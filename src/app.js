@@ -102,7 +102,7 @@ class App extends React.Component {
       arbitratorExtraData
     )
 
-    await BinaryArbitrableProxy.createDispute(
+    return await BinaryArbitrableProxy.createDispute(
       networkMap[network].BINARY_ARBITRABLE_PROXY,
       activeAddress,
       arbitrationCost,

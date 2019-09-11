@@ -4,10 +4,11 @@ import Button from 'react-bootstrap/Button'
 import Form from 'react-bootstrap/Form'
 import Col from 'react-bootstrap/Col'
 import Row from 'react-bootstrap/Row'
-
+import Spinner from 'react-bootstrap/Spinner'
 import Card from 'react-bootstrap/Card'
 import Modal from 'react-bootstrap/Modal'
 import ReactMarkdown from 'react-markdown'
+import Toast from 'react-bootstrap/Toast'
 
 class CreateDispute extends React.Component {
   constructor(props) {
@@ -25,11 +26,20 @@ class CreateDispute extends React.Component {
       secondRulingOption: '',
       secondRulingDescription: '',
       fileInput: '',
-      modalShow: false
+      modalShow: false,
+      awaitingConfirmation: false,
+      showA: false,
+      lastDisputeID: ''
     }
   }
 
-  onModalClose = e => this.setState({ modalShow: false })
+  toggleShowA = e =>
+    this.setState(prevState => {
+      return { showA: !prevState.showA }
+    })
+
+  onModalClose = e =>
+    this.setState({ modalShow: false, awaitingConfirmation: false })
   onModalShow = e => this.setState({ modalShow: true })
 
   onControlChange = e => this.setState({ [e.target.id]: e.target.value })
@@ -72,19 +82,31 @@ class CreateDispute extends React.Component {
       secondRulingDescription
     } = this.state
 
-    await this.props.createDisputeCallback({
-      subcourtID,
-      initialNumberOfJurors,
-      category,
-      title,
-      description,
-      question,
-      firstRulingOption,
-      secondRulingOption,
-      firstRulingDescription,
-      secondRulingDescription,
-      primaryFileURI
-    })
+    this.setState({ awaitingConfirmation: true })
+    try {
+      const receipt = await this.props.createDisputeCallback({
+        subcourtID,
+        initialNumberOfJurors,
+        category,
+        title,
+        description,
+        question,
+        firstRulingOption,
+        secondRulingOption,
+        firstRulingDescription,
+        secondRulingDescription,
+        primaryFileURI
+      })
+
+      this.setState({
+        lastDisputeID: receipt.events.Dispute.returnValues._disputeID
+      })
+      this.toggleShowA()
+    } catch (e) {
+      this.setState({ awaitingConfirmation: false })
+    }
+
+    this.onModalClose()
   }
 
   render() {
@@ -104,11 +126,50 @@ class CreateDispute extends React.Component {
       firstRulingDescription,
       secondRulingDescription,
       fileInput,
-      modalShow
+      modalShow,
+      awaitingConfirmation,
+      lastDisputeID
     } = this.state
 
     return (
       <Container>
+        <div
+          aria-live="polite"
+          aria-atomic="true"
+          style={{
+            position: 'relative',
+            minHeight: '100px'
+          }}
+        >
+          <Toast
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0
+            }}
+            show={this.state.showA}
+            onClose={this.toggleShowA}
+            delay={7000}
+            autohide
+          >
+            <Toast.Header>
+              <img
+                src="holder.js/20x20?text=%20"
+                className="rounded mr-2"
+                alt=""
+              />
+              <strong className="mr-auto">Tx Mined</strong>
+              <small>Just now</small>
+            </Toast.Header>
+            <Toast.Body>
+              Check dispute{' '}
+              <a href={`https://court.kleros.io/cases/${lastDisputeID}`}>
+                {lastDisputeID}
+              </a>{' '}
+              on Kleros!
+            </Toast.Body>
+          </Toast>
+        </div>
         <Card>
           <Card.Body>
             <Card.Title>Create Dispute</Card.Title>
@@ -433,7 +494,20 @@ class CreateDispute extends React.Component {
             <Button variant="secondary" onClick={this.onModalClose}>
               Close
             </Button>
-            <Button variant="primary" onClick={this.onCreateDisputeButtonClick}>
+            <Button
+              variant="primary"
+              onClick={this.onCreateDisputeButtonClick}
+              disabled={awaitingConfirmation}
+            >
+              {awaitingConfirmation && (
+                <Spinner
+                  as="span"
+                  animation="grow"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                />
+              )}{' '}
               Broadcast Transaction
             </Button>
           </Modal.Footer>
