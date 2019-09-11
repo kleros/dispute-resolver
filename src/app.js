@@ -44,8 +44,11 @@ class App extends React.Component {
   getArbitrationCost = (arbitratorAddress, extraData) =>
     Arbitrator.arbitrationCost(arbitratorAddress, extraData)
 
-  getDispute = (klerosLiquidAddress, disputeID) =>
-    KlerosLiquid.disputes(klerosLiquidAddress, disputeID)
+  getDispute = async disputeID =>
+    KlerosLiquid.disputes(
+      networkMap[this.state.network].KLEROS_LIQUID,
+      disputeID
+    )
 
   publishPrimaryDocument = async (filename, fileBuffer) => {
     return await ipfsPublish(filename, fileBuffer)

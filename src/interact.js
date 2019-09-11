@@ -19,8 +19,11 @@ class Interact extends React.Component {
 
   onControlChange = e => this.setState({ [e.target.id]: e.target.value })
 
-  onDisputeIDChange = e => {
+  onDisputeIDChange = async e => {
     this.setState({ disputeID: e.target.value })
+    const dispute = await this.props.getDisputeCallback(this.state.disputeID)
+
+    this.setState({ period: dispute.period })
   }
 
   getHumanReadablePeriod = period => this.PERIODS[period]
@@ -54,7 +57,11 @@ class Interact extends React.Component {
                       <Form.Control
                         readOnly
                         type="text"
-                        placeholder={this.getHumanReadablePeriod(period)}
+                        placeholder={
+                          'Currently in ' +
+                          this.getHumanReadablePeriod(period) +
+                          ' period'
+                        }
                       />
                     </Form.Group>
                   </Col>
@@ -62,8 +69,9 @@ class Interact extends React.Component {
                 {disputeID && (
                   <Col>
                     <Form.Group>
+                      Check out this{' '}
                       <a href={`https://court.kleros.io/cases/${disputeID}`}>
-                        Check out this dispute on Kleros
+                        dispute on Kleros
                       </a>
                     </Form.Group>
                   </Col>
