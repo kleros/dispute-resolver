@@ -461,6 +461,7 @@ class CreateDispute extends React.Component {
                 <Col>
                   <Form.Group>
                     <a
+                      target="blank"
                       href={
                         primaryFileURI &&
                         'https://ipfs.kleros.io' + primaryFileURI
