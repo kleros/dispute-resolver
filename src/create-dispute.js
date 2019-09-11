@@ -192,7 +192,7 @@ class CreateDispute extends React.Component {
                       as="input"
                       value={category}
                       onChange={this.onControlChange}
-                      placeholder={'Dispute category'}
+                      placeholder={'Category'}
                     />
                   </Form.Group>
                 </Col>
@@ -202,7 +202,7 @@ class CreateDispute extends React.Component {
                       as="input"
                       value={title}
                       onChange={this.onControlChange}
-                      placeholder={'title'}
+                      placeholder={'Title'}
                     />
                   </Form.Group>
                 </Col>
@@ -215,7 +215,7 @@ class CreateDispute extends React.Component {
                       rows="3"
                       value={description}
                       onChange={this.onControlChange}
-                      placeholder={'description'}
+                      placeholder={'Description of dispute in markdown'}
                     />
                   </Form.Group>
                 </Col>
@@ -228,7 +228,7 @@ class CreateDispute extends React.Component {
                       rows="1"
                       value={question}
                       onChange={this.onControlChange}
-                      placeholder={'question'}
+                      placeholder={'Question'}
                     />
                   </Form.Group>
                 </Col>
@@ -241,7 +241,7 @@ class CreateDispute extends React.Component {
                       as="input"
                       value={firstRulingOption}
                       onChange={this.onControlChange}
-                      placeholder={'firstRulingOption'}
+                      placeholder={'First ruling option'}
                     />
                   </Form.Group>
                 </Col>
@@ -252,7 +252,7 @@ class CreateDispute extends React.Component {
                       as="input"
                       value={firstRulingDescription}
                       onChange={this.onControlChange}
-                      placeholder={'firstRulingDescription'}
+                      placeholder={'Description of first ruling option'}
                     />
                   </Form.Group>
                 </Col>{' '}
@@ -265,7 +265,7 @@ class CreateDispute extends React.Component {
                       as="input"
                       value={secondRulingOption}
                       onChange={this.onControlChange}
-                      placeholder={'secondRulingOption'}
+                      placeholder={'Second ruling option'}
                     />
                   </Form.Group>
                 </Col>
@@ -276,7 +276,7 @@ class CreateDispute extends React.Component {
                       as="input"
                       value={secondRulingDescription}
                       onChange={this.onControlChange}
-                      placeholder={'secondRulingDescription'}
+                      placeholder={'Description of second ruling option'}
                     />
                   </Form.Group>
                 </Col>{' '}
@@ -315,8 +315,7 @@ class CreateDispute extends React.Component {
                         className="text-left custom-file-label"
                         htmlFor="inputGroupFile04"
                       >
-                        {(fileInput && fileInput.name) ||
-                          'Choose Primary Document'}
+                        {(fileInput && fileInput.name) || 'Primary document'}
                       </label>
                     </div>
                     <div className="input-group-append">
