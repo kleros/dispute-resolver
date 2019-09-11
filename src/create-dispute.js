@@ -52,6 +52,7 @@ class CreateDispute extends React.Component {
 
   onInput = e => {
     console.log(e.target.files)
+    this.setState({ primaryFileURI: '' })
     this.setState({ fileInput: e.target.files[0] })
     console.log('file input')
   }
@@ -282,33 +283,52 @@ class CreateDispute extends React.Component {
               </Form.Row>
               <Form.Row>
                 <Col>
-                  <InputGroup className="mb-3">
-                    <div className="input-group">
-                      <div className="custom-file">
-                        <input
-                          type="file"
-                          className="custom-file-input"
-                          id="inputGroupFile04"
-                          onInput={this.onInput}
-                        />
+                  <div className="input-group mb-3">
+                    {primaryFileURI && (
+                      <div className="input-group-prepend">
                         <label
-                          className="text-left custom-file-label"
-                          htmlFor="inputGroupFile04"
+                          className={
+                            'pr-2 pt-2 mb-0' +
+                            (primaryFileURI ? ' text-success' : '')
+                          }
                         >
-                          {fileInput.name || 'Choose Primary Document'}
+                          <a
+                            className={primaryFileURI ? ' text-success' : ''}
+                            href={
+                              primaryFileURI &&
+                              'https://ipfs.kleros.io' + primaryFileURI
+                            }
+                          >
+                            {fileInput && fileInput.name}
+                          </a>
                         </label>
                       </div>
-                      <div className="input-group-append">
-                        <button
-                          className="btn btn-primary"
-                          type="button"
-                          onClick={this.onSubmitButtonClick}
-                        >
-                          Submit
-                        </button>
-                      </div>
+                    )}
+                    <div className="custom-file">
+                      <input
+                        type="file"
+                        className="custom-file-input"
+                        id="inputGroupFile04"
+                        onInput={this.onInput}
+                      />
+                      <label
+                        className="text-left custom-file-label"
+                        htmlFor="inputGroupFile04"
+                      >
+                        {(fileInput && fileInput.name) ||
+                          'Choose Primary Document'}
+                      </label>
                     </div>
-                  </InputGroup>
+                    <div className="input-group-append">
+                      <button
+                        className="btn btn-primary"
+                        type="button"
+                        onClick={this.onSubmitButtonClick}
+                      >
+                        Submit
+                      </button>
+                    </div>
+                  </div>
                 </Col>
               </Form.Row>
 

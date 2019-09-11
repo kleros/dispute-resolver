@@ -73,9 +73,7 @@ class App extends React.Component {
       <Container>
         <Row>
           <Col>
-            <header className="text-center my-5">
-              Binary Arbitrable Proxy
-            </header>
+            <h1 className="text-center my-5">Binary Arbitrable Proxy</h1>
           </Col>
         </Row>
 
