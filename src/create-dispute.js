@@ -11,6 +11,7 @@ import InputGroup from 'react-bootstrap/InputGroup'
 import networkMap from './ethereum/network-contract-mapping'
 import generateMetaEvidence from './ethereum/generate-meta-evidence'
 import ipfsPublish from './ipfs-publish'
+import web3 from './ethereum/web3'
 
 class CreateDispute extends React.Component {
   constructor(props) {
@@ -45,8 +46,7 @@ class CreateDispute extends React.Component {
 
   generateArbitratorExtraData = (subcourtID, initialNumberOfJurors) =>
     '0x' +
-    subcourtID.padStart(16, '0') +
-    initialNumberOfJurors.padStart(16, '0')
+    (subcourtID.padStart(64, '0') + initialNumberOfJurors.padStart(64, '0'))
 
   onControlChange = e => this.setState({ [e.target.id]: e.target.value })
 
@@ -77,6 +77,7 @@ class CreateDispute extends React.Component {
 
   onCreateDisputeButtonClick = async e => {
     e.preventDefault()
+    console.log('create dispute clicked')
     const {
       arbitrator,
       subcourtID,
