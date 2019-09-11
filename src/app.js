@@ -4,9 +4,11 @@ import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import './app.css'
 import CreateDispute from './create-dispute'
+import Interact from './interact'
 
 import * as BinaryArbitrableProxy from './ethereum/binary-arbitrable-proxy'
 import * as Arbitrator from './ethereum/arbitrator'
+import * as KlerosLiquid from './ethereum/kleros-liquid'
 
 import networkMap from './ethereum/network-contract-mapping'
 import ipfsPublish from './ipfs-publish'
@@ -41,6 +43,9 @@ class App extends React.Component {
 
   getArbitrationCost = (arbitratorAddress, extraData) =>
     Arbitrator.arbitrationCost(arbitratorAddress, extraData)
+
+  getDispute = (klerosLiquidAddress, disputeID) =>
+    KlerosLiquid.disputes(klerosLiquidAddress, disputeID)
 
   publishPrimaryDocument = async (filename, fileBuffer) => {
     return await ipfsPublish(filename, fileBuffer)
@@ -124,10 +129,17 @@ class App extends React.Component {
         </Row>
 
         <Row>
-          <CreateDispute
-            createDisputeCallback={this.createDispute}
-            publishPrimaryDocumentCallback={this.publishPrimaryDocument}
-          />
+          <Col>
+            <CreateDispute
+              createDisputeCallback={this.createDispute}
+              publishPrimaryDocumentCallback={this.publishPrimaryDocument}
+            />
+          </Col>
+        </Row>
+        <Row className="mt-5">
+          <Col>
+            <Interact getDisputeCallback={this.getDispute} />
+          </Col>
         </Row>
       </Container>
     )
