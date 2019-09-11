@@ -1,8 +1,5 @@
 import React from 'react'
 import Container from 'react-bootstrap/Container'
-import Jumbotron from 'react-bootstrap/Jumbotron'
-import Button from 'react-bootstrap/Button'
-import Form from 'react-bootstrap/Form'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import './app.css'
@@ -11,7 +8,6 @@ import CreateDispute from './create-dispute'
 import * as BinaryArbitrableProxy from './ethereum/binary-arbitrable-proxy'
 import * as Arbitrator from './ethereum/arbitrator'
 
-import web3 from './ethereum/web3'
 import networkMap from './ethereum/network-contract-mapping'
 import ipfsPublish from './ipfs-publish'
 
@@ -22,6 +18,7 @@ class App extends React.Component {
       activeAddress: '0x0000000000000000000000000000000000000000',
       network: '1'
     }
+    this.encoder = new TextEncoder()
   }
 
   async componentDidMount() {
@@ -42,28 +39,74 @@ class App extends React.Component {
     } else console.error('MetaMask not detected :(')
   }
 
-  arbitrationCost = (arbitratorAddress, extraData) =>
+  getArbitrationCost = (arbitratorAddress, extraData) =>
     Arbitrator.arbitrationCost(arbitratorAddress, extraData)
 
   publishPrimaryDocument = async (filename, fileBuffer) => {
     return await ipfsPublish(filename, fileBuffer)
   }
 
-  createDispute = async (
-    value,
-    arbitratorAddress,
-    arbitratorExtraData,
-    metaevidenceURI
-  ) => {
-    console.log(arbitratorExtraData)
-    console.log(web3.utils.hexToBytes(arbitratorExtraData))
-    console.log('callback called')
+  generateArbitratorExtraData = (subcourtID, initialNumberOfJurors) =>
+    '0x' +
+    (subcourtID.padStart(64, '0') + initialNumberOfJurors.padStart(64, '0'))
+
+  createDispute = async ({
+    subcourtID,
+    initialNumberOfJurors,
+    category,
+    title,
+    description,
+    question,
+    firstRulingOption,
+    secondRulingOption,
+    firstRulingDescription,
+    secondRulingDescription,
+    primaryFileURI,
+    value
+  }) => {
     const { activeAddress, network } = this.state
+    const arbitrator = networkMap[network].KLEROS_LIQUID
+
+    const arbitratorExtraData = this.generateArbitratorExtraData(
+      subcourtID,
+      initialNumberOfJurors
+    )
+
+    const metaevidence = {
+      category,
+      title,
+      description,
+      question,
+      rulingOptions: {
+        type: 'single-select',
+        titles: [firstRulingOption, secondRulingOption],
+        descriptions: [firstRulingDescription, secondRulingDescription]
+      },
+      fileURI: primaryFileURI
+    }
+
+    const ipfsHashMetaEvidenceObj = await ipfsPublish(
+      'metaEvidence.json',
+      this.encoder.encode(JSON.stringify(metaevidence))
+    )
+
+    const metaevidenceURI =
+      '/ipfs/' +
+      ipfsHashMetaEvidenceObj[1]['hash'] +
+      ipfsHashMetaEvidenceObj[0]['path']
+
+    console.log(metaevidence)
+
+    let arbitrationCost = await this.getArbitrationCost(
+      arbitrator,
+      arbitratorExtraData
+    )
+
     await BinaryArbitrableProxy.createDispute(
       networkMap[network].BINARY_ARBITRABLE_PROXY,
       activeAddress,
-      value,
-      arbitratorAddress,
+      arbitrationCost,
+      arbitrator,
       arbitratorExtraData,
       metaevidenceURI
     )
@@ -82,9 +125,7 @@ class App extends React.Component {
 
         <Row>
           <CreateDispute
-            network={this.state.network}
             createDisputeCallback={this.createDispute}
-            arbitrationCostCallback={this.arbitrationCost}
             publishPrimaryDocumentCallback={this.publishPrimaryDocument}
           />
         </Row>

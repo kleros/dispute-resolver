@@ -1,26 +1,16 @@
 import React from 'react'
 import Container from 'react-bootstrap/Container'
-import Jumbotron from 'react-bootstrap/Jumbotron'
 import Button from 'react-bootstrap/Button'
 import Form from 'react-bootstrap/Form'
-import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Card from 'react-bootstrap/Card'
-import InputGroup from 'react-bootstrap/InputGroup'
-
-import networkMap from './ethereum/network-contract-mapping'
-import generateMetaEvidence from './ethereum/generate-meta-evidence'
-import ipfsPublish from './ipfs-publish'
-import web3 from './ethereum/web3'
 
 class CreateDispute extends React.Component {
   constructor(props) {
     super(props)
     this.state = {
-      arbitrator: networkMap[this.props.network].KLEROS_LIQUID,
       subcourtID: '',
       initialNumberOfJurors: '',
-      metaevidenceURI: '',
       category: '',
       title: '',
       description: '',
@@ -32,36 +22,18 @@ class CreateDispute extends React.Component {
       secondRulingDescription: '',
       fileInput: ''
     }
-
-    this.encoder = new TextEncoder()
   }
-
-  componentDidUpdate(prevProps) {
-    if (this.props.network !== prevProps.network) {
-      this.setState({
-        arbitrator: networkMap[this.props.network].KLEROS_LIQUID
-      })
-    }
-  }
-
-  generateArbitratorExtraData = (subcourtID, initialNumberOfJurors) =>
-    '0x' +
-    (subcourtID.padStart(64, '0') + initialNumberOfJurors.padStart(64, '0'))
 
   onControlChange = e => this.setState({ [e.target.id]: e.target.value })
 
   onInput = e => {
-    console.log(e.target.files)
     this.setState({ primaryFileURI: '' })
     this.setState({ fileInput: e.target.files[0] })
-    console.log('file input')
   }
 
   onSubmitButtonClick = async e => {
     e.preventDefault()
     const { fileInput } = this.state
-    console.log('submit clicked')
-    console.log(fileInput)
 
     var reader = new FileReader()
     reader.readAsArrayBuffer(fileInput)
@@ -79,7 +51,6 @@ class CreateDispute extends React.Component {
     e.preventDefault()
     console.log('create dispute clicked')
     const {
-      arbitrator,
       subcourtID,
       initialNumberOfJurors,
       category,
@@ -93,12 +64,9 @@ class CreateDispute extends React.Component {
       secondRulingDescription
     } = this.state
 
-    const arbitratorExtraData = this.generateArbitratorExtraData(
+    await this.props.createDisputeCallback({
       subcourtID,
-      initialNumberOfJurors
-    )
-
-    const metaevidence = generateMetaEvidence({
+      initialNumberOfJurors,
       category,
       title,
       description,
@@ -107,32 +75,8 @@ class CreateDispute extends React.Component {
       secondRulingOption,
       firstRulingDescription,
       secondRulingDescription,
-      fileURI: primaryFileURI
+      primaryFileURI
     })
-
-    const ipfsHashMetaEvidenceObj = await ipfsPublish(
-      'metaEvidence.json',
-      this.encoder.encode(JSON.stringify(metaevidence))
-    )
-
-    const metaevidenceURI =
-      '/ipfs/' +
-      ipfsHashMetaEvidenceObj[1]['hash'] +
-      ipfsHashMetaEvidenceObj[0]['path']
-
-    console.log(metaevidence)
-
-    let arbitrationCost = await this.props.arbitrationCostCallback(
-      arbitrator,
-      arbitratorExtraData
-    )
-
-    await this.props.createDisputeCallback(
-      arbitrationCost,
-      arbitrator,
-      arbitratorExtraData,
-      metaevidenceURI
-    )
   }
 
   render() {
@@ -142,12 +86,10 @@ class CreateDispute extends React.Component {
     const {
       subcourtID,
       initialNumberOfJurors,
-      metaevidenceURI,
       category,
       title,
       description,
       question,
-      rulingOptions,
       primaryFileURI,
       firstRulingOption,
       secondRulingOption,
