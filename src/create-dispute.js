@@ -7,6 +7,7 @@ import Row from 'react-bootstrap/Row'
 
 import Card from 'react-bootstrap/Card'
 import Modal from 'react-bootstrap/Modal'
+import ReactMarkdown from 'react-markdown'
 
 class CreateDispute extends React.Component {
   constructor(props) {
@@ -170,6 +171,13 @@ class CreateDispute extends React.Component {
                       onChange={this.onControlChange}
                       placeholder={'Description of dispute in markdown'}
                     />
+                  </Form.Group>
+                </Col>
+              </Form.Row>
+              <Form.Row>
+                <Col>
+                  <Form.Group controlId="markdown-description">
+                    <ReactMarkdown source={description} />
                   </Form.Group>
                 </Col>
               </Form.Row>
