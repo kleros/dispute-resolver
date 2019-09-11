@@ -306,26 +306,6 @@ class CreateDispute extends React.Component {
               <Form.Row>
                 <Col>
                   <div className="input-group mb-3">
-                    {primaryFileURI && (
-                      <div className="input-group-prepend">
-                        <label
-                          className={
-                            'pr-2 pt-2 mb-0' +
-                            (primaryFileURI ? ' text-success' : '')
-                          }
-                        >
-                          <a
-                            className={primaryFileURI ? ' text-success' : ''}
-                            href={
-                              primaryFileURI &&
-                              'https://ipfs.kleros.io' + primaryFileURI
-                            }
-                          >
-                            {fileInput && fileInput.name}
-                          </a>
-                        </label>
-                      </div>
-                    )}
                     <div className="custom-file">
                       <input
                         type="file"
@@ -334,7 +314,10 @@ class CreateDispute extends React.Component {
                         onInput={this.onInput}
                       />
                       <label
-                        className="text-left custom-file-label text-muted"
+                        className={
+                          `text-left custom-file-label  ` +
+                          (primaryFileURI ? 'text-success' : 'text-muted')
+                        }
                         htmlFor="inputGroupFile04"
                       >
                         {(fileInput && fileInput.name) || 'Primary document'}
