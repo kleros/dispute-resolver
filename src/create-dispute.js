@@ -265,7 +265,7 @@ class CreateDispute extends React.Component {
                         onInput={this.onInput}
                       />
                       <label
-                        className="text-left custom-file-label"
+                        className="text-left custom-file-label text-muted"
                         htmlFor="inputGroupFile04"
                       >
                         {(fileInput && fileInput.name) || 'Primary document'}
