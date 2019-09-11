@@ -55,13 +55,16 @@ class App extends React.Component {
     arbitratorExtraData,
     metaevidenceURI
   ) => {
+    console.log(arbitratorExtraData)
+    console.log(web3.utils.hexToBytes(arbitratorExtraData))
+    console.log('callback called')
     const { activeAddress, network } = this.state
     await BinaryArbitrableProxy.createDispute(
       networkMap[network].BINARY_ARBITRABLE_PROXY,
       activeAddress,
       value,
       arbitratorAddress,
-      web3.utils.bytesToHex(arbitratorExtraData),
+      arbitratorExtraData,
       metaevidenceURI
     )
   }
@@ -89,5 +92,4 @@ class App extends React.Component {
     )
   }
 }
-
 export default App

@@ -4,7 +4,7 @@ import web3 from './web3'
 export const contractInstance = address =>
   new web3.eth.Contract(Arbitrator.abi, address)
 
-export const arbitrationCost = (instanceAddress, extraData) =>
+export const arbitrationCost = (instanceAddress, arbitratorExtraData) =>
   contractInstance(instanceAddress)
-    .methods.arbitrationCost(web3.utils.utf8ToHex(extraData))
+    .methods.arbitrationCost(web3.utils.hexToBytes(arbitratorExtraData))
     .call()
