@@ -3,7 +3,10 @@ import Container from 'react-bootstrap/Container'
 import Button from 'react-bootstrap/Button'
 import Form from 'react-bootstrap/Form'
 import Col from 'react-bootstrap/Col'
+import Row from 'react-bootstrap/Row'
+
 import Card from 'react-bootstrap/Card'
+import Modal from 'react-bootstrap/Modal'
 
 class CreateDispute extends React.Component {
   constructor(props) {
@@ -20,9 +23,13 @@ class CreateDispute extends React.Component {
       firstRulingDescription: '',
       secondRulingOption: '',
       secondRulingDescription: '',
-      fileInput: ''
+      fileInput: '',
+      modalShow: false
     }
   }
+
+  onModalClose = e => this.setState({ modalShow: false })
+  onModalShow = e => this.setState({ modalShow: true })
 
   onControlChange = e => this.setState({ [e.target.id]: e.target.value })
 
@@ -95,7 +102,8 @@ class CreateDispute extends React.Component {
       secondRulingOption,
       firstRulingDescription,
       secondRulingDescription,
-      fileInput
+      fileInput,
+      modalShow
     } = this.state
 
     return (
@@ -110,6 +118,7 @@ class CreateDispute extends React.Component {
                     <Form.Control
                       id="subcourtID"
                       as="input"
+                      type="number"
                       value={subcourtID}
                       onChange={this.onControlChange}
                       placeholder={'Subcourt identifier'}
@@ -121,6 +130,7 @@ class CreateDispute extends React.Component {
                     <Form.Control
                       id="initialNumberOfJurors"
                       as="input"
+                      type="number"
                       value={initialNumberOfJurors}
                       onChange={this.onControlChange}
                       placeholder={'Initial number of jurors'}
@@ -275,9 +285,22 @@ class CreateDispute extends React.Component {
               </Form.Row>
 
               <Button
+                disabled={
+                  !subcourtID ||
+                  !initialNumberOfJurors ||
+                  !category ||
+                  !title ||
+                  !description ||
+                  !question ||
+                  !firstRulingOption ||
+                  !firstRulingDescription ||
+                  !secondRulingOption ||
+                  !secondRulingDescription ||
+                  !primaryFileURI
+                }
                 variant="primary"
                 type="button"
-                onClick={this.onCreateDisputeButtonClick}
+                onClick={this.onModalShow}
                 block
               >
                 Create Dispute
@@ -285,6 +308,128 @@ class CreateDispute extends React.Component {
             </Form>
           </Card.Body>
         </Card>
+
+        <Modal show={modalShow} onHide={this.onModalClose} animation={false}>
+          <Modal.Header closeButton>
+            <Modal.Title>Confirmation</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form>
+              <Form.Row>
+                <Col>
+                  <Form.Group>
+                    <Form.Control
+                      readOnly
+                      type="text"
+                      placeholder={subcourtID}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col>
+                  <Form.Group>
+                    <Form.Control
+                      readOnly
+                      type="text"
+                      placeholder={initialNumberOfJurors}
+                    />
+                  </Form.Group>
+                </Col>{' '}
+              </Form.Row>
+              <Form.Row>
+                <Col>
+                  <Form.Group controlId="category">
+                    <Form.Control readOnly type="text" placeholder={category} />
+                  </Form.Group>
+                </Col>
+                <Col>
+                  <Form.Group controlId="title">
+                    <Form.Control readOnly type="text" placeholder={title} />
+                  </Form.Group>
+                </Col>
+              </Form.Row>
+              <Form.Row>
+                <Col>
+                  <Form.Group controlId="description">
+                    <Form.Control
+                      readOnly
+                      type="text"
+                      placeholder={description}
+                    />
+                  </Form.Group>
+                </Col>
+              </Form.Row>
+              <Form.Row>
+                <Col>
+                  <Form.Group controlId="question">
+                    <Form.Control readOnly type="text" placeholder={question} />
+                  </Form.Group>
+                </Col>
+              </Form.Row>
+              <Form.Row>
+                <Col>
+                  <Form.Group>
+                    <Form.Control
+                      readOnly
+                      type="text"
+                      placeholder={firstRulingOption}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col>
+                  <Form.Group>
+                    <Form.Control
+                      readOnly
+                      type="text"
+                      placeholder={firstRulingDescription}
+                    />
+                  </Form.Group>
+                </Col>{' '}
+              </Form.Row>
+              <Form.Row>
+                <Col>
+                  <Form.Group>
+                    <Form.Control
+                      readOnly
+                      type="text"
+                      placeholder={secondRulingOption}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col>
+                  <Form.Group>
+                    <Form.Control
+                      readOnly
+                      type="text"
+                      placeholder={secondRulingDescription}
+                    />
+                  </Form.Group>
+                </Col>{' '}
+              </Form.Row>
+              <Form.Row>
+                <Col>
+                  <Form.Group>
+                    <a
+                      href={
+                        primaryFileURI &&
+                        'https://ipfs.kleros.io' + primaryFileURI
+                      }
+                    >
+                      {fileInput && fileInput.name}
+                    </a>
+                  </Form.Group>
+                </Col>{' '}
+              </Form.Row>
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={this.onModalClose}>
+              Close
+            </Button>
+            <Button variant="primary" onClick={this.onModalClose}>
+              Broadcast Transaction
+            </Button>
+          </Modal.Footer>
+        </Modal>
       </Container>
     )
   }
