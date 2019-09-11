@@ -425,7 +425,7 @@ class CreateDispute extends React.Component {
             <Button variant="secondary" onClick={this.onModalClose}>
               Close
             </Button>
-            <Button variant="primary" onClick={this.onModalClose}>
+            <Button variant="primary" onClick={this.onCreateDisputeButtonClick}>
               Broadcast Transaction
             </Button>
           </Modal.Footer>
