@@ -18,7 +18,8 @@ class App extends React.Component {
     super(props)
     this.state = {
       activeAddress: '0x0000000000000000000000000000000000000000',
-      network: '1'
+      network: '1',
+      lastDisputeID: ''
     }
     this.encoder = new TextEncoder()
   }
@@ -50,6 +51,9 @@ class App extends React.Component {
       disputeID
     )
 
+  updateLastDisputeID = async newDisputeID =>
+    this.setState({ lastDisputeID: newDisputeID })
+
   publishPrimaryDocument = async (filename, fileBuffer) => {
     return await ipfsPublish(filename, fileBuffer)
   }
@@ -57,6 +61,24 @@ class App extends React.Component {
   generateArbitratorExtraData = (subcourtID, initialNumberOfJurors) =>
     '0x' +
     (subcourtID.padStart(64, '0') + initialNumberOfJurors.padStart(64, '0'))
+
+  appeal = async disputeID => {
+    const { activeAddress, network } = this.state
+
+    const appealCost = await Arbitrator.appealCost(
+      networkMap[network].KLEROS_LIQUID,
+      disputeID,
+      '0x0'
+    )
+
+    await Arbitrator.appeal(
+      networkMap[network].KLEROS_LIQUID,
+      activeAddress,
+      appealCost,
+      disputeID,
+      '0x0'
+    )
+  }
 
   createDispute = async ({
     subcourtID,
@@ -141,7 +163,13 @@ class App extends React.Component {
         </Row>
         <Row className="mt-5">
           <Col>
-            <Interact getDisputeCallback={this.getDispute} />
+            <Interact
+              publishPrimaryDocumentCallback={this.publishPrimaryDocument}
+              disputeID={this.state.lastDisputeID}
+              getDisputeCallback={this.getDispute}
+              appealCallback={this.appeal}
+              newDisputeCallback={this.updateLastDisputeID}
+            />
           </Col>
         </Row>
       </Container>

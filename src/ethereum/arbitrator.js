@@ -8,3 +8,19 @@ export const arbitrationCost = (instanceAddress, arbitratorExtraData) =>
   contractInstance(instanceAddress)
     .methods.arbitrationCost(arbitratorExtraData)
     .call()
+
+export const appealCost = (instanceAddress, disputeID, extraData) =>
+  contractInstance(instanceAddress)
+    .methods.appealCost(disputeID, extraData)
+    .call()
+
+export const appeal = (
+  instanceAddress,
+  senderAddress,
+  value,
+  disputeID,
+  extraData
+) =>
+  contractInstance(instanceAddress)
+    .methods.appeal(disputeID, extraData)
+    .send({ from: senderAddress, value })
