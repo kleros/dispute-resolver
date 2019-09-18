@@ -101,6 +101,9 @@ class CreateDispute extends React.Component {
       this.setState({
         lastDisputeID: receipt.events.Dispute.returnValues._disputeID
       })
+      // this.props.newDisputeCallback(
+      //   receipt.events.Dispute.returnValues._disputeID
+      // )
       this.toggleShowA()
     } catch (e) {
       this.setState({ awaitingConfirmation: false })
@@ -162,17 +165,16 @@ class CreateDispute extends React.Component {
               <small>Just now</small>
             </Toast.Header>
             <Toast.Body>
-              Check dispute{' '}
+              Check out the new{' '}
               <a href={`https://court.kleros.io/cases/${lastDisputeID}`}>
-                {lastDisputeID}
-              </a>{' '}
-              on Kleros!
+                dispute {lastDisputeID} on Kleros!
+              </a>
             </Toast.Body>
           </Toast>
         </div>
         <Card>
           <Card.Body>
-            <Card.Title>Create Dispute</Card.Title>
+            <Card.Title>Create a Dispute</Card.Title>
             <Form>
               <Form.Row>
                 <Col>
