@@ -166,7 +166,11 @@ class CreateDispute extends React.Component {
             </Toast.Header>
             <Toast.Body>
               Check out the new{' '}
-              <a href={`https://court.kleros.io/cases/${lastDisputeID}`}>
+              <a
+                href={`https://court.kleros.io/cases/${lastDisputeID}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 dispute {lastDisputeID} on Kleros!
               </a>
             </Toast.Body>
