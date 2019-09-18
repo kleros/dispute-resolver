@@ -16,7 +16,7 @@ class Interact extends React.Component {
       disputeID: this.props.disputeID,
       period: '0',
       fileInput: '',
-      primaryFileURI: ''
+      evidenceFileURI: ''
     }
   }
 
@@ -27,26 +27,46 @@ class Interact extends React.Component {
     }
   }
 
-  PERIODS = ['evidence', 'commit', 'vote', 'appeal', 'execution']
+  PERIODS = [
+    'evidence',
+    'commit',
+    'vote',
+    'appeal',
+    'execution',
+    'ERROR: Dispute id out of bounds.'
+  ]
 
   onControlChange = e => this.setState({ [e.target.id]: e.target.value })
   onInput = e => {
-    this.setState({ primaryFileURI: '' })
+    this.setState({ evidenceFileURI: '' })
     this.setState({ fileInput: e.target.files[0] })
   }
   onSubmitButtonClick = async e => {
+    console.log('EVIDENCE SUBMISSION')
     e.preventDefault()
-    const { fileInput } = this.state
+    const { disputeID, fileInput } = this.state
 
     var reader = new FileReader()
     reader.readAsArrayBuffer(fileInput)
     reader.addEventListener('loadend', async () => {
       const buffer = Buffer.from(reader.result)
-      const result = await this.props.publishPrimaryDocumentCallback(
+
+      const result = await this.props.publishEvidenceCallback(
         fileInput.name,
         buffer
       )
-      this.setState({ primaryFileURI: '/ipfs/' + result[0].hash })
+
+      console.log(result)
+
+      await this.setState({ evidenceFileURI: '/ipfs/' + result[0].hash })
+
+      console.log(`fileURI ${this.state.evidenceFileURI}`)
+      const { evidenceFileURI } = this.state
+      const receipt = await this.props.submitEvidenceCallback({
+        disputeID,
+        evidenceFileURI
+      })
+      console.log(receipt)
     })
   }
 
@@ -55,16 +75,20 @@ class Interact extends React.Component {
   }
 
   onDisputeIDChange = async e => {
-    this.setState({ disputeID: e.target.value })
-    const dispute = await this.props.getDisputeCallback(this.state.disputeID)
-
-    this.setState({ period: dispute.period })
+    await this.setState({ disputeID: e.target.value })
+    try {
+      const dispute = await this.props.getDisputeCallback(this.state.disputeID)
+      console.log(dispute)
+      this.setState({ period: dispute.period })
+    } catch (e) {
+      this.setState({ period: 5 })
+    }
   }
 
   getHumanReadablePeriod = period => this.PERIODS[period]
 
   render() {
-    const { disputeID, period, fileInput, primaryFileURI } = this.state
+    const { disputeID, period, fileInput, evidenceFileURI } = this.state
 
     return (
       <Container>
@@ -138,7 +162,7 @@ class Interact extends React.Component {
                       <label
                         className={
                           `text-left custom-file-label  ` +
-                          (primaryFileURI ? 'text-success' : 'text-muted')
+                          (evidenceFileURI ? 'text-success' : 'text-muted')
                         }
                         htmlFor="inputGroupFile04"
                       >

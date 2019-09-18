@@ -142,6 +142,43 @@ class App extends React.Component {
     )
   }
 
+  submitEvidence = async ({ disputeID, evidenceFileURI }) => {
+    const { activeAddress, network } = this.state
+    const arbitrator = networkMap[network].KLEROS_LIQUID
+
+    const evidence = {
+      name: 'name',
+      description: 'description',
+      fileURI: evidenceFileURI
+    }
+    console.log(evidence)
+    console.log(
+      await BinaryArbitrableProxy.contractInstance(
+        networkMap[this.state.network].BINARY_ARBITRABLE_PROXY
+      )
+    )
+    const localDisputeID = await BinaryArbitrableProxy.externalIDtoLocalID(
+      '0x80CB18e3C62c1923ca8a25767439c608C1Ef41f9',
+      disputeID
+    )
+
+    const ipfsHashEvidenceObj = await ipfsPublish(
+      'evidence.json',
+      this.encoder.encode(JSON.stringify(evidence))
+    )
+
+    const evidenceURI =
+      '/ipfs/' + ipfsHashEvidenceObj[1]['hash'] + ipfsHashEvidenceObj[0]['path']
+
+    return await BinaryArbitrableProxy.submitEvidence(
+      networkMap[network].BINARY_ARBITRABLE_PROXY,
+      activeAddress,
+      arbitrator,
+      localDisputeID,
+      evidenceURI
+    )
+  }
+
   render() {
     console.debug(this.state)
 
@@ -165,6 +202,8 @@ class App extends React.Component {
           <Col>
             <Interact
               publishPrimaryDocumentCallback={this.publishPrimaryDocument}
+              publishEvidenceCallback={this.publishPrimaryDocument}
+              submitEvidenceCallback={this.submitEvidence}
               disputeID={this.state.lastDisputeID}
               getDisputeCallback={this.getDispute}
               appealCallback={this.appeal}
