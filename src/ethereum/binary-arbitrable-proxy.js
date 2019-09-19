@@ -1,11 +1,8 @@
 import BinaryArbitrableProxy from '../../node_modules/@kleros/binary-arbitrable-proxy-contract/build/contracts/BinaryArbitrableProxy.json'
 import web3 from './web3'
 
-export const contractInstance = address => {
-  const contract = new web3.eth.Contract(BinaryArbitrableProxy.abi, address)
-  contract.options.address = address
-  return contract
-}
+export const contractInstance = address =>
+  new web3.eth.Contract(BinaryArbitrableProxy.abi, address)
 
 export const deploy = sender =>
   new web3.eth.Contract(BinaryArbitrableProxy.abi)
