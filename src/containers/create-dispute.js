@@ -28,14 +28,14 @@ class CreateDispute extends React.Component {
       fileInput: '',
       modalShow: false,
       awaitingConfirmation: false,
-      showA: false,
+      showToast: false,
       lastDisputeID: ''
     }
   }
 
-  toggleShowA = e =>
+  toggleshowToast = e =>
     this.setState(prevState => {
-      return { showA: !prevState.showA }
+      return { showToast: !prevState.showToast }
     })
 
   onModalClose = e =>
@@ -53,14 +53,13 @@ class CreateDispute extends React.Component {
     e.preventDefault()
     const { fileInput } = this.state
 
+    console.log(this.props.publishCallback)
+
     var reader = new FileReader()
     reader.readAsArrayBuffer(fileInput)
     reader.addEventListener('loadend', async () => {
       const buffer = Buffer.from(reader.result)
-      const result = await this.props.publishPrimaryDocumentCallback(
-        fileInput.name,
-        buffer
-      )
+      const result = await this.props.publishCallback(fileInput.name, buffer)
       this.setState({ primaryFileURI: '/ipfs/' + result[0].hash })
     })
   }
@@ -101,10 +100,8 @@ class CreateDispute extends React.Component {
       this.setState({
         lastDisputeID: receipt.events.Dispute.returnValues._disputeID
       })
-      // this.props.newDisputeCallback(
-      //   receipt.events.Dispute.returnValues._disputeID
-      // )
-      this.toggleShowA()
+
+      this.toggleshowToast()
     } catch (e) {
       this.setState({ awaitingConfirmation: false })
     }
@@ -131,7 +128,8 @@ class CreateDispute extends React.Component {
       fileInput,
       modalShow,
       awaitingConfirmation,
-      lastDisputeID
+      lastDisputeID,
+      showToast
     } = this.state
 
     return (
@@ -150,8 +148,8 @@ class CreateDispute extends React.Component {
               top: 0,
               right: 0
             }}
-            show={this.state.showA}
-            onClose={this.toggleShowA}
+            show={showToast}
+            onClose={this.toggleshowToast}
             delay={7000}
             autohide
           >

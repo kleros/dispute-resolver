@@ -3,8 +3,9 @@ import Container from 'react-bootstrap/Container'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import './app.css'
-import CreateDispute from './create-dispute'
-import Interact from './interact'
+import CreateDispute from './containers/create-dispute'
+import Interact from './containers/interact'
+import { BrowserRouter, NavLink, Route, Switch } from 'react-router-dom'
 
 import * as BinaryArbitrableProxy from './ethereum/binary-arbitrable-proxy'
 import * as Arbitrator from './ethereum/arbitrator'
@@ -54,7 +55,7 @@ class App extends React.Component {
   updateLastDisputeID = async newDisputeID =>
     this.setState({ lastDisputeID: newDisputeID })
 
-  publishPrimaryDocument = async (filename, fileBuffer) => {
+  onPublish = async (filename, fileBuffer) => {
     return await ipfsPublish(filename, fileBuffer)
   }
 
@@ -144,25 +145,21 @@ class App extends React.Component {
 
   submitEvidence = async ({ disputeID, evidenceFileURI }) => {
     const { activeAddress, network } = this.state
-    const arbitrator = networkMap[network].KLEROS_LIQUID
 
     const evidence = {
       name: 'name',
       description: 'description',
       fileURI: evidenceFileURI
     }
-    console.log(evidence)
     console.log(
       await BinaryArbitrableProxy.contractInstance(
-        networkMap[this.state.network].BINARY_ARBITRABLE_PROXY
+        networkMap[network].BINARY_ARBITRABLE_PROXY
       )
     )
     const localDisputeID = await BinaryArbitrableProxy.externalIDtoLocalID(
-      networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
+      networkMap[network].BINARY_ARBITRABLE_PROXY,
       disputeID
     )
-
-    console.log(`Local disputeID ${localDisputeID}`)
 
     const ipfsHashEvidenceObj = await ipfsPublish(
       'evidence.json',
@@ -183,6 +180,8 @@ class App extends React.Component {
   render() {
     console.debug(this.state)
 
+    const { lastDisputeID } = this.state
+
     return (
       <Container>
         <Row>
@@ -191,27 +190,34 @@ class App extends React.Component {
           </Col>
         </Row>
 
-        <Row>
-          <Col>
-            <CreateDispute
-              createDisputeCallback={this.createDispute}
-              publishPrimaryDocumentCallback={this.publishPrimaryDocument}
+        <BrowserRouter>
+          <Switch>
+            <Route
+              exact
+              path="/"
+              render={props => (
+                <CreateDispute
+                  createDisputeCallback={this.createDispute}
+                  publishCallback={this.onPublish}
+                />
+              )}
             />
-          </Col>
-        </Row>
-        <Row className="mt-5">
-          <Col>
-            <Interact
-              publishPrimaryDocumentCallback={this.publishPrimaryDocument}
-              publishEvidenceCallback={this.publishPrimaryDocument}
-              submitEvidenceCallback={this.submitEvidence}
-              disputeID={this.state.lastDisputeID}
-              getDisputeCallback={this.getDispute}
-              appealCallback={this.appeal}
-              newDisputeCallback={this.updateLastDisputeID}
+            <Route
+              exact
+              path="/interact"
+              render={props => (
+                <Interact
+                  publishCallback={this.onPublish}
+                  submitEvidenceCallback={this.submitEvidence}
+                  disputeID={lastDisputeID}
+                  getDisputeCallback={this.getDispute}
+                  appealCallback={this.appeal}
+                  newDisputeCallback={this.updateLastDisputeID}
+                />
+              )}
             />
-          </Col>
-        </Row>
+          </Switch>
+        </BrowserRouter>
       </Container>
     )
   }

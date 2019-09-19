@@ -51,10 +51,7 @@ class Interact extends React.Component {
     reader.addEventListener('loadend', async () => {
       const buffer = Buffer.from(reader.result)
 
-      const result = await this.props.publishEvidenceCallback(
-        fileInput.name,
-        buffer
-      )
+      const result = await this.props.publishCallback(fileInput.name, buffer)
 
       console.log(result)
 
@@ -78,7 +75,6 @@ class Interact extends React.Component {
     await this.setState({ disputeID: e.target.value })
     try {
       const dispute = await this.props.getDisputeCallback(this.state.disputeID)
-      console.log(dispute)
       this.setState({ period: dispute.period })
     } catch (e) {
       this.setState({ period: 5 })
