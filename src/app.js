@@ -14,6 +14,8 @@ import * as KlerosLiquid from './ethereum/kleros-liquid'
 import networkMap from './ethereum/network-contract-mapping'
 import ipfsPublish from './ipfs-publish'
 
+import './app.css'
+
 class App extends React.Component {
   constructor(props) {
     super(props)
@@ -184,12 +186,6 @@ class App extends React.Component {
 
     return (
       <Container>
-        <Row>
-          <Col>
-            <h1 className="text-center my-5">Binary Arbitrable Proxy</h1>
-          </Col>
-        </Row>
-
         <BrowserRouter>
           <Switch>
             <Route

@@ -9,6 +9,7 @@ import Card from 'react-bootstrap/Card'
 import Modal from 'react-bootstrap/Modal'
 import ReactMarkdown from 'react-markdown'
 import Toast from 'react-bootstrap/Toast'
+import TopBanner from '../components/top-banner'
 
 class CreateDispute extends React.Component {
   constructor(props) {
@@ -134,6 +135,7 @@ class CreateDispute extends React.Component {
 
     return (
       <Container>
+        <TopBanner title="title" description="description" />
         <div
           aria-live="polite"
           aria-atomic="true"
