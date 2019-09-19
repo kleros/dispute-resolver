@@ -158,9 +158,11 @@ class App extends React.Component {
       )
     )
     const localDisputeID = await BinaryArbitrableProxy.externalIDtoLocalID(
-      '0x80CB18e3C62c1923ca8a25767439c608C1Ef41f9',
+      networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
       disputeID
     )
+
+    console.log(`Local disputeID ${localDisputeID}`)
 
     const ipfsHashEvidenceObj = await ipfsPublish(
       'evidence.json',
@@ -173,7 +175,6 @@ class App extends React.Component {
     return await BinaryArbitrableProxy.submitEvidence(
       networkMap[network].BINARY_ARBITRABLE_PROXY,
       activeAddress,
-      arbitrator,
       localDisputeID,
       evidenceURI
     )
