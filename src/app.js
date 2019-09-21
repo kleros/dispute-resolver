@@ -185,7 +185,7 @@ class App extends React.Component {
     const { lastDisputeID } = this.state
 
     return (
-      <Container>
+      <Container fluid="true">
         <BrowserRouter>
           <Switch>
             <Route

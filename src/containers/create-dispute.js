@@ -134,7 +134,7 @@ class CreateDispute extends React.Component {
     } = this.state
 
     return (
-      <Container>
+      <Container fluid="true">
         <TopBanner title="title" description="description" />
         <div
           aria-live="polite"
@@ -177,8 +177,12 @@ class CreateDispute extends React.Component {
           </Toast>
         </div>
         <Card>
+          <Card.Header>
+            <img src="gavel.svg" />
+            Create a Dispute
+          </Card.Header>
+          <hr />
           <Card.Body>
-            <Card.Title>Create a Dispute</Card.Title>
             <Form>
               <Form.Row>
                 <Col>

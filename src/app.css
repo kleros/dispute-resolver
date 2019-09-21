@@ -1,3 +1,7 @@
+html {
+  background-color: #f2e3ff;
+}
+
 .navbar {
   background-color: #1e075f;
   color: white;
@@ -25,6 +29,40 @@
   color: #009aff;
 }
 
+.container-fluid {
+  background-color: #f2e3ff;
+}
+
 .card {
   background-color: #f2e3ff;
+  background: white;
+  box-shadow: 0px 6px 36px #bc9cff;
+}
+
+.card-body {
+  border-radius: 12px;
+}
+
+.card-header {
+  background-color: #4004a3;
+  color: white;
+  /* TITLE */
+
+  font-style: normal;
+  font-weight: 500;
+  font-size: 24px;
+  line-height: 28px;
+  display: flex;
+  align-items: center;
+
+  color: #ffffff;
+}
+
+#root > div > div > div.card > div.card-header > img {
+  margin-right: 20px;
+}
+
+hr {
+  border-top: 5px solid #009aff;
+  margin-top: 0;
 }
