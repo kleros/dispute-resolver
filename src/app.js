@@ -43,6 +43,10 @@ class App extends React.Component {
         this.setState({ network })
       })
     } else console.error('MetaMask not detected :(')
+    console.log(
+      `%c${process.env.COMMIT_REF}`,
+      `color: #${(process.env.COMMIT_REF || '000000').substr(0, 6)}`
+    )
   }
 
   getArbitrationCost = (arbitratorAddress, extraData) =>
