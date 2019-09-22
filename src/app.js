@@ -10,6 +10,7 @@ import { BrowserRouter, NavLink, Route, Switch } from 'react-router-dom'
 import * as BinaryArbitrableProxy from './ethereum/binary-arbitrable-proxy'
 import * as Arbitrator from './ethereum/arbitrator'
 import * as KlerosLiquid from './ethereum/kleros-liquid'
+import * as PolicyRegistry from './ethereum/policy-registry'
 
 import networkMap from './ethereum/network-contract-mapping'
 import ipfsPublish from './ipfs-publish'
@@ -20,8 +21,8 @@ class App extends React.Component {
   constructor(props) {
     super(props)
     this.state = {
-      activeAddress: '0x0000000000000000000000000000000000000000',
-      network: '1',
+      activeAddress: '',
+      network: '',
       lastDisputeID: ''
     }
     this.encoder = new TextEncoder()
@@ -31,26 +32,36 @@ class App extends React.Component {
     console.debug(process.env)
 
     if (typeof window.ethereum !== 'undefined') {
+      console.log(window.ethereum)
       this.setState({ network: window.ethereum.networkVersion })
 
       this.setState({ activeAddress: window.ethereum.selectedAddress })
 
       window.ethereum.on('accountsChanged', accounts => {
+        console.log('ACCOUNT CHANGED')
         this.setState({ activeAddress: accounts[0] })
       })
 
       window.ethereum.on('networkChanged', network => {
+        console.log(`network CHANGED ${network}`)
         this.setState({ network })
       })
     } else console.error('MetaMask not detected :(')
-    console.log(
-      `%c${process.env.COMMIT_REF}`,
-      `color: #${(process.env.COMMIT_REF || '000000').substr(0, 6)}`
-    )
+
+    console.log(networkMap)
+    console.log(this.state.network)
   }
 
   getArbitrationCost = (arbitratorAddress, extraData) =>
     Arbitrator.arbitrationCost(arbitratorAddress, extraData)
+
+  getSubCourtDetails = async subcourtID => {
+    console.log(`Got ${this.state.network}`)
+    return await PolicyRegistry.policies(
+      networkMap[this.state.network].POLICY_REGISTRY,
+      subcourtID
+    )
+  }
 
   getDispute = async disputeID =>
     KlerosLiquid.disputes(
@@ -67,7 +78,12 @@ class App extends React.Component {
 
   generateArbitratorExtraData = (subcourtID, initialNumberOfJurors) =>
     '0x' +
-    (subcourtID.padStart(64, '0') + initialNumberOfJurors.padStart(64, '0'))
+    (parseInt(subcourtID, 16)
+      .toString()
+      .padStart(64, '0') +
+      parseInt(initialNumberOfJurors, 16)
+        .toString()
+        .padStart(64, '0'))
 
   appeal = async disputeID => {
     const { activeAddress, network } = this.state
@@ -87,39 +103,33 @@ class App extends React.Component {
     )
   }
 
-  createDispute = async ({
-    subcourtID,
-    initialNumberOfJurors,
-    category,
-    title,
-    description,
-    question,
-    firstRulingOption,
-    secondRulingOption,
-    firstRulingDescription,
-    secondRulingDescription,
-    primaryFileURI,
-    value
-  }) => {
+  createDispute = async options => {
+    console.log('CALLBACK CREATE DISPUTE')
     const { activeAddress, network } = this.state
     const arbitrator = networkMap[network].KLEROS_LIQUID
-
+    console.log(options.selectedSubcourt)
     const arbitratorExtraData = this.generateArbitratorExtraData(
-      subcourtID,
-      initialNumberOfJurors
+      options.selectedSubcourt,
+      options.initialNumberOfJurors
     )
+    console.log('CALLBACK CREATE DISPUTE')
+
+    console.log(`ex data ${arbitratorExtraData}`)
 
     const metaevidence = {
-      category,
-      title,
-      description,
-      question,
+      category: options.category,
+      title: options.title,
+      description: options.description,
+      question: options.question,
       rulingOptions: {
         type: 'single-select',
-        titles: [firstRulingOption, secondRulingOption],
-        descriptions: [firstRulingDescription, secondRulingDescription]
+        titles: [options.firstRulingOption, options.secondRulingOption],
+        descriptions: [
+          options.firstRulingDescription,
+          options.secondRulingDescription
+        ]
       },
-      fileURI: primaryFileURI
+      fileURI: options.primaryDocument
     }
 
     const ipfsHashMetaEvidenceObj = await ipfsPublish(
@@ -138,8 +148,8 @@ class App extends React.Component {
       arbitrator,
       arbitratorExtraData
     )
-
-    return await BinaryArbitrableProxy.createDispute(
+    console.log('HELLOOOO')
+    return BinaryArbitrableProxy.createDispute(
       networkMap[network].BINARY_ARBITRABLE_PROXY,
       activeAddress,
       arbitrationCost,
@@ -186,40 +196,43 @@ class App extends React.Component {
   render() {
     console.debug(this.state)
 
-    const { lastDisputeID } = this.state
+    const { activeAddress, network, lastDisputeID } = this.state
 
-    return (
-      <Container fluid="true">
-        <BrowserRouter>
-          <Switch>
-            <Route
-              exact
-              path="/"
-              render={props => (
-                <CreateDispute
-                  createDisputeCallback={this.createDispute}
-                  publishCallback={this.onPublish}
-                />
-              )}
-            />
-            <Route
-              exact
-              path="/interact"
-              render={props => (
-                <Interact
-                  publishCallback={this.onPublish}
-                  submitEvidenceCallback={this.submitEvidence}
-                  disputeID={lastDisputeID}
-                  getDisputeCallback={this.getDispute}
-                  appealCallback={this.appeal}
-                  newDisputeCallback={this.updateLastDisputeID}
-                />
-              )}
-            />
-          </Switch>
-        </BrowserRouter>
-      </Container>
-    )
+    if (!network || !activeAddress) return <>WAIT A MINUTE</>
+    else
+      return (
+        <Container fluid="true">
+          <BrowserRouter>
+            <Switch>
+              <Route
+                exact
+                path="/"
+                render={props => (
+                  <CreateDispute
+                    createDisputeCallback={this.createDispute}
+                    publishCallback={this.onPublish}
+                    getSubCourtDetailsCallback={this.getSubCourtDetails}
+                  />
+                )}
+              />
+              <Route
+                exact
+                path="/interact"
+                render={props => (
+                  <Interact
+                    publishCallback={this.onPublish}
+                    submitEvidenceCallback={this.submitEvidence}
+                    disputeID={lastDisputeID}
+                    getDisputeCallback={this.getDispute}
+                    appealCallback={this.appeal}
+                    newDisputeCallback={this.updateLastDisputeID}
+                  />
+                )}
+              />
+            </Switch>
+          </BrowserRouter>
+        </Container>
+      )
   }
 }
 export default App

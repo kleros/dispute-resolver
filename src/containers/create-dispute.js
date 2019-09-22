@@ -1,27 +1,31 @@
 import React from 'react'
-import Container from 'react-bootstrap/Container'
-import Button from 'react-bootstrap/Button'
-import Form from 'react-bootstrap/Form'
-import Col from 'react-bootstrap/Col'
-import Row from 'react-bootstrap/Row'
-import Spinner from 'react-bootstrap/Spinner'
-import Card from 'react-bootstrap/Card'
-import Modal from 'react-bootstrap/Modal'
 import ReactMarkdown from 'react-markdown'
-import Toast from 'react-bootstrap/Toast'
 import TopBanner from '../components/top-banner'
+
+import {
+  Container,
+  Row,
+  Col,
+  Button,
+  Form,
+  Spinner,
+  Card,
+  Modal,
+  Toast,
+  Dropdown,
+  ButtonGroup
+} from 'react-bootstrap'
 
 class CreateDispute extends React.Component {
   constructor(props) {
     super(props)
     this.state = {
-      subcourtID: '',
       initialNumberOfJurors: '',
       category: '',
       title: '',
       description: '',
       question: '',
-      primaryFileURI: '',
+      uploadedDocumentURI: '',
       firstRulingOption: '',
       firstRulingDescription: '',
       secondRulingOption: '',
@@ -30,8 +34,44 @@ class CreateDispute extends React.Component {
       modalShow: false,
       awaitingConfirmation: false,
       showToast: false,
-      lastDisputeID: ''
+      lastDisputeID: '',
+      primaryDocument: '',
+      selectedSubcourt: '',
+      subcourts: [],
+      subcourtsLoading: true
     }
+  }
+
+  componentDidMount = async e => {
+    // TODO Simplify
+    let subcourtURI,
+      subcourt,
+      subcourts = [],
+      counter = 0,
+      subcourtURIs = []
+    while (counter < 15) {
+      subcourtURI = await this.props.getSubCourtDetailsCallback(counter++)
+      subcourtURIs.push(subcourtURI)
+    }
+
+    console.log(subcourtURIs)
+
+    for (var i = 0; i < subcourtURIs.length; i++) {
+      console.log(subcourtURIs[i])
+      try {
+        if (subcourtURIs[i].includes('http')) {
+          subcourt = await fetch(subcourtURIs[i])
+        } else {
+          subcourt = await fetch('https://ipfs.kleros.io' + subcourtURIs[i])
+        }
+        subcourts[i] = await subcourt.json()
+      } catch (e) {
+        console.log(i)
+      }
+      console.log(subcourts)
+    }
+    await this.setState({ subcourts })
+    await this.setState({ subcourtsLoading: false })
   }
 
   toggleshowToast = e =>
@@ -39,14 +79,19 @@ class CreateDispute extends React.Component {
       return { showToast: !prevState.showToast }
     })
 
+  onSubcourtSelect = async subcourtID => {
+    this.setState({ selectedSubcourt: subcourtID })
+  }
+
   onModalClose = e =>
     this.setState({ modalShow: false, awaitingConfirmation: false })
+
   onModalShow = e => this.setState({ modalShow: true })
 
   onControlChange = e => this.setState({ [e.target.id]: e.target.value })
 
   onInput = e => {
-    this.setState({ primaryFileURI: '' })
+    this.setState({ uploadedDocumentURI: '' })
     this.setState({ fileInput: e.target.files[0] })
   }
 
@@ -61,31 +106,34 @@ class CreateDispute extends React.Component {
     reader.addEventListener('loadend', async () => {
       const buffer = Buffer.from(reader.result)
       const result = await this.props.publishCallback(fileInput.name, buffer)
-      this.setState({ primaryFileURI: '/ipfs/' + result[0].hash })
+      this.setState({ uploadedDocumentURI: '/ipfs/' + result[0].hash })
     })
   }
 
   onCreateDisputeButtonClick = async e => {
     e.preventDefault()
+    e.stopPropagation()
     console.log('create dispute clicked')
     const {
-      subcourtID,
+      selectedSubcourt,
       initialNumberOfJurors,
       category,
       title,
       description,
       question,
-      primaryFileURI,
       firstRulingOption,
       secondRulingOption,
       firstRulingDescription,
-      secondRulingDescription
+      secondRulingDescription,
+      primaryDocument
     } = this.state
+    console.log('state loaded')
 
     this.setState({ awaitingConfirmation: true })
     try {
+      console.log('tryinna')
       const receipt = await this.props.createDisputeCallback({
-        subcourtID,
+        selectedSubcourt,
         initialNumberOfJurors,
         category,
         title,
@@ -95,9 +143,9 @@ class CreateDispute extends React.Component {
         secondRulingOption,
         firstRulingDescription,
         secondRulingDescription,
-        primaryFileURI
+        primaryDocument
       })
-
+      console.log('ALOOO')
       this.setState({
         lastDisputeID: receipt.events.Dispute.returnValues._disputeID
       })
@@ -111,17 +159,17 @@ class CreateDispute extends React.Component {
   }
 
   render() {
+    console.log('RENDERING CREATE DISPUTE')
     console.debug(this.props)
     console.debug(this.state)
 
     const {
-      subcourtID,
       initialNumberOfJurors,
       category,
       title,
       description,
       question,
-      primaryFileURI,
+      uploadedDocumentURI,
       firstRulingOption,
       secondRulingOption,
       firstRulingDescription,
@@ -130,7 +178,11 @@ class CreateDispute extends React.Component {
       modalShow,
       awaitingConfirmation,
       lastDisputeID,
-      showToast
+      showToast,
+      primaryDocument,
+      selectedSubcourt,
+      subcourts,
+      subcourtsLoading
     } = this.state
 
     return (
@@ -152,7 +204,7 @@ class CreateDispute extends React.Component {
             }}
             show={showToast}
             onClose={this.toggleshowToast}
-            delay={7000}
+            delay={11000}
             autohide
           >
             <Toast.Header>
@@ -186,16 +238,26 @@ class CreateDispute extends React.Component {
             <Form>
               <Form.Row>
                 <Col>
-                  <Form.Group>
-                    <Form.Control
-                      id="subcourtID"
-                      as="input"
-                      type="number"
-                      value={subcourtID}
-                      onChange={this.onControlChange}
-                      placeholder={'Subcourt identifier'}
-                    />
-                  </Form.Group>
+                  <Dropdown onSelect={this.onSubcourtSelect}>
+                    <Dropdown.Toggle
+                      id="subcourt-dropdown"
+                      block
+                      disabled={subcourtsLoading}
+                    >
+                      {(subcourtsLoading && 'Loading...') ||
+                        (selectedSubcourt &&
+                          subcourts[selectedSubcourt].name) ||
+                        'Please select a court'}
+                    </Dropdown.Toggle>
+
+                    <Dropdown.Menu>
+                      {subcourts.map((subcourt, index) => (
+                        <Dropdown.Item key={index} eventKey={index}>
+                          {subcourt.name}
+                        </Dropdown.Item>
+                      ))}
+                    </Dropdown.Menu>
+                  </Dropdown>
                 </Col>
                 <Col>
                   <Form.Group>
@@ -209,18 +271,19 @@ class CreateDispute extends React.Component {
                     />
                   </Form.Group>
                 </Col>{' '}
-              </Form.Row>
-              <Form.Row>
                 <Col>
                   <Form.Group controlId="category">
                     <Form.Control
                       as="input"
+                      type="text"
                       value={category}
                       onChange={this.onControlChange}
                       placeholder={'Category'}
                     />
                   </Form.Group>
                 </Col>
+              </Form.Row>
+              <Form.Row>
                 <Col>
                   <Form.Group controlId="title">
                     <Form.Control
@@ -315,6 +378,53 @@ class CreateDispute extends React.Component {
               </Form.Row>
               <Form.Row>
                 <Col>
+                  <Form.Group>
+                    <Form.Control
+                      id="primaryDocument"
+                      as="input"
+                      value={primaryDocument}
+                      onChange={this.onControlChange}
+                      placeholder={'Type IPFS path of primary document'}
+                    />
+                  </Form.Group>
+                </Col>
+              </Form.Row>
+
+              <Button
+                disabled={
+                  !selectedSubcourt ||
+                  !initialNumberOfJurors ||
+                  !category ||
+                  !title ||
+                  !description ||
+                  !question ||
+                  !firstRulingOption ||
+                  !firstRulingDescription ||
+                  !secondRulingOption ||
+                  !secondRulingDescription ||
+                  !primaryDocument
+                }
+                variant="primary"
+                type="button"
+                onClick={this.onModalShow}
+                block
+              >
+                Create Dispute
+              </Button>
+            </Form>
+          </Card.Body>
+        </Card>
+
+        <Card>
+          <Card.Header>
+            <img src="ipfs-logo-vector-inkscape-template.svg" alt="ipfs logo" />{' '}
+            Upload to IPFS
+          </Card.Header>
+          <hr />
+          <Card.Body>
+            <Form>
+              <Form.Row>
+                <Col>
                   <div className="input-group mb-3">
                     <div className="custom-file">
                       <input
@@ -326,11 +436,11 @@ class CreateDispute extends React.Component {
                       <label
                         className={
                           `text-left custom-file-label  ` +
-                          (primaryFileURI ? 'text-success' : 'text-muted')
+                          (uploadedDocumentURI ? 'text-success' : 'text-muted')
                         }
                         htmlFor="inputGroupFile04"
                       >
-                        {(fileInput && fileInput.name) || 'Primary document'}
+                        {(fileInput && fileInput.name) || 'Select a document'}
                       </label>
                     </div>
                     <div className="input-group-append">
@@ -339,35 +449,14 @@ class CreateDispute extends React.Component {
                         type="button"
                         onClick={this.onSubmitButtonClick}
                       >
-                        Submit
+                        Upload
                       </button>
                     </div>
                   </div>
                 </Col>
               </Form.Row>
-
-              <Button
-                disabled={
-                  !subcourtID ||
-                  !initialNumberOfJurors ||
-                  !category ||
-                  !title ||
-                  !description ||
-                  !question ||
-                  !firstRulingOption ||
-                  !firstRulingDescription ||
-                  !secondRulingOption ||
-                  !secondRulingDescription ||
-                  !primaryFileURI
-                }
-                variant="primary"
-                type="button"
-                onClick={this.onModalShow}
-                block
-              >
-                Create Dispute
-              </Button>
             </Form>
+            {uploadedDocumentURI && uploadedDocumentURI}
           </Card.Body>
         </Card>
 
@@ -383,7 +472,7 @@ class CreateDispute extends React.Component {
                     <Form.Control
                       readOnly
                       type="text"
-                      placeholder={subcourtID}
+                      placeholder={selectedSubcourt}
                     />
                   </Form.Group>
                 </Col>
@@ -396,13 +485,13 @@ class CreateDispute extends React.Component {
                     />
                   </Form.Group>
                 </Col>{' '}
-              </Form.Row>
-              <Form.Row>
                 <Col>
                   <Form.Group controlId="category">
                     <Form.Control readOnly type="text" placeholder={category} />
                   </Form.Group>
                 </Col>
+              </Form.Row>
+              <Form.Row>
                 <Col>
                   <Form.Group controlId="title">
                     <Form.Control readOnly type="text" placeholder={title} />
@@ -473,11 +562,11 @@ class CreateDispute extends React.Component {
                     <a
                       target="blank"
                       href={
-                        primaryFileURI &&
-                        'https://ipfs.kleros.io' + primaryFileURI
+                        primaryDocument &&
+                        'https://ipfs.kleros.io' + primaryDocument
                       }
                     >
-                      {fileInput && fileInput.name}
+                      {primaryDocument}
                     </a>
                   </Form.Group>
                 </Col>{' '}

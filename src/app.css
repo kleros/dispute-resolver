@@ -2,6 +2,10 @@ html {
   background-color: #f2e3ff;
 }
 
+body {
+  margin-top: 80px;
+}
+
 .navbar {
   background-color: #1e075f;
   color: white;
