@@ -60,9 +60,64 @@ html {
 
 #root > div > div > div.card > div.card-header > img {
   margin-right: 20px;
+  width: 68px;
+}
+
+#root > div > div > div.card {
+  margin-bottom: 30px;
 }
 
 hr {
   border-top: 5px solid #009aff;
   margin-top: 0;
+}
+
+#subcourt-dropdown {
+  text-align: left;
+  background-color: white;
+  color: #4d00b4;
+}
+
+#initialNumberOfJurors {
+  color: #4d00b4;
+}
+
+#category {
+  color: #4d00b4;
+}
+
+#title {
+  color: #4d00b4;
+}
+#description {
+  color: #4d00b4;
+}
+
+#question {
+  color: #4d00b4;
+}
+
+#firstRulingOption {
+  color: #4d00b4;
+}
+
+#firstRulingDescription {
+  color: #4d00b4;
+}
+
+#secondRulingOption {
+  color: #4d00b4;
+}
+
+#secondRulingDescription {
+  color: #4d00b4;
+}
+
+#primaryDocument {
+  color: #4d00b4;
+}
+
+button::after {
+  float: right;
+  margin: 10px 0;
 }
