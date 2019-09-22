@@ -6,6 +6,7 @@ import './app.css'
 import CreateDispute from './containers/create-dispute'
 import Interact from './containers/interact'
 import { BrowserRouter, NavLink, Route, Switch } from 'react-router-dom'
+import TopBanner from './components/top-banner'
 
 import * as BinaryArbitrableProxy from './ethereum/binary-arbitrable-proxy'
 import * as Arbitrator from './ethereum/arbitrator'
@@ -202,6 +203,7 @@ class App extends React.Component {
     else
       return (
         <Container fluid="true">
+          <TopBanner title="title" description="description" />
           <BrowserRouter>
             <Switch>
               <Route
