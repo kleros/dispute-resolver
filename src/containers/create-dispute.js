@@ -12,8 +12,7 @@ import {
   Card,
   Modal,
   Toast,
-  Dropdown,
-  ButtonGroup
+  Dropdown
 } from 'react-bootstrap'
 
 class CreateDispute extends React.Component {
@@ -25,12 +24,10 @@ class CreateDispute extends React.Component {
       title: '',
       description: '',
       question: '',
-      uploadedDocumentURI: '',
       firstRulingOption: '',
       firstRulingDescription: '',
       secondRulingOption: '',
       secondRulingDescription: '',
-      fileInput: '',
       modalShow: false,
       awaitingConfirmation: false,
       showToast: false,
@@ -89,26 +86,6 @@ class CreateDispute extends React.Component {
   onModalShow = e => this.setState({ modalShow: true })
 
   onControlChange = e => this.setState({ [e.target.id]: e.target.value })
-
-  onInput = e => {
-    this.setState({ uploadedDocumentURI: '' })
-    this.setState({ fileInput: e.target.files[0] })
-  }
-
-  onSubmitButtonClick = async e => {
-    e.preventDefault()
-    const { fileInput } = this.state
-
-    console.log(this.props.publishCallback)
-
-    var reader = new FileReader()
-    reader.readAsArrayBuffer(fileInput)
-    reader.addEventListener('loadend', async () => {
-      const buffer = Buffer.from(reader.result)
-      const result = await this.props.publishCallback(fileInput.name, buffer)
-      this.setState({ uploadedDocumentURI: '/ipfs/' + result[0].hash })
-    })
-  }
 
   onCreateDisputeButtonClick = async e => {
     e.preventDefault()
@@ -169,12 +146,10 @@ class CreateDispute extends React.Component {
       title,
       description,
       question,
-      uploadedDocumentURI,
       firstRulingOption,
       secondRulingOption,
       firstRulingDescription,
       secondRulingDescription,
-      fileInput,
       modalShow,
       awaitingConfirmation,
       lastDisputeID,
@@ -230,7 +205,7 @@ class CreateDispute extends React.Component {
         </div>
         <Card>
           <Card.Header>
-            <img src="gavel.svg" />
+            <img src="gavel.svg" alt="gavel" />
             Create a Dispute
           </Card.Header>
           <hr />
@@ -412,51 +387,6 @@ class CreateDispute extends React.Component {
                 Create Dispute
               </Button>
             </Form>
-          </Card.Body>
-        </Card>
-
-        <Card>
-          <Card.Header>
-            <img src="ipfs-logo-vector-inkscape-template.svg" alt="ipfs logo" />{' '}
-            Upload to IPFS
-          </Card.Header>
-          <hr />
-          <Card.Body>
-            <Form>
-              <Form.Row>
-                <Col>
-                  <div className="input-group mb-3">
-                    <div className="custom-file">
-                      <input
-                        type="file"
-                        className="custom-file-input"
-                        id="inputGroupFile04"
-                        onInput={this.onInput}
-                      />
-                      <label
-                        className={
-                          `text-left custom-file-label  ` +
-                          (uploadedDocumentURI ? 'text-success' : 'text-muted')
-                        }
-                        htmlFor="inputGroupFile04"
-                      >
-                        {(fileInput && fileInput.name) || 'Select a document'}
-                      </label>
-                    </div>
-                    <div className="input-group-append">
-                      <button
-                        className="btn btn-primary"
-                        type="button"
-                        onClick={this.onSubmitButtonClick}
-                      >
-                        Upload
-                      </button>
-                    </div>
-                  </div>
-                </Col>
-              </Form.Row>
-            </Form>
-            {uploadedDocumentURI && uploadedDocumentURI}
           </Card.Body>
         </Card>
 

@@ -7,6 +7,7 @@ import CreateDispute from './containers/create-dispute'
 import Interact from './containers/interact'
 import { BrowserRouter, NavLink, Route, Switch } from 'react-router-dom'
 import TopBanner from './components/top-banner'
+import IPFS from './components/ipfs'
 
 import * as BinaryArbitrableProxy from './ethereum/binary-arbitrable-proxy'
 import * as Arbitrator from './ethereum/arbitrator'
@@ -204,6 +205,7 @@ class App extends React.Component {
       return (
         <Container fluid="true">
           <TopBanner title="title" description="description" />
+          <IPFS publishCallback={this.onPublish} />
           <BrowserRouter>
             <Switch>
               <Route
