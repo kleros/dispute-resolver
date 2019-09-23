@@ -4,7 +4,7 @@ import { Container, Row, Col } from 'react-bootstrap'
 import './app.css'
 import CreateDispute from './containers/create-dispute'
 import Interact from './containers/interact'
-import { BrowserRouter, NavLink, Route, Switch } from 'react-router-dom'
+import { BrowserRouter, Route, Switch } from 'react-router-dom'
 import TopBanner from './components/top-banner'
 import IPFS from './components/ipfs'
 
@@ -118,7 +118,6 @@ class App extends React.Component {
     console.log(`ex data ${arbitratorExtraData}`)
 
     const metaevidence = {
-      category: options.category,
       title: options.title,
       description: options.description,
       question: options.question,

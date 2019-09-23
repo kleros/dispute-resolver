@@ -76,6 +76,11 @@ hr {
   margin-top: 0;
 }
 
+form > hr {
+  border-top: 2px solid #4d00b4;
+  margin-bottom: 25px;
+}
+
 #subcourt-dropdown {
   text-align: left;
   background-color: white;
@@ -118,6 +123,10 @@ hr {
 }
 
 #primaryDocument {
+  color: #4d00b4;
+}
+
+label {
   color: #4d00b4;
 }
 

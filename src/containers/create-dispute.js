@@ -11,7 +11,9 @@ import {
   Spinner,
   Card,
   Modal,
-  Dropdown
+  Dropdown,
+  InputGroup,
+  FormControl
 } from 'react-bootstrap'
 
 import {
@@ -27,7 +29,6 @@ class CreateDispute extends React.Component {
     super(props)
     this.state = {
       initialNumberOfJurors: '',
-      category: '',
       title: '',
       description: '',
       question: '',
@@ -100,7 +101,6 @@ class CreateDispute extends React.Component {
     const {
       selectedSubcourt,
       initialNumberOfJurors,
-      category,
       title,
       description,
       question,
@@ -118,7 +118,6 @@ class CreateDispute extends React.Component {
       const receipt = await this.props.createDisputeCallback({
         selectedSubcourt,
         initialNumberOfJurors,
-        category,
         title,
         description,
         question,
@@ -181,29 +180,35 @@ class CreateDispute extends React.Component {
             <Form>
               <Form.Row>
                 <Col>
-                  <Dropdown onSelect={this.onSubcourtSelect}>
-                    <Dropdown.Toggle
-                      id="subcourt-dropdown"
-                      block
-                      disabled={subcourtsLoading}
-                    >
-                      {(subcourtsLoading && 'Loading...') ||
-                        (selectedSubcourt &&
-                          subcourts[selectedSubcourt].name) ||
-                        'Please select a court'}
-                    </Dropdown.Toggle>
+                  <Form.Group>
+                    <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
+                    <Dropdown onSelect={this.onSubcourtSelect}>
+                      <Dropdown.Toggle
+                        id="subcourt-dropdown"
+                        block
+                        disabled={subcourtsLoading}
+                      >
+                        {(subcourtsLoading && 'Loading...') ||
+                          (selectedSubcourt &&
+                            subcourts[selectedSubcourt].name) ||
+                          'Please select a court'}
+                      </Dropdown.Toggle>
 
-                    <Dropdown.Menu>
-                      {subcourts.map((subcourt, index) => (
-                        <Dropdown.Item key={index} eventKey={index}>
-                          {subcourt.name}
-                        </Dropdown.Item>
-                      ))}
-                    </Dropdown.Menu>
-                  </Dropdown>
+                      <Dropdown.Menu>
+                        {subcourts.map((subcourt, index) => (
+                          <Dropdown.Item key={index} eventKey={index}>
+                            {subcourt.name}
+                          </Dropdown.Item>
+                        ))}
+                      </Dropdown.Menu>
+                    </Dropdown>
+                  </Form.Group>
                 </Col>
                 <Col>
                   <Form.Group>
+                    <Form.Label htmlFor="initialNumberOfJurors">
+                      Initial number of jurors
+                    </Form.Label>
                     <Form.Control
                       id="initialNumberOfJurors"
                       as="input"
@@ -214,21 +219,12 @@ class CreateDispute extends React.Component {
                     />
                   </Form.Group>
                 </Col>{' '}
-                <Col>
-                  <Form.Group controlId="category">
-                    <Form.Control
-                      as="input"
-                      type="text"
-                      value={category}
-                      onChange={this.onControlChange}
-                      placeholder={'Category'}
-                    />
-                  </Form.Group>
-                </Col>
               </Form.Row>
+              <hr />
               <Form.Row>
                 <Col>
                   <Form.Group controlId="title">
+                    <Form.Label htmlFor="title">Title</Form.Label>
                     <Form.Control
                       as="input"
                       value={title}
@@ -241,6 +237,7 @@ class CreateDispute extends React.Component {
               <Form.Row>
                 <Col>
                   <Form.Group controlId="description">
+                    <Form.Label htmlFor="description">Description</Form.Label>
                     <Form.Control
                       as="textarea"
                       rows="3"
@@ -258,9 +255,12 @@ class CreateDispute extends React.Component {
                   </Form.Group>
                 </Col>
               </Form.Row>
+              <hr />
               <Form.Row>
                 <Col>
                   <Form.Group controlId="question">
+                    <Form.Label htmlFor="question">Question</Form.Label>
+
                     <Form.Control
                       as="input"
                       rows="1"
@@ -274,6 +274,9 @@ class CreateDispute extends React.Component {
               <Form.Row>
                 <Col>
                   <Form.Group>
+                    <Form.Label htmlFor="firstRulingOption">
+                      First Ruling Option
+                    </Form.Label>
                     <Form.Control
                       id="firstRulingOption"
                       as="input"
@@ -285,6 +288,9 @@ class CreateDispute extends React.Component {
                 </Col>
                 <Col>
                   <Form.Group>
+                    <Form.Label htmlFor="firstRulingDescription">
+                      First Ruling Description
+                    </Form.Label>
                     <Form.Control
                       id="firstRulingDescription"
                       as="input"
@@ -298,6 +304,9 @@ class CreateDispute extends React.Component {
               <Form.Row>
                 <Col>
                   <Form.Group>
+                    <Form.Label htmlFor="secondRulingOption">
+                      Second Ruling Option
+                    </Form.Label>
                     <Form.Control
                       id="secondRulingOption"
                       as="input"
@@ -309,6 +318,9 @@ class CreateDispute extends React.Component {
                 </Col>
                 <Col>
                   <Form.Group>
+                    <Form.Label htmlFor="secondRulingDescription">
+                      Second Ruling Description
+                    </Form.Label>
                     <Form.Control
                       id="secondRulingDescription"
                       as="input"
@@ -322,6 +334,9 @@ class CreateDispute extends React.Component {
               <Form.Row>
                 <Col>
                   <Form.Group>
+                    <Form.Label htmlFor="primaryDocument">
+                      Primary Document
+                    </Form.Label>
                     <Form.Control
                       id="primaryDocument"
                       as="input"
@@ -337,7 +352,6 @@ class CreateDispute extends React.Component {
                 disabled={
                   !selectedSubcourt ||
                   !initialNumberOfJurors ||
-                  !category ||
                   !title ||
                   !description ||
                   !question ||
@@ -489,7 +503,8 @@ class CreateDispute extends React.Component {
                   aria-hidden="true"
                 />
               )}{' '}
-              Broadcast Transaction
+              {(awaitingConfirmation && 'Awaiting Confirmation') ||
+                'Broadcast Transaction'}
             </Button>
           </Modal.Footer>
         </Modal>
