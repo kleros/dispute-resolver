@@ -10,14 +10,16 @@ import Modal from 'react-bootstrap/Modal'
 import ReactMarkdown from 'react-markdown'
 
 class Interact extends React.Component {
-  constructor(props) {
+  constructor(props, { match }) {
     super(props)
     this.state = {
-      disputeID: this.props.disputeID,
+      disputeID: (this.props.route && this.props.route.match.params.id) || '',
       period: '0',
       fileInput: '',
       evidenceFileURI: ''
     }
+
+    console.log(match)
   }
 
   async componentDidUpdate(prevProps) {
@@ -85,10 +87,11 @@ class Interact extends React.Component {
 
   render() {
     const { disputeID, period, fileInput, evidenceFileURI } = this.state
+    console.log(this.props)
+    console.log(this.state.match)
 
     return (
-      <Container>
-        {' '}
+      <Container fluid="true">
         <Card>
           <Card.Body>
             <Card.Title>Interact with a Dispute</Card.Title>{' '}

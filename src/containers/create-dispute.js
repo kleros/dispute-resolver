@@ -11,9 +11,16 @@ import {
   Spinner,
   Card,
   Modal,
-  Toast,
   Dropdown
 } from 'react-bootstrap'
+
+import {
+  BrowserRouter,
+  NavLink,
+  Route,
+  Switch,
+  Redirect
+} from 'react-router-dom'
 
 class CreateDispute extends React.Component {
   constructor(props) {
@@ -30,7 +37,6 @@ class CreateDispute extends React.Component {
       secondRulingDescription: '',
       modalShow: false,
       awaitingConfirmation: false,
-      showToast: false,
       lastDisputeID: '',
       primaryDocument: '',
       selectedSubcourt: '',
@@ -153,7 +159,6 @@ class CreateDispute extends React.Component {
       modalShow,
       awaitingConfirmation,
       lastDisputeID,
-      showToast,
       primaryDocument,
       selectedSubcourt,
       subcourts,
@@ -162,47 +167,10 @@ class CreateDispute extends React.Component {
 
     return (
       <Container fluid="true">
+        {lastDisputeID && <Redirect to={`/interact/${lastDisputeID}`} />}
+
         <TopBanner title="title" description="description" />
-        <div
-          aria-live="polite"
-          aria-atomic="true"
-          style={{
-            position: 'relative',
-            minHeight: '100px'
-          }}
-        >
-          <Toast
-            style={{
-              position: 'absolute',
-              top: 0,
-              right: 0
-            }}
-            show={showToast}
-            onClose={this.toggleshowToast}
-            delay={11000}
-            autohide
-          >
-            <Toast.Header>
-              <img
-                src="holder.js/20x20?text=%20"
-                className="rounded mr-2"
-                alt=""
-              />
-              <strong className="mr-auto">Tx Mined</strong>
-              <small>Just now</small>
-            </Toast.Header>
-            <Toast.Body>
-              Check out the new{' '}
-              <a
-                href={`https://court.kleros.io/cases/${lastDisputeID}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                dispute {lastDisputeID} on Kleros!
-              </a>
-            </Toast.Body>
-          </Toast>
-        </div>
+
         <Card>
           <Card.Header>
             <img src="gavel.svg" alt="gavel" />

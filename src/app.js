@@ -1,7 +1,6 @@
 import React from 'react'
-import Container from 'react-bootstrap/Container'
-import Row from 'react-bootstrap/Row'
-import Col from 'react-bootstrap/Col'
+import { Container, Row, Col } from 'react-bootstrap'
+
 import './app.css'
 import CreateDispute from './containers/create-dispute'
 import Interact from './containers/interact'
@@ -205,32 +204,56 @@ class App extends React.Component {
       return (
         <Container fluid="true">
           <TopBanner title="title" description="description" />
-          <IPFS publishCallback={this.onPublish} />
           <BrowserRouter>
             <Switch>
               <Route
                 exact
-                path="/"
+                path="(/|/create)"
                 render={props => (
-                  <CreateDispute
-                    createDisputeCallback={this.createDispute}
-                    publishCallback={this.onPublish}
-                    getSubCourtDetailsCallback={this.getSubCourtDetails}
-                  />
+                  <React.Fragment>
+                    <IPFS publishCallback={this.onPublish} />
+                    <CreateDispute
+                      createDisputeCallback={this.createDispute}
+                      publishCallback={this.onPublish}
+                      getSubCourtDetailsCallback={this.getSubCourtDetails}
+                    />
+                  </React.Fragment>
                 )}
               />
               <Route
                 exact
-                path="/interact"
+                path="/interact/"
                 render={props => (
-                  <Interact
-                    publishCallback={this.onPublish}
-                    submitEvidenceCallback={this.submitEvidence}
-                    disputeID={lastDisputeID}
-                    getDisputeCallback={this.getDispute}
-                    appealCallback={this.appeal}
-                    newDisputeCallback={this.updateLastDisputeID}
-                  />
+                  <React.Fragment>
+                    <IPFS publishCallback={this.onPublish} />
+                    <Interact
+                      publishCallback={this.onPublish}
+                      submitEvidenceCallback={this.submitEvidence}
+                      disputeID={lastDisputeID}
+                      getDisputeCallback={this.getDispute}
+                      appealCallback={this.appeal}
+                      newDisputeCallback={this.updateLastDisputeID}
+                    />
+                  </React.Fragment>
+                )}
+              />
+              <Route
+                exact
+                path="/interact/:id"
+                render={props => (
+                  <React.Fragment>
+                    <IPFS publishCallback={this.onPublish} />
+
+                    <Interact
+                      route={props}
+                      publishCallback={this.onPublish}
+                      submitEvidenceCallback={this.submitEvidence}
+                      disputeID={lastDisputeID}
+                      getDisputeCallback={this.getDispute}
+                      appealCallback={this.appeal}
+                      newDisputeCallback={this.updateLastDisputeID}
+                    />
+                  </React.Fragment>
                 )}
               />
             </Switch>

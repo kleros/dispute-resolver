@@ -14,7 +14,7 @@ class TopBanner extends React.Component {
         <Navbar.Toggle aria-controls="responsive-navbar-nav" />
         <Navbar.Collapse id="responsive-navbar-nav">
           <Nav className="mr-auto">
-            <Nav.Link href="/">Create</Nav.Link>
+            <Nav.Link href="/create">Create</Nav.Link>
             <Nav.Link href="/interact">Interact</Nav.Link>
           </Nav>
           {/*
