@@ -43,7 +43,8 @@ class CreateDispute extends React.Component {
       lastDisputeID: '',
       selectedSubcourt: '',
       subcourts: [],
-      subcourtsLoading: true
+      subcourtsLoading: true,
+      arbitrationCost: ''
     }
   }
 
@@ -80,7 +81,11 @@ class CreateDispute extends React.Component {
   }
 
   onSubcourtSelect = async subcourtID => {
-    this.setState({ selectedSubcourt: subcourtID })
+    await this.setState({ selectedSubcourt: subcourtID })
+    this.calculateArbitrationCost(
+      this.state.selectedSubcourt,
+      this.state.initialNumberOfJurors
+    )
   }
 
   onModalClose = e =>
@@ -88,7 +93,14 @@ class CreateDispute extends React.Component {
 
   onModalShow = e => this.setState({ modalShow: true })
 
-  onControlChange = e => this.setState({ [e.target.id]: e.target.value })
+  onControlChange = async e => {
+    await this.setState({ [e.target.id]: e.target.value })
+
+    this.calculateArbitrationCost(
+      this.state.selectedSubcourt,
+      this.state.initialNumberOfJurors
+    )
+  }
 
   onDrop = acceptedFiles => {
     console.log(acceptedFiles)
@@ -109,6 +121,16 @@ class CreateDispute extends React.Component {
       await this.setState({ primaryDocument: '/ipfs/' + result[0].hash })
     })
   }
+
+  calculateArbitrationCost = async (subcourtID, noOfJurors) =>
+    subcourtID &&
+    noOfJurors &&
+    this.setState({
+      arbitrationCost: await this.props.getArbitrationCostCallback(
+        subcourtID,
+        noOfJurors
+      )
+    })
 
   onCreateDisputeButtonClick = async e => {
     e.preventDefault()
@@ -176,7 +198,8 @@ class CreateDispute extends React.Component {
       selectedSubcourt,
       subcourts,
       subcourtsLoading,
-      fileInput
+      fileInput,
+      arbitrationCost
     } = this.state
 
     return (
@@ -234,6 +257,20 @@ class CreateDispute extends React.Component {
                     />
                   </Form.Group>
                 </Col>{' '}
+                <Col>
+                  <Form.Group>
+                    <Form.Label htmlFor="arbitrationFee">
+                      Arbitration Cost
+                    </Form.Label>
+                    <Form.Control
+                      id="arbitrationFee"
+                      readOnly
+                      type="text"
+                      value={arbitrationCost && arbitrationCost + ' Ether'}
+                      placeholder="Please select a court and specify number of jurors."
+                    />
+                  </Form.Group>
+                </Col>
               </Form.Row>
               <hr />
               <Form.Row>
@@ -385,7 +422,8 @@ class CreateDispute extends React.Component {
                 onClick={this.onModalShow}
                 block
               >
-                Create Dispute
+                Create Dispute{' '}
+                {arbitrationCost && 'for ' + arbitrationCost + ' Ether'}
               </Button>
             </Form>
           </Card.Body>

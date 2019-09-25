@@ -12,6 +12,7 @@ import * as BinaryArbitrableProxy from './ethereum/binary-arbitrable-proxy'
 import * as Arbitrator from './ethereum/arbitrator'
 import * as KlerosLiquid from './ethereum/kleros-liquid'
 import * as PolicyRegistry from './ethereum/policy-registry'
+import Web3 from './ethereum/web3'
 
 import networkMap from './ethereum/network-contract-mapping'
 import ipfsPublish from './ipfs-publish'
@@ -56,6 +57,15 @@ class App extends React.Component {
   getArbitrationCost = (arbitratorAddress, extraData) =>
     Arbitrator.arbitrationCost(arbitratorAddress, extraData)
 
+  getArbitrationCostWithCourtAndNoOfJurors = async (subcourtID, noOfJurors) =>
+    Web3.utils.fromWei(
+      await Arbitrator.arbitrationCost(
+        networkMap[this.state.network].KLEROS_LIQUID,
+        this.generateArbitratorExtraData(subcourtID, noOfJurors)
+      ),
+      'ether'
+    )
+
   getSubCourtDetails = async subcourtID => {
     console.log(`Got ${this.state.network}`)
     return await PolicyRegistry.policies(
@@ -77,12 +87,12 @@ class App extends React.Component {
     return await ipfsPublish(filename, fileBuffer)
   }
 
-  generateArbitratorExtraData = (subcourtID, initialNumberOfJurors) =>
+  generateArbitratorExtraData = (subcourtID, noOfJurors) =>
     '0x' +
     (parseInt(subcourtID, 16)
       .toString()
       .padStart(64, '0') +
-      parseInt(initialNumberOfJurors, 16)
+      parseInt(noOfJurors, 16)
         .toString()
         .padStart(64, '0'))
 
@@ -214,6 +224,9 @@ class App extends React.Component {
                       createDisputeCallback={this.createDispute}
                       publishCallback={this.onPublish}
                       getSubCourtDetailsCallback={this.getSubCourtDetails}
+                      getArbitrationCostCallback={
+                        this.getArbitrationCostWithCourtAndNoOfJurors
+                      }
                     />
                   </React.Fragment>
                 )}
