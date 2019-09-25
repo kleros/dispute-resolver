@@ -1,6 +1,8 @@
 import React, { useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import TopBanner from '../components/top-banner'
+import Confirmation from '../components/confirmation'
+
 import { useDropzone } from 'react-dropzone'
 import Dropzone from 'react-dropzone'
 
@@ -429,142 +431,22 @@ class CreateDispute extends React.Component {
           </Card.Body>
         </Card>
 
-        <Modal show={modalShow} onHide={this.onModalClose} animation={false}>
-          <Modal.Header closeButton>
-            <Modal.Title>Confirmation</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <Form>
-              <Form.Row>
-                <Col>
-                  <Form.Group>
-                    <Form.Control
-                      readOnly
-                      type="text"
-                      placeholder={selectedSubcourt}
-                    />
-                  </Form.Group>
-                </Col>
-                <Col>
-                  <Form.Group>
-                    <Form.Control
-                      readOnly
-                      type="text"
-                      placeholder={initialNumberOfJurors}
-                    />
-                  </Form.Group>
-                </Col>{' '}
-                <Col>
-                  <Form.Group controlId="category">
-                    <Form.Control readOnly type="text" placeholder={category} />
-                  </Form.Group>
-                </Col>
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <Form.Group controlId="title">
-                    <Form.Control readOnly type="text" placeholder={title} />
-                  </Form.Group>
-                </Col>
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <Form.Group controlId="description">
-                    <Form.Control
-                      readOnly
-                      type="text"
-                      placeholder={description}
-                    />
-                  </Form.Group>
-                </Col>
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <Form.Group controlId="question">
-                    <Form.Control readOnly type="text" placeholder={question} />
-                  </Form.Group>
-                </Col>
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <Form.Group>
-                    <Form.Control
-                      readOnly
-                      type="text"
-                      placeholder={firstRulingOption}
-                    />
-                  </Form.Group>
-                </Col>
-                <Col>
-                  <Form.Group>
-                    <Form.Control
-                      readOnly
-                      type="text"
-                      placeholder={firstRulingDescription}
-                    />
-                  </Form.Group>
-                </Col>{' '}
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <Form.Group>
-                    <Form.Control
-                      readOnly
-                      type="text"
-                      placeholder={secondRulingOption}
-                    />
-                  </Form.Group>
-                </Col>
-                <Col>
-                  <Form.Group>
-                    <Form.Control
-                      readOnly
-                      type="text"
-                      placeholder={secondRulingDescription}
-                    />
-                  </Form.Group>
-                </Col>{' '}
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <Form.Group>
-                    <a
-                      target="blank"
-                      href={
-                        primaryDocument &&
-                        'https://ipfs.kleros.io' + primaryDocument
-                      }
-                    >
-                      {primaryDocument}
-                    </a>
-                  </Form.Group>
-                </Col>{' '}
-              </Form.Row>
-            </Form>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={this.onModalClose}>
-              Close
-            </Button>
-            <Button
-              variant="primary"
-              onClick={this.onCreateDisputeButtonClick}
-              disabled={awaitingConfirmation}
-            >
-              {awaitingConfirmation && (
-                <Spinner
-                  as="span"
-                  animation="grow"
-                  size="sm"
-                  role="status"
-                  aria-hidden="true"
-                />
-              )}{' '}
-              {(awaitingConfirmation && 'Awaiting Confirmation') ||
-                'Broadcast Transaction'}
-            </Button>
-          </Modal.Footer>
-        </Modal>
+        <Confirmation
+          selectedSubcourt={selectedSubcourt}
+          initialNumberOfJurors={initialNumberOfJurors}
+          arbitrationCost={arbitrationCost}
+          title={title}
+          description={description}
+          question={question}
+          firstRulingOption={firstRulingOption}
+          firstRulingDescription={firstRulingDescription}
+          secondRulingOption={secondRulingOption}
+          secondRulingDescription={secondRulingDescription}
+          primaryDocument={primaryDocument}
+          show={modalShow}
+          onModalHide={this.onModalClose}
+          onCreateDisputeButtonClick={this.onCreateDisputeButtonClick}
+        />
       </Container>
     )
   }

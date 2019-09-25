@@ -88,45 +88,6 @@ form > hr {
   color: #4d00b4;
 }
 
-#initialNumberOfJurors {
-  color: #4d00b4;
-}
-
-#category {
-  color: #4d00b4;
-}
-
-#title {
-  color: #4d00b4;
-}
-#description {
-  color: #4d00b4;
-}
-
-#question {
-  color: #4d00b4;
-}
-
-#firstRulingOption {
-  color: #4d00b4;
-}
-
-#firstRulingDescription {
-  color: #4d00b4;
-}
-
-#secondRulingOption {
-  color: #4d00b4;
-}
-
-#secondRulingDescription {
-  color: #4d00b4;
-}
-
-#primaryDocument {
-  color: #4d00b4;
-}
-
 label {
   color: #4d00b4;
 }
@@ -160,4 +121,8 @@ h5,
 h6 {
   text-align: center;
   margin: 0;
+}
+
+input {
+  color: #4d00b4 !important;
 }
