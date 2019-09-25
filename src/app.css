@@ -135,3 +135,29 @@ button::after {
   float: right;
   margin: 10px 0;
 }
+
+#dropzone {
+  border-style: dashed;
+  border-color: #4d00b4;
+  background-color: #f5f1fd;
+}
+
+.vertical-center {
+  min-height: 100%; /* Fallback for browsers do NOT support vh unit */
+  min-height: 100px; /* These two lines are counted as one :-)       */
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#dropzone > div > p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  text-align: center;
+  margin: 0;
+}

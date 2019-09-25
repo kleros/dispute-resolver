@@ -1,6 +1,8 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import TopBanner from '../components/top-banner'
+import { useDropzone } from 'react-dropzone'
+import Dropzone from 'react-dropzone'
 
 import {
   Container,
@@ -39,7 +41,6 @@ class CreateDispute extends React.Component {
       modalShow: false,
       awaitingConfirmation: false,
       lastDisputeID: '',
-      primaryDocument: '',
       selectedSubcourt: '',
       subcourts: [],
       subcourtsLoading: true
@@ -78,11 +79,6 @@ class CreateDispute extends React.Component {
     await this.setState({ subcourtsLoading: false })
   }
 
-  toggleshowToast = e =>
-    this.setState(prevState => {
-      return { showToast: !prevState.showToast }
-    })
-
   onSubcourtSelect = async subcourtID => {
     this.setState({ selectedSubcourt: subcourtID })
   }
@@ -93,6 +89,26 @@ class CreateDispute extends React.Component {
   onModalShow = e => this.setState({ modalShow: true })
 
   onControlChange = e => this.setState({ [e.target.id]: e.target.value })
+
+  onDrop = acceptedFiles => {
+    console.log(acceptedFiles)
+    this.setState({ fileInput: acceptedFiles[0] })
+
+    var reader = new FileReader()
+    reader.readAsArrayBuffer(acceptedFiles[0])
+    reader.addEventListener('loadend', async () => {
+      const buffer = Buffer.from(reader.result)
+
+      const result = await this.props.publishCallback(
+        acceptedFiles[0].name,
+        buffer
+      )
+
+      console.log(result)
+
+      await this.setState({ primaryDocument: '/ipfs/' + result[0].hash })
+    })
+  }
 
   onCreateDisputeButtonClick = async e => {
     e.preventDefault()
@@ -131,8 +147,6 @@ class CreateDispute extends React.Component {
       this.setState({
         lastDisputeID: receipt.events.Dispute.returnValues._disputeID
       })
-
-      this.toggleshowToast()
     } catch (e) {
       this.setState({ awaitingConfirmation: false })
     }
@@ -161,7 +175,8 @@ class CreateDispute extends React.Component {
       primaryDocument,
       selectedSubcourt,
       subcourts,
-      subcourtsLoading
+      subcourtsLoading,
+      fileInput
     } = this.state
 
     return (
@@ -334,16 +349,20 @@ class CreateDispute extends React.Component {
               <Form.Row>
                 <Col>
                   <Form.Group>
-                    <Form.Label htmlFor="primaryDocument">
-                      Primary Document
-                    </Form.Label>
-                    <Form.Control
-                      id="primaryDocument"
-                      as="input"
-                      value={primaryDocument}
-                      onChange={this.onControlChange}
-                      placeholder={'Type IPFS path of primary document'}
-                    />
+                    <Form.Label htmlFor="dropzone">Primary Document</Form.Label>
+                    <Dropzone onDrop={this.onDrop}>
+                      {({ getRootProps, getInputProps }) => (
+                        <section id="dropzone">
+                          <div {...getRootProps()} className="vertical-center">
+                            <input {...getInputProps()} />
+                            <h5>
+                              {(fileInput && fileInput.path) ||
+                                "Drag 'n' drop some files here, or click to selectfiles."}
+                            </h5>
+                          </div>
+                        </section>
+                      )}
+                    </Dropzone>
                   </Form.Group>
                 </Col>
               </Form.Row>
