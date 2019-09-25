@@ -394,7 +394,7 @@ class CreateDispute extends React.Component {
                             <input {...getInputProps()} />
                             <h5>
                               {(fileInput && fileInput.path) ||
-                                "Drag 'n' drop some files here, or click to selectfiles."}
+                                "Drag 'n' drop some files here, or click to select files."}
                             </h5>
                           </div>
                         </section>
