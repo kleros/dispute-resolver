@@ -13,7 +13,8 @@ import {
   Modal,
   Toast,
   Dropdown,
-  ButtonGroup
+  ButtonGroup,
+  Accordion
 } from 'react-bootstrap'
 
 class IPFS extends React.Component {
@@ -73,50 +74,60 @@ class IPFS extends React.Component {
 
     return (
       <Container fluid="true">
-        <Card>
-          <Card.Header>
-            <img src="ipfs-logo-vector-inkscape-template.svg" alt="ipfs logo" />{' '}
-            Upload to IPFS
-          </Card.Header>
-          <hr />
-          <Card.Body>
-            <Form>
-              <Form.Row>
-                <Col>
-                  <div className="input-group mb-3">
-                    <div className="custom-file">
-                      <input
-                        type="file"
-                        className="custom-file-input"
-                        id="inputGroupFile04"
-                        onInput={this.onInput}
-                      />
-                      <label
-                        className={
-                          `text-left custom-file-label  ` +
-                          (uploadedDocumentURI ? 'text-success' : 'text-muted')
-                        }
-                        htmlFor="inputGroupFile04"
-                      >
-                        {(fileInput && fileInput.name) || 'Select a document'}
-                      </label>
-                    </div>
-                    <div className="input-group-append">
-                      <button
-                        className="btn btn-primary"
-                        type="button"
-                        onClick={this.onSubmitButtonClick}
-                      >
-                        Upload
-                      </button>
-                    </div>
-                  </div>
-                </Col>
-              </Form.Row>
-            </Form>
-            {uploadedDocumentURI && uploadedDocumentURI}
-          </Card.Body>
-        </Card>
+        <Accordion>
+          <Card>
+            <Accordion.Toggle as={Card.Header} eventKey="0">
+              <img
+                src="ipfs-logo-vector-inkscape-template.svg"
+                alt="ipfs logo"
+              />{' '}
+              Upload to IPFS
+            </Accordion.Toggle>
+            <hr />
+            <Accordion.Collapse eventKey="0">
+              <Card.Body>
+                <Form>
+                  <Form.Row>
+                    <Col>
+                      <div className="input-group mb-3">
+                        <div className="custom-file">
+                          <input
+                            type="file"
+                            className="custom-file-input"
+                            id="inputGroupFile04"
+                            onInput={this.onInput}
+                          />
+                          <label
+                            className={
+                              `text-left custom-file-label  ` +
+                              (uploadedDocumentURI
+                                ? 'text-success'
+                                : 'text-muted')
+                            }
+                            htmlFor="inputGroupFile04"
+                          >
+                            {(fileInput && fileInput.name) ||
+                              'Select a document'}
+                          </label>
+                        </div>
+                        <div className="input-group-append">
+                          <button
+                            className="btn btn-primary"
+                            type="button"
+                            onClick={this.onSubmitButtonClick}
+                          >
+                            Upload
+                          </button>
+                        </div>
+                      </div>
+                    </Col>
+                  </Form.Row>
+                </Form>
+                {uploadedDocumentURI && uploadedDocumentURI}
+              </Card.Body>
+            </Accordion.Collapse>
+          </Card>
+        </Accordion>
       </Container>
     )
   }

@@ -210,7 +210,6 @@ class App extends React.Component {
                 path="(/|/create)"
                 render={props => (
                   <React.Fragment>
-                    <IPFS publishCallback={this.onPublish} />
                     <CreateDispute
                       createDisputeCallback={this.createDispute}
                       publishCallback={this.onPublish}
@@ -224,7 +223,6 @@ class App extends React.Component {
                 path="/interact/"
                 render={props => (
                   <React.Fragment>
-                    <IPFS publishCallback={this.onPublish} />
                     <Interact
                       publishCallback={this.onPublish}
                       submitEvidenceCallback={this.submitEvidence}
@@ -241,8 +239,6 @@ class App extends React.Component {
                 path="/interact/:id"
                 render={props => (
                   <React.Fragment>
-                    <IPFS publishCallback={this.onPublish} />
-
                     <Interact
                       route={props}
                       publishCallback={this.onPublish}
@@ -257,6 +253,7 @@ class App extends React.Component {
               />
             </Switch>
           </BrowserRouter>
+          <IPFS publishCallback={this.onPublish} />
         </Container>
       )
   }
