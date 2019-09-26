@@ -21,12 +21,7 @@ class TopBanner extends React.Component {
               Interact
             </Nav.Link>
           </Nav>
-          <Nav className="abs-end-x ">
-            <Nav.Link href="#deets">More deets</Nav.Link>
-            <Nav.Link eventKey={2} href="#memes">
-              Dank memes
-            </Nav.Link>
-          </Nav>
+          <Nav className="abs-end-x " />
         </Navbar.Collapse>
       </Navbar>
     )
