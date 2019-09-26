@@ -169,3 +169,18 @@ body > div.modal > div > div > div.modal-header {
 .modal-footer {
   border-style: none;
 }
+
+/* #root
+  > div
+  > div:nth-child(2)
+  > div
+  > div.card-body
+  > form
+  > div:nth-child(5)
+  > div:nth-child(1)
+  > div {
+  height: 100%;
+}
+#description {
+  height: inherit;
+} */

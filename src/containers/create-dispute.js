@@ -120,7 +120,9 @@ class CreateDispute extends React.Component {
 
       console.log(result)
 
-      await this.setState({ primaryDocument: '/ipfs/' + result[0].hash })
+      await this.setState({
+        primaryDocument: '/ipfs/' + result[1].hash + result[0].path
+      })
     })
   }
 
@@ -290,8 +292,12 @@ class CreateDispute extends React.Component {
               </Form.Row>
               <Form.Row>
                 <Col>
+                  <Form.Label htmlFor="description">Description</Form.Label>
+                </Col>
+              </Form.Row>
+              <Form.Row>
+                <Col>
                   <Form.Group controlId="description">
-                    <Form.Label htmlFor="description">Description</Form.Label>
                     <Form.Control
                       as="textarea"
                       rows="3"
@@ -301,14 +307,13 @@ class CreateDispute extends React.Component {
                     />
                   </Form.Group>
                 </Col>
-              </Form.Row>
-              <Form.Row>
                 <Col>
                   <Form.Group controlId="markdown-description">
                     <ReactMarkdown source={description} />
                   </Form.Group>
                 </Col>
               </Form.Row>
+
               <hr />
               <Form.Row>
                 <Col>

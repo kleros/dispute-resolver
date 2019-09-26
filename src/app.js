@@ -128,6 +128,7 @@ class App extends React.Component {
     console.log(`ex data ${arbitratorExtraData}`)
 
     const metaevidence = {
+      category: 'unused',
       title: options.title,
       description: options.description,
       question: options.question,
@@ -147,12 +148,14 @@ class App extends React.Component {
       this.encoder.encode(JSON.stringify(metaevidence))
     )
 
+    console.log(ipfsHashMetaEvidenceObj)
+
     const metaevidenceURI =
       '/ipfs/' +
       ipfsHashMetaEvidenceObj[1]['hash'] +
       ipfsHashMetaEvidenceObj[0]['path']
 
-    console.log(metaevidence)
+    console.log(metaevidenceURI)
 
     let arbitrationCost = await this.getArbitrationCost(
       arbitrator,
