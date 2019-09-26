@@ -204,18 +204,17 @@ blockquote {
 }
 
 #footer {
-  background-color: #cccccc;
+  background-color: #4d00b4;
   height: 72px;
   margin-top: 30px;
 }
 
 #footer > * {
-  color: black;
   font-weight: 500;
 }
 
 #footer > * > * > * {
-  color: black;
+  color: white;
   font-weight: 500;
 }
 
@@ -229,4 +228,12 @@ blockquote {
 
 .container-fluid {
   padding: 0;
+}
+
+.nav-item {
+  width: max-content;
+}
+
+#responsive-navbar-nav > div.abs-end-x.navbar-nav > div:nth-child(1) > a {
+  color: white;
 }
