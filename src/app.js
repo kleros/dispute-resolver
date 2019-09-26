@@ -3,6 +3,7 @@ import { Container, Row, Col } from 'react-bootstrap'
 
 import './app.css'
 import CreateDispute from './containers/create-dispute'
+import _404 from './containers/404'
 import Interact from './containers/interact'
 import { BrowserRouter, Route, Switch } from 'react-router-dom'
 import TopBanner from './components/top-banner'
@@ -213,7 +214,13 @@ class App extends React.Component {
 
     const { activeAddress, network, lastDisputeID } = this.state
 
-    if (!network || !activeAddress) return <>WAIT A MINUTE</>
+    if (!network || !activeAddress)
+      return (
+        <Container fluid="true">
+          <_404 />
+          <Footer title="title" description="description" />
+        </Container>
+      )
     else
       return (
         <Container fluid="true">
