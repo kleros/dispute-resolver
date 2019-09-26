@@ -1,5 +1,5 @@
 import React from 'react'
-import { Modal, Form, Col, Button, Spinner } from 'react-bootstrap'
+import { Container, Modal, Form, Col, Button, Spinner } from 'react-bootstrap'
 
 class Confirmation extends React.Component {
   onModalShow = e => this.setState({ modalShow: true })
@@ -27,7 +27,12 @@ class Confirmation extends React.Component {
     } = this.props
 
     return (
-      <Modal show={show} onHide={this.props.onModalHide} animation={false}>
+      <Modal
+        size="xl"
+        show={show}
+        onHide={this.props.onModalHide}
+        animation={false}
+      >
         <Modal.Header closeButton>
           <Modal.Title>Dispute Summmary</Modal.Title>
         </Modal.Header>
@@ -69,8 +74,8 @@ class Confirmation extends React.Component {
             <Form.Row>
               <Col>
                 <Form.Group controlId="description">
-                  <Form.Label>description</Form.Label>
-                  <Form.Control readOnly type="text" value={description} />
+                  <Form.Label>Description</Form.Label>
+                  <p>{description}</p>
                 </Form.Group>
               </Col>
             </Form.Row>
@@ -138,7 +143,8 @@ class Confirmation extends React.Component {
                       'https://ipfs.kleros.io' + primaryDocument
                     }
                   >
-                    {primaryDocument}
+                    <img src="attachment.svg" alt="primary document" />{' '}
+                    {this.props.filePath}
                   </a>
                 </Form.Group>
               </Col>{' '}

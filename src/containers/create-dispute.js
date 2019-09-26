@@ -32,7 +32,7 @@ class CreateDispute extends React.Component {
   constructor(props) {
     super(props)
     this.state = {
-      initialNumberOfJurors: '',
+      initialNumberOfJurors: '3',
       title: '',
       description: '',
       question: '',
@@ -432,7 +432,9 @@ class CreateDispute extends React.Component {
         </Card>
 
         <Confirmation
-          selectedSubcourt={selectedSubcourt}
+          selectedSubcourt={
+            selectedSubcourt && subcourts[selectedSubcourt].name
+          }
           initialNumberOfJurors={initialNumberOfJurors}
           arbitrationCost={arbitrationCost}
           title={title}
@@ -443,9 +445,11 @@ class CreateDispute extends React.Component {
           secondRulingOption={secondRulingOption}
           secondRulingDescription={secondRulingDescription}
           primaryDocument={primaryDocument}
+          filePath={fileInput && fileInput.path}
           show={modalShow}
           onModalHide={this.onModalClose}
           onCreateDisputeButtonClick={this.onCreateDisputeButtonClick}
+          awaitingConfirmation={awaitingConfirmation}
         />
       </Container>
     )

@@ -123,6 +123,49 @@ h6 {
   margin: 0;
 }
 
-input {
+input,
+textarea,
+p {
   color: #4d00b4 !important;
+  font-weight: 500 !important;
+}
+
+body > div.modal > div > div > div.modal-body > form > div > div > div > input {
+  background-color: unset;
+  border-style: unset;
+  padding: 0;
+}
+
+body > div.modal > div > div > div.modal-body > form {
+  background-color: #f5f1fd;
+  border-radius: 12px;
+  padding: 15px;
+}
+
+body
+  > div.modal
+  > div
+  > div
+  > div.modal-body
+  > form
+  > div:nth-child(9)
+  > div
+  > div
+  > a {
+  color: #4d00b4;
+}
+
+body > div.modal > div > div > div.modal-header {
+  background-color: #4d00b4;
+  color: white;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+.modal-content {
+  border-radius: 16px;
+}
+
+.modal-footer {
+  border-style: none;
 }
