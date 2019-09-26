@@ -46,7 +46,8 @@ class CreateDispute extends React.Component {
       selectedSubcourt: '',
       subcourts: [],
       subcourtsLoading: true,
-      arbitrationCost: ''
+      arbitrationCost: '',
+      primaryDocument: ''
     }
   }
 
@@ -104,7 +105,7 @@ class CreateDispute extends React.Component {
     )
   }
 
-  onDrop = acceptedFiles => {
+  onDrop = async acceptedFiles => {
     console.log(acceptedFiles)
     this.setState({ fileInput: acceptedFiles[0] })
 
@@ -187,7 +188,6 @@ class CreateDispute extends React.Component {
 
     const {
       initialNumberOfJurors,
-      category,
       title,
       description,
       question,
