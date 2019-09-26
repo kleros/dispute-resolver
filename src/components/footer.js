@@ -20,7 +20,7 @@ class Footer extends React.Component {
           <Nav className="abs-end-x ">
             <Nav.Item>
               {' '}
-              <Nav.Link href="https://t.me/kleros">
+              <Nav.Link className="mr-5" href="https://t.me/kleros">
                 <div>
                   I need help <img src="help.svg" alt="help" />
                 </div>
