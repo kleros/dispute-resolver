@@ -210,8 +210,6 @@ class CreateDispute extends React.Component {
       <Container fluid="true">
         {lastDisputeID && <Redirect to={`/interact/${lastDisputeID}`} />}
 
-        <TopBanner title="title" description="description" />
-
         <Card>
           <Card.Header>
             <img src="gavel.svg" alt="gavel" />

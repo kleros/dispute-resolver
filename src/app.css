@@ -2,10 +2,6 @@ html {
   background-color: #f2e3ff;
 }
 
-body {
-  margin-top: 80px;
-}
-
 .navbar {
   background-color: #1e075f;
   color: white;
@@ -207,6 +203,7 @@ blockquote {
 #footer {
   background-color: #cccccc;
   height: 72px;
+  margin-top: 30px;
 }
 
 #footer > * {
