@@ -4,23 +4,25 @@ import React from 'react'
 import { ReactComponent as Underline } from '../assets/images/underline.svg'
 import styled from 'styled-components/macro'
 
-class TopBanner extends React.Component {
+class Footer extends React.Component {
   render() {
     return (
-      <Navbar collapseOnSelect expand="lg" variant="dark" fixed="top">
-        <Navbar.Brand href="#home">
-          <img src="logo.svg" alt="Kleros Logo" />
+      <Navbar
+        collapseOnSelect
+        expand="lg"
+        variant="dark"
+        fixed="bottom"
+        id="footer"
+      >
+        <Navbar.Brand href="https://kleros.io">
+          Find out more about Kleros
         </Navbar.Brand>
+
         <Navbar.Toggle aria-controls="responsive-navbar-nav" />
         <Navbar.Collapse id="responsive-navbar-nav">
-          <Nav className="abs-center-x ">
-            <Nav.Link className="mx-3" href="/create">
-              Create
-            </Nav.Link>
-            <Nav.Link className="mx-3" href="/interact">
-              Interact
-            </Nav.Link>
-          </Nav>
+          <Nav className="abs-center-x">
+            <Nav.Link href="/">Binary Arbitrable Proxy</Nav.Link>
+          </Nav>{' '}
           <Nav className="abs-end-x ">
             <Nav.Link href="#deets">More deets</Nav.Link>
             <Nav.Link eventKey={2} href="#memes">
@@ -33,4 +35,4 @@ class TopBanner extends React.Component {
   }
 }
 
-export default TopBanner
+export default Footer

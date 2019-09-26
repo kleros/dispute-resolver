@@ -191,3 +191,30 @@ blockquote {
   padding-left: 1em;
   border-left: 0.5em #eee solid;
 }
+
+.abs-center-x {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.abs-end-x {
+  position: absolute;
+  left: 90%;
+  transform: translateX(-50%);
+}
+
+#footer {
+  background-color: #cccccc;
+  height: 72px;
+}
+
+#footer > * {
+  color: black;
+  font-weight: 500;
+}
+
+#footer > * > * > * {
+  color: black;
+  font-weight: 500;
+}

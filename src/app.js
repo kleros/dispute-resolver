@@ -6,6 +6,8 @@ import CreateDispute from './containers/create-dispute'
 import Interact from './containers/interact'
 import { BrowserRouter, Route, Switch } from 'react-router-dom'
 import TopBanner from './components/top-banner'
+import Footer from './components/footer'
+
 import IPFS from './components/ipfs'
 
 import * as BinaryArbitrableProxy from './ethereum/binary-arbitrable-proxy'
@@ -270,6 +272,7 @@ class App extends React.Component {
             </Switch>
           </BrowserRouter>
           <IPFS publishCallback={this.onPublish} />
+          <Footer title="title" description="description" />
         </Container>
       )
   }
