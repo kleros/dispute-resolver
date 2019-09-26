@@ -7,7 +7,7 @@ import styled from 'styled-components/macro'
 class TopBanner extends React.Component {
   render() {
     return (
-      <Navbar collapseOnSelect expand="lg" variant="dark">
+      <Navbar collapseOnSelect expand="lg" variant="dark" id="header">
         <Navbar.Brand href="#home">
           <img src="logo.svg" alt="Kleros Logo" />
         </Navbar.Brand>
