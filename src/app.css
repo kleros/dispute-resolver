@@ -170,7 +170,7 @@ body > div.modal > div > div > div.modal-header {
   border-style: none;
 }
 
-/* #root
+#root
   > div
   > div:nth-child(2)
   > div
@@ -183,4 +183,11 @@ body > div.modal > div > div > div.modal-header {
 }
 #description {
   height: inherit;
-} */
+}
+
+blockquote {
+  color: #666;
+  margin: 0;
+  padding-left: 1em;
+  border-left: 0.5em #eee solid;
+}
