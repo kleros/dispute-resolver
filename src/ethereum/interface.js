@@ -14,19 +14,19 @@ const imports = {
 export const contractInstance = (name, address) =>
   new web3.eth.Contract(imports[name].abi, address)
 
-export const call = (contractName, instanceAddress, method, ...args) =>
-  contractInstance(contractName, instanceAddress)
+export const call = (interfaceName, instanceAddress, method, ...args) =>
+  contractInstance(interfaceName, instanceAddress)
     .methods[method](...args)
     .call()
 
 export const send = (
-  contractName,
+  interfaceName,
   instanceAddress,
   from,
   value,
   method,
   ...args
 ) =>
-  contractInstance(contractName, instanceAddress)
+  contractInstance(interfaceName, instanceAddress)
     .methods[method](...args)
     .send({ from, value })
