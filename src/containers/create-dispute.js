@@ -293,7 +293,7 @@ class CreateDispute extends React.Component {
                   <Form.Label htmlFor="description">Description</Form.Label>
                 </Col>
               </Form.Row>
-              <Form.Row>
+              <Form.Row className="mb-3">
                 <Col>
                   <Form.Group controlId="description">
                     <Form.Control
