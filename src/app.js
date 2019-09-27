@@ -11,11 +11,8 @@ import Footer from './components/footer'
 
 import IPFS from './components/ipfs'
 
-import * as BinaryArbitrableProxy from './ethereum/binary-arbitrable-proxy'
-import * as Arbitrator from './ethereum/arbitrator'
-import * as KlerosLiquid from './ethereum/kleros-liquid'
-import * as PolicyRegistry from './ethereum/policy-registry'
 import Web3 from './ethereum/web3'
+import * as EthereumInterface from './ethereum/interface'
 
 import networkMap from './ethereum/network-contract-mapping'
 import ipfsPublish from './ipfs-publish'
@@ -58,28 +55,40 @@ class App extends React.Component {
   }
 
   getArbitrationCost = (arbitratorAddress, extraData) =>
-    Arbitrator.arbitrationCost(arbitratorAddress, extraData)
+    EthereumInterface.call(
+      'Arbitrator',
+      arbitratorAddress,
+      'arbitrationCost',
+      extraData
+    )
 
   getArbitrationCostWithCourtAndNoOfJurors = async (subcourtID, noOfJurors) =>
     Web3.utils.fromWei(
-      await Arbitrator.arbitrationCost(
+      await EthereumInterface.call(
+        'Arbitrator',
         networkMap[this.state.network].KLEROS_LIQUID,
+        'arbitrationCost',
         this.generateArbitratorExtraData(subcourtID, noOfJurors)
       ),
+
       'ether'
     )
 
   getSubCourtDetails = async subcourtID => {
     console.log(`Got ${this.state.network}`)
-    return await PolicyRegistry.policies(
+    return await EthereumInterface.call(
+      'PolicyRegistry',
       networkMap[this.state.network].POLICY_REGISTRY,
+      'policies',
       subcourtID
     )
   }
 
   getDispute = async disputeID =>
-    KlerosLiquid.disputes(
+    EthereumInterface.call(
+      'KlerosLiquid',
       networkMap[this.state.network].KLEROS_LIQUID,
+      'disputes',
       disputeID
     )
 
@@ -102,16 +111,20 @@ class App extends React.Component {
   appeal = async disputeID => {
     const { activeAddress, network } = this.state
 
-    const appealCost = await Arbitrator.appealCost(
+    const appealCost = await EthereumInterface.call(
+      'Arbitrator',
       networkMap[network].KLEROS_LIQUID,
+      'appealCost',
       disputeID,
       '0x0'
     )
 
-    await Arbitrator.appeal(
+    await EthereumInterface.send(
+      'Arbitrator',
       networkMap[network].KLEROS_LIQUID,
       activeAddress,
       appealCost,
+      'appeal',
       disputeID,
       '0x0'
     )
@@ -165,10 +178,13 @@ class App extends React.Component {
       arbitratorExtraData
     )
     console.log('HELLOOOO')
-    return BinaryArbitrableProxy.createDispute(
+
+    return EthereumInterface.send(
+      'BinaryArbitrableProxy',
       networkMap[network].BINARY_ARBITRABLE_PROXY,
       activeAddress,
       arbitrationCost,
+      'createDispute',
       arbitrator,
       arbitratorExtraData,
       metaevidenceURI
@@ -183,13 +199,11 @@ class App extends React.Component {
       description: 'description',
       fileURI: evidenceFileURI
     }
-    console.log(
-      await BinaryArbitrableProxy.contractInstance(
-        networkMap[network].BINARY_ARBITRABLE_PROXY
-      )
-    )
-    const localDisputeID = await BinaryArbitrableProxy.externalIDtoLocalID(
+
+    const localDisputeID = await EthereumInterface.call(
+      'BinaryArbitrableProxy',
       networkMap[network].BINARY_ARBITRABLE_PROXY,
+      'externalIDtoLocalID',
       disputeID
     )
 
@@ -201,9 +215,12 @@ class App extends React.Component {
     const evidenceURI =
       '/ipfs/' + ipfsHashEvidenceObj[1]['hash'] + ipfsHashEvidenceObj[0]['path']
 
-    return await BinaryArbitrableProxy.submitEvidence(
+    return await EthereumInterface.send(
+      'BinaryArbitrableProxy',
       networkMap[network].BINARY_ARBITRABLE_PROXY,
       activeAddress,
+      0,
+      'submitEvidence',
       localDisputeID,
       evidenceURI
     )
