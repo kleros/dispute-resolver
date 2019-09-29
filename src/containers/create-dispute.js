@@ -157,7 +157,6 @@ class CreateDispute extends React.Component {
 
     this.setState({ awaitingConfirmation: true })
     try {
-      console.log('tryinna')
       const receipt = await this.props.createDisputeCallback({
         selectedSubcourt,
         initialNumberOfJurors,
@@ -182,7 +181,6 @@ class CreateDispute extends React.Component {
   }
 
   render() {
-    console.log('RENDERING CREATE DISPUTE')
     console.debug(this.props)
     console.debug(this.state)
 

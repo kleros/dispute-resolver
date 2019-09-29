@@ -1,12 +1,15 @@
 import React from 'react'
-import Container from 'react-bootstrap/Container'
-import Button from 'react-bootstrap/Button'
-import Form from 'react-bootstrap/Form'
-import Col from 'react-bootstrap/Col'
-import Row from 'react-bootstrap/Row'
+import {
+  Container,
+  Button,
+  Form,
+  Col,
+  Row,
+  Breadcrumb,
+  Card,
+  Modal
+} from 'react-bootstrap'
 
-import Card from 'react-bootstrap/Card'
-import Modal from 'react-bootstrap/Modal'
 import ReactMarkdown from 'react-markdown'
 
 class Interact extends React.Component {
@@ -14,10 +17,11 @@ class Interact extends React.Component {
     super(props)
     this.state = {
       disputeID: (this.props.route && this.props.route.match.params.id) || '',
-      period: '0',
+      dispute: {},
       fileInput: '',
       evidenceFileURI: '',
-      metaevidence: ''
+      metaevidence: '',
+      subcourtDetails: {}
     }
 
     console.log(match)
@@ -75,33 +79,50 @@ class Interact extends React.Component {
   }
 
   onDisputeIDChange = async e => {
-    await this.setState({ disputeID: e.target.value })
-    let arbitrableContract
+    const disputeID = e.target.value
+    await this.setState({ disputeID })
     let dispute
+    let subcourtURI
+    let subcourt
     try {
-      dispute = await this.props.getDisputeCallback(this.state.disputeID)
-      arbitrableContract = this.props.getContractInstanceCallback(
-        'IEvidence',
-        dispute.arbitrated
-      )
-      console.log(arbitrableContract)
-      this.setState({ period: dispute.period })
-    } catch (e) {
-      this.setState({ period: 5 })
-    }
+      dispute = await this.props.getDisputeCallback(disputeID)
 
-    await this.setState({
-      metaevidence: await this.props.getMetaEvidenceCallback(
-        dispute.arbitrated,
-        this.state.disputeID
+      subcourtURI = await this.props.getSubCourtDetailsCallback(
+        dispute.subcourtID
       )
-    })
+      console.log(subcourtURI)
+      if (subcourtURI.includes('http')) {
+        subcourt = await fetch(subcourtURI)
+      } else {
+        subcourt = await fetch('https://ipfs.kleros.io' + subcourtURI)
+      }
+
+      await this.setState({
+        dispute,
+        subcourtDetails: await subcourt.json(),
+        metaevidence: await this.props.getMetaEvidenceCallback(
+          dispute.arbitrated,
+          disputeID
+        )
+      })
+    } catch (e) {
+      console.error(e.message)
+      this.setState({ dispute: { period: 5 } })
+    }
   }
 
   getHumanReadablePeriod = period => this.PERIODS[period]
 
   render() {
-    const { disputeID, period, fileInput, evidenceFileURI } = this.state
+    const {
+      disputeID,
+      dispute,
+      fileInput,
+      evidenceFileURI,
+      metaevidence,
+      subcourtDetails
+    } = this.state
+    const metaevidencePayload = metaevidence.metaEvidenceJSON
     console.log(this.props)
     console.log(this.state)
 
@@ -137,7 +158,7 @@ class Interact extends React.Component {
                         type="text"
                         placeholder={
                           'Currently in ' +
-                          this.getHumanReadablePeriod(period) +
+                          this.getHumanReadablePeriod(dispute.period) +
                           ' period'
                         }
                       />
@@ -158,9 +179,116 @@ class Interact extends React.Component {
             </Form>
           </Card.Body>
         </Card>
-        <Card>
-          <Card.Body>asd alt</Card.Body>
-        </Card>
+        {metaevidence && (
+          <>
+            <Card>
+              <Card.Body>
+                <Card.Title>{metaevidencePayload.title}</Card.Title>
+                <Form>
+                  <Form.Row>
+                    <Col>
+                      <Form.Group>
+                        <Breadcrumb>
+                          <Breadcrumb.Item href="#">
+                            {subcourtDetails.name}
+                          </Breadcrumb.Item>
+                        </Breadcrumb>
+                      </Form.Group>
+                    </Col>
+                  </Form.Row>
+                  <hr />
+
+                  <Form.Row>
+                    <Col>
+                      <ReactMarkdown source={metaevidencePayload.description} />
+                    </Col>
+                  </Form.Row>
+                  <Form.Row>
+                    <Col>
+                      <a
+                        target="blank"
+                        href={
+                          metaevidencePayload.fileURI &&
+                          'https://ipfs.kleros.io' + metaevidencePayload.fileURI
+                        }
+                      >
+                        <img src="attachment.svg" alt="primary document" />{' '}
+                        {this.props.filePath}
+                      </a>
+                    </Col>
+                  </Form.Row>
+                </Form>
+              </Card.Body>
+            </Card>
+            <Card>
+              <Card.Body>
+                <Form>
+                  <Form.Row>
+                    <Col>
+                      <Form.Group controlId="question">
+                        <Form.Label>Question</Form.Label>
+                        <Form.Control
+                          readOnly
+                          type="text"
+                          value={metaevidencePayload.question}
+                        />
+                      </Form.Group>
+                    </Col>
+                  </Form.Row>
+                  <Form.Row>
+                    <Col>
+                      <Form.Group>
+                        <Form.Label>First Ruling Option</Form.Label>
+                        <Form.Control
+                          readOnly
+                          type="text"
+                          value={metaevidencePayload.rulingOptions.titles[0]}
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col>
+                      <Form.Group>
+                        <Form.Label>First Ruling Description</Form.Label>
+                        <Form.Control
+                          readOnly
+                          type="text"
+                          value={
+                            metaevidencePayload.rulingOptions.descriptions[0]
+                          }
+                        />
+                      </Form.Group>
+                    </Col>{' '}
+                  </Form.Row>
+                  <Form.Row>
+                    <Col>
+                      <Form.Group>
+                        <Form.Label>Second Ruling Option</Form.Label>
+                        <Form.Control
+                          readOnly
+                          type="text"
+                          value={metaevidencePayload.rulingOptions.titles[1]}
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col>
+                      <Form.Group>
+                        <Form.Label>Second Ruling Description</Form.Label>
+
+                        <Form.Control
+                          readOnly
+                          type="text"
+                          value={
+                            metaevidencePayload.rulingOptions.descriptions[1]
+                          }
+                        />
+                      </Form.Group>
+                    </Col>{' '}
+                  </Form.Row>
+                </Form>
+              </Card.Body>
+            </Card>
+          </>
+        )}
       </Container>
     )
   }

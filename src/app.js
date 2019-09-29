@@ -276,29 +276,13 @@ class App extends React.Component {
               />
               <Route
                 exact
-                path="/interact/"
+                path="/interact/:id?"
                 render={props => (
                   <React.Fragment>
                     <Interact
+                      getSubCourtDetailsCallback={this.getSubCourtDetails}
                       getMetaEvidenceCallback={this.getMetaEvidence}
                       getContractInstanceCallback={this.getContractInstance}
-                      publishCallback={this.onPublish}
-                      submitEvidenceCallback={this.submitEvidence}
-                      disputeID={lastDisputeID}
-                      getDisputeCallback={this.getDispute}
-                      appealCallback={this.appeal}
-                      newDisputeCallback={this.updateLastDisputeID}
-                    />
-                  </React.Fragment>
-                )}
-              />
-              <Route
-                exact
-                path="/interact/:id"
-                render={props => (
-                  <React.Fragment>
-                    <Interact
-                      route={props}
                       publishCallback={this.onPublish}
                       submitEvidenceCallback={this.submitEvidence}
                       disputeID={lastDisputeID}
