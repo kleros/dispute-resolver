@@ -16,6 +16,7 @@ import * as EthereumInterface from './ethereum/interface'
 
 import networkMap from './ethereum/network-contract-mapping'
 import ipfsPublish from './ipfs-publish'
+import Archon from '@kleros/archon'
 
 import './app.css'
 
@@ -38,20 +39,17 @@ class App extends React.Component {
       this.setState({ network: window.ethereum.networkVersion })
 
       this.setState({ activeAddress: window.ethereum.selectedAddress })
-
+      this.setState({
+        archon: new Archon(window.ethereum, 'https://ipfs.kleros.io')
+      })
       window.ethereum.on('accountsChanged', accounts => {
-        console.log('ACCOUNT CHANGED')
         this.setState({ activeAddress: accounts[0] })
       })
 
       window.ethereum.on('networkChanged', network => {
-        console.log(`network CHANGED ${network}`)
         this.setState({ network })
       })
     } else console.error('MetaMask not detected :(')
-
-    console.log(networkMap)
-    console.log(this.state.network)
   }
 
   getArbitrationCost = (arbitratorAddress, extraData) =>
@@ -177,7 +175,6 @@ class App extends React.Component {
       arbitrator,
       arbitratorExtraData
     )
-    console.log('HELLOOOO')
 
     return EthereumInterface.send(
       'BinaryArbitrableProxy',
@@ -190,6 +187,22 @@ class App extends React.Component {
       metaevidenceURI
     )
   }
+
+  getMetaEvidence = async (arbitrableAddress, disputeID) => {
+    const disputeLog = await this.state.archon.arbitrable.getDispute(
+      arbitrableAddress, // arbitrable contract address
+      networkMap[this.state.network].KLEROS_LIQUID, // arbitrator contract address
+      disputeID // dispute unique identifier
+    )
+
+    return await this.state.archon.arbitrable.getMetaEvidence(
+      arbitrableAddress, // arbitrable contract address
+      disputeLog.metaEvidenceID
+    )
+  }
+
+  getContractInstance = (interfaceName, address) =>
+    EthereumInterface.contractInstance(interfaceName, address)
 
   submitEvidence = async ({ disputeID, evidenceFileURI }) => {
     const { activeAddress, network } = this.state
@@ -234,6 +247,7 @@ class App extends React.Component {
     if (!network || !activeAddress)
       return (
         <Container fluid="true">
+          <TopBanner title="title" description="description" />
           <_404 />
           <Footer title="title" description="description" />
         </Container>
@@ -266,6 +280,8 @@ class App extends React.Component {
                 render={props => (
                   <React.Fragment>
                     <Interact
+                      getMetaEvidenceCallback={this.getMetaEvidence}
+                      getContractInstanceCallback={this.getContractInstance}
                       publishCallback={this.onPublish}
                       submitEvidenceCallback={this.submitEvidence}
                       disputeID={lastDisputeID}

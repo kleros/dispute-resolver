@@ -16,7 +16,8 @@ class Interact extends React.Component {
       disputeID: (this.props.route && this.props.route.match.params.id) || '',
       period: '0',
       fileInput: '',
-      evidenceFileURI: ''
+      evidenceFileURI: '',
+      metaevidence: ''
     }
 
     console.log(match)
@@ -75,12 +76,26 @@ class Interact extends React.Component {
 
   onDisputeIDChange = async e => {
     await this.setState({ disputeID: e.target.value })
+    let arbitrableContract
+    let dispute
     try {
-      const dispute = await this.props.getDisputeCallback(this.state.disputeID)
+      dispute = await this.props.getDisputeCallback(this.state.disputeID)
+      arbitrableContract = this.props.getContractInstanceCallback(
+        'IEvidence',
+        dispute.arbitrated
+      )
+      console.log(arbitrableContract)
       this.setState({ period: dispute.period })
     } catch (e) {
       this.setState({ period: 5 })
     }
+
+    await this.setState({
+      metaevidence: await this.props.getMetaEvidenceCallback(
+        dispute.arbitrated,
+        this.state.disputeID
+      )
+    })
   }
 
   getHumanReadablePeriod = period => this.PERIODS[period]
@@ -88,17 +103,22 @@ class Interact extends React.Component {
   render() {
     const { disputeID, period, fileInput, evidenceFileURI } = this.state
     console.log(this.props)
-    console.log(this.state.match)
+    console.log(this.state)
 
     return (
       <Container fluid="true">
         <Card>
+          <Card.Header>
+            <img src="../gavel.svg" alt="gavel" />
+            Interact with a Dispute
+          </Card.Header>
           <Card.Body>
             <Card.Title>Interact with a Dispute</Card.Title>{' '}
             <Form>
               <Form.Row>
                 <Col>
                   <Form.Group>
+                    <Form.Label>Dispute Identifier</Form.Label>
                     <Form.Control
                       id="disputeID"
                       as="input"
@@ -135,53 +155,11 @@ class Interact extends React.Component {
                   </Col>
                 )}{' '}
               </Form.Row>
-              <Form.Row>
-                <Col>
-                  <Button
-                    disabled={parseInt(period) !== 3}
-                    variant="primary"
-                    type="button"
-                    onClick={this.onAppealButtonClick}
-                    block
-                  >
-                    Appeal
-                  </Button>
-                </Col>
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <div className="input-group mt-3">
-                    <div className="custom-file">
-                      <input
-                        type="file"
-                        className="custom-file-input"
-                        id="inputGroupFile04"
-                        onInput={this.onInput}
-                      />
-                      <label
-                        className={
-                          `text-left custom-file-label  ` +
-                          (evidenceFileURI ? 'text-success' : 'text-muted')
-                        }
-                        htmlFor="inputGroupFile04"
-                      >
-                        {(fileInput && fileInput.name) || 'Evidence document'}
-                      </label>
-                    </div>
-                    <div className="input-group-append">
-                      <button
-                        className="btn btn-primary"
-                        type="button"
-                        onClick={this.onSubmitButtonClick}
-                      >
-                        Submit
-                      </button>
-                    </div>
-                  </div>
-                </Col>
-              </Form.Row>
             </Form>
           </Card.Body>
+        </Card>
+        <Card>
+          <Card.Body>asd alt</Card.Body>
         </Card>
       </Container>
     )
