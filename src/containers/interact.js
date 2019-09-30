@@ -7,8 +7,12 @@ import {
   Row,
   Breadcrumb,
   Card,
-  Modal
+  Modal,
+  Dropdown,
+  Accordion
 } from 'react-bootstrap'
+
+import debounce from 'lodash.debounce'
 
 import ReactMarkdown from 'react-markdown'
 
@@ -21,10 +25,19 @@ class Interact extends React.Component {
       fileInput: '',
       evidenceFileURI: '',
       metaevidence: '',
-      subcourtDetails: {}
+      evidences: [],
+      subcourtDetails: {},
+      modalShow: false,
+      evidenceTitle: '',
+      evidenceDescription: ''
     }
 
-    console.log(match)
+    this.debouncedRetrieve = debounce(this.retrieveDisputeDetails, 500, {
+      leading: false,
+      trailing: true
+    })
+
+    console.log(props)
   }
 
   async componentDidUpdate(prevProps) {
@@ -42,6 +55,8 @@ class Interact extends React.Component {
     'execution',
     'ERROR: Dispute id out of bounds.'
   ]
+
+  onModalShow = e => this.setState({ modalShow: true })
 
   onControlChange = e => this.setState({ [e.target.id]: e.target.value })
   onInput = e => {
@@ -81,6 +96,11 @@ class Interact extends React.Component {
   onDisputeIDChange = async e => {
     const disputeID = e.target.value
     await this.setState({ disputeID })
+    await this.debouncedRetrieve(disputeID)
+  }
+
+  retrieveDisputeDetails = async disputeID => {
+    console.log(`Calculating ${disputeID}`)
     let dispute
     let subcourtURI
     let subcourt
@@ -97,10 +117,18 @@ class Interact extends React.Component {
         subcourt = await fetch('https://ipfs.kleros.io' + subcourtURI)
       }
 
+      console.log(
+        await this.props.getEvidencesCallback(dispute.arbitrated, disputeID)
+      )
+
       await this.setState({
         dispute,
         subcourtDetails: await subcourt.json(),
         metaevidence: await this.props.getMetaEvidenceCallback(
+          dispute.arbitrated,
+          disputeID
+        ),
+        evidences: await this.props.getEvidencesCallback(
           dispute.arbitrated,
           disputeID
         )
@@ -120,9 +148,13 @@ class Interact extends React.Component {
       fileInput,
       evidenceFileURI,
       metaevidence,
-      subcourtDetails
+      evidences,
+      subcourtDetails,
+      evidenceTitle,
+      evidenceDescription
     } = this.state
     const metaevidencePayload = metaevidence.metaEvidenceJSON
+
     console.log(this.props)
     console.log(this.state)
 
@@ -190,7 +222,7 @@ class Interact extends React.Component {
                       <Form.Group>
                         <Breadcrumb>
                           <Breadcrumb.Item href="#">
-                            {subcourtDetails.name}
+                            {subcourtDetails && subcourtDetails.name}
                           </Breadcrumb.Item>
                         </Breadcrumb>
                       </Form.Group>
@@ -219,6 +251,59 @@ class Interact extends React.Component {
                   </Form.Row>
                 </Form>
               </Card.Body>
+            </Card>
+            <Card>
+              <Form>
+                <Form.Row>
+                  <Col>
+                    <Form.Group>
+                      <Accordion defaultActiveKey="0">
+                        <Card>
+                          <Accordion.Toggle
+                            as={Card.Header}
+                            variant="link"
+                            eventKey="0"
+                          >
+                            <img src="attachment.svg" alt="primary document" />{' '}
+                            Evidences
+                          </Accordion.Toggle>
+                          <Accordion.Collapse eventKey="0">
+                            <Card.Body>
+                              <Button onClick={this.onModalShow}>
+                                Submit Evidence
+                              </Button>
+                              {evidences.map((evidence, index) => (
+                                <Card id={index}>
+                                  <Card.Body>
+                                    <Card.Title>
+                                      {evidence.evidenceJSON.name}
+                                    </Card.Title>
+                                    {evidence.evidenceJSON.description}
+                                  </Card.Body>
+                                  <Card.Footer>
+                                    <a
+                                      target="blank"
+                                      href={
+                                        'https://ipfs.kleros.io' +
+                                        evidence.evidenceJSON.fileURI
+                                      }
+                                    >
+                                      <img
+                                        src="attachment.svg"
+                                        alt="primary document"
+                                      />{' '}
+                                    </a>
+                                  </Card.Footer>
+                                </Card>
+                              ))}
+                            </Card.Body>
+                          </Accordion.Collapse>
+                        </Card>
+                      </Accordion>
+                    </Form.Group>
+                  </Col>
+                </Form.Row>
+              </Form>
             </Card>
             <Card>
               <Card.Body>
@@ -289,6 +374,46 @@ class Interact extends React.Component {
             </Card>
           </>
         )}
+        <Modal
+          show={this.state.modalShow}
+          onHide={e => this.setState({ modalShow: false })}
+        >
+          <Modal.Header>
+            <Modal.Title>Submit Evidence</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form>
+              <Form.Row>
+                <Col>
+                  <Form.Group controlId="evidenceTitle">
+                    <Form.Label>Evidence Title</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={evidenceTitle}
+                      onChange={this.onControlChange}
+                    />
+                  </Form.Group>
+                </Col>
+              </Form.Row>
+              <Form.Row>
+                <Col>
+                  <Form.Group controlId="evidenceDescription">
+                    <Form.Label>Evidence Description</Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      type="text"
+                      value={evidenceDescription}
+                      onChange={this.onControlChange}
+                    />
+                  </Form.Group>
+                </Col>
+              </Form.Row>
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button onClick={this.onSubmitButtonClick}>Submit</Button>
+          </Modal.Footer>
+        </Modal>
       </Container>
     )
   }

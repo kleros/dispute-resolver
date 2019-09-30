@@ -72,15 +72,13 @@ class App extends React.Component {
       'ether'
     )
 
-  getSubCourtDetails = async subcourtID => {
-    console.log(`Got ${this.state.network}`)
-    return await EthereumInterface.call(
+  getSubCourtDetails = async subcourtID =>
+    await EthereumInterface.call(
       'PolicyRegistry',
       networkMap[this.state.network].POLICY_REGISTRY,
       'policies',
       subcourtID
     )
-  }
 
   getDispute = async disputeID =>
     EthereumInterface.call(
@@ -188,16 +186,24 @@ class App extends React.Component {
     )
   }
 
-  getMetaEvidence = async (arbitrableAddress, disputeID) => {
-    const disputeLog = await this.state.archon.arbitrable.getDispute(
+  getDisputeEvent = async (arbitrableAddress, disputeID) =>
+    await this.state.archon.arbitrable.getDispute(
       arbitrableAddress, // arbitrable contract address
       networkMap[this.state.network].KLEROS_LIQUID, // arbitrator contract address
       disputeID // dispute unique identifier
     )
 
-    return await this.state.archon.arbitrable.getMetaEvidence(
+  getMetaEvidence = async (arbitrableAddress, disputeID) =>
+    await this.state.archon.arbitrable.getMetaEvidence(
       arbitrableAddress, // arbitrable contract address
-      disputeLog.metaEvidenceID
+      (await this.getDisputeEvent(arbitrableAddress, disputeID)).metaEvidenceID
+    )
+
+  getEvidences = async (arbitrableAddress, disputeID) => {
+    return await this.state.archon.arbitrable.getEvidence(
+      arbitrableAddress,
+      networkMap[this.state.network].KLEROS_LIQUID,
+      (await this.getDisputeEvent(arbitrableAddress, disputeID)).evidenceGroupID
     )
   }
 
@@ -280,6 +286,7 @@ class App extends React.Component {
                 render={props => (
                   <React.Fragment>
                     <Interact
+                      getEvidencesCallback={this.getEvidences}
                       getSubCourtDetailsCallback={this.getSubCourtDetails}
                       getMetaEvidenceCallback={this.getMetaEvidence}
                       getContractInstanceCallback={this.getContractInstance}
