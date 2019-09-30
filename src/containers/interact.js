@@ -12,6 +12,8 @@ import {
   Accordion
 } from 'react-bootstrap'
 
+import Dropzone from 'react-dropzone'
+
 import debounce from 'lodash.debounce'
 
 import ReactMarkdown from 'react-markdown'
@@ -56,6 +58,28 @@ class Interact extends React.Component {
     'ERROR: Dispute id out of bounds.'
   ]
 
+  onDrop = async acceptedFiles => {
+    console.log(acceptedFiles)
+    this.setState({ fileInput: acceptedFiles[0] })
+
+    var reader = new FileReader()
+    reader.readAsArrayBuffer(acceptedFiles[0])
+    reader.addEventListener('loadend', async () => {
+      const buffer = Buffer.from(reader.result)
+
+      const result = await this.props.publishCallback(
+        acceptedFiles[0].name,
+        buffer
+      )
+
+      console.log(result)
+
+      await this.setState({
+        primaryDocument: '/ipfs/' + result[1].hash + result[0].path
+      })
+    })
+  }
+
   onModalShow = e => this.setState({ modalShow: true })
 
   onControlChange = e => this.setState({ [e.target.id]: e.target.value })
@@ -66,7 +90,12 @@ class Interact extends React.Component {
   onSubmitButtonClick = async e => {
     console.log('EVIDENCE SUBMISSION')
     e.preventDefault()
-    const { disputeID, fileInput } = this.state
+    const {
+      disputeID,
+      fileInput,
+      evidenceTitle,
+      evidenceDescription
+    } = this.state
 
     var reader = new FileReader()
     reader.readAsArrayBuffer(fileInput)
@@ -83,6 +112,8 @@ class Interact extends React.Component {
       const { evidenceFileURI } = this.state
       const receipt = await this.props.submitEvidenceCallback({
         disputeID,
+        evidenceTitle,
+        evidenceDescription,
         evidenceFileURI
       })
       console.log(receipt)
@@ -405,6 +436,28 @@ class Interact extends React.Component {
                       value={evidenceDescription}
                       onChange={this.onControlChange}
                     />
+                  </Form.Group>
+                </Col>
+              </Form.Row>
+              <Form.Row>
+                <Col>
+                  <Form.Group>
+                    <Form.Label htmlFor="dropzone">
+                      Evidence Document
+                    </Form.Label>
+                    <Dropzone onDrop={this.onDrop}>
+                      {({ getRootProps, getInputProps }) => (
+                        <section id="dropzone">
+                          <div {...getRootProps()} className="vertical-center">
+                            <input {...getInputProps()} />
+                            <h5>
+                              {(fileInput && fileInput.path) ||
+                                "Drag 'n' drop some files here, or click to select files."}
+                            </h5>
+                          </div>
+                        </section>
+                      )}
+                    </Dropzone>
                   </Form.Group>
                 </Col>
               </Form.Row>

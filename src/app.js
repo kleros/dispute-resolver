@@ -210,21 +210,30 @@ class App extends React.Component {
   getContractInstance = (interfaceName, address) =>
     EthereumInterface.contractInstance(interfaceName, address)
 
-  submitEvidence = async ({ disputeID, evidenceFileURI }) => {
+  submitEvidence = async ({
+    disputeID,
+    evidenceTitle,
+    evidenceDescription,
+    evidenceFileURI
+  }) => {
     const { activeAddress, network } = this.state
 
     const evidence = {
-      name: 'name',
-      description: 'description',
+      name: evidenceTitle,
+      description: evidenceDescription,
       fileURI: evidenceFileURI
     }
+
+    console.log(`evidence: ${JSON.stringify(evidence)}`)
 
     const localDisputeID = await EthereumInterface.call(
       'BinaryArbitrableProxy',
       networkMap[network].BINARY_ARBITRABLE_PROXY,
-      'externalIDtoLocalID',
+      'arbitratorExternalIDtoLocalID',
+      networkMap[network].KLEROS_LIQUID,
       disputeID
     )
+    console.log(localDisputeID)
 
     const ipfsHashEvidenceObj = await ipfsPublish(
       'evidence.json',
@@ -233,6 +242,8 @@ class App extends React.Component {
 
     const evidenceURI =
       '/ipfs/' + ipfsHashEvidenceObj[1]['hash'] + ipfsHashEvidenceObj[0]['path']
+
+    console.log(evidenceURI)
 
     return await EthereumInterface.send(
       'BinaryArbitrableProxy',

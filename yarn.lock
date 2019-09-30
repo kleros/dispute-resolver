@@ -1035,10 +1035,10 @@
     multihashes "^0.4.14"
     web3 "1.0.0-beta.36"
 
-"@kleros/binary-arbitrable-proxy-contract@^2.0.1":
-  version "2.0.1"
-  resolved "https://registry.yarnpkg.com/@kleros/binary-arbitrable-proxy-contract/-/binary-arbitrable-proxy-contract-2.0.1.tgz#d38cf515c8eff109b620bf4d0ec07cc143e9f7f0"
-  integrity sha512-5F+WPfIjFZKXvl3Zwd5C5OYvjLbxrAxEGi1M9UuHuksH5rJD7mKUiSm4duGNXBkX30f5eGmACqvuBx5W3Zx2bw==
+"@kleros/binary-arbitrable-proxy-contract@^2.0.2":
+  version "2.0.2"
+  resolved "https://registry.yarnpkg.com/@kleros/binary-arbitrable-proxy-contract/-/binary-arbitrable-proxy-contract-2.0.2.tgz#6366abce13ea751659b50609b5f095b8cead5f44"
+  integrity sha512-qLfPO9wL3/fvn1Uxev4PiWU/UyJkSnKPXDLz7cam2ZwQQrw7zbGG/15ENPuttr3bkQ1+ogQINT48eOMoha14ZQ==
   dependencies:
     "@kleros/erc-792" "^1.1.0"
     "@kleros/ethereum-libraries" "^1.0.0"
