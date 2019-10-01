@@ -123,7 +123,12 @@ class IPFS extends React.Component {
                     </Col>
                   </Form.Row>
                 </Form>
-                {uploadedDocumentURI && uploadedDocumentURI}
+                {uploadedDocumentURI && (
+                  <a href={'https://ipfs.kleros.io' + uploadedDocumentURI}>
+                    {' '}
+                    {'https://ipfs.kleros.io' + uploadedDocumentURI}
+                  </a>
+                )}
               </Card.Body>
             </Accordion.Collapse>
           </Card>
