@@ -237,3 +237,13 @@ blockquote {
 #responsive-navbar-nav > div.abs-end-x.navbar-nav > div:nth-child(1) > a {
   color: white;
 }
+
+#dispute-detail-footer > div:first-child {
+  background: linear-gradient(57.16deg, #1e075f 29.65%, #4d00b4 76.51%);
+  color: white;
+}
+
+#dispute-detail-footer > div:nth-of-type(2) {
+  background: #1e075f;
+  height: 80px;
+}

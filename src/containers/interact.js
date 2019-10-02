@@ -1,26 +1,26 @@
 import React from 'react'
 import {
-  Container,
-  Button,
-  Form,
-  Col,
-  Row,
+  Accordion,
   Breadcrumb,
+  Button,
   Card,
-  Modal,
+  Col,
+  Container,
   Dropdown,
-  Accordion
+  Form,
+  FormControl,
+  InputGroup,
+  Modal,
+  ProgressBar,
+  Row
 } from 'react-bootstrap'
-
 import Dropzone from 'react-dropzone'
-
 import debounce from 'lodash.debounce'
-
 import ReactMarkdown from 'react-markdown'
 
 class Interact extends React.Component {
-  constructor(props, { match }) {
-    super(props)
+  constructor(properties, { match }) {
+    super(properties)
     this.state = {
       disputeID: (this.props.route && this.props.route.match.params.id) || '',
       dispute: {},
@@ -31,7 +31,8 @@ class Interact extends React.Component {
       subcourtDetails: {},
       modalShow: false,
       evidenceTitle: '',
-      evidenceDescription: ''
+      evidenceDescription: '',
+      contributeModalShow: false
     }
 
     this.debouncedRetrieve = debounce(this.retrieveDisputeDetails, 500, {
@@ -39,14 +40,13 @@ class Interact extends React.Component {
       trailing: true
     })
 
-    console.log(props)
+    console.log(properties)
   }
 
-  async componentDidUpdate(prevProps) {
+  async componentDidUpdate(previousProperties) {
     console.log('component update')
-    if (this.props.disputeID !== prevProps.disputeID) {
+    if (this.props.disputeID !== previousProperties.disputeID)
       await this.setState({ disputeID: this.props.disputeID })
-    }
   }
 
   PERIODS = [
@@ -75,18 +75,22 @@ class Interact extends React.Component {
       console.log(result)
 
       await this.setState({
-        primaryDocument: '/ipfs/' + result[1].hash + result[0].path
+        primaryDocument: `/ipfs/${result[1].hash}${result[0].path}`
       })
     })
   }
 
   onModalShow = e => this.setState({ modalShow: true })
+  onContributeModalShow = e => this.setState({ contributeModalShow: true })
 
   onControlChange = e => this.setState({ [e.target.id]: e.target.value })
   onInput = e => {
     this.setState({ evidenceFileURI: '' })
     this.setState({ fileInput: e.target.files[0] })
   }
+
+  onContributeButtonClick = e => this.setState({ contributeModalShow: true })
+
   onSubmitButtonClick = async e => {
     console.log('EVIDENCE SUBMISSION')
     e.preventDefault()
@@ -106,7 +110,7 @@ class Interact extends React.Component {
 
       console.log(result)
 
-      await this.setState({ evidenceFileURI: '/ipfs/' + result[0].hash })
+      await this.setState({ evidenceFileURI: `/ipfs/${result[0].hash}` })
 
       console.log(`fileURI ${this.state.evidenceFileURI}`)
       const { evidenceFileURI } = this.state
@@ -142,11 +146,8 @@ class Interact extends React.Component {
         dispute.subcourtID
       )
       console.log(subcourtURI)
-      if (subcourtURI.includes('http')) {
-        subcourt = await fetch(subcourtURI)
-      } else {
-        subcourt = await fetch('https://ipfs.kleros.io' + subcourtURI)
-      }
+      if (subcourtURI.includes('http')) subcourt = await fetch(subcourtURI)
+      else subcourt = await fetch(`https://ipfs.kleros.io${subcourtURI}`)
 
       console.log(
         await this.props.getEvidencesCallback(dispute.arbitrated, disputeID)
@@ -164,8 +165,8 @@ class Interact extends React.Component {
           disputeID
         )
       })
-    } catch (e) {
-      console.error(e.message)
+    } catch (error) {
+      console.error(error.message)
       this.setState({ dispute: { period: 5 } })
     }
   }
@@ -193,7 +194,7 @@ class Interact extends React.Component {
       <Container fluid="true">
         <Card>
           <Card.Header>
-            <img src="../gavel.svg" alt="gavel" />
+            <img alt="gavel" src="../gavel.svg" />
             Interact with a Dispute
           </Card.Header>
           <Card.Body>
@@ -204,12 +205,12 @@ class Interact extends React.Component {
                   <Form.Group>
                     <Form.Label>Dispute Identifier</Form.Label>
                     <Form.Control
-                      id="disputeID"
                       as="input"
+                      id="disputeID"
+                      onChange={this.onDisputeIDChange}
+                      placeholder="Dispute identifier"
                       type="number"
                       value={disputeID}
-                      onChange={this.onDisputeIDChange}
-                      placeholder={'Dispute identifier'}
                     />
                   </Form.Group>
                 </Col>
@@ -217,13 +218,11 @@ class Interact extends React.Component {
                   <Col>
                     <Form.Group>
                       <Form.Control
+                        placeholder={`Currently in ${this.getHumanReadablePeriod(
+                          dispute.period
+                        )} period`}
                         readOnly
                         type="text"
-                        placeholder={
-                          'Currently in ' +
-                          this.getHumanReadablePeriod(dispute.period) +
-                          ' period'
-                        }
                       />
                     </Form.Group>
                   </Col>
@@ -243,7 +242,7 @@ class Interact extends React.Component {
           </Card.Body>
         </Card>
         {metaevidence && (
-          <>
+          <Card>
             <Card>
               <Card.Body>
                 <Card.Title>{metaevidencePayload.title}</Card.Title>
@@ -269,13 +268,13 @@ class Interact extends React.Component {
                   <Form.Row>
                     <Col>
                       <a
-                        target="blank"
                         href={
                           metaevidencePayload.fileURI &&
-                          'https://ipfs.kleros.io' + metaevidencePayload.fileURI
+                          `https://ipfs.kleros.io${metaevidencePayload.fileURI}`
                         }
+                        target="blank"
                       >
-                        <img src="attachment.svg" alt="primary document" />{' '}
+                        <img alt="primary document" src="attachment.svg" />{' '}
                         {this.props.filePath}
                       </a>
                     </Col>
@@ -283,60 +282,53 @@ class Interact extends React.Component {
                 </Form>
               </Card.Body>
             </Card>
-            <Card>
-              <Form>
-                <Form.Row>
-                  <Col>
-                    <Form.Group>
-                      <Accordion defaultActiveKey="0">
-                        <Card>
-                          <Accordion.Toggle
-                            as={Card.Header}
-                            variant="link"
-                            eventKey="0"
-                          >
-                            <img src="attachment.svg" alt="primary document" />{' '}
-                            Evidences
-                          </Accordion.Toggle>
-                          <Accordion.Collapse eventKey="0">
-                            <Card.Body>
-                              <Button onClick={this.onModalShow}>
-                                Submit Evidence
-                              </Button>
-                              {evidences.map((evidence, index) => (
-                                <Card id={index}>
-                                  <Card.Body>
-                                    <Card.Title>
-                                      {evidence.evidenceJSON.name}
-                                    </Card.Title>
-                                    {evidence.evidenceJSON.description}
-                                  </Card.Body>
-                                  <Card.Footer>
-                                    <a
-                                      target="blank"
-                                      href={
-                                        'https://ipfs.kleros.io' +
-                                        evidence.evidenceJSON.fileURI
-                                      }
-                                    >
-                                      <img
-                                        src="attachment.svg"
-                                        alt="primary document"
-                                      />{' '}
-                                    </a>
-                                  </Card.Footer>
-                                </Card>
-                              ))}
-                            </Card.Body>
-                          </Accordion.Collapse>
-                        </Card>
-                      </Accordion>
-                    </Form.Group>
-                  </Col>
-                </Form.Row>
-              </Form>
-            </Card>
-            <Card>
+            <Form>
+              <Form.Row>
+                <Col>
+                  <Accordion defaultActiveKey="0">
+                    <Card>
+                      <Accordion.Toggle
+                        as={Card.Header}
+                        eventKey="0"
+                        variant="link"
+                      >
+                        <img alt="primary document" src="attachment.svg" />{' '}
+                        Evidences
+                      </Accordion.Toggle>
+                      <Accordion.Collapse eventKey="0">
+                        <Card.Body>
+                          <Button onClick={this.onModalShow}>
+                            Submit Evidence
+                          </Button>
+                          {evidences.map((evidence, index) => (
+                            <Card key={index}>
+                              <Card.Body>
+                                <Card.Title>
+                                  {evidence.evidenceJSON.name}
+                                </Card.Title>
+                                {evidence.evidenceJSON.description}
+                              </Card.Body>
+                              <Card.Footer>
+                                <a
+                                  href={`https://ipfs.kleros.io${evidence.evidenceJSON.fileURI}`}
+                                  target="blank"
+                                >
+                                  <img
+                                    alt="primary document"
+                                    src="attachment.svg"
+                                  />{' '}
+                                </a>
+                              </Card.Footer>
+                            </Card>
+                          ))}
+                        </Card.Body>
+                      </Accordion.Collapse>
+                    </Card>
+                  </Accordion>
+                </Col>
+              </Form.Row>
+            </Form>
+            <Card className="mb-5">
               <Card.Body>
                 <Form>
                   <Form.Row>
@@ -403,11 +395,54 @@ class Interact extends React.Component {
                 </Form>
               </Card.Body>
             </Card>
-          </>
+            <Card className="mb-5 mt-0">
+              <Card.Body>
+                <h2>Crowdfunding appeal fees</h2>
+                <p>
+                  The appeal fees are in crowdfunding. The case will be sent to
+                  the jurors when the crowdfunding gets completed successfully.{' '}
+                </p>
+                <Row>
+                  <Card as={Col}>
+                    <Card.Body>
+                      <ProgressBar label={`${60}%`} now={60} />
+                    </Card.Body>
+                  </Card>
+                  <Card as={Col}>
+                    <Card.Body>
+                      <ProgressBar label={`${60}%`} now={60} />
+                    </Card.Body>
+                  </Card>
+                  <Card as={Col}>
+                    <Card.Body></Card.Body>
+                  </Card>
+                </Row>
+                <Row>
+                  <Button as={Col} onClick={this.onContributeButtonClick}>
+                    Contribute
+                  </Button>
+                </Row>
+              </Card.Body>
+            </Card>
+
+            <Card.Footer className="p-0" id="dispute-detail-footer">
+              <div className="text-center p-5">
+                <h3>
+                  {`${this.getHumanReadablePeriod(dispute.period)
+                    .charAt(0)
+                    .toUpperCase() +
+                    this.getHumanReadablePeriod(dispute.period).slice(
+                      1
+                    )} Period`}
+                </h3>
+              </div>
+              <div>2123123</div>
+            </Card.Footer>
+          </Card>
         )}
         <Modal
-          show={this.state.modalShow}
           onHide={e => this.setState({ modalShow: false })}
+          show={this.state.modalShow}
         >
           <Modal.Header>
             <Modal.Title>Submit Evidence</Modal.Title>
@@ -419,9 +454,9 @@ class Interact extends React.Component {
                   <Form.Group controlId="evidenceTitle">
                     <Form.Label>Evidence Title</Form.Label>
                     <Form.Control
+                      onChange={this.onControlChange}
                       type="text"
                       value={evidenceTitle}
-                      onChange={this.onControlChange}
                     />
                   </Form.Group>
                 </Col>
@@ -432,9 +467,9 @@ class Interact extends React.Component {
                     <Form.Label>Evidence Description</Form.Label>
                     <Form.Control
                       as="textarea"
+                      onChange={this.onControlChange}
                       type="text"
                       value={evidenceDescription}
-                      onChange={this.onControlChange}
                     />
                   </Form.Group>
                 </Col>
@@ -446,10 +481,13 @@ class Interact extends React.Component {
                       Evidence Document
                     </Form.Label>
                     <Dropzone onDrop={this.onDrop}>
-                      {({ getRootProps, getInputProps }) => (
+                      {({ getRootProperties, getInputProperties }) => (
                         <section id="dropzone">
-                          <div {...getRootProps()} className="vertical-center">
-                            <input {...getInputProps()} />
+                          <div
+                            {...getRootProperties()}
+                            className="vertical-center"
+                          >
+                            <input {...getInputProperties()} />
                             <h5>
                               {(fileInput && fileInput.path) ||
                                 "Drag 'n' drop some files here, or click to select files."}
@@ -464,6 +502,41 @@ class Interact extends React.Component {
             </Form>
           </Modal.Body>
           <Modal.Footer>
+            <Button onClick={this.onSubmitButtonClick}>Submit</Button>
+          </Modal.Footer>
+        </Modal>
+        <Modal
+          onHide={e => this.setState({ contributeModalShow: false })}
+          show={this.state.contributeModalShow}
+        >
+          <Modal.Header>
+            <Modal.Title>Contribute to Fees</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Modal.Title>Which side do you want to contribute</Modal.Title>
+            <Form>
+              <InputGroup className="mb-3">
+                <InputGroup.Prepend>
+                  <InputGroup.Radio
+                    aria-label="Checkbox for following text input"
+                    name="as"
+                  />
+                </InputGroup.Prepend>
+                <FormControl aria-label="Text input with checkbox" />
+              </InputGroup>
+              <InputGroup>
+                <InputGroup.Prepend>
+                  <InputGroup.Radio
+                    aria-label="Radio button for following text input"
+                    name="as"
+                  />
+                </InputGroup.Prepend>
+                <FormControl aria-label="Text input with radio button" />
+              </InputGroup>
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <h4>Contribution Amount</h4>
             <Button onClick={this.onSubmitButtonClick}>Submit</Button>
           </Modal.Footer>
         </Modal>
