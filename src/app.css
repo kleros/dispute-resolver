@@ -247,3 +247,7 @@ blockquote {
   background: #1e075f;
   height: 80px;
 }
+
+.breadcrumb {
+  background-image: '../arrow.svg';
+}

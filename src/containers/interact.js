@@ -22,7 +22,8 @@ class Interact extends React.Component {
   constructor(properties, { match }) {
     super(properties)
     this.state = {
-      disputeID: (this.props.route && this.props.route.match.params.id) || '',
+      disputeID:
+        (this.props.route && this.props.route.match.params.id) || '471',
       dispute: {},
       fileInput: '',
       evidenceFileURI: '',
@@ -41,6 +42,10 @@ class Interact extends React.Component {
     })
 
     console.log(properties)
+  }
+
+  async componentDidMount() {
+    await this.debouncedRetrieve(471)
   }
 
   async componentDidUpdate(previousProperties) {
@@ -243,21 +248,18 @@ class Interact extends React.Component {
         </Card>
         {metaevidence && (
           <Card>
+            <h2 className="text-left mt-5" style={{ marginLeft: '80px' }}>
+              {metaevidencePayload.title}
+            </h2>
+            <Breadcrumb>
+              <Breadcrumb.Item href="#">
+                {subcourtDetails && subcourtDetails.name}
+              </Breadcrumb.Item>
+            </Breadcrumb>
             <Card>
               <Card.Body>
                 <Card.Title>{metaevidencePayload.title}</Card.Title>
                 <Form>
-                  <Form.Row>
-                    <Col>
-                      <Form.Group>
-                        <Breadcrumb>
-                          <Breadcrumb.Item href="#">
-                            {subcourtDetails && subcourtDetails.name}
-                          </Breadcrumb.Item>
-                        </Breadcrumb>
-                      </Form.Group>
-                    </Col>
-                  </Form.Row>
                   <hr />
 
                   <Form.Row>
@@ -424,7 +426,6 @@ class Interact extends React.Component {
                 </Row>
               </Card.Body>
             </Card>
-
             <Card.Footer className="p-0" id="dispute-detail-footer">
               <div className="text-center p-5">
                 <h3>
