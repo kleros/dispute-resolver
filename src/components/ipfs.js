@@ -1,25 +1,9 @@
+import { Accordion, Card, Col, Container, Form } from 'react-bootstrap'
 import React from 'react'
-import ReactMarkdown from 'react-markdown'
-import TopBanner from '../components/top-banner'
-
-import {
-  Container,
-  Row,
-  Col,
-  Button,
-  Form,
-  Spinner,
-  Card,
-  Modal,
-  Toast,
-  Dropdown,
-  ButtonGroup,
-  Accordion
-} from 'react-bootstrap'
 
 class IPFS extends React.Component {
-  constructor(props) {
-    super(props)
+  constructor(properties) {
+    super(properties)
     this.state = {
       initialNumberOfJurors: '',
       category: '',
@@ -59,7 +43,7 @@ class IPFS extends React.Component {
     reader.addEventListener('loadend', async () => {
       const buffer = Buffer.from(reader.result)
       const result = await this.props.publishCallback(fileInput.name, buffer)
-      this.setState({ uploadedDocumentURI: '/ipfs/' + result[0].hash })
+      this.setState({ uploadedDocumentURI: `/ipfs/${result[0].hash}` })
     })
   }
 
@@ -78,8 +62,8 @@ class IPFS extends React.Component {
           <Card>
             <Accordion.Toggle as={Card.Header} eventKey="0">
               <img
-                src="ipfs-logo-vector-inkscape-template.svg"
                 alt="ipfs logo"
+                src="ipfs-logo-vector-inkscape-template.svg"
               />{' '}
               Upload to IPFS
             </Accordion.Toggle>
@@ -92,18 +76,17 @@ class IPFS extends React.Component {
                       <div className="input-group mb-3">
                         <div className="custom-file">
                           <input
-                            type="file"
                             className="custom-file-input"
                             id="inputGroupFile04"
                             onInput={this.onInput}
+                            type="file"
                           />
                           <label
-                            className={
-                              `text-left custom-file-label  ` +
-                              (uploadedDocumentURI
+                            className={`text-left custom-file-label  ${
+                              uploadedDocumentURI
                                 ? 'text-success'
-                                : 'text-muted')
-                            }
+                                : 'text-muted'
+                            }`}
                             htmlFor="inputGroupFile04"
                           >
                             {(fileInput && fileInput.name) ||
@@ -113,8 +96,8 @@ class IPFS extends React.Component {
                         <div className="input-group-append">
                           <button
                             className="btn btn-primary"
-                            type="button"
                             onClick={this.onSubmitButtonClick}
+                            type="button"
                           >
                             Upload
                           </button>
@@ -124,9 +107,9 @@ class IPFS extends React.Component {
                   </Form.Row>
                 </Form>
                 {uploadedDocumentURI && (
-                  <a href={'https://ipfs.kleros.io' + uploadedDocumentURI}>
+                  <a href={`https://ipfs.kleros.io${uploadedDocumentURI}`}>
                     {' '}
-                    {'https://ipfs.kleros.io' + uploadedDocumentURI}
+                    {`https://ipfs.kleros.io${uploadedDocumentURI}`}
                   </a>
                 )}
               </Card.Body>

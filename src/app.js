@@ -1,6 +1,5 @@
 import React from 'react'
-import { Container, Row, Col } from 'react-bootstrap'
-
+import { Col, Container, Row } from 'react-bootstrap'
 import './app.css'
 import CreateDispute from './containers/create-dispute'
 import _404 from './containers/404'
@@ -8,17 +7,12 @@ import Interact from './containers/interact'
 import { BrowserRouter, Route, Switch } from 'react-router-dom'
 import TopBanner from './components/top-banner'
 import Footer from './components/footer'
-
 import IPFS from './components/ipfs'
-
 import Web3 from './ethereum/web3'
 import * as EthereumInterface from './ethereum/interface'
-
 import networkMap from './ethereum/network-contract-mapping'
 import ipfsPublish from './ipfs-publish'
 import Archon from '@kleros/archon'
-
-import './app.css'
 
 class App extends React.Component {
   constructor(props) {
@@ -91,18 +85,16 @@ class App extends React.Component {
   updateLastDisputeID = async newDisputeID =>
     this.setState({ lastDisputeID: newDisputeID })
 
-  onPublish = async (filename, fileBuffer) => {
-    return await ipfsPublish(filename, fileBuffer)
-  }
+  onPublish = async (filename, fileBuffer) =>
+    await ipfsPublish(filename, fileBuffer)
 
   generateArbitratorExtraData = (subcourtID, noOfJurors) =>
-    '0x' +
-    (parseInt(subcourtID, 16)
+    `0x${parseInt(subcourtID, 16)
       .toString()
       .padStart(64, '0') +
       parseInt(noOfJurors, 16)
         .toString()
-        .padStart(64, '0'))
+        .padStart(64, '0')}`
 
   appeal = async disputeID => {
     const { activeAddress, network } = this.state
@@ -162,14 +154,11 @@ class App extends React.Component {
 
     console.log(ipfsHashMetaEvidenceObj)
 
-    const metaevidenceURI =
-      '/ipfs/' +
-      ipfsHashMetaEvidenceObj[1]['hash'] +
-      ipfsHashMetaEvidenceObj[0]['path']
+    const metaevidenceURI = `/ipfs/${ipfsHashMetaEvidenceObj[1].hash}${ipfsHashMetaEvidenceObj[0].path}`
 
     console.log(metaevidenceURI)
 
-    let arbitrationCost = await this.getArbitrationCost(
+    const arbitrationCost = await this.getArbitrationCost(
       arbitrator,
       arbitratorExtraData
     )
@@ -199,13 +188,12 @@ class App extends React.Component {
       (await this.getDisputeEvent(arbitrableAddress, disputeID)).metaEvidenceID
     )
 
-  getEvidences = async (arbitrableAddress, disputeID) => {
-    return await this.state.archon.arbitrable.getEvidence(
+  getEvidences = async (arbitrableAddress, disputeID) =>
+    await this.state.archon.arbitrable.getEvidence(
       arbitrableAddress,
       networkMap[this.state.network].KLEROS_LIQUID,
       (await this.getDisputeEvent(arbitrableAddress, disputeID)).evidenceGroupID
     )
-  }
 
   getContractInstance = (interfaceName, address) =>
     EthereumInterface.contractInstance(interfaceName, address)
@@ -219,7 +207,7 @@ class App extends React.Component {
     const { activeAddress, network } = this.state
 
     const evidence = {
-      name: evidenceTitle,
+      title: evidenceTitle,
       description: evidenceDescription,
       fileURI: evidenceFileURI
     }
@@ -240,8 +228,7 @@ class App extends React.Component {
       this.encoder.encode(JSON.stringify(evidence))
     )
 
-    const evidenceURI =
-      '/ipfs/' + ipfsHashEvidenceObj[1]['hash'] + ipfsHashEvidenceObj[0]['path']
+    const evidenceURI = `/ipfs/${ipfsHashEvidenceObj[1].hash}${ipfsHashEvidenceObj[0].path}`
 
     console.log(evidenceURI)
 
@@ -264,57 +251,57 @@ class App extends React.Component {
     if (!network || !activeAddress)
       return (
         <Container fluid="true">
-          <TopBanner title="title" description="description" />
+          <TopBanner description="description" title="title" />
           <_404 />
-          <Footer title="title" description="description" />
+          <Footer description="description" title="title" />
         </Container>
       )
     else
       return (
         <Container fluid="true">
-          <TopBanner title="title" description="description" />
+          <TopBanner description="description" title="title" />
           <BrowserRouter>
             <Switch>
               <Route
                 exact
                 path="(/|/create)"
                 render={props => (
-                  <React.Fragment>
+                  <>
                     <CreateDispute
                       createDisputeCallback={this.createDispute}
-                      publishCallback={this.onPublish}
-                      getSubCourtDetailsCallback={this.getSubCourtDetails}
                       getArbitrationCostCallback={
                         this.getArbitrationCostWithCourtAndNoOfJurors
                       }
+                      getSubCourtDetailsCallback={this.getSubCourtDetails}
+                      publishCallback={this.onPublish}
                     />
-                  </React.Fragment>
+                  </>
                 )}
               />
               <Route
                 exact
                 path="/interact/:id?"
                 render={props => (
-                  <React.Fragment>
+                  <>
                     <Interact
-                      getEvidencesCallback={this.getEvidences}
-                      getSubCourtDetailsCallback={this.getSubCourtDetails}
-                      getMetaEvidenceCallback={this.getMetaEvidence}
+                      appealCallback={this.appeal}
+                      disputeID={lastDisputeID}
                       getContractInstanceCallback={this.getContractInstance}
+                      getDisputeCallback={this.getDispute}
+                      getEvidencesCallback={this.getEvidences}
+                      getMetaEvidenceCallback={this.getMetaEvidence}
+                      getSubCourtDetailsCallback={this.getSubCourtDetails}
+                      newDisputeCallback={this.updateLastDisputeID}
                       publishCallback={this.onPublish}
                       submitEvidenceCallback={this.submitEvidence}
-                      disputeID={lastDisputeID}
-                      getDisputeCallback={this.getDispute}
-                      appealCallback={this.appeal}
-                      newDisputeCallback={this.updateLastDisputeID}
                     />
-                  </React.Fragment>
+                  </>
                 )}
               />
             </Switch>
           </BrowserRouter>
           <IPFS publishCallback={this.onPublish} />
-          <Footer title="title" description="description" />
+          <Footer description="description" title="title" />
         </Container>
       )
   }

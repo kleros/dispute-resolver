@@ -14,6 +14,8 @@ import {
   ProgressBar,
   Row
 } from 'react-bootstrap'
+import Evidence from '../components/evidence'
+import Appeal from '../components/appeal'
 import Dropzone from 'react-dropzone'
 import debounce from 'lodash.debounce'
 import ReactMarkdown from 'react-markdown'
@@ -62,6 +64,15 @@ class Interact extends React.Component {
     'execution',
     'ERROR: Dispute id out of bounds.'
   ]
+
+  submitEvidence = async evidence => {
+    await this.props.submitEvidenceCallback({
+      disputeID: this.state.disputeID,
+      evidenceDescription: evidence.evidenceDescription,
+      evidenceFileURI: evidence.evidenceDocument,
+      evidenceTitle: evidence.evidenceTitle
+    })
+  }
 
   onDrop = async acceptedFiles => {
     console.log(acceptedFiles)
@@ -170,8 +181,8 @@ class Interact extends React.Component {
           disputeID
         )
       })
-    } catch (error) {
-      console.error(error.message)
+    } catch (err) {
+      console.error(err.message)
       this.setState({ dispute: { period: 5 } })
     }
   }
@@ -203,7 +214,6 @@ class Interact extends React.Component {
             Interact with a Dispute
           </Card.Header>
           <Card.Body>
-            <Card.Title>Interact with a Dispute</Card.Title>{' '}
             <Form>
               <Form.Row>
                 <Col>
@@ -220,212 +230,19 @@ class Interact extends React.Component {
                   </Form.Group>
                 </Col>
                 {disputeID && (
-                  <Col>
-                    <Form.Group>
-                      <Form.Control
-                        placeholder={`Currently in ${this.getHumanReadablePeriod(
-                          dispute.period
-                        )} period`}
-                        readOnly
-                        type="text"
-                      />
-                    </Form.Group>
-                  </Col>
-                )}
-                {disputeID && (
-                  <Col>
-                    <Form.Group className="mt-1">
+                  <Col className="align-self-center">
+                    <h4>
                       Check out this{' '}
                       <a href={`https://court.kleros.io/cases/${disputeID}`}>
                         dispute on Kleros
                       </a>
-                    </Form.Group>
+                    </h4>
                   </Col>
                 )}{' '}
               </Form.Row>
             </Form>
           </Card.Body>
-        </Card>
-        {metaevidence && (
-          <Card>
-            <h2 className="text-left mt-5" style={{ marginLeft: '80px' }}>
-              {metaevidencePayload.title}
-            </h2>
-            <Breadcrumb>
-              <Breadcrumb.Item href="#">
-                {subcourtDetails && subcourtDetails.name}
-              </Breadcrumb.Item>
-            </Breadcrumb>
-            <Card>
-              <Card.Body>
-                <Card.Title>{metaevidencePayload.title}</Card.Title>
-                <Form>
-                  <hr />
-
-                  <Form.Row>
-                    <Col>
-                      <ReactMarkdown source={metaevidencePayload.description} />
-                    </Col>
-                  </Form.Row>
-                  <Form.Row>
-                    <Col>
-                      <a
-                        href={
-                          metaevidencePayload.fileURI &&
-                          `https://ipfs.kleros.io${metaevidencePayload.fileURI}`
-                        }
-                        target="blank"
-                      >
-                        <img alt="primary document" src="attachment.svg" />{' '}
-                        {this.props.filePath}
-                      </a>
-                    </Col>
-                  </Form.Row>
-                </Form>
-              </Card.Body>
-            </Card>
-            <Form>
-              <Form.Row>
-                <Col>
-                  <Accordion defaultActiveKey="0">
-                    <Card>
-                      <Accordion.Toggle
-                        as={Card.Header}
-                        eventKey="0"
-                        variant="link"
-                      >
-                        <img alt="primary document" src="attachment.svg" />{' '}
-                        Evidences
-                      </Accordion.Toggle>
-                      <Accordion.Collapse eventKey="0">
-                        <Card.Body>
-                          <Button onClick={this.onModalShow}>
-                            Submit Evidence
-                          </Button>
-                          {evidences.map((evidence, index) => (
-                            <Card key={index}>
-                              <Card.Body>
-                                <Card.Title>
-                                  {evidence.evidenceJSON.name}
-                                </Card.Title>
-                                {evidence.evidenceJSON.description}
-                              </Card.Body>
-                              <Card.Footer>
-                                <a
-                                  href={`https://ipfs.kleros.io${evidence.evidenceJSON.fileURI}`}
-                                  target="blank"
-                                >
-                                  <img
-                                    alt="primary document"
-                                    src="attachment.svg"
-                                  />{' '}
-                                </a>
-                              </Card.Footer>
-                            </Card>
-                          ))}
-                        </Card.Body>
-                      </Accordion.Collapse>
-                    </Card>
-                  </Accordion>
-                </Col>
-              </Form.Row>
-            </Form>
-            <Card className="mb-5">
-              <Card.Body>
-                <Form>
-                  <Form.Row>
-                    <Col>
-                      <Form.Group controlId="question">
-                        <Form.Label>Question</Form.Label>
-                        <Form.Control
-                          readOnly
-                          type="text"
-                          value={metaevidencePayload.question}
-                        />
-                      </Form.Group>
-                    </Col>
-                  </Form.Row>
-                  <Form.Row>
-                    <Col>
-                      <Form.Group>
-                        <Form.Label>First Ruling Option</Form.Label>
-                        <Form.Control
-                          readOnly
-                          type="text"
-                          value={metaevidencePayload.rulingOptions.titles[0]}
-                        />
-                      </Form.Group>
-                    </Col>
-                    <Col>
-                      <Form.Group>
-                        <Form.Label>First Ruling Description</Form.Label>
-                        <Form.Control
-                          readOnly
-                          type="text"
-                          value={
-                            metaevidencePayload.rulingOptions.descriptions[0]
-                          }
-                        />
-                      </Form.Group>
-                    </Col>{' '}
-                  </Form.Row>
-                  <Form.Row>
-                    <Col>
-                      <Form.Group>
-                        <Form.Label>Second Ruling Option</Form.Label>
-                        <Form.Control
-                          readOnly
-                          type="text"
-                          value={metaevidencePayload.rulingOptions.titles[1]}
-                        />
-                      </Form.Group>
-                    </Col>
-                    <Col>
-                      <Form.Group>
-                        <Form.Label>Second Ruling Description</Form.Label>
-
-                        <Form.Control
-                          readOnly
-                          type="text"
-                          value={
-                            metaevidencePayload.rulingOptions.descriptions[1]
-                          }
-                        />
-                      </Form.Group>
-                    </Col>{' '}
-                  </Form.Row>
-                </Form>
-              </Card.Body>
-            </Card>
-            <Card className="mb-5 mt-0">
-              <Card.Body>
-                <h2>Crowdfunding appeal fees</h2>
-                <p>
-                  The appeal fees are in crowdfunding. The case will be sent to
-                  the jurors when the crowdfunding gets completed successfully.{' '}
-                </p>
-                <Row>
-                  <Card as={Col}>
-                    <Card.Body>
-                      <ProgressBar label={`${60}%`} now={60} />
-                    </Card.Body>
-                  </Card>
-                  <Card as={Col}>
-                    <Card.Body>
-                      <ProgressBar label={`${60}%`} now={60} />
-                    </Card.Body>
-                  </Card>
-                  <Card as={Col}>
-                    <Card.Body></Card.Body>
-                  </Card>
-                </Row>
-                <Row>
-                  <Button as={Col} onClick={this.onContributeButtonClick}>
-                    Contribute
-                  </Button>
-                </Row>
-              </Card.Body>
-            </Card>
+          {metaevidence && (
             <Card.Footer className="p-0" id="dispute-detail-footer">
               <div className="text-center p-5">
                 <h3>
@@ -437,10 +254,16 @@ class Interact extends React.Component {
                     )} Period`}
                 </h3>
               </div>
-              <div>2123123</div>
+              <div />
             </Card.Footer>
-          </Card>
-        )}
+          )}
+        </Card>
+        <Evidence
+          publishCallback={this.props.publishCallback}
+          submitEvidenceCallback={this.submitEvidence}
+        />
+        <Appeal />
+
         <Modal
           onHide={e => this.setState({ modalShow: false })}
           show={this.state.modalShow}
