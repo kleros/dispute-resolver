@@ -1,8 +1,9 @@
-import React from 'react'
-import { Container, Modal, Form, Col, Button, Spinner } from 'react-bootstrap'
+import React from "react";
+import { Container, Modal, Form, Col, Button, Spinner } from "react-bootstrap";
+import ReactMarkdown from "react-markdown";
 
 class Confirmation extends React.Component {
-  onModalShow = e => this.setState({ modalShow: true })
+  onModalShow = e => this.setState({ modalShow: true });
   // async componentDidUpdate(prevProps) {
   //   console.log('component update')
   //   if (this.props !== prevProps.disputeID) {
@@ -24,7 +25,7 @@ class Confirmation extends React.Component {
       primaryDocument,
       awaitingConfirmation,
       show
-    } = this.props
+    } = this.props;
 
     return (
       <Modal
@@ -54,7 +55,7 @@ class Confirmation extends React.Component {
                     value={initialNumberOfJurors}
                   />
                 </Form.Group>
-              </Col>{' '}
+              </Col>{" "}
               <Col>
                 <Form.Group controlId="arbitrationCost">
                   <Form.Label>Arbitration Cost</Form.Label>
@@ -75,7 +76,9 @@ class Confirmation extends React.Component {
               <Col>
                 <Form.Group controlId="description">
                   <Form.Label>Description</Form.Label>
-                  <p>{description}</p>
+                  <p>
+                    <ReactMarkdown source={description} />
+                  </p>
                 </Form.Group>
               </Col>
             </Form.Row>
@@ -108,7 +111,7 @@ class Confirmation extends React.Component {
                     value={firstRulingDescription}
                   />
                 </Form.Group>
-              </Col>{' '}
+              </Col>{" "}
             </Form.Row>
             <Form.Row>
               <Col>
@@ -131,7 +134,7 @@ class Confirmation extends React.Component {
                     value={secondRulingDescription}
                   />
                 </Form.Group>
-              </Col>{' '}
+              </Col>{" "}
             </Form.Row>
             <Form.Row>
               <Col>
@@ -140,14 +143,14 @@ class Confirmation extends React.Component {
                     target="blank"
                     href={
                       primaryDocument &&
-                      'https://ipfs.kleros.io' + primaryDocument
+                      "https://ipfs.kleros.io" + primaryDocument
                     }
                   >
-                    <img src="attachment.svg" alt="primary document" />{' '}
+                    <img src="attachment.svg" alt="primary document" />{" "}
                     {this.props.filePath}
                   </a>
                 </Form.Group>
-              </Col>{' '}
+              </Col>{" "}
             </Form.Row>
           </Form>
         </Modal.Body>
@@ -168,14 +171,14 @@ class Confirmation extends React.Component {
                 role="status"
                 aria-hidden="true"
               />
-            )}{' '}
-            {(awaitingConfirmation && 'Awaiting Confirmation') ||
-              'Broadcast Transaction'}
+            )}{" "}
+            {(awaitingConfirmation && "Awaiting Confirmation") ||
+              "Broadcast Transaction"}
           </Button>
         </Modal.Footer>
       </Modal>
-    )
+    );
   }
 }
 
-export default Confirmation
+export default Confirmation;
