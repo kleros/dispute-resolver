@@ -4,7 +4,7 @@
   "private": true,
   "dependencies": {
     "@kleros/archon": "^0.10.1",
-    "@kleros/binary-arbitrable-proxy-contract": "^2.0.2",
+    "@kleros/binary-arbitrable-proxy-contract": "^2.2.1",
     "@kleros/erc-792": "^1.2.0",
     "@kleros/kleros": "^0.1.2",
     "lodash.debounce": "^4.0.8",

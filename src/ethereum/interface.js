@@ -3,7 +3,6 @@ import BinaryArbitrableProxy from '../../node_modules/@kleros/binary-arbitrable-
 import Arbitrator from '../../node_modules/@kleros/erc-792/build/contracts/Arbitrator.json'
 import IArbitrable from '../../node_modules/@kleros/erc-792/build/contracts/IArbitrable.json'
 import IEvidence from '../../node_modules/@kleros/erc-792/build/contracts/IEvidence.json'
-
 import PolicyRegistry from '../../node_modules/@kleros/kleros/build/contracts/PolicyRegistry.json'
 import web3 from './web3'
 
@@ -35,3 +34,15 @@ export const send = (
   contractInstance(interfaceName, instanceAddress)
     .methods[method](...args)
     .send({ from, value })
+
+export const estimateGas = (
+  interfaceName,
+  instanceAddress,
+  from,
+  value,
+  method,
+  ...args
+) =>
+  contractInstance(interfaceName, instanceAddress)
+    .methods[method](...args)
+    .estimateGas({ from, value })

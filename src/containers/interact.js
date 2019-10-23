@@ -1,4 +1,4 @@
-import React from 'react'
+import React from "react";
 import {
   Accordion,
   Breadcrumb,
@@ -13,57 +13,55 @@ import {
   Modal,
   ProgressBar,
   Row
-} from 'react-bootstrap'
-import Evidence from '../components/evidence'
-import Appeal from '../components/appeal'
-import Dropzone from 'react-dropzone'
-import debounce from 'lodash.debounce'
-import ReactMarkdown from 'react-markdown'
+} from "react-bootstrap";
+import Evidence from "../components/evidence";
+import Appeal from "../components/appeal";
+import Dropzone from "react-dropzone";
+import debounce from "lodash.debounce";
+import ReactMarkdown from "react-markdown";
 
 class Interact extends React.Component {
   constructor(properties, { match }) {
-    super(properties)
+    super(properties);
     this.state = {
-      disputeID:
-        (this.props.route && this.props.route.match.params.id) || '471',
+      disputeID: this.props.route && this.props.route.match.params.id,
       dispute: {},
-      fileInput: '',
-      evidenceFileURI: '',
-      metaevidence: '',
+      fileInput: "",
+      evidenceFileURI: "",
+      metaevidence: "",
       evidences: [],
       subcourtDetails: {},
       modalShow: false,
-      evidenceTitle: '',
-      evidenceDescription: '',
+      evidenceTitle: "",
+      evidenceDescription: "",
       contributeModalShow: false
-    }
+    };
 
     this.debouncedRetrieve = debounce(this.retrieveDisputeDetails, 500, {
       leading: false,
       trailing: true
-    })
+    });
 
-    console.log(properties)
+    console.log(properties);
   }
 
-  async componentDidMount() {
-    await this.debouncedRetrieve(471)
-  }
+  async componentDidMount() {}
 
   async componentDidUpdate(previousProperties) {
-    console.log('component update')
+    console.log("component update");
     if (this.props.disputeID !== previousProperties.disputeID)
-      await this.setState({ disputeID: this.props.disputeID })
+      await this.setState({ disputeID: this.props.disputeID });
   }
 
   PERIODS = [
-    'evidence',
-    'commit',
-    'vote',
-    'appeal',
-    'execution',
-    'ERROR: Dispute id out of bounds.'
-  ]
+    "Evidence Period",
+    "Commit Period",
+    "Vote Period",
+    "Appeal Period",
+    "Execution Period",
+    "ERROR: Dispute id out of bounds.",
+    "Fetching..."
+  ];
 
   submitEvidence = async evidence => {
     await this.props.submitEvidenceCallback({
@@ -71,103 +69,110 @@ class Interact extends React.Component {
       evidenceDescription: evidence.evidenceDescription,
       evidenceFileURI: evidence.evidenceDocument,
       evidenceTitle: evidence.evidenceTitle
-    })
-  }
+    });
+  };
 
   onDrop = async acceptedFiles => {
-    console.log(acceptedFiles)
-    this.setState({ fileInput: acceptedFiles[0] })
+    console.log(acceptedFiles);
+    this.setState({ fileInput: acceptedFiles[0] });
 
-    var reader = new FileReader()
-    reader.readAsArrayBuffer(acceptedFiles[0])
-    reader.addEventListener('loadend', async () => {
-      const buffer = Buffer.from(reader.result)
+    var reader = new FileReader();
+    reader.readAsArrayBuffer(acceptedFiles[0]);
+    reader.addEventListener("loadend", async () => {
+      const buffer = Buffer.from(reader.result);
 
       const result = await this.props.publishCallback(
         acceptedFiles[0].name,
         buffer
-      )
+      );
 
-      console.log(result)
+      console.log(result);
 
       await this.setState({
         primaryDocument: `/ipfs/${result[1].hash}${result[0].path}`
-      })
-    })
-  }
+      });
+    });
+  };
 
-  onModalShow = e => this.setState({ modalShow: true })
-  onContributeModalShow = e => this.setState({ contributeModalShow: true })
+  onModalShow = e => this.setState({ modalShow: true });
+  onContributeModalShow = e => this.setState({ contributeModalShow: true });
 
-  onControlChange = e => this.setState({ [e.target.id]: e.target.value })
+  onControlChange = e => this.setState({ [e.target.id]: e.target.value });
   onInput = e => {
-    this.setState({ evidenceFileURI: '' })
-    this.setState({ fileInput: e.target.files[0] })
-  }
+    this.setState({ evidenceFileURI: "" });
+    this.setState({ fileInput: e.target.files[0] });
+  };
 
-  onContributeButtonClick = e => this.setState({ contributeModalShow: true })
+  onContributeButtonClick = e => this.setState({ contributeModalShow: true });
 
   onSubmitButtonClick = async e => {
-    console.log('EVIDENCE SUBMISSION')
-    e.preventDefault()
+    console.log("EVIDENCE SUBMISSION");
+    e.preventDefault();
     const {
       disputeID,
       fileInput,
       evidenceTitle,
       evidenceDescription
-    } = this.state
+    } = this.state;
 
-    var reader = new FileReader()
-    reader.readAsArrayBuffer(fileInput)
-    reader.addEventListener('loadend', async () => {
-      const buffer = Buffer.from(reader.result)
+    var reader = new FileReader();
+    reader.readAsArrayBuffer(fileInput);
+    reader.addEventListener("loadend", async () => {
+      const buffer = Buffer.from(reader.result);
 
-      const result = await this.props.publishCallback(fileInput.name, buffer)
+      const result = await this.props.publishCallback(fileInput.name, buffer);
 
-      console.log(result)
+      console.log(result);
 
-      await this.setState({ evidenceFileURI: `/ipfs/${result[0].hash}` })
+      await this.setState({ evidenceFileURI: `/ipfs/${result[0].hash}` });
 
-      console.log(`fileURI ${this.state.evidenceFileURI}`)
-      const { evidenceFileURI } = this.state
+      console.log(`fileURI ${this.state.evidenceFileURI}`);
+      const { evidenceFileURI } = this.state;
       const receipt = await this.props.submitEvidenceCallback({
         disputeID,
         evidenceTitle,
         evidenceDescription,
         evidenceFileURI
-      })
-      console.log(receipt)
-    })
-  }
+      });
+      console.log(receipt);
+    });
+  };
 
   onAppealButtonClick = async e => {
-    await this.props.appealCallback(this.state.disputeID)
-  }
+    await this.props.appealCallback(this.state.disputeID);
+  };
 
   onDisputeIDChange = async e => {
-    const disputeID = e.target.value
-    await this.setState({ disputeID })
-    await this.debouncedRetrieve(disputeID)
-  }
+    const disputeID = e.target.value;
+    await this.setState({ disputeID });
+
+    await this.debouncedRetrieve(disputeID);
+  };
 
   retrieveDisputeDetails = async disputeID => {
-    console.log(`Calculating ${disputeID}`)
-    let dispute
-    let subcourtURI
-    let subcourt
+    console.log(`Calculating ${disputeID}`);
+    this.setState({ dispute: { period: 6 } });
+    let dispute;
+    let subcourtURI;
+    let subcourt;
+    let crowdfundingStatus;
+    let appealCost;
     try {
-      dispute = await this.props.getDisputeCallback(disputeID)
+      dispute = await this.props.getDisputeCallback(disputeID);
 
       subcourtURI = await this.props.getSubCourtDetailsCallback(
         dispute.subcourtID
-      )
-      console.log(subcourtURI)
-      if (subcourtURI.includes('http')) subcourt = await fetch(subcourtURI)
-      else subcourt = await fetch(`https://ipfs.kleros.io${subcourtURI}`)
+      );
+      console.log(subcourtURI);
+      if (subcourtURI.includes("http")) subcourt = await fetch(subcourtURI);
+      else subcourt = await fetch(`https://ipfs.kleros.io${subcourtURI}`);
 
       console.log(
         await this.props.getEvidencesCallback(dispute.arbitrated, disputeID)
-      )
+      );
+
+      appealCost = await this.props.getAppealCostCallback(disputeID);
+      console.log(appealCost);
 
       await this.setState({
         dispute,
@@ -180,14 +185,25 @@ class Interact extends React.Component {
           dispute.arbitrated,
           disputeID
         )
-      })
+      });
     } catch (err) {
-      console.error(err.message)
-      this.setState({ dispute: { period: 5 } })
+      console.error(err.message);
+      this.setState({ dispute: { period: 5 } });
     }
-  }
 
-  getHumanReadablePeriod = period => this.PERIODS[period]
+    try {
+      crowdfundingStatus = await this.props.getCrowdfundingStatusCallback(
+        dispute.arbitrated,
+        disputeID
+      );
+      console.log(crowdfundingStatus);
+    } catch (err) {
+      console.error(err.message);
+      this.setState({ crowdfundingStatus });
+    }
+  };
+
+  getHumanReadablePeriod = period => this.PERIODS[period];
 
   render() {
     const {
@@ -200,11 +216,11 @@ class Interact extends React.Component {
       subcourtDetails,
       evidenceTitle,
       evidenceDescription
-    } = this.state
-    const metaevidencePayload = metaevidence.metaEvidenceJSON
+    } = this.state;
+    const metaevidencePayload = metaevidence.metaEvidenceJSON;
 
-    console.log(this.props)
-    console.log(this.state)
+    console.log(this.props);
+    console.log(this.state);
 
     return (
       <Container fluid="true">
@@ -232,13 +248,13 @@ class Interact extends React.Component {
                 {disputeID && (
                   <Col className="align-self-center">
                     <h4>
-                      Check out this{' '}
+                      Check out this{" "}
                       <a href={`https://court.kleros.io/cases/${disputeID}`}>
                         dispute on Kleros
                       </a>
                     </h4>
                   </Col>
-                )}{' '}
+                )}{" "}
               </Form.Row>
             </Form>
           </Card.Body>
@@ -249,9 +265,7 @@ class Interact extends React.Component {
                   {`${this.getHumanReadablePeriod(dispute.period)
                     .charAt(0)
                     .toUpperCase() +
-                    this.getHumanReadablePeriod(dispute.period).slice(
-                      1
-                    )} Period`}
+                    this.getHumanReadablePeriod(dispute.period).slice(1)}`}
                 </h3>
               </div>
               <div />
@@ -262,7 +276,9 @@ class Interact extends React.Component {
           publishCallback={this.props.publishCallback}
           submitEvidenceCallback={this.submitEvidence}
         />
-        <Appeal />
+        {this.state.crowdfundingStatus && (
+          <Appeal crowdfundingStatus={this.state.crowdfundingStatus} />
+        )}
 
         <Modal
           onHide={e => this.setState({ modalShow: false })}
@@ -365,8 +381,8 @@ class Interact extends React.Component {
           </Modal.Footer>
         </Modal>
       </Container>
-    )
+    );
   }
 }
 
-export default Interact
+export default Interact;
