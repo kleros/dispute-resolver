@@ -1,51 +1,51 @@
-import { Accordion, Card, Col, Container, Form } from 'react-bootstrap'
-import React from 'react'
+import { Accordion, Card, Col, Container, Form } from "react-bootstrap";
+import React from "react";
 
 class IPFS extends React.Component {
   constructor(properties) {
-    super(properties)
+    super(properties);
     this.state = {
-      initialNumberOfJurors: '',
-      category: '',
-      title: '',
-      description: '',
-      question: '',
-      uploadedDocumentURI: '',
-      firstRulingOption: '',
-      firstRulingDescription: '',
-      secondRulingOption: '',
-      secondRulingDescription: '',
-      fileInput: '',
+      initialNumberOfJurors: "",
+      category: "",
+      title: "",
+      description: "",
+      question: "",
+      uploadedDocumentURI: "",
+      firstRulingOption: "",
+      firstRulingDescription: "",
+      secondRulingOption: "",
+      secondRulingDescription: "",
+      fileInput: "",
       modalShow: false,
       awaitingConfirmation: false,
       showToast: false,
-      lastDisputeID: '',
-      primaryDocument: '',
-      selectedSubcourt: '',
+      lastDisputeID: "",
+      primaryDocument: "",
+      selectedSubcourt: "",
       subcourts: [],
       subcourtsLoading: true
-    }
+    };
   }
 
   onInput = e => {
-    this.setState({ uploadedDocumentURI: '' })
-    this.setState({ fileInput: e.target.files[0] })
-  }
+    this.setState({ uploadedDocumentURI: "" });
+    this.setState({ fileInput: e.target.files[0] });
+  };
 
   onSubmitButtonClick = async e => {
-    e.preventDefault()
-    const { fileInput } = this.state
+    e.preventDefault();
+    const { fileInput } = this.state;
 
-    console.log(this.props.publishCallback)
+    console.log(this.props.publishCallback);
 
-    var reader = new FileReader()
-    reader.readAsArrayBuffer(fileInput)
-    reader.addEventListener('loadend', async () => {
-      const buffer = Buffer.from(reader.result)
-      const result = await this.props.publishCallback(fileInput.name, buffer)
-      this.setState({ uploadedDocumentURI: `/ipfs/${result[0].hash}` })
-    })
-  }
+    var reader = new FileReader();
+    reader.readAsArrayBuffer(fileInput);
+    reader.addEventListener("loadend", async () => {
+      const buffer = Buffer.from(reader.result);
+      const result = await this.props.publishCallback(fileInput.name, buffer);
+      this.setState({ uploadedDocumentURI: `/ipfs/${result[0].hash}` });
+    });
+  };
 
   render() {
     const {
@@ -54,7 +54,7 @@ class IPFS extends React.Component {
       awaitingConfirmation,
       lastDisputeID,
       primaryDocument
-    } = this.state
+    } = this.state;
 
     return (
       <Container fluid="true">
@@ -64,7 +64,7 @@ class IPFS extends React.Component {
               <img
                 alt="ipfs logo"
                 src="ipfs-logo-vector-inkscape-template.svg"
-              />{' '}
+              />{" "}
               Upload to IPFS
             </Accordion.Toggle>
             <hr />
@@ -84,13 +84,13 @@ class IPFS extends React.Component {
                           <label
                             className={`text-left custom-file-label  ${
                               uploadedDocumentURI
-                                ? 'text-success'
-                                : 'text-muted'
+                                ? "text-success"
+                                : "text-muted"
                             }`}
                             htmlFor="inputGroupFile04"
                           >
                             {(fileInput && fileInput.name) ||
-                              'Select a document'}
+                              "Select a document"}
                           </label>
                         </div>
                         <div className="input-group-append">
@@ -107,8 +107,11 @@ class IPFS extends React.Component {
                   </Form.Row>
                 </Form>
                 {uploadedDocumentURI && (
-                  <a href={`https://ipfs.kleros.io${uploadedDocumentURI}`}>
-                    {' '}
+                  <a
+                    href={`https://ipfs.kleros.io${uploadedDocumentURI}`}
+                    target="_blank"
+                  >
+                    {" "}
                     {`https://ipfs.kleros.io${uploadedDocumentURI}`}
                   </a>
                 )}
@@ -117,8 +120,8 @@ class IPFS extends React.Component {
           </Card>
         </Accordion>
       </Container>
-    )
+    );
   }
 }
 
-export default IPFS
+export default IPFS;
