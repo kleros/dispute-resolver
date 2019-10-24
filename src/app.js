@@ -287,7 +287,6 @@ class App extends React.Component {
     else
       return (
         <Container fluid="true">
-          <TopBanner description="description" title="title" />
           <BrowserRouter>
             <Switch>
               <Route
@@ -295,6 +294,7 @@ class App extends React.Component {
                 path="(/|/create)"
                 render={route => (
                   <>
+                    <TopBanner pathname={route.location.pathname} />
                     <CreateDispute
                       route={route}
                       createDisputeCallback={this.createDispute}
@@ -312,6 +312,7 @@ class App extends React.Component {
                 path="/interact/:id?"
                 render={route => (
                   <>
+                    <TopBanner pathname={route.location.pathname} />
                     <Interact
                       route={route}
                       getAppealCostCallback={this.getAppealCost}
