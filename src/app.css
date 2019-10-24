@@ -123,7 +123,8 @@ h6 {
 
 input,
 textarea,
-p {
+p,
+#markdown {
   color: #4d00b4 !important;
   font-weight: 500 !important;
 }

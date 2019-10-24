@@ -307,7 +307,7 @@ class CreateDispute extends React.Component {
                   </Form.Group>
                 </Col>
                 <Col>
-                  <Form.Group controlId="markdown-description">
+                  <Form.Group id="markdown" controlId="markdown-description">
                     <ReactMarkdown source={description} />
                   </Form.Group>
                 </Col>
