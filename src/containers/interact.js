@@ -12,7 +12,8 @@ import {
   InputGroup,
   Modal,
   ProgressBar,
-  Row
+  Row,
+  Spinner
 } from "react-bootstrap";
 import Evidence from "../components/evidence";
 import Appeal from "../components/appeal";
@@ -36,7 +37,8 @@ class Interact extends React.Component {
       modalShow: false,
       evidenceTitle: "",
       evidenceDescription: "",
-      contributeModalShow: false
+      contributeModalShow: false,
+      submitting: false
     };
 
     this.debouncedRetrieve = debounce(this.retrieveDisputeDetails, 500, {
@@ -66,6 +68,8 @@ class Interact extends React.Component {
   ];
 
   submitEvidence = async evidence => {
+    console.log("submitting evidence");
+
     await this.props.submitEvidenceCallback({
       disputeID: this.state.disputeID,
       evidenceDescription: evidence.evidenceDescription,
@@ -213,7 +217,8 @@ class Interact extends React.Component {
       subcourtDetails,
       evidenceTitle,
       evidenceDescription,
-      arbitrableDispute
+      arbitrableDispute,
+      submitting
     } = this.state;
     const metaevidencePayload = metaevidence.metaEvidenceJSON;
 

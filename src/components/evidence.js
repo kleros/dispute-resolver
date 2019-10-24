@@ -1,11 +1,24 @@
-import { Accordion, Button, Card, Col, Container, Form } from "react-bootstrap";
+import {
+  Accordion,
+  Button,
+  Card,
+  Col,
+  Container,
+  Form,
+  Spinner
+} from "react-bootstrap";
 import Dropzone from "react-dropzone";
 import React from "react";
 
 class Evidence extends React.Component {
   constructor(properties) {
     super(properties);
-    this.state = { evidenceDescription: "", evidenceTitle: "", fileInput: "" };
+    this.state = {
+      evidenceDescription: "",
+      evidenceTitle: "",
+      fileInput: "",
+      awaitingConfirmation: false
+    };
   }
 
   handleControlChange = async event => {
@@ -36,15 +49,29 @@ class Evidence extends React.Component {
 
   handleSubmitEvidenceButtonClick = async event => {
     const { evidenceDescription, evidenceDocument, evidenceTitle } = this.state;
+    await this.setState({
+      awaitingConfirmation: true
+    });
     await this.props.submitEvidenceCallback({
       evidenceDescription,
       evidenceDocument,
       evidenceTitle
     });
+    await this.setState({
+      awaitingConfirmation: false,
+      evidenceTitle: "",
+      evidenceDescription: "",
+      fileInput: ""
+    });
   };
 
   render() {
-    const { evidenceDescription, evidenceTitle, fileInput } = this.state;
+    const {
+      evidenceDescription,
+      evidenceTitle,
+      fileInput,
+      awaitingConfirmation
+    } = this.state;
     return (
       <Container fluid="true">
         <Card>
@@ -110,9 +137,24 @@ class Evidence extends React.Component {
                     <Button
                       className="float-right"
                       onClick={this.handleSubmitEvidenceButtonClick}
-                      disabled={!evidenceTitle || !evidenceDescription}
+                      disabled={
+                        !evidenceTitle ||
+                        !evidenceDescription ||
+                        awaitingConfirmation
+                      }
                     >
-                      Submit Evidence
+                      {" "}
+                      {awaitingConfirmation && (
+                        <Spinner
+                          as="span"
+                          animation="grow"
+                          size="sm"
+                          role="status"
+                          aria-hidden="true"
+                        />
+                      )}{" "}
+                      {(awaitingConfirmation && "Awaiting Confirmation") ||
+                        "Submit Evidence"}
                     </Button>
                   </Form.Group>
                 </Col>
