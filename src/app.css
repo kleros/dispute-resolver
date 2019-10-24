@@ -61,8 +61,7 @@ html {
   color: #ffffff;
 }
 
-#root > div > div > div.card > div.card-header > img,
-#root > div > div > div > div > div.card-header > img {
+div.card-header > img {
   margin-right: 20px;
   width: 68px;
 }
@@ -249,5 +248,5 @@ blockquote {
 }
 
 .breadcrumb {
-  background-image: '../arrow.svg';
+  background-image: "../arrow.svg";
 }

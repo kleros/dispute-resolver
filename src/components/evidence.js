@@ -1,50 +1,50 @@
-import { Accordion, Button, Card, Col, Container, Form } from 'react-bootstrap'
-import Dropzone from 'react-dropzone'
-import React from 'react'
+import { Accordion, Button, Card, Col, Container, Form } from "react-bootstrap";
+import Dropzone from "react-dropzone";
+import React from "react";
 
 class Evidence extends React.Component {
   constructor(properties) {
-    super(properties)
-    this.state = { evidenceDescription: '', evidenceTitle: '', fileInput: '' }
+    super(properties);
+    this.state = { evidenceDescription: "", evidenceTitle: "", fileInput: "" };
   }
 
   handleControlChange = async event => {
-    await this.setState({ [event.target.id]: event.target.value })
-  }
+    await this.setState({ [event.target.id]: event.target.value });
+  };
 
   handleDrop = async acceptedFiles => {
-    console.log(acceptedFiles)
-    this.setState({ fileInput: acceptedFiles[0] })
+    console.log(acceptedFiles);
+    this.setState({ fileInput: acceptedFiles[0] });
 
-    var reader = new FileReader()
-    reader.readAsArrayBuffer(acceptedFiles[0])
-    reader.addEventListener('loadend', async () => {
-      const buffer = Buffer.from(reader.result)
+    var reader = new FileReader();
+    reader.readAsArrayBuffer(acceptedFiles[0]);
+    reader.addEventListener("loadend", async () => {
+      const buffer = Buffer.from(reader.result);
 
       const result = await this.props.publishCallback(
         acceptedFiles[0].name,
         buffer
-      )
+      );
 
-      console.log(result)
+      console.log(result);
 
       await this.setState({
         evidenceDocument: `/ipfs/${result[1].hash}${result[0].path}`
-      })
-    })
-  }
+      });
+    });
+  };
 
   handleSubmitEvidenceButtonClick = async event => {
-    const { evidenceDescription, evidenceDocument, evidenceTitle } = this.state
+    const { evidenceDescription, evidenceDocument, evidenceTitle } = this.state;
     await this.props.submitEvidenceCallback({
       evidenceDescription,
       evidenceDocument,
       evidenceTitle
-    })
-  }
+    });
+  };
 
   render() {
-    const { evidenceDescription, evidenceTitle, fileInput } = this.state
+    const { evidenceDescription, evidenceTitle, fileInput } = this.state;
     return (
       <Container fluid="true">
         <Card>
@@ -110,6 +110,7 @@ class Evidence extends React.Component {
                     <Button
                       className="float-right"
                       onClick={this.handleSubmitEvidenceButtonClick}
+                      disabled={!evidenceTitle || !evidenceDescription}
                     >
                       Submit Evidence
                     </Button>
@@ -120,8 +121,8 @@ class Evidence extends React.Component {
           </Card.Body>
         </Card>
       </Container>
-    )
+    );
   }
 }
 
-export default Evidence
+export default Evidence;

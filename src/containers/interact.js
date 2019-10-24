@@ -19,13 +19,15 @@ import Appeal from "../components/appeal";
 import Dropzone from "react-dropzone";
 import debounce from "lodash.debounce";
 import ReactMarkdown from "react-markdown";
+import IPFS from "../components/ipfs";
 
 class Interact extends React.Component {
-  constructor(properties, { match }) {
-    super(properties);
+  constructor(props) {
+    super(props);
     this.state = {
       disputeID: this.props.route && this.props.route.match.params.id,
-      dispute: {},
+      dispute: "",
+      arbitrableDispute: "",
       fileInput: "",
       evidenceFileURI: "",
       metaevidence: "",
@@ -41,11 +43,11 @@ class Interact extends React.Component {
       leading: false,
       trailing: true
     });
-
-    console.log(properties);
   }
 
-  async componentDidMount() {}
+  async componentDidMount() {
+    this.debouncedRetrieve(this.state.disputeID);
+  }
 
   async componentDidUpdate(previousProperties) {
     console.log("component update");
@@ -138,52 +140,47 @@ class Interact extends React.Component {
     });
   };
 
-  onAppealButtonClick = async e => {
-    await this.props.appealCallback(this.state.disputeID);
-  };
+  onAppealButtonClick = async e => {};
 
   onDisputeIDChange = async e => {
     const disputeID = e.target.value;
-    await this.setState({ disputeID });
+    await this.setState({ disputeID, arbitrableDispute: "" });
 
     await this.debouncedRetrieve(disputeID);
   };
 
-  retrieveDisputeDetails = async disputeID => {
-    console.log(`Calculating ${disputeID}`);
+  retrieveDisputeDetails = async arbitrableDisputeID => {
+    console.log(`Calculating ${arbitrableDisputeID}`);
     this.setState({ dispute: { period: 6 } });
-    let dispute;
+    let arbitratorDispute;
+    let arbitrableDispute;
     let subcourtURI;
     let subcourt;
     let crowdfundingStatus;
     let appealCost;
     try {
-      dispute = await this.props.getDisputeCallback(disputeID);
+      arbitrableDispute = await this.props.getArbitrableDisputeCallback(
+        arbitrableDisputeID
+      );
+      arbitratorDispute = await this.props.getArbitratorDisputeCallback(
+        arbitrableDispute.disputeIDOnArbitratorSide
+      );
 
       subcourtURI = await this.props.getSubCourtDetailsCallback(
-        dispute.subcourtID
+        arbitratorDispute.subcourtID
       );
       console.log(subcourtURI);
       if (subcourtURI.includes("http")) subcourt = await fetch(subcourtURI);
       else subcourt = await fetch(`https://ipfs.kleros.io${subcourtURI}`);
 
-      console.log(
-        await this.props.getEvidencesCallback(dispute.arbitrated, disputeID)
-      );
-
-      appealCost = await this.props.getAppealCostCallback(disputeID);
-      console.log(appealCost);
-
+      console.log(arbitratorDispute);
       await this.setState({
-        dispute,
+        dispute: arbitratorDispute,
+        arbitrableDispute,
         subcourtDetails: await subcourt.json(),
         metaevidence: await this.props.getMetaEvidenceCallback(
-          dispute.arbitrated,
-          disputeID
-        ),
-        evidences: await this.props.getEvidencesCallback(
-          dispute.arbitrated,
-          disputeID
+          arbitratorDispute.arbitrated,
+          arbitrableDisputeID
         )
       });
     } catch (err) {
@@ -193,8 +190,8 @@ class Interact extends React.Component {
 
     try {
       crowdfundingStatus = await this.props.getCrowdfundingStatusCallback(
-        dispute.arbitrated,
-        disputeID
+        arbitratorDispute.arbitrated,
+        arbitrableDisputeID
       );
       console.log(crowdfundingStatus);
     } catch (err) {
@@ -215,7 +212,8 @@ class Interact extends React.Component {
       evidences,
       subcourtDetails,
       evidenceTitle,
-      evidenceDescription
+      evidenceDescription,
+      arbitrableDispute
     } = this.state;
     const metaevidencePayload = metaevidence.metaEvidenceJSON;
 
@@ -245,11 +243,16 @@ class Interact extends React.Component {
                     />
                   </Form.Group>
                 </Col>
-                {disputeID && (
+                {arbitrableDispute && (
                   <Col className="align-self-center">
                     <h4>
                       Check out this{" "}
-                      <a href={`https://court.kleros.io/cases/${disputeID}`}>
+                      <a
+                        href={`https://court.kleros.io/cases/${
+                          arbitrableDispute.disputeIDOnArbitratorSide
+                        }`}
+                        target="_blank"
+                      >
                         dispute on Kleros
                       </a>
                     </h4>
@@ -258,24 +261,23 @@ class Interact extends React.Component {
               </Form.Row>
             </Form>
           </Card.Body>
-          {metaevidence && (
-            <Card.Footer className="p-0" id="dispute-detail-footer">
-              <div className="text-center p-5">
-                <h3>
-                  {`${this.getHumanReadablePeriod(dispute.period)
-                    .charAt(0)
-                    .toUpperCase() +
-                    this.getHumanReadablePeriod(dispute.period).slice(1)}`}
-                </h3>
-              </div>
-              <div />
-            </Card.Footer>
-          )}
+
+          <Card.Footer className="p-0" id="dispute-detail-footer">
+            <div className="text-center p-5">
+              <h3>{this.getHumanReadablePeriod(dispute.period)}</h3>
+            </div>
+            <div />
+          </Card.Footer>
         </Card>
-        <Evidence
-          publishCallback={this.props.publishCallback}
-          submitEvidenceCallback={this.submitEvidence}
-        />
+        {dispute && dispute.period == 0 && (
+          <>
+            <Evidence
+              publishCallback={this.props.publishCallback}
+              submitEvidenceCallback={this.submitEvidence}
+            />
+            <IPFS publishCallback={this.onPublish} />
+          </>
+        )}
         {this.state.crowdfundingStatus && (
           <Appeal crowdfundingStatus={this.state.crowdfundingStatus} />
         )}

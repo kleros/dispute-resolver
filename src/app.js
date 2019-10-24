@@ -88,36 +88,44 @@ class App extends React.Component {
       subcourtID
     );
 
-  getDispute = async disputeID =>
+  getArbitratorDispute = async arbitratorDisputeID =>
     EthereumInterface.call(
       "KlerosLiquid",
       networkMap[this.state.network].KLEROS_LIQUID,
       "disputes",
-      disputeID
+      arbitratorDisputeID
     );
 
-  getDisputeStruct = async (arbitrableAddress, arbitratorDisputeID) =>
+  getArbitrableDispute = async arbitrableDisputeID =>
     EthereumInterface.call(
       "BinaryArbitrableProxy",
       networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
       "disputes",
-      await this.getArbitrableDisputeID(
-        arbitrableAddress,
-        networkMap[this.state.network].KLEROS_LIQUID,
-        arbitratorDisputeID
-      )
+      arbitrableDisputeID
     );
 
-  getCrowdfundingStatus = async (arbitrableAddress, arbitratorDisputeID) =>
+  getArbitrableDisputeStruct = async (arbitrableAddress, arbitrableDisputeID) =>
     EthereumInterface.call(
       "BinaryArbitrableProxy",
-      networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
+      arbitrableAddress,
+      "disputes",
+      arbitrableDisputeID
+    );
+
+  getArbitratorDisputeStruct = async arbitratorDisputeID =>
+    EthereumInterface.call(
+      "KlerosLiquid",
+      networkMap[this.state.network].KLEROS_LIQUID,
+      "disputes",
+      arbitratorDisputeID
+    );
+
+  getCrowdfundingStatus = async (arbitrableAddress, arbitrableDisputeID) =>
+    EthereumInterface.call(
+      "BinaryArbitrableProxy",
+      arbitrableAddress,
       "crowdfundingStatus",
-      await this.getArbitrableDisputeID(
-        arbitrableAddress,
-        networkMap[this.state.network].KLEROS_LIQUID,
-        arbitratorDisputeID
-      )
+      arbitrableDisputeID
     );
 
   updateLastDisputeID = async newDisputeID =>
@@ -134,28 +142,12 @@ class App extends React.Component {
         .toString()
         .padStart(64, "0")}`;
 
-  appeal = async disputeID => {
-    const { activeAddress, network } = this.state;
-
-    const appealCost = await this.getAppealCost(disputeID);
-
-    await EthereumInterface.send(
-      "Arbitrator",
-      networkMap[network].KLEROS_LIQUID,
-      activeAddress,
-      appealCost,
-      "appeal",
-      disputeID,
-      "0x0"
-    );
-  };
-
-  getAppealCost = async disputeID =>
+  getAppealCost = async arbitratorDisputeID =>
     EthereumInterface.call(
       "Arbitrator",
       networkMap[this.state.network].KLEROS_LIQUID,
       "appealCost",
-      disputeID,
+      arbitratorDisputeID,
       "0x0"
     );
 
@@ -228,14 +220,14 @@ class App extends React.Component {
   getMetaEvidence = async (arbitrableAddress, disputeID) =>
     await this.state.archon.arbitrable.getMetaEvidence(
       arbitrableAddress, // arbitrable contract address
-      (await this.getDisputeEvent(arbitrableAddress, disputeID)).metaEvidenceID
+      disputeID
     );
 
-  getEvidences = async (arbitrableAddress, disputeID) =>
+  getEvidences = async (arbitrableAddress, arbitrableDisputeID) =>
     await this.state.archon.arbitrable.getEvidence(
       arbitrableAddress,
       networkMap[this.state.network].KLEROS_LIQUID,
-      (await this.getDisputeEvent(arbitrableAddress, disputeID)).evidenceGroupID
+      arbitrableDisputeID
     );
 
   getContractInstance = (interfaceName, address) =>
@@ -250,21 +242,12 @@ class App extends React.Component {
     const { activeAddress, network } = this.state;
 
     const evidence = {
-      title: evidenceTitle,
+      name: evidenceTitle,
       description: evidenceDescription,
       fileURI: evidenceFileURI
     };
 
     console.log(`evidence: ${JSON.stringify(evidence)}`);
-
-    const localDisputeID = await EthereumInterface.call(
-      "BinaryArbitrableProxy",
-      networkMap[network].BINARY_ARBITRABLE_PROXY,
-      "arbitratorExternalIDtoLocalID",
-      networkMap[network].KLEROS_LIQUID,
-      disputeID
-    );
-    console.log(localDisputeID);
 
     const ipfsHashEvidenceObj = await ipfsPublish(
       "evidence.json",
@@ -283,7 +266,7 @@ class App extends React.Component {
       activeAddress,
       0,
       "submitEvidence",
-      localDisputeID,
+      disputeID,
       evidenceURI
     );
   };
@@ -310,9 +293,10 @@ class App extends React.Component {
               <Route
                 exact
                 path="(/|/create)"
-                render={props => (
+                render={route => (
                   <>
                     <CreateDispute
+                      route={route}
                       createDisputeCallback={this.createDispute}
                       getArbitrationCostCallback={
                         this.getArbitrationCostWithCourtAndNoOfJurors
@@ -326,20 +310,25 @@ class App extends React.Component {
               <Route
                 exact
                 path="/interact/:id?"
-                render={props => (
+                render={route => (
                   <>
                     <Interact
-                      appealCallback={this.appeal}
+                      route={route}
                       getAppealCostCallback={this.getAppealCost}
                       disputeID={lastDisputeID}
                       getContractInstanceCallback={this.getContractInstance}
-                      getDisputeCallback={this.getDispute}
-                      getDisputeStructCallback={this.getDisputeStruct}
+                      getArbitratorDisputeCallback={this.getArbitratorDispute}
+                      getArbitrableDisputeCallback={this.getArbitrableDispute}
+                      getArbitratorDisputeStructCallback={
+                        this.getArbitratorDisputeStruct
+                      }
+                      getArbitrableDisputeStructCallback={
+                        this.getArbitrableDisputeStruct
+                      }
                       getCrowdfundingStatusCallback={this.getCrowdfundingStatus}
                       getEvidencesCallback={this.getEvidences}
                       getMetaEvidenceCallback={this.getMetaEvidence}
                       getSubCourtDetailsCallback={this.getSubCourtDetails}
-                      newDisputeCallback={this.updateLastDisputeID}
                       publishCallback={this.onPublish}
                       submitEvidenceCallback={this.submitEvidence}
                     />
@@ -348,7 +337,6 @@ class App extends React.Component {
               />
             </Switch>
           </BrowserRouter>
-          <IPFS publishCallback={this.onPublish} />
           <Footer description="description" title="title" />
         </Container>
       );

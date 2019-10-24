@@ -1,10 +1,10 @@
-import React, { useCallback } from 'react'
-import ReactMarkdown from 'react-markdown'
-import TopBanner from '../components/top-banner'
-import Confirmation from '../components/confirmation'
+import React, { useCallback } from "react";
+import ReactMarkdown from "react-markdown";
+import TopBanner from "../components/top-banner";
+import Confirmation from "../components/confirmation";
 
-import { useDropzone } from 'react-dropzone'
-import Dropzone from 'react-dropzone'
+import { useDropzone } from "react-dropzone";
+import Dropzone from "react-dropzone";
 
 import {
   Container,
@@ -18,7 +18,7 @@ import {
   Dropdown,
   InputGroup,
   FormControl
-} from 'react-bootstrap'
+} from "react-bootstrap";
 
 import {
   BrowserRouter,
@@ -26,29 +26,31 @@ import {
   Route,
   Switch,
   Redirect
-} from 'react-router-dom'
+} from "react-router-dom";
+
+import IPFS from "../components/ipfs";
 
 class CreateDispute extends React.Component {
   constructor(props) {
-    super(props)
+    super(props);
     this.state = {
-      initialNumberOfJurors: '3',
-      title: '',
-      description: '',
-      question: '',
-      firstRulingOption: '',
-      firstRulingDescription: '',
-      secondRulingOption: '',
-      secondRulingDescription: '',
+      initialNumberOfJurors: "3",
+      title: "",
+      description: "",
+      question: "",
+      firstRulingOption: "",
+      firstRulingDescription: "",
+      secondRulingOption: "",
+      secondRulingDescription: "",
       modalShow: false,
       awaitingConfirmation: false,
-      lastDisputeID: '',
-      selectedSubcourt: '',
+      lastDisputeID: "",
+      selectedSubcourt: "",
       subcourts: [],
       subcourtsLoading: true,
-      arbitrationCost: '',
-      primaryDocument: ''
-    }
+      arbitrationCost: "",
+      primaryDocument: ""
+    };
   }
 
   componentDidMount = async e => {
@@ -57,75 +59,75 @@ class CreateDispute extends React.Component {
       subcourt,
       subcourts = [],
       counter = 0,
-      subcourtURIs = []
+      subcourtURIs = [];
     while (counter < 15) {
-      subcourtURI = await this.props.getSubCourtDetailsCallback(counter++)
-      subcourtURIs.push(subcourtURI)
+      subcourtURI = await this.props.getSubCourtDetailsCallback(counter++);
+      subcourtURIs.push(subcourtURI);
     }
 
-    console.log(subcourtURIs)
+    console.log(subcourtURIs);
 
     for (var i = 0; i < subcourtURIs.length; i++) {
-      console.log(subcourtURIs[i])
+      console.log(subcourtURIs[i]);
       try {
-        if (subcourtURIs[i].includes('http')) {
-          subcourt = await fetch(subcourtURIs[i])
+        if (subcourtURIs[i].includes("http")) {
+          subcourt = await fetch(subcourtURIs[i]);
         } else {
-          subcourt = await fetch('https://ipfs.kleros.io' + subcourtURIs[i])
+          subcourt = await fetch("https://ipfs.kleros.io" + subcourtURIs[i]);
         }
-        subcourts[i] = await subcourt.json()
+        subcourts[i] = await subcourt.json();
       } catch (e) {
-        console.log(i)
+        console.log(i);
       }
-      console.log(subcourts)
+      console.log(subcourts);
     }
-    await this.setState({ subcourts })
-    await this.setState({ subcourtsLoading: false })
-  }
+    await this.setState({ subcourts });
+    await this.setState({ subcourtsLoading: false });
+  };
 
   onSubcourtSelect = async subcourtID => {
-    await this.setState({ selectedSubcourt: subcourtID })
+    await this.setState({ selectedSubcourt: subcourtID });
     this.calculateArbitrationCost(
       this.state.selectedSubcourt,
       this.state.initialNumberOfJurors
-    )
-  }
+    );
+  };
 
   onModalClose = e =>
-    this.setState({ modalShow: false, awaitingConfirmation: false })
+    this.setState({ modalShow: false, awaitingConfirmation: false });
 
-  onModalShow = e => this.setState({ modalShow: true })
+  onModalShow = e => this.setState({ modalShow: true });
 
   onControlChange = async e => {
-    await this.setState({ [e.target.id]: e.target.value })
+    await this.setState({ [e.target.id]: e.target.value });
 
     this.calculateArbitrationCost(
       this.state.selectedSubcourt,
       this.state.initialNumberOfJurors
-    )
-  }
+    );
+  };
 
   onDrop = async acceptedFiles => {
-    console.log(acceptedFiles)
-    this.setState({ fileInput: acceptedFiles[0] })
+    console.log(acceptedFiles);
+    this.setState({ fileInput: acceptedFiles[0] });
 
-    var reader = new FileReader()
-    reader.readAsArrayBuffer(acceptedFiles[0])
-    reader.addEventListener('loadend', async () => {
-      const buffer = Buffer.from(reader.result)
+    var reader = new FileReader();
+    reader.readAsArrayBuffer(acceptedFiles[0]);
+    reader.addEventListener("loadend", async () => {
+      const buffer = Buffer.from(reader.result);
 
       const result = await this.props.publishCallback(
         acceptedFiles[0].name,
         buffer
-      )
+      );
 
-      console.log(result)
+      console.log(result);
 
       await this.setState({
-        primaryDocument: '/ipfs/' + result[1].hash + result[0].path
-      })
-    })
-  }
+        primaryDocument: "/ipfs/" + result[1].hash + result[0].path
+      });
+    });
+  };
 
   calculateArbitrationCost = async (subcourtID, noOfJurors) =>
     subcourtID &&
@@ -135,12 +137,12 @@ class CreateDispute extends React.Component {
         subcourtID,
         noOfJurors
       )
-    })
+    });
 
   onCreateDisputeButtonClick = async e => {
-    e.preventDefault()
-    e.stopPropagation()
-    console.log('create dispute clicked')
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("create dispute clicked");
     const {
       selectedSubcourt,
       initialNumberOfJurors,
@@ -152,10 +154,10 @@ class CreateDispute extends React.Component {
       firstRulingDescription,
       secondRulingDescription,
       primaryDocument
-    } = this.state
-    console.log('state loaded')
+    } = this.state;
+    console.log("state loaded");
 
-    this.setState({ awaitingConfirmation: true })
+    this.setState({ awaitingConfirmation: true });
     try {
       const receipt = await this.props.createDisputeCallback({
         selectedSubcourt,
@@ -168,21 +170,22 @@ class CreateDispute extends React.Component {
         firstRulingDescription,
         secondRulingDescription,
         primaryDocument
-      })
-      console.log('ALOOO')
+      });
+      console.log("ALOOO");
+      console.log(receipt);
       this.setState({
-        lastDisputeID: receipt.events.Dispute.returnValues._disputeID
-      })
+        lastDisputeID: receipt.events.MetaEvidence.returnValues._metaEvidenceID
+      });
     } catch (e) {
-      this.setState({ awaitingConfirmation: false })
+      this.setState({ awaitingConfirmation: false });
     }
 
-    this.onModalClose()
-  }
+    this.onModalClose();
+  };
 
   render() {
-    console.debug(this.props)
-    console.debug(this.state)
+    console.debug(this.props);
+    console.debug(this.state);
 
     const {
       initialNumberOfJurors,
@@ -202,7 +205,7 @@ class CreateDispute extends React.Component {
       subcourtsLoading,
       fileInput,
       arbitrationCost
-    } = this.state
+    } = this.state;
 
     return (
       <Container fluid="true">
@@ -226,10 +229,10 @@ class CreateDispute extends React.Component {
                         block
                         disabled={subcourtsLoading}
                       >
-                        {(subcourtsLoading && 'Loading...') ||
+                        {(subcourtsLoading && "Loading...") ||
                           (selectedSubcourt &&
                             subcourts[selectedSubcourt].name) ||
-                          'Please select a court'}
+                          "Please select a court"}
                       </Dropdown.Toggle>
 
                       <Dropdown.Menu>
@@ -253,10 +256,10 @@ class CreateDispute extends React.Component {
                       type="number"
                       value={initialNumberOfJurors}
                       onChange={this.onControlChange}
-                      placeholder={'Initial number of jurors'}
+                      placeholder={"Initial number of jurors"}
                     />
                   </Form.Group>
-                </Col>{' '}
+                </Col>{" "}
                 <Col>
                   <Form.Group>
                     <Form.Label htmlFor="arbitrationFee">
@@ -266,7 +269,7 @@ class CreateDispute extends React.Component {
                       id="arbitrationFee"
                       readOnly
                       type="text"
-                      value={arbitrationCost && arbitrationCost + ' Ether'}
+                      value={arbitrationCost && arbitrationCost + " Ether"}
                       placeholder="Please select a court and specify number of jurors."
                     />
                   </Form.Group>
@@ -281,7 +284,7 @@ class CreateDispute extends React.Component {
                       as="input"
                       value={title}
                       onChange={this.onControlChange}
-                      placeholder={'Title'}
+                      placeholder={"Title"}
                     />
                   </Form.Group>
                 </Col>
@@ -299,7 +302,7 @@ class CreateDispute extends React.Component {
                       rows="3"
                       value={description}
                       onChange={this.onControlChange}
-                      placeholder={'Description of dispute in markdown'}
+                      placeholder={"Description of dispute in markdown"}
                     />
                   </Form.Group>
                 </Col>
@@ -321,7 +324,7 @@ class CreateDispute extends React.Component {
                       rows="1"
                       value={question}
                       onChange={this.onControlChange}
-                      placeholder={'Question'}
+                      placeholder={"Question"}
                     />
                   </Form.Group>
                 </Col>
@@ -337,7 +340,7 @@ class CreateDispute extends React.Component {
                       as="input"
                       value={firstRulingOption}
                       onChange={this.onControlChange}
-                      placeholder={'First ruling option'}
+                      placeholder={"First ruling option"}
                     />
                   </Form.Group>
                 </Col>
@@ -351,10 +354,10 @@ class CreateDispute extends React.Component {
                       as="input"
                       value={firstRulingDescription}
                       onChange={this.onControlChange}
-                      placeholder={'Description of first ruling option'}
+                      placeholder={"Description of first ruling option"}
                     />
                   </Form.Group>
-                </Col>{' '}
+                </Col>{" "}
               </Form.Row>
               <Form.Row>
                 <Col>
@@ -367,7 +370,7 @@ class CreateDispute extends React.Component {
                       as="input"
                       value={secondRulingOption}
                       onChange={this.onControlChange}
-                      placeholder={'Second ruling option'}
+                      placeholder={"Second ruling option"}
                     />
                   </Form.Group>
                 </Col>
@@ -381,10 +384,10 @@ class CreateDispute extends React.Component {
                       as="input"
                       value={secondRulingDescription}
                       onChange={this.onControlChange}
-                      placeholder={'Description of second ruling option'}
+                      placeholder={"Description of second ruling option"}
                     />
                   </Form.Group>
-                </Col>{' '}
+                </Col>{" "}
               </Form.Row>
               <Form.Row>
                 <Col>
@@ -425,8 +428,8 @@ class CreateDispute extends React.Component {
                 onClick={this.onModalShow}
                 block
               >
-                Create Dispute{' '}
-                {arbitrationCost && 'for ' + arbitrationCost + ' Ether'}
+                Create Dispute{" "}
+                {arbitrationCost && "for " + arbitrationCost + " Ether"}
               </Button>
             </Form>
           </Card.Body>
@@ -452,9 +455,10 @@ class CreateDispute extends React.Component {
           onCreateDisputeButtonClick={this.onCreateDisputeButtonClick}
           awaitingConfirmation={awaitingConfirmation}
         />
+        <IPFS publishCallback={this.onPublish} />
       </Container>
-    )
+    );
   }
 }
 
-export default CreateDispute
+export default CreateDispute;
