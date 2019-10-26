@@ -236,14 +236,14 @@ class App extends React.Component {
     disputeID,
     evidenceTitle,
     evidenceDescription,
-    evidenceFileURI
+    evidenceDocument
   }) => {
     const { activeAddress, network } = this.state;
 
     const evidence = {
       name: evidenceTitle,
       description: evidenceDescription,
-      fileURI: evidenceFileURI
+      fileURI: evidenceDocument
     };
 
     console.log(`evidence: ${JSON.stringify(evidence)}`);

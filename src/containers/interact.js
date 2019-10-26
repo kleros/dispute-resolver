@@ -45,7 +45,6 @@ class Interact extends React.Component {
   }
 
   async componentDidUpdate(previousProperties) {
-    console.log("component update");
     if (this.props.disputeID !== previousProperties.disputeID)
       await this.setState({ disputeID: this.props.disputeID });
   }
@@ -60,16 +59,13 @@ class Interact extends React.Component {
     "Fetching..."
   ];
 
-  submitEvidence = async evidence => {
-    console.log("submitting evidence");
-
-    await this.props.submitEvidenceCallback({
+  submitEvidence = async evidence =>
+    this.props.submitEvidenceCallback({
       disputeID: this.state.disputeID,
       evidenceDescription: evidence.evidenceDescription,
-      evidenceFileURI: evidence.evidenceDocument,
+      evidenceDocument: evidence.evidenceDocument,
       evidenceTitle: evidence.evidenceTitle
     });
-  };
 
   onDrop = async acceptedFiles => {
     console.log(acceptedFiles);
@@ -105,7 +101,6 @@ class Interact extends React.Component {
   onContributeButtonClick = e => this.setState({ contributeModalShow: true });
 
   onSubmitButtonClick = async e => {
-    console.log("EVIDENCE SUBMISSION");
     e.preventDefault();
     const {
       disputeID,

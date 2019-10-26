@@ -147,7 +147,6 @@ class CreateDispute extends React.Component {
       secondRulingDescription,
       primaryDocument
     } = this.state;
-    console.log("state loaded");
 
     this.setState({ awaitingConfirmation: true });
     try {
@@ -163,8 +162,6 @@ class CreateDispute extends React.Component {
         secondRulingDescription,
         primaryDocument
       });
-      console.log("ALOOO");
-      console.log(receipt);
       this.setState({
         lastDisputeID: receipt.events.MetaEvidence.returnValues._metaEvidenceID
       });
