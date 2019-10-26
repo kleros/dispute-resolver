@@ -17,10 +17,7 @@ class IPFS extends React.Component {
       secondRulingDescription: "",
       fileInput: "",
       modalShow: false,
-      awaitingConfirmation: false,
       showToast: false,
-      lastDisputeID: "",
-      primaryDocument: "",
       selectedSubcourt: "",
       subcourts: [],
       subcourtsLoading: true
@@ -48,13 +45,7 @@ class IPFS extends React.Component {
   };
 
   render() {
-    const {
-      uploadedDocumentURI,
-      fileInput,
-      awaitingConfirmation,
-      lastDisputeID,
-      primaryDocument
-    } = this.state;
+    const { uploadedDocumentURI, fileInput } = this.state;
 
     return (
       <Container fluid="true">
@@ -110,6 +101,7 @@ class IPFS extends React.Component {
                   <a
                     href={`https://ipfs.kleros.io${uploadedDocumentURI}`}
                     target="_blank"
+                    rel="noopener noreferrer"
                   >
                     {" "}
                     {`https://ipfs.kleros.io${uploadedDocumentURI}`}

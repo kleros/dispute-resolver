@@ -1,25 +1,18 @@
 import React from "react";
 import {
-  Accordion,
-  Breadcrumb,
   Button,
   Card,
   Col,
   Container,
-  Dropdown,
   Form,
   FormControl,
   InputGroup,
-  Modal,
-  ProgressBar,
-  Row,
-  Spinner
+  Modal
 } from "react-bootstrap";
 import Evidence from "../components/evidence";
 import Appeal from "../components/appeal";
 import Dropzone from "react-dropzone";
 import debounce from "lodash.debounce";
-import ReactMarkdown from "react-markdown";
 import IPFS from "../components/ipfs";
 
 class Interact extends React.Component {
@@ -161,7 +154,6 @@ class Interact extends React.Component {
     let subcourtURI;
     let subcourt;
     let crowdfundingStatus;
-    let appealCost;
     try {
       arbitrableDispute = await this.props.getArbitrableDisputeCallback(
         arbitrableDisputeID
@@ -211,16 +203,10 @@ class Interact extends React.Component {
       disputeID,
       dispute,
       fileInput,
-      evidenceFileURI,
-      metaevidence,
-      evidences,
-      subcourtDetails,
       evidenceTitle,
       evidenceDescription,
-      arbitrableDispute,
-      submitting
+      arbitrableDispute
     } = this.state;
-    const metaevidencePayload = metaevidence.metaEvidenceJSON;
 
     console.log(this.props);
     console.log(this.state);
@@ -257,6 +243,7 @@ class Interact extends React.Component {
                           arbitrableDispute.disputeIDOnArbitratorSide
                         }`}
                         target="_blank"
+                        rel="noopener noreferrer"
                       >
                         dispute on Kleros
                       </a>

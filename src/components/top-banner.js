@@ -1,8 +1,5 @@
-import { Card, Col, Row, Navbar, NavDropdown, Nav } from "react-bootstrap";
-import PropTypes from "prop-types";
+import { Navbar, Nav } from "react-bootstrap";
 import React from "react";
-import { ReactComponent as Underline } from "../assets/images/underline.svg";
-import styled from "styled-components/macro";
 
 class TopBanner extends React.Component {
   constructor(props) {

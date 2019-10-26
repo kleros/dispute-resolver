@@ -1,8 +1,5 @@
-import { Card, Col, Row, Navbar, NavDropdown, Nav } from 'react-bootstrap'
-import PropTypes from 'prop-types'
-import React from 'react'
-import { ReactComponent as Underline } from '../assets/images/underline.svg'
-import styled from 'styled-components/macro'
+import { Navbar, Nav } from "react-bootstrap";
+import React from "react";
 
 class Footer extends React.Component {
   render() {
@@ -16,10 +13,10 @@ class Footer extends React.Component {
         <Navbar.Collapse id="responsive-navbar-nav">
           <Nav className="abs-center-x">
             <Nav.Link href="/">Binary Arbitrable Proxy</Nav.Link>
-          </Nav>{' '}
+          </Nav>{" "}
           <Nav className="abs-end-x ">
             <Nav.Item>
-              {' '}
+              {" "}
               <Nav.Link className="mr-5" href="https://t.me/kleros">
                 <div>
                   I need help <img src="help.svg" alt="help" />
@@ -57,8 +54,8 @@ class Footer extends React.Component {
           </Nav>
         </Navbar.Collapse>
       </Navbar>
-    )
+    );
   }
 }
 
-export default Footer
+export default Footer;

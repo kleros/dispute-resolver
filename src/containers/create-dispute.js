@@ -1,6 +1,5 @@
-import React, { useCallback } from "react";
+import React from "react";
 import ReactMarkdown from "react-markdown";
-import TopBanner from "../components/top-banner";
 import Confirmation from "../components/confirmation";
 import "@github/markdown-toolbar-element";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -15,30 +14,11 @@ import {
   faListOl,
   faListUl
 } from "@fortawesome/free-solid-svg-icons";
-import { useDropzone } from "react-dropzone";
 import Dropzone from "react-dropzone";
 
-import {
-  Container,
-  Row,
-  Col,
-  Button,
-  Form,
-  Spinner,
-  Card,
-  Modal,
-  Dropdown,
-  InputGroup,
-  FormControl
-} from "react-bootstrap";
+import { Container, Col, Button, Form, Card, Dropdown } from "react-bootstrap";
 
-import {
-  BrowserRouter,
-  NavLink,
-  Route,
-  Switch,
-  Redirect
-} from "react-router-dom";
+import { Redirect } from "react-router-dom";
 
 import IPFS from "../components/ipfs";
 

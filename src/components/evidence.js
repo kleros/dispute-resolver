@@ -1,12 +1,4 @@
-import {
-  Accordion,
-  Button,
-  Card,
-  Col,
-  Container,
-  Form,
-  Spinner
-} from "react-bootstrap";
+import { Button, Card, Col, Container, Form, Spinner } from "react-bootstrap";
 import Dropzone from "react-dropzone";
 import React from "react";
 

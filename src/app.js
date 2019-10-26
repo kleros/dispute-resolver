@@ -1,5 +1,5 @@
 import React from "react";
-import { Col, Container, Row } from "react-bootstrap";
+import { Container } from "react-bootstrap";
 import "./app.css";
 import CreateDispute from "./containers/create-dispute";
 import _404 from "./containers/404";
@@ -7,7 +7,6 @@ import Interact from "./containers/interact";
 import { BrowserRouter, Route, Switch } from "react-router-dom";
 import TopBanner from "./components/top-banner";
 import Footer from "./components/footer";
-import IPFS from "./components/ipfs";
 import Web3 from "./ethereum/web3";
 import * as EthereumInterface from "./ethereum/interface";
 import networkMap from "./ethereum/network-contract-mapping";

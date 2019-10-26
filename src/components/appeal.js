@@ -1,11 +1,4 @@
-import {
-  Accordion,
-  Card,
-  Col,
-  Container,
-  Form,
-  ProgressBar
-} from "react-bootstrap";
+import { Card, Col, Container, Form, ProgressBar } from "react-bootstrap";
 import React from "react";
 
 class Appeal extends React.Component {
@@ -48,7 +41,7 @@ class Appeal extends React.Component {
                     <Card>
                       <Card.Body>
                         <div>
-                          <img src="clock_purple.svg" /> Requester
+                          <img alt="" src="clock_purple.svg" /> Requester
                         </div>
                         <div>
                           <ProgressBar
@@ -56,7 +49,7 @@ class Appeal extends React.Component {
                           />
                         </div>
                         <div>
-                          <img src="clock_purple.svg" /> Deadline
+                          <img alt="" src="clock_purple.svg" /> Deadline
                         </div>
                       </Card.Body>
                     </Card>
@@ -67,13 +60,13 @@ class Appeal extends React.Component {
                     <Card>
                       <Card.Body>
                         <div>
-                          <img src="clock_purple.svg" /> Respondent
+                          <img alt="" src="clock_purple.svg" /> Respondent
                         </div>
                         <div>
                           <ProgressBar now={50} />
                         </div>
                         <div>
-                          <img src="clock_purple.svg" /> Deadline
+                          <img alt="" src="clock_purple.svg" /> Deadline
                         </div>
                       </Card.Body>
                     </Card>
@@ -85,7 +78,7 @@ class Appeal extends React.Component {
                     <Card>
                       <Card.Body className="text-center">
                         <p>
-                          <img src="warning.svg" />
+                          <img alt="" src="warning.svg" />
                         </p>
                         <p>
                           If the loser compltere it's appeal funding the winner

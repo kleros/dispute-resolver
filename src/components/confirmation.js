@@ -1,5 +1,5 @@
 import React from "react";
-import { Container, Modal, Form, Col, Button, Spinner } from "react-bootstrap";
+import { Modal, Form, Col, Button, Spinner } from "react-bootstrap";
 import ReactMarkdown from "react-markdown";
 
 class Confirmation extends React.Component {
