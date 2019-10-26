@@ -2,7 +2,19 @@ import React, { useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import TopBanner from "../components/top-banner";
 import Confirmation from "../components/confirmation";
-
+import "@github/markdown-toolbar-element";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faBold,
+  faHeading,
+  faItalic,
+  faCode,
+  faLink,
+  faImage,
+  faQuoteLeft,
+  faListOl,
+  faListUl
+} from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 import Dropzone from "react-dropzone";
 
@@ -278,9 +290,10 @@ class CreateDispute extends React.Component {
               <hr />
               <Form.Row>
                 <Col>
-                  <Form.Group controlId="title">
+                  <Form.Group>
                     <Form.Label htmlFor="title">Title</Form.Label>
                     <Form.Control
+                      id="title"
                       as="input"
                       value={title}
                       onChange={this.onControlChange}
@@ -296,8 +309,38 @@ class CreateDispute extends React.Component {
               </Form.Row>
               <Form.Row className="mb-3">
                 <Col>
-                  <Form.Group controlId="description">
+                  <Form.Group>
+                    <markdown-toolbar for="description">
+                      <md-bold>
+                        <FontAwesomeIcon className="mr-3" icon={faBold} />
+                      </md-bold>
+                      <md-header>
+                        <FontAwesomeIcon className="mr-3" icon={faHeading} />
+                      </md-header>
+                      <md-italic>
+                        <FontAwesomeIcon className="mr-3" icon={faItalic} />
+                      </md-italic>
+                      <md-quote>
+                        <FontAwesomeIcon className="mr-3" icon={faQuoteLeft} />
+                      </md-quote>
+                      <md-code>
+                        <FontAwesomeIcon className="mr-3" icon={faCode} />
+                      </md-code>
+                      <md-link>
+                        <FontAwesomeIcon className="mr-3" icon={faLink} />
+                      </md-link>
+                      <md-image>
+                        <FontAwesomeIcon className="mr-3" icon={faImage} />
+                      </md-image>
+                      <md-unordered-list>
+                        <FontAwesomeIcon className="mr-3" icon={faListOl} />
+                      </md-unordered-list>
+                      <md-ordered-list>
+                        <FontAwesomeIcon className="mr-3" icon={faListUl} />
+                      </md-ordered-list>
+                    </markdown-toolbar>
                     <Form.Control
+                      id="description"
                       as="textarea"
                       rows="3"
                       value={description}
@@ -307,7 +350,7 @@ class CreateDispute extends React.Component {
                   </Form.Group>
                 </Col>
                 <Col>
-                  <Form.Group id="markdown" controlId="markdown-description">
+                  <Form.Group id="markdown">
                     <ReactMarkdown source={description} />
                   </Form.Group>
                 </Col>
@@ -316,12 +359,12 @@ class CreateDispute extends React.Component {
               <hr />
               <Form.Row>
                 <Col>
-                  <Form.Group controlId="question">
+                  <Form.Group>
                     <Form.Label htmlFor="question">Question</Form.Label>
 
                     <Form.Control
+                      id="question"
                       as="input"
-                      rows="1"
                       value={question}
                       onChange={this.onControlChange}
                       placeholder={"Question"}

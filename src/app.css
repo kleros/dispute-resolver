@@ -121,12 +121,15 @@ h6 {
   margin: 0;
 }
 
-input,
-textarea,
-p,
-#markdown {
+.form-group > input,
+.form-group > textarea,
+.form-group > p {
   color: #4d00b4 !important;
-  font-weight: 500 !important;
+  font-weight: 500;
+}
+
+#markdown > p {
+  font-weight: normal !important;
 }
 
 body > div.modal > div > div > div.modal-body > form > div > div > div > input {
@@ -180,9 +183,9 @@ body > div.modal > div > div > div.modal-header {
   > div {
   height: 100%;
 }
-#description {
+/* #description {
   height: inherit;
-}
+} */
 
 blockquote {
   color: #666;
@@ -251,4 +254,8 @@ blockquote {
 
 .breadcrumb {
   background-image: "../arrow.svg";
+}
+
+svg {
+  color: #4d00b4;
 }
