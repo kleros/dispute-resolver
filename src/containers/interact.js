@@ -1,17 +1,7 @@
 import React from "react";
-import {
-  Button,
-  Card,
-  Col,
-  Container,
-  Form,
-  FormControl,
-  InputGroup,
-  Modal
-} from "react-bootstrap";
+import { Card, Col, Container, Form } from "react-bootstrap";
 import Evidence from "../components/evidence";
 import Appeal from "../components/appeal";
-import Dropzone from "react-dropzone";
 import debounce from "lodash.debounce";
 import IPFS from "../components/ipfs";
 
@@ -194,14 +184,7 @@ class Interact extends React.Component {
   getHumanReadablePeriod = period => this.PERIODS[period];
 
   render() {
-    const {
-      disputeID,
-      dispute,
-      fileInput,
-      evidenceTitle,
-      evidenceDescription,
-      arbitrableDispute
-    } = this.state;
+    const { disputeID, dispute, arbitrableDispute } = this.state;
 
     console.log(this.props);
     console.log(this.state);
@@ -268,107 +251,6 @@ class Interact extends React.Component {
         {this.state.crowdfundingStatus && (
           <Appeal crowdfundingStatus={this.state.crowdfundingStatus} />
         )}
-
-        <Modal
-          onHide={e => this.setState({ modalShow: false })}
-          show={this.state.modalShow}
-        >
-          <Modal.Header>
-            <Modal.Title>Submit Evidence</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <Form>
-              <Form.Row>
-                <Col>
-                  <Form.Group controlId="evidenceTitle">
-                    <Form.Label>Evidence Title</Form.Label>
-                    <Form.Control
-                      onChange={this.onControlChange}
-                      type="text"
-                      value={evidenceTitle}
-                    />
-                  </Form.Group>
-                </Col>
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <Form.Group controlId="evidenceDescription">
-                    <Form.Label>Evidence Description</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      onChange={this.onControlChange}
-                      type="text"
-                      value={evidenceDescription}
-                    />
-                  </Form.Group>
-                </Col>
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <Form.Group>
-                    <Form.Label htmlFor="dropzone">
-                      Evidence Document
-                    </Form.Label>
-                    <Dropzone onDrop={this.onDrop}>
-                      {({ getRootProperties, getInputProperties }) => (
-                        <section id="dropzone">
-                          <div
-                            {...getRootProperties()}
-                            className="vertical-center"
-                          >
-                            <input {...getInputProperties()} />
-                            <h5>
-                              {(fileInput && fileInput.path) ||
-                                "Drag 'n' drop some files here, or click to select files."}
-                            </h5>
-                          </div>
-                        </section>
-                      )}
-                    </Dropzone>
-                  </Form.Group>
-                </Col>
-              </Form.Row>
-            </Form>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button onClick={this.onSubmitButtonClick}>Submit</Button>
-          </Modal.Footer>
-        </Modal>
-        <Modal
-          onHide={e => this.setState({ contributeModalShow: false })}
-          show={this.state.contributeModalShow}
-        >
-          <Modal.Header>
-            <Modal.Title>Contribute to Fees</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <Modal.Title>Which side do you want to contribute</Modal.Title>
-            <Form>
-              <InputGroup className="mb-3">
-                <InputGroup.Prepend>
-                  <InputGroup.Radio
-                    aria-label="Checkbox for following text input"
-                    name="as"
-                  />
-                </InputGroup.Prepend>
-                <FormControl aria-label="Text input with checkbox" />
-              </InputGroup>
-              <InputGroup>
-                <InputGroup.Prepend>
-                  <InputGroup.Radio
-                    aria-label="Radio button for following text input"
-                    name="as"
-                  />
-                </InputGroup.Prepend>
-                <FormControl aria-label="Text input with radio button" />
-              </InputGroup>
-            </Form>
-          </Modal.Body>
-          <Modal.Footer>
-            <h4>Contribution Amount</h4>
-            <Button onClick={this.onSubmitButtonClick}>Submit</Button>
-          </Modal.Footer>
-        </Modal>
       </Container>
     );
   }
