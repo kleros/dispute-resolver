@@ -261,3 +261,8 @@ blockquote {
 svg {
   color: #4d00b4;
 }
+
+#markdown {
+  height: inherit;
+  padding: 0.375rem 0.75rem;
+}
