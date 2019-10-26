@@ -59,6 +59,8 @@ html {
   align-items: center;
 
   color: #ffffff;
+
+  cursor: pointer;
 }
 
 div.card-header > img {
