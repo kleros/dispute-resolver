@@ -122,7 +122,8 @@ class Interact extends React.Component {
     });
   };
 
-  onAppealButtonClick = async e => {};
+  appeal = async (party, contribution) =>
+    this.props.appealCallback(this.state.disputeID, party, contribution);
 
   onDisputeIDChange = async e => {
     const disputeID = e.target.value;
@@ -139,6 +140,7 @@ class Interact extends React.Component {
     let subcourtURI;
     let subcourt;
     let crowdfundingStatus;
+    let appealCost;
     try {
       arbitrableDispute = await this.props.getArbitrableDisputeCallback(
         arbitrableDisputeID
@@ -174,17 +176,27 @@ class Interact extends React.Component {
         arbitratorDispute.arbitrated,
         arbitrableDisputeID
       );
+      appealCost = await this.props.getAppealCostCallback(
+        arbitrableDispute.disputeIDOnArbitratorSide
+      );
+      console.log("CF");
       console.log(crowdfundingStatus);
+      this.setState({ crowdfundingStatus, appealCost });
     } catch (err) {
       console.error(err.message);
-      this.setState({ crowdfundingStatus });
     }
   };
 
   getHumanReadablePeriod = period => this.PERIODS[period];
 
   render() {
-    const { disputeID, dispute, arbitrableDispute } = this.state;
+    const {
+      disputeID,
+      dispute,
+      arbitrableDispute,
+      crowdfundingStatus,
+      appealCost
+    } = this.state;
 
     console.log(this.props);
     console.log(this.state);
@@ -208,6 +220,7 @@ class Interact extends React.Component {
                       onChange={this.onDisputeIDChange}
                       placeholder="Dispute identifier"
                       type="number"
+                      min="0"
                       value={disputeID}
                     />
                   </Form.Group>
@@ -245,12 +258,16 @@ class Interact extends React.Component {
               publishCallback={this.props.publishCallback}
               submitEvidenceCallback={this.submitEvidence}
             />
-            <IPFS publishCallback={this.onPublish} />
           </>
         )}
-        {this.state.crowdfundingStatus && (
-          <Appeal crowdfundingStatus={this.state.crowdfundingStatus} />
+        {dispute && dispute.period == 3 && crowdfundingStatus && (
+          <Appeal
+            crowdfundingStatus={crowdfundingStatus}
+            appealCost={appealCost}
+            appealCallback={this.appeal}
+          />
         )}
+        <IPFS publishCallback={this.onPublish} />
       </Container>
     );
   }

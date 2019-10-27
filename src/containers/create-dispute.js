@@ -243,6 +243,7 @@ class CreateDispute extends React.Component {
                       id="initialNumberOfJurors"
                       as="input"
                       type="number"
+                      min="0"
                       value={initialNumberOfJurors}
                       onChange={this.onControlChange}
                       placeholder={"Initial number of jurors"}

@@ -43,6 +43,11 @@ class App extends React.Component {
       window.ethereum.on("networkChanged", network => {
         this.setState({ network });
       });
+
+      window.ethereum.on("data", data => {
+        console.log(data);
+        this.forceUpdate();
+      });
     } else console.error("MetaMask not detected :(");
   }
 
@@ -148,6 +153,17 @@ class App extends React.Component {
       "appealCost",
       arbitratorDisputeID,
       "0x0"
+    );
+
+  appeal = async (arbitrableDisputeID, party, contribution) =>
+    EthereumInterface.send(
+      "BinaryArbitrableProxy",
+      networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
+      this.state.activeAddress,
+      contribution,
+      "appeal",
+      arbitrableDisputeID,
+      party
     );
 
   createDispute = async options => {
@@ -315,6 +331,7 @@ class App extends React.Component {
                     <Interact
                       route={route}
                       getAppealCostCallback={this.getAppealCost}
+                      appealCallback={this.appeal}
                       disputeID={lastDisputeID}
                       getContractInstanceCallback={this.getContractInstance}
                       getArbitratorDisputeCallback={this.getArbitratorDispute}
