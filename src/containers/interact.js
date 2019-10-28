@@ -9,7 +9,7 @@ class Interact extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      disputeID: (this.props.route && this.props.route.match.params.id) || 0,
+      disputeID: this.props.route && this.props.route.match.params.id,
       dispute: "",
       arbitrableDispute: "",
       fileInput: "",
@@ -218,7 +218,7 @@ class Interact extends React.Component {
                       as="input"
                       id="disputeID"
                       onChange={this.onDisputeIDChange}
-                      placeholder="Dispute identifier"
+                      placeholder="Please input a dispute identifier to query."
                       type="number"
                       min="0"
                       value={disputeID}
