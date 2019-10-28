@@ -476,7 +476,7 @@ class CreateDispute extends React.Component {
           onCreateDisputeButtonClick={this.onCreateDisputeButtonClick}
           awaitingConfirmation={awaitingConfirmation}
         />
-        <IPFS publishCallback={this.onPublish} />
+        <IPFS publishCallback={this.props.publishCallback} />
       </Container>
     );
   }

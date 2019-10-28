@@ -25,9 +25,7 @@ class TopBanner extends React.Component {
             <Nav.Link
               className="mx-3"
               href="/interact"
-              active={
-                this.props.pathname && this.props.pathname == "/interact/"
-              }
+              active={this.props.pathname && this.props.pathname == "/interact"}
             >
               Interact
             </Nav.Link>

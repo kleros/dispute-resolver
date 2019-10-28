@@ -276,7 +276,7 @@ class Interact extends React.Component {
               )}
             />
           )}
-        <IPFS publishCallback={this.onPublish} />
+        <IPFS publishCallback={this.props.publishCallback} />
       </Container>
     );
   }
