@@ -260,13 +260,22 @@ class Interact extends React.Component {
             />
           </>
         )}
-        {dispute && dispute.period == 3 && crowdfundingStatus && (
-          <Appeal
-            crowdfundingStatus={crowdfundingStatus}
-            appealCost={appealCost}
-            appealCallback={this.appeal}
-          />
-        )}
+        {dispute &&
+          dispute.period == 3 &&
+          crowdfundingStatus &&
+          arbitrableDispute && (
+            <Appeal
+              crowdfundingStatus={crowdfundingStatus}
+              appealCost={appealCost}
+              appealCallback={this.appeal}
+              appealPeriod={this.props.getAppealPeriodCallback(
+                arbitrableDispute.disputeIDOnArbitratorSide
+              )}
+              currentRuling={this.props.getCurrentRulingCallback(
+                arbitrableDispute.disputeIDOnArbitratorSide
+              )}
+            />
+          )}
         <IPFS publishCallback={this.onPublish} />
       </Container>
     );

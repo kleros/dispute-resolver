@@ -12,6 +12,7 @@ import {
 } from "react-bootstrap";
 import React from "react";
 import BigNumber from "bignumber.js";
+import Countdown from "react-countdown-now";
 
 class Appeal extends React.Component {
   constructor(properties) {
@@ -52,14 +53,40 @@ class Appeal extends React.Component {
     );
   };
 
-  render() {
-    const { modalShow, contribution, party } = this.state;
-    console.log(this.state);
-    console.log(
-      BigNumber(this.props.appealCost)
-        .minus(BigNumber(this.props.crowdfundingStatus[0][party]))
-        .toString()
+  componentDidMount() {
+    this.props.appealPeriod.then(response =>
+      this.setState({ appealPeriod: response })
     );
+
+    this.props.currentRuling.then(response =>
+      this.setState({ currentRuling: response })
+    );
+  }
+
+  render() {
+    const {
+      modalShow,
+      contribution,
+      party,
+      appealPeriod,
+      currentRuling
+    } = this.state;
+
+    const { crowdfundingStatus, appealCost } = this.props;
+
+    console.log(this.state);
+    console.log(this.props);
+
+    console.log(new Date().getTime());
+    console.log(
+      appealPeriod &&
+        BigNumber(appealPeriod.end)
+          .div(BigNumber(2))
+          .plus(BigNumber(appealPeriod.start).div(BigNumber(2)))
+          .times(BigNumber(1000))
+          .toString()
+    );
+
     return (
       <Container fluid="true">
         <Card disabled>
@@ -96,6 +123,11 @@ class Appeal extends React.Component {
                           <img alt="" src="clock_purple.svg" /> Requester
                         </div>
                         <div>
+                          {(currentRuling == "0" && "Tied") ||
+                            (currentRuling == "1" && "Winner") ||
+                            (currentRuling == "2" && "Loser")}
+                        </div>
+                        <div>
                           <ProgressBar
                             now={BigNumber(100)
                               .times(
@@ -103,10 +135,47 @@ class Appeal extends React.Component {
                               )
                               .div(BigNumber(this.props.appealCost))
                               .toString()}
+                            label={
+                              "%" +
+                              BigNumber(100)
+                                .times(
+                                  BigNumber(this.props.crowdfundingStatus[0][1])
+                                )
+                                .div(BigNumber(this.props.appealCost))
+                                .toFixed()
+                            }
                           />
                         </div>
                         <div>
-                          <img alt="" src="clock_purple.svg" /> Deadline
+                          {"%" +
+                            BigNumber(100)
+                              .times(
+                                BigNumber(crowdfundingStatus[0][1] / appealCost)
+                              )
+                              .toFixed() +
+                            " contribution"}
+                        </div>
+                        <div>
+                          <img alt="" src="clock_red.svg" />{" "}
+                          {appealPeriod && (
+                            <Countdown
+                              date={
+                                (currentRuling == "1" &&
+                                  BigNumber(appealPeriod.end)
+                                    .times(BigNumber(1000))
+                                    .toNumber()) ||
+                                BigNumber(appealPeriod.end)
+                                  .div(BigNumber(2))
+                                  .plus(
+                                    BigNumber(appealPeriod.start).div(
+                                      BigNumber(2)
+                                    )
+                                  )
+                                  .times(BigNumber(1000))
+                                  .toNumber()
+                              }
+                            />
+                          )}
                         </div>
                       </Card.Body>
                     </Card>
@@ -120,6 +189,11 @@ class Appeal extends React.Component {
                           <img alt="" src="clock_purple.svg" /> Respondent
                         </div>
                         <div>
+                          {(currentRuling == "0" && "Tied") ||
+                            (currentRuling == "1" && "Loser") ||
+                            (currentRuling == "2" && "Winner")}
+                        </div>
+                        <div>
                           <ProgressBar
                             now={BigNumber(100)
                               .times(
@@ -127,10 +201,47 @@ class Appeal extends React.Component {
                               )
                               .div(BigNumber(this.props.appealCost))
                               .toString()}
+                            label={
+                              "%" +
+                              BigNumber(100)
+                                .times(
+                                  BigNumber(this.props.crowdfundingStatus[0][2])
+                                )
+                                .div(BigNumber(this.props.appealCost))
+                                .toFixed(2)
+                            }
                           />
                         </div>
                         <div>
-                          <img alt="" src="clock_purple.svg" /> Deadline
+                          {"%" +
+                            BigNumber(100)
+                              .times(
+                                BigNumber(crowdfundingStatus[0][2] / appealCost)
+                              )
+                              .toFixed() +
+                            " contribution"}
+                        </div>
+                        <div>
+                          <img alt="" src="clock_red.svg" />{" "}
+                          {appealPeriod && (
+                            <Countdown
+                              date={
+                                (currentRuling == "2" &&
+                                  BigNumber(appealPeriod.end)
+                                    .times(BigNumber(1000))
+                                    .toNumber()) ||
+                                BigNumber(appealPeriod.end)
+                                  .div(BigNumber(2))
+                                  .plus(
+                                    BigNumber(appealPeriod.start).div(
+                                      BigNumber(2)
+                                    )
+                                  )
+                                  .times(BigNumber(1000))
+                                  .toNumber()
+                              }
+                            />
+                          )}
                         </div>
                       </Card.Body>
                     </Card>

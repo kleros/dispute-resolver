@@ -166,6 +166,22 @@ class App extends React.Component {
       party
     );
 
+  getAppealPeriod = async arbitratorDisputeID =>
+    EthereumInterface.call(
+      "KlerosLiquid",
+      networkMap[this.state.network].KLEROS_LIQUID,
+      "appealPeriod",
+      arbitratorDisputeID
+    );
+
+  getCurrentRuling = async arbitratorDisputeID =>
+    EthereumInterface.call(
+      "KlerosLiquid",
+      networkMap[this.state.network].KLEROS_LIQUID,
+      "currentRuling",
+      arbitratorDisputeID
+    );
+
   createDispute = async options => {
     console.log("CALLBACK CREATE DISPUTE");
     const { activeAddress, network } = this.state;
@@ -332,6 +348,8 @@ class App extends React.Component {
                       route={route}
                       getAppealCostCallback={this.getAppealCost}
                       appealCallback={this.appeal}
+                      getAppealPeriodCallback={this.getAppealPeriod}
+                      getCurrentRulingCallback={this.getCurrentRuling}
                       disputeID={lastDisputeID}
                       getContractInstanceCallback={this.getContractInstance}
                       getArbitratorDisputeCallback={this.getArbitratorDispute}
