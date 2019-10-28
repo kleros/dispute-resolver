@@ -45,7 +45,7 @@ class Interact extends React.Component {
     "Vote Period",
     "Appeal Period",
     "Execution Period",
-    "ERROR: Dispute id out of bounds.",
+    "Greek gods having trouble finding this dispute...",
     "Fetching..."
   ];
 
@@ -252,7 +252,7 @@ class Interact extends React.Component {
             <div />
           </Card.Footer>
         </Card>
-        {dispute && dispute.period != 4 && (
+        {dispute && ["0", "1", "2", "3"].find(x => x == dispute.period) && (
           <>
             <Evidence
               publishCallback={this.props.publishCallback}
