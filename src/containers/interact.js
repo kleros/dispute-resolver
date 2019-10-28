@@ -252,7 +252,7 @@ class Interact extends React.Component {
             <div />
           </Card.Footer>
         </Card>
-        {dispute && dispute.period == 0 && (
+        {dispute && dispute.period != 4 && (
           <>
             <Evidence
               publishCallback={this.props.publishCallback}
