@@ -226,7 +226,7 @@ class Interact extends React.Component {
                   </Form.Group>
                 </Col>
                 {arbitrableDispute && (
-                  <Col className="align-self-center">
+                  <Col className="text-center align-self-center">
                     <h4>
                       Check out this{" "}
                       <a
