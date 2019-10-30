@@ -18,15 +18,23 @@ class Appeal extends React.Component {
   constructor(properties) {
     super(properties);
     console.log(typeof this.props.appealCost);
-    let appealCostInEth = BigNumber(this.props.appealCost)
-      .minus(BigNumber(this.props.crowdfundingStatus[0][1]))
-      .div(BigNumber(10).pow(BigNumber(18)))
-      .toString();
+
     this.state = {
       modalShow: false,
-      contribution: appealCostInEth.toString(),
+      contribution: "",
       party: "1"
     };
+  }
+
+  async componentDidUpdate(previousProperties) {
+    if (
+      this.props.crowdfundingStatus !== previousProperties.crowdfundingStatus
+    ) {
+      console.log("componentDidUpdate");
+      this.props.crowdfundingStatus.then(response =>
+        this.setState({ crowdfundingStatus: response })
+      );
+    }
   }
 
   handleControlChange = async e => {
@@ -37,7 +45,7 @@ class Appeal extends React.Component {
     if (id == "party")
       await this.setState({
         contribution: BigNumber(this.props.appealCost)
-          .minus(BigNumber(this.props.crowdfundingStatus[0][this.state.party]))
+          .minus(BigNumber(this.state.crowdfundingStatus[0][this.state.party]))
           .div(BigNumber(10).pow(BigNumber(18)))
           .toString()
       });
@@ -53,6 +61,17 @@ class Appeal extends React.Component {
     );
   };
 
+  handleFundButtonClick = async e => {
+    let appealCostInEth = BigNumber(this.props.appealCost)
+      .minus(BigNumber(this.state.crowdfundingStatus[0][this.state.party]))
+      .div(BigNumber(10).pow(BigNumber(18)))
+      .toString();
+    this.setState({
+      contribution: appealCostInEth.toString(),
+      modalShow: true
+    });
+  };
+
   componentDidMount() {
     this.props.appealPeriod.then(response =>
       this.setState({ appealPeriod: response })
@@ -60,6 +79,10 @@ class Appeal extends React.Component {
 
     this.props.currentRuling.then(response =>
       this.setState({ currentRuling: response })
+    );
+
+    this.props.crowdfundingStatus.then(response =>
+      this.setState({ crowdfundingStatus: response })
     );
   }
 
@@ -69,10 +92,11 @@ class Appeal extends React.Component {
       contribution,
       party,
       appealPeriod,
-      currentRuling
+      currentRuling,
+      crowdfundingStatus
     } = this.state;
 
-    const { crowdfundingStatus, appealCost } = this.props;
+    const { appealCost } = this.props;
 
     console.log(this.state);
     console.log(this.props);
@@ -129,31 +153,34 @@ class Appeal extends React.Component {
                         </div>
                         <div>
                           <ProgressBar
-                            now={BigNumber(100)
-                              .times(
-                                BigNumber(this.props.crowdfundingStatus[0][1])
-                              )
-                              .div(BigNumber(this.props.appealCost))
-                              .toString()}
-                            label={
-                              "%" +
+                            now={
+                              crowdfundingStatus &&
                               BigNumber(100)
-                                .times(
-                                  BigNumber(this.props.crowdfundingStatus[0][1])
-                                )
+                                .times(BigNumber(crowdfundingStatus[0][1]))
                                 .div(BigNumber(this.props.appealCost))
-                                .toFixed()
+                                .toString()
+                            }
+                            label={
+                              crowdfundingStatus &&
+                              "%" +
+                                BigNumber(100)
+                                  .times(BigNumber(crowdfundingStatus[0][1]))
+                                  .div(BigNumber(this.props.appealCost))
+                                  .toFixed(2)
                             }
                           />
                         </div>
                         <div>
-                          {"%" +
-                            BigNumber(100)
-                              .times(
-                                BigNumber(crowdfundingStatus[0][1] / appealCost)
-                              )
-                              .toFixed() +
-                            " contribution"}
+                          {crowdfundingStatus &&
+                            "%" +
+                              BigNumber(100)
+                                .times(
+                                  BigNumber(
+                                    crowdfundingStatus[0][1] / appealCost
+                                  )
+                                )
+                                .toFixed(2) +
+                              " contribution"}
                         </div>
                         <div>
                           <img alt="" src="clock_red.svg" />{" "}
@@ -195,31 +222,34 @@ class Appeal extends React.Component {
                         </div>
                         <div>
                           <ProgressBar
-                            now={BigNumber(100)
-                              .times(
-                                BigNumber(this.props.crowdfundingStatus[0][2])
-                              )
-                              .div(BigNumber(this.props.appealCost))
-                              .toString()}
-                            label={
-                              "%" +
+                            now={
+                              crowdfundingStatus &&
                               BigNumber(100)
-                                .times(
-                                  BigNumber(this.props.crowdfundingStatus[0][2])
-                                )
+                                .times(BigNumber(crowdfundingStatus[0][2]))
                                 .div(BigNumber(this.props.appealCost))
                                 .toFixed(2)
+                            }
+                            label={
+                              crowdfundingStatus &&
+                              "%" +
+                                BigNumber(100)
+                                  .times(BigNumber(crowdfundingStatus[0][2]))
+                                  .div(BigNumber(this.props.appealCost))
+                                  .toFixed(2)
                             }
                           />
                         </div>
                         <div>
-                          {"%" +
-                            BigNumber(100)
-                              .times(
-                                BigNumber(crowdfundingStatus[0][2] / appealCost)
-                              )
-                              .toFixed() +
-                            " contribution"}
+                          {crowdfundingStatus &&
+                            "%" +
+                              BigNumber(100)
+                                .times(
+                                  BigNumber(
+                                    crowdfundingStatus[0][2] / appealCost
+                                  )
+                                )
+                                .toFixed(2) +
+                              " contribution"}
                         </div>
                         <div>
                           <img alt="" src="clock_red.svg" />{" "}
@@ -269,7 +299,7 @@ class Appeal extends React.Component {
                 <Col>
                   <Button
                     className="float-right"
-                    onClick={e => this.setState({ modalShow: true })}
+                    onClick={this.handleFundButtonClick}
                   >
                     Fund
                   </Button>
@@ -290,82 +320,119 @@ class Appeal extends React.Component {
             </Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            <Form>
-              <Form.Row>
-                <Col>
-                  <h4>Which side do you want to fund?</h4>
-                </Col>
-              </Form.Row>
-              <hr />
-              <Form.Row>
-                <Col>
-                  <InputGroup>
-                    <InputGroup.Prepend>
-                      <Form.Row>
-                        <Col>Requester</Col>
-                        <Col>Deadline</Col>
-                      </Form.Row>
-                    </InputGroup.Prepend>
-                    <InputGroup.Radio
-                      name="party"
-                      id="party"
-                      value="1"
-                      checked={this.state.party == "1"}
+            <Form id="fund-modal-form">
+              <Form.Group>
+                <Form.Row>
+                  <Col>
+                    <h4>Which side do you want to fund?</h4>
+                  </Col>
+                </Form.Row>
+                <hr />
+                <Form.Row>
+                  <Col>
+                    <InputGroup
+                      style={{
+                        justifyContent: "space-between",
+                        borderStyle: "unset"
+                      }}
+                    >
+                      <InputGroup.Prepend>
+                        <Form.Row>
+                          <Col>
+                            <h5 className="purple-2-inverted">
+                              Previous Round{" "}
+                              {(currentRuling == "0" && "Tied") ||
+                                (currentRuling == "1" && "Winner") ||
+                                (currentRuling == "2" && "Loser")}
+                            </h5>
+                            <p className="purple-2-inverted">Requester</p>
+                          </Col>
+                        </Form.Row>
+                      </InputGroup.Prepend>
+                      <InputGroup.Radio
+                        name="party"
+                        id="party"
+                        value="1"
+                        checked={this.state.party == "1"}
+                        onChange={this.handleControlChange}
+                      />
+                    </InputGroup>
+                  </Col>
+                </Form.Row>
+                <hr />
+                <Form.Row>
+                  <Col>
+                    <InputGroup style={{ justifyContent: "space-between" }}>
+                      <InputGroup.Prepend>
+                        <Form.Row>
+                          <Col>
+                            <h5 className="purple-2-inverted">
+                              Previous Round{" "}
+                              {(currentRuling == "0" && "Tied") ||
+                                (currentRuling == "1" && "Loser") ||
+                                (currentRuling == "2" && "Winner")}
+                            </h5>
+                            <p className="purple-2-inverted">Respondent</p>
+                          </Col>
+                        </Form.Row>
+                      </InputGroup.Prepend>
+                      <InputGroup.Radio
+                        name="party"
+                        id="party"
+                        value="2"
+                        checked={this.state.party == "2"}
+                        onChange={this.handleControlChange}
+                      />
+                    </InputGroup>
+                  </Col>
+                </Form.Row>
+                <hr />
+                <Form.Row>
+                  <Col>
+                    <h4>Contribution Amount (ETH)</h4>
+                  </Col>
+                </Form.Row>
+                <Form.Row className="mb-3">
+                  <Col>
+                    <Form.Control
+                      id="contribution"
+                      type="number"
+                      max={
+                        crowdfundingStatus &&
+                        BigNumber(this.props.appealCost)
+                          .minus(BigNumber(crowdfundingStatus[0][party]))
+                          .div(BigNumber(10).pow(BigNumber(18)))
+                          .toString()
+                      }
+                      min="0"
+                      step="0.001"
+                      value={contribution}
                       onChange={this.handleControlChange}
+                      placeholder="Please enter an amount in ether."
                     />
-                  </InputGroup>
-                </Col>
-              </Form.Row>
-              <hr />
-              <Form.Row>
-                <Col>
-                  <InputGroup>
-                    <InputGroup.Prepend>
-                      <Form.Row>
-                        <Col>Respondent</Col>
-                        <Col>Deadline</Col>
-                      </Form.Row>
-                    </InputGroup.Prepend>
-                    <InputGroup.Radio
-                      name="party"
-                      id="party"
-                      value="2"
-                      checked={this.state.party == "2"}
-                      onChange={this.handleControlChange}
-                    />
-                  </InputGroup>
-                </Col>
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <h4>Contribution Amount</h4>
-                </Col>
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <Form.Control
-                    id="contribution"
-                    type="number"
-                    max={BigNumber(this.props.appealCost)
-                      .minus(BigNumber(this.props.crowdfundingStatus[0][party]))
-                      .div(BigNumber(10).pow(BigNumber(18)))
-                      .toString()}
-                    min="0"
-                    step="0.001"
-                    value={contribution}
-                    onChange={this.handleControlChange}
-                    placeholder="Please select a court and specify number of jurors."
-                  />
-                </Col>
-              </Form.Row>
-              <Form.Row>
-                <Button onClick={e => this.setState({ modalShow: false })}>
-                  Return
-                </Button>
-                <Button onClick={this.handleContributeButtonClick}>
-                  Contribute
-                </Button>
-              </Form.Row>
+                  </Col>
+                </Form.Row>
+                <Form.Row>
+                  <Col>
+                    <Button
+                      variant="light"
+                      className="float-left"
+                      onClick={e => this.setState({ modalShow: false })}
+                    >
+                      Return
+                    </Button>
+                  </Col>
+                  <Col>
+                    <Button
+                      variant="primary"
+                      className="float-right"
+                      onClick={this.handleContributeButtonClick}
+                    >
+                      Contribute
+                    </Button>
+                  </Col>
+                </Form.Row>
+              </Form.Group>
             </Form>
           </Modal.Body>
         </Modal>

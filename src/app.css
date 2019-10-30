@@ -20,6 +20,15 @@ html {
   color: #4004a3;
 }
 
+.purple-2 {
+  background-color: #4d00b4;
+  color: white;
+}
+
+.purple-2-inverted {
+  color: #4d00b4;
+}
+
 .blue {
   background-color: #009aff;
   color: white;
@@ -72,11 +81,6 @@ div.card-header > img {
   margin-bottom: 30px;
 }
 
-hr {
-  border-top: 5px solid #009aff;
-  margin-top: 0;
-}
-
 form > hr {
   border-top: 2px solid #4d00b4;
   margin-bottom: 25px;
@@ -113,12 +117,12 @@ button::after {
 }
 
 #dropzone > div > p,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+#dropzone > div > h1,
+#dropzone > div > h2,
+#dropzone > div > h3,
+#dropzone > div > h4,
+#dropzone > div > h5,
+#dropzone > div > h6 {
   text-align: center;
   margin: 0;
 }
@@ -142,6 +146,12 @@ body > div.modal > div > div > div.modal-body > form > div > div > div > input {
 
 body > div.modal > div > div > div.modal-body > form {
   background-color: #f5f1fd;
+  border-radius: 12px;
+  padding: 15px;
+}
+
+#fund-modal-form {
+  background-color: white;
   border-radius: 12px;
   padding: 15px;
 }
@@ -265,4 +275,11 @@ svg {
 #markdown {
   height: inherit;
   padding: 0.375rem 0.75rem;
+}
+
+span.input-group-text {
+  background-color: transparent;
+  border-style: none;
+  transform: scale(2);
+  align-self: center;
 }

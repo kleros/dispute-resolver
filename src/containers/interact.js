@@ -265,7 +265,10 @@ class Interact extends React.Component {
           crowdfundingStatus &&
           arbitrableDispute && (
             <Appeal
-              crowdfundingStatus={crowdfundingStatus}
+              crowdfundingStatus={this.props.getCrowdfundingStatusCallback(
+                dispute.arbitrated,
+                disputeID
+              )}
               appealCost={appealCost}
               appealCallback={this.appeal}
               appealPeriod={this.props.getAppealPeriodCallback(
@@ -274,6 +277,7 @@ class Interact extends React.Component {
               currentRuling={this.props.getCurrentRulingCallback(
                 arbitrableDispute.disputeIDOnArbitratorSide
               )}
+              metaevidence={this.state.metaevidence}
             />
           )}
         <IPFS publishCallback={this.props.publishCallback} />
