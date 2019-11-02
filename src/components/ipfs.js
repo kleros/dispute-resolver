@@ -58,7 +58,7 @@ class IPFS extends React.Component {
               />{" "}
               Upload to IPFS
             </Accordion.Toggle>
-            <hr />
+            <hr className="mt-0" />
             <Accordion.Collapse eventKey="0">
               <Card.Body>
                 <Form>

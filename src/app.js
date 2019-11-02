@@ -129,7 +129,8 @@ class App extends React.Component {
       "BinaryArbitrableProxy",
       arbitrableAddress,
       "crowdfundingStatus",
-      arbitrableDisputeID
+      arbitrableDisputeID,
+      this.state.activeAddress
     );
 
   updateLastDisputeID = async newDisputeID =>
@@ -198,7 +199,9 @@ class App extends React.Component {
     const metaevidence = {
       category: "unused",
       title: options.title,
+      category: options.category,
       description: options.description,
+      aliases: options.aliases,
       question: options.question,
       rulingOptions: {
         type: "single-select",
@@ -311,7 +314,7 @@ class App extends React.Component {
       return (
         <Container fluid="true">
           <TopBanner description="description" title="title" />
-          <_404 />
+          <_404 Web3={true} />
           <Footer description="description" title="title" />
         </Container>
       );
@@ -327,6 +330,7 @@ class App extends React.Component {
                   <>
                     <TopBanner pathname={route.location.pathname} />
                     <CreateDispute
+                      activeAddress={this.state.activeAddress}
                       route={route}
                       createDisputeCallback={this.createDispute}
                       getArbitrationCostCallback={
@@ -334,6 +338,7 @@ class App extends React.Component {
                       }
                       getSubCourtDetailsCallback={this.getSubCourtDetails}
                       publishCallback={this.onPublish}
+                      web3={Web3}
                     />
                   </>
                 )}
@@ -370,6 +375,7 @@ class App extends React.Component {
                   </>
                 )}
               />
+              <Route component={_404} />
             </Switch>
           </BrowserRouter>
           <Footer description="description" title="title" />

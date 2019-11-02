@@ -141,17 +141,46 @@ class Appeal extends React.Component {
               <Form.Row>
                 <Col>
                   <Form.Group>
-                    <Card>
+                    <Card className="mx-0 crowfunding-card">
                       <Card.Body>
-                        <div>
-                          <img alt="" src="clock_purple.svg" /> Requester
-                        </div>
-                        <div>
-                          {(currentRuling == "0" && "Tied") ||
-                            (currentRuling == "1" && "Winner") ||
-                            (currentRuling == "2" && "Loser")}
-                        </div>
-                        <div>
+                        <Form.Row>
+                          <Col s={1} md={1} l={1} xl={1}>
+                            <div>
+                              <img alt="" src="clock_purple.svg" />
+                            </div>
+                          </Col>
+                          <Col>
+                            <Form.Row>
+                              <Col>
+                                <a
+                                  href={`https://etherscan.io/address/${
+                                    Object.keys(
+                                      this.props.metaevidence.metaEvidenceJSON
+                                        .aliases
+                                    )[0]
+                                  }
+                                  `}
+                                  target="_blank"
+                                  rel="no-referrer no-opener"
+                                >
+                                  {(this.props.metaevidence.metaEvidenceJSON
+                                    .aliases &&
+                                    Object.values(
+                                      this.props.metaevidence.metaEvidenceJSON
+                                        .aliases
+                                    )[0]) ||
+                                    "Requester"}
+                                </a>
+                                <div className="">
+                                  {(currentRuling == "0" && "Tied") ||
+                                    (currentRuling == "1" && "Winner") ||
+                                    (currentRuling == "2" && "Loser")}
+                                </div>
+                              </Col>
+                            </Form.Row>
+                          </Col>
+                        </Form.Row>
+                        <div className="my-3">
                           <ProgressBar
                             now={
                               crowdfundingStatus &&
@@ -170,64 +199,96 @@ class Appeal extends React.Component {
                             }
                           />
                         </div>
-                        <div>
+                        <h4 className="purple-inverted text-center">
                           {crowdfundingStatus &&
-                            "%" +
+                            "You contributed %" +
                               BigNumber(100)
                                 .times(
                                   BigNumber(
-                                    crowdfundingStatus[0][1] / appealCost
+                                    crowdfundingStatus[3][1] / appealCost
                                   )
                                 )
-                                .toFixed(2) +
-                              " contribution"}
-                        </div>
-                        <div>
-                          <img alt="" src="clock_red.svg" />{" "}
-                          {appealPeriod && (
-                            <Countdown
-                              date={
-                                (currentRuling == "1" &&
+                                .toFixed(2)}
+                        </h4>
+                        <Form.Row>
+                          <Col s={1} md={1} l={1} xl={1}>
+                            <img alt="" src="clock_red.svg" />{" "}
+                          </Col>
+                          <Col>
+                            {appealPeriod && (
+                              <Countdown
+                                date={
+                                  (currentRuling == "1" &&
+                                    BigNumber(appealPeriod.end)
+                                      .times(BigNumber(1000))
+                                      .toNumber()) ||
                                   BigNumber(appealPeriod.end)
-                                    .times(BigNumber(1000))
-                                    .toNumber()) ||
-                                BigNumber(appealPeriod.end)
-                                  .div(BigNumber(2))
-                                  .plus(
-                                    BigNumber(appealPeriod.start).div(
-                                      BigNumber(2)
+                                    .div(BigNumber(2))
+                                    .plus(
+                                      BigNumber(appealPeriod.start).div(
+                                        BigNumber(2)
+                                      )
                                     )
-                                  )
-                                  .times(BigNumber(1000))
-                                  .toNumber()
-                              }
-                            />
-                          )}
-                        </div>
+                                    .times(BigNumber(1000))
+                                    .toNumber()
+                                }
+                              />
+                            )}
+                          </Col>
+                        </Form.Row>
                       </Card.Body>
                     </Card>
                   </Form.Group>
                 </Col>
                 <Col>
                   <Form.Group>
-                    <Card>
+                    <Card className="mx-0 crowfunding-card">
                       <Card.Body>
-                        <div>
-                          <img alt="" src="clock_purple.svg" /> Respondent
-                        </div>
-                        <div>
-                          {(currentRuling == "0" && "Tied") ||
-                            (currentRuling == "1" && "Loser") ||
-                            (currentRuling == "2" && "Winner")}
-                        </div>
-                        <div>
+                        <Form.Row>
+                          <Col s={1} md={1} l={1} xl={1}>
+                            <div>
+                              <img alt="" src="clock_purple.svg" />
+                            </div>
+                          </Col>
+                          <Col>
+                            <Form.Row>
+                              <Col>
+                                <a
+                                  href={`https://etherscan.io/address/${
+                                    Object.keys(
+                                      this.props.metaevidence.metaEvidenceJSON
+                                        .aliases
+                                    )[1]
+                                  }
+                                `}
+                                  target="_blank"
+                                  rel="no-referrer no-opener"
+                                >
+                                  {(this.props.metaevidence.metaEvidenceJSON
+                                    .aliases &&
+                                    Object.values(
+                                      this.props.metaevidence.metaEvidenceJSON
+                                        .aliases
+                                    )[1]) ||
+                                    "Respondent"}
+                                </a>
+                                <div className="">
+                                  {(currentRuling == "0" && "Tied") ||
+                                    (currentRuling == "1" && "Loser") ||
+                                    (currentRuling == "2" && "Winner")}
+                                </div>
+                              </Col>
+                            </Form.Row>
+                          </Col>
+                        </Form.Row>
+                        <div className="my-3">
                           <ProgressBar
                             now={
                               crowdfundingStatus &&
                               BigNumber(100)
                                 .times(BigNumber(crowdfundingStatus[0][2]))
                                 .div(BigNumber(this.props.appealCost))
-                                .toFixed(2)
+                                .toString()
                             }
                             label={
                               crowdfundingStatus &&
@@ -239,40 +300,43 @@ class Appeal extends React.Component {
                             }
                           />
                         </div>
-                        <div>
+                        <h4 className="purple-inverted text-center">
                           {crowdfundingStatus &&
-                            "%" +
+                            "You contributed %" +
                               BigNumber(100)
                                 .times(
                                   BigNumber(
-                                    crowdfundingStatus[0][2] / appealCost
+                                    crowdfundingStatus[3][2] / appealCost
                                   )
                                 )
-                                .toFixed(2) +
-                              " contribution"}
-                        </div>
-                        <div>
-                          <img alt="" src="clock_red.svg" />{" "}
-                          {appealPeriod && (
-                            <Countdown
-                              date={
-                                (currentRuling == "2" &&
+                                .toFixed(2)}
+                        </h4>
+                        <Form.Row>
+                          <Col s={1} md={1} l={1} xl={1}>
+                            <img alt="" src="clock_red.svg" />{" "}
+                          </Col>
+                          <Col>
+                            {appealPeriod && (
+                              <Countdown
+                                date={
+                                  (currentRuling == "2" &&
+                                    BigNumber(appealPeriod.end)
+                                      .times(BigNumber(1000))
+                                      .toNumber()) ||
                                   BigNumber(appealPeriod.end)
-                                    .times(BigNumber(1000))
-                                    .toNumber()) ||
-                                BigNumber(appealPeriod.end)
-                                  .div(BigNumber(2))
-                                  .plus(
-                                    BigNumber(appealPeriod.start).div(
-                                      BigNumber(2)
+                                    .div(BigNumber(2))
+                                    .plus(
+                                      BigNumber(appealPeriod.start).div(
+                                        BigNumber(2)
+                                      )
                                     )
-                                  )
-                                  .times(BigNumber(1000))
-                                  .toNumber()
-                              }
-                            />
-                          )}
-                        </div>
+                                    .times(BigNumber(1000))
+                                    .toNumber()
+                                }
+                              />
+                            )}
+                          </Col>
+                        </Form.Row>
                       </Card.Body>
                     </Card>
                   </Form.Group>
@@ -280,16 +344,23 @@ class Appeal extends React.Component {
 
                 <Col>
                   <Form.Group>
-                    <Card>
-                      <Card.Body className="text-center">
-                        <p>
-                          <img alt="" src="warning.svg" />
-                        </p>
-                        <p>
-                          If the loser complete it's appeal funding the winner
-                          of the previous round should also fully fund the
-                          appeal, in order not to lose the case.
-                        </p>
+                    <Card className="mx-0 crowfunding-card">
+                      <Card.Body>
+                        <Form.Row>
+                          <Col className="text-center my-3">
+                            <img src="warning.svg" />
+                          </Col>
+                        </Form.Row>
+
+                        <Form.Row>
+                          <Col>
+                            <p id="warning">
+                              If loser side is fully funded, winner side should
+                              also be fully funded in order to not to lose the
+                              case.
+                            </p>
+                          </Col>
+                        </Form.Row>
                       </Card.Body>
                     </Card>
                   </Form.Group>
@@ -298,7 +369,7 @@ class Appeal extends React.Component {
               <Form.Row>
                 <Col>
                   <Button
-                    className="float-right"
+                    className="float-right ok"
                     onClick={this.handleFundButtonClick}
                   >
                     Fund
@@ -415,8 +486,7 @@ class Appeal extends React.Component {
                 <Form.Row>
                   <Col>
                     <Button
-                      variant="light"
-                      className="float-left"
+                      className="float-left return"
                       onClick={e => this.setState({ modalShow: false })}
                     >
                       Return
@@ -424,8 +494,7 @@ class Appeal extends React.Component {
                   </Col>
                   <Col>
                     <Button
-                      variant="primary"
-                      className="float-right"
+                      className="float-right ok"
                       onClick={this.handleContributeButtonClick}
                     >
                       Contribute

@@ -127,7 +127,7 @@ class Evidence extends React.Component {
                 <Col>
                   <Form.Group>
                     <Button
-                      className="float-right"
+                      className="float-right ok"
                       onClick={this.handleSubmitEvidenceButtonClick}
                       disabled={
                         !evidenceTitle ||

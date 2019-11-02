@@ -4,7 +4,13 @@ import React from "react";
 class Footer extends React.Component {
   render() {
     return (
-      <Navbar collapseOnSelect expand="lg" variant="dark" id="footer">
+      <Navbar
+        collapseOnSelect
+        expand="lg"
+        variant="dark"
+        id="footer"
+        fixed="bottom"
+      >
         <Navbar.Brand href="https://kleros.io">
           Find out more about Kleros
         </Navbar.Brand>

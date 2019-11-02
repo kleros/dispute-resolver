@@ -16,7 +16,12 @@ class Confirmation extends React.Component {
       initialNumberOfJurors,
       arbitrationCost,
       title,
+      category,
       description,
+      requester,
+      requesterAddress,
+      respondent,
+      respondentAddress,
       question,
       firstRulingOption,
       firstRulingDescription,
@@ -28,13 +33,8 @@ class Confirmation extends React.Component {
     } = this.props;
 
     return (
-      <Modal
-        size="xl"
-        show={show}
-        onHide={this.props.onModalHide}
-        animation={false}
-      >
-        <Modal.Header closeButton>
+      <Modal size="xl" show={show} animation={false} closeButton={false}>
+        <Modal.Header>
           <Modal.Title>Dispute Summmary</Modal.Title>
         </Modal.Header>
         <Modal.Body>
@@ -71,6 +71,12 @@ class Confirmation extends React.Component {
                   <Form.Control readOnly type="text" value={title} />
                 </Form.Group>
               </Col>
+              <Col>
+                <Form.Group controlId="title">
+                  <Form.Label>Category</Form.Label>
+                  <Form.Control readOnly type="text" value={category} />
+                </Form.Group>
+              </Col>
             </Form.Row>
             <Form.Row>
               <Col>
@@ -79,6 +85,49 @@ class Confirmation extends React.Component {
                   <p>
                     <ReactMarkdown source={description} />
                   </p>
+                </Form.Group>
+              </Col>
+            </Form.Row>
+            <hr />
+            <Form.Row>
+              <Col md={2} l={2} xl={2}>
+                <Form.Group controlId="requester">
+                  <Form.Label>Requester Alias</Form.Label>
+                  <Form.Control readOnly type="text" value={requester} />
+                </Form.Group>
+              </Col>
+              <Col md={4} l={4} xl={4}>
+                <Form.Group controlId="requesterAddress">
+                  <Form.Label>Requester Address</Form.Label>
+                  <Form.Control
+                    readOnly
+                    type="text"
+                    value={
+                      requesterAddress.substring(0, 6) +
+                      "..." +
+                      requesterAddress.substring(38, 42)
+                    }
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={2} l={2} xl={2}>
+                <Form.Group controlId="respondent">
+                  <Form.Label>Respondent Alias</Form.Label>
+                  <Form.Control readOnly type="text" value={respondent} />
+                </Form.Group>
+              </Col>
+              <Col md={4} l={4} xl={4}>
+                <Form.Group controlId="respondentAddress">
+                  <Form.Label>Respondent Address</Form.Label>
+                  <Form.Control
+                    readOnly
+                    type="text"
+                    value={
+                      respondentAddress.substring(0, 6) +
+                      "..." +
+                      respondentAddress.substring(38, 42)
+                    }
+                  />
                 </Form.Group>
               </Col>
             </Form.Row>
@@ -155,11 +204,11 @@ class Confirmation extends React.Component {
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={this.props.onModalHide}>
+          <Button className="return" onClick={this.props.onModalHide}>
             Close
           </Button>
           <Button
-            variant="primary"
+            className="ok"
             onClick={this.props.onCreateDisputeButtonClick}
             disabled={awaitingConfirmation}
           >

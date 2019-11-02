@@ -28,6 +28,7 @@ class CreateDispute extends React.Component {
     this.state = {
       initialNumberOfJurors: "3",
       title: "",
+      category: "",
       description: "",
       question: "",
       firstRulingOption: "",
@@ -41,7 +42,11 @@ class CreateDispute extends React.Component {
       subcourts: [],
       subcourtsLoading: true,
       arbitrationCost: "",
-      primaryDocument: ""
+      primaryDocument: "",
+      requester: "Requester",
+      respondent: "Respondent",
+      requesterAddress: props.web3.utils.toChecksumAddress(props.activeAddress),
+      respondentAddress: props.web3.utils.toChecksumAddress(props.activeAddress)
     };
   }
 
@@ -139,7 +144,12 @@ class CreateDispute extends React.Component {
       selectedSubcourt,
       initialNumberOfJurors,
       title,
+      category,
       description,
+      requester,
+      requesterAddress,
+      respondent,
+      respondentAddress,
       question,
       firstRulingOption,
       secondRulingOption,
@@ -154,7 +164,12 @@ class CreateDispute extends React.Component {
         selectedSubcourt,
         initialNumberOfJurors,
         title,
+        category,
         description,
+        aliases: {
+          [requesterAddress]: requester,
+          [respondentAddress]: respondent
+        },
         question,
         firstRulingOption,
         secondRulingOption,
@@ -179,6 +194,7 @@ class CreateDispute extends React.Component {
     const {
       initialNumberOfJurors,
       title,
+      category,
       description,
       question,
       firstRulingOption,
@@ -193,8 +209,14 @@ class CreateDispute extends React.Component {
       subcourts,
       subcourtsLoading,
       fileInput,
-      arbitrationCost
+      arbitrationCost,
+      requester,
+      respondent,
+      requesterAddress,
+      respondentAddress
     } = this.state;
+
+    const { activeAddress } = this.props;
 
     return (
       <Container fluid="true">
@@ -205,7 +227,7 @@ class CreateDispute extends React.Component {
             <img src="gavel.svg" alt="gavel" />
             Create a Dispute
           </Card.Header>
-          <hr />
+          <hr className="mt-0" />
           <Card.Body>
             <Form>
               <Form.Row>
@@ -237,7 +259,7 @@ class CreateDispute extends React.Component {
                 <Col>
                   <Form.Group>
                     <Form.Label htmlFor="initialNumberOfJurors">
-                      Initial number of jurors
+                      Number of Jurors
                     </Form.Label>
                     <Form.Control
                       id="initialNumberOfJurors"
@@ -246,7 +268,7 @@ class CreateDispute extends React.Component {
                       min="0"
                       value={initialNumberOfJurors}
                       onChange={this.onControlChange}
-                      placeholder={"Initial number of jurors"}
+                      placeholder={"Number of jurors"}
                     />
                   </Form.Group>
                 </Col>{" "}
@@ -276,6 +298,18 @@ class CreateDispute extends React.Component {
                       value={title}
                       onChange={this.onControlChange}
                       placeholder={"Title"}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col>
+                  <Form.Group>
+                    <Form.Label htmlFor="category">Category</Form.Label>
+                    <Form.Control
+                      id="category"
+                      as="input"
+                      value={category}
+                      onChange={this.onControlChange}
+                      placeholder={"Category"}
                     />
                   </Form.Group>
                 </Col>
@@ -330,6 +364,73 @@ class CreateDispute extends React.Component {
                 <Col>
                   <Form.Group id="markdown">
                     <ReactMarkdown source={description} />
+                  </Form.Group>
+                </Col>
+              </Form.Row>
+
+              <hr />
+              <Form.Row>
+                <Col md={2} l={2} xl={2}>
+                  <Form.Group>
+                    <Form.Label htmlFor="requester">Requester Alias</Form.Label>
+
+                    <Form.Control
+                      id="requester"
+                      as="input"
+                      value={requester}
+                      onChange={this.onControlChange}
+                      placeholder={"Please enter alias"}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4} l={4} xl={4}>
+                  <Form.Group>
+                    <Form.Label htmlFor="requesterAddress">
+                      Requester Address
+                    </Form.Label>
+
+                    <Form.Control
+                      className={
+                        !this.props.web3.utils.checkAddressChecksum(
+                          requesterAddress
+                        ) && "text-danger"
+                      }
+                      id="requesterAddress"
+                      as="input"
+                      value={requesterAddress}
+                      onChange={this.onControlChange}
+                      placeholder={"Please enter address"}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={2} l={2} xl={2}>
+                  <Form.Group>
+                    <Form.Label htmlFor="respondent">
+                      Respondent Alias
+                    </Form.Label>
+
+                    <Form.Control
+                      id="respondent"
+                      as="input"
+                      value={respondent}
+                      onChange={this.onControlChange}
+                      placeholder={"Please enter alias"}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4} l={4} xl={4}>
+                  <Form.Group>
+                    <Form.Label htmlFor="respondentAddress">
+                      Respondent Address
+                    </Form.Label>
+
+                    <Form.Control
+                      id="respondentAddress"
+                      as="input"
+                      value={respondentAddress}
+                      onChange={this.onControlChange}
+                      placeholder={"Please enter address"}
+                    />
                   </Form.Group>
                 </Col>
               </Form.Row>
@@ -437,15 +538,20 @@ class CreateDispute extends React.Component {
                   !initialNumberOfJurors ||
                   !title ||
                   !description ||
+                  !category ||
                   !question ||
                   !firstRulingOption ||
                   !firstRulingDescription ||
                   !secondRulingOption ||
                   !secondRulingDescription ||
-                  !primaryDocument
+                  !primaryDocument ||
+                  !requester ||
+                  !respondent ||
+                  !requesterAddress ||
+                  !respondentAddress
                 }
-                variant="primary"
                 type="button"
+                className="ok"
                 onClick={this.onModalShow}
                 block
               >
@@ -463,7 +569,12 @@ class CreateDispute extends React.Component {
           initialNumberOfJurors={initialNumberOfJurors}
           arbitrationCost={arbitrationCost}
           title={title}
+          category={category}
           description={description}
+          requester={requester}
+          requesterAddress={requesterAddress}
+          respondent={respondent}
+          respondentAddress={respondentAddress}
           question={question}
           firstRulingOption={firstRulingOption}
           firstRulingDescription={firstRulingDescription}

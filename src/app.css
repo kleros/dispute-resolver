@@ -1,3 +1,8 @@
+body {
+  padding-bottom: 100px;
+  background-color: #f2e3ff;
+}
+
 html {
   background-color: #f2e3ff;
 }
@@ -36,6 +41,27 @@ html {
 
 .blue-inverted {
   color: #009aff;
+}
+
+.blue-2 {
+  background-color: #00aaff;
+  color: white;
+}
+
+.blue-inverted-2 {
+  color: #00aaff;
+}
+
+button.return {
+  background-color: transparent;
+  border-color: #4d00b4;
+  color: #4d00b4;
+}
+
+button.ok {
+  background-color: #009aff;
+  border-radius: 3px;
+  color: white;
 }
 
 .container-fluid {
@@ -130,7 +156,7 @@ button::after {
 .form-group > input,
 .form-group > textarea,
 .form-group > p {
-  color: #4d00b4 !important;
+  color: #4d00b4;
   font-weight: 500;
 }
 
@@ -149,8 +175,7 @@ body > div.modal > div > div > div.modal-body > form {
   border-radius: 12px;
   padding: 15px;
 }
-
-#fund-modal-form {
+4 #fund-modal-form {
   background-color: white;
   border-radius: 12px;
   padding: 15px;
@@ -282,4 +307,18 @@ span.input-group-text {
   border-style: none;
   transform: scale(2);
   align-self: center;
+}
+
+#warning {
+  font-style: normal;
+  font-weight: normal;
+  font-size: 16px;
+  line-height: 22px;
+  text-align: center;
+  color: #4d00b4;
+}
+
+.crowfunding-card {
+  border-radius: 12px;
+  box-shadow: 0px 6px 36px rgba(24, 0, 255, 0.25);
 }
