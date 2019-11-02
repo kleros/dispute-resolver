@@ -152,25 +152,30 @@ class Appeal extends React.Component {
                           <Col>
                             <Form.Row>
                               <Col>
-                                <a
-                                  href={`https://etherscan.io/address/${
-                                    Object.keys(
-                                      this.props.metaevidence.metaEvidenceJSON
-                                        .aliases
-                                    )[0]
-                                  }
+                                {(this.props.metaevidence.metaEvidenceJSON
+                                  .aliases &&
+                                  this.props.metaevidence.metaEvidenceJSON
+                                    .aliases[0] && (
+                                    <a
+                                      href={`https://etherscan.io/address/${
+                                        Object.keys(
+                                          this.props.metaevidence
+                                            .metaEvidenceJSON.aliases
+                                        )[0]
+                                      }
                                   `}
-                                  target="_blank"
-                                  rel="no-referrer no-opener"
-                                >
-                                  {(this.props.metaevidence.metaEvidenceJSON
-                                    .aliases &&
-                                    Object.values(
-                                      this.props.metaevidence.metaEvidenceJSON
-                                        .aliases
-                                    )[0]) ||
-                                    "Requester"}
-                                </a>
+                                      target="_blank"
+                                      rel="no-referrer no-opener"
+                                    >
+                                      {
+                                        Object.values(
+                                          this.props.metaevidence
+                                            .metaEvidenceJSON.aliases
+                                        )[0]
+                                      }
+                                    </a>
+                                  )) ||
+                                  "Requester"}
                                 <div className="">
                                   {(currentRuling == "0" && "Tied") ||
                                     (currentRuling == "1" && "Winner") ||
@@ -253,25 +258,30 @@ class Appeal extends React.Component {
                           <Col>
                             <Form.Row>
                               <Col>
-                                <a
-                                  href={`https://etherscan.io/address/${
-                                    Object.keys(
-                                      this.props.metaevidence.metaEvidenceJSON
-                                        .aliases
-                                    )[1]
-                                  }
+                                {(this.props.metaevidence.metaEvidenceJSON
+                                  .aliases &&
+                                  this.props.metaevidence.metaEvidenceJSON
+                                    .aliases[1] && (
+                                    <a
+                                      href={`https://etherscan.io/address/${
+                                        Object.keys(
+                                          this.props.metaevidence
+                                            .metaEvidenceJSON.aliases
+                                        )[1]
+                                      }
                                 `}
-                                  target="_blank"
-                                  rel="no-referrer no-opener"
-                                >
-                                  {(this.props.metaevidence.metaEvidenceJSON
-                                    .aliases &&
-                                    Object.values(
-                                      this.props.metaevidence.metaEvidenceJSON
-                                        .aliases
-                                    )[1]) ||
-                                    "Respondent"}
-                                </a>
+                                      target="_blank"
+                                      rel="no-referrer no-opener"
+                                    >
+                                      {
+                                        Object.values(
+                                          this.props.metaevidence
+                                            .metaEvidenceJSON.aliases
+                                        )[1]
+                                      }
+                                    </a>
+                                  )) ||
+                                  "Respondent"}
                                 <div className="">
                                   {(currentRuling == "0" && "Tied") ||
                                     (currentRuling == "1" && "Loser") ||
