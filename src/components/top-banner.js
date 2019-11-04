@@ -9,7 +9,7 @@ class TopBanner extends React.Component {
   render() {
     return (
       <Navbar collapseOnSelect expand="lg" variant="dark" id="header">
-        <Navbar.Brand href="#home">
+        <Navbar.Brand href="https://kleros.io">
           <img src="logo.svg" alt="Kleros Logo" />
         </Navbar.Brand>
         <Navbar.Toggle aria-controls="responsive-navbar-nav" />
