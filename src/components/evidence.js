@@ -71,6 +71,7 @@ class Evidence extends React.Component {
             <img alt="evidence" src="evidence.svg" />
             Submit Evidence
           </Card.Header>
+          <hr className="mt-0" />
           <Card.Body>
             <Form>
               <Form.Row>
