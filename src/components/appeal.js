@@ -118,6 +118,7 @@ class Appeal extends React.Component {
             <img alt="appeal" src="appeal.svg" />
             Appeal
           </Card.Header>
+          <hr className="mt-0" />
           <Card.Body>
             <Form>
               <Form.Row>
@@ -151,7 +152,7 @@ class Appeal extends React.Component {
                           </Col>
                           <Col>
                             <Form.Row>
-                              <Col>
+                              <Col className="purple-inverted">
                                 {(this.props.metaevidence.metaEvidenceJSON
                                   .aliases &&
                                   this.props.metaevidence.metaEvidenceJSON
@@ -174,9 +175,8 @@ class Appeal extends React.Component {
                                         )[0]
                                       }
                                     </a>
-                                  )) ||
-                                  "Requester"}
-                                <div className="">
+                                  )) || <div>Requester</div>}
+                                <div className="font-weight-500">
                                   {(currentRuling == "0" && "Tied") ||
                                     (currentRuling == "1" && "Winner") ||
                                     (currentRuling == "2" && "Loser")}
@@ -257,7 +257,7 @@ class Appeal extends React.Component {
                           </Col>
                           <Col>
                             <Form.Row>
-                              <Col>
+                              <Col className="purple-inverted">
                                 {(this.props.metaevidence.metaEvidenceJSON
                                   .aliases &&
                                   this.props.metaevidence.metaEvidenceJSON
@@ -280,9 +280,8 @@ class Appeal extends React.Component {
                                         )[1]
                                       }
                                     </a>
-                                  )) ||
-                                  "Respondent"}
-                                <div className="">
+                                  )) || <div>Respondent</div>}
+                                <div className="font-weight-500">
                                   {(currentRuling == "0" && "Tied") ||
                                     (currentRuling == "1" && "Loser") ||
                                     (currentRuling == "2" && "Winner")}

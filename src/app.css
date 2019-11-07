@@ -339,3 +339,13 @@ span.input-group-text {
 #dropzone > div > h5 {
   color: #4d00b4;
 }
+
+.font-weight-500 {
+  font-weight: 500;
+}
+
+.progress {
+  background-color: #009aff;
+  border-radius: 30px;
+  justify-content: center;
+}
