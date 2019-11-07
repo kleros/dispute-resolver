@@ -222,7 +222,7 @@ class Confirmation extends React.Component {
               />
             )}{" "}
             {(awaitingConfirmation && "Awaiting Confirmation") ||
-              "Broadcast Transaction"}
+              "Create the Dispute"}
           </Button>
         </Modal.Footer>
       </Modal>

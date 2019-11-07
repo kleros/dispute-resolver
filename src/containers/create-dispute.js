@@ -372,7 +372,7 @@ class CreateDispute extends React.Component {
               <Form.Row>
                 <Col md={2} l={2} xl={2}>
                   <Form.Group>
-                    <Form.Label htmlFor="requester">Requester Alias</Form.Label>
+                    <Form.Label htmlFor="requester">Party A</Form.Label>
 
                     <Form.Control
                       id="requester"
@@ -386,7 +386,7 @@ class CreateDispute extends React.Component {
                 <Col md={4} l={4} xl={4}>
                   <Form.Group>
                     <Form.Label htmlFor="requesterAddress">
-                      Requester Address
+                      Party A Address
                     </Form.Label>
 
                     <Form.Control
@@ -405,9 +405,7 @@ class CreateDispute extends React.Component {
                 </Col>
                 <Col md={2} l={2} xl={2}>
                   <Form.Group>
-                    <Form.Label htmlFor="respondent">
-                      Respondent Alias
-                    </Form.Label>
+                    <Form.Label htmlFor="respondent">Party B</Form.Label>
 
                     <Form.Control
                       id="respondent"
@@ -421,7 +419,7 @@ class CreateDispute extends React.Component {
                 <Col md={4} l={4} xl={4}>
                   <Form.Group>
                     <Form.Label htmlFor="respondentAddress">
-                      Respondent Address
+                      Party B Address
                     </Form.Label>
 
                     <Form.Control
