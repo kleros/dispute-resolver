@@ -208,7 +208,13 @@ class Interact extends React.Component {
             <img alt="gavel" src="../gavel.svg" />
             Interact with a Dispute
           </Card.Header>
-          <Card.Body>
+          <hr className="mt-0" />
+          <Card.Body
+            style={{
+              borderBottomLeftRadius: "0",
+              borderBottomRightRadius: "0"
+            }}
+          >
             <Form>
               <Form.Row>
                 <Col>
