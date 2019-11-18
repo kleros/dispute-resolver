@@ -6,7 +6,7 @@ import _404 from "./containers/404";
 import Interact from "./containers/interact";
 import { BrowserRouter, Route, Switch } from "react-router-dom";
 import TopBanner from "./components/top-banner";
-import Footer from "./components/footer";
+import { default as Footer } from "@kleros/react-components/dist/footer";
 import Web3 from "./ethereum/web3";
 import * as EthereumInterface from "./ethereum/interface";
 import networkMap from "./ethereum/network-contract-mapping";
@@ -25,6 +25,7 @@ class App extends React.Component {
   }
 
   async componentDidMount() {
+    console.log(Footer);
     console.log(networkMap);
     console.debug(process.env);
 
@@ -378,7 +379,7 @@ class App extends React.Component {
               <Route component={_404} />
             </Switch>
           </BrowserRouter>
-          <Footer description="description" title="title" />
+          <Footer name="Binary Arbitrable Proxy" />
         </Container>
       );
   }
