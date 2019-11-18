@@ -1116,10 +1116,10 @@
     "@kleros/kleros-interaction" "^0.9.0"
     minimetoken "^0.2.0"
 
-"@kleros/react-components@^0.3.4":
-  version "0.3.4"
-  resolved "https://registry.yarnpkg.com/@kleros/react-components/-/react-components-0.3.4.tgz#56af7d8961272092cf1c0111d4edb23d0ea92795"
-  integrity sha512-wvsFUN4RBU0/gIiRTL3bTDfjvjwFNryLSHHgo7i0Utwqn5h9+uWwt3w1g0/Q2y9OMrnsyRL3Du4BOuXAxRx1CQ==
+"@kleros/react-components@^0.3.5":
+  version "0.3.5"
+  resolved "https://registry.yarnpkg.com/@kleros/react-components/-/react-components-0.3.5.tgz#82e5d1abf088315794184ac3331f9d091f89d2ef"
+  integrity sha512-y4u8gIr8IugY36nFbXnYGrsUUblGtHe4Bx/yKa8t9H16WqcnlAdnv2dh6HQA3nyPkZts8X/0qClfvTf3Slta8g==
 
 "@mrmlnc/readdir-enhanced@^2.2.1":
   version "2.2.1"

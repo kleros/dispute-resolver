@@ -379,7 +379,10 @@ class App extends React.Component {
               <Route component={_404} />
             </Switch>
           </BrowserRouter>
-          <Footer name="Binary Arbitrable Proxy" />
+          <Footer
+            name="Binary Arbitrable Proxy"
+            style={{ marginTop: "40px" }}
+          />
         </Container>
       );
   }
