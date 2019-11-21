@@ -381,6 +381,9 @@ class App extends React.Component {
           </BrowserRouter>
           <Footer
             name="Binary Arbitrable Proxy"
+            contractAddress={
+              networkMap[this.state.network].BINARY_ARBITRABLE_PROXY
+            }
             style={{ marginTop: "40px" }}
           />
         </Container>
