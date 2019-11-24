@@ -380,10 +380,11 @@ class App extends React.Component {
             </Switch>
           </BrowserRouter>
           <Footer
-            name="Binary Arbitrable Proxy"
+            appName="Binary Arbitrable Proxy"
             contractAddress={
               networkMap[this.state.network].BINARY_ARBITRABLE_PROXY
             }
+            reposityory={"https://github.com/kleros/binary-arbitrable-proxy"}
             style={{ marginTop: "40px" }}
           />
         </Container>
