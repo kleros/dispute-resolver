@@ -83,9 +83,10 @@ class CreateDispute extends React.Component {
     }
     await this.setState({
       subcourts,
-      subcourtsLoading: false,
-      selectedSubcourt: "0"
+      subcourtsLoading: false
     });
+
+    this.onSubcourtSelect("0");
   };
 
   onSubcourtSelect = async subcourtID => {
