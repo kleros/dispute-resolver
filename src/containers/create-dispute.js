@@ -112,8 +112,9 @@ class CreateDispute extends React.Component {
       console.log(form);
 
       console.log("valid");
-      this.setState({ modalShow: true });
+      this.setState({ modalShow: true, validated: true });
     }
+
     this.setState({ validated: true });
   };
 
@@ -423,11 +424,7 @@ class CreateDispute extends React.Component {
                     </Form.Label>
 
                     <Form.Control
-                      className={
-                        !this.props.web3.utils.checkAddressChecksum(
-                          requesterAddress
-                        ) && "text-danger"
-                      }
+                      pattern="0x[abcdefABCDEF0123456789]{40}"
                       id="requesterAddress"
                       as="input"
                       value={requesterAddress}
@@ -456,11 +453,7 @@ class CreateDispute extends React.Component {
                     </Form.Label>
 
                     <Form.Control
-                      className={
-                        !this.props.web3.utils.checkAddressChecksum(
-                          respondentAddress
-                        ) && "text-danger"
-                      }
+                      pattern="0x[abcdefABCDEF0123456789]{40}"
                       id="respondentAddress"
                       as="input"
                       value={respondentAddress}
