@@ -202,7 +202,7 @@ class Interact extends React.Component {
     console.log(this.state);
 
     return (
-      <Container fluid="true">
+      <Container fluid="true" className="main-content">
         <Card>
           <Card.Header>
             <img alt="gavel" src="../gavel.svg" />

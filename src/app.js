@@ -321,7 +321,7 @@ class App extends React.Component {
       );
     else
       return (
-        <Container fluid="true">
+        <Container fluid="true" style={{ height: "-webkit-fill-available" }}>
           <BrowserRouter>
             <Switch>
               <Route

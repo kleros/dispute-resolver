@@ -243,7 +243,7 @@ class CreateDispute extends React.Component {
     const { activeAddress } = this.props;
 
     return (
-      <Container fluid="true">
+      <Container fluid="true" className="main-content">
         {lastDisputeID && <Redirect to={`/interact/${lastDisputeID}`} />}
 
         <Card>

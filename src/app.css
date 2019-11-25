@@ -1,14 +1,24 @@
+#root {
+  height: -webkit-fill-available;
+}
+
 body {
   background-color: #f2e3ff;
   font-family: Roboto, sans-serif;
+  height: -webkit-fill-available;
 }
 
 html {
   background-color: #f2e3ff;
+  height: -webkit-fill-available;
 }
 
 footer {
   margin-top: 30px;
+}
+
+.main-content {
+  height: -webkit-fill-available;
 }
 
 .card > .card-header + hr {
