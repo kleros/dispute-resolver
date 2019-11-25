@@ -141,11 +141,11 @@ class App extends React.Component {
     await ipfsPublish(filename, fileBuffer);
 
   generateArbitratorExtraData = (subcourtID, noOfJurors) =>
-    `0x${parseInt(subcourtID, 16)
-      .toString()
+    `0x${parseInt(subcourtID, 10)
+      .toString(16)
       .padStart(64, "0") +
-      parseInt(noOfJurors, 16)
-        .toString()
+      parseInt(noOfJurors, 10)
+        .toString(16)
         .padStart(64, "0")}`;
 
   getAppealCost = async arbitratorDisputeID =>
