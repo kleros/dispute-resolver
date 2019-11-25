@@ -46,7 +46,10 @@ class CreateDispute extends React.Component {
       requester: "Requester",
       respondent: "Respondent",
       requesterAddress: props.web3.utils.toChecksumAddress(props.activeAddress),
-      respondentAddress: props.web3.utils.toChecksumAddress(props.activeAddress)
+      respondentAddress: props.web3.utils.toChecksumAddress(
+        props.activeAddress
+      ),
+      validated: false
     };
   }
 
@@ -78,8 +81,11 @@ class CreateDispute extends React.Component {
       }
       console.log(subcourts);
     }
-    await this.setState({ subcourts });
-    await this.setState({ subcourtsLoading: false });
+    await this.setState({
+      subcourts,
+      subcourtsLoading: false,
+      selectedSubcourt: "0"
+    });
   };
 
   onSubcourtSelect = async subcourtID => {
@@ -93,7 +99,23 @@ class CreateDispute extends React.Component {
   onModalClose = e =>
     this.setState({ modalShow: false, awaitingConfirmation: false });
 
-  onModalShow = e => this.setState({ modalShow: true });
+  onModalShow = event => {
+    const form = event.currentTarget;
+    if (form.checkValidity() == false) {
+      console.log("invalid");
+      console.log(form);
+      event.preventDefault();
+      event.stopPropagation();
+    } else {
+      event.preventDefault();
+      event.stopPropagation();
+      console.log(form);
+
+      console.log("valid");
+      this.setState({ modalShow: true });
+    }
+    this.setState({ validated: true });
+  };
 
   onControlChange = async e => {
     await this.setState({ [e.target.id]: e.target.value });
@@ -213,7 +235,8 @@ class CreateDispute extends React.Component {
       requester,
       respondent,
       requesterAddress,
-      respondentAddress
+      respondentAddress,
+      validated
     } = this.state;
 
     const { activeAddress } = this.props;
@@ -229,12 +252,12 @@ class CreateDispute extends React.Component {
           </Card.Header>
           <hr className="mt-0" />
           <Card.Body>
-            <Form>
+            <Form noValidate validated={validated} onSubmit={this.onModalShow}>
               <Form.Row>
                 <Col>
                   <Form.Group>
                     <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
-                    <Dropdown onSelect={this.onSubcourtSelect}>
+                    <Dropdown required onSelect={this.onSubcourtSelect}>
                       <Dropdown.Toggle
                         id="subcourt-dropdown"
                         block
@@ -262,6 +285,7 @@ class CreateDispute extends React.Component {
                       Number of Jurors
                     </Form.Label>
                     <Form.Control
+                      required
                       id="initialNumberOfJurors"
                       as="input"
                       type="number"
@@ -293,17 +317,24 @@ class CreateDispute extends React.Component {
                   <Form.Group>
                     <Form.Label htmlFor="title">Title</Form.Label>
                     <Form.Control
+                      required
                       id="title"
                       as="input"
                       value={title}
                       onChange={this.onControlChange}
                       placeholder={"Title"}
                     />
+                    <Form.Control.Feedback type="invalid">
+                      Please provide title for the dispute, something explains
+                      it in a nutshell.
+                    </Form.Control.Feedback>
                   </Form.Group>
                 </Col>
                 <Col>
                   <Form.Group>
-                    <Form.Label htmlFor="category">Category</Form.Label>
+                    <Form.Label htmlFor="category">
+                      Category (optional)
+                    </Form.Label>
                     <Form.Control
                       id="category"
                       as="input"
@@ -316,7 +347,9 @@ class CreateDispute extends React.Component {
               </Form.Row>
               <Form.Row>
                 <Col>
-                  <Form.Label htmlFor="description">Description</Form.Label>
+                  <Form.Label htmlFor="description">
+                    Description (optional)
+                  </Form.Label>
                 </Col>
               </Form.Row>
               <Form.Row className="mb-3">
@@ -386,7 +419,7 @@ class CreateDispute extends React.Component {
                 <Col md={4} l={4} xl={4}>
                   <Form.Group>
                     <Form.Label htmlFor="requesterAddress">
-                      Party A Address
+                      Party A Address (optional)
                     </Form.Label>
 
                     <Form.Control
@@ -419,10 +452,15 @@ class CreateDispute extends React.Component {
                 <Col md={4} l={4} xl={4}>
                   <Form.Group>
                     <Form.Label htmlFor="respondentAddress">
-                      Party B Address
+                      Party B Address (optional)
                     </Form.Label>
 
                     <Form.Control
+                      className={
+                        !this.props.web3.utils.checkAddressChecksum(
+                          respondentAddress
+                        ) && "text-danger"
+                      }
                       id="respondentAddress"
                       as="input"
                       value={respondentAddress}
@@ -440,12 +478,16 @@ class CreateDispute extends React.Component {
                     <Form.Label htmlFor="question">Question</Form.Label>
 
                     <Form.Control
+                      required
                       id="question"
                       as="input"
                       value={question}
                       onChange={this.onControlChange}
                       placeholder={"Question"}
                     />
+                    <Form.Control.Feedback type="invalid">
+                      Please provide a question.
+                    </Form.Control.Feedback>
                   </Form.Group>
                 </Col>
               </Form.Row>
@@ -456,18 +498,22 @@ class CreateDispute extends React.Component {
                       First Ruling Option
                     </Form.Label>
                     <Form.Control
+                      required
                       id="firstRulingOption"
                       as="input"
                       value={firstRulingOption}
                       onChange={this.onControlChange}
                       placeholder={"First ruling option"}
                     />
+                    <Form.Control.Feedback type="invalid">
+                      Please provide first ruling option, for example: "Yes"
+                    </Form.Control.Feedback>
                   </Form.Group>
                 </Col>
                 <Col>
                   <Form.Group>
                     <Form.Label htmlFor="firstRulingDescription">
-                      First Ruling Description
+                      First Ruling Description (optional)
                     </Form.Label>
                     <Form.Control
                       id="firstRulingDescription"
@@ -486,18 +532,22 @@ class CreateDispute extends React.Component {
                       Second Ruling Option
                     </Form.Label>
                     <Form.Control
+                      required
                       id="secondRulingOption"
                       as="input"
                       value={secondRulingOption}
                       onChange={this.onControlChange}
                       placeholder={"Second ruling option"}
                     />
+                    <Form.Control.Feedback type="invalid">
+                      Please provide first ruling option, for example: "No"
+                    </Form.Control.Feedback>
                   </Form.Group>
                 </Col>
                 <Col>
                   <Form.Group>
                     <Form.Label htmlFor="secondRulingDescription">
-                      Second Ruling Description
+                      Second Ruling Description (optional)
                     </Form.Label>
                     <Form.Control
                       id="secondRulingDescription"
@@ -512,7 +562,9 @@ class CreateDispute extends React.Component {
               <Form.Row>
                 <Col>
                   <Form.Group>
-                    <Form.Label htmlFor="dropzone">Primary Document</Form.Label>
+                    <Form.Label htmlFor="dropzone">
+                      Primary Document (optional)
+                    </Form.Label>
                     <Dropzone onDrop={this.onDrop}>
                       {({ getRootProps, getInputProps }) => (
                         <section id="dropzone">
@@ -530,29 +582,7 @@ class CreateDispute extends React.Component {
                 </Col>
               </Form.Row>
 
-              <Button
-                disabled={
-                  !selectedSubcourt ||
-                  !initialNumberOfJurors ||
-                  !title ||
-                  !description ||
-                  !category ||
-                  !question ||
-                  !firstRulingOption ||
-                  !firstRulingDescription ||
-                  !secondRulingOption ||
-                  !secondRulingDescription ||
-                  !primaryDocument ||
-                  !requester ||
-                  !respondent ||
-                  !requesterAddress ||
-                  !respondentAddress
-                }
-                type="button"
-                className="ok"
-                onClick={this.onModalShow}
-                block
-              >
+              <Button type="submit" className="ok" block>
                 Create Dispute{" "}
                 {arbitrationCost && "for " + arbitrationCost + " Ether"}
               </Button>
