@@ -82,9 +82,7 @@ class Confirmation extends React.Component {
               <Col>
                 <Form.Group controlId="description">
                   <Form.Label>Description</Form.Label>
-                  <p>
-                    <ReactMarkdown source={description} />
-                  </p>
+                  <ReactMarkdown source={description} />
                 </Form.Group>
               </Col>
             </Form.Row>

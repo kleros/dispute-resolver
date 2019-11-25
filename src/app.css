@@ -21,6 +21,11 @@ footer {
   height: -webkit-fill-available;
 }
 
+body > div.modal > div > div > div.modal-body > form > div > div > div > input,
+body > div.modal > div > div > div.modal-body > form > div > div > div > p {
+  font-weight: 600;
+}
+
 .card > .card-header + hr {
   background-color: #009aff;
   color: #009aff;
@@ -182,7 +187,6 @@ button::after {
 .form-group > textarea,
 .form-group > p {
   color: #4d00b4;
-  font-weight: 500;
 }
 
 #markdown > p {
