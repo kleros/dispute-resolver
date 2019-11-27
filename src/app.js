@@ -362,6 +362,9 @@ class App extends React.Component {
                     <>
                       <TopBanner pathname={route.location.pathname} />
                       <Interact
+                        arbitrableAddress={
+                          networkMap[network].BINARY_ARBITRABLE_PROXY
+                        }
                         route={route}
                         getArbitrableDisputeIDCallback={
                           this.getArbitrableDisputeID

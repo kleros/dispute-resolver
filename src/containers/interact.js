@@ -9,8 +9,7 @@ class Interact extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      disputeID: this.props.route && this.props.route.match.params.id,
-      arbitratorDisputeID: "",
+      arbitratorDisputeID: this.props.route && this.props.route.match.params.id,
       dispute: "",
       arbitrableDispute: "",
       fileInput: "",
@@ -28,11 +27,6 @@ class Interact extends React.Component {
       fetchingString: ""
     };
 
-    this.debouncedRetrieve = debounce(this.retrieveDisputeDetails, 500, {
-      leading: false,
-      trailing: true
-    });
-
     this.debouncedRetrieveUsingArbitratorID = debounce(
       this.retrieveDisputeDetailsUsingArbitratorID,
       500,
@@ -41,7 +35,10 @@ class Interact extends React.Component {
   }
 
   async componentDidMount() {
-    this.debouncedRetrieve(this.state.disputeID);
+    if (this.state.arbitratorDisputeID)
+      await this.debouncedRetrieveUsingArbitratorID(
+        this.state.arbitratorDisputeID
+      );
   }
 
   async componentDidUpdate(previousProperties) {
@@ -57,7 +54,10 @@ class Interact extends React.Component {
       "Appeal Period",
       "Execution Period",
       "Greek gods having trouble finding this dispute...",
-      `Fetching ${this.state.fetchingString}...`
+      `Fetching ${this.state.fetchingString}...`,
+      `Dispute #${
+        this.state.arbitratorDisputeID
+      } doesn't belong to this arbitrable contract.`
     ];
 
     return strings[periodNumber];
@@ -140,38 +140,19 @@ class Interact extends React.Component {
     this.props.appealCallback(this.state.disputeID, party, contribution);
 
   onDisputeIDChange = async e => {
-    switch (e.target.id) {
-      case "arbitratorDisputeID":
-        const arbitratorDisputeID = e.target.value;
-        if (arbitratorDisputeID === "") {
-          this.setState({ disputeID: "", arbitratorDisputeID });
-          break;
-        }
-        this.setState({ arbitrableIDLoading: true });
-        console.log(arbitratorDisputeID);
-        this.setState({ arbitratorDisputeID: arbitratorDisputeID });
-
-        this.setState({
-          arbitrableDispute: ""
-        });
-        console.log("hey");
-        await this.debouncedRetrieveUsingArbitratorID(arbitratorDisputeID);
-        break;
-      case "disputeID":
-        const disputeID = e.target.value;
-        if (disputeID === "") {
-          this.setState({ disputeID, arbitratorDisputeID: "" });
-          break;
-        }
-        await this.setState({ arbitratorIDLoading: true });
-
-        await this.setState({
-          disputeID,
-          arbitrableDispute: ""
-        });
-        await this.debouncedRetrieve(disputeID);
-        break;
+    const arbitratorDisputeID = e.target.value;
+    if (arbitratorDisputeID === "") {
+      this.setState({ arbitratorDisputeID });
     }
+    this.setState({ arbitrableIDLoading: true });
+    console.log(arbitratorDisputeID);
+    this.setState({ arbitratorDisputeID: arbitratorDisputeID });
+
+    this.setState({
+      arbitrableDispute: ""
+    });
+    console.log("hey");
+    await this.debouncedRetrieveUsingArbitratorID(arbitratorDisputeID);
   };
 
   retrieveDisputeDetailsUsingArbitratorID = async arbitratorDisputeID => {
@@ -179,20 +160,22 @@ class Interact extends React.Component {
       dispute: { period: 6 },
       fetchingString: `dispute #${arbitratorDisputeID} from Court`
     });
-    const arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(
+    const arbitrated = (await this.props.getArbitratorDisputeCallback(
       arbitratorDisputeID
-    );
-    console.log(arbitrableDisputeID);
-    await this.commonFetchRoutine(arbitrableDisputeID);
-  };
-
-  retrieveDisputeDetails = async arbitrableDisputeID => {
-    console.log(`Calculating ${arbitrableDisputeID}`);
-    this.setState({
-      dispute: { period: 6 },
-      fetchingString: `dispute #${arbitrableDisputeID} from arbitrable contract`
-    });
-    await this.commonFetchRoutine(arbitrableDisputeID);
+    )).arbitrated;
+    console.log("arbitrated:");
+    console.log(arbitrated);
+    if (arbitrated == this.props.arbitrableAddress) {
+      const arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(
+        arbitratorDisputeID
+      );
+      console.log(arbitrableDisputeID);
+      await this.commonFetchRoutine(arbitrableDisputeID);
+    } else {
+      this.setState({
+        dispute: { period: 7 }
+      });
+    }
   };
 
   commonFetchRoutine = async arbitrableDisputeID => {
@@ -286,21 +269,6 @@ class Interact extends React.Component {
           >
             <Form>
               <Form.Row>
-                <Col>
-                  <Form.Group>
-                    <Form.Label>Search Disputes on Arbitrable</Form.Label>
-                    <Form.Control
-                      disabled={arbitrableIDLoading}
-                      as="input"
-                      id="disputeID"
-                      onChange={this.onDisputeIDChange}
-                      placeholder="Please input a dispute identifier to query."
-                      type="number"
-                      min="0"
-                      value={disputeID}
-                    />
-                  </Form.Group>
-                </Col>
                 <Col>
                   <Form.Group>
                     <Form.Label>Search Disputes on Court</Form.Label>
