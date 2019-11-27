@@ -327,7 +327,7 @@ class Interact extends React.Component {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        dispute on Kleros
+                        dispute on Court
                       </a>
                     </h4>
                   </Col>
