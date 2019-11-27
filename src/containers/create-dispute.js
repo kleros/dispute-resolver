@@ -52,21 +52,20 @@ class CreateDispute extends React.Component {
   }
 
   componentDidMount = async e => {
-    // TODO Simplify
     let subcourtURI,
       subcourt,
       subcourts = [],
       counter = 0,
       subcourtURIs = [];
-    while (counter < 15) {
+    while (counter < 100) {
       subcourtURI = await this.props.getSubCourtDetailsCallback(counter++);
+      if (!subcourtURI) break;
       subcourtURIs.push(subcourtURI);
     }
 
     console.log(subcourtURIs);
 
     for (var i = 0; i < subcourtURIs.length; i++) {
-      console.log(subcourtURIs[i]);
       try {
         if (subcourtURIs[i].includes("http")) {
           subcourt = await fetch(subcourtURIs[i]);
@@ -75,9 +74,8 @@ class CreateDispute extends React.Component {
         }
         subcourts[i] = await subcourt.json();
       } catch (e) {
-        console.log(i);
+        break;
       }
-      console.log(subcourts);
     }
     await this.setState({
       subcourts,
