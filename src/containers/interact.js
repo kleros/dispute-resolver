@@ -57,7 +57,8 @@ class Interact extends React.Component {
       `Fetching ${this.state.fetchingString}...`,
       `Dispute #${
         this.state.arbitratorDisputeID
-      } doesn't belong to this arbitrable contract.`
+      } doesn't belong to this arbitrable contract.`,
+      `There is no such dispute...`
     ];
 
     return strings[periodNumber];
@@ -160,9 +161,15 @@ class Interact extends React.Component {
       dispute: { period: 6 },
       fetchingString: `dispute #${arbitratorDisputeID} from Court`
     });
-    const arbitrated = (await this.props.getArbitratorDisputeCallback(
-      arbitratorDisputeID
-    )).arbitrated;
+    let arbitrated;
+    try {
+      arbitrated = (await this.props.getArbitratorDisputeCallback(
+        arbitratorDisputeID
+      )).arbitrated;
+    } catch (e) {
+      this.setState({ dispute: { period: 8 } });
+      return;
+    }
     console.log("arbitrated:");
     console.log(arbitrated);
     if (arbitrated == this.props.arbitrableAddress) {
