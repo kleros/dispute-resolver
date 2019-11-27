@@ -309,10 +309,16 @@ class App extends React.Component {
 
     if (!network || !activeAddress)
       return (
-        <Container fluid="true">
-          <TopBanner description="description" title="title" />
-          <_404 Web3={true} />
-          <Footer description="description" title="title" />
+        <Container fluid="true" style={{ position: "relative" }}>
+          <Container fluid="true">
+            <TopBanner description="description" title="title" />
+            <_404 Web3={true} />
+          </Container>
+          <Footer
+            appName="Binary Arbitrable Proxy"
+            contractAddress={networkMap[1].BINARY_ARBITRABLE_PROXY}
+            repository={"https://github.com/kleros/binary-arbitrable-proxy"}
+          />
         </Container>
       );
     else
