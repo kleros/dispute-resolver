@@ -321,71 +321,77 @@ class App extends React.Component {
       );
     else
       return (
-        <Container fluid="true" style={{ height: "-webkit-fill-available" }}>
-          <BrowserRouter>
-            <Switch>
-              <Route
-                exact
-                path="(/|/create)"
-                render={route => (
-                  <>
-                    <TopBanner pathname={route.location.pathname} />
-                    <CreateDispute
-                      activeAddress={this.state.activeAddress}
-                      route={route}
-                      createDisputeCallback={this.createDispute}
-                      getArbitrationCostCallback={
-                        this.getArbitrationCostWithCourtAndNoOfJurors
-                      }
-                      getSubCourtDetailsCallback={this.getSubCourtDetails}
-                      publishCallback={this.onPublish}
-                      web3={Web3}
-                    />
-                  </>
-                )}
-              />
-              <Route
-                exact
-                path="/interact/:id?"
-                render={route => (
-                  <>
-                    <TopBanner pathname={route.location.pathname} />
-                    <Interact
-                      route={route}
-                      getAppealCostCallback={this.getAppealCost}
-                      appealCallback={this.appeal}
-                      getAppealPeriodCallback={this.getAppealPeriod}
-                      getCurrentRulingCallback={this.getCurrentRuling}
-                      disputeID={lastDisputeID}
-                      getContractInstanceCallback={this.getContractInstance}
-                      getArbitratorDisputeCallback={this.getArbitratorDispute}
-                      getArbitrableDisputeCallback={this.getArbitrableDispute}
-                      getArbitratorDisputeStructCallback={
-                        this.getArbitratorDisputeStruct
-                      }
-                      getArbitrableDisputeStructCallback={
-                        this.getArbitrableDisputeStruct
-                      }
-                      getCrowdfundingStatusCallback={this.getCrowdfundingStatus}
-                      getEvidencesCallback={this.getEvidences}
-                      getMetaEvidenceCallback={this.getMetaEvidence}
-                      getSubCourtDetailsCallback={this.getSubCourtDetails}
-                      publishCallback={this.onPublish}
-                      submitEvidenceCallback={this.submitEvidence}
-                    />
-                  </>
-                )}
-              />
-              <Route component={_404} />
-            </Switch>
-          </BrowserRouter>
+        <Container
+          fluid="true"
+          style={{ position: "relative", minHeight: "100vh" }}
+        >
+          <Container fluid="true" style={{ paddingBottom: "7rem" }}>
+            <BrowserRouter>
+              <Switch>
+                <Route
+                  exact
+                  path="(/|/create)"
+                  render={route => (
+                    <>
+                      <TopBanner pathname={route.location.pathname} />
+                      <CreateDispute
+                        activeAddress={this.state.activeAddress}
+                        route={route}
+                        createDisputeCallback={this.createDispute}
+                        getArbitrationCostCallback={
+                          this.getArbitrationCostWithCourtAndNoOfJurors
+                        }
+                        getSubCourtDetailsCallback={this.getSubCourtDetails}
+                        publishCallback={this.onPublish}
+                        web3={Web3}
+                      />
+                    </>
+                  )}
+                />
+                <Route
+                  exact
+                  path="/interact/:id?"
+                  render={route => (
+                    <>
+                      <TopBanner pathname={route.location.pathname} />
+                      <Interact
+                        route={route}
+                        getAppealCostCallback={this.getAppealCost}
+                        appealCallback={this.appeal}
+                        getAppealPeriodCallback={this.getAppealPeriod}
+                        getCurrentRulingCallback={this.getCurrentRuling}
+                        disputeID={lastDisputeID}
+                        getContractInstanceCallback={this.getContractInstance}
+                        getArbitratorDisputeCallback={this.getArbitratorDispute}
+                        getArbitrableDisputeCallback={this.getArbitrableDispute}
+                        getArbitratorDisputeStructCallback={
+                          this.getArbitratorDisputeStruct
+                        }
+                        getArbitrableDisputeStructCallback={
+                          this.getArbitrableDisputeStruct
+                        }
+                        getCrowdfundingStatusCallback={
+                          this.getCrowdfundingStatus
+                        }
+                        getEvidencesCallback={this.getEvidences}
+                        getMetaEvidenceCallback={this.getMetaEvidence}
+                        getSubCourtDetailsCallback={this.getSubCourtDetails}
+                        publishCallback={this.onPublish}
+                        submitEvidenceCallback={this.submitEvidence}
+                      />
+                    </>
+                  )}
+                />
+                <Route component={_404} />
+              </Switch>
+            </BrowserRouter>
+          </Container>
           <Footer
             appName="Binary Arbitrable Proxy"
             contractAddress={
               networkMap[this.state.network].BINARY_ARBITRABLE_PROXY
             }
             repository={"https://github.com/kleros/binary-arbitrable-proxy"}
-            style={{ marginTop: "40px" }}
           />
         </Container>
       );
