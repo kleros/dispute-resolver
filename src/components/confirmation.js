@@ -35,7 +35,7 @@ class Confirmation extends React.Component {
     return (
       <Modal size="xl" show={show} animation={false} closeButton={false}>
         <Modal.Header>
-          <Modal.Title>Dispute Summmary</Modal.Title>
+          <Modal.Title>Dispute Summary</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
@@ -92,25 +92,25 @@ class Confirmation extends React.Component {
             </Form.Row>
             <hr />
             <Form.Row>
-              <Col md={1}>
+              <Col md={2}>
                 <Form.Group controlId="requester">
                   <Form.Label>Party A</Form.Label>
                   <Form.Control readOnly type="text" value={requester} />
                 </Form.Group>
               </Col>
-              <Col md={5}>
+              <Col md={4}>
                 <Form.Group controlId="requesterAddress">
                   <Form.Label>Requester Address</Form.Label>
                   <Form.Control readOnly type="text" value={requesterAddress} />
                 </Form.Group>
               </Col>
-              <Col md={1}>
+              <Col md={2}>
                 <Form.Group controlId="respondent">
                   <Form.Label>Party B</Form.Label>
                   <Form.Control readOnly type="text" value={respondent} />
                 </Form.Group>
               </Col>
-              <Col md={5}>
+              <Col md={4}>
                 <Form.Group controlId="respondentAddress">
                   <Form.Label>Respondent Address</Form.Label>
                   <Form.Control

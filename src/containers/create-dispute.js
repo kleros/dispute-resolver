@@ -197,8 +197,10 @@ class CreateDispute extends React.Component {
         secondRulingDescription,
         primaryDocument
       });
+      console.log("last dispute");
+      console.log(receipt);
       this.setState({
-        lastDisputeID: receipt.events.MetaEvidence.returnValues._metaEvidenceID
+        lastDisputeID: receipt.events.Dispute.returnValues._disputeID
       });
     } catch (e) {
       this.setState({ awaitingConfirmation: false });
