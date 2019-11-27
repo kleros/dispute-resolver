@@ -504,7 +504,7 @@ class CreateDispute extends React.Component {
                     </Form.Control.Feedback>
                   </Form.Group>
                 </Col>
-                <Col>
+                <Col xs={9}>
                   <Form.Group>
                     <Form.Label htmlFor="firstRulingDescription">
                       First Ruling Description (optional)
@@ -538,7 +538,7 @@ class CreateDispute extends React.Component {
                     </Form.Control.Feedback>
                   </Form.Group>
                 </Col>
-                <Col>
+                <Col xs={9}>
                   <Form.Group>
                     <Form.Label htmlFor="secondRulingDescription">
                       Second Ruling Description (optional)
