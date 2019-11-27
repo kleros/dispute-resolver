@@ -284,7 +284,7 @@ class Interact extends React.Component {
                       as="input"
                       id="arbitratorDisputeID"
                       onChange={this.onDisputeIDChange}
-                      placeholder="Please input a dispute identifier to query."
+                      placeholder="Please input a dispute identifier as in arbitrator contract."
                       type="number"
                       min="0"
                       value={arbitratorDisputeID}
