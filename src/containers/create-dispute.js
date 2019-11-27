@@ -254,7 +254,7 @@ class CreateDispute extends React.Component {
           <Card.Body>
             <Form noValidate validated={validated} onSubmit={this.onModalShow}>
               <Form.Row>
-                <Col>
+                <Col md={4}>
                   <Form.Group>
                     <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
                     <Dropdown required onSelect={this.onSubcourtSelect}>
@@ -279,7 +279,7 @@ class CreateDispute extends React.Component {
                     </Dropdown>
                   </Form.Group>
                 </Col>
-                <Col>
+                <Col md={4}>
                   <Form.Group>
                     <Form.Label htmlFor="initialNumberOfJurors">
                       Number of Jurors
@@ -313,7 +313,7 @@ class CreateDispute extends React.Component {
               </Form.Row>
               <hr />
               <Form.Row>
-                <Col>
+                <Col md={6}>
                   <Form.Group>
                     <Form.Label htmlFor="title">Title</Form.Label>
                     <Form.Control
@@ -353,7 +353,7 @@ class CreateDispute extends React.Component {
                 </Col>
               </Form.Row>
               <Form.Row className="mb-3">
-                <Col>
+                <Col md={6}>
                   <Form.Group>
                     <markdown-toolbar for="description">
                       <md-bold>
@@ -502,7 +502,7 @@ class CreateDispute extends React.Component {
                     </Form.Control.Feedback>
                   </Form.Group>
                 </Col>
-                <Col xs={9}>
+                <Col md={9}>
                   <Form.Group>
                     <Form.Label htmlFor="firstRulingDescription">
                       First Ruling Description (optional)
@@ -536,7 +536,7 @@ class CreateDispute extends React.Component {
                     </Form.Control.Feedback>
                   </Form.Group>
                 </Col>
-                <Col xs={9}>
+                <Col md={9}>
                   <Form.Group>
                     <Form.Label htmlFor="secondRulingDescription">
                       Second Ruling Description (optional)
