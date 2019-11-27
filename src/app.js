@@ -337,7 +337,7 @@ class App extends React.Component {
               <Switch>
                 <Route
                   exact
-                  path="(/|/create)"
+                  path="(/|/create/)"
                   render={route => (
                     <>
                       <TopBanner pathname={route.location.pathname} />

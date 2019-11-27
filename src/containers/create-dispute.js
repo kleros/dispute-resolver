@@ -43,12 +43,10 @@ class CreateDispute extends React.Component {
       subcourtsLoading: true,
       arbitrationCost: "",
       primaryDocument: "",
-      requester: "Requester",
-      respondent: "Respondent",
-      requesterAddress: props.web3.utils.toChecksumAddress(props.activeAddress),
-      respondentAddress: props.web3.utils.toChecksumAddress(
-        props.activeAddress
-      ),
+      requester: "Party A",
+      respondent: "Party B",
+      requesterAddress: "",
+      respondentAddress: "",
       validated: false
     };
   }
@@ -566,7 +564,7 @@ class CreateDispute extends React.Component {
                             <input {...getInputProps()} />
                             <h5>
                               {(fileInput && fileInput.path) ||
-                                "Drag 'n' drop some files here, or click to select files."}
+                                "Drag 'n' drop some files here, or click to select files. (optional)"}
                             </h5>
                           </div>
                         </section>

@@ -59,7 +59,11 @@ class Confirmation extends React.Component {
               <Col>
                 <Form.Group controlId="arbitrationCost">
                   <Form.Label>Arbitration Cost</Form.Label>
-                  <Form.Control readOnly type="text" value={arbitrationCost} />
+                  <Form.Control
+                    readOnly
+                    type="text"
+                    value={arbitrationCost.toString() + " Ether"}
+                  />
                 </Form.Group>
               </Col>
             </Form.Row>
@@ -97,15 +101,7 @@ class Confirmation extends React.Component {
               <Col md={4} l={4} xl={4}>
                 <Form.Group controlId="requesterAddress">
                   <Form.Label>Requester Address</Form.Label>
-                  <Form.Control
-                    readOnly
-                    type="text"
-                    value={
-                      requesterAddress.substring(0, 6) +
-                      "..." +
-                      requesterAddress.substring(38, 42)
-                    }
-                  />
+                  <Form.Control readOnly type="text" value={requesterAddress} />
                 </Form.Group>
               </Col>
               <Col md={2} l={2} xl={2}>
@@ -120,11 +116,7 @@ class Confirmation extends React.Component {
                   <Form.Control
                     readOnly
                     type="text"
-                    value={
-                      respondentAddress.substring(0, 6) +
-                      "..." +
-                      respondentAddress.substring(38, 42)
-                    }
+                    value={respondentAddress}
                   />
                 </Form.Group>
               </Col>

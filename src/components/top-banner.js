@@ -17,15 +17,20 @@ class TopBanner extends React.Component {
           <Nav className="abs-center-x ">
             <Nav.Link
               className="mx-3"
-              href="/create"
-              active={this.props.pathname && this.props.pathname == "/create"}
+              href="/create/"
+              active={
+                (this.props.pathname && this.props.pathname == "/create/") ||
+                this.props.pathname == "/"
+              }
             >
               Create
             </Nav.Link>
             <Nav.Link
               className="mx-3"
-              href="/interact"
-              active={this.props.pathname && this.props.pathname == "/interact"}
+              href="/interact/"
+              active={
+                this.props.pathname && this.props.pathname == "/interact/"
+              }
             >
               Interact
             </Nav.Link>
