@@ -23,6 +23,7 @@ class App extends React.Component {
     };
     this.encoder = new TextEncoder();
   }
+  ETHERSCAN_STRINGS = { "1": "", "42": "kovan." };
 
   async componentDidMount() {
     console.log(Footer);
@@ -316,7 +317,11 @@ class App extends React.Component {
           </Container>
           <Footer
             appName="Binary Arbitrable Proxy"
-            contractAddress={networkMap[1].BINARY_ARBITRABLE_PROXY}
+            contractExplorerURL={`https://${
+              this.ETHERSCAN_STRINGS[1]
+            }etherscan.io/address/${
+              networkMap[1].BINARY_ARBITRABLE_PROXY
+            }#code`}
             repository={"https://github.com/kleros/binary-arbitrable-proxy"}
           />
         </Container>
@@ -393,9 +398,11 @@ class App extends React.Component {
           </Container>
           <Footer
             appName="Binary Arbitrable Proxy"
-            contractAddress={
+            contractExplorerURL={`https://${
+              this.ETHERSCAN_STRINGS[this.state.network]
+            }etherscan.io/address/${
               networkMap[this.state.network].BINARY_ARBITRABLE_PROXY
-            }
+            }#code`}
             repository={"https://github.com/kleros/binary-arbitrable-proxy"}
           />
         </Container>

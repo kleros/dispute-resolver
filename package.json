@@ -11,7 +11,7 @@
     "@kleros/binary-arbitrable-proxy-contract": "^2.2.4",
     "@kleros/erc-792": "^1.2.0",
     "@kleros/kleros": "^0.1.2",
-    "@kleros/react-components": "^0.6.0",
+    "@kleros/react-components": "^1.0.0",
     "bignumber.js": "^9.0.0",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
