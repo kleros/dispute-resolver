@@ -10,6 +10,7 @@ class Interact extends React.Component {
     super(props);
     this.state = {
       disputeID: this.props.route && this.props.route.match.params.id,
+      arbitratorDisputeID: "",
       dispute: "",
       arbitrableDispute: "",
       fileInput: "",
@@ -21,13 +22,22 @@ class Interact extends React.Component {
       evidenceTitle: "",
       evidenceDescription: "",
       contributeModalShow: false,
-      submitting: false
+      submitting: false,
+      arbitratorIDLoading: false,
+      arbitrableIDLoading: false,
+      fetchingString: ""
     };
 
     this.debouncedRetrieve = debounce(this.retrieveDisputeDetails, 500, {
       leading: false,
       trailing: true
     });
+
+    this.debouncedRetrieveUsingArbitratorID = debounce(
+      this.retrieveDisputeDetailsUsingArbitratorID,
+      500,
+      { leading: false, trailing: true }
+    );
   }
 
   async componentDidMount() {
@@ -39,15 +49,19 @@ class Interact extends React.Component {
       await this.setState({ disputeID: this.props.disputeID });
   }
 
-  PERIODS = [
-    "Evidence Period",
-    "Commit Period",
-    "Vote Period",
-    "Appeal Period",
-    "Execution Period",
-    "Greek gods having trouble finding this dispute...",
-    "Fetching..."
-  ];
+  PERIODS = periodNumber => {
+    const strings = [
+      "Evidence Period",
+      "Commit Period",
+      "Vote Period",
+      "Appeal Period",
+      "Execution Period",
+      "Greek gods having trouble finding this dispute...",
+      `Fetching ${this.state.fetchingString}...`
+    ];
+
+    return strings[periodNumber];
+  };
 
   submitEvidence = async evidence =>
     this.props.submitEvidenceCallback({
@@ -126,15 +140,62 @@ class Interact extends React.Component {
     this.props.appealCallback(this.state.disputeID, party, contribution);
 
   onDisputeIDChange = async e => {
-    const disputeID = e.target.value;
-    await this.setState({ disputeID, arbitrableDispute: "" });
+    switch (e.target.id) {
+      case "arbitratorDisputeID":
+        const arbitratorDisputeID = e.target.value;
+        if (arbitratorDisputeID === "") {
+          this.setState({ disputeID: "", arbitratorDisputeID });
+          break;
+        }
+        this.setState({ arbitrableIDLoading: true });
+        console.log(arbitratorDisputeID);
+        this.setState({ arbitratorDisputeID: arbitratorDisputeID });
 
-    await this.debouncedRetrieve(disputeID);
+        this.setState({
+          arbitrableDispute: ""
+        });
+        console.log("hey");
+        await this.debouncedRetrieveUsingArbitratorID(arbitratorDisputeID);
+        break;
+      case "disputeID":
+        const disputeID = e.target.value;
+        if (disputeID === "") {
+          this.setState({ disputeID, arbitratorDisputeID: "" });
+          break;
+        }
+        await this.setState({ arbitratorIDLoading: true });
+
+        await this.setState({
+          disputeID,
+          arbitrableDispute: ""
+        });
+        await this.debouncedRetrieve(disputeID);
+        break;
+    }
+  };
+
+  retrieveDisputeDetailsUsingArbitratorID = async arbitratorDisputeID => {
+    this.setState({
+      dispute: { period: 6 },
+      fetchingString: `dispute #${arbitratorDisputeID} from Court`
+    });
+    const arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(
+      arbitratorDisputeID
+    );
+    console.log(arbitrableDisputeID);
+    await this.commonFetchRoutine(arbitrableDisputeID);
   };
 
   retrieveDisputeDetails = async arbitrableDisputeID => {
     console.log(`Calculating ${arbitrableDisputeID}`);
-    this.setState({ dispute: { period: 6 } });
+    this.setState({
+      dispute: { period: 6 },
+      fetchingString: `dispute #${arbitrableDisputeID} from arbitrable contract`
+    });
+    await this.commonFetchRoutine(arbitrableDisputeID);
+  };
+
+  commonFetchRoutine = async arbitrableDisputeID => {
     let arbitratorDispute;
     let arbitrableDispute;
     let subcourtURI;
@@ -159,16 +220,21 @@ class Interact extends React.Component {
       console.log(arbitratorDispute);
       await this.setState({
         dispute: arbitratorDispute,
-        arbitrableDispute,
         subcourtDetails: await subcourt.json(),
         metaevidence: await this.props.getMetaEvidenceCallback(
           arbitratorDispute.arbitrated,
           arbitrableDisputeID
-        )
+        ),
+        arbitrableDispute,
+        arbitratorDisputeID: arbitrableDispute.disputeIDOnArbitratorSide,
+
+        disputeID: arbitrableDisputeID
       });
     } catch (err) {
       console.error(err.message);
-      this.setState({ dispute: { period: 5 } });
+      this.setState({ dispute: { period: 5 }, arbitratorDisputeID: "" });
+    } finally {
+      this.setState({ arbitrableIDLoading: false, arbitratorIDLoading: false });
     }
 
     try {
@@ -187,7 +253,7 @@ class Interact extends React.Component {
     }
   };
 
-  getHumanReadablePeriod = period => this.PERIODS[period];
+  getHumanReadablePeriod = period => this.PERIODS(period);
 
   render() {
     const {
@@ -195,7 +261,10 @@ class Interact extends React.Component {
       dispute,
       arbitrableDispute,
       crowdfundingStatus,
-      appealCost
+      appealCost,
+      arbitratorDisputeID,
+      arbitratorIDLoading,
+      arbitrableIDLoading
     } = this.state;
 
     console.log(this.props);
@@ -219,8 +288,9 @@ class Interact extends React.Component {
               <Form.Row>
                 <Col>
                   <Form.Group>
-                    <Form.Label>Dispute Identifier</Form.Label>
+                    <Form.Label>Search Disputes on Arbitrable</Form.Label>
                     <Form.Control
+                      disabled={arbitrableIDLoading}
                       as="input"
                       id="disputeID"
                       onChange={this.onDisputeIDChange}
@@ -228,6 +298,21 @@ class Interact extends React.Component {
                       type="number"
                       min="0"
                       value={disputeID}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col>
+                  <Form.Group>
+                    <Form.Label>Search Disputes on Court</Form.Label>
+                    <Form.Control
+                      disabled={arbitratorIDLoading}
+                      as="input"
+                      id="arbitratorDisputeID"
+                      onChange={this.onDisputeIDChange}
+                      placeholder="Please input a dispute identifier to query."
+                      type="number"
+                      min="0"
+                      value={arbitratorDisputeID}
                     />
                   </Form.Group>
                 </Col>

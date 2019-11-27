@@ -52,16 +52,12 @@ class App extends React.Component {
     } else console.error("MetaMask not detected :(");
   }
 
-  getArbitrableDisputeID = async (
-    arbitrableAddress,
-    arbitratorAddress,
-    arbitratorDisputeID
-  ) =>
+  getArbitrableDisputeID = async arbitratorDisputeID =>
     EthereumInterface.call(
       "BinaryArbitrableProxy",
-      arbitrableAddress,
+      networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
       "arbitratorExternalIDtoLocalID",
-      arbitratorAddress,
+      networkMap[this.state.network].KLEROS_LIQUID,
       arbitratorDisputeID
     );
 
@@ -356,6 +352,9 @@ class App extends React.Component {
                       <TopBanner pathname={route.location.pathname} />
                       <Interact
                         route={route}
+                        getArbitrableDisputeIDCallback={
+                          this.getArbitrableDisputeID
+                        }
                         getAppealCostCallback={this.getAppealCost}
                         appealCallback={this.appeal}
                         getAppealPeriodCallback={this.getAppealPeriod}
