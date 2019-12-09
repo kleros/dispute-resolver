@@ -91,6 +91,7 @@ button.ok {
 }
 
 .card {
+  border-radius: 12px;
   background-color: #f2e3ff;
   margin-left: 80px;
   margin-right: 80px;
@@ -99,6 +100,9 @@ button.ok {
 }
 
 .card-body {
+  border-radius: 12px;
+  padding: 40px;
+
   background-color: white;
   border-radius: 12px;
   box-shadow: 0px 6px 36px #bc9cff;
@@ -189,8 +193,10 @@ button::after {
   font-weight: normal !important;
 }
 
-body > div.modal > div > div > div.modal-body > form > div > div > div > input {
-  background-color: unset;
+body > div.modal > div > div > div.modal-body > form > div > div > div > input,
+input:read-only {
+  font-weight: 600;
+  background-color: unset !important;
   border-style: unset;
   padding: 0;
 }
@@ -367,4 +373,20 @@ span.input-group-text {
   background-color: #009aff;
   border-radius: 30px;
   justify-content: center;
+}
+
+.display-title {
+  /* Car insurer did not pay for the repair. Should it be paid? */
+
+  font-style: normal;
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 28px;
+  margin-bottom: 2rem;
+
+  color: #4d00b4;
+}
+.accordion > .card:last-of-type {
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
 }

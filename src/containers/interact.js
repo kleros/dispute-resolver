@@ -1,9 +1,11 @@
 import React from "react";
-import { Card, Col, Container, Form } from "react-bootstrap";
+import { Card, Col, Container, Form, Row } from "react-bootstrap";
 import Evidence from "../components/evidence";
 import Appeal from "../components/appeal";
+import QuestionDisplay from "../components/question-display";
 import debounce from "lodash.debounce";
 import IPFS from "../components/ipfs";
+import ReactMarkdown from "react-markdown";
 
 class Interact extends React.Component {
   constructor(props) {
@@ -55,9 +57,7 @@ class Interact extends React.Component {
       "Execution Period",
       "Greek gods having trouble finding this dispute...",
       `Fetching ${this.state.fetchingString}...`,
-      `Dispute #${
-        this.state.arbitratorDisputeID
-      } doesn't belong to this arbitrable contract.`,
+      `Dispute #${this.state.arbitratorDisputeID} doesn't belong to this arbitrable contract.`,
       `There is no such dispute...`
     ];
 
@@ -254,7 +254,8 @@ class Interact extends React.Component {
       appealCost,
       arbitratorDisputeID,
       arbitratorIDLoading,
-      arbitrableIDLoading
+      arbitrableIDLoading,
+      metaevidence
     } = this.state;
 
     console.log(this.props);
@@ -296,9 +297,7 @@ class Interact extends React.Component {
                     <h4>
                       Check out this{" "}
                       <a
-                        href={`https://court.kleros.io/cases/${
-                          arbitrableDispute.disputeIDOnArbitratorSide
-                        }`}
+                        href={`https://court.kleros.io/cases/${arbitrableDispute.disputeIDOnArbitratorSide}`}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -308,6 +307,69 @@ class Interact extends React.Component {
                   </Col>
                 )}{" "}
               </Form.Row>
+              {arbitrableDispute && this.state.metaevidence.metaEvidenceJSON && (
+                <Form.Row>
+                  <Col>
+                    <h1 className="display-title">
+                      {this.state.metaevidence.metaEvidenceJSON.title}
+                    </h1>
+                  </Col>
+                </Form.Row>
+              )}
+              {arbitrableDispute && this.state.metaevidence.metaEvidenceJSON && (
+                <Form.Row>
+                  <Card
+                    className="w-100"
+                    style={{ margin: 0, textAlign: "center" }}
+                  >
+                    <Card.Body>
+                      <Form.Group id="markdown">
+                        <ReactMarkdown
+                          source={
+                            this.state.metaevidence.metaEvidenceJSON.description
+                          }
+                        />
+                      </Form.Group>
+
+                      <Card.Footer
+                        style={{
+                          backgroundColor: "#F5F1FD"
+                        }}
+                      >
+                        <a
+                          href={
+                            this.state.metaevidence.metaEvidenceJSON.fileURI
+                          }
+                        >
+                          <img src="attachment.svg" />
+                        </a>
+                      </Card.Footer>
+                    </Card.Body>
+                  </Card>
+                </Form.Row>
+              )}
+
+              {arbitrableDispute && this.state.metaevidence.metaEvidenceJSON && (
+                <Form.Row>
+                  <QuestionDisplay
+                    question={metaevidence.metaEvidenceJSON.question}
+                    firstRulingOption={
+                      metaevidence.metaEvidenceJSON.rulingOptions.titles[0]
+                    }
+                    secondRulingOption={
+                      metaevidence.metaEvidenceJSON.rulingOptions.titles[1]
+                    }
+                    firstRulingDescription={
+                      metaevidence.metaEvidenceJSON.rulingOptions
+                        .descriptions[0]
+                    }
+                    secondRulingDescription={
+                      metaevidence.metaEvidenceJSON.rulingOptions
+                        .descriptions[1]
+                    }
+                  />
+                </Form.Row>
+              )}
             </Form>
           </Card.Body>
 
@@ -318,6 +380,7 @@ class Interact extends React.Component {
             <div />
           </Card.Footer>
         </Card>
+
         {dispute && ["0", "1", "2", "3"].find(x => x == dispute.period) && (
           <>
             <Evidence
