@@ -219,9 +219,7 @@ class App extends React.Component {
 
     console.log(ipfsHashMetaEvidenceObj);
 
-    const metaevidenceURI = `/ipfs/${ipfsHashMetaEvidenceObj[1].hash}${
-      ipfsHashMetaEvidenceObj[0].path
-    }`;
+    const metaevidenceURI = `/ipfs/${ipfsHashMetaEvidenceObj[1].hash}${ipfsHashMetaEvidenceObj[0].path}`;
 
     console.log(metaevidenceURI);
 
@@ -286,9 +284,7 @@ class App extends React.Component {
       this.encoder.encode(JSON.stringify(evidence))
     );
 
-    const evidenceURI = `/ipfs/${ipfsHashEvidenceObj[1].hash}${
-      ipfsHashEvidenceObj[0].path
-    }`;
+    const evidenceURI = `/ipfs/${ipfsHashEvidenceObj[1].hash}${ipfsHashEvidenceObj[0].path}`;
 
     console.log(evidenceURI);
 
@@ -316,7 +312,7 @@ class App extends React.Component {
             <_404 Web3={true} />
           </Container>
           <Footer
-            appName="Binary Arbitrable Proxy"
+            appName="Dispute Resolver"
             contractExplorerURL={`https://${
               this.ETHERSCAN_STRINGS[1]
             }etherscan.io/address/${
@@ -400,7 +396,7 @@ class App extends React.Component {
             </BrowserRouter>
           </Container>
           <Footer
-            appName="Binary Arbitrable Proxy"
+            appName="Dispute Resolver"
             contractExplorerURL={`https://${
               this.ETHERSCAN_STRINGS[this.state.network]
             }etherscan.io/address/${
