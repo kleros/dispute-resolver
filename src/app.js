@@ -57,14 +57,13 @@ class App extends React.Component {
     EthereumInterface.call(
       "BinaryArbitrableProxy",
       networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
-      "arbitratorExternalIDtoLocalID",
-      networkMap[this.state.network].KLEROS_LIQUID,
+      "externalIDtoLocalID",
       arbitratorDisputeID
     );
 
   getArbitrationCost = (arbitratorAddress, extraData) =>
     EthereumInterface.call(
-      "Arbitrator",
+      "IArbitrator",
       arbitratorAddress,
       "arbitrationCost",
       extraData
@@ -73,7 +72,7 @@ class App extends React.Component {
   getArbitrationCostWithCourtAndNoOfJurors = async (subcourtID, noOfJurors) =>
     Web3.utils.fromWei(
       await EthereumInterface.call(
-        "Arbitrator",
+        "IArbitrator",
         networkMap[this.state.network].KLEROS_LIQUID,
         "arbitrationCost",
         this.generateArbitratorExtraData(subcourtID, noOfJurors)
@@ -147,7 +146,7 @@ class App extends React.Component {
 
   getAppealCost = async arbitratorDisputeID =>
     EthereumInterface.call(
-      "Arbitrator",
+      "IArbitrator",
       networkMap[this.state.network].KLEROS_LIQUID,
       "appealCost",
       arbitratorDisputeID,
@@ -195,7 +194,6 @@ class App extends React.Component {
     console.log(`ex data ${arbitratorExtraData}`);
 
     const metaevidence = {
-      category: "unused",
       title: options.title,
       category: options.category,
       description: options.description,
@@ -234,7 +232,6 @@ class App extends React.Component {
       activeAddress,
       arbitrationCost,
       "createDispute",
-      arbitrator,
       arbitratorExtraData,
       metaevidenceURI
     );

@@ -177,7 +177,7 @@ class CreateDispute extends React.Component {
       secondRulingDescription,
       primaryDocument
     } = this.state;
-
+    console.log("hgere");
     this.setState({ awaitingConfirmation: true });
     try {
       const receipt = await this.props.createDisputeCallback({
@@ -203,6 +203,7 @@ class CreateDispute extends React.Component {
         lastDisputeID: receipt.events.Dispute.returnValues._disputeID
       });
     } catch (e) {
+      console.log(e);
       this.setState({ awaitingConfirmation: false });
     }
 

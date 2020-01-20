@@ -1066,28 +1066,24 @@
     multihashes "^0.4.14"
     web3 "1.0.0-beta.36"
 
-"@kleros/binary-arbitrable-proxy-contract@^2.2.4":
-  version "2.2.4"
-  resolved "https://registry.yarnpkg.com/@kleros/binary-arbitrable-proxy-contract/-/binary-arbitrable-proxy-contract-2.2.4.tgz#4a7098206856ad71b16a398003c91f97072051e9"
-  integrity sha512-8f83PNxtt8PMKICtA6zV3l6tDRH/gm2bFMwLGtkHATcVxnqkyablPqNE+VUuLlKxZYBX0KwOl2O5T/cq3a0xOA==
+"@kleros/binary-arbitrable-proxy-contract@^2.2.5":
+  version "2.2.5"
+  resolved "https://registry.yarnpkg.com/@kleros/binary-arbitrable-proxy-contract/-/binary-arbitrable-proxy-contract-2.2.5.tgz#5de8ee22e7d9696396c0b2405a5e156cba8daee7"
+  integrity sha512-Qt5GDLDQwY0OmthLKupMvoI2Gip+2GpQ1ZW0qLhGRw6eIeQ2Na3PFa/LmLjrwBVY5rVbTx3Z/xgS+yLus+OPAA==
   dependencies:
-    "@kleros/erc-792" "^1.1.0"
-    "@kleros/ethereum-libraries" "^1.0.0"
+    "@kleros/erc-792" "^3.1.0"
+    "@kleros/ethereum-libraries" "^2.0.0"
+    "@openzeppelin/contracts" "^2.4.0"
 
-"@kleros/erc-792@^1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@kleros/erc-792/-/erc-792-1.1.0.tgz#090ac04f577d1f795d2b176264f565dc5523be09"
-  integrity sha512-AWSjGj46KfcTGH4DaxmpzAIB9IiI/nS3SSKtl07MWLWfwWqhhTQZNUW7EFA1rVDkf2MKFAM7kWAhYXZjn3FN6g==
+"@kleros/erc-792@^3.1.0":
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/@kleros/erc-792/-/erc-792-3.1.0.tgz#50d5b42b9572e567cf0dfd4c0dbfe32bc44f80ac"
+  integrity sha512-nW++Ge5FlDzCSaMLJXYL1ubER1bYUCCPBcGo5g9O9DYrhHMHrE/PcIdmNoR5U7hvGn++aakf6Gw0iLIc51deMQ==
 
-"@kleros/erc-792@^1.2.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@kleros/erc-792/-/erc-792-1.2.0.tgz#3967adf08b2c2f9a50286ada3bc84c3c3b9fd62d"
-  integrity sha512-fDgJC10zBeTXPkX+fFxmZFle5Mv3OrZQ2yIkLMJ/E85MFHPtMh/qVdN6pNn4qfUV2LbUb1TnQlQzo3sDXfJBAg==
-
-"@kleros/ethereum-libraries@^1.0.0":
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/@kleros/ethereum-libraries/-/ethereum-libraries-1.0.0.tgz#9a2f0b2511bb6e526d5f251e9ca195a3d044551a"
-  integrity sha512-CoeIbYZ0XPox/YllsDMdRmhayHhGGYCpquiyl1wlC4z3ar80TfoSrj231fxnJBMzI7ctzg927Dg02U1OYVHqKg==
+"@kleros/ethereum-libraries@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@kleros/ethereum-libraries/-/ethereum-libraries-2.0.0.tgz#595b2ea0a97ce663b5d5d0464fcb7d4ae6c6a347"
+  integrity sha512-x2cwbf1wlTzROoZgjEeQScHAs1bzM6tZBN9q4cXvRcJtcES6j44qM+iFXMw4JR/lndjAn8EfWZKeSeTmFjXXYQ==
 
 "@kleros/kleros-interaction@^0.7.0":
   version "0.7.0"
@@ -1133,6 +1129,11 @@
   version "1.1.3"
   resolved "https://registry.yarnpkg.com/@nodelib/fs.stat/-/fs.stat-1.1.3.tgz#2b5a3ab3f918cca48a8c754c08168e3f03eba61b"
   integrity sha512-shAmDyaQC4H92APFoIaVDHCx5bStIocgvbwQyxPRrbUY20V1EYTbSDchWbuwlMG3V17cprZhA6+78JfB+3DTPw==
+
+"@openzeppelin/contracts@^2.4.0":
+  version "2.4.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-2.4.0.tgz#7270f79ed1463370fe6e664d36a779aa4d3ee896"
+  integrity sha512-xeKP59REgow5TPBJh3S9BRIm7DDG+Rz3Nt4ANWGUkjk4305DHpyUD5CyMJ6nd2JMmZuFyx4mjvvlCtSJLRnN6w==
 
 "@react-bootstrap/react-popper@1.2.1":
   version "1.2.1"
