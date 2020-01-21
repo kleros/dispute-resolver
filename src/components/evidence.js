@@ -1,6 +1,7 @@
 import { Button, Card, Col, Container, Form, Spinner } from "react-bootstrap";
 import Dropzone from "react-dropzone";
 import React from "react";
+import { ReactComponent as EvidenceSVG } from "../assets/images/evidence.svg";
 
 class Evidence extends React.Component {
   constructor(properties) {
@@ -68,7 +69,7 @@ class Evidence extends React.Component {
       <Container fluid="true">
         <Card>
           <Card.Header>
-            <img alt="evidence" src="evidence.svg" />
+            <EvidenceSVG />
             Submit Evidence
           </Card.Header>
           <hr className="mt-0" />

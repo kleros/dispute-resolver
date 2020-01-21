@@ -55,7 +55,7 @@ class IPFS extends React.Component {
               <img
                 alt="ipfs logo"
                 src="ipfs-logo-vector-inkscape-template.svg"
-              />{" "}
+              />
               Upload to IPFS
             </Accordion.Toggle>
             <hr className="mt-0" />

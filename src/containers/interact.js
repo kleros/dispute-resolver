@@ -6,6 +6,8 @@ import QuestionDisplay from "../components/question-display";
 import debounce from "lodash.debounce";
 import IPFS from "../components/ipfs";
 import ReactMarkdown from "react-markdown";
+import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
+import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 
 class Interact extends React.Component {
   constructor(props) {
@@ -265,7 +267,7 @@ class Interact extends React.Component {
       <Container fluid="true" className="main-content">
         <Card>
           <Card.Header>
-            <img alt="gavel" src="../gavel.svg" />
+            <GavelSVG />
             Interact with a Dispute
           </Card.Header>
           <hr className="mt-0" />
@@ -330,20 +332,21 @@ class Interact extends React.Component {
                           }
                         />
                       </Form.Group>
-
-                      <Card.Footer
-                        style={{
-                          backgroundColor: "#F5F1FD"
-                        }}
-                      >
-                        <a
-                          href={
-                            this.state.metaevidence.metaEvidenceJSON.fileURI
-                          }
+                      {this.state.metaevidence.metaEvidenceJSON.fileURI && (
+                        <Card.Footer
+                          style={{
+                            backgroundColor: "#F5F1FD"
+                          }}
                         >
-                          <img src="attachment.svg" />
-                        </a>
-                      </Card.Footer>
+                          <a
+                            href={
+                              this.state.metaevidence.metaEvidenceJSON.fileURI
+                            }
+                          >
+                            <AttachmentSVG />
+                          </a>
+                        </Card.Footer>
+                      )}
                     </Card.Body>
                   </Card>
                 </Form.Row>

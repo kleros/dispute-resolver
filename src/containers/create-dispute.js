@@ -21,6 +21,7 @@ import { Container, Col, Button, Form, Card, Dropdown } from "react-bootstrap";
 import { Redirect } from "react-router-dom";
 
 import IPFS from "../components/ipfs";
+import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
 
 class CreateDispute extends React.Component {
   constructor(props) {
@@ -248,7 +249,7 @@ class CreateDispute extends React.Component {
 
         <Card>
           <Card.Header>
-            <img src="gavel.svg" alt="gavel" />
+            <GavelSVG />
             Create a Dispute
           </Card.Header>
           <hr className="mt-0" />

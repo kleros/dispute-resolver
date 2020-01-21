@@ -1,5 +1,6 @@
 import { Navbar, Nav } from "react-bootstrap";
 import React from "react";
+import { ReactComponent as LogoSVG } from "../assets/images/logo-dispute-resolver-white.svg";
 
 class TopBanner extends React.Component {
   constructor(props) {
@@ -13,11 +14,7 @@ class TopBanner extends React.Component {
           href="https://kleros.io"
           style={{ padding: "0", margin: "0" }}
         >
-          <img
-            src="logo-dispute-resolver-white.png"
-            alt="Dispute Resolver Logo"
-            height="48px"
-          />
+          <LogoSVG />
         </Navbar.Brand>
         <Navbar.Toggle aria-controls="responsive-navbar-nav" />
         <Navbar.Collapse id="responsive-navbar-nav">

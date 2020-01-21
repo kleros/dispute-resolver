@@ -13,6 +13,7 @@ import {
 import React from "react";
 import BigNumber from "bignumber.js";
 import Countdown from "react-countdown-now";
+import { AppealSVG } from "assets/images/appeal.svg";
 
 class Appeal extends React.Component {
   constructor(properties) {
@@ -115,7 +116,7 @@ class Appeal extends React.Component {
       <Container fluid="true">
         <Card disabled>
           <Card.Header>
-            <img alt="appeal" src="appeal.svg" />
+            <AppealSVG />
             Appeal
           </Card.Header>
           <hr className="mt-0" />

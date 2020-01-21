@@ -101,7 +101,7 @@ button.ok {
 
 .card-body {
   border-radius: 12px;
-  padding: 40px;
+  padding: 2rem;
 
   background-color: white;
   border-radius: 12px;
@@ -129,7 +129,7 @@ button.ok {
 }
 
 div.card-header > img {
-  margin-right: 20px;
+  margin-right: 1rem;
   width: 68px;
 }
 
@@ -332,7 +332,47 @@ footer {
 }
 
 svg {
+  margin-right: 1rem;
   color: #4d00b4;
+  width: 4rem;
+  height: auto;
+}
+
+#header > a > svg {
+  width: 14rem;
+  height: minHeight;
+}
+
+body
+  > div.modal
+  > div
+  > div
+  > div.modal-body
+  > form
+  > div:nth-child(11)
+  > div
+  > div
+  > a
+  > svg {
+  width: 1.5rem;
+  height: auto;
+}
+
+#root
+  > div
+  > div
+  > div
+  > div.card
+  > div.card-body
+  > form
+  > div:nth-child(3)
+  > div
+  > div
+  > div.card-footer
+  > a
+  > svg {
+  width: 2rem;
+  height: auto;
 }
 
 #markdown {

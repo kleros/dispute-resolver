@@ -1,6 +1,7 @@
 import React from "react";
 import { Modal, Form, Col, Button, Spinner } from "react-bootstrap";
 import ReactMarkdown from "react-markdown";
+import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 
 class Confirmation extends React.Component {
   onModalShow = e => this.setState({ modalShow: true });
@@ -185,8 +186,7 @@ class Confirmation extends React.Component {
                       "https://ipfs.kleros.io" + primaryDocument
                     }
                   >
-                    <img src="attachment.svg" alt="primary document" />{" "}
-                    {this.props.filePath}
+                    <AttachmentSVG /> {this.props.filePath}
                   </a>
                 </Form.Group>
               </Col>{" "}
