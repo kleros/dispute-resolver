@@ -176,21 +176,23 @@ class Confirmation extends React.Component {
                 </Form.Group>
               </Col>{" "}
             </Form.Row>
-            <Form.Row>
-              <Col>
-                <Form.Group>
-                  <a
-                    target="blank"
-                    href={
-                      primaryDocument &&
-                      "https://ipfs.kleros.io" + primaryDocument
-                    }
-                  >
-                    <AttachmentSVG /> {this.props.filePath}
-                  </a>
-                </Form.Group>
-              </Col>{" "}
-            </Form.Row>
+            {primaryDocument && (
+              <Form.Row>
+                <Col>
+                  <Form.Group>
+                    <a
+                      target="blank"
+                      href={
+                        primaryDocument &&
+                        "https://ipfs.kleros.io" + primaryDocument
+                      }
+                    >
+                      <AttachmentSVG /> {this.props.filePath}
+                    </a>
+                  </Form.Group>
+                </Col>{" "}
+              </Form.Row>
+            )}
           </Form>
         </Modal.Body>
         <Modal.Footer>
