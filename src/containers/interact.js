@@ -326,12 +326,9 @@ class Interact extends React.Component {
               )}
               {arbitrableDispute && this.state.metaevidence.metaEvidenceJSON && (
                 <Form.Row>
-                  <Card
-                    className="w-100"
-                    style={{ margin: 0, textAlign: "center" }}
-                  >
+                  <Card className="w-100" style={{ margin: 0 }}>
                     <Card.Body>
-                      <Form.Group id="markdown">
+                      <Form.Group id="markdown" style={{ paddingLeft: 0 }}>
                         <ReactMarkdown
                           source={
                             this.state.metaevidence.metaEvidenceJSON.description
