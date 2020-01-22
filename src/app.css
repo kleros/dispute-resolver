@@ -331,11 +331,15 @@ footer {
   background-image: "../arrow.svg";
 }
 
-svg {
+a > svg {
   margin-right: 1rem;
   color: #4d00b4;
   width: 4rem;
   height: auto;
+}
+
+i > svg {
+  vertical-align: baseline;
 }
 
 #header > a > svg {

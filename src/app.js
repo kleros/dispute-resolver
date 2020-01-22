@@ -6,7 +6,7 @@ import _404 from "./containers/404";
 import Interact from "./containers/interact";
 import { BrowserRouter, Route, Switch } from "react-router-dom";
 import TopBanner from "./components/top-banner";
-import { default as Footer } from "@kleros/react-components/dist/footer";
+import { Footer } from "@kleros/react-components";
 import Web3 from "./ethereum/web3";
 import * as EthereumInterface from "./ethereum/interface";
 import networkMap from "./ethereum/network-contract-mapping";

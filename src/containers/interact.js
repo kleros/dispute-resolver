@@ -8,6 +8,7 @@ import IPFS from "../components/ipfs";
 import ReactMarkdown from "react-markdown";
 import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
+import { EvidenceTimeline } from "@kleros/react-components";
 
 class Interact extends React.Component {
   constructor(props) {
@@ -19,7 +20,7 @@ class Interact extends React.Component {
       fileInput: "",
       evidenceFileURI: "",
       metaevidence: "",
-      evidences: [],
+      evidences: "",
       subcourtDetails: {},
       modalShow: false,
       evidenceTitle: "",
@@ -210,6 +211,7 @@ class Interact extends React.Component {
       else subcourt = await fetch(`https://ipfs.kleros.io${subcourtURI}`);
 
       console.log(arbitratorDispute);
+
       await this.setState({
         dispute: arbitratorDispute,
         subcourtDetails: await subcourt.json(),
@@ -220,7 +222,11 @@ class Interact extends React.Component {
         arbitrableDispute,
         arbitratorDisputeID: arbitrableDispute.disputeIDOnArbitratorSide,
 
-        disputeID: arbitrableDisputeID
+        disputeID: arbitrableDisputeID,
+        evidences: await this.props.getEvidencesCallback(
+          this.props.arbitrableAddress,
+          arbitrableDisputeID
+        )
       });
     } catch (err) {
       console.error(err.message);
@@ -353,37 +359,57 @@ class Interact extends React.Component {
               )}
 
               {arbitrableDispute && this.state.metaevidence.metaEvidenceJSON && (
-                <Form.Row>
-                  <QuestionDisplay
-                    question={metaevidence.metaEvidenceJSON.question}
-                    firstRulingOption={
-                      metaevidence.metaEvidenceJSON.rulingOptions.titles[0]
-                    }
-                    secondRulingOption={
-                      metaevidence.metaEvidenceJSON.rulingOptions.titles[1]
-                    }
-                    firstRulingDescription={
-                      metaevidence.metaEvidenceJSON.rulingOptions
-                        .descriptions[0]
-                    }
-                    secondRulingDescription={
-                      metaevidence.metaEvidenceJSON.rulingOptions
-                        .descriptions[1]
-                    }
-                  />
-                </Form.Row>
+                <>
+                  <Form.Row>
+                    <QuestionDisplay
+                      question={metaevidence.metaEvidenceJSON.question}
+                      firstRulingOption={
+                        metaevidence.metaEvidenceJSON.rulingOptions.titles[0]
+                      }
+                      secondRulingOption={
+                        metaevidence.metaEvidenceJSON.rulingOptions.titles[1]
+                      }
+                      firstRulingDescription={
+                        metaevidence.metaEvidenceJSON.rulingOptions
+                          .descriptions[0]
+                      }
+                      secondRulingDescription={
+                        metaevidence.metaEvidenceJSON.rulingOptions
+                          .descriptions[1]
+                      }
+                    />
+                  </Form.Row>
+
+                  <Form.Row>
+                    <Card
+                      className="w-100"
+                      style={{
+                        marginLeft: 0,
+                        marginRight: 0
+                      }}
+                    >
+                      <Card.Body>
+                        <EvidenceTimeline
+                          metaEvidence={metaevidence}
+                          evidence={this.state.evidences}
+                        />
+                      </Card.Body>
+                    </Card>
+                  </Form.Row>
+                </>
               )}
             </Form>
           </Card.Body>
 
           <Card.Footer className="p-0" id="dispute-detail-footer">
             <div className="text-center p-5">
-              <h3>{this.getHumanReadablePeriod(dispute.period)}</h3>
+              <h3 style={{ color: "white" }}>
+                {this.getHumanReadablePeriod(dispute.period)}
+              </h3>
             </div>
             <div />
           </Card.Footer>
         </Card>
-
         {dispute && ["0", "1", "2", "3"].find(x => x == dispute.period) && (
           <>
             <Evidence
