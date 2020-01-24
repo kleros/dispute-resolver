@@ -338,6 +338,10 @@ a > svg {
   height: auto;
 }
 
+footer > a > svg {
+  margin: 0;
+}
+
 i > svg {
   vertical-align: baseline;
 }

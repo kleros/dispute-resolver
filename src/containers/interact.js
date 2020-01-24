@@ -357,23 +357,25 @@ class Interact extends React.Component {
               {arbitrableDispute && this.state.metaevidence.metaEvidenceJSON && (
                 <>
                   <Form.Row>
-                    <QuestionDisplay
-                      question={metaevidence.metaEvidenceJSON.question}
-                      firstRulingOption={
-                        metaevidence.metaEvidenceJSON.rulingOptions.titles[0]
-                      }
-                      secondRulingOption={
-                        metaevidence.metaEvidenceJSON.rulingOptions.titles[1]
-                      }
-                      firstRulingDescription={
-                        metaevidence.metaEvidenceJSON.rulingOptions
-                          .descriptions[0]
-                      }
-                      secondRulingDescription={
-                        metaevidence.metaEvidenceJSON.rulingOptions
-                          .descriptions[1]
-                      }
-                    />
+                    <Col style={{ padding: 0 }}>
+                      <QuestionDisplay
+                        question={metaevidence.metaEvidenceJSON.question}
+                        firstRulingOption={
+                          metaevidence.metaEvidenceJSON.rulingOptions.titles[0]
+                        }
+                        secondRulingOption={
+                          metaevidence.metaEvidenceJSON.rulingOptions.titles[1]
+                        }
+                        firstRulingDescription={
+                          metaevidence.metaEvidenceJSON.rulingOptions
+                            .descriptions[0]
+                        }
+                        secondRulingDescription={
+                          metaevidence.metaEvidenceJSON.rulingOptions
+                            .descriptions[1]
+                        }
+                      />
+                    </Col>
                   </Form.Row>
 
                   <Form.Row>

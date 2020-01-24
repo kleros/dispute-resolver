@@ -35,6 +35,7 @@ class QuestionDisplay extends React.Component {
                 <Form.Group controlId="question">
                   <Form.Label>Question</Form.Label>
                   <Form.Control
+                    className="text-break"
                     readOnly
                     type="text"
                     value={this.props.question}
@@ -43,7 +44,7 @@ class QuestionDisplay extends React.Component {
               </Col>
             </Form.Row>
             <Form.Row>
-              <Col>
+              <Col md={3}>
                 <Form.Group>
                   <Form.Label>First Ruling Option</Form.Label>
                   <Form.Control
@@ -53,7 +54,7 @@ class QuestionDisplay extends React.Component {
                   />
                 </Form.Group>
               </Col>
-              <Col>
+              <Col md={9}>
                 <Form.Group>
                   <Form.Label>First Ruling Description</Form.Label>
                   <Form.Control
@@ -65,7 +66,7 @@ class QuestionDisplay extends React.Component {
               </Col>{" "}
             </Form.Row>
             <Form.Row>
-              <Col>
+              <Col sm={3}>
                 <Form.Group>
                   <Form.Label>Second Ruling Option</Form.Label>
                   <Form.Control
@@ -75,7 +76,7 @@ class QuestionDisplay extends React.Component {
                   />
                 </Form.Group>
               </Col>
-              <Col>
+              <Col sm={9}>
                 <Form.Group>
                   <Form.Label>Second Ruling Description</Form.Label>
 
