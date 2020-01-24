@@ -32,61 +32,39 @@ class QuestionDisplay extends React.Component {
           <Form>
             <Form.Row>
               <Col>
-                <Form.Group controlId="question">
-                  <Form.Label>Question</Form.Label>
-                  <Form.Control
-                    className="text-break"
-                    readOnly
-                    type="text"
-                    value={this.props.question}
-                  />
-                </Form.Group>
+                <p className="purple-inverted ">Question</p>
+                <p className=" font-weight-bold purple-inverted">
+                  {this.props.question}
+                </p>
               </Col>
             </Form.Row>
             <Form.Row>
               <Col md={3}>
-                <Form.Group>
-                  <Form.Label>First Ruling Option</Form.Label>
-                  <Form.Control
-                    readOnly
-                    type="text"
-                    value={this.props.firstRulingOption}
-                  />
-                </Form.Group>
+                <p className="purple-inverted">First Ruling Option</p>
+                <p className=" font-weight-bold purple-inverted">
+                  {this.props.firstRulingOption}
+                </p>
               </Col>
               <Col md={9}>
-                <Form.Group>
-                  <Form.Label>First Ruling Description</Form.Label>
-                  <Form.Control
-                    readOnly
-                    type="text"
-                    value={this.props.firstRulingDescription}
-                  />
-                </Form.Group>
-              </Col>{" "}
+                <p className="purple-inverted">First Ruling Description</p>
+                <p className="font-weight-bold purple-inverted">
+                  {this.props.firstRulingDescription}
+                </p>
+              </Col>
             </Form.Row>
             <Form.Row>
-              <Col sm={3}>
-                <Form.Group>
-                  <Form.Label>Second Ruling Option</Form.Label>
-                  <Form.Control
-                    readOnly
-                    type="text"
-                    value={this.props.secondRulingOption}
-                  />
-                </Form.Group>
+              <Col md={3}>
+                <p className="purple-inverted">Second Ruling Option</p>
+                <p className="font-weight-bold purple-inverted">
+                  {this.props.secondRulingOption}
+                </p>
               </Col>
-              <Col sm={9}>
-                <Form.Group>
-                  <Form.Label>Second Ruling Description</Form.Label>
-
-                  <Form.Control
-                    readOnly
-                    type="text"
-                    value={this.props.secondRulingDescription}
-                  />
-                </Form.Group>
-              </Col>{" "}
+              <Col md={9}>
+                <p className="purple-inverted">Second Ruling Description</p>
+                <p className="font-weight-bold purple-inverted">
+                  {this.props.secondRulingDescription}
+                </p>
+              </Col>
             </Form.Row>
           </Form>
         </Card.Body>
