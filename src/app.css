@@ -338,7 +338,7 @@ a > svg {
   height: auto;
 }
 
-footer > a > svg {
+div > a > svg {
   margin: 0;
 }
 

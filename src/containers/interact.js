@@ -8,7 +8,6 @@ import IPFS from "../components/ipfs";
 import ReactMarkdown from "react-markdown";
 import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
-import { EvidenceTimeline } from "@kleros/react-components";
 
 class Interact extends React.Component {
   constructor(props) {
@@ -376,23 +375,6 @@ class Interact extends React.Component {
                         }
                       />
                     </Col>
-                  </Form.Row>
-
-                  <Form.Row>
-                    <Card
-                      className="w-100"
-                      style={{
-                        marginLeft: 0,
-                        marginRight: 0
-                      }}
-                    >
-                      <Card.Body>
-                        <EvidenceTimeline
-                          metaEvidence={metaevidence}
-                          evidence={this.state.evidences}
-                        />
-                      </Card.Body>
-                    </Card>
                   </Form.Row>
                 </>
               )}
