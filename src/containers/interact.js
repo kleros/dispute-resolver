@@ -326,7 +326,7 @@ class Interact extends React.Component {
               )}
               {arbitrableDispute && this.state.metaevidence.metaEvidenceJSON && (
                 <Form.Row>
-                  <Card className="w-100" style={{ margin: 0 }}>
+                  <Card className="w-100 text-center" style={{ margin: 0 }}>
                     <Card.Body>
                       <Form.Group id="markdown" style={{ paddingLeft: 0 }}>
                         <ReactMarkdown
@@ -342,9 +342,8 @@ class Interact extends React.Component {
                           }}
                         >
                           <a
-                            href={
-                              this.state.metaevidence.metaEvidenceJSON.fileURI
-                            }
+                            href={`
+                              https://ipfs.kleros.io${this.state.metaevidence.metaEvidenceJSON.fileURI}`}
                           >
                             <AttachmentSVG />
                           </a>
