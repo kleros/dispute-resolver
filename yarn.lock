@@ -1392,10 +1392,10 @@
     "@kleros/kleros-interaction" "^0.9.0"
     minimetoken "^0.2.0"
 
-"@kleros/react-components@^2.9.0":
-  version "2.9.0"
-  resolved "https://registry.yarnpkg.com/@kleros/react-components/-/react-components-2.9.0.tgz#367d0f1b1aa7bf387085518743c68f10540bf41d"
-  integrity sha512-oyeWC9ruzSSw5GSPI3N3ySaBp++JN009u+0HF5dfUn3Zr9oGiQildcrvktf9mqxUbHqTwMkDjMOQa/d8WNduYQ==
+"@kleros/react-components@^2.9.1":
+  version "2.9.1"
+  resolved "https://registry.yarnpkg.com/@kleros/react-components/-/react-components-2.9.1.tgz#86189a77acd3b86153c33d0674cae083c4db7515"
+  integrity sha512-8941puTU1X+gcVfZcNTH0UT3y5i7xYnwf2SzRpNGjkIbMzby0A+kEBqJJSeHFsYme2OW70xGI3YQrDPH+FbjFA==
   dependencies:
     antd "^3.26.7"
     is-image "^3.0.0"

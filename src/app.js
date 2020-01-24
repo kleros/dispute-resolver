@@ -399,7 +399,7 @@ class App extends React.Component {
             }etherscan.io/address/${
               networkMap[this.state.network].BINARY_ARBITRABLE_PROXY
             }#code`}
-            repository={"https://github.com/kleros/binary-arbitrable-proxy"}
+            repository={"https://github.com/kleros/dispute-resolver"}
           />
         </Container>
       );
