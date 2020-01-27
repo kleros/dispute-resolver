@@ -328,11 +328,17 @@ class Interact extends React.Component {
                   <Card className="w-100" style={{ margin: 0 }}>
                     <Card.Body>
                       <Form.Group id="markdown" style={{ paddingLeft: 0 }}>
-                        <ReactMarkdown
-                          source={
-                            this.state.metaevidence.metaEvidenceJSON.description
-                          }
-                        />
+                        {this.state.metaevidence.metaEvidenceJSON
+                          .description && (
+                          <ReactMarkdown
+                            source={
+                              this.state.metaevidence.metaEvidenceJSON
+                                .description
+                            }
+                          />
+                        )}
+                        {!this.state.metaevidence.metaEvidenceJSON
+                          .description && <p>Not provided</p>}
                       </Form.Group>
                       {this.state.metaevidence.metaEvidenceJSON.fileURI && (
                         <Card.Footer
@@ -391,14 +397,7 @@ class Interact extends React.Component {
             <div />
           </Card.Footer>
         </Card>
-        {dispute && ["0", "1", "2", "3"].find(x => x == dispute.period) && (
-          <>
-            <Evidence
-              publishCallback={this.props.publishCallback}
-              submitEvidenceCallback={this.submitEvidence}
-            />
-          </>
-        )}
+
         {dispute &&
           dispute.period == 3 &&
           crowdfundingStatus &&
@@ -419,6 +418,14 @@ class Interact extends React.Component {
               metaevidence={this.state.metaevidence}
             />
           )}
+        {dispute && ["0", "1", "2", "3"].find(x => x == dispute.period) && (
+          <>
+            <Evidence
+              publishCallback={this.props.publishCallback}
+              submitEvidenceCallback={this.submitEvidence}
+            />
+          </>
+        )}
         <IPFS publishCallback={this.props.publishCallback} />
       </Container>
     );

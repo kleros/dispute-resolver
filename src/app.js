@@ -159,7 +159,7 @@ class App extends React.Component {
       networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
       this.state.activeAddress,
       contribution,
-      "appeal",
+      "fundAppeal",
       arbitrableDisputeID,
       party
     );

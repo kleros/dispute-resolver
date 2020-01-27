@@ -8,12 +8,16 @@ import {
   Modal,
   InputGroup,
   Row,
-  FormControl
+  FormControl,
+  Spinner
 } from "react-bootstrap";
 import React from "react";
 import BigNumber from "bignumber.js";
 import Countdown from "react-countdown-now";
-import { AppealSVG } from "assets/images/appeal.svg";
+import { ReactComponent as AppealSVG } from "assets/images/appeal.svg";
+import { ReactComponent as WarningSVG } from "assets/images/warning.svg";
+import { ReactComponent as ClockRed } from "assets/images/clock_red.svg";
+import { ReactComponent as ClockPurple } from "assets/images/clock_purple.svg";
 
 class Appeal extends React.Component {
   constructor(properties) {
@@ -23,7 +27,8 @@ class Appeal extends React.Component {
     this.state = {
       modalShow: false,
       contribution: "",
-      party: "1"
+      party: "1",
+      awaitingConfirmation: false
     };
   }
 
@@ -54,12 +59,19 @@ class Appeal extends React.Component {
 
   handleContributeButtonClick = async e => {
     console.log("contribute clicked");
-    await this.props.appealCallback(
-      this.state.party,
-      BigNumber(this.state.contribution)
-        .times(BigNumber(10).pow(BigNumber(18)))
-        .toString()
-    );
+    await this.setState({ awaitingConfirmation: true });
+    try {
+      await this.props.appealCallback(
+        this.state.party,
+        BigNumber(this.state.contribution)
+          .times(BigNumber(10).pow(BigNumber(18)))
+          .toString()
+      );
+      await this.setState({ modalShow: false });
+    } catch (e) {
+    } finally {
+      await this.setState({ awaitingConfirmation: false });
+    }
   };
 
   handleFundButtonClick = async e => {
@@ -148,7 +160,7 @@ class Appeal extends React.Component {
                         <Form.Row>
                           <Col s={1} md={1} l={1} xl={1}>
                             <div>
-                              <img alt="" src="clock_purple.svg" />
+                              <ClockPurple />
                             </div>
                           </Col>
                           <Col>
@@ -176,7 +188,16 @@ class Appeal extends React.Component {
                                         )[0]
                                       }
                                     </a>
-                                  )) || <div>Requester</div>}
+                                  )) || (
+                                  <div>
+                                    {
+                                      Object.values(
+                                        this.props.metaevidence.metaEvidenceJSON
+                                          .rulingOptions.titles
+                                      )[0]
+                                    }
+                                  </div>
+                                )}
                                 <div className="font-weight-500">
                                   {(currentRuling == "0" && "Tied") ||
                                     (currentRuling == "1" && "Winner") ||
@@ -218,7 +239,7 @@ class Appeal extends React.Component {
                         </h4>
                         <Form.Row>
                           <Col s={1} md={1} l={1} xl={1}>
-                            <img alt="" src="clock_red.svg" />{" "}
+                            <ClockRed />
                           </Col>
                           <Col>
                             {appealPeriod && (
@@ -253,7 +274,7 @@ class Appeal extends React.Component {
                         <Form.Row>
                           <Col s={1} md={1} l={1} xl={1}>
                             <div>
-                              <img alt="" src="clock_purple.svg" />
+                              <ClockPurple />
                             </div>
                           </Col>
                           <Col>
@@ -281,7 +302,16 @@ class Appeal extends React.Component {
                                         )[1]
                                       }
                                     </a>
-                                  )) || <div>Respondent</div>}
+                                  )) || (
+                                  <div>
+                                    {
+                                      Object.values(
+                                        this.props.metaevidence.metaEvidenceJSON
+                                          .rulingOptions.titles
+                                      )[1]
+                                    }
+                                  </div>
+                                )}
                                 <div className="font-weight-500">
                                   {(currentRuling == "0" && "Tied") ||
                                     (currentRuling == "1" && "Loser") ||
@@ -323,7 +353,7 @@ class Appeal extends React.Component {
                         </h4>
                         <Form.Row>
                           <Col s={1} md={1} l={1} xl={1}>
-                            <img alt="" src="clock_red.svg" />{" "}
+                            <ClockRed />
                           </Col>
                           <Col>
                             {appealPeriod && (
@@ -358,7 +388,7 @@ class Appeal extends React.Component {
                       <Card.Body>
                         <Form.Row>
                           <Col className="text-center my-3">
-                            <img src="warning.svg" />
+                            <WarningSVG />
                           </Col>
                         </Form.Row>
 
@@ -426,7 +456,15 @@ class Appeal extends React.Component {
                                 (currentRuling == "1" && "Winner") ||
                                 (currentRuling == "2" && "Loser")}
                             </h5>
-                            <p className="purple-2-inverted">Requester</p>
+                            <p className="purple-2-inverted">
+                              {" "}
+                              {
+                                Object.values(
+                                  this.props.metaevidence.metaEvidenceJSON
+                                    .rulingOptions.titles
+                                )[0]
+                              }
+                            </p>
                           </Col>
                         </Form.Row>
                       </InputGroup.Prepend>
@@ -453,7 +491,15 @@ class Appeal extends React.Component {
                                 (currentRuling == "1" && "Loser") ||
                                 (currentRuling == "2" && "Winner")}
                             </h5>
-                            <p className="purple-2-inverted">Respondent</p>
+                            <p className="purple-2-inverted">
+                              {" "}
+                              {
+                                Object.values(
+                                  this.props.metaevidence.metaEvidenceJSON
+                                    .rulingOptions.titles
+                                )[1]
+                              }
+                            </p>
                           </Col>
                         </Form.Row>
                       </InputGroup.Prepend>
@@ -507,7 +553,18 @@ class Appeal extends React.Component {
                       className="float-right ok"
                       onClick={this.handleContributeButtonClick}
                     >
-                      Contribute
+                      {this.state.awaitingConfirmation && (
+                        <Spinner
+                          as="span"
+                          animation="grow"
+                          size="sm"
+                          role="status"
+                          aria-hidden="true"
+                        />
+                      )}{" "}
+                      {(this.state.awaitingConfirmation &&
+                        "Awaiting Confirmation") ||
+                        "Contribute"}
                     </Button>
                   </Col>
                 </Form.Row>

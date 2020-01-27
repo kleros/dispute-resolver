@@ -77,9 +77,13 @@ class Confirmation extends React.Component {
                 </Form.Group>
               </Col>
               <Col>
-                <Form.Group controlId="title">
+                <Form.Group controlId="category">
                   <Form.Label>Category</Form.Label>
-                  <Form.Control readOnly type="text" value={category} />
+                  <Form.Control
+                    readOnly
+                    type="text"
+                    value={category || "Not provided"}
+                  />
                 </Form.Group>
               </Col>
             </Form.Row>
@@ -87,7 +91,7 @@ class Confirmation extends React.Component {
               <Col>
                 <Form.Group controlId="description">
                   <Form.Label>Description</Form.Label>
-                  <ReactMarkdown source={description} />
+                  <ReactMarkdown source={description || "Not provided"} />
                 </Form.Group>
               </Col>
             </Form.Row>
@@ -102,7 +106,11 @@ class Confirmation extends React.Component {
               <Col md={4}>
                 <Form.Group controlId="requesterAddress">
                   <Form.Label>Requester Address</Form.Label>
-                  <Form.Control readOnly type="text" value={requesterAddress} />
+                  <Form.Control
+                    readOnly
+                    type="text"
+                    value={requesterAddress || "Not provided"}
+                  />
                 </Form.Group>
               </Col>
               <Col md={2}>
@@ -117,7 +125,7 @@ class Confirmation extends React.Component {
                   <Form.Control
                     readOnly
                     type="text"
-                    value={respondentAddress}
+                    value={respondentAddress || "Not provided"}
                   />
                 </Form.Group>
               </Col>
@@ -148,7 +156,7 @@ class Confirmation extends React.Component {
                   <Form.Control
                     readOnly
                     type="text"
-                    value={firstRulingDescription}
+                    value={firstRulingDescription || "Not provided"}
                   />
                 </Form.Group>
               </Col>{" "}
@@ -171,7 +179,7 @@ class Confirmation extends React.Component {
                   <Form.Control
                     readOnly
                     type="text"
-                    value={secondRulingDescription}
+                    value={secondRulingDescription || "Not provided"}
                   />
                 </Form.Group>
               </Col>{" "}

@@ -42,13 +42,13 @@ class QuestionDisplay extends React.Component {
               <Col md={3}>
                 <p className="purple-inverted">First Ruling Option</p>
                 <p className=" font-weight-bold purple-inverted">
-                  {this.props.firstRulingOption}
+                  {this.props.firstRulingOption || "Not provided"}
                 </p>
               </Col>
               <Col md={9}>
                 <p className="purple-inverted">First Ruling Description</p>
                 <p className="font-weight-bold purple-inverted">
-                  {this.props.firstRulingDescription}
+                  {this.props.firstRulingDescription || "Not provided"}
                 </p>
               </Col>
             </Form.Row>
@@ -56,13 +56,13 @@ class QuestionDisplay extends React.Component {
               <Col md={3}>
                 <p className="purple-inverted">Second Ruling Option</p>
                 <p className="font-weight-bold purple-inverted">
-                  {this.props.secondRulingOption}
+                  {this.props.secondRulingOption || "Not provided"}
                 </p>
               </Col>
               <Col md={9}>
                 <p className="purple-inverted">Second Ruling Description</p>
                 <p className="font-weight-bold purple-inverted">
-                  {this.props.secondRulingDescription}
+                  {this.props.secondRulingDescription || "Not provided"}
                 </p>
               </Col>
             </Form.Row>
