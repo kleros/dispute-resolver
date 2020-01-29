@@ -1364,10 +1364,10 @@
     "@kleros/kleros-interaction" "^0.9.0"
     minimetoken "^0.2.0"
 
-"@kleros/react-components@^3.2.4":
-  version "3.2.4"
-  resolved "https://registry.yarnpkg.com/@kleros/react-components/-/react-components-3.2.4.tgz#ceefdd37aec8e58a817b0d53ab70858c28a6f66f"
-  integrity sha512-lfhpH9QOoWWXMNTvI0qL3tD3IoQ/B2vVImwfReHDSXh1C21mYrC9IOgzSnwIMdQtUD4VE2UT0gi6UEl30S+UDw==
+"@kleros/react-components@^3.3.0":
+  version "3.3.0"
+  resolved "https://registry.yarnpkg.com/@kleros/react-components/-/react-components-3.3.0.tgz#a7492a4ca18e559179b3bd2299f5fd2f99a4b281"
+  integrity sha512-Z76qnZ8PWORQ0vTe5FJxFhVQ3drohwnUuRERmQBWs+py5FnNjbE7WWUlO0z9Xbi6OYDsn8fUHNOWNNNXmAh6kA==
   dependencies:
     is-image "^3.0.0"
     is-text-path "^2.0.0"
