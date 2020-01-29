@@ -383,24 +383,24 @@ class Interact extends React.Component {
                       />
                     </Col>
                   </Form.Row>
+                  <Form.Row>
+                    <Card
+                      className="w-100"
+                      style={{
+                        marginLeft: 0,
+                        marginRight: 0
+                      }}
+                    >
+                      <Card.Body style={{ padding: 0 }}>
+                        <EvidenceTimeline
+                          metaEvidence={metaevidence}
+                          evidences={this.state.evidences}
+                        />
+                      </Card.Body>
+                    </Card>
+                  </Form.Row>
                 </>
               )}
-              <Form.Row>
-                <Card
-                  className="w-100"
-                  style={{
-                    marginLeft: 0,
-                    marginRight: 0
-                  }}
-                >
-                  <Card.Body style={{ padding: 0 }}>
-                    <EvidenceTimeline
-                      metaEvidence={metaevidence}
-                      evidences={this.state.evidences}
-                    />
-                  </Card.Body>
-                </Card>
-              </Form.Row>
             </Form>
           </Card.Body>
 
