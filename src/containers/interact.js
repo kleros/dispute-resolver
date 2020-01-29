@@ -8,6 +8,7 @@ import IPFS from "../components/ipfs";
 import ReactMarkdown from "react-markdown";
 import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
+import { EvidenceTimeline } from "@kleros/react-components";
 
 class Interact extends React.Component {
   constructor(props) {
@@ -19,7 +20,7 @@ class Interact extends React.Component {
       fileInput: "",
       evidenceFileURI: "",
       metaevidence: "",
-      evidences: "",
+      evidences: [],
       subcourtDetails: {},
       modalShow: false,
       evidenceTitle: "",
@@ -359,7 +360,6 @@ class Interact extends React.Component {
                   </Card>
                 </Form.Row>
               )}
-
               {arbitrableDispute && this.state.metaevidence.metaEvidenceJSON && (
                 <>
                   <Form.Row>
@@ -385,6 +385,22 @@ class Interact extends React.Component {
                   </Form.Row>
                 </>
               )}
+              <Form.Row>
+                <Card
+                  className="w-100"
+                  style={{
+                    marginLeft: 0,
+                    marginRight: 0
+                  }}
+                >
+                  <Card.Body style={{ padding: 0 }}>
+                    <EvidenceTimeline
+                      metaEvidence={metaevidence}
+                      evidences={this.state.evidences}
+                    />
+                  </Card.Body>
+                </Card>
+              </Form.Row>
             </Form>
           </Card.Body>
 
