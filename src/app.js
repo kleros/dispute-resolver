@@ -257,6 +257,13 @@ class App extends React.Component {
       arbitrableDisputeID
     );
 
+  getRuling = async (arbitrableAddress, arbitratorDisputeID) =>
+    await this.state.archon.arbitrable.getRuling(
+      arbitrableAddress,
+      networkMap[this.state.network].KLEROS_LIQUID,
+      arbitratorDisputeID
+    );
+
   getContractInstance = (interfaceName, address) =>
     EthereumInterface.contractInstance(interfaceName, address);
 
@@ -379,6 +386,7 @@ class App extends React.Component {
                         getCrowdfundingStatusCallback={
                           this.getCrowdfundingStatus
                         }
+                        getRulingCallback={this.getRuling}
                         getEvidencesCallback={this.getEvidences}
                         getMetaEvidenceCallback={this.getMetaEvidence}
                         getSubCourtDetailsCallback={this.getSubCourtDetails}

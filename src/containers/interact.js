@@ -227,6 +227,10 @@ class Interact extends React.Component {
         evidences: await this.props.getEvidencesCallback(
           this.props.arbitrableAddress,
           arbitrableDisputeID
+        ),
+        ruling: await this.props.getRulingCallback(
+          this.props.arbitrableAddress,
+          arbitrableDispute.disputeIDOnArbitratorSide
         )
       });
     } catch (err) {
@@ -397,8 +401,9 @@ class Interact extends React.Component {
                     >
                       <Card.Body style={{ padding: 0 }}>
                         <EvidenceTimeline
-                          metaEvidence={metaevidence}
+                          metaevidence={metaevidence}
                           evidences={this.state.evidences}
+                          ruling={this.state.ruling}
                         />
                       </Card.Body>
                     </Card>
