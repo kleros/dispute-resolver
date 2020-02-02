@@ -323,33 +323,30 @@ class Interact extends React.Component {
                   </Col>
                 )}{" "}
               </Form.Row>
-              {arbitrableDispute && this.state.metaevidence.metaEvidenceJSON && (
+              {arbitrableDispute && metaevidence.metaEvidenceJSON && (
                 <Form.Row>
                   <Col>
                     <h1 className="display-title">
-                      {this.state.metaevidence.metaEvidenceJSON.title}
+                      {metaevidence.metaEvidenceJSON.title}
                     </h1>
                   </Col>
                 </Form.Row>
               )}
-              {arbitrableDispute && this.state.metaevidence.metaEvidenceJSON && (
+              {arbitrableDispute && metaevidence.metaEvidenceJSON && (
                 <Form.Row>
                   <Card className="w-100" style={{ margin: 0 }}>
                     <Card.Body>
                       <Form.Group id="markdown" style={{ paddingLeft: 0 }}>
-                        {this.state.metaevidence.metaEvidenceJSON
-                          .description && (
+                        {metaevidence.metaEvidenceJSON.description && (
                           <ReactMarkdown
-                            source={
-                              this.state.metaevidence.metaEvidenceJSON
-                                .description
-                            }
+                            source={metaevidence.metaEvidenceJSON.description}
                           />
                         )}
-                        {!this.state.metaevidence.metaEvidenceJSON
-                          .description && <p>Not provided</p>}
+                        {!metaevidence.metaEvidenceJSON.description && (
+                          <p>Not provided</p>
+                        )}
                       </Form.Group>
-                      {this.state.metaevidence.metaEvidenceJSON.fileURI && (
+                      {metaevidence.metaEvidenceJSON.fileURI && (
                         <Card.Footer
                           className="text-center"
                           style={{
@@ -358,7 +355,7 @@ class Interact extends React.Component {
                         >
                           <a
                             href={`
-                              https://ipfs.kleros.io${this.state.metaevidence.metaEvidenceJSON.fileURI}`}
+                              https://ipfs.kleros.io${metaevidence.metaEvidenceJSON.fileURI}`}
                           >
                             <AttachmentSVG />
                           </a>
@@ -368,7 +365,7 @@ class Interact extends React.Component {
                   </Card>
                 </Form.Row>
               )}
-              {arbitrableDispute && this.state.metaevidence.metaEvidenceJSON && (
+              {arbitrableDispute && metaevidence.metaEvidenceJSON && (
                 <>
                   <Form.Row>
                     <Col style={{ padding: 0 }}>
@@ -440,7 +437,7 @@ class Interact extends React.Component {
               currentRuling={this.props.getCurrentRulingCallback(
                 arbitrableDispute.disputeIDOnArbitratorSide
               )}
-              metaevidence={this.state.metaevidence}
+              metaevidence={metaevidence}
             />
           )}
         {dispute && ["0", "1", "2", "3"].find(x => x == dispute.period) && (
