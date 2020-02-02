@@ -9,6 +9,7 @@ import ReactMarkdown from "react-markdown";
 import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { EvidenceTimeline } from "@kleros/react-components";
+import { Redirect } from "react-router-dom";
 
 class Interact extends React.Component {
   constructor(props) {
@@ -271,6 +272,9 @@ class Interact extends React.Component {
 
     return (
       <Container fluid="true" className="main-content">
+        {arbitratorDisputeID && (
+          <Redirect to={`/interact/${arbitratorDisputeID}`} />
+        )}
         <Card>
           <Card.Header>
             <GavelSVG />
