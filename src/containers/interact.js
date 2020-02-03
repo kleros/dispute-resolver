@@ -30,7 +30,8 @@ class Interact extends React.Component {
       submitting: false,
       arbitratorIDLoading: false,
       arbitrableIDLoading: false,
-      fetchingString: ""
+      fetchingString: "",
+      currentRuling: 2
     };
 
     this.debouncedRetrieveUsingArbitratorID = debounce(
@@ -189,6 +190,20 @@ class Interact extends React.Component {
     }
   };
 
+  getCurrentRuling = async disputeIDOnArbitratorSide => {
+    let currentRuling;
+    try {
+      currentRuling = await this.props.getCurrentRulingCallback(
+        disputeIDOnArbitratorSide
+      );
+    } catch (err) {
+      console.log(err);
+    } finally {
+      console.log(currentRuling);
+      return currentRuling;
+    }
+  };
+
   getRuling = async (arbitrableAddress, disputeIDOnArbitratorSide) => {
     let ruling;
     try {
@@ -243,6 +258,9 @@ class Interact extends React.Component {
         ),
         ruling: await this.getRuling(
           this.props.arbitrableAddress,
+          arbitrableDispute.disputeIDOnArbitratorSide
+        ),
+        currentRuling: await this.getCurrentRuling(
           arbitrableDispute.disputeIDOnArbitratorSide
         ),
         disputeEvent: await this.props.getDisputeEventCallback(
@@ -418,6 +436,7 @@ class Interact extends React.Component {
                           metaevidence={metaevidence}
                           evidences={this.state.evidences}
                           ruling={this.state.ruling}
+                          currentRuling={Number(this.state.currentRuling)}
                           dispute={this.state.disputeEvent}
                         />
                       </Card.Body>
