@@ -189,6 +189,19 @@ class Interact extends React.Component {
     }
   };
 
+  getRuling = async (arbitrableAddress, disputeIDOnArbitratorSide) => {
+    let ruling;
+    try {
+      ruling = await this.props.getRulingCallback(
+        arbitrableAddress,
+        disputeIDOnArbitratorSide
+      );
+    } catch (err) {
+    } finally {
+      return ruling;
+    }
+  };
+
   commonFetchRoutine = async arbitrableDisputeID => {
     let arbitratorDispute;
     let arbitrableDispute;
@@ -228,7 +241,7 @@ class Interact extends React.Component {
           this.props.arbitrableAddress,
           arbitrableDisputeID
         ),
-        ruling: await this.props.getRulingCallback(
+        ruling: await this.getRuling(
           this.props.arbitrableAddress,
           arbitrableDispute.disputeIDOnArbitratorSide
         ),
