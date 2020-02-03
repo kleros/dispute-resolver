@@ -231,6 +231,10 @@ class Interact extends React.Component {
         ruling: await this.props.getRulingCallback(
           this.props.arbitrableAddress,
           arbitrableDispute.disputeIDOnArbitratorSide
+        ),
+        disputeEvent: await this.props.getDisputeEventCallback(
+          this.props.arbitrableAddress,
+          arbitrableDispute.disputeIDOnArbitratorSide
         )
       });
     } catch (err) {
@@ -401,6 +405,7 @@ class Interact extends React.Component {
                           metaevidence={metaevidence}
                           evidences={this.state.evidences}
                           ruling={this.state.ruling}
+                          dispute={this.state.disputeEvent}
                         />
                       </Card.Body>
                     </Card>

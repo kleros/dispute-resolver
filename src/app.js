@@ -392,6 +392,7 @@ class App extends React.Component {
                         getSubCourtDetailsCallback={this.getSubCourtDetails}
                         publishCallback={this.onPublish}
                         submitEvidenceCallback={this.submitEvidence}
+                        getDisputeEventCallback={this.getDisputeEvent}
                       />
                     </>
                   )}
