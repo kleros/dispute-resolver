@@ -5,6 +5,7 @@ import { ReactComponent as LogoSVG } from "../assets/images/logo-dispute-resolve
 class TopBanner extends React.Component {
   constructor(props) {
     super(props);
+    console.log("down under");
     console.log(props);
   }
   render() {
@@ -20,7 +21,8 @@ class TopBanner extends React.Component {
               className="mx-3"
               href="/create/"
               active={
-                (this.props.pathname && this.props.pathname == "/create/") ||
+                (this.props.route &&
+                  this.props.route.match.path == "(/|/create/)") ||
                 this.props.pathname == "/"
               }
             >
@@ -30,7 +32,8 @@ class TopBanner extends React.Component {
               className="mx-3"
               href="/interact/"
               active={
-                this.props.pathname && this.props.pathname == "/interact/"
+                this.props.route &&
+                this.props.route.match.path == "/interact/:id?"
               }
             >
               Interact

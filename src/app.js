@@ -271,14 +271,16 @@ class App extends React.Component {
     disputeID,
     evidenceTitle,
     evidenceDescription,
-    evidenceDocument
+    evidenceDocument,
+    supportingSide
   }) => {
     const { activeAddress, network } = this.state;
 
     const evidence = {
       name: evidenceTitle,
       description: evidenceDescription,
-      fileURI: evidenceDocument
+      fileURI: evidenceDocument,
+      side: supportingSide
     };
 
     console.log(`evidence: ${JSON.stringify(evidence)}`);
@@ -340,7 +342,7 @@ class App extends React.Component {
                   path="(/|/create/)"
                   render={route => (
                     <>
-                      <TopBanner pathname={route.location.pathname} />
+                      <TopBanner route={route} />
                       <CreateDispute
                         activeAddress={this.state.activeAddress}
                         route={route}
@@ -360,7 +362,7 @@ class App extends React.Component {
                   path="/interact/:id?"
                   render={route => (
                     <>
-                      <TopBanner pathname={route.location.pathname} />
+                      <TopBanner route={route} />
                       <Interact
                         arbitrableAddress={
                           networkMap[network].BINARY_ARBITRABLE_PROXY
