@@ -245,7 +245,8 @@ class Appeal extends React.Component {
                             {appealPeriod && (
                               <Countdown
                                 date={
-                                  (currentRuling == "1" &&
+                                  ((currentRuling == "1" ||
+                                    currentRuling == "0") &&
                                     BigNumber(appealPeriod.end)
                                       .times(BigNumber(1000))
                                       .toNumber()) ||
@@ -359,7 +360,8 @@ class Appeal extends React.Component {
                             {appealPeriod && (
                               <Countdown
                                 date={
-                                  (currentRuling == "2" &&
+                                  ((currentRuling == "2" ||
+                                    currentRuling == "0") &&
                                     BigNumber(appealPeriod.end)
                                       .times(BigNumber(1000))
                                       .toNumber()) ||
