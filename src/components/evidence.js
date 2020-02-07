@@ -10,7 +10,8 @@ class Evidence extends React.Component {
       evidenceDescription: "",
       evidenceTitle: "",
       fileInput: "",
-      awaitingConfirmation: false
+      awaitingConfirmation: false,
+      supportingSide: 0
     };
   }
 
@@ -41,14 +42,20 @@ class Evidence extends React.Component {
   };
 
   handleSubmitEvidenceButtonClick = async event => {
-    const { evidenceDescription, evidenceDocument, evidenceTitle } = this.state;
+    const {
+      evidenceDescription,
+      evidenceDocument,
+      evidenceTitle,
+      supportingSide
+    } = this.state;
     await this.setState({
       awaitingConfirmation: true
     });
     await this.props.submitEvidenceCallback({
       evidenceDescription,
       evidenceDocument,
-      evidenceTitle
+      evidenceTitle,
+      supportingSide
     });
     await this.setState({
       awaitingConfirmation: false,
@@ -65,6 +72,8 @@ class Evidence extends React.Component {
       fileInput,
       awaitingConfirmation
     } = this.state;
+
+    console.log(this.state);
     return (
       <Container fluid="true">
         <Card>
@@ -126,6 +135,40 @@ class Evidence extends React.Component {
                 </Col>
               </Form.Row>
               <Form.Row>
+                <div key="inline-radio" className="mb-3">
+                  <Form.Check
+                    name="support"
+                    inline
+                    defaultChecked
+                    value={0}
+                    label="Discussion"
+                    type="radio"
+                    id="supportingSide"
+                    onChange={this.handleControlChange}
+                  />
+                  <Form.Check
+                    name="support"
+                    value={1}
+                    inline
+                    label={`I'm supporting "${
+                      this.props.rulingOptions.titles[0]
+                    }"`}
+                    type="radio"
+                    id="supportingSide"
+                    onChange={this.handleControlChange}
+                  />
+                  <Form.Check
+                    value={2}
+                    name="support"
+                    inline
+                    label={`I'm supporting "${
+                      this.props.rulingOptions.titles[1]
+                    }:"`}
+                    type="radio"
+                    id="supportingSide"
+                    onChange={this.handleControlChange}
+                  />
+                </div>
                 <Col>
                   <Form.Group>
                     <Button

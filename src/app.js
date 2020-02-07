@@ -280,7 +280,7 @@ class App extends React.Component {
       name: evidenceTitle,
       description: evidenceDescription,
       fileURI: evidenceDocument,
-      side: supportingSide
+      evidenceSide: supportingSide
     };
 
     console.log(`evidence: ${JSON.stringify(evidence)}`);

@@ -69,13 +69,16 @@ class Interact extends React.Component {
     return strings[periodNumber];
   };
 
-  submitEvidence = async evidence =>
+  submitEvidence = async evidence => {
+    console.log(evidence);
     this.props.submitEvidenceCallback({
       disputeID: this.state.disputeID,
       evidenceDescription: evidence.evidenceDescription,
       evidenceDocument: evidence.evidenceDocument,
-      evidenceTitle: evidence.evidenceTitle
+      evidenceTitle: evidence.evidenceTitle,
+      supportingSide: evidence.supportingSide
     });
+  };
 
   onDrop = async acceptedFiles => {
     console.log(acceptedFiles);
@@ -482,6 +485,7 @@ class Interact extends React.Component {
             <Evidence
               publishCallback={this.props.publishCallback}
               submitEvidenceCallback={this.submitEvidence}
+              rulingOptions={metaevidence.metaEvidenceJSON.rulingOptions}
             />
           </>
         )}
