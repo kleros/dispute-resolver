@@ -17,6 +17,14 @@ html {
   height: 100%;
 }
 
+input[type="text"] {
+  height: auto;
+}
+
+body > div.confirmation.modal label {
+  margin-bottom: 0;
+}
+
 body > div.modal > div > div > div.modal-body > form > div > div > div > input,
 body > div.modal > div > div > div.modal-body > form > div > div > div > p {
   font-weight: 600;

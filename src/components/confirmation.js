@@ -34,7 +34,13 @@ class Confirmation extends React.Component {
     } = this.props;
 
     return (
-      <Modal size="xl" show={show} animation={false} closeButton={false}>
+      <Modal
+        className="confirmation"
+        size="xl"
+        show={show}
+        animation={false}
+        closeButton={false}
+      >
         <Modal.Header>
           <Modal.Title>Dispute Summary</Modal.Title>
         </Modal.Header>
@@ -58,12 +64,12 @@ class Confirmation extends React.Component {
                 </Form.Group>
               </Col>{" "}
               <Col>
-                <Form.Group controlId="arbitrationCost">
-                  <Form.Label>Arbitration Cost</Form.Label>
+                <Form.Group controlId="category">
+                  <Form.Label>Category</Form.Label>
                   <Form.Control
                     readOnly
                     type="text"
-                    value={arbitrationCost.toString() + " Ether"}
+                    value={category || "Not provided"}
                   />
                 </Form.Group>
               </Col>
@@ -74,16 +80,6 @@ class Confirmation extends React.Component {
                 <Form.Group controlId="title">
                   <Form.Label>Title</Form.Label>
                   <Form.Control readOnly type="text" value={title} />
-                </Form.Group>
-              </Col>
-              <Col>
-                <Form.Group controlId="category">
-                  <Form.Label>Category</Form.Label>
-                  <Form.Control
-                    readOnly
-                    type="text"
-                    value={category || "Not provided"}
-                  />
                 </Form.Group>
               </Col>
             </Form.Row>
@@ -222,7 +218,7 @@ class Confirmation extends React.Component {
               />
             )}{" "}
             {(awaitingConfirmation && "Awaiting Confirmation") ||
-              "Create the Dispute"}
+              `Create the Dispute for ${arbitrationCost} ETH`}
           </Button>
         </Modal.Footer>
       </Modal>

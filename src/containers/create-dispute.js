@@ -317,7 +317,7 @@ class CreateDispute extends React.Component {
                       id="arbitrationFee"
                       readOnly
                       type="text"
-                      value={arbitrationCost && arbitrationCost + "ETH"}
+                      value={arbitrationCost && arbitrationCost + " ETH"}
                       placeholder="N/A"
                     />
                   </Form.Group>
@@ -588,7 +588,7 @@ class CreateDispute extends React.Component {
 
               <Button type="submit" className="ok" block>
                 Create Dispute{" "}
-                {arbitrationCost && "for " + arbitrationCost + " Ether"}
+                {arbitrationCost && "for " + arbitrationCost + " ETH"}
               </Button>
             </Form>
           </Card.Body>
