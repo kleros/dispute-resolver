@@ -299,16 +299,26 @@ class CreateDispute extends React.Component {
                   </Form.Group>
                 </Col>{" "}
                 <Col>
-                  <Form.Group>
-                    <Form.Label htmlFor="arbitrationFee">
+                  <Form.Group className="float-right">
+                    <Form.Label
+                      style={{ marginBottom: 0 }}
+                      className="float-right"
+                      htmlFor="arbitrationFee"
+                    >
                       Arbitration Cost
                     </Form.Label>
                     <Form.Control
+                      style={{
+                        fontSize: "2rem",
+                        paddingTop: "0",
+                        height: "auto"
+                      }}
+                      className="text-right"
                       id="arbitrationFee"
                       readOnly
                       type="text"
-                      value={arbitrationCost && arbitrationCost + " Ether"}
-                      placeholder="Please select a court and specify number of jurors."
+                      value={arbitrationCost && arbitrationCost + "ETH"}
+                      placeholder="N/A"
                     />
                   </Form.Group>
                 </Col>
