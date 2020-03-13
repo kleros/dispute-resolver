@@ -22,7 +22,7 @@ import { ReactComponent as ClockPurple } from "assets/images/clock_purple.svg";
 class Appeal extends React.Component {
   constructor(properties) {
     super(properties);
-    console.log(typeof this.props.appealCost);
+    console.log(this.props);
 
     this.state = {
       modalShow: false,
@@ -48,10 +48,21 @@ class Appeal extends React.Component {
 
     await this.setState({ [id]: value });
 
+    let winnerMultiplier = BigNumber(this.props.winnerMultiplier);
+    let loserMultiplier = BigNumber(this.props.loserMultiplier);
+    let sharedMultiplier = BigNumber(this.props.sharedMultiplier);
+    let multiplierDivisor = BigNumber(this.props.multiplierDivisor);
+
     if (id == "party")
       await this.setState({
-        contribution: BigNumber(this.props.appealCost)
-          .minus(BigNumber(this.state.crowdfundingStatus[0][this.state.party]))
+        contribution: this.calculateAmountRemainsToBeRaised(
+          await winnerMultiplier,
+          await loserMultiplier,
+          await sharedMultiplier,
+          await multiplierDivisor,
+          await this.props.crowdfundingStatus,
+          this.state.party
+        )
           .div(BigNumber(10).pow(BigNumber(18)))
           .toString()
       });
@@ -75,14 +86,106 @@ class Appeal extends React.Component {
   };
 
   handleFundButtonClick = async e => {
+    let winnerMultiplier = BigNumber(this.props.winnerMultiplier);
+    let loserMultiplier = BigNumber(this.props.loserMultiplier);
+    let sharedMultiplier = BigNumber(this.props.sharedMultiplier);
+    let multiplierDivisor = BigNumber(this.props.multiplierDivisor);
+
     let appealCostInEth = BigNumber(this.props.appealCost)
       .minus(BigNumber(this.state.crowdfundingStatus[0][this.state.party]))
       .div(BigNumber(10).pow(BigNumber(18)))
       .toString();
     this.setState({
-      contribution: appealCostInEth.toString(),
+      contribution: this.calculateAmountRemainsToBeRaised(
+        await winnerMultiplier,
+        await loserMultiplier,
+        await sharedMultiplier,
+        await multiplierDivisor,
+        await this.props.crowdfundingStatus,
+        this.state.party
+      )
+        .div(BigNumber(10).pow(BigNumber(18)))
+        .toString(),
       modalShow: true
     });
+  };
+
+  calculateAmountRemainsToBeRaised = (
+    winnerMultiplier,
+    loserMultiplier,
+    sharedMultiplier,
+    multiplierDivisor,
+    crowdfundingStatus,
+    party
+  ) => {
+    const appealCost = BigNumber(this.props.appealCost);
+    let stake;
+    console.log(party);
+    if (this.props.currentRuling == party) {
+      stake = appealCost
+        .times(BigNumber(winnerMultiplier))
+        .div(BigNumber(multiplierDivisor));
+      console.log(stake);
+    } else if (this.props.currentRuling == 0) {
+      stake = appealCost
+        .times(BigNumber(sharedMultiplier))
+        .div(BigNumber(multiplierDivisor));
+      console.log(stake);
+    } else {
+      console.log(loserMultiplier);
+      stake = appealCost
+        .times(BigNumber(loserMultiplier))
+        .div(BigNumber(multiplierDivisor));
+      console.log(BigNumber(loserMultiplier).toString());
+      console.log(stake.toString());
+    }
+
+    const raisedSoFar = BigNumber(crowdfundingStatus[0][party]);
+    console.log(multiplierDivisor);
+    console.log(loserMultiplier);
+    console.log(appealCost.toString());
+    console.log(stake.toString());
+    console.log(raisedSoFar.toString());
+
+    console.log(
+      appealCost
+        .plus(stake)
+        .minus(raisedSoFar)
+        .toString()
+    );
+    return appealCost.plus(stake).minus(raisedSoFar);
+  };
+
+  calculateTotalAmountToBeRaised = (
+    winnerMultiplier,
+    loserMultiplier,
+    sharedMultiplier,
+    multiplierDivisor,
+    party
+  ) => {
+    const appealCost = BigNumber(this.props.appealCost);
+    let stake;
+    console.log(party);
+    if (this.props.currentRuling == party) {
+      stake = appealCost
+        .times(BigNumber(winnerMultiplier))
+        .div(BigNumber(multiplierDivisor));
+      console.log(stake);
+    } else if (this.props.currentRuling == 0) {
+      stake = appealCost
+        .times(BigNumber(sharedMultiplier))
+        .div(BigNumber(multiplierDivisor));
+      console.log(stake);
+    } else {
+      console.log(loserMultiplier);
+      stake = appealCost
+        .times(BigNumber(loserMultiplier))
+        .div(BigNumber(multiplierDivisor));
+      console.log(BigNumber(loserMultiplier).toString());
+      console.log(stake.toString());
+    }
+
+    return appealCost.plus(stake);
   };
 
   componentDidMount() {
@@ -109,7 +212,13 @@ class Appeal extends React.Component {
       crowdfundingStatus
     } = this.state;
 
-    const { appealCost } = this.props;
+    const {
+      appealCost,
+      winnerMultiplier,
+      loserMultiplier,
+      sharedMultiplier,
+      multiplierDivisor
+    } = this.props;
 
     console.log(this.state);
     console.log(this.props);
@@ -213,7 +322,15 @@ class Appeal extends React.Component {
                               crowdfundingStatus &&
                               BigNumber(100)
                                 .times(BigNumber(crowdfundingStatus[0][1]))
-                                .div(BigNumber(this.props.appealCost))
+                                .div(
+                                  this.calculateTotalAmountToBeRaised(
+                                    winnerMultiplier,
+                                    loserMultiplier,
+                                    sharedMultiplier,
+                                    multiplierDivisor,
+                                    1
+                                  )
+                                )
                                 .toString()
                             }
                             label={
@@ -221,7 +338,15 @@ class Appeal extends React.Component {
                               "%" +
                                 BigNumber(100)
                                   .times(BigNumber(crowdfundingStatus[0][1]))
-                                  .div(BigNumber(this.props.appealCost))
+                                  .div(
+                                    this.calculateTotalAmountToBeRaised(
+                                      winnerMultiplier,
+                                      loserMultiplier,
+                                      sharedMultiplier,
+                                      multiplierDivisor,
+                                      1
+                                    )
+                                  )
                                   .toFixed(2)
                             }
                           />
@@ -328,7 +453,15 @@ class Appeal extends React.Component {
                               crowdfundingStatus &&
                               BigNumber(100)
                                 .times(BigNumber(crowdfundingStatus[0][2]))
-                                .div(BigNumber(this.props.appealCost))
+                                .div(
+                                  this.calculateTotalAmountToBeRaised(
+                                    winnerMultiplier,
+                                    loserMultiplier,
+                                    sharedMultiplier,
+                                    multiplierDivisor,
+                                    2
+                                  )
+                                )
                                 .toString()
                             }
                             label={
@@ -336,7 +469,15 @@ class Appeal extends React.Component {
                               "%" +
                                 BigNumber(100)
                                   .times(BigNumber(crowdfundingStatus[0][2]))
-                                  .div(BigNumber(this.props.appealCost))
+                                  .div(
+                                    this.calculateTotalAmountToBeRaised(
+                                      winnerMultiplier,
+                                      loserMultiplier,
+                                      sharedMultiplier,
+                                      multiplierDivisor,
+                                      2
+                                    )
+                                  )
                                   .toFixed(2)
                             }
                           />
@@ -528,8 +669,18 @@ class Appeal extends React.Component {
                       type="number"
                       max={
                         crowdfundingStatus &&
-                        BigNumber(this.props.appealCost)
-                          .minus(BigNumber(crowdfundingStatus[0][party]))
+                        winnerMultiplier &&
+                        loserMultiplier &&
+                        sharedMultiplier &&
+                        multiplierDivisor &&
+                        this.calculateAmountRemainsToBeRaised(
+                          winnerMultiplier,
+                          loserMultiplier,
+                          sharedMultiplier,
+                          multiplierDivisor,
+                          crowdfundingStatus,
+                          party
+                        )
                           .div(BigNumber(10).pow(BigNumber(18)))
                           .toString()
                       }

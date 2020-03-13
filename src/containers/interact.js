@@ -31,7 +31,11 @@ class Interact extends React.Component {
       arbitratorIDLoading: false,
       arbitrableIDLoading: false,
       fetchingString: "",
-      currentRuling: 2
+      currentRuling: 2,
+      winnerMultiplier: "",
+      loserMultiplier: "",
+      sharedMultiplier: "",
+      multiplierDivisor: ""
     };
 
     this.debouncedRetrieveUsingArbitratorID = debounce(
@@ -148,6 +152,14 @@ class Interact extends React.Component {
   appeal = async (party, contribution) =>
     this.props.appealCallback(this.state.disputeID, party, contribution);
 
+  getWinnerMultiplier = async arbitrableAddress => {
+    const winnerMultiplier = await this.props.getWinnerMultiplierCallback(
+      arbitrableAddress
+    );
+
+    return winnerMultiplier;
+  };
+
   onDisputeIDChange = async e => {
     const arbitratorDisputeID = e.target.value;
     if (arbitratorDisputeID === "") {
@@ -227,6 +239,10 @@ class Interact extends React.Component {
     let subcourt;
     let crowdfundingStatus;
     let appealCost;
+    let winnerMultiplier;
+    let loserMultiplier;
+    let sharedMultiplier;
+    let multiplierDivisor;
     try {
       arbitrableDispute = await this.props.getArbitrableDisputeCallback(
         arbitrableDisputeID
@@ -286,9 +302,29 @@ class Interact extends React.Component {
       appealCost = await this.props.getAppealCostCallback(
         arbitrableDispute.disputeIDOnArbitratorSide
       );
+      winnerMultiplier = await this.props.getWinnerMultiplierCallback(
+        arbitratorDispute.arbitrated
+      );
+      loserMultiplier = await this.props.getLoserMultiplierCallback(
+        arbitratorDispute.arbitrated
+      );
+      sharedMultiplier = await this.props.getSharedMultiplierCallback(
+        arbitratorDispute.arbitrated
+      );
+      multiplierDivisor = await this.props.getMultiplierDivisorCallback(
+        arbitratorDispute.arbitrated
+      );
+
       console.log("CF");
       console.log(crowdfundingStatus);
-      this.setState({ crowdfundingStatus, appealCost });
+      this.setState({
+        crowdfundingStatus,
+        appealCost,
+        winnerMultiplier,
+        loserMultiplier,
+        sharedMultiplier,
+        multiplierDivisor
+      });
     } catch (err) {
       console.error(err.message);
     }
@@ -306,7 +342,11 @@ class Interact extends React.Component {
       arbitratorDisputeID,
       arbitratorIDLoading,
       arbitrableIDLoading,
-      metaevidence
+      metaevidence,
+      winnerMultiplier,
+      loserMultiplier,
+      sharedMultiplier,
+      multiplierDivisor
     } = this.state;
 
     console.log(this.props);
@@ -470,6 +510,10 @@ class Interact extends React.Component {
                 disputeID
               )}
               appealCost={appealCost}
+              winnerMultiplier={winnerMultiplier}
+              loserMultiplier={loserMultiplier}
+              sharedMultiplier={sharedMultiplier}
+              multiplierDivisor={multiplierDivisor}
               appealCallback={this.appeal}
               appealPeriod={this.props.getAppealPeriodCallback(
                 arbitrableDispute.disputeIDOnArbitratorSide

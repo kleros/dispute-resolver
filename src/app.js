@@ -144,6 +144,34 @@ class App extends React.Component {
         .toString(16)
         .padStart(64, "0")}`;
 
+  getWinnerMultiplier = async arbitrableAddress =>
+    EthereumInterface.call(
+      "BinaryArbitrableProxy",
+      arbitrableAddress,
+      "winnerStakeMultiplier"
+    );
+
+  getLoserMultiplier = async arbitrableAddress =>
+    EthereumInterface.call(
+      "BinaryArbitrableProxy",
+      arbitrableAddress,
+      "loserStakeMultiplier"
+    );
+
+  getSharedMultiplier = async arbitrableAddress =>
+    EthereumInterface.call(
+      "BinaryArbitrableProxy",
+      arbitrableAddress,
+      "sharedStakeMultiplier"
+    );
+
+  getMultiplierDivisor = async arbitrableAddress =>
+    EthereumInterface.call(
+      "BinaryArbitrableProxy",
+      arbitrableAddress,
+      "MULTIPLIER_DIVISOR"
+    );
+
   getAppealCost = async arbitratorDisputeID =>
     EthereumInterface.call(
       "IArbitrator",
@@ -395,6 +423,10 @@ class App extends React.Component {
                         publishCallback={this.onPublish}
                         submitEvidenceCallback={this.submitEvidence}
                         getDisputeEventCallback={this.getDisputeEvent}
+                        getWinnerMultiplierCallback={this.getWinnerMultiplier}
+                        getLoserMultiplierCallback={this.getLoserMultiplier}
+                        getSharedMultiplierCallback={this.getSharedMultiplier}
+                        getMultiplierDivisorCallback={this.getMultiplierDivisor}
                       />
                     </>
                   )}
