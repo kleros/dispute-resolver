@@ -30,10 +30,11 @@ export const send = (
   value,
   method,
   ...args
-) =>
+) => {
   contractInstance(interfaceName, instanceAddress)
     .methods[method](...args)
     .send({ from, value });
+};
 
 export const estimateGas = (
   interfaceName,

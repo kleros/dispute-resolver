@@ -172,6 +172,18 @@ class App extends React.Component {
       "MULTIPLIER_DIVISOR"
     );
 
+  withdrawFeesAndRewards = async (arbitrableDispute, roundNumber) =>
+    EthereumInterface.send(
+      "BinaryArbitrableProxy",
+      networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
+      this.state.activeAddress,
+      0,
+      "withdrawFeesAndRewards",
+      arbitrableDispute,
+      this.state.activeAddress,
+      roundNumber
+    );
+
   getAppealCost = async arbitratorDisputeID =>
     EthereumInterface.call(
       "IArbitrator",
@@ -427,6 +439,9 @@ class App extends React.Component {
                         getLoserMultiplierCallback={this.getLoserMultiplier}
                         getSharedMultiplierCallback={this.getSharedMultiplier}
                         getMultiplierDivisorCallback={this.getMultiplierDivisor}
+                        withdrawFeesAndRewardsCallback={
+                          this.withdrawFeesAndRewards
+                        }
                       />
                     </>
                   )}

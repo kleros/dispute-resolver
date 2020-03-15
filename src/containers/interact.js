@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Col, Container, Form, Row } from "react-bootstrap";
+import { Card, Col, Container, Form, Row, Button } from "react-bootstrap";
 import Evidence from "../components/evidence";
 import Appeal from "../components/appeal";
 import QuestionDisplay from "../components/question-display";
@@ -495,6 +495,15 @@ class Interact extends React.Component {
               <h3 style={{ color: "white" }}>
                 {this.getHumanReadablePeriod(dispute.period)}
               </h3>
+              {dispute && dispute.period == 4 && (
+                <Button
+                  onClick={e =>
+                    this.props.withdrawFeesAndRewardsCallback(disputeID, 0)
+                  }
+                >
+                  Withdraw Funds
+                </Button>
+              )}
             </div>
             <div />
           </Card.Footer>
@@ -533,6 +542,7 @@ class Interact extends React.Component {
             />
           </>
         )}
+
         <IPFS publishCallback={this.props.publishCallback} />
       </Container>
     );
