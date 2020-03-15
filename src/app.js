@@ -334,7 +334,7 @@ class App extends React.Component {
 
     console.log(evidenceURI);
 
-    return await EthereumInterface.send(
+    await EthereumInterface.send(
       "BinaryArbitrableProxy",
       networkMap[network].BINARY_ARBITRABLE_PROXY,
       activeAddress,

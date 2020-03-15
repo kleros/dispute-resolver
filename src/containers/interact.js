@@ -75,7 +75,7 @@ class Interact extends React.Component {
 
   submitEvidence = async evidence => {
     console.log(evidence);
-    this.props.submitEvidenceCallback({
+    await this.props.submitEvidenceCallback({
       disputeID: this.state.disputeID,
       evidenceDescription: evidence.evidenceDescription,
       evidenceDocument: evidence.evidenceDocument,

@@ -18,23 +18,22 @@ const imports = {
 export const contractInstance = (interfaceName, address) =>
   new web3.eth.Contract(imports[interfaceName].abi, address);
 
-export const call = (interfaceName, instanceAddress, method, ...args) =>
-  contractInstance(interfaceName, instanceAddress)
+export const call = async (interfaceName, instanceAddress, method, ...args) =>
+  await contractInstance(interfaceName, instanceAddress)
     .methods[method](...args)
     .call();
 
-export const send = (
+export const send = async (
   interfaceName,
   instanceAddress,
   from,
   value,
   method,
   ...args
-) => {
-  contractInstance(interfaceName, instanceAddress)
+) =>
+  await contractInstance(interfaceName, instanceAddress)
     .methods[method](...args)
     .send({ from, value });
-};
 
 export const estimateGas = (
   interfaceName,

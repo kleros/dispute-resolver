@@ -11,12 +11,15 @@ class Evidence extends React.Component {
       evidenceTitle: "",
       fileInput: "",
       awaitingConfirmation: false,
-      supportingSide: 0
+      support: 0
     };
   }
 
   handleControlChange = async event => {
-    await this.setState({ [event.target.id]: event.target.value });
+    const name = event.target.name;
+    const value = event.target.value;
+    console.log([name, value]);
+    await this.setState({ [name]: value });
   };
 
   handleDrop = async acceptedFiles => {
@@ -46,23 +49,33 @@ class Evidence extends React.Component {
       evidenceDescription,
       evidenceDocument,
       evidenceTitle,
-      supportingSide
+      support
     } = this.state;
     await this.setState({
       awaitingConfirmation: true
     });
-    await this.props.submitEvidenceCallback({
-      evidenceDescription,
-      evidenceDocument,
-      evidenceTitle,
-      supportingSide
-    });
-    await this.setState({
-      awaitingConfirmation: false,
-      evidenceTitle: "",
-      evidenceDescription: "",
-      fileInput: ""
-    });
+
+    try {
+      await this.props.submitEvidenceCallback({
+        evidenceDescription,
+        evidenceDocument,
+        evidenceTitle,
+        supportingSide: support
+      });
+
+      await this.setState({
+        awaitingConfirmation: false,
+        evidenceTitle: "",
+        evidenceDescription: "",
+        fileInput: "",
+        support: 0
+      });
+    } catch (err) {
+      console.log("err");
+      await this.setState({
+        awaitingConfirmation: false
+      });
+    }
   };
 
   render() {
@@ -91,6 +104,7 @@ class Evidence extends React.Component {
                     <Form.Control
                       as="input"
                       id="evidenceTitle"
+                      name="evidenceTitle"
                       onChange={this.handleControlChange}
                       placeholder="e.g. The photo does not comply."
                       type="text"
@@ -106,6 +120,7 @@ class Evidence extends React.Component {
                     <Form.Control
                       as="textarea"
                       id="evidenceDescription"
+                      name="evidenceDescription"
                       onChange={this.handleControlChange}
                       placeholder="Your arguments."
                       rows="3"
@@ -143,7 +158,7 @@ class Evidence extends React.Component {
                     value={0}
                     label="Discussion"
                     type="radio"
-                    id="supportingSide"
+                    id="supportingSide-0"
                     onChange={this.handleControlChange}
                   />
                   <Form.Check
@@ -154,7 +169,7 @@ class Evidence extends React.Component {
                       this.props.rulingOptions.titles[0]
                     }"`}
                     type="radio"
-                    id="supportingSide"
+                    id="supportingSide-1"
                     onChange={this.handleControlChange}
                   />
                   <Form.Check
@@ -163,9 +178,9 @@ class Evidence extends React.Component {
                     inline
                     label={`I'm supporting "${
                       this.props.rulingOptions.titles[1]
-                    }:"`}
+                    }"`}
                     type="radio"
-                    id="supportingSide"
+                    id="supportingSide-2"
                     onChange={this.handleControlChange}
                   />
                 </div>
