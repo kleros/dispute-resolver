@@ -480,6 +480,7 @@ class Interact extends React.Component {
                           ruling={this.state.ruling}
                           currentRuling={Number(this.state.currentRuling)}
                           dispute={this.state.disputeEvent}
+                          disputePeriod={parseInt(dispute.period)}
                           publishCallback={this.props.publishCallback}
                           submitEvidenceCallback={this.submitEvidence}
                         />
