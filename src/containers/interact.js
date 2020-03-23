@@ -1,6 +1,5 @@
 import React from "react";
 import { Card, Col, Container, Form, Row, Button } from "react-bootstrap";
-import Evidence from "../components/evidence";
 import Appeal from "../components/appeal";
 import QuestionDisplay from "../components/question-display";
 import debounce from "lodash.debounce";
@@ -481,6 +480,8 @@ class Interact extends React.Component {
                           ruling={this.state.ruling}
                           currentRuling={Number(this.state.currentRuling)}
                           dispute={this.state.disputeEvent}
+                          publishCallback={this.props.publishCallback}
+                          submitEvidenceCallback={this.submitEvidence}
                         />
                       </Card.Body>
                     </Card>
@@ -533,15 +534,6 @@ class Interact extends React.Component {
               metaevidence={metaevidence}
             />
           )}
-        {dispute && ["0", "1", "2", "3"].find(x => x == dispute.period) && (
-          <>
-            <Evidence
-              publishCallback={this.props.publishCallback}
-              submitEvidenceCallback={this.submitEvidence}
-              rulingOptions={metaevidence.metaEvidenceJSON.rulingOptions}
-            />
-          </>
-        )}
 
         <IPFS publishCallback={this.props.publishCallback} />
       </Container>

@@ -1364,15 +1364,17 @@
     "@kleros/kleros-interaction" "^0.9.0"
     minimetoken "^0.2.0"
 
-"@kleros/react-components@^3.7.7":
-  version "3.7.7"
-  resolved "https://registry.yarnpkg.com/@kleros/react-components/-/react-components-3.7.7.tgz#e83d337cdc3343939a8f37e18a56a574a1d82531"
-  integrity sha512-LXlHoULWXzk7cp6dBI4zdN5GzWdkXpuiHw1BBbNdtx10g7FCByyP9PocG5IjvyyYjE835ZOC7XJZhj/ldWfxoA==
+"@kleros/react-components@^3.12.14":
+  version "3.12.14"
+  resolved "https://registry.yarnpkg.com/@kleros/react-components/-/react-components-3.12.14.tgz#477828dbf7ecb254f97b54a874dd3a934d5560b6"
+  integrity sha512-+9BuzZVVE7shjarFCeiq4gtVqIpdX9wqBuqNYnDLDG6F56XVcFBJB7Y7iFiH4b/k7aDgzfD3a1RFBzn6kjLnGg==
   dependencies:
     "@kleros/archon" "^0.10.1"
+    clsx "^1.1.0"
     is-image "^3.0.0"
     is-text-path "^2.0.0"
     is-video "^1.0.1"
+    react-dropzone "^10.2.1"
 
 "@mrmlnc/readdir-enhanced@^2.2.1":
   version "2.2.1"
@@ -3112,6 +3114,11 @@ clone@^2.0.0:
   version "2.1.2"
   resolved "https://registry.yarnpkg.com/clone/-/clone-2.1.2.tgz#1b7f4b9f591f1e8f83670401600345a02887435f"
   integrity sha1-G39Ln1kfHo+DZwQBYANFoCiHQ18=
+
+clsx@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/clsx/-/clsx-1.1.0.tgz#62937c6adfea771247c34b54d320fb99624f5702"
+  integrity sha512-3avwM37fSK5oP6M5rQ9CNe99lwxhXDOeSWVPAOYF6OazUTgZCMb0yWlJpmdD74REy1gkEaFiub2ULv4fq9GUhA==
 
 co@^4.6.0:
   version "4.6.0"
@@ -9993,7 +10000,7 @@ react-dom@^16.9.0:
     prop-types "^15.6.2"
     scheduler "^0.18.0"
 
-react-dropzone@^10.1.9:
+react-dropzone@^10.1.9, react-dropzone@^10.2.1:
   version "10.2.1"
   resolved "https://registry.yarnpkg.com/react-dropzone/-/react-dropzone-10.2.1.tgz#b7520124c4a3b66f96d49f7879027c7a475eaa20"
   integrity sha512-Me5nOu8hK9/Xyg5easpdfJ6SajwUquqYR/2YTdMotsCUgJ1pHIIwNsv0n+qcIno0tWR2V2rVQtj2r/hXYs2TnQ==
