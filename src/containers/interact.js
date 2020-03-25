@@ -15,6 +15,7 @@ import debounce from "lodash.debounce";
 import IPFS from "../components/ipfs";
 import ReactMarkdown from "react-markdown";
 import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
+import { ReactComponent as KlerosSymbol } from "../assets/images/kleros-symbol.svg";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { EvidenceTimeline } from "@kleros/react-components";
 import { Redirect } from "react-router-dom";
@@ -366,169 +367,147 @@ class Interact extends React.Component {
           <Redirect to={`/interact/${arbitratorDisputeID}`} />
         )}
 
-        <Card className="w-100 m-0">
+        <Card>
+          <Card.Header>
+            <GavelSVG />
+            Interact with a Dispute
+          </Card.Header>
           <Card.Body
-            className="rounded-0"
             style={{
-              background:
-                "linear-gradient(270deg, #F2E3FF 22.92%, #FFFFFF 76.25%)",
-              boxShadow: "0px 3px 24px #BC9CFF"
+              borderRadius: 0
             }}
           >
-            <Row>
-              <Col style={{ alignSelf: "center" }}>
-                <span
-                  style={{
-                    fontWeight: 500,
-                    color: "#4D00B4",
-                    fontSize: "1.5rem"
-                  }}
-                >
-                  Interact with a Dispute
-                </span>
-              </Col>
-              <Col />
-              <Col>
-                <InputGroup className="mb-0" size="md">
-                  <InputGroup.Prepend>
-                    <InputGroup.Text style={{ transform: "none" }}>
-                      Search Disputes on Court
-                    </InputGroup.Text>
-                  </InputGroup.Prepend>
-                  <FormControl
-                    disabled={arbitratorIDLoading}
-                    placeholder="Dispute ID"
-                    aria-label="Input dispute number from Court"
-                    aria-describedby="search"
-                    onChange={this.onDisputeIDChange}
-                    type="number"
-                    min="0"
-                    value={arbitratorDisputeID}
-                    id="arbitratorDisputeID"
-                  />
-                  <InputGroup.Append>
-                    <Button className="blue">➡</Button>
-                  </InputGroup.Append>
-                </InputGroup>
-              </Col>
-            </Row>
-          </Card.Body>
-        </Card>
-        <Card>
-          {arbitrableDispute && metaevidence.metaEvidenceJSON && (
-            <Card.Body
-              style={{
-                borderBottomLeftRadius: "0",
-                borderBottomRightRadius: "0"
-              }}
-            >
-              <Form>
-                <Form.Row>
-                  <Col>
-                    <h1 className="display-title">
-                      {metaevidence.metaEvidenceJSON.title}
-                    </h1>
-                  </Col>
-                </Form.Row>
+            <Form>
+              <Form.Row>
+                <Col>
+                  <InputGroup className="mb-5" size="md">
+                    <InputGroup.Prepend>
+                      <InputGroup.Text
+                        style={{ transform: "none", paddingLeft: "0" }}
+                      >
+                        Search Disputes on Court
+                      </InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <FormControl
+                      disabled={arbitratorIDLoading}
+                      placeholder="Dispute ID"
+                      aria-label="Input dispute number from Court"
+                      aria-describedby="search"
+                      onChange={this.onDisputeIDChange}
+                      type="number"
+                      min="0"
+                      value={arbitratorDisputeID}
+                      id="arbitratorDisputeID"
+                    />
+                  </InputGroup>
+                </Col>
+              </Form.Row>
+              {arbitrableDispute && metaevidence.metaEvidenceJSON && (
+                <>
+                  <Form.Row>
+                    <Col>
+                      <h1 className="display-title">
+                        {metaevidence.metaEvidenceJSON.title}
+                      </h1>
+                    </Col>
+                  </Form.Row>
 
-                <Form.Row>
-                  <Card className="w-100" style={{ margin: 0 }}>
-                    <Card.Body
-                      style={{
-                        paddingBottom: "0",
-                        borderBottomLeftRadius:
-                          metaevidence.metaEvidenceJSON.fileURI && 0,
-                        borderBottomRightRadius:
-                          metaevidence.metaEvidenceJSON.fileURI && 0
-                      }}
-                    >
-                      <Form.Group id="markdown" style={{ paddingLeft: 0 }}>
-                        {metaevidence.metaEvidenceJSON.description && (
-                          <ReactMarkdown
-                            source={metaevidence.metaEvidenceJSON.description}
-                          />
-                        )}
-                        {!metaevidence.metaEvidenceJSON.description && (
-                          <p>Not provided</p>
-                        )}
-                      </Form.Group>
-                    </Card.Body>
-                    {metaevidence.metaEvidenceJSON.fileURI && (
-                      <Card
-                        className="text-center w-100 m-0"
+                  <Form.Row>
+                    <Card className="w-100" style={{ margin: 0 }}>
+                      <Card.Body
                         style={{
-                          backgroundColor: "#F5F1FD",
-                          borderTopLeftRadius: 0,
-                          borderTopRightRadius: 0,
-                          padding: "0.5rem"
+                          paddingBottom: "0",
+                          borderBottomLeftRadius:
+                            metaevidence.metaEvidenceJSON.fileURI && 0,
+                          borderBottomRightRadius:
+                            metaevidence.metaEvidenceJSON.fileURI && 0
                         }}
                       >
-                        <a
-                          href={`
-                            https://ipfs.kleros.io${metaevidence.metaEvidenceJSON.fileURI}`}
+                        <Form.Group id="markdown" style={{ paddingLeft: 0 }}>
+                          {metaevidence.metaEvidenceJSON.description && (
+                            <ReactMarkdown
+                              source={metaevidence.metaEvidenceJSON.description}
+                            />
+                          )}
+                          {!metaevidence.metaEvidenceJSON.description && (
+                            <p>Not provided</p>
+                          )}
+                        </Form.Group>
+                      </Card.Body>
+                      {metaevidence.metaEvidenceJSON.fileURI && (
+                        <Card
+                          className="text-center w-100 m-0"
+                          style={{
+                            backgroundColor: "#F5F1FD",
+                            borderTopLeftRadius: 0,
+                            borderTopRightRadius: 0,
+                            padding: "0.5rem"
+                          }}
                         >
-                          <AttachmentSVG style={{ width: "2rem" }} />
-                        </a>
-                      </Card>
-                    )}
-                  </Card>
-                </Form.Row>
-                <Form.Row>
-                  <Col style={{ padding: 0 }}>
-                    <QuestionDisplay
-                      question={metaevidence.metaEvidenceJSON.question}
-                      firstRulingOption={
-                        metaevidence.metaEvidenceJSON.rulingOptions.titles[0]
-                      }
-                      secondRulingOption={
-                        metaevidence.metaEvidenceJSON.rulingOptions.titles[1]
-                      }
-                      firstRulingDescription={
-                        metaevidence.metaEvidenceJSON.rulingOptions
-                          .descriptions[0]
-                      }
-                      secondRulingDescription={
-                        metaevidence.metaEvidenceJSON.rulingOptions
-                          .descriptions[1]
-                      }
-                    />
-                  </Col>
-                </Form.Row>
-                <Form.Row>
-                  <Card
-                    className="w-100"
-                    style={{
-                      marginLeft: 0,
-                      marginRight: 0
-                    }}
-                  >
-                    <Card.Body style={{ padding: 0 }}>
-                      <EvidenceTimeline
-                        metaevidence={metaevidence}
-                        evidences={this.state.evidences}
-                        ruling={this.state.ruling}
-                        currentRuling={Number(this.state.currentRuling)}
-                        dispute={this.state.disputeEvent}
-                        disputePeriod={parseInt(dispute.period)}
-                        publishCallback={this.props.publishCallback}
-                        submitEvidenceCallback={this.submitEvidence}
+                          <a
+                            href={`
+                            https://ipfs.kleros.io${metaevidence.metaEvidenceJSON.fileURI}`}
+                          >
+                            <AttachmentSVG style={{ width: "2rem" }} />
+                          </a>
+                        </Card>
+                      )}
+                    </Card>
+                  </Form.Row>
+                  <Form.Row>
+                    <Col style={{ padding: 0 }}>
+                      <QuestionDisplay
+                        question={metaevidence.metaEvidenceJSON.question}
+                        firstRulingOption={
+                          metaevidence.metaEvidenceJSON.rulingOptions.titles[0]
+                        }
+                        secondRulingOption={
+                          metaevidence.metaEvidenceJSON.rulingOptions.titles[1]
+                        }
+                        firstRulingDescription={
+                          metaevidence.metaEvidenceJSON.rulingOptions
+                            .descriptions[0]
+                        }
+                        secondRulingDescription={
+                          metaevidence.metaEvidenceJSON.rulingOptions
+                            .descriptions[1]
+                        }
                       />
-                    </Card.Body>
-                  </Card>
-                </Form.Row>
-              </Form>
-            </Card.Body>
-          )}
+                    </Col>
+                  </Form.Row>
+                  <Form.Row>
+                    <Card
+                      className="w-100"
+                      style={{
+                        marginLeft: 0,
+                        marginRight: 0
+                      }}
+                    >
+                      <Card.Body style={{ padding: 0 }}>
+                        <EvidenceTimeline
+                          metaevidence={metaevidence}
+                          evidences={this.state.evidences}
+                          ruling={this.state.ruling}
+                          currentRuling={Number(this.state.currentRuling)}
+                          dispute={this.state.disputeEvent}
+                          disputePeriod={parseInt(dispute.period)}
+                          publishCallback={this.props.publishCallback}
+                          submitEvidenceCallback={this.submitEvidence}
+                        />
+                      </Card.Body>
+                    </Card>
+                  </Form.Row>
+                </>
+              )}
+            </Form>
+          </Card.Body>
 
           <Card.Footer
             className="p-0"
             id="dispute-detail-footer"
             style={{
-              borderTopLeftRadius:
-                (!arbitrableDispute || !metaevidence.metaEvidenceJSON) &&
-                "12px",
-              borderTopRightRadius:
-                (!arbitrableDispute || !metaevidence.metaEvidenceJSON) && "12px"
+              borderTopLeftRadius: 0,
+              borderTopRightRadius: 0
             }}
           >
             <div
