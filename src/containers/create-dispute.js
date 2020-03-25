@@ -249,7 +249,7 @@ class CreateDispute extends React.Component {
 
         <Card>
           <Card.Header>
-            <GavelSVG />
+            <GavelSVG style={{ marginRight: "1rem" }} />
             Create a Dispute
           </Card.Header>
           <hr className="mt-0" />

@@ -1316,10 +1316,10 @@
     multihashes "^0.4.14"
     web3 "1.0.0-beta.36"
 
-"@kleros/binary-arbitrable-proxy-contract@^2.3.0":
-  version "2.3.0"
-  resolved "https://registry.yarnpkg.com/@kleros/binary-arbitrable-proxy-contract/-/binary-arbitrable-proxy-contract-2.3.0.tgz#609717b544956a90dd17bed9e0b1754211722eef"
-  integrity sha512-XU0QwfTl6KiLUi3WgTyqmIbZWZVo4yqkEvmO3B6OJn2lAtLpjh8X8vyOXcCaszDvid31XAaNr5cuurOM590hTw==
+"@kleros/binary-arbitrable-proxy-contract@^2.3.2":
+  version "2.3.2"
+  resolved "https://registry.yarnpkg.com/@kleros/binary-arbitrable-proxy-contract/-/binary-arbitrable-proxy-contract-2.3.2.tgz#6b7c21ef1779452046198f9eba0c8d4e382c5dcb"
+  integrity sha512-lfgTiAxWLAhqYbm8CsNTwsW0PL1E+IWm24DKMtOknML2hM9xkRp0Pv+8Jkfbofl3a02evh3DyRPWQMM0bAk3Tw==
   dependencies:
     "@kleros/erc-792" "^3.1.0"
     "@kleros/ethereum-libraries" "^2.0.0"

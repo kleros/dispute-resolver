@@ -369,7 +369,7 @@ class Interact extends React.Component {
 
         <Card>
           <Card.Header>
-            <GavelSVG />
+            <GavelSVG style={{ marginRight: "1rem" }} />
             Interact with a Dispute
           </Card.Header>
           <Card.Body
