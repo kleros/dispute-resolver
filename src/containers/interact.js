@@ -1,5 +1,14 @@
 import React from "react";
-import { Card, Col, Container, Form, Row, Button } from "react-bootstrap";
+import {
+  Card,
+  Col,
+  Container,
+  Form,
+  Row,
+  Button,
+  InputGroup,
+  FormControl
+} from "react-bootstrap";
 import Appeal from "../components/appeal";
 import QuestionDisplay from "../components/question-display";
 import debounce from "lodash.debounce";
@@ -356,6 +365,55 @@ class Interact extends React.Component {
         {arbitratorDisputeID && (
           <Redirect to={`/interact/${arbitratorDisputeID}`} />
         )}
+
+        <Card className="w-100 m-0">
+          <Card.Body
+            className="rounded-0"
+            style={{
+              background:
+                "linear-gradient(270deg, #F2E3FF 22.92%, #FFFFFF 76.25%)",
+              boxShadow: "0px 3px 24px #BC9CFF"
+            }}
+          >
+            <Row>
+              <Col style={{ alignSelf: "center" }}>
+                <span
+                  style={{
+                    fontWeight: 500,
+                    color: "#4D00B4",
+                    fontSize: "1.5rem"
+                  }}
+                >
+                  Interact with a Dispute
+                </span>
+              </Col>
+              <Col />
+              <Col>
+                <InputGroup className="mb-0" size="md">
+                  <InputGroup.Prepend>
+                    <InputGroup.Text style={{ transform: "none" }}>
+                      Search Disputes on Court
+                    </InputGroup.Text>
+                  </InputGroup.Prepend>
+                  <FormControl
+                    disabled={arbitratorIDLoading}
+                    placeholder="Dispute ID"
+                    aria-label="Input dispute number from Court"
+                    aria-describedby="search"
+                    onChange={this.onDisputeIDChange}
+                    type="number"
+                    min="0"
+                    value={arbitratorDisputeID}
+                    id="arbitratorDisputeID"
+                  />
+                  <InputGroup.Append>
+                    <Button className="blue">➡</Button>
+                  </InputGroup.Append>
+                </InputGroup>
+              </Col>
+            </Row>
+          </Card.Body>
+        </Card>
         <Card>
           <Card.Header>
             <GavelSVG />
