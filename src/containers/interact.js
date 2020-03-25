@@ -524,8 +524,11 @@ class Interact extends React.Component {
             className="p-0"
             id="dispute-detail-footer"
             style={{
-              borderTopLeftRadius: !metaevidence.metaEvidenceJSON && "12px",
-              borderTopRightRadius: !metaevidence.metaEvidenceJSON && "12px"
+              borderTopLeftRadius:
+                (!arbitrableDispute || !metaevidence.metaEvidenceJSON) &&
+                "12px",
+              borderTopRightRadius:
+                (!arbitrableDispute || !metaevidence.metaEvidenceJSON) && "12px"
             }}
           >
             <div
