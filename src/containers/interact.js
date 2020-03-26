@@ -246,6 +246,7 @@ class Interact extends React.Component {
     let crowdfundingStatus;
     let appealCost;
     let multipliers;
+    let withdrewAlready;
     try {
       arbitrableDispute = await this.props.getArbitrableDisputeCallback(
         arbitrableDisputeID
@@ -288,6 +289,9 @@ class Interact extends React.Component {
         disputeEvent: await this.props.getDisputeEventCallback(
           this.props.arbitrableAddress,
           arbitrableDispute.disputeIDOnArbitratorSide
+        ),
+        withdrewAlready: await this.props.withdrewAlreadyCallback(
+          arbitrableDisputeID
         )
       });
     } catch (err) {
@@ -501,11 +505,14 @@ class Interact extends React.Component {
               </h3>
               {dispute && dispute.period == 4 && (
                 <Button
+                  disabled={this.state.withdrewAlready}
                   onClick={e =>
-                    this.props.withdrawFeesAndRewardsCallback(disputeID, 0)
+                    this.props.withdrawFeesAndRewardsCallback(disputeID)
                   }
                 >
-                  Withdraw Funds
+                  {this.state.withdrewAlready
+                    ? "Withdrew Already"
+                    : "Withdraw Funds"}
                 </Button>
               )}
             </div>

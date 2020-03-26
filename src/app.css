@@ -459,3 +459,7 @@ span.input-group-text {
 .progress-bar {
   padding: 0 6px;
 }
+
+button:disabled {
+  cursor: not-allowed !important;
+}

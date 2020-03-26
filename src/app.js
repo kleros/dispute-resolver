@@ -137,13 +137,13 @@ class App extends React.Component {
       "getMultipliers"
     );
 
-  withdrewAlready = async (arbitrableDisputeID, contributorAddress) =>
+  withdrewAlready = async arbitrableDisputeID =>
     EthereumInterface.call(
       "BinaryArbitrableProxy",
       networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
       "withdrewAlready",
       arbitrableDisputeID,
-      contributorAddress
+      this.state.activeAddress
     );
 
   updateLastDisputeID = async newDisputeID =>
@@ -464,8 +464,9 @@ class App extends React.Component {
                         getDisputeEventCallback={this.getDisputeEvent}
                         getMultipliersCallback={this.getMultipliers}
                         withdrawFeesAndRewardsCallback={
-                          this.withdrawFeesAndRewards
+                          this.withdrawFeesAndRewardsForAllRounds
                         }
+                        withdrewAlreadyCallback={this.withdrewAlready}
                       />
                     </>
                   )}
