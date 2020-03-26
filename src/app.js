@@ -121,13 +121,29 @@ class App extends React.Component {
       arbitratorDisputeID
     );
 
-  getCrowdfundingStatus = async (arbitrableAddress, arbitrableDisputeID) =>
+  getCrowdfundingStatus = async arbitrableDisputeID =>
     EthereumInterface.call(
       "BinaryArbitrableProxy",
-      arbitrableAddress,
+      networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
       "crowdfundingStatus",
       arbitrableDisputeID,
       this.state.activeAddress
+    );
+
+  getMultipliers = async () =>
+    EthereumInterface.call(
+      "BinaryArbitrableProxy",
+      networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
+      "getMultipliers"
+    );
+
+  withdrewAlready = async (arbitrableDisputeID, contributorAddress) =>
+    EthereumInterface.call(
+      "BinaryArbitrableProxy",
+      networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
+      "withdrewAlready",
+      arbitrableDisputeID,
+      contributorAddress
     );
 
   updateLastDisputeID = async newDisputeID =>
@@ -182,6 +198,17 @@ class App extends React.Component {
       arbitrableDispute,
       this.state.activeAddress,
       roundNumber
+    );
+
+  withdrawFeesAndRewardsForAllRounds = async arbitrableDispute =>
+    EthereumInterface.send(
+      "BinaryArbitrableProxy",
+      networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
+      this.state.activeAddress,
+      0,
+      "withdrawFeesAndRewardsForAllRounds",
+      arbitrableDispute,
+      this.state.activeAddress
     );
 
   getAppealCost = async arbitratorDisputeID =>
@@ -435,10 +462,7 @@ class App extends React.Component {
                         publishCallback={this.onPublish}
                         submitEvidenceCallback={this.submitEvidence}
                         getDisputeEventCallback={this.getDisputeEvent}
-                        getWinnerMultiplierCallback={this.getWinnerMultiplier}
-                        getLoserMultiplierCallback={this.getLoserMultiplier}
-                        getSharedMultiplierCallback={this.getSharedMultiplier}
-                        getMultiplierDivisorCallback={this.getMultiplierDivisor}
+                        getMultipliersCallback={this.getMultipliers}
                         withdrawFeesAndRewardsCallback={
                           this.withdrawFeesAndRewards
                         }

@@ -40,11 +40,8 @@ class Interact extends React.Component {
       arbitratorIDLoading: false,
       arbitrableIDLoading: false,
       fetchingString: "",
-      currentRuling: 2,
-      winnerMultiplier: "",
-      loserMultiplier: "",
-      sharedMultiplier: "",
-      multiplierDivisor: ""
+      currentRuling: "",
+      multipliers: ""
     };
 
     this.debouncedRetrieveUsingArbitratorID = debounce(
@@ -248,10 +245,7 @@ class Interact extends React.Component {
     let subcourt;
     let crowdfundingStatus;
     let appealCost;
-    let winnerMultiplier;
-    let loserMultiplier;
-    let sharedMultiplier;
-    let multiplierDivisor;
+    let multipliers;
     try {
       arbitrableDispute = await this.props.getArbitrableDisputeCallback(
         arbitrableDisputeID
@@ -305,34 +299,19 @@ class Interact extends React.Component {
 
     try {
       crowdfundingStatus = await this.props.getCrowdfundingStatusCallback(
-        arbitratorDispute.arbitrated,
         arbitrableDisputeID
       );
       appealCost = await this.props.getAppealCostCallback(
         arbitrableDispute.disputeIDOnArbitratorSide
       );
-      winnerMultiplier = await this.props.getWinnerMultiplierCallback(
-        arbitratorDispute.arbitrated
-      );
-      loserMultiplier = await this.props.getLoserMultiplierCallback(
-        arbitratorDispute.arbitrated
-      );
-      sharedMultiplier = await this.props.getSharedMultiplierCallback(
-        arbitratorDispute.arbitrated
-      );
-      multiplierDivisor = await this.props.getMultiplierDivisorCallback(
-        arbitratorDispute.arbitrated
-      );
+      multipliers = await this.props.getMultipliersCallback();
 
       console.log("CF");
       console.log(crowdfundingStatus);
       this.setState({
         crowdfundingStatus,
         appealCost,
-        winnerMultiplier,
-        loserMultiplier,
-        sharedMultiplier,
-        multiplierDivisor
+        multipliers
       });
     } catch (err) {
       console.error(err.message);
@@ -352,10 +331,7 @@ class Interact extends React.Component {
       arbitratorIDLoading,
       arbitrableIDLoading,
       metaevidence,
-      winnerMultiplier,
-      loserMultiplier,
-      sharedMultiplier,
-      multiplierDivisor
+      multipliers
     } = this.state;
 
     console.log(this.props);
@@ -423,7 +399,10 @@ class Interact extends React.Component {
                             metaevidence.metaEvidenceJSON.fileURI && 0
                         }}
                       >
-                        <Form.Group id="markdown" style={{ paddingLeft: 0 }}>
+                        <Form.Group
+                          id="markdown"
+                          style={{ paddingLeft: 0, color: "black" }}
+                        >
                           {metaevidence.metaEvidenceJSON.description && (
                             <ReactMarkdown
                               source={metaevidence.metaEvidenceJSON.description}
@@ -441,7 +420,7 @@ class Interact extends React.Component {
                             backgroundColor: "#F5F1FD",
                             borderTopLeftRadius: 0,
                             borderTopRightRadius: 0,
-                            padding: "0.5rem"
+                            padding: "0.8rem"
                           }}
                         >
                           <a
@@ -540,14 +519,10 @@ class Interact extends React.Component {
           arbitrableDispute && (
             <Appeal
               crowdfundingStatus={this.props.getCrowdfundingStatusCallback(
-                dispute.arbitrated,
                 disputeID
               )}
               appealCost={appealCost}
-              winnerMultiplier={winnerMultiplier}
-              loserMultiplier={loserMultiplier}
-              sharedMultiplier={sharedMultiplier}
-              multiplierDivisor={multiplierDivisor}
+              multipliers={multipliers}
               appealCallback={this.appeal}
               appealPeriod={this.props.getAppealPeriodCallback(
                 arbitrableDispute.disputeIDOnArbitratorSide

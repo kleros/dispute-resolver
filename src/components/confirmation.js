@@ -41,7 +41,7 @@ class Confirmation extends React.Component {
         animation={false}
         closeButton={false}
       >
-        <Modal.Header>
+        <Modal.Header style={{ justifyContent: "center" }}>
           <Modal.Title>Dispute Summary</Modal.Title>
         </Modal.Header>
         <Modal.Body>

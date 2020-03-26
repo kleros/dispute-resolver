@@ -193,7 +193,17 @@ button::after {
 
 .form-group > input,
 .form-group > textarea,
-.form-group > p {
+body
+  > div.confirmation.modal
+  > div
+  > div
+  > div.modal-body
+  > form
+  > div:nth-child(4)
+  > div
+  > div
+  > p,
+#markdown * {
   color: #4d00b4;
 }
 
@@ -444,4 +454,8 @@ span.input-group-text {
 .accordion > .card:last-of-type {
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
+}
+
+.progress-bar {
+  padding: 0 6px;
 }
