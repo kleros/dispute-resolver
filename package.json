@@ -1,56 +1,56 @@
 {
-    "name": "dispute-resolver",
-    "version": "1.0.0",
-    "private": false,
-    "dependencies": {
-        "@fortawesome/fontawesome-svg-core": "^1.2.25",
-        "@fortawesome/free-solid-svg-icons": "^5.11.2",
-        "@fortawesome/react-fontawesome": "^0.1.7",
-        "@github/markdown-toolbar-element": "^1.1.0",
-        "@kleros/archon": "^0.10.1",
-        "@kleros/binary-arbitrable-proxy-contract": "^2.3.3",
-        "@kleros/kleros": "^0.1.2",
-        "@kleros/react-components": "^3.12.19",
-        "bignumber.js": "^9.0.0",
-        "lodash.debounce": "^4.0.8",
-        "lodash.throttle": "^4.1.1",
-        "react": "^16.9.0",
-        "react-bootstrap": "^1.0.0-beta.12",
-        "react-countdown-now": "^2.1.1",
-        "react-dom": "^16.9.0",
-        "react-dropzone": "^10.1.9",
-        "react-markdown": "^4.2.2",
-        "react-router-dom": "^5.0.1",
-        "react-scripts": "3.1.1",
-        "styled-components": "^4.3.2",
-        "web3": "1.0.0-beta.37"
-    },
-    "scripts": {
-        "start": "react-scripts start",
-        "build": "react-scripts build",
-        "test": "react-scripts test",
-        "eject": "react-scripts eject"
-    },
-    "eslintConfig": {
-        "extends": "react-app"
-    },
-    "browserslist": {
-        "production": [
-            ">0.2%",
-            "not dead",
-            "not op_mini all"
-        ],
-        "development": [
-            "last 1 chrome version",
-            "last 1 firefox version",
-            "last 1 safari version"
-        ]
-    },
-    "devDependencies": {
-        "prettier": "^2.0.2"
-    },
-    "prettier": {
-        "tabWidth": 2,
-        "printWidth": 200
-    }
+  "name": "dispute-resolver",
+  "version": "1.0.0",
+  "private": false,
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^1.2.25",
+    "@fortawesome/free-solid-svg-icons": "^5.11.2",
+    "@fortawesome/react-fontawesome": "^0.1.7",
+    "@github/markdown-toolbar-element": "^1.1.0",
+    "@kleros/archon": "^0.10.1",
+    "@kleros/binary-arbitrable-proxy-contract": "^2.3.3",
+    "@kleros/kleros": "^0.1.2",
+    "@kleros/react-components": "^3.12.19",
+    "bignumber.js": "^9.0.0",
+    "lodash.debounce": "^4.0.8",
+    "lodash.throttle": "^4.1.1",
+    "react": "^16.9.0",
+    "react-bootstrap": "^1.0.0-beta.12",
+    "react-countdown-now": "^2.1.1",
+    "react-dom": "^16.9.0",
+    "react-dropzone": "^10.1.9",
+    "react-markdown": "^4.2.2",
+    "react-router-dom": "^5.0.1",
+    "react-scripts": "3.1.1",
+    "styled-components": "^4.3.2",
+    "web3": "1.0.0-beta.37"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "prettier": "^2.0.2"
+  },
+  "prettier": {
+    "tabWidth": 2,
+    "printWidth": 280
+  }
 }

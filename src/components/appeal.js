@@ -231,29 +231,13 @@ class Appeal extends React.Component {
 
                         <div className="mb-3">
                           <ProgressBar
-                            now={
-                              crowdfundingStatus &&
-                              BigNumber(100)
-                                .times(BigNumber(crowdfundingStatus[0][1]))
-                                .div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1))
-                                .toString()
-                            }
-                            label={
-                              crowdfundingStatus &&
-                              "%" +
-                                BigNumber(100)
-                                  .times(BigNumber(crowdfundingStatus[0][1]))
-                                  .div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1))
-                                  .toFixed(2)
-                            }
+                            now={crowdfundingStatus && BigNumber(100).times(BigNumber(crowdfundingStatus[0][1])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1)).toString()}
+                            label={crowdfundingStatus && "%" + BigNumber(100).times(BigNumber(crowdfundingStatus[0][1])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1)).toFixed(2)}
                           />
                         </div>
                         <Card className="my-3 mx-0 p-3 purple-inverted" style={{ backgroundColor: "#F5F1FD" }}>
-                          You will get{" "}
-                          <span style={{ fontWeight: "bold", display: "contents" }}>
-                            {this.calculateReturnOfInvestmentRatio(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1).toFixed(2)}
-                          </span>{" "}
-                          times of your contribution back if this side wins.
+                          You will get <span style={{ fontWeight: "bold", display: "contents" }}>{this.calculateReturnOfInvestmentRatio(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1).toFixed(2)}</span> times of your contribution back if this
+                          side wins.
                           <h4 className="mt-2 purple-inverted text-center">
                             {crowdfundingStatus &&
                               "You contributed: " +
@@ -326,29 +310,13 @@ class Appeal extends React.Component {
                         <div className="mb-3">
                           <ProgressBar
                             variant={crowdfundingStatus && crowdfundingStatus.hasPaid[2] ? "success" : ""}
-                            now={
-                              crowdfundingStatus &&
-                              BigNumber(100)
-                                .times(BigNumber(crowdfundingStatus[0][2]))
-                                .div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2))
-                                .toString()
-                            }
-                            label={
-                              crowdfundingStatus &&
-                              "%" +
-                                BigNumber(100)
-                                  .times(BigNumber(crowdfundingStatus[0][2]))
-                                  .div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2))
-                                  .toFixed(2)
-                            }
+                            now={crowdfundingStatus && BigNumber(100).times(BigNumber(crowdfundingStatus[0][2])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2)).toString()}
+                            label={crowdfundingStatus && "%" + BigNumber(100).times(BigNumber(crowdfundingStatus[0][2])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2)).toFixed(2)}
                           />
                         </div>
                         <Card className="my-3 mx-0 p-3 purple-inverted" style={{ backgroundColor: "#F5F1FD" }}>
-                          You will get{" "}
-                          <span style={{ fontWeight: "bold", display: "contents" }}>
-                            {this.calculateReturnOfInvestmentRatio(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2).toFixed(2)}
-                          </span>{" "}
-                          times of your contribution back if this side wins.
+                          You will get <span style={{ fontWeight: "bold", display: "contents" }}>{this.calculateReturnOfInvestmentRatio(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2).toFixed(2)}</span> times of your contribution back if this
+                          side wins.
                           <h4 className="mt-2 purple-inverted text-center">
                             {crowdfundingStatus &&
                               "You contributed: " +
@@ -430,11 +398,7 @@ class Appeal extends React.Component {
                   </Col>
                 </Form.Row>
                 <hr style={{ margin: 0 }} />
-                <Form.Row
-                  className="fund-modal-ruling-option"
-                  style={{ margin: "0", padding: "1.5rem", backgroundColor: this.state.party == "1" ? "#f5f1fd" : "white" }}
-                  onClick={this.handleControlChange.bind(this, { target: { name: "party", value: "1" } })}
-                >
+                <Form.Row className="fund-modal-ruling-option" style={{ margin: "0", padding: "1.5rem", backgroundColor: this.state.party == "1" ? "#f5f1fd" : "white" }} onClick={this.handleControlChange.bind(this, { target: { name: "party", value: "1" } })}>
                   <Col>
                     <InputGroup
                       style={{
@@ -455,11 +419,7 @@ class Appeal extends React.Component {
                   </Col>
                 </Form.Row>
                 <hr style={{ margin: 0 }} />
-                <Form.Row
-                  className="fund-modal-ruling-option"
-                  style={{ margin: "0", padding: "1.5rem", backgroundColor: this.state.party == "2" ? "#f5f1fd" : "white" }}
-                  onClick={this.handleControlChange.bind(this, { target: { name: "party", value: "2" } })}
-                >
+                <Form.Row className="fund-modal-ruling-option" style={{ margin: "0", padding: "1.5rem", backgroundColor: this.state.party == "2" ? "#f5f1fd" : "white" }} onClick={this.handleControlChange.bind(this, { target: { name: "party", value: "2" } })}>
                   <Col>
                     <InputGroup style={{ justifyContent: "space-between" }}>
                       <InputGroup.Prepend>
@@ -483,6 +443,7 @@ class Appeal extends React.Component {
                 <Form.Row className="mb-3" style={{ margin: "0 1.5rem" }}>
                   <Col style={{ padding: 0 }}>
                     <Form.Control
+                      name="contribution"
                       id="contribution"
                       type="number"
                       max={
@@ -508,8 +469,7 @@ class Appeal extends React.Component {
                   </Col>
                   <Col style={{ padding: 0 }}>
                     <Button className="float-right ok" onClick={this.handleContributeButtonClick}>
-                      {this.state.awaitingConfirmation && <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" />}{" "}
-                      {(this.state.awaitingConfirmation && "Awaiting Confirmation") || "Contribute"}
+                      {this.state.awaitingConfirmation && <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" />} {(this.state.awaitingConfirmation && "Awaiting Confirmation") || "Contribute"}
                     </Button>
                   </Col>
                 </Form.Row>
