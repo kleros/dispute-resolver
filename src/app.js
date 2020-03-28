@@ -47,9 +47,7 @@ class App extends React.Component {
         this.setState({ network });
       });
 
-      window.ethereum.on("data", (data) => {
-        window.location.reload(false);
-      });
+      window.ethereum.on("data", (data) => {});
     } else console.error("MetaMask not detected :(");
   }
 
