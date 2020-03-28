@@ -1,16 +1,4 @@
-import {
-  Button,
-  Card,
-  Col,
-  Container,
-  Form,
-  ProgressBar,
-  Modal,
-  InputGroup,
-  Row,
-  FormControl,
-  Spinner
-} from "react-bootstrap";
+import { Button, Card, Col, Container, Form, ProgressBar, Modal, InputGroup, Row, FormControl, Spinner } from "react-bootstrap";
 import React from "react";
 import BigNumber from "bignumber.js";
 import Countdown from "react-countdown-now";
@@ -28,47 +16,36 @@ class Appeal extends React.Component {
       modalShow: false,
       contribution: "",
       party: "1",
-      awaitingConfirmation: false
+      awaitingConfirmation: false,
     };
   }
 
   async componentDidUpdate(previousProperties) {
-    if (
-      this.props.crowdfundingStatus !== previousProperties.crowdfundingStatus
-    ) {
+    if (this.props.crowdfundingStatus !== previousProperties.crowdfundingStatus) {
       console.log("componentDidUpdate");
-      this.props.crowdfundingStatus.then(response =>
-        this.setState({ crowdfundingStatus: response })
-      );
+      this.props.crowdfundingStatus.then((response) => this.setState({ crowdfundingStatus: response }));
     }
   }
 
-  handleControlChange = async e => {
-    const { id, value } = e.target;
+  handleControlChange = async (e) => {
+    const { name, value } = e.target;
 
-    await this.setState({ [id]: value });
+    await this.setState({ [name]: value });
 
     let winnerMultiplier = BigNumber(this.props.multipliers.winner);
     let loserMultiplier = BigNumber(this.props.multipliers.loser);
     let sharedMultiplier = BigNumber(this.props.multipliers.shared);
     let multiplierDivisor = BigNumber(this.props.multipliers.divisor);
 
-    if (id == "party")
+    if (name == "party")
       await this.setState({
-        contribution: this.calculateAmountRemainsToBeRaised(
-          winnerMultiplier,
-          loserMultiplier,
-          sharedMultiplier,
-          multiplierDivisor,
-          await this.props.crowdfundingStatus,
-          this.state.party
-        )
+        contribution: this.calculateAmountRemainsToBeRaised(winnerMultiplier, loserMultiplier, sharedMultiplier, multiplierDivisor, await this.props.crowdfundingStatus, this.state.party)
           .div(BigNumber(10).pow(BigNumber(18)))
-          .toString()
+          .toString(),
       });
   };
 
-  handleContributeButtonClick = async e => {
+  handleContributeButtonClick = async (e) => {
     console.log("contribute clicked");
     await this.setState({ awaitingConfirmation: true });
     try {
@@ -85,7 +62,7 @@ class Appeal extends React.Component {
     }
   };
 
-  handleFundButtonClick = async e => {
+  handleFundButtonClick = async (e) => {
     let winnerMultiplier = BigNumber(this.props.multipliers.winner);
     let loserMultiplier = BigNumber(this.props.multipliers.loser);
     let sharedMultiplier = BigNumber(this.props.multipliers.shared);
@@ -96,27 +73,14 @@ class Appeal extends React.Component {
       .div(BigNumber(10).pow(BigNumber(18)))
       .toString();
     this.setState({
-      contribution: this.calculateAmountRemainsToBeRaised(
-        winnerMultiplier,
-        loserMultiplier,
-        sharedMultiplier,
-        multiplierDivisor,
-        await this.props.crowdfundingStatus,
-        this.state.party
-      )
+      contribution: this.calculateAmountRemainsToBeRaised(winnerMultiplier, loserMultiplier, sharedMultiplier, multiplierDivisor, await this.props.crowdfundingStatus, this.state.party)
         .div(BigNumber(10).pow(BigNumber(18)))
         .toString(),
-      modalShow: true
+      modalShow: true,
     });
   };
 
-  calculateReturnOfInvestmentRatio = (
-    winnerMultiplier,
-    loserMultiplier,
-    sharedMultiplier,
-    multiplierDivisor,
-    party
-  ) => {
+  calculateReturnOfInvestmentRatio = (winnerMultiplier, loserMultiplier, sharedMultiplier, multiplierDivisor, party) => {
     console.log(party);
     console.log(loserMultiplier);
     console.log(multiplierDivisor);
@@ -125,49 +89,27 @@ class Appeal extends React.Component {
     const shared = BigNumber(sharedMultiplier);
     const divisor = BigNumber(multiplierDivisor);
     if (this.state.currentRuling == party) {
-      return winner
-        .plus(loser)
-        .plus(divisor)
-        .div(winner.plus(divisor));
+      return winner.plus(loser).plus(divisor).div(winner.plus(divisor));
     } else if (this.props.currentRuling == 0) {
-      return shared
-        .plus(shared)
-        .plus(divisor)
-        .div(shared.plus(divisor));
+      return shared.plus(shared).plus(divisor).div(shared.plus(divisor));
     } else {
-      return winner
-        .plus(loser)
-        .plus(divisor)
-        .div(loser.plus(divisor));
+      return winner.plus(loser).plus(divisor).div(loser.plus(divisor));
     }
   };
 
-  calculateAmountRemainsToBeRaised = (
-    winnerMultiplier,
-    loserMultiplier,
-    sharedMultiplier,
-    multiplierDivisor,
-    crowdfundingStatus,
-    party
-  ) => {
+  calculateAmountRemainsToBeRaised = (winnerMultiplier, loserMultiplier, sharedMultiplier, multiplierDivisor, crowdfundingStatus, party) => {
     const appealCost = BigNumber(this.props.appealCost);
     let stake;
     console.log(party);
     if (this.state.currentRuling == party) {
-      stake = appealCost
-        .times(BigNumber(winnerMultiplier))
-        .div(BigNumber(multiplierDivisor));
+      stake = appealCost.times(BigNumber(winnerMultiplier)).div(BigNumber(multiplierDivisor));
       console.log(stake);
     } else if (this.props.currentRuling == 0) {
-      stake = appealCost
-        .times(BigNumber(sharedMultiplier))
-        .div(BigNumber(multiplierDivisor));
+      stake = appealCost.times(BigNumber(sharedMultiplier)).div(BigNumber(multiplierDivisor));
       console.log(stake);
     } else {
       console.log(loserMultiplier);
-      stake = appealCost
-        .times(BigNumber(loserMultiplier))
-        .div(BigNumber(multiplierDivisor));
+      stake = appealCost.times(BigNumber(loserMultiplier)).div(BigNumber(multiplierDivisor));
       console.log(BigNumber(loserMultiplier).toString());
       console.log(stake.toString());
     }
@@ -177,35 +119,23 @@ class Appeal extends React.Component {
     return appealCost.plus(stake).minus(raisedSoFar);
   };
 
-  calculateTotalAmountToBeRaised = (
-    winnerMultiplier,
-    loserMultiplier,
-    sharedMultiplier,
-    multiplierDivisor,
-    party
-  ) => {
+  calculateTotalAmountToBeRaised = (winnerMultiplier, loserMultiplier, sharedMultiplier, multiplierDivisor, party) => {
     const appealCost = BigNumber(this.props.appealCost);
     let stake;
     console.log("check down");
     console.log(party);
     console.log(this.state.currentRuling);
     if (this.state.currentRuling == party) {
-      stake = appealCost
-        .times(BigNumber(winnerMultiplier))
-        .div(BigNumber(multiplierDivisor));
+      stake = appealCost.times(BigNumber(winnerMultiplier)).div(BigNumber(multiplierDivisor));
       console.log("winner");
       console.log(stake);
     } else if (this.props.currentRuling == 0) {
-      stake = appealCost
-        .times(BigNumber(sharedMultiplier))
-        .div(BigNumber(multiplierDivisor));
+      stake = appealCost.times(BigNumber(sharedMultiplier)).div(BigNumber(multiplierDivisor));
       console.log(stake);
     } else {
       console.log("loser");
       console.log(loserMultiplier);
-      stake = appealCost
-        .times(BigNumber(loserMultiplier))
-        .div(BigNumber(multiplierDivisor));
+      stake = appealCost.times(BigNumber(loserMultiplier)).div(BigNumber(multiplierDivisor));
       console.log(BigNumber(loserMultiplier).toString());
       console.log(stake.toString());
     }
@@ -214,28 +144,15 @@ class Appeal extends React.Component {
   };
 
   componentDidMount() {
-    this.props.appealPeriod.then(response =>
-      this.setState({ appealPeriod: response })
-    );
+    this.props.appealPeriod.then((response) => this.setState({ appealPeriod: response }));
 
-    this.props.currentRuling.then(response =>
-      this.setState({ currentRuling: response })
-    );
+    this.props.currentRuling.then((response) => this.setState({ currentRuling: response }));
 
-    this.props.crowdfundingStatus.then(response =>
-      this.setState({ crowdfundingStatus: response })
-    );
+    this.props.crowdfundingStatus.then((response) => this.setState({ crowdfundingStatus: response }));
   }
 
   render() {
-    const {
-      modalShow,
-      contribution,
-      party,
-      appealPeriod,
-      currentRuling,
-      crowdfundingStatus
-    } = this.state;
+    const { modalShow, contribution, party, appealPeriod, currentRuling, crowdfundingStatus } = this.state;
 
     const { appealCost, multipliers } = this.props;
 
@@ -256,7 +173,7 @@ class Appeal extends React.Component {
       <Container fluid="true">
         <Card disabled>
           <Card.Header>
-            <AppealSVG />
+            <AppealSVG style={{ marginRight: "1rem" }} />
             Appeal
           </Card.Header>
           <hr className="mt-0" />
@@ -268,15 +185,8 @@ class Appeal extends React.Component {
                     <h3 className="float-left">Crowdfunding Appeal</h3>
                     <br />
                     <br />
-                    <p>
-                      The appeal fees are in crowdfunding. The case will be sent
-                      to the jurors when the crowdfunding is completed.
-                    </p>
-                    <p>
-                      Anyone can contribute to appeal crowdfunding and win
-                      rewards. Note that help funding the dispute can make you
-                      win rewards, if the side you contributed won.
-                    </p>
+                    <p>The appeal fees are in crowdfunding. The case will be sent to the jurors when the crowdfunding is completed.</p>
+                    <p>Anyone can contribute to appeal crowdfunding and win rewards. Note that help funding the dispute can make you win rewards, if the side you contributed won.</p>
                   </Form.Group>
                 </Col>
               </Form.Row>
@@ -294,60 +204,25 @@ class Appeal extends React.Component {
                           <Col>
                             <Form.Row>
                               <Col className="purple-inverted">
-                                {(this.props.metaevidence.metaEvidenceJSON
-                                  .aliases &&
-                                  this.props.metaevidence.metaEvidenceJSON
-                                    .aliases[0] && (
-                                    <a
-                                      href={`https://etherscan.io/address/${
-                                        Object.keys(
-                                          this.props.metaevidence
-                                            .metaEvidenceJSON.aliases
-                                        )[0]
-                                      }
+                                {(this.props.metaevidence.metaEvidenceJSON.aliases && this.props.metaevidence.metaEvidenceJSON.aliases[0] && (
+                                  <a
+                                    href={`https://etherscan.io/address/${Object.keys(this.props.metaevidence.metaEvidenceJSON.aliases)[0]}
                                   `}
-                                      target="_blank"
-                                      rel="no-referrer no-opener"
-                                    >
-                                      {
-                                        Object.values(
-                                          this.props.metaevidence
-                                            .metaEvidenceJSON.aliases
-                                        )[0]
-                                      }
-                                    </a>
-                                  )) || (
-                                  <div>
-                                    {
-                                      Object.values(
-                                        this.props.metaevidence.metaEvidenceJSON
-                                          .rulingOptions.titles
-                                      )[0]
-                                    }
-                                  </div>
-                                )}
-                                <div className="font-weight-500">
-                                  {(currentRuling == "0" && "Tied") ||
-                                    (currentRuling == "1" && "Winner") ||
-                                    (currentRuling == "2" && "Loser")}
-                                </div>
+                                    target="_blank"
+                                    rel="no-referrer no-opener"
+                                  >
+                                    {Object.values(this.props.metaevidence.metaEvidenceJSON.aliases)[0]}
+                                  </a>
+                                )) || <div>{Object.values(this.props.metaevidence.metaEvidenceJSON.rulingOptions.titles)[0]}</div>}
+                                <div className="font-weight-500">{(currentRuling == "0" && "Tied") || (currentRuling == "1" && "Winner") || (currentRuling == "2" && "Loser")}</div>
                               </Col>
                             </Form.Row>
                           </Col>
                         </Form.Row>
                         <Row>
-                          <Col
-                            className="purple-inverted m-3"
-                            style={{ textAlign: "center" }}
-                          >
+                          <Col className="purple-inverted m-3" style={{ textAlign: "center" }}>
                             Total Deposit Required:{" "}
-                            {this.calculateTotalAmountToBeRaised(
-                              multipliers.winner,
-                              multipliers.loser,
-                              multipliers.shared,
-                              multipliers.divisor,
-                              1
-                            )
+                            {this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1)
                               .div(BigNumber(10).pow(BigNumber(18)))
                               .toString()}{" "}
                             ETH
@@ -360,15 +235,7 @@ class Appeal extends React.Component {
                               crowdfundingStatus &&
                               BigNumber(100)
                                 .times(BigNumber(crowdfundingStatus[0][1]))
-                                .div(
-                                  this.calculateTotalAmountToBeRaised(
-                                    multipliers.winner,
-                                    multipliers.loser,
-                                    multipliers.shared,
-                                    multipliers.divisor,
-                                    1
-                                  )
-                                )
+                                .div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1))
                                 .toString()
                             }
                             label={
@@ -376,40 +243,21 @@ class Appeal extends React.Component {
                               "%" +
                                 BigNumber(100)
                                   .times(BigNumber(crowdfundingStatus[0][1]))
-                                  .div(
-                                    this.calculateTotalAmountToBeRaised(
-                                      multipliers.winner,
-                                      multipliers.loser,
-                                      multipliers.shared,
-                                      multipliers.divisor,
-                                      1
-                                    )
-                                  )
+                                  .div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1))
                                   .toFixed(2)
                             }
                           />
                         </div>
-                        <Card
-                          className="my-3 mx-0 p-3 purple-inverted"
-                          style={{ backgroundColor: "#F5F1FD" }}
-                        >
+                        <Card className="my-3 mx-0 p-3 purple-inverted" style={{ backgroundColor: "#F5F1FD" }}>
                           You will get{" "}
-                          <span
-                            style={{ fontWeight: "bold", display: "contents" }}
-                          >
-                            {this.calculateReturnOfInvestmentRatio(
-                              multipliers.winner,
-                              multipliers.loser,
-                              multipliers.shared,
-                              multipliers.divisor,
-                              1
-                            ).toFixed(2)}
+                          <span style={{ fontWeight: "bold", display: "contents" }}>
+                            {this.calculateReturnOfInvestmentRatio(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1).toFixed(2)}
                           </span>{" "}
                           times of your contribution back if this side wins.
                           <h4 className="mt-2 purple-inverted text-center">
                             {crowdfundingStatus &&
                               "You contributed: " +
-                                BigNumber(BigNumber(crowdfundingStatus[3][1]))
+                                BigNumber(crowdfundingStatus[3][1])
                                   .div(BigNumber(10).pow(BigNumber(18)))
                                   .toString()}{" "}
                             ETH
@@ -423,18 +271,10 @@ class Appeal extends React.Component {
                             {appealPeriod && (
                               <Countdown
                                 date={
-                                  ((currentRuling == "1" ||
-                                    currentRuling == "0") &&
-                                    BigNumber(appealPeriod.end)
-                                      .times(BigNumber(1000))
-                                      .toNumber()) ||
+                                  ((currentRuling == "1" || currentRuling == "0") && BigNumber(appealPeriod.end).times(BigNumber(1000)).toNumber()) ||
                                   BigNumber(appealPeriod.end)
                                     .div(BigNumber(2))
-                                    .plus(
-                                      BigNumber(appealPeriod.start).div(
-                                        BigNumber(2)
-                                      )
-                                    )
+                                    .plus(BigNumber(appealPeriod.start).div(BigNumber(2)))
                                     .times(BigNumber(1000))
                                     .toNumber()
                                 }
@@ -459,60 +299,25 @@ class Appeal extends React.Component {
                           <Col>
                             <Form.Row>
                               <Col className="purple-inverted">
-                                {(this.props.metaevidence.metaEvidenceJSON
-                                  .aliases &&
-                                  this.props.metaevidence.metaEvidenceJSON
-                                    .aliases[1] && (
-                                    <a
-                                      href={`https://etherscan.io/address/${
-                                        Object.keys(
-                                          this.props.metaevidence
-                                            .metaEvidenceJSON.aliases
-                                        )[1]
-                                      }
+                                {(this.props.metaevidence.metaEvidenceJSON.aliases && this.props.metaevidence.metaEvidenceJSON.aliases[1] && (
+                                  <a
+                                    href={`https://etherscan.io/address/${Object.keys(this.props.metaevidence.metaEvidenceJSON.aliases)[1]}
                                 `}
-                                      target="_blank"
-                                      rel="no-referrer no-opener"
-                                    >
-                                      {
-                                        Object.values(
-                                          this.props.metaevidence
-                                            .metaEvidenceJSON.aliases
-                                        )[1]
-                                      }
-                                    </a>
-                                  )) || (
-                                  <div>
-                                    {
-                                      Object.values(
-                                        this.props.metaevidence.metaEvidenceJSON
-                                          .rulingOptions.titles
-                                      )[1]
-                                    }
-                                  </div>
-                                )}
-                                <div className="font-weight-500">
-                                  {(currentRuling == "0" && "Tied") ||
-                                    (currentRuling == "1" && "Loser") ||
-                                    (currentRuling == "2" && "Winner")}
-                                </div>
+                                    target="_blank"
+                                    rel="no-referrer no-opener"
+                                  >
+                                    {Object.values(this.props.metaevidence.metaEvidenceJSON.aliases)[1]}
+                                  </a>
+                                )) || <div>{Object.values(this.props.metaevidence.metaEvidenceJSON.rulingOptions.titles)[1]}</div>}
+                                <div className="font-weight-500">{(currentRuling == "0" && "Tied") || (currentRuling == "1" && "Loser") || (currentRuling == "2" && "Winner")}</div>
                               </Col>
                             </Form.Row>
                           </Col>
                         </Form.Row>
                         <Row>
-                          <Col
-                            className="purple-inverted m-3"
-                            style={{ textAlign: "center" }}
-                          >
+                          <Col className="purple-inverted m-3" style={{ textAlign: "center" }}>
                             Total Deposit Required:{" "}
-                            {this.calculateTotalAmountToBeRaised(
-                              multipliers.winner,
-                              multipliers.loser,
-                              multipliers.shared,
-                              multipliers.divisor,
-                              2
-                            )
+                            {this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2)
                               .div(BigNumber(10).pow(BigNumber(18)))
                               .toString()}{" "}
                             ETH
@@ -520,25 +325,12 @@ class Appeal extends React.Component {
                         </Row>
                         <div className="mb-3">
                           <ProgressBar
-                            variant={
-                              crowdfundingStatus &&
-                              crowdfundingStatus.hasPaid[2]
-                                ? "success"
-                                : ""
-                            }
+                            variant={crowdfundingStatus && crowdfundingStatus.hasPaid[2] ? "success" : ""}
                             now={
                               crowdfundingStatus &&
                               BigNumber(100)
                                 .times(BigNumber(crowdfundingStatus[0][2]))
-                                .div(
-                                  this.calculateTotalAmountToBeRaised(
-                                    multipliers.winner,
-                                    multipliers.loser,
-                                    multipliers.shared,
-                                    multipliers.divisor,
-                                    2
-                                  )
-                                )
+                                .div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2))
                                 .toString()
                             }
                             label={
@@ -546,34 +338,15 @@ class Appeal extends React.Component {
                               "%" +
                                 BigNumber(100)
                                   .times(BigNumber(crowdfundingStatus[0][2]))
-                                  .div(
-                                    this.calculateTotalAmountToBeRaised(
-                                      multipliers.winner,
-                                      multipliers.loser,
-                                      multipliers.shared,
-                                      multipliers.divisor,
-                                      2
-                                    )
-                                  )
+                                  .div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2))
                                   .toFixed(2)
                             }
                           />
                         </div>
-                        <Card
-                          className="my-3 mx-0 p-3 purple-inverted"
-                          style={{ backgroundColor: "#F5F1FD" }}
-                        >
+                        <Card className="my-3 mx-0 p-3 purple-inverted" style={{ backgroundColor: "#F5F1FD" }}>
                           You will get{" "}
-                          <span
-                            style={{ fontWeight: "bold", display: "contents" }}
-                          >
-                            {this.calculateReturnOfInvestmentRatio(
-                              multipliers.winner,
-                              multipliers.loser,
-                              multipliers.shared,
-                              multipliers.divisor,
-                              2
-                            ).toFixed(2)}
+                          <span style={{ fontWeight: "bold", display: "contents" }}>
+                            {this.calculateReturnOfInvestmentRatio(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2).toFixed(2)}
                           </span>{" "}
                           times of your contribution back if this side wins.
                           <h4 className="mt-2 purple-inverted text-center">
@@ -593,18 +366,10 @@ class Appeal extends React.Component {
                             {appealPeriod && (
                               <Countdown
                                 date={
-                                  ((currentRuling == "2" ||
-                                    currentRuling == "0") &&
-                                    BigNumber(appealPeriod.end)
-                                      .times(BigNumber(1000))
-                                      .toNumber()) ||
+                                  ((currentRuling == "2" || currentRuling == "0") && BigNumber(appealPeriod.end).times(BigNumber(1000)).toNumber()) ||
                                   BigNumber(appealPeriod.end)
                                     .div(BigNumber(2))
-                                    .plus(
-                                      BigNumber(appealPeriod.start).div(
-                                        BigNumber(2)
-                                      )
-                                    )
+                                    .plus(BigNumber(appealPeriod.start).div(BigNumber(2)))
                                     .times(BigNumber(1000))
                                     .toNumber()
                                 }
@@ -616,10 +381,12 @@ class Appeal extends React.Component {
                     </Card>
                   </Form.Group>
                 </Col>
+              </Form.Row>
 
+              <Form.Row>
                 <Col>
                   <Form.Group>
-                    <Card className="mx-0 crowfunding-card">
+                    <Card className="m-0 crowfunding-card">
                       <Card.Body>
                         <Form.Row>
                           <Col className="text-center my-3">
@@ -629,11 +396,7 @@ class Appeal extends React.Component {
 
                         <Form.Row>
                           <Col>
-                            <p id="warning">
-                              If loser side is fully funded, winner side should
-                              also be fully funded in order to not to lose the
-                              case.
-                            </p>
+                            <p id="warning">If one side is fully funded, the other side should also be fully funded in order to not to lose the case by default.</p>
                           </Col>
                         </Form.Row>
                       </Card.Body>
@@ -641,136 +404,91 @@ class Appeal extends React.Component {
                   </Form.Group>
                 </Col>
               </Form.Row>
+
               <Form.Row>
                 <Col>
-                  <Button
-                    className="float-right ok"
-                    onClick={this.handleFundButtonClick}
-                  >
-                    Fund
+                  <Button className="float-right ok" onClick={this.handleFundButtonClick}>
+                    Contribute to Funding
                   </Button>
                 </Col>
               </Form.Row>
             </Form>
           </Card.Body>
         </Card>
-        <Modal
-          size="xl"
-          show={modalShow}
-          onHide={e => this.setState({ modalShow: false })}
-        >
-          <Modal.Header>
-            <Modal.Title>
-              <Row>
-                <Col>Fund Appeal</Col>
-              </Row>
-            </Modal.Title>
+        <Modal size="xl" show={modalShow} onHide={(e) => this.setState({ modalShow: false })}>
+          <Modal.Header style={{ justifyContent: "center" }}>
+            <Modal.Title>Fund the Appeal</Modal.Title>
           </Modal.Header>
-          <Modal.Body>
-            <Form id="fund-modal-form">
+          <Modal.Body style={{ padding: "0" }}>
+            <Form id="fund-modal-form" style={{ backgroundColor: "white", padding: 0, margin: "2rem 0" }}>
               <Form.Group>
-                <Form.Row>
+                <Form.Row style={{ margin: "0 1rem" }}>
                   <Col>
-                    <h4>Which side do you want to fund?</h4>
+                    <h4 className="purple-inverted" style={{ textAlign: "center", paddingBottom: "1rem" }}>
+                      Which side do you want to fund?
+                    </h4>
                   </Col>
                 </Form.Row>
-                <hr />
-                <Form.Row>
+                <hr style={{ margin: 0 }} />
+                <Form.Row
+                  className="fund-modal-ruling-option"
+                  style={{ margin: "0", padding: "1.5rem", backgroundColor: this.state.party == "1" ? "#f5f1fd" : "white" }}
+                  onClick={this.handleControlChange.bind(this, { target: { name: "party", value: "1" } })}
+                >
                   <Col>
                     <InputGroup
                       style={{
                         justifyContent: "space-between",
-                        borderStyle: "unset"
+                        borderStyle: "unset",
                       }}
                     >
                       <InputGroup.Prepend>
                         <Form.Row>
                           <Col>
-                            <h5 className="purple-2-inverted">
-                              Previous Round{" "}
-                              {(currentRuling == "0" && "Tied") ||
-                                (currentRuling == "1" && "Winner") ||
-                                (currentRuling == "2" && "Loser")}
-                            </h5>
-                            <p className="purple-2-inverted">
-                              {" "}
-                              {
-                                Object.values(
-                                  this.props.metaevidence.metaEvidenceJSON
-                                    .rulingOptions.titles
-                                )[0]
-                              }
-                            </p>
+                            <h5 className="purple-2-inverted">Previous Round {(currentRuling == "0" && "Tied") || (currentRuling == "1" && "Winner") || (currentRuling == "2" && "Loser")}</h5>
+                            <p className="purple-2-inverted"> {Object.values(this.props.metaevidence.metaEvidenceJSON.rulingOptions.titles)[0]}</p>
                           </Col>
                         </Form.Row>
                       </InputGroup.Prepend>
-                      <InputGroup.Radio
-                        name="party"
-                        id="party"
-                        value="1"
-                        checked={this.state.party == "1"}
-                        onChange={this.handleControlChange}
-                      />
+                      <InputGroup.Radio name="party" id="party-1" value="1" checked={this.state.party == "1"} onChange={this.handleControlChange} />
                     </InputGroup>
                   </Col>
                 </Form.Row>
-                <hr />
-                <Form.Row>
+                <hr style={{ margin: 0 }} />
+                <Form.Row
+                  className="fund-modal-ruling-option"
+                  style={{ margin: "0", padding: "1.5rem", backgroundColor: this.state.party == "2" ? "#f5f1fd" : "white" }}
+                  onClick={this.handleControlChange.bind(this, { target: { name: "party", value: "2" } })}
+                >
                   <Col>
                     <InputGroup style={{ justifyContent: "space-between" }}>
                       <InputGroup.Prepend>
                         <Form.Row>
                           <Col>
-                            <h5 className="purple-2-inverted">
-                              Previous Round{" "}
-                              {(currentRuling == "0" && "Tied") ||
-                                (currentRuling == "1" && "Loser") ||
-                                (currentRuling == "2" && "Winner")}
-                            </h5>
-                            <p className="purple-2-inverted">
-                              {" "}
-                              {
-                                Object.values(
-                                  this.props.metaevidence.metaEvidenceJSON
-                                    .rulingOptions.titles
-                                )[1]
-                              }
-                            </p>
+                            <h5 className="purple-2-inverted">Previous Round {(currentRuling == "0" && "Tied") || (currentRuling == "1" && "Loser") || (currentRuling == "2" && "Winner")}</h5>
+                            <p className="purple-2-inverted"> {Object.values(this.props.metaevidence.metaEvidenceJSON.rulingOptions.titles)[1]}</p>
                           </Col>
                         </Form.Row>
                       </InputGroup.Prepend>
-                      <InputGroup.Radio
-                        name="party"
-                        id="party"
-                        value="2"
-                        checked={this.state.party == "2"}
-                        onChange={this.handleControlChange}
-                      />
+                      <InputGroup.Radio name="party" id="party-2" value="2" checked={this.state.party == "2"} onChange={this.handleControlChange} />
                     </InputGroup>
                   </Col>
                 </Form.Row>
-                <hr />
-                <Form.Row>
+                <hr style={{ margin: 0 }} />
+                <Form.Row style={{ margin: "0", padding: "1.5rem" }}>
                   <Col>
-                    <h4>Contribution Amount (ETH)</h4>
+                    <h5 className="purple-inverted text-center">How much do you want to contribute? (ETH)</h5>
                   </Col>
                 </Form.Row>
-                <Form.Row className="mb-3">
-                  <Col>
+                <Form.Row className="mb-3" style={{ margin: "0 1.5rem" }}>
+                  <Col style={{ padding: 0 }}>
                     <Form.Control
                       id="contribution"
                       type="number"
                       max={
                         crowdfundingStatus &&
                         multipliers &&
-                        this.calculateAmountRemainsToBeRaised(
-                          multipliers.winner,
-                          multipliers.loser,
-                          multipliers.shared,
-                          multipliers.divisor,
-                          crowdfundingStatus,
-                          party
-                        )
+                        this.calculateAmountRemainsToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, crowdfundingStatus, party)
                           .div(BigNumber(10).pow(BigNumber(18)))
                           .toString()
                       }
@@ -782,32 +500,16 @@ class Appeal extends React.Component {
                     />
                   </Col>
                 </Form.Row>
-                <Form.Row>
-                  <Col>
-                    <Button
-                      className="float-left return"
-                      onClick={e => this.setState({ modalShow: false })}
-                    >
+                <Form.Row style={{ margin: "0 1.5rem" }}>
+                  <Col style={{ padding: 0 }}>
+                    <Button className="float-left return" onClick={(e) => this.setState({ modalShow: false })}>
                       Return
                     </Button>
                   </Col>
-                  <Col>
-                    <Button
-                      className="float-right ok"
-                      onClick={this.handleContributeButtonClick}
-                    >
-                      {this.state.awaitingConfirmation && (
-                        <Spinner
-                          as="span"
-                          animation="grow"
-                          size="sm"
-                          role="status"
-                          aria-hidden="true"
-                        />
-                      )}{" "}
-                      {(this.state.awaitingConfirmation &&
-                        "Awaiting Confirmation") ||
-                        "Contribute"}
+                  <Col style={{ padding: 0 }}>
+                    <Button className="float-right ok" onClick={this.handleContributeButtonClick}>
+                      {this.state.awaitingConfirmation && <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" />}{" "}
+                      {(this.state.awaitingConfirmation && "Awaiting Confirmation") || "Contribute"}
                     </Button>
                   </Col>
                 </Form.Row>

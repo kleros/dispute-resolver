@@ -17,25 +17,10 @@ class TopBanner extends React.Component {
         <Navbar.Toggle aria-controls="responsive-navbar-nav" />
         <Navbar.Collapse id="responsive-navbar-nav">
           <Nav className="abs-center-x ">
-            <Nav.Link
-              className="mx-3"
-              href="/create/"
-              active={
-                (this.props.route &&
-                  this.props.route.match.path == "(/|/create/)") ||
-                this.props.pathname == "/"
-              }
-            >
+            <Nav.Link className="mx-3" style={{ fontSize: "1.2rem" }} href="/create/" active={(this.props.route && this.props.route.match.path == "(/|/create/)") || this.props.pathname == "/"}>
               Create
             </Nav.Link>
-            <Nav.Link
-              className="mx-3"
-              href="/interact/"
-              active={
-                this.props.route &&
-                this.props.route.match.path == "/interact/:id?"
-              }
-            >
+            <Nav.Link className="mx-3" style={{ fontSize: "1.2rem" }} href="/interact/" active={this.props.route && this.props.route.match.path == "/interact/:id?"}>
               Interact
             </Nav.Link>
           </Nav>
