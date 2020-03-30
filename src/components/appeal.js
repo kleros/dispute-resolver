@@ -9,7 +9,7 @@ import {
   InputGroup,
   Row,
   FormControl,
-  Spinner
+  Spinner,
 } from "react-bootstrap";
 import React from "react";
 import BigNumber from "bignumber.js";
@@ -28,7 +28,7 @@ class Appeal extends React.Component {
       modalShow: false,
       contribution: "",
       party: "1",
-      awaitingConfirmation: false
+      awaitingConfirmation: false,
     };
   }
 
@@ -37,13 +37,13 @@ class Appeal extends React.Component {
       this.props.crowdfundingStatus !== previousProperties.crowdfundingStatus
     ) {
       console.log("componentDidUpdate");
-      this.props.crowdfundingStatus.then(response =>
+      this.props.crowdfundingStatus.then((response) =>
         this.setState({ crowdfundingStatus: response })
       );
     }
   }
 
-  handleControlChange = async e => {
+  handleControlChange = async (e) => {
     const { id, value } = e.target;
 
     await this.setState({ [id]: value });
@@ -64,11 +64,11 @@ class Appeal extends React.Component {
           this.state.party
         )
           .div(BigNumber(10).pow(BigNumber(18)))
-          .toString()
+          .toString(),
       });
   };
 
-  handleContributeButtonClick = async e => {
+  handleContributeButtonClick = async (e) => {
     console.log("contribute clicked");
     await this.setState({ awaitingConfirmation: true });
     try {
@@ -85,7 +85,7 @@ class Appeal extends React.Component {
     }
   };
 
-  handleFundButtonClick = async e => {
+  handleFundButtonClick = async (e) => {
     let winnerMultiplier = BigNumber(this.props.winnerMultiplier);
     let loserMultiplier = BigNumber(this.props.loserMultiplier);
     let sharedMultiplier = BigNumber(this.props.sharedMultiplier);
@@ -106,7 +106,7 @@ class Appeal extends React.Component {
       )
         .div(BigNumber(10).pow(BigNumber(18)))
         .toString(),
-      modalShow: true
+      modalShow: true,
     });
   };
 
@@ -147,12 +147,7 @@ class Appeal extends React.Component {
     console.log(stake.toString());
     console.log(raisedSoFar.toString());
 
-    console.log(
-      appealCost
-        .plus(stake)
-        .minus(raisedSoFar)
-        .toString()
-    );
+    console.log(appealCost.plus(stake).minus(raisedSoFar).toString());
     return appealCost.plus(stake).minus(raisedSoFar);
   };
 
@@ -189,15 +184,15 @@ class Appeal extends React.Component {
   };
 
   componentDidMount() {
-    this.props.appealPeriod.then(response =>
+    this.props.appealPeriod.then((response) =>
       this.setState({ appealPeriod: response })
     );
 
-    this.props.currentRuling.then(response =>
+    this.props.currentRuling.then((response) =>
       this.setState({ currentRuling: response })
     );
 
-    this.props.crowdfundingStatus.then(response =>
+    this.props.crowdfundingStatus.then((response) =>
       this.setState({ crowdfundingStatus: response })
     );
   }
@@ -209,7 +204,7 @@ class Appeal extends React.Component {
       party,
       appealPeriod,
       currentRuling,
-      crowdfundingStatus
+      crowdfundingStatus,
     } = this.state;
 
     const {
@@ -217,7 +212,7 @@ class Appeal extends React.Component {
       winnerMultiplier,
       loserMultiplier,
       sharedMultiplier,
-      multiplierDivisor
+      multiplierDivisor,
     } = this.props;
 
     console.log(this.state);
@@ -356,8 +351,14 @@ class Appeal extends React.Component {
                             "You contributed %" +
                               BigNumber(100)
                                 .times(
-                                  BigNumber(
-                                    crowdfundingStatus[3][1] / appealCost
+                                  BigNumber(crowdfundingStatus[3][1]).div(
+                                    this.calculateTotalAmountToBeRaised(
+                                      winnerMultiplier,
+                                      loserMultiplier,
+                                      sharedMultiplier,
+                                      multiplierDivisor,
+                                      1
+                                    )
                                   )
                                 )
                                 .toFixed(2)}
@@ -487,8 +488,14 @@ class Appeal extends React.Component {
                             "You contributed %" +
                               BigNumber(100)
                                 .times(
-                                  BigNumber(
-                                    crowdfundingStatus[3][2] / appealCost
+                                  BigNumber(crowdfundingStatus[3][2]).div(
+                                    this.calculateTotalAmountToBeRaised(
+                                      winnerMultiplier,
+                                      loserMultiplier,
+                                      sharedMultiplier,
+                                      multiplierDivisor,
+                                      2
+                                    )
                                   )
                                 )
                                 .toFixed(2)}
@@ -564,7 +571,7 @@ class Appeal extends React.Component {
         </Card>
         <Modal
           show={modalShow}
-          onHide={e => this.setState({ modalShow: false })}
+          onHide={(e) => this.setState({ modalShow: false })}
         >
           <Modal.Header>
             <Modal.Title>
@@ -587,7 +594,7 @@ class Appeal extends React.Component {
                     <InputGroup
                       style={{
                         justifyContent: "space-between",
-                        borderStyle: "unset"
+                        borderStyle: "unset",
                       }}
                     >
                       <InputGroup.Prepend>
@@ -696,7 +703,7 @@ class Appeal extends React.Component {
                   <Col>
                     <Button
                       className="float-left return"
-                      onClick={e => this.setState({ modalShow: false })}
+                      onClick={(e) => this.setState({ modalShow: false })}
                     >
                       Return
                     </Button>
