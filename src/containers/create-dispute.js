@@ -586,7 +586,7 @@ class CreateDispute extends React.Component {
                 </Col>
               </Form.Row>
 
-              <Button type="submit" className="ok" block>
+              <Button type="submit" className="ok" block disabled={!activeAddress}>
                 Create Dispute{" "}
                 {arbitrationCost && "for " + arbitrationCost + " ETH"}
               </Button>
@@ -618,6 +618,7 @@ class CreateDispute extends React.Component {
           onModalHide={this.onModalClose}
           onCreateDisputeButtonClick={this.onCreateDisputeButtonClick}
           awaitingConfirmation={awaitingConfirmation}
+          activeAddress={activeAddress}
         />
         <IPFS publishCallback={this.props.publishCallback} />
       </Container>

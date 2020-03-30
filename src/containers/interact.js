@@ -361,6 +361,8 @@ class Interact extends React.Component {
       multiplierDivisor
     } = this.state;
 
+    const { activeAddress } = this.props
+
     console.log(this.props);
     console.log(this.state);
 
@@ -530,6 +532,7 @@ class Interact extends React.Component {
               </h3>
               {dispute && dispute.period == 4 && (
                 <Button
+                  disabled={!activeAddress}
                   onClick={e =>
                     this.props.withdrawFeesAndRewardsCallback(disputeID, 0)
                   }
@@ -564,6 +567,7 @@ class Interact extends React.Component {
                 arbitrableDispute.disputeIDOnArbitratorSide
               )}
               metaevidence={metaevidence}
+              activeAddress={activeAddress}
             />
           )}
 

@@ -46,6 +46,7 @@ class IPFS extends React.Component {
 
   render() {
     const { uploadedDocumentURI, fileInput } = this.state;
+    const { activeAddress } = this.props
 
     return (
       <Container fluid="true">
@@ -89,6 +90,7 @@ class IPFS extends React.Component {
                             className="btn btn-primary"
                             onClick={this.onSubmitButtonClick}
                             type="button"
+                            disabled={!activeAddress}
                           >
                             Upload
                           </button>

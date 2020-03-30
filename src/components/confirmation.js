@@ -30,7 +30,8 @@ class Confirmation extends React.Component {
       secondRulingDescription,
       primaryDocument,
       awaitingConfirmation,
-      show
+      show,
+      activeAddress
     } = this.props;
 
     return (
@@ -206,7 +207,7 @@ class Confirmation extends React.Component {
           <Button
             className="ok"
             onClick={this.props.onCreateDisputeButtonClick}
-            disabled={awaitingConfirmation}
+            disabled={awaitingConfirmation || !activeAddress}
           >
             {awaitingConfirmation && (
               <Spinner
