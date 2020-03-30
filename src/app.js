@@ -431,7 +431,7 @@ class App extends React.Component {
                 path="(/|/create/)"
                 render={route => (
                   <>
-                    <TopBanner route={route} />
+                    <TopBanner viewOnly={!activeAddress} route={route} />
                     <CreateDispute
                       activeAddress={activeAddress}
                       route={route}
@@ -451,7 +451,7 @@ class App extends React.Component {
                 path="/interact/:id?"
                 render={route => (
                   <>
-                    <TopBanner route={route} />
+                    <TopBanner viewOnly={!activeAddress} route={route} />
                     <Interact
                       arbitrableAddress={
                         networkMap[network].BINARY_ARBITRABLE_PROXY
