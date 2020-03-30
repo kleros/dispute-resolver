@@ -18,7 +18,6 @@ window.addEventListener('load', async () => {
   else if (window.web3) window.web3 = new Web3(web3.currentProvider)
   // Acccounts always exposed
   // Non-dapp browsers...
-  else
     console.log(
       'Non-Ethereum browser detected. You should consider trying MetaMask!'
     )
@@ -27,6 +26,10 @@ window.addEventListener('load', async () => {
 if (typeof window !== 'undefined' && typeof window.web3 !== 'undefined') {
   console.log('Using the web3 object of the window...')
   web3 = new Web3(window.web3.currentProvider)
+} else if (process.env.REACT_APP_WEB3_PROVIDER_URL) { 
+  // Fallback provider.
+  console.info('Using fallback provider')
+  web3 = new Web3(new Web3.providers.HttpProvider(process.env.REACT_APP_WEB3_PROVIDER_URL))
 }
 
 export default web3

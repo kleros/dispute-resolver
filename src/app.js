@@ -30,14 +30,15 @@ class App extends React.Component {
     console.log(networkMap);
     console.debug(process.env);
 
-    if (typeof window.ethereum !== "undefined") {
-      console.log(window.ethereum);
-      this.setState({ network: window.ethereum.networkVersion });
-
-      this.setState({ activeAddress: window.ethereum.selectedAddress });
+    if (Web3) {
+      this.setState({ network: await Web3.eth.net.getId() });   
       this.setState({
-        archon: new Archon(window.ethereum, "https://ipfs.kleros.io")
+        archon: new Archon(Web3.currentProvider.host, "https://ipfs.kleros.io")
       });
+    }
+
+    if (typeof window.ethereum !== "undefined") {
+      this.setState({ activeAddress: window.ethereum.selectedAddress });
       window.ethereum.on("accountsChanged", accounts => {
         this.setState({ activeAddress: accounts[0] });
       });
@@ -140,9 +141,9 @@ class App extends React.Component {
     `0x${parseInt(subcourtID, 10)
       .toString(16)
       .padStart(64, "0") +
-      parseInt(noOfJurors, 10)
-        .toString(16)
-        .padStart(64, "0")}`;
+    parseInt(noOfJurors, 10)
+      .toString(16)
+      .padStart(64, "0")}`;
 
   getWinnerMultiplier = async arbitrableAddress =>
     EthereumInterface.call(
@@ -358,7 +359,7 @@ class App extends React.Component {
 
     const { activeAddress, network, lastDisputeID } = this.state;
 
-    if (!network || !activeAddress)
+    if (!network)
       return (
         <Container fluid="true" style={{ position: "relative" }}>
           <Container fluid="true">
@@ -369,9 +370,9 @@ class App extends React.Component {
             appName="Dispute Resolver"
             contractExplorerURL={`https://${
               this.ETHERSCAN_STRINGS[1]
-            }etherscan.io/address/${
+              }etherscan.io/address/${
               networkMap[1].BINARY_ARBITRABLE_PROXY
-            }#code`}
+              }#code`}
             repository={"https://github.com/kleros/binary-arbitrable-proxy"}
           />
         </Container>
@@ -392,7 +393,7 @@ class App extends React.Component {
                     <>
                       <TopBanner route={route} />
                       <CreateDispute
-                        activeAddress={this.state.activeAddress}
+                        activeAddress={activeAddress}
                         route={route}
                         createDisputeCallback={this.createDispute}
                         getArbitrationCostCallback={
@@ -463,9 +464,9 @@ class App extends React.Component {
             appName="Dispute Resolver"
             contractExplorerURL={`https://${
               this.ETHERSCAN_STRINGS[this.state.network]
-            }etherscan.io/address/${
+              }etherscan.io/address/${
               networkMap[this.state.network].BINARY_ARBITRABLE_PROXY
-            }#code`}
+              }#code`}
             repository={"https://github.com/kleros/dispute-resolver"}
           />
         </Container>
