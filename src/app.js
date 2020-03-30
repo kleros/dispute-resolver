@@ -32,9 +32,13 @@ class App extends React.Component {
     console.debug(process.env);
 
     if (Web3) {
-      this.setState({ network: await Web3.eth.net.getId() });   
+      this.setState({ network: await Web3.eth.net.getId() });         
       this.setState({
-        archon: new Archon(Web3.currentProvider.host, "https://ipfs.kleros.io")
+        archon: new Archon(Web3.currentProvider.host 
+          ? Web3.currentProvider.host
+          : window.ethereum,
+          "https://ipfs.kleros.io"
+        )
       });
     }
 
