@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBold, faHeading, faItalic, faCode, faLink, faImage, faQuoteLeft, faListOl, faListUl } from "@fortawesome/free-solid-svg-icons";
 import Dropzone from "react-dropzone";
 
-import { Container, Col, Button, Form, Card, Dropdown } from "react-bootstrap";
+import { Container, Col, Button, Form, Card, Dropdown, Accordion } from "react-bootstrap";
 
 import { Redirect } from "react-router-dom";
 
@@ -207,223 +207,226 @@ class CreateDispute extends React.Component {
     return (
       <Container fluid="true" className="main-content">
         {lastDisputeID && <Redirect to={`/interact/${lastDisputeID}`} />}
+        <Accordion defaultActiveKey="0">
+          <Card style={{ borderRadius: "12px" }}>
+            <Accordion.Toggle as={Card.Header} eventKey="0">
+              <GavelSVG style={{ marginRight: "1rem" }} />
+              Create a Dispute
+            </Accordion.Toggle>
+            <hr className="mt-0" />
+            <Accordion.Collapse eventKey="0">
+              <Card.Body>
+                <Form noValidate validated={validated} onSubmit={this.onModalShow}>
+                  <Form.Row>
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
+                        <Dropdown required onSelect={this.onSubcourtSelect}>
+                          <Dropdown.Toggle id="subcourt-dropdown" block disabled={subcourtsLoading}>
+                            {(subcourtsLoading && "Loading...") || (selectedSubcourt && subcourts[selectedSubcourt].name) || "Please select a court"}
+                          </Dropdown.Toggle>
 
-        <Card>
-          <Card.Header>
-            <GavelSVG style={{ marginRight: "1rem" }} />
-            Create a Dispute
-          </Card.Header>
-          <hr className="mt-0" />
-          <Card.Body>
-            <Form noValidate validated={validated} onSubmit={this.onModalShow}>
-              <Form.Row>
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
-                    <Dropdown required onSelect={this.onSubcourtSelect}>
-                      <Dropdown.Toggle id="subcourt-dropdown" block disabled={subcourtsLoading}>
-                        {(subcourtsLoading && "Loading...") || (selectedSubcourt && subcourts[selectedSubcourt].name) || "Please select a court"}
-                      </Dropdown.Toggle>
+                          <Dropdown.Menu>
+                            {subcourts.map((subcourt, index) => (
+                              <Dropdown.Item key={index} eventKey={index}>
+                                {subcourt.name}
+                              </Dropdown.Item>
+                            ))}
+                          </Dropdown.Menu>
+                        </Dropdown>
+                      </Form.Group>
+                    </Col>
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label htmlFor="initialNumberOfJurors">Number of Jurors</Form.Label>
+                        <Form.Control required id="initialNumberOfJurors" as="input" type="number" min="0" value={initialNumberOfJurors} onChange={this.onControlChange} placeholder={"Number of jurors"} />
+                      </Form.Group>
+                    </Col>{" "}
+                    <Col>
+                      <Form.Group className="float-right">
+                        <Form.Label style={{ marginBottom: 0 }} className="float-right" htmlFor="arbitrationFee">
+                          Arbitration Cost
+                        </Form.Label>
+                        <Form.Control
+                          style={{
+                            fontSize: "2rem",
+                            border: "none",
+                            borderColor: "transparent",
+                            padding: 0,
+                            height: "auto",
+                          }}
+                          className="text-right"
+                          id="arbitrationFee"
+                          readOnly
+                          type="text"
+                          value={arbitrationCost && arbitrationCost + " ETH"}
+                          placeholder="N/A"
+                        />
+                      </Form.Group>
+                    </Col>
+                  </Form.Row>
+                  <hr />
+                  <Form.Row>
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label htmlFor="title">Title</Form.Label>
+                        <Form.Control required id="title" as="input" value={title} onChange={this.onControlChange} placeholder={"Title"} />
+                        <Form.Control.Feedback type="invalid">Please provide title for the dispute, something explains it in a nutshell.</Form.Control.Feedback>
+                      </Form.Group>
+                    </Col>
+                    <Col>
+                      <Form.Group>
+                        <Form.Label htmlFor="category">Category (optional)</Form.Label>
+                        <Form.Control id="category" as="input" value={category} onChange={this.onControlChange} placeholder={"Category"} />
+                      </Form.Group>
+                    </Col>
+                  </Form.Row>
+                  <Form.Row>
+                    <Col>
+                      <Form.Label htmlFor="description">Description (optional)</Form.Label>
+                    </Col>
+                  </Form.Row>
+                  <Form.Row className="mb-3">
+                    <Col md={6}>
+                      <Form.Group>
+                        <markdown-toolbar for="description">
+                          <md-bold>
+                            <FontAwesomeIcon className="mr-3" icon={faBold} />
+                          </md-bold>
+                          <md-header>
+                            <FontAwesomeIcon className="mr-3" icon={faHeading} />
+                          </md-header>
+                          <md-italic>
+                            <FontAwesomeIcon className="mr-3" icon={faItalic} />
+                          </md-italic>
+                          <md-quote>
+                            <FontAwesomeIcon className="mr-3" icon={faQuoteLeft} />
+                          </md-quote>
+                          <md-code>
+                            <FontAwesomeIcon className="mr-3" icon={faCode} />
+                          </md-code>
+                          <md-link>
+                            <FontAwesomeIcon className="mr-3" icon={faLink} />
+                          </md-link>
+                          <md-image>
+                            <FontAwesomeIcon className="mr-3" icon={faImage} />
+                          </md-image>
+                          <md-unordered-list>
+                            <FontAwesomeIcon className="mr-3" icon={faListOl} />
+                          </md-unordered-list>
+                          <md-ordered-list>
+                            <FontAwesomeIcon className="mr-3" icon={faListUl} />
+                          </md-ordered-list>
+                        </markdown-toolbar>
+                        <Form.Control id="description" as="textarea" rows="3" value={description} onChange={this.onControlChange} placeholder={"Description of dispute in markdown"} />
+                      </Form.Group>
+                    </Col>
+                    <Col>
+                      <Form.Group id="markdown">
+                        <ReactMarkdown source={description} />
+                      </Form.Group>
+                    </Col>
+                  </Form.Row>
 
-                      <Dropdown.Menu>
-                        {subcourts.map((subcourt, index) => (
-                          <Dropdown.Item key={index} eventKey={index}>
-                            {subcourt.name}
-                          </Dropdown.Item>
-                        ))}
-                      </Dropdown.Menu>
-                    </Dropdown>
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label htmlFor="initialNumberOfJurors">Number of Jurors</Form.Label>
-                    <Form.Control required id="initialNumberOfJurors" as="input" type="number" min="0" value={initialNumberOfJurors} onChange={this.onControlChange} placeholder={"Number of jurors"} />
-                  </Form.Group>
-                </Col>{" "}
-                <Col>
-                  <Form.Group className="float-right">
-                    <Form.Label style={{ marginBottom: 0 }} className="float-right" htmlFor="arbitrationFee">
-                      Arbitration Cost
-                    </Form.Label>
-                    <Form.Control
-                      style={{
-                        fontSize: "2rem",
-                        border: "none",
-                        borderColor: "transparent",
-                        padding: 0,
-                        height: "auto",
-                      }}
-                      className="text-right"
-                      id="arbitrationFee"
-                      readOnly
-                      type="text"
-                      value={arbitrationCost && arbitrationCost + " ETH"}
-                      placeholder="N/A"
-                    />
-                  </Form.Group>
-                </Col>
-              </Form.Row>
-              <hr />
-              <Form.Row>
-                <Col md={6}>
-                  <Form.Group>
-                    <Form.Label htmlFor="title">Title</Form.Label>
-                    <Form.Control required id="title" as="input" value={title} onChange={this.onControlChange} placeholder={"Title"} />
-                    <Form.Control.Feedback type="invalid">Please provide title for the dispute, something explains it in a nutshell.</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-                <Col>
-                  <Form.Group>
-                    <Form.Label htmlFor="category">Category (optional)</Form.Label>
-                    <Form.Control id="category" as="input" value={category} onChange={this.onControlChange} placeholder={"Category"} />
-                  </Form.Group>
-                </Col>
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <Form.Label htmlFor="description">Description (optional)</Form.Label>
-                </Col>
-              </Form.Row>
-              <Form.Row className="mb-3">
-                <Col md={6}>
-                  <Form.Group>
-                    <markdown-toolbar for="description">
-                      <md-bold>
-                        <FontAwesomeIcon className="mr-3" icon={faBold} />
-                      </md-bold>
-                      <md-header>
-                        <FontAwesomeIcon className="mr-3" icon={faHeading} />
-                      </md-header>
-                      <md-italic>
-                        <FontAwesomeIcon className="mr-3" icon={faItalic} />
-                      </md-italic>
-                      <md-quote>
-                        <FontAwesomeIcon className="mr-3" icon={faQuoteLeft} />
-                      </md-quote>
-                      <md-code>
-                        <FontAwesomeIcon className="mr-3" icon={faCode} />
-                      </md-code>
-                      <md-link>
-                        <FontAwesomeIcon className="mr-3" icon={faLink} />
-                      </md-link>
-                      <md-image>
-                        <FontAwesomeIcon className="mr-3" icon={faImage} />
-                      </md-image>
-                      <md-unordered-list>
-                        <FontAwesomeIcon className="mr-3" icon={faListOl} />
-                      </md-unordered-list>
-                      <md-ordered-list>
-                        <FontAwesomeIcon className="mr-3" icon={faListUl} />
-                      </md-ordered-list>
-                    </markdown-toolbar>
-                    <Form.Control id="description" as="textarea" rows="3" value={description} onChange={this.onControlChange} placeholder={"Description of dispute in markdown"} />
-                  </Form.Group>
-                </Col>
-                <Col>
-                  <Form.Group id="markdown">
-                    <ReactMarkdown source={description} />
-                  </Form.Group>
-                </Col>
-              </Form.Row>
+                  <hr />
+                  <Form.Row>
+                    <Col md={2} l={2} xl={2}>
+                      <Form.Group>
+                        <Form.Label htmlFor="requester">Party A</Form.Label>
 
-              <hr />
-              <Form.Row>
-                <Col md={2} l={2} xl={2}>
-                  <Form.Group>
-                    <Form.Label htmlFor="requester">Party A</Form.Label>
+                        <Form.Control id="requester" as="input" value={requester} onChange={this.onControlChange} placeholder={"Please enter alias"} />
+                      </Form.Group>
+                    </Col>
+                    <Col md={4} l={4} xl={4}>
+                      <Form.Group>
+                        <Form.Label htmlFor="requesterAddress">Party A Address (optional)</Form.Label>
 
-                    <Form.Control id="requester" as="input" value={requester} onChange={this.onControlChange} placeholder={"Please enter alias"} />
-                  </Form.Group>
-                </Col>
-                <Col md={4} l={4} xl={4}>
-                  <Form.Group>
-                    <Form.Label htmlFor="requesterAddress">Party A Address (optional)</Form.Label>
+                        <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="requesterAddress" as="input" value={requesterAddress} onChange={this.onControlChange} placeholder={"Please enter address"} />
+                      </Form.Group>
+                    </Col>
+                    <Col md={2} l={2} xl={2}>
+                      <Form.Group>
+                        <Form.Label htmlFor="respondent">Party B</Form.Label>
 
-                    <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="requesterAddress" as="input" value={requesterAddress} onChange={this.onControlChange} placeholder={"Please enter address"} />
-                  </Form.Group>
-                </Col>
-                <Col md={2} l={2} xl={2}>
-                  <Form.Group>
-                    <Form.Label htmlFor="respondent">Party B</Form.Label>
+                        <Form.Control id="respondent" as="input" value={respondent} onChange={this.onControlChange} placeholder={"Please enter alias"} />
+                      </Form.Group>
+                    </Col>
+                    <Col md={4} l={4} xl={4}>
+                      <Form.Group>
+                        <Form.Label htmlFor="respondentAddress">Party B Address (optional)</Form.Label>
 
-                    <Form.Control id="respondent" as="input" value={respondent} onChange={this.onControlChange} placeholder={"Please enter alias"} />
-                  </Form.Group>
-                </Col>
-                <Col md={4} l={4} xl={4}>
-                  <Form.Group>
-                    <Form.Label htmlFor="respondentAddress">Party B Address (optional)</Form.Label>
+                        <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="respondentAddress" as="input" value={respondentAddress} onChange={this.onControlChange} placeholder={"Please enter address"} />
+                      </Form.Group>
+                    </Col>
+                  </Form.Row>
 
-                    <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="respondentAddress" as="input" value={respondentAddress} onChange={this.onControlChange} placeholder={"Please enter address"} />
-                  </Form.Group>
-                </Col>
-              </Form.Row>
+                  <hr />
+                  <Form.Row>
+                    <Col>
+                      <Form.Group>
+                        <Form.Label htmlFor="question">Question</Form.Label>
 
-              <hr />
-              <Form.Row>
-                <Col>
-                  <Form.Group>
-                    <Form.Label htmlFor="question">Question</Form.Label>
+                        <Form.Control required id="question" as="input" value={question} onChange={this.onControlChange} placeholder={"Question"} />
+                        <Form.Control.Feedback type="invalid">Please provide a question.</Form.Control.Feedback>
+                      </Form.Group>
+                    </Col>
+                  </Form.Row>
+                  <Form.Row>
+                    <Col>
+                      <Form.Group>
+                        <Form.Label htmlFor="firstRulingOption">First Ruling Option</Form.Label>
+                        <Form.Control required id="firstRulingOption" as="input" value={firstRulingOption} onChange={this.onControlChange} placeholder={"First ruling option"} />
+                        <Form.Control.Feedback type="invalid">Please provide first ruling option, for example: "Yes"</Form.Control.Feedback>
+                      </Form.Group>
+                    </Col>
+                    <Col md={9}>
+                      <Form.Group>
+                        <Form.Label htmlFor="firstRulingDescription">First Ruling Description (optional)</Form.Label>
+                        <Form.Control id="firstRulingDescription" as="input" value={firstRulingDescription} onChange={this.onControlChange} placeholder={"Description of first ruling option"} />
+                      </Form.Group>
+                    </Col>{" "}
+                  </Form.Row>
+                  <Form.Row>
+                    <Col>
+                      <Form.Group>
+                        <Form.Label htmlFor="secondRulingOption">Second Ruling Option</Form.Label>
+                        <Form.Control required id="secondRulingOption" as="input" value={secondRulingOption} onChange={this.onControlChange} placeholder={"Second ruling option"} />
+                        <Form.Control.Feedback type="invalid">Please provide first ruling option, for example: "No"</Form.Control.Feedback>
+                      </Form.Group>
+                    </Col>
+                    <Col md={9}>
+                      <Form.Group>
+                        <Form.Label htmlFor="secondRulingDescription">Second Ruling Description (optional)</Form.Label>
+                        <Form.Control id="secondRulingDescription" as="input" value={secondRulingDescription} onChange={this.onControlChange} placeholder={"Description of second ruling option"} />
+                      </Form.Group>
+                    </Col>{" "}
+                  </Form.Row>
+                  <Form.Row>
+                    <Col>
+                      <Form.Group>
+                        <Form.Label htmlFor="dropzone">Primary Document (optional)</Form.Label>
+                        <Dropzone onDrop={this.onDrop}>
+                          {({ getRootProps, getInputProps }) => (
+                            <section id="dropzone">
+                              <div {...getRootProps()} className="vertical-center">
+                                <input {...getInputProps()} />
+                                <h5>{(fileInput && fileInput.path) || "Drag 'n' drop some files here, or click to select files. (optional)"}</h5>
+                              </div>
+                            </section>
+                          )}
+                        </Dropzone>
+                      </Form.Group>
+                    </Col>
+                  </Form.Row>
 
-                    <Form.Control required id="question" as="input" value={question} onChange={this.onControlChange} placeholder={"Question"} />
-                    <Form.Control.Feedback type="invalid">Please provide a question.</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <Form.Group>
-                    <Form.Label htmlFor="firstRulingOption">First Ruling Option</Form.Label>
-                    <Form.Control required id="firstRulingOption" as="input" value={firstRulingOption} onChange={this.onControlChange} placeholder={"First ruling option"} />
-                    <Form.Control.Feedback type="invalid">Please provide first ruling option, for example: "Yes"</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-                <Col md={9}>
-                  <Form.Group>
-                    <Form.Label htmlFor="firstRulingDescription">First Ruling Description (optional)</Form.Label>
-                    <Form.Control id="firstRulingDescription" as="input" value={firstRulingDescription} onChange={this.onControlChange} placeholder={"Description of first ruling option"} />
-                  </Form.Group>
-                </Col>{" "}
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <Form.Group>
-                    <Form.Label htmlFor="secondRulingOption">Second Ruling Option</Form.Label>
-                    <Form.Control required id="secondRulingOption" as="input" value={secondRulingOption} onChange={this.onControlChange} placeholder={"Second ruling option"} />
-                    <Form.Control.Feedback type="invalid">Please provide first ruling option, for example: "No"</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-                <Col md={9}>
-                  <Form.Group>
-                    <Form.Label htmlFor="secondRulingDescription">Second Ruling Description (optional)</Form.Label>
-                    <Form.Control id="secondRulingDescription" as="input" value={secondRulingDescription} onChange={this.onControlChange} placeholder={"Description of second ruling option"} />
-                  </Form.Group>
-                </Col>{" "}
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <Form.Group>
-                    <Form.Label htmlFor="dropzone">Primary Document (optional)</Form.Label>
-                    <Dropzone onDrop={this.onDrop}>
-                      {({ getRootProps, getInputProps }) => (
-                        <section id="dropzone">
-                          <div {...getRootProps()} className="vertical-center">
-                            <input {...getInputProps()} />
-                            <h5>{(fileInput && fileInput.path) || "Drag 'n' drop some files here, or click to select files. (optional)"}</h5>
-                          </div>
-                        </section>
-                      )}
-                    </Dropzone>
-                  </Form.Group>
-                </Col>
-              </Form.Row>
-
-              <Button type="submit" className="ok" block>
-                Create Dispute {arbitrationCost && "for " + arbitrationCost + " ETH"}
-              </Button>
-            </Form>
-          </Card.Body>
-        </Card>
+                  <Button type="submit" className="ok" block>
+                    Create Dispute {arbitrationCost && "for " + arbitrationCost + " ETH"}
+                  </Button>
+                </Form>
+              </Card.Body>
+            </Accordion.Collapse>
+          </Card>
+        </Accordion>
 
         <Confirmation
           selectedSubcourt={selectedSubcourt && subcourts[selectedSubcourt].name}

@@ -1,4 +1,4 @@
-import { Button, Card, Col, Container, Form, ProgressBar, Modal, InputGroup, Row, FormControl, Spinner } from "react-bootstrap";
+import { Button, Card, Col, Container, Form, ProgressBar, Modal, InputGroup, Row, FormControl, Spinner, Accordion } from "react-bootstrap";
 
 import React from "react";
 import BigNumber from "bignumber.js";
@@ -173,223 +173,227 @@ class Appeal extends React.Component {
 
     return (
       <Container fluid="true">
-        <Card disabled>
-          <Card.Header>
-            <AppealSVG style={{ marginRight: "1rem" }} />
-            Appeal
-          </Card.Header>
-          <hr className="mt-0" />
-          <Card.Body>
-            <Form>
-              <Form.Row>
-                <Col>
-                  <Form.Group>
-                    <h3 className="float-left">Crowdfunding Appeal</h3>
-                    <br />
-                    <br />
-                    <p>The appeal fees are in crowdfunding. The case will be sent to the jurors when the crowdfunding is completed.</p>
-                    <p>Anyone can contribute to appeal crowdfunding and win rewards. Note that help funding the dispute can make you win rewards, if the side you contributed won.</p>
-                  </Form.Group>
-                </Col>
-              </Form.Row>
-              <Form.Row>
-                <Col>
-                  <Form.Group>
-                    <Card className="mx-0 crowfunding-card">
-                      <Card.Body>
-                        <Form.Row>
-                          <Col s={1} md={1} l={1} xl={1}>
-                            <div>
-                              <ClockPurple />
-                            </div>
-                          </Col>
-                          <Col>
+        <Accordion defaultActiveKey="0">
+          <Card disabled style={{ borderRadius: "12px" }}>
+            <Accordion.Toggle as={Card.Header} eventKey="0">
+              <AppealSVG style={{ marginRight: "1rem" }} />
+              Appeal
+            </Accordion.Toggle>
+            <hr className="mt-0" />
+            <Accordion.Collapse eventKey="0">
+              <Card.Body>
+                <Form>
+                  <Form.Row>
+                    <Col>
+                      <Form.Group>
+                        <h3 className="float-left">Crowdfunding Appeal</h3>
+                        <br />
+                        <br />
+                        <p>The appeal fees are in crowdfunding. The case will be sent to the jurors when the crowdfunding is completed.</p>
+                        <p>Anyone can contribute to appeal crowdfunding and win rewards. Note that help funding the dispute can make you win rewards, if the side you contributed won.</p>
+                      </Form.Group>
+                    </Col>
+                  </Form.Row>
+                  <Form.Row>
+                    <Col>
+                      <Form.Group>
+                        <Card className="mx-0 crowfunding-card">
+                          <Card.Body>
                             <Form.Row>
-                              <Col className="purple-inverted">
-                                {(this.props.metaevidence.metaEvidenceJSON.aliases && this.props.metaevidence.metaEvidenceJSON.aliases[0] && (
-                                  <a
-                                    href={`https://etherscan.io/address/${Object.keys(this.props.metaevidence.metaEvidenceJSON.aliases)[0]}
+                              <Col s={1} md={1} l={1} xl={1}>
+                                <div>
+                                  <ClockPurple />
+                                </div>
+                              </Col>
+                              <Col>
+                                <Form.Row>
+                                  <Col className="purple-inverted">
+                                    {(this.props.metaevidence.metaEvidenceJSON.aliases && this.props.metaevidence.metaEvidenceJSON.aliases[0] && (
+                                      <a
+                                        href={`https://etherscan.io/address/${Object.keys(this.props.metaevidence.metaEvidenceJSON.aliases)[0]}
                                   `}
-                                    target="_blank"
-                                    rel="no-referrer no-opener"
-                                  >
-                                    {Object.values(this.props.metaevidence.metaEvidenceJSON.aliases)[0]}
-                                  </a>
-                                )) || <div>{Object.values(this.props.metaevidence.metaEvidenceJSON.rulingOptions.titles)[0]}</div>}
-                                <div className="font-weight-500">{(currentRuling == "0" && "Tied") || (currentRuling == "1" && "Winner") || (currentRuling == "2" && "Loser")}</div>
+                                        target="_blank"
+                                        rel="no-referrer no-opener"
+                                      >
+                                        {Object.values(this.props.metaevidence.metaEvidenceJSON.aliases)[0]}
+                                      </a>
+                                    )) || <div>{Object.values(this.props.metaevidence.metaEvidenceJSON.rulingOptions.titles)[0]}</div>}
+                                    <div className="font-weight-500">{(currentRuling == "0" && "Tied") || (currentRuling == "1" && "Winner") || (currentRuling == "2" && "Loser")}</div>
+                                  </Col>
+                                </Form.Row>
                               </Col>
                             </Form.Row>
-                          </Col>
-                        </Form.Row>
-                        <Row>
-                          <Col className="purple-inverted m-3" style={{ textAlign: "center" }}>
-                            Total Deposit Required:{" "}
-                            {this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1)
-                              .div(BigNumber(10).pow(BigNumber(18)))
-                              .toString()}{" "}
-                            ETH
-                          </Col>
-                        </Row>
-
-                        <div className="mb-3">
-                          <ProgressBar
-                            variant={crowdfundingStatus && crowdfundingStatus.hasPaid[1] ? "success" : ""}
-                            now={crowdfundingStatus && BigNumber(100).times(BigNumber(crowdfundingStatus[0][1])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1)).toString()}
-                            label={crowdfundingStatus && "%" + BigNumber(100).times(BigNumber(crowdfundingStatus[0][1])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1)).toFixed(2)}
-                          />
-                        </div>
-
-                        <Card className="my-3 mx-0 p-3 purple-inverted" style={{ backgroundColor: "#F5F1FD" }}>
-                          You will get <span style={{ fontWeight: "bold", display: "contents" }}>{this.calculateReturnOfInvestmentRatio(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1).toFixed(2)}</span> times of your contribution back if this
-                          side wins.
-                          <h4 className="mt-2 purple-inverted text-center">
-                            {crowdfundingStatus &&
-                              "You contributed: " +
-                                BigNumber(crowdfundingStatus[3][1])
+                            <Row>
+                              <Col className="purple-inverted m-3" style={{ textAlign: "center" }}>
+                                Total Deposit Required:{" "}
+                                {this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1)
                                   .div(BigNumber(10).pow(BigNumber(18)))
                                   .toString()}{" "}
-                            ETH
-                          </h4>
-                        </Card>
+                                ETH
+                              </Col>
+                            </Row>
 
-                        <Form.Row>
-                          <Col s={1} md={1} l={1} xl={1}>
-                            <ClockRed />
-                          </Col>
-                          <Col>
-                            {appealPeriod && (
-                              <Countdown
-                                date={
-                                  ((currentRuling == "1" || currentRuling == "0") && BigNumber(appealPeriod.end).times(BigNumber(1000)).toNumber()) ||
-                                  BigNumber(appealPeriod.end)
-                                    .div(BigNumber(2))
-                                    .plus(BigNumber(appealPeriod.start).div(BigNumber(2)))
-                                    .times(BigNumber(1000))
-                                    .toNumber()
-                                }
+                            <div className="mb-3">
+                              <ProgressBar
+                                variant={crowdfundingStatus && crowdfundingStatus.hasPaid[1] ? "success" : ""}
+                                now={crowdfundingStatus && BigNumber(100).times(BigNumber(crowdfundingStatus[0][1])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1)).toString()}
+                                label={crowdfundingStatus && "%" + BigNumber(100).times(BigNumber(crowdfundingStatus[0][1])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1)).toFixed(2)}
                               />
-                            )}
-                          </Col>
-                        </Form.Row>
-                      </Card.Body>
-                    </Card>
-                  </Form.Group>
-                </Col>
-                <Col>
-                  <Form.Group>
-                    <Card className="mx-0 crowfunding-card">
-                      <Card.Body>
-                        <Form.Row>
-                          <Col s={1} md={1} l={1} xl={1}>
-                            <div>
-                              <ClockPurple />
                             </div>
-                          </Col>
-                          <Col>
+
+                            <Card className="my-3 mx-0 p-3 purple-inverted text-center" style={{ backgroundColor: "#F5F1FD" }}>
+                              You will get <span style={{ fontWeight: "bold", display: "contents" }}>{this.calculateReturnOfInvestmentRatio(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1).toFixed(2)}</span> times of your contribution back if
+                              this side wins.
+                              <h4 className="mt-2 purple-inverted text-center">
+                                {crowdfundingStatus &&
+                                  "You contributed: " +
+                                    BigNumber(crowdfundingStatus[3][1])
+                                      .div(BigNumber(10).pow(BigNumber(18)))
+                                      .toString()}{" "}
+                                ETH
+                              </h4>
+                            </Card>
+
                             <Form.Row>
-                              <Col className="purple-inverted">
-                                {(this.props.metaevidence.metaEvidenceJSON.aliases && this.props.metaevidence.metaEvidenceJSON.aliases[1] && (
-                                  <a
-                                    href={`https://etherscan.io/address/${Object.keys(this.props.metaevidence.metaEvidenceJSON.aliases)[1]}
-                                `}
-                                    target="_blank"
-                                    rel="no-referrer no-opener"
-                                  >
-                                    {Object.values(this.props.metaevidence.metaEvidenceJSON.aliases)[1]}
-                                  </a>
-                                )) || <div>{Object.values(this.props.metaevidence.metaEvidenceJSON.rulingOptions.titles)[1]}</div>}
-                                <div className="font-weight-500">{(currentRuling == "0" && "Tied") || (currentRuling == "1" && "Loser") || (currentRuling == "2" && "Winner")}</div>
+                              <Col s={1} md={1} l={1} xl={1}>
+                                <ClockRed />
+                              </Col>
+                              <Col>
+                                {appealPeriod && (
+                                  <Countdown
+                                    date={
+                                      ((currentRuling == "1" || currentRuling == "0") && BigNumber(appealPeriod.end).times(BigNumber(1000)).toNumber()) ||
+                                      BigNumber(appealPeriod.end)
+                                        .div(BigNumber(2))
+                                        .plus(BigNumber(appealPeriod.start).div(BigNumber(2)))
+                                        .times(BigNumber(1000))
+                                        .toNumber()
+                                    }
+                                  />
+                                )}
                               </Col>
                             </Form.Row>
-                          </Col>
-                        </Form.Row>
-                        <Row>
-                          <Col className="purple-inverted m-3" style={{ textAlign: "center" }}>
-                            Total Deposit Required:{" "}
-                            {this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2)
-                              .div(BigNumber(10).pow(BigNumber(18)))
-                              .toString()}{" "}
-                            ETH
-                          </Col>
-                        </Row>
-                        <div className="mb-3">
-                          <ProgressBar
-                            variant={crowdfundingStatus && crowdfundingStatus.hasPaid[2] ? "success" : ""}
-                            now={crowdfundingStatus && BigNumber(100).times(BigNumber(crowdfundingStatus[0][2])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2)).toString()}
-                            label={crowdfundingStatus && "%" + BigNumber(100).times(BigNumber(crowdfundingStatus[0][2])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2)).toFixed(2)}
-                          />
-                        </div>
-
-                        <Card className="my-3 mx-0 p-3 purple-inverted" style={{ backgroundColor: "#F5F1FD" }}>
-                          You will get <span style={{ fontWeight: "bold", display: "contents" }}>{this.calculateReturnOfInvestmentRatio(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2).toFixed(2)}</span> times of your contribution back if this
-                          side wins.
-                          <h4 className="mt-2 purple-inverted text-center">
-                            {crowdfundingStatus &&
-                              "You contributed: " +
-                                BigNumber(crowdfundingStatus[3][2])
+                          </Card.Body>
+                        </Card>
+                      </Form.Group>
+                    </Col>
+                    <Col>
+                      <Form.Group>
+                        <Card className="mx-0 crowfunding-card">
+                          <Card.Body>
+                            <Form.Row>
+                              <Col s={1} md={1} l={1} xl={1}>
+                                <div>
+                                  <ClockPurple />
+                                </div>
+                              </Col>
+                              <Col>
+                                <Form.Row>
+                                  <Col className="purple-inverted">
+                                    {(this.props.metaevidence.metaEvidenceJSON.aliases && this.props.metaevidence.metaEvidenceJSON.aliases[1] && (
+                                      <a
+                                        href={`https://etherscan.io/address/${Object.keys(this.props.metaevidence.metaEvidenceJSON.aliases)[1]}
+                                `}
+                                        target="_blank"
+                                        rel="no-referrer no-opener"
+                                      >
+                                        {Object.values(this.props.metaevidence.metaEvidenceJSON.aliases)[1]}
+                                      </a>
+                                    )) || <div>{Object.values(this.props.metaevidence.metaEvidenceJSON.rulingOptions.titles)[1]}</div>}
+                                    <div className="font-weight-500">{(currentRuling == "0" && "Tied") || (currentRuling == "1" && "Loser") || (currentRuling == "2" && "Winner")}</div>
+                                  </Col>
+                                </Form.Row>
+                              </Col>
+                            </Form.Row>
+                            <Row>
+                              <Col className="purple-inverted m-3" style={{ textAlign: "center" }}>
+                                Total Deposit Required:{" "}
+                                {this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2)
                                   .div(BigNumber(10).pow(BigNumber(18)))
                                   .toString()}{" "}
-                            ETH
-                          </h4>
-                        </Card>
-
-                        <Form.Row>
-                          <Col s={1} md={1} l={1} xl={1}>
-                            <ClockRed />
-                          </Col>
-                          <Col>
-                            {appealPeriod && (
-                              <Countdown
-                                date={
-                                  ((currentRuling == "2" || currentRuling == "0") && BigNumber(appealPeriod.end).times(BigNumber(1000)).toNumber()) ||
-                                  BigNumber(appealPeriod.end)
-                                    .div(BigNumber(2))
-                                    .plus(BigNumber(appealPeriod.start).div(BigNumber(2)))
-                                    .times(BigNumber(1000))
-                                    .toNumber()
-                                }
+                                ETH
+                              </Col>
+                            </Row>
+                            <div className="mb-3">
+                              <ProgressBar
+                                variant={crowdfundingStatus && crowdfundingStatus.hasPaid[2] ? "success" : ""}
+                                now={crowdfundingStatus && BigNumber(100).times(BigNumber(crowdfundingStatus[0][2])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2)).toString()}
+                                label={crowdfundingStatus && "%" + BigNumber(100).times(BigNumber(crowdfundingStatus[0][2])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2)).toFixed(2)}
                               />
-                            )}
-                          </Col>
-                        </Form.Row>
-                      </Card.Body>
-                    </Card>
-                  </Form.Group>
-                </Col>
-              </Form.Row>
+                            </div>
 
-              <Form.Row>
-                <Col>
-                  <Form.Group>
-                    <Card className="m-0 crowfunding-card">
-                      <Card.Body>
-                        <Form.Row>
-                          <Col className="text-center my-3">
-                            <WarningSVG />
-                          </Col>
-                        </Form.Row>
+                            <Card className="my-3 mx-0 p-3 purple-inverted text-center" style={{ backgroundColor: "#F5F1FD" }}>
+                              You will get <span style={{ fontWeight: "bold", display: "contents" }}>{this.calculateReturnOfInvestmentRatio(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2).toFixed(2)}</span> times of your contribution back if
+                              this side wins.
+                              <h4 className="mt-2 purple-inverted text-center">
+                                {crowdfundingStatus &&
+                                  "You contributed: " +
+                                    BigNumber(crowdfundingStatus[3][2])
+                                      .div(BigNumber(10).pow(BigNumber(18)))
+                                      .toString()}{" "}
+                                ETH
+                              </h4>
+                            </Card>
 
-                        <Form.Row>
-                          <Col>
-                            <p id="warning">If one side is fully funded, the other side should also be fully funded in order to not to lose the case by default.</p>
-                          </Col>
-                        </Form.Row>
-                      </Card.Body>
-                    </Card>
-                  </Form.Group>
-                </Col>
-              </Form.Row>
+                            <Form.Row>
+                              <Col s={1} md={1} l={1} xl={1}>
+                                <ClockRed />
+                              </Col>
+                              <Col>
+                                {appealPeriod && (
+                                  <Countdown
+                                    date={
+                                      ((currentRuling == "2" || currentRuling == "0") && BigNumber(appealPeriod.end).times(BigNumber(1000)).toNumber()) ||
+                                      BigNumber(appealPeriod.end)
+                                        .div(BigNumber(2))
+                                        .plus(BigNumber(appealPeriod.start).div(BigNumber(2)))
+                                        .times(BigNumber(1000))
+                                        .toNumber()
+                                    }
+                                  />
+                                )}
+                              </Col>
+                            </Form.Row>
+                          </Card.Body>
+                        </Card>
+                      </Form.Group>
+                    </Col>
+                  </Form.Row>
 
-              <Form.Row>
-                <Col>
-                  <Button className="float-right ok" onClick={this.handleFundButtonClick}>
-                    Contribute to Funding
-                  </Button>
-                </Col>
-              </Form.Row>
-            </Form>
-          </Card.Body>
-        </Card>
+                  <Form.Row>
+                    <Col>
+                      <Form.Group>
+                        <Card className="m-0 crowfunding-card">
+                          <Card.Body>
+                            <Form.Row>
+                              <Col className="text-center my-3">
+                                <WarningSVG />
+                              </Col>
+                            </Form.Row>
+
+                            <Form.Row>
+                              <Col>
+                                <p id="warning">If one side is fully funded, the other side should also be fully funded in order to not to lose the case by default.</p>
+                              </Col>
+                            </Form.Row>
+                          </Card.Body>
+                        </Card>
+                      </Form.Group>
+                    </Col>
+                  </Form.Row>
+
+                  <Form.Row>
+                    <Col>
+                      <Button className="float-right ok" onClick={this.handleFundButtonClick}>
+                        Contribute to Funding
+                      </Button>
+                    </Col>
+                  </Form.Row>
+                </Form>
+              </Card.Body>
+            </Accordion.Collapse>
+          </Card>
+        </Accordion>
 
         <Modal size="xl" show={modalShow} onHide={(e) => this.setState({ modalShow: false })}>
           <Modal.Header style={{ justifyContent: "center" }}>
