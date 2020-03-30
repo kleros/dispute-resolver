@@ -213,10 +213,7 @@ class Appeal extends React.Component {
       loserMultiplier,
       sharedMultiplier,
       multiplierDivisor,
-<<<<<<< HEAD
-=======
       activeAddress
->>>>>>> fix: disable interaction buttons if there is no wallet available
     } = this.props;
 
     console.log(this.state);

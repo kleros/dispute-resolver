@@ -1,7 +1,8 @@
 import React from "react";
-import { Container } from "react-bootstrap";
+import { Container, Spinner } from "react-bootstrap";
 import "./app.css";
 import CreateDispute from "./containers/create-dispute";
+import styled from "styled-components/macro";
 import _404 from "./containers/404";
 import Interact from "./containers/interact";
 import { BrowserRouter, Route, Switch } from "react-router-dom";
@@ -12,6 +13,14 @@ import * as EthereumInterface from "./ethereum/interface";
 import networkMap from "./ethereum/network-contract-mapping";
 import ipfsPublish from "./ipfs-publish";
 import Archon from "@kleros/archon";
+
+const SpinnerContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: ${"calc(100vh - 64px)"};
+`
 
 class App extends React.Component {
   constructor(props) {
@@ -31,9 +40,9 @@ class App extends React.Component {
     console.debug(process.env);
 
     if (Web3) {
-      this.setState({ network: await Web3.eth.net.getId() });         
+      this.setState({ network: await Web3.eth.net.getId() });
       this.setState({
-        archon: new Archon(Web3.currentProvider.host 
+        archon: new Archon(Web3.currentProvider.host
           ? Web3.currentProvider.host
           : window.ethereum,
           "https://ipfs.kleros.io"
@@ -363,7 +372,7 @@ class App extends React.Component {
 
     const { activeAddress, network, lastDisputeID } = this.state;
 
-    if (!network)
+    if (!network && !process.env.REACT_APP_WEB3_PROVIDER_URL)
       return (
         <Container fluid="true" style={{ position: "relative" }}>
           <Container fluid="true">
@@ -381,101 +390,128 @@ class App extends React.Component {
           />
         </Container>
       );
-    else
+
+    if (!network) 
       return (
-        <Container
-          fluid="true"
-          style={{ position: "relative", minHeight: "100vh" }}
-        >
-          <Container fluid="true" style={{ paddingBottom: "7rem" }}>
-            <BrowserRouter>
-              <Switch>
-                <Route
-                  exact
-                  path="(/|/create/)"
-                  render={route => (
-                    <>
-                      <TopBanner route={route} />
-                      <CreateDispute
-                        activeAddress={activeAddress}
-                        route={route}
-                        createDisputeCallback={this.createDispute}
-                        getArbitrationCostCallback={
-                          this.getArbitrationCostWithCourtAndNoOfJurors
-                        }
-                        getSubCourtDetailsCallback={this.getSubCourtDetails}
-                        publishCallback={this.onPublish}
-                        web3={Web3}
-                      />
-                    </>
-                  )}
-                />
-                <Route
-                  exact
-                  path="/interact/:id?"
-                  render={route => (
-                    <>
-                      <TopBanner route={route} />
-                      <Interact
-                        arbitrableAddress={
-                          networkMap[network].BINARY_ARBITRABLE_PROXY
-                        }
-                        route={route}
-                        getArbitrableDisputeIDCallback={
-                          this.getArbitrableDisputeID
-                        }
-                        getAppealCostCallback={this.getAppealCost}
-                        appealCallback={this.appeal}
-                        getAppealPeriodCallback={this.getAppealPeriod}
-                        getCurrentRulingCallback={this.getCurrentRuling}
-                        disputeID={lastDisputeID}
-                        getContractInstanceCallback={this.getContractInstance}
-                        getArbitratorDisputeCallback={this.getArbitratorDispute}
-                        getArbitrableDisputeCallback={this.getArbitrableDispute}
-                        getArbitratorDisputeStructCallback={
-                          this.getArbitratorDisputeStruct
-                        }
-                        getArbitrableDisputeStructCallback={
-                          this.getArbitrableDisputeStruct
-                        }
-                        getCrowdfundingStatusCallback={
-                          this.getCrowdfundingStatus
-                        }
-                        getRulingCallback={this.getRuling}
-                        getEvidencesCallback={this.getEvidences}
-                        getMetaEvidenceCallback={this.getMetaEvidence}
-                        getSubCourtDetailsCallback={this.getSubCourtDetails}
-                        publishCallback={this.onPublish}
-                        submitEvidenceCallback={this.submitEvidence}
-                        getDisputeEventCallback={this.getDisputeEvent}
-                        getDisputeCallback={this.getDispute}
-                        getWinnerMultiplierCallback={this.getWinnerMultiplier}
-                        getLoserMultiplierCallback={this.getLoserMultiplier}
-                        getSharedMultiplierCallback={this.getSharedMultiplier}
-                        getMultiplierDivisorCallback={this.getMultiplierDivisor}
-                        withdrawFeesAndRewardsCallback={
-                          this.withdrawFeesAndRewards
-                        }
-                        activeAddress={activeAddress}
-                      />
-                    </>
-                  )}
-                />
-                <Route component={_404} />
-              </Switch>
-            </BrowserRouter>
+        <Container fluid="true" style={{ position: "relative" }}>
+          <Container fluid="true">
+            <TopBanner description="description" title="title" />
+            <SpinnerContainer>
+              <Spinner
+                as="span"
+                animation="grow"
+                size="sm"
+                role="status"
+                aria-hidden="true"
+              />
+            </SpinnerContainer>
           </Container>
           <Footer
             appName="Dispute Resolver"
             contractExplorerURL={`https://${
-              this.ETHERSCAN_STRINGS[this.state.network]
+              this.ETHERSCAN_STRINGS[1]
               }etherscan.io/address/${
-              networkMap[this.state.network].BINARY_ARBITRABLE_PROXY
+              networkMap[1].BINARY_ARBITRABLE_PROXY
               }#code`}
-            repository={"https://github.com/kleros/dispute-resolver"}
+            repository={"https://github.com/kleros/binary-arbitrable-proxy"}
           />
         </Container>
       );
+
+    return (
+      <Container
+        fluid="true"
+        style={{ position: "relative", minHeight: "100vh" }}
+      >
+        <Container fluid="true" style={{ paddingBottom: "7rem" }}>
+          <BrowserRouter>
+            <Switch>
+              <Route
+                exact
+                path="(/|/create/)"
+                render={route => (
+                  <>
+                    <TopBanner route={route} />
+                    <CreateDispute
+                      activeAddress={activeAddress}
+                      route={route}
+                      createDisputeCallback={this.createDispute}
+                      getArbitrationCostCallback={
+                        this.getArbitrationCostWithCourtAndNoOfJurors
+                      }
+                      getSubCourtDetailsCallback={this.getSubCourtDetails}
+                      publishCallback={this.onPublish}
+                      web3={Web3}
+                    />
+                  </>
+                )}
+              />
+              <Route
+                exact
+                path="/interact/:id?"
+                render={route => (
+                  <>
+                    <TopBanner route={route} />
+                    <Interact
+                      arbitrableAddress={
+                        networkMap[network].BINARY_ARBITRABLE_PROXY
+                      }
+                      route={route}
+                      getArbitrableDisputeIDCallback={
+                        this.getArbitrableDisputeID
+                      }
+                      getAppealCostCallback={this.getAppealCost}
+                      appealCallback={this.appeal}
+                      getAppealPeriodCallback={this.getAppealPeriod}
+                      getCurrentRulingCallback={this.getCurrentRuling}
+                      disputeID={lastDisputeID}
+                      getContractInstanceCallback={this.getContractInstance}
+                      getArbitratorDisputeCallback={this.getArbitratorDispute}
+                      getArbitrableDisputeCallback={this.getArbitrableDispute}
+                      getArbitratorDisputeStructCallback={
+                        this.getArbitratorDisputeStruct
+                      }
+                      getArbitrableDisputeStructCallback={
+                        this.getArbitrableDisputeStruct
+                      }
+                      getCrowdfundingStatusCallback={
+                        this.getCrowdfundingStatus
+                      }
+                      getRulingCallback={this.getRuling}
+                      getEvidencesCallback={this.getEvidences}
+                      getMetaEvidenceCallback={this.getMetaEvidence}
+                      getSubCourtDetailsCallback={this.getSubCourtDetails}
+                      publishCallback={this.onPublish}
+                      submitEvidenceCallback={this.submitEvidence}
+                      getDisputeCallback={this.getDispute}
+                      getDisputeEventCallback={this.getDisputeEvent}
+                      getWinnerMultiplierCallback={this.getWinnerMultiplier}
+                      getLoserMultiplierCallback={this.getLoserMultiplier}
+                      getSharedMultiplierCallback={this.getSharedMultiplier}
+                      getMultiplierDivisorCallback={this.getMultiplierDivisor}
+                      withdrawFeesAndRewardsCallback={
+                        this.withdrawFeesAndRewards
+                      }
+                      activeAddress={activeAddress}
+                    />
+                  </>
+                )}
+              />
+              <Route component={_404} />
+            </Switch>
+          </BrowserRouter>
+        </Container>
+        <Footer
+          appName="Dispute Resolver"
+          contractExplorerURL={`https://${
+            this.ETHERSCAN_STRINGS[this.state.network]
+            }etherscan.io/address/${
+            networkMap[this.state.network].BINARY_ARBITRABLE_PROXY
+            }#code`}
+          repository={"https://github.com/kleros/dispute-resolver"}
+        />
+      </Container>
+    );
   }
 }
 export default App;
