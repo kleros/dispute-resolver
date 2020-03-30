@@ -424,3 +424,9 @@ input#arbitrationFee.form-control:focus {
   box-shadow: none;
   color: #4d00b4;
 }
+
+div.confirmation.modal input {
+  background-color: red;
+  border: none;
+  padding-left: 0;
+}
