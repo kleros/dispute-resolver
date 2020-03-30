@@ -294,6 +294,9 @@ class Interact extends React.Component {
         disputeEvent: await this.props.getDisputeEventCallback(
           this.props.arbitrableAddress,
           arbitrableDispute.disputeIDOnArbitratorSide
+        ),
+        getDisputeResult: await this.props.getDisputeCallback(
+          arbitrableDispute.disputeIDOnArbitratorSide
         )
       });
     } catch (err) {
@@ -485,6 +488,11 @@ class Interact extends React.Component {
                     >
                       <Card.Body style={{ padding: 0 }}>
                         <EvidenceTimeline
+                          numberOfVotesCast={
+                            this.state.getDisputeResult.votesInEachRound.slice(
+                              -1
+                            )[0]
+                          }
                           metaevidence={metaevidence}
                           evidences={this.state.evidences}
                           ruling={this.state.ruling}
