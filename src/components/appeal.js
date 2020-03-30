@@ -1,4 +1,6 @@
+
 import { Button, Card, Col, Container, Form, ProgressBar, Modal, InputGroup, Row, FormControl, Spinner } from "react-bootstrap";
+
 import React from "react";
 import BigNumber from "bignumber.js";
 import Countdown from "react-countdown-now";
@@ -23,12 +25,16 @@ class Appeal extends React.Component {
   async componentDidUpdate(previousProperties) {
     if (this.props.crowdfundingStatus !== previousProperties.crowdfundingStatus) {
       console.log("componentDidUpdate");
+
       this.props.crowdfundingStatus.then((response) => this.setState({ crowdfundingStatus: response }));
+
     }
   }
 
   handleControlChange = async (e) => {
+
     const { name, value } = e.target;
+
 
     await this.setState({ [name]: value });
 
@@ -63,10 +69,12 @@ class Appeal extends React.Component {
   };
 
   handleFundButtonClick = async (e) => {
+
     let winnerMultiplier = BigNumber(this.props.multipliers.winner);
     let loserMultiplier = BigNumber(this.props.multipliers.loser);
     let sharedMultiplier = BigNumber(this.props.multipliers.shared);
     let multiplierDivisor = BigNumber(this.props.multipliers.divisor);
+
 
     let appealCostInEth = BigNumber(this.props.appealCost)
       .minus(BigNumber(this.state.crowdfundingStatus[0][this.state.party]))
@@ -116,6 +124,7 @@ class Appeal extends React.Component {
 
     const raisedSoFar = BigNumber(crowdfundingStatus[0][party]);
 
+
     return appealCost.plus(stake).minus(raisedSoFar);
   };
 
@@ -144,6 +153,7 @@ class Appeal extends React.Component {
   };
 
   componentDidMount() {
+
     this.props.appealPeriod.then((response) => this.setState({ appealPeriod: response }));
 
     this.props.currentRuling.then((response) => this.setState({ currentRuling: response }));
@@ -155,6 +165,7 @@ class Appeal extends React.Component {
     const { modalShow, contribution, party, appealPeriod, currentRuling, crowdfundingStatus } = this.state;
 
     const { appealCost, multipliers } = this.props;
+
 
     console.log(this.state);
     console.log(this.props);
@@ -235,6 +246,7 @@ class Appeal extends React.Component {
                             label={crowdfundingStatus && "%" + BigNumber(100).times(BigNumber(crowdfundingStatus[0][1])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1)).toFixed(2)}
                           />
                         </div>
+
                         <Card className="my-3 mx-0 p-3 purple-inverted" style={{ backgroundColor: "#F5F1FD" }}>
                           You will get <span style={{ fontWeight: "bold", display: "contents" }}>{this.calculateReturnOfInvestmentRatio(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1).toFixed(2)}</span> times of your contribution back if this
                           side wins.
@@ -247,6 +259,7 @@ class Appeal extends React.Component {
                             ETH
                           </h4>
                         </Card>
+
                         <Form.Row>
                           <Col s={1} md={1} l={1} xl={1}>
                             <ClockRed />
@@ -314,6 +327,7 @@ class Appeal extends React.Component {
                             label={crowdfundingStatus && "%" + BigNumber(100).times(BigNumber(crowdfundingStatus[0][2])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2)).toFixed(2)}
                           />
                         </div>
+
                         <Card className="my-3 mx-0 p-3 purple-inverted" style={{ backgroundColor: "#F5F1FD" }}>
                           You will get <span style={{ fontWeight: "bold", display: "contents" }}>{this.calculateReturnOfInvestmentRatio(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 2).toFixed(2)}</span> times of your contribution back if this
                           side wins.
@@ -326,6 +340,7 @@ class Appeal extends React.Component {
                             ETH
                           </h4>
                         </Card>
+
                         <Form.Row>
                           <Col s={1} md={1} l={1} xl={1}>
                             <ClockRed />
@@ -383,9 +398,11 @@ class Appeal extends React.Component {
             </Form>
           </Card.Body>
         </Card>
+
         <Modal size="xl" show={modalShow} onHide={(e) => this.setState({ modalShow: false })}>
           <Modal.Header style={{ justifyContent: "center" }}>
             <Modal.Title>Fund the Appeal</Modal.Title>
+
           </Modal.Header>
           <Modal.Body style={{ padding: "0" }}>
             <Form id="fund-modal-form" style={{ backgroundColor: "white", padding: 0, margin: "2rem 0" }}>
@@ -461,9 +478,11 @@ class Appeal extends React.Component {
                     />
                   </Col>
                 </Form.Row>
+
                 <Form.Row style={{ margin: "0 1.5rem" }}>
                   <Col style={{ padding: 0 }}>
                     <Button className="float-left return" onClick={(e) => this.setState({ modalShow: false })}>
+
                       Return
                     </Button>
                   </Col>

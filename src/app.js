@@ -169,6 +169,14 @@ class App extends React.Component {
       disputeID // dispute unique identifier
     );
 
+  getDispute = async disputeID =>
+    EthereumInterface.call(
+      "KlerosLiquid",
+      networkMap[this.state.network].KLEROS_LIQUID,
+      "getDispute",
+      disputeID
+    );
+
   getMetaEvidence = async (arbitrableAddress, disputeID) =>
     await this.state.archon.arbitrable.getMetaEvidence(
       arbitrableAddress, // arbitrable contract address
@@ -271,11 +279,19 @@ class App extends React.Component {
                         publishCallback={this.onPublish}
                         submitEvidenceCallback={this.submitEvidence}
                         getDisputeEventCallback={this.getDisputeEvent}
+
                         getMultipliersCallback={this.getMultipliers}
                         withdrawFeesAndRewardsCallback={this.withdrawFeesAndRewardsForAllRounds}
                         withdrewAlreadyCallback={this.withdrewAlready}
                         interactWithKlerosLiquidCallback={this.interactWithKlerosLiquid}
                         interactWithBinaryArbitrableProxyCallback={this.interactWithBinaryArbitrableProxy}
+
+                        getDisputeCallback={this.getDispute}
+
+                        withdrawFeesAndRewardsCallback={
+                          this.withdrawFeesAndRewards
+                        }
+
                       />
                     </>
                   )}
