@@ -18,6 +18,7 @@ window.addEventListener('load', async () => {
   else if (window.web3) window.web3 = new Web3(web3.currentProvider)
   // Acccounts always exposed
   // Non-dapp browsers...
+  else
     console.log(
       'Non-Ethereum browser detected. You should consider trying MetaMask!'
     )
