@@ -371,33 +371,44 @@ class Appeal extends React.Component {
                               </Col>
                             </Form.Row>
 
-                            <Form.Row>
-                              <Col>
-                                <p id="warning">If one side is fully funded, the other side should also be fully funded in order to not to lose the case by default.</p>
-                              </Col>
-                            </Form.Row>
-                          </Card.Body>
-                        </Card>
-                      </Form.Group>
-                    </Col>
-                  </Form.Row>
-
-                  <Form.Row>
-                    <Col>
-                      <Button className="float-right ok" onClick={this.handleFundButtonClick}>
-                        Contribute to Funding
-                      </Button>
-                    </Col>
-                  </Form.Row>
-                </Form>
-              </Card.Body>
-            </Accordion.Collapse>
-          </Card>
-        </Accordion>
-
-        <Modal size="xl" show={modalShow} onHide={(e) => this.setState({ modalShow: false })}>
-          <Modal.Header style={{ justifyContent: "center" }}>
-            <Modal.Title>Fund the Appeal</Modal.Title>
+                        <Form.Row>
+                          <Col>
+                            <p id="warning">
+                              If loser side is fully funded, winner side should
+                              also be fully funded in order to not to lose the
+                              case.
+                            </p>
+                          </Col>
+                        </Form.Row>
+                      </Card.Body>
+                    </Card>
+                  </Form.Group>
+                </Col>
+              </Form.Row>
+              <Form.Row>
+                <Col>
+                  <Button
+                    disabled={!activeAddress}
+                    className="float-right ok"
+                    onClick={this.handleFundButtonClick}
+                  >
+                    Fund
+                  </Button>
+                </Col>
+              </Form.Row>
+            </Form>
+          </Card.Body>
+        </Card>
+        <Modal
+          show={modalShow}
+          onHide={(e) => this.setState({ modalShow: false })}
+        >
+          <Modal.Header>
+            <Modal.Title>
+              <Row>
+                <Col>Fund Appeal</Col>
+              </Row>
+            </Modal.Title>
           </Modal.Header>
           <Modal.Body style={{ padding: "0" }}>
             <Form id="fund-modal-form" style={{ backgroundColor: "white", padding: 0, margin: "2rem 0" }}>
@@ -480,9 +491,24 @@ class Appeal extends React.Component {
                       Return
                     </Button>
                   </Col>
-                  <Col style={{ padding: 0 }}>
-                    <Button className="float-right ok" onClick={this.handleContributeButtonClick}>
-                      {this.state.awaitingConfirmation && <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" />} {(this.state.awaitingConfirmation && "Awaiting Confirmation") || "Contribute"}
+                  <Col>
+                    <Button
+                      className="float-right ok"
+                      onClick={this.handleContributeButtonClick}
+                      disabled={!activeAddress}
+                    >
+                      {this.state.awaitingConfirmation && (
+                        <Spinner
+                          as="span"
+                          animation="grow"
+                          size="sm"
+                          role="status"
+                          aria-hidden="true"
+                        />
+                      )}{" "}
+                      {(this.state.awaitingConfirmation &&
+                        "Awaiting Confirmation") ||
+                        "Contribute"}
                     </Button>
                   </Col>
                 </Form.Row>

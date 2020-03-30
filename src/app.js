@@ -292,7 +292,7 @@ class App extends React.Component {
                         withdrawFeesAndRewardsCallback={
                           this.withdrawFeesAndRewards
                         }
-
+                        activeAddress={activeAddress}
                       />
                     </>
                   )}

@@ -450,6 +450,7 @@ class CreateDispute extends React.Component {
           onModalHide={this.onModalClose}
           onCreateDisputeButtonClick={this.onCreateDisputeButtonClick}
           awaitingConfirmation={awaitingConfirmation}
+          activeAddress={activeAddress}
         />
         <IPFS publishCallback={this.props.publishCallback} />
       </Container>

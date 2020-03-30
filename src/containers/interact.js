@@ -267,6 +267,8 @@ class Interact extends React.Component {
   render() {
     const { disputeID, dispute, arbitrableDispute, crowdfundingStatus, appealCost, arbitratorDisputeID, arbitratorIDLoading, arbitrableIDLoading, metaevidence, multipliers } = this.state;
 
+    const { activeAddress } = this.props
+
     console.log(this.props);
     console.log(this.state);
 
@@ -379,13 +381,30 @@ class Interact extends React.Component {
                   </Form>
                 </Card.Body>
 
-                <Card.Footer
-                  className="p-0"
-                  id="dispute-detail-footer"
-                  style={{
-                    borderTopLeftRadius: 0,
-                    borderTopRightRadius: 0,
-                  }}
+          <Card.Footer
+            className="p-0"
+            id="dispute-detail-footer"
+            style={{
+              borderTopLeftRadius: 0,
+              borderTopRightRadius: 0
+            }}
+          >
+            <div
+              className="text-center p-5"
+              style={{
+                borderTopLeftRadius: "inherit",
+                borderTopRightRadius: "inherit"
+              }}
+            >
+              <h3 style={{ color: "white" }}>
+                {this.getHumanReadablePeriod(dispute.period)}
+              </h3>
+              {dispute && dispute.period == 4 && (
+                <Button
+                  disabled={!activeAddress}
+                  onClick={e =>
+                    this.props.withdrawFeesAndRewardsCallback(disputeID, 0)
+                  }
                 >
                   <div
                     className="text-center p-5"
