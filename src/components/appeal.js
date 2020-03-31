@@ -402,7 +402,7 @@ class Appeal extends React.Component {
             </Accordion.Collapse>
           </Card>
         </Accordion>
-        <Modal show={modalShow} onHide={(e) => this.setState({ modalShow: false })}>
+        <Modal size="xl" show={modalShow} onHide={(e) => this.setState({ modalShow: false })}>
           <Modal.Header>
             <Modal.Title>
               <Row>
@@ -432,7 +432,7 @@ class Appeal extends React.Component {
                       <InputGroup.Prepend>
                         <Form.Row>
                           <Col>
-                            <h5 className="purple-2-inverted">Previous Round {(currentRuling == "0" && "Tied") || (currentRuling == "1" && "Winner") || (currentRuling == "2" && "Loser")}</h5>
+                            <h5 className="purple-2-inverted">{(currentRuling == "1" && "Winner") || (currentRuling == "2" && "Loser")}</h5>
                             <p className="purple-2-inverted"> {Object.values(this.props.metaevidence.metaEvidenceJSON.rulingOptions.titles)[0]}</p>
                           </Col>
                         </Form.Row>
@@ -448,7 +448,7 @@ class Appeal extends React.Component {
                       <InputGroup.Prepend>
                         <Form.Row>
                           <Col>
-                            <h5 className="purple-2-inverted">Previous Round {(currentRuling == "0" && "Tied") || (currentRuling == "1" && "Loser") || (currentRuling == "2" && "Winner")}</h5>
+                            <h5 className="purple-2-inverted">{(currentRuling == "1" && "Loser") || (currentRuling == "2" && "Winner")}</h5>
                             <p className="purple-2-inverted"> {Object.values(this.props.metaevidence.metaEvidenceJSON.rulingOptions.titles)[1]}</p>
                           </Col>
                         </Form.Row>
