@@ -163,6 +163,7 @@ class Interact extends React.Component {
     try {
       arbitrated = (await this.props.getArbitratorDisputeCallback(arbitratorDisputeID)).arbitrated;
     } catch (e) {
+      console.error(e);
       this.setState({ dispute: { period: 8 } });
       return;
     }
@@ -227,7 +228,6 @@ class Interact extends React.Component {
         metaevidence: await this.props.getMetaEvidenceCallback(arbitratorDispute.arbitrated, arbitrableDisputeID),
         arbitrableDispute,
         arbitratorDisputeID: arbitrableDispute.disputeIDOnArbitratorSide,
-
         disputeID: arbitrableDisputeID,
         evidences: await this.props.getEvidencesCallback(this.props.arbitrableAddress, arbitrableDisputeID),
         ruling: await this.getRuling(this.props.arbitrableAddress, arbitrableDispute.disputeIDOnArbitratorSide),

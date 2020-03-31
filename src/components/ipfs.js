@@ -20,16 +20,16 @@ class IPFS extends React.Component {
       showToast: false,
       selectedSubcourt: "",
       subcourts: [],
-      subcourtsLoading: true,
+      subcourtsLoading: true
     };
   }
 
-  onInput = (e) => {
+  onInput = e => {
     this.setState({ uploadedDocumentURI: "" });
     this.setState({ fileInput: e.target.files[0] });
   };
 
-  onSubmitButtonClick = async (e) => {
+  onSubmitButtonClick = async e => {
     e.preventDefault();
     const { fileInput } = this.state;
 
@@ -46,7 +46,7 @@ class IPFS extends React.Component {
 
   render() {
     const { uploadedDocumentURI, fileInput } = this.state;
-    const { activeAddress } = this.props
+    const { activeAddress } = this.props;
 
     return (
       <Container fluid="true">
@@ -70,12 +70,7 @@ class IPFS extends React.Component {
                           </label>
                         </div>
                         <div className="input-group-append">
-                          <button
-                            className="btn btn-primary"
-                            onClick={this.onSubmitButtonClick}
-                            type="button"
-                            disabled={!activeAddress}
-                          >
+                          <button className="btn btn-primary" onClick={this.onSubmitButtonClick} type="button" disabled={!activeAddress}>
                             Upload
                           </button>
                         </div>
