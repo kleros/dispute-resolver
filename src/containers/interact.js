@@ -248,9 +248,11 @@ class Interact extends React.Component {
       appealCost = await this.props.getAppealCostCallback(arbitrableDispute.disputeIDOnArbitratorSide);
       multipliers = await this.props.getMultipliersCallback();
       withdrewAlready = await this.props.withdrewAlreadyCallback(arbitrableDisputeID);
+      crowdfundingStatus = await this.props.getCrowdfundingStatusCallback(arbitrableDisputeID);
 
       console.log("CF");
       this.setState({
+        crowdfundingStatus,
         appealCost,
         multipliers,
         withdrewAlready,
