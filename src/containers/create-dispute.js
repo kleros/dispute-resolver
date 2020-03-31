@@ -38,11 +38,11 @@ class CreateDispute extends React.Component {
       respondent: "Party B",
       requesterAddress: "",
       respondentAddress: "",
-      validated: false
+      validated: false,
     };
   }
 
-  componentDidMount = async e => {
+  componentDidMount = async (e) => {
     let subcourtURI,
       subcourt,
       subcourts = [],
@@ -70,20 +70,20 @@ class CreateDispute extends React.Component {
     }
     await this.setState({
       subcourts,
-      subcourtsLoading: false
+      subcourtsLoading: false,
     });
 
     this.onSubcourtSelect("0");
   };
 
-  onSubcourtSelect = async subcourtID => {
+  onSubcourtSelect = async (subcourtID) => {
     await this.setState({ selectedSubcourt: subcourtID });
     this.calculateArbitrationCost(this.state.selectedSubcourt, this.state.initialNumberOfJurors);
   };
 
-  onModalClose = e => this.setState({ modalShow: false, awaitingConfirmation: false });
+  onModalClose = (e) => this.setState({ modalShow: false, awaitingConfirmation: false });
 
-  onModalShow = event => {
+  onModalShow = (event) => {
     const form = event.currentTarget;
     if (form.checkValidity() == false) {
       console.log("invalid");
@@ -102,13 +102,13 @@ class CreateDispute extends React.Component {
     this.setState({ validated: true });
   };
 
-  onControlChange = async e => {
+  onControlChange = async (e) => {
     await this.setState({ [e.target.id]: e.target.value });
 
     this.calculateArbitrationCost(this.state.selectedSubcourt, this.state.initialNumberOfJurors);
   };
 
-  onDrop = async acceptedFiles => {
+  onDrop = async (acceptedFiles) => {
     console.log(acceptedFiles);
     this.setState({ fileInput: acceptedFiles[0] });
 
@@ -122,7 +122,7 @@ class CreateDispute extends React.Component {
       console.log(result);
 
       await this.setState({
-        primaryDocument: "/ipfs/" + result[1].hash + result[0].path
+        primaryDocument: "/ipfs/" + result[1].hash + result[0].path,
       });
     });
   };
@@ -131,10 +131,10 @@ class CreateDispute extends React.Component {
     subcourtID &&
     noOfJurors &&
     this.setState({
-      arbitrationCost: await this.props.getArbitrationCostCallback(subcourtID, noOfJurors)
+      arbitrationCost: await this.props.getArbitrationCostCallback(subcourtID, noOfJurors),
     });
 
-  onCreateDisputeButtonClick = async e => {
+  onCreateDisputeButtonClick = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     console.log("create dispute clicked");
@@ -150,19 +150,19 @@ class CreateDispute extends React.Component {
         description,
         aliases: {
           [requesterAddress]: requester,
-          [respondentAddress]: respondent
+          [respondentAddress]: respondent,
         },
         question,
         firstRulingOption,
         secondRulingOption,
         firstRulingDescription,
         secondRulingDescription,
-        primaryDocument
+        primaryDocument,
       });
       console.log("last dispute");
       console.log(receipt);
       this.setState({
-        lastDisputeID: receipt.events.Dispute.returnValues._disputeID
+        lastDisputeID: receipt.events.Dispute.returnValues._disputeID,
       });
     } catch (e) {
       console.log(e);
@@ -199,7 +199,7 @@ class CreateDispute extends React.Component {
       respondent,
       requesterAddress,
       respondentAddress,
-      validated
+      validated,
     } = this.state;
 
     const { activeAddress } = this.props;
@@ -251,7 +251,7 @@ class CreateDispute extends React.Component {
                         border: "none",
                         borderColor: "transparent",
                         padding: 0,
-                        height: "auto"
+                        height: "auto",
                       }}
                       className="text-right"
                       id="arbitrationFee"
@@ -417,7 +417,7 @@ class CreateDispute extends React.Component {
                 </Col>
               </Form.Row>
 
-              <Button type="submit" className="ok" block>
+              <Button type="submit" className="ok" disabled={!this.props.activeAddress} block>
                 Create Dispute {arbitrationCost && "for " + arbitrationCost + " ETH"}
               </Button>
             </Form>

@@ -72,6 +72,8 @@ class App extends React.Component {
       "ether"
     );
 
+  getSubcourt = async (subcourtID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "getSubcourt", subcourtID);
+
   getSubCourtDetails = async (subcourtID) => EthereumInterface.call("PolicyRegistry", networkMap[this.state.network].POLICY_REGISTRY, "policies", subcourtID);
 
   getArbitratorDispute = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "disputes", arbitratorDisputeID);
@@ -226,7 +228,7 @@ class App extends React.Component {
             <TopBanner description="description" title="title" />
             <_404 Web3={true} />
           </Container>
-          <Footer appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[1]}etherscan.io/address/${networkMap[1].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/binary-arbitrable-proxy"} />
+          <Footer appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[1]}etherscan.io/address/${networkMap[1].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/dispute-resolver"} />
         </Container>
       );
 
@@ -239,7 +241,7 @@ class App extends React.Component {
               <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" />
             </SpinnerContainer>
           </Container>
-          <Footer appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[1]}etherscan.io/address/${networkMap[1].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/binary-arbitrable-proxy"} />
+          <Footer appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[1]}etherscan.io/address/${networkMap[1].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/dispute-resolver"} />
         </Container>
       );
 
@@ -299,6 +301,7 @@ class App extends React.Component {
                       withdrewAlreadyCallback={this.withdrewAlready}
                       withdrawFeesAndRewardsCallback={this.withdrawFeesAndRewards}
                       activeAddress={activeAddress}
+                      getSubcourtCallback={this.getSubcourt}
                     />
                   </>
                 )}

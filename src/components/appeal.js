@@ -21,11 +21,28 @@ class Appeal extends React.Component {
     };
   }
 
+  componentDidMount() {
+    this.props.appealPeriod.then((response) => this.setState({ appealPeriod: response }));
+
+    this.props.currentRuling.then((response) => this.setState({ currentRuling: response }));
+
+    try {
+      this.props.crowdfundingStatus.then((response) => this.setState({ crowdfundingStatus: response }));
+    } catch (e) {
+      console.log("comp");
+      console.error(e);
+    }
+  }
+
   async componentDidUpdate(previousProperties) {
     if (this.props.crowdfundingStatus !== previousProperties.crowdfundingStatus) {
       console.log("componentDidUpdate");
 
-      this.props.crowdfundingStatus.then((response) => this.setState({ crowdfundingStatus: response }));
+      try {
+        this.setState({ crowdfundingStatus: await this.props.crowdfundingStatus });
+      } catch (e) {
+        console.error(e);
+      }
     }
   }
 
@@ -41,7 +58,7 @@ class Appeal extends React.Component {
 
     if (name == "party")
       await this.setState({
-        contribution: this.calculateAmountRemainsToBeRaised(winnerMultiplier, loserMultiplier, sharedMultiplier, multiplierDivisor, await this.props.crowdfundingStatus, this.state.party)
+        contribution: this.calculateAmountRemainsToBeRaised(winnerMultiplier, loserMultiplier, sharedMultiplier, multiplierDivisor, this.state.crowdfundingStatus, this.state.party)
           .div(BigNumber(10).pow(BigNumber(18)))
           .toString(),
       });
@@ -75,7 +92,7 @@ class Appeal extends React.Component {
       .div(BigNumber(10).pow(BigNumber(18)))
       .toString();
     this.setState({
-      contribution: this.calculateAmountRemainsToBeRaised(winnerMultiplier, loserMultiplier, sharedMultiplier, multiplierDivisor, await this.props.crowdfundingStatus, this.state.party)
+      contribution: this.calculateAmountRemainsToBeRaised(winnerMultiplier, loserMultiplier, sharedMultiplier, multiplierDivisor, this.state.crowdfundingStatus, this.state.party)
         .div(BigNumber(10).pow(BigNumber(18)))
         .toString(),
       modalShow: true,
@@ -144,14 +161,6 @@ class Appeal extends React.Component {
 
     return appealCost.plus(stake);
   };
-
-  componentDidMount() {
-    this.props.appealPeriod.then((response) => this.setState({ appealPeriod: response }));
-
-    this.props.currentRuling.then((response) => this.setState({ currentRuling: response }));
-
-    this.props.crowdfundingStatus.then((response) => this.setState({ crowdfundingStatus: response }));
-  }
 
   render() {
     const { modalShow, contribution, party, appealPeriod, currentRuling, crowdfundingStatus } = this.state;

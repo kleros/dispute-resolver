@@ -234,9 +234,8 @@ class Interact extends React.Component {
         currentRuling: await this.getCurrentRuling(arbitrableDispute.disputeIDOnArbitratorSide),
         disputeEvent: await this.props.getDisputeEventCallback(this.props.arbitrableAddress, arbitrableDispute.disputeIDOnArbitratorSide),
 
-        withdrewAlready: await this.props.withdrewAlreadyCallback(arbitrableDisputeID),
-
         getDisputeResult: await this.props.getDisputeCallback(arbitrableDispute.disputeIDOnArbitratorSide),
+        getSubcourtResult: await this.props.getSubcourtCallback(arbitratorDispute.subcourtID),
       });
     } catch (err) {
       console.error(err.message);
@@ -246,16 +245,15 @@ class Interact extends React.Component {
     }
 
     try {
-      crowdfundingStatus = await this.props.getCrowdfundingStatusCallback(arbitrableDisputeID);
       appealCost = await this.props.getAppealCostCallback(arbitrableDispute.disputeIDOnArbitratorSide);
       multipliers = await this.props.getMultipliersCallback();
+      withdrewAlready = await this.props.withdrewAlreadyCallback(arbitrableDisputeID);
 
       console.log("CF");
-      console.log(crowdfundingStatus);
       this.setState({
-        crowdfundingStatus,
         appealCost,
         multipliers,
+        withdrewAlready,
       });
     } catch (err) {
       console.error(err.message);
@@ -294,9 +292,23 @@ class Interact extends React.Component {
                       <Col>
                         <InputGroup className="mb-5" size="md">
                           <InputGroup.Prepend>
-                            <InputGroup.Text style={{ transform: "none", paddingLeft: "0" }}>Search Disputes on Court</InputGroup.Text>
+                            <InputGroup.Text className="purple-inverted" style={{ transform: "none", paddingLeft: "0" }}>
+                              Search Disputes on Court
+                            </InputGroup.Text>
                           </InputGroup.Prepend>
-                          <FormControl disabled={arbitratorIDLoading} placeholder="Dispute ID" aria-label="Input dispute number from Court" aria-describedby="search" onChange={this.onDisputeIDChange} type="number" min="0" value={arbitratorDisputeID} id="arbitratorDisputeID" />
+                          <FormControl
+                            className="purple-inverted"
+                            style={{ border: "1px solid #D09CFF", borderRadius: "3px" }}
+                            disabled={arbitratorIDLoading}
+                            placeholder="Dispute ID"
+                            aria-label="Input dispute number from Court"
+                            aria-describedby="search"
+                            onChange={this.onDisputeIDChange}
+                            type="number"
+                            min="0"
+                            value={arbitratorDisputeID}
+                            id="arbitratorDisputeID"
+                          />
                         </InputGroup>
                       </Col>
                     </Form.Row>
@@ -363,7 +375,7 @@ class Interact extends React.Component {
                           >
                             <Card.Body style={{ padding: 0 }}>
                               <EvidenceTimeline
-                                numberOfVotesCast={this.state.getDisputeResult.votesInEachRound.slice(-1)[0]}
+                                numberOfVotesCast={Number(this.state.getDisputeResult.votesInEachRound.slice(-1)[0])}
                                 metaevidence={metaevidence}
                                 evidences={this.state.evidences}
                                 ruling={this.state.ruling}
@@ -398,7 +410,7 @@ class Interact extends React.Component {
                   >
                     <h3 style={{ color: "white" }}>{this.getHumanReadablePeriod(dispute.period)}</h3>
                     {dispute && dispute.period == 4 && (
-                      <Button disabled={this.state.withdrewAlready} onClick={(e) => this.props.withdrawFeesAndRewardsCallback(disputeID)}>
+                      <Button disabled={this.state.withdrewAlready || !this.props.activeAddress} onClick={(e) => this.props.withdrawFeesAndRewardsCallback(disputeID)}>
                         {this.state.withdrewAlready ? "Withdrew Already" : "Withdraw Funds"}
                       </Button>
                     )}
@@ -409,7 +421,7 @@ class Interact extends React.Component {
           </Card>
         </Accordion>
 
-        {dispute && dispute.period == 3 && crowdfundingStatus && arbitrableDispute && (
+        {dispute && crowdfundingStatus && dispute.period == 3 && arbitrableDispute && (
           <Appeal
             crowdfundingStatus={this.props.getCrowdfundingStatusCallback(disputeID)}
             appealCost={appealCost}
