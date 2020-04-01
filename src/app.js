@@ -115,6 +115,10 @@ class App extends React.Component {
 
   getAppealPeriod = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "appealPeriod", arbitratorDisputeID);
 
+  passPeriod = async (arbitratorDisputeID) => EthereumInterface.send("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "passPeriod", arbitratorDisputeID);
+  drawJurors = async (arbitratorDisputeID) => EthereumInterface.send("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "drawJurors", arbitratorDisputeID, 1000);
+  passPhase = async () => EthereumInterface.send("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "passPhase");
+
   interactWithKlerosLiquid = async (interactionType, txValue, methodName, ...args) => {
     if (interactionType === "call") {
       return EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, methodName, ...args);
@@ -299,9 +303,12 @@ class App extends React.Component {
                       getDisputeEventCallback={this.getDisputeEvent}
                       getMultipliersCallback={this.getMultipliers}
                       withdrewAlreadyCallback={this.withdrewAlready}
-                      withdrawFeesAndRewardsCallback={this.withdrawFeesAndRewards}
+                      withdrawFeesAndRewardsCallback={this.withdrawFeesAndRewardsForAllRounds}
                       activeAddress={activeAddress}
                       getSubcourtCallback={this.getSubcourt}
+                      passPeriodCallback={this.passPeriod}
+                      drawJurorsCallback={this.drawJurors}
+                      passPhaseCallback={this.passPhase}
                     />
                   </>
                 )}

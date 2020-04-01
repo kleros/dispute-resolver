@@ -10,6 +10,8 @@ import { ReactComponent as KlerosSymbol } from "../assets/images/kleros-symbol.s
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { EvidenceTimeline } from "@kleros/react-components";
 import { Redirect } from "react-router-dom";
+import Countdown from "react-countdown-now";
+import BigNumber from "bignumber.js";
 
 class Interact extends React.Component {
   constructor(props) {
@@ -410,9 +412,46 @@ class Interact extends React.Component {
                       borderTopRightRadius: "inherit",
                     }}
                   >
-                    <h3 style={{ color: "white" }}>{this.getHumanReadablePeriod(dispute.period)}</h3>
+                    <h3 style={{ color: "white" }}>
+                      {this.getHumanReadablePeriod(dispute.period)}
+
+                      {this.state.dispute.lastPeriodChange && this.state.getSubcourtResult && this.state.getSubcourtResult[1][Number(dispute.period)] && (
+                        <>
+                          {" Over in "}
+                          <Countdown
+                            date={BigNumber("1000")
+                              .times(BigNumber(this.state.dispute.lastPeriodChange).plus(BigNumber(this.state.getSubcourtResult[1][Number(dispute.period)])))
+                              .toNumber()}
+                          />
+                        </>
+                      )}
+                    </h3>
+
+                    {this.state.dispute.lastPeriodChange &&
+                      this.state.getSubcourtResult &&
+                      this.state.getSubcourtResult[1][Number(dispute.period)] &&
+                      BigNumber(Date.now()).gt(BigNumber("1000").times(BigNumber(this.state.dispute.lastPeriodChange).plus(BigNumber(this.state.getSubcourtResult[1][Number(dispute.period)])))) && (
+                        <Button style={{ margin: "0 1rem" }} onClick={(e) => this.props.passPeriodCallback(arbitratorDisputeID)}>
+                          Pass Dispute Period
+                        </Button>
+                      )}
+
+                    {this.state.dispute.lastPeriodChange &&
+                      this.state.getSubcourtResult &&
+                      this.state.getSubcourtResult[1][Number(dispute.period)] &&
+                      BigNumber(Date.now()).gt(BigNumber("1000").times(BigNumber(this.state.dispute.lastPeriodChange).plus(BigNumber(this.state.getSubcourtResult[1][Number(dispute.period)])))) &&
+                      dispute.period == 0 && (
+                        <>
+                          <Button style={{ margin: "0 1rem" }} onClick={(e) => this.props.drawJurorsCallback(arbitratorDisputeID)}>
+                            Draw Jurors
+                          </Button>
+                          <Button style={{ margin: "0 1rem" }} onClick={(e) => this.props.passPhaseCallback()}>
+                            Pass Court Phase
+                          </Button>
+                        </>
+                      )}
                     {dispute && dispute.period == 4 && (
-                      <Button disabled={this.state.withdrewAlready || !this.props.activeAddress} onClick={(e) => this.props.withdrawFeesAndRewardsCallback(disputeID)}>
+                      <Button style={{ margin: "0 1rem" }} disabled={this.state.withdrewAlready || !this.props.activeAddress} onClick={(e) => this.props.withdrawFeesAndRewardsCallback(disputeID)}>
                         {this.state.withdrewAlready ? "Withdrew Already" : "Withdraw Funds"}
                       </Button>
                     )}
