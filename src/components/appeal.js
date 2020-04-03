@@ -382,7 +382,7 @@ class Appeal extends React.Component {
 
                             <Form.Row>
                               <Col>
-                                <p id="warning">If loser side is fully funded, winner side should also be fully funded in order to not to lose the case.</p>
+                                <p id="warning">If one side is fully funded, the other side should also be fully funded in order to not to lose the dispute.</p>
                               </Col>
                             </Form.Row>
                           </Card.Body>
