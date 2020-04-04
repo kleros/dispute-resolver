@@ -15,34 +15,19 @@ const imports = {
   PolicyRegistry
 };
 
-export const contractInstance = (interfaceName, address) =>
-  new web3.eth.Contract(imports[interfaceName].abi, address);
+export const contractInstance = (interfaceName, address) => new web3.eth.Contract(imports[interfaceName].abi, address);
 
 export const call = async (interfaceName, instanceAddress, method, ...args) =>
-  await contractInstance(interfaceName, instanceAddress)
+  contractInstance(interfaceName, instanceAddress)
     .methods[method](...args)
     .call();
 
-export const send = async (
-  interfaceName,
-  instanceAddress,
-  from,
-  value,
-  method,
-  ...args
-) =>
-  await contractInstance(interfaceName, instanceAddress)
+export const send = async (interfaceName, instanceAddress, from, value, method, ...args) =>
+  contractInstance(interfaceName, instanceAddress)
     .methods[method](...args)
     .send({ from, value });
 
-export const estimateGas = (
-  interfaceName,
-  instanceAddress,
-  from,
-  value,
-  method,
-  ...args
-) =>
+export const estimateGas = (interfaceName, instanceAddress, from, value, method, ...args) =>
   contractInstance(interfaceName, instanceAddress)
     .methods[method](...args)
     .estimateGas({ from, value });

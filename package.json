@@ -1,16 +1,16 @@
 {
-  "name": "binary-arbitrable-proxy-dapp",
-  "version": "0.1.0",
-  "private": true,
+  "name": "dispute-resolver",
+  "version": "1.0.0",
+  "private": false,
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.25",
     "@fortawesome/free-solid-svg-icons": "^5.11.2",
     "@fortawesome/react-fontawesome": "^0.1.7",
     "@github/markdown-toolbar-element": "^1.1.0",
     "@kleros/archon": "^0.10.1",
-    "@kleros/binary-arbitrable-proxy-contract": "^2.2.5",
+    "@kleros/binary-arbitrable-proxy-contract": "^2.3.3",
     "@kleros/kleros": "^0.1.2",
-    "@kleros/react-components": "^3.13.1",
+    "@kleros/react-components": "^3.13.3",
     "bignumber.js": "^9.0.0",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
@@ -47,15 +47,10 @@
     ]
   },
   "devDependencies": {
-    "eslint-config-prettier": "^6.7.0",
-    "eslint-config-standard": "^14.1.0",
-    "eslint-config-standard-jsx": "^8.1.0",
-    "eslint-plugin-node": "^10.0.0",
-    "eslint-plugin-prettier": "^3.1.1",
-    "eslint-plugin-promise": "^4.2.1",
-    "eslint-plugin-react-perf": "^3.2.3",
-    "eslint-plugin-standard": "^4.0.1",
-    "eslint-plugin-unicorn": "^14.0.1",
-    "eslint-plugin-wyze": "^3.4.0"
+    "prettier": "^2.0.2"
+  },
+  "prettier": {
+    "tabWidth": 2,
+    "printWidth": 280
   }
 }

@@ -20,16 +20,16 @@ class IPFS extends React.Component {
       showToast: false,
       selectedSubcourt: "",
       subcourts: [],
-      subcourtsLoading: true
+      subcourtsLoading: true,
     };
   }
 
-  onInput = e => {
+  onInput = (e) => {
     this.setState({ uploadedDocumentURI: "" });
     this.setState({ fileInput: e.target.files[0] });
   };
 
-  onSubmitButtonClick = async e => {
+  onSubmitButtonClick = async (e) => {
     e.preventDefault();
     const { fileInput } = this.state;
 
@@ -46,16 +46,14 @@ class IPFS extends React.Component {
 
   render() {
     const { uploadedDocumentURI, fileInput } = this.state;
+    const { activeAddress } = this.props;
 
     return (
       <Container fluid="true">
         <Accordion>
-          <Card>
+          <Card style={{ borderRadius: "12px" }}>
             <Accordion.Toggle as={Card.Header} eventKey="0">
-              <img
-                alt="ipfs logo"
-                src="ipfs-logo-vector-inkscape-template.svg"
-              />
+              <img alt="ipfs logo" src="ipfs-logo-vector-inkscape-template.svg" />
               Upload to IPFS
             </Accordion.Toggle>
             <hr className="mt-0" />
@@ -66,30 +64,13 @@ class IPFS extends React.Component {
                     <Col>
                       <div className="input-group mb-3">
                         <div className="custom-file">
-                          <input
-                            className="custom-file-input"
-                            id="inputGroupFile04"
-                            onInput={this.onInput}
-                            type="file"
-                          />
-                          <label
-                            className={`text-left custom-file-label  ${
-                              uploadedDocumentURI
-                                ? "text-success"
-                                : "text-muted"
-                            }`}
-                            htmlFor="inputGroupFile04"
-                          >
-                            {(fileInput && fileInput.name) ||
-                              "Select a document"}
+                          <input className="custom-file-input" id="inputGroupFile04" onInput={this.onInput} type="file" />
+                          <label className={`text-left custom-file-label  ${uploadedDocumentURI ? "text-success" : "text-muted"}`} htmlFor="inputGroupFile04">
+                            {(fileInput && fileInput.name) || "Select a document"}
                           </label>
                         </div>
                         <div className="input-group-append">
-                          <button
-                            className="btn btn-primary"
-                            onClick={this.onSubmitButtonClick}
-                            type="button"
-                          >
+                          <button className="btn btn-primary" onClick={this.onSubmitButtonClick} type="button">
                             Upload
                           </button>
                         </div>
@@ -98,11 +79,7 @@ class IPFS extends React.Component {
                   </Form.Row>
                 </Form>
                 {uploadedDocumentURI && (
-                  <a
-                    href={`https://ipfs.kleros.io${uploadedDocumentURI}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
+                  <a href={`https://ipfs.kleros.io${uploadedDocumentURI}`} target="_blank" rel="noopener noreferrer">
                     {" "}
                     {`https://ipfs.kleros.io${uploadedDocumentURI}`}
                   </a>

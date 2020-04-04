@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 
 class Confirmation extends React.Component {
-  onModalShow = e => this.setState({ modalShow: true });
+  onModalShow = (e) => this.setState({ modalShow: true });
   // async componentDidUpdate(prevProps) {
   //   console.log('component update')
   //   if (this.props !== prevProps.disputeID) {
@@ -30,18 +30,13 @@ class Confirmation extends React.Component {
       secondRulingDescription,
       primaryDocument,
       awaitingConfirmation,
-      show
+      show,
+      activeAddress
     } = this.props;
 
     return (
-      <Modal
-        className="confirmation"
-        size="xl"
-        show={show}
-        animation={false}
-        closeButton={false}
-      >
-        <Modal.Header>
+      <Modal className="confirmation" size="xl" show={show} animation={false} closeButton={false}>
+        <Modal.Header style={{ justifyContent: "center" }}>
           <Modal.Title>Dispute Summary</Modal.Title>
         </Modal.Header>
         <Modal.Body>
@@ -56,21 +51,13 @@ class Confirmation extends React.Component {
               <Col>
                 <Form.Group>
                   <Form.Label>Number of Jurors</Form.Label>
-                  <Form.Control
-                    readOnly
-                    type="text"
-                    value={initialNumberOfJurors}
-                  />
+                  <Form.Control readOnly type="text" value={initialNumberOfJurors} />
                 </Form.Group>
               </Col>{" "}
               <Col>
                 <Form.Group controlId="category">
                   <Form.Label>Category</Form.Label>
-                  <Form.Control
-                    readOnly
-                    type="text"
-                    value={category || "Not provided"}
-                  />
+                  <Form.Control readOnly type="text" value={category || "Not provided"} />
                 </Form.Group>
               </Col>
             </Form.Row>
@@ -102,11 +89,7 @@ class Confirmation extends React.Component {
               <Col md={4}>
                 <Form.Group controlId="requesterAddress">
                   <Form.Label>Requester Address</Form.Label>
-                  <Form.Control
-                    readOnly
-                    type="text"
-                    value={requesterAddress || "Not provided"}
-                  />
+                  <Form.Control readOnly type="text" value={requesterAddress || "Not provided"} />
                 </Form.Group>
               </Col>
               <Col md={2}>
@@ -118,11 +101,7 @@ class Confirmation extends React.Component {
               <Col md={4}>
                 <Form.Group controlId="respondentAddress">
                   <Form.Label>Respondent Address</Form.Label>
-                  <Form.Control
-                    readOnly
-                    type="text"
-                    value={respondentAddress || "Not provided"}
-                  />
+                  <Form.Control readOnly type="text" value={respondentAddress || "Not provided"} />
                 </Form.Group>
               </Col>
             </Form.Row>
@@ -139,21 +118,13 @@ class Confirmation extends React.Component {
               <Col>
                 <Form.Group>
                   <Form.Label>First Ruling Option</Form.Label>
-                  <Form.Control
-                    readOnly
-                    type="text"
-                    value={firstRulingOption}
-                  />
+                  <Form.Control readOnly type="text" value={firstRulingOption} />
                 </Form.Group>
               </Col>
               <Col>
                 <Form.Group>
                   <Form.Label>First Ruling Description</Form.Label>
-                  <Form.Control
-                    readOnly
-                    type="text"
-                    value={firstRulingDescription || "Not provided"}
-                  />
+                  <Form.Control readOnly type="text" value={firstRulingDescription || "Not provided"} />
                 </Form.Group>
               </Col>{" "}
             </Form.Row>
@@ -161,22 +132,14 @@ class Confirmation extends React.Component {
               <Col>
                 <Form.Group>
                   <Form.Label>Second Ruling Option</Form.Label>
-                  <Form.Control
-                    readOnly
-                    type="text"
-                    value={secondRulingOption}
-                  />
+                  <Form.Control readOnly type="text" value={secondRulingOption} />
                 </Form.Group>
               </Col>
               <Col>
                 <Form.Group>
                   <Form.Label>Second Ruling Description</Form.Label>
 
-                  <Form.Control
-                    readOnly
-                    type="text"
-                    value={secondRulingDescription || "Not provided"}
-                  />
+                  <Form.Control readOnly type="text" value={secondRulingDescription || "Not provided"} />
                 </Form.Group>
               </Col>{" "}
             </Form.Row>
@@ -184,13 +147,7 @@ class Confirmation extends React.Component {
               <Form.Row>
                 <Col>
                   <Form.Group>
-                    <a
-                      target="blank"
-                      href={
-                        primaryDocument &&
-                        "https://ipfs.kleros.io" + primaryDocument
-                      }
-                    >
+                    <a target="blank" href={primaryDocument && "https://ipfs.kleros.io" + primaryDocument}>
                       <AttachmentSVG /> {this.props.filePath}
                     </a>
                   </Form.Group>
@@ -206,7 +163,7 @@ class Confirmation extends React.Component {
           <Button
             className="ok"
             onClick={this.props.onCreateDisputeButtonClick}
-            disabled={awaitingConfirmation}
+            disabled={awaitingConfirmation || !activeAddress}
           >
             {awaitingConfirmation && (
               <Spinner

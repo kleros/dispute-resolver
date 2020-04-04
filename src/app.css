@@ -193,7 +193,8 @@ button::after {
 
 .form-group > input,
 .form-group > textarea,
-.form-group > p {
+body > div.confirmation.modal > div > div > div.modal-body > form > div:nth-child(4) > div > div > p,
+#markdown * {
   color: #4d00b4;
 }
 
@@ -205,8 +206,7 @@ body > div.modal > div > div > div.modal-body > form > div > div > div > input,
 input:read-only {
   font-weight: 600;
   background-color: unset !important;
-  border-style: unset;
-  padding: 0;
+  border-color: #4d00b4;
 }
 
 body > div.modal > div > div > div.modal-body > form {
@@ -220,16 +220,7 @@ body > div.modal > div > div > div.modal-body > form {
   padding: 15px;
 }
 
-body
-  > div.modal
-  > div
-  > div
-  > div.modal-body
-  > form
-  > div:nth-child(9)
-  > div
-  > div
-  > a {
+body > div.modal > div > div > div.modal-body > form > div:nth-child(9) > div > div > a {
   color: #4d00b4;
 }
 
@@ -248,15 +239,7 @@ body > div.modal > div > div > div.modal-header {
   border-style: none;
 }
 
-#root
-  > div
-  > div:nth-child(2)
-  > div
-  > div.card-body
-  > form
-  > div:nth-child(5)
-  > div:nth-child(1)
-  > div {
+#root > div > div:nth-child(2) > div > div.card-body > form > div:nth-child(5) > div:nth-child(1) > div {
   height: 100%;
 }
 /* #description {
@@ -359,34 +342,12 @@ i > svg {
   height: minHeight;
 }
 
-body
-  > div.modal
-  > div
-  > div
-  > div.modal-body
-  > form
-  > div:nth-child(11)
-  > div
-  > div
-  > a
-  > svg {
+body > div.modal > div > div > div.modal-body > form > div:nth-child(11) > div > div > a > svg {
   width: 1.5rem;
   height: auto;
 }
 
-#root
-  > div
-  > div
-  > div
-  > div.card
-  > div.card-body
-  > form
-  > div:nth-child(3)
-  > div
-  > div
-  > div.card-footer
-  > a
-  > svg {
+#root > div > div > div > div.card > div.card-body > form > div:nth-child(3) > div > div > div.card-footer > a > svg {
   width: 2rem;
   height: auto;
 }
@@ -444,4 +405,34 @@ span.input-group-text {
 .accordion > .card:last-of-type {
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
+}
+
+.progress-bar {
+  padding: 0 6px;
+}
+
+button:disabled {
+  cursor: not-allowed !important;
+}
+
+.fund-modal-ruling-option:hover {
+  background: #f5f1fd;
+}
+
+input:read-only:focus {
+  outline: 0 none;
+  box-shadow: none;
+  color: #4d00b4;
+}
+
+div.confirmation.modal input {
+  background-color: red;
+  border: none;
+  padding-left: 0;
+}
+
+input.form-control {
+  border: 1px solid #d09cff;
+  box-sizing: border-box;
+  border-radius: 3px;
 }

@@ -1,7 +1,8 @@
 import React from "react";
-import { Container } from "react-bootstrap";
+import { Container, Spinner } from "react-bootstrap";
 import "./app.css";
 import CreateDispute from "./containers/create-dispute";
+import styled from "styled-components/macro";
 import _404 from "./containers/404";
 import Interact from "./containers/interact";
 import { BrowserRouter, Route, Switch } from "react-router-dom";
@@ -13,225 +14,113 @@ import networkMap from "./ethereum/network-contract-mapping";
 import ipfsPublish from "./ipfs-publish";
 import Archon from "@kleros/archon";
 
+const SpinnerContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: ${"calc(100vh - 64px)"};
+`;
+
 class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       activeAddress: "",
       network: "",
-      lastDisputeID: ""
+      lastDisputeID: "",
+      dummy: "",
     };
     this.encoder = new TextEncoder();
   }
-  ETHERSCAN_STRINGS = { "1": "", "42": "kovan." };
+  ETHERSCAN_STRINGS = Object.freeze({ "1": "", "42": "kovan." });
+
+  interactWithKlerosLiquid = async (interactionType, txValue, methodName, ...args) => this.interactWithContract("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, interactionType, txValue, methodName, ...args);
+
+  interactWithBinaryArbitrableProxy = async (interactionType, txValue, methodName, ...args) => this.interactWithContract("BinaryArbitrableProxy", networkMap[this.state.network].BINARY_ARBITRABLE_PROXY, interactionType, txValue, methodName, ...args);
+
+  interactWithContract = async (contractName, contractAddress, interactionType, txValue, methodName, ...args) => {
+    if (interactionType === "call") {
+      return EthereumInterface.call(contractName, contractAddress, methodName, ...args);
+    } else if (interactionType === "send") {
+      return EthereumInterface.send(contractName, contractAddress, this.state.activeAddress, txValue, methodName, ...args);
+    } else {
+      return;
+    }
+  };
 
   async componentDidMount() {
-    console.log(Footer);
-    console.log(networkMap);
-    console.debug(process.env);
+    if (Web3) {
+      this.setState({ network: await Web3.eth.net.getId() });
+      this.setState({
+        archon: new Archon(Web3.currentProvider.host ? Web3.currentProvider.host : window.ethereum, "https://ipfs.kleros.io"),
+      });
+    }
 
     if (typeof window.ethereum !== "undefined") {
-      console.log(window.ethereum);
-      this.setState({ network: window.ethereum.networkVersion });
-
       this.setState({ activeAddress: window.ethereum.selectedAddress });
-      this.setState({
-        archon: new Archon(window.ethereum, "https://ipfs.kleros.io")
-      });
-      window.ethereum.on("accountsChanged", accounts => {
+      window.ethereum.on("accountsChanged", (accounts) => {
         this.setState({ activeAddress: accounts[0] });
       });
 
-      window.ethereum.on("networkChanged", network => {
+      window.ethereum.on("networkChanged", (network) => {
         this.setState({ network });
       });
 
-      window.ethereum.on("data", data => {
-        console.log(data);
-        this.forceUpdate();
-      });
+      window.ethereum.on("data", (data) => {});
     } else console.error("MetaMask not detected :(");
   }
 
-  getArbitrableDisputeID = async arbitratorDisputeID =>
-    EthereumInterface.call(
-      "BinaryArbitrableProxy",
-      networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
-      "externalIDtoLocalID",
-      arbitratorDisputeID
-    );
+  getArbitrableDisputeID = async (arbitratorDisputeID) => this.interactWithBinaryArbitrableProxy("call", "unused", "externalIDtoLocalID", arbitratorDisputeID);
 
-  getArbitrationCost = (arbitratorAddress, extraData) =>
-    EthereumInterface.call(
-      "IArbitrator",
-      arbitratorAddress,
-      "arbitrationCost",
-      extraData
-    );
+  getArbitrationCost = (arbitratorAddress, extraData) => EthereumInterface.call("IArbitrator", arbitratorAddress, "arbitrationCost", extraData);
 
-  getArbitrationCostWithCourtAndNoOfJurors = async (subcourtID, noOfJurors) =>
-    Web3.utils.fromWei(
-      await EthereumInterface.call(
-        "IArbitrator",
-        networkMap[this.state.network].KLEROS_LIQUID,
-        "arbitrationCost",
-        this.generateArbitratorExtraData(subcourtID, noOfJurors)
-      ),
+  getArbitrationCostWithCourtAndNoOfJurors = async (subcourtID, noOfJurors) => Web3.utils.fromWei(await EthereumInterface.call("IArbitrator", networkMap[this.state.network].KLEROS_LIQUID, "arbitrationCost", this.generateArbitratorExtraData(subcourtID, noOfJurors)), "ether");
 
-      "ether"
-    );
+  getSubcourt = async (subcourtID) => this.interactWithKlerosLiquid("call", "unused", "getSubcourt", subcourtID);
 
-  getSubCourtDetails = async subcourtID =>
-    EthereumInterface.call(
-      "PolicyRegistry",
-      networkMap[this.state.network].POLICY_REGISTRY,
-      "policies",
-      subcourtID
-    );
+  getSubCourtDetails = async (subcourtID) => EthereumInterface.call("PolicyRegistry", networkMap[this.state.network].POLICY_REGISTRY, "policies", subcourtID);
 
-  getArbitratorDispute = async arbitratorDisputeID =>
-    EthereumInterface.call(
-      "KlerosLiquid",
-      networkMap[this.state.network].KLEROS_LIQUID,
-      "disputes",
-      arbitratorDisputeID
-    );
+  getArbitratorDispute = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "disputes", arbitratorDisputeID);
 
-  getArbitrableDispute = async arbitrableDisputeID =>
-    EthereumInterface.call(
-      "BinaryArbitrableProxy",
-      networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
-      "disputes",
-      arbitrableDisputeID
-    );
+  getArbitrableDispute = async (arbitrableDisputeID) => this.interactWithBinaryArbitrableProxy("call", "unused", "disputes", arbitrableDisputeID);
 
-  getArbitrableDisputeStruct = async (arbitrableAddress, arbitrableDisputeID) =>
-    EthereumInterface.call(
-      "BinaryArbitrableProxy",
-      arbitrableAddress,
-      "disputes",
-      arbitrableDisputeID
-    );
+  getArbitrableDisputeStruct = async (arbitrableAddress, arbitrableDisputeID) => this.interactWithBinaryArbitrableProxy("call", "unused", "disputes", arbitrableDisputeID);
 
-  getArbitratorDisputeStruct = async arbitratorDisputeID =>
-    EthereumInterface.call(
-      "KlerosLiquid",
-      networkMap[this.state.network].KLEROS_LIQUID,
-      "disputes",
-      arbitratorDisputeID
-    );
+  getArbitratorDisputeStruct = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "disputes", arbitratorDisputeID);
 
-  getCrowdfundingStatus = async (arbitrableAddress, arbitrableDisputeID) =>
-    EthereumInterface.call(
-      "BinaryArbitrableProxy",
-      arbitrableAddress,
-      "crowdfundingStatus",
-      arbitrableDisputeID,
-      this.state.activeAddress
-    );
+  getCrowdfundingStatus = async (arbitrableDisputeID) => this.interactWithBinaryArbitrableProxy("call", "unused", "crowdfundingStatus", arbitrableDisputeID, this.state.activeAddress);
 
-  updateLastDisputeID = async newDisputeID =>
-    this.setState({ lastDisputeID: newDisputeID });
+  getMultipliers = async () => this.interactWithBinaryArbitrableProxy("call", "unused", "getMultipliers");
 
-  onPublish = async (filename, fileBuffer) =>
-    await ipfsPublish(filename, fileBuffer);
+  withdrewAlready = async (arbitrableDisputeID) => this.interactWithBinaryArbitrableProxy("call", "unused", "withdrewAlready", arbitrableDisputeID, this.state.activeAddress);
 
-  generateArbitratorExtraData = (subcourtID, noOfJurors) =>
-    `0x${parseInt(subcourtID, 10)
-      .toString(16)
-      .padStart(64, "0") +
-      parseInt(noOfJurors, 10)
-        .toString(16)
-        .padStart(64, "0")}`;
+  updateLastDisputeID = async (newDisputeID) => this.setState({ lastDisputeID: newDisputeID });
 
-  getWinnerMultiplier = async arbitrableAddress =>
-    EthereumInterface.call(
-      "BinaryArbitrableProxy",
-      arbitrableAddress,
-      "winnerStakeMultiplier"
-    );
+  onPublish = async (filename, fileBuffer) => await ipfsPublish(filename, fileBuffer);
 
-  getLoserMultiplier = async arbitrableAddress =>
-    EthereumInterface.call(
-      "BinaryArbitrableProxy",
-      arbitrableAddress,
-      "loserStakeMultiplier"
-    );
+  generateArbitratorExtraData = (subcourtID, noOfJurors) => `0x${parseInt(subcourtID, 10).toString(16).padStart(64, "0") + parseInt(noOfJurors, 10).toString(16).padStart(64, "0")}`;
 
-  getSharedMultiplier = async arbitrableAddress =>
-    EthereumInterface.call(
-      "BinaryArbitrableProxy",
-      arbitrableAddress,
-      "sharedStakeMultiplier"
-    );
+  withdrawFeesAndRewardsForAllRounds = async (arbitrableDispute) => this.interactWithBinaryArbitrableProxy("send", "0", "withdrawFeesAndRewardsForAllRounds", arbitrableDispute, this.state.activeAddress);
 
-  getMultiplierDivisor = async arbitrableAddress =>
-    EthereumInterface.call(
-      "BinaryArbitrableProxy",
-      arbitrableAddress,
-      "MULTIPLIER_DIVISOR"
-    );
+  getAppealCost = async (arbitratorDisputeID) => EthereumInterface.call("IArbitrator", networkMap[this.state.network].KLEROS_LIQUID, "appealCost", arbitratorDisputeID, "0x0");
 
-  withdrawFeesAndRewards = async (arbitrableDispute, roundNumber) =>
-    EthereumInterface.send(
-      "BinaryArbitrableProxy",
-      networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
-      this.state.activeAddress,
-      0,
-      "withdrawFeesAndRewards",
-      arbitrableDispute,
-      this.state.activeAddress,
-      roundNumber
-    );
+  appeal = async (arbitrableDisputeID, party, contribution) => this.interactWithBinaryArbitrableProxy("send", contribution, "fundAppeal", arbitrableDisputeID, party);
 
-  getAppealCost = async arbitratorDisputeID =>
-    EthereumInterface.call(
-      "IArbitrator",
-      networkMap[this.state.network].KLEROS_LIQUID,
-      "appealCost",
-      arbitratorDisputeID,
-      "0x0"
-    );
+  getAppealPeriod = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "appealPeriod", arbitratorDisputeID);
 
-  appeal = async (arbitrableDisputeID, party, contribution) =>
-    EthereumInterface.send(
-      "BinaryArbitrableProxy",
-      networkMap[this.state.network].BINARY_ARBITRABLE_PROXY,
-      this.state.activeAddress,
-      contribution,
-      "fundAppeal",
-      arbitrableDisputeID,
-      party
-    );
+  passPeriod = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("send", 0, "passPeriod", arbitratorDisputeID);
 
-  getAppealPeriod = async arbitratorDisputeID =>
-    EthereumInterface.call(
-      "KlerosLiquid",
-      networkMap[this.state.network].KLEROS_LIQUID,
-      "appealPeriod",
-      arbitratorDisputeID
-    );
+  drawJurors = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("send", 0, "drawJurors", arbitratorDisputeID, 1000);
 
-  getCurrentRuling = async arbitratorDisputeID =>
-    EthereumInterface.call(
-      "KlerosLiquid",
-      networkMap[this.state.network].KLEROS_LIQUID,
-      "currentRuling",
-      arbitratorDisputeID
-    );
+  passPhase = async () => this.interactWithKlerosLiquid("send", 0, "passPhase");
 
-  createDispute = async options => {
-    console.log("CALLBACK CREATE DISPUTE");
+  getCurrentRuling = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "currentRuling", arbitratorDisputeID);
+
+  createDispute = async (options) => {
     const { activeAddress, network } = this.state;
     const arbitrator = networkMap[network].KLEROS_LIQUID;
-    console.log(options.selectedSubcourt);
-    const arbitratorExtraData = this.generateArbitratorExtraData(
-      options.selectedSubcourt,
-      options.initialNumberOfJurors
-    );
-    console.log("CALLBACK CREATE DISPUTE");
-
-    console.log(`ex data ${arbitratorExtraData}`);
+    const arbitratorExtraData = this.generateArbitratorExtraData(options.selectedSubcourt, options.initialNumberOfJurors);
 
     const metaevidence = {
       title: options.title,
@@ -242,39 +131,18 @@ class App extends React.Component {
       rulingOptions: {
         type: "single-select",
         titles: [options.firstRulingOption, options.secondRulingOption],
-        descriptions: [
-          options.firstRulingDescription,
-          options.secondRulingDescription
-        ]
+        descriptions: [options.firstRulingDescription, options.secondRulingDescription],
       },
-      fileURI: options.primaryDocument
+      fileURI: options.primaryDocument,
     };
 
-    const ipfsHashMetaEvidenceObj = await ipfsPublish(
-      "metaEvidence.json",
-      this.encoder.encode(JSON.stringify(metaevidence))
-    );
-
-    console.log(ipfsHashMetaEvidenceObj);
+    const ipfsHashMetaEvidenceObj = await ipfsPublish("metaEvidence.json", this.encoder.encode(JSON.stringify(metaevidence)));
 
     const metaevidenceURI = `/ipfs/${ipfsHashMetaEvidenceObj[1].hash}${ipfsHashMetaEvidenceObj[0].path}`;
 
-    console.log(metaevidenceURI);
+    const arbitrationCost = await this.getArbitrationCost(arbitrator, arbitratorExtraData);
 
-    const arbitrationCost = await this.getArbitrationCost(
-      arbitrator,
-      arbitratorExtraData
-    );
-
-    return EthereumInterface.send(
-      "BinaryArbitrableProxy",
-      networkMap[network].BINARY_ARBITRABLE_PROXY,
-      activeAddress,
-      arbitrationCost,
-      "createDispute",
-      arbitratorExtraData,
-      metaevidenceURI
-    );
+    return this.interactWithBinaryArbitrableProxy("send", arbitrationCost, "createDispute", arbitratorExtraData, metaevidenceURI);
   };
 
   getDisputeEvent = async (arbitrableAddress, disputeID) =>
@@ -284,13 +152,7 @@ class App extends React.Component {
       disputeID // dispute unique identifier
     );
 
-  getDispute = async disputeID =>
-    EthereumInterface.call(
-      "KlerosLiquid",
-      networkMap[this.state.network].KLEROS_LIQUID,
-      "getDispute",
-      disputeID
-    );
+  getDispute = async (disputeID) => this.interactWithKlerosLiquid("call", "unused", "getDispute", disputeID);
 
   getMetaEvidence = async (arbitrableAddress, disputeID) =>
     await this.state.archon.arbitrable.getMetaEvidence(
@@ -298,178 +160,127 @@ class App extends React.Component {
       disputeID
     );
 
-  getEvidences = async (arbitrableAddress, arbitrableDisputeID) =>
-    await this.state.archon.arbitrable.getEvidence(
-      arbitrableAddress,
-      networkMap[this.state.network].KLEROS_LIQUID,
-      arbitrableDisputeID
-    );
+  getEvidences = async (arbitrableAddress, arbitrableDisputeID) => await this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitrableDisputeID);
 
-  getRuling = async (arbitrableAddress, arbitratorDisputeID) =>
-    await this.state.archon.arbitrable.getRuling(
-      arbitrableAddress,
-      networkMap[this.state.network].KLEROS_LIQUID,
-      arbitratorDisputeID
-    );
+  getRuling = async (arbitrableAddress, arbitratorDisputeID) => await this.state.archon.arbitrable.getRuling(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID);
 
-  getContractInstance = (interfaceName, address) =>
-    EthereumInterface.contractInstance(interfaceName, address);
+  getContractInstance = (interfaceName, address) => EthereumInterface.contractInstance(interfaceName, address);
 
-  submitEvidence = async ({
-    disputeID,
-    evidenceTitle,
-    evidenceDescription,
-    evidenceDocument,
-    supportingSide
-  }) => {
+  submitEvidence = async ({ disputeID, evidenceTitle, evidenceDescription, evidenceDocument, supportingSide }) => {
     const { activeAddress, network } = this.state;
 
     const evidence = {
       name: evidenceTitle,
       description: evidenceDescription,
       fileURI: evidenceDocument,
-      evidenceSide: supportingSide
+      evidenceSide: supportingSide,
     };
 
-    console.log(`evidence: ${JSON.stringify(evidence)}`);
-
-    const ipfsHashEvidenceObj = await ipfsPublish(
-      "evidence.json",
-      this.encoder.encode(JSON.stringify(evidence))
-    );
+    const ipfsHashEvidenceObj = await ipfsPublish("evidence.json", this.encoder.encode(JSON.stringify(evidence)));
 
     const evidenceURI = `/ipfs/${ipfsHashEvidenceObj[1].hash}${ipfsHashEvidenceObj[0].path}`;
 
-    console.log(evidenceURI);
-
-    await EthereumInterface.send(
-      "BinaryArbitrableProxy",
-      networkMap[network].BINARY_ARBITRABLE_PROXY,
-      activeAddress,
-      0,
-      "submitEvidence",
-      disputeID,
-      evidenceURI
-    );
+    await this.interactWithBinaryArbitrableProxy("send", 0, "submitEvidence", disputeID, evidenceURI);
   };
 
   render() {
-    console.debug(this.state);
-
     const { activeAddress, network, lastDisputeID } = this.state;
 
-    if (!network || !activeAddress)
+    if (!network && !process.env.REACT_APP_WEB3_PROVIDER_URL)
       return (
         <Container fluid="true" style={{ position: "relative" }}>
           <Container fluid="true">
             <TopBanner description="description" title="title" />
             <_404 Web3={true} />
           </Container>
-          <Footer
-            appName="Dispute Resolver"
-            contractExplorerURL={`https://${
-              this.ETHERSCAN_STRINGS[1]
-            }etherscan.io/address/${
-              networkMap[1].BINARY_ARBITRABLE_PROXY
-            }#code`}
-            repository={"https://github.com/kleros/binary-arbitrable-proxy"}
-          />
+          <Footer appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[1]}etherscan.io/address/${networkMap[1].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/dispute-resolver"} />
         </Container>
       );
-    else
+
+    if (!network)
       return (
-        <Container
-          fluid="true"
-          style={{ position: "relative", minHeight: "100vh" }}
-        >
-          <Container fluid="true" style={{ paddingBottom: "7rem" }}>
-            <BrowserRouter>
-              <Switch>
-                <Route
-                  exact
-                  path="(/|/create/)"
-                  render={route => (
-                    <>
-                      <TopBanner route={route} />
-                      <CreateDispute
-                        activeAddress={this.state.activeAddress}
-                        route={route}
-                        createDisputeCallback={this.createDispute}
-                        getArbitrationCostCallback={
-                          this.getArbitrationCostWithCourtAndNoOfJurors
-                        }
-                        getSubCourtDetailsCallback={this.getSubCourtDetails}
-                        publishCallback={this.onPublish}
-                        web3={Web3}
-                      />
-                    </>
-                  )}
-                />
-                <Route
-                  exact
-                  path="/interact/:id?"
-                  render={route => (
-                    <>
-                      <TopBanner route={route} />
-                      <Interact
-                        arbitrableAddress={
-                          networkMap[network].BINARY_ARBITRABLE_PROXY
-                        }
-                        route={route}
-                        getArbitrableDisputeIDCallback={
-                          this.getArbitrableDisputeID
-                        }
-                        getAppealCostCallback={this.getAppealCost}
-                        appealCallback={this.appeal}
-                        getAppealPeriodCallback={this.getAppealPeriod}
-                        getCurrentRulingCallback={this.getCurrentRuling}
-                        disputeID={lastDisputeID}
-                        getContractInstanceCallback={this.getContractInstance}
-                        getArbitratorDisputeCallback={this.getArbitratorDispute}
-                        getArbitrableDisputeCallback={this.getArbitrableDispute}
-                        getArbitratorDisputeStructCallback={
-                          this.getArbitratorDisputeStruct
-                        }
-                        getArbitrableDisputeStructCallback={
-                          this.getArbitrableDisputeStruct
-                        }
-                        getCrowdfundingStatusCallback={
-                          this.getCrowdfundingStatus
-                        }
-                        getRulingCallback={this.getRuling}
-                        getEvidencesCallback={this.getEvidences}
-                        getMetaEvidenceCallback={this.getMetaEvidence}
-                        getSubCourtDetailsCallback={this.getSubCourtDetails}
-                        publishCallback={this.onPublish}
-                        submitEvidenceCallback={this.submitEvidence}
-                        getDisputeEventCallback={this.getDisputeEvent}
-                        getDisputeCallback={this.getDispute}
-                        getWinnerMultiplierCallback={this.getWinnerMultiplier}
-                        getLoserMultiplierCallback={this.getLoserMultiplier}
-                        getSharedMultiplierCallback={this.getSharedMultiplier}
-                        getMultiplierDivisorCallback={this.getMultiplierDivisor}
-                        withdrawFeesAndRewardsCallback={
-                          this.withdrawFeesAndRewards
-                        }
-                      />
-                    </>
-                  )}
-                />
-                <Route component={_404} />
-              </Switch>
-            </BrowserRouter>
+        <Container fluid="true" style={{ position: "relative" }}>
+          <Container fluid="true">
+            <TopBanner description="description" title="title" />
+            <SpinnerContainer>
+              <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" />
+            </SpinnerContainer>
           </Container>
-          <Footer
-            appName="Dispute Resolver"
-            contractExplorerURL={`https://${
-              this.ETHERSCAN_STRINGS[this.state.network]
-            }etherscan.io/address/${
-              networkMap[this.state.network].BINARY_ARBITRABLE_PROXY
-            }#code`}
-            repository={"https://github.com/kleros/dispute-resolver"}
-          />
+          <Footer appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[1]}etherscan.io/address/${networkMap[1].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/dispute-resolver"} />
         </Container>
       );
+
+    return (
+      <Container fluid="true" style={{ position: "relative", minHeight: "100vh" }}>
+        <Container fluid="true" style={{ paddingBottom: "7rem" }}>
+          <BrowserRouter>
+            <Switch>
+              <Route
+                exact
+                path="(/|/create/)"
+                render={(route) => (
+                  <>
+                    <TopBanner viewOnly={!activeAddress} route={route} />
+                    <CreateDispute
+                      activeAddress={activeAddress}
+                      route={route}
+                      createDisputeCallback={this.createDispute}
+                      getArbitrationCostCallback={this.getArbitrationCostWithCourtAndNoOfJurors}
+                      getSubCourtDetailsCallback={this.getSubCourtDetails}
+                      publishCallback={this.onPublish}
+                      web3={Web3}
+                    />
+                  </>
+                )}
+              />
+              <Route
+                exact
+                path="/interact/:id?"
+                render={(route) => (
+                  <>
+                    <TopBanner viewOnly={!activeAddress} route={route} />
+                    <Interact
+                      arbitrableAddress={networkMap[network].BINARY_ARBITRABLE_PROXY}
+                      route={route}
+                      getArbitrableDisputeIDCallback={this.getArbitrableDisputeID}
+                      getAppealCostCallback={this.getAppealCost}
+                      appealCallback={this.appeal}
+                      getAppealPeriodCallback={this.getAppealPeriod}
+                      getCurrentRulingCallback={this.getCurrentRuling}
+                      disputeID={lastDisputeID}
+                      getContractInstanceCallback={this.getContractInstance}
+                      getArbitratorDisputeCallback={this.getArbitratorDispute}
+                      getArbitrableDisputeCallback={this.getArbitrableDispute}
+                      getArbitratorDisputeStructCallback={this.getArbitratorDisputeStruct}
+                      getArbitrableDisputeStructCallback={this.getArbitrableDisputeStruct}
+                      getCrowdfundingStatusCallback={this.getCrowdfundingStatus}
+                      getRulingCallback={this.getRuling}
+                      getEvidencesCallback={this.getEvidences}
+                      getMetaEvidenceCallback={this.getMetaEvidence}
+                      getSubCourtDetailsCallback={this.getSubCourtDetails}
+                      publishCallback={this.onPublish}
+                      submitEvidenceCallback={this.submitEvidence}
+                      getDisputeCallback={this.getDispute}
+                      getDisputeEventCallback={this.getDisputeEvent}
+                      getMultipliersCallback={this.getMultipliers}
+                      withdrewAlreadyCallback={this.withdrewAlready}
+                      withdrawFeesAndRewardsCallback={this.withdrawFeesAndRewardsForAllRounds}
+                      activeAddress={activeAddress}
+                      getSubcourtCallback={this.getSubcourt}
+                      passPeriodCallback={this.passPeriod}
+                      drawJurorsCallback={this.drawJurors}
+                      passPhaseCallback={this.passPhase}
+                    />
+                  </>
+                )}
+              />
+              <Route component={_404} />
+            </Switch>
+          </BrowserRouter>
+        </Container>
+        <Footer appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[this.state.network]}etherscan.io/address/${networkMap[this.state.network].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/dispute-resolver"} />
+      </Container>
+    );
   }
 }
 export default App;

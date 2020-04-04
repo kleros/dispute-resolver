@@ -3,20 +3,10 @@ import ReactMarkdown from "react-markdown";
 import Confirmation from "../components/confirmation";
 import "@github/markdown-toolbar-element";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faBold,
-  faHeading,
-  faItalic,
-  faCode,
-  faLink,
-  faImage,
-  faQuoteLeft,
-  faListOl,
-  faListUl
-} from "@fortawesome/free-solid-svg-icons";
+import { faBold, faHeading, faItalic, faCode, faLink, faImage, faQuoteLeft, faListOl, faListUl } from "@fortawesome/free-solid-svg-icons";
 import Dropzone from "react-dropzone";
 
-import { Container, Col, Button, Form, Card, Dropdown } from "react-bootstrap";
+import { Container, Col, Button, Form, Card, Dropdown, Accordion } from "react-bootstrap";
 
 import { Redirect } from "react-router-dom";
 
@@ -48,11 +38,11 @@ class CreateDispute extends React.Component {
       respondent: "Party B",
       requesterAddress: "",
       respondentAddress: "",
-      validated: false
+      validated: false,
     };
   }
 
-  componentDidMount = async e => {
+  componentDidMount = async (e) => {
     let subcourtURI,
       subcourt,
       subcourts = [],
@@ -80,24 +70,20 @@ class CreateDispute extends React.Component {
     }
     await this.setState({
       subcourts,
-      subcourtsLoading: false
+      subcourtsLoading: false,
     });
 
     this.onSubcourtSelect("0");
   };
 
-  onSubcourtSelect = async subcourtID => {
+  onSubcourtSelect = async (subcourtID) => {
     await this.setState({ selectedSubcourt: subcourtID });
-    this.calculateArbitrationCost(
-      this.state.selectedSubcourt,
-      this.state.initialNumberOfJurors
-    );
+    this.calculateArbitrationCost(this.state.selectedSubcourt, this.state.initialNumberOfJurors);
   };
 
-  onModalClose = e =>
-    this.setState({ modalShow: false, awaitingConfirmation: false });
+  onModalClose = (e) => this.setState({ modalShow: false, awaitingConfirmation: false });
 
-  onModalShow = event => {
+  onModalShow = (event) => {
     const form = event.currentTarget;
     if (form.checkValidity() == false) {
       console.log("invalid");
@@ -116,16 +102,13 @@ class CreateDispute extends React.Component {
     this.setState({ validated: true });
   };
 
-  onControlChange = async e => {
+  onControlChange = async (e) => {
     await this.setState({ [e.target.id]: e.target.value });
 
-    this.calculateArbitrationCost(
-      this.state.selectedSubcourt,
-      this.state.initialNumberOfJurors
-    );
+    this.calculateArbitrationCost(this.state.selectedSubcourt, this.state.initialNumberOfJurors);
   };
 
-  onDrop = async acceptedFiles => {
+  onDrop = async (acceptedFiles) => {
     console.log(acceptedFiles);
     this.setState({ fileInput: acceptedFiles[0] });
 
@@ -134,15 +117,12 @@ class CreateDispute extends React.Component {
     reader.addEventListener("loadend", async () => {
       const buffer = Buffer.from(reader.result);
 
-      const result = await this.props.publishCallback(
-        acceptedFiles[0].name,
-        buffer
-      );
+      const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
 
       console.log(result);
 
       await this.setState({
-        primaryDocument: "/ipfs/" + result[1].hash + result[0].path
+        primaryDocument: "/ipfs/" + result[1].hash + result[0].path,
       });
     });
   };
@@ -151,33 +131,14 @@ class CreateDispute extends React.Component {
     subcourtID &&
     noOfJurors &&
     this.setState({
-      arbitrationCost: await this.props.getArbitrationCostCallback(
-        subcourtID,
-        noOfJurors
-      )
+      arbitrationCost: await this.props.getArbitrationCostCallback(subcourtID, noOfJurors),
     });
 
-  onCreateDisputeButtonClick = async e => {
+  onCreateDisputeButtonClick = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     console.log("create dispute clicked");
-    const {
-      selectedSubcourt,
-      initialNumberOfJurors,
-      title,
-      category,
-      description,
-      requester,
-      requesterAddress,
-      respondent,
-      respondentAddress,
-      question,
-      firstRulingOption,
-      secondRulingOption,
-      firstRulingDescription,
-      secondRulingDescription,
-      primaryDocument
-    } = this.state;
+    const { selectedSubcourt, initialNumberOfJurors, title, category, description, requester, requesterAddress, respondent, respondentAddress, question, firstRulingOption, secondRulingOption, firstRulingDescription, secondRulingDescription, primaryDocument } = this.state;
     console.log("hgere");
     this.setState({ awaitingConfirmation: true });
     try {
@@ -189,19 +150,19 @@ class CreateDispute extends React.Component {
         description,
         aliases: {
           [requesterAddress]: requester,
-          [respondentAddress]: respondent
+          [respondentAddress]: respondent,
         },
         question,
         firstRulingOption,
         secondRulingOption,
         firstRulingDescription,
         secondRulingDescription,
-        primaryDocument
+        primaryDocument,
       });
       console.log("last dispute");
       console.log(receipt);
       this.setState({
-        lastDisputeID: receipt.events.Dispute.returnValues._disputeID
+        lastDisputeID: receipt.events.Dispute.returnValues._disputeID,
       });
     } catch (e) {
       console.log(e);
@@ -238,7 +199,7 @@ class CreateDispute extends React.Component {
       respondent,
       requesterAddress,
       respondentAddress,
-      validated
+      validated,
     } = this.state;
 
     const { activeAddress } = this.props;
@@ -246,10 +207,9 @@ class CreateDispute extends React.Component {
     return (
       <Container fluid="true" className="main-content">
         {lastDisputeID && <Redirect to={`/interact/${lastDisputeID}`} />}
-
-        <Card>
+        <Card style={{ borderRadius: "12px" }}>
           <Card.Header>
-            <GavelSVG />
+            <GavelSVG style={{ marginRight: "1rem" }} />
             Create a Dispute
           </Card.Header>
           <hr className="mt-0" />
@@ -260,15 +220,8 @@ class CreateDispute extends React.Component {
                   <Form.Group>
                     <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
                     <Dropdown required onSelect={this.onSubcourtSelect}>
-                      <Dropdown.Toggle
-                        id="subcourt-dropdown"
-                        block
-                        disabled={subcourtsLoading}
-                      >
-                        {(subcourtsLoading && "Loading...") ||
-                          (selectedSubcourt &&
-                            subcourts[selectedSubcourt].name) ||
-                          "Please select a court"}
+                      <Dropdown.Toggle id="subcourt-dropdown" block disabled={subcourtsLoading}>
+                        {(subcourtsLoading && "Loading...") || (selectedSubcourt && subcourts[selectedSubcourt].name) || "Please select a court"}
                       </Dropdown.Toggle>
 
                       <Dropdown.Menu>
@@ -283,35 +236,22 @@ class CreateDispute extends React.Component {
                 </Col>
                 <Col md={4}>
                   <Form.Group>
-                    <Form.Label htmlFor="initialNumberOfJurors">
-                      Number of Jurors
-                    </Form.Label>
-                    <Form.Control
-                      required
-                      id="initialNumberOfJurors"
-                      as="input"
-                      type="number"
-                      min="0"
-                      value={initialNumberOfJurors}
-                      onChange={this.onControlChange}
-                      placeholder={"Number of jurors"}
-                    />
+                    <Form.Label htmlFor="initialNumberOfJurors">Number of Jurors</Form.Label>
+                    <Form.Control required id="initialNumberOfJurors" as="input" type="number" min="0" value={initialNumberOfJurors} onChange={this.onControlChange} placeholder={"Number of jurors"} />
                   </Form.Group>
                 </Col>{" "}
                 <Col>
                   <Form.Group className="float-right">
-                    <Form.Label
-                      style={{ marginBottom: 0 }}
-                      className="float-right"
-                      htmlFor="arbitrationFee"
-                    >
+                    <Form.Label style={{ marginBottom: 0 }} className="float-right" htmlFor="arbitrationFee">
                       Arbitration Cost
                     </Form.Label>
                     <Form.Control
                       style={{
                         fontSize: "2rem",
-                        paddingTop: "0",
-                        height: "auto"
+                        border: "none",
+                        borderColor: "transparent",
+                        padding: 0,
+                        height: "auto",
                       }}
                       className="text-right"
                       id="arbitrationFee"
@@ -328,40 +268,20 @@ class CreateDispute extends React.Component {
                 <Col md={6}>
                   <Form.Group>
                     <Form.Label htmlFor="title">Title</Form.Label>
-                    <Form.Control
-                      required
-                      id="title"
-                      as="input"
-                      value={title}
-                      onChange={this.onControlChange}
-                      placeholder={"Title"}
-                    />
-                    <Form.Control.Feedback type="invalid">
-                      Please provide title for the dispute, something explains
-                      it in a nutshell.
-                    </Form.Control.Feedback>
+                    <Form.Control required id="title" as="input" value={title} onChange={this.onControlChange} placeholder={"Title"} />
+                    <Form.Control.Feedback type="invalid">Please provide title for the dispute, something explains it in a nutshell.</Form.Control.Feedback>
                   </Form.Group>
                 </Col>
                 <Col>
                   <Form.Group>
-                    <Form.Label htmlFor="category">
-                      Category (optional)
-                    </Form.Label>
-                    <Form.Control
-                      id="category"
-                      as="input"
-                      value={category}
-                      onChange={this.onControlChange}
-                      placeholder={"Category"}
-                    />
+                    <Form.Label htmlFor="category">Category (optional)</Form.Label>
+                    <Form.Control id="category" as="input" value={category} onChange={this.onControlChange} placeholder={"Category"} />
                   </Form.Group>
                 </Col>
               </Form.Row>
               <Form.Row>
                 <Col>
-                  <Form.Label htmlFor="description">
-                    Description (optional)
-                  </Form.Label>
+                  <Form.Label htmlFor="description">Description (optional)</Form.Label>
                 </Col>
               </Form.Row>
               <Form.Row className="mb-3">
@@ -396,14 +316,7 @@ class CreateDispute extends React.Component {
                         <FontAwesomeIcon className="mr-3" icon={faListUl} />
                       </md-ordered-list>
                     </markdown-toolbar>
-                    <Form.Control
-                      id="description"
-                      as="textarea"
-                      rows="3"
-                      value={description}
-                      onChange={this.onControlChange}
-                      placeholder={"Description of dispute in markdown"}
-                    />
+                    <Form.Control id="description" as="textarea" rows="3" value={description} onChange={this.onControlChange} placeholder={"Description of dispute in markdown"} />
                   </Form.Group>
                 </Col>
                 <Col>
@@ -419,58 +332,28 @@ class CreateDispute extends React.Component {
                   <Form.Group>
                     <Form.Label htmlFor="requester">Party A</Form.Label>
 
-                    <Form.Control
-                      id="requester"
-                      as="input"
-                      value={requester}
-                      onChange={this.onControlChange}
-                      placeholder={"Please enter alias"}
-                    />
+                    <Form.Control id="requester" as="input" value={requester} onChange={this.onControlChange} placeholder={"Please enter alias"} />
                   </Form.Group>
                 </Col>
                 <Col md={4} l={4} xl={4}>
                   <Form.Group>
-                    <Form.Label htmlFor="requesterAddress">
-                      Party A Address (optional)
-                    </Form.Label>
+                    <Form.Label htmlFor="requesterAddress">Party A Address (optional)</Form.Label>
 
-                    <Form.Control
-                      pattern="0x[abcdefABCDEF0123456789]{40}"
-                      id="requesterAddress"
-                      as="input"
-                      value={requesterAddress}
-                      onChange={this.onControlChange}
-                      placeholder={"Please enter address"}
-                    />
+                    <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="requesterAddress" as="input" value={requesterAddress} onChange={this.onControlChange} placeholder={"Please enter address"} />
                   </Form.Group>
                 </Col>
                 <Col md={2} l={2} xl={2}>
                   <Form.Group>
                     <Form.Label htmlFor="respondent">Party B</Form.Label>
 
-                    <Form.Control
-                      id="respondent"
-                      as="input"
-                      value={respondent}
-                      onChange={this.onControlChange}
-                      placeholder={"Please enter alias"}
-                    />
+                    <Form.Control id="respondent" as="input" value={respondent} onChange={this.onControlChange} placeholder={"Please enter alias"} />
                   </Form.Group>
                 </Col>
                 <Col md={4} l={4} xl={4}>
                   <Form.Group>
-                    <Form.Label htmlFor="respondentAddress">
-                      Party B Address (optional)
-                    </Form.Label>
+                    <Form.Label htmlFor="respondentAddress">Party B Address (optional)</Form.Label>
 
-                    <Form.Control
-                      pattern="0x[abcdefABCDEF0123456789]{40}"
-                      id="respondentAddress"
-                      as="input"
-                      value={respondentAddress}
-                      onChange={this.onControlChange}
-                      placeholder={"Please enter address"}
-                    />
+                    <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="respondentAddress" as="input" value={respondentAddress} onChange={this.onControlChange} placeholder={"Please enter address"} />
                   </Form.Group>
                 </Col>
               </Form.Row>
@@ -481,103 +364,51 @@ class CreateDispute extends React.Component {
                   <Form.Group>
                     <Form.Label htmlFor="question">Question</Form.Label>
 
-                    <Form.Control
-                      required
-                      id="question"
-                      as="input"
-                      value={question}
-                      onChange={this.onControlChange}
-                      placeholder={"Question"}
-                    />
-                    <Form.Control.Feedback type="invalid">
-                      Please provide a question.
-                    </Form.Control.Feedback>
+                    <Form.Control required id="question" as="input" value={question} onChange={this.onControlChange} placeholder={"Question"} />
+                    <Form.Control.Feedback type="invalid">Please provide a question.</Form.Control.Feedback>
                   </Form.Group>
                 </Col>
               </Form.Row>
               <Form.Row>
                 <Col>
                   <Form.Group>
-                    <Form.Label htmlFor="firstRulingOption">
-                      First Ruling Option
-                    </Form.Label>
-                    <Form.Control
-                      required
-                      id="firstRulingOption"
-                      as="input"
-                      value={firstRulingOption}
-                      onChange={this.onControlChange}
-                      placeholder={"First ruling option"}
-                    />
-                    <Form.Control.Feedback type="invalid">
-                      Please provide first ruling option, for example: "Yes"
-                    </Form.Control.Feedback>
+                    <Form.Label htmlFor="firstRulingOption">First Ruling Option</Form.Label>
+                    <Form.Control required id="firstRulingOption" as="input" value={firstRulingOption} onChange={this.onControlChange} placeholder={"First ruling option"} />
+                    <Form.Control.Feedback type="invalid">Please provide first ruling option, for example: "Yes"</Form.Control.Feedback>
                   </Form.Group>
                 </Col>
                 <Col md={9}>
                   <Form.Group>
-                    <Form.Label htmlFor="firstRulingDescription">
-                      First Ruling Description (optional)
-                    </Form.Label>
-                    <Form.Control
-                      id="firstRulingDescription"
-                      as="input"
-                      value={firstRulingDescription}
-                      onChange={this.onControlChange}
-                      placeholder={"Description of first ruling option"}
-                    />
+                    <Form.Label htmlFor="firstRulingDescription">First Ruling Description (optional)</Form.Label>
+                    <Form.Control id="firstRulingDescription" as="input" value={firstRulingDescription} onChange={this.onControlChange} placeholder={"Description of first ruling option"} />
                   </Form.Group>
                 </Col>{" "}
               </Form.Row>
               <Form.Row>
                 <Col>
                   <Form.Group>
-                    <Form.Label htmlFor="secondRulingOption">
-                      Second Ruling Option
-                    </Form.Label>
-                    <Form.Control
-                      required
-                      id="secondRulingOption"
-                      as="input"
-                      value={secondRulingOption}
-                      onChange={this.onControlChange}
-                      placeholder={"Second ruling option"}
-                    />
-                    <Form.Control.Feedback type="invalid">
-                      Please provide first ruling option, for example: "No"
-                    </Form.Control.Feedback>
+                    <Form.Label htmlFor="secondRulingOption">Second Ruling Option</Form.Label>
+                    <Form.Control required id="secondRulingOption" as="input" value={secondRulingOption} onChange={this.onControlChange} placeholder={"Second ruling option"} />
+                    <Form.Control.Feedback type="invalid">Please provide first ruling option, for example: "No"</Form.Control.Feedback>
                   </Form.Group>
                 </Col>
                 <Col md={9}>
                   <Form.Group>
-                    <Form.Label htmlFor="secondRulingDescription">
-                      Second Ruling Description (optional)
-                    </Form.Label>
-                    <Form.Control
-                      id="secondRulingDescription"
-                      as="input"
-                      value={secondRulingDescription}
-                      onChange={this.onControlChange}
-                      placeholder={"Description of second ruling option"}
-                    />
+                    <Form.Label htmlFor="secondRulingDescription">Second Ruling Description (optional)</Form.Label>
+                    <Form.Control id="secondRulingDescription" as="input" value={secondRulingDescription} onChange={this.onControlChange} placeholder={"Description of second ruling option"} />
                   </Form.Group>
                 </Col>{" "}
               </Form.Row>
               <Form.Row>
                 <Col>
                   <Form.Group>
-                    <Form.Label htmlFor="dropzone">
-                      Primary Document (optional)
-                    </Form.Label>
+                    <Form.Label htmlFor="dropzone">Primary Document (optional)</Form.Label>
                     <Dropzone onDrop={this.onDrop}>
                       {({ getRootProps, getInputProps }) => (
                         <section id="dropzone">
                           <div {...getRootProps()} className="vertical-center">
                             <input {...getInputProps()} />
-                            <h5>
-                              {(fileInput && fileInput.path) ||
-                                "Drag 'n' drop some files here, or click to select files. (optional)"}
-                            </h5>
+                            <h5>{(fileInput && fileInput.path) || "Drag 'n' drop some files here, or click to select files. (optional)"}</h5>
                           </div>
                         </section>
                       )}
@@ -586,18 +417,15 @@ class CreateDispute extends React.Component {
                 </Col>
               </Form.Row>
 
-              <Button type="submit" className="ok" block>
-                Create Dispute{" "}
-                {arbitrationCost && "for " + arbitrationCost + " ETH"}
+              <Button type="submit" className="ok" disabled={!this.props.activeAddress} block>
+                Create Dispute {arbitrationCost && "for " + arbitrationCost + " ETH"}
               </Button>
             </Form>
           </Card.Body>
         </Card>
 
         <Confirmation
-          selectedSubcourt={
-            selectedSubcourt && subcourts[selectedSubcourt].name
-          }
+          selectedSubcourt={selectedSubcourt && subcourts[selectedSubcourt].name}
           initialNumberOfJurors={initialNumberOfJurors}
           arbitrationCost={arbitrationCost}
           title={title}
@@ -618,6 +446,7 @@ class CreateDispute extends React.Component {
           onModalHide={this.onModalClose}
           onCreateDisputeButtonClick={this.onCreateDisputeButtonClick}
           awaitingConfirmation={awaitingConfirmation}
+          activeAddress={activeAddress}
         />
         <IPFS publishCallback={this.props.publishCallback} />
       </Container>
