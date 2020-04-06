@@ -1,4 +1,4 @@
-import { Button, Card, Col, Container, Form, ProgressBar, Modal, InputGroup, Row, FormControl, Spinner, Accordion } from "react-bootstrap";
+import { Button, Card, Col, Container, Form, ProgressBar, Modal, InputGroup, Row, Spinner, Accordion } from "react-bootstrap";
 
 import React from "react";
 import BigNumber from "bignumber.js";
@@ -87,10 +87,6 @@ class Appeal extends React.Component {
     let sharedMultiplier = BigNumber(this.props.multipliers.shared);
     let multiplierDivisor = BigNumber(this.props.multipliers.divisor);
 
-    let appealCostInEth = BigNumber(this.props.appealCost)
-      .minus(BigNumber(this.state.crowdfundingStatus[0][this.state.party]))
-      .div(BigNumber(10).pow(BigNumber(18)))
-      .toString();
     this.setState({
       contribution: this.calculateAmountRemainsToBeRaised(winnerMultiplier, loserMultiplier, sharedMultiplier, multiplierDivisor, this.state.crowdfundingStatus, this.state.party)
         .div(BigNumber(10).pow(BigNumber(18)))
@@ -165,7 +161,7 @@ class Appeal extends React.Component {
   render() {
     const { modalShow, contribution, party, appealPeriod, currentRuling, crowdfundingStatus } = this.state;
 
-    const { appealCost, multipliers, activeAddress } = this.props;
+    const { multipliers, activeAddress } = this.props;
 
     console.log(this.state);
     console.log(this.props);
@@ -222,7 +218,7 @@ class Appeal extends React.Component {
                                         href={`https://etherscan.io/address/${Object.keys(this.props.metaevidence.metaEvidenceJSON.aliases)[0]}
                                   `}
                                         target="_blank"
-                                        rel="no-referrer no-opener"
+                                        rel="noreferrer noopener"
                                       >
                                         {Object.values(this.props.metaevidence.metaEvidenceJSON.aliases)[0]}
                                       </a>
@@ -304,7 +300,7 @@ class Appeal extends React.Component {
                                         href={`https://etherscan.io/address/${Object.keys(this.props.metaevidence.metaEvidenceJSON.aliases)[1]}
                                 `}
                                         target="_blank"
-                                        rel="no-referrer no-opener"
+                                        rel="noreferrer noopener"
                                       >
                                         {Object.values(this.props.metaevidence.metaEvidenceJSON.aliases)[1]}
                                       </a>

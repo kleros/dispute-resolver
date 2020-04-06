@@ -267,12 +267,27 @@ class Interact extends React.Component {
   getHumanReadablePeriod = (period) => this.PERIODS(period);
 
   render() {
-    const { disputeID, dispute, arbitrableDispute, crowdfundingStatus, appealCost, arbitratorDisputeID, arbitratorIDLoading, arbitrableIDLoading, metaevidence, multipliers } = this.state;
+    const {
+      disputeID,
+      dispute,
+      arbitrableDispute,
+      crowdfundingStatus,
+      appealCost,
+      arbitratorDisputeID,
+      arbitratorIDLoading,
+      arbitrableIDLoading,
+      metaevidence,
+      multipliers,
+      evidences,
+      currentRuling,
+      ruling,
+      withdrewAlready,
+      getSubcourtResult,
+      getDisputeResult,
+      disputeEvent,
+    } = this.state;
 
-    const { activeAddress } = this.props;
-
-    console.log(this.props);
-    console.log(this.state);
+    const { activeAddress, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, passPhaseCallback, passPeriodCallback, drawJurorsCallback } = this.props;
 
     return (
       <Container fluid="true" className="main-content">
@@ -379,14 +394,14 @@ class Interact extends React.Component {
                           >
                             <Card.Body style={{ padding: 0 }}>
                               <EvidenceTimeline
-                                numberOfVotesCast={Number(this.state.getDisputeResult.votesInEachRound.slice(-1)[0])}
+                                numberOfVotesCast={Number(getDisputeResult.votesInEachRound.slice(-1)[0])}
                                 metaevidence={metaevidence}
-                                evidences={this.state.evidences}
-                                ruling={this.state.ruling}
-                                currentRuling={Number(this.state.currentRuling)}
-                                dispute={this.state.disputeEvent}
+                                evidences={evidences}
+                                ruling={ruling}
+                                currentRuling={Number(currentRuling)}
+                                dispute={disputeEvent}
                                 disputePeriod={parseInt(dispute.period)}
-                                publishCallback={this.props.publishCallback}
+                                publishCallback={publishCallback}
                                 submitEvidenceCallback={this.submitEvidence}
                               />
                             </Card.Body>
@@ -415,44 +430,41 @@ class Interact extends React.Component {
                     <h3 style={{ color: "white" }}>
                       {this.getHumanReadablePeriod(dispute.period)}
 
-                      {this.state.dispute.lastPeriodChange && this.state.getSubcourtResult && this.state.getSubcourtResult[1][Number(dispute.period)] && (
+                      {dispute.lastPeriodChange && getSubcourtResult && getSubcourtResult[1][Number(dispute.period)] && (
                         <>
                           {" Over in "}
                           <Countdown
                             date={BigNumber("1000")
-                              .times(BigNumber(this.state.dispute.lastPeriodChange).plus(BigNumber(this.state.getSubcourtResult[1][Number(dispute.period)])))
+                              .times(BigNumber(dispute.lastPeriodChange).plus(BigNumber(getSubcourtResult[1][Number(dispute.period)])))
                               .toNumber()}
                           />
                         </>
                       )}
                     </h3>
 
-                    {this.state.dispute.lastPeriodChange &&
-                      this.state.getSubcourtResult &&
-                      this.state.getSubcourtResult[1][Number(dispute.period)] &&
-                      BigNumber(Date.now()).gt(BigNumber("1000").times(BigNumber(this.state.dispute.lastPeriodChange).plus(BigNumber(this.state.getSubcourtResult[1][Number(dispute.period)])))) && (
-                        <Button style={{ margin: "0 1rem" }} onClick={(e) => this.props.passPeriodCallback(arbitratorDisputeID)}>
-                          Pass Dispute Period
-                        </Button>
-                      )}
+                    {dispute.lastPeriodChange && getSubcourtResult && getSubcourtResult[1][Number(dispute.period)] && BigNumber(Date.now()).gt(BigNumber("1000").times(BigNumber(dispute.lastPeriodChange).plus(BigNumber(getSubcourtResult[1][Number(dispute.period)])))) && (
+                      <Button style={{ margin: "0 1rem" }} onClick={(e) => passPeriodCallback(arbitratorDisputeID)}>
+                        Pass Dispute Period
+                      </Button>
+                    )}
 
-                    {this.state.dispute.lastPeriodChange &&
-                      this.state.getSubcourtResult &&
-                      this.state.getSubcourtResult[1][Number(dispute.period)] &&
-                      BigNumber(Date.now()).gt(BigNumber("1000").times(BigNumber(this.state.dispute.lastPeriodChange).plus(BigNumber(this.state.getSubcourtResult[1][Number(dispute.period)])))) &&
+                    {dispute.lastPeriodChange &&
+                      getSubcourtResult &&
+                      getSubcourtResult[1][Number(dispute.period)] &&
+                      BigNumber(Date.now()).gt(BigNumber("1000").times(BigNumber(dispute.lastPeriodChange).plus(BigNumber(getSubcourtResult[1][Number(dispute.period)])))) &&
                       dispute.period == 0 && (
                         <>
-                          <Button style={{ margin: "0 1rem" }} onClick={(e) => this.props.drawJurorsCallback(arbitratorDisputeID)}>
+                          <Button style={{ margin: "0 1rem" }} onClick={(e) => drawJurorsCallback(arbitratorDisputeID)}>
                             Draw Jurors
                           </Button>
-                          <Button style={{ margin: "0 1rem" }} onClick={(e) => this.props.passPhaseCallback()}>
+                          <Button style={{ margin: "0 1rem" }} onClick={(e) => passPhaseCallback()}>
                             Pass Court Phase
                           </Button>
                         </>
                       )}
                     {dispute && dispute.period == 4 && (
-                      <Button style={{ margin: "0 1rem" }} disabled={this.state.withdrewAlready || !this.props.activeAddress} onClick={(e) => this.props.withdrawFeesAndRewardsCallback(disputeID)}>
-                        {this.state.withdrewAlready ? "Withdrew Already" : "Withdraw Funds"}
+                      <Button style={{ margin: "0 1rem" }} disabled={withdrewAlready || !activeAddress} onClick={(e) => withdrawFeesAndRewardsCallback(disputeID)}>
+                        {withdrewAlready ? "Withdrew Already" : "Withdraw Funds"}
                       </Button>
                     )}
                   </div>
@@ -464,18 +476,18 @@ class Interact extends React.Component {
 
         {dispute && crowdfundingStatus && dispute.period == 3 && arbitrableDispute && (
           <Appeal
-            crowdfundingStatus={this.props.getCrowdfundingStatusCallback(disputeID)}
+            crowdfundingStatus={getCrowdfundingStatusCallback(disputeID)}
             appealCost={appealCost}
             multipliers={multipliers}
             appealCallback={this.appeal}
-            appealPeriod={this.props.getAppealPeriodCallback(arbitrableDispute.disputeIDOnArbitratorSide)}
-            currentRuling={this.props.getCurrentRulingCallback(arbitrableDispute.disputeIDOnArbitratorSide)}
+            appealPeriod={getAppealPeriodCallback(arbitrableDispute.disputeIDOnArbitratorSide)}
+            currentRuling={getCurrentRulingCallback(arbitrableDispute.disputeIDOnArbitratorSide)}
             metaevidence={metaevidence}
             activeAddress={activeAddress}
           />
         )}
 
-        <IPFS publishCallback={this.props.publishCallback} />
+        <IPFS publishCallback={publishCallback} />
       </Container>
     );
   }

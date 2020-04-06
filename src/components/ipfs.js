@@ -46,7 +46,6 @@ class IPFS extends React.Component {
 
   render() {
     const { uploadedDocumentURI, fileInput } = this.state;
-    const { activeAddress } = this.props;
 
     return (
       <Container fluid="true">

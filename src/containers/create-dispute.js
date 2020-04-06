@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBold, faHeading, faItalic, faCode, faLink, faImage, faQuoteLeft, faListOl, faListUl } from "@fortawesome/free-solid-svg-icons";
 import Dropzone from "react-dropzone";
 
-import { Container, Col, Button, Form, Card, Dropdown, Accordion } from "react-bootstrap";
+import { Container, Col, Button, Form, Card, Dropdown } from "react-bootstrap";
 
 import { Redirect } from "react-router-dom";
 
@@ -417,7 +417,7 @@ class CreateDispute extends React.Component {
                 </Col>
               </Form.Row>
 
-              <Button type="submit" className="ok" disabled={!this.props.activeAddress} block>
+              <Button type="submit" className="ok" disabled={!activeAddress} block>
                 Create Dispute {arbitrationCost && "for " + arbitrationCost + " ETH"}
               </Button>
             </Form>

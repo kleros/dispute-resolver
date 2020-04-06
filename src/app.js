@@ -118,7 +118,7 @@ class App extends React.Component {
   getCurrentRuling = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "currentRuling", arbitratorDisputeID);
 
   createDispute = async (options) => {
-    const { activeAddress, network } = this.state;
+    const { network } = this.state;
     const arbitrator = networkMap[network].KLEROS_LIQUID;
     const arbitratorExtraData = this.generateArbitratorExtraData(options.selectedSubcourt, options.initialNumberOfJurors);
 
@@ -167,8 +167,6 @@ class App extends React.Component {
   getContractInstance = (interfaceName, address) => EthereumInterface.contractInstance(interfaceName, address);
 
   submitEvidence = async ({ disputeID, evidenceTitle, evidenceDescription, evidenceDocument, supportingSide }) => {
-    const { activeAddress, network } = this.state;
-
     const evidence = {
       name: evidenceTitle,
       description: evidenceDescription,
