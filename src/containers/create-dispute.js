@@ -54,8 +54,6 @@ class CreateDispute extends React.Component {
       subcourtURIs.push(subcourtURI);
     }
 
-    console.log(subcourtURIs);
-
     for (var i = 0; i < subcourtURIs.length; i++) {
       try {
         if (subcourtURIs[i].includes("http")) {
@@ -86,16 +84,12 @@ class CreateDispute extends React.Component {
   onModalShow = (event) => {
     const form = event.currentTarget;
     if (form.checkValidity() == false) {
-      console.log("invalid");
-      console.log(form);
       event.preventDefault();
       event.stopPropagation();
     } else {
       event.preventDefault();
       event.stopPropagation();
-      console.log(form);
 
-      console.log("valid");
       this.setState({ modalShow: true, validated: true });
     }
 
@@ -109,7 +103,6 @@ class CreateDispute extends React.Component {
   };
 
   onDrop = async (acceptedFiles) => {
-    console.log(acceptedFiles);
     this.setState({ fileInput: acceptedFiles[0] });
 
     var reader = new FileReader();
@@ -118,8 +111,6 @@ class CreateDispute extends React.Component {
       const buffer = Buffer.from(reader.result);
 
       const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
-
-      console.log(result);
 
       await this.setState({
         primaryDocument: "/ipfs/" + result[1].hash + result[0].path,
@@ -137,9 +128,7 @@ class CreateDispute extends React.Component {
   onCreateDisputeButtonClick = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log("create dispute clicked");
     const { selectedSubcourt, initialNumberOfJurors, title, category, description, requester, requesterAddress, respondent, respondentAddress, question, firstRulingOption, secondRulingOption, firstRulingDescription, secondRulingDescription, primaryDocument } = this.state;
-    console.log("hgere");
     this.setState({ awaitingConfirmation: true });
     try {
       const receipt = await this.props.createDisputeCallback({
@@ -159,13 +148,11 @@ class CreateDispute extends React.Component {
         secondRulingDescription,
         primaryDocument,
       });
-      console.log("last dispute");
-      console.log(receipt);
       this.setState({
         lastDisputeID: receipt.events.Dispute.returnValues._disputeID,
       });
     } catch (e) {
-      console.log(e);
+      console.error(e);
       this.setState({ awaitingConfirmation: false });
     }
 

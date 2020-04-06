@@ -65,7 +65,6 @@ class Interact extends React.Component {
   };
 
   submitEvidence = async (evidence) => {
-    console.log(evidence);
     await this.props.submitEvidenceCallback({
       disputeID: this.state.disputeID,
       evidenceDescription: evidence.evidenceDescription,
@@ -76,7 +75,6 @@ class Interact extends React.Component {
   };
 
   onDrop = async (acceptedFiles) => {
-    console.log(acceptedFiles);
     this.setState({ fileInput: acceptedFiles[0] });
 
     var reader = new FileReader();
@@ -85,8 +83,6 @@ class Interact extends React.Component {
       const buffer = Buffer.from(reader.result);
 
       const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
-
-      console.log(result);
 
       await this.setState({
         primaryDocument: `/ipfs/${result[1].hash}${result[0].path}`,
@@ -116,11 +112,8 @@ class Interact extends React.Component {
 
       const result = await this.props.publishCallback(fileInput.name, buffer);
 
-      console.log(result);
-
       await this.setState({ evidenceFileURI: `/ipfs/${result[0].hash}` });
 
-      console.log(`fileURI ${this.state.evidenceFileURI}`);
       const { evidenceFileURI } = this.state;
       const receipt = await this.props.submitEvidenceCallback({
         disputeID,
@@ -128,7 +121,6 @@ class Interact extends React.Component {
         evidenceDescription,
         evidenceFileURI,
       });
-      console.log(receipt);
     });
   };
 
@@ -146,13 +138,11 @@ class Interact extends React.Component {
       this.setState({ arbitratorDisputeID });
     }
     this.setState({ arbitrableIDLoading: true });
-    console.log(arbitratorDisputeID);
     this.setState({ arbitratorDisputeID: arbitratorDisputeID });
 
     this.setState({
       arbitrableDispute: "",
     });
-    console.log("hey");
     await this.debouncedRetrieveUsingArbitratorID(arbitratorDisputeID);
   };
 
@@ -169,11 +159,8 @@ class Interact extends React.Component {
       this.setState({ dispute: { period: 8 } });
       return;
     }
-    console.log("arbitrated:");
-    console.log(arbitrated);
     if (arbitrated == this.props.arbitrableAddress) {
       const arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(arbitratorDisputeID);
-      console.log(arbitrableDisputeID);
       await this.commonFetchRoutine(arbitrableDisputeID);
     } else {
       this.setState({
@@ -187,9 +174,8 @@ class Interact extends React.Component {
     try {
       currentRuling = await this.props.getCurrentRulingCallback(disputeIDOnArbitratorSide);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     } finally {
-      console.log(currentRuling);
       return currentRuling;
     }
   };
@@ -218,11 +204,8 @@ class Interact extends React.Component {
       arbitratorDispute = await this.props.getArbitratorDisputeCallback(arbitrableDispute.disputeIDOnArbitratorSide);
 
       subcourtURI = await this.props.getSubCourtDetailsCallback(arbitratorDispute.subcourtID);
-      console.log(subcourtURI);
       if (subcourtURI.includes("http")) subcourt = await fetch(subcourtURI);
       else subcourt = await fetch(`https://ipfs.kleros.io${subcourtURI}`);
-
-      console.log(arbitratorDispute);
 
       await this.setState({
         dispute: arbitratorDispute,
@@ -252,7 +235,6 @@ class Interact extends React.Component {
       withdrewAlready = await this.props.withdrewAlreadyCallback(arbitrableDisputeID);
       crowdfundingStatus = await this.props.getCrowdfundingStatusCallback(arbitrableDisputeID);
 
-      console.log("CF");
       this.setState({
         crowdfundingStatus,
         appealCost,
@@ -267,6 +249,9 @@ class Interact extends React.Component {
   getHumanReadablePeriod = (period) => this.PERIODS(period);
 
   render() {
+    console.debug(this.props);
+    console.debug(this.state);
+
     const {
       disputeID,
       dispute,

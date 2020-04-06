@@ -7,16 +7,14 @@ const StyledBanner = styled.div`
   padding: 1.1em 1.5em;
   font-size: 13px;
   background: #ffe03d;
-`
+`;
 
 class TopBanner extends React.Component {
   constructor(props) {
     super(props);
-    console.log("down under");
-    console.log(props);
   }
   render() {
-    const { viewOnly } = this.props
+    const { viewOnly } = this.props;
 
     return (
       <>
@@ -27,25 +25,10 @@ class TopBanner extends React.Component {
           <Navbar.Toggle aria-controls="responsive-navbar-nav" />
           <Navbar.Collapse id="responsive-navbar-nav">
             <Nav className="abs-center-x ">
-              <Nav.Link
-                className="mx-3"
-                href="/create/"
-                active={
-                  (this.props.route &&
-                    this.props.route.match.path == "(/|/create/)") ||
-                  this.props.pathname == "/"
-                }
-              >
+              <Nav.Link className="mx-3" href="/create/" active={(this.props.route && this.props.route.match.path == "(/|/create/)") || this.props.pathname == "/"}>
                 Create
               </Nav.Link>
-              <Nav.Link
-                className="mx-3"
-                href="/interact/"
-                active={
-                  this.props.route &&
-                  this.props.route.match.path == "/interact/:id?"
-                }
-              >
+              <Nav.Link className="mx-3" href="/interact/" active={this.props.route && this.props.route.match.path == "/interact/:id?"}>
                 Interact
               </Nav.Link>
             </Nav>
@@ -54,10 +37,11 @@ class TopBanner extends React.Component {
         </Navbar>
         {viewOnly && (
           <StyledBanner>
-            View mode only: Actions that require an Ethereum account are 
-            disabled. To use them, a web3 browser like <a href="https://metamask.io" target="_blank" rel="noreferrer noopener">
+            View mode only: Actions that require an Ethereum account are disabled. To use them, a web3 browser like{" "}
+            <a href="https://metamask.io" target="_blank" rel="noreferrer noopener">
               Metamask
-            </a> is required.
+            </a>{" "}
+            is required.
           </StyledBanner>
         )}
       </>
