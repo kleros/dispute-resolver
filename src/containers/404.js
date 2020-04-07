@@ -1,21 +1,17 @@
 import { ReactComponent as Acropolis } from "../assets/images/acropolis.svg";
 import PropTypes from "prop-types";
 import React from "react";
+import { Spinner } from "react-bootstrap";
 import styled from "styled-components/macro";
 
 const StyledDiv = styled.div`
-  display: flex;
-  flex-direction: column;
-  min-height: ${"calc(100vh - 73px)"};
-  ${(props) => !props.Web3 && "margin: 0 -9.375vw -62px;"}
+  min-height: 100%;
 `;
 const StyledAcropolis = styled(Acropolis)`
-  height: auto;
   width: 100%;
+  height: auto;
 `;
 const StyledInfoDiv = styled.div`
-  flex: 1;
-  padding: 0 9.375vw 62px;
   text-align: center;
 `;
 const Styled404Div = styled.div`
@@ -38,13 +34,10 @@ const StyledMessageLine3 = styled.div`
 const _404 = ({ Web3 }) => (
   <StyledDiv Web3={Web3}>
     <StyledAcropolis />
-    <StyledInfoDiv className="quaternary-background theme-background">
-      <Styled404Div className="primary-color theme-color">{Web3 ? "Please connect your Web3 provider" : "404"}</Styled404Div>
-      <StyledMessageLine1 className="ternary-color theme-color">Oops,</StyledMessageLine1>
-      <StyledMessageLine2 className="ternary-color theme-color">{Web3 ? "The gods are having trouble finding your Web3 provider." : "Something went wrong in Athens!"}</StyledMessageLine2>
-      <StyledMessageLine3 className="ternary-color theme-color">
-        {Web3 ? "Please make sure you have your wallet unlocked on Mainnet or Kovan. If you don't have a wallet, we recommend you install MetaMask on desktop and Trust on mobile." : "The greek gods are not available at the moment."}
-      </StyledMessageLine3>
+    <StyledInfoDiv>
+      <Styled404Div className="primary-color theme-color">{Web3 ? "Connecting Ethereum..." : "404"}</Styled404Div>
+      <StyledMessageLine2 className="ternary-color theme-color">{Web3 ? "The gods are trying to locate your Web3 provider." : "Something went wrong in Athens!"}</StyledMessageLine2>
+      {Web3 && <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" style={{ width: "5rem", height: "5rem" }} className="purple-inverted" />}
     </StyledInfoDiv>
   </StyledDiv>
 );

@@ -184,25 +184,12 @@ class App extends React.Component {
   render() {
     const { activeAddress, network, lastDisputeID } = this.state;
 
-    if (!network && !process.env.REACT_APP_WEB3_PROVIDER_URL)
+    if (!network)
       return (
-        <Container fluid="true" style={{ position: "relative" }}>
+        <Container fluid="true" style={{ position: "relative", minHeight: "100vh" }}>
           <Container fluid="true">
             <TopBanner description="description" title="title" />
             <_404 Web3={true} />
-          </Container>
-          <Footer appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[1]}etherscan.io/address/${networkMap[1].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/dispute-resolver"} />
-        </Container>
-      );
-
-    if (!network)
-      return (
-        <Container fluid="true" style={{ position: "relative" }}>
-          <Container fluid="true">
-            <TopBanner description="description" title="title" />
-            <SpinnerContainer>
-              <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" />
-            </SpinnerContainer>
           </Container>
           <Footer appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[1]}etherscan.io/address/${networkMap[1].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/dispute-resolver"} />
         </Container>
