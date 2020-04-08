@@ -58,7 +58,7 @@ class Interact extends React.Component {
       "Greek gods having trouble finding this dispute...",
       `Fetching ${this.state.fetchingString}...`,
       `Dispute #${this.state.arbitratorDisputeID} doesn't belong to this arbitrable contract.`,
-      `There is no such dispute...`,
+      `There is no such dispute. Are you in the correct network?`,
     ];
 
     return strings[periodNumber];
@@ -244,6 +244,19 @@ class Interact extends React.Component {
     } catch (err) {
       console.error(err.message);
     }
+
+    try {
+      this.setState({ canPassPeriod: await this.props.estimateGasOfPassPeriodCallback(arbitrableDispute.disputeIDOnArbitratorSide) });
+    } catch {
+      this.setState({ canPassPeriod: false });
+    }
+
+    try {
+      this.setState({ canDrawJurors: await this.props.estimateGasOfDrawJurorsCallback(arbitrableDispute.disputeIDOnArbitratorSide) });
+      console.log("2nd");
+    } catch {
+      this.setState({ canPassPeriod: false });
+    }
   };
 
   getHumanReadablePeriod = (period) => this.PERIODS(period);
@@ -270,6 +283,8 @@ class Interact extends React.Component {
       getSubcourtResult,
       getDisputeResult,
       disputeEvent,
+      canPassPeriod,
+      canDrawJurors,
     } = this.state;
 
     const { activeAddress, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, passPhaseCallback, passPeriodCallback, drawJurorsCallback } = this.props;
@@ -422,30 +437,49 @@ class Interact extends React.Component {
                             date={BigNumber("1000")
                               .times(BigNumber(dispute.lastPeriodChange).plus(BigNumber(getSubcourtResult[1][Number(dispute.period)])))
                               .toNumber()}
+                            onComplete={() => {
+                              console.log("COMPLETE");
+                              const self = this;
+                              setInterval(function () {
+                                self.forceUpdate();
+                              }, 2000);
+                            }}
                           />
                         </>
                       )}
                     </h3>
 
-                    {dispute.lastPeriodChange && getSubcourtResult && getSubcourtResult[1][Number(dispute.period)] && BigNumber(Date.now()).gt(BigNumber("1000").times(BigNumber(dispute.lastPeriodChange).plus(BigNumber(getSubcourtResult[1][Number(dispute.period)])))) && (
-                      <Button style={{ margin: "0 1rem" }} onClick={(e) => passPeriodCallback(arbitratorDisputeID)}>
-                        Pass Dispute Period
-                      </Button>
-                    )}
+                    {dispute.lastPeriodChange &&
+                      getSubcourtResult &&
+                      getSubcourtResult[1][Number(dispute.period)] &&
+                      BigNumber(Date.now()).gt(BigNumber("1000").times(BigNumber(dispute.lastPeriodChange).plus(BigNumber(getSubcourtResult[1][Number(dispute.period)])))) &&
+                      canPassPeriod && (
+                        <Button style={{ margin: "0 1rem" }} onClick={(e) => passPeriodCallback(arbitratorDisputeID)}>
+                          Pass Dispute Period
+                        </Button>
+                      )}
 
                     {dispute.lastPeriodChange &&
                       getSubcourtResult &&
                       getSubcourtResult[1][Number(dispute.period)] &&
                       BigNumber(Date.now()).gt(BigNumber("1000").times(BigNumber(dispute.lastPeriodChange).plus(BigNumber(getSubcourtResult[1][Number(dispute.period)])))) &&
-                      dispute.period == 0 && (
-                        <>
-                          <Button style={{ margin: "0 1rem" }} onClick={(e) => drawJurorsCallback(arbitratorDisputeID)}>
-                            Draw Jurors
-                          </Button>
-                          <Button style={{ margin: "0 1rem" }} onClick={(e) => passPhaseCallback()}>
-                            Pass Court Phase
-                          </Button>
-                        </>
+                      dispute.period == 0 &&
+                      !canPassPeriod &&
+                      canDrawJurors && (
+                        <Button style={{ margin: "0 1rem" }} onClick={(e) => drawJurorsCallback(arbitratorDisputeID)}>
+                          Draw Jurors
+                        </Button>
+                      )}
+                    {dispute.lastPeriodChange &&
+                      getSubcourtResult &&
+                      getSubcourtResult[1][Number(dispute.period)] &&
+                      BigNumber(Date.now()).gt(BigNumber("1000").times(BigNumber(dispute.lastPeriodChange).plus(BigNumber(getSubcourtResult[1][Number(dispute.period)])))) &&
+                      dispute.period == 0 &&
+                      !canPassPeriod &&
+                      !canDrawJurors && (
+                        <Button style={{ margin: "0 1rem" }} onClick={(e) => passPhaseCallback()}>
+                          Pass Court Phase
+                        </Button>
                       )}
                     {dispute && dispute.period == 4 && (
                       <Button style={{ margin: "0 1rem" }} disabled={withdrewAlready || !activeAddress} onClick={(e) => withdrawFeesAndRewardsCallback(disputeID)}>

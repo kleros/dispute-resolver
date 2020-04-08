@@ -67,7 +67,10 @@ class App extends React.Component {
         this.setState({ network });
       });
 
-      window.ethereum.on("data", (data) => {});
+      window.ethereum.on("data", (data) => {
+        console.log("TX CONFIRMED");
+        this.forceUpdate(); // Seems not working
+      });
     } else console.error("MetaMask not detected :(");
   }
 
@@ -111,7 +114,10 @@ class App extends React.Component {
 
   passPeriod = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("send", 0, "passPeriod", arbitratorDisputeID);
 
+  estimateGasOfPassPeriod = async (arbitratorDisputeID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "passPeriod", arbitratorDisputeID);
+
   drawJurors = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("send", 0, "drawJurors", arbitratorDisputeID, 1000);
+  estimateGasOfDrawJurors = async (arbitratorDisputeID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "drawJurors", arbitratorDisputeID, 1000);
 
   passPhase = async () => this.interactWithKlerosLiquid("send", 0, "passPhase");
 
@@ -255,6 +261,8 @@ class App extends React.Component {
                       passPeriodCallback={this.passPeriod}
                       drawJurorsCallback={this.drawJurors}
                       passPhaseCallback={this.passPhase}
+                      estimateGasOfPassPeriodCallback={this.estimateGasOfPassPeriod}
+                      estimateGasOfDrawJurorsCallback={this.estimateGasOfDrawJurors}
                     />
                   </>
                 )}
