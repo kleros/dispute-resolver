@@ -132,7 +132,7 @@ class App extends React.Component {
     const metaevidence = {
       title: options.title,
       category: options.category,
-      description: options.description,
+      description: options.description + "\n\nGo to arbitrable application: https://resolve.kleros.io",
       aliases: options.aliases,
       question: options.question,
       rulingOptions: {
