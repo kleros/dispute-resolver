@@ -29,7 +29,6 @@ class Appeal extends React.Component {
     try {
       this.props.crowdfundingStatus.then((response) => this.setState({ crowdfundingStatus: response }));
     } catch (e) {
-      console.log("comp");
       console.error(e);
     }
   }
@@ -78,6 +77,11 @@ class Appeal extends React.Component {
     } catch (e) {
     } finally {
       await this.setState({ awaitingConfirmation: false });
+      try {
+        this.props.crowdfundingStatus.then((response) => this.setState({ crowdfundingStatus: response }));
+      } catch (e) {
+        console.error(e);
+      }
     }
   };
 
@@ -105,7 +109,7 @@ class Appeal extends React.Component {
     const divisor = BigNumber(multiplierDivisor);
     if (this.state.currentRuling == party) {
       return winner.plus(loser).plus(divisor).div(winner.plus(divisor));
-    } else if (this.props.currentRuling == 0) {
+    } else if (this.state.currentRuling == 0) {
       return shared.plus(shared).plus(divisor).div(shared.plus(divisor));
     } else {
       return winner.plus(loser).plus(divisor).div(loser.plus(divisor));
@@ -119,7 +123,7 @@ class Appeal extends React.Component {
     if (this.state.currentRuling == party) {
       stake = appealCost.times(BigNumber(winnerMultiplier)).div(BigNumber(multiplierDivisor));
       console.log(stake);
-    } else if (this.props.currentRuling == 0) {
+    } else if (this.state.currentRuling == 0) {
       stake = appealCost.times(BigNumber(sharedMultiplier)).div(BigNumber(multiplierDivisor));
       console.log(stake);
     } else {
@@ -144,7 +148,7 @@ class Appeal extends React.Component {
       stake = appealCost.times(BigNumber(winnerMultiplier)).div(BigNumber(multiplierDivisor));
       console.log("winner");
       console.log(stake);
-    } else if (this.props.currentRuling == 0) {
+    } else if (this.state.currentRuling == 0) {
       stake = appealCost.times(BigNumber(sharedMultiplier)).div(BigNumber(multiplierDivisor));
       console.log(stake);
     } else {
@@ -241,8 +245,8 @@ class Appeal extends React.Component {
                             <div className="mb-3">
                               <ProgressBar
                                 variant={crowdfundingStatus && crowdfundingStatus.hasPaid[1] ? "success" : ""}
-                                now={crowdfundingStatus && BigNumber(100).times(BigNumber(crowdfundingStatus[0][1])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1)).toString()}
-                                label={crowdfundingStatus && "%" + BigNumber(100).times(BigNumber(crowdfundingStatus[0][1])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1)).toFixed(2)}
+                                now={crowdfundingStatus && BigNumber(100).times(BigNumber(crowdfundingStatus.paidFees[1])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1)).toString()}
+                                label={crowdfundingStatus && "%" + BigNumber(100).times(BigNumber(crowdfundingStatus.paidFees[1])).div(this.calculateTotalAmountToBeRaised(multipliers.winner, multipliers.loser, multipliers.shared, multipliers.divisor, 1)).toFixed(2)}
                               />
                             </div>
 

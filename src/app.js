@@ -50,6 +50,7 @@ class App extends React.Component {
   };
 
   async componentDidMount() {
+    const self = this;
     if (Web3) {
       this.setState({ network: await Web3.eth.net.getId() });
       this.setState({
@@ -69,7 +70,7 @@ class App extends React.Component {
 
       window.ethereum.on("data", (data) => {
         console.log("TX CONFIRMED");
-        this.forceUpdate(); // Seems not working
+        self.forceUpdate();
       });
     } else console.error("MetaMask not detected :(");
   }

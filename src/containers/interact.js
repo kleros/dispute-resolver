@@ -72,6 +72,7 @@ class Interact extends React.Component {
       evidenceTitle: evidence.evidenceTitle,
       supportingSide: evidence.supportingSide,
     });
+    this.setState({ evidences: await this.props.getEvidencesCallback(this.props.arbitrableAddress, this.state.disputeID) });
   };
 
   onDrop = async (acceptedFiles) => {
