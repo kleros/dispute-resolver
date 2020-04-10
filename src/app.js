@@ -22,6 +22,8 @@ const SpinnerContainer = styled.div`
   min-height: ${"calc(100vh - 64px)"};
 `;
 
+const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
+
 class App extends React.Component {
   constructor(props) {
     super(props);
@@ -93,11 +95,13 @@ class App extends React.Component {
 
   getArbitratorDisputeStruct = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "disputes", arbitratorDisputeID);
 
-  getCrowdfundingStatus = async (arbitrableDisputeID) => this.interactWithBinaryArbitrableProxy("call", "unused", "crowdfundingStatus", arbitrableDisputeID, this.state.activeAddress);
+  getCrowdfundingStatus = async (arbitrableDisputeID) => this.interactWithBinaryArbitrableProxy("call", "unused", "crowdfundingStatus", arbitrableDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO);
+
+  getRoundInfo = async (arbitrableDisputeID, round) => this.interactWithBinaryArbitrableProxy("call", "unused", "getRoundInfo", arbitrableDisputeID, round);
 
   getMultipliers = async () => this.interactWithBinaryArbitrableProxy("call", "unused", "getMultipliers");
 
-  withdrewAlready = async (arbitrableDisputeID) => this.interactWithBinaryArbitrableProxy("call", "unused", "withdrewAlready", arbitrableDisputeID, this.state.activeAddress);
+  withdrewAlready = async (arbitrableDisputeID) => this.interactWithBinaryArbitrableProxy("call", "unused", "withdrewAlready", arbitrableDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO);
 
   updateLastDisputeID = async (newDisputeID) => this.setState({ lastDisputeID: newDisputeID });
 
@@ -264,6 +268,7 @@ class App extends React.Component {
                       passPhaseCallback={this.passPhase}
                       estimateGasOfPassPeriodCallback={this.estimateGasOfPassPeriod}
                       estimateGasOfDrawJurorsCallback={this.estimateGasOfDrawJurors}
+                      getRoundInfoCallback={this.getRoundInfo}
                     />
                   </>
                 )}

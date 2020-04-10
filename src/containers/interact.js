@@ -13,6 +13,8 @@ import { Redirect } from "react-router-dom";
 import Countdown from "react-countdown-now";
 import BigNumber from "bignumber.js";
 
+const FALLBACK_ACTIVATION_DELAY_SECONDS = 600;
+
 class Interact extends React.Component {
   constructor(props) {
     super(props);
@@ -256,7 +258,7 @@ class Interact extends React.Component {
       this.setState({ canDrawJurors: await this.props.estimateGasOfDrawJurorsCallback(arbitrableDispute.disputeIDOnArbitratorSide) });
       console.log("2nd");
     } catch {
-      this.setState({ canPassPeriod: false });
+      this.setState({ canDrawJurors: false });
     }
   };
 
@@ -395,6 +397,7 @@ class Interact extends React.Component {
                           >
                             <Card.Body style={{ padding: 0 }}>
                               <EvidenceTimeline
+                                evidenceSubmissionEnabled={Boolean(activeAddress)}
                                 numberOfVotesCast={Number(getDisputeResult.votesInEachRound.slice(-1)[0])}
                                 metaevidence={metaevidence}
                                 evidences={evidences}
@@ -450,40 +453,79 @@ class Interact extends React.Component {
                       )}
                     </h3>
 
-                    {dispute.lastPeriodChange &&
+                    {activeAddress &&
+                      dispute.lastPeriodChange &&
                       getSubcourtResult &&
                       getSubcourtResult[1][Number(dispute.period)] &&
-                      BigNumber(Date.now()).gt(BigNumber("1000").times(BigNumber(dispute.lastPeriodChange).plus(BigNumber(getSubcourtResult[1][Number(dispute.period)])))) &&
+                      BigNumber(Date.now()).gt(
+                        BigNumber("1000").times(
+                          BigNumber(dispute.lastPeriodChange)
+                            .plus(BigNumber(getSubcourtResult[1][Number(dispute.period)]))
+                            .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS))
+                        )
+                      ) &&
                       canPassPeriod && (
-                        <Button style={{ margin: "0 1rem" }} onClick={(e) => passPeriodCallback(arbitratorDisputeID)}>
+                        <Button
+                          style={{ margin: "0 1rem" }}
+                          onClick={async (e) => {
+                            await passPeriodCallback(arbitratorDisputeID);
+                            this.commonFetchRoutine(disputeID);
+                          }}
+                        >
                           Pass Dispute Period
                         </Button>
                       )}
 
-                    {dispute.lastPeriodChange &&
+                    {activeAddress &&
+                      dispute.lastPeriodChange &&
                       getSubcourtResult &&
                       getSubcourtResult[1][Number(dispute.period)] &&
-                      BigNumber(Date.now()).gt(BigNumber("1000").times(BigNumber(dispute.lastPeriodChange).plus(BigNumber(getSubcourtResult[1][Number(dispute.period)])))) &&
+                      BigNumber(Date.now()).gt(
+                        BigNumber("1000").times(
+                          BigNumber(dispute.lastPeriodChange)
+                            .plus(BigNumber(getSubcourtResult[1][Number(dispute.period)]))
+                            .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS))
+                        )
+                      ) &&
                       dispute.period == 0 &&
                       !canPassPeriod &&
                       canDrawJurors && (
-                        <Button style={{ margin: "0 1rem" }} onClick={(e) => drawJurorsCallback(arbitratorDisputeID)}>
+                        <Button
+                          style={{ margin: "0 1rem" }}
+                          onClick={async (e) => {
+                            await drawJurorsCallback(arbitratorDisputeID);
+                            this.commonFetchRoutine(disputeID);
+                          }}
+                        >
                           Draw Jurors
                         </Button>
                       )}
-                    {dispute.lastPeriodChange &&
+                    {activeAddress &&
+                      dispute.lastPeriodChange &&
                       getSubcourtResult &&
                       getSubcourtResult[1][Number(dispute.period)] &&
-                      BigNumber(Date.now()).gt(BigNumber("1000").times(BigNumber(dispute.lastPeriodChange).plus(BigNumber(getSubcourtResult[1][Number(dispute.period)])))) &&
+                      BigNumber(Date.now()).gt(
+                        BigNumber("1000").times(
+                          BigNumber(dispute.lastPeriodChange)
+                            .plus(BigNumber(getSubcourtResult[1][Number(dispute.period)]))
+                            .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS))
+                        )
+                      ) &&
                       dispute.period == 0 &&
                       !canPassPeriod &&
                       !canDrawJurors && (
-                        <Button style={{ margin: "0 1rem" }} onClick={(e) => passPhaseCallback()}>
+                        <Button
+                          style={{ margin: "0 1rem" }}
+                          onClick={async (e) => {
+                            await passPhaseCallback();
+                            this.commonFetchRoutine(disputeID);
+                          }}
+                        >
                           Pass Court Phase
                         </Button>
                       )}
-                    {dispute && dispute.period == 4 && (
-                      <Button style={{ margin: "0 1rem" }} disabled={withdrewAlready || !activeAddress} onClick={(e) => withdrawFeesAndRewardsCallback(disputeID)}>
+                    {activeAddress && dispute && dispute.period == 4 && (
+                      <Button style={{ margin: "0 1rem" }} disabled={withdrewAlready} onClick={(e) => withdrawFeesAndRewardsCallback(disputeID)}>
                         {withdrewAlready ? "Withdrew Already" : "Withdraw Funds"}
                       </Button>
                     )}
@@ -494,7 +536,7 @@ class Interact extends React.Component {
           </Card>
         </Accordion>
 
-        {dispute && crowdfundingStatus && dispute.period == 3 && arbitrableDispute && (
+        {dispute && dispute.period == 3 && arbitrableDispute && (
           <Appeal
             crowdfundingStatus={getCrowdfundingStatusCallback(disputeID)}
             appealCost={appealCost}
