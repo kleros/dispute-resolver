@@ -107,6 +107,12 @@ button.ok {
   border: unset;
 }
 
+@media (max-width: 500px) {
+  .card {
+    margin: 20px;
+  }
+}
+
 .card-body {
   border-radius: 12px;
   padding: 2rem;
