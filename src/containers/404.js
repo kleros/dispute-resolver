@@ -13,12 +13,20 @@ const StyledAcropolis = styled(Acropolis)`
 `;
 const StyledInfoDiv = styled.div`
   text-align: center;
+
+  @media (max-width: 500px) {
+    margin: 80px 20px;
+  }
 `;
 const Styled404Div = styled.div`
-  padding-top: 1rem;
-  font-size: 88px;
+  font-size: 40px;
   font-weight: bold;
-  line-height: 112px;
+  margin-top: 40px;
+
+  @media (max-width: 500px) {
+    font-size: 30px;
+    line-height: 40px;
+  }
 `;
 const StyledMessageLine1 = styled.div`
   font-size: 28px;
@@ -26,6 +34,7 @@ const StyledMessageLine1 = styled.div`
 `;
 const StyledMessageLine2 = styled.div`
   font-size: 24px;
+  margin-top: 30px;
 `;
 const StyledMessageLine3 = styled.div`
   font-size: 16px;
