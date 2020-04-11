@@ -6,7 +6,6 @@ import debounce from "lodash.debounce";
 import IPFS from "../components/ipfs";
 import ReactMarkdown from "react-markdown";
 import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
-import { ReactComponent as KlerosSymbol } from "../assets/images/kleros-symbol.svg";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { EvidenceTimeline } from "@kleros/react-components";
 import { Redirect } from "react-router-dom";
