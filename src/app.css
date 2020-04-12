@@ -101,9 +101,9 @@ button.ok {
 .card {
   border-radius: 12px;
   background-color: #f2e3ff;
-  margin-left: 80px;
-  margin-right: 80px;
-  margin-top: 50px;
+  margin-left: 2vw;
+  margin-right: 2vw;
+  margin-top: 4vh;
   border: unset;
 }
 
