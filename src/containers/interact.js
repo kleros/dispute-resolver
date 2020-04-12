@@ -422,6 +422,8 @@ class Interact extends React.Component {
                   style={{
                     borderTopLeftRadius: 0,
                     borderTopRightRadius: 0,
+                    borderBottomLeftRadius: 12,
+                    borderBottomRightRadius: 12,
                   }}
                 >
                   <div
@@ -429,6 +431,7 @@ class Interact extends React.Component {
                     style={{
                       borderTopLeftRadius: "inherit",
                       borderTopRightRadius: "inherit",
+                      borderRadius: "inherit",
                     }}
                   >
                     <h3 style={{ color: "white" }}>
