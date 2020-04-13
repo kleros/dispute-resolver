@@ -8,7 +8,7 @@ import ReactMarkdown from "react-markdown";
 import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { EvidenceTimeline } from "@kleros/react-components";
-import { Redirect } from "react-router-dom";
+import { Redirect, Link } from "react-router-dom";
 import Countdown from "react-countdown-now";
 import BigNumber from "bignumber.js";
 

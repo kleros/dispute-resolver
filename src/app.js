@@ -1,11 +1,12 @@
 import React from "react";
 import { Container, Spinner } from "react-bootstrap";
 import "./app.css";
-import CreateDispute from "./containers/create-dispute";
 import styled from "styled-components/macro";
+import CreateDispute from "./containers/create-dispute";
 import _404 from "./containers/404";
 import Interact from "./containers/interact";
-import { BrowserRouter, Route, Switch } from "react-router-dom";
+import OpenDisputes from "./containers/open-disputes";
+import { BrowserRouter, Route, Switch, Link } from "react-router-dom";
 import TopBanner from "./components/top-banner";
 import { Footer } from "@kleros/react-components";
 import Web3 from "./ethereum/web3";
@@ -199,8 +200,10 @@ class App extends React.Component {
       return (
         <Container fluid="true" style={{ position: "relative", minHeight: "100vh" }}>
           <Container fluid="true">
-            <TopBanner description="description" title="title" />
-            <_404 Web3={true} />
+            <BrowserRouter>
+              <TopBanner description="description" title="title" />
+              <_404 Web3={true} />
+            </BrowserRouter>
           </Container>
           <Footer appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[1]}etherscan.io/address/${networkMap[1].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/dispute-resolver"} />
         </Container>
@@ -231,10 +234,21 @@ class App extends React.Component {
               />
               <Route
                 exact
+                path="(/disputes/)"
+                render={(route) => (
+                  <>
+                    <TopBanner viewOnly={!activeAddress} route={route} />
+                    <OpenDisputes activeAddress={activeAddress} route={route} />
+                  </>
+                )}
+              />
+              <Route
+                exact
                 path="/interact/:id?"
                 render={(route) => (
                   <>
                     <TopBanner viewOnly={!activeAddress} route={route} />
+
                     <Interact
                       arbitrableAddress={networkMap[network].BINARY_ARBITRABLE_PROXY}
                       route={route}

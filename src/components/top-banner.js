@@ -2,6 +2,7 @@ import { Navbar, Nav } from "react-bootstrap";
 import React from "react";
 import styled from "styled-components/macro";
 import { ReactComponent as LogoSVG } from "../assets/images/logo-dispute-resolver-white.svg";
+import { NavLink, Link } from "react-router-dom";
 
 const StyledBanner = styled.div`
   padding: 1.1em 1.5em;
@@ -15,7 +16,7 @@ class TopBanner extends React.Component {
   }
   render() {
     const { viewOnly } = this.props;
-
+    console.debug(this.props);
     return (
       <>
         <Navbar collapseOnSelect expand="lg" variant="dark" id="header">
@@ -25,12 +26,15 @@ class TopBanner extends React.Component {
           <Navbar.Toggle aria-controls="responsive-navbar-nav" />
           <Navbar.Collapse id="responsive-navbar-nav">
             <Nav className="abs-center-x ">
-              <Nav.Link className="mx-3" href="/create/" active={(this.props.route && this.props.route.match.path == "(/|/create/)") || this.props.pathname == "/"}>
+              <NavLink className="nav-link mx-3" to="/create/">
                 Create
-              </Nav.Link>
-              <Nav.Link className="mx-3" href="/interact/" active={this.props.route && this.props.route.match.path == "/interact/:id?"}>
+              </NavLink>
+              <NavLink className="nav-link mx-3" to="/disputes/">
+                Open Disputes
+              </NavLink>
+              <NavLink className="nav-link mx-3" to="/interact/">
                 Interact
-              </Nav.Link>
+              </NavLink>
             </Nav>
             <Nav className="abs-end-x " />
           </Navbar.Collapse>
