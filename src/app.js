@@ -78,6 +78,8 @@ class App extends React.Component {
     } else console.error("MetaMask not detected :(");
   }
 
+  getOpenDisputes = async () => this.interactWithBinaryArbitrableProxy("call", "unused", "getOpenDisputes", 0, 0);
+
   getArbitrableDisputeID = async (arbitratorDisputeID) => this.interactWithBinaryArbitrableProxy("call", "unused", "externalIDtoLocalID", arbitratorDisputeID);
 
   getArbitrationCost = (arbitratorAddress, extraData) => EthereumInterface.call("IArbitrator", arbitratorAddress, "arbitrationCost", extraData);
@@ -166,11 +168,13 @@ class App extends React.Component {
 
   getDispute = async (disputeID) => this.interactWithKlerosLiquid("call", "unused", "getDispute", disputeID);
 
-  getMetaEvidence = async (arbitrableAddress, disputeID) =>
+  getMetaEvidence = async (disputeID) =>
     await this.state.archon.arbitrable.getMetaEvidence(
-      arbitrableAddress, // arbitrable contract address
+      networkMap[this.state.network].BINARY_ARBITRABLE_PROXY, // arbitrable contract address
       disputeID
     );
+
+  getMetaEvidenceWithArbitratorDisputeID = async (arbitratorDisputeID) => this.state.archon.arbitrable.getMetaEvidence(networkMap[this.state.network].BINARY_ARBITRABLE_PROXY, await this.getArbitrableDisputeID(arbitratorDisputeID));
 
   getEvidences = async (arbitrableAddress, arbitrableDisputeID) => await this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitrableDisputeID);
 
@@ -216,7 +220,7 @@ class App extends React.Component {
             <Switch>
               <Route
                 exact
-                path="(/|/create/)"
+                path="(/create/)"
                 render={(route) => (
                   <>
                     <TopBanner viewOnly={!activeAddress} route={route} />
@@ -234,11 +238,11 @@ class App extends React.Component {
               />
               <Route
                 exact
-                path="(/disputes/)"
+                path="(/|/disputes/)"
                 render={(route) => (
                   <>
                     <TopBanner viewOnly={!activeAddress} route={route} />
-                    <OpenDisputes activeAddress={activeAddress} route={route} />
+                    <OpenDisputes activeAddress={activeAddress} route={route} getOpenDisputesCallback={this.getOpenDisputes} getMetaEvidenceCallback={this.getMetaEvidenceWithArbitratorDisputeID} />
                   </>
                 )}
               />
