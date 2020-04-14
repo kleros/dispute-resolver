@@ -291,7 +291,15 @@ class App extends React.Component {
                   </>
                 )}
               />
-              <Route component={_404} />
+              <Route
+                render={(route) => (
+                  <>
+                    <TopBanner viewOnly={!activeAddress} route={route} />
+
+                    <_404 />
+                  </>
+                )}
+              />
             </Switch>
           </BrowserRouter>
         </Container>
