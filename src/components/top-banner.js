@@ -3,6 +3,7 @@ import React from "react";
 import styled from "styled-components/macro";
 import { ReactComponent as LogoSVG } from "../assets/images/logo-dispute-resolver-white.svg";
 import { NavLink, Link } from "react-router-dom";
+import { LinkContainer } from "react-router-bootstrap";
 
 const StyledBanner = styled.div`
   padding: 1.1em 1.5em;
@@ -24,19 +25,18 @@ class TopBanner extends React.Component {
             <LogoSVG />
           </Navbar.Brand>
           <Navbar.Toggle aria-controls="responsive-navbar-nav" />
-          <Navbar.Collapse id="responsive-navbar-nav">
-            <Nav className="abs-center-x ">
-              <NavLink className="nav-link mx-3" to="/create/">
-                Create
-              </NavLink>
-              <NavLink className="nav-link mx-3" to="/disputes/">
-                Open Disputes
-              </NavLink>
-              <NavLink className="nav-link mx-3" to="/interact/">
-                Interact
-              </NavLink>
+          <Navbar.Collapse id="responsive-navbar-nav" style={{ placeContent: "center", marginRight: "240px" }}>
+            <Nav>
+              <LinkContainer to="/create/">
+                <Nav.Link className=" mx-3">Create</Nav.Link>
+              </LinkContainer>
+              <LinkContainer to="/disputes/">
+                <Nav.Link className=" mx-3">Open Disputes</Nav.Link>
+              </LinkContainer>
+              <LinkContainer to="/interact/">
+                <Nav.Link className=" mx-3">Interact</Nav.Link>
+              </LinkContainer>
             </Nav>
-            <Nav className="abs-end-x " />
           </Navbar.Collapse>
         </Navbar>
         {viewOnly && (
