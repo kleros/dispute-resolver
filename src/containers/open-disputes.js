@@ -32,7 +32,7 @@ class openDisputeIDs extends React.Component {
                 <Card.Header>
                   <Form.Row className="w-100">
                     <Col xs={12}>
-                      <ScalesSVG style={{ height: "24px", verticalAlign: "baseline", width: "auto" }} />
+                      <ScalesSVG style={{ float: "left", height: "100%", width: "auto" }} />
                       <span style={{ float: "right" }}>#{dispute}</span>
                     </Col>
                   </Form.Row>
