@@ -212,7 +212,7 @@ class Interact extends React.Component {
       await this.setState({
         dispute: arbitratorDispute,
         subcourtDetails: await subcourt.json(),
-        metaevidence: await this.props.getMetaEvidenceCallback(arbitratorDispute.arbitrated, arbitrableDisputeID),
+        metaevidence: await this.props.getMetaEvidenceCallback(arbitrableDisputeID),
         arbitrableDispute,
         arbitratorDisputeID: arbitrableDispute.disputeIDOnArbitratorSide,
         disputeID: arbitrableDisputeID,
