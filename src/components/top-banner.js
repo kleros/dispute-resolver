@@ -30,9 +30,11 @@ class TopBanner extends React.Component {
               <LinkContainer to="/disputes/">
                 <Nav.Link className=" mx-3">Open Disputes</Nav.Link>
               </LinkContainer>
-              <LinkContainer exact to="/create/">
-                <Nav.Link className=" mx-3">Create</Nav.Link>
-              </LinkContainer>
+              {!viewOnly && (
+                <LinkContainer exact to="/create/">
+                  <Nav.Link className=" mx-3">Create</Nav.Link>
+                </LinkContainer>
+              )}
               <LinkContainer exact to="/interact/">
                 <Nav.Link className=" mx-3">Interact</Nav.Link>
               </LinkContainer>
