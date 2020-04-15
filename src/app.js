@@ -6,7 +6,7 @@ import CreateDispute from "./containers/create-dispute";
 import _404 from "./containers/404";
 import Interact from "./containers/interact";
 import OpenDisputes from "./containers/open-disputes";
-import { BrowserRouter, Route, Switch, Link } from "react-router-dom";
+import { BrowserRouter, Route, Switch, Link, Redirect } from "react-router-dom";
 import TopBanner from "./components/top-banner";
 import { Footer } from "@kleros/react-components";
 import Web3 from "./ethereum/web3";
@@ -214,8 +214,90 @@ class App extends React.Component {
         <Container fluid="true" style={{ position: "relative", minHeight: "100vh" }}>
           <Container fluid="true">
             <BrowserRouter>
-              <TopBanner description="description" title="title" />
+              <TopBanner description="description" title="title" viewOnly={!activeAddress} />
               <_404 Web3={true} />
+            </BrowserRouter>
+          </Container>
+          <Footer appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[1]}etherscan.io/address/${networkMap[1].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/dispute-resolver"} />
+        </Container>
+      );
+
+    if (!activeAddress)
+      return (
+        <Container fluid="true" style={{ position: "relative", minHeight: "100vh" }}>
+          <Container fluid="true">
+            <BrowserRouter>
+              <Switch>
+                <Route
+                  exact
+                  path="(/|/disputes/)"
+                  render={(route) => (
+                    <>
+                      <TopBanner viewOnly={!activeAddress} route={route} />
+                      <OpenDisputes activeAddress={activeAddress} route={route} getOpenDisputesCallback={this.getOpenDisputes} getMetaEvidenceCallback={this.getMetaEvidenceWithArbitratorDisputeID} />
+                    </>
+                  )}
+                />
+
+                <Route exact path="(/create/)" render={(route) => <Redirect to="/disputes/" />} />
+
+                <Route
+                  exact
+                  path="/interact/:id?"
+                  render={(route) => (
+                    <>
+                      <TopBanner viewOnly={!activeAddress} route={route} />
+
+                      <Interact
+                        arbitrableAddress={networkMap[network].BINARY_ARBITRABLE_PROXY}
+                        route={route}
+                        getArbitrableDisputeIDCallback={this.getArbitrableDisputeID}
+                        getAppealCostCallback={this.getAppealCost}
+                        appealCallback={this.appeal}
+                        getAppealPeriodCallback={this.getAppealPeriod}
+                        getCurrentRulingCallback={this.getCurrentRuling}
+                        disputeID={lastDisputeID}
+                        getContractInstanceCallback={this.getContractInstance}
+                        getArbitratorDisputeCallback={this.getArbitratorDispute}
+                        getArbitrableDisputeCallback={this.getArbitrableDispute}
+                        getArbitratorDisputeStructCallback={this.getArbitratorDisputeStruct}
+                        getArbitrableDisputeStructCallback={this.getArbitrableDisputeStruct}
+                        getCrowdfundingStatusCallback={this.getCrowdfundingStatus}
+                        getRulingCallback={this.getRuling}
+                        getEvidencesCallback={this.getEvidences}
+                        getMetaEvidenceCallback={this.getMetaEvidence}
+                        getSubCourtDetailsCallback={this.getSubCourtDetails}
+                        publishCallback={this.onPublish}
+                        submitEvidenceCallback={this.submitEvidence}
+                        getDisputeCallback={this.getDispute}
+                        getDisputeEventCallback={this.getDisputeEvent}
+                        getMultipliersCallback={this.getMultipliers}
+                        withdrewAlreadyCallback={this.withdrewAlready}
+                        withdrawFeesAndRewardsCallback={this.withdrawFeesAndRewardsForAllRounds}
+                        activeAddress={activeAddress}
+                        getSubcourtCallback={this.getSubcourt}
+                        passPeriodCallback={this.passPeriod}
+                        drawJurorsCallback={this.drawJurors}
+                        passPhaseCallback={this.passPhase}
+                        estimateGasOfPassPeriodCallback={this.estimateGasOfPassPeriod}
+                        estimateGasOfDrawJurorsCallback={this.estimateGasOfDrawJurors}
+                        getRoundInfoCallback={this.getRoundInfo}
+                        getAppealDecisionCallback={this.getAppealDecision}
+                      />
+                    </>
+                  )}
+                />
+
+                <Route
+                  render={(route) => (
+                    <>
+                      <TopBanner viewOnly={!activeAddress} route={route} />
+
+                      <_404 />
+                    </>
+                  )}
+                />
+              </Switch>
             </BrowserRouter>
           </Container>
           <Footer appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[1]}etherscan.io/address/${networkMap[1].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/dispute-resolver"} />
@@ -227,6 +309,17 @@ class App extends React.Component {
         <Container fluid="true" style={{ paddingBottom: "7rem" }}>
           <BrowserRouter>
             <Switch>
+              <Route
+                exact
+                path="(/|/disputes/)"
+                render={(route) => (
+                  <>
+                    <TopBanner viewOnly={!activeAddress} route={route} />
+                    <OpenDisputes activeAddress={activeAddress} route={route} getOpenDisputesCallback={this.getOpenDisputes} getMetaEvidenceCallback={this.getMetaEvidenceWithArbitratorDisputeID} />
+                  </>
+                )}
+              />
+
               <Route
                 exact
                 path="(/create/)"
@@ -245,16 +338,7 @@ class App extends React.Component {
                   </>
                 )}
               />
-              <Route
-                exact
-                path="(/|/disputes/)"
-                render={(route) => (
-                  <>
-                    <TopBanner viewOnly={!activeAddress} route={route} />
-                    <OpenDisputes activeAddress={activeAddress} route={route} getOpenDisputesCallback={this.getOpenDisputes} getMetaEvidenceCallback={this.getMetaEvidenceWithArbitratorDisputeID} />
-                  </>
-                )}
-              />
+
               <Route
                 exact
                 path="/interact/:id?"
