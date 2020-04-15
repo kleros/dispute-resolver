@@ -166,13 +166,22 @@ class App extends React.Component {
       disputeID // dispute unique identifier
     );
 
-  getDispute = async (disputeID) => this.interactWithKlerosLiquid("call", "unused", "getDispute", disputeID);
-
   getMetaEvidence = async (disputeID) =>
     await this.state.archon.arbitrable.getMetaEvidence(
       networkMap[this.state.network].BINARY_ARBITRABLE_PROXY, // arbitrable contract address
       disputeID
     );
+
+  getAppealDecision = async (arbitratorDisputeID) => {
+    const contractInstance = EthereumInterface.contractInstance("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID);
+    const appealDecisionLog = await contractInstance.getPastEvents("AppealDecision", { fromBlock: 7303699, toBlock: "latest", filter: { _disputeID: arbitratorDisputeID } });
+    const blockNumbers = await Promise.all(appealDecisionLog.map((appealDecision) => Web3.eth.getBlock(appealDecision.blockNumber)));
+    return blockNumbers.map((blockNumber) => {
+      return { appealedAt: blockNumber.timestamp };
+    });
+  };
+
+  getDispute = async (disputeID) => this.interactWithKlerosLiquid("call", "unused", "getDispute", disputeID);
 
   getMetaEvidenceWithArbitratorDisputeID = async (arbitratorDisputeID) => this.state.archon.arbitrable.getMetaEvidence(networkMap[this.state.network].BINARY_ARBITRABLE_PROXY, await this.getArbitrableDisputeID(arbitratorDisputeID));
 
@@ -287,6 +296,7 @@ class App extends React.Component {
                       estimateGasOfPassPeriodCallback={this.estimateGasOfPassPeriod}
                       estimateGasOfDrawJurorsCallback={this.estimateGasOfDrawJurors}
                       getRoundInfoCallback={this.getRoundInfo}
+                      getAppealDecisionCallback={this.getAppealDecision}
                     />
                   </>
                 )}

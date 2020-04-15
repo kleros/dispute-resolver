@@ -259,6 +259,8 @@ class Interact extends React.Component {
     } catch {
       this.setState({ canDrawJurors: false });
     }
+
+    this.setState({ appealDecisions: await this.props.getAppealDecisionCallback(arbitrableDispute.disputeIDOnArbitratorSide) });
   };
 
   getHumanReadablePeriod = (period) => this.PERIODS(period);
@@ -406,6 +408,7 @@ class Interact extends React.Component {
                                 disputePeriod={parseInt(dispute.period)}
                                 publishCallback={publishCallback}
                                 submitEvidenceCallback={this.submitEvidence}
+                                appealDecisions={this.state.appealDecisions}
                               />
                             </Card.Body>
                           </Card>
