@@ -352,7 +352,7 @@ class Interact extends React.Component {
                                 borderBottomRightRadius: metaevidence.metaEvidenceJSON.fileURI && 0,
                               }}
                             >
-                              <Form.Group id="markdown" style={{ paddingLeft: 0, color: "black" }}>
+                              <Form.Group id="markdown" className="markdown" style={{ paddingLeft: 0, color: "black" }}>
                                 {metaevidence.metaEvidenceJSON.description && <ReactMarkdown source={metaevidence.metaEvidenceJSON.description} />}
                                 {!metaevidence.metaEvidenceJSON.description && <p>Not provided</p>}
                               </Form.Group>
@@ -471,6 +471,7 @@ class Interact extends React.Component {
                       ) &&
                       canPassPeriod && (
                         <Button
+                          className="ok"
                           style={{ margin: "0 1rem" }}
                           onClick={async (e) => {
                             await passPeriodCallback(arbitratorDisputeID);
@@ -496,6 +497,7 @@ class Interact extends React.Component {
                       !canPassPeriod &&
                       canDrawJurors && (
                         <Button
+                          className="ok"
                           style={{ margin: "0 1rem" }}
                           onClick={async (e) => {
                             await drawJurorsCallback(arbitratorDisputeID);
@@ -530,7 +532,7 @@ class Interact extends React.Component {
                         </Button>
                       )}
                     {activeAddress && dispute && dispute.period == 4 && (
-                      <Button style={{ margin: "0 1rem" }} disabled={withdrewAlready} onClick={(e) => withdrawFeesAndRewardsCallback(disputeID)}>
+                      <Button className="ok" style={{ margin: "0 1rem" }} disabled={withdrewAlready} onClick={(e) => withdrawFeesAndRewardsCallback(disputeID)}>
                         {withdrewAlready ? "Withdrew Already" : "Withdraw Funds"}
                       </Button>
                     )}

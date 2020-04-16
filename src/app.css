@@ -94,6 +94,10 @@ button.ok {
   color: white;
 }
 
+button.ok:hover {
+  background: linear-gradient(109.65deg, #009aff 45.81%, #63c1ff 82.89%);
+}
+
 .container-fluid {
   background-color: #f2e3ff;
 }
@@ -194,11 +198,11 @@ button::after {
 .form-group > input,
 .form-group > textarea,
 body > div.confirmation.modal > div > div > div.modal-body > form > div:nth-child(4) > div > div > p,
-#markdown * {
+.markdown * {
   color: #4d00b4;
 }
 
-#markdown > p {
+.markdown > p {
   font-weight: normal !important;
 }
 
@@ -352,7 +356,7 @@ body > div.modal > div > div > div.modal-body > form > div:nth-child(11) > div >
   height: auto;
 }
 
-#markdown {
+.markdown {
   height: inherit;
   padding: 0.375rem 0.75rem;
 }

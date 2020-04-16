@@ -31,7 +31,7 @@ class Confirmation extends React.Component {
       primaryDocument,
       awaitingConfirmation,
       show,
-      activeAddress
+      activeAddress,
     } = this.props;
 
     return (
@@ -72,7 +72,7 @@ class Confirmation extends React.Component {
             </Form.Row>
             <Form.Row>
               <Col>
-                <Form.Group controlId="description">
+                <Form.Group className="markdown" controlId="description">
                   <Form.Label>Description</Form.Label>
                   <ReactMarkdown source={description || "Not provided"} />
                 </Form.Group>
@@ -160,22 +160,8 @@ class Confirmation extends React.Component {
           <Button className="return" onClick={this.props.onModalHide}>
             Close
           </Button>
-          <Button
-            className="ok"
-            onClick={this.props.onCreateDisputeButtonClick}
-            disabled={awaitingConfirmation || !activeAddress}
-          >
-            {awaitingConfirmation && (
-              <Spinner
-                as="span"
-                animation="grow"
-                size="sm"
-                role="status"
-                aria-hidden="true"
-              />
-            )}{" "}
-            {(awaitingConfirmation && "Awaiting Confirmation") ||
-              `Create the Dispute for ${arbitrationCost} ETH`}
+          <Button className="ok" onClick={this.props.onCreateDisputeButtonClick} disabled={awaitingConfirmation || !activeAddress}>
+            {awaitingConfirmation && <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" />} {(awaitingConfirmation && "Awaiting Confirmation") || `Create the Dispute for ${arbitrationCost} ETH`}
           </Button>
         </Modal.Footer>
       </Modal>

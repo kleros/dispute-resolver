@@ -139,7 +139,7 @@ class App extends React.Component {
     const metaevidence = {
       title: options.title,
       category: options.category,
-      description: options.description + "\n\nGo to arbitrable application: https://resolve.kleros.io",
+      description: options.description,
       aliases: options.aliases,
       question: options.question,
       rulingOptions: {
@@ -148,6 +148,7 @@ class App extends React.Component {
         descriptions: [options.firstRulingDescription, options.secondRulingDescription],
       },
       fileURI: options.primaryDocument,
+      dynamicScriptURI: "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj",
     };
 
     const ipfsHashMetaEvidenceObj = await ipfsPublish("metaEvidence.json", this.encoder.encode(JSON.stringify(metaevidence)));
