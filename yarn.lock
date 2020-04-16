@@ -1364,10 +1364,10 @@
     "@kleros/kleros-interaction" "^0.9.0"
     minimetoken "^0.2.0"
 
-"@kleros/react-components@^3.15.1":
-  version "3.15.1"
-  resolved "https://registry.yarnpkg.com/@kleros/react-components/-/react-components-3.15.1.tgz#b75159c75413ac59d2ac7dfd2233836aa328cff2"
-  integrity sha512-X+RDSn9LuLd27StuhIMO9/OOvNxCEOmcpMt9g/J/xoW2fRVcesuASPvrcYAVX4fXYSacuTZHtE8jpx5wBa/MUw==
+"@kleros/react-components@^3.15.2":
+  version "3.15.2"
+  resolved "https://registry.yarnpkg.com/@kleros/react-components/-/react-components-3.15.2.tgz#e18e323340827bb9146b166d82c3836ffcee7601"
+  integrity sha512-Ssh6hVHpjHD6ORJCQvvO0M7qO+T1qEEsAKqT+kEM65Hw9PmUkQMC75xDqqsU+h2YCYhTSViKuA1n7yrQJy6NCA==
   dependencies:
     "@kleros/archon" "^0.10.1"
     clsx "^1.1.0"
