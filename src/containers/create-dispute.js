@@ -30,8 +30,6 @@ class CreateDispute extends React.Component {
       awaitingConfirmation: false,
       lastDisputeID: "",
       selectedSubcourt: "",
-      subcourts: [],
-      subcourtsLoading: true,
       arbitrationCost: "",
       primaryDocument: "",
       requester: "Party A",
@@ -43,34 +41,6 @@ class CreateDispute extends React.Component {
   }
 
   componentDidMount = async (e) => {
-    let subcourtURI,
-      subcourt,
-      subcourts = [],
-      counter = 0,
-      subcourtURIs = [];
-    while (counter < 100) {
-      subcourtURI = await this.props.getSubCourtDetailsCallback(counter++);
-      if (!subcourtURI) break;
-      subcourtURIs.push(subcourtURI);
-    }
-
-    for (var i = 0; i < subcourtURIs.length; i++) {
-      try {
-        if (subcourtURIs[i].includes("http")) {
-          subcourt = await fetch(subcourtURIs[i]);
-        } else {
-          subcourt = await fetch("https://ipfs.kleros.io" + subcourtURIs[i]);
-        }
-        subcourts[i] = await subcourt.json();
-      } catch (e) {
-        break;
-      }
-    }
-    await this.setState({
-      subcourts,
-      subcourtsLoading: false,
-    });
-
     this.onSubcourtSelect("0");
   };
 
@@ -178,8 +148,7 @@ class CreateDispute extends React.Component {
       lastDisputeID,
       primaryDocument,
       selectedSubcourt,
-      subcourts,
-      subcourtsLoading,
+
       fileInput,
       arbitrationCost,
       requester,
@@ -189,7 +158,7 @@ class CreateDispute extends React.Component {
       validated,
     } = this.state;
 
-    const { activeAddress } = this.props;
+    const { activeAddress, subcourtDetails, subcourtsLoading } = this.props;
 
     return (
       <Container fluid="true" className="main-content">
@@ -208,15 +177,16 @@ class CreateDispute extends React.Component {
                     <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
                     <Dropdown required onSelect={this.onSubcourtSelect}>
                       <Dropdown.Toggle id="subcourt-dropdown" block disabled={subcourtsLoading}>
-                        {(subcourtsLoading && "Loading...") || (selectedSubcourt && subcourts[selectedSubcourt].name) || "Please select a court"}
+                        {(subcourtsLoading && "Loading...") || (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt].name) || "Please select a court"}
                       </Dropdown.Toggle>
 
                       <Dropdown.Menu>
-                        {subcourts.map((subcourt, index) => (
-                          <Dropdown.Item key={index} eventKey={index}>
-                            {subcourt.name}
-                          </Dropdown.Item>
-                        ))}
+                        {subcourtDetails &&
+                          subcourtDetails.map((subcourt, index) => (
+                            <Dropdown.Item key={index} eventKey={index}>
+                              {subcourt.name}
+                            </Dropdown.Item>
+                          ))}
                       </Dropdown.Menu>
                     </Dropdown>
                   </Form.Group>
@@ -412,7 +382,7 @@ class CreateDispute extends React.Component {
         </Card>
 
         <Confirmation
-          selectedSubcourt={selectedSubcourt && subcourts[selectedSubcourt].name}
+          selectedSubcourt={selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt].name}
           initialNumberOfJurors={initialNumberOfJurors}
           arbitrationCost={arbitrationCost}
           title={title}

@@ -15,16 +15,12 @@ class openDisputeIDs extends React.Component {
   componentDidMount() {
     this.props.getOpenDisputesCallback().then((response) => {
       this.setState({ openDisputeIDs: response.openDisputes });
-      Promise.all(response.openDisputes.map((dispute) => this.props.getMetaEvidenceCallback(dispute).then((response) => this.setState({ [dispute]: response }))));
+      response.openDisputes.map((dispute) => this.props.getMetaEvidenceCallback(dispute).then((response) => this.setState({ [dispute]: response })));
 
-      Promise.all(
-        response.openDisputes.map((arbitratorDispute) =>
-          this.props.getArbitratorDisputeCallback(arbitratorDispute).then((response) => {
-            this.setState({ ["arbitrator" + arbitratorDispute]: response });
-
-            this.props.getSubcourtCallback(response.subcourtID).then((subcourtData) => this.setState({ [`subcourt${response.subcourtID}`]: subcourtData }));
-          })
-        )
+      response.openDisputes.map((arbitratorDispute) =>
+        this.props.getArbitratorDisputeCallback(arbitratorDispute).then((response) => {
+          this.setState({ ["arbitrator" + arbitratorDispute]: response });
+        })
       );
     });
   }
@@ -40,7 +36,7 @@ class openDisputeIDs extends React.Component {
     console.debug(this.props);
 
     const { openDisputeIDs, selectedDispute } = this.state;
-    const { subcourts } = this.props;
+    const { subcourts, subcourtDetails } = this.props;
 
     if (selectedDispute) return <Redirect to={`/interact/${selectedDispute}`} />;
 
@@ -54,19 +50,19 @@ class openDisputeIDs extends React.Component {
                   <Form.Row className="w-100">
                     <Col xs={12} style={{ textAlign: "center" }}>
                       <ScalesSVG style={{ float: "left", height: "100%", width: "auto" }} />
-                      {this.state[`arbitrator${dispute}`] && subcourts && <span>{subcourts[this.state[`arbitrator${dispute}`].subcourtID].name}</span>}
+                      {this.state[`arbitrator${dispute}`] && subcourtDetails && <span>{subcourtDetails[this.state[`arbitrator${dispute}`].subcourtID].name}</span>}
                       <span style={{ float: "right" }}>{dispute}</span>
                     </Col>
                   </Form.Row>
                 </Card.Header>
                 <Card.Body style={{ borderRadius: 0 }}>{this.state[dispute] && this.state[dispute].metaEvidenceJSON.title}</Card.Body>
                 <Card.Footer style={{ backgroundColor: "#F5F1FD", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px", borderTop: 0, textAlign: "end" }}>
-                  {this.state[`arbitrator${dispute}`] && this.state[`subcourt${this.state[`arbitrator${dispute}`].subcourtID}`] && (
+                  {subcourts && (
                     <>
                       {this.getPeriodName(this.state[`arbitrator${dispute}`].period)}{" "}
                       <Countdown
                         date={BigNumber("1000")
-                          .times(BigNumber(this.state[`arbitrator${dispute}`].lastPeriodChange).plus(BigNumber(this.state[`subcourt${this.state[`arbitrator${dispute}`].subcourtID}`].timesPerPeriod[this.state[`arbitrator${dispute}`].period])))
+                          .times(BigNumber(this.state[`arbitrator${dispute}`].lastPeriodChange).plus(BigNumber(subcourts[this.state[`arbitrator${dispute}`].subcourtID].timesPerPeriod[this.state[`arbitrator${dispute}`].period])))
                           .toNumber()}
                       />
                     </>

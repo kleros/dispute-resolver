@@ -33,7 +33,7 @@ class App extends React.Component {
       activeAddress: "",
       network: "",
       lastDisputeID: "",
-      dummy: "",
+      subcourtsLoading: true,
     };
     this.encoder = new TextEncoder();
   }
@@ -83,30 +83,36 @@ class App extends React.Component {
     let subcourtURI,
       subcourt,
       subcourts = [],
+      subcourtDetail,
+      subcourtDetails = [],
       counter = 0,
       subcourtURIs = [];
     while (counter < 100) {
       subcourtURI = await this.getSubCourtDetails(counter++);
       if (!subcourtURI) break;
+      subcourt = this.getSubcourt(counter - 1);
+      subcourts.push(subcourt);
       subcourtURIs.push(subcourtURI);
     }
 
     for (var i = 0; i < subcourtURIs.length; i++) {
       try {
         if (subcourtURIs[i].includes("http")) {
-          subcourt = await fetch(subcourtURIs[i]);
+          subcourtDetail = await fetch(subcourtURIs[i]);
         } else {
-          subcourt = await fetch("https://ipfs.kleros.io" + subcourtURIs[i]);
+          subcourtDetail = await fetch("https://ipfs.kleros.io" + subcourtURIs[i]);
         }
-        subcourts[i] = await subcourt.json();
+        subcourtDetails[i] = await subcourtDetail.json();
       } catch (e) {
         break;
       }
     }
     await this.setState({
-      subcourts,
+      subcourtDetails,
       subcourtsLoading: false,
     });
+
+    Promise.all(subcourts).then((subcourts) => this.setState({ subcourts }));
   }
 
   getOpenDisputes = async () => this.interactWithBinaryArbitrableProxy("call", "unused", "getOpenDisputes", 0, 0);
@@ -154,6 +160,8 @@ class App extends React.Component {
   passPeriod = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("send", 0, "passPeriod", arbitratorDisputeID);
 
   estimateGasOfPassPeriod = async (arbitratorDisputeID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "passPeriod", arbitratorDisputeID);
+
+  estimateGasOfGetSubcourtDetails = async (subcourtID) => EthereumInterface.estimateGas("PolicyRegistry", networkMap[this.state.network].KLEROS_LIQUID, this.activeAddress, 0, "policies", subcourtID);
 
   drawJurors = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("send", 0, "drawJurors", arbitratorDisputeID, 1000);
   estimateGasOfDrawJurors = async (arbitratorDisputeID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "drawJurors", arbitratorDisputeID, 1000);
@@ -239,7 +247,7 @@ class App extends React.Component {
   };
 
   render() {
-    const { activeAddress, network, lastDisputeID, subcourts } = this.state;
+    const { activeAddress, network, lastDisputeID, subcourts, subcourtDetails, subcourtsLoading } = this.state;
 
     console.log(this.state);
 
@@ -273,6 +281,7 @@ class App extends React.Component {
                       getArbitratorDisputeCallback={this.getArbitratorDispute}
                       getSubcourtCallback={this.getSubcourt}
                       getSubCourtDetailsCallback={this.getSubCourtDetails}
+                      subcourtDetails={subcourtDetails}
                       subcourts={subcourts}
                     />
                   </>
@@ -361,6 +370,7 @@ class App extends React.Component {
                     getArbitratorDisputeCallback={this.getArbitratorDispute}
                     getSubcourtCallback={this.getSubcourt}
                     getSubCourtDetailsCallback={this.getSubCourtDetails}
+                    subcourtDetails={subcourtDetails}
                     subcourts={subcourts}
                   />
                 </>
@@ -381,6 +391,8 @@ class App extends React.Component {
                     getSubCourtDetailsCallback={this.getSubCourtDetails}
                     publishCallback={this.onPublish}
                     web3={Web3}
+                    subcourtDetails={subcourtDetails}
+                    subcourtsLoading={subcourtsLoading}
                   />
                 </>
               )}
