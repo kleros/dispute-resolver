@@ -395,7 +395,7 @@ class CreateDispute extends React.Component {
                         <section id="dropzone">
                           <div {...getRootProps()} className="vertical-center">
                             <input {...getInputProps()} />
-                            <h5>{(fileInput && fileInput.path) || "Drag 'n' drop some files here, or click to select files. (optional)"}</h5>
+                            <h5 style={{ padding: "1rem" }}>{(fileInput && fileInput.path) || "Drag 'n' drop some files here, or click to select files. (optional)"}</h5>
                           </div>
                         </section>
                       )}
