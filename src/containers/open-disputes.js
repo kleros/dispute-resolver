@@ -57,7 +57,7 @@ class openDisputeIDs extends React.Component {
                 </Card.Header>
                 <Card.Body style={{ borderRadius: 0 }}>{this.state[dispute] && this.state[dispute].metaEvidenceJSON.title}</Card.Body>
                 <Card.Footer style={{ backgroundColor: "#F5F1FD", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px", borderTop: 0, textAlign: "end" }}>
-                  {subcourts && (
+                  {this.state[`arbitrator${dispute}`] && subcourts && (
                     <>
                       {this.getPeriodName(this.state[`arbitrator${dispute}`].period)}{" "}
                       <Countdown
