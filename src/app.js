@@ -1,4 +1,5 @@
 import React from "react";
+import ReactDOM from "react-dom";
 import { Container, Spinner } from "react-bootstrap";
 import "./app.css";
 import styled from "styled-components/macro";
@@ -53,6 +54,8 @@ class App extends React.Component {
   };
 
   async componentDidMount() {
+    this.setState({ footerHeightInPixels: ReactDOM.findDOMNode(this.refs.footer).clientHeight });
+
     const self = this;
     if (Web3) {
       this.setState({ network: await Web3.eth.net.getId() });
@@ -209,21 +212,22 @@ class App extends React.Component {
 
   render() {
     const { activeAddress, network, lastDisputeID } = this.state;
+    console.log(this.state);
 
     if (!network)
       return (
-        <Container fluid="true" style={{ position: "relative", minHeight: "100vh", paddingBottom: "7rem" }}>
+        <Container fluid="true" style={{ position: "relative", minHeight: "100vh", paddingBottom: `calc(3rem + ${this.state.footerHeightInPixels}px)` }}>
           <BrowserRouter>
             <TopBanner description="description" title="title" viewOnly={!activeAddress} />
             <_404 Web3={true} />
           </BrowserRouter>
-          <Footer appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[1]}etherscan.io/address/${networkMap[1].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/dispute-resolver"} />
+          <Footer ref="footer" appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[1]}etherscan.io/address/${networkMap[1].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/dispute-resolver"} />
         </Container>
       );
 
     if (!activeAddress)
       return (
-        <Container fluid="true" style={{ position: "relative", minHeight: "100vh", paddingBottom: "7rem" }}>
+        <Container fluid="true" style={{ position: "relative", minHeight: "100vh", paddingBottom: `calc(3rem + ${this.state.footerHeightInPixels}px)` }}>
           <BrowserRouter>
             <Switch>
               <Route
@@ -302,7 +306,7 @@ class App extends React.Component {
       );
 
     return (
-      <Container fluid="true" style={{ position: "relative", minHeight: "100vh", paddingBottom: "7rem" }}>
+      <Container fluid="true" style={{ position: "relative", minHeight: "100vh", paddingBottom: `calc(3rem + ${this.state.footerHeightInPixels}px)` }}>
         <BrowserRouter>
           <Switch>
             <Route
