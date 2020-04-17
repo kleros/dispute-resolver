@@ -37,8 +37,10 @@ class openDisputeIDs extends React.Component {
 
   render() {
     console.debug(this.state);
+    console.debug(this.props);
 
     const { openDisputeIDs, selectedDispute } = this.state;
+    const { subcourts } = this.props;
 
     if (selectedDispute) return <Redirect to={`/interact/${selectedDispute}`} />;
 
@@ -50,9 +52,10 @@ class openDisputeIDs extends React.Component {
               <Card style={{ cursor: "pointer", height: "100%" }} onClick={(e) => this.setState({ selectedDispute: dispute })}>
                 <Card.Header>
                   <Form.Row className="w-100">
-                    <Col xs={12}>
+                    <Col xs={12} style={{ textAlign: "center" }}>
                       <ScalesSVG style={{ float: "left", height: "100%", width: "auto" }} />
-                      <span style={{ float: "right" }}>#{dispute}</span>
+                      {this.state[`arbitrator${dispute}`] && subcourts && <span>{subcourts[this.state[`arbitrator${dispute}`].subcourtID].name}</span>}
+                      <span style={{ float: "right" }}>{dispute}</span>
                     </Col>
                   </Form.Row>
                 </Card.Header>
@@ -65,13 +68,6 @@ class openDisputeIDs extends React.Component {
                         date={BigNumber("1000")
                           .times(BigNumber(this.state[`arbitrator${dispute}`].lastPeriodChange).plus(BigNumber(this.state[`subcourt0`].timesPerPeriod[this.state[`arbitrator${dispute}`].period])))
                           .toNumber()}
-                        onComplete={() => {
-                          console.log("COMPLETE");
-                          const self = this;
-                          setInterval(function () {
-                            self.forceUpdate();
-                          }, 2000);
-                        }}
                       />
                     </>
                   )}

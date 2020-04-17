@@ -89,13 +89,16 @@ button.return {
 }
 
 button.ok {
-  background-color: #009aff;
+  background: #009aff;
   border-radius: 3px;
   color: white;
+  opacity: 0.9;
+  transition: opacity 1s;
 }
 
 button.ok:hover {
   background: linear-gradient(109.65deg, #009aff 45.81%, #63c1ff 82.89%);
+  opacity: 1;
 }
 
 .container-fluid {

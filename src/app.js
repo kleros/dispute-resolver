@@ -65,13 +65,13 @@ class App extends React.Component {
     }
 
     if (typeof window.ethereum !== "undefined") {
-      this.setState({ activeAddress: window.ethereum.selectedAddress });
+      await this.setState({ activeAddress: window.ethereum.selectedAddress });
       window.ethereum.on("accountsChanged", (accounts) => {
         this.setState({ activeAddress: accounts[0] });
       });
 
-      window.ethereum.on("networkChanged", (network) => {
-        this.setState({ network });
+      window.ethereum.on("networkChanged", async (network) => {
+        await this.setState({ network });
       });
 
       window.ethereum.on("data", (data) => {
@@ -79,6 +79,34 @@ class App extends React.Component {
         self.forceUpdate();
       });
     } else console.error("MetaMask not detected :(");
+
+    let subcourtURI,
+      subcourt,
+      subcourts = [],
+      counter = 0,
+      subcourtURIs = [];
+    while (counter < 100) {
+      subcourtURI = await this.getSubCourtDetails(counter++);
+      if (!subcourtURI) break;
+      subcourtURIs.push(subcourtURI);
+    }
+
+    for (var i = 0; i < subcourtURIs.length; i++) {
+      try {
+        if (subcourtURIs[i].includes("http")) {
+          subcourt = await fetch(subcourtURIs[i]);
+        } else {
+          subcourt = await fetch("https://ipfs.kleros.io" + subcourtURIs[i]);
+        }
+        subcourts[i] = await subcourt.json();
+      } catch (e) {
+        break;
+      }
+    }
+    await this.setState({
+      subcourts,
+      subcourtsLoading: false,
+    });
   }
 
   getOpenDisputes = async () => this.interactWithBinaryArbitrableProxy("call", "unused", "getOpenDisputes", 0, 0);
@@ -211,9 +239,9 @@ class App extends React.Component {
   };
 
   render() {
-    const { activeAddress, network, lastDisputeID } = this.state;
+    const { activeAddress, network, lastDisputeID, subcourts } = this.state;
 
-    const openDisputesProps = [];
+    console.log(this.state);
 
     if (!network)
       return (
@@ -244,6 +272,8 @@ class App extends React.Component {
                       getMetaEvidenceCallback={this.getMetaEvidenceWithArbitratorDisputeID}
                       getArbitratorDisputeCallback={this.getArbitratorDispute}
                       getSubcourtCallback={this.getSubcourt}
+                      getSubCourtDetailsCallback={this.getSubCourtDetails}
+                      subcourts={subcourts}
                     />
                   </>
                 )}
@@ -330,6 +360,8 @@ class App extends React.Component {
                     getMetaEvidenceCallback={this.getMetaEvidenceWithArbitratorDisputeID}
                     getArbitratorDisputeCallback={this.getArbitratorDispute}
                     getSubcourtCallback={this.getSubcourt}
+                    getSubCourtDetailsCallback={this.getSubCourtDetails}
+                    subcourts={subcourts}
                   />
                 </>
               )}
