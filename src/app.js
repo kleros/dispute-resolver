@@ -80,39 +80,28 @@ class App extends React.Component {
       });
     } else console.error("MetaMask not detected :(");
 
-    let subcourtURI,
-      subcourt,
+    let counter = 0,
       subcourts = [],
-      subcourtDetail,
       subcourtDetails = [],
-      counter = 0,
       subcourtURIs = [];
-    while (counter < 100) {
-      subcourtURI = await this.getSubCourtDetails(counter++);
-      if (!subcourtURI) break;
-      subcourt = this.getSubcourt(counter - 1);
-      subcourts.push(subcourt);
-      subcourtURIs.push(subcourtURI);
-    }
 
-    for (var i = 0; i < subcourtURIs.length; i++) {
+    while (true) {
       try {
-        if (subcourtURIs[i].includes("http")) {
-          subcourtDetail = await fetch(subcourtURIs[i]);
-        } else {
-          subcourtDetail = await fetch("https://ipfs.kleros.io" + subcourtURIs[i]);
-        }
-        subcourtDetails[i] = await subcourtDetail.json();
-      } catch (e) {
+        await this.estimateGasOfGetSubcourt(counter++);
+      } catch (err) {
         break;
       }
     }
-    await this.setState({
-      subcourtDetails,
-      subcourtsLoading: false,
-    });
 
-    Promise.all(subcourts).then((subcourts) => this.setState({ subcourts }));
+    for (var i = 0; i < counter - 1; i++) {
+      subcourtURIs[i] = this.getSubCourtDetails(i);
+      subcourts[i] = this.getSubcourt(i);
+    }
+    this.setState({
+      subcourtDetails: await Promise.all(subcourtURIs.map((promise) => promise.then((subcourtURI) => (subcourtURI.includes("http") ? fetch(subcourtURI) : fetch("https://ipfs.kleros.io" + subcourtURI)).then((response) => response.json())))),
+      subcourtsLoading: false,
+      subcourts: await Promise.all(subcourts),
+    });
   }
 
   getOpenDisputes = async () => this.interactWithBinaryArbitrableProxy("call", "unused", "getOpenDisputes", 0, 0);
@@ -161,7 +150,7 @@ class App extends React.Component {
 
   estimateGasOfPassPeriod = async (arbitratorDisputeID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "passPeriod", arbitratorDisputeID);
 
-  estimateGasOfGetSubcourtDetails = async (subcourtID) => EthereumInterface.estimateGas("PolicyRegistry", networkMap[this.state.network].KLEROS_LIQUID, this.activeAddress, 0, "policies", subcourtID);
+  estimateGasOfGetSubcourt = async (subcourtID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.activeAddress, 0, "getSubcourt", subcourtID);
 
   drawJurors = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("send", 0, "drawJurors", arbitratorDisputeID, 1000);
   estimateGasOfDrawJurors = async (arbitratorDisputeID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "drawJurors", arbitratorDisputeID, 1000);
