@@ -25,7 +25,6 @@ class Interact extends React.Component {
       evidenceFileURI: "",
       metaevidence: "",
       evidences: [],
-      subcourtDetails: {},
       modalShow: false,
       evidenceTitle: "",
       evidenceDescription: "",
@@ -205,13 +204,8 @@ class Interact extends React.Component {
       arbitrableDispute = await this.props.getArbitrableDisputeCallback(arbitrableDisputeID);
       arbitratorDispute = await this.props.getArbitratorDisputeCallback(arbitrableDispute.disputeIDOnArbitratorSide);
 
-      subcourtURI = await this.props.getSubCourtDetailsCallback(arbitratorDispute.subcourtID);
-      if (subcourtURI.includes("http")) subcourt = await fetch(subcourtURI);
-      else subcourt = await fetch(`https://ipfs.kleros.io${subcourtURI}`);
-
       await this.setState({
         dispute: arbitratorDispute,
-        subcourtDetails: await subcourt.json(),
         metaevidence: await this.props.getMetaEvidenceCallback(arbitrableDisputeID),
         arbitrableDispute,
         arbitratorDisputeID: arbitrableDispute.disputeIDOnArbitratorSide,
@@ -222,7 +216,6 @@ class Interact extends React.Component {
         disputeEvent: await this.props.getDisputeEventCallback(this.props.arbitrableAddress, arbitrableDispute.disputeIDOnArbitratorSide),
 
         getDisputeResult: await this.props.getDisputeCallback(arbitrableDispute.disputeIDOnArbitratorSide),
-        getSubcourtResult: await this.props.getSubcourtCallback(arbitratorDispute.subcourtID),
       });
     } catch (err) {
       console.error(err.message);
@@ -284,14 +277,13 @@ class Interact extends React.Component {
       currentRuling,
       ruling,
       withdrewAlready,
-      getSubcourtResult,
       getDisputeResult,
       disputeEvent,
       canPassPeriod,
       canDrawJurors,
     } = this.state;
 
-    const { activeAddress, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, passPhaseCallback, passPeriodCallback, drawJurorsCallback } = this.props;
+    const { activeAddress, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, passPhaseCallback, passPeriodCallback, drawJurorsCallback, subcourts } = this.props;
 
     return (
       <Container fluid="true" className="main-content">
@@ -439,12 +431,12 @@ class Interact extends React.Component {
                     <h3 style={{ color: "white" }}>
                       {this.getHumanReadablePeriod(dispute.period)}
 
-                      {dispute.lastPeriodChange && getSubcourtResult && getSubcourtResult[1][Number(dispute.period)] && (
+                      {dispute.lastPeriodChange && subcourts && subcourts[dispute.subcourtID].timesPerPeriod[Number(dispute.period)] && (
                         <>
                           {" Over in "}
                           <Countdown
                             date={BigNumber("1000")
-                              .times(BigNumber(dispute.lastPeriodChange).plus(BigNumber(getSubcourtResult[1][Number(dispute.period)])))
+                              .times(BigNumber(dispute.lastPeriodChange).plus(BigNumber(subcourts[dispute.subcourtID].timesPerPeriod[Number(dispute.period)])))
                               .toNumber()}
                             onComplete={() => {
                               console.log("COMPLETE");
@@ -460,12 +452,12 @@ class Interact extends React.Component {
 
                     {activeAddress &&
                       dispute.lastPeriodChange &&
-                      getSubcourtResult &&
-                      getSubcourtResult[1][Number(dispute.period)] &&
+                      subcourts &&
+                      subcourts[dispute.subcourtID].timesPerPeriod[Number(dispute.period)] &&
                       BigNumber(Date.now()).gt(
                         BigNumber("1000").times(
                           BigNumber(dispute.lastPeriodChange)
-                            .plus(BigNumber(getSubcourtResult[1][Number(dispute.period)]))
+                            .plus(BigNumber(subcourts[dispute.subcourtID].timesPerPeriod[Number(dispute.period)]))
                             .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS))
                         )
                       ) &&
@@ -484,12 +476,12 @@ class Interact extends React.Component {
 
                     {activeAddress &&
                       dispute.lastPeriodChange &&
-                      getSubcourtResult &&
-                      getSubcourtResult[1][Number(dispute.period)] &&
+                      subcourts &&
+                      subcourts[dispute.subcourtID].timesPerPeriod[Number(dispute.period)] &&
                       BigNumber(Date.now()).gt(
                         BigNumber("1000").times(
                           BigNumber(dispute.lastPeriodChange)
-                            .plus(BigNumber(getSubcourtResult[1][Number(dispute.period)]))
+                            .plus(BigNumber(subcourts[dispute.subcourtID].timesPerPeriod[Number(dispute.period)]))
                             .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS))
                         )
                       ) &&
@@ -509,12 +501,12 @@ class Interact extends React.Component {
                       )}
                     {activeAddress &&
                       dispute.lastPeriodChange &&
-                      getSubcourtResult &&
-                      getSubcourtResult[1][Number(dispute.period)] &&
+                      subcourts &&
+                      subcourts[dispute.subcourtID][1][Number(dispute.period)] &&
                       BigNumber(Date.now()).gt(
                         BigNumber("1000").times(
                           BigNumber(dispute.lastPeriodChange)
-                            .plus(BigNumber(getSubcourtResult[1][Number(dispute.period)]))
+                            .plus(BigNumber(subcourts[dispute.subcourtID].timesPerPeriod[Number(dispute.period)]))
                             .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS))
                         )
                       ) &&

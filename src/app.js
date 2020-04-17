@@ -268,8 +268,6 @@ class App extends React.Component {
                       getOpenDisputesCallback={this.getOpenDisputes}
                       getMetaEvidenceCallback={this.getMetaEvidenceWithArbitratorDisputeID}
                       getArbitratorDisputeCallback={this.getArbitratorDispute}
-                      getSubcourtCallback={this.getSubcourt}
-                      getSubCourtDetailsCallback={this.getSubCourtDetails}
                       subcourtDetails={subcourtDetails}
                       subcourts={subcourts}
                     />
@@ -304,7 +302,6 @@ class App extends React.Component {
                       getRulingCallback={this.getRuling}
                       getEvidencesCallback={this.getEvidences}
                       getMetaEvidenceCallback={this.getMetaEvidence}
-                      getSubCourtDetailsCallback={this.getSubCourtDetails}
                       publishCallback={this.onPublish}
                       submitEvidenceCallback={this.submitEvidence}
                       getDisputeCallback={this.getDispute}
@@ -313,7 +310,6 @@ class App extends React.Component {
                       withdrewAlreadyCallback={this.withdrewAlready}
                       withdrawFeesAndRewardsCallback={this.withdrawFeesAndRewardsForAllRounds}
                       activeAddress={activeAddress}
-                      getSubcourtCallback={this.getSubcourt}
                       passPeriodCallback={this.passPeriod}
                       drawJurorsCallback={this.drawJurors}
                       passPhaseCallback={this.passPhase}
@@ -321,6 +317,7 @@ class App extends React.Component {
                       estimateGasOfDrawJurorsCallback={this.estimateGasOfDrawJurors}
                       getRoundInfoCallback={this.getRoundInfo}
                       getAppealDecisionCallback={this.getAppealDecision}
+                      subcourts={subcourts}
                     />
                   </>
                 )}
@@ -357,8 +354,6 @@ class App extends React.Component {
                     getOpenDisputesCallback={this.getOpenDisputes}
                     getMetaEvidenceCallback={this.getMetaEvidenceWithArbitratorDisputeID}
                     getArbitratorDisputeCallback={this.getArbitratorDispute}
-                    getSubcourtCallback={this.getSubcourt}
-                    getSubCourtDetailsCallback={this.getSubCourtDetails}
                     subcourtDetails={subcourtDetails}
                     subcourts={subcourts}
                   />
@@ -377,7 +372,6 @@ class App extends React.Component {
                     route={route}
                     createDisputeCallback={this.createDispute}
                     getArbitrationCostCallback={this.getArbitrationCostWithCourtAndNoOfJurors}
-                    getSubCourtDetailsCallback={this.getSubCourtDetails}
                     publishCallback={this.onPublish}
                     web3={Web3}
                     subcourtDetails={subcourtDetails}
@@ -412,7 +406,6 @@ class App extends React.Component {
                     getRulingCallback={this.getRuling}
                     getEvidencesCallback={this.getEvidences}
                     getMetaEvidenceCallback={this.getMetaEvidence}
-                    getSubCourtDetailsCallback={this.getSubCourtDetails}
                     publishCallback={this.onPublish}
                     submitEvidenceCallback={this.submitEvidence}
                     getDisputeCallback={this.getDispute}
@@ -421,7 +414,6 @@ class App extends React.Component {
                     withdrewAlreadyCallback={this.withdrewAlready}
                     withdrawFeesAndRewardsCallback={this.withdrawFeesAndRewardsForAllRounds}
                     activeAddress={activeAddress}
-                    getSubcourtCallback={this.getSubcourt}
                     passPeriodCallback={this.passPeriod}
                     drawJurorsCallback={this.drawJurors}
                     passPhaseCallback={this.passPhase}
@@ -429,6 +421,7 @@ class App extends React.Component {
                     estimateGasOfDrawJurorsCallback={this.estimateGasOfDrawJurors}
                     getRoundInfoCallback={this.getRoundInfo}
                     getAppealDecisionCallback={this.getAppealDecision}
+                    subcourts={subcourts}
                   />
                 </>
               )}
