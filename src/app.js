@@ -212,7 +212,8 @@ class App extends React.Component {
 
   render() {
     const { activeAddress, network, lastDisputeID } = this.state;
-    console.log(this.state);
+
+    const openDisputesProps = [];
 
     if (!network)
       return (
@@ -236,7 +237,14 @@ class App extends React.Component {
                 render={(route) => (
                   <>
                     <TopBanner viewOnly={!activeAddress} route={route} />
-                    <OpenDisputes activeAddress={activeAddress} route={route} getOpenDisputesCallback={this.getOpenDisputes} getMetaEvidenceCallback={this.getMetaEvidenceWithArbitratorDisputeID} />
+                    <OpenDisputes
+                      activeAddress={activeAddress}
+                      route={route}
+                      getOpenDisputesCallback={this.getOpenDisputes}
+                      getMetaEvidenceCallback={this.getMetaEvidenceWithArbitratorDisputeID}
+                      getArbitratorDisputeCallback={this.getArbitratorDispute}
+                      getSubcourtCallback={this.getSubcourt}
+                    />
                   </>
                 )}
               />
@@ -315,7 +323,14 @@ class App extends React.Component {
               render={(route) => (
                 <>
                   <TopBanner viewOnly={!activeAddress} route={route} />
-                  <OpenDisputes activeAddress={activeAddress} route={route} getOpenDisputesCallback={this.getOpenDisputes} getMetaEvidenceCallback={this.getMetaEvidenceWithArbitratorDisputeID} />
+                  <OpenDisputes
+                    activeAddress={activeAddress}
+                    route={route}
+                    getOpenDisputesCallback={this.getOpenDisputes}
+                    getMetaEvidenceCallback={this.getMetaEvidenceWithArbitratorDisputeID}
+                    getArbitratorDisputeCallback={this.getArbitratorDispute}
+                    getSubcourtCallback={this.getSubcourt}
+                  />
                 </>
               )}
             />

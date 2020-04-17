@@ -2,6 +2,8 @@ import React from "react";
 import { Accordion, Container, Col, Row, Button, Form, Card, Dropdown } from "react-bootstrap";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 import { Redirect, Link } from "react-router-dom";
+import Countdown from "react-countdown-now";
+import BigNumber from "bignumber.js";
 
 const span = Object.freeze({ xs: 12, sm: 12, md: 6, lg: 4, xl: 3 });
 
@@ -13,9 +15,26 @@ class openDisputeIDs extends React.Component {
   componentDidMount() {
     this.props.getOpenDisputesCallback().then((response) => {
       this.setState({ openDisputeIDs: response.openDisputes });
-      Promise.all([response.openDisputes.map((dispute) => this.props.getMetaEvidenceCallback(dispute).then((response) => this.setState({ [dispute]: response })))]);
+      Promise.all(response.openDisputes.map((dispute) => this.props.getMetaEvidenceCallback(dispute).then((response) => this.setState({ [dispute]: response }))));
+
+      Promise.all(
+        response.openDisputes.map((arbitratorDispute) =>
+          this.props.getArbitratorDisputeCallback(arbitratorDispute).then((response) => {
+            this.setState({ ["arbitrator" + arbitratorDispute]: response });
+
+            this.props.getSubcourtCallback(response.subcourtID).then((subcourtData) => this.setState({ [`subcourt${response.subcourtID}`]: subcourtData }));
+          })
+        )
+      );
     });
   }
+
+  getPeriodName = (periodNumber) => {
+    const strings = ["Evidence Period", "Commit Period", "Vote Period", "Appeal Period", "Execution Period"];
+
+    return strings[periodNumber];
+  };
+
   render() {
     console.debug(this.state);
 
@@ -27,8 +46,8 @@ class openDisputeIDs extends React.Component {
       <Container fluid className="main-content">
         <Form.Row style={{ margin: 0 }}>
           {openDisputeIDs.map((dispute) => (
-            <Col key={dispute} xl={span.xl} lg={span.lg} md={span.md} sm={span.sm} xs={span.xs}>
-              <Card style={{ cursor: "pointer" }} onClick={(e) => this.setState({ selectedDispute: dispute })}>
+            <Col style={{ display: "flex", flexDirection: "column" }} key={dispute} xl={span.xl} lg={span.lg} md={span.md} sm={span.sm} xs={span.xs}>
+              <Card style={{ cursor: "pointer", height: "100%" }} onClick={(e) => this.setState({ selectedDispute: dispute })}>
                 <Card.Header>
                   <Form.Row className="w-100">
                     <Col xs={12}>
@@ -37,7 +56,26 @@ class openDisputeIDs extends React.Component {
                     </Col>
                   </Form.Row>
                 </Card.Header>
-                <Card.Body style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>{this.state[dispute] && this.state[dispute].metaEvidenceJSON.title}</Card.Body>
+                <Card.Body style={{ borderRadius: 0 }}>{this.state[dispute] && this.state[dispute].metaEvidenceJSON.title}</Card.Body>
+                <Card.Footer style={{ backgroundColor: "#F5F1FD", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px", borderTop: 0, textAlign: "end" }}>
+                  {this.state[`arbitrator${dispute}`] && this.state[`subcourt0`] && (
+                    <>
+                      {this.getPeriodName(this.state[`arbitrator${dispute}`].period)}{" "}
+                      <Countdown
+                        date={BigNumber("1000")
+                          .times(BigNumber(this.state[`arbitrator${dispute}`].lastPeriodChange).plus(BigNumber(this.state[`subcourt0`].timesPerPeriod[this.state[`arbitrator${dispute}`].period])))
+                          .toNumber()}
+                        onComplete={() => {
+                          console.log("COMPLETE");
+                          const self = this;
+                          setInterval(function () {
+                            self.forceUpdate();
+                          }, 2000);
+                        }}
+                      />
+                    </>
+                  )}
+                </Card.Footer>
               </Card>
             </Col>
           ))}
