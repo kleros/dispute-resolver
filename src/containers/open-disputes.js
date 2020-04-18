@@ -5,7 +5,7 @@ import { Redirect, Link } from "react-router-dom";
 import Countdown from "react-countdown-now";
 import BigNumber from "bignumber.js";
 
-const span = Object.freeze({ xs: 12, sm: 12, md: 6, lg: 4, xl: 3 });
+const span = Object.freeze({ xs: 12, sm: 12, md: 6, lg: 6, xl: 4 });
 
 class openDisputeIDs extends React.Component {
   constructor(props) {
