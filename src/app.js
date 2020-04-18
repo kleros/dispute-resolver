@@ -270,6 +270,7 @@ class App extends React.Component {
                       getArbitratorDisputeCallback={this.getArbitratorDispute}
                       subcourtDetails={subcourtDetails}
                       subcourts={subcourts}
+                      getCurrentRulingCallback={this.getCurrentRuling}
                     />
                   </>
                 )}
@@ -356,6 +357,7 @@ class App extends React.Component {
                     getArbitratorDisputeCallback={this.getArbitratorDispute}
                     subcourtDetails={subcourtDetails}
                     subcourts={subcourts}
+                    getCurrentRulingCallback={this.getCurrentRuling}
                   />
                 </>
               )}

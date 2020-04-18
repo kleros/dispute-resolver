@@ -370,7 +370,7 @@ span.input-group-text {
   align-self: center;
 }
 
-#warning {
+.warning {
   font-style: normal;
   font-weight: normal;
   font-size: 16px;
