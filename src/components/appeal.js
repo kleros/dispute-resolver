@@ -150,6 +150,19 @@ class Appeal extends React.Component {
     console.debug(this.state);
     console.debug(this.props);
 
+    const loserFailedToRaise =
+      crowdfundingStatus &&
+      appealPeriod &&
+      currentRuling != 0 &&
+      !crowdfundingStatus.hasPaid[3 - currentRuling] &&
+      BigNumber(Date.now()).gt(
+        BigNumber(appealPeriod.end)
+          .div(BigNumber(2))
+          .plus(BigNumber(appealPeriod.start).div(BigNumber(2)))
+          .times(BigNumber(1000))
+          .toNumber()
+      );
+
     return (
       <Container fluid="true">
         <Accordion defaultActiveKey="0">
@@ -352,12 +365,22 @@ class Appeal extends React.Component {
                               </Col>
                             </Form.Row>
 
-                            <Form.Row>
-                              <Col>
-                                <p className="warning">If one side is fully funded, the other side should also be fully funded in order to not to lose the dispute.</p>
-                                <p className="warning"> Loser can fund only in the first half of the appeal period.</p>
-                              </Col>
-                            </Form.Row>
+                            {!loserFailedToRaise && (
+                              <Form.Row>
+                                <Col>
+                                  <p className="warning">If one side is fully funded, the other side should also be fully funded in order to not to lose the dispute.</p>
+                                  <p className="warning"> Loser can fund only in the first half of the appeal period.</p>
+                                </Col>
+                              </Form.Row>
+                            )}
+                            {loserFailedToRaise && (
+                              <Form.Row>
+                                <Col>
+                                  <p className="warning">Loser failed to raise appeal funds before deadline, winner remains the same. </p>
+                                  <p className="warning">Awaiting winners deadline to be passed to execute the ruling. Please withdraw your funds back if you participated in crowdfunding. You can do so, in execution period, from this page, by clicking "Withdraw Funds" button.</p>
+                                </Col>
+                              </Form.Row>
+                            )}
                           </Card.Body>
                         </Card>
                       </Form.Group>
@@ -366,7 +389,7 @@ class Appeal extends React.Component {
                   {activeAddress && (
                     <Form.Row>
                       <Col>
-                        <Button disabled={!activeAddress} className="float-right ok" onClick={this.handleFundButtonClick}>
+                        <Button disabled={!activeAddress || loserFailedToRaise} className="float-right ok" onClick={this.handleFundButtonClick}>
                           Fund
                         </Button>
                       </Col>
