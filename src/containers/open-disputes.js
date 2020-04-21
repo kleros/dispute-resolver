@@ -13,15 +13,16 @@ class openDisputeIDs extends React.Component {
     this.state = { openDisputeIDs: [], arbitratorDisputes: {} };
   }
   componentDidMount() {
-    this.props.getOpenDisputesCallback().then((response) => {
-      this.setState({ openDisputeIDs: response.openDisputes });
-      response.openDisputes.map((dispute) => this.props.getMetaEvidenceCallback(dispute).then((response) => this.setState({ [dispute]: response })));
+    this.props.getOpenDisputesOnCourtCallback().then((openDisputeIDs) => {
+      this.setState({ openDisputeIDs: openDisputeIDs });
 
-      response.openDisputes.map((arbitratorDispute) => {
-        this.props.getArbitratorDisputeCallback(arbitratorDispute).then((response) => {
-          this.setState({ ["arbitrator" + arbitratorDispute]: response });
+      openDisputeIDs.map((arbitratorDispute) => {
+        this.props.getArbitratorDisputeCallback(arbitratorDispute).then((arbitratorDisputeDetails) => {
+          this.setState({ ["arbitrator" + arbitratorDispute]: arbitratorDisputeDetails });
+          openDisputeIDs.map((dispute) => this.props.getMetaEvidenceCallback(arbitratorDisputeDetails.arbitrated, dispute).then((metaevidence) => this.setState({ [dispute]: metaevidence })));
         });
-        this.props.getCurrentRulingCallback(arbitratorDispute).then((response) => this.setState({ ["arbitratorRuling" + arbitratorDispute]: response }));
+
+        this.props.getCurrentRulingCallback(arbitratorDispute).then((ruling) => this.setState({ ["arbitratorRuling" + arbitratorDispute]: ruling }));
       });
     });
   }
