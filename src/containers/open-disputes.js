@@ -87,6 +87,11 @@ class openDisputeIDs extends React.Component {
               )}
             </Col>
           ))}
+          {openDisputeIDs.length == 0 && (
+            <Col style={{ textAlign: "center", marginTop: "5rem" }}>
+              <h1>There are no open disputes.</h1>
+            </Col>
+          )}
         </Form.Row>
       </Container>
     );
