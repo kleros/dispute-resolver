@@ -118,7 +118,8 @@ class App extends React.Component {
     return openDisputes;
   };
 
-  getArbitrableDisputeID = async (arbitrableAddress, arbitratorDisputeID) => EthereumInterface.call("BinaryArbitrableProxy", networkMap[this.state.network], "externalIDtoLocalID", arbitratorDisputeID);
+  getArbitrableDisputeID = async (arbitrableAddress, arbitratorDisputeID) => EthereumInterface.call("BinaryArbitrableProxy", arbitrableAddress, "externalIDtoLocalID", arbitratorDisputeID);
+  getArbitrableDispute = async (arbitrableAddress, arbitrableDisputeID) => EthereumInterface.call("BinaryArbitrableProxy", arbitrableAddress, "disputes", arbitrableDisputeID);
 
   getArbitrationCost = (arbitratorAddress, extraData) => EthereumInterface.call("IArbitrator", arbitratorAddress, "arbitrationCost", extraData);
 
@@ -130,15 +131,13 @@ class App extends React.Component {
 
   getArbitratorDispute = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "disputes", arbitratorDisputeID);
 
-  getArbitrableDispute = async (arbitrableAddress, arbitrableDisputeID) => this.interactWithBinaryArbitrableProxy(arbitrableAddress, "call", "unused", "disputes", arbitrableDisputeID);
-
-  getCrowdfundingStatus = async (arbitrableAddress, arbitrableDisputeID) => this.interactWithBinaryArbitrableProxy(arbitrableAddress, "call", "unused", "crowdfundingStatus", arbitrableDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO);
+  getCrowdfundingStatus = (arbitrableAddress, arbitrableDisputeID) => EthereumInterface.call("BinaryArbitrableProxy", arbitrableAddress, "crowdfundingStatus", arbitrableDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO);
 
   getRoundInfo = async (arbitrableAddress, arbitrableDisputeID, round) => this.interactWithBinaryArbitrableProxy(arbitrableAddress, "call", "unused", "getRoundInfo", arbitrableDisputeID, round);
 
-  getMultipliers = async (arbitrableAddress) => this.interactWithBinaryArbitrableProxy(arbitrableAddress, "call", "unused", "getMultipliers");
+  getMultipliers = (arbitrableAddress) => EthereumInterface.call("BinaryArbitrableProxy", arbitrableAddress, "getMultipliers");
 
-  withdrewAlready = async (arbitrableAddress, arbitrableDisputeID) => this.interactWithBinaryArbitrableProxy(arbitrableAddress, "call", "unused", "withdrewAlready", arbitrableDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO);
+  withdrewAlready = async (arbitrableAddress, arbitrableDisputeID) => EthereumInterface.call("BinaryArbitrableProxy", arbitrableAddress, "withdrewAlready", arbitrableDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO);
 
   updateLastDisputeID = async (newDisputeID) => this.setState({ lastDisputeID: newDisputeID });
 
@@ -150,7 +149,7 @@ class App extends React.Component {
 
   getAppealCost = async (arbitratorDisputeID) => EthereumInterface.call("IArbitrator", networkMap[this.state.network].KLEROS_LIQUID, "appealCost", arbitratorDisputeID, "0x0");
 
-  appeal = async (arbitrableAddress, arbitrableDisputeID, party, contribution) => this.interactWithBinaryArbitrableProxy(arbitrableAddress, "send", contribution, "fundAppeal", arbitrableDisputeID, party);
+  appeal = (arbitrableAddress, arbitrableDisputeID, party, contribution) => EthereumInterface.send("BinaryArbitrableProxy", arbitrableAddress, this.state.activeAddress, contribution, "fundAppeal", arbitrableDisputeID, party);
 
   getAppealPeriod = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "appealPeriod", arbitratorDisputeID);
 
@@ -202,12 +201,12 @@ class App extends React.Component {
       disputeID // dispute unique identifier
     );
 
-  getMetaEvidence = async (arbitrableAddress, arbitratorDisputeID) =>
+  getMetaEvidence = (arbitrableAddress, arbitratorDisputeID) =>
     this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
-      .then((response) => this.state.archon.arbitrable.getMetaEvidence(arbitrableAddress, response.metaEvidenceID), { scriptParameters: { disputeID: arbitratorDisputeID } });
+      .then((response) => this.state.archon.arbitrable.getMetaEvidence(arbitrableAddress, response.metaEvidenceID, { scriptParameters: { disputeID: arbitratorDisputeID } }));
 
-  getEvidences = async (arbitrableAddress, arbitratorDisputeID) =>
+  getEvidences = (arbitrableAddress, arbitratorDisputeID) =>
     this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
       .then((response) => this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.metaEvidenceID));
@@ -227,7 +226,7 @@ class App extends React.Component {
 
   getContractInstance = (interfaceName, address) => EthereumInterface.contractInstance(interfaceName, address);
 
-  submitEvidence = async ({ disputeID, evidenceTitle, evidenceDescription, evidenceDocument, supportingSide }) => {
+  submitEvidence = async (arbitrableAddress, { disputeID, evidenceTitle, evidenceDescription, evidenceDocument, supportingSide }) => {
     const evidence = {
       name: evidenceTitle,
       description: evidenceDescription,
@@ -239,7 +238,7 @@ class App extends React.Component {
 
     const evidenceURI = `/ipfs/${ipfsHashEvidenceObj[1].hash}${ipfsHashEvidenceObj[0].path}`;
 
-    await this.interactWithBinaryArbitrableProxy(networkMap[this.state.network].BINARY_ARBITRABLE_PROXY, "send", 0, "submitEvidence", disputeID, evidenceURI);
+    await EthereumInterface.send("BinaryArbitrableProxy", arbitrableAddress, this.state.activeAddress, 0, "submitEvidence", disputeID, evidenceURI);
   };
 
   render() {
@@ -294,7 +293,7 @@ class App extends React.Component {
                     <TopBanner viewOnly={!activeAddress} route={route} />
 
                     <Interact
-                      arbitrableAddress={networkMap[network].BINARY_ARBITRABLE_PROXY}
+                      arbitratorAddress={networkMap[network].KLEROS_LIQUID}
                       route={route}
                       getArbitrableDisputeIDCallback={this.getArbitrableDisputeID}
                       getAppealCostCallback={this.getAppealCost}
@@ -400,7 +399,7 @@ class App extends React.Component {
                   <TopBanner viewOnly={!activeAddress} route={route} />
 
                   <Interact
-                    arbitrableAddress={networkMap[network].BINARY_ARBITRABLE_PROXY}
+                    arbitratorAddress={networkMap[network].KLEROS_LIQUID}
                     route={route}
                     getArbitrableDisputeIDCallback={this.getArbitrableDisputeID}
                     getAppealCostCallback={this.getAppealCost}

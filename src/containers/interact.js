@@ -19,8 +19,6 @@ class Interact extends React.Component {
     super(props);
     this.state = {
       arbitratorDisputeID: this.props.route && this.props.route.match.params.id,
-      arbitratorDispute: "",
-      arbitrableDispute: "",
       fileInput: "",
       evidenceFileURI: "",
       metaevidence: "",
@@ -34,14 +32,13 @@ class Interact extends React.Component {
       arbitrableIDLoading: false,
       fetchingString: "",
       currentRuling: "",
-      multipliers: "",
     };
 
     this.debouncedRetrieveUsingArbitratorID = debounce(this.retrieveDisputeDetailsUsingArbitratorID, 500, { leading: false, trailing: true });
   }
 
-  async componentDidMount() {
-    if (this.state.arbitratorDisputeID) await this.debouncedRetrieveUsingArbitratorID(this.state.arbitratorDisputeID);
+  componentDidMount() {
+    if (this.state.arbitratorDisputeID) this.debouncedRetrieveUsingArbitratorID(this.state.arbitratorDisputeID);
   }
 
   async componentDidUpdate(previousProperties) {
@@ -56,7 +53,6 @@ class Interact extends React.Component {
       "Appeal Period",
       "Execution Period",
       "Greek gods having trouble finding this dispute...",
-      `Fetching ${this.state.fetchingString}...`,
       `Dispute #${this.state.arbitratorDisputeID} doesn't belong to this arbitrable contract.`,
       `There is no such dispute. Are you in the correct network?`,
     ];
@@ -64,15 +60,22 @@ class Interact extends React.Component {
     return strings[periodNumber];
   };
 
+  MESSAGES = (code) => {
+    const strings = [`Fetching #${this.state.arbitratorDisputeID}`, "Failed to fetch, perhaps wrong network?"];
+
+    return strings[code];
+  };
+
   submitEvidence = async (evidence) => {
-    await this.props.submitEvidenceCallback({
+    await this.props.submitEvidenceCallback(this.state.arbitrated, {
       disputeID: this.state.arbitrableDisputeID,
       evidenceDescription: evidence.evidenceDescription,
       evidenceDocument: evidence.evidenceDocument,
       evidenceTitle: evidence.evidenceTitle,
       supportingSide: evidence.supportingSide,
     });
-    this.setState({ evidences: await this.props.getEvidencesCallback(this.props.arbitrableAddress, this.state.arbitrableDisputeID) });
+    console.log("submitted");
+    this.setState({ evidences: await this.props.getEvidencesCallback(this.state.arbitrated, this.state.arbitrableDisputeID) });
   };
 
   onDrop = async (acceptedFiles) => {
@@ -125,7 +128,7 @@ class Interact extends React.Component {
     });
   };
 
-  appeal = async (party, contribution) => this.props.appealCallback(this.state.arbitrableDisputeID, party, contribution);
+  appeal = async (party, contribution) => this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution);
 
   getWinnerMultiplier = async (arbitrableAddress) => {
     const winnerMultiplier = await this.props.getWinnerMultiplierCallback(arbitrableAddress);
@@ -135,14 +138,12 @@ class Interact extends React.Component {
 
   onDisputeIDChange = async (e) => {
     const arbitratorDisputeID = e.target.value;
-    if (arbitratorDisputeID === "") {
-      this.setState({ arbitratorDisputeID });
-    }
-    this.setState({ arbitrableIDLoading: true });
+
     this.setState({ arbitratorDisputeID: arbitratorDisputeID });
 
-    this.setState({
-      arbitrableDispute: "",
+    await this.setState({
+      arbitrableDispute: null,
+      arbitratorDispute: null,
     });
     await this.debouncedRetrieveUsingArbitratorID(arbitratorDisputeID);
   };
@@ -169,18 +170,19 @@ class Interact extends React.Component {
   };
 
   retrieveDisputeDetailsUsingArbitratorID = async (arbitratorDisputeID) => {
-    this.setState({
-      arbitratorDispute: { period: 6 },
-      fetchingString: `dispute #${arbitratorDisputeID} from Court`,
-    });
     let arbitrated;
+
+    this.setState({ interactionState: 0 });
     try {
       arbitrated = (await this.props.getArbitratorDisputeCallback(arbitratorDisputeID)).arbitrated;
+      this.setState({ arbitrated });
     } catch (e) {
       console.error(e);
-      this.setState({ arbitratorDispute: { period: 8 }, arbitrated });
+      this.setState({ interactionState: 1 });
       return;
     }
+
+    this.setState({ arbitrated });
 
     await this.commonFetchRoutine(arbitrated, arbitratorDisputeID);
   };
@@ -189,12 +191,11 @@ class Interact extends React.Component {
     let arbitratorDispute;
     let subcourtURI;
     let subcourt;
-    let crowdfundingStatus;
     let appealCost;
 
     try {
       arbitratorDispute = await this.props.getArbitratorDisputeCallback(arbitratorDisputeID);
-      await this.setState({
+      this.setState({
         arbitratorDispute,
         arbitratorDisputeID,
         metaevidence: await this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID),
@@ -207,7 +208,7 @@ class Interact extends React.Component {
       });
     } catch (err) {
       console.error(err.message);
-      this.setState({ arbitratorDispute: { period: 5 }, arbitratorDisputeID: "" });
+      this.setState({ interactionState: 1 });
     } finally {
     }
 
@@ -215,18 +216,24 @@ class Interact extends React.Component {
     let arbitrableDispute;
     let multipliers;
     let withdrewAlready;
+    let crowdfundingStatus;
+
     try {
-      arbitrableDisputeID = await this.props.getArbitrableDisputeID(arbitratorDisputeID);
-      multipliers = await this.props.getMultipliersCallback();
-      withdrewAlready = await this.props.withdrewAlreadyCallback(arbitrableDisputeID);
-      crowdfundingStatus = await this.props.getCrowdfundingStatusCallback(arbitrableDisputeID);
+      arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(arbitrated, arbitratorDisputeID);
+      arbitrableDispute = await this.props.getArbitrableDisputeCallback(arbitrated, arbitrableDisputeID);
+      multipliers = await this.props.getMultipliersCallback(arbitrated);
+      withdrewAlready = await this.props.withdrewAlreadyCallback(arbitrated, arbitrableDisputeID);
+      crowdfundingStatus = await this.props.getCrowdfundingStatusCallback(arbitrated, arbitrableDisputeID);
 
       this.setState({
+        arbitrableDisputeID,
+        arbitrableDispute,
         crowdfundingStatus,
         multipliers,
         withdrewAlready,
       });
     } catch (err) {
+      console.error("this one");
       console.error(err.message);
     }
 
@@ -251,9 +258,27 @@ class Interact extends React.Component {
     console.debug(this.props);
     console.debug(this.state);
 
-    const { arbitrableDisputeID, arbitratorDispute, arbitrableDispute, crowdfundingStatus, appealCost, arbitratorDisputeID, metaevidence, multipliers, evidences, currentRuling, ruling, withdrewAlready, getDisputeResult, disputeEvent, canPassPeriod, canDrawJurors } = this.state;
+    const {
+      arbitrated,
+      arbitrableDisputeID,
+      arbitratorDispute,
+      arbitrableDispute,
+      crowdfundingStatus,
+      appealCost,
+      arbitratorDisputeID,
+      metaevidence,
+      multipliers,
+      evidences,
+      currentRuling,
+      ruling,
+      withdrewAlready,
+      getDisputeResult,
+      disputeEvent,
+      canPassPeriod,
+      canDrawJurors,
+    } = this.state;
 
-    const { activeAddress, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, passPhaseCallback, passPeriodCallback, drawJurorsCallback, subcourts } = this.props;
+    const { arbitratorAddress, activeAddress, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, passPhaseCallback, passPeriodCallback, drawJurorsCallback, subcourts } = this.props;
 
     return (
       <Container fluid="true" className="main-content">
@@ -284,7 +309,6 @@ class Interact extends React.Component {
                           <FormControl
                             className="purple-inverted"
                             style={{ border: "1px solid #D09CFF", borderRadius: "3px" }}
-                            disabled={!arbitratorDispute}
                             placeholder="Dispute ID"
                             aria-label="Input dispute number from Court"
                             aria-describedby="search"
@@ -315,11 +339,25 @@ class Interact extends React.Component {
                               }}
                             >
                               <Form.Group id="markdown" className="markdown" style={{ paddingLeft: 0, color: "black" }}>
-                                {metaevidence.metaEvidenceJSON.description && <ReactMarkdown source={metaevidence.metaEvidenceJSON.description} />}
+                                {metaevidence.metaEvidenceJSON.description && metaevidence.metaEvidenceJSONValid && <ReactMarkdown source={metaevidence.metaEvidenceJSON.description} />}
                                 {!metaevidence.metaEvidenceJSON.description && <p>Not provided</p>}
                               </Form.Group>
+                              {metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI && metaevidence.interfaceValid && (
+                                <div className="iframe-container">
+                                  <iframe
+                                    className="embed-responsive-item"
+                                    src={
+                                      metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI.includes("://")
+                                        ? metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI
+                                        : `https://ipfs.kleros.io${metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI}` + encodeURI(`?{"arbitrableContractAddress":"${arbitrated}","arbitratorContractAddress":"${arbitratorAddress}","disputeID":"${arbitratorDisputeID}"}`)
+                                    }
+                                    title="evidence-display"
+                                    allowfullscreen
+                                  />
+                                </div>
+                              )}
                             </Card.Body>
-                            {metaevidence.metaEvidenceJSON.fileURI && (
+                            {metaevidence.metaEvidenceJSON.fileURI && metaevidence.fileValid && (
                               <Card
                                 className="text-center w-100 m-0"
                                 style={{
@@ -399,7 +437,7 @@ class Interact extends React.Component {
                     }}
                   >
                     <h3 style={{ color: "white" }}>
-                      {arbitratorDispute && this.getHumanReadablePeriod(arbitratorDispute.period)}
+                      {(arbitratorDispute && this.getHumanReadablePeriod(arbitratorDispute.period)) || this.MESSAGES(this.state.interactionState)}
 
                       {arbitratorDispute && arbitratorDispute.lastPeriodChange && subcourts && subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)] && (
                         <>
@@ -421,6 +459,7 @@ class Interact extends React.Component {
                     </h3>
 
                     {activeAddress &&
+                      arbitratorDispute &&
                       arbitratorDispute.lastPeriodChange &&
                       subcourts &&
                       subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)] &&
@@ -437,7 +476,7 @@ class Interact extends React.Component {
                           style={{ margin: "0 1rem" }}
                           onClick={async (e) => {
                             await passPeriodCallback(arbitratorDisputeID);
-                            this.commonFetchRoutine(arbitrableDisputeID);
+                            this.commonFetchRoutine(arbitratorDisputeID);
                           }}
                         >
                           Pass Dispute Period
@@ -445,6 +484,7 @@ class Interact extends React.Component {
                       )}
 
                     {activeAddress &&
+                      arbitratorDispute &&
                       arbitratorDispute.lastPeriodChange &&
                       subcourts &&
                       subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)] &&
@@ -463,13 +503,14 @@ class Interact extends React.Component {
                           style={{ margin: "0 1rem" }}
                           onClick={async (e) => {
                             await drawJurorsCallback(arbitratorDisputeID);
-                            this.commonFetchRoutine(arbitrableDisputeID);
+                            this.commonFetchRoutine(arbitratorDisputeID);
                           }}
                         >
                           Draw Jurors
                         </Button>
                       )}
                     {activeAddress &&
+                      arbitratorDispute &&
                       arbitratorDispute.lastPeriodChange &&
                       subcourts &&
                       subcourts[arbitratorDispute.subcourtID][1][Number(arbitratorDispute.period)] &&
@@ -487,7 +528,7 @@ class Interact extends React.Component {
                           style={{ margin: "0 1rem" }}
                           onClick={async (e) => {
                             await passPhaseCallback();
-                            this.commonFetchRoutine(arbitrableDisputeID);
+                            this.commonFetchRoutine(arbitratorDisputeID);
                           }}
                         >
                           Pass Court Phase
@@ -507,7 +548,7 @@ class Interact extends React.Component {
 
         {arbitrableDisputeID && arbitratorDispute && arbitratorDispute.period == 3 && arbitrableDispute && (
           <Appeal
-            crowdfundingStatus={getCrowdfundingStatusCallback(arbitrableDisputeID)}
+            crowdfundingStatus={getCrowdfundingStatusCallback(arbitrated, arbitrableDisputeID)}
             appealCost={appealCost}
             multipliers={multipliers}
             appealCallback={this.appeal}

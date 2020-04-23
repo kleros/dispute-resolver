@@ -442,3 +442,18 @@ input.form-control {
   box-sizing: border-box;
   border-radius: 3px;
 }
+
+.iframe-container {
+  overflow: hidden;
+  padding-top: 40%;
+  position: relative;
+}
+
+.iframe-container iframe {
+  border: 0;
+  height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
