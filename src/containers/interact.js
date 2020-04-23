@@ -19,7 +19,7 @@ class Interact extends React.Component {
     super(props);
     this.state = {
       arbitratorDisputeID: this.props.route && this.props.route.match.params.id,
-      dispute: "",
+      arbitratorDispute: "",
       arbitrableDispute: "",
       fileInput: "",
       evidenceFileURI: "",
@@ -45,7 +45,7 @@ class Interact extends React.Component {
   }
 
   async componentDidUpdate(previousProperties) {
-    if (this.props.disputeID !== previousProperties.disputeID) await this.setState({ disputeID: this.props.disputeID });
+    if (this.props.disputeID !== previousProperties.disputeID) await this.setState({ arbitrableDisputeID: this.props.disputeID });
   }
 
   PERIODS = (periodNumber) => {
@@ -66,13 +66,13 @@ class Interact extends React.Component {
 
   submitEvidence = async (evidence) => {
     await this.props.submitEvidenceCallback({
-      disputeID: this.state.disputeID,
+      disputeID: this.state.arbitrableDisputeID,
       evidenceDescription: evidence.evidenceDescription,
       evidenceDocument: evidence.evidenceDocument,
       evidenceTitle: evidence.evidenceTitle,
       supportingSide: evidence.supportingSide,
     });
-    this.setState({ evidences: await this.props.getEvidencesCallback(this.props.arbitrableAddress, this.state.disputeID) });
+    this.setState({ evidences: await this.props.getEvidencesCallback(this.props.arbitrableAddress, this.state.arbitrableDisputeID) });
   };
 
   onDrop = async (acceptedFiles) => {
@@ -104,7 +104,7 @@ class Interact extends React.Component {
 
   onSubmitButtonClick = async (e) => {
     e.preventDefault();
-    const { disputeID, fileInput, evidenceTitle, evidenceDescription } = this.state;
+    const { arbitrableDisputeID, fileInput, evidenceTitle, evidenceDescription } = this.state;
 
     var reader = new FileReader();
     reader.readAsArrayBuffer(fileInput);
@@ -117,7 +117,7 @@ class Interact extends React.Component {
 
       const { evidenceFileURI } = this.state;
       const receipt = await this.props.submitEvidenceCallback({
-        disputeID,
+        arbitrableDisputeID,
         evidenceTitle,
         evidenceDescription,
         evidenceFileURI,
@@ -125,7 +125,7 @@ class Interact extends React.Component {
     });
   };
 
-  appeal = async (party, contribution) => this.props.appealCallback(this.state.disputeID, party, contribution);
+  appeal = async (party, contribution) => this.props.appealCallback(this.state.arbitrableDisputeID, party, contribution);
 
   getWinnerMultiplier = async (arbitrableAddress) => {
     const winnerMultiplier = await this.props.getWinnerMultiplierCallback(arbitrableAddress);
@@ -145,29 +145,6 @@ class Interact extends React.Component {
       arbitrableDispute: "",
     });
     await this.debouncedRetrieveUsingArbitratorID(arbitratorDisputeID);
-  };
-
-  retrieveDisputeDetailsUsingArbitratorID = async (arbitratorDisputeID) => {
-    this.setState({
-      dispute: { period: 6 },
-      fetchingString: `dispute #${arbitratorDisputeID} from Court`,
-    });
-    let arbitrated;
-    try {
-      arbitrated = (await this.props.getArbitratorDisputeCallback(arbitratorDisputeID)).arbitrated;
-    } catch (e) {
-      console.error(e);
-      this.setState({ dispute: { period: 8 } });
-      return;
-    }
-    if (arbitrated == this.props.arbitrableAddress) {
-      const arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(arbitratorDisputeID);
-      await this.commonFetchRoutine(arbitrableDisputeID);
-    } else {
-      this.setState({
-        dispute: { period: 7 },
-      });
-    }
   };
 
   getCurrentRuling = async (disputeIDOnArbitratorSide) => {
@@ -191,48 +168,61 @@ class Interact extends React.Component {
     }
   };
 
-  commonFetchRoutine = async (arbitrableDisputeID) => {
+  retrieveDisputeDetailsUsingArbitratorID = async (arbitratorDisputeID) => {
+    this.setState({
+      arbitratorDispute: { period: 6 },
+      fetchingString: `dispute #${arbitratorDisputeID} from Court`,
+    });
+    let arbitrated;
+    try {
+      arbitrated = (await this.props.getArbitratorDisputeCallback(arbitratorDisputeID)).arbitrated;
+    } catch (e) {
+      console.error(e);
+      this.setState({ arbitratorDispute: { period: 8 }, arbitrated });
+      return;
+    }
+
+    await this.commonFetchRoutine(arbitrated, arbitratorDisputeID);
+  };
+
+  commonFetchRoutine = async (arbitrated, arbitratorDisputeID) => {
     let arbitratorDispute;
-    let arbitrableDispute;
     let subcourtURI;
     let subcourt;
     let crowdfundingStatus;
     let appealCost;
-    let multipliers;
-    let withdrewAlready;
+
     try {
-      arbitrableDispute = await this.props.getArbitrableDisputeCallback(arbitrableDisputeID);
-      arbitratorDispute = await this.props.getArbitratorDisputeCallback(arbitrableDispute.disputeIDOnArbitratorSide);
-
+      arbitratorDispute = await this.props.getArbitratorDisputeCallback(arbitratorDisputeID);
       await this.setState({
-        dispute: arbitratorDispute,
-        metaevidence: await this.props.getMetaEvidenceCallback(arbitrableDisputeID),
-        arbitrableDispute,
-        arbitratorDisputeID: arbitrableDispute.disputeIDOnArbitratorSide,
-        disputeID: arbitrableDisputeID,
-        evidences: await this.props.getEvidencesCallback(this.props.arbitrableAddress, arbitrableDisputeID),
-        ruling: await this.getRuling(this.props.arbitrableAddress, arbitrableDispute.disputeIDOnArbitratorSide),
-        currentRuling: await this.getCurrentRuling(arbitrableDispute.disputeIDOnArbitratorSide),
-        disputeEvent: await this.props.getDisputeEventCallback(this.props.arbitrableAddress, arbitrableDispute.disputeIDOnArbitratorSide),
-
-        getDisputeResult: await this.props.getDisputeCallback(arbitrableDispute.disputeIDOnArbitratorSide),
+        arbitratorDispute,
+        arbitratorDisputeID,
+        metaevidence: await this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID),
+        evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
+        ruling: await this.getRuling(arbitrated, arbitratorDisputeID),
+        currentRuling: await this.getCurrentRuling(arbitratorDisputeID),
+        disputeEvent: await this.props.getDisputeEventCallback(arbitrated, arbitratorDisputeID),
+        getDisputeResult: await this.props.getDisputeCallback(arbitratorDisputeID),
+        appealCost: await this.props.getAppealCostCallback(arbitratorDisputeID),
       });
     } catch (err) {
       console.error(err.message);
-      this.setState({ dispute: { period: 5 }, arbitratorDisputeID: "" });
+      this.setState({ arbitratorDispute: { period: 5 }, arbitratorDisputeID: "" });
     } finally {
-      this.setState({ arbitrableIDLoading: false, arbitratorIDLoading: false });
     }
 
+    let arbitrableDisputeID;
+    let arbitrableDispute;
+    let multipliers;
+    let withdrewAlready;
     try {
-      appealCost = await this.props.getAppealCostCallback(arbitrableDispute.disputeIDOnArbitratorSide);
+      arbitrableDisputeID = await this.props.getArbitrableDisputeID(arbitratorDisputeID);
       multipliers = await this.props.getMultipliersCallback();
       withdrewAlready = await this.props.withdrewAlreadyCallback(arbitrableDisputeID);
       crowdfundingStatus = await this.props.getCrowdfundingStatusCallback(arbitrableDisputeID);
 
       this.setState({
         crowdfundingStatus,
-        appealCost,
         multipliers,
         withdrewAlready,
       });
@@ -241,19 +231,18 @@ class Interact extends React.Component {
     }
 
     try {
-      this.setState({ canPassPeriod: await this.props.estimateGasOfPassPeriodCallback(arbitrableDispute.disputeIDOnArbitratorSide) });
+      this.setState({ canPassPeriod: await this.props.estimateGasOfPassPeriodCallback(arbitratorDisputeID) });
     } catch {
       this.setState({ canPassPeriod: false });
     }
 
     try {
-      this.setState({ canDrawJurors: await this.props.estimateGasOfDrawJurorsCallback(arbitrableDispute.disputeIDOnArbitratorSide) });
-      console.log("2nd");
+      this.setState({ canDrawJurors: await this.props.estimateGasOfDrawJurorsCallback(arbitratorDisputeID) });
     } catch {
       this.setState({ canDrawJurors: false });
     }
 
-    this.setState({ appealDecisions: await this.props.getAppealDecisionCallback(arbitrableDispute.disputeIDOnArbitratorSide) });
+    this.setState({ appealDecisions: await this.props.getAppealDecisionCallback(arbitratorDisputeID) });
   };
 
   getHumanReadablePeriod = (period) => this.PERIODS(period);
@@ -262,26 +251,7 @@ class Interact extends React.Component {
     console.debug(this.props);
     console.debug(this.state);
 
-    const {
-      disputeID,
-      dispute,
-      arbitrableDispute,
-      crowdfundingStatus,
-      appealCost,
-      arbitratorDisputeID,
-      arbitratorIDLoading,
-      arbitrableIDLoading,
-      metaevidence,
-      multipliers,
-      evidences,
-      currentRuling,
-      ruling,
-      withdrewAlready,
-      getDisputeResult,
-      disputeEvent,
-      canPassPeriod,
-      canDrawJurors,
-    } = this.state;
+    const { arbitrableDisputeID, arbitratorDispute, arbitrableDispute, crowdfundingStatus, appealCost, arbitratorDisputeID, metaevidence, multipliers, evidences, currentRuling, ruling, withdrewAlready, getDisputeResult, disputeEvent, canPassPeriod, canDrawJurors } = this.state;
 
     const { activeAddress, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, passPhaseCallback, passPeriodCallback, drawJurorsCallback, subcourts } = this.props;
 
@@ -314,7 +284,7 @@ class Interact extends React.Component {
                           <FormControl
                             className="purple-inverted"
                             style={{ border: "1px solid #D09CFF", borderRadius: "3px" }}
-                            disabled={arbitratorIDLoading}
+                            disabled={!arbitratorDispute}
                             placeholder="Dispute ID"
                             aria-label="Input dispute number from Court"
                             aria-describedby="search"
@@ -327,7 +297,7 @@ class Interact extends React.Component {
                         </InputGroup>
                       </Col>
                     </Form.Row>
-                    {arbitrableDispute && metaevidence.metaEvidenceJSON && (
+                    {arbitratorDispute && metaevidence.metaEvidenceJSON && (
                       <>
                         <Form.Row>
                           <Col>
@@ -390,14 +360,14 @@ class Interact extends React.Component {
                           >
                             <Card.Body style={{ padding: 0 }}>
                               <EvidenceTimeline
-                                evidenceSubmissionEnabled={Boolean(activeAddress)}
+                                evidenceSubmissionEnabled={Boolean(activeAddress) && arbitrableDispute}
                                 numberOfVotesCast={Number(getDisputeResult.votesInEachRound.slice(-1)[0])}
                                 metaevidence={metaevidence}
                                 evidences={evidences}
                                 ruling={ruling}
                                 currentRuling={Number(currentRuling)}
                                 dispute={disputeEvent}
-                                disputePeriod={parseInt(dispute.period)}
+                                disputePeriod={parseInt(arbitratorDispute.period)}
                                 publishCallback={publishCallback}
                                 submitEvidenceCallback={this.submitEvidence}
                                 appealDecisions={this.state.appealDecisions}
@@ -429,14 +399,14 @@ class Interact extends React.Component {
                     }}
                   >
                     <h3 style={{ color: "white" }}>
-                      {this.getHumanReadablePeriod(dispute.period)}
+                      {arbitratorDispute && this.getHumanReadablePeriod(arbitratorDispute.period)}
 
-                      {dispute.lastPeriodChange && subcourts && subcourts[dispute.subcourtID].timesPerPeriod[Number(dispute.period)] && (
+                      {arbitratorDispute && arbitratorDispute.lastPeriodChange && subcourts && subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)] && (
                         <>
                           {" Over in "}
                           <Countdown
                             date={BigNumber("1000")
-                              .times(BigNumber(dispute.lastPeriodChange).plus(BigNumber(subcourts[dispute.subcourtID].timesPerPeriod[Number(dispute.period)])))
+                              .times(BigNumber(arbitratorDispute.lastPeriodChange).plus(BigNumber(subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)])))
                               .toNumber()}
                             onComplete={() => {
                               console.log("COMPLETE");
@@ -451,13 +421,13 @@ class Interact extends React.Component {
                     </h3>
 
                     {activeAddress &&
-                      dispute.lastPeriodChange &&
+                      arbitratorDispute.lastPeriodChange &&
                       subcourts &&
-                      subcourts[dispute.subcourtID].timesPerPeriod[Number(dispute.period)] &&
+                      subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)] &&
                       BigNumber(Date.now()).gt(
                         BigNumber("1000").times(
-                          BigNumber(dispute.lastPeriodChange)
-                            .plus(BigNumber(subcourts[dispute.subcourtID].timesPerPeriod[Number(dispute.period)]))
+                          BigNumber(arbitratorDispute.lastPeriodChange)
+                            .plus(BigNumber(subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)]))
                             .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS))
                         )
                       ) &&
@@ -467,7 +437,7 @@ class Interact extends React.Component {
                           style={{ margin: "0 1rem" }}
                           onClick={async (e) => {
                             await passPeriodCallback(arbitratorDisputeID);
-                            this.commonFetchRoutine(disputeID);
+                            this.commonFetchRoutine(arbitrableDisputeID);
                           }}
                         >
                           Pass Dispute Period
@@ -475,17 +445,17 @@ class Interact extends React.Component {
                       )}
 
                     {activeAddress &&
-                      dispute.lastPeriodChange &&
+                      arbitratorDispute.lastPeriodChange &&
                       subcourts &&
-                      subcourts[dispute.subcourtID].timesPerPeriod[Number(dispute.period)] &&
+                      subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)] &&
                       BigNumber(Date.now()).gt(
                         BigNumber("1000").times(
-                          BigNumber(dispute.lastPeriodChange)
-                            .plus(BigNumber(subcourts[dispute.subcourtID].timesPerPeriod[Number(dispute.period)]))
+                          BigNumber(arbitratorDispute.lastPeriodChange)
+                            .plus(BigNumber(subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)]))
                             .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS))
                         )
                       ) &&
-                      dispute.period == 0 &&
+                      arbitratorDispute.period == 0 &&
                       !canPassPeriod &&
                       canDrawJurors && (
                         <Button
@@ -493,38 +463,38 @@ class Interact extends React.Component {
                           style={{ margin: "0 1rem" }}
                           onClick={async (e) => {
                             await drawJurorsCallback(arbitratorDisputeID);
-                            this.commonFetchRoutine(disputeID);
+                            this.commonFetchRoutine(arbitrableDisputeID);
                           }}
                         >
                           Draw Jurors
                         </Button>
                       )}
                     {activeAddress &&
-                      dispute.lastPeriodChange &&
+                      arbitratorDispute.lastPeriodChange &&
                       subcourts &&
-                      subcourts[dispute.subcourtID][1][Number(dispute.period)] &&
+                      subcourts[arbitratorDispute.subcourtID][1][Number(arbitratorDispute.period)] &&
                       BigNumber(Date.now()).gt(
                         BigNumber("1000").times(
-                          BigNumber(dispute.lastPeriodChange)
-                            .plus(BigNumber(subcourts[dispute.subcourtID].timesPerPeriod[Number(dispute.period)]))
+                          BigNumber(arbitratorDispute.lastPeriodChange)
+                            .plus(BigNumber(subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)]))
                             .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS))
                         )
                       ) &&
-                      dispute.period == 0 &&
+                      arbitratorDispute.period == 0 &&
                       !canPassPeriod &&
                       !canDrawJurors && (
                         <Button
                           style={{ margin: "0 1rem" }}
                           onClick={async (e) => {
                             await passPhaseCallback();
-                            this.commonFetchRoutine(disputeID);
+                            this.commonFetchRoutine(arbitrableDisputeID);
                           }}
                         >
                           Pass Court Phase
                         </Button>
                       )}
-                    {activeAddress && dispute && dispute.period == 4 && (
-                      <Button className="ok" style={{ margin: "0 1rem" }} disabled={withdrewAlready} onClick={(e) => withdrawFeesAndRewardsCallback(disputeID)}>
+                    {activeAddress && arbitratorDispute && arbitratorDispute.period == 4 && (
+                      <Button className="ok" style={{ margin: "0 1rem" }} disabled={withdrewAlready} onClick={(e) => withdrawFeesAndRewardsCallback(arbitrableDisputeID)}>
                         {withdrewAlready ? "Withdrew Already" : "Withdraw Funds"}
                       </Button>
                     )}
@@ -535,14 +505,14 @@ class Interact extends React.Component {
           </Card>
         </Accordion>
 
-        {dispute && dispute.period == 3 && arbitrableDispute && (
+        {arbitrableDisputeID && arbitratorDispute && arbitratorDispute.period == 3 && arbitrableDispute && (
           <Appeal
-            crowdfundingStatus={getCrowdfundingStatusCallback(disputeID)}
+            crowdfundingStatus={getCrowdfundingStatusCallback(arbitrableDisputeID)}
             appealCost={appealCost}
             multipliers={multipliers}
             appealCallback={this.appeal}
-            appealPeriod={getAppealPeriodCallback(arbitrableDispute.disputeIDOnArbitratorSide)}
-            currentRuling={getCurrentRulingCallback(arbitrableDispute.disputeIDOnArbitratorSide)}
+            appealPeriod={getAppealPeriodCallback(arbitratorDisputeID)}
+            currentRuling={getCurrentRulingCallback(arbitratorDisputeID)}
             metaevidence={metaevidence}
             activeAddress={activeAddress}
           />

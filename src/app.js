@@ -41,7 +41,7 @@ class App extends React.Component {
 
   interactWithKlerosLiquid = async (interactionType, txValue, methodName, ...args) => this.interactWithContract("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, interactionType, txValue, methodName, ...args);
 
-  interactWithBinaryArbitrableProxy = async (arbitrableAddress, interactionType, txValue, methodName, ...args) => this.interactWithContract("BinaryArbitrableProxy", arbitrableAddress, interactionType, txValue, methodName, ...args);
+  interactWithBinaryArbitrableProxy = async (arbitrableAddress, interactionType, txValue, methodName, ...args) => this.interactWithContract("IArbitrable", arbitrableAddress, interactionType, txValue, methodName, ...args);
 
   interactWithContract = async (contractName, contractAddress, interactionType, txValue, methodName, ...args) => {
     if (interactionType === "call") {
@@ -118,7 +118,7 @@ class App extends React.Component {
     return openDisputes;
   };
 
-  getArbitrableDisputeID = async (arbitrableAddress, arbitratorDisputeID) => this.interactWithBinaryArbitrableProxy(arbitrableAddress, "call", "unused", "externalIDtoLocalID", arbitratorDisputeID);
+  getArbitrableDisputeID = async (arbitrableAddress, arbitratorDisputeID) => EthereumInterface.call("BinaryArbitrableProxy", networkMap[this.state.network], "externalIDtoLocalID", arbitratorDisputeID);
 
   getArbitrationCost = (arbitratorAddress, extraData) => EthereumInterface.call("IArbitrator", arbitratorAddress, "arbitrationCost", extraData);
 
@@ -192,8 +192,7 @@ class App extends React.Component {
     const metaevidenceURI = `/ipfs/${ipfsHashMetaEvidenceObj[1].hash}${ipfsHashMetaEvidenceObj[0].path}`;
 
     const arbitrationCost = await this.getArbitrationCost(arbitrator, arbitratorExtraData);
-
-    return this.interactWithBinaryArbitrableProxy(networkMap[this.state.network].BINARY_ARBITRABLE_PROXY, "send", arbitrationCost, "createDispute", arbitratorExtraData, metaevidenceURI);
+    return EthereumInterface.send("BinaryArbitrableProxy", networkMap[this.state.network].BINARY_ARBITRABLE_PROXY, this.state.activeAddress, arbitrationCost, "createDispute", arbitratorExtraData, metaevidenceURI);
   };
 
   getDisputeEvent = async (arbitrableAddress, disputeID) =>
@@ -203,8 +202,15 @@ class App extends React.Component {
       disputeID // dispute unique identifier
     );
 
-  getMetaEvidence = async (arbitrableAddress, disputeID) =>
-    this.state.archon.arbitrable.getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, disputeID).then((response) => this.state.archon.arbitrable.getMetaEvidence(arbitrableAddress, response.metaEvidenceID));
+  getMetaEvidence = async (arbitrableAddress, arbitratorDisputeID) =>
+    this.state.archon.arbitrable
+      .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
+      .then((response) => this.state.archon.arbitrable.getMetaEvidence(arbitrableAddress, response.metaEvidenceID), { scriptParameters: { disputeID: arbitratorDisputeID } });
+
+  getEvidences = async (arbitrableAddress, arbitratorDisputeID) =>
+    this.state.archon.arbitrable
+      .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
+      .then((response) => this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.metaEvidenceID));
 
   getAppealDecision = async (arbitratorDisputeID) => {
     const contractInstance = EthereumInterface.contractInstance("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID);
@@ -215,9 +221,7 @@ class App extends React.Component {
     });
   };
 
-  getDispute = async (disputeID) => this.interactWithKlerosLiquid("call", "unused", "getDispute", disputeID);
-
-  getEvidences = async (arbitrableAddress, arbitrableDisputeID) => await this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitrableDisputeID);
+  getDispute = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "getDispute", arbitratorDisputeID);
 
   getRuling = async (arbitrableAddress, arbitratorDisputeID) => await this.state.archon.arbitrable.getRuling(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID);
 
