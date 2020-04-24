@@ -145,7 +145,7 @@ class App extends React.Component {
 
   generateArbitratorExtraData = (subcourtID, noOfJurors) => `0x${parseInt(subcourtID, 10).toString(16).padStart(64, "0") + parseInt(noOfJurors, 10).toString(16).padStart(64, "0")}`;
 
-  withdrawFeesAndRewardsForAllRounds = async (arbitrableAddress, arbitrableDispute) => this.interactWithBinaryArbitrableProxy(arbitrableAddress, "send", "0", "withdrawFeesAndRewardsForAllRounds", arbitrableDispute, this.state.activeAddress);
+  withdrawFeesAndRewardsForAllRounds = (arbitrableAddress, arbitrableDispute) => EthereumInterface.send("BinaryArbitrableProxy", arbitrableAddress, this.state.activeAddress, "0", "withdrawFeesAndRewardsForAllRounds", arbitrableDispute, this.state.activeAddress);
 
   getAppealCost = async (arbitratorDisputeID) => EthereumInterface.call("IArbitrator", networkMap[this.state.network].KLEROS_LIQUID, "appealCost", arbitratorDisputeID, "0x0");
 
@@ -271,7 +271,6 @@ class App extends React.Component {
                     <OpenDisputes
                       activeAddress={activeAddress}
                       route={route}
-                      getOpenDisputesCallback={this.getOpenDisputes}
                       getMetaEvidenceCallback={this.getMetaEvidence}
                       getArbitratorDisputeCallback={this.getArbitratorDispute}
                       subcourtDetails={subcourtDetails}
@@ -359,7 +358,6 @@ class App extends React.Component {
                   <OpenDisputes
                     activeAddress={activeAddress}
                     route={route}
-                    getOpenDisputesCallback={this.getOpenDisputes}
                     getMetaEvidenceCallback={this.getMetaEvidence}
                     getArbitratorDisputeCallback={this.getArbitratorDispute}
                     subcourtDetails={subcourtDetails}

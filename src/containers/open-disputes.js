@@ -1,5 +1,5 @@
 import React from "react";
-import { Accordion, Container, Col, Row, Button, Form, Card, Dropdown, Badge } from "react-bootstrap";
+import { Accordion, Container, Col, Row, Button, Form, Card, Dropdown, Badge, Spinner } from "react-bootstrap";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 import { Redirect, Link } from "react-router-dom";
 import Countdown from "react-countdown-now";
@@ -10,16 +10,16 @@ const span = Object.freeze({ xs: 12, sm: 12, md: 6, lg: 6, xl: 4 });
 class openDisputeIDs extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { openDisputeIDs: [], arbitratorDisputes: {} };
+    this.state = { openDisputeIDs: [], arbitratorDisputes: {}, loading: true };
   }
   componentDidMount() {
     this.props.getOpenDisputesOnCourtCallback().then((openDisputeIDs) => {
-      this.setState({ openDisputeIDs: openDisputeIDs });
+      this.setState({ openDisputeIDs: openDisputeIDs, loading: false });
 
       openDisputeIDs.map((arbitratorDispute) => {
         this.props.getArbitratorDisputeCallback(arbitratorDispute).then((arbitratorDisputeDetails) => {
           this.setState({ ["arbitrator" + arbitratorDispute]: arbitratorDisputeDetails });
-          openDisputeIDs.map((dispute) => this.props.getMetaEvidenceCallback(arbitratorDisputeDetails.arbitrated, dispute).then((metaevidence) => this.setState({ [dispute]: metaevidence })));
+          this.props.getMetaEvidenceCallback(arbitratorDisputeDetails.arbitrated, arbitratorDispute).then((metaevidence) => this.setState({ [arbitratorDispute]: metaevidence }));
         });
 
         this.props.getCurrentRulingCallback(arbitratorDispute).then((ruling) => this.setState({ ["arbitratorRuling" + arbitratorDispute]: ruling }));
@@ -66,7 +66,7 @@ class openDisputeIDs extends React.Component {
                       <Form.Row style={{ marginTop: "auto", paddingTop: "2.5rem" }}>
                         <Col>
                           <Badge style={{ fontSize: "1rem", padding: "0.6rem 0.6rem" }} className="purple text-wrap w-100">
-                            Jurors ruled: {this.state[dispute].metaEvidenceJSON.rulingOptions.titles[this.state[`arbitratorRuling${dispute}`] - 1]}
+                            Jurors ruled: {["Draw / Refused to Rule", ...this.state[dispute].metaEvidenceJSON.rulingOptions.titles][this.state[`arbitratorRuling${dispute}`]]}
                           </Badge>
                         </Col>
                       </Form.Row>
@@ -88,10 +88,15 @@ class openDisputeIDs extends React.Component {
               )}
             </Col>
           ))}
-          {openDisputeIDs.length == 0 && (
+          {!this.state.loading && openDisputeIDs.length == 0 && (
             <Col style={{ textAlign: "center", marginTop: "5rem" }}>
               <h1>There are no open disputes.</h1>
             </Col>
+          )}
+          {this.state.loading && (
+            <div style={{ margin: "auto", marginTop: "5vh" }}>
+              <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" style={{ width: "5rem", height: "5rem" }} className="purple-inverted" />
+            </div>
           )}
         </Form.Row>
       </Container>
