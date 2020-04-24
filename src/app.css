@@ -445,8 +445,14 @@ input.form-control {
 
 .iframe-container {
   overflow: hidden;
-  padding-top: 50%;
   position: relative;
+  padding-top: 25vh;
+}
+
+@media only screen and (max-width: 750px) {
+  .iframe-container {
+    padding-top: 45vh;
+  }
 }
 
 .iframe-container iframe {
