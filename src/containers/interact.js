@@ -373,14 +373,12 @@ class Interact extends React.Component {
                                 {metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI && metaevidence.interfaceValid && (
                                   <div className="iframe-container">
                                     <iframe
-                                      className="embed-responsive-item"
+                                      className="iframe"
                                       src={
-                                        metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI.includes("://")
-                                          ? metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI
-                                          : `https://ipfs.kleros.io${metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI}` + encodeURI(`?{"arbitrableContractAddress":"${arbitrated}","arbitratorContractAddress":"${arbitratorAddress}","disputeID":"${arbitratorDisputeID}"}`)
+                                        (metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI.includes("://") ? metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI : `https://ipfs.kleros.io${metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI}`) +
+                                        encodeURI(`?{"arbitrableContractAddress":"${arbitrated}","arbitratorContractAddress":"${arbitratorAddress}","disputeID":"${arbitratorDisputeID}"}`)
                                       }
                                       title="evidence-display"
-                                      allowFullScreen
                                     />
                                   </div>
                                 )}
