@@ -25,6 +25,7 @@ const SpinnerContainer = styled.div`
 `;
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
+const IPFS_GATEWAY = "https://ipfs.kleros.io";
 
 class App extends React.Component {
   constructor(props) {
@@ -60,7 +61,7 @@ class App extends React.Component {
     if (Web3) {
       this.setState({ network: await Web3.eth.net.getId() });
       this.setState({
-        archon: new Archon(Web3.currentProvider.host ? Web3.currentProvider.host : window.ethereum, "https://ipfs.kleros.io"),
+        archon: new Archon(Web3.currentProvider.host ? Web3.currentProvider.host : window.ethereum, IPFS_GATEWAY),
       });
     }
 
@@ -212,7 +213,7 @@ class App extends React.Component {
     this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
       .then((response) => EthereumInterface.contractInstance("IEvidence", arbitrableAddress).getPastEvents("MetaEvidence", { fromBlock: 7303699, toBlock: "latest", filter: { _metaEvidenceID: response.metaEvidenceID } }))
-      .then((metaevidence) => fetch("https://ipfs.kleros.io" + metaevidence[0].returnValues._evidence))
+      .then((metaevidence) => fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence))
       .then((response) => response.json());
 
   getEvidences = (arbitrableAddress, arbitratorDisputeID) =>
