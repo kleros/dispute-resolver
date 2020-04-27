@@ -207,6 +207,14 @@ class App extends React.Component {
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
       .then((response) => this.state.archon.arbitrable.getMetaEvidence(arbitrableAddress, response.metaEvidenceID, { scriptParameters: { disputeID: arbitratorDisputeID } }));
 
+  //Using Archon, parallel calls occasionally fail.
+  getMetaEvidenceParallelizeable = (arbitrableAddress, arbitratorDisputeID) =>
+    this.state.archon.arbitrable
+      .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
+      .then((response) => EthereumInterface.contractInstance("IEvidence", arbitrableAddress).getPastEvents("MetaEvidence", { fromBlock: 7303699, toBlock: "latest", filter: { _metaEvidenceID: response.metaEvidenceID } }))
+      .then((metaevidence) => fetch("https://ipfs.kleros.io" + metaevidence[0].returnValues._evidence))
+      .then((response) => response.json());
+
   getEvidences = (arbitrableAddress, arbitratorDisputeID) =>
     this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
@@ -272,7 +280,7 @@ class App extends React.Component {
                     <OpenDisputes
                       activeAddress={activeAddress}
                       route={route}
-                      getMetaEvidenceCallback={this.getMetaEvidence}
+                      getMetaEvidenceCallback={this.getMetaEvidenceParallelizeable}
                       getArbitratorDisputeCallback={this.getArbitratorDispute}
                       subcourtDetails={subcourtDetails}
                       subcourts={subcourts}
@@ -359,7 +367,7 @@ class App extends React.Component {
                   <OpenDisputes
                     activeAddress={activeAddress}
                     route={route}
-                    getMetaEvidenceCallback={this.getMetaEvidence}
+                    getMetaEvidenceCallback={this.getMetaEvidenceParallelizeable}
                     getArbitratorDisputeCallback={this.getArbitratorDispute}
                     subcourtDetails={subcourtDetails}
                     subcourts={subcourts}

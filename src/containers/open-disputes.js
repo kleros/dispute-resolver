@@ -19,7 +19,9 @@ class openDisputeIDs extends React.Component {
       openDisputeIDs.map((arbitratorDispute) => {
         this.props.getArbitratorDisputeCallback(arbitratorDispute).then((arbitratorDisputeDetails) => {
           this.setState({ ["arbitrator" + arbitratorDispute]: arbitratorDisputeDetails });
-          this.props.getMetaEvidenceCallback(arbitratorDisputeDetails.arbitrated, arbitratorDispute).then((metaevidence) => this.setState({ [arbitratorDispute]: metaevidence }));
+          this.props.getMetaEvidenceCallback(arbitratorDisputeDetails.arbitrated, arbitratorDispute).then((metaevidence) => {
+            this.setState({ [arbitratorDispute]: metaevidence });
+          });
         });
 
         this.props.getCurrentRulingCallback(arbitratorDispute).then((ruling) => this.setState({ ["arbitratorRuling" + arbitratorDispute]: ruling }));
@@ -60,13 +62,13 @@ class openDisputeIDs extends React.Component {
                   </Card.Header>
                   <Card.Body style={{ borderRadius: 0, display: "flex", flexDirection: "column" }}>
                     <Form.Row>
-                      <Col>{this.state[dispute].metaEvidenceJSON.title}</Col>
+                      <Col>{this.state[dispute].title}</Col>
                     </Form.Row>
                     {this.state[`arbitrator${dispute}`].period == 3 && (
                       <Form.Row style={{ marginTop: "auto", paddingTop: "2.5rem" }}>
                         <Col>
                           <Badge style={{ fontSize: "1rem", padding: "0.6rem 0.6rem" }} className="purple text-wrap w-100">
-                            Jurors ruled: {["Draw / Refused to Rule", ...this.state[dispute].metaEvidenceJSON.rulingOptions.titles][this.state[`arbitratorRuling${dispute}`]]}
+                            Jurors ruled: {["Draw / Refused to Rule", ...this.state[dispute].rulingOptions.titles][this.state[`arbitratorRuling${dispute}`]]}
                           </Badge>
                         </Col>
                       </Form.Row>
