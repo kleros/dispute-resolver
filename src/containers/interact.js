@@ -145,7 +145,7 @@ class Interact extends React.Component {
   onDisputeIDChange = async (e) => {
     const arbitratorDisputeID = e.target.value;
 
-    this.setState({ arbitratorDisputeID: arbitratorDisputeID });
+    await this.setState({ arbitratorDisputeID: arbitratorDisputeID, loading: true });
 
     await this.setState({
       arbitrableDispute: null,
@@ -232,7 +232,7 @@ class Interact extends React.Component {
       withdrewAlready = await this.props.withdrewAlreadyCallback(arbitrated, arbitrableDisputeID);
       crowdfundingStatus = await this.props.getCrowdfundingStatusCallback(arbitrated, arbitrableDisputeID);
 
-      this.setState({
+      await this.setState({
         arbitrableDisputeID,
         arbitrableDispute,
         crowdfundingStatus,
@@ -464,7 +464,7 @@ class Interact extends React.Component {
                                 <EvidenceTimeline
                                   evidenceSubmissionEnabled={Boolean(activeAddress) && Boolean(arbitrableDispute)}
                                   numberOfVotesCast={Number(getDisputeResult.votesInEachRound.slice(-1)[0])}
-                                  numberOfVotes={Number(getDisputeResult.votesInEachRound.slice(-1)[0])}
+                                  numberOfVotes={Number(getDisputeResult.votesLengths.slice(-1)[0])}
                                   metaevidence={metaevidence}
                                   evidences={evidences}
                                   ruling={ruling}

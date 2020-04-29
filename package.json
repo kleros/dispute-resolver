@@ -10,7 +10,7 @@
     "@kleros/archon": "^0.10.1",
     "@kleros/binary-arbitrable-proxy-contract": "^2.3.3",
     "@kleros/kleros": "^0.1.2",
-    "@kleros/react-components": "^3.15.3",
+    "@kleros/react-components": "^4.0.2",
     "bignumber.js": "^9.0.0",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
