@@ -1,4 +1,5 @@
 import React from "react";
+import ReactDOM from "react-dom";
 import { Card, Col, Container, Form, Row, Button, InputGroup, FormControl, Accordion } from "react-bootstrap";
 import Appeal from "../components/appeal";
 import QuestionDisplay from "../components/question-display";
@@ -12,7 +13,10 @@ import { Redirect, Link } from "react-router-dom";
 import Countdown from "react-countdown-now";
 import BigNumber from "bignumber.js";
 
-const FALLBACK_ACTIVATION_DELAY_SECONDS = 600;
+const FALLBACK_ACTIVATION_DELAY_SECONDS = {
+  1: 900, // Mainnet, 15 minutes
+  42: 240, // Kovan, 4 minutes
+};
 
 class Interact extends React.Component {
   constructor(props) {
@@ -34,10 +38,13 @@ class Interact extends React.Component {
     };
 
     this.debouncedRetrieveUsingArbitratorID = debounce(this.retrieveDisputeDetailsUsingArbitratorID, 500, { leading: false, trailing: true });
+
+    this.iframe = React.createRef();
   }
 
   componentDidMount() {
     if (this.state.arbitratorDisputeID) this.debouncedRetrieveUsingArbitratorID(this.state.arbitratorDisputeID);
+    console.log(this.iframe.current);
   }
 
   async componentDidUpdate(previousProperties) {
@@ -74,7 +81,7 @@ class Interact extends React.Component {
       supportingSide: evidence.supportingSide,
     });
     console.log("submitted");
-    this.reload();
+    new Promise(() => setTimeout(2000)).then(this.reload());
   };
 
   onDrop = async (acceptedFiles) => {
@@ -233,8 +240,13 @@ class Interact extends React.Component {
         withdrewAlready,
       });
     } catch (err) {
-      console.error("this one");
       console.error(err.message);
+    }
+
+    try {
+      this.setState({ canPassPhase: await this.props.estimateGasOfPassPhaseCallback() });
+    } catch {
+      this.setState({ canPassPhase: false });
     }
 
     try {
@@ -259,10 +271,23 @@ class Interact extends React.Component {
     this.setState({
       arbitratorDispute: await this.props.getArbitratorDisputeCallback(arbitratorDisputeID),
       evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
-      crowdfundingStatus: await this.props.getCrowdfundingStatusCallback(arbitrated, arbitrableDisputeID),
-      withdrewAlready: await this.props.withdrewAlreadyCallback(arbitrated, arbitrableDisputeID),
       appealDecisions: await this.props.getAppealDecisionCallback(arbitratorDisputeID),
     });
+
+    try {
+      this.setState({
+        crowdfundingStatus: await this.props.getCrowdfundingStatusCallback(arbitrated, arbitrableDisputeID),
+        withdrewAlready: await this.props.withdrewAlreadyCallback(arbitrated, arbitrableDisputeID),
+      });
+    } catch (error) {
+      console.error(error);
+    }
+
+    try {
+      this.setState({ canPassPhase: await this.props.estimateGasOfPassPhaseCallback() });
+    } catch {
+      this.setState({ canPassPhase: false });
+    }
 
     try {
       this.setState({ canPassPeriod: await this.props.estimateGasOfPassPeriodCallback(arbitratorDisputeID) });
@@ -299,12 +324,13 @@ class Interact extends React.Component {
       withdrewAlready,
       getDisputeResult,
       disputeEvent,
+      canPassPhase,
       canPassPeriod,
       canDrawJurors,
       appealPeriod,
     } = this.state;
 
-    const { arbitratorAddress, activeAddress, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, passPhaseCallback, passPeriodCallback, drawJurorsCallback, subcourts } = this.props;
+    const { arbitratorAddress, activeAddress, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, passPhaseCallback, passPeriodCallback, drawJurorsCallback, subcourts, network } = this.props;
 
     return (
       <>
@@ -375,6 +401,8 @@ class Interact extends React.Component {
                                 {metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI && metaevidence.interfaceValid && (
                                   <div className="iframe-container">
                                     <iframe
+                                      ref={this.iframe}
+                                      id="iframe"
                                       className="iframe"
                                       src={
                                         (metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI.includes("://") ? metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI : `https://ipfs.kleros.io${metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI}`) +
@@ -436,6 +464,7 @@ class Interact extends React.Component {
                                 <EvidenceTimeline
                                   evidenceSubmissionEnabled={Boolean(activeAddress) && Boolean(arbitrableDispute)}
                                   numberOfVotesCast={Number(getDisputeResult.votesInEachRound.slice(-1)[0])}
+                                  numberOfVotes={Number(getDisputeResult.votesInEachRound.slice(-1)[0])}
                                   metaevidence={metaevidence}
                                   evidences={evidences}
                                   ruling={ruling}
@@ -497,7 +526,7 @@ class Interact extends React.Component {
                           BigNumber("1000").times(
                             BigNumber(arbitratorDispute.lastPeriodChange)
                               .plus(BigNumber(subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)]))
-                              .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS))
+                              .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS.network))
                           )
                         ) &&
                         canPassPeriod && (
@@ -506,7 +535,7 @@ class Interact extends React.Component {
                             style={{ margin: "0 1rem" }}
                             onClick={async (e) => {
                               await passPeriodCallback(arbitratorDisputeID);
-                              this.commonFetchRoutine(arbitratorDisputeID);
+                              new Promise(() => setTimeout(5000)).then(this.reload());
                             }}
                           >
                             Pass Dispute Period
@@ -522,7 +551,7 @@ class Interact extends React.Component {
                           BigNumber("1000").times(
                             BigNumber(arbitratorDispute.lastPeriodChange)
                               .plus(BigNumber(subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)]))
-                              .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS))
+                              .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS.network))
                           )
                         ) &&
                         arbitratorDispute.period == 0 &&
@@ -533,7 +562,7 @@ class Interact extends React.Component {
                             style={{ margin: "0 1rem" }}
                             onClick={async (e) => {
                               await drawJurorsCallback(arbitratorDisputeID);
-                              this.commonFetchRoutine(arbitratorDisputeID);
+                              new Promise(() => setTimeout(5000)).then(this.reload());
                             }}
                           >
                             Draw Jurors
@@ -548,23 +577,25 @@ class Interact extends React.Component {
                           BigNumber("1000").times(
                             BigNumber(arbitratorDispute.lastPeriodChange)
                               .plus(BigNumber(subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)]))
-                              .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS))
+                              .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS.network))
                           )
                         ) &&
                         arbitratorDispute.period == 0 &&
                         !canPassPeriod &&
-                        !canDrawJurors && (
+                        !canDrawJurors &&
+                        canPassPhase && (
                           <Button
+                            className="ok"
                             style={{ margin: "0 1rem" }}
                             onClick={async (e) => {
                               await passPhaseCallback();
-                              this.commonFetchRoutine(arbitratorDisputeID);
+                              new Promise(() => setTimeout(5000)).then(this.reload());
                             }}
                           >
                             Pass Court Phase
                           </Button>
                         )}
-                      {activeAddress && arbitratorDispute && arbitratorDispute.period == 4 && (
+                      {arbitrableDisputeID && activeAddress && arbitratorDispute && arbitratorDispute.period == 4 && (
                         <Button className="ok" style={{ margin: "0 1rem" }} disabled={withdrewAlready} onClick={(e) => withdrawFeesAndRewardsCallback(arbitrated, arbitrableDisputeID)}>
                           {withdrewAlready ? "Withdrew Already" : "Withdraw Funds"}
                         </Button>

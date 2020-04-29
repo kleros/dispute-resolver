@@ -77,7 +77,7 @@ class App extends React.Component {
 
       window.ethereum.on("data", (data) => {
         console.log("TX CONFIRMED");
-        self.forceUpdate();
+        //self.forceUpdate();
       });
     } else console.error("MetaMask not detected :(");
 
@@ -157,9 +157,10 @@ class App extends React.Component {
 
   passPeriod = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("send", 0, "passPeriod", arbitratorDisputeID);
 
-  estimateGasOfPassPeriod = async (arbitratorDisputeID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "passPeriod", arbitratorDisputeID);
+  estimateGasOfPassPhase = () => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "passPhase");
+  estimateGasOfPassPeriod = (arbitratorDisputeID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "passPeriod", arbitratorDisputeID);
 
-  estimateGasOfGetSubcourt = async (subcourtID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.activeAddress, 0, "getSubcourt", subcourtID);
+  estimateGasOfGetSubcourt = (subcourtID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.activeAddress, 0, "getSubcourt", subcourtID);
 
   drawJurors = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("send", 0, "drawJurors", arbitratorDisputeID, 1000);
   estimateGasOfDrawJurors = async (arbitratorDisputeID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "drawJurors", arbitratorDisputeID, 1000);
@@ -303,6 +304,7 @@ class App extends React.Component {
 
                     <Interact
                       arbitratorAddress={networkMap[network].KLEROS_LIQUID}
+                      network={network}
                       route={route}
                       getArbitrableDisputeIDCallback={this.getArbitrableDisputeID}
                       getAppealCostCallback={this.getAppealCost}
@@ -330,6 +332,7 @@ class App extends React.Component {
                       passPeriodCallback={this.passPeriod}
                       drawJurorsCallback={this.drawJurors}
                       passPhaseCallback={this.passPhase}
+                      estimateGasOfPassPhaseCallback={this.estimateGasOfPassPhase}
                       estimateGasOfPassPeriodCallback={this.estimateGasOfPassPeriod}
                       estimateGasOfDrawJurorsCallback={this.estimateGasOfDrawJurors}
                       getRoundInfoCallback={this.getRoundInfo}
@@ -408,6 +411,7 @@ class App extends React.Component {
 
                   <Interact
                     arbitratorAddress={networkMap[network].KLEROS_LIQUID}
+                    network={network}
                     route={route}
                     getArbitrableDisputeIDCallback={this.getArbitrableDisputeID}
                     getAppealCostCallback={this.getAppealCost}
@@ -435,6 +439,7 @@ class App extends React.Component {
                     passPeriodCallback={this.passPeriod}
                     drawJurorsCallback={this.drawJurors}
                     passPhaseCallback={this.passPhase}
+                    estimateGasOfPassPhaseCallback={this.estimateGasOfPassPhase}
                     estimateGasOfPassPeriodCallback={this.estimateGasOfPassPeriod}
                     estimateGasOfDrawJurorsCallback={this.estimateGasOfDrawJurors}
                     getRoundInfoCallback={this.getRoundInfo}
