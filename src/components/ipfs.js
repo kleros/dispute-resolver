@@ -1,4 +1,5 @@
 import { Accordion, Card, Col, Container, Form } from "react-bootstrap";
+import IPFSLogo from "assets/images/ipfs.svg";
 import React from "react";
 
 class IPFS extends React.Component {
@@ -52,7 +53,7 @@ class IPFS extends React.Component {
         <Accordion>
           <Card style={{ borderRadius: "12px" }}>
             <Accordion.Toggle as={Card.Header} eventKey="0">
-              <img alt="ipfs logo" src="ipfs-logo-vector-inkscape-template.svg" />
+              <img alt="ipfs logo" src={IPFSLogo} />
               Upload to IPFS
             </Accordion.Toggle>
             <hr className="mt-0" />

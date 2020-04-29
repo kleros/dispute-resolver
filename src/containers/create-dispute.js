@@ -162,7 +162,7 @@ class CreateDispute extends React.Component {
 
     return (
       <Container fluid="true" className="main-content">
-        {lastDisputeID && <Redirect to={`/interact/${lastDisputeID}`} />}
+        {lastDisputeID && <Redirect to={`/cases/${lastDisputeID}`} />}
         <Card style={{ borderRadius: "12px" }}>
           <Card.Header>
             <GavelSVG style={{ marginRight: "1rem" }} />

@@ -338,7 +338,7 @@ class Interact extends React.Component {
           <div style={{ padding: "1.1em 1.5em", fontSize: "13px", background: "#ffe03d" }}>View mode only: This is a 3rd party arbitrable contract, evidence submission and crowdfunding appeals is not available.</div>
         )}
         <Container fluid="true" className="main-content">
-          {arbitratorDisputeID && <Redirect to={`/interact/${arbitratorDisputeID}`} />}
+          {arbitratorDisputeID && <Redirect to={`/cases/${arbitratorDisputeID}`} />}
           <Accordion defaultActiveKey="0">
             <Card>
               <Accordion.Toggle as={Card.Header} eventKey="0">

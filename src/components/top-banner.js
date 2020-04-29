@@ -27,7 +27,7 @@ class TopBanner extends React.Component {
           <Navbar.Toggle aria-controls="responsive-navbar-nav" />
           <Navbar.Collapse id="responsive-navbar-nav" style={{ placeContent: "center", marginRight: "240px" }}>
             <Nav>
-              <LinkContainer to="/disputes/">
+              <LinkContainer to="/open-cases/">
                 <Nav.Link className=" mx-3">Open Disputes</Nav.Link>
               </LinkContainer>
               {!viewOnly && (
@@ -35,7 +35,7 @@ class TopBanner extends React.Component {
                   <Nav.Link className=" mx-3">Create</Nav.Link>
                 </LinkContainer>
               )}
-              <LinkContainer exact to="/interact/">
+              <LinkContainer exact to="/cases/">
                 <Nav.Link className=" mx-3">Interact</Nav.Link>
               </LinkContainer>
             </Nav>

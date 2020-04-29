@@ -273,9 +273,10 @@ class App extends React.Component {
         <Container fluid="true" style={{ position: "relative", minHeight: "100vh", paddingBottom: `calc(3rem + ${this.state.footerHeightInPixels}px)` }}>
           <BrowserRouter>
             <Switch>
+              <Route exact path="(/disputes/)" render={() => <Redirect to={`/open-cases/`} />} />
               <Route
                 exact
-                path="(/|/disputes/)"
+                path="(/|/open-cases/)"
                 render={(route) => (
                   <>
                     <TopBanner viewOnly={!activeAddress} route={route} />
@@ -293,11 +294,11 @@ class App extends React.Component {
                 )}
               />
 
-              <Route exact path="(/create/)" render={(route) => <Redirect to="/disputes/" />} />
-
+              <Route exact path="(/create/)" render={(route) => <Redirect to="/cases/" />} />
+              <Redirect from="/interact/:id" to="/cases/:id" />
               <Route
                 exact
-                path="/interact/:id?"
+                path="/cases/:id?"
                 render={(route) => (
                   <>
                     <TopBanner viewOnly={!activeAddress} route={route} />
@@ -362,9 +363,10 @@ class App extends React.Component {
       <Container fluid="true" style={{ position: "relative", minHeight: "100vh", paddingBottom: `calc(3rem + ${this.state.footerHeightInPixels}px)` }}>
         <BrowserRouter>
           <Switch>
+            <Route exact path="(/disputes/)" render={() => <Redirect to={`/open-cases/`} />} />
             <Route
               exact
-              path="(/|/disputes/)"
+              path="(/|/open-cases/|)"
               render={(route) => (
                 <>
                   <TopBanner viewOnly={!activeAddress} route={route} />
@@ -402,9 +404,10 @@ class App extends React.Component {
               )}
             />
 
+            <Redirect from="/interact/:id" to="/cases/:id" />
             <Route
               exact
-              path="/interact/:id?"
+              path="/cases/:id?"
               render={(route) => (
                 <>
                   <TopBanner viewOnly={!activeAddress} route={route} />
