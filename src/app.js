@@ -273,10 +273,10 @@ class App extends React.Component {
         <Container fluid="true" style={{ position: "relative", minHeight: "100vh", paddingBottom: `calc(3rem + ${this.state.footerHeightInPixels}px)` }}>
           <BrowserRouter>
             <Switch>
-              <Route exact path="(/disputes/)" render={() => <Redirect to={`/open-cases/`} />} />
+              <Route exact path="(/disputes/)" render={() => <Redirect to={`/ongoing/`} />} />
               <Route
                 exact
-                path="(/|/open-cases/)"
+                path="(/|/ongoing/)"
                 render={(route) => (
                   <>
                     <TopBanner viewOnly={!activeAddress} route={route} />
@@ -363,10 +363,10 @@ class App extends React.Component {
       <Container fluid="true" style={{ position: "relative", minHeight: "100vh", paddingBottom: `calc(3rem + ${this.state.footerHeightInPixels}px)` }}>
         <BrowserRouter>
           <Switch>
-            <Route exact path="(/disputes/)" render={() => <Redirect to={`/open-cases/`} />} />
+            <Route exact path="(/disputes/)" render={() => <Redirect to={`/ongoing/`} />} />
             <Route
               exact
-              path="(/|/open-cases/|)"
+              path="(/|/ongoing/|)"
               render={(route) => (
                 <>
                   <TopBanner viewOnly={!activeAddress} route={route} />

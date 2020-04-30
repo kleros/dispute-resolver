@@ -27,7 +27,7 @@ class TopBanner extends React.Component {
           <Navbar.Toggle aria-controls="responsive-navbar-nav" />
           <Navbar.Collapse id="responsive-navbar-nav" style={{ placeContent: "center", marginRight: "240px" }}>
             <Nav>
-              <LinkContainer to="/open-cases/">
+              <LinkContainer to="/ongoing/">
                 <Nav.Link className=" mx-3">Open Disputes</Nav.Link>
               </LinkContainer>
               {!viewOnly && (
