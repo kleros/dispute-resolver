@@ -62,7 +62,7 @@ class openDisputeIDs extends React.Component {
                   </Card.Header>
                   <Card.Body style={{ borderRadius: 0, display: "flex", flexDirection: "column" }}>
                     <Form.Row>
-                      <Col>{this.state[dispute].title}</Col>
+                      <Col style={{ fontSize: "1.3rem" }}>{this.state[dispute].title}</Col>
                     </Form.Row>
                     {this.state[`arbitrator${dispute}`].period == 3 && (
                       <Form.Row style={{ marginTop: "auto", paddingTop: "2.5rem" }}>
