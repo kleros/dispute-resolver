@@ -148,6 +148,7 @@ class Interact extends React.Component {
     await this.setState({ arbitratorDisputeID: arbitratorDisputeID, loading: true });
 
     await this.setState({
+      arbitrableDisputeID: null,
       arbitrableDispute: null,
       arbitratorDispute: null,
     });
