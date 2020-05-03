@@ -365,7 +365,7 @@ class Appeal extends React.Component {
                                     <Col>
                                       <p className="warning">Loser failed to raise appeal funds before deadline, winner remains the same. </p>
                                       <p className="warning">
-                                        Awaiting winners deadline to be passed to execute the ruling. Please withdraw your funds back if you participated in crowdfunding. You can do so, in execution period, from this page, by clicking "Withdraw Funds" button.
+                                        Awaiting winners deadline to be passed to execute the ruling. Please withdraw your funds back if you participated in crowdfunding. You will be able to do so once the execution period starts, by clicking "Withdraw Funds" button.
                                       </p>
                                     </Col>
                                   </Form.Row>
