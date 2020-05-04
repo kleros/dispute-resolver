@@ -276,7 +276,7 @@ class App extends React.Component {
               <Route exact path="(/disputes/)" render={() => <Redirect to={`/ongoing/`} />} />
               <Route
                 exact
-                path="(/|/ongoing/)"
+                path="(/|/ongoing/|/create/)"
                 render={(route) => (
                   <>
                     <TopBanner viewOnly={!activeAddress} route={route} />
@@ -293,8 +293,7 @@ class App extends React.Component {
                   </>
                 )}
               />
-
-              <Route exact path="(/create/)" render={(route) => <Redirect to="/cases/" />} />
+              // // <Route exact path="(/create/)" render={(route) => <Redirect to="/cases/" />} />
               <Redirect from="/interact/:id" to="/cases/:id" />
               <Route
                 exact
@@ -343,7 +342,6 @@ class App extends React.Component {
                   </>
                 )}
               />
-
               <Route
                 render={(route) => (
                   <>
