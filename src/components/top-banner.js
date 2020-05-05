@@ -28,7 +28,7 @@ class TopBanner extends React.Component {
           <Navbar.Collapse id="responsive-navbar-nav" style={{ placeContent: "center", marginRight: "240px" }}>
             <Nav>
               <LinkContainer to="/ongoing/">
-                <Nav.Link className=" mx-3">Open Disputes</Nav.Link>
+                <Nav.Link className=" mx-3">Ongoing Disputes</Nav.Link>
               </LinkContainer>
               {!viewOnly && (
                 <LinkContainer exact to="/create/">
