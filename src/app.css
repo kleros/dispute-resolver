@@ -30,6 +30,10 @@ body > div.modal > div > div > div.modal-body > form > div > div > div > p {
   font-weight: 600;
 }
 
+img {
+  max-width: 100%;
+}
+
 .card > .card-header + hr {
   background-color: #009aff;
   color: #009aff;
