@@ -17,10 +17,7 @@ const imports = {
 
 const instances = {};
 
-export const contractInstance = (interfaceName, address) => {
-  if (!instances[address]) instances[address] = new web3.eth.Contract(imports[interfaceName].abi, address);
-  return instances[address];
-};
+export const contractInstance = (interfaceName, address) => new web3.eth.Contract(imports[interfaceName].abi, address);
 
 export const call = async (interfaceName, instanceAddress, method, ...args) =>
   contractInstance(interfaceName, instanceAddress)
