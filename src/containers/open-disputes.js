@@ -54,7 +54,7 @@ class openDisputeIDs extends React.Component {
                       <Form.Row className="w-100">
                         <Col xs={12} style={{ textAlign: "center" }}>
                           <ScalesSVG style={{ float: "left", height: "100%", width: "auto" }} />
-                          {this.state[`arbitrator${dispute}`] && subcourtDetails && <span>{subcourtDetails[this.state[`arbitrator${dispute}`].subcourtID].name}</span>}
+                          {this.state[`arbitrator${dispute}`] && subcourtDetails && <span>{subcourtDetails[this.state[`arbitrator${dispute}`].subcourtID] && subcourtDetails[this.state[`arbitrator${dispute}`].subcourtID].name}</span>}
                           <span style={{ float: "right" }}>{dispute}</span>
                         </Col>
                       </Form.Row>

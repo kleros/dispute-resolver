@@ -184,7 +184,7 @@ class CreateDispute extends React.Component {
                         {subcourtDetails &&
                           subcourtDetails.map((subcourt, index) => (
                             <Dropdown.Item key={index} eventKey={index}>
-                              {subcourt.name}
+                              {subcourt && subcourt.name}
                             </Dropdown.Item>
                           ))}
                       </Dropdown.Menu>

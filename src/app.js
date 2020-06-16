@@ -98,8 +98,23 @@ class App extends React.Component {
       subcourtURIs[i] = this.getSubCourtDetails(i);
       subcourts[i] = this.getSubcourt(i);
     }
+
+    await Promise.all(subcourtURIs.map((promise) => promise.then((subcourtURI) => console.log(subcourtURI))));
+
     this.setState({
-      subcourtDetails: await Promise.all(subcourtURIs.map((promise) => promise.then((subcourtURI) => (subcourtURI.includes("http") ? fetch(subcourtURI) : fetch("https://ipfs.kleros.io" + subcourtURI)).then((response) => response.json())))),
+      subcourtDetails: await Promise.all(
+        subcourtURIs.map((promise) =>
+          promise.then((subcourtURI) => {
+            if (subcourtURI.length > 0) {
+              if (subcourtURI.includes("http")) {
+                return fetch(subcourtURI).then((response) => response.json());
+              } else {
+                return fetch("https://ipfs.kleros.io" + subcourtURI).then((response) => response.json());
+              }
+            }
+          })
+        )
+      ),
       subcourtsLoading: false,
       subcourts: await Promise.all(subcourts),
     });
