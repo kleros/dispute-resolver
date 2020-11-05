@@ -43,7 +43,7 @@ class openDisputeIDs extends React.Component {
     const { subcourts, subcourtDetails } = this.props;
 
     return (
-      <Container fluid className="main-content">
+      <Container fluid className="main-content" id="ongoing-disputes">
         <Form.Row style={{ margin: 0 }}>
           {openDisputeIDs.map((dispute) => (
             <Col style={{ display: "flex", flexDirection: "column" }} key={dispute} xl={span.xl} lg={span.lg} md={span.md} sm={span.sm} xs={span.xs}>

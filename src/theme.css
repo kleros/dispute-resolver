@@ -1,0 +1,64 @@
+:root {
+  font-size: 16px;
+  font-weight: 400;
+  font-family: "Open Sans", sans-serif !important;
+  --color-purple-primary: #4D00B4;
+  --color-purple-light: #FBF9FE;
+  --color-purple-dark: #1e075f;
+  --color-blue-primary: #009aff;
+  --color-blue-secondary: #7bcbff;
+  --color-blue-accent: rgba(0, 154, 255, 0.06);
+
+  --color-text-primary: rgba(0,0,0, 0.85);
+  --color-text-primary: rgba(0,0,0, 0.45);
+  --color-text-primary: #ccc;
+
+  --color-grey-light: #fafafa;
+  --color-grey-dark: #6c6c6c;
+
+  --color-orange: #ff9900;
+  --color-red: #f60c36;
+  --color-green: #00c42b;
+}
+
+.all-crowdfunding {
+  color: var(--color-purple-primary);
+}
+
+.in-progress {
+  color: var(--color-blue-primary);
+}
+
+.challenged{
+  color: var(--color-orange);
+}
+
+.appealed {
+  color: var(--color-red);
+}
+
+.pending {
+  color: var(--color-text-primary);
+}
+
+.registered{
+  color: var(--color-green);
+}
+
+.rejected{
+  color: var(--color-grey-dark);
+}
+
+.bold {
+  font-weight: 600;
+}
+
+.lead {
+  font-size: 24px;
+}
+
+
+
+header, footer{
+  background-color: var(--color-purple-primary) !important;
+}

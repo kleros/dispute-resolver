@@ -1,9 +1,11 @@
 import { Navbar, Nav } from "react-bootstrap";
 import React from "react";
 import styled from "styled-components/macro";
-import { ReactComponent as LogoSVG } from "../assets/images/logo-dispute-resolver-white.svg";
+import { ReactComponent as Brand } from "../assets/images/logo-dispute-resolver-white.svg";
 import { NavLink, Link } from "react-router-dom";
 import { LinkContainer } from "react-router-bootstrap";
+
+import styles from "./styles/header.module.css";
 
 const StyledBanner = styled.div`
   padding: 1.1em 1.5em;
@@ -11,7 +13,7 @@ const StyledBanner = styled.div`
   background: #ffe03d;
 `;
 
-class TopBanner extends React.Component {
+class Header extends React.Component {
   constructor(props) {
     super(props);
   }
@@ -19,13 +21,13 @@ class TopBanner extends React.Component {
     const { viewOnly } = this.props;
     console.debug(this.props);
     return (
-      <>
-        <Navbar collapseOnSelect expand="lg" variant="dark" id="header">
-          <Navbar.Brand href="/" style={{ padding: "0", margin: "0" }}>
-            <LogoSVG />
+      <header>
+        <Navbar collapseOnSelect expand="lg" variant="dark" className={styles.navbar}>
+          <Navbar.Brand href="/" className={styles.navbarBrand} >
+            <Brand/>
           </Navbar.Brand>
           <Navbar.Toggle aria-controls="responsive-navbar-nav" />
-          <Navbar.Collapse id="responsive-navbar-nav" style={{ placeContent: "center", marginRight: "240px" }}>
+          <Navbar.Collapse id="responsive-navbar-nav" >
             <Nav>
               <LinkContainer to="/ongoing/">
                 <Nav.Link className=" mx-3">Ongoing Disputes</Nav.Link>
@@ -50,9 +52,9 @@ class TopBanner extends React.Component {
             is required.
           </StyledBanner>
         )}
-      </>
+      </header>
     );
   }
 }
 
-export default TopBanner;
+export default Header;
