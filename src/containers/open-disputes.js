@@ -43,65 +43,67 @@ class openDisputeIDs extends React.Component {
     const { subcourts, subcourtDetails } = this.props;
 
     return (
-      <Container fluid className="main-content" id="ongoing-disputes">
-        <Form.Row style={{ margin: 0 }}>
-          {openDisputeIDs.map((dispute) => (
-            <Col style={{ display: "flex", flexDirection: "column" }} key={dispute} xl={span.xl} lg={span.lg} md={span.md} sm={span.sm} xs={span.xs}>
-              <a style={{ display: "contents", textDecoration: "none", color: "unset" }} href={`/cases/${dispute}`}>
-                {this.state[dispute] && (
-                  <Card style={{ cursor: "pointer", height: "100%" }} onClick={(e) => this.setState({ selectedDispute: dispute })}>
-                    <Card.Header>
-                      <Form.Row className="w-100">
-                        <Col xs={12} style={{ textAlign: "center" }}>
-                          <ScalesSVG style={{ float: "left", height: "100%", width: "auto" }} />
-                          {this.state[`arbitrator${dispute}`] && subcourtDetails && <span>{subcourtDetails[this.state[`arbitrator${dispute}`].subcourtID] && subcourtDetails[this.state[`arbitrator${dispute}`].subcourtID].name}</span>}
-                          <span style={{ float: "right" }}>{dispute}</span>
-                        </Col>
-                      </Form.Row>
-                    </Card.Header>
-                    <Card.Body style={{ borderRadius: 0, display: "flex", flexDirection: "column" }}>
-                      <Form.Row>
-                        <Col style={{ fontSize: "1.3rem" }}>{this.state[dispute].title}</Col>
-                      </Form.Row>
-                      {this.state[`arbitrator${dispute}`].period == 3 && (
-                        <Form.Row style={{ marginTop: "auto", paddingTop: "2.5rem" }}>
-                          <Col>
-                            <Badge style={{ fontSize: "1rem", padding: "0.6rem 0.6rem" }} className="purple text-wrap w-100">
-                              Jurors ruled: {["Draw / Refused to Rule", ...this.state[dispute].rulingOptions.titles][this.state[`arbitratorRuling${dispute}`]]}
-                            </Badge>
+      <main>
+        <Container fluid className="main-content" id="ongoing-disputes">
+          <Form.Row style={{ margin: 0 }}>
+            {openDisputeIDs.map((dispute) => (
+              <Col style={{ display: "flex", flexDirection: "column" }} key={dispute} xl={span.xl} lg={span.lg} md={span.md} sm={span.sm} xs={span.xs}>
+                <a style={{ display: "contents", textDecoration: "none", color: "unset" }} href={`/cases/${dispute}`}>
+                  {this.state[dispute] && (
+                    <Card style={{ cursor: "pointer", height: "100%" }} onClick={(e) => this.setState({ selectedDispute: dispute })}>
+                      <Card.Header>
+                        <Form.Row className="w-100">
+                          <Col xs={12} style={{ textAlign: "center" }}>
+                            <ScalesSVG style={{ float: "left", height: "100%", width: "auto" }} />
+                            {this.state[`arbitrator${dispute}`] && subcourtDetails && <span>{subcourtDetails[this.state[`arbitrator${dispute}`].subcourtID] && subcourtDetails[this.state[`arbitrator${dispute}`].subcourtID].name}</span>}
+                            <span style={{ float: "right" }}>{dispute}</span>
                           </Col>
                         </Form.Row>
-                      )}
-                    </Card.Body>
-                    <Card.Footer style={{ backgroundColor: "#F5F1FD", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px", borderTop: 0, textAlign: "end" }}>
-                      {this.state[`arbitrator${dispute}`] && subcourts && (
-                        <>
-                          {this.getPeriodName(this.state[`arbitrator${dispute}`].period)}{" "}
-                          <Countdown
-                            date={BigNumber("1000")
-                              .times(BigNumber(this.state[`arbitrator${dispute}`].lastPeriodChange).plus(BigNumber(subcourts[this.state[`arbitrator${dispute}`].subcourtID].timesPerPeriod[this.state[`arbitrator${dispute}`].period])))
-                              .toNumber()}
-                          />
-                        </>
-                      )}
-                    </Card.Footer>
-                  </Card>
-                )}
-              </a>
-            </Col>
-          ))}
-          {!this.state.loading && openDisputeIDs.length == 0 && (
-            <Col style={{ textAlign: "center", marginTop: "5rem" }}>
-              <h1>There are no open disputes.</h1>
-            </Col>
-          )}
-          {this.state.loading && (
-            <div style={{ margin: "auto", marginTop: "5vh" }}>
-              <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" style={{ width: "5rem", height: "5rem" }} className="purple-inverted" />
-            </div>
-          )}
-        </Form.Row>
-      </Container>
+                      </Card.Header>
+                      <Card.Body style={{ borderRadius: 0, display: "flex", flexDirection: "column" }}>
+                        <Form.Row>
+                          <Col style={{ fontSize: "1.3rem" }}>{this.state[dispute].title}</Col>
+                        </Form.Row>
+                        {this.state[`arbitrator${dispute}`].period == 3 && (
+                          <Form.Row style={{ marginTop: "auto", paddingTop: "2.5rem" }}>
+                            <Col>
+                              <Badge style={{ fontSize: "1rem", padding: "0.6rem 0.6rem" }} className="purple text-wrap w-100">
+                                Jurors ruled: {["Draw / Refused to Rule", ...this.state[dispute].rulingOptions.titles][this.state[`arbitratorRuling${dispute}`]]}
+                              </Badge>
+                            </Col>
+                          </Form.Row>
+                        )}
+                      </Card.Body>
+                      <Card.Footer style={{ backgroundColor: "#F5F1FD", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px", borderTop: 0, textAlign: "end" }}>
+                        {this.state[`arbitrator${dispute}`] && subcourts && (
+                          <>
+                            {this.getPeriodName(this.state[`arbitrator${dispute}`].period)}{" "}
+                            <Countdown
+                              date={BigNumber("1000")
+                                .times(BigNumber(this.state[`arbitrator${dispute}`].lastPeriodChange).plus(BigNumber(subcourts[this.state[`arbitrator${dispute}`].subcourtID].timesPerPeriod[this.state[`arbitrator${dispute}`].period])))
+                                .toNumber()}
+                            />
+                          </>
+                        )}
+                      </Card.Footer>
+                    </Card>
+                  )}
+                </a>
+              </Col>
+            ))}
+            {!this.state.loading && openDisputeIDs.length == 0 && (
+              <Col style={{ textAlign: "center", marginTop: "5rem" }}>
+                <h1>There are no open disputes.</h1>
+              </Col>
+            )}
+            {this.state.loading && (
+              <div style={{ margin: "auto", marginTop: "5vh" }}>
+                <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" style={{ width: "5rem", height: "5rem" }} className="purple-inverted" />
+              </div>
+            )}
+          </Form.Row>
+        </Container>
+      </main>
     );
   }
 }

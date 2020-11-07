@@ -1,16 +1,14 @@
 :root {
-  font-size: 16px;
-  font-weight: 400;
-  font-family: "Open Sans", sans-serif !important;
   --color-purple-primary: #4d00b4;
   --color-purple-light: #fbf9fe;
   --color-purple-dark: #1e075f;
   --color-blue-primary: #009aff;
   --color-blue-secondary: #7bcbff;
   --color-blue-accent: rgba(0, 154, 255, 0.06);
+  --color-pink-light: #f2f2f2;
 
   --color-text-primary: rgba(0, 0, 0, 0.85);
-  --color-text-primary: rgba(0, 0, 0, 0.45);
+  --color-text-secondary: rgba(0, 0, 0, 0.45);
   --color-text-primary: #ccc;
 
   --color-grey-light: #fafafa;
@@ -69,4 +67,12 @@ footer {
 
 footer {
   color: white;
+}
+
+main {
+  background-color: var(--color-pink-light);
+}
+
+.navbar-dark .navbar-nav .nav-link {
+  color: rgba(255, 255, 255, 0.85);
 }

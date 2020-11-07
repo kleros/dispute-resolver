@@ -8,6 +8,8 @@ svg {
 
 body {
   font-family: "Open Sans", sans-serif;
+  font-size: 16px !important;
+  font-weight: 400 !important;
 }
 
 .navbar {

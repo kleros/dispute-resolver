@@ -4,6 +4,7 @@ import { Container } from "react-bootstrap";
 import "./layout.css";
 import "./base.css";
 import "./theme.css";
+import "./bootstrapConfig.sass";
 import CreateDispute from "./containers/create-dispute";
 import _404 from "./containers/404";
 import Interact from "./containers/interact";

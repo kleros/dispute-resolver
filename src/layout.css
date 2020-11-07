@@ -5,6 +5,11 @@
   flex: 1;
 }
 
+main {
+  padding-bottom: var(--spacing-32);
+  padding-top: var(--spacing-32);
+}
+
 footer {
   height: var(--spacing-64);
   padding-left: var(--spacing-32);
