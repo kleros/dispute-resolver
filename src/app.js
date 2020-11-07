@@ -9,8 +9,8 @@ import _404 from "./containers/404";
 import Interact from "./containers/interact";
 import OpenDisputes from "./containers/open-disputes";
 import { BrowserRouter, Route, Switch, Redirect } from "react-router-dom";
-import TopBanner from "./components/header";
-import { Footer } from "@kleros/react-components";
+import Header from "./components/header";
+import Footer from "./components/footer";
 import Web3 from "./ethereum/web3";
 import * as EthereumInterface from "./ethereum/interface";
 import networkMap from "./ethereum/network-contract-mapping";
@@ -31,7 +31,6 @@ class App extends React.Component {
     };
     this.encoder = new TextEncoder();
   }
-  ETHERSCAN_STRINGS = Object.freeze({ "1": "", "42": "kovan." });
 
   interactWithKlerosLiquid = async (interactionType, txValue, methodName, ...args) => this.interactWithContract("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, interactionType, txValue, methodName, ...args);
 
@@ -48,7 +47,7 @@ class App extends React.Component {
   };
 
   async componentDidMount() {
-    this.setState({ footerHeightInPixels: ReactDOM.findDOMNode(this.refs.footer).clientHeight });
+    //this.setState({ footerHeightInPixels: ReactDOM.findDOMNode(this.refs.footer).clientHeight });
 
     if (Web3) {
       this.setState({ network: await Web3.eth.net.getId() });
@@ -263,108 +262,8 @@ class App extends React.Component {
 
     console.log(this.state);
 
-    if (!network)
+    if (this.state.network)
       return (
-        <Container fluid="true" style={{ position: "relative", minHeight: "100vh", paddingBottom: `calc(3rem + ${this.state.footerHeightInPixels}px)` }}>
-          <BrowserRouter>
-            <TopBanner description="description" title="title" viewOnly={!activeAddress} />
-            <_404 Web3={true} />
-          </BrowserRouter>
-          <Footer ref="footer" appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[1]}etherscan.io/address/${networkMap[1].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/dispute-resolver"} />
-        </Container>
-      );
-
-    if (!activeAddress)
-      return (
-        <Container fluid="true" style={{ position: "relative", minHeight: "100vh", paddingBottom: `calc(3rem + ${this.state.footerHeightInPixels}px)` }}>
-          <BrowserRouter>
-            <Switch>
-              <Route exact path="(/disputes/)" render={() => <Redirect to={`/ongoing/`} />} />
-              <Route
-                exact
-                path="(/|/ongoing/|/create/)"
-                render={(route) => (
-                  <>
-                    <TopBanner viewOnly={!activeAddress} route={route} />
-                    <OpenDisputes
-                      activeAddress={activeAddress}
-                      route={route}
-                      getMetaEvidenceCallback={this.getMetaEvidenceParallelizeable}
-                      getArbitratorDisputeCallback={this.getArbitratorDispute}
-                      subcourtDetails={subcourtDetails}
-                      subcourts={subcourts}
-                      getCurrentRulingCallback={this.getCurrentRuling}
-                      getOpenDisputesOnCourtCallback={this.getOpenDisputesOnCourt}
-                    />
-                  </>
-                )}
-              />
-              // // <Route exact path="(/create/)" render={(route) => <Redirect to="/cases/" />} />
-              <Redirect from="/interact/:id" to="/cases/:id" />
-              <Route
-                exact
-                path="/cases/:id?"
-                render={(route) => (
-                  <>
-                    <TopBanner viewOnly={!activeAddress} route={route} />
-
-                    <Interact
-                      arbitratorAddress={networkMap[network].KLEROS_LIQUID}
-                      network={network}
-                      route={route}
-                      getArbitrableDisputeIDCallback={this.getArbitrableDisputeID}
-                      getAppealCostCallback={this.getAppealCost}
-                      appealCallback={this.appeal}
-                      getAppealPeriodCallback={this.getAppealPeriod}
-                      getCurrentRulingCallback={this.getCurrentRuling}
-                      disputeID={lastDisputeID}
-                      getContractInstanceCallback={this.getContractInstance}
-                      getArbitratorDisputeCallback={this.getArbitratorDispute}
-                      getArbitrableDisputeCallback={this.getArbitrableDispute}
-                      getArbitratorDisputeStructCallback={this.getArbitratorDispute}
-                      getArbitrableDisputeStructCallback={this.getArbitrableDispute}
-                      getCrowdfundingStatusCallback={this.getCrowdfundingStatus}
-                      getRulingCallback={this.getRuling}
-                      getEvidencesCallback={this.getEvidences}
-                      getMetaEvidenceCallback={this.getMetaEvidence}
-                      publishCallback={this.onPublish}
-                      submitEvidenceCallback={this.submitEvidence}
-                      getDisputeCallback={this.getDispute}
-                      getDisputeEventCallback={this.getDisputeEvent}
-                      getMultipliersCallback={this.getMultipliers}
-                      withdrewAlreadyCallback={this.withdrewAlready}
-                      withdrawFeesAndRewardsCallback={this.withdrawFeesAndRewardsForAllRounds}
-                      activeAddress={activeAddress}
-                      passPeriodCallback={this.passPeriod}
-                      drawJurorsCallback={this.drawJurors}
-                      passPhaseCallback={this.passPhase}
-                      estimateGasOfPassPhaseCallback={this.estimateGasOfPassPhase}
-                      estimateGasOfPassPeriodCallback={this.estimateGasOfPassPeriod}
-                      estimateGasOfDrawJurorsCallback={this.estimateGasOfDrawJurors}
-                      getRoundInfoCallback={this.getRoundInfo}
-                      getAppealDecisionCallback={this.getAppealDecision}
-                      subcourts={subcourts}
-                    />
-                  </>
-                )}
-              />
-              <Route
-                render={(route) => (
-                  <>
-                    <TopBanner viewOnly={!activeAddress} route={route} />
-
-                    <_404 />
-                  </>
-                )}
-              />
-            </Switch>
-          </BrowserRouter>
-          <Footer appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[1]}etherscan.io/address/${networkMap[1].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/dispute-resolver"} />
-        </Container>
-      );
-
-    return (
-      <Container fluid="true" style={{ position: "relative", minHeight: "100vh", paddingBottom: `calc(3rem + ${this.state.footerHeightInPixels}px)` }}>
         <BrowserRouter>
           <Switch>
             <Route exact path="(/disputes/)" render={() => <Redirect to={`/ongoing/`} />} />
@@ -373,7 +272,7 @@ class App extends React.Component {
               path="(/|/ongoing/|)"
               render={(route) => (
                 <>
-                  <TopBanner viewOnly={!activeAddress} route={route} />
+                  <Header viewOnly={!activeAddress} route={route} />
                   <OpenDisputes
                     activeAddress={activeAddress}
                     route={route}
@@ -384,6 +283,7 @@ class App extends React.Component {
                     getCurrentRulingCallback={this.getCurrentRuling}
                     getOpenDisputesOnCourtCallback={this.getOpenDisputesOnCourt}
                   />
+                  <Footer networkMap={networkMap} network={this.state.network} />
                 </>
               )}
             />
@@ -393,7 +293,7 @@ class App extends React.Component {
               path="(/create/)"
               render={(route) => (
                 <>
-                  <TopBanner viewOnly={!activeAddress} route={route} />
+                  <Header viewOnly={!activeAddress} route={route} />
                   <CreateDispute
                     activeAddress={activeAddress}
                     route={route}
@@ -404,6 +304,7 @@ class App extends React.Component {
                     subcourtDetails={subcourtDetails}
                     subcourtsLoading={subcourtsLoading}
                   />
+                  <Footer networkMap={networkMap} network={this.state.network} />
                 </>
               )}
             />
@@ -414,7 +315,7 @@ class App extends React.Component {
               path="/cases/:id?"
               render={(route) => (
                 <>
-                  <TopBanner viewOnly={!activeAddress} route={route} />
+                  <Header viewOnly={!activeAddress} route={route} />
 
                   <Interact
                     arbitratorAddress={networkMap[network].KLEROS_LIQUID}
@@ -453,23 +354,24 @@ class App extends React.Component {
                     getAppealDecisionCallback={this.getAppealDecision}
                     subcourts={subcourts}
                   />
+                  <Footer networkMap={networkMap} network={this.state.network} />
                 </>
               )}
             />
             <Route
               render={(route) => (
                 <>
-                  <TopBanner viewOnly={!activeAddress} route={route} />
+                  <Header viewOnly={!activeAddress} route={route} />
 
                   <_404 />
+                  <Footer networkMap={networkMap} network={this.state.network} />
                 </>
               )}
             />
           </Switch>
         </BrowserRouter>
-        <Footer appName="Dispute Resolver" contractExplorerURL={`https://${this.ETHERSCAN_STRINGS[this.state.network]}etherscan.io/address/${networkMap[this.state.network].BINARY_ARBITRABLE_PROXY}#code`} repository={"https://github.com/kleros/dispute-resolver"} />
-      </Container>
-    );
+      );
+    else return <>asda</>;
   }
 }
 export default App;

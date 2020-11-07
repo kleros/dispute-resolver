@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap");
 
 svg {
   max-width: 100%;
@@ -7,17 +7,15 @@ svg {
 }
 
 body {
-  font-family: 'Open Sans', sans-serif;
+  font-family: "Open Sans", sans-serif;
 }
 
-
-
-.navbar{
+.navbar {
   background-color: inherit;
   padding: 8px 32px;
 }
 
-.navbar-brand{
+.navbar-brand {
   padding: 0;
 }
 
@@ -25,6 +23,6 @@ body {
   height: 48px;
 }
 
-.navbar-dark .navbar-nav .nav-link{
+.navbar-dark .navbar-nav .nav-link {
   color: rgba(255, 255, 255, 0.85);
 }

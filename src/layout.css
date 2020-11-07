@@ -1,10 +1,20 @@
-
-footer {
-  height: 64px;
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
+footer {
+  height: var(--spacing-64);
+  padding-left: var(--spacing-32);
+  padding-right: var(--spacing-32);
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  margin-top: auto;
+}
 
-
-body{
+body {
   background-color: gray;
 }

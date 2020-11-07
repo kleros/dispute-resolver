@@ -1,0 +1,46 @@
+.footer a {
+  text-decoration: none;
+  color: white;
+}
+
+.footer,
+.rest {
+  display: flex;
+}
+
+.footer {
+  width: 100%;
+  align-content: space-between;
+}
+
+.rest {
+  margin-left: auto;
+}
+
+.social {
+  margin-left: var(--spacing-64);
+}
+
+.rest svg {
+  height: var(--spacing-16);
+}
+
+.brand > svg {
+  height: var(--spacing-32);
+}
+
+.help > span + svg {
+  margin-left: var(--spacing-8);
+}
+
+.rest svg {
+  vertical-align: text-bottom;
+}
+
+.help span {
+  vertical-align: middle;
+}
+
+.social > a + a {
+  margin-left: var(--spacing-16);
+}
