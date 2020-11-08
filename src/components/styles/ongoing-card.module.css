@@ -1,0 +1,151 @@
+.ongoingCard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.ongoingCard > div {
+  padding-left: var(--spacing-16);
+  padding-right: var(--spacing-16);
+}
+
+.ongoingCard .header {
+  padding-top: var(--spacing-8);
+  padding-bottom: var(--spacing-8);
+  border-top-left-radius: var(--border-radius);
+  border-top-right-radius: var(--border-radius);
+
+  display: flex;
+  justify-content: space-between;
+  background-color: var(--color-purple-primary);
+  color: white;
+}
+
+.ongoingCard .body {
+  padding-top: var(--spacing-16);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background-color: white;
+}
+
+.ongoingCard .title {
+  margin-bottom: var(--spacing-16);
+}
+
+.ongoingCard .footer {
+  display: flex;
+  flex-direction: column;
+  min-height: 150px;
+  flex: 1;
+  padding-top: var(--spacing-16);
+  padding-bottom: var(--spacing-16);
+
+  background-color: var(--color-purple-light);
+
+  border-bottom-left-radius: var(--border-radius);
+  border-bottom-right-radius: var(--border-radius);
+}
+
+.ongoingCard .status::before {
+  content: "●";
+  vertical-align: text-bottom;
+}
+
+.ongoingCard .status:global(.evidence)::after {
+  content: "Evidence Period";
+}
+
+.ongoingCard .status:global(.evidence)::before {
+  color: var(--color-purple-primary);
+}
+
+.ongoingCard .status:global(.commit)::after {
+  content: "Commit Period";
+}
+
+.ongoingCard .status:global(.commit)::before {
+  color: var(--color-blue-primary);
+}
+
+.ongoingCard .status:global(.vote)::after {
+  content: "Voting";
+}
+
+.ongoingCard .status:global(.vote)::before {
+  color: var(--color-blue-primary);
+}
+
+.ongoingCard .status:global(.appeal)::after {
+  content: "Crowdfunding";
+}
+
+.ongoingCard .status:global(.appeal)::before {
+  color: var(--color-red);
+}
+
+.ongoingCard .status:global(.execution)::after {
+  content: "Executed";
+}
+
+.ongoingCard .status:global(.execution)::before {
+  color: var(--color-grey-dark);
+}
+
+.ongoingCard .disputeID::before {
+  content: "#";
+}
+
+.ongoingCard .separator {
+  margin-top: auto;
+
+  width: 100%;
+  margin-bottom: 0;
+  height: 2px;
+  color: var(--color-purple-primary);
+  background-color: var(--color-purple-primary);
+}
+
+.ongoingCard .badge {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  width: 100%;
+  height: var(--spacing-64);
+  padding: var(--spacing-16);
+  border-radius: var(--border-radius);
+}
+
+.ongoingCard .badge > span {
+  font-weight: var(--bold);
+  margin-left: var(--spacing-8);
+  vertical-align: middle;
+}
+
+.ongoingCard .badge > svg {
+  vertical-align: middle;
+}
+
+.ongoingCard .badge > svg > path {
+  fill: var(--color-purple-primary);
+}
+
+.ongoingCard .bodyBottom {
+  background-color: var(--color-purple-light);
+}
+
+.ongoingCard .countdown {
+  margin-top: auto;
+
+  font-weight: var(--bold);
+  text-align: center;
+}
+
+.ongoingCard .countdown > svg {
+  margin-right: var(--spacing-8);
+  vertical-align: sub;
+}
+
+.ongoingCard .countdown > svg > path {
+  fill: var(--color-purple-primary);
+}

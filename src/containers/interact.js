@@ -10,7 +10,7 @@ import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { EvidenceTimeline } from "@kleros/react-components";
 import { Redirect, Link } from "react-router-dom";
-import Countdown from "react-countdown-now";
+import Countdown from "react-countdown";
 import BigNumber from "bignumber.js";
 
 const FALLBACK_ACTIVATION_DELAY_SECONDS = {

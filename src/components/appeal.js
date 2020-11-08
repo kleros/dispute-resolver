@@ -2,7 +2,7 @@ import { Button, Card, Col, Container, Form, ProgressBar, Modal, InputGroup, Row
 
 import React from "react";
 import BigNumber from "bignumber.js";
-import Countdown from "react-countdown-now";
+import Countdown from "react-countdown";
 import { ReactComponent as AppealSVG } from "assets/images/appeal.svg";
 import { ReactComponent as WarningSVG } from "assets/images/warning.svg";
 import { ReactComponent as ClockRed } from "assets/images/clock_red.svg";

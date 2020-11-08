@@ -22,42 +22,10 @@
   --spacing-16: 16px;
   --spacing-32: 32px;
   --spacing-64: 64px;
-}
 
-.all-crowdfunding {
-  color: var(--color-purple-primary);
-}
+  --bold: 600;
 
-.in-progress {
-  color: var(--color-blue-primary);
-}
-
-.challenged {
-  color: var(--color-orange);
-}
-
-.appealed {
-  color: var(--color-red);
-}
-
-.pending {
-  color: var(--color-text-primary);
-}
-
-.registered {
-  color: var(--color-green);
-}
-
-.rejected {
-  color: var(--color-grey-dark);
-}
-
-.bold {
-  font-weight: 600;
-}
-
-.lead {
-  font-size: 24px;
+  --border-radius: 3px;
 }
 
 header,
@@ -75,4 +43,15 @@ main {
 
 .navbar-dark .navbar-nav .nav-link {
   color: rgba(255, 255, 255, 0.85);
+}
+
+.card-header {
+  padding: var(--spacing-8) var(--spacing-16);
+  background-color: var(--color-purple-primary);
+  color: white;
+  border-radius: 3px;
+}
+
+.card-body {
+  padding: var(--spacing-16) var(--spacing-16);
 }
