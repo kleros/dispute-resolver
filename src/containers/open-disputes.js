@@ -13,7 +13,7 @@ class openDisputeIDs extends React.Component {
   }
   componentDidMount() {
     this.props.getOpenDisputesOnCourtCallback().then((openDisputeIDs) => {
-      this.setState({ openDisputeIDs: openDisputeIDs, loading: false });
+      this.setState({ openDisputeIDs: openDisputeIDs });
 
       openDisputeIDs.map((arbitratorDispute) => {
         this.props.getArbitratorDisputeCallback(arbitratorDispute).then((arbitratorDisputeDetails) => {
@@ -25,6 +25,7 @@ class openDisputeIDs extends React.Component {
 
         this.props.getCurrentRulingCallback(arbitratorDispute).then((ruling) => this.setState({ ["arbitratorRuling" + arbitratorDispute]: ruling }));
       });
+      this.setState({ loading: false });
     });
   }
 
@@ -42,7 +43,7 @@ class openDisputeIDs extends React.Component {
             {openDisputeIDs.map((dispute) => (
               <Col className={styles.card} style={{ display: "flex", flexDirection: "column" }} key={dispute} xl={span.xl} lg={span.lg} md={span.md} sm={span.sm} xs={span.xs}>
                 <a style={{ display: "contents", textDecoration: "none", color: "unset" }} href={`/cases/${dispute}`}>
-                  {this.state[dispute] && <OngoingCard bundle={this.state} dispute={dispute} subcourtDetails={subcourtDetails} subcourts={subcourts} />}
+                  {this.state[dispute] && <OngoingCard dispute={dispute} arbitratorDisputeDetails={this.state[`arbitrator${dispute}`]} title={this.state[dispute].title} subcourtDetails={subcourtDetails} subcourts={subcourts} />}
                 </a>
               </Col>
             ))}

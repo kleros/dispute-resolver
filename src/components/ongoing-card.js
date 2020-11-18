@@ -1,4 +1,4 @@
-import { Card, Col, Form, Badge } from "react-bootstrap";
+import { Card, Col, Form, Badge, Spinner } from "react-bootstrap";
 import React from "react";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 import BigNumber from "bignumber.js";
@@ -23,37 +23,40 @@ class OngoingCard extends React.Component {
     return strings[periodNumber];
   };
   render() {
-    const { dispute, bundle, subcourtDetails, subcourts } = this.props;
+    const { dispute, subcourtDetails, subcourts, title, arbitratorDisputeDetails } = this.props;
+    console.log(this.props);
 
     return (
       <div className={styles.ongoingCard} onClick={(e) => this.setState({ selectedDispute: dispute })}>
         <div className={styles.header}>
-          {false && bundle[`arbitrator${dispute}`] && subcourtDetails && <div styles={styles.badge}>{subcourtDetails[bundle[`arbitrator${dispute}`].subcourtID] && subcourtDetails[bundle[`arbitrator${dispute}`].subcourtID].name}</div>}
-          <span className={`${styles.status} ${this.getStatusClass(bundle[`arbitrator${dispute}`].period)}`}> </span>
+          <span className={`${styles.status} ${this.getStatusClass(arbitratorDisputeDetails.period)}`}> </span>
           <span className={styles.disputeID}>{dispute}</span>
         </div>
         <div className={styles.body}>
-          <div className={styles.title}>{bundle[dispute].title}</div>
+          <div className={styles.title}>{title}</div>
           <hr className={styles.separator} />
         </div>
 
         <div className={styles.footer}>
-          {bundle[`arbitrator${dispute}`].period == 3 && (
-            <div>
-              {bundle[`arbitrator${dispute}`] && subcourtDetails && (
-                <div className={styles.badge}>
-                  <ScalesSVG />
-                  <span>{subcourtDetails[bundle[`arbitrator${dispute}`].subcourtID] && subcourtDetails[bundle[`arbitrator${dispute}`].subcourtID].name}</span>
-                </div>
-              )}
-            </div>
-          )}
-          {bundle[`arbitrator${dispute}`] && subcourts && (
+          <div>
+            {arbitratorDisputeDetails && subcourtDetails && (
+              <div className={styles.badge}>
+                <ScalesSVG />
+                <span>{subcourtDetails[arbitratorDisputeDetails.subcourtID].name}</span>
+              </div>
+            )}
+            {(!arbitratorDisputeDetails || !subcourtDetails) && (
+              <div style={{ textAlign: "center" }}>
+                <Spinner as="span" animation="grow" size="xs" role="status" aria-hidden="true" className="purple-inverted" />
+              </div>
+            )}
+          </div>
+          {arbitratorDisputeDetails && subcourts && (
             <div className={styles.countdown}>
               <Hourglass />
               <Countdown
                 date={BigNumber("1000")
-                  .times(BigNumber(bundle[`arbitrator${dispute}`].lastPeriodChange).plus(BigNumber(subcourts[bundle[`arbitrator${dispute}`].subcourtID].timesPerPeriod[bundle[`arbitrator${dispute}`].period])))
+                  .times(BigNumber(arbitratorDisputeDetails.lastPeriodChange).plus(BigNumber(subcourts[arbitratorDisputeDetails.subcourtID].timesPerPeriod[arbitratorDisputeDetails.period])))
                   .toNumber()}
                 renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>}
               />
