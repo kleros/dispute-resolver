@@ -23,7 +23,7 @@ class OngoingCard extends React.Component {
     return strings[periodNumber];
   };
   render() {
-    const { dispute, subcourtDetails, subcourts, title, arbitratorDisputeDetails } = this.props;
+    const { dispute, subcourtDetails, subcourts, title, arbitratorDisputeDetails, grayedOut } = this.props;
     console.log(this.props);
 
     return (

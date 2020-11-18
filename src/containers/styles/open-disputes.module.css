@@ -1,3 +1,13 @@
 .card {
   padding: var(--spacing-16) !important;
 }
+
+.openDisputes div:global(.row) {
+  padding-left: var(--spacing-16);
+}
+
+.filter :global(.dropdown-toggle.btn.btn-primary)::before {
+  content: "●";
+  vertical-align: text-bottom;
+  margin-right: var(--spacing-8);
+}

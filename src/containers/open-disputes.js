@@ -1,5 +1,5 @@
 import React from "react";
-import { Accordion, Container, Col, Row, Button, Form, Card, Dropdown, Badge, Spinner } from "react-bootstrap";
+import { Accordion, Container, Col, Row, Button, Form, Card, Dropdown, DropdownButton, Badge, Spinner } from "react-bootstrap";
 import { Redirect, Link } from "react-router-dom";
 import OngoingCard from "components/ongoing-card.js";
 import styles from "containers/styles/open-disputes.module.css";
@@ -9,7 +9,7 @@ const span = Object.freeze({ xs: 12, sm: 12, md: 6, lg: 6, xl: 4 });
 class openDisputeIDs extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { openDisputeIDs: [], arbitratorDisputes: {}, loading: true };
+    this.state = { openDisputeIDs: [], arbitratorDisputes: {}, loading: true, statusFilter: 5 };
   }
   componentDidMount() {
     this.props.getOpenDisputesOnCourtCallback().then((openDisputeIDs) => {
@@ -29,21 +29,51 @@ class openDisputeIDs extends React.Component {
     });
   }
 
+  FILTER_NAMES = ["Evidence Period", "Commit Period", "Vote Period", "Appeal Period", "Execution Period", "Ongoing"];
+
+  getFilterName = (periodNumber) => {
+    const strings = this.FILTER_NAMES;
+
+    return strings[periodNumber];
+  };
+
+  getStatusClass = (periodNumber) => {
+    const strings = ["evidence", "commit", "vote", "appeal", "execution"];
+
+    return strings[periodNumber];
+  };
+
+  onFilterSelect = async (filter) => {
+    console.log(filter);
+    await this.setState({ statusFilter: filter });
+  };
+
   render() {
     console.debug(this.state);
     console.debug(this.props);
 
-    const { openDisputeIDs, selectedDispute } = this.state;
+    const { openDisputeIDs, selectedDispute, statusFilter } = this.state;
     const { subcourts, subcourtDetails } = this.props;
 
     return (
       <main className={styles.openDisputes}>
         <Container fluid className="main-content" id="ongoing-disputes">
-          <Form.Row style={{ margin: 0, padding: 0 }}>
+          <Row>
+            <DropdownButton id="dropdown-basic-button" title={this.getFilterName(statusFilter)} className={styles.filter} onSelect={this.onFilterSelect}>
+              {this.FILTER_NAMES.map((name, index) => (
+                <Dropdown.Item href={`#/${index}`} eventKey={index}>
+                  {name}
+                </Dropdown.Item>
+              ))}
+            </DropdownButton>
+          </Row>
+          <Row style={{ margin: 0, padding: 0 }}>
             {openDisputeIDs.map((dispute) => (
               <Col className={styles.card} style={{ display: "flex", flexDirection: "column" }} key={dispute} xl={span.xl} lg={span.lg} md={span.md} sm={span.sm} xs={span.xs}>
                 <a style={{ display: "contents", textDecoration: "none", color: "unset" }} href={`/cases/${dispute}`}>
-                  {this.state[dispute] && <OngoingCard dispute={dispute} arbitratorDisputeDetails={this.state[`arbitrator${dispute}`]} title={this.state[dispute].title} subcourtDetails={subcourtDetails} subcourts={subcourts} />}
+                  {this.state[dispute] && (this.state[`arbitrator${dispute}`].period == statusFilter || statusFilter == 5) && (
+                    <OngoingCard dispute={dispute} arbitratorDisputeDetails={this.state[`arbitrator${dispute}`]} title={this.state[dispute].title} subcourtDetails={subcourtDetails} subcourts={subcourts} />
+                  )}
                 </a>
               </Col>
             ))}
@@ -57,7 +87,7 @@ class openDisputeIDs extends React.Component {
                 <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" style={{ width: "5rem", height: "5rem" }} className="purple-inverted" />
               </div>
             )}
-          </Form.Row>
+          </Row>
         </Container>
       </main>
     );

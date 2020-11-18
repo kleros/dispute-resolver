@@ -28,3 +28,8 @@ body {
 .navbar-dark .navbar-nav .nav-link {
   color: rgba(255, 255, 255, 0.85);
 }
+
+.dropdown-toggle.btn.btn-primary {
+  background-color: white;
+  color: black;
+}
