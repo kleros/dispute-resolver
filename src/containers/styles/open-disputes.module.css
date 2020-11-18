@@ -6,7 +6,50 @@
   padding-left: var(--spacing-16);
 }
 
+.filter :global(.dropdown-toggle.btn.btn-primary)::after {
+  margin-left: var(--spacing-32);
+  color: var(--color-stroke);
+}
+
 .filter :global(.dropdown-toggle.btn.btn-primary)::before {
+  content: "●";
+  vertical-align: text-bottom;
+  margin-right: var(--spacing-8);
+}
+
+.filter:global(.evidence) :global(.dropdown-toggle.btn.btn-primary)::before {
+  color: var(--color-green);
+}
+
+.filter :global(.dropdown-item.evidence)::before {
+  color: var(--color-green);
+}
+
+.filter:global(.commit) :global(.dropdown-toggle.btn.btn-primary)::before {
+  color: var(--color-blue-primary);
+}
+
+.filter :global(.dropdown-item.commit)::before {
+  color: var(--color-blue-primary);
+}
+
+.filter:global(.vote) :global(.dropdown-toggle.btn.btn-primary)::before {
+  color: var(--color-blue-primary);
+}
+
+.filter :global(.dropdown-item.vote)::before {
+  color: var(--color-blue-primary);
+}
+
+.filter:global(.appeal) :global(.dropdown-toggle.btn.btn-primary)::before {
+  color: var(--color-red);
+}
+
+.filter :global(.dropdown-item.appeal)::before {
+  color: var(--color-red);
+}
+
+.filter :global(.dropdown-item)::before {
   content: "●";
   vertical-align: text-bottom;
   margin-right: var(--spacing-8);

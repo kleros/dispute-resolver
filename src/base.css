@@ -33,3 +33,7 @@ body {
   background-color: white;
   color: black;
 }
+
+.dropdown .btn {
+  border-color: var(--color-stroke);
+}

@@ -4,12 +4,10 @@ import { Redirect, Link } from "react-router-dom";
 import OngoingCard from "components/ongoing-card.js";
 import styles from "containers/styles/open-disputes.module.css";
 
-const span = Object.freeze({ xs: 12, sm: 12, md: 6, lg: 6, xl: 4 });
-
 class openDisputeIDs extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { openDisputeIDs: [], arbitratorDisputes: {}, loading: true, statusFilter: 5 };
+    this.state = { openDisputeIDs: [], arbitratorDisputes: {}, loading: true, statusFilter: 4 };
   }
   componentDidMount() {
     this.props.getOpenDisputesOnCourtCallback().then((openDisputeIDs) => {
@@ -29,7 +27,7 @@ class openDisputeIDs extends React.Component {
     });
   }
 
-  FILTER_NAMES = ["Evidence Period", "Commit Period", "Vote Period", "Appeal Period", "Execution Period", "Ongoing"];
+  FILTER_NAMES = ["Evidence", "Commit", "Voting", "Crowdfunding", "Ongoing"];
 
   getFilterName = (periodNumber) => {
     const strings = this.FILTER_NAMES;
@@ -59,9 +57,9 @@ class openDisputeIDs extends React.Component {
       <main className={styles.openDisputes}>
         <Container fluid className="main-content" id="ongoing-disputes">
           <Row>
-            <DropdownButton id="dropdown-basic-button" title={this.getFilterName(statusFilter)} className={styles.filter} onSelect={this.onFilterSelect}>
+            <DropdownButton id="dropdown-basic-button" title={this.getFilterName(statusFilter)} className={`${styles.filter} ${this.getStatusClass(statusFilter)}`} onSelect={this.onFilterSelect}>
               {this.FILTER_NAMES.map((name, index) => (
-                <Dropdown.Item href={`#/${index}`} eventKey={index}>
+                <Dropdown.Item eventKey={index} className={this.getStatusClass(index)}>
                   {name}
                 </Dropdown.Item>
               ))}
@@ -69,9 +67,19 @@ class openDisputeIDs extends React.Component {
           </Row>
           <Row style={{ margin: 0, padding: 0 }}>
             {openDisputeIDs.map((dispute) => (
-              <Col className={styles.card} style={{ display: "flex", flexDirection: "column" }} key={dispute} xl={span.xl} lg={span.lg} md={span.md} sm={span.sm} xs={span.xs}>
+              <Col
+                className={styles.card}
+                style={{ display: "flex", flexDirection: "column" }}
+                key={dispute}
+                xl={4}
+                lg={6}
+                md={6}
+                sm={12}
+                xs={12}
+                style={{ display: (this.state[dispute] && this.state[`arbitrator${dispute}`].period == statusFilter) || statusFilter == 4 ? "block" : "none" }}
+              >
                 <a style={{ display: "contents", textDecoration: "none", color: "unset" }} href={`/cases/${dispute}`}>
-                  {this.state[dispute] && (this.state[`arbitrator${dispute}`].period == statusFilter || statusFilter == 5) && (
+                  {this.state[dispute] && (this.state[`arbitrator${dispute}`].period == statusFilter || statusFilter == 4) && (
                     <OngoingCard dispute={dispute} arbitratorDisputeDetails={this.state[`arbitrator${dispute}`]} title={this.state[dispute].title} subcourtDetails={subcourtDetails} subcourts={subcourts} />
                   )}
                 </a>

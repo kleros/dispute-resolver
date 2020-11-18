@@ -58,7 +58,6 @@
 }
 
 .ongoingCard .status:global(.evidence)::before {
-  color: var(--color-purple-primary);
   color: white;
 }
 
