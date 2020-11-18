@@ -23,6 +23,7 @@ main {
 
 footer {
   height: var(--spacing-64);
+  min-height: var(--spacing-64);
   padding-left: var(--spacing-32);
   padding-right: var(--spacing-32);
   display: flex;

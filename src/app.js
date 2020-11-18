@@ -372,7 +372,7 @@ class App extends React.Component {
           </Switch>
         </BrowserRouter>
       );
-    else return <>asda</>;
+    else return <>Please enable a web3 provider.</>;
   }
 }
 export default App;
