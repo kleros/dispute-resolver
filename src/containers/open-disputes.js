@@ -54,49 +54,47 @@ class openDisputeIDs extends React.Component {
     const { subcourts, subcourtDetails } = this.props;
 
     return (
-      <main className={styles.openDisputes}>
-        <Container fluid className="main-content" id="ongoing-disputes">
-          <Row>
-            <DropdownButton id="dropdown-basic-button" title={this.getFilterName(statusFilter)} className={`${styles.filter} ${this.getStatusClass(statusFilter)}`} onSelect={this.onFilterSelect}>
-              {this.FILTER_NAMES.map((name, index) => (
-                <Dropdown.Item eventKey={index} className={this.getStatusClass(index)}>
-                  {name}
-                </Dropdown.Item>
-              ))}
-            </DropdownButton>
-          </Row>
-          <Row style={{ margin: 0, padding: 0 }}>
-            {openDisputeIDs.map((dispute) => (
-              <Col
-                className={styles.card}
-                style={{ display: "flex", flexDirection: "column" }}
-                key={dispute}
-                xl={4}
-                lg={6}
-                md={6}
-                sm={12}
-                xs={12}
-                style={{ display: (this.state[dispute] && this.state[`arbitrator${dispute}`].period == statusFilter) || statusFilter == 4 ? "block" : "none" }}
-              >
-                <a style={{ display: "contents", textDecoration: "none", color: "unset" }} href={`/cases/${dispute}`}>
-                  {this.state[dispute] && (this.state[`arbitrator${dispute}`].period == statusFilter || statusFilter == 4) && (
-                    <OngoingCard dispute={dispute} arbitratorDisputeDetails={this.state[`arbitrator${dispute}`]} title={this.state[dispute].title} subcourtDetails={subcourtDetails} subcourts={subcourts} />
-                  )}
-                </a>
-              </Col>
+      <main className={styles.openDisputes} id="ongoing-disputes">
+        <Row>
+          <DropdownButton id="dropdown-basic-button" title={this.getFilterName(statusFilter)} className={`${styles.filter} ${this.getStatusClass(statusFilter)}`} onSelect={this.onFilterSelect}>
+            {this.FILTER_NAMES.map((name, index) => (
+              <Dropdown.Item eventKey={index} className={this.getStatusClass(index)}>
+                {name}
+              </Dropdown.Item>
             ))}
-            {!this.state.loading && openDisputeIDs.length == 0 && (
-              <Col style={{ textAlign: "center", marginTop: "5rem" }}>
-                <h1>There are no open disputes.</h1>
-              </Col>
-            )}
-            {this.state.loading && (
-              <div style={{ margin: "auto", marginTop: "5vh" }}>
-                <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" style={{ width: "5rem", height: "5rem" }} className="purple-inverted" />
-              </div>
-            )}
-          </Row>
-        </Container>
+          </DropdownButton>
+        </Row>
+        <Row style={{ margin: 0, padding: 0 }}>
+          {openDisputeIDs.map((dispute) => (
+            <Col
+              className={styles.card}
+              style={{ display: "flex", flexDirection: "column" }}
+              key={dispute}
+              xl={4}
+              lg={6}
+              md={6}
+              sm={12}
+              xs={12}
+              style={{ display: (this.state[dispute] && this.state[`arbitrator${dispute}`].period == statusFilter) || statusFilter == 4 ? "block" : "none" }}
+            >
+              <a style={{ display: "contents", textDecoration: "none", color: "unset" }} href={`/cases/${dispute}`}>
+                {this.state[dispute] && (this.state[`arbitrator${dispute}`].period == statusFilter || statusFilter == 4) && (
+                  <OngoingCard dispute={dispute} arbitratorDisputeDetails={this.state[`arbitrator${dispute}`]} title={this.state[dispute].title} subcourtDetails={subcourtDetails} subcourts={subcourts} />
+                )}
+              </a>
+            </Col>
+          ))}
+          {!this.state.loading && openDisputeIDs.length == 0 && (
+            <Col style={{ textAlign: "center", marginTop: "5rem" }}>
+              <h1>There are no open disputes.</h1>
+            </Col>
+          )}
+          {this.state.loading && (
+            <div style={{ margin: "auto", marginTop: "5vh" }}>
+              <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" style={{ width: "5rem", height: "5rem" }} className="purple-inverted" />
+            </div>
+          )}
+        </Row>
       </main>
     );
   }

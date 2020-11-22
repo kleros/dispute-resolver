@@ -5,7 +5,7 @@ import "./layout.css";
 import "./base.css";
 import "./bootstrapConfig.sass";
 import "./theme.css";
-import CreateDispute from "./containers/create-dispute";
+import Create from "./containers/create";
 import _404 from "./containers/404";
 import Interact from "./containers/interact";
 import OpenDisputes from "./containers/open-disputes";
@@ -295,7 +295,7 @@ class App extends React.Component {
               render={(route) => (
                 <>
                   <Header viewOnly={!activeAddress} route={route} />
-                  <CreateDispute
+                  <Create
                     activeAddress={activeAddress}
                     route={route}
                     createDisputeCallback={this.createDispute}

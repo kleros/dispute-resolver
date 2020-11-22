@@ -1,0 +1,8 @@
+.create > div {
+  background-color: white;
+  border-radius: 18px;
+}
+
+.create .markdown {
+  word-wrap: break-word;
+}
