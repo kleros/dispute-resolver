@@ -31,10 +31,8 @@ class Create extends React.Component {
       category: "",
       description: "",
       question: "",
-      firstRulingOption: "",
-      firstRulingDescription: "",
-      secondRulingOption: "",
-      secondRulingDescription: "",
+      titles: [],
+      descriptions: [],
       modalShow: false,
       awaitingConfirmation: false,
       lastDisputeID: "",
@@ -48,6 +46,7 @@ class Create extends React.Component {
       validated: false,
       questionType: QuestionTypes.SINGLE_SELECT,
       numberOfRulingOptions: 2,
+      numberOfParties: 2,
     };
   }
 
@@ -80,6 +79,37 @@ class Create extends React.Component {
   onQuestionTypeChange = async (questionType) => {
     console.log(JSON.parse(questionType));
     await this.setState({ questionType: JSON.parse(questionType) });
+
+    if (!(JSON.parse(questionType).code == QuestionTypes.SINGLE_SELECT.code || JSON.parse(questionType).code == QuestionTypes.MULTIPLE_SELECT.code)) {
+      await this.setState({ numberOfRulingOptions: 0 }); // Default value, means the max at the smart contract
+    } else {
+      await this.setState({ numberOfRulingOptions: 2 }); // Default value, means the max at the smart contract
+    }
+  };
+
+  onTitlesChange = async (event, index) => {
+    this.setState((prevState) => ({
+      titles: [...prevState.titles.slice(0, index), event.target.value, ...prevState.titles.slice(index + 1)],
+    }));
+  };
+
+  onDescriptionsChange = async (event, index) => {
+    this.setState((prevState) => ({
+      descriptions: [...prevState.descriptions.slice(0, index), event.target.value, ...prevState.descriptions.slice(index + 1)],
+    }));
+  };
+
+  onNumberOfRulingOptionsChange = async (event) => {
+    let number = parseInt(event.target.value);
+    if (Number.isNaN(number));
+    {
+      console.log(Number.isNaN(number));
+      this.setState({ numberOfRulingOptions: number });
+      return;
+    }
+    number = number > 32 ? 32 : 32;
+    this.setState({ numberOfRulingOptions: number });
+    this.setState((prevState) => ({ titles: prevState.titles.slice(0, number), descriptions: prevState.titles.slice(0, number) }));
   };
 
   onControlChange = async (e) => {
@@ -112,12 +142,12 @@ class Create extends React.Component {
     });
 
   onCreateButtonClick = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const { selectedSubcourt, initialNumberOfJurors, title, category, description, requester, requesterAddress, respondent, respondentAddress, question, firstRulingOption, secondRulingOption, firstRulingDescription, secondRulingDescription, primaryDocument } = this.state;
+    console.log("hey");
+
+    const { selectedSubcourt, initialNumberOfJurors, title, category, description, requester, requesterAddress, respondent, respondentAddress, question, titles, descriptions, primaryDocument, questionType, numberOfRulingOptions } = this.state;
     this.setState({ awaitingConfirmation: true });
     try {
-      const receipt = await this.props.CreateCallback({
+      const receipt = await this.props.createDisputeCallback({
         selectedSubcourt,
         initialNumberOfJurors,
         title,
@@ -128,11 +158,13 @@ class Create extends React.Component {
           [respondentAddress]: respondent,
         },
         question,
-        firstRulingOption,
-        secondRulingOption,
-        firstRulingDescription,
-        secondRulingDescription,
         primaryDocument,
+        numberOfRulingOptions,
+        rulingOptions: {
+          type: questionType.code,
+          titles: titles,
+          descriptions: descriptions,
+        },
       });
       this.setState({
         lastDisputeID: receipt.events.Dispute.returnValues._disputeID,
@@ -155,10 +187,6 @@ class Create extends React.Component {
       category,
       description,
       question,
-      firstRulingOption,
-      secondRulingOption,
-      firstRulingDescription,
-      secondRulingDescription,
       modalShow,
       awaitingConfirmation,
       lastDisputeID,
@@ -174,6 +202,10 @@ class Create extends React.Component {
       validated,
       questionType,
       numberOfRulingOptions,
+      numberOfParties,
+      rulingOptions,
+      titles,
+      descriptions,
     } = this.state;
 
     const { activeAddress, subcourtDetails, subcourtsLoading } = this.props;
@@ -324,11 +356,11 @@ class Create extends React.Component {
                   </Dropdown>
                 </Form.Group>
               </Col>
-              {(questionType == QuestionTypes.SINGLE_SELECT || questionType == QuestionTypes.MULTIPLE_SELECT) && (
+              {(questionType.code == QuestionTypes.SINGLE_SELECT.code || questionType.code == QuestionTypes.MULTIPLE_SELECT.code) && (
                 <Col>
                   <Form.Group>
                     <Form.Label htmlFor="numberOfRulingOptions">Number of Options</Form.Label>
-                    <Form.Control required id="numberOfRulingOptions" as="input" type="number" min="2" value={numberOfRulingOptions} onChange={this.onControlChange} placeholder={2} />
+                    <Form.Control required id="numberOfRulingOptions" as="input" type="number" min="2" max="32" value={numberOfRulingOptions} onChange={this.onNumberOfRulingOptionsChange} placeholder={"Enter a number between 2 and 32"} />
                     <Form.Control.Feedback type="invalid">Please provide first ruling option, for example: "Yes"</Form.Control.Feedback>
                   </Form.Group>
                 </Col>
@@ -345,53 +377,50 @@ class Create extends React.Component {
                 </Form.Group>
               </Col>
             </Row>
-            {(questionType == QuestionTypes.SINGLE_SELECT || questionType == QuestionTypes.MULTIPLE_SELECT) &&
+            {!isNaN(numberOfRulingOptions) &&
+              (questionType.code == QuestionTypes.SINGLE_SELECT.code || questionType.code == QuestionTypes.MULTIPLE_SELECT.code) &&
               [...Array(parseInt(numberOfRulingOptions))].map((value, index) => (
                 <Row>
                   <Col>
                     <Form.Group>
-                      <Form.Label htmlFor="firstRulingOption">Ruling Option {index + 1}</Form.Label>
-                      <Form.Control required id="firstRulingOption" as="input" value={firstRulingOption} onChange={this.onControlChange} placeholder={`Ruling option ${index + 1}`} />
+                      <Form.Label htmlFor={`rulingOption${index}Title`}>Ruling Option {index + 1}</Form.Label>
+                      <Form.Control required id={`rulingOption${index}Title`} as="input" value={titles[index]} onChange={(e) => this.onTitlesChange(e, index)} placeholder={`Ruling option ${index + 1}`} />
                       <Form.Control.Feedback type="invalid">Please provide first ruling option, for example: "Yes"</Form.Control.Feedback>
                     </Form.Group>
                   </Col>
                   <Col md={9}>
                     <Form.Group>
-                      <Form.Label htmlFor="firstRulingDescription">Ruling Option {index + 1} Description (optional)</Form.Label>
-                      <Form.Control id="firstRulingDescription" as="input" value={firstRulingDescription} onChange={this.onControlChange} placeholder={`Ruling option ${index + 1} description`} />
+                      <Form.Label htmlFor={`rulingOption${index}Description`}>Ruling Option {index + 1} Description (optional)</Form.Label>
+                      <Form.Control id={`rulingOption${index}Description`} as="input" value={descriptions[index]} onChange={(e) => this.onDescriptionsChange(e, index)} placeholder={`Ruling option ${index + 1} description`} />
                     </Form.Group>
                   </Col>{" "}
                 </Row>
               ))}
 
             <Row>
-              <Col md={2} l={2} xl={2}>
-                <Form.Group>
-                  <Form.Label htmlFor="requester">Party A</Form.Label>
+              {[...Array(parseInt(numberOfParties))].map((value, index) => (
+                <>
+                  <Col md={2} l={2} xl={2}>
+                    <Form.Group>
+                      <Form.Label htmlFor="requester">Party A</Form.Label>
 
-                  <Form.Control id="requester" as="input" value={requester} onChange={this.onControlChange} placeholder={"Please enter alias"} />
-                </Form.Group>
-              </Col>
-              <Col md={4} l={4} xl={4}>
-                <Form.Group>
-                  <Form.Label htmlFor="requesterAddress">Party A Address (optional)</Form.Label>
+                      <Form.Control id="requester" as="input" value={requester} onChange={this.onControlChange} placeholder={"Please enter alias"} />
+                    </Form.Group>
+                  </Col>
+                  <Col md={4} l={4} xl={4}>
+                    <Form.Group>
+                      <Form.Label htmlFor="requesterAddress">Party A Address (optional)</Form.Label>
 
-                  <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="requesterAddress" as="input" value={requesterAddress} onChange={this.onControlChange} placeholder={"Please enter address"} />
-                </Form.Group>
-              </Col>
-              <Col md={2} l={2} xl={2}>
-                <Form.Group>
-                  <Form.Label htmlFor="respondent">Party B</Form.Label>
-
-                  <Form.Control id="respondent" as="input" value={respondent} onChange={this.onControlChange} placeholder={"Please enter alias"} />
-                </Form.Group>
-              </Col>
-              <Col md={4} l={4} xl={4}>
-                <Form.Group>
-                  <Form.Label htmlFor="respondentAddress">Party B Address (optional)</Form.Label>
-
-                  <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="respondentAddress" as="input" value={respondentAddress} onChange={this.onControlChange} placeholder={"Please enter address"} />
-                </Form.Group>
+                      <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="requesterAddress" as="input" value={requesterAddress} onChange={this.onControlChange} placeholder={"Please enter address"} />
+                    </Form.Group>
+                  </Col>
+                </>
+              ))}
+            </Row>
+            <Row>
+              <Col>
+                <Button onClick={(e) => this.setState({ numberOfParties: numberOfParties + 1 })}>Increment</Button>
+                <Button onClick={(e) => this.setState({ numberOfParties: numberOfParties - 1 > 0 ? numberOfParties - 1 : 0 })}>Decrement </Button>
               </Col>
             </Row>
 
@@ -431,15 +460,12 @@ class Create extends React.Component {
           respondent={respondent}
           respondentAddress={respondentAddress}
           question={question}
-          firstRulingOption={firstRulingOption}
-          firstRulingDescription={firstRulingDescription}
-          secondRulingOption={secondRulingOption}
-          secondRulingDescription={secondRulingDescription}
+          rulingOptions={rulingOptions}
           primaryDocument={primaryDocument}
           filePath={fileInput && fileInput.path}
           show={modalShow}
           onModalHide={this.onModalClose}
-          onCreateButtonClick={this.onCreateButtonClick}
+          onCreateDisputeButtonClick={this.onCreateButtonClick}
           awaitingConfirmation={awaitingConfirmation}
           activeAddress={activeAddress}
         />

@@ -186,11 +186,7 @@ class App extends React.Component {
       description: options.description,
       aliases: options.aliases,
       question: options.question,
-      rulingOptions: {
-        type: "single-select",
-        titles: [options.firstRulingOption, options.secondRulingOption],
-        descriptions: [options.firstRulingDescription, options.secondRulingDescription],
-      },
+      rulingOptions: options.rulingOptions,
       fileURI: options.primaryDocument,
       dynamicScriptURI: "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj",
     };
@@ -200,7 +196,7 @@ class App extends React.Component {
     const metaevidenceURI = `/ipfs/${ipfsHashMetaEvidenceObj[1].hash}${ipfsHashMetaEvidenceObj[0].path}`;
 
     const arbitrationCost = await this.getArbitrationCost(arbitrator, arbitratorExtraData);
-    return EthereumInterface.send("ArbitrableProxy", networkMap[this.state.network].BINARY_ARBITRABLE_PROXY, this.state.activeAddress, arbitrationCost, "createDispute", arbitratorExtraData, metaevidenceURI);
+    return EthereumInterface.send("ArbitrableProxy", networkMap[this.state.network].ARBITRABLE_PROXY, this.state.activeAddress, arbitrationCost, "createDispute", arbitratorExtraData, metaevidenceURI, options.numberOfRulingOptions);
   };
 
   getDisputeEvent = async (arbitrableAddress, disputeID) =>
