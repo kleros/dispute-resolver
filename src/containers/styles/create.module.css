@@ -6,3 +6,31 @@
 .create .markdown {
   word-wrap: break-word;
 }
+
+.create .fillUpTheForm {
+  font-size: var(--font-size-s);
+}
+
+.create .h1 {
+  font-size: var(--font-size-l);
+  font-weight: var(--bold);
+}
+
+.create hr {
+  width: calc(100% - 32px);
+}
+
+.create .scales {
+  height: 16px;
+  width: auto;
+  margin-right: var(--spacing-4);
+  vertical-align: text-bottom;
+}
+
+.create .subcourtDropdownToggle > span {
+  vertical-align: middle;
+}
+
+.create .scales > path {
+  fill: var(--color-purple-primary);
+}

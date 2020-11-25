@@ -13,6 +13,7 @@ import { Redirect } from "react-router-dom";
 
 import IPFS from "../components/ipfs";
 import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
+import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 
 const QuestionTypes = Object.freeze({
   SINGLE_SELECT: { code: "single-select", humanReadable: "Multiple choice with single correct answer" },
@@ -146,6 +147,8 @@ class Create extends React.Component {
 
     const { selectedSubcourt, initialNumberOfJurors, title, category, description, requester, requesterAddress, respondent, respondentAddress, question, titles, descriptions, primaryDocument, questionType, numberOfRulingOptions } = this.state;
     this.setState({ awaitingConfirmation: true });
+
+    let noOfOptions = questionType.code == "multiple-select" ? Math.pow(2, numberOfRulingOptions) : numberOfRulingOptions;
     try {
       const receipt = await this.props.createDisputeCallback({
         selectedSubcourt,
@@ -159,7 +162,7 @@ class Create extends React.Component {
         },
         question,
         primaryDocument,
-        numberOfRulingOptions,
+        numberOfRulingOptions: noOfOptions,
         rulingOptions: {
           type: questionType.code,
           titles: titles,
@@ -217,8 +220,8 @@ class Create extends React.Component {
           <Form noValidate validated={validated} onSubmit={this.onModalShow}>
             <Row>
               <Col>
-                <p>Fill up the form to</p>
-                <h1>Create a custom dispute</h1>
+                <p className={styles.fillUpTheForm}>Fill up the form to</p>
+                <h1 className={styles.h1}>Create a custom dispute</h1>
               </Col>
             </Row>
             <hr />
@@ -227,8 +230,8 @@ class Create extends React.Component {
                 <Form.Group>
                   <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
                   <Dropdown required onSelect={this.onSubcourtSelect}>
-                    <Dropdown.Toggle id="subcourt-dropdown" block disabled={subcourtsLoading}>
-                      {(subcourtsLoading && "Loading...") || (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt].name) || "Please select a court"}
+                    <Dropdown.Toggle id="subcourt-dropdown" block disabled={subcourtsLoading} className={styles.subcourtDropdownToggle}>
+                      <ScalesSVG className={styles.scales} /> <span>{(subcourtsLoading && "Loading...") || (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt].name) || "Please select a court"}</span>
                     </Dropdown.Toggle>
 
                     <Dropdown.Menu>
