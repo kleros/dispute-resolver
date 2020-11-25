@@ -27,10 +27,44 @@
   vertical-align: text-bottom;
 }
 
+.create .subcourtDropdownToggle {
+  text-align: left;
+}
+
+.create .subcourtDropdownToggle::after {
+  position: absolute;
+  right: var(--spacing-16);
+  top: calc(50% - var(--spacing-4));
+}
+
 .create .subcourtDropdownToggle > span {
   vertical-align: middle;
 }
 
+.create .subcourtDropdownToggle::after {
+}
+
 .create .scales > path {
   fill: var(--color-purple-primary);
+}
+
+.create .arbitrationFeeGroup > div {
+  box-shadow: 0px 6px 24px rgba(77, 0, 180, 0.25);
+}
+
+.create .arbitrationFeeGroupPrepend > svg {
+  margin-top: auto;
+  margin-bottom: auto;
+  margin-left: var(--spacing-16);
+}
+
+.create .arbitrationFee {
+  border: none;
+  background-color: white;
+  font-weight: var(--bold);
+  color: var(--color-text-primary);
+}
+
+.create :global(markdown-toolbar) {
+  color: var(--color-blue-primary);
 }

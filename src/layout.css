@@ -24,6 +24,20 @@ main {
   flex: 1;
 }
 
+@media only screen and (max-width: 600px) {
+  main {
+    padding-left: var(--spacing-32);
+    padding-right: var(--spacing-32);
+  }
+}
+
+@media only screen and (max-width: 400px) {
+  main {
+    padding-left: var(--spacing-16);
+    padding-right: var(--spacing-16);
+  }
+}
+
 main > div {
   padding: var(--spacing-32);
 }

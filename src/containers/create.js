@@ -7,13 +7,16 @@ import { faBold, faHeading, faItalic, faCode, faLink, faImage, faQuoteLeft, faLi
 import Dropzone from "react-dropzone";
 import styles from "containers/styles/create.module.css";
 
-import { Container, Col, Row, Button, Form, Card, Dropdown } from "react-bootstrap";
+import { Container, Col, Row, Button, Form, Card, Dropdown, InputGroup } from "react-bootstrap";
 
 import { Redirect } from "react-router-dom";
 
 import IPFS from "../components/ipfs";
 import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
+import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
+
+import { Cascader } from "antd";
 
 const QuestionTypes = Object.freeze({
   SINGLE_SELECT: { code: "single-select", humanReadable: "Multiple choice with single correct answer" },
@@ -226,7 +229,7 @@ class Create extends React.Component {
             </Row>
             <hr />
             <Row>
-              <Col>
+              <Col xl={3} md={6} sm={12} xs={12}>
                 <Form.Group>
                   <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
                   <Dropdown required onSelect={this.onSubcourtSelect}>
@@ -245,42 +248,30 @@ class Create extends React.Component {
                   </Dropdown>
                 </Form.Group>
               </Col>
-              <Col>
+              <Col xl={3} md={6} sm={12} xs={12}>
                 <Form.Group>
                   <Form.Label htmlFor="initialNumberOfJurors">Number of Jurors</Form.Label>
                   <Form.Control required id="initialNumberOfJurors" as="input" type="number" min="0" value={initialNumberOfJurors} onChange={this.onControlChange} placeholder={"Number of jurors"} />
                 </Form.Group>
               </Col>
-              <Col>
+              <Col xl={3} md={6} sm={12} xs={12}>
                 <Form.Group>
-                  <Form.Label htmlFor="category">Category (optional)</Form.Label>
+                  <Form.Label htmlFor="category">Category (Optional)</Form.Label>
                   <Form.Control id="category" as="input" value={category} onChange={this.onControlChange} placeholder={"Category"} />
                 </Form.Group>
               </Col>
-              <Col>
-                <Form.Group className="float-right">
-                  <Form.Label style={{ marginBottom: 0 }} className="float-right" htmlFor="arbitrationFee">
-                    Arbitration Cost
-                  </Form.Label>
-                  <Form.Control
-                    style={{
-                      fontSize: "2rem",
-                      border: "none",
-                      borderColor: "transparent",
-                      padding: 0,
-                      height: "auto",
-                    }}
-                    className="text-right"
-                    id="arbitrationFee"
-                    readOnly
-                    type="text"
-                    value={arbitrationCost && arbitrationCost + " ETH"}
-                    placeholder="N/A"
-                  />
+              <Col xl={3} md={6} sm={12} xs={12}>
+                <Form.Group className={styles.arbitrationFeeGroup}>
+                  <Form.Label htmlFor="arbitrationFee">Arbitration Cost</Form.Label>
+                  <InputGroup>
+                    <InputGroup.Prepend className={styles.arbitrationFeeGroupPrepend}>
+                      <EthereumSVG />
+                    </InputGroup.Prepend>
+                    <Form.Control className={styles.arbitrationFee} id="arbitrationFee" readOnly type="text" value={arbitrationCost && arbitrationCost + " ETH"} placeholder="N/A" />
+                  </InputGroup>
                 </Form.Group>
               </Col>
             </Row>
-            <hr />
             <Row>
               <Col>
                 <Form.Group>
@@ -292,10 +283,10 @@ class Create extends React.Component {
             </Row>
             <Row>
               <Col>
-                <Form.Label htmlFor="description">Description (optional)</Form.Label>
+                <Form.Label htmlFor="description">Description (Optional)</Form.Label>
               </Col>
             </Row>
-            <Row className="mb-3">
+            <Row>
               <Col>
                 <Form.Group>
                   <Form.Control id="description" as="textarea" rows="3" value={description} onChange={this.onControlChange} placeholder={"Description of dispute in markdown"} />
@@ -393,13 +384,14 @@ class Create extends React.Component {
                   </Col>
                   <Col md={9}>
                     <Form.Group>
-                      <Form.Label htmlFor={`rulingOption${index}Description`}>Ruling Option {index + 1} Description (optional)</Form.Label>
+                      <Form.Label htmlFor={`rulingOption${index}Description`}>Ruling Option {index + 1} Description (Optional)</Form.Label>
                       <Form.Control id={`rulingOption${index}Description`} as="input" value={descriptions[index]} onChange={(e) => this.onDescriptionsChange(e, index)} placeholder={`Ruling option ${index + 1} description`} />
                     </Form.Group>
                   </Col>{" "}
                 </Row>
               ))}
 
+            <hr />
             <Row>
               {[...Array(parseInt(numberOfParties))].map((value, index) => (
                 <>
@@ -412,7 +404,7 @@ class Create extends React.Component {
                   </Col>
                   <Col md={4} l={4} xl={4}>
                     <Form.Group>
-                      <Form.Label htmlFor="requesterAddress">Party A Address (optional)</Form.Label>
+                      <Form.Label htmlFor="requesterAddress">Party A Address (Optional)</Form.Label>
 
                       <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="requesterAddress" as="input" value={requesterAddress} onChange={this.onControlChange} placeholder={"Please enter address"} />
                     </Form.Group>
@@ -430,13 +422,13 @@ class Create extends React.Component {
             <Row>
               <Col>
                 <Form.Group>
-                  <Form.Label htmlFor="dropzone">Primary Document (optional)</Form.Label>
+                  <Form.Label htmlFor="dropzone">Primary Document (Optional)</Form.Label>
                   <Dropzone onDrop={this.onDrop}>
                     {({ getRootProps, getInputProps }) => (
                       <section id="dropzone">
                         <div {...getRootProps()} className="vertical-center">
                           <input {...getInputProps()} />
-                          <h5 style={{ padding: "1rem" }}>{(fileInput && fileInput.path) || "Drag 'n' drop some files here, or click to select files. (optional)"}</h5>
+                          <h5 style={{ padding: "1rem" }}>{(fileInput && fileInput.path) || "Drag 'n' drop some files here, or click to select files. (Optional)"}</h5>
                         </div>
                       </section>
                     )}

@@ -12,6 +12,7 @@
     "@kleros/archon": "^0.10.1",
     "@kleros/kleros": "^0.1.2",
     "@kleros/react-components": "^4.0.3",
+    "antd": "^4.8.5",
     "bignumber.js": "^9.0.0",
     "js-levenshtein": "^1.1.6",
     "lodash.debounce": "^4.0.8",

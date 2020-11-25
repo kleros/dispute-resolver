@@ -77,3 +77,11 @@ hr {
   padding-left: var(--spacing-16) !important;
   padding-right: var(--spacing-16) !important;
 }
+
+.form-control,
+.input-group,
+.input-group-prepend,
+.dropdown-toggle {
+  border-radius: 3px;
+  border-color: var(--color-stroke);
+}
