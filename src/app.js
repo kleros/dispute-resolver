@@ -48,8 +48,6 @@ class App extends React.Component {
   };
 
   async componentDidMount() {
-    //this.setState({ footerHeightInPixels: ReactDOM.findDOMNode(this.refs.footer).clientHeight });
-
     if (Web3) {
       this.setState({ network: await Web3.eth.net.getId() });
       this.setState({

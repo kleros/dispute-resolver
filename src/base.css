@@ -12,6 +12,36 @@ body {
   font-weight: 400 !important;
 }
 
+p {
+  margin-bottom: var(--spacing-8);
+  margin-bottom: 0;
+}
+
+button:not(.dropdown-toggle),
+button:not(.dropdown-toggle).btn {
+  padding: var(--spacing-8) var(--spacing-32);
+  border: none;
+  font-weight: var(--bold);
+}
+
+button:active,
+button:focus,
+button.btn:active,
+button.btn:focus {
+  outline: none !important;
+  box-shadow: none;
+  -webkit-box-shadow: none;
+}
+
+button:not(.dropdown-toggle):hover,
+button.btn:not(.dropdown-toggle):hover {
+  background-color: var(--color-blue-secondary);
+}
+
+label.form-label {
+  font-size: var(--font-size-s);
+}
+
 .navbar {
   background-color: inherit;
   padding: 8px 32px;
@@ -36,4 +66,15 @@ body {
 
 .dropdown .btn {
   border-color: var(--color-stroke);
+}
+
+div.dropdown-menu.show {
+}
+
+.dropdown-item {
+  background-color: white;
+}
+
+.dropdown-item:hover {
+  background-color: var(--color-blue-accent);
 }

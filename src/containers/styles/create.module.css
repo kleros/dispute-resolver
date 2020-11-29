@@ -1,6 +1,7 @@
 .create > div {
   background-color: white;
   border-radius: 18px;
+  box-shadow: var(--box-shadow);
 }
 
 .create .markdown {
@@ -27,21 +28,27 @@
   vertical-align: text-bottom;
 }
 
-.create .subcourtDropdownToggle {
-  text-align: left;
-}
-
-.create .subcourtDropdownToggle::after {
+.create .dropdownToggle::after {
   position: absolute;
   right: var(--spacing-16);
   top: calc(50% - var(--spacing-4));
 }
 
-.create .subcourtDropdownToggle > span {
+.create .dropdownToggle {
+  padding: 0.375rem 0.75rem;
+  text-align: left;
+}
+
+.create .dropdownToggle a {
+  background-color: red;
+}
+
+.create .dropdownToggle > span {
   vertical-align: middle;
 }
 
-.create .subcourtDropdownToggle::after {
+.create .dropdownToggle::after {
+  color: var(--color-stroke);
 }
 
 .create .scales > path {
@@ -49,13 +56,16 @@
 }
 
 .create .arbitrationFeeGroup > div {
-  box-shadow: 0px 6px 24px rgba(77, 0, 180, 0.25);
+  box-shadow: var(--box-shadow);
 }
 
+.create .arbitrationFeeGroupPrepend {
+  border: none;
+}
 .create .arbitrationFeeGroupPrepend > svg {
   margin-top: auto;
   margin-bottom: auto;
-  margin-left: var(--spacing-16);
+  margin-right: var(--spacing-8);
 }
 
 .create .arbitrationFee {
@@ -65,6 +75,110 @@
   color: var(--color-text-primary);
 }
 
+.create :global(#description) {
+  margin-bottom: var(--spacing-4);
+}
+
 .create :global(markdown-toolbar) {
   color: var(--color-blue-primary);
+}
+
+.create :global(markdown-toolbar) > * > svg {
+  margin-left: var(--spacing-16);
+}
+
+.create .buttonAlias {
+  background-color: var(--color-blue-primary);
+  font-size: 40px;
+  border: none;
+  border-radius: 50%;
+}
+
+.create :global(.cssCircle) {
+  border-radius: 999px;
+  display: inline-block;
+
+  width: var(--spacing-32);
+  height: var(--spacing-32);
+  padding: 0px !important;
+
+  color: white;
+  background: var(--color-blue-primary);
+  border: none;
+  text-align: center;
+  transition: background 0.2s linear;
+  transition: color 0.2s linear;
+
+  font-size: 26px;
+}
+
+.create :global(.cssCircle):hover {
+  background: #3f69a0;
+  cursor: pointer;
+}
+
+.create :global(.minusSign) {
+}
+
+.create :global(.minusSign) > span {
+  vertical-align: super;
+  line-height: 27px;
+}
+
+.create :global(.plusSign) {
+  line-height: 0;
+  margin-right: var(--spacing-8);
+}
+
+.create :global(.minusSign):hover,
+.create :global(.plusSign):hover {
+  color: white;
+}
+
+.create .dropzoneRow {
+  margin-top: var(--spacing-32);
+}
+
+.create .dropzone {
+  background-color: var(--color-blue-accent);
+  border: 2px dashed #009aff;
+  text-align: center;
+  margin-bottom: var(--spacing-8);
+}
+
+.create .dropzoneInfo > svg {
+  margin-right: var(--spacing-8);
+}
+
+.create .submit {
+  float: right;
+  margin-right: var(--spacing-16);
+}
+
+/* enable absolute positioning */
+:global(.inner-addon) {
+  position: relative;
+}
+
+/* style icon */
+:global(.inner-addon) :global(.glyphicon) {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* align icon */
+:global(.left-addon) :global(.glyphicon) {
+  left: 14px;
+  top: 42px;
+}
+:global(.right-addon) :global(.glyphicon) {
+  right: 0px;
+}
+
+/* add padding  */
+:global(.left-addon) input {
+  padding-left: 40px;
+}
+:global(.right-addon) input {
+  padding-right: 30px;
 }

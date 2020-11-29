@@ -15,12 +15,15 @@ import IPFS from "../components/ipfs";
 import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
+import { ReactComponent as UploadSVG } from "../assets/images/upload.svg";
+import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
+import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
 
 import { Cascader } from "antd";
 
 const QuestionTypes = Object.freeze({
-  SINGLE_SELECT: { code: "single-select", humanReadable: "Multiple choice with single correct answer" },
-  MULTIPLE_SELECT: { code: "multiple-select", humanReadable: "Multiple choice with multiple correct answer" },
+  SINGLE_SELECT: { code: "single-select", humanReadable: "Multiple choice: single select" },
+  MULTIPLE_SELECT: { code: "multiple-select", humanReadable: "Multiple choice: multiple select" },
   UINT: { code: "uint", humanReadable: "Non-negative number" },
   INT: { code: "int", humanReadable: "Number" },
   STRING: { code: "string", humanReadable: "Text" },
@@ -43,8 +46,6 @@ class Create extends React.Component {
       selectedSubcourt: "",
       arbitrationCost: "",
       primaryDocument: "",
-      requester: "Party A",
-      respondent: "Party B",
       requesterAddress: "",
       respondentAddress: "",
       validated: false,
@@ -233,14 +234,14 @@ class Create extends React.Component {
                 <Form.Group>
                   <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
                   <Dropdown required onSelect={this.onSubcourtSelect}>
-                    <Dropdown.Toggle id="subcourt-dropdown" block disabled={subcourtsLoading} className={styles.subcourtDropdownToggle}>
+                    <Dropdown.Toggle id="subcourt-dropdown" block disabled={subcourtsLoading} className={styles.dropdownToggle}>
                       <ScalesSVG className={styles.scales} /> <span>{(subcourtsLoading && "Loading...") || (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt].name) || "Please select a court"}</span>
                     </Dropdown.Toggle>
 
                     <Dropdown.Menu>
                       {subcourtDetails &&
                         subcourtDetails.map((subcourt, index) => (
-                          <Dropdown.Item key={index} eventKey={index}>
+                          <Dropdown.Item key={index} eventKey={index} className={`${index == selectedSubcourt && "selectedDropdownItem"}`}>
                             {subcourt && subcourt.name}
                           </Dropdown.Item>
                         ))}
@@ -249,8 +250,9 @@ class Create extends React.Component {
                 </Form.Group>
               </Col>
               <Col xl={3} md={6} sm={12} xs={12}>
-                <Form.Group>
+                <Form.Group className="inner-addon left-addon">
                   <Form.Label htmlFor="initialNumberOfJurors">Number of Jurors</Form.Label>
+                  <AvatarSVG className="glyphicon glyphicon-user" />
                   <Form.Control required id="initialNumberOfJurors" as="input" type="number" min="0" value={initialNumberOfJurors} onChange={this.onControlChange} placeholder={"Number of jurors"} />
                 </Form.Group>
               </Col>
@@ -263,12 +265,10 @@ class Create extends React.Component {
               <Col xl={3} md={6} sm={12} xs={12}>
                 <Form.Group className={styles.arbitrationFeeGroup}>
                   <Form.Label htmlFor="arbitrationFee">Arbitration Cost</Form.Label>
-                  <InputGroup>
-                    <InputGroup.Prepend className={styles.arbitrationFeeGroupPrepend}>
-                      <EthereumSVG />
-                    </InputGroup.Prepend>
-                    <Form.Control className={styles.arbitrationFee} id="arbitrationFee" readOnly type="text" value={arbitrationCost && arbitrationCost + " ETH"} placeholder="N/A" />
-                  </InputGroup>
+                  <Form.Control as="div" className={styles.arbitrationFeeGroupPrepend}>
+                    <EthereumSVG />
+                    <span className={styles.arbitrationFee}>{arbitrationCost && arbitrationCost + " ETH"}</span>
+                  </Form.Control>
                 </Form.Group>
               </Col>
             </Row>
@@ -277,7 +277,7 @@ class Create extends React.Component {
                 <Form.Group>
                   <Form.Label htmlFor="title">Title</Form.Label>
                   <Form.Control required id="title" as="input" value={title} onChange={this.onControlChange} placeholder={"Title"} />
-                  <Form.Control.Feedback type="invalid">Please provide title for the dispute, something explains it in a nutshell.</Form.Control.Feedback>
+                  <Form.Control.Feedback type="invalid">Please enter title for the dispute, something explains it in a nutshell.</Form.Control.Feedback>
                 </Form.Group>
               </Col>
             </Row>
@@ -289,34 +289,34 @@ class Create extends React.Component {
             <Row>
               <Col>
                 <Form.Group>
-                  <Form.Control id="description" as="textarea" rows="3" value={description} onChange={this.onControlChange} placeholder={"Description of dispute in markdown"} />
+                  <Form.Control id="description" as="textarea" rows="5" value={description} onChange={this.onControlChange} placeholder={"Description of dispute in markdown"} />
                   <markdown-toolbar for="description">
                     <md-bold>
-                      <FontAwesomeIcon className="mr-3" icon={faBold} />
+                      <FontAwesomeIcon icon={faBold} />
                     </md-bold>
                     <md-header>
-                      <FontAwesomeIcon className="mr-3" icon={faHeading} />
+                      <FontAwesomeIcon icon={faHeading} />
                     </md-header>
                     <md-italic>
-                      <FontAwesomeIcon className="mr-3" icon={faItalic} />
+                      <FontAwesomeIcon icon={faItalic} />
                     </md-italic>
                     <md-quote>
-                      <FontAwesomeIcon className="mr-3" icon={faQuoteLeft} />
+                      <FontAwesomeIcon icon={faQuoteLeft} />
                     </md-quote>
                     <md-code>
-                      <FontAwesomeIcon className="mr-3" icon={faCode} />
+                      <FontAwesomeIcon icon={faCode} />
                     </md-code>
                     <md-link>
-                      <FontAwesomeIcon className="mr-3" icon={faLink} />
+                      <FontAwesomeIcon icon={faLink} />
                     </md-link>
                     <md-image>
-                      <FontAwesomeIcon className="mr-3" icon={faImage} />
+                      <FontAwesomeIcon icon={faImage} />
                     </md-image>
                     <md-unordered-list>
-                      <FontAwesomeIcon className="mr-3" icon={faListOl} />
+                      <FontAwesomeIcon icon={faListOl} />
                     </md-unordered-list>
                     <md-ordered-list>
-                      <FontAwesomeIcon className="mr-3" icon={faListUl} />
+                      <FontAwesomeIcon icon={faListUl} />
                     </md-ordered-list>
                   </markdown-toolbar>
                 </Form.Group>
@@ -331,12 +331,12 @@ class Create extends React.Component {
             <hr />
 
             <Row>
-              <Col>
+              <Col xl={8} md={true} xs={12}>
                 <Form.Group>
                   <Form.Label htmlFor="questionType">Question Type</Form.Label>
 
                   <Dropdown required onSelect={this.onQuestionTypeChange}>
-                    <Dropdown.Toggle id="questionType" block>
+                    <Dropdown.Toggle className={styles.dropdownToggle} id="questionType" block>
                       {questionType.humanReadable || "Error"}
                     </Dropdown.Toggle>
 
@@ -355,7 +355,7 @@ class Create extends React.Component {
                   <Form.Group>
                     <Form.Label htmlFor="numberOfRulingOptions">Number of Options</Form.Label>
                     <Form.Control required id="numberOfRulingOptions" as="input" type="number" min="2" max="32" value={numberOfRulingOptions} onChange={this.onNumberOfRulingOptionsChange} placeholder={"Enter a number between 2 and 32"} />
-                    <Form.Control.Feedback type="invalid">Please provide first ruling option, for example: "Yes"</Form.Control.Feedback>
+                    <Form.Control.Feedback type="invalid">Please enter first ruling option, for example: "Yes"</Form.Control.Feedback>
                   </Form.Group>
                 </Col>
               )}
@@ -367,7 +367,7 @@ class Create extends React.Component {
                   <Form.Label htmlFor="question">Question</Form.Label>
 
                   <Form.Control required id="question" as="input" value={question} onChange={this.onControlChange} placeholder={"Question"} />
-                  <Form.Control.Feedback type="invalid">Please provide a question.</Form.Control.Feedback>
+                  <Form.Control.Feedback type="invalid">Please enter a question.</Form.Control.Feedback>
                 </Form.Group>
               </Col>
             </Row>
@@ -379,7 +379,7 @@ class Create extends React.Component {
                     <Form.Group>
                       <Form.Label htmlFor={`rulingOption${index}Title`}>Ruling Option {index + 1}</Form.Label>
                       <Form.Control required id={`rulingOption${index}Title`} as="input" value={titles[index]} onChange={(e) => this.onTitlesChange(e, index)} placeholder={`Ruling option ${index + 1}`} />
-                      <Form.Control.Feedback type="invalid">Please provide first ruling option, for example: "Yes"</Form.Control.Feedback>
+                      <Form.Control.Feedback type="invalid">Please enter first ruling option, for example: "Yes"</Form.Control.Feedback>
                     </Form.Group>
                   </Col>
                   <Col md={9}>
@@ -395,16 +395,16 @@ class Create extends React.Component {
             <Row>
               {[...Array(parseInt(numberOfParties))].map((value, index) => (
                 <>
-                  <Col md={2} l={2} xl={2}>
+                  <Col xl={2} l={2} md={4}>
                     <Form.Group>
-                      <Form.Label htmlFor="requester">Party A</Form.Label>
+                      <Form.Label htmlFor="requester">Party {index + 1}</Form.Label>
 
                       <Form.Control id="requester" as="input" value={requester} onChange={this.onControlChange} placeholder={"Please enter alias"} />
                     </Form.Group>
                   </Col>
-                  <Col md={4} l={4} xl={4}>
+                  <Col xl={4} l={4} md={8}>
                     <Form.Group>
-                      <Form.Label htmlFor="requesterAddress">Party A Address (Optional)</Form.Label>
+                      <Form.Label htmlFor="requesterAddress">Party {index + 1} Address (Optional)</Form.Label>
 
                       <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="requesterAddress" as="input" value={requesterAddress} onChange={this.onControlChange} placeholder={"Please enter address"} />
                     </Form.Group>
@@ -414,31 +414,41 @@ class Create extends React.Component {
             </Row>
             <Row>
               <Col>
-                <Button onClick={(e) => this.setState({ numberOfParties: numberOfParties + 1 })}>Increment</Button>
-                <Button onClick={(e) => this.setState({ numberOfParties: numberOfParties - 1 > 0 ? numberOfParties - 1 : 0 })}>Decrement </Button>
-              </Col>
-            </Row>
-
-            <Row>
-              <Col>
                 <Form.Group>
-                  <Form.Label htmlFor="dropzone">Primary Document (Optional)</Form.Label>
-                  <Dropzone onDrop={this.onDrop}>
-                    {({ getRootProps, getInputProps }) => (
-                      <section id="dropzone">
-                        <div {...getRootProps()} className="vertical-center">
-                          <input {...getInputProps()} />
-                          <h5 style={{ padding: "1rem" }}>{(fileInput && fileInput.path) || "Drag 'n' drop some files here, or click to select files. (Optional)"}</h5>
-                        </div>
-                      </section>
-                    )}
-                  </Dropzone>
+                  <Button className="cssCircle plusSign" onClick={(e) => this.setState({ numberOfParties: numberOfParties + 1 })}>
+                    <span>+</span>
+                  </Button>
+                  <Button className="cssCircle minusSign" onClick={(e) => this.setState({ numberOfParties: numberOfParties - 1 > 0 ? numberOfParties - 1 : 0 })}>
+                    <span>–</span>
+                  </Button>
                 </Form.Group>
               </Col>
             </Row>
 
-            <Button type="submit" className="ok" disabled={!activeAddress} block>
-              Create Dispute {arbitrationCost && "for " + arbitrationCost + " ETH"}
+            <Row className={styles.dropzoneRow}>
+              <Col>
+                <Form.Group>
+                  <Form.Label htmlFor="dropzone">Upload the Primary Document (Optional)</Form.Label>
+                  <Dropzone onDrop={this.onDrop}>
+                    {({ getRootProps, getInputProps }) => (
+                      <section id="dropzone">
+                        <div {...getRootProps()} className={styles.dropzone}>
+                          <input {...getInputProps()} />
+                          <p style={{ padding: "1rem" }}>{(fileInput && fileInput.path) || <UploadSVG />}</p>
+                        </div>
+                      </section>
+                    )}
+                  </Dropzone>
+                  <p className={styles.dropzoneInfo}>
+                    <InfoSVG />
+                    You can add multiple files using an archive file, such as zip or rar.
+                  </p>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Button type="submit" className={styles.submit} disabled={!activeAddress}>
+              Next
             </Button>
           </Form>
         </div>
