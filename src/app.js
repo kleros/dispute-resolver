@@ -3,7 +3,6 @@ import ReactDOM from "react-dom";
 import { Container } from "react-bootstrap";
 import "./layout.css";
 import "./base.css";
-import "./bootstrapConfig.sass";
 import "./theme.css";
 import Create from "./containers/create";
 import _404 from "./containers/404";
