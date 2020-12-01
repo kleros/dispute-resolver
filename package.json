@@ -14,6 +14,7 @@
     "@kleros/react-components": "^4.0.3",
     "antd": "^4.8.5",
     "bignumber.js": "^9.0.0",
+    "bootstrap": "^4.5.3",
     "js-levenshtein": "^1.1.6",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
