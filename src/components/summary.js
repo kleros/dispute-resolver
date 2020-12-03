@@ -1,5 +1,5 @@
 import React from "react";
-import { Container, Col, Row, Button, Form, Card, Dropdown, InputGroup, Toast } from "react-bootstrap";
+import { Container, Col, Row, Button, Form, Card, Dropdown, InputGroup } from "react-bootstrap";
 import ReactMarkdown from "react-markdown";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBold, faHeading, faItalic, faCode, faLink, faImage, faQuoteLeft, faListOl, faListUl } from "@fortawesome/free-solid-svg-icons";
@@ -220,22 +220,6 @@ class Summary extends React.Component {
                   </Button>
                 </Col>
               </Row>
-            </Col>
-          </Row>
-
-          <Row>
-            <Col xs={6}>
-              <Toast onClose={() => setShow(false)} show={show} delay={3000} autohide>
-                <Toast.Header>
-                  <img src="holder.js/20x20?text=%20" className="rounded mr-2" alt="" />
-                  <strong className="mr-auto">Bootstrap</strong>
-                  <small>11 mins ago</small>
-                </Toast.Header>
-                <Toast.Body>Woohoo, you're reading this text in a Toast!</Toast.Body>
-              </Toast>
-            </Col>
-            <Col xs={6}>
-              <Button onClick={() => setShow(true)}>Show Toast</Button>
             </Col>
           </Row>
         </Form>
