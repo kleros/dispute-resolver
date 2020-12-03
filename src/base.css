@@ -33,9 +33,12 @@ button.btn:focus {
   -webkit-box-shadow: none;
 }
 
-button:not(.dropdown-toggle):hover,
-button.btn:not(.dropdown-toggle):hover {
+button.btn-primary:not(.dropdown-toggle):hover {
   background-color: var(--color-blue-secondary);
+}
+
+button.btn-secondary:not(.dropdown-toggle):hover {
+  background-color: var(--color-purple-light);
 }
 
 button:not(.dropdown-toggle).btn-primary {
