@@ -11,11 +11,24 @@ $stroke: #ccc;
 $grey-light: #fafafa;
 $grey-dark: #6c6c6c;
 $orange: #ff9900;
+
 $red: #f60c36;
 $green: #00c42b;
+$blue: #009aff;
 
+$spacing-4: 4px;
+$spacing-8: 8px;
+$spacing-16: 16px;
+$spacing-32: 32px;
+$spacing-64: 64px;
+$spacing-128: 128px;
+
+$input-color: $text-primary;
+$link-color: $input-color;
+// $input-btn-padding-y: 0.5rem;
+// $input-btn-padding-x: 1rem;
+// $line-height-base: 1.361;
 $grid-columns: 24;
 $enable-validation-icons: false;
 $form-feedback-valid-color: blue;
 $font-weight-bold: 600;
-$input-color: $text-primary;

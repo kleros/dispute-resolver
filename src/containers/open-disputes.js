@@ -70,11 +70,11 @@ class openDisputeIDs extends React.Component {
               className={styles.card}
               style={{ display: "flex", flexDirection: "column" }}
               key={dispute}
-              xl={4}
-              lg={6}
-              md={6}
-              sm={12}
-              xs={12}
+              xl={8}
+              lg={12}
+              md={12}
+              sm={24}
+              xs={24}
               style={{ display: (this.state[dispute] && this.state[`arbitrator${dispute}`].period == statusFilter) || statusFilter == 4 ? "block" : "none" }}
             >
               <a style={{ display: "contents", textDecoration: "none", color: "unset" }} href={`/cases/${dispute}`}>

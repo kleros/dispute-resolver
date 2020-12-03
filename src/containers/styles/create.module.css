@@ -1,3 +1,7 @@
+.create {
+  position: relative;
+}
+
 .create > div {
   background-color: white;
   border-radius: 18px;
@@ -18,7 +22,7 @@
 }
 
 .create hr {
-  width: calc(100% - 32px);
+  width: 100%;
 }
 
 .create .scales {
@@ -181,4 +185,11 @@
 }
 :global(.right-addon) input {
   padding-right: 30px;
+}
+
+.create .toast {
+  display: none;
+  position: absolute;
+  bottom: var(--spacing-64);
+  right: var(--spacing-32);
 }

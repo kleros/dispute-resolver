@@ -4,7 +4,7 @@ import CreateForm from "components/createForm";
 
 import styles from "containers/styles/create.module.css";
 
-import { Container, Col, Row, Button, Form, Card, Dropdown, InputGroup } from "react-bootstrap";
+import { Container, Col, Row, Button, Form, Card, Dropdown, InputGroup, Toast } from "react-bootstrap";
 
 import { Redirect } from "react-router-dom";
 
@@ -20,8 +20,9 @@ class Create extends React.Component {
 
   componentDidMount = async (e) => {};
 
-  onNextButtonClick = (event) => {
-    this.setState({ activePage: 2 });
+  onNextButtonClick = (formData) => {
+    console.log(formData);
+    this.setState({ activePage: 2, formData });
   };
 
   onReturnButtonClick = (event) => {
@@ -32,19 +33,40 @@ class Create extends React.Component {
     await this.setState({ [e.target.id]: e.target.value });
   };
 
+  setShow = () => this.setState({ show: false });
+
   render() {
     console.debug(this.props);
     console.debug(this.state);
 
-    const { lastDisputeID, activePage } = this.state;
+    const { lastDisputeID, activePage, formData } = this.state;
 
-    const { activeAddress, subcourtDetails, subcourtsLoading, getArbitrationCostCallback, publishCallback } = this.props;
+    const { activeAddress, subcourtDetails, subcourtsLoading, getArbitrationCostCallback, publishCallback, createDisputeCallback } = this.props;
 
     return (
       <main className={styles.create}>
         {lastDisputeID && <Redirect to={`/cases/${lastDisputeID}`} />}
         {activePage == 1 && <CreateForm getArbitrationCostCallback={getArbitrationCostCallback} publishCallback={publishCallback} subcourtDetails={subcourtDetails} subcourtsLoading={subcourtsLoading} onNextButtonClickCallback={this.onNextButtonClick} />}
-        {activePage == 2 && <Summary getArbitrationCostCallback={getArbitrationCostCallback} publishCallback={publishCallback} subcourtDetails={subcourtDetails} subcourtsLoading={subcourtsLoading} onReturnButtonClickCallback={this.onReturnButtonClick} />}
+        {activePage == 2 && (
+          <Summary
+            getArbitrationCostCallback={getArbitrationCostCallback}
+            publishCallback={publishCallback}
+            subcourtDetails={subcourtDetails}
+            subcourtsLoading={subcourtsLoading}
+            formData={formData}
+            onReturnButtonClickCallback={this.onReturnButtonClick}
+            createDisputeCallback={createDisputeCallback}
+          />
+        )}
+
+        <Toast className={styles.toast} onClose={() => this.setShow()} show={true} delay={3000} autohide>
+          <Toast.Header>
+            <img src="holder.js/20x20?text=%20" className="rounded mr-2" alt="" />
+            <strong className="mr-auto">Bootstrap</strong>
+            <small>11 mins ago</small>
+          </Toast.Header>
+          <Toast.Body>Woohoo, you're reading this text in a Toast!</Toast.Body>
+        </Toast>
       </main>
     );
   }

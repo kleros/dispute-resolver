@@ -6,6 +6,7 @@
 
 .createForm .markdown {
   word-wrap: break-word;
+  height: auto;
 }
 
 .createForm .fillUpTheForm {
@@ -35,7 +36,6 @@
 }
 
 .createForm .dropdownToggle {
-  padding: 0.375rem 0.75rem;
   text-align: left;
 }
 

@@ -1,0 +1,22 @@
+.summary .description {
+  margin-bottom: var(--spacing-32);
+}
+
+.summary :global(span.form-control) {
+  font-weight: var(--bold);
+  box-shadow: var(--box-shadow);
+  border: none;
+}
+
+.summary .buttons {
+  text-align: right;
+}
+
+.summary .spanWithSvgInside > svg {
+  margin-right: var(--spacing-8);
+  vertical-align: text-bottom;
+}
+
+.summary .primaryDocument > svg {
+  margin-right: var(--spacing-8);
+}

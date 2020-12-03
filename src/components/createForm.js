@@ -29,12 +29,12 @@ class CreateForm extends React.Component {
     super(props);
     this.state = {
       initialNumberOfJurors: "3",
-      title: "",
-      category: "",
-      description: "",
-      question: "",
-      rulingTitles: [],
-      rulingDescriptions: [],
+      title: "Example Title",
+      category: "Kategori",
+      description: "Example description of a dispute asd",
+      question: "Example Question",
+      rulingTitles: ["First Ruling", "Second Ruling"],
+      rulingDescriptions: ["Description of the First", "Description of the Second"],
       names: [],
       addresses: [],
       modalShow: false,
@@ -48,13 +48,15 @@ class CreateForm extends React.Component {
       validated: false,
       questionType: QuestionTypes.SINGLE_SELECT,
       numberOfRulingOptions: 2,
-      numberOfParties: 2,
+      numberOfParties: 1,
       summary: false,
     };
   }
-
   onNextButtonClick = async (event) => {
     const { form } = event.target;
+    const { subcourtDetails } = this.props;
+    const { arbitrationCost, selectedSubcourt, title, category, description, initialNumberOfJurors, question, rulingTitles, rulingDescriptions, names, addresses, primaryDocument, questionType } = this.state;
+
     const valid = form.checkValidity();
     event.preventDefault();
     event.stopPropagation();
@@ -62,7 +64,22 @@ class CreateForm extends React.Component {
     this.setState({ validated: !valid });
 
     if (valid) {
-      this.props.onNextButtonClickCallback();
+      this.props.onNextButtonClickCallback({
+        subcourtDetails,
+        selectedSubcourt,
+        title,
+        category,
+        description,
+        initialNumberOfJurors,
+        question,
+        rulingTitles: questionType.code == "single-select" || questionType.code == "multiple-select" ? rulingTitles : [],
+        rulingDescriptions,
+        names,
+        addresses,
+        primaryDocument,
+        questionType,
+        arbitrationCost,
+      });
     }
   };
 
@@ -130,44 +147,6 @@ class CreateForm extends React.Component {
       arbitrationCost: await this.props.getArbitrationCostCallback(subcourtID, noOfJurors),
     });
 
-  onCreateButtonClick = async (e) => {
-    console.log("hey");
-
-    const { selectedSubcourt, initialNumberOfJurors, title, category, description, requester, requesterAddress, respondent, respondentAddress, question, rulingTitles, rulingDescriptions, primaryDocument, questionType, numberOfRulingOptions } = this.state;
-    this.setState({ awaitingConfirmation: true });
-
-    let noOfOptions = questionType.code == "multiple-select" ? Math.pow(2, numberOfRulingOptions) : numberOfRulingOptions;
-    try {
-      const receipt = await this.props.createDisputeCallback({
-        selectedSubcourt,
-        initialNumberOfJurors,
-        title,
-        category,
-        description,
-        aliases: {
-          [requesterAddress]: requester,
-          [respondentAddress]: respondent,
-        },
-        question,
-        primaryDocument,
-        numberOfRulingOptions: noOfOptions,
-        rulingOptions: {
-          type: questionType.code,
-          titles: rulingTitle,
-          descriptions: rulingDescriptions,
-        },
-      });
-      this.setState({
-        lastDisputeID: receipt.events.Dispute.returnValues._disputeID,
-      });
-    } catch (e) {
-      console.error(e);
-      this.setState({ awaitingConfirmation: false });
-    }
-
-    this.onModalClose();
-  };
-
   componentDidMount = async (e) => {
     this.onSubcourtSelect("0");
   };
@@ -189,7 +168,7 @@ class CreateForm extends React.Component {
           </Row>
           <hr />
           <Row>
-            <Col xl={3} md={6} sm={12} xs={12}>
+            <Col xl={6} md={12} sm={24} xs={24}>
               <Form.Group>
                 <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
                 <Dropdown required onSelect={this.onSubcourtSelect}>
@@ -208,20 +187,20 @@ class CreateForm extends React.Component {
                 </Dropdown>
               </Form.Group>
             </Col>
-            <Col xl={3} md={6} sm={12} xs={12}>
+            <Col xl={6} md={12} sm={24} xs={24}>
               <Form.Group className="inner-addon left-addon">
                 <Form.Label htmlFor="initialNumberOfJurors">Number of Jurors</Form.Label>
                 <AvatarSVG className="glyphicon glyphicon-user" />
                 <Form.Control required id="initialNumberOfJurors" as="input" type="number" min="0" value={initialNumberOfJurors} onChange={this.onControlChange} placeholder={"Number of jurors"} />
               </Form.Group>
             </Col>
-            <Col xl={3} md={6} sm={12} xs={12}>
+            <Col xl={6} md={12} sm={24} xs={24}>
               <Form.Group>
                 <Form.Label htmlFor="category">Category (Optional)</Form.Label>
                 <Form.Control id="category" as="input" value={category} onChange={this.onControlChange} placeholder={"Category"} />
               </Form.Group>
             </Col>
-            <Col xl={3} md={6} sm={12} xs={12}>
+            <Col xl={6} md={12} sm={24} xs={24}>
               <Form.Group className={styles.arbitrationFeeGroup}>
                 <Form.Label htmlFor="arbitrationFee">Arbitration Cost</Form.Label>
                 <Form.Control as="div" className={styles.arbitrationFeeGroupPrepend}>
@@ -240,14 +219,11 @@ class CreateForm extends React.Component {
               </Form.Group>
             </Col>
           </Row>
-          <Row>
-            <Col>
-              <Form.Label htmlFor="description">Description (Optional)</Form.Label>
-            </Col>
-          </Row>
+
           <Row>
             <Col>
               <Form.Group>
+                <Form.Label htmlFor="description">Description (Optional)</Form.Label>
                 <Form.Control id="description" as="textarea" rows="5" value={description} onChange={this.onControlChange} placeholder={"Description of dispute in markdown"} />
                 <markdown-toolbar for="description">
                   <md-bold>
@@ -281,16 +257,21 @@ class CreateForm extends React.Component {
               </Form.Group>
             </Col>
           </Row>
-          <Row>
-            <Col>
-              <ReactMarkdown className={styles.markdown} source={description} />
-            </Col>
-          </Row>
+          {description && (
+            <Row>
+              <Col>
+                <Form.Group>
+                  <Form.Label htmlFor="markdown">Markdown Preview of Description</Form.Label>
+                  <ReactMarkdown id="markdown" className={`form-control ${styles.markdown}`} source={description} />
+                </Form.Group>
+              </Col>
+            </Row>
+          )}
 
           <hr />
 
           <Row>
-            <Col xl={8} md={true} xs={12}>
+            <Col xl={16} md={true} xs={24}>
               <Form.Group>
                 <Form.Label htmlFor="questionType">Question Type</Form.Label>
 
@@ -341,7 +322,7 @@ class CreateForm extends React.Component {
                     <Form.Control.Feedback type="invalid">Please enter first ruling option, for example: "Yes"</Form.Control.Feedback>
                   </Form.Group>
                 </Col>
-                <Col md={9}>
+                <Col md={18}>
                   <Form.Group>
                     <Form.Label htmlFor={`rulingOption${index}Description`}>Ruling Option {index + 1} Description (Optional)</Form.Label>
                     <Form.Control id={`rulingOption${index}Description`} as="input" value={rulingDescriptions[index]} onChange={(e) => this.onArrayStateVariableChange(e, "rulingDescriptions", index)} placeholder={`Ruling option ${index + 1} description`} />
@@ -354,18 +335,18 @@ class CreateForm extends React.Component {
           <Row>
             {[...Array(parseInt(numberOfParties))].map((value, index) => (
               <>
-                <Col xl={2} l={2} md={4}>
-                  <Form.Group>
-                    <Form.Label htmlFor="requester">Party {index + 1}</Form.Label>
-
-                    <Form.Control id={`name${index}`} as="input" value={names[index]} onChange={this.onControlChange} placeholder={"Please enter alias"} />
-                  </Form.Group>
-                </Col>
                 <Col xl={4} l={4} md={8}>
                   <Form.Group>
-                    <Form.Label htmlFor={`address${index}`}>Party {index + 1} Address (Optional)</Form.Label>
+                    <Form.Label htmlFor="requester">Alias {index + 1} (Optional)</Form.Label>
 
-                    <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="requesterAddress" as="input" value={addresses[index]} onChange={this.onControlChange} placeholder={"Please enter address"} />
+                    <Form.Control required={addresses[index]} id={`name${index}`} as="input" value={names[index]} onChange={(e) => this.onArrayStateVariableChange(e, "names", index)} placeholder={"Please enter alias"} />
+                  </Form.Group>
+                </Col>
+                <Col xl={8} l={8} md={16}>
+                  <Form.Group>
+                    <Form.Label htmlFor={`address${index}`}>Address of Alias {index + 1} (Optional)</Form.Label>
+
+                    <Form.Control required={names[index]} pattern="0x[abcdefABCDEF0123456789]{40}" id="requesterAddress" as="input" value={addresses[index]} onChange={(e) => this.onArrayStateVariableChange(e, "addresses", index)} placeholder={"Please enter address"} />
                   </Form.Group>
                 </Col>
               </>
@@ -405,10 +386,13 @@ class CreateForm extends React.Component {
               </Form.Group>
             </Col>
           </Row>
-
-          <Button type="button" className={styles.submit} onClick={this.onNextButtonClick}>
-            Next
-          </Button>
+          <Row>
+            <Col>
+              <Button type="button" className={styles.submit} onClick={this.onNextButtonClick}>
+                Next
+              </Button>
+            </Col>
+          </Row>
         </Form>
       </div>
     );
