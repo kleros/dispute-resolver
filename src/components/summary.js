@@ -123,7 +123,7 @@ class Summary extends React.Component {
             <Col xl={6} md={12} sm={24} xs={24}>
               <Form.Group>
                 <Form.Label htmlFor="category">Category (Optional)</Form.Label>
-                <Form.Control id="category" as="span">
+                <Form.Control id="category" as="span" title={formData.category}>
                   {formData.category}
                 </Form.Control>
               </Form.Group>
@@ -145,7 +145,7 @@ class Summary extends React.Component {
                   <Form.Group>
                     <Form.Label htmlFor="requester">Party {index + 1}</Form.Label>
 
-                    <Form.Control id={`name${index}`} as="span">
+                    <Form.Control id={`name${index}`} as="span" title={formData.names[index]}>
                       {formData.names[index]}
                     </Form.Control>
                   </Form.Group>
@@ -154,7 +154,7 @@ class Summary extends React.Component {
                   <Form.Group>
                     <Form.Label htmlFor={`address${index}`}>Party {index + 1} Address (Optional)</Form.Label>
 
-                    <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="requesterAddress" as="span">
+                    <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="requesterAddress" as="span" title={formData.addresses[index]}>
                       {formData.addresses[index]}
                     </Form.Control>
                   </Form.Group>
@@ -178,7 +178,7 @@ class Summary extends React.Component {
               <Col xs={24} lg={8}>
                 <Form.Group>
                   <Form.Label htmlFor={`rulingOption${index}Title`}>Ruling Option {index + 1}</Form.Label>
-                  <Form.Control required id={`rulingOption${index}Title`} as="span">
+                  <Form.Control required id={`rulingOption${index}Title`} as="span" title={formData.rulingTitles[index]}>
                     {formData.rulingTitles[index]}
                   </Form.Control>
                 </Form.Group>
@@ -187,7 +187,7 @@ class Summary extends React.Component {
                 <Col xs={24} lg={16}>
                   <Form.Group>
                     <Form.Label htmlFor={`rulingOption${index}Description`}>Ruling Option {index + 1} Description (Optional)</Form.Label>
-                    <Form.Control id={`rulingOption${index}Description`} as="span">
+                    <Form.Control id={`rulingOption${index}Description`} as="span" title={formData.rulingDescriptions[index]}>
                       {formData.rulingDescriptions[index]}
                     </Form.Control>
                   </Form.Group>
@@ -197,22 +197,24 @@ class Summary extends React.Component {
           ))}
           <hr />
 
-          <Row>
-            <Col sm="auto" xs={24}>
-              <a href={`https://ipfs.kleros.io${formData.primaryDocument}`} target="_blank" rel="noopener noreferrer" className={styles.primaryDocument}>
-                <AttachmentSVG />
-                {formData.primaryDocument.split("/").slice(-1)}
-              </a>
-            </Col>
+          <Row className={` text-center text-md-left ${styles.footer} `}>
+            {formData.primaryDocument && (
+              <Col md={12} xs={24} className={styles.attachment}>
+                <a href={`https://ipfs.kleros.io${formData.primaryDocument}`} target="_blank" rel="noopener noreferrer" className={styles.primaryDocument}>
+                  <AttachmentSVG />
+                  {formData.primaryDocument.split("/").slice(-1)}
+                </a>
+              </Col>
+            )}
             <Col>
-              <Row className={styles.buttons}>
+              <Row className={`text-center text-md-right mt-3 mt-md-0 ${styles.buttons}`}>
                 <Col>
-                  <Button type="button" variant="secondary" className={`${styles.return}`} onClick={onReturnButtonClickCallback}>
+                  <Button type="button" variant="secondary" className={`mb-3 mb-sm-0 ${styles.return}`} onClick={onReturnButtonClickCallback}>
                     Return
                   </Button>
                 </Col>
-                <Col sm="auto" xs={24}>
-                  <Button type="button" variant="primary" className={` ${styles.create}`} onClick={this.onCreateButtonClick}>
+                <Col md="auto" xs={24} sm={12}>
+                  <Button type="button" variant="primary" className={`${styles.create}`} onClick={this.onCreateButtonClick} xs={{ block: true }}>
                     Create
                   </Button>
                 </Col>

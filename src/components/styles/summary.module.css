@@ -12,6 +12,9 @@
   text-align: right;
 }
 
+.summary .attachment {
+}
+
 .summary .spanWithSvgInside > svg {
   margin-right: var(--spacing-8);
   vertical-align: text-bottom;
@@ -19,4 +22,17 @@
 
 .summary .primaryDocument > svg {
   margin-right: var(--spacing-8);
+  height: var(--spacing-16);
+}
+
+/* .summary .buttons {
+  margin-top: -var(--spacing-16);
+}
+
+.summary .buttons > div + div {
+  margin-top: var(--spacing-16);
+} */
+
+.summary .footer > div:first-child {
+  margin: auto;
 }
