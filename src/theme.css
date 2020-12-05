@@ -67,7 +67,7 @@ main {
 
 hr {
   width: 100%;
-  height: 2px;
+  height: 2px !important;
   color: var(--color-purple-primary);
   background-color: var(--color-purple-primary);
 
