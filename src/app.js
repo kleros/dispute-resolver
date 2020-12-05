@@ -118,6 +118,7 @@ class App extends React.Component {
     const disputeCreationEvents = await contractInstance.getPastEvents("DisputeCreation", { fromBlock: 7303699, toBlock: "latest" });
     const disputes = [...new Set(disputeCreationEvents.map((result) => result.returnValues._disputeID))];
     const resolvedDisputes = newPeriodEvents.filter((result) => result.returnValues._period == 4).map((result) => result.returnValues._disputeID);
+
     const openDisputes = disputes.filter((dispute) => !resolvedDisputes.includes(dispute));
     console.log(resolvedDisputes);
     console.log(openDisputes);

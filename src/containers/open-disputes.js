@@ -13,16 +13,19 @@ class openDisputeIDs extends React.Component {
     this.props.getOpenDisputesOnCourtCallback().then((openDisputeIDs) => {
       this.setState({ openDisputeIDs: openDisputeIDs });
 
-      openDisputeIDs.map((arbitratorDispute) => {
-        this.props.getArbitratorDisputeCallback(arbitratorDispute).then((arbitratorDisputeDetails) => {
-          this.setState({ ["arbitrator" + arbitratorDispute]: arbitratorDisputeDetails });
-          this.props.getMetaEvidenceCallback(arbitratorDisputeDetails.arbitrated, arbitratorDispute).then((metaevidence) => {
-            this.setState({ [arbitratorDispute]: metaevidence });
+      openDisputeIDs
+        .sort()
+        .reverse()
+        .map((arbitratorDispute) => {
+          this.props.getArbitratorDisputeCallback(arbitratorDispute).then((arbitratorDisputeDetails) => {
+            this.setState({ ["arbitrator" + arbitratorDispute]: arbitratorDisputeDetails });
+            this.props.getMetaEvidenceCallback(arbitratorDisputeDetails.arbitrated, arbitratorDispute).then((metaevidence) => {
+              this.setState({ [arbitratorDispute]: metaevidence });
+            });
           });
-        });
 
-        this.props.getCurrentRulingCallback(arbitratorDispute).then((ruling) => this.setState({ ["arbitratorRuling" + arbitratorDispute]: ruling }));
-      });
+          this.props.getCurrentRulingCallback(arbitratorDispute).then((ruling) => this.setState({ ["arbitratorRuling" + arbitratorDispute]: ruling }));
+        });
       this.setState({ loading: false });
     });
   }
