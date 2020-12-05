@@ -138,6 +138,30 @@ class Summary extends React.Component {
               </Form.Group>
             </Col>
           </Row>
+          <Row>
+            {formData.names.map((value, index) => (
+              <>
+                <Col xl={2} lg={2} md={4}>
+                  <Form.Group>
+                    <Form.Label htmlFor="requester">Party {index + 1}</Form.Label>
+
+                    <Form.Control id={`name${index}`} as="span">
+                      {formData.names[index]}
+                    </Form.Control>
+                  </Form.Group>
+                </Col>
+                <Col xl={4} lg={4} md={8}>
+                  <Form.Group>
+                    <Form.Label htmlFor={`address${index}`}>Party {index + 1} Address (Optional)</Form.Label>
+
+                    <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="requesterAddress" as="span">
+                      {formData.addresses[index]}
+                    </Form.Control>
+                  </Form.Group>
+                </Col>
+              </>
+            ))}
+          </Row>
           <hr />
           <Row>
             <Col>
@@ -172,30 +196,7 @@ class Summary extends React.Component {
             </Row>
           ))}
           <hr />
-          <Row>
-            {formData.names.map((value, index) => (
-              <>
-                <Col xl={2} lg={2} md={4}>
-                  <Form.Group>
-                    <Form.Label htmlFor="requester">Party {index + 1}</Form.Label>
 
-                    <Form.Control id={`name${index}`} as="span">
-                      {formData.names[index]}
-                    </Form.Control>
-                  </Form.Group>
-                </Col>
-                <Col xl={4} lg={4} md={8}>
-                  <Form.Group>
-                    <Form.Label htmlFor={`address${index}`}>Party {index + 1} Address (Optional)</Form.Label>
-
-                    <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="requesterAddress" as="span">
-                      {formData.addresses[index]}
-                    </Form.Control>
-                  </Form.Group>
-                </Col>
-              </>
-            ))}
-          </Row>
           <Row>
             <Col sm="auto" xs={24}>
               <a href={`https://ipfs.kleros.io${formData.primaryDocument}`} target="_blank" rel="noopener noreferrer" className={styles.primaryDocument}>
