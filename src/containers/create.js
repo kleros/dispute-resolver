@@ -46,7 +46,7 @@ class Create extends React.Component {
     return (
       <main className={styles.create}>
         {lastDisputeID && <Redirect to={`/cases/${lastDisputeID}`} />}
-        {activePage == 1 && <CreateForm getArbitrationCostCallback={getArbitrationCostCallback} publishCallback={publishCallback} subcourtDetails={subcourtDetails} subcourtsLoading={subcourtsLoading} onNextButtonClickCallback={this.onNextButtonClick} />}
+        {activePage == 1 && <CreateForm getArbitrationCostCallback={getArbitrationCostCallback} publishCallback={publishCallback} subcourtDetails={subcourtDetails} subcourtsLoading={subcourtsLoading} onNextButtonClickCallback={this.onNextButtonClick} formData={formData} />}
         {activePage == 2 && (
           <Summary
             getArbitrationCostCallback={getArbitrationCostCallback}

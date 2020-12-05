@@ -29,12 +29,12 @@ class CreateForm extends React.Component {
     super(props);
     this.state = {
       initialNumberOfJurors: "3",
-      title: "Example Title",
-      category: "Kategori",
-      description: "Example description of a dispute asd",
-      question: "Example Question",
-      rulingTitles: ["First Ruling", "Second Ruling"],
-      rulingDescriptions: ["Description of the First", "Description of the Second"],
+      title: "",
+      category: "",
+      description: "",
+      question: "",
+      rulingTitles: [""],
+      rulingDescriptions: [],
       names: [],
       addresses: [],
       modalShow: false,
@@ -149,14 +149,32 @@ class CreateForm extends React.Component {
 
   componentDidMount = async (e) => {
     this.onSubcourtSelect("0");
+    const { formData } = this.props;
+    if (formData)
+      this.setState({
+        selectedSubcourt: parseInt(formData.selectedSubcourt) && formData.selectedSubcourt,
+        initialNumberOfJurors: formData.initialNumberOfJurors && formData.initialNumberOfJurors,
+        category: formData.category && formData.category,
+        title: formData.title && formData.title,
+        description: formData.description && formData.description,
+        question: formData.question && formData.question,
+        primaryDocument: formData.primaryDocument && formData.primaryDocument,
+        questionType: formData.questionType.code.length > 0 && formData.questionType,
+        numberOfRulingOptions: formData.rulingTitles.length > 0 && formData.rulingTitles.length,
+        rulingTitles: formData.rulingTitles.length > 0 ? formData.rulingTitles : [],
+        rulingDescriptions: formData.rulingDescriptions.length > 0 ? formData.rulingDescriptions : [],
+        names: formData.names.length > 0 ? formData.names : [],
+        addresses: formData.addresses.length > 0 ? formData.addresses : [],
+      });
   };
 
   render() {
-    const { primaryDocument, awaitingConfirmation, show, activeAddress, subcourtsLoading, subcourtDetails, onNextButtonClickCallback } = this.props;
+    const { awaitingConfirmation, show, activeAddress, subcourtsLoading, subcourtDetails, onNextButtonClickCallback } = this.props;
 
-    const { title, description, category, question, validated, questionType, numberOfRulingOptions, rulingTitles, numberOfParties, rulingDescriptions, names, addresses, fileInput, initialNumberOfJurors, arbitrationCost, selectedSubcourt, summary } = this.state;
+    const { title, description, category, question, validated, questionType, numberOfRulingOptions, rulingTitles, numberOfParties, rulingDescriptions, names, addresses, fileInput, initialNumberOfJurors, arbitrationCost, selectedSubcourt, summary, primaryDocument } = this.state;
 
     console.log(this.state);
+    console.log(this.props);
     return (
       <div className={styles.createForm}>
         <Form noValidate validated={validated} onSubmit={this.onModalShow}>
@@ -335,7 +353,7 @@ class CreateForm extends React.Component {
                     <section id="dropzone">
                       <div {...getRootProps()} className={styles.dropzone}>
                         <input {...getInputProps()} />
-                        <p style={{ padding: "1rem" }}>{(fileInput && fileInput.path) || <UploadSVG />}</p>
+                        <p style={{ padding: "1rem" }}>{primaryDocument || (fileInput && fileInput.path) || <UploadSVG />}</p>
                       </div>
                     </section>
                   )}
