@@ -172,7 +172,7 @@ class CreateForm extends React.Component {
               <Form.Group>
                 <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
                 <Dropdown required onSelect={this.onSubcourtSelect}>
-                  <Dropdown.Toggle id="subcourt-dropdown" block disabled={subcourtsLoading || summary} className={styles.dropdownToggle}>
+                  <Dropdown.Toggle className="form-control" id="subcourt-dropdown" block disabled={subcourtsLoading || summary} className={styles.dropdownToggle}>
                     <ScalesSVG className={styles.scales} /> <span>{(subcourtsLoading && "Loading...") || (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt].name) || "Please select a court"}</span>
                   </Dropdown.Toggle>
 
@@ -237,7 +237,7 @@ class CreateForm extends React.Component {
                 <Form.Label htmlFor="questionType">Question Type</Form.Label>
 
                 <Dropdown required onSelect={this.onQuestionTypeChange}>
-                  <Dropdown.Toggle className={styles.dropdownToggle} id="questionType" block>
+                  <Dropdown.Toggle className={`form-control ${styles.dropdownToggle}`} id="questionType" block>
                     {questionType.humanReadable || "Error"}
                   </Dropdown.Toggle>
 

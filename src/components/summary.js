@@ -138,9 +138,7 @@ class Summary extends React.Component {
               </Form.Group>
             </Col>
           </Row>
-
           <hr />
-
           <Row>
             <Col>
               <Form.Group>
@@ -151,7 +149,6 @@ class Summary extends React.Component {
               </Form.Group>
             </Col>
           </Row>
-
           {formData.rulingTitles.map((value, index) => (
             <Row>
               <Col xs={24} lg={8}>
@@ -174,7 +171,6 @@ class Summary extends React.Component {
               )}
             </Row>
           ))}
-
           <hr />
           <Row>
             {formData.names.map((value, index) => (
@@ -202,7 +198,7 @@ class Summary extends React.Component {
           </Row>
           <Row>
             <Col sm="auto" xs={24}>
-              <a href={`https://ipfs.kleros.io${formData.primaryDocument}`} target="_blank" rel="noopener noreferrer" className={styles.primaryDocument} onClick={onReturnButtonClickCallback}>
+              <a href={`https://ipfs.kleros.io${formData.primaryDocument}`} target="_blank" rel="noopener noreferrer" className={styles.primaryDocument}>
                 <AttachmentSVG />
                 {formData.primaryDocument.split("/").slice(-1)}
               </a>

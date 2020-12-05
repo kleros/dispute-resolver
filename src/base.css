@@ -92,3 +92,9 @@ div.dropdown-menu.show {
 .dropdown-item:hover {
   background-color: var(--color-blue-accent);
 }
+
+span.form-control {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
