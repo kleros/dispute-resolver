@@ -225,48 +225,9 @@ class CreateForm extends React.Component {
               <Form.Group>
                 <Form.Label htmlFor="description">Description (Optional)</Form.Label>
                 <Form.Control id="description" as="textarea" rows="5" value={description} onChange={this.onControlChange} placeholder={"Description of dispute in markdown"} />
-                <markdown-toolbar for="description">
-                  <md-bold>
-                    <FontAwesomeIcon icon={faBold} />
-                  </md-bold>
-                  <md-header>
-                    <FontAwesomeIcon icon={faHeading} />
-                  </md-header>
-                  <md-italic>
-                    <FontAwesomeIcon icon={faItalic} />
-                  </md-italic>
-                  <md-quote>
-                    <FontAwesomeIcon icon={faQuoteLeft} />
-                  </md-quote>
-                  <md-code>
-                    <FontAwesomeIcon icon={faCode} />
-                  </md-code>
-                  <md-link>
-                    <FontAwesomeIcon icon={faLink} />
-                  </md-link>
-                  <md-image>
-                    <FontAwesomeIcon icon={faImage} />
-                  </md-image>
-                  <md-unordered-list>
-                    <FontAwesomeIcon icon={faListOl} />
-                  </md-unordered-list>
-                  <md-ordered-list>
-                    <FontAwesomeIcon icon={faListUl} />
-                  </md-ordered-list>
-                </markdown-toolbar>
               </Form.Group>
             </Col>
           </Row>
-          {description && (
-            <Row>
-              <Col>
-                <Form.Group>
-                  <Form.Label htmlFor="markdown">Markdown Preview of Description</Form.Label>
-                  <ReactMarkdown id="markdown" className={`form-control ${styles.markdown}`} source={description} />
-                </Form.Group>
-              </Col>
-            </Row>
-          )}
 
           <hr />
 

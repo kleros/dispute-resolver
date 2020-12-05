@@ -2,10 +2,6 @@
   padding: var(--spacing-16) !important;
 }
 
-.openDisputes div:global(.row) {
-  padding-left: var(--spacing-16);
-}
-
 .filter :global(.dropdown-toggle.btn.btn-primary)::after {
   margin-left: var(--spacing-32);
   color: var(--color-stroke);
