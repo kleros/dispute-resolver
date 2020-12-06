@@ -38,7 +38,7 @@ main {
   }
 }
 
-main > div {
+main > div:first-child {
   padding: var(--spacing-32);
 }
 
@@ -61,8 +61,4 @@ body {
 .form-row > [class*="col-"] {
   padding-left: 0;
   padding-right: var(--spacing-8);
-}
-
-.row {
-  margin: 0;
 }

@@ -23,20 +23,8 @@ $spacing-32: 32px;
 $spacing-64: 64px;
 $spacing-128: 128px;
 
-$input-color: $text-primary;
-$link-color: $input-color;
-// $input-btn-padding-y: 0.5rem;
-// $input-btn-padding-x: 1rem;
-// $line-height-base: 1.361;
-$grid-columns: 24;
-$enable-validation-icons: false;
-$form-feedback-valid-color: blue;
-$font-weight-bold: 600;
-$paragraph-margin-bottom: 0.5rem;
-
 $spacer: 1rem !default;
 $spacers: () !default;
-// stylelint-disable-next-line scss/dollar-variable-default
 $spacers: map-merge(
   (
     0: 0,
@@ -56,3 +44,17 @@ $spacers: map-merge(
   ),
   $spacers
 );
+
+$grid-gutter-width: 32px;
+$border-radius: 3px;
+$toast-border-radius: $border-radius;
+$input-color: $text-primary;
+$link-color: $input-color;
+// $input-btn-padding-y: 0.5rem;
+// $input-btn-padding-x: 1rem;
+// $line-height-base: 1.361;
+$grid-columns: 24;
+$enable-validation-icons: false;
+$font-weight-bold: 600;
+$font-weight-bolder: 600;
+$paragraph-margin-bottom: 0.5rem;

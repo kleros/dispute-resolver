@@ -2,7 +2,7 @@
   position: relative;
 }
 
-.create > div {
+.create > div:first-child {
   background-color: white;
   border-radius: 18px;
   box-shadow: var(--box-shadow);
@@ -185,11 +185,4 @@
 }
 :global(.right-addon) input {
   padding-right: 30px;
-}
-
-.create .toast {
-  display: none;
-  position: absolute;
-  bottom: var(--spacing-64);
-  right: var(--spacing-32);
 }

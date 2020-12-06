@@ -29,7 +29,7 @@ class Summary extends React.Component {
   onCreateButtonClick = async (e) => {
     console.log("hey");
 
-    const { formData } = this.props;
+    const { formData, notificationEventCallback } = this.props;
     this.setState({ awaitingConfirmation: true });
 
     const noOfOptions = formData.questionType.code == "multiple-select" ? Math.pow(2, formData.rulingTitles.length) : formData.rulingTitles.length;
@@ -37,23 +37,6 @@ class Summary extends React.Component {
       result[formData.addresses[index]] = field;
       return result;
     }, {});
-
-    console.log({
-      selectedSubcourt: formData.selectedSubcourt,
-      initialNumberOfJurors: formData.initialNumberOfJurors,
-      title: formData.title,
-      category: formData.category,
-      description: formData.description,
-      aliases,
-      question: formData.question,
-      primaryDocument: formData.primaryDocument,
-      numberOfRulingOptions: noOfOptions,
-      rulingOptions: {
-        type: formData.questionType.code,
-        titles: formData.rulingTitles,
-        descriptions: formData.rulingDescriptions,
-      },
-    });
 
     try {
       const receipt = await this.props.createDisputeCallback({
@@ -72,6 +55,7 @@ class Summary extends React.Component {
           descriptions: formData.rulingDescriptions,
         },
       });
+      notificationEventCallback(receipt.events.Dispute.returnValues._disputeID);
       this.setState({
         lastDisputeID: receipt.events.Dispute.returnValues._disputeID,
       });
@@ -97,11 +81,13 @@ class Summary extends React.Component {
             </Col>
           </Row>
           <hr />
-          <Row className={styles.description}>
-            <Col>
-              <ReactMarkdown className={styles.markdown} source={formData.description} />
-            </Col>
-          </Row>
+          {formData.description && (
+            <Row className={styles.description}>
+              <Col>
+                <ReactMarkdown className={styles.markdown} source={formData.description} />
+              </Col>
+            </Row>
+          )}
           <Row>
             <Col xl={6} md={12} sm={24} xs={24}>
               <Form.Group>

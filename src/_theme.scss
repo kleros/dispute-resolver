@@ -83,7 +83,7 @@ hr {
 .input-group,
 .input-group-prepend,
 .dropdown-toggle {
-  border-radius: 3px;
+  border-radius: var(--border-radius);
   border-color: var(--color-stroke);
 }
 

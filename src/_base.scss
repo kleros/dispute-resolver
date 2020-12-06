@@ -8,8 +8,8 @@ svg {
 
 body {
   font-family: "Open Sans", sans-serif;
-  font-size: 16px !important;
-  font-weight: 400 !important;
+  font-size: 16px;
+  font-weight: 400;
 }
 
 p {
@@ -17,8 +17,8 @@ p {
   margin-bottom: 0;
 }
 
-button:not(.dropdown-toggle),
-button:not(.dropdown-toggle).btn {
+button.btn-primary:not(.dropdown-toggle),
+button.btn-secondary:not(.dropdown-toggle) {
   padding: var(--spacing-8) var(--spacing-32);
   font-weight: var(--bold);
 }
@@ -27,10 +27,14 @@ button:active,
 button:focus,
 button.btn:active,
 button.btn:focus {
-  border: none !important;
-  outline: none !important;
+  /* border: none !important; */
+  outline: none;
   box-shadow: none;
   -webkit-box-shadow: none;
+}
+
+button:hover {
+  box-shadow: none !important;
 }
 
 button.btn-primary:not(.dropdown-toggle):hover {

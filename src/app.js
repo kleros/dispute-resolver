@@ -1,9 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import { Container } from "react-bootstrap";
-import "./layout.css";
-import "./base.css";
-import "./theme.css";
 import "./app.scss";
 import Create from "./containers/create";
 import _404 from "./containers/404";
@@ -65,10 +62,14 @@ class App extends React.Component {
         await this.setState({ network });
       });
 
-      window.ethereum.on("data", (data) => {
-        console.log("TX CONFIRMED");
-        //self.forceUpdate();
-      });
+      var subscription = Web3.eth
+        .subscribe("pendingTransactions", function (error, result) {
+          if (!error) console.log(result);
+          else console.error(error);
+        })
+        .on("data", function (transaction) {
+          console.log(transaction);
+        });
     } else console.error("MetaMask not detected :(");
 
     let counter = 0,

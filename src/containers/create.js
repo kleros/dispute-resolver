@@ -1,10 +1,11 @@
 import React from "react";
 import Summary from "../components/summary";
 import CreateForm from "components/createForm";
+import Toast from "components/toast";
 
 import styles from "containers/styles/create.module.css";
 
-import { Container, Col, Row, Button, Form, Card, Dropdown, InputGroup, Toast } from "react-bootstrap";
+import { Container, Col, Row, Button, Form, Card, Dropdown, InputGroup } from "react-bootstrap";
 
 import { Redirect } from "react-router-dom";
 
@@ -15,7 +16,7 @@ import { Cascader } from "antd";
 class Create extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { activePage: 1 };
+    this.state = { activePage: 1, notificationShow: false };
   }
 
   componentDidMount = async (e) => {};
@@ -33,19 +34,22 @@ class Create extends React.Component {
     await this.setState({ [e.target.id]: e.target.value });
   };
 
-  setShow = () => this.setState({ show: false });
+  setShow = () => this.setState({ notificationShow: false });
+
+  notificationEventCallback = (lastDisputeID) => {
+    this.setState({ notificationShow: true, lastDisputeID });
+  };
 
   render() {
     console.debug(this.props);
     console.debug(this.state);
 
-    const { lastDisputeID, activePage, formData } = this.state;
+    const { lastDisputeID, activePage, formData, notificationShow } = this.state;
 
     const { activeAddress, subcourtDetails, subcourtsLoading, getArbitrationCostCallback, publishCallback, createDisputeCallback } = this.props;
 
     return (
       <main className={styles.create}>
-        {lastDisputeID && <Redirect to={`/cases/${lastDisputeID}`} />}
         {activePage == 1 && <CreateForm getArbitrationCostCallback={getArbitrationCostCallback} publishCallback={publishCallback} subcourtDetails={subcourtDetails} subcourtsLoading={subcourtsLoading} onNextButtonClickCallback={this.onNextButtonClick} formData={formData} />}
         {activePage == 2 && (
           <Summary
@@ -56,17 +60,10 @@ class Create extends React.Component {
             formData={formData}
             onReturnButtonClickCallback={this.onReturnButtonClick}
             createDisputeCallback={createDisputeCallback}
+            notificationEventCallback={this.notificationEventCallback}
           />
         )}
-
-        <Toast className={styles.toast} onClose={() => this.setShow()} show={true} delay={3000} autohide>
-          <Toast.Header>
-            <img src="holder.js/20x20?text=%20" className="rounded mr-2" alt="" />
-            <strong className="mr-auto">Bootstrap</strong>
-            <small>11 mins ago</small>
-          </Toast.Header>
-          <Toast.Body>Woohoo, you're reading this text in a Toast!</Toast.Body>
-        </Toast>
+        <Toast className={styles.toast} onClose={() => this.setShow()} show={notificationShow} delay={5000} autohide header="Transaction Confirmed" body={`You have successfully created dispute ${lastDisputeID}!`} iconName="Success" animation />
       </main>
     );
   }

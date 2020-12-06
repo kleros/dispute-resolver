@@ -50,6 +50,7 @@ class CreateForm extends React.Component {
       numberOfRulingOptions: 2,
       numberOfParties: 1,
       summary: false,
+      uploading: false,
     };
   }
   onNextButtonClick = async (event) => {
@@ -125,7 +126,7 @@ class CreateForm extends React.Component {
   };
 
   onDrop = async (acceptedFiles) => {
-    this.setState({ fileInput: acceptedFiles[0] });
+    this.setState({ fileInput: acceptedFiles[0], uploading: true });
 
     var reader = new FileReader();
     reader.readAsArrayBuffer(acceptedFiles[0]);
@@ -136,6 +137,7 @@ class CreateForm extends React.Component {
 
       await this.setState({
         primaryDocument: "/ipfs/" + result[1].hash + result[0].path,
+        uploading: false,
       });
     });
   };
@@ -171,7 +173,27 @@ class CreateForm extends React.Component {
   render() {
     const { awaitingConfirmation, show, activeAddress, subcourtsLoading, subcourtDetails, onNextButtonClickCallback } = this.props;
 
-    const { title, description, category, question, validated, questionType, numberOfRulingOptions, rulingTitles, numberOfParties, rulingDescriptions, names, addresses, fileInput, initialNumberOfJurors, arbitrationCost, selectedSubcourt, summary, primaryDocument } = this.state;
+    const {
+      title,
+      description,
+      category,
+      question,
+      validated,
+      questionType,
+      numberOfRulingOptions,
+      rulingTitles,
+      numberOfParties,
+      rulingDescriptions,
+      names,
+      addresses,
+      fileInput,
+      initialNumberOfJurors,
+      arbitrationCost,
+      selectedSubcourt,
+      summary,
+      primaryDocument,
+      uploading,
+    } = this.state;
 
     console.log(this.state);
     console.log(this.props);
@@ -353,7 +375,7 @@ class CreateForm extends React.Component {
                     <section id="dropzone">
                       <div {...getRootProps()} className={styles.dropzone}>
                         <input {...getInputProps()} />
-                        <p style={{ padding: "1rem" }}>{primaryDocument || (fileInput && fileInput.path) || <UploadSVG />}</p>
+                        <p style={{ padding: "1rem" }}>{primaryDocument || (fileInput && `Uploading ${fileInput.path}...`) || <UploadSVG />}</p>
                       </div>
                     </section>
                   )}
@@ -367,7 +389,7 @@ class CreateForm extends React.Component {
           </Row>
           <Row>
             <Col>
-              <Button type="button" className={styles.submit} onClick={this.onNextButtonClick}>
+              <Button type="button" className={styles.submit} onClick={this.onNextButtonClick} disabled={uploading}>
                 Next
               </Button>
             </Col>
