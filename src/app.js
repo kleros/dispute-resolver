@@ -216,8 +216,11 @@ class App extends React.Component {
     this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
       .then((response) => EthereumInterface.contractInstance("IEvidence", arbitrableAddress).getPastEvents("MetaEvidence", { fromBlock: 7303699, toBlock: "latest", filter: { _metaEvidenceID: response.metaEvidenceID } }))
-      .then((metaevidence) => fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence))
-      .then((response) => response.json());
+      .then((metaevidence) => {
+        if (metaevidence.length > 0) {
+          return fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence).then((response) => response.json());
+        }
+      });
 
   getEvidences = (arbitrableAddress, arbitratorDisputeID) =>
     this.state.archon.arbitrable

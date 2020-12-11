@@ -81,8 +81,8 @@ class openDisputeIDs extends React.Component {
               style={{ display: (this.state[dispute] && this.state[`arbitrator${dispute}`].period == statusFilter) || statusFilter == 4 ? "block" : "none" }}
             >
               <a style={{ display: "contents", textDecoration: "none", color: "unset" }} href={`/cases/${dispute}`}>
-                {this.state[dispute] && (this.state[`arbitrator${dispute}`].period == statusFilter || statusFilter == 4) && (
-                  <OngoingCard dispute={dispute} arbitratorDisputeDetails={this.state[`arbitrator${dispute}`]} title={this.state[dispute].title} subcourtDetails={subcourtDetails} subcourts={subcourts} />
+                {this.state[`arbitrator${dispute}`] && (this.state[`arbitrator${dispute}`].period == statusFilter || statusFilter == 4) && (
+                  <OngoingCard dispute={dispute} arbitratorDisputeDetails={this.state[`arbitrator${dispute}`]} title={(this.state[dispute] && this.state[dispute].title) || "Meta Evidence Missing"} subcourtDetails={subcourtDetails} subcourts={subcourts} />
                 )}
               </a>
             </Col>
