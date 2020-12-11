@@ -1,17 +1,21 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import { Card, Col, Container, Form, Row, Button, InputGroup, FormControl, Accordion } from "react-bootstrap";
-import Appeal from "../components/appeal";
-import QuestionDisplay from "../components/question-display";
+import Appeal from "components/appeal";
+import QuestionDisplay from "components/question-display";
+import DisputeSummary from "components/disputeSummary";
 import debounce from "lodash.debounce";
-import IPFS from "../components/ipfs";
 import ReactMarkdown from "react-markdown";
 import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
+import { ReactComponent as Magnifier } from "../assets/images/magnifier.svg";
+
 import { EvidenceTimeline } from "@kleros/react-components";
 import { Redirect, Link } from "react-router-dom";
 import Countdown from "react-countdown";
 import BigNumber from "bignumber.js";
+
+import styles from "containers/styles/interact.module.css";
 
 const FALLBACK_ACTIVATION_DELAY_SECONDS = {
   1: 900, // Mainnet, 15 minutes
@@ -38,13 +42,10 @@ class Interact extends React.Component {
     };
 
     this.debouncedRetrieveUsingArbitratorID = debounce(this.retrieveDisputeDetailsUsingArbitratorID, 500, { leading: false, trailing: true });
-
-    this.iframe = React.createRef();
   }
 
   componentDidMount() {
     if (this.state.arbitratorDisputeID) this.debouncedRetrieveUsingArbitratorID(this.state.arbitratorDisputeID);
-    console.log(this.iframe.current);
   }
 
   async componentDidUpdate(previousProperties) {
@@ -338,292 +339,28 @@ class Interact extends React.Component {
         {Boolean(activeAddress) && !this.state.arbitrableDispute && !this.state.loading && (
           <div style={{ padding: "1.1em 1.5em", fontSize: "13px", background: "#ffe03d" }}>View mode only: This is a 3rd party arbitrable contract, evidence submission and crowdfunding appeals is not available.</div>
         )}
-        <Container fluid="true" className="main-content">
+        <main className={styles.interact}>
           {arbitratorDisputeID && <Redirect to={`/cases/${arbitratorDisputeID}`} />}
-          <Accordion defaultActiveKey="0">
-            <Card>
-              <Accordion.Toggle as={Card.Header} eventKey="0">
-                <GavelSVG style={{ marginRight: "1rem" }} />
-                Interact with a Dispute
-              </Accordion.Toggle>
-              <hr className="mt-0" />
-              <Accordion.Collapse eventKey="0">
-                <>
-                  <Card.Body
-                    style={{
-                      borderRadius: 0,
-                    }}
-                  >
-                    <Form>
-                      <Form.Row>
-                        <Col>
-                          <InputGroup className="mb-5" size="md">
-                            <InputGroup.Prepend>
-                              <InputGroup.Text className="purple-inverted" style={{ transform: "none", paddingLeft: "0" }}>
-                                Search Disputes on Court
-                              </InputGroup.Text>
-                            </InputGroup.Prepend>
-                            <FormControl
-                              className="purple-inverted"
-                              style={{ border: "1px solid #D09CFF", borderRadius: "3px" }}
-                              placeholder="Dispute ID"
-                              aria-label="Input dispute number from Court"
-                              aria-describedby="search"
-                              onChange={this.onDisputeIDChange}
-                              type="number"
-                              min="0"
-                              value={arbitratorDisputeID}
-                              id="arbitratorDisputeID"
-                            />
-                          </InputGroup>
-                        </Col>
-                      </Form.Row>
-                      {arbitratorDispute && metaevidence.metaEvidenceJSON && (
-                        <>
-                          <Form.Row>
-                            <Col>
-                              <h1 className="display-title">{metaevidence.metaEvidenceJSON.title}</h1>
-                            </Col>
-                          </Form.Row>
+          <div>
+            <Row>
+              <Col>Search Disputes on Court</Col>
+            </Row>
 
-                          <Form.Row>
-                            <Card className="w-100" style={{ margin: 0 }}>
-                              <Card.Body
-                                style={{
-                                  paddingBottom: "0",
-                                  borderBottomLeftRadius: metaevidence.metaEvidenceJSON.fileURI && 0,
-                                  borderBottomRightRadius: metaevidence.metaEvidenceJSON.fileURI && 0,
-                                }}
-                              >
-                                <Form.Group id="markdown" className="markdown" style={{ paddingLeft: 0, color: "black" }}>
-                                  {metaevidence.metaEvidenceJSON.description && metaevidence.metaEvidenceJSONValid && <ReactMarkdown source={metaevidence.metaEvidenceJSON.description} />}
-                                  {!metaevidence.metaEvidenceJSON.description && <p>Not provided</p>}
-                                </Form.Group>
-                                {metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI && metaevidence.interfaceValid && (
-                                  <div className="iframe-container">
-                                    <iframe
-                                      ref={this.iframe}
-                                      id="iframe"
-                                      className="iframe"
-                                      src={
-                                        (metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI.includes("://") ? metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI : `https://ipfs.kleros.io${metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI}`) +
-                                        encodeURI(`?{"arbitrableContractAddress":"${arbitrated}","arbitratorContractAddress":"${arbitratorAddress}","disputeID":"${arbitratorDisputeID}"}`)
-                                      }
-                                      title="evidence-display"
-                                    />
-                                  </div>
-                                )}
-                                {metaevidence.metaEvidenceJSON.arbitrableInterfaceURI && !metaevidence.metaEvidenceJSON.arbitrableInterfaceURI.includes("resolve.kleros.io") && (
-                                  <div className="my-3">
-                                    <a href={metaevidence.metaEvidenceJSON.arbitrableInterfaceURI} className="purple-inverted">
-                                      Go to arbitrable application from here
-                                    </a>
-                                  </div>
-                                )}
-                              </Card.Body>
-
-                              {metaevidence.metaEvidenceJSON.fileURI && metaevidence.fileValid && (
-                                <Card
-                                  className="text-center w-100 m-0"
-                                  style={{
-                                    backgroundColor: "#F5F1FD",
-                                    borderTopLeftRadius: 0,
-                                    borderTopRightRadius: 0,
-                                    padding: "0.8rem",
-                                  }}
-                                >
-                                  <a
-                                    href={`
-                            https://ipfs.kleros.io${metaevidence.metaEvidenceJSON.fileURI}`}
-                                  >
-                                    <AttachmentSVG style={{ width: "2rem" }} />
-                                  </a>
-                                </Card>
-                              )}
-                            </Card>
-                          </Form.Row>
-                          <Form.Row>
-                            <Col style={{ padding: 0 }}>
-                              <QuestionDisplay
-                                question={metaevidence.metaEvidenceJSON.question}
-                                firstRulingOption={metaevidence.metaEvidenceJSON.rulingOptions.titles[0]}
-                                secondRulingOption={metaevidence.metaEvidenceJSON.rulingOptions.titles[1]}
-                                firstRulingDescription={metaevidence.metaEvidenceJSON.rulingOptions.descriptions && metaevidence.metaEvidenceJSON.rulingOptions.descriptions[0]}
-                                secondRulingDescription={metaevidence.metaEvidenceJSON.rulingOptions.descriptions && metaevidence.metaEvidenceJSON.rulingOptions.descriptions[1]}
-                              />
-                            </Col>
-                          </Form.Row>
-                          <Form.Row>
-                            <Card
-                              className="w-100"
-                              style={{
-                                marginLeft: 0,
-                                marginRight: 0,
-                              }}
-                            >
-                              <Card.Body style={{ padding: 0 }}>
-                                <EvidenceTimeline
-                                  evidenceSubmissionEnabled={Boolean(activeAddress) && Boolean(arbitrableDispute)}
-                                  numberOfVotesCast={Number(getDisputeResult.votesInEachRound.slice(-1)[0])}
-                                  numberOfVotes={Number(getDisputeResult.votesLengths.slice(-1)[0])}
-                                  metaevidence={metaevidence}
-                                  evidences={evidences}
-                                  ruling={ruling}
-                                  currentRuling={Number(currentRuling)}
-                                  dispute={disputeEvent}
-                                  disputePeriod={parseInt(arbitratorDispute.period)}
-                                  publishCallback={publishCallback}
-                                  submitEvidenceCallback={this.submitEvidence}
-                                  appealDecisions={this.state.appealDecisions}
-                                />
-                              </Card.Body>
-                            </Card>
-                          </Form.Row>
-                        </>
-                      )}
-                    </Form>
-                  </Card.Body>
-
-                  <Card.Footer
-                    className="p-0"
-                    id="dispute-detail-footer"
-                    style={{
-                      borderTopLeftRadius: 0,
-                      borderTopRightRadius: 0,
-                      borderBottomLeftRadius: 12,
-                      borderBottomRightRadius: 12,
-                    }}
-                  >
-                    <div
-                      className="text-center p-5"
-                      style={{
-                        borderTopLeftRadius: "inherit",
-                        borderTopRightRadius: "inherit",
-                        borderRadius: "inherit",
-                      }}
-                    >
-                      <h3 style={{ color: "white" }}>
-                        {(arbitratorDispute && this.getHumanReadablePeriod(arbitratorDispute.period)) || this.MESSAGES(this.state.interactionState)}
-
-                        {arbitratorDispute && arbitratorDispute.lastPeriodChange && subcourts && subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)] && (
-                          <>
-                            {" Over in "}
-                            <Countdown
-                              date={BigNumber("1000")
-                                .times(BigNumber(arbitratorDispute.lastPeriodChange).plus(BigNumber(subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)])))
-                                .toNumber()}
-                              onComplete={() => this.reload()}
-                            />
-                          </>
-                        )}
-                      </h3>
-
-                      {activeAddress &&
-                        arbitratorDispute &&
-                        arbitratorDispute.lastPeriodChange &&
-                        subcourts &&
-                        subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)] &&
-                        BigNumber(Date.now()).gt(
-                          BigNumber("1000").times(
-                            BigNumber(arbitratorDispute.lastPeriodChange)
-                              .plus(BigNumber(subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)]))
-                              .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS.network))
-                          )
-                        ) &&
-                        canPassPeriod && (
-                          <Button
-                            className="ok"
-                            style={{ margin: "0 1rem" }}
-                            onClick={async (e) => {
-                              await passPeriodCallback(arbitratorDisputeID);
-                              new Promise(() => setTimeout(5000)).then(this.reload());
-                            }}
-                          >
-                            Pass Dispute Period
-                          </Button>
-                        )}
-
-                      {activeAddress &&
-                        arbitratorDispute &&
-                        arbitratorDispute.lastPeriodChange &&
-                        subcourts &&
-                        subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)] &&
-                        BigNumber(Date.now()).gt(
-                          BigNumber("1000").times(
-                            BigNumber(arbitratorDispute.lastPeriodChange)
-                              .plus(BigNumber(subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)]))
-                              .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS.network))
-                          )
-                        ) &&
-                        arbitratorDispute.period == 0 &&
-                        !canPassPeriod &&
-                        canDrawJurors && (
-                          <Button
-                            className="ok"
-                            style={{ margin: "0 1rem" }}
-                            onClick={async (e) => {
-                              await drawJurorsCallback(arbitratorDisputeID);
-                              new Promise(() => setTimeout(5000)).then(this.reload());
-                            }}
-                          >
-                            Draw Jurors
-                          </Button>
-                        )}
-                      {activeAddress &&
-                        arbitratorDispute &&
-                        arbitratorDispute.lastPeriodChange &&
-                        subcourts &&
-                        subcourts[arbitratorDispute.subcourtID][1][Number(arbitratorDispute.period)] &&
-                        BigNumber(Date.now()).gt(
-                          BigNumber("1000").times(
-                            BigNumber(arbitratorDispute.lastPeriodChange)
-                              .plus(BigNumber(subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)]))
-                              .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS.network))
-                          )
-                        ) &&
-                        arbitratorDispute.period == 0 &&
-                        !canPassPeriod &&
-                        !canDrawJurors &&
-                        canPassPhase && (
-                          <Button
-                            className="ok"
-                            style={{ margin: "0 1rem" }}
-                            onClick={async (e) => {
-                              await passPhaseCallback();
-                              new Promise(() => setTimeout(5000)).then(this.reload());
-                            }}
-                          >
-                            Pass Court Phase
-                          </Button>
-                        )}
-                      {arbitrableDisputeID && activeAddress && arbitratorDispute && arbitratorDispute.period == 4 && (
-                        <Button className="ok" style={{ margin: "0 1rem" }} disabled={withdrewAlready} onClick={(e) => withdrawFeesAndRewardsCallback(arbitrated, arbitrableDisputeID)}>
-                          {withdrewAlready ? "Withdrew Already" : "Withdraw Funds"}
-                        </Button>
-                      )}
-                    </div>
-                  </Card.Footer>
-                </>
-              </Accordion.Collapse>
-            </Card>
-          </Accordion>
-
-          {arbitrableDisputeID && arbitratorDispute && arbitratorDispute.period == 3 && arbitrableDispute && (
-            <Appeal
-              crowdfundingStatus={crowdfundingStatus}
-              appealCost={appealCost}
-              multipliers={multipliers}
-              appealCallback={this.appeal}
-              appealPeriod={appealPeriod}
-              currentRuling={currentRuling}
-              metaevidence={metaevidence}
-              activeAddress={activeAddress}
-              reloadCallback={this.reload}
-            />
-          )}
-
-          <IPFS publishCallback={publishCallback} />
-        </Container>
+            <Row>
+              <Col>
+                <InputGroup className={styles.search} size="md">
+                  <InputGroup.Prepend>
+                    <InputGroup.Text>
+                      <Magnifier />
+                    </InputGroup.Text>
+                  </InputGroup.Prepend>
+                  <FormControl className="purple-inverted" placeholder="Dispute ID" aria-label="Input dispute number from Court" aria-describedby="search" onChange={this.onDisputeIDChange} type="number" min="0" value={arbitratorDisputeID} id="arbitratorDisputeID" />
+                </InputGroup>
+              </Col>
+            </Row>
+          </div>
+          <DisputeSummary metaevidenceJSON={metaevidence.metaEvidenceJSON} />
+        </main>
       </>
     );
   }

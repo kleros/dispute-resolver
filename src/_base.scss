@@ -97,6 +97,10 @@ div.dropdown-menu.show {
   background-color: var(--color-blue-accent);
 }
 
+p {
+  text-overflow: ellipsis;
+}
+
 span.form-control {
   white-space: nowrap;
   overflow: hidden;

@@ -87,6 +87,12 @@ hr {
   border-color: var(--color-stroke);
 }
 
+main > section {
+  background-color: white;
+  border-radius: 18px;
+  box-shadow: var(--box-shadow);
+}
+
 /* .form-control,
 .input-group,
 .input-group-prepend,

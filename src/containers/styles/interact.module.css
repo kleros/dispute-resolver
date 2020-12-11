@@ -1,0 +1,14 @@
+.interact {
+}
+
+.interact .search :global(.input-group-prepend) {
+  border-right-width: 0;
+}
+
+.interact .search :global(.input-group-prepend) > * {
+  background-color: white;
+}
+
+.interact .search > input {
+  border-left-width: 0;
+}

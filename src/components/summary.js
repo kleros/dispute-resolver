@@ -68,7 +68,7 @@ class Summary extends React.Component {
 
     console.log(this.props);
     return (
-      <div className={styles.summary}>
+      <section className={styles.summary}>
         <Form noValidate validated={validated} onSubmit={this.onModalShow}>
           <Row>
             <Col>
@@ -79,9 +79,7 @@ class Summary extends React.Component {
           <hr />
           {formData.description && (
             <Row className={styles.description}>
-              <Col>
-                <ReactMarkdown className={styles.markdown} source={formData.description} />
-              </Col>
+              <Col>{formData.description}</Col>
             </Row>
           )}
           <Row>
@@ -204,7 +202,7 @@ class Summary extends React.Component {
             </Col>
           </Row>
         </Form>
-      </div>
+      </section>
     );
   }
 }

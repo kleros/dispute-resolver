@@ -195,7 +195,7 @@ class CreateForm extends React.Component {
     console.log(this.state);
     console.log(this.props);
     return (
-      <div className={styles.createForm}>
+      <section className={`${styles.createForm}`}>
         <Form noValidate validated={validated} onSubmit={this.onModalShow}>
           <Row>
             <Col>
@@ -392,7 +392,7 @@ class CreateForm extends React.Component {
             </Col>
           </Row>
         </Form>
-      </div>
+      </section>
     );
   }
 }

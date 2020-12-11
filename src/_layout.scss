@@ -38,8 +38,12 @@ main {
   }
 }
 
-main > div:first-child {
+main > section {
   padding: var(--spacing-32);
+}
+
+main > div + main > section {
+  margin-top: var(--spacing-16);
 }
 
 footer {

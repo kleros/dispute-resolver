@@ -2,12 +2,6 @@
   position: relative;
 }
 
-.create > div:first-child {
-  background-color: white;
-  border-radius: 18px;
-  box-shadow: var(--box-shadow);
-}
-
 .create .markdown {
   word-wrap: break-word;
 }
