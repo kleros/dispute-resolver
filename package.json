@@ -4,10 +4,6 @@
   "private": false,
   "dependencies": {
     "@babel/helper-call-delegate": "^7.12.1",
-    "@fortawesome/fontawesome-svg-core": "^1.2.25",
-    "@fortawesome/free-solid-svg-icons": "^5.11.2",
-    "@fortawesome/react-fontawesome": "^0.1.7",
-    "@github/markdown-toolbar-element": "^1.1.0",
     "@kleros/arbitrable-proxy-contracts": "^1.0.1",
     "@kleros/archon": "^0.10.1",
     "@kleros/kleros": "^0.1.2",
