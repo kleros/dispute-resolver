@@ -18,7 +18,7 @@
 
   display: flex;
   justify-content: space-between;
-  background-color: var(--color-purple-primary);
+  background-color: var(--purple-primary);
   color: white;
 }
 
@@ -42,7 +42,7 @@
   padding-top: var(--spacing-16);
   padding-bottom: var(--spacing-16);
 
-  background-color: var(--color-purple-light);
+  background-color: var(--purple-light);
 
   border-bottom-left-radius: var(--border-radius);
   border-bottom-right-radius: var(--border-radius);
@@ -66,7 +66,7 @@
 }
 
 .ongoingCard .status:global(.commit)::before {
-  color: var(--color-blue-primary);
+  color: var(--blue-primary);
 }
 
 .ongoingCard .status:global(.vote)::after {
@@ -74,7 +74,7 @@
 }
 
 .ongoingCard .status:global(.vote)::before {
-  color: var(--color-blue-primary);
+  color: var(--blue-primary);
 }
 
 .ongoingCard .status:global(.appeal)::after {
@@ -82,7 +82,7 @@
 }
 
 .ongoingCard .status:global(.appeal)::before {
-  color: var(--color-red);
+  color: var(--red);
 }
 
 .ongoingCard .status:global(.execution)::after {
@@ -90,7 +90,7 @@
 }
 
 .ongoingCard .status:global(.execution)::before {
-  color: var(--color-grey-dark);
+  color: var(--grey-dark);
 }
 
 .ongoingCard .disputeID::before {
@@ -123,11 +123,11 @@
 }
 
 .ongoingCard .badge > svg > path {
-  fill: var(--color-purple-primary);
+  fill: var(--purple-primary);
 }
 
 .ongoingCard .bodyBottom {
-  background-color: var(--color-purple-light);
+  background-color: var(--purple-light);
 }
 
 .ongoingCard .countdown {
@@ -143,5 +143,5 @@
 }
 
 .ongoingCard .countdown > svg > path {
-  fill: var(--color-purple-primary);
+  fill: var(--purple-primary);
 }

@@ -359,7 +359,7 @@ class Interact extends React.Component {
               </Col>
             </Row>
           </div>
-          <DisputeSummary metaevidenceJSON={metaevidence.metaEvidenceJSON} />
+          <DisputeSummary metaevidenceJSON={metaevidence.metaEvidenceJSON} ipfsGateway="https://ipfs.kleros.io" arbitrated={arbitrated} arbitratorAddress={arbitratorAddress} arbitratorDisputeID={arbitratorDisputeID} />
         </main>
       </>
     );

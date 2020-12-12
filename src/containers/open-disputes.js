@@ -58,7 +58,7 @@ class openDisputeIDs extends React.Component {
 
     return (
       <main className={styles.openDisputes} id="ongoing-disputes">
-        <Row>
+        <Row className={styles.dropdownContainer}>
           <DropdownButton id="dropdown-basic-button" title={this.getFilterName(statusFilter)} className={`${styles.filter} ${this.getStatusClass(statusFilter)}`} onSelect={this.onFilterSelect}>
             {this.FILTER_NAMES.map((name, index) => (
               <Dropdown.Item eventKey={index} className={this.getStatusClass(index)}>

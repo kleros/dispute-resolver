@@ -2,12 +2,6 @@
   margin-bottom: var(--spacing-32);
 }
 
-.summary :global(span.form-control) {
-  font-weight: var(--bold);
-  box-shadow: var(--box-shadow);
-  border: none;
-}
-
 .summary .buttons {
   text-align: right;
 }

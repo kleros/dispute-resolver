@@ -4,7 +4,7 @@
 
 .filter :global(.dropdown-toggle.btn.btn-primary)::after {
   margin-left: var(--spacing-32);
-  color: var(--color-stroke);
+  color: var(--stroke);
 }
 
 .filter :global(.dropdown-toggle.btn.btn-primary)::before {
@@ -14,39 +14,43 @@
 }
 
 .filter:global(.evidence) :global(.dropdown-toggle.btn.btn-primary)::before {
-  color: var(--color-green);
+  color: var(--green);
 }
 
 .filter :global(.dropdown-item.evidence)::before {
-  color: var(--color-green);
+  color: var(--green);
 }
 
 .filter:global(.commit) :global(.dropdown-toggle.btn.btn-primary)::before {
-  color: var(--color-blue-primary);
+  color: var(--blue-primary);
 }
 
 .filter :global(.dropdown-item.commit)::before {
-  color: var(--color-blue-primary);
+  color: var(--blue-primary);
 }
 
 .filter:global(.vote) :global(.dropdown-toggle.btn.btn-primary)::before {
-  color: var(--color-blue-primary);
+  color: var(--blue-primary);
 }
 
 .filter :global(.dropdown-item.vote)::before {
-  color: var(--color-blue-primary);
+  color: var(--blue-primary);
 }
 
 .filter:global(.appeal) :global(.dropdown-toggle.btn.btn-primary)::before {
-  color: var(--color-red);
+  color: var(--red);
 }
 
 .filter :global(.dropdown-item.appeal)::before {
-  color: var(--color-red);
+  color: var(--red);
 }
 
 .filter :global(.dropdown-item)::before {
   content: "●";
   vertical-align: text-bottom;
   margin-right: var(--spacing-8);
+}
+
+.dropdownContainer {
+  padding: var(--spacing-32);
 }

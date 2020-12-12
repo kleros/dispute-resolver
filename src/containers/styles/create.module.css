@@ -46,11 +46,11 @@
 }
 
 .create .dropdownToggle::after {
-  color: var(--color-stroke);
+  color: var(--stroke);
 }
 
 .create .scales > path {
-  fill: var(--color-purple-primary);
+  fill: var(--purple-primary);
 }
 
 .create .arbitrationFeeGroup > div {
@@ -70,7 +70,7 @@
   border: none;
   background-color: white;
   font-weight: var(--bold);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .create :global(#description) {
@@ -78,7 +78,7 @@
 }
 
 .create :global(markdown-toolbar) {
-  color: var(--color-blue-primary);
+  color: var(--blue-primary);
 }
 
 .create :global(markdown-toolbar) > * > svg {
@@ -86,7 +86,7 @@
 }
 
 .create .buttonAlias {
-  background-color: var(--color-blue-primary);
+  background-color: var(--blue-primary);
   font-size: 40px;
   border: none;
   border-radius: 50%;
@@ -101,7 +101,7 @@
   padding: 0px !important;
 
   color: white;
-  background: var(--color-blue-primary);
+  background: var(--blue-primary);
   border: none;
   text-align: center;
   transition: background 0.2s linear;
@@ -138,7 +138,7 @@
 }
 
 .create .dropzone {
-  background-color: var(--color-blue-accent);
+  background-color: var(--blue-accent);
   border: 2px dashed #009aff;
   text-align: center;
   margin-bottom: var(--spacing-8);

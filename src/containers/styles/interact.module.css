@@ -1,4 +1,5 @@
-.interact {
+.interact section:first-of-type {
+  padding: 0;
 }
 
 .interact .search :global(.input-group-prepend) {
