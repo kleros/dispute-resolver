@@ -4,6 +4,7 @@ import { Card, Col, Container, Form, Row, Button, InputGroup, FormControl, Accor
 import Appeal from "components/appeal";
 import QuestionDisplay from "components/question-display";
 import DisputeSummary from "components/disputeSummary";
+import DisputeDetails from "components/disputeDetails";
 import debounce from "lodash.debounce";
 import ReactMarkdown from "react-markdown";
 import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
@@ -343,11 +344,8 @@ class Interact extends React.Component {
           {arbitratorDisputeID && <Redirect to={`/cases/${arbitratorDisputeID}`} />}
           <div>
             <Row>
-              <Col>Search Disputes on Court</Col>
-            </Row>
-
-            <Row>
               <Col>
+                <Form.Label>Search Disputes on Court</Form.Label>
                 <InputGroup className={styles.search} size="md">
                   <InputGroup.Prepend>
                     <InputGroup.Text>
@@ -360,6 +358,7 @@ class Interact extends React.Component {
             </Row>
           </div>
           <DisputeSummary metaevidenceJSON={metaevidence.metaEvidenceJSON} ipfsGateway="https://ipfs.kleros.io" arbitrated={arbitrated} arbitratorAddress={arbitratorAddress} arbitratorDisputeID={arbitratorDisputeID} />
+          <DisputeDetails metaevidenceJSON={metaevidence.metaEvidenceJSON} ipfsGateway="https://ipfs.kleros.io" arbitrated={arbitrated} arbitratorAddress={arbitratorAddress} arbitratorDisputeID={arbitratorDisputeID} arbitratorDispute={arbitratorDispute} subcourts={subcourts} />
         </main>
       </>
     );

@@ -1,5 +1,5 @@
 import React from "react";
-import Summary from "../components/summary";
+import Summary from "../components/createSummary";
 import CreateForm from "components/createForm";
 import Toast from "components/toast";
 

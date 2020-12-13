@@ -10,9 +10,9 @@ import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
 
 import Dropzone from "react-dropzone";
 
-import styles from "components/styles/summary.module.css";
+import styles from "components/styles/createSummary.module.css";
 
-class Summary extends React.Component {
+class CreateSummary extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -72,7 +72,7 @@ class Summary extends React.Component {
         <Form noValidate validated={validated} onSubmit={this.onModalShow}>
           <Row>
             <Col>
-              <p className={styles.fillUpTheForm}>Summary</p>
+              <p className={styles.fillUpTheForm}>CreateSummary</p>
               <h1 className={styles.h1}>{formData.title}</h1>
             </Col>
           </Row>
@@ -207,4 +207,4 @@ class Summary extends React.Component {
   }
 }
 
-export default Summary;
+export default CreateSummary;

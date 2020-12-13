@@ -2,6 +2,10 @@
   padding: 0;
 }
 
+.interact .search {
+  margin-bottom: var(--spacing-32);
+}
+
 .interact .search :global(.input-group-prepend) {
   border-right-width: 0;
 }

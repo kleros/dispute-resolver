@@ -46,6 +46,10 @@ main > div + main > section {
   margin-top: var(--spacing-16);
 }
 
+section + section {
+  margin-top: var(--spacing-32);
+}
+
 footer {
   height: var(--spacing-64);
   min-height: var(--spacing-64);
