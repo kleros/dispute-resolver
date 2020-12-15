@@ -226,9 +226,9 @@ class CreateForm extends React.Component {
             </Col>
             <Col xl={6} md={12} sm={24} xs={24}>
               <Form.Group className="inner-addon left-addon">
-                <Form.Label htmlFor="initialNumberOfJurors">Number of Jurors</Form.Label>
+                <Form.Label htmlFor="initialNumberOfJurors">Number of Votes</Form.Label>
                 <AvatarSVG className="glyphicon glyphicon-user" />
-                <Form.Control required id="initialNumberOfJurors" as="input" type="number" min="0" value={initialNumberOfJurors} onChange={this.onControlChange} placeholder={"Number of jurors"} />
+                <Form.Control required id="initialNumberOfJurors" as="input" type="number" min="0" value={initialNumberOfJurors} onChange={this.onControlChange} placeholder={"Number of votes"} />
               </Form.Group>
             </Col>
             <Col xl={6} md={12} sm={24} xs={24}>
