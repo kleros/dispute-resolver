@@ -1,0 +1,8 @@
+.disputeDetails .spanWithSvgInside > svg {
+  margin-right: var(--spacing-8);
+  vertical-align: text-bottom;
+}
+
+.disputeDetails .scales > path {
+  fill: var(--purple-primary);
+}

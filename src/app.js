@@ -139,6 +139,8 @@ class App extends React.Component {
 
   getArbitratorDispute = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "disputes", arbitratorDisputeID);
 
+  getArbitratorDisputeDetails = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "getDispute", arbitratorDisputeID);
+
   getCrowdfundingStatus = (arbitrableAddress, arbitrableDisputeID) => EthereumInterface.call("ArbitrableProxy", arbitrableAddress, "crowdfundingStatus", arbitrableDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO);
 
   getRoundInfo = async (arbitrableAddress, arbitrableDisputeID, round) => this.interactWithArbitrableProxy(arbitrableAddress, "call", "unused", "getRoundInfo", arbitrableDisputeID, round);
@@ -329,6 +331,7 @@ class App extends React.Component {
                     disputeID={lastDisputeID}
                     getContractInstanceCallback={this.getContractInstance}
                     getArbitratorDisputeCallback={this.getArbitratorDispute}
+                    getArbitratorDisputeDetailsCallback={this.getArbitratorDisputeDetails}
                     getArbitrableDisputeCallback={this.getArbitrableDispute}
                     getArbitratorDisputeStructCallback={this.getArbitratorDispute}
                     getArbitrableDisputeStructCallback={this.getArbitrableDispute}
@@ -353,6 +356,7 @@ class App extends React.Component {
                     getRoundInfoCallback={this.getRoundInfo}
                     getAppealDecisionCallback={this.getAppealDecision}
                     subcourts={subcourts}
+                    subcourtDetails={subcourtDetails}
                   />
                   <Footer networkMap={networkMap} network={this.state.network} />
                 </>

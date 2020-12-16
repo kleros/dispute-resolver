@@ -38,11 +38,11 @@ button:hover {
 }
 
 button.btn-primary:not(.dropdown-toggle):hover {
-  background-color: var(--color-blue-secondary);
+  background-color: var(--blue-secondary);
 }
 
 button.btn-secondary:not(.dropdown-toggle):hover {
-  background-color: var(--color-purple-light);
+  background-color: var(--purple-light);
 }
 
 button:not(.dropdown-toggle).btn-primary {
@@ -52,8 +52,8 @@ button:not(.dropdown-toggle).btn-primary {
 button.btn-secondary,
 button.btn-secondary:hover {
   background-color: white;
-  color: var(--color-blue-primary);
-  border: 1px solid var(--color-blue-primary);
+  color: var(--blue-primary);
+  border: 1px solid var(--blue-primary);
 }
 
 label.form-label {
@@ -83,7 +83,7 @@ label.form-label {
 }
 
 .dropdown .btn {
-  border-color: var(--color-stroke);
+  border-color: var(--stroke);
 }
 
 div.dropdown-menu.show {
@@ -94,7 +94,7 @@ div.dropdown-menu.show {
 }
 
 .dropdown-item:hover {
-  background-color: var(--color-blue-accent);
+  background-color: var(--blue-accent);
 }
 
 p {

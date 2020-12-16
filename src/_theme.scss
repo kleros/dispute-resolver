@@ -37,6 +37,10 @@
   --box-shadow: 0px 6px 24px rgba(77, 0, 180, 0.25);
 }
 
+.purple-primary {
+  color: var(--purple-primary);
+}
+
 header,
 footer {
   background-color: var(--purple-primary) !important;

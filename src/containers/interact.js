@@ -206,6 +206,7 @@ class Interact extends React.Component {
       arbitratorDispute = await this.props.getArbitratorDisputeCallback(arbitratorDisputeID);
       this.setState({
         arbitratorDispute,
+        arbitratorDisputeDetails: await this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
         arbitratorDisputeID,
         metaevidence: await this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID),
         evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
@@ -315,6 +316,7 @@ class Interact extends React.Component {
       arbitrated,
       arbitrableDisputeID,
       arbitratorDispute,
+      arbitratorDisputeDetails,
       arbitrableDispute,
       crowdfundingStatus,
       appealCost,
@@ -333,7 +335,21 @@ class Interact extends React.Component {
       appealPeriod,
     } = this.state;
 
-    const { arbitratorAddress, activeAddress, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, passPhaseCallback, passPeriodCallback, drawJurorsCallback, subcourts, network } = this.props;
+    const {
+      arbitratorAddress,
+      activeAddress,
+      publishCallback,
+      withdrawFeesAndRewardsCallback,
+      getCrowdfundingStatusCallback,
+      getAppealPeriodCallback,
+      getCurrentRulingCallback,
+      passPhaseCallback,
+      passPeriodCallback,
+      drawJurorsCallback,
+      subcourts,
+      subcourtDetails,
+      network,
+    } = this.props;
 
     return (
       <>
@@ -358,7 +374,18 @@ class Interact extends React.Component {
             </Row>
           </div>
           <DisputeSummary metaevidenceJSON={metaevidence.metaEvidenceJSON} ipfsGateway="https://ipfs.kleros.io" arbitrated={arbitrated} arbitratorAddress={arbitratorAddress} arbitratorDisputeID={arbitratorDisputeID} />
-          <DisputeDetails metaevidenceJSON={metaevidence.metaEvidenceJSON} ipfsGateway="https://ipfs.kleros.io" arbitrated={arbitrated} arbitratorAddress={arbitratorAddress} arbitratorDisputeID={arbitratorDisputeID} arbitratorDispute={arbitratorDispute} subcourts={subcourts} />
+          <DisputeDetails
+            metaevidenceJSON={metaevidence.metaEvidenceJSON}
+            ipfsGateway="https://ipfs.kleros.io"
+            arbitrated={arbitrated}
+            arbitratorAddress={arbitratorAddress}
+            arbitratorDisputeID={arbitratorDisputeID}
+            arbitratorDispute={arbitratorDispute}
+            arbitratorDisputeDetails={arbitratorDisputeDetails}
+            subcourts={subcourts}
+            subcourtDetails={subcourtDetails}
+            currentRuling={currentRuling}
+          />
         </main>
       </>
     );

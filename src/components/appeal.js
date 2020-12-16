@@ -4,7 +4,6 @@ import React from "react";
 import BigNumber from "bignumber.js";
 import Countdown from "react-countdown";
 import { ReactComponent as AppealSVG } from "assets/images/appeal.svg";
-import { ReactComponent as WarningSVG } from "assets/images/warning.svg";
 import { ReactComponent as ClockRed } from "assets/images/clock_red.svg";
 import { ReactComponent as ClockPurple } from "assets/images/clock_purple.svg";
 
@@ -347,9 +346,7 @@ class Appeal extends React.Component {
                             <Card className="m-0 crowfunding-card">
                               <Card.Body>
                                 <Form.Row>
-                                  <Col className="text-center my-3">
-                                    <WarningSVG />
-                                  </Col>
+                                  <Col className="text-center my-3"></Col>
                                 </Form.Row>
 
                                 {!loserFailedToRaise && (
