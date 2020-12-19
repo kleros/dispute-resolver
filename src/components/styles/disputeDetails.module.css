@@ -6,3 +6,13 @@
 .disputeDetails .scales > path {
   fill: var(--purple-primary);
 }
+
+.disputeDetails .accordion div:global(.card-header.closed)::after {
+  content: "＋";
+  float: right;
+}
+
+.disputeDetails .accordion div:global(.card-header.open)::after {
+  content: "—";
+  float: right;
+}

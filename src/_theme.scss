@@ -59,10 +59,10 @@ main {
 }
 
 .card-header {
-  padding: var(--spacing-8) var(--spacing-16);
+  padding: var(--spacing-8) var(--spacing-32);
   background-color: var(--purple-primary);
   color: white;
-  border-radius: 3px;
+  border-radius: var(--border-radius);
 }
 
 .card-body {
@@ -109,4 +109,23 @@ span.form-control {
   font-weight: var(--bold);
   box-shadow: var(--box-shadow);
   border: none;
+}
+
+.accordion > .card div.card-header,
+.accordion > .card:not(:first-of-type) .card-header:first-child {
+  font-weight: var(--bold);
+  border-radius: var(--border-radius);
+}
+
+.accordion > .card {
+  border: none;
+}
+
+.accordion .card-header:not(:last-of-type):not(.open) {
+  margin-bottom: 1.5rem;
+}
+
+.accordion > .card .card-body {
+  padding: var(--spacing-32);
+  font-size: var(--font-size-s);
 }

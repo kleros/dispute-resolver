@@ -1,5 +1,5 @@
 import React from "react";
-import { Container, Col, Row, Button, Form, Card, Dropdown, InputGroup } from "react-bootstrap";
+import { Container, Col, Row, Button, Form, Dropdown, InputGroup } from "react-bootstrap";
 import ReactMarkdown from "react-markdown";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";

@@ -16,6 +16,8 @@ $red: #f60c36;
 $green: #00c42b;
 $blue: #009aff;
 
+$body-color: $text-primary;
+
 $spacing-4: 4px;
 $spacing-8: 8px;
 $spacing-16: 16px;
@@ -44,6 +46,9 @@ $spacers: map-merge(
   ),
   $spacers
 );
+
+$card-spacer-x: $spacing-32;
+$card-spacer-y: $spacing-16;
 
 $grid-gutter-width: 32px;
 $border-radius: 3px;
