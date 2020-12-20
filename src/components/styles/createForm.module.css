@@ -39,10 +39,6 @@
   text-align: left;
 }
 
-.createForm .dropdownToggle a {
-  background-color: red;
-}
-
 .createForm .dropdownToggle > span {
   vertical-align: middle;
 }

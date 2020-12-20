@@ -1,13 +1,22 @@
-import { Card, Row, Col, Form, Container, Accordion } from "react-bootstrap";
+import { Card, Row, Col, Form, Container, Accordion, Dropdown } from "react-bootstrap";
 import React from "react";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
+import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
 
 import DisputeTimeline from "components/disputeTimeline";
 import AlertMessage from "components/alertMessage";
 
 import styles from "components/styles/disputeDetails.module.css";
+
+const QuestionTypes = Object.freeze({
+  "single-select": "Multiple choice: single select",
+  "multiple-select": "Multiple choice: multiple select",
+  uint: "Non-negative number",
+  int: "Number",
+  string: "Text",
+});
 
 class DisputeDetails extends React.Component {
   constructor(props) {
@@ -61,7 +70,7 @@ class DisputeDetails extends React.Component {
           <AlertMessage type="info" title={`Jury decision: ${metaevidenceJSON.rulingOptions.titles[currentRuling - 1]}`} content="This decision can be appealed within appeal period." />
           <Accordion
             className={`mt-4 ${styles.accordion}`}
-            defaultActiveKey="0"
+            defaultActiveKey="1"
             onSelect={(e) => {
               this.setState({ activeAccordionKey: e });
             }}
@@ -79,7 +88,29 @@ class DisputeDetails extends React.Component {
                 Question
               </Accordion.Toggle>
               <Accordion.Collapse eventKey="1">
-                <Card.Body>Hello! I'm another body</Card.Body>
+                <Card.Body className={styles.question}>
+                  <p>{QuestionTypes[metaevidenceJSON.rulingOptions.type]}</p>
+                  <p>{metaevidenceJSON.question}</p>
+                  <Dropdown>
+                    <Dropdown.Toggle className="form-control" block className={styles.dropdownToggle}>
+                      View Voting Options
+                    </Dropdown.Toggle>
+
+                    <Dropdown.Menu>
+                      {metaevidenceJSON.rulingOptions.titles.map((title, index) => (
+                        <Dropdown.Item disabled>{`Option ${index + 1}: ${title}`}</Dropdown.Item>
+                      ))}
+                    </Dropdown.Menu>
+                  </Dropdown>
+                  <p className={styles.questionInfo}>
+                    <InfoSVG />
+                    Note that you can only view the voting options. Selected jurors can vote using{" "}
+                    <a href={`https://court.kleros.io/cases/${arbitratorDisputeID}`} target="_blank" rel="noreferrer noopener">
+                      Court
+                    </a>
+                    .
+                  </p>
+                </Card.Body>
               </Accordion.Collapse>
             </Card>
             <Card>

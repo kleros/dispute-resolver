@@ -98,23 +98,26 @@ main > section {
   box-shadow: var(--box-shadow);
 }
 
-/* .form-control,
-.input-group,
-.input-group-prepend,
-.dropdown-toggle {
-  padding: var(--spacing-8) var(--spacing-16);
-} */
-
 span.form-control {
   font-weight: var(--bold);
   box-shadow: var(--box-shadow);
   border: none;
 }
 
-.accordion > .card div.card-header,
-.accordion > .card:not(:first-of-type) .card-header:first-child {
+.accordion > .card div.card-header {
   font-weight: var(--bold);
-  border-radius: var(--border-radius);
+  cursor: pointer;
+}
+
+.accordion > .card:first-of-type {
+  border-top-left-radius: var(--border-radius);
+  border-top-right-radius: var(--border-radius);
+}
+
+div.accordion > div.card:last-of-type,
+div.accordion > div.card:last-of-type > div.card-header:first-child {
+  border-bottom-left-radius: var(--border-radius);
+  border-bottom-right-radius: var(--border-radius);
 }
 
 .accordion > .card {
