@@ -6,6 +6,8 @@ import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
 
 import DisputeTimeline from "components/disputeTimeline";
+import EvidenceTimeline from "components/evidenceTimeline";
+
 import AlertMessage from "components/alertMessage";
 
 import styles from "components/styles/disputeDetails.module.css";
@@ -29,7 +31,7 @@ class DisputeDetails extends React.Component {
   componentDidMount() {}
 
   render() {
-    const { metaevidenceJSON, ipfsGateway, interfaceValid, arbitrated, arbitratorDisputeID, arbitratorAddress, arbitratorDispute, subcourts, subcourtDetails, arbitratorDisputeDetails, currentRuling } = this.props;
+    const { metaevidenceJSON, evidences, ipfsGateway, interfaceValid, arbitrated, arbitratorDisputeID, arbitratorAddress, arbitratorDispute, subcourts, subcourtDetails, arbitratorDisputeDetails, currentRuling, disputeEvent, publishCallback, submitEvidenceCallback } = this.props;
     console.log(this.props);
     const { activeAccordionKey } = this.state;
     console.log(this.state);
@@ -70,24 +72,23 @@ class DisputeDetails extends React.Component {
           <AlertMessage type="info" title={`Jury decision: ${metaevidenceJSON.rulingOptions.titles[currentRuling - 1]}`} content="This decision can be appealed within appeal period." />
           <Accordion
             className={`mt-4 ${styles.accordion}`}
-            defaultActiveKey="1"
             onSelect={(e) => {
               this.setState({ activeAccordionKey: e });
             }}
           >
             <Card>
-              <Accordion.Toggle className={activeAccordionKey == 0 ? "open" : "closed"} as={Card.Header} eventKey="0">
+              <Accordion.Toggle className={activeAccordionKey == 1 ? "open" : "closed"} as={Card.Header} eventKey="1">
                 Appeal
               </Accordion.Toggle>
-              <Accordion.Collapse eventKey="0">
+              <Accordion.Collapse eventKey="1">
                 <Card.Body>Hello! I'm the body</Card.Body>
               </Accordion.Collapse>
             </Card>
             <Card>
-              <Accordion.Toggle className={activeAccordionKey == 1 ? "open" : "closed"} as={Card.Header} eventKey="1">
+              <Accordion.Toggle className={activeAccordionKey == 2 ? "open" : "closed"} as={Card.Header} eventKey="2">
                 Question
               </Accordion.Toggle>
-              <Accordion.Collapse eventKey="1">
+              <Accordion.Collapse eventKey="2">
                 <Card.Body className={styles.question}>
                   <p>{QuestionTypes[metaevidenceJSON.rulingOptions.type]}</p>
                   <p>{metaevidenceJSON.question}</p>
@@ -114,11 +115,24 @@ class DisputeDetails extends React.Component {
               </Accordion.Collapse>
             </Card>
             <Card>
-              <Accordion.Toggle className={activeAccordionKey == 2 ? "open" : "closed"} as={Card.Header} eventKey="2">
+              <Accordion.Toggle className={activeAccordionKey == 3 ? "open" : "closed"} as={Card.Header} eventKey="3">
                 Evidence
               </Accordion.Toggle>
-              <Accordion.Collapse eventKey="2">
-                <Card.Body>Hello! I'm another body</Card.Body>
+              <Accordion.Collapse eventKey="3">
+                <Card.Body>
+                  <EvidenceTimeline
+                    evidenceSubmissionEnabled={true}
+                    numberOfVotesCast={5}
+                    numberOfVotes={7}
+                    metaevidence={metaevidenceJSON}
+                    evidences={evidences}
+                    dispute={disputeEvent}
+                    disputePeriod={parseInt(arbitratorDispute.period)}
+                    publishCallback={publishCallback}
+                    submitEvidenceCallback={submitEvidenceCallback}
+                    appealDecisions={this.state.appealDecisions}
+                  />
+                </Card.Body>
               </Accordion.Collapse>
             </Card>
           </Accordion>

@@ -11,7 +11,6 @@ import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { ReactComponent as Magnifier } from "../assets/images/magnifier.svg";
 
-import { EvidenceTimeline } from "@kleros/react-components";
 import { Redirect, Link } from "react-router-dom";
 import Countdown from "react-countdown";
 import BigNumber from "bignumber.js";
@@ -75,6 +74,7 @@ class Interact extends React.Component {
   };
 
   submitEvidence = async (evidence) => {
+    console.log(this.state);
     await this.props.submitEvidenceCallback(this.state.arbitrated, {
       disputeID: this.state.arbitrableDisputeID,
       evidenceDescription: evidence.evidenceDescription,
@@ -112,29 +112,6 @@ class Interact extends React.Component {
   };
 
   onContributeButtonClick = (e) => this.setState({ contributeModalShow: true });
-
-  onSubmitButtonClick = async (e) => {
-    e.preventDefault();
-    const { arbitrableDisputeID, fileInput, evidenceTitle, evidenceDescription } = this.state;
-
-    var reader = new FileReader();
-    reader.readAsArrayBuffer(fileInput);
-    reader.addEventListener("loadend", async () => {
-      const buffer = Buffer.from(reader.result);
-
-      const result = await this.props.publishCallback(fileInput.name, buffer);
-
-      await this.setState({ evidenceFileURI: `/ipfs/${result[0].hash}` });
-
-      const { evidenceFileURI } = this.state;
-      const receipt = await this.props.submitEvidenceCallback({
-        arbitrableDisputeID,
-        evidenceTitle,
-        evidenceDescription,
-        evidenceFileURI,
-      });
-    });
-  };
 
   appeal = async (party, contribution) => this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution);
 
@@ -233,15 +210,11 @@ class Interact extends React.Component {
       arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(arbitrated, arbitratorDisputeID);
       arbitrableDispute = await this.props.getArbitrableDisputeCallback(arbitrated, arbitrableDisputeID);
       multipliers = await this.props.getMultipliersCallback(arbitrated);
-      withdrewAlready = await this.props.withdrewAlreadyCallback(arbitrated, arbitrableDisputeID);
-      crowdfundingStatus = await this.props.getCrowdfundingStatusCallback(arbitrated, arbitrableDisputeID);
 
       await this.setState({
         arbitrableDisputeID,
         arbitrableDispute,
-        crowdfundingStatus,
         multipliers,
-        withdrewAlready,
       });
     } catch (err) {
       console.error(err.message);
@@ -376,6 +349,7 @@ class Interact extends React.Component {
           <DisputeSummary metaevidenceJSON={metaevidence.metaEvidenceJSON} ipfsGateway="https://ipfs.kleros.io" arbitrated={arbitrated} arbitratorAddress={arbitratorAddress} arbitratorDisputeID={arbitratorDisputeID} />
           <DisputeDetails
             metaevidenceJSON={metaevidence.metaEvidenceJSON}
+            evidences={evidences}
             ipfsGateway="https://ipfs.kleros.io"
             arbitrated={arbitrated}
             arbitratorAddress={arbitratorAddress}
@@ -385,6 +359,9 @@ class Interact extends React.Component {
             subcourts={subcourts}
             subcourtDetails={subcourtDetails}
             currentRuling={currentRuling}
+            disputeEvent={disputeEvent}
+            publishCallback={publishCallback}
+            submitEvidenceCallback={this.submitEvidence}
           />
         </main>
       </>
