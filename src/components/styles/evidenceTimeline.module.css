@@ -340,3 +340,8 @@ div > div > .divider {
   padding-right: 1rem;
   align-items: baseline;
 }
+
+.evidenceTimeline .noEvidence {
+  font-size: var(--font-size-l);
+  text-align: center;
+}

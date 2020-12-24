@@ -214,12 +214,17 @@ class EvidenceTimeline extends React.Component {
                   </React.Fragment>
                 );
             })}
-          <div className={styles["event"]}>
-            <>
-              <p>Dispute Created</p>
-              {dispute && <small>{new Date(dispute.createdAt * 1000).toString()}</small>}
-            </>
-          </div>
+
+          {evidences.length > 0 && (
+            <div className={styles["event"]}>
+              <>
+                <p>Dispute Created</p>
+                {dispute && <small>{new Date(dispute.createdAt * 1000).toString()}</small>}
+              </>
+            </div>
+          )}
+
+          {evidences.length == 0 && <div className={styles.noEvidence}>No evidence submitted yet.</div>}
         </div>
         <div className={`${styles["modal-overlay"]} ${styles[this.state.modalExtraClass]}`} id="modal-overlay" onClick={this.handleModalOpenClose}></div>
         <div className={styles.modalContainer}>
