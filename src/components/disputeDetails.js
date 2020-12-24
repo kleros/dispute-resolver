@@ -92,25 +92,30 @@ class DisputeDetails extends React.Component {
                 <Card.Body className={styles.question}>
                   <p>{QuestionTypes[metaevidenceJSON.rulingOptions.type]}</p>
                   <p>{metaevidenceJSON.question}</p>
-                  <Dropdown>
-                    <Dropdown.Toggle className="form-control" block className={styles.dropdownToggle}>
-                      View Voting Options
-                    </Dropdown.Toggle>
+                  {metaevidenceJSON.rulingOptions.type == "single-select" ||
+                    (metaevidenceJSON.rulingOptions.type == "multiple-select" && (
+                      <>
+                        <Dropdown>
+                          <Dropdown.Toggle className="form-control" block className={styles.dropdownToggle}>
+                            View Voting Options
+                          </Dropdown.Toggle>
 
-                    <Dropdown.Menu>
-                      {metaevidenceJSON.rulingOptions.titles.map((title, index) => (
-                        <Dropdown.Item disabled>{`Option ${index + 1}: ${title}`}</Dropdown.Item>
-                      ))}
-                    </Dropdown.Menu>
-                  </Dropdown>
-                  <p className={styles.questionInfo}>
-                    <InfoSVG />
-                    Note that you can only view the voting options. Selected jurors can vote using{" "}
-                    <a href={`https://court.kleros.io/cases/${arbitratorDisputeID}`} target="_blank" rel="noreferrer noopener">
-                      Court
-                    </a>
-                    .
-                  </p>
+                          <Dropdown.Menu>
+                            {metaevidenceJSON.rulingOptions.titles.map((title, index) => (
+                              <Dropdown.Item key={index} disabled>{`Option ${index + 1}: ${title}`}</Dropdown.Item>
+                            ))}
+                          </Dropdown.Menu>
+                        </Dropdown>
+                        <p className={styles.questionInfo}>
+                          <InfoSVG />
+                          Note that you can only view the voting options. Selected jurors can vote using{" "}
+                          <a href={`https://court.kleros.io/cases/${arbitratorDisputeID}`} target="_blank" rel="noreferrer noopener">
+                            Court
+                          </a>
+                          .
+                        </p>
+                      </>
+                    ))}
                 </Card.Body>
               </Accordion.Collapse>
             </Card>

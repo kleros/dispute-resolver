@@ -18,7 +18,6 @@ const icons = {
 class AlertMessage extends React.Component {
   render() {
     const { type, content, title } = this.props;
-    console.log(type);
     return (
       <div className={`${styles.alertMessage} ${styles[type]}`}>
         <div className={styles.leftColumn}>{React.createElement(icons[type], {})}</div>

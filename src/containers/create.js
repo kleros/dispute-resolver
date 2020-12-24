@@ -11,8 +11,6 @@ import { Redirect } from "react-router-dom";
 
 import IPFS from "../components/ipfs";
 
-import { Cascader } from "antd";
-
 class Create extends React.Component {
   constructor(props) {
     super(props);

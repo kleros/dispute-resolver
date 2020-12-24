@@ -80,6 +80,7 @@ class App extends React.Component {
       try {
         await this.estimateGasOfGetSubcourt(counter++);
       } catch (err) {
+        console.log("disregard this error");
         break;
       }
     }
@@ -224,10 +225,16 @@ class App extends React.Component {
         }
       });
 
-  getEvidences = (arbitrableAddress, arbitratorDisputeID) =>
-    this.state.archon.arbitrable
+  getEvidences = (arbitrableAddress, arbitratorDisputeID) => {
+    console.log(arbitratorDisputeID);
+    return this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
-      .then((response) => this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.metaEvidenceID));
+      .then((response) => {
+        console.log(response);
+        return this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).catch(console.error);
+      })
+      .catch(console.error);
+  };
 
   getAppealDecision = async (arbitratorDisputeID) => {
     const contractInstance = EthereumInterface.contractInstance("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID);
@@ -350,9 +357,6 @@ class App extends React.Component {
                     passPeriodCallback={this.passPeriod}
                     drawJurorsCallback={this.drawJurors}
                     passPhaseCallback={this.passPhase}
-                    estimateGasOfPassPhaseCallback={this.estimateGasOfPassPhase}
-                    estimateGasOfPassPeriodCallback={this.estimateGasOfPassPeriod}
-                    estimateGasOfDrawJurorsCallback={this.estimateGasOfDrawJurors}
                     getRoundInfoCallback={this.getRoundInfo}
                     getAppealDecisionCallback={this.getAppealDecision}
                     subcourts={subcourts}

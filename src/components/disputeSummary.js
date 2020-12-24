@@ -35,39 +35,43 @@ class DisputeSummary extends React.Component {
               </div>
             )}
 
-            <Row>
-              {Object.entries(metaevidenceJSON.aliases).map(([key, value], index) => (
-                <>
-                  <Col>
-                    <Form.Group>
-                      <Form.Label htmlFor="alias">Party {index + 1} </Form.Label>
+            {metaevidenceJSON.aliases && (
+              <Row>
+                {Object.entries(metaevidenceJSON.aliases).map(([key, value], index) => (
+                  <React.Fragment key={index}>
+                    <Col>
+                      <Form.Group>
+                        <Form.Label htmlFor="alias">Party {index + 1} </Form.Label>
 
-                      <Form.Control id="alias" as="span" title={value}>
-                        {value}
-                      </Form.Control>
-                    </Form.Group>
-                  </Col>
-                  <Col>
-                    <Form.Group>
-                      <Form.Label htmlFor="address">Party {index + 1} Address</Form.Label>
+                        <Form.Control id="alias" as="span" title={value}>
+                          {value}
+                        </Form.Control>
+                      </Form.Group>
+                    </Col>
+                    <Col>
+                      <Form.Group>
+                        <Form.Label htmlFor="address">Party {index + 1} Address</Form.Label>
 
-                      <Form.Control id="address" as="span" title={key}>
-                        {key}
-                      </Form.Control>
-                    </Form.Group>
-                  </Col>
-                </>
-              ))}
-            </Row>
+                        <Form.Control id="address" as="span" title={key}>
+                          {key}
+                        </Form.Control>
+                      </Form.Group>
+                    </Col>
+                  </React.Fragment>
+                ))}
+              </Row>
+            )}
           </div>
-          <Row className={styles.footer}>
-            <Col>
-              <a href={ipfsGateway + metaevidenceJSON.fileURI}>
-                <AttachmentSVG />
-                {metaevidenceJSON.fileURI.split("/").slice(-1)}
-              </a>
-            </Col>
-          </Row>
+          {metaevidenceJSON.fileURI && (
+            <Row className={styles.footer}>
+              <Col>
+                <a href={ipfsGateway + metaevidenceJSON.fileURI}>
+                  <AttachmentSVG />
+                  {metaevidenceJSON.fileURI.split("/").slice(-1)}
+                </a>
+              </Col>
+            </Row>
+          )}
         </section>
       );
     else return <div></div>;

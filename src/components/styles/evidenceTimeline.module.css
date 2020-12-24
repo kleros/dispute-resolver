@@ -89,7 +89,6 @@ label {
 .evidence .temp > div.sender {
   color: var(--purple-primary);
   font-size: var(--font-size-s);
-  line-height: 2rem;
 }
 
 .evidence .temp > div.timestamp {
@@ -196,8 +195,21 @@ div.evidence-side > svg {
   fill: var(--blue-primary);
 }
 
+.evidence .footer {
+  display: flex;
+}
+
+.evidence .footer > canvas {
+  margin: auto 0;
+  margin-right: var(--spacing-8);
+}
+
+.evidence .footer > div {
+  flex: 1;
+}
+
 div > div > .divider {
-  border-left: 0.1rem solid var(--purple-primary);
+  border-left: 2px solid var(--purple-primary);
   height: 3rem;
   width: min-content;
   margin: auto;

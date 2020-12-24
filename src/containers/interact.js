@@ -2,7 +2,6 @@ import React from "react";
 import ReactDOM from "react-dom";
 import { Card, Col, Container, Form, Row, Button, InputGroup, FormControl, Accordion } from "react-bootstrap";
 import Appeal from "components/appeal";
-import QuestionDisplay from "components/question-display";
 import DisputeSummary from "components/disputeSummary";
 import DisputeDetails from "components/disputeDetails";
 import debounce from "lodash.debounce";
@@ -16,11 +15,6 @@ import Countdown from "react-countdown";
 import BigNumber from "bignumber.js";
 
 import styles from "containers/styles/interact.module.css";
-
-const FALLBACK_ACTIVATION_DELAY_SECONDS = {
-  1: 900, // Mainnet, 15 minutes
-  42: 240, // Kovan, 4 minutes
-};
 
 class Interact extends React.Component {
   constructor(props) {
@@ -158,13 +152,12 @@ class Interact extends React.Component {
   retrieveDisputeDetailsUsingArbitratorID = async (arbitratorDisputeID) => {
     let arbitrated;
 
-    this.setState({ interactionState: 0 });
     try {
       arbitrated = (await this.props.getArbitratorDisputeCallback(arbitratorDisputeID)).arbitrated;
       this.setState({ arbitrated });
     } catch (e) {
+      console.log("err2");
       console.error(e);
-      this.setState({ interactionState: 1 });
       return;
     }
 
@@ -186,25 +179,43 @@ class Interact extends React.Component {
         arbitratorDisputeDetails: await this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
         arbitratorDisputeID,
         metaevidence: await this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID),
-        evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
         ruling: await this.getRuling(arbitrated, arbitratorDisputeID),
         currentRuling: await this.getCurrentRuling(arbitratorDisputeID),
         disputeEvent: await this.props.getDisputeEventCallback(arbitrated, arbitratorDisputeID),
         getDisputeResult: await this.props.getDisputeCallback(arbitratorDisputeID),
+      });
+    } catch (err) {
+      console.log("err");
+      console.error(err.message);
+    } finally {
+    }
+
+    console.log("There");
+    try {
+      this.setState({
+        evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
+      });
+    } catch (err) {
+      console.log("err");
+      console.error(err.message);
+    } finally {
+    }
+
+    try {
+      arbitratorDispute = await this.props.getArbitratorDisputeCallback(arbitratorDisputeID);
+      this.setState({
         appealCost: await this.props.getAppealCostCallback(arbitratorDisputeID),
         appealPeriod: await this.props.getAppealPeriodCallback(arbitratorDisputeID),
       });
     } catch (err) {
+      console.log("err");
       console.error(err.message);
-      this.setState({ interactionState: 1 });
     } finally {
     }
 
     let arbitrableDisputeID;
     let arbitrableDispute;
     let multipliers;
-    let withdrewAlready;
-    let crowdfundingStatus;
 
     try {
       arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(arbitrated, arbitratorDisputeID);
@@ -220,24 +231,6 @@ class Interact extends React.Component {
       console.error(err.message);
     }
 
-    try {
-      this.setState({ canPassPhase: await this.props.estimateGasOfPassPhaseCallback() });
-    } catch {
-      this.setState({ canPassPhase: false });
-    }
-
-    try {
-      this.setState({ canPassPeriod: await this.props.estimateGasOfPassPeriodCallback(arbitratorDisputeID) });
-    } catch {
-      this.setState({ canPassPeriod: false });
-    }
-
-    try {
-      this.setState({ canDrawJurors: await this.props.estimateGasOfDrawJurorsCallback(arbitratorDisputeID) });
-    } catch {
-      this.setState({ canDrawJurors: false });
-    }
-
     this.setState({ appealDecisions: await this.props.getAppealDecisionCallback(arbitratorDisputeID) });
 
     this.setState({ loading: false });
@@ -250,33 +243,6 @@ class Interact extends React.Component {
       evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
       appealDecisions: await this.props.getAppealDecisionCallback(arbitratorDisputeID),
     });
-
-    try {
-      this.setState({
-        crowdfundingStatus: await this.props.getCrowdfundingStatusCallback(arbitrated, arbitrableDisputeID),
-        withdrewAlready: await this.props.withdrewAlreadyCallback(arbitrated, arbitrableDisputeID),
-      });
-    } catch (error) {
-      console.error(error);
-    }
-
-    try {
-      this.setState({ canPassPhase: await this.props.estimateGasOfPassPhaseCallback() });
-    } catch {
-      this.setState({ canPassPhase: false });
-    }
-
-    try {
-      this.setState({ canPassPeriod: await this.props.estimateGasOfPassPeriodCallback(arbitratorDisputeID) });
-    } catch {
-      this.setState({ canPassPeriod: false });
-    }
-
-    try {
-      this.setState({ canDrawJurors: await this.props.estimateGasOfDrawJurorsCallback(arbitratorDisputeID) });
-    } catch {
-      this.setState({ canDrawJurors: false });
-    }
   };
 
   getHumanReadablePeriod = (period) => this.PERIODS(period);

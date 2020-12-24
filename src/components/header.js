@@ -1,17 +1,10 @@
 import { Navbar, Nav } from "react-bootstrap";
 import React from "react";
-import styled from "styled-components/macro";
 import { ReactComponent as Brand } from "../assets/images/logo-dispute-resolver-white.svg";
 import { NavLink, Link } from "react-router-dom";
 import { LinkContainer } from "react-router-bootstrap";
 
 import styles from "./styles/header.module.css";
-
-const StyledBanner = styled.div`
-  padding: 1.1em 1.5em;
-  font-size: 13px;
-  background: #ffe03d;
-`;
 
 class Header extends React.Component {
   constructor(props) {
@@ -23,11 +16,11 @@ class Header extends React.Component {
     return (
       <header>
         <Navbar collapseOnSelect expand="lg" variant="dark" className={styles.navbar}>
-          <Navbar.Brand href="/" className={styles.navbarBrand} >
-            <Brand/>
+          <Navbar.Brand href="/" className={styles.navbarBrand}>
+            <Brand />
           </Navbar.Brand>
           <Navbar.Toggle aria-controls="responsive-navbar-nav" />
-          <Navbar.Collapse id="responsive-navbar-nav" >
+          <Navbar.Collapse id="responsive-navbar-nav">
             <Nav>
               <LinkContainer to="/ongoing/">
                 <Nav.Link className=" mx-3">Ongoing Disputes</Nav.Link>
@@ -44,13 +37,13 @@ class Header extends React.Component {
           </Navbar.Collapse>
         </Navbar>
         {viewOnly && (
-          <StyledBanner>
+          <div>
             View mode only: Actions that require an Ethereum account are disabled. To use them, a web3 browser like{" "}
             <a href="https://metamask.io" target="_blank" rel="noreferrer noopener">
               Metamask
             </a>{" "}
             is required.
-          </StyledBanner>
+          </div>
         )}
       </header>
     );

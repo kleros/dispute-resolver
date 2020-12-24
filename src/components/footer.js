@@ -1,6 +1,5 @@
 import { Navbar, Nav } from "react-bootstrap";
 import React from "react";
-import styled from "styled-components/macro";
 import { ReactComponent as Etherscan } from "../assets/images/etherscan.svg";
 import { ReactComponent as Github } from "../assets/images/github.svg";
 import { ReactComponent as Slack } from "../assets/images/slack.svg";

@@ -8,6 +8,10 @@
   display: flex;
 }
 
+.footer .social svg {
+  fill: white;
+}
+
 .footer {
   width: 100%;
   align-content: space-between;

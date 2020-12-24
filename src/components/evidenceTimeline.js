@@ -6,8 +6,8 @@ import styles from "components/styles/evidenceTimeline.module.css";
 import isImage from "is-image";
 import isTextPath from "is-text-path";
 import isVideo from "is-video";
-import clsx from "clsx";
 import Dropzone from "react-dropzone";
+import Blockies from "react-blockies";
 
 import { ReactComponent as LinkSVG } from "../assets/images/link.svg";
 import { ReactComponent as UploadSVG } from "../assets/images/upload.svg";
@@ -115,39 +115,6 @@ class EvidenceTimeline extends React.Component {
     });
   };
 
-  getSupportingSideIcon = (supportingSide) => {
-    if (supportingSide == 1)
-      return (
-        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="20" cy="20" r="20" fill="#66E800" />
-          <path
-            d="M14.0625 15.75H10.9375C10.4197 15.75 10 16.1697 10 16.6875V26.0625C10 26.5803 10.4197 27 10.9375 27H14.0625C14.5803 27 15 26.5803 15 26.0625V16.6875C15 16.1697 14.5803 15.75 14.0625 15.75ZM12.5 25.4375C11.9822 25.4375 11.5625 25.0178 11.5625 24.5C11.5625 23.9822 11.9822 23.5625 12.5 23.5625C13.0178 23.5625 13.4375 23.9822 13.4375 24.5C13.4375 25.0178 13.0178 25.4375 12.5 25.4375ZM25 10.1817C25 11.8386 23.9855 12.768 23.7001 13.875H27.6737C28.9782 13.875 29.9939 14.9588 30 16.1445C30.0032 16.8452 29.7052 17.5995 29.2406 18.0662L29.2363 18.0705C29.6205 18.9821 29.5581 20.2595 28.8727 21.1748C29.2118 22.1863 28.87 23.4288 28.2328 24.095C28.4007 24.7824 28.3205 25.3674 27.9927 25.8384C27.1954 26.9839 25.2194 27 23.5484 27L23.4373 27C21.5511 26.9993 20.0073 26.3125 18.767 25.7607C18.1436 25.4834 17.3286 25.1401 16.7103 25.1287C16.4548 25.1241 16.25 24.9156 16.25 24.6601V16.3097C16.25 16.1847 16.3001 16.0647 16.389 15.9768C17.9364 14.4478 18.6018 12.8289 19.8701 11.5584C20.4484 10.9791 20.6587 10.1039 20.862 9.25758C21.0357 8.53488 21.3991 7 22.1875 7C23.125 7 25 7.3125 25 10.1817Z"
-            fill="white"
-          />
-        </svg>
-      );
-    else if (supportingSide == 2)
-      return (
-        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="20" cy="20" r="20" fill="#F60C36" />
-          <path
-            d="M10 13.1875V22.5625C10 23.0803 10.4197 23.5 10.9375 23.5H14.0625C14.5803 23.5 15 23.0803 15 22.5625V13.1875C15 12.6697 14.5803 12.25 14.0625 12.25H10.9375C10.4197 12.25 10 12.6697 10 13.1875ZM11.5625 21C11.5625 20.4822 11.9822 20.0625 12.5 20.0625C13.0178 20.0625 13.4375 20.4822 13.4375 21C13.4375 21.5178 13.0178 21.9375 12.5 21.9375C11.9822 21.9375 11.5625 21.5178 11.5625 21ZM22.1875 31C21.3991 31 21.0357 29.4651 20.8621 28.7424C20.6587 27.8961 20.4484 27.0209 19.8702 26.4415C18.6018 25.1711 17.9364 23.5522 16.389 22.0231C16.345 21.9796 16.31 21.9278 16.2862 21.8706C16.2623 21.8135 16.25 21.7522 16.25 21.6903V13.3399C16.25 13.0844 16.4548 12.8759 16.7103 12.8712C17.3287 12.8599 18.1437 12.5166 18.767 12.2393C20.0074 11.6874 21.5511 11.0007 23.4373 11H23.5484C25.2194 11 27.1954 11.0161 27.9927 12.1616C28.3205 12.6326 28.4007 13.2176 28.2329 13.905C28.87 14.5712 29.2119 15.8138 28.8728 16.8252C29.5581 17.7405 29.6205 19.0179 29.2364 19.9295L29.2407 19.9338C29.7052 20.4005 30.0033 21.1548 30 21.8555C29.9939 23.0412 28.9782 24.125 27.6737 24.125H23.7001C23.9855 25.232 25 26.1614 25 27.8183C25 30.6875 23.125 31 22.1875 31Z"
-            fill="white"
-          />
-        </svg>
-      );
-    else
-      return (
-        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="20" cy="20" r="20" fill="#CCCCCC" />
-          <path
-            d="M25.8662 16.1429C25.8662 12.1964 21.644 9 16.4331 9C11.2222 9 7 12.1964 7 16.1429C7 17.6741 7.63946 19.0848 8.72336 20.25C8.11565 21.5982 7.11338 22.6696 7.09977 22.683C7 22.7857 6.97279 22.9375 7.03175 23.0714C7.0907 23.2054 7.21769 23.2857 7.36281 23.2857C9.02268 23.2857 10.3968 22.7366 11.3855 22.1696C12.8458 22.8705 14.5737 23.2857 16.4331 23.2857C21.644 23.2857 25.8662 20.0893 25.8662 16.1429ZM31.3991 25.9643C32.483 24.8036 33.1224 23.3884 33.1224 21.8571C33.1224 18.8705 30.6961 16.3125 27.2585 15.2455C27.2993 15.5402 27.3175 15.8393 27.3175 16.1429C27.3175 20.8705 22.4331 24.7143 16.4331 24.7143C15.9433 24.7143 15.4671 24.6786 14.9955 24.6295C16.424 27.1964 19.78 29 23.6893 29C25.5488 29 27.2766 28.5893 28.737 27.8839C29.7256 28.4509 31.0998 29 32.7596 29C32.9048 29 33.0363 28.9152 33.0907 28.7857C33.1497 28.6563 33.1224 28.5045 33.0227 28.3973C33.0091 28.3839 32.0068 27.317 31.3991 25.9643Z"
-            fill="white"
-          />
-        </svg>
-      );
-  };
-
   getAttachmentIcon = (uri) => {
     if (isImage(uri)) {
       return (
@@ -202,9 +169,7 @@ class EvidenceTimeline extends React.Component {
               Submit New Evidence
             </Button>
           )}
-          <div className={styles["event"]}>
-            <p>{this.eventPhrasing(metaevidence, numberOfVotes, numberOfVotesCast, currentRuling, disputePeriod)}</p>
-          </div>
+
           {evidences
             .concat(appealDecisions)
             .sort((a, b) => {
@@ -228,14 +193,13 @@ class EvidenceTimeline extends React.Component {
               else
                 return (
                   <React.Fragment key={index}>
-                    <div className={styles["divider"]}></div>
                     <div className={styles.evidence}>
                       <div className={styles["header"]}>
                         <p>{evidenceOrEvent.evidenceJSON.title || evidenceOrEvent.evidenceJSON.name}</p>
                       </div>
                       <p>{evidenceOrEvent.evidenceJSON.description}</p>
-                      <div className={styles.footer + " " + styles[`${evidenceOrEvent.evidenceJSON.evidenceSide != undefined}`]}>
-                        {evidenceOrEvent.evidenceJSON.evidenceSide != undefined && <div className={styles["evidence-side"]}>{this.getSupportingSideIcon(evidenceOrEvent.evidenceJSON.evidenceSide)}</div>}
+                      <div className={styles.footer}>
+                        <Blockies seed={evidenceOrEvent.submittedBy} color="#7bcbff" spotColor="white" bgColor="#1e075f;" size={8} scale={3} className="rounded-circle" />
                         <div className={styles["temp"]}>
                           <div className={styles["sender"]}>Submitted by: {this.truncateAddress(evidenceOrEvent.submittedBy)}</div>
 
@@ -246,10 +210,10 @@ class EvidenceTimeline extends React.Component {
                         </a>
                       </div>
                     </div>
+                    <div className={styles["divider"]}></div>
                   </React.Fragment>
                 );
             })}
-          <div className={styles["divider"]}></div>
           <div className={styles["event"]}>
             <>
               <p>Dispute Created</p>
@@ -257,9 +221,9 @@ class EvidenceTimeline extends React.Component {
             </>
           </div>
         </div>
-        <div className={clsx(styles["modal-overlay"], styles[this.state.modalExtraClass])} id="modal-overlay" onClick={this.handleModalOpenClose}></div>
+        <div className={`${styles["modal-overlay"]} ${styles[this.state.modalExtraClass]}`} id="modal-overlay" onClick={this.handleModalOpenClose}></div>
         <div className={styles.modalContainer}>
-          <div className={clsx(styles.modal, styles[this.state.modalExtraClass])} id="modal">
+          <div className={`${styles.modal} ${styles[this.state.modalExtraClass]}`} id="modal">
             <div className={styles["modal-header"]}>
               <h1>Submit Evidence</h1>
             </div>
