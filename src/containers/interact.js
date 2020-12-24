@@ -293,7 +293,9 @@ class Interact extends React.Component {
     return (
       <>
         {Boolean(activeAddress) && !this.state.arbitrableDispute && !this.state.loading && (
-          <div style={{ padding: "1.1em 1.5em", fontSize: "13px", background: "#ffe03d" }}>View mode only: This is a 3rd party arbitrable contract, evidence submission and crowdfunding appeals is not available.</div>
+          <div style={{ padding: "1rem 2rem", fontSize: "14px", background: "#ff9900", color: "white" }}>
+            <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or appeal.
+          </div>
         )}
         <main className={styles.interact}>
           {arbitratorDisputeID && <Redirect to={`/cases/${arbitratorDisputeID}`} />}
