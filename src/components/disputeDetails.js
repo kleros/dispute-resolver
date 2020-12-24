@@ -55,7 +55,7 @@ class DisputeDetails extends React.Component {
                 <Form.Label htmlFor="initialNumberOfJurors">Number of Votes</Form.Label>
                 <Form.Control className={`mr-4 ${styles.spanWithSvgInside}`} id="initialNumberOfJurors" as="span">
                   <AvatarSVG />
-                  <span>{arbitratorDisputeDetails.votesLengths}</span>
+                  <span>{arbitratorDisputeDetails.votesLengths.slice(-1)}</span>
                 </Form.Control>
               </Form.Group>
             </Col>
