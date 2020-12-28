@@ -72,7 +72,6 @@ class DisputeDetails extends React.Component {
           </Row>
           <AlertMessage type="info" title={`Jury decision: ${metaevidenceJSON.rulingOptions.titles[currentRuling - 1]}`} content="This decision can be appealed within appeal period." />
           <Accordion
-            defaultActiveKey="1"
             className={`mt-4 ${styles.accordion}`}
             onSelect={(e) => {
               this.setState({ activeKey: e });
