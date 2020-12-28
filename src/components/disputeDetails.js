@@ -7,6 +7,7 @@ import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
 
 import DisputeTimeline from "components/disputeTimeline";
 import EvidenceTimeline from "components/evidenceTimeline";
+import CrowdfundingCard from "components/crowdfundingCard";
 
 import AlertMessage from "components/alertMessage";
 
@@ -24,7 +25,7 @@ class DisputeDetails extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      activeAccordionKey: 0,
+      activeKey: 0,
     };
   }
 
@@ -33,7 +34,7 @@ class DisputeDetails extends React.Component {
   render() {
     const { metaevidenceJSON, evidences, ipfsGateway, interfaceValid, arbitrated, arbitratorDisputeID, arbitratorAddress, arbitratorDispute, subcourts, subcourtDetails, arbitratorDisputeDetails, currentRuling, disputeEvent, publishCallback, submitEvidenceCallback } = this.props;
     console.log(this.props);
-    const { activeAccordionKey } = this.state;
+    const { activeKey } = this.state;
     console.log(this.state);
 
     if (metaevidenceJSON && arbitratorDispute && subcourts && subcourtDetails && arbitratorDisputeDetails)
@@ -71,21 +72,57 @@ class DisputeDetails extends React.Component {
           </Row>
           <AlertMessage type="info" title={`Jury decision: ${metaevidenceJSON.rulingOptions.titles[currentRuling - 1]}`} content="This decision can be appealed within appeal period." />
           <Accordion
+            defaultActiveKey="1"
             className={`mt-4 ${styles.accordion}`}
             onSelect={(e) => {
-              this.setState({ activeAccordionKey: e });
+              this.setState({ activeKey: e });
             }}
           >
             <Card>
-              <Accordion.Toggle className={activeAccordionKey == 1 ? "open" : "closed"} as={Card.Header} eventKey="1">
-                Appeal
-              </Accordion.Toggle>
-              <Accordion.Collapse eventKey="1">
-                <Card.Body>Hello! I'm the body</Card.Body>
-              </Accordion.Collapse>
+              {arbitratorDispute && arbitratorDispute.period == 3 && (
+                <>
+                  <Accordion.Toggle className={activeKey == 1 ? "open" : "closed"} as={Card.Header} eventKey="1">
+                    Appeal
+                  </Accordion.Toggle>
+                  <Accordion.Collapse eventKey="1">
+                    <Card.Body>
+                      <div className="h1">Appeal the decision</div>
+                      <p className="label">
+                        In order to appeal the decision, you need to fully fund the crowdfunding deposit. The dispute will be sent to the jurors when the full deposit is reached. Note that if the previous round loser funds its side, the previous round winner should also fully
+                        fund its side in order not to lose the case.
+                      </p>
+                      <AlertMessage extraClass="mt-6" type="info" title={`Jury decision: ${metaevidenceJSON.rulingOptions.titles[currentRuling - 1]}`} content="This decision can be appealed within appeal period." />
+                      <Row className="mt-3">
+                        <Col className="pb-4" xl={8} lg={12} xs={24}>
+                          <CrowdfundingCard key={0} title={"Invalid / Refused to Arbitrate"} winner={currentRuling == 0} fundingPercentage={8} appealPeriodEnd={1610000000} roi={1.1} />
+                        </Col>
+                        {metaevidenceJSON &&
+                          (metaevidenceJSON.rulingOptions.type == "single-select" || metaevidenceJSON.rulingOptions.type == "multiple-select") &&
+                          metaevidenceJSON.rulingOptions.titles.map((title, index) => (
+                            <Col className="pb-4" xl={8} lg={12} xs={24}>
+                              <CrowdfundingCard key={index + 1} title={title} winner={currentRuling == index + 1} fundingPercentage={68} appealPeriodEnd={1610000000} roi={1.3} />
+                            </Col>
+                          ))}
+                        {metaevidenceJSON &&
+                          !(metaevidenceJSON.rulingOptions.type == "single-select" && metaevidenceJSON.rulingOptions.type == "multiple-select") &&
+                          [].map((title, index) => (
+                            <Col className="pb-4" xl={8} lg={12} xs={24}>
+                              <CrowdfundingCard key={index + 1} title={title} winner={currentRuling == 12345} fundingPercentage={68} appealPeriodEnd={1610000000} roi={1.3} />
+                            </Col>
+                          ))}
+                        {metaevidenceJSON && !(metaevidenceJSON.rulingOptions.type == "single-select" && metaevidenceJSON.rulingOptions.type == "multiple-select") && (
+                          <Col className="pb-4" xl={8} lg={12} xs={24}>
+                            <CrowdfundingCard variable={metaevidenceJSON.rulingOptions.type} winner={currentRuling == 12345} fundingPercentage={0} appealPeriodEnd={1610000000} roi={1.3} />
+                          </Col>
+                        )}
+                      </Row>
+                    </Card.Body>
+                  </Accordion.Collapse>
+                </>
+              )}
             </Card>
             <Card>
-              <Accordion.Toggle className={activeAccordionKey == 2 ? "open" : "closed"} as={Card.Header} eventKey="2">
+              <Accordion.Toggle className={activeKey == 2 ? "open" : "closed"} as={Card.Header} eventKey="2">
                 Question
               </Accordion.Toggle>
               <Accordion.Collapse eventKey="2">
@@ -120,15 +157,13 @@ class DisputeDetails extends React.Component {
               </Accordion.Collapse>
             </Card>
             <Card>
-              <Accordion.Toggle className={activeAccordionKey == 3 ? "open" : "closed"} as={Card.Header} eventKey="3">
+              <Accordion.Toggle className={activeKey == 3 ? "open" : "closed"} as={Card.Header} eventKey="3">
                 Evidence
               </Accordion.Toggle>
               <Accordion.Collapse eventKey="3">
                 <Card.Body>
                   <EvidenceTimeline
                     evidenceSubmissionEnabled={true}
-                    numberOfVotesCast={5}
-                    numberOfVotes={7}
                     metaevidence={metaevidenceJSON}
                     evidences={evidences}
                     dispute={disputeEvent}

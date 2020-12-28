@@ -17,7 +17,22 @@ p {
   margin-bottom: 0;
 }
 
-button.btn-primary:not(.dropdown-toggle),
+label {
+  font-size: var(--font-size-s);
+}
+
+.label {
+  // I used a class here because label stylings are contradicting with semantical html rules. (Some paragraphs are styled with label size)
+  font-size: var(--font-size-s);
+}
+
+.h1 {
+  // I used a class here because h1 stylings are contradicting with semantical html rules. (Multiple h1s in a document)
+  font-size: var(--font-size-l);
+  font-weight: var(--bold);
+}
+
+.label button.btn-primary:not(.dropdown-toggle),
 button.btn-secondary:not(.dropdown-toggle) {
   padding: var(--spacing-8) var(--spacing-32);
   font-weight: var(--bold);

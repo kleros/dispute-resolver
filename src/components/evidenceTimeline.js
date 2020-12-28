@@ -186,7 +186,7 @@ class EvidenceTimeline extends React.Component {
 
                     <div className={styles["event"]}>
                       <p>Appealed</p>
-                      <small>{new Date(evidenceOrEvent.appealedAt * 1000).toString()}</small>
+                      <small>{new Date(evidenceOrEvent.appealedAt * 1000).toUTCString()}</small>
                     </div>
                   </React.Fragment>
                 );
@@ -218,8 +218,8 @@ class EvidenceTimeline extends React.Component {
           {evidences.length > 0 && (
             <div className={styles["event"]}>
               <>
-                <p>Dispute Created</p>
-                {dispute && <small>{new Date(dispute.createdAt * 1000).toString()}</small>}
+                <p>Dispute Raised</p>
+                {dispute && <small>{new Date(dispute.createdAt * 1000).toUTCString()}</small>}
               </>
             </div>
           )}

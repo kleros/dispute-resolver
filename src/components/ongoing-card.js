@@ -27,7 +27,7 @@ class OngoingCard extends React.Component {
     console.log(this.props);
 
     return (
-      <div className={styles.ongoingCard} onClick={(e) => this.setState({ selectedDispute: dispute })}>
+      <div className={styles.ongoingCard}>
         <div className={styles.header}>
           <span className={`${styles.status} ${this.getStatusClass(arbitratorDisputeDetails.period)}`}> </span>
           <span className={styles.disputeID}>{dispute}</span>

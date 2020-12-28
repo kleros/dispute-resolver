@@ -17,9 +17,9 @@ const icons = {
 
 class AlertMessage extends React.Component {
   render() {
-    const { type, content, title } = this.props;
+    const { type, content, title, extraClass } = this.props;
     return (
-      <div className={`${styles.alertMessage} ${styles[type]}`}>
+      <div className={`${styles.alertMessage} ${styles[type]} ${extraClass}`}>
         <div className={styles.leftColumn}>{React.createElement(icons[type], {})}</div>
         <div className={styles.rightColumn}>
           <div className={`${!title && "text-capitalize"} ${styles.title}`}>{title || type}</div>

@@ -72,7 +72,7 @@ class CreateSummary extends React.Component {
         <Form noValidate validated={validated} onSubmit={this.onModalShow}>
           <Row>
             <Col>
-              <p className={styles.fillUpTheForm}>CreateSummary</p>
+              <p className={styles.fillUpTheForm}>Summary</p>
               <h1 className={styles.h1}>{formData.title}</h1>
             </Col>
           </Row>

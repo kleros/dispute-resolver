@@ -31,16 +31,25 @@ $spacers: map-merge(
   (
     0: 0,
     1: (
-      $spacer * 0.25,
-    ),
-    2: (
       $spacer * 0.5,
     ),
-    3: $spacer,
+    2: (
+      $spacer,
+    ),
+    3: $spacer * 1.5,
     4: (
       $spacer * 2,
     ),
     5: (
+      $spacer * 2.5,
+    ),
+    6: (
+      $spacer * 3,
+    ),
+    7: (
+      $spacer * 3.5,
+    ),
+    8: (
       $spacer * 4,
     ),
   ),
@@ -52,6 +61,9 @@ $card-spacer-y: $spacing-16;
 
 $grid-gutter-width: 32px;
 $border-radius: 3px;
+$progress-border-radius: 30px;
+$progress-height: 8px;
+$box-shadow: 0px 6px 24px rgba(77, 0, 180, 0.25);
 $toast-border-radius: $border-radius;
 $input-color: $text-primary;
 $link-color: $input-color;
@@ -62,6 +74,7 @@ $grid-columns: 24;
 $enable-validation-icons: false;
 $font-weight-bold: 600;
 $font-weight-bolder: 600;
+$btn-font-weight: $font-weight-bold;
 $paragraph-margin-bottom: 0.5rem;
 $small-font-size: 12px;
 

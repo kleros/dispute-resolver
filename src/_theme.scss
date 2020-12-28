@@ -29,6 +29,7 @@
   --font-size-m: 16px;
   --font-size-l: 24px;
 
+  --thin: 400;
   --bold: 600;
 
   --border-radius: 3px;
@@ -37,8 +38,28 @@
   --box-shadow: 0px 6px 24px rgba(77, 0, 180, 0.25);
 }
 
+.x-small {
+  font-size: var(--font-size-xs);
+}
+
+.small {
+  font-size: var(--font-size-s);
+}
+
+.medium {
+  font-size: var(--font-size-m);
+}
+
+.large {
+  font-size: var(--font-size-s);
+}
+
 .purple-primary {
   color: var(--purple-primary);
+}
+
+svg.red > path {
+  fill: var(--red);
 }
 
 header,

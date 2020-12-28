@@ -1,0 +1,7 @@
+.crowdfundingCard .countdown {
+  color: var(--red);
+  font-weight: var(--bold);
+}
+.crowdfundingCard {
+  min-height: 380px;
+}

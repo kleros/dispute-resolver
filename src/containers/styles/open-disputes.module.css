@@ -2,6 +2,10 @@
   padding: var(--spacing-16) !important;
 }
 
+.filter :global(.dropdown-toggle.btn.btn-primary) {
+  font-weight: var(--thin);
+}
+
 .filter :global(.dropdown-toggle.btn.btn-primary)::after {
   margin-left: var(--spacing-32);
   color: var(--stroke);
