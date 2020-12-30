@@ -30,20 +30,6 @@ class App extends React.Component {
     this.encoder = new TextEncoder();
   }
 
-  interactWithKlerosLiquid = async (interactionType, txValue, methodName, ...args) => this.interactWithContract("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, interactionType, txValue, methodName, ...args);
-
-  interactWithArbitrableProxy = async (arbitrableAddress, interactionType, txValue, methodName, ...args) => this.interactWithContract("IArbitrable", arbitrableAddress, interactionType, txValue, methodName, ...args);
-
-  interactWithContract = async (contractName, contractAddress, interactionType, txValue, methodName, ...args) => {
-    if (interactionType === "call") {
-      return EthereumInterface.call(contractName, contractAddress, methodName, ...args);
-    } else if (interactionType === "send") {
-      return EthereumInterface.send(contractName, contractAddress, this.state.activeAddress, txValue, methodName, ...args);
-    } else {
-      return;
-    }
-  };
-
   async componentDidMount() {
     if (Web3) {
       this.setState({ network: await Web3.eth.net.getId() });
@@ -62,14 +48,14 @@ class App extends React.Component {
         await this.setState({ network });
       });
 
-      var subscription = Web3.eth
-        .subscribe("pendingTransactions", function (error, result) {
-          if (!error) console.log(result);
-          else console.error(error);
-        })
-        .on("data", function (transaction) {
-          console.log(transaction);
-        });
+      // var subscription = Web3.eth
+      //   .subscribe("pendingTransactions", function (error, result) {
+      //     if (!error) console.log(result);
+      //     else console.error(error);
+      //   })
+      //   .on("data", function (transaction) {
+      //     console.log(transaction);
+      //   });
     } else console.error("MetaMask not detected :(");
 
     let counter = 0,
@@ -111,8 +97,6 @@ class App extends React.Component {
     });
   }
 
-  getOpenDisputes = (arbitrableAddress) => this.interactWithArbitrableProxy(arbitrableAddress, "call", "unused", "getOpenDisputes", 0, 0);
-
   getOpenDisputesOnCourt = async () => {
     const contractInstance = EthereumInterface.contractInstance("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID);
 
@@ -122,33 +106,28 @@ class App extends React.Component {
     const resolvedDisputes = newPeriodEvents.filter((result) => result.returnValues._period == 4).map((result) => result.returnValues._disputeID);
 
     const openDisputes = disputes.filter((dispute) => !resolvedDisputes.includes(dispute));
-    console.log(resolvedDisputes);
-    console.log(openDisputes);
     return openDisputes;
   };
 
   getArbitrableDisputeID = async (arbitrableAddress, arbitratorDisputeID) => EthereumInterface.call("ArbitrableProxy", arbitrableAddress, "externalIDtoLocalID", arbitratorDisputeID);
-  getArbitrableDispute = async (arbitrableAddress, arbitrableDisputeID) => EthereumInterface.call("ArbitrableProxy", arbitrableAddress, "disputes", arbitrableDisputeID);
 
   getArbitrationCost = (arbitratorAddress, extraData) => EthereumInterface.call("IArbitrator", arbitratorAddress, "arbitrationCost", extraData);
 
   getArbitrationCostWithCourtAndNoOfJurors = async (subcourtID, noOfJurors) => Web3.utils.fromWei(await EthereumInterface.call("IArbitrator", networkMap[this.state.network].KLEROS_LIQUID, "arbitrationCost", this.generateArbitratorExtraData(subcourtID, noOfJurors)), "ether");
 
-  getSubcourt = async (subcourtID) => this.interactWithKlerosLiquid("call", "unused", "getSubcourt", subcourtID);
+  estimateGasOfGetSubcourt = (subcourtID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.activeAddress, 0, "getSubcourt", subcourtID);
+
+  getSubcourt = async (subcourtID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "getSubcourt", subcourtID);
 
   getSubCourtDetails = async (subcourtID) => EthereumInterface.call("PolicyRegistry", networkMap[this.state.network].POLICY_REGISTRY, "policies", subcourtID);
 
-  getArbitratorDispute = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "disputes", arbitratorDisputeID);
+  getArbitratorDispute = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "disputes", arbitratorDisputeID);
 
-  getArbitratorDisputeDetails = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "getDispute", arbitratorDisputeID);
+  getArbitratorDisputeDetails = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "getDispute", arbitratorDisputeID);
 
   getCrowdfundingStatus = (arbitrableAddress, arbitrableDisputeID) => EthereumInterface.call("ArbitrableProxy", arbitrableAddress, "crowdfundingStatus", arbitrableDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO);
 
-  getRoundInfo = async (arbitrableAddress, arbitrableDisputeID, round) => this.interactWithArbitrableProxy(arbitrableAddress, "call", "unused", "getRoundInfo", arbitrableDisputeID, round);
-
-  getMultipliers = (arbitrableAddress) => EthereumInterface.call("ArbitrableProxy", arbitrableAddress, "getMultipliers");
-
-  withdrewAlready = async (arbitrableAddress, arbitrableDisputeID) => EthereumInterface.call("ArbitrableProxy", arbitrableAddress, "withdrewAlready", arbitrableDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO);
+  getMultipliers = (arbitrableAddress) => EthereumInterface.call("IDisputeResolver", arbitrableAddress, "getMultipliers");
 
   updateLastDisputeID = async (newDisputeID) => this.setState({ lastDisputeID: newDisputeID });
 
@@ -162,21 +141,9 @@ class App extends React.Component {
 
   appeal = (arbitrableAddress, arbitrableDisputeID, party, contribution) => EthereumInterface.send("ArbitrableProxy", arbitrableAddress, this.state.activeAddress, contribution, "fundAppeal", arbitrableDisputeID, party);
 
-  getAppealPeriod = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "appealPeriod", arbitratorDisputeID);
+  getAppealPeriod = async (arbitratorDisputeID, rulingOption) => EthereumInterface.call("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY, "appealPeriod", arbitratorDisputeID, rulingOption);
 
-  passPeriod = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("send", 0, "passPeriod", arbitratorDisputeID);
-
-  estimateGasOfPassPhase = () => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "passPhase");
-  estimateGasOfPassPeriod = (arbitratorDisputeID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "passPeriod", arbitratorDisputeID);
-
-  estimateGasOfGetSubcourt = (subcourtID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.activeAddress, 0, "getSubcourt", subcourtID);
-
-  drawJurors = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("send", 0, "drawJurors", arbitratorDisputeID, 1000);
-  estimateGasOfDrawJurors = async (arbitratorDisputeID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.activeAddress, 0, "drawJurors", arbitratorDisputeID, 1000);
-
-  passPhase = async () => this.interactWithKlerosLiquid("send", 0, "passPhase");
-
-  getCurrentRuling = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "currentRuling", arbitratorDisputeID);
+  getCurrentRuling = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "currentRuling", arbitratorDisputeID);
 
   createDispute = async (options) => {
     const { network } = this.state;
@@ -245,7 +212,7 @@ class App extends React.Component {
     });
   };
 
-  getDispute = async (arbitratorDisputeID) => this.interactWithKlerosLiquid("call", "unused", "getDispute", arbitratorDisputeID);
+  getDispute = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "getDispute", arbitratorDisputeID);
 
   getRuling = async (arbitrableAddress, arbitratorDisputeID) => await this.state.archon.arbitrable.getRuling(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID);
 
@@ -339,7 +306,6 @@ class App extends React.Component {
                     getContractInstanceCallback={this.getContractInstance}
                     getArbitratorDisputeCallback={this.getArbitratorDispute}
                     getArbitratorDisputeDetailsCallback={this.getArbitratorDisputeDetails}
-                    getArbitrableDisputeCallback={this.getArbitrableDispute}
                     getArbitratorDisputeStructCallback={this.getArbitratorDispute}
                     getArbitrableDisputeStructCallback={this.getArbitrableDispute}
                     getCrowdfundingStatusCallback={this.getCrowdfundingStatus}

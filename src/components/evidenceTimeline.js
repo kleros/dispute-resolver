@@ -279,8 +279,6 @@ class EvidenceTimeline extends React.Component {
 }
 
 EvidenceTimeline.propTypes = {
-  numberOfVotesCast: PropTypes.number.isRequired,
-  numberOfVotes: PropTypes.number.isRequired,
   dispute: PropTypes.object, // Dispute Event
   disputePeriod: PropTypes.number.isRequired,
   ipfsGateway: PropTypes.string.isRequired,

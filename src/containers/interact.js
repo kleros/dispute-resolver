@@ -46,27 +46,6 @@ class Interact extends React.Component {
     if (this.props.disputeID !== previousProperties.disputeID) await this.setState({ arbitrableDisputeID: this.props.disputeID });
   }
 
-  PERIODS = (periodNumber) => {
-    const strings = [
-      "Evidence Period",
-      "Commit Period",
-      "Vote Period",
-      "Appeal Period",
-      "Execution Period",
-      "Greek gods having trouble finding this dispute...",
-      `Dispute #${this.state.arbitratorDisputeID} doesn't belong to this arbitrable contract.`,
-      `There is no such dispute. Are you in the correct network?`,
-    ];
-
-    return strings[periodNumber];
-  };
-
-  MESSAGES = (code) => {
-    const strings = [`Fetching #${this.state.arbitratorDisputeID}`, "Failed to fetch, perhaps wrong network?"];
-
-    return strings[code];
-  };
-
   submitEvidence = async (evidence) => {
     console.log(this.state);
     await this.props.submitEvidenceCallback(this.state.arbitrated, {
@@ -96,9 +75,6 @@ class Interact extends React.Component {
     });
   };
 
-  onModalShow = (e) => this.setState({ modalShow: true });
-  onContributeModalShow = (e) => this.setState({ contributeModalShow: true });
-
   onControlChange = (e) => this.setState({ [e.target.id]: e.target.value });
   onInput = (e) => {
     this.setState({ evidenceFileURI: "" });
@@ -122,7 +98,6 @@ class Interact extends React.Component {
 
     await this.setState({
       arbitrableDisputeID: null,
-      arbitrableDispute: null,
       arbitratorDispute: null,
     });
     await this.debouncedRetrieveUsingArbitratorID(arbitratorDisputeID);
@@ -163,7 +138,7 @@ class Interact extends React.Component {
 
     this.setState({ arbitrated });
 
-    await this.commonFetchRoutine(arbitrated, arbitratorDisputeID);
+    await this.commonFetchRoutine(arbitrated, arbitratorDisputeID).then(this.setState({ loading: false }));
   };
 
   commonFetchRoutine = async (arbitrated, arbitratorDisputeID) => {
@@ -171,14 +146,16 @@ class Interact extends React.Component {
     let subcourtURI;
     let subcourt;
     let appealCost;
+    let metaevidence;
 
     try {
       arbitratorDispute = await this.props.getArbitratorDisputeCallback(arbitratorDisputeID);
+      metaevidence = await this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID);
       this.setState({
         arbitratorDispute,
         arbitratorDisputeDetails: await this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
         arbitratorDisputeID,
-        metaevidence: await this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID),
+        metaevidence,
         ruling: await this.getRuling(arbitrated, arbitratorDisputeID),
         currentRuling: await this.getCurrentRuling(arbitratorDisputeID),
         disputeEvent: await this.props.getDisputeEventCallback(arbitrated, arbitratorDisputeID),
@@ -202,10 +179,8 @@ class Interact extends React.Component {
     }
 
     try {
-      arbitratorDispute = await this.props.getArbitratorDisputeCallback(arbitratorDisputeID);
       this.setState({
         appealCost: await this.props.getAppealCostCallback(arbitratorDisputeID),
-        appealPeriod: await this.props.getAppealPeriodCallback(arbitratorDisputeID),
       });
     } catch (err) {
       console.log("err");
@@ -214,26 +189,23 @@ class Interact extends React.Component {
     }
 
     let arbitrableDisputeID;
-    let arbitrableDispute;
     let multipliers;
 
     try {
       arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(arbitrated, arbitratorDisputeID);
-      arbitrableDispute = await this.props.getArbitrableDisputeCallback(arbitrated, arbitrableDisputeID);
       multipliers = await this.props.getMultipliersCallback(arbitrated);
 
       await this.setState({
         arbitrableDisputeID,
-        arbitrableDispute,
         multipliers,
       });
     } catch (err) {
       console.error(err.message);
     }
 
-    this.setState({ appealDecisions: await this.props.getAppealDecisionCallback(arbitratorDisputeID) });
+    const appealDeadlines = ["Refused to Rule"].concat(metaevidence.metaEvidenceJSON.rulingOptions.titles).map((title, index) => this.props.getAppealPeriodCallback(arbitrableDisputeID, index));
 
-    this.setState({ loading: false });
+    await this.setState({ appealDeadlines: await Promise.all(appealDeadlines), appealDecisions: await this.props.getAppealDecisionCallback(arbitratorDisputeID) });
   };
 
   reload = async () => {
@@ -245,54 +217,17 @@ class Interact extends React.Component {
     });
   };
 
-  getHumanReadablePeriod = (period) => this.PERIODS(period);
-
   render() {
     console.debug(this.props);
     console.debug(this.state);
 
-    const {
-      arbitrated,
-      arbitrableDisputeID,
-      arbitratorDispute,
-      arbitratorDisputeDetails,
-      arbitrableDispute,
-      crowdfundingStatus,
-      appealCost,
-      arbitratorDisputeID,
-      metaevidence,
-      multipliers,
-      evidences,
-      currentRuling,
-      ruling,
-      withdrewAlready,
-      getDisputeResult,
-      disputeEvent,
-      canPassPhase,
-      canPassPeriod,
-      canDrawJurors,
-      appealPeriod,
-    } = this.state;
+    const { arbitrated, arbitrableDisputeID, arbitratorDispute, arbitratorDisputeDetails, crowdfundingStatus, appealCost, arbitratorDisputeID, metaevidence, multipliers, evidences, currentRuling, ruling, getDisputeResult, disputeEvent, appealDeadlines } = this.state;
 
-    const {
-      arbitratorAddress,
-      activeAddress,
-      publishCallback,
-      withdrawFeesAndRewardsCallback,
-      getCrowdfundingStatusCallback,
-      getAppealPeriodCallback,
-      getCurrentRulingCallback,
-      passPhaseCallback,
-      passPeriodCallback,
-      drawJurorsCallback,
-      subcourts,
-      subcourtDetails,
-      network,
-    } = this.props;
+    const { arbitratorAddress, activeAddress, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, subcourts, subcourtDetails, network } = this.props;
 
     return (
       <>
-        {Boolean(activeAddress) && !this.state.arbitrableDispute && !this.state.loading && (
+        {Boolean(activeAddress) && !this.state.loading && (
           <div style={{ padding: "1rem 2rem", fontSize: "14px", background: "#ff9900", color: "white" }}>
             <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or appeal.
           </div>
@@ -330,6 +265,8 @@ class Interact extends React.Component {
             disputeEvent={disputeEvent}
             publishCallback={publishCallback}
             submitEvidenceCallback={this.submitEvidence}
+            getAppealPeriodCallback={getAppealPeriodCallback}
+            appealDeadlines={appealDeadlines}
           />
         </main>
       </>

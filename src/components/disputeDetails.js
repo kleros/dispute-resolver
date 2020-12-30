@@ -32,9 +32,26 @@ class DisputeDetails extends React.Component {
   componentDidMount() {}
 
   render() {
-    const { metaevidenceJSON, evidences, ipfsGateway, interfaceValid, arbitrated, arbitratorDisputeID, arbitratorAddress, arbitratorDispute, subcourts, subcourtDetails, arbitratorDisputeDetails, currentRuling, disputeEvent, publishCallback, submitEvidenceCallback } = this.props;
-    console.log(this.props);
+    const {
+      metaevidenceJSON,
+      evidences,
+      ipfsGateway,
+      interfaceValid,
+      arbitrated,
+      arbitratorDisputeID,
+      arbitratorAddress,
+      arbitratorDispute,
+      subcourts,
+      subcourtDetails,
+      arbitratorDisputeDetails,
+      currentRuling,
+      disputeEvent,
+      publishCallback,
+      submitEvidenceCallback,
+      appealDeadlines,
+    } = this.props;
     const { activeKey } = this.state;
+    console.log(this.props);
     console.log(this.state);
 
     if (metaevidenceJSON && arbitratorDispute && subcourts && subcourtDetails && arbitratorDisputeDetails)
@@ -93,13 +110,13 @@ class DisputeDetails extends React.Component {
                       <AlertMessage extraClass="mt-6" type="info" title={`Jury decision: ${metaevidenceJSON.rulingOptions.titles[currentRuling - 1]}`} content="This decision can be appealed within appeal period." />
                       <Row className="mt-3">
                         <Col className="pb-4" xl={8} lg={12} xs={24}>
-                          <CrowdfundingCard key={0} title={"Invalid / Refused to Arbitrate"} winner={currentRuling == 0} fundingPercentage={8} appealPeriodEnd={1610000000} roi={1.1} />
+                          <CrowdfundingCard key={0} title={"Invalid / Refused to Arbitrate"} winner={currentRuling == 0} fundingPercentage={8} appealPeriodEnd={appealDeadlines && parseInt(appealDeadlines[0].end)} roi={1.1} />
                         </Col>
                         {metaevidenceJSON &&
                           (metaevidenceJSON.rulingOptions.type == "single-select" || metaevidenceJSON.rulingOptions.type == "multiple-select") &&
                           metaevidenceJSON.rulingOptions.titles.map((title, index) => (
                             <Col className="pb-4" xl={8} lg={12} xs={24}>
-                              <CrowdfundingCard key={index + 1} title={title} winner={currentRuling == index + 1} fundingPercentage={68} appealPeriodEnd={1610000000} roi={1.3} />
+                              <CrowdfundingCard key={index + 1} title={title} winner={currentRuling == index + 1} fundingPercentage={68} appealPeriodEnd={appealDeadlines && parseInt(appealDeadlines[index + 1].end)} roi={1.3} />
                             </Col>
                           ))}
                         {metaevidenceJSON &&
@@ -109,7 +126,7 @@ class DisputeDetails extends React.Component {
                               <CrowdfundingCard key={index + 1} title={title} winner={currentRuling == 12345} fundingPercentage={68} appealPeriodEnd={1610000000} roi={1.3} />
                             </Col>
                           ))}
-                        {metaevidenceJSON && !(metaevidenceJSON.rulingOptions.type == "single-select" && metaevidenceJSON.rulingOptions.type == "multiple-select") && (
+                        {metaevidenceJSON && !(metaevidenceJSON.rulingOptions.type == "single-select" || metaevidenceJSON.rulingOptions.type == "multiple-select") && (
                           <Col className="pb-4" xl={8} lg={12} xs={24}>
                             <CrowdfundingCard variable={metaevidenceJSON.rulingOptions.type} winner={currentRuling == 12345} fundingPercentage={0} appealPeriodEnd={1610000000} roi={1.3} />
                           </Col>
