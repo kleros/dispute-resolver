@@ -142,10 +142,11 @@ class Interact extends React.Component {
   };
 
   commonFetchRoutine = async (arbitrated, arbitratorDisputeID) => {
+    // Optimize this function: too many awaits, you can parallelize some calls.
+
     let arbitratorDispute;
     let subcourtURI;
     let subcourt;
-    let appealCost;
     let metaevidence;
 
     try {
@@ -178,16 +179,6 @@ class Interact extends React.Component {
     } finally {
     }
 
-    try {
-      this.setState({
-        appealCost: await this.props.getAppealCostCallback(arbitratorDisputeID),
-      });
-    } catch (err) {
-      console.log("err");
-      console.error(err.message);
-    } finally {
-    }
-
     let arbitrableDisputeID;
     let multipliers;
 
@@ -203,9 +194,18 @@ class Interact extends React.Component {
       console.error(err.message);
     }
 
-    const appealDeadlines = ["Refused to Rule"].concat(metaevidence.metaEvidenceJSON.rulingOptions.titles).map((title, index) => this.props.getAppealPeriodCallback(arbitrableDisputeID, index));
+    try {
+      const appealDeadlines = ["Refused to Rule"].concat(metaevidence.metaEvidenceJSON.rulingOptions.titles).map((title, index) => this.props.getAppealPeriodCallback(arbitrableDisputeID, index));
+      const appealCosts = ["Refused to Rule"].concat(metaevidence.metaEvidenceJSON.rulingOptions.titles).map((title, index) => this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, index));
 
-    await this.setState({ appealDeadlines: await Promise.all(appealDeadlines), appealDecisions: await this.props.getAppealDecisionCallback(arbitratorDisputeID) });
+      await this.setState({ appealDeadlines: await Promise.all(appealDeadlines), appealCosts: await Promise.all(appealCosts) });
+    } catch (err) {
+      console.error(err);
+    }
+
+    const appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
+    this.setState({ appealDecisions });
+    await this.setState({ contributions: await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length) });
   };
 
   reload = async () => {
@@ -221,7 +221,25 @@ class Interact extends React.Component {
     console.debug(this.props);
     console.debug(this.state);
 
-    const { arbitrated, arbitrableDisputeID, arbitratorDispute, arbitratorDisputeDetails, crowdfundingStatus, appealCost, arbitratorDisputeID, metaevidence, multipliers, evidences, currentRuling, ruling, getDisputeResult, disputeEvent, appealDeadlines } = this.state;
+    const {
+      arbitrated,
+      arbitrableDisputeID,
+      arbitratorDispute,
+      arbitratorDisputeDetails,
+      crowdfundingStatus,
+      appealCosts,
+      arbitratorDisputeID,
+      metaevidence,
+      multipliers,
+      evidences,
+      currentRuling,
+      ruling,
+      getDisputeResult,
+      disputeEvent,
+      appealDeadlines,
+      appealDecisions,
+      contributions,
+    } = this.state;
 
     const { arbitratorAddress, activeAddress, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, subcourts, subcourtDetails, network } = this.props;
 
@@ -267,6 +285,9 @@ class Interact extends React.Component {
             submitEvidenceCallback={this.submitEvidence}
             getAppealPeriodCallback={getAppealPeriodCallback}
             appealDeadlines={appealDeadlines}
+            appealCosts={appealCosts}
+            appealDecisions={appealDecisions}
+            contributions={contributions}
           />
         </main>
       </>

@@ -192,8 +192,6 @@ class CreateForm extends React.Component {
       uploading,
     } = this.state;
 
-    console.log(this.state);
-    console.log(this.props);
     return (
       <section className={`${styles.createForm}`}>
         <Form noValidate validated={validated} onSubmit={this.onModalShow}>

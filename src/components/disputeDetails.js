@@ -1,5 +1,7 @@
 import { Card, Row, Col, Form, Container, Accordion, Dropdown } from "react-bootstrap";
 import React from "react";
+import BigNumber from "bignumber.js";
+
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
@@ -49,6 +51,8 @@ class DisputeDetails extends React.Component {
       publishCallback,
       submitEvidenceCallback,
       appealDeadlines,
+      appealCosts,
+      contributions,
     } = this.props;
     const { activeKey } = this.state;
     console.log(this.props);
@@ -108,30 +112,52 @@ class DisputeDetails extends React.Component {
                         fund its side in order not to lose the case.
                       </p>
                       <AlertMessage extraClass="mt-6" type="info" title={`Jury decision: ${metaevidenceJSON.rulingOptions.titles[currentRuling - 1]}`} content="This decision can be appealed within appeal period." />
-                      <Row className="mt-3">
-                        <Col className="pb-4" xl={8} lg={12} xs={24}>
-                          <CrowdfundingCard key={0} title={"Invalid / Refused to Arbitrate"} winner={currentRuling == 0} fundingPercentage={8} appealPeriodEnd={appealDeadlines && parseInt(appealDeadlines[0].end)} roi={1.1} />
-                        </Col>
-                        {metaevidenceJSON &&
-                          (metaevidenceJSON.rulingOptions.type == "single-select" || metaevidenceJSON.rulingOptions.type == "multiple-select") &&
-                          metaevidenceJSON.rulingOptions.titles.map((title, index) => (
-                            <Col className="pb-4" xl={8} lg={12} xs={24}>
-                              <CrowdfundingCard key={index + 1} title={title} winner={currentRuling == index + 1} fundingPercentage={68} appealPeriodEnd={appealDeadlines && parseInt(appealDeadlines[index + 1].end)} roi={1.3} />
-                            </Col>
-                          ))}
-                        {metaevidenceJSON &&
-                          !(metaevidenceJSON.rulingOptions.type == "single-select" && metaevidenceJSON.rulingOptions.type == "multiple-select") &&
-                          [].map((title, index) => (
-                            <Col className="pb-4" xl={8} lg={12} xs={24}>
-                              <CrowdfundingCard key={index + 1} title={title} winner={currentRuling == 12345} fundingPercentage={68} appealPeriodEnd={1610000000} roi={1.3} />
-                            </Col>
-                          ))}
-                        {metaevidenceJSON && !(metaevidenceJSON.rulingOptions.type == "single-select" || metaevidenceJSON.rulingOptions.type == "multiple-select") && (
+                      {appealDeadlines && contributions && (
+                        <Row className="mt-3">
                           <Col className="pb-4" xl={8} lg={12} xs={24}>
-                            <CrowdfundingCard variable={metaevidenceJSON.rulingOptions.type} winner={currentRuling == 12345} fundingPercentage={0} appealPeriodEnd={1610000000} roi={1.3} />
+                            <CrowdfundingCard
+                              key={0}
+                              title={"Invalid / Refused to Arbitrate"}
+                              winner={currentRuling == 0}
+                              fundingPercentage={contributions[0] ? BigNumber(contributions[0]).div(BigNumber(appealCosts[0])).toFixed(2) : 0}
+                              appealPeriodEnd={appealDeadlines && parseInt(appealDeadlines[0].end)}
+                              roi={1.1}
+                            />
                           </Col>
-                        )}
-                      </Row>
+                          {metaevidenceJSON &&
+                            (metaevidenceJSON.rulingOptions.type == "single-select" || metaevidenceJSON.rulingOptions.type == "multiple-select") &&
+                            metaevidenceJSON.rulingOptions.titles.map((title, index) => (
+                              <Col className="pb-4" xl={8} lg={12} xs={24}>
+                                <CrowdfundingCard
+                                  key={index + 1}
+                                  title={title}
+                                  winner={currentRuling == index + 1}
+                                  fundingPercentage={
+                                    contributions[index + 1]
+                                      ? BigNumber(contributions[index + 1])
+                                          .div(BigNumber(appealCosts[index + 1]))
+                                          .toFixed(2)
+                                      : 0
+                                  }
+                                  appealPeriodEnd={appealDeadlines && parseInt(appealDeadlines[index + 1].end)}
+                                  roi={1.3}
+                                />
+                              </Col>
+                            ))}
+                          {metaevidenceJSON &&
+                            !(metaevidenceJSON.rulingOptions.type == "single-select" && metaevidenceJSON.rulingOptions.type == "multiple-select") &&
+                            [].map((title, index) => (
+                              <Col className="pb-4" xl={8} lg={12} xs={24}>
+                                <CrowdfundingCard key={index + 1} title={title} winner={currentRuling == 12345} fundingPercentage={68} appealPeriodEnd={1610000000} roi={1.3} />
+                              </Col>
+                            ))}
+                          {metaevidenceJSON && !(metaevidenceJSON.rulingOptions.type == "single-select" || metaevidenceJSON.rulingOptions.type == "multiple-select") && (
+                            <Col className="pb-4" xl={8} lg={12} xs={24}>
+                              <CrowdfundingCard variable={metaevidenceJSON.rulingOptions.type} winner={currentRuling == 12345} fundingPercentage={0} appealPeriodEnd={1610000000} roi={1.3} />
+                            </Col>
+                          )}
+                        </Row>
+                      )}
                     </Card.Body>
                   </Accordion.Collapse>
                 </>

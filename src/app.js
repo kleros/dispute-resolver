@@ -138,6 +138,7 @@ class App extends React.Component {
   withdrawFeesAndRewardsForAllRounds = (arbitrableAddress, arbitrableDispute) => EthereumInterface.send("ArbitrableProxy", arbitrableAddress, this.state.activeAddress, "0", "withdrawFeesAndRewardsForAllRounds", arbitrableDispute, this.state.activeAddress);
 
   getAppealCost = async (arbitratorDisputeID) => EthereumInterface.call("IArbitrator", networkMap[this.state.network].KLEROS_LIQUID, "appealCost", arbitratorDisputeID, "0x0");
+  getAppealCostOnArbitrable = async (arbitratorDisputeID, ruling) => EthereumInterface.call("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY, "appealCost", arbitratorDisputeID, ruling);
 
   appeal = (arbitrableAddress, arbitrableDisputeID, party, contribution) => EthereumInterface.send("ArbitrableProxy", arbitrableAddress, this.state.activeAddress, contribution, "fundAppeal", arbitrableDisputeID, party);
 
@@ -210,6 +211,17 @@ class App extends React.Component {
     return blockNumbers.map((blockNumber) => {
       return { appealedAt: blockNumber.timestamp };
     });
+  };
+
+  getContributions = async (arbitrableDisputeID, round) => {
+    const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY);
+    const contributionLogs = await contractInstance.getPastEvents("Contribution", { fromBlock: 11590356, toBlock: "latest", filter: { localDisputeID: arbitrableDisputeID } });
+    let contributionsForEachRuling = {};
+    contributionLogs.map((log) => {
+      contributionsForEachRuling[log.returnValues.ruling] = contributionsForEachRuling[log.returnValues.ruling] || 0;
+      contributionsForEachRuling[log.returnValues.ruling] = parseInt(contributionsForEachRuling[log.returnValues.ruling]) + parseInt(log.returnValues.amount);
+    });
+    return contributionsForEachRuling;
   };
 
   getDispute = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "getDispute", arbitratorDisputeID);
@@ -299,6 +311,7 @@ class App extends React.Component {
                     route={route}
                     getArbitrableDisputeIDCallback={this.getArbitrableDisputeID}
                     getAppealCostCallback={this.getAppealCost}
+                    getAppealCostOnArbitrableCallback={this.getAppealCostOnArbitrable}
                     appealCallback={this.appeal}
                     getAppealPeriodCallback={this.getAppealPeriod}
                     getCurrentRulingCallback={this.getCurrentRuling}
@@ -325,6 +338,7 @@ class App extends React.Component {
                     passPhaseCallback={this.passPhase}
                     getRoundInfoCallback={this.getRoundInfo}
                     getAppealDecisionCallback={this.getAppealDecision}
+                    getContributionsCallback={this.getContributions}
                     subcourts={subcourts}
                     subcourtDetails={subcourtDetails}
                   />

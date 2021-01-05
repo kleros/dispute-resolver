@@ -66,7 +66,6 @@ class CreateSummary extends React.Component {
   render() {
     const { awaitingConfirmation, show, activeAddress, subcourtsLoading, onReturnButtonClickCallback, validated, arbitrationCost, summary, formData } = this.props;
 
-    console.log(this.props);
     return (
       <section className={styles.summary}>
         <Form noValidate validated={validated} onSubmit={this.onModalShow}>
