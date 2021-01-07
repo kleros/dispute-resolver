@@ -49,92 +49,21 @@ class DisputeDetails extends React.Component {
     }
   };
 
-  getCombinations(chars) {
-    var result = [];
-    var f = function (prefix, chars) {
-      for (var i = 0; i < chars.length; i++) {
-        result.push(prefix + chars[i]);
-        f(prefix + chars[i], chars.slice(i + 1));
-      }
-    };
-    f("", chars);
-    return result;
-  }
-
-  k_combinations(set, k) {
-    var i, j, combs, head, tailcombs;
-
-    // There is no way to take e.g. sets of 5 elements from
-    // a set of 4.
-    if (k > set.length || k <= 0) {
-      return [];
-    }
-
-    // K-sized set has only one K-sized subset.
-    if (k == set.length) {
-      return [set];
-    }
-
-    // There is N 1-sized subsets in a N-sized set.
-    if (k == 1) {
-      combs = [];
-      for (i = 0; i < set.length; i++) {
-        combs.push([set[i]]);
-      }
-      return combs;
-    }
-
-    // Assert {1 < k < set.length}
-
-    // Algorithm description:
-    // To get k-combinations of a set, we want to join each element
-    // with all (k-1)-combinations of the other elements. The set of
-    // these k-sized sets would be the desired result. However, as we
-    // represent sets with lists, we need to take duplicates into
-    // account. To avoid producing duplicates and also unnecessary
-    // computing, we use the following approach: each element i
-    // divides the list into three: the preceding elements, the
-    // current element i, and the subsequent elements. For the first
-    // element, the list of preceding elements is empty. For element i,
-    // we compute the (k-1)-computations of the subsequent elements,
-    // join each with the element i, and store the joined to the set of
-    // computed k-combinations. We do not need to take the preceding
-    // elements into account, because they have already been the i:th
-    // element so they are already computed and stored. When the length
-    // of the subsequent list drops below (k-1), we cannot find any
-    // (k-1)-combs, hence the upper limit for the iteration:
-    combs = [];
-    for (i = 0; i < set.length - k + 1; i++) {
-      // head is a list that includes only our current element.
-      head = set.slice(i, i + 1);
-      // We take smaller combinations from the subsequent elements
-      tailcombs = this.k_combinations(set.slice(i + 1), k - 1);
-      // For each (k-1)-combination we join it with the current
-      // and store it to the set of k-combinations.
-      for (j = 0; j < tailcombs.length; j++) {
-        combs.push(head.concat(tailcombs[j]));
-      }
-    }
-    return combs;
-  }
-
-  combinations(set) {
-    var k, i, combs, k_combs;
-    combs = [];
-
-    // Calculate all non-empty k-combinations
-    for (k = 1; k <= set.length; k++) {
-      k_combs = this.k_combinations(set, k);
-      for (i = 0; i < k_combs.length; i++) {
-        combs.push(k_combs[i]);
-      }
-    }
-    return combs;
-  }
-
   componentDidMount() {
     console.log("here");
   }
+
+  multipleSelectRulingTitleCombinations = (metaevidenceJSON) => {
+    const combs = combinations(Array.from(Array(metaevidenceJSON.rulingOptions.titles.length).keys()));
+    let combsInTitles = combs.map((rulingCombination) => rulingCombination.map((rulingCode) => metaevidenceJSON.rulingOptions.titles[rulingCode] + " "));
+    combsInTitles[0] = "None";
+    return combsInTitles;
+  };
+
+  multipleSelectIsWinner = (metaevidenceJSON, currentRuling, rulingOptionIndexAsInMetaevidence) => {
+    const winningCombination = combinations(Array.from(Array(metaevidenceJSON.rulingOptions.titles.length).keys()))[currentRuling - 1];
+    return winningCombination.includes(rulingOptionIndexAsInMetaevidence);
+  };
 
   render() {
     const {
@@ -162,7 +91,6 @@ class DisputeDetails extends React.Component {
     const { activeKey } = this.state;
     console.log(this.props);
     console.log(this.state);
-    console.log(combinations([0, 1, 2]));
 
     if (metaevidenceJSON && arbitratorDispute && subcourts && subcourtDetails && arbitratorDisputeDetails)
       return (
@@ -201,7 +129,11 @@ class DisputeDetails extends React.Component {
             <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "refused to arbitrate" : metaevidenceJSON.rulingOptions.titles[currentRuling - 1]}`} content="This decision can be appealed within appeal period." />
           )}
           {metaevidenceJSON.rulingOptions.type == "multiple-select" && arbitratorDispute.period == 3 && (
-            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "refused to arbitrate" : combinations([0, 1, 2])[currentRuling - 1].map((code) => metaevidenceJSON.rulingOptions.titles[code])}`} content="This decision can be appealed within appeal period." />
+            <AlertMessage
+              type="info"
+              title={`Jury decision: ${currentRuling == 0 ? "refused to arbitrate" : combinations(Array.from(Array(metaevidenceJSON.rulingOptions.titles.length).keys()))[currentRuling - 1].map((code) => metaevidenceJSON.rulingOptions.titles[code])}`}
+              content="This decision can be appealed within appeal period."
+            /> // Refactor out this logic, too complicated.
           )}
           <Accordion
             className={`mt-4 ${styles.accordion}`}
@@ -240,7 +172,7 @@ class DisputeDetails extends React.Component {
                             />
                           </Col>
                           {metaevidenceJSON &&
-                            (metaevidenceJSON.rulingOptions.type == "single-select" || metaevidenceJSON.rulingOptions.type == "multiple-select") &&
+                            metaevidenceJSON.rulingOptions.type == "single-select" &&
                             metaevidenceJSON.rulingOptions.titles.map((title, index) => (
                               <Col className="pb-4" xl={8} lg={12} xs={24}>
                                 <CrowdfundingCard
@@ -273,13 +205,47 @@ class DisputeDetails extends React.Component {
                               </Col>
                             ))}
                           {metaevidenceJSON &&
-                            !(metaevidenceJSON.rulingOptions.type == "single-select" && metaevidenceJSON.rulingOptions.type == "multiple-select") &&
+                            metaevidenceJSON.rulingOptions.type == "multiple-select" &&
+                            this.multipleSelectRulingTitleCombinations(metaevidenceJSON).map((title, index) => (
+                              <Col className="pb-4" xl={8} lg={12} xs={24}>
+                                <CrowdfundingCard
+                                  key={index + 1}
+                                  title={title}
+                                  winner={currentRuling == index + 1}
+                                  fundingPercentage={
+                                    contributions[index + 1]
+                                      ? BigNumber(contributions[index + 1])
+                                          .div(BigNumber(appealCosts[index + 1]))
+                                          .times(100)
+                                          .toFixed(2)
+                                      : 0
+                                  }
+                                  appealPeriodEnd={appealDeadlines && appealDeadlines[index + 1] && parseInt(appealDeadlines[index + 1].end)}
+                                  roi={this.calculateReturnOfInvestmentRatio(index + 1).toFixed(2)}
+                                  suggestedContribution={
+                                    contributions[index + 1]
+                                      ? BigNumber(appealCosts[index + 1])
+                                          .minus(BigNumber(contributions[index + 1]))
+                                          .div(DECIMALS)
+                                          .toString()
+                                      : BigNumber(appealCosts[index + 1])
+                                          .div(DECIMALS)
+                                          .toString()
+                                  }
+                                  appealCallback={appealCallback}
+                                  rulingOptionCode={index + 1}
+                                />
+                              </Col>
+                            ))}
+
+                          {metaevidenceJSON &&
+                            (metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") &&
                             [].map((title, index) => (
                               <Col className="pb-4" xl={8} lg={12} xs={24}>
                                 <CrowdfundingCard key={index + 1} title={title} winner={currentRuling == 12345} fundingPercentage={68} appealPeriodEnd={1610000000} roi={1.3} />
                               </Col>
                             ))}
-                          {metaevidenceJSON && !(metaevidenceJSON.rulingOptions.type == "single-select" || metaevidenceJSON.rulingOptions.type == "multiple-select") && (
+                          {metaevidenceJSON && (metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") && (
                             <Col className="pb-4" xl={8} lg={12} xs={24}>
                               <CrowdfundingCard
                                 variable={metaevidenceJSON.rulingOptions.type}

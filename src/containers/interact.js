@@ -13,6 +13,7 @@ import { ReactComponent as Magnifier } from "../assets/images/magnifier.svg";
 import { Redirect, Link } from "react-router-dom";
 import Countdown from "react-countdown";
 import BigNumber from "bignumber.js";
+import { combinations } from "utils/combinations";
 
 import styles from "containers/styles/interact.module.css";
 
@@ -195,8 +196,20 @@ class Interact extends React.Component {
     }
 
     try {
-      const appealDeadlines = ["Refused to Rule"].concat(metaevidence.metaEvidenceJSON.rulingOptions.titles).map((title, index) => this.props.getAppealPeriodCallback(arbitrableDisputeID, index));
-      const appealCosts = ["Refused to Rule"].concat(metaevidence.metaEvidenceJSON.rulingOptions.titles).map((title, index) => this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, index));
+      const rulingOptionType = metaevidence.metaEvidenceJSON.rulingOptions.type;
+      console.log(rulingOptionType);
+      let appealDeadlines, appealCosts;
+
+      switch (rulingOptionType) {
+        case "single-select":
+          appealDeadlines = ["Refused to Rule"].concat(metaevidence.metaEvidenceJSON.rulingOptions.titles).map((title, index) => this.props.getAppealPeriodCallback(arbitrableDisputeID, index));
+          appealCosts = ["Refused to Rule"].concat(metaevidence.metaEvidenceJSON.rulingOptions.titles).map((title, index) => this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, index));
+          break;
+        case "multiple-select":
+          appealDeadlines = ["Refused to Rule"].concat(Array.from(Array(2 ** metaevidence.metaEvidenceJSON.rulingOptions.titles.length).keys())).map((title, index) => this.props.getAppealPeriodCallback(arbitrableDisputeID, index));
+          appealCosts = ["Refused to Rule"].concat(Array.from(Array(2 ** metaevidence.metaEvidenceJSON.rulingOptions.titles.length).keys())).map((title, index) => this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, index));
+          break;
+      }
 
       await this.setState({ appealDeadlines: await Promise.all(appealDeadlines), appealCosts: await Promise.all(appealCosts) });
     } catch (err) {
