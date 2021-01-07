@@ -5,3 +5,6 @@
 .crowdfundingCard {
   min-height: 380px;
 }
+
+.crowdfundingCard :global(input) {
+}

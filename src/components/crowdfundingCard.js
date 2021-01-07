@@ -6,11 +6,12 @@ import Countdown, { zeroPad, calcTimeDelta, formatTimeDelta } from "react-countd
 import styles from "components/styles/crowdfundingCard.module.css";
 import { ReactComponent as Hourglass } from "assets/images/hourglass.svg";
 import AlertMessage from "components/alertMessage";
+const DECIMALS = BigNumber(10).pow(BigNumber(18));
 
 class CrowdfundingCard extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { variableRulingOption: "123" };
+    this.state = { variableRulingOption: "123", contribution: this.props.suggestedContribution };
   }
 
   getPeriodName = (periodNumber) => {
@@ -28,8 +29,8 @@ class CrowdfundingCard extends React.Component {
   onControlChange = async (e) => await this.setState({ [e.target.id]: e.target.value });
 
   render() {
-    const { dispute, subcourtDetails, subcourts, title, arbitratorDisputeDetails, grayedOut, winner, fundingPercentage, appealPeriodEnd, variable, roi } = this.props;
-    const { variableRulingOption } = this.state;
+    const { dispute, subcourtDetails, subcourts, title, arbitratorDisputeDetails, grayedOut, winner, fundingPercentage, appealPeriodEnd, variable, roi, suggestedContribution, appealCallback, rulingOptionCode } = this.props;
+    const { variableRulingOption, contribution } = this.state;
     console.log(this.props);
     console.log(this.state);
 
@@ -53,9 +54,11 @@ class CrowdfundingCard extends React.Component {
           <Countdown className={styles.countdown} date={1000 * parseInt(appealPeriodEnd)} renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>} />
         </div>
         <InputGroup className="my-3">
-          <FormControl placeholder="Enter contribution amount" aria-label="Recipient's username" aria-describedby="basic-addon2" />
+          <FormControl id="contribution" value={contribution} placeholder="Enter contribution amount" aria-label="Recipient's username" aria-describedby="basic-addon2" type="number" step="0.1" onChange={this.onControlChange} disabled={suggestedContribution == 0} />
           <InputGroup.Append>
-            <Button variant="primary">Fund</Button>
+            <Button variant="primary" disabled={suggestedContribution == 0} onClick={(e) => appealCallback(rulingOptionCode, BigNumber(contribution).times(DECIMALS))}>
+              Fund
+            </Button>
           </InputGroup.Append>
         </InputGroup>
 

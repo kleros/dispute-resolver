@@ -83,7 +83,7 @@ class Interact extends React.Component {
 
   onContributeButtonClick = (e) => this.setState({ contributeModalShow: true });
 
-  appeal = async (party, contribution) => this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution);
+  appeal = async (party, contribution) => this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);
 
   getWinnerMultiplier = async (arbitrableAddress) => {
     const winnerMultiplier = await this.props.getWinnerMultiplierCallback(arbitrableAddress);
@@ -215,6 +215,19 @@ class Interact extends React.Component {
       evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
       appealDecisions: await this.props.getAppealDecisionCallback(arbitratorDisputeID),
     });
+
+    try {
+      const appealDeadlines = ["Refused to Rule"].concat(metaevidence.metaEvidenceJSON.rulingOptions.titles).map((title, index) => this.props.getAppealPeriodCallback(arbitrableDisputeID, index));
+      const appealCosts = ["Refused to Rule"].concat(metaevidence.metaEvidenceJSON.rulingOptions.titles).map((title, index) => this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, index));
+
+      await this.setState({ appealDeadlines: await Promise.all(appealDeadlines), appealCosts: await Promise.all(appealCosts) });
+    } catch (err) {
+      console.error(err);
+    }
+
+    const appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
+    this.setState({ appealDecisions });
+    await this.setState({ contributions: await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length) });
   };
 
   render() {
@@ -241,7 +254,7 @@ class Interact extends React.Component {
       contributions,
     } = this.state;
 
-    const { arbitratorAddress, activeAddress, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, subcourts, subcourtDetails, network } = this.props;
+    const { arbitratorAddress, activeAddress, appealCallback, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, subcourts, subcourtDetails, network } = this.props;
 
     return (
       <>
@@ -287,7 +300,9 @@ class Interact extends React.Component {
             appealDeadlines={appealDeadlines}
             appealCosts={appealCosts}
             appealDecisions={appealDecisions}
+            appealCallback={this.appeal}
             contributions={contributions}
+            multipliers={multipliers}
           />
         </main>
       </>
