@@ -42,16 +42,22 @@ class DisputeDetails extends React.Component {
     const divisor = BigNumber(multipliers.divisor);
     if (currentRuling == party) {
       return winner.plus(loser).plus(divisor).div(winner.plus(divisor));
-    } else if (this.props.currentRuling == 0) {
-      return shared.plus(shared).plus(divisor).div(shared.plus(divisor));
     } else {
       return winner.plus(loser).plus(divisor).div(loser.plus(divisor));
     }
   };
 
-  componentDidMount() {
-    console.log("here");
-  }
+  calculateReturnOfInvestmentRatioForLoser = () => {
+    const { currentRuling, multipliers } = this.props;
+    const winner = BigNumber(multipliers.winner);
+    const loser = BigNumber(multipliers.loser);
+    const shared = BigNumber(multipliers.shared);
+    const divisor = BigNumber(multipliers.divisor);
+
+    return winner.plus(loser).plus(divisor).div(loser.plus(divisor));
+  };
+
+  componentDidMount() {}
 
   multipleSelectRulingTitleCombinations = (metaevidenceJSON) => {
     const combs = combinations(Array.from(Array(metaevidenceJSON.rulingOptions.titles.length).keys()));
@@ -135,6 +141,9 @@ class DisputeDetails extends React.Component {
               content="This decision can be appealed within appeal period."
             /> // Refactor out this logic, too complicated.
           )}
+          {metaevidenceJSON.rulingOptions.type == "uint" && arbitratorDispute.period == 3 && (
+            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "refused to arbitrate" : currentRuling - 1}`} content="This decision can be appealed within appeal period." /> // Refactor out this logic, too complicated.
+          )}
           <Accordion
             className={`mt-4 ${styles.accordion}`}
             onSelect={(e) => {
@@ -155,16 +164,15 @@ class DisputeDetails extends React.Component {
                         fund its side in order not to lose the case.
                       </p>
 
-                      <AlertMessage extraClass="mt-6" type="info" title={`Jury decision: ${metaevidenceJSON.rulingOptions.titles[currentRuling - 1]}`} content="This decision can be appealed within appeal period." />
-                      {appealDeadlines && contributions && (
+                      {appealDeadlines && contributions && appealCosts && (
                         <Row className="mt-3">
                           <Col className="pb-4" xl={8} lg={12} xs={24}>
                             <CrowdfundingCard
                               key={0}
                               title={"Invalid / Refused to Arbitrate"}
                               winner={currentRuling == 0}
-                              fundingPercentage={contributions[0] ? BigNumber(contributions[0]).div(BigNumber(appealCosts[0])).times(100).toFixed(2) : 0}
-                              appealPeriodEnd={appealDeadlines && parseInt(appealDeadlines[0].end)}
+                              fundingPercentage={contributions.hasOwnProperty(0) && appealCosts.hasOwnProperty(0) ? BigNumber(contributions[0]).div(BigNumber(appealCosts[0])).times(100).toFixed(2) : 0}
+                              appealPeriodEnd={appealDeadlines && appealDeadlines.hasOwnProperty(0) && parseInt(appealDeadlines[0].end)}
                               suggestedContribution={contributions[0] ? BigNumber(appealCosts[0]).minus(BigNumber(contributions[0])).div(DECIMALS).toString() : BigNumber(appealCosts[0]).div(DECIMALS).toString()}
                               roi={this.calculateReturnOfInvestmentRatio(0).toFixed(2)}
                               appealCallback={appealCallback}
@@ -173,10 +181,10 @@ class DisputeDetails extends React.Component {
                           </Col>
                           {metaevidenceJSON &&
                             metaevidenceJSON.rulingOptions.type == "single-select" &&
+                            Object.keys(appealDeadlines).length > 1 &&
                             metaevidenceJSON.rulingOptions.titles.map((title, index) => (
-                              <Col className="pb-4" xl={8} lg={12} xs={24}>
+                              <Col key={index + 1} className="pb-4" xl={8} lg={12} xs={24}>
                                 <CrowdfundingCard
-                                  key={index + 1}
                                   title={title}
                                   winner={currentRuling == index + 1}
                                   fundingPercentage={
@@ -187,7 +195,7 @@ class DisputeDetails extends React.Component {
                                           .toFixed(2)
                                       : 0
                                   }
-                                  appealPeriodEnd={appealDeadlines && parseInt(appealDeadlines[index + 1].end)}
+                                  appealPeriodEnd={appealDeadlines && appealDeadlines[index + 1] && parseInt(appealDeadlines[index + 1].end)}
                                   roi={this.calculateReturnOfInvestmentRatio(index + 1).toFixed(2)}
                                   suggestedContribution={
                                     contributions[index + 1]
@@ -206,8 +214,9 @@ class DisputeDetails extends React.Component {
                             ))}
                           {metaevidenceJSON &&
                             metaevidenceJSON.rulingOptions.type == "multiple-select" &&
+                            Object.keys(appealDeadlines).length > 1 &&
                             this.multipleSelectRulingTitleCombinations(metaevidenceJSON).map((title, index) => (
-                              <Col className="pb-4" xl={8} lg={12} xs={24}>
+                              <Col key={index} className="pb-4" xl={8} lg={12} xs={24}>
                                 <CrowdfundingCard
                                   key={index + 1}
                                   title={title}
@@ -240,19 +249,33 @@ class DisputeDetails extends React.Component {
 
                           {metaevidenceJSON &&
                             (metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") &&
-                            [].map((title, index) => (
-                              <Col className="pb-4" xl={8} lg={12} xs={24}>
-                                <CrowdfundingCard key={index + 1} title={title} winner={currentRuling == 12345} fundingPercentage={68} appealPeriodEnd={1610000000} roi={1.3} />
-                              </Col>
-                            ))}
+                            Object.keys(contributions)
+                              .slice(1)
+                              .map((key, value) => (
+                                <Col key={key} className="pb-4" xl={8} lg={12} xs={24}>
+                                  <CrowdfundingCard
+                                    title={key}
+                                    rulingOptionCode={key}
+                                    winner={currentRuling == key}
+                                    fundingPercentage={contributions[key] ? BigNumber(contributions[key]).div(BigNumber(appealCosts[key])).times(100).toFixed(2) : 0}
+                                    suggestedContribution={BigNumber(appealCosts[key]).minus(BigNumber(contributions[key])).div(DECIMALS).toString()}
+                                    appealPeriodEnd={appealDeadlines && appealDeadlines[key] && parseInt(appealDeadlines[key].end)}
+                                    roi={this.calculateReturnOfInvestmentRatio(key).toFixed(2)}
+                                    appealCallback={appealCallback}
+                                  />
+                                </Col>
+                              ))}
                           {metaevidenceJSON && (metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") && (
                             <Col className="pb-4" xl={8} lg={12} xs={24}>
                               <CrowdfundingCard
                                 variable={metaevidenceJSON.rulingOptions.type}
-                                winner={currentRuling == 12345}
-                                fundingPercentage={contributions[123456789] ? BigNumber(contributions[123456789]).div(BigNumber(appealCosts[123456789])).times(100).toFixed(2) : 0}
-                                appealPeriodEnd={appealDeadlines && parseInt(appealDeadlines[0].end)} // TODO
-                                roi={this.calculateReturnOfInvestmentRatio(123456789).toFixed(2)}
+                                winner={false}
+                                fundingPercentage={0}
+                                appealPeriodEnd={Math.min(...Object.values(appealDeadlines).map((item) => item.end))} // TODO
+                                roi={this.calculateReturnOfInvestmentRatioForLoser().toFixed(2)}
+                                suggestedContribution={BigNumber(Math.max(...Object.values(appealCosts)))
+                                  .div(DECIMALS)
+                                  .toString()}
                                 appealCallback={appealCallback}
                               />
                             </Col>

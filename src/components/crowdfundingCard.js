@@ -11,7 +11,7 @@ const DECIMALS = BigNumber(10).pow(BigNumber(18));
 class CrowdfundingCard extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { variableRulingOption: "123", contribution: this.props.suggestedContribution };
+    this.state = { variableRulingOption: "", contribution: this.props.suggestedContribution };
   }
 
   getPeriodName = (periodNumber) => {
@@ -38,7 +38,7 @@ class CrowdfundingCard extends React.Component {
       <div className={`shadow rounded p-3 d-flex flex-column ${styles.crowdfundingCard}`}>
         <div>
           {!variable && <strong>{title}</strong>}
-          {variable && <FormControl id="variableRulingOption" type={variable == "string" ? "text" : "number"} value={variableRulingOption} onChange={this.onControlChange}></FormControl>}
+          {variable && <FormControl id="variableRulingOption" type={variable == "string" ? "text" : "number"} value={variableRulingOption} step="1" placeholder="Enter a new ruling option" onChange={this.onControlChange}></FormControl>}
         </div>
 
         {winner && (
@@ -46,6 +46,7 @@ class CrowdfundingCard extends React.Component {
             <small>Previous round winner</small>
           </div>
         )}
+
         <div className="text-center mt-3 text-success">{fundingPercentage}% Funded</div>
         <ProgressBar className="mb-2" now={fundingPercentage} variant="success" />
 
@@ -56,12 +57,11 @@ class CrowdfundingCard extends React.Component {
         <InputGroup className="my-3">
           <FormControl id="contribution" value={contribution} placeholder="Enter contribution amount" aria-label="Recipient's username" aria-describedby="basic-addon2" type="number" step="0.1" onChange={this.onControlChange} disabled={suggestedContribution == 0} />
           <InputGroup.Append>
-            <Button variant="primary" disabled={suggestedContribution == 0} onClick={(e) => appealCallback(rulingOptionCode, BigNumber(contribution).times(DECIMALS))}>
+            <Button variant="primary" disabled={suggestedContribution == 0} onClick={(e) => appealCallback(variable ? variableRulingOption : rulingOptionCode, BigNumber(contribution).times(DECIMALS))}>
               Fund
             </Button>
           </InputGroup.Append>
         </InputGroup>
-
         <AlertMessage extraClass="mt-auto" type="info" title={`For external contributors`} content={`If this ruling option wins, you will receive back ${roi} times of your contribution. `} />
       </div>
     );

@@ -24,7 +24,6 @@ class OngoingCard extends React.Component {
   };
   render() {
     const { dispute, subcourtDetails, subcourts, title, arbitratorDisputeDetails, grayedOut } = this.props;
-    console.log(this.props);
 
     return (
       <div className={styles.ongoingCard}>

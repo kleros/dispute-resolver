@@ -195,30 +195,43 @@ class Interact extends React.Component {
       console.error(err.message);
     }
 
+    const appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
+    const contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length);
+    await this.setState({ contributions, appealDecisions });
+
     try {
       const rulingOptionType = metaevidence.metaEvidenceJSON.rulingOptions.type;
       console.log(rulingOptionType);
-      let appealDeadlines, appealCosts;
+      let appealDeadlines = { 0: await this.props.getAppealPeriodCallback(arbitrableDisputeID, 0) },
+        appealCosts = { 0: await this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, 0) };
 
       switch (rulingOptionType) {
         case "single-select":
-          appealDeadlines = ["Refused to Rule"].concat(metaevidence.metaEvidenceJSON.rulingOptions.titles).map((title, index) => this.props.getAppealPeriodCallback(arbitrableDisputeID, index));
-          appealCosts = ["Refused to Rule"].concat(metaevidence.metaEvidenceJSON.rulingOptions.titles).map((title, index) => this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, index));
+          await metaevidence.metaEvidenceJSON.rulingOptions.titles.map(async (key, index) => {
+            appealDeadlines[index + 1] = await this.props.getAppealPeriodCallback(arbitrableDisputeID, index + 1);
+            appealCosts[index + 1] = await this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, index + 1);
+          });
           break;
+
         case "multiple-select":
-          appealDeadlines = ["Refused to Rule"].concat(Array.from(Array(2 ** metaevidence.metaEvidenceJSON.rulingOptions.titles.length).keys())).map((title, index) => this.props.getAppealPeriodCallback(arbitrableDisputeID, index));
-          appealCosts = ["Refused to Rule"].concat(Array.from(Array(2 ** metaevidence.metaEvidenceJSON.rulingOptions.titles.length).keys())).map((title, index) => this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, index));
+          Array.from(Array(2 ** metaevidence.metaEvidenceJSON.rulingOptions.titles.length).keys()).map(async (key) => {
+            appealDeadlines[key + 1] = await this.props.getAppealPeriodCallback(arbitrableDisputeID, key + 1);
+            appealCosts[key + 1] = await this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, key + 1);
+          });
+          break;
+        case "uint":
+        case "int":
+          Object.keys(contributions).map(async (key) => {
+            appealDeadlines[key] = await this.props.getAppealPeriodCallback(arbitrableDisputeID, key);
+            appealCosts[key] = await this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, key);
+          });
           break;
       }
 
-      await this.setState({ appealDeadlines: await Promise.all(appealDeadlines), appealCosts: await Promise.all(appealCosts) });
+      await this.setState({ appealDeadlines, appealCosts });
     } catch (err) {
       console.error(err);
     }
-
-    const appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
-    this.setState({ appealDecisions });
-    await this.setState({ contributions: await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length) });
   };
 
   reload = async () => {
