@@ -157,4 +157,10 @@ function combinations(set) {
   return combs;
 }
 
+function numberToBitMaskArray(number) {
+  //TODO
+  const binary = number.toString(2);
+  let bitMask = [];
+}
+
 module.exports = { combinations: combinations };

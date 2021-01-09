@@ -135,7 +135,8 @@ class App extends React.Component {
 
   generateArbitratorExtraData = (subcourtID, noOfJurors) => `0x${parseInt(subcourtID, 10).toString(16).padStart(64, "0") + parseInt(noOfJurors, 10).toString(16).padStart(64, "0")}`;
 
-  withdrawFeesAndRewardsForAllRounds = (arbitrableAddress, arbitrableDispute) => EthereumInterface.send("ArbitrableProxy", arbitrableAddress, this.state.activeAddress, "0", "withdrawFeesAndRewardsForAllRounds", arbitrableDispute, this.state.activeAddress);
+  withdrawFeesAndRewardsForAllRounds = (arbitrableAddress, arbitrableDisputeID, rulingOptionsContributedTo) =>
+    EthereumInterface.send("ArbitrableProxy", arbitrableAddress, this.state.activeAddress, "0", "withdrawFeesAndRewardsForAllRounds", arbitrableDisputeID, this.state.activeAddress, rulingOptionsContributedTo);
 
   getAppealCost = async (arbitratorDisputeID) => EthereumInterface.call("IArbitrator", networkMap[this.state.network].KLEROS_LIQUID, "appealCost", arbitratorDisputeID, "0x0");
   getAppealCostOnArbitrable = async (arbitratorDisputeID, ruling) => EthereumInterface.call("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY, "appealCost", arbitratorDisputeID, ruling);
@@ -216,6 +217,7 @@ class App extends React.Component {
   getContributions = async (arbitrableDisputeID, round) => {
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY);
     const contributionLogs = await contractInstance.getPastEvents("Contribution", { fromBlock: 11590356, toBlock: "latest", filter: { localDisputeID: arbitrableDisputeID, round: round } });
+    console.log(contributionLogs);
     let contributionsForEachRuling = {};
     contributionLogs.map((log) => {
       contributionsForEachRuling[log.returnValues.ruling] = contributionsForEachRuling[log.returnValues.ruling] || 0;
@@ -330,8 +332,7 @@ class App extends React.Component {
                     getDisputeCallback={this.getDispute}
                     getDisputeEventCallback={this.getDisputeEvent}
                     getMultipliersCallback={this.getMultipliers}
-                    withdrewAlreadyCallback={this.withdrewAlready}
-                    withdrawFeesAndRewardsCallback={this.withdrawFeesAndRewardsForAllRounds}
+                    withdrawCallback={this.withdrawFeesAndRewardsForAllRounds}
                     activeAddress={activeAddress}
                     passPeriodCallback={this.passPeriod}
                     drawJurorsCallback={this.drawJurors}

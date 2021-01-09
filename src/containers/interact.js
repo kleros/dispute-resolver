@@ -86,6 +86,15 @@ class Interact extends React.Component {
 
   appeal = async (party, contribution) => this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);
 
+  withdraw = async () => {
+    console.log([Object.keys(this.state.contributions).map((key) => parseInt(key))]);
+    this.props.withdrawCallback(
+      this.state.arbitrated,
+      this.state.arbitrableDisputeID,
+      Object.keys(this.state.contributions).map((key) => parseInt(key))
+    );
+  };
+
   getWinnerMultiplier = async (arbitrableAddress) => {
     const winnerMultiplier = await this.props.getWinnerMultiplierCallback(arbitrableAddress);
 
@@ -221,6 +230,7 @@ class Interact extends React.Component {
           break;
         case "uint":
         case "int":
+        case "string":
           Object.keys(contributions).map(async (key) => {
             appealDeadlines[key] = await this.props.getAppealPeriodCallback(arbitrableDisputeID, key);
             appealCosts[key] = await this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, key);
@@ -230,7 +240,7 @@ class Interact extends React.Component {
 
       await this.setState({ appealDeadlines, appealCosts });
     } catch (err) {
-      console.error(err);
+      this.setState({ incompatible: true });
     }
   };
 
@@ -278,13 +288,14 @@ class Interact extends React.Component {
       appealDeadlines,
       appealDecisions,
       contributions,
+      incompatible,
     } = this.state;
 
-    const { arbitratorAddress, activeAddress, appealCallback, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, subcourts, subcourtDetails, network } = this.props;
+    const { arbitratorAddress, activeAddress, appealCallback, publishCallback, withdrawCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, subcourts, subcourtDetails, network } = this.props;
 
     return (
       <>
-        {Boolean(activeAddress) && !this.state.loading && (
+        {Boolean(activeAddress) && incompatible && (
           <div style={{ padding: "1rem 2rem", fontSize: "14px", background: "#ff9900", color: "white" }}>
             <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or appeal.
           </div>
@@ -329,6 +340,7 @@ class Interact extends React.Component {
             appealCallback={this.appeal}
             contributions={contributions}
             multipliers={multipliers}
+            withdrawCallback={this.withdraw}
           />
         </main>
       </>

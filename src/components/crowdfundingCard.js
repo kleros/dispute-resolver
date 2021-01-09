@@ -28,6 +28,29 @@ class CrowdfundingCard extends React.Component {
 
   onControlChange = async (e) => await this.setState({ [e.target.id]: e.target.value });
 
+  handleFundButtonClick = () => {
+    const { variable, appealCallback, rulingOptionCode } = this.props;
+    const { variableRulingOption, contribution } = this.state;
+    let actualRulingCode;
+
+    switch (variable) {
+      case undefined: //Not variable
+        actualRulingCode = rulingOptionCode;
+        break;
+      case "uint":
+        actualRulingCode = variableRulingOption + 1;
+        break;
+      case "int":
+        actualRulingCode = variableRulingOption >= 0 ? variableRulingOption + 1 : variableRulingOption;
+        break;
+      case "string":
+        actualRulingCode = variableRulingOption;
+        break;
+    }
+
+    appealCallback(actualRulingCode, BigNumber(contribution).times(DECIMALS));
+  };
+
   render() {
     const { dispute, subcourtDetails, subcourts, title, arbitratorDisputeDetails, grayedOut, winner, fundingPercentage, appealPeriodEnd, variable, roi, suggestedContribution, appealCallback, rulingOptionCode } = this.props;
     const { variableRulingOption, contribution } = this.state;
@@ -57,7 +80,7 @@ class CrowdfundingCard extends React.Component {
         <InputGroup className="my-3">
           <FormControl id="contribution" value={contribution} placeholder="Enter contribution amount" aria-label="Recipient's username" aria-describedby="basic-addon2" type="number" step="0.1" onChange={this.onControlChange} disabled={suggestedContribution == 0} />
           <InputGroup.Append>
-            <Button variant="primary" disabled={suggestedContribution == 0} onClick={(e) => appealCallback(variable ? variableRulingOption : rulingOptionCode, BigNumber(contribution).times(DECIMALS))}>
+            <Button variant="primary" disabled={suggestedContribution == 0} onClick={this.handleFundButtonClick}>
               Fund
             </Button>
           </InputGroup.Append>
