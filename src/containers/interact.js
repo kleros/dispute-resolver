@@ -95,6 +95,12 @@ class Interact extends React.Component {
     );
   };
 
+  getWithdrawAmount = async () =>
+    this.props.getTotalWithdrawableAmountCallback(
+      this.state.arbitrableDisputeID,
+      Object.keys(this.state.contributions).map((key) => parseInt(key))
+    );
+
   getWinnerMultiplier = async (arbitrableAddress) => {
     const winnerMultiplier = await this.props.getWinnerMultiplierCallback(arbitrableAddress);
 
@@ -206,7 +212,11 @@ class Interact extends React.Component {
 
     const appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
     const contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length);
-    await this.setState({ contributions, appealDecisions });
+    const totalWithdrawable = await this.props.getTotalWithdrawableAmountCallback(
+      arbitrableDisputeID,
+      Object.keys(contributions).map((key) => parseInt(key))
+    );
+    await this.setState({ contributions, appealDecisions, totalWithdrawable });
 
     try {
       const rulingOptionType = metaevidence.metaEvidenceJSON.rulingOptions.type;
@@ -289,9 +299,10 @@ class Interact extends React.Component {
       appealDecisions,
       contributions,
       incompatible,
+      totalWithdrawable,
     } = this.state;
 
-    const { arbitratorAddress, activeAddress, appealCallback, publishCallback, withdrawCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, subcourts, subcourtDetails, network } = this.props;
+    const { arbitratorAddress, activeAddress, appealCallback, publishCallback, withdrawCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, subcourts, subcourtDetails, network, getTotalWithdrawableAmountCallback } = this.props;
 
     return (
       <>
@@ -319,6 +330,7 @@ class Interact extends React.Component {
           </div>
           <DisputeSummary metaevidenceJSON={metaevidence.metaEvidenceJSON} ipfsGateway="https://ipfs.kleros.io" arbitrated={arbitrated} arbitratorAddress={arbitratorAddress} arbitratorDisputeID={arbitratorDisputeID} />
           <DisputeDetails
+            activeAddress={activeAddress}
             metaevidenceJSON={metaevidence.metaEvidenceJSON}
             evidences={evidences}
             ipfsGateway="https://ipfs.kleros.io"
@@ -341,6 +353,7 @@ class Interact extends React.Component {
             contributions={contributions}
             multipliers={multipliers}
             withdrawCallback={this.withdraw}
+            totalWithdrawable={totalWithdrawable}
           />
         </main>
       </>

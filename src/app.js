@@ -100,8 +100,8 @@ class App extends React.Component {
   getOpenDisputesOnCourt = async () => {
     const contractInstance = EthereumInterface.contractInstance("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID);
 
-    const newPeriodEvents = await contractInstance.getPastEvents("NewPeriod", { fromBlock: 7303699, toBlock: "latest" });
-    const disputeCreationEvents = await contractInstance.getPastEvents("DisputeCreation", { fromBlock: 7303699, toBlock: "latest" });
+    const newPeriodEvents = await contractInstance.getPastEvents("NewPeriod", { fromBlock: 11000000, toBlock: "latest" });
+    const disputeCreationEvents = await contractInstance.getPastEvents("DisputeCreation", { fromBlock: 11000000, toBlock: "latest" });
     const disputes = [...new Set(disputeCreationEvents.map((result) => result.returnValues._disputeID))];
     const resolvedDisputes = newPeriodEvents.filter((result) => result.returnValues._period == 4).map((result) => result.returnValues._disputeID);
 
@@ -133,13 +133,13 @@ class App extends React.Component {
 
   onPublish = async (filename, fileBuffer) => await ipfsPublish(filename, fileBuffer);
 
-  generateArbitratorExtraData = (subcourtID, noOfJurors) => `0x${parseInt(subcourtID, 10).toString(16).padStart(64, "0") + parseInt(noOfJurors, 10).toString(16).padStart(64, "0")}`;
+  generateArbitratorExtraData = (subcourtID, noOfVotes) => `0x${parseInt(subcourtID, 10).toString(16).padStart(64, "0") + parseInt(noOfVotes, 10).toString(16).padStart(64, "0")}`;
 
   withdrawFeesAndRewardsForAllRounds = (arbitrableAddress, arbitrableDisputeID, rulingOptionsContributedTo) =>
     EthereumInterface.send("ArbitrableProxy", arbitrableAddress, this.state.activeAddress, "0", "withdrawFeesAndRewardsForAllRounds", arbitrableDisputeID, this.state.activeAddress, rulingOptionsContributedTo);
 
   getAppealCost = async (arbitratorDisputeID) => EthereumInterface.call("IArbitrator", networkMap[this.state.network].KLEROS_LIQUID, "appealCost", arbitratorDisputeID, "0x0");
-  getAppealCostOnArbitrable = async (arbitratorDisputeID, ruling) => EthereumInterface.call("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY, "appealCost", arbitratorDisputeID, ruling);
+  getAppealCostOnArbitrable = async (arbitrableDisputeID, ruling) => EthereumInterface.call("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY, "appealCost", arbitrableDisputeID, ruling);
 
   appeal = (arbitrableAddress, arbitrableDisputeID, party, contribution) => EthereumInterface.send("ArbitrableProxy", arbitrableAddress, this.state.activeAddress, contribution, "fundAppeal", arbitrableDisputeID, party);
 
@@ -225,6 +225,9 @@ class App extends React.Component {
     });
     return contributionsForEachRuling;
   };
+
+  getTotalWithdrawableAmount = async (arbitrableDisputeID, contributedTo) =>
+    EthereumInterface.call("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY, "getTotalWithdrawableAmount", arbitrableDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO, contributedTo);
 
   getDispute = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "getDispute", arbitratorDisputeID);
 
@@ -333,6 +336,7 @@ class App extends React.Component {
                     getDisputeEventCallback={this.getDisputeEvent}
                     getMultipliersCallback={this.getMultipliers}
                     withdrawCallback={this.withdrawFeesAndRewardsForAllRounds}
+                    getTotalWithdrawableAmountCallback={this.getTotalWithdrawableAmount}
                     activeAddress={activeAddress}
                     passPeriodCallback={this.passPeriod}
                     drawJurorsCallback={this.drawJurors}

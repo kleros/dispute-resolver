@@ -51,7 +51,7 @@ class DisputeTimeline extends React.Component {
               <small className={styles.time}>
                 {period > 3 && "Concluded"}
                 {period == 3 && <Countdown date={(parseInt(lastPeriodChange) + parseInt(subcourt.timesPerPeriod[period])) * 1000} renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>} />}
-                {period < 3 && this.convertToHumanReadiableTime(subcourt.timesPerPeriod[2])}
+                {period < 3 && this.convertToHumanReadiableTime(subcourt.timesPerPeriod[3])}
               </small>
             </div>
           </Col>

@@ -93,6 +93,8 @@ class DisputeDetails extends React.Component {
       appealCallback,
       contributions,
       multipliers,
+      activeAddress,
+      totalWithdrawable,
     } = this.props;
     const { activeKey } = this.state;
     console.log(this.props);
@@ -145,7 +147,9 @@ class DisputeDetails extends React.Component {
                   ? "none"
                   : (currentRuling - 1)
                       .toString(2)
+                      .padStart(4, "0")
                       .split("")
+                      .reverse()
                       .map((bit, index) => (bit == 1 ? metaevidenceJSON.rulingOptions.titles[index] : null))
                       .join(" ")
               }`}
@@ -162,20 +166,30 @@ class DisputeDetails extends React.Component {
             }}
           >
             <Card>
-              {arbitratorDispute && arbitratorDispute.period >= 3 && (
+              {arbitratorDispute && arbitratorDispute.period >= 3 && contributions && (
                 <>
                   <Accordion.Toggle className={activeKey == 1 ? "open" : "closed"} as={Card.Header} eventKey="1">
                     Appeal
                   </Accordion.Toggle>
                   <Accordion.Collapse eventKey="1">
                     <Card.Body>
-                      <div className="h1">{arbitratorDispute.period == 3 ? "Appeal the decision" : "Withdraw crowdfunding contributions"}</div>
+                      <div className="h1">{arbitratorDispute.period == 3 ? "Appeal the decision" : "Withdraw crowdfunding rewards and refunds"}</div>
                       <p className="label">
                         {arbitratorDispute.period == 3
                           ? "In order to appeal the decision, you need to fully fund the crowdfunding deposit. The dispute will be sent to the jurors when the full deposit is reached. Note that if the previous round loser funds its side, the previous round winner should also fully fund its side in order not to lose the case."
-                          : "If you have contributed"}
+                          : parseInt(totalWithdrawable) != 0
+                          ? "If you have contributed to a ruling option and in the end that ruling option was the winner you are eligible for some reward. Also, if you have contributed but appeal did not happen your contribution is refunded."
+                          : "You don't have any refunds of rewards or you already withdrawn it."}
                       </p>
-                      {arbitratorDispute.period == 4 && <Button onClick={this.props.withdrawCallback}>Withdraw</Button>}
+                      {arbitratorDispute.period == 4 && parseInt(totalWithdrawable) != 0 && (
+                        <Row className="mt-5">
+                          <Col className="text-right">
+                            <Button className="ml-auto" onClick={this.props.withdrawCallback}>
+                              {`Withdraw ${BigNumber(totalWithdrawable).div(DECIMALS).toString()} ETH`}
+                            </Button>
+                          </Col>
+                        </Row>
+                      )}
 
                       {arbitratorDispute.period == 3 && appealDeadlines && contributions && Object.keys(appealCosts).length > 0 && (
                         <Row className="mt-3">
@@ -231,16 +245,17 @@ class DisputeDetails extends React.Component {
                             Array.from(Array(2 ** metaevidenceJSON.rulingOptions.titles.length).keys()).map((key, index) => (
                               <Col key={index} className="pb-4" xl={8} lg={12} xs={24}>
                                 <CrowdfundingCard
-                                  key={index + 1}
                                   title={
-                                    key == 0
+                                    index == 0
                                       ? "None"
-                                      : key
+                                      : index
                                           .toString(2)
                                           .padStart(4, "0")
                                           .split("")
-                                          .map((bit, index) => (bit == 1 ? metaevidenceJSON.rulingOptions.titles[index] : null))
+                                          .reverse()
+                                          .map((bit, i) => (bit == 1 ? metaevidenceJSON.rulingOptions.titles[i] : null))
                                           .join(" ")
+                                          .concat(" (ruling code: " + (index + 1) + ")")
                                   }
                                   winner={currentRuling == index + 1}
                                   fundingPercentage={

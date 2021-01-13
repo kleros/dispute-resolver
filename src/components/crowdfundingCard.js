@@ -30,6 +30,7 @@ class CrowdfundingCard extends React.Component {
 
   handleFundButtonClick = () => {
     const { variable, appealCallback, rulingOptionCode } = this.props;
+    // console.log(this.props);
     const { variableRulingOption, contribution } = this.state;
     let actualRulingCode;
 
@@ -85,7 +86,7 @@ class CrowdfundingCard extends React.Component {
             </Button>
           </InputGroup.Append>
         </InputGroup>
-        <AlertMessage extraClass="mt-auto" type="info" title={`For external contributors`} content={`If this ruling option wins, you will receive back ${roi} times of your contribution. `} />
+        <AlertMessage extraClass="mt-auto" type="info" title={`Return of Investment`} content={`If this ruling option wins, you will receive back ${roi} times of your contribution. `} />
       </div>
     );
   }
