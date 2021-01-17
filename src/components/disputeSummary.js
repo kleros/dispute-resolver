@@ -20,6 +20,7 @@ class DisputeSummary extends React.Component {
 
             {metaevidenceJSON.evidenceDisplayInterfaceURI && (
               <iframe
+                className="border-0"
                 src={
                   (metaevidenceJSON.evidenceDisplayInterfaceURI.includes("://") ? metaevidenceJSON.evidenceDisplayInterfaceURI : `https://ipfs.kleros.io${metaevidenceJSON.evidenceDisplayInterfaceURI}`) +
                   encodeURI(`?{"arbitrableContractAddress":"${arbitrated}","arbitratorContractAddress":"${arbitratorAddress}","disputeID":"${arbitratorDisputeID}"}`)

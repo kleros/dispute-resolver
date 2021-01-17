@@ -143,7 +143,7 @@ class App extends React.Component {
 
   appeal = (arbitrableAddress, arbitrableDisputeID, party, contribution) => EthereumInterface.send("ArbitrableProxy", arbitrableAddress, this.state.activeAddress, contribution, "fundAppeal", arbitrableDisputeID, party);
 
-  getAppealPeriod = async (arbitratorDisputeID, rulingOption) => EthereumInterface.call("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY, "appealPeriod", arbitratorDisputeID, rulingOption);
+  getAppealPeriod = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "appealPeriod", arbitratorDisputeID);
 
   getCurrentRuling = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "currentRuling", arbitratorDisputeID);
 

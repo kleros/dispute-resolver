@@ -210,13 +210,34 @@ class Interact extends React.Component {
       console.error(err.message);
     }
 
-    const appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
-    const contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length);
-    const totalWithdrawable = await this.props.getTotalWithdrawableAmountCallback(
-      arbitrableDisputeID,
-      Object.keys(contributions).map((key) => parseInt(key))
-    );
-    await this.setState({ contributions, appealDecisions, totalWithdrawable });
+    let appealDecisions, contributions, totalWithdrawable;
+    try {
+      appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
+      console.log(appealDecisions);
+      contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length);
+      console.log(contributions);
+
+      await this.setState({ contributions, appealDecisions });
+    } catch (err) {
+      this.setState({ incompatible: true });
+    }
+
+    if (arbitratorDispute.period == 3 || true) {
+      await this.setState({ appealCost: await this.props.getAppealCostCallback(arbitratorDisputeID) });
+      await this.setState({ appealPeriod: await this.props.getAppealPeriodCallback(arbitratorDisputeID) });
+    }
+
+    if (arbitratorDispute.period == 4) {
+      try {
+        totalWithdrawable = await this.props.getTotalWithdrawableAmountCallback(
+          arbitrableDisputeID,
+          Object.keys(contributions).map((key) => parseInt(key))
+        );
+        await this.setState({ totalWithdrawable });
+      } catch (err) {
+        this.setState({ incompatible: true });
+      }
+    }
 
     try {
       const rulingOptionType = metaevidence.metaEvidenceJSON.rulingOptions.type;
@@ -285,8 +306,9 @@ class Interact extends React.Component {
       arbitrableDisputeID,
       arbitratorDispute,
       arbitratorDisputeDetails,
+      appealCost,
+      appealPeriod,
       crowdfundingStatus,
-      appealCosts,
       arbitratorDisputeID,
       metaevidence,
       multipliers,
@@ -346,8 +368,8 @@ class Interact extends React.Component {
             publishCallback={publishCallback}
             submitEvidenceCallback={this.submitEvidence}
             getAppealPeriodCallback={getAppealPeriodCallback}
-            appealDeadlines={appealDeadlines}
-            appealCosts={appealCosts}
+            appealCost={appealCost}
+            appealPeriod={appealPeriod}
             appealDecisions={appealDecisions}
             appealCallback={this.appeal}
             contributions={contributions}

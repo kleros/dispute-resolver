@@ -33,14 +33,43 @@ class DisputeDetails extends React.Component {
     };
   }
 
-  calculateReturnOfInvestmentRatio = (party) => {
+  calculateTotalCost = (rulingOption) => {
+    const { currentRuling, multipliers, contributions } = this.props;
+
+    const appealCost = BigNumber(this.props.appealCost);
+    let stake;
+    if (currentRuling == rulingOption) {
+      stake = appealCost.times(BigNumber(multipliers.winnerStakeMultiplier)).div(BigNumber(multipliers.divisor));
+    } else {
+      stake = appealCost.times(BigNumber(multipliers.loserStakeMultiplier)).div(BigNumber(multipliers.divisor));
+    }
+
+    return appealCost.plus(stake);
+  };
+
+  calculateAmountRemainsToBeRaised = (rulingOption) => {
+    const { currentRuling, multipliers, contributions } = this.props;
+
+    const appealCost = BigNumber(this.props.appealCost);
+    let stake;
+    if (currentRuling == rulingOption) {
+      stake = appealCost.times(BigNumber(multipliers.winnerStakeMultiplier)).div(BigNumber(multipliers.divisor));
+    } else {
+      stake = appealCost.times(BigNumber(multipliers.loserStakeMultiplier)).div(BigNumber(multipliers.divisor));
+    }
+
+    const raisedSoFar = contributions[rulingOption] ? BigNumber(contributions[rulingOption]) : 0;
+
+    return appealCost.plus(stake).minus(raisedSoFar);
+  };
+
+  calculateReturnOfInvestmentRatio = (rulingOption) => {
     const { currentRuling, multipliers } = this.props;
 
-    const winner = BigNumber(multipliers.winner);
-    const loser = BigNumber(multipliers.loser);
-    const shared = BigNumber(multipliers.shared);
+    const winner = BigNumber(multipliers.winnerStakeMultiplier);
+    const loser = BigNumber(multipliers.loserStakeMultiplier);
     const divisor = BigNumber(multipliers.divisor);
-    if (currentRuling == party) {
+    if (currentRuling == rulingOption) {
       return winner.plus(loser).plus(divisor).div(winner.plus(divisor));
     } else {
       return winner.plus(loser).plus(divisor).div(loser.plus(divisor));
@@ -49,12 +78,20 @@ class DisputeDetails extends React.Component {
 
   calculateReturnOfInvestmentRatioForLoser = () => {
     const { currentRuling, multipliers } = this.props;
-    const winner = BigNumber(multipliers.winner);
-    const loser = BigNumber(multipliers.loser);
-    const shared = BigNumber(multipliers.shared);
+    const winner = BigNumber(multipliers.winnerStakeMultiplier);
+    const loser = BigNumber(multipliers.loserStakeMultiplier);
     const divisor = BigNumber(multipliers.divisor);
 
     return winner.plus(loser).plus(divisor).div(loser.plus(divisor));
+  };
+
+  calculateAppealPeriod = (rulingOption) => {
+    const { currentRuling, multipliers, appealPeriod } = this.props;
+    const loser = multipliers.loserAppealPeriodMultiplier;
+    const divisor = multipliers.divisor;
+
+    if (currentRuling == rulingOption) return appealPeriod.end;
+    else return parseInt(appealPeriod.start) + ((parseInt(appealPeriod.end) - parseInt(appealPeriod.start)) * parseInt(loser)) / divisor;
   };
 
   componentDidMount() {}
@@ -88,8 +125,8 @@ class DisputeDetails extends React.Component {
       disputeEvent,
       publishCallback,
       submitEvidenceCallback,
-      appealDeadlines,
-      appealCosts,
+      appealCost,
+      appealPeriod,
       appealCallback,
       contributions,
       multipliers,
@@ -166,7 +203,7 @@ class DisputeDetails extends React.Component {
             }}
           >
             <Card>
-              {arbitratorDispute && arbitratorDispute.period >= 3 && contributions && (
+              {arbitratorDispute && arbitratorDispute.period >= 3 && contributions && multipliers && appealCost && appealPeriod && (
                 <>
                   <Accordion.Toggle className={activeKey == 1 ? "open" : "closed"} as={Card.Header} eventKey="1">
                     Appeal
@@ -191,16 +228,16 @@ class DisputeDetails extends React.Component {
                         </Row>
                       )}
 
-                      {arbitratorDispute.period == 3 && appealDeadlines && contributions && Object.keys(appealCosts).length > 0 && (
+                      {arbitratorDispute.period == 3 && (
                         <Row className="mt-3">
                           <Col className="pb-4" xl={8} lg={12} xs={24}>
                             <CrowdfundingCard
                               key={0}
                               title={"Invalid / Refused to Arbitrate"}
                               winner={currentRuling == 0}
-                              fundingPercentage={contributions.hasOwnProperty(0) && appealCosts.hasOwnProperty(0) ? BigNumber(contributions[0]).div(BigNumber(appealCosts[0])).times(100).toFixed(2) : 0}
-                              appealPeriodEnd={appealDeadlines && appealDeadlines.hasOwnProperty(0) && parseInt(appealDeadlines[0].end)}
-                              suggestedContribution={contributions[0] ? BigNumber(appealCosts[0]).minus(BigNumber(contributions[0])).div(DECIMALS).toString() : BigNumber(appealCosts[0]).div(DECIMALS).toString()}
+                              fundingPercentage={contributions.hasOwnProperty(0) ? BigNumber(contributions[0]).div(this.calculateTotalCost(0)).times(100).toFixed(2) : 0}
+                              appealPeriodEnd={this.calculateAppealPeriod(0)}
+                              suggestedContribution={this.calculateAmountRemainsToBeRaised(0).div(DECIMALS).toString()}
                               roi={this.calculateReturnOfInvestmentRatio(0).toFixed(2)}
                               appealCallback={appealCallback}
                               rulingOptionCode={0}
@@ -208,32 +245,24 @@ class DisputeDetails extends React.Component {
                           </Col>
                           {metaevidenceJSON &&
                             metaevidenceJSON.rulingOptions.type == "single-select" &&
-                            Object.keys(appealDeadlines).length > 1 &&
                             metaevidenceJSON.rulingOptions.titles.map((title, index) => (
                               <Col key={index + 1} className="pb-4" xl={8} lg={12} xs={24}>
                                 <CrowdfundingCard
                                   title={title}
                                   winner={currentRuling == index + 1}
                                   fundingPercentage={
-                                    contributions[index + 1]
+                                    contributions.hasOwnProperty(index + 1)
                                       ? BigNumber(contributions[index + 1])
-                                          .div(BigNumber(appealCosts[index + 1]))
+                                          .div(this.calculateTotalCost(index + 1))
                                           .times(100)
                                           .toFixed(2)
                                       : 0
                                   }
-                                  appealPeriodEnd={appealDeadlines && appealDeadlines[index + 1] && parseInt(appealDeadlines[index + 1].end)}
+                                  appealPeriodEnd={this.calculateAppealPeriod(index + 1)}
+                                  suggestedContribution={this.calculateAmountRemainsToBeRaised(index + 1)
+                                    .div(DECIMALS)
+                                    .toString()}
                                   roi={this.calculateReturnOfInvestmentRatio(index + 1).toFixed(2)}
-                                  suggestedContribution={
-                                    contributions[index + 1]
-                                      ? BigNumber(appealCosts[index + 1])
-                                          .minus(BigNumber(contributions[index + 1]))
-                                          .div(DECIMALS)
-                                          .toString()
-                                      : BigNumber(appealCosts[index + 1])
-                                          .div(DECIMALS)
-                                          .toString()
-                                  }
                                   appealCallback={appealCallback}
                                   rulingOptionCode={index + 1}
                                 />
@@ -292,7 +321,14 @@ class DisputeDetails extends React.Component {
                                   title={key - 1}
                                   rulingOptionCode={key}
                                   winner={currentRuling == key}
-                                  fundingPercentage={contributions[key] ? BigNumber(contributions[key]).div(BigNumber(appealCosts[key])).times(100).toFixed(2) : 0}
+                                  fundingPercentage={
+                                    contributions[key - 1]
+                                      ? BigNumber(contributions[key - 1])
+                                          .div(BigNumber(appealCosts[key - 1]))
+                                          .times(100)
+                                          .toFixed(2)
+                                      : 0
+                                  }
                                   suggestedContribution={BigNumber(appealCosts[key]).minus(BigNumber(contributions[key])).div(DECIMALS).toString()}
                                   appealPeriodEnd={appealDeadlines && appealDeadlines[key] && parseInt(appealDeadlines[key].end)}
                                   roi={this.calculateReturnOfInvestmentRatio(key).toFixed(2)}
@@ -322,6 +358,7 @@ class DisputeDetails extends React.Component {
                 </>
               )}
             </Card>
+
             <Card>
               <Accordion.Toggle className={activeKey == 2 ? "open" : "closed"} as={Card.Header} eventKey="2">
                 Question
@@ -357,6 +394,7 @@ class DisputeDetails extends React.Component {
                 </Card.Body>
               </Accordion.Collapse>
             </Card>
+
             <Card>
               <Accordion.Toggle className={activeKey == 3 ? "open" : "closed"} as={Card.Header} eventKey="3">
                 Evidence

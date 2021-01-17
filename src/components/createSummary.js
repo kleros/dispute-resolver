@@ -92,7 +92,7 @@ class CreateSummary extends React.Component {
             </Col>
             <Col xl={6} md={12} sm={24} xs={24}>
               <Form.Group className="">
-                <Form.Label htmlFor="initialNumberOfJurors">Number of Jurors</Form.Label>
+                <Form.Label htmlFor="initialNumberOfJurors">Number of Votes</Form.Label>
                 <Form.Control className={styles.spanWithSvgInside} id="initialNumberOfJurors" as="span">
                   <AvatarSVG />
                   <span>{formData.initialNumberOfJurors}</span>
