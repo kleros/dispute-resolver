@@ -13,7 +13,6 @@ import { ReactComponent as Magnifier } from "../assets/images/magnifier.svg";
 import { Redirect, Link } from "react-router-dom";
 import Countdown from "react-countdown";
 import BigNumber from "bignumber.js";
-import { combinations } from "utils/combinations";
 
 import styles from "containers/styles/interact.module.css";
 
@@ -43,8 +42,20 @@ class Interact extends React.Component {
     if (this.state.arbitratorDisputeID) this.debouncedRetrieveUsingArbitratorID(this.state.arbitratorDisputeID);
   }
 
-  async componentDidUpdate(previousProperties) {
-    if (this.props.disputeID !== previousProperties.disputeID) await this.setState({ arbitrableDisputeID: this.props.disputeID });
+  componentDidUpdate(previousProperties) {
+    if (this.props.disputeID !== previousProperties.disputeID) {
+      this.setState({ arbitrableDisputeID: this.props.disputeID });
+      this.reload();
+    }
+  }
+
+  sumObjectsByKey(...objs) {
+    return objs.reduce((a, b) => {
+      for (let k in b) {
+        if (b.hasOwnProperty(k)) a[k] = (a[k] || 0) + b[k];
+      }
+      return a;
+    }, {});
   }
 
   submitEvidence = async (evidence) => {
@@ -91,7 +102,7 @@ class Interact extends React.Component {
     this.props.withdrawCallback(
       this.state.arbitrated,
       this.state.arbitrableDisputeID,
-      Object.keys(this.state.contributions).map((key) => parseInt(key))
+      Object.keys(this.state.aggregatedContributions).map((key) => parseInt(key))
     );
   };
 
@@ -213,7 +224,6 @@ class Interact extends React.Component {
     let appealDecisions, contributions, totalWithdrawable;
     try {
       appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
-      console.log(appealDecisions);
       contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length);
       console.log(contributions);
 
@@ -222,56 +232,26 @@ class Interact extends React.Component {
       this.setState({ incompatible: true });
     }
 
-    if (arbitratorDispute.period == 3 || true) {
+    if (arbitratorDispute.period >= 3) {
       await this.setState({ appealCost: await this.props.getAppealCostCallback(arbitratorDisputeID) });
       await this.setState({ appealPeriod: await this.props.getAppealPeriodCallback(arbitratorDisputeID) });
     }
 
     if (arbitratorDispute.period == 4) {
+      let contributionsOfPastRounds = [];
+      for (let i = 0; i < appealDecisions.length; i++) contributionsOfPastRounds[i] = await this.props.getContributionsCallback(arbitrableDisputeID, i);
+
+      const aggregatedContributions = this.sumObjectsByKey(...contributionsOfPastRounds, contributions);
+
       try {
         totalWithdrawable = await this.props.getTotalWithdrawableAmountCallback(
           arbitrableDisputeID,
-          Object.keys(contributions).map((key) => parseInt(key))
+          Object.keys(aggregatedContributions).map((key) => parseInt(key))
         );
-        await this.setState({ totalWithdrawable });
+        await this.setState({ totalWithdrawable, aggregatedContributions });
       } catch (err) {
         this.setState({ incompatible: true });
       }
-    }
-
-    try {
-      const rulingOptionType = metaevidence.metaEvidenceJSON.rulingOptions.type;
-      console.log(rulingOptionType);
-      let appealDeadlines = { 0: await this.props.getAppealPeriodCallback(arbitrableDisputeID, 0) },
-        appealCosts = { 0: await this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, 0) };
-
-      switch (rulingOptionType) {
-        case "single-select":
-          await metaevidence.metaEvidenceJSON.rulingOptions.titles.map(async (key, index) => {
-            appealDeadlines[index + 1] = await this.props.getAppealPeriodCallback(arbitrableDisputeID, index + 1);
-            appealCosts[index + 1] = await this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, index + 1);
-          });
-          break;
-
-        case "multiple-select":
-          Array.from(Array(2 ** metaevidence.metaEvidenceJSON.rulingOptions.titles.length).keys()).map(async (key) => {
-            appealDeadlines[key + 1] = await this.props.getAppealPeriodCallback(arbitrableDisputeID, key + 1);
-            appealCosts[key + 1] = await this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, key + 1);
-          });
-          break;
-        case "uint":
-        case "int":
-        case "string":
-          Object.keys(contributions).map(async (key) => {
-            appealDeadlines[key] = await this.props.getAppealPeriodCallback(arbitrableDisputeID, key);
-            appealCosts[key] = await this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, key);
-          });
-          break;
-      }
-
-      await this.setState({ appealDeadlines, appealCosts });
-    } catch (err) {
-      this.setState({ incompatible: true });
     }
   };
 
@@ -322,6 +302,7 @@ class Interact extends React.Component {
       contributions,
       incompatible,
       totalWithdrawable,
+      aggregatedContributions,
     } = this.state;
 
     const { arbitratorAddress, activeAddress, appealCallback, publishCallback, withdrawCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, subcourts, subcourtDetails, network, getTotalWithdrawableAmountCallback } = this.props;
