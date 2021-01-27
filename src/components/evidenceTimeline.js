@@ -265,7 +265,7 @@ class EvidenceTimeline extends React.Component {
                   </Button>
                 </Col>
                 <Col md="auto" xs={24} sm={12}>
-                  <Button type="button" variant="primary" onClick={this.handleSubmitEvidenceButtonClick} disabled={awaitingConfirmation}>
+                  <Button type="button" variant="primary" onClick={this.handleSubmitEvidenceButtonClick} disabled={awaitingConfirmation || uploadingToIPFS}>
                     {(awaitingConfirmation && "Awaiting Confirmation") || "Submit"}
                   </Button>
                 </Col>

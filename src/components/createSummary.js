@@ -29,10 +29,11 @@ class CreateSummary extends React.Component {
     this.setState({ awaitingConfirmation: true });
 
     const noOfOptions = formData.questionType.code == "multiple-select" ? Math.pow(2, formData.rulingTitles.length) : formData.rulingTitles.length;
-    const aliases = formData.names.reduce(function (result, field, index) {
-      result[formData.addresses[index]] = field;
-      return result;
-    }, {});
+
+    let aliases = {};
+    formData.names.map((name, index) => {
+      aliases[formData.addresses[index]] = name;
+    });
 
     try {
       const receipt = await this.props.createDisputeCallback({
@@ -120,7 +121,7 @@ class CreateSummary extends React.Component {
           <Row>
             {formData.names.map((value, index) => (
               <>
-                <Col xl={2} lg={2} md={4}>
+                <Col xl={4} lg={4} md={8}>
                   <Form.Group>
                     <Form.Label htmlFor="requester">Party {index + 1}</Form.Label>
 
@@ -129,7 +130,7 @@ class CreateSummary extends React.Component {
                     </Form.Control>
                   </Form.Group>
                 </Col>
-                <Col xl={4} lg={4} md={8}>
+                <Col xl={8} lg={8} md={16}>
                   <Form.Group>
                     <Form.Label htmlFor={`address${index}`}>Party {index + 1} Address (Optional)</Form.Label>
 

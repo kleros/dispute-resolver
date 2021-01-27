@@ -95,7 +95,7 @@ class Interact extends React.Component {
 
   onContributeButtonClick = (e) => this.setState({ contributeModalShow: true });
 
-  appeal = async (party, contribution) => this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);
+  appeal = async (party, contribution) => await this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);
 
   withdraw = async () => {
     console.log([Object.keys(this.state.contributions).map((key) => parseInt(key))]);
@@ -256,25 +256,16 @@ class Interact extends React.Component {
   };
 
   reload = async () => {
-    const { arbitrated, arbitratorDisputeID, arbitrableDisputeID } = this.state;
+    const { arbitrated, arbitratorDisputeID, arbitrableDisputeID, metaevidence } = this.state;
     this.setState({
       arbitratorDispute: await this.props.getArbitratorDisputeCallback(arbitratorDisputeID),
       evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
       appealDecisions: await this.props.getAppealDecisionCallback(arbitratorDisputeID),
     });
 
-    try {
-      const appealDeadlines = ["Refused to Rule"].concat(metaevidence.metaEvidenceJSON.rulingOptions.titles).map((title, index) => this.props.getAppealPeriodCallback(arbitrableDisputeID, index));
-      const appealCosts = ["Refused to Rule"].concat(metaevidence.metaEvidenceJSON.rulingOptions.titles).map((title, index) => this.props.getAppealCostOnArbitrableCallback(arbitrableDisputeID, index));
-
-      await this.setState({ appealDeadlines: await Promise.all(appealDeadlines), appealCosts: await Promise.all(appealCosts) });
-    } catch (err) {
-      console.error(err);
-    }
-
     const appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
-    this.setState({ appealDecisions });
-    await this.setState({ contributions: await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length) });
+
+    await this.setState({ appealDecisions, contributions: await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length) });
   };
 
   render() {

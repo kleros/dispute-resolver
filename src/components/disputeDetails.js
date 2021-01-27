@@ -307,7 +307,6 @@ class DisputeDetails extends React.Component {
                                           .reverse()
                                           .map((bit, i) => (bit == 1 ? metaevidenceJSON.rulingOptions.titles[i] : null))
                                           .join(" ")
-                                          .concat(" (ruling code: " + (index + 1) + ")")
                                   }
                                   winner={currentRuling == index + 1}
                                   fundingPercentage={
@@ -399,7 +398,9 @@ class DisputeDetails extends React.Component {
 
                         <Dropdown.Menu>
                           {metaevidenceJSON.rulingOptions.titles.map((title, index) => (
-                            <Dropdown.Item key={index} disabled>{`Option ${index + 1}: ${title}`}</Dropdown.Item>
+                            <Dropdown.Item key={index} disabled>{`Option ${index + 1} ${title}${metaevidenceJSON.rulingOptions.descriptions[index] != undefined ? ":" : ""} ${
+                              metaevidenceJSON.rulingOptions.descriptions[index] != undefined ? metaevidenceJSON.rulingOptions.descriptions[index] : ""
+                            }`}</Dropdown.Item>
                           ))}
                         </Dropdown.Menu>
                       </Dropdown>

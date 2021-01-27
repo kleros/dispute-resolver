@@ -66,7 +66,7 @@ class DisputeSummary extends React.Component {
           {metaevidenceJSON.fileURI && (
             <Row className={styles.footer}>
               <Col>
-                <a href={ipfsGateway + metaevidenceJSON.fileURI}>
+                <a href={ipfsGateway + metaevidenceJSON.fileURI} target="_blank" rel="noopener noreferrer">
                   <AttachmentSVG />
                   {metaevidenceJSON.fileURI.split("/").slice(-1)}
                 </a>

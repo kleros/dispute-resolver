@@ -50,9 +50,7 @@ class CrowdfundingCard extends React.Component {
         break;
     }
 
-    appealCallback(actualRulingCode, BigNumber(contribution).times(DECIMALS));
-
-    this.setState({ variableRulingOption: "", contribution: this.props.suggestedContribution });
+    appealCallback(actualRulingCode, BigNumber(contribution).times(DECIMALS)).then(this.setState({ variableRulingOption: "", contribution: this.props.suggestedContribution }));
   };
 
   render() {
@@ -82,7 +80,17 @@ class CrowdfundingCard extends React.Component {
             <Countdown className={styles.countdown} date={1000 * parseInt(appealPeriodEnd)} renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>} />
           </div>
           <InputGroup className="my-3">
-            <FormControl id="contribution" value={contribution} placeholder="Enter contribution amount" aria-label="Recipient's username" aria-describedby="basic-addon2" type="number" step="0.01" onChange={this.onControlChange} disabled={suggestedContribution == 0} />
+            <FormControl
+              id="contribution"
+              value={suggestedContribution > 0 ? contribution : 0}
+              placeholder="Enter contribution amount"
+              aria-label="Recipient's username"
+              aria-describedby="basic-addon2"
+              type="number"
+              step="0.01"
+              onChange={this.onControlChange}
+              disabled={suggestedContribution == 0}
+            />
             <InputGroup.Append>
               <Button variant="primary" disabled={suggestedContribution == 0 || (variable && !variableRulingOption)} onClick={this.handleFundButtonClick}>
                 Fund
