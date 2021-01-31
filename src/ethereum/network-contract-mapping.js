@@ -1,3 +1,5 @@
+import ArbitrableProxy from "../../node_modules/@kleros/arbitrable-proxy-contracts/build/contracts/ArbitrableProxy.json";
+
 const map = {
   1: {
     KLEROS_LIQUID: "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
@@ -6,7 +8,7 @@ const map = {
   },
   42: {
     KLEROS_LIQUID: "0x60b2abfdfad9c0873242f59f2a8c32a3cc682f80",
-    ARBITRABLE_PROXY: "0x776c837650Ea8bCB068902320c3B6F0A70C61a68",
+    ARBITRABLE_PROXY: ArbitrableProxy.networks[42].address,
     POLICY_REGISTRY: "0xFC53D1d6dDc2C6Cdd403cb7DBf0f26140D82e12d",
   },
 };
