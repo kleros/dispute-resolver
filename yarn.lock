@@ -1573,10 +1573,10 @@
     "@types/yargs" "^15.0.0"
     chalk "^4.0.0"
 
-"@kleros/arbitrable-proxy-contracts@^1.6.0":
-  version "1.6.0"
-  resolved "https://registry.yarnpkg.com/@kleros/arbitrable-proxy-contracts/-/arbitrable-proxy-contracts-1.6.0.tgz#79f1506a78b39e079ad6bd478596f6e2ef940096"
-  integrity sha512-5eBsVXj5Ok4jq6Cu/lmTNyWqvx3iLcsHajk74yo/a4j9yuRMN2Bya511ny+PhglDT5mDlE/u2eBgcrllDHPxDQ==
+"@kleros/arbitrable-proxy-contracts@^1.7.0":
+  version "1.7.0"
+  resolved "https://registry.yarnpkg.com/@kleros/arbitrable-proxy-contracts/-/arbitrable-proxy-contracts-1.7.0.tgz#4d87c12a54a39510592b9effd3e8c45eebb4bbe7"
+  integrity sha512-AmTc2RArBQUEdbcUw7Jxl+d2UHrW3Mz4J7V9beR/WJaey3dsCuBzUlh4vflwXuRlART8Q6Ln/58lTPkmURyelg==
   dependencies:
     "@kleros/erc-792" "7.0.0"
     "@kleros/ethereum-libraries" "^2.0.0"
