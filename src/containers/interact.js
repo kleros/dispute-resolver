@@ -1,7 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import { Card, Col, Container, Form, Row, Button, InputGroup, FormControl, Accordion } from "react-bootstrap";
-import Appeal from "components/appeal";
 import DisputeSummary from "components/disputeSummary";
 import DisputeDetails from "components/disputeDetails";
 import debounce from "lodash.debounce";
@@ -59,7 +58,7 @@ class Interact extends React.Component {
   }
 
   submitEvidence = async (evidence) => {
-    console.log(this.state);
+    console.debug(this.state);
     await this.props.submitEvidenceCallback(this.state.arbitrated, {
       disputeID: this.state.arbitrableDisputeID,
       evidenceDescription: evidence.evidenceDescription,
@@ -67,7 +66,7 @@ class Interact extends React.Component {
       evidenceTitle: evidence.evidenceTitle,
       supportingSide: evidence.supportingSide,
     });
-    console.log("submitted");
+    console.debug("submitted");
     new Promise(() => setTimeout(2000)).then(this.reload());
   };
 
@@ -98,7 +97,7 @@ class Interact extends React.Component {
   appeal = async (party, contribution) => await this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);
 
   withdraw = async () => {
-    console.log([Object.keys(this.state.contributions).map((key) => parseInt(key))]);
+    console.debug([Object.keys(this.state.contributions).map((key) => parseInt(key))]);
     this.props.withdrawCallback(
       this.state.arbitrated,
       this.state.arbitrableDisputeID,
@@ -158,7 +157,7 @@ class Interact extends React.Component {
       arbitrated = (await this.props.getArbitratorDisputeCallback(arbitratorDisputeID)).arbitrated;
       this.setState({ arbitrated });
     } catch (e) {
-      console.log("err2");
+      console.debug("err2");
       console.error(e);
       return;
     }
@@ -190,18 +189,18 @@ class Interact extends React.Component {
         getDisputeResult: await this.props.getDisputeCallback(arbitratorDisputeID),
       });
     } catch (err) {
-      console.log("err");
+      console.debug("err");
       console.error(err.message);
     } finally {
     }
 
-    console.log("There");
+    console.debug("There");
     try {
       this.setState({
         evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
       });
     } catch (err) {
-      console.log("err");
+      console.debug("err");
       console.error(err.message);
     } finally {
     }
@@ -225,7 +224,7 @@ class Interact extends React.Component {
     try {
       appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
       contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length);
-      console.log(contributions);
+      console.debug(contributions);
 
       await this.setState({ contributions, appealDecisions });
     } catch (err) {
@@ -261,6 +260,7 @@ class Interact extends React.Component {
       arbitratorDispute: await this.props.getArbitratorDisputeCallback(arbitratorDisputeID),
       evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
       appealDecisions: await this.props.getAppealDecisionCallback(arbitratorDisputeID),
+      arbitratorDisputeDetails: await this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
     });
 
     const appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);

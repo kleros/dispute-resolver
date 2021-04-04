@@ -87,7 +87,7 @@ class CreateForm extends React.Component {
   };
 
   onQuestionTypeChange = async (questionType) => {
-    console.log(JSON.parse(questionType));
+    console.debug(JSON.parse(questionType));
     await this.setState({ questionType: JSON.parse(questionType) });
 
     if (!(JSON.parse(questionType).code == QuestionTypes.SINGLE_SELECT.code || JSON.parse(questionType).code == QuestionTypes.MULTIPLE_SELECT.code)) {
@@ -107,7 +107,7 @@ class CreateForm extends React.Component {
     let number = parseInt(event.target.value);
     if (Number.isNaN(number));
     {
-      console.log(Number.isNaN(number));
+      console.debug(Number.isNaN(number));
       this.setState({ numberOfRulingOptions: number });
       return;
     }

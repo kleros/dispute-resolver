@@ -45,29 +45,24 @@ class DisputeDetails extends React.Component {
 
     const appealCost = BigNumber(this.props.appealCost);
     let stake;
-    if (currentRuling == rulingOption) {
+    console.debug(`current ruling ${currentRuling}`);
+    console.debug(`tie multiplier: ${multipliers.tieStakeMultiplier}`);
+
+    if (currentRuling == 0) {
+      stake = appealCost.times(BigNumber(multipliers.tieStakeMultiplier)).div(BigNumber(multipliers.divisor));
+    } else if (currentRuling == rulingOption) {
       stake = appealCost.times(BigNumber(multipliers.winnerStakeMultiplier)).div(BigNumber(multipliers.divisor));
     } else {
-      stake = appealCost.times(BigNumber(multipliers.loserStakeMultiplier)).div(BigNumber(multipliers.divisor));
+      stake = calculateAmountRemainsToBeRaisedForLoser();
     }
 
     return appealCost.plus(stake);
   };
 
   calculateAmountRemainsToBeRaised = (rulingOption) => {
-    const { currentRuling, multipliers, contributions } = this.props;
-
-    const appealCost = BigNumber(this.props.appealCost);
-    let stake;
-    if (currentRuling == rulingOption) {
-      stake = appealCost.times(BigNumber(multipliers.winnerStakeMultiplier)).div(BigNumber(multipliers.divisor));
-    } else {
-      stake = appealCost.times(BigNumber(multipliers.loserStakeMultiplier)).div(BigNumber(multipliers.divisor));
-    }
-
+    const { contributions } = this.props;
     const raisedSoFar = contributions[rulingOption] ? BigNumber(contributions[rulingOption]) : 0;
-
-    return appealCost.plus(stake).minus(raisedSoFar);
+    return this.calculateTotalCost(rulingOption).minus(raisedSoFar);
   };
 
   calculateAmountRemainsToBeRaisedForLoser = () => {
@@ -84,8 +79,13 @@ class DisputeDetails extends React.Component {
 
     const winner = BigNumber(multipliers.winnerStakeMultiplier);
     const loser = BigNumber(multipliers.loserStakeMultiplier);
+    const tie = BigNumber(multipliers.tieStakeMultiplier);
+
     const divisor = BigNumber(multipliers.divisor);
-    if (currentRuling == rulingOption) {
+
+    if (currentRuling == 0) {
+      return tie.plus(tie).plus(divisor).div(tie.plus(divisor));
+    } else if (currentRuling == rulingOption) {
       return winner.plus(loser).plus(divisor).div(winner.plus(divisor));
     } else {
       return winner.plus(loser).plus(divisor).div(loser.plus(divisor));
@@ -158,8 +158,8 @@ class DisputeDetails extends React.Component {
       totalWithdrawable,
     } = this.props;
     const { activeKey } = this.state;
-    console.log(this.props);
-    console.log(this.state);
+    console.debug(this.props);
+    console.debug(this.state);
 
     if (metaevidenceJSON && arbitratorDispute && subcourts && subcourtDetails && arbitratorDisputeDetails)
       return (
@@ -195,7 +195,7 @@ class DisputeDetails extends React.Component {
             </Col>
           </Row>
           {metaevidenceJSON.rulingOptions.type == "single-select" && arbitratorDispute.period >= 3 && (
-            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "refused to arbitrate" : metaevidenceJSON.rulingOptions.titles[currentRuling - 1]}`} content="This decision can be appealed within appeal period." />
+            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : metaevidenceJSON.rulingOptions.titles[currentRuling - 1]}`} content="This decision can be appealed within appeal period." />
           )}
 
           {metaevidenceJSON.rulingOptions.type == "multiple-select" && arbitratorDispute.period >= 3 && (
@@ -203,7 +203,7 @@ class DisputeDetails extends React.Component {
               type="info"
               title={`Jury decision: ${
                 currentRuling == 0
-                  ? "refused to arbitrate"
+                  ? "invalid / refused to arbitrate / tied"
                   : currentRuling == 1
                   ? "none"
                   : (currentRuling - 1)
@@ -218,7 +218,7 @@ class DisputeDetails extends React.Component {
             /> // Refactor out this logic, too complicated.
           )}
           {(metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") && arbitratorDispute.period >= 3 && (
-            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "refused to arbitrate" : currentRuling - 1}`} content="This decision can be appealed within appeal period." /> // Refactor out this logic, too complicated.
+            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : currentRuling - 1}`} content="This decision can be appealed within appeal period." /> // Refactor out this logic, too complicated.
           )}
           <Accordion
             className={`mt-4 ${styles.accordion}`}
@@ -240,7 +240,7 @@ class DisputeDetails extends React.Component {
                           ? "In order to appeal the decision, you need to fully fund the crowdfunding deposit. The dispute will be sent to the jurors when the full deposit is reached. Note that if the previous round loser funds its side, the previous round winner should also fully fund its side in order not to lose the case."
                           : parseInt(totalWithdrawable) != 0
                           ? "If you have contributed to a ruling option and in the end that ruling option was the winner you are eligible for some reward. Also, if you have contributed but appeal did not happen your contribution is refunded."
-                          : "You don't have any amount to withdraw. Reason might be that you did not contribute, you already withdrew or the ruling is not executed yet by the arbitrator."}
+                          : "You don't have any amount to withdraw. Reason might be that you did not contribute, the ruling option you have contributed did not win, you already withdrew or the ruling is not executed yet by the arbitrator."}
                       </p>
                       {arbitratorDispute.period == 4 && parseInt(totalWithdrawable) > 0 && (
                         <Row className="mt-5">
@@ -257,7 +257,7 @@ class DisputeDetails extends React.Component {
                           <Col className="pb-4" xl={8} lg={12} xs={24}>
                             <CrowdfundingCard
                               key={0}
-                              title={"Invalid / Refused to Arbitrate"}
+                              title={"Invalid / Refused to Arbitrate / Tied"}
                               winner={currentRuling == 0}
                               fundingPercentage={contributions.hasOwnProperty(0) ? BigNumber(contributions[0]).div(this.calculateTotalCost(0)).times(100).toFixed(2) : 0}
                               appealPeriodEnd={this.calculateAppealPeriod(0)}

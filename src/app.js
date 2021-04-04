@@ -190,6 +190,7 @@ class App extends React.Component {
       .then((response) => EthereumInterface.contractInstance("IEvidence", arbitrableAddress).getPastEvents("MetaEvidence", { fromBlock: 7303699, toBlock: "latest", filter: { _metaEvidenceID: response.metaEvidenceID } }))
       .then((metaevidence) => {
         if (metaevidence.length > 0) {
+          console.debug(metaevidence[0].returnValues._evidence);
           return fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence).then((response) => response.json());
         }
       });

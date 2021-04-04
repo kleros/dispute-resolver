@@ -39,7 +39,7 @@ class EvidenceTimeline extends React.Component {
   handleControlChange = async (event) => {
     const name = event.target.name;
     const value = event.target.value;
-    console.log([name, value]);
+    console.debug([name, value]);
     await this.setState({ [name]: value });
   };
 
@@ -66,7 +66,7 @@ class EvidenceTimeline extends React.Component {
         support: 0,
       });
     } catch (err) {
-      console.log(err);
+      console.debug(err);
       await this.setState({
         awaitingConfirmation: false,
         modalExtraClass: "closed",
@@ -76,7 +76,7 @@ class EvidenceTimeline extends React.Component {
   };
 
   eventPhrasing = (metaevidence, numberOfVotes, numberOfVotesCast, currentRulingOnArbitrator, disputePeriodCode) => {
-    console.log(disputePeriodCode);
+    console.debug(disputePeriodCode);
     const DaysEnum = Object.freeze({
       NO_VOTES_CAST: 0,
       JUROR_DECISION: 1,
@@ -99,7 +99,7 @@ class EvidenceTimeline extends React.Component {
 
       const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
 
-      console.log(result);
+      console.debug(result);
       if (result)
         await this.setState({
           evidenceDocument: `/ipfs/${result[1].hash}${result[0].path}`,
@@ -159,8 +159,8 @@ class EvidenceTimeline extends React.Component {
     const { ipfsGateway, metaevidence, evidences, currentRuling, dispute, disputePeriod, numberOfVotes, numberOfVotesCast, evidenceSubmissionEnabled, appealDecisions } = this.props;
 
     const { evidenceDescription, evidenceTitle, fileInput, awaitingConfirmation, uploadingToIPFS } = this.state;
-    console.log(this.props);
-    console.log(this.state);
+    console.debug(this.props);
+    console.debug(this.state);
     return (
       <div id="evidence-timeline" className={styles.evidenceTimeline}>
         <div className={styles["content-inner"]}>

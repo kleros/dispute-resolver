@@ -20,7 +20,7 @@ class Create extends React.Component {
   componentDidMount = async (e) => {};
 
   onNextButtonClick = (formData) => {
-    console.log(formData);
+    console.debug(formData);
     this.setState({ activePage: 2, formData });
   };
 

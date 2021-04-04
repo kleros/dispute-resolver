@@ -45,7 +45,7 @@ class openDisputeIDs extends React.Component {
   };
 
   onFilterSelect = async (filter) => {
-    console.log(filter);
+    console.debug(filter);
     await this.setState({ statusFilter: filter });
   };
 

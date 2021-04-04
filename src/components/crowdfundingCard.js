@@ -68,7 +68,7 @@ class CrowdfundingCard extends React.Component {
 
         {winner && (
           <div>
-            <small>Previous round winner</small>
+            <small>Latest jury decision</small>
           </div>
         )}
         <div className="mt-auto">

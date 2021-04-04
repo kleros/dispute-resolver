@@ -7,7 +7,7 @@ import styles from "components/styles/disputeSummary.module.css";
 class DisputeSummary extends React.Component {
   render() {
     const { metaevidenceJSON, ipfsGateway, interfaceValid, arbitrated, arbitratorDisputeID, arbitratorAddress } = this.props;
-    console.log(metaevidenceJSON);
+    console.debug(metaevidenceJSON);
 
     if (metaevidenceJSON)
       return (
