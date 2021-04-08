@@ -208,7 +208,8 @@ class CreateForm extends React.Component {
                 <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
                 <Dropdown required onSelect={this.onSubcourtSelect}>
                   <Dropdown.Toggle className="form-control" id="subcourt-dropdown" block disabled={subcourtsLoading || summary} className={styles.dropdownToggle}>
-                    <ScalesSVG className={styles.scales} /> <span className="font-weight-normal">{(subcourtsLoading && "Loading...") || (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt].name) || "Please select a court"}</span>
+                    <ScalesSVG className={styles.scales} />{" "}
+                    <span className="font-weight-normal">{(subcourtsLoading && "Loading...") || (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt] && subcourtDetails[selectedSubcourt].name) || "Please select a court"}</span>
                   </Dropdown.Toggle>
 
                   <Dropdown.Menu>

@@ -84,7 +84,9 @@ class App extends React.Component {
           promise.then((subcourtURI) => {
             if (subcourtURI.length > 0) {
               if (subcourtURI.includes("http")) {
-                return fetch(subcourtURI).then((response) => response.json());
+                return fetch(subcourtURI)
+                  .then((response) => response.json())
+                  .catch((error) => console.error(error));
               } else {
                 return fetch("https://ipfs.kleros.io" + subcourtURI).then((response) => response.json());
               }

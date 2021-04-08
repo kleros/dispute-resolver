@@ -1,4 +1,4 @@
-import { Navbar, Nav } from "react-bootstrap";
+import { Navbar, Nav, Col } from "react-bootstrap";
 import React from "react";
 import { ReactComponent as Etherscan } from "../assets/images/etherscan.svg";
 import { ReactComponent as Github } from "../assets/images/github.svg";
@@ -16,14 +16,15 @@ import { LinkContainer } from "react-router-bootstrap";
 
 import styles from "./styles/footer.module.css";
 
-const ETHERSCAN_STRINGS = Object.freeze({ 1: "", 42: "kovan." });
+const ETHERSCAN_STRINGS = Object.freeze({ 1: "", 3: "ropsten.", 42: "kovan." });
+const NETWORK_NAMES = Object.freeze({ 1: "", 3: "Ropsten", 42: "Kovan" });
 
 class Footer extends React.Component {
   constructor(props) {
     super(props);
   }
   render() {
-    const { viewOnly } = this.props;
+    const { viewOnly, network } = this.props;
     console.debug(this.props);
     return (
       <footer>
@@ -31,13 +32,16 @@ class Footer extends React.Component {
           <a className={`m-auto m-sm-0 ${styles.brand}`} href="https://kleros.io">
             <SecuredByKleros />
           </a>
+          <div className={`d-none d-lg-block`}>
+            <Col>{NETWORK_NAMES[network]}</Col>
+          </div>
           <div className={`ml-sm-auto ${styles.rest}`}>
             <a className={`d-none d-sm-block ${styles.help}`} href="https://t.me/kleros">
               <span>I need help</span>
               <Help />
             </a>
             <div className={`d-none d-md-block ${styles.social}`}>
-              <a href={`https://etherscan.io/address/${this.props.networkMap[1].ARBITRABLE_PROXY}#code`}>
+              <a href={`https://${ETHERSCAN_STRINGS[network]}etherscan.io/address/${this.props.networkMap[network].ARBITRABLE_PROXY}#code`} target="_blank" rel="noopener noreferrer">
                 <Etherscan />
               </a>
               <a href="https://github.com/kleros/dispute-resolver">
