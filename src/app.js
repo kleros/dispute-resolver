@@ -17,6 +17,7 @@ import Archon from "@kleros/archon";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 const IPFS_GATEWAY = "https://ipfs.kleros.io";
+const QUERY_FROM_BLOCK = 7303699; // For performance.
 
 class App extends React.Component {
   constructor(props) {
@@ -50,11 +51,11 @@ class App extends React.Component {
 
       // var subscription = Web3.eth
       //   .subscribe("pendingTransactions", function (error, result) {
-      //     if (!error) console.log(result);
+      //     if (!error) console.debug(result);
       //     else console.error(error);
       //   })
       //   .on("data", function (transaction) {
-      //     console.log(transaction);
+      //     console.debug(transaction);
       //   });
     } else console.error("MetaMask not detected :(");
 
@@ -66,7 +67,7 @@ class App extends React.Component {
       try {
         await this.estimateGasOfGetSubcourt(counter++);
       } catch (err) {
-        console.log("disregard this error");
+        console.debug("disregard this error");
         break;
       }
     }
@@ -76,7 +77,7 @@ class App extends React.Component {
       subcourts[i] = this.getSubcourt(i);
     }
 
-    await Promise.all(subcourtURIs.map((promise) => promise.then((subcourtURI) => console.log(subcourtURI))));
+    await Promise.all(subcourtURIs.map((promise) => promise.then((subcourtURI) => console.debug(subcourtURI))));
 
     this.setState({
       subcourtDetails: await Promise.all(
@@ -102,8 +103,8 @@ class App extends React.Component {
   getOpenDisputesOnCourt = async () => {
     const contractInstance = EthereumInterface.contractInstance("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID);
 
-    const newPeriodEvents = await contractInstance.getPastEvents("NewPeriod", { fromBlock: 10000000, toBlock: "latest" });
-    const disputeCreationEvents = await contractInstance.getPastEvents("DisputeCreation", { fromBlock: 10000000, toBlock: "latest" });
+    const newPeriodEvents = await contractInstance.getPastEvents("NewPeriod", { fromBlock: QUERY_FROM_BLOCK, toBlock: "latest" });
+    const disputeCreationEvents = await contractInstance.getPastEvents("DisputeCreation", { fromBlock: QUERY_FROM_BLOCK, toBlock: "latest" });
     const disputes = [...new Set(disputeCreationEvents.map((result) => result.returnValues._disputeID))];
     const resolvedDisputes = newPeriodEvents.filter((result) => result.returnValues._period == 4).map((result) => result.returnValues._disputeID);
 
@@ -188,7 +189,7 @@ class App extends React.Component {
   getMetaEvidenceParallelizeable = (arbitrableAddress, arbitratorDisputeID) =>
     this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
-      .then((response) => EthereumInterface.contractInstance("IEvidence", arbitrableAddress).getPastEvents("MetaEvidence", { fromBlock: 7303699, toBlock: "latest", filter: { _metaEvidenceID: response.metaEvidenceID } }))
+      .then((response) => EthereumInterface.contractInstance("IEvidence", arbitrableAddress).getPastEvents("MetaEvidence", { fromBlock: QUERY_FROM_BLOCK, toBlock: "latest", filter: { _metaEvidenceID: response.metaEvidenceID } }))
       .then((metaevidence) => {
         if (metaevidence.length > 0) {
           console.debug(metaevidence[0].returnValues._evidence);
@@ -197,11 +198,11 @@ class App extends React.Component {
       });
 
   getEvidences = (arbitrableAddress, arbitratorDisputeID) => {
-    console.log(arbitratorDisputeID);
+    console.debug(arbitratorDisputeID);
     return this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
       .then((response) => {
-        console.log(response);
+        console.debug(response);
         return this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).catch(console.error);
       })
       .catch(console.error);
@@ -209,7 +210,7 @@ class App extends React.Component {
 
   getAppealDecision = async (arbitratorDisputeID) => {
     const contractInstance = EthereumInterface.contractInstance("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID);
-    const appealDecisionLog = await contractInstance.getPastEvents("AppealDecision", { fromBlock: 7303699, toBlock: "latest", filter: { _disputeID: arbitratorDisputeID } });
+    const appealDecisionLog = await contractInstance.getPastEvents("AppealDecision", { fromBlock: QUERY_FROM_BLOCK, toBlock: "latest", filter: { _disputeID: arbitratorDisputeID } });
     const blockNumbers = await Promise.all(appealDecisionLog.map((appealDecision) => Web3.eth.getBlock(appealDecision.blockNumber)));
     return blockNumbers.map((blockNumber) => {
       return { appealedAt: blockNumber.timestamp };
@@ -218,8 +219,8 @@ class App extends React.Component {
 
   getContributions = async (arbitrableDisputeID, round) => {
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY);
-    const contributionLogs = await contractInstance.getPastEvents("Contribution", { fromBlock: 11590356, toBlock: "latest", filter: { localDisputeID: arbitrableDisputeID, round: round } });
-    console.log(contributionLogs);
+    const contributionLogs = await contractInstance.getPastEvents("Contribution", { fromBlock: QUERY_FROM_BLOCK, toBlock: "latest", filter: { localDisputeID: arbitrableDisputeID, round: round } });
+    console.debug(contributionLogs);
     let contributionsForEachRuling = {};
     contributionLogs.map((log) => {
       contributionsForEachRuling[log.returnValues.ruling] = contributionsForEachRuling[log.returnValues.ruling] || 0;
@@ -255,7 +256,7 @@ class App extends React.Component {
   render() {
     const { activeAddress, network, lastDisputeID, subcourts, subcourtDetails, subcourtsLoading } = this.state;
 
-    console.log(this.state);
+    console.debug(this.state);
 
     if (this.state.network)
       return (

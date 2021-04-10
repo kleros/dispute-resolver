@@ -31,7 +31,7 @@ class CrowdfundingCard extends React.Component {
 
   handleFundButtonClick = () => {
     const { variable, appealCallback, rulingOptionCode } = this.props;
-    console.log(Web3);
+    console.debug(Web3);
     const { variableRulingOption, contribution } = this.state;
     let actualRulingCode;
 
@@ -56,8 +56,8 @@ class CrowdfundingCard extends React.Component {
   render() {
     const { dispute, subcourtDetails, subcourts, title, arbitratorDisputeDetails, grayedOut, winner, fundingPercentage, appealPeriodEnd, variable, roi, suggestedContribution, appealCallback, rulingOptionCode } = this.props;
     const { variableRulingOption, contribution } = this.state;
-    console.log(this.props);
-    console.log(this.state);
+    console.debug(this.props);
+    console.debug(this.state);
 
     return (
       <div className={`shadow rounded p-3 d-flex flex-column ${styles.crowdfundingCard}`}>

@@ -53,7 +53,7 @@ class DisputeDetails extends React.Component {
     } else if (currentRuling == rulingOption) {
       stake = appealCost.times(BigNumber(multipliers.winnerStakeMultiplier)).div(BigNumber(multipliers.divisor));
     } else {
-      stake = calculateAmountRemainsToBeRaisedForLoser();
+      stake = this.calculateAmountRemainsToBeRaisedForLoser();
     }
 
     return appealCost.plus(stake);
@@ -106,7 +106,7 @@ class DisputeDetails extends React.Component {
     const loser = multipliers.loserAppealPeriodMultiplier;
     const divisor = multipliers.divisor;
 
-    if (currentRuling == rulingOption) return appealPeriod.end;
+    if (currentRuling == 0 || currentRuling == rulingOption) return appealPeriod.end;
     else return parseInt(appealPeriod.start) + ((parseInt(appealPeriod.end) - parseInt(appealPeriod.start)) * parseInt(loser)) / divisor;
   };
 
