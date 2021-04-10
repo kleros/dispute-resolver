@@ -32,7 +32,7 @@ class Footer extends React.Component {
           <a className={`m-auto m-sm-0 ${styles.brand}`} href="https://kleros.io">
             <SecuredByKleros />
           </a>
-          <div className={`d-none d-lg-block`}>
+          <div className={`d-none d-lg-block ml-5`}>
             <Col>{NETWORK_NAMES[network]}</Col>
           </div>
           <div className={`ml-sm-auto ${styles.rest}`}>

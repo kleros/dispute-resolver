@@ -102,12 +102,13 @@ class App extends React.Component {
   getOpenDisputesOnCourt = async () => {
     const contractInstance = EthereumInterface.contractInstance("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID);
 
-    const newPeriodEvents = await contractInstance.getPastEvents("NewPeriod", { fromBlock: 11000000, toBlock: "latest" });
-    const disputeCreationEvents = await contractInstance.getPastEvents("DisputeCreation", { fromBlock: 11000000, toBlock: "latest" });
+    const newPeriodEvents = await contractInstance.getPastEvents("NewPeriod", { fromBlock: 10000000, toBlock: "latest" });
+    const disputeCreationEvents = await contractInstance.getPastEvents("DisputeCreation", { fromBlock: 10000000, toBlock: "latest" });
     const disputes = [...new Set(disputeCreationEvents.map((result) => result.returnValues._disputeID))];
     const resolvedDisputes = newPeriodEvents.filter((result) => result.returnValues._period == 4).map((result) => result.returnValues._disputeID);
 
     const openDisputes = disputes.filter((dispute) => !resolvedDisputes.includes(dispute));
+
     return openDisputes;
   };
 

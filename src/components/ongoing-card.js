@@ -41,7 +41,7 @@ class OngoingCard extends React.Component {
             {arbitratorDisputeDetails && subcourtDetails && (
               <div className={styles.badge}>
                 <ScalesSVG />
-                <span>{subcourtDetails[arbitratorDisputeDetails.subcourtID].name}</span>
+                <span>{subcourtDetails[arbitratorDisputeDetails.subcourtID] && subcourtDetails[arbitratorDisputeDetails.subcourtID].name}</span>
               </div>
             )}
             {(!arbitratorDisputeDetails || !subcourtDetails) && (
