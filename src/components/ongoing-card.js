@@ -54,7 +54,7 @@ class OngoingCard extends React.Component {
             <div className={styles.countdown}>
               <Hourglass />
               <Countdown
-                date={1000 * (parseInt(arbitratorDisputeDetails.lastPeriodChange) + parseInt(subcourts[arbitratorDisputeDetails.subcourtID].timesPerPeriod[arbitratorDisputeDetails.period]))}
+                date={1000 * (parseInt(arbitratorDisputeDetails.lastPeriodChange) + parseInt(subcourts[arbitratorDisputeDetails.subcourtID] && subcourts[arbitratorDisputeDetails.subcourtID].timesPerPeriod[arbitratorDisputeDetails.period]))}
                 renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>}
               />
             </div>

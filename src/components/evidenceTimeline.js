@@ -170,52 +170,56 @@ class EvidenceTimeline extends React.Component {
             </Button>
           )}
 
-          {evidences
-            .concat(appealDecisions)
-            .sort((a, b) => {
-              if (a.submittedAt > b.submittedAt || a.appealedAt > b.submittedAt || a.appealedAt > b.appealedAt || a.submittedAt > b.appealedAt) return -1;
-              else if (a.submittedAt < b.submittedAt || a.appealedAt < b.submittedAt || a.appealedAt < b.appealedAt || a.submittedAt < b.appealedAt) return 1;
+          {evidences &&
+            evidences
+              .filter((e) => e.evidenceJSONValid)
+              .concat(appealDecisions)
+              .sort((a, b) => {
+                if (a.submittedAt > b.submittedAt || a.appealedAt > b.submittedAt || a.appealedAt > b.appealedAt || a.submittedAt > b.appealedAt) return -1;
+                else if (a.submittedAt < b.submittedAt || a.appealedAt < b.submittedAt || a.appealedAt < b.appealedAt || a.submittedAt < b.appealedAt) return 1;
 
-              return 0;
-            })
-            .map((evidenceOrEvent, index) => {
-              if (evidenceOrEvent.appealedAt)
-                return (
-                  <React.Fragment key={index}>
-                    <div className={styles["divider"]}></div>
+                return 0;
+              })
+              .map((evidenceOrEvent, index) => {
+                console.log(evidenceOrEvent);
+                if (evidenceOrEvent.appealedAt)
+                  return (
+                    <React.Fragment key={index}>
+                      <div className={styles["divider"]}></div>
 
-                    <div className={styles["event"]}>
-                      <p>Appealed</p>
-                      <small>{new Date(evidenceOrEvent.appealedAt * 1000).toUTCString()}</small>
-                    </div>
-                  </React.Fragment>
-                );
-              else
-                return (
-                  <React.Fragment key={index}>
-                    <div className={styles.evidence}>
-                      <div className={styles["header"]}>
-                        <p>{evidenceOrEvent.evidenceJSON.title || evidenceOrEvent.evidenceJSON.name}</p>
+                      <div className={styles["event"]}>
+                        <p>Appealed</p>
+                        <small>{new Date(evidenceOrEvent.appealedAt * 1000).toUTCString()}</small>
                       </div>
-                      <p>{evidenceOrEvent.evidenceJSON.description}</p>
-                      <div className={styles.footer}>
-                        <Blockies seed={evidenceOrEvent.submittedBy} color="#7bcbff" spotColor="white" bgColor="#1e075f;" size={8} scale={3} className="rounded-circle" />
-                        <div className={styles["temp"]}>
-                          <div className={styles["sender"]}>Submitted by: {this.truncateAddress(evidenceOrEvent.submittedBy)}</div>
-
-                          <div className={styles["timestamp"]}>{new Date(evidenceOrEvent.submittedAt * 1000).toUTCString()}</div>
+                    </React.Fragment>
+                  );
+                else if (evidenceOrEvent.evidenceJSON)
+                  return (
+                    <React.Fragment key={index}>
+                      <div className={styles.evidence}>
+                        <div className={styles["header"]}>
+                          <p>{evidenceOrEvent.evidenceJSON.title || evidenceOrEvent.evidenceJSON.name}</p>
                         </div>
-                        <a href={`${ipfsGateway}${evidenceOrEvent.evidenceJSON.fileURI}`} target="_blank" rel="noopener noreferrer">
-                          {this.getAttachmentIcon(evidenceOrEvent.evidenceJSON.fileURI)}
-                        </a>
-                      </div>
-                    </div>
-                    <div className={styles["divider"]}></div>
-                  </React.Fragment>
-                );
-            })}
+                        <p>{evidenceOrEvent.evidenceJSON.description}</p>
+                        <div className={styles.footer}>
+                          <Blockies seed={evidenceOrEvent.submittedBy} color="#7bcbff" spotColor="white" bgColor="#1e075f;" size={8} scale={3} className="rounded-circle" />
+                          <div className={styles["temp"]}>
+                            <div className={styles["sender"]}>Submitted by: {this.truncateAddress(evidenceOrEvent.submittedBy)}</div>
 
-          {evidences.length > 0 && (
+                            <div className={styles["timestamp"]}>{new Date(evidenceOrEvent.submittedAt * 1000).toUTCString()}</div>
+                          </div>
+                          <a href={`${ipfsGateway}${evidenceOrEvent.evidenceJSON.fileURI}`} target="_blank" rel="noopener noreferrer">
+                            {this.getAttachmentIcon(evidenceOrEvent.evidenceJSON.fileURI)}
+                          </a>
+                        </div>
+                      </div>
+                      <div className={styles["divider"]}></div>
+                    </React.Fragment>
+                  );
+                else return null; // Request rejected
+              })}
+
+          {evidences && evidences.length > 0 && (
             <div className={styles["event"]}>
               <>
                 <p>Dispute Raised</p>
@@ -224,7 +228,7 @@ class EvidenceTimeline extends React.Component {
             </div>
           )}
 
-          {evidences.length == 0 && <div className={styles.noEvidence}>No evidence submitted yet.</div>}
+          {evidences && evidences.length == 0 && <div className={styles.noEvidence}>No evidence submitted yet.</div>}
         </div>
         <div className={`${styles["modal-overlay"]} ${styles[this.state.modalExtraClass]}`} id="modal-overlay" onClick={this.handleModalOpenClose}></div>
         <div className={styles.modalContainer}>

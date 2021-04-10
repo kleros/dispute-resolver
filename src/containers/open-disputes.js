@@ -53,7 +53,7 @@ class openDisputeIDs extends React.Component {
     // console.debug(this.state);
     // console.debug(this.props);
 
-    const { openDisputeIDs, selectedDispute, statusFilter } = this.state;
+    const { openDisputeIDs, selectedDispute, statusFilter, loading } = this.state;
     const { subcourts, subcourtDetails } = this.props;
 
     return (

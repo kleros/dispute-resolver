@@ -249,7 +249,7 @@ class Interact extends React.Component {
         );
         await this.setState({ totalWithdrawable, aggregatedContributions });
       } catch (err) {
-        this.setState({ incompatible: true });
+        //this.setState({ incompatible: true }); If ruling is not executed, this reverts.
       }
     }
   };

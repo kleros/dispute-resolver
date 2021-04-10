@@ -67,7 +67,6 @@ class App extends React.Component {
       try {
         await this.estimateGasOfGetSubcourt(counter++);
       } catch (err) {
-        console.debug("disregard this error");
         break;
       }
     }
@@ -198,11 +197,12 @@ class App extends React.Component {
       });
 
   getEvidences = (arbitrableAddress, arbitratorDisputeID) => {
+    console.debug("getEvidences");
     console.debug(arbitratorDisputeID);
     return this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
       .then((response) => {
-        console.debug(response);
+        this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).then(console.log);
         return this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).catch(console.error);
       })
       .catch(console.error);
