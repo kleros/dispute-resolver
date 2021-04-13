@@ -53,7 +53,7 @@ class DisputeDetails extends React.Component {
     } else if (currentRuling == rulingOption) {
       stake = appealCost.times(BigNumber(multipliers.winnerStakeMultiplier)).div(BigNumber(multipliers.divisor));
     } else {
-      stake = this.calculateAmountRemainsToBeRaisedForLoser();
+      return this.calculateAmountRemainsToBeRaisedForLoser();
     }
 
     return appealCost.plus(stake);
