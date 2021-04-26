@@ -142,7 +142,7 @@ class App extends React.Component {
   getAppealCost = async (arbitratorDisputeID) => EthereumInterface.call("IArbitrator", networkMap[this.state.network].KLEROS_LIQUID, "appealCost", arbitratorDisputeID, "0x0");
   getAppealCostOnArbitrable = async (arbitrableDisputeID, ruling) => EthereumInterface.call("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY, "appealCost", arbitrableDisputeID, ruling);
 
-  appeal = (arbitrableAddress, arbitrableDisputeID, party, contribution) => EthereumInterface.send("IDisputeResolver", arbitrableAddress, this.state.activeAddress, contribution, "fundAppeal", arbitrableDisputeID, party);
+  appeal = (arbitrableAddress, arbitratorDisputeID, party, contribution) => EthereumInterface.send("IDisputeResolver", arbitrableAddress, this.state.activeAddress, contribution, "fundAppeal", networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID, party);
 
   getAppealPeriod = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "appealPeriod", arbitratorDisputeID);
 
@@ -169,7 +169,7 @@ class App extends React.Component {
     const metaevidenceURI = `/ipfs/${ipfsHashMetaEvidenceObj[1].hash}${ipfsHashMetaEvidenceObj[0].path}`;
 
     const arbitrationCost = await this.getArbitrationCost(arbitrator, arbitratorExtraData);
-    return EthereumInterface.send("ArbitrableProxy", networkMap[this.state.network].ARBITRABLE_PROXY, this.state.activeAddress, arbitrationCost, "createDispute", arbitratorExtraData, metaevidenceURI, options.numberOfRulingOptions);
+    return EthereumInterface.send("ArbitrableProxy", networkMap[this.state.network].ARBITRABLE_PROXY, this.state.activeAddress, arbitrationCost, "createDispute", networkMap[this.state.network].KLEROS_LIQUID, arbitratorExtraData, metaevidenceURI, options.numberOfRulingOptions);
   };
 
   getDisputeEvent = async (arbitrableAddress, disputeID) =>
@@ -217,9 +217,9 @@ class App extends React.Component {
     });
   };
 
-  getContributions = async (arbitrableDisputeID, round) => {
+  getContributions = async (arbitratorDisputeID, round) => {
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY);
-    const contributionLogs = await contractInstance.getPastEvents("Contribution", { fromBlock: QUERY_FROM_BLOCK, toBlock: "latest", filter: { localDisputeID: arbitrableDisputeID, round: round } });
+    const contributionLogs = await contractInstance.getPastEvents("Contribution", { fromBlock: QUERY_FROM_BLOCK, toBlock: "latest", filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, disputeID: arbitratorDisputeID, round: round } });
     console.debug(contributionLogs);
     let contributionsForEachRuling = {};
     contributionLogs.map((log) => {
@@ -229,8 +229,8 @@ class App extends React.Component {
     return contributionsForEachRuling;
   };
 
-  getTotalWithdrawableAmount = async (arbitrableDisputeID, contributedTo) =>
-    EthereumInterface.call("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY, "getTotalWithdrawableAmount", arbitrableDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO, contributedTo);
+  getTotalWithdrawableAmount = async (arbitratorDisputeID, contributedTo) =>
+    EthereumInterface.call("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY, "getTotalWithdrawableAmount", networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO, contributedTo);
 
   getDispute = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "getDispute", arbitratorDisputeID);
 
@@ -250,13 +250,14 @@ class App extends React.Component {
 
     const evidenceURI = `/ipfs/${ipfsHashEvidenceObj[1].hash}${ipfsHashEvidenceObj[0].path}`;
 
-    await EthereumInterface.send("ArbitrableProxy", arbitrableAddress, this.state.activeAddress, 0, "submitEvidence", disputeID, evidenceURI);
+    await EthereumInterface.send("ArbitrableProxy", arbitrableAddress, this.state.activeAddress, 0, "submitEvidence", "0x60b2abfdfad9c0873242f59f2a8c32a3cc682f80", disputeID, evidenceURI);
   };
 
   render() {
     const { activeAddress, network, lastDisputeID, subcourts, subcourtDetails, subcourtsLoading } = this.state;
 
     console.debug(this.state);
+    console.debug(networkMap[this.state.network]);
 
     if (this.state.network)
       return (

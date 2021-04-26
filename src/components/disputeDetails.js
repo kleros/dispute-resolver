@@ -398,8 +398,8 @@ class DisputeDetails extends React.Component {
 
                         <Dropdown.Menu>
                           {metaevidenceJSON.rulingOptions.titles.map((title, index) => (
-                            <Dropdown.Item key={index} disabled>{`Option ${index + 1} ${title}${metaevidenceJSON.rulingOptions.descriptions[index] != undefined ? ":" : ""} ${
-                              metaevidenceJSON.rulingOptions.descriptions[index] != undefined ? metaevidenceJSON.rulingOptions.descriptions[index] : ""
+                            <Dropdown.Item key={index} disabled>{`Option ${index + 1} ${title}${metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[index] != undefined ? ":" : ""} ${
+                              metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[index] != undefined ? metaevidenceJSON.rulingOptions.descriptions[index] : ""
                             }`}</Dropdown.Item>
                           ))}
                         </Dropdown.Menu>
