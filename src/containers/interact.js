@@ -60,7 +60,7 @@ class Interact extends React.Component {
   submitEvidence = async (evidence) => {
     console.debug(this.state);
     await this.props.submitEvidenceCallback(this.state.arbitrated, {
-      disputeID: this.state.arbitratorDisputeID,
+      disputeID: this.state.arbitrableDisputeID,
       evidenceDescription: evidence.evidenceDescription,
       evidenceDocument: evidence.evidenceDocument,
       evidenceTitle: evidence.evidenceTitle,
@@ -108,7 +108,8 @@ class Interact extends React.Component {
   getWithdrawAmount = async () =>
     this.props.getTotalWithdrawableAmountCallback(
       this.state.arbitratorDisputeID,
-      Object.keys(this.state.contributions).map((key) => parseInt(key))
+      Object.keys(this.state.contributions).map((key) => parseInt(key)),
+      this.state.arbitrated
     );
 
   getWinnerMultiplier = async (arbitrableAddress) => {
@@ -162,7 +163,7 @@ class Interact extends React.Component {
       return;
     }
 
-    this.setState({ arbitrated });
+    await this.setState({ arbitrated });
 
     await this.commonFetchRoutine(arbitrated, arbitratorDisputeID).then(this.setState({ loading: false }));
   };
@@ -182,6 +183,7 @@ class Interact extends React.Component {
         arbitratorDispute,
         arbitratorDisputeDetails: await this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
         arbitratorDisputeID,
+        arbitrableDisputeID: await this.props.getArbitrableDisputeIDCallback(arbitrated, arbitratorDisputeID),
         metaevidence,
         ruling: await this.getRuling(arbitrated, arbitratorDisputeID),
         currentRuling: await this.getCurrentRuling(arbitratorDisputeID),
@@ -221,7 +223,7 @@ class Interact extends React.Component {
     let appealDecisions, contributions, totalWithdrawable;
     try {
       appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
-      contributions = await this.props.getContributionsCallback(arbitratorDisputeID, appealDecisions.length);
+      contributions = await this.props.getContributionsCallback(arbitratorDisputeID, appealDecisions.length, arbitrated);
       console.debug(contributions);
 
       await this.setState({ contributions, appealDecisions });
@@ -245,11 +247,14 @@ class Interact extends React.Component {
       try {
         totalWithdrawable = await this.props.getTotalWithdrawableAmountCallback(
           arbitrableDisputeID,
-          Object.keys(aggregatedContributions).map((key) => parseInt(key))
+          Object.keys(aggregatedContributions).map((key) => parseInt(key)),
+          arbitrated
         );
         await this.setState({ totalWithdrawable, aggregatedContributions });
       } catch (err) {
-        //this.setState({ incompatible: true }); If ruling is not executed, this reverts.
+        console.log("can't get totalWithdrawable");
+        console.error(err);
+        this.setState({ incompatible: true }); //If ruling is not executed, this reverts.
       }
     }
   };
@@ -265,7 +270,7 @@ class Interact extends React.Component {
 
     const appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
 
-    await this.setState({ appealDecisions, contributions: await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length) });
+    await this.setState({ appealDecisions, contributions: await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated) });
   };
 
   render() {
@@ -295,6 +300,7 @@ class Interact extends React.Component {
       totalWithdrawable,
       aggregatedContributions,
     } = this.state;
+    console.log(arbitrated);
 
     const { arbitratorAddress, activeAddress, appealCallback, publishCallback, withdrawCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, subcourts, subcourtDetails, network, getTotalWithdrawableAmountCallback } = this.props;
 
@@ -305,51 +311,53 @@ class Interact extends React.Component {
             <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or appeal.
           </div>
         )}
-        <main className={styles.interact}>
-          {arbitratorDisputeID && <Redirect to={`/cases/${arbitratorDisputeID}`} />}
-          <div>
-            <Row>
-              <Col>
-                <Form.Label>Search Disputes on Court</Form.Label>
-                <InputGroup className={styles.search} size="md">
-                  <InputGroup.Prepend>
-                    <InputGroup.Text>
-                      <Magnifier />
-                    </InputGroup.Text>
-                  </InputGroup.Prepend>
-                  <FormControl className="purple-inverted" placeholder="Dispute ID" aria-label="Input dispute number from Court" aria-describedby="search" onChange={this.onDisputeIDChange} type="number" min="0" value={arbitratorDisputeID} id="arbitratorDisputeID" />
-                </InputGroup>
-              </Col>
-            </Row>
-          </div>
-          <DisputeSummary metaevidenceJSON={metaevidence.metaEvidenceJSON} ipfsGateway="https://ipfs.kleros.io" arbitrated={arbitrated} arbitratorAddress={arbitratorAddress} arbitratorDisputeID={arbitratorDisputeID} />
-          <DisputeDetails
-            activeAddress={activeAddress}
-            metaevidenceJSON={metaevidence.metaEvidenceJSON}
-            evidences={evidences}
-            ipfsGateway="https://ipfs.kleros.io"
-            arbitrated={arbitrated}
-            arbitratorAddress={arbitratorAddress}
-            arbitratorDisputeID={arbitratorDisputeID}
-            arbitratorDispute={arbitratorDispute}
-            arbitratorDisputeDetails={arbitratorDisputeDetails}
-            subcourts={subcourts}
-            subcourtDetails={subcourtDetails}
-            currentRuling={currentRuling}
-            disputeEvent={disputeEvent}
-            publishCallback={publishCallback}
-            submitEvidenceCallback={this.submitEvidence}
-            getAppealPeriodCallback={getAppealPeriodCallback}
-            appealCost={appealCost}
-            appealPeriod={appealPeriod}
-            appealDecisions={appealDecisions}
-            appealCallback={this.appeal}
-            contributions={contributions}
-            multipliers={multipliers}
-            withdrawCallback={this.withdraw}
-            totalWithdrawable={totalWithdrawable}
-          />
-        </main>
+        {arbitrated && (
+          <main className={styles.interact}>
+            {arbitratorDisputeID && <Redirect to={`/cases/${arbitratorDisputeID}`} />}
+            <div>
+              <Row>
+                <Col>
+                  <Form.Label>Search Disputes on Court</Form.Label>
+                  <InputGroup className={styles.search} size="md">
+                    <InputGroup.Prepend>
+                      <InputGroup.Text>
+                        <Magnifier />
+                      </InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <FormControl className="purple-inverted" placeholder="Dispute ID" aria-label="Input dispute number from Court" aria-describedby="search" onChange={this.onDisputeIDChange} type="number" min="0" value={arbitratorDisputeID} id="arbitratorDisputeID" />
+                  </InputGroup>
+                </Col>
+              </Row>
+            </div>
+            <DisputeSummary metaevidenceJSON={metaevidence.metaEvidenceJSON} ipfsGateway="https://ipfs.kleros.io" arbitrated={arbitrated} arbitratorAddress={arbitratorAddress} arbitratorDisputeID={arbitratorDisputeID} />
+            <DisputeDetails
+              activeAddress={activeAddress}
+              metaevidenceJSON={metaevidence.metaEvidenceJSON}
+              evidences={evidences}
+              ipfsGateway="https://ipfs.kleros.io"
+              arbitrated={arbitrated}
+              arbitratorAddress={arbitratorAddress}
+              arbitratorDisputeID={arbitratorDisputeID}
+              arbitratorDispute={arbitratorDispute}
+              arbitratorDisputeDetails={arbitratorDisputeDetails}
+              subcourts={subcourts}
+              subcourtDetails={subcourtDetails}
+              currentRuling={currentRuling}
+              disputeEvent={disputeEvent}
+              publishCallback={publishCallback}
+              submitEvidenceCallback={this.submitEvidence}
+              getAppealPeriodCallback={getAppealPeriodCallback}
+              appealCost={appealCost}
+              appealPeriod={appealPeriod}
+              appealDecisions={appealDecisions}
+              appealCallback={this.appeal}
+              contributions={contributions}
+              multipliers={multipliers}
+              withdrawCallback={this.withdraw}
+              totalWithdrawable={totalWithdrawable}
+            />
+          </main>
+        )}
       </>
     );
   }

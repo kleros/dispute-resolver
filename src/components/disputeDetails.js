@@ -48,10 +48,8 @@ class DisputeDetails extends React.Component {
     console.debug(`current ruling ${currentRuling}`);
     console.debug(`tie multiplier: ${multipliers.tieStakeMultiplier}`);
 
-    if (currentRuling == 0) {
-      stake = appealCost.times(BigNumber(multipliers.tieStakeMultiplier)).div(BigNumber(multipliers.divisor));
-    } else if (currentRuling == rulingOption) {
-      stake = appealCost.times(BigNumber(multipliers.winnerStakeMultiplier)).div(BigNumber(multipliers.divisor));
+    if (currentRuling == rulingOption) {
+      stake = appealCost.times(BigNumber(multipliers.winnerStakeMultiplier)).div(BigNumber(multipliers.denominator));
     } else {
       return this.calculateAmountRemainsToBeRaisedForLoser();
     }
@@ -69,7 +67,7 @@ class DisputeDetails extends React.Component {
     const { multipliers, contributions } = this.props;
 
     const appealCost = BigNumber(this.props.appealCost);
-    let stake = appealCost.times(BigNumber(multipliers.loserStakeMultiplier)).div(BigNumber(multipliers.divisor));
+    let stake = appealCost.times(BigNumber(multipliers.loserStakeMultiplier)).div(BigNumber(multipliers.denominator));
 
     return appealCost.plus(stake);
   };
@@ -79,13 +77,10 @@ class DisputeDetails extends React.Component {
 
     const winner = BigNumber(multipliers.winnerStakeMultiplier);
     const loser = BigNumber(multipliers.loserStakeMultiplier);
-    const tie = BigNumber(multipliers.tieStakeMultiplier);
 
-    const divisor = BigNumber(multipliers.divisor);
+    const divisor = BigNumber(multipliers.denominator);
 
-    if (currentRuling == 0) {
-      return tie.plus(tie).plus(divisor).div(tie.plus(divisor));
-    } else if (currentRuling == rulingOption) {
+    if (currentRuling == rulingOption) {
       return winner.plus(loser).plus(divisor).div(winner.plus(divisor));
     } else {
       return winner.plus(loser).plus(divisor).div(loser.plus(divisor));
@@ -96,7 +91,7 @@ class DisputeDetails extends React.Component {
     const { currentRuling, multipliers } = this.props;
     const winner = BigNumber(multipliers.winnerStakeMultiplier);
     const loser = BigNumber(multipliers.loserStakeMultiplier);
-    const divisor = BigNumber(multipliers.divisor);
+    const divisor = BigNumber(multipliers.denominator);
 
     return winner.plus(loser).plus(divisor).div(loser.plus(divisor));
   };
@@ -104,7 +99,8 @@ class DisputeDetails extends React.Component {
   calculateAppealPeriod = (rulingOption) => {
     const { currentRuling, multipliers, appealPeriod } = this.props;
     const loser = multipliers.loserAppealPeriodMultiplier;
-    const divisor = multipliers.divisor;
+    const divisor = multipliers.denominator;
+    console.log(multipliers);
 
     if (currentRuling == 0 || currentRuling == rulingOption) return appealPeriod.end;
     else return parseInt(appealPeriod.start) + ((parseInt(appealPeriod.end) - parseInt(appealPeriod.start)) * parseInt(loser)) / divisor;
@@ -113,7 +109,7 @@ class DisputeDetails extends React.Component {
   calculateLoserAppealPeriod = () => {
     const { multipliers, appealPeriod } = this.props;
     const loser = multipliers.loserAppealPeriodMultiplier;
-    const divisor = multipliers.divisor;
+    const divisor = multipliers.denominator;
 
     return parseInt(appealPeriod.start) + ((parseInt(appealPeriod.end) - parseInt(appealPeriod.start)) * parseInt(loser)) / divisor;
   };

@@ -4,7 +4,7 @@
   "private": false,
   "dependencies": {
     "@babel/helper-call-delegate": "^7.12.1",
-    "@kleros/arbitrable-proxy-contracts": "^3.0.0",
+    "@kleros/arbitrable-proxy-contracts": "^4.0.0",
     "@kleros/archon": "^1.2.2",
     "@kleros/kleros": "^0.1.2",
     "bignumber.js": "^9.0.0",
@@ -41,10 +41,13 @@
       "not op_mini all"
     ],
     "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
+      "last 3 chrome version",
+      "last 3 firefox version",
+      "last 3 safari version"
     ]
+  },
+  "engines": {
+    "node": ">=0.12"
   },
   "devDependencies": {
     "prettier": "^2.0.2"
@@ -52,8 +55,5 @@
   "prettier": {
     "tabWidth": 2,
     "printWidth": 280
-  },
-  "engines": {
-    "node": ">=10.19 <11.0"
   }
 }
