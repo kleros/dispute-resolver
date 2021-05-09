@@ -102,7 +102,7 @@ class DisputeDetails extends React.Component {
     const divisor = multipliers.denominator;
     console.log(multipliers);
 
-    if (currentRuling == 0 || currentRuling == rulingOption) return appealPeriod.end;
+    if (currentRuling == rulingOption) return appealPeriod.end;
     else return parseInt(appealPeriod.start) + ((parseInt(appealPeriod.end) - parseInt(appealPeriod.start)) * parseInt(loser)) / divisor;
   };
 

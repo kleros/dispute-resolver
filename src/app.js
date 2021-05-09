@@ -142,7 +142,7 @@ class App extends React.Component {
   getAppealCost = async (arbitratorDisputeID) => EthereumInterface.call("IArbitrator", networkMap[this.state.network].KLEROS_LIQUID, "appealCost", arbitratorDisputeID, "0x0");
   getAppealCostOnArbitrable = async (arbitrableDisputeID, ruling) => EthereumInterface.call("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY, "appealCost", arbitrableDisputeID, ruling);
 
-  appeal = (arbitrableAddress, arbitratorDisputeID, party, contribution) => EthereumInterface.send("IDisputeResolver", arbitrableAddress, this.state.activeAddress, contribution, "fundAppeal", networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID, party);
+  appeal = (arbitrableAddress, arbitrableDisputeID, party, contribution) => EthereumInterface.send("IDisputeResolver", arbitrableAddress, this.state.activeAddress, contribution, "fundAppeal", arbitrableDisputeID, party);
 
   getAppealPeriod = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "appealPeriod", arbitratorDisputeID);
 
@@ -217,9 +217,9 @@ class App extends React.Component {
     });
   };
 
-  getContributions = async (arbitratorDisputeID, round, arbitrableContractAddress) => {
+  getContributions = async (arbitrableDisputeID, round, arbitrableContractAddress) => {
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
-    const contributionLogs = await contractInstance.getPastEvents("Contribution", { fromBlock: QUERY_FROM_BLOCK, toBlock: "latest", filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, disputeID: arbitratorDisputeID, round: round } });
+    const contributionLogs = await contractInstance.getPastEvents("Contribution", { fromBlock: QUERY_FROM_BLOCK, toBlock: "latest", filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, localDisputeID: arbitrableDisputeID, round: round } });
     console.debug(contributionLogs);
     let contributionsForEachRuling = {};
     contributionLogs.map((log) => {
@@ -229,9 +229,9 @@ class App extends React.Component {
     return contributionsForEachRuling;
   };
 
-  getTotalWithdrawableAmount = async (arbitratorDisputeID, contributedTo, arbitrated) => {
+  getTotalWithdrawableAmount = async (arbitrableDisputeID, contributedTo, arbitrated) => {
     console.log(contributedTo);
-    return EthereumInterface.call("IDisputeResolver", arbitrated, "getTotalWithdrawableAmount", networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO, contributedTo);
+    return EthereumInterface.call("IDisputeResolver", arbitrated, "getTotalWithdrawableAmount", arbitrableDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO, contributedTo);
   };
 
   getDispute = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "getDispute", arbitratorDisputeID);

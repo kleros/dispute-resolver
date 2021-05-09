@@ -94,7 +94,7 @@ class Interact extends React.Component {
 
   onContributeButtonClick = (e) => this.setState({ contributeModalShow: true });
 
-  appeal = async (party, contribution) => await this.props.appealCallback(this.state.arbitrated, this.state.arbitratorDisputeID, party, contribution).then(this.reload);
+  appeal = async (party, contribution) => await this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);
 
   withdraw = async () => {
     console.debug([Object.keys(this.state.contributions).map((key) => parseInt(key))]);
@@ -175,6 +175,7 @@ class Interact extends React.Component {
     let subcourtURI;
     let subcourt;
     let metaevidence;
+    let arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(arbitrated, arbitratorDisputeID);
 
     try {
       arbitratorDispute = await this.props.getArbitratorDisputeCallback(arbitratorDisputeID);
@@ -183,7 +184,7 @@ class Interact extends React.Component {
         arbitratorDispute,
         arbitratorDisputeDetails: await this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
         arbitratorDisputeID,
-        arbitrableDisputeID: await this.props.getArbitrableDisputeIDCallback(arbitrated, arbitratorDisputeID),
+        arbitrableDisputeID,
         metaevidence,
         ruling: await this.getRuling(arbitrated, arbitratorDisputeID),
         currentRuling: await this.getCurrentRuling(arbitratorDisputeID),
@@ -207,7 +208,6 @@ class Interact extends React.Component {
     } finally {
     }
 
-    let arbitrableDisputeID;
     let multipliers;
 
     try {
@@ -223,7 +223,7 @@ class Interact extends React.Component {
     let appealDecisions, contributions, totalWithdrawable;
     try {
       appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
-      contributions = await this.props.getContributionsCallback(arbitratorDisputeID, appealDecisions.length, arbitrated);
+      contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated);
       console.debug(contributions);
 
       await this.setState({ contributions, appealDecisions });
@@ -240,7 +240,7 @@ class Interact extends React.Component {
 
     if (arbitratorDispute.period == 4) {
       let contributionsOfPastRounds = [];
-      for (let i = 0; i < appealDecisions.length; i++) contributionsOfPastRounds[i] = await this.props.getContributionsCallback(arbitratorDisputeID, i);
+      for (let i = 0; i < appealDecisions.length; i++) contributionsOfPastRounds[i] = await this.props.getContributionsCallback(arbitrableDisputeID, i, arbitrated);
 
       const aggregatedContributions = this.sumObjectsByKey(...contributionsOfPastRounds, contributions);
 
