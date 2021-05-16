@@ -30,7 +30,7 @@ class openDisputeIDs extends React.Component {
     });
   }
 
-  FILTER_NAMES = ["Evidence", "Commit", "Voting", "Crowdfunding", "Ongoing"];
+  FILTER_NAMES = ["Evidence", "Commit", "Voting", "Appeal", "Ongoing"];
 
   getFilterName = (periodNumber) => {
     const strings = this.FILTER_NAMES;

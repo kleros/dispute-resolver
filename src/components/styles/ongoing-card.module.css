@@ -78,7 +78,7 @@
 }
 
 .ongoingCard .status:global(.appeal)::after {
-  content: "Crowdfunding";
+  content: "Appeal";
 }
 
 .ongoingCard .status:global(.appeal)::before {
@@ -98,7 +98,7 @@
 }
 
 .ongoingCard .separator {
-  margin-top: auto;
+  margin-top: auto !important;
   margin-bottom: 0;
 }
 
