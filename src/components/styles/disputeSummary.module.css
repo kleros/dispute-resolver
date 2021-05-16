@@ -1,0 +1,26 @@
+.disputeSummary .inner {
+  padding: var(--spacing-32);
+}
+
+.disputeSummary .description {
+  margin-bottom: var(--spacing-32);
+}
+
+.disputeSummary .footer {
+  text-align: center;
+  background-color: var(--purple-light);
+  padding: var(--spacing-16);
+  margin: 0;
+  border-bottom-left-radius: var(--border-radius-l);
+  border-bottom-right-radius: var(--border-radius-l);
+}
+
+.disputeSummary .footer svg {
+  margin-right: var(--spacing-8);
+}
+
+.disputeSummary iframe {
+  width: 100%;
+  min-height: 500px;
+  margin-bottom: var(--spacing-32);
+}

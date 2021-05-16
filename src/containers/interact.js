@@ -1,22 +1,19 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import { Card, Col, Container, Form, Row, Button, InputGroup, FormControl, Accordion } from "react-bootstrap";
-import Appeal from "../components/appeal";
-import QuestionDisplay from "../components/question-display";
+import DisputeSummary from "components/disputeSummary";
+import DisputeDetails from "components/disputeDetails";
 import debounce from "lodash.debounce";
-import IPFS from "../components/ipfs";
 import ReactMarkdown from "react-markdown";
 import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
-import { EvidenceTimeline } from "@kleros/react-components";
+import { ReactComponent as Magnifier } from "../assets/images/magnifier.svg";
+
 import { Redirect, Link } from "react-router-dom";
-import Countdown from "react-countdown-now";
+import Countdown from "react-countdown";
 import BigNumber from "bignumber.js";
 
-const FALLBACK_ACTIVATION_DELAY_SECONDS = {
-  1: 900, // Mainnet, 15 minutes
-  42: 240, // Kovan, 4 minutes
-};
+import styles from "containers/styles/interact.module.css";
 
 class Interact extends React.Component {
   constructor(props) {
@@ -38,41 +35,30 @@ class Interact extends React.Component {
     };
 
     this.debouncedRetrieveUsingArbitratorID = debounce(this.retrieveDisputeDetailsUsingArbitratorID, 500, { leading: false, trailing: true });
-
-    this.iframe = React.createRef();
   }
 
   componentDidMount() {
     if (this.state.arbitratorDisputeID) this.debouncedRetrieveUsingArbitratorID(this.state.arbitratorDisputeID);
-    console.log(this.iframe.current);
   }
 
-  async componentDidUpdate(previousProperties) {
-    if (this.props.disputeID !== previousProperties.disputeID) await this.setState({ arbitrableDisputeID: this.props.disputeID });
+  componentDidUpdate(previousProperties) {
+    if (this.props.disputeID !== previousProperties.disputeID) {
+      this.setState({ arbitrableDisputeID: this.props.disputeID });
+      this.reload();
+    }
   }
 
-  PERIODS = (periodNumber) => {
-    const strings = [
-      "Evidence Period",
-      "Commit Period",
-      "Vote Period",
-      "Appeal Period",
-      "Execution Period",
-      "Greek gods having trouble finding this dispute...",
-      `Dispute #${this.state.arbitratorDisputeID} doesn't belong to this arbitrable contract.`,
-      `There is no such dispute. Are you in the correct network?`,
-    ];
-
-    return strings[periodNumber];
-  };
-
-  MESSAGES = (code) => {
-    const strings = [`Fetching #${this.state.arbitratorDisputeID}`, "Failed to fetch, perhaps wrong network?"];
-
-    return strings[code];
-  };
+  sumObjectsByKey(...objs) {
+    return objs.reduce((a, b) => {
+      for (let k in b) {
+        if (b.hasOwnProperty(k)) a[k] = (a[k] || 0) + b[k];
+      }
+      return a;
+    }, {});
+  }
 
   submitEvidence = async (evidence) => {
+    console.debug(this.state);
     await this.props.submitEvidenceCallback(this.state.arbitrated, {
       disputeID: this.state.arbitrableDisputeID,
       evidenceDescription: evidence.evidenceDescription,
@@ -80,7 +66,7 @@ class Interact extends React.Component {
       evidenceTitle: evidence.evidenceTitle,
       supportingSide: evidence.supportingSide,
     });
-    console.log("submitted");
+    console.debug("submitted");
     new Promise(() => setTimeout(2000)).then(this.reload());
   };
 
@@ -100,9 +86,6 @@ class Interact extends React.Component {
     });
   };
 
-  onModalShow = (e) => this.setState({ modalShow: true });
-  onContributeModalShow = (e) => this.setState({ contributeModalShow: true });
-
   onControlChange = (e) => this.setState({ [e.target.id]: e.target.value });
   onInput = (e) => {
     this.setState({ evidenceFileURI: "" });
@@ -111,30 +94,23 @@ class Interact extends React.Component {
 
   onContributeButtonClick = (e) => this.setState({ contributeModalShow: true });
 
-  onSubmitButtonClick = async (e) => {
-    e.preventDefault();
-    const { arbitrableDisputeID, fileInput, evidenceTitle, evidenceDescription } = this.state;
+  appeal = async (party, contribution) => await this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);
 
-    var reader = new FileReader();
-    reader.readAsArrayBuffer(fileInput);
-    reader.addEventListener("loadend", async () => {
-      const buffer = Buffer.from(reader.result);
-
-      const result = await this.props.publishCallback(fileInput.name, buffer);
-
-      await this.setState({ evidenceFileURI: `/ipfs/${result[0].hash}` });
-
-      const { evidenceFileURI } = this.state;
-      const receipt = await this.props.submitEvidenceCallback({
-        arbitrableDisputeID,
-        evidenceTitle,
-        evidenceDescription,
-        evidenceFileURI,
-      });
-    });
+  withdraw = async () => {
+    console.debug([Object.keys(this.state.contributions).map((key) => parseInt(key))]);
+    this.props.withdrawCallback(
+      this.state.arbitrated,
+      this.state.arbitrableDisputeID,
+      Object.keys(this.state.aggregatedContributions).map((key) => parseInt(key))
+    );
   };
 
-  appeal = async (party, contribution) => this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution);
+  getWithdrawAmount = async () =>
+    this.props.getTotalWithdrawableAmountCallback(
+      this.state.arbitratorDisputeID,
+      Object.keys(this.state.contributions).map((key) => parseInt(key)),
+      this.state.arbitrated
+    );
 
   getWinnerMultiplier = async (arbitrableAddress) => {
     const winnerMultiplier = await this.props.getWinnerMultiplierCallback(arbitrableAddress);
@@ -149,7 +125,6 @@ class Interact extends React.Component {
 
     await this.setState({
       arbitrableDisputeID: null,
-      arbitrableDispute: null,
       arbitratorDispute: null,
     });
     await this.debouncedRetrieveUsingArbitratorID(arbitratorDisputeID);
@@ -179,131 +154,131 @@ class Interact extends React.Component {
   retrieveDisputeDetailsUsingArbitratorID = async (arbitratorDisputeID) => {
     let arbitrated;
 
-    this.setState({ interactionState: 0 });
     try {
       arbitrated = (await this.props.getArbitratorDisputeCallback(arbitratorDisputeID)).arbitrated;
       this.setState({ arbitrated });
     } catch (e) {
+      console.debug("err2");
       console.error(e);
-      this.setState({ interactionState: 1 });
       return;
     }
 
-    this.setState({ arbitrated });
+    await this.setState({ arbitrated });
 
-    await this.commonFetchRoutine(arbitrated, arbitratorDisputeID);
+    await this.commonFetchRoutine(arbitrated, arbitratorDisputeID).then(this.setState({ loading: false }));
   };
 
   commonFetchRoutine = async (arbitrated, arbitratorDisputeID) => {
+    // Optimize this function: too many awaits, you can parallelize some calls.
+
     let arbitratorDispute;
     let subcourtURI;
     let subcourt;
-    let appealCost;
+    let metaevidence;
+    let arbitrableDisputeID;
+
+    try {
+      arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(arbitrated, arbitratorDisputeID);
+      this.setState({ arbitratorDisputeID });
+    } catch {
+      console.error("Failed to get arbitrable dispute id. Incompatible with IDisputeResolver.");
+      this.setState({ incompatible: true });
+    }
 
     try {
       arbitratorDispute = await this.props.getArbitratorDisputeCallback(arbitratorDisputeID);
+      metaevidence = await this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID);
       this.setState({
         arbitratorDispute,
+        arbitratorDisputeDetails: await this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
         arbitratorDisputeID,
-        metaevidence: await this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID),
-        evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
+        metaevidence,
         ruling: await this.getRuling(arbitrated, arbitratorDisputeID),
         currentRuling: await this.getCurrentRuling(arbitratorDisputeID),
         disputeEvent: await this.props.getDisputeEventCallback(arbitrated, arbitratorDisputeID),
         getDisputeResult: await this.props.getDisputeCallback(arbitratorDisputeID),
-        appealCost: await this.props.getAppealCostCallback(arbitratorDisputeID),
-        appealPeriod: await this.props.getAppealPeriodCallback(arbitratorDisputeID),
       });
     } catch (err) {
+      console.debug("err");
       console.error(err.message);
-      this.setState({ interactionState: 1 });
     } finally {
     }
 
-    let arbitrableDisputeID;
-    let arbitrableDispute;
+    console.debug("There");
+    try {
+      this.setState({
+        evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
+      });
+    } catch (err) {
+      console.debug("err");
+      console.error(err.message);
+    } finally {
+    }
+
     let multipliers;
-    let withdrewAlready;
-    let crowdfundingStatus;
 
     try {
-      arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(arbitrated, arbitratorDisputeID);
-      arbitrableDispute = await this.props.getArbitrableDisputeCallback(arbitrated, arbitrableDisputeID);
       multipliers = await this.props.getMultipliersCallback(arbitrated);
-      withdrewAlready = await this.props.withdrewAlreadyCallback(arbitrated, arbitrableDisputeID);
-      crowdfundingStatus = await this.props.getCrowdfundingStatusCallback(arbitrated, arbitrableDisputeID);
 
       await this.setState({
-        arbitrableDisputeID,
-        arbitrableDispute,
-        crowdfundingStatus,
         multipliers,
-        withdrewAlready,
       });
     } catch (err) {
       console.error(err.message);
     }
 
+    let appealDecisions, contributions, totalWithdrawable;
     try {
-      this.setState({ canPassPhase: await this.props.estimateGasOfPassPhaseCallback() });
-    } catch {
-      this.setState({ canPassPhase: false });
+      appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
+      contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated);
+      console.debug(contributions);
+
+      await this.setState({ contributions, appealDecisions });
+    } catch (err) {
+      console.error("incompatible contract");
+      console.error(err);
+      this.setState({ incompatible: true });
     }
 
-    try {
-      this.setState({ canPassPeriod: await this.props.estimateGasOfPassPeriodCallback(arbitratorDisputeID) });
-    } catch {
-      this.setState({ canPassPeriod: false });
+    if (arbitratorDispute.period >= 3) {
+      await this.setState({ appealCost: await this.props.getAppealCostCallback(arbitratorDisputeID) });
+      await this.setState({ appealPeriod: await this.props.getAppealPeriodCallback(arbitratorDisputeID) });
     }
 
-    try {
-      this.setState({ canDrawJurors: await this.props.estimateGasOfDrawJurorsCallback(arbitratorDisputeID) });
-    } catch {
-      this.setState({ canDrawJurors: false });
+    if (arbitratorDispute.period == 4) {
+      let contributionsOfPastRounds = [];
+      for (let i = 0; i < appealDecisions.length; i++) contributionsOfPastRounds[i] = await this.props.getContributionsCallback(arbitrableDisputeID, i, arbitrated);
+
+      const aggregatedContributions = this.sumObjectsByKey(...contributionsOfPastRounds, contributions);
+
+      try {
+        totalWithdrawable = await this.props.getTotalWithdrawableAmountCallback(
+          arbitrableDisputeID,
+          Object.keys(aggregatedContributions).map((key) => parseInt(key)),
+          arbitrated
+        );
+        await this.setState({ totalWithdrawable, aggregatedContributions });
+      } catch (err) {
+        console.log("can't get totalWithdrawable");
+        console.error(err);
+        this.setState({ incompatible: true }); //If ruling is not executed, this reverts.
+      }
     }
-
-    this.setState({ appealDecisions: await this.props.getAppealDecisionCallback(arbitratorDisputeID) });
-
-    this.setState({ loading: false });
   };
 
   reload = async () => {
-    const { arbitrated, arbitratorDisputeID, arbitrableDisputeID } = this.state;
+    const { arbitrated, arbitratorDisputeID, arbitrableDisputeID, metaevidence } = this.state;
     this.setState({
       arbitratorDispute: await this.props.getArbitratorDisputeCallback(arbitratorDisputeID),
       evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
       appealDecisions: await this.props.getAppealDecisionCallback(arbitratorDisputeID),
+      arbitratorDisputeDetails: await this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
     });
 
-    try {
-      this.setState({
-        crowdfundingStatus: await this.props.getCrowdfundingStatusCallback(arbitrated, arbitrableDisputeID),
-        withdrewAlready: await this.props.withdrewAlreadyCallback(arbitrated, arbitrableDisputeID),
-      });
-    } catch (error) {
-      console.error(error);
-    }
+    const appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
 
-    try {
-      this.setState({ canPassPhase: await this.props.estimateGasOfPassPhaseCallback() });
-    } catch {
-      this.setState({ canPassPhase: false });
-    }
-
-    try {
-      this.setState({ canPassPeriod: await this.props.estimateGasOfPassPeriodCallback(arbitratorDisputeID) });
-    } catch {
-      this.setState({ canPassPeriod: false });
-    }
-
-    try {
-      this.setState({ canDrawJurors: await this.props.estimateGasOfDrawJurorsCallback(arbitratorDisputeID) });
-    } catch {
-      this.setState({ canDrawJurors: false });
-    }
+    await this.setState({ appealDecisions, contributions: await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated) });
   };
-
-  getHumanReadablePeriod = (period) => this.PERIODS(period);
 
   render() {
     console.debug(this.props);
@@ -313,317 +288,84 @@ class Interact extends React.Component {
       arbitrated,
       arbitrableDisputeID,
       arbitratorDispute,
-      arbitrableDispute,
-      crowdfundingStatus,
+      arbitratorDisputeDetails,
       appealCost,
+      appealPeriod,
+      crowdfundingStatus,
       arbitratorDisputeID,
       metaevidence,
       multipliers,
       evidences,
       currentRuling,
       ruling,
-      withdrewAlready,
       getDisputeResult,
       disputeEvent,
-      canPassPhase,
-      canPassPeriod,
-      canDrawJurors,
-      appealPeriod,
+      appealDeadlines,
+      appealDecisions,
+      contributions,
+      incompatible,
+      totalWithdrawable,
+      aggregatedContributions,
     } = this.state;
+    console.log(arbitrated);
 
-    const { arbitratorAddress, activeAddress, publishCallback, withdrawFeesAndRewardsCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, passPhaseCallback, passPeriodCallback, drawJurorsCallback, subcourts, network } = this.props;
+    const { arbitratorAddress, activeAddress, appealCallback, publishCallback, withdrawCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, subcourts, subcourtDetails, network, getTotalWithdrawableAmountCallback } = this.props;
 
     return (
       <>
-        {Boolean(activeAddress) && !this.state.arbitrableDispute && !this.state.loading && (
-          <div style={{ padding: "1.1em 1.5em", fontSize: "13px", background: "#ffe03d" }}>View mode only: This is a 3rd party arbitrable contract, evidence submission and crowdfunding appeals is not available.</div>
+        {Boolean(activeAddress) && incompatible && (
+          <div style={{ padding: "1rem 2rem", fontSize: "14px", background: "#ff9900", color: "white" }}>
+            <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or fund appeal on this interface. You can do these on the arbitrable application, if implemented.
+          </div>
         )}
-        <Container fluid="true" className="main-content">
-          {arbitratorDisputeID && <Redirect to={`/cases/${arbitratorDisputeID}`} />}
-          <Accordion defaultActiveKey="0">
-            <Card>
-              <Accordion.Toggle as={Card.Header} eventKey="0">
-                <GavelSVG style={{ marginRight: "1rem" }} />
-                Interact with a Dispute
-              </Accordion.Toggle>
-              <hr className="mt-0" />
-              <Accordion.Collapse eventKey="0">
-                <>
-                  <Card.Body
-                    style={{
-                      borderRadius: 0,
-                    }}
-                  >
-                    <Form>
-                      <Form.Row>
-                        <Col>
-                          <InputGroup className="mb-5" size="md">
-                            <InputGroup.Prepend>
-                              <InputGroup.Text className="purple-inverted" style={{ transform: "none", paddingLeft: "0" }}>
-                                Search Disputes on Court
-                              </InputGroup.Text>
-                            </InputGroup.Prepend>
-                            <FormControl
-                              className="purple-inverted"
-                              style={{ border: "1px solid #D09CFF", borderRadius: "3px" }}
-                              placeholder="Dispute ID"
-                              aria-label="Input dispute number from Court"
-                              aria-describedby="search"
-                              onChange={this.onDisputeIDChange}
-                              type="number"
-                              min="0"
-                              value={arbitratorDisputeID}
-                              id="arbitratorDisputeID"
-                            />
-                          </InputGroup>
-                        </Col>
-                      </Form.Row>
-                      {arbitratorDispute && metaevidence.metaEvidenceJSON && (
-                        <>
-                          <Form.Row>
-                            <Col>
-                              <h1 className="display-title">{metaevidence.metaEvidenceJSON.title}</h1>
-                            </Col>
-                          </Form.Row>
-
-                          <Form.Row>
-                            <Card className="w-100" style={{ margin: 0 }}>
-                              <Card.Body
-                                style={{
-                                  paddingBottom: "0",
-                                  borderBottomLeftRadius: metaevidence.metaEvidenceJSON.fileURI && 0,
-                                  borderBottomRightRadius: metaevidence.metaEvidenceJSON.fileURI && 0,
-                                }}
-                              >
-                                <Form.Group id="markdown" className="markdown" style={{ paddingLeft: 0, color: "black" }}>
-                                  {metaevidence.metaEvidenceJSON.description && metaevidence.metaEvidenceJSONValid && <ReactMarkdown source={metaevidence.metaEvidenceJSON.description} />}
-                                  {!metaevidence.metaEvidenceJSON.description && <p>Not provided</p>}
-                                </Form.Group>
-                                {metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI && metaevidence.interfaceValid && (
-                                  <div className="iframe-container">
-                                    <iframe
-                                      ref={this.iframe}
-                                      id="iframe"
-                                      className="iframe"
-                                      src={
-                                        (metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI.includes("://") ? metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI : `https://ipfs.kleros.io${metaevidence.metaEvidenceJSON.evidenceDisplayInterfaceURI}`) +
-                                        encodeURI(`?{"arbitrableContractAddress":"${arbitrated}","arbitratorContractAddress":"${arbitratorAddress}","disputeID":"${arbitratorDisputeID}"}`)
-                                      }
-                                      title="evidence-display"
-                                    />
-                                  </div>
-                                )}
-                                {metaevidence.metaEvidenceJSON.arbitrableInterfaceURI && !metaevidence.metaEvidenceJSON.arbitrableInterfaceURI.includes("resolve.kleros.io") && (
-                                  <div className="my-3">
-                                    <a href={metaevidence.metaEvidenceJSON.arbitrableInterfaceURI} className="purple-inverted">
-                                      Go to arbitrable application from here
-                                    </a>
-                                  </div>
-                                )}
-                              </Card.Body>
-
-                              {metaevidence.metaEvidenceJSON.fileURI && metaevidence.fileValid && (
-                                <Card
-                                  className="text-center w-100 m-0"
-                                  style={{
-                                    backgroundColor: "#F5F1FD",
-                                    borderTopLeftRadius: 0,
-                                    borderTopRightRadius: 0,
-                                    padding: "0.8rem",
-                                  }}
-                                >
-                                  <a
-                                    href={`
-                            https://ipfs.kleros.io${metaevidence.metaEvidenceJSON.fileURI}`}
-                                  >
-                                    <AttachmentSVG style={{ width: "2rem" }} />
-                                  </a>
-                                </Card>
-                              )}
-                            </Card>
-                          </Form.Row>
-                          <Form.Row>
-                            <Col style={{ padding: 0 }}>
-                              <QuestionDisplay
-                                question={metaevidence.metaEvidenceJSON.question}
-                                firstRulingOption={metaevidence.metaEvidenceJSON.rulingOptions.titles[0]}
-                                secondRulingOption={metaevidence.metaEvidenceJSON.rulingOptions.titles[1]}
-                                firstRulingDescription={metaevidence.metaEvidenceJSON.rulingOptions.descriptions && metaevidence.metaEvidenceJSON.rulingOptions.descriptions[0]}
-                                secondRulingDescription={metaevidence.metaEvidenceJSON.rulingOptions.descriptions && metaevidence.metaEvidenceJSON.rulingOptions.descriptions[1]}
-                              />
-                            </Col>
-                          </Form.Row>
-                          <Form.Row>
-                            <Card
-                              className="w-100"
-                              style={{
-                                marginLeft: 0,
-                                marginRight: 0,
-                              }}
-                            >
-                              <Card.Body style={{ padding: 0 }}>
-                                <EvidenceTimeline
-                                  evidenceSubmissionEnabled={Boolean(activeAddress) && Boolean(arbitrableDispute)}
-                                  numberOfVotesCast={Number(getDisputeResult.votesInEachRound.slice(-1)[0])}
-                                  numberOfVotes={Number(getDisputeResult.votesLengths.slice(-1)[0])}
-                                  metaevidence={metaevidence}
-                                  evidences={evidences}
-                                  ruling={ruling}
-                                  currentRuling={Number(currentRuling)}
-                                  dispute={disputeEvent}
-                                  disputePeriod={parseInt(arbitratorDispute.period)}
-                                  publishCallback={publishCallback}
-                                  submitEvidenceCallback={this.submitEvidence}
-                                  appealDecisions={this.state.appealDecisions}
-                                />
-                              </Card.Body>
-                            </Card>
-                          </Form.Row>
-                        </>
-                      )}
-                    </Form>
-                  </Card.Body>
-
-                  <Card.Footer
-                    className="p-0"
-                    id="dispute-detail-footer"
-                    style={{
-                      borderTopLeftRadius: 0,
-                      borderTopRightRadius: 0,
-                      borderBottomLeftRadius: 12,
-                      borderBottomRightRadius: 12,
-                    }}
-                  >
-                    <div
-                      className="text-center p-5"
-                      style={{
-                        borderTopLeftRadius: "inherit",
-                        borderTopRightRadius: "inherit",
-                        borderRadius: "inherit",
-                      }}
-                    >
-                      <h3 style={{ color: "white" }}>
-                        {(arbitratorDispute && this.getHumanReadablePeriod(arbitratorDispute.period)) || this.MESSAGES(this.state.interactionState)}
-
-                        {arbitratorDispute && arbitratorDispute.lastPeriodChange && subcourts && subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)] && (
-                          <>
-                            {" Over in "}
-                            <Countdown
-                              date={BigNumber("1000")
-                                .times(BigNumber(arbitratorDispute.lastPeriodChange).plus(BigNumber(subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)])))
-                                .toNumber()}
-                              onComplete={() => this.reload()}
-                            />
-                          </>
-                        )}
-                      </h3>
-
-                      {activeAddress &&
-                        arbitratorDispute &&
-                        arbitratorDispute.lastPeriodChange &&
-                        subcourts &&
-                        subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)] &&
-                        BigNumber(Date.now()).gt(
-                          BigNumber("1000").times(
-                            BigNumber(arbitratorDispute.lastPeriodChange)
-                              .plus(BigNumber(subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)]))
-                              .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS.network))
-                          )
-                        ) &&
-                        canPassPeriod && (
-                          <Button
-                            className="ok"
-                            style={{ margin: "0 1rem" }}
-                            onClick={async (e) => {
-                              await passPeriodCallback(arbitratorDisputeID);
-                              new Promise(() => setTimeout(5000)).then(this.reload());
-                            }}
-                          >
-                            Pass Dispute Period
-                          </Button>
-                        )}
-
-                      {activeAddress &&
-                        arbitratorDispute &&
-                        arbitratorDispute.lastPeriodChange &&
-                        subcourts &&
-                        subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)] &&
-                        BigNumber(Date.now()).gt(
-                          BigNumber("1000").times(
-                            BigNumber(arbitratorDispute.lastPeriodChange)
-                              .plus(BigNumber(subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)]))
-                              .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS.network))
-                          )
-                        ) &&
-                        arbitratorDispute.period == 0 &&
-                        !canPassPeriod &&
-                        canDrawJurors && (
-                          <Button
-                            className="ok"
-                            style={{ margin: "0 1rem" }}
-                            onClick={async (e) => {
-                              await drawJurorsCallback(arbitratorDisputeID);
-                              new Promise(() => setTimeout(5000)).then(this.reload());
-                            }}
-                          >
-                            Draw Jurors
-                          </Button>
-                        )}
-                      {activeAddress &&
-                        arbitratorDispute &&
-                        arbitratorDispute.lastPeriodChange &&
-                        subcourts &&
-                        subcourts[arbitratorDispute.subcourtID][1][Number(arbitratorDispute.period)] &&
-                        BigNumber(Date.now()).gt(
-                          BigNumber("1000").times(
-                            BigNumber(arbitratorDispute.lastPeriodChange)
-                              .plus(BigNumber(subcourts[arbitratorDispute.subcourtID].timesPerPeriod[Number(arbitratorDispute.period)]))
-                              .plus(BigNumber(FALLBACK_ACTIVATION_DELAY_SECONDS.network))
-                          )
-                        ) &&
-                        arbitratorDispute.period == 0 &&
-                        !canPassPeriod &&
-                        !canDrawJurors &&
-                        canPassPhase && (
-                          <Button
-                            className="ok"
-                            style={{ margin: "0 1rem" }}
-                            onClick={async (e) => {
-                              await passPhaseCallback();
-                              new Promise(() => setTimeout(5000)).then(this.reload());
-                            }}
-                          >
-                            Pass Court Phase
-                          </Button>
-                        )}
-                      {arbitrableDisputeID && activeAddress && arbitratorDispute && arbitratorDispute.period == 4 && (
-                        <Button className="ok" style={{ margin: "0 1rem" }} disabled={withdrewAlready} onClick={(e) => withdrawFeesAndRewardsCallback(arbitrated, arbitrableDisputeID)}>
-                          {withdrewAlready ? "Withdrew Already" : "Withdraw Funds"}
-                        </Button>
-                      )}
-                    </div>
-                  </Card.Footer>
-                </>
-              </Accordion.Collapse>
-            </Card>
-          </Accordion>
-
-          {arbitrableDisputeID && arbitratorDispute && arbitratorDispute.period == 3 && arbitrableDispute && (
-            <Appeal
-              crowdfundingStatus={crowdfundingStatus}
-              appealCost={appealCost}
-              multipliers={multipliers}
-              appealCallback={this.appeal}
-              appealPeriod={appealPeriod}
-              currentRuling={currentRuling}
-              metaevidence={metaevidence}
+        {arbitrated && (
+          <main className={styles.interact}>
+            {arbitratorDisputeID && <Redirect to={`/cases/${arbitratorDisputeID}`} />}
+            <div>
+              <Row>
+                <Col>
+                  <Form.Label>Search Disputes on Court</Form.Label>
+                  <InputGroup className={styles.search} size="md">
+                    <InputGroup.Prepend>
+                      <InputGroup.Text>
+                        <Magnifier />
+                      </InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <FormControl className="purple-inverted" placeholder="Dispute ID" aria-label="Input dispute number from Court" aria-describedby="search" onChange={this.onDisputeIDChange} type="number" min="0" value={arbitratorDisputeID} id="arbitratorDisputeID" />
+                  </InputGroup>
+                </Col>
+              </Row>
+            </div>
+            <DisputeSummary metaevidenceJSON={metaevidence.metaEvidenceJSON} ipfsGateway="https://ipfs.kleros.io" arbitrated={arbitrated} arbitratorAddress={arbitratorAddress} arbitratorDisputeID={arbitratorDisputeID} />
+            <DisputeDetails
               activeAddress={activeAddress}
-              reloadCallback={this.reload}
+              metaevidenceJSON={metaevidence.metaEvidenceJSON}
+              evidences={evidences}
+              ipfsGateway="https://ipfs.kleros.io"
+              arbitrated={arbitrated}
+              arbitratorAddress={arbitratorAddress}
+              arbitratorDisputeID={arbitratorDisputeID}
+              arbitratorDispute={arbitratorDispute}
+              arbitratorDisputeDetails={arbitratorDisputeDetails}
+              subcourts={subcourts}
+              subcourtDetails={subcourtDetails}
+              incompatible={incompatible}
+              currentRuling={currentRuling}
+              disputeEvent={disputeEvent}
+              publishCallback={publishCallback}
+              submitEvidenceCallback={this.submitEvidence}
+              getAppealPeriodCallback={getAppealPeriodCallback}
+              appealCost={appealCost}
+              appealPeriod={appealPeriod}
+              appealDecisions={appealDecisions}
+              appealCallback={this.appeal}
+              contributions={contributions}
+              multipliers={multipliers}
+              withdrawCallback={this.withdraw}
+              totalWithdrawable={totalWithdrawable}
             />
-          )}
-
-          <IPFS publishCallback={publishCallback} />
-        </Container>
+          </main>
+        )}
       </>
     );
   }

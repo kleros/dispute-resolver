@@ -1,91 +1,88 @@
 import React from "react";
-import { Accordion, Container, Col, Row, Button, Form, Card, Dropdown, Badge, Spinner } from "react-bootstrap";
-import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
+import { Accordion, Container, Col, Row, Button, Form, Card, Dropdown, DropdownButton, Badge, Spinner } from "react-bootstrap";
 import { Redirect, Link } from "react-router-dom";
-import Countdown from "react-countdown-now";
-import BigNumber from "bignumber.js";
-
-const span = Object.freeze({ xs: 12, sm: 12, md: 6, lg: 6, xl: 4 });
+import OngoingCard from "components/ongoing-card.js";
+import styles from "containers/styles/open-disputes.module.css";
 
 class openDisputeIDs extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { openDisputeIDs: [], arbitratorDisputes: {}, loading: true };
+    this.state = { openDisputeIDs: [], arbitratorDisputes: {}, loading: true, statusFilter: 4 };
   }
   componentDidMount() {
     this.props.getOpenDisputesOnCourtCallback().then((openDisputeIDs) => {
-      this.setState({ openDisputeIDs: openDisputeIDs, loading: false });
+      this.setState({ openDisputeIDs: openDisputeIDs });
 
-      openDisputeIDs.map((arbitratorDispute) => {
-        this.props.getArbitratorDisputeCallback(arbitratorDispute).then((arbitratorDisputeDetails) => {
-          this.setState({ ["arbitrator" + arbitratorDispute]: arbitratorDisputeDetails });
-          this.props.getMetaEvidenceCallback(arbitratorDisputeDetails.arbitrated, arbitratorDispute).then((metaevidence) => {
-            this.setState({ [arbitratorDispute]: metaevidence });
+      openDisputeIDs
+        .sort()
+        .reverse()
+        .map((arbitratorDispute) => {
+          this.props.getArbitratorDisputeCallback(arbitratorDispute).then((arbitratorDisputeDetails) => {
+            this.setState({ ["arbitrator" + arbitratorDispute]: arbitratorDisputeDetails });
+            this.props.getMetaEvidenceCallback(arbitratorDisputeDetails.arbitrated, arbitratorDispute).then((metaevidence) => {
+              this.setState({ [arbitratorDispute]: metaevidence });
+            });
           });
-        });
 
-        this.props.getCurrentRulingCallback(arbitratorDispute).then((ruling) => this.setState({ ["arbitratorRuling" + arbitratorDispute]: ruling }));
-      });
+          this.props.getCurrentRulingCallback(arbitratorDispute).then((ruling) => this.setState({ ["arbitratorRuling" + arbitratorDispute]: ruling }));
+        });
+      this.setState({ loading: false });
     });
   }
 
-  getPeriodName = (periodNumber) => {
-    const strings = ["Evidence Period", "Commit Period", "Vote Period", "Appeal Period", "Execution Period"];
+  FILTER_NAMES = ["Evidence", "Commit", "Voting", "Crowdfunding", "Ongoing"];
+
+  getFilterName = (periodNumber) => {
+    const strings = this.FILTER_NAMES;
 
     return strings[periodNumber];
   };
 
-  render() {
-    console.debug(this.state);
-    console.debug(this.props);
+  getStatusClass = (periodNumber) => {
+    const strings = ["evidence", "commit", "vote", "appeal", "execution"];
 
-    const { openDisputeIDs, selectedDispute } = this.state;
+    return strings[periodNumber];
+  };
+
+  onFilterSelect = async (filter) => {
+    console.debug(filter);
+    await this.setState({ statusFilter: filter });
+  };
+
+  render() {
+    // console.debug(this.state);
+    // console.debug(this.props);
+
+    const { openDisputeIDs, selectedDispute, statusFilter, loading } = this.state;
     const { subcourts, subcourtDetails } = this.props;
 
     return (
-      <Container fluid className="main-content">
-        <Form.Row style={{ margin: 0 }}>
+      <main className={styles.openDisputes} id="ongoing-disputes">
+        <Row className={styles.dropdownContainer}>
+          <DropdownButton id="dropdown-basic-button" title={this.getFilterName(statusFilter)} className={`${styles.filter} ${this.getStatusClass(statusFilter)}`} onSelect={this.onFilterSelect}>
+            {this.FILTER_NAMES.map((name, index) => (
+              <Dropdown.Item key={index} eventKey={index} className={this.getStatusClass(index)}>
+                {name}
+              </Dropdown.Item>
+            ))}
+          </DropdownButton>
+        </Row>
+        <Row style={{ margin: 0, padding: 0 }}>
           {openDisputeIDs.map((dispute) => (
-            <Col style={{ display: "flex", flexDirection: "column" }} key={dispute} xl={span.xl} lg={span.lg} md={span.md} sm={span.sm} xs={span.xs}>
+            <Col
+              className={styles.card}
+              style={{ display: "flex", flexDirection: "column" }}
+              key={dispute}
+              xl={8}
+              lg={12}
+              md={12}
+              sm={24}
+              xs={24}
+              style={{ display: (this.state[dispute] && this.state[`arbitrator${dispute}`].period == statusFilter) || statusFilter == 4 ? "block" : "none" }}
+            >
               <a style={{ display: "contents", textDecoration: "none", color: "unset" }} href={`/cases/${dispute}`}>
-                {this.state[dispute] && (
-                  <Card style={{ cursor: "pointer", height: "100%" }} onClick={(e) => this.setState({ selectedDispute: dispute })}>
-                    <Card.Header>
-                      <Form.Row className="w-100">
-                        <Col xs={12} style={{ textAlign: "center" }}>
-                          <ScalesSVG style={{ float: "left", height: "100%", width: "auto" }} />
-                          {this.state[`arbitrator${dispute}`] && subcourtDetails && <span>{subcourtDetails[this.state[`arbitrator${dispute}`].subcourtID] && subcourtDetails[this.state[`arbitrator${dispute}`].subcourtID].name}</span>}
-                          <span style={{ float: "right" }}>{dispute}</span>
-                        </Col>
-                      </Form.Row>
-                    </Card.Header>
-                    <Card.Body style={{ borderRadius: 0, display: "flex", flexDirection: "column" }}>
-                      <Form.Row>
-                        <Col style={{ fontSize: "1.3rem" }}>{this.state[dispute].title}</Col>
-                      </Form.Row>
-                      {this.state[`arbitrator${dispute}`].period == 3 && (
-                        <Form.Row style={{ marginTop: "auto", paddingTop: "2.5rem" }}>
-                          <Col>
-                            <Badge style={{ fontSize: "1rem", padding: "0.6rem 0.6rem" }} className="purple text-wrap w-100">
-                              Jurors ruled: {["Draw / Refused to Rule", ...this.state[dispute].rulingOptions.titles][this.state[`arbitratorRuling${dispute}`]]}
-                            </Badge>
-                          </Col>
-                        </Form.Row>
-                      )}
-                    </Card.Body>
-                    <Card.Footer style={{ backgroundColor: "#F5F1FD", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px", borderTop: 0, textAlign: "end" }}>
-                      {this.state[`arbitrator${dispute}`] && subcourts && (
-                        <>
-                          {this.getPeriodName(this.state[`arbitrator${dispute}`].period)}{" "}
-                          <Countdown
-                            date={BigNumber("1000")
-                              .times(BigNumber(this.state[`arbitrator${dispute}`].lastPeriodChange).plus(BigNumber(subcourts[this.state[`arbitrator${dispute}`].subcourtID].timesPerPeriod[this.state[`arbitrator${dispute}`].period])))
-                              .toNumber()}
-                          />
-                        </>
-                      )}
-                    </Card.Footer>
-                  </Card>
+                {this.state[`arbitrator${dispute}`] && (this.state[`arbitrator${dispute}`].period == statusFilter || statusFilter == 4) && (
+                  <OngoingCard dispute={dispute} arbitratorDisputeDetails={this.state[`arbitrator${dispute}`]} title={(this.state[dispute] && this.state[dispute].title) || "Meta Evidence Missing"} subcourtDetails={subcourtDetails} subcourts={subcourts} />
                 )}
               </a>
             </Col>
@@ -100,8 +97,8 @@ class openDisputeIDs extends React.Component {
               <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true" style={{ width: "5rem", height: "5rem" }} className="purple-inverted" />
             </div>
           )}
-        </Form.Row>
-      </Container>
+        </Row>
+      </main>
     );
   }
 }

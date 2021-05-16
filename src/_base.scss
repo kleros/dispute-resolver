@@ -1,0 +1,124 @@
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap");
+
+svg {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+}
+
+body {
+  font-family: "Open Sans", sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+p {
+  margin-bottom: var(--spacing-8);
+  margin-bottom: 0;
+}
+
+label {
+  font-size: var(--font-size-s);
+}
+
+.label {
+  // I used a class here because label stylings are contradicting with semantical html rules. (Some paragraphs are styled with label size)
+  font-size: var(--font-size-s);
+}
+
+.h1 {
+  // I used a class here because h1 stylings are contradicting with semantical html rules. (Multiple h1s in a document)
+  font-size: var(--font-size-l);
+  font-weight: var(--bold);
+}
+
+div:not(.input-group-prepend):not(.input-group-append) > button.btn-primary:not(.dropdown-toggle),
+div:not(.input-group-prepend):not(.input-group-append) > button.btn-secondary:not(.dropdown-toggle) {
+  padding: calc(1.5 * var(--spacing-8)) var(--spacing-32);
+
+  font-weight: var(--bold);
+}
+
+button:active,
+button:focus,
+button.btn:active,
+button.btn:focus {
+  /* border: none !important; */
+  outline: none;
+  box-shadow: none;
+  -webkit-box-shadow: none;
+}
+
+button:hover {
+  box-shadow: none !important;
+}
+
+button.btn-primary:not(.dropdown-toggle):hover {
+  background-color: var(--blue-secondary);
+}
+
+button.btn-secondary:not(.dropdown-toggle):hover {
+  background-color: var(--purple-light);
+}
+
+button:not(.dropdown-toggle).btn-primary {
+  border: none;
+}
+
+button.btn-secondary,
+button.btn-secondary:hover {
+  background-color: white;
+  color: var(--blue-primary);
+  border: 1px solid var(--blue-primary);
+}
+
+label.form-label {
+  font-size: var(--font-size-s);
+}
+
+.navbar {
+  background-color: inherit;
+  padding: 8px 32px;
+}
+
+.navbar-brand {
+  padding: 0;
+}
+
+.navbar-brand > svg {
+  height: 48px;
+}
+
+.navbar-dark .navbar-nav .nav-link {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dropdown-toggle.btn.btn-primary {
+  background-color: white;
+  color: black;
+}
+
+.dropdown .btn {
+  border-color: var(--stroke);
+}
+
+div.dropdown-menu.show {
+}
+
+.dropdown-item {
+  background-color: white;
+}
+
+.dropdown-item:hover {
+  background-color: var(--blue-accent);
+}
+
+p {
+  text-overflow: ellipsis;
+}
+
+span.form-control {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

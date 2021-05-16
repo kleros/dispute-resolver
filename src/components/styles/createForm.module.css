@@ -1,0 +1,180 @@
+.createForm > div {
+  background-color: white;
+  border-radius: 18px;
+  box-shadow: var(--box-shadow);
+}
+
+.createForm .markdown {
+  word-wrap: break-word;
+  height: auto;
+}
+
+.createForm .fillUpTheForm {
+  font-size: var(--font-size-s);
+}
+
+.createForm .h1 {
+  font-size: var(--font-size-l);
+  font-weight: var(--bold);
+}
+
+.createForm hr {
+  width: calc(100% - 32px);
+}
+
+.createForm .scales {
+  height: 16px;
+  width: auto;
+  margin-right: var(--spacing-4);
+  vertical-align: text-bottom;
+}
+
+.createForm .dropdownToggle::after {
+  position: absolute;
+  right: var(--spacing-16);
+  top: calc(50% - var(--spacing-4));
+}
+
+.createForm .dropdownToggle {
+  text-align: left;
+}
+
+.createForm .dropdownToggle > span {
+  vertical-align: middle;
+}
+
+.createForm .dropdownToggle::after {
+  color: var(--stroke);
+}
+
+.createForm .scales > path {
+  fill: var(--purple-primary);
+}
+
+.createForm .arbitrationFeeGroup > div {
+  box-shadow: var(--box-shadow);
+}
+
+.createForm .arbitrationFeeGroupPrepend {
+  border: none;
+}
+.createForm .arbitrationFeeGroupPrepend > svg {
+  margin-top: auto;
+  margin-bottom: auto;
+  margin-right: var(--spacing-8);
+}
+
+.createForm .arbitrationFee {
+  border: none;
+  background-color: white;
+  font-weight: var(--bold);
+  color: var(--text-primary);
+}
+
+.createForm :global(#description) {
+  margin-bottom: var(--spacing-4);
+}
+
+.createForm :global(markdown-toolbar) {
+  color: var(--blue-primary);
+}
+
+.createForm :global(markdown-toolbar) > * > svg {
+  margin-left: var(--spacing-16);
+}
+
+.createForm .buttonAlias {
+  background-color: var(--blue-primary);
+  font-size: 40px;
+  border: none;
+  border-radius: 50%;
+}
+
+.createForm :global(.cssCircle) {
+  border-radius: 999px;
+  display: inline-block;
+
+  width: var(--spacing-32);
+  height: var(--spacing-32);
+  padding: 0px !important;
+
+  color: white;
+  background: var(--blue-primary);
+  border: none;
+  text-align: center;
+  transition: background 0.2s linear;
+  transition: color 0.2s linear;
+
+  font-size: 26px;
+}
+
+.createForm :global(.cssCircle):hover {
+  background: #3f69a0;
+  cursor: pointer;
+}
+
+.createForm :global(.minusSign) {
+}
+
+.createForm :global(.minusSign) > span {
+  vertical-align: super;
+  line-height: 27px;
+}
+
+.createForm :global(.plusSign) {
+  line-height: 0;
+  margin-right: var(--spacing-8);
+}
+
+.createForm :global(.minusSign):hover,
+.createForm :global(.plusSign):hover {
+  color: white;
+}
+
+.createForm .dropzoneRow {
+  margin-top: var(--spacing-32);
+}
+
+.createForm .dropzone {
+  background-color: var(--blue-accent);
+  border: 2px dashed #009aff;
+  text-align: center;
+  margin-bottom: var(--spacing-8);
+}
+
+.createForm .dropzoneInfo > svg {
+  margin-right: var(--spacing-8);
+}
+
+.createForm .submit {
+  float: right;
+  margin-right: var(--spacing-16);
+}
+
+/* enable absolute positioning */
+.createForm :global(.inner-addon) {
+  position: relative;
+}
+
+/* style icon */
+.createForm :global(.inner-addon) :global(.glyphicon) {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* align icon */
+.createForm :global(.left-addon) :global(.glyphicon) {
+  left: 14px;
+  top: 42px;
+}
+.createForm :global(.right-addon) :global(.glyphicon) {
+  right: 0px;
+}
+
+/* add padding  */
+.createForm :global(.left-addon) input {
+  padding-left: 40px;
+}
+.createForm :global(.right-addon) input {
+  padding-right: 30px;
+}
