@@ -1,0 +1,72 @@
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  height: 100%;
+}
+
+main {
+  width: 100%;
+  padding-bottom: var(--spacing-32);
+  padding-top: var(--spacing-64);
+  padding-left: var(--spacing-64);
+  padding-right: var(--spacing-64);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+@media only screen and (max-width: 600px) {
+  main {
+    padding-left: var(--spacing-32);
+    padding-right: var(--spacing-32);
+  }
+}
+
+@media only screen and (max-width: 400px) {
+  main {
+    padding-left: var(--spacing-16);
+    padding-right: var(--spacing-16);
+  }
+}
+
+main > section {
+  padding: var(--spacing-32);
+}
+
+main > div + main > section {
+  margin-top: var(--spacing-16);
+}
+
+section + section {
+  margin-top: var(--spacing-32);
+}
+
+footer {
+  height: var(--spacing-64);
+  min-height: var(--spacing-64);
+  padding-left: var(--spacing-32);
+  padding-right: var(--spacing-32);
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  margin-top: auto;
+}
+
+body {
+  background-color: gray;
+}
+
+.form-row > .col,
+.form-row > [class*="col-"] {
+  padding-left: 0;
+  padding-right: var(--spacing-8);
+}

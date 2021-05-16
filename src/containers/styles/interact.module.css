@@ -1,0 +1,19 @@
+.interact section:first-of-type {
+  padding: 0;
+}
+
+.interact .search {
+  margin-bottom: var(--spacing-32);
+}
+
+.interact .search :global(.input-group-prepend) {
+  border-right-width: 0;
+}
+
+.interact .search :global(.input-group-prepend) > * {
+  background-color: white;
+}
+
+.interact .search > input {
+  border-left-width: 0;
+}

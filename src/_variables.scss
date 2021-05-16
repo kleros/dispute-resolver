@@ -1,0 +1,84 @@
+$purple-primary: #4d00b4;
+$purple-light: #fbf9fe;
+$purple-dark: #1e075f;
+$blue-primary: #009aff;
+$blue-secondary: #7bcbff;
+$blue-accent: rgba(0, 154, 255, 0.06);
+$pink-light: #f2f2f2;
+$text-primary: rgba(0, 0, 0, 0.85);
+$text-secondary: rgba(0, 0, 0, 0.45);
+$stroke: #ccc;
+$grey-light: #fafafa;
+$grey-dark: #6c6c6c;
+$orange: #ff9900;
+
+$red: #f60c36;
+$green: #00c42b;
+$blue: #009aff;
+
+$body-color: $text-primary;
+
+$spacing-4: 4px;
+$spacing-8: 8px;
+$spacing-16: 16px;
+$spacing-32: 32px;
+$spacing-64: 64px;
+$spacing-128: 128px;
+
+$spacer: 1rem !default;
+$spacers: () !default;
+$spacers: map-merge(
+  (
+    0: 0,
+    1: (
+      $spacer * 0.5,
+    ),
+    2: (
+      $spacer,
+    ),
+    3: $spacer * 1.5,
+    4: (
+      $spacer * 2,
+    ),
+    5: (
+      $spacer * 2.5,
+    ),
+    6: (
+      $spacer * 3,
+    ),
+    7: (
+      $spacer * 3.5,
+    ),
+    8: (
+      $spacer * 4,
+    ),
+  ),
+  $spacers
+);
+
+$card-spacer-x: $spacing-32;
+$card-spacer-y: $spacing-16;
+
+$grid-gutter-width: 32px;
+$border-radius: 3px;
+$progress-border-radius: 30px;
+$progress-height: 8px;
+$box-shadow: 0px 6px 24px rgba(77, 0, 180, 0.25);
+$toast-border-radius: $border-radius;
+$input-color: $text-primary;
+$link-color: $input-color;
+// $input-btn-padding-y: 0.5rem;
+// $input-btn-padding-x: 1rem;
+// $line-height-base: 1.361;
+$grid-columns: 24;
+$enable-validation-icons: false;
+$font-weight-bold: 600;
+$font-weight-bolder: 600;
+$btn-font-weight: $font-weight-bold;
+$paragraph-margin-bottom: 0.5rem;
+$small-font-size: 12px;
+
+$h1-font-size: 24px;
+
+// $btn-padding-y: 12px; Cant use this because of buttons inside dropdown
+// $btn-padding-x: 32px;

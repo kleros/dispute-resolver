@@ -3,28 +3,30 @@
   "version": "1.0.0",
   "private": false,
   "dependencies": {
-    "@fortawesome/fontawesome-svg-core": "^1.2.25",
-    "@fortawesome/free-solid-svg-icons": "^5.11.2",
-    "@fortawesome/react-fontawesome": "^0.1.7",
-    "@github/markdown-toolbar-element": "^1.1.0",
-    "@kleros/archon": "^0.10.1",
-    "@kleros/binary-arbitrable-proxy-contract": "^2.3.3",
+    "@babel/helper-call-delegate": "^7.12.1",
+    "@kleros/arbitrable-proxy-contracts": "^4.0.4",
+    "@kleros/archon": "^1.2.2",
     "@kleros/kleros": "^0.1.2",
-    "@kleros/react-components": "^4.0.3",
     "bignumber.js": "^9.0.0",
+    "bootstrap": "^4.5.3",
+    "is-image": "^3.0.0",
+    "is-text-path": "^2.0.0",
+    "is-video": "^1.0.1",
+    "js-levenshtein": "^1.1.6",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
-    "react": "^16.9.0",
-    "react-bootstrap": "^1.0.0",
-    "react-countdown-now": "^2.1.1",
-    "react-dom": "^16.9.0",
+    "node-sass": "4.14.1",
+    "react": "17.0.0",
+    "react-blockies": "^1.4.1",
+    "react-bootstrap": "^1.4.0",
+    "react-countdown": "^2.3.1",
+    "react-dom": "17.0.0",
     "react-dropzone": "^10.1.9",
     "react-markdown": "^4.2.2",
     "react-router-bootstrap": "^0.25.0",
     "react-router-dom": "^5.0.1",
-    "react-scripts": "3.1.1",
-    "styled-components": "^4.3.2",
-    "web3": "1.0.0-beta.37"
+    "react-scripts": "4.0.0",
+    "styled-components": "^5.2.1"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -39,10 +41,13 @@
       "not op_mini all"
     ],
     "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
+      "last 3 chrome version",
+      "last 3 firefox version",
+      "last 3 safari version"
     ]
+  },
+  "engines": {
+    "node": ">=0.12"
   },
   "devDependencies": {
     "prettier": "^2.0.2"

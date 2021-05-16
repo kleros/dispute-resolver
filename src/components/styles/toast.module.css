@@ -1,0 +1,44 @@
+.toast {
+  font-size: var(--font-size-s);
+  position: absolute;
+  bottom: var(--spacing-64);
+  right: var(--spacing-32);
+  background-color: var(--blue-primary);
+  color: white;
+  padding: calc(var(--spacing-16) * 1.5);
+}
+
+.toast .row {
+  display: flex;
+  flex-direction: row;
+}
+
+.toast svg {
+  width: var(--spacing-32);
+  height: auto;
+}
+
+.toast button:global(.close) > span {
+  color: white;
+}
+
+.toast :global(.toast-header) {
+  color: white;
+  background-color: transparent;
+  border: none;
+  font-size: var(--font-size-m);
+  padding: 0;
+}
+
+.toast :global(.toast-body) {
+  padding: 0;
+}
+
+.toast .toastLeftColumn {
+  padding-right: var(--spacing-16);
+  margin: auto;
+}
+
+.toast .toastRightColumn {
+  padding: 0 !important;
+}

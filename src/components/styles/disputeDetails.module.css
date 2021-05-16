@@ -1,0 +1,51 @@
+.disputeDetails .spanWithSvgInside > svg {
+  margin-right: var(--spacing-8);
+  vertical-align: text-bottom;
+}
+
+.disputeDetails .scales > path {
+  fill: var(--purple-primary);
+}
+
+.disputeDetails .accordion div:global(.card-header.closed)::after {
+  content: "＋";
+  float: right;
+}
+
+.disputeDetails .accordion div:global(.card-header.open)::after {
+  content: "—";
+  float: right;
+}
+
+.disputeDetails .question > p:nth-child(2) {
+  font-size: var(--font-size-l);
+  font-weight: var(--bold);
+  margin-bottom: var(--spacing-16);
+  margin-top: var(--spacing-8);
+}
+
+.disputeDetails .dropdownToggle::after {
+  position: absolute;
+  right: var(--spacing-16);
+  top: calc(50% - var(--spacing-4));
+}
+
+.disputeDetails .dropdownToggle {
+  text-align: left;
+}
+
+.disputeDetails .dropdownToggle > span {
+  vertical-align: middle;
+}
+
+.disputeDetails .dropdownToggle::after {
+  color: var(--stroke);
+}
+
+.disputeDetails .questionInfo {
+  margin-top: var(--spacing-16);
+}
+
+.disputeDetails .questionInfo > svg {
+  margin-right: var(--spacing-8);
+}

@@ -1,0 +1,347 @@
+button {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 2.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+button:hover {
+  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+input,
+textarea {
+  border-radius: 0.25rem;
+  border: 1px solid #ced4da;
+  line-height: 1.5;
+  padding: 0.375rem 0.75rem;
+  font-size: 1rem;
+}
+
+hr {
+  margin-bottom: 2rem;
+  margin-top: 1rem;
+}
+
+.evidenceTimeline * {
+  font-family: Roboto, sans-serif;
+}
+
+.evidence-button {
+  display: block;
+  margin: auto;
+  background-color: var(--third-color);
+  color: white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 3px;
+  font-family: Roboto, sans-serif;
+  font-size: 1rem;
+  border-style: hidden;
+}
+
+label {
+  border-radius: 7px;
+}
+
+.evidence {
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding-top: 1.5rem;
+}
+
+.evidence::after {
+  border-left: thick solid #ff0000;
+}
+
+.evidence .header {
+  display: grid;
+  grid: 1fr / [title] 20fr [etherscan] 3fr [footer-end];
+  font-size: 1rem;
+}
+
+.evidence .header > a > svg {
+  grid-column: etherscan;
+  float: right;
+  width: auto;
+  height: 1.8rem;
+}
+
+.evidence > .header > p {
+  margin: 0;
+  grid-column: title;
+  display: inline-block;
+  font-weight: var(--bold);
+}
+
+.evidence p,
+.evidence pre {
+  margin: 0.5rem 1.5rem;
+  margin-bottom: 1.5rem;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.evidence .temp > div.sender {
+  color: var(--purple-primary);
+  font-size: var(--font-size-s);
+}
+
+.evidence .temp > div.timestamp {
+  font-size: var(--font-size-xs);
+
+  color: var(--purple-primary);
+}
+
+.evidence > .footer > a {
+  align-self: center;
+}
+
+.evidence > .footer {
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
+  background-color: var(--purple-light);
+  padding: 1rem 1.5rem;
+}
+
+@media only screen and (min-width: 400px) {
+  .evidence .header {
+    display: grid;
+    grid: 1fr / [title] 20fr [etherscan] 3fr [footer-end];
+    margin: 0rem 1.5rem;
+  }
+
+  .evidence > .footer {
+    display: grid;
+    grid: 1fr / [supportingSide] 1fr 14px [submitInfo] 100fr [link] 10fr [footer-end];
+  }
+
+  .evidence > .footer.false {
+    display: grid;
+    grid: 1fr / [submitInfo] 100fr [link] 10fr [footer-end];
+  }
+
+  .evidence .temp {
+    display: inline-block;
+    grid-column: submitInfo;
+  }
+
+  div.evidence-side {
+    grid-column: supportingSide;
+  }
+
+  .evidence > .header > a {
+    align-self: center;
+  }
+}
+@media only screen and (max-width: 400px) {
+  .evidence .header {
+    display: grid;
+    grid: 1fr / [title] 1fr [footer-end];
+    border-bottom: 1px solid;
+    border-color: #e8e8e8;
+    margin: 0rem 2rem;
+  }
+
+  div.evidence-side {
+    display: none;
+  }
+
+  .evidence > .footer {
+    display: grid;
+    grid: 1fr / [link] 1fr [footer-end];
+
+    padding: 1.5rem;
+    background-color: var(--second-color);
+  }
+
+  .evidence .temp {
+    display: none;
+  }
+
+  .evidence > .footer > a {
+    justify-self: center;
+  }
+
+  .evidence .header > a > svg {
+    display: none;
+  }
+}
+label > svg {
+  height: 1.2rem;
+  width: 1.2rem;
+  vertical-align: middle;
+}
+div.evidence-side {
+  align-self: end;
+}
+
+div.evidence-side > svg {
+  vertical-align: sub;
+}
+
+.evidence > .footer > a > svg {
+  grid-column: link;
+  float: right;
+  height: 1.5rem;
+  width: 1.5rem;
+}
+
+.evidence > .footer > a > svg > path {
+  fill: var(--blue-primary);
+}
+
+.evidence .footer {
+  display: flex;
+}
+
+.evidence .footer > canvas {
+  margin: auto 0;
+  margin-right: var(--spacing-8);
+}
+
+.evidence .footer > div {
+  flex: 1;
+}
+
+div > div > .divider {
+  border-left: 2px solid var(--purple-primary);
+  height: 3rem;
+  width: min-content;
+  margin: auto;
+  padding: 0;
+}
+
+.event {
+  display: block;
+  background-color: var(--purple-primary);
+  color: white;
+  text-align: center;
+  margin: auto;
+  max-width: max-content;
+  padding: 0.5rem 1.5rem;
+  border-radius: 16px;
+}
+
+.event p,
+.event pre {
+  margin: 0;
+  color: white;
+  font-size: var(--font-size-s);
+}
+
+.modal-header {
+  margin-bottom: var(--spacing-32);
+  text-align: center;
+  vertical-align: middle;
+  border-top-left-radius: var(--border-radius);
+  border-top-right-radius: var(--border-radius);
+}
+
+.modal-header h1 {
+  font-weight: normal;
+  margin: 0;
+}
+
+.modal {
+  /* This way it could be display flex or grid or whatever also. */
+  display: grid;
+  position: fixed;
+  top: calc(50vh - 250px);
+  left: 10vw;
+  /* Probably need media queries here */
+  width: 80vw;
+  z-index: 100;
+
+  /* Use this for centering if unknown width/height */
+
+  /* If known, negative margins are probably better (less chance of blurry text). */
+  /* margin: -200px 0 0 -200px; */
+
+  background: white;
+  border-radius: var(--border-radius);
+  padding: var(--spacing-32);
+}
+.closed {
+  display: none;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+
+  background: rgba(0, 0, 0, 0.4);
+}
+.modal-guts {
+  display: grid;
+  overflow: auto;
+}
+
+.dropzone {
+  margin-top: 0.2rem;
+}
+
+.dropzone p {
+  font-size: 1.25rem;
+  font-weight: normal;
+  margin: 0;
+  padding: 1rem;
+}
+
+.evidenceTimeline .dropzoneRow {
+  margin-top: var(--spacing-32);
+}
+
+.evidenceTimeline .dropzone {
+  background-color: var(--blue-accent);
+  border: 2px dashed #009aff;
+  text-align: center;
+  margin-bottom: var(--spacing-8);
+}
+
+.evidenceTimeline .dropzoneInfo > svg {
+  margin-right: var(--spacing-8);
+}
+
+.evidenceTitle {
+  margin-bottom: var(--spacing-32);
+}
+
+.evidenceDescription {
+  margin-bottom: 1.5rem;
+}
+
+.evidenceTitle,
+.evidenceDescription {
+  display: grid;
+}
+
+.evidenceTitle label,
+.evidenceDescription label,
+.dropzoneDiv label {
+  margin-bottom: 0.2rem;
+  text-align: center;
+}
+
+.evidenceSide {
+  display: block;
+}
+
+.evidenceSide > div {
+  display: inline-flex;
+  padding-right: 1rem;
+  align-items: baseline;
+}
+
+.evidenceTimeline .noEvidence {
+  font-size: var(--font-size-l);
+  text-align: center;
+}
