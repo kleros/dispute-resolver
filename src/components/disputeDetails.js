@@ -138,6 +138,7 @@ class DisputeDetails extends React.Component {
       arbitratorDisputeID,
       arbitratorAddress,
       arbitratorDispute,
+      incompatible,
       subcourts,
       subcourtDetails,
       arbitratorDisputeDetails,
@@ -156,6 +157,8 @@ class DisputeDetails extends React.Component {
     const { activeKey } = this.state;
     console.debug(this.props);
     console.debug(this.state);
+
+    const decisionInfoBoxContent = `This decision can be appealed within appeal period. ${incompatible ? "Go to arbitrable application to appeal this ruling." : ""}`;
 
     if (metaevidenceJSON && arbitratorDispute && subcourts && subcourtDetails && arbitratorDisputeDetails)
       return (
@@ -191,7 +194,7 @@ class DisputeDetails extends React.Component {
             </Col>
           </Row>
           {metaevidenceJSON.rulingOptions.type == "single-select" && arbitratorDispute.period >= 3 && (
-            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : metaevidenceJSON.rulingOptions.titles[currentRuling - 1]}`} content="This decision can be appealed within appeal period." />
+            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : metaevidenceJSON.rulingOptions.titles[currentRuling - 1]}`} content={decisionInfoBoxContent} />
           )}
 
           {metaevidenceJSON.rulingOptions.type == "multiple-select" && arbitratorDispute.period >= 3 && (
@@ -210,11 +213,11 @@ class DisputeDetails extends React.Component {
                       .map((bit, index) => (bit == 1 ? metaevidenceJSON.rulingOptions.titles[index] : null))
                       .join(" ")
               }`}
-              content="This decision can be appealed within appeal period."
+              content={decisionInfoBoxContent}
             /> // Refactor out this logic, too complicated.
           )}
           {(metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") && arbitratorDispute.period >= 3 && (
-            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : currentRuling - 1}`} content="This decision can be appealed within appeal period." /> // Refactor out this logic, too complicated.
+            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : currentRuling - 1}`} content={decisionInfoBoxContent} /> // Refactor out this logic, too complicated.
           )}
           <Accordion
             className={`mt-4 ${styles.accordion}`}
@@ -421,7 +424,7 @@ class DisputeDetails extends React.Component {
               <Accordion.Collapse eventKey="3">
                 <Card.Body>
                   <EvidenceTimeline
-                    evidenceSubmissionEnabled={true}
+                    evidenceSubmissionEnabled={!incompatible}
                     metaevidence={metaevidenceJSON}
                     evidences={evidences}
                     dispute={disputeEvent}

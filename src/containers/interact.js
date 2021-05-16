@@ -175,7 +175,15 @@ class Interact extends React.Component {
     let subcourtURI;
     let subcourt;
     let metaevidence;
-    let arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(arbitrated, arbitratorDisputeID);
+    let arbitrableDisputeID;
+
+    try {
+      arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(arbitrated, arbitratorDisputeID);
+      this.setState({ arbitratorDisputeID });
+    } catch {
+      console.error("Failed to get arbitrable dispute id. Incompatible with IDisputeResolver.");
+      this.setState({ incompatible: true });
+    }
 
     try {
       arbitratorDispute = await this.props.getArbitratorDisputeCallback(arbitratorDisputeID);
@@ -184,7 +192,6 @@ class Interact extends React.Component {
         arbitratorDispute,
         arbitratorDisputeDetails: await this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
         arbitratorDisputeID,
-        arbitrableDisputeID,
         metaevidence,
         ruling: await this.getRuling(arbitrated, arbitratorDisputeID),
         currentRuling: await this.getCurrentRuling(arbitratorDisputeID),
@@ -308,7 +315,7 @@ class Interact extends React.Component {
       <>
         {Boolean(activeAddress) && incompatible && (
           <div style={{ padding: "1rem 2rem", fontSize: "14px", background: "#ff9900", color: "white" }}>
-            <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or appeal.
+            <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or fund appeal on this interface. You can do these on the arbitrable application, if implemented.
           </div>
         )}
         {arbitrated && (
@@ -342,6 +349,7 @@ class Interact extends React.Component {
               arbitratorDisputeDetails={arbitratorDisputeDetails}
               subcourts={subcourts}
               subcourtDetails={subcourtDetails}
+              incompatible={incompatible}
               currentRuling={currentRuling}
               disputeEvent={disputeEvent}
               publishCallback={publishCallback}

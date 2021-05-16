@@ -164,9 +164,9 @@ class EvidenceTimeline extends React.Component {
     return (
       <div id="evidence-timeline" className={styles.evidenceTimeline}>
         <div className={styles["content-inner"]}>
-          {evidenceSubmissionEnabled && parseInt(disputePeriod) >= 0 && parseInt(disputePeriod) < 4 && (
-            <Button id="evidence-button" onClick={this.handleModalOpenClose} className="mb-4">
-              Submit New Evidence
+          {parseInt(disputePeriod) >= 0 && parseInt(disputePeriod) < 4 && (
+            <Button id="evidence-button" onClick={this.handleModalOpenClose} className="mb-4" disabled={!evidenceSubmissionEnabled}>
+              {evidenceSubmissionEnabled ? "Submit New Evidence" : "Go to Arbitrable Application to Submit Evidence"}
             </Button>
           )}
 

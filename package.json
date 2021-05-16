@@ -4,7 +4,7 @@
   "private": false,
   "dependencies": {
     "@babel/helper-call-delegate": "^7.12.1",
-    "@kleros/arbitrable-proxy-contracts": "^4.0.0",
+    "@kleros/arbitrable-proxy-contracts": "^4.0.4",
     "@kleros/archon": "^1.2.2",
     "@kleros/kleros": "^0.1.2",
     "bignumber.js": "^9.0.0",
