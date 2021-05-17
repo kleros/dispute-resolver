@@ -19,7 +19,7 @@ class Interact extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      arbitratorDisputeID: this.props.route && this.props.route.match.params.id,
+      arbitratorDisputeID: (this.props.route && this.props.route.match.params.id) || 700,
       fileInput: "",
       evidenceFileURI: "",
       metaevidence: "",
