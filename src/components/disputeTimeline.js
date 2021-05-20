@@ -13,8 +13,7 @@ class DisputeTimeline extends React.Component {
   };
 
   render() {
-    const { metaevidenceJSON, ipfsGateway, interfaceValid, arbitrated, arbitratorDisputeID, arbitratorAddress, period, lastPeriodChange, subcourt } = this.props;
-    console.debug(metaevidenceJSON);
+    const { period, lastPeriodChange, subcourt } = this.props;
     console.debug(this.props);
 
     return (

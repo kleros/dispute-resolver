@@ -31,12 +31,11 @@ class CrowdfundingCard extends React.Component {
 
   handleFundButtonClick = () => {
     const { variable, appealCallback, rulingOptionCode } = this.props;
-    console.debug(Web3);
     const { variableRulingOption, contribution } = this.state;
     let actualRulingCode;
 
     switch (variable) {
-      case undefined: //Not variable
+      case undefined: // Not variable
         actualRulingCode = rulingOptionCode;
         break;
       case "uint":
@@ -50,7 +49,7 @@ class CrowdfundingCard extends React.Component {
         break;
     }
 
-    appealCallback(actualRulingCode, BigNumber(contribution).times(DECIMALS)).then(this.setState({ variableRulingOption: "", contribution: this.props.suggestedContribution }));
+    appealCallback(actualRulingCode, BigNumber(contribution).times(DECIMALS)); //.then(this.setState({ variableRulingOption: "", contribution: this.props.suggestedContribution }));
   };
 
   render() {

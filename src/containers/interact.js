@@ -179,7 +179,7 @@ class Interact extends React.Component {
 
     try {
       arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(arbitrated, arbitratorDisputeID);
-      this.setState({ arbitratorDisputeID });
+      this.setState({ arbitrableDisputeID });
     } catch {
       console.error("Failed to get arbitrable dispute id. Incompatible with IDisputeResolver.");
       this.setState({ incompatible: true });
