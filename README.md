@@ -9,7 +9,7 @@ A general purpose arbitrable application.
 - Submit evidence.
 - Fund appeals.
 
-This user interface implements [IDisputeResolver](https://github.com/kleros/arbitrable-proxy-contracts/blob/master/contracts/IDisputeResolver.sol). Any arbitrable smart contract will be fully compatible (for submitting evidence and funding appeals) with this user interface if it implements `IDisputeResolver` . Otherwise interface will work except evidence submissions and appeal funding.
+This user interface implements [IDisputeResolver](https://github.com/kleros/dispute-resolver-interface-contract). Any arbitrable smart contract will be fully compatible (for submitting evidence and funding appeals) with this user interface if it implements `IDisputeResolver` . Otherwise interface will work except evidence submissions and appeal funding.
 
 See deployed contracts [here](https://github.com/kleros/binary-arbitrable-proxy/blob/master/src/ethereum/network-contract-mapping.js).
 
