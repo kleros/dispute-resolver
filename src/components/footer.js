@@ -41,13 +41,11 @@ class Footer extends React.Component {
               <Help />
             </a>
             <div className={`d-none d-md-block ${styles.social}`}>
-              {network == 1 ||
-                network == 3 ||
-                (network == 42 && (
-                  <a href={`https://${ETHERSCAN_STRINGS[network]}etherscan.io/address/${this.props.networkMap[network].ARBITRABLE_PROXY}#code`} target="_blank" rel="noopener noreferrer">
-                    <Etherscan />
-                  </a>
-                ))}
+              {(network == 1 || network == 3 || network == 42) && (
+                <a href={`https://${ETHERSCAN_STRINGS[network]}etherscan.io/address/${this.props.networkMap[network].ARBITRABLE_PROXY}#code`} target="_blank" rel="noopener noreferrer">
+                  <Etherscan />
+                </a>
+              )}
               <a href="https://github.com/kleros/dispute-resolver">
                 <Github />
               </a>
