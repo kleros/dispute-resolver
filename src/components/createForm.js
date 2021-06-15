@@ -19,6 +19,8 @@ const QuestionTypes = Object.freeze({
   STRING: { code: "string", humanReadable: "Text" },
 });
 
+const NATIVE_TOKEN_TICKER = Object.freeze({ 1: "ETH", 3: "ETH", 42: "ETH", 77: "SPOA" });
+
 import styles from "components/styles/createForm.module.css";
 
 class CreateForm extends React.Component {
@@ -168,7 +170,7 @@ class CreateForm extends React.Component {
   };
 
   render() {
-    const { awaitingConfirmation, show, activeAddress, subcourtsLoading, subcourtDetails, onNextButtonClickCallback } = this.props;
+    const { awaitingConfirmation, show, activeAddress, subcourtsLoading, subcourtDetails, onNextButtonClickCallback, network } = this.props;
 
     const {
       title,
@@ -241,7 +243,7 @@ class CreateForm extends React.Component {
                 <Form.Label htmlFor="arbitrationFee">Arbitration Cost</Form.Label>
                 <Form.Control as="div" className={styles.arbitrationFeeGroupPrepend}>
                   <EthereumSVG />
-                  <span className={styles.arbitrationFee}>{arbitrationCost && arbitrationCost + " ETH"}</span>
+                  {<span className={styles.arbitrationFee}>{arbitrationCost && arbitrationCost + " " + NATIVE_TOKEN_TICKER[network]}</span>}
                 </Form.Control>
               </Form.Group>
             </Col>

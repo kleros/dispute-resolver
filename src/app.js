@@ -304,6 +304,7 @@ class App extends React.Component {
                     web3={Web3}
                     subcourtDetails={subcourtDetails}
                     subcourtsLoading={subcourtsLoading}
+                    network={this.state.network}
                   />
                   <Footer networkMap={networkMap} network={this.state.network} />
                 </>

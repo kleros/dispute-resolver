@@ -44,11 +44,13 @@ class Create extends React.Component {
 
     const { lastDisputeID, activePage, formData, notificationShow } = this.state;
 
-    const { activeAddress, subcourtDetails, subcourtsLoading, getArbitrationCostCallback, publishCallback, createDisputeCallback } = this.props;
+    const { activeAddress, subcourtDetails, subcourtsLoading, getArbitrationCostCallback, publishCallback, createDisputeCallback, network } = this.props;
 
     return (
       <main className={styles.create}>
-        {activePage == 1 && <CreateForm getArbitrationCostCallback={getArbitrationCostCallback} publishCallback={publishCallback} subcourtDetails={subcourtDetails} subcourtsLoading={subcourtsLoading} onNextButtonClickCallback={this.onNextButtonClick} formData={formData} />}
+        {activePage == 1 && (
+          <CreateForm getArbitrationCostCallback={getArbitrationCostCallback} publishCallback={publishCallback} subcourtDetails={subcourtDetails} subcourtsLoading={subcourtsLoading} onNextButtonClickCallback={this.onNextButtonClick} formData={formData} network={network} />
+        )}
         {activePage == 2 && (
           <Summary
             getArbitrationCostCallback={getArbitrationCostCallback}
