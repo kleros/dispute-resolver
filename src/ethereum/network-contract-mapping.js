@@ -16,6 +16,12 @@ const map = {
     ARBITRABLE_PROXY: ArbitrableProxy.networks[42].address,
     POLICY_REGISTRY: "0xFC53D1d6dDc2C6Cdd403cb7DBf0f26140D82e12d",
   },
+
+  77: {
+    KLEROS_LIQUID: "0xb701ff19fBD9702DD7Ca099Ee7D0D42a2612baB5",
+    ARBITRABLE_PROXY: ArbitrableProxy.networks[77].address,
+    POLICY_REGISTRY: "0x0Bee63bC7220d0Bacd8A3c9d6B6511126CDfe58f",
+  },
 };
 
 export default map;

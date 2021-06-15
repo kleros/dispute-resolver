@@ -18,8 +18,6 @@ const imports = {
   PolicyRegistry,
 };
 
-const instances = {};
-
 export const contractInstance = (interfaceName, address) => new web3.eth.Contract(imports[interfaceName].abi, address);
 
 export const call = (interfaceName, instanceAddress, method, ...args) =>
