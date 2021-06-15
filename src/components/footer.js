@@ -17,7 +17,7 @@ import { LinkContainer } from "react-router-bootstrap";
 import styles from "./styles/footer.module.css";
 
 const ETHERSCAN_STRINGS = Object.freeze({ 1: "", 3: "ropsten.", 42: "kovan." });
-const NETWORK_NAMES = Object.freeze({ 1: "", 3: "Ropsten", 42: "Kovan" });
+const NETWORK_NAMES = Object.freeze({ 1: "", 3: "Ropsten", 42: "Kovan", 77: "Sokol" });
 
 class Footer extends React.Component {
   constructor(props) {
@@ -33,7 +33,7 @@ class Footer extends React.Component {
             <SecuredByKleros />
           </a>
           <div className={`d-none d-lg-block ml-5`}>
-            <Col>{NETWORK_NAMES[network]}</Col>
+            <Col>{NETWORK_NAMES[network] || "Unsupported Network"}</Col>
           </div>
           <div className={`ml-sm-auto ${styles.rest}`}>
             <a className={`d-none d-sm-block ${styles.help}`} href="https://t.me/kleros">
