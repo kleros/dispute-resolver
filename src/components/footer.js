@@ -17,7 +17,7 @@ import { LinkContainer } from "react-router-bootstrap";
 import styles from "./styles/footer.module.css";
 
 const ETHERSCAN_STRINGS = Object.freeze({ 1: "", 3: "ropsten.", 42: "kovan." });
-const NETWORK_NAMES = Object.freeze({ 1: "", 3: "Ropsten", 42: "Kovan", 77: "Sokol" });
+const NETWORK_NAMES = Object.freeze({ 1: "Main", 3: "Ropsten", 42: "Kovan", 77: "Sokol" });
 
 class Footer extends React.Component {
   constructor(props) {
