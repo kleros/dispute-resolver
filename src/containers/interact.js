@@ -314,7 +314,7 @@ class Interact extends React.Component {
     return (
       <>
         {Boolean(activeAddress) && incompatible && (
-          <div style={{ padding: "1rem 2rem", fontSize: "14px", background: "#ff9900", color: "white" }}>
+          <div style={{ padding: "1rem 2rem", fontSize: "14px", background: "#fafafa" }}>
             <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or fund appeal on this interface. You can do these on the arbitrable application, if implemented.
           </div>
         )}

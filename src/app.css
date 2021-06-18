@@ -86,6 +86,10 @@ img {
   color: #00aaff;
 }
 
+.gray-inverted {
+  color: #fafafa;
+}
+
 button.return {
   background-color: transparent;
   border-color: #4d00b4;
