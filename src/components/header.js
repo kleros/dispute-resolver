@@ -37,7 +37,7 @@ class Header extends React.Component {
           </Navbar.Collapse>
         </Navbar>
         {viewOnly && (
-          <div>
+          <div style={{ padding: "1rem 2rem", fontSize: "14px", background: "#fafafa" }}>
             View mode only: Actions that require an Ethereum account are disabled. To use them, a web3 browser like{" "}
             <a href="https://metamask.io" target="_blank" rel="noreferrer noopener">
               Metamask
