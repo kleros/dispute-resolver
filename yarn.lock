@@ -1658,9 +1658,9 @@
     chalk "^4.0.0"
 
 "@kleros/arbitrable-proxy-contracts@^4.0.6":
-  version "4.0.6"
-  resolved "https://registry.yarnpkg.com/@kleros/arbitrable-proxy-contracts/-/arbitrable-proxy-contracts-4.0.6.tgz#fa6994bb2e86503890ce8cddd09a9b73bb468c37"
-  integrity sha512-wqh4SNZZmhO2NqUJugyksGy4RJit3A3PiZDnRW0SCl1rhJwnC3bDgy7Q5Z6TFAHnrckCAnscf7Jn7RueWryHgw==
+  version "4.0.8"
+  resolved "https://registry.yarnpkg.com/@kleros/arbitrable-proxy-contracts/-/arbitrable-proxy-contracts-4.0.8.tgz#9c7a01c996cc6e95073a23a653e9cf15836754dc"
+  integrity sha512-EXHXuSj78nJNr4Sg2Q8rSEBd71clsPW/2ZdP9jjL2YmTlkFoxz2qEfmesW6O9V2xGZdqrqOSytOPEFZUQyu7Ng==
   dependencies:
     "@kleros/dispute-resolver-interface-contract" "^1.0.2"
     "@kleros/erc-792" "7.0.0"

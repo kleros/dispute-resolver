@@ -19,7 +19,7 @@ const QuestionTypes = Object.freeze({
   STRING: { code: "string", humanReadable: "Text" },
 });
 
-const NATIVE_TOKEN_TICKER = Object.freeze({ 1: "ETH", 3: "ETH", 42: "ETH", 77: "SPOA" });
+const NATIVE_TOKEN_TICKER = Object.freeze({ 1: "ETH", 3: "ETH", 42: "ETH", 77: "SPOA", 100: "xDai" });
 
 import styles from "components/styles/createForm.module.css";
 
