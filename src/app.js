@@ -230,8 +230,24 @@ class App extends React.Component {
   };
 
   getTotalWithdrawableAmount = async (arbitrableDisputeID, contributedTo, arbitrated) => {
-    console.log(contributedTo);
-    return EthereumInterface.call("IDisputeResolver", arbitrated, "getTotalWithdrawableAmount", arbitrableDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO, contributedTo);
+    const address = "0xfB63808C6B6FEbc4f341073211127Aa383E175cd";
+
+    console.debug(`arbitrated ${arbitrated}`);
+    console.log(`arbitrable dispute id ${arbitrableDisputeID}`);
+    console.log(`ruling ${contributedTo}`);
+    console.log(`contributor ${address ? address : this.state.activeAddress}`);
+
+    let amount = 0;
+    let counter = 0;
+    while (counter < contributedTo.length) {
+      amount = await EthereumInterface.call("IDisputeResolver", arbitrated, "getTotalWithdrawableAmount", arbitrableDisputeID, address ? address : this.state.activeAddress, contributedTo[counter]);
+      if (amount != 0) break;
+      counter++;
+    }
+    console.debug(`counter ${counter}`);
+    return { amount: amount, ruling: contributedTo[counter] };
+    // console.debug(`result ${result}`);
+    // return result;
   };
 
   getDispute = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "getDispute", arbitratorDisputeID);

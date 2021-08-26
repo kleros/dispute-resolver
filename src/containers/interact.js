@@ -250,6 +250,8 @@ class Interact extends React.Component {
       for (let i = 0; i < appealDecisions.length; i++) contributionsOfPastRounds[i] = await this.props.getContributionsCallback(arbitrableDisputeID, i, arbitrated);
 
       const aggregatedContributions = this.sumObjectsByKey(...contributionsOfPastRounds, contributions);
+      console.log(`agregated ${aggregatedContributions}`);
+      console.log(aggregatedContributions);
 
       try {
         totalWithdrawable = await this.props.getTotalWithdrawableAmountCallback(
@@ -257,7 +259,7 @@ class Interact extends React.Component {
           Object.keys(aggregatedContributions).map((key) => parseInt(key)),
           arbitrated
         );
-        await this.setState({ totalWithdrawable, aggregatedContributions });
+        await this.setState({ totalWithdrawable: totalWithdrawable.amount, aggregatedContributions });
       } catch (err) {
         console.log("can't get totalWithdrawable");
         console.error(err);
