@@ -1657,13 +1657,12 @@
     "@types/yargs" "^15.0.0"
     chalk "^4.0.0"
 
-"@kleros/arbitrable-proxy-contracts@^4.0.6":
-  version "4.0.8"
-  resolved "https://registry.yarnpkg.com/@kleros/arbitrable-proxy-contracts/-/arbitrable-proxy-contracts-4.0.8.tgz#9c7a01c996cc6e95073a23a653e9cf15836754dc"
-  integrity sha512-EXHXuSj78nJNr4Sg2Q8rSEBd71clsPW/2ZdP9jjL2YmTlkFoxz2qEfmesW6O9V2xGZdqrqOSytOPEFZUQyu7Ng==
+"@kleros/arbitrable-proxy-contracts@^5.0.0":
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/@kleros/arbitrable-proxy-contracts/-/arbitrable-proxy-contracts-5.0.0.tgz#90b18dd41a380f1698d43d17d6bd06ce4574c0dd"
+  integrity sha512-j6SDTg4WfPYgswu5uStXgUdOZpHB0fdvoQup07kh3c5uFXrZ4FcS2zK0tnqcVCd2WtgPb/2h2jg5LPG4p5aeqA==
   dependencies:
-    "@kleros/dispute-resolver-interface-contract" "^1.0.2"
-    "@kleros/erc-792" "7.0.0"
+    "@kleros/dispute-resolver-interface-contract" "^2"
     "@kleros/ethereum-libraries" "^2.0.0"
 
 "@kleros/archon@^1.2.2":
@@ -1677,10 +1676,10 @@
     multihashes "0.4.14"
     web3 "^1.3.6"
 
-"@kleros/dispute-resolver-interface-contract@^1.0.2":
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/@kleros/dispute-resolver-interface-contract/-/dispute-resolver-interface-contract-1.0.2.tgz#c4c2e68304136875c8dcb67cada23a757e481957"
-  integrity sha512-AXT8IJTXLcDrr/VztvKNk9L5PGDUg3Nbm3jGG5IshQ4PnUqLqXasXzZi2gQnbONR3VQCEiQlKgLvgyE71h7k9w==
+"@kleros/dispute-resolver-interface-contract@^2":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@kleros/dispute-resolver-interface-contract/-/dispute-resolver-interface-contract-2.0.0.tgz#c4ba2b1ca10ad666104d117cf3b0dc3b96f5ec99"
+  integrity sha512-Mf6xyMoq5AOOU1h34O7i65peP+tosqTQRN+F88Vr8seVWBSxsF3S+J8I1jAJ9ASFjqeLX6EofKIPH/WymSuKtg==
   dependencies:
     "@kleros/erc-792" "7.0.0"
 
