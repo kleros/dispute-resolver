@@ -98,11 +98,7 @@ class Interact extends React.Component {
 
   withdraw = async () => {
     console.debug([Object.keys(this.state.contributions).map((key) => parseInt(key))]);
-    this.props.withdrawCallback(
-      this.state.arbitrated,
-      this.state.arbitrableDisputeID,
-      Object.keys(this.state.aggregatedContributions).map((key) => parseInt(key))
-    );
+    this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution);
   };
 
   getWithdrawAmount = async () =>
@@ -259,7 +255,7 @@ class Interact extends React.Component {
           Object.keys(aggregatedContributions).map((key) => parseInt(key)),
           arbitrated
         );
-        await this.setState({ totalWithdrawable: totalWithdrawable.amount, aggregatedContributions });
+        await this.setState({ totalWithdrawable: totalWithdrawable.amount, aggregatedContributions, selectedContribution: totalWithdrawable.ruling });
       } catch (err) {
         console.log("can't get totalWithdrawable");
         console.error(err);
