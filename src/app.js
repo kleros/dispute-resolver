@@ -233,7 +233,6 @@ class App extends React.Component {
     console.debug(`arbitrated ${arbitrated}`);
     console.log(`arbitrable dispute id ${arbitrableDisputeID}`);
     console.log(`ruling ${contributedTo}`);
-    console.log(`contributor ${address ? address : this.state.activeAddress}`);
 
     let amount = 0;
     let counter = 0;
