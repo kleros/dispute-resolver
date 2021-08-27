@@ -219,7 +219,7 @@ class App extends React.Component {
 
   getContributions = async (arbitrableDisputeID, round, arbitrableContractAddress) => {
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
-    const contributionLogs = await contractInstance.getPastEvents("Contribution", { fromBlock: QUERY_FROM_BLOCK, toBlock: "latest", filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, round: round } });
+    const contributionLogs = await contractInstance.getPastEvents("Contribution", { fromBlock: QUERY_FROM_BLOCK, toBlock: "latest", filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round: round } });
     console.debug(contributionLogs);
     let contributionsForEachRuling = {};
     contributionLogs.map((log) => {
