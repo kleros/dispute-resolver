@@ -1658,9 +1658,9 @@
     chalk "^4.0.0"
 
 "@kleros/arbitrable-proxy-contracts@^5.0.0":
-  version "5.0.0"
-  resolved "https://registry.yarnpkg.com/@kleros/arbitrable-proxy-contracts/-/arbitrable-proxy-contracts-5.0.0.tgz#90b18dd41a380f1698d43d17d6bd06ce4574c0dd"
-  integrity sha512-j6SDTg4WfPYgswu5uStXgUdOZpHB0fdvoQup07kh3c5uFXrZ4FcS2zK0tnqcVCd2WtgPb/2h2jg5LPG4p5aeqA==
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/@kleros/arbitrable-proxy-contracts/-/arbitrable-proxy-contracts-5.0.1.tgz#aab6afc5cac756e5300ae887c446a1c922dbfc6f"
+  integrity sha512-f5OzGF0nVGNYkPKJfpP+XFv3En/kDxZVRvw9P5rNNscaADJ8ebCpZgBxSs44BiiV+JXMjVkqcvp1l53Wmi9WVw==
   dependencies:
     "@kleros/dispute-resolver-interface-contract" "^2"
     "@kleros/ethereum-libraries" "^2.0.0"

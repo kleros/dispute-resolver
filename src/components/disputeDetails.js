@@ -346,7 +346,7 @@ class DisputeDetails extends React.Component {
                               .map((key, index) => (
                                 <Col key={key} className="pb-4" xl={8} lg={12} xs={24}>
                                   <CrowdfundingCard
-                                    title={metaevidenceJSON.rulingOptions.type == "string" ? hexToUtf8(toHex(key)) : key - 1}
+                                    title={metaevidenceJSON.rulingOptions.type == "string" ? hexToUtf8(toHex(key)) : this.convertToRealitioFormat(key, metaevidenceJSON)}
                                     rulingOptionCode={key}
                                     winner={currentRuling == key}
                                     fundingPercentage={contributions.hasOwnProperty(key) ? BigNumber(contributions[key]).div(this.calculateTotalCost(key)).times(100).toFixed(2) : 0}
@@ -354,13 +354,14 @@ class DisputeDetails extends React.Component {
                                     appealPeriodEnd={this.calculateAppealPeriod(key)}
                                     roi={this.calculateReturnOfInvestmentRatio(key).toFixed(2)}
                                     appealCallback={appealCallback}
+                                    metaevidenceJSON={metaevidenceJSON}
                                   />
                                 </Col>
                               ))}
                           {metaevidenceJSON && (metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") && this.props.currentRuling != 0 && (
                             <Col className="pb-4" xl={8} lg={12} xs={24}>
                               <CrowdfundingCard
-                                title={`${this.props.currentRuling - 1}`}
+                                title={`${this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`}
                                 rulingOptionCode={this.props.currentRuling}
                                 winner={true}
                                 fundingPercentage={contributions.hasOwnProperty(this.props.currentRuling) ? BigNumber(contributions[this.props.currentRuling]).div(this.calculateTotalCost(this.props.currentRuling)).times(100).toFixed(2) : 0}
@@ -368,6 +369,7 @@ class DisputeDetails extends React.Component {
                                 roi={this.calculateReturnOfInvestmentRatio(this.props.currentRuling).toFixed(2)}
                                 suggestedContribution={this.calculateAmountRemainsToBeRaised(this.props.currentRuling).div(DECIMALS).toString()}
                                 appealCallback={appealCallback}
+                                metaevidenceJSON={metaevidenceJSON}
                               />
                             </Col>
                           )}
@@ -381,6 +383,7 @@ class DisputeDetails extends React.Component {
                                 roi={this.calculateReturnOfInvestmentRatioForLoser().toFixed(2)}
                                 suggestedContribution={this.calculateAmountRemainsToBeRaisedForLoser().div(DECIMALS).toString()}
                                 appealCallback={appealCallback}
+                                metaevidenceJSON={metaevidenceJSON}
                               />
                             </Col>
                           )}
