@@ -252,7 +252,7 @@ class Interact extends React.Component {
       try {
         totalWithdrawable = await this.props.getTotalWithdrawableAmountCallback(
           arbitrableDisputeID,
-          Object.keys(aggregatedContributions).map((key) => parseInt(key)),
+          Object.keys(aggregatedContributions).map((key) => key),
           arbitrated
         );
         await this.setState({ totalWithdrawable: totalWithdrawable.amount, aggregatedContributions, selectedContribution: totalWithdrawable.ruling });

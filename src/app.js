@@ -241,7 +241,6 @@ class App extends React.Component {
       if (amount != 0) break;
       counter++;
     }
-    console.debug(`counter ${counter}`);
     return { amount: amount, ruling: contributedTo[counter] };
   };
 
