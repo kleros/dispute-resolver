@@ -3,7 +3,7 @@ import ArbitrableProxy from "../../node_modules/@kleros/arbitrable-proxy-contrac
 const map = {
   1: {
     KLEROS_LIQUID: "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
-    ARBITRABLE_PROXY: ArbitrableProxy.networks[1].address,
+    ARBITRABLE_PROXY: ArbitrableProxy.networks[1]?.address,
     POLICY_REGISTRY: "0xCf1f07713d5193FaE5c1653C9f61953D048BECe4",
   },
   3: {

@@ -8,6 +8,8 @@ import { ReactComponent as Hourglass } from "assets/images/hourglass.svg";
 import AlertMessage from "components/alertMessage";
 const DECIMALS = BigNumber(10).pow(BigNumber(18));
 import Web3 from ".././ethereum/web3";
+const { toBN, toHex, hexToUtf8 } = Web3.utils;
+import * as realitioLibQuestionFormatter from "@realitio/realitio-lib/formatters/question";
 
 class CrowdfundingCard extends React.Component {
   constructor(props) {
@@ -29,17 +31,27 @@ class CrowdfundingCard extends React.Component {
 
   onControlChange = async (e) => await this.setState({ [e.target.id]: e.target.value });
 
+  addDecimalsToUintRuling = (currentRuling, metaEvidenceJSON) => {
+    return realitioLibQuestionFormatter.answerToBytes32(currentRuling, {
+      decimals: metaEvidenceJSON.rulingOptions.precision || 18,
+      type: metaEvidenceJSON.rulingOptions.type,
+    });
+  };
+
   handleFundButtonClick = () => {
-    const { variable, appealCallback, rulingOptionCode } = this.props;
+    const { variable, appealCallback, rulingOptionCode, metaevidenceJSON } = this.props;
     const { variableRulingOption, contribution } = this.state;
     let actualRulingCode;
-
+    console.log("hande fund button");
+    console.log(variableRulingOption);
     switch (variable) {
       case undefined: // Not variable
         actualRulingCode = rulingOptionCode;
         break;
       case "uint":
-        actualRulingCode = parseInt(variableRulingOption) + 1;
+        actualRulingCode = toBN(this.addDecimalsToUintRuling(variableRulingOption, metaevidenceJSON)).add(toBN("1")); // 10**18
+        console.log(`actual ruling code for uint ${actualRulingCode}`);
+        console.log(typeof actualRulingCode);
         break;
       case "int":
         actualRulingCode = parseInt(variableRulingOption) >= 0 ? parseInt(variableRulingOption) + 1 : variableRulingOption;
@@ -53,7 +65,7 @@ class CrowdfundingCard extends React.Component {
   };
 
   render() {
-    const { dispute, subcourtDetails, subcourts, title, arbitratorDisputeDetails, grayedOut, winner, fundingPercentage, appealPeriodEnd, variable, roi, suggestedContribution, appealCallback, rulingOptionCode } = this.props;
+    const { dispute, subcourtDetails, subcourts, title, arbitratorDisputeDetails, grayedOut, winner, fundingPercentage, appealPeriodEnd, variable, roi, suggestedContribution, appealCallback, rulingOptionCode, metaevidenceJSON } = this.props;
     const { variableRulingOption, contribution } = this.state;
     console.debug(this.props);
     console.debug(this.state);

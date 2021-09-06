@@ -7,6 +7,7 @@
     "@kleros/arbitrable-proxy-contracts": "^5.0.0",
     "@kleros/archon": "^1.2.2",
     "@kleros/kleros": "^0.1.2",
+    "@realitio/realitio-lib": "^2.0.2",
     "bignumber.js": "^9.0.0",
     "bootstrap": "^4.5.3",
     "is-image": "^3.0.0",
@@ -57,6 +58,7 @@
     "printWidth": 280
   },
   "volta": {
-    "node": "14.17.5"
+    "node": "14.17.5",
+    "yarn": "1.22.11"
   }
 }

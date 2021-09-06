@@ -2,7 +2,7 @@ import { Card, Row, Col, Form, Container, Accordion, Dropdown, Button } from "re
 import React from "react";
 import BigNumber from "bignumber.js";
 const DECIMALS = BigNumber(10).pow(BigNumber(18));
-
+import * as realitioLibQuestionFormatter from "@realitio/realitio-lib/formatters/question";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
@@ -13,6 +13,7 @@ import EvidenceTimeline from "components/evidenceTimeline";
 import CrowdfundingCard from "components/crowdfundingCard";
 import { combinations } from "utils/combinations";
 import Web3 from ".././ethereum/web3";
+const { toBN, toHex, hexToUtf8 } = Web3.utils;
 
 import AlertMessage from "components/alertMessage";
 
@@ -128,6 +129,17 @@ class DisputeDetails extends React.Component {
     return winningCombination.includes(rulingOptionIndexAsInMetaevidence);
   };
 
+  convertToRealitioFormat = (currentRuling, metaEvidenceJSON) => {
+    return realitioLibQuestionFormatter.getAnswerString(
+      {
+        decimals: metaEvidenceJSON.rulingOptions.precision,
+        outcomes: metaEvidenceJSON.rulingOptions.titles,
+        type: metaEvidenceJSON.rulingOptions.type,
+      },
+      realitioLibQuestionFormatter.padToBytes32(toBN(currentRuling).sub(toBN("1")).toString(16))
+    );
+  };
+
   render() {
     const {
       metaevidenceJSON,
@@ -217,7 +229,7 @@ class DisputeDetails extends React.Component {
             /> // Refactor out this logic, too complicated.
           )}
           {(metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") && arbitratorDispute.period >= 3 && (
-            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : currentRuling - 1}`} content={decisionInfoBoxContent} /> // Refactor out this logic, too complicated.
+            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`} content={decisionInfoBoxContent} /> // Refactor out this logic, too complicated.
           )}
           <Accordion
             className={`mt-4 ${styles.accordion}`}
@@ -334,7 +346,7 @@ class DisputeDetails extends React.Component {
                               .map((key, index) => (
                                 <Col key={key} className="pb-4" xl={8} lg={12} xs={24}>
                                   <CrowdfundingCard
-                                    title={metaevidenceJSON.rulingOptions.type == "string" ? Web3.utils.hexToUtf8(Web3.utils.toHex(key)) : key - 1}
+                                    title={metaevidenceJSON.rulingOptions.type == "string" ? hexToUtf8(toHex(key)) : this.convertToRealitioFormat(key, metaevidenceJSON)}
                                     rulingOptionCode={key}
                                     winner={currentRuling == key}
                                     fundingPercentage={contributions.hasOwnProperty(key) ? BigNumber(contributions[key]).div(this.calculateTotalCost(key)).times(100).toFixed(2) : 0}
@@ -342,13 +354,14 @@ class DisputeDetails extends React.Component {
                                     appealPeriodEnd={this.calculateAppealPeriod(key)}
                                     roi={this.calculateReturnOfInvestmentRatio(key).toFixed(2)}
                                     appealCallback={appealCallback}
+                                    metaevidenceJSON={metaevidenceJSON}
                                   />
                                 </Col>
                               ))}
                           {metaevidenceJSON && (metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") && this.props.currentRuling != 0 && (
                             <Col className="pb-4" xl={8} lg={12} xs={24}>
                               <CrowdfundingCard
-                                title={`${this.props.currentRuling - 1}`}
+                                title={`${this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`}
                                 rulingOptionCode={this.props.currentRuling}
                                 winner={true}
                                 fundingPercentage={contributions.hasOwnProperty(this.props.currentRuling) ? BigNumber(contributions[this.props.currentRuling]).div(this.calculateTotalCost(this.props.currentRuling)).times(100).toFixed(2) : 0}
@@ -356,6 +369,7 @@ class DisputeDetails extends React.Component {
                                 roi={this.calculateReturnOfInvestmentRatio(this.props.currentRuling).toFixed(2)}
                                 suggestedContribution={this.calculateAmountRemainsToBeRaised(this.props.currentRuling).div(DECIMALS).toString()}
                                 appealCallback={appealCallback}
+                                metaevidenceJSON={metaevidenceJSON}
                               />
                             </Col>
                           )}
@@ -369,6 +383,7 @@ class DisputeDetails extends React.Component {
                                 roi={this.calculateReturnOfInvestmentRatioForLoser().toFixed(2)}
                                 suggestedContribution={this.calculateAmountRemainsToBeRaisedForLoser().div(DECIMALS).toString()}
                                 appealCallback={appealCallback}
+                                metaevidenceJSON={metaevidenceJSON}
                               />
                             </Col>
                           )}
