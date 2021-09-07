@@ -25,6 +25,7 @@ const QuestionTypes = Object.freeze({
   uint: "Non-negative number",
   int: "Number",
   string: "Text",
+  datetime: "Datetime",
 });
 
 class DisputeDetails extends React.Component {
@@ -140,6 +141,11 @@ class DisputeDetails extends React.Component {
     );
   };
 
+  getWinner = (rulingFunded, currentRuling) => {
+    if (rulingFunded.length == 1) return rulingFunded[0];
+    else return currentRuling;
+  };
+
   render() {
     const {
       metaevidenceJSON,
@@ -162,6 +168,7 @@ class DisputeDetails extends React.Component {
       appealPeriod,
       appealCallback,
       contributions,
+      rulingFunded,
       multipliers,
       activeAddress,
       totalWithdrawable,
@@ -205,11 +212,18 @@ class DisputeDetails extends React.Component {
               </Form.Group>
             </Col>
           </Row>
-          {metaevidenceJSON.rulingOptions.type == "single-select" && arbitratorDispute.period >= 3 && (
+          {metaevidenceJSON.rulingOptions.type == "single-select" && arbitratorDispute.period == 3 && (
             <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : metaevidenceJSON.rulingOptions.titles[currentRuling - 1]}`} content={decisionInfoBoxContent} />
           )}
+          {metaevidenceJSON.rulingOptions.type == "single-select" && arbitratorDispute.period == 4 && (
+            <AlertMessage
+              type="info"
+              title={`Winner: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : metaevidenceJSON.rulingOptions.titles[this.getWinner(rulingFunded, currentRuling) - 1]}`}
+              content={`${this.getWinner(rulingFunded, currentRuling) != currentRuling ? "Won by default" : "Won by jury decision"}`}
+            />
+          )}
 
-          {metaevidenceJSON.rulingOptions.type == "multiple-select" && arbitratorDispute.period >= 3 && (
+          {metaevidenceJSON.rulingOptions.type == "multiple-select" && arbitratorDispute.period == 3 && (
             <AlertMessage
               type="info"
               title={`Jury decision: ${
@@ -226,10 +240,37 @@ class DisputeDetails extends React.Component {
                       .join(" ")
               }`}
               content={decisionInfoBoxContent}
-            /> // Refactor out this logic, too complicated.
+            />
           )}
-          {(metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") && arbitratorDispute.period >= 3 && (
-            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`} content={decisionInfoBoxContent} /> // Refactor out this logic, too complicated.
+          {metaevidenceJSON.rulingOptions.type == "multiple-select" && arbitratorDispute.period == 4 && (
+            <AlertMessage
+              type="info"
+              title={`Winner: ${
+                this.getWinner(rulingFunded, currentRuling) == 0
+                  ? "invalid / refused to arbitrate / tied"
+                  : this.getWinner(rulingFunded, currentRuling) == 1
+                  ? "none"
+                  : (this.getWinner(rulingFunded, currentRuling) - 1)
+                      .toString(2)
+                      .padStart(4, "0")
+                      .split("")
+                      .reverse()
+                      .map((bit, index) => (bit == 1 ? metaevidenceJSON.rulingOptions.titles[index] : null))
+                      .join(" ")
+              }`}
+              content={`${this.getWinner(rulingFunded, currentRuling) != currentRuling ? "Won by default" : "Won by jury decision"} `}
+            />
+          )}
+          {["uint", "int", "string", "datetime"].includes(metaevidenceJSON.rulingOptions.type) && arbitratorDispute.period == 3 && (
+            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`} content={decisionInfoBoxContent} />
+          )}
+
+          {["uint", "int", "string", "datetime"].includes(metaevidenceJSON.rulingOptions.type) && arbitratorDispute.period == 4 && (
+            <AlertMessage
+              type="info"
+              title={`Winner: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(this.getWinner(rulingFunded, currentRuling), metaevidenceJSON)}`}
+              content={`${this.getWinner(rulingFunded, currentRuling) != currentRuling ? "Won by default" : "Won by jury decision"} `}
+            />
           )}
           <Accordion
             className={`mt-4 ${styles.accordion}`}
@@ -340,7 +381,7 @@ class DisputeDetails extends React.Component {
                             ))}
 
                           {metaevidenceJSON &&
-                            (metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") &&
+                            ["uint", "int", "string", "datetime"].includes(metaevidenceJSON.rulingOptions.type) &&
                             Object.keys(contributions)
                               .filter((key) => key != this.props.currentRuling)
                               .map((key, index) => (
@@ -358,7 +399,7 @@ class DisputeDetails extends React.Component {
                                   />
                                 </Col>
                               ))}
-                          {metaevidenceJSON && (metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") && this.props.currentRuling != 0 && (
+                          {metaevidenceJSON && ["uint", "int", "string", "datetime"].includes(metaevidenceJSON.rulingOptions.type) && this.props.currentRuling != 0 && (
                             <Col className="pb-4" xl={8} lg={12} xs={24}>
                               <CrowdfundingCard
                                 title={`${this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`}
@@ -373,7 +414,7 @@ class DisputeDetails extends React.Component {
                               />
                             </Col>
                           )}
-                          {metaevidenceJSON && (metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") && (
+                          {metaevidenceJSON && ["uint", "int", "string", "datetime"].includes(metaevidenceJSON.rulingOptions.type) && (
                             <Col className="pb-4" xl={8} lg={12} xs={24}>
                               <CrowdfundingCard
                                 variable={metaevidenceJSON.rulingOptions.type}

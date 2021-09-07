@@ -229,6 +229,14 @@ class App extends React.Component {
     return contributionsForEachRuling;
   };
 
+  getRulingFunded = async (arbitrableDisputeID, round, arbitrableContractAddress) => {
+    const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
+    const rulingFundedLogs = await contractInstance.getPastEvents("RulingFunded", { fromBlock: QUERY_FROM_BLOCK, toBlock: "latest", filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round: round } });
+    let ruling = rulingFundedLogs.map((log) => log.returnValues._ruling);
+    console.log(ruling);
+    return ruling;
+  };
+
   getTotalWithdrawableAmount = async (arbitrableDisputeID, contributedTo, arbitrated) => {
     console.debug(`arbitrated ${arbitrated}`);
     console.log(`arbitrable dispute id ${arbitrableDisputeID}`);
@@ -363,6 +371,7 @@ class App extends React.Component {
                     getRoundInfoCallback={this.getRoundInfo}
                     getAppealDecisionCallback={this.getAppealDecision}
                     getContributionsCallback={this.getContributions}
+                    getRulingFundedCallback={this.getRulingFunded}
                     subcourts={subcourts}
                     subcourtDetails={subcourtDetails}
                   />

@@ -66,7 +66,6 @@ class Interact extends React.Component {
       evidenceTitle: evidence.evidenceTitle,
       supportingSide: evidence.supportingSide,
     });
-    console.debug("submitted");
     new Promise(() => setTimeout(2000)).then(this.reload());
   };
 
@@ -223,13 +222,15 @@ class Interact extends React.Component {
       console.error(err.message);
     }
 
-    let appealDecisions, contributions, totalWithdrawable;
+    let appealDecisions, contributions, totalWithdrawable, rulingFunded;
     try {
       appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
       contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated);
+      rulingFunded = await this.props.getRulingFundedCallback(arbitrableDisputeID, appealDecisions.length, arbitrated);
+      console.log(rulingFunded);
       console.debug(contributions);
 
-      await this.setState({ contributions, appealDecisions });
+      await this.setState({ contributions, appealDecisions, rulingFunded });
     } catch (err) {
       console.error("incompatible contract");
       console.error(err);
@@ -301,6 +302,7 @@ class Interact extends React.Component {
       appealDeadlines,
       appealDecisions,
       contributions,
+      rulingFunded,
       incompatible,
       totalWithdrawable,
       aggregatedContributions,
@@ -360,6 +362,7 @@ class Interact extends React.Component {
               appealDecisions={appealDecisions}
               appealCallback={this.appeal}
               contributions={contributions}
+              rulingFunded={rulingFunded}
               multipliers={multipliers}
               withdrawCallback={this.withdraw}
               totalWithdrawable={totalWithdrawable}

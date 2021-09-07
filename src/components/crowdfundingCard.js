@@ -10,6 +10,7 @@ const DECIMALS = BigNumber(10).pow(BigNumber(18));
 import Web3 from ".././ethereum/web3";
 const { toBN, toHex, hexToUtf8 } = Web3.utils;
 import * as realitioLibQuestionFormatter from "@realitio/realitio-lib/formatters/question";
+import DatetimePicker from "components/datetimePicker.js";
 
 class CrowdfundingCard extends React.Component {
   constructor(props) {
@@ -30,6 +31,12 @@ class CrowdfundingCard extends React.Component {
   };
 
   onControlChange = async (e) => await this.setState({ [e.target.id]: e.target.value });
+
+  onDatePickerChange = async (value, dateString) => {
+    console.log("Selected Time: ", value);
+    console.log("Formatted Selected Time: ", dateString);
+    await this.setState({ variableRulingOption: value.unix() });
+  };
 
   addDecimalsToUintRuling = (currentRuling, metaEvidenceJSON) => {
     return realitioLibQuestionFormatter.answerToBytes32(currentRuling, {
@@ -59,6 +66,8 @@ class CrowdfundingCard extends React.Component {
       case "string":
         actualRulingCode = Web3.utils.utf8ToHex(variableRulingOption);
         break;
+      case "datetime":
+        actualRulingCode = variableRulingOption;
     }
 
     appealCallback(actualRulingCode, BigNumber(contribution).times(DECIMALS)); //.then(this.setState({ variableRulingOption: "", contribution: this.props.suggestedContribution }));
@@ -74,7 +83,8 @@ class CrowdfundingCard extends React.Component {
       <div className={`shadow rounded p-3 d-flex flex-column ${styles.crowdfundingCard}`}>
         <div>
           {!variable && <strong>{title}</strong>}
-          {variable && <FormControl id="variableRulingOption" type={variable == "string" ? "text" : "number"} value={variableRulingOption} step="1" placeholder="Enter a new ruling option" onChange={this.onControlChange}></FormControl>}
+          {variable && variable != "datetime" && <FormControl id="variableRulingOption" type={variable == "string" ? "text" : "number"} value={variableRulingOption} step="1" placeholder="Enter a new ruling option" onChange={this.onControlChange}></FormControl>}
+          {variable && variable == "datetime" && <DatetimePicker id="variableRulingOption" onChange={this.onDatePickerChange} />}
         </div>
 
         {winner && (
