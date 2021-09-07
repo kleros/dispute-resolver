@@ -14,7 +14,9 @@ class openDisputeIDs extends React.Component {
       this.setState({ openDisputeIDs: openDisputeIDs });
 
       openDisputeIDs
-        .sort()
+        .sort(function compareFn(a, b) {
+          return parseInt(a) - parseInt(b);
+        })
         .reverse()
         .map((arbitratorDispute) => {
           this.props.getArbitratorDisputeCallback(arbitratorDispute).then((arbitratorDisputeDetails) => {
