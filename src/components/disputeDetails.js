@@ -25,6 +25,7 @@ const QuestionTypes = Object.freeze({
   uint: "Non-negative number",
   int: "Number",
   string: "Text",
+  datetime: "Datetime",
 });
 
 class DisputeDetails extends React.Component {
@@ -228,9 +229,10 @@ class DisputeDetails extends React.Component {
               content={decisionInfoBoxContent}
             /> // Refactor out this logic, too complicated.
           )}
-          {(metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") && arbitratorDispute.period >= 3 && (
-            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`} content={decisionInfoBoxContent} /> // Refactor out this logic, too complicated.
+          {["uint", "int", "string", "datetime"].includes(metaevidenceJSON.rulingOptions.type) && arbitratorDispute.period >= 3 && (
+            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`} content={decisionInfoBoxContent} />
           )}
+
           <Accordion
             className={`mt-4 ${styles.accordion}`}
             onSelect={(e) => {
@@ -340,7 +342,7 @@ class DisputeDetails extends React.Component {
                             ))}
 
                           {metaevidenceJSON &&
-                            (metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") &&
+                            ["uint", "int", "string", "datetime"].includes(metaevidenceJSON.rulingOptions.type) &&
                             Object.keys(contributions)
                               .filter((key) => key != this.props.currentRuling)
                               .map((key, index) => (
@@ -358,7 +360,7 @@ class DisputeDetails extends React.Component {
                                   />
                                 </Col>
                               ))}
-                          {metaevidenceJSON && (metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") && this.props.currentRuling != 0 && (
+                          {metaevidenceJSON && ["uint", "int", "string", "datetime"].includes(metaevidenceJSON.rulingOptions.type) && this.props.currentRuling != 0 && (
                             <Col className="pb-4" xl={8} lg={12} xs={24}>
                               <CrowdfundingCard
                                 title={`${this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`}
@@ -373,7 +375,7 @@ class DisputeDetails extends React.Component {
                               />
                             </Col>
                           )}
-                          {metaevidenceJSON && (metaevidenceJSON.rulingOptions.type == "uint" || metaevidenceJSON.rulingOptions.type == "int" || metaevidenceJSON.rulingOptions.type == "string") && (
+                          {metaevidenceJSON && ["uint", "int", "string", "datetime"].includes(metaevidenceJSON.rulingOptions.type) && (
                             <Col className="pb-4" xl={8} lg={12} xs={24}>
                               <CrowdfundingCard
                                 variable={metaevidenceJSON.rulingOptions.type}
