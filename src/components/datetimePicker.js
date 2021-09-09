@@ -15,7 +15,7 @@ class DatetimePicker extends React.Component {
   render() {
     const { onChange, onOk, id } = this.props;
     console.log(this.props);
-    return <DatePicker style={{ width: "100%" }} styleonChange={onChange} onOk={onOk} id={id} />;
+    return <DatePicker style={{ width: "100%" }} onChange={onChange} onOk={onOk} id={id} />;
   }
 }
 
