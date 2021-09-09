@@ -25,7 +25,7 @@ const QuestionTypes = Object.freeze({
   uint: "Non-negative number",
   int: "Number",
   string: "Text",
-  datetime: "Datetime",
+  datetime: "Date",
 });
 
 class DisputeDetails extends React.Component {
