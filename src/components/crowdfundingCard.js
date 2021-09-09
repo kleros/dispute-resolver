@@ -35,7 +35,7 @@ class CrowdfundingCard extends React.Component {
   onDatePickerChange = async (value, dateString) => {
     console.log("Selected Time: ", value);
     console.log("Formatted Selected Time: ", dateString);
-    await this.setState({ variableRulingOption: value.unix() });
+    await this.setState({ variableRulingOption: value.utcOffset(0).set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).unix() });
   };
 
   addDecimalsToUintRuling = (currentRuling, metaEvidenceJSON) => {
@@ -67,7 +67,7 @@ class CrowdfundingCard extends React.Component {
         actualRulingCode = Web3.utils.utf8ToHex(variableRulingOption);
         break;
       case "datetime":
-        actualRulingCode = variableRulingOption;
+        actualRulingCode = variableRulingOption + 1;
     }
 
     appealCallback(actualRulingCode, BigNumber(contribution).times(DECIMALS)); //.then(this.setState({ variableRulingOption: "", contribution: this.props.suggestedContribution }));
