@@ -15,8 +15,9 @@ const QuestionTypes = Object.freeze({
   SINGLE_SELECT: { code: "single-select", humanReadable: "Multiple choice: single select" },
   MULTIPLE_SELECT: { code: "multiple-select", humanReadable: "Multiple choice: multiple select" },
   UINT: { code: "uint", humanReadable: "Non-negative number" },
-  INT: { code: "int", humanReadable: "Number" },
-  STRING: { code: "string", humanReadable: "Text" },
+  //  INT: { code: "int", humanReadable: "Number" }, Not-implemented in Court, so disabling.
+  // STRING: { code: "string", humanReadable: "Text" },  Not-implemented in Court, so disabling.
+  DATETIME: { code: "datetime", humanReadable: "Date" },
 });
 
 const NATIVE_TOKEN_TICKER = Object.freeze({ 1: "ETH", 3: "ETH", 42: "ETH", 77: "SPOA", 100: "xDai" });

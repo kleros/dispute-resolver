@@ -2,7 +2,6 @@ import React from "react";
 import Summary from "../components/createSummary";
 import CreateForm from "components/createForm";
 import Toast from "components/toast";
-import DatetimePicker from "components/datetimePicker.js";
 
 import styles from "containers/styles/create.module.css";
 
@@ -65,8 +64,6 @@ class Create extends React.Component {
           />
         )}
         <Toast className={styles.toast} onClose={() => this.setShow()} show={notificationShow} delay={5000} autohide header="Transaction Confirmed" body={`You have successfully created dispute ${lastDisputeID}!`} iconName="Success" animation />
-
-        <DatetimePicker />
       </main>
     );
   }
