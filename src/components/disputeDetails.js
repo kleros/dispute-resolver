@@ -2,7 +2,7 @@ import { Card, Row, Col, Form, Container, Accordion, Dropdown, Button } from "re
 import React from "react";
 import BigNumber from "bignumber.js";
 const DECIMALS = BigNumber(10).pow(BigNumber(18));
-import * as realitioLibQuestionFormatter from "@realitio/realitio-lib/formatters/question";
+import * as realitioLibQuestionFormatter from "@reality.eth/reality-eth-lib/formatters/question";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";

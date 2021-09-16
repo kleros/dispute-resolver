@@ -9,7 +9,7 @@ import AlertMessage from "components/alertMessage";
 const DECIMALS = BigNumber(10).pow(BigNumber(18));
 import Web3 from ".././ethereum/web3";
 const { toBN, toHex, hexToUtf8 } = Web3.utils;
-import * as realitioLibQuestionFormatter from "@realitio/realitio-lib/formatters/question";
+import * as realitioLibQuestionFormatter from "@reality.eth/reality-eth-lib/formatters/question";
 import DatetimePicker from "components/datetimePicker.js";
 
 class CrowdfundingCard extends React.Component {
