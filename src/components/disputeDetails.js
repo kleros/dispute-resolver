@@ -142,7 +142,7 @@ class DisputeDetails extends React.Component {
   };
 
   getWinner = (rulingFunded, currentRuling) => {
-    if (rulingFunded.length == 1) return rulingFunded[0];
+    if (rulingFunded && rulingFunded.length == 1) return rulingFunded[0];
     else return currentRuling;
   };
 
