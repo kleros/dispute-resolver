@@ -131,6 +131,7 @@ class DisputeDetails extends React.Component {
   };
 
   convertToRealitioFormat = (currentRuling, metaEvidenceJSON) => {
+    console.log(currentRuling);
     return realitioLibQuestionFormatter.getAnswerString(
       {
         decimals: metaEvidenceJSON.rulingOptions.precision,
@@ -212,66 +213,18 @@ class DisputeDetails extends React.Component {
               </Form.Group>
             </Col>
           </Row>
-          {metaevidenceJSON.rulingOptions.type == "single-select" && arbitratorDispute.period == 3 && (
-            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : metaevidenceJSON.rulingOptions.titles[currentRuling - 1]}`} content={decisionInfoBoxContent} />
+
+          {arbitratorDispute.period == 3 && (
+            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(this.getWinner(rulingFunded, currentRuling), metaevidenceJSON)}`} content={decisionInfoBoxContent} />
           )}
-          {metaevidenceJSON.rulingOptions.type == "single-select" && arbitratorDispute.period == 4 && (
+          {arbitratorDispute.period == 4 && (
             <AlertMessage
               type="info"
-              title={`Winner: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : metaevidenceJSON.rulingOptions.titles[this.getWinner(rulingFunded, currentRuling) - 1]}`}
+              title={`Winner: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(this.getWinner(rulingFunded, currentRuling), metaevidenceJSON)}`}
               content={`${this.getWinner(rulingFunded, currentRuling) != currentRuling ? "Won by default" : "Won by jury decision"}`}
             />
           )}
 
-          {metaevidenceJSON.rulingOptions.type == "multiple-select" && arbitratorDispute.period == 3 && (
-            <AlertMessage
-              type="info"
-              title={`Jury decision: ${
-                currentRuling == 0
-                  ? "invalid / refused to arbitrate / tied"
-                  : currentRuling == 1
-                  ? "none"
-                  : (currentRuling - 1)
-                      .toString(2)
-                      .padStart(4, "0")
-                      .split("")
-                      .reverse()
-                      .map((bit, index) => (bit == 1 ? metaevidenceJSON.rulingOptions.titles[index] : null))
-                      .join(" ")
-              }`}
-              content={decisionInfoBoxContent}
-            />
-          )}
-          {metaevidenceJSON.rulingOptions.type == "multiple-select" && arbitratorDispute.period == 4 && (
-            <AlertMessage
-              type="info"
-              title={`Winner: ${
-                this.getWinner(rulingFunded, currentRuling) == 0
-                  ? "invalid / refused to arbitrate / tied"
-                  : this.getWinner(rulingFunded, currentRuling) == 1
-                  ? "none"
-                  : (this.getWinner(rulingFunded, currentRuling) - 1)
-                      .toString(2)
-                      .padStart(4, "0")
-                      .split("")
-                      .reverse()
-                      .map((bit, index) => (bit == 1 ? metaevidenceJSON.rulingOptions.titles[index] : null))
-                      .join(" ")
-              }`}
-              content={`${this.getWinner(rulingFunded, currentRuling) != currentRuling ? "Won by default" : "Won by jury decision"} `}
-            />
-          )}
-          {["uint", "int", "string", "datetime"].includes(metaevidenceJSON.rulingOptions.type) && arbitratorDispute.period == 3 && (
-            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`} content={decisionInfoBoxContent} />
-          )}
-
-          {["uint", "int", "string", "datetime"].includes(metaevidenceJSON.rulingOptions.type) && arbitratorDispute.period == 4 && (
-            <AlertMessage
-              type="info"
-              title={`Winner: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(this.getWinner(rulingFunded, currentRuling), metaevidenceJSON)}`}
-              content={`${this.getWinner(rulingFunded, currentRuling) != currentRuling ? "Won by default" : "Won by jury decision"} `}
-            />
-          )}
           <Accordion
             className={`mt-4 ${styles.accordion}`}
             onSelect={(e) => {
