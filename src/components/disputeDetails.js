@@ -272,6 +272,19 @@ class DisputeDetails extends React.Component {
                               rulingOptionCode={0}
                             />
                           </Col>
+                          <Col className="pb-4" xl={8} lg={12} xs={24}>
+                            <CrowdfundingCard
+                              key={"0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"}
+                              title={"Answered Too Soon"}
+                              winner={currentRuling == "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"}
+                              fundingPercentage={contributions.hasOwnProperty(0) ? BigNumber(contributions[0]).div(this.calculateTotalCost(0)).times(100).toFixed(2) : 0}
+                              appealPeriodEnd={this.calculateAppealPeriod(0)}
+                              suggestedContribution={this.calculateAmountRemainsToBeRaised(0).div(DECIMALS).toString()}
+                              roi={this.calculateReturnOfInvestmentRatio(0).toFixed(2)}
+                              appealCallback={appealCallback}
+                              rulingOptionCode={"0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"}
+                            />
+                          </Col>
                           {metaevidenceJSON &&
                             metaevidenceJSON.rulingOptions.type == "single-select" &&
                             metaevidenceJSON.rulingOptions.titles.map((title, index) => (

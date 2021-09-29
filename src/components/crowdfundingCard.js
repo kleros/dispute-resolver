@@ -50,7 +50,7 @@ class CrowdfundingCard extends React.Component {
     const { variableRulingOption, contribution } = this.state;
     let actualRulingCode;
     console.log("hande fund button");
-    console.log(variableRulingOption);
+    console.log(rulingOptionCode);
     switch (variable) {
       case undefined: // Not variable
         actualRulingCode = rulingOptionCode;
