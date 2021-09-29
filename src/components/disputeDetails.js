@@ -19,6 +19,8 @@ import AlertMessage from "components/alertMessage";
 
 import styles from "components/styles/disputeDetails.module.css";
 
+const UINT_MAX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
 const QuestionTypes = Object.freeze({
   "single-select": "Multiple choice: single select",
   "multiple-select": "Multiple choice: multiple select",
@@ -102,7 +104,6 @@ class DisputeDetails extends React.Component {
     const { currentRuling, multipliers, appealPeriod } = this.props;
     const loser = multipliers.loserAppealPeriodMultiplier;
     const divisor = multipliers.denominator;
-    console.log(multipliers);
 
     if (currentRuling == rulingOption) return appealPeriod.end;
     else return parseInt(appealPeriod.start) + ((parseInt(appealPeriod.end) - parseInt(appealPeriod.start)) * parseInt(loser)) / divisor;
@@ -131,7 +132,6 @@ class DisputeDetails extends React.Component {
   };
 
   convertToRealitioFormat = (currentRuling, metaEvidenceJSON) => {
-    console.log(currentRuling);
     return realitioLibQuestionFormatter.getAnswerString(
       {
         decimals: metaEvidenceJSON.rulingOptions.precision,
@@ -274,15 +274,15 @@ class DisputeDetails extends React.Component {
                           </Col>
                           <Col className="pb-4" xl={8} lg={12} xs={24}>
                             <CrowdfundingCard
-                              key={"0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"}
+                              key={UINT_MAX}
                               title={"Answered Too Soon"}
-                              winner={currentRuling == "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"}
+                              winner={currentRuling == toBN(UINT_MAX)}
                               fundingPercentage={contributions.hasOwnProperty(0) ? BigNumber(contributions[0]).div(this.calculateTotalCost(0)).times(100).toFixed(2) : 0}
                               appealPeriodEnd={this.calculateAppealPeriod(0)}
                               suggestedContribution={this.calculateAmountRemainsToBeRaised(0).div(DECIMALS).toString()}
                               roi={this.calculateReturnOfInvestmentRatio(0).toFixed(2)}
                               appealCallback={appealCallback}
-                              rulingOptionCode={"0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"}
+                              rulingOptionCode={UINT_MAX}
                             />
                           </Col>
                           {metaevidenceJSON &&
