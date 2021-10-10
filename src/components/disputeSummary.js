@@ -6,8 +6,29 @@ import styles from "components/styles/disputeSummary.module.css";
 
 class DisputeSummary extends React.Component {
   render() {
-    const { metaevidenceJSON, ipfsGateway, interfaceValid, arbitrated, arbitratorDisputeID, arbitratorAddress } = this.props;
-    console.debug(metaevidenceJSON);
+    const {
+      metaevidenceJSON,
+      ipfsGateway,
+      interfaceValid,
+      arbitrated,
+      arbitratorDisputeID,
+      arbitratorAddress,
+      arbitratorChainID,
+      arbitrableChainID,
+      arbitratorJsonRpcUrl,
+      arbitrableJsonRpcUrl,
+    } = this.props;
+    console.debug(this.props);
+
+    const injectedParams = {
+      disputeID: arbitratorDisputeID,
+      arbitratorContractAddress: arbitratorAddress,
+      arbitratorJsonRpcUrl: arbitratorJsonRpcUrl,
+      arbitratorChainID: arbitratorChainID,
+      arbitrableContractAddress: arbitrated,
+      arbitrableChainID: arbitrableChainID,
+      arbitrableJsonRpcUrl: arbitrableJsonRpcUrl,
+    };
 
     if (metaevidenceJSON)
       return (
@@ -22,8 +43,9 @@ class DisputeSummary extends React.Component {
               <iframe
                 className="border-0"
                 src={
-                  (metaevidenceJSON.evidenceDisplayInterfaceURI.includes("://") ? metaevidenceJSON.evidenceDisplayInterfaceURI : `https://ipfs.kleros.io${metaevidenceJSON.evidenceDisplayInterfaceURI}`) +
-                  encodeURI(`?{"arbitrableContractAddress":"${arbitrated}","arbitratorContractAddress":"${arbitratorAddress}","disputeID":"${arbitratorDisputeID}"}`)
+                  (metaevidenceJSON.evidenceDisplayInterfaceURI.includes("://")
+                    ? metaevidenceJSON.evidenceDisplayInterfaceURI
+                    : `https://ipfs.kleros.io${metaevidenceJSON.evidenceDisplayInterfaceURI}?`) + encodeURIComponent(JSON.stringify(injectedParams))
                 }
                 title="evidence-display"
               />

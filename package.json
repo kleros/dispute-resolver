@@ -58,7 +58,7 @@
   },
   "prettier": {
     "tabWidth": 2,
-    "printWidth": 280
+    "printWidth": 180
   },
   "volta": {
     "node": "14.17.5",

@@ -180,9 +180,19 @@ class App extends React.Component {
     );
 
   getMetaEvidence = (arbitrableAddress, arbitratorDisputeID) =>
-    this.state.archon.arbitrable
-      .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
-      .then((response) => this.state.archon.arbitrable.getMetaEvidence(arbitrableAddress, response.metaEvidenceID, { scriptParameters: { disputeID: arbitratorDisputeID } }));
+    this.state.archon.arbitrable.getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID).then((response) =>
+      this.state.archon.arbitrable.getMetaEvidence(arbitrableAddress, response.metaEvidenceID, {
+        scriptParameters: {
+          disputeID: arbitratorDisputeID,
+          arbitrableContractAddress: arbitrableAddress,
+          arbitratorContractAddress: networkMap[this.state.network].KLEROS_LIQUID,
+          arbitratorChainID: this.state.network,
+          arbitrableChainID: this.state.network,
+          arbitrableJsonRpcUrl: process.env.REACT_APP_WEB3_PROVIDER_URL,
+          arbitratorJsonRpcUrl: process.env.REACT_APP_WEB3_PROVIDER_URL,
+        },
+      })
+    );
 
   //Using Archon, parallel calls occasionally fail.
   getMetaEvidenceParallelizeable = (arbitrableAddress, arbitratorDisputeID) =>
@@ -280,6 +290,7 @@ class App extends React.Component {
 
     console.debug(this.state);
     console.debug(networkMap[this.state.network]);
+    console.debug(process.env.REACT_APP_WEB3_PROVIDER_URL);
 
     if (this.state.network)
       return (
@@ -374,6 +385,7 @@ class App extends React.Component {
                     getRulingFundedCallback={this.getRulingFunded}
                     subcourts={subcourts}
                     subcourtDetails={subcourtDetails}
+                    web3Provider={process.env.REACT_APP_WEB3_PROVIDER_URL}
                   />
                   <Footer networkMap={networkMap} network={this.state.network} />
                 </>
