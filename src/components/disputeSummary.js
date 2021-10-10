@@ -20,7 +20,7 @@ class DisputeSummary extends React.Component {
     } = this.props;
     console.debug(this.props);
 
-    const injectedParams = {
+    const injectedArgs = {
       disputeID: arbitratorDisputeID,
       arbitratorContractAddress: arbitratorAddress,
       arbitratorJsonRpcUrl: arbitratorJsonRpcUrl,
@@ -45,7 +45,7 @@ class DisputeSummary extends React.Component {
                 src={
                   (metaevidenceJSON.evidenceDisplayInterfaceURI.includes("://")
                     ? metaevidenceJSON.evidenceDisplayInterfaceURI
-                    : `https://ipfs.kleros.io${metaevidenceJSON.evidenceDisplayInterfaceURI}?`) + encodeURIComponent(JSON.stringify(injectedParams))
+                    : `${ipfsGateway}${metaevidenceJSON.evidenceDisplayInterfaceURI}?`) + encodeURIComponent(JSON.stringify(injectedArgs))
                 }
                 title="evidence-display"
               />
