@@ -309,7 +309,7 @@ class Interact extends React.Component {
     } = this.state;
     console.log(arbitrated);
 
-    const { arbitratorAddress, activeAddress, appealCallback, publishCallback, withdrawCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, subcourts, subcourtDetails, network, getTotalWithdrawableAmountCallback } = this.props;
+    const { arbitratorAddress, activeAddress, appealCallback, publishCallback, withdrawCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, subcourts, subcourtDetails, network, getTotalWithdrawableAmountCallback, web3Provider } = this.props;
 
     return (
       <>
@@ -338,7 +338,17 @@ class Interact extends React.Component {
                 </Col>
               </Row>
             </div>
-            <DisputeSummary metaevidenceJSON={metaevidence.metaEvidenceJSON} ipfsGateway="https://ipfs.kleros.io" arbitrated={arbitrated} arbitratorAddress={arbitratorAddress} arbitratorDisputeID={arbitratorDisputeID} />
+            <DisputeSummary
+              metaevidenceJSON={metaevidence.metaEvidenceJSON}
+              ipfsGateway="https://ipfs.kleros.io"
+              arbitrated={arbitrated}
+              arbitratorAddress={arbitratorAddress}
+              arbitratorDisputeID={arbitratorDisputeID}
+              arbitrableChainID={network}
+              arbitratorChainID={network}
+              arbitratorJsonRpcUrl={web3Provider}
+              arbitrableJsonRpcUrl={web3Provider}
+            />
             <DisputeDetails
               activeAddress={activeAddress}
               metaevidenceJSON={metaevidence.metaEvidenceJSON}
