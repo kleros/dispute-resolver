@@ -17,7 +17,7 @@ import { LinkContainer } from "react-router-bootstrap";
 import styles from "./styles/footer.module.css";
 
 const ETHERSCAN_STRINGS = Object.freeze({ 1: "", 3: "ropsten.", 42: "kovan." });
-const NETWORK_NAMES = Object.freeze({ 1: "Main", 3: "Ropsten", 42: "Kovan", 77: "Sokol", 100: "xDai" });
+const NETWORK_NAMES = Object.freeze({ 1: "Ethereum Mainnet", 3: "Ethereum Ropsten", 42: "Ethereum Kovan", 77: "Sokol", 100: "xDai" });
 
 class Footer extends React.Component {
   constructor(props) {
@@ -42,7 +42,11 @@ class Footer extends React.Component {
             </a>
             <div className={`d-none d-md-block ${styles.social}`}>
               {(network == 1 || network == 3 || network == 42) && (
-                <a href={`https://${ETHERSCAN_STRINGS[network]}etherscan.io/address/${this.props.networkMap[network].ARBITRABLE_PROXY}#code`} target="_blank" rel="noopener noreferrer">
+                <a
+                  href={`https://${ETHERSCAN_STRINGS[network]}etherscan.io/address/${this.props.networkMap[network].ARBITRABLE_PROXY}#code`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <Etherscan />
                 </a>
               )}
