@@ -1,6 +1,7 @@
 import { Card, Row, Col, Form, Container } from "react-bootstrap";
 import React from "react";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
+import IframeResizer from "iframe-resizer-react";
 
 import styles from "components/styles/disputeSummary.module.css";
 
@@ -40,7 +41,7 @@ class DisputeSummary extends React.Component {
             <p className={styles.description}>{metaevidenceJSON.description}</p>
 
             {metaevidenceJSON.evidenceDisplayInterfaceURI && (
-              <iframe
+              <IframeResizer
                 className="border-0"
                 src={
                   (metaevidenceJSON.evidenceDisplayInterfaceURI.includes("://")
