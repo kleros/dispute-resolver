@@ -309,13 +309,28 @@ class Interact extends React.Component {
     } = this.state;
     console.log(arbitrated);
 
-    const { arbitratorAddress, activeAddress, appealCallback, publishCallback, withdrawCallback, getCrowdfundingStatusCallback, getAppealPeriodCallback, getCurrentRulingCallback, subcourts, subcourtDetails, network, getTotalWithdrawableAmountCallback, web3Provider } = this.props;
+    const {
+      arbitratorAddress,
+      activeAddress,
+      appealCallback,
+      publishCallback,
+      withdrawCallback,
+      getCrowdfundingStatusCallback,
+      getAppealPeriodCallback,
+      getCurrentRulingCallback,
+      subcourts,
+      subcourtDetails,
+      network,
+      getTotalWithdrawableAmountCallback,
+      web3Provider,
+    } = this.props;
 
     return (
       <>
         {Boolean(activeAddress) && incompatible && (
           <div style={{ padding: "1rem 2rem", fontSize: "14px", background: "#fafafa" }}>
-            <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or fund appeal on this interface. You can do these on the arbitrable application, if implemented.
+            <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or fund appeal on
+            this interface. You can do these on the arbitrable application, if implemented.
           </div>
         )}
         {arbitrated && (
@@ -333,7 +348,17 @@ class Interact extends React.Component {
                         <Magnifier />
                       </InputGroup.Text>
                     </InputGroup.Prepend>
-                    <FormControl className="purple-inverted" placeholder="Dispute ID" aria-label="Input dispute number from Court" aria-describedby="search" onChange={this.onDisputeIDChange} type="number" min="0" value={arbitratorDisputeID} id="arbitratorDisputeID" />
+                    <FormControl
+                      className="purple-inverted"
+                      placeholder="Dispute ID"
+                      aria-label="Input dispute number from Court"
+                      aria-describedby="search"
+                      onChange={this.onDisputeIDChange}
+                      type="number"
+                      min="0"
+                      value={arbitratorDisputeID}
+                      id="arbitratorDisputeID"
+                    />
                   </InputGroup>
                 </Col>
               </Row>
@@ -346,6 +371,7 @@ class Interact extends React.Component {
               arbitratorDisputeID={arbitratorDisputeID}
               arbitrableChainID={network}
               arbitratorChainID={network}
+              chainID={network}
               arbitratorJsonRpcUrl={web3Provider}
               arbitrableJsonRpcUrl={web3Provider}
             />
