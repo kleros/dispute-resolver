@@ -15,6 +15,7 @@ class DisputeSummary extends React.Component {
       arbitratorAddress,
       arbitratorChainID,
       arbitrableChainID,
+      chainID, // Deprecated. Use arbitrableChainID or arbitratorChainID instead.
       arbitratorJsonRpcUrl,
       arbitrableJsonRpcUrl,
     } = this.props;
@@ -22,6 +23,7 @@ class DisputeSummary extends React.Component {
 
     const injectedArgs = {
       disputeID: arbitratorDisputeID,
+      chainID: chainID, // Deprecated. Use arbitrableChainID or arbitratorChainID instead.
       arbitratorContractAddress: arbitratorAddress,
       arbitratorJsonRpcUrl: arbitratorJsonRpcUrl,
       arbitratorChainID: arbitratorChainID,
