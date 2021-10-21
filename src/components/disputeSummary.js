@@ -46,9 +46,8 @@ class DisputeSummary extends React.Component {
               <iframe
                 className="border-0"
                 src={
-                  (metaevidenceJSON.evidenceDisplayInterfaceURI.includes("://")
-                    ? metaevidenceJSON.evidenceDisplayInterfaceURI
-                    : `${ipfsGateway}${metaevidenceJSON.evidenceDisplayInterfaceURI}?`) + encodeURIComponent(JSON.stringify(injectedArgs))
+                  (metaevidenceJSON.evidenceDisplayInterfaceURI.includes("://") ? "" : ipfsGateway) +
+                  `${metaevidenceJSON.evidenceDisplayInterfaceURI}?${encodeURIComponent(JSON.stringify(injectedArgs))}`
                 }
                 title="evidence-display"
               />
