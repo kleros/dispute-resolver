@@ -30,6 +30,7 @@ class DisputeSummary extends React.Component {
       arbitrableContractAddress: arbitrated,
       arbitrableChainID: arbitrableChainID,
       arbitrableJsonRpcUrl: arbitrableJsonRpcUrl,
+      jsonRpcUrl: arbitratorJsonRpcUrl,
     };
 
     if (metaevidenceJSON)

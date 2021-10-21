@@ -1,4 +1,5 @@
 import Web3 from "web3";
+import networkMap from "./network-contract-mapping";
 
 let web3;
 
