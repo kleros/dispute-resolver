@@ -34,11 +34,12 @@ class Interact extends React.Component {
       loading: true,
     };
 
-    this.debouncedRetrieveUsingArbitratorID = debounce(this.retrieveDisputeDetailsUsingArbitratorID, 500, { leading: false, trailing: true });
+    this.debouncedRetrieveUsingArbitratorID = debounce(this.retrieveDisputeDetailsUsingArbitratorID, 750, { leading: false, trailing: true });
   }
 
   componentDidMount() {
-    if (this.state.arbitratorDisputeID) this.debouncedRetrieveUsingArbitratorID(this.state.arbitratorDisputeID);
+    if (this.state.arbitratorDisputeID) if (this.state.arbitratorDisputeID) this.debouncedRetrieveUsingArbitratorID.cancel();
+    this.debouncedRetrieveUsingArbitratorID(this.state.arbitratorDisputeID);
   }
 
   componentDidUpdate(previousProperties) {
@@ -115,6 +116,7 @@ class Interact extends React.Component {
 
   onDisputeIDChange = async (e) => {
     const arbitratorDisputeID = e.target.value;
+    await this.setState({ metaevidence: undefined });
 
     await this.setState({ arbitratorDisputeID: arbitratorDisputeID, loading: true });
 
@@ -122,6 +124,7 @@ class Interact extends React.Component {
       arbitrableDisputeID: null,
       arbitratorDispute: null,
     });
+    await this.debouncedRetrieveUsingArbitratorID.cancel();
     await this.debouncedRetrieveUsingArbitratorID(arbitratorDisputeID);
   };
 
@@ -364,7 +367,7 @@ class Interact extends React.Component {
               </Row>
             </div>
             <DisputeSummary
-              metaevidenceJSON={metaevidence.metaEvidenceJSON}
+              metaevidenceJSON={metaevidence && metaevidence.metaEvidenceJSON}
               ipfsGateway="https://ipfs.kleros.io"
               arbitrated={arbitrated}
               arbitratorAddress={arbitratorAddress}
@@ -377,7 +380,7 @@ class Interact extends React.Component {
             />
             <DisputeDetails
               activeAddress={activeAddress}
-              metaevidenceJSON={metaevidence.metaEvidenceJSON}
+              metaevidenceJSON={metaevidence && metaevidence.metaEvidenceJSON}
               evidences={evidences}
               ipfsGateway="https://ipfs.kleros.io"
               arbitrated={arbitrated}

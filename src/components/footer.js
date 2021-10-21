@@ -11,13 +11,14 @@ import { ReactComponent as LinkedIn } from "../assets/images/linkedin.svg";
 import { ReactComponent as Help } from "../assets/images/help.svg";
 import { ReactComponent as SecuredByKleros } from "../assets/images/securedByKleros.svg";
 
+import networkMap from "../ethereum/network-contract-mapping";
+
 import { NavLink, Link } from "react-router-dom";
 import { LinkContainer } from "react-router-bootstrap";
 
 import styles from "./styles/footer.module.css";
 
 const ETHERSCAN_STRINGS = Object.freeze({ 1: "", 3: "ropsten.", 42: "kovan." });
-const NETWORK_NAMES = Object.freeze({ 1: "Ethereum Mainnet", 3: "Ethereum Ropsten", 42: "Ethereum Kovan", 77: "Sokol", 100: "xDai" });
 
 class Footer extends React.Component {
   constructor(props) {
@@ -33,7 +34,7 @@ class Footer extends React.Component {
             <SecuredByKleros />
           </a>
           <div className={`d-none d-lg-block ml-5`}>
-            <Col>{NETWORK_NAMES[network] || "Unsupported Network"}</Col>
+            <Col>{networkMap[network].NAME || "Unsupported Network"}</Col>
           </div>
           <div className={`ml-sm-auto ${styles.rest}`}>
             <a className={`d-none d-sm-block ${styles.help}`} href="https://t.me/kleros">
