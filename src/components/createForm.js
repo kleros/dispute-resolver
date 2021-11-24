@@ -1,6 +1,5 @@
 import React from "react";
 import { Container, Col, Row, Button, Form, Dropdown, InputGroup } from "react-bootstrap";
-import ReactMarkdown from "react-markdown";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
@@ -20,7 +19,7 @@ const QuestionTypes = Object.freeze({
   DATETIME: { code: "datetime", humanReadable: "Date" },
 });
 
-const NATIVE_TOKEN_TICKER = Object.freeze({ 1: "ETH", 3: "ETH", 42: "ETH", 77: "SPOA", 100: "xDai" });
+const NATIVE_TOKEN_TICKER = Object.freeze({ 1: "ETH", 3: "ETH", 4: "ETH", 5: "ETH", 42: "ETH", 77: "SPOA", 100: "xDai" });
 
 import styles from "components/styles/createForm.module.css";
 
@@ -56,7 +55,21 @@ class CreateForm extends React.Component {
   onNextButtonClick = async (event) => {
     const { form } = event.target;
     const { subcourtDetails } = this.props;
-    const { arbitrationCost, selectedSubcourt, title, category, description, initialNumberOfJurors, question, rulingTitles, rulingDescriptions, names, addresses, primaryDocument, questionType } = this.state;
+    const {
+      arbitrationCost,
+      selectedSubcourt,
+      title,
+      category,
+      description,
+      initialNumberOfJurors,
+      question,
+      rulingTitles,
+      rulingDescriptions,
+      names,
+      addresses,
+      primaryDocument,
+      questionType,
+    } = this.state;
 
     const valid = form.checkValidity();
     event.preventDefault();
@@ -212,7 +225,11 @@ class CreateForm extends React.Component {
                 <Dropdown required onSelect={this.onSubcourtSelect}>
                   <Dropdown.Toggle className="form-control" id="subcourt-dropdown" block disabled={subcourtsLoading || summary} className={styles.dropdownToggle}>
                     <ScalesSVG className={styles.scales} />{" "}
-                    <span className="font-weight-normal">{(subcourtsLoading && "Loading...") || (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt] && subcourtDetails[selectedSubcourt].name) || "Please select a court"}</span>
+                    <span className="font-weight-normal">
+                      {(subcourtsLoading && "Loading...") ||
+                        (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt] && subcourtDetails[selectedSubcourt].name) ||
+                        "Please select a court"}
+                    </span>
                   </Dropdown.Toggle>
 
                   <Dropdown.Menu>
@@ -230,7 +247,16 @@ class CreateForm extends React.Component {
               <Form.Group className="inner-addon left-addon">
                 <Form.Label htmlFor="initialNumberOfJurors">Number of Votes</Form.Label>
                 <AvatarSVG className="glyphicon glyphicon-user" />
-                <Form.Control required id="initialNumberOfJurors" as="input" type="number" min="1" value={initialNumberOfJurors} onChange={this.onControlChange} placeholder={"Number of votes"} />
+                <Form.Control
+                  required
+                  id="initialNumberOfJurors"
+                  as="input"
+                  type="number"
+                  min="1"
+                  value={initialNumberOfJurors}
+                  onChange={this.onControlChange}
+                  placeholder={"Number of votes"}
+                />
               </Form.Group>
             </Col>
             <Col xl={6} md={12} sm={24} xs={24}>
@@ -263,7 +289,7 @@ class CreateForm extends React.Component {
             <Col>
               <Form.Group>
                 <Form.Label htmlFor="description">Description (Optional)</Form.Label>
-                <Form.Control id="description" as="textarea" rows="5" value={description} onChange={this.onControlChange} placeholder={"Description of dispute in markdown"} />
+                <Form.Control id="description" as="textarea" rows="5" value={description} onChange={this.onControlChange} placeholder={"Description of dispute"} />
               </Form.Group>
             </Col>
           </Row>
@@ -294,7 +320,17 @@ class CreateForm extends React.Component {
               <Col>
                 <Form.Group>
                   <Form.Label htmlFor="numberOfRulingOptions">Number of Options</Form.Label>
-                  <Form.Control required id="numberOfRulingOptions" as="input" type="number" min="2" max="32" value={numberOfRulingOptions} onChange={this.onNumberOfRulingOptionsChange} placeholder={"Enter a number between 2 and 32"} />
+                  <Form.Control
+                    required
+                    id="numberOfRulingOptions"
+                    as="input"
+                    type="number"
+                    min="2"
+                    max="32"
+                    value={numberOfRulingOptions}
+                    onChange={this.onNumberOfRulingOptionsChange}
+                    placeholder={"Enter a number between 2 and 32"}
+                  />
                   <Form.Control.Feedback type="invalid">Please enter first ruling option, for example: "Yes"</Form.Control.Feedback>
                 </Form.Group>
               </Col>
@@ -318,14 +354,27 @@ class CreateForm extends React.Component {
                 <Col>
                   <Form.Group>
                     <Form.Label htmlFor={`rulingOption${index}Title`}>Ruling Option {index + 1}</Form.Label>
-                    <Form.Control required id={`rulingOption${index}Title`} as="input" value={rulingTitles[index]} onChange={(e) => this.onArrayStateVariableChange(e, "rulingTitles", index)} placeholder={`Ruling option ${index + 1}`} />
+                    <Form.Control
+                      required
+                      id={`rulingOption${index}Title`}
+                      as="input"
+                      value={rulingTitles[index]}
+                      onChange={(e) => this.onArrayStateVariableChange(e, "rulingTitles", index)}
+                      placeholder={`Ruling option ${index + 1}`}
+                    />
                     <Form.Control.Feedback type="invalid">Please enter first ruling option, for example: "Yes"</Form.Control.Feedback>
                   </Form.Group>
                 </Col>
                 <Col md={18}>
                   <Form.Group>
                     <Form.Label htmlFor={`rulingOption${index}Description`}>Ruling Option {index + 1} Description (Optional)</Form.Label>
-                    <Form.Control id={`rulingOption${index}Description`} as="input" value={rulingDescriptions[index]} onChange={(e) => this.onArrayStateVariableChange(e, "rulingDescriptions", index)} placeholder={`Ruling option ${index + 1} description`} />
+                    <Form.Control
+                      id={`rulingOption${index}Description`}
+                      as="input"
+                      value={rulingDescriptions[index]}
+                      onChange={(e) => this.onArrayStateVariableChange(e, "rulingDescriptions", index)}
+                      placeholder={`Ruling option ${index + 1} description`}
+                    />
                   </Form.Group>
                 </Col>{" "}
               </Row>
@@ -339,14 +388,29 @@ class CreateForm extends React.Component {
                   <Form.Group>
                     <Form.Label htmlFor="requester">Alias {index + 1} (Optional)</Form.Label>
 
-                    <Form.Control required={addresses[index]} id={`name${index}`} as="input" value={names[index]} onChange={(e) => this.onArrayStateVariableChange(e, "names", index)} placeholder={"Please enter alias"} />
+                    <Form.Control
+                      required={addresses[index]}
+                      id={`name${index}`}
+                      as="input"
+                      value={names[index]}
+                      onChange={(e) => this.onArrayStateVariableChange(e, "names", index)}
+                      placeholder={"Please enter alias"}
+                    />
                   </Form.Group>
                 </Col>
                 <Col xl={8} l={8} md={16}>
                   <Form.Group>
                     <Form.Label htmlFor={`address${index}`}>Address of Alias {index + 1} (Optional)</Form.Label>
 
-                    <Form.Control required={names[index]} pattern="0x[abcdefABCDEF0123456789]{40}" id="requesterAddress" as="input" value={addresses[index]} onChange={(e) => this.onArrayStateVariableChange(e, "addresses", index)} placeholder={"Please enter address"} />
+                    <Form.Control
+                      required={names[index]}
+                      pattern="0x[abcdefABCDEF0123456789]{40}"
+                      id="requesterAddress"
+                      as="input"
+                      value={addresses[index]}
+                      onChange={(e) => this.onArrayStateVariableChange(e, "addresses", index)}
+                      placeholder={"Please enter address"}
+                    />
                   </Form.Group>
                 </Col>
               </>
