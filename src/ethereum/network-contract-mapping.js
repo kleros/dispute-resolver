@@ -57,3 +57,16 @@ const map = {
 };
 
 export default map;
+
+export function getReadOnlyRpcUrl({ chainId }) {
+  const url = map[chainId].WEB3_PROVIDER;
+  if (!url) {
+    throw new Error(`Unsupported chain ID: ${chainId}`);
+  }
+
+  return url;
+}
+
+export function getReadOnlyWeb3({ chainId }) {
+  return new Web3(getReadOnlyRpcUrl({ chainId }));
+}
