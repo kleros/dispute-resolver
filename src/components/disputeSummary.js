@@ -26,11 +26,11 @@ class DisputeSummary extends React.Component {
       disputeID: arbitratorDisputeID,
       chainID: chainID, // Deprecated. Use arbitrableChainID or arbitratorChainID instead.
       arbitratorContractAddress: arbitratorAddress,
-      arbitratorJsonRpcUrl: getReadOnlyRpcUrl(arbitratorChainID) ?? web3Provider,
+      arbitratorJsonRpcUrl: getReadOnlyRpcUrl({ chainId: arbitratorChainID}) ?? web3Provider,
       arbitratorChainID: arbitratorChainID,
       arbitrableContractAddress: arbitrated,
       arbitrableChainID: arbitrableChainID,
-      arbitrableJsonRpcUrl: getReadOnlyRpcUrl(arbitrableChainID) ?? web3Provider,
+      arbitrableJsonRpcUrl: getReadOnlyRpcUrl({ chainId: arbitrableChainID }) ?? web3Provider,
       jsonRpcUrl: web3Provider,
     };
 
