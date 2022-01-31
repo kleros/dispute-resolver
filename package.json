@@ -5,7 +5,7 @@
   "dependencies": {
     "@babel/helper-call-delegate": "^7.12.1",
     "@kleros/arbitrable-proxy-contracts": "^5.0.0",
-    "@kleros/archon": "^1.2.2",
+    "@kleros/archon": "^2.2.0",
     "@kleros/kleros": "^0.1.2",
     "@reality.eth/reality-eth-lib": "^3.0.0",
     "antd": "^4.16.13",
@@ -31,7 +31,8 @@
     "react-router-bootstrap": "^0.25.0",
     "react-router-dom": "^5.0.1",
     "react-scripts": "4.0.0",
-    "styled-components": "^5.2.1"
+    "styled-components": "^5.2.1",
+    "web3": "^1.7.0"
   },
   "scripts": {
     "start": "react-scripts start",

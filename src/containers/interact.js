@@ -372,11 +372,10 @@ class Interact extends React.Component {
               arbitrated={arbitrated}
               arbitratorAddress={arbitratorAddress}
               arbitratorDisputeID={arbitratorDisputeID}
-              arbitrableChainID={network}
-              arbitratorChainID={network}
+              arbitrableChainID={metaevidence.metaEvidenceJSON?.arbitrableChainID ?? network}
+              arbitratorChainID={metaevidence.metaEvidenceJSON?.arbitratorChainID ?? network}
               chainID={network}
-              arbitratorJsonRpcUrl={web3Provider}
-              arbitrableJsonRpcUrl={web3Provider}
+              web3Provider={web3Provider}
             />
             <DisputeDetails
               activeAddress={activeAddress}

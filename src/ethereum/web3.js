@@ -1,5 +1,4 @@
 import Web3 from "web3";
-import networkMap from "./network-contract-mapping";
 
 let web3;
 
@@ -24,7 +23,7 @@ window.addEventListener("load", async () => {
 
 if (typeof window !== "undefined" && typeof window.web3 !== "undefined") {
   console.debug("Using the web3 object of the window...");
-  web3 = new Web3(window.web3.currentProvider);
+  web3 = new Web3(window.ethereum);
 } else if (process.env.REACT_APP_WEB3_PROVIDER_URL) {
   // Fallback provider.
   console.info("Using fallback provider");

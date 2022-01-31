@@ -12,6 +12,7 @@ import Footer from "./components/footer";
 import Web3 from "./ethereum/web3";
 import * as EthereumInterface from "./ethereum/interface";
 import networkMap from "./ethereum/network-contract-mapping";
+import { getReadOnlyRpcUrl } from "./ethereum/network-contract-mapping";
 import ipfsPublish from "./ipfs-publish";
 import Archon from "@kleros/archon";
 
@@ -214,13 +215,14 @@ class App extends React.Component {
   getMetaEvidence = (arbitrableAddress, arbitratorDisputeID) =>
     this.state.archon.arbitrable.getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID).then((response) =>
       this.state.archon.arbitrable.getMetaEvidence(arbitrableAddress, response.metaEvidenceID, {
+        strict: true,
+        getJsonRpcUrl: (chainId) => getReadOnlyRpcUrl({ chainId }),
         scriptParameters: {
           disputeID: arbitratorDisputeID,
           arbitrableContractAddress: arbitrableAddress,
           arbitratorContractAddress: networkMap[this.state.network].KLEROS_LIQUID,
           arbitratorChainID: this.state.network,
-          arbitrableChainID: this.state.network,
-          arbitrableJsonRpcUrl: networkMap[this.state.network].WEB3_PROVIDER,
+          chainID: this.state.network,
           arbitratorJsonRpcUrl: networkMap[this.state.network].WEB3_PROVIDER,
         },
       })

@@ -2,6 +2,7 @@ import { Card, Row, Col, Form, Container } from "react-bootstrap";
 import React from "react";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import IframeResizer from "iframe-resizer-react";
+import { getReadOnlyRpcUrl } from "./ethereum/network-contract-mapping";
 
 import styles from "components/styles/disputeSummary.module.css";
 
@@ -17,8 +18,7 @@ class DisputeSummary extends React.Component {
       arbitratorChainID,
       arbitrableChainID,
       chainID, // Deprecated. Use arbitrableChainID or arbitratorChainID instead.
-      arbitratorJsonRpcUrl,
-      arbitrableJsonRpcUrl,
+      web3Provider,
     } = this.props;
     console.debug(this.props);
 
@@ -26,13 +26,22 @@ class DisputeSummary extends React.Component {
       disputeID: arbitratorDisputeID,
       chainID: chainID, // Deprecated. Use arbitrableChainID or arbitratorChainID instead.
       arbitratorContractAddress: arbitratorAddress,
-      arbitratorJsonRpcUrl: arbitratorJsonRpcUrl,
+      arbitratorJsonRpcUrl: getReadOnlyRpcUrl(arbitratorChainID) ?? web3Provider,
       arbitratorChainID: arbitratorChainID,
       arbitrableContractAddress: arbitrated,
       arbitrableChainID: arbitrableChainID,
-      arbitrableJsonRpcUrl: arbitrableJsonRpcUrl,
-      jsonRpcUrl: arbitratorJsonRpcUrl,
+      arbitrableJsonRpcUrl: getReadOnlyRpcUrl(arbitrableChainID) ?? web3Provider,
+      jsonRpcUrl: web3Provider,
     };
+
+    let searchParams;
+    const { _v = "0" } = metaevidenceJSON;
+    if (_v === "0") {
+      searchParams = `${encodeURIComponent(JSON.stringify(injectedArgs))}`;
+    } else {
+      const _searchParams = new URLSearchParams(injectedArgs);
+      searchParams = `${_searchParams.toString()}`;
+    }
 
     if (metaevidenceJSON)
       return (
@@ -48,7 +57,7 @@ class DisputeSummary extends React.Component {
                 className="border-0"
                 src={
                   (metaevidenceJSON.evidenceDisplayInterfaceURI.includes("://") ? "" : ipfsGateway) +
-                  `${metaevidenceJSON.evidenceDisplayInterfaceURI}?${encodeURIComponent(JSON.stringify(injectedArgs))}`
+                  `${metaevidenceJSON.evidenceDisplayInterfaceURI}?${searchParams}`
                 }
                 title="evidence-display"
               />
