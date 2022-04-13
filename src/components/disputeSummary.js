@@ -1,7 +1,6 @@
 import { Card, Row, Col, Form, Container } from "react-bootstrap";
 import React from "react";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
-import IframeResizer from "iframe-resizer-react";
 import { getReadOnlyRpcUrl } from "../ethereum/network-contract-mapping";
 
 import styles from "components/styles/disputeSummary.module.css";
@@ -26,7 +25,7 @@ class DisputeSummary extends React.Component {
       disputeID: arbitratorDisputeID,
       chainID: chainID, // Deprecated. Use arbitrableChainID or arbitratorChainID instead.
       arbitratorContractAddress: arbitratorAddress,
-      arbitratorJsonRpcUrl: getReadOnlyRpcUrl({ chainId: arbitratorChainID}) ?? web3Provider,
+      arbitratorJsonRpcUrl: getReadOnlyRpcUrl({ chainId: arbitratorChainID }) ?? web3Provider,
       arbitratorChainID: arbitratorChainID,
       arbitrableContractAddress: arbitrated,
       arbitrableChainID: arbitrableChainID,
@@ -53,12 +52,10 @@ class DisputeSummary extends React.Component {
             <p className={styles.description}>{metaevidenceJSON.description}</p>
 
             {metaevidenceJSON.evidenceDisplayInterfaceURI && (
-              <IframeResizer
+              <iframe
                 className="border-0"
-                src={
-                  (metaevidenceJSON.evidenceDisplayInterfaceURI.includes("://") ? "" : ipfsGateway) +
-                  `${metaevidenceJSON.evidenceDisplayInterfaceURI}?${searchParams}`
-                }
+                style={{ width: "100%", height: "360px" }}
+                src={(metaevidenceJSON.evidenceDisplayInterfaceURI.includes("://") ? "" : ipfsGateway) + `${metaevidenceJSON.evidenceDisplayInterfaceURI}?${searchParams}`}
                 title="evidence-display"
               />
             )}
