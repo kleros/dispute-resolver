@@ -106,7 +106,7 @@ class DisputeSummary extends React.Component {
           )}
         </section>
       );
-    else return <div></div>;
+    else return <div>Failed to load metaevidence, thus the dispute summary. This might be an issue with the IPFS access.</div>;
   }
 }
 
