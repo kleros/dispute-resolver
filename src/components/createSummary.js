@@ -23,7 +23,7 @@ class CreateSummary extends React.Component {
   }
 
   onCreateButtonClick = async (e) => {
-    console.debug("hey");
+    
 
     const { formData, notificationEventCallback } = this.props;
     this.setState({ awaitingConfirmation: true });

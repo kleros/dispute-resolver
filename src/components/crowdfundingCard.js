@@ -33,8 +33,8 @@ class CrowdfundingCard extends React.Component {
   onControlChange = async (e) => await this.setState({ [e.target.id]: e.target.value });
 
   onDatePickerChange = async (value, dateString) => {
-    console.log("Selected Time: ", value);
-    console.log("Formatted Selected Time: ", dateString);
+    
+    
     await this.setState({ variableRulingOption: value.utcOffset(0).set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).unix() });
   };
 
@@ -49,16 +49,16 @@ class CrowdfundingCard extends React.Component {
     const { variable, appealCallback, rulingOptionCode, metaevidenceJSON } = this.props;
     const { variableRulingOption, contribution } = this.state;
     let actualRulingCode;
-    console.log("hande fund button");
-    console.log(rulingOptionCode);
+    
+    
     switch (variable) {
       case undefined: // Not variable
         actualRulingCode = rulingOptionCode;
         break;
       case "uint":
         actualRulingCode = toBN(this.addDecimalsToUintRuling(variableRulingOption, metaevidenceJSON)).add(toBN("1")); // 10**18
-        console.log(`actual ruling code for uint ${actualRulingCode}`);
-        console.log(typeof actualRulingCode);
+        
+        
         break;
       case "int":
         actualRulingCode = parseInt(variableRulingOption) >= 0 ? parseInt(variableRulingOption) + 1 : variableRulingOption;
@@ -76,8 +76,8 @@ class CrowdfundingCard extends React.Component {
   render() {
     const { dispute, subcourtDetails, subcourts, title, arbitratorDisputeDetails, grayedOut, winner, fundingPercentage, appealPeriodEnd, variable, roi, suggestedContribution, appealCallback, rulingOptionCode, metaevidenceJSON } = this.props;
     const { variableRulingOption, contribution } = this.state;
-    console.debug(this.props);
-    console.debug(this.state);
+    
+    
 
     return (
       <div className={`shadow rounded p-3 d-flex flex-column ${styles.crowdfundingCard}`}>

@@ -49,8 +49,6 @@ class DisputeDetails extends React.Component {
 
     const appealCost = BigNumber(this.props.appealCost);
     let stake;
-    console.debug(`current ruling ${currentRuling}`);
-    console.debug(`tie multiplier: ${multipliers.tieStakeMultiplier}`);
 
     if (currentRuling == rulingOption) {
       stake = appealCost.times(BigNumber(multipliers.winnerStakeMultiplier)).div(BigNumber(multipliers.denominator));
@@ -175,8 +173,6 @@ class DisputeDetails extends React.Component {
       totalWithdrawable,
     } = this.props;
     const { activeKey } = this.state;
-    console.debug(this.props);
-    console.debug(this.state);
 
     const decisionInfoBoxContent = `This decision can be appealed within appeal period. ${incompatible ? "Go to arbitrable application to appeal this ruling." : ""}`;
 

@@ -46,19 +46,10 @@ class App extends React.Component {
         this.setState({ activeAddress: accounts[0] });
       });
 
-      window.ethereum.on("networkChanged", async (network) => {
+      window.ethereum.on("chainChanged", async (network) => {
         await this.setState({ network });
         this.loadSubcourtData();
       });
-
-      // var subscription = Web3.eth
-      //   .subscribe("pendingTransactions", function (error, result) {
-      //     if (!error) console.debug(result);
-      //     else console.error(error);
-      //   })
-      //   .on("data", function (transaction) {
-      //     console.debug(transaction);
-      //   });
     } else console.error("MetaMask not detected :(");
 
     this.loadSubcourtData();
@@ -81,8 +72,6 @@ class App extends React.Component {
       subcourtURIs[i] = this.getSubCourtDetails(i);
       subcourts[i] = this.getSubcourt(i);
     }
-
-    await Promise.all(subcourtURIs.map((promise) => promise.then((subcourtURI) => console.debug(subcourtURI))));
 
     this.setState({
       subcourtDetails: await Promise.all(
@@ -241,18 +230,14 @@ class App extends React.Component {
       )
       .then((metaevidence) => {
         if (metaevidence.length > 0) {
-          console.debug(metaevidence[0].returnValues._evidence);
           return fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence).then((response) => response.json());
         }
       });
 
   getEvidences = (arbitrableAddress, arbitratorDisputeID) => {
-    console.debug("getEvidences");
-    console.debug(arbitratorDisputeID);
     return this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
       .then((response) => {
-        this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).then(console.log);
         return this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).catch(console.error);
       })
       .catch(console.error);
@@ -278,7 +263,7 @@ class App extends React.Component {
       toBlock: "latest",
       filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round: round },
     });
-    console.debug(contributionLogs);
+
     let contributionsForEachRuling = {};
     contributionLogs.map((log) => {
       contributionsForEachRuling[log.returnValues.ruling] = contributionsForEachRuling[log.returnValues.ruling] || 0;
@@ -295,15 +280,11 @@ class App extends React.Component {
       filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round: round },
     });
     let ruling = rulingFundedLogs.map((log) => log.returnValues._ruling);
-    console.log(ruling);
+
     return ruling;
   };
 
   getTotalWithdrawableAmount = async (arbitrableDisputeID, contributedTo, arbitrated) => {
-    console.debug(`arbitrated ${arbitrated}`);
-    console.log(`arbitrable dispute id ${arbitrableDisputeID}`);
-    console.log(`ruling ${contributedTo}`);
-
     let amount = 0;
     let counter = 0;
     while (counter < contributedTo.length) {
@@ -336,8 +317,6 @@ class App extends React.Component {
       evidenceSide: supportingSide,
     };
 
-    console.log(disputeID);
-
     const ipfsHashEvidenceObj = await ipfsPublish("evidence.json", this.encoder.encode(JSON.stringify(evidence)));
 
     const evidenceURI = `/ipfs/${ipfsHashEvidenceObj[1].hash}${ipfsHashEvidenceObj[0].path}`;
@@ -347,9 +326,6 @@ class App extends React.Component {
 
   render() {
     const { activeAddress, network, lastDisputeID, subcourts, subcourtDetails, subcourtsLoading } = this.state;
-
-    console.debug(this.state);
-    console.debug(networkMap[this.state.network]);
 
     if (this.state.network)
       return (

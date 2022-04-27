@@ -14,7 +14,7 @@ class DisputeTimeline extends React.Component {
 
   render() {
     const { period, lastPeriodChange, subcourt } = this.props;
-    console.debug(this.props);
+    
 
     return (
       <div className={styles.disputeTimeline}>

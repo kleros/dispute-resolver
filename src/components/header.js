@@ -12,7 +12,7 @@ class Header extends React.Component {
   }
   render() {
     const { viewOnly } = this.props;
-    console.debug(this.props);
+    
     return (
       <header>
         <Navbar collapseOnSelect expand="lg" variant="dark" className={styles.navbar}>

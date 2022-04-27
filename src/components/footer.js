@@ -26,7 +26,7 @@ class Footer extends React.Component {
   }
   render() {
     const { viewOnly, network } = this.props;
-    console.debug(this.props);
+    
     return (
       <footer>
         <div className={styles.footer}>

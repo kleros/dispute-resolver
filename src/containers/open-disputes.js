@@ -64,13 +64,13 @@ class openDisputeIDs extends React.Component {
   };
 
   onFilterSelect = async (filter) => {
-    console.debug(filter);
+    
     await this.setState({ statusFilter: filter });
   };
 
   render() {
-    // console.debug(this.state);
-    // console.debug(this.props);
+    // 
+    // 
 
     const { openDisputeIDs, selectedDispute, statusFilter, loading } = this.state;
     const { subcourts, subcourtDetails } = this.props;

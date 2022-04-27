@@ -15,7 +15,7 @@ class DatetimePicker extends React.Component {
   }
   render() {
     const { onChange, onOk, id } = this.props;
-    console.log(this.props);
+    
     return <DatePicker style={{ width: "100%" }} showTime={{ defaultValue: moment("00:00:00", "HH:mm:ss") }} onChange={onChange} onOk={onOk} id={id} />;
   }
 }

@@ -20,7 +20,7 @@ class Create extends React.Component {
   componentDidMount = async (e) => {};
 
   onNextButtonClick = (formData) => {
-    console.debug(formData);
+    
     this.setState({ activePage: 2, formData });
   };
 
@@ -39,8 +39,8 @@ class Create extends React.Component {
   };
 
   render() {
-    console.debug(this.props);
-    console.debug(this.state);
+    
+    
 
     const { lastDisputeID, activePage, formData, notificationShow } = this.state;
 

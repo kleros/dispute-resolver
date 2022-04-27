@@ -59,7 +59,6 @@ class Interact extends React.Component {
   }
 
   submitEvidence = async (evidence) => {
-    console.debug(this.state);
     await this.props.submitEvidenceCallback(this.state.arbitrated, {
       disputeID: this.state.arbitrableDisputeID,
       evidenceDescription: evidence.evidenceDescription,
@@ -156,7 +155,6 @@ class Interact extends React.Component {
       arbitrated = (await this.props.getArbitratorDisputeCallback(arbitratorDisputeID)).arbitrated;
       this.setState({ arbitrated });
     } catch (e) {
-      console.debug("err2");
       console.error(e);
       return;
     }
@@ -197,18 +195,15 @@ class Interact extends React.Component {
         getDisputeResult: await this.props.getDisputeCallback(arbitratorDisputeID),
       });
     } catch (err) {
-      console.debug("err");
       console.error(err.message);
     } finally {
     }
 
-    console.debug("There");
     try {
       this.setState({
         evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
       });
     } catch (err) {
-      console.debug("err");
       console.error(err.message);
     } finally {
     }
@@ -230,8 +225,6 @@ class Interact extends React.Component {
       appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
       contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated);
       rulingFunded = await this.props.getRulingFundedCallback(arbitrableDisputeID, appealDecisions.length, arbitrated);
-      console.log(rulingFunded);
-      console.debug(contributions);
 
       await this.setState({ contributions, appealDecisions, rulingFunded });
     } catch (err) {
@@ -250,8 +243,6 @@ class Interact extends React.Component {
       for (let i = 0; i < appealDecisions.length; i++) contributionsOfPastRounds[i] = await this.props.getContributionsCallback(arbitrableDisputeID, i, arbitrated);
 
       const aggregatedContributions = this.sumObjectsByKey(...contributionsOfPastRounds, contributions);
-      console.log(`agregated ${aggregatedContributions}`);
-      console.log(aggregatedContributions);
 
       try {
         totalWithdrawable = await this.props.getTotalWithdrawableAmountCallback(
@@ -261,7 +252,6 @@ class Interact extends React.Component {
         );
         await this.setState({ totalWithdrawable: totalWithdrawable.amount, aggregatedContributions, selectedContribution: totalWithdrawable.ruling });
       } catch (err) {
-        console.log("can't get totalWithdrawable");
         console.error(err);
         this.setState({ incompatible: true }); //If ruling is not executed, this reverts.
       }
@@ -283,9 +273,6 @@ class Interact extends React.Component {
   };
 
   render() {
-    console.debug(this.props);
-    console.debug(this.state);
-
     const {
       arbitrated,
       arbitrableDisputeID,
@@ -310,7 +297,6 @@ class Interact extends React.Component {
       totalWithdrawable,
       aggregatedContributions,
     } = this.state;
-    console.log(arbitrated);
 
     const {
       arbitratorAddress,
