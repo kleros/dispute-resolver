@@ -6,6 +6,10 @@ import { getReadOnlyRpcUrl } from "../ethereum/network-contract-mapping";
 import styles from "components/styles/disputeSummary.module.css";
 
 class DisputeSummary extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+
   render() {
     const {
       metaevidenceJSON,
@@ -18,7 +22,10 @@ class DisputeSummary extends React.Component {
       arbitrableChainID,
       chainID, // Deprecated. Use arbitrableChainID or arbitratorChainID instead.
       web3Provider,
+      loading,
     } = this.props;
+
+    console.debug(this.props);
 
     const injectedArgs = {
       disputeID: arbitratorDisputeID,
@@ -105,6 +112,7 @@ class DisputeSummary extends React.Component {
           )}
         </section>
       );
+    else if (loading) return <div>Fetching....</div>;
     else return <div>Failed to load metaevidence, thus the dispute summary. This might be an issue with the IPFS access.</div>;
   }
 }

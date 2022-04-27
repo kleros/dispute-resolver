@@ -167,7 +167,8 @@ class Interact extends React.Component {
 
     await this.setState({ arbitrated });
 
-    await this.commonFetchRoutine(arbitrated, arbitratorDisputeID).then(this.setState({ loading: false }));
+    await this.commonFetchRoutine(arbitrated, arbitratorDisputeID);
+    this.setState({ loading: false });
   };
 
   commonFetchRoutine = async (arbitrated, arbitratorDisputeID) => {
@@ -302,6 +303,7 @@ class Interact extends React.Component {
       incompatible,
       totalWithdrawable,
       aggregatedContributions,
+      loading,
     } = this.state;
 
     const {
@@ -368,6 +370,7 @@ class Interact extends React.Component {
               arbitratorChainID={metaevidence.metaEvidenceJSON?.arbitratorChainID ?? network}
               chainID={network}
               web3Provider={web3Provider}
+              loading={loading}
             />
             <DisputeDetails
               activeAddress={activeAddress}
