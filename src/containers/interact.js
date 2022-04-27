@@ -97,7 +97,13 @@ class Interact extends React.Component {
 
   withdraw = async () => {
     console.debug([Object.keys(this.state.contributions).map((key) => parseInt(key))]);
-    this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution);
+    try {
+      // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256 _ruling);
+      this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution);
+    } catch {
+      // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256[] memory _contributedTo);
+      this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, [this.state.selectedContribution]);
+    }
   };
 
   getWithdrawAmount = async () =>
