@@ -183,7 +183,12 @@ class DisputeDetails extends React.Component {
     if (metaevidenceJSON && arbitratorDispute && subcourts && subcourtDetails && arbitratorDisputeDetails)
       return (
         <section className={styles.disputeDetails}>
-          <DisputeTimeline period={arbitratorDispute.period} lastPeriodChange={arbitratorDispute.lastPeriodChange} subcourtID={arbitratorDispute.subcourtID} subcourt={subcourts[arbitratorDispute.subcourtID]} />
+          <DisputeTimeline
+            period={arbitratorDispute.period}
+            lastPeriodChange={arbitratorDispute.lastPeriodChange}
+            subcourtID={arbitratorDispute.subcourtID}
+            subcourt={subcourts[arbitratorDispute.subcourtID]}
+          />
           <hr className="mt-4" />
           <Row>
             <Col xl={6} md="auto" sm={true} xs={24}>
@@ -215,12 +220,18 @@ class DisputeDetails extends React.Component {
           </Row>
 
           {arbitratorDispute.period == 3 && (
-            <AlertMessage type="info" title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(this.getWinner(rulingFunded, currentRuling), metaevidenceJSON)}`} content={decisionInfoBoxContent} />
+            <AlertMessage
+              type="info"
+              title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`}
+              content={decisionInfoBoxContent}
+            />
           )}
           {arbitratorDispute.period == 4 && (
             <AlertMessage
               type="info"
-              title={`Winner: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(this.getWinner(rulingFunded, currentRuling), metaevidenceJSON)}`}
+              title={`Winner: ${
+                currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(this.getWinner(rulingFunded, currentRuling), metaevidenceJSON)
+              }`}
               content={`${this.getWinner(rulingFunded, currentRuling) != currentRuling ? "Won by default" : "Won by jury decision"}`}
             />
           )}
@@ -356,7 +367,9 @@ class DisputeDetails extends React.Component {
                                     title={metaevidenceJSON.rulingOptions.type == "string" ? hexToUtf8(toHex(key)) : this.convertToRealitioFormat(key, metaevidenceJSON)}
                                     rulingOptionCode={key}
                                     winner={currentRuling == key}
-                                    fundingPercentage={contributions.hasOwnProperty(key) ? BigNumber(contributions[key]).div(this.calculateTotalCost(key)).times(100).toFixed(2) : 0}
+                                    fundingPercentage={
+                                      contributions.hasOwnProperty(key) ? BigNumber(contributions[key]).div(this.calculateTotalCost(key)).times(100).toFixed(2) : 0
+                                    }
                                     suggestedContribution={this.calculateAmountRemainsToBeRaised(key).div(DECIMALS).toString()}
                                     appealPeriodEnd={this.calculateAppealPeriod(key)}
                                     roi={this.calculateReturnOfInvestmentRatio(key).toFixed(2)}
@@ -371,7 +384,11 @@ class DisputeDetails extends React.Component {
                                 title={`${this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`}
                                 rulingOptionCode={this.props.currentRuling}
                                 winner={true}
-                                fundingPercentage={contributions.hasOwnProperty(this.props.currentRuling) ? BigNumber(contributions[this.props.currentRuling]).div(this.calculateTotalCost(this.props.currentRuling)).times(100).toFixed(2) : 0}
+                                fundingPercentage={
+                                  contributions.hasOwnProperty(this.props.currentRuling)
+                                    ? BigNumber(contributions[this.props.currentRuling]).div(this.calculateTotalCost(this.props.currentRuling)).times(100).toFixed(2)
+                                    : 0
+                                }
                                 appealPeriodEnd={this.calculateAppealPeriod(this.props.currentRuling)}
                                 roi={this.calculateReturnOfInvestmentRatio(this.props.currentRuling).toFixed(2)}
                                 suggestedContribution={this.calculateAmountRemainsToBeRaised(this.props.currentRuling).div(DECIMALS).toString()}
@@ -419,8 +436,12 @@ class DisputeDetails extends React.Component {
 
                         <Dropdown.Menu>
                           {metaevidenceJSON.rulingOptions.titles.map((title, index) => (
-                            <Dropdown.Item key={index} disabled>{`Option ${index + 1} ${title}${metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[index] != undefined ? ":" : ""} ${
-                              metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[index] != undefined ? metaevidenceJSON.rulingOptions.descriptions[index] : ""
+                            <Dropdown.Item key={index} disabled>{`Option ${index + 1} ${title}${
+                              metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[index] != undefined ? ":" : ""
+                            } ${
+                              metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[index] != undefined
+                                ? metaevidenceJSON.rulingOptions.descriptions[index]
+                                : ""
                             }`}</Dropdown.Item>
                           ))}
                         </Dropdown.Menu>
