@@ -230,9 +230,9 @@ class Interact extends React.Component {
     let appealDecisions, contributions, totalWithdrawable, rulingFunded;
     try {
       appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
-      contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated);
+      contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated, arbitratorDispute.period);
       rulingFunded = await this.props.getRulingFundedCallback(arbitrableDisputeID, appealDecisions.length, arbitrated);
-
+      console.log(appealDecisions);
       await this.setState({ contributions, appealDecisions, rulingFunded });
     } catch (err) {
       console.error("incompatible contract");
@@ -247,7 +247,8 @@ class Interact extends React.Component {
 
     if (arbitratorDispute.period == 4) {
       let contributionsOfPastRounds = [];
-      for (let i = 0; i < appealDecisions.length; i++) contributionsOfPastRounds[i] = await this.props.getContributionsCallback(arbitrableDisputeID, i, arbitrated);
+      for (let i = 0; i < appealDecisions.length; i++)
+        contributionsOfPastRounds[i] = await this.props.getContributionsCallback(arbitrableDisputeID, i, arbitrated, arbitratedDispute.period);
 
       const aggregatedContributions = this.sumObjectsByKey(...contributionsOfPastRounds, contributions);
 
@@ -276,7 +277,10 @@ class Interact extends React.Component {
 
     const appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
 
-    await this.setState({ appealDecisions, contributions: await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated) });
+    await this.setState({
+      appealDecisions,
+      contributions: await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated, arbitratorDispute.period),
+    });
   };
 
   render() {
