@@ -25,8 +25,6 @@ class DisputeSummary extends React.Component {
       loading,
     } = this.props;
 
-    console.debug(this.props);
-
     const injectedArgs = {
       disputeID: arbitratorDisputeID,
       chainID: chainID, // Deprecated. Use arbitrableChainID or arbitratorChainID instead.

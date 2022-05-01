@@ -256,12 +256,12 @@ class App extends React.Component {
     });
   };
 
-  getContributions = async (arbitrableDisputeID, round, arbitrableContractAddress) => {
+  getContributions = async (arbitrableDisputeID, round, arbitrableContractAddress, period) => {
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
     const contributionLogs = await contractInstance.getPastEvents("Contribution", {
       fromBlock: QUERY_FROM_BLOCK,
       toBlock: "latest",
-      filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round: round },
+      filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round: period == 4 ? round : round + 1 },
     });
 
     let contributionsForEachRuling = {};
@@ -269,6 +269,7 @@ class App extends React.Component {
       contributionsForEachRuling[log.returnValues.ruling] = contributionsForEachRuling[log.returnValues.ruling] || 0;
       contributionsForEachRuling[log.returnValues.ruling] = parseInt(contributionsForEachRuling[log.returnValues.ruling]) + parseInt(log.returnValues._amount);
     });
+    console.log(contributionsForEachRuling);
     return contributionsForEachRuling;
   };
 
