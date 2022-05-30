@@ -7,6 +7,7 @@ import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
 import { ReactComponent as UploadSVG } from "../assets/images/upload.svg";
 import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
+import { NATIVE_TOKEN_ABBREVIATIONS } from "../utils/constants";
 
 import Dropzone from "react-dropzone";
 
@@ -18,8 +19,6 @@ const QuestionTypes = Object.freeze({
   // STRING: { code: "string", humanReadable: "Text" },  Not-implemented in Court, so disabling.
   DATETIME: { code: "datetime", humanReadable: "Date" },
 });
-
-const NATIVE_TOKEN_TICKER = Object.freeze({ 1: "ETH", 3: "ETH", 4: "ETH", 5: "ETH", 42: "ETH", 77: "SPOA", 100: "xDai" });
 
 import styles from "components/styles/createForm.module.css";
 
@@ -270,7 +269,7 @@ class CreateForm extends React.Component {
                 <Form.Label htmlFor="arbitrationFee">Arbitration Cost</Form.Label>
                 <Form.Control as="div" className={styles.arbitrationFeeGroupPrepend}>
                   <EthereumSVG />
-                  {<span className={styles.arbitrationFee}>{arbitrationCost && arbitrationCost + " " + NATIVE_TOKEN_TICKER[network]}</span>}
+                  {<span className={styles.arbitrationFee}>{arbitrationCost && arbitrationCost + " " + NATIVE_TOKEN_ABBREVIATIONS[network]}</span>}
                 </Form.Control>
               </Form.Group>
             </Col>

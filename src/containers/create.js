@@ -20,7 +20,6 @@ class Create extends React.Component {
   componentDidMount = async (e) => {};
 
   onNextButtonClick = (formData) => {
-    
     this.setState({ activePage: 2, formData });
   };
 
@@ -39,9 +38,6 @@ class Create extends React.Component {
   };
 
   render() {
-    
-    
-
     const { lastDisputeID, activePage, formData, notificationShow } = this.state;
 
     const { activeAddress, subcourtDetails, subcourtsLoading, getArbitrationCostCallback, publishCallback, createDisputeCallback, network } = this.props;
@@ -49,7 +45,15 @@ class Create extends React.Component {
     return (
       <main className={styles.create}>
         {activePage == 1 && (
-          <CreateForm getArbitrationCostCallback={getArbitrationCostCallback} publishCallback={publishCallback} subcourtDetails={subcourtDetails} subcourtsLoading={subcourtsLoading} onNextButtonClickCallback={this.onNextButtonClick} formData={formData} network={network} />
+          <CreateForm
+            getArbitrationCostCallback={getArbitrationCostCallback}
+            publishCallback={publishCallback}
+            subcourtDetails={subcourtDetails}
+            subcourtsLoading={subcourtsLoading}
+            onNextButtonClickCallback={this.onNextButtonClick}
+            formData={formData}
+            network={network}
+          />
         )}
         {activePage == 2 && (
           <Summary
@@ -61,9 +65,20 @@ class Create extends React.Component {
             onReturnButtonClickCallback={this.onReturnButtonClick}
             createDisputeCallback={createDisputeCallback}
             notificationEventCallback={this.notificationEventCallback}
+            network={network}
           />
         )}
-        <Toast className={styles.toast} onClose={() => this.setShow()} show={notificationShow} delay={5000} autohide header="Transaction Confirmed" body={`You have successfully created dispute ${lastDisputeID}!`} iconName="Success" animation />
+        <Toast
+          className={styles.toast}
+          onClose={() => this.setShow()}
+          show={notificationShow}
+          delay={5000}
+          autohide
+          header="Transaction Confirmed"
+          body={`You have successfully created dispute ${lastDisputeID}!`}
+          iconName="Success"
+          animation
+        />
       </main>
     );
   }
