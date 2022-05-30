@@ -7,6 +7,7 @@ import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
 import { ReactComponent as UploadSVG } from "../assets/images/upload.svg";
 import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
+import { NATIVE_TOKEN_ABBREVIATIONS } from "../utils/constants";
 
 import Dropzone from "react-dropzone";
 
@@ -23,8 +24,6 @@ class CreateSummary extends React.Component {
   }
 
   onCreateButtonClick = async (e) => {
-    
-
     const { formData, notificationEventCallback } = this.props;
     this.setState({ awaitingConfirmation: true });
 
@@ -65,7 +64,7 @@ class CreateSummary extends React.Component {
   componentDidMount = () => {};
 
   render() {
-    const { awaitingConfirmation, show, activeAddress, subcourtsLoading, onReturnButtonClickCallback, validated, arbitrationCost, summary, formData } = this.props;
+    const { awaitingConfirmation, show, activeAddress, subcourtsLoading, onReturnButtonClickCallback, validated, arbitrationCost, summary, formData, network } = this.props;
 
     return (
       <section className={styles.summary}>
@@ -113,7 +112,7 @@ class CreateSummary extends React.Component {
                 <Form.Label htmlFor="arbitrationFee">Arbitration Cost</Form.Label>
                 <Form.Control className={styles.spanWithSvgInside} as="span">
                   <EthereumSVG />
-                  <span className={styles.arbitrationFee}>{formData.arbitrationCost + " ETH"}</span>
+                  <span className={styles.arbitrationFee}>{formData.arbitrationCost + " " + NATIVE_TOKEN_ABBREVIATIONS[network]}</span>
                 </Form.Control>
               </Form.Group>
             </Col>
