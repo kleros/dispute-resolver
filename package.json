@@ -1,5 +1,6 @@
 {
   "name": "dispute-resolver",
+  "author": "Ferit <ferit@cryptolab.net> (https://github.com/0xferit)"
   "version": "1.0.0",
   "private": false,
   "dependencies": {
