@@ -18,7 +18,7 @@ const loadWeb3 = async () => {
 
 if (document.readyState === "complete") { 
   // DOM loading is already complete
-  async () => await loadWeb3();
+  loadWeb3();
 } else {
   window.addEventListener("load", async () => {
     // Modern dapp browsers...
