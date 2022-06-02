@@ -12,8 +12,8 @@ import DisputeTimeline from "components/disputeTimeline";
 import EvidenceTimeline from "components/evidenceTimeline";
 import CrowdfundingCard from "components/crowdfundingCard";
 import { combinations } from "utils/combinations";
-import Web3 from "../ethereum/web3";
-const { toBN, toHex, hexToUtf8 } = Web3.utils;
+import web3 from "web3";
+const { toBN, toHex, hexToUtf8 } = web3.utils;
 
 import AlertMessage from "components/alertMessage";
 
