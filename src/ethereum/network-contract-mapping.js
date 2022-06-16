@@ -59,14 +59,10 @@ const map = {
 export default map;
 
 export function getReadOnlyRpcUrl({ chainId }) {
-  const url = map[chainId].WEB3_PROVIDER;
+  const url = map[parseInt(chainId)].WEB3_PROVIDER;
   if (!url) {
-    throw new Error(`Unsupported chain ID: ${chainId}`);
+    console.warn(`No read only provider for ${map[parseInt(chainId)].NAME} using the browser wallet instead.`);
   }
 
   return url;
-}
-
-export function getReadOnlyWeb3({ chainId }) {
-  return new Web3(getReadOnlyRpcUrl({ chainId }));
 }
