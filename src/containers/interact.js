@@ -1,17 +1,11 @@
 import React from "react";
-import ReactDOM from "react-dom";
-import { Card, Col, Container, Form, Row, Button, InputGroup, FormControl, Accordion } from "react-bootstrap";
+import {  Col, Form, Row, InputGroup, FormControl } from "react-bootstrap";
 import DisputeSummary from "components/disputeSummary";
 import DisputeDetails from "components/disputeDetails";
 import debounce from "lodash.debounce";
-import ReactMarkdown from "react-markdown";
-import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
-import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { ReactComponent as Magnifier } from "../assets/images/magnifier.svg";
 
-import { Redirect, Link } from "react-router-dom";
-import Countdown from "react-countdown";
-import BigNumber from "bignumber.js";
+import { Redirect } from "react-router-dom";
 
 import styles from "containers/styles/interact.module.css";
 
@@ -85,15 +79,10 @@ class Interact extends React.Component {
     });
   };
 
-  onControlChange = (e) => this.setState({ [e.target.id]: e.target.value });
-  onInput = (e) => {
-    this.setState({ evidenceFileURI: "" });
-    this.setState({ fileInput: e.target.files[0] });
-  };
 
-  onContributeButtonClick = (e) => this.setState({ contributeModalShow: true });
 
-  appeal = async (party, contribution) => await this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);
+
+  appeal = async (party, contribution) =>  this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);
 
   withdraw = async () => {
     console.debug([Object.keys(this.state.contributions).map((key) => parseInt(key))]);
@@ -105,20 +94,7 @@ class Interact extends React.Component {
       this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, [this.state.selectedContribution]);
     }
   };
-
-  getWithdrawAmount = async () =>
-    this.props.getTotalWithdrawableAmountCallback(
-      this.state.arbitratorDisputeID,
-      Object.keys(this.state.contributions).map((key) => parseInt(key)),
-      this.state.arbitrated
-    );
-
-  getWinnerMultiplier = async (arbitrableAddress) => {
-    const winnerMultiplier = await this.props.getWinnerMultiplierCallback(arbitrableAddress);
-
-    return winnerMultiplier;
-  };
-
+  
   onDisputeIDChange = async (e) => {
     const arbitratorDisputeID = e.target.value;
     await this.setState({ metaevidence: undefined });
@@ -134,23 +110,17 @@ class Interact extends React.Component {
   };
 
   getCurrentRuling = async (disputeIDOnArbitratorSide) => {
-    let currentRuling;
     try {
-      currentRuling = await this.props.getCurrentRulingCallback(disputeIDOnArbitratorSide);
+      return await this.props.getCurrentRulingCallback(disputeIDOnArbitratorSide);
     } catch (err) {
       console.error(err);
-    } finally {
-      return currentRuling;
     }
   };
 
   getRuling = async (arbitrableAddress, disputeIDOnArbitratorSide) => {
-    let ruling;
     try {
-      ruling = await this.props.getRulingCallback(arbitrableAddress, disputeIDOnArbitratorSide);
+      return await this.props.getRulingCallback(arbitrableAddress, disputeIDOnArbitratorSide);
     } catch (err) {
-    } finally {
-      return ruling;
     }
   };
 
@@ -175,8 +145,6 @@ class Interact extends React.Component {
     // Optimize this function: too many awaits, you can parallelize some calls.
 
     let arbitratorDispute;
-    let subcourtURI;
-    let subcourt;
     let metaevidence;
     let arbitrableDisputeID;
 
@@ -203,7 +171,6 @@ class Interact extends React.Component {
       });
     } catch (err) {
       console.error(err.message);
-    } finally {
     }
 
     try {
@@ -212,7 +179,6 @@ class Interact extends React.Component {
       });
     } catch (err) {
       console.error(err.message);
-    } finally {
     }
 
     let multipliers;
@@ -248,7 +214,7 @@ class Interact extends React.Component {
     if (arbitratorDispute.period == 4) {
       let contributionsOfPastRounds = [];
       for (let i = 0; i < appealDecisions.length; i++)
-        contributionsOfPastRounds[i] = await this.props.getContributionsCallback(arbitrableDisputeID, i, arbitrated, arbitratedDispute.period);
+        contributionsOfPastRounds[i] = await this.props.getContributionsCallback(arbitrableDisputeID, i, arbitrated, arbitratorDispute.period);
 
       const aggregatedContributions = this.sumObjectsByKey(...contributionsOfPastRounds, contributions);
 
@@ -260,14 +226,12 @@ class Interact extends React.Component {
         );
         await this.setState({ totalWithdrawable: totalWithdrawable.amount, aggregatedContributions, selectedContribution: totalWithdrawable.ruling });
       } catch (err) {
-        console.error(err);
-        this.setState({ incompatible: true }); //If ruling is not executed, this reverts.
       }
     }
   };
 
   reload = async () => {
-    const { arbitrated, arbitratorDisputeID, arbitrableDisputeID, metaevidence } = this.state;
+    const { arbitrated, arbitratorDisputeID, arbitrableDisputeID } = this.state;
     this.setState({
       arbitratorDispute: await this.props.getArbitratorDisputeCallback(arbitratorDisputeID),
       evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
@@ -286,43 +250,34 @@ class Interact extends React.Component {
   render() {
     const {
       arbitrated,
-      arbitrableDisputeID,
       arbitratorDispute,
       arbitratorDisputeDetails,
       appealCost,
       appealPeriod,
-      crowdfundingStatus,
       arbitratorDisputeID,
       metaevidence,
       multipliers,
       evidences,
       currentRuling,
-      ruling,
-      getDisputeResult,
       disputeEvent,
-      appealDeadlines,
       appealDecisions,
       contributions,
       rulingFunded,
       incompatible,
       totalWithdrawable,
-      aggregatedContributions,
       loading,
     } = this.state;
+
+    console.log(metaevidence)
 
     const {
       arbitratorAddress,
       activeAddress,
-      appealCallback,
       publishCallback,
-      withdrawCallback,
-      getCrowdfundingStatusCallback,
       getAppealPeriodCallback,
-      getCurrentRulingCallback,
       subcourts,
       subcourtDetails,
       network,
-      getTotalWithdrawableAmountCallback,
       web3Provider,
     } = this.props;
 

@@ -1,9 +1,8 @@
-import { Card, Row, Col, Form, Container, Accordion, Dropdown, Button } from "react-bootstrap";
+import { Card, Row, Col, Form, Accordion, Dropdown, Button } from "react-bootstrap";
 import React from "react";
 import BigNumber from "bignumber.js";
 const DECIMALS = BigNumber(10).pow(BigNumber(18));
 import * as realitioLibQuestionFormatter from "@reality.eth/reality-eth-lib/formatters/question";
-import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
@@ -19,7 +18,6 @@ import AlertMessage from "components/alertMessage";
 
 import styles from "components/styles/disputeDetails.module.css";
 
-const UINT_MAX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
 const QuestionTypes = Object.freeze({
   "single-select": "Multiple choice: single select",
@@ -45,7 +43,7 @@ class DisputeDetails extends React.Component {
   }
 
   calculateTotalCost = (rulingOption) => {
-    const { currentRuling, multipliers, contributions } = this.props;
+    const { currentRuling, multipliers } = this.props;
 
     const appealCost = BigNumber(this.props.appealCost);
     let stake;
@@ -66,7 +64,7 @@ class DisputeDetails extends React.Component {
   };
 
   calculateAmountRemainsToBeRaisedForLoser = () => {
-    const { multipliers, contributions } = this.props;
+    const { multipliers } = this.props;
 
     const appealCost = BigNumber(this.props.appealCost);
     let stake = appealCost.times(BigNumber(multipliers.loserStakeMultiplier)).div(BigNumber(multipliers.denominator));
@@ -90,7 +88,7 @@ class DisputeDetails extends React.Component {
   };
 
   calculateReturnOfInvestmentRatioForLoser = () => {
-    const { currentRuling, multipliers } = this.props;
+    const {  multipliers } = this.props;
     const winner = BigNumber(multipliers.winnerStakeMultiplier);
     const loser = BigNumber(multipliers.loserStakeMultiplier);
     const divisor = BigNumber(multipliers.denominator);
@@ -115,7 +113,6 @@ class DisputeDetails extends React.Component {
     return parseInt(appealPeriod.start) + ((parseInt(appealPeriod.end) - parseInt(appealPeriod.start)) * parseInt(loser)) / divisor;
   };
 
-  componentDidMount() {}
 
   multipleSelectRulingTitleCombinations = (metaevidenceJSON) => {
     const combs = combinations(Array.from(Array(metaevidenceJSON.rulingOptions.titles.length).keys()));
@@ -149,11 +146,7 @@ class DisputeDetails extends React.Component {
     const {
       metaevidenceJSON,
       evidences,
-      ipfsGateway,
-      interfaceValid,
-      arbitrated,
       arbitratorDisputeID,
-      arbitratorAddress,
       arbitratorDispute,
       incompatible,
       subcourts,
@@ -169,7 +162,6 @@ class DisputeDetails extends React.Component {
       contributions,
       rulingFunded,
       multipliers,
-      activeAddress,
       totalWithdrawable,
     } = this.props;
     const { activeKey } = this.state;
@@ -279,19 +271,23 @@ class DisputeDetails extends React.Component {
                               rulingOptionCode={0}
                             />
                           </Col>
-                          <Col className="pb-4" xl={8} lg={12} xs={24}>
-                            <CrowdfundingCard
-                              key={UINT_MAX}
-                              title={"Answered Too Soon"}
-                              winner={currentRuling == toBN(UINT_MAX)}
-                              fundingPercentage={contributions.hasOwnProperty(0) ? BigNumber(contributions[0]).div(this.calculateTotalCost(0)).times(100).toFixed(2) : 0}
-                              appealPeriodEnd={this.calculateAppealPeriod(0)}
-                              suggestedContribution={this.calculateAmountRemainsToBeRaised(0).div(DECIMALS).toString()}
-                              roi={this.calculateReturnOfInvestmentRatio(0).toFixed(2)}
-                              appealCallback={appealCallback}
-                              rulingOptionCode={UINT_MAX}
-                            />
-                          </Col>
+                          {metaevidenceJSON.rulingOptions &&
+                            metaevidenceJSON.rulingOptions.reserved &&
+                            Object.entries(metaevidenceJSON.rulingOptions.reserved).map(([rulingCode, title]) => (
+                              <Col key={rulingCode} className="pb-4" xl={8} lg={12} xs={24}>
+                                <CrowdfundingCard
+                                  key={rulingCode}
+                                  title={title}
+                                  winner={currentRuling == toBN(rulingCode)}
+                                  fundingPercentage={contributions.hasOwnProperty(0) ? BigNumber(contributions[0]).div(this.calculateTotalCost(rulingCode)).times(100).toFixed(2) : 0}
+                                  appealPeriodEnd={this.calculateAppealPeriod(rulingCode)}
+                                  suggestedContribution={this.calculateAmountRemainsToBeRaised(rulingCode).div(DECIMALS).toString()}
+                                  roi={this.calculateReturnOfInvestmentRatio(rulingCode).toFixed(2)}
+                                  appealCallback={appealCallback}
+                                  rulingOptionCode={rulingCode}
+                                />
+                              </Col>
+                            ))}
                           {metaevidenceJSON &&
                             metaevidenceJSON.rulingOptions.type == "single-select" &&
                             metaevidenceJSON.rulingOptions.titles.map((title, index) => (
@@ -319,7 +315,7 @@ class DisputeDetails extends React.Component {
                             ))}
                           {metaevidenceJSON &&
                             metaevidenceJSON.rulingOptions.type == "multiple-select" &&
-                            Array.from(Array(2 ** metaevidenceJSON.rulingOptions.titles.length).keys()).map((key, index) => (
+                            Array.from(Array(2 ** metaevidenceJSON.rulingOptions.titles.length).keys()).map((_key, index) => (
                               <Col key={index} className="pb-4" xl={8} lg={12} xs={24}>
                                 <CrowdfundingCard
                                   title={
@@ -357,7 +353,7 @@ class DisputeDetails extends React.Component {
                             ["uint", "int", "string", "datetime"].includes(metaevidenceJSON.rulingOptions.type) &&
                             Object.keys(contributions)
                               .filter((key) => key != this.props.currentRuling)
-                              .map((key, index) => (
+                              .map((key, _) => (
                                 <Col key={key} className="pb-4" xl={8} lg={12} xs={24}>
                                   <CrowdfundingCard
                                     title={metaevidenceJSON.rulingOptions.type == "string" ? hexToUtf8(toHex(key)) : this.convertToRealitioFormat(key, metaevidenceJSON)}
@@ -421,9 +417,9 @@ class DisputeDetails extends React.Component {
               </Accordion.Toggle>
               <Accordion.Collapse eventKey="2">
                 <Card.Body className={styles.question}>
-                  <p>{QuestionTypes[metaevidenceJSON.rulingOptions.type]}</p>
+                  <p>{QuestionTypes[metaevidenceJSON.rulingOptions?.type]}</p>
                   <p>{metaevidenceJSON.question}</p>
-                  {(metaevidenceJSON.rulingOptions.type == "single-select" || metaevidenceJSON.rulingOptions.type == "multiple-select") && (
+                  {(metaevidenceJSON.rulingOptions?.type == "single-select" || metaevidenceJSON.rulingOptions?.type == "multiple-select") && (
                     <>
                       <Dropdown>
                         <Dropdown.Toggle className="form-control" block className={styles.dropdownToggle}>
