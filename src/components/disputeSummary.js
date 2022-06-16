@@ -1,7 +1,7 @@
-import { Card, Row, Col, Form, Container } from "react-bootstrap";
+import {Card, Row, Col, Form, Container} from "react-bootstrap";
 import React from "react";
-import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
-import { getReadOnlyRpcUrl } from "../ethereum/network-contract-mapping";
+import {ReactComponent as AttachmentSVG} from "../assets/images/attachment.svg";
+import {getReadOnlyRpcUrl} from "../ethereum/network-contract-mapping";
 
 import styles from "components/styles/disputeSummary.module.css";
 
@@ -29,36 +29,36 @@ class DisputeSummary extends React.Component {
       disputeID: arbitratorDisputeID,
       chainID: chainID, // Deprecated. Use arbitrableChainID or arbitratorChainID instead.
       arbitratorContractAddress: arbitratorAddress,
-      arbitratorJsonRpcUrl: getReadOnlyRpcUrl({ chainId: arbitratorChainID }) ?? web3Provider,
+      arbitratorJsonRpcUrl: getReadOnlyRpcUrl({chainId: arbitratorChainID}) ?? web3Provider,
       arbitratorChainID: arbitratorChainID,
       arbitrableContractAddress: arbitrated,
       arbitrableChainID: arbitrableChainID,
-      arbitrableJsonRpcUrl: getReadOnlyRpcUrl({ chainId: arbitrableChainID }) ?? web3Provider,
+      arbitrableJsonRpcUrl: getReadOnlyRpcUrl({chainId: arbitrableChainID}) ?? web3Provider,
       jsonRpcUrl: web3Provider,
     };
 
-    let searchParams;
-    const { _v = "0" } = metaevidenceJSON;
-    if (_v === "0") {
-      searchParams = `${encodeURIComponent(JSON.stringify(injectedArgs))}`;
-    } else {
-      const _searchParams = new URLSearchParams(injectedArgs);
-      searchParams = `${_searchParams.toString()}`;
-    }
 
-    if (metaevidenceJSON)
+    if (metaevidenceJSON) {
+      let searchParams;
+      const {_v = "0"} = metaevidenceJSON;
+      if (_v === "0") {
+        searchParams = `${encodeURIComponent(JSON.stringify(injectedArgs))}`;
+      } else {
+        const _searchParams = new URLSearchParams(injectedArgs);
+        searchParams = `${_searchParams.toString()}`;
+      }
       return (
         <section className={styles.disputeSummary}>
           <div className={styles.inner}>
             <p className={styles.interactWithTheDispute}>Interact with the dispute</p>
             <h1 className={styles.h1}>{metaevidenceJSON.title}</h1>
-            <hr />
+            <hr/>
             <p className={styles.description}>{metaevidenceJSON.description}</p>
 
             {metaevidenceJSON.evidenceDisplayInterfaceURI && (
               <iframe
                 className="border-0"
-                style={{ width: "100%", height: "360px" }}
+                style={{width: "100%", height: "360px"}}
                 src={(metaevidenceJSON.evidenceDisplayInterfaceURI.includes("://") ? "" : ipfsGateway) + `${metaevidenceJSON.evidenceDisplayInterfaceURI}?${searchParams}`}
                 title="evidence-display"
               />
@@ -102,7 +102,7 @@ class DisputeSummary extends React.Component {
             <Row className={styles.footer}>
               <Col>
                 <a href={ipfsGateway + metaevidenceJSON.fileURI} target="_blank" rel="noopener noreferrer">
-                  <AttachmentSVG />
+                  <AttachmentSVG/>
                   {metaevidenceJSON.fileURI.split("/").slice(-1)}
                 </a>
               </Col>
@@ -110,7 +110,7 @@ class DisputeSummary extends React.Component {
           )}
         </section>
       );
-    else if (loading) return <div>Fetching....</div>;
+    } else if (loading) return <div>Fetching....</div>;
     else return <div>Failed to load metaevidence, thus the dispute summary. This might be an issue with the IPFS access.</div>;
   }
 }
