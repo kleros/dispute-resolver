@@ -279,19 +279,23 @@ class DisputeDetails extends React.Component {
                               rulingOptionCode={0}
                             />
                           </Col>
-                          <Col className="pb-4" xl={8} lg={12} xs={24}>
-                            <CrowdfundingCard
-                              key={UINT_MAX}
-                              title={"Answered Too Soon"}
-                              winner={currentRuling == toBN(UINT_MAX)}
-                              fundingPercentage={contributions.hasOwnProperty(0) ? BigNumber(contributions[0]).div(this.calculateTotalCost(0)).times(100).toFixed(2) : 0}
-                              appealPeriodEnd={this.calculateAppealPeriod(0)}
-                              suggestedContribution={this.calculateAmountRemainsToBeRaised(0).div(DECIMALS).toString()}
-                              roi={this.calculateReturnOfInvestmentRatio(0).toFixed(2)}
-                              appealCallback={appealCallback}
-                              rulingOptionCode={UINT_MAX}
-                            />
-                          </Col>
+                          {metaevidenceJSON.rulingOptions &&
+                            metaevidenceJSON.rulingOptions.reserved &&
+                            Object.entries(metaevidenceJSON.rulingOptions.reserved).map(([rulingCode, title]) => (
+                              <Col className="pb-4" xl={8} lg={12} xs={24}>
+                                <CrowdfundingCard
+                                  key={rulingCode}
+                                  title={title}
+                                  winner={currentRuling == toBN(rulingCode)}
+                                  fundingPercentage={contributions.hasOwnProperty(0) ? BigNumber(contributions[0]).div(this.calculateTotalCost(rulingCode)).times(100).toFixed(2) : 0}
+                                  appealPeriodEnd={this.calculateAppealPeriod(rulingCode)}
+                                  suggestedContribution={this.calculateAmountRemainsToBeRaised(rulingCode).div(DECIMALS).toString()}
+                                  roi={this.calculateReturnOfInvestmentRatio(rulingCode).toFixed(2)}
+                                  appealCallback={appealCallback}
+                                  rulingOptionCode={rulingCode}
+                                />
+                              </Col>
+                            ))}
                           {metaevidenceJSON &&
                             metaevidenceJSON.rulingOptions.type == "single-select" &&
                             metaevidenceJSON.rulingOptions.titles.map((title, index) => (

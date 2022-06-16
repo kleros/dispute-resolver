@@ -60,9 +60,5 @@ export default map;
 
 export function getReadOnlyRpcUrl({ chainId }) {
   const url = map[parseInt(chainId)].WEB3_PROVIDER;
-  if (!url) {
-    console.warn(`No read only provider for ${map[parseInt(chainId)].NAME} using the browser wallet instead.`);
-  }
-
   return url;
 }
