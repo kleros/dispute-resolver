@@ -18,7 +18,6 @@ import AlertMessage from "components/alertMessage";
 
 import styles from "components/styles/disputeDetails.module.css";
 
-const UINT_MAX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
 const QuestionTypes = Object.freeze({
   "single-select": "Multiple choice: single select",
@@ -275,7 +274,7 @@ class DisputeDetails extends React.Component {
                           {metaevidenceJSON.rulingOptions &&
                             metaevidenceJSON.rulingOptions.reserved &&
                             Object.entries(metaevidenceJSON.rulingOptions.reserved).map(([rulingCode, title]) => (
-                              <Col className="pb-4" xl={8} lg={12} xs={24}>
+                              <Col key={rulingCode} className="pb-4" xl={8} lg={12} xs={24}>
                                 <CrowdfundingCard
                                   key={rulingCode}
                                   title={title}
@@ -418,7 +417,7 @@ class DisputeDetails extends React.Component {
               </Accordion.Toggle>
               <Accordion.Collapse eventKey="2">
                 <Card.Body className={styles.question}>
-                  <p>{QuestionTypes[metaevidenceJSON.rulingOptions.type]}</p>
+                  <p>{QuestionTypes[metaevidenceJSON?.rulingOptions.type]}</p>
                   <p>{metaevidenceJSON.question}</p>
                   {(metaevidenceJSON.rulingOptions.type == "single-select" || metaevidenceJSON.rulingOptions.type == "multiple-select") && (
                     <>
