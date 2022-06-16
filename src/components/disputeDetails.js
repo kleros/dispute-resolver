@@ -436,6 +436,16 @@ class DisputeDetails extends React.Component {
                                 : ""
                             }`}</Dropdown.Item>
                           ))}
+                          {metaevidenceJSON?.rulingOptions.reserved &&
+                            Object.entries(metaevidenceJSON.rulingOptions.reserved).map(([rulingCode, title]) => (
+                              <Dropdown.Item key={rulingCode} disabled>{`Option ${rulingCode} ${title}${
+                                metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[rulingCode] != undefined ? ":" : ""
+                              } ${
+                                metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[rulingCode] != undefined
+                                  ? metaevidenceJSON.rulingOptions.descriptions[rulingCode]
+                                  : ""
+                              }`}</Dropdown.Item>
+                            ))}
                         </Dropdown.Menu>
                       </Dropdown>
                       <p className={styles.questionInfo}>
