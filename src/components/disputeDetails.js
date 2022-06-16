@@ -417,9 +417,9 @@ class DisputeDetails extends React.Component {
               </Accordion.Toggle>
               <Accordion.Collapse eventKey="2">
                 <Card.Body className={styles.question}>
-                  <p>{QuestionTypes[metaevidenceJSON?.rulingOptions.type]}</p>
+                  <p>{QuestionTypes[metaevidenceJSON.rulingOptions?.type]}</p>
                   <p>{metaevidenceJSON.question}</p>
-                  {(metaevidenceJSON.rulingOptions.type == "single-select" || metaevidenceJSON.rulingOptions.type == "multiple-select") && (
+                  {(metaevidenceJSON.rulingOptions?.type == "single-select" || metaevidenceJSON.rulingOptions?.type == "multiple-select") && (
                     <>
                       <Dropdown>
                         <Dropdown.Toggle className="form-control" block className={styles.dropdownToggle}>
