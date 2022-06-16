@@ -1,9 +1,8 @@
-import { Card, Row, Col, Form, Container, Accordion, Dropdown, Button } from "react-bootstrap";
+import { Card, Row, Col, Form, Accordion, Dropdown, Button } from "react-bootstrap";
 import React from "react";
 import BigNumber from "bignumber.js";
 const DECIMALS = BigNumber(10).pow(BigNumber(18));
 import * as realitioLibQuestionFormatter from "@reality.eth/reality-eth-lib/formatters/question";
-import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
@@ -45,7 +44,7 @@ class DisputeDetails extends React.Component {
   }
 
   calculateTotalCost = (rulingOption) => {
-    const { currentRuling, multipliers, contributions } = this.props;
+    const { currentRuling, multipliers } = this.props;
 
     const appealCost = BigNumber(this.props.appealCost);
     let stake;
@@ -66,7 +65,7 @@ class DisputeDetails extends React.Component {
   };
 
   calculateAmountRemainsToBeRaisedForLoser = () => {
-    const { multipliers, contributions } = this.props;
+    const { multipliers } = this.props;
 
     const appealCost = BigNumber(this.props.appealCost);
     let stake = appealCost.times(BigNumber(multipliers.loserStakeMultiplier)).div(BigNumber(multipliers.denominator));
@@ -90,7 +89,7 @@ class DisputeDetails extends React.Component {
   };
 
   calculateReturnOfInvestmentRatioForLoser = () => {
-    const { currentRuling, multipliers } = this.props;
+    const {  multipliers } = this.props;
     const winner = BigNumber(multipliers.winnerStakeMultiplier);
     const loser = BigNumber(multipliers.loserStakeMultiplier);
     const divisor = BigNumber(multipliers.denominator);
@@ -115,7 +114,6 @@ class DisputeDetails extends React.Component {
     return parseInt(appealPeriod.start) + ((parseInt(appealPeriod.end) - parseInt(appealPeriod.start)) * parseInt(loser)) / divisor;
   };
 
-  componentDidMount() {}
 
   multipleSelectRulingTitleCombinations = (metaevidenceJSON) => {
     const combs = combinations(Array.from(Array(metaevidenceJSON.rulingOptions.titles.length).keys()));
@@ -149,11 +147,7 @@ class DisputeDetails extends React.Component {
     const {
       metaevidenceJSON,
       evidences,
-      ipfsGateway,
-      interfaceValid,
-      arbitrated,
       arbitratorDisputeID,
-      arbitratorAddress,
       arbitratorDispute,
       incompatible,
       subcourts,
@@ -169,7 +163,6 @@ class DisputeDetails extends React.Component {
       contributions,
       rulingFunded,
       multipliers,
-      activeAddress,
       totalWithdrawable,
     } = this.props;
     const { activeKey } = this.state;
@@ -323,7 +316,7 @@ class DisputeDetails extends React.Component {
                             ))}
                           {metaevidenceJSON &&
                             metaevidenceJSON.rulingOptions.type == "multiple-select" &&
-                            Array.from(Array(2 ** metaevidenceJSON.rulingOptions.titles.length).keys()).map((key, index) => (
+                            Array.from(Array(2 ** metaevidenceJSON.rulingOptions.titles.length).keys()).map((_key, index) => (
                               <Col key={index} className="pb-4" xl={8} lg={12} xs={24}>
                                 <CrowdfundingCard
                                   title={
@@ -361,7 +354,7 @@ class DisputeDetails extends React.Component {
                             ["uint", "int", "string", "datetime"].includes(metaevidenceJSON.rulingOptions.type) &&
                             Object.keys(contributions)
                               .filter((key) => key != this.props.currentRuling)
-                              .map((key, index) => (
+                              .map((key, _) => (
                                 <Col key={key} className="pb-4" xl={8} lg={12} xs={24}>
                                   <CrowdfundingCard
                                     title={metaevidenceJSON.rulingOptions.type == "string" ? hexToUtf8(toHex(key)) : this.convertToRealitioFormat(key, metaevidenceJSON)}
