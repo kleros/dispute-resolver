@@ -1,17 +1,26 @@
-import { Navbar, Nav } from "react-bootstrap";
+import { Navbar, Nav, Dropdown } from "react-bootstrap";
 import React from "react";
 import { ReactComponent as Brand } from "../assets/images/logo-dispute-resolver-white.svg";
 import { NavLink, Link } from "react-router-dom";
 import { LinkContainer } from "react-router-bootstrap";
+import {utils} from "web3";
+
 
 import styles from "./styles/header.module.css";
 
 class Header extends React.Component {
   constructor(props) {
     super(props);
+
+    this.handleConnectClick = this.handleConnectClick.bind(this);
   }
+
+  handleConnectClick = (e) => {
+    console.log(e)
+  };
+
   render() {
-    const { viewOnly } = this.props;
+    const { viewOnly, network, networkMap } = this.props;
     
     return (
       <header>
@@ -21,7 +30,7 @@ class Header extends React.Component {
           </Navbar.Brand>
           <Navbar.Toggle aria-controls="responsive-navbar-nav" />
           <Navbar.Collapse id="responsive-navbar-nav">
-            <Nav>
+            <Nav className='w-100'>
               <LinkContainer to="/ongoing/">
                 <Nav.Link className=" mx-3">Ongoing Disputes</Nav.Link>
               </LinkContainer>
@@ -33,6 +42,22 @@ class Header extends React.Component {
               <LinkContainer exact to="/cases/">
                 <Nav.Link className=" mx-3">Interact</Nav.Link>
               </LinkContainer>
+              <div className='mt-auto ml-auto'>
+                <Dropdown>
+                  <Dropdown.Toggle variant="success" id="dropdown-basic">
+                    {networkMap[network]?.NAME}
+                  </Dropdown.Toggle>
+
+                  <Dropdown.Menu>
+                    {Object.entries(networkMap).map(([networkID, networkDetails])=>
+                      <Dropdown.Item key={networkID} onClick={() => ethereum
+                        .request({ method: "wallet_switchEthereumChain",  params: [{"chainId": utils.numberToHex(networkID)}
+                      ] })}>{networkDetails.NAME}</Dropdown.Item>    )}
+
+                  </Dropdown.Menu>
+                </Dropdown>
+                <button onClick={this.handleConnectClick}>Connect</button>
+              </div>
             </Nav>
           </Navbar.Collapse>
         </Navbar>

@@ -354,7 +354,7 @@ class App extends React.Component {
               path="(/|/ongoing/|)"
               render={(route) => (
                 <>
-                  <Header viewOnly={!activeAddress} route={route} />
+                  <Header viewOnly={!activeAddress} route={route}  network={network} networkMap={networkMap}/>
                   <OpenDisputes
                     activeAddress={activeAddress}
                     route={route}
@@ -376,7 +376,7 @@ class App extends React.Component {
               path="(/create/)"
               render={(route) => (
                 <>
-                  <Header viewOnly={!activeAddress} route={route} />
+                  <Header viewOnly={!activeAddress} route={route}  network={network} networkMap={networkMap}/>
                   <Create
                     activeAddress={activeAddress}
                     route={route}
@@ -399,7 +399,7 @@ class App extends React.Component {
               path="/cases/:id?"
               render={(route) => (
                 <>
-                  <Header viewOnly={!activeAddress} route={route} />
+                  <Header viewOnly={!activeAddress} route={route} network={network} networkMap={networkMap}/>
 
                   <Interact
                     arbitratorAddress={networkMap[network].KLEROS_LIQUID}
