@@ -57,7 +57,7 @@ const map = {
 
   80001: {
     NAME: "Mumbai",
-    WEB3_PROVIDER: "https://rpc-mumbai.matic.today/",
+    WEB3_PROVIDER: "https://polygon-mumbai.g.alchemy.com/v2/PX_3q-P-AbxWKn8qiTvF5A6TFSMfQ4jz",
   },
 
 };
