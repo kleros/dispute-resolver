@@ -57,7 +57,7 @@ const map = {
 
   80001: {
     NAME: "Mumbai",
-    WEB3_PROVIDER: "https://polygon-mumbai.g.alchemy.com/v2/PX_3q-P-AbxWKn8qiTvF5A6TFSMfQ4jz",
+    WEB3_PROVIDER: process.env.REACT_APP_WEB3_MUMBAI_PROVIDER_URL,
   },
 
 };
