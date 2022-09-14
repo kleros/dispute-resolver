@@ -54,6 +54,12 @@ const map = {
     POLICY_REGISTRY: "0x9d494768936b6bDaabc46733b8D53A937A6c6D7e",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_XDAI_PROVIDER_URL,
   },
+
+  80001: {
+    NAME: "Mumbai",
+    WEB3_PROVIDER: "https://polygon-mumbai.g.alchemy.com/v2/PX_3q-P-AbxWKn8qiTvF5A6TFSMfQ4jz",
+  },
+
 };
 
 export default map;
