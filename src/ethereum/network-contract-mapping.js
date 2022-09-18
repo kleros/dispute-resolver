@@ -56,8 +56,13 @@ const map = {
   },
 
   80001: {
-    NAME: "Mumbai",
+    NAME: "Polygon Testnet Mumbai",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_MUMBAI_PROVIDER_URL,
+  },
+
+  137: {
+    NAME: "Polygon Mainnet",
+    WEB3_PROVIDER: process.env.REACT_APP_WEB3_POLYGON_PROVIDER_URL,
   },
 
 };
