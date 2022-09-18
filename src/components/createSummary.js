@@ -7,7 +7,7 @@ import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
 import { ReactComponent as UploadSVG } from "../assets/images/upload.svg";
 import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
-import { NATIVE_TOKEN_ABBREVIATIONS } from "../utils/constants";
+import networkMap from "../ethereum/network-contract-mapping";
 
 import Dropzone from "react-dropzone";
 
@@ -112,7 +112,7 @@ class CreateSummary extends React.Component {
                 <Form.Label htmlFor="arbitrationFee">Arbitration Cost</Form.Label>
                 <Form.Control className={styles.spanWithSvgInside} as="span">
                   <EthereumSVG />
-                  <span className={styles.arbitrationFee}>{formData.arbitrationCost + " " + NATIVE_TOKEN_ABBREVIATIONS[network]}</span>
+                  <span className={styles.arbitrationFee}>{formData.arbitrationCost + " " + networkMap[network].CURRENCY_SHORT}</span>
                 </Form.Control>
               </Form.Group>
             </Col>
