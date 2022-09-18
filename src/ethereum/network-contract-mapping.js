@@ -78,15 +78,17 @@ const map = {
     NAME: "Polygon Mainnet",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_POLYGON_PROVIDER_URL,
     CURRENCY_SHORT: "MATIC",
-    KLEROS_LIQUID: arbitrators["1"],
+    FOREIGN_KLEROS_LIQUID: arbitrators["1"],
+    FOREIGN_ARBITRATOR_NETWORK_CODE: "1"
+
   },
 
   80001: {
     NAME: "Polygon Testnet Mumbai",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_MUMBAI_PROVIDER_URL,
     CURRENCY_SHORT: "MATIC",
-    KLEROS_LIQUID: arbitrators["5"],
-    ARBITRATOR_NETWORK_CODE: "5"
+    FOREIGN_KLEROS_LIQUID: arbitrators["5"],
+    FOREIGN_ARBITRATOR_NETWORK_CODE: "5"
   },
 
 };

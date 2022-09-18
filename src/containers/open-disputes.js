@@ -3,6 +3,7 @@ import { Accordion, Container, Col, Row, Button, Form, Card, Dropdown, DropdownB
 import { Redirect, Link } from "react-router-dom";
 import OngoingCard from "components/ongoing-card.js";
 import debounce from "lodash.debounce";
+import networkMap from "../ethereum/network-contract-mapping";
 
 import styles from "containers/styles/open-disputes.module.css";
 
@@ -10,20 +11,22 @@ class openDisputeIDs extends React.Component {
   constructor(props) {
     super(props);
     this.state = { openDisputeIDs: [], arbitratorDisputes: {}, loading: true, statusFilter: 4 };
-
-    this.debouncedFetch = debounce(this.fetch, 0, { leading: false, trailing: true });
+    if(networkMap[this.props.network].KLEROS_LIQUID)
+      this.debouncedFetch = debounce(this.fetch, 0, { leading: false, trailing: true });
   }
 
   componentWillReceiveProps(props) {
     const { subcourts, subcourtDetails } = this.props;
     if (props.subcourts !== subcourts || props.subcourtDetails !== subcourtDetails) {
       this.setState({ loading: true, openDisputeIDs: [], arbitratorDisputes: {} });
-      this.debouncedFetch.cancel();
-      this.debouncedFetch();
+      if(networkMap[this.props.network].KLEROS_LIQUID){
+        this.debouncedFetch.cancel();
+        this.debouncedFetch();
+      }
     }
   }
   componentDidMount() {
-    this.fetch();
+    if(networkMap[this.props.network].KLEROS_LIQUID) this.fetch();
   }
 
   fetch = () => {
@@ -73,7 +76,11 @@ class openDisputeIDs extends React.Component {
     // 
 
     const { openDisputeIDs, selectedDispute, statusFilter, loading } = this.state;
-    const { subcourts, subcourtDetails } = this.props;
+    const { subcourts, subcourtDetails, network } = this.props;
+
+
+
+  if(!networkMap[network].KLEROS_LIQUID) return <main className={styles.openDisputes}><h1>There is no arbitrator on this network, thus no disputes.</h1></main>
 
     return (
       <main className={styles.openDisputes} id="ongoing-disputes">
