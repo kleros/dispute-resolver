@@ -48,10 +48,11 @@ class App extends React.Component {
 
       window.ethereum.on("chainChanged", async (network) => {
         await this.setState({ network });
+        if(networkMap[network].KLEROS_LIQUID)
         this.loadSubcourtData();
       });
     } else console.error("MetaMask not detected :(");
-
+    if(networkMap[this.state.network].KLEROS_LIQUID)
     this.loadSubcourtData();
   }
 
