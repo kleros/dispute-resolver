@@ -7,7 +7,7 @@ import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
 import { ReactComponent as UploadSVG } from "../assets/images/upload.svg";
 import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
-import { NATIVE_TOKEN_ABBREVIATIONS } from "../utils/constants";
+import networkMap from "../ethereum/network-contract-mapping";
 
 import Dropzone from "react-dropzone";
 
@@ -269,7 +269,7 @@ class CreateForm extends React.Component {
                 <Form.Label htmlFor="arbitrationFee">Arbitration Cost</Form.Label>
                 <Form.Control as="div" className={styles.arbitrationFeeGroupPrepend}>
                   <EthereumSVG />
-                  {<span className={styles.arbitrationFee}>{arbitrationCost && arbitrationCost + " " + NATIVE_TOKEN_ABBREVIATIONS[network]}</span>}
+                  {<span className={styles.arbitrationFee}>{arbitrationCost && arbitrationCost + " " + networkMap[network].CURRENCY_SHORT}</span>}
                 </Form.Control>
               </Form.Group>
             </Col>
