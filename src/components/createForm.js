@@ -97,6 +97,7 @@ class CreateForm extends React.Component {
   };
 
   onSubcourtSelect = async (subcourtID) => {
+    if (!networkMap[this.props.network].ARBITRABLE_PROXY) return
     await this.setState({ selectedSubcourt: subcourtID });
     this.calculateArbitrationCost(this.state.selectedSubcourt, this.state.initialNumberOfJurors);
   };
