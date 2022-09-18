@@ -379,7 +379,7 @@ class CreateForm extends React.Component {
 
         <hr/>
         <Row>
-          {[...Array(parseInt(numberOfParties))].map((value, index) => (<>
+          {[...Array(parseInt(numberOfParties))].map((value, index) => (<React.Fragment key={index}>
             <Col xl={4} l={4} md={8}>
               <Form.Group>
                 <Form.Label htmlFor="requester">Alias {index + 1} (Optional)</Form.Label>
@@ -409,7 +409,7 @@ class CreateForm extends React.Component {
                 />
               </Form.Group>
             </Col>
-          </>))}
+          </React.Fragment>))}
         </Row>
         <Row>
           <Col>
