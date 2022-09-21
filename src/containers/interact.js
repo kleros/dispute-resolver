@@ -304,7 +304,7 @@ class Interact extends React.Component {
               <Row>
                 <Col>
                   <Form.Label>
-                    Search Disputes on <a href={`https://court.kleros.io/cases/${arbitratorDisputeID}`}>Court</a>
+                    Search Disputes on <a href={`https://kleros-v2.netlify.app/cases/${arbitratorDisputeID}/overview`}>Court</a>
                   </Form.Label>
                   <InputGroup className={styles.search} size="md">
                     <InputGroup.Prepend>

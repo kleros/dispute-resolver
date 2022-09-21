@@ -456,7 +456,7 @@ class DisputeDetails extends React.Component {
                       <p className={styles.questionInfo}>
                         <InfoSVG />
                         Note that you can only view the voting options. Selected jurors can vote using{" "}
-                        <a href={`https://court.kleros.io/cases/${arbitratorDisputeID}`} target="_blank" rel="noreferrer noopener">
+                        <a href={`https://kleros-v2.netlify.app/cases/${arbitratorDisputeID}/overview`} target="_blank" rel="noreferrer noopener">
                           Court
                         </a>
                         .

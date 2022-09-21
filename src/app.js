@@ -387,7 +387,6 @@ class App extends React.Component {
 
   getContractInstance = (interfaceName, address) => EthereumInterface.contractInstance(interfaceName, address);
 
-  // TODO: fix me, use DK.submitEvidence()
   submitEvidence = async (arbitrableAddress, { disputeID, evidenceTitle, evidenceDescription, evidenceDocument, supportingSide }) => {
     const evidence = {
       name: evidenceTitle,
@@ -400,7 +399,7 @@ class App extends React.Component {
 
     const evidenceURI = `/ipfs/${ipfsHashEvidenceObj[1].hash}${ipfsHashEvidenceObj[0].path}`;
 
-    await EthereumInterface.send("DisputeResolver", arbitrableAddress, this.state.activeAddress, 0, "submitEvidence", disputeID, evidenceURI);
+    await EthereumInterface.send("DisputeKit", this.state.disputeKitClassic, this.state.activeAddress, 0, "submitEvidence", disputeID, evidenceURI);
   };
 
   render() {
