@@ -79,9 +79,6 @@ class Interact extends React.Component {
     });
   };
 
-
-
-
   appeal = async (party, contribution) =>  this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);
 
   withdraw = async () => {
@@ -145,6 +142,7 @@ class Interact extends React.Component {
     // Optimize this function: too many awaits, you can parallelize some calls.
 
     let arbitratorDispute;
+    let arbitratorDisputeDetails;
     let metaevidence;
     let arbitrableDisputeID;
 
@@ -155,13 +153,21 @@ class Interact extends React.Component {
       console.error("Failed to get arbitrable dispute id. Incompatible with IDisputeResolver.");
       this.setState({ incompatible: true });
     }
-
+    
     try {
       arbitratorDispute = await this.props.getArbitratorDisputeCallback(arbitratorDisputeID);
+      console.log("arbitratorDispute: %O", arbitratorDispute);
+      
+      arbitratorDisputeDetails = await this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID); 
+      arbitratorDisputeDetails.timesPerPeriod = await this.props.getTimesPerPeriodCallback(arbitratorDispute.subcourtID);
+      console.log("arbitratorDisputeDetails: %O", arbitratorDisputeDetails);
+      
       metaevidence = await this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID);
+      console.log("metaevidence: %O, metaevidence.metaEvidenceJSON: %O", metaevidence, metaevidence.metaEvidenceJSON);
+      
       this.setState({
         arbitratorDispute,
-        arbitratorDisputeDetails: await this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
+        arbitratorDisputeDetails,
         arbitratorDisputeID,
         metaevidence,
         ruling: await this.getRuling(arbitrated, arbitratorDisputeID),
@@ -196,9 +202,14 @@ class Interact extends React.Component {
     let appealDecisions, contributions, totalWithdrawable, rulingFunded;
     try {
       appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
+      console.log("appealDecisions: %s", appealDecisions);
+
       contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated, arbitratorDispute.period);
+      console.log("contributions: %s", contributions);
+
       rulingFunded = await this.props.getRulingFundedCallback(arbitrableDisputeID, appealDecisions.length, arbitrated);
-      console.log(appealDecisions);
+      console.log("rulingFunded: %s", rulingFunded);
+
       await this.setState({ contributions, appealDecisions, rulingFunded });
     } catch (err) {
       console.error("incompatible contract");
@@ -268,8 +279,6 @@ class Interact extends React.Component {
       loading,
     } = this.state;
 
-    console.log(metaevidence)
-
     const {
       arbitratorAddress,
       activeAddress,
@@ -285,8 +294,7 @@ class Interact extends React.Component {
       <>
         {Boolean(activeAddress) && incompatible && (
           <div style={{ padding: "1rem 2rem", fontSize: "14px", background: "#fafafa" }}>
-            <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or fund appeal on
-            this interface. You can do these on the arbitrable application, if implemented.
+            <b>View mode only:</b> To submit evidence or fund appeal, use the <a href="https://kleros-v2.netlify.app/">court v2 interface</a>.
           </div>
         )}
         {arbitrated && (
@@ -320,20 +328,20 @@ class Interact extends React.Component {
               </Row>
             </div>
             <DisputeSummary
-              metaevidenceJSON={metaevidence && metaevidence.metaEvidenceJSON}
+              metaevidenceJSON={metaevidence}
               ipfsGateway="https://ipfs.kleros.io"
               arbitrated={arbitrated}
               arbitratorAddress={arbitratorAddress}
               arbitratorDisputeID={arbitratorDisputeID}
-              arbitrableChainID={metaevidence?.metaEvidenceJSON?.arbitrableChainID ?? network}
-              arbitratorChainID={metaevidence?.metaEvidenceJSON?.arbitratorChainID ?? network}
+              arbitrableChainID={metaevidence?.arbitrableChainID ?? network}
+              arbitratorChainID={metaevidence?.arbitratorChainID ?? network}
               chainID={network}
               web3Provider={web3Provider}
               loading={loading}
             />
             <DisputeDetails
               activeAddress={activeAddress}
-              metaevidenceJSON={metaevidence && metaevidence.metaEvidenceJSON}
+              metaevidenceJSON={metaevidence}
               evidences={evidences}
               ipfsGateway="https://ipfs.kleros.io"
               arbitrated={arbitrated}

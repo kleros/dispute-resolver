@@ -5,9 +5,7 @@
   "private": false,
   "dependencies": {
     "@babel/helper-call-delegate": "^7.12.1",
-    "@kleros/arbitrable-proxy-contracts": "^5.0.0",
     "@kleros/archon": "^2.2.0",
-    "@kleros/kleros": "^0.1.2",
     "@reality.eth/reality-eth-lib": "^3.0.0",
     "antd": "^4.16.13",
     "bignumber.js": "^9.0.0",

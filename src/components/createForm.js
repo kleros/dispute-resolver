@@ -99,7 +99,7 @@ class CreateForm extends React.Component {
   };
 
   onSubcourtSelect = async (subcourtID) => {
-    if (!networkMap[this.props.network].ARBITRABLE_PROXY) return
+    if (!networkMap[this.props.network].DISPUTE_RESOLVER) return
     this.setState({selectedSubcourt: subcourtID});
     this.calculateArbitrationCost(this.state.selectedSubcourt, this.state.initialNumberOfJurors);
   };
@@ -207,7 +207,7 @@ class CreateForm extends React.Component {
       uploading,
     } = this.state;
 
-    if (!networkMap[network].ARBITRABLE_PROXY) return <h1>There is no arbitrable contract deployed in this network.
+    if (!networkMap[network].DISPUTE_RESOLVER) return <h1>There is no arbitrable contract deployed in this network.
       So unfortunately you can't create a dispute.
       Feel free to head over <a href="https://github.com/kleros/dispute-resolver/issues" target="_blank" rel="noopener noreferrer">GitHub
         issues</a> to request this feature.</h1>

@@ -44,7 +44,7 @@ class DisputeDetails extends React.Component {
 
   calculateTotalCost = (rulingOption) => {
     const { currentRuling, multipliers } = this.props;
-
+    console.log("currentRuling: %d, multipliers: %O", currentRuling, multipliers)
     const appealCost = BigNumber(this.props.appealCost);
     let stake;
 
@@ -88,7 +88,7 @@ class DisputeDetails extends React.Component {
   };
 
   calculateReturnOfInvestmentRatioForLoser = () => {
-    const {  multipliers } = this.props;
+    const { multipliers } = this.props;
     const winner = BigNumber(multipliers.winnerStakeMultiplier);
     const loser = BigNumber(multipliers.loserStakeMultiplier);
     const divisor = BigNumber(multipliers.denominator);
@@ -112,7 +112,6 @@ class DisputeDetails extends React.Component {
 
     return parseInt(appealPeriod.start) + ((parseInt(appealPeriod.end) - parseInt(appealPeriod.start)) * parseInt(loser)) / divisor;
   };
-
 
   multipleSelectRulingTitleCombinations = (metaevidenceJSON) => {
     const combs = combinations(Array.from(Array(metaevidenceJSON.rulingOptions.titles.length).keys()));
@@ -167,7 +166,11 @@ class DisputeDetails extends React.Component {
     const { activeKey } = this.state;
 
     const decisionInfoBoxContent = `This decision can be appealed within appeal period. ${incompatible ? "Go to arbitrable application to appeal this ruling." : ""}`;
-
+    console.log(
+      "subcourts:%O, arbitratorDispute: %O",
+      subcourts,
+      arbitratorDispute
+    );
     if (metaevidenceJSON && arbitratorDispute && subcourts && subcourtDetails && arbitratorDisputeDetails)
       return (
         <section className={styles.disputeDetails}>
@@ -279,7 +282,9 @@ class DisputeDetails extends React.Component {
                                   key={rulingCode}
                                   title={title}
                                   winner={currentRuling == toBN(rulingCode)}
-                                  fundingPercentage={contributions.hasOwnProperty(0) ? BigNumber(contributions[0]).div(this.calculateTotalCost(rulingCode)).times(100).toFixed(2) : 0}
+                                  fundingPercentage={
+                                    contributions.hasOwnProperty(0) ? BigNumber(contributions[0]).div(this.calculateTotalCost(rulingCode)).times(100).toFixed(2) : 0
+                                  }
                                   appealPeriodEnd={this.calculateAppealPeriod(rulingCode)}
                                   suggestedContribution={this.calculateAmountRemainsToBeRaised(rulingCode).div(DECIMALS).toString()}
                                   roi={this.calculateReturnOfInvestmentRatio(rulingCode).toFixed(2)}

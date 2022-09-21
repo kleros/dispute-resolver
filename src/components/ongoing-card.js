@@ -11,6 +11,11 @@ class OngoingCard extends React.Component {
     super(props);
   }
 
+  componentDidMount() {
+    console.log("OngoingCard.subcourts: %O", this.props.subcourts)
+    console.log("OngoingCard.arbitratorDisputeDetails: %O", this.props.arbitratorDisputeDetails)
+  }
+
   getPeriodName = (periodNumber) => {
     const strings = ["Evidence Period", "Commit Period", "Vote Period", "Appeal Period", "Execution Period"];
 
@@ -54,7 +59,11 @@ class OngoingCard extends React.Component {
             <div className={styles.countdown}>
               <Hourglass />
               <Countdown
-                date={1000 * (parseInt(arbitratorDisputeDetails.lastPeriodChange) + parseInt(subcourts[arbitratorDisputeDetails.subcourtID] && subcourts[arbitratorDisputeDetails.subcourtID].timesPerPeriod[arbitratorDisputeDetails.period]))}
+                date={
+                  1000 *
+                  (parseInt(arbitratorDisputeDetails.lastPeriodChange) +
+                    parseInt(subcourts[arbitratorDisputeDetails.subcourtID] && subcourts[arbitratorDisputeDetails.subcourtID].timesPerPeriod[arbitratorDisputeDetails.period]))
+                }
                 renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>}
               />
             </div>

@@ -1,20 +1,22 @@
-import KlerosLiquid from "../../node_modules/@kleros/kleros/build/contracts/KlerosLiquid.json";
-import IArbitrator from "../../node_modules/@kleros/arbitrable-proxy-contracts/build/contracts/IArbitrator.json";
-import IArbitrable from "../../node_modules/@kleros/arbitrable-proxy-contracts/build/contracts/IArbitrable.json";
-import IEvidence from "../../node_modules/@kleros/arbitrable-proxy-contracts/build/contracts/IEvidence.json";
-import PolicyRegistry from "../../node_modules/@kleros/kleros/build/contracts/PolicyRegistry.json";
-import ArbitrableProxy from "../../node_modules/@kleros/arbitrable-proxy-contracts/build/contracts/ArbitrableProxy.json";
-import IDisputeResolver from "../../node_modules/@kleros/arbitrable-proxy-contracts/build/contracts/IDisputeResolver.json";
+import KlerosCore from "../contracts/KlerosCore.json";
+import DisputeKit from "../contracts/DisputeKitClassic.json";
+import IArbitrator from "../contracts/IArbitrator.json";
+import IArbitrable from "../contracts/IArbitrable.json";
+import IEvidence from "../contracts/IEvidence.json";
+import IMetaEvidence from "../contracts/IMetaEvidence.json";
+import PolicyRegistry from "../contracts/PolicyRegistry.json";
+import DisputeResolver from "../contracts/DisputeResolver.json";
 
 import web3 from "./web3";
 
 const imports = {
-  KlerosLiquid,
-  IDisputeResolver,
-  ArbitrableProxy,
+  KlerosCore,
+  DisputeKit,
+  DisputeResolver,
   IArbitrator,
   IArbitrable,
   IEvidence,
+  IMetaEvidence,
   PolicyRegistry,
 };
 

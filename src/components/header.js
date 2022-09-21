@@ -30,9 +30,6 @@ class Header extends React.Component {
                   <Nav.Link className=" mx-3">Create</Nav.Link>
                 </LinkContainer>
               )}
-              <LinkContainer exact to="/cases/">
-                <Nav.Link className=" mx-3">Interact</Nav.Link>
-              </LinkContainer>
             </Nav>
           </Navbar.Collapse>
         </Navbar>

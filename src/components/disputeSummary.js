@@ -37,6 +37,7 @@ class DisputeSummary extends React.Component {
       jsonRpcUrl: web3Provider,
     };
 
+    console.log("DisputeSummary.metaevidenceJSON: %s", metaevidenceJSON)
 
     if (metaevidenceJSON) {
       let searchParams;

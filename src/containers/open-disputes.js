@@ -11,26 +11,27 @@ class openDisputeIDs extends React.Component {
   constructor(props) {
     super(props);
     this.state = { openDisputeIDs: [], arbitratorDisputes: {}, loading: true, statusFilter: 4 };
-    if(networkMap[this.props.network].KLEROS_LIQUID)
-      this.debouncedFetch = debounce(this.fetch, 0, { leading: false, trailing: true });
+    if (networkMap[this.props.network].KLEROS_CORE) this.debouncedFetch = debounce(this.fetch, 0, { leading: false, trailing: true });
   }
 
   componentWillReceiveProps(props) {
     const { subcourts, subcourtDetails } = this.props;
     if (props.subcourts !== subcourts || props.subcourtDetails !== subcourtDetails) {
       this.setState({ loading: true, openDisputeIDs: [], arbitratorDisputes: {} });
-      if(networkMap[this.props.network].KLEROS_LIQUID){
+      if (networkMap[this.props.network].KLEROS_CORE) {
         this.debouncedFetch.cancel();
         this.debouncedFetch();
       }
     }
   }
+
   componentDidMount() {
-    if(networkMap[this.props.network].KLEROS_LIQUID) this.fetch();
+    if (networkMap[this.props.network].KLEROS_CORE) this.fetch();
   }
 
   fetch = () => {
     this.props.getOpenDisputesOnCourtCallback().then((openDisputeIDs) => {
+      // WARNING: this.props.subcourts is not ready yet
       this.setState({ openDisputeIDs: openDisputeIDs });
 
       openDisputeIDs
@@ -38,15 +39,16 @@ class openDisputeIDs extends React.Component {
           return parseInt(a) - parseInt(b);
         })
         .reverse()
-        .map((arbitratorDispute) => {
-          this.props.getArbitratorDisputeCallback(arbitratorDispute).then((arbitratorDisputeDetails) => {
-            this.setState({ ["arbitrator" + arbitratorDispute]: arbitratorDisputeDetails });
-            this.props.getMetaEvidenceCallback(arbitratorDisputeDetails.arbitrated, arbitratorDispute).then((metaevidence) => {
-              this.setState({ [arbitratorDispute]: metaevidence });
+        .map((arbitratorDisputeID) => {
+          this.props.getArbitratorDisputeCallback(arbitratorDisputeID).then((arbitratorDisputeDetails) => {
+            console.log("arbitratorDisputeID: %O", arbitratorDisputeID);
+            console.log("arbitratorDisputeDetails: %O", arbitratorDisputeDetails);
+            this.setState({ ["arbitrator" + arbitratorDisputeID]: arbitratorDisputeDetails });
+            this.props.getMetaEvidenceCallback(arbitratorDisputeDetails.arbitrated, arbitratorDisputeID).then((metaevidence) => {
+              this.setState({ [arbitratorDisputeID]: metaevidence });
             });
           });
-
-          this.props.getCurrentRulingCallback(arbitratorDispute).then((ruling) => this.setState({ ["arbitratorRuling" + arbitratorDispute]: ruling }));
+          this.props.getCurrentRulingCallback(arbitratorDisputeID).then((ruling) => this.setState({ ["arbitratorRuling" + arbitratorDisputeID]: ruling }));
         });
       this.setState({ loading: false });
     });
@@ -56,31 +58,29 @@ class openDisputeIDs extends React.Component {
 
   getFilterName = (periodNumber) => {
     const strings = this.FILTER_NAMES;
-
     return strings[periodNumber];
   };
 
   getStatusClass = (periodNumber) => {
     const strings = ["evidence", "commit", "vote", "appeal", "execution"];
-
     return strings[periodNumber];
   };
 
   onFilterSelect = async (filter) => {
-    
     await this.setState({ statusFilter: filter });
   };
 
   render() {
-    // 
-    // 
-
     const { openDisputeIDs, selectedDispute, statusFilter, loading } = this.state;
     const { subcourts, subcourtDetails, network } = this.props;
 
-
-
-  if(!networkMap[network].KLEROS_LIQUID) return <main className={styles.openDisputes}><h1>There is no arbitrator on this network, thus no disputes.</h1></main>
+    if (!networkMap[network].KLEROS_CORE) {
+      return (
+        <main className={styles.openDisputes}>
+          <h1>There is no arbitrator on this network, thus no disputes.</h1>
+        </main>
+      );
+    }
 
     return (
       <main className={styles.openDisputes} id="ongoing-disputes">
