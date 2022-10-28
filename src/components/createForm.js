@@ -123,12 +123,7 @@ class CreateForm extends React.Component {
 
   onNumberOfRulingOptionsChange = async (event) => {
     let number = parseInt(event.target.value);
-    if (Number.isNaN(number))
-    {
-      console.debug(Number.isNaN(number));
-      this.setState({numberOfRulingOptions: number});
-    }
-
+    this.setState({numberOfRulingOptions: number});
   };
 
   onControlChange = async (e) => {
@@ -322,6 +317,7 @@ class CreateForm extends React.Component {
                 as="input"
                 type="number"
                 min="2"
+                step="1"
                 max="32"
                 value={numberOfRulingOptions}
                 onChange={this.onNumberOfRulingOptionsChange}
