@@ -20,7 +20,7 @@
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
     "moment": "^2.29.4",
-    "node-sass": "4.14.1",
+    "node-sass": "4",
     "react": "17.0.0",
     "react-blockies": "^1.4.1",
     "react-bootstrap": "^1.4.0",
@@ -64,7 +64,7 @@
     "printWidth": 180
   },
   "volta": {
-    "node": "12.22.12",
+    "node": "14.20.1",
     "yarn": "1.22.11"
   }
 }
