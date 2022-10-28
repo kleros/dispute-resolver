@@ -32,7 +32,7 @@ class CrowdfundingCard extends React.Component {
 
   onControlChange = async (e) => await this.setState({ [e.target.id]: e.target.value });
 
-  onDatePickerChange = async (value, dateString) => {
+  onDatePickerChange = async (value, _dateString) => {
     
     
     await this.setState({ variableRulingOption: value.utcOffset(0).set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).unix() });
@@ -74,10 +74,8 @@ class CrowdfundingCard extends React.Component {
   };
 
   render() {
-    const { dispute, subcourtDetails, subcourts, title, arbitratorDisputeDetails, grayedOut, winner, fundingPercentage, appealPeriodEnd, variable, roi, suggestedContribution, appealCallback, rulingOptionCode, metaevidenceJSON } = this.props;
+    const {  title, winner, fundingPercentage, appealPeriodEnd, variable, roi, suggestedContribution } = this.props;
     const { variableRulingOption, contribution } = this.state;
-    
-    
 
     return (
       <div className={`shadow rounded p-3 d-flex flex-column ${styles.crowdfundingCard}`}>

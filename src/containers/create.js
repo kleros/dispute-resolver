@@ -17,7 +17,6 @@ class Create extends React.Component {
     this.state = { activePage: 1, notificationShow: false };
   }
 
-  componentDidMount = async (e) => {};
 
   onNextButtonClick = (formData) => {
     this.setState({ activePage: 2, formData });
@@ -40,7 +39,7 @@ class Create extends React.Component {
   render() {
     const { lastDisputeID, activePage, formData, notificationShow } = this.state;
 
-    const { activeAddress, subcourtDetails, subcourtsLoading, getArbitrationCostCallback, publishCallback, createDisputeCallback, network } = this.props;
+    const { subcourtDetails, subcourtsLoading, getArbitrationCostCallback, publishCallback, createDisputeCallback, network } = this.props;
 
     return (
       <main className={styles.create}>

@@ -14,7 +14,6 @@ class DisputeSummary extends React.Component {
     const {
       metaevidenceJSON,
       ipfsGateway,
-      interfaceValid,
       arbitrated,
       arbitratorDisputeID,
       arbitratorAddress,
