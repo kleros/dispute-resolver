@@ -274,9 +274,7 @@ EvidenceTimeline.propTypes = {
   dispute: PropTypes.object, // Dispute Event
   disputePeriod: PropTypes.number.isRequired,
   ipfsGateway: PropTypes.string.isRequired,
-  metaevidence: PropTypes.object,
   evidences: PropTypes.array,
-  currentRuling: PropTypes.number,
   evidenceButtonHandler: PropTypes.func,
   publishCallback: PropTypes.func,
   submitEvidenceCallback: PropTypes.func,
