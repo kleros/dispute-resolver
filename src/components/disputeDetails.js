@@ -10,7 +10,6 @@ import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
 import DisputeTimeline from "components/disputeTimeline";
 import EvidenceTimeline from "components/evidenceTimeline";
 import CrowdfundingCard from "components/crowdfundingCard";
-import { combinations } from "utils/combinations";
 import web3 from "web3";
 const { toBN, toHex, hexToUtf8 } = web3.utils;
 
@@ -114,17 +113,8 @@ class DisputeDetails extends React.Component {
   };
 
 
-  multipleSelectRulingTitleCombinations = (metaevidenceJSON) => {
-    const combs = combinations(Array.from(Array(metaevidenceJSON.rulingOptions.titles.length).keys()));
-    let combsInTitles = combs.map((rulingCombination) => rulingCombination.map((rulingCode) => metaevidenceJSON.rulingOptions.titles[rulingCode] + " "));
-    combsInTitles[0] = "None";
-    return combsInTitles;
-  };
 
-  multipleSelectIsWinner = (metaevidenceJSON, currentRuling, rulingOptionIndexAsInMetaevidence) => {
-    const winningCombination = combinations(Array.from(Array(metaevidenceJSON.rulingOptions.titles.length).keys()))[currentRuling - 1];
-    return winningCombination.includes(rulingOptionIndexAsInMetaevidence);
-  };
+
 
   convertToRealitioFormat = (currentRuling, metaEvidenceJSON) => {
     return realitioLibQuestionFormatter.getAnswerString(

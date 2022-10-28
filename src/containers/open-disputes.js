@@ -7,7 +7,7 @@ import networkMap from "../ethereum/network-contract-mapping";
 
 import styles from "containers/styles/open-disputes.module.css";
 
-class openDisputeIDs extends React.Component {
+class OpenDisputes extends React.Component {
   constructor(props) {
     super(props);
     this.state = { openDisputeIDs: [], arbitratorDisputes: {}, loading: true, statusFilter: 4 };
@@ -30,10 +30,10 @@ class openDisputeIDs extends React.Component {
   }
 
   fetch = () => {
-    this.props.getOpenDisputesOnCourtCallback().then((openDisputeIDs) => {
-      this.setState({ openDisputeIDs: openDisputeIDs });
+    this.props.getOpenDisputesOnCourtCallback().then((openDIDs) => {
+      this.setState({ openDisputeIDs: openDIDs });
 
-      openDisputeIDs
+      openDIDs
         .sort(function compareFn(a, b) {
           return parseInt(a) - parseInt(b);
         })
@@ -75,7 +75,7 @@ class openDisputeIDs extends React.Component {
     // 
     // 
 
-    const { openDisputeIDs, selectedDispute, statusFilter, loading } = this.state;
+    const { openDisputeIDs, statusFilter, loading } = this.state;
     const { subcourts, subcourtDetails, network } = this.props;
 
 
@@ -141,4 +141,4 @@ class openDisputeIDs extends React.Component {
   }
 }
 
-export default openDisputeIDs;
+export default OpenDisputes;

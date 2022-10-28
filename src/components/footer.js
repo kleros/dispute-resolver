@@ -25,7 +25,7 @@ class Footer extends React.Component {
     super(props);
   }
   render() {
-    const { viewOnly, network } = this.props;
+    const {  network } = this.props;
     
     return (
       <footer>

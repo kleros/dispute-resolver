@@ -17,7 +17,6 @@ class EvidenceTimeline extends React.Component {
   constructor(props) {
     super(props);
 
-    var root = document.documentElement;
 
     this.state = {
       modalExtraClass: "closed",
@@ -43,7 +42,7 @@ class EvidenceTimeline extends React.Component {
     await this.setState({ [name]: value });
   };
 
-  handleSubmitEvidenceButtonClick = async (event) => {
+  handleSubmitEvidenceButtonClick = async () => {
     const { evidenceDescription, evidenceDocument, evidenceTitle, support } = this.state;
     await this.setState({
       awaitingConfirmation: true,
@@ -75,14 +74,9 @@ class EvidenceTimeline extends React.Component {
     }
   };
 
-  eventPhrasing = (metaevidence, numberOfVotes, numberOfVotesCast, currentRulingOnArbitrator, disputePeriodCode) => {
+  eventPhrasing = (metaevidence, numberOfVotes, numberOfVotesCast) => {
     
-    const DaysEnum = Object.freeze({
-      NO_VOTES_CAST: 0,
-      JUROR_DECISION: 1,
-      WON_BY_DEFAULT: 2,
-      FETCHING: 3,
-    });
+
     if (!metaevidence) return "Fetching...";
     else if (numberOfVotesCast == 0) return "No votes has been cast yet.";
     else return `${numberOfVotesCast} out of ${numberOfVotes} votes has been cast.`;
@@ -156,7 +150,7 @@ class EvidenceTimeline extends React.Component {
   };
 
   render() {
-    const { ipfsGateway, metaevidence, evidences, currentRuling, dispute, disputePeriod, numberOfVotes, numberOfVotesCast, evidenceSubmissionEnabled, appealDecisions } = this.props;
+    const { ipfsGateway,  evidences,  dispute, disputePeriod, evidenceSubmissionEnabled, appealDecisions } = this.props;
 
     const { evidenceDescription, evidenceTitle, fileInput, awaitingConfirmation, uploadingToIPFS } = this.state;
     
@@ -303,7 +297,7 @@ EvidenceTimeline.defaultProps = {
     await new Promise((r) => setTimeout(r, 4000));
     return [{ hash: "" }, { path: "" }];
   },
-  submitEvidenceCallback: async (e) => {
+  submitEvidenceCallback: async () => {
     await new Promise((r) => setTimeout(r, 4000));
   },
   disputePeriod: 4,
