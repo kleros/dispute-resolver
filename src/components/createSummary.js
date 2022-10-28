@@ -23,7 +23,7 @@ class CreateSummary extends React.Component {
     };
   }
 
-  onCreateButtonClick = async (e) => {
+  onCreateButtonClick = async () => {
     const { formData, notificationEventCallback } = this.props;
     this.setState({ awaitingConfirmation: true });
 
@@ -64,7 +64,7 @@ class CreateSummary extends React.Component {
   componentDidMount = () => {};
 
   render() {
-    const { awaitingConfirmation, show, activeAddress, subcourtsLoading, onReturnButtonClickCallback, validated, arbitrationCost, summary, formData, network } = this.props;
+    const {  onReturnButtonClickCallback, validated, formData, network } = this.props;
 
     return (
       <section className={styles.summary}>
@@ -118,7 +118,7 @@ class CreateSummary extends React.Component {
             </Col>
           </Row>
           <Row>
-            {formData.names.map((value, index) => (
+            {formData.names.map((_value, index) => (
               <>
                 <Col xl={4} lg={4} md={8}>
                   <Form.Group>
@@ -152,7 +152,7 @@ class CreateSummary extends React.Component {
               </Form.Group>
             </Col>
           </Row>
-          {formData.rulingTitles.map((value, index) => (
+          {formData.rulingTitles.map((_value, index) => (
             <Row>
               <Col xs={24} lg={8}>
                 <Form.Group>

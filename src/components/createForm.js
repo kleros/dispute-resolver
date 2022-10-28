@@ -123,14 +123,14 @@ class CreateForm extends React.Component {
 
   onNumberOfRulingOptionsChange = async (event) => {
     let number = parseInt(event.target.value);
-    if (Number.isNaN(number)) ;
+    if (Number.isNaN(number))
     {
       console.debug(Number.isNaN(number));
       this.setState({numberOfRulingOptions: number});
       return;
     }
-    number = number > 32 ? 32 : 32;
-    this.setState({numberOfRulingOptions: number});
+
+    this.setState({numberOfRulingOptions: 32});
     this.setState((prevState) => ({
       rulingTitles: prevState.rulingTitles.slice(0, number), rulingDescriptions: prevState.rulingTitles.slice(0, number)
     }));
@@ -162,7 +162,7 @@ class CreateForm extends React.Component {
     arbitrationCost: await this.props.getArbitrationCostCallback(subcourtID, noOfJurors),
   });
 
-  componentDidMount = async (e) => {
+  componentDidMount = async () => {
     this.onSubcourtSelect("0");
     const {formData} = this.props;
     if (formData) this.setState({
@@ -183,7 +183,7 @@ class CreateForm extends React.Component {
   };
 
   render() {
-    const {awaitingConfirmation, show, activeAddress, subcourtsLoading, subcourtDetails, onNextButtonClickCallback, network} = this.props;
+    const { subcourtsLoading, subcourtDetails,  network } = this.props;
 
     const {
       title,
@@ -310,9 +310,9 @@ class CreateForm extends React.Component {
                 </Dropdown.Toggle>
 
                 <Dropdown.Menu>
-                  {Object.values(QuestionTypes).map((questionType, index) => (
-                    <Dropdown.Item key={index} eventKey={JSON.stringify(questionType)}>
-                      {questionType.humanReadable}
+                  {Object.values(QuestionTypes).map((qType, index) => (
+                    <Dropdown.Item key={index} eventKey={JSON.stringify(qType)}>
+                      {qType.humanReadable}
                     </Dropdown.Item>))}
                 </Dropdown.Menu>
               </Dropdown>
@@ -347,7 +347,7 @@ class CreateForm extends React.Component {
             </Form.Group>
           </Col>
         </Row>
-        {!isNaN(numberOfRulingOptions) && (questionType.code == QuestionTypes.SINGLE_SELECT.code || questionType.code == QuestionTypes.MULTIPLE_SELECT.code) && [...Array(parseInt(numberOfRulingOptions))].map((value, index) => (
+        {!isNaN(numberOfRulingOptions) && (questionType.code == QuestionTypes.SINGLE_SELECT.code || questionType.code == QuestionTypes.MULTIPLE_SELECT.code) && [...Array(parseInt(numberOfRulingOptions))].map((_value, index) => (
           <Row>
             <Col>
               <Form.Group>
@@ -379,7 +379,7 @@ class CreateForm extends React.Component {
 
         <hr/>
         <Row>
-          {[...Array(parseInt(numberOfParties))].map((value, index) => (<React.Fragment key={index}>
+          {[...Array(parseInt(numberOfParties))].map((_value, index) => (<React.Fragment key={index}>
             <Col xl={4} l={4} md={8}>
               <Form.Group>
                 <Form.Label htmlFor="requester">Alias {index + 1} (Optional)</Form.Label>
@@ -414,11 +414,11 @@ class CreateForm extends React.Component {
         <Row>
           <Col>
             <Form.Group>
-              <Button className="cssCircle plusSign" onClick={(e) => this.setState({numberOfParties: numberOfParties + 1})}>
+              <Button className="cssCircle plusSign" onClick={() => this.setState({numberOfParties: numberOfParties + 1})}>
                 <span>+</span>
               </Button>
               <Button className="cssCircle minusSign"
-                      onClick={(e) => this.setState({numberOfParties: numberOfParties - 1 > 0 ? numberOfParties - 1 : 0})}>
+                      onClick={(_e) => this.setState({numberOfParties: numberOfParties - 1 > 0 ? numberOfParties - 1 : 0})}>
                 <span>–</span>
               </Button>
             </Form.Group>
