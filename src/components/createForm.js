@@ -127,13 +127,8 @@ class CreateForm extends React.Component {
     {
       console.debug(Number.isNaN(number));
       this.setState({numberOfRulingOptions: number});
-      return;
     }
 
-    this.setState({numberOfRulingOptions: 32});
-    this.setState((prevState) => ({
-      rulingTitles: prevState.rulingTitles.slice(0, number), rulingDescriptions: prevState.rulingTitles.slice(0, number)
-    }));
   };
 
   onControlChange = async (e) => {
