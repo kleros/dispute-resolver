@@ -74,13 +74,7 @@ class EvidenceTimeline extends React.Component {
     }
   };
 
-  eventPhrasing = (metaevidence, numberOfVotes, numberOfVotesCast) => {
-    
 
-    if (!metaevidence) return "Fetching...";
-    else if (numberOfVotesCast == 0) return "No votes has been cast yet.";
-    else return `${numberOfVotesCast} out of ${numberOfVotes} votes has been cast.`;
-  };
 
   handleDrop = async (acceptedFiles) => {
     await this.setState({ fileInput: null });
