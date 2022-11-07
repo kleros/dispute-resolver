@@ -80,7 +80,7 @@ class EvidenceTimeline extends React.Component {
     await this.setState({ fileInput: null });
     let reader = new FileReader();
     reader.readAsArrayBuffer(acceptedFiles[0]);
-    await reader.addEventListener("loadend", async () => {
+     reader.addEventListener("loadend", async () => {
       const buffer = Buffer.from(reader.result);
 
       await this.setState({ uploadingToIPFS: true });
