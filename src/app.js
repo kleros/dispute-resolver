@@ -130,9 +130,8 @@ class App extends React.Component {
 
   getMultipliers = (arbitrableAddress) => EthereumInterface.call("IDisputeResolver", arbitrableAddress, "getMultipliers");
 
-  updateLastDisputeID = async (newDisputeID) => this.setState({ lastDisputeID: newDisputeID });
 
-  onPublish = async (filename, fileBuffer) => await ipfsPublish(filename, fileBuffer);
+  onPublish = async (filename, fileBuffer) =>  ipfsPublish(filename, fileBuffer);
 
   generateArbitratorExtraData = (subcourtID, noOfVotes) => `0x${parseInt(subcourtID, 10).toString(16).padStart(64, "0") + parseInt(noOfVotes, 10).toString(16).padStart(64, "0")}`;
 
@@ -175,7 +174,7 @@ class App extends React.Component {
       dynamicScriptURI: "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj",
     };
 
-    const ipfsHashMetaEvidenceObj = await ipfsPublish("metaEvidence.json", this.encoder.encode(JSON.stringify(metaevidence)));
+    const ipfsHashMetaEvidenceObj =  ipfsPublish("metaEvidence.json", this.encoder.encode(JSON.stringify(metaevidence)));
 
     const metaevidenceURI = `/ipfs/${ipfsHashMetaEvidenceObj[1].hash}${ipfsHashMetaEvidenceObj[0].path}`;
 
@@ -304,7 +303,7 @@ class App extends React.Component {
       return { amount: amount, ruling: contributedTo[counter] };
     } catch {
       // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256[] memory _contributedTo);
-      amount = amount = await EthereumInterface.call(
+      amount = await EthereumInterface.call(
         "IDisputeResolver",
         arbitrated,
         "getTotalWithdrawableAmount",
@@ -332,7 +331,7 @@ class App extends React.Component {
       evidenceSide: supportingSide,
     };
 
-    const ipfsHashEvidenceObj = await ipfsPublish("evidence.json", this.encoder.encode(JSON.stringify(evidence)));
+    const ipfsHashEvidenceObj =  ipfsPublish("evidence.json", this.encoder.encode(JSON.stringify(evidence)));
 
     const evidenceURI = `/ipfs/${ipfsHashEvidenceObj[1].hash}${ipfsHashEvidenceObj[0].path}`;
 
