@@ -11,7 +11,6 @@ import Web3 from "./ethereum/web3";
 import * as EthereumInterface from "./ethereum/interface";
 import networkMap, { getReadOnlyRpcUrl } from "./ethereum/network-contract-mapping";
 import ipfsPublish from "./ipfs-publish";
-import Archon from "@kleros/archon";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 const IPFS_GATEWAY = "https://ipfs.kleros.io";
@@ -32,9 +31,7 @@ class App extends React.Component {
   async componentDidMount() {
     if (Web3) {
       this.setState({ network: await Web3.eth.net.getId() });
-      this.setState({
-        archon: new Archon(Web3.currentProvider.host ? Web3.currentProvider.host : window.ethereum, IPFS_GATEWAY),
-      });
+
     }
 
     if (typeof window.ethereum !== "undefined") {
