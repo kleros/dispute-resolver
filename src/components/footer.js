@@ -1,4 +1,4 @@
-import { Navbar, Nav, Col } from "react-bootstrap";
+import {  Col } from "react-bootstrap";
 import React from "react";
 import { ReactComponent as Etherscan } from "../assets/images/etherscan.svg";
 import { ReactComponent as Github } from "../assets/images/github.svg";

@@ -412,7 +412,7 @@ class DisputeDetails extends React.Component {
                   {(metaevidenceJSON.rulingOptions?.type == "single-select" || metaevidenceJSON.rulingOptions?.type == "multiple-select") && (
                     <>
                       <Dropdown>
-                        <Dropdown.Toggle className="form-control" block className={styles.dropdownToggle}>
+                        <Dropdown.Toggle  block className={styles.dropdownToggle}>
                           <span className="font-weight-normal">View Voting Options</span>
                         </Dropdown.Toggle>
 

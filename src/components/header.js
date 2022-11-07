@@ -1,7 +1,6 @@
 import { Navbar, Nav, Dropdown } from "react-bootstrap";
 import React from "react";
 import { ReactComponent as Brand } from "../assets/images/logo-dispute-resolver-white.svg";
-import { NavLink, Link } from "react-router-dom";
 import { LinkContainer } from "react-router-bootstrap";
 import {utils} from "web3";
 

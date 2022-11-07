@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Row, Col, Form, Container, Accordion, Dropdown, Button } from "react-bootstrap";
+import {  Row, Col, Button } from "react-bootstrap";
 
 import PropTypes from "prop-types";
 import styles from "components/styles/evidenceTimeline.module.css";
@@ -78,7 +78,7 @@ class EvidenceTimeline extends React.Component {
 
   handleDrop = async (acceptedFiles) => {
     await this.setState({ fileInput: null });
-    var reader = new FileReader();
+    let reader = new FileReader();
     reader.readAsArrayBuffer(acceptedFiles[0]);
     await reader.addEventListener("loadend", async () => {
       const buffer = Buffer.from(reader.result);
@@ -138,10 +138,7 @@ class EvidenceTimeline extends React.Component {
     else return null;
   };
 
-  getRulingTitle = (rulingCode, rulingOptions) => {
-    if (rulingCode != 0) return rulingOptions.titles[parseInt(rulingCode) - 1];
-    else return "Tied";
-  };
+
 
   render() {
     const { ipfsGateway,  evidences,  dispute, disputePeriod, evidenceSubmissionEnabled, appealDecisions } = this.props;

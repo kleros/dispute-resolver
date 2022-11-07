@@ -1,7 +1,6 @@
-import { Card, Row, Col, Form, Container } from "react-bootstrap";
+import { Row, Col } from "react-bootstrap";
 import React from "react";
-import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
-import Countdown, { zeroPad, calcTimeDelta, formatTimeDelta } from "react-countdown";
+import Countdown, { zeroPad, calcTimeDelta } from "react-countdown";
 
 import styles from "components/styles/disputeTimeline.module.css";
 

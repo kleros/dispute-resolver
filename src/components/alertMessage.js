@@ -1,6 +1,4 @@
-import { Card, Row, Col, Form, Container } from "react-bootstrap";
 import React from "react";
-import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { ReactComponent as success } from "../assets/images/success.svg";
 import { ReactComponent as error } from "../assets/images/error.svg";
 import { ReactComponent as info } from "../assets/images/info.svg";

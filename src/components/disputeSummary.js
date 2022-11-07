@@ -1,4 +1,4 @@
-import {Card, Row, Col, Form, Container} from "react-bootstrap";
+import { Row, Col, Form} from "react-bootstrap";
 import React from "react";
 import {ReactComponent as AttachmentSVG} from "../assets/images/attachment.svg";
 import {getReadOnlyRpcUrl} from "../ethereum/network-contract-mapping";

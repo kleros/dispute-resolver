@@ -1,7 +1,5 @@
 import React from "react";
-import {Container, Col, Row, Button, Form, Dropdown, InputGroup} from "react-bootstrap";
-import {ReactComponent as AttachmentSVG} from "../assets/images/attachment.svg";
-import {ReactComponent as GavelSVG} from "../assets/images/gavel.svg";
+import { Col, Row, Button, Form, Dropdown} from "react-bootstrap";
 import {ReactComponent as ScalesSVG} from "../assets/images/scales.svg";
 import {ReactComponent as EthereumSVG} from "../assets/images/ethereum.svg";
 import {ReactComponent as UploadSVG} from "../assets/images/upload.svg";
@@ -135,7 +133,7 @@ class CreateForm extends React.Component {
   onDrop = async (acceptedFiles) => {
     this.setState({fileInput: acceptedFiles[0], uploading: true});
 
-    var reader = new FileReader();
+    let reader = new FileReader();
     reader.readAsArrayBuffer(acceptedFiles[0]);
     reader.addEventListener("loadend", async () => {
       const buffer = Buffer.from(reader.result);
