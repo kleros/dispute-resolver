@@ -111,6 +111,7 @@ button.ok:hover {
 
 .container-fluid {
   background-color: #f2e3ff;
+  padding: 0;
 }
 
 .card {
@@ -227,7 +228,8 @@ body > div.modal > div > div > div.modal-body > form {
   border-radius: 12px;
   padding: 15px;
 }
-4 #fund-modal-form {
+
+ #fund-modal-form {
   background-color: white;
   border-radius: 12px;
   padding: 15px;
@@ -307,9 +309,6 @@ footer {
   margin-right: 0;
 }
 
-.container-fluid {
-  padding: 0;
-}
 
 .nav-item {
   width: max-content;
