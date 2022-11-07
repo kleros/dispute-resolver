@@ -418,7 +418,7 @@ class DisputeDetails extends React.Component {
 
                         <Dropdown.Menu>
                           {metaevidenceJSON.rulingOptions.titles.map((title, index) => (
-                            <Dropdown.Item key={index} disabled>{`Option ${index + 1} ${title.length> 12 ? (title.slice(0,6)+"..."+title.slice(-6)) : title}${
+                            <Dropdown.Item key={index} disabled>{`Option ${index + 1} ${title.length > 12 ? (title.slice(0,6)+"..."+title.slice(-6)) : title}${
                               metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[index] != undefined ? ":" : ""
                             } ${
                               metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[index] != undefined
@@ -428,7 +428,7 @@ class DisputeDetails extends React.Component {
                           ))}
                           {metaevidenceJSON.rulingOptions?.reserved &&
                             Object.entries(metaevidenceJSON.rulingOptions.reserved).map(([rulingCode, title]) => (
-                              <Dropdown.Item key={rulingCode} disabled>{`Option ${rulingCode} ${title}${
+                              <Dropdown.Item key={rulingCode} disabled>{`Option ${rulingCode} ${title.length > 12 ? (title.slice(0,6)+"..."+title.slice(-6)) : title}${
                                 metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[rulingCode] != undefined ? ":" : ""
                               } ${
                                 metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[rulingCode] != undefined
