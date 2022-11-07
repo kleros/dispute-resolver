@@ -436,6 +436,7 @@ class DisputeDetails extends React.Component {
                                   : ""
                               }`}</Dropdown.Item>
                             ))}
+                          <Dropdown.Item>Option 0 Refused to Arbitrate</Dropdown.Item>
                         </Dropdown.Menu>
                       </Dropdown>
                       <p className={styles.questionInfo}>
