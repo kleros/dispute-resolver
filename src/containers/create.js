@@ -5,12 +5,6 @@ import Toast from "components/toast";
 
 import styles from "containers/styles/create.module.css";
 
-import { Container, Col, Row, Button, Form, Card, Dropdown, InputGroup } from "react-bootstrap";
-
-import { Redirect } from "react-router-dom";
-
-import IPFS from "../components/ipfs";
-
 class Create extends React.Component {
   constructor(props) {
     super(props);
@@ -26,9 +20,6 @@ class Create extends React.Component {
     this.setState({ activePage: 1 });
   };
 
-  onControlChange = async (e) => {
-    await this.setState({ [e.target.id]: e.target.value });
-  };
 
   setShow = () => this.setState({ notificationShow: false });
 

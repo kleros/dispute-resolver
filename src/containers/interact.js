@@ -63,23 +63,6 @@ class Interact extends React.Component {
     new Promise(() => setTimeout(2000)).then(this.reload());
   };
 
-  onDrop = async (acceptedFiles) => {
-    this.setState({ fileInput: acceptedFiles[0] });
-
-    var reader = new FileReader();
-    reader.readAsArrayBuffer(acceptedFiles[0]);
-    reader.addEventListener("loadend", async () => {
-      const buffer = Buffer.from(reader.result);
-
-      const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
-
-      await this.setState({
-        primaryDocument: `/ipfs/${result[1].hash}${result[0].path}`,
-      });
-    });
-  };
-
-
 
 
   appeal = async (party, contribution) =>  this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);

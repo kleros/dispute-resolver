@@ -6,8 +6,7 @@
   text-align: right;
 }
 
-.summary .attachment {
-}
+
 
 .summary .spanWithSvgInside > svg {
   margin-right: var(--spacing-8);

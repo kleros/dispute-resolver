@@ -1,6 +1,5 @@
 import React from "react";
-import { Accordion, Container, Col, Row, Button, Form, Card, Dropdown, DropdownButton, Badge, Spinner } from "react-bootstrap";
-import { Redirect, Link } from "react-router-dom";
+import {  Col, Row, Dropdown, DropdownButton, Spinner } from "react-bootstrap";
 import OngoingCard from "components/ongoing-card.js";
 import debounce from "lodash.debounce";
 import networkMap from "../ethereum/network-contract-mapping";
@@ -80,7 +79,9 @@ class OpenDisputes extends React.Component {
 
 
 
-  if(!networkMap[network].KLEROS_LIQUID) return <main className={styles.openDisputes}><h1>There is no arbitrator on this network, thus no disputes.</h1></main>
+  if(!networkMap[network].KLEROS_LIQUID) {
+    return <main className={styles.openDisputes}><h1>There is no arbitrator on this network, thus no disputes.</h1></main>
+  }
 
     return (
       <main className={styles.openDisputes} id="ongoing-disputes">
@@ -108,7 +109,6 @@ class OpenDisputes extends React.Component {
             openDisputeIDs.map((dispute) => (
               <Col
                 className={styles.card}
-                style={{ display: "flex", flexDirection: "column" }}
                 key={dispute}
                 xl={8}
                 lg={12}
