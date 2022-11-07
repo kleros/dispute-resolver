@@ -417,6 +417,7 @@ class DisputeDetails extends React.Component {
                         </Dropdown.Toggle>
 
                         <Dropdown.Menu>
+                          <Dropdown.Item key={0} disabled>Option 0 Refuse to Arbitrate</Dropdown.Item>
                           {metaevidenceJSON.rulingOptions.titles.map((title, index) => (
                             <Dropdown.Item key={index} disabled>{`Option ${index + 1} ${title}${
                               metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[index] != undefined ? ":" : ""
@@ -436,6 +437,7 @@ class DisputeDetails extends React.Component {
                                   : ""
                               }`}</Dropdown.Item>
                             ))}
+
                         </Dropdown.Menu>
                       </Dropdown>
                       <p className={styles.questionInfo}>
