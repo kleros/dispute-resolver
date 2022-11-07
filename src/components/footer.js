@@ -13,8 +13,6 @@ import { ReactComponent as SecuredByKleros } from "../assets/images/securedByKle
 
 import networkMap from "../ethereum/network-contract-mapping";
 
-import { NavLink, Link } from "react-router-dom";
-import { LinkContainer } from "react-router-bootstrap";
 
 import styles from "./styles/footer.module.css";
 
