@@ -15,6 +15,7 @@ body {
 p {
   margin-bottom: var(--spacing-8);
   margin-bottom: 0;
+  text-overflow: ellipsis;
 }
 
 label {
@@ -102,8 +103,7 @@ label.form-label {
   border-color: var(--stroke);
 }
 
-div.dropdown-menu.show {
-}
+
 
 .dropdown-item {
   background-color: white;
@@ -113,9 +113,7 @@ div.dropdown-menu.show {
   background-color: var(--blue-accent);
 }
 
-p {
-  text-overflow: ellipsis;
-}
+
 
 span.form-control {
   white-space: nowrap;
