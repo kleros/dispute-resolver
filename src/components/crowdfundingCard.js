@@ -1,8 +1,7 @@
-import { Card, Col, Form, Badge, Spinner, ProgressBar, InputGroup, FormControl, Button } from "react-bootstrap";
+import {  ProgressBar, InputGroup, FormControl, Button } from "react-bootstrap";
 import React from "react";
-import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 import BigNumber from "bignumber.js";
-import Countdown, { zeroPad, calcTimeDelta, formatTimeDelta } from "react-countdown";
+import Countdown, { zeroPad } from "react-countdown";
 import styles from "components/styles/crowdfundingCard.module.css";
 import { ReactComponent as Hourglass } from "assets/images/hourglass.svg";
 import AlertMessage from "components/alertMessage";
@@ -18,17 +17,9 @@ class CrowdfundingCard extends React.Component {
     this.state = { variableRulingOption: "", contribution: this.props.suggestedContribution };
   }
 
-  getPeriodName = (periodNumber) => {
-    const strings = ["Evidence Period", "Commit Period", "Vote Period", "Appeal Period", "Execution Period"];
 
-    return strings[periodNumber];
-  };
 
-  getStatusClass = (periodNumber) => {
-    const strings = ["evidence", "commit", "vote", "appeal", "execution"];
 
-    return strings[periodNumber];
-  };
 
   onControlChange = async (e) => await this.setState({ [e.target.id]: e.target.value });
 

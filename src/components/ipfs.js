@@ -34,9 +34,7 @@ class IPFS extends React.Component {
     e.preventDefault();
     const { fileInput } = this.state;
 
-    
-
-    var reader = new FileReader();
+    let reader = new FileReader();
     reader.readAsArrayBuffer(fileInput);
     reader.addEventListener("loadend", async () => {
       const buffer = Buffer.from(reader.result);

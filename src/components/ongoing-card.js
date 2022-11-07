@@ -1,8 +1,7 @@
-import { Card, Col, Form, Badge, Spinner } from "react-bootstrap";
+import { Spinner } from "react-bootstrap";
 import React from "react";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
-import BigNumber from "bignumber.js";
-import Countdown, { zeroPad, calcTimeDelta, formatTimeDelta } from "react-countdown";
+import Countdown, { zeroPad } from "react-countdown";
 import styles from "components/styles/ongoing-card.module.css";
 import { ReactComponent as Hourglass } from "assets/images/hourglass.svg";
 
@@ -11,19 +10,13 @@ class OngoingCard extends React.Component {
     super(props);
   }
 
-  getPeriodName = (periodNumber) => {
-    const strings = ["Evidence Period", "Commit Period", "Vote Period", "Appeal Period", "Execution Period"];
-
-    return strings[periodNumber];
-  };
-
   getStatusClass = (periodNumber) => {
     const strings = ["evidence", "commit", "vote", "appeal", "execution"];
 
     return strings[periodNumber];
   };
   render() {
-    const { dispute, subcourtDetails, subcourts, title, arbitratorDisputeDetails, grayedOut } = this.props;
+    const { dispute, subcourtDetails, subcourts, title, arbitratorDisputeDetails } = this.props;
 
     return (
       <div className={styles.ongoingCard}>

@@ -1,16 +1,9 @@
 import React from "react";
-import { Container, Col, Row, Button, Form, Dropdown, InputGroup } from "react-bootstrap";
+import {  Col, Row, Button, Form } from "react-bootstrap";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
-import { ReactComponent as GavelSVG } from "../assets/images/gavel.svg";
-import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
-import { ReactComponent as UploadSVG } from "../assets/images/upload.svg";
-import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
 import networkMap from "../ethereum/network-contract-mapping";
-
-import Dropzone from "react-dropzone";
-
 import styles from "components/styles/createSummary.module.css";
 
 class CreateSummary extends React.Component {
