@@ -5,7 +5,6 @@ import { LinkContainer } from "react-router-bootstrap";
 import {utils} from "web3";
 
 
-import styles from "./styles/header.module.css";
 
 class Header extends React.Component {
   constructor(props) {
@@ -23,8 +22,8 @@ class Header extends React.Component {
     
     return (
       <header>
-        <Navbar collapseOnSelect expand="lg" variant="dark" className={styles.navbar}>
-          <Navbar.Brand href="/" className={styles.navbarBrand}>
+        <Navbar collapseOnSelect expand="lg" variant="dark" >
+          <Navbar.Brand href="/" >
             <Brand />
           </Navbar.Brand>
           <Navbar.Toggle aria-controls="responsive-navbar-nav" />

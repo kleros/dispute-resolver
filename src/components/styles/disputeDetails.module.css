@@ -28,6 +28,8 @@
   position: absolute;
   right: var(--spacing-16);
   top: calc(50% - var(--spacing-4));
+  color: var(--stroke);
+
 }
 
 .disputeDetails .dropdownToggle {
@@ -38,9 +40,7 @@
   vertical-align: middle;
 }
 
-.disputeDetails .dropdownToggle::after {
-  color: var(--stroke);
-}
+
 
 .disputeDetails .questionInfo {
   margin-top: var(--spacing-16);

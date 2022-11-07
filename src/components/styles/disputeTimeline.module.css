@@ -22,22 +22,16 @@
   vertical-align: baseline;
 }
 
-.disputeTimeline .evidence {
-}
 
 .disputeTimeline .evidence::before {
   content: "1";
 }
 
-.disputeTimeline .voting {
-}
 
 .disputeTimeline .voting::before {
   content: "2";
 }
 
-.disputeTimeline .appeal {
-}
 
 .disputeTimeline .appeal::before {
   content: "3";
@@ -49,8 +43,7 @@
   color: var(--blue-primary);
 }
 
-.disputeTimeline .period > div:global(.past):not(.decoration) {
-}
+
 
 .disputeTimeline .period > div:global(.current) {
   color: var(--text-primary);
