@@ -30,6 +30,8 @@
   position: absolute;
   right: var(--spacing-16);
   top: calc(50% - var(--spacing-4));
+  color: var(--stroke);
+
 }
 
 .create .dropdownToggle {
@@ -45,9 +47,6 @@
   vertical-align: middle;
 }
 
-.create .dropdownToggle::after {
-  color: var(--stroke);
-}
 
 .create .scales > path {
   fill: var(--purple-primary);
@@ -115,8 +114,6 @@
   cursor: pointer;
 }
 
-.create :global(.minusSign) {
-}
 
 .create :global(.minusSign) > span {
   vertical-align: super;
