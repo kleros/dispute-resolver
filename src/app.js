@@ -1,6 +1,4 @@
 import React from "react";
-import ReactDOM from "react-dom";
-import { Container } from "react-bootstrap";
 import "./app.scss";
 import Create from "./containers/create";
 import _404 from "./containers/404";
@@ -11,8 +9,7 @@ import Header from "./components/header";
 import Footer from "./components/footer";
 import Web3 from "./ethereum/web3";
 import * as EthereumInterface from "./ethereum/interface";
-import networkMap from "./ethereum/network-contract-mapping";
-import { getReadOnlyRpcUrl } from "./ethereum/network-contract-mapping";
+import networkMap, { getReadOnlyRpcUrl } from "./ethereum/network-contract-mapping";
 import ipfsPublish from "./ipfs-publish";
 import Archon from "@kleros/archon";
 
@@ -69,7 +66,7 @@ class App extends React.Component {
       }
     }
 
-    for (var i = 0; i < counter - 1; i++) {
+    for (let i = 0; i < counter - 1; i++) {
       subcourtURIs[i] = this.getSubCourtDetails(i);
       subcourts[i] = this.getSubcourt(i);
     }
