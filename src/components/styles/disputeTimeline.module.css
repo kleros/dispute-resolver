@@ -5,7 +5,6 @@
 }
 
 .disputeTimeline .period > div::before {
-  display: inline;
   text-align: center;
   color: var(--stroke);
   height: 1.5rem;
