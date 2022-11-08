@@ -231,9 +231,10 @@ class DisputeDetails extends React.Component {
                       <div className="h1">{arbitratorDispute.period == 3 ? "Appeal the decision" : "Withdraw crowdfunding rewards and refunds"}</div>
                       <p className="label">
                         {arbitratorDispute.period == 3
-                          ? "In order to appeal the decision, you need to fully fund the crowdfunding deposit. The dispute will be sent to the jurors when the full deposit is reached. Note that if the previous round loser funds its side, the previous round winner should also fully fund its side in order not to lose the case."
-                          : parseInt(totalWithdrawable) != 0
-                          ? "If you have contributed to a ruling option and in the end that ruling option was the winner you are eligible for some reward. Also, if you have contributed but appeal did not happen your contribution is refunded."
+                          && "In order to appeal the decision, you need to fully fund the crowdfunding deposit. The dispute will be sent" +
+                          " to the jurors when the full deposit is reached. Note that if the previous round loser funds its side, the previous round winner should also fully fund its side in order not to lose the case."
+                          }
+                        {arbitratorDispute.period == 4 && parseInt(totalWithdrawable) != 0 ? "If you have contributed to a ruling option and in the end that ruling option was the winner you are eligible for some reward. Also, if you have contributed but appeal did not happen your contribution is refunded."
                           : "You don't have any amount to withdraw. Reason might be that you did not contribute, the ruling option you have contributed did not win, you already withdrew or the ruling is not executed yet by the arbitrator."}
                       </p>
                       {arbitratorDispute.period == 4 && parseInt(totalWithdrawable) > 0 && (
