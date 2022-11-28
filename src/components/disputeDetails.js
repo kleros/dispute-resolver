@@ -156,6 +156,8 @@ class DisputeDetails extends React.Component {
     } = this.props;
     const { activeKey } = this.state;
 
+    console.debug(this.props)
+
     const decisionInfoBoxContent = `This decision can be appealed within appeal period. ${incompatible ? "Go to arbitrable application to appeal this ruling." : ""}`;
 
     if (metaevidenceJSON && arbitratorDispute && subcourts && subcourtDetails && arbitratorDisputeDetails)
@@ -265,15 +267,15 @@ class DisputeDetails extends React.Component {
                           {metaevidenceJSON.rulingOptions &&
                             metaevidenceJSON.rulingOptions.reserved &&
                             Object.entries(metaevidenceJSON.rulingOptions.reserved).map(([rulingCode, title]) => (
-                              <Col key={rulingCode} className="pb-4" xl={8} lg={12} xs={24}>
+                              <Col key={web3.utils.hexToNumberString(rulingCode)} className="pb-4" xl={8} lg={12} xs={24}>
                                 <CrowdfundingCard
-                                  key={rulingCode}
+                                  key={web3.utils.hexToNumberString(rulingCode)}
                                   title={title}
-                                  winner={currentRuling == toBN(rulingCode)}
-                                  fundingPercentage={contributions.hasOwnProperty(0) ? BigNumber(contributions[0]).div(this.calculateTotalCost(rulingCode)).times(100).toFixed(2) : 0}
-                                  appealPeriodEnd={this.calculateAppealPeriod(rulingCode)}
-                                  suggestedContribution={this.calculateAmountRemainsToBeRaised(rulingCode).div(DECIMALS).toString()}
-                                  roi={this.calculateReturnOfInvestmentRatio(rulingCode).toFixed(2)}
+                                  winner={currentRuling == web3.utils.hexToNumberString(rulingCode)}
+                                  fundingPercentage={contributions.hasOwnProperty(web3.utils.hexToNumberString(rulingCode)) ? BigNumber(contributions[web3.utils.hexToNumberString(rulingCode)]).div(this.calculateTotalCost(web3.utils.hexToNumberString(rulingCode))).times(100).toFixed(2) : 0}
+                                  appealPeriodEnd={this.calculateAppealPeriod(web3.utils.hexToNumberString(rulingCode))}
+                                  suggestedContribution={this.calculateAmountRemainsToBeRaised(web3.utils.hexToNumberString(rulingCode)).div(DECIMALS).toString()}
+                                  roi={this.calculateReturnOfInvestmentRatio(web3.utils.hexToNumberString(rulingCode)).toFixed(2)}
                                   appealCallback={appealCallback}
                                   rulingOptionCode={rulingCode}
                                 />
