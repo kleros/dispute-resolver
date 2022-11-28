@@ -8,6 +8,7 @@ import { ReactComponent as Magnifier } from "../assets/images/magnifier.svg";
 import { Redirect } from "react-router-dom";
 
 import styles from "containers/styles/interact.module.css";
+import {debug} from "prettier/doc";
 
 class Interact extends React.Component {
   constructor(props) {
@@ -181,7 +182,11 @@ class Interact extends React.Component {
       appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
       contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated, arbitratorDispute.period);
       rulingFunded = await this.props.getRulingFundedCallback(arbitrableDisputeID, appealDecisions.length, arbitrated);
-      console.log(appealDecisions);
+      console.debug(arbitrableDisputeID);
+      console.debug(appealDecisions.length)
+      console.debug(appealDecisions);
+      console.debug(contributions);
+      console.debug(rulingFunded);
       await this.setState({ contributions, appealDecisions, rulingFunded });
     } catch (err) {
       console.error("incompatible contract");
