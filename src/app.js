@@ -254,11 +254,21 @@ class App extends React.Component {
   };
 
   getContributions = async (arbitrableDisputeID, round, arbitrableContractAddress, period) => {
+    // Unslashed contract violates IDisputeResolver interface by incrementing rounds without triggering an appeal event.
+    // Because of this, here we make an exception for Unslashed and shift rounds by plus one, except when in execution period.
+
+    const exceptionalContractAddresses =[0xe0e1bc8C6cd1B81993e2Fcfb80832d814886eA38]
+
+    let _round = round;
+    if( exceptionalContractAddresses.includes(arbitrableContractAddress)){
+      if(period < 4) _round++;
+    }
+
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
     const contributionLogs = await contractInstance.getPastEvents("Contribution", {
       fromBlock: QUERY_FROM_BLOCK,
       toBlock: "latest",
-      filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round: period == 4 },
+      filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round },
     });
 
 
