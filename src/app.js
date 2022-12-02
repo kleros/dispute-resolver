@@ -258,7 +258,7 @@ class App extends React.Component {
     const contributionLogs = await contractInstance.getPastEvents("Contribution", {
       fromBlock: QUERY_FROM_BLOCK,
       toBlock: "latest",
-      filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round: period == 4 },
+      filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round: round },
     });
 
 
