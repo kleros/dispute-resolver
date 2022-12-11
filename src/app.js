@@ -284,11 +284,17 @@ class App extends React.Component {
   };
 
   getRulingFunded = async (arbitrableDisputeID, round, arbitrableContractAddress) => {
+    let _round = round;
+    if(EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress)){
+      _round++;
+    }
+
+
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
     const rulingFundedLogs = await contractInstance.getPastEvents("RulingFunded", {
       fromBlock: QUERY_FROM_BLOCK,
       toBlock: "latest",
-      filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round: round },
+      filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round },
     });
     let ruling = rulingFundedLogs.map((log) => log.returnValues._ruling);
 
