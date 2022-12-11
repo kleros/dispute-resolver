@@ -109,11 +109,11 @@ class DisputeDetails extends React.Component {
   };
 
   calculateAppealPeriod = (rulingOption) => {
-    const { currentRuling, multipliers, appealPeriod } = this.props;
+    const { currentRuling, multipliers, appealPeriod, exceptionalContractAddresses, arbitrated } = this.props;
     const loser = multipliers.loserAppealPeriodMultiplier;
     const divisor = multipliers.denominator;
 
-    if (currentRuling == rulingOption) return appealPeriod.end;
+    if (currentRuling == rulingOption || (exceptionalContractAddresses.includes(arbitrated) && currentRuling == 0)) return appealPeriod.end;
     else return parseInt(appealPeriod.start) + ((parseInt(appealPeriod.end) - parseInt(appealPeriod.start)) * parseInt(loser)) / divisor;
   };
 
