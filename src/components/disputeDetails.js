@@ -11,7 +11,7 @@ import DisputeTimeline from "components/disputeTimeline";
 import EvidenceTimeline from "components/evidenceTimeline";
 import CrowdfundingCard from "components/crowdfundingCard";
 import web3 from "web3";
-const { toBN, toHex, hexToUtf8 } = web3.utils;
+const { toBN, toHex, hexToUtf8, hexToNumberString } = web3.utils;
 
 import AlertMessage from "components/alertMessage";
 
@@ -282,15 +282,15 @@ class DisputeDetails extends React.Component {
                           {metaevidenceJSON.rulingOptions &&
                             metaevidenceJSON.rulingOptions.reserved &&
                             Object.entries(metaevidenceJSON.rulingOptions.reserved).map(([rulingCode, title]) => (
-                              <Col key={web3.utils.hexToNumberString(rulingCode)} className="pb-4" xl={8} lg={12} xs={24}>
+                              <Col key={hexToNumberString(rulingCode)} className="pb-4" xl={8} lg={12} xs={24}>
                                 <CrowdfundingCard
-                                  key={web3.utils.hexToNumberString(rulingCode)}
+                                  key={hexToNumberString(rulingCode)}
                                   title={title}
-                                  winner={currentRuling == web3.utils.hexToNumberString(rulingCode)}
-                                  fundingPercentage={contributions.hasOwnProperty(web3.utils.hexToNumberString(rulingCode)) ? BigNumber(contributions[web3.utils.hexToNumberString(rulingCode)]).div(this.calculateTotalCost(web3.utils.hexToNumberString(rulingCode)), arbitrated).times(100).toFixed(2) : 0}
-                                  appealPeriodEnd={this.calculateAppealPeriod(web3.utils.hexToNumberString(rulingCode))}
-                                  suggestedContribution={this.calculateAmountRemainsToBeRaised(web3.utils.hexToNumberString(rulingCode), arbitrated).div(DECIMALS).toString()}
-                                  roi={this.calculateReturnOfInvestmentRatio(web3.utils.hexToNumberString(rulingCode), arbitrated).toFixed(2)}
+                                  winner={currentRuling == hexToNumberString(rulingCode)}
+                                  fundingPercentage={contributions.hasOwnProperty(hexToNumberString(rulingCode)) ? BigNumber(contributions[hexToNumberString(rulingCode)]).div(this.calculateTotalCost(hexToNumberString(rulingCode), arbitrated)).times(100).toFixed(2) : 0}
+                                  appealPeriodEnd={this.calculateAppealPeriod(hexToNumberString(rulingCode))}
+                                  suggestedContribution={this.calculateAmountRemainsToBeRaised(hexToNumberString(rulingCode), arbitrated).div(DECIMALS).toString()}
+                                  roi={this.calculateReturnOfInvestmentRatio(hexToNumberString(rulingCode), arbitrated).toFixed(2)}
                                   appealCallback={appealCallback}
                                   rulingOptionCode={rulingCode}
                                 />
