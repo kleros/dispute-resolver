@@ -41,13 +41,13 @@ class DisputeDetails extends React.Component {
     }
   }
 
-  calculateTotalCost = (rulingOption, arbitrated) => {
+  calculateTotalCost = (rulingOption) => {
     // Unslashed contract violates IDisputeResolver interface by not letting option 0: refuse to rule to be funded.
     // Subsequently, in case of a ruling 0, contract considers remaining ruling options as winners, instead of losers.
     // Therefore we have to make an exception in this function for the following list of irregular contracts.
 
 
-    const { currentRuling, multipliers, exceptionalContractAddresses } = this.props;
+    const { currentRuling, multipliers, exceptionalContractAddresses, arbitrated } = this.props;
 
     const appealCost = BigNumber(this.props.appealCost);
     let stake;
@@ -64,10 +64,10 @@ class DisputeDetails extends React.Component {
     return appealCost.plus(stake);
   };
 
-  calculateAmountRemainsToBeRaised = (rulingOption, arbitrated) => {
+  calculateAmountRemainsToBeRaised = (rulingOption) => {
     const { contributions } = this.props;
     const raisedSoFar = contributions[rulingOption] ? BigNumber(contributions[rulingOption]) : 0;
-    return this.calculateTotalCost(rulingOption, arbitrated).minus(raisedSoFar);
+    return this.calculateTotalCost(rulingOption).minus(raisedSoFar);
   };
 
   calculateAmountRemainsToBeRaisedForLoser = () => {
@@ -79,12 +79,12 @@ class DisputeDetails extends React.Component {
     return appealCost.plus(stake);
   };
 
-  calculateReturnOfInvestmentRatio = (rulingOption, arbitrated) => {
+  calculateReturnOfInvestmentRatio = (rulingOption) => {
     // Unslashed contract violates IDisputeResolver interface by not letting option 0: refuse to rule to be funded.
     // Subsequently, in case of a ruling 0, contract considers remaining ruling options as winners, instead of losers.
     // Therefore we have to make an exception in this function for the following list of irregular contracts.
 
-    const { currentRuling, multipliers, exceptionalContractAddresses } = this.props;
+    const { currentRuling, multipliers, exceptionalContractAddresses, arbitrated } = this.props;
 
     const winner = BigNumber(multipliers.winnerStakeMultiplier);
     const loser = BigNumber(multipliers.loserStakeMultiplier);
@@ -271,10 +271,10 @@ class DisputeDetails extends React.Component {
                               key={0}
                               title={"Invalid / Refused to Arbitrate / Tied"}
                               winner={currentRuling == 0}
-                              fundingPercentage={contributions.hasOwnProperty(0) ? BigNumber(contributions[0]).div(this.calculateTotalCost(0, arbitrated)).times(100).toFixed(2) : 0}
+                              fundingPercentage={contributions.hasOwnProperty(0) ? BigNumber(contributions[0]).div(this.calculateTotalCost(0)).times(100).toFixed(2) : 0}
                               appealPeriodEnd={this.calculateAppealPeriod(0)}
-                              suggestedContribution={this.calculateAmountRemainsToBeRaised(0, arbitrated).div(DECIMALS).toString()}
-                              roi={this.calculateReturnOfInvestmentRatio(0, arbitrated).toFixed(2)}
+                              suggestedContribution={this.calculateAmountRemainsToBeRaised(0).div(DECIMALS).toString()}
+                              roi={this.calculateReturnOfInvestmentRatio(0).toFixed(2)}
                               appealCallback={appealCallback}
                               rulingOptionCode={0}
                             />
@@ -287,10 +287,10 @@ class DisputeDetails extends React.Component {
                                   key={hexToNumberString(rulingCode)}
                                   title={title}
                                   winner={currentRuling == hexToNumberString(rulingCode)}
-                                  fundingPercentage={contributions.hasOwnProperty(hexToNumberString(rulingCode)) ? BigNumber(contributions[hexToNumberString(rulingCode)]).div(this.calculateTotalCost(hexToNumberString(rulingCode), arbitrated)).times(100).toFixed(2) : 0}
+                                  fundingPercentage={contributions.hasOwnProperty(hexToNumberString(rulingCode)) ? BigNumber(contributions[hexToNumberString(rulingCode)]).div(this.calculateTotalCost(hexToNumberString(rulingCode))).times(100).toFixed(2) : 0}
                                   appealPeriodEnd={this.calculateAppealPeriod(hexToNumberString(rulingCode))}
-                                  suggestedContribution={this.calculateAmountRemainsToBeRaised(hexToNumberString(rulingCode), arbitrated).div(DECIMALS).toString()}
-                                  roi={this.calculateReturnOfInvestmentRatio(hexToNumberString(rulingCode), arbitrated).toFixed(2)}
+                                  suggestedContribution={this.calculateAmountRemainsToBeRaised(hexToNumberString(rulingCode)).div(DECIMALS).toString()}
+                                  roi={this.calculateReturnOfInvestmentRatio(hexToNumberString(rulingCode)).toFixed(2)}
                                   appealCallback={appealCallback}
                                   rulingOptionCode={rulingCode}
                                 />
@@ -306,16 +306,16 @@ class DisputeDetails extends React.Component {
                                   fundingPercentage={
                                     contributions.hasOwnProperty(index + 1)
                                       ? BigNumber(contributions[index + 1])
-                                          .div(this.calculateTotalCost(index + 1, arbitrated))
+                                          .div(this.calculateTotalCost(index + 1))
                                           .times(100)
                                           .toFixed(2)
                                       : 0
                                   }
                                   appealPeriodEnd={this.calculateAppealPeriod(index + 1)}
-                                  suggestedContribution={this.calculateAmountRemainsToBeRaised(index + 1, arbitrated)
+                                  suggestedContribution={this.calculateAmountRemainsToBeRaised(index + 1)
                                     .div(DECIMALS)
                                     .toString()}
-                                  roi={this.calculateReturnOfInvestmentRatio(index + 1, arbitrated).toFixed(2)}
+                                  roi={this.calculateReturnOfInvestmentRatio(index + 1).toFixed(2)}
                                   appealCallback={appealCallback}
                                   rulingOptionCode={index + 1}
                                 />
@@ -341,14 +341,14 @@ class DisputeDetails extends React.Component {
                                   fundingPercentage={
                                     contributions.hasOwnProperty(index + 1)
                                       ? BigNumber(contributions[index + 1])
-                                          .div(this.calculateTotalCost(index + 1, arbitrated))
+                                          .div(this.calculateTotalCost(index + 1))
                                           .times(100)
                                           .toFixed(2)
                                       : 0
                                   }
                                   appealPeriodEnd={this.calculateAppealPeriod(index + 1)}
-                                  roi={this.calculateReturnOfInvestmentRatio(index + 1, arbitrated).toFixed(2)}
-                                  suggestedContribution={this.calculateAmountRemainsToBeRaised(index + 1, arbitrated)
+                                  roi={this.calculateReturnOfInvestmentRatio(index + 1).toFixed(2)}
+                                  suggestedContribution={this.calculateAmountRemainsToBeRaised(index + 1)
                                     .div(DECIMALS)
                                     .toString()}
                                   appealCallback={appealCallback}
@@ -368,11 +368,11 @@ class DisputeDetails extends React.Component {
                                     rulingOptionCode={key}
                                     winner={currentRuling == key}
                                     fundingPercentage={
-                                      contributions.hasOwnProperty(key) ? BigNumber(contributions[key]).div(this.calculateTotalCost(key, arbitrated)).times(100).toFixed(2) : 0
+                                      contributions.hasOwnProperty(key) ? BigNumber(contributions[key]).div(this.calculateTotalCost(key)).times(100).toFixed(2) : 0
                                     }
-                                    suggestedContribution={this.calculateAmountRemainsToBeRaised(key, arbitrated).div(DECIMALS).toString()}
+                                    suggestedContribution={this.calculateAmountRemainsToBeRaised(key).div(DECIMALS).toString()}
                                     appealPeriodEnd={this.calculateAppealPeriod(key)}
-                                    roi={this.calculateReturnOfInvestmentRatio(key, arbitrated).toFixed(2)}
+                                    roi={this.calculateReturnOfInvestmentRatio(key).toFixed(2)}
                                     appealCallback={appealCallback}
                                     metaevidenceJSON={metaevidenceJSON}
                                   />
@@ -382,16 +382,16 @@ class DisputeDetails extends React.Component {
                             <Col className="pb-4" xl={8} lg={12} xs={24}>
                               <CrowdfundingCard
                                 title={`${this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`}
-                                rulingOptionCode={this.props.currentRuling}
+                                rulingOptionCode={currentRuling}
                                 winner={true}
                                 fundingPercentage={
-                                  contributions.hasOwnProperty(this.props.currentRuling)
-                                    ? BigNumber(contributions[this.props.currentRuling]).div(this.calculateTotalCost(this.props.currentRuling, arbitrated)).times(100).toFixed(2)
+                                  contributions.hasOwnProperty(currentRuling)
+                                    ? BigNumber(contributions[currentRuling]).div(this.calculateTotalCost(currentRuling)).times(100).toFixed(2)
                                     : 0
                                 }
-                                appealPeriodEnd={this.calculateAppealPeriod(this.props.currentRuling)}
-                                roi={this.calculateReturnOfInvestmentRatio(this.props.currentRuling, arbitrated).toFixed(2)}
-                                suggestedContribution={this.calculateAmountRemainsToBeRaised(this.props.currentRuling, arbitrated).div(DECIMALS).toString()}
+                                appealPeriodEnd={this.calculateAppealPeriod(currentRuling)}
+                                roi={this.calculateReturnOfInvestmentRatio(currentRuling).toFixed(2)}
+                                suggestedContribution={this.calculateAmountRemainsToBeRaised(currentRuling).div(DECIMALS).toString()}
                                 appealCallback={appealCallback}
                                 metaevidenceJSON={metaevidenceJSON}
                               />
