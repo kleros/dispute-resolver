@@ -30,7 +30,7 @@ class DisputeTimeline extends React.Component {
 
           <Col className={`${period < 2 ? "upcoming" : "past"}  d-none d-md-block  ${styles.decoration}`} />
 
-          <Col className={`mb-2 mb-md-0 ${period < 2 && "upcoming"}${period == 2 ? "current" : "past"} justify-content-md-center ${styles.voting}`} xs={24} md="auto">
+          <Col className={`mb-2 mb-md-0 ${period < 2 && "upcoming"} ${period == 2 ? "current" : "past"} justify-content-md-center ${styles.voting}`} xs={24} md="auto">
             <div>
               <div className={styles.name}>Voting</div>
               <small className={styles.time}>
