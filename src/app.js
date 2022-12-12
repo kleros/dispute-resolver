@@ -16,6 +16,8 @@ import Archon from "@kleros/archon";
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 const IPFS_GATEWAY = "https://ipfs.kleros.io";
 const QUERY_FROM_BLOCK = 7303699; // For performance.
+const EXCEPTIONAL_CONTRACT_ADDRESSES =['0xe0e1bc8C6cd1B81993e2Fcfb80832d814886eA38', '0xb9f9B5eee2ad29098b9b3Ea0B401571F5dA4AD81']
+
 
 class App extends React.Component {
   constructor(props) {
@@ -254,11 +256,20 @@ class App extends React.Component {
   };
 
   getContributions = async (arbitrableDisputeID, round, arbitrableContractAddress, period) => {
+    // Unslashed contract violates IDisputeResolver interface by incrementing rounds without triggering an appeal event.
+    // Because of this, here we make an exception for Unslashed and shift rounds by plus one, except when in execution period.
+
+    let _round = round;
+    if(EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress)){
+      if(period < 4) _round++;
+    }
+
+
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
     const contributionLogs = await contractInstance.getPastEvents("Contribution", {
       fromBlock: QUERY_FROM_BLOCK,
       toBlock: "latest",
-      filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round: round },
+      filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round },
     });
 
 
@@ -273,11 +284,17 @@ class App extends React.Component {
   };
 
   getRulingFunded = async (arbitrableDisputeID, round, arbitrableContractAddress) => {
+    let _round = round;
+    if(EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress)){
+      _round++;
+    }
+
+
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
     const rulingFundedLogs = await contractInstance.getPastEvents("RulingFunded", {
       fromBlock: QUERY_FROM_BLOCK,
       toBlock: "latest",
-      filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round: round },
+      filter: { arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round },
     });
     let ruling = rulingFundedLogs.map((log) => log.returnValues._ruling);
 
@@ -438,6 +455,7 @@ class App extends React.Component {
                     subcourts={subcourts}
                     subcourtDetails={subcourtDetails}
                     web3Provider={networkMap[network].WEB3_PROVIDER}
+                    exceptionalContractAddresses={EXCEPTIONAL_CONTRACT_ADDRESSES}
                   />
                   <Footer networkMap={networkMap} network={this.state.network} />
                 </>

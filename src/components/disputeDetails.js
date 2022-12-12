@@ -11,7 +11,7 @@ import DisputeTimeline from "components/disputeTimeline";
 import EvidenceTimeline from "components/evidenceTimeline";
 import CrowdfundingCard from "components/crowdfundingCard";
 import web3 from "web3";
-const { toBN, toHex, hexToUtf8 } = web3.utils;
+const { toBN, toHex, hexToUtf8, hexToNumberString } = web3.utils;
 
 import AlertMessage from "components/alertMessage";
 
@@ -42,14 +42,22 @@ class DisputeDetails extends React.Component {
   }
 
   calculateTotalCost = (rulingOption) => {
-    const { currentRuling, multipliers } = this.props;
+    // Unslashed contract violates IDisputeResolver interface by not letting option 0: refuse to rule to be funded.
+    // Subsequently, in case of a ruling 0, contract considers remaining ruling options as winners, instead of losers.
+    // Therefore we have to make an exception in this function for the following list of irregular contracts.
+
+
+    const { currentRuling, multipliers, exceptionalContractAddresses, arbitrated } = this.props;
 
     const appealCost = BigNumber(this.props.appealCost);
     let stake;
 
-    if (currentRuling == rulingOption) {
+    if (currentRuling == rulingOption || (exceptionalContractAddresses.includes(arbitrated) && currentRuling == 0)) {
+      console.log(`exception for ruling ${rulingOption}`);
       stake = appealCost.times(BigNumber(multipliers.winnerStakeMultiplier)).div(BigNumber(multipliers.denominator));
-    } else {
+    }
+
+    else {
       return this.calculateAmountRemainsToBeRaisedForLoser();
     }
 
@@ -72,14 +80,19 @@ class DisputeDetails extends React.Component {
   };
 
   calculateReturnOfInvestmentRatio = (rulingOption) => {
-    const { currentRuling, multipliers } = this.props;
+    // Unslashed contract violates IDisputeResolver interface by not letting option 0: refuse to rule to be funded.
+    // Subsequently, in case of a ruling 0, contract considers remaining ruling options as winners, instead of losers.
+    // Therefore we have to make an exception in this function for the following list of irregular contracts.
+
+    const { currentRuling, multipliers, exceptionalContractAddresses, arbitrated } = this.props;
 
     const winner = BigNumber(multipliers.winnerStakeMultiplier);
     const loser = BigNumber(multipliers.loserStakeMultiplier);
 
     const divisor = BigNumber(multipliers.denominator);
 
-    if (currentRuling == rulingOption) {
+    if (currentRuling == rulingOption || (exceptionalContractAddresses.includes(arbitrated) && currentRuling == 0)) {
+      console.log(`ROI ratio for ruling option ${rulingOption}`)
       return winner.plus(loser).plus(divisor).div(winner.plus(divisor));
     } else {
       return winner.plus(loser).plus(divisor).div(loser.plus(divisor));
@@ -96,11 +109,11 @@ class DisputeDetails extends React.Component {
   };
 
   calculateAppealPeriod = (rulingOption) => {
-    const { currentRuling, multipliers, appealPeriod } = this.props;
+    const { currentRuling, multipliers, appealPeriod, exceptionalContractAddresses, arbitrated } = this.props;
     const loser = multipliers.loserAppealPeriodMultiplier;
     const divisor = multipliers.denominator;
 
-    if (currentRuling == rulingOption) return appealPeriod.end;
+    if (currentRuling == rulingOption || (exceptionalContractAddresses.includes(arbitrated) && currentRuling == 0)) return appealPeriod.end;
     else return parseInt(appealPeriod.start) + ((parseInt(appealPeriod.end) - parseInt(appealPeriod.start)) * parseInt(loser)) / divisor;
   };
 
@@ -134,6 +147,7 @@ class DisputeDetails extends React.Component {
 
   render() {
     const {
+      arbitrated,
       metaevidenceJSON,
       evidences,
       arbitratorDisputeID,
@@ -153,6 +167,7 @@ class DisputeDetails extends React.Component {
       rulingFunded,
       multipliers,
       totalWithdrawable,
+      exceptionalContractAddresses
     } = this.props;
     const { activeKey } = this.state;
 
@@ -223,7 +238,7 @@ class DisputeDetails extends React.Component {
             }}
           >
             <Card>
-              {arbitratorDispute && arbitratorDispute.period >= 3 && contributions && multipliers && appealCost && appealPeriod && (
+              {arbitratorDispute && arbitratorDispute.period >= 3 && contributions && multipliers && appealCost && appealPeriod && arbitrated &&  (
                 <>
                   <Accordion.Toggle className={activeKey == 1 ? "open" : "closed"} as={Card.Header} eventKey="1">
                     Appeal
@@ -251,7 +266,7 @@ class DisputeDetails extends React.Component {
 
                       {arbitratorDispute.period == 3 && (
                         <Row className="mt-3">
-                          <Col className="pb-4" xl={8} lg={12} xs={24}>
+                          {!exceptionalContractAddresses.includes(arbitrated) && <Col className="pb-4" xl={8} lg={12} xs={24}>
                             <CrowdfundingCard
                               key={0}
                               title={"Invalid / Refused to Arbitrate / Tied"}
@@ -263,19 +278,19 @@ class DisputeDetails extends React.Component {
                               appealCallback={appealCallback}
                               rulingOptionCode={0}
                             />
-                          </Col>
+                          </Col>}
                           {metaevidenceJSON.rulingOptions &&
                             metaevidenceJSON.rulingOptions.reserved &&
                             Object.entries(metaevidenceJSON.rulingOptions.reserved).map(([rulingCode, title]) => (
-                              <Col key={web3.utils.hexToNumberString(rulingCode)} className="pb-4" xl={8} lg={12} xs={24}>
+                              <Col key={hexToNumberString(rulingCode)} className="pb-4" xl={8} lg={12} xs={24}>
                                 <CrowdfundingCard
-                                  key={web3.utils.hexToNumberString(rulingCode)}
+                                  key={hexToNumberString(rulingCode)}
                                   title={title}
-                                  winner={currentRuling == web3.utils.hexToNumberString(rulingCode)}
-                                  fundingPercentage={contributions.hasOwnProperty(web3.utils.hexToNumberString(rulingCode)) ? BigNumber(contributions[web3.utils.hexToNumberString(rulingCode)]).div(this.calculateTotalCost(web3.utils.hexToNumberString(rulingCode))).times(100).toFixed(2) : 0}
-                                  appealPeriodEnd={this.calculateAppealPeriod(web3.utils.hexToNumberString(rulingCode))}
-                                  suggestedContribution={this.calculateAmountRemainsToBeRaised(web3.utils.hexToNumberString(rulingCode)).div(DECIMALS).toString()}
-                                  roi={this.calculateReturnOfInvestmentRatio(web3.utils.hexToNumberString(rulingCode)).toFixed(2)}
+                                  winner={currentRuling == hexToNumberString(rulingCode)}
+                                  fundingPercentage={contributions.hasOwnProperty(hexToNumberString(rulingCode)) ? BigNumber(contributions[hexToNumberString(rulingCode)]).div(this.calculateTotalCost(hexToNumberString(rulingCode))).times(100).toFixed(2) : 0}
+                                  appealPeriodEnd={this.calculateAppealPeriod(hexToNumberString(rulingCode))}
+                                  suggestedContribution={this.calculateAmountRemainsToBeRaised(hexToNumberString(rulingCode)).div(DECIMALS).toString()}
+                                  roi={this.calculateReturnOfInvestmentRatio(hexToNumberString(rulingCode)).toFixed(2)}
                                   appealCallback={appealCallback}
                                   rulingOptionCode={rulingCode}
                                 />
@@ -367,16 +382,16 @@ class DisputeDetails extends React.Component {
                             <Col className="pb-4" xl={8} lg={12} xs={24}>
                               <CrowdfundingCard
                                 title={`${this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`}
-                                rulingOptionCode={this.props.currentRuling}
+                                rulingOptionCode={currentRuling}
                                 winner={true}
                                 fundingPercentage={
-                                  contributions.hasOwnProperty(this.props.currentRuling)
-                                    ? BigNumber(contributions[this.props.currentRuling]).div(this.calculateTotalCost(this.props.currentRuling)).times(100).toFixed(2)
+                                  contributions.hasOwnProperty(currentRuling)
+                                    ? BigNumber(contributions[currentRuling]).div(this.calculateTotalCost(currentRuling)).times(100).toFixed(2)
                                     : 0
                                 }
-                                appealPeriodEnd={this.calculateAppealPeriod(this.props.currentRuling)}
-                                roi={this.calculateReturnOfInvestmentRatio(this.props.currentRuling).toFixed(2)}
-                                suggestedContribution={this.calculateAmountRemainsToBeRaised(this.props.currentRuling).div(DECIMALS).toString()}
+                                appealPeriodEnd={this.calculateAppealPeriod(currentRuling)}
+                                roi={this.calculateReturnOfInvestmentRatio(currentRuling).toFixed(2)}
+                                suggestedContribution={this.calculateAmountRemainsToBeRaised(currentRuling).div(DECIMALS).toString()}
                                 appealCallback={appealCallback}
                                 metaevidenceJSON={metaevidenceJSON}
                               />

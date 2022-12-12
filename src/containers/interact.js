@@ -346,6 +346,7 @@ class Interact extends React.Component {
               multipliers={multipliers}
               withdrawCallback={this.withdraw}
               totalWithdrawable={totalWithdrawable}
+              exceptionalContractAddresses={this.props.exceptionalContractAddresses}
             />
           </main>
         )}
