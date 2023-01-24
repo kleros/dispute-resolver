@@ -125,7 +125,7 @@ class CreateForm extends React.Component {
   };
 
   onControlChange = async (e) => {
-    this.setState({[e.target.id]: e.target.value});
+    await this.setState({[e.target.id]: e.target.value});
 
     this.calculateArbitrationCost(this.state.selectedSubcourt, this.state.initialNumberOfJurors);
   };
