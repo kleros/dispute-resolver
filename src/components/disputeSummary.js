@@ -4,6 +4,7 @@ import {ReactComponent as AttachmentSVG} from "../assets/images/attachment.svg";
 import {getReadOnlyRpcUrl} from "../ethereum/network-contract-mapping";
 
 import styles from "components/styles/disputeSummary.module.css";
+import ReactMarkdown from "react-markdown";
 
 class DisputeSummary extends React.Component {
   constructor(props) {
@@ -52,7 +53,7 @@ class DisputeSummary extends React.Component {
             <p className={styles.interactWithTheDispute}>Interact with the dispute</p>
             <h1 className={styles.h1}>{metaevidenceJSON.title}</h1>
             <hr/>
-            <p className={styles.description}>{metaevidenceJSON.description}</p>
+              <ReactMarkdown  className={styles.description} source={metaevidenceJSON.description} />
 
             {metaevidenceJSON.evidenceDisplayInterfaceURI && (
               <iframe

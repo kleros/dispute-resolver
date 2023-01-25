@@ -6,6 +6,11 @@
   margin-bottom: var(--spacing-32);
 }
 
+.disputeSummary .description hr {
+  background-color: unset;
+}
+
+
 .disputeSummary .footer {
   text-align: center;
   background-color: var(--purple-light);
