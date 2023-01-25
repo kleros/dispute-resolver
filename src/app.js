@@ -239,7 +239,7 @@ class App extends React.Component {
   getMetaEvidenceParallelizeable = (arbitrableAddress, arbitratorDisputeID) => {
     if(localStorage.getItem(arbitratorDisputeID.toString())){
       console.log(`Found ${arbitratorDisputeID} skipping fetch.`)
-      return localStorage.getItem(arbitratorDisputeID.toString())
+      return JSON.parse(localStorage.getItem(arbitratorDisputeID.toString()))
     }
     return this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
@@ -252,9 +252,10 @@ class App extends React.Component {
       )
       .then((metaevidence) => {
         if (metaevidence.length > 0) {
-          const payload = fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence).then((response) => response.json());
-          localStorage.setItem(arbitratorDisputeID.toString(), payload);
-          return payload;
+          fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence).then((response) => response.json()).then(function (payload){
+            localStorage.setItem(arbitratorDisputeID.toString(), JSON.stringify(payload));
+            return payload;
+          });
         }
       })};
 
