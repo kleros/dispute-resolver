@@ -236,8 +236,12 @@ class App extends React.Component {
     );
 
   //Using Archon, parallel calls occasionally fail.
-  getMetaEvidenceParallelizeable = (arbitrableAddress, arbitratorDisputeID) =>
-    this.state.archon.arbitrable
+  getMetaEvidenceParallelizeable = (arbitrableAddress, arbitratorDisputeID) => {
+    if(localStorage.getItem(arbitratorDisputeID.toString())){
+      console.log(`Found ${arbitratorDisputeID} skipping fetch.`)
+      return localStorage.getItem(arbitratorDisputeID.toString())
+    }
+    return this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
       .then((response) =>
         EthereumInterface.contractInstance("IEvidence", arbitrableAddress).getPastEvents("MetaEvidence", {
@@ -248,9 +252,11 @@ class App extends React.Component {
       )
       .then((metaevidence) => {
         if (metaevidence.length > 0) {
-          return fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence).then((response) => response.json());
+          const payload = fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence).then((response) => response.json());
+          localStorage.setItem(arbitratorDisputeID.toString(), payload);
+          return payload;
         }
-      });
+      })};
 
   getEvidences = (arbitrableAddress, arbitratorDisputeID) => {
     return this.state.archon.arbitrable
