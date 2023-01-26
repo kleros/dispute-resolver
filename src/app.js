@@ -50,6 +50,7 @@ class App extends React.Component {
       });
 
       window.ethereum.on("chainChanged", async (network) => {
+
         await this.setState({ network });
         if(networkMap[network].KLEROS_LIQUID)
         this.loadSubcourtData();
@@ -60,12 +61,15 @@ class App extends React.Component {
   }
 
   loadSubcourtData = async () => {
-    if((new Date().getTime() < CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS + parseInt(localStorage.getItem('lastModified'))) && localStorage.getItem('subcourts') && localStorage.getItem('subcourtDetails')){
+    const {network} = this.state
+
+    if((new Date().getTime() < CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS + parseInt(localStorage.getItem(`${network}LastModified`)))
+      && localStorage.getItem(`${network}Subcourts`) && localStorage.getItem(`${network}SubcourtDetails`)){
       console.log("Found subcourts in cache, skipping fetch.")
-      console.log(`Cache will be invalidated at: ${new Date(parseInt(localStorage.getItem('lastModified'))+CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS).toUTCString()}`)
+      console.log(`Cache will be invalidated at: ${new Date(parseInt(localStorage.getItem(`${network}LastModified`))+CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS).toUTCString()}`)
       await this.setState({
-        subcourts: JSON.parse(localStorage.getItem('subcourts')),
-        subcourtDetails: JSON.parse(localStorage.getItem('subcourtDetails')),
+        subcourts: JSON.parse(localStorage.getItem(`${network}Subcourts`)),
+        subcourtDetails: JSON.parse(localStorage.getItem(`${network}SubcourtDetails`)),
         subcourtsLoading: false
       })
 
@@ -111,9 +115,9 @@ class App extends React.Component {
       subcourts: await Promise.all(subcourts),
     });
 
-    localStorage.setItem('subcourts', JSON.stringify(this.state.subcourts))
-    localStorage.setItem('subcourtDetails', JSON.stringify(this.state.subcourtDetails))
-    localStorage.setItem('lastModified', new Date().getTime())
+    localStorage.setItem(`${network}Subcourts`, JSON.stringify(this.state.subcourts))
+    localStorage.setItem(`${network}SubcourtDetails`, JSON.stringify(this.state.subcourtDetails))
+    localStorage.setItem(`${network}LastModified`, new Date().getTime())
   };
 
   getOpenDisputesOnCourt = async () => {
@@ -150,18 +154,7 @@ class App extends React.Component {
   getSubCourtDetails = async (subcourtID) => EthereumInterface.call("PolicyRegistry", networkMap[this.state.network].POLICY_REGISTRY, "policies", subcourtID);
 
   getArbitratorDispute = async (arbitratorDisputeID) => {
-
-    if((new Date().getTime() < CACHE_INVALIDATION_PERIOD_FOR_DISPUTES_MS + parseInt(localStorage.getItem(`dispute${arbitratorDisputeID}LastModified`)))
-      && localStorage.getItem(`dispute${arbitratorDisputeID}`))
-    {
-      console.log(`Found arbitrator dispute ${arbitratorDisputeID}, skipping fetch.`)
-      return JSON.parse(localStorage.getItem(`dispute${arbitratorDisputeID}`))
-    }
-
     const arbitratorDispute = await EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "disputes", arbitratorDisputeID);
-    localStorage.setItem(`dispute${arbitratorDisputeID}`, JSON.stringify(arbitratorDispute))
-    localStorage.setItem(`dispute${arbitratorDisputeID}LastModified`,  new Date().getTime())
-
     return arbitratorDispute
   }
 
@@ -256,9 +249,11 @@ class App extends React.Component {
 
   //Using Archon, parallel calls occasionally fail.
   getMetaEvidenceParallelizeable = (arbitrableAddress, arbitratorDisputeID) => {
-    if(localStorage.getItem(arbitratorDisputeID.toString())){
+    const {network} = this.state;
+
+    if(localStorage.getItem(`${network}${arbitratorDisputeID.toString()}`)){
       console.log(`Found metaevidence of ${arbitratorDisputeID} skipping fetch.`)
-      return JSON.parse(localStorage.getItem(arbitratorDisputeID.toString()))
+      return JSON.parse(localStorage.getItem(`${network}${arbitratorDisputeID.toString()}`))
     }
     console.log(`Fetching ${arbitratorDisputeID}...`)
 
@@ -275,7 +270,7 @@ class App extends React.Component {
         if (metaevidence.length > 0) {
           fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence).then((response) => response.json()).then((payload) => {
             console.log(`caching ${arbitratorDisputeID}`)
-            localStorage.setItem(arbitratorDisputeID.toString(), JSON.stringify(payload));
+            localStorage.setItem(`${network}${arbitratorDisputeID.toString()}`, JSON.stringify(payload));
             return payload;
           });
         }
