@@ -150,7 +150,7 @@ class App extends React.Component {
 
   getArbitratorDispute = async (arbitratorDisputeID) => {
 
-    if(localStorage.getItem(`dispute${arbitratorDisputeID}`)) {
+    if((new Date().getTime() < 10000 + parseInt(localStorage.getItem('lastModified'))) && localStorage.getItem(`dispute${arbitratorDisputeID}`)) {
       console.log(`Found arbitrator dispute ${arbitratorDisputeID}`)
       return JSON.parse(localStorage.getItem(`dispute${arbitratorDisputeID}`))
     }
