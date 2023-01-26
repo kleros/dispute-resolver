@@ -1,3 +1,4 @@
+import {createAlchemyWeb3} from "@alch/alchemy-web3"
 import Web3 from "web3";
 
 let web3;
@@ -31,7 +32,7 @@ if (typeof window !== "undefined" && typeof window.web3 !== "undefined") {
 } else if (process.env.REACT_APP_WEB3_PROVIDER_URL) {
   // Fallback provider.
   console.info("Using fallback provider");
-  web3 = new Web3(new Web3.providers.HttpProvider(process.env.REACT_APP_WEB3_PROVIDER_URL));
+  web3 = new createAlchemyWeb3(process.env.REACT_APP_WEB3_PROVIDER_URL, {retryJitter: 2000, retryInterval: 2000});
 }
 
 export default web3;

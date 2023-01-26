@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "private": false,
   "dependencies": {
+    "@alch/alchemy-web3": "^1.4.7",
     "@babel/helper-call-delegate": "^7.12.1",
     "@kleros/arbitrable-proxy-contracts": "^5.0.0",
     "@kleros/archon": "^2.2.0",
