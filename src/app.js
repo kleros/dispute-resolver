@@ -18,7 +18,8 @@ const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 const IPFS_GATEWAY = "https://ipfs.kleros.io";
 const QUERY_FROM_BLOCK = 7303699; // For performance.
 const EXCEPTIONAL_CONTRACT_ADDRESSES =['0xe0e1bc8C6cd1B81993e2Fcfb80832d814886eA38', '0xb9f9B5eee2ad29098b9b3Ea0B401571F5dA4AD81']
-const CACHE_INVALIDATION_PERIOD_MS = 3*60*60*1000
+const CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS = 3*60*60*1000
+const CACHE_INVALIDATION_PERIOD_FOR_DISPUTES_MS = 1*60*1000
 
 
 class App extends React.Component {
@@ -59,9 +60,9 @@ class App extends React.Component {
   }
 
   loadSubcourtData = async () => {
-    if((new Date().getTime() < CACHE_INVALIDATION_PERIOD_MS + parseInt(localStorage.getItem('lastModified'))) && localStorage.getItem('subcourts') && localStorage.getItem('subcourtDetails')){
+    if((new Date().getTime() < CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS + parseInt(localStorage.getItem('lastModified'))) && localStorage.getItem('subcourts') && localStorage.getItem('subcourtDetails')){
       console.log("Found subcourts in cache, skipping fetch.")
-      console.log(`Cache will be invalidated at: ${new Date(parseInt(localStorage.getItem('lastModified'))+CACHE_INVALIDATION_PERIOD_MS).toUTCString()}`)
+      console.log(`Cache will be invalidated at: ${new Date(parseInt(localStorage.getItem('lastModified'))+CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS).toUTCString()}`)
       await this.setState({
         subcourts: JSON.parse(localStorage.getItem('subcourts')),
         subcourtDetails: JSON.parse(localStorage.getItem('subcourtDetails')),
@@ -150,13 +151,17 @@ class App extends React.Component {
 
   getArbitratorDispute = async (arbitratorDisputeID) => {
 
-    if((new Date().getTime() < 10000 + parseInt(localStorage.getItem('lastModified'))) && localStorage.getItem(`dispute${arbitratorDisputeID}`)) {
-      console.log(`Found arbitrator dispute ${arbitratorDisputeID}`)
+    if((new Date().getTime() < CACHE_INVALIDATION_PERIOD_FOR_DISPUTES_MS + parseInt(localStorage.getItem(`dispute${arbitratorDisputeID}LastModified`)))
+      && localStorage.getItem(`dispute${arbitratorDisputeID}`))
+    {
+      console.log(`Found arbitrator dispute ${arbitratorDisputeID}, skipping fetch.`)
       return JSON.parse(localStorage.getItem(`dispute${arbitratorDisputeID}`))
     }
-    const arbitratorDispute = await EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "disputes", arbitratorDisputeID);
 
+    const arbitratorDispute = await EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "disputes", arbitratorDisputeID);
     localStorage.setItem(`dispute${arbitratorDisputeID}`, JSON.stringify(arbitratorDispute))
+    localStorage.setItem(`dispute${arbitratorDisputeID}LastModified`,  new Date().getTime())
+
     return arbitratorDispute
   }
 
@@ -252,7 +257,7 @@ class App extends React.Component {
   //Using Archon, parallel calls occasionally fail.
   getMetaEvidenceParallelizeable = (arbitrableAddress, arbitratorDisputeID) => {
     if(localStorage.getItem(arbitratorDisputeID.toString())){
-      console.log(`Found ${arbitratorDisputeID} skipping fetch.`)
+      console.log(`Found metaevidence of ${arbitratorDisputeID} skipping fetch.`)
       return JSON.parse(localStorage.getItem(arbitratorDisputeID.toString()))
     }
     console.log(`Fetching ${arbitratorDisputeID}...`)
