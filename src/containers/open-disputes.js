@@ -43,7 +43,6 @@ class OpenDisputes extends React.Component {
             this.setState({ [arbitratorDispute]: this.props.getMetaEvidenceCallback(arbitratorDisputeDetails.arbitrated, arbitratorDispute) });
           });
 
-          this.props.getCurrentRulingCallback(arbitratorDispute).then((ruling) => this.setState({ ["arbitratorRuling" + arbitratorDispute]: ruling }));
         });
       this.setState({ loading: false });
     });

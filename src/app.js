@@ -8,6 +8,7 @@ import { BrowserRouter, Route, Switch, Redirect } from "react-router-dom";
 import Header from "./components/header";
 import Footer from "./components/footer";
 import Web3 from "./ethereum/web3";
+
 import * as EthereumInterface from "./ethereum/interface";
 import networkMap, { getReadOnlyRpcUrl } from "./ethereum/network-contract-mapping";
 import ipfsPublish from "./ipfs-publish";
@@ -35,8 +36,9 @@ class App extends React.Component {
   async componentDidMount() {
     if (Web3) {
       this.setState({ network: await Web3.eth.net.getId() });
+      console.log(Web3)
       this.setState({
-        archon: new Archon(Web3.currentProvider.host ? Web3.currentProvider.host : window.ethereum, IPFS_GATEWAY),
+        archon: new Archon(Web3.currentProvider ? Web3.currentProvider : window.ethereum, IPFS_GATEWAY),
       });
     }
 
@@ -116,14 +118,16 @@ class App extends React.Component {
   getOpenDisputesOnCourt = async () => {
     const contractInstance = EthereumInterface.contractInstance("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID);
 
-    const newPeriodEvents = await contractInstance.getPastEvents("NewPeriod", { fromBlock: QUERY_FROM_BLOCK, toBlock: "latest" });
-    const disputeCreationEvents = await contractInstance.getPastEvents("DisputeCreation", { fromBlock: QUERY_FROM_BLOCK, toBlock: "latest" });
+    const startingBlock = (await Web3.eth.getBlockNumber()) - 1_000_000
+
+    const newPeriodEvents = await contractInstance.getPastEvents("NewPeriod", { fromBlock: startingBlock, toBlock: "latest" });
+    const disputeCreationEvents = await contractInstance.getPastEvents("DisputeCreation", { fromBlock: startingBlock, toBlock: "latest" });
     const disputes = [...new Set(disputeCreationEvents.map((result) => result.returnValues._disputeID))];
     const resolvedDisputes = newPeriodEvents.filter((result) => result.returnValues._period == 4).map((result) => result.returnValues._disputeID);
 
     const openDisputes = disputes.filter((dispute) => !resolvedDisputes.includes(dispute));
 
-    return openDisputes;
+    return openDisputes
   };
 
   getArbitrableDisputeID = async (arbitrableAddress, arbitratorDisputeID) =>
@@ -144,7 +148,17 @@ class App extends React.Component {
 
   getSubCourtDetails = async (subcourtID) => EthereumInterface.call("PolicyRegistry", networkMap[this.state.network].POLICY_REGISTRY, "policies", subcourtID);
 
-  getArbitratorDispute = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "disputes", arbitratorDisputeID);
+  getArbitratorDispute = async (arbitratorDisputeID) => {
+
+    if(localStorage.getItem(`dispute${arbitratorDisputeID}`)) {
+      console.log(`Found arbitrator dispute ${arbitratorDisputeID}`)
+      return JSON.parse(localStorage.getItem(`dispute${arbitratorDisputeID}`))
+    }
+    const arbitratorDispute = await EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "disputes", arbitratorDisputeID);
+
+    localStorage.setItem(`dispute${arbitratorDisputeID}`, JSON.stringify(arbitratorDispute))
+    return arbitratorDispute
+  }
 
   getArbitratorDisputeDetails = async (arbitratorDisputeID) =>
     EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "getDispute", arbitratorDisputeID);
@@ -241,6 +255,8 @@ class App extends React.Component {
       console.log(`Found ${arbitratorDisputeID} skipping fetch.`)
       return JSON.parse(localStorage.getItem(arbitratorDisputeID.toString()))
     }
+    console.log(`Fetching ${arbitratorDisputeID}...`)
+
     return this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
       .then((response) =>
@@ -252,7 +268,8 @@ class App extends React.Component {
       )
       .then((metaevidence) => {
         if (metaevidence.length > 0) {
-          fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence).then((response) => response.json()).then(function (payload){
+          fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence).then((response) => response.json()).then((payload) => {
+            console.log(`caching ${arbitratorDisputeID}`)
             localStorage.setItem(arbitratorDisputeID.toString(), JSON.stringify(payload));
             return payload;
           });
