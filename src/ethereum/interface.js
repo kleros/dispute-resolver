@@ -12,6 +12,7 @@ import web3 from "./web3";
 const imports = {
   KlerosLiquid,
   IDisputeResolver: IDisputeResolver_v2_0_0,
+  IDisputeResolver_v1: IDisputeResolver_v1_0_2,
   ArbitrableProxy,
   IArbitrator,
   IArbitrable,

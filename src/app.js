@@ -348,7 +348,7 @@ class App extends React.Component {
     let amount = 0;
 
     try {
-      // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256 _ruling);
+      // targeting v2;
       let counter = 0;
       while (counter < contributedTo.length) {
         amount = await EthereumInterface.call(
@@ -364,9 +364,9 @@ class App extends React.Component {
       }
       return { amount: amount, ruling: contributedTo[counter] };
     } catch {
-      // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256[] memory _contributedTo);
+      // targeting v1
       amount = await EthereumInterface.call(
-        "IDisputeResolver",
+        "IDisputeResolver_v1",
         arbitrated,
         "getTotalWithdrawableAmount",
         arbitrableDisputeID,
