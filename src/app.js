@@ -168,7 +168,21 @@ class App extends React.Component {
 
   generateArbitratorExtraData = (subcourtID, noOfVotes) => `0x${parseInt(subcourtID, 10).toString(16).padStart(64, "0") + parseInt(noOfVotes, 10).toString(16).padStart(64, "0")}`;
 
-  withdrawFeesAndRewardsForAllRounds = (arbitrableAddress, arbitrableDisputeID, rulingOptionsContributedTo) =>
+  withdrawFeesAndRewardsForAllRounds = (arbitrableAddress, arbitrableDisputeID, rulingOptionsContributedTo, arbitrableContractAddress) =>
+  {
+
+    if(EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress))  return EthereumInterface.send(
+      "IDisputeResolver_v1",
+      arbitrableAddress,
+      this.state.activeAddress,
+      "0",
+      "withdrawFeesAndRewardsForAllRounds",
+      arbitrableDisputeID,
+      this.state.activeAddress,
+      rulingOptionsContributedTo
+    );
+
+    else return
     EthereumInterface.send(
       "IDisputeResolver",
       arbitrableAddress,
@@ -179,6 +193,8 @@ class App extends React.Component {
       this.state.activeAddress,
       rulingOptionsContributedTo
     );
+  }
+
 
   getAppealCost = async (arbitratorDisputeID) => EthereumInterface.call("IArbitrator", networkMap[this.state.network].KLEROS_LIQUID, "appealCost", arbitratorDisputeID, "0x0");
   getAppealCostOnArbitrable = async (arbitrableDisputeID, ruling) =>
@@ -374,7 +390,7 @@ class App extends React.Component {
         contributedTo
       );
 
-      return { amount: amount, ruling: 0 };
+      return { amount: amount, ruling: contributedTo };
     }
   };
 
