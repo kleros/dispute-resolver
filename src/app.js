@@ -182,8 +182,7 @@ class App extends React.Component {
       rulingOptionsContributedTo
     );
 
-    else return
-    EthereumInterface.send(
+    else return EthereumInterface.send(
       "IDisputeResolver",
       arbitrableAddress,
       this.state.activeAddress,
