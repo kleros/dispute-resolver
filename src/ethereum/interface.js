@@ -4,13 +4,15 @@ import IArbitrable from "../../node_modules/@kleros/arbitrable-proxy-contracts/b
 import IEvidence from "../../node_modules/@kleros/arbitrable-proxy-contracts/build/contracts/IEvidence.json";
 import PolicyRegistry from "../../node_modules/@kleros/kleros/build/contracts/PolicyRegistry.json";
 import ArbitrableProxy from "../../node_modules/@kleros/arbitrable-proxy-contracts/build/contracts/ArbitrableProxy.json";
-import IDisputeResolver from "../../node_modules/@kleros/arbitrable-proxy-contracts/build/contracts/IDisputeResolver.json";
+import IDisputeResolver_v2_0_0 from "../../node_modules/IDRv2/build/contracts/IDisputeResolver.json";
+import IDisputeResolver_v1_0_2 from "../../node_modules/IDRv1/build/contracts/IDisputeResolver.json";
 
 import web3 from "./web3";
 
 const imports = {
   KlerosLiquid,
-  IDisputeResolver,
+  IDisputeResolver: IDisputeResolver_v2_0_0,
+  IDisputeResolver_v1: IDisputeResolver_v1_0_2,
   ArbitrableProxy,
   IArbitrator,
   IArbitrable,

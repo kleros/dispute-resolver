@@ -69,13 +69,13 @@ class Interact extends React.Component {
   appeal = async (party, contribution) =>  this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);
 
   withdraw = async () => {
-    console.debug([Object.keys(this.state.contributions).map((key) => parseInt(key))]);
+    console.debug(`Withdrawing these rulings: ${[Object.keys(this.state.contributions).map((key) => parseInt(key))]}`);
     try {
       // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256 _ruling);
-      this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution);
+      this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);
     } catch {
       // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256[] memory _contributedTo);
-      this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, [this.state.selectedContribution]);
+      this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);
     }
   };
   
@@ -220,8 +220,10 @@ class Interact extends React.Component {
 
   reload = async () => {
     const { arbitrated, arbitratorDisputeID, arbitrableDisputeID } = this.state;
+
+    const arbitratorDispute = await this.props.getArbitratorDisputeCallback(arbitratorDisputeID);
     this.setState({
-      arbitratorDispute: await this.props.getArbitratorDisputeCallback(arbitratorDisputeID),
+      arbitratorDispute: await arbitratorDispute,
       evidences: await this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
       appealDecisions: await this.props.getAppealDecisionCallback(arbitratorDisputeID),
       arbitratorDisputeDetails: await this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
@@ -256,7 +258,6 @@ class Interact extends React.Component {
       loading,
     } = this.state;
 
-    console.log(metaevidence)
 
     const {
       arbitratorAddress,
