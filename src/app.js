@@ -335,7 +335,7 @@ class App extends React.Component {
   };
 
   render() {
-    const {activeAddress, network, lastDisputeID, subcourts, subcourtDetails, subcourtsLoading, network} = this.state;
+    const {activeAddress, network, lastDisputeID, subcourts, subcourtDetails, subcourtsLoading} = this.state;
 
     if (network) {
       if (!networkMap[network]) {
