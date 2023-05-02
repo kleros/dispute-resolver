@@ -339,111 +339,117 @@ class App extends React.Component {
 
     if (network) {
       if (!networkMap[network]) {
-        return (<UnsupportedNetwork/>)
+        return (
+          <>
+            <Header viewOnly={!activeAddress} route={route}/>
+            <UnsupportedNetwork/>
+            <Footer networkMap={networkMap} network={network}/>
+          </>
+        )
       }
       return (<BrowserRouter>
-          <Switch>
-            <Route exact path="(/disputes/)" render={() => <Redirect to={`/ongoing/`}/>}/>
-            <Route
-              exact
-              path="(/|/ongoing/|)"
-              render={(route) => (<>
-                  <Header viewOnly={!activeAddress} route={route}/>
-                  <OpenDisputes
-                    activeAddress={activeAddress}
-                    route={route}
-                    getMetaEvidenceCallback={this.getMetaEvidenceParallelizeable}
-                    getArbitratorDisputeCallback={this.getArbitratorDispute}
-                    subcourtDetails={subcourtDetails}
-                    subcourts={subcourts}
-                    getCurrentRulingCallback={this.getCurrentRuling}
-                    getOpenDisputesOnCourtCallback={this.getOpenDisputesOnCourt}
-                    network={network}
-                  />
-                  <Footer networkMap={networkMap} network={network}/>
-                </>)}
-            />
+        <Switch>
+          <Route exact path="(/disputes/)" render={() => <Redirect to={`/ongoing/`}/>}/>
+          <Route
+            exact
+            path="(/|/ongoing/|)"
+            render={(route) => (<>
+              <Header viewOnly={!activeAddress} route={route}/>
+              <OpenDisputes
+                activeAddress={activeAddress}
+                route={route}
+                getMetaEvidenceCallback={this.getMetaEvidenceParallelizeable}
+                getArbitratorDisputeCallback={this.getArbitratorDispute}
+                subcourtDetails={subcourtDetails}
+                subcourts={subcourts}
+                getCurrentRulingCallback={this.getCurrentRuling}
+                getOpenDisputesOnCourtCallback={this.getOpenDisputesOnCourt}
+                network={network}
+              />
+              <Footer networkMap={networkMap} network={network}/>
+            </>)}
+          />
 
-            <Route
-              exact
-              path="(/create/)"
-              render={(route) => (<>
-                  <Header viewOnly={!activeAddress} route={route}/>
-                  <Create
-                    activeAddress={activeAddress}
-                    route={route}
-                    createDisputeCallback={this.createDispute}
-                    getArbitrationCostCallback={this.getArbitrationCostWithCourtAndNoOfJurors}
-                    publishCallback={this.onPublish}
-                    web3={Web3}
-                    subcourtDetails={subcourtDetails}
-                    subcourtsLoading={subcourtsLoading}
-                    network={network}
-                  />
-                  <Footer networkMap={networkMap} network={network}/>
-                </>)}
-            />
+          <Route
+            exact
+            path="(/create/)"
+            render={(route) => (<>
+              <Header viewOnly={!activeAddress} route={route}/>
+              <Create
+                activeAddress={activeAddress}
+                route={route}
+                createDisputeCallback={this.createDispute}
+                getArbitrationCostCallback={this.getArbitrationCostWithCourtAndNoOfJurors}
+                publishCallback={this.onPublish}
+                web3={Web3}
+                subcourtDetails={subcourtDetails}
+                subcourtsLoading={subcourtsLoading}
+                network={network}
+              />
+              <Footer networkMap={networkMap} network={network}/>
+            </>)}
+          />
 
-            <Redirect from="/interact/:id" to="/cases/:id"/>
-            <Route
-              exact
-              path="/cases/:id?"
-              render={(route) => (<>
-                  <Header viewOnly={!activeAddress} route={route}/>
+          <Redirect from="/interact/:id" to="/cases/:id"/>
+          <Route
+            exact
+            path="/cases/:id?"
+            render={(route) => (<>
+              <Header viewOnly={!activeAddress} route={route}/>
 
-                  <Interact
-                    arbitratorAddress={networkMap[network].KLEROS_LIQUID}
-                    network={network}
-                    route={route}
-                    getArbitrableDisputeIDCallback={this.getArbitrableDisputeID}
-                    getAppealCostCallback={this.getAppealCost}
-                    getAppealCostOnArbitrableCallback={this.getAppealCostOnArbitrable}
-                    appealCallback={this.appeal}
-                    getAppealPeriodCallback={this.getAppealPeriod}
-                    getCurrentRulingCallback={this.getCurrentRuling}
-                    disputeID={lastDisputeID}
-                    getContractInstanceCallback={this.getContractInstance}
-                    getArbitratorDisputeCallback={this.getArbitratorDispute}
-                    getArbitratorDisputeDetailsCallback={this.getArbitratorDisputeDetails}
-                    getArbitratorDisputeStructCallback={this.getArbitratorDispute}
-                    getArbitrableDisputeStructCallback={this.getArbitrableDispute}
-                    getCrowdfundingStatusCallback={this.getCrowdfundingStatus}
-                    getRulingCallback={this.getRuling}
-                    getEvidencesCallback={this.getEvidences}
-                    getMetaEvidenceCallback={this.getMetaEvidence}
-                    publishCallback={this.onPublish}
-                    submitEvidenceCallback={this.submitEvidence}
-                    getDisputeCallback={this.getDispute}
-                    getDisputeEventCallback={this.getDisputeEvent}
-                    getMultipliersCallback={this.getMultipliers}
-                    withdrawCallback={this.withdrawFeesAndRewardsForAllRounds}
-                    getTotalWithdrawableAmountCallback={this.getTotalWithdrawableAmount}
-                    activeAddress={activeAddress}
-                    passPeriodCallback={this.passPeriod}
-                    drawJurorsCallback={this.drawJurors}
-                    passPhaseCallback={this.passPhase}
-                    getRoundInfoCallback={this.getRoundInfo}
-                    getAppealDecisionCallback={this.getAppealDecision}
-                    getContributionsCallback={this.getContributions}
-                    getRulingFundedCallback={this.getRulingFunded}
-                    subcourts={subcourts}
-                    subcourtDetails={subcourtDetails}
-                    web3Provider={networkMap[network].WEB3_PROVIDER}
-                    exceptionalContractAddresses={EXCEPTIONAL_CONTRACT_ADDRESSES}
-                  />
-                  <Footer networkMap={networkMap} network={network}/>
-                </>)}
-            />
-            <Route
-              render={(route) => (<>
-                  <Header viewOnly={!activeAddress} route={route}/>
+              <Interact
+                arbitratorAddress={networkMap[network].KLEROS_LIQUID}
+                network={network}
+                route={route}
+                getArbitrableDisputeIDCallback={this.getArbitrableDisputeID}
+                getAppealCostCallback={this.getAppealCost}
+                getAppealCostOnArbitrableCallback={this.getAppealCostOnArbitrable}
+                appealCallback={this.appeal}
+                getAppealPeriodCallback={this.getAppealPeriod}
+                getCurrentRulingCallback={this.getCurrentRuling}
+                disputeID={lastDisputeID}
+                getContractInstanceCallback={this.getContractInstance}
+                getArbitratorDisputeCallback={this.getArbitratorDispute}
+                getArbitratorDisputeDetailsCallback={this.getArbitratorDisputeDetails}
+                getArbitratorDisputeStructCallback={this.getArbitratorDispute}
+                getArbitrableDisputeStructCallback={this.getArbitrableDispute}
+                getCrowdfundingStatusCallback={this.getCrowdfundingStatus}
+                getRulingCallback={this.getRuling}
+                getEvidencesCallback={this.getEvidences}
+                getMetaEvidenceCallback={this.getMetaEvidence}
+                publishCallback={this.onPublish}
+                submitEvidenceCallback={this.submitEvidence}
+                getDisputeCallback={this.getDispute}
+                getDisputeEventCallback={this.getDisputeEvent}
+                getMultipliersCallback={this.getMultipliers}
+                withdrawCallback={this.withdrawFeesAndRewardsForAllRounds}
+                getTotalWithdrawableAmountCallback={this.getTotalWithdrawableAmount}
+                activeAddress={activeAddress}
+                passPeriodCallback={this.passPeriod}
+                drawJurorsCallback={this.drawJurors}
+                passPhaseCallback={this.passPhase}
+                getRoundInfoCallback={this.getRoundInfo}
+                getAppealDecisionCallback={this.getAppealDecision}
+                getContributionsCallback={this.getContributions}
+                getRulingFundedCallback={this.getRulingFunded}
+                subcourts={subcourts}
+                subcourtDetails={subcourtDetails}
+                web3Provider={networkMap[network].WEB3_PROVIDER}
+                exceptionalContractAddresses={EXCEPTIONAL_CONTRACT_ADDRESSES}
+              />
+              <Footer networkMap={networkMap} network={network}/>
+            </>)}
+          />
+          <Route
+            render={(route) => (<>
+              <Header viewOnly={!activeAddress} route={route}/>
 
-                  <_404/>
-                  <Footer networkMap={networkMap} network={network}/>
-                </>)}
-            />
-          </Switch>
-        </BrowserRouter>)
+              <_404/>
+              <Footer networkMap={networkMap} network={network}/>
+            </>)}
+          />
+        </Switch>
+      </BrowserRouter>)
     } else return <>Please enable a web3 provider.</>;
   }
 }
