@@ -342,7 +342,7 @@ class App extends React.Component {
         return (<BrowserRouter>
             <Route render={route => (<>
               <Header viewOnly={!activeAddress} route={route}/>
-              <UnsupportedNetwork/>
+              <UnsupportedNetwork network={network} networkMap={networkMap}/>
               <Footer networkMap={networkMap} network={network}/>
             </>)}>
             </Route>
