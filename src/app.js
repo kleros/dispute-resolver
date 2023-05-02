@@ -417,9 +417,9 @@ class App extends React.Component {
   };
 
   render() {
-    const { activeAddress, network, lastDisputeID, subcourts, subcourtDetails, subcourtsLoading } = this.state;
+    const { activeAddress, network, lastDisputeID, subcourts, subcourtDetails, subcourtsLoading, network } = this.state;
 
-    if (this.state.network)
+    if (network)
     {
       return (
         <BrowserRouter>
@@ -440,9 +440,9 @@ class App extends React.Component {
                     subcourts={subcourts}
                     getCurrentRulingCallback={this.getCurrentRuling}
                     getOpenDisputesOnCourtCallback={this.getOpenDisputesOnCourt}
-                    network={this.state.network}
+                    network={network}
                   />
-                  <Footer networkMap={networkMap} network={this.state.network} />
+                  <Footer networkMap={networkMap} network={network} />
                 </>
               )}
             />
@@ -462,9 +462,9 @@ class App extends React.Component {
                     web3={Web3}
                     subcourtDetails={subcourtDetails}
                     subcourtsLoading={subcourtsLoading}
-                    network={this.state.network}
+                    network={network}
                   />
-                  <Footer networkMap={networkMap} network={this.state.network} />
+                  <Footer networkMap={networkMap} network={network} />
                 </>
               )}
             />
@@ -517,7 +517,7 @@ class App extends React.Component {
                     web3Provider={networkMap[network].WEB3_PROVIDER}
                     exceptionalContractAddresses={EXCEPTIONAL_CONTRACT_ADDRESSES}
                   />
-                  <Footer networkMap={networkMap} network={this.state.network} />
+                  <Footer networkMap={networkMap} network={network} />
                 </>
               )}
             />
@@ -527,7 +527,7 @@ class App extends React.Component {
                   <Header viewOnly={!activeAddress} route={route} />
 
                   <_404 />
-                  <Footer networkMap={networkMap} network={this.state.network} />
+                  <Footer networkMap={networkMap} network={network} />
                 </>
               )}
             />
@@ -535,7 +535,7 @@ class App extends React.Component {
         </BrowserRouter>
       )
     }
-    else if(!networkMap[this.state.network]) {
+    else if(!networkMap[network]) {
       return (<UnsupportedNetwork/>)
     }
     else return <>Please enable a web3 provider.</>;
