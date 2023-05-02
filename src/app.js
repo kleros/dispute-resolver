@@ -35,7 +35,6 @@ class App extends React.Component {
   async componentDidMount() {
     if (Web3) {
       this.setState({network: await Web3.eth.net.getId()});
-      console.log(Web3)
       this.setState({
         archon: new Archon(Web3.currentProvider ? Web3.currentProvider : window.ethereum, IPFS_GATEWAY),
       });
@@ -48,20 +47,17 @@ class App extends React.Component {
       });
 
       window.ethereum.on("chainChanged", async (network) => {
-
-        await this.setState({network});
-        if (networkMap[network].KLEROS_LIQUID) this.loadSubcourtData();
+        await this.setState({network: parseInt(network).toString(10)});
+        if (networkMap[network]?.KLEROS_LIQUID) this.loadSubcourtData();
       });
     } else console.error("MetaMask not detected :(");
-    if (networkMap[this.state.network].KLEROS_LIQUID) this.loadSubcourtData();
+    if (networkMap[this.state.network]?.KLEROS_LIQUID) this.loadSubcourtData();
   }
 
   loadSubcourtData = async () => {
     const {network} = this.state
 
     if ((new Date().getTime() < CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS + parseInt(localStorage.getItem(`${network}LastModified`))) && localStorage.getItem(`${network}Subcourts`) && localStorage.getItem(`${network}SubcourtDetails`)) {
-      console.log("Found subcourts in cache, skipping fetch.")
-      console.log(`Cache will be invalidated at: ${new Date(parseInt(localStorage.getItem(`${network}LastModified`)) + CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS).toUTCString()}`)
       await this.setState({
         subcourts: JSON.parse(localStorage.getItem(`${network}Subcourts`)),
         subcourtDetails: JSON.parse(localStorage.getItem(`${network}SubcourtDetails`)),
@@ -70,7 +66,6 @@ class App extends React.Component {
 
       return
     }
-    console.log("Unable to find subcourts in cache. Fetching...")
 
 
     let counter = 0, subcourts = [], subcourtURIs = [];
@@ -274,7 +269,6 @@ class App extends React.Component {
       contributionsForEachRuling[log.returnValues.ruling] = contributionsForEachRuling[log.returnValues.ruling] || 0;
       contributionsForEachRuling[log.returnValues.ruling] = parseInt(contributionsForEachRuling[log.returnValues.ruling]) + parseInt(log.returnValues._amount);
     });
-    console.log(contributionsForEachRuling);
     return contributionsForEachRuling;
   };
 
@@ -336,7 +330,6 @@ class App extends React.Component {
 
   render() {
     const {activeAddress, network, lastDisputeID, subcourts, subcourtDetails, subcourtsLoading} = this.state;
-
     if (network) {
       if (!networkMap[network]) {
         return (<BrowserRouter>
