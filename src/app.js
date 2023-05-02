@@ -339,12 +339,15 @@ class App extends React.Component {
 
     if (network) {
       if (!networkMap[network]) {
-        return (
-          <>
-            <Header viewOnly={!activeAddress}/>
-            <UnsupportedNetwork/>
-            <Footer networkMap={networkMap} network={network}/>
-          </>
+        return (<BrowserRouter>
+            <Route render={route => (<>
+              <Header viewOnly={!activeAddress} route={route}/>
+              <UnsupportedNetwork/>
+              <Footer networkMap={networkMap} network={network}/>
+            </>)}>
+            </Route>
+          </BrowserRouter>
+
         )
       }
       return (<BrowserRouter>
