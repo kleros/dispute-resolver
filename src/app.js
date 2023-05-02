@@ -13,6 +13,7 @@ import * as EthereumInterface from "./ethereum/interface";
 import networkMap, { getReadOnlyRpcUrl } from "./ethereum/network-contract-mapping";
 import ipfsPublish from "./ipfs-publish";
 import Archon from "@kleros/archon";
+import UnsupportedNetwork from "./components/unsupportedNetwork";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 const IPFS_GATEWAY = "https://ipfs.kleros.io";
@@ -419,6 +420,7 @@ class App extends React.Component {
     const { activeAddress, network, lastDisputeID, subcourts, subcourtDetails, subcourtsLoading } = this.state;
 
     if (this.state.network)
+    {
       return (
         <BrowserRouter>
           <Switch>
@@ -531,7 +533,11 @@ class App extends React.Component {
             />
           </Switch>
         </BrowserRouter>
-      );
+      )
+    }
+    else if(!networkMap[this.state.network]) {
+      return (<UnsupportedNetwork/>)
+    }
     else return <>Please enable a web3 provider.</>;
   }
 }
