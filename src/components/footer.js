@@ -32,7 +32,7 @@ class Footer extends React.Component {
             <SecuredByKleros />
           </a>
           <div className={`d-none d-lg-block ml-5`}>
-            <Col>{networkMap[network].NAME || "Unsupported Network"}</Col>
+            <Col>{networkMap[network]?.NAME || "Unsupported Network"}</Col>
           </div>
           <div className={`ml-sm-auto ${styles.rest}`}>
             <a className={`d-none d-sm-block ${styles.help}`} href="https://t.me/kleros">
@@ -42,7 +42,7 @@ class Footer extends React.Component {
             <div className={`d-none d-md-block ${styles.social}`}>
               {(network == 1 || network == 3 || network == 42) && (
                 <a
-                  href={`https://${ETHERSCAN_STRINGS[network]}etherscan.io/address/${this.props.networkMap[network].ARBITRABLE_PROXY}#code`}
+                  href={`https://${ETHERSCAN_STRINGS[network]}etherscan.io/address/${this.props.networkMap[network]?.ARBITRABLE_PROXY}#code`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
