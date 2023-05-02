@@ -7,7 +7,7 @@ class UnsupportedNetwork extends React.Component {
     const {network, networkMap} = this.props;
     return (
       <main>
-        <h1>Unsupported Network {parseInt(network, 16).toString(10)}</h1>
+        <h1>Unsupported Network {network}</h1>
         <p>Please switch over one of the following networks.</p>
         <ol>
           {Object.entries(networkMap).map(([key, value]) => (
