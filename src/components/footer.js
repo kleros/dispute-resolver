@@ -32,7 +32,7 @@ class Footer extends React.Component {
             <SecuredByKleros />
           </a>
           <div className={`d-none d-lg-block ml-5`}>
-            <Col>{networkMap[network].NAME || "Unsupported Network"}</Col>
+            <Col>{networkMap[network]?.NAME || "Unsupported Network"}</Col>
           </div>
           <div className={`ml-sm-auto ${styles.rest}`}>
             <a className={`d-none d-sm-block ${styles.help}`} href="https://t.me/kleros">
