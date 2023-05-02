@@ -10,7 +10,11 @@ class UnsupportedNetwork extends React.Component {
         <h1>Unsupported Network {network}</h1>
         <p>Please switch over one of the following networks.</p>
         <ol>
-          {Array.from(networkMap).entries().map((a, b, c) => (<li>{a} {b} {c}</li>))}
+          {Object.entries(networkMap).map(([key, value]) => (
+            <li key={key}>
+              {key} {value.NAME}
+            </li>
+          ))}
         </ol>
       </section>
     );
