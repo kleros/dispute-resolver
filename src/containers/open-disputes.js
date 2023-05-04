@@ -14,9 +14,9 @@ class OpenDisputes extends React.Component {
       this.debouncedFetch = debounce(this.fetch, 0, { leading: false, trailing: true });
   }
 
-  componentWillReceiveProps(props) {
-    const { subcourts, subcourtDetails } = this.props;
-    if (props.subcourts !== subcourts || props.subcourtDetails !== subcourtDetails) {
+  componentWillReceiveProps(nextProps) {
+    const { subcourts, subcourtDetails, network } = this.props;
+    if (nextProps.subcourts !== subcourts || nextProps.subcourtDetails !== subcourtDetails || nextProps.network !== network) {
       this.setState({ loading: true, openDisputeIDs: [], arbitratorDisputes: {} });
       if(networkMap[this.props.network].KLEROS_LIQUID){
         this.debouncedFetch.cancel();
