@@ -216,11 +216,14 @@ class App extends React.Component {
       }))
       .then((metaevidence) => {
         if (metaevidence.length > 0) {
-          fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence).then((response) => response.json()).then((payload) => {
-            console.log(`caching ${arbitratorDisputeID}`)
-            localStorage.setItem(`${network}${arbitratorDisputeID.toString()}`, JSON.stringify(payload));
-            return payload;
-          });
+            fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence).then((response) => response.json()).catch((error) => {
+              console.error(`Failed to fetch metaevidence of ${arbitratorDisputeID} at ${IPFS_GATEWAY + metaevidence[0].returnValues._evidence}`)
+            }).then((payload) => {
+              console.log(`caching ${arbitratorDisputeID}`)
+              localStorage.setItem(`${network}${arbitratorDisputeID.toString()}`, JSON.stringify(payload));
+              return payload;
+            });
+
         }
       })
   };
