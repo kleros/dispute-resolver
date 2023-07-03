@@ -9,7 +9,7 @@ const arbitrators = {
   77: "0xb701ff19fBD9702DD7Ca099Ee7D0D42a2612baB5",
   100: "0x9C1dA9A04925bDfDedf0f6421bC7EEa8305F9002",
   10200: "0xD8798DfaE8194D6B4CD6e2Da6187ae4209d06f27",
-  11155111: "0x90992fb4E15ce0C59aEFfb376460Fda4Ee19C879"
+  11155111: "0x90992fb4E15ce0C59aEFfb376460Fda4Ee19C879",
 };
 
 const map = {
@@ -20,24 +20,8 @@ const map = {
     POLICY_REGISTRY: "0xCf1f07713d5193FaE5c1653C9f61953D048BECe4",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_PROVIDER_URL,
     CURRENCY_SHORT: "ETH",
+    QUERY_FROM_BLOCK: 7303699,
   },
-  3: {
-    NAME: "Ethereum Testnet Ropsten",
-    KLEROS_LIQUID: arbitrators["3"],
-    ARBITRABLE_PROXY: ArbitrableProxy.networks[3].address,
-    POLICY_REGISTRY: "0xe4ee06e5c9921d7e4d4ab62199c8c4b5267a7547",
-    WEB3_PROVIDER: process.env.REACT_APP_WEB3_ROPSTEN_PROVIDER_URL,
-    CURRENCY_SHORT: "ETH",
-  },
-  4: {
-    NAME: "Ethereum Testnet Rinkeby",
-    KLEROS_LIQUID: arbitrators["4"],
-    ARBITRABLE_PROXY: "0xe83BCc07C57d2260102C189f780AF6a7bc34a83d",
-    POLICY_REGISTRY: "0xCd444af85127392cB84b8583a82e6aE6230Ec0b9",
-    WEB3_PROVIDER: process.env.REACT_APP_WEB3_RINKEBY_PROVIDER_URL,
-    CURRENCY_SHORT: "ETH",
-  },
-
   5: {
     NAME: "Ethereum Testnet Görli",
     KLEROS_LIQUID: arbitrators["5"],
@@ -45,26 +29,8 @@ const map = {
     POLICY_REGISTRY: "0x28c8A3A2E3c8Cd3F795DB83764316a1129a069bA",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_GOERLI_PROVIDER_URL,
     CURRENCY_SHORT: "ETH",
+    QUERY_FROM_BLOCK: 5893941,
   },
-
-  42: {
-    NAME: "Ethereum Testnet Kovan",
-    KLEROS_LIQUID: arbitrators["42"],
-    ARBITRABLE_PROXY: ArbitrableProxy.networks[42].address,
-    POLICY_REGISTRY: "0xFC53D1d6dDc2C6Cdd403cb7DBf0f26140D82e12d",
-    WEB3_PROVIDER: process.env.REACT_APP_WEB3_KOVAN_PROVIDER_URL,
-    CURRENCY_SHORT: "ETH",
-  },
-
-  77: {
-    NAME: "POA Network Sokol",
-    KLEROS_LIQUID: arbitrators["77"],
-    ARBITRABLE_PROXY: ArbitrableProxy.networks[77].address,
-    POLICY_REGISTRY: "0x0Bee63bC7220d0Bacd8A3c9d6B6511126CDfe58f",
-    WEB3_PROVIDER: process.env.REACT_APP_WEB3_SOKOL_PROVIDER_URL,
-    CURRENCY_SHORT: "SPOA",
-  },
-
   100: {
     NAME: "Gnosis Network",
     KLEROS_LIQUID: arbitrators["100"],
@@ -72,24 +38,24 @@ const map = {
     POLICY_REGISTRY: "0x9d494768936b6bDaabc46733b8D53A937A6c6D7e",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_XDAI_PROVIDER_URL,
     CURRENCY_SHORT: "xDai",
+    QUERY_FROM_BLOCK: 16895601,
   },
-
   137: {
     NAME: "Polygon Mainnet",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_POLYGON_PROVIDER_URL,
     CURRENCY_SHORT: "MATIC",
     FOREIGN_KLEROS_LIQUID: arbitrators["1"],
     FOREIGN_ARBITRATOR_NETWORK_CODE: "1",
+    QUERY_FROM_BLOCK: 7303699,
   },
-
   80001: {
     NAME: "Polygon Testnet Mumbai",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_MUMBAI_PROVIDER_URL,
     CURRENCY_SHORT: "MATIC",
     FOREIGN_KLEROS_LIQUID: arbitrators["5"],
     FOREIGN_ARBITRATOR_NETWORK_CODE: "5",
+    QUERY_FROM_BLOCK: 5893941,
   },
-
   10200: {
     NAME: "Gnosis Testnet Chiado",
     KLEROS_LIQUID: arbitrators["10200"],
@@ -97,8 +63,8 @@ const map = {
     POLICY_REGISTRY: "0x53FC70FE1EC3a60f8939A62aBCc61bf1A57938D7",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_CHIADO_PROVIDER_URL,
     CURRENCY_SHORT: "xDai",
+    QUERY_FROM_BLOCK: 1165867,
   },
-
   11155111: {
     NAME: "Ethereum Testnet Sepolia",
     KLEROS_LIQUID: arbitrators["11155111"],
@@ -106,6 +72,7 @@ const map = {
     POLICY_REGISTRY: "0x88Fb25D399310c07d35cB9091b8346d8b1893aa5",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_SEPOLIA_PROVIDER_URL,
     CURRENCY_SHORT: "sETH",
+    QUERY_FROM_BLOCK: 3635742,
   },
 };
 
