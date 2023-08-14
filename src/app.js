@@ -127,8 +127,8 @@ class App extends React.Component {
 
   getOpenDisputesOnCourtFallback = async () => {
     const newPeriodEvents = await contractInstance.getPastEvents("NewPeriod", {fromBlock: startingBlock, toBlock: "latest"});
-    const disputeCreationEvents = await contractInstance.methods.disputes().call();
-    const disputes = [...new Set(disputeCreationEvents.map((result) => result._disputeID))];
+    const disputeCreationEvents = await contractInstance.getPastEvents("DisputeCreation", {fromBlock: startingBlock, toBlock: "latest"});
+    const disputes = [...new Set(disputeCreationEvents.map((result) => result.returnValues._disputeID))];
     const resolvedDisputes = newPeriodEvents.filter((result) => result.returnValues._period == 4).map((result) => result.returnValues._disputeID);
 
     const openDisputes = disputes.filter((dispute) => !resolvedDisputes.includes(dispute));
