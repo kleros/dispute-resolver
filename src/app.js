@@ -117,19 +117,24 @@ class App extends React.Component {
         }`
       }
       const openDisputes = (await (await fetch(subgraph,{method: 'POST', body: JSON.stringify(query)})).json())?.data?.disputes;
+      if (!openDisputes) return await(getOpenDisputesOnCourtFallback());
       const openDisputeIDs = openDisputes.map((obj) => obj.id)
       return openDisputeIDs;
     } else {
-      const newPeriodEvents = await contractInstance.getPastEvents("NewPeriod", {fromBlock: startingBlock, toBlock: "latest"});
-      const disputeCreationEvents = await contractInstance.methods.disputes().call();
-      const disputes = [...new Set(disputeCreationEvents.map((result) => result._disputeID))];
-      const resolvedDisputes = newPeriodEvents.filter((result) => result.returnValues._period == 4).map((result) => result.returnValues._disputeID);
-
-      const openDisputes = disputes.filter((dispute) => !resolvedDisputes.includes(dispute));
-
-      return openDisputes
+      return await(getOpenDisputesOnCourtFallback());
     }
   };
+
+  getOpenDisputesOnCourtFallback = async () => {
+    const newPeriodEvents = await contractInstance.getPastEvents("NewPeriod", {fromBlock: startingBlock, toBlock: "latest"});
+    const disputeCreationEvents = await contractInstance.methods.disputes().call();
+    const disputes = [...new Set(disputeCreationEvents.map((result) => result._disputeID))];
+    const resolvedDisputes = newPeriodEvents.filter((result) => result.returnValues._period == 4).map((result) => result.returnValues._disputeID);
+
+    const openDisputes = disputes.filter((dispute) => !resolvedDisputes.includes(dispute));
+
+    return openDisputes
+  }
 
   getArbitrableDisputeID = async (arbitrableAddress, arbitratorDisputeID) => EthereumInterface.call("IDisputeResolver", arbitrableAddress, "externalIDtoLocalID", arbitratorDisputeID);
 
@@ -301,7 +306,8 @@ class App extends React.Component {
         }`
       }
       const dispute = (await (await fetch(subgraph,{method: 'POST', body: JSON.stringify(query)})).json())?.data?.disputes;
-      fromBlock = dispute[0]?.createdAtBlock;
+      if (dispute.length > 0)
+        fromBlock = dispute[0]?.createdAtBlock;
     }
 
     const appealDecisionLog = await contractInstance.getPastEvents("AppealDecision", {
@@ -335,6 +341,7 @@ class App extends React.Component {
         }`
       }
       const dispute = (await (await fetch(subgraph,{method: 'POST', body: JSON.stringify(query)})).json())?.data?.disputes;
+      if (dispute.length > 0)
       fromBlock = dispute[0]?.createdAtBlock;
     }
 
