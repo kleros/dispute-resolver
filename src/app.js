@@ -106,14 +106,29 @@ class App extends React.Component {
 
     const startingBlock = (await Web3.eth.getBlockNumber()) - 1_000_000
 
-    const newPeriodEvents = await contractInstance.getPastEvents("NewPeriod", {fromBlock: startingBlock, toBlock: "latest"});
-    const disputeCreationEvents = await contractInstance.getPastEvents("DisputeCreation", {fromBlock: startingBlock, toBlock: "latest"});
-    const disputes = [...new Set(disputeCreationEvents.map((result) => result.returnValues._disputeID))];
-    const resolvedDisputes = newPeriodEvents.filter((result) => result.returnValues._period == 4).map((result) => result.returnValues._disputeID);
+    const subgraph = networkMap[this.state.network].SUBGRAPH
 
-    const openDisputes = disputes.filter((dispute) => !resolvedDisputes.includes(dispute));
+    if (subgraph){
+      const query = {
+        query: `{
+            disputes: disputes(first: 1000, where: {ruled: false}) {
+                id
+            }
+        }`
+      }
+      const openDisputes = (await (await fetch(subgraph,{method: 'POST', body: JSON.stringify(query)})).json())?.data?.disputes;
+      const openDisputeIDs = openDisputes.map((obj) => obj.id)
+      return openDisputeIDs;
+    } else {
+      const newPeriodEvents = await contractInstance.getPastEvents("NewPeriod", {fromBlock: startingBlock, toBlock: "latest"});
+      const disputeCreationEvents = await contractInstance.methods.disputes().call();
+      const disputes = [...new Set(disputeCreationEvents.map((result) => result._disputeID))];
+      const resolvedDisputes = newPeriodEvents.filter((result) => result.returnValues._period == 4).map((result) => result.returnValues._disputeID);
 
-    return openDisputes
+      const openDisputes = disputes.filter((dispute) => !resolvedDisputes.includes(dispute));
+
+      return openDisputes
+    }
   };
 
   getArbitrableDisputeID = async (arbitrableAddress, arbitratorDisputeID) => EthereumInterface.call("IDisputeResolver", arbitrableAddress, "externalIDtoLocalID", arbitratorDisputeID);
@@ -207,7 +222,32 @@ class App extends React.Component {
       console.log(`Found metaevidence of ${arbitratorDisputeID} skipping fetch.`)
       return JSON.parse(localStorage.getItem(`${network}${arbitratorDisputeID.toString()}`))
     }
+
     console.log(`Fetching ${arbitratorDisputeID}...`)
+
+    return fetch(
+      `${process.env.REACT_APP_METAEVIDENCE_URL}?chainId=${this.state.network}&disputeId=${arbitratorDisputeID}`
+    ).then((response) => response.json()).catch((error) => {
+      console.error(`Failed to fetch metaevidence of ${arbitratorDisputeID} at ${process.env.REACT_APP_METAEVIDENCE_URL}?chainId=${this.state.network}&disputeId=${arbitratorDisputeID}`)
+      return getMetaEvidenceFallback(arbitrableAddress, arbitratorDisputeID);
+    }).then((payload) => {
+      const uri = payload.metaEvidenceUri;
+      return fetch(IPFS_GATEWAY + uri).then((response) => response.json()).catch((error) => {
+        console.error(`Failed to fetch metaevidence of ${arbitratorDisputeID} at ${IPFS_GATEWAY + metaevidence[0].returnValues._evidence}`)
+      }).then((payload) => {
+        console.log(`caching ${arbitratorDisputeID}`)
+        console.log(JSON.stringify(payload))
+        localStorage.setItem(`${network}${arbitratorDisputeID.toString()}`, JSON.stringify(payload));
+        return payload;
+      });
+    }).catch((error) => {
+      console.error(`Failed to fetch metaevidence of ${arbitratorDisputeID} at ${process.env.REACT_APP_METAEVIDENCE_URL}?chainId=${this.state.network}&disputeId=${arbitratorDisputeID}`)
+      return getMetaEvidenceFallback(arbitrableAddress, arbitratorDisputeID);
+
+    });
+  };
+
+  getMetaEvidenceFallback = (arbitrableAddress, arbitratorDisputeID) => {
 
     return this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
@@ -226,7 +266,7 @@ class App extends React.Component {
 
         }
       })
-  };
+    }
 
   getEvidences = (arbitrableAddress, arbitratorDisputeID) => {
     return this.state.archon.arbitrable
@@ -239,8 +279,25 @@ class App extends React.Component {
 
   getAppealDecision = async (arbitratorDisputeID) => {
     const contractInstance = EthereumInterface.contractInstance("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID);
+
+    const subgraph = networkMap[this.state.network].SUBGRAPH
+
+    let fromBlock = networkMap[this.state.network].QUERY_FROM_BLOCK
+
+    if (subgraph){
+      const query = {
+        query: `{
+          disputes(first: 1, where: {id: "118"}) {
+            createdAtBlock
+          }
+        }`
+      }
+      const dispute = (await (await fetch(subgraph,{method: 'POST', body: JSON.stringify(query)})).json())?.data?.disputes;
+      fromBlock = dispute[0]?.createdAtBlock;
+    }
+
     const appealDecisionLog = await contractInstance.getPastEvents("AppealDecision", {
-      fromBlock: networkMap[this.state.network].QUERY_FROM_BLOCK, toBlock: "latest", filter: {_disputeID: arbitratorDisputeID},
+      fromBlock: fromBlock, toBlock: "latest", filter: {_disputeID: arbitratorDisputeID},
     });
     const blockNumbers = await Promise.all(appealDecisionLog.map((appealDecision) => Web3.eth.getBlock(appealDecision.blockNumber)));
     return blockNumbers.map((blockNumber) => {
@@ -257,10 +314,25 @@ class App extends React.Component {
       if (period < 4) _round++;
     }
 
+    const subgraph = networkMap[this.state.network].SUBGRAPH
+
+    let fromBlock = networkMap[this.state.network].QUERY_FROM_BLOCK
+
+    if (subgraph){
+      const query = {
+        query: `{
+          disputes(first: 1, where: {id: "118"}) {
+            createdAtBlock
+          }
+        }`
+      }
+      const dispute = (await (await fetch(subgraph,{method: 'POST', body: JSON.stringify(query)})).json())?.data?.disputes;
+      fromBlock = dispute[0]?.createdAtBlock;
+    }
 
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
     const contributionLogs = await contractInstance.getPastEvents("Contribution", {
-      fromBlock: networkMap[this.state.network].QUERY_FROM_BLOCK,
+      fromBlock: fromBlock,
       toBlock: "latest",
       filter: {arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round},
     });
@@ -280,10 +352,25 @@ class App extends React.Component {
       _round++;
     }
 
+    const subgraph = networkMap[this.state.network].SUBGRAPH
+
+    let fromBlock = networkMap[this.state.network].QUERY_FROM_BLOCK
+
+    if (subgraph){
+      const query = {
+        query: `{
+          disputes(first: 1, where: {id: "118"}) {
+            createdAtBlock
+          }
+        }`
+      }
+      const dispute = (await (await fetch(subgraph,{method: 'POST', body: JSON.stringify(query)})).json())?.data?.disputes;
+      fromBlock = dispute[0]?.createdAtBlock;
+    }
 
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
     const rulingFundedLogs = await contractInstance.getPastEvents("RulingFunded", {
-      fromBlock: networkMap[this.state.network].QUERY_FROM_BLOCK,
+      fromBlock: fromBlock,
       toBlock: "latest",
       filter: {arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round},
     });
