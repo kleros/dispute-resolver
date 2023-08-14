@@ -1,5 +1,7 @@
 [build.environment]
   YARN_FLAGS='--pure-lockfile'
+  REACT_APP_METAEVIDENCE_URL='https://kleros-api.netlify.app/.netlify/functions/get-dispute-metaevidence'
+  REACT_APP_WEB3_XDAI_PROVIDER_URL='https://rpc.gnosis.gateway.fm'
 
 [[redirects]]
   from = "/*"
