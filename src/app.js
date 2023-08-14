@@ -12,7 +12,7 @@ import Web3 from "./ethereum/web3";
 import * as EthereumInterface from "./ethereum/interface";
 import networkMap, {getReadOnlyRpcUrl} from "./ethereum/network-contract-mapping";
 import ipfsPublish from "./ipfs-publish";
-import Archon from "@kleros/archon";
+import Archon from "@shotaronowhere/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
@@ -208,7 +208,7 @@ class App extends React.Component {
     disputeID // dispute unique identifier
   );
 
-  getMetaEvidence = (arbitrableAddress, arbitratorDisputeID) => this.state.archon.arbitrable.getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID).then((response) => this.state.archon.arbitrable.getMetaEvidence(arbitrableAddress, response.metaEvidenceID, {
+  getMetaEvidence = (arbitrableAddress, arbitratorDisputeID) => this.state.archon.arbitrable.getMetaEvidenceFromDisputeID(arbitrableAddress, arbitratorDisputeID, this.state.network, {
     strict: true, getJsonRpcUrl: (chainId) => getReadOnlyRpcUrl({chainId}), scriptParameters: {
       disputeID: arbitratorDisputeID,
       arbitrableContractAddress: arbitrableAddress,
@@ -217,7 +217,7 @@ class App extends React.Component {
       chainID: this.state.network,
       arbitratorJsonRpcUrl: networkMap[this.state.network].WEB3_PROVIDER,
     },
-  }));
+  });
 
   //Using Archon, parallel calls occasionally fail.
   getMetaEvidenceParallelizeable = (arbitrableAddress, arbitratorDisputeID) => {
@@ -281,13 +281,18 @@ class App extends React.Component {
   };
 
 
-  getEvidences = (arbitrableAddress, arbitratorDisputeID) => {
-    return this.state.archon.arbitrable
+  getEvidences = async (arbitrableAddress, arbitratorDisputeID) => {
+    const subgraph = networkMap[this.state.network].SUBGRAPH
+    if (subgraph){
+      return this.state.archon.arbitrable.getEvidenceFromDisputeID(arbitratorDisputeID, this.state.network).catch(console.error);
+    } else {
+      this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
       .then((response) => {
         return this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).catch(console.error);
       })
       .catch(console.error);
+    }
   };
 
   getAppealDecision = async (arbitratorDisputeID, disputedAtBlockNumber) => {
