@@ -250,11 +250,11 @@ class App extends React.Component {
     });
     const blockNumbers = await Promise.all(appealDecisionLog.map((appealDecision) => Web3.eth.getBlock(appealDecision.blockNumber)));
     return blockNumbers.map((blockNumber) => {
-      return {appealedAt: blockNumber.timestamp};
+      return {appealedAt: blockNumber.timestamp, appealedAtBlockNumber: blockNumber.number};
     });
   };
 
-  getContributions = async (arbitrableDisputeID, round, arbitrableContractAddress, period) => {
+  getContributions = async (arbitrableDisputeID, round, arbitrableContractAddress, period, searchFrom) => {
     // Unslashed contract violates IDisputeResolver interface by incrementing rounds without triggering an appeal event.
     // Because of this, here we make an exception for Unslashed and shift rounds by plus one, except when in execution period.
 
@@ -266,8 +266,8 @@ class App extends React.Component {
 
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
     const contributionLogs = await contractInstance.getPastEvents("Contribution", {
-      fromBlock: networkMap[this.state.network].QUERY_FROM_BLOCK,
-      toBlock: "latest",
+      fromBlock: searchFrom ?? networkMap[this.state.network].QUERY_FROM_BLOCK,
+      toBlock: searchFrom ? searchFrom + 100_000 : "latest",
       filter: {arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round},
     });
 

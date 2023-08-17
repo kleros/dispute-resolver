@@ -180,7 +180,7 @@ class Interact extends React.Component {
     let appealDecisions, contributions, totalWithdrawable, rulingFunded;
     try {
       appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID, this.state.disputeEvent.blockNumber);
-      contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated, arbitratorDispute.period);
+      contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated, arbitratorDispute.period, appealDecisions.slice(-1)?.appealedAtBlockNumber);
       rulingFunded = await this.props.getRulingFundedCallback(arbitrableDisputeID, appealDecisions.length, arbitrated);
       console.debug(arbitrableDisputeID);
       console.debug(appealDecisions.length)
@@ -202,7 +202,7 @@ class Interact extends React.Component {
     if (arbitratorDispute.period == 4) {
       let contributionsOfPastRounds = [];
       for (let i = 0; i < appealDecisions.length; i++)
-        contributionsOfPastRounds[i] = await this.props.getContributionsCallback(arbitrableDisputeID, i, arbitrated, arbitratorDispute.period);
+        contributionsOfPastRounds[i] = await this.props.getContributionsCallback(arbitrableDisputeID, i, arbitrated, arbitratorDispute.period, this.state.disputeEvent.blockNumber);
 
       const aggregatedContributions = this.sumObjectsByKey(...contributionsOfPastRounds, contributions);
 
