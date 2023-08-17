@@ -211,21 +211,27 @@ class App extends React.Component {
 
     return this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
-      .then((response) => EthereumInterface.contractInstance("IEvidence", arbitrableAddress).getPastEvents("MetaEvidence", {
-        fromBlock: networkMap[this.state.network].QUERY_FROM_BLOCK, toBlock: "latest", filter: {_metaEvidenceID: response.metaEvidenceID},
-      }))
+      .then((response) =>
+        EthereumInterface.contractInstance("IEvidence", arbitrableAddress).getPastEvents("MetaEvidence", {
+          fromBlock: networkMap[this.state.network].QUERY_FROM_BLOCK,
+          toBlock: response.blockNumber,
+          filter: { _metaEvidenceID: response.metaEvidenceID },
+        })
+      )
       .then((metaevidence) => {
         if (metaevidence.length > 0) {
-            fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence).then((response) => response.json()).catch((error) => {
-              console.error(`Failed to fetch metaevidence of ${arbitratorDisputeID} at ${IPFS_GATEWAY + metaevidence[0].returnValues._evidence}`)
-            }).then((payload) => {
-              console.log(`caching ${arbitratorDisputeID}`)
+          fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence)
+            .then((response) => response.json())
+            .catch((error) => {
+              console.error(`Failed to fetch metaevidence of ${arbitratorDisputeID} at ${IPFS_GATEWAY + metaevidence[0].returnValues._evidence}`);
+            })
+            .then((payload) => {
+              console.log(`caching ${arbitratorDisputeID}`);
               localStorage.setItem(`${network}${arbitratorDisputeID.toString()}`, JSON.stringify(payload));
               return payload;
             });
-
         }
-      })
+      });
   };
 
   getEvidences = (arbitrableAddress, arbitratorDisputeID) => {
@@ -237,18 +243,18 @@ class App extends React.Component {
       .catch(console.error);
   };
 
-  getAppealDecision = async (arbitratorDisputeID) => {
+  getAppealDecision = async (arbitratorDisputeID, disputedAtBlockNumber) => {
     const contractInstance = EthereumInterface.contractInstance("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID);
     const appealDecisionLog = await contractInstance.getPastEvents("AppealDecision", {
-      fromBlock: networkMap[this.state.network].QUERY_FROM_BLOCK, toBlock: "latest", filter: {_disputeID: arbitratorDisputeID},
+      fromBlock: disputedAtBlockNumber, toBlock: "latest", filter: {_disputeID: arbitratorDisputeID},
     });
     const blockNumbers = await Promise.all(appealDecisionLog.map((appealDecision) => Web3.eth.getBlock(appealDecision.blockNumber)));
     return blockNumbers.map((blockNumber) => {
-      return {appealedAt: blockNumber.timestamp};
+      return {appealedAt: blockNumber.timestamp, appealedAtBlockNumber: blockNumber.number};
     });
   };
 
-  getContributions = async (arbitrableDisputeID, round, arbitrableContractAddress, period) => {
+  getContributions = async (arbitrableDisputeID, round, arbitrableContractAddress, period, searchFrom) => {
     // Unslashed contract violates IDisputeResolver interface by incrementing rounds without triggering an appeal event.
     // Because of this, here we make an exception for Unslashed and shift rounds by plus one, except when in execution period.
 
@@ -260,8 +266,8 @@ class App extends React.Component {
 
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
     const contributionLogs = await contractInstance.getPastEvents("Contribution", {
-      fromBlock: networkMap[this.state.network].QUERY_FROM_BLOCK,
-      toBlock: "latest",
+      fromBlock: searchFrom ?? networkMap[this.state.network].QUERY_FROM_BLOCK,
+      toBlock: searchFrom ? searchFrom + 100_000 : "latest",
       filter: {arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round},
     });
 
