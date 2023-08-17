@@ -211,21 +211,27 @@ class App extends React.Component {
 
     return this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
-      .then((response) => EthereumInterface.contractInstance("IEvidence", arbitrableAddress).getPastEvents("MetaEvidence", {
-        fromBlock: networkMap[this.state.network].QUERY_FROM_BLOCK, toBlock: "latest", filter: {_metaEvidenceID: response.metaEvidenceID},
-      }))
+      .then((response) =>
+        EthereumInterface.contractInstance("IEvidence", arbitrableAddress).getPastEvents("MetaEvidence", {
+          fromBlock: networkMap[this.state.network].QUERY_FROM_BLOCK,
+          toBlock: response.blockNumber,
+          filter: { _metaEvidenceID: response.metaEvidenceID },
+        })
+      )
       .then((metaevidence) => {
         if (metaevidence.length > 0) {
-            fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence).then((response) => response.json()).catch((error) => {
-              console.error(`Failed to fetch metaevidence of ${arbitratorDisputeID} at ${IPFS_GATEWAY + metaevidence[0].returnValues._evidence}`)
-            }).then((payload) => {
-              console.log(`caching ${arbitratorDisputeID}`)
+          fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence)
+            .then((response) => response.json())
+            .catch((error) => {
+              console.error(`Failed to fetch metaevidence of ${arbitratorDisputeID} at ${IPFS_GATEWAY + metaevidence[0].returnValues._evidence}`);
+            })
+            .then((payload) => {
+              console.log(`caching ${arbitratorDisputeID}`);
               localStorage.setItem(`${network}${arbitratorDisputeID.toString()}`, JSON.stringify(payload));
               return payload;
             });
-
         }
-      })
+      });
   };
 
   getEvidences = (arbitrableAddress, arbitratorDisputeID) => {
