@@ -355,21 +355,6 @@ class App extends React.Component {
   getAppealDecision = async (arbitratorDisputeID, disputedAtBlockNumber) => {
     const contractInstance = EthereumInterface.contractInstance("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID);
 
-    const subgraph = networkMap[this.state.network].SUBGRAPH;
-
-    let fromBlock = networkMap[this.state.network].QUERY_FROM_BLOCK;
-
-    if (subgraph) {
-      const query = {
-        query: `{
-          disputes(first: 1, where: {id: ${arbitratorDisputeID}}) {
-            createdAtBlock
-          }
-        }`,
-      };
-      const dispute = (await (await fetch(subgraph, { method: "POST", body: JSON.stringify(query) })).json())?.data?.disputes;
-      if (dispute.length > 0) fromBlock = dispute[0]?.createdAtBlock;
-    }
 
     const appealDecisionLog = await contractInstance.getPastEvents("AppealDecision", {
       fromBlock: disputedAtBlockNumber,
@@ -389,22 +374,6 @@ class App extends React.Component {
     let _round = round;
     if (EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress)) {
       if (period < 4) _round++;
-    }
-
-    const subgraph = networkMap[this.state.network].SUBGRAPH;
-
-    let fromBlock = networkMap[this.state.network].QUERY_FROM_BLOCK;
-
-    if (subgraph) {
-      const query = {
-        query: `{
-          disputes(first: 1, where: {id: "118"}) {
-            createdAtBlock
-          }
-        }`,
-      };
-      const dispute = (await (await fetch(subgraph, { method: "POST", body: JSON.stringify(query) })).json())?.data?.disputes;
-      if (dispute.length > 0) fromBlock = dispute[0]?.createdAtBlock;
     }
 
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
