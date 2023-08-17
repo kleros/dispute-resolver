@@ -280,17 +280,16 @@ class App extends React.Component {
     return contributionsForEachRuling;
   };
 
-  getRulingFunded = async (arbitrableDisputeID, round, arbitrableContractAddress) => {
+  getRulingFunded = async (arbitrableDisputeID, round, arbitrableContractAddress, searchFrom) => {
     let _round = round;
     if (EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress)) {
       _round++;
     }
 
-
     const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
     const rulingFundedLogs = await contractInstance.getPastEvents("RulingFunded", {
-      fromBlock: networkMap[this.state.network].QUERY_FROM_BLOCK,
-      toBlock: "latest",
+      fromBlock: searchFrom ?? networkMap[this.state.network].QUERY_FROM_BLOCK,
+      toBlock: searchFrom ? searchFrom + 100_000 : "latest",
       filter: {arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round},
     });
     let ruling = rulingFundedLogs.map((log) => log.returnValues._ruling);
