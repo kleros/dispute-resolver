@@ -179,7 +179,7 @@ class Interact extends React.Component {
 
     let appealDecisions, contributions, totalWithdrawable, rulingFunded;
     try {
-      appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID);
+      appealDecisions = await this.props.getAppealDecisionCallback(arbitratorDisputeID, this.state.disputeEvent.blockNumber);
       contributions = await this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated, arbitratorDispute.period);
       rulingFunded = await this.props.getRulingFundedCallback(arbitrableDisputeID, appealDecisions.length, arbitrated);
       console.debug(arbitrableDisputeID);

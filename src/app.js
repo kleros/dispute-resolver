@@ -243,10 +243,10 @@ class App extends React.Component {
       .catch(console.error);
   };
 
-  getAppealDecision = async (arbitratorDisputeID) => {
+  getAppealDecision = async (arbitratorDisputeID, disputedAtBlockNumber) => {
     const contractInstance = EthereumInterface.contractInstance("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID);
     const appealDecisionLog = await contractInstance.getPastEvents("AppealDecision", {
-      fromBlock: networkMap[this.state.network].QUERY_FROM_BLOCK, toBlock: "latest", filter: {_disputeID: arbitratorDisputeID},
+      fromBlock: disputedAtBlockNumber, toBlock: "latest", filter: {_disputeID: arbitratorDisputeID},
     });
     const blockNumbers = await Promise.all(appealDecisionLog.map((appealDecision) => Web3.eth.getBlock(appealDecision.blockNumber)));
     return blockNumbers.map((blockNumber) => {
