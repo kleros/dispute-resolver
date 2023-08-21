@@ -298,7 +298,7 @@ class App extends React.Component {
           .then((payload) => {
             console.log(`caching ${arbitratorDisputeID}`);
             console.log(JSON.stringify(payload));
-            localStorage.setItem(`${network}${arbitratorDisputeID.toString()}`, JSON.stringify(payload));
+            localStorage.setItem(`${this.state.network}${arbitratorDisputeID.toString()}`, JSON.stringify(payload));
             return payload;
           });
       })
@@ -331,7 +331,7 @@ class App extends React.Component {
             })
             .then((payload) => {
               console.log(`caching ${arbitratorDisputeID}`);
-              localStorage.setItem(`${network}${arbitratorDisputeID.toString()}`, JSON.stringify(payload));
+              localStorage.setItem(`${this.state.network}${arbitratorDisputeID.toString()}`, JSON.stringify(payload));
               return payload;
             });
         }
