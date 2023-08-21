@@ -286,7 +286,7 @@ class App extends React.Component {
         console.error(
           `Failed to fetch metaevidence of ${arbitratorDisputeID} at ${process.env.REACT_APP_METAEVIDENCE_URL}?chainId=${this.state.network}&disputeId=${arbitratorDisputeID}`
         );
-        return getMetaEvidenceFallback(arbitrableAddress, arbitratorDisputeID);
+        return this.getMetaEvidenceFallback(arbitrableAddress, arbitratorDisputeID);
       })
       .then((payload) => {
         const uri = payload.metaEvidenceUri;
@@ -306,7 +306,7 @@ class App extends React.Component {
         console.error(
           `Failed to fetch metaevidence of ${arbitratorDisputeID} at ${process.env.REACT_APP_METAEVIDENCE_URL}?chainId=${this.state.network}&disputeId=${arbitratorDisputeID}`
         );
-        return getMetaEvidenceFallback(arbitrableAddress, arbitratorDisputeID);
+        return this.getMetaEvidenceFallback(arbitrableAddress, arbitratorDisputeID);
       });
   };
 
