@@ -283,6 +283,7 @@ class App extends React.Component {
     return fetch(`${process.env.REACT_APP_METAEVIDENCE_URL}?chainId=${this.state.network}&disputeId=${arbitratorDisputeID}`)
       .then((response) => response.json())
       .catch((error) => {
+        console.error(error)
         console.error(
           `Failed to fetch metaevidence of ${arbitratorDisputeID} at ${process.env.REACT_APP_METAEVIDENCE_URL}?chainId=${this.state.network}&disputeId=${arbitratorDisputeID}`
         );
