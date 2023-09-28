@@ -2,6 +2,7 @@ import { Row, Col, Form} from "react-bootstrap";
 import React from "react";
 import {ReactComponent as AttachmentSVG} from "../assets/images/attachment.svg";
 import {getReadOnlyRpcUrl} from "../ethereum/network-contract-mapping";
+import whitelistedArbitrables from "../ethereum/whitelistedArbitrables";
 
 import styles from "components/styles/disputeSummary.module.css";
 import ReactMarkdown from "react-markdown";
@@ -57,6 +58,11 @@ class DisputeSummary extends React.Component {
 
             {metaevidenceJSON.evidenceDisplayInterfaceURI && (
               <iframe
+              sandbox={
+              whitelistedArbitrables[arbitratorChainID]?.includes(arbitrated.toLowerCase())
+              ? "allow-scripts allow-same-origin"
+              : "allow-scripts"
+            }
                 className="border-0"
                 style={{width: "100%", height: "360px"}}
                 src={(metaevidenceJSON.evidenceDisplayInterfaceURI.includes("://") ? "" : ipfsGateway) + `${metaevidenceJSON.evidenceDisplayInterfaceURI}?${searchParams}`}
