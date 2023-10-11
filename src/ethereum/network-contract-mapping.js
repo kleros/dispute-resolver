@@ -12,6 +12,16 @@ const arbitrators = {
   11155111: "0x90992fb4E15ce0C59aEFfb376460Fda4Ee19C879",
 };
 
+const policyRegistries = {
+  1: "0xCf1f07713d5193FaE5c1653C9f61953D048BECe4",
+  5: "0x28c8A3A2E3c8Cd3F795DB83764316a1129a069bA",
+}
+
+const arbitratorDeployedAtBlock = {
+  1: 7303699,
+  5: 5893941,
+}
+
 const map = {
   1: {
     NAME: "Ethereum Mainnet",
@@ -20,7 +30,7 @@ const map = {
     POLICY_REGISTRY: "0xCf1f07713d5193FaE5c1653C9f61953D048BECe4",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_PROVIDER_URL,
     CURRENCY_SHORT: "ETH",
-    QUERY_FROM_BLOCK: 7303699,
+    QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["1"],
   },
   5: {
     NAME: "Ethereum Testnet Görli",
@@ -29,7 +39,7 @@ const map = {
     POLICY_REGISTRY: "0x28c8A3A2E3c8Cd3F795DB83764316a1129a069bA",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_GOERLI_PROVIDER_URL,
     CURRENCY_SHORT: "ETH",
-    QUERY_FROM_BLOCK: 5893941,
+    QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["5"],
   },
   100: {
     NAME: "Gnosis Network",
@@ -46,7 +56,27 @@ const map = {
     CURRENCY_SHORT: "MATIC",
     FOREIGN_KLEROS_LIQUID: arbitrators["1"],
     FOREIGN_ARBITRATOR_NETWORK_CODE: "1",
-    QUERY_FROM_BLOCK: 7303699,
+    QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["1"],
+  },
+  280:{
+    NAME: "zkSync Era Testnet",
+    FOREIGN_KLEROS_LIQUID: arbitrators["5"],
+    FOREIGN_ARBITRATOR_NETWORK_CODE: "5",
+    ARBITRABLE_PROXY: null,
+    POLICY_REGISTRY: policyRegistries["5"],
+    WEB3_PROVIDER: process.env.REACT_APP_ZKSYNC_ERA_TESTNET,
+    CURRENCY_SHORT: "ETH",
+    QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["5"],
+  },
+  324:{
+    NAME: "zkSync Era Mainnet",
+    FOREIGN_KLEROS_LIQUID: arbitrators["1"],
+    FOREIGN_ARBITRATOR_NETWORK_CODE: "1",
+    ARBITRABLE_PROXY: null,
+    POLICY_REGISTRY: policyRegistries["1"],
+    WEB3_PROVIDER: null,
+    CURRENCY_SHORT: "ETH",
+    QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["1"],
   },
   80001: {
     NAME: "Polygon Testnet Mumbai",
@@ -54,7 +84,7 @@ const map = {
     CURRENCY_SHORT: "MATIC",
     FOREIGN_KLEROS_LIQUID: arbitrators["5"],
     FOREIGN_ARBITRATOR_NETWORK_CODE: "5",
-    QUERY_FROM_BLOCK: 5893941,
+    QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["5"],
   },
   10200: {
     NAME: "Gnosis Testnet Chiado",
