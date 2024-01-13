@@ -20,6 +20,8 @@ const policyRegistries = {
 const arbitratorDeployedAtBlock = {
   1: 7303699,
   5: 5893941,
+  11155111: 3635742,
+
 }
 
 const map = {
@@ -58,15 +60,15 @@ const map = {
     FOREIGN_ARBITRATOR_NETWORK_CODE: "1",
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["1"],
   },
-  280:{
-    NAME: "zkSync Era Testnet",
-    FOREIGN_KLEROS_LIQUID: arbitrators["5"],
-    FOREIGN_ARBITRATOR_NETWORK_CODE: "5",
+  300: {
+    NAME: "zkSync Era Testnet Sepolia",
+    FOREIGN_KLEROS_LIQUID: arbitrators["11155111"],
+    FOREIGN_ARBITRATOR_NETWORK_CODE: "11155111",
     ARBITRABLE_PROXY: null,
-    POLICY_REGISTRY: policyRegistries["5"],
-    WEB3_PROVIDER: process.env.REACT_APP_ZKSYNC_ERA_TESTNET,
-    CURRENCY_SHORT: "ETH",
-    QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["5"],
+    POLICY_REGISTRY: policyRegistries["11155111"],
+    WEB3_PROVIDER: "https://sepolia.era.zksync.dev/",
+    CURRENCY_SHORT: "sETH",
+    QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["11155111"],
   },
   324:{
     NAME: "zkSync Era Mainnet",
