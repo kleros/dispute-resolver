@@ -20,6 +20,8 @@ const policyRegistries = {
 const arbitratorDeployedAtBlock = {
   1: 7303699,
   5: 5893941,
+  11155111: 3635742,
+
 }
 
 const map = {
