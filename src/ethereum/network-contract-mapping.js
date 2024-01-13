@@ -60,16 +60,7 @@ const map = {
     FOREIGN_ARBITRATOR_NETWORK_CODE: "1",
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["1"],
   },
-  280:{
-    NAME: "zkSync Era Testnet",
-    FOREIGN_KLEROS_LIQUID: arbitrators["5"],
-    FOREIGN_ARBITRATOR_NETWORK_CODE: "5",
-    ARBITRABLE_PROXY: null,
-    POLICY_REGISTRY: policyRegistries["5"],
-    WEB3_PROVIDER: process.env.REACT_APP_ZKSYNC_ERA_TESTNET,
-    CURRENCY_SHORT: "ETH",
-    QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["5"],
-  },
+
   324:{
     NAME: "zkSync Era Mainnet",
     FOREIGN_KLEROS_LIQUID: arbitrators["1"],
