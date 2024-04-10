@@ -23,7 +23,7 @@
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
     "moment": "^2.29.4",
-    "node-sass": "4",
+    "node-sass": "7",
     "react": "17.0.0",
     "react-blockies": "^1.4.1",
     "react-bootstrap": "^1.4.0",
