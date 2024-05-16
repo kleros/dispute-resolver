@@ -16,7 +16,7 @@ import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
-const IPFS_GATEWAY = "https://ipfs.kleros.io";
+const IPFS_GATEWAY = "https://ipfs.kleros.io/";
 const EXCEPTIONAL_CONTRACT_ADDRESSES = ['0xe0e1bc8C6cd1B81993e2Fcfb80832d814886eA38', '0xb9f9B5eee2ad29098b9b3Ea0B401571F5dA4AD81']
 const CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS = 3 * 60 * 60 * 1000
 const CACHE_INVALIDATION_PERIOD_FOR_DISPUTES_MS = 1 * 60 * 1000
