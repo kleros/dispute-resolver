@@ -80,6 +80,27 @@ const map = {
     CURRENCY_SHORT: "ETH",
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["1"],
   },
+  42161: {
+    NAME: "Arbitrum One",
+    FOREIGN_KLEROS_LIQUID: arbitrators["1"],
+    FOREIGN_ARBITRATOR_NETWORK_CODE: "1",
+    ARBITRABLE_PROXY: null,
+    POLICY_REGISTRY: policyRegistries["1"],
+    WEB3_PROVIDER: "https://arbitrum.llamarpc.com",
+    CURRENCY_SHORT: "ETH",
+    QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["1"],
+  },
+  421614: {
+    NAME: "Arbitrum Testnet Sepolia",
+    FOREIGN_KLEROS_LIQUID: arbitrators["11155111"],
+    FOREIGN_ARBITRATOR_NETWORK_CODE: "11155111",
+    ARBITRABLE_PROXY: null,
+    POLICY_REGISTRY: policyRegistries["11155111"],
+    WEB3_PROVIDER: "https://arbitrum-sepolia.blockpi.network/v1/rpc/public",
+    CURRENCY_SHORT: "ETH",
+    QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["11155111"],
+  },
+
   80001: {
     NAME: "Polygon Testnet Mumbai",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_MUMBAI_PROVIDER_URL,
