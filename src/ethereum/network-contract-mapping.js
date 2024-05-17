@@ -76,7 +76,7 @@ const map = {
     FOREIGN_ARBITRATOR_NETWORK_CODE: "1",
     ARBITRABLE_PROXY: null,
     POLICY_REGISTRY: policyRegistries["1"],
-    WEB3_PROVIDER: null,
+    WEB3_PROVIDER: "https://mainnet.era.zksync.io",
     CURRENCY_SHORT: "ETH",
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["1"],
   },
