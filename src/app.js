@@ -425,7 +425,7 @@ class App extends React.Component {
                 getCrowdfundingStatusCallback={this.getCrowdfundingStatus}
                 getRulingCallback={this.getRuling}
                 getEvidencesCallback={this.getEvidences}
-                getMetaEvidenceCallback={this.getMetaEvidence}
+                getMetaEvidenceCallback={this.getMetaEvidenceParallelizeable}
                 publishCallback={this.onPublish}
                 submitEvidenceCallback={this.submitEvidence}
                 getDisputeCallback={this.getDispute}
