@@ -6,10 +6,13 @@
  */
 const ipfsPublish = async (fileName, data) => {
   const klerosIPFSNetlifyFunctionEndpoint = `https://kleros-api.netlify.app/.netlify/functions/upload-to-ipfs`
-
+  console.log("Uploading to IPFS");
   return new Promise((resolve, reject) => {
-    fetch(`${klerosIPFSNetlifyFunctionEndpoint}?operation=evidence&pinToGraph=false`, {
+    fetch(`${klerosIPFSNetlifyFunctionEndpoint}?operation=file&pinToGraph=true`, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'multipart/form-data; boundary=<calculated when request is sent>',
+      },
       body: new FormData().append('file', new Blob([data]), fileName),
 
     })
