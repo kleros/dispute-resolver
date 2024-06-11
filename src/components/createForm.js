@@ -139,9 +139,10 @@ class CreateForm extends React.Component {
       const buffer = Buffer.from(reader.result);
 
       const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
-
+      console.log(result);
+      console.log(result);
       this.setState({
-        primaryDocument: "/ipfs/" + result[1].hash + result[0].path, uploading: false,
+        primaryDocument: result, uploading: false,
       });
     });
   };
@@ -224,7 +225,7 @@ class CreateForm extends React.Component {
 
                 <Dropdown.Menu>
                   {subcourtDetails && subcourtDetails.map((subcourt, index) => (
-                    <Dropdown.Item key={index} eventKey={index} className={`${index == selectedSubcourt && "selectedDropdownItem"}`}>
+                    <Dropdown.Item key={`subcourt-${index}`} eventKey={index} className={`${index == selectedSubcourt && "selectedDropdownItem"}`}>
                       {subcourt && subcourt.name}
                     </Dropdown.Item>))}
                 </Dropdown.Menu>
@@ -299,7 +300,7 @@ class CreateForm extends React.Component {
 
                 <Dropdown.Menu>
                   {Object.values(QuestionTypes).map((qType, index) => (
-                    <Dropdown.Item key={index} eventKey={JSON.stringify(qType)}>
+                    <Dropdown.Item key={`questionType-${index}`} eventKey={JSON.stringify(qType)}>
                       {qType.humanReadable}
                     </Dropdown.Item>))}
                 </Dropdown.Menu>
@@ -368,7 +369,7 @@ class CreateForm extends React.Component {
 
         <hr/>
         <Row>
-          {[...Array(parseInt(numberOfParties))].map((_value, index) => (<React.Fragment key={index}>
+          {[...Array(parseInt(numberOfParties))].map((_value, index) => (<React.Fragment key={`party-${index}`}>
             <Col xl={4} l={4} md={8}>
               <Form.Group>
                 <Form.Label htmlFor="requester">Alias {index + 1} (Optional)</Form.Label>

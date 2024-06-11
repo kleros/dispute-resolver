@@ -176,8 +176,8 @@ class App extends React.Component {
     };
 
     const ipfsHashMetaEvidenceObj = await ipfsPublish("metaEvidence.json", this.encoder.encode(JSON.stringify(metaevidence)));
-
-    const metaevidenceURI = `/ipfs/${ipfsHashMetaEvidenceObj[1].hash}${ipfsHashMetaEvidenceObj[0].path}`;
+    console.log(ipfsHashMetaEvidenceObj);
+    const metaevidenceURI = ipfsHashMetaEvidenceObj;
 
     const arbitrationCost = await this.getArbitrationCost(arbitrator, arbitratorExtraData);
     return EthereumInterface.send("ArbitrableProxy", networkMap[this.state.network].ARBITRABLE_PROXY, this.state.activeAddress, arbitrationCost, "createDispute", arbitratorExtraData, metaevidenceURI, options.numberOfRulingOptions);
@@ -188,16 +188,22 @@ class App extends React.Component {
     disputeID // dispute unique identifier
   );
 
-  getMetaEvidence = (arbitrableAddress, arbitratorDisputeID) => this.state.archon.arbitrable.getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID).then((response) => this.state.archon.arbitrable.getMetaEvidence(arbitrableAddress, response.metaEvidenceID, {
-    strict: true, getJsonRpcUrl: (chainId) => getReadOnlyRpcUrl({chainId}), scriptParameters: {
-      disputeID: arbitratorDisputeID,
-      arbitrableContractAddress: arbitrableAddress,
-      arbitratorContractAddress: networkMap[this.state.network].KLEROS_LIQUID,
-      arbitratorChainID: this.state.network,
-      chainID: this.state.network,
-      arbitratorJsonRpcUrl: networkMap[this.state.network].WEB3_PROVIDER,
-    },
-  }));
+  getMetaEvidence = (arbitrableAddress, arbitratorDisputeID) =>
+    this.state.archon.arbitrable.getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID).then((response) =>
+    {
+      console.log(response);
+
+      return this.state.archon.arbitrable.getMetaEvidence(arbitrableAddress, response.metaEvidenceID, {
+        strict: true, getJsonRpcUrl: (chainId) => getReadOnlyRpcUrl({ chainId }), scriptParameters: {
+          disputeID: arbitratorDisputeID,
+          arbitrableContractAddress: arbitrableAddress,
+          arbitratorContractAddress: networkMap[this.state.network].KLEROS_LIQUID,
+          arbitratorChainID: this.state.network,
+          chainID: this.state.network,
+          arbitratorJsonRpcUrl: networkMap[this.state.network].WEB3_PROVIDER
+        }
+
+  })});
 
   //Using Archon, parallel calls occasionally fail.
   getMetaEvidenceParallelizeable = (arbitrableAddress, arbitratorDisputeID) => {
@@ -220,10 +226,10 @@ class App extends React.Component {
       )
       .then((metaevidence) => {
         if (metaevidence.length > 0) {
-          fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence)
+          fetch(IPFS_GATEWAY.slice(0, -1) + metaevidence[0].returnValues._evidence)
             .then((response) => response.json())
             .catch((error) => {
-              console.error(`Failed to fetch metaevidence of ${arbitratorDisputeID} at ${IPFS_GATEWAY + metaevidence[0].returnValues._evidence}`);
+              console.error(`Failed to fetch metaevidence of ${arbitratorDisputeID} at ${IPFS_GATEWAY.slice(0, -1) + metaevidence[0].returnValues._evidence}`);
             })
             .then((payload) => {
               console.log(`caching ${arbitratorDisputeID}`);
@@ -330,7 +336,7 @@ class App extends React.Component {
 
     const ipfsHashEvidenceObj = await ipfsPublish("evidence.json", this.encoder.encode(JSON.stringify(evidence)));
 
-    const evidenceURI = `/ipfs/${ipfsHashEvidenceObj[1].hash}${ipfsHashEvidenceObj[0].path}`;
+    const evidenceURI = ipfsHashEvidenceObj;
 
     await EthereumInterface.send("ArbitrableProxy", arbitrableAddress, this.state.activeAddress, 0, "submitEvidence", disputeID, evidenceURI);
   };
