@@ -310,7 +310,7 @@ class Interact extends React.Component {
             </div>
             <DisputeSummary
               metaevidenceJSON={metaevidence && metaevidence.metaEvidenceJSON}
-              ipfsGateway="https://ipfs.kleros.io"
+              ipfsGateway="https://cdn.kleros.link"
               arbitrated={arbitrated}
               arbitratorAddress={arbitratorAddress}
               arbitratorDisputeID={arbitratorDisputeID}
@@ -324,7 +324,7 @@ class Interact extends React.Component {
               activeAddress={activeAddress}
               metaevidenceJSON={metaevidence && metaevidence.metaEvidenceJSON}
               evidences={evidences}
-              ipfsGateway="https://ipfs.kleros.io"
+              ipfsGateway="https://cdn.kleros.link"
               arbitrated={arbitrated}
               arbitratorAddress={arbitratorAddress}
               arbitratorDisputeID={arbitratorDisputeID}
