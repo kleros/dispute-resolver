@@ -5,21 +5,16 @@
  * @return {object} ipfs response. Should include the hash and path of the stored item.
  */
 const ipfsPublish = async (fileName, data) => {
-  const buffer = await Buffer.from(data)
+  const klerosIPFSNetlifyFunctionEndpoint = `https://kleros-api.netlify.app/.netlify/functions/upload-to-ipfs`
 
   return new Promise((resolve, reject) => {
-    fetch('https://ipfs.kleros.io/add', {
+    fetch(`${klerosIPFSNetlifyFunctionEndpoint}?operation=evidence&pinToGraph=false`, {
       method: 'POST',
-      body: JSON.stringify({
-        fileName,
-        buffer
-      }),
-      headers: {
-        'content-type': 'application/json'
-      }
+      body: new FormData().append('file', new Blob([data]), fileName),
+
     })
       .then(response => response.json())
-      .then(success => resolve(success.data))
+      .then(data => resolve(data.cids[0]))
       .catch(err => reject(err))
   })
 }
