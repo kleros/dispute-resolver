@@ -3,9 +3,6 @@ import {  Row, Col, Button } from "react-bootstrap";
 
 import PropTypes from "prop-types";
 import styles from "components/styles/evidenceTimeline.module.css";
-import isImage from "is-image";
-import isTextPath from "is-text-path";
-import isVideo from "is-video";
 import Dropzone from "react-dropzone";
 import Blockies from "react-blockies";
 
@@ -90,7 +87,7 @@ class EvidenceTimeline extends React.Component {
       
       if (result)
         await this.setState({
-          evidenceDocument: `/ipfs/${result[1].hash}${result[0].path}`,
+          evidenceDocument: result,
           fileInput: acceptedFiles[0],
           uploadingToIPFS: false,
         });
@@ -104,7 +101,7 @@ class EvidenceTimeline extends React.Component {
   };
 
   getAttachmentIcon = (uri) => {
-    if (isImage(uri)) {
+    if (false) {
       return (
         <svg width="32" height="32" viewBox="0 0 29 39" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path
@@ -114,7 +111,7 @@ class EvidenceTimeline extends React.Component {
           />
         </svg>
       );
-    } else if (isVideo(uri)) {
+    } else if (false) {
       return (
         <svg fill="none" xmlns="http://www.w3.org/2000/svg">
           <path
@@ -124,7 +121,7 @@ class EvidenceTimeline extends React.Component {
           />
         </svg>
       );
-    } else if (isTextPath(uri)) {
+    } else if (false) {
       return (
         <svg width="30" height="39" viewBox="0 0 30 39" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path

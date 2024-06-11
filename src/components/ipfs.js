@@ -39,7 +39,7 @@ class IPFS extends React.Component {
     reader.addEventListener("loadend", async () => {
       const buffer = Buffer.from(reader.result);
       const result = await this.props.publishCallback(fileInput.name, buffer);
-      this.setState({ uploadedDocumentURI: `/ipfs/${result[0].hash}` });
+      this.setState({ uploadedDocumentURI: result });
     });
   };
 

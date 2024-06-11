@@ -14,6 +14,7 @@ import networkMap, {getReadOnlyRpcUrl} from "./ethereum/network-contract-mapping
 import ipfsPublish from "./ipfs-publish";
 import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
+import { urlNormalize } from "./urlNormalizer";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 const IPFS_GATEWAY = "https://cdn.kleros.link";
@@ -203,9 +204,10 @@ class App extends React.Component {
   getMetaEvidenceParallelizeable = (arbitrableAddress, arbitratorDisputeID) => {
     const {network} = this.state;
 
-    if (localStorage.getItem(`${network}${arbitratorDisputeID.toString()}`)) {
+    let item = localStorage.getItem(`${network}${arbitratorDisputeID.toString()}`);
+    if (item && item !== "undefined") {
       console.log(`Found metaevidence of ${arbitratorDisputeID} skipping fetch.`)
-      return JSON.parse(localStorage.getItem(`${network}${arbitratorDisputeID.toString()}`))
+      return JSON.parse(item);
     }
     console.log(`Fetching ${arbitratorDisputeID}...`)
 
@@ -221,11 +223,9 @@ class App extends React.Component {
       .then((metaevidence) => {
         console.log(metaevidence);
         if (metaevidence.length > 0) {
-          fetch(`${IPFS_GATEWAY}/${metaevidence[0].returnValues._evidence}`)
+          fetch(urlNormalize(metaevidence[0].returnValues._evidence))
             .then((response) => response.json())
-            .catch((error) => {
-              console.error(`Failed to fetch metaevidence of ${arbitratorDisputeID} at ${IPFS_GATEWAY + metaevidence[0].returnValues._evidence}`);
-            })
+            .catch(console.error)
             .then((payload) => {
               console.log(`caching ${arbitratorDisputeID}`);
               localStorage.setItem(`${network}${arbitratorDisputeID.toString()}`, JSON.stringify(payload));
