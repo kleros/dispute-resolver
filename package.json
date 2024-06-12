@@ -5,13 +5,12 @@
   "private": false,
   "dependencies": {
     "@alch/alchemy-web3": "^1.4.7",
-    "@babel/helper-call-delegate": "^7.12.1",
     "@kleros/arbitrable-proxy-contracts": "^5.0.0",
-    "@kleros/archon": "^2.2.0",
-    "IDRv2": "npm:@kleros/dispute-resolver-interface-contract@8.0.0",
-    "IDRv1": "npm:@kleros/dispute-resolver-interface-contract@1.0.2",
+    "@kleros/archon": "^2.4.0",
     "@kleros/kleros": "^0.1.2",
     "@reality.eth/reality-eth-lib": "3.1.14",
+    "IDRv1": "npm:@kleros/dispute-resolver-interface-contract@1.0.2",
+    "IDRv2": "npm:@kleros/dispute-resolver-interface-contract@8.0.0",
     "antd": "^4.16.13",
     "bignumber.js": "^9.0.0",
     "bootstrap": "^4.5.3",
@@ -23,7 +22,6 @@
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
     "moment": "^2.29.4",
-    "node-sass": "4",
     "react": "17.0.0",
     "react-blockies": "^1.4.1",
     "react-bootstrap": "^1.4.0",
@@ -35,7 +33,7 @@
     "react-router-bootstrap": "^0.25.0",
     "react-router-dom": "^5.0.1",
     "react-scripts": "4.0.0",
-    "styled-components": "^5.2.1",
+    "sass": "^1.77.5",
     "web3": "^1.7.0"
   },
   "scripts": {
@@ -43,18 +41,6 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ]
   },
   "engines": {
     "node": ">=0.12"
@@ -67,7 +53,19 @@
     "printWidth": 180
   },
   "volta": {
-    "node": "14.20.1",
+    "node": "16.20.2",
     "yarn": "1.22.11"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }
