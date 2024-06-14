@@ -178,7 +178,7 @@ class App extends React.Component {
 
     const ipfsHashMetaEvidenceObj = await ipfsPublish("metaEvidence.json", this.encoder.encode(JSON.stringify(metaevidence)));
 
-    const metaevidenceURI = `/ipfs/${ipfsHashMetaEvidenceObj[1].hash}${ipfsHashMetaEvidenceObj[0].path}`;
+    const metaevidenceURI = ipfsHashMetaEvidenceObj;
 
     const arbitrationCost = await this.getArbitrationCost(arbitrator, arbitratorExtraData);
     return EthereumInterface.send("ArbitrableProxy", networkMap[this.state.network].ARBITRABLE_PROXY, this.state.activeAddress, arbitrationCost, "createDispute", arbitratorExtraData, metaevidenceURI, options.numberOfRulingOptions);
