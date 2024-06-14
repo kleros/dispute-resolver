@@ -77,9 +77,9 @@ class IPFS extends React.Component {
                   </Form.Row>
                 </Form>
                 {uploadedDocumentURI && (
-                  <a href={`https://ipfs.kleros.io${uploadedDocumentURI}`} target="_blank" rel="noopener noreferrer">
+                  <a href={`https://cdn.kleros.link${uploadedDocumentURI}`} target="_blank" rel="noopener noreferrer">
                     {" "}
-                    {`https://ipfs.kleros.io${uploadedDocumentURI}`}
+                    {`https://cdn.kleros.link${uploadedDocumentURI}`}
                   </a>
                 )}
               </Card.Body>

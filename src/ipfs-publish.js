@@ -8,7 +8,7 @@ const ipfsPublish = async (fileName, data) => {
   const buffer = await Buffer.from(data)
 
   return new Promise((resolve, reject) => {
-    fetch('https://ipfs.kleros.io/add', {
+    fetch('https://cdn.kleros.link/add', {
       method: 'POST',
       body: JSON.stringify({
         fileName,
