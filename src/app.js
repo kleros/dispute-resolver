@@ -14,9 +14,10 @@ import networkMap, {getReadOnlyRpcUrl} from "./ethereum/network-contract-mapping
 import ipfsPublish from "./ipfs-publish";
 import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
+import { urlNormalize } from "./urlNormalizer";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
-const IPFS_GATEWAY = "https://ipfs.kleros.io/";
+const IPFS_GATEWAY = "https://cdn.kleros.link";
 const EXCEPTIONAL_CONTRACT_ADDRESSES = ['0xe0e1bc8C6cd1B81993e2Fcfb80832d814886eA38', '0xb9f9B5eee2ad29098b9b3Ea0B401571F5dA4AD81']
 const CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS = 3 * 60 * 60 * 1000
 const CACHE_INVALIDATION_PERIOD_FOR_DISPUTES_MS = 1 * 60 * 1000
@@ -90,7 +91,7 @@ class App extends React.Component {
               .then((response) => response.json())
               .catch((error) => console.error(error));
           } else {
-            return fetch("https://ipfs.kleros.io" + subcourtURI).then((response) => response.json());
+            return fetch("https://cdn.kleros.link" + subcourtURI).then((response) => response.json());
           }
         }
       }))), subcourtsLoading: false, subcourts: await Promise.all(subcourts),
@@ -177,7 +178,7 @@ class App extends React.Component {
 
     const ipfsHashMetaEvidenceObj = await ipfsPublish("metaEvidence.json", this.encoder.encode(JSON.stringify(metaevidence)));
 
-    const metaevidenceURI = `/ipfs/${ipfsHashMetaEvidenceObj[1].hash}${ipfsHashMetaEvidenceObj[0].path}`;
+    const metaevidenceURI = ipfsHashMetaEvidenceObj;
 
     const arbitrationCost = await this.getArbitrationCost(arbitrator, arbitratorExtraData);
     return EthereumInterface.send("ArbitrableProxy", networkMap[this.state.network].ARBITRABLE_PROXY, this.state.activeAddress, arbitrationCost, "createDispute", arbitratorExtraData, metaevidenceURI, options.numberOfRulingOptions);
@@ -203,9 +204,10 @@ class App extends React.Component {
   getMetaEvidenceParallelizeable = (arbitrableAddress, arbitratorDisputeID) => {
     const {network} = this.state;
 
-    if (localStorage.getItem(`${network}${arbitratorDisputeID.toString()}`)) {
+    let item = localStorage.getItem(`${network}${arbitratorDisputeID.toString()}`);
+    if (item && item !== "undefined") {
       console.log(`Found metaevidence of ${arbitratorDisputeID} skipping fetch.`)
-      return JSON.parse(localStorage.getItem(`${network}${arbitratorDisputeID.toString()}`))
+      return JSON.parse(item);
     }
     console.log(`Fetching ${arbitratorDisputeID}...`)
 
@@ -219,12 +221,11 @@ class App extends React.Component {
         })
       )
       .then((metaevidence) => {
+        console.log(metaevidence);
         if (metaevidence.length > 0) {
-          fetch(IPFS_GATEWAY + metaevidence[0].returnValues._evidence)
+          fetch(urlNormalize(metaevidence[0].returnValues._evidence))
             .then((response) => response.json())
-            .catch((error) => {
-              console.error(`Failed to fetch metaevidence of ${arbitratorDisputeID} at ${IPFS_GATEWAY + metaevidence[0].returnValues._evidence}`);
-            })
+            .catch(console.error)
             .then((payload) => {
               console.log(`caching ${arbitratorDisputeID}`);
               localStorage.setItem(`${network}${arbitratorDisputeID.toString()}`, JSON.stringify(payload));

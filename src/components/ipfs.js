@@ -39,7 +39,7 @@ class IPFS extends React.Component {
     reader.addEventListener("loadend", async () => {
       const buffer = Buffer.from(reader.result);
       const result = await this.props.publishCallback(fileInput.name, buffer);
-      this.setState({ uploadedDocumentURI: `/ipfs/${result[0].hash}` });
+      this.setState({ uploadedDocumentURI: result });
     });
   };
 
@@ -77,9 +77,9 @@ class IPFS extends React.Component {
                   </Form.Row>
                 </Form>
                 {uploadedDocumentURI && (
-                  <a href={`https://ipfs.kleros.io${uploadedDocumentURI}`} target="_blank" rel="noopener noreferrer">
+                  <a href={`https://cdn.kleros.link${uploadedDocumentURI}`} target="_blank" rel="noopener noreferrer">
                     {" "}
-                    {`https://ipfs.kleros.io${uploadedDocumentURI}`}
+                    {`https://cdn.kleros.link${uploadedDocumentURI}`}
                   </a>
                 )}
               </Card.Body>

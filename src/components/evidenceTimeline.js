@@ -38,7 +38,7 @@ class EvidenceTimeline extends React.Component {
   handleControlChange = async (event) => {
     const name = event.target.name;
     const value = event.target.value;
-    
+
     await this.setState({ [name]: value });
   };
 
@@ -65,7 +65,7 @@ class EvidenceTimeline extends React.Component {
         support: 0,
       });
     } catch (err) {
-      
+
       await this.setState({
         awaitingConfirmation: false,
         modalExtraClass: "closed",
@@ -80,14 +80,14 @@ class EvidenceTimeline extends React.Component {
     await this.setState({ fileInput: null });
     let reader = new FileReader();
     reader.readAsArrayBuffer(acceptedFiles[0]);
-     reader.addEventListener("loadend", async () => {
+    reader.addEventListener("loadend", async () => {
       const buffer = Buffer.from(reader.result);
 
       await this.setState({ uploadingToIPFS: true });
 
       const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
 
-      
+
       if (result)
         await this.setState({
           evidenceDocument: `/ipfs/${result[1].hash}${result[0].path}`,
@@ -144,8 +144,8 @@ class EvidenceTimeline extends React.Component {
     const { ipfsGateway,  evidences,  dispute, disputePeriod, evidenceSubmissionEnabled, appealDecisions } = this.props;
 
     const { evidenceDescription, evidenceTitle, fileInput, awaitingConfirmation, uploadingToIPFS } = this.state;
-    
-    
+
+
     return (
       <div id="evidence-timeline" className={styles.evidenceTimeline}>
         <div className={styles["content-inner"]}>
@@ -166,7 +166,7 @@ class EvidenceTimeline extends React.Component {
                 return 0;
               })
               .map((evidenceOrEvent, index) => {
-                
+
                 if (evidenceOrEvent.appealedAt)
                   return (
                     <React.Fragment key={index}>
