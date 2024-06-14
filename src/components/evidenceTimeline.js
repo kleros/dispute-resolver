@@ -3,6 +3,9 @@ import {  Row, Col, Button } from "react-bootstrap";
 
 import PropTypes from "prop-types";
 import styles from "components/styles/evidenceTimeline.module.css";
+import isImage from "is-image";
+import isTextPath from "is-text-path";
+import isVideo from "is-video";
 import Dropzone from "react-dropzone";
 import Blockies from "react-blockies";
 
@@ -35,7 +38,7 @@ class EvidenceTimeline extends React.Component {
   handleControlChange = async (event) => {
     const name = event.target.name;
     const value = event.target.value;
-    
+
     await this.setState({ [name]: value });
   };
 
@@ -62,7 +65,7 @@ class EvidenceTimeline extends React.Component {
         support: 0,
       });
     } catch (err) {
-      
+
       await this.setState({
         awaitingConfirmation: false,
         modalExtraClass: "closed",
@@ -77,17 +80,17 @@ class EvidenceTimeline extends React.Component {
     await this.setState({ fileInput: null });
     let reader = new FileReader();
     reader.readAsArrayBuffer(acceptedFiles[0]);
-     reader.addEventListener("loadend", async () => {
+    reader.addEventListener("loadend", async () => {
       const buffer = Buffer.from(reader.result);
 
       await this.setState({ uploadingToIPFS: true });
 
       const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
 
-      
+
       if (result)
         await this.setState({
-          evidenceDocument: result,
+          evidenceDocument: `/ipfs/${result[1].hash}${result[0].path}`,
           fileInput: acceptedFiles[0],
           uploadingToIPFS: false,
         });
@@ -101,7 +104,7 @@ class EvidenceTimeline extends React.Component {
   };
 
   getAttachmentIcon = (uri) => {
-    if (false) {
+    if (isImage(uri)) {
       return (
         <svg width="32" height="32" viewBox="0 0 29 39" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path
@@ -111,7 +114,7 @@ class EvidenceTimeline extends React.Component {
           />
         </svg>
       );
-    } else if (false) {
+    } else if (isVideo(uri)) {
       return (
         <svg fill="none" xmlns="http://www.w3.org/2000/svg">
           <path
@@ -121,7 +124,7 @@ class EvidenceTimeline extends React.Component {
           />
         </svg>
       );
-    } else if (false) {
+    } else if (isTextPath(uri)) {
       return (
         <svg width="30" height="39" viewBox="0 0 30 39" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path
@@ -141,8 +144,8 @@ class EvidenceTimeline extends React.Component {
     const { ipfsGateway,  evidences,  dispute, disputePeriod, evidenceSubmissionEnabled, appealDecisions } = this.props;
 
     const { evidenceDescription, evidenceTitle, fileInput, awaitingConfirmation, uploadingToIPFS } = this.state;
-    
-    
+
+
     return (
       <div id="evidence-timeline" className={styles.evidenceTimeline}>
         <div className={styles["content-inner"]}>
@@ -163,7 +166,7 @@ class EvidenceTimeline extends React.Component {
                 return 0;
               })
               .map((evidenceOrEvent, index) => {
-                
+
                 if (evidenceOrEvent.appealedAt)
                   return (
                     <React.Fragment key={index}>
@@ -277,7 +280,7 @@ EvidenceTimeline.propTypes = {
 };
 
 EvidenceTimeline.defaultProps = {
-  ipfsGateway: "https://cdn.kleros.link",
+  ipfsGateway: "https://ipfs.kleros.io",
   publishCallback: async (e) => {
     console.error(e);
     await new Promise((r) => setTimeout(r, 4000));
