@@ -3,7 +3,7 @@ const ipfsPublish = async (fileName, data) => {
   payload.append("file", new Blob([data]), fileName);
   const klerosIPFSNetlifyFunctionEndpoint = `https://kleros-api.netlify.app/.netlify/functions/upload-to-ipfs`
   const operation = 'file'
-  const pinToGraph = 'true'
+  const pinToGraph = 'false'
 
   console.log("Uploading to IPFS");
   return new Promise((resolve, reject) => {
