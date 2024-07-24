@@ -81,6 +81,16 @@ const map = {
     CURRENCY_SHORT: "ETH",
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["1"],
   },
+  690:{
+    NAME: "Redstone",
+    FOREIGN_KLEROS_LIQUID: arbitrators["1"],
+    FOREIGN_ARBITRATOR_NETWORK_CODE: "1",
+    ARBITRABLE_PROXY: null,
+    POLICY_REGISTRY: policyRegistries["1"],
+    WEB3_PROVIDER: process.env.REACT_APP_REDSTONE,
+    CURRENCY_SHORT: "ETH",
+    QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["1"]
+  },
   42161: {
     NAME: "Arbitrum One",
     FOREIGN_KLEROS_LIQUID: arbitrators["1"],
