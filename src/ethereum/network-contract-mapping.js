@@ -1,5 +1,4 @@
 import ArbitrableProxy from "../../node_modules/@kleros/arbitrable-proxy-contracts/build/contracts/ArbitrableProxy.json";
-import * as process from "node:process";
 
 const arbitrators = {
   1: "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
