@@ -1,4 +1,5 @@
 import ArbitrableProxy from "../../node_modules/@kleros/arbitrable-proxy-contracts/build/contracts/ArbitrableProxy.json";
+import * as process from "node:process";
 
 const arbitrators = {
   1: "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
@@ -15,6 +16,7 @@ const arbitrators = {
 const policyRegistries = {
   1: "0xCf1f07713d5193FaE5c1653C9f61953D048BECe4",
   5: "0x28c8A3A2E3c8Cd3F795DB83764316a1129a069bA",
+  11155111: "0x88Fb25D399310c07d35cB9091b8346d8b1893aa5"
 }
 
 const arbitratorDeployedAtBlock = {
@@ -122,11 +124,21 @@ const map = {
     NAME: "Ethereum Testnet Sepolia",
     KLEROS_LIQUID: arbitrators["11155111"],
     ARBITRABLE_PROXY: "0x009cA5A0B816156F91B29A93d7688c52480BaB24",
-    POLICY_REGISTRY: "0x88Fb25D399310c07d35cB9091b8346d8b1893aa5",
+    POLICY_REGISTRY: policyRegistries["11155111"],
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_SEPOLIA_PROVIDER_URL,
     CURRENCY_SHORT: "sETH",
     QUERY_FROM_BLOCK: 3635742,
   },
+  11155420: {
+    NAME: "Optimism Testnet Sepolia",
+    FOREIGN_KLEROS_LIQUID: arbitrators["11155111"],
+    FOREIGN_ARBITRATOR_NETWORK_CODE: "11155111",
+    ARBITRABLE_PROXY: null,
+    POLICY_REGISTRY: policyRegistries["11155111"],
+    WEB3_PROVIDER: process.env.REACT_APP_OPTIMISM_SEPOLIA,
+    CURRENCY_SHORT: "ETH",
+    QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["11155111"],
+  }
 };
 
 export default map;
