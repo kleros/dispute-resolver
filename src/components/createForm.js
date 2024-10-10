@@ -433,10 +433,10 @@ class CreateForm extends React.Component {
                     <input {...getInputProps()} />
                     <p style={{ padding: "1rem" }}>
                       {primaryDocument || (fileInput && `Uploading ${fileInput.path}...`) || (
-                        <>
+                        <div style={{display: "flex", gap: "8px", justifyContent: "center"}}>
                           <UploadSVG />
                           <span>Drop files here or click to select files (Max size: 4MB)</span>
-                        </>
+                        </div>
                       )}
                     </p>
                   </div>
