@@ -74,9 +74,15 @@ class EvidenceTimeline extends React.Component {
     }
   };
 
-
-
   handleDrop = async (acceptedFiles) => {
+    // The backend cannot handle files larger than 4MB currently
+    // https://docs.netlify.com/functions/overview/#default-deployment-options
+    const maxSizeInBytes = 4 * 1024 * 1024;
+    if (acceptedFiles[0].size > maxSizeInBytes) {
+      alert('File is too large. Maximum size is 4MB.');
+      return;
+    }
+
     await this.setState({ fileInput: null });
     let reader = new FileReader();
     reader.readAsArrayBuffer(acceptedFiles[0]);
@@ -166,7 +172,6 @@ class EvidenceTimeline extends React.Component {
                 return 0;
               })
               .map((evidenceOrEvent, index) => {
-
                 if (evidenceOrEvent.appealedAt)
                   return (
                     <React.Fragment key={index}>
@@ -236,7 +241,14 @@ class EvidenceTimeline extends React.Component {
                     <section className={styles["dropzone"]}>
                       <div {...getRootProps()} className={styles["vertical-center"]}>
                         <input {...getInputProps()} />
-                        <p>{(fileInput && fileInput.path) || (uploadingToIPFS && "Uploading to IPFS...") || <UploadSVG />}</p>
+                        <p>
+                          {(fileInput && fileInput.path) || (uploadingToIPFS && "Uploading to IPFS...") || (
+                            <>
+                              <UploadSVG />
+                              <span>Drop files here or click to select files (Max size: 4MB)</span>
+                            </>
+                          )}
+                        </p>
                       </div>
                     </section>
                   )}
