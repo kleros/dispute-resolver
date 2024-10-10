@@ -131,6 +131,14 @@ class CreateForm extends React.Component {
   };
 
   onDrop = async (acceptedFiles) => {
+    // The backend cannot handle files larger than 4MB currently
+    // https://docs.netlify.com/functions/overview/#default-deployment-options
+    const maxSizeInBytes = 4 * 1024 * 1024;
+    if (acceptedFiles[0].size > maxSizeInBytes) {
+      alert('File is too large. Maximum size is 4MB.');
+      return;
+    }
+
     this.setState({fileInput: acceptedFiles[0], uploading: true});
 
     let reader = new FileReader();
@@ -423,7 +431,14 @@ class CreateForm extends React.Component {
                 {({getRootProps, getInputProps}) => (<section id="dropzone">
                   <div {...getRootProps()} className={styles.dropzone}>
                     <input {...getInputProps()} />
-                    <p style={{padding: "1rem"}}>{primaryDocument || (fileInput && `Uploading ${fileInput.path}...`) || <UploadSVG/>}</p>
+                    <p style={{ padding: "1rem" }}>
+                      {primaryDocument || (fileInput && `Uploading ${fileInput.path}...`) || (
+                        <div style={{display: "flex", gap: "8px", justifyContent: "center"}}>
+                          <UploadSVG />
+                          <span>Drop files here or click to select files (Max size: 4MB)</span>
+                        </div>
+                      )}
+                    </p>
                   </div>
                 </section>)}
               </Dropzone>
