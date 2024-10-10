@@ -243,10 +243,10 @@ class EvidenceTimeline extends React.Component {
                         <input {...getInputProps()} />
                         <p>
                           {(fileInput && fileInput.path) || (uploadingToIPFS && "Uploading to IPFS...") || (
-                            <>
+                            <div style={{display: "flex", gap: "8px", justifyContent: "center"}}>
                               <UploadSVG />
                               <span>Drop files here or click to select files (Max size: 4MB)</span>
-                            </>
+                            </div>
                           )}
                         </p>
                       </div>
