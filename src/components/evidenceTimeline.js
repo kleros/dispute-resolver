@@ -280,7 +280,7 @@ EvidenceTimeline.propTypes = {
 };
 
 EvidenceTimeline.defaultProps = {
-  ipfsGateway: "https://ipfs.kleros.io",
+  ipfsGateway: "https://cdn.kleros.link",
   publishCallback: async (e) => {
     console.error(e);
     await new Promise((r) => setTimeout(r, 4000));
