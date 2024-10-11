@@ -285,32 +285,6 @@ div > div > .divider {
   overflow: auto;
 }
 
-.dropzone {
-  margin-top: 0.2rem;
-}
-
-.dropzone p {
-  font-size: 1.25rem;
-  font-weight: normal;
-  margin: 0;
-  padding: 1rem;
-}
-
-.evidenceTimeline .dropzoneRow {
-  margin-top: var(--spacing-32);
-}
-
-.evidenceTimeline .dropzone {
-  background-color: var(--blue-accent);
-  border: 2px dashed #009aff;
-  text-align: center;
-  margin-bottom: var(--spacing-8);
-}
-
-.evidenceTimeline .dropzoneInfo > svg {
-  margin-right: var(--spacing-8);
-}
-
 .evidenceTitle {
   margin-bottom: var(--spacing-32);
 }
@@ -325,8 +299,7 @@ div > div > .divider {
 }
 
 .evidenceTitle label,
-.evidenceDescription label,
-.dropzoneDiv label {
+.evidenceDescription label {
   margin-bottom: 0.2rem;
   text-align: center;
 }

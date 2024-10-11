@@ -1,25 +1,26 @@
 import React from "react";
-import { Col, Row, Button, Form, Dropdown} from "react-bootstrap";
-import {ReactComponent as ScalesSVG} from "../assets/images/scales.svg";
-import {ReactComponent as EthereumSVG} from "../assets/images/ethereum.svg";
-import {ReactComponent as UploadSVG} from "../assets/images/upload.svg";
-import {ReactComponent as InfoSVG} from "../assets/images/info.svg";
-import {ReactComponent as AvatarSVG} from "../assets/images/avatar.svg";
+import { Col, Row, Button, Form, Dropdown } from "react-bootstrap";
+import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
+import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
+import { ReactComponent as UploadSVG } from "../assets/images/upload.svg";
+import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
+import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
 import networkMap from "../ethereum/network-contract-mapping";
 
 import Dropzone from "react-dropzone";
 
 const QuestionTypes = Object.freeze({
-  SINGLE_SELECT: {code: "single-select", humanReadable: "Multiple choice: single select"},
-  MULTIPLE_SELECT: {code: "multiple-select", humanReadable: "Multiple choice: multiple select"},
+  SINGLE_SELECT: { code: "single-select", humanReadable: "Multiple choice: single select" },
+  MULTIPLE_SELECT: { code: "multiple-select", humanReadable: "Multiple choice: multiple select" },
   UINT: {
     code: "uint", humanReadable: "Non-negative number"
   }, //  INT: { code: "int", humanReadable: "Number" }, Not-implemented in Court, so disabling.
   // STRING: { code: "string", humanReadable: "Text" },  Not-implemented in Court, so disabling.
-  DATETIME: {code: "datetime", humanReadable: "Date"},
+  DATETIME: { code: "datetime", humanReadable: "Date" },
 });
 
 import styles from "components/styles/createForm.module.css";
+import FileUploadDropzone from "./FileUploadDropzone";
 
 class CreateForm extends React.Component {
   constructor(props) {
@@ -48,12 +49,13 @@ class CreateForm extends React.Component {
       numberOfParties: 1,
       summary: false,
       uploading: false,
+      uploadError: ""
     };
   }
 
   onNextButtonClick = async (event) => {
-    const {form} = event.target;
-    const {subcourtDetails} = this.props;
+    const { form } = event.target;
+    const { subcourtDetails } = this.props;
     const {
       arbitrationCost,
       selectedSubcourt,
@@ -74,7 +76,7 @@ class CreateForm extends React.Component {
     event.preventDefault();
     event.stopPropagation();
 
-    this.setState({validated: !valid});
+    this.setState({ validated: !valid });
 
     if (valid) {
       this.props.onNextButtonClickCallback({
@@ -98,18 +100,18 @@ class CreateForm extends React.Component {
 
   onSubcourtSelect = async (subcourtID) => {
     if (!networkMap[this.props.network].ARBITRABLE_PROXY) return
-    await this.setState({selectedSubcourt: subcourtID});
+    await this.setState({ selectedSubcourt: subcourtID });
     this.calculateArbitrationCost(this.state.selectedSubcourt, this.state.initialNumberOfJurors);
   };
 
   onQuestionTypeChange = async (questionType) => {
     console.debug(JSON.parse(questionType));
-    this.setState({questionType: JSON.parse(questionType)});
+    this.setState({ questionType: JSON.parse(questionType) });
 
     if (!(JSON.parse(questionType).code == QuestionTypes.SINGLE_SELECT.code || JSON.parse(questionType).code == QuestionTypes.MULTIPLE_SELECT.code)) {
-      this.setState({numberOfRulingOptions: 0}); // Default value, means the max at the smart contract
+      this.setState({ numberOfRulingOptions: 0 }); // Default value, means the max at the smart contract
     } else {
-      this.setState({numberOfRulingOptions: 2}); // Default value, means the max at the smart contract
+      this.setState({ numberOfRulingOptions: 2 }); // Default value, means the max at the smart contract
     }
   };
 
@@ -121,38 +123,54 @@ class CreateForm extends React.Component {
 
   onNumberOfRulingOptionsChange = async (event) => {
     let number = parseInt(event.target.value);
-    this.setState({numberOfRulingOptions: number});
+    this.setState({ numberOfRulingOptions: number });
   };
 
   onControlChange = async (e) => {
-    await this.setState({[e.target.id]: e.target.value});
+    await this.setState({ [e.target.id]: e.target.value });
 
     this.calculateArbitrationCost(this.state.selectedSubcourt, this.state.initialNumberOfJurors);
   };
 
   onDrop = async (acceptedFiles) => {
+
+    this.setState({ uploadError: "", fileInput: null });
+
     // The backend cannot handle files larger than 4MB currently
     // https://docs.netlify.com/functions/overview/#default-deployment-options
     const maxSizeInBytes = 4 * 1024 * 1024;
     if (acceptedFiles[0].size > maxSizeInBytes) {
-      alert('File is too large. Maximum size is 4MB.');
+      this.setState({ uploadError: "File is too large. Maximum size is 4MB." });
       return;
     }
 
-    this.setState({fileInput: acceptedFiles[0], uploading: true});
-
     let reader = new FileReader();
     reader.readAsArrayBuffer(acceptedFiles[0]);
-    reader.addEventListener("loadend", async () => {
-      const buffer = Buffer.from(reader.result);
 
-      const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
-      console.log(result);
-      console.log(result);
-      this.setState({
-        primaryDocument: result, uploading: false,
-      });
+    reader.addEventListener("loadend", async () => {
+      try {
+        this.setState({ uploading: true });
+        const buffer = Buffer.from(reader.result);
+        const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
+        console.log(result);
+        this.setState({
+          primaryDocument: result, fileInput: acceptedFiles[0], uploading: false
+        });
+      } catch (error) {
+        console.error("Upload error:", error);
+        this.setState({
+          uploadError: "An error occurred while uploading the file. Please try again.",
+          uploading: false,
+        });
+      }
     });
+
+    reader.onerror = () => {
+      this.setState({
+        uploadError: "Failed to read the file. Please try again.",
+        uploading: false,
+      });
+    };
   };
 
   calculateArbitrationCost = async (subcourtID, noOfJurors) => subcourtID && noOfJurors && this.setState({
@@ -161,7 +179,7 @@ class CreateForm extends React.Component {
 
   componentDidMount = async () => {
     this.onSubcourtSelect("0");
-    const {formData} = this.props;
+    const { formData } = this.props;
     if (formData) this.setState({
       selectedSubcourt: parseInt(formData.selectedSubcourt) && formData.selectedSubcourt,
       initialNumberOfJurors: formData.initialNumberOfJurors && formData.initialNumberOfJurors,
@@ -180,7 +198,7 @@ class CreateForm extends React.Component {
   };
 
   render() {
-    const { subcourtsLoading, subcourtDetails,  network } = this.props;
+    const { subcourtsLoading, subcourtDetails, network } = this.props;
 
     const {
       title,
@@ -201,6 +219,7 @@ class CreateForm extends React.Component {
       selectedSubcourt,
       summary,
       primaryDocument,
+      uploadError,
       uploading,
     } = this.state;
 
@@ -217,18 +236,18 @@ class CreateForm extends React.Component {
             <h1 className={styles.h1}>Create a custom dispute</h1>
           </Col>
         </Row>
-        <hr/>
+        <hr />
         <Row>
           <Col xl={6} md={12} sm={24} xs={24}>
             <Form.Group>
               <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
               <Dropdown required onSelect={this.onSubcourtSelect}>
-                <Dropdown.Toggle  id="subcourt-dropdown" block disabled={subcourtsLoading || summary}
-                                 className={styles.dropdownToggle}>
-                  <ScalesSVG className={styles.scales}/>{" "}
+                <Dropdown.Toggle id="subcourt-dropdown" block disabled={subcourtsLoading || summary}
+                  className={styles.dropdownToggle}>
+                  <ScalesSVG className={styles.scales} />{" "}
                   <span className="font-weight-normal">
-                      {(subcourtsLoading && "Loading...") || (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt] && subcourtDetails[selectedSubcourt].name) || "Please select a court"}
-                    </span>
+                    {(subcourtsLoading && "Loading...") || (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt] && subcourtDetails[selectedSubcourt].name) || "Please select a court"}
+                  </span>
                 </Dropdown.Toggle>
 
                 <Dropdown.Menu>
@@ -243,7 +262,7 @@ class CreateForm extends React.Component {
           <Col xl={6} md={12} sm={24} xs={24}>
             <Form.Group className="inner-addon left-addon">
               <Form.Label htmlFor="initialNumberOfJurors">Number of Votes</Form.Label>
-              <AvatarSVG className="glyphicon glyphicon-user"/>
+              <AvatarSVG className="glyphicon glyphicon-user" />
               <Form.Control
                 required
                 id="initialNumberOfJurors"
@@ -259,14 +278,14 @@ class CreateForm extends React.Component {
           <Col xl={6} md={12} sm={24} xs={24}>
             <Form.Group>
               <Form.Label htmlFor="category">Category (Optional)</Form.Label>
-              <Form.Control id="category" as="input" value={category} onChange={this.onControlChange} placeholder={"Category"}/>
+              <Form.Control id="category" as="input" value={category} onChange={this.onControlChange} placeholder={"Category"} />
             </Form.Group>
           </Col>
           <Col xl={6} md={12} sm={24} xs={24}>
             <Form.Group className={styles.arbitrationFeeGroup}>
               <Form.Label htmlFor="arbitrationFee">Arbitration Cost</Form.Label>
               <Form.Control as="div" className={styles.arbitrationFeeGroupPrepend}>
-                <EthereumSVG/>
+                <EthereumSVG />
                 {<span
                   className={styles.arbitrationFee}>{arbitrationCost && arbitrationCost + " " + networkMap[network].CURRENCY_SHORT}</span>}
               </Form.Control>
@@ -277,7 +296,7 @@ class CreateForm extends React.Component {
           <Col>
             <Form.Group>
               <Form.Label htmlFor="title">Title</Form.Label>
-              <Form.Control required id="title" as="input" value={title} onChange={this.onControlChange} placeholder={"Title"}/>
+              <Form.Control required id="title" as="input" value={title} onChange={this.onControlChange} placeholder={"Title"} />
               <Form.Control.Feedback type="invalid">Please enter title for the dispute, something explains it in a
                 nutshell.</Form.Control.Feedback>
             </Form.Group>
@@ -289,12 +308,12 @@ class CreateForm extends React.Component {
             <Form.Group>
               <Form.Label htmlFor="description">Description (Optional)</Form.Label>
               <Form.Control id="description" as="textarea" rows="5" value={description} onChange={this.onControlChange}
-                            placeholder={"Description of dispute"}/>
+                placeholder={"Description of dispute"} />
             </Form.Group>
           </Col>
         </Row>
 
-        <hr/>
+        <hr />
 
         <Row>
           <Col xl={16} md={true} xs={24}>
@@ -340,7 +359,7 @@ class CreateForm extends React.Component {
             <Form.Group>
               <Form.Label htmlFor="question">Question</Form.Label>
 
-              <Form.Control required id="question" as="input" value={question} onChange={this.onControlChange} placeholder={"Question"}/>
+              <Form.Control required id="question" as="input" value={question} onChange={this.onControlChange} placeholder={"Question"} />
               <Form.Control.Feedback type="invalid">Please enter a question.</Form.Control.Feedback>
             </Form.Group>
           </Col>
@@ -375,7 +394,7 @@ class CreateForm extends React.Component {
             </Col>{" "}
           </Row>))}
 
-        <hr/>
+        <hr />
         <Row>
           {[...Array(parseInt(numberOfParties))].map((_value, index) => (<React.Fragment key={`party-${index}`}>
             <Col xl={4} l={4} md={8}>
@@ -412,11 +431,11 @@ class CreateForm extends React.Component {
         <Row>
           <Col>
             <Form.Group>
-              <Button className="cssCircle plusSign" onClick={() => this.setState({numberOfParties: numberOfParties + 1})}>
+              <Button className="cssCircle plusSign" onClick={() => this.setState({ numberOfParties: numberOfParties + 1 })}>
                 <span>+</span>
               </Button>
               <Button className="cssCircle minusSign"
-                      onClick={(_e) => this.setState({numberOfParties: numberOfParties - 1 > 0 ? numberOfParties - 1 : 0})}>
+                onClick={(_e) => this.setState({ numberOfParties: numberOfParties - 1 > 0 ? numberOfParties - 1 : 0 })}>
                 <span>–</span>
               </Button>
             </Form.Group>
@@ -427,25 +446,12 @@ class CreateForm extends React.Component {
           <Col>
             <Form.Group>
               <Form.Label htmlFor="dropzone">Upload the Primary Document (Optional)</Form.Label>
-              <Dropzone onDrop={this.onDrop}>
-                {({getRootProps, getInputProps}) => (<section id="dropzone">
-                  <div {...getRootProps()} className={styles.dropzone}>
-                    <input {...getInputProps()} />
-                    <p style={{ padding: "1rem" }}>
-                      {primaryDocument || (fileInput && `Uploading ${fileInput.path}...`) || (
-                        <div style={{display: "flex", gap: "8px", justifyContent: "center"}}>
-                          <UploadSVG />
-                          <span>Drop files here or click to select files (Max size: 4MB)</span>
-                        </div>
-                      )}
-                    </p>
-                  </div>
-                </section>)}
-              </Dropzone>
-              <p className={styles.dropzoneInfo}>
-                <InfoSVG/>
-                You can add multiple files using an archive file, such as zip or rar.
-              </p>
+              <FileUploadDropzone
+                onDrop={this.onDrop}
+                uploadError={uploadError}
+                uploadingToIPFS={uploading}
+                fileInput={fileInput}
+              />
             </Form.Group>
           </Col>
         </Row>

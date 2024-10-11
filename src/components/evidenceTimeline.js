@@ -1,5 +1,5 @@
 import React from "react";
-import {  Row, Col, Button } from "react-bootstrap";
+import { Row, Col, Button } from "react-bootstrap";
 
 import PropTypes from "prop-types";
 import styles from "components/styles/evidenceTimeline.module.css";
@@ -12,6 +12,8 @@ import Blockies from "react-blockies";
 import { ReactComponent as LinkSVG } from "../assets/images/link.svg";
 import { ReactComponent as UploadSVG } from "../assets/images/upload.svg";
 import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
+import { ReactComponent as ErrorSVG } from "../assets/images/error.svg";
+import FileUploadDropzone from "./FileUploadDropzone";
 
 class EvidenceTimeline extends React.Component {
   constructor(props) {
@@ -36,15 +38,13 @@ class EvidenceTimeline extends React.Component {
   };
 
   handleControlChange = async (event) => {
-    const name = event.target.name;
-    const value = event.target.value;
-
-    await this.setState({ [name]: value });
+    const { name, value } = event.target;
+    this.setState({ [name]: value });
   };
 
   handleSubmitEvidenceButtonClick = async () => {
     const { evidenceDescription, evidenceDocument, evidenceTitle, support } = this.state;
-    await this.setState({
+    this.setState({
       awaitingConfirmation: true,
     });
 
@@ -70,43 +70,47 @@ class EvidenceTimeline extends React.Component {
         awaitingConfirmation: false,
         modalExtraClass: "closed",
         uploadingToIPFS: false,
+        uploadError: ""
       });
     }
   };
 
   handleDrop = async (acceptedFiles) => {
+    this.setState({ uploadError: "", fileInput: null });
+
     // The backend cannot handle files larger than 4MB currently
     // https://docs.netlify.com/functions/overview/#default-deployment-options
     const maxSizeInBytes = 4 * 1024 * 1024;
     if (acceptedFiles[0].size > maxSizeInBytes) {
-      alert('File is too large. Maximum size is 4MB.');
+      this.setState({ uploadError: "File is too large. Maximum size is 4MB." });
       return;
     }
 
-    await this.setState({ fileInput: null });
     let reader = new FileReader();
     reader.readAsArrayBuffer(acceptedFiles[0]);
     reader.addEventListener("loadend", async () => {
-      const buffer = Buffer.from(reader.result);
-
-      await this.setState({ uploadingToIPFS: true });
-
-      const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
-
-
-      if (result)
-        await this.setState({
-          evidenceDocument: result,
-          fileInput: acceptedFiles[0],
-          uploadingToIPFS: false,
-        });
-      else {
-        await this.setState({
-          fileInput: null,
+      try {
+        this.setState({ uploadingToIPFS: true });
+        const buffer = Buffer.from(reader.result);
+        const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
+        this.setState({
+          evidenceDocument: result, fileInput: acceptedFiles[0], uploadingToIPFS: false
+        })
+      } catch (error) {
+        console.error("Upload error:", error);
+        this.setState({
+          uploadError: "An error occurred while uploading the file. Please try again.",
           uploadingToIPFS: false,
         });
       }
     });
+
+    reader.onerror = () => {
+      this.setState({
+        uploadError: "Failed to read the file. Please try again.",
+        uploading: false,
+      });
+    };
   };
 
   getAttachmentIcon = (uri) => {
@@ -147,7 +151,7 @@ class EvidenceTimeline extends React.Component {
 
 
   render() {
-    const { ipfsGateway,  evidences,  dispute, disputePeriod, evidenceSubmissionEnabled, appealDecisions } = this.props;
+    const { ipfsGateway, evidences, dispute, disputePeriod, evidenceSubmissionEnabled, appealDecisions } = this.props;
 
     const { evidenceDescription, evidenceTitle, fileInput, awaitingConfirmation, uploadingToIPFS } = this.state;
 
@@ -235,29 +239,13 @@ class EvidenceTimeline extends React.Component {
                 <label htmlFor="evidence-description">Evidence Description</label>
                 <textarea name="evidenceDescription" id="evidence-description" type="textarea" rows="5" onChange={this.handleControlChange} value={evidenceDescription}></textarea>
               </div>
-              <div className={styles.dropzoneDiv}>
-                <Dropzone onDrop={this.handleDrop} id="dropzone">
-                  {({ getInputProps, getRootProps }) => (
-                    <section className={styles["dropzone"]}>
-                      <div {...getRootProps()} className={styles["vertical-center"]}>
-                        <input {...getInputProps()} />
-                        <p>
-                          {(fileInput && fileInput.path) || (uploadingToIPFS && "Uploading to IPFS...") || (
-                            <div style={{display: "flex", gap: "8px", justifyContent: "center"}}>
-                              <UploadSVG />
-                              <span>Drop files here or click to select files (Max size: 4MB)</span>
-                            </div>
-                          )}
-                        </p>
-                      </div>
-                    </section>
-                  )}
-                </Dropzone>
-                <p className={styles.documentInfo}>
-                  <InfoSVG className="mr-2" />
-                  Additionally, you can add an external file in PDF or add multiple files in a single .zip file.
-                </p>
-              </div>
+
+              <FileUploadDropzone
+                onDrop={this.handleDrop}
+                uploadError={this.state.uploadError}
+                uploadingToIPFS={this.state.uploadingToIPFS}
+                fileInput={this.state.fileInput}
+              />
 
               <Row className={`no-gutters mt-3 text-center text-md-right  ${styles.buttons}`}>
                 <Col>
