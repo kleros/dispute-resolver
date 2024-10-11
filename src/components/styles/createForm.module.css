@@ -34,7 +34,6 @@
   right: var(--spacing-16);
   top: calc(50% - var(--spacing-4));
   color: var(--stroke);
-
 }
 
 .createForm .dropdownToggle {
@@ -44,7 +43,6 @@
 .createForm .dropdownToggle > span {
   vertical-align: middle;
 }
-
 
 .createForm .scales > path {
   fill: var(--purple-primary);
@@ -112,7 +110,6 @@
   cursor: pointer;
 }
 
-
 .createForm :global(.minusSign) > span {
   vertical-align: super;
   line-height: 27px;
@@ -130,17 +127,6 @@
 
 .createForm .dropzoneRow {
   margin-top: var(--spacing-32);
-}
-
-.createForm .dropzone {
-  background-color: var(--blue-accent);
-  border: 2px dashed #009aff;
-  text-align: center;
-  margin-bottom: var(--spacing-8);
-}
-
-.createForm .dropzoneInfo > svg {
-  margin-right: var(--spacing-8);
 }
 
 .createForm .submit {
