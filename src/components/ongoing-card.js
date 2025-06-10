@@ -15,13 +15,27 @@ class OngoingCard extends React.Component {
 
     return strings[periodNumber];
   };
+
+  getRemainingTime = () => {
+    if (!this.props.arbitratorDisputeDetails || !this.props.subcourts.length) return null;
+
+    const { arbitratorDisputeDetails, subcourts } = this.props;
+    const { lastPeriodChange, period, subcourtID } = arbitratorDisputeDetails
+
+    const timesPerPeriod = subcourts[subcourtID.toString()][1]
+    const periodDuration = timesPerPeriod[period.toString()];
+
+    return 1000 * (parseInt(lastPeriodChange.toString()) + parseInt(periodDuration));
+  }
+
   render() {
-    const { dispute, subcourtDetails, subcourts, title, arbitratorDisputeDetails } = this.props;
+    const { dispute, subcourtDetails, title, arbitratorDisputeDetails } = this.props;
+    const remainingTime = this.getRemainingTime()
 
     return (
       <div className={styles.ongoingCard}>
         <div className={styles.header}>
-          <span className={`${styles.status} ${this.getStatusClass(arbitratorDisputeDetails.period)}`}> </span>
+          <span className={`${styles.status} ${this.getStatusClass(arbitratorDisputeDetails.period.toString())}`}> </span>
           <span className={styles.disputeID}>{dispute}</span>
         </div>
         <div className={styles.body}>
@@ -34,7 +48,7 @@ class OngoingCard extends React.Component {
             {arbitratorDisputeDetails && subcourtDetails && (
               <div className={styles.badge}>
                 <ScalesSVG />
-                <span>{subcourtDetails[arbitratorDisputeDetails.subcourtID] && subcourtDetails[arbitratorDisputeDetails.subcourtID].name}</span>
+                <span>{subcourtDetails[arbitratorDisputeDetails.subcourtID.toString()] && subcourtDetails[arbitratorDisputeDetails.subcourtID.toString()].name}</span>
               </div>
             )}
             {(!arbitratorDisputeDetails || !subcourtDetails) && (
@@ -43,11 +57,11 @@ class OngoingCard extends React.Component {
               </div>
             )}
           </div>
-          {arbitratorDisputeDetails && subcourts && (
+          {remainingTime != null && remainingTime > 0 && (
             <div className={styles.countdown}>
               <Hourglass />
               <Countdown
-                date={1000 * (parseInt(arbitratorDisputeDetails.lastPeriodChange) + parseInt(subcourts[arbitratorDisputeDetails.subcourtID] && subcourts[arbitratorDisputeDetails.subcourtID].timesPerPeriod[arbitratorDisputeDetails.period]))}
+                date={remainingTime}
                 renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>}
               />
             </div>

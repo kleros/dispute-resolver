@@ -56,7 +56,7 @@ class EvidenceTimeline extends React.Component {
         supportingSide: support,
       });
 
-      await this.setState({
+      this.setState({
         awaitingConfirmation: false,
         modalExtraClass: "closed",
         evidenceTitle: "",
@@ -65,8 +65,8 @@ class EvidenceTimeline extends React.Component {
         support: 0,
       });
     } catch (err) {
-
-      await this.setState({
+      console.error("Error submitting evidence:", err);
+      this.setState({
         awaitingConfirmation: false,
         modalExtraClass: "closed",
         uploadingToIPFS: false,

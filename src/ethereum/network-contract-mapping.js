@@ -91,7 +91,7 @@ const map = {
     CURRENCY_SHORT: "sETH",
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["11155111"],
   },
-  324:{
+  324: {
     NAME: "zkSync Era Mainnet",
     FOREIGN_KLEROS_LIQUID: arbitrators["1"],
     FOREIGN_ARBITRATOR_NETWORK_CODE: "1",
@@ -101,7 +101,7 @@ const map = {
     CURRENCY_SHORT: "ETH",
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["1"],
   },
-  690:{
+  690: {
     NAME: "Redstone",
     FOREIGN_KLEROS_LIQUID: arbitrators["1"],
     FOREIGN_ARBITRATOR_NETWORK_CODE: "1",

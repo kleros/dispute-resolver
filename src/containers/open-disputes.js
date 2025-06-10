@@ -14,38 +14,96 @@ class OpenDisputes extends React.Component {
       this.debouncedFetch = debounce(this.fetch, 0, { leading: false, trailing: true });
   }
 
-  componentWillReceiveProps(nextProps) {
+  componentDidUpdate(prevProps) {
     const { subcourts, subcourtDetails, network } = this.props;
-    if (nextProps.subcourts !== subcourts || nextProps.subcourtDetails !== subcourtDetails || nextProps.network !== network) {
-      this.setState({ loading: true, openDisputeIDs: [], arbitratorDisputes: {} });
-      if(networkMap[this.props.network].KLEROS_LIQUID){
-        this.debouncedFetch.cancel();
+    
+    if (
+      prevProps.subcourts !== subcourts || 
+      prevProps.subcourtDetails !== subcourtDetails || 
+      prevProps.network !== network
+    ) {
+      this.setState({ 
+        loading: true, 
+        openDisputeIDs: [], 
+        arbitratorDisputes: {} 
+      });
+      
+      if (networkMap[this.props.network]?.KLEROS_LIQUID) {
+        if (this.debouncedFetch) {
+          this.debouncedFetch.cancel();
+        } else {
+          // Initialize debounced fetch if it wasn't created in constructor
+          this.debouncedFetch = debounce(this.fetch, 750, { leading: false, trailing: true });
+        }
         this.debouncedFetch();
       }
     }
   }
+
   componentDidMount() {
     if(networkMap[this.props.network].KLEROS_LIQUID) this.fetch();
   }
 
-  fetch = () => {
-    this.props.getOpenDisputesOnCourtCallback().then((openDIDs) => {
-      this.setState({ openDisputeIDs: openDIDs });
+  componentWillUnmount() {
+    if (this.debouncedFetch) {
+      this.debouncedFetch.cancel();
+    }
+    this.setState({ openDisputeIDs: [], arbitratorDisputes: {}, loading: true });
+  }
 
-      openDIDs
-        .sort(function compareFn(a, b) {
-          return parseInt(a) - parseInt(b);
-        })
-        .reverse()
-        .map((arbitratorDispute) => {
-          this.props.getArbitratorDisputeCallback(arbitratorDispute).then((arbitratorDisputeDetails) => {
-            this.setState({ ["arbitrator" + arbitratorDispute]: arbitratorDisputeDetails });
-            this.setState({ [arbitratorDispute]: this.props.getMetaEvidenceCallback(arbitratorDisputeDetails.arbitrated, arbitratorDispute) });
-          });
+  fetch = async() => {
+    try {
+      if (!networkMap[this.props.network]?.KLEROS_LIQUID) {
+        this.setState({ loading: false });
+        return;
+      }
 
-        });
+      const openDIDs = await this.props.getOpenDisputesOnCourtCallback();
+      
+      const sortedDisputes = [...openDIDs].sort((a, b) => parseInt(a) - parseInt(b)).reverse();
+      this.setState({ openDisputeIDs: sortedDisputes });
+
+      const detailPromises = sortedDisputes.map(async (disputeId) => {
+        try {
+          const arbitratorDisputeDetails = await this.props.getArbitratorDisputeCallback(disputeId);
+          
+          if (arbitratorDisputeDetails) {
+            this.setState(prevState => ({
+              arbitratorDisputes: {
+                ...prevState.arbitratorDisputes,
+                ["arbitrator" + disputeId]: arbitratorDisputeDetails
+              }
+            }));
+            
+            const metaEvidence = await this.props.getMetaEvidenceCallback(
+              arbitratorDisputeDetails.arbitrated,
+              disputeId
+            );
+            
+            this.setState(prevState => ({
+              arbitratorDisputes: {
+                ...prevState.arbitratorDisputes,
+                [disputeId]: metaEvidence
+              }
+            }));
+          }
+        } catch (error) {
+          console.error(`Error fetching details for dispute ${disputeId}:`, error);
+        }
+      });
+      
+      await Promise.all(detailPromises);
+      
       this.setState({ loading: false });
-    });
+    } catch (error) {
+      if (error.code === "NETWORK_ERROR" && error.event === "changed") {
+        console.warn("Network Error: Unable to fetch open disputes. Reloading the page.");
+        window.location.reload();
+      }
+
+      console.error("Error fetching open disputes:", error);
+      this.setState({ loading: false });
+    }
   };
 
   FILTER_NAMES = ["Evidence", "Commit", "Voting", "Appeal", "Ongoing"];
@@ -62,23 +120,15 @@ class OpenDisputes extends React.Component {
     return strings[periodNumber];
   };
 
-  onFilterSelect = async (filter) => {
-    
-    await this.setState({ statusFilter: filter });
-  };
+  onFilterSelect = async (filter) => this.setState({ statusFilter: filter });
 
   render() {
-    // 
-    // 
-
     const { openDisputeIDs, statusFilter, loading } = this.state;
     const { subcourts, subcourtDetails, network } = this.props;
 
-
-
-  if(!networkMap[network].KLEROS_LIQUID) {
-    return <main className={styles.openDisputes}><h1>There is no arbitrator on this network, thus no disputes.</h1></main>
-  }
+    if(!networkMap[network].KLEROS_LIQUID) {
+      return <main className={styles.openDisputes}><h1>There is no arbitrator on this network, thus no disputes.</h1></main>
+    }
 
     return (
       <main className={styles.openDisputes} id="ongoing-disputes">
@@ -112,16 +162,16 @@ class OpenDisputes extends React.Component {
                 md={12}
                 sm={24}
                 xs={24}
-                style={{ display: (this.state[dispute] && this.state[`arbitrator${dispute}`].period == statusFilter) || statusFilter == 4 ? "block" : "none" }}
+                style={{ display: (this.state[dispute] && this.state.arbitratorDisputes[`arbitrator${dispute}`].period == statusFilter) || statusFilter == 4 ? "block" : "none" }}
               >
-                <a style={{ display: "contents", textDecoration: "none", color: "unset" }} href={`/cases/${dispute}`}>
-                  {this.state[`arbitrator${dispute}`] && (this.state[`arbitrator${dispute}`].period == statusFilter || statusFilter == 4) && (
+                <a style={{ display: "contents", textDecoration: "none", color: "unset" }} href={`/${network}/cases/${dispute}`}>
+                  {this.state.arbitratorDisputes[`arbitrator${dispute}`] && (this.state.arbitratorDisputes[`arbitrator${dispute}`].period == statusFilter || statusFilter == 4) && (
                     <OngoingCard
                       dispute={dispute}
-                      arbitratorDisputeDetails={this.state[`arbitrator${dispute}`]}
-                      title={(this.state[dispute] && this.state[dispute].title) || "Meta Evidence Missing"}
+                      arbitratorDisputeDetails={this.state.arbitratorDisputes[`arbitrator${dispute}`]}
+                      title={this.state.arbitratorDisputes[dispute]?.title ?? "Meta Evidence Missing"}
                       subcourtDetails={subcourtDetails}
-                      subcourts={subcourts}
+                      subcourts={subcourts || []}
                     />
                   )}
                 </a>

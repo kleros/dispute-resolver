@@ -38,7 +38,6 @@ class DisputeSummary extends React.Component {
       jsonRpcUrl: web3Provider,
     };
 
-
     if (metaevidenceJSON) {
       let searchParams;
       const {_v = "0"} = metaevidenceJSON;
@@ -48,6 +47,7 @@ class DisputeSummary extends React.Component {
         const _searchParams = new URLSearchParams(injectedArgs);
         searchParams = `${_searchParams.toString()}`;
       }
+      
       return (
         <section className={styles.disputeSummary}>
           <div className={styles.inner}>
