@@ -43,7 +43,9 @@ class DisputeDetails extends React.Component {
 
   componentDidMount() {
     const { appealCost, multipliers } = this.props;
-    console.log("DisputeDetails component mounted with appealCost:", appealCost, "and multipliers:", multipliers);
+    if (process.env.NODE_ENV === "development") {
+      console.log("DisputeDetails component mounted with appealCost:", appealCost, "and multipliers:", multipliers);
+    }
   }
 
   calculateTotalCost = (rulingOption) => {
