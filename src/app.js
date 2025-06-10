@@ -4,69 +4,206 @@ import Create from "./containers/create";
 import _404 from "./containers/404";
 import Interact from "./containers/interact";
 import OpenDisputes from "./containers/open-disputes";
-import {BrowserRouter, Route, Switch, Redirect} from "react-router-dom";
+import { BrowserRouter, Route, Switch, Redirect } from "react-router-dom";
 import Header from "./components/header";
 import Footer from "./components/footer";
-import Web3 from "./ethereum/web3";
+import { ethers } from "ethers";
 
 import * as EthereumInterface from "./ethereum/interface";
-import networkMap, {getReadOnlyRpcUrl} from "./ethereum/network-contract-mapping";
+import networkMap, { getReadOnlyRpcUrl } from "./ethereum/network-contract-mapping";
 import ipfsPublish from "./ipfs-publish";
 import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
 import { urlNormalize } from "./urlNormalizer";
 
-const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 const IPFS_GATEWAY = "https://cdn.kleros.link";
 const EXCEPTIONAL_CONTRACT_ADDRESSES = ['0xe0e1bc8C6cd1B81993e2Fcfb80832d814886eA38', '0xb9f9B5eee2ad29098b9b3Ea0B401571F5dA4AD81']
 const CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS = 3 * 60 * 60 * 1000
 const CACHE_INVALIDATION_PERIOD_FOR_DISPUTES_MS = 1 * 60 * 1000
 
+const safeJSONStringify = (obj) => {
+  return JSON.stringify(obj, (key, value) => {
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    if (value && typeof value === 'object' && value._isBigNumber) {
+      return value.toString();
+    }
+    if (value && typeof value === 'object' && typeof value.toString === 'function') {
+      if (value.type === 'BigNumber' || value._hex !== undefined) {
+        return value.toString();
+      }
+    }
+    return value;
+  });
+};
+
+const safeLocalStorageGet = (key) => {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : null;
+  } catch (error) {
+    console.warn(`Failed to parse localStorage item ${key}:`, error);
+    return null;
+  }
+};
 
 class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      activeAddress: "", network: "", lastDisputeID: "", subcourtsLoading: true,
+      activeAddress: "",
+      network: "",
+      lastDisputeID: "",
+      subcourtsLoading: true,
+      provider: null,
+      signer: null,
+      archon: null
     };
     this.encoder = new TextEncoder();
   }
 
   async componentDidMount() {
-    if (Web3) {
-      this.setState({network: await Web3.eth.net.getId()});
-      this.setState({
-        archon: new Archon(Web3.currentProvider ? Web3.currentProvider : window.ethereum, IPFS_GATEWAY),
-      });
+    await this.initiateWeb3Provider();
+
+    // Check if URL chainId matches provider's chainId
+    const urlChainId = window.location.pathname.split('/')[1];
+    if (urlChainId && this.state.network && urlChainId !== this.state.network) {
+      console.log(`Switching to chain ${urlChainId} from URL`);
+      this.setState({ network: urlChainId });
+      await this.switchToChain(urlChainId);
     }
 
-    if (typeof window.ethereum !== "undefined") {
-      await this.setState({activeAddress: window.ethereum.selectedAddress});
+    if (window.ethereum) {
+      this.setState({ activeAddress: window.ethereum.selectedAddress });
+
       window.ethereum.on("accountsChanged", (accounts) => {
-        this.setState({activeAddress: accounts[0]});
+        this.setState({ activeAddress: accounts[0] });
       });
 
-      window.ethereum.on("chainChanged", async (network) => {
-        await this.setState({network: parseInt(network).toString(10)});
-        if (networkMap[network]?.KLEROS_LIQUID) this.loadSubcourtData();
+      window.ethereum.on("chainChanged", async (chainIdHex) => {
+        const networkId = parseInt(chainIdHex, 16).toString(10);
+        await this.handleNetworkChange(networkId);
       });
-    } else console.error("MetaMask not detected :(");
-    if (networkMap[this.state.network]?.KLEROS_LIQUID) this.loadSubcourtData();
+    } else {
+      console.error("MetaMask not detected :(");
+    }
+
+    if (networkMap[this.state.network]?.KLEROS_LIQUID) {
+      this.loadSubcourtData();
+    }
   }
 
-  loadSubcourtData = async () => {
-    const {network} = this.state
-
-    if ((new Date().getTime() < CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS + parseInt(localStorage.getItem(`${network}LastModified`))) && localStorage.getItem(`${network}Subcourts`) && localStorage.getItem(`${network}SubcourtDetails`)) {
-      await this.setState({
-        subcourts: JSON.parse(localStorage.getItem(`${network}Subcourts`)),
-        subcourtDetails: JSON.parse(localStorage.getItem(`${network}SubcourtDetails`)),
-        subcourtsLoading: false
-      })
-
-      return
+  componentWillUnmount() {
+    if (window.ethereum) {
+      window.ethereum.removeAllListeners('accountsChanged');
+      window.ethereum.removeAllListeners('chainChanged');
     }
+  }
 
+  handleNetworkChange = async (newChainId) => {
+    this.setState({ 
+      subcourts: [],
+      subcourtDetails: [],
+      subcourtsLoading: true,
+      lastDisputeID: ""
+    });
+
+    if(this.state.network === newChainId) return;
+
+    this.setState({ network: newChainId}, async ()=> {
+      await this.initiateWeb3Provider();
+       if (networkMap[newChainId]?.KLEROS_LIQUID) {
+        this.loadSubcourtData();
+      }
+      
+      this.syncUrlWithChain(newChainId);
+    });
+  };
+
+   syncUrlWithChain = (chainId) => {
+    const currentPath = window.location.pathname;
+    const pathParts = currentPath.split('/');
+    
+    // Check if URL already has a chain ID
+    if (pathParts[1] && /^\d+$/.test(pathParts[1])) {
+      pathParts[1] = chainId;
+    } else {
+      pathParts.splice(1, 0, chainId);
+    }
+    
+    const newPath = pathParts.join('/');
+    window.history.replaceState(null, '', newPath);
+  };
+
+  initiateWeb3Provider = async () => {
+    let provider;
+    let signer = null;
+
+    if (window.ethereum) {
+      provider = new ethers.BrowserProvider(window.ethereum);
+      signer = provider.getSigner();
+
+      const network = await provider.getNetwork();
+      this.setState({
+        network: network.chainId.toString(),
+        provider,
+        signer,
+        archon: new Archon(window.ethereum, IPFS_GATEWAY)
+      });
+    } else {
+      // Fallback to a default provider
+      provider = ethers.getDefaultProvider();
+      const network = await provider.getNetwork();
+      this.setState({
+        network: network.chainId.toString(),
+        provider,
+        archon: new Archon(provider, IPFS_GATEWAY)
+      });
+    }
+    //this.syncUrlWithChain(this.state.network);
+  };
+
+  switchToChain = async (chainId) => {
+    if (!window.ethereum) return;
+    
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: `0x${parseInt(chainId).toString(16)}` }],
+      });
+    } catch (error) {
+      console.error('Failed to switch chain:', error);
+    }
+  };
+
+  loadSubcourtData = async () => {
+    const { network } = this.state;
+
+    console.debug(`Loading subcourts for network: ${network}`);
+
+    const parsedSubcourts = safeLocalStorageGet(`${network}Subcourts`);
+    const parsedSubcourtDetails = safeLocalStorageGet(`${network}SubcourtDetails`);
+    const lastModified = localStorage.getItem(`${network}LastModified`);
+
+    // Check cache validity
+    if (lastModified &&
+      parsedSubcourts &&
+      parsedSubcourtDetails &&
+      parsedSubcourts.length > 0 &&
+      parsedSubcourtDetails.length > 0 &&
+      new Date().getTime() < CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS + parseInt(lastModified)) {
+      try {
+        this.setState({
+          subcourts: parsedSubcourts,
+          subcourtDetails: parsedSubcourtDetails,
+          subcourtsLoading: false
+        });
+        return;
+      } catch (error) {
+        console.warn("Failed to use cached subcourts:", error);
+      }
+    }
 
     let counter = 0, subcourts = [], subcourtURIs = [];
 
@@ -83,85 +220,639 @@ class App extends React.Component {
       subcourts[i] = this.getSubcourt(i);
     }
 
-    await this.setState({
+    this.setState({
       subcourtDetails: await Promise.all(subcourtURIs.map((promise) => promise.then((subcourtURI) => {
+        console.log({ subcourtURI })
         if (subcourtURI.length > 0) {
           if (subcourtURI.includes("http")) {
             return fetch(subcourtURI)
               .then((response) => response.json())
               .catch((error) => console.error(error));
           } else {
-            return fetch("https://cdn.kleros.link" + subcourtURI).then((response) => response.json());
+            return fetch(IPFS_GATEWAY + subcourtURI).then((response) => response.json());
           }
         }
       }))), subcourtsLoading: false, subcourts: await Promise.all(subcourts),
     });
 
-    localStorage.setItem(`${network}Subcourts`, JSON.stringify(this.state.subcourts))
-    localStorage.setItem(`${network}SubcourtDetails`, JSON.stringify(this.state.subcourtDetails))
-    localStorage.setItem(`${network}LastModified`, new Date().getTime())
+    // Cache the data
+    localStorage.setItem(`${network}Subcourts`, safeJSONStringify(this.state.subcourts));
+    localStorage.setItem(`${network}SubcourtDetails`, safeJSONStringify(this.state.subcourtDetails));
+    localStorage.setItem(`${network}LastModified`, new Date().getTime().toString());
   };
 
   getOpenDisputesOnCourt = async () => {
-    const contractInstance = EthereumInterface.contractInstance("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID);
+    if (!networkMap[this.state.network]?.KLEROS_LIQUID) return [];
 
-    const startingBlock = (await Web3.eth.getBlockNumber()) - 1_000_000
+    const contract = EthereumInterface.getContract(
+      "KlerosLiquid",
+      networkMap[this.state.network].KLEROS_LIQUID,
+      this.state.provider
+    );
 
-    const newPeriodEvents = await contractInstance.getPastEvents("NewPeriod", {fromBlock: startingBlock, toBlock: "latest"});
-    const disputeCreationEvents = await contractInstance.getPastEvents("DisputeCreation", {fromBlock: startingBlock, toBlock: "latest"});
-    const disputes = [...new Set(disputeCreationEvents.map((result) => result.returnValues._disputeID))];
-    const resolvedDisputes = newPeriodEvents.filter((result) => result.returnValues._period == 4).map((result) => result.returnValues._disputeID);
+    const currentBlock = await this.state.provider.getBlockNumber();
+    const startingBlock = Math.max(0, currentBlock - 1_000_000);
+
+    const newPeriodFilter = contract.filters.NewPeriod();
+    const newPeriodEvents = await contract.queryFilter(newPeriodFilter, startingBlock);
+
+    const disputeCreationFilter = contract.filters.DisputeCreation();
+    const disputeCreationEvents = await contract.queryFilter(disputeCreationFilter, startingBlock);
+
+    const disputes = [...new Set(disputeCreationEvents.map((event) => event.args._disputeID.toString()))];
+
+    const resolvedDisputes = newPeriodEvents
+      .filter((event) => event.args._period.toString() === "4")
+      .map((event) => event.args._disputeID.toString());
 
     const openDisputes = disputes.filter((dispute) => !resolvedDisputes.includes(dispute));
 
-    return openDisputes
+    return openDisputes;
   };
 
-  getArbitrableDisputeID = async (arbitrableAddress, arbitratorDisputeID) => EthereumInterface.call("IDisputeResolver", arbitrableAddress, "externalIDtoLocalID", arbitratorDisputeID);
+  getArbitrableDisputeID = async (arbitrableAddress, arbitratorDisputeID) => {
+    const contract = EthereumInterface.getContract(
+      "IDisputeResolver",
+      arbitrableAddress,
+      this.state.provider
+    );
 
-  getArbitrationCost = (arbitratorAddress, extraData) => EthereumInterface.call("IArbitrator", arbitratorAddress, "arbitrationCost", extraData);
-
-  getArbitrationCostWithCourtAndNoOfJurors = async (subcourtID, noOfJurors) => Web3.utils.fromWei(await EthereumInterface.call("IArbitrator", networkMap[this.state.network].KLEROS_LIQUID, "arbitrationCost", this.generateArbitratorExtraData(subcourtID, noOfJurors)), "ether");
-
-  estimateGasOfGetSubcourt = (subcourtID) => EthereumInterface.estimateGas("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.activeAddress, 0, "getSubcourt", subcourtID);
-
-  getSubcourt = async (subcourtID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "getSubcourt", subcourtID);
-
-  getSubCourtDetails = async (subcourtID) => EthereumInterface.call("PolicyRegistry", networkMap[this.state.network].POLICY_REGISTRY, "policies", subcourtID);
-
-  getArbitratorDispute = async (arbitratorDisputeID) => {
-    const arbitratorDispute = await EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "disputes", arbitratorDisputeID);
-    return arbitratorDispute
+    try {
+      return await contract.externalIDtoLocalID.staticCall(arbitratorDisputeID);
+    } catch (error) {
+      console.error(`Error fetching dispute ID for arbitrabe ${arbitrableAddress}:`, error);
+      return null;
+    }
   }
 
-  getArbitratorDisputeDetails = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "getDispute", arbitratorDisputeID);
+  getArbitrationCost = async (arbitratorAddress, extraData) => {
+    const contract = EthereumInterface.getContract(
+      "IArbitrator",
+      arbitratorAddress,
+      this.state.provider
+    );
 
-  getMultipliers = (arbitrableAddress) => EthereumInterface.call("IDisputeResolver", arbitrableAddress, "getMultipliers");
+    try {
+      return await contract.arbitrationCost(extraData)
+    } catch (error) {
+      console.error(`Error fetching arbitration cost for arbitrator ${arbitratorAddress}:`, error);
+      return null;
+    }
+  }
+
+  getArbitrationCostWithCourtAndNoOfJurors = async (subcourtID, noOfJurors) => {
+    if (!networkMap[this.state.network]?.KLEROS_LIQUID) return;
+
+    const contract = EthereumInterface.getContract(
+      "IArbitrator",
+      networkMap[this.state.network].KLEROS_LIQUID,
+      this.state.provider
+    );
+
+    try {
+      const extraData = this.generateArbitratorExtraData(subcourtID, noOfJurors);
+      const value = await contract.arbitrationCost(extraData)
+
+      return ethers.formatEther(value)
+    } catch (error) {
+      console.error(`Error fetching arbitration cost for court ${subcourtID}:`, error);
+      return null
+    }
+  }
+
+  estimateGasOfGetSubcourt = async (subcourtID) => {
+    if (!networkMap[this.state.network]?.KLEROS_LIQUID) {
+      throw new Error('Network not configured for Kleros Liquid');
+    }
+
+    try {
+      const contract = EthereumInterface.getContract(
+        "KlerosLiquid",
+        networkMap[this.state.network].KLEROS_LIQUID,
+        this.state.provider
+      );
+
+      return await contract.getSubcourt.estimateGas(subcourtID);
+    } catch (error) {
+      console.warn(`Error estimating gas for subcourt ${subcourtID}:`, error);
+      throw error;
+    }
+  };
+
+  getSubcourt = async (subcourtID) => {
+    if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
+
+    const contract = EthereumInterface.getContract(
+      "KlerosLiquid",
+      networkMap[this.state.network].KLEROS_LIQUID,
+      this.state.provider
+    );
+
+    try {
+      return await contract.getSubcourt(subcourtID);
+    } catch (error) {
+      console.error("Error fetching subcourt details: ", error)
+    }
+  };
+
+  getSubCourtDetails = async (subcourtID) => {
+    if (!networkMap[this.state.network]?.POLICY_REGISTRY) return null;
+
+    const contract = EthereumInterface.getContract(
+      "PolicyRegistry",
+      networkMap[this.state.network].POLICY_REGISTRY,
+      this.state.provider
+    );
+
+    try {
+      return await contract.policies(subcourtID);
+    } catch (error) {
+      console.error(`Error fetching subcourt details for court ${subcourtID}:`, error);
+      return null;
+    }
+  };
+
+  getArbitratorDispute = async (arbitratorDisputeID) => {
+    if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
+
+    const contract = EthereumInterface.getContract(
+      "KlerosLiquid",
+      networkMap[this.state.network].KLEROS_LIQUID,
+      this.state.provider
+    );
+
+    try {
+      return await contract.disputes(arbitratorDisputeID);
+    } catch (error) {
+      console.error(`Error fetching dispute ${arbitratorDisputeID}:`, error);
+      return null;
+    }
+  };
+
+  getArbitratorDisputeDetails = async (arbitratorDisputeID) => {
+    if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
+
+    const contract = EthereumInterface.getContract(
+      "KlerosLiquid",
+      networkMap[this.state.network].KLEROS_LIQUID,
+      this.state.provider
+    );
+
+    try {
+      return await contract.getDispute(arbitratorDisputeID);
+    } catch (error) {
+      console.error(`Error fetching dispute details ${arbitratorDisputeID}:`, error);
+      return null;
+    }
+  }
+
+  getMultipliers = async (arbitrableAddress) => {
+    const contract = EthereumInterface.getContract(
+      "IDisputeResolver",
+      arbitrableAddress,
+      this.state.provider
+    );
+
+    try {
+      return await contract.getMultipliers()
+    } catch (error) {
+      console.error(`Error fetching multipliers for arbitrable ${arbitrableAddress}:`, error);
+      return null
+    }
+  }
 
 
   onPublish = async (filename, fileBuffer) => await ipfsPublish(filename, fileBuffer);
 
   generateArbitratorExtraData = (subcourtID, noOfVotes) => `0x${parseInt(subcourtID, 10).toString(16).padStart(64, "0") + parseInt(noOfVotes, 10).toString(16).padStart(64, "0")}`;
 
-  withdrawFeesAndRewardsForAllRounds = (arbitrableAddress, arbitrableDisputeID, rulingOptionsContributedTo, arbitrableContractAddress) => {
+  getAppealCost = async (arbitratorDisputeID) => {
+    if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
 
-    if (EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress)) return EthereumInterface.send("IDisputeResolver_v1", arbitrableAddress, this.state.activeAddress, "0", "withdrawFeesAndRewardsForAllRounds", arbitrableDisputeID, this.state.activeAddress, rulingOptionsContributedTo);
+    const contract = EthereumInterface.getContract(
+      "IArbitrator",
+      networkMap[this.state.network].KLEROS_LIQUID,
+      this.state.provider
+    );
 
-    else return EthereumInterface.send("IDisputeResolver", arbitrableAddress, this.state.activeAddress, "0", "withdrawFeesAndRewardsForAllRounds", arbitrableDisputeID, this.state.activeAddress, rulingOptionsContributedTo);
+    try {
+      return await contract.appealCost(arbitratorDisputeID, ethers.ZeroHash);
+    } catch (error) {
+      console.error(`Error fetching appeal cost for dispute ID ${arbitratorDisputeID}:`, error);
+      return null
+    }
   }
 
+  getAppealCostOnArbitrable = async (arbitrableDisputeID, ruling) => {
+    if (!networkMap[this.state.network]?.ARBITRABLE_PROXY) return null;
 
-  getAppealCost = async (arbitratorDisputeID) => EthereumInterface.call("IArbitrator", networkMap[this.state.network].KLEROS_LIQUID, "appealCost", arbitratorDisputeID, "0x0");
-  getAppealCostOnArbitrable = async (arbitrableDisputeID, ruling) => EthereumInterface.call("IDisputeResolver", networkMap[this.state.network].ARBITRABLE_PROXY, "appealCost", arbitrableDisputeID, ruling);
+    const contract = EthereumInterface.getContract(
+      "IDisputeResolver",
+      networkMap[this.state.network].ARBITRABLE_PROXY,
+      this.state.provider
+    );
 
-  appeal = (arbitrableAddress, arbitrableDisputeID, party, contribution) => EthereumInterface.send("IDisputeResolver", arbitrableAddress, this.state.activeAddress, contribution, "fundAppeal", arbitrableDisputeID, party);
+    try {
+      return await contract.appealCost(arbitrableDisputeID, ruling);
+    } catch (error) {
+      console.error(`Error fetching appeal cost for dispute ID ${arbitrableDisputeID}:`, error);
+      return null;
+    }
+  }
 
-  getAppealPeriod = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "appealPeriod", arbitratorDisputeID);
+  getAppealPeriod = async (arbitratorDisputeID) => {
+    if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
 
-  getCurrentRuling = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "currentRuling", arbitratorDisputeID);
+    const contract = EthereumInterface.getContract(
+      "KlerosLiquid",
+      networkMap[this.state.network].KLEROS_LIQUID,
+      this.state.provider
+    );
+
+    try {
+      return await contract.appealPeriod(arbitratorDisputeID);
+    } catch (error) {
+      console.error(`Error fetching appeal period for dispute ID ${arbitratorDisputeID}:`, error);
+      return null;
+    }
+  }
+
+  getCurrentRuling = async (arbitratorDisputeID) => {
+    if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
+
+    const contract = EthereumInterface.getContract(
+      "KlerosLiquid",
+      networkMap[this.state.network].KLEROS_LIQUID,
+      this.state.provider
+    );
+
+    try {
+      return await contract.currentRuling(arbitratorDisputeID);
+    } catch (error) {
+      console.error(`Error fetching current ruling for dispute ID ${arbitratorDisputeID}:`, error);
+      return null;
+    }
+  }
+
+  getDisputeEvent = async (arbitrableAddress, disputeID) => await this.state.archon.arbitrable.getDispute(arbitrableAddress, // arbitrable contract address
+    networkMap[this.state.network].KLEROS_LIQUID, // arbitrator contract address
+    disputeID // dispute unique identifier
+  );
+
+  getMetaEvidence = async (arbitrableAddress, arbitratorDisputeID) => {
+    try {
+      const dispute = await this.state.archon.arbitrable.getDispute(
+        arbitrableAddress,
+        networkMap[this.state.network].KLEROS_LIQUID,
+        arbitratorDisputeID
+      );
+      console.log({ dispute })
+
+      const scriptParameters = {
+        disputeID: arbitratorDisputeID,
+        arbitrableContractAddress: arbitrableAddress,
+        arbitratorContractAddress: networkMap[this.state.network].KLEROS_LIQUID,
+        arbitratorChainID: this.state.network,
+        chainID: this.state.network,
+        arbitratorJsonRpcUrl: networkMap[this.state.network].WEB3_PROVIDER,
+      };
+
+      const options = {
+        strict: true,
+        getJsonRpcUrl: (chainId) => getReadOnlyRpcUrl({ chainId }),
+        scriptParameters
+      };
+
+      return await this.state.archon.arbitrable.getMetaEvidence(
+        arbitrableAddress,
+        dispute.metaEvidenceID,
+        options
+      );
+
+    } catch (error) {
+      console.error('Error fetching meta evidence:', error);
+      return null;
+    }
+  };
+
+  //Using Archon, parallel calls occasionally fail.
+  getMetaEvidenceParallelizeable = async (arbitrableAddress, arbitratorDisputeID) => {
+    const { network } = this.state;
+
+    let item = localStorage.getItem(`${network}${arbitratorDisputeID.toString()}`);
+    if (item && item !== "undefined") {
+      console.debug(`Found metaevidence of ${arbitratorDisputeID} skipping fetch.`);
+      return JSON.parse(item);
+    }
+    console.debug(`Fetching ${arbitratorDisputeID}...`);
+
+    try {
+      const dispute = await this.state.archon.arbitrable.getDispute(
+        arbitrableAddress,
+        networkMap[this.state.network].KLEROS_LIQUID,
+        arbitratorDisputeID
+      );
+
+      const contract = EthereumInterface.getContract(
+        "IEvidence",
+        arbitrableAddress,
+        this.state.provider
+      );
+
+      const filter = contract.filters.MetaEvidence(dispute.metaEvidenceID);
+      const events = await contract.queryFilter(
+        filter,
+        networkMap[this.state.network].QUERY_FROM_BLOCK,
+        dispute.blockNumber
+      );
+
+      if (events.length > 0) {
+        const metaEvidenceURI = events[0].args._evidence;
+        const response = await fetch(urlNormalize(metaEvidenceURI));
+        const payload = await response.json();
+
+        console.debug(`caching ${arbitratorDisputeID}`);
+        localStorage.setItem(
+          `${network}${arbitratorDisputeID.toString()}`,
+          JSON.stringify(payload)
+        );
+
+        return payload;
+      }
+
+      return null;
+
+    } catch (error) {
+      console.error('Error fetching meta evidence:', error);
+      return null;
+    }
+  };
+
+  getEvidences = (arbitrableAddress, arbitratorDisputeID) => {
+    return this.state.archon.arbitrable
+      .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
+      .then((response) => {
+        return this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).catch(console.error);
+      })
+      .catch(console.error);
+  };
+
+  getAppealDecision = async (arbitratorDisputeID, disputedAtBlockNumber) => {
+    if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
+
+    const contract = EthereumInterface.getContract(
+      "KlerosLiquid",
+      networkMap[this.state.network].KLEROS_LIQUID,
+      this.state.provider
+    );
+
+    try {
+      const appealDecisionFilter = contract.filters.AppealDecision(arbitratorDisputeID);
+      const appealDecisionEvents = await contract.queryFilter(
+        appealDecisionFilter,
+        disputedAtBlockNumber,
+        "latest"
+      );
+
+      const blockPromises = appealDecisionEvents.map(event =>
+        this.state.provider.getBlock(event.blockNumber)
+      );
+
+      const blocks = await Promise.all(blockPromises);
+
+      return blocks.map(block => ({
+        appealedAt: block.timestamp,
+        appealedAtBlockNumber: block.number
+      }));
+
+    } catch (error) {
+      console.error('Error fetching appeal decisions:', error);
+      return null;
+    }
+  };
+
+  getContributions = async (arbitrableDisputeID, round, arbitrableContractAddress, period, searchFrom) => {
+    // Unslashed contract violates IDisputeResolver interface by incrementing rounds without triggering an appeal event.
+    // Because of this, here we make an exception for Unslashed and shift rounds by plus one, except when in execution period.
+
+    let _round = round;
+    if (EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress)) {
+      if (period < 4) _round++;
+    }
+
+    const contract = EthereumInterface.getContract(
+      "IDisputeResolver",
+      arbitrableContractAddress,
+      this.state.provider
+    );
+
+    try {
+      const contributionFilter = contract.filters.Contribution(
+        arbitrableDisputeID, // _localDisputeID  
+        _round, 
+        null                //  _contributor (null means any contributor)
+      );
+
+      console.debug('DEBUG getContributions - filter:', contributionFilter);
+
+      const currentBlock = await this.state.provider.getBlockNumber();
+      const fromBlock = searchFrom ?? Math.max(
+        networkMap[this.state.network].QUERY_FROM_BLOCK || 0,
+        currentBlock - 1_000_000  // Search last 1M blocks to catch recent events
+      );
+      const toBlock = searchFrom ? searchFrom + 100_000 : "latest";
+
+      const events = await contract.queryFilter(
+        contributionFilter,
+        fromBlock,
+        toBlock
+      );
+
+      console.debug('DEBUG getContributions - events found:', events.length, events);
+
+      const contributionsForEachRuling = events.reduce((acc, event) => {
+        const ruling = event.args.ruling.toString();
+        const amount = event.args._amount.toString();
+
+        acc[ruling] = acc[ruling] || "0";
+        acc[ruling] = (BigInt(acc[ruling]) + BigInt(amount)).toString();
+
+        return acc;
+      }, {});
+
+      return contributionsForEachRuling;
+
+    } catch (error) {
+      console.error('Error fetching contributions:', error);
+      return {};
+    }
+  };
+
+  getRulingFunded = async (arbitrableDisputeID, round, arbitrableContractAddress, searchFrom) => {
+    let _round = round;
+    if (EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress)) {
+      _round++;
+    }
+
+    console.log('DEBUG getRulingFunded - inputs:', {
+      arbitrableDisputeID,
+      round,
+      _round,
+      arbitrableContractAddress,
+      searchFrom,
+      arbitrator: networkMap[this.state.network].KLEROS_LIQUID
+    });
+
+    const contract = EthereumInterface.getContract(
+      "IDisputeResolver",
+      arbitrableContractAddress,
+      this.state.provider
+    );
+
+    try {
+      const rulingFundedFilter = contract.filters.RulingFunded(
+        arbitrableDisputeID, // _localDisputeID
+        _round, // _round
+        null // _ruling (null means any ruling)
+      );
+
+      console.log('DEBUG getRulingFunded - filter:', rulingFundedFilter);
+
+      // Ensure we search a wide enough range to catch recent events
+      const currentBlock = await this.state.provider.getBlockNumber();
+      const fromBlock = searchFrom ?? Math.max(
+        networkMap[this.state.network].QUERY_FROM_BLOCK || 0,
+        currentBlock - 1_000_000  // Search last 1M blocks to catch recent events
+      );
+      const toBlock = searchFrom ? searchFrom + 100_000 : "latest";
+
+      console.log('DEBUG getRulingFunded - block range:', { fromBlock, toBlock, currentBlock });
+
+      const events = await contract.queryFilter(
+        rulingFundedFilter,
+        fromBlock,
+        toBlock
+      );
+
+      console.log('DEBUG getRulingFunded - events found:', events.length, events);
+
+      // Log details of each event for debugging
+      events.forEach((event, index) => {
+        console.log(`DEBUG getRulingFunded - event ${index}:`, {
+          blockNumber: event.blockNumber,
+          transactionHash: event.transactionHash,
+          disputeID: event.args._localDisputeID.toString(),
+          round: event.args._round.toString(),
+          ruling: event.args._ruling.toString()
+        });
+      });
+
+      const rulings = events.map(event => event.args._ruling.toString());
+      console.log('DEBUG getRulingFunded - returning rulings:', rulings);
+
+      return rulings;
+
+    } catch (error) {
+      console.error('Error fetching ruling funded events:', error);
+      return [];
+    }
+  };
+
+  getTotalWithdrawableAmount = async (arbitrableDisputeID, contributedTo, arbitrated) => {
+    let amount = 0;
+
+    let contract = EthereumInterface.getContract(
+      "IDisputeResolver",
+      arbitrated,
+      this.state.provider
+    )
+    try {
+      // targeting v2;
+      let counter = 0;
+
+      while (counter < contributedTo.length) {
+        amount = await contract.getTotalWithdrawableAmount(
+          arbitrableDisputeID,
+          this.state.activeAddress ?? ethers.ZeroAddress,
+          contributedTo[counter]
+        );
+
+        if (amount != 0) break;
+        counter++;
+      }
+
+      return { amount: amount, ruling: contributedTo[counter] };
+    } catch {
+      // targeting v1
+      contract = EthereumInterface.getContract(
+        "IDisputeResolver_v1",
+        arbitrated,
+        this.state.provider
+      )
+      amount = await contract.getTotalWithdrawableAmount(
+        arbitrableDisputeID,
+        this.state.activeAddress ?? ethers.ZeroAddress,
+        contributedTo
+      );
+
+      return { amount: amount, ruling: contributedTo };
+    }
+  };
+
+  getDispute = async (arbitratorDisputeID) => {
+    if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
+
+    const contract = EthereumInterface.getContract(
+      "KlerosLiquid",
+      networkMap[this.state.network].KLEROS_LIQUID,
+      this.state.provider
+    );
+
+    try {
+      return await contract.getDispute(arbitratorDisputeID);
+    } catch (error) {
+      console.error(`Error fetching dispute with dispute ID ${arbitratorDisputeID}:`, error);
+      return null
+    }
+  }
+
+  getRuling = async (arbitrableAddress, arbitratorDisputeID) => await this.state.archon.arbitrable.getRuling(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID);
+
+  submitEvidence = async (arbitrableAddress, { disputeID, evidenceTitle, evidenceDescription, evidenceDocument, supportingSide }, value = "0") => {
+    const evidence = {
+      name: evidenceTitle,
+      description: evidenceDescription,
+      fileURI: evidenceDocument,
+      evidenceSide: supportingSide
+    };
+
+    const ipfsHashEvidenceObj = await ipfsPublish(
+      "evidence.json",
+      this.encoder.encode(JSON.stringify(evidence))
+    );
+
+    const evidenceURI = ipfsHashEvidenceObj;
+
+    const contract = await EthereumInterface.getSignableContract(
+      "ArbitrableProxy",
+      arbitrableAddress,
+      this.state.provider
+    );
+
+    try {
+      const tx = await contract.submitEvidence(disputeID, evidenceURI, {
+        value: ethers.parseEther(value)
+      });
+
+      return await tx.wait();
+    } catch (error) {
+      console.error('Error submitting evidence:', error);
+      throw error;
+    }
+  };
 
   createDispute = async (options) => {
-    const {network} = this.state;
+    const { network } = this.state;
     const arbitrator = networkMap[network].KLEROS_LIQUID;
     const arbitratorExtraData = this.generateArbitratorExtraData(options.selectedSubcourt, options.initialNumberOfJurors);
 
@@ -177,188 +868,118 @@ class App extends React.Component {
     };
 
     const ipfsHashMetaEvidenceObj = await ipfsPublish("metaEvidence.json", this.encoder.encode(JSON.stringify(metaevidence)));
-
     const metaevidenceURI = ipfsHashMetaEvidenceObj;
 
     const arbitrationCost = await this.getArbitrationCost(arbitrator, arbitratorExtraData);
-    return EthereumInterface.send("ArbitrableProxy", networkMap[this.state.network].ARBITRABLE_PROXY, this.state.activeAddress, arbitrationCost, "createDispute", arbitratorExtraData, metaevidenceURI, options.numberOfRulingOptions);
-  };
+    console.debug({ arbitrationCost })
 
-  getDisputeEvent = async (arbitrableAddress, disputeID) => await this.state.archon.arbitrable.getDispute(arbitrableAddress, // arbitrable contract address
-    networkMap[this.state.network].KLEROS_LIQUID, // arbitrator contract address
-    disputeID // dispute unique identifier
-  );
-
-  getMetaEvidence = (arbitrableAddress, arbitratorDisputeID) => this.state.archon.arbitrable.getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID).then((response) => this.state.archon.arbitrable.getMetaEvidence(arbitrableAddress, response.metaEvidenceID, {
-    strict: true, getJsonRpcUrl: (chainId) => getReadOnlyRpcUrl({chainId}), scriptParameters: {
-      disputeID: arbitratorDisputeID,
-      arbitrableContractAddress: arbitrableAddress,
-      arbitratorContractAddress: networkMap[this.state.network].KLEROS_LIQUID,
-      arbitratorChainID: this.state.network,
-      chainID: this.state.network,
-      arbitratorJsonRpcUrl: networkMap[this.state.network].WEB3_PROVIDER,
-    },
-  }));
-
-  //Using Archon, parallel calls occasionally fail.
-  getMetaEvidenceParallelizeable = (arbitrableAddress, arbitratorDisputeID) => {
-    const {network} = this.state;
-
-    let item = localStorage.getItem(`${network}${arbitratorDisputeID.toString()}`);
-    if (item && item !== "undefined") {
-      console.log(`Found metaevidence of ${arbitratorDisputeID} skipping fetch.`)
-      return JSON.parse(item);
-    }
-    console.log(`Fetching ${arbitratorDisputeID}...`)
-
-    return this.state.archon.arbitrable
-      .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
-      .then((response) =>
-        EthereumInterface.contractInstance("IEvidence", arbitrableAddress).getPastEvents("MetaEvidence", {
-          fromBlock: networkMap[this.state.network].QUERY_FROM_BLOCK,
-          toBlock: response.blockNumber,
-          filter: { _metaEvidenceID: response.metaEvidenceID },
-        })
-      )
-      .then((metaevidence) => {
-        console.log(metaevidence);
-        if (metaevidence.length > 0) {
-          fetch(urlNormalize(metaevidence[0].returnValues._evidence))
-            .then((response) => response.json())
-            .catch(console.error)
-            .then((payload) => {
-              console.log(`caching ${arbitratorDisputeID}`);
-              localStorage.setItem(`${network}${arbitratorDisputeID.toString()}`, JSON.stringify(payload));
-              return payload;
-            });
-        }
-      });
-  };
-
-  getEvidences = (arbitrableAddress, arbitratorDisputeID) => {
-    return this.state.archon.arbitrable
-      .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
-      .then((response) => {
-        return this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).catch(console.error);
-      })
-      .catch(console.error);
-  };
-
-  getAppealDecision = async (arbitratorDisputeID, disputedAtBlockNumber) => {
-    const contractInstance = EthereumInterface.contractInstance("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID);
-    const appealDecisionLog = await contractInstance.getPastEvents("AppealDecision", {
-      fromBlock: disputedAtBlockNumber, toBlock: "latest", filter: {_disputeID: arbitratorDisputeID},
-    });
-    const blockNumbers = await Promise.all(appealDecisionLog.map((appealDecision) => Web3.eth.getBlock(appealDecision.blockNumber)));
-    return blockNumbers.map((blockNumber) => {
-      return {appealedAt: blockNumber.timestamp, appealedAtBlockNumber: blockNumber.number};
-    });
-  };
-
-  getContributions = async (arbitrableDisputeID, round, arbitrableContractAddress, period, searchFrom) => {
-    // Unslashed contract violates IDisputeResolver interface by incrementing rounds without triggering an appeal event.
-    // Because of this, here we make an exception for Unslashed and shift rounds by plus one, except when in execution period.
-
-    let _round = round;
-    if (EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress)) {
-      if (period < 4) _round++;
-    }
-
-
-    const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
-    const contributionLogs = await contractInstance.getPastEvents("Contribution", {
-      fromBlock: searchFrom ?? networkMap[this.state.network].QUERY_FROM_BLOCK,
-      toBlock: searchFrom ? searchFrom + 100_000 : "latest",
-      filter: {arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round},
-    });
-
-
-    let contributionsForEachRuling = {};
-    contributionLogs.map((log) => {
-      contributionsForEachRuling[log.returnValues.ruling] = contributionsForEachRuling[log.returnValues.ruling] || 0;
-      contributionsForEachRuling[log.returnValues.ruling] = parseInt(contributionsForEachRuling[log.returnValues.ruling]) + parseInt(log.returnValues._amount);
-    });
-    return contributionsForEachRuling;
-  };
-
-  getRulingFunded = async (arbitrableDisputeID, round, arbitrableContractAddress, searchFrom) => {
-    let _round = round;
-    if (EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress)) {
-      _round++;
-    }
-
-    const contractInstance = EthereumInterface.contractInstance("IDisputeResolver", arbitrableContractAddress);
-    const rulingFundedLogs = await contractInstance.getPastEvents("RulingFunded", {
-      fromBlock: searchFrom ?? networkMap[this.state.network].QUERY_FROM_BLOCK,
-      toBlock: searchFrom ? searchFrom + 100_000 : "latest",
-      filter: {arbitrator: networkMap[this.state.network].KLEROS_LIQUID, _localDisputeID: arbitrableDisputeID, _round},
-    });
-    let ruling = rulingFundedLogs.map((log) => log.returnValues._ruling);
-
-    return ruling;
-  };
-
-  getTotalWithdrawableAmount = async (arbitrableDisputeID, contributedTo, arbitrated) => {
-    let amount = 0;
+    const contract = await EthereumInterface.getSignableContract(
+      "ArbitrableProxy",
+      networkMap[this.state.network].ARBITRABLE_PROXY,
+      this.state.provider
+    );
 
     try {
-      // targeting v2;
-      let counter = 0;
-      while (counter < contributedTo.length) {
-        amount = await EthereumInterface.call("IDisputeResolver", arbitrated, "getTotalWithdrawableAmount", arbitrableDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO, contributedTo[counter]);
-        if (amount != 0) break;
-        counter++;
-      }
-      return {amount: amount, ruling: contributedTo[counter]};
-    } catch {
-      // targeting v1
-      amount = await EthereumInterface.call("IDisputeResolver_v1", arbitrated, "getTotalWithdrawableAmount", arbitrableDisputeID, this.state.activeAddress ? this.state.activeAddress : ADDRESS_ZERO, contributedTo);
+      const tx = await contract.createDispute(
+        arbitratorExtraData,
+        metaevidenceURI,
+        options.numberOfRulingOptions,
+        { value: arbitrationCost }
+      );
 
-      return {amount: amount, ruling: contributedTo};
+      const receipt = await tx.wait();
+
+      const disputeCreationTopic = contract.interface.getEvent("DisputeCreation").topicHash;
+      const disputeLog = receipt.logs.find(log => log.topics[0] === disputeCreationTopic);
+
+      if (disputeLog) {
+        const disputeID = ethers.getBigInt(disputeLog.topics[1]);
+        return {
+          receipt,
+          disputeID: disputeID.toString()
+        };
+      } else {
+        console.error("DisputeCreation event not found in transaction logs");
+        return { receipt, disputeID: null };
+      }
+    } catch (error) {
+      console.error("Error creating dispute: ", error)
     }
   };
 
-  getDispute = async (arbitratorDisputeID) => EthereumInterface.call("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, "getDispute", arbitratorDisputeID);
+  appeal = async (arbitrableAddress, arbitrableDisputeID, party, contribution) => {
+    const contract = await EthereumInterface.getSignableContract(
+      "IDisputeResolver",
+      arbitrableAddress,
+      this.state.provider
+    );
 
-  getRuling = async (arbitrableAddress, arbitratorDisputeID) => await this.state.archon.arbitrable.getRuling(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID);
+    try {
+      const tx = await contract.fundAppeal(arbitrableDisputeID, party, {
+        value: ethers.parseEther(contribution)
+      })
 
-  getContractInstance = (interfaceName, address) => EthereumInterface.contractInstance(interfaceName, address);
+      return await tx.wait()
+    } catch (error) {
+      console.error("Error executing Appeal transaction: ", error)
+    }
+  }
 
-  submitEvidence = async (arbitrableAddress, {disputeID, evidenceTitle, evidenceDescription, evidenceDocument, supportingSide}) => {
-    const evidence = {
-      name: evidenceTitle, description: evidenceDescription, fileURI: evidenceDocument, evidenceSide: supportingSide,
-    };
+  withdrawFeesAndRewardsForAllRounds = async (
+    arbitrableAddress,
+    arbitrableDisputeID,
+    rulingOptionsContributedTo,
+    arbitrableContractAddress
+  ) => {
 
-    const ipfsHashEvidenceObj = await ipfsPublish("evidence.json", this.encoder.encode(JSON.stringify(evidence)));
+    const contractName =
+      EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress)
+        ? "IDisputeResolver_v1"
+        : "IDisputeResolver";
 
-    const evidenceURI = ipfsHashEvidenceObj;
+    const contract = await EthereumInterface.getSignableContract(
+      contractName,
+      arbitrableAddress,
+      this.state.provider
+    );
 
-    await EthereumInterface.send("ArbitrableProxy", arbitrableAddress, this.state.activeAddress, 0, "submitEvidence", disputeID, evidenceURI);
-  };
+    try {
+      const tx = await contract.withdrawFeesAndRewardsForAllRounds(
+        arbitrableDisputeID,
+        this.state.activeAddress,
+        rulingOptionsContributedTo,
+        { value: ethers.parseEther("0") }
+      );
+
+      return await tx.wait();
+    } catch (error) {
+      console.log("Error executing withdrawFeesAndRewardsForAllRounds transaction: ", error)
+    }
+  }
 
   render() {
-    const {activeAddress, network, lastDisputeID, subcourts, subcourtDetails, subcourtsLoading} = this.state;
+    const { activeAddress, network, lastDisputeID, subcourts, subcourtDetails, subcourtsLoading } = this.state;
     if (network) {
       if (!networkMap[network]) {
         return (<BrowserRouter>
-            <Route render={route => (<>
-              <Header viewOnly={!activeAddress} route={route}/>
-              <UnsupportedNetwork network={network} networkMap={networkMap}/>
-              <Footer networkMap={networkMap} network={network}/>
-            </>)}>
-            </Route>
-          </BrowserRouter>
+          <Route render={route => (<>
+            <Header viewOnly={!activeAddress} route={route} />
+            <UnsupportedNetwork network={network} networkMap={networkMap} />
+            <Footer networkMap={networkMap} network={network} />
+          </>)}>
+          </Route>
+        </BrowserRouter>
 
         )
       }
       return (<BrowserRouter>
         <Switch>
-          <Route exact path="(/disputes/)" render={() => <Redirect to={`/ongoing/`}/>}/>
+          <Route exact path={[ "/", "/:chainId", "/:chainId/disputes"]} render={() => <Redirect to={`${network}/ongoing`} />} />
           <Route
             exact
-            path="(/|/ongoing/|)"
+            path="/:chainId/ongoing"
             render={(route) => (<>
-              <Header viewOnly={!activeAddress} route={route}/>
+              <Header viewOnly={!activeAddress} route={route} />
               <OpenDisputes
                 activeAddress={activeAddress}
                 route={route}
@@ -368,38 +989,38 @@ class App extends React.Component {
                 subcourts={subcourts}
                 getCurrentRulingCallback={this.getCurrentRuling}
                 getOpenDisputesOnCourtCallback={this.getOpenDisputesOnCourt}
-                network={network}
+                network={route.match.params.chainId}
               />
-              <Footer networkMap={networkMap} network={network}/>
+              <Footer networkMap={networkMap} network={route.match.params.chainId} />
             </>)}
           />
 
           <Route
             exact
-            path="(/create/)"
+            path="/:chainId/create"
             render={(route) => (<>
-              <Header viewOnly={!activeAddress} route={route}/>
+              <Header viewOnly={!activeAddress} route={route} />
               <Create
                 activeAddress={activeAddress}
                 route={route}
                 createDisputeCallback={this.createDispute}
                 getArbitrationCostCallback={this.getArbitrationCostWithCourtAndNoOfJurors}
                 publishCallback={this.onPublish}
-                web3={Web3}
+                web3Provider={this.state.provider}
                 subcourtDetails={subcourtDetails}
                 subcourtsLoading={subcourtsLoading}
                 network={network}
               />
-              <Footer networkMap={networkMap} network={network}/>
+              <Footer networkMap={networkMap} network={network} />
             </>)}
           />
 
-          <Redirect from="/interact/:id" to="/cases/:id"/>
+          <Redirect from="/:chainId/interact/:id" to="/:chainId/cases/:id" />
           <Route
             exact
-            path="/cases/:id?"
+            path="/:chainId/cases/:id?"
             render={(route) => (<>
-              <Header viewOnly={!activeAddress} route={route}/>
+              <Header viewOnly={!activeAddress} route={route} />
 
               <Interact
                 arbitratorAddress={networkMap[network].KLEROS_LIQUID}
@@ -438,18 +1059,18 @@ class App extends React.Component {
                 getRulingFundedCallback={this.getRulingFunded}
                 subcourts={subcourts}
                 subcourtDetails={subcourtDetails}
-                web3Provider={networkMap[network].WEB3_PROVIDER}
+                web3Provider={this.state.provider}
                 exceptionalContractAddresses={EXCEPTIONAL_CONTRACT_ADDRESSES}
               />
-              <Footer networkMap={networkMap} network={network}/>
+              <Footer networkMap={networkMap} network={network} />
             </>)}
           />
           <Route
             render={(route) => (<>
-              <Header viewOnly={!activeAddress} route={route}/>
+              <Header viewOnly={!activeAddress} route={route} />
 
-              <_404/>
-              <Footer networkMap={networkMap} network={network}/>
+              <_404 />
+              <Footer networkMap={networkMap} network={network} />
             </>)}
           />
         </Switch>

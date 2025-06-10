@@ -9,26 +9,28 @@ class Header extends React.Component {
     super(props);
   }
   render() {
-    const { viewOnly } = this.props;
+    const { viewOnly, route } = this.props;
+
+    const chainId = route.match.params.chainId;
     
     return (
       <header>
         <Navbar collapseOnSelect expand="lg" variant="dark" >
-          <Navbar.Brand href="/" >
+          <Navbar.Brand href={`/${chainId}`} >
             <Brand />
           </Navbar.Brand>
           <Navbar.Toggle aria-controls="responsive-navbar-nav" />
           <Navbar.Collapse id="responsive-navbar-nav">
             <Nav>
-              <LinkContainer to="/ongoing/">
+              <LinkContainer to={`/${chainId}/ongoing/`}>
                 <Nav.Link className=" mx-3">Ongoing Disputes</Nav.Link>
               </LinkContainer>
               {!viewOnly && (
-                <LinkContainer exact to="/create/">
+                <LinkContainer exact to={`/${chainId}/create/`}>
                   <Nav.Link className=" mx-3">Create</Nav.Link>
                 </LinkContainer>
               )}
-              <LinkContainer exact to="/cases/">
+              <LinkContainer exact to={`/${chainId}/cases/`}>
                 <Nav.Link className=" mx-3">Interact</Nav.Link>
               </LinkContainer>
             </Nav>

@@ -23,12 +23,14 @@ class CreateSummary extends React.Component {
     const noOfOptions = formData.questionType.code == "multiple-select" ? Math.pow(2, formData.rulingTitles.length) : formData.rulingTitles.length;
 
     let aliases = {};
-    formData.names.map((name, index) => {
+    formData.names.filter(name => name.trim() !== "").map((name, index) => {
       aliases[formData.addresses[index]] = name;
     });
 
+    console.log({aliases})
+
     try {
-      const receipt = await this.props.createDisputeCallback({
+      const result = await this.props.createDisputeCallback({
         selectedSubcourt: formData.selectedSubcourt,
         initialNumberOfJurors: formData.initialNumberOfJurors,
         title: formData.title,
@@ -44,12 +46,13 @@ class CreateSummary extends React.Component {
           descriptions: formData.rulingDescriptions,
         },
       });
-      notificationEventCallback(receipt.events.Dispute.returnValues._disputeID);
-      this.setState({
-        lastDisputeID: receipt.events.Dispute.returnValues._disputeID,
-      });
+
+      console.debug({result})
+      notificationEventCallback(result.disputeID);
+      this.setState({lastDisputeID: result.disputeID});
     } catch (e) {
       console.error(e);
+    } finally {
       this.setState({ awaitingConfirmation: false });
     }
   };
@@ -111,8 +114,8 @@ class CreateSummary extends React.Component {
             </Col>
           </Row>
           <Row>
-            {formData.names.map((_value, index) => (
-              <>
+            {formData.names?.length> 0 && formData.names.filter(name => name.trim() !== '').map((_value, index) => (
+              <React.Fragment key={`party-${index+1}`}>
                 <Col xl={4} lg={4} md={8}>
                   <Form.Group>
                     <Form.Label htmlFor="requester">Party {index + 1}</Form.Label>
@@ -131,7 +134,7 @@ class CreateSummary extends React.Component {
                     </Form.Control>
                   </Form.Group>
                 </Col>
-              </>
+              </React.Fragment>
             ))}
           </Row>
           <hr />
@@ -186,7 +189,13 @@ class CreateSummary extends React.Component {
                   </Button>
                 </Col>
                 <Col md="auto" xs={24} sm={12}>
-                  <Button type="button" variant="primary" className={`${styles.create}`} onClick={this.onCreateButtonClick} xs={{ block: true }}>
+                  <Button 
+                  type="button" 
+                  variant="primary" 
+                  className={`${styles.create}`} 
+                  onClick={this.onCreateButtonClick}
+                  disabled={this.state.awaitingConfirmation} 
+                  xs={{ block: true }}>
                     Create
                   </Button>
                 </Col>

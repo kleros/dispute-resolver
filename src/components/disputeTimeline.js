@@ -12,8 +12,7 @@ class DisputeTimeline extends React.Component {
   };
 
   render() {
-    const { period, lastPeriodChange, subcourt } = this.props;
-    
+    const { period, lastPeriodChange, timesPerPeriod } = this.props;
 
     return (
       <div className={styles.disputeTimeline}>
@@ -22,7 +21,7 @@ class DisputeTimeline extends React.Component {
             <div>
               <div className={styles.name}>Evidence</div>
               <small className={styles.time}>
-                {period == 0 && <Countdown date={(parseInt(lastPeriodChange) + parseInt(subcourt.timesPerPeriod[period])) * 1000} renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>} />}
+                {period == 0 && <Countdown date={(parseInt(lastPeriodChange) + parseInt(timesPerPeriod[period])) * 1000} renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>} />}
                 {period > 0 && "Concluded"}
               </small>
             </div>
@@ -34,9 +33,9 @@ class DisputeTimeline extends React.Component {
             <div>
               <div className={styles.name}>Voting</div>
               <small className={styles.time}>
-                {period == 2 && <Countdown date={(parseInt(lastPeriodChange) + parseInt(subcourt.timesPerPeriod[period])) * 1000} renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>} />}
+                {period == 2 && <Countdown date={(parseInt(lastPeriodChange) + parseInt(timesPerPeriod[period])) * 1000} renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>} />}
                 {period > 2 && "Concluded"}
-                {period < 2 && this.convertToHumanReadiableTime(subcourt.timesPerPeriod[2])}
+                {period < 2 && this.convertToHumanReadiableTime(timesPerPeriod[2])}
               </small>
             </div>
           </Col>
@@ -48,8 +47,8 @@ class DisputeTimeline extends React.Component {
               <div className={styles.name}>Appeal</div>
               <small className={styles.time}>
                 {period > 3 && "Concluded"}
-                {period == 3 && <Countdown date={(parseInt(lastPeriodChange) + parseInt(subcourt.timesPerPeriod[period])) * 1000} renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>} />}
-                {period < 3 && this.convertToHumanReadiableTime(subcourt.timesPerPeriod[3])}
+                {period == 3 && <Countdown date={(parseInt(lastPeriodChange) + parseInt(timesPerPeriod[period])) * 1000} renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>} />}
+                {period < 3 && this.convertToHumanReadiableTime(timesPerPeriod[3])}
               </small>
             </div>
           </Col>

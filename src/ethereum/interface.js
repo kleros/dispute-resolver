@@ -7,9 +7,9 @@ import ArbitrableProxy from "../../node_modules/@kleros/arbitrable-proxy-contrac
 import IDisputeResolver_v2_0_0 from "../../node_modules/IDRv2/build/contracts/IDisputeResolver.json";
 import IDisputeResolver_v1_0_2 from "../../node_modules/IDRv1/build/contracts/IDisputeResolver.json";
 
-import web3 from "./web3";
+import { ethers } from "ethers";
 
-const imports = {
+const contractABIs = {
   KlerosLiquid,
   IDisputeResolver: IDisputeResolver_v2_0_0,
   IDisputeResolver_v1: IDisputeResolver_v1_0_2,
@@ -20,18 +20,24 @@ const imports = {
   PolicyRegistry,
 };
 
-export const contractInstance = (interfaceName, address) => new web3.eth.Contract(imports[interfaceName].abi, address);
+export const getContract = (contractName, address, provider) => {
+  if (!contractABIs[contractName]) {
+    throw new Error(`ABI for contract ${contractName} not found`);
+  }
 
-export const call = (interfaceName, instanceAddress, method, ...args) =>
-  contractInstance(interfaceName, instanceAddress)
-    .methods[method](...args).call()
+  return new ethers.Contract(
+    address,
+    contractABIs[contractName].abi,
+    provider
+  );
+};
 
-export const send = (interfaceName, instanceAddress, from, value, method, ...args) =>
-  contractInstance(interfaceName, instanceAddress)
-    .methods[method](...args)
-    .send({ from, value });
-
-export const estimateGas = (interfaceName, instanceAddress, from, value, method, ...args) =>
-  contractInstance(interfaceName, instanceAddress)
-    .methods[method](...args)
-    .estimateGas({ from, value });
+export const getSignableContract = async (contractName, address, provider) => {
+  if (!provider) {
+    throw new Error("Provider is required for signable contract");
+  }
+  
+  const signer = await provider.getSigner();
+  
+  return getContract(contractName, address, signer);
+};

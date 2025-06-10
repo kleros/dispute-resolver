@@ -2,12 +2,8 @@ import React from "react";
 import { Col, Row, Button, Form, Dropdown } from "react-bootstrap";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
-import { ReactComponent as UploadSVG } from "../assets/images/upload.svg";
-import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
 import networkMap from "../ethereum/network-contract-mapping";
-
-import Dropzone from "react-dropzone";
 
 const QuestionTypes = Object.freeze({
   SINGLE_SELECT: { code: "single-select", humanReadable: "Multiple choice: single select" },
@@ -22,35 +18,57 @@ const QuestionTypes = Object.freeze({
 import styles from "components/styles/createForm.module.css";
 import FileUploadDropzone from "./FileUploadDropzone";
 
+const INITIAL_STATE = {
+  initialNumberOfJurors: "3",
+  title: "",
+  category: "",
+  description: "",
+  question: "",
+  rulingTitles: ["",""],
+  rulingDescriptions: [""],
+  names: [],
+  addresses: [],
+  modalShow: false,
+  awaitingConfirmation: false,
+  lastDisputeID: "",
+  selectedSubcourt: "0",
+  arbitrationCost: "",
+  primaryDocument: "",
+  requesterAddress: "",
+  respondentAddress: "",
+  validated: false,
+  questionType: QuestionTypes.SINGLE_SELECT,
+  numberOfRulingOptions: 2,
+  numberOfParties: 1,
+  summary: false,
+  uploading: false,
+  uploadError: ""
+}
+
 class CreateForm extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {
-      initialNumberOfJurors: "3",
-      title: "",
-      category: "",
-      description: "",
-      question: "",
-      rulingTitles: [""],
-      rulingDescriptions: [],
-      names: [],
-      addresses: [],
-      modalShow: false,
-      awaitingConfirmation: false,
-      lastDisputeID: "",
-      selectedSubcourt: "",
-      arbitrationCost: "",
-      primaryDocument: "",
-      requesterAddress: "",
-      respondentAddress: "",
-      validated: false,
-      questionType: QuestionTypes.SINGLE_SELECT,
-      numberOfRulingOptions: 2,
-      numberOfParties: 1,
-      summary: false,
-      uploading: false,
-      uploadError: ""
-    };
+    this.state = INITIAL_STATE;
+  }
+
+  componentDidUpdate(prevProps) {
+    const networkChanged = this.props.network !== prevProps.network;
+    const subcourtDetailsLoaded =
+      Array.isArray(this.props.subcourtDetails) &&
+      this.props.subcourtDetails.length > 0 &&
+      (prevProps.subcourtDetails !== this.props.subcourtDetails);
+
+    if (networkChanged || subcourtDetailsLoaded) {
+      this.setState(INITIAL_STATE, async () => {
+        if (
+          networkMap[this.props.network].ARBITRABLE_PROXY &&
+          this.props.subcourtDetails &&
+          this.props.subcourtDetails.length > 0
+        ) {
+          await this.calculateArbitrationCost("0", 3);
+        }
+      });
+    }
   }
 
   onNextButtonClick = async (event) => {
@@ -100,8 +118,8 @@ class CreateForm extends React.Component {
 
   onSubcourtSelect = async (subcourtID) => {
     if (!networkMap[this.props.network].ARBITRABLE_PROXY) return
-    await this.setState({ selectedSubcourt: subcourtID });
-    this.calculateArbitrationCost(this.state.selectedSubcourt, this.state.initialNumberOfJurors);
+    this.setState({ selectedSubcourt: subcourtID });
+    await this.calculateArbitrationCost(subcourtID, this.state.initialNumberOfJurors);
   };
 
   onQuestionTypeChange = async (questionType) => {
@@ -127,9 +145,21 @@ class CreateForm extends React.Component {
   };
 
   onControlChange = async (e) => {
-    await this.setState({ [e.target.id]: e.target.value });
+    const { id, value } = e.target;
 
-    this.calculateArbitrationCost(this.state.selectedSubcourt, this.state.initialNumberOfJurors);
+    this.setState(
+      prevState => {
+        const newState = { ...prevState, [id]: value };
+        return newState;
+      },
+      async () => {
+        const { selectedSubcourt, initialNumberOfJurors } = this.state;
+        console.debug("onControlChange", { selectedSubcourt, initialNumberOfJurors });
+        if (selectedSubcourt && initialNumberOfJurors) {
+          await this.calculateArbitrationCost(selectedSubcourt, initialNumberOfJurors);
+        }
+      }
+    );
   };
 
   onDrop = async (acceptedFiles) => {
@@ -223,6 +253,8 @@ class CreateForm extends React.Component {
       uploading,
     } = this.state;
 
+    console.log({state:this.state})
+
     if (!networkMap[network].ARBITRABLE_PROXY) return <h1>There is no arbitrable contract deployed in this network.
       So unfortunately you can't create a dispute.
       Feel free to head over <a href="https://github.com/kleros/dispute-resolver/issues" target="_blank" rel="noopener noreferrer">GitHub
@@ -252,9 +284,10 @@ class CreateForm extends React.Component {
 
                 <Dropdown.Menu>
                   {subcourtDetails && subcourtDetails.map((subcourt, index) => (
-                    <Dropdown.Item key={`subcourt-${index}`} eventKey={index} className={`${index == selectedSubcourt && "selectedDropdownItem"}`}>
+                    <Dropdown.Item key={`subcourt-${subcourt.name}`} eventKey={index} className={`${index == selectedSubcourt && "selectedDropdownItem"}`}>
                       {subcourt && subcourt.name}
-                    </Dropdown.Item>))}
+                    </Dropdown.Item>)
+                    )}
                 </Dropdown.Menu>
               </Dropdown>
             </Form.Group>
@@ -435,7 +468,32 @@ class CreateForm extends React.Component {
                 <span>+</span>
               </Button>
               <Button className="cssCircle minusSign"
-                onClick={(_e) => this.setState({ numberOfParties: numberOfParties - 1 > 0 ? numberOfParties - 1 : 0 })}>
+                onClick={(_e) => {
+                  const newNumberOfParties = Math.max(numberOfParties - 1, 1);
+    
+                  this.setState((prevState) => {
+                    let newNames = [...prevState.names];
+                    let newAddresses = [...prevState.addresses];
+
+                    if (numberOfParties === 1) {
+                      if (newNames.length > 0) newNames[0] = "";
+                      if (newAddresses.length > 0) newAddresses[0] = "";
+                    } else if (numberOfParties > 1) {
+                      if (newNames.length >= numberOfParties) {
+                        newNames = newNames.slice(0, -1);
+                      }
+                      if (newAddresses.length >= numberOfParties) {
+                        newAddresses = newAddresses.slice(0, -1);
+                      }
+                    }
+
+                    return {
+                      numberOfParties: newNumberOfParties,
+                      names: newNames,
+                      addresses: newAddresses
+                    };
+                  });
+                }}>
                 <span>–</span>
               </Button>
             </Form.Group>

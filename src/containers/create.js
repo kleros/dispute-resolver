@@ -11,6 +11,13 @@ class Create extends React.Component {
     this.state = { activePage: 1, notificationShow: false };
   }
 
+  componentDidUpdate(prevProps) {
+    console.debug("CreateSummary componentDidUpdate", {prevProps, props: this.props});
+
+    if (prevProps.network !== this.props.network) {
+      this.setState({ activePage: 1, formData: undefined, lastDisputeID: undefined });
+    }
+  }
 
   onNextButtonClick = (formData) => {
     this.setState({ activePage: 2, formData });
@@ -36,6 +43,7 @@ class Create extends React.Component {
       <main className={styles.create}>
         {activePage == 1 && (
           <CreateForm
+            key={network}
             getArbitrationCostCallback={getArbitrationCostCallback}
             publishCallback={publishCallback}
             subcourtDetails={subcourtDetails}
@@ -47,6 +55,7 @@ class Create extends React.Component {
         )}
         {activePage == 2 && (
           <Summary
+            key={network}
             getArbitrationCostCallback={getArbitrationCostCallback}
             publishCallback={publishCallback}
             subcourtDetails={subcourtDetails}

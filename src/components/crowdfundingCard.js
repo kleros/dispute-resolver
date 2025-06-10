@@ -1,15 +1,12 @@
-import {  ProgressBar, InputGroup, FormControl, Button } from "react-bootstrap";
+import { ProgressBar, InputGroup, FormControl, Button } from "react-bootstrap";
 import React from "react";
-import BigNumber from "bignumber.js";
 import Countdown, { zeroPad } from "react-countdown";
 import styles from "components/styles/crowdfundingCard.module.css";
 import { ReactComponent as Hourglass } from "assets/images/hourglass.svg";
 import AlertMessage from "components/alertMessage";
-const DECIMALS = BigNumber(10).pow(BigNumber(18));
-import web3 from "web3";
-const { toBN, utf8ToHex } = web3.utils;
 import * as realitioLibQuestionFormatter from "@reality.eth/reality-eth-lib/formatters/question";
 import DatetimePicker from "components/datetimePicker.js";
+import { ethers } from "ethers";
 
 class CrowdfundingCard extends React.Component {
   constructor(props) {
@@ -17,16 +14,10 @@ class CrowdfundingCard extends React.Component {
     this.state = { variableRulingOption: "", contribution: this.props.suggestedContribution };
   }
 
+  onControlChange = (e) => this.setState({ [e.target.id]: e.target.value });
 
-
-
-
-  onControlChange = async (e) => await this.setState({ [e.target.id]: e.target.value });
-
-  onDatePickerChange = async (value, _dateString) => {
-    
-    
-    await this.setState({ variableRulingOption: value.utcOffset(0).set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).unix() });
+  onDatePickerChange = (value, _dateString) => {
+    this.setState({ variableRulingOption: value.utcOffset(0).set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).unix() });
   };
 
   addDecimalsToUintRuling = (currentRuling, metaEvidenceJSON) => {
@@ -36,36 +27,36 @@ class CrowdfundingCard extends React.Component {
     });
   };
 
-  handleFundButtonClick = () => {
+  handleFundButtonClick = async () => {
     const { variable, appealCallback, rulingOptionCode, metaevidenceJSON } = this.props;
     const { variableRulingOption, contribution } = this.state;
     let actualRulingCode;
-    
-    
+
+
     switch (variable) {
       case undefined: // Not variable
         actualRulingCode = rulingOptionCode;
         break;
       case "uint":
-        actualRulingCode = toBN(this.addDecimalsToUintRuling(variableRulingOption, metaevidenceJSON)).add(toBN("1")); // 10**18
-        
-        
+        actualRulingCode = ethers.getBigInt(this.addDecimalsToUintRuling(variableRulingOption, metaevidenceJSON)) + 1n;
         break;
       case "int":
         actualRulingCode = parseInt(variableRulingOption) >= 0 ? parseInt(variableRulingOption) + 1 : variableRulingOption;
         break;
       case "string":
-        actualRulingCode = utf8ToHex(variableRulingOption);
+        actualRulingCode = ethers.hexlify(ethers.toUtf8Bytes(variableRulingOption));
         break;
       case "datetime":
         actualRulingCode = variableRulingOption + 1;
     }
 
-    appealCallback(actualRulingCode, BigNumber(contribution).times(DECIMALS)); //.then(this.setState({ variableRulingOption: "", contribution: this.props.suggestedContribution }));
+    await appealCallback(actualRulingCode, contribution.toString());
   };
 
+
+
   render() {
-    const {  title, winner, fundingPercentage, appealPeriodEnd, variable, roi, suggestedContribution } = this.props;
+    const { title, winner, fundingPercentage, appealPeriodEnd, variable, roi, suggestedContribution } = this.props;
     const { variableRulingOption, contribution } = this.state;
 
     return (
