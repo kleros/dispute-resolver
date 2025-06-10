@@ -253,7 +253,7 @@ class CreateForm extends React.Component {
       uploading,
     } = this.state;
 
-    console.log({state:this.state})
+    // Removed debug console.log to avoid spamming the console and impacting performance.
 
     if (!networkMap[network].ARBITRABLE_PROXY) return <h1>There is no arbitrable contract deployed in this network.
       So unfortunately you can't create a dispute.
