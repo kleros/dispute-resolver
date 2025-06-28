@@ -153,7 +153,9 @@ class DisputeDetails extends React.Component {
       // For hash type rulings, handle them as hex strings without numeric operations
       if (questionType === "hash") {
         let hashValue = currentRuling.toString();
-        let numericValue;
+        let finalHexValue;
+        
+        console.log('DEBUG: hash conversion - input:', hashValue, 'type:', typeof hashValue);
         
         // Check if it's already a hex string (case-insensitive)
         const isHexString = /^0x/i.test(hashValue);
@@ -168,16 +170,26 @@ class DisputeDetails extends React.Component {
           if (!/^[0-9a-fA-F]+$/.test(hexWithoutPrefix)) {
             throw new Error(`Invalid hex value: contains non-hex characters: ${hashValue}`);
           }
-          // Parse hex string to numeric value
-          numericValue = BigInt('0x' + hexWithoutPrefix);
+          
+          console.log('DEBUG: processing hex string, hexWithoutPrefix:', hexWithoutPrefix);
+          
+          // For hex strings, apply offset by subtracting 1 from the BigInt representation
+          const numericValue = BigInt('0x' + hexWithoutPrefix);
+          console.log('DEBUG: numericValue as BigInt:', numericValue.toString());
+          finalHexValue = (numericValue - 1n).toString(16);
+          console.log('DEBUG: finalHexValue after -1:', finalHexValue);
         } else {
-          // Handle numeric string input similar to numeric types
+          // Handle numeric string input
+          let numericValue;
+          
+          console.log('DEBUG: processing numeric string');
+          
           // Check if the string contains scientific notation
           if (hashValue.includes('e') || hashValue.includes('E')) {
             // Parse scientific notation as a Number first, then convert to BigInt
             const numValue = Number(hashValue);
-            if (!isFinite(numValue)) {
-              throw new Error(`Invalid number: ${hashValue}`);
+            if (!isFinite(numValue) || numValue > Number.MAX_SAFE_INTEGER) {
+              throw new Error(`Invalid number: ${hashValue} - too large or not finite`);
             }
             numericValue = BigInt(Math.floor(numValue));
           } else {
@@ -188,19 +200,28 @@ class DisputeDetails extends React.Component {
               throw new Error(`Invalid hash value: not a valid number or hex string: ${hashValue}`);
             }
           }
+          
+          console.log('DEBUG: numericValue as BigInt:', numericValue.toString());
+          // Apply -1 offset
+          finalHexValue = (numericValue - 1n).toString(16);
+          console.log('DEBUG: finalHexValue after -1:', finalHexValue);
         }
         
-        // Apply consistent -1 offset for both hex and numeric inputs
-        hashValue = (numericValue - 1n).toString(16);
+        console.log('DEBUG: calling padToBytes32 with:', finalHexValue);
+        const paddedResult = realitioLibQuestionFormatter.padToBytes32(finalHexValue);
+        console.log('DEBUG: padToBytes32 result:', paddedResult);
         
-        return realitioLibQuestionFormatter.getAnswerString(
+        const result = realitioLibQuestionFormatter.getAnswerString(
           {
             decimals: metaEvidenceJSON.rulingOptions.precision,
             outcomes: metaEvidenceJSON.rulingOptions.titles,
             type: questionType,
           },
-          realitioLibQuestionFormatter.padToBytes32(hashValue)
+          paddedResult
         );
+        
+        console.log('DEBUG: final getAnswerString result:', result);
+        return result;
       }
       
       // For numeric types, apply the original logic
