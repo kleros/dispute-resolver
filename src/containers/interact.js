@@ -8,7 +8,6 @@ import { ReactComponent as Magnifier } from "../assets/images/magnifier.svg";
 import { Redirect } from "react-router-dom";
 
 import styles from "containers/styles/interact.module.css";
-import { debug } from "prettier/doc";
 
 class Interact extends React.Component {
   constructor(props) {
@@ -78,7 +77,6 @@ class Interact extends React.Component {
   appeal = async (party, contribution) => this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);
 
   withdraw = async () => {
-    console.debug(`Withdrawing these rulings: ${[Object.keys(this.state.contributions).map((key) => parseInt(key))]}`);
     try {
       // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256 _ruling);
       this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);
@@ -181,9 +179,6 @@ class Interact extends React.Component {
         disputeEvent.blockNumber
       );
 
-      console.log('DEBUG - appealDecisions:', appealDecisions);
-      console.log('DEBUG - appealDecisions.length:', appealDecisions.length);
-
       const [contributions, rulingFunded] = await Promise.all([
         this.props.getContributionsCallback(
           arbitrableDisputeID,
@@ -199,22 +194,6 @@ class Interact extends React.Component {
           appealDecisions.slice(-1)?.appealedAtBlockNumber
         )
       ]);
-
-      console.log('DEBUG - contributions:', contributions);
-      console.log('DEBUG - rulingFunded from round', appealDecisions.length, ':', rulingFunded);
-
-      // Let's also check if there are rulingFunded events in other rounds
-      if (appealDecisions.length > 0) {
-        for (let round = 0; round < appealDecisions.length; round++) {
-          const rulingFundedInRound = await this.props.getRulingFundedCallback(
-            arbitrableDisputeID,
-            round,
-            arbitrated,
-            appealDecisions[round]?.appealedAtBlockNumber
-          );
-          console.log(`DEBUG - rulingFunded in round ${round}:`, rulingFundedInRound);
-        }
-      }
 
       this.setState({ contributions, appealDecisions, rulingFunded });
 
@@ -278,15 +257,6 @@ class Interact extends React.Component {
         this.props.getAppealDecisionCallback(arbitratorDisputeID),
         this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID)
       ]);
-
-      console.debug("Reloading dispute data:", {
-        arbitratorDisputeID,
-        arbitrated,
-        arbitratorDispute,
-        evidences,
-        appealDecisions,
-        arbitratorDisputeDetails
-      });
 
       const contributions = await this.props.getContributionsCallback(
         arbitrableDisputeID,
@@ -426,6 +396,8 @@ class Interact extends React.Component {
               subcourtDetails={subcourtDetails}
               incompatible={incompatible}
               currentRuling={
+                // Preserve hash values as strings to avoid precision loss with large values
+                // For other types, maintain existing parseInt() behavior for compatibility
                 metaevidence?.metaEvidenceJSON?.rulingOptions?.type === "hash" 
                   ? currentRuling 
                   : parseInt(currentRuling)

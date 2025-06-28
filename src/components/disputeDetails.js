@@ -43,10 +43,7 @@ class DisputeDetails extends React.Component {
   }
 
   componentDidMount() {
-    const { appealCost, multipliers } = this.props;
-    if (process.env.NODE_ENV === "development") {
-      console.log("DisputeDetails component mounted with appealCost:", appealCost, "and multipliers:", multipliers);
-    }
+    // Component initialization complete
   }
 
   calculateTotalCost = (rulingOption) => {
@@ -59,7 +56,6 @@ class DisputeDetails extends React.Component {
     let stake;
 
     if (currentRuling == rulingOption || (exceptionalContractAddresses.includes(arbitrated) && currentRuling == 0)) {
-      console.log(`exception for ruling ${rulingOption}`);
       stake = (appealCost * multipliers.winnerStakeMultiplier) / multipliers.denominator;
     } else {
       return this.calculateAmountRemainsToBeRaisedForLoser();
@@ -94,7 +90,6 @@ class DisputeDetails extends React.Component {
     const divisor = multipliers.denominator;
 
     if (currentRuling == rulingOption || (exceptionalContractAddresses.includes(arbitrated) && currentRuling == 0)) {
-      console.log(`ROI ratio for ruling option ${rulingOption}`)
       return Number((winner + loser + divisor) * 1000n / (winner + divisor)) / 1000;
     } else {
       return Number((winner + loser + divisor) * 1000n / (loser + divisor)) / 1000;
@@ -150,7 +145,8 @@ class DisputeDetails extends React.Component {
     try {
       const questionType = metaEvidenceJSON.rulingOptions.type;
       
-      // For hash type rulings, handle them as hex strings without numeric operations
+      // For hash type rulings, preserve precision by handling as hex strings
+      // Apply Reality.eth -1 offset consistently for both hex and numeric inputs
       if (questionType === "hash") {
         let hashValue = currentRuling.toString();
         let finalHexValue;
@@ -179,7 +175,7 @@ class DisputeDetails extends React.Component {
           // Check if the string contains scientific notation
           if (hashValue.includes('e') || hashValue.includes('E')) {
             // Scientific notation indicates precision loss occurred upstream
-            throw new Error(`Hash value received in scientific notation (${hashValue}), indicating precision loss. Ensure hash values are preserved as strings without parseInt() conversion.`);
+            throw new Error(`Hash value precision lost during processing. Please report this issue.`);
           } else {
             // Try to parse as BigInt directly for regular numbers
             try {
@@ -266,8 +262,6 @@ class DisputeDetails extends React.Component {
       totalWithdrawable,
       exceptionalContractAddresses
     } = this.props;
-
-    console.log({metaevidenceJSON})
 
     const { activeKey } = this.state;
     const decisionInfoBoxContent = `This decision can be appealed within appeal period. ${incompatible ? "Go to arbitrable application to appeal this ruling." : ""}`;
