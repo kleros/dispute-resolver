@@ -158,16 +158,20 @@ class DisputeDetails extends React.Component {
         const isHexString = /^0x/i.test(hashValue);
         
         if (isHexString) {
-          // Remove hex prefix (case-insensitive) and ensure we have valid hex
+          // Remove hex prefix (case-insensitive) and validate hex characters
           const hexWithoutPrefix = hashValue.slice(2);
           if (hexWithoutPrefix === '') {
             throw new Error('Invalid hex value: empty hex string');
           }
+          // Validate that all characters are valid hex digits
+          if (!/^[0-9a-fA-F]+$/.test(hexWithoutPrefix)) {
+            throw new Error(`Invalid hex value: contains non-hex characters: ${hashValue}`);
+          }
           hashValue = hexWithoutPrefix;
         } else {
-          // Convert numeric value to hex
+          // Convert numeric value to hex, applying -1 offset for consistency
           const numericValue = BigInt(hashValue);
-          hashValue = numericValue.toString(16);
+          hashValue = (numericValue - 1n).toString(16);
         }
         
         return realitioLibQuestionFormatter.getAnswerString(
