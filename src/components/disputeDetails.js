@@ -292,7 +292,7 @@ class DisputeDetails extends React.Component {
     // Reserved options
     if (metaevidenceJSON.rulingOptions?.reserved) {
       Object.entries(metaevidenceJSON.rulingOptions.reserved).forEach(([rulingCode, title]) => {
-        const hexToNumberString = hex => ethers.getBigInt(hex).toString();
+        const hexToNumberString = (hex) => ethers.getBigInt(hex).toString();
         cards.push(
           <Col key={hexToNumberString(rulingCode)} className="pb-4" xl={8} lg={12} xs={24}>
             <CrowdfundingCard
@@ -342,7 +342,7 @@ class DisputeDetails extends React.Component {
               .padStart(4, "0")
               .split("")
               .reverse()
-              .map((bit, i) => (bit == 1 ? metaevidenceJSON.rulingOptions.titles[i] : null))
+              .map((bit, i) => (bit === 1 ? metaevidenceJSON.rulingOptions.titles[i] : null))
               .join(" ");
         
         cards.push(
@@ -376,7 +376,7 @@ class DisputeDetails extends React.Component {
 
     // Other contributions (not current ruling)
     Object.keys(contributions)
-      .filter((key) => key != this.props.currentRuling)
+      .filter((key) => key !== this.props.currentRuling)
       .forEach((key) => {
         const title = questionType === "string" 
           ? ethers.toUtf8String(ethers.hexlify(key)) 

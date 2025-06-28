@@ -111,7 +111,7 @@ class App extends React.Component {
 
     if(this.state.network === newChainId) return;
 
-    this.setState({ network: newChainId}, async ()=> {
+          this.setState({ network: newChainId}, async () => {
       await this.initiateWeb3Provider();
        if (networkMap[newChainId]?.KLEROS_LIQUID) {
         this.loadSubcourtData();
@@ -614,13 +614,13 @@ class App extends React.Component {
         "latest"
       );
 
-      const blockPromises = appealDecisionEvents.map(event =>
-        this.state.provider.getBlock(event.blockNumber)
-      );
+          const blockPromises = appealDecisionEvents.map((event) =>
+      this.state.provider.getBlock(event.blockNumber)
+    );
 
-      const blocks = await Promise.all(blockPromises);
+    const blocks = await Promise.all(blockPromises);
 
-      return blocks.map(block => ({
+    return blocks.map((block) => ({
         appealedAt: block.timestamp,
         appealedAtBlockNumber: block.number
       }));
@@ -747,7 +747,7 @@ class App extends React.Component {
         });
       });
 
-      const rulings = events.map(event => event.args._ruling.toString());
+      const rulings = events.map((event) => event.args._ruling.toString());
       console.log('DEBUG getRulingFunded - returning rulings:', rulings);
 
       return rulings;
@@ -890,7 +890,7 @@ class App extends React.Component {
       const receipt = await tx.wait();
 
       const disputeCreationTopic = contract.interface.getEvent("DisputeCreation").topicHash;
-      const disputeLog = receipt.logs.find(log => log.topics[0] === disputeCreationTopic);
+      const disputeLog = receipt.logs.find((log) => log.topics[0] === disputeCreationTopic);
 
       if (disputeLog) {
         const disputeID = ethers.getBigInt(disputeLog.topics[1]);
