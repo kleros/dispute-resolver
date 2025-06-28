@@ -14,6 +14,15 @@ import AlertMessage from "components/alertMessage";
 
 import styles from "components/styles/disputeDetails.module.css";
 
+// Constants to avoid magic numbers
+const PRECISION_SCALING_FACTOR = 1000n;
+const PRECISION_SCALING_DIVISOR = 1000;
+const PERCENTAGE_SCALING_FACTOR = 10000n;
+const PERCENTAGE_SCALING_DIVISOR = 100;
+const DISPUTE_PERIOD_APPEAL = 3;
+const DISPUTE_PERIOD_EXECUTION = 4;
+const BINARY_PADDING_WIDTH = 4;
+const HEX_PREFIX_LENGTH = 2;
 
 const QuestionTypes = Object.freeze({
   "single-select": "Multiple choice: single select",
@@ -90,9 +99,9 @@ class DisputeDetails extends React.Component {
     const divisor = multipliers.denominator;
 
     if (currentRuling == rulingOption || (exceptionalContractAddresses.includes(arbitrated) && currentRuling == 0)) {
-      return Number((winner + loser + divisor) * 1000n / (winner + divisor)) / 1000;
+      return Number((winner + loser + divisor) * PRECISION_SCALING_FACTOR / (winner + divisor)) / PRECISION_SCALING_DIVISOR;
     } else {
-      return Number((winner + loser + divisor) * 1000n / (loser + divisor)) / 1000;
+      return Number((winner + loser + divisor) * PRECISION_SCALING_FACTOR / (loser + divisor)) / PRECISION_SCALING_DIVISOR;
     }
   };
 
@@ -102,7 +111,7 @@ class DisputeDetails extends React.Component {
     const loser = multipliers.loserStakeMultiplier;
     const divisor = multipliers.denominator;
 
-    return Number((winner + loser + divisor) * 1000n / (loser + divisor)) / 1000;
+    return Number((winner + loser + divisor) * PRECISION_SCALING_FACTOR / (loser + divisor)) / PRECISION_SCALING_DIVISOR;
   };
 
   calculateAppealPeriod = (rulingOption) => {
@@ -137,13 +146,13 @@ class DisputeDetails extends React.Component {
 
     if (totalCost === 0) return 0;
 
-    const scaled = (BigInt(raisedSoFar) * 10000n) / totalCost;
-    return Number(scaled) / 100;
+    const scaled = (BigInt(raisedSoFar) * PERCENTAGE_SCALING_FACTOR) / totalCost;
+    return Number(scaled) / PERCENTAGE_SCALING_DIVISOR;
   }
 
   // Helper method to validate and process hex strings
   processHexValue = (hashValue) => {
-    const hexWithoutPrefix = hashValue.slice(2);
+    const hexWithoutPrefix = hashValue.slice(HEX_PREFIX_LENGTH);
     
     if (hexWithoutPrefix === '') {
       throw new Error('Invalid hex value: empty hex string');
@@ -243,7 +252,7 @@ class DisputeDetails extends React.Component {
   renderDecisionAlerts = (disputePeriod, currentRuling, metaevidenceJSON, rulingFunded, incompatible) => {
     const decisionInfoBoxContent = `This decision can be appealed within appeal period. ${incompatible ? "Go to arbitrable application to appeal this ruling." : ""}`;
     
-    if (disputePeriod == 3) {
+    if (disputePeriod == DISPUTE_PERIOD_APPEAL) {
       return (
         <AlertMessage
           type="info"
@@ -253,7 +262,7 @@ class DisputeDetails extends React.Component {
       );
     }
     
-    if (disputePeriod == 4) {
+    if (disputePeriod == DISPUTE_PERIOD_EXECUTION) {
       return (
         <AlertMessage
           type="info"
@@ -339,7 +348,7 @@ class DisputeDetails extends React.Component {
           ? "None"
           : index
               .toString(2)
-              .padStart(4, "0")
+              .padStart(BINARY_PADDING_WIDTH, "0")
               .split("")
               .reverse()
               .map((bit, i) => (bit === 1 ? metaevidenceJSON.rulingOptions.titles[i] : null))
@@ -518,23 +527,23 @@ class DisputeDetails extends React.Component {
             }}
           >
             <Card>
-              {arbitratorDispute && disputePeriod >= 3 && contributions && multipliers && appealCost && appealPeriod && arbitrated && (
+              {arbitratorDispute && disputePeriod >= DISPUTE_PERIOD_APPEAL && contributions && multipliers && appealCost && appealPeriod && arbitrated && (
                 <>
                   <Accordion.Toggle className={activeKey == 1 ? "open" : "closed"} as={Card.Header} eventKey="1">
                     Appeal
                   </Accordion.Toggle>
                   <Accordion.Collapse eventKey="1">
                     <Card.Body>
-                      <div className="h1">{disputePeriod == 3 ? "Appeal the decision" : "Withdraw crowdfunding rewards and refunds"}</div>
+                      <div className="h1">{disputePeriod == DISPUTE_PERIOD_APPEAL ? "Appeal the decision" : "Withdraw crowdfunding rewards and refunds"}</div>
                       <p className="label">
-                        {disputePeriod == 3
+                        {disputePeriod == DISPUTE_PERIOD_APPEAL
                           && "In order to appeal the decision, you need to fully fund the crowdfunding deposit. The dispute will be sent" +
                           " to the jurors when the full deposit is reached. Note that if the previous round loser funds its side, the previous round winner should also fully fund its side in order not to lose the case."
                         }
-                        {disputePeriod == 4 && parseInt(totalWithdrawable) != 0 ? "If you have contributed to a ruling option and in the end that ruling option was the winner you are eligible for some reward. Also, if you have contributed but appeal did not happen your contribution is refunded."
+                        {disputePeriod == DISPUTE_PERIOD_EXECUTION && parseInt(totalWithdrawable) != 0 ? "If you have contributed to a ruling option and in the end that ruling option was the winner you are eligible for some reward. Also, if you have contributed but appeal did not happen your contribution is refunded."
                           : "You don't have any amount to withdraw. Reason might be that you did not contribute, the ruling option you have contributed did not win, you already withdrew or the ruling is not executed yet by the arbitrator."}
                       </p>
-                      {disputePeriod == 4 && parseInt(totalWithdrawable) > 0 && (
+                      {disputePeriod == DISPUTE_PERIOD_EXECUTION && parseInt(totalWithdrawable) > 0 && (
                         <Row className="mt-5">
                           <Col className="text-right">
                             <Button className="ml-auto" onClick={this.props.withdrawCallback}>
@@ -544,7 +553,7 @@ class DisputeDetails extends React.Component {
                         </Row>
                       )}
 
-                      {disputePeriod == 3 && (
+                      {disputePeriod == DISPUTE_PERIOD_APPEAL && (
                         <Row className="mt-3">
                           {this.renderCrowdfundingCards(metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated)}
 
