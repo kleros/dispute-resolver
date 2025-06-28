@@ -351,7 +351,7 @@ class DisputeDetails extends React.Component {
               .padStart(BINARY_PADDING_WIDTH, "0")
               .split("")
               .reverse()
-              .map((bit, i) => (bit === 1 ? metaevidenceJSON.rulingOptions.titles[i] : null))
+              .map((bit, i) => (bit === "1" ? metaevidenceJSON.rulingOptions.titles[i] : null))
               .join(" ");
         
         cards.push(
