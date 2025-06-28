@@ -156,6 +156,7 @@ class DisputeDetails extends React.Component {
         let finalHexValue;
         
         console.log('DEBUG: hash conversion - input:', hashValue, 'type:', typeof hashValue);
+        console.log('DEBUG: currentRuling (original):', currentRuling, 'type:', typeof currentRuling);
         
         // Check if it's already a hex string (case-insensitive)
         const isHexString = /^0x/i.test(hashValue);
@@ -186,11 +187,27 @@ class DisputeDetails extends React.Component {
           
           // Check if the string contains scientific notation
           if (hashValue.includes('e') || hashValue.includes('E')) {
-            // Parse scientific notation as a Number first, then convert to BigInt
+            // For hash types, scientific notation indicates a very large number that lost precision
+            // We need to handle this differently to avoid precision loss
+            console.log('DEBUG: detected scientific notation for hash:', hashValue);
+            
             const numValue = Number(hashValue);
-            if (!isFinite(numValue) || numValue > Number.MAX_SAFE_INTEGER) {
-              throw new Error(`Invalid number: ${hashValue} - too large or not finite`);
+            console.log('DEBUG: Number value:', numValue);
+            console.log('DEBUG: is finite:', isFinite(numValue));
+            console.log('DEBUG: MAX_SAFE_INTEGER:', Number.MAX_SAFE_INTEGER);
+            console.log('DEBUG: is larger than safe:', numValue > Number.MAX_SAFE_INTEGER);
+            
+            if (!isFinite(numValue)) {
+              throw new Error(`Invalid number: ${hashValue} - not finite`);
             }
+            
+            if (numValue > Number.MAX_SAFE_INTEGER) {
+              // For very large numbers in scientific notation, we can't safely convert through Number
+              // This likely means the original was a large hex that lost precision
+              console.log('DEBUG: number too large for safe conversion, this indicates upstream precision loss');
+              throw new Error(`Hash value too large for safe conversion: ${hashValue}. This suggests the original hex value was corrupted during processing.`);
+            }
+            
             numericValue = BigInt(Math.floor(numValue));
           } else {
             // Try to parse as BigInt directly for regular numbers
