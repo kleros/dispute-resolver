@@ -377,7 +377,7 @@ class DisputeDetails extends React.Component {
   // Helper method to render variable type crowdfunding cards
   renderVariableTypeCrowdfundingCards = (metaevidenceJSON, currentRuling, contributions, appealCallback) => {
     const questionType = metaevidenceJSON.rulingOptions?.type;
-    const isVariableType = ["uint", "int", "string", "datetime"].includes(questionType);
+    const isVariableType = ["uint", "int", "string", "datetime", "hash"].includes(questionType);
     
     if (!isVariableType) return null;
 
