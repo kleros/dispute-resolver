@@ -152,15 +152,31 @@ class DisputeDetails extends React.Component {
       
       // For hash type rulings, handle them as hex strings without numeric operations
       if (questionType === "hash") {
-        // Hash values should be passed directly without numeric conversion
-        const hashValue = currentRuling.toString();
+        let hashValue = currentRuling.toString();
+        
+        // Check if it's already a hex string (case-insensitive)
+        const isHexString = /^0x/i.test(hashValue);
+        
+        if (isHexString) {
+          // Remove hex prefix (case-insensitive) and ensure we have valid hex
+          const hexWithoutPrefix = hashValue.slice(2);
+          if (hexWithoutPrefix === '') {
+            throw new Error('Invalid hex value: empty hex string');
+          }
+          hashValue = hexWithoutPrefix;
+        } else {
+          // Convert numeric value to hex
+          const numericValue = BigInt(hashValue);
+          hashValue = numericValue.toString(16);
+        }
+        
         return realitioLibQuestionFormatter.getAnswerString(
           {
             decimals: metaEvidenceJSON.rulingOptions.precision,
             outcomes: metaEvidenceJSON.rulingOptions.titles,
             type: questionType,
           },
-          realitioLibQuestionFormatter.padToBytes32(hashValue.startsWith('0x') ? hashValue.slice(2) : hashValue)
+          realitioLibQuestionFormatter.padToBytes32(hashValue)
         );
       }
       
