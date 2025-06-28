@@ -153,6 +153,7 @@ class DisputeDetails extends React.Component {
       // For hash type rulings, handle them as hex strings without numeric operations
       if (questionType === "hash") {
         let hashValue = currentRuling.toString();
+        let numericValue;
         
         // Check if it's already a hex string (case-insensitive)
         const isHexString = /^0x/i.test(hashValue);
@@ -167,12 +168,30 @@ class DisputeDetails extends React.Component {
           if (!/^[0-9a-fA-F]+$/.test(hexWithoutPrefix)) {
             throw new Error(`Invalid hex value: contains non-hex characters: ${hashValue}`);
           }
-          hashValue = hexWithoutPrefix;
+          // Parse hex string to numeric value
+          numericValue = BigInt('0x' + hexWithoutPrefix);
         } else {
-          // Convert numeric value to hex, applying -1 offset for consistency
-          const numericValue = BigInt(hashValue);
-          hashValue = (numericValue - 1n).toString(16);
+          // Handle numeric string input similar to numeric types
+          // Check if the string contains scientific notation
+          if (hashValue.includes('e') || hashValue.includes('E')) {
+            // Parse scientific notation as a Number first, then convert to BigInt
+            const numValue = Number(hashValue);
+            if (!isFinite(numValue)) {
+              throw new Error(`Invalid number: ${hashValue}`);
+            }
+            numericValue = BigInt(Math.floor(numValue));
+          } else {
+            // Try to parse as BigInt directly for regular numbers
+            try {
+              numericValue = BigInt(hashValue);
+            } catch (error) {
+              throw new Error(`Invalid hash value: not a valid number or hex string: ${hashValue}`);
+            }
+          }
         }
+        
+        // Apply consistent -1 offset for both hex and numeric inputs
+        hashValue = (numericValue - 1n).toString(16);
         
         return realitioLibQuestionFormatter.getAnswerString(
           {
