@@ -148,7 +148,7 @@ class DisputeDetails extends React.Component {
       // For hash type rulings, preserve precision by handling as hex strings
       // Apply Reality.eth -1 offset consistently for both hex and numeric inputs
       if (questionType === "hash") {
-        let hashValue = currentRuling.toString();
+        const hashValue = currentRuling.toString();
         let finalHexValue;
         
         // Check if it's already a hex string (case-insensitive)
