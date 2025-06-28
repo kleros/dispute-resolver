@@ -22,6 +22,7 @@ const QuestionTypes = Object.freeze({
   int: "Number",
   string: "Text",
   datetime: "Date",
+  hash: "Hash"
 });
 
 class DisputeDetails extends React.Component {
@@ -146,6 +147,8 @@ class DisputeDetails extends React.Component {
   }
 
   convertToRealitioFormat = (currentRuling, metaEvidenceJSON) => {
+
+    console.log({currentRuling,metaEvidenceJSON})
     try {
       // Handle potential scientific notation or very large numbers
       let rulingValue;
@@ -165,7 +168,7 @@ class DisputeDetails extends React.Component {
         // Try to parse as BigInt directly for regular numbers
         rulingValue = BigInt(rulingStr);
       }
-
+      
       return realitioLibQuestionFormatter.getAnswerString(
         {
           decimals: metaEvidenceJSON.rulingOptions.precision,
