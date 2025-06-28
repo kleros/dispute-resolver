@@ -425,7 +425,11 @@ class Interact extends React.Component {
               subcourts={subcourts}
               subcourtDetails={subcourtDetails}
               incompatible={incompatible}
-              currentRuling={parseInt(currentRuling)}
+              currentRuling={
+                metaevidence?.metaEvidenceJSON?.rulingOptions?.type === "hash" 
+                  ? currentRuling 
+                  : parseInt(currentRuling)
+              }
               disputeEvent={disputeEvent}
               publishCallback={publishCallback}
               submitEvidenceCallback={this.submitEvidence}

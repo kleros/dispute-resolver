@@ -155,9 +155,6 @@ class DisputeDetails extends React.Component {
         let hashValue = currentRuling.toString();
         let finalHexValue;
         
-        console.log('DEBUG: hash conversion - input:', hashValue, 'type:', typeof hashValue);
-        console.log('DEBUG: currentRuling (original):', currentRuling, 'type:', typeof currentRuling);
-        
         // Check if it's already a hex string (case-insensitive)
         const isHexString = /^0x/i.test(hashValue);
         
@@ -172,43 +169,17 @@ class DisputeDetails extends React.Component {
             throw new Error(`Invalid hex value: contains non-hex characters: ${hashValue}`);
           }
           
-          console.log('DEBUG: processing hex string, hexWithoutPrefix:', hexWithoutPrefix);
-          
           // For hex strings, apply offset by subtracting 1 from the BigInt representation
           const numericValue = BigInt('0x' + hexWithoutPrefix);
-          console.log('DEBUG: numericValue as BigInt:', numericValue.toString());
           finalHexValue = (numericValue - 1n).toString(16);
-          console.log('DEBUG: finalHexValue after -1:', finalHexValue);
         } else {
           // Handle numeric string input
           let numericValue;
           
-          console.log('DEBUG: processing numeric string');
-          
           // Check if the string contains scientific notation
           if (hashValue.includes('e') || hashValue.includes('E')) {
-            // For hash types, scientific notation indicates a very large number that lost precision
-            // We need to handle this differently to avoid precision loss
-            console.log('DEBUG: detected scientific notation for hash:', hashValue);
-            
-            const numValue = Number(hashValue);
-            console.log('DEBUG: Number value:', numValue);
-            console.log('DEBUG: is finite:', isFinite(numValue));
-            console.log('DEBUG: MAX_SAFE_INTEGER:', Number.MAX_SAFE_INTEGER);
-            console.log('DEBUG: is larger than safe:', numValue > Number.MAX_SAFE_INTEGER);
-            
-            if (!isFinite(numValue)) {
-              throw new Error(`Invalid number: ${hashValue} - not finite`);
-            }
-            
-            if (numValue > Number.MAX_SAFE_INTEGER) {
-              // For very large numbers in scientific notation, we can't safely convert through Number
-              // This likely means the original was a large hex that lost precision
-              console.log('DEBUG: number too large for safe conversion, this indicates upstream precision loss');
-              throw new Error(`Hash value too large for safe conversion: ${hashValue}. This suggests the original hex value was corrupted during processing.`);
-            }
-            
-            numericValue = BigInt(Math.floor(numValue));
+            // Scientific notation indicates precision loss occurred upstream
+            throw new Error(`Hash value received in scientific notation (${hashValue}), indicating precision loss. Ensure hash values are preserved as strings without parseInt() conversion.`);
           } else {
             // Try to parse as BigInt directly for regular numbers
             try {
@@ -218,27 +189,18 @@ class DisputeDetails extends React.Component {
             }
           }
           
-          console.log('DEBUG: numericValue as BigInt:', numericValue.toString());
           // Apply -1 offset
           finalHexValue = (numericValue - 1n).toString(16);
-          console.log('DEBUG: finalHexValue after -1:', finalHexValue);
         }
         
-        console.log('DEBUG: calling padToBytes32 with:', finalHexValue);
-        const paddedResult = realitioLibQuestionFormatter.padToBytes32(finalHexValue);
-        console.log('DEBUG: padToBytes32 result:', paddedResult);
-        
-        const result = realitioLibQuestionFormatter.getAnswerString(
+        return realitioLibQuestionFormatter.getAnswerString(
           {
             decimals: metaEvidenceJSON.rulingOptions.precision,
             outcomes: metaEvidenceJSON.rulingOptions.titles,
             type: questionType,
           },
-          paddedResult
+          realitioLibQuestionFormatter.padToBytes32(finalHexValue)
         );
-        
-        console.log('DEBUG: final getAnswerString result:', result);
-        return result;
       }
       
       // For numeric types, apply the original logic
