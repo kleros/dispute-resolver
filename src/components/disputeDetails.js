@@ -385,7 +385,7 @@ class DisputeDetails extends React.Component {
 
     // Other contributions (not current ruling)
     Object.keys(contributions)
-      .filter((key) => key !== this.props.currentRuling)
+      .filter((key) => key !== this.props.currentRuling.toString())
       .forEach((key) => {
         const title = questionType === "string" 
           ? ethers.toUtf8String(ethers.hexlify(key)) 
