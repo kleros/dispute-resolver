@@ -147,10 +147,24 @@ class DisputeDetails extends React.Component {
   }
 
   convertToRealitioFormat = (currentRuling, metaEvidenceJSON) => {
-
-    console.log({currentRuling,metaEvidenceJSON})
     try {
-      // Handle potential scientific notation or very large numbers
+      const questionType = metaEvidenceJSON.rulingOptions.type;
+      
+      // For hash type rulings, handle them as hex strings without numeric operations
+      if (questionType === "hash") {
+        // Hash values should be passed directly without numeric conversion
+        const hashValue = currentRuling.toString();
+        return realitioLibQuestionFormatter.getAnswerString(
+          {
+            decimals: metaEvidenceJSON.rulingOptions.precision,
+            outcomes: metaEvidenceJSON.rulingOptions.titles,
+            type: questionType,
+          },
+          realitioLibQuestionFormatter.padToBytes32(hashValue.startsWith('0x') ? hashValue.slice(2) : hashValue)
+        );
+      }
+      
+      // For numeric types, apply the original logic
       let rulingValue;
 
       // Convert to string first to handle all cases uniformly
@@ -173,7 +187,7 @@ class DisputeDetails extends React.Component {
         {
           decimals: metaEvidenceJSON.rulingOptions.precision,
           outcomes: metaEvidenceJSON.rulingOptions.titles,
-          type: metaEvidenceJSON.rulingOptions.type,
+          type: questionType,
         },
         realitioLibQuestionFormatter.padToBytes32((rulingValue - 1n).toString(16))
       );
