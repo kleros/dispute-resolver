@@ -8,6 +8,7 @@ import { BrowserRouter, Route, Switch, Redirect } from "react-router-dom";
 import Header from "./components/header";
 import Footer from "./components/footer";
 import { ethers } from "ethers";
+import { Col, Container, Row } from "react-bootstrap";
 
 import * as EthereumInterface from "./ethereum/interface";
 import networkMap, { getReadOnlyRpcUrl } from "./ethereum/network-contract-mapping";
@@ -15,6 +16,12 @@ import ipfsPublish from "./ipfs-publish";
 import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
 import { urlNormalize } from "./urlNormalizer";
+
+// Constants to avoid magic numbers
+const HEX_PADDING_WIDTH = 64;
+const BLOCK_SEARCH_RANGE = 1_000_000;
+const BLOCK_SEARCH_WINDOW = 100_000;
+const DISPUTE_PERIOD_EXECUTION = 4;
 
 const IPFS_GATEWAY = "https://cdn.kleros.link";
 const EXCEPTIONAL_CONTRACT_ADDRESSES = ['0xe0e1bc8C6cd1B81993e2Fcfb80832d814886eA38', '0xb9f9B5eee2ad29098b9b3Ea0B401571F5dA4AD81']
@@ -111,7 +118,7 @@ class App extends React.Component {
 
     if(this.state.network === newChainId) return;
 
-    this.setState({ network: newChainId}, async ()=> {
+          this.setState({ network: newChainId}, async () => {
       await this.initiateWeb3Provider();
        if (networkMap[newChainId]?.KLEROS_LIQUID) {
         this.loadSubcourtData();
@@ -251,7 +258,7 @@ class App extends React.Component {
     );
 
     const currentBlock = await this.state.provider.getBlockNumber();
-    const startingBlock = Math.max(0, currentBlock - 1_000_000);
+    const startingBlock = Math.max(0, currentBlock - BLOCK_SEARCH_RANGE);
 
     const newPeriodFilter = contract.filters.NewPeriod();
     const newPeriodEvents = await contract.queryFilter(newPeriodFilter, startingBlock);
@@ -424,7 +431,7 @@ class App extends React.Component {
 
   onPublish = async (filename, fileBuffer) => await ipfsPublish(filename, fileBuffer);
 
-  generateArbitratorExtraData = (subcourtID, noOfVotes) => `0x${parseInt(subcourtID, 10).toString(16).padStart(64, "0") + parseInt(noOfVotes, 10).toString(16).padStart(64, "0")}`;
+  generateArbitratorExtraData = (subcourtID, noOfVotes) => `0x${parseInt(subcourtID, 10).toString(16).padStart(HEX_PADDING_WIDTH, "0") + parseInt(noOfVotes, 10).toString(16).padStart(HEX_PADDING_WIDTH, "0")}`;
 
   getAppealCost = async (arbitratorDisputeID) => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
@@ -614,13 +621,13 @@ class App extends React.Component {
         "latest"
       );
 
-      const blockPromises = appealDecisionEvents.map(event =>
-        this.state.provider.getBlock(event.blockNumber)
-      );
+          const blockPromises = appealDecisionEvents.map((event) =>
+      this.state.provider.getBlock(event.blockNumber)
+    );
 
-      const blocks = await Promise.all(blockPromises);
+    const blocks = await Promise.all(blockPromises);
 
-      return blocks.map(block => ({
+    return blocks.map((block) => ({
         appealedAt: block.timestamp,
         appealedAtBlockNumber: block.number
       }));
@@ -637,7 +644,7 @@ class App extends React.Component {
 
     let _round = round;
     if (EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress)) {
-      if (period < 4) _round++;
+      if (period < DISPUTE_PERIOD_EXECUTION) _round++;
     }
 
     const contract = EthereumInterface.getContract(
@@ -658,9 +665,9 @@ class App extends React.Component {
       const currentBlock = await this.state.provider.getBlockNumber();
       const fromBlock = searchFrom ?? Math.max(
         networkMap[this.state.network].QUERY_FROM_BLOCK || 0,
-        currentBlock - 1_000_000  // Search last 1M blocks to catch recent events
+        currentBlock - BLOCK_SEARCH_RANGE  // Search last 1M blocks to catch recent events
       );
-      const toBlock = searchFrom ? searchFrom + 100_000 : "latest";
+      const toBlock = searchFrom ? searchFrom + BLOCK_SEARCH_WINDOW : "latest";
 
       const events = await contract.queryFilter(
         contributionFilter,
@@ -722,9 +729,9 @@ class App extends React.Component {
       const currentBlock = await this.state.provider.getBlockNumber();
       const fromBlock = searchFrom ?? Math.max(
         networkMap[this.state.network].QUERY_FROM_BLOCK || 0,
-        currentBlock - 1_000_000  // Search last 1M blocks to catch recent events
+        currentBlock - BLOCK_SEARCH_RANGE  // Search last 1M blocks to catch recent events
       );
-      const toBlock = searchFrom ? searchFrom + 100_000 : "latest";
+      const toBlock = searchFrom ? searchFrom + BLOCK_SEARCH_WINDOW : "latest";
 
       console.log('DEBUG getRulingFunded - block range:', { fromBlock, toBlock, currentBlock });
 
@@ -747,7 +754,7 @@ class App extends React.Component {
         });
       });
 
-      const rulings = events.map(event => event.args._ruling.toString());
+      const rulings = events.map((event) => event.args._ruling.toString());
       console.log('DEBUG getRulingFunded - returning rulings:', rulings);
 
       return rulings;
@@ -890,7 +897,7 @@ class App extends React.Component {
       const receipt = await tx.wait();
 
       const disputeCreationTopic = contract.interface.getEvent("DisputeCreation").topicHash;
-      const disputeLog = receipt.logs.find(log => log.topics[0] === disputeCreationTopic);
+      const disputeLog = receipt.logs.find((log) => log.topics[0] === disputeCreationTopic);
 
       if (disputeLog) {
         const disputeID = ethers.getBigInt(disputeLog.topics[1]);

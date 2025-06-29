@@ -68,7 +68,7 @@ class OpenDisputes extends React.Component {
           const arbitratorDisputeDetails = await this.props.getArbitratorDisputeCallback(disputeId);
           
           if (arbitratorDisputeDetails) {
-            this.setState(prevState => ({
+            this.setState((prevState) => ({
               arbitratorDisputes: {
                 ...prevState.arbitratorDisputes,
                 ["arbitrator" + disputeId]: arbitratorDisputeDetails
@@ -80,7 +80,7 @@ class OpenDisputes extends React.Component {
               disputeId
             );
             
-            this.setState(prevState => ({
+            this.setState((prevState) => ({
               arbitratorDisputes: {
                 ...prevState.arbitratorDisputes,
                 [disputeId]: metaEvidence
@@ -162,10 +162,10 @@ class OpenDisputes extends React.Component {
                 md={12}
                 sm={24}
                 xs={24}
-                style={{ display: (this.state[dispute] && this.state.arbitratorDisputes[`arbitrator${dispute}`].period == statusFilter) || statusFilter == 4 ? "block" : "none" }}
+                style={{ display: (this.state[dispute] && this.state.arbitratorDisputes[`arbitrator${dispute}`].period === statusFilter) || statusFilter === 4 ? "block" : "none" }}
               >
                 <a style={{ display: "contents", textDecoration: "none", color: "unset" }} href={`/${network}/cases/${dispute}`}>
-                  {this.state.arbitratorDisputes[`arbitrator${dispute}`] && (this.state.arbitratorDisputes[`arbitrator${dispute}`].period == statusFilter || statusFilter == 4) && (
+                  {this.state.arbitratorDisputes[`arbitrator${dispute}`] && (this.state.arbitratorDisputes[`arbitrator${dispute}`].period === statusFilter || statusFilter === 4) && (
                     <OngoingCard
                       dispute={dispute}
                       arbitratorDisputeDetails={this.state.arbitratorDisputes[`arbitrator${dispute}`]}
@@ -177,7 +177,7 @@ class OpenDisputes extends React.Component {
                 </a>
               </Col>
             ))}
-          {!this.state.loading && openDisputeIDs.length == 0 && (
+          {!this.state.loading && openDisputeIDs.length === 0 && (
             <Col style={{ textAlign: "center", marginTop: "5rem" }}>
               <h1>There are no open disputes.</h1>
             </Col>

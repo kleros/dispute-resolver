@@ -1,0 +1,6 @@
+{
+    "sonarlint.connectedMode.project": {
+        "connectionId": "kleros",
+        "projectKey": "kleros_dispute-resolver"
+    }
+}
