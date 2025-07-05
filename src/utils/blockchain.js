@@ -1,30 +1,95 @@
-import { BLOCKCHAIN_CONSTANTS } from '../constants/blockchain.js';
-import { UI_CONSTANTS } from '../constants/ui';
-import { ErrorHandler } from './errorHandler.js';
-
 /**
- * Blockchain utility functions
- * Consolidates common operations for BigInt handling, address formatting, and blockchain calculations
+ * Blockchain Utility Functions
+ * Common operations for blockchain interactions
  */
 
+import { ethers } from 'ethers';
 import { 
-  HEX_PADDING_WIDTH, 
-  PERCENTAGE_SCALING_FACTOR, 
-  PERCENTAGE_SCALING_DIVISOR,
+  SCALING_FACTORS, 
+  RETRY_CONFIG, 
+  VALIDATION,
+  DEFAULT_ADDRESSES,
+  GAS_LIMITS,
+  HEX_PADDING_WIDTH,
   NETWORK_TIMEOUTS
 } from '../constants/blockchain.js';
-import { VALIDATION_RULES } from '../constants/ui.js';
+import { debug } from './errorHandler.js';
 
 /**
- * Safely handles BigInt conversions and formatting
+ * BigInt utility functions
  */
-export const BigIntUtils = {
+export class BigIntUtils {
+  /**
+   * Formats BigInt to human-readable string
+   */
+  static formatEther(value) {
+    if (!value) return '0';
+    try {
+      return ethers.formatEther(value);
+    } catch (error) {
+      debug('bigint-utils', 'Failed to format ether', { value, error: error.message });
+      return '0';
+    }
+  }
+
+  /**
+   * Parses string to BigInt (wei)
+   */
+  static parseEther(value) {
+    if (!value || value === '0') return 0n;
+    try {
+      return ethers.parseEther(value.toString());
+    } catch (error) {
+      debug('bigint-utils', 'Failed to parse ether', { value, error: error.message });
+      return 0n;
+    }
+  }
+
+  /**
+   * Formats BigInt with custom decimals
+   */
+  static formatUnits(value, decimals = 18) {
+    if (!value) return '0';
+    try {
+      return ethers.formatUnits(value, decimals);
+    } catch (error) {
+      debug('bigint-utils', 'Failed to format units', { value, decimals, error: error.message });
+      return '0';
+    }
+  }
+
+  /**
+   * Parses string to BigInt with custom decimals
+   */
+  static parseUnits(value, decimals = 18) {
+    if (!value || value === '0') return 0n;
+    try {
+      return ethers.parseUnits(value.toString(), decimals);
+    } catch (error) {
+      debug('bigint-utils', 'Failed to parse units', { value, decimals, error: error.message });
+      return 0n;
+    }
+  }
+
+  /**
+   * Calculates percentage of a BigInt value
+   */
+  static calculatePercentage(value, percentage) {
+    if (!value || !percentage) return 0n;
+    try {
+      const bigIntValue = BigInt(value);
+      const bigIntPercentage = BigInt(Math.floor(percentage * 100)); // Convert to basis points
+      return (bigIntValue * bigIntPercentage) / SCALING_FACTORS.PERCENTAGE_MULTIPLIER;
+    } catch (error) {
+      debug('bigint-utils', 'Failed to calculate percentage', { value, percentage, error: error.message });
+      return 0n;
+    }
+  }
+
   /**
    * Safely converts any value to string, handling BigInt and ethers BigNumber
-   * @param {any} value - Value to convert
-   * @returns {string} String representation
    */
-  toStringSafe(value) {
+  static toStringSafe(value) {
     try {
       if (typeof value === 'bigint') {
         return value.toString();
@@ -39,17 +104,15 @@ export const BigIntUtils = {
       }
       return String(value);
     } catch (error) {
-      console.warn('Failed to convert value to string:', { value, error });
+      debug('bigint-utils', 'Failed to convert value to string', { value, error: error.message });
       return '0';
     }
-  },
+  }
 
   /**
    * Safely parses a value to BigInt
-   * @param {any} value - Value to parse
-   * @returns {bigint} BigInt value
    */
-  parseSafe(value) {
+  static parseSafe(value) {
     try {
       if (typeof value === 'bigint') {
         return value;
@@ -57,75 +120,133 @@ export const BigIntUtils = {
       const str = this.toStringSafe(value);
       return BigInt(str);
     } catch (error) {
-      console.warn('Failed to parse BigInt:', { value, error });
+      debug('bigint-utils', 'Failed to parse BigInt', { value, error: error.message });
       return 0n;
     }
-  },
+  }
 
   /**
-   * Calculates percentage with specified precision
-   * @param {bigint} numerator - Numerator value
-   * @param {bigint} denominator - Denominator value  
-   * @param {number} precision - Decimal places (default: 2)
-   * @returns {string} Formatted percentage
+   * Adds two BigInt values safely
    */
-  calculatePercentage(numerator, denominator, precision = 2) {
-    if (denominator === 0n) return '0.00';
-    
+  static safeAdd(a, b) {
     try {
-      const scaled = (numerator * PERCENTAGE_SCALING_FACTOR) / denominator;
-      return (Number(scaled) / PERCENTAGE_SCALING_DIVISOR).toFixed(precision);
+      return BigInt(a) + BigInt(b);
     } catch (error) {
-      console.warn('Failed to calculate percentage:', { numerator, denominator, error });
-      return '0.00';
+      debug('bigint-utils', 'Failed to add values', { a, b, error: error.message });
+      return 0n;
     }
   }
-};
+
+  /**
+   * Subtracts two BigInt values safely
+   */
+  static safeSubtract(a, b) {
+    try {
+      const result = BigInt(a) - BigInt(b);
+      return result < 0n ? 0n : result;
+    } catch (error) {
+      debug('bigint-utils', 'Failed to subtract values', { a, b, error: error.message });
+      return 0n;
+    }
+  }
+
+  /**
+   * Formats BigInt for display with proper decimal places
+   */
+  static formatForDisplay(value, decimals = 18, displayDecimals = 4) {
+    try {
+      const formatted = this.formatUnits(value, decimals);
+      const number = parseFloat(formatted);
+      
+      if (number === 0) return '0';
+      if (number < 0.0001) return '< 0.0001';
+      
+      return number.toFixed(displayDecimals).replace(/\.?0+$/, '');
+    } catch (error) {
+      debug('bigint-utils', 'Failed to format for display', { value, decimals, displayDecimals, error: error.message });
+      return '0';
+    }
+  }
+}
 
 /**
- * Address validation and formatting utilities
+ * Address utility functions
  */
-export const AddressUtils = {
+export class AddressUtils {
   /**
-   * Validates Ethereum address format
-   * @param {string} address - Address to validate
-   * @returns {boolean} True if valid
+   * Validates Ethereum address
    */
-  isValid(address) {
-    if (!address || typeof address !== 'string') {
+  static isValidAddress(address) {
+    if (!address || typeof address !== 'string') return false;
+    
+    try {
+      return ethers.isAddress(address);
+    } catch (error) {
+      debug('address-utils', 'Address validation failed', { address, error: error.message });
       return false;
     }
-    return VALIDATION_RULES.ADDRESS_PATTERN.test(address);
-  },
+  }
 
   /**
-   * Formats address for display (truncated)
-   * @param {string} address - Full address
-   * @param {number} startChars - Characters to show at start (default: 6)
-   * @param {number} endChars - Characters to show at end (default: 4)
-   * @returns {string} Formatted address
+   * Checksums an address
    */
-  format(address, startChars = 6, endChars = 4) {
-    if (!this.isValid(address)) {
-      return 'Invalid Address';
-    }
+  static getChecksumAddress(address) {
+    if (!address) return '';
     
-    if (address.length <= startChars + endChars) {
+    try {
+      return ethers.getAddress(address);
+    } catch (error) {
+      debug('address-utils', 'Failed to checksum address', { address, error: error.message });
       return address;
     }
-    
-    return `${address.slice(0, startChars)}...${address.slice(-endChars)}`;
-  },
+  }
 
   /**
-   * Normalizes address to lowercase
-   * @param {string} address - Address to normalize
-   * @returns {string} Normalized address
+   * Truncates address for display
    */
-  normalize(address) {
-    return this.isValid(address) ? address.toLowerCase() : '';
+  static truncateAddress(address, startChars = 6, endChars = 4) {
+    if (!address || !this.isValidAddress(address)) return '';
+    
+    if (address.length <= startChars + endChars) return address;
+    
+    return `${address.slice(0, startChars)}...${address.slice(-endChars)}`;
   }
-};
+
+  /**
+   * Checks if address is zero address
+   */
+  static isZeroAddress(address) {
+    if (!address) return true;
+    return address.toLowerCase() === DEFAULT_ADDRESSES.ZERO_ADDRESS.toLowerCase();
+  }
+
+  /**
+   * Checks if two addresses are equal
+   */
+  static areEqual(address1, address2) {
+    if (!address1 || !address2) return false;
+    
+    try {
+      return this.getChecksumAddress(address1) === this.getChecksumAddress(address2);
+    } catch (error) {
+      debug('address-utils', 'Failed to compare addresses', { address1, address2, error: error.message });
+      return false;
+    }
+  }
+
+  // Legacy methods for backward compatibility
+  static isValid(address) {
+    return this.isValidAddress(address);
+  }
+
+  static format(address, startChars = 6, endChars = 4) {
+    return this.truncateAddress(address, startChars, endChars) || 'Invalid Address';
+  }
+
+  static normalize(address) {
+    return this.isValidAddress(address) ? address.toLowerCase() : '';
+  }
+}
 
 /**
  * Hex data processing utilities
@@ -187,43 +308,94 @@ export const HexUtils = {
 };
 
 /**
- * Network retry utilities
+ * Retry utility functions
  */
-export const RetryUtils = {
+export class RetryUtils {
   /**
-   * Retries an async operation with exponential backoff
-   * @param {Function} operation - Async function to retry
-   * @param {number} maxRetries - Maximum retry attempts (default: 3)
-   * @param {number} baseDelay - Base delay in ms (default: 1000)
-   * @returns {Promise} Result of operation
+   * Executes function with exponential backoff retry
    */
-  async withExponentialBackoff(operation, maxRetries = 3, baseDelay = 1000) {
+  static async withExponentialBackoff(
+    operation, 
+    maxRetries = RETRY_CONFIG.MAX_RETRIES,
+    initialDelay = RETRY_CONFIG.INITIAL_DELAY,
+    maxDelay = RETRY_CONFIG.MAX_DELAY,
+    backoffFactor = RETRY_CONFIG.BACKOFF_FACTOR
+  ) {
     let lastError;
-    
+    let delay = initialDelay;
+
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        return await Promise.race([
-          operation(),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Operation timeout')), NETWORK_TIMEOUTS.RPC_TIMEOUT)
-          )
-        ]);
+        debug('retry-utils', `Attempt ${attempt + 1}/${maxRetries + 1}`, { delay });
+        return await operation();
       } catch (error) {
         lastError = error;
         
         if (attempt === maxRetries) {
-          break;
+          debug('retry-utils', 'Max retries reached', { error: error.message });
+          throw error;
         }
+
+        // Don't retry certain errors
+        if (error.code === 'USER_REJECTED' || error.message?.includes('user rejected')) {
+          debug('retry-utils', 'User rejected - not retrying', { error: error.message });
+          throw error;
+        }
+
+        debug('retry-utils', `Attempt ${attempt + 1} failed, retrying in ${delay}ms`, { error: error.message });
         
-        const delay = baseDelay * Math.pow(2, attempt);
-        console.warn(`Operation failed, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries}):`, error);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await this.sleep(delay);
+        delay = Math.min(delay * backoffFactor, maxDelay);
       }
     }
-    
+
     throw lastError;
   }
-};
+
+  /**
+   * Executes function with fixed delay retry
+   */
+  static async withFixedDelay(
+    operation,
+    maxRetries = RETRY_CONFIG.MAX_RETRIES,
+    delay = RETRY_CONFIG.INITIAL_DELAY
+  ) {
+    let lastError;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        debug('retry-utils', `Fixed delay attempt ${attempt + 1}/${maxRetries + 1}`);
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        
+        if (attempt === maxRetries) {
+          debug('retry-utils', 'Max retries reached with fixed delay', { error: error.message });
+          throw error;
+        }
+
+        // Don't retry certain errors
+        if (error.code === 'USER_REJECTED' || error.message?.includes('user rejected')) {
+          debug('retry-utils', 'User rejected - not retrying', { error: error.message });
+          throw error;
+        }
+
+        debug('retry-utils', `Fixed delay attempt ${attempt + 1} failed, retrying in ${delay}ms`, { error: error.message });
+        
+        await this.sleep(delay);
+      }
+    }
+
+    throw lastError;
+  }
+
+  /**
+   * Sleep utility
+   */
+  static sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
 
 /**
  * Error formatting utilities

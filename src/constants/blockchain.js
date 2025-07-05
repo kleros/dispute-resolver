@@ -1,98 +1,134 @@
 /**
- * Blockchain-related constants
- * Centralizes magic numbers and configuration values used throughout the application
+ * Blockchain Constants
+ * Centralized configuration for blockchain operations
  */
 
-// Hex processing constants
+// Hex formatting
 export const HEX_PADDING_WIDTH = 64;
-export const HEX_PREFIX_LENGTH = 2; // "0x"
 
-// Block search parameters
-export const BLOCK_SEARCH_RANGE = 1_000_000;
-export const BLOCK_SEARCH_WINDOW = 100_000;
+// Block search configuration
+export const BLOCK_SEARCH_RANGE = 10000;
+export const BLOCK_SEARCH_WINDOW = 10000;
 
-// Dispute periods (from Kleros protocol)
+// Dispute periods (from Kleros contracts)
 export const DISPUTE_PERIODS = {
   EVIDENCE: 0,
   COMMIT: 1,
-  VOTING: 2,
+  VOTE: 2,
   APPEAL: 3,
   EXECUTION: 4
 };
 
-// Percentage calculations
-export const PERCENTAGE_SCALING_FACTOR = 10000n;
-export const PERCENTAGE_SCALING_DIVISOR = 100;
+// Network timeouts (in milliseconds)
+export const NETWORK_TIMEOUTS = {
+  TRANSACTION: 300000, // 5 minutes
+  BLOCK_CONFIRMATION: 60000, // 1 minute
+  CONTRACT_CALL: 30000, // 30 seconds
+  IPFS_UPLOAD: 120000, // 2 minutes
+  METADATA_FETCH: 60000 // 1 minute
+};
 
-// Cache TTL values
+// Cache configuration
 export const CACHE_TTL = {
-  SUBCOURTS: 3 * 60 * 60 * 1000, // 3 hours
-  DISPUTES: 1 * 60 * 1000, // 1 minute
-  METADATA: 5 * 60 * 1000 // 5 minutes
+  METADATA: 24 * 60 * 60 * 1000, // 24 hours
+  DISPUTE_DETAILS: 5 * 60 * 1000, // 5 minutes
+  SUBCOURT_INFO: 60 * 60 * 1000, // 1 hour
+  NETWORK_CONFIG: 60 * 60 * 1000 // 1 hour
 };
 
 // IPFS configuration
-export const IPFS_GATEWAY = "https://cdn.kleros.link";
+export const IPFS_GATEWAY = "https://ipfs.kleros.io";
+export const IPFS_TIMEOUT = 30000; // 30 seconds
 
-// Known exceptional contract addresses (for special handling)
-export const EXCEPTIONAL_CONTRACT_ADDRESSES = [
-  '0xe0e1bc8C6cd1B81993e2Fcfb80832d814886eA38',
-  '0xb9f9B5eee2ad29098b9b3Ea0B401571F5dA4AD81'
-];
-
-// Network timeout values
-export const NETWORK_TIMEOUTS = {
-  TRANSACTION_TIMEOUT: 300000, // 5 minutes
-  RPC_TIMEOUT: 30000, // 30 seconds
-  RETRY_DELAY: 2000 // 2 seconds
-};
-
-// Gas estimation multipliers
-export const GAS_MULTIPLIERS = {
-  SAFETY_MARGIN: 1.2, // 20% extra gas
-  PRIORITY_FEE: 1.1 // 10% extra for priority
-};
-
-// Scaling factors for calculations
+// Scaling factors for BigInt operations
 export const SCALING_FACTORS = {
-  PRECISION: 1000n,
-  PERCENTAGE: 10000n,
-  PERCENTAGE_DIVISOR: 100
+  PERCENTAGE_MULTIPLIER: 10000n, // For percentage calculations (basis points)
+  WEI_TO_ETH: 1000000000000000000n, // 10^18
+  GWEI_TO_WEI: 1000000000n, // 10^9
+  PRECISION_MULTIPLIER: 1000000n // For precise calculations
 };
 
-// Contract interaction retries
+// Gas limits
+export const GAS_LIMITS = {
+  CREATE_DISPUTE: 500000,
+  SUBMIT_EVIDENCE: 200000,
+  FUND_APPEAL: 300000,
+  WITHDRAW_REWARDS: 400000,
+  ESTIMATE_BUFFER: 1.2 // 20% buffer for gas estimation
+};
+
+// Retry configuration
 export const RETRY_CONFIG = {
   MAX_RETRIES: 3,
-  BASE_DELAY: 1000,
-  EXPONENTIAL_BACKOFF: true
+  INITIAL_DELAY: 1000, // 1 second
+  MAX_DELAY: 10000, // 10 seconds
+  BACKOFF_FACTOR: 2
 };
 
-// Gas estimation padding
-export const GAS_PADDING = {
-  MULTIPLIER: 1.2,
-  MIN_PADDING: 10000
+// Exceptional contract addresses that require special handling
+export const EXCEPTIONAL_CONTRACT_ADDRESSES = [
+  "0x988b3A538b618C7A603e1c11Ab82Cd16dbE28069", // Legacy contract
+  "0x9C1dA9A04925bDfDedf0f6421bC7EEa8305F9002"  // Another legacy contract
+];
+
+// Court configuration
+export const COURT_CONFIG = {
+  DEFAULT_SUBCOURT: 0,
+  MIN_JURORS: 3,
+  MAX_JURORS: 15,
+  DEFAULT_JURORS: 3
 };
 
-// Scaling divisors for display
-export const SCALING_DIVISORS = {
-  PRECISION: 1000,
-  PERCENTAGE: 100
+// Transaction types for error handling
+export const TRANSACTION_TYPES = {
+  CREATE_DISPUTE: 'create-dispute',
+  SUBMIT_EVIDENCE: 'submit-evidence',
+  FUND_APPEAL: 'fund-appeal',
+  WITHDRAW_REWARDS: 'withdraw-rewards',
+  GENERAL_CONTRACT_CALL: 'contract-call'
 };
 
-// Binary padding for multiple select calculations
-export const BINARY_PADDING_WIDTH = 4;
-
-// Network identifiers
-export const NETWORK_IDS = {
-  MAINNET: '1',
-  GOERLI: '5',
-  GNOSIS: '100',
-  SEPOLIA: '11155111'
+// Error codes
+export const ERROR_CODES = {
+  NETWORK_ERROR: 'NETWORK_ERROR',
+  CONTRACT_ERROR: 'CONTRACT_ERROR',
+  INSUFFICIENT_FUNDS: 'INSUFFICIENT_FUNDS',
+  USER_REJECTED: 'USER_REJECTED',
+  TIMEOUT: 'TIMEOUT',
+  INVALID_PARAMETERS: 'INVALID_PARAMETERS',
+  UNKNOWN_ERROR: 'UNKNOWN_ERROR'
 };
 
-// Gas estimation and retry settings
-export const GAS_SETTINGS = {
-  ESTIMATION_RETRIES: 3,
-  TRANSACTION_RETRIES: 2,
-  RETRY_DELAY_MS: 1000
+// Common contract addresses (will be overridden by network-specific configs)
+export const DEFAULT_ADDRESSES = {
+  ZERO_ADDRESS: '0x0000000000000000000000000000000000000000',
+  BURN_ADDRESS: '0x000000000000000000000000000000000000dEaD'
+};
+
+// File upload limits
+export const FILE_LIMITS = {
+  MAX_SIZE: 10 * 1024 * 1024, // 10MB
+  ALLOWED_TYPES: [
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'text/plain',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ]
+};
+
+// Validation constants
+export const VALIDATION = {
+  MIN_DISPUTE_TITLE_LENGTH: 10,
+  MAX_DISPUTE_TITLE_LENGTH: 100,
+  MIN_DESCRIPTION_LENGTH: 50,
+  MAX_DESCRIPTION_LENGTH: 5000,
+  MIN_QUESTION_LENGTH: 10,
+  MAX_QUESTION_LENGTH: 500,
+  MIN_RULING_OPTIONS: 2,
+  MAX_RULING_OPTIONS: 10,
+  ADDRESS_LENGTH: 42, // Including 0x prefix
+  HASH_LENGTH: 66 // Including 0x prefix
 };

@@ -2,6 +2,9 @@ import { BlockchainUtils } from './blockchain.js';
 import { UI_CONSTANTS } from '../constants/ui.js';
 import DOMPurify from 'dompurify';
 import { AddressUtils } from './blockchain.js';
+import { VALIDATION, FILE_LIMITS } from '../constants/blockchain.js';
+import { VALIDATION_RULES, FILE_UPLOAD } from '../constants/ui.js';
+import { handleValidationError, debug } from './errorHandler.js';
 
 /**
  * Centralized Validation Utility
@@ -1100,3 +1103,622 @@ export const createDebouncedValidator = (validatorFn, delay = UI_CONSTANTS.TIMEO
     }, delay);
   };
 };
+
+/**
+ * Validation Utility Functions
+ * Centralized validation logic for forms, inputs, and data integrity
+ */
+
+/**
+ * Core validation utilities
+ */
+export class ValidationUtils {
+  /**
+   * Validates dispute title
+   */
+  static validateDisputeTitle(title) {
+    if (!title || typeof title !== 'string') {
+      return { isValid: false, error: 'Title is required' };
+    }
+    
+    const trimmed = title.trim();
+    
+    if (trimmed.length < VALIDATION.MIN_DISPUTE_TITLE_LENGTH) {
+      return { 
+        isValid: false, 
+        error: `Title must be at least ${VALIDATION.MIN_DISPUTE_TITLE_LENGTH} characters` 
+      };
+    }
+    
+    if (trimmed.length > VALIDATION.MAX_DISPUTE_TITLE_LENGTH) {
+      return { 
+        isValid: false, 
+        error: `Title must be no more than ${VALIDATION.MAX_DISPUTE_TITLE_LENGTH} characters` 
+      };
+    }
+
+    // Check for valid characters
+    if (VALIDATION_RULES.DISPUTE_TITLE.PATTERN && !VALIDATION_RULES.DISPUTE_TITLE.PATTERN.test(trimmed)) {
+      return {
+        isValid: false,
+        error: 'Title contains invalid characters'
+      };
+    }
+    
+    return { isValid: true, value: trimmed };
+  }
+
+  /**
+   * Validates dispute description
+   */
+  static validateDescription(description) {
+    if (!description || typeof description !== 'string') {
+      return { isValid: false, error: 'Description is required' };
+    }
+    
+    const trimmed = description.trim();
+    
+    if (trimmed.length < VALIDATION.MIN_DESCRIPTION_LENGTH) {
+      return { 
+        isValid: false, 
+        error: `Description must be at least ${VALIDATION.MIN_DESCRIPTION_LENGTH} characters` 
+      };
+    }
+    
+    if (trimmed.length > VALIDATION.MAX_DESCRIPTION_LENGTH) {
+      return { 
+        isValid: false, 
+        error: `Description must be no more than ${VALIDATION.MAX_DESCRIPTION_LENGTH} characters` 
+      };
+    }
+    
+    return { isValid: true, value: trimmed };
+  }
+
+  /**
+   * Validates dispute question
+   */
+  static validateQuestion(question) {
+    if (!question || typeof question !== 'string') {
+      return { isValid: false, error: 'Question is required' };
+    }
+    
+    const trimmed = question.trim();
+    
+    if (trimmed.length < VALIDATION.MIN_QUESTION_LENGTH) {
+      return { 
+        isValid: false, 
+        error: `Question must be at least ${VALIDATION.MIN_QUESTION_LENGTH} characters` 
+      };
+    }
+    
+    if (trimmed.length > VALIDATION.MAX_QUESTION_LENGTH) {
+      return { 
+        isValid: false, 
+        error: `Question must be no more than ${VALIDATION.MAX_QUESTION_LENGTH} characters` 
+      };
+    }
+    
+    return { isValid: true, value: trimmed };
+  }
+
+  /**
+   * Validates ruling options
+   */
+  static validateRulingOptions(options) {
+    if (!Array.isArray(options)) {
+      return { isValid: false, error: 'Ruling options must be an array' };
+    }
+    
+    if (options.length < VALIDATION.MIN_RULING_OPTIONS) {
+      return { 
+        isValid: false, 
+        error: `Must have at least ${VALIDATION.MIN_RULING_OPTIONS} ruling options` 
+      };
+    }
+    
+    if (options.length > VALIDATION.MAX_RULING_OPTIONS) {
+      return { 
+        isValid: false, 
+        error: `Must have no more than ${VALIDATION.MAX_RULING_OPTIONS} ruling options` 
+      };
+    }
+    
+    const validatedOptions = [];
+    const errors = [];
+    
+    for (let i = 0; i < options.length; i++) {
+      const option = options[i];
+      
+      if (!option || typeof option !== 'string') {
+        errors.push(`Ruling option ${i + 1} is required`);
+        continue;
+      }
+      
+      const trimmed = option.trim();
+      
+      if (trimmed.length === 0) {
+        errors.push(`Ruling option ${i + 1} cannot be empty`);
+        continue;
+      }
+      
+      if (VALIDATION_RULES.RULING_OPTIONS?.MIN_OPTION_LENGTH && 
+          trimmed.length < VALIDATION_RULES.RULING_OPTIONS.MIN_OPTION_LENGTH) {
+        errors.push(`Ruling option ${i + 1} must be at least ${VALIDATION_RULES.RULING_OPTIONS.MIN_OPTION_LENGTH} characters`);
+        continue;
+      }
+      
+      if (VALIDATION_RULES.RULING_OPTIONS?.MAX_OPTION_LENGTH && 
+          trimmed.length > VALIDATION_RULES.RULING_OPTIONS.MAX_OPTION_LENGTH) {
+        errors.push(`Ruling option ${i + 1} must be no more than ${VALIDATION_RULES.RULING_OPTIONS.MAX_OPTION_LENGTH} characters`);
+        continue;
+      }
+      
+      // Check for duplicates
+      if (validatedOptions.includes(trimmed)) {
+        errors.push(`Ruling option ${i + 1} is a duplicate`);
+        continue;
+      }
+      
+      validatedOptions.push(trimmed);
+    }
+    
+    if (errors.length > 0) {
+      return { isValid: false, error: errors[0], errors };
+    }
+    
+    return { isValid: true, value: validatedOptions };
+  }
+
+  /**
+   * Validates Ethereum address
+   */
+  static validateAddress(address) {
+    if (!address) {
+      return { isValid: false, error: 'Address is required' };
+    }
+    
+    if (typeof address !== 'string') {
+      return { isValid: false, error: 'Address must be a string' };
+    }
+    
+    const trimmed = address.trim();
+    
+    if (trimmed.length !== VALIDATION.ADDRESS_LENGTH) {
+      return { isValid: false, error: 'Address must be 42 characters long' };
+    }
+    
+    if (!AddressUtils.isValidAddress(trimmed)) {
+      return { isValid: false, error: 'Invalid Ethereum address format' };
+    }
+    
+    return { isValid: true, value: AddressUtils.getChecksumAddress(trimmed) };
+  }
+
+  /**
+   * Validates amount (ETH or token)
+   */
+  static validateAmount(amount, min = 0, max = null, decimals = 18) {
+    if (amount === null || amount === undefined || amount === '') {
+      return { isValid: false, error: 'Amount is required' };
+    }
+    
+    let numAmount;
+    
+    if (typeof amount === 'string') {
+      numAmount = parseFloat(amount.trim());
+    } else if (typeof amount === 'number') {
+      numAmount = amount;
+    } else {
+      return { isValid: false, error: 'Amount must be a number or string' };
+    }
+    
+    if (isNaN(numAmount)) {
+      return { isValid: false, error: 'Amount must be a valid number' };
+    }
+    
+    if (numAmount < 0) {
+      return { isValid: false, error: 'Amount cannot be negative' };
+    }
+    
+    if (numAmount < min) {
+      return { isValid: false, error: `Amount must be at least ${min}` };
+    }
+    
+    if (max !== null && numAmount > max) {
+      return { isValid: false, error: `Amount must be no more than ${max}` };
+    }
+    
+    // Check decimal places
+    const amountStr = numAmount.toString();
+    const decimalIndex = amountStr.indexOf('.');
+    if (decimalIndex !== -1) {
+      const decimalPlaces = amountStr.length - decimalIndex - 1;
+      if (decimalPlaces > decimals) {
+        return { 
+          isValid: false, 
+          error: `Amount cannot have more than ${decimals} decimal places` 
+        };
+      }
+    }
+    
+    return { isValid: true, value: numAmount };
+  }
+
+  /**
+   * Validates file upload
+   */
+  static validateFile(file, maxSize = FILE_UPLOAD.MAX_SIZE, allowedTypes = FILE_UPLOAD.ALLOWED_TYPES) {
+    if (!file) {
+      return { isValid: false, error: 'File is required' };
+    }
+    
+    if (!(file instanceof File)) {
+      return { isValid: false, error: 'Invalid file object' };
+    }
+    
+    if (file.size === 0) {
+      return { isValid: false, error: 'File cannot be empty' };
+    }
+    
+    if (file.size > maxSize) {
+      const maxSizeMB = Math.round(maxSize / 1024 / 1024);
+      return { 
+        isValid: false, 
+        error: `File size must be less than ${maxSizeMB}MB` 
+      };
+    }
+    
+    if (allowedTypes && allowedTypes.length > 0 && !allowedTypes.includes(file.type)) {
+      const allowedExtensions = allowedTypes
+        .map(type => FILE_UPLOAD.MIME_TYPE_EXTENSIONS[type] || type)
+        .join(', ');
+      return { 
+        isValid: false, 
+        error: `File type not allowed. Allowed types: ${allowedExtensions}` 
+      };
+    }
+    
+    return { isValid: true, value: file };
+  }
+
+  /**
+   * Validates URL
+   */
+  static validateUrl(url, required = false) {
+    if (!url || url.trim() === '') {
+      if (required) {
+        return { isValid: false, error: 'URL is required' };
+      }
+      return { isValid: true, value: '' };
+    }
+    
+    const trimmed = url.trim();
+    
+    try {
+      new URL(trimmed);
+      return { isValid: true, value: trimmed };
+    } catch (error) {
+      return { isValid: false, error: 'Invalid URL format' };
+    }
+  }
+
+  /**
+   * Validates email address
+   */
+  static validateEmail(email, required = false) {
+    if (!email || email.trim() === '') {
+      if (required) {
+        return { isValid: false, error: 'Email is required' };
+      }
+      return { isValid: true, value: '' };
+    }
+    
+    const trimmed = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!emailRegex.test(trimmed)) {
+      return { isValid: false, error: 'Invalid email format' };
+    }
+    
+    return { isValid: true, value: trimmed };
+  }
+
+  /**
+   * Validates number of jurors
+   */
+  static validateJurors(jurors) {
+    const result = this.validateAmount(jurors, 1, 32, 0);
+    
+    if (!result.isValid) {
+      return result;
+    }
+    
+    const numJurors = Math.floor(result.value);
+    
+    if (numJurors !== result.value) {
+      return { isValid: false, error: 'Number of jurors must be a whole number' };
+    }
+    
+    if (numJurors % 2 === 0) {
+      return { isValid: false, error: 'Number of jurors must be odd' };
+    }
+    
+    return { isValid: true, value: numJurors };
+  }
+
+  /**
+   * Validates subcourt ID
+   */
+  static validateSubcourt(subcourtId) {
+    const result = this.validateAmount(subcourtId, 0, 999999, 0);
+    
+    if (!result.isValid) {
+      return result;
+    }
+    
+    const numSubcourt = Math.floor(result.value);
+    
+    if (numSubcourt !== result.value) {
+      return { isValid: false, error: 'Subcourt ID must be a whole number' };
+    }
+    
+    return { isValid: true, value: numSubcourt };
+  }
+
+  /**
+   * Sanitizes string input to prevent XSS
+   */
+  static sanitizeString(input) {
+    if (!input || typeof input !== 'string') return '';
+    
+    return input
+      .trim()
+      .replace(/[<>]/g, '') // Remove potential HTML tags
+      .replace(/javascript:/gi, '') // Remove javascript: protocol
+      .replace(/data:/gi, '') // Remove data: protocol
+      .replace(/vbscript:/gi, '') // Remove vbscript: protocol
+      .replace(/on\w+=/gi, ''); // Remove event handlers
+  }
+
+  /**
+   * Validates and sanitizes text input
+   */
+  static validateAndSanitizeText(text, minLength = 0, maxLength = 10000, required = true) {
+    if (!text || typeof text !== 'string') {
+      if (required) {
+        return { isValid: false, error: 'Text is required' };
+      }
+      return { isValid: true, value: '' };
+    }
+    
+    const sanitized = this.sanitizeString(text);
+    
+    if (required && sanitized.length === 0) {
+      return { isValid: false, error: 'Text cannot be empty' };
+    }
+    
+    if (sanitized.length < minLength) {
+      return { 
+        isValid: false, 
+        error: `Text must be at least ${minLength} characters` 
+      };
+    }
+    
+    if (sanitized.length > maxLength) {
+      return { 
+        isValid: false, 
+        error: `Text must be no more than ${maxLength} characters` 
+      };
+    }
+    
+    return { isValid: true, value: sanitized };
+  }
+}
+
+/**
+ * Form validation utilities
+ */
+export class FormValidator {
+  constructor() {
+    this.errors = {};
+    this.values = {};
+  }
+
+  /**
+   * Validates a single field
+   */
+  validateField(fieldName, value, validator, ...args) {
+    const result = validator(value, ...args);
+    
+    if (result.isValid) {
+      delete this.errors[fieldName];
+      this.values[fieldName] = result.value;
+    } else {
+      this.errors[fieldName] = result.error;
+    }
+    
+    return result;
+  }
+
+  /**
+   * Validates multiple fields
+   */
+  validateFields(fields) {
+    let allValid = true;
+    
+    for (const [fieldName, { value, validator, args = [] }] of Object.entries(fields)) {
+      const result = this.validateField(fieldName, value, validator, ...args);
+      if (!result.isValid) {
+        allValid = false;
+      }
+    }
+    
+    return allValid;
+  }
+
+  /**
+   * Gets validation errors
+   */
+  getErrors() {
+    return { ...this.errors };
+  }
+
+  /**
+   * Gets validated values
+   */
+  getValues() {
+    return { ...this.values };
+  }
+
+  /**
+   * Checks if form is valid
+   */
+  isValid() {
+    return Object.keys(this.errors).length === 0;
+  }
+
+  /**
+   * Clears all errors
+   */
+  clearErrors() {
+    this.errors = {};
+  }
+
+  /**
+   * Clears specific field error
+   */
+  clearFieldError(fieldName) {
+    delete this.errors[fieldName];
+  }
+
+  /**
+   * Sets custom error
+   */
+  setError(fieldName, error) {
+    this.errors[fieldName] = error;
+  }
+
+  /**
+   * Gets error for specific field
+   */
+  getFieldError(fieldName) {
+    return this.errors[fieldName];
+  }
+
+  /**
+   * Gets first error message
+   */
+  getFirstError() {
+    const errorFields = Object.keys(this.errors);
+    if (errorFields.length === 0) return null;
+    return this.errors[errorFields[0]];
+  }
+}
+
+/**
+ * Validation rules for common form patterns
+ */
+export const ValidationRules = {
+  /**
+   * Dispute creation form validation
+   */
+  disputeForm: {
+    title: (value) => ValidationUtils.validateDisputeTitle(value),
+    description: (value) => ValidationUtils.validateDescription(value),
+    question: (value) => ValidationUtils.validateQuestion(value),
+    rulingOptions: (value) => ValidationUtils.validateRulingOptions(value),
+    category: (value) => ValidationUtils.validateAndSanitizeText(value, 1, 100),
+    subcourt: (value) => ValidationUtils.validateSubcourt(value),
+    jurors: (value) => ValidationUtils.validateJurors(value),
+    primaryDocument: (value) => ValidationUtils.validateFile(value)
+  },
+
+  /**
+   * Evidence submission form validation
+   */
+  evidenceForm: {
+    title: (value) => ValidationUtils.validateAndSanitizeText(value, 5, 200),
+    description: (value) => ValidationUtils.validateAndSanitizeText(value, 20, 2000),
+    supportingSide: (value) => ValidationUtils.validateAmount(value, 0, 10, 0),
+    evidenceDocument: (value) => ValidationUtils.validateFile(value)
+  },
+
+  /**
+   * Appeal funding form validation
+   */
+  appealForm: {
+    side: (value) => ValidationUtils.validateAmount(value, 0, 10, 0),
+    amount: (value) => ValidationUtils.validateAmount(value, 0.001, 1000000, 18)
+  },
+
+  /**
+   * Common field validators
+   */
+  common: {
+    address: (value) => ValidationUtils.validateAddress(value),
+    amount: (value, min = 0, max = null) => ValidationUtils.validateAmount(value, min, max),
+    url: (value, required = false) => ValidationUtils.validateUrl(value, required),
+    email: (value, required = false) => ValidationUtils.validateEmail(value, required),
+    text: (value, min = 0, max = 1000, required = true) => 
+      ValidationUtils.validateAndSanitizeText(value, min, max, required)
+  }
+};
+
+/**
+ * Validation error handler
+ */
+export class ValidationError extends Error {
+  constructor(field, message, value = null) {
+    super(message);
+    this.name = 'ValidationError';
+    this.field = field;
+    this.value = value;
+  }
+}
+
+/**
+ * Validates form data and throws ValidationError on failure
+ */
+export function validateOrThrow(validator, value, fieldName = 'field') {
+  const result = validator(value);
+  
+  if (!result.isValid) {
+    const error = handleValidationError(fieldName, result.error, value);
+    throw new ValidationError(fieldName, result.error, value);
+  }
+  
+  return result.value;
+}
+
+/**
+ * Batch validation utility
+ */
+export function validateBatch(validations) {
+  const results = {};
+  const errors = {};
+  let hasErrors = false;
+  
+  for (const [fieldName, { validator, value, args = [] }] of Object.entries(validations)) {
+    try {
+      const result = validator(value, ...args);
+      
+      if (result.isValid) {
+        results[fieldName] = result.value;
+      } else {
+        errors[fieldName] = result.error;
+        hasErrors = true;
+      }
+    } catch (error) {
+      errors[fieldName] = error.message;
+      hasErrors = true;
+      debug('validation', 'Validation error', { fieldName, error: error.message });
+    }
+  }
+  
+  return {
+    isValid: !hasErrors,
+    values: results,
+    errors
+  };
+}

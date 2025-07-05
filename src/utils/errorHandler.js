@@ -1,267 +1,238 @@
 /**
- * Centralized Error Handling System
- * Replaces scattered console.error/console.warn calls
- * Provides structured logging, user notifications, and error tracking
+ * Error Handler Utility
+ * Centralized error handling, logging, and user feedback
  */
+
+import { ERROR_CODES, TRANSACTION_TYPES } from '../constants/blockchain.js';
+import { MESSAGES } from '../constants/ui.js';
+
+// Error tracking for debugging
+let errorCounter = 0;
+const errorLog = [];
 
 /**
- * Generates unique error IDs for tracking
+ * Generates a unique error ID for tracking
  */
-const generateErrorId = () => {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
-};
+function generateErrorId() {
+  return `ERR-${Date.now()}-${++errorCounter}`;
+}
 
 /**
- * Main error handler class
- * Replaces inconsistent console.error calls throughout the app
+ * Logs error with context for debugging
  */
-export class ErrorHandler {
-  /**
-   * Logs error with structured format and metadata
-   * @param {Error|string} error - The error to log
-   * @param {string} context - Context where error occurred
-   * @param {object} metadata - Additional debugging information
-   * @returns {string} Unique error ID for tracking
-   */
-  static logError(error, context, metadata = {}) {
-    const errorId = generateErrorId();
-    const timestamp = new Date().toISOString();
-    
-    const errorData = {
-      id: errorId,
-      timestamp,
-      context,
-      metadata,
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown',
-      url: typeof window !== 'undefined' ? window.location.href : 'Unknown'
-    };
+export function logError(error, context = {}) {
+  const errorId = generateErrorId();
+  const timestamp = new Date().toISOString();
+  
+  const errorEntry = {
+    id: errorId,
+    timestamp,
+    error: {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    },
+    context,
+    userAgent: navigator.userAgent,
+    url: window.location.href
+  };
 
-    // Extract error details
-    if (error instanceof Error) {
-      errorData.message = error.message;
-      errorData.stack = error.stack;
-      errorData.name = error.name;
-    } else {
-      errorData.message = String(error);
-    }
-
-    // Console logging with structured format
-    console.group(`🚨 Error [${errorId}] in ${context}`);
-    console.error('Message:', error.message || error);
-    console.error('Context:', context);
-    if (Object.keys(metadata).length > 0) {
-      console.error('Metadata:', metadata);
-    }
-    if (error instanceof Error && error.stack) {
-      console.error('Stack:', error.stack);
-    }
-    console.groupEnd();
-
-    // Report to external monitoring service (if available)
-    this.reportToMonitoring(errorData);
-
-    return errorId;
+  errorLog.push(errorEntry);
+  
+  // Keep only last 100 errors to prevent memory issues
+  if (errorLog.length > 100) {
+    errorLog.shift();
   }
 
-  /**
-   * Handles user-facing errors with notifications
-   * @param {Error|string} error - The error that occurred
-   * @param {string} context - Context where error occurred
-   * @param {string} userMessage - User-friendly message to display
-   * @param {object} metadata - Additional debugging information
-   * @returns {object} Error result with ID
-   */
-  static handleUserError(error, context, userMessage, metadata = {}) {
-    const errorId = this.logError(error, context, metadata);
-    
-    // Show user notification
-    this.showUserNotification(userMessage, 'error', errorId);
-    
-    return {
-      success: false,
-      errorId,
-      userMessage
-    };
+  // Log to console in development
+  if (process.env.NODE_ENV === 'development') {
+    console.error(`[${errorId}] Error:`, error);
+    console.error(`[${errorId}] Context:`, context);
   }
 
-  /**
-   * Logs warnings with structured format
-   * @param {string} message - Warning message
-   * @param {string} context - Context where warning occurred
-   * @param {object} metadata - Additional information
-   * @returns {string} Warning ID
-   */
-  static logWarning(message, context, metadata = {}) {
-    const warningId = generateErrorId();
-    
-    console.warn(`⚠️ Warning [${warningId}]:`, message, metadata);
-    
-    // Report warning to monitoring
-    this.reportWarningToMonitoring({
-      id: warningId,
-      message,
-      context,
-      metadata,
-      timestamp: new Date().toISOString()
-    });
-    
-    return warningId;
-  }
+  return errorId;
+}
 
-  /**
-   * Debug logging with conditional output
-   * @param {string} context - Debug context
-   * @param {string} message - Debug message
-   * @param {object} metadata - Debug data
-   */
-  static debug(context, message, metadata = {}) {
-    if (process.env.NODE_ENV === 'development' || process.env.REACT_APP_DEBUG === 'true') {
-      console.debug(`🔍 Debug [${context}]:`, message, metadata);
-    }
-  }
-
-  /**
-   * Handles contract interaction errors specifically
-   * @param {Error} error - Contract error
-   * @param {string} contractName - Name of contract
-   * @param {string} methodName - Contract method that failed
-   * @param {object} params - Parameters passed to method
-   * @returns {object} Structured error result
-   */
-  static handleContractError(error, contractName, methodName, params = {}) {
-    const context = `${contractName}.${methodName}`;
-    const userMessage = this.getContractErrorMessage(error, methodName);
-    
-    return this.handleUserError(error, context, userMessage, {
-      contractName,
-      methodName,
-      params,
-      isContractError: true
-    });
-  }
-
-  /**
-   * Handles network-related errors
-   * @param {Error} error - Network error
-   * @param {string} operation - What operation was being performed
-   * @param {string} network - Network ID
-   * @returns {object} Structured error result
-   */
-  static handleNetworkError(error, operation, network) {
-    const context = `network-${network}`;
-    const userMessage = 'Network connection issue. Please check your internet connection and try again.';
-    
-    return this.handleUserError(error, context, userMessage, {
-      operation,
-      network,
-      isNetworkError: true
-    });
-  }
-
-  /**
-   * Shows user notification (to be implemented based on UI framework)
-   * @param {string} message - Message to show
-   * @param {string} type - Notification type (error, warning, success, info)
-   * @param {string} errorId - Error ID for reference
-   */
-  static showUserNotification(message, type = 'info', errorId = null) {
-    // This would integrate with your notification system
-    // For now, just log to console
-    const prefix = type === 'error' ? '❌' : type === 'warning' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
-    console.log(`📢 User Notification [${type.toUpperCase()}]:`, message);
-    
-    if (errorId) {
-      console.log(`Error ID for support: ${errorId}`);
-    }
-    
-    // TODO: Integrate with actual notification system (react-toastify, antd notifications, etc.)
-  }
-
-  /**
-   * Reports error to external monitoring service
-   * @param {object} errorData - Structured error data
-   */
-  static reportToMonitoring(errorData) {
-    try {
-      // TODO: Integrate with monitoring service (Sentry, LogRocket, etc.)
-      console.debug('Error reported to service:', errorData.id);
-    } catch (reportError) {
-      console.warn('Failed to report error to service:', reportError);
-    }
-  }
-
-  /**
-   * Reports warning to monitoring service
-   * @param {object} warningData - Structured warning data
-   */
-  static reportWarningToMonitoring(warningData) {
-    try {
-      // TODO: Integrate with monitoring service
-      console.debug('Warning reported to service:', warningData.id);
-    } catch (reportError) {
-      console.warn('Failed to report warning to service:', reportError);
-    }
-  }
-
-  /**
-   * Gets user-friendly message for contract errors
-   * @param {Error} error - The contract error
-   * @param {string} methodName - Contract method name
-   * @returns {string} User-friendly error message
-   */
-  static getContractErrorMessage(error, methodName) {
-    const message = error.message || error.toString();
-    
-    // Common contract error patterns
-    if (message.includes('user rejected')) {
-      return 'Transaction was cancelled by user.';
-    }
-    
-    if (message.includes('insufficient funds')) {
-      return 'Insufficient funds for this transaction.';
-    }
-    
-    if (message.includes('gas')) {
-      return 'Transaction failed due to gas issues. Please try again.';
-    }
-    
-    if (message.includes('revert')) {
-      return 'Transaction was rejected by the contract. Please check the transaction details.';
-    }
-    
-    // Method-specific messages
-    switch (methodName) {
-      case 'createDispute':
-        return 'Failed to create dispute. Please check your inputs and try again.';
-      case 'submitEvidence':
-        return 'Failed to submit evidence. Please try again.';
-      case 'fundAppeal':
-        return 'Failed to fund appeal. Please check your balance and try again.';
-      default:
-        return 'Transaction failed. Please try again or contact support.';
-    }
+/**
+ * Debug logging utility
+ */
+export function debug(category, message, data = {}) {
+  if (process.env.NODE_ENV === 'development') {
+    console.debug(`[${category}] ${message}`, data);
   }
 }
 
 /**
- * React Error Boundary component for catching React errors
+ * Determines error code from error object
+ */
+function getErrorCode(error) {
+  if (!error) return ERROR_CODES.UNKNOWN_ERROR;
+
+  // Check for specific error patterns
+  if (error.code === 'NETWORK_ERROR' || error.message?.includes('network')) {
+    return ERROR_CODES.NETWORK_ERROR;
+  }
+  
+  if (error.code === 'INSUFFICIENT_FUNDS' || error.message?.includes('insufficient funds')) {
+    return ERROR_CODES.INSUFFICIENT_FUNDS;
+  }
+  
+  if (error.code === 'USER_REJECTED' || error.message?.includes('user rejected')) {
+    return ERROR_CODES.USER_REJECTED;
+  }
+  
+  if (error.code === 'TIMEOUT' || error.message?.includes('timeout')) {
+    return ERROR_CODES.TIMEOUT;
+  }
+  
+  if (error.code === 'INVALID_ARGUMENT' || error.message?.includes('invalid argument')) {
+    return ERROR_CODES.INVALID_PARAMETERS;
+  }
+  
+  // Check for contract-specific errors
+  if (error.message?.includes('execution reverted') || error.message?.includes('contract')) {
+    return ERROR_CODES.CONTRACT_ERROR;
+  }
+  
+  return ERROR_CODES.UNKNOWN_ERROR;
+}
+
+/**
+ * Gets user-friendly error message
+ */
+function getUserMessage(errorCode, context = {}) {
+  const messages = {
+    [ERROR_CODES.NETWORK_ERROR]: 'Network connection issue. Please check your internet connection and try again.',
+    [ERROR_CODES.CONTRACT_ERROR]: 'Blockchain transaction failed. Please check your wallet and try again.',
+    [ERROR_CODES.INSUFFICIENT_FUNDS]: 'Insufficient funds to complete this transaction. Please add more funds to your wallet.',
+    [ERROR_CODES.USER_REJECTED]: 'Transaction was cancelled. Please try again if you want to proceed.',
+    [ERROR_CODES.TIMEOUT]: 'Request timed out. Please try again.',
+    [ERROR_CODES.INVALID_PARAMETERS]: 'Invalid input parameters. Please check your inputs and try again.',
+    [ERROR_CODES.UNKNOWN_ERROR]: 'An unexpected error occurred. Please try again.'
+  };
+
+  let message = messages[errorCode] || messages[ERROR_CODES.UNKNOWN_ERROR];
+  
+  // Add context-specific information
+  if (context.transactionType) {
+    const transactionMessages = {
+      [TRANSACTION_TYPES.CREATE_DISPUTE]: 'Failed to create dispute.',
+      [TRANSACTION_TYPES.SUBMIT_EVIDENCE]: 'Failed to submit evidence.',
+      [TRANSACTION_TYPES.FUND_APPEAL]: 'Failed to fund appeal.',
+      [TRANSACTION_TYPES.WITHDRAW_REWARDS]: 'Failed to withdraw rewards.'
+    };
+    
+    const transactionMessage = transactionMessages[context.transactionType];
+    if (transactionMessage) {
+      message = `${transactionMessage} ${message}`;
+    }
+  }
+
+  return message;
+}
+
+/**
+ * Handles contract-specific errors
+ */
+export function handleContractError(error, contractName, methodName, parameters = {}) {
+  const errorId = logError(error, {
+    type: 'contract-error',
+    contractName,
+    methodName,
+    parameters
+  });
+
+  const errorCode = getErrorCode(error);
+  const userMessage = getUserMessage(errorCode, { transactionType: TRANSACTION_TYPES.GENERAL_CONTRACT_CALL });
+
+  const enhancedError = new Error(userMessage);
+  enhancedError.code = errorCode;
+  enhancedError.errorId = errorId;
+  enhancedError.originalError = error;
+  enhancedError.contractName = contractName;
+  enhancedError.methodName = methodName;
+
+  return enhancedError;
+}
+
+/**
+ * Handles network-specific errors
+ */
+export function handleNetworkError(error, operation = 'network-operation') {
+  const errorId = logError(error, {
+    type: 'network-error',
+    operation
+  });
+
+  const errorCode = ERROR_CODES.NETWORK_ERROR;
+  const userMessage = getUserMessage(errorCode);
+
+  const enhancedError = new Error(userMessage);
+  enhancedError.code = errorCode;
+  enhancedError.errorId = errorId;
+  enhancedError.originalError = error;
+
+  return enhancedError;
+}
+
+/**
+ * Handles user-facing errors with friendly messages
+ */
+export function handleUserError(error, context = '', fallbackMessage = MESSAGES.ERROR_GENERIC) {
+  const errorId = logError(error, {
+    type: 'user-error',
+    context
+  });
+
+  const errorCode = getErrorCode(error);
+  const userMessage = getUserMessage(errorCode) || fallbackMessage;
+
+  const enhancedError = new Error(userMessage);
+  enhancedError.code = errorCode;
+  enhancedError.errorId = errorId;
+  enhancedError.originalError = error;
+
+  return enhancedError;
+}
+
+/**
+ * Handles validation errors
+ */
+export function handleValidationError(field, message, value = null) {
+  const error = new Error(message);
+  const errorId = logError(error, {
+    type: 'validation-error',
+    field,
+    value
+  });
+
+  error.code = ERROR_CODES.INVALID_PARAMETERS;
+  error.errorId = errorId;
+  error.field = field;
+
+  return error;
+}
+
+/**
+ * React Error Boundary component
  */
 export class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, errorId: null };
+    this.state = { hasError: false, error: null, errorId: null };
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true };
+    return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
-    const errorId = ErrorHandler.logError(error, 'react-error-boundary', {
-      componentStack: errorInfo.componentStack,
-      errorBoundary: this.constructor.name
+    const errorId = logError(error, {
+      type: 'react-error-boundary',
+      errorInfo,
+      componentStack: errorInfo.componentStack
     });
-    
+
     this.setState({ errorId });
   }
 
@@ -270,10 +241,13 @@ export class ErrorBoundary extends React.Component {
       return this.props.fallback || (
         <div className="error-boundary">
           <h2>Something went wrong</h2>
-          <p>An unexpected error occurred. Please refresh the page or contact support.</p>
+          <p>An unexpected error occurred. Please refresh the page and try again.</p>
           {this.state.errorId && (
-            <p>Error ID: {this.state.errorId}</p>
+            <p className="error-id">Error ID: {this.state.errorId}</p>
           )}
+          <button onClick={() => window.location.reload()}>
+            Refresh Page
+          </button>
         </div>
       );
     }
@@ -283,32 +257,91 @@ export class ErrorBoundary extends React.Component {
 }
 
 /**
- * Sets up global error handlers
+ * Gets error log for debugging
  */
-export const setupGlobalErrorHandlers = () => {
-  // Handle unhandled promise rejections
-  window.addEventListener('unhandledrejection', (event) => {
-    const errorId = ErrorHandler.logError(event.reason, 'unhandled-promise-rejection', {
-      promise: event.promise
-    });
-    console.error(`Unhandled error: ${errorId}`);
+export function getErrorLog() {
+  return [...errorLog];
+}
+
+/**
+ * Clears error log
+ */
+export function clearErrorLog() {
+  errorLog.length = 0;
+  errorCounter = 0;
+}
+
+/**
+ * Exports error log as JSON for support
+ */
+export function exportErrorLog() {
+  const exportData = {
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent,
+    url: window.location.href,
+    errors: errorLog
+  };
+
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+    type: 'application/json'
   });
 
-  // Handle uncaught errors  
-  window.addEventListener('error', (event) => {
-    const errorId = ErrorHandler.logError(event.error, 'uncaught-error', {
-      filename: event.filename,
-      lineno: event.lineno,
-      colno: event.colno
-    });
-    console.error(`Unhandled promise rejection: ${errorId}`);
-  });
-};
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `error-log-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
-// Export convenience functions for common use cases
-export const logError = ErrorHandler.logError.bind(ErrorHandler);
-export const logWarning = ErrorHandler.logWarning.bind(ErrorHandler);
-export const debug = ErrorHandler.debug.bind(ErrorHandler);
-export const handleUserError = ErrorHandler.handleUserError.bind(ErrorHandler);
-export const handleContractError = ErrorHandler.handleContractError.bind(ErrorHandler);
-export const handleNetworkError = ErrorHandler.handleNetworkError.bind(ErrorHandler);
+/**
+ * Checks if error is retryable
+ */
+export function isRetryableError(error) {
+  const retryableCodes = [
+    ERROR_CODES.NETWORK_ERROR,
+    ERROR_CODES.TIMEOUT
+  ];
+
+  return retryableCodes.includes(error.code || getErrorCode(error));
+}
+
+/**
+ * Formats error for display
+ */
+export function formatErrorForDisplay(error) {
+  if (!error) return 'Unknown error';
+
+  // If it's already a handled error, return the message
+  if (error.errorId) {
+    return error.message;
+  }
+
+  // Otherwise, handle it and return the formatted message
+  const handledError = handleUserError(error);
+  return handledError.message;
+}
+
+/**
+ * Creates a notification-friendly error object
+ */
+export function createNotificationError(error, title = 'Error') {
+  const errorCode = getErrorCode(error);
+  const message = getUserMessage(errorCode);
+
+  return {
+    type: 'error',
+    title,
+    message,
+    errorId: error.errorId,
+    timestamp: Date.now()
+  };
+}
+
+// Export React if available (for ErrorBoundary)
+let React;
+try {
+  React = require('react');
+} catch (e) {
+  // React not available, ErrorBoundary won't work but other functions will
+}
