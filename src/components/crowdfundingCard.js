@@ -48,6 +48,10 @@ class CrowdfundingCard extends React.Component {
         break;
       case "datetime":
         actualRulingCode = variableRulingOption + 1;
+        break;
+      case "hash":
+        actualRulingCode = variableRulingOption;
+        break;
     }
 
     await appealCallback(actualRulingCode, contribution.toString());
@@ -63,7 +67,7 @@ class CrowdfundingCard extends React.Component {
       <div className={`shadow rounded p-3 d-flex flex-column ${styles.crowdfundingCard}`}>
         <div>
           {!variable && <strong>{title}</strong>}
-          {variable && variable != "datetime" && <FormControl id="variableRulingOption" type={variable == "string" ? "text" : "number"} value={variableRulingOption} step="1" placeholder="Enter a new ruling option" onChange={this.onControlChange}></FormControl>}
+          {variable && variable != "datetime" && <FormControl id="variableRulingOption" type={(variable == "string" || variable == "hash") ? "text" : "number"} value={variableRulingOption} step="1" placeholder="Enter a new ruling option" onChange={this.onControlChange}></FormControl>}
           {variable && variable == "datetime" && <DatetimePicker id="variableRulingOption" onChange={this.onDatePickerChange} />}
         </div>
 
