@@ -32,28 +32,55 @@ class CrowdfundingCard extends React.Component {
     const { variableRulingOption, contribution } = this.state;
     let actualRulingCode;
 
+    try {
+      switch (variable) {
+        case undefined: // Not variable
+          actualRulingCode = rulingOptionCode;
+          break;
+        case "uint":
+          actualRulingCode = ethers.getBigInt(this.addDecimalsToUintRuling(variableRulingOption, metaevidenceJSON)) + 1n;
+          break;
+        case "int":
+          actualRulingCode = parseInt(variableRulingOption) >= 0 ? parseInt(variableRulingOption) + 1 : variableRulingOption;
+          break;
+        case "string":
+          actualRulingCode = ethers.hexlify(ethers.toUtf8Bytes(variableRulingOption));
+          break;
+        case "datetime":
+          actualRulingCode = variableRulingOption + 1;
+          break;
+        case "hash":
+          // Handle hash values - support both hex strings (0x...) and numeric strings
+          const hashValue = variableRulingOption.toString().trim();
+          const isHexString = /^0x/i.test(hashValue);
 
-    switch (variable) {
-      case undefined: // Not variable
-        actualRulingCode = rulingOptionCode;
-        break;
-      case "uint":
-        actualRulingCode = ethers.getBigInt(this.addDecimalsToUintRuling(variableRulingOption, metaevidenceJSON)) + 1n;
-        break;
-      case "int":
-        actualRulingCode = parseInt(variableRulingOption) >= 0 ? parseInt(variableRulingOption) + 1 : variableRulingOption;
-        break;
-      case "string":
-        actualRulingCode = ethers.hexlify(ethers.toUtf8Bytes(variableRulingOption));
-        break;
-      case "datetime":
-        actualRulingCode = variableRulingOption + 1;
+          if (isHexString) {
+            // Process hex string: validate and convert to BigInt, then add 1
+            const hexWithoutPrefix = hashValue.slice(2);
+            if (hexWithoutPrefix === '' || !/^[0-9a-fA-F]+$/.test(hexWithoutPrefix)) {
+              throw new Error(`Invalid hex value: ${hashValue}`);
+            }
+            actualRulingCode = BigInt('0x' + hexWithoutPrefix) + 1n;
+          } else {
+            // Process numeric string: convert to BigInt and add 1
+            if (hashValue.includes('e') || hashValue.includes('E')) {
+              throw new Error(`Hash value precision lost during processing. Please report this issue.`);
+            }
+            try {
+              actualRulingCode = BigInt(hashValue) + 1n;
+            } catch (error) {
+              throw new Error(`Invalid hash value: not a valid number or hex string: ${hashValue}`);
+            }
+          }
+          break;
+      }
+
+      await appealCallback(actualRulingCode, contribution.toString());
+    } catch (error) {
+      console.error('Error processing appeal:', error);
+      alert(`Error: ${error.message}`);
     }
-
-    await appealCallback(actualRulingCode, contribution.toString());
   };
-
-
 
   render() {
     const { title, winner, fundingPercentage, appealPeriodEnd, variable, roi, suggestedContribution } = this.props;
@@ -63,7 +90,7 @@ class CrowdfundingCard extends React.Component {
       <div className={`shadow rounded p-3 d-flex flex-column ${styles.crowdfundingCard}`}>
         <div>
           {!variable && <strong>{title}</strong>}
-          {variable && variable != "datetime" && <FormControl id="variableRulingOption" type={variable == "string" ? "text" : "number"} value={variableRulingOption} step="1" placeholder="Enter a new ruling option" onChange={this.onControlChange}></FormControl>}
+          {variable && variable != "datetime" && <FormControl id="variableRulingOption" type={variable == "string" || variable == "hash" ? "text" : "number"} value={variableRulingOption} step="1" placeholder="Enter a new ruling option" onChange={this.onControlChange}></FormControl>}
           {variable && variable == "datetime" && <DatetimePicker id="variableRulingOption" onChange={this.onDatePickerChange} />}
         </div>
 
