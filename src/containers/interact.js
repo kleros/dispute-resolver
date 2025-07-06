@@ -77,6 +77,12 @@ class Interact extends React.Component {
   appeal = async (party, contribution) => this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);
 
   withdraw = async () => {
+    // Guard against null selectedContribution
+    if (this.state.selectedContribution === null) {
+      console.error('Cannot withdraw: no valid ruling found');
+      return;
+    }
+
     try {
       // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256 _ruling);
       this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);

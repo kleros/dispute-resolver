@@ -812,7 +812,7 @@ class App extends React.Component {
       // Try v2 first
       const result = await this.tryGetWithdrawableAmountV2(contract, arbitrableDisputeID, contributedTo);
       if (result) return result;
-      return { amount: 0, ruling: contributedTo[0] };
+      return { amount: 0, ruling: null };
     } catch {
       // Fallback to v1
       try {
