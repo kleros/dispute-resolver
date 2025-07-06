@@ -14,7 +14,7 @@ class CrowdfundingCard extends React.Component {
     this.state = { variableRulingOption: "", contribution: this.props.suggestedContribution, error: null };
   }
 
-  onControlChange = (e) => this.setState({ [e.target.id]: e.target.value, error: null });
+  onControlChange = e => this.setState({ [e.target.id]: e.target.value, error: null });
 
   onDatePickerChange = (value, _dateString) => {
     this.setState({ variableRulingOption: value.utcOffset(0).set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).unix() });
@@ -41,7 +41,7 @@ class CrowdfundingCard extends React.Component {
           actualRulingCode = ethers.getBigInt(this.addDecimalsToUintRuling(variableRulingOption, metaevidenceJSON)) + 1n;
           break;
         case "int":
-          actualRulingCode = parseInt(variableRulingOption) >= 0 ? parseInt(variableRulingOption) + 1 : variableRulingOption;
+          actualRulingCode = parseInt(variableRulingOption, 10) >= 0 ? parseInt(variableRulingOption, 10) + 1 : variableRulingOption;
           break;
         case "string":
           actualRulingCode = ethers.hexlify(ethers.toUtf8Bytes(variableRulingOption));
@@ -55,7 +55,7 @@ class CrowdfundingCard extends React.Component {
       }
 
       await appealCallback(actualRulingCode, contribution.toString());
-    } catch (error) {
+    } catch {
       // Set error state to show user feedback
       this.setState({ error: "Invalid input format. Please enter a valid number or hex string." });
     }
