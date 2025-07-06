@@ -1,5 +1,5 @@
 import React from "react";
-import {  Toast as ToastBootstrap } from "react-bootstrap";
+import { Toast as ToastBootstrap } from "react-bootstrap";
 
 import { ReactComponent as Success } from "../assets/images/iconCheckCircle.svg";
 import { ReactComponent as Failure } from "../assets/images/iconXCircle.svg";

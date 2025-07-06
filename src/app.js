@@ -27,6 +27,12 @@ const EXCEPTIONAL_CONTRACT_ADDRESSES = ['0xe0e1bc8C6cd1B81993e2Fcfb80832d814886e
 const CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS = 3 * 60 * 60 * 1000
 const CACHE_INVALIDATION_PERIOD_FOR_DISPUTES_MS = 1 * 60 * 1000
 
+const isBigNumberLike = value => {
+  return value && typeof value === 'object' &&
+    typeof value.toString === 'function' &&
+    (value.type === 'BigNumber' || value._hex !== undefined);
+};
+
 const safeJSONStringify = obj => {
   return JSON.stringify(obj, (_, value) => {
     if (typeof value === 'bigint') {
@@ -35,7 +41,7 @@ const safeJSONStringify = obj => {
     if (value && typeof value === 'object' && value._isBigNumber) {
       return value.toString();
     }
-    if (value && typeof value === 'object' && typeof value.toString === 'function' && (value.type === 'BigNumber' || value._hex !== undefined)) {
+    if (isBigNumberLike(value)) {
       return value.toString();
     }
     return value;
@@ -180,6 +186,16 @@ class App extends React.Component {
     }
   };
 
+  // Extract cache validation logic to reduce complexity
+  isCacheValid = (parsedSubcourts, parsedSubcourtDetails, lastModified) => {
+    return lastModified &&
+      parsedSubcourts &&
+      parsedSubcourtDetails &&
+      parsedSubcourts.length > 0 &&
+      parsedSubcourtDetails.length > 0 &&
+      new Date().getTime() < CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS + parseInt(lastModified, 10);
+  };
+
   loadSubcourtData = async () => {
     const { network } = this.state;
 
@@ -190,12 +206,7 @@ class App extends React.Component {
     const lastModified = localStorage.getItem(`${network}LastModified`);
 
     // Check cache validity
-    if (lastModified &&
-      parsedSubcourts &&
-      parsedSubcourtDetails &&
-      parsedSubcourts.length > 0 &&
-      parsedSubcourtDetails.length > 0 &&
-      new Date().getTime() < CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS + parseInt(lastModified, 10)) {
+    if (this.isCacheValid(parsedSubcourts, parsedSubcourtDetails, lastModified)) {
       try {
         this.setState({
           subcourts: parsedSubcourts,
@@ -225,7 +236,7 @@ class App extends React.Component {
 
     this.setState({
       subcourtDetails: await Promise.all(subcourtURIs.map(promise => promise.then(subcourtURI => {
-        console.log({ subcourtURI })
+        console.debug({ subcourtURI })
         if (subcourtURI.length > 0) {
           if (subcourtURI.includes("http")) {
             return fetch(subcourtURI)
@@ -756,45 +767,56 @@ class App extends React.Component {
     }
   };
 
-  getTotalWithdrawableAmount = async (arbitrableDisputeID, contributedTo, arbitrated) => {
-    let amount = 0;
+  // Extract v2 contract logic to reduce complexity
+  tryGetWithdrawableAmountV2 = async (contract, arbitrableDisputeID, contributedTo) => {
+    let counter = 0;
+    while (counter < contributedTo.length) {
+      const amount = await contract.getTotalWithdrawableAmount(
+        arbitrableDisputeID,
+        this.state.activeAddress ?? ethers.ZeroAddress,
+        contributedTo[counter]
+      );
+      if (amount != 0) {
+        return { amount, ruling: contributedTo[counter] };
+      }
+      counter++;
+    }
+    return null;
+  };
 
-    let contract = EthereumInterface.getContract(
+  // Extract v1 contract logic to reduce complexity  
+  tryGetWithdrawableAmountV1 = async (arbitrated, arbitrableDisputeID, contributedTo) => {
+    const contract = EthereumInterface.getContract(
+      "IDisputeResolver_v1",
+      arbitrated,
+      this.state.provider
+    );
+
+    const amount = await contract.getTotalWithdrawableAmount(
+      arbitrableDisputeID,
+      this.state.activeAddress ?? ethers.ZeroAddress,
+      contributedTo
+    );
+
+    return { amount, ruling: contributedTo };
+  };
+
+  getTotalWithdrawableAmount = async (arbitrableDisputeID, contributedTo, arbitrated) => {
+    const contract = EthereumInterface.getContract(
       "IDisputeResolver",
       arbitrated,
       this.state.provider
-    )
+    );
+
     try {
-      // targeting v2;
-      let counter = 0;
-
-      while (counter < contributedTo.length) {
-        amount = await contract.getTotalWithdrawableAmount(
-          arbitrableDisputeID,
-          this.state.activeAddress ?? ethers.ZeroAddress,
-          contributedTo[counter]
-        );
-
-        if (amount != 0) break;
-        counter++;
-      }
-
-      return { amount, ruling: contributedTo[counter] };
+      // Try v2 first
+      const result = await this.tryGetWithdrawableAmountV2(contract, arbitrableDisputeID, contributedTo);
+      if (result) return result;
+      return { amount: 0, ruling: undefined };
     } catch {
-      // targeting v1
-      contract = EthereumInterface.getContract(
-        "IDisputeResolver_v1",
-        arbitrated,
-        this.state.provider
-      )
+      // Fallback to v1
       try {
-        amount = await contract.getTotalWithdrawableAmount(
-          arbitrableDisputeID,
-          this.state.activeAddress ?? ethers.ZeroAddress,
-          contributedTo
-        );
-
-        return { amount, ruling: contributedTo };
+        return await this.tryGetWithdrawableAmountV1(arbitrated, arbitrableDisputeID, contributedTo);
       } catch (v1Error) {
         console.error('Error fetching withdrawable amount:', v1Error);
         return { amount: 0, ruling: contributedTo };
