@@ -43,7 +43,7 @@ class CrowdfundingCard extends React.Component {
           break;
         case "int": {
           const parsedValue = parseInt(variableRulingOption, 10);
-          actualRulingCode = parsedValue >= 0 ? parsedValue + 1 : variableRulingOption;
+          actualRulingCode = parsedValue >= 0 ? parsedValue + 1 : parsedValue;
           break;
         }
         case "string":
