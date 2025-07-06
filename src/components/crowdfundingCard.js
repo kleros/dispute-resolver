@@ -11,10 +11,10 @@ import { ethers } from "ethers";
 class CrowdfundingCard extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { variableRulingOption: "", contribution: this.props.suggestedContribution };
+    this.state = { variableRulingOption: "", contribution: this.props.suggestedContribution, error: null };
   }
 
-  onControlChange = (e) => this.setState({ [e.target.id]: e.target.value });
+  onControlChange = (e) => this.setState({ [e.target.id]: e.target.value, error: null });
 
   onDatePickerChange = (value, _dateString) => {
     this.setState({ variableRulingOption: value.utcOffset(0).set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).unix() });
@@ -32,36 +32,40 @@ class CrowdfundingCard extends React.Component {
     const { variableRulingOption, contribution } = this.state;
     let actualRulingCode;
 
+    try {
+      switch (variable) {
+        case undefined: // Not variable
+          actualRulingCode = rulingOptionCode;
+          break;
+        case "uint":
+          actualRulingCode = ethers.getBigInt(this.addDecimalsToUintRuling(variableRulingOption, metaevidenceJSON)) + 1n;
+          break;
+        case "int":
+          actualRulingCode = parseInt(variableRulingOption) >= 0 ? parseInt(variableRulingOption) + 1 : variableRulingOption;
+          break;
+        case "string":
+          actualRulingCode = ethers.hexlify(ethers.toUtf8Bytes(variableRulingOption));
+          break;
+        case "datetime":
+          actualRulingCode = variableRulingOption + 1;
+          break;
+        case "hash":
+          actualRulingCode = BigInt(variableRulingOption) + 1n;
+          break;
+      }
 
-    switch (variable) {
-      case undefined: // Not variable
-        actualRulingCode = rulingOptionCode;
-        break;
-      case "uint":
-        actualRulingCode = ethers.getBigInt(this.addDecimalsToUintRuling(variableRulingOption, metaevidenceJSON)) + 1n;
-        break;
-      case "int":
-        actualRulingCode = parseInt(variableRulingOption) >= 0 ? parseInt(variableRulingOption) + 1 : variableRulingOption;
-        break;
-      case "string":
-        actualRulingCode = ethers.hexlify(ethers.toUtf8Bytes(variableRulingOption));
-        break;
-      case "datetime":
-        actualRulingCode = variableRulingOption + 1;
-        break;
-      case "hash":
-        actualRulingCode = BigInt(variableRulingOption) + 1n;
-        break;
+      await appealCallback(actualRulingCode, contribution.toString());
+    } catch (error) {
+      // Set error state to show user feedback
+      this.setState({ error: "Invalid input format. Please enter a valid number or hex string." });
     }
-
-    await appealCallback(actualRulingCode, contribution.toString());
   };
 
 
 
   render() {
     const { title, winner, fundingPercentage, appealPeriodEnd, variable, roi, suggestedContribution } = this.props;
-    const { variableRulingOption, contribution } = this.state;
+    const { variableRulingOption, contribution, error } = this.state;
 
     return (
       <div className={`shadow rounded p-3 d-flex flex-column ${styles.crowdfundingCard}`}>
@@ -84,6 +88,9 @@ class CrowdfundingCard extends React.Component {
             <Hourglass className="red mr-1" />
             <Countdown className={styles.countdown} date={1000 * parseInt(appealPeriodEnd)} renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>} />
           </div>
+          {error && (
+            <AlertMessage extraClass="mb-3" type="danger" title="Invalid Input" content={error} />
+          )}
           <InputGroup className="my-3">
             <FormControl
               id="contribution"
@@ -97,7 +104,7 @@ class CrowdfundingCard extends React.Component {
               disabled={suggestedContribution == 0}
             />
             <InputGroup.Append>
-              <Button variant="primary" disabled={suggestedContribution == 0 || (variable && !variableRulingOption)} onClick={this.handleFundButtonClick}>
+              <Button variant="primary" disabled={suggestedContribution == 0 || (variable && !variableRulingOption) || error} onClick={this.handleFundButtonClick}>
                 Fund
               </Button>
             </InputGroup.Append>
