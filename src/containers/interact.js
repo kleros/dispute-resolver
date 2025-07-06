@@ -13,7 +13,7 @@ class Interact extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      arbitratorDisputeID: (this.props.route && this.props.route.match.params.id) || 0,
+      arbitratorDisputeID: this.props.route?.match?.params?.id || 0,
       fileInput: "",
       evidenceFileURI: "",
       metaevidence: "",
@@ -40,7 +40,7 @@ class Interact extends React.Component {
     if (this.props.network !== previousProperties.network) {
       const dispute = await this.props.getArbitratorDisputeCallback(this.state.arbitratorDisputeID);
 
-      if (!dispute && !dispute?.arbitrated) {
+      if (!dispute?.arbitrated) {
         window.location.reload();
       }
       this.setState(() => ({ arbitrated: dispute.arbitrated }));
@@ -362,9 +362,9 @@ class Interact extends React.Component {
 
   getCurrentRulingValue = () => {
     const { metaevidence, currentRuling } = this.state;
-    if (!currentRuling) return "";
+    if (!currentRuling) return "0";
 
-    // Always return string for consistent type handling
+    // Always return string for consistent type handling (TypeScript preparation)
     // Hash types: convert to string to preserve precision for large numbers
     // Non-hash types: apply parseInt then convert to string to maintain processing logic
     if (metaevidence?.metaEvidenceJSON?.rulingOptions?.type === "hash") {
@@ -384,7 +384,7 @@ class Interact extends React.Component {
 
     return (
       <>
-        {Boolean(activeAddress) && incompatible && this.renderIncompatibleWarning()}
+        {activeAddress && incompatible && this.renderIncompatibleWarning()}
         {arbitrated && this.renderMainContent()}
       </>
     );

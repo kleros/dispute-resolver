@@ -43,9 +43,9 @@ class DisputeDetails extends React.Component {
   }
 
   componentDidUpdate(previousProperties) {
-    if( this.props.network !== previousProperties.network )
+    if (this.props.network !== previousProperties.network)
       window.location.reload();
-    
+
     if (this.props.arbitratorDisputeID !== previousProperties.arbitratorDisputeID) {
       this.setState({ activeKey: 0 });
     }
@@ -81,9 +81,9 @@ class DisputeDetails extends React.Component {
   };
 
   calculateAmountRemainsToBeRaisedForLoser = () => {
-    const { appealCost,multipliers } = this.props;
+    const { appealCost, multipliers } = this.props;
     const stake = (appealCost * multipliers.loserStakeMultiplier) / multipliers.denominator;
-    
+
     return BigInt(appealCost) + BigInt(stake);
   };
 
@@ -153,15 +153,15 @@ class DisputeDetails extends React.Component {
   // Helper method to validate and process hex strings
   processHexValue = (hashValue) => {
     const hexWithoutPrefix = hashValue.slice(HEX_PREFIX_LENGTH);
-    
+
     if (hexWithoutPrefix === '') {
       throw new Error('Invalid hex value: empty hex string');
     }
-    
+
     if (!/^[0-9a-fA-F]+$/.test(hexWithoutPrefix)) {
       throw new Error(`Invalid hex value: contains non-hex characters: ${hashValue}`);
     }
-    
+
     const numericValue = BigInt('0x' + hexWithoutPrefix);
     return (numericValue - 1n).toString(16);
   };
@@ -171,7 +171,7 @@ class DisputeDetails extends React.Component {
     if (hashValue.includes('e') || hashValue.includes('E')) {
       throw new Error(`Hash value precision lost during processing. Please report this issue.`);
     }
-    
+
     try {
       const numericValue = BigInt(hashValue);
       return (numericValue - 1n).toString(16);
@@ -184,11 +184,11 @@ class DisputeDetails extends React.Component {
   processHashRuling = (currentRuling, metaEvidenceJSON) => {
     const hashValue = currentRuling.toString();
     const isHexString = /^0x/i.test(hashValue);
-    
-    const finalHexValue = isHexString 
+
+    const finalHexValue = isHexString
       ? this.processHexValue(hashValue)
       : this.processNumericValue(hashValue);
-    
+
     return realitioLibQuestionFormatter.getAnswerString(
       {
         decimals: metaEvidenceJSON.rulingOptions.precision,
@@ -213,7 +213,7 @@ class DisputeDetails extends React.Component {
     } else {
       rulingValue = BigInt(rulingStr);
     }
-    
+
     return realitioLibQuestionFormatter.getAnswerString(
       {
         decimals: metaEvidenceJSON.rulingOptions.precision,
@@ -227,13 +227,13 @@ class DisputeDetails extends React.Component {
   convertToRealitioFormat = (currentRuling, metaEvidenceJSON) => {
     try {
       const questionType = metaEvidenceJSON.rulingOptions.type;
-      
+
       // For hash type rulings, preserve precision by handling as hex strings
       // Apply Reality.eth -1 offset consistently for both hex and numeric inputs
       if (questionType === "hash") {
         return this.processHashRuling(currentRuling, metaEvidenceJSON);
       }
-      
+
       // For numeric types, apply the original logic
       return this.processNumericRuling(currentRuling, metaEvidenceJSON);
     } catch (error) {
@@ -251,7 +251,7 @@ class DisputeDetails extends React.Component {
   // Helper method to render decision alert messages
   renderDecisionAlerts = (disputePeriod, currentRuling, metaevidenceJSON, rulingFunded, incompatible) => {
     const decisionInfoBoxContent = `This decision can be appealed within appeal period. ${incompatible ? "Go to arbitrable application to appeal this ruling." : ""}`;
-    
+
     if (disputePeriod == DISPUTE_PERIOD_APPEAL) {
       return (
         <AlertMessage
@@ -261,7 +261,7 @@ class DisputeDetails extends React.Component {
         />
       );
     }
-    
+
     if (disputePeriod == DISPUTE_PERIOD_EXECUTION) {
       return (
         <AlertMessage
@@ -271,7 +271,7 @@ class DisputeDetails extends React.Component {
         />
       );
     }
-    
+
     return null;
   };
 
@@ -322,7 +322,7 @@ class DisputeDetails extends React.Component {
 
     // Type-specific cards
     const questionType = metaevidenceJSON.rulingOptions?.type;
-    
+
     if (questionType === "single-select") {
       metaevidenceJSON.rulingOptions.titles.forEach((title, index) => {
         cards.push(
@@ -344,16 +344,16 @@ class DisputeDetails extends React.Component {
 
     if (questionType === "multiple-select") {
       Array.from(Array(2 ** metaevidenceJSON.rulingOptions.titles.length).keys()).forEach((_key, index) => {
-        const title = index == 0 
+        const title = index == 0
           ? "None"
           : index
-              .toString(2)
-              .padStart(BINARY_PADDING_WIDTH, "0")
-              .split("")
-              .reverse()
-              .map((bit, i) => (bit === "1" ? metaevidenceJSON.rulingOptions.titles[i] : null))
-              .join(" ");
-        
+            .toString(2)
+            .padStart(BINARY_PADDING_WIDTH, "0")
+            .split("")
+            .reverse()
+            .map((bit, i) => (bit === "1" ? metaevidenceJSON.rulingOptions.titles[i] : null))
+            .join(" ");
+
         cards.push(
           <Col key={index} className="pb-4" xl={8} lg={12} xs={24}>
             <CrowdfundingCard
@@ -378,19 +378,19 @@ class DisputeDetails extends React.Component {
   renderVariableTypeCrowdfundingCards = (metaevidenceJSON, currentRuling, contributions, appealCallback) => {
     const questionType = metaevidenceJSON.rulingOptions?.type;
     const isVariableType = ["uint", "int", "string", "datetime", "hash"].includes(questionType);
-    
+
     if (!isVariableType) return null;
 
     const cards = [];
 
     // Other contributions (not current ruling)
     Object.keys(contributions)
-      .filter((key) => key !== this.props.currentRuling.toString())
+      .filter((key) => key !== this.props.currentRuling)
       .forEach((key) => {
-        const title = questionType === "string" 
-          ? ethers.toUtf8String(ethers.hexlify(key)) 
+        const title = questionType === "string"
+          ? ethers.toUtf8String(ethers.hexlify(key))
           : this.convertToRealitioFormat(key, metaevidenceJSON);
-        
+
         cards.push(
           <Col key={key} className="pb-4" xl={8} lg={12} xs={24}>
             <CrowdfundingCard
@@ -474,169 +474,169 @@ class DisputeDetails extends React.Component {
     const { activeKey } = this.state;
 
     // Early return if required data is not available
-    if (!metaevidenceJSON || !arbitratorDispute || subcourts.length === 0 || 
-        subcourtDetails.length === 0 || !arbitratorDisputeDetails) {
+    if (!metaevidenceJSON || !arbitratorDispute || subcourts.length === 0 ||
+      subcourtDetails.length === 0 || !arbitratorDisputeDetails) {
       return <div></div>;
     }
 
     const disputePeriod = parseInt(arbitratorDispute.period);
 
-      return (
-        <section className={styles.disputeDetails}>
-          <DisputeTimeline
-            period={disputePeriod}
-            lastPeriodChange={arbitratorDispute.lastPeriodChange.toString()}
-            timesPerPeriod={subcourts[arbitratorDispute.subcourtID.toString()]?.[1]}
-          />
-          <hr className="mt-4" />
-          <Row>
-            <Col xl={6} md="auto" sm={true} xs={24}>
-              <Form.Group>
-                <Form.Label htmlFor="category">Dispute</Form.Label>
-                <Form.Control id="category" as="span" title="" className="mr-4">
-                  <i className="purple-primary">#</i> {arbitratorDisputeID}
-                </Form.Control>
-              </Form.Group>
-            </Col>
-            <Col xl={6} md="auto" sm={true} xs={24}>
-              <Form.Group className="">
-                <Form.Label htmlFor="initialNumberOfJurors">Number of Votes</Form.Label>
-                <Form.Control className={`mr-4 ${styles.spanWithSvgInside}`} id="initialNumberOfJurors" as="span">
-                  <AvatarSVG />
-                  <span>{parseInt(arbitratorDisputeDetails.votesLengths[0])}</span>
-                </Form.Control>
-              </Form.Group>
-            </Col>
-            <Col md={true} sm={24}>
-              <Form.Group>
-                <Form.Label htmlFor="court">Court</Form.Label>
-                <Form.Control className={styles.spanWithSvgInside} id="court" as="span">
-                  <ScalesSVG className={styles.scales} />
-                  <span>{subcourtDetails[arbitratorDispute.subcourtID]?.name}</span>
-                </Form.Control>
-              </Form.Group>
-            </Col>
-          </Row>
+    return (
+      <section className={styles.disputeDetails}>
+        <DisputeTimeline
+          period={disputePeriod}
+          lastPeriodChange={arbitratorDispute.lastPeriodChange.toString()}
+          timesPerPeriod={subcourts[arbitratorDispute.subcourtID.toString()]?.[1]}
+        />
+        <hr className="mt-4" />
+        <Row>
+          <Col xl={6} md="auto" sm={true} xs={24}>
+            <Form.Group>
+              <Form.Label htmlFor="category">Dispute</Form.Label>
+              <Form.Control id="category" as="span" title="" className="mr-4">
+                <i className="purple-primary">#</i> {arbitratorDisputeID}
+              </Form.Control>
+            </Form.Group>
+          </Col>
+          <Col xl={6} md="auto" sm={true} xs={24}>
+            <Form.Group className="">
+              <Form.Label htmlFor="initialNumberOfJurors">Number of Votes</Form.Label>
+              <Form.Control className={`mr-4 ${styles.spanWithSvgInside}`} id="initialNumberOfJurors" as="span">
+                <AvatarSVG />
+                <span>{parseInt(arbitratorDisputeDetails.votesLengths[0])}</span>
+              </Form.Control>
+            </Form.Group>
+          </Col>
+          <Col md={true} sm={24}>
+            <Form.Group>
+              <Form.Label htmlFor="court">Court</Form.Label>
+              <Form.Control className={styles.spanWithSvgInside} id="court" as="span">
+                <ScalesSVG className={styles.scales} />
+                <span>{subcourtDetails[arbitratorDispute.subcourtID]?.name}</span>
+              </Form.Control>
+            </Form.Group>
+          </Col>
+        </Row>
 
-          {this.renderDecisionAlerts(disputePeriod, currentRuling, metaevidenceJSON, rulingFunded, incompatible)}
+        {this.renderDecisionAlerts(disputePeriod, currentRuling, metaevidenceJSON, rulingFunded, incompatible)}
 
-          <Accordion
-            className={`mt-4 ${styles.accordion}`}
-            onSelect={(e) => {
-              this.setState({ activeKey: e });
-            }}
-          >
-            <Card>
-              {arbitratorDispute && disputePeriod >= DISPUTE_PERIOD_APPEAL && contributions && multipliers && appealCost && appealPeriod && arbitrated && (
-                <>
-                  <Accordion.Toggle className={activeKey == 1 ? "open" : "closed"} as={Card.Header} eventKey="1">
-                    Appeal
-                  </Accordion.Toggle>
-                  <Accordion.Collapse eventKey="1">
-                    <Card.Body>
-                      <div className="h1">{disputePeriod == DISPUTE_PERIOD_APPEAL ? "Appeal the decision" : "Withdraw crowdfunding rewards and refunds"}</div>
-                      <p className="label">
-                        {disputePeriod == DISPUTE_PERIOD_APPEAL
-                          && "In order to appeal the decision, you need to fully fund the crowdfunding deposit. The dispute will be sent" +
-                          " to the jurors when the full deposit is reached. Note that if the previous round loser funds its side, the previous round winner should also fully fund its side in order not to lose the case."
-                        }
-                        {disputePeriod == DISPUTE_PERIOD_EXECUTION && parseInt(totalWithdrawable) != 0 ? "If you have contributed to a ruling option and in the end that ruling option was the winner you are eligible for some reward. Also, if you have contributed but appeal did not happen your contribution is refunded."
-                          : "You don't have any amount to withdraw. Reason might be that you did not contribute, the ruling option you have contributed did not win, you already withdrew or the ruling is not executed yet by the arbitrator."}
-                      </p>
-                      {disputePeriod == DISPUTE_PERIOD_EXECUTION && parseInt(totalWithdrawable) > 0 && (
-                        <Row className="mt-5">
-                          <Col className="text-right">
-                            <Button className="ml-auto" onClick={this.props.withdrawCallback}>
-                              {`Withdraw ${ethers.formatEther(totalWithdrawable)} ETH`}
-                            </Button>
-                          </Col>
-                        </Row>
-                      )}
+        <Accordion
+          className={`mt-4 ${styles.accordion}`}
+          onSelect={(e) => {
+            this.setState({ activeKey: e });
+          }}
+        >
+          <Card>
+            {arbitratorDispute && disputePeriod >= DISPUTE_PERIOD_APPEAL && contributions && multipliers && appealCost && appealPeriod && arbitrated && (
+              <>
+                <Accordion.Toggle className={activeKey == 1 ? "open" : "closed"} as={Card.Header} eventKey="1">
+                  Appeal
+                </Accordion.Toggle>
+                <Accordion.Collapse eventKey="1">
+                  <Card.Body>
+                    <div className="h1">{disputePeriod == DISPUTE_PERIOD_APPEAL ? "Appeal the decision" : "Withdraw crowdfunding rewards and refunds"}</div>
+                    <p className="label">
+                      {disputePeriod == DISPUTE_PERIOD_APPEAL
+                        && "In order to appeal the decision, you need to fully fund the crowdfunding deposit. The dispute will be sent" +
+                        " to the jurors when the full deposit is reached. Note that if the previous round loser funds its side, the previous round winner should also fully fund its side in order not to lose the case."
+                      }
+                      {disputePeriod == DISPUTE_PERIOD_EXECUTION && parseInt(totalWithdrawable) != 0 ? "If you have contributed to a ruling option and in the end that ruling option was the winner you are eligible for some reward. Also, if you have contributed but appeal did not happen your contribution is refunded."
+                        : "You don't have any amount to withdraw. Reason might be that you did not contribute, the ruling option you have contributed did not win, you already withdrew or the ruling is not executed yet by the arbitrator."}
+                    </p>
+                    {disputePeriod == DISPUTE_PERIOD_EXECUTION && parseInt(totalWithdrawable) > 0 && (
+                      <Row className="mt-5">
+                        <Col className="text-right">
+                          <Button className="ml-auto" onClick={this.props.withdrawCallback}>
+                            {`Withdraw ${ethers.formatEther(totalWithdrawable)} ETH`}
+                          </Button>
+                        </Col>
+                      </Row>
+                    )}
 
-                      {disputePeriod == DISPUTE_PERIOD_APPEAL && (
-                        <Row className="mt-3">
-                          {this.renderCrowdfundingCards(metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated)}
+                    {disputePeriod == DISPUTE_PERIOD_APPEAL && (
+                      <Row className="mt-3">
+                        {this.renderCrowdfundingCards(metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated)}
 
-                          {this.renderVariableTypeCrowdfundingCards(metaevidenceJSON, currentRuling, contributions, appealCallback)}
-                        </Row>
-                      )}
-                    </Card.Body>
-                  </Accordion.Collapse>
-                </>
-              )}
-            </Card>
+                        {this.renderVariableTypeCrowdfundingCards(metaevidenceJSON, currentRuling, contributions, appealCallback)}
+                      </Row>
+                    )}
+                  </Card.Body>
+                </Accordion.Collapse>
+              </>
+            )}
+          </Card>
 
-            <Card>
-              <Accordion.Toggle className={activeKey == 2 ? "open" : "closed"} as={Card.Header} eventKey="2">
-                Question
-              </Accordion.Toggle>
-              <Accordion.Collapse eventKey="2">
-                <Card.Body className={styles.question}>
-                  <p>{QuestionTypes[metaevidenceJSON.rulingOptions?.type]}</p>
-                  <p>{metaevidenceJSON.question}</p>
-                  {(metaevidenceJSON.rulingOptions?.type == "single-select" || metaevidenceJSON.rulingOptions?.type == "multiple-select") && (
-                    <>
-                      <Dropdown>
-                        <Dropdown.Toggle block className={styles.dropdownToggle}>
-                          <span className="font-weight-normal">View Voting Options</span>
-                        </Dropdown.Toggle>
+          <Card>
+            <Accordion.Toggle className={activeKey == 2 ? "open" : "closed"} as={Card.Header} eventKey="2">
+              Question
+            </Accordion.Toggle>
+            <Accordion.Collapse eventKey="2">
+              <Card.Body className={styles.question}>
+                <p>{QuestionTypes[metaevidenceJSON.rulingOptions?.type]}</p>
+                <p>{metaevidenceJSON.question}</p>
+                {(metaevidenceJSON.rulingOptions?.type == "single-select" || metaevidenceJSON.rulingOptions?.type == "multiple-select") && (
+                  <>
+                    <Dropdown>
+                      <Dropdown.Toggle block className={styles.dropdownToggle}>
+                        <span className="font-weight-normal">View Voting Options</span>
+                      </Dropdown.Toggle>
 
-                        <Dropdown.Menu dir="">
-                          <Dropdown.Item key={0} disabled >Option 0 Refuse to Arbitrate</Dropdown.Item>
-                          {metaevidenceJSON.rulingOptions.titles.map((title, index) => (
-                            <Dropdown.Item key={index} disabled>{`Option ${index + 1} ${title}${metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[index] != undefined ? ":" : ""
-                              } ${metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[index] != undefined
-                                ? metaevidenceJSON.rulingOptions.descriptions[index]
+                      <Dropdown.Menu dir="">
+                        <Dropdown.Item key={0} disabled >Option 0 Refuse to Arbitrate</Dropdown.Item>
+                        {metaevidenceJSON.rulingOptions.titles.map((title, index) => (
+                          <Dropdown.Item key={index} disabled>{`Option ${index + 1} ${title}${metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[index] != undefined ? ":" : ""
+                            } ${metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[index] != undefined
+                              ? metaevidenceJSON.rulingOptions.descriptions[index]
+                              : ""
+                            }`}</Dropdown.Item>
+                        ))}
+                        {metaevidenceJSON.rulingOptions?.reserved &&
+                          Object.entries(metaevidenceJSON.rulingOptions.reserved).map(([rulingCode, title]) => (
+                            <Dropdown.Item key={rulingCode} disabled>{`Option ${rulingCode.length > 12 ? (rulingCode.slice(0, 6) + "..." + rulingCode.slice(-6)) : rulingCode} ${title}${metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[rulingCode] != undefined ? ":" : ""
+                              } ${metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[rulingCode] != undefined
+                                ? metaevidenceJSON.rulingOptions.descriptions[rulingCode]
                                 : ""
                               }`}</Dropdown.Item>
                           ))}
-                          {metaevidenceJSON.rulingOptions?.reserved &&
-                            Object.entries(metaevidenceJSON.rulingOptions.reserved).map(([rulingCode, title]) => (
-                              <Dropdown.Item key={rulingCode} disabled>{`Option ${rulingCode.length > 12 ? (rulingCode.slice(0, 6) + "..." + rulingCode.slice(-6)) : rulingCode} ${title}${metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[rulingCode] != undefined ? ":" : ""
-                                } ${metaevidenceJSON.rulingOptions.descriptions && metaevidenceJSON.rulingOptions.descriptions[rulingCode] != undefined
-                                  ? metaevidenceJSON.rulingOptions.descriptions[rulingCode]
-                                  : ""
-                                }`}</Dropdown.Item>
-                            ))}
 
-                        </Dropdown.Menu>
-                      </Dropdown>
-                      <p className={styles.questionInfo}>
-                        <InfoSVG />
-                        Note that you can only view the voting options. Selected jurors can vote using{" "}
-                        <a href={`https://court.kleros.io/cases/${arbitratorDisputeID}`} target="_blank" rel="noreferrer noopener">
-                          Court
-                        </a>
-                        .
-                      </p>
-                    </>
-                  )}
-                </Card.Body>
-              </Accordion.Collapse>
-            </Card>
+                      </Dropdown.Menu>
+                    </Dropdown>
+                    <p className={styles.questionInfo}>
+                      <InfoSVG />
+                      Note that you can only view the voting options. Selected jurors can vote using{" "}
+                      <a href={`https://court.kleros.io/cases/${arbitratorDisputeID}`} target="_blank" rel="noreferrer noopener">
+                        Court
+                      </a>
+                      .
+                    </p>
+                  </>
+                )}
+              </Card.Body>
+            </Accordion.Collapse>
+          </Card>
 
-            <Card>
-              <Accordion.Toggle className={activeKey == 3 ? "open" : "closed"} as={Card.Header} eventKey="3">
-                Evidence
-              </Accordion.Toggle>
-              <Accordion.Collapse eventKey="3">
-                <Card.Body>
-                  <EvidenceTimeline
-                    evidenceSubmissionEnabled={!incompatible}
-                    metaevidence={metaevidenceJSON}
-                    evidences={evidences}
-                    dispute={disputeEvent}
-                    disputePeriod={disputePeriod}
-                    publishCallback={publishCallback}
-                    submitEvidenceCallback={submitEvidenceCallback}
-                    appealDecisions={this.state.appealDecisions}
-                  />
-                </Card.Body>
-              </Accordion.Collapse>
-            </Card>
-          </Accordion>
-        </section>
-      );
+          <Card>
+            <Accordion.Toggle className={activeKey == 3 ? "open" : "closed"} as={Card.Header} eventKey="3">
+              Evidence
+            </Accordion.Toggle>
+            <Accordion.Collapse eventKey="3">
+              <Card.Body>
+                <EvidenceTimeline
+                  evidenceSubmissionEnabled={!incompatible}
+                  metaevidence={metaevidenceJSON}
+                  evidences={evidences}
+                  dispute={disputeEvent}
+                  disputePeriod={disputePeriod}
+                  publishCallback={publishCallback}
+                  submitEvidenceCallback={submitEvidenceCallback}
+                  appealDecisions={this.state.appealDecisions}
+                />
+              </Card.Body>
+            </Accordion.Collapse>
+          </Card>
+        </Accordion>
+      </section>
+    );
   }
 }
 
