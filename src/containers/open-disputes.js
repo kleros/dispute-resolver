@@ -1,5 +1,5 @@
 import React from "react";
-import {  Col, Row, Dropdown, DropdownButton, Spinner } from "react-bootstrap";
+import { Col, Row, Dropdown, DropdownButton, Spinner } from "react-bootstrap";
 import OngoingCard from "components/ongoing-card.js";
 import debounce from "lodash.debounce";
 import networkMap from "../ethereum/network-contract-mapping";
@@ -10,24 +10,24 @@ class OpenDisputes extends React.Component {
   constructor(props) {
     super(props);
     this.state = { openDisputeIDs: [], arbitratorDisputes: {}, loading: true, statusFilter: 4 };
-    if(networkMap[this.props.network].KLEROS_LIQUID)
+    if (networkMap[this.props.network].KLEROS_LIQUID)
       this.debouncedFetch = debounce(this.fetch, 0, { leading: false, trailing: true });
   }
 
   componentDidUpdate(prevProps) {
     const { subcourts, subcourtDetails, network } = this.props;
-    
+
     if (
-      prevProps.subcourts !== subcourts || 
-      prevProps.subcourtDetails !== subcourtDetails || 
+      prevProps.subcourts !== subcourts ||
+      prevProps.subcourtDetails !== subcourtDetails ||
       prevProps.network !== network
     ) {
-      this.setState({ 
-        loading: true, 
-        openDisputeIDs: [], 
-        arbitratorDisputes: {} 
+      this.setState({
+        loading: true,
+        openDisputeIDs: [],
+        arbitratorDisputes: {}
       });
-      
+
       if (networkMap[this.props.network]?.KLEROS_LIQUID) {
         if (this.debouncedFetch) {
           this.debouncedFetch.cancel();
@@ -41,7 +41,7 @@ class OpenDisputes extends React.Component {
   }
 
   componentDidMount() {
-    if(networkMap[this.props.network].KLEROS_LIQUID) this.fetch();
+    if (networkMap[this.props.network].KLEROS_LIQUID) this.fetch();
   }
 
   componentWillUnmount() {
@@ -51,7 +51,7 @@ class OpenDisputes extends React.Component {
     this.setState({ openDisputeIDs: [], arbitratorDisputes: {}, loading: true });
   }
 
-  fetch = async() => {
+  fetch = async () => {
     try {
       if (!networkMap[this.props.network]?.KLEROS_LIQUID) {
         this.setState({ loading: false });
@@ -59,28 +59,28 @@ class OpenDisputes extends React.Component {
       }
 
       const openDIDs = await this.props.getOpenDisputesOnCourtCallback();
-      
-      const sortedDisputes = [...openDIDs].sort((a, b) => parseInt(a) - parseInt(b)).reverse();
+
+      const sortedDisputes = [...openDIDs].sort((a, b) => parseInt(a, 10) - parseInt(b, 10)).reverse();
       this.setState({ openDisputeIDs: sortedDisputes });
 
-      const detailPromises = sortedDisputes.map(async (disputeId) => {
+      const detailPromises = sortedDisputes.map(async disputeId => {
         try {
           const arbitratorDisputeDetails = await this.props.getArbitratorDisputeCallback(disputeId);
-          
+
           if (arbitratorDisputeDetails) {
-            this.setState((prevState) => ({
+            this.setState(prevState => ({
               arbitratorDisputes: {
                 ...prevState.arbitratorDisputes,
                 ["arbitrator" + disputeId]: arbitratorDisputeDetails
               }
             }));
-            
+
             const metaEvidence = await this.props.getMetaEvidenceCallback(
               arbitratorDisputeDetails.arbitrated,
               disputeId
             );
-            
-            this.setState((prevState) => ({
+
+            this.setState(prevState => ({
               arbitratorDisputes: {
                 ...prevState.arbitratorDisputes,
                 [disputeId]: metaEvidence
@@ -91,9 +91,9 @@ class OpenDisputes extends React.Component {
           console.error(`Error fetching details for dispute ${disputeId}:`, error);
         }
       });
-      
+
       await Promise.all(detailPromises);
-      
+
       this.setState({ loading: false });
     } catch (error) {
       if (error.code === "NETWORK_ERROR" && error.event === "changed") {
@@ -120,13 +120,13 @@ class OpenDisputes extends React.Component {
     return strings[periodNumber];
   };
 
-  onFilterSelect = async (filter) => this.setState({ statusFilter: filter });
+  onFilterSelect = async filter => this.setState({ statusFilter: filter });
 
   render() {
     const { openDisputeIDs, statusFilter, loading } = this.state;
     const { subcourts, subcourtDetails, network } = this.props;
 
-    if(!networkMap[network].KLEROS_LIQUID) {
+    if (!networkMap[network].KLEROS_LIQUID) {
       return <main className={styles.openDisputes}><h1>There is no arbitrator on this network, thus no disputes.</h1></main>
     }
 
