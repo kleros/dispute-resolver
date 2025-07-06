@@ -2,7 +2,6 @@
   "name": "dispute-resolver",
   "author": "Ferit <ferit@cryptolab.net> (https://github.com/0xferit)",
   "version": "1.0.0",
-  "private": false,
   "dependencies": {
     "@alch/alchemy-web3": "^1.4.7",
     "@babel/helper-call-delegate": "^7.12.1",
@@ -41,8 +40,8 @@
     "html-to-text": "^7.0.0"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "NODE_OPTIONS=--openssl-legacy-provider react-scripts start",
+    "build": "NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -59,7 +58,7 @@
     ]
   },
   "engines": {
-    "node": ">=0.12"
+    "node": ">=20.0.0"
   },
   "devDependencies": {
     "prettier": "^2.0.2"
@@ -69,7 +68,7 @@
     "printWidth": 180
   },
   "volta": {
-    "node": "16.20.2",
-    "yarn": "1.22.11"
+    "node": "20.18.1",
+    "yarn": "4.9.2"
   }
 }
