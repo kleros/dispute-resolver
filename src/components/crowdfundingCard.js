@@ -50,7 +50,7 @@ class CrowdfundingCard extends React.Component {
         actualRulingCode = variableRulingOption + 1;
         break;
       case "hash":
-        actualRulingCode = variableRulingOption;
+        actualRulingCode = BigInt(variableRulingOption) + 1n;
         break;
     }
 
