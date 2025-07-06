@@ -13,7 +13,7 @@ class Interact extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      arbitratorDisputeID: (this.props.route && this.props.route.match.params.id) || 0,
+      arbitratorDisputeID: this.props.route?.match?.params?.id || 0,
       fileInput: "",
       evidenceFileURI: "",
       metaevidence: "",
@@ -39,15 +39,15 @@ class Interact extends React.Component {
   async componentDidUpdate(previousProperties) {
     if (this.props.network !== previousProperties.network) {
       const dispute = await this.props.getArbitratorDisputeCallback(this.state.arbitratorDisputeID);
-      
-      if (!dispute && !dispute?.arbitrated) {
+
+      if (!dispute) {
         window.location.reload();
       }
-      this.setState({ arbitrated: dispute.arbitrated });
+      this.setState(() => ({ arbitrated: dispute.arbitrated }));
     }
 
     if (this.props.disputeID !== previousProperties.disputeID) {
-      this.setState({ arbitrableDisputeID: this.props.disputeID });
+      this.setState(() => ({ arbitrableDisputeID: this.props.disputeID }));
       this.reload();
     }
   }
@@ -80,21 +80,22 @@ class Interact extends React.Component {
     try {
       // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256 _ruling);
       this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);
-    } catch {
+    } catch (err) {
       // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256[] memory _contributedTo);
+      console.error('First withdraw attempt failed, trying alternative signature:', err);
       this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);
     }
   };
 
   onDisputeIDChange = async (e) => {
     const arbitratorDisputeID = e.target.value;
-    this.setState({
-      metaevidence: undefined,
-      arbitratorDisputeID: arbitratorDisputeID,
+    this.setState(() => ({
+      metaevidence: null,
+      arbitratorDisputeID,
       loading: true,
       arbitrableDisputeID: null,
       arbitratorDispute: null,
-    });
+    }));
     await this.debouncedRetrieveUsingArbitratorID.cancel();
     await this.debouncedRetrieveUsingArbitratorID(arbitratorDisputeID);
   };
@@ -104,6 +105,7 @@ class Interact extends React.Component {
       return await this.props.getCurrentRulingCallback(disputeIDOnArbitratorSide);
     } catch (err) {
       console.error(err);
+      return null;
     }
   };
 
@@ -111,6 +113,8 @@ class Interact extends React.Component {
     try {
       return await this.props.getRulingCallback(arbitrableAddress, disputeIDOnArbitratorSide);
     } catch (err) {
+      console.error('Failed to get ruling:', err);
+      return null;
     }
   };
 
@@ -118,7 +122,7 @@ class Interact extends React.Component {
     try {
       const { arbitrated } = await this.props.getArbitratorDisputeCallback(arbitratorDisputeID);
 
-      if(!arbitrated) return;
+      if (!arbitrated) return;
 
       this.setState({ arbitrated });
       await this.commonFetchRoutine(arbitrated, arbitratorDisputeID);
@@ -126,6 +130,85 @@ class Interact extends React.Component {
       console.error('Failed to retrieve dispute details:', error);
     } finally {
       this.setState({ loading: false });
+    }
+  };
+
+  fetchInitialDisputeData = async (arbitrated, arbitratorDisputeID) => {
+    const [
+      arbitratorDispute,
+      metaevidence,
+      arbitratorDisputeDetails,
+      ruling,
+      currentRuling,
+      disputeEvent,
+      getDisputeResult,
+      evidences,
+      multipliers
+    ] = await Promise.all([
+      this.props.getArbitratorDisputeCallback(arbitratorDisputeID),
+      this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID),
+      this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
+      this.getRuling(arbitrated, arbitratorDisputeID),
+      this.getCurrentRuling(arbitratorDisputeID),
+      this.props.getDisputeEventCallback(arbitrated, arbitratorDisputeID),
+      this.props.getDisputeCallback(arbitratorDisputeID),
+      this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
+      this.props.getMultipliersCallback(arbitrated)
+    ]);
+
+    return {
+      arbitratorDispute,
+      metaevidence,
+      arbitratorDisputeDetails,
+      ruling,
+      currentRuling,
+      disputeEvent,
+      getDisputeResult,
+      evidences,
+      multipliers
+    };
+  };
+
+  handleAppealPeriodLogic = async (arbitratorDispute, arbitratorDisputeID) => {
+    if (parseInt(arbitratorDispute.period, 10) >= 3) {
+      const [appealCost, appealPeriod] = await Promise.all([
+        this.props.getAppealCostCallback(arbitratorDisputeID),
+        this.props.getAppealPeriodCallback(arbitratorDisputeID)
+      ]);
+      this.setState({ appealCost, appealPeriod });
+    }
+  };
+
+  handleExecutionPeriodLogic = async (arbitratorDispute, arbitrableDisputeID, arbitrated, appealDecisions, disputeEvent, contributions) => {
+    if (parseInt(arbitratorDispute.period, 10) === 4) {
+      const contributionPromises = Array.from(
+        { length: appealDecisions.length },
+        (_, i) => this.props.getContributionsCallback(
+          arbitrableDisputeID,
+          i,
+          arbitrated,
+          arbitratorDispute.period,
+          disputeEvent.blockNumber
+        )
+      );
+
+      const contributionsOfPastRounds = await Promise.all(contributionPromises);
+      const aggregatedContributions = this.sumObjectsByKey(...contributionsOfPastRounds, contributions);
+
+      try {
+        const totalWithdrawable = await this.props.getTotalWithdrawableAmountCallback(
+          arbitrableDisputeID,
+          Object.keys(aggregatedContributions),
+          arbitrated
+        );
+        this.setState({
+          totalWithdrawable: totalWithdrawable.amount,
+          aggregatedContributions,
+          selectedContribution: totalWithdrawable.ruling
+        });
+      } catch (err) {
+        console.error("Failed to get withdrawable amount:", err);
+      }
     }
   };
 
@@ -138,45 +221,17 @@ class Interact extends React.Component {
           throw err;
         });
 
-      const [
-        arbitratorDispute,
-        metaevidence,
-        arbitratorDisputeDetails,
-        ruling,
-        currentRuling,
-        disputeEvent,
-        getDisputeResult,
-        evidences,
-        multipliers
-      ] = await Promise.all([
-        this.props.getArbitratorDisputeCallback(arbitratorDisputeID),
-        this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID),
-        this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
-        this.getRuling(arbitrated, arbitratorDisputeID),
-        this.getCurrentRuling(arbitratorDisputeID),
-        this.props.getDisputeEventCallback(arbitrated, arbitratorDisputeID),
-        this.props.getDisputeCallback(arbitratorDisputeID),
-        this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
-        this.props.getMultipliersCallback(arbitrated)
-      ]);
+      const disputeData = await this.fetchInitialDisputeData(arbitrated, arbitratorDisputeID);
 
       this.setState({
         arbitrableDisputeID,
-        arbitratorDispute,
-        arbitratorDisputeDetails,
         arbitratorDisputeID,
-        metaevidence,
-        ruling,
-        currentRuling,
-        disputeEvent,
-        getDisputeResult,
-        evidences,
-        multipliers
+        ...disputeData
       });
 
       const appealDecisions = await this.props.getAppealDecisionCallback(
         arbitratorDisputeID,
-        disputeEvent.blockNumber
+        disputeData.disputeEvent.blockNumber
       );
 
       const [contributions, rulingFunded] = await Promise.all([
@@ -184,7 +239,7 @@ class Interact extends React.Component {
           arbitrableDisputeID,
           appealDecisions.length,
           arbitrated,
-          arbitratorDispute.period,
+          disputeData.arbitratorDispute.period,
           appealDecisions.slice(-1)?.appealedAtBlockNumber
         ),
         this.props.getRulingFundedCallback(
@@ -197,44 +252,8 @@ class Interact extends React.Component {
 
       this.setState({ contributions, appealDecisions, rulingFunded });
 
-      if (parseInt(arbitratorDispute.period) >= 3) {
-        const [appealCost, appealPeriod] = await Promise.all([
-          this.props.getAppealCostCallback(arbitratorDisputeID),
-          this.props.getAppealPeriodCallback(arbitratorDisputeID)
-        ]);
-        this.setState({ appealCost, appealPeriod });
-      }
-
-      if (parseInt(arbitratorDispute.period) === 4) {
-        const contributionPromises = Array.from(
-          { length: appealDecisions.length },
-          (_, i) => this.props.getContributionsCallback(
-            arbitrableDisputeID,
-            i,
-            arbitrated,
-            arbitratorDispute.period,
-            disputeEvent.blockNumber
-          )
-        );
-
-        const contributionsOfPastRounds = await Promise.all(contributionPromises);
-        const aggregatedContributions = this.sumObjectsByKey(...contributionsOfPastRounds, contributions);
-
-        try {
-          const totalWithdrawable = await this.props.getTotalWithdrawableAmountCallback(
-            arbitrableDisputeID,
-            Object.keys(aggregatedContributions),
-            arbitrated
-          );
-          this.setState({
-            totalWithdrawable: totalWithdrawable.amount,
-            aggregatedContributions,
-            selectedContribution: totalWithdrawable.ruling
-          });
-        } catch (err) {
-          console.error("Failed to get withdrawable amount:", err);
-        }
-      }
+      await this.handleAppealPeriodLogic(disputeData.arbitratorDispute, arbitratorDisputeID);
+      await this.handleExecutionPeriodLogic(disputeData.arbitratorDispute, arbitrableDisputeID, arbitrated, appealDecisions, disputeData.disputeEvent, contributions);
 
     } catch (err) {
       console.error("Error in commonFetchRoutine:", err);
@@ -243,8 +262,6 @@ class Interact extends React.Component {
   };
 
   reload = async () => {
-    const { arbitrated, arbitratorDisputeID, arbitrableDisputeID } = this.state;
-
     try {
       const [
         arbitratorDispute,
@@ -252,35 +269,129 @@ class Interact extends React.Component {
         appealDecisions,
         arbitratorDisputeDetails
       ] = await Promise.all([
-        this.props.getArbitratorDisputeCallback(arbitratorDisputeID),
-        this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
-        this.props.getAppealDecisionCallback(arbitratorDisputeID),
-        this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID)
+        this.props.getArbitratorDisputeCallback(this.state.arbitratorDisputeID),
+        this.props.getEvidencesCallback(this.state.arbitrated, this.state.arbitratorDisputeID),
+        this.props.getAppealDecisionCallback(this.state.arbitratorDisputeID),
+        this.props.getArbitratorDisputeDetailsCallback(this.state.arbitratorDisputeID)
       ]);
 
       const contributions = await this.props.getContributionsCallback(
-        arbitrableDisputeID,
+        this.state.arbitrableDisputeID,
         appealDecisions.length,
-        arbitrated,
+        this.state.arbitrated,
         arbitratorDispute.period
       );
 
-      this.setState({
+      this.setState(() => ({
         arbitratorDispute,
         evidences,
         appealDecisions,
         arbitratorDisputeDetails,
         contributions
-      });
+      }));
 
     } catch (err) {
       console.error('Failed to reload dispute data:', err);
     }
   };
 
+  renderNoDisputeFound = () => {
+    const { arbitratorDisputeID } = this.state;
+    const { network } = this.props;
+
+    return (
+      <div style={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '2rem'
+      }}>
+        <h2 style={{ fontSize: "18px" }}>Dispute with ID {arbitratorDisputeID} does not exist on this network.</h2>
+        <button
+          className="btn btn-primary"
+          onClick={() => window.location.href = `/${network}/ongoing`}
+        >
+          View Ongoing Disputes
+        </button>
+      </div>
+    );
+  };
+
+  renderIncompatibleWarning = () => (
+    <div style={{ padding: "1rem 2rem", fontSize: "14px", background: "#fafafa" }}>
+      <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or fund appeal on
+      this interface. You can do these on the arbitrable application, if implemented.
+    </div>
+  );
+
+  renderSearchForm = () => {
+    const { arbitratorDisputeID } = this.state;
+
+    return (
+      <div>
+        <Row>
+          <Col>
+            <Form.Label>
+              Search Disputes on <a href={`https://court.kleros.io/cases/${arbitratorDisputeID}`}>Court</a>
+            </Form.Label>
+            <InputGroup className={styles.search} size="md">
+              <InputGroup.Prepend>
+                <InputGroup.Text>
+                  <Magnifier />
+                </InputGroup.Text>
+              </InputGroup.Prepend>
+              <FormControl
+                className="purple-inverted"
+                placeholder="Dispute ID"
+                aria-label="Input dispute number from Court"
+                aria-describedby="search"
+                onChange={this.onDisputeIDChange}
+                type="number"
+                min="0"
+                value={arbitratorDisputeID}
+                id="arbitratorDisputeID"
+              />
+            </InputGroup>
+          </Col>
+        </Row>
+      </div>
+    );
+  };
+
+  getCurrentRulingValue = () => {
+    const { metaevidence, currentRuling } = this.state;
+    if (!currentRuling) return "0";
+
+    // Always return string for consistent type handling (TypeScript preparation)
+    // Hash types: convert to string to preserve precision for large numbers
+    // Non-hash types: apply parseInt then convert to string to maintain processing logic
+    if (metaevidence?.metaEvidenceJSON?.rulingOptions?.type === "hash") {
+      return String(currentRuling); // Preserve precision by converting to string
+    } else {
+      return String(parseInt(currentRuling, 10)); // Apply parseInt logic then convert to string
+    }
+  };
+
   render() {
+    const { arbitrated, loading, incompatible } = this.state;
+    const { activeAddress } = this.props;
+
+    if (!loading && !arbitrated) {
+      return this.renderNoDisputeFound();
+    }
+
+    return (
+      <>
+        {activeAddress && incompatible && this.renderIncompatibleWarning()}
+        {arbitrated && this.renderMainContent()}
+      </>
+    );
+  }
+
+  renderMainContent = () => {
     const {
-      arbitrated,
       arbitratorDispute,
       arbitratorDisputeDetails,
       appealCost,
@@ -289,7 +400,6 @@ class Interact extends React.Component {
       metaevidence,
       multipliers,
       evidences,
-      currentRuling,
       disputeEvent,
       appealDecisions,
       contributions,
@@ -297,8 +407,8 @@ class Interact extends React.Component {
       incompatible,
       totalWithdrawable,
       loading,
+      arbitrated
     } = this.state;
-
 
     const {
       arbitratorAddress,
@@ -311,117 +421,54 @@ class Interact extends React.Component {
       web3Provider,
     } = this.props;
 
-    if (!loading && !arbitrated) {
-      return (
-      <div style={{ 
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '2rem'
-      }}>
-        <h2 style={{fontSize:"18px"}}>Dispute with ID {arbitratorDisputeID} does not exist on this network.</h2>
-        <button 
-        className="btn btn-primary"
-        onClick={() => window.location.href = `/${network}/ongoing`}
-        >
-        View Ongoing Disputes
-        </button>
-      </div>
-      );
-    }
-
     return (
-      <>
-        {Boolean(activeAddress) && incompatible && (
-          <div style={{ padding: "1rem 2rem", fontSize: "14px", background: "#fafafa" }}>
-            <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or fund appeal on
-            this interface. You can do these on the arbitrable application, if implemented.
-          </div>
-        )}
-        {arbitrated && (
-          <main className={styles.interact}>
-            {arbitratorDisputeID && <Redirect to={`/${network}/cases/${arbitratorDisputeID}`} />}
-            <div>
-              <Row>
-                <Col>
-                  <Form.Label>
-                    Search Disputes on <a href={`https://court.kleros.io/cases/${arbitratorDisputeID}`}>Court</a>
-                  </Form.Label>
-                  <InputGroup className={styles.search} size="md">
-                    <InputGroup.Prepend>
-                      <InputGroup.Text>
-                        <Magnifier />
-                      </InputGroup.Text>
-                    </InputGroup.Prepend>
-                    <FormControl
-                      className="purple-inverted"
-                      placeholder="Dispute ID"
-                      aria-label="Input dispute number from Court"
-                      aria-describedby="search"
-                      onChange={this.onDisputeIDChange}
-                      type="number"
-                      min="0"
-                      value={arbitratorDisputeID}
-                      id="arbitratorDisputeID"
-                    />
-                  </InputGroup>
-                </Col>
-              </Row>
-            </div>
-            <DisputeSummary
-              metaevidenceJSON={metaevidence && metaevidence.metaEvidenceJSON}
-              ipfsGateway="https://cdn.kleros.link"
-              arbitrated={arbitrated}
-              arbitratorAddress={arbitratorAddress}
-              arbitratorDisputeID={arbitratorDisputeID}
-              arbitrableChainID={metaevidence?.metaEvidenceJSON?.arbitrableChainID ?? network}
-              arbitratorChainID={metaevidence?.metaEvidenceJSON?.arbitratorChainID ?? network}
-              chainID={network}
-              web3Provider={web3Provider}
-              loading={loading}
-            />
-            <DisputeDetails
-              activeAddress={activeAddress}
-              metaevidenceJSON={metaevidence && metaevidence.metaEvidenceJSON}
-              evidences={evidences}
-              ipfsGateway="https://cdn.kleros.link"
-              arbitrated={arbitrated}
-              arbitratorAddress={arbitratorAddress}
-              arbitratorDisputeID={arbitratorDisputeID}
-              arbitratorDispute={arbitratorDispute}
-              arbitratorDisputeDetails={arbitratorDisputeDetails}
-              subcourts={subcourts}
-              subcourtDetails={subcourtDetails}
-              incompatible={incompatible}
-              currentRuling={
-                // Preserve hash values as strings to avoid precision loss with large values
-                // For other types, maintain existing parseInt() behavior for compatibility
-                metaevidence?.metaEvidenceJSON?.rulingOptions?.type === "hash" 
-                  ? currentRuling 
-                  : parseInt(currentRuling)
-              }
-              disputeEvent={disputeEvent}
-              publishCallback={publishCallback}
-              submitEvidenceCallback={this.submitEvidence}
-              getAppealPeriodCallback={getAppealPeriodCallback}
-              appealCost={appealCost}
-              appealPeriod={appealPeriod}
-              appealDecisions={appealDecisions}
-              appealCallback={this.appeal}
-              contributions={contributions}
-              rulingFunded={rulingFunded}
-              multipliers={multipliers}
-              withdrawCallback={this.withdraw}
-              totalWithdrawable={totalWithdrawable}
-              exceptionalContractAddresses={this.props.exceptionalContractAddresses}
-            />
-          </main>
-        )}
-      </>
+      <main className={styles.interact}>
+        {arbitratorDisputeID && <Redirect to={`/${network}/cases/${arbitratorDisputeID}`} />}
+        {this.renderSearchForm()}
+        <DisputeSummary
+          metaevidenceJSON={metaevidence?.metaEvidenceJSON}
+          ipfsGateway="https://cdn.kleros.link"
+          arbitrated={arbitrated}
+          arbitratorAddress={arbitratorAddress}
+          arbitratorDisputeID={arbitratorDisputeID}
+          arbitrableChainID={metaevidence?.metaEvidenceJSON?.arbitrableChainID ?? network}
+          arbitratorChainID={metaevidence?.metaEvidenceJSON?.arbitratorChainID ?? network}
+          chainID={network}
+          web3Provider={web3Provider}
+          loading={loading}
+        />
+        <DisputeDetails
+          activeAddress={activeAddress}
+          metaevidenceJSON={metaevidence?.metaEvidenceJSON}
+          evidences={evidences}
+          ipfsGateway="https://cdn.kleros.link"
+          arbitrated={arbitrated}
+          arbitratorAddress={arbitratorAddress}
+          arbitratorDisputeID={arbitratorDisputeID}
+          arbitratorDispute={arbitratorDispute}
+          arbitratorDisputeDetails={arbitratorDisputeDetails}
+          subcourts={subcourts}
+          subcourtDetails={subcourtDetails}
+          incompatible={incompatible}
+          currentRuling={this.getCurrentRulingValue()}
+          disputeEvent={disputeEvent}
+          publishCallback={publishCallback}
+          submitEvidenceCallback={this.submitEvidence}
+          getAppealPeriodCallback={getAppealPeriodCallback}
+          appealCost={appealCost}
+          appealPeriod={appealPeriod}
+          appealDecisions={appealDecisions}
+          appealCallback={this.appeal}
+          contributions={contributions}
+          rulingFunded={rulingFunded}
+          multipliers={multipliers}
+          withdrawCallback={this.withdraw}
+          totalWithdrawable={totalWithdrawable}
+          exceptionalContractAddresses={this.props.exceptionalContractAddresses}
+        />
+      </main>
     );
-  }
+  };
 }
 
 export default Interact;

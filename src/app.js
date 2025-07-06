@@ -269,9 +269,7 @@ class App extends React.Component {
       .filter(event => event.args._period.toString() === "4")
       .map(event => event.args._disputeID.toString());
 
-    const openDisputes = disputes.filter(dispute => !resolvedDisputes.includes(dispute));
-
-    return openDisputes;
+    return disputes.filter(dispute => !resolvedDisputes.includes(dispute));
   };
 
   getArbitrableDisputeID = async (arbitrableAddress, arbitratorDisputeID) => {
@@ -596,16 +594,10 @@ class App extends React.Component {
   getEvidences = (arbitrableAddress, arbitratorDisputeID) => {
     return this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
-      .then(response => {
-        return this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).catch(error => {
-          console.error('Error fetching evidence:', error);
-          return null;
-        });
-      })
-      .catch(error => {
-        console.error('Error fetching dispute for evidence:', error);
-        return null;
-      });
+      .then(response =>
+        this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).catch(() => null)
+      )
+      .catch(() => null);
   };
 
   getAppealDecision = async (arbitratorDisputeID, disputedAtBlockNumber) => {
@@ -787,7 +779,7 @@ class App extends React.Component {
         counter++;
       }
 
-      return { amount: amount, ruling: contributedTo[counter] };
+      return { amount, ruling: contributedTo[counter] };
     } catch {
       // targeting v1
       contract = EthereumInterface.getContract(
@@ -802,7 +794,7 @@ class App extends React.Component {
           contributedTo
         );
 
-        return { amount: amount, ruling: contributedTo };
+        return { amount, ruling: contributedTo };
       } catch (v1Error) {
         console.error('Error fetching withdrawable amount:', v1Error);
         return { amount: 0, ruling: contributedTo };
