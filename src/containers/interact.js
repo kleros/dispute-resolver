@@ -40,7 +40,7 @@ class Interact extends React.Component {
     if (this.props.network !== previousProperties.network) {
       const dispute = await this.props.getArbitratorDisputeCallback(this.state.arbitratorDisputeID);
 
-      if (!dispute?.arbitrated) {
+      if (!dispute) {
         window.location.reload();
       }
       this.setState(() => ({ arbitrated: dispute.arbitrated }));
