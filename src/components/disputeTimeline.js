@@ -25,6 +25,11 @@ class DisputeTimeline extends React.Component {
     return "upcoming";
   };
 
+  getDecorationStatus = (periodType, currentPeriod) => {
+    if (currentPeriod < periodType) return "upcoming";
+    return "past";
+  };
+
   getPeriodTime = (periodType, currentPeriod, lastPeriodChange, timesPerPeriod) => {
     if (currentPeriod === periodType) {
       return <Countdown date={(parseInt(lastPeriodChange, 10) + parseInt(timesPerPeriod[periodType], 10)) * MILLISECONDS_PER_SECOND} renderer={this.renderCountdown} />;
@@ -50,7 +55,7 @@ class DisputeTimeline extends React.Component {
             </div>
           </Col>
 
-          <Col className={`${this.getPeriodStatus(DISPUTE_PERIOD_VOTING, period)} d-none d-md-block ${styles.decoration}`} />
+          <Col className={`${this.getDecorationStatus(DISPUTE_PERIOD_VOTING, period)} d-none d-md-block ${styles.decoration}`} />
 
           <Col className={`mb-2 mb-md-0 ${this.getPeriodStatus(DISPUTE_PERIOD_VOTING, period)} justify-content-md-center ${styles.voting}`} xs={24} md="auto">
             <div>
@@ -61,7 +66,7 @@ class DisputeTimeline extends React.Component {
             </div>
           </Col>
 
-          <Col className={`${this.getPeriodStatus(DISPUTE_PERIOD_APPEAL, period)} d-none d-md-block ${styles.decoration}`} />
+          <Col className={`${this.getDecorationStatus(DISPUTE_PERIOD_APPEAL, period)} d-none d-md-block ${styles.decoration}`} />
 
           <Col className={`${this.getPeriodStatus(DISPUTE_PERIOD_APPEAL, period)} justify-content-md-end ${styles.appeal}`} xs={24} md="auto">
             <div>
