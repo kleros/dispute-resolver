@@ -80,21 +80,22 @@ class Interact extends React.Component {
     try {
       // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256 _ruling);
       this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);
-    } catch {
+    } catch (err) {
       // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256[] memory _contributedTo);
+      console.error('First withdraw attempt failed, trying alternative signature:', err);
       this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);
     }
   };
 
   onDisputeIDChange = async (e) => {
     const arbitratorDisputeID = e.target.value;
-    this.setState({
+    this.setState(() => ({
       metaevidence: null,
       arbitratorDisputeID,
       loading: true,
       arbitrableDisputeID: null,
       arbitratorDispute: null,
-    });
+    }));
     await this.debouncedRetrieveUsingArbitratorID.cancel();
     await this.debouncedRetrieveUsingArbitratorID(arbitratorDisputeID);
   };
@@ -112,6 +113,7 @@ class Interact extends React.Component {
     try {
       return await this.props.getRulingCallback(arbitrableAddress, disputeIDOnArbitratorSide);
     } catch (err) {
+      console.error('Failed to get ruling:', err);
       return null;
     }
   };
@@ -131,6 +133,85 @@ class Interact extends React.Component {
     }
   };
 
+  fetchInitialDisputeData = async (arbitrated, arbitratorDisputeID) => {
+    const [
+      arbitratorDispute,
+      metaevidence,
+      arbitratorDisputeDetails,
+      ruling,
+      currentRuling,
+      disputeEvent,
+      getDisputeResult,
+      evidences,
+      multipliers
+    ] = await Promise.all([
+      this.props.getArbitratorDisputeCallback(arbitratorDisputeID),
+      this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID),
+      this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
+      this.getRuling(arbitrated, arbitratorDisputeID),
+      this.getCurrentRuling(arbitratorDisputeID),
+      this.props.getDisputeEventCallback(arbitrated, arbitratorDisputeID),
+      this.props.getDisputeCallback(arbitratorDisputeID),
+      this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
+      this.props.getMultipliersCallback(arbitrated)
+    ]);
+
+    return {
+      arbitratorDispute,
+      metaevidence,
+      arbitratorDisputeDetails,
+      ruling,
+      currentRuling,
+      disputeEvent,
+      getDisputeResult,
+      evidences,
+      multipliers
+    };
+  };
+
+  handleAppealPeriodLogic = async (arbitratorDispute, arbitratorDisputeID) => {
+    if (parseInt(arbitratorDispute.period, 10) >= 3) {
+      const [appealCost, appealPeriod] = await Promise.all([
+        this.props.getAppealCostCallback(arbitratorDisputeID),
+        this.props.getAppealPeriodCallback(arbitratorDisputeID)
+      ]);
+      this.setState({ appealCost, appealPeriod });
+    }
+  };
+
+  handleExecutionPeriodLogic = async (arbitratorDispute, arbitrableDisputeID, arbitrated, appealDecisions, disputeEvent, contributions) => {
+    if (parseInt(arbitratorDispute.period, 10) === 4) {
+      const contributionPromises = Array.from(
+        { length: appealDecisions.length },
+        (_, i) => this.props.getContributionsCallback(
+          arbitrableDisputeID,
+          i,
+          arbitrated,
+          arbitratorDispute.period,
+          disputeEvent.blockNumber
+        )
+      );
+
+      const contributionsOfPastRounds = await Promise.all(contributionPromises);
+      const aggregatedContributions = this.sumObjectsByKey(...contributionsOfPastRounds, contributions);
+
+      try {
+        const totalWithdrawable = await this.props.getTotalWithdrawableAmountCallback(
+          arbitrableDisputeID,
+          Object.keys(aggregatedContributions),
+          arbitrated
+        );
+        this.setState({
+          totalWithdrawable: totalWithdrawable.amount,
+          aggregatedContributions,
+          selectedContribution: totalWithdrawable.ruling
+        });
+      } catch (err) {
+        console.error("Failed to get withdrawable amount:", err);
+      }
+    }
+  };
+
   commonFetchRoutine = async (arbitrated, arbitratorDisputeID) => {
     try {
       const arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(arbitrated, arbitratorDisputeID)
@@ -140,45 +221,17 @@ class Interact extends React.Component {
           throw err;
         });
 
-      const [
-        arbitratorDispute,
-        metaevidence,
-        arbitratorDisputeDetails,
-        ruling,
-        currentRuling,
-        disputeEvent,
-        getDisputeResult,
-        evidences,
-        multipliers
-      ] = await Promise.all([
-        this.props.getArbitratorDisputeCallback(arbitratorDisputeID),
-        this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID),
-        this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
-        this.getRuling(arbitrated, arbitratorDisputeID),
-        this.getCurrentRuling(arbitratorDisputeID),
-        this.props.getDisputeEventCallback(arbitrated, arbitratorDisputeID),
-        this.props.getDisputeCallback(arbitratorDisputeID),
-        this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
-        this.props.getMultipliersCallback(arbitrated)
-      ]);
+      const disputeData = await this.fetchInitialDisputeData(arbitrated, arbitratorDisputeID);
 
       this.setState({
         arbitrableDisputeID,
-        arbitratorDispute,
-        arbitratorDisputeDetails,
         arbitratorDisputeID,
-        metaevidence,
-        ruling,
-        currentRuling,
-        disputeEvent,
-        getDisputeResult,
-        evidences,
-        multipliers
+        ...disputeData
       });
 
       const appealDecisions = await this.props.getAppealDecisionCallback(
         arbitratorDisputeID,
-        disputeEvent.blockNumber
+        disputeData.disputeEvent.blockNumber
       );
 
       const [contributions, rulingFunded] = await Promise.all([
@@ -186,7 +239,7 @@ class Interact extends React.Component {
           arbitrableDisputeID,
           appealDecisions.length,
           arbitrated,
-          arbitratorDispute.period,
+          disputeData.arbitratorDispute.period,
           appealDecisions.slice(-1)?.appealedAtBlockNumber
         ),
         this.props.getRulingFundedCallback(
@@ -199,44 +252,8 @@ class Interact extends React.Component {
 
       this.setState({ contributions, appealDecisions, rulingFunded });
 
-      if (parseInt(arbitratorDispute.period, 10) >= 3) {
-        const [appealCost, appealPeriod] = await Promise.all([
-          this.props.getAppealCostCallback(arbitratorDisputeID),
-          this.props.getAppealPeriodCallback(arbitratorDisputeID)
-        ]);
-        this.setState({ appealCost, appealPeriod });
-      }
-
-      if (parseInt(arbitratorDispute.period, 10) === 4) {
-        const contributionPromises = Array.from(
-          { length: appealDecisions.length },
-          (_, i) => this.props.getContributionsCallback(
-            arbitrableDisputeID,
-            i,
-            arbitrated,
-            arbitratorDispute.period,
-            disputeEvent.blockNumber
-          )
-        );
-
-        const contributionsOfPastRounds = await Promise.all(contributionPromises);
-        const aggregatedContributions = this.sumObjectsByKey(...contributionsOfPastRounds, contributions);
-
-        try {
-          const totalWithdrawable = await this.props.getTotalWithdrawableAmountCallback(
-            arbitrableDisputeID,
-            Object.keys(aggregatedContributions),
-            arbitrated
-          );
-          this.setState({
-            totalWithdrawable: totalWithdrawable.amount,
-            aggregatedContributions,
-            selectedContribution: totalWithdrawable.ruling
-          });
-        } catch (err) {
-          console.error("Failed to get withdrawable amount:", err);
-        }
-      }
+      await this.handleAppealPeriodLogic(disputeData.arbitratorDispute, arbitratorDisputeID);
+      await this.handleExecutionPeriodLogic(disputeData.arbitratorDispute, arbitrableDisputeID, arbitrated, appealDecisions, disputeData.disputeEvent, contributions);
 
     } catch (err) {
       console.error("Error in commonFetchRoutine:", err);
@@ -245,8 +262,6 @@ class Interact extends React.Component {
   };
 
   reload = async () => {
-    const { arbitrated, arbitratorDisputeID, arbitrableDisputeID } = this.state;
-
     try {
       const [
         arbitratorDispute,
@@ -254,26 +269,26 @@ class Interact extends React.Component {
         appealDecisions,
         arbitratorDisputeDetails
       ] = await Promise.all([
-        this.props.getArbitratorDisputeCallback(arbitratorDisputeID),
-        this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
-        this.props.getAppealDecisionCallback(arbitratorDisputeID),
-        this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID)
+        this.props.getArbitratorDisputeCallback(this.state.arbitratorDisputeID),
+        this.props.getEvidencesCallback(this.state.arbitrated, this.state.arbitratorDisputeID),
+        this.props.getAppealDecisionCallback(this.state.arbitratorDisputeID),
+        this.props.getArbitratorDisputeDetailsCallback(this.state.arbitratorDisputeID)
       ]);
 
       const contributions = await this.props.getContributionsCallback(
-        arbitrableDisputeID,
+        this.state.arbitrableDisputeID,
         appealDecisions.length,
-        arbitrated,
+        this.state.arbitrated,
         arbitratorDispute.period
       );
 
-      this.setState({
+      this.setState(() => ({
         arbitratorDispute,
         evidences,
         appealDecisions,
         arbitratorDisputeDetails,
         contributions
-      });
+      }));
 
     } catch (err) {
       console.error('Failed to reload dispute data:', err);
@@ -304,7 +319,7 @@ class Interact extends React.Component {
     );
   };
 
-  renderWarning = () => (
+  renderIncompatibleWarning = () => (
     <div style={{ padding: "1rem 2rem", fontSize: "14px", background: "#fafafa" }}>
       <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or fund appeal on
       this interface. You can do these on the arbitrable application, if implemented.
@@ -363,7 +378,7 @@ class Interact extends React.Component {
 
     return (
       <>
-        {Boolean(activeAddress) && incompatible && this.renderWarning()}
+        {Boolean(activeAddress) && incompatible && this.renderIncompatibleWarning()}
         {arbitrated && this.renderMainContent()}
       </>
     );
