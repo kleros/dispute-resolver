@@ -32,6 +32,7 @@ class CrowdfundingCard extends React.Component {
     const { variableRulingOption, contribution } = this.state;
     let actualRulingCode;
 
+    // First, validate and process the input
     try {
       switch (variable) {
         case undefined: // Not variable
@@ -53,11 +54,18 @@ class CrowdfundingCard extends React.Component {
           actualRulingCode = BigInt(variableRulingOption) + 1n;
           break;
       }
-
-      await appealCallback(actualRulingCode, contribution.toString());
     } catch {
-      // Set error state to show user feedback
+      // Set error state for input validation errors
       this.setState({ error: "Invalid input format. Please enter a valid number or hex string." });
+      return;
+    }
+
+    // Then, execute the callback
+    try {
+      await appealCallback(actualRulingCode, contribution.toString());
+    } catch (error) {
+      // Set error state for callback execution errors
+      this.setState({ error: "Transaction failed. Please check your network connection and try again." });
     }
   };
 
