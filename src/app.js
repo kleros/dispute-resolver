@@ -1,14 +1,13 @@
 import React from "react";
 import "./app.scss";
 import Create from "./containers/create";
-import _404 from "./containers/404";
+import NotFound from "./containers/404";
 import Interact from "./containers/interact";
 import OpenDisputes from "./containers/open-disputes";
 import { BrowserRouter, Route, Switch, Redirect } from "react-router-dom";
 import Header from "./components/header";
 import Footer from "./components/footer";
 import { ethers } from "ethers";
-import { Col, Container, Row } from "react-bootstrap";
 
 import * as EthereumInterface from "./ethereum/interface";
 import networkMap, { getReadOnlyRpcUrl } from "./ethereum/network-contract-mapping";
@@ -45,7 +44,7 @@ const safeJSONStringify = (obj) => {
   });
 };
 
-const safeLocalStorageGet = (key) => {
+const safeLocalStorageGet = key => {
   try {
     const item = localStorage.getItem(key);
     return item ? JSON.parse(item) : null;
@@ -88,7 +87,7 @@ class App extends React.Component {
         this.setState({ activeAddress: accounts[0] });
       });
 
-      window.ethereum.on("chainChanged", async (chainIdHex) => {
+      window.ethereum.on("chainChanged", async chainIdHex => {
         const networkId = parseInt(chainIdHex, 16).toString(10);
         await this.handleNetworkChange(networkId);
       });
@@ -109,36 +108,36 @@ class App extends React.Component {
   }
 
   handleNetworkChange = async (newChainId) => {
-    this.setState({ 
+    this.setState({
       subcourts: [],
       subcourtDetails: [],
       subcourtsLoading: true,
       lastDisputeID: ""
     });
 
-    if(this.state.network === newChainId) return;
+    if (this.state.network === newChainId) return;
 
-          this.setState({ network: newChainId}, async () => {
+    this.setState({ network: newChainId }, async () => {
       await this.initiateWeb3Provider();
-       if (networkMap[newChainId]?.KLEROS_LIQUID) {
+      if (networkMap[newChainId]?.KLEROS_LIQUID) {
         this.loadSubcourtData();
       }
-      
+
       this.syncUrlWithChain(newChainId);
     });
   };
 
-   syncUrlWithChain = (chainId) => {
+  syncUrlWithChain = (chainId) => {
     const currentPath = window.location.pathname;
     const pathParts = currentPath.split('/');
-    
+
     // Check if URL already has a chain ID
     if (pathParts[1] && /^\d+$/.test(pathParts[1])) {
       pathParts[1] = chainId;
     } else {
       pathParts.splice(1, 0, chainId);
     }
-    
+
     const newPath = pathParts.join('/');
     window.history.replaceState(null, '', newPath);
   };
@@ -168,12 +167,11 @@ class App extends React.Component {
         archon: new Archon(provider, IPFS_GATEWAY)
       });
     }
-    //this.syncUrlWithChain(this.state.network);
   };
 
   switchToChain = async (chainId) => {
     if (!window.ethereum) return;
-    
+
     try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
@@ -236,7 +234,7 @@ class App extends React.Component {
               .then((response) => response.json())
               .catch((error) => console.error(error));
           } else {
-            return fetch(IPFS_GATEWAY + subcourtURI).then((response) => response.json());
+            return fetch(IPFS_GATEWAY + subcourtURI).then(response => response.json());
           }
         }
       }))), subcourtsLoading: false, subcourts: await Promise.all(subcourts),
@@ -621,13 +619,13 @@ class App extends React.Component {
         "latest"
       );
 
-          const blockPromises = appealDecisionEvents.map((event) =>
-      this.state.provider.getBlock(event.blockNumber)
-    );
+      const blockPromises = appealDecisionEvents.map((event) =>
+        this.state.provider.getBlock(event.blockNumber)
+      );
 
-    const blocks = await Promise.all(blockPromises);
+      const blocks = await Promise.all(blockPromises);
 
-    return blocks.map((block) => ({
+      return blocks.map((block) => ({
         appealedAt: block.timestamp,
         appealedAtBlockNumber: block.number
       }));
@@ -656,7 +654,7 @@ class App extends React.Component {
     try {
       const contributionFilter = contract.filters.Contribution(
         arbitrableDisputeID, // _localDisputeID  
-        _round, 
+        _round,
         null                //  _contributor (null means any contributor)
       );
 
@@ -929,6 +927,7 @@ class App extends React.Component {
       return await tx.wait()
     } catch (error) {
       console.error("Error executing Appeal transaction: ", error)
+      return null
     }
   }
 
@@ -964,124 +963,128 @@ class App extends React.Component {
     }
   }
 
+  renderUnsupportedNetwork = route => (
+    <>
+      <Header viewOnly={!this.state.activeAddress} route={route} />
+      <UnsupportedNetwork network={this.state.network} networkMap={networkMap} />
+      <Footer networkMap={networkMap} network={this.state.network} />
+    </>
+  );
+
+  renderRedirect = () => <Redirect to={`${this.state.network}/ongoing`} />;
+
+  renderOpenDisputes = route => (
+    <>
+      <Header viewOnly={!this.state.activeAddress} route={route} />
+      <OpenDisputes
+        activeAddress={this.state.activeAddress}
+        route={route}
+        getMetaEvidenceCallback={this.getMetaEvidenceParallelizeable}
+        getArbitratorDisputeCallback={this.getArbitratorDispute}
+        subcourtDetails={this.state.subcourtDetails}
+        subcourts={this.state.subcourts}
+        getCurrentRulingCallback={this.getCurrentRuling}
+        getOpenDisputesOnCourtCallback={this.getOpenDisputesOnCourt}
+        network={route.match.params.chainId}
+      />
+      <Footer networkMap={networkMap} network={route.match.params.chainId} />
+    </>
+  );
+
+  renderCreate = route => (
+    <>
+      <Header viewOnly={!this.state.activeAddress} route={route} />
+      <Create
+        activeAddress={this.state.activeAddress}
+        route={route}
+        createDisputeCallback={this.createDispute}
+        getArbitrationCostCallback={this.getArbitrationCostWithCourtAndNoOfJurors}
+        publishCallback={this.onPublish}
+        web3Provider={this.state.provider}
+        subcourtDetails={this.state.subcourtDetails}
+        subcourtsLoading={this.state.subcourtsLoading}
+        network={this.state.network}
+      />
+      <Footer networkMap={networkMap} network={this.state.network} />
+    </>
+  );
+
+  renderInteract = route => (
+    <>
+      <Header viewOnly={!this.state.activeAddress} route={route} />
+      <Interact
+        arbitratorAddress={networkMap[this.state.network].KLEROS_LIQUID}
+        network={this.state.network}
+        route={route}
+        getArbitrableDisputeIDCallback={this.getArbitrableDisputeID}
+        getAppealCostCallback={this.getAppealCost}
+        getAppealCostOnArbitrableCallback={this.getAppealCostOnArbitrable}
+        appealCallback={this.appeal}
+        getAppealPeriodCallback={this.getAppealPeriod}
+        getCurrentRulingCallback={this.getCurrentRuling}
+        disputeID={this.state.lastDisputeID}
+        getContractInstanceCallback={this.getContractInstance}
+        getArbitratorDisputeCallback={this.getArbitratorDispute}
+        getArbitratorDisputeDetailsCallback={this.getArbitratorDisputeDetails}
+        getArbitratorDisputeStructCallback={this.getArbitratorDispute}
+        getArbitrableDisputeStructCallback={this.getArbitrableDispute}
+        getCrowdfundingStatusCallback={this.getCrowdfundingStatus}
+        getRulingCallback={this.getRuling}
+        getEvidencesCallback={this.getEvidences}
+        getMetaEvidenceCallback={this.getMetaEvidence}
+        publishCallback={this.onPublish}
+        submitEvidenceCallback={this.submitEvidence}
+        getDisputeCallback={this.getDispute}
+        getDisputeEventCallback={this.getDisputeEvent}
+        getMultipliersCallback={this.getMultipliers}
+        withdrawCallback={this.withdrawFeesAndRewardsForAllRounds}
+        getTotalWithdrawableAmountCallback={this.getTotalWithdrawableAmount}
+        activeAddress={this.state.activeAddress}
+        passPeriodCallback={this.passPeriod}
+        drawJurorsCallback={this.drawJurors}
+        passPhaseCallback={this.passPhase}
+        getRoundInfoCallback={this.getRoundInfo}
+        getAppealDecisionCallback={this.getAppealDecision}
+        getContributionsCallback={this.getContributions}
+        getRulingFundedCallback={this.getRulingFunded}
+        subcourts={this.state.subcourts}
+        subcourtDetails={this.state.subcourtDetails}
+        web3Provider={this.state.provider}
+        exceptionalContractAddresses={EXCEPTIONAL_CONTRACT_ADDRESSES}
+      />
+      <Footer networkMap={networkMap} network={this.state.network} />
+    </>
+  );
+
+  renderNotFound = route => (
+    <>
+      <Header viewOnly={!this.state.activeAddress} route={route} />
+      <NotFound />
+      <Footer networkMap={networkMap} network={this.state.network} />
+    </>
+  );
+
   render() {
-    const { activeAddress, network, lastDisputeID, subcourts, subcourtDetails, subcourtsLoading } = this.state;
-    if (network) {
-      if (!networkMap[network]) {
-        return (<BrowserRouter>
-          <Route render={route => (<>
-            <Header viewOnly={!activeAddress} route={route} />
-            <UnsupportedNetwork network={network} networkMap={networkMap} />
-            <Footer networkMap={networkMap} network={network} />
-          </>)}>
-          </Route>
-        </BrowserRouter>
-
-        )
+    if (this.state.network) {
+      if (!networkMap[this.state.network]) {
+        return (
+          <BrowserRouter>
+            <Route render={this.renderUnsupportedNetwork} />
+          </BrowserRouter>
+        );
       }
-      return (<BrowserRouter>
-        <Switch>
-          <Route exact path={[ "/", "/:chainId", "/:chainId/disputes"]} render={() => <Redirect to={`${network}/ongoing`} />} />
-          <Route
-            exact
-            path="/:chainId/ongoing"
-            render={(route) => (<>
-              <Header viewOnly={!activeAddress} route={route} />
-              <OpenDisputes
-                activeAddress={activeAddress}
-                route={route}
-                getMetaEvidenceCallback={this.getMetaEvidenceParallelizeable}
-                getArbitratorDisputeCallback={this.getArbitratorDispute}
-                subcourtDetails={subcourtDetails}
-                subcourts={subcourts}
-                getCurrentRulingCallback={this.getCurrentRuling}
-                getOpenDisputesOnCourtCallback={this.getOpenDisputesOnCourt}
-                network={route.match.params.chainId}
-              />
-              <Footer networkMap={networkMap} network={route.match.params.chainId} />
-            </>)}
-          />
-
-          <Route
-            exact
-            path="/:chainId/create"
-            render={(route) => (<>
-              <Header viewOnly={!activeAddress} route={route} />
-              <Create
-                activeAddress={activeAddress}
-                route={route}
-                createDisputeCallback={this.createDispute}
-                getArbitrationCostCallback={this.getArbitrationCostWithCourtAndNoOfJurors}
-                publishCallback={this.onPublish}
-                web3Provider={this.state.provider}
-                subcourtDetails={subcourtDetails}
-                subcourtsLoading={subcourtsLoading}
-                network={network}
-              />
-              <Footer networkMap={networkMap} network={network} />
-            </>)}
-          />
-
-          <Redirect from="/:chainId/interact/:id" to="/:chainId/cases/:id" />
-          <Route
-            exact
-            path="/:chainId/cases/:id?"
-            render={(route) => (<>
-              <Header viewOnly={!activeAddress} route={route} />
-
-              <Interact
-                arbitratorAddress={networkMap[network].KLEROS_LIQUID}
-                network={network}
-                route={route}
-                getArbitrableDisputeIDCallback={this.getArbitrableDisputeID}
-                getAppealCostCallback={this.getAppealCost}
-                getAppealCostOnArbitrableCallback={this.getAppealCostOnArbitrable}
-                appealCallback={this.appeal}
-                getAppealPeriodCallback={this.getAppealPeriod}
-                getCurrentRulingCallback={this.getCurrentRuling}
-                disputeID={lastDisputeID}
-                getContractInstanceCallback={this.getContractInstance}
-                getArbitratorDisputeCallback={this.getArbitratorDispute}
-                getArbitratorDisputeDetailsCallback={this.getArbitratorDisputeDetails}
-                getArbitratorDisputeStructCallback={this.getArbitratorDispute}
-                getArbitrableDisputeStructCallback={this.getArbitrableDispute}
-                getCrowdfundingStatusCallback={this.getCrowdfundingStatus}
-                getRulingCallback={this.getRuling}
-                getEvidencesCallback={this.getEvidences}
-                getMetaEvidenceCallback={this.getMetaEvidence}
-                publishCallback={this.onPublish}
-                submitEvidenceCallback={this.submitEvidence}
-                getDisputeCallback={this.getDispute}
-                getDisputeEventCallback={this.getDisputeEvent}
-                getMultipliersCallback={this.getMultipliers}
-                withdrawCallback={this.withdrawFeesAndRewardsForAllRounds}
-                getTotalWithdrawableAmountCallback={this.getTotalWithdrawableAmount}
-                activeAddress={activeAddress}
-                passPeriodCallback={this.passPeriod}
-                drawJurorsCallback={this.drawJurors}
-                passPhaseCallback={this.passPhase}
-                getRoundInfoCallback={this.getRoundInfo}
-                getAppealDecisionCallback={this.getAppealDecision}
-                getContributionsCallback={this.getContributions}
-                getRulingFundedCallback={this.getRulingFunded}
-                subcourts={subcourts}
-                subcourtDetails={subcourtDetails}
-                web3Provider={this.state.provider}
-                exceptionalContractAddresses={EXCEPTIONAL_CONTRACT_ADDRESSES}
-              />
-              <Footer networkMap={networkMap} network={network} />
-            </>)}
-          />
-          <Route
-            render={(route) => (<>
-              <Header viewOnly={!activeAddress} route={route} />
-
-              <_404 />
-              <Footer networkMap={networkMap} network={network} />
-            </>)}
-          />
-        </Switch>
-      </BrowserRouter>)
+      return (
+        <BrowserRouter>
+          <Switch>
+            <Route exact path={["/", "/:chainId", "/:chainId/disputes"]} render={this.renderRedirect} />
+            <Route exact path="/:chainId/ongoing" render={this.renderOpenDisputes} />
+            <Route exact path="/:chainId/create" render={this.renderCreate} />
+            <Redirect from="/:chainId/interact/:id" to="/:chainId/cases/:id" />
+            <Route exact path="/:chainId/cases/:id?" render={this.renderInteract} />
+            <Route render={this.renderNotFound} />
+          </Switch>
+        </BrowserRouter>
+      );
     } else return <>Please enable a web3 provider.</>;
   }
 }
