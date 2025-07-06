@@ -55,6 +55,10 @@ class DisputeDetails extends React.Component {
     // Component initialization complete
   }
 
+  handleAccordionSelect = e => {
+    this.setState({ activeKey: e });
+  };
+
   calculateTotalCost = rulingOption => {
     // Unslashed contract violates IDisputeResolver interface by not letting option 0: refuse to rule to be funded.
     // Subsequently, in case of a ruling 0, contract considers remaining ruling options as winners, instead of losers.
@@ -250,7 +254,7 @@ class DisputeDetails extends React.Component {
   renderDecisionAlerts = (disputePeriod, currentRuling, metaevidenceJSON, rulingFunded, incompatible) => {
     const decisionInfoBoxContent = `This decision can be appealed within appeal period. ${incompatible ? "Go to arbitrable application to appeal this ruling." : ""}`;
 
-    const formatRulingForDisplay = (ruling) => {
+    const formatRulingForDisplay = ruling => {
       if (ruling == 0) return "invalid / refused to arbitrate / tied";
 
       if (metaevidenceJSON.rulingOptions?.type === "hash") {
@@ -515,7 +519,7 @@ class DisputeDetails extends React.Component {
             .join(" ");
 
         cards.push(
-          <Col key={`combo-${index}`} className="pb-4" xl={8} lg={12} xs={24}>
+          <Col key={index + 1} className="pb-4" xl={8} lg={12} xs={24}>
             <CrowdfundingCard
               title={title}
               winner={currentRuling == index + 1}
@@ -673,9 +677,7 @@ class DisputeDetails extends React.Component {
 
         <Accordion
           className={`mt-4 ${styles.accordion}`}
-          onSelect={e => {
-            this.setState({ activeKey: e });
-          }}
+          onSelect={this.handleAccordionSelect}
         >
           {this.renderAppealCard(arbitratorDispute, disputePeriod, contributions, multipliers, appealCost, appealPeriod, arbitrated, totalWithdrawable, metaevidenceJSON, currentRuling, appealCallback, exceptionalContractAddresses, activeKey)}
 
