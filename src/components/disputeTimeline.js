@@ -37,6 +37,10 @@ class DisputeTimeline extends React.Component {
     if (currentPeriod > periodType) {
       return <span>Concluded</span>;
     }
+    // Evidence period shows nothing when period < DISPUTE_PERIOD_EVIDENCE
+    if (periodType === DISPUTE_PERIOD_EVIDENCE) {
+      return null;
+    }
     return <span>{this.convertToHumanReadiableTime(timesPerPeriod[periodType])}</span>;
   };
 
