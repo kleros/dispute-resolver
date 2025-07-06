@@ -363,9 +363,15 @@ class Interact extends React.Component {
   getCurrentRulingValue = () => {
     const { metaevidence, currentRuling } = this.state;
     if (!currentRuling) return "";
-    return metaevidence?.metaEvidenceJSON?.rulingOptions?.type === "hash"
-      ? String(currentRuling)
-      : String(parseInt(currentRuling, 10));
+
+    // Always return string for consistent type handling
+    // Hash types: convert to string to preserve precision for large numbers
+    // Non-hash types: apply parseInt then convert to string to maintain processing logic
+    if (metaevidence?.metaEvidenceJSON?.rulingOptions?.type === "hash") {
+      return String(currentRuling); // Preserve precision by converting to string
+    } else {
+      return String(parseInt(currentRuling, 10)); // Apply parseInt logic then convert to string
+    }
   };
 
   render() {
