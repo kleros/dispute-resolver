@@ -41,9 +41,11 @@ class CrowdfundingCard extends React.Component {
         case "uint":
           actualRulingCode = ethers.getBigInt(this.addDecimalsToUintRuling(variableRulingOption, metaevidenceJSON)) + 1n;
           break;
-        case "int":
-          actualRulingCode = parseInt(variableRulingOption, 10) >= 0 ? parseInt(variableRulingOption, 10) + 1 : variableRulingOption;
+        case "int": {
+          const parsedValue = parseInt(variableRulingOption, 10);
+          actualRulingCode = parsedValue >= 0 ? parsedValue + 1 : parsedValue;
           break;
+        }
         case "string":
           actualRulingCode = ethers.hexlify(ethers.toUtf8Bytes(variableRulingOption));
           break;
