@@ -2,7 +2,7 @@
   "name": "dispute-resolver",
   "author": "Ferit <ferit@cryptolab.net> (https://github.com/0xferit)",
   "version": "1.0.0",
-  "private": false,
+  "packageManager": "yarn@4.9.2",
   "dependencies": {
     "@alch/alchemy-web3": "^1.4.7",
     "@babel/helper-call-delegate": "^7.12.1",
@@ -19,10 +19,13 @@
     "is-image": "^3.0.0",
     "is-text-path": "^2.0.0",
     "is-video": "^1.0.1",
+    "jquery": "^3.7.1",
     "js-levenshtein": "^1.1.6",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
     "moment": "^2.29.4",
+    "popper.js": "^1.16.1",
+    "prop-types": "^15.8.1",
     "react": "17.0.0",
     "react-blockies": "^1.4.1",
     "react-bootstrap": "^1.4.0",
@@ -30,19 +33,22 @@
     "react-datetime-picker": "^3.4.0",
     "react-dom": "17.0.0",
     "react-dropzone": "^10.1.9",
+    "react-is": "^17.0.0",
     "react-markdown": "^4.2.2",
     "react-router-bootstrap": "^0.25.0",
     "react-router-dom": "^5.0.1",
     "react-scripts": "4.0.0",
     "sass": "^1.77.5",
-    "styled-components": "^5.2.1"
+    "styled-components": "^5.2.1",
+    "typescript": "^5.5.4",
+    "web3": "^1.10.4"
   },
   "resolutions": {
     "html-to-text": "^7.0.0"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "NODE_OPTIONS=--openssl-legacy-provider react-scripts start",
+    "build": "NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -59,7 +65,7 @@
     ]
   },
   "engines": {
-    "node": ">=0.12"
+    "node": ">=20.0.0"
   },
   "devDependencies": {
     "prettier": "^2.0.2"
@@ -69,7 +75,7 @@
     "printWidth": 180
   },
   "volta": {
-    "node": "16.20.2",
-    "yarn": "1.22.11"
+    "node": "20.18.1",
+    "yarn": "4.9.2"
   }
 }
