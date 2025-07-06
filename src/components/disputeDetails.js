@@ -250,11 +250,22 @@ class DisputeDetails extends React.Component {
   renderDecisionAlerts = (disputePeriod, currentRuling, metaevidenceJSON, rulingFunded, incompatible) => {
     const decisionInfoBoxContent = `This decision can be appealed within appeal period. ${incompatible ? "Go to arbitrable application to appeal this ruling." : ""}`;
 
+    const formatRulingForDisplay = (ruling) => {
+      if (ruling == 0) return "invalid / refused to arbitrate / tied";
+
+      if (metaevidenceJSON.rulingOptions?.type === "hash") {
+        // For hash type, display the raw hex value without Reality.eth conversion
+        return `0x${BigInt(ruling).toString(16).padStart(64, '0')}`;
+      } else {
+        return this.convertToRealitioFormat(ruling, metaevidenceJSON);
+      }
+    };
+
     if (disputePeriod == DISPUTE_PERIOD_APPEAL) {
       return (
         <AlertMessage
           type="info"
-          title={`Jury decision: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`}
+          title={`Jury decision: ${formatRulingForDisplay(currentRuling)}`}
           content={decisionInfoBoxContent}
         />
       );
@@ -264,7 +275,7 @@ class DisputeDetails extends React.Component {
       return (
         <AlertMessage
           type="info"
-          title={`Winner: ${currentRuling == 0 ? "invalid / refused to arbitrate / tied" : this.convertToRealitioFormat(this.getWinner(rulingFunded, currentRuling), metaevidenceJSON)}`}
+          title={`Winner: ${formatRulingForDisplay(this.getWinner(rulingFunded, currentRuling))}`}
           content={`${rulingFunded && rulingFunded.length == 1 ? "Won by default" : "Won by jury decision"}`}
         />
       );
@@ -462,7 +473,7 @@ class DisputeDetails extends React.Component {
               suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(hexToNumberString(rulingCode)))}
               roi={this.calculateReturnOfInvestmentRatio(hexToNumberString(rulingCode)).toFixed(2)}
               appealCallback={appealCallback}
-              rulingOptionCode={rulingCode}
+              rulingOptionCode={hexToNumberString(rulingCode)}
             />
           </Col>
         );
@@ -532,13 +543,23 @@ class DisputeDetails extends React.Component {
 
     const cards = [];
 
+    // Note: For hash type questions, we don't apply Reality.eth conversion (subtracting 1)
+    // when displaying contribution keys because they already represent the actual ruling values
+    // that were appealed for. This fixes the off-by-one display issue.
+
     // Other contributions (not current ruling)
     Object.keys(contributions)
       .filter(key => key !== this.props.currentRuling)
       .forEach(key => {
-        const title = questionType === "string"
-          ? ethers.toUtf8String(ethers.hexlify(key))
-          : this.convertToRealitioFormat(key, metaevidenceJSON);
+        let title;
+        if (questionType === "string") {
+          title = ethers.toUtf8String(ethers.hexlify(key));
+        } else if (questionType === "hash") {
+          // For hash type, display the raw hex value without Reality.eth conversion
+          title = `0x${BigInt(key).toString(16).padStart(64, '0')}`;
+        } else {
+          title = this.convertToRealitioFormat(key, metaevidenceJSON);
+        }
 
         cards.push(
           <Col key={key} className="pb-4" xl={8} lg={12} xs={24}>
@@ -559,10 +580,18 @@ class DisputeDetails extends React.Component {
 
     // Current ruling card (if not 0)
     if (this.props.currentRuling != 0) {
+      let currentRulingTitle;
+      if (questionType === "hash") {
+        // For hash type, display the raw hex value without Reality.eth conversion
+        currentRulingTitle = `0x${BigInt(currentRuling).toString(16).padStart(64, '0')}`;
+      } else {
+        currentRulingTitle = this.convertToRealitioFormat(currentRuling, metaevidenceJSON);
+      }
+
       cards.push(
         <Col key="current-ruling" className="pb-4" xl={8} lg={12} xs={24}>
           <CrowdfundingCard
-            title={`${this.convertToRealitioFormat(currentRuling, metaevidenceJSON)}`}
+            title={currentRulingTitle}
             rulingOptionCode={currentRuling}
             winner={true}
             fundingPercentage={this.calculateFundingPercentage(currentRuling, contributions).toFixed(2)}
