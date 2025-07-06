@@ -24,7 +24,7 @@ const INITIAL_STATE = {
   category: "",
   description: "",
   question: "",
-  rulingTitles: ["",""],
+  rulingTitles: ["", ""],
   rulingDescriptions: [""],
   names: [],
   addresses: [],
@@ -287,7 +287,7 @@ class CreateForm extends React.Component {
                     <Dropdown.Item key={`subcourt-${subcourt.name}`} eventKey={index} className={`${index == selectedSubcourt && "selectedDropdownItem"}`}>
                       {subcourt && subcourt.name}
                     </Dropdown.Item>)
-                    )}
+                  )}
                 </Dropdown.Menu>
               </Dropdown>
             </Form.Group>
@@ -470,7 +470,7 @@ class CreateForm extends React.Component {
               <Button className="cssCircle minusSign"
                 onClick={(_e) => {
                   const newNumberOfParties = Math.max(numberOfParties - 1, 1);
-    
+
                   this.setState((prevState) => {
                     let newNames = [...prevState.names];
                     let newAddresses = [...prevState.addresses];

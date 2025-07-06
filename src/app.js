@@ -29,9 +29,8 @@ const CACHE_INVALIDATION_PERIOD_FOR_DISPUTES_MS = 1 * 60 * 1000
 
 const isBigNumberLike = value => {
   return value && typeof value === 'object' &&
-    value.type === 'BigNumber' &&
     typeof value.toString === 'function' &&
-    (value._hex !== undefined || value._isBigNumber !== undefined);
+    (value.type === 'BigNumber' || value._hex !== undefined);
 };
 
 const safeJSONStringify = obj => {
