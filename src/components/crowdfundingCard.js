@@ -63,7 +63,7 @@ class CrowdfundingCard extends React.Component {
     // Then, execute the callback
     try {
       await appealCallback(actualRulingCode, contribution.toString());
-    } catch (error) {
+    } catch {
       // Set error state for callback execution errors
       this.setState({ error: "Transaction failed. Please check your network connection and try again." });
     }
