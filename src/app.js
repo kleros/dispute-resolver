@@ -27,18 +27,16 @@ const EXCEPTIONAL_CONTRACT_ADDRESSES = ['0xe0e1bc8C6cd1B81993e2Fcfb80832d814886e
 const CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS = 3 * 60 * 60 * 1000
 const CACHE_INVALIDATION_PERIOD_FOR_DISPUTES_MS = 1 * 60 * 1000
 
-const safeJSONStringify = (obj) => {
-  return JSON.stringify(obj, (key, value) => {
+const safeJSONStringify = obj => {
+  return JSON.stringify(obj, (_, value) => {
     if (typeof value === 'bigint') {
       return value.toString();
     }
     if (value && typeof value === 'object' && value._isBigNumber) {
       return value.toString();
     }
-    if (value && typeof value === 'object' && typeof value.toString === 'function') {
-      if (value.type === 'BigNumber' || value._hex !== undefined) {
-        return value.toString();
-      }
+    if (value && typeof value === 'object' && typeof value.toString === 'function' && (value.type === 'BigNumber' || value._hex !== undefined)) {
+      return value.toString();
     }
     return value;
   });
@@ -83,7 +81,7 @@ class App extends React.Component {
     if (window.ethereum) {
       this.setState({ activeAddress: window.ethereum.selectedAddress });
 
-      window.ethereum.on("accountsChanged", (accounts) => {
+      window.ethereum.on("accountsChanged", accounts => {
         this.setState({ activeAddress: accounts[0] });
       });
 
@@ -107,7 +105,7 @@ class App extends React.Component {
     }
   }
 
-  handleNetworkChange = async (newChainId) => {
+  handleNetworkChange = async newChainId => {
     this.setState({
       subcourts: [],
       subcourtDetails: [],
@@ -127,7 +125,7 @@ class App extends React.Component {
     });
   };
 
-  syncUrlWithChain = (chainId) => {
+  syncUrlWithChain = chainId => {
     const currentPath = window.location.pathname;
     const pathParts = currentPath.split('/');
 
@@ -169,13 +167,13 @@ class App extends React.Component {
     }
   };
 
-  switchToChain = async (chainId) => {
+  switchToChain = async chainId => {
     if (!window.ethereum) return;
 
     try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: `0x${parseInt(chainId).toString(16)}` }],
+        params: [{ chainId: `0x${parseInt(chainId, 10).toString(16)}` }],
       });
     } catch (error) {
       console.error('Failed to switch chain:', error);
@@ -197,7 +195,7 @@ class App extends React.Component {
       parsedSubcourtDetails &&
       parsedSubcourts.length > 0 &&
       parsedSubcourtDetails.length > 0 &&
-      new Date().getTime() < CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS + parseInt(lastModified)) {
+      new Date().getTime() < CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS + parseInt(lastModified, 10)) {
       try {
         this.setState({
           subcourts: parsedSubcourts,
@@ -226,17 +224,18 @@ class App extends React.Component {
     }
 
     this.setState({
-      subcourtDetails: await Promise.all(subcourtURIs.map((promise) => promise.then((subcourtURI) => {
+      subcourtDetails: await Promise.all(subcourtURIs.map(promise => promise.then(subcourtURI => {
         console.log({ subcourtURI })
         if (subcourtURI.length > 0) {
           if (subcourtURI.includes("http")) {
             return fetch(subcourtURI)
-              .then((response) => response.json())
-              .catch((error) => console.error(error));
+              .then(response => response.json())
+              .catch(error => console.error(error));
           } else {
             return fetch(IPFS_GATEWAY + subcourtURI).then(response => response.json());
           }
         }
+        return null;
       }))), subcourtsLoading: false, subcourts: await Promise.all(subcourts),
     });
 
@@ -264,13 +263,13 @@ class App extends React.Component {
     const disputeCreationFilter = contract.filters.DisputeCreation();
     const disputeCreationEvents = await contract.queryFilter(disputeCreationFilter, startingBlock);
 
-    const disputes = [...new Set(disputeCreationEvents.map((event) => event.args._disputeID.toString()))];
+    const disputes = [...new Set(disputeCreationEvents.map(event => event.args._disputeID.toString()))];
 
     const resolvedDisputes = newPeriodEvents
-      .filter((event) => event.args._period.toString() === "4")
-      .map((event) => event.args._disputeID.toString());
+      .filter(event => event.args._period.toString() === "4")
+      .map(event => event.args._disputeID.toString());
 
-    const openDisputes = disputes.filter((dispute) => !resolvedDisputes.includes(dispute));
+    const openDisputes = disputes.filter(dispute => !resolvedDisputes.includes(dispute));
 
     return openDisputes;
   };
@@ -306,7 +305,7 @@ class App extends React.Component {
   }
 
   getArbitrationCostWithCourtAndNoOfJurors = async (subcourtID, noOfJurors) => {
-    if (!networkMap[this.state.network]?.KLEROS_LIQUID) return;
+    if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
 
     const contract = EthereumInterface.getContract(
       "IArbitrator",
@@ -325,7 +324,7 @@ class App extends React.Component {
     }
   }
 
-  estimateGasOfGetSubcourt = async (subcourtID) => {
+  estimateGasOfGetSubcourt = async subcourtID => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) {
       throw new Error('Network not configured for Kleros Liquid');
     }
@@ -344,7 +343,7 @@ class App extends React.Component {
     }
   };
 
-  getSubcourt = async (subcourtID) => {
+  getSubcourt = async subcourtID => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
 
     const contract = EthereumInterface.getContract(
@@ -357,10 +356,11 @@ class App extends React.Component {
       return await contract.getSubcourt(subcourtID);
     } catch (error) {
       console.error("Error fetching subcourt details: ", error)
+      return null;
     }
   };
 
-  getSubCourtDetails = async (subcourtID) => {
+  getSubCourtDetails = async subcourtID => {
     if (!networkMap[this.state.network]?.POLICY_REGISTRY) return null;
 
     const contract = EthereumInterface.getContract(
@@ -377,7 +377,7 @@ class App extends React.Component {
     }
   };
 
-  getArbitratorDispute = async (arbitratorDisputeID) => {
+  getArbitratorDispute = async arbitratorDisputeID => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
 
     const contract = EthereumInterface.getContract(
@@ -394,7 +394,7 @@ class App extends React.Component {
     }
   };
 
-  getArbitratorDisputeDetails = async (arbitratorDisputeID) => {
+  getArbitratorDisputeDetails = async arbitratorDisputeID => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
 
     const contract = EthereumInterface.getContract(
@@ -411,7 +411,7 @@ class App extends React.Component {
     }
   }
 
-  getMultipliers = async (arbitrableAddress) => {
+  getMultipliers = async arbitrableAddress => {
     const contract = EthereumInterface.getContract(
       "IDisputeResolver",
       arbitrableAddress,
@@ -431,7 +431,7 @@ class App extends React.Component {
 
   generateArbitratorExtraData = (subcourtID, noOfVotes) => `0x${parseInt(subcourtID, 10).toString(16).padStart(HEX_PADDING_WIDTH, "0") + parseInt(noOfVotes, 10).toString(16).padStart(HEX_PADDING_WIDTH, "0")}`;
 
-  getAppealCost = async (arbitratorDisputeID) => {
+  getAppealCost = async arbitratorDisputeID => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
 
     const contract = EthereumInterface.getContract(
@@ -465,7 +465,7 @@ class App extends React.Component {
     }
   }
 
-  getAppealPeriod = async (arbitratorDisputeID) => {
+  getAppealPeriod = async arbitratorDisputeID => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
 
     const contract = EthereumInterface.getContract(
@@ -482,7 +482,7 @@ class App extends React.Component {
     }
   }
 
-  getCurrentRuling = async (arbitratorDisputeID) => {
+  getCurrentRuling = async arbitratorDisputeID => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
 
     const contract = EthereumInterface.getContract(
@@ -524,7 +524,7 @@ class App extends React.Component {
 
       const options = {
         strict: true,
-        getJsonRpcUrl: (chainId) => getReadOnlyRpcUrl({ chainId }),
+        getJsonRpcUrl: chainId => getReadOnlyRpcUrl({ chainId }),
         scriptParameters
       };
 
@@ -540,11 +540,11 @@ class App extends React.Component {
     }
   };
 
-  //Using Archon, parallel calls occasionally fail.
+  // Using Archon, parallel calls occasionally fail.
   getMetaEvidenceParallelizeable = async (arbitrableAddress, arbitratorDisputeID) => {
     const { network } = this.state;
 
-    let item = localStorage.getItem(`${network}${arbitratorDisputeID.toString()}`);
+    const item = localStorage.getItem(`${network}${arbitratorDisputeID.toString()}`);
     if (item && item !== "undefined") {
       console.debug(`Found metaevidence of ${arbitratorDisputeID} skipping fetch.`);
       return JSON.parse(item);
@@ -596,10 +596,16 @@ class App extends React.Component {
   getEvidences = (arbitrableAddress, arbitratorDisputeID) => {
     return this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
-      .then((response) => {
-        return this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).catch(console.error);
+      .then(response => {
+        return this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).catch(error => {
+          console.error('Error fetching evidence:', error);
+          return null;
+        });
       })
-      .catch(console.error);
+      .catch(error => {
+        console.error('Error fetching dispute for evidence:', error);
+        return null;
+      });
   };
 
   getAppealDecision = async (arbitratorDisputeID, disputedAtBlockNumber) => {
@@ -619,13 +625,13 @@ class App extends React.Component {
         "latest"
       );
 
-      const blockPromises = appealDecisionEvents.map((event) =>
+      const blockPromises = appealDecisionEvents.map(event =>
         this.state.provider.getBlock(event.blockNumber)
       );
 
       const blocks = await Promise.all(blockPromises);
 
-      return blocks.map((block) => ({
+      return blocks.map(block => ({
         appealedAt: block.timestamp,
         appealedAtBlockNumber: block.number
       }));
@@ -641,8 +647,8 @@ class App extends React.Component {
     // Because of this, here we make an exception for Unslashed and shift rounds by plus one, except when in execution period.
 
     let _round = round;
-    if (EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress)) {
-      if (period < DISPUTE_PERIOD_EXECUTION) _round++;
+    if (EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress) && period < DISPUTE_PERIOD_EXECUTION) {
+      _round++;
     }
 
     const contract = EthereumInterface.getContract(
@@ -675,7 +681,7 @@ class App extends React.Component {
 
       console.debug('DEBUG getContributions - events found:', events.length, events);
 
-      const contributionsForEachRuling = events.reduce((acc, event) => {
+      return events.reduce((acc, event) => {
         const ruling = event.args.ruling.toString();
         const amount = event.args._amount.toString();
 
@@ -684,8 +690,6 @@ class App extends React.Component {
 
         return acc;
       }, {});
-
-      return contributionsForEachRuling;
 
     } catch (error) {
       console.error('Error fetching contributions:', error);
@@ -752,10 +756,7 @@ class App extends React.Component {
         });
       });
 
-      const rulings = events.map((event) => event.args._ruling.toString());
-      console.log('DEBUG getRulingFunded - returning rulings:', rulings);
-
-      return rulings;
+      return events.map(event => event.args._ruling.toString());
 
     } catch (error) {
       console.error('Error fetching ruling funded events:', error);
@@ -794,17 +795,22 @@ class App extends React.Component {
         arbitrated,
         this.state.provider
       )
-      amount = await contract.getTotalWithdrawableAmount(
-        arbitrableDisputeID,
-        this.state.activeAddress ?? ethers.ZeroAddress,
-        contributedTo
-      );
+      try {
+        amount = await contract.getTotalWithdrawableAmount(
+          arbitrableDisputeID,
+          this.state.activeAddress ?? ethers.ZeroAddress,
+          contributedTo
+        );
 
-      return { amount: amount, ruling: contributedTo };
+        return { amount: amount, ruling: contributedTo };
+      } catch (v1Error) {
+        console.error('Error fetching withdrawable amount:', v1Error);
+        return { amount: 0, ruling: contributedTo };
+      }
     }
   };
 
-  getDispute = async (arbitratorDisputeID) => {
+  getDispute = async arbitratorDisputeID => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
 
     const contract = EthereumInterface.getContract(
@@ -821,7 +827,7 @@ class App extends React.Component {
     }
   }
 
-  getRuling = async (arbitrableAddress, arbitratorDisputeID) => await this.state.archon.arbitrable.getRuling(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID);
+  getRuling = async (arbitrableAddress, arbitratorDisputeID) => this.state.archon.arbitrable.getRuling(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID);
 
   submitEvidence = async (arbitrableAddress, { disputeID, evidenceTitle, evidenceDescription, evidenceDocument, supportingSide }, value = "0") => {
     const evidence = {
@@ -856,7 +862,7 @@ class App extends React.Component {
     }
   };
 
-  createDispute = async (options) => {
+  createDispute = async options => {
     const { network } = this.state;
     const arbitrator = networkMap[network].KLEROS_LIQUID;
     const arbitratorExtraData = this.generateArbitratorExtraData(options.selectedSubcourt, options.initialNumberOfJurors);
@@ -895,7 +901,7 @@ class App extends React.Component {
       const receipt = await tx.wait();
 
       const disputeCreationTopic = contract.interface.getEvent("DisputeCreation").topicHash;
-      const disputeLog = receipt.logs.find((log) => log.topics[0] === disputeCreationTopic);
+      const disputeLog = receipt.logs.find(log => log.topics[0] === disputeCreationTopic);
 
       if (disputeLog) {
         const disputeID = ethers.getBigInt(disputeLog.topics[1]);
@@ -909,6 +915,7 @@ class App extends React.Component {
       }
     } catch (error) {
       console.error("Error creating dispute: ", error)
+      return null
     }
   };
 
@@ -960,6 +967,7 @@ class App extends React.Component {
       return await tx.wait();
     } catch (error) {
       console.log("Error executing withdrawFeesAndRewardsForAllRounds transaction: ", error)
+      return null
     }
   }
 
