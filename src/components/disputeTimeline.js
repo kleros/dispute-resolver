@@ -11,10 +11,37 @@ const DISPUTE_PERIOD_VOTING = 2;
 const DISPUTE_PERIOD_APPEAL = 3;
 
 class DisputeTimeline extends React.Component {
-  convertToHumanReadiableTime = (timeInMillis) => {
-    const time = calcTimeDelta(parseInt(timeInMillis) * MILLISECONDS_PER_SECOND, { now: () => 0 });
+  convertToHumanReadiableTime = timeInMillis => {
+    const time = calcTimeDelta(parseInt(timeInMillis, 10) * MILLISECONDS_PER_SECOND, { now: () => 0 });
 
     return `${zeroPad(time.days, 2)}d ${zeroPad(time.hours, 2)}h ${zeroPad(time.minutes, 2)}m`;
+  };
+
+  renderCountdown = props => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>;
+
+  getPeriodStatus = (periodType, currentPeriod) => {
+    if (currentPeriod === periodType) return "current";
+    if (currentPeriod > periodType) return "past";
+    return "upcoming";
+  };
+
+  getDecorationStatus = (periodType, currentPeriod) => {
+    if (currentPeriod < periodType) return "upcoming";
+    return "past";
+  };
+
+  getPeriodTime = (periodType, currentPeriod, lastPeriodChange, timesPerPeriod) => {
+    if (currentPeriod === periodType) {
+      return <Countdown date={(parseInt(lastPeriodChange, 10) + parseInt(timesPerPeriod[periodType], 10)) * MILLISECONDS_PER_SECOND} renderer={this.renderCountdown} />;
+    }
+    if (currentPeriod > periodType) {
+      return <span>Concluded</span>;
+    }
+    // Evidence period shows nothing when period < DISPUTE_PERIOD_EVIDENCE
+    if (periodType === DISPUTE_PERIOD_EVIDENCE) {
+      return null;
+    }
+    return <span>{this.convertToHumanReadiableTime(timesPerPeriod[periodType])}</span>;
   };
 
   render() {
@@ -23,38 +50,33 @@ class DisputeTimeline extends React.Component {
     return (
       <div className={styles.disputeTimeline}>
         <Row className={` ${styles.period}`}>
-          <Col className={`mb-2 mb-md-0 ${period == DISPUTE_PERIOD_EVIDENCE ? "current" : "past"} ${styles.evidence}`} xs={24} md="auto">
+          <Col className={`mb-2 mb-md-0 ${this.getPeriodStatus(DISPUTE_PERIOD_EVIDENCE, period)} ${styles.evidence}`} xs={24} md="auto">
             <div>
               <div className={styles.name}>Evidence</div>
               <small className={styles.time}>
-                {period == DISPUTE_PERIOD_EVIDENCE && <Countdown date={(parseInt(lastPeriodChange) + parseInt(timesPerPeriod[period])) * MILLISECONDS_PER_SECOND} renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>} />}
-                {period > DISPUTE_PERIOD_EVIDENCE && "Concluded"}
+                {this.getPeriodTime(DISPUTE_PERIOD_EVIDENCE, period, lastPeriodChange, timesPerPeriod)}
               </small>
             </div>
           </Col>
 
-          <Col className={`${period < DISPUTE_PERIOD_VOTING ? "upcoming" : "past"}  d-none d-md-block  ${styles.decoration}`} />
+          <Col className={`${this.getDecorationStatus(DISPUTE_PERIOD_VOTING, period)} d-none d-md-block ${styles.decoration}`} />
 
-          <Col className={`mb-2 mb-md-0 ${period < DISPUTE_PERIOD_VOTING && "upcoming"} ${period == DISPUTE_PERIOD_VOTING ? "current" : "past"} justify-content-md-center ${styles.voting}`} xs={24} md="auto">
+          <Col className={`mb-2 mb-md-0 ${this.getPeriodStatus(DISPUTE_PERIOD_VOTING, period)} justify-content-md-center ${styles.voting}`} xs={24} md="auto">
             <div>
               <div className={styles.name}>Voting</div>
               <small className={styles.time}>
-                {period == DISPUTE_PERIOD_VOTING && <Countdown date={(parseInt(lastPeriodChange) + parseInt(timesPerPeriod[period])) * MILLISECONDS_PER_SECOND} renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>} />}
-                {period > DISPUTE_PERIOD_VOTING && "Concluded"}
-                {period < DISPUTE_PERIOD_VOTING && this.convertToHumanReadiableTime(timesPerPeriod[DISPUTE_PERIOD_VOTING])}
+                {this.getPeriodTime(DISPUTE_PERIOD_VOTING, period, lastPeriodChange, timesPerPeriod)}
               </small>
             </div>
           </Col>
 
-          <Col className={`${period < DISPUTE_PERIOD_APPEAL ? "upcoming" : "past"}  d-none d-md-block ${styles.decoration}`} />
+          <Col className={`${this.getDecorationStatus(DISPUTE_PERIOD_APPEAL, period)} d-none d-md-block ${styles.decoration}`} />
 
-          <Col className={`${period < DISPUTE_PERIOD_APPEAL && "upcoming"} ${period == DISPUTE_PERIOD_APPEAL ? "current" : "past"}  justify-content-md-end ${styles.appeal}`} xs={24} md="auto">
+          <Col className={`${this.getPeriodStatus(DISPUTE_PERIOD_APPEAL, period)} justify-content-md-end ${styles.appeal}`} xs={24} md="auto">
             <div>
               <div className={styles.name}>Appeal</div>
               <small className={styles.time}>
-                {period > DISPUTE_PERIOD_APPEAL && "Concluded"}
-                {period == DISPUTE_PERIOD_APPEAL && <Countdown date={(parseInt(lastPeriodChange) + parseInt(timesPerPeriod[period])) * MILLISECONDS_PER_SECOND} renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>} />}
-                {period < DISPUTE_PERIOD_APPEAL && this.convertToHumanReadiableTime(timesPerPeriod[DISPUTE_PERIOD_APPEAL])}
+                {this.getPeriodTime(DISPUTE_PERIOD_APPEAL, period, lastPeriodChange, timesPerPeriod)}
               </small>
             </div>
           </Col>
