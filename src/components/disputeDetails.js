@@ -507,10 +507,10 @@ class DisputeDetails extends React.Component {
     }
 
     if (questionType === "multiple-select") {
-      Array.from(Array(2 ** metaevidenceJSON.rulingOptions.titles.length).keys()).forEach((_key, index) => {
-        const title = index == 0
+      Array.from(Array(2 ** metaevidenceJSON.rulingOptions.titles.length).keys()).forEach(comboValue => {
+        const title = comboValue == 0
           ? "None"
-          : index
+          : comboValue
             .toString(2)
             .padStart(BINARY_PADDING_WIDTH, "0")
             .split("")
@@ -519,16 +519,16 @@ class DisputeDetails extends React.Component {
             .join(" ");
 
         cards.push(
-          <Col key={index + 1} className="pb-4" xl={8} lg={12} xs={24}>
+          <Col key={`combo-${comboValue + 1}`} className="pb-4" xl={8} lg={12} xs={24}>
             <CrowdfundingCard
               title={title}
-              winner={currentRuling == index + 1}
-              fundingPercentage={this.calculateFundingPercentage(index + 1, contributions).toFixed(2)}
-              appealPeriodEnd={this.calculateAppealPeriod(index + 1)}
-              roi={this.calculateReturnOfInvestmentRatio(index + 1).toFixed(2)}
-              suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(index + 1))}
+              winner={currentRuling == comboValue + 1}
+              fundingPercentage={this.calculateFundingPercentage(comboValue + 1, contributions).toFixed(2)}
+              appealPeriodEnd={this.calculateAppealPeriod(comboValue + 1)}
+              roi={this.calculateReturnOfInvestmentRatio(comboValue + 1).toFixed(2)}
+              suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(comboValue + 1))}
               appealCallback={appealCallback}
-              rulingOptionCode={index + 1}
+              rulingOptionCode={comboValue + 1}
             />
           </Col>
         );
