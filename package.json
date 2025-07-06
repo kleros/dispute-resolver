@@ -2,6 +2,7 @@
   "name": "dispute-resolver",
   "author": "Ferit <ferit@cryptolab.net> (https://github.com/0xferit)",
   "version": "1.0.0",
+  "packageManager": "yarn@4.9.2",
   "dependencies": {
     "@alch/alchemy-web3": "^1.4.7",
     "@babel/helper-call-delegate": "^7.12.1",
