@@ -205,7 +205,6 @@ class App extends React.Component {
         return;
       } catch (error) {
         console.warn("Failed to use cached subcourts:", error);
-        return;
       }
     }
 
@@ -598,9 +597,15 @@ class App extends React.Component {
     return this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
       .then(response => {
-        return this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).catch(() => null);
+        return this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).catch(error => {
+          console.error('Error fetching evidence:', error);
+          return null;
+        });
       })
-      .catch(() => null);
+      .catch(error => {
+        console.error('Error fetching dispute for evidence:', error);
+        return null;
+      });
   };
 
   getAppealDecision = async (arbitratorDisputeID, disputedAtBlockNumber) => {
