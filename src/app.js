@@ -776,7 +776,7 @@ class App extends React.Component {
         this.state.activeAddress ?? ethers.ZeroAddress,
         contributedTo[counter]
       );
-      if (amount !== 0) {
+      if (amount != 0) {
         return { amount, ruling: contributedTo[counter] };
       }
       counter++;
@@ -812,7 +812,7 @@ class App extends React.Component {
       // Try v2 first
       const result = await this.tryGetWithdrawableAmountV2(contract, arbitrableDisputeID, contributedTo);
       if (result) return result;
-      return { amount: 0, ruling: null };
+      return { amount: 0, ruling: undefined };
     } catch {
       // Fallback to v1
       try {
