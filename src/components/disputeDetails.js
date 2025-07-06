@@ -553,7 +553,7 @@ class DisputeDetails extends React.Component {
 
     // Other contributions (not current ruling)
     Object.keys(contributions)
-      .filter(key => key !== this.props.currentRuling)
+      .filter(key => key !== this.props.currentRuling.toString())
       .forEach(key => {
         let title;
         if (questionType === "string") {
@@ -569,7 +569,7 @@ class DisputeDetails extends React.Component {
           <Col key={key} className="pb-4" xl={8} lg={12} xs={24}>
             <CrowdfundingCard
               title={title}
-              rulingOptionCode={key}
+              rulingOptionCode={key.toString()}
               winner={currentRuling == key}
               fundingPercentage={this.calculateFundingPercentage(key, contributions).toFixed(2)}
               suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(key))}
@@ -596,7 +596,7 @@ class DisputeDetails extends React.Component {
         <Col key="current-ruling" className="pb-4" xl={8} lg={12} xs={24}>
           <CrowdfundingCard
             title={currentRulingTitle}
-            rulingOptionCode={currentRuling}
+            rulingOptionCode={currentRuling.toString()}
             winner={true}
             fundingPercentage={this.calculateFundingPercentage(currentRuling, contributions).toFixed(2)}
             appealPeriodEnd={this.calculateAppealPeriod(currentRuling)}
