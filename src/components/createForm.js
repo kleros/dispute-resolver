@@ -71,7 +71,7 @@ class CreateForm extends React.Component {
     }
   }
 
-  onNextButtonClick = async (event) => {
+  onNextButtonClick = async event => {
     const { form } = event.target;
     const { subcourtDetails } = this.props;
     const {
@@ -116,13 +116,13 @@ class CreateForm extends React.Component {
     }
   };
 
-  onSubcourtSelect = async (subcourtID) => {
+  onSubcourtSelect = async subcourtID => {
     if (!networkMap[this.props.network].ARBITRABLE_PROXY) return
     this.setState({ selectedSubcourt: subcourtID });
     await this.calculateArbitrationCost(subcourtID, this.state.initialNumberOfJurors);
   };
 
-  onQuestionTypeChange = async (questionType) => {
+  onQuestionTypeChange = async questionType => {
     console.debug(JSON.parse(questionType));
     this.setState({ questionType: JSON.parse(questionType) });
 
@@ -139,19 +139,16 @@ class CreateForm extends React.Component {
     }));
   };
 
-  onNumberOfRulingOptionsChange = async (event) => {
-    let number = parseInt(event.target.value);
+  onNumberOfRulingOptionsChange = async event => {
+    let number = parseInt(event.target.value, 10);
     this.setState({ numberOfRulingOptions: number });
   };
 
-  onControlChange = async (e) => {
+  onControlChange = async e => {
     const { id, value } = e.target;
 
     this.setState(
-      prevState => {
-        const newState = { ...prevState, [id]: value };
-        return newState;
-      },
+      prevState => ({ ...prevState, [id]: value }),
       async () => {
         const { selectedSubcourt, initialNumberOfJurors } = this.state;
         console.debug("onControlChange", { selectedSubcourt, initialNumberOfJurors });
@@ -162,7 +159,7 @@ class CreateForm extends React.Component {
     );
   };
 
-  onDrop = async (acceptedFiles) => {
+  onDrop = async acceptedFiles => {
 
     this.setState({ uploadError: "", fileInput: null });
 
@@ -207,11 +204,61 @@ class CreateForm extends React.Component {
     arbitrationCost: await this.props.getArbitrationCostCallback(subcourtID, noOfJurors),
   });
 
+  onAddParty = () => {
+    this.setState(prevState => ({ numberOfParties: prevState.numberOfParties + 1 }));
+  };
+
+  onRemoveParty = () => {
+    const { numberOfParties } = this.state;
+    const newNumberOfParties = Math.max(numberOfParties - 1, 1);
+
+    this.setState(prevState => {
+      let newNames = [...prevState.names];
+      let newAddresses = [...prevState.addresses];
+
+      if (numberOfParties === 1) {
+        if (newNames.length > 0) newNames[0] = "";
+        if (newAddresses.length > 0) newAddresses[0] = "";
+      } else if (numberOfParties > 1) {
+        if (newNames.length >= numberOfParties) {
+          newNames = newNames.slice(0, -1);
+        }
+        if (newAddresses.length >= numberOfParties) {
+          newAddresses = newAddresses.slice(0, -1);
+        }
+      } else {
+        // numberOfParties should never be < 1 due to Math.max constraint
+      }
+
+      return {
+        numberOfParties: newNumberOfParties,
+        names: newNames,
+        addresses: newAddresses
+      };
+    });
+  };
+
+  onRulingTitleChange = index => e => {
+    this.onArrayStateVariableChange(e, "rulingTitles", index);
+  };
+
+  onRulingDescriptionChange = index => e => {
+    this.onArrayStateVariableChange(e, "rulingDescriptions", index);
+  };
+
+  onNameChange = index => e => {
+    this.onArrayStateVariableChange(e, "names", index);
+  };
+
+  onAddressChange = index => e => {
+    this.onArrayStateVariableChange(e, "addresses", index);
+  };
+
   componentDidMount = async () => {
     this.onSubcourtSelect("0");
     const { formData } = this.props;
     if (formData) this.setState({
-      selectedSubcourt: parseInt(formData.selectedSubcourt) && formData.selectedSubcourt,
+      selectedSubcourt: parseInt(formData.selectedSubcourt, 10) && formData.selectedSubcourt,
       initialNumberOfJurors: formData.initialNumberOfJurors && formData.initialNumberOfJurors,
       category: formData.category && formData.category,
       title: formData.title && formData.title,
@@ -283,9 +330,9 @@ class CreateForm extends React.Component {
                 </Dropdown.Toggle>
 
                 <Dropdown.Menu>
-                  {subcourtDetails && subcourtDetails.map((subcourt, index) => (
+                  {subcourtDetails?.map((subcourt, index) => (
                     <Dropdown.Item key={`subcourt-${subcourt.name}`} eventKey={index} className={`${index == selectedSubcourt && "selectedDropdownItem"}`}>
-                      {subcourt && subcourt.name}
+                      {subcourt?.name}
                     </Dropdown.Item>)
                   )}
                 </Dropdown.Menu>
@@ -359,8 +406,8 @@ class CreateForm extends React.Component {
                 </Dropdown.Toggle>
 
                 <Dropdown.Menu>
-                  {Object.values(QuestionTypes).map((qType, index) => (
-                    <Dropdown.Item key={`questionType-${index}`} eventKey={JSON.stringify(qType)}>
+                  {Object.values(QuestionTypes).map(qType => (
+                    <Dropdown.Item key={`questionType-${qType.code}`} eventKey={JSON.stringify(qType)}>
                       {qType.humanReadable}
                     </Dropdown.Item>))}
                 </Dropdown.Menu>
@@ -397,8 +444,8 @@ class CreateForm extends React.Component {
             </Form.Group>
           </Col>
         </Row>
-        {!isNaN(numberOfRulingOptions) && (questionType.code == QuestionTypes.SINGLE_SELECT.code || questionType.code == QuestionTypes.MULTIPLE_SELECT.code) && [...Array(parseInt(numberOfRulingOptions))].map((_value, index) => (
-          <Row>
+        {!isNaN(numberOfRulingOptions) && (questionType.code == QuestionTypes.SINGLE_SELECT.code || questionType.code == QuestionTypes.MULTIPLE_SELECT.code) && [...Array(parseInt(numberOfRulingOptions, 10))].map((_value, index) => (
+          <Row key={`ruling-${numberOfRulingOptions}-${index}`}>
             <Col>
               <Form.Group>
                 <Form.Label htmlFor={`rulingOption${index}Title`}>Ruling Option {index + 1}</Form.Label>
@@ -407,7 +454,7 @@ class CreateForm extends React.Component {
                   id={`rulingOption${index}Title`}
                   as="input"
                   value={rulingTitles[index]}
-                  onChange={(e) => this.onArrayStateVariableChange(e, "rulingTitles", index)}
+                  onChange={this.onRulingTitleChange(index)}
                   placeholder={`Ruling option ${index + 1}`}
                 />
                 <Form.Control.Feedback type="invalid">Please enter first ruling option, for example: "Yes"</Form.Control.Feedback>
@@ -420,7 +467,7 @@ class CreateForm extends React.Component {
                   id={`rulingOption${index}Description`}
                   as="input"
                   value={rulingDescriptions[index]}
-                  onChange={(e) => this.onArrayStateVariableChange(e, "rulingDescriptions", index)}
+                  onChange={this.onRulingDescriptionChange(index)}
                   placeholder={`Ruling option ${index + 1} description`}
                 />
               </Form.Group>
@@ -429,7 +476,7 @@ class CreateForm extends React.Component {
 
         <hr />
         <Row>
-          {[...Array(parseInt(numberOfParties))].map((_value, index) => (<React.Fragment key={`party-${index}`}>
+          {[...Array(parseInt(numberOfParties, 10))].map((_value, index) => (<React.Fragment key={`party-${numberOfParties}-${index}`}>
             <Col xl={4} l={4} md={8}>
               <Form.Group>
                 <Form.Label htmlFor="requester">Alias {index + 1} (Optional)</Form.Label>
@@ -439,7 +486,7 @@ class CreateForm extends React.Component {
                   id={`name${index}`}
                   as="input"
                   value={names[index]}
-                  onChange={(e) => this.onArrayStateVariableChange(e, "names", index)}
+                  onChange={this.onNameChange(index)}
                   placeholder={"Please enter alias"}
                 />
               </Form.Group>
@@ -454,7 +501,7 @@ class CreateForm extends React.Component {
                   id="requesterAddress"
                   as="input"
                   value={addresses[index]}
-                  onChange={(e) => this.onArrayStateVariableChange(e, "addresses", index)}
+                  onChange={this.onAddressChange(index)}
                   placeholder={"Please enter address"}
                 />
               </Form.Group>
@@ -464,36 +511,10 @@ class CreateForm extends React.Component {
         <Row>
           <Col>
             <Form.Group>
-              <Button className="cssCircle plusSign" onClick={() => this.setState({ numberOfParties: numberOfParties + 1 })}>
+              <Button className="cssCircle plusSign" onClick={this.onAddParty}>
                 <span>+</span>
               </Button>
-              <Button className="cssCircle minusSign"
-                onClick={(_e) => {
-                  const newNumberOfParties = Math.max(numberOfParties - 1, 1);
-
-                  this.setState((prevState) => {
-                    let newNames = [...prevState.names];
-                    let newAddresses = [...prevState.addresses];
-
-                    if (numberOfParties === 1) {
-                      if (newNames.length > 0) newNames[0] = "";
-                      if (newAddresses.length > 0) newAddresses[0] = "";
-                    } else if (numberOfParties > 1) {
-                      if (newNames.length >= numberOfParties) {
-                        newNames = newNames.slice(0, -1);
-                      }
-                      if (newAddresses.length >= numberOfParties) {
-                        newAddresses = newAddresses.slice(0, -1);
-                      }
-                    }
-
-                    return {
-                      numberOfParties: newNumberOfParties,
-                      names: newNames,
-                      addresses: newAddresses
-                    };
-                  });
-                }}>
+              <Button className="cssCircle minusSign" onClick={this.onRemoveParty}>
                 <span>–</span>
               </Button>
             </Form.Group>
