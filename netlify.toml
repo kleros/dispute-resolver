@@ -1,5 +1,7 @@
 [build.environment]
-  YARN_FLAGS='--pure-lockfile'
+  NODE_VERSION = "20.18.1"
+  YARN_VERSION = "4.9.2"
+  YARN_FLAGS = '--immutable --immutable-cache --check-cache'
 
 [[redirects]]
   from = "/*"
