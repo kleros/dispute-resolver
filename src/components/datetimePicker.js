@@ -5,9 +5,6 @@ import moment from "moment";
 import styles from "./styles/datetimePicker.module.css";
 
 class DatetimePicker extends React.Component {
-  constructor(props) {
-    super(props);
-  }
   render() {
     const { onChange, onOk, id } = this.props;
     

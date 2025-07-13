@@ -25,12 +25,12 @@ class IPFS extends React.Component {
     };
   }
 
-  onInput = (e) => {
+  onInput = e => {
     this.setState({ uploadedDocumentURI: "" });
     this.setState({ fileInput: e.target.files[0] });
   };
 
-  onSubmitButtonClick = async (e) => {
+  onSubmitButtonClick = async e => {
     e.preventDefault();
     const { fileInput } = this.state;
 

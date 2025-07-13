@@ -6,11 +6,7 @@ import styles from "components/styles/ongoing-card.module.css";
 import { ReactComponent as Hourglass } from "assets/images/hourglass.svg";
 
 class OngoingCard extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
-  getStatusClass = (periodNumber) => {
+  getStatusClass = periodNumber => {
     const strings = ["evidence", "commit", "vote", "appeal", "execution"];
 
     return strings[periodNumber];
@@ -62,7 +58,7 @@ class OngoingCard extends React.Component {
               <Hourglass />
               <Countdown
                 date={remainingTime}
-                renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>}
+                renderer={props => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>}
               />
             </div>
           )}

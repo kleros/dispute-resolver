@@ -14,10 +14,6 @@ const icons = {
 };
 
 class Toast extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   render() {
     const { body, header, show, onClose, delay, iconName } = this.props;
     return (

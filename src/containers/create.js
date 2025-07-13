@@ -19,18 +19,18 @@ class Create extends React.Component {
     }
   }
 
-  onNextButtonClick = (formData) => {
+  onNextButtonClick = formData => {
     this.setState({ activePage: 2, formData });
   };
 
-  onReturnButtonClick = (event) => {
+  onReturnButtonClick = event => {
     this.setState({ activePage: 1 });
   };
 
 
   setShow = () => this.setState({ notificationShow: false });
 
-  notificationEventCallback = (lastDisputeID) => {
+  notificationEventCallback = lastDisputeID => {
     this.setState({ notificationShow: true, lastDisputeID });
   };
 
