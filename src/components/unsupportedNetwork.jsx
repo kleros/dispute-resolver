@@ -1,8 +1,5 @@
 import React from "react";
 class UnsupportedNetwork extends React.Component {
-  constructor(props) {
-    super(props);
-  }
   render() {
     const {network, networkMap} = this.props;
     return (

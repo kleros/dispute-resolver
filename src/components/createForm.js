@@ -134,13 +134,13 @@ class CreateForm extends React.Component {
   };
 
   onArrayStateVariableChange = async (event, variable, index) => {
-    this.setState((prevState) => ({
+    this.setState(prevState => ({
       [variable]: [...prevState[variable].slice(0, index), event.target.value, ...prevState[variable].slice(index + 1)],
     }));
   };
 
   onNumberOfRulingOptionsChange = async event => {
-    let number = parseInt(event.target.value, 10);
+    const number = parseInt(event.target.value, 10);
     this.setState({ numberOfRulingOptions: number });
   };
 
@@ -171,7 +171,7 @@ class CreateForm extends React.Component {
       return;
     }
 
-    let reader = new FileReader();
+    const reader = new FileReader();
     reader.readAsArrayBuffer(acceptedFiles[0]);
 
     reader.addEventListener("loadend", async () => {
@@ -257,194 +257,246 @@ class CreateForm extends React.Component {
   componentDidMount = async () => {
     this.onSubcourtSelect("0");
     const { formData } = this.props;
-    if (formData) this.setState({
-      selectedSubcourt: parseInt(formData.selectedSubcourt, 10) && formData.selectedSubcourt,
-      initialNumberOfJurors: formData.initialNumberOfJurors && formData.initialNumberOfJurors,
-      category: formData.category && formData.category,
-      title: formData.title && formData.title,
-      description: formData.description && formData.description,
-      question: formData.question && formData.question,
-      primaryDocument: formData.primaryDocument && formData.primaryDocument,
-      questionType: formData.questionType.code.length > 0 && formData.questionType,
-      numberOfRulingOptions: formData.rulingTitles.length > 0 && formData.rulingTitles.length,
-      rulingTitles: formData.rulingTitles.length > 0 ? formData.rulingTitles : [],
-      rulingDescriptions: formData.rulingDescriptions.length > 0 ? formData.rulingDescriptions : [],
-      names: formData.names.length > 0 ? formData.names : [],
-      addresses: formData.addresses.length > 0 ? formData.addresses : [],
-    });
+    if (formData) {
+      this.setState({
+        selectedSubcourt: formData.selectedSubcourt ? parseInt(formData.selectedSubcourt, 10) : 0,
+        initialNumberOfJurors: formData.initialNumberOfJurors || "3",
+        category: formData.category || "",
+        title: formData.title || "",
+        description: formData.description || "",
+        question: formData.question || "",
+        primaryDocument: formData.primaryDocument || "",
+        questionType: formData.questionType && formData.questionType.code && formData.questionType.code.length > 0 ? formData.questionType : QuestionTypes.SINGLE_SELECT,
+        numberOfRulingOptions: formData.rulingTitles && formData.rulingTitles.length > 0 ? formData.rulingTitles.length : 2,
+        rulingTitles: formData.rulingTitles && formData.rulingTitles.length > 0 ? formData.rulingTitles : ["", ""],
+        rulingDescriptions: formData.rulingDescriptions && formData.rulingDescriptions.length > 0 ? formData.rulingDescriptions : [""],
+        names: formData.names && formData.names.length > 0 ? formData.names : [],
+        addresses: formData.addresses && formData.addresses.length > 0 ? formData.addresses : [],
+      });
+    }
   };
 
-  render() {
-    const { subcourtsLoading, subcourtDetails, network } = this.props;
+  renderNetworkError() {
+    return (
+      <h1>
+        There is no arbitrable contract deployed in this network.
+        So unfortunately you can't create a dispute.
+        Feel free to head over <a href="https://github.com/kleros/dispute-resolver/issues" target="_blank" rel="noopener noreferrer">GitHub issues</a> to request this feature.
+      </h1>
+    );
+  }
 
-    const {
-      title,
-      description,
-      category,
-      question,
-      validated,
-      questionType,
-      numberOfRulingOptions,
-      rulingTitles,
-      numberOfParties,
-      rulingDescriptions,
-      names,
-      addresses,
-      fileInput,
-      initialNumberOfJurors,
-      arbitrationCost,
-      selectedSubcourt,
-      summary,
-      primaryDocument,
-      uploadError,
-      uploading,
-    } = this.state;
+  renderCourtAndJurorSelection() {
+    const { subcourtsLoading, subcourtDetails } = this.props;
+    const { selectedSubcourt, initialNumberOfJurors, summary } = this.state;
 
-    // Removed debug console.log to avoid spamming the console and impacting performance.
+    return (
+      <Row>
+        <Col xl={6} md={12} sm={24} xs={24}>
+          <Form.Group>
+            <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
+            <Dropdown required onSelect={this.onSubcourtSelect}>
+              <Dropdown.Toggle 
+                id="subcourt-dropdown" 
+                block 
+                disabled={subcourtsLoading || summary}
+                className={styles.dropdownToggle}
+              >
+                <ScalesSVG className={styles.scales} />{" "}
+                <span className="font-weight-normal">
+                  {(subcourtsLoading && "Loading...") || 
+                   (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt] && subcourtDetails[selectedSubcourt].name) || 
+                   "Please select a court"}
+                </span>
+              </Dropdown.Toggle>
+              <Dropdown.Menu>
+                {subcourtDetails?.map((subcourt, index) => (
+                  <Dropdown.Item 
+                    key={`subcourt-${subcourt.name}`} 
+                    eventKey={index} 
+                    className={`${index === selectedSubcourt && "selectedDropdownItem"}`}
+                  >
+                    {subcourt?.name}
+                  </Dropdown.Item>
+                ))}
+              </Dropdown.Menu>
+            </Dropdown>
+          </Form.Group>
+        </Col>
+        <Col xl={6} md={12} sm={24} xs={24}>
+          <Form.Group className="inner-addon left-addon">
+            <Form.Label htmlFor="initialNumberOfJurors">Number of Votes</Form.Label>
+            <AvatarSVG className="glyphicon glyphicon-user" />
+            <Form.Control
+              required
+              id="initialNumberOfJurors"
+              as="input"
+              type="number"
+              min="1"
+              value={initialNumberOfJurors}
+              onChange={this.onControlChange}
+              placeholder="Number of votes"
+            />
+          </Form.Group>
+        </Col>
+        {this.renderCategoryAndCost()}
+      </Row>
+    );
+  }
 
-    if (!networkMap[network].ARBITRABLE_PROXY) return <h1>There is no arbitrable contract deployed in this network.
-      So unfortunately you can't create a dispute.
-      Feel free to head over <a href="https://github.com/kleros/dispute-resolver/issues" target="_blank" rel="noopener noreferrer">GitHub
-        issues</a> to request this feature.</h1>
+  renderCategoryAndCost() {
+    const { network } = this.props;
+    const { category, arbitrationCost } = this.state;
 
-    return (<section className={`${styles.createForm}`}>
-      <Form noValidate validated={validated} onSubmit={this.onModalShow}>
-        <Row>
-          <Col>
-            <p className={styles.fillUpTheForm}>Fill up the form to</p>
-            <h1 className={styles.h1}>Create a custom dispute</h1>
-          </Col>
-        </Row>
-        <hr />
-        <Row>
-          <Col xl={6} md={12} sm={24} xs={24}>
-            <Form.Group>
-              <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
-              <Dropdown required onSelect={this.onSubcourtSelect}>
-                <Dropdown.Toggle id="subcourt-dropdown" block disabled={subcourtsLoading || summary}
-                  className={styles.dropdownToggle}>
-                  <ScalesSVG className={styles.scales} />{" "}
-                  <span className="font-weight-normal">
-                    {(subcourtsLoading && "Loading...") || (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt] && subcourtDetails[selectedSubcourt].name) || "Please select a court"}
-                  </span>
-                </Dropdown.Toggle>
+    return (
+      <>
+        <Col xl={6} md={12} sm={24} xs={24}>
+          <Form.Group>
+            <Form.Label htmlFor="category">Category (Optional)</Form.Label>
+            <Form.Control 
+              id="category" 
+              as="input" 
+              value={category} 
+              onChange={this.onControlChange} 
+              placeholder="Category" 
+            />
+          </Form.Group>
+        </Col>
+        <Col xl={6} md={12} sm={24} xs={24}>
+          <Form.Group className={styles.arbitrationFeeGroup}>
+            <Form.Label htmlFor="arbitrationFee">Arbitration Cost</Form.Label>
+            <Form.Control as="div" className={styles.arbitrationFeeGroupPrepend}>
+              <EthereumSVG />
+              <span className={styles.arbitrationFee}>
+                {arbitrationCost && `${arbitrationCost} ${networkMap[network].CURRENCY_SHORT}`}
+              </span>
+            </Form.Control>
+          </Form.Group>
+        </Col>
+      </>
+    );
+  }
 
-                <Dropdown.Menu>
-                  {subcourtDetails?.map((subcourt, index) => (
-                    <Dropdown.Item key={`subcourt-${subcourt.name}`} eventKey={index} className={`${index == selectedSubcourt && "selectedDropdownItem"}`}>
-                      {subcourt?.name}
-                    </Dropdown.Item>)
-                  )}
-                </Dropdown.Menu>
-              </Dropdown>
-            </Form.Group>
-          </Col>
-          <Col xl={6} md={12} sm={24} xs={24}>
-            <Form.Group className="inner-addon left-addon">
-              <Form.Label htmlFor="initialNumberOfJurors">Number of Votes</Form.Label>
-              <AvatarSVG className="glyphicon glyphicon-user" />
-              <Form.Control
-                required
-                id="initialNumberOfJurors"
-                as="input"
-                type="number"
-                min="1"
-                value={initialNumberOfJurors}
-                onChange={this.onControlChange}
-                placeholder={"Number of votes"}
-              />
-            </Form.Group>
-          </Col>
-          <Col xl={6} md={12} sm={24} xs={24}>
-            <Form.Group>
-              <Form.Label htmlFor="category">Category (Optional)</Form.Label>
-              <Form.Control id="category" as="input" value={category} onChange={this.onControlChange} placeholder={"Category"} />
-            </Form.Group>
-          </Col>
-          <Col xl={6} md={12} sm={24} xs={24}>
-            <Form.Group className={styles.arbitrationFeeGroup}>
-              <Form.Label htmlFor="arbitrationFee">Arbitration Cost</Form.Label>
-              <Form.Control as="div" className={styles.arbitrationFeeGroupPrepend}>
-                <EthereumSVG />
-                {<span
-                  className={styles.arbitrationFee}>{arbitrationCost && arbitrationCost + " " + networkMap[network].CURRENCY_SHORT}</span>}
-              </Form.Control>
-            </Form.Group>
-          </Col>
-        </Row>
+  renderTitleAndDescription() {
+    const { title, description } = this.state;
+
+    return (
+      <>
         <Row>
           <Col>
             <Form.Group>
               <Form.Label htmlFor="title">Title</Form.Label>
-              <Form.Control required id="title" as="input" value={title} onChange={this.onControlChange} placeholder={"Title"} />
-              <Form.Control.Feedback type="invalid">Please enter title for the dispute, something explains it in a
-                nutshell.</Form.Control.Feedback>
+              <Form.Control 
+                required 
+                id="title" 
+                as="input" 
+                value={title} 
+                onChange={this.onControlChange} 
+                placeholder="Title" 
+              />
+              <Form.Control.Feedback type="invalid">
+                Please enter title for the dispute, something explains it in a nutshell.
+              </Form.Control.Feedback>
             </Form.Group>
           </Col>
         </Row>
-
         <Row>
           <Col>
             <Form.Group>
               <Form.Label htmlFor="description">Description (Optional)</Form.Label>
-              <Form.Control id="description" as="textarea" rows="5" value={description} onChange={this.onControlChange}
-                placeholder={"Description of dispute"} />
+              <Form.Control 
+                id="description" 
+                as="textarea" 
+                rows="5" 
+                value={description} 
+                onChange={this.onControlChange}
+                placeholder="Description of dispute" 
+              />
             </Form.Group>
           </Col>
         </Row>
+      </>
+    );
+  }
 
-        <hr />
+  renderQuestionTypeSection() {
+    const { questionType, numberOfRulingOptions, question } = this.state;
 
+    return (
+      <>
         <Row>
           <Col xl={16} md={true} xs={24}>
             <Form.Group>
               <Form.Label htmlFor="questionType">Question Type</Form.Label>
-
               <Dropdown required onSelect={this.onQuestionTypeChange}>
                 <Dropdown.Toggle className={`form-control ${styles.dropdownToggle} font-weight-normal`} id="questionType" block>
                   {questionType.humanReadable || "Error"}
                 </Dropdown.Toggle>
-
                 <Dropdown.Menu>
                   {Object.values(QuestionTypes).map(qType => (
                     <Dropdown.Item key={`questionType-${qType.code}`} eventKey={JSON.stringify(qType)}>
                       {qType.humanReadable}
-                    </Dropdown.Item>))}
+                    </Dropdown.Item>
+                  ))}
                 </Dropdown.Menu>
               </Dropdown>
             </Form.Group>
           </Col>
-          {(questionType.code == QuestionTypes.SINGLE_SELECT.code || questionType.code == QuestionTypes.MULTIPLE_SELECT.code) && (<Col>
-            <Form.Group>
-              <Form.Label htmlFor="numberOfRulingOptions">Number of Options</Form.Label>
-              <Form.Control
-                required
-                id="numberOfRulingOptions"
-                as="input"
-                type="number"
-                min="2"
-                step="1"
-                max="32"
-                value={numberOfRulingOptions}
-                onChange={this.onNumberOfRulingOptionsChange}
-                placeholder={"Enter a number between 2 and 32"}
-              />
-              <Form.Control.Feedback type="invalid">Please enter first ruling option, for example: "Yes"</Form.Control.Feedback>
-            </Form.Group>
-          </Col>)}
+          {(questionType.code === QuestionTypes.SINGLE_SELECT.code || questionType.code === QuestionTypes.MULTIPLE_SELECT.code) && (
+            <Col>
+              <Form.Group>
+                <Form.Label htmlFor="numberOfRulingOptions">Number of Options</Form.Label>
+                <Form.Control
+                  required
+                  id="numberOfRulingOptions"
+                  as="input"
+                  type="number"
+                  min="2"
+                  step="1"
+                  max="32"
+                  value={numberOfRulingOptions}
+                  onChange={this.onNumberOfRulingOptionsChange}
+                  placeholder="Enter a number between 2 and 32"
+                />
+                <Form.Control.Feedback type="invalid">
+                  Please enter first ruling option, for example: "Yes"
+                </Form.Control.Feedback>
+              </Form.Group>
+            </Col>
+          )}
         </Row>
-
         <Row>
           <Col>
             <Form.Group>
               <Form.Label htmlFor="question">Question</Form.Label>
-
-              <Form.Control required id="question" as="input" value={question} onChange={this.onControlChange} placeholder={"Question"} />
-              <Form.Control.Feedback type="invalid">Please enter a question.</Form.Control.Feedback>
+              <Form.Control 
+                required 
+                id="question" 
+                as="input" 
+                value={question} 
+                onChange={this.onControlChange} 
+                placeholder="Question" 
+              />
+              <Form.Control.Feedback type="invalid">
+                Please enter a question.
+              </Form.Control.Feedback>
             </Form.Group>
           </Col>
         </Row>
-        {!isNaN(numberOfRulingOptions) && (questionType.code == QuestionTypes.SINGLE_SELECT.code || questionType.code == QuestionTypes.MULTIPLE_SELECT.code) && [...Array(parseInt(numberOfRulingOptions, 10))].map((_value, index) => (
+      </>
+    );
+  }
+
+  renderRulingOptionsSection() {
+    const { questionType, numberOfRulingOptions, rulingTitles, rulingDescriptions } = this.state;
+
+    if (isNaN(numberOfRulingOptions) || (questionType.code !== QuestionTypes.SINGLE_SELECT.code && questionType.code !== QuestionTypes.MULTIPLE_SELECT.code)) {
+      return null;
+    }
+
+    return (
+      <>
+        {[...Array(parseInt(numberOfRulingOptions, 10))].map((_value, index) => (
           <Row key={`ruling-${numberOfRulingOptions}-${index}`}>
             <Col>
               <Form.Group>
@@ -457,7 +509,9 @@ class CreateForm extends React.Component {
                   onChange={this.onRulingTitleChange(index)}
                   placeholder={`Ruling option ${index + 1}`}
                 />
-                <Form.Control.Feedback type="invalid">Please enter first ruling option, for example: "Yes"</Form.Control.Feedback>
+                <Form.Control.Feedback type="invalid">
+                  Please enter first ruling option, for example: "Yes"
+                </Form.Control.Feedback>
               </Form.Group>
             </Col>
             <Col md={18}>
@@ -471,78 +525,126 @@ class CreateForm extends React.Component {
                   placeholder={`Ruling option ${index + 1} description`}
                 />
               </Form.Group>
-            </Col>{" "}
-          </Row>))}
+            </Col>
+          </Row>
+        ))}
+      </>
+    );
+  }
 
-        <hr />
-        <Row>
-          {[...Array(parseInt(numberOfParties, 10))].map((_value, index) => (<React.Fragment key={`party-${numberOfParties}-${index}`}>
+  renderPartiesSection() {
+    const { numberOfParties, names, addresses } = this.state;
+
+    return (
+      <Row>
+        {[...Array(parseInt(numberOfParties, 10))].map((_value, index) => (
+          <React.Fragment key={`party-${numberOfParties}-${index}`}>
             <Col xl={4} l={4} md={8}>
               <Form.Group>
-                <Form.Label htmlFor="requester">Alias {index + 1} (Optional)</Form.Label>
-
+                <Form.Label htmlFor={`name${index}`}>Alias {index + 1} (Optional)</Form.Label>
                 <Form.Control
                   required={addresses[index]}
                   id={`name${index}`}
                   as="input"
                   value={names[index]}
                   onChange={this.onNameChange(index)}
-                  placeholder={"Please enter alias"}
+                  placeholder="Please enter alias"
                 />
               </Form.Group>
             </Col>
             <Col xl={8} l={8} md={16}>
               <Form.Group>
-                <Form.Label htmlFor={`address${index}`}>Address of Alias {index + 1} (Optional)</Form.Label>
-
+                <Form.Label htmlFor={`address${index}`}>Address {index + 1} (Optional)</Form.Label>
                 <Form.Control
                   required={names[index]}
-                  pattern="0x[abcdefABCDEF0123456789]{40}"
-                  id="requesterAddress"
+                  id={`address${index}`}
                   as="input"
                   value={addresses[index]}
                   onChange={this.onAddressChange(index)}
-                  placeholder={"Please enter address"}
+                  placeholder="Please enter address"
                 />
               </Form.Group>
             </Col>
-          </React.Fragment>))}
-        </Row>
-        <Row>
-          <Col>
-            <Form.Group>
-              <Button className="cssCircle plusSign" onClick={this.onAddParty}>
-                <span>+</span>
-              </Button>
-              <Button className="cssCircle minusSign" onClick={this.onRemoveParty}>
-                <span>–</span>
-              </Button>
-            </Form.Group>
-          </Col>
-        </Row>
+          </React.Fragment>
+        ))}
+      </Row>
+    );
+  }
 
-        <Row className={styles.dropzoneRow}>
-          <Col>
-            <Form.Group>
-              <Form.Label htmlFor="dropzone">Upload the Primary Document (Optional)</Form.Label>
-              <FileUploadDropzone
-                onDrop={this.onDrop}
-                uploadError={uploadError}
-                uploadingToIPFS={uploading}
-                fileInput={fileInput}
-              />
-            </Form.Group>
-          </Col>
-        </Row>
-        <Row>
-          <Col>
-            <Button type="button" className={styles.submit} onClick={this.onNextButtonClick} disabled={uploading}>
-              Next
-            </Button>
-          </Col>
-        </Row>
-      </Form>
-    </section>);
+  renderFileUploadSection() {
+    const { fileInput, uploading, uploadError } = this.state;
+
+    return (
+      <Row>
+        <Col>
+          <Form.Group>
+            <Form.Label htmlFor="primaryDocument">Primary Document (Optional)</Form.Label>
+            <FileUploadDropzone 
+              onDrop={this.onDrop} 
+              uploading={uploading} 
+              uploadError={uploadError}
+            />
+            {fileInput && (
+              <div className={styles.fileInputLabel}>
+                <p><strong>Selected file:</strong> {fileInput.name}</p>
+              </div>
+            )}
+          </Form.Group>
+        </Col>
+      </Row>
+    );
+  }
+
+  renderSubmitSection() {
+    const { awaitingConfirmation, summary } = this.state;
+
+    return (
+      <Row>
+        <Col>
+          <Button 
+            type="submit" 
+            variant="primary" 
+            disabled={awaitingConfirmation}
+            block
+          >
+            {awaitingConfirmation ? "Please wait..." : (summary ? "Submit" : "Continue")}
+          </Button>
+        </Col>
+      </Row>
+    );
+  }
+
+  render() {
+    const { network } = this.props;
+    const { validated, summary } = this.state;
+
+    if (!networkMap[network].ARBITRABLE_PROXY) {
+      return this.renderNetworkError();
+    }
+
+    return (
+      <section className={`${styles.createForm}`}>
+        <Form noValidate validated={validated} onSubmit={this.onModalShow}>
+          <Row>
+            <Col>
+              <p className={styles.fillUpTheForm}>Fill up the form to</p>
+              <h1 className={styles.h1}>Create a custom dispute</h1>
+            </Col>
+          </Row>
+          <hr />
+          {this.renderCourtAndJurorSelection()}
+          {this.renderTitleAndDescription()}
+          <hr />
+          {this.renderQuestionTypeSection()}
+          {this.renderRulingOptionsSection()}
+          <hr />
+          {this.renderPartiesSection()}
+          <hr />
+          {this.renderFileUploadSection()}
+          {this.renderSubmitSection()}
+        </Form>
+      </section>
+    );
   }
 }
 

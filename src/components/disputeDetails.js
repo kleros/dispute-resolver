@@ -417,8 +417,8 @@ class DisputeDetails extends React.Component {
 
   // Helper method to check if required data is available
   hasRequiredData = (metaevidenceJSON, arbitratorDispute, subcourts, subcourtDetails, arbitratorDisputeDetails) => {
-    return metaevidenceJSON && arbitratorDispute && subcourts.length > 0 &&
-      subcourtDetails.length > 0 && arbitratorDisputeDetails;
+    return metaevidenceJSON && arbitratorDispute && subcourts?.length > 0 &&
+      subcourtDetails?.length > 0 && arbitratorDisputeDetails;
   };
 
   // Helper method to render appeal card conditionally
@@ -667,7 +667,7 @@ class DisputeDetails extends React.Component {
         <DisputeTimeline
           period={disputePeriod}
           lastPeriodChange={arbitratorDispute.lastPeriodChange.toString()}
-          timesPerPeriod={subcourts[arbitratorDispute.subcourtID.toString()]?.[1]}
+          timesPerPeriod={subcourts[arbitratorDispute.subcourtID.toString()]?.[1] || ["0", "0", "0", "0"]}
         />
         <hr className="mt-4" />
 

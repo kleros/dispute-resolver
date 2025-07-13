@@ -4,7 +4,7 @@ import Countdown, { zeroPad } from "react-countdown";
 import styles from "components/styles/crowdfundingCard.module.css";
 import { ReactComponent as Hourglass } from "assets/images/hourglass.svg";
 import AlertMessage from "components/alertMessage";
-import * as realitioLibQuestionFormatter from "@reality.eth/reality-eth-lib/formatters/question";
+import { answerToBytes32 } from "@reality.eth/reality-eth-lib/formatters/question";
 import DatetimePicker from "components/datetimePicker.js";
 import { ethers } from "ethers";
 
@@ -20,54 +20,51 @@ class CrowdfundingCard extends React.Component {
     this.setState({ variableRulingOption: value.utcOffset(0).set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).unix() });
   };
 
+  renderCountdown = props => (
+    <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>
+  );
+
   addDecimalsToUintRuling = (currentRuling, metaEvidenceJSON) => {
-    return realitioLibQuestionFormatter.answerToBytes32(currentRuling, {
+    return answerToBytes32(currentRuling, {
       decimals: metaEvidenceJSON.rulingOptions.precision || 18,
       type: metaEvidenceJSON.rulingOptions.type,
     });
   };
 
+  processRulingCode = (variable, variableRulingOption, metaevidenceJSON, rulingOptionCode) => {
+    switch (variable) {
+      case undefined: // Not variable
+        return rulingOptionCode;
+      case "uint":
+        return ethers.getBigInt(this.addDecimalsToUintRuling(variableRulingOption, metaevidenceJSON)) + 1n;
+      case "int": {
+        const parsedValue = parseInt(variableRulingOption, 10);
+        return parsedValue >= 0 ? parsedValue + 1 : parsedValue;
+      }
+      case "string":
+        return ethers.hexlify(ethers.toUtf8Bytes(variableRulingOption));
+      case "datetime":
+        return variableRulingOption + 1;
+      case "hash":
+        return BigInt(variableRulingOption) + 1n;
+      default:
+        throw new Error(`Unsupported variable type: ${variable}`);
+    }
+  };
+
   handleFundButtonClick = async () => {
     const { variable, appealCallback, rulingOptionCode, metaevidenceJSON } = this.props;
     const { variableRulingOption, contribution } = this.state;
-    let actualRulingCode;
-
-    // First, validate and process the input
+    
     try {
-      switch (variable) {
-        case undefined: // Not variable
-          actualRulingCode = rulingOptionCode;
-          break;
-        case "uint":
-          actualRulingCode = ethers.getBigInt(this.addDecimalsToUintRuling(variableRulingOption, metaevidenceJSON)) + 1n;
-          break;
-        case "int": {
-          const parsedValue = parseInt(variableRulingOption, 10);
-          actualRulingCode = parsedValue >= 0 ? parsedValue + 1 : parsedValue;
-          break;
-        }
-        case "string":
-          actualRulingCode = ethers.hexlify(ethers.toUtf8Bytes(variableRulingOption));
-          break;
-        case "datetime":
-          actualRulingCode = variableRulingOption + 1;
-          break;
-        case "hash":
-          actualRulingCode = BigInt(variableRulingOption) + 1n;
-          break;
-      }
-    } catch {
-      // Set error state for input validation errors
-      this.setState({ error: "Invalid input format. Please enter a valid number or hex string." });
-      return;
-    }
-
-    // Then, execute the callback
-    try {
+      const actualRulingCode = this.processRulingCode(variable, variableRulingOption, metaevidenceJSON, rulingOptionCode);
       await appealCallback(actualRulingCode, contribution.toString());
-    } catch {
-      // Set error state for callback execution errors
-      this.setState({ error: "Transaction failed. Please check your network connection and try again." });
+    } catch (error) {
+      if (error.message && error.message.includes('Unsupported variable type')) {
+        this.setState({ error: "Invalid input format. Please enter a valid number or hex string." });
+      } else {
+        this.setState({ error: "Transaction failed. Please check your network connection and try again." });
+      }
     }
   };
 
@@ -96,7 +93,7 @@ class CrowdfundingCard extends React.Component {
 
           <div className={styles.countdown}>
             <Hourglass className="red mr-1" />
-            <Countdown className={styles.countdown} date={1000 * parseInt(appealPeriodEnd)} renderer={(props) => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>} />
+            <Countdown className={styles.countdown} date={1000 * parseInt(appealPeriodEnd, 10)} renderer={this.renderCountdown} />
           </div>
           {error && (
             <AlertMessage extraClass="mb-3" type="danger" title="Invalid Input" content={error} />

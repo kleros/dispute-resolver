@@ -19,9 +19,6 @@ import styles from "./styles/footer.module.css";
 const ETHERSCAN_STRINGS = Object.freeze({ 1: "", 3: "ropsten.", 42: "kovan." });
 
 class Footer extends React.Component {
-  constructor(props) {
-    super(props);
-  }
   render() {
     const {  network } = this.props;
     

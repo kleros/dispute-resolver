@@ -5,9 +5,6 @@ import { LinkContainer } from "react-router-bootstrap";
 
 
 class Header extends React.Component {
-  constructor(props) {
-    super(props);
-  }
   render() {
     const { viewOnly, route } = this.props;
 

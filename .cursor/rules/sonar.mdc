@@ -1,0 +1,89 @@
+---
+alwaysApply: true
+---
+# Cursor Rules for Dispute Resolver Project
+
+## SonarCloud Quality Assurance
+
+### Always Check SonarCloud Issues Before Code Changes
+
+When asked about SonarCloud issues or code quality, use this recipe:
+
+1. **Primary Method - IDE Diagnostics (Real-time)**:
+   ```
+   mcp__ide__getDiagnostics()  # Get all current issues
+   ```
+
+2. **Verify SonarLint Extension**:
+   ```bash
+   code --list-extensions | grep -i sonar
+   ```
+   Expected: `sonarsource.sonarlint-vscode`
+
+3. **Check Specific Files** (for modified files from git status):
+   ```
+   mcp__ide__getDiagnostics(uri="file:///absolute/path/to/file.js")
+   ```
+
+4. **Fallback - Read Existing Reports**:
+   ```
+   Read("sonarcloud-issues-report.md")
+   Read("sonarcloud-remaining-issues.md")
+   ```
+
+### Interpretation Guidelines
+
+- **Empty diagnostics = Clean code** - No SonarCloud violations
+- **Focus on real-time data** - IDE diagnostics over static reports
+- **Check modified files first** - Use git status to identify changed files
+- **Verify extension status** - Ensure SonarLint is active for accurate results
+
+### Code Quality Standards
+
+- **Before making changes**: Check existing SonarCloud issues in target files
+- **During development**: Follow established patterns and avoid introducing new issues
+- **After changes**: Verify no new SonarCloud violations appear
+- **Critical/Blocker issues**: Must be fixed immediately
+- **Major issues**: Fix when touching the code
+- **Minor issues**: Fix opportunistically
+
+### Project-Specific Commands
+
+```bash
+# Development
+npm start
+
+# Testing
+npm test
+
+# Build
+npm run build
+
+# Linting (if available)
+npm run lint
+```
+
+### Technology Stack Context
+
+- React 17 with Create React App
+- Web3/Ethereum integration with ethers.js
+- SCSS styling with Bootstrap
+- SonarCloud for code quality analysis
+
+### Quality Gates
+
+- Maintain or improve SonarCloud quality rating
+- Keep code coverage stable or increasing
+- Ensure no security issues are introduced
+- Follow established code style and patterns
+
+## General Development Rules
+
+- **File Creation**: Only create new files when absolutely necessary
+- **Prefer Editing**: Always prefer editing existing files over creating new ones
+- **No Unsolicited Documentation**: Never create README or .md files unless explicitly requested
+- **Follow Patterns**: Mimic existing code style and conventions
+- **Security First**: Never expose secrets, keys, or sensitive information
+- **Test After Changes**: Run tests to ensure no regressions
+
+This ensures consistent SonarCloud quality checking across all AI interactions with the project.

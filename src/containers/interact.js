@@ -140,6 +140,7 @@ class Interact extends React.Component {
   };
 
   fetchInitialDisputeData = async (arbitrated, arbitratorDisputeID) => {
+    // Make each promise resilient by catching individual errors
     const [
       arbitratorDispute,
       metaevidence,
@@ -151,15 +152,70 @@ class Interact extends React.Component {
       evidences,
       multipliers
     ] = await Promise.all([
-      this.props.getArbitratorDisputeCallback(arbitratorDisputeID),
-      this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID),
-      this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID),
-      this.getRuling(arbitrated, arbitratorDisputeID),
-      this.getCurrentRuling(arbitratorDisputeID),
-      this.props.getDisputeEventCallback(arbitrated, arbitratorDisputeID),
-      this.props.getDisputeCallback(arbitratorDisputeID),
-      this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID),
-      this.props.getMultipliersCallback(arbitrated)
+      this.props.getArbitratorDisputeCallback(arbitratorDisputeID).catch(err => {
+        console.warn('getArbitratorDisputeCallback failed:', err.message);
+        return {
+          period: "0",
+          lastPeriodChange: "0",
+          subcourtID: "0",
+          numberOfChoices: "2"
+        };
+      }),
+      this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID).catch(err => {
+        console.warn('getMetaEvidenceCallback failed:', err.message);
+        return null;
+      }),
+      this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID).catch(err => {
+        console.warn('getArbitratorDisputeDetailsCallback failed:', err.message);
+        return {
+          0: "0", // appeal cost
+          1: "0", // appeal period
+          2: ["0", "0", "0", "0"] // times per period
+        };
+      }),
+      this.getRuling(arbitrated, arbitratorDisputeID).catch(err => {
+        console.warn('getRuling failed:', err.message);
+        return null;
+      }),
+      this.getCurrentRuling(arbitratorDisputeID).catch(err => {
+        console.warn('getCurrentRuling failed:', err.message);
+        return null;
+      }),
+      this.props.getDisputeEventCallback(arbitrated, arbitratorDisputeID).catch(err => {
+        console.warn('getDisputeEventCallback failed:', err.message);
+        return {
+          blockNumber: 0,
+          args: {
+            _arbitrator: arbitrated,
+            _disputeID: arbitratorDisputeID,
+            _metaEvidenceID: 0,
+            _evidenceGroupID: 0
+          }
+        };
+      }),
+      this.props.getDisputeCallback(arbitratorDisputeID).catch(err => {
+        console.warn('getDisputeCallback failed:', err.message);
+        return {
+          id: arbitratorDisputeID,
+          arbitrated: arbitrated,
+          period: "0",
+          lastPeriodChange: "0",
+          numberOfChoices: "2"
+        };
+      }),
+      this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID).catch(err => {
+        console.warn('getEvidencesCallback failed:', err.message);
+        return [];
+      }),
+      this.props.getMultipliersCallback(arbitrated).catch(err => {
+        console.warn('getMultipliersCallback failed:', err.message);
+        return {
+          winner: "10000", // 1.0 multiplier in basis points
+          loser: "10000",
+          shared: "5000",
+          divisor: "10000"
+        };
+      })
     ]);
 
     return {
@@ -235,35 +291,63 @@ class Interact extends React.Component {
         ...disputeData
       });
 
+      // Make appeal-related calls more resilient
       const appealDecisions = await this.props.getAppealDecisionCallback(
         arbitratorDisputeID,
-        disputeData.disputeEvent.blockNumber
-      );
+        disputeData.disputeEvent?.blockNumber || 0
+      ).catch(err => {
+        console.warn("getAppealDecisionCallback failed:", err.message);
+        return [];
+      });
 
       const [contributions, rulingFunded] = await Promise.all([
         this.props.getContributionsCallback(
           arbitrableDisputeID,
           appealDecisions.length,
           arbitrated,
-          disputeData.arbitratorDispute.period,
+          disputeData.arbitratorDispute?.period,
           appealDecisions.slice(-1)?.appealedAtBlockNumber
-        ),
+        ).catch(err => {
+          console.warn("getContributionsCallback failed:", err.message);
+          return {};
+        }),
         this.props.getRulingFundedCallback(
           arbitrableDisputeID,
           appealDecisions.length,
           arbitrated,
           appealDecisions.slice(-1)?.appealedAtBlockNumber
-        )
+        ).catch(err => {
+          console.warn("getRulingFundedCallback failed:", err.message);
+          return {};
+        })
       ]);
 
       this.setState({ contributions, appealDecisions, rulingFunded });
 
-      await this.handleAppealPeriodLogic(disputeData.arbitratorDispute, arbitratorDisputeID);
-      await this.handleExecutionPeriodLogic(disputeData.arbitratorDispute, arbitrableDisputeID, arbitrated, appealDecisions, disputeData.disputeEvent, contributions);
+      // Make these optional operations more resilient
+      try {
+        if (disputeData.arbitratorDispute) {
+          await this.handleAppealPeriodLogic(disputeData.arbitratorDispute, arbitratorDisputeID);
+        }
+      } catch (err) {
+        console.warn("handleAppealPeriodLogic failed:", err.message);
+      }
+
+      try {
+        if (disputeData.arbitratorDispute && disputeData.disputeEvent) {
+          await this.handleExecutionPeriodLogic(disputeData.arbitratorDispute, arbitrableDisputeID, arbitrated, appealDecisions, disputeData.disputeEvent, contributions);
+        }
+      } catch (err) {
+        console.warn("handleExecutionPeriodLogic failed:", err.message);
+      }
 
     } catch (err) {
       console.error("Error in commonFetchRoutine:", err);
-      this.setState({ incompatible: true });
+      // Only set incompatible if critical operations fail
+      // If we have MetaEvidence, don't mark as incompatible
+      if (!this.state.metaevidence) {
+        this.setState({ incompatible: true });
+      }
     }
   };
 
@@ -325,12 +409,38 @@ class Interact extends React.Component {
     );
   };
 
-  renderIncompatibleWarning = () => (
-    <div style={{ padding: "1rem 2rem", fontSize: "14px", background: "#fafafa" }}>
-      <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or fund appeal on
-      this interface. You can do these on the arbitrable application, if implemented.
-    </div>
-  );
+  renderIncompatibleWarning = () => {
+    const { metaevidence } = this.state;
+    const isGenericMetaEvidence = metaevidence?.metaEvidenceJSON?.category === "Non-Standard Contract";
+    
+    return (
+      <div style={{ 
+        padding: "1rem 2rem", 
+        fontSize: "14px", 
+        background: isGenericMetaEvidence ? "#fff3cd" : "#fafafa",
+        border: isGenericMetaEvidence ? "1px solid #ffeaa7" : "none",
+        borderRadius: "4px",
+        marginBottom: "1rem"
+      }}>
+        {isGenericMetaEvidence ? (
+          <>
+            <b>⚠️ Non-Standard Contract:</b> This arbitrable contract doesn't follow standard Kleros patterns. 
+            The dispute information shown is generic. Limited functionality is available - you may not be able to submit evidence 
+            or fund appeals through this interface.
+            <br />
+            <small style={{ color: "#856404", marginTop: "0.5rem", display: "block" }}>
+              Contract: {this.state.arbitrated}
+            </small>
+          </>
+        ) : (
+          <>
+            <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. 
+            You can't submit evidence or fund appeal on this interface. You can do these on the arbitrable application, if implemented.
+          </>
+        )}
+      </div>
+    );
+  };
 
   renderSearchForm = () => {
     const { arbitratorDisputeID } = this.state;
@@ -381,16 +491,19 @@ class Interact extends React.Component {
   };
 
   render() {
-    const { arbitrated, loading, incompatible } = this.state;
+    const { arbitrated, loading, incompatible, metaevidence } = this.state;
     const { activeAddress } = this.props;
 
     if (!loading && !arbitrated) {
       return this.renderNoDisputeFound();
     }
 
+    const isGenericMetaEvidence = metaevidence?.metaEvidenceJSON?.category === "Non-Standard Contract";
+    const shouldShowWarning = incompatible || isGenericMetaEvidence;
+
     return (
       <>
-        {activeAddress && incompatible && this.renderIncompatibleWarning()}
+        {shouldShowWarning && this.renderIncompatibleWarning()}
         {arbitrated && this.renderMainContent()}
       </>
     );
