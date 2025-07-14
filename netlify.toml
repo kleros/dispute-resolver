@@ -6,6 +6,7 @@
   NODE_VERSION = "20.18.1"
   YARN_VERSION = "4.9.2"
   CI = "false"
+  MISE_DISABLE = "true"
 
 [[redirects]]
   from = "/*"
