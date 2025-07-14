@@ -34,14 +34,16 @@ jobs:
             exit 1
           else
             echo "✅ CLAUDE_CODE_OAUTH_TOKEN secret is configured"
+            echo "Token length: ${#CLAUDE_CODE_OAUTH_TOKEN}"
           fi
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       - uses: anthropics/claude-code-action@beta
         with:
-          # Use OAuth token instead of separate API key + GitHub token:
+          # Use OAuth token for both Anthropic and GitHub authentication:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # Alternative: use separate tokens
-          # anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Explicitly avoid using separate GitHub token when using OAuth
+          github_token: ""
           # Optional: add custom trigger phrase (default: @claude)
           # trigger_phrase: "/claude"
           # Optional: add assignee trigger for issues
