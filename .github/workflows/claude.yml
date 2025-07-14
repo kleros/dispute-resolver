@@ -17,6 +17,7 @@ on:
 jobs:
   claude-response:
     runs-on: ubuntu-latest
+    if: github.actor != 'cursor[bot]' && !endsWith(github.actor, '[bot]')
     permissions:
       contents: write
       issues: write
