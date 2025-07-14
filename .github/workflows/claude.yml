@@ -27,6 +27,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Verify secret exists
+        run: |
+          if [ -z "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}" ]; then
+            echo "❌ CLAUDE_CODE_OAUTH_TOKEN secret is not set"
+            exit 1
+          else
+            echo "✅ CLAUDE_CODE_OAUTH_TOKEN secret is configured"
+          fi
       - uses: anthropics/claude-code-action@beta
         with:
           # Use OAuth token instead of separate API key + GitHub token:
