@@ -1,6 +1,9 @@
 name: Claude Assistant
 permissions:
   contents: write
+  issues: write
+  pull-requests: write
+  repository-projects: write
 on:
   issue_comment:
     types: [created]
@@ -14,6 +17,11 @@ on:
 jobs:
   claude-response:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      repository-projects: write
     steps:
       - uses: anthropics/claude-code-action@beta
         with:
