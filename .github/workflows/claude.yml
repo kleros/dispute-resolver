@@ -14,9 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: read
+      contents: write
       issues: write
       pull-requests: write
+      actions: read
+      metadata: read
     steps:
       - uses: anthropics/claude-code-action@beta
         with:
