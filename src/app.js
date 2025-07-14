@@ -520,29 +520,47 @@ class App extends React.Component {
         networkMap[this.state.network].KLEROS_LIQUID,
         arbitratorDisputeID
       );
-      console.log({ dispute })
-
-      const scriptParameters = {
-        disputeID: arbitratorDisputeID,
-        arbitrableContractAddress: arbitrableAddress,
-        arbitratorContractAddress: networkMap[this.state.network].KLEROS_LIQUID,
-        arbitratorChainID: this.state.network,
-        chainID: this.state.network,
-        arbitratorJsonRpcUrl: networkMap[this.state.network].WEB3_PROVIDER,
-      };
-
-      const options = {
-        strict: true,
-        getJsonRpcUrl: chainId => getReadOnlyRpcUrl({ chainId }),
-        scriptParameters
-      };
-
-      return await this.state.archon.arbitrable.getMetaEvidence(
+      console.log({ dispute });
+      // Fetch raw MetaEvidence event to get URI
+      const contract = EthereumInterface.getContract(
+        "IEvidence",
         arbitrableAddress,
-        dispute.metaEvidenceID,
-        options
+        this.state.provider
       );
-
+      const filter = contract.filters.MetaEvidence(dispute.metaEvidenceID);
+      const events = await contract.queryFilter(
+        filter,
+        networkMap[this.state.network].QUERY_FROM_BLOCK,
+        "latest"
+      );
+      if (events.length > 0) {
+        const metaEvidenceURI = events[events.length - 1].args._evidence;
+        const response = await fetch(urlNormalize(metaEvidenceURI));
+        const rawMeta = await response.json();
+        const arbitratorChainID = rawMeta.arbitratorChainID || this.state.network;
+        const arbitrableChainID = rawMeta.arbitrableChainID || this.state.network;
+        console.log('Parsed chainIDs from raw meta:', { arbitratorChainID, arbitrableChainID });
+        const scriptParameters = {
+          disputeID: arbitratorDisputeID,
+          arbitrableContractAddress: arbitrableAddress,
+          arbitratorContractAddress: networkMap[this.state.network].KLEROS_LIQUID,
+          arbitratorChainID,
+          chainID: this.state.network,
+          arbitrableChainID,
+          arbitratorJsonRpcUrl: getReadOnlyRpcUrl({ chainId: arbitratorChainID }) ?? networkMap[this.state.network].WEB3_PROVIDER,
+          arbitrableJsonRpcUrl: getReadOnlyRpcUrl({ chainId: arbitrableChainID }) ?? networkMap[this.state.network].WEB3_PROVIDER,
+        };
+        const options = {
+          strict: true,
+          getJsonRpcUrl: chainId => getReadOnlyRpcUrl({ chainId }),
+          scriptParameters
+        };
+        return await this.state.archon.arbitrable.getMetaEvidence(
+          arbitrableAddress,
+          dispute.metaEvidenceID,
+          options
+        );
+      }
     } catch (error) {
       console.error('Error fetching meta evidence:', error);
       return null;
