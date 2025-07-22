@@ -226,8 +226,30 @@ class DisputeDetails extends React.Component {
     );
   };
 
+  // Helper to find Reality.eth outcomes from various possible locations
+  findRealityOutcomes = (metaEvidenceJSON) => {
+    const possiblePaths = [
+      metaEvidenceJSON?.dispute?.template?.outcomes,
+      metaEvidenceJSON?.template?.outcomes,
+      metaEvidenceJSON?.outcomes,
+      metaEvidenceJSON?.question?.outcomes
+    ];
+    return possiblePaths.find(outcomes => outcomes && Array.isArray(outcomes) && outcomes.length > 0);
+  };
+
   convertToRealitioFormat = (currentRuling, metaEvidenceJSON) => {
     try {
+      if (!metaEvidenceJSON?.rulingOptions) {
+        const realityOutcomes = this.findRealityOutcomes(metaEvidenceJSON);
+        if (realityOutcomes) {
+          const rulingIndex = parseInt(currentRuling) - 1;
+          if (rulingIndex >= 0 && rulingIndex < realityOutcomes.length) {
+            return realityOutcomes[rulingIndex];
+          }
+        }
+        return currentRuling.toString();
+      }
+
       const questionType = metaEvidenceJSON.rulingOptions.type;
 
       // For hash type rulings, preserve precision by handling as hex strings
@@ -365,7 +387,7 @@ class DisputeDetails extends React.Component {
 
             <Dropdown.Menu dir="">
               <Dropdown.Item key={0} disabled >Option 0 Refuse to Arbitrate</Dropdown.Item>
-              {metaevidenceJSON.rulingOptions.titles.map((title, index) => (
+              {metaevidenceJSON.rulingOptions?.titles?.map((title, index) => (
                 <Dropdown.Item key={`option-${index + 1}`} disabled>{`Option ${index + 1} ${title}${metaevidenceJSON.rulingOptions.descriptions?.[index] != undefined ? ":" : ""
                   } ${metaevidenceJSON.rulingOptions.descriptions?.[index] != undefined
                     ? metaevidenceJSON.rulingOptions.descriptions[index]
@@ -487,7 +509,7 @@ class DisputeDetails extends React.Component {
     // Type-specific cards
     const questionType = metaevidenceJSON.rulingOptions?.type;
 
-    if (questionType === "single-select") {
+    if (questionType === "single-select" && metaevidenceJSON.rulingOptions?.titles) {
       metaevidenceJSON.rulingOptions.titles.forEach((title, index) => {
         cards.push(
           <Col key={index + 1} className="pb-4" xl={8} lg={12} xs={24}>
@@ -504,9 +526,7 @@ class DisputeDetails extends React.Component {
           </Col>
         );
       });
-    }
-
-    if (questionType === "multiple-select") {
+    } else if (questionType === "multiple-select" && metaevidenceJSON.rulingOptions?.titles) {
       Array.from(Array(2 ** metaevidenceJSON.rulingOptions.titles.length).keys()).forEach(comboValue => {
         const title = comboValue == 0
           ? "None"
@@ -529,6 +549,27 @@ class DisputeDetails extends React.Component {
               suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(comboValue + 1))}
               appealCallback={appealCallback}
               rulingOptionCode={comboValue + 1}
+            />
+          </Col>
+        );
+      });
+    } else {
+      // Try to use Reality.eth parsed outcomes if available
+      const realityOutcomes = this.findRealityOutcomes(metaevidenceJSON);
+      const fallbackTitles = realityOutcomes || ["Yes", "No"]; // Basic fallback for Reality.eth questions
+      
+      fallbackTitles.forEach((title, index) => {
+        cards.push(
+          <Col key={`fallback-${index + 1}`} className="pb-4" xl={8} lg={12} xs={24}>
+            <CrowdfundingCard
+              title={title}
+              winner={currentRuling == index + 1}
+              fundingPercentage={this.calculateFundingPercentage(index + 1, contributions).toFixed(2)}
+              appealPeriodEnd={this.calculateAppealPeriod(index + 1)}
+              suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(index + 1))}
+              roi={this.calculateReturnOfInvestmentRatio(index + 1).toFixed(2)}
+              appealCallback={appealCallback}
+              rulingOptionCode={index + 1}
             />
           </Col>
         );
