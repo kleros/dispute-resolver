@@ -58,12 +58,12 @@ class OpenDisputes extends React.Component {
       const sortedDisputes = [...openDIDs].sort((a, b) => parseInt(a, 10) - parseInt(b, 10)).reverse();
       this.setState({ openDisputeIDs: sortedDisputes });
 
-      const detailPromises = sortedDisputes.map(async (disputeId) => {
+      const detailPromises = sortedDisputes.map(async disputeId => {
         try {
           const arbitratorDisputeDetails = await this.props.getArbitratorDisputeCallback(disputeId);
 
           if (arbitratorDisputeDetails) {
-            this.setState((prevState) => ({
+            this.setState(prevState => ({
               arbitratorDisputes: {
                 ...prevState.arbitratorDisputes,
                 ["arbitrator" + disputeId]: arbitratorDisputeDetails,
@@ -72,7 +72,7 @@ class OpenDisputes extends React.Component {
 
             const metaEvidence = await this.props.getMetaEvidenceCallback(arbitratorDisputeDetails.arbitrated, disputeId);
 
-            this.setState((prevState) => ({
+            this.setState(prevState => ({
               arbitratorDisputes: {
                 ...prevState.arbitratorDisputes,
                 [disputeId]: metaEvidence,
@@ -112,7 +112,7 @@ class OpenDisputes extends React.Component {
     return strings[periodNumber];
   };
 
-  onFilterSelect = async (filter) => this.setState({ statusFilter: Number(filter) });
+  onFilterSelect = async filter => this.setState({ statusFilter: Number(filter) });
 
   render() {
     const { openDisputeIDs, statusFilter, loading } = this.state;
