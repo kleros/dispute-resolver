@@ -242,7 +242,7 @@ class DisputeDetails extends React.Component {
       if (!metaEvidenceJSON?.rulingOptions) {
         const realityOutcomes = this.findRealityOutcomes(metaEvidenceJSON);
         if (realityOutcomes) {
-          const rulingIndex = parseInt(currentRuling) - 1;
+          const rulingIndex = parseInt(currentRuling, 10) - 1;
           if (rulingIndex >= 0 && rulingIndex < realityOutcomes.length) {
             return realityOutcomes[rulingIndex];
           }

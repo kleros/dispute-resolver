@@ -1669,7 +1669,7 @@ class App extends React.Component {
     } catch {
       // Fallback to v1
       try {
-        return this.tryGetWithdrawableAmountV1(arbitrated, arbitrableDisputeID, contributedTo);
+        return await this.tryGetWithdrawableAmountV1(arbitrated, arbitrableDisputeID, contributedTo);
       } catch (v1Error) {
         console.error('Error fetching withdrawable amount:', v1Error);
         return { amount: 0, ruling: contributedTo };

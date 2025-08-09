@@ -21,7 +21,7 @@ class OngoingCard extends React.Component {
     const timesPerPeriod = subcourts[subcourtID.toString()][1]
     const periodDuration = timesPerPeriod[period.toString()];
 
-    return 1000 * (parseInt(lastPeriodChange.toString()) + parseInt(periodDuration));
+    return 1000 * (parseInt(lastPeriodChange.toString(), 10) + parseInt(periodDuration, 10));
   }
 
   render() {
