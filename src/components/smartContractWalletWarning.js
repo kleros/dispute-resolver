@@ -1,6 +1,7 @@
 import React from "react";
 import styled from "styled-components";
 import { Alert } from "antd";
+import PropTypes from "prop-types";
 
 const StyledAlert = styled(Alert)`
   text-align: center;
@@ -58,6 +59,7 @@ export default class SmartContractWalletWarning extends React.Component {
       const code = await web3Provider.getCode(activeAddress);
       this.setState({ isSmartContractWallet: code !== "0x" });
     } catch (error) {
+      console.error("Error getting code at wallet address", error);
       this.setState({ isSmartContractWallet: false });
     }
   };
@@ -69,7 +71,7 @@ export default class SmartContractWalletWarning extends React.Component {
 
   render() {
     const { isSmartContractWallet, showWarning } = this.state;
-    
+
     if (!showWarning || !isSmartContractWallet) {
       return null;
     }
@@ -97,3 +99,8 @@ export default class SmartContractWalletWarning extends React.Component {
     );
   }
 }
+
+SmartContractWalletWarning.propTypes = {
+  activeAddress: PropTypes.string.isRequired,
+  web3Provider: PropTypes.object.isRequired,
+};

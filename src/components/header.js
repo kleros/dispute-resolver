@@ -3,6 +3,7 @@ import React from "react";
 import { ReactComponent as Brand } from "../assets/images/logo-dispute-resolver-white.svg";
 import { LinkContainer } from "react-router-bootstrap";
 import SmartContractWalletWarning from "./smartContractWalletWarning";
+import PropTypes from "prop-types";
 
 class Header extends React.Component {
   render() {
@@ -49,3 +50,10 @@ class Header extends React.Component {
 }
 
 export default Header;
+
+Header.propTypes = {
+  viewOnly: PropTypes.bool.isRequired,
+  route: PropTypes.object.isRequired,
+  activeAddress: PropTypes.string.isRequired,
+  web3Provider: PropTypes.object.isRequired,
+};
