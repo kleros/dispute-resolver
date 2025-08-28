@@ -15,7 +15,8 @@ const StyledP = styled.p`
   margin: 0;
 `;
 
-const storageKey = "@kleros/dispute-resolver/alert/smart-contract-wallet-warning";
+const STORAGE_KEY = "@kleros/dispute-resolver/alert/smart-contract-wallet-warning";
+const EIP7702_PREFIX = "0xef0100";
 
 export default class SmartContractWalletWarning extends React.Component {
   constructor(props) {
@@ -28,7 +29,7 @@ export default class SmartContractWalletWarning extends React.Component {
 
   getStoredWarningState = () => {
     try {
-      const storedValue = localStorage.getItem(storageKey);
+      const storedValue = localStorage.getItem(`${STORAGE_KEY}:${this.props.activeAddress}`);
       if (storedValue === null) return true;
       return JSON.parse(storedValue);
     } catch {
@@ -44,6 +45,7 @@ export default class SmartContractWalletWarning extends React.Component {
     if (prevProps.activeAddress !== this.props.activeAddress ||
       prevProps.web3Provider !== this.props.web3Provider) {
       this.checkIfSmartWallet();
+      this.setState({ showWarning: this.getStoredWarningState() });
     }
   }
 
@@ -57,7 +59,11 @@ export default class SmartContractWalletWarning extends React.Component {
 
     try {
       const code = await web3Provider.getCode(activeAddress);
-      this.setState({ isSmartContractWallet: code !== "0x" });
+      const formattedCode = code.toLowerCase();
+      const isEip7702Eoa = formattedCode.startsWith(EIP7702_PREFIX);
+
+      //Do not show warning for EIP-7702 EOAs 
+      this.setState({ isSmartContractWallet: code !== "0x" && !isEip7702Eoa });
     } catch (error) {
       console.error("Error getting code at wallet address", error);
       this.setState({ isSmartContractWallet: false });
@@ -66,7 +72,7 @@ export default class SmartContractWalletWarning extends React.Component {
 
   handleClose = () => {
     this.setState({ showWarning: false });
-    localStorage.setItem(storageKey, false);
+    localStorage.setItem(`${STORAGE_KEY}:${this.props.activeAddress}`, false);
   };
 
   render() {
