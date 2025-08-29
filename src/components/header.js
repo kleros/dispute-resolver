@@ -2,16 +2,18 @@ import { Navbar, Nav } from "react-bootstrap";
 import React from "react";
 import { ReactComponent as Brand } from "../assets/images/logo-dispute-resolver-white.svg";
 import { LinkContainer } from "react-router-bootstrap";
-
+import SmartContractWalletWarning from "./smartContractWalletWarning";
+import PropTypes from "prop-types";
 
 class Header extends React.Component {
   render() {
-    const { viewOnly, route } = this.props;
+    const { viewOnly, route, activeAddress, web3Provider } = this.props;
 
     const chainId = route.match.params.chainId;
-    
+
     return (
       <header>
+        <SmartContractWalletWarning activeAddress={activeAddress} web3Provider={web3Provider} />
         <Navbar collapseOnSelect expand="lg" variant="dark" >
           <Navbar.Brand href={`/${chainId}`} >
             <Brand />
@@ -48,3 +50,10 @@ class Header extends React.Component {
 }
 
 export default Header;
+
+Header.propTypes = {
+  viewOnly: PropTypes.bool.isRequired,
+  route: PropTypes.object.isRequired,
+  activeAddress: PropTypes.string.isRequired,
+  web3Provider: PropTypes.object.isRequired,
+};
