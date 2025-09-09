@@ -314,20 +314,37 @@ class App extends React.Component {
         transaction: error.transaction
       });
 
-      // Try to get the correct arbitrable address from arbitrator events
-      console.debug(`🔄 [getArbitrableDisputeID] Attempting to find correct arbitrable address from arbitrator...`);
-      try {
-        const correctArbitrableAddress = await this.findArbitrableFromArbitrator(arbitratorDisputeID);
-        if (correctArbitrableAddress && correctArbitrableAddress !== arbitrableAddress) {
-          console.debug(`📍 [getArbitrableDisputeID] Found different arbitrable address: ${correctArbitrableAddress}`);
-          // Recursively try with the correct address
-          return this.getArbitrableDisputeID(correctArbitrableAddress, arbitratorDisputeID);
-        }
-      } catch (fallbackError) {
-        console.error(`❌ [getArbitrableDisputeID] Fallback query failed:`, fallbackError);
-      }
+      //Fallback: For EscrowV1 the externalIDtoLocalID function is not available, but the mapping disputeIDtoTransactionID is.
+      //Note that EscrowV1 uses MultipleArbitrableTransaction and MultipleArbitrableTokenTransaction contracts. 
+      //However, we can always use the same ABI here because the function is the same and available in both.
+      const newContract = getContract(
+        "MultipleArbitrableTokenTransaction",
+        arbitrableAddress,
+        this.state.provider
+      );
 
-      return null;
+      try {
+        const result = await newContract.disputeIDtoTransactionID.staticCall(arbitratorDisputeID);
+        console.debug(`✅ [getArbitrableDisputeID] Fallback success:`, result.toString());
+        return result;
+      } catch (error) {
+        console.error(`❌ [getArbitrableDisputeID] Fallback fetching of dispute ID for arbitrable ${arbitrableAddress} also failed:`, error);
+
+        // Try to get the correct arbitrable address from arbitrator events
+        console.debug(`🔄 [getArbitrableDisputeID] Attempting to find correct arbitrable address from arbitrator...`);
+        try {
+          const correctArbitrableAddress = await this.findArbitrableFromArbitrator(arbitratorDisputeID);
+          if (correctArbitrableAddress && correctArbitrableAddress !== arbitrableAddress) {
+            console.debug(`📍 [getArbitrableDisputeID] Found different arbitrable address: ${correctArbitrableAddress}`);
+            // Recursively try with the correct address
+            return this.getArbitrableDisputeID(correctArbitrableAddress, arbitratorDisputeID);
+          }
+        } catch (fallbackError) {
+          console.error(`❌ [getArbitrableDisputeID] Fallback query failed:`, fallbackError);
+        }
+
+        return null;
+      }
     }
   }
 

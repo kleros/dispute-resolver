@@ -6,6 +6,7 @@ import PolicyRegistry from "../../node_modules/@kleros/kleros/build/contracts/Po
 import ArbitrableProxy from "../../node_modules/@kleros/arbitrable-proxy-contracts/build/contracts/ArbitrableProxy.json";
 import IDisputeResolver_v2_0_0 from "../../node_modules/IDRv2/build/contracts/IDisputeResolver.json";
 import IDisputeResolver_v1_0_2 from "../../node_modules/IDRv1/build/contracts/IDisputeResolver.json";
+import MultipleArbitrableTokenTransaction from "../../node_modules/@kleros/kleros-interaction/build/contracts/MultipleArbitrableTokenTransaction.json";
 
 import { ethers } from "ethers";
 
@@ -18,6 +19,7 @@ const contractABIs = {
   IArbitrable,
   IEvidence,
   PolicyRegistry,
+  MultipleArbitrableTokenTransaction,
 };
 
 export const getContract = (contractName, address, provider) => {
