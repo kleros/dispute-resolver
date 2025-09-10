@@ -295,7 +295,7 @@ class App extends React.Component {
     });
 
     //Means it is an EscrowV1 dispute
-    if (networkMap[this.state.network].ESCROW_V1_CONTRACTS.findIndex(contract => contract === arbitrableAddress) !== -1) {
+    if (networkMap[this.state.network].ESCROW_V1_CONTRACTS.includes(arbitrableAddress)) {
       return this.getArbitrableDisputeIDFromEscrowV1(arbitrableAddress, arbitratorDisputeID);
     }
 
