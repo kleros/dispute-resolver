@@ -9,6 +9,7 @@ import DisputeTimeline from "components/disputeTimeline";
 import EvidenceTimeline from "components/evidenceTimeline";
 import CrowdfundingCard from "components/crowdfundingCard";
 import { ethers } from "ethers";
+import networkMap from "../ethereum/network-contract-mapping";
 
 import AlertMessage from "components/alertMessage";
 
@@ -65,6 +66,11 @@ class DisputeDetails extends React.Component {
     // Therefore we have to make an exception in this function for the following list of irregular contracts.
 
     const { currentRuling, appealCost, multipliers, exceptionalContractAddresses, arbitrated } = this.props;
+
+    //Means it is an EscrowV1 dispute, for which there are no calculations needed
+    if (networkMap[this.props.network].ESCROW_V1_CONTRACTS.includes(arbitrated)) {
+      return appealCost;
+    }
 
     let stake;
 
@@ -373,6 +379,21 @@ class DisputeDetails extends React.Component {
     </Card.Body>
   );
 
+  renderEscrowV1AppealSection = (disputePeriod, appealCallback, appealCost) => (
+    <Card.Body>
+      <div className="h1">{disputePeriod == DISPUTE_PERIOD_APPEAL ? "Appeal the decision" : "Appeal period ended"}</div>
+      {disputePeriod == DISPUTE_PERIOD_APPEAL && <p className="label">In order to appeal the decision, you need to pay the appeal cost.</p>}
+      {disputePeriod == DISPUTE_PERIOD_APPEAL && (
+        <Button
+          onClick={() =>
+            appealCallback(0, ethers.formatEther(appealCost))
+          }>
+          Appeal - {ethers.formatEther(appealCost)} ETH
+        </Button>
+      )}
+    </Card.Body>
+  );
+
   // Helper method to render question section
   renderQuestionSection = (metaevidenceJSON, arbitratorDisputeID) => (
     <Card.Body className={styles.question}>
@@ -444,7 +465,7 @@ class DisputeDetails extends React.Component {
   };
 
   // Helper method to render appeal card conditionally
-  renderAppealCard = (arbitratorDispute, disputePeriod, contributions, multipliers, appealCost, appealPeriod, arbitrated, totalWithdrawable, metaevidenceJSON, currentRuling, appealCallback, exceptionalContractAddresses, activeKey) => {
+  renderAppealCard = (arbitratorDispute, disputePeriod, contributions, multipliers, appealCost, appealPeriod, arbitrated, totalWithdrawable, metaevidenceJSON, currentRuling, appealCallback, exceptionalContractAddresses, activeKey, isEscrowV1Dispute) => {
     if (!arbitratorDispute || disputePeriod < DISPUTE_PERIOD_APPEAL || !contributions || !multipliers || !appealCost || !appealPeriod || !arbitrated) {
       return null;
     }
@@ -455,7 +476,9 @@ class DisputeDetails extends React.Component {
           Appeal
         </Accordion.Toggle>
         <Accordion.Collapse eventKey="1">
-          {this.renderAppealSection(disputePeriod, totalWithdrawable, metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated)}
+          {isEscrowV1Dispute ?
+            this.renderEscrowV1AppealSection(disputePeriod, appealCallback, appealCost)
+            : this.renderAppealSection(disputePeriod, totalWithdrawable, metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated)}
         </Accordion.Collapse>
       </Card>
     );
@@ -557,7 +580,7 @@ class DisputeDetails extends React.Component {
       // Try to use Reality.eth parsed outcomes if available
       const realityOutcomes = this.findRealityOutcomes(metaevidenceJSON);
       const fallbackTitles = realityOutcomes || ["Yes", "No"]; // Basic fallback for Reality.eth questions
-      
+
       fallbackTitles.forEach((title, index) => {
         cards.push(
           <Col key={`fallback-${index + 1}`} className="pb-4" xl={8} lg={12} xs={24}>
@@ -672,6 +695,7 @@ class DisputeDetails extends React.Component {
   render() {
     const {
       arbitrated,
+      network,
       metaevidenceJSON,
       evidences,
       arbitratorDisputeID,
@@ -702,6 +726,7 @@ class DisputeDetails extends React.Component {
     }
 
     const disputePeriod = parseInt(arbitratorDispute.period, 10);
+    const isEscrowV1Dispute = networkMap[network].ESCROW_V1_CONTRACTS.includes(arbitrated);
 
     return (
       <section className={styles.disputeDetails}>
@@ -720,7 +745,7 @@ class DisputeDetails extends React.Component {
           className={`mt-4 ${styles.accordion}`}
           onSelect={this.handleAccordionSelect}
         >
-          {this.renderAppealCard(arbitratorDispute, disputePeriod, contributions, multipliers, appealCost, appealPeriod, arbitrated, totalWithdrawable, metaevidenceJSON, currentRuling, appealCallback, exceptionalContractAddresses, activeKey)}
+          {this.renderAppealCard(arbitratorDispute, disputePeriod, contributions, multipliers, appealCost, appealPeriod, arbitrated, totalWithdrawable, metaevidenceJSON, currentRuling, appealCallback, exceptionalContractAddresses, activeKey, isEscrowV1Dispute)}
 
           <Card>
             <Accordion.Toggle className={activeKey == 2 ? "open" : "closed"} as={Card.Header} eventKey="2">
