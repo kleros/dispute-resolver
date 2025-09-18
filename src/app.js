@@ -1812,6 +1812,13 @@ class App extends React.Component {
   };
 
   appeal = async (arbitrableAddress, arbitrableDisputeID, party, contribution) => {
+    //EscrowV1 does not support crowdfunding and so does not have the fundAppeal function, users can only appeal by paying the appeal cost
+    if (networkMap[this.state.network].ESCROW_V1_CONTRACTS
+      .includes(arbitrableAddress)) {
+
+      return this.handleEscrowV1Appeal(arbitrableAddress, arbitrableDisputeID, contribution);
+    }
+
     const contract = await getSignableContract(
       "IDisputeResolver",
       arbitrableAddress,
@@ -1827,6 +1834,25 @@ class App extends React.Component {
     } catch (error) {
       console.error("Error executing Appeal transaction: ", error)
       return null
+    }
+  }
+
+  handleEscrowV1Appeal = async (arbitrableAddress, arbitrableDisputeID, contribution) => {
+    const contract = await getSignableContract(
+      "MultipleArbitrableTokenTransaction",
+      arbitrableAddress,
+      this.state.provider
+    );
+
+    try {
+      const tx = await contract.appeal(
+        arbitrableDisputeID,
+        { value: ethers.parseEther(contribution) }
+      );
+      return tx.wait();
+    } catch (err) {
+      console.error("EscrowV1 appeal failed:", err);
+      return null;
     }
   }
 
