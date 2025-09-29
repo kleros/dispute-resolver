@@ -210,11 +210,11 @@ class Interact extends React.Component {
       this.props.getMultipliersCallback(arbitrated).catch(err => {
         console.warn('getMultipliersCallback failed:', err.message);
         return {
-          winner: "10000", // 1.0 multiplier in basis points
-          loser: "10000",
-          shared: "5000",
-          divisor: "10000"
-        };
+          winnerStakeMultiplier: 10000n,
+          loserStakeMultiplier: 10000n,
+          loserAppealPeriodMultiplier: 10000n,
+          denominator: 10000n
+        }
       })
     ]);
 
@@ -412,11 +412,11 @@ class Interact extends React.Component {
   renderIncompatibleWarning = () => {
     const { metaevidence } = this.state;
     const isGenericMetaEvidence = metaevidence?.metaEvidenceJSON?.category === "Non-Standard Contract";
-    
+
     return (
-      <div style={{ 
-        padding: "1rem 2rem", 
-        fontSize: "14px", 
+      <div style={{
+        padding: "1rem 2rem",
+        fontSize: "14px",
         background: isGenericMetaEvidence ? "#fff3cd" : "#fafafa",
         border: isGenericMetaEvidence ? "1px solid #ffeaa7" : "none",
         borderRadius: "4px",
@@ -424,8 +424,8 @@ class Interact extends React.Component {
       }}>
         {isGenericMetaEvidence ? (
           <>
-            <b>⚠️ Non-Standard Contract:</b> This arbitrable contract doesn't follow standard Kleros patterns. 
-            The dispute information shown is generic. Limited functionality is available - you may not be able to submit evidence 
+            <b>⚠️ Non-Standard Contract:</b> This arbitrable contract doesn't follow standard Kleros patterns.
+            The dispute information shown is generic. Limited functionality is available - you may not be able to submit evidence
             or fund appeals through this interface.
             <br />
             <small style={{ color: "#856404", marginTop: "0.5rem", display: "block" }}>
@@ -434,7 +434,7 @@ class Interact extends React.Component {
           </>
         ) : (
           <>
-            <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. 
+            <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver.
             You can't submit evidence or fund appeal on this interface. You can do these on the arbitrable application, if implemented.
           </>
         )}
@@ -558,6 +558,7 @@ class Interact extends React.Component {
         />
         <DisputeDetails
           activeAddress={activeAddress}
+          network={network}
           metaevidenceJSON={metaevidence?.metaEvidenceJSON}
           evidences={evidences}
           ipfsGateway="https://cdn.kleros.link"

@@ -294,6 +294,11 @@ class App extends React.Component {
       network: this.state.network
     });
 
+    //Means it is an EscrowV1 dispute
+    if (networkMap[this.state.network].ESCROW_V1_CONTRACTS.includes(arbitrableAddress)) {
+      return this.getArbitrableDisputeIDFromEscrowV1(arbitrableAddress, arbitratorDisputeID);
+    }
+
     const contract = getContract(
       "IDisputeResolver",
       arbitrableAddress,
@@ -327,6 +332,26 @@ class App extends React.Component {
         console.error(`❌ [getArbitrableDisputeID] Fallback query failed:`, fallbackError);
       }
 
+      return null;
+    }
+  }
+
+  //For EscrowV1 the externalIDtoLocalID function is not available, but the mapping disputeIDtoTransactionID is.
+  getArbitrableDisputeIDFromEscrowV1 = async (arbitrableAddress, arbitratorDisputeID) => {
+    try {
+      //Note that EscrowV1 uses MultipleArbitrableTransaction and MultipleArbitrableTokenTransaction contracts. 
+      //However, we can always use the same ABI here because the function is the same and available in both.
+      const contract = getContract(
+        "MultipleArbitrableTokenTransaction",
+        arbitrableAddress,
+        this.state.provider
+      );
+
+      const result = await contract.disputeIDtoTransactionID.staticCall(arbitratorDisputeID);
+      console.debug(`✅ [getArbitrableDisputeID] EscrowV1 success:`, result.toString());
+      return result;
+    } catch (error) {
+      console.error(`❌ [getArbitrableDisputeID] EscrowV1 error:`, error);
       return null;
     }
   }
@@ -1787,6 +1812,13 @@ class App extends React.Component {
   };
 
   appeal = async (arbitrableAddress, arbitrableDisputeID, party, contribution) => {
+    //EscrowV1 does not support crowdfunding and so does not have the fundAppeal function, users can only appeal by paying the appeal cost
+    if (networkMap[this.state.network].ESCROW_V1_CONTRACTS
+      .includes(arbitrableAddress)) {
+
+      return this.handleEscrowV1Appeal(arbitrableAddress, arbitrableDisputeID, contribution);
+    }
+
     const contract = await getSignableContract(
       "IDisputeResolver",
       arbitrableAddress,
@@ -1802,6 +1834,25 @@ class App extends React.Component {
     } catch (error) {
       console.error("Error executing Appeal transaction: ", error)
       return null
+    }
+  }
+
+  handleEscrowV1Appeal = async (arbitrableAddress, arbitrableDisputeID, contribution) => {
+    const contract = await getSignableContract(
+      "MultipleArbitrableTokenTransaction",
+      arbitrableAddress,
+      this.state.provider
+    );
+
+    try {
+      const tx = await contract.appeal(
+        arbitrableDisputeID,
+        { value: ethers.parseEther(contribution) }
+      );
+      return tx.wait();
+    } catch (err) {
+      console.error("EscrowV1 appeal failed:", err);
+      return null;
     }
   }
 
