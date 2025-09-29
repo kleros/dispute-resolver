@@ -233,7 +233,7 @@ class App extends React.Component {
       }
     }
 
-    for (let i = 0; i < counter - 1; i++) {
+    for (let i = 0; i < counter; i++) {
       subcourtURIs[i] = this.getSubCourtDetails(i);
       subcourts[i] = this.getSubcourt(i);
     }
