@@ -201,6 +201,18 @@ const map = {
     WEB3_PROVIDER: process.env.REACT_APP_OPTIMISM_SEPOLIA,
     CURRENCY_SHORT: "ETH",
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["11155111"],
+  },
+  8453: {
+    NAME: "Base Mainnet",
+    FOREIGN_KLEROS_LIQUID: arbitrators["1"],
+    FOREIGN_ARBITRATOR_NETWORK_CODE: "1",
+    ARBITRABLE_PROXY: null,
+    ESCROW_V1_CONTRACTS: [],
+    POH_V2_CONTRACTS: [],
+    POLICY_REGISTRY: policyRegistries["1"],
+    WEB3_PROVIDER: process.env.REACT_APP_BASE,
+    CURRENCY_SHORT: "ETH",
+    QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["1"],
   }
 };
 
