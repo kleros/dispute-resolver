@@ -15,6 +15,7 @@ import ipfsPublish from "./ipfs-publish";
 import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
 import { urlNormalize } from "./urlNormalizer";
+import { fetchDataFromScript } from "./utils";
 
 // Constants to avoid magic numbers
 const HEX_PADDING_WIDTH = 64;
@@ -1311,7 +1312,7 @@ class App extends React.Component {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const metaEvidenceJSON = await response.json();
+      let metaEvidenceJSON = await response.json();
       console.debug(`📋 [getMetaEvidence] MetaEvidence JSON content:`, metaEvidenceJSON);
 
       console.log({ dispute: { metaEvidenceID, blockNumber: disputeEvent.blockNumber } });
@@ -1333,11 +1334,53 @@ class App extends React.Component {
       //Do not assume cross-chain for POH_V2, otherwise the iframe won't work
       const isPOH_V2 = networkMap[this.state.network].POH_V2_CONTRACTS.includes(arbitrableAddress);
 
-      // For cross-chain disputes where arbitrable is on Gnosis, ensure correct chainID
+      //For cross-chain disputes where arbitrable is on Gnosis, ensure correct chainID
       if (!isPOH_V2 && !metaEvidenceJSON.arbitrableChainID && network === '1') {
         console.debug(`🔧 [getMetaEvidence] Adding arbitrableChainID for cross-chain dispute`);
         metaEvidenceJSON.arbitrableChainID = '100'; // Gnosis chain
         metaEvidenceJSON.arbitratorChainID = '1';   // Ethereum mainnet
+      }
+
+      //Check for the dynamicScriptURI and fetch data if available
+      if (metaEvidenceJSON.dynamicScriptURI) {
+        const scriptURI = urlNormalize(metaEvidenceJSON.dynamicScriptURI);
+
+        console.debug(`🔧 [getMetaEvidence] Fetching dynamic script from URI: ${scriptURI}`);
+
+        const response = await fetch(scriptURI);
+        if (!response.ok) throw new Error(`Unable to fetch dynamic script file at ${scriptURI}.`);
+
+        const scriptData = await response.text();
+        const injectedParameters = {
+          arbitratorChainID: metaEvidenceJSON.arbitratorChainID || network,
+          arbitrableChainID: metaEvidenceJSON.arbitrableChainID || network,
+          disputeID: arbitratorDisputeID,
+        };
+
+        injectedParameters.arbitrableContractAddress = arbitrableAddress;
+        injectedParameters.arbitratorJsonRpcUrl = getReadOnlyRpcUrl({ chainId: injectedParameters.arbitratorChainID });
+        injectedParameters.arbitrableChainID = injectedParameters.arbitrableChainID || metaEvidenceJSON.arbitrableChainID;
+        injectedParameters.arbitrableJsonRpcUrl = getReadOnlyRpcUrl({ chainId: injectedParameters.arbitrableChainID });
+
+        if (
+          injectedParameters.arbitratorChainID !== undefined &&
+          injectedParameters.arbitratorJsonRpcUrl === undefined
+        ) {
+          console.debug(`🔧 [getMetaEvidence] Could not obtain a valid 'arbitratorJsonRpcUrl' for chain ID ${injectedParameters.arbitratorChainID} on the Arbitrator side.`);
+        }
+
+        if (
+          injectedParameters.arbitrableChainID !== undefined &&
+          injectedParameters.arbitrableJsonRpcUrl === undefined
+        ) {
+          console.debug(`🔧 [getMetaEvidence] Could not obtain a valid 'arbitrableJsonRpcUrl' for chain ID ${injectedParameters.arbitrableChainID} on the Arbitrable side.`);
+        }
+
+        const metaEvidenceEdits = await fetchDataFromScript(scriptData, injectedParameters);
+        metaEvidenceJSON = {
+          ...metaEvidenceJSON,
+          ...metaEvidenceEdits,
+        };
       }
 
       // Note: Block range parameters removed - evidence display interfaces 
