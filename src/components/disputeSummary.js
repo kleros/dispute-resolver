@@ -12,10 +12,10 @@ class DisputeSummary extends React.Component {
     const { arbitratorDisputeID, arbitratorAddress, arbitratorChainID, chainID, web3Provider } = this.props;
     return {
       disputeID: arbitratorDisputeID,
-      parsedChainID: parseInt(chainID, 10),
+      chainID: Number.parseInt(chainID, 10),
       arbitratorContractAddress: arbitratorAddress,
       arbitratorJsonRpcUrl: getReadOnlyRpcUrl({ chainId: arbitratorChainID }) ?? web3Provider,
-      arbitratorChainID: parseInt(arbitratorChainID, 10),
+      arbitratorChainID: Number.parseInt(arbitratorChainID, 10),
     };
   }
 
@@ -23,7 +23,7 @@ class DisputeSummary extends React.Component {
     const { arbitrableChainID, arbitrated, web3Provider } = this.props;
     return {
       arbitrableContractAddress: arbitrated,
-      arbitrableChainID: parseInt(arbitrableChainID, 10),
+      arbitrableChainID: Number.parseInt(arbitrableChainID, 10),
       arbitrableJsonRpcUrl: getReadOnlyRpcUrl({ chainId: arbitrableChainID }) ?? web3Provider,
     };
   }
