@@ -27,7 +27,7 @@ const arbitrableWhitelist = {
     "0xf339047c85d0dd2645f2bd802a1e8a5e7af61053",
     "0xf65c7560d6ce320cc3a16a07f1f65aab66396b9e",
     "0xf72cfd1b34a91a64f9a98537fe63fbab7530adca",
-    "0xbE9834097A4E97689d9B667441acafb456D0480A"
+    "0xbe9834097a4e97689d9b667441acafb456d0480a"
   ],
   100: [
     "0x0b928165a67df8254412483ae8c3b8cc7f2b4d36",
@@ -50,10 +50,10 @@ const arbitrableWhitelist = {
     "0xd5994f15be9987104d9821aa99d1c97227c7c08c",
     "0xe04f5791d671d5c4e08ab49b39807087b591ea3e",
     "0xf7de5537ecd69a94695fcf4bcdbdee6329b63322",
-    "0xa4AC94C4fa65Bb352eFa30e3408e64F72aC857bc"
+    "0xa4ac94c4fa65bb352efa30e3408e64f72ac857bc"
   ],
   8453: [
-    "0xF0b37Feda6CDF5F78B37e1Fbccc24969059F2044"
+    "0xf0b37feda6cdf5f78b37e1fbccc24969059f2044"
   ]
 };
 
