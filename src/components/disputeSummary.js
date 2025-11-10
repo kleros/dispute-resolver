@@ -12,10 +12,10 @@ class DisputeSummary extends React.Component {
     const { arbitratorDisputeID, arbitratorAddress, arbitratorChainID, chainID, web3Provider } = this.props;
     return {
       disputeID: arbitratorDisputeID,
-      chainID,
+      parsedChainID: parseInt(chainID, 10),
       arbitratorContractAddress: arbitratorAddress,
       arbitratorJsonRpcUrl: getReadOnlyRpcUrl({ chainId: arbitratorChainID }) ?? web3Provider,
-      arbitratorChainID,
+      arbitratorChainID: parseInt(arbitratorChainID, 10),
     };
   }
 
@@ -23,7 +23,7 @@ class DisputeSummary extends React.Component {
     const { arbitrableChainID, arbitrated, web3Provider } = this.props;
     return {
       arbitrableContractAddress: arbitrated,
-      arbitrableChainID,
+      arbitrableChainID: parseInt(arbitrableChainID, 10),
       arbitrableJsonRpcUrl: getReadOnlyRpcUrl({ chainId: arbitrableChainID }) ?? web3Provider,
     };
   }
@@ -31,10 +31,10 @@ class DisputeSummary extends React.Component {
   getInjectedArgs() {
     const { web3Provider, chainID } = this.props;
     // Convert web3Provider object to URL string if needed
-    const jsonRpcUrl = typeof web3Provider === 'object' 
-      ? getReadOnlyRpcUrl({ chainId: chainID }) 
+    const jsonRpcUrl = typeof web3Provider === 'object'
+      ? getReadOnlyRpcUrl({ chainId: chainID })
       : web3Provider;
-    
+
     // Follow Kleros Court approach: only pass essential parameters
     // Do NOT pass block range parameters - let evidence interfaces handle optimization internally
     const baseArgs = {
@@ -58,7 +58,7 @@ class DisputeSummary extends React.Component {
 
   renderAliases(metaevidenceJSON) {
     if (!metaevidenceJSON.aliases) return null;
-    
+
     return (
       <Row>
         {Object.entries(metaevidenceJSON.aliases).map(([key, value]) => (
