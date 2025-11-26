@@ -1331,16 +1331,6 @@ class App extends React.Component {
 
       console.debug(`🔧 [getMetaEvidence] Final MetaEvidence JSON after normalization:`, metaEvidenceJSON);
 
-      //Do not assume cross-chain for POH_V2, otherwise the iframe won't work
-      const isPOH_V2 = networkMap[this.state.network].POH_V2_CONTRACTS.includes(arbitrableAddress);
-
-      //For cross-chain disputes where arbitrable is on Gnosis, ensure correct chainID
-      if (!isPOH_V2 && !metaEvidenceJSON.arbitrableChainID && network === '1') {
-        console.debug(`🔧 [getMetaEvidence] Adding arbitrableChainID for cross-chain dispute`);
-        metaEvidenceJSON.arbitrableChainID = '100'; // Gnosis chain
-        metaEvidenceJSON.arbitratorChainID = '1';   // Ethereum mainnet
-      }
-
       //Check for the dynamicScriptURI and fetch data if available
       if (metaEvidenceJSON.dynamicScriptURI) {
         const scriptURI = urlNormalize(metaEvidenceJSON.dynamicScriptURI);
@@ -1353,7 +1343,7 @@ class App extends React.Component {
         const scriptData = await response.text();
         const injectedParameters = {
           arbitratorChainID: metaEvidenceJSON.arbitratorChainID || network,
-          arbitrableChainID: metaEvidenceJSON.arbitrableChainID || network,
+          arbitrableChainID: metaEvidenceJSON.arbitrableChainID || metaEvidenceJSON.arbitratorChainID || network,
           disputeID: arbitratorDisputeID,
         };
 
