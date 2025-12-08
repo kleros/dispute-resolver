@@ -195,6 +195,17 @@ const map = {
     WEB3_PROVIDER: process.env.REACT_APP_BASE,
     CURRENCY_SHORT: "ETH",
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["1"],
+  },
+  84532: {
+    NAME: "Base Sepolia",
+    FOREIGN_KLEROS_LIQUID: arbitrators["11155111"],
+    FOREIGN_ARBITRATOR_NETWORK_CODE: "11155111",
+    ARBITRABLE_PROXY: null,
+    ESCROW_V1_CONTRACTS: [],
+    POLICY_REGISTRY: policyRegistries["11155111"],
+    WEB3_PROVIDER: process.env.REACT_APP_BASE_SEPOLIA,
+    CURRENCY_SHORT: "ETH",
+    QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["111155111"],
   }
 };
 
