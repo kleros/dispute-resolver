@@ -86,7 +86,7 @@ class DisputeSummary extends React.Component {
   }
 
   render() {
-    const { metaevidenceJSON, ipfsGateway, arbitrated, arbitratorChainID, loading } = this.props;
+    const { metaevidenceJSON, ipfsGateway, arbitrated, arbitrableChainID, loading } = this.props;
 
     if (metaevidenceJSON) {
       const injectedArgs = this.getInjectedArgs();
@@ -110,8 +110,8 @@ class DisputeSummary extends React.Component {
               return (
                 <iframe
                   sandbox={
-                    whitelistedArbitrables[arbitratorChainID]?.includes(arbitrated.toLowerCase())
-                      ? "allow-scripts allow-same-origin"
+                    whitelistedArbitrables[arbitrableChainID]?.includes(arbitrated.toLowerCase())
+                      ? "allow-scripts allow-same-origin allow-popups"
                       : "allow-scripts"
                   }
                   className="border-0"
