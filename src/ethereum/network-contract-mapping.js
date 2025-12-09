@@ -225,7 +225,7 @@ export function getReadOnlyRpcUrl({ chainId }) {
   return url;
 }
 
-const testnetChainIds = [5, 1301, 300, 421614, 80001, 10200, 11155111, 11155420, 84532];
+const testnetChainIds = new Set([5, 1301, 300, 421614, 80001, 10200, 11155111, 11155420, 84532]);
 export function isTestnet(chainId) {
-  return testnetChainIds.includes(Number(chainId));
+  return testnetChainIds.has(Number(chainId));
 }

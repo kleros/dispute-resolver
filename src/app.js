@@ -623,6 +623,45 @@ class App extends React.Component {
     );
   }
 
+  processDynamicScript = async (metaEvidenceJSON, chainID, disputeId, arbitrated, arbitrator) => {
+    const scriptURI =
+      chainID === "1" && disputeId === "1621"
+        ? urlNormalize("/ipfs/Qmf1k727vP7qZv21MDB8vwL6tfVEKPCUQAiw8CTfHStkjf")
+        : urlNormalize(metaEvidenceJSON.dynamicScriptURI);
+
+    console.info("🧾 [getMetaEvidence] Fetching dynamic script file at", scriptURI);
+
+    const fileResponse = await fetch(scriptURI);
+    if (!fileResponse.ok) {
+      console.error(`💥 [getMetaEvidence] Unable to fetch dynamic script file at ${scriptURI}.`);
+      return null;
+    }
+    const scriptData = await fileResponse.text();
+
+    const injectedParameters = {
+      arbitratorChainID: metaEvidenceJSON.arbitratorChainID || chainID,
+      arbitrableChainID: metaEvidenceJSON.arbitrableChainID || chainID,
+      disputeID: disputeId,
+      arbitrableContractAddress: arbitrated,
+    };
+
+    injectedParameters.arbitratorJsonRpcUrl =
+      injectedParameters.arbitratorJsonRpcUrl || getReadOnlyRpcUrl({ chainId: injectedParameters.arbitratorChainID });
+    injectedParameters.arbitrableChainID = injectedParameters.arbitrableChainID || arbitrator;
+    injectedParameters.arbitrableJsonRpcUrl =
+      injectedParameters.arbitrableJsonRpcUrl || getReadOnlyRpcUrl({ chainId: injectedParameters.arbitrableChainID });
+
+    if (injectedParameters.arbitratorChainID !== undefined && injectedParameters.arbitratorJsonRpcUrl === undefined) {
+      console.warn(`Could not obtain a valid 'arbitratorJsonRpcUrl' for chain ID ${injectedParameters.arbitratorChainID}`);
+    }
+
+    if (injectedParameters.arbitrableChainID !== undefined && injectedParameters.arbitrableJsonRpcUrl === undefined) {
+      console.warn(`Could not obtain a valid 'arbitrableJsonRpcUrl' for chain ID ${injectedParameters.arbitrableChainID}`);
+    }
+
+    return fetchDataFromScript(scriptData, injectedParameters);
+  };
+
   getMetaEvidence = async (arbitrated, disputeId) => {
     const chainID = this.state.network;
     const arbitrator = networkMap[this.state.network].KLEROS_LIQUID;
@@ -649,65 +688,20 @@ class App extends React.Component {
           evidenceDisplayInterfaceURLHash: "evidenceDisplayInterfaceHash",
         };
 
-        const replacePairs = Object.entries(updateDict);
-        for (const [legacyKey, updatedKey] of replacePairs) {
+        for (const [legacyKey, updatedKey] of Object.entries(updateDict)) {
           if (!metaEvidenceJSON[legacyKey]) continue;
           const value = metaEvidenceJSON[legacyKey];
           delete metaEvidenceJSON[legacyKey];
           metaEvidenceJSON[updatedKey] = value;
         }
 
-        if (metaEvidenceJSON.rulingOptions && !metaEvidenceJSON.rulingOptions.type)
+        if (metaEvidenceJSON.rulingOptions && !metaEvidenceJSON.rulingOptions.type) {
           metaEvidenceJSON.rulingOptions.type = "single-select";
+        }
 
         if (metaEvidenceJSON.dynamicScriptURI) {
-          const scriptURI =
-            chainID === 1 && disputeId === "1621"
-              ? urlNormalize("/ipfs/Qmf1k727vP7qZv21MDB8vwL6tfVEKPCUQAiw8CTfHStkjf")
-              : urlNormalize(metaEvidenceJSON.dynamicScriptURI);
-
-          console.info("🧾 [getMetaEvidence] Fetching dynamic script file at", scriptURI);
-
-          const fileResponse = await fetch(scriptURI);
-          if (!fileResponse.ok) {
-            console.error(`💥 [getMetaEvidence] Unable to fetch dynamic script file at ${scriptURI}.`);
-            return null;
-          }
-          const scriptData = await fileResponse.text();
-
-          const injectedParameters = {
-            arbitratorChainID: metaEvidenceJSON.arbitratorChainID || chainID,
-            arbitrableChainID: metaEvidenceJSON.arbitrableChainID || chainID,
-            disputeID: disputeId,
-          };
-
-          injectedParameters.arbitrableContractAddress = injectedParameters.arbitrableContractAddress || arbitrated;
-          injectedParameters.arbitratorJsonRpcUrl =
-            injectedParameters.arbitratorJsonRpcUrl || getReadOnlyRpcUrl({ chainId: injectedParameters.arbitratorChainID });
-          injectedParameters.arbitrableChainID = injectedParameters.arbitrableChainID || arbitrator;
-          injectedParameters.arbitrableJsonRpcUrl =
-            injectedParameters.arbitrableJsonRpcUrl || getReadOnlyRpcUrl({ chainId: injectedParameters.arbitrableChainID });
-
-          if (
-            injectedParameters.arbitratorChainID !== undefined &&
-            injectedParameters.arbitratorJsonRpcUrl === undefined
-          ) {
-            console.warn(`💥 [getMetaEvidence] Could not obtain a valid 'arbitratorJsonRpcUrl' for chain ID ${injectedParameters.arbitratorChainID} on the Arbitrator side.`);
-          }
-
-          if (
-            injectedParameters.arbitrableChainID !== undefined &&
-            injectedParameters.arbitrableJsonRpcUrl === undefined
-          ) {
-            console.warn(`💥 [getMetaEvidence] Could not obtain a valid 'arbitrableJsonRpcUrl' for chain ID ${injectedParameters.arbitrableChainID} on the Arbitrable side.`);
-          }
-
-          const metaEvidenceEdits = await fetchDataFromScript(scriptData, injectedParameters);
-
-          metaEvidenceJSON = {
-            ...metaEvidenceJSON,
-            ...metaEvidenceEdits,
-          };
+          const metaEvidenceEdits = await this.processDynamicScript(metaEvidenceJSON, chainID, disputeId, arbitrated, arbitrator);
+          metaEvidenceJSON = { ...metaEvidenceJSON, ...metaEvidenceEdits };
         }
 
         return { metaEvidenceJSON };
@@ -716,6 +710,7 @@ class App extends React.Component {
         console.warn(`💥 [getMetaEvidence] Failed to get the evidence:`, err);
       }
     }
+
     return {
       description:
         "In case you have an AdBlock enabled, please disable it and refresh the page. It may be preventing the correct working of the page. If that's not the case, the data for this case is not formatted correctly or has been tampered since the time of its submission. Please refresh the page and refuse to arbitrate if the problem persists.",
