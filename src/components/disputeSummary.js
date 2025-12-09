@@ -104,9 +104,13 @@ class DisputeSummary extends React.Component {
             <ReactMarkdown className={styles.description} source={metaevidenceJSON.description} />
 
             {metaevidenceJSON.evidenceDisplayInterfaceURI && (() => {
-              const iframeSrc = (metaevidenceJSON.evidenceDisplayInterfaceURI.includes("://") ? "" : ipfsGateway) + `${metaevidenceJSON.evidenceDisplayInterfaceURI}?${searchParams}`;
+              // hack to allow displaying old t2cr disputes, since old endpoint was lost
+              const evidenceDisplayInterfaceURI = arbitrated === "0xEbcf3bcA271B26ae4B162Ba560e243055Af0E679"
+                ? "/ipfs/QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh/index.html"
+                : metaevidenceJSON.evidenceDisplayInterfaceURI;
+              const iframeSrc = (evidenceDisplayInterfaceURI.includes("://") ? "" : ipfsGateway) + `${evidenceDisplayInterfaceURI}?${searchParams}`;
               console.debug('🔍 [DisputeSummary] iframe src:', iframeSrc);
-              console.debug('🔍 [DisputeSummary] evidenceDisplayInterfaceURI:', metaevidenceJSON.evidenceDisplayInterfaceURI);
+              console.debug('🔍 [DisputeSummary] evidenceDisplayInterfaceURI:', evidenceDisplayInterfaceURI);
               return (
                 <iframe
                   sandbox={
