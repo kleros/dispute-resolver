@@ -1,5 +1,5 @@
 import React from "react";
-import {  Col, Row, Button, Form } from "react-bootstrap";
+import { Col, Row, Button, Form } from "react-bootstrap";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
@@ -27,7 +27,7 @@ class CreateSummary extends React.Component {
       aliases[formData.addresses[index]] = name;
     });
 
-    console.log({aliases})
+    console.log({ aliases })
 
     try {
       const result = await this.props.createDisputeCallback({
@@ -47,9 +47,9 @@ class CreateSummary extends React.Component {
         },
       });
 
-      console.debug({result})
+      console.debug({ result })
       notificationEventCallback(result.disputeID);
-      this.setState({lastDisputeID: result.disputeID});
+      this.setState({ lastDisputeID: result.disputeID });
     } catch (e) {
       console.error(e);
     } finally {
@@ -57,14 +57,14 @@ class CreateSummary extends React.Component {
     }
   };
 
-  componentDidMount = () => {};
+  componentDidMount = () => { };
 
   render() {
-    const {  onReturnButtonClickCallback, validated, formData, network } = this.props;
+    const { onReturnButtonClickCallback, validated, formData, network } = this.props;
 
     return (
       <section className={styles.summary}>
-        <Form noValidate validated={validated} onSubmit={this.onModalShow}>
+        <Form noValidate validated={validated} onSubmit={this.onCreateButtonClick}>
           <Row>
             <Col>
               <p className={styles.fillUpTheForm}>Summary</p>
@@ -114,8 +114,8 @@ class CreateSummary extends React.Component {
             </Col>
           </Row>
           <Row>
-            {formData.names?.length> 0 && formData.names.filter(name => name.trim() !== '').map((_value, index) => (
-              <React.Fragment key={`party-${index+1}`}>
+            {formData.names?.length > 0 && formData.names.filter(name => name.trim() !== '').map((_value, index) => (
+              <React.Fragment key={`party-${index + 1}`}>
                 <Col xl={4} lg={4} md={8}>
                   <Form.Group>
                     <Form.Label htmlFor="requester">Party {index + 1}</Form.Label>
@@ -172,7 +172,7 @@ class CreateSummary extends React.Component {
           ))}
           <hr />
 
-          <Row className={` text-center text-md-left ${styles.footer} `}>
+          <Row className={`text-center text-md-left ${styles.footer}`}>
             {formData.primaryDocument && (
               <Col md={12} xs={24} className={styles.attachment}>
                 <a href={`https://cdn.kleros.link${formData.primaryDocument}`} target="_blank" rel="noopener noreferrer" className={styles.primaryDocument}>
@@ -181,25 +181,23 @@ class CreateSummary extends React.Component {
                 </a>
               </Col>
             )}
+          </Row>
+          <Row className={`text-center text-md-right mt-3 ${styles.buttons}`}>
             <Col>
-              <Row className={`text-center text-md-right mt-3 mt-md-0 ${styles.buttons}`}>
-                <Col>
-                  <Button type="button" variant="secondary" className={`mb-3 mb-sm-0 ${styles.return}`} onClick={onReturnButtonClickCallback}>
-                    Return
-                  </Button>
-                </Col>
-                <Col md="auto" xs={24} sm={12}>
-                  <Button 
-                  type="button" 
-                  variant="primary" 
-                  className={`${styles.create}`} 
-                  onClick={this.onCreateButtonClick}
-                  disabled={this.state.awaitingConfirmation} 
-                  xs={{ block: true }}>
-                    Create
-                  </Button>
-                </Col>
-              </Row>
+              <Button type="button" variant="secondary" className={`mb-3 mb-sm-0 ${styles.return}`} onClick={onReturnButtonClickCallback}>
+                Return
+              </Button>
+            </Col>
+            <Col>
+              <Button
+                type="button"
+                variant="primary"
+                className={styles.create}
+                onClick={this.onCreateButtonClick}
+                disabled={this.state.awaitingConfirmation}
+                xs={{ block: true }}>
+                Create
+              </Button>
             </Col>
           </Row>
         </Form>

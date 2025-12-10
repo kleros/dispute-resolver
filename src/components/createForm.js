@@ -72,7 +72,10 @@ class CreateForm extends React.Component {
   }
 
   onNextButtonClick = async event => {
-    const { form } = event.target;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const form = event.target;
     const { subcourtDetails } = this.props;
     const {
       arbitrationCost,
@@ -91,8 +94,6 @@ class CreateForm extends React.Component {
     } = this.state;
 
     const valid = form.checkValidity();
-    event.preventDefault();
-    event.stopPropagation();
 
     this.setState({ validated: !valid });
 
@@ -296,24 +297,24 @@ class CreateForm extends React.Component {
           <Form.Group>
             <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
             <Dropdown required onSelect={this.onSubcourtSelect}>
-              <Dropdown.Toggle 
-                id="subcourt-dropdown" 
-                block 
+              <Dropdown.Toggle
+                id="subcourt-dropdown"
+                block
                 disabled={subcourtsLoading || summary}
                 className={styles.dropdownToggle}
               >
                 <ScalesSVG className={styles.scales} />{" "}
                 <span className="font-weight-normal">
-                  {(subcourtsLoading && "Loading...") || 
-                   (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt] && subcourtDetails[selectedSubcourt].name) || 
-                   "Please select a court"}
+                  {(subcourtsLoading && "Loading...") ||
+                    (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt] && subcourtDetails[selectedSubcourt].name) ||
+                    "Please select a court"}
                 </span>
               </Dropdown.Toggle>
               <Dropdown.Menu>
                 {subcourtDetails?.map((subcourt, index) => (
-                  <Dropdown.Item 
-                    key={`subcourt-${subcourt.name}`} 
-                    eventKey={index} 
+                  <Dropdown.Item
+                    key={`subcourt-${subcourt.name}`}
+                    eventKey={index}
                     className={`${index === selectedSubcourt && "selectedDropdownItem"}`}
                   >
                     {subcourt?.name}
@@ -353,12 +354,12 @@ class CreateForm extends React.Component {
         <Col xl={6} md={12} sm={24} xs={24}>
           <Form.Group>
             <Form.Label htmlFor="category">Category (Optional)</Form.Label>
-            <Form.Control 
-              id="category" 
-              as="input" 
-              value={category} 
-              onChange={this.onControlChange} 
-              placeholder="Category" 
+            <Form.Control
+              id="category"
+              as="input"
+              value={category}
+              onChange={this.onControlChange}
+              placeholder="Category"
             />
           </Form.Group>
         </Col>
@@ -386,13 +387,13 @@ class CreateForm extends React.Component {
           <Col>
             <Form.Group>
               <Form.Label htmlFor="title">Title</Form.Label>
-              <Form.Control 
-                required 
-                id="title" 
-                as="input" 
-                value={title} 
-                onChange={this.onControlChange} 
-                placeholder="Title" 
+              <Form.Control
+                required
+                id="title"
+                as="input"
+                value={title}
+                onChange={this.onControlChange}
+                placeholder="Title"
               />
               <Form.Control.Feedback type="invalid">
                 Please enter title for the dispute, something explains it in a nutshell.
@@ -404,13 +405,13 @@ class CreateForm extends React.Component {
           <Col>
             <Form.Group>
               <Form.Label htmlFor="description">Description (Optional)</Form.Label>
-              <Form.Control 
-                id="description" 
-                as="textarea" 
-                rows="5" 
-                value={description} 
+              <Form.Control
+                id="description"
+                as="textarea"
+                rows="5"
+                value={description}
                 onChange={this.onControlChange}
-                placeholder="Description of dispute" 
+                placeholder="Description of dispute"
               />
             </Form.Group>
           </Col>
@@ -469,13 +470,13 @@ class CreateForm extends React.Component {
           <Col>
             <Form.Group>
               <Form.Label htmlFor="question">Question</Form.Label>
-              <Form.Control 
-                required 
-                id="question" 
-                as="input" 
-                value={question} 
-                onChange={this.onControlChange} 
-                placeholder="Question" 
+              <Form.Control
+                required
+                id="question"
+                as="input"
+                value={question}
+                onChange={this.onControlChange}
+                placeholder="Question"
               />
               <Form.Control.Feedback type="invalid">
                 Please enter a question.
@@ -579,9 +580,9 @@ class CreateForm extends React.Component {
         <Col>
           <Form.Group>
             <Form.Label htmlFor="primaryDocument">Primary Document (Optional)</Form.Label>
-            <FileUploadDropzone 
-              onDrop={this.onDrop} 
-              uploading={uploading} 
+            <FileUploadDropzone
+              onDrop={this.onDrop}
+              uploading={uploading}
               uploadError={uploadError}
             />
             {fileInput && (
@@ -601,9 +602,9 @@ class CreateForm extends React.Component {
     return (
       <Row>
         <Col>
-          <Button 
-            type="submit" 
-            variant="primary" 
+          <Button
+            type="submit"
+            variant="primary"
             disabled={awaitingConfirmation}
             block
           >
@@ -624,7 +625,7 @@ class CreateForm extends React.Component {
 
     return (
       <section className={`${styles.createForm}`}>
-        <Form noValidate validated={validated} onSubmit={this.onModalShow}>
+        <Form noValidate validated={validated} onSubmit={this.onNextButtonClick}>
           <Row>
             <Col>
               <p className={styles.fillUpTheForm}>Fill up the form to</p>
