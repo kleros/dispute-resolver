@@ -1,5 +1,6 @@
 import { Row, Col, Form } from "react-bootstrap";
 import React from "react";
+import PropTypes from "prop-types";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { getReadOnlyRpcUrl } from "../ethereum/network-contract-mapping";
 import whitelistedArbitrables from "../ethereum/arbitrableWhitelist";
@@ -104,9 +105,13 @@ class DisputeSummary extends React.Component {
             <ReactMarkdown className={styles.description} source={metaevidenceJSON.description} />
 
             {metaevidenceJSON.evidenceDisplayInterfaceURI && (() => {
-              const iframeSrc = (metaevidenceJSON.evidenceDisplayInterfaceURI.includes("://") ? "" : ipfsGateway) + `${metaevidenceJSON.evidenceDisplayInterfaceURI}?${searchParams}`;
+              // hack to allow displaying old t2cr disputes, since old endpoint was lost
+              const evidenceDisplayInterfaceURI = arbitrated === "0xEbcf3bcA271B26ae4B162Ba560e243055Af0E679"
+                ? "/ipfs/QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh/index.html"
+                : metaevidenceJSON.evidenceDisplayInterfaceURI;
+              const iframeSrc = (evidenceDisplayInterfaceURI.includes("://") ? "" : ipfsGateway) + `${evidenceDisplayInterfaceURI}?${searchParams}`;
               console.debug('🔍 [DisputeSummary] iframe src:', iframeSrc);
-              console.debug('🔍 [DisputeSummary] evidenceDisplayInterfaceURI:', metaevidenceJSON.evidenceDisplayInterfaceURI);
+              console.debug('🔍 [DisputeSummary] evidenceDisplayInterfaceURI:', evidenceDisplayInterfaceURI);
               return (
                 <iframe
                   sandbox={
@@ -147,5 +152,26 @@ class DisputeSummary extends React.Component {
     else return <div>Failed to load metaevidence, thus the dispute summary. This might be an issue with the IPFS access.</div>;
   }
 }
+
+DisputeSummary.propTypes = {
+  metaevidenceJSON: PropTypes.shape({
+    title: PropTypes.string,
+    description: PropTypes.string,
+    evidenceDisplayInterfaceURI: PropTypes.string,
+    arbitrableInterfaceURI: PropTypes.string,
+    fileURI: PropTypes.string,
+    aliases: PropTypes.object,
+    _v: PropTypes.string,
+  }),
+  ipfsGateway: PropTypes.string,
+  arbitrated: PropTypes.string,
+  arbitrableChainID: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  arbitratorChainID: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  arbitratorDisputeID: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  arbitratorAddress: PropTypes.string,
+  chainID: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  web3Provider: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+  loading: PropTypes.bool,
+};
 
 export default DisputeSummary;

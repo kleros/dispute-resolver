@@ -10,7 +10,7 @@ import Footer from "./components/footer";
 import { ethers } from "ethers";
 
 import { getContract, getSignableContract } from "./ethereum/interface";
-import networkMap, { getReadOnlyRpcUrl } from "./ethereum/network-contract-mapping";
+import networkMap, { getReadOnlyRpcUrl, isTestnet } from "./ethereum/network-contract-mapping";
 import ipfsPublish from "./ipfs-publish";
 import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
@@ -73,6 +73,9 @@ class App extends React.Component {
     };
     this.encoder = new TextEncoder();
   }
+
+  //Testnets have lower limits due to RPC restrictions
+  getMaxLookback = () => networkMap[this.state.network]?.MAX_LOOKBACK || MAX_BLOCK_LOOKBACK;
 
   async componentDidMount() {
     await this.initiateWeb3Provider();
@@ -271,7 +274,7 @@ class App extends React.Component {
     );
 
     const currentBlock = await this.state.provider.getBlockNumber();
-    const startingBlock = Math.max(0, currentBlock - MAX_BLOCK_LOOKBACK);
+    const startingBlock = Math.max(0, currentBlock - this.getMaxLookback());
 
     const newPeriodFilter = contract.filters.NewPeriod();
     const newPeriodEvents = await contract.queryFilter(newPeriodFilter, startingBlock);
@@ -378,7 +381,7 @@ class App extends React.Component {
       // Query for DisputeCreation events
       const deploymentBlock = networkMap[network]?.QUERY_FROM_BLOCK || 0;
       const currentBlock = await this.state.provider.getBlockNumber();
-      const fromBlock = Math.max(deploymentBlock, currentBlock - 1000000); // Limit search range
+      const fromBlock = Math.max(deploymentBlock, currentBlock - this.getMaxLookback());
 
       console.debug(`🔍 [findArbitrableFromArbitrator] Searching blocks ${fromBlock} to ${currentBlock}`);
 
@@ -614,911 +617,132 @@ class App extends React.Component {
     }
   }
 
-  getDisputeEvent = async (arbitrableAddress, disputeID) => this.state.archon.arbitrable.getDispute(arbitrableAddress, // arbitrable contract address
-    networkMap[this.state.network].KLEROS_LIQUID, // arbitrator contract address
-    disputeID // dispute unique identifier
-  );
-
-  getMetaEvidence = async (arbitrableAddress, arbitratorDisputeID) => {
-    try {
-      console.debug(`🔍 [getMetaEvidence] Starting dispute ${arbitratorDisputeID}`);
-
-      const { network } = this.state;
-      // For cross-chain disputes: if arbitrator is on Ethereum mainnet (1),
-      // we USED to assume arbitrable is on Gnosis (100), but we need to check both networks
-      // First, let's try the same network as the arbitrator
-      let targetNetwork = network; // Start by assuming same network
-      console.debug(`🌐 [getMetaEvidence] Current network: ${network}, initially trying target network: ${targetNetwork}`);
-
-      // First, get the block number from DisputeCreation event on arbitrator (Ethereum)
-      console.debug(`📍 [getMetaEvidence] Step 1: Querying arbitrator for DisputeCreation event`);
-      const arbitratorContract = getContract(
-        "KlerosLiquid",
-        networkMap[this.state.network].KLEROS_LIQUID,
-        this.state.provider
-      );
-
-      const disputeCreationFilter = arbitratorContract.filters.DisputeCreation(arbitratorDisputeID);
-      const arbitratorCurrentBlock = await this.state.provider.getBlockNumber();
-      // Use deployment block if available, otherwise fallback to SEARCH_WINDOW_SIZE
-      const deploymentBlock = networkMap[this.state.network].QUERY_FROM_BLOCK;
-      const arbitratorSearchFrom = deploymentBlock || (arbitratorCurrentBlock - SEARCH_WINDOW_SIZE);
-
-      console.debug(`🔎 [getMetaEvidence] Searching arbitrator blocks ${arbitratorSearchFrom} to ${arbitratorCurrentBlock} for dispute ${arbitratorDisputeID}`);
-      console.debug(`🏗️ [getMetaEvidence] Using deployment block: ${deploymentBlock}, current: ${arbitratorCurrentBlock}`);
-      console.debug(`📊 [getMetaEvidence] Arbitrator contract: ${networkMap[this.state.network].KLEROS_LIQUID}`);
-
-      let disputeCreationEvents;
-      try {
-        console.debug(`🚀 [getMetaEvidence] Executing DisputeCreation queryFilter...`);
-        disputeCreationEvents = await arbitratorContract.queryFilter(
-          disputeCreationFilter,
-          arbitratorSearchFrom,
-          "latest"
-        );
-        console.debug(`📋 [getMetaEvidence] Found ${disputeCreationEvents.length} DisputeCreation events`);
-      } catch (error) {
-        console.error(`💥 [getMetaEvidence] Error querying DisputeCreation events:`, error);
-        return null;
-      }
-
-      if (disputeCreationEvents.length === 0) {
-        console.error(`❌ [getMetaEvidence] No DisputeCreation event found on arbitrator for dispute ${arbitratorDisputeID}`);
-        return null;
-      }
-
-      const disputeCreationBlock = disputeCreationEvents[0].blockNumber;
-
-      // Get the timestamp of the DisputeCreation block for cross-chain coordination
-      console.debug(`⏰ [getMetaEvidence] Getting timestamp for Ethereum block ${disputeCreationBlock}`);
-      const disputeCreationBlockData = await this.state.provider.getBlock(disputeCreationBlock);
-      const disputeCreationTimestamp = disputeCreationBlockData.timestamp;
-
-      console.debug(`✅ [getMetaEvidence] Found DisputeCreation at block ${disputeCreationBlock} (timestamp: ${disputeCreationTimestamp}) on arbitrator`);
-      console.debug(`🧾 [getMetaEvidence] DisputeCreation event details:`, disputeCreationEvents[0]);
-
-      // Extract and display all event args clearly
-      const event = disputeCreationEvents[0];
-      console.debug(`📋 [getMetaEvidence] DisputeCreation event args:`);
-      console.debug(`   - _disputeID: ${event.args._disputeID}`);
-      console.debug(`   - _arbitrable: ${event.args._arbitrable}`);
-      console.debug(`   - Transaction hash: ${event.transactionHash}`);
-      console.debug(`   - Block number: ${event.blockNumber}`);
-
-      // CRITICAL: Check if the arbitrable address in the event matches what we're querying
-      const eventArbitrableAddress = disputeCreationEvents[0].args._arbitrable;
-      console.debug(`🔍 [getMetaEvidence] Event arbitrable address: ${eventArbitrableAddress}`);
-      console.debug(`🔍 [getMetaEvidence] Query arbitrable address: ${arbitrableAddress}`);
-      console.debug(`🔍 [getMetaEvidence] Addresses match: ${eventArbitrableAddress.toLowerCase() === arbitrableAddress.toLowerCase()}`);
-
-      if (eventArbitrableAddress.toLowerCase() !== arbitrableAddress.toLowerCase()) {
-        console.error(`❌ [getMetaEvidence] ADDRESS MISMATCH! Event shows arbitrable ${eventArbitrableAddress} but we're querying ${arbitrableAddress}`);
-        console.debug(`💡 [getMetaEvidence] This explains why no events are found. Using the correct address from the event...`);
-        // Update the arbitrable address to the correct one from the event
-        arbitrableAddress = eventArbitrableAddress;
-        console.debug(`🔄 [getMetaEvidence] Updated arbitrable address to: ${arbitrableAddress}`);
-      }
-
-      // Now query the arbitrable contract - start with same network as arbitrator
-      console.debug(`📍 [getMetaEvidence] Step 2: Querying arbitrable contract for Dispute event on same network`);
-      const targetProvider = this.state.provider; // Use same provider as arbitrator initially
-
-      console.debug(`🔗 [getMetaEvidence] Target provider: Using same network (${network}) as arbitrator`);
-
-      const contract = getContract("IDisputeResolver", arbitrableAddress, targetProvider);
-      console.debug(`🏗️ [getMetaEvidence] Created contract instance for ${arbitrableAddress} on network ${network}`);
-
-      // Debug contract interface
-      try {
-        const hasDispute = typeof contract.filters.Dispute === 'function';
-        console.debug(`🔍 [getMetaEvidence] Contract has Dispute filter: ${hasDispute}`);
-        if (hasDispute) {
-          const topics = contract.interface.getEvent('Dispute').topicHash;
-          console.debug(`🏷️ [getMetaEvidence] Dispute event topic: ${topics}`);
-        }
-      } catch (err) {
-        console.debug(`⚠️ [getMetaEvidence] Contract interface check failed: ${err.message}`);
-      }
-
-      const arbitratorAddr = networkMap[this.state.network].KLEROS_LIQUID;
-      console.debug(`⚖️ [getMetaEvidence] Using arbitrator address: ${arbitratorAddr}`);
-
-      const disputeFilter = contract.filters.Dispute(
-        arbitratorAddr, // arbitrator address
-        arbitratorDisputeID // dispute ID
-      );
-
-      // Since both arbitrator and arbitrable are on Ethereum, use the same block range as DisputeCreation
-      console.debug(`📅 [getMetaEvidence] Step 2a: Searching on same network (Ethereum) around block ${disputeCreationBlock}`);
-
-      const targetCurrentBlock = await targetProvider.getBlockNumber();
-      console.debug(`🔗 [getMetaEvidence] Current Ethereum block: ${targetCurrentBlock}`);
-
-      // Since both events should be in the same transaction or very close blocks on Ethereum
-      const blockBuffer = 100; // Much smaller buffer since same network  
-      const searchFromBlock = Math.max(1, disputeCreationBlock - blockBuffer);
-      const searchToBlock = Math.min(targetCurrentBlock, disputeCreationBlock + blockBuffer);
-
-      // Also prepare a wider search as backup 
-      const recentSearchFrom = Math.max(1, targetCurrentBlock - 9999);
-      const recentSearchTo = targetCurrentBlock;
-
-      console.debug(`🧮 [getMetaEvidence] DisputeCreation block: ${disputeCreationBlock}, Current: ${targetCurrentBlock}`);
-      console.debug(`🎯 [getMetaEvidence] Searching close to DisputeCreation block with ±${blockBuffer} buffer`);
-
-      console.debug(`🔎 [getMetaEvidence] Searching arbitrable blocks ${searchFromBlock} to ${searchToBlock} (±${blockBuffer} around DisputeCreation ${disputeCreationBlock})`);
-      console.debug(`📊 [getMetaEvidence] Arbitrable filter: arbitrator=${arbitratorAddr}, disputeID=${arbitratorDisputeID}`);
-
-      let disputeEvents;
-      try {
-        console.debug(`🚀 [getMetaEvidence] Executing queryFilter...`);
-        disputeEvents = await contract.queryFilter(
-          disputeFilter,
-          searchFromBlock,
-          searchToBlock
-        );
-        console.debug(`📋 [getMetaEvidence] Found ${disputeEvents.length} Dispute events on arbitrable contract`);
-
-        if (disputeEvents.length > 0) {
-          console.debug(`📄 [getMetaEvidence] First Dispute event details:`, disputeEvents[0]);
-          console.debug(`📋 [getMetaEvidence] Event args:`, disputeEvents[0].args);
-        }
-      } catch (error) {
-        console.error(`💥 [getMetaEvidence] Error querying Dispute events:`, error);
-        return null;
-      }
-
-      if (disputeEvents.length === 0) {
-        console.error(`❌ [getMetaEvidence] No Dispute event found for dispute ${arbitratorDisputeID}`);
-        console.debug(`🔍 [getMetaEvidence] Search parameters: arbitrator=${arbitratorAddr}, disputeID=${arbitratorDisputeID}, blocks=${searchFromBlock}-${searchToBlock}`);
-
-        // Try a much wider range and also check for any events without filters
-        try {
-          console.debug(`🔄 [getMetaEvidence] Trying to query all Dispute events in narrow range (no filter)...`);
-          const allDisputeEvents = await contract.queryFilter(
-            contract.filters.Dispute(),
-            searchFromBlock,
-            searchToBlock
-          );
-          console.debug(`📊 [getMetaEvidence] Found ${allDisputeEvents.length} total Dispute events in narrow range`);
-          if (allDisputeEvents.length > 0) {
-            console.debug(`🔍 [getMetaEvidence] Sample Dispute event:`, allDisputeEvents[0]);
-            console.debug(`🔍 [getMetaEvidence] Sample event args:`, allDisputeEvents[0].args);
-          }
-
-          // Try recent blocks search (most likely to succeed for 1-month-old dispute)
-          console.debug(`🔄 [getMetaEvidence] Trying recent blocks search: ${recentSearchFrom} to ${recentSearchTo}`);
-
-          const recentDisputeEvents = await contract.queryFilter(
-            contract.filters.Dispute(),
-            recentSearchFrom,
-            recentSearchTo
-          );
-          console.debug(`📊 [getMetaEvidence] Found ${recentDisputeEvents.length} Dispute events in recent range`);
-          if (recentDisputeEvents.length > 0) {
-            console.debug(`🔍 [getMetaEvidence] First recent event:`, recentDisputeEvents[0]);
-            console.debug(`🔍 [getMetaEvidence] First recent event args:`, recentDisputeEvents[0].args);
-          }
-        } catch (searchError) {
-          console.error(`💥 [getMetaEvidence] Error in wider search:`, searchError);
-        }
-
-        // One final attempt: check if this contract has ANY Dispute events ever
-        try {
-          console.debug(`🔍 [getMetaEvidence] Final check: searching for ANY Dispute events on this contract...`);
-          const recentBlock = await targetProvider.getBlockNumber();
-          const veryRecentFrom = Math.max(1, recentBlock - 9999); // Max allowed range
-
-          const anyDisputeEvents = await contract.queryFilter(
-            contract.filters.Dispute(),
-            veryRecentFrom,
-            recentBlock
-          );
-          console.debug(`📋 [getMetaEvidence] Found ${anyDisputeEvents.length} total Dispute events in recent 10k blocks`);
-
-          if (anyDisputeEvents.length > 0) {
-            console.debug(`🔍 [getMetaEvidence] Sample recent Dispute event:`, anyDisputeEvents[0]);
-            console.debug(`🔍 [getMetaEvidence] Sample recent event args:`, anyDisputeEvents[0].args);
-            console.debug(`📊 [getMetaEvidence] All recent dispute IDs:`, anyDisputeEvents.map(e => e.args._disputeID.toString()));
-          } else {
-            console.debug(`⚠️ [getMetaEvidence] This contract has NO Dispute events in recent history`);
-            console.debug(`🤔 [getMetaEvidence] Possible reasons:`);
-            console.debug(`   1. Dispute 1661 never created a Dispute event on this arbitrable contract`);
-            console.debug(`   2. Wrong arbitrable contract address`);
-            console.debug(`   3. Events are older than 10k blocks`);
-            console.debug(`   4. Different arbitrator address used in events`);
-          }
-        } catch (finalError) {
-          console.error(`💥 [getMetaEvidence] Final check failed:`, finalError);
-        }
-
-        console.debug(`🔍 [getMetaEvidence] This error is from the getMetaEvidence function (not parallelizeable)`);
-
-        // Since user confirms dispute 1661 exists, let's try some alternative approaches
-        console.debug(`💡 [getMetaEvidence] User confirms dispute 1661 exists. Trying alternative approaches...`);
-
-        // Try 1: Search on Ethereum mainnet instead of Gnosis
-        try {
-          console.debug(`🔄 [getMetaEvidence] Alternative 1: Checking if arbitrable contract is on Ethereum mainnet...`);
-          const ethereumContract = getContract("IDisputeResolver", arbitrableAddress, this.state.provider);
-          const ethereumDisputeFilter = ethereumContract.filters.Dispute(arbitratorAddr, arbitratorDisputeID);
-          const ethereumCurrentBlock = await this.state.provider.getBlockNumber();
-          const ethereumSearchFrom = Math.max(1, ethereumCurrentBlock - 9999);
-
-          const ethereumDisputeEvents = await ethereumContract.queryFilter(
-            ethereumDisputeFilter,
-            ethereumSearchFrom,
-            ethereumCurrentBlock
-          );
-          console.debug(`📊 [getMetaEvidence] Found ${ethereumDisputeEvents.length} Dispute events on Ethereum mainnet`);
-          if (ethereumDisputeEvents.length > 0) {
-            console.debug(`✅ [getMetaEvidence] FOUND IT! Dispute event is on Ethereum mainnet, not Gnosis!`);
-            console.debug(`🔍 [getMetaEvidence] Ethereum Dispute event:`, ethereumDisputeEvents[0]);
-            // TODO: Continue with this event instead of returning null
-          }
-        } catch (ethError) {
-          console.debug(`💥 [getMetaEvidence] Ethereum search failed:`, ethError.message);
-        }
-
-        // Final diagnostic: Check what events this contract DOES emit
-        try {
-          console.debug(`🔍 [getMetaEvidence] Final diagnostic: checking what events this contract emits...`);
-
-          // Get all events (no filter) from recent blocks
-          const gnosisContract = getContract("IDisputeResolver", arbitrableAddress, targetProvider);
-          const recentFrom = Math.max(1, await targetProvider.getBlockNumber() - 2000);
-          const allEvents = await gnosisContract.queryFilter("*", recentFrom, "latest");
-
-          console.debug(`📊 [getMetaEvidence] Found ${allEvents.length} total events of any type in recent 2000 blocks`);
-          if (allEvents.length > 0) {
-            console.debug(`🔍 [getMetaEvidence] Sample events:`, allEvents.slice(0, 3));
-            const eventTypes = [...new Set(allEvents.map(e => e.fragment.name))];
-            console.debug(`📋 [getMetaEvidence] Event types found: ${eventTypes.join(', ')}`);
-          } else {
-            console.debug(`⚠️ [getMetaEvidence] This contract emits NO events of any type in recent history`);
-            console.debug(`💡 [getMetaEvidence] This might be a proxy contract or use a different interface`);
-          }
-
-          // ALTERNATIVE APPROACH: Try searching on the arbitrator network (Ethereum mainnet)
-          // Some cross-chain disputes have MetaEvidence on the arbitrator chain instead
-          if (network === '100') { // If we're on Gnosis, try Ethereum mainnet
-            console.debug(`🔄 [getMetaEvidence] CROSS-CHAIN SEARCH: Trying arbitrator network (Ethereum mainnet)...`);
-            try {
-              // Get Ethereum provider
-              const ethereumProvider = new ethers.JsonRpcProvider(networkMap['1'].WEB3_PROVIDER);
-              const ethereumContract = getContract("IDisputeResolver", arbitrableAddress, ethereumProvider);
-
-              console.debug(`🔗 [getMetaEvidence] Created Ethereum contract instance for ${arbitrableAddress}`);
-
-              // Search for MetaEvidence on Ethereum mainnet
-              const ethereumSearchDeploymentBlock = networkMap['1'].QUERY_FROM_BLOCK || 1;
-              const ethereumCurrentBlock = await ethereumProvider.getBlockNumber();
-              console.debug(`📅 [getMetaEvidence] Searching Ethereum range: ${ethereumSearchDeploymentBlock} to ${ethereumCurrentBlock}`);
-
-              const ethereumMetaEvents = await ethereumContract.queryFilter(
-                ethereumContract.filters.MetaEvidence(),
-                ethereumSearchDeploymentBlock,
-                ethereumCurrentBlock
-              );
-
-              console.debug(`📊 [getMetaEvidence] Found ${ethereumMetaEvents.length} MetaEvidence events on Ethereum mainnet`);
-
-              if (ethereumMetaEvents.length > 0) {
-                console.debug(`✅ [getMetaEvidence] FOUND MetaEvidence on Ethereum mainnet!`);
-                const ethereumMetaIDs = ethereumMetaEvents.map(e => e.args._metaEvidenceID.toString());
-                console.debug(`📋 [getMetaEvidence] Ethereum MetaEvidence IDs: ${ethereumMetaIDs.join(', ')}`);
-                console.debug(`🔍 [getMetaEvidence] Ethereum MetaEvidence events:`, ethereumMetaEvents);
-
-                // Look for our specific metaEvidenceID on Ethereum
-                const ethereumTargetEvent = ethereumMetaEvents.find(e => e.args._metaEvidenceID.toString() === metaEvidenceID.toString());
-                if (ethereumTargetEvent) {
-                  console.debug(`🎯 [getMetaEvidence] Found target MetaEvidence ID ${metaEvidenceID} on Ethereum mainnet!`);
-                  metaEvidenceEvents = [ethereumTargetEvent]; // Use this event
-                  console.debug(`✅ [getMetaEvidence] Using Ethereum MetaEvidence event:`, ethereumTargetEvent);
-                }
-              }
-            } catch (ethereumError) {
-              console.debug(`💥 [getMetaEvidence] Ethereum search failed:`, ethereumError.message);
-            }
-          }
-
-        } catch (diagError) {
-          console.debug(`💥 [getMetaEvidence] Event diagnostic failed:`, diagError.message);
-        }
-
-        return null;
-      }
-
-      const disputeEvent = disputeEvents[0];
-      const metaEvidenceID = disputeEvent.args._metaEvidenceID;
-
-      // Get the MetaEvidence event - search from contract deployment or much earlier
-      console.debug(`🔍 [getMetaEvidence] Searching for MetaEvidence with ID ${metaEvidenceID}`);
-
-      const metaEvidenceFilter = contract.filters.MetaEvidence(metaEvidenceID);
-
-      // Try searching from a much earlier block since MetaEvidence is typically emitted at contract creation
-      const wideSearchFrom = Math.max(1, disputeEvent.blockNumber - 1000000); // Search back 1M blocks
-      console.debug(`🔎 [getMetaEvidence] Searching MetaEvidence from block ${wideSearchFrom} to ${disputeEvent.blockNumber}`);
-
-      let metaEvidenceEvents = await contract.queryFilter(
-        metaEvidenceFilter,
-        wideSearchFrom,
-        disputeEvent.blockNumber
-      );
-
-      if (metaEvidenceEvents.length === 0) {
-        console.debug(`⚠️ [getMetaEvidence] No MetaEvidence found in recent range, trying from deployment...`);
-
-        // Try from deployment block if available
-        const deploymentBlock = networkMap[network].QUERY_FROM_BLOCK || 1;
-        console.debug(`🔎 [getMetaEvidence] Searching MetaEvidence from deployment block ${deploymentBlock}`);
-
-        metaEvidenceEvents = await contract.queryFilter(
-          metaEvidenceFilter,
-          deploymentBlock,
-          disputeEvent.blockNumber
-        );
-      }
-
-      if (metaEvidenceEvents.length === 0) {
-        console.error(`❌ [getMetaEvidence] No MetaEvidence event found for metaEvidenceID ${metaEvidenceID} in any range`);
-
-        // Debug: Check what MetaEvidence events exist on this contract
-        try {
-          // First, try a much wider search range to find ANY MetaEvidence events
-          console.debug(`🔍 [getMetaEvidence] Expanding search to find ANY MetaEvidence events on this contract...`);
-
-          // Search from contract deployment to current block
-          const searchDeploymentBlock = networkMap[network].QUERY_FROM_BLOCK || 1;
-          const currentBlock = await targetProvider.getBlockNumber();
-          console.debug(`📅 [getMetaEvidence] Searching full range: ${searchDeploymentBlock} to ${currentBlock}`);
-
-          const allMetaEvents = await contract.queryFilter(
-            contract.filters.MetaEvidence(),
-            searchDeploymentBlock,
-            currentBlock
-          );
-          console.debug(`📊 [getMetaEvidence] Found ${allMetaEvents.length} total MetaEvidence events in full range`);
-
-          if (allMetaEvents.length > 0) {
-            const metaIDs = allMetaEvents.map(e => e.args._metaEvidenceID.toString());
-            console.debug(`📋 [getMetaEvidence] Available MetaEvidence IDs: ${metaIDs.join(', ')}`);
-            console.debug(`🔍 [getMetaEvidence] Sample MetaEvidence event:`, allMetaEvents[0]);
-            console.debug(`🔍 [getMetaEvidence] All MetaEvidence events:`, allMetaEvents);
-
-            // FALLBACK: If requested metaEvidenceID is missing but others exist, try the most recent/relevant one
-            console.debug(`💡 [getMetaEvidence] FALLBACK: Trying to use available MetaEvidence as substitute`);
-            const availableIds = allMetaEvents.map(e => parseInt(e.args._metaEvidenceID.toString(), 10));
-            let fallbackEvent = null;
-
-            // Strategy 1: Try ID 0 (often the default/general one)
-            if (availableIds.includes(0)) {
-              fallbackEvent = allMetaEvents.find(e => e.args._metaEvidenceID.toString() === '0');
-              console.debug(`🔄 [getMetaEvidence] Using MetaEvidence ID 0 as fallback`);
-            }
-            // Strategy 2: Use the closest lower ID
-            else if (availableIds.length > 0) {
-              const closestId = availableIds.filter(id => id < metaEvidenceID).sort((a, b) => b - a)[0];
-              if (closestId !== undefined) {
-                fallbackEvent = allMetaEvents.find(e => e.args._metaEvidenceID.toString() === closestId.toString());
-                console.debug(`🔄 [getMetaEvidence] Using closest MetaEvidence ID ${closestId} as fallback`);
-              } else {
-                // Strategy 3: Use the first available
-                fallbackEvent = allMetaEvents[0];
-                console.debug(`🔄 [getMetaEvidence] Using first available MetaEvidence ID ${fallbackEvent.args._metaEvidenceID} as fallback`);
-              }
-            }
-
-            if (fallbackEvent) {
-              console.debug(`✅ [getMetaEvidence] Using fallback MetaEvidence event:`, fallbackEvent);
-              metaEvidenceEvents = [fallbackEvent]; // Continue with fallback
-            }
-          }
-        } catch (debugError) {
-          console.debug(`💥 [getMetaEvidence] MetaEvidence debug failed:`, debugError.message);
-        }
-
-        // TRANSACTION INVESTIGATION: Always check the transaction for MetaEvidence events
-        if (metaEvidenceEvents.length === 0) {
-          console.debug(`🔍 [getMetaEvidence] TRANSACTION INVESTIGATION: Checking dispute transaction for MetaEvidence...`);
-          try {
-            // Get the transaction that created the Dispute event
-            const disputeTx = await targetProvider.getTransaction(disputeEvent.transactionHash);
-            console.debug(`📋 [getMetaEvidence] Dispute transaction details:`, disputeTx);
-
-            // Get the transaction receipt to see all events emitted in that transaction
-            const disputeReceipt = await targetProvider.getTransactionReceipt(disputeEvent.transactionHash);
-            console.debug(`📋 [getMetaEvidence] Dispute transaction receipt:`, disputeReceipt);
-            console.debug(`📊 [getMetaEvidence] Total events in dispute transaction: ${disputeReceipt.logs.length}`);
-
-            // Check if any logs in that transaction match MetaEvidence signature
-            // MetaEvidence(uint256 indexed _metaEvidenceID, string _evidence)
-            const metaEvidenceEventSignature = contract.interface.getEvent("MetaEvidence").topicHash;
-            console.debug(`🏷️ [getMetaEvidence] MetaEvidence event signature: ${metaEvidenceEventSignature}`);
-            const metaEvidenceLogsInTx = disputeReceipt.logs.filter(log =>
-              log.topics[0] === metaEvidenceEventSignature
-            );
-
-            console.debug(`🔍 [getMetaEvidence] MetaEvidence events in dispute transaction: ${metaEvidenceLogsInTx.length}`);
-
-            // Debug: Show all event signatures in the transaction
-            console.debug(`🔍 [getMetaEvidence] All event signatures in transaction:`);
-            const allSignatures = disputeReceipt.logs.map((log, index) => ({
-              index,
-              signature: log.topics[0],
-              address: log.address,
-              data: log.data
-            }));
-            console.debug(`📋 [getMetaEvidence] Event signatures:`, allSignatures);
-            allSignatures.forEach((sig, i) => {
-              console.debug(`   Event ${i}: ${sig.signature} (address: ${sig.address})`);
-            });
-
-            // Try to find MetaEvidence events by checking common signatures AND the actual transaction signatures
-            const actualTransactionSignatures = allSignatures.map(sig => sig.signature);
-            const commonMetaEvidenceSignatures = [
-              "0x61606860eb6c87306811e2695215385101daab53bd6ab4e9f9049aead9363c7d", // Current calculated
-              "0x61606860eb6c87c0c9c6e96b33545aa5eb4a2a8dc6cd6f75b5e65c5a7be29b4c", // Alternative
-              metaEvidenceEventSignature, // Our calculated one
-              ...actualTransactionSignatures // ALL actual signatures from the transaction
-            ];
-
-            console.debug(`🔍 [getMetaEvidence] Trying common MetaEvidence signatures:`, commonMetaEvidenceSignatures);
-
-            // TEST EACH ACTUAL SIGNATURE: Try to decode each signature as MetaEvidence
-            console.debug(`🧪 [getMetaEvidence] SIGNATURE TESTING: Testing each actual transaction signature as potential MetaEvidence...`);
-            for (let i = 0; i < actualTransactionSignatures.length; i++) {
-              const signature = actualTransactionSignatures[i];
-              console.debug(`🔬 [getMetaEvidence] Testing signature ${i}: ${signature}`);
-
-              const matchingLogs = disputeReceipt.logs.filter(log => log.topics[0] === signature);
-              if (matchingLogs.length > 0) {
-                console.debug(`📝 [getMetaEvidence] Found ${matchingLogs.length} logs with signature ${signature}`);
-
-                // Try to decode this log as a MetaEvidence event
-                for (const log of matchingLogs) {
-                  try {
-                    // Attempt to manually decode this as MetaEvidence structure
-                    // MetaEvidence(uint256 indexed _metaEvidenceID, string _evidence)
-                    if (log.topics.length >= 2 && log.data) {
-                      // Topics[0] = event signature, topics[1] = indexed metaEvidenceID
-                      console.debug(`🔍 [getMetaEvidence] Log details for signature ${i}:`, log);
-                      console.debug(`🔍 [getMetaEvidence] Log topics:`, log.topics);
-                      console.debug(`🔍 [getMetaEvidence] Log data:`, log.data);
-
-                      // Try different topic positions as MetaEvidence ID might be in different positions
-                      for (let topicIndex = 1; topicIndex < log.topics.length; topicIndex++) {
-                        try {
-                          const potentialMetaEvidenceID = ethers.getBigInt(log.topics[topicIndex]);
-                          console.debug(`🔍 [getMetaEvidence] Potential MetaEvidence ID from signature ${i}, topic[${topicIndex}]: ${potentialMetaEvidenceID}`);
-
-                          // Check if this matches our target metaEvidenceID
-                          if (potentialMetaEvidenceID.toString() === metaEvidenceID.toString()) {
-                            console.debug(`🎯 [getMetaEvidence] FOUND TARGET! Signature ${i}, topic[${topicIndex}] contains MetaEvidence ID ${metaEvidenceID}!`);
-
-                            // Try to decode the data portion (the _evidence string)
-                            try {
-                              // Try different data decodings - the structure might vary
-                              const abiCoder = ethers.AbiCoder.defaultAbiCoder();
-
-                              // First try: single string (standard MetaEvidence)
-                              try {
-                                const decodedData = abiCoder.decode(['string'], log.data);
-                                const evidenceString = decodedData[0];
-                                console.debug(`📄 [getMetaEvidence] Decoded evidence string (attempt 1): ${evidenceString}`);
-
-                                // Create synthetic MetaEvidence event
-                                const syntheticEvent = {
-                                  args: {
-                                    _metaEvidenceID: potentialMetaEvidenceID,
-                                    _evidence: evidenceString
-                                  },
-                                  blockNumber: disputeEvent.blockNumber,
-                                  transactionHash: disputeEvent.transactionHash,
-                                  address: log.address
-                                };
-
-                                console.debug(`✅ [getMetaEvidence] Created synthetic MetaEvidence event:`, syntheticEvent);
-                                metaEvidenceEvents = [syntheticEvent];
-                                break; // Found our target, exit loops
-                              } catch (decode1Error) {
-                                console.debug(`💥 [getMetaEvidence] String decode failed, trying alternatives:`, decode1Error.message);
-
-                                // Second try: Multiple parameters - some contracts have different structures
-                                try {
-                                  const decodedData2 = abiCoder.decode(['uint256', 'string'], log.data);
-                                  const evidenceString2 = decodedData2[1];
-                                  console.debug(`📄 [getMetaEvidence] Decoded evidence string (attempt 2): ${evidenceString2}`);
-
-                                  const syntheticEvent2 = {
-                                    args: {
-                                      _metaEvidenceID: potentialMetaEvidenceID,
-                                      _evidence: evidenceString2
-                                    },
-                                    blockNumber: disputeEvent.blockNumber,
-                                    transactionHash: disputeEvent.transactionHash,
-                                    address: log.address
-                                  };
-
-                                  console.debug(`✅ [getMetaEvidence] Created synthetic MetaEvidence event (attempt 2):`, syntheticEvent2);
-                                  metaEvidenceEvents = [syntheticEvent2];
-                                  break;
-                                } catch (decode2Error) {
-                                  console.debug(`💥 [getMetaEvidence] Alternative decode also failed:`, decode2Error.message);
-                                  // If we can't decode the data, at least we found the right ID
-                                  console.debug(`🎯 [getMetaEvidence] Found correct MetaEvidence ID ${metaEvidenceID} but couldn't decode data`);
-                                }
-                              }
-
-                            } catch (dataDecodeError) {
-                              console.debug(`💥 [getMetaEvidence] Failed to decode data for signature ${i}:`, dataDecodeError.message);
-                            }
-                          }
-                        } catch (topicDecodeError) {
-                          console.debug(`💥 [getMetaEvidence] Failed to decode topic[${topicIndex}] for signature ${i}:`, topicDecodeError.message);
-                        }
-                      }
-
-                      // SPECIAL CASE: Signature 4 has IPFS hash in data - check if this contains target MetaEvidence
-                      if (i === 4 && log.data && log.data.length > 2) {
-                        console.debug(`🧪 [getMetaEvidence] SPECIAL CASE: Signature 4 contains significant data, checking for IPFS hash...`);
-                        try {
-                          // Try to decode as string to see if it contains IPFS hash
-                          const abiCoder = ethers.AbiCoder.defaultAbiCoder();
-                          const decodedString = abiCoder.decode(['string'], log.data)[0];
-                          console.debug(`📄 [getMetaEvidence] Decoded string from signature 4 data: "${decodedString}"`);
-
-                          // Check if this looks like an IPFS hash
-                          if (decodedString && (decodedString.includes('ipfs') || decodedString.includes('Qm'))) {
-                            console.debug(`🎯 [getMetaEvidence] FOUND IPFS HASH in signature 4! Creating MetaEvidence with target ID ${metaEvidenceID}`);
-
-                            // Create synthetic MetaEvidence event with target ID and found IPFS hash
-                            const ipfsEvent = {
-                              args: {
-                                _metaEvidenceID: ethers.getBigInt(metaEvidenceID),
-                                _evidence: decodedString
-                              },
-                              blockNumber: disputeEvent.blockNumber,
-                              transactionHash: disputeEvent.transactionHash,
-                              address: log.address
-                            };
-
-                            console.debug(`✅ [getMetaEvidence] Created MetaEvidence event from IPFS data:`, ipfsEvent);
-                            metaEvidenceEvents = [ipfsEvent];
-                            break; // Found what we need, exit
-                          }
-                        } catch (specialDecodeError) {
-                          console.debug(`💥 [getMetaEvidence] Failed to decode signature 4 data as string:`, specialDecodeError.message);
-
-                          // Try alternative: Maybe the data contains the MetaEvidence ID followed by string
-                          try {
-                            const altAbiCoder = ethers.AbiCoder.defaultAbiCoder();
-                            const decodedAlt = altAbiCoder.decode(['uint256', 'string'], log.data);
-                            const [altMetaID, altString] = decodedAlt;
-                            console.debug(`📄 [getMetaEvidence] Alternative decode - ID: ${altMetaID}, String: "${altString}"`);
-
-                            if (altMetaID.toString() === metaEvidenceID.toString() || (altString && altString.includes('ipfs'))) {
-                              console.debug(`🎯 [getMetaEvidence] Found match in alternative decode!`);
-                              const altEvent = {
-                                args: {
-                                  _metaEvidenceID: ethers.getBigInt(metaEvidenceID),
-                                  _evidence: altString
-                                },
-                                blockNumber: disputeEvent.blockNumber,
-                                transactionHash: disputeEvent.transactionHash,
-                                address: log.address
-                              };
-                              console.debug(`✅ [getMetaEvidence] Created MetaEvidence from alternative decode:`, altEvent);
-                              metaEvidenceEvents = [altEvent];
-                              break;
-                            }
-                          } catch (altDecodeError) {
-                            console.debug(`💥 [getMetaEvidence] Alternative decode also failed:`, altDecodeError.message);
-                          }
-                        }
-                      }
-                    }
-                  } catch (signatureDecodeError) {
-                    console.debug(`💥 [getMetaEvidence] Failed to decode signature ${i} as MetaEvidence:`, signatureDecodeError.message);
-                  }
-                }
-
-                // If we found the target MetaEvidence, break out of signature testing
-                if (metaEvidenceEvents.length > 0) break;
-              }
-            }
-
-            // Check each signature against transaction logs
-            for (const signature of commonMetaEvidenceSignatures) {
-              const matches = disputeReceipt.logs.filter(log => log.topics[0] === signature);
-              if (matches.length > 0) {
-                console.debug(`✅ [getMetaEvidence] Found ${matches.length} events with signature ${signature}:`, matches);
-              }
-            }
-
-            if (metaEvidenceLogsInTx.length > 0) {
-              console.debug(`✅ [getMetaEvidence] Found MetaEvidence in same transaction as Dispute!`);
-              console.debug(`📋 [getMetaEvidence] Raw MetaEvidence logs:`, metaEvidenceLogsInTx);
-
-              // Try to decode these logs
-              for (const log of metaEvidenceLogsInTx) {
-                try {
-                  const decodedLog = contract.interface.parseLog(log);
-                  console.debug(`🔍 [getMetaEvidence] Decoded MetaEvidence log:`, decodedLog);
-                  if (decodedLog.args._metaEvidenceID.toString() === metaEvidenceID.toString()) {
-                    console.debug(`🎯 [getMetaEvidence] Found target MetaEvidence ID ${metaEvidenceID} in same transaction!`);
-                    // Create a synthetic event object
-                    metaEvidenceEvents = [{
-                      args: decodedLog.args,
-                      blockNumber: disputeEvent.blockNumber,
-                      transactionHash: disputeEvent.transactionHash
-                    }];
-                    break; // Found it, exit the loop
-                  }
-                } catch (decodeError) {
-                  console.debug(`💥 [getMetaEvidence] Failed to decode log:`, decodeError.message);
-                }
-              }
-            }
-          } catch (txError) {
-            console.debug(`💥 [getMetaEvidence] Transaction investigation failed:`, txError.message);
-          }
-        }
-
-        // If still no events after all attempts, create a generic MetaEvidence
-        if (metaEvidenceEvents.length === 0) {
-          console.debug(`💡 [getMetaEvidence] No MetaEvidence events found on contract. Creating generic fallback.`);
-          console.debug(`🏗️ [getMetaEvidence] This contract appears to be a non-standard arbitrable that doesn't emit MetaEvidence events.`);
-
-          // Create a minimal generic MetaEvidence for contracts without proper metadata
-          const genericMetaEvidence = {
-            metaEvidenceJSON: {
-              title: `Dispute #${arbitratorDisputeID} (Non-Standard Contract)`,
-              description: `This dispute involves a non-standard arbitrable contract (${arbitrableAddress}) that doesn't provide MetaEvidence. Limited information is available.`,
-              question: "Unknown dispute question - contract doesn't provide metadata",
-              rulingOptions: {
-                type: "single-select",
-                titles: ["Refuse to arbitrate", "Option A", "Option B"],
-                descriptions: ["Invalid dispute or insufficient information", "Rule in favor of first party", "Rule in favor of second party"]
-              },
-              category: "Non-Standard Contract",
-              arbitratorChainID: network,
-              arbitrableChainID: network,
-              _v: "0"
-            }
-          };
-
-          console.debug(`✅ [getMetaEvidence] Created generic MetaEvidence for non-standard contract`);
-          return genericMetaEvidence;
-        }
-      }
-
-      const actualMetaEvidenceID = metaEvidenceEvents[0].args._metaEvidenceID.toString();
-      if (actualMetaEvidenceID !== metaEvidenceID.toString()) {
-        console.debug(`⚠️ [getMetaEvidence] Using fallback MetaEvidence ID ${actualMetaEvidenceID} instead of requested ${metaEvidenceID}`);
-      } else {
-        console.debug(`✅ [getMetaEvidence] Found MetaEvidence event for ID ${metaEvidenceID}`);
-      }
-
-      const metaEvidenceURI = metaEvidenceEvents[0].args._evidence;
-      console.debug(`🌐 [getMetaEvidence] Fetching MetaEvidence from URI: ${metaEvidenceURI}`);
-      console.debug(`🌐 [getMetaEvidence] Normalized URI: ${urlNormalize(metaEvidenceURI)}`);
-
-      const response = await fetch(urlNormalize(metaEvidenceURI));
-      console.debug(`📡 [getMetaEvidence] Fetch response status: ${response.status} ${response.statusText}`);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      let metaEvidenceJSON = await response.json();
-      console.debug(`📋 [getMetaEvidence] MetaEvidence JSON content:`, metaEvidenceJSON);
-
-      console.log({ dispute: { metaEvidenceID, blockNumber: disputeEvent.blockNumber } });
-
-      // NORMALIZE FIELD NAMES: Some MetaEvidence uses 'name' instead of 'title'
-      if (metaEvidenceJSON.name && !metaEvidenceJSON.title) {
-        console.debug(`🔧 [getMetaEvidence] Normalizing 'name' field to 'title'`);
-        metaEvidenceJSON.title = metaEvidenceJSON.name;
-      }
-
-      // Ensure title exists (fallback for UI compatibility)
-      if (!metaEvidenceJSON.title) {
-        console.debug(`🔧 [getMetaEvidence] Adding fallback title for UI compatibility`);
-        metaEvidenceJSON.title = `Dispute #${arbitratorDisputeID}`;
-      }
-
-      console.debug(`🔧 [getMetaEvidence] Final MetaEvidence JSON after normalization:`, metaEvidenceJSON);
-
-      //Check for the dynamicScriptURI and fetch data if available
-      if (metaEvidenceJSON.dynamicScriptURI) {
-        const scriptURI = urlNormalize(metaEvidenceJSON.dynamicScriptURI);
-
-        console.debug(`🔧 [getMetaEvidence] Fetching dynamic script from URI: ${scriptURI}`);
-
-        const response = await fetch(scriptURI);
-        if (!response.ok) throw new Error(`Unable to fetch dynamic script file at ${scriptURI}.`);
-
-        const scriptData = await response.text();
-        const injectedParameters = {
-          arbitratorChainID: metaEvidenceJSON.arbitratorChainID || network,
-          arbitrableChainID: metaEvidenceJSON.arbitrableChainID || metaEvidenceJSON.arbitratorChainID || network,
-          disputeID: arbitratorDisputeID,
-        };
-
-        injectedParameters.arbitrableContractAddress = arbitrableAddress;
-        injectedParameters.arbitratorJsonRpcUrl = getReadOnlyRpcUrl({ chainId: injectedParameters.arbitratorChainID });
-        injectedParameters.arbitrableChainID = injectedParameters.arbitrableChainID || metaEvidenceJSON.arbitrableChainID;
-        injectedParameters.arbitrableJsonRpcUrl = getReadOnlyRpcUrl({ chainId: injectedParameters.arbitrableChainID });
-
-        if (
-          injectedParameters.arbitratorChainID !== undefined &&
-          injectedParameters.arbitratorJsonRpcUrl === undefined
-        ) {
-          console.debug(`🔧 [getMetaEvidence] Could not obtain a valid 'arbitratorJsonRpcUrl' for chain ID ${injectedParameters.arbitratorChainID} on the Arbitrator side.`);
-        }
-
-        if (
-          injectedParameters.arbitrableChainID !== undefined &&
-          injectedParameters.arbitrableJsonRpcUrl === undefined
-        ) {
-          console.debug(`🔧 [getMetaEvidence] Could not obtain a valid 'arbitrableJsonRpcUrl' for chain ID ${injectedParameters.arbitrableChainID} on the Arbitrable side.`);
-        }
-
-        const metaEvidenceEdits = await fetchDataFromScript(scriptData, injectedParameters);
-        metaEvidenceJSON = {
-          ...metaEvidenceJSON,
-          ...metaEvidenceEdits,
-        };
-      }
-
-      // Note: Block range parameters removed - evidence display interfaces 
-      // should handle their own RPC optimization internally (follows Kleros Court approach)
-
-      console.debug(`🎯 [getMetaEvidence] Successfully returning MetaEvidence for dispute ${arbitratorDisputeID}`);
-      return { metaEvidenceJSON };
-
-    } catch (error) {
-      console.error(`💥 [getMetaEvidence] Error fetching meta evidence:`, error);
-      console.debug(`🔍 [getMetaEvidence] Error occurred for arbitrable=${arbitrableAddress}, dispute=${arbitratorDisputeID}`);
+  getDisputeEvent = async (arbitrableAddress, disputeID) => {
+    const fromBlock = isTestnet(this.state.network) ? Math.max(0, await this.state.provider.getBlockNumber() - this.getMaxLookback()) : 0;
+    return this.state.archon.arbitrable.getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, disputeID, { fromBlock }
+    );
+  }
+
+  processDynamicScript = async (metaEvidenceJSON, chainID, disputeId, arbitrated, arbitrator) => {
+    const scriptURI =
+      chainID === "1" && disputeId === "1621"
+        ? urlNormalize("/ipfs/Qmf1k727vP7qZv21MDB8vwL6tfVEKPCUQAiw8CTfHStkjf")
+        : urlNormalize(metaEvidenceJSON.dynamicScriptURI);
+
+    console.info("🧾 [getMetaEvidence] Fetching dynamic script file at", scriptURI);
+
+    const fileResponse = await fetch(scriptURI);
+    if (!fileResponse.ok) {
+      console.error(`💥 [getMetaEvidence] Unable to fetch dynamic script file at ${scriptURI}.`);
       return null;
     }
+    const scriptData = await fileResponse.text();
+
+    const injectedParameters = {
+      arbitratorChainID: metaEvidenceJSON.arbitratorChainID || chainID,
+      arbitrableChainID: metaEvidenceJSON.arbitrableChainID || chainID,
+      disputeID: disputeId,
+      arbitrableContractAddress: arbitrated,
+    };
+
+    injectedParameters.arbitratorJsonRpcUrl =
+      injectedParameters.arbitratorJsonRpcUrl || getReadOnlyRpcUrl({ chainId: injectedParameters.arbitratorChainID });
+    injectedParameters.arbitrableChainID = injectedParameters.arbitrableChainID || arbitrator;
+    injectedParameters.arbitrableJsonRpcUrl =
+      injectedParameters.arbitrableJsonRpcUrl || getReadOnlyRpcUrl({ chainId: injectedParameters.arbitrableChainID });
+
+    if (injectedParameters.arbitratorChainID !== undefined && injectedParameters.arbitratorJsonRpcUrl === undefined) {
+      console.warn(`Could not obtain a valid 'arbitratorJsonRpcUrl' for chain ID ${injectedParameters.arbitratorChainID}`);
+    }
+
+    if (injectedParameters.arbitrableChainID !== undefined && injectedParameters.arbitrableJsonRpcUrl === undefined) {
+      console.warn(`Could not obtain a valid 'arbitrableJsonRpcUrl' for chain ID ${injectedParameters.arbitrableChainID}`);
+    }
+
+    return fetchDataFromScript(scriptData, injectedParameters);
   };
 
-  // Using Archon, parallel calls occasionally fail.
-  getMetaEvidenceParallelizeable = async (arbitrableAddress, arbitratorDisputeID, arbitrableChainId = null) => {
-    const { network } = this.state;
-    // For cross-chain disputes: if arbitrator is on Ethereum mainnet (1) but no explicit arbitrable chain ID,
-    // assume arbitrable is on Gnosis (100) for now
-    const targetNetwork = arbitrableChainId || (network === '1' ? '100' : network);
+  getMetaEvidence = async (arbitrated, disputeId) => {
+    const chainID = this.state.network;
+    const arbitrator = networkMap[this.state.network].KLEROS_LIQUID;
+    const startTime = Date.now();
+    const maxTime = 120000;
+    const waitTime = 5000;
 
-    console.debug(`🔍 [getMetaEvidenceParallelizeable] Starting search for dispute ${arbitratorDisputeID}`);
-    console.debug(`🌐 [getMetaEvidenceParallelizeable] Networks: arbitrator=${network}, arbitrable=${targetNetwork}`);
+    while (Date.now() - startTime < maxTime) {
+      try {
+        const metaEvidenceUriData = await fetch(
+          `${process.env.REACT_APP_METAEVIDENCE_URL}?chainId=${chainID}&disputeId=${disputeId}`
+        ).then(response => response.json());
+
+        const uri = metaEvidenceUriData.metaEvidenceUri;
+        if (!uri) {
+          console.error(`💥 [getMetaEvidence] No MetaEvidence log for disputeId ${disputeId} on chainID ${chainID}`);
+          return null;
+        }
+
+        let metaEvidenceJSON = await fetch(urlNormalize(uri)).then(response => response.json());
+
+        const updateDict = {
+          evidenceDisplayInterfaceURL: "evidenceDisplayInterfaceURI",
+          evidenceDisplayInterfaceURLHash: "evidenceDisplayInterfaceHash",
+        };
+
+        for (const [legacyKey, updatedKey] of Object.entries(updateDict)) {
+          if (!metaEvidenceJSON[legacyKey]) continue;
+          const value = metaEvidenceJSON[legacyKey];
+          delete metaEvidenceJSON[legacyKey];
+          metaEvidenceJSON[updatedKey] = value;
+        }
+
+        if (metaEvidenceJSON.rulingOptions && !metaEvidenceJSON.rulingOptions.type) {
+          metaEvidenceJSON.rulingOptions.type = "single-select";
+        }
+
+        if (metaEvidenceJSON.dynamicScriptURI) {
+          const metaEvidenceEdits = await this.processDynamicScript(metaEvidenceJSON, chainID, disputeId, arbitrated, arbitrator);
+          metaEvidenceJSON = { ...metaEvidenceJSON, ...metaEvidenceEdits };
+        }
+
+        return { metaEvidenceJSON };
+      } catch (err) {
+        await new Promise((r) => setTimeout(() => r(), waitTime));
+        console.warn(`💥 [getMetaEvidence] Failed to get the evidence:`, err);
+      }
+    }
+
+    return {
+      description:
+        "In case you have an AdBlock enabled, please disable it and refresh the page. It may be preventing the correct working of the page. If that's not the case, the data for this case is not formatted correctly or has been tampered since the time of its submission. Please refresh the page and refuse to arbitrate if the problem persists.",
+      title: "Invalid or tampered case data, refuse to arbitrate.",
+    };
+  }
+
+  getMetaEvidenceParallelizeable = async (arbitrableAddress, arbitratorDisputeID) => {
+    const { network } = this.state;
 
     const item = localStorage.getItem(`${network}${arbitratorDisputeID.toString()}`);
     if (item && item !== "undefined") {
-      console.debug(`💾 [getMetaEvidenceParallelizeable] Found cached metaevidence for ${arbitratorDisputeID}`);
       return JSON.parse(item);
     }
-    console.debug(`📡 [getMetaEvidenceParallelizeable] Fetching dispute ${arbitratorDisputeID}...`);
 
-    try {
-      // Step 1: First, get the block number from DisputeCreation event on arbitrator (Ethereum)
-      console.debug(`🔍 [getMetaEvidenceParallelizeable] Step 1: Querying arbitrator for DisputeCreation event`);
-      const arbitratorContract = getContract("KlerosLiquid", networkMap[this.state.network].KLEROS_LIQUID, this.state.provider);
-      const disputeCreationFilter = arbitratorContract.filters.DisputeCreation(arbitratorDisputeID);
+    const result = await this.getMetaEvidence(arbitrableAddress, arbitratorDisputeID);
 
-      const currentBlock = await this.state.provider.getBlockNumber();
-      // Use deployment block if available, otherwise fallback to MAX_BLOCK_LOOKBACK
-      const deploymentBlock = networkMap[this.state.network].QUERY_FROM_BLOCK;
-      const arbitratorSearchFrom = deploymentBlock || Math.max(1, currentBlock - MAX_BLOCK_LOOKBACK);
-
-      console.debug(`🔎 [getMetaEvidenceParallelizeable] Searching arbitrator blocks ${arbitratorSearchFrom} to latest`);
-      console.debug(`🏗️ [getMetaEvidenceParallelizeable] Using deployment block: ${deploymentBlock}, current: ${currentBlock}`);
-
-      const disputeCreationEvents = await arbitratorContract.queryFilter(disputeCreationFilter, arbitratorSearchFrom, "latest");
-
-      if (disputeCreationEvents.length === 0) {
-        console.error(`❌ [getMetaEvidenceParallelizeable] No DisputeCreation event found on arbitrator for dispute ${arbitratorDisputeID}`);
-        return null;
-      }
-
-      const disputeCreationBlock = disputeCreationEvents[0].blockNumber;
-      console.debug(`🎯 [getMetaEvidenceParallelizeable] Found DisputeCreation at block ${disputeCreationBlock}`);
-      console.debug(`🧾 [getMetaEvidenceParallelizeable] DisputeCreation event details:`, disputeCreationEvents[0]);
-
-      // Step 2: Now query the arbitrable contract around that block number
-      console.debug(`📍 [getMetaEvidenceParallelizeable] Step 2: Querying arbitrable contract for Dispute event`);
-      const targetProvider = targetNetwork === network
-        ? this.state.provider
-        : new ethers.JsonRpcProvider(getReadOnlyRpcUrl({ chainId: targetNetwork }));
-
-      console.debug(`🔗 [getMetaEvidenceParallelizeable] Target provider RPC URL: ${targetNetwork === network ? 'same network' : getReadOnlyRpcUrl({ chainId: targetNetwork })}`);
-
-      const contract = getContract("IDisputeResolver", arbitrableAddress, targetProvider);
-      console.debug(`🏗️ [getMetaEvidenceParallelizeable] Created contract instance for ${arbitrableAddress} on network ${targetNetwork}`);
-
-      const arbitratorAddr = networkMap[this.state.network].KLEROS_LIQUID;
-      console.debug(`⚖️ [getMetaEvidenceParallelizeable] Using arbitrator address: ${arbitratorAddr}`);
-
-      const disputeFilter = contract.filters.Dispute(
-        arbitratorAddr, // arbitrator address
-        arbitratorDisputeID // dispute ID
-      );
-
-      // Search around the dispute creation block (give some buffer for cross-chain timing)
-      const blockBuffer = 1000; // blocks before/after to account for cross-chain delays
-      const searchFromBlock = Math.max(1, disputeCreationBlock - blockBuffer);
-      const searchToBlock = disputeCreationBlock + blockBuffer;
-
-      console.debug(`🔎 [getMetaEvidenceParallelizeable] Searching arbitrable blocks ${searchFromBlock} to ${searchToBlock} (±${blockBuffer} around ${disputeCreationBlock})`);
-      console.debug(`📊 [getMetaEvidenceParallelizeable] Arbitrable filter: arbitrator=${arbitratorAddr}, disputeID=${arbitratorDisputeID}`);
-
-      let disputeEvents;
-      try {
-        console.debug(`🚀 [getMetaEvidenceParallelizeable] Executing queryFilter...`);
-        disputeEvents = await contract.queryFilter(
-          disputeFilter,
-          searchFromBlock,
-          searchToBlock
-        );
-        console.debug(`📋 [getMetaEvidenceParallelizeable] Found ${disputeEvents.length} Dispute events on arbitrable contract`);
-
-        if (disputeEvents.length > 0) {
-          console.debug(`📄 [getMetaEvidenceParallelizeable] First Dispute event details:`, disputeEvents[0]);
-          console.debug(`📋 [getMetaEvidenceParallelizeable] Event args:`, disputeEvents[0].args);
-        }
-      } catch (error) {
-        console.error(`💥 [getMetaEvidenceParallelizeable] Error querying Dispute events:`, error);
-        return null;
-      }
-
-      if (disputeEvents.length === 0) {
-        console.error(`❌ [getMetaEvidenceParallelizeable] No Dispute event found for dispute ${arbitratorDisputeID}`);
-        console.debug(`🔍 [getMetaEvidenceParallelizeable] Search parameters: arbitrator=${arbitratorAddr}, disputeID=${arbitratorDisputeID}, blocks=${searchFromBlock}-${searchToBlock}`);
-        return null;
-      }
-
-      const disputeEvent = disputeEvents[0];
-      const metaEvidenceID = disputeEvent.args._metaEvidenceID;
-      const dispute = { metaEvidenceID, blockNumber: disputeEvent.blockNumber };
-
-      const filter = contract.filters.MetaEvidence(dispute.metaEvidenceID);
-
-      const events = await contract.queryFilter(
-        filter,
-        searchFromBlock,
-        dispute.blockNumber
-      );
-
-      if (events.length > 0) {
-        const metaEvidenceURI = events[0].args._evidence;
-        const response = await fetch(urlNormalize(metaEvidenceURI));
-        const payload = await response.json();
-
-        console.debug(`caching ${arbitratorDisputeID}`);
-        localStorage.setItem(
-          `${network}${arbitratorDisputeID.toString()}`,
-          JSON.stringify(payload)
-        );
-
-        return payload;
-      }
-
-      return null;
-
-    } catch (error) {
-      console.error('Error fetching meta evidence:', error);
-      return null;
+    //Unwrap, cache, and return raw as previous function did
+    const metaEvidenceJSON = result?.metaEvidenceJSON;
+    if (metaEvidenceJSON) {
+      localStorage.setItem(`${network}${arbitratorDisputeID.toString()}`, JSON.stringify(metaEvidenceJSON));
     }
-  };
 
-  getEvidences = (arbitrableAddress, arbitratorDisputeID) => {
+    return metaEvidenceJSON;
+  }
+
+  getEvidences = async (arbitrableAddress, arbitratorDisputeID) => {
+    const fromBlock = isTestnet(this.state.network) ? Math.max(0, await this.state.provider.getBlockNumber() - this.getMaxLookback()) : 0;
     return this.state.archon.arbitrable
-      .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID)
+      .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID, { fromBlock })
       .then(response =>
-        this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID).catch(() => null)
+        this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID, { fromBlock }).catch(() => null)
       )
       .catch(() => null);
   };
@@ -1583,9 +807,10 @@ class App extends React.Component {
 
       const currentBlock = await this.state.provider.getBlockNumber();
       const queryFromBlock = networkMap[this.state.network].QUERY_FROM_BLOCK;
+      const maxLookback = this.getMaxLookback();
       const fromBlock = searchFrom ?? Math.max(
-        queryFromBlock && queryFromBlock > 0 ? queryFromBlock : currentBlock - MAX_BLOCK_LOOKBACK,
-        currentBlock - MAX_BLOCK_LOOKBACK  // Search last 1M blocks to catch recent events
+        queryFromBlock && queryFromBlock > 0 ? queryFromBlock : currentBlock - maxLookback,
+        currentBlock - maxLookback
       );
       const toBlock = searchFrom ? searchFrom + SEARCH_WINDOW_SIZE : "latest";
 
@@ -1646,9 +871,10 @@ class App extends React.Component {
       // Ensure we search a wide enough range to catch recent events
       const currentBlock = await this.state.provider.getBlockNumber();
       const queryFromBlock = networkMap[this.state.network].QUERY_FROM_BLOCK;
+      const maxLookback = this.getMaxLookback();
       const fromBlock = searchFrom ?? Math.max(
-        queryFromBlock && queryFromBlock > 0 ? queryFromBlock : currentBlock - MAX_BLOCK_LOOKBACK,
-        currentBlock - MAX_BLOCK_LOOKBACK  // Search last 1M blocks to catch recent events
+        queryFromBlock && queryFromBlock > 0 ? queryFromBlock : currentBlock - maxLookback,
+        currentBlock - maxLookback
       );
       const toBlock = searchFrom ? searchFrom + SEARCH_WINDOW_SIZE : "latest";
 
@@ -1755,7 +981,10 @@ class App extends React.Component {
     }
   }
 
-  getRuling = async (arbitrableAddress, arbitratorDisputeID) => this.state.archon.arbitrable.getRuling(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID);
+  getRuling = async (arbitrableAddress, arbitratorDisputeID) => {
+    const fromBlock = isTestnet(this.state.network) ? Math.max(0, await this.state.provider.getBlockNumber() - this.getMaxLookback()) : 0;
+    return this.state.archon.arbitrable.getRuling(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID, { fromBlock });
+  }
 
   submitEvidence = async (arbitrableAddress, { disputeID, evidenceTitle, evidenceDescription, evidenceDocument, supportingSide }, value = "0") => {
     const evidence = {

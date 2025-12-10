@@ -47,6 +47,7 @@ const map = {
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_GOERLI_PROVIDER_URL,
     CURRENCY_SHORT: "ETH",
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["5"],
+    MAX_LOOKBACK: 50_000,
   },
   100: {
     NAME: "Gnosis Network",
@@ -79,6 +80,7 @@ const map = {
     WEB3_PROVIDER: process.env.REACT_APP_UNICHAIN_SEPOLIA,
     CURRENCY_SHORT: "ETH",
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["11155111"],
+    MAX_LOOKBACK: 50_000,
   },
   137: {
     NAME: "Polygon Mainnet",
@@ -99,6 +101,7 @@ const map = {
     WEB3_PROVIDER: "https://sepolia.era.zksync.dev/",
     CURRENCY_SHORT: "sETH",
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["11155111"],
+    MAX_LOOKBACK: 50_000,
   },
   324: {
     NAME: "zkSync Era Mainnet",
@@ -143,6 +146,7 @@ const map = {
     WEB3_PROVIDER: process.env.REACT_APP_ARBITRUM_SEPOLIA,
     CURRENCY_SHORT: "ETH",
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["11155111"],
+    MAX_LOOKBACK: 50_000,
   },
 
   80001: {
@@ -153,6 +157,7 @@ const map = {
     FOREIGN_ARBITRATOR_NETWORK_CODE: "5",
     ESCROW_V1_CONTRACTS: [],
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["5"],
+    MAX_LOOKBACK: 50_000,
   },
   10200: {
     NAME: "Gnosis Testnet Chiado",
@@ -163,6 +168,7 @@ const map = {
     CURRENCY_SHORT: "xDai",
     ESCROW_V1_CONTRACTS: [],
     QUERY_FROM_BLOCK: 1165867,
+    MAX_LOOKBACK: 50_000,
   },
   11155111: {
     NAME: "Ethereum Testnet Sepolia",
@@ -173,6 +179,7 @@ const map = {
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_SEPOLIA_PROVIDER_URL,
     CURRENCY_SHORT: "sETH",
     QUERY_FROM_BLOCK: 3635742,
+    MAX_LOOKBACK: 50_000,
   },
   11155420: {
     NAME: "Optimism Testnet Sepolia",
@@ -184,6 +191,7 @@ const map = {
     WEB3_PROVIDER: process.env.REACT_APP_OPTIMISM_SEPOLIA,
     CURRENCY_SHORT: "ETH",
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["11155111"],
+    MAX_LOOKBACK: 50_000,
   },
   8453: {
     NAME: "Base Mainnet",
@@ -206,6 +214,7 @@ const map = {
     WEB3_PROVIDER: process.env.REACT_APP_BASE_SEPOLIA,
     CURRENCY_SHORT: "ETH",
     QUERY_FROM_BLOCK: arbitratorDeployedAtBlock["111155111"],
+    MAX_LOOKBACK: 50_000,
   }
 };
 
@@ -214,4 +223,9 @@ export default map;
 export function getReadOnlyRpcUrl({ chainId }) {
   const url = map[parseInt(chainId)].WEB3_PROVIDER;
   return url;
+}
+
+const testnetChainIds = new Set([5, 1301, 300, 421614, 80001, 10200, 11155111, 11155420, 84532]);
+export function isTestnet(chainId) {
+  return testnetChainIds.has(Number(chainId));
 }
