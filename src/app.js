@@ -1057,7 +1057,7 @@ class App extends React.Component {
 
       const receipt = await tx.wait();
 
-      const disputeCreationTopic = contract.interface.getEvent("DisputeCreation").topicHash;
+      const disputeCreationTopic = ethers.id("DisputeCreation(uint256,address)");
       const disputeLog = receipt.logs.find(log => log.topics[0] === disputeCreationTopic);
 
       if (disputeLog) {

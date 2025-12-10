@@ -12,7 +12,7 @@ class Create extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    console.debug("CreateSummary componentDidUpdate", {prevProps, props: this.props});
+    console.debug("CreateSummary componentDidUpdate", { prevProps, props: this.props });
 
     if (prevProps.network !== this.props.network) {
       this.setState({ activePage: 1, formData: undefined, lastDisputeID: undefined });
@@ -32,6 +32,13 @@ class Create extends React.Component {
 
   notificationEventCallback = lastDisputeID => {
     this.setState({ notificationShow: true, lastDisputeID });
+
+    //Redirect to the dispute page after a brief delay (so user sees toast)
+    if (lastDisputeID) {
+      setTimeout(() => {
+        window.location.href = `/${this.props.network}/cases/${lastDisputeID}`;
+      }, 2000);
+    }
   };
 
   render() {
