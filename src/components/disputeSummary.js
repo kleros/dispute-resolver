@@ -116,7 +116,7 @@ class DisputeSummary extends React.Component {
                 <iframe
                   sandbox={
                     whitelistedArbitrables[arbitrableChainID]?.includes(arbitrated.toLowerCase())
-                      ? "allow-scripts allow-same-origin allow-popups"
+                      ? "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
                       : "allow-scripts"
                   }
                   className="border-0"
