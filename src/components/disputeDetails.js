@@ -454,6 +454,7 @@ class DisputeDetails extends React.Component {
         publishCallback={publishCallback}
         submitEvidenceCallback={submitEvidenceCallback}
         appealDecisions={this.state.appealDecisions}
+        ipfsGateway={this.props.ipfsGateway}
       />
     </Card.Body>
   );
