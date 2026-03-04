@@ -14,7 +14,6 @@ import networkMap from "../ethereum/network-contract-mapping";
 import AlertMessage from "components/alertMessage";
 
 import styles from "components/styles/disputeDetails.module.css";
-import { getRtALabel } from "utils/answer-labels";
 
 // Constants to avoid magic numbers
 const PRECISION_SCALING_FACTOR = 1000n;
@@ -396,7 +395,7 @@ class DisputeDetails extends React.Component {
   );
 
   // Helper method to render question section
-  renderQuestionSection = (metaevidenceJSON, arbitratorDisputeID, network, arbitrated) => (
+  renderQuestionSection = (metaevidenceJSON, arbitratorDisputeID) => (
     <Card.Body className={styles.question}>
       <p>{QuestionTypes[metaevidenceJSON.rulingOptions?.type]}</p>
       <p>{metaevidenceJSON.question}</p>
@@ -408,7 +407,7 @@ class DisputeDetails extends React.Component {
             </Dropdown.Toggle>
 
             <Dropdown.Menu dir="">
-              <Dropdown.Item key={0} disabled>{`Option 0 - ${getRtALabel(metaevidenceJSON?.arbitrableChainID ?? metaevidenceJSON?.arbitratorChainID ?? network, arbitrated)}`}</Dropdown.Item>
+              <Dropdown.Item key={0} disabled>Option 0 - Refuse to Arbitrate / Invalid</Dropdown.Item>
               {metaevidenceJSON.rulingOptions?.titles?.map((title, index) => (
                 <Dropdown.Item key={`option-${index + 1}`} disabled>{`Option ${index + 1} - ${title}${metaevidenceJSON.rulingOptions.descriptions?.[index] != undefined ? ":" : ""
                   } ${metaevidenceJSON.rulingOptions.descriptions?.[index] != undefined
@@ -754,7 +753,7 @@ class DisputeDetails extends React.Component {
               Question
             </Accordion.Toggle>
             <Accordion.Collapse eventKey="2">
-              {this.renderQuestionSection(metaevidenceJSON, arbitratorDisputeID, network, arbitrated)}
+              {this.renderQuestionSection(metaevidenceJSON, arbitratorDisputeID)}
             </Accordion.Collapse>
           </Card>
 
