@@ -14,6 +14,7 @@ import networkMap from "../ethereum/network-contract-mapping";
 import AlertMessage from "components/alertMessage";
 
 import styles from "components/styles/disputeDetails.module.css";
+import { getRtALabel } from "utils/answer-labels";
 
 // Constants to avoid magic numbers
 const PRECISION_SCALING_FACTOR = 1000n;
@@ -407,9 +408,9 @@ class DisputeDetails extends React.Component {
             </Dropdown.Toggle>
 
             <Dropdown.Menu dir="">
-              <Dropdown.Item key={0} disabled >Option 0 Refuse to Arbitrate</Dropdown.Item>
+              <Dropdown.Item key={0} disabled>{`Option 0 - ${getRtALabel(metaevidenceJSON?.arbitrableChainID ?? metaevidenceJSON?.arbitratorChainID ?? this.props.network, this.props.arbitrated)}`}</Dropdown.Item>
               {metaevidenceJSON.rulingOptions?.titles?.map((title, index) => (
-                <Dropdown.Item key={`option-${index + 1}`} disabled>{`Option ${index + 1} ${title}${metaevidenceJSON.rulingOptions.descriptions?.[index] != undefined ? ":" : ""
+                <Dropdown.Item key={`option-${index + 1}`} disabled>{`Option ${index + 1} - ${title}${metaevidenceJSON.rulingOptions.descriptions?.[index] != undefined ? ":" : ""
                   } ${metaevidenceJSON.rulingOptions.descriptions?.[index] != undefined
                     ? metaevidenceJSON.rulingOptions.descriptions[index]
                     : ""
@@ -419,7 +420,7 @@ class DisputeDetails extends React.Component {
                 Object.entries(metaevidenceJSON.rulingOptions.reserved).map(([rulingCode, title]) => {
                   const displayCode = rulingCode.length > 12 ? `${rulingCode.slice(0, 6)}...${rulingCode.slice(-6)}` : rulingCode;
                   return (
-                    <Dropdown.Item key={rulingCode} disabled>{`Option ${displayCode} ${title}${metaevidenceJSON.rulingOptions.descriptions?.[rulingCode] != undefined ? ":" : ""
+                    <Dropdown.Item key={rulingCode} disabled>{`Option ${displayCode} - ${title}${metaevidenceJSON.rulingOptions.descriptions?.[rulingCode] != undefined ? ":" : ""
                       } ${metaevidenceJSON.rulingOptions.descriptions?.[rulingCode] != undefined
                         ? metaevidenceJSON.rulingOptions.descriptions[rulingCode]
                         : ""

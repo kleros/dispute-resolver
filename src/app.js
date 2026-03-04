@@ -11,11 +11,11 @@ import { ethers } from "ethers";
 
 import { getContract, getSignableContract } from "./ethereum/interface";
 import networkMap, { getReadOnlyRpcUrl, isTestnet } from "./ethereum/network-contract-mapping";
-import ipfsPublish from "./ipfs-publish";
+import ipfsPublish from "./utils/ipfs-publish";
 import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
-import { urlNormalize } from "./urlNormalizer";
-import { fetchDataFromScript } from "./utils";
+import { urlNormalize } from "./utils/urlNormalizer";
+import { fetchDataFromScript } from "./utils/utils";
 
 // Constants to avoid magic numbers
 const HEX_PADDING_WIDTH = 64;
