@@ -396,7 +396,7 @@ class DisputeDetails extends React.Component {
   );
 
   // Helper method to render question section
-  renderQuestionSection = (metaevidenceJSON, arbitratorDisputeID) => (
+  renderQuestionSection = (metaevidenceJSON, arbitratorDisputeID, network, arbitrated) => (
     <Card.Body className={styles.question}>
       <p>{QuestionTypes[metaevidenceJSON.rulingOptions?.type]}</p>
       <p>{metaevidenceJSON.question}</p>
@@ -408,7 +408,7 @@ class DisputeDetails extends React.Component {
             </Dropdown.Toggle>
 
             <Dropdown.Menu dir="">
-              <Dropdown.Item key={0} disabled>{`Option 0 - ${getRtALabel(metaevidenceJSON?.arbitrableChainID ?? metaevidenceJSON?.arbitratorChainID ?? this.props.network, this.props.arbitrated)}`}</Dropdown.Item>
+              <Dropdown.Item key={0} disabled>{`Option 0 - ${getRtALabel(metaevidenceJSON?.arbitrableChainID ?? metaevidenceJSON?.arbitratorChainID ?? network, arbitrated)}`}</Dropdown.Item>
               {metaevidenceJSON.rulingOptions?.titles?.map((title, index) => (
                 <Dropdown.Item key={`option-${index + 1}`} disabled>{`Option ${index + 1} - ${title}${metaevidenceJSON.rulingOptions.descriptions?.[index] != undefined ? ":" : ""
                   } ${metaevidenceJSON.rulingOptions.descriptions?.[index] != undefined
@@ -754,7 +754,7 @@ class DisputeDetails extends React.Component {
               Question
             </Accordion.Toggle>
             <Accordion.Collapse eventKey="2">
-              {this.renderQuestionSection(metaevidenceJSON, arbitratorDisputeID)}
+              {this.renderQuestionSection(metaevidenceJSON, arbitratorDisputeID, network, arbitrated)}
             </Accordion.Collapse>
           </Card>
 
