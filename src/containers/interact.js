@@ -444,13 +444,15 @@ class Interact extends React.Component {
 
   renderSearchForm = (network) => {
     const { arbitratorDisputeID } = this.state;
+    const courtURL = new URL(`https://court.kleros.io/cases/${encodeURIComponent(arbitratorDisputeID)}`);
+    courtURL.searchParams.set("requiredChainId", network ?? "1");
 
     return (
       <div>
         <Row>
           <Col>
             <Form.Label>
-              Search Disputes on <a href={`https://court.kleros.io/cases/${arbitratorDisputeID}?requiredChainId=${network}`} target="_blank" rel="noreferrer noopener">Court</a>
+              Search Disputes on <a href={courtURL.toString()} target="_blank" rel="noreferrer noopener">Court</a>
             </Form.Label>
             <InputGroup className={styles.search} size="md">
               <InputGroup.Prepend>

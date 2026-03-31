@@ -395,8 +395,12 @@ class DisputeDetails extends React.Component {
   );
 
   // Helper method to render question section
-  renderQuestionSection = (metaevidenceJSON, arbitratorDisputeID, network) => (
-    <Card.Body className={styles.question}>
+  renderQuestionSection = (metaevidenceJSON, arbitratorDisputeID, network) => {
+    const courtURL = new URL(`https://court.kleros.io/cases/${encodeURIComponent(arbitratorDisputeID)}`);
+    courtURL.searchParams.set("requiredChainId", network ?? "1");
+
+    return (
+      <Card.Body className={styles.question}>
       <p>{QuestionTypes[metaevidenceJSON.rulingOptions?.type]}</p>
       <p>{metaevidenceJSON.question}</p>
       {(metaevidenceJSON.rulingOptions?.type == "single-select" || metaevidenceJSON.rulingOptions?.type == "multiple-select") && (
@@ -432,15 +436,16 @@ class DisputeDetails extends React.Component {
           <p className={styles.questionInfo}>
             <InfoSVG />
             Note that you can only view the voting options. Selected jurors can vote using{" "}
-            <a href={`https://court.kleros.io/cases/${arbitratorDisputeID}?requiredChainId=${network}`} target="_blank" rel="noreferrer noopener">
+            <a href={courtURL.toString()} target="_blank" rel="noreferrer noopener">
               Court
             </a>
             .
           </p>
         </>
       )}
-    </Card.Body>
-  );
+      </Card.Body>
+    );
+  };
 
   // Helper method to render evidence section
   renderEvidenceSection = (incompatible, metaevidenceJSON, evidences, disputeEvent, disputePeriod, publishCallback, submitEvidenceCallback) => (
