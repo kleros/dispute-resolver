@@ -395,7 +395,7 @@ class DisputeDetails extends React.Component {
   );
 
   // Helper method to render question section
-  renderQuestionSection = (metaevidenceJSON, arbitratorDisputeID) => (
+  renderQuestionSection = (metaevidenceJSON, arbitratorDisputeID, network) => (
     <Card.Body className={styles.question}>
       <p>{QuestionTypes[metaevidenceJSON.rulingOptions?.type]}</p>
       <p>{metaevidenceJSON.question}</p>
@@ -432,7 +432,7 @@ class DisputeDetails extends React.Component {
           <p className={styles.questionInfo}>
             <InfoSVG />
             Note that you can only view the voting options. Selected jurors can vote using{" "}
-            <a href={`https://court.kleros.io/cases/${arbitratorDisputeID}`} target="_blank" rel="noreferrer noopener">
+            <a href={`https://court.kleros.io/cases/${arbitratorDisputeID}?requiredChainId=${network}`} target="_blank" rel="noreferrer noopener">
               Court
             </a>
             .
@@ -753,7 +753,7 @@ class DisputeDetails extends React.Component {
               Question
             </Accordion.Toggle>
             <Accordion.Collapse eventKey="2">
-              {this.renderQuestionSection(metaevidenceJSON, arbitratorDisputeID)}
+              {this.renderQuestionSection(metaevidenceJSON, arbitratorDisputeID, network)}
             </Accordion.Collapse>
           </Card>
 
