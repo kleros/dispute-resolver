@@ -442,15 +442,17 @@ class Interact extends React.Component {
     );
   };
 
-  renderSearchForm = () => {
+  renderSearchForm = (network) => {
     const { arbitratorDisputeID } = this.state;
+    const courtURL = new URL(`https://court.kleros.io/cases/${encodeURIComponent(arbitratorDisputeID)}`);
+    courtURL.searchParams.set("requiredChainId", network ?? "1");
 
     return (
       <div>
         <Row>
           <Col>
             <Form.Label>
-              Search Disputes on <a href={`https://court.kleros.io/cases/${arbitratorDisputeID}`}>Court</a>
+              Search Disputes on <a href={courtURL.toString()} target="_blank" rel="noreferrer noopener">Court</a>
             </Form.Label>
             <InputGroup className={styles.search} size="md">
               <InputGroup.Prepend>
@@ -543,7 +545,7 @@ class Interact extends React.Component {
     return (
       <main className={styles.interact}>
         {arbitratorDisputeID && <Redirect to={`/${network}/cases/${arbitratorDisputeID}`} />}
-        {this.renderSearchForm()}
+        {this.renderSearchForm(network)}
         <DisputeSummary
           metaevidenceJSON={metaevidence?.metaEvidenceJSON}
           ipfsGateway="https://cdn.kleros.link"
