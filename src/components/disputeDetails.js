@@ -460,7 +460,6 @@ class DisputeDetails extends React.Component {
         publishCallback={publishCallback}
         submitEvidenceCallback={submitEvidenceCallback}
         appealDecisions={this.state.appealDecisions}
-        ipfsGateway={this.props.ipfsGateway}
         isAuthenticated={isAuthenticated}
         isSigningIn={isSigningIn}
         onSignIn={onSignIn}

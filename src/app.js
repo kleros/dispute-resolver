@@ -14,7 +14,7 @@ import networkMap, { getReadOnlyRpcUrl, isTestnet } from "./ethereum/network-con
 import { uploadToIpfs, getAuthToken, isTokenValid, isTokenForAccount, authenticateUser, clearAuthData } from "./utils/atlas-api";
 import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
-import { urlNormalize } from "./utils/urlNormalizer";
+import { urlNormalize, IPFS_GATEWAY, getFormattedPath } from "./utils/urlNormalizer";
 import { fetchDataFromScript } from "./utils/utils";
 
 // Constants to avoid magic numbers
@@ -23,7 +23,6 @@ const MAX_BLOCK_LOOKBACK = 1_000_000;
 const SEARCH_WINDOW_SIZE = 10_000;
 const DISPUTE_PERIOD_EXECUTION = 4;
 
-const IPFS_GATEWAY = "https://cdn.kleros.link";
 const EXCEPTIONAL_CONTRACT_ADDRESSES = ['0xe0e1bc8C6cd1B81993e2Fcfb80832d814886eA38', '0xb9f9B5eee2ad29098b9b3Ea0B401571F5dA4AD81']
 const CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS = 3 * 60 * 60 * 1000
 const CACHE_INVALIDATION_PERIOD_FOR_DISPUTES_MS = 1 * 60 * 1000
@@ -1003,7 +1002,7 @@ class App extends React.Component {
     const evidence = {
       name: evidenceTitle,
       description: evidenceDescription,
-      fileURI: evidenceDocument,
+      fileURI: getFormattedPath(evidenceDocument),
       evidenceSide: supportingSide
     };
 
@@ -1012,7 +1011,7 @@ class App extends React.Component {
       new Blob([JSON.stringify(evidence)], { type: "application/json" })
     );
 
-    const evidenceURI = ipfsHashEvidenceObj;
+    const evidenceURI = getFormattedPath(ipfsHashEvidenceObj);
 
     const contract = await getSignableContract(
       "ArbitrableProxy",
@@ -1044,12 +1043,12 @@ class App extends React.Component {
       aliases: options.aliases,
       question: options.question,
       rulingOptions: options.rulingOptions,
-      fileURI: options.primaryDocument,
+      fileURI: getFormattedPath(options.primaryDocument),
       dynamicScriptURI: "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj",
     };
 
     const ipfsHashMetaEvidenceObj = await uploadToIpfs("metaEvidence.json", new Blob([JSON.stringify(metaevidence)], { type: "application/json" }));
-    const metaevidenceURI = ipfsHashMetaEvidenceObj;
+    const metaevidenceURI = getFormattedPath(ipfsHashMetaEvidenceObj);
 
     const arbitrationCost = await this.getArbitrationCost(arbitrator, arbitratorExtraData);
     console.debug({ arbitrationCost })

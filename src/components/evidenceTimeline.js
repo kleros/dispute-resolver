@@ -11,6 +11,7 @@ import SignIn from "./signIn";
 
 import { ReactComponent as LinkSVG } from "../assets/images/link.svg";
 import FileUploadDropzone from "./FileUploadDropzone";
+import { urlNormalize } from "../utils/urlNormalizer";
 
 class EvidenceTimeline extends React.Component {
   constructor(props) {
@@ -183,8 +184,6 @@ class EvidenceTimeline extends React.Component {
   );
 
   renderEvidenceItem = evidenceOrEvent => {
-    const { ipfsGateway } = this.props;
-
     return (
       <React.Fragment key={`evidence-${evidenceOrEvent.transactionHash || evidenceOrEvent.blockNumber}`}>
         <div className={styles.evidence}>
@@ -198,7 +197,7 @@ class EvidenceTimeline extends React.Component {
               <div className={styles["sender"]}>Submitted by: {this.truncateAddress(evidenceOrEvent.submittedBy)}</div>
               <div className={styles["timestamp"]}>{new Date(evidenceOrEvent.submittedAt * 1000).toUTCString()}</div>
             </div>
-            <a href={`${ipfsGateway}${evidenceOrEvent.evidenceJSON.fileURI}`} target="_blank" rel="noopener noreferrer">
+            <a href={urlNormalize(evidenceOrEvent.evidenceJSON.fileURI)} target="_blank" rel="noopener noreferrer">
               {this.getAttachmentIcon(evidenceOrEvent.evidenceJSON.fileURI)}
             </a>
           </div>
@@ -317,7 +316,6 @@ class EvidenceTimeline extends React.Component {
 EvidenceTimeline.propTypes = {
   dispute: PropTypes.object, // Dispute Event
   disputePeriod: PropTypes.number.isRequired,
-  ipfsGateway: PropTypes.string.isRequired,
   evidences: PropTypes.array,
   publishCallback: PropTypes.func,
   submitEvidenceCallback: PropTypes.func,

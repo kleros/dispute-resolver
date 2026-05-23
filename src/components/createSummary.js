@@ -5,6 +5,7 @@ import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
 import networkMap from "../ethereum/network-contract-mapping";
 import styles from "components/styles/createSummary.module.css";
+import { urlNormalize } from "../utils/urlNormalizer";
 
 class CreateSummary extends React.Component {
   constructor(props) {
@@ -175,7 +176,7 @@ class CreateSummary extends React.Component {
           <Row className={`text-center text-md-left ${styles.footer}`}>
             {formData.primaryDocument && (
               <Col md={12} xs={24} className={styles.attachment}>
-                <a href={`https://cdn.kleros.link${formData.primaryDocument}`} target="_blank" rel="noopener noreferrer" className={styles.primaryDocument}>
+                <a href={urlNormalize(formData.primaryDocument)} target="_blank" rel="noopener noreferrer" className={styles.primaryDocument}>
                   <AttachmentSVG />
                   {formData.primaryDocument.split("/").slice(-1)}
                 </a>

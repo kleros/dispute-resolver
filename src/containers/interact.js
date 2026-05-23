@@ -552,7 +552,6 @@ class Interact extends React.Component {
         {this.renderSearchForm(network)}
         <DisputeSummary
           metaevidenceJSON={metaevidence?.metaEvidenceJSON}
-          ipfsGateway="https://cdn.kleros.link"
           arbitrated={arbitrated}
           arbitratorAddress={arbitratorAddress}
           arbitratorDisputeID={arbitratorDisputeID}
@@ -567,7 +566,6 @@ class Interact extends React.Component {
           network={network}
           metaevidenceJSON={metaevidence?.metaEvidenceJSON}
           evidences={evidences}
-          ipfsGateway="https://cdn.kleros.link"
           arbitrated={arbitrated}
           arbitratorAddress={arbitratorAddress}
           arbitratorDisputeID={arbitratorDisputeID}
