@@ -152,10 +152,10 @@ class EvidenceTimeline extends React.Component {
   renderSubmitButton() {
     const { disputePeriod, evidenceSubmissionEnabled, isAuthenticated, isSigningIn, onSignIn } = this.props;
 
-    if (!(parseInt(disputePeriod, 10) >= 0 && parseInt(disputePeriod, 10) < 4)) {
+    if (!(Number.parseInt(disputePeriod, 10) >= 0 && Number.parseInt(disputePeriod, 10) < 4)) {
       return null;
     }
-    
+
     if (evidenceSubmissionEnabled && !isAuthenticated) {
       return (
         <SignIn onSignIn={onSignIn} isSigningIn={isSigningIn} />

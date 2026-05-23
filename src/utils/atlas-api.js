@@ -87,13 +87,10 @@ export const isTokenValid = (token) => {
   try {
     //JWT uses Base64URL encoding, convert to standard Base64 before decoding
     const base64Url = token.split(".")[1];
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const base64 = base64Url.replaceAll("-", "+").replaceAll("_", "/");
     const padded = base64 + "===".slice((base64.length + 3) % 4);
     const payload = JSON.parse(atob(padded));
-    if (payload.exp && payload.exp < Date.now() / 1000) {
-      return false;
-    }
-    return true;
+    return !(payload.exp && payload.exp < Date.now() / 1000);
   } catch {
     return false;
   }

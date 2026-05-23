@@ -449,7 +449,7 @@ class DisputeDetails extends React.Component {
   };
 
   // Helper method to render evidence section
-  renderEvidenceSection = (incompatible, metaevidenceJSON, evidences, disputeEvent, disputePeriod, publishCallback, submitEvidenceCallback, isAuthenticated, isSigningIn, onSignIn) => (
+  renderEvidenceSection = ({ incompatible, metaevidenceJSON, evidences, disputeEvent, disputePeriod, publishCallback, submitEvidenceCallback, isAuthenticated, isSigningIn, onSignIn }) => (
     <Card.Body>
       <EvidenceTimeline
         evidenceSubmissionEnabled={!incompatible}
@@ -774,7 +774,7 @@ class DisputeDetails extends React.Component {
               Evidence
             </Accordion.Toggle>
             <Accordion.Collapse eventKey="3">
-              {this.renderEvidenceSection(incompatible, metaevidenceJSON, evidences, disputeEvent, disputePeriod, publishCallback, submitEvidenceCallback, isAuthenticated, isSigningIn, onSignIn)}
+              {this.renderEvidenceSection({ incompatible, metaevidenceJSON, evidences, disputeEvent, disputePeriod, publishCallback, submitEvidenceCallback, isAuthenticated, isSigningIn, onSignIn })}
             </Accordion.Collapse>
           </Card>
         </Accordion>
@@ -784,6 +784,7 @@ class DisputeDetails extends React.Component {
 }
 
 DisputeDetails.propTypes = {
+  exceptionalContractAddresses: PropTypes.array,
   isAuthenticated: PropTypes.bool.isRequired,
   isSigningIn: PropTypes.bool.isRequired,
   onSignIn: PropTypes.func.isRequired,
