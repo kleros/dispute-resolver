@@ -221,7 +221,10 @@ export const uploadToIpfs = async (fileName, data) => {
 
   const response = await fetch(`${ATLAS_URI}/ipfs/file`, {
     method: "POST",
-    headers: { authorization: `Bearer ${token}` },
+    headers: {
+      authorization: `Bearer ${token}`,
+      "apollo-require-preflight": "true",
+    },
     body: formData,
   });
 
