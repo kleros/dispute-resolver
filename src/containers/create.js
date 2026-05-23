@@ -98,6 +98,12 @@ class Create extends React.Component {
 }
 
 Create.propTypes = {
+  subcourtDetails: PropTypes.array,
+  subcourtsLoading: PropTypes.bool,
+  getArbitrationCostCallback: PropTypes.func,
+  publishCallback: PropTypes.func,
+  createDisputeCallback: PropTypes.func,
+  network: PropTypes.string,
   isAuthenticated: PropTypes.bool.isRequired,
   isSigningIn: PropTypes.bool.isRequired,
   onSignIn: PropTypes.func.isRequired,
