@@ -11,7 +11,7 @@ import { ethers } from "ethers";
 
 import { getContract, getSignableContract } from "./ethereum/interface";
 import networkMap, { getReadOnlyRpcUrl, isTestnet } from "./ethereum/network-contract-mapping";
-import ipfsPublish from "./utils/ipfs-publish";
+import { uploadToIpfs, getAuthToken, isTokenValid, isTokenForAccount, authenticateUser, clearAuthData } from "./utils/atlas-api";
 import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
 import { urlNormalize } from "./utils/urlNormalizer";
@@ -69,7 +69,8 @@ class App extends React.Component {
       subcourtsLoading: true,
       provider: null,
       signer: null,
-      archon: null
+      archon: null,
+      isSigningIn: false
     };
     this.encoder = new TextEncoder();
   }
@@ -92,7 +93,11 @@ class App extends React.Component {
       this.setState({ activeAddress: window.ethereum.selectedAddress });
 
       window.ethereum.on("accountsChanged", accounts => {
-        this.setState({ activeAddress: accounts[0] });
+        const newAddress = accounts[0];
+        if (!isTokenForAccount(newAddress)) {
+          clearAuthData();
+        }
+        this.setState({ activeAddress: newAddress });
       });
 
       window.ethereum.on("chainChanged", async chainIdHex => {
@@ -156,7 +161,7 @@ class App extends React.Component {
 
     if (window.ethereum) {
       provider = new ethers.BrowserProvider(window.ethereum);
-      signer = provider.getSigner();
+      signer = await provider.getSigner();
 
       const network = await provider.getNetwork();
       this.setState({
@@ -544,8 +549,16 @@ class App extends React.Component {
     }
   }
 
+  signInWithEthereum = async () => {
+    this.setState({ isSigningIn: true });
+    try {
+      await authenticateUser({ signer: this.state.signer, address: this.state.activeAddress });
+    } finally {
+      this.setState({ isSigningIn: false });
+    }
+  };
 
-  onPublish = async (filename, fileBuffer) => ipfsPublish(filename, fileBuffer);
+  onPublish = async (filename, fileBuffer) => uploadToIpfs(filename, fileBuffer);
 
   generateArbitratorExtraData = (subcourtID, noOfVotes) => `0x${parseInt(subcourtID, 10).toString(16).padStart(HEX_PADDING_WIDTH, "0") + parseInt(noOfVotes, 10).toString(16).padStart(HEX_PADDING_WIDTH, "0")}`;
 
@@ -994,7 +1007,7 @@ class App extends React.Component {
       evidenceSide: supportingSide
     };
 
-    const ipfsHashEvidenceObj = await ipfsPublish(
+    const ipfsHashEvidenceObj = await uploadToIpfs(
       "evidence.json",
       this.encoder.encode(JSON.stringify(evidence))
     );
@@ -1035,7 +1048,7 @@ class App extends React.Component {
       dynamicScriptURI: "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj",
     };
 
-    const ipfsHashMetaEvidenceObj = await ipfsPublish("metaEvidence.json", this.encoder.encode(JSON.stringify(metaevidence)));
+    const ipfsHashMetaEvidenceObj = await uploadToIpfs("metaEvidence.json", this.encoder.encode(JSON.stringify(metaevidence)));
     const metaevidenceURI = ipfsHashMetaEvidenceObj;
 
     const arbitrationCost = await this.getArbitrationCost(arbitrator, arbitratorExtraData);
@@ -1182,7 +1195,7 @@ class App extends React.Component {
     </>
   );
 
-  renderCreate = route => (
+  renderCreate = (route, isAuthenticated) => (
     <>
       <Header activeAddress={this.state.activeAddress} web3Provider={this.state.provider} viewOnly={!this.state.activeAddress} route={route} />
       <Create
@@ -1195,12 +1208,15 @@ class App extends React.Component {
         subcourtDetails={this.state.subcourtDetails}
         subcourtsLoading={this.state.subcourtsLoading}
         network={this.state.network}
+        isAuthenticated={isAuthenticated}
+        isSigningIn={this.state.isSigningIn}
+        onSignIn={this.signInWithEthereum}
       />
       <Footer networkMap={networkMap} network={this.state.network} />
     </>
   );
 
-  renderInteract = route => (
+  renderInteract = (route, isAuthenticated) => (
     <>
       <Header activeAddress={this.state.activeAddress} web3Provider={this.state.provider} viewOnly={!this.state.activeAddress} route={route} />
       <Interact
@@ -1242,6 +1258,9 @@ class App extends React.Component {
         subcourtDetails={this.state.subcourtDetails}
         web3Provider={this.state.provider}
         exceptionalContractAddresses={EXCEPTIONAL_CONTRACT_ADDRESSES}
+        isAuthenticated={isAuthenticated}
+        isSigningIn={this.state.isSigningIn}
+        onSignIn={this.signInWithEthereum}
       />
       <Footer networkMap={networkMap} network={this.state.network} />
     </>
@@ -1264,14 +1283,18 @@ class App extends React.Component {
           </BrowserRouter>
         );
       }
+
+      const authToken = getAuthToken();
+      const isAuthenticated = !!authToken && isTokenValid(authToken) && isTokenForAccount(this.state.activeAddress);
+
       return (
         <BrowserRouter>
           <Switch>
             <Route exact path={["/", "/:chainId", "/:chainId/disputes"]} render={this.renderRedirect} />
             <Route exact path="/:chainId/ongoing" render={this.renderOpenDisputes} />
-            <Route exact path="/:chainId/create" render={this.renderCreate} />
+            <Route exact path="/:chainId/create" render={(route) => this.renderCreate(route, isAuthenticated)} />
             <Redirect from="/:chainId/interact/:id" to="/:chainId/cases/:id" />
-            <Route exact path="/:chainId/cases/:id?" render={this.renderInteract} />
+            <Route exact path="/:chainId/cases/:id?" render={(route) => this.renderInteract(route, isAuthenticated)} />
             <Route render={this.renderNotFound} />
           </Switch>
         </BrowserRouter>

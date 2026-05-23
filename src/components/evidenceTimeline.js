@@ -7,6 +7,7 @@ import isImage from "is-image";
 import isTextPath from "is-text-path";
 import isVideo from "is-video";
 import Blockies from "react-blockies";
+import SignIn from "./signIn";
 
 import { ReactComponent as LinkSVG } from "../assets/images/link.svg";
 import FileUploadDropzone from "./FileUploadDropzone";
@@ -74,11 +75,9 @@ class EvidenceTimeline extends React.Component {
   handleDrop = async acceptedFiles => {
     this.setState({ uploadError: "", fileInput: null });
 
-    // The backend cannot handle files larger than 4MB currently
-    // https://docs.netlify.com/functions/overview/#default-deployment-options
-    const maxSizeInBytes = 4 * 1024 * 1024;
+    const maxSizeInBytes = 20 * 1024 * 1024;
     if (acceptedFiles[0].size > maxSizeInBytes) {
-      this.setState({ uploadError: "File is too large. Maximum size is 4MB." });
+      this.setState({ uploadError: "File is too large. Maximum size is 20MB." });
       return;
     }
 
@@ -151,16 +150,28 @@ class EvidenceTimeline extends React.Component {
 
 
   renderSubmitButton() {
-    const { disputePeriod, evidenceSubmissionEnabled } = this.props;
+    const { disputePeriod, evidenceSubmissionEnabled, isAuthenticated, isSigningIn, onSignIn } = this.props;
+
+    if (!(parseInt(disputePeriod, 10) >= 0 && parseInt(disputePeriod, 10) < 4)) {
+      return null;
+    }
     
-    if (parseInt(disputePeriod, 10) >= 0 && parseInt(disputePeriod, 10) < 4) {
+    if (evidenceSubmissionEnabled && !isAuthenticated) {
       return (
-        <Button id="evidence-button" onClick={this.handleModalOpenClose} className="mb-4" disabled={!evidenceSubmissionEnabled}>
-          {evidenceSubmissionEnabled ? "Submit New Evidence" : "Go to Arbitrable Application to Submit Evidence"}
-        </Button>
+        <SignIn onSignIn={onSignIn} isSigningIn={isSigningIn} />
       );
     }
-    return null;
+
+    return (
+      <Button
+        id="evidence-button"
+        onClick={this.handleModalOpenClose}
+        className="mb-4"
+        disabled={!evidenceSubmissionEnabled || !isAuthenticated}
+      >
+        {evidenceSubmissionEnabled ? "Submit New Evidence" : "Go to Arbitrable Application to Submit Evidence"}
+      </Button>
+    );
   }
 
   sortEvidenceByDate = (a, b) => {
@@ -185,7 +196,7 @@ class EvidenceTimeline extends React.Component {
 
   renderEvidenceItem = evidenceOrEvent => {
     const { ipfsGateway } = this.props;
-    
+
     return (
       <React.Fragment key={`evidence-${evidenceOrEvent.transactionHash || evidenceOrEvent.blockNumber}`}>
         <div className={styles.evidence}>
@@ -211,9 +222,9 @@ class EvidenceTimeline extends React.Component {
 
   renderEvidenceTimeline() {
     const { evidences, appealDecisions } = this.props;
-    
+
     if (!evidences) return null;
-    
+
     return evidences
       .filter(e => e.evidenceJSONValid)
       .concat(appealDecisions)
@@ -231,7 +242,7 @@ class EvidenceTimeline extends React.Component {
 
   renderDisputeStatus() {
     const { evidences, dispute } = this.props;
-    
+
     if (evidences && evidences.length > 0) {
       return (
         <div className={styles["event"]}>
@@ -240,17 +251,17 @@ class EvidenceTimeline extends React.Component {
         </div>
       );
     }
-    
+
     if (evidences && evidences.length === 0) {
       return <div className={styles.noEvidence}>No evidence submitted yet.</div>;
     }
-    
+
     return null;
   }
 
   renderModal() {
     const { evidenceDescription, evidenceTitle, awaitingConfirmation, uploadingToIPFS } = this.state;
-    
+
     return (
       <>
         <button className={`${styles["modal-overlay"]} ${styles[this.state.modalExtraClass]}`} id="modal-overlay" onClick={this.handleModalOpenClose} onKeyDown={this.handleModalKeyDown} tabIndex="0" aria-label="Close modal"></button>

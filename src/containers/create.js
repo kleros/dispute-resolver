@@ -44,7 +44,7 @@ class Create extends React.Component {
   render() {
     const { lastDisputeID, activePage, formData, notificationShow } = this.state;
 
-    const { subcourtDetails, subcourtsLoading, getArbitrationCostCallback, publishCallback, createDisputeCallback, network } = this.props;
+    const { subcourtDetails, subcourtsLoading, getArbitrationCostCallback, publishCallback, createDisputeCallback, network, isAuthenticated, isSigningIn, onSignIn } = this.props;
 
     return (
       <main className={styles.create}>
@@ -58,6 +58,9 @@ class Create extends React.Component {
             onNextButtonClickCallback={this.onNextButtonClick}
             formData={formData}
             network={network}
+            isAuthenticated={isAuthenticated}
+            isSigningIn={isSigningIn}
+            onSignIn={onSignIn}
           />
         )}
         {activePage == 2 && (
@@ -72,6 +75,9 @@ class Create extends React.Component {
             createDisputeCallback={createDisputeCallback}
             notificationEventCallback={this.notificationEventCallback}
             network={network}
+            isAuthenticated={isAuthenticated}
+            isSigningIn={isSigningIn}
+            onSignIn={onSignIn}
           />
         )}
         <Toast

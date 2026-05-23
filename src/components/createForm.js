@@ -17,6 +17,7 @@ const QuestionTypes = Object.freeze({
 
 import styles from "components/styles/createForm.module.css";
 import FileUploadDropzone from "./FileUploadDropzone";
+import SignIn from "./signIn";
 
 const INITIAL_STATE = {
   initialNumberOfJurors: "3",
@@ -164,11 +165,9 @@ class CreateForm extends React.Component {
 
     this.setState({ uploadError: "", fileInput: null });
 
-    // The backend cannot handle files larger than 4MB currently
-    // https://docs.netlify.com/functions/overview/#default-deployment-options
-    const maxSizeInBytes = 4 * 1024 * 1024;
+    const maxSizeInBytes = 20 * 1024 * 1024;
     if (acceptedFiles[0].size > maxSizeInBytes) {
-      this.setState({ uploadError: "File is too large. Maximum size is 4MB." });
+      this.setState({ uploadError: "File is too large. Maximum size is 20MB." });
       return;
     }
 
@@ -598,14 +597,16 @@ class CreateForm extends React.Component {
 
   renderSubmitSection() {
     const { awaitingConfirmation, summary } = this.state;
+    const { isAuthenticated, isSigningIn, onSignIn } = this.props;
 
     return (
       <Row>
         <Col>
+          {!isAuthenticated && <SignIn onSignIn={onSignIn} isSigningIn={isSigningIn} />}
           <Button
             type="submit"
             variant="primary"
-            disabled={awaitingConfirmation}
+            disabled={awaitingConfirmation || !isAuthenticated}
             block
           >
             {awaitingConfirmation ? "Please wait..." : (summary ? "Submit" : "Continue")}

@@ -401,54 +401,54 @@ class DisputeDetails extends React.Component {
 
     return (
       <Card.Body className={styles.question}>
-      <p>{QuestionTypes[metaevidenceJSON.rulingOptions?.type]}</p>
-      <p>{metaevidenceJSON.question}</p>
-      {(metaevidenceJSON.rulingOptions?.type == "single-select" || metaevidenceJSON.rulingOptions?.type == "multiple-select") && (
-        <>
-          <Dropdown>
-            <Dropdown.Toggle block className={styles.dropdownToggle}>
-              <span className="font-weight-normal">View Voting Options</span>
-            </Dropdown.Toggle>
+        <p>{QuestionTypes[metaevidenceJSON.rulingOptions?.type]}</p>
+        <p>{metaevidenceJSON.question}</p>
+        {(metaevidenceJSON.rulingOptions?.type == "single-select" || metaevidenceJSON.rulingOptions?.type == "multiple-select") && (
+          <>
+            <Dropdown>
+              <Dropdown.Toggle block className={styles.dropdownToggle}>
+                <span className="font-weight-normal">View Voting Options</span>
+              </Dropdown.Toggle>
 
-            <Dropdown.Menu dir="">
-              <Dropdown.Item key={0} disabled>Option 0 - Refuse to Arbitrate / Invalid</Dropdown.Item>
-              {metaevidenceJSON.rulingOptions?.titles?.map((title, index) => (
-                <Dropdown.Item key={`option-${index + 1}`} disabled>{`Option ${index + 1} - ${title}${metaevidenceJSON.rulingOptions.descriptions?.[index] != undefined ? ":" : ""
-                  } ${metaevidenceJSON.rulingOptions.descriptions?.[index] != undefined
-                    ? metaevidenceJSON.rulingOptions.descriptions[index]
-                    : ""
-                  }`}</Dropdown.Item>
-              ))}
-              {metaevidenceJSON.rulingOptions?.reserved &&
-                Object.entries(metaevidenceJSON.rulingOptions.reserved).map(([rulingCode, title]) => {
-                  const displayCode = rulingCode.length > 12 ? `${rulingCode.slice(0, 6)}...${rulingCode.slice(-6)}` : rulingCode;
-                  return (
-                    <Dropdown.Item key={rulingCode} disabled>{`Option ${displayCode} - ${title}${metaevidenceJSON.rulingOptions.descriptions?.[rulingCode] != undefined ? ":" : ""
-                      } ${metaevidenceJSON.rulingOptions.descriptions?.[rulingCode] != undefined
-                        ? metaevidenceJSON.rulingOptions.descriptions[rulingCode]
-                        : ""
-                      }`}</Dropdown.Item>
-                  );
-                })}
+              <Dropdown.Menu dir="">
+                <Dropdown.Item key={0} disabled>Option 0 - Refuse to Arbitrate / Invalid</Dropdown.Item>
+                {metaevidenceJSON.rulingOptions?.titles?.map((title, index) => (
+                  <Dropdown.Item key={`option-${index + 1}`} disabled>{`Option ${index + 1} - ${title}${metaevidenceJSON.rulingOptions.descriptions?.[index] != undefined ? ":" : ""
+                    } ${metaevidenceJSON.rulingOptions.descriptions?.[index] != undefined
+                      ? metaevidenceJSON.rulingOptions.descriptions[index]
+                      : ""
+                    }`}</Dropdown.Item>
+                ))}
+                {metaevidenceJSON.rulingOptions?.reserved &&
+                  Object.entries(metaevidenceJSON.rulingOptions.reserved).map(([rulingCode, title]) => {
+                    const displayCode = rulingCode.length > 12 ? `${rulingCode.slice(0, 6)}...${rulingCode.slice(-6)}` : rulingCode;
+                    return (
+                      <Dropdown.Item key={rulingCode} disabled>{`Option ${displayCode} - ${title}${metaevidenceJSON.rulingOptions.descriptions?.[rulingCode] != undefined ? ":" : ""
+                        } ${metaevidenceJSON.rulingOptions.descriptions?.[rulingCode] != undefined
+                          ? metaevidenceJSON.rulingOptions.descriptions[rulingCode]
+                          : ""
+                        }`}</Dropdown.Item>
+                    );
+                  })}
 
-            </Dropdown.Menu>
-          </Dropdown>
-          <p className={styles.questionInfo}>
-            <InfoSVG />
-            Note that you can only view the voting options. Selected jurors can vote using{" "}
-            <a href={courtURL.toString()} target="_blank" rel="noreferrer noopener">
-              Court
-            </a>
-            .
-          </p>
-        </>
-      )}
+              </Dropdown.Menu>
+            </Dropdown>
+            <p className={styles.questionInfo}>
+              <InfoSVG />
+              Note that you can only view the voting options. Selected jurors can vote using{" "}
+              <a href={courtURL.toString()} target="_blank" rel="noreferrer noopener">
+                Court
+              </a>
+              .
+            </p>
+          </>
+        )}
       </Card.Body>
     );
   };
 
   // Helper method to render evidence section
-  renderEvidenceSection = (incompatible, metaevidenceJSON, evidences, disputeEvent, disputePeriod, publishCallback, submitEvidenceCallback) => (
+  renderEvidenceSection = (incompatible, metaevidenceJSON, evidences, disputeEvent, disputePeriod, publishCallback, submitEvidenceCallback, isAuthenticated, isSigningIn, onSignIn) => (
     <Card.Body>
       <EvidenceTimeline
         evidenceSubmissionEnabled={!incompatible}
@@ -460,6 +460,9 @@ class DisputeDetails extends React.Component {
         submitEvidenceCallback={submitEvidenceCallback}
         appealDecisions={this.state.appealDecisions}
         ipfsGateway={this.props.ipfsGateway}
+        isAuthenticated={isAuthenticated}
+        isSigningIn={isSigningIn}
+        onSignIn={onSignIn}
       />
     </Card.Body>
   );
@@ -721,7 +724,10 @@ class DisputeDetails extends React.Component {
       rulingFunded,
       multipliers,
       totalWithdrawable,
-      exceptionalContractAddresses
+      exceptionalContractAddresses,
+      isAuthenticated,
+      isSigningIn,
+      onSignIn
     } = this.props;
 
     const { activeKey } = this.state;
@@ -767,7 +773,7 @@ class DisputeDetails extends React.Component {
               Evidence
             </Accordion.Toggle>
             <Accordion.Collapse eventKey="3">
-              {this.renderEvidenceSection(incompatible, metaevidenceJSON, evidences, disputeEvent, disputePeriod, publishCallback, submitEvidenceCallback)}
+              {this.renderEvidenceSection(incompatible, metaevidenceJSON, evidences, disputeEvent, disputePeriod, publishCallback, submitEvidenceCallback, isAuthenticated, isSigningIn, onSignIn)}
             </Accordion.Collapse>
           </Card>
         </Accordion>

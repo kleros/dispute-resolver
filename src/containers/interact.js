@@ -540,6 +540,9 @@ class Interact extends React.Component {
       subcourtDetails,
       network,
       web3Provider,
+      isAuthenticated,
+      isSigningIn,
+      onSignIn,
     } = this.props;
 
     return (
@@ -587,6 +590,9 @@ class Interact extends React.Component {
           withdrawCallback={this.withdraw}
           totalWithdrawable={totalWithdrawable}
           exceptionalContractAddresses={this.props.exceptionalContractAddresses}
+          isAuthenticated={isAuthenticated}
+          isSigningIn={isSigningIn}
+          onSignIn={onSignIn}
         />
       </main>
     );
