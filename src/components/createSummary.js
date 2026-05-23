@@ -1,4 +1,5 @@
 import React from "react";
+import PropTypes from "prop-types";
 import { Col, Row, Button, Form } from "react-bootstrap";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
@@ -206,5 +207,11 @@ class CreateSummary extends React.Component {
     );
   }
 }
+
+CreateSummary.propTypes = {
+  formData: PropTypes.shape({
+    primaryDocument: PropTypes.string,
+  }),
+};
 
 export default CreateSummary;

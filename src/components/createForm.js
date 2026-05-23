@@ -640,6 +640,7 @@ class CreateForm extends React.Component {
 }
 
 CreateForm.propTypes = {
+  publishCallback: PropTypes.func,
   isAuthenticated: PropTypes.bool.isRequired,
   isSigningIn: PropTypes.bool.isRequired,
   onSignIn: PropTypes.func.isRequired,

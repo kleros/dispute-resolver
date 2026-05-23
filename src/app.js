@@ -71,7 +71,6 @@ class App extends React.Component {
       archon: null,
       isSigningIn: false
     };
-    this.encoder = new TextEncoder();
   }
 
   //Testnets have lower limits due to RPC restrictions
