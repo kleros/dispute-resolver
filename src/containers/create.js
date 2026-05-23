@@ -1,4 +1,5 @@
 import React from "react";
+import PropTypes from "prop-types";
 import Summary from "../components/createSummary";
 import CreateForm from "components/createForm";
 import Toast from "components/toast";
@@ -95,5 +96,11 @@ class Create extends React.Component {
     );
   }
 }
+
+Create.propTypes = {
+  isAuthenticated: PropTypes.bool.isRequired,
+  isSigningIn: PropTypes.bool.isRequired,
+  onSignIn: PropTypes.func.isRequired,
+};
 
 export default Create;

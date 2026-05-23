@@ -335,6 +335,9 @@ EvidenceTimeline.propTypes = {
   submitEvidenceCallback: PropTypes.func,
   evidenceSubmissionEnabled: PropTypes.bool,
   appealDecisions: PropTypes.array,
+  isAuthenticated: PropTypes.bool.isRequired,
+  isSigningIn: PropTypes.bool.isRequired,
+  onSignIn: PropTypes.func.isRequired,
 };
 
 EvidenceTimeline.defaultProps = {

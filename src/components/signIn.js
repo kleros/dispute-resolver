@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import PropTypes from "prop-types";
 import { Button, Spinner } from "react-bootstrap";
 
 const SignIn = ({ onSignIn, isSigningIn }) => {
@@ -24,6 +25,11 @@ const SignIn = ({ onSignIn, isSigningIn }) => {
       {error && <div><small className="text-danger">{error}</small></div>}
     </div>
   );
+};
+
+SignIn.propTypes = {
+  onSignIn: PropTypes.func.isRequired,
+  isSigningIn: PropTypes.bool.isRequired,
 };
 
 export default SignIn;

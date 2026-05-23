@@ -1,4 +1,5 @@
 import React from "react";
+import PropTypes from "prop-types";
 import { Col, Row, Button, Form, Dropdown } from "react-bootstrap";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
@@ -649,5 +650,11 @@ class CreateForm extends React.Component {
     );
   }
 }
+
+CreateForm.propTypes = {
+  isAuthenticated: PropTypes.bool.isRequired,
+  isSigningIn: PropTypes.bool.isRequired,
+  onSignIn: PropTypes.func.isRequired,
+};
 
 export default CreateForm;

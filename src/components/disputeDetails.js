@@ -1,5 +1,6 @@
 import { Card, Row, Col, Form, Accordion, Dropdown, Button } from "react-bootstrap";
 import React from "react";
+import PropTypes from "prop-types";
 import * as realitioLibQuestionFormatter from "@reality.eth/reality-eth-lib/formatters/question";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
@@ -781,5 +782,11 @@ class DisputeDetails extends React.Component {
     );
   }
 }
+
+DisputeDetails.propTypes = {
+  isAuthenticated: PropTypes.bool.isRequired,
+  isSigningIn: PropTypes.bool.isRequired,
+  onSignIn: PropTypes.func.isRequired,
+};
 
 export default DisputeDetails;

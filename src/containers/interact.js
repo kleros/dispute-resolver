@@ -1,4 +1,5 @@
 import React from "react";
+import PropTypes from "prop-types";
 import { Col, Form, Row, InputGroup, FormControl } from "react-bootstrap";
 import DisputeSummary from "components/disputeSummary";
 import DisputeDetails from "components/disputeDetails";
@@ -598,5 +599,11 @@ class Interact extends React.Component {
     );
   };
 }
+
+Interact.propTypes = {
+  isAuthenticated: PropTypes.bool.isRequired,
+  isSigningIn: PropTypes.bool.isRequired,
+  onSignIn: PropTypes.func.isRequired,
+};
 
 export default Interact;
