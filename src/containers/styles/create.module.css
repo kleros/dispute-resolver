@@ -141,10 +141,6 @@
   margin-bottom: var(--spacing-8);
 }
 
-.create .dropzoneInfo > svg {
-  margin-right: var(--spacing-8);
-}
-
 .create .submit {
   float: right;
   margin-right: var(--spacing-16);

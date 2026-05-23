@@ -4,27 +4,26 @@ import Dropzone from 'react-dropzone';
 import { Col } from 'react-bootstrap';
 
 import { ReactComponent as UploadSVG } from "../assets/images/upload.svg";
-import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
 import { ReactComponent as ErrorSVG } from "../assets/images/error.svg";
 
 import styles from "components/styles/fileUploadDropzone.module.css";
 
 class FileUploadDropzone extends React.Component {
     render() {
-        const { uploadError, uploadingToIPFS, fileInput, onDrop } = this.props;
+        const { uploadError, uploadingToIPFS, fileInput, onDrop, disabled } = this.props;
 
         return (
             <div className={styles.dropzoneDiv}>
-                <Dropzone onDrop={onDrop}>
+                <Dropzone onDrop={onDrop} disabled={disabled}>
                     {({ getInputProps, getRootProps }) => (
-                        <section className={styles["dropzone"]}>
+                        <section className={styles["dropzone"]} style={disabled ? { opacity: 0.5, cursor: "not-allowed" } : undefined}>
                             <div {...getRootProps()} className={styles["vertical-center"]}>
                                 <input {...getInputProps()} />
                                 <Col className={styles.uploadContent}>
                                     <UploadSVG />
                                     <p style={{ fontSize: "14px" }}>
                                         {(fileInput && fileInput.path) || (uploadingToIPFS && "Uploading to IPFS...") || (
-                                            "Drop files here or click to select files (Max size: 4MB)"
+                                            "Drop files here or click to select files (Max size: 20MB)"
                                         )}
                                     </p>
                                 </Col>
@@ -40,10 +39,6 @@ class FileUploadDropzone extends React.Component {
                     </p>
                 )}
 
-                <p className={styles.dropzoneInfo}>
-                    <InfoSVG />
-                    Additionally, you can add an external file in PDF or add multiple files in a single .zip file.
-                </p>
             </div>
         );
     }
@@ -54,6 +49,7 @@ FileUploadDropzone.propTypes = {
     uploadingToIPFS: PropTypes.bool,
     fileInput: PropTypes.object,
     onDrop: PropTypes.func.isRequired,
+    disabled: PropTypes.bool,
 };
 
 // Default props (if needed)

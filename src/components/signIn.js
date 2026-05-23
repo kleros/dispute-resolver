@@ -16,7 +16,7 @@ const SignIn = ({ onSignIn, isSigningIn }) => {
 
   return (
     <div className="mb-3">
-      <div className="mb-2"><small className="text-muted">Sign in with Ethereum to upload files.</small></div>
+      <div className="mb-2 text-muted small">Sign in with Ethereum to upload files.</div>
       <Button variant="outline-primary" disabled={isSigningIn} onClick={handleClick}>
         {isSigningIn
           ? <Spinner as="span" animation="grow" size="xs" role="status" aria-hidden="true" className="purple-inverted" />

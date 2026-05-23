@@ -574,16 +574,19 @@ class CreateForm extends React.Component {
 
   renderFileUploadSection() {
     const { fileInput, uploading, uploadError } = this.state;
+    const { isAuthenticated, isSigningIn, onSignIn } = this.props;
 
     return (
       <Row>
         <Col>
           <Form.Group>
             <Form.Label htmlFor="primaryDocument">Primary Document (Optional)</Form.Label>
+            {!isAuthenticated && <SignIn onSignIn={onSignIn} isSigningIn={isSigningIn} />}
             <FileUploadDropzone
               onDrop={this.onDrop}
               uploading={uploading}
               uploadError={uploadError}
+              disabled={!isAuthenticated}
             />
             {fileInput && (
               <div className={styles.fileInputLabel}>
@@ -598,12 +601,11 @@ class CreateForm extends React.Component {
 
   renderSubmitSection() {
     const { awaitingConfirmation, summary } = this.state;
-    const { isAuthenticated, isSigningIn, onSignIn } = this.props;
+    const { isAuthenticated } = this.props;
 
     return (
       <Row>
         <Col>
-          {!isAuthenticated && <SignIn onSignIn={onSignIn} isSigningIn={isSigningIn} />}
           <Button
             type="submit"
             variant="primary"
