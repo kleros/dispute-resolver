@@ -11,7 +11,7 @@ import { ethers } from "ethers";
 
 import { getContract, getSignableContract } from "./ethereum/interface";
 import networkMap, { getReadOnlyRpcUrl, isTestnet } from "./ethereum/network-contract-mapping";
-import { uploadToIpfs, getAuthToken, isTokenValid, isTokenForAccount, authenticateUser, clearAuthData } from "./utils/atlas-api";
+import { uploadToIpfs, getAuthToken, isTokenValid, isTokenForAccount, authenticateUser, clearAuthData, Role } from "./utils/atlas-api";
 import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
 import { urlNormalize, IPFS_GATEWAY, getFormattedPath } from "./utils/urlNormalizer";
@@ -1008,7 +1008,8 @@ class App extends React.Component {
 
     const ipfsHashEvidenceObj = await uploadToIpfs(
       "evidence.json",
-      new Blob([JSON.stringify(evidence)], { type: "application/json" })
+      new Blob([JSON.stringify(evidence)], { type: "application/json" }),
+      Role.POLICY
     );
 
     const evidenceURI = getFormattedPath(ipfsHashEvidenceObj);
@@ -1047,7 +1048,11 @@ class App extends React.Component {
       dynamicScriptURI: "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj",
     };
 
-    const ipfsHashMetaEvidenceObj = await uploadToIpfs("metaEvidence.json", new Blob([JSON.stringify(metaevidence)], { type: "application/json" }));
+    const ipfsHashMetaEvidenceObj = await uploadToIpfs(
+      "metaEvidence.json",
+      new Blob([JSON.stringify(metaevidence)], { type: "application/json" }),
+      Role.POLICY
+    );
     const metaevidenceURI = getFormattedPath(ipfsHashMetaEvidenceObj);
 
     const arbitrationCost = await this.getArbitrationCost(arbitrator, arbitratorExtraData);

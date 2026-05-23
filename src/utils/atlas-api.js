@@ -7,7 +7,10 @@ if (!ATLAS_URI) {
 }
 
 const IPFS_UPLOAD_PRODUCT = "CourtV1";
-const IPFS_UPLOAD_ROLE = "evidence";
+export const Role = {
+  EVIDENCE: "evidence",
+  POLICY: "policy",
+};
 
 const TOKEN_STORAGE_KEY = "#dispute_resolver_atlas_auth_token";
 const TOKEN_ACCOUNT_KEY = "#dispute_resolver_atlas_auth_account";
@@ -206,7 +209,7 @@ export const authenticateUser = async ({ signer, address }) => {
 };
 
 //Upload a file to IPFS
-export const uploadToIpfs = async (fileName, file) => {
+export const uploadToIpfs = async (fileName, file, role = Role.EVIDENCE) => {
   const token = getAuthToken();
   if (!token || !isTokenValid(token)) {
     clearAuthData();
@@ -217,7 +220,7 @@ export const uploadToIpfs = async (fileName, file) => {
   formData.append("file", file, fileName);
   formData.append("name", fileName);
   formData.append("product", IPFS_UPLOAD_PRODUCT);
-  formData.append("role", IPFS_UPLOAD_ROLE);
+  formData.append("role", role);
 
   const response = await fetch(`${ATLAS_URI}/ipfs/file`, {
     method: "POST",
