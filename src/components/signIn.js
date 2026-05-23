@@ -10,7 +10,8 @@ const SignIn = ({ onSignIn, isSigningIn }) => {
     try {
       await onSignIn();
     } catch (e) {
-      setError(e?.message || "Sign-in failed. Please try again.");
+      console.error("Sign-in error:", e);
+      setError("Sign-in failed. Please try again.");
     }
   };
 
