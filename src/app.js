@@ -558,7 +558,7 @@ class App extends React.Component {
     }
   };
 
-  onPublish = async (filename, fileBuffer) => uploadToIpfs(filename, fileBuffer);
+  onPublish = async (filename, file) => uploadToIpfs(filename, file);
 
   generateArbitratorExtraData = (subcourtID, noOfVotes) => `0x${parseInt(subcourtID, 10).toString(16).padStart(HEX_PADDING_WIDTH, "0") + parseInt(noOfVotes, 10).toString(16).padStart(HEX_PADDING_WIDTH, "0")}`;
 
@@ -1009,7 +1009,7 @@ class App extends React.Component {
 
     const ipfsHashEvidenceObj = await uploadToIpfs(
       "evidence.json",
-      this.encoder.encode(JSON.stringify(evidence))
+      new Blob([JSON.stringify(evidence)], { type: "application/json" })
     );
 
     const evidenceURI = ipfsHashEvidenceObj;
@@ -1048,7 +1048,7 @@ class App extends React.Component {
       dynamicScriptURI: "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj",
     };
 
-    const ipfsHashMetaEvidenceObj = await uploadToIpfs("metaEvidence.json", this.encoder.encode(JSON.stringify(metaevidence)));
+    const ipfsHashMetaEvidenceObj = await uploadToIpfs("metaEvidence.json", new Blob([JSON.stringify(metaevidence)], { type: "application/json" }));
     const metaevidenceURI = ipfsHashMetaEvidenceObj;
 
     const arbitrationCost = await this.getArbitrationCost(arbitrator, arbitratorExtraData);

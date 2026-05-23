@@ -206,7 +206,7 @@ export const authenticateUser = async ({ signer, address }) => {
 };
 
 //Upload a file to IPFS
-export const uploadToIpfs = async (fileName, data) => {
+export const uploadToIpfs = async (fileName, file) => {
   const token = getAuthToken();
   if (!token || !isTokenValid(token)) {
     clearAuthData();
@@ -214,7 +214,7 @@ export const uploadToIpfs = async (fileName, data) => {
   }
 
   const formData = new FormData();
-  formData.append("file", new Blob([data]), fileName);
+  formData.append("file", file, fileName);
   formData.append("name", fileName);
   formData.append("product", IPFS_UPLOAD_PRODUCT);
   formData.append("role", IPFS_UPLOAD_ROLE);

@@ -81,33 +81,21 @@ class EvidenceTimeline extends React.Component {
       return;
     }
 
-    const reader = new FileReader();
-    reader.readAsArrayBuffer(acceptedFiles[0]);
-    reader.addEventListener("loadend", async () => {
-      try {
-        this.setState({ uploadingToIPFS: true });
-        const buffer = Buffer.from(reader.result);
-        const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
-        this.setState({
-          evidenceDocument: result,
-          fileInput: acceptedFiles[0],
-          uploadingToIPFS: false
-        })
-      } catch (error) {
-        console.error("Upload error:", error);
-        this.setState({
-          uploadError: "An error occurred while uploading the file. Please try again.",
-          uploadingToIPFS: false,
-        });
-      }
-    });
-
-    reader.onerror = () => {
+    try {
+      this.setState({ uploadingToIPFS: true });
+      const result = await this.props.publishCallback(acceptedFiles[0].name, acceptedFiles[0]);
       this.setState({
-        uploadError: "Failed to read the file. Please try again.",
-        uploading: false,
+        evidenceDocument: result,
+        fileInput: acceptedFiles[0],
+        uploadingToIPFS: false
       });
-    };
+    } catch (error) {
+      console.error("Upload error:", error);
+      this.setState({
+        uploadError: "An error occurred while uploading the file. Please try again.",
+        uploadingToIPFS: false,
+      });
+    }
   };
 
   getAttachmentIcon = uri => {

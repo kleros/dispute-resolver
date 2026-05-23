@@ -172,33 +172,19 @@ class CreateForm extends React.Component {
       return;
     }
 
-    const reader = new FileReader();
-    reader.readAsArrayBuffer(acceptedFiles[0]);
-
-    reader.addEventListener("loadend", async () => {
-      try {
-        this.setState({ uploading: true });
-        const buffer = Buffer.from(reader.result);
-        const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
-        console.log(result);
-        this.setState({
-          primaryDocument: result, fileInput: acceptedFiles[0], uploading: false
-        });
-      } catch (error) {
-        console.error("Upload error:", error);
-        this.setState({
-          uploadError: "An error occurred while uploading the file. Please try again.",
-          uploading: false,
-        });
-      }
-    });
-
-    reader.onerror = () => {
+    try {
+      this.setState({ uploading: true });
+      const result = await this.props.publishCallback(acceptedFiles[0].name, acceptedFiles[0]);
       this.setState({
-        uploadError: "Failed to read the file. Please try again.",
+        primaryDocument: result, fileInput: acceptedFiles[0], uploading: false
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      this.setState({
+        uploadError: "An error occurred while uploading the file. Please try again.",
         uploading: false,
       });
-    };
+    }
   };
 
   calculateArbitrationCost = async (subcourtID, noOfJurors) => subcourtID && noOfJurors && this.setState({
