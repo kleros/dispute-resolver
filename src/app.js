@@ -11,10 +11,10 @@ import { ethers } from "ethers";
 
 import { getContract, getSignableContract } from "./ethereum/interface";
 import networkMap, { getReadOnlyRpcUrl, isTestnet } from "./ethereum/network-contract-mapping";
-import ipfsPublish from "./utils/ipfs-publish";
+import { uploadToIpfs, getAuthToken, isTokenValid, isTokenForAccount, authenticateUser, clearAuthData, Role } from "./utils/atlas-api";
 import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
-import { urlNormalize } from "./utils/urlNormalizer";
+import { urlNormalize, IPFS_GATEWAY, getFormattedPath } from "./utils/urlNormalizer";
 import { fetchDataFromScript } from "./utils/utils";
 
 // Constants to avoid magic numbers
@@ -23,7 +23,6 @@ const MAX_BLOCK_LOOKBACK = 1_000_000;
 const SEARCH_WINDOW_SIZE = 10_000;
 const DISPUTE_PERIOD_EXECUTION = 4;
 
-const IPFS_GATEWAY = "https://cdn.kleros.link";
 const EXCEPTIONAL_CONTRACT_ADDRESSES = ['0xe0e1bc8C6cd1B81993e2Fcfb80832d814886eA38', '0xb9f9B5eee2ad29098b9b3Ea0B401571F5dA4AD81']
 const CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS = 3 * 60 * 60 * 1000
 const CACHE_INVALIDATION_PERIOD_FOR_DISPUTES_MS = 1 * 60 * 1000
@@ -69,9 +68,9 @@ class App extends React.Component {
       subcourtsLoading: true,
       provider: null,
       signer: null,
-      archon: null
+      archon: null,
+      isSigningIn: false
     };
-    this.encoder = new TextEncoder();
   }
 
   //Testnets have lower limits due to RPC restrictions
@@ -92,7 +91,11 @@ class App extends React.Component {
       this.setState({ activeAddress: window.ethereum.selectedAddress });
 
       window.ethereum.on("accountsChanged", accounts => {
-        this.setState({ activeAddress: accounts[0] });
+        const newAddress = accounts[0];
+        if (!isTokenForAccount(newAddress)) {
+          clearAuthData();
+        }
+        this.setState({ activeAddress: newAddress });
       });
 
       window.ethereum.on("chainChanged", async chainIdHex => {
@@ -156,7 +159,7 @@ class App extends React.Component {
 
     if (window.ethereum) {
       provider = new ethers.BrowserProvider(window.ethereum);
-      signer = provider.getSigner();
+      signer = await provider.getSigner();
 
       const network = await provider.getNetwork();
       this.setState({
@@ -544,8 +547,16 @@ class App extends React.Component {
     }
   }
 
+  signInWithEthereum = async () => {
+    this.setState({ isSigningIn: true });
+    try {
+      await authenticateUser({ signer: this.state.signer, address: this.state.activeAddress });
+    } finally {
+      this.setState({ isSigningIn: false });
+    }
+  };
 
-  onPublish = async (filename, fileBuffer) => ipfsPublish(filename, fileBuffer);
+  onPublish = async (filename, file) => uploadToIpfs(filename, file);
 
   generateArbitratorExtraData = (subcourtID, noOfVotes) => `0x${parseInt(subcourtID, 10).toString(16).padStart(HEX_PADDING_WIDTH, "0") + parseInt(noOfVotes, 10).toString(16).padStart(HEX_PADDING_WIDTH, "0")}`;
 
@@ -990,16 +1001,17 @@ class App extends React.Component {
     const evidence = {
       name: evidenceTitle,
       description: evidenceDescription,
-      fileURI: evidenceDocument,
+      fileURI: getFormattedPath(evidenceDocument),
       evidenceSide: supportingSide
     };
 
-    const ipfsHashEvidenceObj = await ipfsPublish(
+    const ipfsHashEvidenceObj = await uploadToIpfs(
       "evidence.json",
-      this.encoder.encode(JSON.stringify(evidence))
+      new Blob([JSON.stringify(evidence)], { type: "application/json" }),
+      Role.POLICY
     );
 
-    const evidenceURI = ipfsHashEvidenceObj;
+    const evidenceURI = getFormattedPath(ipfsHashEvidenceObj);
 
     const contract = await getSignableContract(
       "ArbitrableProxy",
@@ -1031,12 +1043,16 @@ class App extends React.Component {
       aliases: options.aliases,
       question: options.question,
       rulingOptions: options.rulingOptions,
-      fileURI: options.primaryDocument,
+      fileURI: getFormattedPath(options.primaryDocument),
       dynamicScriptURI: "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj",
     };
 
-    const ipfsHashMetaEvidenceObj = await ipfsPublish("metaEvidence.json", this.encoder.encode(JSON.stringify(metaevidence)));
-    const metaevidenceURI = ipfsHashMetaEvidenceObj;
+    const ipfsHashMetaEvidenceObj = await uploadToIpfs(
+      "metaEvidence.json",
+      new Blob([JSON.stringify(metaevidence)], { type: "application/json" }),
+      Role.POLICY
+    );
+    const metaevidenceURI = getFormattedPath(ipfsHashMetaEvidenceObj);
 
     const arbitrationCost = await this.getArbitrationCost(arbitrator, arbitratorExtraData);
     console.debug({ arbitrationCost })
@@ -1182,7 +1198,7 @@ class App extends React.Component {
     </>
   );
 
-  renderCreate = route => (
+  renderCreate = (route, isAuthenticated) => (
     <>
       <Header activeAddress={this.state.activeAddress} web3Provider={this.state.provider} viewOnly={!this.state.activeAddress} route={route} />
       <Create
@@ -1195,12 +1211,15 @@ class App extends React.Component {
         subcourtDetails={this.state.subcourtDetails}
         subcourtsLoading={this.state.subcourtsLoading}
         network={this.state.network}
+        isAuthenticated={isAuthenticated}
+        isSigningIn={this.state.isSigningIn}
+        onSignIn={this.signInWithEthereum}
       />
       <Footer networkMap={networkMap} network={this.state.network} />
     </>
   );
 
-  renderInteract = route => (
+  renderInteract = (route, isAuthenticated) => (
     <>
       <Header activeAddress={this.state.activeAddress} web3Provider={this.state.provider} viewOnly={!this.state.activeAddress} route={route} />
       <Interact
@@ -1242,6 +1261,9 @@ class App extends React.Component {
         subcourtDetails={this.state.subcourtDetails}
         web3Provider={this.state.provider}
         exceptionalContractAddresses={EXCEPTIONAL_CONTRACT_ADDRESSES}
+        isAuthenticated={isAuthenticated}
+        isSigningIn={this.state.isSigningIn}
+        onSignIn={this.signInWithEthereum}
       />
       <Footer networkMap={networkMap} network={this.state.network} />
     </>
@@ -1264,14 +1286,18 @@ class App extends React.Component {
           </BrowserRouter>
         );
       }
+
+      const authToken = getAuthToken();
+      const isAuthenticated = !!authToken && isTokenValid(authToken) && isTokenForAccount(this.state.activeAddress);
+
       return (
         <BrowserRouter>
           <Switch>
             <Route exact path={["/", "/:chainId", "/:chainId/disputes"]} render={this.renderRedirect} />
             <Route exact path="/:chainId/ongoing" render={this.renderOpenDisputes} />
-            <Route exact path="/:chainId/create" render={this.renderCreate} />
+            <Route exact path="/:chainId/create" render={(route) => this.renderCreate(route, isAuthenticated)} />
             <Redirect from="/:chainId/interact/:id" to="/:chainId/cases/:id" />
-            <Route exact path="/:chainId/cases/:id?" render={this.renderInteract} />
+            <Route exact path="/:chainId/cases/:id?" render={(route) => this.renderInteract(route, isAuthenticated)} />
             <Route render={this.renderNotFound} />
           </Switch>
         </BrowserRouter>

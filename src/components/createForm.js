@@ -1,4 +1,5 @@
 import React from "react";
+import PropTypes from "prop-types";
 import { Col, Row, Button, Form, Dropdown } from "react-bootstrap";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
@@ -17,6 +18,7 @@ const QuestionTypes = Object.freeze({
 
 import styles from "components/styles/createForm.module.css";
 import FileUploadDropzone from "./FileUploadDropzone";
+import SignIn from "./signIn";
 
 const INITIAL_STATE = {
   initialNumberOfJurors: "3",
@@ -164,41 +166,25 @@ class CreateForm extends React.Component {
 
     this.setState({ uploadError: "", fileInput: null });
 
-    // The backend cannot handle files larger than 4MB currently
-    // https://docs.netlify.com/functions/overview/#default-deployment-options
-    const maxSizeInBytes = 4 * 1024 * 1024;
+    const maxSizeInBytes = 20 * 1024 * 1024;
     if (acceptedFiles[0].size > maxSizeInBytes) {
-      this.setState({ uploadError: "File is too large. Maximum size is 4MB." });
+      this.setState({ uploadError: "File is too large. Maximum size is 20MB." });
       return;
     }
 
-    const reader = new FileReader();
-    reader.readAsArrayBuffer(acceptedFiles[0]);
-
-    reader.addEventListener("loadend", async () => {
-      try {
-        this.setState({ uploading: true });
-        const buffer = Buffer.from(reader.result);
-        const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
-        console.log(result);
-        this.setState({
-          primaryDocument: result, fileInput: acceptedFiles[0], uploading: false
-        });
-      } catch (error) {
-        console.error("Upload error:", error);
-        this.setState({
-          uploadError: "An error occurred while uploading the file. Please try again.",
-          uploading: false,
-        });
-      }
-    });
-
-    reader.onerror = () => {
+    try {
+      this.setState({ uploading: true });
+      const result = await this.props.publishCallback(acceptedFiles[0].name, acceptedFiles[0]);
       this.setState({
-        uploadError: "Failed to read the file. Please try again.",
+        primaryDocument: result, fileInput: acceptedFiles[0], uploading: false
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      this.setState({
+        uploadError: "An error occurred while uploading the file. Please try again.",
         uploading: false,
       });
-    };
+    }
   };
 
   calculateArbitrationCost = async (subcourtID, noOfJurors) => subcourtID && noOfJurors && this.setState({
@@ -574,16 +560,19 @@ class CreateForm extends React.Component {
 
   renderFileUploadSection() {
     const { fileInput, uploading, uploadError } = this.state;
+    const { isAuthenticated, isSigningIn, onSignIn } = this.props;
 
     return (
       <Row>
         <Col>
           <Form.Group>
             <Form.Label htmlFor="primaryDocument">Primary Document (Optional)</Form.Label>
+            {!isAuthenticated && <SignIn onSignIn={onSignIn} isSigningIn={isSigningIn} />}
             <FileUploadDropzone
               onDrop={this.onDrop}
               uploading={uploading}
               uploadError={uploadError}
+              disabled={!isAuthenticated}
             />
             {fileInput && (
               <div className={styles.fileInputLabel}>
@@ -598,6 +587,7 @@ class CreateForm extends React.Component {
 
   renderSubmitSection() {
     const { awaitingConfirmation, summary } = this.state;
+    const { isAuthenticated } = this.props;
 
     return (
       <Row>
@@ -605,7 +595,7 @@ class CreateForm extends React.Component {
           <Button
             type="submit"
             variant="primary"
-            disabled={awaitingConfirmation}
+            disabled={awaitingConfirmation || !isAuthenticated}
             block
           >
             {awaitingConfirmation ? "Please wait..." : (summary ? "Submit" : "Continue")}
@@ -648,5 +638,12 @@ class CreateForm extends React.Component {
     );
   }
 }
+
+CreateForm.propTypes = {
+  publishCallback: PropTypes.func,
+  isAuthenticated: PropTypes.bool.isRequired,
+  isSigningIn: PropTypes.bool.isRequired,
+  onSignIn: PropTypes.func.isRequired,
+};
 
 export default CreateForm;

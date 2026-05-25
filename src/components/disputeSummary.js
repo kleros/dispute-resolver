@@ -7,6 +7,7 @@ import whitelistedArbitrables from "../ethereum/arbitrableWhitelist";
 
 import styles from "components/styles/disputeSummary.module.css";
 import ReactMarkdown from "react-markdown";
+import { urlNormalize } from "../utils/urlNormalizer";
 
 class DisputeSummary extends React.Component {
   getArbitratorConfig() {
@@ -87,7 +88,7 @@ class DisputeSummary extends React.Component {
   }
 
   render() {
-    const { metaevidenceJSON, ipfsGateway, arbitrated, arbitrableChainID, loading } = this.props;
+    const { metaevidenceJSON, arbitrated, arbitrableChainID, loading } = this.props;
 
     if (metaevidenceJSON) {
       const injectedArgs = this.getInjectedArgs();
@@ -109,7 +110,9 @@ class DisputeSummary extends React.Component {
               const evidenceDisplayInterfaceURI = arbitrated === "0xEbcf3bcA271B26ae4B162Ba560e243055Af0E679"
                 ? "/ipfs/QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh/index.html"
                 : metaevidenceJSON.evidenceDisplayInterfaceURI;
-              const iframeSrc = (evidenceDisplayInterfaceURI.includes("://") ? "" : ipfsGateway) + `${evidenceDisplayInterfaceURI}?${searchParams}`;
+              const iframeSrc = evidenceDisplayInterfaceURI.includes("://")
+                ? `${evidenceDisplayInterfaceURI}?${searchParams}`
+                : `${urlNormalize(evidenceDisplayInterfaceURI)}?${searchParams}`;
               console.debug('🔍 [DisputeSummary] iframe src:', iframeSrc);
               console.debug('🔍 [DisputeSummary] evidenceDisplayInterfaceURI:', evidenceDisplayInterfaceURI);
               return (
@@ -139,7 +142,7 @@ class DisputeSummary extends React.Component {
           {metaevidenceJSON.fileURI && (
             <Row className={styles.footer}>
               <Col>
-                <a href={ipfsGateway + metaevidenceJSON.fileURI} target="_blank" rel="noopener noreferrer">
+                <a href={urlNormalize(metaevidenceJSON.fileURI)} target="_blank" rel="noopener noreferrer">
                   <AttachmentSVG />
                   {metaevidenceJSON.fileURI.split("/").slice(-1)}
                 </a>
@@ -163,7 +166,6 @@ DisputeSummary.propTypes = {
     aliases: PropTypes.object,
     _v: PropTypes.string,
   }),
-  ipfsGateway: PropTypes.string,
   arbitrated: PropTypes.string,
   arbitrableChainID: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   arbitratorChainID: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),

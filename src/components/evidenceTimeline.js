@@ -7,9 +7,11 @@ import isImage from "is-image";
 import isTextPath from "is-text-path";
 import isVideo from "is-video";
 import Blockies from "react-blockies";
+import SignIn from "./signIn";
 
 import { ReactComponent as LinkSVG } from "../assets/images/link.svg";
 import FileUploadDropzone from "./FileUploadDropzone";
+import { urlNormalize } from "../utils/urlNormalizer";
 
 class EvidenceTimeline extends React.Component {
   constructor(props) {
@@ -74,41 +76,27 @@ class EvidenceTimeline extends React.Component {
   handleDrop = async acceptedFiles => {
     this.setState({ uploadError: "", fileInput: null });
 
-    // The backend cannot handle files larger than 4MB currently
-    // https://docs.netlify.com/functions/overview/#default-deployment-options
-    const maxSizeInBytes = 4 * 1024 * 1024;
+    const maxSizeInBytes = 20 * 1024 * 1024;
     if (acceptedFiles[0].size > maxSizeInBytes) {
-      this.setState({ uploadError: "File is too large. Maximum size is 4MB." });
+      this.setState({ uploadError: "File is too large. Maximum size is 20MB." });
       return;
     }
 
-    const reader = new FileReader();
-    reader.readAsArrayBuffer(acceptedFiles[0]);
-    reader.addEventListener("loadend", async () => {
-      try {
-        this.setState({ uploadingToIPFS: true });
-        const buffer = Buffer.from(reader.result);
-        const result = await this.props.publishCallback(acceptedFiles[0].name, buffer);
-        this.setState({
-          evidenceDocument: result,
-          fileInput: acceptedFiles[0],
-          uploadingToIPFS: false
-        })
-      } catch (error) {
-        console.error("Upload error:", error);
-        this.setState({
-          uploadError: "An error occurred while uploading the file. Please try again.",
-          uploadingToIPFS: false,
-        });
-      }
-    });
-
-    reader.onerror = () => {
+    try {
+      this.setState({ uploadingToIPFS: true });
+      const result = await this.props.publishCallback(acceptedFiles[0].name, acceptedFiles[0]);
       this.setState({
-        uploadError: "Failed to read the file. Please try again.",
-        uploading: false,
+        evidenceDocument: result,
+        fileInput: acceptedFiles[0],
+        uploadingToIPFS: false
       });
-    };
+    } catch (error) {
+      console.error("Upload error:", error);
+      this.setState({
+        uploadError: "An error occurred while uploading the file. Please try again.",
+        uploadingToIPFS: false,
+      });
+    }
   };
 
   getAttachmentIcon = uri => {
@@ -151,16 +139,28 @@ class EvidenceTimeline extends React.Component {
 
 
   renderSubmitButton() {
-    const { disputePeriod, evidenceSubmissionEnabled } = this.props;
-    
-    if (parseInt(disputePeriod, 10) >= 0 && parseInt(disputePeriod, 10) < 4) {
+    const { disputePeriod, evidenceSubmissionEnabled, isAuthenticated, isSigningIn, onSignIn } = this.props;
+
+    if (!(Number.parseInt(disputePeriod, 10) >= 0 && Number.parseInt(disputePeriod, 10) < 4)) {
+      return null;
+    }
+
+    if (evidenceSubmissionEnabled && !isAuthenticated) {
       return (
-        <Button id="evidence-button" onClick={this.handleModalOpenClose} className="mb-4" disabled={!evidenceSubmissionEnabled}>
-          {evidenceSubmissionEnabled ? "Submit New Evidence" : "Go to Arbitrable Application to Submit Evidence"}
-        </Button>
+        <SignIn onSignIn={onSignIn} isSigningIn={isSigningIn} />
       );
     }
-    return null;
+
+    return (
+      <Button
+        id="evidence-button"
+        onClick={this.handleModalOpenClose}
+        className="mb-4"
+        disabled={!evidenceSubmissionEnabled || !isAuthenticated}
+      >
+        {evidenceSubmissionEnabled ? "Submit New Evidence" : "Go to Arbitrable Application to Submit Evidence"}
+      </Button>
+    );
   }
 
   sortEvidenceByDate = (a, b) => {
@@ -184,8 +184,6 @@ class EvidenceTimeline extends React.Component {
   );
 
   renderEvidenceItem = evidenceOrEvent => {
-    const { ipfsGateway } = this.props;
-    
     return (
       <React.Fragment key={`evidence-${evidenceOrEvent.transactionHash || evidenceOrEvent.blockNumber}`}>
         <div className={styles.evidence}>
@@ -199,7 +197,7 @@ class EvidenceTimeline extends React.Component {
               <div className={styles["sender"]}>Submitted by: {this.truncateAddress(evidenceOrEvent.submittedBy)}</div>
               <div className={styles["timestamp"]}>{new Date(evidenceOrEvent.submittedAt * 1000).toUTCString()}</div>
             </div>
-            <a href={`${ipfsGateway}${evidenceOrEvent.evidenceJSON.fileURI}`} target="_blank" rel="noopener noreferrer">
+            <a href={urlNormalize(evidenceOrEvent.evidenceJSON.fileURI)} target="_blank" rel="noopener noreferrer">
               {this.getAttachmentIcon(evidenceOrEvent.evidenceJSON.fileURI)}
             </a>
           </div>
@@ -211,9 +209,9 @@ class EvidenceTimeline extends React.Component {
 
   renderEvidenceTimeline() {
     const { evidences, appealDecisions } = this.props;
-    
+
     if (!evidences) return null;
-    
+
     return evidences
       .filter(e => e.evidenceJSONValid)
       .concat(appealDecisions)
@@ -231,7 +229,7 @@ class EvidenceTimeline extends React.Component {
 
   renderDisputeStatus() {
     const { evidences, dispute } = this.props;
-    
+
     if (evidences && evidences.length > 0) {
       return (
         <div className={styles["event"]}>
@@ -240,17 +238,17 @@ class EvidenceTimeline extends React.Component {
         </div>
       );
     }
-    
+
     if (evidences && evidences.length === 0) {
       return <div className={styles.noEvidence}>No evidence submitted yet.</div>;
     }
-    
+
     return null;
   }
 
   renderModal() {
     const { evidenceDescription, evidenceTitle, awaitingConfirmation, uploadingToIPFS } = this.state;
-    
+
     return (
       <>
         <button className={`${styles["modal-overlay"]} ${styles[this.state.modalExtraClass]}`} id="modal-overlay" onClick={this.handleModalOpenClose} onKeyDown={this.handleModalKeyDown} tabIndex="0" aria-label="Close modal"></button>
@@ -318,12 +316,14 @@ class EvidenceTimeline extends React.Component {
 EvidenceTimeline.propTypes = {
   dispute: PropTypes.object, // Dispute Event
   disputePeriod: PropTypes.number.isRequired,
-  ipfsGateway: PropTypes.string.isRequired,
   evidences: PropTypes.array,
   publishCallback: PropTypes.func,
   submitEvidenceCallback: PropTypes.func,
   evidenceSubmissionEnabled: PropTypes.bool,
   appealDecisions: PropTypes.array,
+  isAuthenticated: PropTypes.bool.isRequired,
+  isSigningIn: PropTypes.bool.isRequired,
+  onSignIn: PropTypes.func.isRequired,
 };
 
 EvidenceTimeline.defaultProps = {

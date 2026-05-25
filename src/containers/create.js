@@ -1,4 +1,5 @@
 import React from "react";
+import PropTypes from "prop-types";
 import Summary from "../components/createSummary";
 import CreateForm from "components/createForm";
 import Toast from "components/toast";
@@ -44,7 +45,7 @@ class Create extends React.Component {
   render() {
     const { lastDisputeID, activePage, formData, notificationShow } = this.state;
 
-    const { subcourtDetails, subcourtsLoading, getArbitrationCostCallback, publishCallback, createDisputeCallback, network } = this.props;
+    const { subcourtDetails, subcourtsLoading, getArbitrationCostCallback, publishCallback, createDisputeCallback, network, isAuthenticated, isSigningIn, onSignIn } = this.props;
 
     return (
       <main className={styles.create}>
@@ -58,6 +59,9 @@ class Create extends React.Component {
             onNextButtonClickCallback={this.onNextButtonClick}
             formData={formData}
             network={network}
+            isAuthenticated={isAuthenticated}
+            isSigningIn={isSigningIn}
+            onSignIn={onSignIn}
           />
         )}
         {activePage == 2 && (
@@ -72,6 +76,9 @@ class Create extends React.Component {
             createDisputeCallback={createDisputeCallback}
             notificationEventCallback={this.notificationEventCallback}
             network={network}
+            isAuthenticated={isAuthenticated}
+            isSigningIn={isSigningIn}
+            onSignIn={onSignIn}
           />
         )}
         <Toast
@@ -89,5 +96,17 @@ class Create extends React.Component {
     );
   }
 }
+
+Create.propTypes = {
+  subcourtDetails: PropTypes.array,
+  subcourtsLoading: PropTypes.bool,
+  getArbitrationCostCallback: PropTypes.func,
+  publishCallback: PropTypes.func,
+  createDisputeCallback: PropTypes.func,
+  network: PropTypes.string,
+  isAuthenticated: PropTypes.bool.isRequired,
+  isSigningIn: PropTypes.bool.isRequired,
+  onSignIn: PropTypes.func.isRequired,
+};
 
 export default Create;

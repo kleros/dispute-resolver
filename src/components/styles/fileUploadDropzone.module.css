@@ -13,7 +13,6 @@
   padding: 1rem;
 }
 
-.dropzoneInfo > svg,
 .dropzoneError > svg {
   margin-right: var(--spacing-8);
 }

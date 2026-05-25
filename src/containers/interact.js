@@ -1,4 +1,5 @@
 import React from "react";
+import PropTypes from "prop-types";
 import { Col, Form, Row, InputGroup, FormControl } from "react-bootstrap";
 import DisputeSummary from "components/disputeSummary";
 import DisputeDetails from "components/disputeDetails";
@@ -540,6 +541,9 @@ class Interact extends React.Component {
       subcourtDetails,
       network,
       web3Provider,
+      isAuthenticated,
+      isSigningIn,
+      onSignIn,
     } = this.props;
 
     return (
@@ -548,7 +552,6 @@ class Interact extends React.Component {
         {this.renderSearchForm(network)}
         <DisputeSummary
           metaevidenceJSON={metaevidence?.metaEvidenceJSON}
-          ipfsGateway="https://cdn.kleros.link"
           arbitrated={arbitrated}
           arbitratorAddress={arbitratorAddress}
           arbitratorDisputeID={arbitratorDisputeID}
@@ -563,7 +566,6 @@ class Interact extends React.Component {
           network={network}
           metaevidenceJSON={metaevidence?.metaEvidenceJSON}
           evidences={evidences}
-          ipfsGateway="https://cdn.kleros.link"
           arbitrated={arbitrated}
           arbitratorAddress={arbitratorAddress}
           arbitratorDisputeID={arbitratorDisputeID}
@@ -587,10 +589,19 @@ class Interact extends React.Component {
           withdrawCallback={this.withdraw}
           totalWithdrawable={totalWithdrawable}
           exceptionalContractAddresses={this.props.exceptionalContractAddresses}
+          isAuthenticated={isAuthenticated}
+          isSigningIn={isSigningIn}
+          onSignIn={onSignIn}
         />
       </main>
     );
   };
 }
+
+Interact.propTypes = {
+  isAuthenticated: PropTypes.bool.isRequired,
+  isSigningIn: PropTypes.bool.isRequired,
+  onSignIn: PropTypes.func.isRequired,
+};
 
 export default Interact;
