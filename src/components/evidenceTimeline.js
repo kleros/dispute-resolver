@@ -197,9 +197,11 @@ class EvidenceTimeline extends React.Component {
               <div className={styles["sender"]}>Submitted by: {this.truncateAddress(evidenceOrEvent.submittedBy)}</div>
               <div className={styles["timestamp"]}>{new Date(evidenceOrEvent.submittedAt * 1000).toUTCString()}</div>
             </div>
-            <a href={urlNormalize(evidenceOrEvent.evidenceJSON.fileURI)} target="_blank" rel="noopener noreferrer">
-              {this.getAttachmentIcon(evidenceOrEvent.evidenceJSON.fileURI)}
-            </a>
+            {evidenceOrEvent.evidenceJSON.fileURI && (
+              <a href={urlNormalize(evidenceOrEvent.evidenceJSON.fileURI)} target="_blank" rel="noopener noreferrer">
+                {this.getAttachmentIcon(evidenceOrEvent.evidenceJSON.fileURI)}
+              </a>
+            )}
           </div>
         </div>
         <div className={styles["divider"]}></div>

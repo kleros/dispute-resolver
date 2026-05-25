@@ -1,6 +1,7 @@
 export const IPFS_GATEWAY = process.env.REACT_APP_IPFS_GATEWAY || "https://cdn.kleros.link";
 
 export function getFormattedPath(url) {
+  if (!url) return "";
   if (url.startsWith("/ipfs/") || url.startsWith("/ipns/")) return url;
   if (url.startsWith("ipfs/")) return `/${url}`;
   if (url.startsWith("ipfs://")) return url.replace("ipfs://", "/ipfs/");
@@ -8,5 +9,6 @@ export function getFormattedPath(url) {
 }
 
 export function urlNormalize(url) {
+  if (!url) return "";
   return `${IPFS_GATEWAY}${getFormattedPath(url)}`;
 }
