@@ -748,6 +748,16 @@ class App extends React.Component {
     return metaEvidenceJSON;
   }
 
+  normalizeEvidenceJSON = (json) => {
+    if (!json || typeof json !== "object" || Array.isArray(json)) return json;
+    const normalized = { ...json };
+
+    if (!normalized.fileURI && normalized.evidence) {
+      normalized.fileURI = normalized.evidence;
+    }
+    return normalized;
+  };
+
   getEvidences = async (arbitrableAddress, arbitratorDisputeID) => {
     const fromBlock = isTestnet(this.state.network) ? Math.max(0, await this.state.provider.getBlockNumber() - this.getMaxLookback()) : 0;
     return this.state.archon.arbitrable
@@ -755,6 +765,13 @@ class App extends React.Component {
       .then(response =>
         this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID, { fromBlock }).catch(() => null)
       )
+      .then(evidences => {
+        if (!Array.isArray(evidences)) return evidences;
+        return evidences.map(item => {
+          if (!item?.evidenceJSON || typeof item.evidenceJSON !== "object") return item;
+          return { ...item, evidenceJSON: this.normalizeEvidenceJSON(item.evidenceJSON) };
+        });
+      })
       .catch(() => null);
   };
 
