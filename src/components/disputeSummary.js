@@ -8,6 +8,7 @@ import whitelistedArbitrables from "../ethereum/arbitrableWhitelist";
 import styles from "components/styles/disputeSummary.module.css";
 import ReactMarkdown from "react-markdown";
 import { urlNormalize } from "../utils/urlNormalizer";
+import { isSafeNavigationUrl } from "../utils/urlValidation";
 
 class DisputeSummary extends React.Component {
   getArbitratorConfig() {
@@ -103,6 +104,11 @@ class DisputeSummary extends React.Component {
             <p className={styles.interactWithTheDispute}>Interact with the dispute</p>
             <h1 className={styles.h1}>{metaevidenceJSON.title}</h1>
             <hr />
+
+            {/* 
+              * By default, ReactMarkdown 4 escapes HTML. Changing this without sanitizing the input could expose us to XSS attacks.
+              * Another potential safety issue can come from updating ReactMarkdown version and adding the rehype-raw plugin, for instance.
+            */}
             <ReactMarkdown className={styles.description} source={metaevidenceJSON.description} />
 
             {metaevidenceJSON.evidenceDisplayInterfaceURI && (() => {
@@ -110,9 +116,12 @@ class DisputeSummary extends React.Component {
               const evidenceDisplayInterfaceURI = arbitrated === "0xEbcf3bcA271B26ae4B162Ba560e243055Af0E679"
                 ? "/ipfs/QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh/index.html"
                 : metaevidenceJSON.evidenceDisplayInterfaceURI;
-              const iframeSrc = evidenceDisplayInterfaceURI.includes("://")
-                ? `${evidenceDisplayInterfaceURI}?${searchParams}`
-                : `${urlNormalize(evidenceDisplayInterfaceURI)}?${searchParams}`;
+
+              const resolvedURI = evidenceDisplayInterfaceURI.includes("://")
+                ? evidenceDisplayInterfaceURI
+                : urlNormalize(evidenceDisplayInterfaceURI);
+              if (!isSafeNavigationUrl(resolvedURI)) return null;
+              const iframeSrc = `${resolvedURI}?${searchParams}`;
               console.debug('🔍 [DisputeSummary] iframe src:', iframeSrc);
               console.debug('🔍 [DisputeSummary] evidenceDisplayInterfaceURI:', evidenceDisplayInterfaceURI);
               return (
@@ -129,9 +138,9 @@ class DisputeSummary extends React.Component {
                 />
               );
             })()}
-            {metaevidenceJSON.arbitrableInterfaceURI && !metaevidenceJSON.arbitrableInterfaceURI.includes("resolve.kleros.io") && (
+            {metaevidenceJSON.arbitrableInterfaceURI && !metaevidenceJSON.arbitrableInterfaceURI.includes("resolve.kleros.io") && isSafeNavigationUrl(metaevidenceJSON.arbitrableInterfaceURI) && (
               <div className="my-3">
-                <a href={metaevidenceJSON.arbitrableInterfaceURI} className="purple-inverted">
+                <a href={metaevidenceJSON.arbitrableInterfaceURI} target="_blank" rel="noopener noreferrer" className="purple-inverted">
                   Go to arbitrable application from here
                 </a>
               </div>
