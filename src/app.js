@@ -16,6 +16,7 @@ import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
 import { urlNormalize, IPFS_GATEWAY, getFormattedPath } from "./utils/urlNormalizer";
 import { fetchDataFromScript } from "./utils/utils";
+import { resolveAppealMultipliers } from "./utils/multipliers";
 
 // Constants to avoid magic numbers
 const HEX_PADDING_WIDTH = 64;
@@ -25,7 +26,6 @@ const DISPUTE_PERIOD_EXECUTION = 4;
 
 const EXCEPTIONAL_CONTRACT_ADDRESSES = ['0xe0e1bc8C6cd1B81993e2Fcfb80832d814886eA38', '0xb9f9B5eee2ad29098b9b3Ea0B401571F5dA4AD81']
 const CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS = 3 * 60 * 60 * 1000
-const CACHE_INVALIDATION_PERIOD_FOR_DISPUTES_MS = 1 * 60 * 1000
 
 const isBigNumberLike = value => {
   return value && typeof value === 'object' &&
@@ -532,20 +532,7 @@ class App extends React.Component {
     }
   }
 
-  getMultipliers = async arbitrableAddress => {
-    const contract = getContract(
-      "IDisputeResolver",
-      arbitrableAddress,
-      this.state.provider
-    );
-
-    try {
-      return contract.getMultipliers()
-    } catch (error) {
-      console.error(`Error fetching multipliers for arbitrable ${arbitrableAddress}:`, error);
-      return null
-    }
-  }
+  getMultipliers = async arbitrableAddress => resolveAppealMultipliers(arbitrableAddress, this.state.provider);
 
   signInWithEthereum = async () => {
     this.setState({ isSigningIn: true });
@@ -776,7 +763,7 @@ class App extends React.Component {
   };
 
   getAppealDecision = async (arbitratorDisputeID, disputedAtBlockNumber) => {
-    if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
+    if (!networkMap[this.state.network]?.KLEROS_LIQUID) return [];
 
     const contract = getContract(
       "KlerosLiquid",
@@ -805,7 +792,7 @@ class App extends React.Component {
 
     } catch (error) {
       console.error('Error fetching appeal decisions:', error);
-      return null;
+      return [];
     }
   };
 

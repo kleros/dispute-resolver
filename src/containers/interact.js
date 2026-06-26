@@ -210,12 +210,7 @@ class Interact extends React.Component {
       }),
       this.props.getMultipliersCallback(arbitrated).catch(err => {
         console.warn('getMultipliersCallback failed:', err.message);
-        return {
-          winnerStakeMultiplier: 10000n,
-          loserStakeMultiplier: 10000n,
-          loserAppealPeriodMultiplier: 10000n,
-          denominator: 10000n
-        }
+        return null;
       })
     ]);
 
@@ -307,7 +302,7 @@ class Interact extends React.Component {
           appealDecisions.length,
           arbitrated,
           disputeData.arbitratorDispute?.period,
-          appealDecisions.slice(-1)?.appealedAtBlockNumber
+          appealDecisions.at(-1)?.appealedAtBlockNumber
         ).catch(err => {
           console.warn("getContributionsCallback failed:", err.message);
           return {};
@@ -316,7 +311,7 @@ class Interact extends React.Component {
           arbitrableDisputeID,
           appealDecisions.length,
           arbitrated,
-          appealDecisions.slice(-1)?.appealedAtBlockNumber
+          appealDecisions.at(-1)?.appealedAtBlockNumber
         ).catch(err => {
           console.warn("getRulingFundedCallback failed:", err.message);
           return {};
@@ -571,6 +566,7 @@ class Interact extends React.Component {
           arbitratorDisputeID={arbitratorDisputeID}
           arbitratorDispute={arbitratorDispute}
           arbitratorDisputeDetails={arbitratorDisputeDetails}
+          loading={loading}
           subcourts={subcourts}
           subcourtDetails={subcourtDetails}
           incompatible={incompatible}
