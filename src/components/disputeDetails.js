@@ -1,4 +1,4 @@
-import { Card, Row, Col, Form, Accordion, Dropdown, Button } from "react-bootstrap";
+import { Card, Row, Col, Form, Accordion, Dropdown, Button, Spinner } from "react-bootstrap";
 import React from "react";
 import PropTypes from "prop-types";
 import * as realitioLibQuestionFormatter from "@reality.eth/reality-eth-lib/formatters/question";
@@ -136,7 +136,7 @@ class DisputeDetails extends React.Component {
     const loserMultiplier = multipliers.loserAppealPeriodMultiplier;
     const denominator = multipliers.denominator;
 
-    return Number(start + (end - start) * (loserMultiplier / denominator));
+    return Number(start + (end - start) * loserMultiplier / denominator);
   };
 
   calculateLoserAppealPeriod = () => {
@@ -146,7 +146,7 @@ class DisputeDetails extends React.Component {
     const loserMultiplier = multipliers.loserAppealPeriodMultiplier;
     const denominator = multipliers.denominator;
 
-    return Number(start + (end - start) * (loserMultiplier / denominator));
+    return Number(start + (end - start) * loserMultiplier / denominator);
   };
 
   calculateFundingPercentage = (rulingOption, contributions) => {
@@ -350,7 +350,7 @@ class DisputeDetails extends React.Component {
   );
 
   // Helper method to render appeal section
-  renderAppealSection = (disputePeriod, totalWithdrawable, metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated) => (
+  renderAppealSection = (disputePeriod, totalWithdrawable, metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated, multipliers) => (
     <Card.Body>
       <div className="h1">{disputePeriod == DISPUTE_PERIOD_APPEAL ? "Appeal the decision" : "Withdraw crowdfunding rewards and refunds"}</div>
       <p className="label">
@@ -372,10 +372,18 @@ class DisputeDetails extends React.Component {
       )}
 
       {disputePeriod == DISPUTE_PERIOD_APPEAL && (
-        <Row className="mt-3">
-          {this.renderCrowdfundingCards(metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated)}
-          {this.renderVariableTypeCrowdfundingCards(metaevidenceJSON, currentRuling, contributions, appealCallback)}
-        </Row>
+        (multipliers && this.props.appealCost != null && this.props.appealPeriod != null) ? (
+          <Row className="mt-3">
+            {this.renderCrowdfundingCards(metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated)}
+            {this.renderVariableTypeCrowdfundingCards(metaevidenceJSON, currentRuling, contributions, appealCallback)}
+          </Row>
+        ) : (
+          <AlertMessage
+            type="warning"
+            title="Appeal fees could not be calculated"
+            content="This arbitrable contract uses an unsupported appeal interface, so the appeal funding amounts and deadlines can't be shown. Please use the arbitrable application to appeal."
+          />
+        )
       )}
     </Card.Body>
   );
@@ -474,9 +482,22 @@ class DisputeDetails extends React.Component {
   };
 
   // Helper method to render appeal card conditionally
-  renderAppealCard = (arbitratorDispute, disputePeriod, contributions, multipliers, appealCost, appealPeriod, arbitrated, totalWithdrawable, metaevidenceJSON, currentRuling, appealCallback, exceptionalContractAddresses, activeKey, isEscrowV1Dispute) => {
-    if (!arbitratorDispute || disputePeriod < DISPUTE_PERIOD_APPEAL || !contributions || !multipliers || !appealCost || !appealPeriod || !arbitrated) {
+  renderAppealCard = (arbitratorDispute, disputePeriod, contributions, multipliers, appealCost, appealPeriod, arbitrated, totalWithdrawable, metaevidenceJSON, currentRuling, appealCallback, exceptionalContractAddresses, activeKey, isEscrowV1Dispute, loading) => {
+    if (!arbitratorDispute || disputePeriod < DISPUTE_PERIOD_APPEAL || !arbitrated) {
       return null;
+    }
+
+    let body;
+    if (loading) {
+      body = (
+        <Card.Body className="text-center">
+          <Spinner animation="border" role="status" />
+        </Card.Body>
+      );
+    } else if (isEscrowV1Dispute) {
+      body = this.renderEscrowV1AppealSection(disputePeriod, appealCallback, appealCost);
+    } else {
+      body = this.renderAppealSection(disputePeriod, totalWithdrawable, metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated, multipliers);
     }
 
     return (
@@ -485,9 +506,7 @@ class DisputeDetails extends React.Component {
           Appeal
         </Accordion.Toggle>
         <Accordion.Collapse eventKey="1">
-          {isEscrowV1Dispute ?
-            this.renderEscrowV1AppealSection(disputePeriod, appealCallback, appealCost)
-            : this.renderAppealSection(disputePeriod, totalWithdrawable, metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated)}
+          {body}
         </Accordion.Collapse>
       </Card>
     );
@@ -727,7 +746,8 @@ class DisputeDetails extends React.Component {
       exceptionalContractAddresses,
       isAuthenticated,
       isSigningIn,
-      onSignIn
+      onSignIn,
+      loading
     } = this.props;
 
     const { activeKey } = this.state;
@@ -757,7 +777,7 @@ class DisputeDetails extends React.Component {
           className={`mt-4 ${styles.accordion}`}
           onSelect={this.handleAccordionSelect}
         >
-          {this.renderAppealCard(arbitratorDispute, disputePeriod, contributions, multipliers, appealCost, appealPeriod, arbitrated, totalWithdrawable, metaevidenceJSON, currentRuling, appealCallback, exceptionalContractAddresses, activeKey, isEscrowV1Dispute)}
+          {this.renderAppealCard(arbitratorDispute, disputePeriod, contributions, multipliers, appealCost, appealPeriod, arbitrated, totalWithdrawable, metaevidenceJSON, currentRuling, appealCallback, exceptionalContractAddresses, activeKey, isEscrowV1Dispute, loading)}
 
           <Card>
             <Accordion.Toggle className={activeKey == 2 ? "open" : "closed"} as={Card.Header} eventKey="2">
