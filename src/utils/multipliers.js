@@ -2,14 +2,18 @@ import { ethers } from "ethers";
 import { getContract } from "ethereum/interface";
 
 //Appealable arbitrables don't all share one ABI: some implement getMultipliers(),
-//others expose the values individually under different names (e.g. KlerosGovernor), and some are hybrids. 
+//others expose the values individually under different names (e.g. KlerosGovernor), and some are hybrids.
 //We resolve each field independently against the known getter names (by priority).
-export const MULTIPLIER_FIELD_GETTERS = {
+const MULTIPLIER_FIELD_GETTERS = {
   winnerStakeMultiplier: ["winnerStakeMultiplier", "winnerMultiplier"],
   loserStakeMultiplier: ["loserStakeMultiplier", "loserMultiplier"],
   denominator: ["denominator", "MULTIPLIER_DIVISOR", "MULTIPLIER_DENOMINATOR"],
   loserAppealPeriodMultiplier: ["loserAppealPeriodMultiplier"],
 };
+
+//Some arbitrables (e.g. PohV2) hardcode the multiplier divisor as a non-public constant
+//Normally this value is 10000
+const DEFAULT_MULTIPLIER_DIVISOR = 10000n;
 
 const readFirstGetter = async (arbitrableAddress, provider, names) => {
   for (const name of names) {
@@ -38,20 +42,23 @@ export const resolveAppealMultipliers = async (arbitrableAddress, provider) => {
     //Not IDisputeResolver, try other getters
   }
 
-  const [winnerStakeMultiplier, loserStakeMultiplier, denominator] = await Promise.all([
+  const [winnerStakeMultiplier, loserStakeMultiplier, resolvedDenominator] = await Promise.all([
     readFirstGetter(arbitrableAddress, provider, MULTIPLIER_FIELD_GETTERS.winnerStakeMultiplier),
     readFirstGetter(arbitrableAddress, provider, MULTIPLIER_FIELD_GETTERS.loserStakeMultiplier),
     readFirstGetter(arbitrableAddress, provider, MULTIPLIER_FIELD_GETTERS.denominator),
   ]);
 
-  //If it can't be read, do not show wrong information.
-  if (winnerStakeMultiplier == null || loserStakeMultiplier == null || denominator == null) {
+  //If the stake multipliers can't be read, do not show wrong information.
+  if (winnerStakeMultiplier == null || loserStakeMultiplier == null) {
     console.warn(
       `resolveAppealMultipliers: could not resolve appeal multipliers for arbitrable ${arbitrableAddress}. A new appeal-contract ABI may need to be supported.`,
-      { winnerStakeMultiplier, loserStakeMultiplier, denominator }
+      { winnerStakeMultiplier, loserStakeMultiplier, denominator: resolvedDenominator }
     );
     return null;
   }
+
+  //If we can get the stake multipliers, but not the divisor, fall back to the Kleros default.
+  const denominator = resolvedDenominator ?? DEFAULT_MULTIPLIER_DIVISOR;
 
   //Some contracts without an explicit loser appeal-period getter, hardcode the loser funding window to half of the appeal period. (e.g. KlerosGovernor)
   const loserAppealPeriodMultiplier =
