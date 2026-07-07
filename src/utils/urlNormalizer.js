@@ -10,5 +10,7 @@ export function getFormattedPath(url) {
 
 export function urlNormalize(url) {
   if (!url) return "";
+  //Absolute http(s) URLs are returned unchanged.
+  if (/^https?:\/\//.test(url)) return url;
   return `${IPFS_GATEWAY}${getFormattedPath(url)}`;
 }
