@@ -688,7 +688,7 @@ class App extends React.Component {
 
         if (!isContentAddressed(uri)) {
           console.error(`💥 [getMetaEvidence] Rejecting non-content-addressed metaEvidence URI for disputeId ${disputeId} on chainID ${chainID}: ${uri}`);
-          return { metaEvidenceJSON: invalidMetaEvidence };
+          return { metaEvidenceJSON: invalidMetaEvidence, invalid: true };
         }
 
         let metaEvidenceJSON = await fetch(urlNormalize(uri)).then(response => response.json());
@@ -712,7 +712,7 @@ class App extends React.Component {
         if (metaEvidenceJSON.dynamicScriptURI) {
           if (!isContentAddressed(metaEvidenceJSON.dynamicScriptURI)) {
             console.error(`💥 [getMetaEvidence] Rejecting non-content-addressed dynamicScriptURI for disputeId ${disputeId} on chainID ${chainID}: ${metaEvidenceJSON.dynamicScriptURI}`);
-            return { metaEvidenceJSON: invalidMetaEvidence };
+            return { metaEvidenceJSON: invalidMetaEvidence, invalid: true };
           }
           const metaEvidenceEdits = await this.processDynamicScript(metaEvidenceJSON, chainID, disputeId, arbitrated, arbitrator);
           metaEvidenceJSON = { ...metaEvidenceJSON, ...metaEvidenceEdits };
@@ -738,9 +738,9 @@ class App extends React.Component {
 
     const result = await this.getMetaEvidence(arbitrableAddress, arbitratorDisputeID);
 
-    //Unwrap, cache, and return raw as previous function did
+    //Unwrap, cache, and return raw as previous function did. Rejections are not cached.
     const metaEvidenceJSON = result?.metaEvidenceJSON;
-    if (metaEvidenceJSON) {
+    if (metaEvidenceJSON && !result.invalid) {
       localStorage.setItem(`${network}${arbitratorDisputeID.toString()}`, JSON.stringify(metaEvidenceJSON));
     }
 
