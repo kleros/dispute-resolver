@@ -14,7 +14,7 @@ import networkMap, { getReadOnlyRpcUrl, isTestnet } from "./ethereum/network-con
 import { uploadToIpfs, getAuthToken, isTokenValid, isTokenForAccount, authenticateUser, clearAuthData, Role } from "./utils/atlas-api";
 import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
-import { urlNormalize, IPFS_GATEWAY, getFormattedPath } from "./utils/urlNormalizer";
+import { urlNormalize, IPFS_GATEWAY, getFormattedPath, isContentAddressed } from "./utils/urlNormalizer";
 import { fetchDataFromScript } from "./utils/utils";
 import { resolveAppealMultipliers } from "./utils/multipliers";
 
@@ -346,7 +346,7 @@ class App extends React.Component {
   //For EscrowV1 the externalIDtoLocalID function is not available, but the mapping disputeIDtoTransactionID is.
   getArbitrableDisputeIDFromEscrowV1 = async (arbitrableAddress, arbitratorDisputeID) => {
     try {
-      //Note that EscrowV1 uses MultipleArbitrableTransaction and MultipleArbitrableTokenTransaction contracts. 
+      //Note that EscrowV1 uses MultipleArbitrableTransaction and MultipleArbitrableTokenTransaction contracts.
       //However, we can always use the same ABI here because the function is the same and available in both.
       const contract = getContract(
         "MultipleArbitrableTokenTransaction",
@@ -667,6 +667,13 @@ class App extends React.Component {
     const maxTime = 120000;
     const waitTime = 5000;
 
+    const invalidMetaEvidence = {
+      description:
+        "In case you have an AdBlock enabled, please disable it and refresh the page. It may be preventing the correct working of the page. If that's not the case, the data for this case is not formatted correctly or has been tampered since the time of its submission. Please refresh the page and refuse to arbitrate if the problem persists.",
+      title: "Invalid or tampered case data, refuse to arbitrate.",
+      rulingOptions: { type: "single-select", titles: [] },
+    };
+
     while (Date.now() - startTime < maxTime) {
       try {
         const metaEvidenceUriData = await fetch(
@@ -677,6 +684,11 @@ class App extends React.Component {
         if (!uri) {
           console.error(`💥 [getMetaEvidence] No MetaEvidence log for disputeId ${disputeId} on chainID ${chainID}`);
           return null;
+        }
+
+        if (!isContentAddressed(uri)) {
+          console.error(`💥 [getMetaEvidence] Rejecting non-content-addressed metaEvidence URI for disputeId ${disputeId} on chainID ${chainID}: ${uri}`);
+          return { metaEvidenceJSON: invalidMetaEvidence };
         }
 
         let metaEvidenceJSON = await fetch(urlNormalize(uri)).then(response => response.json());
@@ -698,6 +710,10 @@ class App extends React.Component {
         }
 
         if (metaEvidenceJSON.dynamicScriptURI) {
+          if (!isContentAddressed(metaEvidenceJSON.dynamicScriptURI)) {
+            console.error(`💥 [getMetaEvidence] Rejecting non-content-addressed dynamicScriptURI for disputeId ${disputeId} on chainID ${chainID}: ${metaEvidenceJSON.dynamicScriptURI}`);
+            return { metaEvidenceJSON: invalidMetaEvidence };
+          }
           const metaEvidenceEdits = await this.processDynamicScript(metaEvidenceJSON, chainID, disputeId, arbitrated, arbitrator);
           metaEvidenceJSON = { ...metaEvidenceJSON, ...metaEvidenceEdits };
         }
@@ -709,11 +725,7 @@ class App extends React.Component {
       }
     }
 
-    return {
-      description:
-        "In case you have an AdBlock enabled, please disable it and refresh the page. It may be preventing the correct working of the page. If that's not the case, the data for this case is not formatted correctly or has been tampered since the time of its submission. Please refresh the page and refuse to arbitrate if the problem persists.",
-      title: "Invalid or tampered case data, refuse to arbitrate.",
-    };
+    return null;
   }
 
   getMetaEvidenceParallelizeable = async (arbitrableAddress, arbitratorDisputeID) => {
@@ -813,7 +825,7 @@ class App extends React.Component {
 
     try {
       const contributionFilter = contract.filters.Contribution(
-        arbitrableDisputeID, // _localDisputeID  
+        arbitrableDisputeID, // _localDisputeID
         _round,
         null                //  _contributor (null means any contributor)
       );
@@ -939,7 +951,7 @@ class App extends React.Component {
     return null;
   };
 
-  // Extract v1 contract logic to reduce complexity  
+  // Extract v1 contract logic to reduce complexity
   tryGetWithdrawableAmountV1 = async (arbitrated, arbitrableDisputeID, contributedTo) => {
     const contract = getContract(
       "IDisputeResolver_v1",
