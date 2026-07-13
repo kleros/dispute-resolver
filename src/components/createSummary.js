@@ -7,6 +7,7 @@ import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
 import networkMap from "../ethereum/network-contract-mapping";
 import styles from "components/styles/createSummary.module.css";
 import { urlNormalize } from "../utils/urlNormalizer";
+import SignIn from "./signIn";
 
 class CreateSummary extends React.Component {
   constructor(props) {
@@ -19,7 +20,8 @@ class CreateSummary extends React.Component {
   }
 
   onCreateButtonClick = async () => {
-    const { formData, notificationEventCallback } = this.props;
+    const { formData, notificationEventCallback, isAuthenticated } = this.props;
+    if (!isAuthenticated) return;
     this.setState({ awaitingConfirmation: true });
 
     const noOfOptions = formData.questionType.code == "multiple-select" ? Math.pow(2, formData.rulingTitles.length) : formData.rulingTitles.length;
@@ -62,7 +64,7 @@ class CreateSummary extends React.Component {
   componentDidMount = () => { };
 
   render() {
-    const { onReturnButtonClickCallback, validated, formData, network } = this.props;
+    const { onReturnButtonClickCallback, validated, formData, network, isAuthenticated, isSigningIn, onSignIn } = this.props;
 
     return (
       <section className={styles.summary}>
@@ -184,6 +186,13 @@ class CreateSummary extends React.Component {
               </Col>
             )}
           </Row>
+          {!isAuthenticated && (
+            <Row className="text-center text-md-right">
+              <Col>
+                <SignIn onSignIn={onSignIn} isSigningIn={isSigningIn} message="Sign in with Ethereum to publish your dispute data to IPFS." />
+              </Col>
+            </Row>
+          )}
           <Row className={`text-center text-md-right mt-3 ${styles.buttons}`}>
             <Col>
               <Button type="button" variant="secondary" className={`mb-3 mb-sm-0 ${styles.return}`} onClick={onReturnButtonClickCallback}>
@@ -196,7 +205,7 @@ class CreateSummary extends React.Component {
                 variant="primary"
                 className={styles.create}
                 onClick={this.onCreateButtonClick}
-                disabled={this.state.awaitingConfirmation}
+                disabled={this.state.awaitingConfirmation || !isAuthenticated}
                 xs={{ block: true }}>
                 Create
               </Button>
@@ -212,6 +221,9 @@ CreateSummary.propTypes = {
   formData: PropTypes.shape({
     primaryDocument: PropTypes.string,
   }),
+  isAuthenticated: PropTypes.bool.isRequired,
+  isSigningIn: PropTypes.bool.isRequired,
+  onSignIn: PropTypes.func.isRequired,
 };
 
 export default CreateSummary;

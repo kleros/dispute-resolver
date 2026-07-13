@@ -587,7 +587,6 @@ class CreateForm extends React.Component {
 
   renderSubmitSection() {
     const { awaitingConfirmation, summary } = this.state;
-    const { isAuthenticated } = this.props;
 
     return (
       <Row>
@@ -595,7 +594,7 @@ class CreateForm extends React.Component {
           <Button
             type="submit"
             variant="primary"
-            disabled={awaitingConfirmation || !isAuthenticated}
+            disabled={awaitingConfirmation}
             block
           >
             {awaitingConfirmation ? "Please wait..." : (summary ? "Submit" : "Continue")}
