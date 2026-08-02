@@ -10,6 +10,11 @@ import MultipleArbitrableTokenTransaction from "../../node_modules/@kleros/klero
 
 import { ethers } from "ethers";
 
+//KlerosGovernor supports submitEvidence with only evidenceURI.
+const KlerosGovernor = {
+  abi: ["function submitEvidence(string _evidenceURI)"],
+};
+
 const contractABIs = {
   KlerosLiquid,
   IDisputeResolver: IDisputeResolver_v2_0_0,
@@ -20,6 +25,7 @@ const contractABIs = {
   IEvidence,
   PolicyRegistry,
   MultipleArbitrableTokenTransaction,
+  KlerosGovernor,
 };
 
 export const getContract = (contractName, address, provider) => {
