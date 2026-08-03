@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { Col, Form, Row, InputGroup, FormControl } from "react-bootstrap";
 import DisputeSummary from "components/disputeSummary";
 import DisputeDetails from "components/disputeDetails";
+import { isGovernorWithEvidenceSupport } from "ethereum/network-contract-mapping";
 import debounce from "lodash.debounce";
 import { ReactComponent as Magnifier } from "../assets/images/magnifier.svg";
 
@@ -102,6 +103,7 @@ class Interact extends React.Component {
       loading: true,
       arbitrableDisputeID: null,
       arbitratorDispute: null,
+      incompatible: false,
     }));
     await this.debouncedRetrieveUsingArbitratorID.cancel();
     await this.debouncedRetrieveUsingArbitratorID(arbitratorDisputeID);
@@ -281,9 +283,12 @@ class Interact extends React.Component {
 
       const disputeData = await this.fetchInitialDisputeData(arbitrated, arbitratorDisputeID);
 
+      //getArbitrableDisputeIDCallback resolves null when the arbitrable does not implement IDisputeResolver.
+      //Evidence submission then is currently only supported for governor contracts.
       this.setState({
         arbitrableDisputeID,
         arbitratorDisputeID,
+        incompatible: arbitrableDisputeID == null && !isGovernorWithEvidenceSupport(this.props.network, arbitrated),
         ...disputeData
       });
 

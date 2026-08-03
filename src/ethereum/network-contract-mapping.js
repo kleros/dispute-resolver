@@ -27,12 +27,22 @@ const arbitratorDeployedAtBlock = {
 const ESCROW_V1_ETH_MAINNET_ADDRESSES = ["0xE2Dd8CCe2c33a04215074ADb4B5820B765d8Ed9D", "0x0d67440946949fe293b45c52efd8a9b3d51e2522", "0xC25a0b9681ABF6F090AEd71a8c08fB564b41dab6", "0xBCf0d1AD453728F75e9cFD4358ED187598A45e6c"]
 const ESCROW_V1_ETH_SEPOLIA_ADDRESSES = ["0x338f1A474e0FB0ae9E913cFA3d7c6Aa19b92015B", "0x9262c1c7810571B189db83F945e7e8b67abcE1c8", "0x58fc7e398B4a1886695ab2C7fE7c31F49393a8c5", "0x6048002b6E93A4A5d93E902F2427D7472790aC97"]
 
+//kleros.eth (0xe5bcEa6F87aAEe4a81f64dfDB4d30d400e0e5cf4) is not listed because it has no submitEvidence function.
+const GOVERNOR_ETH_MAINNET_ADDRESSES = [
+  "0x327a29fcE0a6490E4236240Be176dAA282EcCfdF", //poh.eth
+  "0x7510c77163683448b8Dc8fe9e019d9482Be1ed2b", //ubi-voting.eth
+]
+const GOVERNOR_GNOSIS_ADDRESSES = [
+  "0xf7dE5537eCD69a94695fcF4BCdBDeE6329b63322", //fork-dao.eth
+]
+
 const map = {
   1: {
     NAME: "Ethereum Mainnet",
     KLEROS_LIQUID: arbitrators["1"],
     ARBITRABLE_PROXY: ArbitrableProxy.networks[1]?.address,
     ESCROW_V1_CONTRACTS: ESCROW_V1_ETH_MAINNET_ADDRESSES,
+    GOVERNOR_CONTRACTS: GOVERNOR_ETH_MAINNET_ADDRESSES,
     POLICY_REGISTRY: "0xCf1f07713d5193FaE5c1653C9f61953D048BECe4",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_PROVIDER_URL,
     CURRENCY_SHORT: "ETH",
@@ -54,6 +64,7 @@ const map = {
     KLEROS_LIQUID: arbitrators["100"],
     ARBITRABLE_PROXY: ArbitrableProxy.networks[100].address,
     ESCROW_V1_CONTRACTS: [],
+    GOVERNOR_CONTRACTS: GOVERNOR_GNOSIS_ADDRESSES,
     POLICY_REGISTRY: "0x9d494768936b6bDaabc46733b8D53A937A6c6D7e",
     WEB3_PROVIDER: process.env.REACT_APP_WEB3_XDAI_PROVIDER_URL,
     CURRENCY_SHORT: "xDai",
@@ -228,4 +239,13 @@ export function getReadOnlyRpcUrl({ chainId }) {
 const testnetChainIds = new Set([5, 1301, 300, 421614, 80001, 10200, 11155111, 11155420, 84532]);
 export function isTestnet(chainId) {
   return testnetChainIds.has(Number(chainId));
+}
+
+export function isGovernorWithEvidenceSupport(chainId, arbitrableAddress) {
+  return Boolean(
+    arbitrableAddress &&
+    map[parseInt(chainId, 10)]?.GOVERNOR_CONTRACTS?.some(
+      (address) => address.toLowerCase() === arbitrableAddress.toLowerCase()
+    )
+  );
 }

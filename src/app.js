@@ -10,7 +10,7 @@ import Footer from "./components/footer";
 import { ethers } from "ethers";
 
 import { getContract, getSignableContract } from "./ethereum/interface";
-import networkMap, { getReadOnlyRpcUrl, isTestnet } from "./ethereum/network-contract-mapping";
+import networkMap, { getReadOnlyRpcUrl, isTestnet, isGovernorWithEvidenceSupport } from "./ethereum/network-contract-mapping";
 import { uploadToIpfs, getAuthToken, isTokenValid, isTokenForAccount, authenticateUser, clearAuthData, Role } from "./utils/atlas-api";
 import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
@@ -1029,13 +1029,30 @@ class App extends React.Component {
 
     const evidenceURI = getFormattedPath(ipfsHashEvidenceObj);
 
-    const contract = await getSignableContract(
-      "ArbitrableProxy",
-      arbitrableAddress,
-      this.state.provider
-    );
-
     try {
+      //KlerosGovernor has no local dispute IDs, and evidence is submitted with only evidenceURI.
+      if (isGovernorWithEvidenceSupport(this.state.network, arbitrableAddress)) {
+        const contract = await getSignableContract(
+          "KlerosGovernor",
+          arbitrableAddress,
+          this.state.provider
+        );
+
+        const tx = await contract.submitEvidence(evidenceURI);
+        return tx.wait();
+      }
+
+      //Without a local dispute ID the IDisputeResolver call cannot be encoded.
+      if (disputeID == null) {
+        throw new Error(`Arbitrable ${arbitrableAddress} does not support evidence submission through this interface.`);
+      }
+
+      const contract = await getSignableContract(
+        "ArbitrableProxy",
+        arbitrableAddress,
+        this.state.provider
+      );
+
       const tx = await contract.submitEvidence(disputeID, evidenceURI, {
         value: ethers.parseEther(value)
       });
