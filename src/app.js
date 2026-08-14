@@ -20,6 +20,7 @@ import { resolveAppealMultipliers } from "./utils/multipliers";
 
 // Constants to avoid magic numbers
 const HEX_PADDING_WIDTH = 64;
+const DEFAULT_CHAIN_ID = "1";
 const MAX_BLOCK_LOOKBACK = 1_000_000;
 const SEARCH_WINDOW_SIZE = 10_000;
 const DISPUTE_PERIOD_EXECUTION = 4;
@@ -67,6 +68,7 @@ class App extends React.Component {
       lastDisputeID: "",
       subcourtsLoading: true,
       provider: null,
+      walletProvider: null,
       signer: null,
       archon: null,
       isSigningIn: false
@@ -83,7 +85,8 @@ class App extends React.Component {
     const urlChainId = window.location.pathname.split('/')[1];
     if (urlChainId && this.state.network && urlChainId !== this.state.network) {
       console.log(`Switching to chain ${urlChainId} from URL`);
-      this.setState({ network: urlChainId });
+      //Rebuild the read provider for the URL chain so reads don't stay pinned to the wallet's chain.
+      await this.initiateWeb3Provider(urlChainId);
       await this.switchToChain(urlChainId);
     }
 
@@ -153,31 +156,30 @@ class App extends React.Component {
     window.history.replaceState(null, '', newPath);
   };
 
-  initiateWeb3Provider = async () => {
-    let provider;
+  //The wallet is used for signing only. Reads go through the RPC endpoint configured.
+  initiateWeb3Provider = async (networkOverride) => {
+    let walletProvider = null;
     let signer = null;
+    let network = networkOverride;
 
     if (window.ethereum) {
-      provider = new ethers.BrowserProvider(window.ethereum);
-      signer = await provider.getSigner();
-
-      const network = await provider.getNetwork();
-      this.setState({
-        network: network.chainId.toString(),
-        provider,
-        signer,
-        archon: new Archon(window.ethereum, IPFS_GATEWAY)
-      });
-    } else {
-      // Fallback to a default provider
-      provider = ethers.getDefaultProvider();
-      const network = await provider.getNetwork();
-      this.setState({
-        network: network.chainId.toString(),
-        provider,
-        archon: new Archon(provider, IPFS_GATEWAY)
-      });
+      walletProvider = new ethers.BrowserProvider(window.ethereum);
+      signer = await walletProvider.getSigner();
+      if (!network) network = (await walletProvider.getNetwork()).chainId.toString();
     }
+    if (!network) network = DEFAULT_CHAIN_ID;
+
+    const readOnlyRpcUrl = networkMap[network]?.WEB3_PROVIDER;
+    //Fallback to the wallet provider on networks without a configured RPC
+    const provider = readOnlyRpcUrl ? new ethers.JsonRpcProvider(readOnlyRpcUrl) : walletProvider ?? ethers.getDefaultProvider();
+
+    this.setState({
+      network,
+      provider,
+      walletProvider,
+      signer,
+      archon: new Archon(readOnlyRpcUrl ?? window.ethereum ?? provider, IPFS_GATEWAY)
+    });
   };
 
   switchToChain = async chainId => {
@@ -1035,7 +1037,7 @@ class App extends React.Component {
         const contract = await getSignableContract(
           "KlerosGovernor",
           arbitrableAddress,
-          this.state.provider
+          this.state.walletProvider
         );
 
         const tx = await contract.submitEvidence(evidenceURI);
@@ -1050,7 +1052,7 @@ class App extends React.Component {
       const contract = await getSignableContract(
         "ArbitrableProxy",
         arbitrableAddress,
-        this.state.provider
+        this.state.walletProvider
       );
 
       const tx = await contract.submitEvidence(disputeID, evidenceURI, {
@@ -1093,7 +1095,7 @@ class App extends React.Component {
     const contract = await getSignableContract(
       "ArbitrableProxy",
       networkMap[this.state.network].ARBITRABLE_PROXY,
-      this.state.provider
+      this.state.walletProvider
     );
 
     try {
@@ -1136,7 +1138,7 @@ class App extends React.Component {
     const contract = await getSignableContract(
       "IDisputeResolver",
       arbitrableAddress,
-      this.state.provider
+      this.state.walletProvider
     );
 
     try {
@@ -1155,7 +1157,7 @@ class App extends React.Component {
     const contract = await getSignableContract(
       "MultipleArbitrableTokenTransaction",
       arbitrableAddress,
-      this.state.provider
+      this.state.walletProvider
     );
 
     try {
@@ -1185,7 +1187,7 @@ class App extends React.Component {
     const contract = await getSignableContract(
       contractName,
       arbitrableAddress,
-      this.state.provider
+      this.state.walletProvider
     );
 
     try {
@@ -1225,9 +1227,9 @@ class App extends React.Component {
         subcourts={this.state.subcourts}
         getCurrentRulingCallback={this.getCurrentRuling}
         getOpenDisputesOnCourtCallback={this.getOpenDisputesOnCourt}
-        network={route.match.params.chainId}
+        network={this.state.network}
       />
-      <Footer networkMap={networkMap} network={route.match.params.chainId} />
+      <Footer networkMap={networkMap} network={this.state.network} />
     </>
   );
 
