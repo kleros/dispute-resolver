@@ -9,7 +9,7 @@ import styles from "containers/styles/open-disputes.module.css";
 class OpenDisputes extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { openDisputeIDs: [], arbitratorDisputes: {}, loading: true, statusFilter: 4 };
+    this.state = { openDisputeIDs: [], arbitratorDisputes: {}, loading: true, fetchFailed: false, statusFilter: 4 };
     if (networkMap[this.props.network].KLEROS_LIQUID) this.debouncedFetch = debounce(this.fetch, 0, { leading: false, trailing: true });
   }
 
@@ -19,6 +19,7 @@ class OpenDisputes extends React.Component {
     if (prevProps.subcourts !== subcourts || prevProps.subcourtDetails !== subcourtDetails || prevProps.network !== network) {
       this.setState({
         loading: true,
+        fetchFailed: false,
         openDisputeIDs: [],
         arbitratorDisputes: {},
       });
@@ -86,7 +87,7 @@ class OpenDisputes extends React.Component {
 
       await Promise.all(detailPromises);
 
-      this.setState({ loading: false });
+      this.setState({ loading: false, fetchFailed: false });
     } catch (error) {
       if (error.code === "NETWORK_ERROR" && error.event === "changed") {
         console.warn("Network Error: Unable to fetch open disputes. Reloading the page.");
@@ -94,7 +95,8 @@ class OpenDisputes extends React.Component {
       }
 
       console.error("Error fetching open disputes:", error);
-      this.setState({ loading: false });
+      //Distinguish a failed fetch from an empty result so the UI doesn't claim there are no disputes.
+      this.setState({ loading: false, fetchFailed: true });
     }
   };
 
@@ -115,7 +117,7 @@ class OpenDisputes extends React.Component {
   onFilterSelect = async filter => this.setState({ statusFilter: Number(filter) });
 
   render() {
-    const { openDisputeIDs, statusFilter, loading } = this.state;
+    const { openDisputeIDs, statusFilter, loading, fetchFailed } = this.state;
     const { subcourts, subcourtDetails, network } = this.props;
 
     if (!networkMap[network].KLEROS_LIQUID) {
@@ -149,32 +151,43 @@ class OpenDisputes extends React.Component {
             </div>
           )}
           {!loading &&
-            openDisputeIDs.map((dispute) => (
-              <Col
-                className={styles.card}
-                key={dispute}
-                xl={8}
-                lg={12}
-                md={12}
-                sm={24}
-                xs={24}
-                style={{ display: Number(this.state.arbitratorDisputes[`arbitrator${dispute}`].period) === statusFilter || statusFilter === 4 ? "block" : "none" }}
-              >
-                <a style={{ display: "contents", textDecoration: "none", color: "unset" }} href={`/${network}/cases/${dispute}`}>
-                  {this.state.arbitratorDisputes[`arbitrator${dispute}`] &&
-                    (Number(this.state.arbitratorDisputes[`arbitrator${dispute}`].period) === statusFilter || statusFilter === 4) && (
+            openDisputeIDs.map((dispute) => {
+              const details = this.state.arbitratorDisputes[`arbitrator${dispute}`];
+              //Skip disputes for which we couldn't fetch the details
+              if (!details) return null;
+              const visible = Number(details.period) === statusFilter || statusFilter === 4;
+              return (
+                <Col
+                  className={styles.card}
+                  key={dispute}
+                  xl={8}
+                  lg={12}
+                  md={12}
+                  sm={24}
+                  xs={24}
+                  style={{ display: visible ? "block" : "none" }}
+                >
+                  <a style={{ display: "contents", textDecoration: "none", color: "unset" }} href={`/${network}/cases/${dispute}`}>
+                    {visible && (
                       <OngoingCard
                         dispute={dispute}
-                        arbitratorDisputeDetails={this.state.arbitratorDisputes[`arbitrator${dispute}`]}
+                        arbitratorDisputeDetails={details}
                         title={this.state.arbitratorDisputes[dispute]?.title ?? "Meta Evidence Missing"}
                         subcourtDetails={subcourtDetails}
                         subcourts={subcourts || []}
                       />
                     )}
-                </a>
-              </Col>
-            ))}
-          {!this.state.loading && openDisputeIDs.length === 0 && (
+                  </a>
+                </Col>
+              );
+            })}
+          {!loading && fetchFailed && (
+            <Col style={{ textAlign: "center", marginTop: "5rem" }}>
+              <h1>Failed to load disputes.</h1>
+              <p>There may be a problem with the RPC endpoint. Please refresh the page to try again.</p>
+            </Col>
+          )}
+          {!loading && !fetchFailed && openDisputeIDs.length === 0 && (
             <Col style={{ textAlign: "center", marginTop: "5rem" }}>
               <h1>There are no open disputes.</h1>
             </Col>
