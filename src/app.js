@@ -1227,9 +1227,9 @@ class App extends React.Component {
         subcourts={this.state.subcourts}
         getCurrentRulingCallback={this.getCurrentRuling}
         getOpenDisputesOnCourtCallback={this.getOpenDisputesOnCourt}
-        network={route.match.params.chainId}
+        network={this.state.network}
       />
-      <Footer networkMap={networkMap} network={route.match.params.chainId} />
+      <Footer networkMap={networkMap} network={this.state.network} />
     </>
   );
 
