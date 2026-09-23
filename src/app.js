@@ -17,6 +17,7 @@ import UnsupportedNetwork from "./components/unsupportedNetwork";
 import { urlNormalize, IPFS_GATEWAY, getFormattedPath, isContentAddressed } from "./utils/urlNormalizer";
 import { fetchDataFromScript } from "./utils/utils";
 import { resolveAppealMultipliers } from "./utils/multipliers";
+import * as fixtures from "./fixtures";
 
 // Constants to avoid magic numbers
 const HEX_PADDING_WIDTH = 64;
@@ -79,6 +80,11 @@ class App extends React.Component {
   getMaxLookback = () => networkMap[this.state.network]?.MAX_LOOKBACK || MAX_BLOCK_LOOKBACK;
 
   async componentDidMount() {
+    if (fixtures.isFixtureMode()) {
+      this.initiateFixtureMode();
+      return;
+    }
+
     await this.initiateWeb3Provider();
 
     // Check if URL chainId matches provider's chainId
@@ -182,6 +188,19 @@ class App extends React.Component {
     });
   };
 
+  //Fixture mode: the chain comes from the environment and neither the wallet nor an RPC is used.
+  initiateFixtureMode = () => {
+    const network = fixtures.getFixtureChainId();
+    console.info(`Fixture mode enabled for chain ${network}.`);
+
+    const urlChainId = window.location.pathname.split('/')[1];
+    if (urlChainId && urlChainId !== network) this.syncUrlWithChain(network);
+
+    this.setState({ network }, () => {
+      if (networkMap[network]?.KLEROS_LIQUID) this.loadSubcourtData();
+    });
+  };
+
   switchToChain = async chainId => {
     if (!window.ethereum) return;
 
@@ -209,6 +228,17 @@ class App extends React.Component {
     const { network } = this.state;
 
     console.debug(`Loading subcourts for network: ${network}`);
+
+    if (fixtures.isFixtureMode()) {
+      try {
+        const { subcourts, subcourtDetails } = await fixtures.getSubcourtData(network);
+        this.setState({ subcourts, subcourtDetails, subcourtsLoading: false });
+      } catch (error) {
+        console.error("Failed to load the subcourt fixture:", error);
+        this.setState({ subcourts: [], subcourtDetails: [], subcourtsLoading: false });
+      }
+      return;
+    }
 
     const parsedSubcourts = safeLocalStorageGet(`${network}Subcourts`);
     const parsedSubcourtDetails = safeLocalStorageGet(`${network}SubcourtDetails`);
@@ -271,6 +301,7 @@ class App extends React.Component {
 
   getOpenDisputesOnCourt = async () => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return [];
+    if (fixtures.isFixtureMode()) return fixtures.getOpenDisputesOnCourt(this.state.network);
 
     const contract = getContract(
       "KlerosLiquid",
@@ -502,6 +533,7 @@ class App extends React.Component {
 
   getArbitratorDispute = async arbitratorDisputeID => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
+    if (fixtures.isFixtureMode()) return fixtures.getArbitratorDispute(this.state.network, arbitratorDisputeID);
 
     const contract = getContract(
       "KlerosLiquid",
@@ -732,6 +764,9 @@ class App extends React.Component {
 
   getMetaEvidenceParallelizeable = async (arbitrableAddress, arbitratorDisputeID) => {
     const { network } = this.state;
+
+    //Fixtures bypass the localStorage cache so fixture and real data never mix.
+    if (fixtures.isFixtureMode()) return fixtures.getMetaEvidence(network, arbitratorDisputeID);
 
     const item = localStorage.getItem(`${network}${arbitratorDisputeID.toString()}`);
     if (item && item !== "undefined") {

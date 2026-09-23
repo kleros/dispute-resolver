@@ -1,0 +1,24 @@
+{
+  "chainId": "100",
+  "notes": "Synthetic, deliberately malformed dispute for the Gnosis fixture. Not loaded by anything. It models a non-standard arbitrable whose meta-evidence does not follow ERC-1497 (title is an object, rulingOptions is a string). Rendering it currently crashes the Ongoing Disputes page (OngoingCard renders the title as a React child). To use it, add the id to openDisputeIDs in 100.json and copy arbitratorDispute and metaEvidence under that id.",
+  "disputeId": "999999",
+  "arbitratorDispute": {
+    "subcourtID": "0",
+    "arbitrated": "0x000000000000000000000000000000000000dEaD",
+    "numberOfChoices": "0",
+    "period": "0",
+    "lastPeriodChange": "1758610000",
+    "drawsInRound": "0",
+    "commitsInRound": "0",
+    "ruled": false
+  },
+  "metaEvidence": {
+    "title": {
+      "en": "Non-standard dispute",
+      "pt": "Disputa fora do padrão"
+    },
+    "description": null,
+    "rulingOptions": "yes/no",
+    "fileURI": ""
+  }
+}

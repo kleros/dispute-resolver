@@ -55,5 +55,5 @@ Header.propTypes = {
   viewOnly: PropTypes.bool.isRequired,
   route: PropTypes.object.isRequired,
   activeAddress: PropTypes.string.isRequired,
-  web3Provider: PropTypes.object.isRequired,
+  web3Provider: PropTypes.object,
 };

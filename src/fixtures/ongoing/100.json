@@ -1,0 +1,747 @@
+{
+  "chainId": "100",
+  "capturedAt": "2026-09-23T20:00:52.160Z",
+  "capturedAtBlock": 48403425,
+  "notes": "Captured from the live RPC and meta-evidence API by replicating the reads in src/app.js (getOpenDisputesOnCourt, getArbitratorDispute, getMetaEvidenceParallelizeable, loadSubcourtData). Numeric contract values are decimal strings, as in the app's localStorage cache. A deliberately malformed dispute is kept in 100.malformed.json and is not loaded by default.",
+  "openDisputeIDs": [
+    "1005",
+    "1007",
+    "1008",
+    "1009",
+    "1010",
+    "1011",
+    "1012",
+    "1013"
+  ],
+  "arbitratorDisputes": {
+    "1005": {
+      "subcourtID": "14",
+      "arbitrated": "0xAe6aaed5434244be3699c56E7Ebc828194F26dc3",
+      "numberOfChoices": "2",
+      "period": "3",
+      "lastPeriodChange": "1789936805",
+      "drawsInRound": "3",
+      "commitsInRound": "0",
+      "ruled": false
+    },
+    "1007": {
+      "subcourtID": "18",
+      "arbitrated": "0xa4AC94C4fa65Bb352eFa30e3408e64F72aC857bc",
+      "numberOfChoices": "2",
+      "period": "3",
+      "lastPeriodChange": "1790058605",
+      "drawsInRound": "1",
+      "commitsInRound": "0",
+      "ruled": false
+    },
+    "1008": {
+      "subcourtID": "18",
+      "arbitrated": "0xa4AC94C4fa65Bb352eFa30e3408e64F72aC857bc",
+      "numberOfChoices": "2",
+      "period": "3",
+      "lastPeriodChange": "1790062205",
+      "drawsInRound": "1",
+      "commitsInRound": "0",
+      "ruled": false
+    },
+    "1009": {
+      "subcourtID": "18",
+      "arbitrated": "0xa4AC94C4fa65Bb352eFa30e3408e64F72aC857bc",
+      "numberOfChoices": "2",
+      "period": "3",
+      "lastPeriodChange": "1790063405",
+      "drawsInRound": "1",
+      "commitsInRound": "0",
+      "ruled": false
+    },
+    "1010": {
+      "subcourtID": "19",
+      "arbitrated": "0xeE1502e29795Ef6C2D60F8D7120596abE3baD990",
+      "numberOfChoices": "2",
+      "period": "1",
+      "lastPeriodChange": "1790060405",
+      "drawsInRound": "3",
+      "commitsInRound": "0",
+      "ruled": false
+    },
+    "1011": {
+      "subcourtID": "18",
+      "arbitrated": "0xa4AC94C4fa65Bb352eFa30e3408e64F72aC857bc",
+      "numberOfChoices": "2",
+      "period": "2",
+      "lastPeriodChange": "1790121605",
+      "drawsInRound": "1",
+      "commitsInRound": "0",
+      "ruled": false
+    },
+    "1012": {
+      "subcourtID": "19",
+      "arbitrated": "0xeE1502e29795Ef6C2D60F8D7120596abE3baD990",
+      "numberOfChoices": "2",
+      "period": "0",
+      "lastPeriodChange": "1790077420",
+      "drawsInRound": "3",
+      "commitsInRound": "0",
+      "ruled": false
+    },
+    "1013": {
+      "subcourtID": "19",
+      "arbitrated": "0x66260C69d03837016d88c9877e61e08Ef74C59F2",
+      "numberOfChoices": "2",
+      "period": "0",
+      "lastPeriodChange": "1790082875",
+      "drawsInRound": "3",
+      "commitsInRound": "0",
+      "ruled": false
+    }
+  },
+  "metaEvidence": {
+    "1005": {
+      "title": "Add a module to Address Tags Query (ATQ) Registry",
+      "description": "Someone requested to add a module to Address Tags Query (ATQ) Registry",
+      "rulingOptions": {
+        "titles": [
+          "Yes, Add It",
+          "No, Don't Add It"
+        ],
+        "descriptions": [
+          "Select this if you think the module complies with the required criteria and should be added.",
+          "Select this if you think the module does not comply with the required criteria and should not be added."
+        ],
+        "type": "single-select"
+      },
+      "category": "Curated Lists",
+      "question": "Does the module comply with the required criteria?",
+      "fileURI": "/ipfs/QmWbpqfGiA4L1FK4qwSAgyp9u2KMLYc8AWCKKW3pxPuFNP",
+      "evidenceDisplayInterfaceURI": "/ipfs/QmNhJXtMrxeJu4fpchPruGrL93bm2M4VmDZ8pj4x6FqnHJ/index.html",
+      "metadata": {
+        "tcrTitle": "Address Tags Query (ATQ) Registry",
+        "tcrDescription": "A list of verified modules that can be used to retrieve address tags for ranges of EVM contracts in one go.",
+        "columns": [
+          {
+            "label": "Github Repository URL",
+            "description": "The URL of the repository containing the function that returns the Contract Tags.  The repository name must be in the kebab case (hyphen-case).",
+            "type": "link",
+            "isIdentifier": true
+          },
+          {
+            "label": "Commit hash",
+            "description": "The hash of the specific commit for this repository to be referenced.",
+            "type": "text",
+            "isIdentifier": true
+          },
+          {
+            "label": "EVM Chain ID",
+            "description": "The integer EVM Chain ID of the chain of the contracts being retrieved by the function in this module.",
+            "type": "number",
+            "isIdentifier": true
+          },
+          {
+            "label": "Description",
+            "description": "A field used to describe the range of contracts being curated here, specifying (if applicable) the version, type and purpose of the contracts that are returned. ",
+            "type": "long text",
+            "isIdentifier": false
+          }
+        ],
+        "itemName": "module",
+        "itemNamePlural": "modules",
+        "logoURI": "/ipfs/QmStzoYeV9nfJSms47TLo9f5t1fVrxjvvRf9GspCduXhE4/kleros-symbol.png",
+        "requireRemovalEvidence": true,
+        "isTCRofTCRs": false,
+        "relTcrDisabled": true
+      }
+    },
+    "1007": {
+      "category": "Curated List",
+      "title": "Proof of Humanity V2 Registration Request",
+      "description": "A request to register the specified entry to a list of provable humans.",
+      "question": "Should the request to register be accepted?",
+      "fileURI": "/ipfs/Qmbd9QuiJ6B74faz9qqfpatU3aB5VCtmEkTf1BSZ3vk588",
+      "evidenceDisplayInterfaceURI": "/ipfs/QmRwGZ7SGVpdaZye2wUY3dkJSCoBo5iCzL3SrGhkCMUWn9/index.html",
+      "rulingOptions": {
+        "type": "single-select",
+        "titles": [
+          "Yes",
+          "No"
+        ],
+        "descriptions": [
+          "Accept",
+          "Reject"
+        ]
+      }
+    },
+    "1008": {
+      "category": "Curated List",
+      "title": "Proof of Humanity V2 Registration Request",
+      "description": "A request to register the specified entry to a list of provable humans.",
+      "question": "Should the request to register be accepted?",
+      "fileURI": "/ipfs/Qmbd9QuiJ6B74faz9qqfpatU3aB5VCtmEkTf1BSZ3vk588",
+      "evidenceDisplayInterfaceURI": "/ipfs/QmRwGZ7SGVpdaZye2wUY3dkJSCoBo5iCzL3SrGhkCMUWn9/index.html",
+      "rulingOptions": {
+        "type": "single-select",
+        "titles": [
+          "Yes",
+          "No"
+        ],
+        "descriptions": [
+          "Accept",
+          "Reject"
+        ]
+      }
+    },
+    "1009": {
+      "category": "Curated List",
+      "title": "Proof of Humanity V2 Registration Request",
+      "description": "A request to register the specified entry to a list of provable humans.",
+      "question": "Should the request to register be accepted?",
+      "fileURI": "/ipfs/Qmbd9QuiJ6B74faz9qqfpatU3aB5VCtmEkTf1BSZ3vk588",
+      "evidenceDisplayInterfaceURI": "/ipfs/QmRwGZ7SGVpdaZye2wUY3dkJSCoBo5iCzL3SrGhkCMUWn9/index.html",
+      "rulingOptions": {
+        "type": "single-select",
+        "titles": [
+          "Yes",
+          "No"
+        ],
+        "descriptions": [
+          "Accept",
+          "Reject"
+        ]
+      }
+    },
+    "1010": {
+      "title": "Add a token to Kleros Tokens",
+      "description": "Someone requested to add a token to Kleros Tokens",
+      "rulingOptions": {
+        "titles": [
+          "Yes, Add It",
+          "No, Don't Add It"
+        ],
+        "descriptions": [
+          "Select this if you think the token complies with the required criteria and should be added.",
+          "Select this if you think the token does not comply with the required criteria and should not be added."
+        ],
+        "type": "single-select"
+      },
+      "category": "Curated Lists",
+      "question": "Does the token comply with the required criteria?",
+      "fileURI": "/ipfs/QmarLK8MmtshY7tRPqh7TXFLLqFprAhE4KqDXHkP1ppydN/policy.pdf",
+      "evidenceDisplayInterfaceURI": "/ipfs/QmNhJXtMrxeJu4fpchPruGrL93bm2M4VmDZ8pj4x6FqnHJ/index.html",
+      "metadata": {
+        "tcrTitle": "Kleros Tokens",
+        "tcrDescription": "A list of tokens and their contract address across various blockchains",
+        "columns": [
+          {
+            "label": "Address",
+            "description": "The address of the smart contract being tagged. Will be store in CAIP-10 format if the chain is properly selected in the UI.",
+            "type": "rich address",
+            "isIdentifier": true
+          },
+          {
+            "label": "Name",
+            "description": "The name of the token",
+            "type": "text",
+            "isIdentifier": true
+          },
+          {
+            "label": "Symbol",
+            "description": "The symbol/ticker of the token",
+            "type": "text",
+            "isIdentifier": true
+          },
+          {
+            "label": "Decimals",
+            "description": "The number of decimals applicable for this token",
+            "type": "number"
+          },
+          {
+            "label": "Logo",
+            "description": "The PNG logo of the token (at least 128px X 128px in size",
+            "type": "image",
+            "isIdentifier": false
+          },
+          {
+            "label": "Website",
+            "description": "The URL of the token project's official website. Its primary source for documentation, token specifications, and team information (e.g. https://chain.link).",
+            "type": "link",
+            "isIdentifier": true
+          }
+        ],
+        "itemName": "token",
+        "itemNamePlural": "tokens",
+        "logoURI": "/ipfs/QmZ5VC8FHMjs92yQEn9dnJottspM5JUbJUkPtno1hPPYks/t2cr-logo.974d9285.png",
+        "requireRemovalEvidence": true,
+        "isTCRofTCRs": false
+      }
+    },
+    "1011": {
+      "category": "Curated List",
+      "title": "Proof of Humanity V2 Registration Request",
+      "description": "A request to register the specified entry to a list of provable humans.",
+      "question": "Should the request to register be accepted?",
+      "fileURI": "/ipfs/Qmbd9QuiJ6B74faz9qqfpatU3aB5VCtmEkTf1BSZ3vk588",
+      "evidenceDisplayInterfaceURI": "/ipfs/QmRwGZ7SGVpdaZye2wUY3dkJSCoBo5iCzL3SrGhkCMUWn9/index.html",
+      "rulingOptions": {
+        "type": "single-select",
+        "titles": [
+          "Yes",
+          "No"
+        ],
+        "descriptions": [
+          "Accept",
+          "Reject"
+        ]
+      }
+    },
+    "1012": {
+      "title": "Add a token to Kleros Tokens",
+      "description": "Someone requested to add a token to Kleros Tokens",
+      "rulingOptions": {
+        "titles": [
+          "Yes, Add It",
+          "No, Don't Add It"
+        ],
+        "descriptions": [
+          "Select this if you think the token complies with the required criteria and should be added.",
+          "Select this if you think the token does not comply with the required criteria and should not be added."
+        ],
+        "type": "single-select"
+      },
+      "category": "Curated Lists",
+      "question": "Does the token comply with the required criteria?",
+      "fileURI": "/ipfs/QmarLK8MmtshY7tRPqh7TXFLLqFprAhE4KqDXHkP1ppydN/policy.pdf",
+      "evidenceDisplayInterfaceURI": "/ipfs/QmNhJXtMrxeJu4fpchPruGrL93bm2M4VmDZ8pj4x6FqnHJ/index.html",
+      "metadata": {
+        "tcrTitle": "Kleros Tokens",
+        "tcrDescription": "A list of tokens and their contract address across various blockchains",
+        "columns": [
+          {
+            "label": "Address",
+            "description": "The address of the smart contract being tagged. Will be store in CAIP-10 format if the chain is properly selected in the UI.",
+            "type": "rich address",
+            "isIdentifier": true
+          },
+          {
+            "label": "Name",
+            "description": "The name of the token",
+            "type": "text",
+            "isIdentifier": true
+          },
+          {
+            "label": "Symbol",
+            "description": "The symbol/ticker of the token",
+            "type": "text",
+            "isIdentifier": true
+          },
+          {
+            "label": "Decimals",
+            "description": "The number of decimals applicable for this token",
+            "type": "number"
+          },
+          {
+            "label": "Logo",
+            "description": "The PNG logo of the token (at least 128px X 128px in size",
+            "type": "image",
+            "isIdentifier": false
+          },
+          {
+            "label": "Website",
+            "description": "The URL of the token project's official website. Its primary source for documentation, token specifications, and team information (e.g. https://chain.link).",
+            "type": "link",
+            "isIdentifier": true
+          }
+        ],
+        "itemName": "token",
+        "itemNamePlural": "tokens",
+        "logoURI": "/ipfs/QmZ5VC8FHMjs92yQEn9dnJottspM5JUbJUkPtno1hPPYks/t2cr-logo.974d9285.png",
+        "requireRemovalEvidence": true,
+        "isTCRofTCRs": false
+      }
+    },
+    "1013": {
+      "title": "Add a tag to Address Tags",
+      "description": "Someone requested to add a tag to Address Tags",
+      "rulingOptions": {
+        "titles": [
+          "Yes, Add It",
+          "No, Don't Add It"
+        ],
+        "descriptions": [
+          "Select this if you think the tag complies with the required criteria and should be added.",
+          "Select this if you think the tag does not comply with the required criteria and should not be added."
+        ],
+        "type": "single-select"
+      },
+      "category": "Curated Lists",
+      "question": "Does the tag comply with the required criteria?",
+      "fileURI": "/ipfs/QmdaUwTrvePqgh7hw472BSN7gxuH9UktbWAzsz23hQKjhA",
+      "evidenceDisplayInterfaceURI": "/ipfs/QmNhJXtMrxeJu4fpchPruGrL93bm2M4VmDZ8pj4x6FqnHJ/index.html",
+      "metadata": {
+        "tcrTitle": "Address Tags",
+        "tcrDescription": "A list of public name tags, associated with contract addresses on various blockchains.",
+        "columns": [
+          {
+            "label": "Contract Address",
+            "description": "The address of the smart contract being tagged. Will be store in CAIP-10 format if the chain is properly selected in the UI.",
+            "type": "rich address",
+            "isIdentifier": true
+          },
+          {
+            "label": "Public Name Tag",
+            "description": "The Public Name tag of a contract address indicates a commonly-used name of the smart contract and clearly identifies it to avoid potential confusion. (e.g. Eth2 Deposit Contract).",
+            "type": "text",
+            "isIdentifier": true
+          },
+          {
+            "label": "Project Name",
+            "description": "The name of the project that the contract belongs to. Can be omitted only for contracts which do not belong to a project",
+            "type": "text",
+            "isIdentifier": true
+          },
+          {
+            "label": "UI/Website Link",
+            "description": "The URL of the most popular user interface used to interact with the contract tagged or the URL of the official website of the contract deployer (e.g. https://launchpad.ethereum.org/en/).",
+            "type": "link",
+            "isIdentifier": true
+          },
+          {
+            "label": "Public Note",
+            "description": "The Public Note is a short, mandatory comment field used to add a comment/information about the contract that could not fit in the public name tag (e.g. Official Ethereum 2.0 Beacon Chain deposit contact address).",
+            "type": "text"
+          }
+        ],
+        "itemName": "tag",
+        "itemNamePlural": "tags",
+        "logoURI": "/ipfs/QmP1hU1LaheHVGxcSJWg5sC3g25vs5snam3qP1bVVAa7mT/address-tag-2-1.png",
+        "requireRemovalEvidence": true,
+        "isTCRofTCRs": false,
+        "relTcrDisabled": true
+      }
+    }
+  },
+  "subcourts": [
+    [
+      [
+        "1",
+        "2",
+        "12",
+        "15",
+        "18",
+        "19"
+      ],
+      [
+        "280800",
+        "583200",
+        "583200",
+        "388800"
+      ]
+    ],
+    [
+      [],
+      [
+        "140400",
+        "291600",
+        "291600",
+        "194400"
+      ]
+    ],
+    [
+      [
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11"
+      ],
+      [
+        "280800",
+        "437400",
+        "437400",
+        "291600"
+      ]
+    ],
+    [
+      [],
+      [
+        "280800",
+        "437400",
+        "437400",
+        "291600"
+      ]
+    ],
+    [
+      [],
+      [
+        "280800",
+        "437400",
+        "437400",
+        "291600"
+      ]
+    ],
+    [
+      [],
+      [
+        "280800",
+        "437400",
+        "437400",
+        "291600"
+      ]
+    ],
+    [
+      [],
+      [
+        "280800",
+        "437400",
+        "437400",
+        "291600"
+      ]
+    ],
+    [
+      [],
+      [
+        "280800",
+        "437400",
+        "437400",
+        "291600"
+      ]
+    ],
+    [
+      [],
+      [
+        "280800",
+        "437400",
+        "437400",
+        "291600"
+      ]
+    ],
+    [
+      [],
+      [
+        "280800",
+        "437400",
+        "437400",
+        "291600"
+      ]
+    ],
+    [
+      [],
+      [
+        "280800",
+        "437400",
+        "437400",
+        "291600"
+      ]
+    ],
+    [
+      [],
+      [
+        "280800",
+        "437400",
+        "437400",
+        "291600"
+      ]
+    ],
+    [
+      [
+        "13",
+        "14"
+      ],
+      [
+        "280800",
+        "437400",
+        "437400",
+        "291600"
+      ]
+    ],
+    [
+      [],
+      [
+        "280800",
+        "437400",
+        "437400",
+        "291600"
+      ]
+    ],
+    [
+      [],
+      [
+        "280800",
+        "437400",
+        "437400",
+        "291600"
+      ]
+    ],
+    [
+      [
+        "16",
+        "17"
+      ],
+      [
+        "280800",
+        "583200",
+        "583200",
+        "388800"
+      ]
+    ],
+    [
+      [],
+      [
+        "140400",
+        "291600",
+        "291600",
+        "194400"
+      ]
+    ],
+    [
+      [],
+      [
+        "108000",
+        "216000",
+        "216000",
+        "216000"
+      ]
+    ],
+    [
+      [],
+      [
+        "140400",
+        "291600",
+        "291600",
+        "194400"
+      ]
+    ],
+    [
+      [],
+      [
+        "140400",
+        "291600",
+        "145800",
+        "194400"
+      ]
+    ]
+  ],
+  "subcourtDetails": [
+    {
+      "name": "xDai General Court",
+      "description": "**Court Purpose**\n\nThe General court exists as the top court in the hierarchy. All appeals made in subcourts will make their way to the General Court.",
+      "summary": "**Guidelines:**\n All policies of a court also apply to all of its child subcourts.\n Jurors should cast their vote with a suitable verification.\n Jurors should not rule in favor of a side who have engaged in immoral activities (example: rule reject on “revenge porn” images even if they would otherwise fit into the category).\n “Refuse to arbitrate” should be used for disputes where both sides of the dispute have engaged in activities which are immoral (ex: refuse to rule on an assassination market dispute).\n Immoral activities include: Murder, slavery, rape, violence, theft and perjury.\n Rulings should be made based on the “state of the world” at the time a dispute was created. (Ex: in a dispute concerning membership of a smart contract on a curated list of “bug free” contracts, jurors should not take into account changes made to the contract after the dispute is raised.) In particular, jurors should base their rulings on court policies and arbitrable application primary documents as they exist at the time of the creation of the dispute, disregarding later modifications.\n To ensure fairness to jurors who vote at different times within a voting period, jurors should disregard any evidence that is both 1) submitted after the end of the evidence period of the initial round of a dispute AND 2) cannot be reasonably considered to have been readily, publicly available to jurors. Jurors may, however, consider arguments that are submitted later that are based upon existing evidence and/or information which a juror considering the case during the evidence period of the initial round could reasonably have been expected to find themselves. (Ex: a party submits a new photo of a damaged product in an insurance case after the evidence period; this photo should not be considered by jurors. Ex: in a dispute over whether a token satisfies the criteria of a curated list of ERC20 tokens, an argument that reminds jurors of a definitional element of the ERC20 standard is submitted; this is publicly available and can be considered by jurors. Ex: in a dispute over whether a token satisfies a decentralization criterion for an exchange listing, an argument that invokes the distribution of tokens over different Ethereum addresses, as publicly available from sites such as Etherscan, can be considered by jurors.)\n When considering an appeal of a case that has originated in a lower court, jurors should consider whether 1) evaluating the case requires specialized skills which jurors in the appellate court cannot be expected to have (ex: evaluating the quality of an English to Korean translation when knowledge of Korean is not a requirement of the appellate court) and 2) whether there is evidence that an attack was performed against this case in the lower court (ex: bribes, p+epsilon attacks, 51% attacks, etc). If there is no evidence of an attack AND appellate court jurors cannot be reasonably expected to have the required skills to independently evaluate the case, jurors should vote to uphold the lower court ruling. Evidence related to the presence of attacks on Kleros should be considered by jurors even if it would otherwise violate the above points on evidence admissibility.\n Jurors should attempt to interpret disputes according to the “spirit of the dispute” unless the arbitrable contract or the policies of the subcourt state otherwise.\n Jurors should interpret disputes without assuming the existence of gods, spirits or other supernatural beings unless the arbitrable contract or the policies of the subcourt state otherwise."
+    },
+    {
+      "name": "xDai Curation",
+      "description": "**Court purpose** \n\n In this court, jurors will solve micro-tasks related to curation or content moderation, such as for social media, when requirements for inclusion are relatively straightforward. Higher effort cases, requiring application of more nuanced rules should be placed in other courts but might arrive in this court upon appeal.",
+      "summary": "",
+      "requiredSkills": "No particular skills are required."
+    },
+    {
+      "name": "xDai English Language",
+      "description": "**Court purpose** \n\n In this court, jurors will solve disputes involving quality of written content. This includes grammar and text logic.\n\n**Example**\n\n- Contractor utilizes poor grammar in a sponsored article which doesn’t meet the standards as agreed in the contract.",
+      "summary": "**Policies:**\n\n- If the disputed content is of significant size (> 10 000 words), parties in the dispute should point out specific parts of the content which are being disputed. Otherwise, jurors should refuse to arbitrate.\n\n- All variations of English (UK, US, Australia, etc) are to be accepted unless a target audience is specifically mentioned in the contract.",
+      "requiredSkills": "This court requires an advanced level of English. Jurors who are not native English speakers are advised to stake into this court only if they have C1+ level of English.\n\nThe following tests evaluates a C1 level: Cambridge Advanced (CAE), BEC Higher, BULATS score 75+, CLB/CELPIP 8+, CAEL 70+, IELTS level 7, TOEFL 110+, TOEIC score 880+."
+    },
+    {
+      "name": "xDai Spanish-English Translation",
+      "description": "**Court purpose** \n\n In this court, jurors will solve disputes involving the quality of translations between Spanish and English.",
+      "summary": "",
+      "requiredSkills": "Jurors in this court should have a strong command of both English and Spanish. While jurors do not necessarily have to have the skills of a professional translator themselves, they should be able to review texts translated between English and Spanish for the quality of their translation. Particularly, when presented with passages that are flagged by challengers as potentially erroneous or inadequate and arguments given by the translator and the challenger for why the passage should or should not be considered acceptable, jurors should be able to make a determination on the quality of the passage. Jurors should be capable of these tasks even when the text is being translated to or from regional variations of these languages, such as US/British English, or Mexican/Argentinian/European Spanish."
+    },
+    {
+      "name": "xDai French-English Translation",
+      "description": "**Court purpose** \n\n In this court, jurors will solve disputes involving the quality of translations between French and English.",
+      "summary": "",
+      "requiredSkills": "Jurors in this court should have a strong command of both English and French. While jurors do not necessarily have to have the skills of a professional translator themselves, they should be able to review texts translated between English and French for the quality of their translation. Particularly, when presented with passages that are flagged by challengers as potentially erroneous or inadequate and arguments given by the translator and the challenger for why the passage should or should not be considered acceptable, jurors should be able to make a determination on the quality of the passage. Jurors should be capable of these tasks even when the text is being translated to or from regional variations of these languages, such as US/British English, or European/Québécois French."
+    },
+    {
+      "name": "xDai Portuguese-English Translation",
+      "description": "**Court purpose** \n\n In this court, jurors will solve disputes involving the quality of translations between Portuguese and English.",
+      "summary": "",
+      "requiredSkills": "Jurors in this court should have a strong command of both English and Portuguese. While jurors do not necessarily have to have the skills of a professional translator themselves, they should be able to review texts translated between English and Portuguese for the quality of their translation. Particularly, when presented with passages that are flagged by challengers as potentially erroneous or inadequate and arguments given by the translator and the challenger for why the passage should or should not be considered acceptable, jurors should be able to make a determination on the quality of the passage. Jurors should be capable of these tasks even when the text is being translated to or from regional variations of these languages, such as US/British English, or Brazilian/European Portuguese."
+    },
+    {
+      "name": "xDai German-English Translation",
+      "description": "**Court purpose** \n\n In this court, jurors will solve disputes involving the quality of translations between German and English.",
+      "summary": "",
+      "requiredSkills": "Jurors in this court should have a strong command of both English and German. While jurors do not necessarily have to have the skills of a professional translator themselves, they should be able to review texts translated between English and German for the quality of their translation. Particularly, when presented with passages that are flagged by challengers as potentially erroneous or inadequate and arguments given by the translator and the challenger for why the passage should or should not be considered acceptable, jurors should be able to make a determination on the quality of the passage. Jurors should be capable of these tasks even when the text is being translated to or from regional variations of these languages, such as US/British English."
+    },
+    {
+      "name": "xDai Russian-English Translation",
+      "description": "**Court purpose** \n\n In this court, jurors will solve disputes involving the quality of translations between Russian and English.",
+      "summary": "",
+      "requiredSkills": "Jurors in this court should have a strong command of both English and Russian. While jurors do not necessarily have to have the skills of a professional translator themselves, they should be able to review texts translated between English and Russian for the quality of their translation. Particularly, when presented with passages that are flagged by challengers as potentially erroneous or inadequate and arguments given by the translator and the challenger for why the passage should or should not be considered acceptable, jurors should be able to make a determination on the quality of the passage. Jurors should be capable of these tasks even when the text is being translated to or from regional variations of these languages, such as US/British English."
+    },
+    {
+      "name": "xDai Korean-English Translation",
+      "description": "**Court purpose** \n\n In this court, jurors will solve disputes involving the quality of translations between Korean and English.",
+      "summary": "",
+      "requiredSkills": "Jurors in this court should have a strong command of both English and Korean. While jurors do not necessarily have to have the skills of a professional translator themselves, they should be able to review texts translated between English and Korean for the quality of their translation. Particularly, when presented with passages that are flagged by challengers as potentially erroneous or inadequate and arguments given by the translator and the challenger for why the passage should or should not be considered acceptable, jurors should be able to make a determination on the quality of the passage. Jurors should be capable of these tasks even when the text is being translated to or from regional variations of these languages, such as US/British English."
+    },
+    {
+      "name": "xDai Japanese-English Translation",
+      "description": "**Court purpose** \n\n In this court, jurors will solve disputes involving the quality of translations between Japanese and English.",
+      "summary": "",
+      "requiredSkills": "Jurors in this court should have a strong command of both English and Japanese. While jurors do not necessarily have to have the skills of a professional translator themselves, they should be able to review texts translated between English and Japanese for the quality of their translation. Particularly, when presented with passages that are flagged by challengers as potentially erroneous or inadequate and arguments given by the translator and the challenger for why the passage should or should not be considered acceptable, jurors should be able to make a determination on the quality of the passage. Jurors should be capable of these tasks even when the text is being translated to or from regional variations of these languages, such as US/British English."
+    },
+    {
+      "name": "xDai Turkish-English Translation",
+      "description": "**Court purpose** \n\n In this court, jurors will solve disputes involving the quality of translations between Turkish and English.",
+      "summary": "",
+      "requiredSkills": "Jurors in this court should have a strong command of both English and Turkish. While jurors do not necessarily have to have the skills of a professional translator themselves, they should be able to review texts translated between English and Turkish for the quality of their translation. Particularly, when presented with passages that are flagged by challengers as potentially erroneous or inadequate and arguments given by the translator and the challenger for why the passage should or should not be considered acceptable, jurors should be able to make a determination on the quality of the passage. Jurors should be capable of these tasks even when the text is being translated to or from regional variations of these languages, such as US/British English."
+    },
+    {
+      "name": "xDai Chinese-English Translation",
+      "description": "**Court purpose** \n\n In this court, jurors will solve disputes involving the quality of translations between Chinese and English.",
+      "summary": "",
+      "requiredSkills": "Jurors in this court should have a strong command of both English and Chinese (written in simplified characters). While jurors do not necessarily have to have the skills of a professional translator themselves, they should be able to review texts translated between English and Chinese for the quality of their translation. Particularly, when presented with passages that are flagged by challengers as potentially erroneous or inadequate and arguments given by the translator and the challenger for why the passage should or should not be considered acceptable, jurors should be able to make a determination on the quality of the passage. Jurors should be capable of these tasks even when the text is being translated to or from regional variations of these languages, such as US/British English."
+    },
+    {
+      "name": "xDai Development Court",
+      "description": "**Court purpose** \n\nThis court serves to arbitrate disputes arising from software development processes, including disputes between developers and third parties regarding whether the disputed software product aligns with the agreed specified requirements.",
+      "summary": "**Policy** \n\n1. Jurors must base their rulings on the software specifications mutually agreed upon by the involved parties prior to the initiation of the dispute.\n\n    - _Example: A written and signed agreement between a developer and her client, or messages exchanged by the parties agreeing on the desired specifications for the final code._\n\n2. Unless agreed otherwise between the parties, the jurors must apply the following criteria:\n\n    a. Issues which do not put assets at risk nor directly affect the essential system functionalities are acceptable, especially with regards to functional, security, usability and performance issues. Issues which indirectly lead to the same impact must be supported by evidence demonstrating a valid execution path.\n      - _Example 1: A suboptimal gas usage for a smart contract implementation is acceptable unless excessively wasteful in a way that hinders usability._\n      - _Example 2: An issue directly leading to a temporary disruption of a core functionality is not acceptable._\n\n    b. Minor deviations from best practices are acceptable, including but not limited to architectural decisions, tooling choices, or coding hygiene, unless such deviations breach section 2.a.\n      - _Example 1: A codebase which mostly does not follow a consistent indentation or variable naming convention is not acceptable._\n      - _Example 2: Best practices (such as KISS, YAGNI, DRY, SOLID, SoC, Low Coupling/High Cohesion) do not apply equally to every type of software project, so a smart contract codebase that does not follow DRY to better adhere to KISS is acceptable._\n\n    c. Issues solely related to accessibility, modularity, interoperability, or other unspecified requirements must be disregarded.\n\n3. In instances where there are no explicitly agreed specifications that apply to the contested deliverable or if the parties provide contradictory evidence on the agreed specifications and there is no certainty on the authenticity of the presented evidence, jurors must rule considering:\n\n    a. The nature of the agreement between the developer and the third party;\n\n    b. The specificities of the software being developed; and\n\n    c. Best practices in software development that are applicable to the specific type of software being developed.\n",
+      "requiredSkills": "This court requires a good level of programming proficiency. Jurors are advised to participate in this court only if they possess an intermediate understanding of programming languages, algorithms, and good practices in software development."
+    },
+    {
+      "name": "xDai Solidity Court",
+      "description": "**Court purpose** \n\nThis court serves to arbitrate disputes arising from software development processes using the programming language Solidity, including disputes between developers and third parties regarding whether the disputed software product aligns with the agreed specified requirements.",
+      "summary": "**Policy** \n\nThe parties involved in the dispute must highlight the sections or portions of the code that are being contested. Otherwise, jurors must refuse to arbitrate the dispute.",
+      "requiredSkills": "This court requires a proficient level of expertise in Solidity. Jurors are advised to participate in this court only if they possess the ability to develop relatively simple smart contracts, understand common Solidity security vulnerabilities, and evaluate the time and space complexity of simple functions."
+    },
+    {
+      "name": "xDai Javascript Court",
+      "description": "**Court purpose** \n\nThis court serves to arbitrate disputes arising from software development processes using the programming language Javascript, including disputes between developers and third parties regarding whether the disputed software product aligns with the agreed specified requirements.",
+      "summary": "**Policy** \n\nThe parties involved in the dispute must highlight the sections or portions of the code that are being contested. Otherwise, jurors must refuse to arbitrate the dispute.",
+      "requiredSkills": "This court requires a proficient level of expertise in JavaScript. Jurors are advised to participate in this court only if they have an intermediate level of knowledge of the main frameworks and libraries (such as ExpressJS, React, Ethers.js, etc.), and are comfortable with testing, working with APIs, and interacting with databases using various languages."
+    },
+    {
+      "name": "Corte General en Español",
+      "description": "**Propósito de la Corte** \n\n La Corte General en Español sirve como corte de uso múltiple para todo tipo de disputas que requieran un alto nivel de conocimiento del español para ser evaluadas. Los casos resueltos por cortes más especializadas que requieran conocimientos de español además de otras habilidades pueden ser revisados en esta corte tras el proceso de apelación.",
+      "summary": "**Políticas:** \n\n Además del requisito de que los jurados tengan un nivel suficiente de español, esta corte debe tener la misma política que la Corte General de Kleros en xDai(xDai General Court).",
+      "requiredSkills": "**Habilidades Requeridas:** \n\n Este tribunal requiere un nivel avanzado de español. Los miembros del jurado deben poder leer la evidencia y proporcionar una justificación adecuada en español sobre una amplia gama de temas."
+    },
+    {
+      "name": "Corte de Curación en Español",
+      "description": "**Propósito de la Corte** \n\n En esta corte, los miembros del jurado resuelven microtareas relacionadas con la curación o la moderación de contenido, como para redes sociales, cuando los requisitos son relativamente sencillos. Los casos de mayor esfuerzo, que requieren la aplicación de reglas con mayores matices, deben presentarse en otras cortes, pero pueden llegar a este tribunal en caso de apelación.",
+      "summary": "",
+      "requiredSkills": "**Habilidades Requeridas:** \n\n Este tribunal requiere un nivel avanzado de español. Los miembros del jurado deben poder leer la evidencia y proporcionar una justificación adecuada en español sobre una amplia gama de temas."
+    },
+    {
+      "name": "Blockchain No Técnica",
+      "description": "",
+      "summary": "",
+      "requiredSkills": "**Habilidades Requeridas:** \n\n Los jurados no necesitan un conocimiento profundo de blockchain ni habilidades de programación. Pero necesitan conocimiento para leer exploradores de blockchain, buscar criptoactivos listados en exchanges, entender cómo verificar una transacción y analizar datos on-chain."
+    },
+    {
+      "name": "Humanity Court",
+      "description": "**Court Purpose**\n\nIn this court jurors will judge disputes related to establishing Sybil resistant lists of unique human identities, particularly for the Proof of Humanity protocol.\n\n",
+      "summary": "",
+      "requiredSkills": "Jurors should be capable of reasonably evaluating whether a proposed submission consisting of photo and video evidence corresponds to a unique human being, eventually making use of supplementary information that might be provided as evidence by relevant parties."
+    },
+    {
+      "name": "xDai Curation (Hidden Voting)",
+      "description": "**Court purpose** \n\n In this court, jurors will solve micro-tasks related to curation or content moderation, such as for social media, when requirements for inclusion are relatively straightforward. Higher effort cases, requiring application of more nuanced rules should be placed in other courts but might arrive in this court upon appeal.",
+      "summary": "",
+      "requiredSkills": "No particular skills are required."
+    }
+  ]
+}

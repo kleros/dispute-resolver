@@ -108,5 +108,5 @@ export default class SmartContractWalletWarning extends React.Component {
 
 SmartContractWalletWarning.propTypes = {
   activeAddress: PropTypes.string.isRequired,
-  web3Provider: PropTypes.object.isRequired,
+  web3Provider: PropTypes.object,
 };
