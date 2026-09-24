@@ -57,4 +57,18 @@
 
 .dropdownContainer {
   padding: var(--spacing-32);
+  align-items: center;
+  gap: var(--spacing-16);
+}
+
+/* The row stretches each child to its full width; keep the status filter and the search on one line instead. */
+.dropdownContainer > .filter {
+  width: auto;
+}
+
+.dropdownContainer > .search {
+  width: auto;
+  flex: 1 1 240px;
+  max-width: 480px;
+  margin-top: 0;
 }

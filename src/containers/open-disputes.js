@@ -1,15 +1,24 @@
 import React from "react";
-import { Col, Row, Dropdown, DropdownButton, Spinner } from "react-bootstrap";
+import { Col, Row, Dropdown, DropdownButton, Form, Spinner } from "react-bootstrap";
 import OngoingCard from "components/ongoing-card.js";
 import debounce from "lodash.debounce";
 import networkMap from "../ethereum/network-contract-mapping";
 
 import styles from "containers/styles/open-disputes.module.css";
 
+//Case-insensitive substring match of the search query against the dispute ID, the title shown on the card and the court name.
+//Non-standard disputes may carry non-string fields, so only strings are searched and anything else simply never matches.
+export const disputeMatchesSearch = (query, dispute, title, courtName) => {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+
+  return [String(dispute), title, courtName].some(value => typeof value === "string" && value.toLowerCase().includes(needle));
+};
+
 class OpenDisputes extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { openDisputeIDs: [], arbitratorDisputes: {}, loading: true, fetchFailed: false, statusFilter: 4 };
+    this.state = { openDisputeIDs: [], arbitratorDisputes: {}, loading: true, fetchFailed: false, statusFilter: 4, searchQuery: "" };
     if (networkMap[this.props.network].KLEROS_LIQUID) this.debouncedFetch = debounce(this.fetch, 0, { leading: false, trailing: true });
   }
 
@@ -116,8 +125,31 @@ class OpenDisputes extends React.Component {
 
   onFilterSelect = async filter => this.setState({ statusFilter: Number(filter) });
 
+  onSearchChange = event => this.setState({ searchQuery: event.target.value });
+
+  getDisputeTitle = dispute => this.state.arbitratorDisputes[dispute]?.title ?? "Meta Evidence Missing";
+
+  getCourtName = details => this.props.subcourtDetails?.[details.subcourtID?.toString()]?.name;
+
+  //The status filter and the search only narrow down the disputes already loaded; neither triggers a fetch.
+  isDisputeVisible = dispute => {
+    const { arbitratorDisputes, statusFilter, searchQuery } = this.state;
+    const details = arbitratorDisputes[`arbitrator${dispute}`];
+    if (!details) return false;
+
+    const matchesStatus = Number(details.period) === statusFilter || statusFilter === 4;
+    return matchesStatus && disputeMatchesSearch(searchQuery, dispute, this.getDisputeTitle(dispute), this.getCourtName(details));
+  };
+
+  getNoMatchHint = () => {
+    const { statusFilter, searchQuery } = this.state;
+    const scope = statusFilter === 4 ? "open disputes" : `disputes in the ${this.getFilterName(statusFilter)} period`;
+
+    return `No dispute ID, title or court among the ${scope} contains "${searchQuery.trim()}".`;
+  };
+
   render() {
-    const { openDisputeIDs, statusFilter, loading, fetchFailed } = this.state;
+    const { openDisputeIDs, statusFilter, loading, fetchFailed, searchQuery } = this.state;
     const { subcourts, subcourtDetails, network } = this.props;
 
     if (!networkMap[network].KLEROS_LIQUID) {
@@ -127,6 +159,8 @@ class OpenDisputes extends React.Component {
         </main>
       );
     }
+
+    const noSearchMatches = !loading && !fetchFailed && openDisputeIDs.length > 0 && searchQuery.trim() !== "" && !openDisputeIDs.some(this.isDisputeVisible);
 
     return (
       <main className={styles.openDisputes} id="ongoing-disputes">
@@ -143,6 +177,16 @@ class OpenDisputes extends React.Component {
               </Dropdown.Item>
             ))}
           </DropdownButton>
+          <Form.Control
+            id="ongoing-search"
+            className={styles.search}
+            type="search"
+            placeholder="Search by dispute ID, title or court"
+            aria-label="Search disputes by ID, title or court"
+            autoComplete="off"
+            value={searchQuery}
+            onChange={this.onSearchChange}
+          />
         </Row>
         <Row style={{ margin: 0, padding: 0 }}>
           {this.state.loading && (
@@ -155,7 +199,7 @@ class OpenDisputes extends React.Component {
               const details = this.state.arbitratorDisputes[`arbitrator${dispute}`];
               //Skip disputes for which we couldn't fetch the details
               if (!details) return null;
-              const visible = Number(details.period) === statusFilter || statusFilter === 4;
+              const visible = this.isDisputeVisible(dispute);
               return (
                 <Col
                   className={styles.card}
@@ -172,7 +216,7 @@ class OpenDisputes extends React.Component {
                       <OngoingCard
                         dispute={dispute}
                         arbitratorDisputeDetails={details}
-                        title={this.state.arbitratorDisputes[dispute]?.title ?? "Meta Evidence Missing"}
+                        title={this.getDisputeTitle(dispute)}
                         subcourtDetails={subcourtDetails}
                         subcourts={subcourts || []}
                       />
@@ -190,6 +234,12 @@ class OpenDisputes extends React.Component {
           {!loading && !fetchFailed && openDisputeIDs.length === 0 && (
             <Col style={{ textAlign: "center", marginTop: "5rem" }}>
               <h1>There are no open disputes.</h1>
+            </Col>
+          )}
+          {noSearchMatches && (
+            <Col style={{ textAlign: "center", marginTop: "5rem" }}>
+              <h1>No disputes match your search.</h1>
+              <p>{this.getNoMatchHint()}</p>
             </Col>
           )}
         </Row>
