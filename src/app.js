@@ -196,7 +196,9 @@ class App extends React.Component {
     const urlChainId = window.location.pathname.split('/')[1];
     if (urlChainId && urlChainId !== network) this.syncUrlWithChain(network);
 
-    this.setState({ network }, () => {
+    //REACT_APP_FIXTURE_SIGNED_IN shows the connected and signed-in UI; there is still no wallet behind it.
+    const activeAddress = fixtures.isSignedIn() ? fixtures.getSignedInAddress() : "";
+    this.setState({ network, activeAddress }, () => {
       if (networkMap[network]?.KLEROS_LIQUID) this.loadSubcourtData();
     });
   };
@@ -333,6 +335,8 @@ class App extends React.Component {
       arbitratorDisputeID,
       network: this.state.network
     });
+
+    if (fixtures.isFixtureMode()) return fixtures.getArbitrableDisputeID(this.state.network, arbitrableAddress, arbitratorDisputeID);
 
     //Means it is an EscrowV1 dispute
     if (networkMap[this.state.network].ESCROW_V1_CONTRACTS.includes(arbitrableAddress)) {
@@ -542,15 +546,19 @@ class App extends React.Component {
     );
 
     try {
-      return contract.disputes(arbitratorDisputeID);
+      return await contract.disputes(arbitratorDisputeID);
     } catch (error) {
+      //A reverted call means the dispute does not exist on this arbitrator. Any other error is a failed read
+      //and is rethrown so the page can tell "not found" from "could not load".
+      if (error?.code === "CALL_EXCEPTION") return null;
       console.error(`Error fetching dispute ${arbitratorDisputeID}:`, error);
-      return null;
+      throw error;
     }
   };
 
   getArbitratorDisputeDetails = async arbitratorDisputeID => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
+    if (fixtures.isFixtureMode()) return fixtures.getArbitratorDisputeDetails(this.state.network, arbitratorDisputeID);
 
     const contract = getContract(
       "KlerosLiquid",
@@ -566,7 +574,10 @@ class App extends React.Component {
     }
   }
 
-  getMultipliers = async arbitrableAddress => resolveAppealMultipliers(arbitrableAddress, this.state.provider);
+  getMultipliers = async arbitrableAddress => {
+    if (fixtures.isFixtureMode()) return fixtures.getMultipliers(this.state.network, arbitrableAddress);
+    return resolveAppealMultipliers(arbitrableAddress, this.state.provider);
+  };
 
   signInWithEthereum = async () => {
     this.setState({ isSigningIn: true });
@@ -583,6 +594,7 @@ class App extends React.Component {
 
   getAppealCost = async arbitratorDisputeID => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
+    if (fixtures.isFixtureMode()) return fixtures.getAppealCost(this.state.network, arbitratorDisputeID);
 
     const contract = getContract(
       "IArbitrator",
@@ -617,6 +629,7 @@ class App extends React.Component {
 
   getAppealPeriod = async arbitratorDisputeID => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
+    if (fixtures.isFixtureMode()) return fixtures.getAppealPeriod(this.state.network, arbitratorDisputeID);
 
     const contract = getContract(
       "KlerosLiquid",
@@ -634,6 +647,7 @@ class App extends React.Component {
 
   getCurrentRuling = async arbitratorDisputeID => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
+    if (fixtures.isFixtureMode()) return fixtures.getCurrentRuling(this.state.network, arbitratorDisputeID);
 
     const contract = getContract(
       "KlerosLiquid",
@@ -650,6 +664,8 @@ class App extends React.Component {
   }
 
   getDisputeEvent = async (arbitrableAddress, disputeID) => {
+    if (fixtures.isFixtureMode()) return fixtures.getDisputeEvent(this.state.network, arbitrableAddress, disputeID);
+
     const fromBlock = isTestnet(this.state.network) ? Math.max(0, await this.state.provider.getBlockNumber() - this.getMaxLookback()) : 0;
     return this.state.archon.arbitrable.getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, disputeID, { fromBlock }
     );
@@ -696,6 +712,13 @@ class App extends React.Component {
 
   getMetaEvidence = async (arbitrated, disputeId) => {
     const chainID = this.state.network;
+
+    //The fixture keeps the processed meta-evidence JSON, wrapped like the result below; a missing one resolves null.
+    if (fixtures.isFixtureMode()) {
+      const metaEvidenceJSON = await fixtures.getMetaEvidence(chainID, disputeId);
+      return metaEvidenceJSON ? { metaEvidenceJSON } : null;
+    }
+
     const arbitrator = networkMap[this.state.network].KLEROS_LIQUID;
     const startTime = Date.now();
     const maxTime = 120000;
@@ -794,25 +817,32 @@ class App extends React.Component {
     return normalized;
   };
 
+  normalizeEvidences = evidences => {
+    if (!Array.isArray(evidences)) return evidences;
+    return evidences.map(item => {
+      if (!item?.evidenceJSON || typeof item.evidenceJSON !== "object") return item;
+      return { ...item, evidenceJSON: this.normalizeEvidenceJSON(item.evidenceJSON) };
+    });
+  };
+
   getEvidences = async (arbitrableAddress, arbitratorDisputeID) => {
+    if (fixtures.isFixtureMode()) {
+      return fixtures.getEvidences(this.state.network, arbitrableAddress, arbitratorDisputeID).then(this.normalizeEvidences).catch(() => null);
+    }
+
     const fromBlock = isTestnet(this.state.network) ? Math.max(0, await this.state.provider.getBlockNumber() - this.getMaxLookback()) : 0;
     return this.state.archon.arbitrable
       .getDispute(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID, { fromBlock })
       .then(response =>
         this.state.archon.arbitrable.getEvidence(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, response.evidenceGroupID, { fromBlock }).catch(() => null)
       )
-      .then(evidences => {
-        if (!Array.isArray(evidences)) return evidences;
-        return evidences.map(item => {
-          if (!item?.evidenceJSON || typeof item.evidenceJSON !== "object") return item;
-          return { ...item, evidenceJSON: this.normalizeEvidenceJSON(item.evidenceJSON) };
-        });
-      })
+      .then(this.normalizeEvidences)
       .catch(() => null);
   };
 
   getAppealDecision = async (arbitratorDisputeID, disputedAtBlockNumber) => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return [];
+    if (fixtures.isFixtureMode()) return fixtures.getAppealDecisions(this.state.network, arbitratorDisputeID);
 
     const contract = getContract(
       "KlerosLiquid",
@@ -853,6 +883,8 @@ class App extends React.Component {
     if (EXCEPTIONAL_CONTRACT_ADDRESSES.includes(arbitrableContractAddress) && period < DISPUTE_PERIOD_EXECUTION) {
       _round++;
     }
+
+    if (fixtures.isFixtureMode()) return fixtures.getContributions(this.state.network, arbitrableDisputeID, _round, arbitrableContractAddress);
 
     const contract = getContract(
       "IDisputeResolver",
@@ -916,6 +948,8 @@ class App extends React.Component {
       searchFrom,
       arbitrator: networkMap[this.state.network].KLEROS_LIQUID
     });
+
+    if (fixtures.isFixtureMode()) return fixtures.getRulingFunded(this.state.network, arbitrableDisputeID, _round, arbitrableContractAddress);
 
     const contract = getContract(
       "IDisputeResolver",
@@ -1006,6 +1040,8 @@ class App extends React.Component {
   };
 
   getTotalWithdrawableAmount = async (arbitrableDisputeID, contributedTo, arbitrated) => {
+    if (fixtures.isFixtureMode()) return fixtures.getTotalWithdrawableAmount(this.state.network, arbitrableDisputeID, contributedTo, arbitrated);
+
     const contract = getContract(
       "IDisputeResolver",
       arbitrated,
@@ -1030,6 +1066,7 @@ class App extends React.Component {
 
   getDispute = async arbitratorDisputeID => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
+    if (fixtures.isFixtureMode()) return fixtures.getArbitratorDisputeDetails(this.state.network, arbitratorDisputeID);
 
     const contract = getContract(
       "KlerosLiquid",
@@ -1046,6 +1083,8 @@ class App extends React.Component {
   }
 
   getRuling = async (arbitrableAddress, arbitratorDisputeID) => {
+    if (fixtures.isFixtureMode()) return fixtures.getRuling(this.state.network, arbitrableAddress, arbitratorDisputeID);
+
     const fromBlock = isTestnet(this.state.network) ? Math.max(0, await this.state.provider.getBlockNumber() - this.getMaxLookback()) : 0;
     return this.state.archon.arbitrable.getRuling(arbitrableAddress, networkMap[this.state.network].KLEROS_LIQUID, arbitratorDisputeID, { fromBlock });
   }
@@ -1289,55 +1328,66 @@ class App extends React.Component {
     </>
   );
 
-  renderInteract = (route, isAuthenticated) => (
-    <>
-      <Header activeAddress={this.state.activeAddress} web3Provider={this.state.provider} viewOnly={!this.state.activeAddress} route={route} />
-      <Interact
-        arbitratorAddress={networkMap[this.state.network].KLEROS_LIQUID}
-        network={this.state.network}
-        route={route}
-        getArbitrableDisputeIDCallback={this.getArbitrableDisputeID}
-        getAppealCostCallback={this.getAppealCost}
-        getAppealCostOnArbitrableCallback={this.getAppealCostOnArbitrable}
-        appealCallback={this.appeal}
-        getAppealPeriodCallback={this.getAppealPeriod}
-        getCurrentRulingCallback={this.getCurrentRuling}
-        disputeID={this.state.lastDisputeID}
-        getContractInstanceCallback={this.getContractInstance}
-        getArbitratorDisputeCallback={this.getArbitratorDispute}
-        getArbitratorDisputeDetailsCallback={this.getArbitratorDisputeDetails}
-        getArbitratorDisputeStructCallback={this.getArbitratorDispute}
-        getArbitrableDisputeStructCallback={this.getArbitrableDispute}
-        getCrowdfundingStatusCallback={this.getCrowdfundingStatus}
-        getRulingCallback={this.getRuling}
-        getEvidencesCallback={this.getEvidences}
-        getMetaEvidenceCallback={this.getMetaEvidence}
-        publishCallback={this.onPublish}
-        submitEvidenceCallback={this.submitEvidence}
-        getDisputeCallback={this.getDispute}
-        getDisputeEventCallback={this.getDisputeEvent}
-        getMultipliersCallback={this.getMultipliers}
-        withdrawCallback={this.withdrawFeesAndRewardsForAllRounds}
-        getTotalWithdrawableAmountCallback={this.getTotalWithdrawableAmount}
-        activeAddress={this.state.activeAddress}
-        passPeriodCallback={this.passPeriod}
-        drawJurorsCallback={this.drawJurors}
-        passPhaseCallback={this.passPhase}
-        getRoundInfoCallback={this.getRoundInfo}
-        getAppealDecisionCallback={this.getAppealDecision}
-        getContributionsCallback={this.getContributions}
-        getRulingFundedCallback={this.getRulingFunded}
-        subcourts={this.state.subcourts}
-        subcourtDetails={this.state.subcourtDetails}
-        web3Provider={this.state.provider}
-        exceptionalContractAddresses={EXCEPTIONAL_CONTRACT_ADDRESSES}
-        isAuthenticated={isAuthenticated}
-        isSigningIn={this.state.isSigningIn}
-        onSignIn={this.signInWithEthereum}
-      />
-      <Footer networkMap={networkMap} network={this.state.network} />
-    </>
-  );
+  //Write actions never reach a wallet in fixture mode: stubs report success or failure the way these handlers do.
+  getWriteCallbacks = () =>
+    fixtures.isFixtureMode()
+      ? { appeal: fixtures.appeal, submitEvidence: fixtures.submitEvidence, withdraw: fixtures.withdraw, publish: fixtures.publish, signIn: fixtures.signIn }
+      : { appeal: this.appeal, submitEvidence: this.submitEvidence, withdraw: this.withdrawFeesAndRewardsForAllRounds, publish: this.onPublish, signIn: this.signInWithEthereum };
+
+  renderInteract = (route, isAuthenticated) => {
+    const writes = this.getWriteCallbacks();
+
+    return (
+      <>
+        <Header activeAddress={this.state.activeAddress} web3Provider={this.state.provider} viewOnly={!this.state.activeAddress} route={route} />
+        <Interact
+          arbitratorAddress={networkMap[this.state.network].KLEROS_LIQUID}
+          network={this.state.network}
+          route={route}
+          getArbitrableDisputeIDCallback={this.getArbitrableDisputeID}
+          getAppealCostCallback={this.getAppealCost}
+          getAppealCostOnArbitrableCallback={this.getAppealCostOnArbitrable}
+          appealCallback={writes.appeal}
+          getAppealPeriodCallback={this.getAppealPeriod}
+          getCurrentRulingCallback={this.getCurrentRuling}
+          getContractInstanceCallback={this.getContractInstance}
+          getArbitratorDisputeCallback={this.getArbitratorDispute}
+          getArbitratorDisputeDetailsCallback={this.getArbitratorDisputeDetails}
+          getArbitratorDisputeStructCallback={this.getArbitratorDispute}
+          getArbitrableDisputeStructCallback={this.getArbitrableDispute}
+          getCrowdfundingStatusCallback={this.getCrowdfundingStatus}
+          getRulingCallback={this.getRuling}
+          getEvidencesCallback={this.getEvidences}
+          getMetaEvidenceCallback={this.getMetaEvidence}
+          publishCallback={writes.publish}
+          submitEvidenceCallback={writes.submitEvidence}
+          getDisputeCallback={this.getDispute}
+          getDisputeEventCallback={this.getDisputeEvent}
+          getMultipliersCallback={this.getMultipliers}
+          withdrawCallback={writes.withdraw}
+          getTotalWithdrawableAmountCallback={this.getTotalWithdrawableAmount}
+          activeAddress={this.state.activeAddress}
+          passPeriodCallback={this.passPeriod}
+          drawJurorsCallback={this.drawJurors}
+          passPhaseCallback={this.passPhase}
+          getRoundInfoCallback={this.getRoundInfo}
+          getAppealDecisionCallback={this.getAppealDecision}
+          getContributionsCallback={this.getContributions}
+          getRulingFundedCallback={this.getRulingFunded}
+          subcourts={this.state.subcourts}
+          subcourtDetails={this.state.subcourtDetails}
+          subcourtsLoading={this.state.subcourtsLoading}
+          now={fixtures.getNow}
+          web3Provider={this.state.provider}
+          exceptionalContractAddresses={EXCEPTIONAL_CONTRACT_ADDRESSES}
+          isAuthenticated={isAuthenticated}
+          isSigningIn={this.state.isSigningIn}
+          onSignIn={writes.signIn}
+        />
+        <Footer networkMap={networkMap} network={this.state.network} />
+      </>
+    );
+  };
 
   renderNotFound = route => (
     <>
@@ -1358,7 +1408,9 @@ class App extends React.Component {
       }
 
       const authToken = getAuthToken();
-      const isAuthenticated = !!authToken && isTokenValid(authToken) && isTokenForAccount(this.state.activeAddress);
+      const isAuthenticated = fixtures.isFixtureMode()
+        ? fixtures.isSignedIn()
+        : !!authToken && isTokenValid(authToken) && isTokenForAccount(this.state.activeAddress);
 
       return (
         <BrowserRouter>

@@ -1,5 +1,6 @@
 import { Row, Col } from "react-bootstrap";
 import React from "react";
+import PropTypes from "prop-types";
 import Countdown, { zeroPad, calcTimeDelta } from "react-countdown";
 
 import styles from "components/styles/disputeTimeline.module.css";
@@ -9,6 +10,14 @@ const MILLISECONDS_PER_SECOND = 1000;
 const DISPUTE_PERIOD_EVIDENCE = 0;
 const DISPUTE_PERIOD_VOTING = 2;
 const DISPUTE_PERIOD_APPEAL = 3;
+//The largest timestamp a Date can hold (milliseconds).
+const MAX_DATE_MILLISECONDS = 8640000000000000;
+
+const toSeconds = value => {
+  if (value == null) return null;
+  const seconds = Number.parseInt(value, 10);
+  return Number.isSafeInteger(seconds) && seconds >= 0 ? seconds : null;
+};
 
 class DisputeTimeline extends React.Component {
   convertToHumanReadiableTime = timeInMillis => {
@@ -30,9 +39,15 @@ class DisputeTimeline extends React.Component {
     return "past";
   };
 
+  //Unknown court durations or an unreadable period change are shown as unavailable instead of an expired countdown.
   getPeriodTime = (periodType, currentPeriod, lastPeriodChange, timesPerPeriod) => {
+    const duration = toSeconds(timesPerPeriod?.[periodType]);
+
     if (currentPeriod === periodType) {
-      return <Countdown date={(parseInt(lastPeriodChange, 10) + parseInt(timesPerPeriod[periodType], 10)) * MILLISECONDS_PER_SECOND} renderer={this.renderCountdown} />;
+      const changedAt = toSeconds(lastPeriodChange);
+      const deadline = changedAt != null && duration != null ? (changedAt + duration) * MILLISECONDS_PER_SECOND : null;
+      if (deadline == null || deadline > MAX_DATE_MILLISECONDS) return <span>Unavailable</span>;
+      return <Countdown date={deadline} now={this.props.now} renderer={this.renderCountdown} />;
     }
     if (currentPeriod > periodType) {
       return <span>Concluded</span>;
@@ -41,7 +56,8 @@ class DisputeTimeline extends React.Component {
     if (periodType === DISPUTE_PERIOD_EVIDENCE) {
       return null;
     }
-    return <span>{this.convertToHumanReadiableTime(timesPerPeriod[periodType])}</span>;
+    if (duration == null) return <span>Unavailable</span>;
+    return <span>{this.convertToHumanReadiableTime(duration)}</span>;
   };
 
   render() {
@@ -85,5 +101,13 @@ class DisputeTimeline extends React.Component {
     );
   }
 }
+
+DisputeTimeline.propTypes = {
+  period: PropTypes.number.isRequired,
+  lastPeriodChange: PropTypes.string,
+  timesPerPeriod: PropTypes.array,
+  //Returns the current time in milliseconds, like Date.now; lets fixture mode freeze the countdowns.
+  now: PropTypes.func,
+};
 
 export default DisputeTimeline;

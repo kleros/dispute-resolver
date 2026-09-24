@@ -283,10 +283,15 @@ class DisputeDetails extends React.Component {
   renderDecisionAlerts = (disputePeriod, currentRuling, metaevidenceJSON, rulingFunded, incompatible) => {
     const decisionInfoBoxContent = `This decision can be appealed within appeal period. ${incompatible ? "Go to arbitrable application to appeal this ruling." : ""}`;
 
+    //The current ruling could not be read; showing option 0 instead would look like a real "refuse to arbitrate" decision.
+    if ((disputePeriod == DISPUTE_PERIOD_APPEAL || disputePeriod == DISPUTE_PERIOD_EXECUTION) && currentRuling == null) {
+      return <AlertMessage type="warning" title="Jury decision unavailable" content="The current ruling could not be read from the arbitrator." />;
+    }
+
     const formatRulingForDisplay = ruling => {
       if (ruling == 0) return "invalid / refused to arbitrate / tied";
 
-      if (metaevidenceJSON.rulingOptions?.type === "hash") {
+      if (metaevidenceJSON?.rulingOptions?.type === "hash") {
         // For hash type, display the raw hex value without Reality.eth conversion
         return `0x${BigInt(ruling).toString(16).padStart(64, '0')}`;
       } else {
@@ -317,82 +322,117 @@ class DisputeDetails extends React.Component {
     return null;
   };
 
-  // Helper method to render dispute info section
-  renderDisputeInfo = (arbitratorDisputeID, arbitratorDisputeDetails, arbitratorDispute, subcourtDetails) => (
-    <Row>
-      <Col xl={6} md="auto" sm={true} xs={24}>
-        <Form.Group>
-          <Form.Label htmlFor="category">Dispute</Form.Label>
-          <Form.Control id="category" as="span" title="" className="mr-4">
-            <i className="purple-primary">#</i> {arbitratorDisputeID}
-          </Form.Control>
-        </Form.Group>
-      </Col>
-      <Col xl={6} md="auto" sm={true} xs={24}>
-        <Form.Group className="">
-          <Form.Label htmlFor="initialNumberOfJurors">Number of Votes</Form.Label>
-          <Form.Control className={`mr-4 ${styles.spanWithSvgInside}`} id="initialNumberOfJurors" as="span">
-            <AvatarSVG />
-            <span>{parseInt(arbitratorDisputeDetails.votesLengths[0], 10)}</span>
-          </Form.Control>
-        </Form.Group>
-      </Col>
-      <Col md={true} sm={24}>
-        <Form.Group>
-          <Form.Label htmlFor="court">Court</Form.Label>
-          <Form.Control className={styles.spanWithSvgInside} id="court" as="span">
-            <ScalesSVG className={styles.scales} />
-            <span>{subcourtDetails[arbitratorDispute.subcourtID]?.name}</span>
-          </Form.Control>
-        </Form.Group>
-      </Col>
-    </Row>
-  );
+  // Helper method to render dispute info section. Unknown values are shown as unavailable, never as a number.
+  renderDisputeInfo = (arbitratorDisputeID, arbitratorDisputeDetails, arbitratorDispute, subcourtDetails) => {
+    const numberOfVotes = Number.parseInt(arbitratorDisputeDetails?.votesLengths?.[0], 10);
+    const courtName = subcourtDetails?.[arbitratorDispute.subcourtID?.toString()]?.name;
+    const hasCourtName = typeof courtName === "string" && courtName.trim() !== "";
+
+    return (
+      <Row>
+        <Col xl={6} md="auto" sm={true} xs={24}>
+          <Form.Group>
+            <Form.Label htmlFor="category">Dispute</Form.Label>
+            <Form.Control id="category" as="span" title="" className="mr-4">
+              <i className="purple-primary">#</i> {arbitratorDisputeID}
+            </Form.Control>
+          </Form.Group>
+        </Col>
+        <Col xl={6} md="auto" sm={true} xs={24}>
+          <Form.Group className="">
+            <Form.Label htmlFor="initialNumberOfJurors">Number of Votes</Form.Label>
+            <Form.Control className={`mr-4 ${styles.spanWithSvgInside}`} id="initialNumberOfJurors" as="span">
+              <AvatarSVG />
+              <span>{Number.isNaN(numberOfVotes) ? "Unavailable" : numberOfVotes}</span>
+            </Form.Control>
+          </Form.Group>
+        </Col>
+        <Col md={true} sm={24}>
+          <Form.Group>
+            <Form.Label htmlFor="court">Court</Form.Label>
+            <Form.Control className={styles.spanWithSvgInside} id="court" as="span">
+              <ScalesSVG className={styles.scales} />
+              <span>{hasCourtName ? courtName : "Court unavailable"}</span>
+            </Form.Control>
+          </Form.Group>
+        </Col>
+      </Row>
+    );
+  };
+
+  //The text of the withdrawal section. An unknown amount is said to be unknown rather than shown as nothing to withdraw.
+  getWithdrawalText = totalWithdrawable => {
+    if (totalWithdrawable == null) return "The amount you can withdraw could not be read from the arbitrable contract.";
+    if (parseInt(totalWithdrawable, 10) != 0) {
+      return "If you have contributed to a ruling option and in the end that ruling option was the winner you are eligible for some reward. Also, if you have contributed but appeal did not happen your contribution is refunded.";
+    }
+    return "You don't have any amount to withdraw. Reason might be that you did not contribute, the ruling option you have contributed did not win, you already withdrew or the ruling is not executed yet by the arbitrator.";
+  };
+
+  //Crowdfunding cards need every input of the fee and deadline calculations; a missing one shows the reason instead of wrong amounts.
+  renderCrowdfundingUnavailable = multipliers => {
+    if (!multipliers) {
+      return (
+        <AlertMessage
+          type="warning"
+          title="Appeal fees could not be calculated"
+          content="This arbitrable contract uses an unsupported appeal interface, so the appeal funding amounts and deadlines can't be shown. Please use the arbitrable application to appeal."
+        />
+      );
+    }
+    return (
+      <AlertMessage
+        type="warning"
+        title="Appeal options unavailable"
+        content="Some of the data needed to show the appeal funding amounts and deadlines could not be loaded. Please refresh the page or try again later."
+      />
+    );
+  };
 
   // Helper method to render appeal section
-  renderAppealSection = (disputePeriod, totalWithdrawable, metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated, multipliers) => (
-    <Card.Body>
-      <div className="h1">{disputePeriod == DISPUTE_PERIOD_APPEAL ? "Appeal the decision" : "Withdraw crowdfunding rewards and refunds"}</div>
-      <p className="label">
-        {disputePeriod == DISPUTE_PERIOD_APPEAL
-          && "In order to appeal the decision, you need to fully fund the crowdfunding deposit. The dispute will be sent" +
-          " to the jurors when the full deposit is reached. Note that if the previous round loser funds its side, the previous round winner should also fully fund its side in order not to lose the case."
-        }
-        {disputePeriod == DISPUTE_PERIOD_EXECUTION && parseInt(totalWithdrawable, 10) != 0 ? "If you have contributed to a ruling option and in the end that ruling option was the winner you are eligible for some reward. Also, if you have contributed but appeal did not happen your contribution is refunded."
-          : "You don't have any amount to withdraw. Reason might be that you did not contribute, the ruling option you have contributed did not win, you already withdrew or the ruling is not executed yet by the arbitrator."}
-      </p>
-      {disputePeriod == DISPUTE_PERIOD_EXECUTION && parseInt(totalWithdrawable, 10) > 0 && (
-        <Row className="mt-5">
-          <Col className="text-right">
-            <Button className="ml-auto" onClick={this.props.withdrawCallback}>
-              {`Withdraw ${ethers.formatEther(totalWithdrawable)} ETH`}
-            </Button>
-          </Col>
-        </Row>
-      )}
+  renderAppealSection = (disputePeriod, totalWithdrawable, metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated, multipliers) => {
+    const canCrowdfund = Boolean(metaevidenceJSON && multipliers && this.props.appealCost != null && this.props.appealPeriod != null && currentRuling != null && contributions != null);
 
-      {disputePeriod == DISPUTE_PERIOD_APPEAL && (
-        (multipliers && this.props.appealCost != null && this.props.appealPeriod != null) ? (
-          <Row className="mt-3">
-            {this.renderCrowdfundingCards(metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated)}
-            {this.renderVariableTypeCrowdfundingCards(metaevidenceJSON, currentRuling, contributions, appealCallback)}
+    return (
+      <Card.Body>
+        <div className="h1">{disputePeriod == DISPUTE_PERIOD_APPEAL ? "Appeal the decision" : "Withdraw crowdfunding rewards and refunds"}</div>
+        <p className="label">
+          {disputePeriod == DISPUTE_PERIOD_APPEAL
+            && "In order to appeal the decision, you need to fully fund the crowdfunding deposit. The dispute will be sent" +
+            " to the jurors when the full deposit is reached. Note that if the previous round loser funds its side, the previous round winner should also fully fund its side in order not to lose the case."
+          }
+          {disputePeriod == DISPUTE_PERIOD_EXECUTION && this.getWithdrawalText(totalWithdrawable)}
+        </p>
+        {disputePeriod == DISPUTE_PERIOD_EXECUTION && totalWithdrawable != null && parseInt(totalWithdrawable, 10) > 0 && (
+          <Row className="mt-5">
+            <Col className="text-right">
+              <Button className="ml-auto" onClick={this.props.withdrawCallback}>
+                {`Withdraw ${ethers.formatEther(totalWithdrawable)} ETH`}
+              </Button>
+            </Col>
           </Row>
-        ) : (
-          <AlertMessage
-            type="warning"
-            title="Appeal fees could not be calculated"
-            content="This arbitrable contract uses an unsupported appeal interface, so the appeal funding amounts and deadlines can't be shown. Please use the arbitrable application to appeal."
-          />
-        )
-      )}
-    </Card.Body>
-  );
+        )}
+
+        {disputePeriod == DISPUTE_PERIOD_APPEAL && (
+          canCrowdfund ? (
+            <Row className="mt-3">
+              {this.renderCrowdfundingCards(metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated)}
+              {this.renderVariableTypeCrowdfundingCards(metaevidenceJSON, currentRuling, contributions, appealCallback)}
+            </Row>
+          ) : this.renderCrowdfundingUnavailable(multipliers)
+        )}
+      </Card.Body>
+    );
+  };
 
   renderEscrowV1AppealSection = (disputePeriod, appealCallback, appealCost) => (
     <Card.Body>
       <div className="h1">{disputePeriod == DISPUTE_PERIOD_APPEAL ? "Appeal the decision" : "Appeal period ended"}</div>
       {disputePeriod == DISPUTE_PERIOD_APPEAL && <p className="label">In order to appeal the decision, you need to pay the appeal cost.</p>}
-      {disputePeriod == DISPUTE_PERIOD_APPEAL && (
+      {disputePeriod == DISPUTE_PERIOD_APPEAL && appealCost == null && (
+        <AlertMessage type="warning" title="Appeal cost unavailable" content="The appeal cost could not be read from the arbitrator. Please refresh the page or try again later." />
+      )}
+      {disputePeriod == DISPUTE_PERIOD_APPEAL && appealCost != null && (
         <Button
           onClick={() =>
             appealCallback(0, ethers.formatEther(appealCost))
@@ -403,16 +443,27 @@ class DisputeDetails extends React.Component {
     </Card.Body>
   );
 
-  // Helper method to render question section
+  //Ruling options of a well-formed meta-evidence, or null when they are missing or not an object (some non-standard arbitrables use a string).
+  getRulingOptions = metaevidenceJSON => {
+    const rulingOptions = metaevidenceJSON?.rulingOptions;
+    return rulingOptions && typeof rulingOptions === "object" ? rulingOptions : null;
+  };
+
+  // Helper method to render question section. A missing or malformed meta-evidence leaves the question unavailable.
   renderQuestionSection = (metaevidenceJSON, arbitratorDisputeID, network) => {
     const courtURL = new URL(`https://court.kleros.io/cases/${encodeURIComponent(arbitratorDisputeID)}`);
     courtURL.searchParams.set("requiredChainId", network ?? "1");
+    const rulingOptions = this.getRulingOptions(metaevidenceJSON);
+    const question = typeof metaevidenceJSON?.question === "string" ? metaevidenceJSON.question : null;
+    const titles = Array.isArray(rulingOptions?.titles) ? rulingOptions.titles : [];
+    const descriptions = rulingOptions?.descriptions && typeof rulingOptions.descriptions === "object" ? rulingOptions.descriptions : {};
+    const reserved = rulingOptions?.reserved && typeof rulingOptions.reserved === "object" ? rulingOptions.reserved : null;
 
     return (
       <Card.Body className={styles.question}>
-        <p>{QuestionTypes[metaevidenceJSON.rulingOptions?.type]}</p>
-        <p>{metaevidenceJSON.question}</p>
-        {(metaevidenceJSON.rulingOptions?.type == "single-select" || metaevidenceJSON.rulingOptions?.type == "multiple-select") && (
+        <p>{QuestionTypes[rulingOptions?.type]}</p>
+        <p>{question ?? "Question unavailable."}</p>
+        {(rulingOptions?.type == "single-select" || rulingOptions?.type == "multiple-select") && (
           <>
             <Dropdown>
               <Dropdown.Toggle block className={styles.dropdownToggle}>
@@ -421,20 +472,20 @@ class DisputeDetails extends React.Component {
 
               <Dropdown.Menu dir="">
                 <Dropdown.Item key={0} disabled>Option 0 - Refuse to Arbitrate / Invalid</Dropdown.Item>
-                {metaevidenceJSON.rulingOptions?.titles?.map((title, index) => (
-                  <Dropdown.Item key={`option-${index + 1}`} disabled>{`Option ${index + 1} - ${title}${metaevidenceJSON.rulingOptions.descriptions?.[index] != undefined ? ":" : ""
-                    } ${metaevidenceJSON.rulingOptions.descriptions?.[index] != undefined
-                      ? metaevidenceJSON.rulingOptions.descriptions[index]
+                {titles.map((title, index) => (
+                  <Dropdown.Item key={`option-${index + 1}`} disabled>{`Option ${index + 1} - ${title}${descriptions[index] != undefined ? ":" : ""
+                    } ${descriptions[index] != undefined
+                      ? descriptions[index]
                       : ""
                     }`}</Dropdown.Item>
                 ))}
-                {metaevidenceJSON.rulingOptions?.reserved &&
-                  Object.entries(metaevidenceJSON.rulingOptions.reserved).map(([rulingCode, title]) => {
+                {reserved &&
+                  Object.entries(reserved).map(([rulingCode, title]) => {
                     const displayCode = rulingCode.length > 12 ? `${rulingCode.slice(0, 6)}...${rulingCode.slice(-6)}` : rulingCode;
                     return (
-                      <Dropdown.Item key={rulingCode} disabled>{`Option ${displayCode} - ${title}${metaevidenceJSON.rulingOptions.descriptions?.[rulingCode] != undefined ? ":" : ""
-                        } ${metaevidenceJSON.rulingOptions.descriptions?.[rulingCode] != undefined
-                          ? metaevidenceJSON.rulingOptions.descriptions[rulingCode]
+                      <Dropdown.Item key={rulingCode} disabled>{`Option ${displayCode} - ${title}${descriptions[rulingCode] != undefined ? ":" : ""
+                        } ${descriptions[rulingCode] != undefined
+                          ? descriptions[rulingCode]
                           : ""
                         }`}</Dropdown.Item>
                     );
@@ -467,7 +518,7 @@ class DisputeDetails extends React.Component {
         disputePeriod={disputePeriod}
         publishCallback={publishCallback}
         submitEvidenceCallback={submitEvidenceCallback}
-        appealDecisions={this.state.appealDecisions}
+        appealDecisions={this.props.appealDecisions}
         isAuthenticated={isAuthenticated}
         isSigningIn={isSigningIn}
         onSignIn={onSignIn}
@@ -475,15 +526,10 @@ class DisputeDetails extends React.Component {
     </Card.Body>
   );
 
-  // Helper method to check if required data is available
-  hasRequiredData = (metaevidenceJSON, arbitratorDispute, subcourts, subcourtDetails, arbitratorDisputeDetails) => {
-    return metaevidenceJSON && arbitratorDispute && subcourts?.length > 0 &&
-      subcourtDetails?.length > 0 && arbitratorDisputeDetails;
-  };
-
   // Helper method to render appeal card conditionally
   renderAppealCard = (arbitratorDispute, disputePeriod, contributions, multipliers, appealCost, appealPeriod, arbitrated, totalWithdrawable, metaevidenceJSON, currentRuling, appealCallback, exceptionalContractAddresses, activeKey, isEscrowV1Dispute, loading) => {
-    if (!arbitratorDispute || disputePeriod < DISPUTE_PERIOD_APPEAL || !arbitrated) {
+    //A period that could not be read (NaN) never reaches the appeal stage.
+    if (!arbitratorDispute || !(disputePeriod >= DISPUTE_PERIOD_APPEAL) || !arbitrated) {
       return null;
     }
 
@@ -515,6 +561,9 @@ class DisputeDetails extends React.Component {
   // Helper method to render crowdfunding cards for different question types
   renderCrowdfundingCards = (metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated) => {
     const cards = [];
+    const rulingOptions = this.getRulingOptions(metaevidenceJSON);
+    const titles = Array.isArray(rulingOptions?.titles) ? rulingOptions.titles : null;
+    const { now } = this.props;
 
     // Invalid/Refused option
     if (!exceptionalContractAddresses.includes(arbitrated)) {
@@ -530,14 +579,15 @@ class DisputeDetails extends React.Component {
             roi={this.calculateReturnOfInvestmentRatio(0).toFixed(2)}
             appealCallback={appealCallback}
             rulingOptionCode={0}
+            now={now}
           />
         </Col>
       );
     }
 
     // Reserved options
-    if (metaevidenceJSON.rulingOptions?.reserved) {
-      Object.entries(metaevidenceJSON.rulingOptions.reserved).forEach(([rulingCode, title]) => {
+    if (rulingOptions?.reserved && typeof rulingOptions.reserved === "object") {
+      Object.entries(rulingOptions.reserved).forEach(([rulingCode, title]) => {
         const hexToNumberString = hex => ethers.getBigInt(hex).toString();
         cards.push(
           <Col key={hexToNumberString(rulingCode)} className="pb-4" xl={8} lg={12} xs={24}>
@@ -551,6 +601,7 @@ class DisputeDetails extends React.Component {
               roi={this.calculateReturnOfInvestmentRatio(hexToNumberString(rulingCode)).toFixed(2)}
               appealCallback={appealCallback}
               rulingOptionCode={hexToNumberString(rulingCode)}
+              now={now}
             />
           </Col>
         );
@@ -558,10 +609,10 @@ class DisputeDetails extends React.Component {
     }
 
     // Type-specific cards
-    const questionType = metaevidenceJSON.rulingOptions?.type;
+    const questionType = rulingOptions?.type;
 
-    if (questionType === "single-select" && metaevidenceJSON.rulingOptions?.titles) {
-      metaevidenceJSON.rulingOptions.titles.forEach((title, index) => {
+    if (questionType === "single-select" && titles) {
+      titles.forEach((title, index) => {
         cards.push(
           <Col key={index + 1} className="pb-4" xl={8} lg={12} xs={24}>
             <CrowdfundingCard
@@ -573,12 +624,13 @@ class DisputeDetails extends React.Component {
               roi={this.calculateReturnOfInvestmentRatio(index + 1).toFixed(2)}
               appealCallback={appealCallback}
               rulingOptionCode={index + 1}
+              now={now}
             />
           </Col>
         );
       });
-    } else if (questionType === "multiple-select" && metaevidenceJSON.rulingOptions?.titles) {
-      Array.from(Array(2 ** metaevidenceJSON.rulingOptions.titles.length).keys()).forEach(comboValue => {
+    } else if (questionType === "multiple-select" && titles) {
+      Array.from(Array(2 ** titles.length).keys()).forEach(comboValue => {
         const title = comboValue == 0
           ? "None"
           : comboValue
@@ -586,7 +638,7 @@ class DisputeDetails extends React.Component {
             .padStart(BINARY_PADDING_WIDTH, "0")
             .split("")
             .reverse()
-            .map((bit, i) => (bit === "1" ? metaevidenceJSON.rulingOptions.titles[i] : null))
+            .map((bit, i) => (bit === "1" ? titles[i] : null))
             .join(" ");
 
         cards.push(
@@ -600,6 +652,7 @@ class DisputeDetails extends React.Component {
               suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(comboValue + 1))}
               appealCallback={appealCallback}
               rulingOptionCode={comboValue + 1}
+              now={now}
             />
           </Col>
         );
@@ -621,6 +674,7 @@ class DisputeDetails extends React.Component {
               roi={this.calculateReturnOfInvestmentRatio(index + 1).toFixed(2)}
               appealCallback={appealCallback}
               rulingOptionCode={index + 1}
+              now={now}
             />
           </Col>
         );
@@ -632,12 +686,13 @@ class DisputeDetails extends React.Component {
 
   // Helper method to render variable type crowdfunding cards
   renderVariableTypeCrowdfundingCards = (metaevidenceJSON, currentRuling, contributions, appealCallback) => {
-    const questionType = metaevidenceJSON.rulingOptions?.type;
+    const questionType = this.getRulingOptions(metaevidenceJSON)?.type;
     const isVariableType = ["uint", "int", "string", "datetime", "hash"].includes(questionType);
 
     if (!isVariableType) return null;
 
     const cards = [];
+    const { now } = this.props;
 
     // Note: For hash type questions, we don't apply Reality.eth conversion (subtracting 1)
     // when displaying contribution keys because they already represent the actual ruling values
@@ -669,6 +724,7 @@ class DisputeDetails extends React.Component {
               roi={this.calculateReturnOfInvestmentRatio(key).toFixed(2)}
               appealCallback={appealCallback}
               metaevidenceJSON={metaevidenceJSON}
+              now={now}
             />
           </Col>
         );
@@ -696,6 +752,7 @@ class DisputeDetails extends React.Component {
             suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaisedForLoser())}
             appealCallback={appealCallback}
             metaevidenceJSON={metaevidenceJSON}
+            now={now}
           />
         </Col>
       );
@@ -713,11 +770,29 @@ class DisputeDetails extends React.Component {
           suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaisedForLoser())}
           appealCallback={appealCallback}
           metaevidenceJSON={metaevidenceJSON}
+          now={now}
         />
       </Col>
     );
 
     return cards;
+  };
+
+  //The timeline needs a readable period; the durations of an unknown court are shown as unavailable by the timeline itself.
+  renderTimeline = (arbitratorDispute, disputePeriod, subcourts) => {
+    if (!Number.isInteger(disputePeriod) || disputePeriod < 0) {
+      return <p className="label">Timeline unavailable: the dispute period could not be read.</p>;
+    }
+
+    const timesPerPeriod = subcourts?.[arbitratorDispute.subcourtID?.toString()]?.[1] ?? null;
+    return (
+      <DisputeTimeline
+        period={disputePeriod}
+        lastPeriodChange={arbitratorDispute.lastPeriodChange?.toString() ?? null}
+        timesPerPeriod={Array.isArray(timesPerPeriod) ? timesPerPeriod : null}
+        now={this.props.now}
+      />
+    );
   };
 
   render() {
@@ -731,6 +806,7 @@ class DisputeDetails extends React.Component {
       incompatible,
       subcourts,
       subcourtDetails,
+      subcourtsLoading,
       arbitratorDisputeDetails,
       currentRuling,
       disputeEvent,
@@ -752,8 +828,9 @@ class DisputeDetails extends React.Component {
 
     const { activeKey } = this.state;
 
-    // Early return if required data is not available
-    if (!this.hasRequiredData(metaevidenceJSON, arbitratorDispute, subcourts, subcourtDetails, arbitratorDisputeDetails)) {
+    //The dispute struct is the one thing every section needs; each section copes with its own missing data.
+    //The subcourts are loaded once per chain by the app, so the details wait for them rather than render in two steps.
+    if (!arbitratorDispute || !arbitrated || subcourtsLoading) {
       return <div></div>;
     }
 
@@ -762,11 +839,7 @@ class DisputeDetails extends React.Component {
 
     return (
       <section className={styles.disputeDetails}>
-        <DisputeTimeline
-          period={disputePeriod}
-          lastPeriodChange={arbitratorDispute.lastPeriodChange.toString()}
-          timesPerPeriod={subcourts[arbitratorDispute.subcourtID.toString()]?.[1] || ["0", "0", "0", "0"]}
-        />
+        {this.renderTimeline(arbitratorDispute, disputePeriod, subcourts)}
         <hr className="mt-4" />
 
         {this.renderDisputeInfo(arbitratorDisputeID, arbitratorDisputeDetails, arbitratorDispute, subcourtDetails)}
@@ -807,6 +880,8 @@ DisputeDetails.propTypes = {
   isAuthenticated: PropTypes.bool.isRequired,
   isSigningIn: PropTypes.bool.isRequired,
   onSignIn: PropTypes.func.isRequired,
+  subcourtsLoading: PropTypes.bool,
+  now: PropTypes.func,
 };
 
 export default DisputeDetails;

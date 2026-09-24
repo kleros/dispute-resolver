@@ -25,10 +25,12 @@ class OpenDisputes extends React.Component {
     if (networkMap[this.props.network]?.KLEROS_LIQUID) this.debouncedFetch = debounce(this.fetch, 0, { leading: false, trailing: true });
   }
 
+  //Only a network change needs a fresh list. The subcourts are enumerated by the app after this page mounts and can arrive
+  //after the first load; they only feed the court names and countdowns, so the list already shown just re-renders with them.
   componentDidUpdate(prevProps) {
-    const { subcourts, subcourtDetails, network } = this.props;
+    const { network } = this.props;
 
-    if (prevProps.subcourts !== subcourts || prevProps.subcourtDetails !== subcourtDetails || prevProps.network !== network) {
+    if (prevProps.network !== network) {
       this.fetchVersion++;
       this.setState({
         loading: true,

@@ -1,0 +1,8 @@
+{
+  "chainId": "1",
+  "capturedAt": "2026-09-23T20:01:09.781Z",
+  "capturedAtBlock": 26042422,
+  "capturedAtTimestamp": 1790193647,
+  "notes": "Case page reads for the disputes of ongoing/1.json, captured at the same block. That fixture shows the empty state, so there are no case records and every dispute ID is unknown. capturedAtTimestamp is the block timestamp and is the fixed \"now\" of fixture mode.",
+  "disputes": {}
+}

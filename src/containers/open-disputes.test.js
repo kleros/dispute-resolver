@@ -401,6 +401,39 @@ describe("Ongoing disputes resilience and states", () => {
     expect(container.querySelector('[role="alert"]')).toBeNull();
   });
 
+  //The subcourts are enumerated by the app after the page mounts; on a first visit without a cached copy they arrive after
+  //the first load has rendered. The list already shown then picks up the court names and countdowns without loading again.
+  it("fills in the court names when the subcourts arrive after the first load, without fetching the disputes again", async () => {
+    const callbacks = {
+      getOpenDisputesOnCourtCallback: jest.fn(() => fixtures.getOpenDisputesOnCourt(GNOSIS)),
+      getArbitratorDisputeCallback: jest.fn(disputeId => fixtures.getArbitratorDispute(GNOSIS, disputeId)),
+      getMetaEvidenceCallback: jest.fn((arbitrated, disputeId) => fixtures.getMetaEvidence(GNOSIS, disputeId)),
+    };
+    await act(async () => {
+      ReactDOM.render(<OpenDisputes network={GNOSIS} subcourts={[]} subcourtDetails={[]} {...callbacks} />, container);
+    });
+    await waitFor(() => container.querySelector('[role="status"]') === null);
+    const countsAfterLoad = callCounts(callbacks);
+    expect(countsAfterLoad.getOpenDisputesOnCourtCallback).toBe(1);
+    expect(visibleDisputeIDs()).toEqual(GNOSIS_DISPUTES);
+    const card = () => container.querySelector('a[href="/100/cases/1005"]');
+    expect(card().textContent).toContain("Court unavailable");
+    expect(card().querySelector(".countdown > span").textContent).toBe("Unavailable");
+
+    const { subcourts, subcourtDetails } = await fixtures.getSubcourtData(GNOSIS);
+    await act(async () => {
+      ReactDOM.render(<OpenDisputes network={GNOSIS} subcourts={subcourts} subcourtDetails={subcourtDetails} {...callbacks} />, container);
+    });
+
+    expect(container.querySelector('[role="status"]')).toBeNull();
+    expect(visibleDisputeIDs()).toEqual(GNOSIS_DISPUTES);
+    expect(card().textContent).toContain("xDai Javascript Court");
+    expect(card().textContent).not.toContain("Court unavailable");
+    expect(card().querySelector(".countdown").textContent).toMatch(/\d+d \d{2}h \d{2}m/);
+    await waitFor(() => visibleDisputeIDs().length === GNOSIS_DISPUTES.length);
+    expect(callCounts(callbacks)).toEqual(countsAfterLoad);
+  });
+
   it("ignores an earlier network request that finishes after the current request", async () => {
     let resolveOldRequest;
     const oldRequest = new Promise(resolve => { resolveOldRequest = resolve; });

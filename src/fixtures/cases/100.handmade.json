@@ -1,0 +1,266 @@
+{
+  "chainId": "100",
+  "notes": "Hand-made cases for the Gnosis fixture. They are not listed on the Ongoing page but open by ID on the case page. Each record has the same shape as a captured record in 100.json plus the KlerosLiquid dispute struct (arbitratorDispute) and the meta-evidence (metaEvidence). Timings are relative to the fixed now of the Gnosis fixture, 1790193640 (2026-09-23T20:00:40Z). The malformed dispute 999999 takes its struct and meta-evidence from ../ongoing/100.malformed.json and only its case reads live here.",
+  "disputes": {
+    "900001": {
+      "arbitratorDispute": {
+        "subcourtID": "0",
+        "arbitrated": "0x0000000000000000000000000000000000900001",
+        "numberOfChoices": "16",
+        "period": "3",
+        "lastPeriodChange": "1790100000",
+        "drawsInRound": "3",
+        "commitsInRound": "0",
+        "ruled": false
+      },
+      "metaEvidence": {
+        "title": "Which deliverables of the website contract were completed?",
+        "description": "The client and the freelancer disagree on which of the four deliverables listed in the agreement were completed as specified before the deadline.\n\nJurors are asked to select **every** deliverable that meets the specification.",
+        "category": "Freelancing",
+        "question": "Select every deliverable that was completed as specified in the agreement.",
+        "rulingOptions": {
+          "type": "multiple-select",
+          "titles": ["Design", "Frontend", "Backend", "Deployment"],
+          "descriptions": [
+            "The design files match the approved mockups.",
+            "The frontend implements every page of the design.",
+            "The backend passes the acceptance tests of the agreement.",
+            "The site is deployed at the agreed domain."
+          ]
+        },
+        "aliases": {
+          "0x0000000000000000000000000000000000A11CE0": "Client",
+          "0x000000000000000000000000000000000000B0B0": "Freelancer"
+        },
+        "fileURI": "/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/agreement.pdf"
+      },
+      "arbitrableDisputeID": "41",
+      "disputeDetails": {
+        "votesLengths": ["3"],
+        "tokensAtStakePerJuror": ["5500000000000000000000"],
+        "totalFeesForJurors": ["3000000000000000000"],
+        "votesInEachRound": ["3"],
+        "repartitionsInEachRound": ["0"],
+        "penaltiesInEachRound": ["0"]
+      },
+      "currentRuling": "4",
+      "appealCost": "3000000000000000000",
+      "appealPeriod": { "start": "1790100000", "end": "1790488800" },
+      "disputeEvent": {
+        "metaEvidenceID": "0",
+        "evidenceGroupID": "41",
+        "createdAt": 1789500000,
+        "blockNumber": 48267000,
+        "transactionHash": "0x9000010000000000000000000000000000000000000000000000000000000001"
+      },
+      "evidences": [
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "title": "Signed agreement and deliverable list",
+            "description": "The agreement lists the four deliverables and the acceptance criteria of each.",
+            "fileURI": "/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/agreement.pdf"
+          },
+          "submittedAt": 1789503600,
+          "submittedBy": "0x0000000000000000000000000000000000A11CE0",
+          "blockNumber": 48267700,
+          "transactionHash": "0x9000010000000000000000000000000000000000000000000000000000000002"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "title": "Deployment log",
+            "description": "The site was deployed at the agreed domain two days before the deadline. The backend acceptance tests were not part of the deployment."
+          },
+          "submittedAt": 1789590000,
+          "submittedBy": "0x000000000000000000000000000000000000B0B0",
+          "blockNumber": 48284000,
+          "transactionHash": "0x9000010000000000000000000000000000000000000000000000000000000003"
+        }
+      ],
+      "ruling": null,
+      "multipliers": {
+        "winnerStakeMultiplier": "10000",
+        "loserStakeMultiplier": "20000",
+        "loserAppealPeriodMultiplier": "5000",
+        "denominator": "10000"
+      },
+      "appealDecisions": [],
+      "contributions": {
+        "1": "9000000000000000000",
+        "3": "1500000000000000000",
+        "4": "3000000000000000000"
+      },
+      "rulingFunded": ["1"]
+    },
+    "900002": {
+      "arbitratorDispute": {
+        "subcourtID": "0",
+        "arbitrated": "0x0000000000000000000000000000000000900002",
+        "numberOfChoices": "115792089237316195423570985008687907853269984665640564039457584007913129639934",
+        "period": "3",
+        "lastPeriodChange": "1790150000",
+        "drawsInRound": "3",
+        "commitsInRound": "0",
+        "ruled": false
+      },
+      "metaEvidence": {
+        "title": "How many tonnes were delivered under the shipping contract?",
+        "description": "The buyer and the carrier disagree on the quantity delivered. The contract pays per tonne recorded by the weighbridge of the destination port.",
+        "category": "Oracle",
+        "question": "Enter the number of tonnes delivered, as recorded in the weighbridge receipts of the destination port.",
+        "rulingOptions": {
+          "type": "uint",
+          "precision": 18
+        }
+      },
+      "arbitrableDisputeID": "58",
+      "disputeDetails": {
+        "votesLengths": ["3"],
+        "tokensAtStakePerJuror": ["5500000000000000000000"],
+        "totalFeesForJurors": ["2000000000000000000"],
+        "votesInEachRound": ["3"],
+        "repartitionsInEachRound": ["0"],
+        "penaltiesInEachRound": ["0"]
+      },
+      "currentRuling": "42000000000000000001",
+      "appealCost": "2000000000000000000",
+      "appealPeriod": { "start": "1790150000", "end": "1790538800" },
+      "disputeEvent": {
+        "metaEvidenceID": "0",
+        "evidenceGroupID": "58",
+        "createdAt": 1789600000,
+        "blockNumber": 48287000,
+        "transactionHash": "0x9000020000000000000000000000000000000000000000000000000000000001"
+      },
+      "evidences": [
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "name": "Weighbridge receipts",
+            "description": "Receipts of the three unloading days. They add up to 42 tonnes.",
+            "fileURI": "/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/receipts.pdf"
+          },
+          "submittedAt": 1789603600,
+          "submittedBy": "0x000000000000000000000000000000000000C0DE",
+          "blockNumber": 48287700,
+          "transactionHash": "0x9000020000000000000000000000000000000000000000000000000000000002"
+        }
+      ],
+      "ruling": null,
+      "multipliers": {
+        "winnerStakeMultiplier": "10000",
+        "loserStakeMultiplier": "20000",
+        "loserAppealPeriodMultiplier": "5000",
+        "denominator": "10000"
+      },
+      "appealDecisions": [],
+      "contributions": {
+        "43000000000000000001": "1000000000000000000"
+      },
+      "rulingFunded": []
+    },
+    "900003": {
+      "arbitratorDispute": {
+        "subcourtID": "0",
+        "arbitrated": "0x0000000000000000000000000000000000900003",
+        "numberOfChoices": "2",
+        "period": "2",
+        "lastPeriodChange": "1790000000",
+        "drawsInRound": "3",
+        "commitsInRound": "0",
+        "ruled": false
+      },
+      "metaEvidence": null,
+      "arbitrableDisputeID": "7",
+      "disputeDetails": {
+        "votesLengths": ["3"],
+        "tokensAtStakePerJuror": ["5500000000000000000000"],
+        "totalFeesForJurors": ["2000000000000000000"],
+        "votesInEachRound": ["3"],
+        "repartitionsInEachRound": ["0"],
+        "penaltiesInEachRound": ["0"]
+      },
+      "currentRuling": "0",
+      "appealCost": "2000000000000000000",
+      "appealPeriod": { "start": "0", "end": "0" },
+      "disputeEvent": {
+        "metaEvidenceID": "0",
+        "evidenceGroupID": "7",
+        "createdAt": 1789700000,
+        "blockNumber": 48306000,
+        "transactionHash": "0x9000030000000000000000000000000000000000000000000000000000000001"
+      },
+      "evidences": [
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "title": "Statement of the requester",
+            "description": "The request was filed with the documents listed in the policy."
+          },
+          "submittedAt": 1789703600,
+          "submittedBy": "0x000000000000000000000000000000000000D0D0",
+          "blockNumber": 48306700,
+          "transactionHash": "0x9000030000000000000000000000000000000000000000000000000000000002"
+        }
+      ],
+      "ruling": null,
+      "multipliers": {
+        "winnerStakeMultiplier": "10000",
+        "loserStakeMultiplier": "20000",
+        "loserAppealPeriodMultiplier": "5000",
+        "denominator": "10000"
+      },
+      "appealDecisions": [],
+      "contributions": {},
+      "rulingFunded": []
+    },
+    "999999": {
+      "arbitrableDisputeID": null,
+      "disputeDetails": null,
+      "currentRuling": "0",
+      "appealCost": null,
+      "appealPeriod": null,
+      "disputeEvent": {
+        "metaEvidenceID": "0",
+        "evidenceGroupID": "999999",
+        "createdAt": "not a timestamp",
+        "blockNumber": 0,
+        "transactionHash": null
+      },
+      "evidences": [
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "title": { "en": "Evidence with a localized title" },
+            "description": 42,
+            "fileURI": 7
+          },
+          "submittedAt": null,
+          "submittedBy": null,
+          "blockNumber": 1,
+          "transactionHash": "0x9999990000000000000000000000000000000000000000000000000000000001"
+        },
+        {
+          "evidenceJSONValid": false,
+          "fileValid": false,
+          "evidenceJSON": null,
+          "submittedAt": 1789800000,
+          "submittedBy": "0x000000000000000000000000000000000000dEaD",
+          "blockNumber": 2,
+          "transactionHash": "0x9999990000000000000000000000000000000000000000000000000000000002"
+        }
+      ],
+      "ruling": null,
+      "multipliers": null,
+      "appealDecisions": [],
+      "contributions": {},
+      "rulingFunded": []
+    }
+  }
+}

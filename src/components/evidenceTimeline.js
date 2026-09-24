@@ -173,33 +173,48 @@ class EvidenceTimeline extends React.Component {
     }
   };
 
+  //Timestamps come from untrusted evidence data; anything that is not a valid Unix time is shown as unavailable.
+  formatTimestamp = seconds => {
+    const milliseconds = Number(seconds) * 1000;
+    if (seconds == null || seconds === "" || !Number.isFinite(milliseconds) || milliseconds < 0 || milliseconds > 8640000000000000) return "Date unavailable";
+    return new Date(milliseconds).toUTCString();
+  };
+
   renderAppealEvent = evidenceOrEvent => (
     <React.Fragment key={`appeal-${evidenceOrEvent.appealedAt}`}>
       <div className={styles["divider"]}></div>
       <div className={styles["event"]}>
         <p>Appealed</p>
-        <small>{new Date(evidenceOrEvent.appealedAt * 1000).toUTCString()}</small>
+        <small>{this.formatTimestamp(evidenceOrEvent.appealedAt)}</small>
       </div>
     </React.Fragment>
   );
 
+  //Evidence JSON is written by the parties and may not follow the standard; only string fields are rendered.
   renderEvidenceItem = evidenceOrEvent => {
+    const evidenceJSON = evidenceOrEvent.evidenceJSON;
+    const isNonEmptyString = value => typeof value === "string" && value.trim() !== "";
+    const title = [evidenceJSON.title, evidenceJSON.name].find(isNonEmptyString) ?? "Title unavailable";
+    const description = typeof evidenceJSON.description === "string" ? evidenceJSON.description : null;
+    const fileURI = isNonEmptyString(evidenceJSON.fileURI) ? evidenceJSON.fileURI : null;
+    const submittedBy = isNonEmptyString(evidenceOrEvent.submittedBy) ? evidenceOrEvent.submittedBy : null;
+
     return (
       <React.Fragment key={`evidence-${evidenceOrEvent.transactionHash || evidenceOrEvent.blockNumber}`}>
         <div className={styles.evidence}>
           <div className={styles["header"]}>
-            <p>{evidenceOrEvent.evidenceJSON.title || evidenceOrEvent.evidenceJSON.name}</p>
+            <p>{title}</p>
           </div>
-          <p>{evidenceOrEvent.evidenceJSON.description}</p>
+          <p>{description}</p>
           <div className={styles.footer}>
-            <Blockies seed={evidenceOrEvent.submittedBy} color="#7bcbff" spotColor="white" bgColor="#1e075f;" size={8} scale={3} className="rounded-circle" />
+            <Blockies seed={submittedBy ?? ""} color="#7bcbff" spotColor="white" bgColor="#1e075f;" size={8} scale={3} className="rounded-circle" />
             <div className={styles["temp"]}>
-              <div className={styles["sender"]}>Submitted by: {this.truncateAddress(evidenceOrEvent.submittedBy)}</div>
-              <div className={styles["timestamp"]}>{new Date(evidenceOrEvent.submittedAt * 1000).toUTCString()}</div>
+              <div className={styles["sender"]}>Submitted by: {submittedBy ? this.truncateAddress(submittedBy) : "Unavailable"}</div>
+              <div className={styles["timestamp"]}>{this.formatTimestamp(evidenceOrEvent.submittedAt)}</div>
             </div>
-            {evidenceOrEvent.evidenceJSON.fileURI && (
-              <a href={urlNormalize(evidenceOrEvent.evidenceJSON.fileURI)} target="_blank" rel="noopener noreferrer">
-                {this.getAttachmentIcon(evidenceOrEvent.evidenceJSON.fileURI)}
+            {fileURI && (
+              <a href={urlNormalize(fileURI)} target="_blank" rel="noopener noreferrer">
+                {this.getAttachmentIcon(fileURI)}
               </a>
             )}
           </div>
@@ -212,16 +227,16 @@ class EvidenceTimeline extends React.Component {
   renderEvidenceTimeline() {
     const { evidences, appealDecisions } = this.props;
 
-    if (!evidences) return null;
+    if (!Array.isArray(evidences)) return null;
 
     return evidences
-      .filter(e => e.evidenceJSONValid)
-      .concat(appealDecisions)
+      .filter(e => e?.evidenceJSONValid)
+      .concat(Array.isArray(appealDecisions) ? appealDecisions : [])
       .sort(this.sortEvidenceByDate)
       .map(evidenceOrEvent => {
         if (evidenceOrEvent.appealedAt) {
           return this.renderAppealEvent(evidenceOrEvent);
-        } else if (evidenceOrEvent.evidenceJSON) {
+        } else if (evidenceOrEvent.evidenceJSON && typeof evidenceOrEvent.evidenceJSON === "object") {
           return this.renderEvidenceItem(evidenceOrEvent);
         } else {
           return null;
@@ -229,23 +244,34 @@ class EvidenceTimeline extends React.Component {
       });
   }
 
+  //null evidences means the evidence could not be loaded, which is different from an empty list.
   renderDisputeStatus() {
-    const { evidences, dispute } = this.props;
+    const { evidences, dispute, appealDecisions } = this.props;
 
-    if (evidences && evidences.length > 0) {
+    if (!Array.isArray(evidences)) {
+      return <div className={styles.noEvidence} role="alert">Evidence could not be loaded.</div>;
+    }
+
+    const appealHistoryNote = appealDecisions == null && <div className={styles.noEvidence}>Appeal history unavailable.</div>;
+
+    if (evidences.length > 0) {
       return (
-        <div className={styles["event"]}>
-          <p>Dispute Raised</p>
-          {dispute && <small>{new Date(dispute.createdAt * 1000).toUTCString()}</small>}
-        </div>
+        <>
+          {appealHistoryNote}
+          <div className={styles["event"]}>
+            <p>Dispute Raised</p>
+            {dispute && <small>{this.formatTimestamp(dispute.createdAt)}</small>}
+          </div>
+        </>
       );
     }
 
-    if (evidences && evidences.length === 0) {
-      return <div className={styles.noEvidence}>No evidence submitted yet.</div>;
-    }
-
-    return null;
+    return (
+      <>
+        {appealHistoryNote}
+        <div className={styles.noEvidence}>No evidence submitted yet.</div>
+      </>
+    );
   }
 
   renderModal() {

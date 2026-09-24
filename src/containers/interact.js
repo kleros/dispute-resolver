@@ -4,54 +4,84 @@ import { Col, Form, Row, InputGroup, FormControl } from "react-bootstrap";
 import DisputeSummary from "components/disputeSummary";
 import DisputeDetails from "components/disputeDetails";
 import { isGovernorWithEvidenceSupport } from "ethereum/network-contract-mapping";
-import debounce from "lodash.debounce";
 import { ReactComponent as Magnifier } from "../assets/images/magnifier.svg";
 
-import { Redirect } from "react-router-dom";
-
 import styles from "containers/styles/interact.module.css";
+
+const DISPUTE_PERIOD_APPEAL = 3;
+const DISPUTE_PERIOD_EXECUTION = 4;
+
+//Everything the page knows about one case. null marks data that could not be loaded, which renders as unavailable rather than as a default.
+const EMPTY_CASE = {
+  arbitrated: null,
+  arbitrableDisputeID: null,
+  incompatible: false,
+  arbitratorDispute: null,
+  metaevidence: null,
+  arbitratorDisputeDetails: null,
+  ruling: null,
+  currentRuling: null,
+  disputeEvent: null,
+  evidences: null,
+  multipliers: null,
+  appealDecisions: null,
+  contributions: null,
+  rulingFunded: null,
+  appealCost: null,
+  appealPeriod: null,
+  totalWithdrawable: null,
+  aggregatedContributions: null,
+  selectedContribution: null,
+};
+
+//Resolves null instead of rejecting so that one failed read only hides its own section.
+const unavailable = async (read, name) => {
+  try {
+    return await read();
+  } catch (error) {
+    console.warn(`${name} failed:`, error?.message ?? error);
+    return null;
+  }
+};
 
 class Interact extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      arbitratorDisputeID: this.props.route?.match?.params?.id || 0,
-      fileInput: "",
-      evidenceFileURI: "",
-      metaevidence: "",
-      evidences: [],
-      modalShow: false,
-      evidenceTitle: "",
-      evidenceDescription: "",
-      contributeModalShow: false,
-      submitting: false,
-      fetchingString: "",
-      currentRuling: "",
-      loading: true,
+      arbitratorDisputeID: this.getRouteDisputeID(),
+      loading: false,
+      //True once every read the page shows has finished, so the case renders in one go instead of section by section.
+      ready: false,
+      loadError: null,
+      notFound: false,
+      ...EMPTY_CASE,
     };
-
-    this.debouncedRetrieveUsingArbitratorID = debounce(this.retrieveDisputeDetailsUsingArbitratorID, 750, { leading: false, trailing: true });
+    //Bumped on every load and navigation so a slow earlier response can never overwrite a newer one.
+    this.loadVersion = 0;
   }
 
-  async componentDidMount() {
-    if (this.state.arbitratorDisputeID) if (this.state.arbitratorDisputeID) this.debouncedRetrieveUsingArbitratorID.cancel();
-    this.debouncedRetrieveUsingArbitratorID(this.state.arbitratorDisputeID);
+  getRouteDisputeID = (route = this.props.route) => route?.match?.params?.id ?? "";
+
+  componentDidMount() {
+    const arbitratorDisputeID = this.getRouteDisputeID();
+    if (arbitratorDisputeID) this.load(arbitratorDisputeID);
   }
 
-  async componentDidUpdate(previousProperties) {
-    if (this.props.network !== previousProperties.network) {
-      const dispute = await this.props.getArbitratorDisputeCallback(this.state.arbitratorDisputeID);
+  componentDidUpdate(previousProperties) {
+    const arbitratorDisputeID = this.getRouteDisputeID();
 
-      if (!dispute) {
-        window.location.reload();
-      }
-      this.setState(() => ({ arbitrated: dispute.arbitrated }));
+    if (arbitratorDisputeID !== this.getRouteDisputeID(previousProperties.route)) {
+      this.setState({ arbitratorDisputeID });
+      if (arbitratorDisputeID) this.load(arbitratorDisputeID);
+      else this.clear();
+      return;
     }
 
-    if (this.props.disputeID !== previousProperties.disputeID) {
-      this.setState(() => ({ arbitrableDisputeID: this.props.disputeID }));
-      this.reload();
-    }
+    if (this.props.network !== previousProperties.network && arbitratorDisputeID) this.load(arbitratorDisputeID);
+  }
+
+  componentWillUnmount() {
+    this.loadVersion++;
   }
 
   sumObjectsByKey(...objs) {
@@ -71,10 +101,8 @@ class Interact extends React.Component {
       evidenceTitle: evidence.evidenceTitle,
       supportingSide: evidence.supportingSide,
     });
-    new Promise(() => setTimeout(2000)).then(this.reload());
+    await this.reload();
   };
-
-
 
   appeal = async (party, contribution) => this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);
 
@@ -95,310 +123,158 @@ class Interact extends React.Component {
     }
   };
 
-  onDisputeIDChange = async (e) => {
-    const arbitratorDisputeID = e.target.value;
-    this.setState(() => ({
-      metaevidence: null,
-      arbitratorDisputeID,
-      loading: true,
-      arbitrableDisputeID: null,
-      arbitratorDispute: null,
-      incompatible: false,
-    }));
-    await this.debouncedRetrieveUsingArbitratorID.cancel();
-    await this.debouncedRetrieveUsingArbitratorID(arbitratorDisputeID);
+  //Typing only edits the search box. The dispute ID in the URL decides which case is shown.
+  onDisputeIDChange = event => this.setState({ arbitratorDisputeID: event.target.value });
+
+  //Enter or the search button opens the typed case as a new history entry, so Back returns to the previous case.
+  //With a router the URL changes and componentDidUpdate loads the case; without one (unit tests) the case is loaded directly.
+  onSearchSubmit = event => {
+    event.preventDefault();
+    const arbitratorDisputeID = this.state.arbitratorDisputeID.trim();
+    if (!arbitratorDisputeID || arbitratorDisputeID === this.getRouteDisputeID()) return;
+
+    const history = this.props.route?.history;
+    if (history) history.push(`/${this.props.network}/cases/${arbitratorDisputeID}`);
+    else this.load(arbitratorDisputeID);
   };
 
-  getCurrentRuling = async (disputeIDOnArbitratorSide) => {
-    try {
-      return await this.props.getCurrentRulingCallback(disputeIDOnArbitratorSide);
-    } catch (err) {
-      console.error(err);
-      return null;
-    }
+  clear = () => {
+    this.loadVersion++;
+    this.setState({ loading: false, ready: false, loadError: null, notFound: false, ...EMPTY_CASE });
   };
 
-  getRuling = async (arbitrableAddress, disputeIDOnArbitratorSide) => {
+  //Loads the case of the given arbitrator dispute ID. A missing dispute and a failed read are different states.
+  //A silent load (after a write) keeps the page as it is and updates it in place.
+  load = async (arbitratorDisputeID, { silent = false } = {}) => {
+    const version = ++this.loadVersion;
+    if (!silent) this.setState({ loading: true, ready: false, loadError: null, notFound: false, ...EMPTY_CASE });
+
+    let arbitratorDispute;
     try {
-      return await this.props.getRulingCallback(arbitrableAddress, disputeIDOnArbitratorSide);
-    } catch (err) {
-      console.error('Failed to get ruling:', err);
-      return null;
-    }
-  };
-
-  retrieveDisputeDetailsUsingArbitratorID = async (arbitratorDisputeID) => {
-    try {
-      const { arbitrated } = await this.props.getArbitratorDisputeCallback(arbitratorDisputeID);
-
-      if (!arbitrated) return;
-
-      this.setState({ arbitrated });
-      await this.commonFetchRoutine(arbitrated, arbitratorDisputeID);
+      arbitratorDispute = await this.props.getArbitratorDisputeCallback(arbitratorDisputeID);
     } catch (error) {
-      console.error('Failed to retrieve dispute details:', error);
-    } finally {
-      this.setState({ loading: false });
+      console.error(`Failed to load dispute ${arbitratorDisputeID}:`, error);
+      if (version === this.loadVersion) this.setState({ loading: false, ready: false, loadError: error?.message || String(error), ...EMPTY_CASE });
+      return;
     }
-  };
+    if (version !== this.loadVersion) return;
 
-  fetchInitialDisputeData = async (arbitrated, arbitratorDisputeID) => {
-    // Make each promise resilient by catching individual errors
-    const [
-      arbitratorDispute,
-      metaevidence,
-      arbitratorDisputeDetails,
-      ruling,
-      currentRuling,
-      disputeEvent,
-      getDisputeResult,
-      evidences,
-      multipliers
-    ] = await Promise.all([
-      this.props.getArbitratorDisputeCallback(arbitratorDisputeID).catch(err => {
-        console.warn('getArbitratorDisputeCallback failed:', err.message);
-        return {
-          period: "0",
-          lastPeriodChange: "0",
-          subcourtID: "0",
-          numberOfChoices: "2"
-        };
-      }),
-      this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID).catch(err => {
-        console.warn('getMetaEvidenceCallback failed:', err.message);
-        return null;
-      }),
-      this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID).catch(err => {
-        console.warn('getArbitratorDisputeDetailsCallback failed:', err.message);
-        return {
-          0: "0", // appeal cost
-          1: "0", // appeal period
-          2: ["0", "0", "0", "0"] // times per period
-        };
-      }),
-      this.getRuling(arbitrated, arbitratorDisputeID).catch(err => {
-        console.warn('getRuling failed:', err.message);
-        return null;
-      }),
-      this.getCurrentRuling(arbitratorDisputeID).catch(err => {
-        console.warn('getCurrentRuling failed:', err.message);
-        return null;
-      }),
-      this.props.getDisputeEventCallback(arbitrated, arbitratorDisputeID).catch(err => {
-        console.warn('getDisputeEventCallback failed:', err.message);
-        return {
-          blockNumber: 0,
-          args: {
-            _arbitrator: arbitrated,
-            _disputeID: arbitratorDisputeID,
-            _metaEvidenceID: 0,
-            _evidenceGroupID: 0
-          }
-        };
-      }),
-      this.props.getDisputeCallback(arbitratorDisputeID).catch(err => {
-        console.warn('getDisputeCallback failed:', err.message);
-        return {
-          id: arbitratorDisputeID,
-          arbitrated: arbitrated,
-          period: "0",
-          lastPeriodChange: "0",
-          numberOfChoices: "2"
-        };
-      }),
-      this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID).catch(err => {
-        console.warn('getEvidencesCallback failed:', err.message);
-        return [];
-      }),
-      this.props.getMultipliersCallback(arbitrated).catch(err => {
-        console.warn('getMultipliersCallback failed:', err.message);
-        return null;
-      })
-    ]);
-
-    return {
-      arbitratorDispute,
-      metaevidence,
-      arbitratorDisputeDetails,
-      ruling,
-      currentRuling,
-      disputeEvent,
-      getDisputeResult,
-      evidences,
-      multipliers
-    };
-  };
-
-  handleAppealPeriodLogic = async (arbitratorDispute, arbitratorDisputeID) => {
-    if (parseInt(arbitratorDispute.period, 10) >= 3) {
-      const [appealCost, appealPeriod] = await Promise.all([
-        this.props.getAppealCostCallback(arbitratorDisputeID),
-        this.props.getAppealPeriodCallback(arbitratorDisputeID)
-      ]);
-      this.setState({ appealCost, appealPeriod });
+    if (!arbitratorDispute) {
+      this.setState({ loading: false, ready: false, notFound: true, ...EMPTY_CASE });
+      return;
     }
-  };
 
-  handleExecutionPeriodLogic = async (arbitratorDispute, arbitrableDisputeID, arbitrated, appealDecisions, disputeEvent, contributions) => {
-    if (parseInt(arbitratorDispute.period, 10) === 4) {
-      const contributionPromises = Array.from(
-        { length: appealDecisions.length },
-        (_, i) => this.props.getContributionsCallback(
-          arbitrableDisputeID,
-          i,
-          arbitrated,
-          arbitratorDispute.period,
-          disputeEvent.blockNumber
-        )
-      );
-
-      const contributionsOfPastRounds = await Promise.all(contributionPromises);
-      const aggregatedContributions = this.sumObjectsByKey(...contributionsOfPastRounds, contributions);
-
-      try {
-        const totalWithdrawable = await this.props.getTotalWithdrawableAmountCallback(
-          arbitrableDisputeID,
-          Object.keys(aggregatedContributions),
-          arbitrated
-        );
-        this.setState({
-          totalWithdrawable: totalWithdrawable.amount,
-          aggregatedContributions,
-          selectedContribution: totalWithdrawable.ruling
-        });
-      } catch (err) {
-        console.error("Failed to get withdrawable amount:", err);
-      }
+    const arbitrated = arbitratorDispute.arbitrated;
+    if (typeof arbitrated !== "string" || !arbitrated) {
+      this.setState({ loading: false, ready: false, loadError: "The arbitrator returned a dispute without an arbitrable contract address.", ...EMPTY_CASE });
+      return;
     }
-  };
 
-  commonFetchRoutine = async (arbitrated, arbitratorDisputeID) => {
-    try {
-      const arbitrableDisputeID = await this.props.getArbitrableDisputeIDCallback(arbitrated, arbitratorDisputeID)
-        .catch(err => {
-          console.error("Failed to get arbitrable dispute id. Incompatible with IDisputeResolver.");
-          this.setState({ incompatible: true });
-          throw err;
-        });
+    //Everything the page shows is read before it renders, so it appears at once.
+    const coreData = await this.loadCoreData(arbitrated, arbitratorDisputeID);
+    if (version !== this.loadVersion) return;
+    this.setState({ arbitrated, arbitratorDispute, ...coreData, ready: true });
 
-      const disputeData = await this.fetchInitialDisputeData(arbitrated, arbitratorDisputeID);
-
-      //getArbitrableDisputeIDCallback resolves null when the arbitrable does not implement IDisputeResolver.
-      //Evidence submission then is currently only supported for governor contracts.
-      this.setState({
-        arbitrableDisputeID,
-        arbitratorDisputeID,
-        incompatible: arbitrableDisputeID == null && !isGovernorWithEvidenceSupport(this.props.network, arbitrated),
-        ...disputeData
-      });
-
-      // Make appeal-related calls more resilient
-      const appealDecisions = await this.props.getAppealDecisionCallback(
-        arbitratorDisputeID,
-        disputeData.disputeEvent?.blockNumber || 0
-      ).catch(err => {
-        console.warn("getAppealDecisionCallback failed:", err.message);
-        return [];
-      });
-
-      const [contributions, rulingFunded] = await Promise.all([
-        this.props.getContributionsCallback(
-          arbitrableDisputeID,
-          appealDecisions.length,
-          arbitrated,
-          disputeData.arbitratorDispute?.period,
-          appealDecisions.at(-1)?.appealedAtBlockNumber
-        ).catch(err => {
-          console.warn("getContributionsCallback failed:", err.message);
-          return {};
-        }),
-        this.props.getRulingFundedCallback(
-          arbitrableDisputeID,
-          appealDecisions.length,
-          arbitrated,
-          appealDecisions.at(-1)?.appealedAtBlockNumber
-        ).catch(err => {
-          console.warn("getRulingFundedCallback failed:", err.message);
-          return {};
-        })
-      ]);
-
-      this.setState({ contributions, appealDecisions, rulingFunded });
-
-      // Make these optional operations more resilient
-      try {
-        if (disputeData.arbitratorDispute) {
-          await this.handleAppealPeriodLogic(disputeData.arbitratorDispute, arbitratorDisputeID);
-        }
-      } catch (err) {
-        console.warn("handleAppealPeriodLogic failed:", err.message);
-      }
-
-      try {
-        if (disputeData.arbitratorDispute && disputeData.disputeEvent) {
-          await this.handleExecutionPeriodLogic(disputeData.arbitratorDispute, arbitrableDisputeID, arbitrated, appealDecisions, disputeData.disputeEvent, contributions);
-        }
-      } catch (err) {
-        console.warn("handleExecutionPeriodLogic failed:", err.message);
-      }
-
-    } catch (err) {
-      console.error("Error in commonFetchRoutine:", err);
-      // Only set incompatible if critical operations fail
-      // If we have MetaEvidence, don't mark as incompatible
-      if (!this.state.metaevidence) {
-        this.setState({ incompatible: true });
-      }
-    }
+    //The appeal card keeps its placeholder until the crowdfunding reads finish, then updates once.
+    const appealData = await this.loadAppealData(arbitrated, arbitratorDisputeID, arbitratorDispute, coreData);
+    if (version !== this.loadVersion) return;
+    this.setState({ ...appealData, loading: false });
   };
 
   reload = async () => {
-    try {
-      const [
-        arbitratorDispute,
-        evidences,
-        appealDecisions,
-        arbitratorDisputeDetails
-      ] = await Promise.all([
-        this.props.getArbitratorDisputeCallback(this.state.arbitratorDisputeID),
-        this.props.getEvidencesCallback(this.state.arbitrated, this.state.arbitratorDisputeID),
-        this.props.getAppealDecisionCallback(this.state.arbitratorDisputeID),
-        this.props.getArbitratorDisputeDetailsCallback(this.state.arbitratorDisputeID)
-      ]);
-
-      const contributions = await this.props.getContributionsCallback(
-        this.state.arbitrableDisputeID,
-        appealDecisions.length,
-        this.state.arbitrated,
-        arbitratorDispute.period
-      );
-
-      this.setState(() => ({
-        arbitratorDispute,
-        evidences,
-        appealDecisions,
-        arbitratorDisputeDetails,
-        contributions
-      }));
-
-    } catch (err) {
-      console.error('Failed to reload dispute data:', err);
-    }
+    if (this.state.arbitratorDisputeID) await this.load(this.state.arbitratorDisputeID, { silent: true });
   };
+
+  //The reads behind every section of the page, in parallel. The appeal decisions follow the dispute event they start from.
+  loadCoreData = async (arbitrated, arbitratorDisputeID) => {
+    const { network } = this.props;
+
+    const disputeEventAndAppeals = unavailable(() => this.props.getDisputeEventCallback(arbitrated, arbitratorDisputeID), "getDisputeEventCallback").then(async disputeEvent => ({
+      disputeEvent,
+      appealDecisions: await unavailable(() => this.props.getAppealDecisionCallback(arbitratorDisputeID, disputeEvent?.blockNumber || 0), "getAppealDecisionCallback"),
+    }));
+
+    const [arbitrableDisputeID, metaevidence, arbitratorDisputeDetails, ruling, currentRuling, { disputeEvent, appealDecisions }, evidences, multipliers] = await Promise.all([
+      unavailable(() => this.props.getArbitrableDisputeIDCallback(arbitrated, arbitratorDisputeID), "getArbitrableDisputeIDCallback"),
+      unavailable(() => this.props.getMetaEvidenceCallback(arbitrated, arbitratorDisputeID), "getMetaEvidenceCallback"),
+      unavailable(() => this.props.getArbitratorDisputeDetailsCallback(arbitratorDisputeID), "getArbitratorDisputeDetailsCallback"),
+      unavailable(() => this.props.getRulingCallback(arbitrated, arbitratorDisputeID), "getRulingCallback"),
+      unavailable(() => this.props.getCurrentRulingCallback(arbitratorDisputeID), "getCurrentRulingCallback"),
+      disputeEventAndAppeals,
+      unavailable(() => this.props.getEvidencesCallback(arbitrated, arbitratorDisputeID), "getEvidencesCallback"),
+      unavailable(() => this.props.getMultipliersCallback(arbitrated), "getMultipliersCallback"),
+    ]);
+
+    //getArbitrableDisputeIDCallback resolves null when the arbitrable does not implement IDisputeResolver.
+    //Evidence submission then is currently only supported for governor contracts.
+    const incompatible = arbitrableDisputeID == null && !isGovernorWithEvidenceSupport(network, arbitrated);
+
+    return { arbitrableDisputeID, incompatible, metaevidence, arbitratorDisputeDetails, ruling, currentRuling, disputeEvent, appealDecisions, evidences, multipliers };
+  };
+
+  //The crowdfunding state of the current round and, from the appeal period on, the appeal cost and period.
+  loadAppealData = async (arbitrated, arbitratorDisputeID, arbitratorDispute, { arbitrableDisputeID, appealDecisions, disputeEvent }) => {
+    const period = Number.parseInt(arbitratorDispute.period, 10);
+    //Without the appeal history the current round is unknown, so the crowdfunding state cannot be read either.
+    const hasAppealHistory = Array.isArray(appealDecisions);
+    const searchFrom = appealDecisions?.at(-1)?.appealedAtBlockNumber;
+
+    const [contributions, rulingFunded, appealCost, appealPeriod] = await Promise.all([
+      hasAppealHistory
+        ? unavailable(() => this.props.getContributionsCallback(arbitrableDisputeID, appealDecisions.length, arbitrated, arbitratorDispute.period, searchFrom), "getContributionsCallback")
+        : null,
+      hasAppealHistory
+        ? unavailable(() => this.props.getRulingFundedCallback(arbitrableDisputeID, appealDecisions.length, arbitrated, searchFrom), "getRulingFundedCallback")
+        : null,
+      period >= DISPUTE_PERIOD_APPEAL ? unavailable(() => this.props.getAppealCostCallback(arbitratorDisputeID), "getAppealCostCallback") : null,
+      period >= DISPUTE_PERIOD_APPEAL ? unavailable(() => this.props.getAppealPeriodCallback(arbitratorDisputeID), "getAppealPeriodCallback") : null,
+    ]);
+
+    const withdrawable =
+      period === DISPUTE_PERIOD_EXECUTION && hasAppealHistory && contributions
+        ? await this.loadWithdrawableAmount(arbitrated, arbitrableDisputeID, arbitratorDispute, appealDecisions, disputeEvent, contributions)
+        : {};
+
+    return { contributions, rulingFunded, appealCost, appealPeriod, ...withdrawable };
+  };
+
+  //Resolves the withdrawable amount of the connected account, or nothing when a contribution round could not be read.
+  loadWithdrawableAmount = async (arbitrated, arbitrableDisputeID, arbitratorDispute, appealDecisions, disputeEvent, contributions) => {
+    const contributionsOfPastRounds = await Promise.all(
+      Array.from({ length: appealDecisions.length }, (_, round) =>
+        unavailable(() => this.props.getContributionsCallback(arbitrableDisputeID, round, arbitrated, arbitratorDispute.period, disputeEvent?.blockNumber), "getContributionsCallback")
+      )
+    );
+    if (contributionsOfPastRounds.some(roundContributions => roundContributions == null)) return {};
+
+    const aggregatedContributions = this.sumObjectsByKey(...contributionsOfPastRounds, contributions);
+    const totalWithdrawable = await unavailable(
+      () => this.props.getTotalWithdrawableAmountCallback(arbitrableDisputeID, Object.keys(aggregatedContributions), arbitrated),
+      "getTotalWithdrawableAmountCallback"
+    );
+
+    return {
+      totalWithdrawable: totalWithdrawable?.amount ?? null,
+      aggregatedContributions,
+      selectedContribution: totalWithdrawable?.ruling ?? null,
+    };
+  };
+
+  getFeedbackStyle = () => ({
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '2rem'
+  });
 
   renderNoDisputeFound = () => {
     const { arbitratorDisputeID } = this.state;
     const { network } = this.props;
 
     return (
-      <div style={{
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '2rem'
-      }}>
+      <div style={this.getFeedbackStyle()}>
         <h2 style={{ fontSize: "18px" }}>Dispute with ID {arbitratorDisputeID} does not exist on this network.</h2>
         <button
           className="btn btn-primary"
@@ -406,6 +282,27 @@ class Interact extends React.Component {
         >
           View Ongoing Disputes
         </button>
+      </div>
+    );
+  };
+
+  renderLoadError = () => {
+    const { arbitratorDisputeID, loadError } = this.state;
+    const { network } = this.props;
+
+    return (
+      <div style={this.getFeedbackStyle()} role="alert">
+        <h2 style={{ fontSize: "18px" }}>Failed to load dispute with ID {arbitratorDisputeID}.</h2>
+        <p>There may be a problem with the RPC endpoint. Please try again.</p>
+        <p><small>{loadError}</small></p>
+        <div>
+          <button className="btn btn-primary mr-3" onClick={() => this.load(arbitratorDisputeID)}>
+            Try again
+          </button>
+          <button className="btn btn-secondary" onClick={() => window.location.href = `/${network}/ongoing`}>
+            View Ongoing Disputes
+          </button>
+        </div>
       </div>
     );
   };
@@ -449,15 +346,15 @@ class Interact extends React.Component {
     courtURL.searchParams.set("requiredChainId", network ?? "1");
 
     return (
-      <div>
+      <Form onSubmit={this.onSearchSubmit}>
         <Row>
           <Col>
-            <Form.Label>
+            <Form.Label htmlFor="arbitratorDisputeID">
               Search Disputes on <a href={courtURL.toString()} target="_blank" rel="noreferrer noopener">Court</a>
             </Form.Label>
             <InputGroup className={styles.search} size="md">
               <InputGroup.Prepend>
-                <InputGroup.Text>
+                <InputGroup.Text as="button" type="submit" aria-label="Open dispute">
                   <Magnifier />
                 </InputGroup.Text>
               </InputGroup.Prepend>
@@ -475,44 +372,53 @@ class Interact extends React.Component {
             </InputGroup>
           </Col>
         </Row>
-      </div>
+      </Form>
     );
   };
 
+  //The current ruling as the string DisputeDetails expects, or null when it could not be read.
   getCurrentRulingValue = () => {
     const { metaevidence, currentRuling } = this.state;
-    if (!currentRuling) return "0";
+    if (currentRuling == null) return null;
 
     // Always return string for consistent type handling (TypeScript preparation)
     // Hash types: convert to string to preserve precision for large numbers
-    // Non-hash types: apply parseInt then convert to string to maintain processing logic
     if (metaevidence?.metaEvidenceJSON?.rulingOptions?.type === "hash") {
       return String(currentRuling); // Preserve precision by converting to string
-    } else {
-      return String(parseInt(currentRuling, 10)); // Apply parseInt logic then convert to string
+    }
+
+    //Rulings are uint256 values; free-value questions use the whole range, which parseInt would round.
+    try {
+      return BigInt(currentRuling).toString();
+    } catch {
+      const parsed = Number.parseInt(currentRuling, 10);
+      return Number.isNaN(parsed) ? null : String(parsed);
     }
   };
 
   render() {
-    const { arbitrated, loading, incompatible, metaevidence } = this.state;
-    const { activeAddress } = this.props;
+    const { arbitratorDisputeID, loading, ready, loadError, notFound, arbitrated, incompatible, metaevidence } = this.state;
+    const { network } = this.props;
 
-    if (!loading && !arbitrated) {
-      return this.renderNoDisputeFound();
-    }
+    if (notFound) return this.renderNoDisputeFound();
+    if (loadError) return this.renderLoadError();
 
     const isGenericMetaEvidence = metaevidence?.metaEvidenceJSON?.category === "Non-Standard Contract";
-    const shouldShowWarning = incompatible || isGenericMetaEvidence;
+    const shouldShowWarning = ready && (incompatible || isGenericMetaEvidence);
 
     return (
       <>
         {shouldShowWarning && this.renderIncompatibleWarning()}
-        {arbitrated && this.renderMainContent()}
+        <main className={styles.interact} aria-busy={loading}>
+          {this.renderSearchForm(network)}
+          {loading && !ready && <div role="status" aria-live="polite">Fetching dispute #{arbitratorDisputeID}…</div>}
+          {ready && arbitrated && this.renderCase()}
+        </main>
       </>
     );
   }
 
-  renderMainContent = () => {
+  renderCase = () => {
     const {
       arbitratorDispute,
       arbitratorDisputeDetails,
@@ -539,17 +445,17 @@ class Interact extends React.Component {
       getAppealPeriodCallback,
       subcourts,
       subcourtDetails,
+      subcourtsLoading,
       network,
       web3Provider,
       isAuthenticated,
       isSigningIn,
       onSignIn,
+      now,
     } = this.props;
 
     return (
-      <main className={styles.interact}>
-        {arbitratorDisputeID && <Redirect to={`/${network}/cases/${arbitratorDisputeID}`} />}
-        {this.renderSearchForm(network)}
+      <>
         <DisputeSummary
           metaevidenceJSON={metaevidence?.metaEvidenceJSON}
           arbitrated={arbitrated}
@@ -559,7 +465,6 @@ class Interact extends React.Component {
           arbitratorChainID={metaevidence?.metaEvidenceJSON?.arbitratorChainID ?? network}
           chainID={network}
           web3Provider={web3Provider}
-          loading={loading}
         />
         <DisputeDetails
           activeAddress={activeAddress}
@@ -574,6 +479,7 @@ class Interact extends React.Component {
           loading={loading}
           subcourts={subcourts}
           subcourtDetails={subcourtDetails}
+          subcourtsLoading={subcourtsLoading}
           incompatible={incompatible}
           currentRuling={this.getCurrentRulingValue()}
           disputeEvent={disputeEvent}
@@ -593,8 +499,9 @@ class Interact extends React.Component {
           isAuthenticated={isAuthenticated}
           isSigningIn={isSigningIn}
           onSignIn={onSignIn}
+          now={now}
         />
-      </main>
+      </>
     );
   };
 }
@@ -603,6 +510,8 @@ Interact.propTypes = {
   isAuthenticated: PropTypes.bool.isRequired,
   isSigningIn: PropTypes.bool.isRequired,
   onSignIn: PropTypes.func.isRequired,
+  subcourtsLoading: PropTypes.bool,
+  now: PropTypes.func,
 };
 
 export default Interact;

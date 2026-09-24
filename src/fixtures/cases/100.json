@@ -1,0 +1,797 @@
+{
+  "chainId": "100",
+  "capturedAt": "2026-09-24T20:32:17.432Z",
+  "capturedAtBlock": 48403425,
+  "capturedAtTimestamp": 1790193640,
+  "notes": "Case page reads for the disputes of ongoing/<chain>.json, replayed from src/app.js (getArbitrableDisputeID, getDispute, currentRuling, appealCost, appealPeriod, Archon getDispute/getEvidence/getRuling, resolveAppealMultipliers, getAppealDecision, getContributions, getRulingFunded) with every call pinned to capturedAtBlock. Numeric contract values are decimal strings; the loader restores the BigInt types production uses. capturedAtTimestamp is the block timestamp and is the fixed \"now\" of fixture mode.",
+  "disputes": {
+    "1005": {
+      "arbitrableDisputeID": null,
+      "disputeDetails": {
+        "votesLengths": [
+          "3"
+        ],
+        "tokensAtStakePerJuror": [
+          "3150000000000000000000"
+        ],
+        "totalFeesForJurors": [
+          "99000000000000000000"
+        ],
+        "votesInEachRound": [
+          "3"
+        ],
+        "repartitionsInEachRound": [
+          "0"
+        ],
+        "penaltiesInEachRound": [
+          "0"
+        ]
+      },
+      "currentRuling": "2",
+      "appealCost": "231000000000000000000",
+      "appealPeriod": {
+        "start": "1789936805",
+        "end": "1790228405"
+      },
+      "disputeEvent": {
+        "metaEvidenceID": "10",
+        "evidenceGroupID": "24702547676404334644577856340705350446074469307981534148024619403351337565842",
+        "createdAt": 1789217890,
+        "blockNumber": 48212845,
+        "transactionHash": "0xe484bd6ec3dc4faa7fb44443546fea10fe536b2bf88c358d215572a451b9fe88"
+      },
+      "evidences": [
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "title": "ERC-20 tag missing “token”",
+            "description": "The fFRAX(WETH)-42 tag leaves “token” out of both its name and note. Address Tags rule 10 requires it, and ATQ requires returned tags to follow that rule. This Ethereum pair is itself an ERC-20 token: in Contract > Code, search for “abstract contract FraxlendPairCore” to see it inherits ERC20.\n\nSource: https://etherscan.io/address/0x76ff120ff669591b7cb5452995c0269437bea414#code"
+          },
+          "submittedAt": 1789217890,
+          "submittedBy": "0x9F4f53194C63541E6930F75Cd9D403CA4D3f6Ca4",
+          "blockNumber": 48212845,
+          "transactionHash": "0xe484bd6ec3dc4faa7fb44443546fea10fe536b2bf88c358d215572a451b9fe88"
+        }
+      ],
+      "ruling": null,
+      "multipliers": {
+        "winnerStakeMultiplier": "10000",
+        "loserStakeMultiplier": "20000",
+        "loserAppealPeriodMultiplier": "5000",
+        "denominator": "10000"
+      },
+      "appealDecisions": [],
+      "contributions": {},
+      "rulingFunded": []
+    },
+    "1007": {
+      "arbitrableDisputeID": null,
+      "disputeDetails": {
+        "votesLengths": [
+          "1"
+        ],
+        "tokensAtStakePerJuror": [
+          "1200000000000000000000"
+        ],
+        "totalFeesForJurors": [
+          "6000000000000000000"
+        ],
+        "votesInEachRound": [
+          "1"
+        ],
+        "repartitionsInEachRound": [
+          "0"
+        ],
+        "penaltiesInEachRound": [
+          "0"
+        ]
+      },
+      "currentRuling": "2",
+      "appealCost": "18000000000000000000",
+      "appealPeriod": {
+        "start": "1790058605",
+        "end": "1790253005"
+      },
+      "disputeEvent": {
+        "metaEvidenceID": "6",
+        "evidenceGroupID": "108209687223033332480046256493026298117565891542142018165967418402514483988749",
+        "createdAt": 1789625970,
+        "blockNumber": 48292150,
+        "transactionHash": "0x0b10c6071b14e4ded21424ae587798d1a5f4f243c36ec03c8055dfb35ac18718"
+      },
+      "evidences": [
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "name": "Registration",
+            "fileURI": "/ipfs/QmdAz1E1iTR4QJ6DwtweorEMgspCnm495YfSwKLiSJaowU"
+          },
+          "submittedAt": 1789233000,
+          "submittedBy": "0x593ff859965d327dF916aef7EB61fb6068Fb3d08",
+          "blockNumber": 48215820,
+          "transactionHash": "0xd7223ebb11d77b95281e3ccccfdd82fa6362af9f6c260e8cc06e4003f6506d54"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "name": "Challenge Justification",
+            "description": "Incorrect wallet Address\nMust Vote No."
+          },
+          "submittedAt": 1789625970,
+          "submittedBy": "0x54000024D140Ff879a91f99657C217e1256f5099",
+          "blockNumber": 48292150,
+          "transactionHash": "0x0b10c6071b14e4ded21424ae587798d1a5f4f243c36ec03c8055dfb35ac18718"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "name": "Third party evidence 1 ",
+            "description": "Dear juro vote NO to this registration because the wallet have to match with the one his holding in his hand .\n\nVote should be NO juro "
+          },
+          "submittedAt": 1789773565,
+          "submittedBy": "0x0f12C43226B975C948176784c891C1De61377Df3",
+          "blockNumber": 48321088,
+          "transactionHash": "0x7b4a7ea94194271c0171f55395c22d9a5e7f0effd21bc357f63d3b099f070fe9"
+        }
+      ],
+      "ruling": null,
+      "multipliers": {
+        "winnerStakeMultiplier": "10000",
+        "loserStakeMultiplier": "20000",
+        "loserAppealPeriodMultiplier": "5000",
+        "denominator": "10000"
+      },
+      "appealDecisions": [],
+      "contributions": {},
+      "rulingFunded": []
+    },
+    "1008": {
+      "arbitrableDisputeID": null,
+      "disputeDetails": {
+        "votesLengths": [
+          "1"
+        ],
+        "tokensAtStakePerJuror": [
+          "1200000000000000000000"
+        ],
+        "totalFeesForJurors": [
+          "6000000000000000000"
+        ],
+        "votesInEachRound": [
+          "1"
+        ],
+        "repartitionsInEachRound": [
+          "0"
+        ],
+        "penaltiesInEachRound": [
+          "0"
+        ]
+      },
+      "currentRuling": "1",
+      "appealCost": "18000000000000000000",
+      "appealPeriod": {
+        "start": "1790062205",
+        "end": "1790256605"
+      },
+      "disputeEvent": {
+        "metaEvidenceID": "6",
+        "evidenceGroupID": "68995273077962944902367349738275991066152865703542579767893432675432423164758",
+        "createdAt": 1789629090,
+        "blockNumber": 48292761,
+        "transactionHash": "0x91eee69e381fd17146832a1900c4ca2236a86c759715cb251e4a55d0a35b7079"
+      },
+      "evidences": [
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "name": "Registration",
+            "fileURI": "/ipfs/QmRanKcgPW7MqXqu52SUF3bqeqideHccv2wEUN9YifWrn3"
+          },
+          "submittedAt": 1788802985,
+          "submittedBy": "0xbF02Beb54EE587d22B8BA9cA6CDa71e7244C54b7",
+          "blockNumber": 48131276,
+          "transactionHash": "0x0c0d5a852f79f0e35020117f53aee23ebcb7fc36e04c380bce224acf703b129a"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "name": "Challenge Justification",
+            "description": "Poor lighting. Face is underexposed and the eye sockets are in shadow. Eyes are not clearly discernible: iris/pupil have no contrast. Policy requires internal facial features (including eyes) to be visible and lighting sufficient to discern them. This photo/video fails that."
+          },
+          "submittedAt": 1789629090,
+          "submittedBy": "0xC00e92FA884C4914e09e3478c1F93fC566347d3f",
+          "blockNumber": 48292761,
+          "transactionHash": "0x91eee69e381fd17146832a1900c4ca2236a86c759715cb251e4a55d0a35b7079"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "name": "Defense Evidence Against claims of incorrect submission ",
+            "description": "Good day Highly Esteemed Jurors,This is my defense to debunk the claims of wrong submission on my account. I have attached a document clearly detailing my defense against such unfounded claims and I ask that you look into this matter with fairness and due consideration. Thank you🙏",
+            "fileURI": "/ipfs/QmUM85vbVmHLSEBfWxU4Rb6ccpHAqZxNh7ZeH2rHyfJ9Vb"
+          },
+          "submittedAt": 1789688665,
+          "submittedBy": "0xbF02Beb54EE587d22B8BA9cA6CDa71e7244C54b7",
+          "blockNumber": 48304430,
+          "transactionHash": "0x61be4fdb720397a6d68368a53e8efdf3bfcdb24431e55311a4dc37fb8564f527"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "name": "Third Party Evidence",
+            "description": "Dear Esteemed Jurors,\n\nI am not the owner of this profile. I am writing to support the submitter. I have read the challenge. I believe the Juror should vote YES.\n\n An “Incorrect Submission” challenge is only for a real broken rule. The policy gives clear examples of a real broken rule: a mirrored photo, a hateful name, or using the same old video again. The official example of a wrong challenge is when someone complains about a part of the face that the policy does not even list. This challenger did not show a mirror. He did not show a fake edit. He did not show a covered face. He only said the lighting isn’t sufficient enough which is very wrong as the internal features of the face make in the face can be clearly told apart from each other. That is not one of the broken rules listed for this challenge type. And to crown it all the lighting is very ok and the person can easily be identified.\n\nThe policy says the photo must face the camera and sit the right way so the face can be recognised. That is the job of the photo: so people can tell who the person is. The same face is in the photo and in the video, and the video shows him holding the address. If jurors can tell it is the same living person, the photo has done its job. The policy does not use extra photo tests beyond that.\n\nFor these two reasons, the challenge is not valid. Please vote YES.\n\nThank you."
+          },
+          "submittedAt": 1789726565,
+          "submittedBy": "0x01f5CeF44A3728C6c8e085Df8152120725b2BB0F",
+          "blockNumber": 48311861,
+          "transactionHash": "0x353ff6aad02c507132b65f47f92e39713f3c35a2fb0e045f1fbb1e3b805fd118"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "name": "A supporting defense against the claims of wrong submission ",
+            "description": "Good day, Jurors.\n\nI would like to add in defense against the challenger’s claim of wrong submission that the policy’s lighting requirement does not state that every individual component of the eyes, such as the iris or pupil, must be separately discernible. Instead, for video submissions, it states that “Lighting conditions and recording device quality must be sufficient to discern internal facial features.” Therefore, the supposed question under the policy is whether the internal facial features, including the eyes, are sufficiently visible to be discerned, not whether the iris and pupil satisfy an additional standard that is not expressly provided in the policy. The required conditions were clearly met in his submission.\n\nIn my opinion, this claim of wrong submission should be rejected and be judged accordingly to the exact rule guiding the proof of humanity.\n\nAnd a YES vote should be given on this judgement.\n\nJust my own opinion."
+          },
+          "submittedAt": 1789746350,
+          "submittedBy": "0x945dfF3116d14f8Fe316AEc67F15279C46108b56",
+          "blockNumber": 48315756,
+          "transactionHash": "0xad6994c49ac4a95c87d29dae48a9858ac06eeb5ddde64187a7b8fe0d5c3f935f"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "name": "Third party evidence 1 ",
+            "description": "Dear honorable juro I can clearly see this peron face , the person that challenged the account is just try to stop this legitimate registration, I can clearly see the facial features.\n\nVote YES for this registration as he violated no rule.\nJuro pls VOTE yes "
+          },
+          "submittedAt": 1789773375,
+          "submittedBy": "0x0f12C43226B975C948176784c891C1De61377Df3",
+          "blockNumber": 48321052,
+          "transactionHash": "0xb9aa8a13a16b6b4088403f9b9ead3a8772b67fa7dfa682936263a9cd0fd1d460"
+        }
+      ],
+      "ruling": null,
+      "multipliers": {
+        "winnerStakeMultiplier": "10000",
+        "loserStakeMultiplier": "20000",
+        "loserAppealPeriodMultiplier": "5000",
+        "denominator": "10000"
+      },
+      "appealDecisions": [],
+      "contributions": {},
+      "rulingFunded": []
+    },
+    "1009": {
+      "arbitrableDisputeID": null,
+      "disputeDetails": {
+        "votesLengths": [
+          "1"
+        ],
+        "tokensAtStakePerJuror": [
+          "1200000000000000000000"
+        ],
+        "totalFeesForJurors": [
+          "6000000000000000000"
+        ],
+        "votesInEachRound": [
+          "1"
+        ],
+        "repartitionsInEachRound": [
+          "0"
+        ],
+        "penaltiesInEachRound": [
+          "0"
+        ]
+      },
+      "currentRuling": "2",
+      "appealCost": "18000000000000000000",
+      "appealPeriod": {
+        "start": "1790063405",
+        "end": "1790257805"
+      },
+      "disputeEvent": {
+        "metaEvidenceID": "6",
+        "evidenceGroupID": "7122802365454913244659789072781926482431646299770833480152640673453222751928",
+        "createdAt": 1789630790,
+        "blockNumber": 48293095,
+        "transactionHash": "0x8ffc21be9c94fc51df7472769615449432bca96503b75bb6ce25d48574642c1f"
+      },
+      "evidences": [
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "name": "Registration",
+            "fileURI": "/ipfs/QmeHGqUELQm8jUCAkR28KS32wGnSAZA2Q9etafR3cvN9p7"
+          },
+          "submittedAt": 1789215030,
+          "submittedBy": "0x385Ff0F4b36A07B8b4B05D1a8cefa0FF9D32E18B",
+          "blockNumber": 48212282,
+          "transactionHash": "0x26f3db56c6664efee76f5bf95192e0cef9a928d4990cb1460d86ca588a8c0377"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "name": "Challenge Justification",
+            "description": "Wallet address is the same with a previous challenged account"
+          },
+          "submittedAt": 1789630790,
+          "submittedBy": "0xa5E05C71b8684633e1CDd21600242E73A7D2d5a7",
+          "blockNumber": 48293095,
+          "transactionHash": "0x8ffc21be9c94fc51df7472769615449432bca96503b75bb6ce25d48574642c1f"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "name": "Third party evidence 1",
+            "description": "Dear juro dis regard this challenge because the wallet address the person is holding is the same with the account wallet address, so please I don't see any violations, maybe this human is a newbie and he doesn't know anything about challenged account that why he has not put up an evidence against his challenge, I seek you critically review this case as this challenged account has not committed any offense \n\n\nVote YES my honorable juro "
+          },
+          "submittedAt": 1789773020,
+          "submittedBy": "0x0f12C43226B975C948176784c891C1De61377Df3",
+          "blockNumber": 48320986,
+          "transactionHash": "0x16b18794901bec023b4ff52f8bcdea878c8c6daa5511e5aeabf6c01d9f3e39fd"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "name": "Third party evidence 2",
+            "description": "Please VOTE YES , my honorable juro, this person might be a newbie and doesn't know that his account was challenged.\n\nThis challenger of this account state false evidence, the wallet address this peron is holding is same with the account wallet address, which then makes the challenger reason false .\n\n\nPlease my honorable juro , let's save the integrity of the ecosystem, please vote YES my honorable juro \n\nVote YES please "
+          },
+          "submittedAt": 1789773210,
+          "submittedBy": "0x0f12C43226B975C948176784c891C1De61377Df3",
+          "blockNumber": 48321023,
+          "transactionHash": "0x799a2dcf031889cc4dd4789e232c343882d96d2626f38d7a69b8cf015fbf6ec4"
+        }
+      ],
+      "ruling": null,
+      "multipliers": {
+        "winnerStakeMultiplier": "10000",
+        "loserStakeMultiplier": "20000",
+        "loserAppealPeriodMultiplier": "5000",
+        "denominator": "10000"
+      },
+      "appealDecisions": [],
+      "contributions": {},
+      "rulingFunded": []
+    },
+    "1010": {
+      "arbitrableDisputeID": null,
+      "disputeDetails": {
+        "votesLengths": [
+          "3"
+        ],
+        "tokensAtStakePerJuror": [
+          "672000000000000000000"
+        ],
+        "totalFeesForJurors": [
+          "21600000000000000000"
+        ],
+        "votesInEachRound": [
+          "0"
+        ],
+        "repartitionsInEachRound": [
+          "0"
+        ],
+        "penaltiesInEachRound": [
+          "0"
+        ]
+      },
+      "currentRuling": "0",
+      "appealCost": "50400000000000000000",
+      "appealPeriod": {
+        "start": "0",
+        "end": "0"
+      },
+      "disputeEvent": {
+        "metaEvidenceID": "22",
+        "evidenceGroupID": "25983383808175946363406780609199443401803547285967825167487955176228167239635",
+        "createdAt": 1789919605,
+        "blockNumber": 48349697,
+        "transactionHash": "0x404e32a37e31c0ff5312a96931c9a1ea57ae02d5aec9c50f7c29869bfb94e336"
+      },
+      "evidences": [
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "title": "Challenge Justification",
+            "description": "The token name is not SODA; it's SODAX. I will prove this with 3 pieces of evidence, each with its own evidence post, to make it easier to follow.\nFirstly, by going to this block explorer detail page associated with the submitted token contract: https://snowscan.xyz/address/0x390ceed555905ec225da330a188ea04e85570f00, under the \"Token Tracker\" info section, \"SODAX (SODA)\" is observed (Shown in the attached screenshot). This particular explorer (i.e., Snowscan) and many others usually follow a token naming format, which is the token name, followed by a space, and then the token symbol or ticker in parentheses (i.e. \"Token Name (Token Symbol/Ticker)\" ).  All ERC20 tokens follow this naming format on this explorer. For example, under the \"Token Tracker\" section on the associated explorer detail page for the Tether token (i.e. https://snowscan.xyz/address/0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7) is TetherToken (USDt), where \"TetherToken\" is the token name and \"USDT\" is the token symbol/ticker. So, following this token naming format, the token name for the submitted token contract would be \"SODAX\", not SODA.",
+            "fileURI": "/ipfs/QmTkBkh5cyDBukYRn1y4MfAwcSY55qnswS2bcTuSBKGBQ7",
+            "fileTypeExtension": ".png"
+          },
+          "submittedAt": 1789919605,
+          "submittedBy": "0xBE8d8Bd3cD771279b3F33149e77514aE086BcC8A",
+          "blockNumber": 48349697,
+          "transactionHash": "0x404e32a37e31c0ff5312a96931c9a1ea57ae02d5aec9c50f7c29869bfb94e336"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "title": "2nd Evidence",
+            "description": "By navigating to the read contract section on an Avalanche C-Chain block explorer detail page associated with the submitted token contract, you could verify its token name and token symbol/ticker. The token contract is unverified on Snowscan.xyz, so we would be using dedaub.com, a very reputable contract decompilation platform,  to decompile the contract so that we can read its contract information. By navigating to the read contract section on the link generated after the token contract has been decompiled (i.e. https://app.dedaub.com/avalanche/address/0x390ceed555905ec225da330a188ea04e85570f00/read). You would note that the value under the \"name\" field shows \"SODAX\", while the value under the \"symbol\" field is \"SODA\" (Shown in the attached screenshot). So, the token name is \"SODAX\", not \"SODA\", as verified.",
+            "fileURI": "/ipfs/QmQQB63xsPop72sMh7BKVknQPtWvoiqKafhNUuGJtKfEa5",
+            "fileTypeExtension": ".png"
+          },
+          "submittedAt": 1789919805,
+          "submittedBy": "0xBE8d8Bd3cD771279b3F33149e77514aE086BcC8A",
+          "blockNumber": 48349736,
+          "transactionHash": "0xefcbb85672c6deaa879cfb97d124c270152cc44343098dcece917b822cbbd03c"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "title": "3rd Evidence",
+            "description": "Finally, I verified with the SODAX team on Discord (i.e. https://discord.com/invite/xM2Nh4S6vN) what the token name and symbol are. They said, \"fyi the asset is SODAX and the ticker is SODA\" (Shown in the attached screenshot). In the context of crypto tokens, a token ticker is the same as its token symbol, and the asset is the same as the token itself, whose name is SODAX. Also, since they explicitly state that the token ticker/symbol is \"SODA\", the token name can't also be \"SODA\". This verifies the token name is indeed \"SODAX\", not \"SODA\". \n\nThe submitter must have been confused due to the ticker or symbol \"SODA\" being used extensively on the tokenomics page here: https://www.sodax.com/holders/soda-token. This is similar to \"USDT\" being extensively used on the tokenomics page and confusing for its token name, \"Tether\".",
+            "fileURI": "/ipfs/QmXVmnF6dLYjtFQ2WbJroNf8D1AuLegCYPQfvBj61Q2q15",
+            "fileTypeExtension": ".png"
+          },
+          "submittedAt": 1789920075,
+          "submittedBy": "0xBE8d8Bd3cD771279b3F33149e77514aE086BcC8A",
+          "blockNumber": 48349789,
+          "transactionHash": "0xe3aece0c249bb7a5483884dc26ef48ec51ee74bdb81029b027a6c73ce7004df1"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "title": "JURORS PLEASE READ",
+            "description": "The challenge conflates the protocol name with the token name. On SODAX’s official website (https://www.sodax.com/holders/soda-token), the page is explicitly titled “SODA Token” and states: “SODA is the fixed supply asset…” and “SODA is a native token…”. The attached screenshot also shows the official navigation labels “SODA Token”, “Buy SODA” and “SODA Tokenomics”. The same page separately describes “SODAX” as the cross-network execution and liquidity system, clearly distinguishing SODAX (protocol) from SODA (token). Explorer/decompiler metadata showing name() = SODAX does not erase the project’s own first-party naming. Likewise, the Discord wording only shows inconsistent terminology, not that “SODA” is invalid. Since the official issuer repeatedly identifies the token as SODA, the submission is supported by direct first-party evidence and should not be rejected."
+          },
+          "submittedAt": 1789990380,
+          "submittedBy": "0xd5b2deB4F30781d301A84b8CB5a5027BC5964b8e",
+          "blockNumber": 48363587,
+          "transactionHash": "0xae777e764da1720e27a1a65402918de8b4981c6631c779303889c9df9a2cb0b4"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "title": "OFFICIAL TOKEN NAME",
+            "description": "Part 2 – Policy\n\nTHE POLICIES NAME directly supports the submission: “If there is more than one official name, any of them is acceptable, except in the case of a rebranding.” Here, SODA is clearly used as an official token name by the project itself on its official website, including the explicit labels “SODA Token” and “SODA Tokenomics.” Therefore, even if “SODAX” is also considered an official name based on the contract metadata, the policy expressly states that any official name must be accepted. There is no evidence of a rebranding from SODA to SODAX. Accordingly, the existence of “SODAX” does not invalidate the submitted name SODA, and the challenge should be rejected.\n\nTHE TOKEN HAS TO BE ACCEPTED."
+          },
+          "submittedAt": 1789990510,
+          "submittedBy": "0xd5b2deB4F30781d301A84b8CB5a5027BC5964b8e",
+          "blockNumber": 48363613,
+          "transactionHash": "0xcb0fbc8d8fdbf2f1f49e67e71252aa359fb7877c9398de1be1a376afb5859972"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "title": "Part 3  .... Official Brand Kit",
+            "description": "Further first-party evidence comes from SODAX’s official brand kit. After downloading the “SODAX-brand-kit”, there is a dedicated folder named “Token”, and the files inside are explicitly named “Soda token.” This is significant because the brand kit is the project’s own official branding material, specifically intended to define how its protocol, logos, symbol, and token should be identified. The fact that the token assets themselves are labeled “Soda token” independently confirms that SODA is an official name used by the SODAX team for the token, further supporting the submission and contradicting the claim that the token can only be named “SODAX.”",
+            "fileURI": "/ipfs/QmUUw4hiW7PRkrDZEeUh8EF1d9TcDX7xjuz6A8Zk55eNvh",
+            "fileTypeExtension": "png",
+            "type": "image/png"
+          },
+          "submittedAt": 1789990780,
+          "submittedBy": "0xd5b2deB4F30781d301A84b8CB5a5027BC5964b8e",
+          "blockNumber": 48363665,
+          "transactionHash": "0x0d9bbaaf348344c588745e78e8edddbc78fde104526d31a5dbe3e625bdf59a7f"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "title": "Part 4 – Official SODAX Help Center",
+            "description": "SODAX’s official Help Center provides an explicit clarification of the naming. When asked whether the correct name is SODA ($SODA) or SODAX $SODA, its support AI responded: “SODA → the token,” “$SODA → the token symbol,” and “SODAX → the project/protocol.” It further states that the normal format is “SODA ($SODA)” and summarizes: “SODAX = project” and “SODA / $SODA = token.” This directly addresses the challenger’s argument: SODAX identifies the project/protocol, while SODA is the token name and $SODA its symbol. This is fully consistent with the official website, the “SODA Token” navigation, and the project’s official brand kit.",
+            "fileURI": "/ipfs/QmeSRcYd2Cdhi9tw6uq47DB4WeZrjpwWye1S9VmqG2v49j",
+            "fileTypeExtension": "png",
+            "type": "image/png"
+          },
+          "submittedAt": 1789990940,
+          "submittedBy": "0xd5b2deB4F30781d301A84b8CB5a5027BC5964b8e",
+          "blockNumber": 48363696,
+          "transactionHash": "0xe85d777eb9fe9499429404ac7c0776ddf0b0da0dfa6e2712c800adddb0e96e30"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "title": "Team confirms explicitly that the token name is SODAX",
+            "description": "I'm not conflating the token name and the project name. All 3 pieces of evidence point to \"SODAX\" being the token name. A SODAX team member on Discord explicitly states that the asset/token name is SODAX and the ticker/symbol is SODA. An official confirmation like this should be enough to clear all doubts.  The official confirmation doesn't include another name (e.g. SODA) for the token as stated by the submitter.  A lot of projects tend to use more of the token ticker/symbol to refer to their tokens on their platform; that doesn't mean it is the token name.  For example, USD Coin (USDC) refer to its token using its ticker \"USDC\" on the homepage of its website (i.e. https://www.usdc.com/?r=0), instead of its token name, \"USD Coin\". The same is true for Synthetix's Synthetix Network Token (SNX) here: https://sips.synthetix.io/sips/sip-315/, where the token ticker, SNX, is used extensively. The fact that the ticker is used extensively in both examples doesn't automatically make them token names. And AIs are generally known for being quite unreliable when fact-checking; it's usually best to confirm with the project team. The official confirmation of which I got from Discord."
+          },
+          "submittedAt": 1789993515,
+          "submittedBy": "0xBE8d8Bd3cD771279b3F33149e77514aE086BcC8A",
+          "blockNumber": 48364197,
+          "transactionHash": "0xe46ca0b7cf65d10e756427395ed0cf11977b93f626b95ecc30bdda4e4fcf53a7"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "title": "Direct Confirmation from a Team Member that the name is SODA",
+            "description": "To remove any remaining doubt, I took the time to contact an actual member of the team directly, instead of relying on the AI support agent.\n\n I explicitly asked whether the correct token name is SODA ($SODA), and the team member confirmed it twice: “It’s SODA” and “Correct, it’s SODA.”\n\nThis is direct first-party confirmation from someone on the team that SODA is the token name and $SODA is its ticker/symbol. Together with the official website, brand kit, and the applicable naming policy, this further confirms that SODA is a valid official name. \n\nTherefore, the challenge should be rejected. \n\nVote YES ADD IT.",
+            "fileURI": "/ipfs/QmeHD9FkGc5RTEUMh5hUJYDV4NhUHMpLmJQkK3d9WfBuxu",
+            "fileTypeExtension": "png",
+            "type": "image/png"
+          },
+          "submittedAt": 1789995180,
+          "submittedBy": "0xd5b2deB4F30781d301A84b8CB5a5027BC5964b8e",
+          "blockNumber": 48364522,
+          "transactionHash": "0xce1bea82bd88064916aaf1ac0118dfdccf39418e5b0d3fd8613801271908e280"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "title": "Core Team member vs ad hoc staff member confirmation",
+            "description": "Lol, it's very interesting that we have 2 different confirmations from the team. The support (i.e. Hazy)  that the submitter got his confirmation from seems to think that \"$\" in \"$SODA\" indicates a hashtag on social media. Hazy doesn't even know that, in the context of crypto tokens, it denotes a token's ticker symbol. This alone makes any confirmation given by this particular support  (i.e. Hazy) regarding tokens questionable.\n\nAlso, Hazy is not an 'actual' team member; he is simply a freelance community manager/support  whom the actual SODAX team members hired to handle support/community management of their platforms. He is simply an external party on a contract job. This is shown in the attached screenshot of the joined Hazy's and John's SODAX Discord server profiles. While it's clearly shown that John, who confirmed that SODAX is the token name, is an actual team member, as his profile has the \"SODAX Team\" role. Hazy is shown to be just a community manager/support, as no \"SODAX Team\" role can be seen on his profile. Also, going to Hazy's personal link shown on his Discord profile (i.e. https://hasantoprak.xyz/), you would see he does community management/support as a business for multiple projects. He is currently hired as a community manager for about 3 different projects aside from SODAX. So, how is he a team member? At best, he is an ad hoc staff member. That would explain the incorrect and surface-level confirmation he gave the submitter\n\nSo, jurors, which of the confirmations would you rather regard as valid? Is it the confirmation from a core team member that most likely knows the SODAX project thoroughly, or the confirmation from some freelancer that just happened to get hired by the actual team members and likely has a surface-level knowledge of the SODAX project compared to the actual team?",
+            "fileURI": "/ipfs/QmcGMCPqMUfTCWZ8UoHokFK9vCvPp3r71hcNRE2dHKALu1",
+            "fileTypeExtension": ".png"
+          },
+          "submittedAt": 1790005810,
+          "submittedBy": "0xBE8d8Bd3cD771279b3F33149e77514aE086BcC8A",
+          "blockNumber": 48366607,
+          "transactionHash": "0xff150f03d8134a70f87ee59a2f7913f8e00de1582a5294751d18671483bc1dd1"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "title": "Token name on CoinMarketCap is SODAX.",
+            "description": "CoinMarketCap, a very reputable crypto token tracking platform, shows the token name as \"SODAX\" and the token ticker/symbol as \"SODA\", as seen here: https://coinmarketcap.com/currencies/sodax/.\n\nTokens published on CoinMarketCap are usually listed by their owners, so it's safe to say that the SODAX team themselves listed the SODAX token on CoinMarketCap."
+          },
+          "submittedAt": 1790007030,
+          "submittedBy": "0xBE8d8Bd3cD771279b3F33149e77514aE086BcC8A",
+          "blockNumber": 48366847,
+          "transactionHash": "0x03965de27d51b8d826ebd0705d65d7ba0c81a8c1f9c35e24ac4f2f7b695bc606"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "title": "SODA IS CONFIRMED BY official SOURCES",
+            "description": "The evidence already confirms that SODA is the official token name and $SODA is its ticker/symbol. This is supported by multiple first-party sources: the official website uses “SODA Token” and “SODA Tokenomics”; the official brand kit includes files named “Soda token”; the project’s official support AI confirmed SODA = token and $SODA = symbol; and a human representative of the project independently confirmed twice that the correct token is SODA / $SODA.\n\nMost importantly, the policy states:\n\n“IF THERE IS MORE THAN ONE OFFICIAL NAME, ANY OF THEM IS ACCEPTABLE, EXCEPT IN THE CASE OF A REBRANDING.”\n\nTherefore, even if another source uses a different naming convention, that does not invalidate SODA, which is clearly supported by official project-controlled evidence. \n\nThe challenge should be rejected AND THE TOKEN HAS TO BE ADD IT TO THE LIST."
+          },
+          "submittedAt": 1790077400,
+          "submittedBy": "0xd5b2deB4F30781d301A84b8CB5a5027BC5964b8e",
+          "blockNumber": 48380649,
+          "transactionHash": "0xb2b09bc0e83447d265cc50be8cffa5eccbf2847ca98cd474680f34209519664d"
+        }
+      ],
+      "ruling": null,
+      "multipliers": {
+        "winnerStakeMultiplier": "10000",
+        "loserStakeMultiplier": "20000",
+        "loserAppealPeriodMultiplier": "5000",
+        "denominator": "10000"
+      },
+      "appealDecisions": [],
+      "contributions": {},
+      "rulingFunded": []
+    },
+    "1011": {
+      "arbitrableDisputeID": null,
+      "disputeDetails": {
+        "votesLengths": [
+          "1"
+        ],
+        "tokensAtStakePerJuror": [
+          "1200000000000000000000"
+        ],
+        "totalFeesForJurors": [
+          "6000000000000000000"
+        ],
+        "votesInEachRound": [
+          "0"
+        ],
+        "repartitionsInEachRound": [
+          "0"
+        ],
+        "penaltiesInEachRound": [
+          "0"
+        ]
+      },
+      "currentRuling": "0",
+      "appealCost": "18000000000000000000",
+      "appealPeriod": {
+        "start": "0",
+        "end": "0"
+      },
+      "disputeEvent": {
+        "metaEvidenceID": "6",
+        "evidenceGroupID": "13732939642590828766414402706968898659361671741718086829093536482232078054290",
+        "createdAt": 1789981040,
+        "blockNumber": 48361756,
+        "transactionHash": "0xc3d26363cab93a282f2bc48bd8978f12efb47df7e1f7045b5e256b56760eecdc"
+      },
+      "evidences": [
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "name": "Registration",
+            "fileURI": "/ipfs/QmfFHPL9uNuCG9xpCpjttfmbw7Lr8cKLYA7Ax8PpfgGK3y"
+          },
+          "submittedAt": 1789486285,
+          "submittedBy": "0x118b4BBC6a29C7F8EfE9Fa37655A3A63CaBF5c4B",
+          "blockNumber": 48265173,
+          "transactionHash": "0x34cddaa5699a2783913423320d5ddf4a433525d16d69c35aa177ca821c110268"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "name": "Challenge Justification",
+            "description": "The individual presented in this profile appears to be a minor, which raises significant concerns regarding the actual control and ownership of the associated wallet.\nThe circumstances may indicate that an adult is controlling the wallet while using a minor to create or verify profiles for the purpose of farming rewards.\n\nDear Juror, Allowing profiles involving minors without sufficient scrutiny could create a precedent where vulnerable children are photographed or recorded and submitted to Proof of Humanity by adults seeking to obtain rewards.\n\nThe concern is therefore not only about this individual profile, but also about preventing the potential exploitation of children for financial gain and maintaining the integrity of the verification process.\n"
+          },
+          "submittedAt": 1789981040,
+          "submittedBy": "0x46105cdB8CcC1eDD53A5d145d14C188903b8b814",
+          "blockNumber": 48361756,
+          "transactionHash": "0xc3d26363cab93a282f2bc48bd8978f12efb47df7e1f7045b5e256b56760eecdc"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "name": "Please Vote YES Honourable Juror",
+            "description": "Dear Honourable Juror,\n\nVote YES. This account is mine.\n\nI am Chidubem King. I made this profile. I hold this wallet. I am the one holding this address. Nobody else is running this account for me.\n\nThe challenger has no second profile and no proof that another person owns this wallet. They only said I look young. That is not evidence.\n\nCheck the file with this message. You will see my WAEC card with my name, my date of birth, and the year I wrote the exam, 2021. You will also see my UBA ATM MASTERCARD with my name on it. Those documents match this profile. I handle my own records and my own money, and I handle this wallet the same way.\n\nI own this account. Please vote YES.\n\nChidubem King (Kingsley- KING for short)",
+            "fileURI": "/ipfs/QmbT6FGnhkmYbVJSDsSrfd19fxB4perzaVXiHiX3KzSfnp"
+          },
+          "submittedAt": 1789994365,
+          "submittedBy": "0x118b4BBC6a29C7F8EfE9Fa37655A3A63CaBF5c4B",
+          "blockNumber": 48364366,
+          "transactionHash": "0x35ffb0f87292e833c5adfc2866192924b3b38354585758b73113d75808c077bb"
+        },
+        {
+          "evidenceJSONValid": true,
+          "fileValid": true,
+          "evidenceJSON": {
+            "name": "Please Vote Yes Honourable Juror",
+            "description": "Dear Juror,\nI am also adding this video to support the evidence I already submitted.\nSo far I have three proofs that I own this account: this video, where I speak for myself and show that I am the owner of this account and I'm not a minor, my WAEC ID card, and my UBA Mastercard.\nPlease watch the video after this note, \n\nthen vote Yes.\nChidubem King",
+            "fileURI": "/ipfs/QmZieKZ3CtZWF3ty2m626DvMx1r4rwc83cKfHHJ7aEZA3D"
+          },
+          "submittedAt": 1790009995,
+          "submittedBy": "0x118b4BBC6a29C7F8EfE9Fa37655A3A63CaBF5c4B",
+          "blockNumber": 48367430,
+          "transactionHash": "0xa4cc3b3c9bcdc237c25388d392da0495e2bfd0a8cf9aea8fc2a54400f9b7f790"
+        }
+      ],
+      "ruling": null,
+      "multipliers": {
+        "winnerStakeMultiplier": "10000",
+        "loserStakeMultiplier": "20000",
+        "loserAppealPeriodMultiplier": "5000",
+        "denominator": "10000"
+      },
+      "appealDecisions": [],
+      "contributions": {},
+      "rulingFunded": []
+    },
+    "1012": {
+      "arbitrableDisputeID": null,
+      "disputeDetails": {
+        "votesLengths": [
+          "3"
+        ],
+        "tokensAtStakePerJuror": [
+          "672000000000000000000"
+        ],
+        "totalFeesForJurors": [
+          "21600000000000000000"
+        ],
+        "votesInEachRound": [
+          "0"
+        ],
+        "repartitionsInEachRound": [
+          "0"
+        ],
+        "penaltiesInEachRound": [
+          "0"
+        ]
+      },
+      "currentRuling": "0",
+      "appealCost": "50400000000000000000",
+      "appealPeriod": {
+        "start": "0",
+        "end": "0"
+      },
+      "disputeEvent": {
+        "metaEvidenceID": "22",
+        "evidenceGroupID": "95271089607921295852197909212130592538322128115844025143608722926075941847940",
+        "createdAt": 1790077420,
+        "blockNumber": 48380653,
+        "transactionHash": "0x96b559f5f703b10834ffd083565c1dd084251a1c2aff88e3c2d8af155a2252ea"
+      },
+      "evidences": [
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "title": "Challenge Justification",
+            "description": "The token logo exceeds 1 MB"
+          },
+          "submittedAt": 1790077420,
+          "submittedBy": "0x9F4f53194C63541E6930F75Cd9D403CA4D3f6Ca4",
+          "blockNumber": 48380653,
+          "transactionHash": "0x96b559f5f703b10834ffd083565c1dd084251a1c2aff88e3c2d8af155a2252ea"
+        }
+      ],
+      "ruling": null,
+      "multipliers": {
+        "winnerStakeMultiplier": "10000",
+        "loserStakeMultiplier": "20000",
+        "loserAppealPeriodMultiplier": "5000",
+        "denominator": "10000"
+      },
+      "appealDecisions": [],
+      "contributions": {},
+      "rulingFunded": []
+    },
+    "1013": {
+      "arbitrableDisputeID": null,
+      "disputeDetails": {
+        "votesLengths": [
+          "3"
+        ],
+        "tokensAtStakePerJuror": [
+          "672000000000000000000"
+        ],
+        "totalFeesForJurors": [
+          "21600000000000000000"
+        ],
+        "votesInEachRound": [
+          "0"
+        ],
+        "repartitionsInEachRound": [
+          "0"
+        ],
+        "penaltiesInEachRound": [
+          "0"
+        ]
+      },
+      "currentRuling": "0",
+      "appealCost": "50400000000000000000",
+      "appealPeriod": {
+        "start": "0",
+        "end": "0"
+      },
+      "disputeEvent": {
+        "metaEvidenceID": "26",
+        "evidenceGroupID": "32268179543114211381486879075996760159286844614134234008268593869045772487112",
+        "createdAt": 1790082875,
+        "blockNumber": 48381715,
+        "transactionHash": "0x68353bebd4f75ee5ca32bee7330e268b6785bf7db3f13241fa11c80210eb14cc"
+      },
+      "evidences": [
+        {
+          "evidenceJSONValid": true,
+          "fileValid": false,
+          "evidenceJSON": {
+            "title": "Challenge Justification",
+            "description": "The project name is outdated: Dex Finance changed its brand to DexFi in November 2024. See the announcement's New Branding section. Rule 4 requires the rebranded name.\nhttps://medium.com/@DexFinance/v4-vaults-ailm-live-in-public-beta-3387b57e034f"
+          },
+          "submittedAt": 1790082875,
+          "submittedBy": "0x9F4f53194C63541E6930F75Cd9D403CA4D3f6Ca4",
+          "blockNumber": 48381715,
+          "transactionHash": "0x68353bebd4f75ee5ca32bee7330e268b6785bf7db3f13241fa11c80210eb14cc"
+        }
+      ],
+      "ruling": null,
+      "multipliers": {
+        "winnerStakeMultiplier": "10000",
+        "loserStakeMultiplier": "20000",
+        "loserAppealPeriodMultiplier": "5000",
+        "denominator": "10000"
+      },
+      "appealDecisions": [],
+      "contributions": {},
+      "rulingFunded": []
+    }
+  }
+}

@@ -93,7 +93,7 @@ class CrowdfundingCard extends React.Component {
 
           <div className={styles.countdown}>
             <Hourglass className="red mr-1" />
-            <Countdown className={styles.countdown} date={1000 * parseInt(appealPeriodEnd, 10)} renderer={this.renderCountdown} />
+            <Countdown className={styles.countdown} date={1000 * parseInt(appealPeriodEnd, 10)} now={this.props.now} renderer={this.renderCountdown} />
           </div>
           {error && (
             <AlertMessage extraClass="mb-3" type="danger" title="Invalid Input" content={error} />

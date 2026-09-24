@@ -3,6 +3,8 @@ import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 import Countdown, { zeroPad } from "react-countdown";
 import styles from "components/styles/ongoing-card.module.css";
 import { ReactComponent as Hourglass } from "assets/images/hourglass.svg";
+//The clock the countdowns tick against: the real one, or the fixed one of fixture mode.
+import { getNow } from "../fixtures";
 
 //Use the same safe title for rendering and searching untrusted meta-evidence.
 export const getDisputeTitle = title => {
@@ -65,6 +67,7 @@ class OngoingCard extends React.Component {
               {remainingTime == null ? <span>Unavailable</span> : (
                 <Countdown
                   date={remainingTime}
+                  now={getNow}
                   renderer={props => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>}
                 />
               )}

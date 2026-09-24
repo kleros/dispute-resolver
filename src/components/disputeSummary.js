@@ -10,6 +10,17 @@ import ReactMarkdown from "react-markdown";
 import { urlNormalize } from "../utils/urlNormalizer";
 import { isSafeNavigationUrl } from "../utils/urlValidation";
 
+//Meta-evidence comes from the arbitrable and may not follow the standard; chain IDs it names may be unknown here.
+const readOnlyRpcUrl = chainId => {
+  try {
+    return getReadOnlyRpcUrl({ chainId });
+  } catch {
+    return undefined;
+  }
+};
+
+const isNonEmptyString = value => typeof value === "string" && value.trim() !== "";
+
 class DisputeSummary extends React.Component {
   getArbitratorConfig() {
     const { arbitratorDisputeID, arbitratorAddress, arbitratorChainID, chainID, web3Provider } = this.props;
@@ -17,7 +28,7 @@ class DisputeSummary extends React.Component {
       disputeID: arbitratorDisputeID,
       chainID: Number.parseInt(chainID, 10),
       arbitratorContractAddress: arbitratorAddress,
-      arbitratorJsonRpcUrl: getReadOnlyRpcUrl({ chainId: arbitratorChainID }) ?? web3Provider,
+      arbitratorJsonRpcUrl: readOnlyRpcUrl(arbitratorChainID) ?? web3Provider,
       arbitratorChainID: Number.parseInt(arbitratorChainID, 10),
     };
   }
@@ -27,7 +38,7 @@ class DisputeSummary extends React.Component {
     return {
       arbitrableContractAddress: arbitrated,
       arbitrableChainID: Number.parseInt(arbitrableChainID, 10),
-      arbitrableJsonRpcUrl: getReadOnlyRpcUrl({ chainId: arbitrableChainID }) ?? web3Provider,
+      arbitrableJsonRpcUrl: readOnlyRpcUrl(arbitrableChainID) ?? web3Provider,
     };
   }
 
@@ -35,7 +46,7 @@ class DisputeSummary extends React.Component {
     const { web3Provider, chainID } = this.props;
     // Convert web3Provider object to URL string if needed
     const jsonRpcUrl = typeof web3Provider === 'object'
-      ? getReadOnlyRpcUrl({ chainId: chainID })
+      ? readOnlyRpcUrl(chainID)
       : web3Provider;
 
     // Follow Kleros Court approach: only pass essential parameters
@@ -60,15 +71,18 @@ class DisputeSummary extends React.Component {
 
 
   renderAliases(metaevidenceJSON) {
-    if (!metaevidenceJSON.aliases) return null;
+    const { aliases } = metaevidenceJSON;
+    if (!aliases || typeof aliases !== "object" || Array.isArray(aliases)) return null;
 
     return (
       <Row>
-        {Object.entries(metaevidenceJSON.aliases).map(([key, value]) => (
+        {Object.entries(aliases).map(([key, alias]) => {
+          const value = isNonEmptyString(alias) ? alias : "Unavailable";
+          return (
           <React.Fragment key={key}>
             <Col>
               <Form.Group>
-                <Form.Label htmlFor="alias">Party {Object.keys(metaevidenceJSON.aliases).indexOf(key) + 1} </Form.Label>
+                <Form.Label htmlFor="alias">Party {Object.keys(aliases).indexOf(key) + 1} </Form.Label>
                 <Form.Control id="alias" as="span" title={value}>
                   {value}
                 </Form.Control>
@@ -76,54 +90,61 @@ class DisputeSummary extends React.Component {
             </Col>
             <Col>
               <Form.Group>
-                <Form.Label htmlFor="address">Party {Object.keys(metaevidenceJSON.aliases).indexOf(key) + 1} Address</Form.Label>
+                <Form.Label htmlFor="address">Party {Object.keys(aliases).indexOf(key) + 1} Address</Form.Label>
                 <Form.Control id="address" as="span" title={key}>
                   {key}
                 </Form.Control>
               </Form.Group>
             </Col>
           </React.Fragment>
-        ))}
+          );
+        })}
       </Row>
     );
   }
 
   render() {
-    const { metaevidenceJSON, arbitrated, arbitrableChainID, loading } = this.props;
+    const { metaevidenceJSON, arbitrated, arbitrableChainID } = this.props;
 
-    if (metaevidenceJSON) {
+    if (metaevidenceJSON && typeof metaevidenceJSON === "object") {
       const injectedArgs = this.getInjectedArgs();
       console.debug('🔍 [DisputeSummary] metaevidenceJSON:', metaevidenceJSON);
       console.debug('🔍 [DisputeSummary] injectedArgs:', injectedArgs);
       const searchParams = this.getSearchParams(injectedArgs, metaevidenceJSON);
       console.debug('🔍 [DisputeSummary] searchParams:', searchParams);
+      //Non-standard arbitrables may put anything in these fields; only strings are rendered.
+      const title = isNonEmptyString(metaevidenceJSON.title) ? metaevidenceJSON.title : "Title unavailable";
+      const description = typeof metaevidenceJSON.description === "string" ? metaevidenceJSON.description : null;
+      const evidenceDisplayInterfaceURI = isNonEmptyString(metaevidenceJSON.evidenceDisplayInterfaceURI) ? metaevidenceJSON.evidenceDisplayInterfaceURI : null;
+      const arbitrableInterfaceURI = isNonEmptyString(metaevidenceJSON.arbitrableInterfaceURI) ? metaevidenceJSON.arbitrableInterfaceURI : null;
+      const fileURI = isNonEmptyString(metaevidenceJSON.fileURI) ? metaevidenceJSON.fileURI : null;
 
       return (
         <section className={styles.disputeSummary}>
           <div className={styles.inner}>
             <p className={styles.interactWithTheDispute}>Interact with the dispute</p>
-            <h1 className={styles.h1}>{metaevidenceJSON.title}</h1>
+            <h1 className={styles.h1}>{title}</h1>
             <hr />
 
-            {/* 
+            {/*
               * By default, ReactMarkdown 4 escapes HTML. Changing this without sanitizing the input could expose us to XSS attacks.
               * Another potential safety issue can come from updating ReactMarkdown version and adding the rehype-raw plugin, for instance.
             */}
-            <ReactMarkdown className={styles.description} source={metaevidenceJSON.description} />
+            {description != null && <ReactMarkdown className={styles.description} source={description} />}
 
-            {metaevidenceJSON.evidenceDisplayInterfaceURI && (() => {
+            {evidenceDisplayInterfaceURI && (() => {
               // hack to allow displaying old t2cr disputes, since old endpoint was lost
-              const evidenceDisplayInterfaceURI = arbitrated === "0xEbcf3bcA271B26ae4B162Ba560e243055Af0E679"
+              const displayInterfaceURI = arbitrated === "0xEbcf3bcA271B26ae4B162Ba560e243055Af0E679"
                 ? "/ipfs/QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh/index.html"
-                : metaevidenceJSON.evidenceDisplayInterfaceURI;
+                : evidenceDisplayInterfaceURI;
 
-              const resolvedURI = evidenceDisplayInterfaceURI.includes("://")
-                ? evidenceDisplayInterfaceURI
-                : urlNormalize(evidenceDisplayInterfaceURI);
+              const resolvedURI = displayInterfaceURI.includes("://")
+                ? displayInterfaceURI
+                : urlNormalize(displayInterfaceURI);
               if (!isSafeNavigationUrl(resolvedURI)) return null;
               const iframeSrc = `${resolvedURI}?${searchParams}`;
               console.debug('🔍 [DisputeSummary] iframe src:', iframeSrc);
-              console.debug('🔍 [DisputeSummary] evidenceDisplayInterfaceURI:', evidenceDisplayInterfaceURI);
+              console.debug('🔍 [DisputeSummary] evidenceDisplayInterfaceURI:', displayInterfaceURI);
               return (
                 <iframe
                   sandbox={
@@ -138,9 +159,9 @@ class DisputeSummary extends React.Component {
                 />
               );
             })()}
-            {metaevidenceJSON.arbitrableInterfaceURI && !metaevidenceJSON.arbitrableInterfaceURI.includes("resolve.kleros.io") && isSafeNavigationUrl(metaevidenceJSON.arbitrableInterfaceURI) && (
+            {arbitrableInterfaceURI && !arbitrableInterfaceURI.includes("resolve.kleros.io") && isSafeNavigationUrl(arbitrableInterfaceURI) && (
               <div className="my-3">
-                <a href={metaevidenceJSON.arbitrableInterfaceURI} target="_blank" rel="noopener noreferrer" className="purple-inverted">
+                <a href={arbitrableInterfaceURI} target="_blank" rel="noopener noreferrer" className="purple-inverted">
                   Go to arbitrable application from here
                 </a>
               </div>
@@ -148,20 +169,20 @@ class DisputeSummary extends React.Component {
 
             {this.renderAliases(metaevidenceJSON)}
           </div>
-          {metaevidenceJSON.fileURI && (
+          {fileURI && (
             <Row className={styles.footer}>
               <Col>
-                <a href={urlNormalize(metaevidenceJSON.fileURI)} target="_blank" rel="noopener noreferrer">
+                <a href={urlNormalize(fileURI)} target="_blank" rel="noopener noreferrer">
                   <AttachmentSVG />
-                  {metaevidenceJSON.fileURI.split("/").slice(-1)}
+                  {fileURI.split("/").slice(-1)}
                 </a>
               </Col>
             </Row>
           )}
         </section>
       );
-    } else if (loading) return <div>Fetching....</div>;
-    else return <div>Failed to load metaevidence, thus the dispute summary. This might be an issue with the IPFS access.</div>;
+    }
+    return <div>Failed to load metaevidence, thus the dispute summary. This might be an issue with the IPFS access.</div>;
   }
 }
 
@@ -182,7 +203,6 @@ DisputeSummary.propTypes = {
   arbitratorAddress: PropTypes.string,
   chainID: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   web3Provider: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
-  loading: PropTypes.bool,
 };
 
 export default DisputeSummary;
