@@ -109,6 +109,16 @@
   font-weight: var(--thin);
 }
 
+.searchControl .search:focus,
+.filter :global(.dropdown-toggle.btn.btn-primary):focus,
+.filter :global(.dropdown-toggle.btn.btn-primary):active,
+.filter:global(.show) :global(.dropdown-toggle.btn.btn-primary) {
+  border-color: var(--purple-primary);
+  background-color: white;
+  outline: none;
+  box-shadow: none;
+}
+
 .filter :global(.dropdown-toggle.btn.btn-primary)::after {
   margin-left: auto;
   color: var(--purple-primary);

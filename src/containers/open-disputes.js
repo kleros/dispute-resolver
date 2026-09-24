@@ -214,7 +214,6 @@ class OpenDisputes extends React.Component {
               </p>
               <div className={styles.resultsActions}>
                 {hasFilters && <button type="button" className={styles.clearFilters} onClick={this.clearFilters}>Clear filters</button>}
-                <span>Newest first</span>
               </div>
             </div>
           )}
