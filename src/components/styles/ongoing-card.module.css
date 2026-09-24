@@ -2,146 +2,171 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  box-shadow: 0px 6px 24px rgba(77, 0, 180, 0.25);
+  min-width: 0;
+  background: white;
+  border: 1px solid var(--stroke);
+  border-radius: var(--border-radius-l);
+  overflow: hidden;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
-.ongoingCard > div {
-  padding-left: var(--spacing-16);
-  padding-right: var(--spacing-16);
+.ongoingCard:hover {
+  border-color: var(--purple-primary);
+  box-shadow: var(--box-shadow);
 }
 
-.ongoingCard .header {
-  padding-top: var(--spacing-16);
-  padding-bottom: var(--spacing-16);
-  border-top-left-radius: var(--border-radius);
-  border-top-right-radius: var(--border-radius);
-
+.header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  background-color: var(--purple-primary);
-  color: white;
+  flex-wrap: wrap;
+  gap: var(--spacing-8);
+  padding: 24px 24px 0;
 }
 
-.ongoingCard .body {
-  padding-top: var(--spacing-16);
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-8);
+  padding: 6px 12px;
+  border-radius: var(--border-radius-l);
+  background: var(--purple-light);
+  color: var(--purple-dark);
+  font-size: var(--font-size-xs);
+  font-weight: var(--bold);
+}
+
+.status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--grey-dark);
+}
+
+.evidence::before {
+  background: var(--green);
+}
+
+.commit::before,
+.vote::before {
+  background: var(--blue-primary);
+}
+
+.appeal::before {
+  background: var(--red);
+}
+
+.identifier {
+  color: var(--grey-dark);
+  font-size: var(--font-size-s);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.disputeID {
+  font-weight: var(--bold);
+}
+
+.body {
   display: flex;
   flex-direction: column;
   flex: 1;
-  background-color: white;
+  padding: 20px 24px 24px;
 }
 
-.ongoingCard .title {
-  margin-bottom: var(--spacing-16);
+.title {
+  margin: 0 0 24px;
+  color: var(--purple-dark);
+  font-size: 18px;
+  line-height: 1.5;
+  font-weight: var(--bold);
+  overflow-wrap: anywhere;
 }
 
-.ongoingCard .footer {
-  display: flex;
-  flex-direction: column;
-  min-height: 150px;
-  flex: 1;
-  padding-top: var(--spacing-16);
-  padding-bottom: var(--spacing-16);
-
-  background-color: var(--purple-light);
-
-  border-bottom-left-radius: var(--border-radius);
-  border-bottom-right-radius: var(--border-radius);
-}
-
-.ongoingCard .status::before {
-  content: "●";
-  vertical-align: text-bottom;
-}
-
-.ongoingCard .status:global(.evidence)::after {
-  content: "Evidence Period";
-}
-
-.ongoingCard .status:global(.evidence)::before {
-  color: white;
-}
-
-.ongoingCard .status:global(.commit)::after {
-  content: "Commit Period";
-}
-
-.ongoingCard .status:global(.commit)::before {
-  color: var(--blue-primary);
-}
-
-.ongoingCard .status:global(.vote)::after {
-  content: "Voting";
-}
-
-.ongoingCard .status:global(.vote)::before {
-  color: var(--blue-primary);
-}
-
-.ongoingCard .status:global(.appeal)::after {
-  content: "Appeal";
-}
-
-.ongoingCard .status:global(.appeal)::before {
-  color: var(--red);
-}
-
-.ongoingCard .status:global(.execution)::after {
-  content: "Executed";
-}
-
-.ongoingCard .status:global(.execution)::before {
+.placeholder {
+  margin: -12px 0 24px;
+  font-size: var(--font-size-s);
   color: var(--grey-dark);
 }
 
-.ongoingCard .disputeID::before {
-  content: "#";
+.court {
+  margin-top: auto;
 }
 
-.ongoingCard .separator {
-  margin-top: auto !important;
-  margin-bottom: 0;
+.label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--grey-dark);
+  font-size: var(--font-size-xs);
 }
 
-.ongoingCard .badge {
+.badge {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-8);
+  color: var(--text-primary);
+  font-size: var(--font-size-s);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.badge > span {
+  min-width: 0;
+}
+
+.badge > svg {
+  width: 20px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.badge > svg > path,
+.countdown > svg > path {
+  fill: var(--purple-primary);
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-16);
+  padding: var(--spacing-16) 24px;
+  background: var(--purple-light);
+}
+
+.countdown {
   display: flex;
   align-items: center;
-  background-color: white;
-  width: 100%;
-  height: var(--spacing-64);
-  padding: var(--spacing-16);
-  border-radius: var(--border-radius);
-}
-
-.ongoingCard .badge > span {
+  gap: var(--spacing-8);
+  color: var(--purple-dark);
   font-weight: var(--bold);
-  margin-left: var(--spacing-8);
-  vertical-align: middle;
+  font-size: var(--font-size-s);
+  font-variant-numeric: tabular-nums;
 }
 
-.ongoingCard .badge > svg {
-  vertical-align: middle;
+.countdown > svg {
+  width: 12px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
-.ongoingCard .badge > svg > path {
-  fill: var(--purple-primary);
-}
-
-.ongoingCard .bodyBottom {
-  background-color: var(--purple-light);
-}
-
-.ongoingCard .countdown {
-  margin-top: auto;
-
+.viewDispute {
+  color: var(--purple-primary);
+  font-size: var(--font-size-s);
   font-weight: var(--bold);
-  text-align: center;
+  white-space: nowrap;
 }
 
-.ongoingCard .countdown > svg {
-  margin-right: var(--spacing-8);
-  vertical-align: sub;
+.viewDispute > span {
+  margin-left: var(--spacing-4);
 }
 
-.ongoingCard .countdown > svg > path {
-  fill: var(--purple-primary);
+@media (prefers-reduced-motion: reduce) {
+  .ongoingCard {
+    transition: none;
+  }
 }

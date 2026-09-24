@@ -27,7 +27,17 @@ const loadFixture = async chainId => {
   }
 
   const module = await load();
-  return module.default;
+  const fixture = module.default;
+  //Opt in with REACT_APP_FIXTURE_VARIANT=malformed; the default eight disputes stay unchanged.
+  if (String(chainId) !== "100" || process.env.REACT_APP_FIXTURE_VARIANT !== "malformed") return fixture;
+
+  const { default: malformed } = await import("./ongoing/100.malformed.json");
+  return {
+    ...fixture,
+    openDisputeIDs: [...fixture.openDisputeIDs, malformed.disputeId],
+    arbitratorDisputes: { ...fixture.arbitratorDisputes, [malformed.disputeId]: malformed.arbitratorDispute },
+    metaEvidence: { ...fixture.metaEvidence, [malformed.disputeId]: malformed.metaEvidence },
+  };
 };
 
 //Same shape as App.getOpenDisputesOnCourt: the open dispute IDs, unsorted.

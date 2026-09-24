@@ -11,8 +11,11 @@ const MAINNET = "1";
 const GNOSIS_DISPUTES = ["1013", "1012", "1011", "1010", "1009", "1008", "1007", "1005"];
 
 let container;
+let fixtureVariant;
 
 beforeEach(() => {
+  fixtureVariant = process.env.REACT_APP_FIXTURE_VARIANT;
+  delete process.env.REACT_APP_FIXTURE_VARIANT;
   container = document.createElement("div");
   document.body.appendChild(container);
 });
@@ -20,6 +23,9 @@ beforeEach(() => {
 afterEach(() => {
   ReactDOM.unmountComponentAtNode(container);
   container.remove();
+  jest.restoreAllMocks();
+  if (fixtureVariant === undefined) delete process.env.REACT_APP_FIXTURE_VARIANT;
+  else process.env.REACT_APP_FIXTURE_VARIANT = fixtureVariant;
 });
 
 //Polls until the condition holds, letting the fixture reads and the React updates settle in between.
@@ -285,5 +291,135 @@ describe("disputeMatchesSearch", () => {
     expect(disputeMatchesSearch("9999", disputeId, metaEvidence.title, undefined)).toBe(true);
     expect(disputeMatchesSearch("court", 42, null, undefined)).toBe(false);
     expect(disputeMatchesSearch("42", 42, null, undefined)).toBe(true);
+  });
+});
+
+
+describe("Ongoing disputes resilience and states", () => {
+  it("preserves the ID, title, status, court, countdown and destination on every card", async () => {
+    await renderPage(GNOSIS);
+
+    for (const disputeId of GNOSIS_DISPUTES) {
+      const details = await fixtures.getArbitratorDispute(GNOSIS, disputeId);
+      const metaEvidence = await fixtures.getMetaEvidence(GNOSIS, disputeId);
+      const { subcourtDetails } = await fixtures.getSubcourtData(GNOSIS);
+      const link = container.querySelector(`a[href="/100/cases/${disputeId}"]`);
+      expect(link.querySelector(".disputeID").textContent).toBe(disputeId);
+      expect(link.querySelector("h2").textContent).toBe(metaEvidence.title);
+      expect(link.querySelector(".status").textContent).toBe(["Evidence Period", "Commit Period", "Voting", "Appeal"][details.period]);
+      expect(link.textContent).toContain(subcourtDetails[details.subcourtID].name);
+      expect(link.querySelector(".countdown").textContent).toMatch(/\d+d \d{2}h \d{2}m/);
+    }
+  });
+
+  it("renders the malformed fixture with a placeholder alongside all eight valid disputes", async () => {
+    process.env.REACT_APP_FIXTURE_VARIANT = "malformed";
+    await renderPage(GNOSIS);
+
+    expect(visibleDisputeIDs()).toEqual([malformedDispute.disputeId, ...GNOSIS_DISPUTES]);
+    const malformedCard = container.querySelector(`a[href="/100/cases/${malformedDispute.disputeId}"]`);
+    expect(malformedCard.textContent).toContain("Title unavailable");
+    expect(malformedCard.textContent).toContain("The meta-evidence title could not be read.");
+    expect(malformedCard.textContent).toContain("Evidence Period");
+
+    await search("title unavailable");
+    expect(visibleDisputeIDs()).toEqual([malformedDispute.disputeId]);
+    await search("999999");
+    expect(visibleDisputeIDs()).toEqual([malformedDispute.disputeId]);
+    await selectStatusFilter("Appeal");
+    expect(hasNoMatchMessage()).toBe(true);
+
+    await act(async () => {
+      Simulate.click(container.querySelector(".clearFilters"));
+    });
+    expect(visibleDisputeIDs()).toEqual([malformedDispute.disputeId, ...GNOSIS_DISPUTES]);
+  });
+
+  it.each([null, "", 42, ["invalid"], { en: "invalid" }])("handles an unusable meta-evidence title: %p", async title => {
+    await renderPage(GNOSIS, {
+      getMetaEvidenceCallback: jest.fn((arbitrated, disputeId) => disputeId === "1005" ? Promise.resolve({ title }) : fixtures.getMetaEvidence(GNOSIS, disputeId)),
+    });
+    expect(visibleDisputeIDs()).toEqual(GNOSIS_DISPUTES);
+    const card = container.querySelector('a[href="/100/cases/1005"]');
+    expect(card.querySelector("h2").textContent).toBe(title == null ? "Meta Evidence Missing" : "Title unavailable");
+    expect(card.querySelector(".placeholder")).not.toBeNull();
+  });
+
+  it("keeps valid cards visible when meta-evidence or dispute detail requests fail", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    await renderPage(GNOSIS, {
+      getMetaEvidenceCallback: jest.fn((arbitrated, disputeId) => disputeId === "1005" ? Promise.reject(new Error("Missing meta-evidence")) : fixtures.getMetaEvidence(GNOSIS, disputeId)),
+      getArbitratorDisputeCallback: jest.fn(disputeId => disputeId === "1013" ? Promise.reject(new Error("Missing details")) : fixtures.getArbitratorDispute(GNOSIS, disputeId)),
+    });
+
+    expect(visibleDisputeIDs()).toEqual(GNOSIS_DISPUTES);
+    expect(container.querySelector('a[href="/100/cases/1005"]').textContent).toContain("Meta Evidence Missing");
+    expect(container.querySelector('a[href="/100/cases/1013"]').textContent).toContain("Status unavailable");
+    expect(container.querySelector('a[href="/100/cases/1013"]').textContent).toContain("Court unavailable");
+    expect(container.textContent).not.toContain("Failed to load disputes.");
+  });
+
+  it("handles unknown courts, periods and missing timings without crashing", async () => {
+    await renderPage(GNOSIS, {
+      getArbitratorDisputeCallback: jest.fn(async disputeId => {
+        const details = await fixtures.getArbitratorDispute(GNOSIS, disputeId);
+        return disputeId === "1005" ? { ...details, subcourtID: "9999", period: "__proto__", lastPeriodChange: "invalid" } : details;
+      }),
+    });
+    expect(visibleDisputeIDs()).toEqual(GNOSIS_DISPUTES);
+    const card = container.querySelector('a[href="/100/cases/1005"]');
+    expect(card.textContent).toContain("Court unavailable");
+    expect(card.textContent).toContain("Status unavailable");
+    expect(card.querySelector(".countdown > span").textContent).toBe("Unavailable");
+  });
+
+  it("shows an accessible loading state until the data has arrived", async () => {
+    let resolveDisputes;
+    const pendingDisputes = new Promise(resolve => { resolveDisputes = resolve; });
+    await act(async () => {
+      ReactDOM.render(<OpenDisputes network={MAINNET} getOpenDisputesOnCourtCallback={() => pendingDisputes} />, container);
+    });
+    expect(container.querySelector('[role="status"]').textContent).toContain("Loading disputes");
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(hasNoDisputesMessage()).toBe(false);
+    await act(async () => { resolveDisputes([]); });
+    expect(container.querySelector('[role="status"]')).toBeNull();
+    expect(hasNoDisputesMessage()).toBe(true);
+  });
+
+  it("distinguishes errors from empty results and lets the user retry", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    const getOpenDisputesOnCourtCallback = jest.fn()
+      .mockRejectedValueOnce(new Error("RPC unavailable"))
+      .mockImplementation(() => fixtures.getOpenDisputesOnCourt(GNOSIS));
+    await renderPage(GNOSIS, { getOpenDisputesOnCourtCallback });
+    expect(container.querySelector('[role="alert"]').textContent).toContain("Failed to load disputes.");
+    expect(hasNoDisputesMessage()).toBe(false);
+    await act(async () => { Simulate.click(container.querySelector('[role="alert"] button')); });
+    await waitFor(() => container.querySelector('[role="status"]') === null);
+    expect(visibleDisputeIDs()).toEqual(GNOSIS_DISPUTES);
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("ignores an earlier network request that finishes after the current request", async () => {
+    let resolveOldRequest;
+    const oldRequest = new Promise(resolve => { resolveOldRequest = resolve; });
+    const { subcourts, subcourtDetails } = await fixtures.getSubcourtData(GNOSIS);
+    const props = {
+      subcourts,
+      subcourtDetails,
+      getArbitratorDisputeCallback: disputeId => fixtures.getArbitratorDispute(GNOSIS, disputeId),
+      getMetaEvidenceCallback: (arbitrated, disputeId) => fixtures.getMetaEvidence(GNOSIS, disputeId),
+    };
+    await act(async () => {
+      ReactDOM.render(<OpenDisputes {...props} network={MAINNET} getOpenDisputesOnCourtCallback={() => oldRequest} />, container);
+    });
+    await act(async () => {
+      ReactDOM.render(<OpenDisputes {...props} network={GNOSIS} getOpenDisputesOnCourtCallback={() => fixtures.getOpenDisputesOnCourt(GNOSIS)} />, container);
+    });
+    await waitFor(() => visibleDisputeIDs().length === GNOSIS_DISPUTES.length);
+    await act(async () => { resolveOldRequest([]); });
+    expect(visibleDisputeIDs()).toEqual(GNOSIS_DISPUTES);
+    expect(hasNoDisputesMessage()).toBe(false);
   });
 });
