@@ -160,7 +160,9 @@ class OpenDisputes extends React.Component {
       );
     }
 
-    const noSearchMatches = !loading && !fetchFailed && openDisputeIDs.length > 0 && searchQuery.trim() !== "" && !openDisputeIDs.some(this.isDisputeVisible);
+    const noVisibleDisputes = !loading && !fetchFailed && openDisputeIDs.length > 0 && !openDisputeIDs.some(this.isDisputeVisible);
+    const noSearchMatches = noVisibleDisputes && searchQuery.trim() !== "";
+    const noStatusMatches = noVisibleDisputes && statusFilter !== 4 && searchQuery.trim() === "";
 
     return (
       <main className={styles.openDisputes} id="ongoing-disputes">
@@ -234,6 +236,11 @@ class OpenDisputes extends React.Component {
           {!loading && !fetchFailed && openDisputeIDs.length === 0 && (
             <Col style={{ textAlign: "center", marginTop: "5rem" }}>
               <h1>There are no open disputes.</h1>
+            </Col>
+          )}
+          {noStatusMatches && (
+            <Col style={{ textAlign: "center", marginTop: "5rem" }}>
+              <h1>No disputes in the {this.getFilterName(statusFilter)} period.</h1>
             </Col>
           )}
           {noSearchMatches && (

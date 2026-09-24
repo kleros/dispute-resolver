@@ -201,6 +201,38 @@ describe("Ongoing disputes search", () => {
     expect(visibleDisputeIDs()).toEqual(GNOSIS_DISPUTES);
   });
 
+  it("shows a clear message when the status filter has no disputes and no search is active", async () => {
+    await renderPage(GNOSIS, {
+      getOpenDisputesOnCourtCallback: jest.fn(() => Promise.resolve(["1005"])),
+    });
+
+    await selectStatusFilter("Voting");
+
+    expect(visibleDisputeIDs()).toEqual([]);
+    expect(container.textContent).toContain("No disputes in the Voting period.");
+    expect(hasNoMatchMessage()).toBe(false);
+    expect(hasNoDisputesMessage()).toBe(false);
+
+    await search("1005");
+
+    expect(hasNoMatchMessage()).toBe(true);
+    expect(container.textContent).not.toContain("No disputes in the Voting period.");
+
+    for (const value of ["", "   "]) {
+      await search(value);
+
+      expect(container.textContent).toContain("No disputes in the Voting period.");
+      expect(hasNoMatchMessage()).toBe(false);
+    }
+
+    await selectStatusFilter("Ongoing");
+
+    expect(visibleDisputeIDs()).toEqual(["1005"]);
+    expect(container.textContent).not.toContain("No disputes in the Voting period.");
+    expect(hasNoMatchMessage()).toBe(false);
+    expect(hasNoDisputesMessage()).toBe(false);
+  });
+
   it("does nothing when there are no open disputes", async () => {
     const callbacks = await renderPage(MAINNET);
     const countsAfterLoad = callCounts(callbacks);
