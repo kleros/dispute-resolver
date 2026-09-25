@@ -497,7 +497,17 @@ class DisputeDetails extends React.Component {
     );
   };
 
-  renderEscrowV1AppealBody = (disputePeriod, appealCallback, appealCost) => (
+  //The appeal handler reports a rejected transaction as "Contribution failed" itself and rethrows; the click must not leave that rejection unhandled.
+  handleEscrowV1AppealClick = async () => {
+    const { appealCallback, appealCost } = this.props;
+    try {
+      await appealCallback(0, ethers.formatEther(appealCost));
+    } catch {
+      //Already reported by the handler.
+    }
+  };
+
+  renderEscrowV1AppealBody = (disputePeriod, appealCost) => (
     <>
       {disputePeriod == DISPUTE_PERIOD_APPEAL && <p className={styles.lead}>In order to appeal the decision, you need to pay the appeal cost.</p>}
       {disputePeriod == DISPUTE_PERIOD_APPEAL && appealCost == null && (
@@ -505,10 +515,7 @@ class DisputeDetails extends React.Component {
       )}
       {disputePeriod == DISPUTE_PERIOD_APPEAL && appealCost != null && (
         <div className={styles.actions}>
-          <Button
-            onClick={() =>
-              appealCallback(0, ethers.formatEther(appealCost))
-            }>
+          <Button onClick={this.handleEscrowV1AppealClick}>
             Appeal - {ethers.formatEther(appealCost)} ETH
           </Button>
         </div>
@@ -610,7 +617,7 @@ class DisputeDetails extends React.Component {
         </div>
       );
     } else if (isEscrowV1Dispute) {
-      body = this.renderEscrowV1AppealBody(disputePeriod, appealCallback, appealCost);
+      body = this.renderEscrowV1AppealBody(disputePeriod, appealCost);
     } else {
       body = this.renderAppealBody(disputePeriod, totalWithdrawable, metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated, multipliers);
     }

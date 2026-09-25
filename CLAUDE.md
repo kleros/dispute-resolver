@@ -10,7 +10,6 @@
 ## Rules
 - Never commit secrets or `.env`. Don't push or open PRs.
 - Keep changes to the task; don't fix unrelated issues.
-- Don't rewrite, restructure or reformat code outside what the task needs.
 - In files you touch, match the existing style unless the task says otherwise.
 - New components may use cleaner patterns but must fit the current stack. Don't add or upgrade dependencies unless the task says so.
 - The project uses SonarCloud. Don't introduce new code smells, but don't fix unrelated existing issues.

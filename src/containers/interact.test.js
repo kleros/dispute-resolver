@@ -17,6 +17,8 @@ jest.mock("react-blockies", () => () => null);
 const GNOSIS = "100";
 const KLEROS_LIQUID = "0x9C1dA9A04925bDfDedf0f6421bC7EEa8305F9002";
 const SIGNED_IN_ADDRESS = "0x1111111111111111111111111111111111111111";
+//One of the mainnet Escrow V1 contracts, which appeal by paying the appeal cost instead of crowdfunding.
+const ESCROW_V1_MAINNET = "0xE2Dd8CCe2c33a04215074ADb4B5820B765d8Ed9D";
 //The fixed clock of the Gnosis fixture: the timestamp of the captured block.
 const NOW = casesGnosis.capturedAtTimestamp * 1000;
 const GNOSIS_DISPUTES = ["1005", "1007", "1008", "1009", "1010", "1011", "1012", "1013"];
@@ -151,6 +153,21 @@ const deferred = () => {
 const clickFund = () =>
   act(async () => {
     Simulate.click(buttons("Fund").find(button => !button.disabled));
+  });
+const clickAppeal = label =>
+  act(async () => {
+    Simulate.click(buttons(label)[0]);
+  });
+//The Gnosis handmade case 900001 opened on mainnet as a dispute of an Escrow V1 contract: every read but the arbitrable comes from the Gnosis fixtures.
+const renderEscrowV1Case = overrides =>
+  renderCase("900001", {
+    chainId: "1",
+    signedIn: true,
+    overrides: {
+      ...fixtureCallbacks(GNOSIS),
+      getArbitratorDisputeCallback: async id => ({ ...(await fixtures.getArbitratorDispute(GNOSIS, id)), arbitrated: ESCROW_V1_MAINNET }),
+      ...overrides,
+    },
   });
 
 describe("Captured Gnosis disputes", () => {
@@ -780,6 +797,23 @@ describe("Write feedback", () => {
     expect(text()).toContain("User rejected the transaction");
     expect(text()).not.toContain("Contribution pending");
     expect(container.querySelectorAll(".crowdfundingCard")).toHaveLength(17);
+  });
+
+  //An Escrow V1 appeal pays the appeal cost from a single button. The handler reports the rejected transaction and rethrows;
+  //Jest fails this test if the click leaves that rejection unhandled.
+  it("reports a rejected Escrow V1 appeal as failed without leaving the rejection unhandled", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    const appealCallback = jest.fn(() => Promise.reject(new Error("User rejected the transaction")));
+    await renderEscrowV1Case({ appealCallback });
+    expect(container.querySelectorAll(".crowdfundingCard")).toHaveLength(0);
+
+    await clickAppeal("Appeal - 3.0 ETH");
+    await waitFor(() => text().includes("Contribution failed"));
+
+    expect(appealCallback).toHaveBeenCalledTimes(1);
+    expect(appealCallback).toHaveBeenCalledWith(ESCROW_V1_MAINNET, 41n, 0, "3.0");
+    expect(text()).toContain("User rejected the transaction");
+    expect(text()).not.toContain("Contribution pending");
   });
 
   it("keeps the confirmation of a successful contribution when the case moves to the next round and the appeal section disappears", async () => {
