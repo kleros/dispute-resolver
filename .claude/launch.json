@@ -1,0 +1,72 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "real", "runtimeExecutable": "env", "runtimeArgs": ["PORT=3000", "BROWSER=none", "yarn", "start"], "port": 3000 },
+    {
+      "name": "fixture-gnosis",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["PORT=3001", "BROWSER=none", "REACT_APP_USE_FIXTURES=true", "REACT_APP_FIXTURE_CHAIN_ID=100", "yarn", "start"],
+      "port": 3001
+    },
+    {
+      "name": "fixture-mainnet",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["PORT=3002", "BROWSER=none", "REACT_APP_USE_FIXTURES=true", "REACT_APP_FIXTURE_CHAIN_ID=1", "yarn", "start"],
+      "port": 3002
+    },
+    {
+      "name": "fixture-delay",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["PORT=3004", "BROWSER=none", "REACT_APP_USE_FIXTURES=true", "REACT_APP_FIXTURE_CHAIN_ID=100", "REACT_APP_FIXTURE_DELAY_MS=3000", "yarn", "start"],
+      "port": 3004
+    },
+    {
+      "name": "fixture-fail",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["PORT=3005", "BROWSER=none", "REACT_APP_USE_FIXTURES=true", "REACT_APP_FIXTURE_CHAIN_ID=100", "REACT_APP_FIXTURE_FAIL=true", "yarn", "start"],
+      "port": 3005
+    },
+    {
+      "name": "fixture-signed-in",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["PORT=3006", "BROWSER=none", "REACT_APP_USE_FIXTURES=true", "REACT_APP_FIXTURE_CHAIN_ID=100", "REACT_APP_FIXTURE_SIGNED_IN=true", "yarn", "start"],
+      "port": 3006
+    },
+    {
+      "name": "fixture-writes-fail",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3007",
+        "BROWSER=none",
+        "REACT_APP_USE_FIXTURES=true",
+        "REACT_APP_FIXTURE_CHAIN_ID=100",
+        "REACT_APP_FIXTURE_SIGNED_IN=true",
+        "REACT_APP_FIXTURE_WRITES=failure",
+        "yarn",
+        "start"
+      ],
+      "port": 3007
+    },
+    {
+      "name": "fixture-fail-reads",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3008",
+        "BROWSER=none",
+        "REACT_APP_USE_FIXTURES=true",
+        "REACT_APP_FIXTURE_CHAIN_ID=100",
+        "REACT_APP_FIXTURE_SIGNED_IN=true",
+        "REACT_APP_FIXTURE_FAIL_READS=evidences,multipliers,disputeDetails",
+        "yarn",
+        "start"
+      ],
+      "port": 3008
+    },
+    {
+      "name": "fixture-malformed",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["PORT=3009", "BROWSER=none", "REACT_APP_USE_FIXTURES=true", "REACT_APP_FIXTURE_CHAIN_ID=100", "REACT_APP_FIXTURE_VARIANT=malformed", "yarn", "start"],
+      "port": 3009
+    }
+  ]
+}
