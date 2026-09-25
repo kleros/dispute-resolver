@@ -1,31 +1,120 @@
-.disputeSummary .inner {
-  padding: var(--spacing-32);
+.disputeSummary {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--stroke);
+  border-radius: var(--border-radius-l);
+  background: white;
+  overflow-wrap: anywhere;
+  scroll-margin-top: 16px;
 }
 
-.disputeSummary .description {
-  margin-bottom: var(--spacing-32);
+.disputeSummary h2 {
+  margin: 0 0 16px;
+  color: var(--purple-dark);
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: var(--bold);
 }
 
-.disputeSummary .description hr {
+.description {
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.description > :last-child {
+  margin-bottom: 0;
+}
+
+.description hr {
   background-color: unset;
 }
 
-
-.disputeSummary .footer {
-  text-align: center;
-  background-color: var(--purple-light);
-  padding: var(--spacing-16);
-  margin: 0;
-  border-bottom-left-radius: var(--border-radius-l);
-  border-bottom-right-radius: var(--border-radius-l);
-}
-
-.disputeSummary .footer svg {
-  margin-right: var(--spacing-8);
-}
-
-.disputeSummary iframe {
+.evidenceDisplay {
+  display: block;
   width: 1px;
   min-width: 100%;
-  margin-bottom: var(--spacing-32);
+  height: 360px;
+  margin-bottom: 20px;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+}
+
+.parties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  margin: 0 0 20px;
+}
+
+.party {
+  min-width: 0;
+}
+
+.party dt {
+  margin-bottom: 4px;
+  color: var(--grey-dark);
+  font-size: var(--font-size-xs);
+  font-weight: var(--thin);
+}
+
+.party dd {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  font-size: var(--font-size-s);
+}
+
+.party strong {
+  color: var(--text-primary);
+}
+
+.address {
+  color: var(--grey-dark);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--font-size-xs);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0 -24px -24px;
+  padding: 16px 24px;
+  border-radius: 0 0 var(--border-radius-l) var(--border-radius-l);
+  background: var(--purple-light);
+}
+
+.links a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-8);
+  color: var(--purple-primary);
+  font-size: var(--font-size-s);
+  font-weight: var(--bold);
+}
+
+.links svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.links svg > path {
+  fill: var(--purple-primary);
+}
+
+.alert {
+  border-radius: 12px;
+}
+
+@media (max-width: 767px) {
+  .disputeSummary {
+    padding: 16px;
+  }
+
+  .links {
+    margin: 0 -16px -16px;
+    padding: 16px;
+  }
 }

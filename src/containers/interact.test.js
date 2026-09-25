@@ -280,6 +280,20 @@ describe("Hand-made cases", () => {
     expect(text()).not.toContain("Jury decision");
   });
 
+  it("keeps the summary right after the case card, before the appeal section, in every period", async () => {
+    const sectionIDs = () => Array.from(container.querySelectorAll("#summary, #appeal, #question, #evidence")).map(section => section.id);
+    const summaryFollowsCard = () => Boolean(container.querySelector("h1").compareDocumentPosition(container.querySelector("#summary")) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+    await renderCase("900001");
+    expect(sectionIDs()).toEqual(["summary", "appeal", "question", "evidence"]);
+    expect(summaryFollowsCard()).toBe(true);
+
+    ReactDOM.unmountComponentAtNode(container);
+    await renderCase("900003");
+    expect(sectionIDs()).toEqual(["summary", "question", "evidence"]);
+    expect(summaryFollowsCard()).toBe(true);
+  });
+
   it("says that a non-existent dispute does not exist", async () => {
     await renderCase("123456789");
 
@@ -338,7 +352,7 @@ describe("Loading", () => {
 
     //Only the appeal card is still loading, behind its spinner, without any unavailable message.
     expect(container.querySelector('main[aria-busy="true"]')).not.toBeNull();
-    expect(container.querySelector('.card-body [role="status"]')).not.toBeNull();
+    expect(container.querySelector('#appeal [role="status"]')).not.toBeNull();
     expect(container.querySelectorAll(".crowdfundingCard")).toHaveLength(0);
     expect(text()).not.toContain("unavailable");
     expect(text()).not.toContain("Unavailable");
@@ -348,7 +362,7 @@ describe("Loading", () => {
     });
     await waitFor(isSettled);
 
-    expect(container.querySelector('.card-body [role="status"]')).toBeNull();
+    expect(container.querySelector('#appeal [role="status"]')).toBeNull();
     expect(container.querySelectorAll(".crowdfundingCard")).toHaveLength(17);
     expect(title()).toBe(record.metaEvidence.title);
   });
@@ -540,6 +554,30 @@ describe("Navigation", () => {
     expect(history.location.pathname).toBe("/100/cases/1005");
     expect(title()).toBe(ongoingGnosis.metaEvidence["1005"].title);
     expect(input().value).toBe("1005");
+  });
+
+  it("leaves the dispute shown on the page untouched while an ID is typed, until the search is submitted", async () => {
+    const { history } = await renderCase("1005");
+    const input = () => container.querySelector("#arbitratorDisputeID");
+
+    await act(async () => {
+      Simulate.change(input(), { target: { value: "900002" } });
+    });
+    await sleep(100);
+    expect(input().value).toBe("900002");
+    expect(fieldText("category")).toBe("# 1005");
+    expect(title()).toBe(ongoingGnosis.metaEvidence["1005"].title);
+    expect(container.querySelector("#court").textContent).toContain("xDai Javascript Court");
+    expect(text()).not.toContain("900002");
+    expect(text()).not.toContain("Fetching dispute");
+    expect(history.location.pathname).toBe("/100/cases/1005");
+
+    await act(async () => {
+      Simulate.submit(input().closest("form"));
+    });
+    await waitFor(() => isSettled() && fieldText("category") === "# 900002");
+    expect(input().value).toBe("900002");
+    expect(title()).toBe(handmadeGnosis.disputes["900002"].metaEvidence.title);
   });
 
   it("opens the typed dispute with the search button and ignores an empty or unchanged ID", async () => {

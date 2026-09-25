@@ -28,10 +28,6 @@ hr {
   margin-top: 1rem;
 }
 
-.evidenceTimeline * {
-  font-family: Roboto, sans-serif;
-}
-
 .evidence-button {
   display: block;
   margin: auto;
@@ -49,8 +45,8 @@ label {
 }
 
 .evidence {
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
   padding-top: 1.5rem;
 }
 
@@ -263,7 +259,7 @@ div > div > .divider {
   /* margin: -200px 0 0 -200px; */
 
   background: white;
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-l);
   padding: var(--spacing-32);
 }
 .closed {
@@ -315,6 +311,8 @@ div > div > .divider {
 }
 
 .evidenceTimeline .noEvidence {
-  font-size: var(--font-size-l);
+  margin-top: var(--spacing-16);
+  color: var(--grey-dark);
+  font-size: var(--font-size-s);
   text-align: center;
 }

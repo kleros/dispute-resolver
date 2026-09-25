@@ -1,20 +1,26 @@
-import { Card, Row, Col, Form, Accordion, Dropdown, Button, Spinner } from "react-bootstrap";
+import { Button, Spinner } from "react-bootstrap";
 import React from "react";
 import PropTypes from "prop-types";
+import Countdown from "react-countdown";
 import * as realitioLibQuestionFormatter from "@reality.eth/reality-eth-lib/formatters/question";
 import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 import { ReactComponent as InfoSVG } from "../assets/images/info.svg";
+import { ReactComponent as Hourglass } from "../assets/images/hourglass.svg";
+import { ReactComponent as SuccessIcon } from "../assets/images/iconCheckCircle.svg";
+import { ReactComponent as FailureIcon } from "../assets/images/iconXCircle.svg";
 
 import DisputeTimeline from "components/disputeTimeline";
 import EvidenceTimeline from "components/evidenceTimeline";
 import CrowdfundingCard from "components/crowdfundingCard";
+import { PERIOD_NAMES, PERIOD_CLASSES, getDisputeTitle, renderCountdown } from "components/ongoing-card";
 import { ethers } from "ethers";
 import networkMap from "../ethereum/network-contract-mapping";
 
 import AlertMessage from "components/alertMessage";
 
 import styles from "components/styles/disputeDetails.module.css";
+import statusStyles from "components/styles/ongoing-card.module.css";
 
 // Constants to avoid magic numbers
 const PRECISION_SCALING_FACTOR = 1000n;
@@ -36,30 +42,30 @@ const QuestionTypes = Object.freeze({
   hash: "Hash"
 });
 
-class DisputeDetails extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      activeKey: 0,
-    };
-  }
+//What the page says about a write action while it is pending and once it has succeeded or failed.
+const WRITE_FEEDBACK = Object.freeze({
+  fund: {
+    pending: ["Contribution pending", "Waiting for the transaction to be confirmed."],
+    success: ["Contribution sent", "The funding status of the options has been refreshed."],
+    failure: ["Contribution failed", "No funds were sent. Check your wallet and try again."],
+  },
+  withdraw: {
+    pending: ["Withdrawal pending", "Waiting for the transaction to be confirmed."],
+    success: ["Withdrawal sent", "The transaction has been confirmed."],
+    failure: ["Withdrawal failed", "Nothing was withdrawn. Check your wallet and try again."],
+  },
+  evidence: {
+    pending: ["Evidence submission pending", "Waiting for the upload and the transaction to be confirmed."],
+    success: ["Evidence submitted", "The evidence has been added to the list below."],
+    failure: ["Evidence submission failed", "Nothing was submitted. Check your wallet and try again."],
+  },
+});
 
+class DisputeDetails extends React.Component {
   componentDidUpdate(previousProperties) {
     if (this.props.network !== previousProperties.network)
       window.location.reload();
-
-    if (this.props.arbitratorDisputeID !== previousProperties.arbitratorDisputeID) {
-      this.setState({ activeKey: 0 });
-    }
   }
-
-  componentDidMount() {
-    // Component initialization complete
-  }
-
-  handleAccordionSelect = e => {
-    this.setState({ activeKey: e });
-  };
 
   calculateTotalCost = rulingOption => {
     // Unslashed contract violates IDisputeResolver interface by not letting option 0: refuse to rule to be funded.
@@ -285,7 +291,7 @@ class DisputeDetails extends React.Component {
 
     //The current ruling could not be read; showing option 0 instead would look like a real "refuse to arbitrate" decision.
     if ((disputePeriod == DISPUTE_PERIOD_APPEAL || disputePeriod == DISPUTE_PERIOD_EXECUTION) && currentRuling == null) {
-      return <AlertMessage type="warning" title="Jury decision unavailable" content="The current ruling could not be read from the arbitrator." />;
+      return <AlertMessage type="warning" extraClass={styles.alert} title="Jury decision unavailable" content="The current ruling could not be read from the arbitrator." />;
     }
 
     const formatRulingForDisplay = ruling => {
@@ -303,6 +309,7 @@ class DisputeDetails extends React.Component {
       return (
         <AlertMessage
           type="info"
+          extraClass={styles.alert}
           title={`Jury decision: ${formatRulingForDisplay(currentRuling)}`}
           content={decisionInfoBoxContent}
         />
@@ -313,6 +320,7 @@ class DisputeDetails extends React.Component {
       return (
         <AlertMessage
           type="info"
+          extraClass={styles.alert}
           title={`Winner: ${formatRulingForDisplay(this.getWinner(rulingFunded, currentRuling))}`}
           content={`${rulingFunded && rulingFunded.length == 1 ? "Won by default" : "Won by jury decision"}`}
         />
@@ -323,40 +331,38 @@ class DisputeDetails extends React.Component {
   };
 
   // Helper method to render dispute info section. Unknown values are shown as unavailable, never as a number.
-  renderDisputeInfo = (arbitratorDisputeID, arbitratorDisputeDetails, arbitratorDispute, subcourtDetails) => {
+  renderDisputeInfo = (arbitratorDisputeID, arbitratorDisputeDetails, arbitratorDispute, subcourtDetails, arbitrated) => {
     const numberOfVotes = Number.parseInt(arbitratorDisputeDetails?.votesLengths?.[0], 10);
     const courtName = subcourtDetails?.[arbitratorDispute.subcourtID?.toString()]?.name;
     const hasCourtName = typeof courtName === "string" && courtName.trim() !== "";
 
     return (
-      <Row>
-        <Col xl={6} md="auto" sm={true} xs={24}>
-          <Form.Group>
-            <Form.Label htmlFor="category">Dispute</Form.Label>
-            <Form.Control id="category" as="span" title="" className="mr-4">
-              <i className="purple-primary">#</i> {arbitratorDisputeID}
-            </Form.Control>
-          </Form.Group>
-        </Col>
-        <Col xl={6} md="auto" sm={true} xs={24}>
-          <Form.Group className="">
-            <Form.Label htmlFor="initialNumberOfJurors">Number of Votes</Form.Label>
-            <Form.Control className={`mr-4 ${styles.spanWithSvgInside}`} id="initialNumberOfJurors" as="span">
-              <AvatarSVG />
-              <span>{Number.isNaN(numberOfVotes) ? "Unavailable" : numberOfVotes}</span>
-            </Form.Control>
-          </Form.Group>
-        </Col>
-        <Col md={true} sm={24}>
-          <Form.Group>
-            <Form.Label htmlFor="court">Court</Form.Label>
-            <Form.Control className={styles.spanWithSvgInside} id="court" as="span">
-              <ScalesSVG className={styles.scales} />
-              <span>{hasCourtName ? courtName : "Court unavailable"}</span>
-            </Form.Control>
-          </Form.Group>
-        </Col>
-      </Row>
+      <dl className={styles.facts}>
+        <div className={styles.fact}>
+          <dt>Dispute</dt>
+          <dd id="category">
+            <i className="purple-primary">#</i> {arbitratorDisputeID}
+          </dd>
+        </div>
+        <div className={styles.fact}>
+          <dt>Court</dt>
+          <dd id="court">
+            <ScalesSVG aria-hidden="true" />
+            <span>{hasCourtName ? courtName : "Court unavailable"}</span>
+          </dd>
+        </div>
+        <div className={styles.fact}>
+          <dt>Number of votes</dt>
+          <dd id="initialNumberOfJurors">
+            <AvatarSVG aria-hidden="true" />
+            <span>{Number.isNaN(numberOfVotes) ? "Unavailable" : numberOfVotes}</span>
+          </dd>
+        </div>
+        <div className={`${styles.fact} ${styles.contract}`}>
+          <dt>Arbitrable contract</dt>
+          <dd>{arbitrated}</dd>
+        </div>
+      </dl>
     );
   };
 
@@ -375,6 +381,7 @@ class DisputeDetails extends React.Component {
       return (
         <AlertMessage
           type="warning"
+          extraClass={styles.alert}
           title="Appeal fees could not be calculated"
           content="This arbitrable contract uses an unsupported appeal interface, so the appeal funding amounts and deadlines can't be shown. Please use the arbitrable application to appeal."
         />
@@ -383,20 +390,82 @@ class DisputeDetails extends React.Component {
     return (
       <AlertMessage
         type="warning"
+        extraClass={styles.alert}
         title="Appeal options unavailable"
         content="Some of the data needed to show the appeal funding amounts and deadlines could not be loaded. Please refresh the page or try again later."
       />
     );
   };
 
-  // Helper method to render appeal section
-  renderAppealSection = (disputePeriod, totalWithdrawable, metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated, multipliers) => {
-    const canCrowdfund = Boolean(metaevidenceJSON && multipliers && this.props.appealCost != null && this.props.appealPeriod != null && currentRuling != null && contributions != null);
+  //Feedback of the last write action, next to the section it belongs to. Failures are announced; the rest is polite.
+  renderWriteStatus = action => {
+    const { writeStatus, onDismissWriteStatus } = this.props;
+    if (writeStatus?.action !== action) return null;
+
+    const { status, hash, error } = writeStatus;
+    const [title, content] = WRITE_FEEDBACK[action][status];
+    const Icon = status === "success" ? SuccessIcon : FailureIcon;
 
     return (
-      <Card.Body>
-        <div className="h1">{disputePeriod == DISPUTE_PERIOD_APPEAL ? "Appeal the decision" : "Withdraw crowdfunding rewards and refunds"}</div>
-        <p className="label">
+      <div className={`${styles.writeStatus} ${styles[status]}`} role={status === "failure" ? "alert" : "status"}>
+        {status === "pending" ? <Spinner as="span" animation="border" size="sm" aria-hidden="true" /> : <Icon aria-hidden="true" />}
+        <div className={styles.writeStatusText}>
+          <strong>{title}</strong>
+          <span>{content}</span>
+          {hash && <small>Transaction {`${hash.slice(0, 10)}…${hash.slice(-8)}`}</small>}
+          {error && <small>{error}</small>}
+        </div>
+        {status !== "pending" && (
+          <button type="button" className={styles.dismiss} onClick={onDismissWriteStatus}>
+            Dismiss
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  //The end of the appeal period for the side of the jury decision and, earlier, for every other option.
+  renderAppealDeadlines = () => {
+    const { appealPeriod, multipliers, loading } = this.props;
+
+    if (loading) {
+      return (
+        <div className={styles.deadlines} aria-hidden="true">
+          <span className={`skeleton ${styles.skeletonDeadline}`} />
+          <span className={`skeleton ${styles.skeletonDeadline}`} />
+        </div>
+      );
+    }
+
+    return (
+      <dl className={styles.deadlines}>
+        {this.renderDeadline("Deadline for the jury decision", appealPeriod?.end ?? null)}
+        {this.renderDeadline("Deadline for other options", appealPeriod && multipliers ? this.calculateLoserAppealPeriod() : null)}
+      </dl>
+    );
+  };
+
+  renderDeadline = (label, deadline) => (
+    <div className={styles.deadline}>
+      <dt>{label}</dt>
+      <dd>
+        <Hourglass aria-hidden="true" />
+        {deadline == null ? <span>Unavailable</span> : <Countdown date={1000 * Number.parseInt(deadline, 10)} now={this.props.now} renderer={renderCountdown} />}
+      </dd>
+    </div>
+  );
+
+  //Crowdfunding needs every input of the fee and deadline calculations.
+  canCrowdfund = () => {
+    const { metaevidenceJSON, multipliers, appealCost, appealPeriod, currentRuling, contributions } = this.props;
+    return Boolean(metaevidenceJSON && multipliers && appealCost != null && appealPeriod != null && currentRuling != null && contributions != null);
+  };
+
+  // Helper method to render appeal section
+  renderAppealBody = (disputePeriod, totalWithdrawable, metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated, multipliers) => {
+    return (
+      <>
+        <p className={styles.lead}>
           {disputePeriod == DISPUTE_PERIOD_APPEAL
             && "In order to appeal the decision, you need to fully fund the crowdfunding deposit. The dispute will be sent" +
             " to the jurors when the full deposit is reached. Note that if the previous round loser funds its side, the previous round winner should also fully fund its side in order not to lose the case."
@@ -404,43 +473,42 @@ class DisputeDetails extends React.Component {
           {disputePeriod == DISPUTE_PERIOD_EXECUTION && this.getWithdrawalText(totalWithdrawable)}
         </p>
         {disputePeriod == DISPUTE_PERIOD_EXECUTION && totalWithdrawable != null && parseInt(totalWithdrawable, 10) > 0 && (
-          <Row className="mt-5">
-            <Col className="text-right">
-              <Button className="ml-auto" onClick={this.props.withdrawCallback}>
-                {`Withdraw ${ethers.formatEther(totalWithdrawable)} ETH`}
-              </Button>
-            </Col>
-          </Row>
+          <div className={styles.actions}>
+            <Button onClick={this.props.withdrawCallback}>
+              {`Withdraw ${ethers.formatEther(totalWithdrawable)} ETH`}
+            </Button>
+          </div>
         )}
 
         {disputePeriod == DISPUTE_PERIOD_APPEAL && (
-          canCrowdfund ? (
-            <Row className="mt-3">
+          this.canCrowdfund() ? (
+            <div className={styles.fundingGrid}>
               {this.renderCrowdfundingCards(metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated)}
               {this.renderVariableTypeCrowdfundingCards(metaevidenceJSON, currentRuling, contributions, appealCallback)}
-            </Row>
+            </div>
           ) : this.renderCrowdfundingUnavailable(multipliers)
         )}
-      </Card.Body>
+      </>
     );
   };
 
-  renderEscrowV1AppealSection = (disputePeriod, appealCallback, appealCost) => (
-    <Card.Body>
-      <div className="h1">{disputePeriod == DISPUTE_PERIOD_APPEAL ? "Appeal the decision" : "Appeal period ended"}</div>
-      {disputePeriod == DISPUTE_PERIOD_APPEAL && <p className="label">In order to appeal the decision, you need to pay the appeal cost.</p>}
+  renderEscrowV1AppealBody = (disputePeriod, appealCallback, appealCost) => (
+    <>
+      {disputePeriod == DISPUTE_PERIOD_APPEAL && <p className={styles.lead}>In order to appeal the decision, you need to pay the appeal cost.</p>}
       {disputePeriod == DISPUTE_PERIOD_APPEAL && appealCost == null && (
-        <AlertMessage type="warning" title="Appeal cost unavailable" content="The appeal cost could not be read from the arbitrator. Please refresh the page or try again later." />
+        <AlertMessage type="warning" extraClass={styles.alert} title="Appeal cost unavailable" content="The appeal cost could not be read from the arbitrator. Please refresh the page or try again later." />
       )}
       {disputePeriod == DISPUTE_PERIOD_APPEAL && appealCost != null && (
-        <Button
-          onClick={() =>
-            appealCallback(0, ethers.formatEther(appealCost))
-          }>
-          Appeal - {ethers.formatEther(appealCost)} ETH
-        </Button>
+        <div className={styles.actions}>
+          <Button
+            onClick={() =>
+              appealCallback(0, ethers.formatEther(appealCost))
+            }>
+            Appeal - {ethers.formatEther(appealCost)} ETH
+          </Button>
+        </div>
       )}
-    </Card.Body>
+    </>
   );
 
   //Ruling options of a well-formed meta-evidence, or null when they are missing or not an object (some non-standard arbitrables use a string).
@@ -449,67 +517,61 @@ class DisputeDetails extends React.Component {
     return rulingOptions && typeof rulingOptions === "object" ? rulingOptions : null;
   };
 
+  renderVotingOption = (code, title, description) => (
+    <li key={code}>
+      <span className={styles.optionCode}>Option {code}</span>
+      <span className={styles.optionTitle}>{`${title}`}</span>
+      {description != null && <span className={styles.optionDescription}>{`${description}`}</span>}
+    </li>
+  );
+
   // Helper method to render question section. A missing or malformed meta-evidence leaves the question unavailable.
-  renderQuestionSection = (metaevidenceJSON, arbitratorDisputeID, network) => {
-    const courtURL = new URL(`https://court.kleros.io/cases/${encodeURIComponent(arbitratorDisputeID)}`);
-    courtURL.searchParams.set("requiredChainId", network ?? "1");
+  renderQuestionSection = (metaevidenceJSON, courtURL) => {
     const rulingOptions = this.getRulingOptions(metaevidenceJSON);
     const question = typeof metaevidenceJSON?.question === "string" ? metaevidenceJSON.question : null;
     const titles = Array.isArray(rulingOptions?.titles) ? rulingOptions.titles : [];
     const descriptions = rulingOptions?.descriptions && typeof rulingOptions.descriptions === "object" ? rulingOptions.descriptions : {};
     const reserved = rulingOptions?.reserved && typeof rulingOptions.reserved === "object" ? rulingOptions.reserved : null;
+    const questionType = QuestionTypes[rulingOptions?.type];
 
     return (
-      <Card.Body className={styles.question}>
-        <p>{QuestionTypes[rulingOptions?.type]}</p>
-        <p>{question ?? "Question unavailable."}</p>
+      <section className={styles.section} id="question">
+        <h2>Question</h2>
+        {questionType && <p className={styles.questionType}>{questionType}</p>}
+        <p className={styles.questionText}>{question ?? "Question unavailable."}</p>
         {(rulingOptions?.type == "single-select" || rulingOptions?.type == "multiple-select") && (
           <>
-            <Dropdown>
-              <Dropdown.Toggle block className={styles.dropdownToggle}>
-                <span className="font-weight-normal">View Voting Options</span>
-              </Dropdown.Toggle>
-
-              <Dropdown.Menu dir="">
-                <Dropdown.Item key={0} disabled>Option 0 - Refuse to Arbitrate / Invalid</Dropdown.Item>
-                {titles.map((title, index) => (
-                  <Dropdown.Item key={`option-${index + 1}`} disabled>{`Option ${index + 1} - ${title}${descriptions[index] != undefined ? ":" : ""
-                    } ${descriptions[index] != undefined
-                      ? descriptions[index]
-                      : ""
-                    }`}</Dropdown.Item>
-                ))}
-                {reserved &&
-                  Object.entries(reserved).map(([rulingCode, title]) => {
-                    const displayCode = rulingCode.length > 12 ? `${rulingCode.slice(0, 6)}...${rulingCode.slice(-6)}` : rulingCode;
-                    return (
-                      <Dropdown.Item key={rulingCode} disabled>{`Option ${displayCode} - ${title}${descriptions[rulingCode] != undefined ? ":" : ""
-                        } ${descriptions[rulingCode] != undefined
-                          ? descriptions[rulingCode]
-                          : ""
-                        }`}</Dropdown.Item>
-                    );
-                  })}
-
-              </Dropdown.Menu>
-            </Dropdown>
-            <p className={styles.questionInfo}>
-              <InfoSVG />
-              Note that you can only view the voting options. Selected jurors can vote using{" "}
-              <a href={courtURL.toString()} target="_blank" rel="noreferrer noopener">
-                Court
-              </a>
-              .
+            <h3 className={styles.optionsHeading}>Voting options</h3>
+            <ul className={styles.options}>
+              {this.renderVotingOption(0, "Refuse to Arbitrate / Invalid")}
+              {titles.map((title, index) => this.renderVotingOption(index + 1, title, descriptions[index]))}
+              {reserved &&
+                Object.entries(reserved).map(([rulingCode, title]) => {
+                  const displayCode = rulingCode.length > 12 ? `${rulingCode.slice(0, 6)}...${rulingCode.slice(-6)}` : rulingCode;
+                  return this.renderVotingOption(displayCode, title, descriptions[rulingCode]);
+                })}
+            </ul>
+            <p className={styles.note}>
+              <InfoSVG aria-hidden="true" />
+              <span>
+                Note that you can only view the voting options. Selected jurors can vote using{" "}
+                <a href={courtURL} target="_blank" rel="noreferrer noopener">
+                  Court
+                </a>
+                .
+              </span>
             </p>
           </>
         )}
-      </Card.Body>
+      </section>
     );
   };
 
   // Helper method to render evidence section
   renderEvidenceSection = ({ incompatible, metaevidenceJSON, evidences, disputeEvent, disputePeriod, publishCallback, submitEvidenceCallback, isAuthenticated, isSigningIn, onSignIn }) => (
-    <Card.Body>
+    <section className={styles.section} id="evidence">
+      <h2>Evidence</h2>
+      {this.renderWriteStatus("evidence")}
       <EvidenceTimeline
         evidenceSubmissionEnabled={!incompatible}
         metaevidence={metaevidenceJSON}
@@ -523,38 +585,43 @@ class DisputeDetails extends React.Component {
         isSigningIn={isSigningIn}
         onSignIn={onSignIn}
       />
-    </Card.Body>
+    </section>
   );
 
-  // Helper method to render appeal card conditionally
-  renderAppealCard = (arbitratorDispute, disputePeriod, contributions, multipliers, appealCost, appealPeriod, arbitrated, totalWithdrawable, metaevidenceJSON, currentRuling, appealCallback, exceptionalContractAddresses, activeKey, isEscrowV1Dispute, loading) => {
-    //A period that could not be read (NaN) never reaches the appeal stage.
-    if (!arbitratorDispute || !(disputePeriod >= DISPUTE_PERIOD_APPEAL) || !arbitrated) {
-      return null;
-    }
+  //The appeal section: its heading and deadlines stay at the top of the viewport while the funding options scroll by.
+  renderAppealSection = (disputePeriod, isEscrowV1Dispute) => {
+    const { contributions, multipliers, appealCost, arbitrated, totalWithdrawable, metaevidenceJSON, currentRuling, appealCallback, exceptionalContractAddresses, loading } = this.props;
+
+    let heading = "Withdraw crowdfunding rewards and refunds";
+    if (disputePeriod === DISPUTE_PERIOD_APPEAL) heading = "Appeal the decision";
+    else if (isEscrowV1Dispute) heading = "Appeal period ended";
 
     let body;
     if (loading) {
       body = (
-        <Card.Body className="text-center">
-          <Spinner animation="border" role="status" />
-        </Card.Body>
+        <div className={styles.sectionStatus} role="status">
+          <Spinner as="span" animation="border" size="sm" aria-hidden="true" />
+          <span>Loading the appeal data…</span>
+        </div>
       );
     } else if (isEscrowV1Dispute) {
-      body = this.renderEscrowV1AppealSection(disputePeriod, appealCallback, appealCost);
+      body = this.renderEscrowV1AppealBody(disputePeriod, appealCallback, appealCost);
     } else {
-      body = this.renderAppealSection(disputePeriod, totalWithdrawable, metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated, multipliers);
+      body = this.renderAppealBody(disputePeriod, totalWithdrawable, metaevidenceJSON, currentRuling, contributions, appealCallback, exceptionalContractAddresses, arbitrated, multipliers);
     }
 
     return (
-      <Card>
-        <Accordion.Toggle className={activeKey == 1 ? "open" : "closed"} as={Card.Header} eventKey="1">
-          Appeal
-        </Accordion.Toggle>
-        <Accordion.Collapse eventKey="1">
-          {body}
-        </Accordion.Collapse>
-      </Card>
+      <section className={styles.section} id="appeal" aria-busy={loading}>
+        <div className={styles.appealBar}>
+          <div className={styles.appealBarRow}>
+            <h2>{heading}</h2>
+            {disputePeriod === DISPUTE_PERIOD_APPEAL && this.renderAppealDeadlines()}
+          </div>
+          {this.renderWriteStatus("fund")}
+          {this.renderWriteStatus("withdraw")}
+        </div>
+        {body}
+      </section>
     );
   };
 
@@ -568,20 +635,18 @@ class DisputeDetails extends React.Component {
     // Invalid/Refused option
     if (!exceptionalContractAddresses.includes(arbitrated)) {
       cards.push(
-        <Col key={0} className="pb-4" xl={8} lg={12} xs={24}>
-          <CrowdfundingCard
-            key={0}
-            title={"Invalid / Refused to Arbitrate / Tied"}
-            winner={currentRuling == 0}
-            fundingPercentage={this.calculateFundingPercentage(0, contributions).toFixed(2)}
-            appealPeriodEnd={this.calculateAppealPeriod(0)}
-            suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(0))}
-            roi={this.calculateReturnOfInvestmentRatio(0).toFixed(2)}
-            appealCallback={appealCallback}
-            rulingOptionCode={0}
-            now={now}
-          />
-        </Col>
+        <CrowdfundingCard
+          key={0}
+          title={"Invalid / Refused to Arbitrate / Tied"}
+          winner={currentRuling == 0}
+          fundingPercentage={this.calculateFundingPercentage(0, contributions).toFixed(2)}
+          appealPeriodEnd={this.calculateAppealPeriod(0)}
+          suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(0))}
+          roi={this.calculateReturnOfInvestmentRatio(0).toFixed(2)}
+          appealCallback={appealCallback}
+          rulingOptionCode={0}
+          now={now}
+        />
       );
     }
 
@@ -590,20 +655,18 @@ class DisputeDetails extends React.Component {
       Object.entries(rulingOptions.reserved).forEach(([rulingCode, title]) => {
         const hexToNumberString = hex => ethers.getBigInt(hex).toString();
         cards.push(
-          <Col key={hexToNumberString(rulingCode)} className="pb-4" xl={8} lg={12} xs={24}>
-            <CrowdfundingCard
-              key={hexToNumberString(rulingCode)}
-              title={title}
-              winner={currentRuling == hexToNumberString(rulingCode)}
-              fundingPercentage={this.calculateFundingPercentage(hexToNumberString(rulingCode), contributions).toFixed(2)}
-              appealPeriodEnd={this.calculateAppealPeriod(hexToNumberString(rulingCode))}
-              suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(hexToNumberString(rulingCode)))}
-              roi={this.calculateReturnOfInvestmentRatio(hexToNumberString(rulingCode)).toFixed(2)}
-              appealCallback={appealCallback}
-              rulingOptionCode={hexToNumberString(rulingCode)}
-              now={now}
-            />
-          </Col>
+          <CrowdfundingCard
+            key={hexToNumberString(rulingCode)}
+            title={title}
+            winner={currentRuling == hexToNumberString(rulingCode)}
+            fundingPercentage={this.calculateFundingPercentage(hexToNumberString(rulingCode), contributions).toFixed(2)}
+            appealPeriodEnd={this.calculateAppealPeriod(hexToNumberString(rulingCode))}
+            suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(hexToNumberString(rulingCode)))}
+            roi={this.calculateReturnOfInvestmentRatio(hexToNumberString(rulingCode)).toFixed(2)}
+            appealCallback={appealCallback}
+            rulingOptionCode={hexToNumberString(rulingCode)}
+            now={now}
+          />
         );
       });
     }
@@ -614,19 +677,18 @@ class DisputeDetails extends React.Component {
     if (questionType === "single-select" && titles) {
       titles.forEach((title, index) => {
         cards.push(
-          <Col key={index + 1} className="pb-4" xl={8} lg={12} xs={24}>
-            <CrowdfundingCard
-              title={title}
-              winner={currentRuling == index + 1}
-              fundingPercentage={this.calculateFundingPercentage(index + 1, contributions).toFixed(2)}
-              appealPeriodEnd={this.calculateAppealPeriod(index + 1)}
-              suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(index + 1))}
-              roi={this.calculateReturnOfInvestmentRatio(index + 1).toFixed(2)}
-              appealCallback={appealCallback}
-              rulingOptionCode={index + 1}
-              now={now}
-            />
-          </Col>
+          <CrowdfundingCard
+            key={index + 1}
+            title={title}
+            winner={currentRuling == index + 1}
+            fundingPercentage={this.calculateFundingPercentage(index + 1, contributions).toFixed(2)}
+            appealPeriodEnd={this.calculateAppealPeriod(index + 1)}
+            suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(index + 1))}
+            roi={this.calculateReturnOfInvestmentRatio(index + 1).toFixed(2)}
+            appealCallback={appealCallback}
+            rulingOptionCode={index + 1}
+            now={now}
+          />
         );
       });
     } else if (questionType === "multiple-select" && titles) {
@@ -642,19 +704,18 @@ class DisputeDetails extends React.Component {
             .join(" ");
 
         cards.push(
-          <Col key={`combo-${comboValue + 1}`} className="pb-4" xl={8} lg={12} xs={24}>
-            <CrowdfundingCard
-              title={title}
-              winner={currentRuling == comboValue + 1}
-              fundingPercentage={this.calculateFundingPercentage(comboValue + 1, contributions).toFixed(2)}
-              appealPeriodEnd={this.calculateAppealPeriod(comboValue + 1)}
-              roi={this.calculateReturnOfInvestmentRatio(comboValue + 1).toFixed(2)}
-              suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(comboValue + 1))}
-              appealCallback={appealCallback}
-              rulingOptionCode={comboValue + 1}
-              now={now}
-            />
-          </Col>
+          <CrowdfundingCard
+            key={`combo-${comboValue + 1}`}
+            title={title}
+            winner={currentRuling == comboValue + 1}
+            fundingPercentage={this.calculateFundingPercentage(comboValue + 1, contributions).toFixed(2)}
+            appealPeriodEnd={this.calculateAppealPeriod(comboValue + 1)}
+            roi={this.calculateReturnOfInvestmentRatio(comboValue + 1).toFixed(2)}
+            suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(comboValue + 1))}
+            appealCallback={appealCallback}
+            rulingOptionCode={comboValue + 1}
+            now={now}
+          />
         );
       });
     } else {
@@ -664,19 +725,18 @@ class DisputeDetails extends React.Component {
 
       fallbackTitles.forEach((title, index) => {
         cards.push(
-          <Col key={`fallback-${index + 1}`} className="pb-4" xl={8} lg={12} xs={24}>
-            <CrowdfundingCard
-              title={title}
-              winner={currentRuling == index + 1}
-              fundingPercentage={this.calculateFundingPercentage(index + 1, contributions).toFixed(2)}
-              appealPeriodEnd={this.calculateAppealPeriod(index + 1)}
-              suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(index + 1))}
-              roi={this.calculateReturnOfInvestmentRatio(index + 1).toFixed(2)}
-              appealCallback={appealCallback}
-              rulingOptionCode={index + 1}
-              now={now}
-            />
-          </Col>
+          <CrowdfundingCard
+            key={`fallback-${index + 1}`}
+            title={title}
+            winner={currentRuling == index + 1}
+            fundingPercentage={this.calculateFundingPercentage(index + 1, contributions).toFixed(2)}
+            appealPeriodEnd={this.calculateAppealPeriod(index + 1)}
+            suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(index + 1))}
+            roi={this.calculateReturnOfInvestmentRatio(index + 1).toFixed(2)}
+            appealCallback={appealCallback}
+            rulingOptionCode={index + 1}
+            now={now}
+          />
         );
       });
     }
@@ -713,20 +773,19 @@ class DisputeDetails extends React.Component {
         }
 
         cards.push(
-          <Col key={key} className="pb-4" xl={8} lg={12} xs={24}>
-            <CrowdfundingCard
-              title={title}
-              rulingOptionCode={key.toString()}
-              winner={currentRuling == key}
-              fundingPercentage={this.calculateFundingPercentage(key, contributions).toFixed(2)}
-              suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(key))}
-              appealPeriodEnd={this.calculateAppealPeriod(key)}
-              roi={this.calculateReturnOfInvestmentRatio(key).toFixed(2)}
-              appealCallback={appealCallback}
-              metaevidenceJSON={metaevidenceJSON}
-              now={now}
-            />
-          </Col>
+          <CrowdfundingCard
+            key={key}
+            title={title}
+            rulingOptionCode={key.toString()}
+            winner={currentRuling == key}
+            fundingPercentage={this.calculateFundingPercentage(key, contributions).toFixed(2)}
+            suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(key))}
+            appealPeriodEnd={this.calculateAppealPeriod(key)}
+            roi={this.calculateReturnOfInvestmentRatio(key).toFixed(2)}
+            appealCallback={appealCallback}
+            metaevidenceJSON={metaevidenceJSON}
+            now={now}
+          />
         );
       });
 
@@ -741,38 +800,36 @@ class DisputeDetails extends React.Component {
       }
 
       cards.push(
-        <Col key="current-ruling" className="pb-4" xl={8} lg={12} xs={24}>
-          <CrowdfundingCard
-            title={currentRulingTitle}
-            rulingOptionCode={currentRuling.toString()}
-            winner={true}
-            fundingPercentage={this.calculateFundingPercentage(currentRuling, contributions).toFixed(2)}
-            appealPeriodEnd={this.calculateAppealPeriod(currentRuling)}
-            roi={this.calculateReturnOfInvestmentRatio(currentRuling).toFixed(2)}
-            suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaisedForLoser())}
-            appealCallback={appealCallback}
-            metaevidenceJSON={metaevidenceJSON}
-            now={now}
-          />
-        </Col>
-      );
-    }
-
-    // Variable input card
-    cards.push(
-      <Col key="variable-input" className="pb-4" xl={8} lg={12} xs={24}>
         <CrowdfundingCard
-          variable={questionType}
-          winner={false}
-          fundingPercentage={0}
-          appealPeriodEnd={this.calculateLoserAppealPeriod()}
-          roi={this.calculateReturnOfInvestmentRatioForLoser().toFixed(2)}
+          key="current-ruling"
+          title={currentRulingTitle}
+          rulingOptionCode={currentRuling.toString()}
+          winner={true}
+          fundingPercentage={this.calculateFundingPercentage(currentRuling, contributions).toFixed(2)}
+          appealPeriodEnd={this.calculateAppealPeriod(currentRuling)}
+          roi={this.calculateReturnOfInvestmentRatio(currentRuling).toFixed(2)}
           suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaisedForLoser())}
           appealCallback={appealCallback}
           metaevidenceJSON={metaevidenceJSON}
           now={now}
         />
-      </Col>
+      );
+    }
+
+    // Variable input card
+    cards.push(
+      <CrowdfundingCard
+        key="variable-input"
+        variable={questionType}
+        winner={false}
+        fundingPercentage={0}
+        appealPeriodEnd={this.calculateLoserAppealPeriod()}
+        roi={this.calculateReturnOfInvestmentRatioForLoser().toFixed(2)}
+        suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaisedForLoser())}
+        appealCallback={appealCallback}
+        metaevidenceJSON={metaevidenceJSON}
+        now={now}
+      />
     );
 
     return cards;
@@ -781,7 +838,7 @@ class DisputeDetails extends React.Component {
   //The timeline needs a readable period; the durations of an unknown court are shown as unavailable by the timeline itself.
   renderTimeline = (arbitratorDispute, disputePeriod, subcourts) => {
     if (!Number.isInteger(disputePeriod) || disputePeriod < 0) {
-      return <p className="label">Timeline unavailable: the dispute period could not be read.</p>;
+      return <p className={styles.unavailable}>Timeline unavailable: the dispute period could not be read.</p>;
     }
 
     const timesPerPeriod = subcourts?.[arbitratorDispute.subcourtID?.toString()]?.[1] ?? null;
@@ -795,6 +852,65 @@ class DisputeDetails extends React.Component {
     );
   };
 
+  //Placeholders for the facts and the timeline while the subcourts, which name the court and time the periods, are loading.
+  renderHeaderPlaceholder = () => (
+    <div className={styles.headerPlaceholder} aria-hidden="true">
+      <div className={styles.facts}>
+        <span className={`skeleton ${styles.skeletonFact}`} />
+        <span className={`skeleton ${styles.skeletonFact}`} />
+        <span className={`skeleton ${styles.skeletonFact}`} />
+      </div>
+      <span className={`skeleton ${styles.skeletonLine}`} />
+    </div>
+  );
+
+  //One link per action the visitor can take on this page, each pointing at the section with its control:
+  //funding while the appeal section shows funding options, withdrawing while it shows a withdrawal, evidence while it can be submitted here.
+  renderActions = (disputePeriod, isEscrowV1Dispute) => {
+    const { incompatible, totalWithdrawable, appealCost } = this.props;
+    const actions = [];
+
+    if (disputePeriod === DISPUTE_PERIOD_APPEAL && !incompatible && (isEscrowV1Dispute ? appealCost != null : this.canCrowdfund())) actions.push(["appeal", "Fund an appeal"]);
+    if (disputePeriod === DISPUTE_PERIOD_EXECUTION && totalWithdrawable != null && parseInt(totalWithdrawable, 10) > 0) actions.push(["appeal", "Withdraw"]);
+    if (disputePeriod >= 0 && disputePeriod < DISPUTE_PERIOD_EXECUTION && !incompatible) actions.push(["evidence", "Submit evidence"]);
+
+    return actions.map(([target, label]) => (
+      <a key={label} className={styles.actionLink} href={`#${target}`}>
+        {label}
+        <span aria-hidden="true"> ↓</span>
+      </a>
+    ));
+  };
+
+  //The status, title, facts and timeline of the case. The facts and the timeline wait for the subcourts.
+  renderHeader = (disputePeriod, isEscrowV1Dispute, courtURL) => {
+    const { arbitratorDisputeID, arbitratorDisputeDetails, arbitratorDispute, subcourts, subcourtDetails, subcourtsLoading, currentRuling, metaevidenceJSON, rulingFunded, incompatible, arbitrated } = this.props;
+
+    return (
+      <article className={styles.header}>
+        <div className={styles.headerTop}>
+          <span className={`${statusStyles.status} ${statusStyles[PERIOD_CLASSES[disputePeriod]] || ""}`}>{PERIOD_NAMES[disputePeriod] || "Status unavailable"}</span>
+          <div className={styles.headerLinks}>
+            {this.renderActions(disputePeriod, isEscrowV1Dispute)}
+            <a className={styles.courtLink} href={courtURL} target="_blank" rel="noreferrer noopener">
+              View on Court<span aria-hidden="true"> ↗</span>
+            </a>
+          </div>
+        </div>
+        <h1 className={styles.title}>{getDisputeTitle(metaevidenceJSON?.title)}</h1>
+        {subcourtsLoading ? (
+          this.renderHeaderPlaceholder()
+        ) : (
+          <>
+            {this.renderDisputeInfo(arbitratorDisputeID, arbitratorDisputeDetails, arbitratorDispute, subcourtDetails, arbitrated)}
+            <div className={styles.timeline}>{this.renderTimeline(arbitratorDispute, disputePeriod, subcourts)}</div>
+          </>
+        )}
+        {this.renderDecisionAlerts(disputePeriod, currentRuling, metaevidenceJSON, rulingFunded, incompatible)}
+      </article>
+    );
+  };
+
   render() {
     const {
       arbitrated,
@@ -804,73 +920,34 @@ class DisputeDetails extends React.Component {
       arbitratorDisputeID,
       arbitratorDispute,
       incompatible,
-      subcourts,
-      subcourtDetails,
-      subcourtsLoading,
-      arbitratorDisputeDetails,
-      currentRuling,
       disputeEvent,
       publishCallback,
       submitEvidenceCallback,
-      appealCost,
-      appealPeriod,
-      appealCallback,
-      contributions,
-      rulingFunded,
-      multipliers,
-      totalWithdrawable,
-      exceptionalContractAddresses,
       isAuthenticated,
       isSigningIn,
       onSignIn,
-      loading
+      summary,
     } = this.props;
 
-    const { activeKey } = this.state;
-
     //The dispute struct is the one thing every section needs; each section copes with its own missing data.
-    //The subcourts are loaded once per chain by the app, so the details wait for them rather than render in two steps.
-    if (!arbitratorDispute || !arbitrated || subcourtsLoading) {
-      return <div></div>;
+    if (!arbitratorDispute || !arbitrated) {
+      return null;
     }
 
     const disputePeriod = parseInt(arbitratorDispute.period, 10);
     const isEscrowV1Dispute = networkMap[network].ESCROW_V1_CONTRACTS.includes(arbitrated);
+    const courtURL = new URL(`https://court.kleros.io/cases/${encodeURIComponent(arbitratorDisputeID)}`);
+    courtURL.searchParams.set("requiredChainId", network ?? "1");
 
     return (
-      <section className={styles.disputeDetails}>
-        {this.renderTimeline(arbitratorDispute, disputePeriod, subcourts)}
-        <hr className="mt-4" />
-
-        {this.renderDisputeInfo(arbitratorDisputeID, arbitratorDisputeDetails, arbitratorDispute, subcourtDetails)}
-
-        {this.renderDecisionAlerts(disputePeriod, currentRuling, metaevidenceJSON, rulingFunded, incompatible)}
-
-        <Accordion
-          className={`mt-4 ${styles.accordion}`}
-          onSelect={this.handleAccordionSelect}
-        >
-          {this.renderAppealCard(arbitratorDispute, disputePeriod, contributions, multipliers, appealCost, appealPeriod, arbitrated, totalWithdrawable, metaevidenceJSON, currentRuling, appealCallback, exceptionalContractAddresses, activeKey, isEscrowV1Dispute, loading)}
-
-          <Card>
-            <Accordion.Toggle className={activeKey == 2 ? "open" : "closed"} as={Card.Header} eventKey="2">
-              Question
-            </Accordion.Toggle>
-            <Accordion.Collapse eventKey="2">
-              {this.renderQuestionSection(metaevidenceJSON, arbitratorDisputeID, network)}
-            </Accordion.Collapse>
-          </Card>
-
-          <Card>
-            <Accordion.Toggle className={activeKey == 3 ? "open" : "closed"} as={Card.Header} eventKey="3">
-              Evidence
-            </Accordion.Toggle>
-            <Accordion.Collapse eventKey="3">
-              {this.renderEvidenceSection({ incompatible, metaevidenceJSON, evidences, disputeEvent, disputePeriod, publishCallback, submitEvidenceCallback, isAuthenticated, isSigningIn, onSignIn })}
-            </Accordion.Collapse>
-          </Card>
-        </Accordion>
-      </section>
+      <div className={styles.disputeDetails}>
+        {this.renderHeader(disputePeriod, isEscrowV1Dispute, courtURL.toString())}
+        {summary}
+        {/*A period that could not be read (NaN) never reaches the appeal stage.*/}
+        {disputePeriod >= DISPUTE_PERIOD_APPEAL && this.renderAppealSection(disputePeriod, isEscrowV1Dispute)}
+        {this.renderQuestionSection(metaevidenceJSON, courtURL.toString())}
+        {this.renderEvidenceSection({ incompatible, metaevidenceJSON, evidences, disputeEvent, disputePeriod, publishCallback, submitEvidenceCallback, isAuthenticated, isSigningIn, onSignIn })}
+      </div>
     );
   }
 }
@@ -882,6 +959,14 @@ DisputeDetails.propTypes = {
   onSignIn: PropTypes.func.isRequired,
   subcourtsLoading: PropTypes.bool,
   now: PropTypes.func,
+  summary: PropTypes.node,
+  writeStatus: PropTypes.shape({
+    action: PropTypes.oneOf(["fund", "withdraw", "evidence"]).isRequired,
+    status: PropTypes.oneOf(["pending", "success", "failure"]).isRequired,
+    hash: PropTypes.string,
+    error: PropTypes.string,
+  }),
+  onDismissWriteStatus: PropTypes.func,
 };
 
 export default DisputeDetails;

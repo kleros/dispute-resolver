@@ -1,10 +1,12 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { Col, Form, Row, InputGroup, FormControl } from "react-bootstrap";
+import { Form, FormControl, Spinner } from "react-bootstrap";
 import DisputeSummary from "components/disputeSummary";
 import DisputeDetails from "components/disputeDetails";
+import AlertMessage from "components/alertMessage";
 import { isGovernorWithEvidenceSupport } from "ethereum/network-contract-mapping";
 import { ReactComponent as Magnifier } from "../assets/images/magnifier.svg";
+import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 
 import styles from "containers/styles/interact.module.css";
 
@@ -48,12 +50,16 @@ class Interact extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
+      //The dispute shown or being loaded; the search box has its own value until it is submitted.
       arbitratorDisputeID: this.getRouteDisputeID(),
+      searchQuery: this.getRouteDisputeID(),
       loading: false,
       //True once every read the page shows has finished, so the case renders in one go instead of section by section.
       ready: false,
       loadError: null,
       notFound: false,
+      //The last write action (fund, withdraw, submit evidence) and how it went, shown next to its section until dismissed.
+      writeStatus: null,
       ...EMPTY_CASE,
     };
     //Bumped on every load and navigation so a slow earlier response can never overwrite a newer one.
@@ -71,7 +77,7 @@ class Interact extends React.Component {
     const arbitratorDisputeID = this.getRouteDisputeID();
 
     if (arbitratorDisputeID !== this.getRouteDisputeID(previousProperties.route)) {
-      this.setState({ arbitratorDisputeID });
+      this.setState({ arbitratorDisputeID, searchQuery: arbitratorDisputeID });
       if (arbitratorDisputeID) this.load(arbitratorDisputeID);
       else this.clear();
       return;
@@ -82,6 +88,7 @@ class Interact extends React.Component {
 
   componentWillUnmount() {
     this.loadVersion++;
+    this.unmounted = true;
   }
 
   sumObjectsByKey(...objs) {
@@ -93,18 +100,41 @@ class Interact extends React.Component {
     }, {});
   }
 
-  submitEvidence = async (evidence) => {
-    await this.props.submitEvidenceCallback(this.state.arbitrated, {
-      disputeID: this.state.arbitrableDisputeID,
-      evidenceDescription: evidence.evidenceDescription,
-      evidenceDocument: evidence.evidenceDocument,
-      evidenceTitle: evidence.evidenceTitle,
-      supportingSide: evidence.supportingSide,
-    });
-    await this.reload();
+  //A write may finish after the page was left; its outcome is then dropped.
+  setWriteStatus = (action, status, details = {}) => {
+    if (!this.unmounted) this.setState({ writeStatus: { action, status, ...details } });
   };
 
-  appeal = async (party, contribution) => this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution).then(this.reload);
+  dismissWriteStatus = () => this.setState({ writeStatus: null });
+
+  submitEvidence = async (evidence) => {
+    this.setWriteStatus("evidence", "pending");
+    let receipt;
+    try {
+      receipt = await this.props.submitEvidenceCallback(this.state.arbitrated, {
+        disputeID: this.state.arbitrableDisputeID,
+        evidenceDescription: evidence.evidenceDescription,
+        evidenceDocument: evidence.evidenceDocument,
+        evidenceTitle: evidence.evidenceTitle,
+        supportingSide: evidence.supportingSide,
+      });
+    } catch (error) {
+      this.setWriteStatus("evidence", "failure", { error: error?.message ?? String(error) });
+      throw error;
+    }
+    await this.reload();
+    this.setWriteStatus("evidence", "success", { hash: receipt?.hash });
+  };
+
+  //App.appeal resolves null instead of rejecting when the transaction failed; the case is reloaded either way, as before.
+  appeal = async (party, contribution) => {
+    this.setWriteStatus("fund", "pending");
+    const receipt = await this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution);
+    if (!receipt) this.setWriteStatus("fund", "failure");
+    await this.reload();
+    if (receipt) this.setWriteStatus("fund", "success", { hash: receipt.hash });
+    return receipt;
+  };
 
   withdraw = async () => {
     // Guard against null or undefined selectedContribution
@@ -113,24 +143,29 @@ class Interact extends React.Component {
       return;
     }
 
+    this.setWriteStatus("withdraw", "pending");
+    let receipt;
     try {
       // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256 _ruling);
-      this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);
+      receipt = await this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);
     } catch (err) {
       // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256[] memory _contributedTo);
       console.error('First withdraw attempt failed, trying alternative signature:', err);
-      this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);
+      receipt = await this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);
     }
+    //App.withdrawFeesAndRewardsForAllRounds resolves null when the transaction failed.
+    if (receipt) this.setWriteStatus("withdraw", "success", { hash: receipt.hash });
+    else this.setWriteStatus("withdraw", "failure");
   };
 
-  //Typing only edits the search box. The dispute ID in the URL decides which case is shown.
-  onDisputeIDChange = event => this.setState({ arbitratorDisputeID: event.target.value });
+  //Typing only edits the search box; nothing else changes until the search is submitted.
+  onDisputeIDChange = event => this.setState({ searchQuery: event.target.value });
 
   //Enter or the search button opens the typed case as a new history entry, so Back returns to the previous case.
   //With a router the URL changes and componentDidUpdate loads the case; without one (unit tests) the case is loaded directly.
   onSearchSubmit = event => {
     event.preventDefault();
-    const arbitratorDisputeID = this.state.arbitratorDisputeID.trim();
+    const arbitratorDisputeID = this.state.searchQuery.trim();
     if (!arbitratorDisputeID || arbitratorDisputeID === this.getRouteDisputeID()) return;
 
     const history = this.props.route?.history;
@@ -140,14 +175,14 @@ class Interact extends React.Component {
 
   clear = () => {
     this.loadVersion++;
-    this.setState({ loading: false, ready: false, loadError: null, notFound: false, ...EMPTY_CASE });
+    this.setState({ loading: false, ready: false, loadError: null, notFound: false, writeStatus: null, ...EMPTY_CASE });
   };
 
   //Loads the case of the given arbitrator dispute ID. A missing dispute and a failed read are different states.
   //A silent load (after a write) keeps the page as it is and updates it in place.
   load = async (arbitratorDisputeID, { silent = false } = {}) => {
     const version = ++this.loadVersion;
-    if (!silent) this.setState({ loading: true, ready: false, loadError: null, notFound: false, ...EMPTY_CASE });
+    if (!silent) this.setState({ arbitratorDisputeID, loading: true, ready: false, loadError: null, notFound: false, writeStatus: null, ...EMPTY_CASE });
 
     let arbitratorDispute;
     try {
@@ -260,121 +295,152 @@ class Interact extends React.Component {
     };
   };
 
-  getFeedbackStyle = () => ({
-    height: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: '2rem'
-  });
-
-  renderNoDisputeFound = () => {
-    const { arbitratorDisputeID } = this.state;
-    const { network } = this.props;
-
-    return (
-      <div style={this.getFeedbackStyle()}>
-        <h2 style={{ fontSize: "18px" }}>Dispute with ID {arbitratorDisputeID} does not exist on this network.</h2>
-        <button
-          className="btn btn-primary"
-          onClick={() => window.location.href = `/${network}/ongoing`}
-        >
-          View Ongoing Disputes
-        </button>
+  //The states without a case (not found, failed) keep the search box so another ID can be tried right away.
+  renderNoDisputeFound = () => (
+    <div className={styles.casePage}>
+      <div className={styles.content}>
+        {this.renderSearchForm()}
+        <div className={styles.feedback}>
+          <ScalesSVG className={styles.feedbackIcon} aria-hidden="true" />
+          <h2>Dispute with ID {this.state.arbitratorDisputeID} does not exist on this network.</h2>
+          <p>Check the ID, or pick a case from the list of open disputes.</p>
+          <div className={styles.feedbackActions}>
+            <button type="button" className={styles.action} onClick={() => window.location.href = `/${this.props.network}/ongoing`}>
+              View Ongoing Disputes
+            </button>
+          </div>
+        </div>
       </div>
-    );
-  };
+    </div>
+  );
 
   renderLoadError = () => {
     const { arbitratorDisputeID, loadError } = this.state;
-    const { network } = this.props;
 
     return (
-      <div style={this.getFeedbackStyle()} role="alert">
-        <h2 style={{ fontSize: "18px" }}>Failed to load dispute with ID {arbitratorDisputeID}.</h2>
-        <p>There may be a problem with the RPC endpoint. Please try again.</p>
-        <p><small>{loadError}</small></p>
-        <div>
-          <button className="btn btn-primary mr-3" onClick={() => this.load(arbitratorDisputeID)}>
-            Try again
-          </button>
-          <button className="btn btn-secondary" onClick={() => window.location.href = `/${network}/ongoing`}>
-            View Ongoing Disputes
-          </button>
+      <div className={styles.casePage}>
+        <div className={styles.content}>
+          {this.renderSearchForm()}
+          <div className={styles.feedback} role="alert">
+            <ScalesSVG className={styles.feedbackIcon} aria-hidden="true" />
+            <h2>Failed to load dispute with ID {arbitratorDisputeID}.</h2>
+            <p>There may be a problem with the RPC endpoint. Please try again.</p>
+            <p><small>{loadError}</small></p>
+            <div className={styles.feedbackActions}>
+              <button type="button" className={styles.action} onClick={() => this.load(arbitratorDisputeID)}>
+                Try again
+              </button>
+              <button type="button" className={styles.secondaryAction} onClick={() => window.location.href = `/${this.props.network}/ongoing`}>
+                View Ongoing Disputes
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
   };
 
+  //The landing of /cases/ without an ID: a dispute is opened by its arbitrator dispute ID.
+  renderLanding = () => (
+    <main className={styles.casePage}>
+      <div className={styles.content}>
+        <section className={styles.landing}>
+          <ScalesSVG className={styles.feedbackIcon} aria-hidden="true" />
+          <h1>Find a dispute</h1>
+          {this.renderSearchForm({ landing: true })}
+        </section>
+      </div>
+    </main>
+  );
+
   renderIncompatibleWarning = () => {
-    const { metaevidence } = this.state;
+    const { metaevidence, arbitrated } = this.state;
     const isGenericMetaEvidence = metaevidence?.metaEvidenceJSON?.category === "Non-Standard Contract";
 
+    if (isGenericMetaEvidence) {
+      return (
+        <AlertMessage
+          type="warning"
+          extraClass={styles.warning}
+          title="Non-standard contract"
+          content={
+            <>
+              This arbitrable contract doesn't follow standard Kleros patterns. The dispute information shown is generic. Limited functionality is available - you may not be able
+              to submit evidence or fund appeals through this interface.
+              <br />
+              <small>Contract: {arbitrated}</small>
+            </>
+          }
+        />
+      );
+    }
+
     return (
-      <div style={{
-        padding: "1rem 2rem",
-        fontSize: "14px",
-        background: isGenericMetaEvidence ? "#fff3cd" : "#fafafa",
-        border: isGenericMetaEvidence ? "1px solid #ffeaa7" : "none",
-        borderRadius: "4px",
-        marginBottom: "1rem"
-      }}>
-        {isGenericMetaEvidence ? (
-          <>
-            <b>⚠️ Non-Standard Contract:</b> This arbitrable contract doesn't follow standard Kleros patterns.
-            The dispute information shown is generic. Limited functionality is available - you may not be able to submit evidence
-            or fund appeals through this interface.
-            <br />
-            <small style={{ color: "#856404", marginTop: "0.5rem", display: "block" }}>
-              Contract: {this.state.arbitrated}
-            </small>
-          </>
-        ) : (
-          <>
-            <b>View mode only:</b> the arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver.
-            You can't submit evidence or fund appeal on this interface. You can do these on the arbitrable application, if implemented.
-          </>
-        )}
+      <AlertMessage
+        type="warning"
+        extraClass={styles.warning}
+        title="View mode only"
+        content="The arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or fund an appeal here. You can do these on the arbitrable application, if implemented."
+      />
+    );
+  };
+
+  renderSearchForm = ({ landing = false } = {}) => (
+    <Form onSubmit={this.onSearchSubmit} className={landing ? styles.landingForm : styles.toolbar} role="search">
+      <div className={styles.searchRow}>
+        <div className={styles.searchControl}>
+          <Magnifier aria-hidden="true" />
+          <FormControl
+            className={styles.search}
+            placeholder="Dispute ID"
+            aria-label="Dispute ID from Court"
+            autoComplete="off"
+            onChange={this.onDisputeIDChange}
+            type="number"
+            min="0"
+            value={this.state.searchQuery}
+            id="arbitratorDisputeID"
+          />
+        </div>
+        <button type="submit" className={styles.action}>
+          Open dispute
+        </button>
       </div>
-    );
-  };
+    </Form>
+  );
 
-  renderSearchForm = (network) => {
-    const { arbitratorDisputeID } = this.state;
-    const courtURL = new URL(`https://court.kleros.io/cases/${encodeURIComponent(arbitratorDisputeID)}`);
-    courtURL.searchParams.set("requiredChainId", network ?? "1");
-
-    return (
-      <Form onSubmit={this.onSearchSubmit}>
-        <Row>
-          <Col>
-            <Form.Label htmlFor="arbitratorDisputeID">
-              Search Disputes on <a href={courtURL.toString()} target="_blank" rel="noreferrer noopener">Court</a>
-            </Form.Label>
-            <InputGroup className={styles.search} size="md">
-              <InputGroup.Prepend>
-                <InputGroup.Text as="button" type="submit" aria-label="Open dispute">
-                  <Magnifier />
-                </InputGroup.Text>
-              </InputGroup.Prepend>
-              <FormControl
-                className="purple-inverted"
-                placeholder="Dispute ID"
-                aria-label="Input dispute number from Court"
-                aria-describedby="search"
-                onChange={this.onDisputeIDChange}
-                type="number"
-                min="0"
-                value={arbitratorDisputeID}
-                id="arbitratorDisputeID"
-              />
-            </InputGroup>
-          </Col>
-        </Row>
-      </Form>
-    );
-  };
+  //Placeholders in the shape of the case, shown until every core read has finished.
+  renderLoadingCase = () => (
+    <>
+      <div className={styles.loadingStatus} role="status" aria-live="polite">
+        <Spinner as="span" animation="border" size="sm" aria-hidden="true" />
+        <span>Fetching dispute #{this.state.arbitratorDisputeID}…</span>
+      </div>
+      <div aria-hidden="true">
+        <div className={styles.skeletonCard}>
+          <span className={`skeleton ${styles.skeletonPill}`} />
+          <span className={`skeleton ${styles.skeletonTitle}`} />
+          <div className={styles.skeletonRow}>
+            <span className={`skeleton ${styles.skeletonFact}`} />
+            <span className={`skeleton ${styles.skeletonFact}`} />
+            <span className={`skeleton ${styles.skeletonFact}`} />
+          </div>
+          <span className={`skeleton ${styles.skeletonLine}`} />
+        </div>
+        <div className={styles.skeletonCard}>
+          <span className={`skeleton ${styles.skeletonHeading}`} />
+          <span className={`skeleton ${styles.skeletonLine}`} />
+          <span className={`skeleton ${styles.skeletonLine}`} />
+          <span className={`skeleton ${styles.skeletonShortLine}`} />
+        </div>
+        <div className={styles.skeletonCard}>
+          <span className={`skeleton ${styles.skeletonHeading}`} />
+          <span className={`skeleton ${styles.skeletonLine}`} />
+          <span className={`skeleton ${styles.skeletonShortLine}`} />
+        </div>
+      </div>
+    </>
+  );
 
   //The current ruling as the string DisputeDetails expects, or null when it could not be read.
   getCurrentRulingValue = () => {
@@ -397,24 +463,24 @@ class Interact extends React.Component {
   };
 
   render() {
-    const { arbitratorDisputeID, loading, ready, loadError, notFound, arbitrated, incompatible, metaevidence } = this.state;
-    const { network } = this.props;
+    const { loading, ready, loadError, notFound, arbitrated, incompatible, metaevidence } = this.state;
 
     if (notFound) return this.renderNoDisputeFound();
     if (loadError) return this.renderLoadError();
+    if (!this.getRouteDisputeID() && !loading && !ready) return this.renderLanding();
 
     const isGenericMetaEvidence = metaevidence?.metaEvidenceJSON?.category === "Non-Standard Contract";
     const shouldShowWarning = ready && (incompatible || isGenericMetaEvidence);
 
     return (
-      <>
-        {shouldShowWarning && this.renderIncompatibleWarning()}
-        <main className={styles.interact} aria-busy={loading}>
-          {this.renderSearchForm(network)}
-          {loading && !ready && <div role="status" aria-live="polite">Fetching dispute #{arbitratorDisputeID}…</div>}
+      <main className={styles.casePage} aria-busy={loading}>
+        <div className={styles.content}>
+          {this.renderSearchForm()}
+          {shouldShowWarning && this.renderIncompatibleWarning()}
+          {loading && !ready && this.renderLoadingCase()}
           {ready && arbitrated && this.renderCase()}
-        </main>
-      </>
+        </div>
+      </main>
     );
   }
 
@@ -435,7 +501,8 @@ class Interact extends React.Component {
       incompatible,
       totalWithdrawable,
       loading,
-      arbitrated
+      arbitrated,
+      writeStatus,
     } = this.state;
 
     const {
@@ -454,54 +521,58 @@ class Interact extends React.Component {
       now,
     } = this.props;
 
+    const summary = (
+      <DisputeSummary
+        metaevidenceJSON={metaevidence?.metaEvidenceJSON}
+        arbitrated={arbitrated}
+        arbitratorAddress={arbitratorAddress}
+        arbitratorDisputeID={arbitratorDisputeID}
+        arbitrableChainID={metaevidence?.metaEvidenceJSON?.arbitrableChainID ?? network}
+        arbitratorChainID={metaevidence?.metaEvidenceJSON?.arbitratorChainID ?? network}
+        chainID={network}
+        web3Provider={web3Provider}
+      />
+    );
+
     return (
-      <>
-        <DisputeSummary
-          metaevidenceJSON={metaevidence?.metaEvidenceJSON}
-          arbitrated={arbitrated}
-          arbitratorAddress={arbitratorAddress}
-          arbitratorDisputeID={arbitratorDisputeID}
-          arbitrableChainID={metaevidence?.metaEvidenceJSON?.arbitrableChainID ?? network}
-          arbitratorChainID={metaevidence?.metaEvidenceJSON?.arbitratorChainID ?? network}
-          chainID={network}
-          web3Provider={web3Provider}
-        />
-        <DisputeDetails
-          activeAddress={activeAddress}
-          network={network}
-          metaevidenceJSON={metaevidence?.metaEvidenceJSON}
-          evidences={evidences}
-          arbitrated={arbitrated}
-          arbitratorAddress={arbitratorAddress}
-          arbitratorDisputeID={arbitratorDisputeID}
-          arbitratorDispute={arbitratorDispute}
-          arbitratorDisputeDetails={arbitratorDisputeDetails}
-          loading={loading}
-          subcourts={subcourts}
-          subcourtDetails={subcourtDetails}
-          subcourtsLoading={subcourtsLoading}
-          incompatible={incompatible}
-          currentRuling={this.getCurrentRulingValue()}
-          disputeEvent={disputeEvent}
-          publishCallback={publishCallback}
-          submitEvidenceCallback={this.submitEvidence}
-          getAppealPeriodCallback={getAppealPeriodCallback}
-          appealCost={appealCost}
-          appealPeriod={appealPeriod}
-          appealDecisions={appealDecisions}
-          appealCallback={this.appeal}
-          contributions={contributions}
-          rulingFunded={rulingFunded}
-          multipliers={multipliers}
-          withdrawCallback={this.withdraw}
-          totalWithdrawable={totalWithdrawable}
-          exceptionalContractAddresses={this.props.exceptionalContractAddresses}
-          isAuthenticated={isAuthenticated}
-          isSigningIn={isSigningIn}
-          onSignIn={onSignIn}
-          now={now}
-        />
-      </>
+      <DisputeDetails
+        activeAddress={activeAddress}
+        network={network}
+        metaevidenceJSON={metaevidence?.metaEvidenceJSON}
+        evidences={evidences}
+        arbitrated={arbitrated}
+        arbitratorAddress={arbitratorAddress}
+        arbitratorDisputeID={arbitratorDisputeID}
+        arbitratorDispute={arbitratorDispute}
+        arbitratorDisputeDetails={arbitratorDisputeDetails}
+        loading={loading}
+        subcourts={subcourts}
+        subcourtDetails={subcourtDetails}
+        subcourtsLoading={subcourtsLoading}
+        incompatible={incompatible}
+        currentRuling={this.getCurrentRulingValue()}
+        disputeEvent={disputeEvent}
+        publishCallback={publishCallback}
+        submitEvidenceCallback={this.submitEvidence}
+        getAppealPeriodCallback={getAppealPeriodCallback}
+        appealCost={appealCost}
+        appealPeriod={appealPeriod}
+        appealDecisions={appealDecisions}
+        appealCallback={this.appeal}
+        contributions={contributions}
+        rulingFunded={rulingFunded}
+        multipliers={multipliers}
+        withdrawCallback={this.withdraw}
+        totalWithdrawable={totalWithdrawable}
+        exceptionalContractAddresses={this.props.exceptionalContractAddresses}
+        isAuthenticated={isAuthenticated}
+        isSigningIn={isSigningIn}
+        onSignIn={onSignIn}
+        now={now}
+        summary={summary}
+        writeStatus={writeStatus}
+        onDismissWriteStatus={this.dismissWriteStatus}
+      />
     );
   };
 }

@@ -38,18 +38,23 @@
 
 .disputeTimeline .period > div:global(.past):not(.decoration)::before {
   content: "✓";
-  border-color: var(--blue-primary);
-  color: var(--blue-primary);
+  border-color: var(--purple-primary);
+  color: var(--purple-primary);
 }
 
 
 
 .disputeTimeline .period > div:global(.current) {
-  color: var(--text-primary);
+  color: var(--purple-dark);
+}
+
+.disputeTimeline .period > div:global(.current) .time {
+  color: var(--purple-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .disputeTimeline .period > div:global(.current)::before {
-  background-color: var(--blue-primary);
+  background-color: var(--purple-primary);
   color: white;
   border: none;
 }
@@ -61,5 +66,5 @@
 }
 
 .disputeTimeline .decoration:global(.past) {
-  border: 1px var(--blue-primary) solid;
+  border: 1px var(--purple-primary) solid;
 }

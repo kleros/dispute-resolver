@@ -11,7 +11,11 @@ import { ethers } from "ethers";
 class CrowdfundingCard extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { variableRulingOption: "", contribution: this.props.suggestedContribution, error: null };
+    this.state = { variableRulingOption: "", contribution: this.props.suggestedContribution, error: null, pending: false };
+  }
+
+  componentWillUnmount() {
+    this.unmounted = true;
   }
 
   onControlChange = e => this.setState({ [e.target.id]: e.target.value, error: null });
@@ -52,10 +56,12 @@ class CrowdfundingCard extends React.Component {
     }
   };
 
+  //The button is disabled while the contribution is on its way, so it cannot be sent twice.
   handleFundButtonClick = async () => {
     const { variable, appealCallback, rulingOptionCode, metaevidenceJSON } = this.props;
     const { variableRulingOption, contribution } = this.state;
-    
+
+    this.setState({ pending: true });
     try {
       const actualRulingCode = this.processRulingCode(variable, variableRulingOption, metaevidenceJSON, rulingOptionCode);
       await appealCallback(actualRulingCode, contribution.toString());
@@ -65,59 +71,77 @@ class CrowdfundingCard extends React.Component {
       } else {
         this.setState({ error: "Transaction failed. Please check your network connection and try again." });
       }
+    } finally {
+      if (!this.unmounted) this.setState({ pending: false });
     }
   };
 
-
-
   render() {
     const { title, winner, fundingPercentage, appealPeriodEnd, variable, roi, suggestedContribution } = this.props;
-    const { variableRulingOption, contribution, error } = this.state;
+    const { variableRulingOption, contribution, error, pending } = this.state;
+    const fullyFunded = Number(suggestedContribution) === 0;
 
     return (
-      <div className={`shadow rounded p-3 d-flex flex-column ${styles.crowdfundingCard}`}>
-        <div>
-          {!variable && <strong>{title}</strong>}
-          {variable && variable != "datetime" && <FormControl id="variableRulingOption" type={(variable == "string" || variable == "hash") ? "text" : "number"} value={variableRulingOption} step="1" placeholder="Enter a new ruling option" onChange={this.onControlChange}></FormControl>}
-          {variable && variable == "datetime" && <DatetimePicker id="variableRulingOption" onChange={this.onDatePickerChange} />}
-        </div>
-
-        {winner && (
-          <div>
-            <small>Latest jury decision</small>
-          </div>
-        )}
-        <div className="mt-auto">
-          <div className="text-center mt-3 text-success">{fundingPercentage}% Funded</div>
-          <ProgressBar className="mb-2" now={fundingPercentage} variant="success" />
-
-          <div className={styles.countdown}>
-            <Hourglass className="red mr-1" />
-            <Countdown className={styles.countdown} date={1000 * parseInt(appealPeriodEnd, 10)} now={this.props.now} renderer={this.renderCountdown} />
-          </div>
-          {error && (
-            <AlertMessage extraClass="mb-3" type="danger" title="Invalid Input" content={error} />
-          )}
-          <InputGroup className="my-3">
+      <div className={`${styles.crowdfundingCard} ${winner ? styles.winner : ""}`}>
+        <div className={styles.head}>
+          {!variable && <strong className={styles.title}>{title}</strong>}
+          {variable && variable != "datetime" && (
             <FormControl
-              id="contribution"
-              value={suggestedContribution > 0 ? contribution : 0}
-              placeholder="Enter contribution amount"
-              aria-label="Recipient's username"
-              aria-describedby="basic-addon2"
-              type="number"
-              step="0.01"
+              id="variableRulingOption"
+              className={styles.variableInput}
+              type={(variable == "string" || variable == "hash") ? "text" : "number"}
+              value={variableRulingOption}
+              step="1"
+              placeholder="Enter a new ruling option"
+              aria-label="New ruling option"
               onChange={this.onControlChange}
-              disabled={suggestedContribution == 0}
             />
-            <InputGroup.Append>
-              <Button variant="primary" disabled={suggestedContribution == 0 || (variable && !variableRulingOption) || error} onClick={this.handleFundButtonClick}>
-                Fund
-              </Button>
-            </InputGroup.Append>
-          </InputGroup>
-          <AlertMessage extraClass="mt-auto" type="info" title={`Return of Investment`} content={`If this ruling option wins, you will receive back ${roi} times of your contribution. `} />
+          )}
+          {variable && variable == "datetime" && <DatetimePicker id="variableRulingOption" onChange={this.onDatePickerChange} />}
+          {(winner || fullyFunded) && (
+            <div className={styles.badges}>
+              {winner && <span className={styles.badgeWinner}>Latest jury decision</span>}
+              {fullyFunded && <span className={styles.badgeFunded}>Fully funded</span>}
+            </div>
+          )}
         </div>
+
+        <div className={styles.funding}>
+          <div className={styles.fundingLabel}>
+            <span>{fundingPercentage}% Funded</span>
+          </div>
+          <ProgressBar now={fundingPercentage} variant="success" aria-label={`${fundingPercentage}% funded`} />
+        </div>
+
+        <div className={styles.countdown}>
+          <Hourglass aria-hidden="true" />
+          <span className={styles.countdownLabel}>Ends in</span>
+          <Countdown date={1000 * parseInt(appealPeriodEnd, 10)} now={this.props.now} renderer={this.renderCountdown} />
+        </div>
+
+        {error && (
+          <AlertMessage extraClass={styles.error} type="error" title="Invalid Input" content={error} />
+        )}
+
+        <InputGroup className={styles.controls}>
+          <FormControl
+            id="contribution"
+            value={suggestedContribution > 0 ? contribution : 0}
+            placeholder="Enter contribution amount"
+            aria-label="Contribution amount"
+            type="number"
+            step="0.01"
+            onChange={this.onControlChange}
+            disabled={fullyFunded || pending}
+          />
+          <InputGroup.Append>
+            <Button variant="primary" disabled={fullyFunded || (variable && !variableRulingOption) || error || pending} onClick={this.handleFundButtonClick}>
+              {pending ? "Funding…" : "Fund"}
+            </Button>
+          </InputGroup.Append>
+        </InputGroup>
+
+        <p className={styles.roi}>If this ruling option wins, you will receive back {roi} times of your contribution.</p>
       </div>
     );
   }

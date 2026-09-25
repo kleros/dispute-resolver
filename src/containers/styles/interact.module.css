@@ -1,19 +1,299 @@
-.interact section:first-of-type {
-  padding: 0;
+.casePage {
+  flex: 1;
+  padding: 32px 32px 64px;
+  background: var(--purple-light);
 }
 
-.interact .search {
-  margin-bottom: var(--spacing-32);
+.content {
+  width: 100%;
+  max-width: 1248px;
+  margin: 0 auto;
 }
 
-.interact .search :global(.input-group-prepend) {
-  border-right-width: 0;
+/* Search */
+
+.toolbar,
+.landingForm {
+  margin: 0;
 }
 
-.interact .search :global(.input-group-prepend) > * {
-  background-color: white;
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 24px;
+  border: 1px solid var(--stroke);
+  border-radius: var(--border-radius-l);
+  background: white;
 }
 
-.interact .search > input {
-  border-left-width: 0;
+.searchRow {
+  display: flex;
+  gap: var(--spacing-16);
+}
+
+.searchControl {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.searchControl > svg {
+  position: absolute;
+  top: 16px;
+  left: var(--spacing-16);
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+
+.searchControl > svg > path {
+  fill: var(--grey-dark);
+}
+
+.searchControl .search {
+  width: 100%;
+  height: 48px;
+  margin: 0;
+  padding-left: 44px;
+  border-radius: var(--spacing-8);
+  border-color: var(--stroke);
+  font-size: var(--font-size-m);
+  -moz-appearance: textfield;
+}
+
+.searchControl .search::-webkit-outer-spin-button,
+.searchControl .search::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.searchControl .search::placeholder {
+  color: var(--grey-dark);
+  opacity: 1;
+}
+
+.searchControl .search:focus {
+  border-color: var(--purple-primary);
+  outline: none;
+  box-shadow: none;
+}
+
+.toolbar .searchRow {
+  max-width: 560px;
+}
+
+/* Buttons */
+
+.action,
+.secondaryAction {
+  padding: 12px 24px;
+  border: 1px solid var(--purple-primary);
+  border-radius: var(--spacing-8);
+  font-weight: var(--bold);
+  white-space: nowrap;
+}
+
+.action {
+  background: var(--purple-primary);
+  color: white;
+}
+
+.action:hover {
+  background: var(--purple-dark);
+}
+
+.secondaryAction {
+  background: white;
+  color: var(--purple-primary);
+}
+
+.secondaryAction:hover {
+  background: var(--purple-light);
+}
+
+.casePage button:focus-visible,
+.casePage input:focus-visible,
+.casePage a:focus-visible {
+  outline: 3px solid var(--purple-primary);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+/* Warnings */
+
+.warning {
+  margin-top: 24px;
+  border-radius: 12px;
+  background: white;
+}
+
+/* Landing */
+
+.landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 640px;
+  margin: 32px auto 0;
+  padding: 48px 32px;
+  border: 1px solid var(--stroke);
+  border-radius: var(--border-radius-l);
+  background: white;
+  text-align: center;
+}
+
+.landing h1 {
+  margin: 24px 0 20px;
+  color: var(--purple-dark);
+  font-size: 28px;
+  line-height: 1.3;
+  font-weight: var(--bold);
+}
+
+.landingForm {
+  width: 100%;
+  text-align: left;
+}
+
+/* Not found, failed load */
+
+.feedback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 24px;
+  padding: 64px 24px;
+  border: 1px solid var(--stroke);
+  border-radius: var(--border-radius-l);
+  background: white;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.feedback h2 {
+  margin: 24px 0 12px;
+  color: var(--purple-dark);
+  font-size: var(--font-size-l);
+  line-height: 1.4;
+}
+
+.feedback p {
+  max-width: 540px;
+  margin: 0 0 8px;
+  color: var(--grey-dark);
+}
+
+.feedback small {
+  color: var(--grey-dark);
+}
+
+.feedbackIcon {
+  width: 40px;
+  height: 32px;
+}
+
+.feedbackIcon > path {
+  fill: var(--purple-primary);
+}
+
+.feedbackActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--spacing-16);
+  margin-top: 16px;
+}
+
+/* Loading */
+
+.loadingStatus {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 12px;
+  color: var(--purple-dark);
+  font-weight: var(--bold);
+}
+
+.loadingStatus :global(.spinner-border) {
+  color: var(--purple-primary);
+}
+
+.skeletonCard {
+  margin-top: 16px;
+  padding: 24px;
+  border: 1px solid var(--stroke);
+  border-radius: var(--border-radius-l);
+  background: white;
+}
+
+.skeletonPill {
+  width: 120px;
+  height: 26px;
+  border-radius: 13px;
+}
+
+.skeletonTitle {
+  width: 60%;
+  height: 28px;
+  margin: 20px 0 24px;
+}
+
+.skeletonHeading {
+  width: 140px;
+  height: 20px;
+  margin-bottom: 20px;
+}
+
+.skeletonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  margin-bottom: 24px;
+}
+
+.skeletonFact {
+  width: 160px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.skeletonLine {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.skeletonShortLine {
+  width: 45%;
+}
+
+@media (max-width: 639px) {
+  .casePage {
+    padding: 16px 16px 48px;
+  }
+
+  .toolbar {
+    padding: 16px;
+  }
+
+  .searchRow {
+    flex-direction: column;
+  }
+
+  .landing {
+    margin-top: 16px;
+    padding: 32px 16px;
+  }
+
+  .landing h1 {
+    font-size: 24px;
+  }
+
+  .feedback {
+    padding: 40px 16px;
+  }
+
+  .skeletonCard {
+    padding: 16px;
+  }
 }

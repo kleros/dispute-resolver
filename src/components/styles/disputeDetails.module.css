@@ -1,51 +1,479 @@
-.disputeDetails .spanWithSvgInside > svg {
-  margin-right: var(--spacing-8);
-  vertical-align: text-bottom;
+.disputeDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 24px;
 }
 
-.disputeDetails .scales > path {
+.disputeDetails h2 {
+  margin: 0;
+  color: var(--purple-dark);
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: var(--bold);
+}
+
+.disputeDetails h3 {
+  margin: 0 0 12px;
+  color: var(--purple-dark);
+  font-size: var(--font-size-s);
+  font-weight: var(--bold);
+}
+
+/* Cards */
+
+.header,
+.section {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--stroke);
+  border-radius: var(--border-radius-l);
+  background: white;
+  overflow-wrap: anywhere;
+}
+
+.section > h2 {
+  margin-bottom: 16px;
+}
+
+.section {
+  scroll-margin-top: 16px;
+}
+
+/* Header */
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.headerLinks {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+
+.courtLink,
+.actionLink {
+  font-size: var(--font-size-s);
+  font-weight: var(--bold);
+  white-space: nowrap;
+}
+
+.courtLink {
+  color: var(--purple-primary);
+}
+
+.actionLink {
+  padding: 8px 16px;
+  border-radius: var(--spacing-8);
+  background: var(--purple-primary);
+  color: white;
+}
+
+.actionLink:hover {
+  background: var(--purple-dark);
+  color: white;
+  text-decoration: none;
+}
+
+.title {
+  margin: 16px 0 20px;
+  color: var(--purple-dark);
+  font-size: 28px;
+  line-height: 1.3;
+  font-weight: var(--bold);
+  letter-spacing: -0.02em;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  margin: 0 0 24px;
+}
+
+.fact {
+  min-width: 0;
+}
+
+.fact dt {
+  margin-bottom: 4px;
+  color: var(--grey-dark);
+  font-size: var(--font-size-xs);
+  font-weight: var(--thin);
+}
+
+.fact dd {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-8);
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-s);
+  font-weight: var(--bold);
+  line-height: 1.5;
+}
+
+.fact dd > svg {
+  width: 20px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.fact dd > svg > path {
   fill: var(--purple-primary);
 }
 
-.disputeDetails .accordion div:global(.card-header.closed)::after {
-  content: "＋";
-  float: right;
+.contract dd {
+  font-weight: var(--thin);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--font-size-xs);
 }
 
-.disputeDetails .accordion div:global(.card-header.open)::after {
-  content: "—";
-  float: right;
+.timeline {
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: var(--purple-light);
 }
 
-.disputeDetails .question > p:nth-child(2) {
-  font-size: var(--font-size-l);
+.headerPlaceholder .facts {
+  margin-bottom: 20px;
+}
+
+.header .alert,
+.section .alert {
+  margin-top: 20px;
+  border-radius: 12px;
+}
+
+.unavailable {
+  margin: 0;
+  color: var(--grey-dark);
+  font-size: var(--font-size-s);
+}
+
+/* Appeal */
+
+.appealBar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  margin: -24px -24px 20px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--stroke);
+  border-radius: var(--border-radius-l) var(--border-radius-l) 0 0;
+  background: white;
+}
+
+.appealBarRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+}
+
+.deadlines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin: 0;
+}
+
+.deadline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.deadline dt {
+  margin: 0;
+  color: var(--grey-dark);
+  font-size: var(--font-size-s);
+  font-weight: var(--thin);
+}
+
+.deadline dd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--purple-dark);
+  font-size: var(--font-size-s);
   font-weight: var(--bold);
-  margin-bottom: var(--spacing-16);
-  margin-top: var(--spacing-8);
+  font-variant-numeric: tabular-nums;
 }
 
-.disputeDetails .dropdownToggle::after {
-  position: absolute;
-  right: var(--spacing-16);
-  top: calc(50% - var(--spacing-4));
-  color: var(--stroke);
-
+.deadline dd > svg {
+  width: 12px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
-.disputeDetails .dropdownToggle {
-  text-align: left;
+.deadline dd > svg > path {
+  fill: var(--purple-primary);
 }
 
-.disputeDetails .dropdownToggle > span {
-  vertical-align: middle;
+.lead {
+  margin: 0 0 20px;
+  color: var(--grey-dark);
+  font-size: var(--font-size-s);
+  line-height: 1.6;
 }
 
-
-
-.disputeDetails .questionInfo {
-  margin-top: var(--spacing-16);
+.actions {
+  margin-bottom: 8px;
 }
 
-.disputeDetails .questionInfo > svg {
-  margin-right: var(--spacing-8);
+.fundingGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 16px;
+}
+
+.sectionStatus {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 0 8px;
+  color: var(--purple-dark);
+  font-size: var(--font-size-s);
+  font-weight: var(--bold);
+}
+
+.sectionStatus :global(.spinner-border) {
+  color: var(--purple-primary);
+}
+
+/* Write feedback */
+
+.writeStatus {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--blue-primary);
+  border-radius: 12px;
+  background: var(--blue-accent);
+  font-size: var(--font-size-s);
+}
+
+.writeStatus > svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.writeStatus :global(.spinner-border) {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--blue-primary);
+}
+
+.writeStatusText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+
+.writeStatusText strong {
+  color: var(--purple-dark);
+}
+
+.writeStatusText small {
+  color: var(--grey-dark);
+  overflow-wrap: anywhere;
+}
+
+.success {
+  border-color: var(--green);
+  background: #f1fbf4;
+}
+
+.success > svg > path {
+  fill: var(--green);
+}
+
+.failure {
+  border-color: var(--red);
+  background: #fff4f6;
+}
+
+.failure > svg > path {
+  fill: var(--red);
+}
+
+.dismiss {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--purple-primary);
+  font-size: var(--font-size-s);
+  font-weight: var(--bold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+/* Question */
+
+.questionType {
+  margin: 0 0 8px;
+  color: var(--grey-dark);
+  font-size: var(--font-size-s);
+}
+
+.questionText {
+  margin: 0 0 20px;
+  color: var(--text-primary);
+  font-size: var(--font-size-m);
+  font-weight: var(--bold);
+  line-height: 1.5;
+}
+
+.options {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.options li {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 2px 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--pink-light);
+  font-size: var(--font-size-s);
+}
+
+.optionCode {
+  color: var(--grey-dark);
+}
+
+.optionTitle {
+  font-weight: var(--bold);
+}
+
+.optionDescription {
+  grid-column: 2;
+  color: var(--grey-dark);
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-8);
+  margin: 0;
+  color: var(--grey-dark);
+  font-size: var(--font-size-s);
+}
+
+.note > svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Bootstrap buttons inside the sections follow the Ongoing page's purple actions. */
+
+.disputeDetails :global(button.btn-primary:not(.dropdown-toggle)) {
+  border-radius: var(--spacing-8);
+  background-color: var(--purple-primary);
+  color: white;
+}
+
+.disputeDetails :global(button.btn-primary:not(.dropdown-toggle)):hover {
+  background-color: var(--purple-dark);
+}
+
+.disputeDetails :global(button.btn-primary:not(.dropdown-toggle)):disabled {
+  background-color: var(--purple-primary);
+  opacity: 0.5;
+}
+
+.disputeDetails :global(button.btn-outline-primary) {
+  border-color: var(--purple-primary);
+  border-radius: var(--spacing-8);
+  color: var(--purple-primary);
+  font-weight: var(--bold);
+}
+
+.disputeDetails :global(button.btn-outline-primary):hover {
+  background-color: var(--purple-light);
+  color: var(--purple-primary);
+}
+
+.disputeDetails button:focus-visible,
+.disputeDetails a:focus-visible {
+  outline: 3px solid var(--purple-primary);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+/* Placeholders */
+
+.skeletonFact {
+  width: 160px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.skeletonLine {
+  width: 100%;
+  height: 56px;
+  border-radius: 12px;
+}
+
+.skeletonDeadline {
+  width: 150px;
+  height: 34px;
+  border-radius: 8px;
+}
+
+@media (max-width: 767px) {
+  .disputeDetails {
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .header,
+  .section {
+    padding: 16px;
+  }
+
+  .title {
+    font-size: 22px;
+  }
+
+  .timeline {
+    padding: 12px 16px;
+  }
+
+  .appealBar {
+    margin: -16px -16px 16px;
+    padding: 12px 16px;
+  }
+
+  .fundingGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .options li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .optionDescription {
+    grid-column: 1;
+  }
 }

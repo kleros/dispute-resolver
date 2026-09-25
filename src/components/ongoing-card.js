@@ -17,8 +17,10 @@ export const getCourtName = (details, subcourtDetails) => {
   return typeof name === "string" && name.trim() ? name : "Court unavailable";
 };
 
-const PERIOD_NAMES = ["Evidence Period", "Commit Period", "Voting", "Appeal", "Executed"];
-const PERIOD_CLASSES = ["evidence", "commit", "vote", "appeal", "execution"];
+export const PERIOD_NAMES = ["Evidence Period", "Commit Period", "Voting", "Appeal", "Executed"];
+export const PERIOD_CLASSES = ["evidence", "commit", "vote", "appeal", "execution"];
+
+export const renderCountdown = props => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>;
 
 class OngoingCard extends React.Component {
   getRemainingTime = () => {
@@ -65,11 +67,7 @@ class OngoingCard extends React.Component {
             <div className={styles.countdown}>
               <Hourglass aria-hidden="true" />
               {remainingTime == null ? <span>Unavailable</span> : (
-                <Countdown
-                  date={remainingTime}
-                  now={getNow}
-                  renderer={props => <span>{`${zeroPad(props.days, 2)}d ${zeroPad(props.hours, 2)}h ${zeroPad(props.minutes, 2)}m`}</span>}
-                />
+                <Countdown date={remainingTime} now={getNow} renderer={renderCountdown} />
               )}
             </div>
           </div>
