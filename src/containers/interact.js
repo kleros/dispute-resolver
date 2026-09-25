@@ -64,6 +64,8 @@ class Interact extends React.Component {
     };
     //Bumped on every load and navigation so a slow earlier response can never overwrite a newer one.
     this.loadVersion = 0;
+    //Bumped whenever the page changes case or is left, so the outcome of a write started on another case is dropped.
+    this.caseVersion = 0;
   }
 
   getRouteDisputeID = (route = this.props.route) => route?.match?.params?.id ?? "";
@@ -88,7 +90,7 @@ class Interact extends React.Component {
 
   componentWillUnmount() {
     this.loadVersion++;
-    this.unmounted = true;
+    this.caseVersion++;
   }
 
   sumObjectsByKey(...objs) {
@@ -100,15 +102,16 @@ class Interact extends React.Component {
     }, {});
   }
 
-  //A write may finish after the page was left; its outcome is then dropped.
-  setWriteStatus = (action, status, details = {}) => {
-    if (!this.unmounted) this.setState({ writeStatus: { action, status, ...details } });
+  //The feedback of a write belongs to the case it was started on (its caseVersion); a stale outcome is dropped.
+  setWriteStatus = (version, action, status, details = {}) => {
+    if (version === this.caseVersion) this.setState({ writeStatus: { action, status, ...details } });
   };
 
   dismissWriteStatus = () => this.setState({ writeStatus: null });
 
   submitEvidence = async (evidence) => {
-    this.setWriteStatus("evidence", "pending");
+    const version = this.caseVersion;
+    this.setWriteStatus(version, "evidence", "pending");
     let receipt;
     try {
       receipt = await this.props.submitEvidenceCallback(this.state.arbitrated, {
@@ -119,20 +122,30 @@ class Interact extends React.Component {
         supportingSide: evidence.supportingSide,
       });
     } catch (error) {
-      this.setWriteStatus("evidence", "failure", { error: error?.message ?? String(error) });
+      this.setWriteStatus(version, "evidence", "failure", { error: error?.message ?? String(error) });
       throw error;
     }
+    if (version !== this.caseVersion) return;
     await this.reload();
-    this.setWriteStatus("evidence", "success", { hash: receipt?.hash });
+    this.setWriteStatus(version, "evidence", "success", { hash: receipt?.hash });
   };
 
   //App.appeal resolves null instead of rejecting when the transaction failed; the case is reloaded either way, as before.
+  //A rejected call (for example a transaction refused in the wallet) is reported as a failure and, as before, not reloaded.
   appeal = async (party, contribution) => {
-    this.setWriteStatus("fund", "pending");
-    const receipt = await this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution);
-    if (!receipt) this.setWriteStatus("fund", "failure");
+    const version = this.caseVersion;
+    this.setWriteStatus(version, "fund", "pending");
+    let receipt;
+    try {
+      receipt = await this.props.appealCallback(this.state.arbitrated, this.state.arbitrableDisputeID, party, contribution);
+    } catch (error) {
+      this.setWriteStatus(version, "fund", "failure", { error: error?.message ?? String(error) });
+      throw error;
+    }
+    if (version !== this.caseVersion) return receipt;
+    if (!receipt) this.setWriteStatus(version, "fund", "failure");
     await this.reload();
-    if (receipt) this.setWriteStatus("fund", "success", { hash: receipt.hash });
+    if (receipt) this.setWriteStatus(version, "fund", "success", { hash: receipt.hash });
     return receipt;
   };
 
@@ -143,19 +156,29 @@ class Interact extends React.Component {
       return;
     }
 
-    this.setWriteStatus("withdraw", "pending");
-    let receipt;
+    const version = this.caseVersion;
+    this.setWriteStatus(version, "withdraw", "pending");
+    //As before, only a call that throws is retried with the alternative signature; a rejected transaction is not sent again.
+    let attempt;
     try {
       // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256 _ruling);
-      receipt = await this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);
+      attempt = this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);
     } catch (err) {
       // function signature withdrawFeesAndRewardsForAllRounds(uint256 _localDisputeID, address payable _contributor, uint256[] memory _contributedTo);
       console.error('First withdraw attempt failed, trying alternative signature:', err);
-      receipt = await this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);
+      attempt = this.props.withdrawCallback(this.state.arbitrated, this.state.arbitrableDisputeID, this.state.selectedContribution, this.state.arbitrated);
+    }
+
+    let receipt;
+    try {
+      receipt = await attempt;
+    } catch (error) {
+      this.setWriteStatus(version, "withdraw", "failure", { error: error?.message ?? String(error) });
+      return;
     }
     //App.withdrawFeesAndRewardsForAllRounds resolves null when the transaction failed.
-    if (receipt) this.setWriteStatus("withdraw", "success", { hash: receipt.hash });
-    else this.setWriteStatus("withdraw", "failure");
+    if (receipt) this.setWriteStatus(version, "withdraw", "success", { hash: receipt.hash });
+    else this.setWriteStatus(version, "withdraw", "failure");
   };
 
   //Typing only edits the search box; nothing else changes until the search is submitted.
@@ -175,6 +198,7 @@ class Interact extends React.Component {
 
   clear = () => {
     this.loadVersion++;
+    this.caseVersion++;
     this.setState({ loading: false, ready: false, loadError: null, notFound: false, writeStatus: null, ...EMPTY_CASE });
   };
 
@@ -182,7 +206,10 @@ class Interact extends React.Component {
   //A silent load (after a write) keeps the page as it is and updates it in place.
   load = async (arbitratorDisputeID, { silent = false } = {}) => {
     const version = ++this.loadVersion;
-    if (!silent) this.setState({ arbitratorDisputeID, loading: true, ready: false, loadError: null, notFound: false, writeStatus: null, ...EMPTY_CASE });
+    if (!silent) {
+      this.caseVersion++;
+      this.setState({ arbitratorDisputeID, loading: true, ready: false, loadError: null, notFound: false, writeStatus: null, ...EMPTY_CASE });
+    }
 
     let arbitratorDispute;
     try {

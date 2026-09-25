@@ -89,7 +89,7 @@ const fixtureCallbacks = chainId => ({
 const isSettled = () => container.querySelector('[aria-busy="true"]') === null && container.textContent.trim() !== "";
 
 //Renders the case page inside a router at /<chain>/cases/<id> without waiting for it to load.
-const mountCase = async (disputeId, { chainId = GNOSIS, overrides = {}, signedIn = false, history } = {}) => {
+const mountCase = async (disputeId, { chainId = GNOSIS, overrides = {}, signedIn = false, history, exceptionalContractAddresses = [] } = {}) => {
   const callbacks = { ...fixtureCallbacks(chainId), ...overrides };
   const memoryHistory = history ?? createMemoryHistory({ initialEntries: [`/${chainId}/cases/${disputeId}`] });
   const { subcourts, subcourtDetails } = await fixtures.getSubcourtData(chainId);
@@ -107,7 +107,7 @@ const mountCase = async (disputeId, { chainId = GNOSIS, overrides = {}, signedIn
               subcourts={subcourts}
               subcourtDetails={subcourtDetails}
               subcourtsLoading={false}
-              exceptionalContractAddresses={[]}
+              exceptionalContractAddresses={exceptionalContractAddresses}
               activeAddress={signedIn ? SIGNED_IN_ADDRESS : ""}
               isAuthenticated={signedIn}
               isSigningIn={false}
@@ -142,6 +142,16 @@ const countdown = deadlineSeconds => {
 };
 //The value of a labelled field; icons are SVG imports, which jest renders as their file name, so the value span is read when there is one.
 const fieldText = id => (container.querySelector(`#${id} span`) ?? container.querySelector(`#${id}`))?.textContent.trim();
+//A deferred read or write: the callback resolves only when the test says so.
+const deferred = () => {
+  let resolve;
+  const promise = new Promise(resolvePromise => { resolve = resolvePromise; });
+  return { callback: jest.fn(() => promise), resolve };
+};
+const clickFund = () =>
+  act(async () => {
+    Simulate.click(buttons("Fund").find(button => !button.disabled));
+  });
 
 describe("Captured Gnosis disputes", () => {
   it.each(GNOSIS_DISPUTES)("opens dispute %s with its title, court, votes, period, decision and evidence", async disputeId => {
@@ -305,13 +315,6 @@ describe("Hand-made cases", () => {
 });
 
 describe("Loading", () => {
-  //A deferred read: the callback resolves only when the test says so.
-  const deferred = () => {
-    let resolve;
-    const promise = new Promise(resolvePromise => { resolve = resolvePromise; });
-    return { callback: jest.fn(() => promise), resolve };
-  };
-
   it("shows the whole case at once when the core reads finish and keeps a placeholder in the appeal card until the crowdfunding reads finish", async () => {
     const record = handmadeGnosis.disputes["900001"];
     const evidences = deferred();
@@ -698,5 +701,127 @@ describe("Write stubs", () => {
     expect(title()).toBe(handmadeGnosis.disputes["900001"].metaEvidence.title);
     expect(container.querySelectorAll(".crowdfundingCard")).toHaveLength(17);
     expect(text()).toContain("50.00% Funded");
+  });
+});
+
+describe("Appeal deadlines", () => {
+  it("gives every option the full appeal period on the exceptional contracts when the jury refused to arbitrate, in the deadline bar too", async () => {
+    const record = handmadeGnosis.disputes["900001"];
+    await renderCase("900001", {
+      overrides: { getCurrentRulingCallback: jest.fn(() => Promise.resolve(0n)) },
+      exceptionalContractAddresses: [record.arbitratorDispute.arbitrated],
+    });
+    const fullPeriod = countdown(Number(record.appealPeriod.end));
+    const loserPeriod = countdown(Number(record.appealPeriod.start) + (Number(record.appealPeriod.end) - Number(record.appealPeriod.start)) / 2);
+
+    expect(Array.from(container.querySelectorAll("#appeal dd")).map(deadline => deadline.textContent)).toEqual([expect.stringContaining(fullPeriod), expect.stringContaining(fullPeriod)]);
+    const cards = Array.from(container.querySelectorAll(".crowdfundingCard"));
+    expect(cards).toHaveLength(16);
+    cards.forEach(card => expect(card.textContent).toContain(fullPeriod));
+    expect(text()).not.toContain(loserPeriod);
+  });
+});
+
+describe("Write feedback", () => {
+  //An execution-period case with an amount to withdraw: the captured fixtures have none, so 900001 is moved on and given one.
+  const withdrawableOverrides = () => ({
+    getArbitratorDisputeCallback: async id => ({ ...(await fixtures.getArbitratorDispute(GNOSIS, id)), period: 4n }),
+    getTotalWithdrawableAmountCallback: jest.fn(() => Promise.resolve({ amount: 1000000000000000000n, ruling: "4" })),
+  });
+  const clickWithdraw = () =>
+    act(async () => {
+      Simulate.click(buttons("Withdraw 1.0 ETH")[0]);
+    });
+
+  it("reports a rejected withdrawal as failed after one call instead of retrying the same call", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    const withdrawCallback = jest.fn(() => Promise.reject(new Error("User rejected the transaction")));
+    await renderCase("900001", { signedIn: true, overrides: { ...withdrawableOverrides(), withdrawCallback } });
+    const arbitrated = handmadeGnosis.disputes["900001"].arbitratorDispute.arbitrated;
+
+    await clickWithdraw();
+    await waitFor(() => text().includes("Withdrawal failed"));
+
+    expect(withdrawCallback).toHaveBeenCalledTimes(1);
+    expect(withdrawCallback).toHaveBeenCalledWith(arbitrated, 41n, "4", arbitrated);
+    expect(text()).toContain("User rejected the transaction");
+    expect(text()).not.toContain("Withdrawal pending");
+  });
+
+  it("retries the alternative signature only when the first attempt throws synchronously, as the original handler did", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    const receipt = { status: 1, hash: `0x${"ab".repeat(32)}` };
+    const withdrawCallback = jest
+      .fn()
+      .mockImplementationOnce(() => {
+        throw new Error("no matching function");
+      })
+      .mockImplementation(() => Promise.resolve(receipt));
+    await renderCase("900001", { signedIn: true, overrides: { ...withdrawableOverrides(), withdrawCallback } });
+    const arbitrated = handmadeGnosis.disputes["900001"].arbitratorDispute.arbitrated;
+
+    await clickWithdraw();
+    await waitFor(() => text().includes("Withdrawal sent"));
+
+    expect(withdrawCallback).toHaveBeenCalledTimes(2);
+    expect(withdrawCallback).toHaveBeenNthCalledWith(2, arbitrated, 41n, "4", arbitrated);
+    expect(text()).toContain("Transaction 0xabababab…abababab");
+  });
+
+  it("reports a contribution whose transaction was rejected as failed instead of leaving it pending", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    const appealCallback = jest.fn(() => Promise.reject(new Error("User rejected the transaction")));
+    await renderCase("900001", { signedIn: true, overrides: { appealCallback } });
+
+    await clickFund();
+    await waitFor(() => text().includes("Contribution failed"));
+
+    expect(appealCallback).toHaveBeenCalledTimes(1);
+    expect(text()).toContain("User rejected the transaction");
+    expect(text()).not.toContain("Contribution pending");
+    expect(container.querySelectorAll(".crowdfundingCard")).toHaveLength(17);
+  });
+
+  it("keeps the confirmation of a successful contribution when the case moves to the next round and the appeal section disappears", async () => {
+    const getArbitratorDisputeCallback = jest
+      .fn()
+      .mockImplementationOnce(id => fixtures.getArbitratorDispute(GNOSIS, id))
+      .mockImplementation(async id => ({ ...(await fixtures.getArbitratorDispute(GNOSIS, id)), period: 0n }));
+    const { callbacks } = await renderCase("900001", { signedIn: true, overrides: { getArbitratorDisputeCallback } });
+    expect(container.querySelector("#appeal")).not.toBeNull();
+
+    await clickFund();
+    await waitFor(() => callbacks.appealCallback.mock.calls.length === 1);
+    await waitFor(() => isSettled() && currentPeriod() !== null && currentPeriod().includes("Evidence"));
+
+    expect(container.querySelector("#appeal")).toBeNull();
+    expect(text()).toContain("Contribution sent");
+    expect(text()).not.toContain("Contribution pending");
+  });
+
+  it("drops the outcome of a contribution started on another case after navigating away", async () => {
+    const appeal = deferred();
+    const history = createMemoryHistory({ initialEntries: ["/100/cases/900001"] });
+    await renderCase("900001", { signedIn: true, history, overrides: { appealCallback: appeal.callback } });
+
+    await clickFund();
+    await waitFor(() => appeal.callback.mock.calls.length === 1);
+    expect(text()).toContain("Contribution pending");
+
+    await act(async () => {
+      history.push("/100/cases/1005");
+    });
+    await waitFor(() => isSettled() && fieldText("category") === "# 1005");
+    expect(text()).not.toContain("Contribution pending");
+
+    await act(async () => {
+      appeal.resolve({ status: 1, hash: `0x${"cd".repeat(32)}` });
+    });
+    await sleep(100);
+    await waitFor(isSettled);
+
+    expect(fieldText("category")).toBe("# 1005");
+    expect(text()).not.toContain("Contribution sent");
+    expect(text()).not.toContain("Contribution pending");
   });
 });

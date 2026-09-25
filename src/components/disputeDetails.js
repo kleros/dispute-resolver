@@ -425,8 +425,9 @@ class DisputeDetails extends React.Component {
   };
 
   //The end of the appeal period for the side of the jury decision and, earlier, for every other option.
+  //Same rule as calculateAppealPeriod: on the exceptional contracts a ruling of 0 leaves every option the full period.
   renderAppealDeadlines = () => {
-    const { appealPeriod, multipliers, loading } = this.props;
+    const { appealPeriod, multipliers, currentRuling, exceptionalContractAddresses, arbitrated, loading } = this.props;
 
     if (loading) {
       return (
@@ -437,10 +438,14 @@ class DisputeDetails extends React.Component {
       );
     }
 
+    const everyOptionHasFullPeriod = exceptionalContractAddresses.includes(arbitrated) && currentRuling == 0;
+    let otherOptionsDeadline = null;
+    if (appealPeriod) otherOptionsDeadline = everyOptionHasFullPeriod ? appealPeriod.end : multipliers && this.calculateLoserAppealPeriod();
+
     return (
       <dl className={styles.deadlines}>
         {this.renderDeadline("Deadline for the jury decision", appealPeriod?.end ?? null)}
-        {this.renderDeadline("Deadline for other options", appealPeriod && multipliers ? this.calculateLoserAppealPeriod() : null)}
+        {this.renderDeadline("Deadline for other options", otherOptionsDeadline)}
       </dl>
     );
   };
@@ -936,15 +941,19 @@ class DisputeDetails extends React.Component {
 
     const disputePeriod = parseInt(arbitratorDispute.period, 10);
     const isEscrowV1Dispute = networkMap[network].ESCROW_V1_CONTRACTS.includes(arbitrated);
+    //A period that could not be read (NaN) never reaches the appeal stage.
+    const hasAppealSection = disputePeriod >= DISPUTE_PERIOD_APPEAL;
     const courtURL = new URL(`https://court.kleros.io/cases/${encodeURIComponent(arbitratorDisputeID)}`);
     courtURL.searchParams.set("requiredChainId", network ?? "1");
 
     return (
       <div className={styles.disputeDetails}>
         {this.renderHeader(disputePeriod, isEscrowV1Dispute, courtURL.toString())}
+        {/*The outcome of a contribution or withdrawal stays visible when the case has moved on and the appeal section is gone.*/}
+        {!hasAppealSection && this.renderWriteStatus("fund")}
+        {!hasAppealSection && this.renderWriteStatus("withdraw")}
         {summary}
-        {/*A period that could not be read (NaN) never reaches the appeal stage.*/}
-        {disputePeriod >= DISPUTE_PERIOD_APPEAL && this.renderAppealSection(disputePeriod, isEscrowV1Dispute)}
+        {hasAppealSection && this.renderAppealSection(disputePeriod, isEscrowV1Dispute)}
         {this.renderQuestionSection(metaevidenceJSON, courtURL.toString())}
         {this.renderEvidenceSection({ incompatible, metaevidenceJSON, evidences, disputeEvent, disputePeriod, publishCallback, submitEvidenceCallback, isAuthenticated, isSigningIn, onSignIn })}
       </div>
