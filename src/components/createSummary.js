@@ -1,226 +1,283 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { Col, Row, Button, Form } from "react-bootstrap";
+import { Spinner } from "react-bootstrap";
+import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
-import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
-import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
+import { ReactComponent as SuccessIcon } from "../assets/images/iconCheckCircle.svg";
+import { ReactComponent as FailureIcon } from "../assets/images/iconXCircle.svg";
 import networkMap from "../ethereum/network-contract-mapping";
-import styles from "components/styles/createSummary.module.css";
 import { urlNormalize } from "../utils/urlNormalizer";
 import SignIn from "./signIn";
+import { QuestionTypes, hasRulingOptions } from "./createForm";
+
+import styles from "containers/styles/create.module.css";
+
+//What the page says about the creation while it is pending and once it has succeeded or failed.
+const WRITE_FEEDBACK = {
+  pending: ["Creating the dispute", "Waiting for the upload and the transaction to be confirmed."],
+  success: ["Dispute created", "Opening the case…"],
+  failure: ["Dispute creation failed", "Check you have the necessary funds and try again. If the error persists, contact support."],
+};
+
+//The options App.createDispute receives, built from the form as before: a multiple-select question registers one ruling
+//per combination of its options, and the aliases map each address to the name given next to it.
+export const buildCreateDisputeOptions = formData => {
+  const rulingTitles = formData.rulingTitles ?? [];
+  const numberOfRulingOptions = formData.questionType.code === QuestionTypes.MULTIPLE_SELECT.code ? Math.pow(2, rulingTitles.length) : rulingTitles.length;
+  const aliases = {};
+  (formData.names ?? []).forEach((name, index) => {
+    if (typeof name === "string" && name.trim() !== "") aliases[formData.addresses?.[index]] = name;
+  });
+
+  return {
+    selectedSubcourt: formData.selectedSubcourt,
+    initialNumberOfJurors: formData.initialNumberOfJurors,
+    title: formData.title,
+    category: formData.category,
+    description: formData.description,
+    aliases,
+    question: formData.question,
+    primaryDocument: formData.primaryDocument,
+    numberOfRulingOptions,
+    rulingOptions: {
+      type: formData.questionType.code,
+      titles: rulingTitles,
+      descriptions: formData.rulingDescriptions ?? [],
+    },
+  };
+};
+
+//How many rulings the court will accept, in words.
+const describeRulings = (questionType, numberOfRulingOptions, optionCount) => {
+  if (!hasRulingOptions(questionType)) return questionType.code === QuestionTypes.UINT.code ? "Any non-negative number" : "Any date";
+  if (questionType.code === QuestionTypes.MULTIPLE_SELECT.code) return `${numberOfRulingOptions} rulings: any combination of the ${optionCount} options`;
+  return `${numberOfRulingOptions} ruling options`;
+};
 
 class CreateSummary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {
-      modalShow: false,
-      awaitingConfirmation: false,
-      lastDisputeID: "",
-    };
+    this.state = { writeStatus: null };
   }
 
+  componentWillUnmount() {
+    this.unmounted = true;
+  }
+
+  setWriteStatus = writeStatus => {
+    if (!this.unmounted) this.setState({ writeStatus });
+  };
+
+  dismissWriteStatus = () => this.setWriteStatus(null);
+
+  //The App handler resolves null when the transaction fails and a receipt without an ID when the DisputeCreation event is missing.
   onCreateButtonClick = async () => {
-    const { formData, notificationEventCallback, isAuthenticated } = this.props;
+    const { formData, createDisputeCallback, onDisputeCreated, isAuthenticated } = this.props;
     if (!isAuthenticated) return;
-    this.setState({ awaitingConfirmation: true });
 
-    const noOfOptions = formData.questionType.code == "multiple-select" ? Math.pow(2, formData.rulingTitles.length) : formData.rulingTitles.length;
-
-    let aliases = {};
-    formData.names.filter(name => name.trim() !== "").map((name, index) => {
-      aliases[formData.addresses[index]] = name;
-    });
-
-    console.log({ aliases })
-
+    this.setWriteStatus({ status: "pending" });
     try {
-      const result = await this.props.createDisputeCallback({
-        selectedSubcourt: formData.selectedSubcourt,
-        initialNumberOfJurors: formData.initialNumberOfJurors,
-        title: formData.title,
-        category: formData.category,
-        description: formData.description,
-        aliases,
-        question: formData.question,
-        primaryDocument: formData.primaryDocument,
-        numberOfRulingOptions: noOfOptions,
-        rulingOptions: {
-          type: formData.questionType.code,
-          titles: formData.rulingTitles,
-          descriptions: formData.rulingDescriptions,
-        },
-      });
+      const result = await createDisputeCallback(buildCreateDisputeOptions(formData));
+      if (result == null) {
+        this.setWriteStatus({ status: "failure" });
+        return;
+      }
 
-      console.debug({ result })
-      notificationEventCallback(result.disputeID);
-      this.setState({ lastDisputeID: result.disputeID });
-    } catch (e) {
-      console.error(e);
-    } finally {
-      this.setState({ awaitingConfirmation: false });
+      this.setWriteStatus({ status: "success", disputeID: result.disputeID, hash: result.receipt?.hash });
+      if (result.disputeID != null) onDisputeCreated(result.disputeID);
+    } catch (error) {
+      console.error("Error creating dispute:", error);
+      this.setWriteStatus({ status: "failure", error: error?.message });
     }
   };
 
-  componentDidMount = () => { };
+  renderWriteStatus() {
+    const { writeStatus } = this.state;
+    if (!writeStatus) return null;
 
-  render() {
-    const { onReturnButtonClickCallback, validated, formData, network, isAuthenticated, isSigningIn, onSignIn } = this.props;
+    const { status, disputeID, hash, error } = writeStatus;
+    let [title, content] = WRITE_FEEDBACK[status];
+    if (status === "success" && disputeID != null) title = `Dispute ${disputeID} created`;
+    if (status === "success" && disputeID == null) content = "The dispute ID could not be read from the transaction. The new case is listed on the Ongoing Disputes page.";
+    const Icon = status === "success" ? SuccessIcon : FailureIcon;
 
     return (
-      <section className={styles.summary}>
-        <Form noValidate validated={validated} onSubmit={this.onCreateButtonClick}>
-          <Row>
-            <Col>
-              <p className={styles.fillUpTheForm}>Summary</p>
-              <h1 className={styles.h1}>{formData.title}</h1>
-            </Col>
-          </Row>
-          <hr />
-          {formData.description && (
-            <Row className={styles.description}>
-              <Col>{formData.description}</Col>
-            </Row>
-          )}
-          <Row>
-            <Col xl={6} md={12} sm={24} xs={24}>
-              <Form.Group>
-                <Form.Label htmlFor="court">Court</Form.Label>
-                <Form.Control required id="court" as="span">
-                  {formData.subcourtDetails[formData.selectedSubcourt].name}
-                </Form.Control>
-              </Form.Group>
-            </Col>
-            <Col xl={6} md={12} sm={24} xs={24}>
-              <Form.Group className="">
-                <Form.Label htmlFor="initialNumberOfJurors">Number of Votes</Form.Label>
-                <Form.Control className={styles.spanWithSvgInside} id="initialNumberOfJurors" as="span">
-                  <AvatarSVG />
-                  <span>{formData.initialNumberOfJurors}</span>
-                </Form.Control>
-              </Form.Group>
-            </Col>
-            <Col xl={6} md={12} sm={24} xs={24}>
-              <Form.Group>
-                <Form.Label htmlFor="category">Category (Optional)</Form.Label>
-                <Form.Control id="category" as="span" title={formData.category}>
-                  {formData.category}
-                </Form.Control>
-              </Form.Group>
-            </Col>
-            <Col xl={6} md={12} sm={24} xs={24}>
-              <Form.Group className={styles.arbitrationFeeGroup}>
-                <Form.Label htmlFor="arbitrationFee">Arbitration Cost</Form.Label>
-                <Form.Control className={styles.spanWithSvgInside} as="span">
-                  <EthereumSVG />
-                  <span className={styles.arbitrationFee}>{formData.arbitrationCost + " " + networkMap[network].CURRENCY_SHORT}</span>
-                </Form.Control>
-              </Form.Group>
-            </Col>
-          </Row>
-          <Row>
-            {formData.names?.length > 0 && formData.names.filter(name => name.trim() !== '').map((_value, index) => (
-              <React.Fragment key={`party-${index + 1}`}>
-                <Col xl={4} lg={4} md={8}>
-                  <Form.Group>
-                    <Form.Label htmlFor="requester">Party {index + 1}</Form.Label>
+      <div className={`${styles.writeStatus} ${styles[status]}`} role={status === "failure" ? "alert" : "status"}>
+        {status === "pending" ? <Spinner as="span" animation="border" size="sm" aria-hidden="true" /> : <Icon aria-hidden="true" />}
+        <div className={styles.writeStatusText}>
+          <strong>{title}</strong>
+          <span>{content}</span>
+          {hash && <small>Transaction {`${hash.slice(0, 10)}…${hash.slice(-8)}`}</small>}
+          {error && <small>{error}</small>}
+        </div>
+        {status === "failure" && (
+          <button type="button" className={styles.dismiss} onClick={this.dismissWriteStatus}>
+            Dismiss
+          </button>
+        )}
+      </div>
+    );
+  }
 
-                    <Form.Control id={`name${index}`} as="span" title={formData.names[index]}>
-                      {formData.names[index]}
-                    </Form.Control>
-                  </Form.Group>
-                </Col>
-                <Col xl={8} lg={8} md={16}>
-                  <Form.Group>
-                    <Form.Label htmlFor={`address${index}`}>Party {index + 1} Address (Optional)</Form.Label>
+  renderDisputeCard() {
+    const { formData, network } = this.props;
+    const courtName = formData.subcourtDetails?.[Number(formData.selectedSubcourt)]?.name ?? `Court ${formData.selectedSubcourt}`;
+    const currency = networkMap[network]?.CURRENCY_SHORT ?? "";
 
-                    <Form.Control pattern="0x[abcdefABCDEF0123456789]{40}" id="requesterAddress" as="span" title={formData.addresses[index]}>
-                      {formData.addresses[index]}
-                    </Form.Control>
-                  </Form.Group>
-                </Col>
-              </React.Fragment>
-            ))}
-          </Row>
-          <hr />
-          <Row>
-            <Col>
-              <Form.Group>
-                <Form.Label htmlFor="question">{formData.questionType.humanReadable}</Form.Label>
-                <Form.Control required id="question" as="span">
-                  {formData.question}
-                </Form.Control>
-              </Form.Group>
-            </Col>
-          </Row>
-          {formData.rulingTitles.map((_value, index) => (
-            <Row>
-              <Col xs={24} lg={8}>
-                <Form.Group>
-                  <Form.Label htmlFor={`rulingOption${index}Title`}>Ruling Option {index + 1}</Form.Label>
-                  <Form.Control required id={`rulingOption${index}Title`} as="span" title={formData.rulingTitles[index]}>
-                    {formData.rulingTitles[index]}
-                  </Form.Control>
-                </Form.Group>
-              </Col>
-              {formData.rulingDescriptions[index] && (
-                <Col xs={24} lg={16}>
-                  <Form.Group>
-                    <Form.Label htmlFor={`rulingOption${index}Description`}>Ruling Option {index + 1} Description (Optional)</Form.Label>
-                    <Form.Control id={`rulingOption${index}Description`} as="span" title={formData.rulingDescriptions[index]}>
-                      {formData.rulingDescriptions[index]}
-                    </Form.Control>
-                  </Form.Group>
-                </Col>
-              )}
-            </Row>
-          ))}
-          <hr />
-
-          <Row className={`text-center text-md-left ${styles.footer}`}>
-            {formData.primaryDocument && (
-              <Col md={12} xs={24} className={styles.attachment}>
-                <a href={urlNormalize(formData.primaryDocument)} target="_blank" rel="noopener noreferrer" className={styles.primaryDocument}>
-                  <AttachmentSVG />
-                  {formData.primaryDocument.split("/").slice(-1)}
-                </a>
-              </Col>
-            )}
-          </Row>
-          {!isAuthenticated && (
-            <Row className="text-center text-md-right">
-              <Col>
-                <SignIn onSignIn={onSignIn} isSigningIn={isSigningIn} message="Sign in with Ethereum to publish your dispute data to IPFS." />
-              </Col>
-            </Row>
-          )}
-          <Row className={`text-center text-md-right mt-3 ${styles.buttons}`}>
-            <Col>
-              <Button type="button" variant="secondary" className={`mb-3 mb-sm-0 ${styles.return}`} onClick={onReturnButtonClickCallback}>
-                Return
-              </Button>
-            </Col>
-            <Col>
-              <Button
-                type="button"
-                variant="primary"
-                className={styles.create}
-                onClick={this.onCreateButtonClick}
-                disabled={this.state.awaitingConfirmation || !isAuthenticated}
-                xs={{ block: true }}>
-                Create
-              </Button>
-            </Col>
-          </Row>
-        </Form>
+    return (
+      <section className={styles.card} aria-labelledby="summary-title">
+        <h2 id="summary-title" className={styles.summaryTitle}>
+          {formData.title}
+        </h2>
+        {formData.description && <p className={styles.description}>{formData.description}</p>}
+        <dl className={styles.facts}>
+          <div className={styles.fact}>
+            <dt>Court</dt>
+            <dd id="summary-court">
+              <ScalesSVG aria-hidden="true" />
+              <span>{courtName}</span>
+            </dd>
+          </div>
+          <div className={styles.fact}>
+            <dt>Number of votes</dt>
+            <dd id="summary-votes">{formData.initialNumberOfJurors}</dd>
+          </div>
+          <div className={styles.fact}>
+            <dt>Category</dt>
+            <dd id="summary-category">{formData.category || "None"}</dd>
+          </div>
+          <div className={styles.fact}>
+            <dt>Arbitration cost</dt>
+            <dd id="summary-cost">{formData.arbitrationCost ? `${formData.arbitrationCost} ${currency}` : "Not read"}</dd>
+          </div>
+        </dl>
       </section>
+    );
+  }
+
+  renderQuestionCard() {
+    const { formData } = this.props;
+    const options = buildCreateDisputeOptions(formData);
+    const titles = formData.rulingTitles ?? [];
+
+    return (
+      <section className={styles.card} aria-labelledby="summary-question-heading">
+        <h2 id="summary-question-heading">Question</h2>
+        <p className={styles.questionType}>{formData.questionType.humanReadable}</p>
+        <p className={styles.questionText} id="summary-question">
+          {formData.question}
+        </p>
+        {titles.length > 0 && (
+          <ol className={styles.options}>
+            {titles.map((title, index) => (
+              <li key={`ruling-${index}`}>
+                <span className={styles.optionCode}>Option {index + 1}</span>
+                <span className={styles.optionTitle}>{title}</span>
+                {formData.rulingDescriptions?.[index] && <span className={styles.optionDescription}>{formData.rulingDescriptions[index]}</span>}
+              </li>
+            ))}
+          </ol>
+        )}
+        <p className={styles.note} id="summary-rulings">
+          Rulings registered with the court: {describeRulings(formData.questionType, options.numberOfRulingOptions, titles.length)}.
+        </p>
+      </section>
+    );
+  }
+
+  //Every party with an alias, in the order of the form. The form refuses two parties with one address, so this list is
+  //exactly what the aliases of the meta-evidence will hold.
+  renderPartiesCard() {
+    const { formData } = this.props;
+    const parties = (formData.names ?? [])
+      .map((name, index) => ({ name, address: formData.addresses?.[index] ?? "" }))
+      .filter(party => typeof party.name === "string" && party.name.trim() !== "");
+    if (parties.length === 0) return null;
+
+    return (
+      <section className={styles.card} aria-labelledby="summary-parties-heading">
+        <h2 id="summary-parties-heading">Parties</h2>
+        <dl className={styles.facts}>
+          {parties.map((party, index) => (
+            <div key={`party-${index}`} className={`${styles.fact} ${styles.party}`}>
+              <dt>{party.name}</dt>
+              <dd>{party.address}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+    );
+  }
+
+  renderDocumentCard() {
+    const { formData } = this.props;
+    if (!formData.primaryDocument) return null;
+    const fileName = formData.fileInput?.name ?? formData.primaryDocument.split("/").slice(-1)[0];
+
+    return (
+      <section className={styles.card} aria-labelledby="summary-document-heading">
+        <h2 id="summary-document-heading">Primary document</h2>
+        <a href={urlNormalize(formData.primaryDocument)} target="_blank" rel="noopener noreferrer" className={styles.document}>
+          <AttachmentSVG aria-hidden="true" />
+          <span>{fileName}</span>
+        </a>
+      </section>
+    );
+  }
+
+  render() {
+    const { formData, onReturnButtonClickCallback, isAuthenticated, isSigningIn, onSignIn } = this.props;
+    const { writeStatus } = this.state;
+    const pending = writeStatus?.status === "pending";
+    const created = writeStatus?.status === "success";
+
+    return (
+      <div>
+        {this.renderDisputeCard()}
+        {this.renderQuestionCard()}
+        {this.renderPartiesCard()}
+        {this.renderDocumentCard()}
+        <section className={styles.card} aria-labelledby="summary-create-heading">
+          <h2 id="summary-create-heading">Create the dispute</h2>
+          <p className={styles.cardHint}>The details above are published to IPFS as the meta-evidence, then the dispute is created and the arbitration cost is paid.</p>
+          {!isAuthenticated && <SignIn onSignIn={onSignIn} isSigningIn={isSigningIn} message="Sign in with Ethereum to publish the dispute data to IPFS and create the dispute." />}
+          {this.renderWriteStatus()}
+          <div className={styles.actions}>
+            <button type="button" className={styles.secondaryAction} onClick={onReturnButtonClickCallback} disabled={pending || created}>
+              Back
+            </button>
+            <button type="button" className={styles.action} onClick={this.onCreateButtonClick} disabled={pending || created || !isAuthenticated}>
+              {pending ? "Creating…" : "Create dispute"}
+            </button>
+          </div>
+        </section>
+      </div>
     );
   }
 }
 
 CreateSummary.propTypes = {
   formData: PropTypes.shape({
+    subcourtDetails: PropTypes.array,
+    selectedSubcourt: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    initialNumberOfJurors: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    title: PropTypes.string,
+    category: PropTypes.string,
+    description: PropTypes.string,
+    question: PropTypes.string,
+    questionType: PropTypes.shape({ code: PropTypes.string, humanReadable: PropTypes.string }),
+    rulingTitles: PropTypes.array,
+    rulingDescriptions: PropTypes.array,
+    names: PropTypes.array,
+    addresses: PropTypes.array,
     primaryDocument: PropTypes.string,
-  }),
+    fileInput: PropTypes.object,
+    arbitrationCost: PropTypes.string,
+  }).isRequired,
+  network: PropTypes.string,
+  createDisputeCallback: PropTypes.func.isRequired,
+  onReturnButtonClickCallback: PropTypes.func.isRequired,
+  onDisputeCreated: PropTypes.func.isRequired,
   isAuthenticated: PropTypes.bool.isRequired,
   isSigningIn: PropTypes.bool.isRequired,
   onSignIn: PropTypes.func.isRequired,

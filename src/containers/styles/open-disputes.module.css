@@ -13,15 +13,6 @@
   margin-bottom: var(--spacing-32);
 }
 
-.pageHeading .eyebrow {
-  margin-bottom: var(--spacing-8);
-  color: var(--purple-primary);
-  font-size: var(--font-size-xs);
-  font-weight: var(--bold);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
 .pageHeading h1 {
   margin-bottom: 12px;
   color: var(--purple-dark);

@@ -56,7 +56,7 @@
         "REACT_APP_USE_FIXTURES=true",
         "REACT_APP_FIXTURE_CHAIN_ID=100",
         "REACT_APP_FIXTURE_SIGNED_IN=true",
-        "REACT_APP_FIXTURE_FAIL_READS=evidences,multipliers,disputeDetails",
+        "REACT_APP_FIXTURE_FAIL_READS=evidences,multipliers,disputeDetails,arbitrationCost",
         "yarn",
         "start"
       ],

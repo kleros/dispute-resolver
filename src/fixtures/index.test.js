@@ -5,6 +5,8 @@ import casesGnosis from "./cases/100.json";
 import casesMainnet from "./cases/1.json";
 import handmadeGnosis from "./cases/100.handmade.json";
 import malformedDispute from "./ongoing/100.malformed.json";
+import courtsGnosis from "./courts/100.json";
+import courtsMainnet from "./courts/1.json";
 
 const ENV_KEYS = [
   "REACT_APP_USE_FIXTURES",
@@ -244,5 +246,37 @@ describe("signed-in flag and write stubs", () => {
     const before = await fixtures.getContributions("100", 41n, 0, handmadeGnosis.disputes["900001"].arbitratorDispute.arbitrated);
     await fixtures.appeal(handmadeGnosis.disputes["900001"].arbitratorDispute.arbitrated, 41n, 4, "3.0");
     expect(await fixtures.getContributions("100", 41n, 0, handmadeGnosis.disputes["900001"].arbitratorDispute.arbitrated)).toEqual(before);
+  });
+});
+
+describe("Create page reads and the dispute creation stub", () => {
+  it("multiplies the court's juror fee by the number of votes and formats it in ether, like the App handler", async () => {
+    expect(await fixtures.getArbitrationCost("100", "0", "3")).toBe("36.0");
+    expect(await fixtures.getArbitrationCost("100", 1, 4)).toBe("28.8");
+    expect(await fixtures.getArbitrationCost("1", "0", 3)).toBe("0.0162");
+  });
+
+  it("captured one fee per court of the Ongoing fixture, at the same block", () => {
+    expect(courtsGnosis.feeForJuror).toHaveLength(ongoingGnosis.subcourtDetails.length);
+    expect(courtsMainnet.feeForJuror).toHaveLength(ongoingMainnet.subcourtDetails.length);
+    expect(courtsGnosis.capturedAtBlock).toBe(ongoingGnosis.capturedAtBlock);
+    expect(courtsMainnet.capturedAtBlock).toBe(ongoingMainnet.capturedAtBlock);
+  });
+
+  it("fails the cost read when it is named in REACT_APP_FIXTURE_FAIL_READS or the court is unknown", async () => {
+    process.env.REACT_APP_FIXTURE_FAIL_READS = "arbitrationCost";
+    await expect(fixtures.getArbitrationCost("100", "0", 3)).rejects.toThrow("arbitrationCost");
+    delete process.env.REACT_APP_FIXTURE_FAIL_READS;
+    await expect(fixtures.getArbitrationCost("100", "99", 3)).rejects.toThrow("No court 99");
+  });
+
+  it("reports the newest open dispute of the fixture chain as created, or null with REACT_APP_FIXTURE_WRITES=failure", async () => {
+    process.env.REACT_APP_FIXTURE_CHAIN_ID = "100";
+    const options = { title: "Late delivery of the website" };
+    await expect(fixtures.createDispute(options)).resolves.toEqual({ receipt: { status: 1, hash: expect.stringMatching(/^0x/), blockNumber: null }, disputeID: "1013" });
+    process.env.REACT_APP_FIXTURE_CHAIN_ID = "1";
+    await expect(fixtures.createDispute(options)).resolves.toMatchObject({ disputeID: "1" });
+    process.env.REACT_APP_FIXTURE_WRITES = "failure";
+    await expect(fixtures.createDispute(options)).resolves.toBeNull();
   });
 });

@@ -1,521 +1,460 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { Col, Row, Button, Form, Dropdown } from "react-bootstrap";
+import { Form, Dropdown } from "react-bootstrap";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
-import { ReactComponent as EthereumSVG } from "../assets/images/ethereum.svg";
-import { ReactComponent as AvatarSVG } from "../assets/images/avatar.svg";
+import { ReactComponent as AttachmentSVG } from "../assets/images/attachment.svg";
 import networkMap from "../ethereum/network-contract-mapping";
-
-const QuestionTypes = Object.freeze({
-  SINGLE_SELECT: { code: "single-select", humanReadable: "Multiple choice: single select" },
-  MULTIPLE_SELECT: { code: "multiple-select", humanReadable: "Multiple choice: multiple select" },
-  UINT: {
-    code: "uint", humanReadable: "Non-negative number"
-  }, //  INT: { code: "int", humanReadable: "Number" }, Not-implemented in Court, so disabling.
-  // STRING: { code: "string", humanReadable: "Text" },  Not-implemented in Court, so disabling.
-  DATETIME: { code: "datetime", humanReadable: "Date" },
-});
-
-import styles from "components/styles/createForm.module.css";
 import FileUploadDropzone from "./FileUploadDropzone";
 import SignIn from "./signIn";
 
+import styles from "containers/styles/create.module.css";
+
+export const QuestionTypes = Object.freeze({
+  SINGLE_SELECT: { code: "single-select", humanReadable: "Multiple choice: single select" },
+  MULTIPLE_SELECT: { code: "multiple-select", humanReadable: "Multiple choice: multiple select" },
+  //INT (number) and STRING (text) are not implemented in Court, so they are not offered.
+  UINT: { code: "uint", humanReadable: "Non-negative number" },
+  DATETIME: { code: "datetime", humanReadable: "Date" },
+});
+
+//Only the multiple choice questions have a fixed list of ruling options; the others accept any value.
+export const hasRulingOptions = questionType => questionType?.code === QuestionTypes.SINGLE_SELECT.code || questionType?.code === QuestionTypes.MULTIPLE_SELECT.code;
+
+//Marks a label of a field that must be filled; the inputs carry the required attribute for assistive technology.
+const Required = () => (
+  <span className={styles.required} aria-hidden="true">
+    *
+  </span>
+);
+
+const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+const MAX_RULING_OPTIONS = 32;
+const ADDRESS_PATTERN = "0x[a-fA-F0-9]{40}";
+
 const INITIAL_STATE = {
+  selectedSubcourt: "0",
   initialNumberOfJurors: "3",
-  title: "",
   category: "",
+  title: "",
   description: "",
+  questionType: QuestionTypes.SINGLE_SELECT,
+  numberOfRulingOptions: 2,
   question: "",
   rulingTitles: ["", ""],
   rulingDescriptions: [""],
+  numberOfParties: 1,
   names: [],
   addresses: [],
-  modalShow: false,
-  awaitingConfirmation: false,
-  lastDisputeID: "",
-  selectedSubcourt: "0",
-  arbitrationCost: "",
   primaryDocument: "",
-  requesterAddress: "",
-  respondentAddress: "",
-  validated: false,
-  questionType: QuestionTypes.SINGLE_SELECT,
-  numberOfRulingOptions: 2,
-  numberOfParties: 1,
-  summary: false,
+  fileInput: null,
   uploading: false,
-  uploadError: ""
-}
+  uploadError: "",
+  arbitrationCost: "",
+  //idle until a court and a number of votes are known, then loading, ready or failed.
+  costStatus: "idle",
+  validated: false,
+};
+
+//The values the form restores when the user comes back from the review step.
+const stateFromFormData = formData => ({
+  selectedSubcourt: formData.selectedSubcourt == null ? "0" : String(formData.selectedSubcourt),
+  initialNumberOfJurors: formData.initialNumberOfJurors || "3",
+  category: formData.category || "",
+  title: formData.title || "",
+  description: formData.description || "",
+  question: formData.question || "",
+  primaryDocument: formData.primaryDocument || "",
+  fileInput: formData.fileInput || null,
+  questionType: formData.questionType?.code ? formData.questionType : QuestionTypes.SINGLE_SELECT,
+  numberOfRulingOptions: formData.numberOfRulingOptions ?? (formData.rulingTitles?.length || 2),
+  rulingTitles: formData.rulingTitles?.length > 0 ? formData.rulingTitles : ["", ""],
+  rulingDescriptions: formData.rulingDescriptions?.length > 0 ? formData.rulingDescriptions : [""],
+  names: formData.names?.length > 0 ? formData.names : [],
+  addresses: formData.addresses?.length > 0 ? formData.addresses : [],
+  numberOfParties: formData.numberOfParties ?? Math.max(1, formData.names?.length ?? 0, formData.addresses?.length ?? 0),
+  arbitrationCost: formData.arbitrationCost || "",
+});
 
 class CreateForm extends React.Component {
   constructor(props) {
     super(props);
-    this.state = INITIAL_STATE;
+    this.state = props.formData ? { ...INITIAL_STATE, ...stateFromFormData(props.formData) } : INITIAL_STATE;
+    this.costVersion = 0;
+    this.formRef = React.createRef();
   }
 
-  componentDidUpdate(prevProps) {
-    const networkChanged = this.props.network !== prevProps.network;
-    const subcourtDetailsLoaded =
-      Array.isArray(this.props.subcourtDetails) &&
-      this.props.subcourtDetails.length > 0 &&
-      (prevProps.subcourtDetails !== this.props.subcourtDetails);
-
-    if (networkChanged || subcourtDetailsLoaded) {
-      this.setState(INITIAL_STATE, async () => {
-        if (
-          networkMap[this.props.network].ARBITRABLE_PROXY &&
-          this.props.subcourtDetails &&
-          this.props.subcourtDetails.length > 0
-        ) {
-          await this.calculateArbitrationCost("0", 3);
-        }
-      });
-    }
+  componentDidMount() {
+    this.refreshArbitrationCost();
+    this.syncAddressValidity();
   }
 
-  onNextButtonClick = async event => {
-    event.preventDefault();
-    event.stopPropagation();
+  //The subcourts are enumerated by the app and can arrive after the form mounts; only the cost depends on them.
+  componentDidUpdate(prevProps, prevState) {
+    if (prevProps.subcourtsLoading !== this.props.subcourtsLoading || prevProps.subcourtDetails !== this.props.subcourtDetails) this.refreshArbitrationCost();
+    if (prevState.addresses !== this.state.addresses || prevState.numberOfParties !== this.state.numberOfParties) this.syncAddressValidity();
+  }
 
-    const form = event.target;
-    const { subcourtDetails } = this.props;
-    const {
-      arbitrationCost,
-      selectedSubcourt,
-      title,
-      category,
-      description,
-      initialNumberOfJurors,
-      question,
-      rulingTitles,
-      rulingDescriptions,
-      names,
-      addresses,
-      primaryDocument,
-      questionType,
-    } = this.state;
+  //The party before this one that already uses its address, or null. The aliases are keyed by address, so two parties
+  //cannot share one: the second would silently replace the first in the review and in the meta-evidence.
+  duplicateAddressOwner = index => {
+    const { addresses } = this.state;
+    const address = (addresses[index] ?? "").trim().toLowerCase();
+    if (!address) return null;
+    const owner = addresses.findIndex((other, position) => position < index && (other ?? "").trim().toLowerCase() === address);
+    return owner === -1 ? null : owner;
+  };
 
-    const valid = form.checkValidity();
+  //Keeps the browser's validity of every address input in step with the duplicate check, so the form cannot be submitted with one.
+  syncAddressValidity = () => {
+    const form = this.formRef.current;
+    if (!form) return;
+    Array.from({ length: this.state.numberOfParties }, (_, index) => form.querySelector(`#address${index}`)).forEach((input, index) => {
+      input?.setCustomValidity(this.duplicateAddressOwner(index) == null ? "" : "Each party needs its own address.");
+    });
+  };
 
-    this.setState({ validated: !valid });
+  componentWillUnmount() {
+    this.costVersion++;
+  }
 
-    if (valid) {
-      this.props.onNextButtonClickCallback({
-        subcourtDetails,
-        selectedSubcourt,
-        title,
-        category,
-        description,
-        initialNumberOfJurors,
-        question,
-        rulingTitles: questionType.code == "single-select" || questionType.code == "multiple-select" ? rulingTitles : [],
-        rulingDescriptions,
-        names,
-        addresses,
-        primaryDocument,
-        questionType,
-        arbitrationCost,
-      });
+  hasCourts = () => !this.props.subcourtsLoading && Array.isArray(this.props.subcourtDetails) && this.props.subcourtDetails.length > 0;
+
+  refreshArbitrationCost = () => {
+    const { selectedSubcourt, initialNumberOfJurors } = this.state;
+    if (this.hasCourts()) this.calculateArbitrationCost(selectedSubcourt, initialNumberOfJurors);
+  };
+
+  //A failed read (a rejection, or the null the App handler resolves on an error) shows an error with a retry. A result of an
+  //earlier request, such as a court selected before the previous cost arrived, is ignored.
+  calculateArbitrationCost = async (subcourtID, noOfJurors) => {
+    const version = ++this.costVersion;
+
+    if (subcourtID == null || subcourtID === "" || !(Number(noOfJurors) >= 1)) {
+      this.setState({ arbitrationCost: "", costStatus: "idle" });
+      return;
     }
-  };
 
-  onSubcourtSelect = async subcourtID => {
-    if (!networkMap[this.props.network].ARBITRABLE_PROXY) return
-    this.setState({ selectedSubcourt: subcourtID });
-    await this.calculateArbitrationCost(subcourtID, this.state.initialNumberOfJurors);
-  };
-
-  onQuestionTypeChange = async questionType => {
-    console.debug(JSON.parse(questionType));
-    this.setState({ questionType: JSON.parse(questionType) });
-
-    if (!(JSON.parse(questionType).code == QuestionTypes.SINGLE_SELECT.code || JSON.parse(questionType).code == QuestionTypes.MULTIPLE_SELECT.code)) {
-      this.setState({ numberOfRulingOptions: 0 }); // Default value, means the max at the smart contract
-    } else {
-      this.setState({ numberOfRulingOptions: 2 }); // Default value, means the max at the smart contract
+    this.setState({ costStatus: "loading" });
+    let cost = null;
+    try {
+      cost = await this.props.getArbitrationCostCallback(subcourtID, noOfJurors);
+    } catch (error) {
+      console.error(`Error fetching arbitration cost for court ${subcourtID}:`, error);
     }
+
+    if (version !== this.costVersion) return;
+    if (cost == null) this.setState({ arbitrationCost: "", costStatus: "failed" });
+    else this.setState({ arbitrationCost: String(cost), costStatus: "ready" });
   };
 
-  onArrayStateVariableChange = async (event, variable, index) => {
+  onSubcourtSelect = subcourtID => {
+    const selectedSubcourt = String(subcourtID);
+    this.setState({ selectedSubcourt });
+    this.calculateArbitrationCost(selectedSubcourt, this.state.initialNumberOfJurors);
+  };
+
+  onQuestionTypeChange = code => {
+    const questionType = Object.values(QuestionTypes).find(type => type.code === code) ?? QuestionTypes.SINGLE_SELECT;
+    //0 means the maximum at the smart contract, for questions without a fixed set of options.
+    this.setState({ questionType, numberOfRulingOptions: hasRulingOptions(questionType) ? 2 : 0 });
+  };
+
+  onControlChange = event => {
+    const { id, value } = event.target;
+    this.setState({ [id]: value });
+    if (id === "initialNumberOfJurors") this.calculateArbitrationCost(this.state.selectedSubcourt, value);
+  };
+
+  onNumberOfRulingOptionsChange = event => this.setState({ numberOfRulingOptions: event.target.value });
+
+  onArrayStateVariableChange = (variable, index, value) =>
+    this.setState(prevState => {
+      const values = [...prevState[variable]];
+      while (values.length < index) values.push("");
+      values[index] = value;
+      return { [variable]: values };
+    });
+
+  onRulingTitleChange = index => event => this.onArrayStateVariableChange("rulingTitles", index, event.target.value);
+
+  onRulingDescriptionChange = index => event => this.onArrayStateVariableChange("rulingDescriptions", index, event.target.value);
+
+  onAddParty = () => this.setState(prevState => ({ numberOfParties: prevState.numberOfParties + 1 }));
+
+  //Drops the party's alias and address; the parties after it move up one row.
+  onRemoveParty = index => () =>
     this.setState(prevState => ({
-      [variable]: [...prevState[variable].slice(0, index), event.target.value, ...prevState[variable].slice(index + 1)],
+      numberOfParties: Math.max(prevState.numberOfParties - 1, 1),
+      names: prevState.names.filter((_, position) => position !== index),
+      addresses: prevState.addresses.filter((_, position) => position !== index),
     }));
-  };
 
-  onNumberOfRulingOptionsChange = async event => {
-    const number = parseInt(event.target.value, 10);
-    this.setState({ numberOfRulingOptions: number });
-  };
+  onNameChange = index => event => this.onArrayStateVariableChange("names", index, event.target.value);
 
-  onControlChange = async e => {
-    const { id, value } = e.target;
-
-    this.setState(
-      prevState => ({ ...prevState, [id]: value }),
-      async () => {
-        const { selectedSubcourt, initialNumberOfJurors } = this.state;
-        console.debug("onControlChange", { selectedSubcourt, initialNumberOfJurors });
-        if (selectedSubcourt && initialNumberOfJurors) {
-          await this.calculateArbitrationCost(selectedSubcourt, initialNumberOfJurors);
-        }
-      }
-    );
-  };
+  onAddressChange = index => event => this.onArrayStateVariableChange("addresses", index, event.target.value);
 
   onDrop = async acceptedFiles => {
+    const file = acceptedFiles[0];
+    if (!file) return;
 
-    this.setState({ uploadError: "", fileInput: null });
+    this.setState({ uploadError: "", fileInput: null, primaryDocument: "" });
 
-    const maxSizeInBytes = 20 * 1024 * 1024;
-    if (acceptedFiles[0].size > maxSizeInBytes) {
+    if (file.size > MAX_FILE_SIZE_BYTES) {
       this.setState({ uploadError: "File is too large. Maximum size is 20MB." });
       return;
     }
 
+    this.setState({ uploading: true });
     try {
-      this.setState({ uploading: true });
-      const result = await this.props.publishCallback(acceptedFiles[0].name, acceptedFiles[0]);
-      this.setState({
-        primaryDocument: result, fileInput: acceptedFiles[0], uploading: false
-      });
+      const primaryDocument = await this.props.publishCallback(file.name, file);
+      this.setState({ primaryDocument, fileInput: file, uploading: false });
     } catch (error) {
       console.error("Upload error:", error);
-      this.setState({
-        uploadError: "An error occurred while uploading the file. Please try again.",
-        uploading: false,
-      });
+      this.setState({ uploadError: "An error occurred while uploading the file. Please try again.", uploading: false });
     }
   };
 
-  calculateArbitrationCost = async (subcourtID, noOfJurors) => subcourtID && noOfJurors && this.setState({
-    arbitrationCost: await this.props.getArbitrationCostCallback(subcourtID, noOfJurors),
-  });
-
-  onAddParty = () => {
-    this.setState(prevState => ({ numberOfParties: prevState.numberOfParties + 1 }));
+  //The number of ruling option rows shown: a whole number between 1 and the maximum, otherwise none.
+  rulingOptionCount = () => {
+    const count = Number.parseInt(this.state.numberOfRulingOptions, 10);
+    return Number.isInteger(count) && count > 0 ? Math.min(count, MAX_RULING_OPTIONS) : 0;
   };
 
-  onRemoveParty = () => {
-    const { numberOfParties } = this.state;
-    const newNumberOfParties = Math.max(numberOfParties - 1, 1);
+  onNextButtonClick = event => {
+    event.preventDefault();
+    event.stopPropagation();
 
-    this.setState(prevState => {
-      let newNames = [...prevState.names];
-      let newAddresses = [...prevState.addresses];
+    const form = event.currentTarget;
+    this.syncAddressValidity();
+    const valid = form.checkValidity();
+    this.setState({ validated: !valid });
 
-      if (numberOfParties === 1) {
-        if (newNames.length > 0) newNames[0] = "";
-        if (newAddresses.length > 0) newAddresses[0] = "";
-      } else if (numberOfParties > 1) {
-        if (newNames.length >= numberOfParties) {
-          newNames = newNames.slice(0, -1);
-        }
-        if (newAddresses.length >= numberOfParties) {
-          newAddresses = newAddresses.slice(0, -1);
-        }
-      } else {
-        // numberOfParties should never be < 1 due to Math.max constraint
-      }
+    if (!valid) {
+      Array.from(form.elements)
+        .find(element => typeof element.checkValidity === "function" && !element.checkValidity())
+        ?.focus();
+      return;
+    }
 
-      return {
-        numberOfParties: newNumberOfParties,
-        names: newNames,
-        addresses: newAddresses
-      };
+    const { subcourtDetails } = this.props;
+    const { selectedSubcourt, initialNumberOfJurors, title, category, description, question, questionType, rulingTitles, rulingDescriptions, names, addresses, numberOfParties, primaryDocument, fileInput, arbitrationCost } = this.state;
+    const withOptions = hasRulingOptions(questionType);
+    const count = withOptions ? this.rulingOptionCount() : 0;
+    const shown = values => Array.from({ length: count }, (_, index) => values[index] ?? "");
+
+    this.props.onNextButtonClickCallback({
+      subcourtDetails,
+      selectedSubcourt,
+      initialNumberOfJurors,
+      title,
+      category,
+      description,
+      question,
+      questionType,
+      numberOfRulingOptions: count,
+      rulingTitles: shown(rulingTitles),
+      rulingDescriptions: shown(rulingDescriptions),
+      names,
+      addresses,
+      numberOfParties,
+      primaryDocument,
+      fileInput,
+      arbitrationCost,
     });
   };
 
-  onRulingTitleChange = index => e => {
-    this.onArrayStateVariableChange(e, "rulingTitles", index);
-  };
+  renderArbitrationCost() {
+    const { network, subcourtsLoading } = this.props;
+    const { arbitrationCost, costStatus } = this.state;
+    const currency = networkMap[network]?.CURRENCY_SHORT ?? "";
+    const loading = costStatus === "loading" || (costStatus === "idle" && subcourtsLoading);
+    const noCourts = !subcourtsLoading && !this.hasCourts();
+    const failed = costStatus === "failed" || (costStatus === "idle" && noCourts);
 
-  onRulingDescriptionChange = index => e => {
-    this.onArrayStateVariableChange(e, "rulingDescriptions", index);
-  };
-
-  onNameChange = index => e => {
-    this.onArrayStateVariableChange(e, "names", index);
-  };
-
-  onAddressChange = index => e => {
-    this.onArrayStateVariableChange(e, "addresses", index);
-  };
-
-  componentDidMount = async () => {
-    this.onSubcourtSelect("0");
-    const { formData } = this.props;
-    if (formData) {
-      this.setState({
-        selectedSubcourt: formData.selectedSubcourt ? parseInt(formData.selectedSubcourt, 10) : 0,
-        initialNumberOfJurors: formData.initialNumberOfJurors || "3",
-        category: formData.category || "",
-        title: formData.title || "",
-        description: formData.description || "",
-        question: formData.question || "",
-        primaryDocument: formData.primaryDocument || "",
-        questionType: formData.questionType && formData.questionType.code && formData.questionType.code.length > 0 ? formData.questionType : QuestionTypes.SINGLE_SELECT,
-        numberOfRulingOptions: formData.rulingTitles && formData.rulingTitles.length > 0 ? formData.rulingTitles.length : 2,
-        rulingTitles: formData.rulingTitles && formData.rulingTitles.length > 0 ? formData.rulingTitles : ["", ""],
-        rulingDescriptions: formData.rulingDescriptions && formData.rulingDescriptions.length > 0 ? formData.rulingDescriptions : [""],
-        names: formData.names && formData.names.length > 0 ? formData.names : [],
-        addresses: formData.addresses && formData.addresses.length > 0 ? formData.addresses : [],
-      });
-    }
-  };
-
-  renderNetworkError() {
     return (
-      <h1>
-        There is no arbitrable contract deployed in this network.
-        So unfortunately you can't create a dispute.
-        Feel free to head over <a href="https://github.com/kleros/dispute-resolver/issues" target="_blank" rel="noopener noreferrer">GitHub issues</a> to request this feature.
-      </h1>
+      <div className={styles.field}>
+        <span className={styles.label} id="arbitration-cost-label">
+          Arbitration cost
+        </span>
+        <div id="arbitrationCost" className={`${styles.cost} ${failed ? styles.costFailed : ""}`} aria-labelledby="arbitration-cost-label" aria-live="polite" aria-busy={loading}>
+          {loading && (
+            <>
+              <span className={`skeleton ${styles.costSkeleton}`} aria-hidden="true" />
+              <span className={styles.srOnly}>Calculating the arbitration cost</span>
+            </>
+          )}
+          {costStatus === "ready" && (
+            <>
+              <strong className={styles.costValue}>
+                {arbitrationCost} {currency}
+              </strong>
+              <span className={styles.costHint}>Paid to the court when the dispute is created.</span>
+            </>
+          )}
+          {costStatus === "failed" && (
+            <div className={styles.costError} role="alert">
+              <span>The arbitration cost could not be read.</span>
+              <button type="button" className={styles.retry} onClick={this.refreshArbitrationCost}>
+                Try again
+              </button>
+            </div>
+          )}
+          {!loading && costStatus === "idle" && noCourts && (
+            <div className={styles.costError} role="alert">
+              <span>The courts could not be loaded, so the cost is unknown. Reload the page to try again.</span>
+            </div>
+          )}
+          {!loading && costStatus === "idle" && !noCourts && <span className={styles.costHint}>Enter at least 1 vote to see the cost.</span>}
+        </div>
+      </div>
     );
   }
 
-  renderCourtAndJurorSelection() {
+  renderCourtSection() {
     const { subcourtsLoading, subcourtDetails } = this.props;
-    const { selectedSubcourt, initialNumberOfJurors, summary } = this.state;
+    const { selectedSubcourt, initialNumberOfJurors, category } = this.state;
+    const courts = Array.isArray(subcourtDetails) ? subcourtDetails : [];
+    const courtName = courts[Number(selectedSubcourt)]?.name;
+    let toggleText = "No courts loaded";
+    if (subcourtsLoading) toggleText = "Loading courts…";
+    else if (courtName) toggleText = courtName;
+    else if (courts.length > 0) toggleText = "Select a court";
 
     return (
-      <Row>
-        <Col xl={6} md={12} sm={24} xs={24}>
-          <Form.Group>
-            <Form.Label htmlFor="subcourt-dropdown">Court</Form.Label>
-            <Dropdown required onSelect={this.onSubcourtSelect}>
-              <Dropdown.Toggle
-                id="subcourt-dropdown"
-                block
-                disabled={subcourtsLoading || summary}
-                className={styles.dropdownToggle}
-              >
-                <ScalesSVG className={styles.scales} />{" "}
-                <span className="font-weight-normal">
-                  {(subcourtsLoading && "Loading...") ||
-                    (selectedSubcourt && subcourtDetails && subcourtDetails[selectedSubcourt] && subcourtDetails[selectedSubcourt].name) ||
-                    "Please select a court"}
-                </span>
+      <section className={styles.card} aria-labelledby="create-court-heading">
+        <h2 id="create-court-heading">Court</h2>
+        <p className={styles.cardHint}>The court that draws the jurors and the number of votes in the first round set the arbitration cost.</p>
+        <div className={styles.fieldGrid}>
+          <Form.Group className={styles.field}>
+            <Form.Label htmlFor="subcourt-dropdown">
+              Court <Required />
+            </Form.Label>
+            <Dropdown className={styles.dropdown} onSelect={this.onSubcourtSelect}>
+              <Dropdown.Toggle id="subcourt-dropdown" disabled={subcourtsLoading || courts.length === 0}>
+                <ScalesSVG aria-hidden="true" />
+                <span className={styles.dropdownText}>{toggleText}</span>
               </Dropdown.Toggle>
               <Dropdown.Menu>
-                {subcourtDetails?.map((subcourt, index) => (
-                  <Dropdown.Item
-                    key={`subcourt-${subcourt.name}`}
-                    eventKey={index}
-                    className={`${index === selectedSubcourt && "selectedDropdownItem"}`}
-                  >
-                    {subcourt?.name}
+                {courts.map((subcourt, index) => (
+                  <Dropdown.Item key={`subcourt-${index}`} eventKey={String(index)} active={String(index) === selectedSubcourt}>
+                    {subcourt?.name || `Court ${index}`}
                   </Dropdown.Item>
                 ))}
               </Dropdown.Menu>
             </Dropdown>
           </Form.Group>
-        </Col>
-        <Col xl={6} md={12} sm={24} xs={24}>
-          <Form.Group className="inner-addon left-addon">
-            <Form.Label htmlFor="initialNumberOfJurors">Number of Votes</Form.Label>
-            <AvatarSVG className="glyphicon glyphicon-user" />
-            <Form.Control
-              required
-              id="initialNumberOfJurors"
-              as="input"
-              type="number"
-              min="1"
-              value={initialNumberOfJurors}
-              onChange={this.onControlChange}
-              placeholder="Number of votes"
-            />
+          <Form.Group className={styles.field}>
+            <Form.Label htmlFor="initialNumberOfJurors">
+              Number of votes <Required />
+            </Form.Label>
+            <Form.Control required id="initialNumberOfJurors" type="number" min="1" step="1" value={initialNumberOfJurors} onChange={this.onControlChange} />
+            <Form.Control.Feedback type="invalid">Enter a whole number of votes, at least 1.</Form.Control.Feedback>
           </Form.Group>
-        </Col>
-        {this.renderCategoryAndCost()}
-      </Row>
+          <Form.Group className={styles.field}>
+            <Form.Label htmlFor="category">Category</Form.Label>
+            <Form.Control id="category" value={category} onChange={this.onControlChange} placeholder="For example: Escrow" />
+          </Form.Group>
+          {this.renderArbitrationCost()}
+        </div>
+      </section>
     );
   }
 
-  renderCategoryAndCost() {
-    const { network } = this.props;
-    const { category, arbitrationCost } = this.state;
-
-    return (
-      <>
-        <Col xl={6} md={12} sm={24} xs={24}>
-          <Form.Group>
-            <Form.Label htmlFor="category">Category (Optional)</Form.Label>
-            <Form.Control
-              id="category"
-              as="input"
-              value={category}
-              onChange={this.onControlChange}
-              placeholder="Category"
-            />
-          </Form.Group>
-        </Col>
-        <Col xl={6} md={12} sm={24} xs={24}>
-          <Form.Group className={styles.arbitrationFeeGroup}>
-            <Form.Label htmlFor="arbitrationFee">Arbitration Cost</Form.Label>
-            <Form.Control as="div" className={styles.arbitrationFeeGroupPrepend}>
-              <EthereumSVG />
-              <span className={styles.arbitrationFee}>
-                {arbitrationCost && `${arbitrationCost} ${networkMap[network].CURRENCY_SHORT}`}
-              </span>
-            </Form.Control>
-          </Form.Group>
-        </Col>
-      </>
-    );
-  }
-
-  renderTitleAndDescription() {
+  renderDisputeSection() {
     const { title, description } = this.state;
 
     return (
-      <>
-        <Row>
-          <Col>
-            <Form.Group>
-              <Form.Label htmlFor="title">Title</Form.Label>
-              <Form.Control
-                required
-                id="title"
-                as="input"
-                value={title}
-                onChange={this.onControlChange}
-                placeholder="Title"
-              />
-              <Form.Control.Feedback type="invalid">
-                Please enter title for the dispute, something explains it in a nutshell.
-              </Form.Control.Feedback>
-            </Form.Group>
-          </Col>
-        </Row>
-        <Row>
-          <Col>
-            <Form.Group>
-              <Form.Label htmlFor="description">Description (Optional)</Form.Label>
-              <Form.Control
-                id="description"
-                as="textarea"
-                rows="5"
-                value={description}
-                onChange={this.onControlChange}
-                placeholder="Description of dispute"
-              />
-            </Form.Group>
-          </Col>
-        </Row>
-      </>
+      <section className={styles.card} aria-labelledby="create-dispute-heading">
+        <h2 id="create-dispute-heading">Dispute</h2>
+        <p className={styles.cardHint}>The title and the description are shown to the jurors and on the case page.</p>
+        <div className={styles.stack}>
+          <Form.Group className={styles.field}>
+            <Form.Label htmlFor="title">
+              Title <Required />
+            </Form.Label>
+            <Form.Control required id="title" value={title} onChange={this.onControlChange} placeholder="What the dispute is about, in one line" />
+            <Form.Control.Feedback type="invalid">Enter a title that sums up the dispute.</Form.Control.Feedback>
+          </Form.Group>
+          <Form.Group className={styles.field}>
+            <Form.Label htmlFor="description">Description</Form.Label>
+            <Form.Control id="description" as="textarea" rows="5" value={description} onChange={this.onControlChange} placeholder="The context the jurors need to rule" />
+          </Form.Group>
+        </div>
+      </section>
     );
   }
 
-  renderQuestionTypeSection() {
+  renderRulingOptions() {
+    const { questionType, rulingTitles, rulingDescriptions } = this.state;
+    if (!hasRulingOptions(questionType)) return null;
+
+    return (
+      <div className={styles.rows}>
+        {Array.from({ length: this.rulingOptionCount() }, (_, index) => (
+          <div key={`ruling-${index}`} className={styles.row}>
+            <Form.Group className={styles.field}>
+              <Form.Label htmlFor={`rulingOption${index}Title`}>
+                Ruling option {index + 1} <Required />
+              </Form.Label>
+              <Form.Control required id={`rulingOption${index}Title`} value={rulingTitles[index] ?? ""} onChange={this.onRulingTitleChange(index)} placeholder={`Ruling option ${index + 1}`} />
+              <Form.Control.Feedback type="invalid">Enter ruling option {index + 1}, for example "Yes".</Form.Control.Feedback>
+            </Form.Group>
+            <Form.Group className={styles.field}>
+              <Form.Label htmlFor={`rulingOption${index}Description`}>Description</Form.Label>
+              <Form.Control id={`rulingOption${index}Description`} value={rulingDescriptions[index] ?? ""} onChange={this.onRulingDescriptionChange(index)} placeholder={`What ruling option ${index + 1} means`} />
+            </Form.Group>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  renderQuestionSection() {
     const { questionType, numberOfRulingOptions, question } = this.state;
 
     return (
-      <>
-        <Row>
-          <Col xl={16} md={true} xs={24}>
-            <Form.Group>
-              <Form.Label htmlFor="questionType">Question Type</Form.Label>
-              <Dropdown required onSelect={this.onQuestionTypeChange}>
-                <Dropdown.Toggle className={`form-control ${styles.dropdownToggle} font-weight-normal`} id="questionType" block>
-                  {questionType.humanReadable || "Error"}
+      <section className={styles.card} aria-labelledby="create-question-heading">
+        <h2 id="create-question-heading">Question</h2>
+        <p className={styles.cardHint}>The jurors answer this question with one of the ruling options.</p>
+        <div className={styles.stack}>
+          <div className={styles.fieldGrid}>
+            <Form.Group className={styles.field}>
+              <Form.Label htmlFor="questionType">
+                Question type <Required />
+              </Form.Label>
+              <Dropdown className={styles.dropdown} onSelect={this.onQuestionTypeChange}>
+                <Dropdown.Toggle id="questionType">
+                  <span className={styles.dropdownText}>{questionType.humanReadable}</span>
                 </Dropdown.Toggle>
                 <Dropdown.Menu>
-                  {Object.values(QuestionTypes).map(qType => (
-                    <Dropdown.Item key={`questionType-${qType.code}`} eventKey={JSON.stringify(qType)}>
-                      {qType.humanReadable}
+                  {Object.values(QuestionTypes).map(type => (
+                    <Dropdown.Item key={`questionType-${type.code}`} eventKey={type.code} active={type.code === questionType.code}>
+                      {type.humanReadable}
                     </Dropdown.Item>
                   ))}
                 </Dropdown.Menu>
               </Dropdown>
             </Form.Group>
-          </Col>
-          {(questionType.code === QuestionTypes.SINGLE_SELECT.code || questionType.code === QuestionTypes.MULTIPLE_SELECT.code) && (
-            <Col>
-              <Form.Group>
-                <Form.Label htmlFor="numberOfRulingOptions">Number of Options</Form.Label>
-                <Form.Control
-                  required
-                  id="numberOfRulingOptions"
-                  as="input"
-                  type="number"
-                  min="2"
-                  step="1"
-                  max="32"
-                  value={numberOfRulingOptions}
-                  onChange={this.onNumberOfRulingOptionsChange}
-                  placeholder="Enter a number between 2 and 32"
-                />
-                <Form.Control.Feedback type="invalid">
-                  Please enter first ruling option, for example: "Yes"
-                </Form.Control.Feedback>
+            {hasRulingOptions(questionType) && (
+              <Form.Group className={styles.field}>
+                <Form.Label htmlFor="numberOfRulingOptions">
+                  Number of options <Required />
+                </Form.Label>
+                <Form.Control required id="numberOfRulingOptions" type="number" min="2" max={MAX_RULING_OPTIONS} step="1" value={numberOfRulingOptions} onChange={this.onNumberOfRulingOptionsChange} />
+                <Form.Control.Feedback type="invalid">Enter a whole number between 2 and {MAX_RULING_OPTIONS}.</Form.Control.Feedback>
               </Form.Group>
-            </Col>
-          )}
-        </Row>
-        <Row>
-          <Col>
-            <Form.Group>
-              <Form.Label htmlFor="question">Question</Form.Label>
-              <Form.Control
-                required
-                id="question"
-                as="input"
-                value={question}
-                onChange={this.onControlChange}
-                placeholder="Question"
-              />
-              <Form.Control.Feedback type="invalid">
-                Please enter a question.
-              </Form.Control.Feedback>
-            </Form.Group>
-          </Col>
-        </Row>
-      </>
-    );
-  }
-
-  renderRulingOptionsSection() {
-    const { questionType, numberOfRulingOptions, rulingTitles, rulingDescriptions } = this.state;
-
-    if (isNaN(numberOfRulingOptions) || (questionType.code !== QuestionTypes.SINGLE_SELECT.code && questionType.code !== QuestionTypes.MULTIPLE_SELECT.code)) {
-      return null;
-    }
-
-    return (
-      <>
-        {[...Array(parseInt(numberOfRulingOptions, 10))].map((_value, index) => (
-          <Row key={`ruling-${numberOfRulingOptions}-${index}`}>
-            <Col>
-              <Form.Group>
-                <Form.Label htmlFor={`rulingOption${index}Title`}>Ruling Option {index + 1}</Form.Label>
-                <Form.Control
-                  required
-                  id={`rulingOption${index}Title`}
-                  as="input"
-                  value={rulingTitles[index]}
-                  onChange={this.onRulingTitleChange(index)}
-                  placeholder={`Ruling option ${index + 1}`}
-                />
-                <Form.Control.Feedback type="invalid">
-                  Please enter first ruling option, for example: "Yes"
-                </Form.Control.Feedback>
-              </Form.Group>
-            </Col>
-            <Col md={18}>
-              <Form.Group>
-                <Form.Label htmlFor={`rulingOption${index}Description`}>Ruling Option {index + 1} Description (Optional)</Form.Label>
-                <Form.Control
-                  id={`rulingOption${index}Description`}
-                  as="input"
-                  value={rulingDescriptions[index]}
-                  onChange={this.onRulingDescriptionChange(index)}
-                  placeholder={`Ruling option ${index + 1} description`}
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-        ))}
-      </>
+            )}
+          </div>
+          <Form.Group className={styles.field}>
+            <Form.Label htmlFor="question">
+              Question <Required />
+            </Form.Label>
+            <Form.Control required id="question" value={question} onChange={this.onControlChange} placeholder="The question the jurors will answer" />
+            <Form.Control.Feedback type="invalid">Enter the question the jurors will answer.</Form.Control.Feedback>
+          </Form.Group>
+          {this.renderRulingOptions()}
+        </div>
+      </section>
     );
   }
 
@@ -523,123 +462,102 @@ class CreateForm extends React.Component {
     const { numberOfParties, names, addresses } = this.state;
 
     return (
-      <Row>
-        {[...Array(parseInt(numberOfParties, 10))].map((_value, index) => (
-          <React.Fragment key={`party-${numberOfParties}-${index}`}>
-            <Col xl={4} l={4} md={8}>
-              <Form.Group>
-                <Form.Label htmlFor={`name${index}`}>Alias {index + 1} (Optional)</Form.Label>
-                <Form.Control
-                  required={addresses[index]}
-                  id={`name${index}`}
-                  as="input"
-                  value={names[index]}
-                  onChange={this.onNameChange(index)}
-                  placeholder="Please enter alias"
-                />
-              </Form.Group>
-            </Col>
-            <Col xl={8} l={8} md={16}>
-              <Form.Group>
-                <Form.Label htmlFor={`address${index}`}>Address {index + 1} (Optional)</Form.Label>
-                <Form.Control
-                  required={names[index]}
-                  id={`address${index}`}
-                  as="input"
-                  value={addresses[index]}
-                  onChange={this.onAddressChange(index)}
-                  placeholder="Please enter address"
-                />
-              </Form.Group>
-            </Col>
-          </React.Fragment>
-        ))}
-      </Row>
-    );
-  }
-
-  renderFileUploadSection() {
-    const { fileInput, uploading, uploadError } = this.state;
-    const { isAuthenticated, isSigningIn, onSignIn } = this.props;
-
-    return (
-      <Row>
-        <Col>
-          <Form.Group>
-            <Form.Label htmlFor="primaryDocument">Primary Document (Optional)</Form.Label>
-            {!isAuthenticated && <SignIn onSignIn={onSignIn} isSigningIn={isSigningIn} />}
-            <FileUploadDropzone
-              onDrop={this.onDrop}
-              uploading={uploading}
-              uploadError={uploadError}
-              disabled={!isAuthenticated}
-            />
-            {fileInput && (
-              <div className={styles.fileInputLabel}>
-                <p><strong>Selected file:</strong> {fileInput.name}</p>
+      <section className={styles.card} aria-labelledby="create-parties-heading">
+        <h2 id="create-parties-heading">Parties</h2>
+        <p className={styles.cardHint}>An alias replaces the address of a party wherever the case is shown. Each alias needs its address, and each address its alias.</p>
+        <div className={styles.parties}>
+          {Array.from({ length: numberOfParties }, (_, index) => (
+            <div key={`party-${index}`} className={styles.partyBlock}>
+              <div className={styles.partyHeader}>
+                <h3>Party {index + 1}</h3>
+                {numberOfParties > 1 && (
+                  <button type="button" className={styles.removeParty} onClick={this.onRemoveParty(index)} aria-label={`Remove party ${index + 1}`}>
+                    Remove
+                  </button>
+                )}
               </div>
-            )}
-          </Form.Group>
-        </Col>
-      </Row>
+              <div className={styles.row}>
+                <Form.Group className={styles.field}>
+                  <Form.Label htmlFor={`name${index}`}>Alias</Form.Label>
+                  <Form.Control required={Boolean(addresses[index])} id={`name${index}`} value={names[index] ?? ""} onChange={this.onNameChange(index)} placeholder="For example: Buyer" />
+                  <Form.Control.Feedback type="invalid">Enter an alias for this address.</Form.Control.Feedback>
+                </Form.Group>
+                <Form.Group className={styles.field}>
+                  <Form.Label htmlFor={`address${index}`}>Address</Form.Label>
+                  <Form.Control required={Boolean(names[index])} pattern={ADDRESS_PATTERN} id={`address${index}`} value={addresses[index] ?? ""} onChange={this.onAddressChange(index)} placeholder="0x…" />
+                  <Form.Control.Feedback type="invalid">
+                  {this.duplicateAddressOwner(index) == null
+                    ? "Enter the address of this party: 0x followed by 40 hexadecimal characters."
+                    : `Party ${this.duplicateAddressOwner(index) + 1} already uses this address. Each party needs its own address.`}
+                </Form.Control.Feedback>
+                </Form.Group>
+              </div>
+            </div>
+          ))}
+          <div className={styles.rowActions}>
+            <button type="button" className={styles.secondaryAction} onClick={this.onAddParty}>
+              Add another party
+            </button>
+          </div>
+        </div>
+      </section>
     );
   }
 
-  renderSubmitSection() {
-    const { awaitingConfirmation, summary } = this.state;
+  renderDocumentSection() {
+    const { fileInput, uploading, uploadError, primaryDocument } = this.state;
+    const { isAuthenticated, isSigningIn, onSignIn } = this.props;
+    const fileName = fileInput?.name ?? (primaryDocument ? primaryDocument.split("/").slice(-1)[0] : "");
 
     return (
-      <Row>
-        <Col>
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={awaitingConfirmation}
-            block
-          >
-            {awaitingConfirmation ? "Please wait..." : (summary ? "Submit" : "Continue")}
-          </Button>
-        </Col>
-      </Row>
+      <section className={styles.card} aria-labelledby="create-document-heading">
+        <h2 id="create-document-heading">Primary document</h2>
+        <p className={styles.cardHint}>The agreement or the main evidence the jurors should read, published to IPFS.</p>
+        {!isAuthenticated && <SignIn onSignIn={onSignIn} isSigningIn={isSigningIn} />}
+        <FileUploadDropzone onDrop={this.onDrop} uploadingToIPFS={uploading} uploadError={uploadError} disabled={!isAuthenticated || uploading} />
+        {fileName && (
+          <p className={styles.selectedFile}>
+            <AttachmentSVG aria-hidden="true" />
+            <span>
+              <strong>Selected file:</strong> {fileName}
+            </span>
+          </p>
+        )}
+      </section>
     );
   }
 
   render() {
-    const { network } = this.props;
-    const { validated, summary } = this.state;
-
-    if (!networkMap[network].ARBITRABLE_PROXY) {
-      return this.renderNetworkError();
-    }
+    const { validated } = this.state;
 
     return (
-      <section className={`${styles.createForm}`}>
-        <Form noValidate validated={validated} onSubmit={this.onNextButtonClick}>
-          <Row>
-            <Col>
-              <p className={styles.fillUpTheForm}>Fill up the form to</p>
-              <h1 className={styles.h1}>Create a custom dispute</h1>
-            </Col>
-          </Row>
-          <hr />
-          {this.renderCourtAndJurorSelection()}
-          {this.renderTitleAndDescription()}
-          <hr />
-          {this.renderQuestionTypeSection()}
-          {this.renderRulingOptionsSection()}
-          <hr />
-          {this.renderPartiesSection()}
-          <hr />
-          {this.renderFileUploadSection()}
-          {this.renderSubmitSection()}
-        </Form>
-      </section>
+      <Form ref={this.formRef} noValidate validated={validated} onSubmit={this.onNextButtonClick} className={styles.form}>
+        <p className={styles.requiredNote}>
+          Fields marked <Required /> are required.
+        </p>
+        {this.renderCourtSection()}
+        {this.renderDisputeSection()}
+        {this.renderQuestionSection()}
+        {this.renderPartiesSection()}
+        {this.renderDocumentSection()}
+        <div className={styles.actions}>
+          <button type="submit" className={styles.action}>
+            Continue to review
+          </button>
+        </div>
+      </Form>
     );
   }
 }
 
 CreateForm.propTypes = {
+  getArbitrationCostCallback: PropTypes.func.isRequired,
   publishCallback: PropTypes.func,
+  onNextButtonClickCallback: PropTypes.func.isRequired,
+  subcourtDetails: PropTypes.array,
+  subcourtsLoading: PropTypes.bool,
+  formData: PropTypes.object,
+  network: PropTypes.string,
   isAuthenticated: PropTypes.bool.isRequired,
   isSigningIn: PropTypes.bool.isRequired,
   onSignIn: PropTypes.func.isRequired,

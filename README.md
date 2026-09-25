@@ -29,17 +29,17 @@ To allow viewing app data without a web3 browser, set the REACT_APP_WEB3_PROVIDE
 
 ## Fixture mode
 
-Renders the Ongoing Disputes page and the case page from the JSON files in `src/fixtures/` instead of the network. It is off unless `REACT_APP_USE_FIXTURES=true`; with it off the app behaves as before. The Create page still uses the network.
+Renders the Ongoing Disputes page, the case page and the Create page from the JSON files in `src/fixtures/` instead of the network. It is off unless `REACT_APP_USE_FIXTURES=true`; with it off the app behaves as before. On the Create page the courts and the arbitration cost come from the fixtures, and uploading the primary document and creating the dispute go through the write stubs.
 
 | Variable | Effect |
 | --- | --- |
 | `REACT_APP_USE_FIXTURES=true` | Enables fixture mode. The wallet is not used and the chain in the URL is replaced by the fixture chain. |
 | `REACT_APP_FIXTURE_CHAIN_ID` | Chain whose fixture is used: `100` (Gnosis, 8 disputes) or `1` (Mainnet, no disputes). Defaults to `1`. |
 | `REACT_APP_FIXTURE_SIGNED_IN=true` | Shows the connected and signed-in UI (a fixed placeholder account). There is still no wallet. |
-| `REACT_APP_FIXTURE_WRITES` | `success` (default) or `failure`. Write actions never reach a wallet; they report the outcome the way the real handlers do: appeal and withdrawal resolve `null` on failure, evidence submission, uploads and sign-in reject. Nothing in the fixture changes. |
+| `REACT_APP_FIXTURE_WRITES` | `success` (default) or `failure`. Write actions never reach a wallet; they report the outcome the way the real handlers do: appeal, withdrawal and dispute creation resolve `null` on failure, evidence submission, uploads and sign-in reject. A successful creation reports the newest open dispute of the fixture as the new dispute, so the case page opened afterwards shows a real case. Nothing in the fixture changes. |
 | `REACT_APP_FIXTURE_DELAY_MS` | Milliseconds to wait before every fixture read, to see the loading states. |
-| `REACT_APP_FIXTURE_FAIL=true` | Makes every fixture read fail: the Ongoing page shows its error state and a case page shows the failed-load error (distinct from "dispute not found"). |
-| `REACT_APP_FIXTURE_FAIL_READS` | Comma-separated reads that should fail, to see a case page degrade per section, e.g. `evidences,multipliers`. Names: `openDisputes`, `arbitratorDispute`, `metaEvidence`, `subcourts`, `arbitrableDisputeID`, `disputeDetails`, `currentRuling`, `appealCost`, `appealPeriod`, `disputeEvent`, `evidences`, `ruling`, `multipliers`, `appealDecisions`, `contributions`, `rulingFunded`, `totalWithdrawable`. |
+| `REACT_APP_FIXTURE_FAIL=true` | Makes every fixture read fail: the Ongoing page shows its error state, a case page shows the failed-load error (distinct from "dispute not found") and the Create page has no courts and no cost. |
+| `REACT_APP_FIXTURE_FAIL_READS` | Comma-separated reads that should fail, to see a case page degrade per section, e.g. `evidences,multipliers`, or the Create page show the failed cost read with a retry (`arbitrationCost`). Names: `openDisputes`, `arbitratorDispute`, `metaEvidence`, `subcourts`, `arbitrationCost`, `arbitrableDisputeID`, `disputeDetails`, `currentRuling`, `appealCost`, `appealPeriod`, `disputeEvent`, `evidences`, `ruling`, `multipliers`, `appealDecisions`, `contributions`, `rulingFunded`, `totalWithdrawable`. |
 | `REACT_APP_FIXTURE_VARIANT=malformed` | Also lists the malformed dispute on the Ongoing page. |
 
 ```
@@ -56,6 +56,7 @@ Both Gnosis fixtures were captured at block 48403425 (2026-09-23T20:00:40Z) from
 | `cases/<chain>.json` | The case page reads of those disputes: local dispute ID, `getDispute` details, current ruling, appeal cost and period, the Dispute event, evidence, multipliers, appeal decisions, contributions and funded rulings. |
 | `cases/100.handmade.json` | Hand-made Gnosis cases, never listed on the Ongoing page but opened by ID: `900001` (four-outcome multi-select in appeal with partial crowdfunding), `900002` (free-value question in appeal), `900003` (missing meta-evidence). |
 | `ongoing/100.malformed.json` | A deliberately malformed dispute, `999999`, that opens by ID on the case page; its case reads live in `cases/100.handmade.json`. |
+| `courts/<chain>.json` | The `feeForJuror` of every KlerosLiquid court, read at the same block. The Create page's arbitration cost is this fee times the number of votes, as `KlerosLiquid.arbitrationCost` computes it: 36 xDai for the Gnosis General Court with 3 votes. |
 
 Numeric contract values are stored as decimal strings; the loader in `src/fixtures/index.js` restores the BigInt values ethers returns in production. Any ID without a record, such as `123456789`, is a non-existent dispute.
 

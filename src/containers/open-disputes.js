@@ -171,7 +171,6 @@ class OpenDisputes extends React.Component {
       <main className={styles.openDisputes} id="ongoing-disputes">
         <div className={styles.content}>
           <div className={styles.pageHeading}>
-            <p className={styles.eyebrow}>Arbitration overview</p>
             <h1>Ongoing Disputes</h1>
             <p>Explore active cases and follow each stage of arbitration.</p>
           </div>

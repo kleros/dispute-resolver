@@ -464,6 +464,7 @@ class App extends React.Component {
 
   getArbitrationCostWithCourtAndNoOfJurors = async (subcourtID, noOfJurors) => {
     if (!networkMap[this.state.network]?.KLEROS_LIQUID) return null;
+    if (fixtures.isFixtureMode()) return fixtures.getArbitrationCost(this.state.network, subcourtID, noOfJurors);
 
     const contract = getContract(
       "IArbitrator",
@@ -1307,32 +1308,50 @@ class App extends React.Component {
     </>
   );
 
-  renderCreate = (route, isAuthenticated) => (
-    <>
-      <Header activeAddress={this.state.activeAddress} web3Provider={this.state.provider} viewOnly={!this.state.activeAddress} route={route} />
-      <Create
-        activeAddress={this.state.activeAddress}
-        route={route}
-        createDisputeCallback={this.createDispute}
-        getArbitrationCostCallback={this.getArbitrationCostWithCourtAndNoOfJurors}
-        publishCallback={this.onPublish}
-        web3Provider={this.state.provider}
-        subcourtDetails={this.state.subcourtDetails}
-        subcourtsLoading={this.state.subcourtsLoading}
-        network={this.state.network}
-        isAuthenticated={isAuthenticated}
-        isSigningIn={this.state.isSigningIn}
-        onSignIn={this.signInWithEthereum}
-      />
-      <Footer networkMap={networkMap} network={this.state.network} />
-    </>
-  );
-
   //Write actions never reach a wallet in fixture mode: stubs report success or failure the way these handlers do.
   getWriteCallbacks = () =>
     fixtures.isFixtureMode()
-      ? { appeal: fixtures.appeal, submitEvidence: fixtures.submitEvidence, withdraw: fixtures.withdraw, publish: fixtures.publish, signIn: fixtures.signIn }
-      : { appeal: this.appeal, submitEvidence: this.submitEvidence, withdraw: this.withdrawFeesAndRewardsForAllRounds, publish: this.onPublish, signIn: this.signInWithEthereum };
+      ? {
+          appeal: fixtures.appeal,
+          submitEvidence: fixtures.submitEvidence,
+          withdraw: fixtures.withdraw,
+          publish: fixtures.publish,
+          signIn: fixtures.signIn,
+          createDispute: fixtures.createDispute,
+        }
+      : {
+          appeal: this.appeal,
+          submitEvidence: this.submitEvidence,
+          withdraw: this.withdrawFeesAndRewardsForAllRounds,
+          publish: this.onPublish,
+          signIn: this.signInWithEthereum,
+          createDispute: this.createDispute,
+        };
+
+  renderCreate = (route, isAuthenticated) => {
+    const writes = this.getWriteCallbacks();
+
+    return (
+      <>
+        <Header activeAddress={this.state.activeAddress} web3Provider={this.state.provider} viewOnly={!this.state.activeAddress} route={route} />
+        <Create
+          activeAddress={this.state.activeAddress}
+          route={route}
+          createDisputeCallback={writes.createDispute}
+          getArbitrationCostCallback={this.getArbitrationCostWithCourtAndNoOfJurors}
+          publishCallback={writes.publish}
+          web3Provider={this.state.provider}
+          subcourtDetails={this.state.subcourtDetails}
+          subcourtsLoading={this.state.subcourtsLoading}
+          network={this.state.network}
+          isAuthenticated={isAuthenticated}
+          isSigningIn={this.state.isSigningIn}
+          onSignIn={writes.signIn}
+        />
+        <Footer networkMap={networkMap} network={this.state.network} />
+      </>
+    );
+  };
 
   renderInteract = (route, isAuthenticated) => {
     const writes = this.getWriteCallbacks();

@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { act, Simulate } from "react-dom/test-utils";
 import { ethers } from "ethers";
 import App from './app';
-import { getSignableContract } from "./ethereum/interface";
+import { getContract, getSignableContract } from "./ethereum/interface";
 import { uploadToIpfs } from "./utils/atlas-api";
 
 jest.mock("./ethereum/interface", () => ({
@@ -234,5 +234,114 @@ describe("fixture mode", () => {
       Simulate.click(Array.from(container.querySelectorAll("button")).find(button => button.textContent.trim() === "Fund"));
     });
     expect(getSignableContract).not.toHaveBeenCalled();
+  });
+});
+
+const readBlob = blob =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsText(blob);
+  });
+
+describe("App.getArbitrationCostWithCourtAndNoOfJurors", () => {
+  it("asks the arbitrator for the cost of the court and the votes, encoded as extra data, and formats it in ether", async () => {
+    const app = createApp({ network: "100" });
+    app.state.provider = { name: "provider" };
+    const contract = { arbitrationCost: jest.fn().mockResolvedValue(36000000000000000000n) };
+    getContract.mockReturnValue(contract);
+
+    expect(await app.getArbitrationCostWithCourtAndNoOfJurors("0", "3")).toBe("36.0");
+    expect(getContract).toHaveBeenCalledWith("IArbitrator", "0x9C1dA9A04925bDfDedf0f6421bC7EEa8305F9002", app.state.provider);
+    expect(contract.arbitrationCost).toHaveBeenCalledWith("0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003");
+  });
+
+  it("resolves null when the read fails", async () => {
+    getContract.mockReturnValue({ arbitrationCost: jest.fn().mockRejectedValue(new Error("RPC down")) });
+    expect(await createApp({ network: "100" }).getArbitrationCostWithCourtAndNoOfJurors("0", "3")).toBeNull();
+  });
+
+  it("reads the fixture in fixture mode without touching a contract", async () => {
+    process.env.REACT_APP_USE_FIXTURES = "true";
+    expect(await createApp({ network: "100" }).getArbitrationCostWithCourtAndNoOfJurors("1", 4)).toBe("28.8");
+    expect(getContract).not.toHaveBeenCalled();
+  });
+});
+
+describe("App.createDispute", () => {
+  //The options the review step builds for the form filled in create.test.js, with an uploaded primary document.
+  const options = {
+    selectedSubcourt: "1",
+    initialNumberOfJurors: "4",
+    title: "Late delivery of the website",
+    category: "Escrow",
+    description: "The site was delivered two weeks after the deadline.",
+    aliases: { "0x00000000000000000000000000000000000000a1": "Alice" },
+    question: "Was the website delivered on time?",
+    primaryDocument: "/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/contract.pdf",
+    numberOfRulingOptions: 2,
+    rulingOptions: { type: "single-select", titles: ["Yes", "No"], descriptions: ["Delivered by the agreed date.", "Delivered after the agreed date."] },
+  };
+  const DISPUTE_CREATION_TOPIC = ethers.id("DisputeCreation(uint256,address)");
+  //Dispute 1013 (0x3f5) created by the Gnosis arbitrable proxy.
+  const receiptWithDispute = {
+    status: 1,
+    hash: "0xcreated",
+    logs: [{ topics: [DISPUTE_CREATION_TOPIC, "0x00000000000000000000000000000000000000000000000000000000000003f5", "0x000000000000000000000000c7add3c961f7935cb4914e37da991d2f1cd7986c"] }],
+  };
+
+  const arrange = ({ receipt = receiptWithDispute, fails = false } = {}) => {
+    const app = createApp({ network: "100" });
+    app.state.provider = { name: "provider" };
+    getContract.mockReturnValue({ arbitrationCost: jest.fn().mockResolvedValue(28800000000000000000n) });
+    uploadToIpfs.mockResolvedValue("/ipfs/QmMeta/metaEvidence.json");
+    const contract = {
+      createDispute: jest.fn(() => (fails ? Promise.reject(new Error("createDispute reverted")) : Promise.resolve({ wait: jest.fn().mockResolvedValue(receipt) }))),
+    };
+    getSignableContract.mockResolvedValue(contract);
+    return { app, contract };
+  };
+
+  it("publishes the meta-evidence and calls createDispute on the arbitrable proxy with the extra data, the URI, the number of rulings and the cost", async () => {
+    const { app, contract } = arrange();
+
+    expect(await app.createDispute(options)).toEqual({ receipt: receiptWithDispute, disputeID: "1013" });
+
+    expect(uploadToIpfs).toHaveBeenCalledTimes(1);
+    const [filename, blob, role] = uploadToIpfs.mock.calls[0];
+    expect(filename).toBe("metaEvidence.json");
+    expect(role).toBe("policy");
+    expect(blob.type).toBe("application/json");
+    expect(JSON.parse(await readBlob(blob))).toEqual({
+      title: "Late delivery of the website",
+      category: "Escrow",
+      description: "The site was delivered two weeks after the deadline.",
+      aliases: { "0x00000000000000000000000000000000000000a1": "Alice" },
+      question: "Was the website delivered on time?",
+      rulingOptions: { type: "single-select", titles: ["Yes", "No"], descriptions: ["Delivered by the agreed date.", "Delivered after the agreed date."] },
+      fileURI: "/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/contract.pdf",
+      dynamicScriptURI: "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj",
+    });
+    expect(getContract).toHaveBeenCalledWith("IArbitrator", "0x9C1dA9A04925bDfDedf0f6421bC7EEa8305F9002", app.state.provider);
+    expect(getSignableContract).toHaveBeenCalledWith("ArbitrableProxy", "0xC7aDD3C961f7935CB4914E37DA991D2f1Cd7986c", app.state.walletProvider);
+    expect(contract.createDispute).toHaveBeenCalledTimes(1);
+    expect(contract.createDispute).toHaveBeenCalledWith(
+      "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000004",
+      "/ipfs/QmMeta/metaEvidence.json",
+      2,
+      { value: 28800000000000000000n }
+    );
+  });
+
+  it("resolves null when the transaction fails", async () => {
+    const { app } = arrange({ fails: true });
+    expect(await app.createDispute(options)).toBeNull();
+  });
+
+  it("resolves the receipt without an ID when the DisputeCreation event is missing", async () => {
+    const receipt = { status: 1, hash: "0xcreated", logs: [] };
+    const { app } = arrange({ receipt });
+    expect(await app.createDispute(options)).toEqual({ receipt, disputeID: null });
   });
 });

@@ -21,6 +21,7 @@ This procedure only reports. The user decides what gets fixed.
 3. For each affected page, run its checklist, starting each configuration it names from `.claude/launch.json`.
    - Ongoing page: [references/ongoing.md](references/ongoing.md)
    - Case details page: [references/case.md](references/case.md)
+   - Create page: [references/create.md](references/create.md)
 4. Check each affected page at desktop, tablet and mobile widths.
 5. When done, stop any dev servers you started.
 

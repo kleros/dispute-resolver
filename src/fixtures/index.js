@@ -1,5 +1,7 @@
-//Fixture mode renders the Ongoing Disputes page and the case page from the JSON files in ./ongoing and ./cases instead of the network.
-//It is off unless REACT_APP_USE_FIXTURES=true. See README.md for the other variables.
+//Fixture mode renders the Ongoing Disputes page, the case page and the Create page from the JSON files in ./ongoing, ./cases
+//and ./courts instead of the network. It is off unless REACT_APP_USE_FIXTURES=true. See README.md for the other variables.
+import { ethers } from "ethers";
+
 const DEFAULT_FIXTURE_CHAIN_ID = "1";
 
 //Both fixtures of a chain were captured at the same block. Its timestamp (seconds) is the fixed "now" of fixture mode,
@@ -25,6 +27,10 @@ const caseLoaders = {
 };
 const handmadeCaseLoaders = {
   100: () => import("./cases/100.handmade.json"),
+};
+const courtLoaders = {
+  1: () => import("./courts/1.json"),
+  100: () => import("./courts/100.json"),
 };
 const loadMalformedDispute = () => import("./ongoing/100.malformed.json");
 
@@ -179,6 +185,16 @@ export const getSubcourtData = chainId =>
     return { subcourts: fixture.subcourts, subcourtDetails: fixture.subcourtDetails };
   });
 
+//Same shape as App.getArbitrationCostWithCourtAndNoOfJurors: the cost in ether as a string. KlerosLiquid charges the court's
+//feeForJuror for every vote, so the fixture keeps the fee of each court and multiplies it here.
+export const getArbitrationCost = (chainId, subcourtID, noOfJurors) =>
+  read("arbitrationCost", async () => {
+    const { feeForJuror } = await loadFromMap(courtLoaders, chainId, "courts");
+    const fee = feeForJuror[Number.parseInt(subcourtID, 10)];
+    if (fee === undefined) throw new Error(`No court ${subcourtID} in the courts fixture of chain ${chainId}.`);
+    return ethers.formatEther(BigInt(fee) * BigInt(Number.parseInt(noOfJurors, 10)));
+  });
+
 //Same shape as App.getArbitrableDisputeID: the local dispute ID as BigInt, or null when the arbitrable does not implement IDisputeResolver.
 export const getArbitrableDisputeID = (chainId, arbitrated, disputeId) =>
   read("arbitrableDisputeID", async () => toBigInt((await findCaseRecord(chainId, disputeId))?.arbitrableDisputeID ?? null));
@@ -253,7 +269,7 @@ export const getTotalWithdrawableAmount = (chainId, arbitrableDisputeID, contrib
   });
 
 //Write actions never reach a wallet. REACT_APP_FIXTURE_WRITES=failure makes them fail the way the App handlers fail:
-//appeal and withdrawal resolve null, evidence submission, publishing and signing in reject. Nothing in the fixture changes.
+//appeal, withdrawal and dispute creation resolve null, evidence submission, publishing and signing in reject. Nothing in the fixture changes.
 const writesSucceed = () => process.env.REACT_APP_FIXTURE_WRITES !== "failure";
 const writeFailure = action => new Error(`Forced failure: REACT_APP_FIXTURE_WRITES is set to failure (${action}).`);
 const receipt = () => ({ status: 1, hash: WRITE_TRANSACTION_HASH, blockNumber: null });
@@ -288,4 +304,15 @@ export const signIn = async () => {
   await delay();
   console.info("Fixture sign-in: set REACT_APP_FIXTURE_SIGNED_IN=true to load the page signed in.");
   if (!writesSucceed()) throw writeFailure("sign-in");
+};
+
+//Same shape as App.createDispute: the receipt and the ID of the new dispute, or null when the transaction failed. The ID is the
+//newest open dispute of the fixture chain, so the case page opened after the creation shows a real case.
+export const createDispute = async options => {
+  await delay();
+  console.info("Fixture dispute creation:", options);
+  if (!writesSucceed()) return null;
+  const { openDisputeIDs } = await loadOngoingFixture(getFixtureChainId());
+  const newest = openDisputeIDs.map(Number).reduce((max, id) => Math.max(max, id), 0);
+  return { receipt: receipt(), disputeID: String(newest || 1) };
 };

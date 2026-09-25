@@ -1,0 +1,15 @@
+# Create page checks
+- `fixture-gnosis`: /100/create lists the 20 Gnosis courts; the General Court with 3 votes costs 36.0 xDai, with no chain or IPFS request. No eyebrow label above the heading; required fields carry *, nothing says optional.
+- `fixture-gnosis`: the cost follows the court and the votes (xDai Curation with 4 votes: 28.8 xDai); 0 votes shows a hint, not a cost.
+- `fixture-gnosis`: Continue on an empty form marks the title, the question and the ruling options and focuses the first invalid field; an alias without an address, an address without an alias, and a malformed address are marked too.
+- `fixture-gnosis`: all four question types; number and date questions hide the ruling options; the number of options adds rows (2 to 32).
+- `fixture-gnosis`: Add another party adds an alias and address pair, Remove drops one, and the review step lists every alias with its address. A second party with the address of the first is refused with "Party 1 already uses this address."
+- `fixture-gnosis`: the review step shows the court, votes, category, cost, title, description, question type, question, options with descriptions, the number of rulings and the parties as typed; Back keeps every value.
+- `fixture-gnosis`: signed out, the upload is disabled behind a sign-in prompt and Create is disabled behind one on the review step.
+- `fixture-signed-in`: an upload shows "Selected file" and the review step links it; Create shows pending, then "Dispute 1013 created" and opens /100/cases/1013.
+- `fixture-writes-fail`: the upload shows its error; Create shows "Dispute creation failed" with "Check you have the necessary funds and try again. If the error persists, contact support.", the details stay and Back works.
+- `fixture-delay`: "Loading courts…" and a cost placeholder while loading, never "unavailable".
+- `fixture-fail-reads`: the cost says it could not be read, with Try again; the rest of the form works.
+- `fixture-mainnet`: the 25 Mainnet courts and 0.0162 ETH for the General Court with 3 votes.
+- `real`: /100/create loads the courts and a cost from the chain.
+- 375px, 768px and desktop: one page scroll, no horizontal overflow; the field pairs stack on mobile.
