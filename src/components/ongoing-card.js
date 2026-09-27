@@ -12,7 +12,8 @@ export const getDisputeTitle = title => {
   return title == null ? "Meta Evidence Missing" : "Title unavailable";
 };
 
-export const getCourtName = (details, subcourtDetails) => {
+export const getCourtName = (details, subcourtDetails, subcourtsLoading) => {
+  if (subcourtsLoading) return "Loading court…";
   const name = subcourtDetails?.[details?.subcourtID?.toString()]?.name;
   return typeof name === "string" && name.trim() ? name : "Court unavailable";
 };
@@ -36,7 +37,7 @@ class OngoingCard extends React.Component {
   };
 
   render() {
-    const { dispute, subcourtDetails, title, arbitratorDisputeDetails } = this.props;
+    const { dispute, subcourtDetails, subcourtsLoading, title, arbitratorDisputeDetails } = this.props;
     const remainingTime = this.getRemainingTime();
     const period = Number(arbitratorDisputeDetails?.period?.toString());
     const displayTitle = getDisputeTitle(title);
@@ -57,7 +58,7 @@ class OngoingCard extends React.Component {
             <span className={styles.label}>Court</span>
             <div className={styles.badge}>
               <ScalesSVG aria-hidden="true" />
-              <span>{getCourtName(arbitratorDisputeDetails, subcourtDetails)}</span>
+              <span aria-busy={subcourtsLoading}>{getCourtName(arbitratorDisputeDetails, subcourtDetails, subcourtsLoading)}</span>
             </div>
           </div>
         </div>

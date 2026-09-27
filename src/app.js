@@ -1388,6 +1388,7 @@ class App extends React.Component {
         getMetaEvidenceCallback={this.getMetaEvidenceParallelizeable}
         getArbitratorDisputeCallback={this.getArbitratorDispute}
         subcourtDetails={this.state.subcourtDetails}
+        subcourtsLoading={this.state.subcourtsLoading}
         subcourts={this.state.subcourts}
         getCurrentRulingCallback={this.getCurrentRuling}
         getOpenDisputesOnCourtCallback={this.getOpenDisputesOnCourt}

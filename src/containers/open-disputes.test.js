@@ -50,7 +50,7 @@ const renderPage = async (chainId, overrides = {}) => {
   const { subcourts, subcourtDetails } = await fixtures.getSubcourtData(chainId);
 
   await act(async () => {
-    ReactDOM.render(<OpenDisputes network={chainId} subcourts={subcourts} subcourtDetails={subcourtDetails} {...callbacks} />, container);
+    ReactDOM.render(<OpenDisputes network={chainId} subcourts={subcourts} subcourtDetails={subcourtDetails} subcourtsLoading={false} {...callbacks} />, container);
   });
   await waitFor(() => container.querySelector('[role="status"]') === null);
 
@@ -403,32 +403,38 @@ describe("Ongoing disputes resilience and states", () => {
 
   //The subcourts are enumerated by the app after the page mounts; on a first visit without a cached copy they arrive after
   //the first load has rendered. The list already shown then picks up the court names and countdowns without loading again.
-  it("fills in the court names when the subcourts arrive after the first load, without fetching the disputes again", async () => {
+  it.each(["found", "missing", "failed"])("replaces the court loading placeholder when the list finishes (%s), without fetching disputes again", async result => {
     const callbacks = {
       getOpenDisputesOnCourtCallback: jest.fn(() => fixtures.getOpenDisputesOnCourt(GNOSIS)),
       getArbitratorDisputeCallback: jest.fn(disputeId => fixtures.getArbitratorDispute(GNOSIS, disputeId)),
       getMetaEvidenceCallback: jest.fn((arbitrated, disputeId) => fixtures.getMetaEvidence(GNOSIS, disputeId)),
     };
     await act(async () => {
-      ReactDOM.render(<OpenDisputes network={GNOSIS} subcourts={[]} subcourtDetails={[]} {...callbacks} />, container);
+      ReactDOM.render(<OpenDisputes network={GNOSIS} subcourts={[]} subcourtDetails={[]} subcourtsLoading={true} {...callbacks} />, container);
     });
     await waitFor(() => container.querySelector('[role="status"]') === null);
     const countsAfterLoad = callCounts(callbacks);
     expect(countsAfterLoad.getOpenDisputesOnCourtCallback).toBe(1);
     expect(visibleDisputeIDs()).toEqual(GNOSIS_DISPUTES);
     const card = () => container.querySelector('a[href="/100/cases/1005"]');
-    expect(card().textContent).toContain("Court unavailable");
+    expect(card().querySelector('.badge [aria-busy="true"]').textContent).toBe("Loading court…");
+    expect(container.textContent).not.toContain("Court unavailable");
     expect(card().querySelector(".countdown > span").textContent).toBe("Unavailable");
 
     const { subcourts, subcourtDetails } = await fixtures.getSubcourtData(GNOSIS);
+    const courtDetails = result === "failed" ? [] : [...subcourtDetails];
+    if (result === "missing") {
+      const details = await fixtures.getArbitratorDispute(GNOSIS, "1005");
+      delete courtDetails[details.subcourtID];
+    }
     await act(async () => {
-      ReactDOM.render(<OpenDisputes network={GNOSIS} subcourts={subcourts} subcourtDetails={subcourtDetails} {...callbacks} />, container);
+      ReactDOM.render(<OpenDisputes network={GNOSIS} subcourts={subcourts} subcourtDetails={courtDetails} subcourtsLoading={false} {...callbacks} />, container);
     });
 
     expect(container.querySelector('[role="status"]')).toBeNull();
     expect(visibleDisputeIDs()).toEqual(GNOSIS_DISPUTES);
-    expect(card().textContent).toContain("xDai Javascript Court");
-    expect(card().textContent).not.toContain("Court unavailable");
+    expect(card().querySelector('.badge [aria-busy="false"]').textContent).toBe(result === "found" ? "xDai Javascript Court" : "Court unavailable");
+    expect(container.textContent).not.toContain("Loading court…");
     expect(card().querySelector(".countdown").textContent).toMatch(/\d+d \d{2}h \d{2}m/);
     await waitFor(() => visibleDisputeIDs().length === GNOSIS_DISPUTES.length);
     expect(callCounts(callbacks)).toEqual(countsAfterLoad);

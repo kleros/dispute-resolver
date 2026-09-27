@@ -123,7 +123,7 @@ class OpenDisputes extends React.Component {
 
   getDisputeTitle = dispute => getDisputeTitle(this.state.arbitratorDisputes[dispute]?.title);
 
-  getCourtName = details => getCourtName(details, this.props.subcourtDetails);
+  getCourtName = details => getCourtName(details, this.props.subcourtDetails, this.props.subcourtsLoading);
 
   //The status filter and the search only narrow down the disputes already loaded; neither triggers a fetch.
   isDisputeVisible = dispute => {
@@ -151,7 +151,7 @@ class OpenDisputes extends React.Component {
 
   render() {
     const { openDisputeIDs, arbitratorDisputes, statusFilter, loading, fetchFailed, searchQuery } = this.state;
-    const { subcourts, subcourtDetails, network } = this.props;
+    const { subcourts, subcourtDetails, subcourtsLoading, network } = this.props;
 
     if (!networkMap[network]?.KLEROS_LIQUID) {
       return (
@@ -235,6 +235,7 @@ class OpenDisputes extends React.Component {
                       arbitratorDisputeDetails={arbitratorDisputes[`arbitrator${dispute}`]}
                       title={arbitratorDisputes[dispute]?.title}
                       subcourtDetails={subcourtDetails}
+                      subcourtsLoading={subcourtsLoading}
                       subcourts={subcourts || []}
                     />
                   </a>
