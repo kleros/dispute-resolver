@@ -212,7 +212,7 @@ describe("fixture mode", () => {
     await renderApp("/100/cases/900001");
 
     expect(container.querySelector("h1").textContent).toBe("Which deliverables of the website contract were completed?");
-    expect(container.textContent).not.toContain("View mode only");
+    expect(container.textContent).not.toContain("Read-only mode");
     const submit = Array.from(container.querySelectorAll("button")).find(button => button.textContent.trim() === "Submit New Evidence");
     expect(submit.disabled).toBe(false);
     expect(container.querySelectorAll(".crowdfundingCard")).toHaveLength(17);
@@ -226,7 +226,8 @@ describe("fixture mode", () => {
     await renderApp("/100/cases/1005");
 
     expect(container.querySelector("h1").textContent).toBe("Add a module to Address Tags Query (ATQ) Registry");
-    expect(container.textContent).toContain("View mode only: Actions that require an Ethereum account are disabled.");
+    expect(container.textContent).toContain("Read-only mode");
+    expect(container.textContent).toContain("You can browse disputes, but taking part in them needs a wallet.");
     expect(container.textContent).toContain("Jury decision: No, Don't Add It");
     expect(getSignableContract).not.toHaveBeenCalled();
 
@@ -234,6 +235,37 @@ describe("fixture mode", () => {
       Simulate.click(Array.from(container.querySelectorAll("button")).find(button => button.textContent.trim() === "Fund"));
     });
     expect(getSignableContract).not.toHaveBeenCalled();
+  });
+
+  //The header and footer render from the wallet status the adapter builds out of the fixture settings.
+  const navLabels = () => Array.from(container.querySelectorAll("header nav a.nav-link")).map(link => link.textContent.trim());
+
+  it("shows the fixture account in the header, with the Create link and no banner, with the signed-in flag", async () => {
+    process.env.REACT_APP_USE_FIXTURES = "true";
+    process.env.REACT_APP_FIXTURE_CHAIN_ID = "100";
+    process.env.REACT_APP_FIXTURE_SIGNED_IN = "true";
+    await renderApp("/100/ongoing");
+
+    const header = container.querySelector("header");
+    expect(header.querySelector('[title="0x1111111111111111111111111111111111111111"]').textContent).toBe("0x1111…1111");
+    expect(header.querySelector('[role="status"]')).toBeNull();
+    expect(header.querySelector('[role="alert"]')).toBeNull();
+    expect(navLabels()).toEqual(["Ongoing Disputes", "Create", "Case Lookup"]);
+    expect(container.querySelector("footer").textContent).toContain("Gnosis Network");
+  });
+
+  it("shows the read-only banner with an install link, no Create link and the chain in the footer without the flag", async () => {
+    process.env.REACT_APP_USE_FIXTURES = "true";
+    process.env.REACT_APP_FIXTURE_CHAIN_ID = "100";
+    await renderApp("/100/ongoing");
+
+    const banner = container.querySelector('header [role="status"]');
+    expect(banner.textContent).toContain("Read-only mode");
+    expect(banner.querySelector('a[href="https://metamask.io"]')).not.toBeNull();
+    expect(navLabels()).toEqual(["Ongoing Disputes", "Case Lookup"]);
+    const footer = container.querySelector("footer");
+    expect(footer.textContent).toContain("Gnosis Network");
+    expect(footer.querySelector('a[href="https://gnosisscan.io/address/0xC7aDD3C961f7935CB4914E37DA991D2f1Cd7986c#code"]')).not.toBeNull();
   });
 });
 

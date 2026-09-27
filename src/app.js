@@ -18,6 +18,7 @@ import { urlNormalize, IPFS_GATEWAY, getFormattedPath, isContentAddressed } from
 import { fetchDataFromScript } from "./utils/utils";
 import { resolveAppealMultipliers } from "./utils/multipliers";
 import * as fixtures from "./fixtures";
+import { ERROR_CODES, buildWalletActions, buildWalletStatus, detectSmartContractWallet, isWalletDetected, toWalletError } from "./wallet/walletAdapter";
 
 // Constants to avoid magic numbers
 const HEX_PADDING_WIDTH = 64;
@@ -72,8 +73,15 @@ class App extends React.Component {
       walletProvider: null,
       signer: null,
       archon: null,
-      isSigningIn: false
+      isSigningIn: false,
+      //What the wallet adapter needs besides activeAddress and network; see src/wallet/walletAdapter.js.
+      walletInitializing: true,
+      walletError: null,
+      isSmartContractWallet: null
     };
+    this.smartContractWalletCheck = 0;
+    //Built once: connect asks the wallet for an account and reports the outcome through the state.
+    this.walletActions = buildWalletActions({ onAccounts: this.handleAccountsChanged, onError: walletError => this.setState({ walletError }) });
   }
 
   //Testnets have lower limits due to RPC restrictions
@@ -85,26 +93,16 @@ class App extends React.Component {
       return;
     }
 
-    await this.initiateWeb3Provider();
-
-    // Check if URL chainId matches provider's chainId
-    const urlChainId = window.location.pathname.split('/')[1];
-    if (urlChainId && this.state.network && urlChainId !== this.state.network) {
-      console.log(`Switching to chain ${urlChainId} from URL`);
-      //Rebuild the read provider for the URL chain so reads don't stay pinned to the wallet's chain.
-      await this.initiateWeb3Provider(urlChainId);
-      await this.switchToChain(urlChainId);
-    }
+    await this.initiateWallet();
 
     if (window.ethereum) {
-      this.setState({ activeAddress: window.ethereum.selectedAddress });
+      this.handleAccountsChanged([window.ethereum.selectedAddress]);
 
       window.ethereum.on("accountsChanged", accounts => {
-        const newAddress = accounts[0];
-        if (!isTokenForAccount(newAddress)) {
+        if (!isTokenForAccount(accounts[0])) {
           clearAuthData();
         }
-        this.setState({ activeAddress: newAddress });
+        this.handleAccountsChanged(accounts);
       });
 
       window.ethereum.on("chainChanged", async chainIdHex => {
@@ -138,7 +136,15 @@ class App extends React.Component {
     if (this.state.network === newChainId) return;
 
     this.setState({ network: newChainId }, async () => {
-      await this.initiateWeb3Provider();
+      try {
+        await this.initiateWeb3Provider();
+      } catch (error) {
+        //The wallet moved to the new chain but its provider could not be rebuilt: stay browsable, read-only, on that chain.
+        console.error("Failed to initialise the provider for the new chain:", error);
+        this.setState({ walletError: toWalletError(error, ERROR_CODES.INIT_FAILED) });
+        this.setProviders(newChainId);
+      }
+      this.checkSmartContractWallet(this.state.activeAddress);
       if (networkMap[newChainId]?.KLEROS_LIQUID) {
         this.loadSubcourtData();
       }
@@ -173,8 +179,12 @@ class App extends React.Component {
       signer = await walletProvider.getSigner();
       if (!network) network = (await walletProvider.getNetwork()).chainId.toString();
     }
-    if (!network) network = DEFAULT_CHAIN_ID;
 
+    this.setProviders(network || DEFAULT_CHAIN_ID, walletProvider, signer);
+  };
+
+  //Sets the chain and its read provider. Without a wallet provider the app browses that chain read-only.
+  setProviders = (network, walletProvider = null, signer = null) => {
     const readOnlyRpcUrl = networkMap[network]?.WEB3_PROVIDER;
     //Fallback to the wallet provider on networks without a configured RPC
     const provider = readOnlyRpcUrl ? new ethers.JsonRpcProvider(readOnlyRpcUrl) : walletProvider ?? ethers.getDefaultProvider();
@@ -188,6 +198,72 @@ class App extends React.Component {
     });
   };
 
+  //Resolves the wallet, the signer and the chain, once at a time: the connect action and the wallet's own accountsChanged
+  //event can both ask for it. A closed prompt or a broken extension is kept as a WalletError and the app falls back to
+  //browsing the URL chain, or mainnet, read-only, so it never stays on the bare notice.
+  initiateWallet = () => {
+    if (!this.walletInitialisation) {
+      this.walletInitialisation = this.resolveWallet().finally(() => {
+        this.walletInitialisation = null;
+      });
+    }
+    return this.walletInitialisation;
+  };
+
+  resolveWallet = async () => {
+    this.setState({ walletInitializing: true, walletError: null });
+
+    try {
+      await this.initiateWeb3Provider();
+
+      // Check if URL chainId matches provider's chainId
+      const urlChainId = window.location.pathname.split('/')[1];
+      if (urlChainId && this.state.network && urlChainId !== this.state.network) {
+        console.log(`Switching to chain ${urlChainId} from URL`);
+        //Rebuild the read provider for the URL chain so reads don't stay pinned to the wallet's chain.
+        await this.initiateWeb3Provider(urlChainId);
+        await this.switchToChain(urlChainId);
+      }
+    } catch (error) {
+      console.error("Wallet initialisation failed:", error);
+      this.setState({ walletError: toWalletError(error, ERROR_CODES.INIT_FAILED) });
+      if (!this.state.network) this.setProviders(window.location.pathname.split('/')[1] || DEFAULT_CHAIN_ID);
+    } finally {
+      this.setState({ walletInitializing: false });
+    }
+  };
+
+  //An account was granted or changed: by the connect action, the wallet UI or the initial read. A wallet that failed to
+  //initialise has no signer or chain yet, so it is initialised again now that it answers.
+  handleAccountsChanged = async accounts => {
+    const activeAddress = accounts[0] ?? "";
+    this.setState({ activeAddress });
+    if (activeAddress && !this.state.walletProvider) await this.initiateWallet();
+    this.checkSmartContractWallet(activeAddress);
+  };
+
+  //Whether the account is a smart contract wallet, read through the read provider; null while pending or unknown.
+  checkSmartContractWallet = async address => {
+    const check = ++this.smartContractWalletCheck;
+    this.setState({ isSmartContractWallet: null });
+    if (!address) return;
+
+    const isSmartContractWallet = await detectSmartContractWallet(this.state.provider, address);
+    //Only the latest check counts: the account or the chain may have changed meanwhile.
+    if (check === this.smartContractWalletCheck) this.setState({ isSmartContractWallet });
+  };
+
+  //The header and footer render from this alone; the adapter maps App state to the contract in src/wallet/walletStatus.js.
+  getWalletStatus = () =>
+    buildWalletStatus({
+      activeAddress: this.state.activeAddress,
+      network: this.state.network,
+      walletDetected: isWalletDetected(),
+      initializing: this.state.walletInitializing,
+      error: this.state.walletError,
+      isSmartContractWallet: this.state.isSmartContractWallet
+    });
+
   //Fixture mode: the chain comes from the environment and neither the wallet nor an RPC is used.
   initiateFixtureMode = () => {
     const network = fixtures.getFixtureChainId();
@@ -198,7 +274,7 @@ class App extends React.Component {
 
     //REACT_APP_FIXTURE_SIGNED_IN shows the connected and signed-in UI; there is still no wallet behind it.
     const activeAddress = fixtures.isSignedIn() ? fixtures.getSignedInAddress() : "";
-    this.setState({ network, activeAddress }, () => {
+    this.setState({ network, activeAddress, walletInitializing: false }, () => {
       if (networkMap[network]?.KLEROS_LIQUID) this.loadSubcourtData();
     });
   };
@@ -1280,11 +1356,24 @@ class App extends React.Component {
     }
   }
 
+  renderHeader = route => <Header status={this.getWalletStatus()} actions={this.walletActions} route={route} />;
+
+  renderFooter = () => <Footer status={this.getWalletStatus()} />;
+
+  //Shown while no chain is known yet: the chrome in its connecting state around an empty, busy page.
+  renderConnecting = route => (
+    <>
+      {this.renderHeader(route)}
+      <main aria-busy="true" aria-label="Connecting to your wallet" />
+      {this.renderFooter()}
+    </>
+  );
+
   renderUnsupportedNetwork = route => (
     <>
-      <Header activeAddress={this.state.activeAddress} web3Provider={this.state.provider} viewOnly={!this.state.activeAddress} route={route} />
+      {this.renderHeader(route)}
       <UnsupportedNetwork network={this.state.network} networkMap={networkMap} />
-      <Footer networkMap={networkMap} network={this.state.network} />
+      {this.renderFooter()}
     </>
   );
 
@@ -1292,7 +1381,7 @@ class App extends React.Component {
 
   renderOpenDisputes = route => (
     <>
-      <Header activeAddress={this.state.activeAddress} web3Provider={this.state.provider} viewOnly={!this.state.activeAddress} route={route} />
+      {this.renderHeader(route)}
       <OpenDisputes
         activeAddress={this.state.activeAddress}
         route={route}
@@ -1304,7 +1393,7 @@ class App extends React.Component {
         getOpenDisputesOnCourtCallback={this.getOpenDisputesOnCourt}
         network={this.state.network}
       />
-      <Footer networkMap={networkMap} network={this.state.network} />
+      {this.renderFooter()}
     </>
   );
 
@@ -1333,7 +1422,7 @@ class App extends React.Component {
 
     return (
       <>
-        <Header activeAddress={this.state.activeAddress} web3Provider={this.state.provider} viewOnly={!this.state.activeAddress} route={route} />
+        {this.renderHeader(route)}
         <Create
           activeAddress={this.state.activeAddress}
           route={route}
@@ -1348,7 +1437,7 @@ class App extends React.Component {
           isSigningIn={this.state.isSigningIn}
           onSignIn={writes.signIn}
         />
-        <Footer networkMap={networkMap} network={this.state.network} />
+        {this.renderFooter()}
       </>
     );
   };
@@ -1358,7 +1447,7 @@ class App extends React.Component {
 
     return (
       <>
-        <Header activeAddress={this.state.activeAddress} web3Provider={this.state.provider} viewOnly={!this.state.activeAddress} route={route} />
+        {this.renderHeader(route)}
         <Interact
           arbitratorAddress={networkMap[this.state.network].KLEROS_LIQUID}
           network={this.state.network}
@@ -1403,16 +1492,16 @@ class App extends React.Component {
           isSigningIn={this.state.isSigningIn}
           onSignIn={writes.signIn}
         />
-        <Footer networkMap={networkMap} network={this.state.network} />
+        {this.renderFooter()}
       </>
     );
   };
 
   renderNotFound = route => (
     <>
-      <Header activeAddress={this.state.activeAddress} web3Provider={this.state.provider} viewOnly={!this.state.activeAddress} route={route} />
+      {this.renderHeader(route)}
       <NotFound />
-      <Footer networkMap={networkMap} network={this.state.network} />
+      {this.renderFooter()}
     </>
   );
 
@@ -1441,6 +1530,12 @@ class App extends React.Component {
             <Route exact path="/:chainId/cases/:id?" render={(route) => this.renderInteract(route, isAuthenticated)} />
             <Route render={this.renderNotFound} />
           </Switch>
+        </BrowserRouter>
+      );
+    } else if (this.state.walletInitializing) {
+      return (
+        <BrowserRouter>
+          <Route path="/:chainId?" render={this.renderConnecting} />
         </BrowserRouter>
       );
     } else return <>Please enable a web3 provider.</>;
