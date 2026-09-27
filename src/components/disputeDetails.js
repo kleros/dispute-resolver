@@ -480,7 +480,7 @@ class DisputeDetails extends React.Component {
         {disputePeriod == DISPUTE_PERIOD_EXECUTION && totalWithdrawable != null && parseInt(totalWithdrawable, 10) > 0 && (
           <div className={styles.actions}>
             <Button onClick={this.props.withdrawCallback}>
-              {`Withdraw ${ethers.formatEther(totalWithdrawable)} ETH`}
+              {`Withdraw ${ethers.formatEther(totalWithdrawable)} ${networkMap[this.props.network]?.CURRENCY_SHORT ?? ""}`}
             </Button>
           </div>
         )}
@@ -516,7 +516,7 @@ class DisputeDetails extends React.Component {
       {disputePeriod == DISPUTE_PERIOD_APPEAL && appealCost != null && (
         <div className={styles.actions}>
           <Button onClick={this.handleEscrowV1AppealClick}>
-            Appeal - {ethers.formatEther(appealCost)} ETH
+            Appeal - {ethers.formatEther(appealCost)} {networkMap[this.props.network]?.CURRENCY_SHORT ?? ""}
           </Button>
         </div>
       )}

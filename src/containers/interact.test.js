@@ -747,8 +747,23 @@ describe("Write feedback", () => {
   });
   const clickWithdraw = () =>
     act(async () => {
-      Simulate.click(buttons("Withdraw 1.0 ETH")[0]);
+      Simulate.click(buttons("Withdraw 1.0 xDai")[0]);
     });
+
+  it.each([
+    [GNOSIS, "xDai"],
+    ["1", "ETH"],
+  ])("labels the withdrawal amount on chain %s in %s", async (chainId, currency) => {
+    //Use the same amount and dispute on both chains to check that only the currency label changes.
+    await renderCase("900001", {
+      chainId,
+      signedIn: true,
+      overrides: { ...fixtureCallbacks(GNOSIS), ...withdrawableOverrides() },
+    });
+
+    const withdrawalButtons = Array.from(container.querySelectorAll("button")).filter(button => button.textContent.startsWith("Withdraw "));
+    expect(withdrawalButtons.map(button => button.textContent)).toEqual([`Withdraw 1.0 ${currency}`]);
+  });
 
   it("reports a rejected withdrawal as failed after one call instead of retrying the same call", async () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
