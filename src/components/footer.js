@@ -1,5 +1,5 @@
-import {  Col } from "react-bootstrap";
 import React from "react";
+import PropTypes from "prop-types";
 import { ReactComponent as Etherscan } from "../assets/images/etherscan.svg";
 import { ReactComponent as Github } from "../assets/images/github.svg";
 import { ReactComponent as Slack } from "../assets/images/slack.svg";
@@ -11,60 +11,66 @@ import { ReactComponent as LinkedIn } from "../assets/images/linkedin.svg";
 import { ReactComponent as Help } from "../assets/images/help.svg";
 import { ReactComponent as SecuredByKleros } from "../assets/images/securedByKleros.svg";
 
-import networkMap from "../ethereum/network-contract-mapping";
-
-
 import styles from "./styles/footer.module.css";
 
-const ETHERSCAN_STRINGS = Object.freeze({ 1: "", 3: "ropsten.", 42: "kovan." });
+const UNSUPPORTED_NETWORK = "Unsupported Network";
 
 class Footer extends React.Component {
+  //The chain comes from the status alone: its name (flagged when it is a testnet), the unsupported notice, or a placeholder while it is unknown.
+  renderChain(chain) {
+    if (chain?.supported === false) return <span className={`${styles.pill} ${styles.unsupported}`}>{UNSUPPORTED_NETWORK}</span>;
+    if (chain?.name) {
+      return (
+        <span className={styles.pill}>
+          {chain.name}
+          {chain.testnet && <span className={styles.testnet}>Testnet</span>}
+        </span>
+      );
+    }
+    return <span className={`skeleton ${styles.chainPlaceholder}`} aria-hidden="true" />;
+  }
+
   render() {
-    const {  network } = this.props;
-    
+    const chain = this.props.status?.chain ?? null;
+    const explorerUrl = chain?.contractExplorerUrl;
+
     return (
-      <footer>
-        <div className={styles.footer}>
-          <a className={`m-auto m-sm-0 ${styles.brand}`} href="https://kleros.io">
+      <footer className={styles.footer}>
+        <div className={styles.inner}>
+          <a className={styles.brand} href="https://kleros.io" aria-label="Secured by Kleros">
             <SecuredByKleros />
           </a>
-          <div className={`d-none d-lg-block ml-5`}>
-            <Col>{networkMap[network]?.NAME || "Unsupported Network"}</Col>
-          </div>
-          <div className={`ml-sm-auto ${styles.rest}`}>
-            <a className={`d-none d-sm-block ${styles.help}`} href="https://t.me/kleros">
+          <div className={styles.chain}>{this.renderChain(chain)}</div>
+          <div className={styles.rest}>
+            <a className={styles.help} href="https://t.me/kleros">
               <span>I need help</span>
-              <Help />
+              <Help aria-hidden="true" />
             </a>
-            <div className={`d-none d-md-block ${styles.social}`}>
-              {(network == 1 || network == 3 || network == 42) && (
-                <a
-                  href={`https://${ETHERSCAN_STRINGS[network]}etherscan.io/address/${this.props.networkMap[network]?.ARBITRABLE_PROXY}#code`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+            <div className={styles.social}>
+              {explorerUrl && (
+                <a className={styles.explorer} href={explorerUrl} target="_blank" rel="noopener noreferrer" aria-label="Arbitrable proxy contract on the block explorer">
                   <Etherscan />
                 </a>
               )}
-              <a href="https://github.com/kleros/dispute-resolver">
+              <a href="https://github.com/kleros/dispute-resolver" aria-label="GitHub">
                 <Github />
               </a>
-              <a href="https://slack.kleros.io">
+              <a href="https://slack.kleros.io" aria-label="Slack">
                 <Slack />
               </a>
-              <a href="https://reddit.com/r/Kleros/">
+              <a href="https://reddit.com/r/Kleros/" aria-label="Reddit">
                 <Reddit />
               </a>
-              <a href="https://twitter.com/kleros_io">
+              <a href="https://twitter.com/kleros_io" aria-label="Twitter">
                 <Twitter />
               </a>
-              <a href="https://forum.kleros.io">
+              <a href="https://forum.kleros.io" aria-label="Forum">
                 <Forum />
               </a>
-              <a href="https://t.me/kleros">
+              <a href="https://t.me/kleros" aria-label="Telegram">
                 <Telegram />
               </a>
-              <a href="https://www.linkedin.com/company/kleros/">
+              <a href="https://www.linkedin.com/company/kleros/" aria-label="LinkedIn">
                 <LinkedIn />
               </a>
             </div>
@@ -76,3 +82,16 @@ class Footer extends React.Component {
 }
 
 export default Footer;
+
+Footer.propTypes = {
+  status: PropTypes.shape({
+    chain: PropTypes.shape({
+      id: PropTypes.string,
+      supported: PropTypes.bool,
+      name: PropTypes.string,
+      testnet: PropTypes.bool,
+      currency: PropTypes.string,
+      contractExplorerUrl: PropTypes.string,
+    }),
+  }),
+};

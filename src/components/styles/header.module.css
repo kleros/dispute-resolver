@@ -1,0 +1,268 @@
+/* Navigation */
+
+.header {
+  width: 100%;
+}
+
+.navbar {
+  padding: var(--spacing-8) var(--spacing-32);
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 1248px;
+  margin: 0 auto;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  margin-right: var(--spacing-32);
+  border-radius: var(--spacing-8);
+}
+
+.nav {
+  gap: var(--spacing-4);
+}
+
+.header :global(.navbar-nav a.nav-link) {
+  padding: var(--spacing-8) var(--spacing-16);
+  border-radius: var(--border-radius-l);
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: var(--bold);
+}
+
+.header :global(.navbar-nav a.nav-link):hover {
+  color: white;
+}
+
+.header :global(.navbar-nav a.nav-link.active) {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+}
+
+.header :global(.navbar-toggler) {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* Wallet area */
+
+.wallet {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-8);
+  margin-left: auto;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-8);
+  min-height: 36px;
+  padding: 6px var(--spacing-16);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--border-radius-l);
+  color: white;
+  font-size: var(--font-size-s);
+  line-height: 1.4;
+}
+
+.account {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.unsupported {
+  border-color: var(--orange);
+  background: var(--orange);
+  color: var(--purple-dark);
+  font-weight: var(--bold);
+}
+
+.connecting {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: var(--font-size-s);
+}
+
+.error {
+  color: white;
+  font-size: var(--font-size-s);
+}
+
+.connect {
+  min-height: 36px;
+  padding: 6px 20px;
+  border: 1px solid white;
+  border-radius: var(--border-radius-l);
+  background: white;
+  color: var(--purple-primary);
+  font-size: var(--font-size-s);
+  font-weight: var(--bold);
+  white-space: nowrap;
+}
+
+.connect:hover {
+  background: var(--purple-light);
+}
+
+.connect:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+/* Notices under the navigation: the view-only banner and the smart contract wallet warning */
+
+.notice {
+  padding: var(--spacing-16) var(--spacing-32) 0;
+  background: var(--purple-light);
+}
+
+.noticeCard {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  width: 100%;
+  max-width: 1248px;
+  margin: 0 auto;
+  padding: 12px 20px;
+  border: 1px solid var(--stroke);
+  border-radius: var(--spacing-8);
+  background: white;
+}
+
+.cardText {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.cardTitle {
+  margin: 0 0 2px;
+  color: var(--purple-dark);
+  font-size: var(--font-size-s);
+  font-weight: var(--bold);
+}
+
+.cardBody {
+  margin: 0;
+  color: var(--grey-dark);
+  font-size: var(--font-size-s);
+  line-height: 1.5;
+}
+
+.cardBody a {
+  color: var(--purple-primary);
+  font-weight: var(--bold);
+}
+
+.cardAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-8) 20px;
+  border: 1px solid var(--purple-primary);
+  border-radius: var(--spacing-8);
+  background: var(--purple-primary);
+  color: white;
+  font-size: var(--font-size-s);
+  font-weight: var(--bold);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.cardAction:hover {
+  background: var(--purple-dark);
+  color: white;
+  text-decoration: none;
+}
+
+.cardAction:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.cardAction:disabled:hover {
+  background: var(--purple-primary);
+}
+
+.warning {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  border-color: var(--orange);
+}
+
+.warning .cardTitle {
+  color: var(--orange);
+}
+
+.warningIcon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.dismiss {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--grey-dark);
+  font-size: var(--font-size-l);
+  line-height: 1;
+}
+
+.dismiss:hover {
+  background: var(--purple-light);
+  color: var(--purple-dark);
+}
+
+/* Focus */
+
+.header a:focus-visible,
+.header button:focus-visible {
+  outline: 3px solid white;
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+.notice a:focus-visible,
+.notice button:focus-visible {
+  outline-color: var(--purple-primary);
+}
+
+/* Responsive */
+
+@media (max-width: 991px) {
+  .nav {
+    gap: 0;
+  }
+
+  .wallet {
+    margin: var(--spacing-8) 0;
+  }
+}
+
+@media (max-width: 639px) {
+  .navbar {
+    padding: var(--spacing-8) var(--spacing-16);
+  }
+
+  .notice {
+    padding: var(--spacing-16) var(--spacing-16) 0;
+  }
+
+  .noticeCard {
+    padding: 12px var(--spacing-16);
+  }
+
+  .noticeCard:not(.warning) > .cardAction {
+    width: 100%;
+  }
+}
