@@ -23,6 +23,7 @@ const ESCROW_V1_MAINNET = "0xE2Dd8CCe2c33a04215074ADb4B5820B765d8Ed9D";
 const NOW = casesGnosis.capturedAtTimestamp * 1000;
 const GNOSIS_DISPUTES = ["1005", "1007", "1008", "1009", "1010", "1011", "1012", "1013"];
 const PERIOD_NAMES = ["Evidence", "Commit", "Voting", "Appeal", "Execution"];
+const VIEW_ONLY_WARNING = "not compatible with the interface of Dispute Resolver";
 
 let container;
 let originalWrites;
@@ -182,7 +183,7 @@ describe("Captured Gnosis disputes", () => {
     expect(fieldText("category")).toBe(`# ${disputeId}`);
     expect(fieldText("initialNumberOfJurors")).toBe(record.disputeDetails.votesLengths[0]);
     expect(fieldText("court")).toBe(ongoingGnosis.subcourtDetails[dispute.subcourtID].name);
-    expect(text()).toContain("View mode only");
+    expect(text()).toContain(VIEW_ONLY_WARNING);
 
     const period = Number(dispute.period);
     if (PERIOD_NAMES[period] !== "Commit") expect(currentPeriod()).toContain(PERIOD_NAMES[period]);
@@ -228,7 +229,7 @@ describe("Hand-made cases", () => {
     expect(title()).toBe(record.metaEvidence.title);
     expect(text()).toContain("Jury decision: Design / Frontend");
     expect(text()).toContain("Multiple choice: multiple select");
-    expect(text()).not.toContain("View mode only");
+    expect(text()).not.toContain(VIEW_ONLY_WARNING);
     expect(fieldText("court")).toBe("xDai General Court");
     expect(text()).toContain("Party 1");
     expect(text()).toContain("Client");
@@ -286,7 +287,7 @@ describe("Hand-made cases", () => {
     expect(fieldText("initialNumberOfJurors")).toBe("3");
     expect(fieldText("court")).toBe("xDai General Court");
     expect(text()).toContain("Statement of the requester");
-    expect(text()).not.toContain("View mode only");
+    expect(text()).not.toContain(VIEW_ONLY_WARNING);
   });
 
   it("renders the malformed dispute without crashing and marks what cannot be read", async () => {
@@ -298,7 +299,7 @@ describe("Hand-made cases", () => {
     expect(fieldText("initialNumberOfJurors")).toBe("Unavailable");
     expect(fieldText("court")).toBe("xDai General Court");
     expect(currentPeriod()).toContain("Evidence");
-    expect(text()).toContain("View mode only");
+    expect(text()).toContain(VIEW_ONLY_WARNING);
     expect(container.querySelectorAll("#evidence-timeline .evidence")).toHaveLength(1);
     expect(text()).toContain("Title unavailable");
     expect(text()).toContain("Submitted by: Unavailable");
@@ -351,7 +352,7 @@ describe("Loading", () => {
     expect(title()).toBeUndefined();
     expect(container.querySelector("#category")).toBeNull();
     expect(container.querySelector(".disputeTimeline")).toBeNull();
-    expect(text()).not.toContain("View mode only");
+    expect(text()).not.toContain(VIEW_ONLY_WARNING);
 
     await act(async () => {
       evidences.resolve(await fixtures.getEvidences(GNOSIS, record.arbitratorDispute.arbitrated, "900001"));
@@ -693,9 +694,62 @@ describe("Write stubs", () => {
       supportingSide: 0,
     });
     await expect(callbacks.submitEvidenceCallback.mock.results[0].value).resolves.toMatchObject({ status: 1 });
+    //The dialog closes once the case has been reloaded, which ends the submission.
+    await waitFor(() => container.querySelector("#modal").className.includes("closed"));
     await waitFor(isSettled);
     expect(title()).toBe(handmadeGnosis.disputes["900001"].metaEvidence.title);
     expect(container.querySelectorAll("#evidence-timeline .evidence")).toHaveLength(2);
+  });
+
+  it("uploads the attached file first and submits its published path as the evidence document, with the same call as before", async () => {
+    const submission = deferred();
+    const { callbacks } = await renderCase("900001", { signedIn: true, overrides: { submitEvidenceCallback: submission.callback } });
+    await act(async () => {
+      Simulate.click(buttons("Submit New Evidence")[0]);
+    });
+
+    const file = new File(["Sent on the day of the deadline."], "notice.txt", { type: "text/plain" });
+    const fileInput = container.querySelector('#modal input[type="file"]');
+    Object.defineProperty(fileInput, "files", { value: [file] });
+    await act(async () => {
+      Simulate.change(fileInput);
+    });
+    await waitFor(() => callbacks.publishCallback.mock.calls.length === 1);
+    expect(callbacks.publishCallback).toHaveBeenCalledWith("notice.txt", file);
+    const publishedPath = await callbacks.publishCallback.mock.results[0].value;
+    await waitFor(() => container.querySelector("#modal").textContent.includes("notice.txt"));
+
+    const titleInput = container.querySelector("#evidence-title");
+    const descriptionInput = container.querySelector("#evidence-description");
+    titleInput.value = "Late delivery notice";
+    descriptionInput.value = "See the attached notice.";
+    await act(async () => {
+      Simulate.change(titleInput);
+      Simulate.change(descriptionInput);
+    });
+    await act(async () => {
+      Simulate.click(buttons("Submit")[0]);
+    });
+
+    expect(submission.callback).toHaveBeenCalledTimes(1);
+    expect(submission.callback).toHaveBeenCalledWith(handmadeGnosis.disputes["900001"].arbitratorDispute.arbitrated, {
+      disputeID: 41n,
+      evidenceTitle: "Late delivery notice",
+      evidenceDescription: "See the attached notice.",
+      evidenceDocument: publishedPath,
+      supportingSide: 0,
+    });
+    //While the transaction is pending the dialog stays open with its submit button disabled.
+    expect(buttons("Awaiting Confirmation")[0].disabled).toBe(true);
+    expect(container.querySelector("#modal").className).not.toContain("closed");
+
+    await act(async () => {
+      submission.resolve(await fixtures.submitEvidence());
+    });
+    //The dialog closes once the case has been reloaded with the new evidence.
+    await waitFor(() => container.querySelector("#modal").className.includes("closed"));
+    await waitFor(isSettled);
+    expect(text()).toContain("Evidence submitted");
   });
 
   it("reports write failures per action without changing the case", async () => {

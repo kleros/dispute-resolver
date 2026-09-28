@@ -20,7 +20,7 @@ class AlertMessage extends React.Component {
       <div className={`${styles.alertMessage} ${styles[type]} ${extraClass}`}>
         <div className={styles.leftColumn}>{React.createElement(icons[type], {})}</div>
         <div className={styles.rightColumn}>
-          <div className={`${!title && "text-capitalize"} ${styles.title}`}>{title || type}</div>
+          {title && <div className={styles.title}>{title}</div>}
           <span>{content}</span>
         </div>
       </div>

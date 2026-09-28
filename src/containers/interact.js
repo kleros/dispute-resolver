@@ -406,7 +406,6 @@ class Interact extends React.Component {
       <AlertMessage
         type="warning"
         extraClass={styles.warning}
-        title="View mode only"
         content="The arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or fund an appeal here. You can do these on the arbitrable application, if implemented."
       />
     );

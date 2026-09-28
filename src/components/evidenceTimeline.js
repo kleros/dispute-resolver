@@ -1,5 +1,5 @@
 import React from "react";
-import { Row, Col, Button } from "react-bootstrap";
+import { Button, Spinner } from "react-bootstrap";
 
 import PropTypes from "prop-types";
 import styles from "components/styles/evidenceTimeline.module.css";
@@ -275,45 +275,42 @@ class EvidenceTimeline extends React.Component {
   }
 
   renderModal() {
-    const { evidenceDescription, evidenceTitle, awaitingConfirmation, uploadingToIPFS } = this.state;
+    const { evidenceDescription, evidenceTitle, awaitingConfirmation, uploadingToIPFS, modalExtraClass } = this.state;
+    const hidden = modalExtraClass === "closed" ? styles.closed : "";
 
     return (
       <>
-        <button className={`${styles["modal-overlay"]} ${styles[this.state.modalExtraClass]}`} id="modal-overlay" onClick={this.handleModalOpenClose} onKeyDown={this.handleModalKeyDown} tabIndex="0" aria-label="Close modal"></button>
-        <div className={styles.modalContainer}>
-          <div className={`${styles.modal} ${styles[this.state.modalExtraClass]}`} id="modal">
-            <div className={styles["modal-header"]}>
-              <h1>Submit Evidence</h1>
+        <button className={`${styles["modal-overlay"]} ${hidden}`} id="modal-overlay" onClick={this.handleModalOpenClose} onKeyDown={this.handleModalKeyDown} tabIndex="0" aria-label="Close modal"></button>
+        <div className={`${styles.modal} ${hidden}`} id="modal" role="dialog" aria-modal="true" aria-labelledby="evidence-modal-title">
+          <div className={styles["modal-header"]}>
+            <h2 id="evidence-modal-title">Submit Evidence</h2>
+          </div>
+          <div className={styles["modal-guts"]}>
+            <div className={styles.field}>
+              <label htmlFor="evidence-title">Evidence Title</label>
+              <input name="evidenceTitle" id="evidence-title" type="text" onChange={this.handleControlChange} value={evidenceTitle} />
             </div>
-            <div className={styles["modal-guts"]}>
-              <div className={styles.evidenceTitle}>
-                <label htmlFor="evidence-title">Evidence Title</label>
-                <input name="evidenceTitle" id="evidence-title" type="text" onChange={this.handleControlChange} value={evidenceTitle}></input>
-              </div>
-              <div className={styles.evidenceDescription}>
-                <label htmlFor="evidence-description">Evidence Description</label>
-                <textarea name="evidenceDescription" id="evidence-description" type="textarea" rows="5" onChange={this.handleControlChange} value={evidenceDescription}></textarea>
-              </div>
-
-              <FileUploadDropzone
-                onDrop={this.handleDrop}
-                uploadError={this.state.uploadError}
-                uploadingToIPFS={this.state.uploadingToIPFS}
-                fileInput={this.state.fileInput}
-              />
-
-              <Row className={`no-gutters mt-3 text-center text-md-right  ${styles.buttons}`}>
-                <Col>
-                  <Button type="button" variant="secondary" className={`mb-3 mb-sm-0 ${styles.return}`} onClick={this.handleModalOpenClose}>
-                    Return
-                  </Button>
-                </Col>
-                <Col md="auto" xs={24} sm={12}>
-                  <Button type="button" variant="primary" onClick={this.handleSubmitEvidenceButtonClick} disabled={awaitingConfirmation || uploadingToIPFS}>
-                    {(awaitingConfirmation && "Awaiting Confirmation") || "Submit"}
-                  </Button>
-                </Col>
-              </Row>
+            <div className={styles.field}>
+              <label htmlFor="evidence-description">Evidence Description</label>
+              <textarea name="evidenceDescription" id="evidence-description" rows="5" onChange={this.handleControlChange} value={evidenceDescription} />
+            </div>
+            <div className={styles.upload}>
+              <FileUploadDropzone onDrop={this.handleDrop} uploadError={this.state.uploadError} uploadingToIPFS={uploadingToIPFS} fileInput={this.state.fileInput} />
+            </div>
+            <div className={styles.actions}>
+              <button type="button" className={styles.secondaryAction} onClick={this.handleModalOpenClose}>
+                Return
+              </button>
+              <button type="button" className={styles.action} onClick={this.handleSubmitEvidenceButtonClick} disabled={awaitingConfirmation || uploadingToIPFS}>
+                {awaitingConfirmation ? (
+                  <>
+                    <Spinner as="span" animation="border" size="sm" aria-hidden="true" />
+                    Awaiting Confirmation
+                  </>
+                ) : (
+                  "Submit"
+                )}
+              </button>
             </div>
           </div>
         </div>
