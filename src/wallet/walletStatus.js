@@ -20,10 +20,12 @@
 /**
  * @typedef {"none" | "connecting" | "connected" | "error"} WalletConnection
  * - "none": no account is available. Either no wallet is installed (`walletDetected` false) or the wallet
- *   has not authorised an account (`walletDetected` true). The app runs read-only on `chain`.
+ *   has not authorised an account (`walletDetected` true), including after the user rejected the connection
+ *   request. The app runs read-only on `chain`.
  * - "connecting": the adapter is still resolving the provider, signer or chain. `chain` and `address` may be null.
  * - "connected": an account is available. `address` is set. Check `chain.supported` before offering writes.
  * - "error": resolving the wallet failed. `error` is set. The adapter falls back to a read-only `chain` when it can.
+ *   A rejected connection request is not a failure: it leaves the connection at "none".
  */
 
 /**
@@ -38,7 +40,7 @@
 
 /**
  * @typedef {Object} WalletError
- * @property {"init-failed" | "user-rejected" | "unknown"} code Stable identifier for the failure; the UI may branch on it.
+ * @property {"init-failed" | "unknown"} code Stable identifier for the failure; the UI may branch on it.
  * @property {string} message Short, user-facing sentence. Already safe to render; the UI does not need to interpret it.
  */
 
@@ -57,6 +59,7 @@
  * Callbacks the UI needs alongside the status. Kept separate so the status stays plain data.
  * @typedef {Object} WalletActions
  * @property {() => Promise<void>} connect Ask the wallet for an account. Only meaningful when `walletDetected` is true and `connection` is "none" or "error".
+ *   A rejected request changes nothing: the status stays as it was and the UI keeps offering to connect.
  */
 
 export const CONNECTION = Object.freeze({
@@ -109,7 +112,7 @@ const EOA = "0x1111111111111111111111111111111111111111";
  * @type {Readonly<Record<string, WalletStatus>>}
  */
 export const EXAMPLES = Object.freeze({
-  /** No injected wallet. The app reads mainnet (or the URL chain) and shows the view-only banner with an install link. */
+  /** No injected wallet. The app reads mainnet (or the URL chain) and shows the view-only banner; the banner never carries an action. */
   NO_WALLET: {
     connection: CONNECTION.NONE,
     walletDetected: false,
@@ -120,7 +123,7 @@ export const EXAMPLES = Object.freeze({
     error: null,
   },
 
-  /** Wallet installed but no account authorised yet. Same chrome as NO_WALLET, except the banner offers "Connect" instead of an install link. */
+  /** Wallet installed but no account authorised yet, or the connection request was rejected. Same chrome as NO_WALLET, plus a "Connect" button in the header's wallet area. */
   WALLET_NOT_CONNECTED: {
     connection: CONNECTION.NONE,
     walletDetected: true,

@@ -135,22 +135,23 @@ class App extends React.Component {
 
     if (this.state.network === newChainId) return;
 
-    this.setState({ network: newChainId }, async () => {
-      try {
-        await this.initiateWeb3Provider();
-      } catch (error) {
-        //The wallet moved to the new chain but its provider could not be rebuilt: stay browsable, read-only, on that chain.
-        console.error("Failed to initialise the provider for the new chain:", error);
-        this.setState({ walletError: toWalletError(error, ERROR_CODES.INIT_FAILED) });
-        this.setProviders(newChainId);
-      }
-      this.checkSmartContractWallet(this.state.activeAddress);
-      if (networkMap[newChainId]?.KLEROS_LIQUID) {
-        this.loadSubcourtData();
-      }
+    //The chain and its read provider change in one update (setProviders): a page that fetches on the chain change must
+    //never read the new chain through the previous chain's provider, which would leave it with an empty list.
+    try {
+      await this.initiateWeb3Provider(newChainId);
+    } catch (error) {
+      //The wallet moved to the new chain but its provider could not be rebuilt: stay browsable, read-only, on that chain.
+      const walletError = toWalletError(error, ERROR_CODES.INIT_FAILED);
+      if (walletError) console.error("Failed to initialise the provider for the new chain:", error);
+      this.setState({ walletError });
+      this.setProviders(newChainId);
+    }
+    this.checkSmartContractWallet(this.state.activeAddress);
+    if (networkMap[newChainId]?.KLEROS_LIQUID) {
+      this.loadSubcourtData();
+    }
 
-      this.syncUrlWithChain(newChainId);
-    });
+    this.syncUrlWithChain(newChainId);
   };
 
   syncUrlWithChain = chainId => {
@@ -199,8 +200,8 @@ class App extends React.Component {
   };
 
   //Resolves the wallet, the signer and the chain, once at a time: the connect action and the wallet's own accountsChanged
-  //event can both ask for it. A closed prompt or a broken extension is kept as a WalletError and the app falls back to
-  //browsing the URL chain, or mainnet, read-only, so it never stays on the bare notice.
+  //event can both ask for it. A broken extension is kept as a WalletError, a closed prompt is not an error at all, and in
+  //both cases the app falls back to browsing the URL chain, or mainnet, read-only, so it never stays on the bare notice.
   initiateWallet = () => {
     if (!this.walletInitialisation) {
       this.walletInitialisation = this.resolveWallet().finally(() => {
@@ -225,8 +226,10 @@ class App extends React.Component {
         await this.switchToChain(urlChainId);
       }
     } catch (error) {
-      console.error("Wallet initialisation failed:", error);
-      this.setState({ walletError: toWalletError(error, ERROR_CODES.INIT_FAILED) });
+      //A rejected connection request maps to no error: the app simply stays read-only and keeps offering to connect.
+      const walletError = toWalletError(error, ERROR_CODES.INIT_FAILED);
+      if (walletError) console.error("Wallet initialisation failed:", error);
+      this.setState({ walletError });
       if (!this.state.network) this.setProviders(window.location.pathname.split('/')[1] || DEFAULT_CHAIN_ID);
     } finally {
       this.setState({ walletInitializing: false });

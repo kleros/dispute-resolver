@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { act, Simulate } from "react-dom/test-utils";
 import { ethers } from "ethers";
 import App from './app';
+import networkMap from "./ethereum/network-contract-mapping";
 import { getContract, getSignableContract } from "./ethereum/interface";
 import { uploadToIpfs } from "./utils/atlas-api";
 
@@ -23,6 +24,60 @@ jest.mock("./utils/atlas-api", () => ({
 
 //react-blockies draws the avatar on a canvas, which jsdom does not implement.
 jest.mock("react-blockies", () => () => null);
+
+//The ethers providers are fakes, so mounting the app never reaches an RPC. A read provider remembers the URL it was built
+//for, the wallet provider proxies the wallet the way ethers does (a signer needs an authorised account, and a refused
+//prompt is rethrown as ACTION_REJECTED), and getDefaultProvider yields a fake as well.
+jest.mock("ethers", () => {
+  const actual = jest.requireActual("ethers");
+
+  class FakeJsonRpcProvider {
+    constructor(url) {
+      this.url = url;
+    }
+
+    async getBlockNumber() {
+      return 1_000_000;
+    }
+
+    async getCode() {
+      return "0x";
+    }
+  }
+
+  class FakeBrowserProvider extends FakeJsonRpcProvider {
+    constructor(ethereum) {
+      super("wallet");
+      this.ethereum = ethereum;
+    }
+
+    async getSigner() {
+      let accounts = await this.ethereum.request({ method: "eth_accounts" });
+      if (accounts.length === 0) {
+        try {
+          accounts = await this.ethereum.request({ method: "eth_requestAccounts" });
+        } catch (error) {
+          throw Object.assign(new Error("user rejected action"), { code: "ACTION_REJECTED", info: { error } });
+        }
+      }
+      return { getAddress: async () => accounts[0] };
+    }
+
+    async getNetwork() {
+      return { chainId: BigInt(await this.ethereum.request({ method: "eth_chainId" })) };
+    }
+  }
+
+  const providers = { BrowserProvider: FakeBrowserProvider, JsonRpcProvider: FakeJsonRpcProvider, getDefaultProvider: () => new FakeJsonRpcProvider("default") };
+  return { ...actual, ...providers, ethers: { ...actual.ethers, ...providers } };
+});
+
+//Mainnet and Gnosis read through an RPC URL of their own whatever the environment, so a test can tell which chain a read provider serves.
+jest.mock("./ethereum/network-contract-mapping", () => {
+  const actual = jest.requireActual("./ethereum/network-contract-mapping");
+  const withRpc = chainId => ({ ...actual.default[chainId], WEB3_PROVIDER: `http://chain-${chainId}.rpc.test` });
+  return { __esModule: true, ...actual, default: { ...actual.default, 1: withRpc(1), 100: withRpc(100) } };
+});
 
 const ENV_KEYS = ["REACT_APP_USE_FIXTURES", "REACT_APP_FIXTURE_CHAIN_ID", "REACT_APP_FIXTURE_SIGNED_IN"];
 let originalEnvironment;
@@ -227,7 +282,7 @@ describe("fixture mode", () => {
 
     expect(container.querySelector("h1").textContent).toBe("Add a module to Address Tags Query (ATQ) Registry");
     expect(container.textContent).toContain("Read-only mode");
-    expect(container.textContent).toContain("You can browse disputes, but taking part in them needs a wallet.");
+    expect(container.textContent).toContain("You can only browse disputes.");
     expect(container.textContent).toContain("Jury decision: No, Don't Add It");
     expect(getSignableContract).not.toHaveBeenCalled();
 
@@ -254,18 +309,174 @@ describe("fixture mode", () => {
     expect(container.querySelector("footer").textContent).toContain("Gnosis Network");
   });
 
-  it("shows the read-only banner with an install link, no Create link and the chain in the footer without the flag", async () => {
+  it("shows the read-only banner without any action, no Create link and the chain in the footer without the flag", async () => {
     process.env.REACT_APP_USE_FIXTURES = "true";
     process.env.REACT_APP_FIXTURE_CHAIN_ID = "100";
     await renderApp("/100/ongoing");
 
     const banner = container.querySelector('header [role="status"]');
-    expect(banner.textContent).toContain("Read-only mode");
-    expect(banner.querySelector('a[href="https://metamask.io"]')).not.toBeNull();
+    expect(banner.textContent).toBe("Read-only modeYou can only browse disputes.");
+    expect(banner.querySelector("a, button")).toBeNull();
     expect(navLabels()).toEqual(["Ongoing Disputes", "Case Lookup"]);
     const footer = container.querySelector("footer");
     expect(footer.textContent).toContain("Gnosis Network");
     expect(footer.querySelector('a[href="https://gnosisscan.io/address/0xC7aDD3C961f7935CB4914E37DA991D2f1Cd7986c#code"]')).not.toBeNull();
+  });
+});
+
+describe("real mode with a wallet", () => {
+  const ACCOUNT = "0x00000000000000000000000000000000000000AA";
+  const CONNECT_LABEL = "Connect wallet";
+  const GNOSIS_ARBITRATOR = networkMap[100].KLEROS_LIQUID;
+  const MAINNET_ARBITRATOR = networkMap[1].KLEROS_LIQUID;
+  let container;
+  let wallet;
+
+  //Polls until the condition holds, letting the wallet, the fake providers and the React updates settle in between.
+  const waitFor = async (condition, timeoutMs = 5000) => {
+    const start = Date.now();
+    while (!condition()) {
+      if (Date.now() - start > timeoutMs) throw new Error("Timed out waiting for the app to settle.");
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      });
+    }
+  };
+
+  //A minimal EIP-1193 wallet. It answers on a later task, like the extension does, so the app's own timers run in between.
+  const installWallet = ({ chainId, accounts = [], approveConnection = true }) => {
+    const listeners = {};
+    wallet = {
+      chainId,
+      accounts,
+      approveConnection,
+      selectedAddress: accounts[0] ?? null,
+      request: jest.fn(async ({ method }) => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+        switch (method) {
+          case "eth_chainId":
+            return wallet.chainId;
+          case "eth_accounts":
+            return wallet.accounts;
+          case "eth_requestAccounts":
+            if (!wallet.approveConnection) throw Object.assign(new Error("User rejected the request."), { code: 4001 });
+            wallet.accounts = [ACCOUNT];
+            return wallet.accounts;
+          default:
+            throw new Error(`Unexpected wallet request: ${method}`);
+        }
+      }),
+      on: jest.fn((event, listener) => {
+        listeners[event] = [...(listeners[event] ?? []), listener];
+      }),
+      removeAllListeners: jest.fn(event => {
+        delete listeners[event];
+      }),
+      emit: (event, payload) => (listeners[event] ?? []).forEach(listener => listener(payload)),
+    };
+    window.ethereum = wallet;
+  };
+
+  //The court of a chain lists the given disputes, but only when read through that chain's own RPC. Dispute details and
+  //courts are unreadable, so a card is rendered from its ID alone and the court enumeration ends at once.
+  const mockCourts = disputesByRpc => {
+    const filters = { NewPeriod: () => "NewPeriod", DisputeCreation: () => "DisputeCreation" };
+    const unreadable = () => Promise.reject(Object.assign(new Error("call reverted"), { code: "CALL_EXCEPTION" }));
+    getContract.mockImplementation((name, address, provider) => ({
+      filters,
+      queryFilter: async filter => (filter === "DisputeCreation" ? (disputesByRpc[address]?.[provider.url] ?? []).map(id => ({ args: { _disputeID: BigInt(id) } })) : []),
+      disputes: unreadable,
+      getSubcourt: { estimateGas: unreadable },
+    }));
+  };
+
+  const renderApp = async path => {
+    window.history.pushState({}, "", path);
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    await act(async () => {
+      ReactDOM.render(<App />, container);
+    });
+    await waitFor(() => container.querySelector("main") !== null && container.querySelector('[aria-busy="true"]') === null);
+  };
+
+  const header = () => container.querySelector("header");
+  const banner = () => header().querySelector('[role="status"]');
+  //The labels of the header's buttons; the responsive toggle has no text and is left out.
+  const headerButtons = () => Array.from(header().querySelectorAll("button")).map(button => button.textContent.trim()).filter(Boolean);
+  const walletButton = () => header().querySelector(".wallet button");
+  const disputeIDs = () => Array.from(container.querySelectorAll(".disputeID")).map(node => node.textContent);
+  const courtReads = arbitrator => getContract.mock.calls.filter(([name, address]) => name === "KlerosLiquid" && address === arbitrator);
+
+  afterEach(() => {
+    if (container) {
+      ReactDOM.unmountComponentAtNode(container);
+      container.remove();
+      container = null;
+    }
+    delete window.ethereum;
+    getContract.mockReset();
+    localStorage.clear();
+    window.history.pushState({}, "", "/");
+  });
+
+  it("offers Connect wallet in the header, and no action in the banner, after the connection request is rejected", async () => {
+    installWallet({ chainId: "0x64", approveConnection: false });
+    mockCourts({});
+    await renderApp("/100/ongoing");
+
+    expect(wallet.request).toHaveBeenCalledWith({ method: "eth_requestAccounts" });
+    expect(headerButtons()).toEqual([CONNECT_LABEL]);
+    expect(walletButton().disabled).toBe(false);
+    expect(header().textContent).not.toMatch(/rejected|Retry|Could not connect|went wrong/);
+    expect(banner().textContent).toBe("Read-only modeYou can only browse disputes.");
+    expect(banner().querySelector("a, button")).toBeNull();
+    expect(container.querySelector("footer").textContent).toContain("Gnosis Network");
+
+    //Rejecting the prompt again changes nothing.
+    wallet.request.mockClear();
+    await act(async () => {
+      Simulate.click(walletButton());
+    });
+    await waitFor(() => headerButtons().every(label => label === CONNECT_LABEL) && !walletButton().disabled);
+    expect(wallet.request).toHaveBeenCalledWith({ method: "eth_requestAccounts" });
+    expect(headerButtons()).toEqual([CONNECT_LABEL]);
+    expect(banner().querySelector("a, button")).toBeNull();
+    expect(header().textContent).not.toMatch(/rejected|Retry|Could not connect|went wrong/);
+
+    //Approving it connects the account.
+    wallet.approveConnection = true;
+    await act(async () => {
+      Simulate.click(walletButton());
+    });
+    await waitFor(() => header().querySelector(`[title="${ACCOUNT}"]`) !== null);
+    expect(banner()).toBeNull();
+    expect(headerButtons()).toEqual([]);
+    expect(header().textContent).toContain("Gnosis Network");
+  });
+
+  it("lists the disputes of the chain the wallet switched to, read through that chain's own RPC", async () => {
+    installWallet({ chainId: "0x64", accounts: [ACCOUNT] });
+    mockCourts({
+      [GNOSIS_ARBITRATOR]: { [networkMap[100].WEB3_PROVIDER]: ["1013"] },
+      [MAINNET_ARBITRATOR]: { [networkMap[1].WEB3_PROVIDER]: ["7"] },
+    });
+    await renderApp("/100/ongoing");
+    expect(disputeIDs()).toEqual(["1013"]);
+    expect(container.querySelector("footer").textContent).toContain("Gnosis Network");
+
+    await act(async () => {
+      wallet.chainId = "0x1";
+      wallet.emit("chainChanged", "0x1");
+    });
+    await waitFor(() => courtReads(MAINNET_ARBITRATOR).length > 0 && container.querySelector('[aria-busy="true"]') === null);
+
+    const mainnetReadUrls = new Set(courtReads(MAINNET_ARBITRATOR).map(([, , provider]) => provider.url));
+    expect(mainnetReadUrls).toEqual(new Set([networkMap[1].WEB3_PROVIDER]));
+    expect(disputeIDs()).toEqual(["7"]);
+    expect(container.querySelector("footer").textContent).toContain("Ethereum Mainnet");
+    expect(header().querySelector(`[title="${ACCOUNT}"]`)).not.toBeNull();
+    expect(window.location.pathname).toBe("/1/ongoing");
   });
 });
 

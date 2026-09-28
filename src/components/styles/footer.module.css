@@ -1,4 +1,6 @@
 .footer {
+  /* #root is a flex column: without this the footer shrinks to its min-height once its content wraps and the rows overflow it. */
+  flex-shrink: 0;
   height: auto;
   min-height: var(--spacing-64);
   padding: 12px var(--spacing-32);
@@ -118,15 +120,37 @@
   fill: white;
 }
 
-@media (max-width: 767px) {
+/* Below the desktop navigation: the brand and the chain share the first row, the help link and the social links the second. */
+@media (max-width: 991px) {
+  .chain {
+    margin-left: auto;
+  }
+
   .rest {
     width: 100%;
     margin-left: 0;
+    justify-content: space-between;
   }
 }
 
+/* Phones: one item per row, centred. */
 @media (max-width: 639px) {
   .footer {
     padding: 12px var(--spacing-16);
+  }
+
+  .inner,
+  .rest {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .social {
+    justify-content: center;
+  }
+
+  .chain {
+    margin-left: 0;
   }
 }

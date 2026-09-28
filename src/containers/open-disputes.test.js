@@ -462,3 +462,20 @@ describe("Ongoing disputes resilience and states", () => {
     expect(hasNoDisputesMessage()).toBe(false);
   });
 });
+
+describe("Ongoing disputes on a network without a court", () => {
+  //Polygon is in the network map for the case page but has no court; 999 is unknown altogether.
+  it.each(["137", "999"])("says the network is unsupported and fetches nothing on chain %s", async network => {
+    const getOpenDisputesOnCourtCallback = jest.fn();
+    await act(async () => {
+      ReactDOM.render(<OpenDisputes network={network} getOpenDisputesOnCourtCallback={getOpenDisputesOnCourtCallback} />, container);
+    });
+
+    const main = container.querySelector("main");
+    expect(main.querySelector("h2").textContent).toBe("Unsupported network");
+    expect(main.querySelector("p")).toBeNull();
+    expect(main.textContent.toLowerCase()).not.toContain("arbitrator");
+    expect(main.querySelector("h1")).toBeNull();
+    expect(getOpenDisputesOnCourtCallback).not.toHaveBeenCalled();
+  });
+});

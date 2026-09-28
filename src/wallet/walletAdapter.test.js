@@ -54,6 +54,8 @@ const EXAMPLE_INPUTS = {
 };
 
 const userRejection = () => Object.assign(new Error("User rejected the request."), { code: 4001 });
+//How ethers v6 hands the same refusal to App: wrapped under ACTION_REJECTED, with the wallet's error kept under info.
+const ethersRejection = () => Object.assign(new Error("user rejected action"), { code: "ACTION_REJECTED", info: { error: userRejection() } });
 
 const expectChainStatusShape = (chain) => {
   expect(Object.keys(chain).sort()).toEqual(CHAIN_KEYS);
@@ -187,11 +189,20 @@ describe("buildWalletStatus precedence", () => {
     expect(buildWalletStatus({ network: null, walletDetected: true, error: "boom" })).toStrictEqual(EXAMPLES.ERROR);
   });
 
-  it("maps a user rejection during initialisation to user-rejected", () => {
-    const status = buildWalletStatus({ network: MAINNET.id, walletDetected: true, error: userRejection() });
-    expect(status.connection).toBe(CONNECTION.ERROR);
-    expect(status.error).toStrictEqual({ code: ERROR_CODES.USER_REJECTED, message: expect.any(String) });
-    expectWalletStatusShape(status);
+  it("leaves the connection at none, without an error, after the user rejected the initialisation prompt", () => {
+    [userRejection(), ethersRejection()].forEach((error) => {
+      const status = buildWalletStatus({ network: MAINNET.id, walletDetected: true, error });
+      expect(status).toStrictEqual(EXAMPLES.WALLET_NOT_CONNECTED);
+      expectWalletStatusShape(status);
+    });
+  });
+
+  it("keeps connecting, not failing, while the chain is unknown after a rejected prompt", () => {
+    expect(buildWalletStatus({ network: "", walletDetected: true, error: userRejection() })).toStrictEqual(EXAMPLES.CONNECTING);
+  });
+
+  it("still connects an account that was granted despite an earlier rejection", () => {
+    expect(buildWalletStatus({ ...connected(GNOSIS.id), error: userRejection() })).toStrictEqual(EXAMPLES.CONNECTED_GNOSIS);
   });
 
   it("keeps a WalletError that was already mapped", () => {
@@ -281,12 +292,17 @@ describe("buildWalletStatus in fixture mode", () => {
 });
 
 describe("toWalletError", () => {
-  it("maps EIP-1193 and ethers user rejections, wherever the code sits", () => {
-    const expected = { code: ERROR_CODES.USER_REJECTED, message: expect.any(String) };
-    expect(toWalletError(userRejection())).toStrictEqual(expected);
-    expect(toWalletError({ code: "ACTION_REJECTED" })).toStrictEqual(expected);
-    expect(toWalletError({ code: "UNKNOWN_ERROR", error: { code: 4001 } })).toStrictEqual(expected);
-    expect(toWalletError({ code: "UNKNOWN_ERROR", info: { error: { code: 4001 } } })).toStrictEqual(expected);
+  it("is null for EIP-1193 and ethers user rejections, wherever the code sits, whatever the fallback", () => {
+    expect(toWalletError(userRejection())).toBeNull();
+    expect(toWalletError(ethersRejection(), ERROR_CODES.INIT_FAILED)).toBeNull();
+    expect(toWalletError({ code: "ACTION_REJECTED" })).toBeNull();
+    expect(toWalletError({ code: "UNKNOWN_ERROR", error: { code: 4001 } })).toBeNull();
+    expect(toWalletError({ code: "UNKNOWN_ERROR", info: { error: { code: 4001 } } })).toBeNull();
+  });
+
+  it("has no code for a rejection: every code maps to a failure message", () => {
+    expect(Object.values(ERROR_CODES)).toEqual(["init-failed", "unknown"]);
+    Object.values(ERROR_CODES).forEach((code) => expect(toWalletError("boom", code)).toStrictEqual({ code, message: expect.any(String) }));
   });
 
   it("uses the fallback code for everything else and guards against a bad fallback", () => {
@@ -330,16 +346,19 @@ describe("buildWalletActions", () => {
     expect(onError).not.toHaveBeenCalled();
   });
 
-  it("maps a rejected prompt to user-rejected and resolves", async () => {
-    const ethereum = { request: jest.fn().mockRejectedValue(userRejection()) };
-    const onAccounts = jest.fn();
-    const onError = jest.fn();
+  it("reports nothing for a rejected prompt and resolves, so the UI keeps offering to connect", async () => {
+    for (const rejection of [userRejection(), ethersRejection()]) {
+      const ethereum = { request: jest.fn().mockRejectedValue(rejection) };
+      const onAccounts = jest.fn();
+      const onError = jest.fn();
 
-    await expect(buildWalletActions({ ethereum, onAccounts, onError }).connect()).resolves.toBeUndefined();
+      await expect(buildWalletActions({ ethereum, onAccounts, onError }).connect()).resolves.toBeUndefined();
 
-    expect(onAccounts).not.toHaveBeenCalled();
-    expect(onError).toHaveBeenCalledWith({ code: ERROR_CODES.USER_REJECTED, message: expect.any(String) });
-    expect(console.error).not.toHaveBeenCalled();
+      expect(ethereum.request).toHaveBeenCalledWith(REQUEST_ACCOUNTS);
+      expect(onAccounts).not.toHaveBeenCalled();
+      expect(onError).not.toHaveBeenCalled();
+      expect(console.error).not.toHaveBeenCalled();
+    }
   });
 
   it("maps any other failure to unknown, logs it and resolves", async () => {

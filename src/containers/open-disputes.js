@@ -156,7 +156,7 @@ class OpenDisputes extends React.Component {
     if (!networkMap[network]?.KLEROS_LIQUID) {
       return (
         <main className={styles.openDisputes}>
-          {this.renderMessage("There is no arbitrator on this network, thus no disputes.")}
+          {this.renderMessage("Unsupported network")}
         </main>
       );
     }

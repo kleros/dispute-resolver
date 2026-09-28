@@ -5,13 +5,13 @@ import Footer from "./footer";
 import { EXAMPLES } from "../wallet/walletStatus";
 
 const UNSUPPORTED_NETWORK = "Unsupported Network";
+const HELP_URL = "https://t.me/kleros";
 const SOCIAL_LINKS = [
   "https://github.com/kleros/dispute-resolver",
-  "https://slack.kleros.io",
   "https://reddit.com/r/Kleros/",
   "https://twitter.com/kleros_io",
   "https://forum.kleros.io",
-  "https://t.me/kleros",
+  HELP_URL,
   "https://www.linkedin.com/company/kleros/",
 ];
 
@@ -35,7 +35,14 @@ const renderFooter = (status) =>
 const chain = () => container.querySelector(".chain");
 const testnetTag = () => container.querySelector(".testnet");
 const explorerLink = () => container.querySelector(".explorer");
-const hrefs = (root) => Array.from(root.querySelectorAll("a")).map((link) => link.getAttribute("href"));
+const links = (root) => Array.from(root.querySelectorAll("a"));
+const hrefs = (root) => links(root).map((link) => link.getAttribute("href"));
+
+//Every footer link leaves the app: it opens in a new tab without handing the opener or the referrer to the destination.
+const expectNewTab = (link) => {
+  expect(link.target).toBe("_blank");
+  expect(link.rel.split(" ")).toEqual(expect.arrayContaining(["noopener", "noreferrer"]));
+};
 
 //The label the footer must show for a chain: its name, the unsupported notice, or nothing while it is unknown.
 const expectedChainLabel = (chainStatus) => {
@@ -58,13 +65,25 @@ describe("Footer per wallet status", () => {
       expect(explorerLink()).toBeNull();
     } else {
       expect(explorerLink().getAttribute("href")).toBe(explorerUrl);
-      expect(explorerLink().target).toBe("_blank");
-      expect(explorerLink().rel.split(" ")).toEqual(expect.arrayContaining(["noopener", "noreferrer"]));
     }
 
     expect(container.querySelector('a[href="https://kleros.io"]')).not.toBeNull();
-    expect(container.querySelector(".help").getAttribute("href")).toBe("https://t.me/kleros");
+    expect(container.querySelector(".help").getAttribute("href")).toBe(HELP_URL);
     expect(hrefs(container.querySelector(".social"))).toEqual(explorerUrl === null ? SOCIAL_LINKS : [explorerUrl, ...SOCIAL_LINKS]);
+    links(container).forEach(expectNewTab);
+  });
+
+  it("opens every link in a new tab, the explorer link included", async () => {
+    await renderFooter(EXAMPLES.CONNECTED_GNOSIS);
+    const footerLinks = links(container);
+    expect(footerLinks.length).toBe(SOCIAL_LINKS.length + 3);
+    footerLinks.forEach(expectNewTab);
+  });
+
+  it("has no Slack link", async () => {
+    await renderFooter(EXAMPLES.CONNECTED_GNOSIS);
+    expect(hrefs(container).some((href) => href.includes("slack"))).toBe(false);
+    expect(container.querySelector('a[aria-label="Slack"]')).toBeNull();
   });
 
   it("flags a testnet next to its name", async () => {
@@ -102,5 +121,6 @@ describe("Footer without a usable status", () => {
     expect(explorerLink()).toBeNull();
     expect(container.querySelector('a[href="https://kleros.io"]')).not.toBeNull();
     expect(hrefs(container.querySelector(".social"))).toEqual(SOCIAL_LINKS);
+    links(container).forEach(expectNewTab);
   });
 });

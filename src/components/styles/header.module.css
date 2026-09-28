@@ -159,36 +159,6 @@
   font-weight: var(--bold);
 }
 
-.cardAction {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-8) 20px;
-  border: 1px solid var(--purple-primary);
-  border-radius: var(--spacing-8);
-  background: var(--purple-primary);
-  color: white;
-  font-size: var(--font-size-s);
-  font-weight: var(--bold);
-  white-space: nowrap;
-  text-decoration: none;
-}
-
-.cardAction:hover {
-  background: var(--purple-dark);
-  color: white;
-  text-decoration: none;
-}
-
-.cardAction:disabled {
-  opacity: 0.7;
-  cursor: wait;
-}
-
-.cardAction:disabled:hover {
-  background: var(--purple-primary);
-}
-
 .warning {
   flex-wrap: nowrap;
   align-items: flex-start;
@@ -260,9 +230,5 @@
 
   .noticeCard {
     padding: 12px var(--spacing-16);
-  }
-
-  .noticeCard:not(.warning) > .cardAction {
-    width: 100%;
   }
 }

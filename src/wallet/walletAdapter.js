@@ -33,17 +33,18 @@ const EIP1193_USER_REJECTED = 4001;
 const ETHERS_ACTION_REJECTED = "ACTION_REJECTED";
 const USER_REJECTION_CODES = [EIP1193_USER_REJECTED, ETHERS_ACTION_REJECTED];
 
-/** The WalletError codes of the contract. @type {Readonly<{ INIT_FAILED: "init-failed", USER_REJECTED: "user-rejected", UNKNOWN: "unknown" }>} */
+/**
+ * The WalletError codes of the contract. A rejected wallet prompt has no code: it is not an error (see toWalletError).
+ * @type {Readonly<{ INIT_FAILED: "init-failed", UNKNOWN: "unknown" }>}
+ */
 export const ERROR_CODES = Object.freeze({
   INIT_FAILED: "init-failed",
-  USER_REJECTED: "user-rejected",
   UNKNOWN: "unknown",
 });
 
 //User-facing sentences, one per code. They never include the raw error.
 const ERROR_MESSAGES = Object.freeze({
   [ERROR_CODES.INIT_FAILED]: "Could not connect to your wallet. Check the extension and reload the page.",
-  [ERROR_CODES.USER_REJECTED]: "The connection request was rejected in your wallet.",
   [ERROR_CODES.UNKNOWN]: "Something went wrong with your wallet. Reload the page and try again.",
 });
 
@@ -97,15 +98,16 @@ const hasUserRejectionCode = (error) => Boolean(error) && typeof error === "obje
 const isUserRejection = (error) => hasUserRejectionCode(error) || hasUserRejectionCode(error?.error) || hasUserRejectionCode(error?.info?.error);
 
 /**
- * Maps whatever a wallet call threw to a WalletError with a user-facing message.
+ * Maps whatever a wallet call threw to a WalletError with a user-facing message, or to null when the user rejected the
+ * request: closing or refusing the wallet's prompt is a choice, not a failure, and leaves the connection as it was.
  * @param {unknown} error A thrown value, an EIP-1193 or ethers error, or an existing WalletError (copied as is).
- * @param {WalletError["code"]} [fallbackCode="unknown"] Code used when the error is not a user rejection.
- * @returns {WalletError}
+ * @param {WalletError["code"]} [fallbackCode="unknown"] Code used for anything that is not a user rejection.
+ * @returns {WalletError | null}
  */
 export const toWalletError = (error, fallbackCode = ERROR_CODES.UNKNOWN) => {
   if (isWalletError(error)) return { code: error.code, message: error.message };
-  const safeFallbackCode = hasOwn(ERROR_MESSAGES, fallbackCode) ? fallbackCode : ERROR_CODES.UNKNOWN;
-  const code = isUserRejection(error) ? ERROR_CODES.USER_REJECTED : safeFallbackCode;
+  if (isUserRejection(error)) return null;
+  const code = hasOwn(ERROR_MESSAGES, fallbackCode) ? fallbackCode : ERROR_CODES.UNKNOWN;
   return { code, message: ERROR_MESSAGES[code] };
 };
 
@@ -139,7 +141,7 @@ export const buildChainStatus = (network) => {
  * @property {unknown} [network] App state `network`; "" until initialised.
  * @property {boolean} [walletDetected] Whether window.ethereum exists (App passes isWalletDetected()). Defaults to false.
  * @property {boolean} [initializing] True while App is still resolving the provider, signer or chain.
- * @property {unknown} [error] What the wallet initialisation threw, or a WalletError. Anything truthy puts the status in "error".
+ * @property {unknown} [error] What the wallet initialisation threw, or a WalletError. Anything truthy puts the status in "error", except a user rejection, which counts as no error.
  * @property {boolean | null} [isSmartContractWallet] Result of detectSmartContractWallet for `activeAddress`; null while unknown.
  */
 
@@ -155,16 +157,18 @@ export const buildWalletStatus = (input) => {
   const fixtureSignedIn = fixtures.isSignedIn();
   const detected = fixtureMode ? fixtureSignedIn : Boolean(walletDetected);
   const chain = buildChainStatus(network);
+  //A rejected prompt maps to null and the status carries on as if nothing had been thrown.
+  const walletError = error ? toWalletError(error, ERROR_CODES.INIT_FAILED) : null;
 
-  if (Boolean(initializing) || (chain === null && !error)) return { ...BASE_STATUS, connection: CONNECTION.CONNECTING, walletDetected: detected };
+  if (Boolean(initializing) || (chain === null && !walletError)) return { ...BASE_STATUS, connection: CONNECTION.CONNECTING, walletDetected: detected };
 
-  if (error) {
+  if (walletError) {
     return {
       ...BASE_STATUS,
       connection: CONNECTION.ERROR,
       walletDetected: detected,
       chain: chain ?? buildChainStatus(FALLBACK_CHAIN_ID),
-      error: toWalletError(error, ERROR_CODES.INIT_FAILED),
+      error: walletError,
     };
   }
 
@@ -184,7 +188,9 @@ export const buildWalletStatus = (input) => {
 
 const reportConnectFailure = (error, onError) => {
   const walletError = toWalletError(error);
-  if (walletError.code !== ERROR_CODES.USER_REJECTED) console.error("Wallet connection request failed:", error);
+  //A rejected prompt is the user's choice: nothing to report, the UI keeps offering to connect.
+  if (walletError === null) return;
+  console.error("Wallet connection request failed:", error);
   if (typeof onError === "function") onError(walletError);
 };
 
@@ -193,7 +199,7 @@ const reportConnectFailure = (error, onError) => {
  * @param {{ request: (args: { method: string }) => Promise<unknown> } | null} [options.ethereum] EIP-1193 provider. Defaults to
  *   window.ethereum at call time; null (or no injected provider) makes connect a no-op, the UI shows an install link instead.
  * @param {(accounts: string[]) => void} [options.onAccounts] Receives the authorised accounts; App sets activeAddress from accounts[0].
- * @param {(error: WalletError) => void} [options.onError] Receives the mapped error when the request fails or the user rejects it.
+ * @param {(error: WalletError) => void} [options.onError] Receives the mapped error when the request fails. A rejected prompt is not an error and is not reported.
  * @returns {WalletActions} connect always resolves; request failures go to onError and are never rethrown.
  */
 export const buildWalletActions = (options) => {

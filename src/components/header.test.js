@@ -14,22 +14,24 @@ const ONGOING_LABEL = "Ongoing Disputes";
 const CREATE_LABEL = "Create";
 const CASES_LABEL = "Case Lookup";
 const UNSUPPORTED_NETWORK = "Unsupported Network";
-const INSTALL_URL = "https://metamask.io";
+const VIEW_ONLY_TITLE = "Read-only mode";
+const VIEW_ONLY_COPY = "You can only browse disputes.";
 const FAQ_URL = "https://docs.kleros.io/welcome/faq#can-i-use-a-smart-contract-account-to-stake-in-the-court";
 const WARNING_STORAGE_KEY = "@kleros/dispute-resolver/alert/smart-contract-wallet-warning";
 const DISMISS_SELECTOR = 'button[aria-label="Dismiss warning"]';
 
 //What the header must show for each example of the contract. Every example needs a row here, so a new state cannot go untested.
+//The banner is shown (true) or not (null); it never carries an action, the connect button belongs to the wallet area.
 const CHROME = {
-  NO_WALLET: { banner: "install", create: false, wallet: "empty", unsupported: false, warning: false },
-  WALLET_NOT_CONNECTED: { banner: "connect", create: false, wallet: "connect", unsupported: false, warning: false },
+  NO_WALLET: { banner: true, create: false, wallet: "empty", unsupported: false, warning: false },
+  WALLET_NOT_CONNECTED: { banner: true, create: false, wallet: "connect", unsupported: false, warning: false },
   CONNECTED_SUPPORTED: { banner: null, create: true, wallet: "account", unsupported: false, warning: false },
   CONNECTED_GNOSIS: { banner: null, create: true, wallet: "account", unsupported: false, warning: false },
   CONNECTED_TESTNET: { banner: null, create: true, wallet: "account", unsupported: false, warning: false },
   CONNECTED_SMART_CONTRACT_WALLET: { banner: null, create: true, wallet: "account", unsupported: false, warning: true },
   CONNECTED_UNSUPPORTED: { banner: null, create: true, wallet: "account", unsupported: true, warning: false },
-  CONNECTING: { banner: "none", create: false, wallet: "connecting", unsupported: false, warning: false },
-  ERROR: { banner: "connect", create: false, wallet: "error", unsupported: false, warning: false },
+  CONNECTING: { banner: true, create: false, wallet: "connecting", unsupported: false, warning: false },
+  ERROR: { banner: true, create: false, wallet: "error", unsupported: false, warning: false },
 };
 
 let container;
@@ -89,20 +91,18 @@ const click = (node) =>
     Simulate.click(node);
   });
 
-const expectBanner = (kind) => {
-  if (kind === null) {
+//The banner is always the same title and sentence, with no link and no button.
+const expectBanner = (shown) => {
+  if (shown === null) {
     expect(banner()).toBeNull();
     return;
   }
   expect(banner()).not.toBeNull();
-  const install = banner().querySelector(`a[href="${INSTALL_URL}"]`);
-  const connect = button(banner(), CONNECT_LABEL);
-  expect(install !== null).toBe(kind === "install");
-  expect(connect !== undefined).toBe(kind === "connect");
-  if (install) {
-    expect(install.target).toBe("_blank");
-    expect(install.rel.split(" ")).toEqual(expect.arrayContaining(["noreferrer", "noopener"]));
-  }
+  expect(banner().textContent).toBe(`${VIEW_ONLY_TITLE}${VIEW_ONLY_COPY}`);
+  expect(banner().querySelector(".cardTitle").textContent).toBe(VIEW_ONLY_TITLE);
+  expect(banner().querySelector(".cardBody").textContent).toBe(VIEW_ONLY_COPY);
+  expect(banner().querySelector("a")).toBeNull();
+  expect(buttons(banner())).toHaveLength(0);
 };
 
 const expectWalletArea = (kind, status) => {
@@ -152,6 +152,24 @@ describe("Header chrome per wallet status", () => {
     expectWalletArea(expected.wallet, status);
     expect(walletArea().textContent.includes(UNSUPPORTED_NETWORK)).toBe(expected.unsupported);
     expect(warning() !== null).toBe(expected.warning);
+  });
+
+  it("keeps the banner to its title and one sentence, without an install link, when there is no wallet", async () => {
+    await renderHeader({ status: EXAMPLES.NO_WALLET });
+    expect(banner().textContent).toBe(`${VIEW_ONLY_TITLE}${VIEW_ONLY_COPY}`);
+    expect(banner().querySelector("a")).toBeNull();
+    expect(buttons(banner())).toHaveLength(0);
+    expect(container.querySelector('a[href*="metamask"]')).toBeNull();
+  });
+
+  it("offers Connect wallet in the header only, without an error, when the wallet is not connected", async () => {
+    await renderHeader({ status: EXAMPLES.WALLET_NOT_CONNECTED });
+    expect(button(walletArea(), CONNECT_LABEL)).toBeDefined();
+    expect(button(walletArea(), RETRY_LABEL)).toBeUndefined();
+    expect(walletArea().textContent).toBe(CONNECT_LABEL);
+    expect(buttons(banner())).toHaveLength(0);
+    expect(banner().textContent).toBe(`${VIEW_ONLY_TITLE}${VIEW_ONLY_COPY}`);
+    expect(buttons(container).filter((node) => node.textContent.trim() === CONNECT_LABEL)).toHaveLength(1);
   });
 
   it("offers no way to switch away from an unsupported chain", async () => {
@@ -214,21 +232,21 @@ describe("Header connect action", () => {
     await click(button(walletArea(), CONNECT_LABEL));
 
     expect(connect).toHaveBeenCalledTimes(1);
-    const pending = [...buttons(walletArea()), ...buttons(banner())];
-    expect(pending).toHaveLength(2);
-    expect(pending.map((node) => node.disabled)).toEqual([true, true]);
-    expect(pending.map((node) => node.textContent)).toEqual([CONNECTING_LABEL, CONNECTING_LABEL]);
+    const pending = buttons(walletArea());
+    expect(pending).toHaveLength(1);
+    expect(pending[0].disabled).toBe(true);
+    expect(pending[0].textContent).toBe(CONNECTING_LABEL);
+    expect(buttons(banner())).toHaveLength(0);
 
     await act(async () => {
       finishConnecting();
     });
     await waitFor(() => button(walletArea(), CONNECT_LABEL) !== undefined);
     expect(button(walletArea(), CONNECT_LABEL).disabled).toBe(false);
-    expect(button(banner(), CONNECT_LABEL).disabled).toBe(false);
   });
 
-  it("survives a rejected connection and offers to retry", async () => {
-    const connect = jest.fn(() => Promise.reject(new Error("User rejected the request.")));
+  it("survives a connect action that throws and keeps offering to retry", async () => {
+    const connect = jest.fn(() => Promise.reject(new Error("Wallet exploded.")));
     await renderHeader({ status: EXAMPLES.ERROR, actions: { connect } });
 
     await click(button(walletArea(), RETRY_LABEL));
@@ -239,11 +257,12 @@ describe("Header connect action", () => {
     expect(console.warn).toHaveBeenCalled();
   });
 
-  it("connects from the banner too", async () => {
-    const connect = jest.fn().mockResolvedValue();
-    await renderHeader({ status: EXAMPLES.ERROR, actions: { connect } });
-    await click(button(banner(), CONNECT_LABEL));
-    expect(connect).toHaveBeenCalledTimes(1);
+  it("never offers to connect from the banner", async () => {
+    for (const status of [EXAMPLES.WALLET_NOT_CONNECTED, EXAMPLES.ERROR, EXAMPLES.NO_WALLET, EXAMPLES.CONNECTING]) {
+      await renderHeader({ status, actions: { connect: jest.fn().mockResolvedValue() } });
+      expect(buttons(banner())).toHaveLength(0);
+      expect(banner().querySelector("a")).toBeNull();
+    }
   });
 
   it("stays usable without actions", async () => {

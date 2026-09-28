@@ -10,7 +10,7 @@ import styles from "./styles/header.module.css";
 const CONNECT_LABEL = "Connect wallet";
 const CONNECTING_LABEL = "Connecting…";
 const UNSUPPORTED_NETWORK = "Unsupported Network";
-const WALLET_INSTALL_URL = "https://metamask.io";
+const VIEW_ONLY_COPY = "You can only browse disputes.";
 const SMART_CONTRACT_WALLET_FAQ_URL = "https://docs.kleros.io/welcome/faq#can-i-use-a-smart-contract-account-to-stake-in-the-court";
 const WARNING_STORAGE_KEY = "@kleros/dispute-resolver/alert/smart-contract-wallet-warning";
 const NO_ACTIONS = Object.freeze({ connect: async () => {} });
@@ -39,15 +39,6 @@ const storeWarningDismissal = (address) => {
     console.warn("Could not store the smart contract wallet warning dismissal", error);
   }
 };
-
-const viewOnlyCopy = ({ connection, walletDetected }) => {
-  if (!walletDetected) return "You can browse disputes, but taking part in them needs a wallet.";
-  if (connection === CONNECTION.CONNECTING) return "You can browse disputes while your wallet connects.";
-  return "You can browse disputes, but taking part in them needs a connected wallet.";
-};
-
-//The contract only makes connect meaningful with an injected wallet that is idle or failed.
-const offersConnect = ({ connection, walletDetected }) => walletDetected && (connection === CONNECTION.NONE || connection === CONNECTION.ERROR);
 
 class Header extends React.Component {
   state = { connecting: false, warningDismissedFor: null };
@@ -122,26 +113,14 @@ class Header extends React.Component {
     );
   }
 
-  renderViewOnlyAction(status) {
-    if (!status.walletDetected) {
-      return (
-        <a className={styles.cardAction} href={WALLET_INSTALL_URL} target="_blank" rel="noreferrer noopener">
-          Install MetaMask
-        </a>
-      );
-    }
-    return offersConnect(status) ? this.renderConnectButton(styles.cardAction) : null;
-  }
-
-  renderViewOnlyBanner(status) {
+  renderViewOnlyBanner() {
     return (
       <div className={styles.notice} role="status">
         <div className={styles.noticeCard}>
           <div className={styles.cardText}>
             <p className={styles.cardTitle}>Read-only mode</p>
-            <p className={styles.cardBody}>{viewOnlyCopy(status)}</p>
+            <p className={styles.cardBody}>{VIEW_ONLY_COPY}</p>
           </div>
-          {this.renderViewOnlyAction(status)}
         </div>
       </div>
     );
@@ -203,7 +182,7 @@ class Header extends React.Component {
             </Navbar.Collapse>
           </div>
         </Navbar>
-        {viewOnly && this.renderViewOnlyBanner(status)}
+        {viewOnly && this.renderViewOnlyBanner()}
         {showWarning && this.renderSmartContractWalletWarning()}
       </header>
     );
