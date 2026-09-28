@@ -27,6 +27,29 @@ See deployed contracts [here](https://github.com/kleros/binary-arbitrable-proxy/
 
 To allow viewing app data without a web3 browser, set the REACT_APP_WEB3_PROVIDER_URL environment variable to a web3 provider endpoint. Sending transactions will not be possible without a wallet.
 
+## Install, test and build
+
+Use Yarn 4.9.2 (declared in `packageManager`):
+
+```sh
+yarn install
+CI=true yarn test
+yarn build
+```
+
+`@kleros/archon@2.4.0` pulls in `v8-sandbox@3.2.12` for executing dynamic
+meta-evidence scripts in Node. Its native addon does not compile on Node 23
+because it uses an older V8 `ScriptOrigin` API. This browser app executes those
+scripts through the iframe helper in `src/utils/utils.js`; Archon's browser path
+also uses an iframe. Neither needs the native addon.
+
+The root `dependenciesMeta` entry disables only the `v8-sandbox` build, following
+[Yarn's package build setting](https://yarnpkg.com/configuration/manifest#dependenciesMeta.built).
+The package remains installed at the locked version, and other dependency build
+scripts still run. Do not use Archon's Node-side dynamic script execution with
+this configuration; that would require a working native addon and revisiting
+this setting.
+
 ## Fixture mode
 
 Renders the Ongoing Disputes page, the case page and the Create page from the JSON files in `src/fixtures/` instead of the network. It is off unless `REACT_APP_USE_FIXTURES=true`; with it off the app behaves as before. On the Create page the courts and the arbitration cost come from the fixtures, and uploading the primary document and creating the dispute go through the write stubs.

@@ -7584,6 +7584,9 @@ __metadata:
     styled-components: "npm:^5.2.1"
     typescript: "npm:^5.5.4"
     web3: "npm:^1.10.4"
+  dependenciesMeta:
+    v8-sandbox:
+      built: false
   languageName: unknown
   linkType: soft
 

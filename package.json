@@ -44,6 +44,11 @@
     "typescript": "^5.5.4",
     "web3": "^1.10.4"
   },
+  "dependenciesMeta": {
+    "v8-sandbox": {
+      "built": false
+    }
+  },
   "resolutions": {
     "html-to-text": "^7.0.0",
     "react-scripts/@babel/core": "^7.16.0"
