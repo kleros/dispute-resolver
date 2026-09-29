@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { Navbar, Nav } from "react-bootstrap";
+import { Navbar, Nav, Dropdown } from "react-bootstrap";
 import { LinkContainer } from "react-router-bootstrap";
 import { ReactComponent as Brand } from "../assets/images/logo-dispute-resolver-white.svg";
 import { ReactComponent as WarningIcon } from "../assets/images/warning.svg";
@@ -9,15 +9,20 @@ import styles from "./styles/header.module.css";
 
 const CONNECT_LABEL = "Connect wallet";
 const CONNECTING_LABEL = "Connecting…";
+const SWITCHING_LABEL = "Switching…";
+const SWITCHER_TITLE = "Switch network";
+const SWITCHER_ID = "chain-switcher";
 const UNSUPPORTED_NETWORK = "Unsupported Network";
 const VIEW_ONLY_COPY = "You can only browse disputes.";
 const SMART_CONTRACT_WALLET_FAQ_URL = "https://docs.kleros.io/welcome/faq#can-i-use-a-smart-contract-account-to-stake-in-the-court";
 const WARNING_STORAGE_KEY = "@kleros/dispute-resolver/alert/smart-contract-wallet-warning";
-const NO_ACTIONS = Object.freeze({ connect: async () => {} });
+const NO_ACTIONS = Object.freeze({ connect: async () => {}, switchChain: async () => {} });
 
 //A missing or partial status (an old caller, a bad state) renders like a wallet that is still connecting: banner without an action, no chain chrome, navigation intact.
 const normaliseStatus = (status) => (status && typeof status === "object" ? { ...EXAMPLES.CONNECTING, ...status } : EXAMPLES.CONNECTING);
-const normaliseActions = (actions) => (actions && typeof actions.connect === "function" ? actions : NO_ACTIONS);
+//Each action falls back to a no-op on its own, so an old caller that only passes connect keeps working.
+const normaliseActions = (actions) =>
+  Object.fromEntries(Object.entries(NO_ACTIONS).map(([name, noop]) => [name, typeof actions?.[name] === "function" ? actions[name] : noop]));
 
 const shortenAddress = (address) => `${address.slice(0, 6)}…${address.slice(-4)}`;
 
@@ -41,7 +46,7 @@ const storeWarningDismissal = (address) => {
 };
 
 class Header extends React.Component {
-  state = { connecting: false, warningDismissedFor: null };
+  state = { connecting: false, switching: false, warningDismissedFor: null };
 
   componentDidMount() {
     this.mounted = true;
@@ -64,6 +69,20 @@ class Header extends React.Component {
     }
   };
 
+  //The chosen chain goes to the adapter; the outcome comes back through the status (a new chain, or switchError).
+  handleSwitchChain = async (chainId) => {
+    const { chain } = normaliseStatus(this.props.status);
+    if (this.state.switching || !chainId || chainId === chain?.id) return;
+    this.setState({ switching: true });
+    try {
+      await normaliseActions(this.props.actions).switchChain(chainId);
+    } catch (error) {
+      console.warn("Chain switch did not complete", error);
+    } finally {
+      if (this.mounted) this.setState({ switching: false });
+    }
+  };
+
   handleDismissWarning = () => {
     const { address } = normaliseStatus(this.props.status);
     storeWarningDismissal(address);
@@ -79,18 +98,49 @@ class Header extends React.Component {
     );
   }
 
+  //The chain pill: the current chain (or the unsupported notice), opening the list of chains the app can move to.
+  renderChainSwitcher(status) {
+    const { chain, chains, switchError } = status;
+    if (!chain) return null;
+    const unsupported = chain.supported === false;
+    const label = unsupported ? UNSUPPORTED_NETWORK : chain.name;
+    const options = Array.isArray(chains) ? chains.filter((option) => option && option.id && option.name) : [];
+    if (options.length === 0) {
+      return <span className={`${styles.pill} ${unsupported ? styles.unsupported : ""}`}>{label}</span>;
+    }
+
+    const { switching } = this.state;
+    return (
+      <>
+        <Dropdown className={styles.switcher} onSelect={this.handleSwitchChain} focusFirstItemOnShow="keyboard">
+          <Dropdown.Toggle id={SWITCHER_ID} variant={null} className={`${styles.chainToggle} ${unsupported ? styles.unsupported : ""}`} title={SWITCHER_TITLE} disabled={switching}>
+            {switching ? SWITCHING_LABEL : label}
+          </Dropdown.Toggle>
+          <Dropdown.Menu className={styles.chainMenu} aria-label={SWITCHER_TITLE}>
+            {options.map((option) => (
+              <Dropdown.Item as="button" type="button" key={option.id} eventKey={option.id} active={option.id === chain.id} aria-current={option.id === chain.id ? "true" : undefined}>
+                {option.name}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown>
+        {switchError?.message && !switching && (
+          <span className={styles.error} role="alert">
+            {switchError.message}
+          </span>
+        )}
+      </>
+    );
+  }
+
   renderWalletArea(status) {
-    const { connection, walletDetected, address, chain, error } = status;
-    const chainName = chain && chain.supported !== false ? chain.name : null;
+    const { connection, walletDetected, address, error } = status;
     let content = null;
     if (connection === CONNECTION.CONNECTED && address) {
       content = (
-        <>
-          <span className={`${styles.pill} ${styles.account}`} title={address}>
-            {shortenAddress(address)}
-          </span>
-          {chainName && <span className={styles.pill}>{chainName}</span>}
-        </>
+        <span className={`${styles.pill} ${styles.account}`} title={address}>
+          {shortenAddress(address)}
+        </span>
       );
     } else if (connection === CONNECTION.CONNECTING) {
       content = <span className={styles.connecting}>{CONNECTING_LABEL}</span>;
@@ -107,8 +157,8 @@ class Header extends React.Component {
 
     return (
       <div className={styles.wallet}>
-        {chain?.supported === false && <span className={`${styles.pill} ${styles.unsupported}`}>{UNSUPPORTED_NETWORK}</span>}
         {content}
+        {this.renderChainSwitcher(status)}
       </div>
     );
   }
@@ -209,7 +259,9 @@ Header.propTypes = {
     viewOnly: PropTypes.bool,
     isSmartContractWallet: PropTypes.bool,
     error: PropTypes.shape({ code: PropTypes.string, message: PropTypes.string }),
+    chains: PropTypes.arrayOf(chainShape),
+    switchError: PropTypes.shape({ code: PropTypes.string, message: PropTypes.string }),
   }),
-  actions: PropTypes.shape({ connect: PropTypes.func }),
+  actions: PropTypes.shape({ connect: PropTypes.func, switchChain: PropTypes.func }),
   route: PropTypes.shape({ match: PropTypes.shape({ params: PropTypes.shape({ chainId: PropTypes.string }) }) }).isRequired,
 };

@@ -309,6 +309,59 @@ describe("fixture mode", () => {
     expect(container.querySelector("footer").textContent).toContain("Gnosis Network");
   });
 
+  const switcherToggle = () => container.querySelector("header .switcher button.dropdown-toggle");
+  const switchTo = async chainName => {
+    await act(async () => {
+      Simulate.click(switcherToggle());
+    });
+    const item = Array.from(container.querySelectorAll("header .switcher .dropdown-item")).find(node => node.textContent === chainName);
+    await act(async () => {
+      Simulate.click(item);
+    });
+    await waitFor(() => !switcherToggle().disabled && container.querySelector('[aria-busy="true"]') === null);
+  };
+  const disputeIDs = () => Array.from(container.querySelectorAll(".disputeID")).map(node => node.textContent);
+
+  it("switches between the fixture chains on the Ongoing page", async () => {
+    process.env.REACT_APP_USE_FIXTURES = "true";
+    process.env.REACT_APP_FIXTURE_CHAIN_ID = "100";
+    await renderApp("/100/ongoing");
+    expect(disputeIDs()).toHaveLength(8);
+    expect(Array.from(container.querySelectorAll("header .switcher .dropdown-item")).map(node => node.textContent)).toEqual([]);
+
+    await switchTo("Ethereum Mainnet");
+    await waitFor(() => disputeIDs().length === 0);
+
+    expect(container.querySelector("footer").textContent).toContain("Ethereum Mainnet");
+    expect(switcherToggle().textContent).toBe("Ethereum Mainnet");
+    expect(window.location.pathname).toBe("/1/ongoing");
+    expect(container.querySelector("header nav a.nav-link").getAttribute("href")).toBe("/1/ongoing/");
+
+    await switchTo("Gnosis Network");
+    await waitFor(() => disputeIDs().length === 8);
+    expect(window.location.pathname).toBe("/100/ongoing");
+  });
+
+  it("keeps the case id when switching: the case loads on a chain that has it and says so on one that does not", async () => {
+    process.env.REACT_APP_USE_FIXTURES = "true";
+    process.env.REACT_APP_FIXTURE_CHAIN_ID = "100";
+    await renderApp("/100/cases/1005");
+    expect(container.querySelector("h1").textContent).toBe("Add a module to Address Tags Query (ATQ) Registry");
+
+    await switchTo("Ethereum Mainnet");
+    await waitFor(() => container.textContent.includes("does not exist on this network"));
+
+    expect(container.textContent).toContain("Dispute with ID 1005 does not exist on this network.");
+    expect(container.querySelector("footer").textContent).toContain("Ethereum Mainnet");
+    expect(window.location.pathname).toBe("/1/cases/1005");
+    //jsdom reports a page reload as a "Not implemented: navigation" error: the case must follow the chain without one.
+    expect(console.error.mock.calls.flat().some(argument => String(argument?.message ?? argument).includes("Not implemented: navigation"))).toBe(false);
+
+    await switchTo("Gnosis Network");
+    await waitFor(() => container.querySelector("h1")?.textContent === "Add a module to Address Tags Query (ATQ) Registry");
+    expect(window.location.pathname).toBe("/100/cases/1005");
+  });
+
   it("shows the read-only banner without any action, no Create link and the chain in the footer without the flag", async () => {
     process.env.REACT_APP_USE_FIXTURES = "true";
     process.env.REACT_APP_FIXTURE_CHAIN_ID = "100";
@@ -344,14 +397,17 @@ describe("real mode with a wallet", () => {
   };
 
   //A minimal EIP-1193 wallet. It answers on a later task, like the extension does, so the app's own timers run in between.
-  const installWallet = ({ chainId, accounts = [], approveConnection = true }) => {
+  //A switch request moves the wallet and, when it reports chains, emits chainChanged on a later task; `switchError` makes it throw instead.
+  const installWallet = ({ chainId, accounts = [], approveConnection = true, reportsChain = true, switchError = null }) => {
     const listeners = {};
     wallet = {
       chainId,
       accounts,
       approveConnection,
+      reportsChain,
+      switchError,
       selectedAddress: accounts[0] ?? null,
-      request: jest.fn(async ({ method }) => {
+      request: jest.fn(async ({ method, params }) => {
         await new Promise(resolve => setTimeout(resolve, 0));
         switch (method) {
           case "eth_chainId":
@@ -362,6 +418,12 @@ describe("real mode with a wallet", () => {
             if (!wallet.approveConnection) throw Object.assign(new Error("User rejected the request."), { code: 4001 });
             wallet.accounts = [ACCOUNT];
             return wallet.accounts;
+          case "wallet_switchEthereumChain": {
+            if (wallet.switchError) throw wallet.switchError;
+            wallet.chainId = params[0].chainId;
+            if (wallet.reportsChain) setTimeout(() => wallet.emit("chainChanged", wallet.chainId), 0);
+            return null;
+          }
           default:
             throw new Error(`Unexpected wallet request: ${method}`);
         }
@@ -378,14 +440,16 @@ describe("real mode with a wallet", () => {
   };
 
   //The court of a chain lists the given disputes, but only when read through that chain's own RPC. Dispute details and
-  //courts are unreadable, so a card is rendered from its ID alone and the court enumeration ends at once.
-  const mockCourts = disputesByRpc => {
+  //courts are unreadable, so a card is rendered from its ID alone and the court enumeration ends at once. With
+  //`readableDisputes`, the dispute structs can be read instead, so the meta-evidence of each dispute is requested.
+  const mockCourts = (disputesByRpc, { readableDisputes = false } = {}) => {
     const filters = { NewPeriod: () => "NewPeriod", DisputeCreation: () => "DisputeCreation" };
     const unreadable = () => Promise.reject(Object.assign(new Error("call reverted"), { code: "CALL_EXCEPTION" }));
+    const readable = async () => ({ arbitrated: ARBITRABLE, subcourtID: 0n, period: 0n, lastPeriodChange: 0n, ruled: false });
     getContract.mockImplementation((name, address, provider) => ({
       filters,
       queryFilter: async filter => (filter === "DisputeCreation" ? (disputesByRpc[address]?.[provider.url] ?? []).map(id => ({ args: { _disputeID: BigInt(id) } })) : []),
-      disputes: unreadable,
+      disputes: readableDisputes ? readable : unreadable,
       getSubcourt: { estimateGas: unreadable },
     }));
   };
@@ -401,12 +465,33 @@ describe("real mode with a wallet", () => {
   };
 
   const header = () => container.querySelector("header");
-  const banner = () => header().querySelector('[role="status"]');
-  //The labels of the header's buttons; the responsive toggle has no text and is left out.
-  const headerButtons = () => Array.from(header().querySelectorAll("button")).map(button => button.textContent.trim()).filter(Boolean);
-  const walletButton = () => header().querySelector(".wallet button");
+  const banner = () => header().querySelector('.notice[role="status"]');
+  //The labels of the header's buttons apart from the chain switcher; the responsive toggle has no text and is left out.
+  const headerButtons = () =>
+    Array.from(header().querySelectorAll("button"))
+      .filter(button => !button.closest(".switcher"))
+      .map(button => button.textContent.trim())
+      .filter(Boolean);
+  const walletButton = () => header().querySelector(".wallet button:not(.dropdown-toggle)");
+  const switcherToggle = () => header().querySelector(".switcher button.dropdown-toggle");
+  const switchError = () => header().querySelector('.wallet [role="alert"]');
+  const navHrefs = () => Array.from(header().querySelectorAll("nav a.nav-link")).map(link => link.getAttribute("href"));
   const disputeIDs = () => Array.from(container.querySelectorAll(".disputeID")).map(node => node.textContent);
   const courtReads = arbitrator => getContract.mock.calls.filter(([name, address]) => name === "KlerosLiquid" && address === arbitrator);
+  const switchRequests = () => wallet.request.mock.calls.filter(([{ method }]) => method === "wallet_switchEthereumChain").map(([{ params }]) => params[0].chainId);
+
+  //Picks a chain in the header's switcher and waits for the switch request to be answered.
+  const switchTo = async chainName => {
+    await act(async () => {
+      Simulate.click(switcherToggle());
+    });
+    const item = Array.from(header().querySelectorAll(".switcher .dropdown-item")).find(node => node.textContent === chainName);
+    await act(async () => {
+      Simulate.click(item);
+    });
+    await waitFor(() => !switcherToggle().disabled);
+  };
+  const settled = () => container.querySelector("main") !== null && container.querySelector('[aria-busy="true"]') === null;
 
   afterEach(() => {
     if (container) {
@@ -477,6 +562,286 @@ describe("real mode with a wallet", () => {
     expect(container.querySelector("footer").textContent).toContain("Ethereum Mainnet");
     expect(header().querySelector(`[title="${ACCOUNT}"]`)).not.toBeNull();
     expect(window.location.pathname).toBe("/1/ongoing");
+    expect(navHrefs()).toEqual(["/1/ongoing/", "/1/create/", "/1/cases/"]);
+    expect(switcherToggle().textContent).toBe("Ethereum Mainnet");
+  });
+
+  describe("courts on the Create page", () => {
+    const GNOSIS_POLICY_REGISTRY = networkMap[100].POLICY_REGISTRY;
+    let originalFetch;
+
+    //Court 0 is the only court; its policy read on the registry, and the policy fetch, behave as the flags say.
+    const mockCourtWithPolicy = ({ policyReadFails = false }) => {
+      const getSubcourt = jest.fn(async () => [0n, false, 1n, 1000n, 1n, [60n, 60n, 60n, 60n], 1n]);
+      getSubcourt.estimateGas = async id => {
+        if (Number(id) === 0) return 1n;
+        throw Object.assign(new Error("out of range"), { code: "CALL_EXCEPTION" });
+      };
+      getContract.mockImplementation((name, address) => {
+        if (name === "PolicyRegistry" && address === GNOSIS_POLICY_REGISTRY) {
+          return { policies: jest.fn(() => (policyReadFails ? Promise.reject(new Error("registry unreachable")) : Promise.resolve("/ipfs/QmPolicy"))) };
+        }
+        if (name === "IArbitrator") return { arbitrationCost: async () => 1000000000000000000n };
+        return { getSubcourt, filters: {}, queryFilter: async () => [] };
+      });
+    };
+
+    beforeEach(() => {
+      originalFetch = global.fetch;
+      global.fetch = jest.fn(async () => ({ json: async () => ({ name: "General Court" }) }));
+    });
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    const courtToggle = () => container.querySelector("#subcourt-dropdown");
+    const costBox = () => container.querySelector("#arbitrationCost");
+    const tryAgain = () => Array.from(costBox().querySelectorAll("button")).find(button => button.textContent.trim() === "Try again");
+
+    it("ends in a failure with a retry when a court policy read rejects, and loads the courts on retry", async () => {
+      delete window.ethereum;
+      mockCourtWithPolicy({ policyReadFails: true });
+      await renderApp("/100/create");
+
+      expect(courtToggle().textContent).toContain("No courts loaded");
+      expect(courtToggle().disabled).toBe(true);
+      expect(costBox().textContent).toContain("The courts could not be loaded, so the cost is unknown.");
+      expect(costBox().textContent).not.toContain("Reload the page");
+      expect(tryAgain()).toBeDefined();
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Failed to load the subcourts of network 100"), expect.any(Error));
+
+      mockCourtWithPolicy({ policyReadFails: false });
+      await act(async () => {
+        Simulate.click(tryAgain());
+      });
+      await waitFor(() => courtToggle().textContent.includes("General Court") && settled());
+
+      expect(courtToggle().disabled).toBe(false);
+      expect(costBox().textContent).not.toContain("could not be loaded");
+    });
+
+    it("keeps the courts whose policy fetch failed, without a name, instead of failing the whole list", async () => {
+      delete window.ethereum;
+      mockCourtWithPolicy({ policyReadFails: false });
+      global.fetch = jest.fn(() => Promise.reject(new TypeError("Failed to fetch")));
+      await renderApp("/100/create");
+
+      expect(courtToggle().disabled).toBe(false);
+      expect(courtToggle().textContent).toContain("Select a court");
+      expect(costBox().textContent).not.toContain("could not be loaded");
+    });
+  });
+
+  describe("chain switcher", () => {
+    const bothCourts = () =>
+      mockCourts({
+        [GNOSIS_ARBITRATOR]: { [networkMap[100].WEB3_PROVIDER]: ["1013"] },
+        [MAINNET_ARBITRATOR]: { [networkMap[1].WEB3_PROVIDER]: ["7"] },
+      });
+
+    const expectOnGnosis = () => {
+      expect(disputeIDs()).toEqual(["1013"]);
+      expect(container.querySelector("footer").textContent).toContain("Gnosis Network");
+      expect(switcherToggle().textContent).toBe("Gnosis Network");
+      expect(window.location.pathname).toBe("/100/ongoing");
+    };
+
+    const expectOnMainnet = () => {
+      expect(disputeIDs()).toEqual(["7"]);
+      expect(new Set(courtReads(MAINNET_ARBITRATOR).map(([, , provider]) => provider.url))).toEqual(new Set([networkMap[1].WEB3_PROVIDER]));
+      expect(container.querySelector("footer").textContent).toContain("Ethereum Mainnet");
+      expect(switcherToggle().textContent).toBe("Ethereum Mainnet");
+      expect(window.location.pathname).toBe("/1/ongoing");
+      expect(navHrefs()[0]).toBe("/1/ongoing/");
+      expect(switchError()).toBeNull();
+    };
+
+    it("asks the connected wallet to switch and follows once the wallet reports the new chain", async () => {
+      installWallet({ chainId: "0x64", accounts: [ACCOUNT], reportsChain: false });
+      bothCourts();
+      await renderApp("/100/ongoing");
+      expectOnGnosis();
+
+      await switchTo("Ethereum Mainnet");
+
+      //The wallet has accepted the request but not reported the chain yet: the app stays where it is.
+      expect(switchRequests()).toEqual(["0x1"]);
+      expectOnGnosis();
+      expect(switchError()).toBeNull();
+
+      await act(async () => {
+        wallet.emit("chainChanged", "0x1");
+      });
+      await waitFor(() => courtReads(MAINNET_ARBITRATOR).length > 0 && settled());
+
+      expectOnMainnet();
+      expect(header().querySelector(`[title="${ACCOUNT}"]`)).not.toBeNull();
+      expect(headerButtons()).toEqual([]);
+    });
+
+    it("switches the chain it reads from, without asking the wallet, when the wallet is not connected", async () => {
+      installWallet({ chainId: "0x64", approveConnection: false });
+      bothCourts();
+      await renderApp("/100/ongoing");
+      expectOnGnosis();
+      expect(headerButtons()).toEqual([CONNECT_LABEL]);
+      wallet.request.mockClear();
+
+      await switchTo("Ethereum Mainnet");
+      await waitFor(() => courtReads(MAINNET_ARBITRATOR).length > 0 && settled());
+
+      expect(wallet.request).not.toHaveBeenCalled();
+      expectOnMainnet();
+      expect(headerButtons()).toEqual([CONNECT_LABEL]);
+      expect(banner().textContent).toBe("Read-only modeYou can only browse disputes.");
+    });
+
+    it("switches the chain it reads from when there is no wallet at all", async () => {
+      delete window.ethereum;
+      bothCourts();
+      await renderApp("/100/ongoing");
+      expect(disputeIDs()).toEqual(["1013"]);
+      expect(switcherToggle().textContent).toBe("Gnosis Network");
+
+      await switchTo("Ethereum Mainnet");
+      await waitFor(() => courtReads(MAINNET_ARBITRATOR).length > 0 && settled());
+
+      expectOnMainnet();
+      expect(headerButtons()).toEqual([]);
+      expect(banner()).not.toBeNull();
+    });
+
+    it("stays on the chain, without a message, when the user rejects the switch", async () => {
+      installWallet({ chainId: "0x64", accounts: [ACCOUNT], switchError: Object.assign(new Error("User rejected the request."), { code: 4001 }) });
+      bothCourts();
+      await renderApp("/100/ongoing");
+
+      await switchTo("Ethereum Mainnet");
+      await waitFor(settled);
+
+      expect(switchRequests()).toEqual(["0x1"]);
+      expectOnGnosis();
+      expect(switchError()).toBeNull();
+      expect(header().textContent).not.toMatch(/rejected|Could not switch|went wrong/);
+      expect(courtReads(MAINNET_ARBITRATOR)).toHaveLength(0);
+    });
+
+    it("stays on the chain and says so when the wallet cannot switch, until the next switch succeeds", async () => {
+      installWallet({ chainId: "0x64", accounts: [ACCOUNT], switchError: new Error("Internal JSON-RPC error.") });
+      bothCourts();
+      await renderApp("/100/ongoing");
+
+      await switchTo("Ethereum Mainnet");
+      await waitFor(() => switchError() !== null);
+
+      expectOnGnosis();
+      expect(switchError().textContent).toBe("Could not switch the network.");
+      expect(header().textContent).not.toContain("Internal JSON-RPC error.");
+      expect(header().querySelector(`[title="${ACCOUNT}"]`)).not.toBeNull();
+      expect(courtReads(MAINNET_ARBITRATOR)).toHaveLength(0);
+
+      wallet.switchError = null;
+      await switchTo("Ethereum Mainnet");
+      await waitFor(() => courtReads(MAINNET_ARBITRATOR).length > 0 && settled());
+
+      expectOnMainnet();
+    });
+
+    it("stops the previous chain's meta-evidence requests on a switch: none of them carries on or retries", async () => {
+      const originalFetch = global.fetch;
+      const metaEvidenceUrls = chainId => global.fetch.mock.calls.map(([url]) => String(url)).filter(url => url.includes(`chainId=${chainId}&`));
+      jest.spyOn(console, "warn").mockImplementation(() => {});
+      global.fetch = jest.fn(() => Promise.reject(new TypeError("Failed to fetch")));
+      try {
+        delete window.ethereum;
+        mockCourts(
+          {
+            [GNOSIS_ARBITRATOR]: { [networkMap[100].WEB3_PROVIDER]: ["1013"] },
+            [MAINNET_ARBITRATOR]: { [networkMap[1].WEB3_PROVIDER]: ["7"] },
+          },
+          { readableDisputes: true }
+        );
+
+        //Mount without waiting for the page to settle: the Gnosis meta-evidence requests are failing and about to retry.
+        window.history.pushState({}, "", "/100/ongoing");
+        container = document.createElement("div");
+        document.body.appendChild(container);
+        await act(async () => {
+          ReactDOM.render(<App />, container);
+        });
+        await waitFor(() => switcherToggle() !== null && metaEvidenceUrls(100).some(url => url.includes("disputeId=1013")));
+
+        await switchTo("Ethereum Mainnet");
+        const gnosisRequests = metaEvidenceUrls(100).length;
+        await waitFor(() => metaEvidenceUrls(1).length >= 1);
+
+        //Longer than the retry delay: no Gnosis attempt is repeated, while the Mainnet ones go on.
+        await act(async () => {
+          await new Promise(resolve => setTimeout(resolve, 2600));
+        });
+        expect(metaEvidenceUrls(100)).toHaveLength(gnosisRequests);
+        expect(global.fetch.mock.calls.filter(([url]) => String(url).includes("chainId=100&")).every(([, options]) => options.signal.aborted)).toBe(true);
+        expect(metaEvidenceUrls(1).length).toBeGreaterThanOrEqual(2);
+        expect(window.location.pathname).toBe("/1/ongoing");
+      } finally {
+        global.fetch = originalFetch;
+      }
+    }, 15000);
+
+    //The wallet's chainChanged starts the provider rebuild; state.network only changes once the signer has been resolved.
+    //A read of the old chain that begins in that window must be cancelled, not given the new chain's signal.
+    it("cancels a read of the previous chain that starts after the switch began but before the chain state changed", async () => {
+      const originalFetch = global.fetch;
+      jest.spyOn(console, "warn").mockImplementation(() => {});
+      global.fetch = jest.fn(() => Promise.reject(new TypeError("Failed to fetch")));
+      try {
+        installWallet({ chainId: "0x64", accounts: [ACCOUNT] });
+        mockCourts({ [GNOSIS_ARBITRATOR]: { [networkMap[100].WEB3_PROVIDER]: ["1013"] } });
+        window.history.pushState({}, "", "/100/ongoing");
+        container = document.createElement("div");
+        document.body.appendChild(container);
+        let app;
+        await act(async () => {
+          app = ReactDOM.render(<App />, container);
+        });
+        await waitFor(settled);
+        expect(app.state.network).toBe("100");
+        global.fetch.mockClear();
+
+        let lateGnosisRead;
+        await act(async () => {
+          wallet.chainId = "0x1";
+          wallet.emit("chainChanged", "0x1");
+          //Still inside the window: the switch has begun, the chain state has not changed yet.
+          expect(app.state.network).toBe("100");
+          lateGnosisRead = app.getMetaEvidence(ARBITRABLE, "1013");
+        });
+
+        await expect(lateGnosisRead).resolves.toBeNull();
+        expect(global.fetch).not.toHaveBeenCalled();
+        await waitFor(() => app.state.network === "1" && settled());
+
+        //The chain entered has a live signal of its own.
+        expect(app.getChainSignal("1").aborted).toBe(false);
+        expect(app.getChainSignal("100").aborted).toBe(true);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it("offers Mainnet and Gnosis on a testnet too, and switching there reads the new chain", async () => {
+      installWallet({ chainId: "0xaa36a7", accounts: [ACCOUNT] });
+      bothCourts();
+      await renderApp("/11155111/ongoing");
+      expect(switcherToggle().textContent).toBe("Ethereum Testnet Sepolia");
+
+      await switchTo("Gnosis Network");
+      await waitFor(() => courtReads(GNOSIS_ARBITRATOR).length > 0 && settled());
+
+      expect(switchRequests()).toEqual(["0x64"]);
+      expectOnGnosis();
+    });
   });
 });
 
@@ -487,6 +852,90 @@ const readBlob = blob =>
     reader.onerror = reject;
     reader.readAsText(blob);
   });
+
+describe("App.getArbitratorDispute", () => {
+  const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+  const dispute = arbitrated => ({ arbitrated, subcourtID: 0n, period: 0n, lastPeriodChange: 0n, ruled: false });
+
+  it("resolves the dispute struct the arbitrator returns", async () => {
+    getContract.mockReturnValue({ disputes: jest.fn().mockResolvedValue(dispute(ARBITRABLE)) });
+    await expect(createApp({ network: "100" }).getArbitratorDispute("1013")).resolves.toEqual(dispute(ARBITRABLE));
+  });
+
+  it("resolves null when the arbitrator answers an all-zero struct, as some RPCs do for an ID that does not exist", async () => {
+    getContract.mockReturnValue({ disputes: jest.fn().mockResolvedValue(dispute(ZERO_ADDRESS)) });
+    await expect(createApp({ network: "100" }).getArbitratorDispute("1678")).resolves.toBeNull();
+  });
+
+  it("resolves null when the call reverts, and rethrows any other failure", async () => {
+    getContract.mockReturnValue({ disputes: jest.fn().mockRejectedValue(Object.assign(new Error("missing revert data"), { code: "CALL_EXCEPTION" })) });
+    await expect(createApp({ network: "100" }).getArbitratorDispute("1678")).resolves.toBeNull();
+
+    getContract.mockReturnValue({ disputes: jest.fn().mockRejectedValue(Object.assign(new Error("timeout"), { code: "TIMEOUT" })) });
+    await expect(createApp({ network: "100" }).getArbitratorDispute("1678")).rejects.toThrow("timeout");
+  });
+
+  it("resolves null on a chain without a court, without any call", async () => {
+    getContract.mockReset();
+    await expect(createApp({ network: "137" }).getArbitratorDispute("1")).resolves.toBeNull();
+    expect(getContract).not.toHaveBeenCalled();
+  });
+});
+
+describe("App.getMetaEvidence", () => {
+  const metaEvidenceUrls = () => global.fetch.mock.calls.map(([url]) => String(url)).filter(url => url.includes("get-dispute-metaevidence") && url.includes("disputeId=1013"));
+  let originalFetch;
+
+  beforeEach(() => {
+    originalFetch = global.fetch;
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it("gives up after a bounded number of failed attempts and resolves null, so the page can show the meta-evidence as unavailable", async () => {
+    global.fetch = jest.fn(() => Promise.reject(new TypeError("Failed to fetch")));
+    const app = createApp({ network: "100" });
+
+    const started = Date.now();
+    await expect(app.getMetaEvidence(ARBITRABLE, "1013")).resolves.toBeNull();
+
+    expect(metaEvidenceUrls()).toHaveLength(3);
+    expect(metaEvidenceUrls().every(url => url.includes("chainId=100&disputeId=1013"))).toBe(true);
+    expect(Date.now() - started).toBeLessThan(8000);
+  }, 10000);
+
+  it("stops at once, without another attempt, when the chain changes meanwhile", async () => {
+    global.fetch = jest.fn(() => Promise.reject(new TypeError("Failed to fetch")));
+    const app = createApp({ network: "100" });
+
+    const pending = app.getMetaEvidence(ARBITRABLE, "1013");
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    });
+    expect(metaEvidenceUrls()).toHaveLength(1);
+
+    //What handleNetworkChange does first on a chain change.
+    app.abortChainRequests("100");
+    const started = Date.now();
+    await expect(pending).resolves.toBeNull();
+
+    expect(Date.now() - started).toBeLessThan(500);
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 2500));
+    });
+    expect(metaEvidenceUrls()).toHaveLength(1);
+    expect(global.fetch.mock.calls[0][1].signal.aborted).toBe(true);
+  }, 10000);
+
+  it("resolves null without retrying when the service has no meta-evidence for the dispute", async () => {
+    global.fetch = jest.fn(() => Promise.resolve({ json: async () => ({ metaEvidenceUri: null }) }));
+    await expect(createApp({ network: "100" }).getMetaEvidence(ARBITRABLE, "1013")).resolves.toBeNull();
+    expect(metaEvidenceUrls()).toHaveLength(1);
+  });
+});
 
 describe("App.getArbitrationCostWithCourtAndNoOfJurors", () => {
   it("asks the arbitrator for the cost of the court and the votes, encoded as extra data, and formats it in ether", async () => {

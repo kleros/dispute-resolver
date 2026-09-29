@@ -14,7 +14,9 @@
  * Route-based links (`/:chainId/ongoing`, `/:chainId/cases`) keep using the router's `chainId` param as
  * they do now; `chain` is for display and for deciding which chrome to show.
  *
- * Chain switching is out of scope: nothing here exposes a switch action.
+ * Chain switching: `chains` lists the chains the header offers and `WalletActions.switchChain` moves the app to one
+ * of them. With a connected wallet the wallet is asked to switch and the app follows once the wallet reports the new
+ * chain; without one the app switches the chain it reads from. `switchError` says why the last attempt failed.
  */
 
 /**
@@ -40,7 +42,7 @@
 
 /**
  * @typedef {Object} WalletError
- * @property {"init-failed" | "unknown"} code Stable identifier for the failure; the UI may branch on it.
+ * @property {"init-failed" | "switch-failed" | "unknown"} code Stable identifier for the failure; the UI may branch on it.
  * @property {string} message Short, user-facing sentence. Already safe to render; the UI does not need to interpret it.
  */
 
@@ -53,6 +55,10 @@
  * @property {boolean} viewOnly True whenever `address` is null. Drives the view-only banner and hides the Create link. Chain support does not affect it.
  * @property {boolean | null} isSmartContractWallet True when `address` holds contract code that is not an EIP-7702 delegation; false when it is an EOA; null while unknown or when there is no address.
  * @property {WalletError | null} error Set only when `connection` is "error".
+ * @property {ChainStatus[]} chains Chains the header offers to switch to, all supported, in display order. Empty when the app cannot switch.
+ *   `chain` need not be one of them: a testnet or an unsupported chain is still shown as the current chain, with these as the way out.
+ * @property {WalletError | null} switchError Why the last chain switch failed (code "switch-failed"); null once the next attempt starts or the chain changes.
+ *   A switch the user rejected in the wallet is not a failure and leaves this null.
  */
 
 /**
@@ -60,6 +66,10 @@
  * @typedef {Object} WalletActions
  * @property {() => Promise<void>} connect Ask the wallet for an account. Only meaningful when `walletDetected` is true and `connection` is "none" or "error".
  *   A rejected request changes nothing: the status stays as it was and the UI keeps offering to connect.
+ * @property {(chainId: string) => Promise<void>} switchChain Move the app to a chain of `chains` (decimal id). With a connected wallet
+ *   the wallet is asked to switch (and, for Gnosis only, to add the chain first when it does not have it); the status follows once the wallet reports the
+ *   new chain. Without a connected wallet the app switches the chain it reads from at once. Always resolves: a rejected prompt changes
+ *   nothing, a failure shows up as `switchError`.
  */
 
 export const CONNECTION = Object.freeze({
@@ -107,6 +117,9 @@ const UNSUPPORTED = Object.freeze({
 
 const EOA = "0x1111111111111111111111111111111111111111";
 
+/** The chains the header offers, in display order. */
+const SWITCHABLE = Object.freeze([MAINNET, GNOSIS]);
+
 /**
  * One example per state the UI must render. Use these in stories, tests and fixture mode.
  * @type {Readonly<Record<string, WalletStatus>>}
@@ -121,6 +134,8 @@ export const EXAMPLES = Object.freeze({
     viewOnly: true,
     isSmartContractWallet: null,
     error: null,
+    chains: SWITCHABLE,
+    switchError: null,
   },
 
   /** Wallet installed but no account authorised yet, or the connection request was rejected. Same chrome as NO_WALLET, plus a "Connect" button in the header's wallet area. */
@@ -132,6 +147,8 @@ export const EXAMPLES = Object.freeze({
     viewOnly: true,
     isSmartContractWallet: null,
     error: null,
+    chains: SWITCHABLE,
+    switchError: null,
   },
 
   /** Connected on a supported chain. Full navigation, no banner. */
@@ -143,6 +160,8 @@ export const EXAMPLES = Object.freeze({
     viewOnly: false,
     isSmartContractWallet: false,
     error: null,
+    chains: SWITCHABLE,
+    switchError: null,
   },
 
   /** Connected on Gnosis, the chain fixture mode runs on. Same chrome as CONNECTED_SUPPORTED with Gnosis chain data. */
@@ -154,6 +173,8 @@ export const EXAMPLES = Object.freeze({
     viewOnly: false,
     isSmartContractWallet: false,
     error: null,
+    chains: SWITCHABLE,
+    switchError: null,
   },
 
   /** Connected on a supported testnet. Footer may flag the testnet; everything else as CONNECTED_SUPPORTED. */
@@ -165,6 +186,8 @@ export const EXAMPLES = Object.freeze({
     viewOnly: false,
     isSmartContractWallet: false,
     error: null,
+    chains: SWITCHABLE,
+    switchError: null,
   },
 
   /** Connected, but the account is a smart contract wallet. Header shows the dismissible warning. */
@@ -176,6 +199,8 @@ export const EXAMPLES = Object.freeze({
     viewOnly: false,
     isSmartContractWallet: true,
     error: null,
+    chains: SWITCHABLE,
+    switchError: null,
   },
 
   /** Connected on a chain that is not in the network map. Footer shows "Unsupported Network"; pages show the unsupported view. */
@@ -187,6 +212,8 @@ export const EXAMPLES = Object.freeze({
     viewOnly: false,
     isSmartContractWallet: false,
     error: null,
+    chains: SWITCHABLE,
+    switchError: null,
   },
 
   /** Provider, signer or chain still resolving. Chain-dependent chrome (network name, explorer link) is not available yet. */
@@ -198,6 +225,8 @@ export const EXAMPLES = Object.freeze({
     viewOnly: true,
     isSmartContractWallet: null,
     error: null,
+    chains: SWITCHABLE,
+    switchError: null,
   },
 
   /** Wallet resolution failed. The adapter fell back to read-only mainnet so the app stays browsable. */
@@ -211,6 +240,24 @@ export const EXAMPLES = Object.freeze({
     error: {
       code: "init-failed",
       message: "Could not connect to your wallet. Check the extension and reload the page.",
+    },
+    chains: SWITCHABLE,
+    switchError: null,
+  },
+
+  /** Connected, but the last chain switch failed (the wallet could not switch or add the chain). The header shows the message next to the switcher. */
+  SWITCH_FAILED: {
+    connection: CONNECTION.CONNECTED,
+    walletDetected: true,
+    address: EOA,
+    chain: MAINNET,
+    viewOnly: false,
+    isSmartContractWallet: false,
+    error: null,
+    chains: SWITCHABLE,
+    switchError: {
+      code: "switch-failed",
+      message: "Could not switch the network.",
     },
   },
 });

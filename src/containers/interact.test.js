@@ -95,7 +95,8 @@ const isSettled = () => container.querySelector('[aria-busy="true"]') === null &
 const mountCase = async (disputeId, { chainId = GNOSIS, overrides = {}, signedIn = false, history, exceptionalContractAddresses = [] } = {}) => {
   const callbacks = { ...fixtureCallbacks(chainId), ...overrides };
   const memoryHistory = history ?? createMemoryHistory({ initialEntries: [`/${chainId}/cases/${disputeId}`] });
-  const { subcourts, subcourtDetails } = await fixtures.getSubcourtData(chainId);
+  //A chain without fixtures (such as one without a court) has no subcourts either.
+  const { subcourts, subcourtDetails } = await fixtures.getSubcourtData(chainId).catch(() => ({ subcourts: [], subcourtDetails: [] }));
 
   await act(async () => {
     ReactDOM.render(
@@ -329,6 +330,31 @@ describe("Hand-made cases", () => {
     expect(buttons("View Ongoing Disputes")).toHaveLength(1);
     expect(text()).not.toContain("Failed to load");
     expect(container.querySelector("main")).toBeNull();
+  });
+
+  //Whether a dispute exists is decided from the arbitrator alone: a missing dispute never reaches the meta-evidence service or the arbitrable.
+  it("decides that a dispute does not exist from the arbitrator, without asking the meta-evidence service", async () => {
+    const getMetaEvidenceCallback = jest.fn(() => new Promise(() => {}));
+    const getArbitrableDisputeIDCallback = jest.fn(() => new Promise(() => {}));
+    const getArbitratorDisputeCallback = jest.fn().mockResolvedValue(null);
+    await renderCase("1678", { overrides: { getArbitratorDisputeCallback, getMetaEvidenceCallback, getArbitrableDisputeIDCallback } });
+
+    expect(text()).toContain("Dispute with ID 1678 does not exist on this network.");
+    expect(container.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(getArbitratorDisputeCallback).toHaveBeenCalledWith("1678");
+    expect(getMetaEvidenceCallback).not.toHaveBeenCalled();
+    expect(getArbitrableDisputeIDCallback).not.toHaveBeenCalled();
+  });
+
+  it("says the network is unsupported, pointing to the header switcher, on a chain without a court", async () => {
+    const getArbitratorDisputeCallback = jest.fn();
+    await mountCase("1678", { chainId: "137", overrides: { getArbitratorDisputeCallback } });
+
+    expect(container.querySelector("main h2").textContent).toBe("Unsupported network");
+    expect(text()).toContain("Polygon Mainnet is not supported. Choose a supported network from the switcher in the header.");
+    expect(container.querySelector("form")).toBeNull();
+    expect(container.querySelector("main a, main button")).toBeNull();
+    expect(getArbitratorDisputeCallback).not.toHaveBeenCalled();
   });
 });
 

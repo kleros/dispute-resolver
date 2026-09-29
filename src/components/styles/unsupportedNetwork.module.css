@@ -1,0 +1,41 @@
+.page {
+  width: 100%;
+  max-width: 1248px;
+  margin: 0 auto;
+}
+
+.feedback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64px 24px;
+  border: 1px solid var(--stroke);
+  border-radius: var(--border-radius-l);
+  background: white;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.feedback h1 {
+  margin: 24px 0 12px;
+  color: var(--purple-dark);
+  font-size: var(--font-size-l);
+  line-height: 1.4;
+  font-weight: var(--bold);
+}
+
+.feedback p {
+  max-width: 540px;
+  margin: 0;
+  color: var(--grey-dark);
+  line-height: 1.6;
+}
+
+.icon {
+  width: 40px;
+  height: 32px;
+}
+
+.icon > path {
+  fill: var(--purple-primary);
+}

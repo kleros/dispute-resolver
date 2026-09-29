@@ -60,9 +60,8 @@
 }
 
 .unsupported {
-  border-color: var(--orange);
-  background: var(--orange);
-  color: var(--purple-dark);
+  border-color: white;
+  color: white;
   font-weight: var(--bold);
 }
 

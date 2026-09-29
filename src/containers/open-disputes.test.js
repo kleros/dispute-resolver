@@ -473,7 +473,8 @@ describe("Ongoing disputes on a network without a court", () => {
 
     const main = container.querySelector("main");
     expect(main.querySelector("h2").textContent).toBe("Unsupported network");
-    expect(main.querySelector("p")).toBeNull();
+    expect(main.querySelector("p").textContent).toBe(`${network === "137" ? "Polygon Mainnet" : "Chain 999"} is not supported. Choose a supported network from the switcher in the header.`);
+    expect(main.querySelector("a, button")).toBeNull();
     expect(main.textContent.toLowerCase()).not.toContain("arbitrator");
     expect(main.querySelector("h1")).toBeNull();
     expect(getOpenDisputesOnCourtCallback).not.toHaveBeenCalled();

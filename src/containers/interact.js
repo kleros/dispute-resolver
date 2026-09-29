@@ -4,7 +4,8 @@ import { Form, FormControl, Spinner } from "react-bootstrap";
 import DisputeSummary from "components/disputeSummary";
 import DisputeDetails from "components/disputeDetails";
 import AlertMessage from "components/alertMessage";
-import { isGovernorWithEvidenceSupport } from "ethereum/network-contract-mapping";
+import networkMap, { isGovernorWithEvidenceSupport } from "ethereum/network-contract-mapping";
+import { UNSUPPORTED_NETWORK_TITLE, describeUnsupportedNetwork } from "components/unsupportedNetwork";
 import { ReactComponent as Magnifier } from "../assets/images/magnifier.svg";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 
@@ -70,9 +71,12 @@ class Interact extends React.Component {
 
   getRouteDisputeID = (route = this.props.route) => route?.match?.params?.id ?? "";
 
+  //A chain without a Kleros court has no disputes to read: the page shows the unsupported notice and makes no read.
+  hasCourt = () => Boolean(networkMap[this.props.network]?.KLEROS_LIQUID);
+
   componentDidMount() {
     const arbitratorDisputeID = this.getRouteDisputeID();
-    if (arbitratorDisputeID) this.load(arbitratorDisputeID);
+    if (arbitratorDisputeID && this.hasCourt()) this.load(arbitratorDisputeID);
   }
 
   componentDidUpdate(previousProperties) {
@@ -80,12 +84,15 @@ class Interact extends React.Component {
 
     if (arbitratorDisputeID !== this.getRouteDisputeID(previousProperties.route)) {
       this.setState({ arbitratorDisputeID, searchQuery: arbitratorDisputeID });
-      if (arbitratorDisputeID) this.load(arbitratorDisputeID);
+      if (arbitratorDisputeID && this.hasCourt()) this.load(arbitratorDisputeID);
       else this.clear();
       return;
     }
 
-    if (this.props.network !== previousProperties.network && arbitratorDisputeID) this.load(arbitratorDisputeID);
+    if (this.props.network !== previousProperties.network && arbitratorDisputeID) {
+      if (this.hasCourt()) this.load(arbitratorDisputeID);
+      else this.clear();
+    }
   }
 
   componentWillUnmount() {
@@ -488,9 +495,23 @@ class Interact extends React.Component {
     }
   };
 
+  //A chain without a Kleros court has no disputes to look up: the same notice as the other pages, pointing to the switcher.
+  renderUnsupportedNetwork = () => (
+    <main className={styles.casePage}>
+      <div className={styles.content}>
+        <div className={styles.feedback}>
+          <ScalesSVG className={styles.feedbackIcon} aria-hidden="true" />
+          <h2>{UNSUPPORTED_NETWORK_TITLE}</h2>
+          <p>{describeUnsupportedNetwork(this.props.network)}</p>
+        </div>
+      </div>
+    </main>
+  );
+
   render() {
     const { loading, ready, loadError, notFound, arbitrated, incompatible, metaevidence } = this.state;
 
+    if (!networkMap[this.props.network]?.KLEROS_LIQUID) return this.renderUnsupportedNetwork();
     if (notFound) return this.renderNoDisputeFound();
     if (loadError) return this.renderLoadError();
     if (!this.getRouteDisputeID() && !loading && !ready) return this.renderLanding();

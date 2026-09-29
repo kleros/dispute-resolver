@@ -38,6 +38,9 @@ export const isFixtureMode = () => process.env.REACT_APP_USE_FIXTURES === "true"
 
 export const getFixtureChainId = () => process.env.REACT_APP_FIXTURE_CHAIN_ID || DEFAULT_FIXTURE_CHAIN_ID;
 
+//Whether every page has a fixture for the chain, so the app can switch to it in fixture mode.
+export const hasFixtures = chainId => [ongoingLoaders, caseLoaders, courtLoaders].every(loaders => Object.prototype.hasOwnProperty.call(loaders, chainId));
+
 export const isSignedIn = () => isFixtureMode() && process.env.REACT_APP_FIXTURE_SIGNED_IN === "true";
 
 export const getSignedInAddress = () => SIGNED_IN_ADDRESS;

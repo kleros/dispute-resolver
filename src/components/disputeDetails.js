@@ -62,11 +62,7 @@ const WRITE_FEEDBACK = Object.freeze({
 });
 
 class DisputeDetails extends React.Component {
-  componentDidUpdate(previousProperties) {
-    if (this.props.network !== previousProperties.network)
-      window.location.reload();
-  }
-
+  //A chain change is handled by the case page, which reloads the case in place; nothing here needs a page reload.
   calculateTotalCost = rulingOption => {
     // Unslashed contract violates IDisputeResolver interface by not letting option 0: refuse to rule to be funded.
     // Subsequently, in case of a ruling 0, contract considers remaining ruling options as winners, instead of losers.

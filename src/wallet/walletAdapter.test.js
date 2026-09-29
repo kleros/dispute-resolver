@@ -1,7 +1,7 @@
 import networkMap from "../ethereum/network-contract-mapping";
 import * as fixtures from "../fixtures";
 import { CONNECTION, EXAMPLES } from "./walletStatus";
-import { ERROR_CODES, buildChainStatus, buildWalletActions, buildWalletStatus, detectSmartContractWallet, isWalletDetected, toWalletError } from "./walletAdapter";
+import { ERROR_CODES, SWITCHABLE_CHAIN_IDS, buildChainStatus, buildWalletActions, buildWalletStatus, detectSmartContractWallet, isWalletDetected, toWalletError } from "./walletAdapter";
 
 const ENV_KEYS = ["REACT_APP_USE_FIXTURES", "REACT_APP_FIXTURE_SIGNED_IN"];
 let originalEnvironment;
@@ -37,6 +37,9 @@ const CHAIN_KEYS = Object.keys(MAINNET).sort();
 const ERROR_KEYS = Object.keys(EXAMPLES.ERROR.error).sort();
 const CONNECTIONS = Object.values(CONNECTION);
 const REQUEST_ACCOUNTS = { method: "eth_requestAccounts" };
+const SWITCHABLE = EXAMPLES.NO_WALLET.chains;
+const switchRequest = (chain) => ({ method: "wallet_switchEthereumChain", params: [{ chainId: `0x${BigInt(chain.id).toString(16)}` }] });
+const CHAIN_ID_REQUEST = { method: "eth_chainId" };
 
 const connected = (network, activeAddress = EOA, isSmartContractWallet = false) => ({ network, activeAddress, walletDetected: true, isSmartContractWallet });
 
@@ -51,6 +54,7 @@ const EXAMPLE_INPUTS = {
   CONNECTED_UNSUPPORTED: connected(UNSUPPORTED.id),
   CONNECTING: { network: "", activeAddress: "", walletDetected: true, initializing: true },
   ERROR: { network: "", activeAddress: "", walletDetected: true, error: new Error("provider exploded") },
+  SWITCH_FAILED: { ...connected(MAINNET.id), switchError: new Error("wallet could not switch") },
 };
 
 const userRejection = () => Object.assign(new Error("User rejected the request."), { code: 4001 });
@@ -78,6 +82,12 @@ const expectWalletStatusShape = (status) => {
   expect(status.address === null || typeof status.address === "string").toBe(true);
   expect(status.viewOnly).toBe(status.address === null);
   expect(status.isSmartContractWallet === null || typeof status.isSmartContractWallet === "boolean").toBe(true);
+  expect(Array.isArray(status.chains)).toBe(true);
+  status.chains.forEach((chain) => {
+    expectChainStatusShape(chain);
+    expect(chain.supported).toBe(true);
+  });
+  expect(status.switchError === null || (status.switchError.code === ERROR_CODES.SWITCH_FAILED && typeof status.switchError.message === "string")).toBe(true);
 
   if (status.chain === null) expect(status.connection).toBe(CONNECTION.CONNECTING);
   else expectChainStatusShape(status.chain);
@@ -289,6 +299,37 @@ describe("buildWalletStatus in fixture mode", () => {
     process.env.REACT_APP_FIXTURE_SIGNED_IN = "true";
     expect(buildWalletStatus({ network: "", activeAddress: "" })).toStrictEqual(EXAMPLES.CONNECTING);
   });
+
+  it("offers only the chains that have fixtures", () => {
+    const { chains } = buildWalletStatus({ network: GNOSIS.id, activeAddress: "" });
+    expect(chains.map((chain) => chain.id)).toEqual(SWITCHABLE_CHAIN_IDS.filter((id) => fixtures.hasFixtures(id)));
+    expect(chains).toStrictEqual(SWITCHABLE);
+  });
+});
+
+describe("buildWalletStatus chain switching", () => {
+  it("offers Mainnet and Gnosis, in that order, whatever the current chain is", () => {
+    expect(SWITCHABLE_CHAIN_IDS).toEqual([MAINNET.id, GNOSIS.id]);
+    expect(SWITCHABLE.map((chain) => chain.id)).toEqual(SWITCHABLE_CHAIN_IDS);
+    for (const input of Object.values(EXAMPLE_INPUTS)) expect(buildWalletStatus(input).chains).toStrictEqual(SWITCHABLE);
+    expect(buildWalletStatus(connected(SEPOLIA.id)).chains).toStrictEqual(SWITCHABLE);
+    expect(buildWalletStatus(connected(UNSUPPORTED.id)).chains).toStrictEqual(SWITCHABLE);
+  });
+
+  it("keeps the switch failure whether or not an account is connected, with the switch-failed code", () => {
+    const failure = { code: ERROR_CODES.SWITCH_FAILED, message: expect.any(String) };
+    expect(buildWalletStatus({ ...EXAMPLE_INPUTS.NO_WALLET, switchError: new Error("x") })).toStrictEqual({ ...EXAMPLES.NO_WALLET, switchError: failure });
+    expect(buildWalletStatus({ ...EXAMPLE_INPUTS.WALLET_NOT_CONNECTED, switchError: "x" }).switchError).toStrictEqual(failure);
+    expect(buildWalletStatus({ ...EXAMPLE_INPUTS.ERROR, switchError: "x" }).switchError).toStrictEqual(failure);
+    expect(buildWalletStatus({ ...EXAMPLE_INPUTS.CONNECTED_UNSUPPORTED, switchError: "x" }).switchError).toStrictEqual(failure);
+    expect(buildWalletStatus({ ...EXAMPLE_INPUTS.CONNECTED_GNOSIS, switchError: EXAMPLES.SWITCH_FAILED.switchError }).switchError).toStrictEqual(EXAMPLES.SWITCH_FAILED.switchError);
+  });
+
+  it("drops the switch failure while connecting and after a rejected switch", () => {
+    expect(buildWalletStatus({ ...EXAMPLE_INPUTS.CONNECTING, switchError: "x" })).toStrictEqual(EXAMPLES.CONNECTING);
+    expect(buildWalletStatus({ ...EXAMPLE_INPUTS.CONNECTED_SUPPORTED, switchError: userRejection() })).toStrictEqual(EXAMPLES.CONNECTED_SUPPORTED);
+    expect(buildWalletStatus({ ...EXAMPLE_INPUTS.CONNECTED_SUPPORTED, switchError: null })).toStrictEqual(EXAMPLES.CONNECTED_SUPPORTED);
+  });
 });
 
 describe("toWalletError", () => {
@@ -301,7 +342,7 @@ describe("toWalletError", () => {
   });
 
   it("has no code for a rejection: every code maps to a failure message", () => {
-    expect(Object.values(ERROR_CODES)).toEqual(["init-failed", "unknown"]);
+    expect(Object.values(ERROR_CODES)).toEqual(["init-failed", "switch-failed", "unknown"]);
     Object.values(ERROR_CODES).forEach((code) => expect(toWalletError("boom", code)).toStrictEqual({ code, message: expect.any(String) }));
   });
 
@@ -403,6 +444,269 @@ describe("buildWalletActions", () => {
     await expect(buildWalletActions({ ethereum: { request: jest.fn().mockRejectedValue(new Error("x")) } }).connect()).resolves.toBeUndefined();
     await buildWalletActions({ ethereum: { request: jest.fn().mockResolvedValue(undefined) }, onAccounts }).connect();
     expect(onAccounts).toHaveBeenCalledWith([]);
+  });
+});
+
+describe("buildWalletActions switchChain", () => {
+  const chainNotAdded = () => Object.assign(new Error("Unrecognized chain ID."), { code: 4902 });
+  const callbacks = () => ({ isConnected: jest.fn(() => true), onSwitchStart: jest.fn(), onReadOnlyChain: jest.fn(), onWalletChain: jest.fn(), onSwitchError: jest.fn() });
+
+  //A wallet on `chainId` that switches when asked, or throws what `switchError` says.
+  const walletOn = (chainId, { switchError = null, addError = null } = {}) => {
+    const wallet = {
+      chainId,
+      request: jest.fn(async ({ method, params }) => {
+        switch (method) {
+          case "eth_chainId":
+            return wallet.chainId;
+          case "wallet_switchEthereumChain":
+            if (switchError) throw switchError;
+            wallet.chainId = params[0].chainId;
+            return null;
+          case "wallet_addEthereumChain":
+            if (addError) throw addError;
+            switchError = null;
+            return null;
+          default:
+            throw new Error(`Unexpected request: ${method}`);
+        }
+      }),
+    };
+    return wallet;
+  };
+
+  it("asks the connected wallet to switch and leaves following the chain to the wallet's chainChanged event", async () => {
+    const ethereum = walletOn("0x64");
+    const hooks = callbacks();
+
+    await expect(buildWalletActions({ ethereum, ...hooks }).switchChain(MAINNET.id)).resolves.toBeUndefined();
+
+    expect(hooks.onSwitchStart).toHaveBeenCalledWith(MAINNET.id);
+    expect(ethereum.request.mock.calls.map(([args]) => args)).toEqual([CHAIN_ID_REQUEST, switchRequest(MAINNET)]);
+    expect(hooks.onWalletChain).not.toHaveBeenCalled();
+    expect(hooks.onReadOnlyChain).not.toHaveBeenCalled();
+    expect(hooks.onSwitchError).not.toHaveBeenCalled();
+  });
+
+  it("accepts a hex or numeric target and sends the wallet the hex id", async () => {
+    const ethereum = walletOn("0x1");
+    const hooks = callbacks();
+    await buildWalletActions({ ethereum, ...hooks }).switchChain(100);
+    await buildWalletActions({ ethereum: walletOn("0x1"), ...hooks }).switchChain("0x64");
+    expect(ethereum.request).toHaveBeenCalledWith(switchRequest(GNOSIS));
+    expect(hooks.onSwitchStart).toHaveBeenCalledTimes(2);
+    expect(hooks.onSwitchStart).toHaveBeenCalledWith(GNOSIS.id);
+  });
+
+  it("follows the wallet at once when it is already on the chain, without a switch request", async () => {
+    const ethereum = walletOn("0x1");
+    const hooks = callbacks();
+
+    await buildWalletActions({ ethereum, ...hooks }).switchChain(MAINNET.id);
+
+    expect(ethereum.request.mock.calls.map(([args]) => args)).toEqual([CHAIN_ID_REQUEST]);
+    expect(hooks.onWalletChain).toHaveBeenCalledWith(MAINNET.id);
+    expect(hooks.onSwitchError).not.toHaveBeenCalled();
+  });
+
+  it("switches the chain the app reads from, without asking the wallet, when no account is connected", async () => {
+    const ethereum = walletOn("0x64");
+    const hooks = { ...callbacks(), isConnected: jest.fn(() => false) };
+
+    await buildWalletActions({ ethereum, ...hooks }).switchChain(MAINNET.id);
+
+    expect(ethereum.request).not.toHaveBeenCalled();
+    expect(hooks.onSwitchStart).toHaveBeenCalledWith(MAINNET.id);
+    expect(hooks.onReadOnlyChain).toHaveBeenCalledWith(MAINNET.id);
+    expect(hooks.onWalletChain).not.toHaveBeenCalled();
+  });
+
+  it("switches the chain the app reads from when there is no wallet at all", async () => {
+    const hooks = callbacks();
+    await buildWalletActions({ ...hooks }).switchChain(GNOSIS.id);
+    await buildWalletActions({ ethereum: null, ...hooks }).switchChain(GNOSIS.id);
+    await buildWalletActions({ ethereum: {}, ...hooks }).switchChain(GNOSIS.id);
+    expect(hooks.onReadOnlyChain).toHaveBeenCalledTimes(3);
+    expect(hooks.onReadOnlyChain).toHaveBeenCalledWith(GNOSIS.id);
+    expect(hooks.isConnected).not.toHaveBeenCalled();
+  });
+
+  it("treats a missing isConnected as not connected", async () => {
+    const ethereum = walletOn("0x64");
+    const onReadOnlyChain = jest.fn();
+    await buildWalletActions({ ethereum, onReadOnlyChain }).switchChain(MAINNET.id);
+    expect(ethereum.request).not.toHaveBeenCalled();
+    expect(onReadOnlyChain).toHaveBeenCalledWith(MAINNET.id);
+  });
+
+  it("reports nothing when the user rejects the switch, so the app stays where it is", async () => {
+    for (const rejection of [userRejection(), ethersRejection()]) {
+      const ethereum = walletOn("0x64", { switchError: rejection });
+      const hooks = callbacks();
+
+      await expect(buildWalletActions({ ethereum, ...hooks }).switchChain(MAINNET.id)).resolves.toBeUndefined();
+
+      expect(hooks.onSwitchStart).toHaveBeenCalledWith(MAINNET.id);
+      expect(hooks.onSwitchError).not.toHaveBeenCalled();
+      expect(hooks.onWalletChain).not.toHaveBeenCalled();
+      expect(hooks.onReadOnlyChain).not.toHaveBeenCalled();
+      expect(console.error).not.toHaveBeenCalled();
+    }
+  });
+
+  it("reports any other failure as switch-failed, logs it and resolves", async () => {
+    const failure = new Error("wallet locked");
+    const ethereum = walletOn("0x64", { switchError: failure });
+    const hooks = callbacks();
+
+    await expect(buildWalletActions({ ethereum, ...hooks }).switchChain(MAINNET.id)).resolves.toBeUndefined();
+
+    expect(hooks.onSwitchError).toHaveBeenCalledWith({ code: ERROR_CODES.SWITCH_FAILED, message: expect.any(String) });
+    expect(hooks.onSwitchError.mock.calls[0][0].message).not.toContain("wallet locked");
+    expect(console.error).toHaveBeenCalledWith(expect.any(String), failure);
+    expect(hooks.onWalletChain).not.toHaveBeenCalled();
+  });
+
+  it("adds Gnosis through its public RPC when the wallet does not have it, then switches", async () => {
+    const ethereum = walletOn("0x1", { switchError: chainNotAdded() });
+    const hooks = callbacks();
+
+    await buildWalletActions({ ethereum, ...hooks }).switchChain(GNOSIS.id);
+
+    const entry = networkMap[GNOSIS.id];
+    expect(ethereum.request.mock.calls.map(([args]) => args)).toEqual([
+      CHAIN_ID_REQUEST,
+      switchRequest(GNOSIS),
+      {
+        method: "wallet_addEthereumChain",
+        params: [
+          {
+            chainId: "0x64",
+            chainName: entry.NAME,
+            rpcUrls: ["https://rpc.gnosischain.com"],
+            nativeCurrency: { name: entry.CURRENCY_SHORT, symbol: entry.CURRENCY_SHORT, decimals: 18 },
+            blockExplorerUrls: ["https://gnosisscan.io"],
+          },
+        ],
+      },
+      switchRequest(GNOSIS),
+    ]);
+    expect(hooks.onSwitchError).not.toHaveBeenCalled();
+  });
+
+  //Every URL the app itself reads through: the network map's RPC endpoints and every REACT_APP_ environment variable.
+  const projectUrls = () => {
+    const fromMap = Object.values(networkMap).map((entry) => entry.WEB3_PROVIDER);
+    const fromEnvironment = Object.entries(process.env)
+      .filter(([key]) => key.startsWith("REACT_APP_"))
+      .map(([, value]) => value);
+    return [...fromMap, ...fromEnvironment].filter((value) => typeof value === "string" && value.trim() !== "");
+  };
+
+  const addRequests = (ethereum) => ethereum.request.mock.calls.map(([args]) => args).filter(({ method }) => method === "wallet_addEthereumChain");
+
+  it("never hands a project RPC URL or environment value to wallet_addEthereumChain, for any chain", async () => {
+    //Every map entry gets a distinctive RPC so a leak would be unmistakable, whatever the environment provides.
+    const original = Object.fromEntries(Object.entries(networkMap).map(([id, entry]) => [id, entry.WEB3_PROVIDER]));
+    Object.keys(networkMap).forEach((id) => {
+      networkMap[id].WEB3_PROVIDER = `https://secret-${id}.rpc.test/key`;
+    });
+    process.env.REACT_APP_WEB3_XDAI_PROVIDER_URL = "https://secret-env.rpc.test/key";
+    try {
+      const urls = projectUrls();
+      expect(urls.length).toBeGreaterThan(0);
+      const adds = [];
+      for (const id of Object.keys(networkMap)) {
+        const ethereum = walletOn("0x2a", { switchError: chainNotAdded() });
+        await buildWalletActions({ ethereum, ...callbacks() }).switchChain(id);
+        adds.push(...addRequests(ethereum));
+      }
+      expect(adds).toHaveLength(1);
+      expect(adds[0].params[0].chainId).toBe("0x64");
+      const sent = JSON.stringify(adds);
+      urls.forEach((url) => expect(sent).not.toContain(url));
+      expect(sent).not.toContain("rpc.test");
+    } finally {
+      Object.entries(original).forEach(([id, url]) => {
+        networkMap[id].WEB3_PROVIDER = url;
+      });
+      delete process.env.REACT_APP_WEB3_XDAI_PROVIDER_URL;
+    }
+  });
+
+  it("never adds Mainnet: a chain-not-added answer for it is reported as a failure", async () => {
+    const ethereum = walletOn("0x64", { switchError: chainNotAdded() });
+    const hooks = callbacks();
+
+    await buildWalletActions({ ethereum, ...hooks }).switchChain(MAINNET.id);
+
+    expect(addRequests(ethereum)).toHaveLength(0);
+    expect(ethereum.request.mock.calls.map(([args]) => args)).toEqual([CHAIN_ID_REQUEST, switchRequest(MAINNET)]);
+    expect(hooks.onSwitchError).toHaveBeenCalledWith({ code: ERROR_CODES.SWITCH_FAILED, message: expect.any(String) });
+    expect(hooks.onWalletChain).not.toHaveBeenCalled();
+  });
+
+  it("recognises the chain-not-added code wherever ethers puts it", async () => {
+    const wrapped = Object.assign(new Error("could not coalesce error"), { code: "UNKNOWN_ERROR", info: { error: chainNotAdded() } });
+    const ethereum = walletOn("0x1", { switchError: wrapped });
+    const hooks = callbacks();
+    await buildWalletActions({ ethereum, ...hooks }).switchChain(GNOSIS.id);
+    expect(ethereum.request).toHaveBeenCalledWith(expect.objectContaining({ method: "wallet_addEthereumChain" }));
+    expect(hooks.onSwitchError).not.toHaveBeenCalled();
+  });
+
+  it("stays silent when the user declines to add the chain, and reports a failed addition", async () => {
+    const declined = walletOn("0x1", { switchError: chainNotAdded(), addError: userRejection() });
+    const declinedHooks = callbacks();
+    await buildWalletActions({ ethereum: declined, ...declinedHooks }).switchChain(GNOSIS.id);
+    expect(declinedHooks.onSwitchError).not.toHaveBeenCalled();
+    expect(declined.request).toHaveBeenCalledTimes(3);
+
+    const broken = walletOn("0x1", { switchError: chainNotAdded(), addError: new Error("add failed") });
+    const brokenHooks = callbacks();
+    await buildWalletActions({ ethereum: broken, ...brokenHooks }).switchChain(GNOSIS.id);
+    expect(brokenHooks.onSwitchError).toHaveBeenCalledWith({ code: ERROR_CODES.SWITCH_FAILED, message: expect.any(String) });
+  });
+
+  it("adds Gnosis whether or not the network map has an RPC endpoint for it", async () => {
+    const entry = networkMap[GNOSIS.id];
+    const rpc = entry.WEB3_PROVIDER;
+    entry.WEB3_PROVIDER = undefined;
+    try {
+      const ethereum = walletOn("0x1", { switchError: chainNotAdded() });
+      const hooks = callbacks();
+      await buildWalletActions({ ethereum, ...hooks }).switchChain(GNOSIS.id);
+      expect(addRequests(ethereum)).toHaveLength(1);
+      expect(addRequests(ethereum)[0].params[0].rpcUrls).toEqual(["https://rpc.gnosischain.com"]);
+      expect(hooks.onSwitchError).not.toHaveBeenCalled();
+    } finally {
+      entry.WEB3_PROVIDER = rpc;
+    }
+  });
+
+  it("reports a failure when the wallet cannot even say which chain it is on", async () => {
+    const ethereum = { request: jest.fn().mockRejectedValue(new Error("disconnected")) };
+    const hooks = callbacks();
+    await buildWalletActions({ ethereum, ...hooks }).switchChain(MAINNET.id);
+    expect(hooks.onSwitchError).toHaveBeenCalledWith({ code: ERROR_CODES.SWITCH_FAILED, message: expect.any(String) });
+  });
+
+  it("ignores a chain that is not in the network map, or no chain, without touching the wallet", async () => {
+    const ethereum = walletOn("0x64");
+    const hooks = callbacks();
+    const { switchChain } = buildWalletActions({ ethereum, ...hooks });
+    for (const target of [UNSUPPORTED.id, "nonsense", "", null, undefined, "constructor"]) await expect(switchChain(target)).resolves.toBeUndefined();
+    expect(ethereum.request).not.toHaveBeenCalled();
+    expect(hooks.onSwitchStart).not.toHaveBeenCalled();
+    expect(hooks.onReadOnlyChain).not.toHaveBeenCalled();
+    expect(hooks.onSwitchError).not.toHaveBeenCalled();
+  });
+
+  it("tolerates missing callbacks", async () => {
+    await expect(buildWalletActions({ ethereum: walletOn("0x64"), isConnected: () => true }).switchChain(MAINNET.id)).resolves.toBeUndefined();
+    await expect(buildWalletActions({ ethereum: walletOn("0x1"), isConnected: () => true }).switchChain(MAINNET.id)).resolves.toBeUndefined();
+    await expect(buildWalletActions({ ethereum: walletOn("0x64", { switchError: new Error("x") }), isConnected: () => true }).switchChain(MAINNET.id)).resolves.toBeUndefined();
+    await expect(buildWalletActions().switchChain(MAINNET.id)).resolves.toBeUndefined();
   });
 });
 

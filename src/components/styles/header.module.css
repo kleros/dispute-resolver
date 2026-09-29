@@ -77,9 +77,8 @@
 }
 
 .unsupported {
-  border-color: var(--orange);
-  background: var(--orange);
-  color: var(--purple-dark);
+  border-color: white;
+  color: white;
   font-weight: var(--bold);
 }
 
@@ -112,6 +111,85 @@
 .connect:disabled {
   opacity: 0.7;
   cursor: wait;
+}
+
+/* Chain switcher: the chain pill as a dropdown toggle, with a menu in the page's card style */
+
+.switcher {
+  position: relative;
+  display: inline-flex;
+}
+
+.switcher .chainToggle:global(.btn) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-8);
+  min-height: 36px;
+  padding: 6px var(--spacing-16);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--border-radius-l);
+  background: transparent;
+  color: white;
+  font-size: var(--font-size-s);
+  font-weight: var(--thin);
+  line-height: 1.4;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.switcher .chainToggle:global(.btn):hover,
+.switcher .chainToggle:global(.btn):focus,
+.switcher .chainToggle:global(.btn):active,
+.switcher:global(.show) .chainToggle:global(.btn) {
+  border-color: white;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  box-shadow: none;
+}
+
+.switcher .chainToggle:global(.btn):disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.switcher .chainToggle:global(.btn)::after {
+  margin-left: 0;
+}
+
+.switcher .chainToggle.unsupported:global(.btn),
+.switcher:global(.show) .chainToggle.unsupported:global(.btn) {
+  border-color: white;
+  color: white;
+  font-weight: var(--bold);
+}
+
+.chainMenu:global(.dropdown-menu) {
+  min-width: 200px;
+  margin-top: var(--spacing-4);
+  padding: var(--spacing-8);
+  border: 1px solid var(--stroke);
+  border-radius: var(--spacing-8);
+  box-shadow: var(--box-shadow);
+}
+
+.chainMenu :global(.dropdown-item) {
+  padding: 10px 12px;
+  border-radius: var(--spacing-4);
+  color: var(--purple-dark);
+  font-size: var(--font-size-s);
+}
+
+.chainMenu :global(.dropdown-item.active),
+.chainMenu :global(.dropdown-item):hover,
+.chainMenu :global(.dropdown-item):focus {
+  background: var(--purple-light);
+  color: var(--purple-primary);
+  font-weight: var(--bold);
+}
+
+.chainMenu :global(.dropdown-item):focus-visible {
+  outline: 3px solid var(--purple-primary);
+  outline-offset: -3px;
 }
 
 /* Notices under the navigation: the view-only banner and the smart contract wallet warning */
@@ -208,6 +286,13 @@
 }
 
 /* Responsive */
+
+@media (min-width: 992px) {
+  .chainMenu:global(.dropdown-menu) {
+    right: 0;
+    left: auto;
+  }
+}
 
 @media (max-width: 991px) {
   .nav {

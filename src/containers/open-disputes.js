@@ -5,6 +5,7 @@ import { ReactComponent as SearchIcon } from "assets/images/magnifier.svg";
 import { ReactComponent as ScalesSVG } from "assets/images/scales.svg";
 import debounce from "lodash.debounce";
 import networkMap from "../ethereum/network-contract-mapping";
+import { UNSUPPORTED_NETWORK_TITLE, describeUnsupportedNetwork } from "../components/unsupportedNetwork";
 
 import styles from "containers/styles/open-disputes.module.css";
 
@@ -156,7 +157,7 @@ class OpenDisputes extends React.Component {
     if (!networkMap[network]?.KLEROS_LIQUID) {
       return (
         <main className={styles.openDisputes}>
-          {this.renderMessage("Unsupported network")}
+          {this.renderMessage(UNSUPPORTED_NETWORK_TITLE, describeUnsupportedNetwork(network))}
         </main>
       );
     }

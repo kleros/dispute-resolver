@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import CreateForm from "components/createForm";
 import CreateSummary from "components/createSummary";
 import networkMap from "../ethereum/network-contract-mapping";
+import { UNSUPPORTED_NETWORK_TITLE, describeUnsupportedNetwork } from "../components/unsupportedNetwork";
 import { ReactComponent as ScalesSVG } from "../assets/images/scales.svg";
 
 import styles from "containers/styles/create.module.css";
@@ -19,11 +20,14 @@ const stepState = (step, activePage) => {
 class Create extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { activePage: 1, formData: undefined };
+    this.state = { activePage: 1, formData: undefined, network: props.network };
   }
 
-  componentDidUpdate(prevProps) {
-    if (prevProps.network !== this.props.network) this.setState({ activePage: 1, formData: undefined });
+  //A chain change starts over: the draft is dropped in the same render that mounts the new form (keyed by the chain), so
+  //the form never opens with the previous chain's draft, even when the draft had been carried to the review step and back.
+  static getDerivedStateFromProps(props, state) {
+    if (props.network === state.network) return null;
+    return { network: props.network, activePage: 1, formData: undefined };
   }
 
   componentWillUnmount() {
@@ -70,23 +74,18 @@ class Create extends React.Component {
     );
   };
 
-  renderNoArbitrable = () => (
+  //A chain without the arbitrable proxy cannot create disputes: the same notice as the other pages, pointing to the switcher.
+  renderUnsupported = () => (
     <div className={styles.feedback}>
       <ScalesSVG className={styles.feedbackIcon} aria-hidden="true" />
-      <h2>There is no arbitrable contract deployed on this network, so a dispute cannot be created here.</h2>
-      <p>
-        Request it on the{" "}
-        <a href="https://github.com/kleros/dispute-resolver/issues" target="_blank" rel="noopener noreferrer">
-          GitHub issues
-        </a>{" "}
-        of Dispute Resolver.
-      </p>
+      <h2>{UNSUPPORTED_NETWORK_TITLE}</h2>
+      <p>{describeUnsupportedNetwork(this.props.network)}</p>
     </div>
   );
 
   render() {
     const { activePage, formData } = this.state;
-    const { subcourtDetails, subcourtsLoading, getArbitrationCostCallback, publishCallback, createDisputeCallback, network, isAuthenticated, isSigningIn, onSignIn } = this.props;
+    const { subcourtDetails, subcourtsLoading, reloadSubcourtsCallback, getArbitrationCostCallback, publishCallback, createDisputeCallback, network, isAuthenticated, isSigningIn, onSignIn } = this.props;
     const canCreate = Boolean(networkMap[network]?.ARBITRABLE_PROXY);
 
     return (
@@ -100,7 +99,7 @@ class Create extends React.Component {
                 : "Check what will be submitted. Creating the dispute publishes these details to IPFS and pays the arbitration cost to the court."}
             </p>
           </div>
-          {!canCreate && this.renderNoArbitrable()}
+          {!canCreate && this.renderUnsupported()}
           {canCreate && this.renderSteps()}
           {canCreate && activePage === 1 && (
             <CreateForm
@@ -109,6 +108,7 @@ class Create extends React.Component {
               publishCallback={publishCallback}
               subcourtDetails={subcourtDetails}
               subcourtsLoading={subcourtsLoading}
+              onRetryCourts={reloadSubcourtsCallback}
               onNextButtonClickCallback={this.onNextButtonClick}
               formData={formData}
               network={network}
@@ -144,6 +144,7 @@ Create.propTypes = {
   publishCallback: PropTypes.func,
   createDisputeCallback: PropTypes.func,
   network: PropTypes.string,
+  reloadSubcourtsCallback: PropTypes.func,
   isAuthenticated: PropTypes.bool.isRequired,
   isSigningIn: PropTypes.bool.isRequired,
   onSignIn: PropTypes.func.isRequired,

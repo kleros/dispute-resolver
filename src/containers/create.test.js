@@ -167,9 +167,9 @@ const dropFile = file =>
     Simulate.change(container.querySelector('input[type="file"]'), { target: { files: [file] } });
   });
 
-const fillForm = async () => {
-  await selectItem("subcourt-dropdown", FILLED.court);
-  await setValue("initialNumberOfJurors", FILLED.votes);
+const fillForm = async ({ court = FILLED.court, votes = FILLED.votes, cost = "28.8 xDai" } = {}) => {
+  await selectItem("subcourt-dropdown", court);
+  await setValue("initialNumberOfJurors", votes);
   await setValue("category", FILLED.category);
   await setValue("title", FILLED.title);
   await setValue("description", FILLED.description);
@@ -180,7 +180,7 @@ const fillForm = async () => {
   }
   await setValue("name0", FILLED.alias);
   await setValue("address0", FILLED.address);
-  await waitFor(() => costValue() === "28.8 xDai");
+  await waitFor(() => costValue() === cost);
 };
 
 const goToReview = async () => {
@@ -270,6 +270,16 @@ describe("Create form in fixture mode", () => {
     await waitFor(isSettled);
     expect(element("subcourt-dropdown").textContent).toContain("xDai General Court");
     expect(costValue()).toBe("36.0 xDai");
+  });
+
+  it("offers to load the courts again when the app can, instead of asking for a page reload", async () => {
+    const reloadSubcourtsCallback = jest.fn();
+    await renderCreate({ subcourtDetails: [], overrides: { reloadSubcourtsCallback } });
+
+    expect(costAlert().textContent).toContain("The courts could not be loaded, so the cost is unknown.");
+    expect(costAlert().textContent).not.toContain("Reload the page");
+    await click(buttons("Try again")[0]);
+    expect(reloadSubcourtsCallback).toHaveBeenCalledTimes(1);
   });
 
   it("says that the courts could not be loaded when there are none", async () => {
@@ -384,6 +394,52 @@ describe("Create form in fixture mode", () => {
     expect(costValue()).toBe("28.8 xDai");
   });
 
+  //The form is keyed by the chain, so a chain change mounts a new one. It must start empty even when the draft was already
+  //carried to the review step and back, which is when the parent still holds it at the moment the new form mounts.
+  it("drops the draft on a chain change, also after going to the review step and back", async () => {
+    const { rerender } = await renderCreate();
+    await fillForm();
+    await goToReview();
+    await click(buttons("Back")[0]);
+    await waitFor(isSettled);
+    expect(element("title").value).toBe(FILLED.title);
+
+    const mainnetCourts = (await fixtures.getSubcourtData("1")).subcourtDetails;
+    await rerender({ network: "1", subcourtDetails: mainnetCourts, getArbitrationCostCallback: (subcourtID, noOfJurors) => fixtures.getArbitrationCost("1", subcourtID, noOfJurors) });
+    await waitFor(isSettled);
+
+    expect(currentStep()).toBe("1Details");
+    expect(element("subcourt-dropdown").textContent).toContain("General Court");
+    expect(element("initialNumberOfJurors").value).toBe("3");
+    expect(element("category").value).toBe("");
+    expect(element("title").value).toBe("");
+    expect(element("description").value).toBe("");
+    expect(element("question").value).toBe("");
+    expect(element("rulingOption0Title").value).toBe("");
+    expect(element("rulingOption1Title").value).toBe("");
+    expect(element("name0").value).toBe("");
+    expect(element("address0").value).toBe("");
+    expect(costValue()).toBe("0.0162 ETH");
+  });
+
+  it("drops a draft typed on the details step on a chain change, and returns to the details step from the review step", async () => {
+    const { rerender } = await renderCreate();
+    await setValue("title", FILLED.title);
+    const mainnetCourts = (await fixtures.getSubcourtData("1")).subcourtDetails;
+    await rerender({ network: "1", subcourtDetails: mainnetCourts, getArbitrationCostCallback: (subcourtID, noOfJurors) => fixtures.getArbitrationCost("1", subcourtID, noOfJurors) });
+    await waitFor(isSettled);
+    expect(element("title").value).toBe("");
+
+    await fillForm({ court: "General Court", votes: "3", cost: "0.0162 ETH" });
+    await goToReview();
+    expect(currentStep()).toBe("2Review");
+    await rerender({ network: GNOSIS, subcourtDetails: (await fixtures.getSubcourtData(GNOSIS)).subcourtDetails, getArbitrationCostCallback: fixtureCallbacks(GNOSIS).getArbitrationCostCallback });
+    await waitFor(isSettled);
+    expect(currentStep()).toBe("1Details");
+    expect(element("title").value).toBe("");
+    expect(element("subcourt-dropdown").textContent).toContain("xDai General Court");
+  });
+
   it("describes the rulings of multiple-select, number and date questions in the review step", async () => {
     await renderCreate();
     await fillForm();
@@ -413,12 +469,14 @@ describe("Create form in fixture mode", () => {
     expect(buttons("Sign in")).toHaveLength(1);
   });
 
-  it("explains when the network has no arbitrable contract instead of showing the form", async () => {
-    await renderCreate({ chainId: "130", subcourtDetails: [] });
+  it("says the network is unsupported, pointing to the header switcher, instead of showing the form on a chain without the arbitrable proxy", async () => {
+    await renderCreate({ chainId: "137", subcourtDetails: [] });
 
-    expect(text()).toContain("There is no arbitrable contract deployed on this network, so a dispute cannot be created here.");
+    expect(container.querySelector("h2").textContent).toBe("Unsupported network");
+    expect(text()).toContain("Polygon Mainnet is not supported. Choose a supported network from the switcher in the header.");
+    expect(text()).not.toContain("arbitrable contract");
     expect(container.querySelector("form")).toBeNull();
-    expect(container.querySelector('a[href="https://github.com/kleros/dispute-resolver/issues"]')).not.toBeNull();
+    expect(container.querySelector("main a, main button")).toBeNull();
   });
 });
 

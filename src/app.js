@@ -26,6 +26,10 @@ const DEFAULT_CHAIN_ID = "1";
 const MAX_BLOCK_LOOKBACK = 1_000_000;
 const SEARCH_WINDOW_SIZE = 10_000;
 const DISPUTE_PERIOD_EXECUTION = 4;
+//The meta-evidence service is asked a bounded number of times, a short pause apart, so a failing request ends in the
+//"unavailable" state of the page instead of keeping it loading; a chain change stops the attempts at once.
+const METAEVIDENCE_ATTEMPTS = 3;
+const METAEVIDENCE_RETRY_DELAY_MS = 2000;
 
 const EXCEPTIONAL_CONTRACT_ADDRESSES = ['0xe0e1bc8C6cd1B81993e2Fcfb80832d814886eA38', '0xb9f9B5eee2ad29098b9b3Ea0B401571F5dA4AD81']
 const CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS = 3 * 60 * 60 * 1000
@@ -50,6 +54,21 @@ const safeJSONStringify = obj => {
     return value;
   });
 };
+
+const isZeroAddress = address => typeof address === "string" && /^0x0{40}$/i.test(address);
+
+//Resolves after the delay, or as soon as the signal aborts.
+const wait = (ms, signal) =>
+  new Promise(resolve => {
+    if (signal?.aborted) return resolve();
+    const timer = setTimeout(done, ms);
+    function done() {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", done);
+      resolve();
+    }
+    signal?.addEventListener("abort", done);
+  });
 
 const safeLocalStorageGet = key => {
   try {
@@ -77,12 +96,40 @@ class App extends React.Component {
       //What the wallet adapter needs besides activeAddress and network; see src/wallet/walletAdapter.js.
       walletInitializing: true,
       walletError: null,
-      isSmartContractWallet: null
+      isSmartContractWallet: null,
+      chainSwitchError: null
     };
     this.smartContractWalletCheck = 0;
-    //Built once: connect asks the wallet for an account and reports the outcome through the state.
-    this.walletActions = buildWalletActions({ onAccounts: this.handleAccountsChanged, onError: walletError => this.setState({ walletError }) });
+    //The chain change in flight, so the wallet's chainChanged event and the switch action cannot start it twice.
+    this.networkChangeTarget = null;
+    //One AbortController per chain, keyed by chain id. Work started for a chain takes that chain's signal when it starts;
+    //leaving the chain aborts it, so nothing started for it carries on or retries, whenever it happens to run.
+    this.chainRequests = new Map();
+    //Built once: connect asks the wallet for an account, switchChain moves the app to a chain, and both report through the state.
+    this.walletActions = buildWalletActions({
+      onAccounts: this.handleAccountsChanged,
+      onError: walletError => this.setState({ walletError }),
+      isConnected: () => Boolean(this.state.activeAddress),
+      onSwitchStart: () => this.setState({ chainSwitchError: null }),
+      onSwitchError: chainSwitchError => this.setState({ chainSwitchError }),
+      onReadOnlyChain: chainId => this.handleNetworkChange(chainId, { readOnly: true }),
+      onWalletChain: chainId => this.handleNetworkChange(chainId)
+    });
   }
+
+  //The signal of the work done for a chain. A chain that was left keeps its aborted controller until it is entered again,
+  //so a read of the previous chain that starts late is cancelled at once instead of getting a fresh signal.
+  getChainSignal = chainId => {
+    if (!this.chainRequests.has(chainId)) this.chainRequests.set(chainId, new AbortController());
+    return this.chainRequests.get(chainId).signal;
+  };
+
+  //Leaving a chain always leaves an aborted controller behind, even when nothing had asked for its signal yet.
+  abortChainRequests = chainId => {
+    const controller = this.chainRequests.get(chainId) ?? new AbortController();
+    controller.abort();
+    this.chainRequests.set(chainId, controller);
+  };
 
   //Testnets have lower limits due to RPC restrictions
   getMaxLookback = () => networkMap[this.state.network]?.MAX_LOOKBACK || MAX_BLOCK_LOOKBACK;
@@ -119,41 +166,57 @@ class App extends React.Component {
   }
 
   componentWillUnmount() {
+    //Nothing started for any chain may carry on once the app is gone.
+    this.chainRequests.forEach(controller => controller.abort());
     if (window.ethereum) {
       window.ethereum.removeAllListeners('accountsChanged');
       window.ethereum.removeAllListeners('chainChanged');
     }
   }
 
-  handleNetworkChange = async newChainId => {
+  //Moves the app to a chain: the one the wallet reports (chainChanged, or the switch action finding the wallet already
+  //there), or, read-only, the one chosen without a connected wallet. The same chain arriving twice is a no-op.
+  handleNetworkChange = async (newChainId, { readOnly = false } = {}) => {
+    if (this.state.network === newChainId || this.networkChangeTarget === newChainId) return;
+    this.networkChangeTarget = newChainId;
+    //The chain being left is aborted, and the chain being entered starts afresh. Work for the old chain that begins in the
+    //window before state.network changes still asks for the old chain's signal, which is already aborted.
+    this.abortChainRequests(this.state.network);
+    this.chainRequests.set(newChainId, new AbortController());
+
     this.setState({
       subcourts: [],
       subcourtDetails: [],
       subcourtsLoading: true,
-      lastDisputeID: ""
+      lastDisputeID: "",
+      chainSwitchError: null
     });
-
-    if (this.state.network === newChainId) return;
+    //The route follows first, so the page stays on the same path and the header links point at the new chain.
+    this.syncUrlWithChain(newChainId);
 
     //The chain and its read provider change in one update (setProviders): a page that fetches on the chain change must
     //never read the new chain through the previous chain's provider, which would leave it with an empty list.
     try {
-      await this.initiateWeb3Provider(newChainId);
+      if (fixtures.isFixtureMode()) await new Promise(resolve => this.setState({ network: newChainId }, resolve));
+      else if (readOnly) await new Promise(resolve => this.setProviders(newChainId, null, null, resolve));
+      else await this.initiateWeb3Provider(newChainId);
     } catch (error) {
       //The wallet moved to the new chain but its provider could not be rebuilt: stay browsable, read-only, on that chain.
       const walletError = toWalletError(error, ERROR_CODES.INIT_FAILED);
       if (walletError) console.error("Failed to initialise the provider for the new chain:", error);
       this.setState({ walletError });
       this.setProviders(newChainId);
+    } finally {
+      this.networkChangeTarget = null;
     }
     this.checkSmartContractWallet(this.state.activeAddress);
     if (networkMap[newChainId]?.KLEROS_LIQUID) {
       this.loadSubcourtData();
     }
-
-    this.syncUrlWithChain(newChainId);
   };
 
+  //Rewrites the chain segment of the current path. Through the router when one is mounted, so the pages and the header
+  //see the new chain in their route; through the history API before the first render.
   syncUrlWithChain = chainId => {
     const currentPath = window.location.pathname;
     const pathParts = currentPath.split('/');
@@ -166,7 +229,8 @@ class App extends React.Component {
     }
 
     const newPath = pathParts.join('/');
-    window.history.replaceState(null, '', newPath);
+    if (this.routerHistory) this.routerHistory.replace(newPath);
+    else window.history.replaceState(null, '', newPath);
   };
 
   //The wallet is used for signing only. Reads go through the RPC endpoint configured.
@@ -185,18 +249,21 @@ class App extends React.Component {
   };
 
   //Sets the chain and its read provider. Without a wallet provider the app browses that chain read-only.
-  setProviders = (network, walletProvider = null, signer = null) => {
+  setProviders = (network, walletProvider = null, signer = null, onSet = undefined) => {
     const readOnlyRpcUrl = networkMap[network]?.WEB3_PROVIDER;
     //Fallback to the wallet provider on networks without a configured RPC
     const provider = readOnlyRpcUrl ? new ethers.JsonRpcProvider(readOnlyRpcUrl) : walletProvider ?? ethers.getDefaultProvider();
 
-    this.setState({
-      network,
-      provider,
-      walletProvider,
-      signer,
-      archon: new Archon(readOnlyRpcUrl ?? window.ethereum ?? provider, IPFS_GATEWAY)
-    });
+    this.setState(
+      {
+        network,
+        provider,
+        walletProvider,
+        signer,
+        archon: new Archon(readOnlyRpcUrl ?? window.ethereum ?? provider, IPFS_GATEWAY)
+      },
+      onSet
+    );
   };
 
   //Resolves the wallet, the signer and the chain, once at a time: the connect action and the wallet's own accountsChanged
@@ -264,7 +331,8 @@ class App extends React.Component {
       walletDetected: isWalletDetected(),
       initializing: this.state.walletInitializing,
       error: this.state.walletError,
-      isSmartContractWallet: this.state.isSmartContractWallet
+      isSmartContractWallet: this.state.isSmartContractWallet,
+      switchError: this.state.chainSwitchError
     });
 
   //Fixture mode: the chain comes from the environment and neither the wallet nor an RPC is used.
@@ -305,10 +373,12 @@ class App extends React.Component {
       new Date().getTime() < CACHE_INVALIDATION_PERIOD_FOR_SUBCOURTS_MS + parseInt(lastModified, 10);
   };
 
+  //Ends in one of two states whatever happens: the courts, or an empty list that the Create page reports with a retry.
   loadSubcourtData = async () => {
     const { network } = this.state;
 
     console.debug(`Loading subcourts for network: ${network}`);
+    this.setState({ subcourtsLoading: true });
 
     if (fixtures.isFixtureMode()) {
       try {
@@ -353,26 +423,41 @@ class App extends React.Component {
       }
     }
 
+    //Court 0 exists on every chain with a court: none found means the chain could not be read.
+    if (counter === 0) {
+      console.error(`No subcourt could be read on network ${network}.`);
+      this.setState({ subcourts: [], subcourtDetails: [], subcourtsLoading: false });
+      return;
+    }
+
     for (let i = 0; i < counter; i++) {
       subcourtURIs[i] = this.getSubCourtDetails(i);
       subcourts[i] = this.getSubcourt(i);
     }
 
-    this.setState({
-      subcourtDetails: await Promise.all(subcourtURIs.map(promise => promise.then(subcourtURI => {
-        console.debug({ subcourtURI })
-        if (subcourtURI.length > 0) {
-          if (subcourtURI.includes("http")) {
-            return fetch(subcourtURI)
+    try {
+      //A policy that cannot be fetched leaves its court without a name; it does not fail the whole list.
+      const subcourtDetails = await Promise.all(
+        subcourtURIs.map(promise =>
+          promise.then(subcourtURI => {
+            console.debug({ subcourtURI });
+            if (typeof subcourtURI !== "string" || subcourtURI.length === 0) return null;
+            const policyUrl = subcourtURI.includes("http") ? subcourtURI : IPFS_GATEWAY + subcourtURI;
+            return fetch(policyUrl)
               .then(response => response.json())
-              .catch(error => console.error(error));
-          } else {
-            return fetch(IPFS_GATEWAY + subcourtURI).then(response => response.json());
-          }
-        }
-        return null;
-      }))), subcourtsLoading: false, subcourts: await Promise.all(subcourts),
-    });
+              .catch(error => {
+                console.error(`Failed to fetch the policy ${policyUrl}:`, error);
+                return null;
+              });
+          })
+        )
+      );
+      this.setState({ subcourtDetails, subcourtsLoading: false, subcourts: await Promise.all(subcourts) });
+    } catch (error) {
+      console.error(`Failed to load the subcourts of network ${network}:`, error);
+      this.setState({ subcourts: [], subcourtDetails: [], subcourtsLoading: false });
+      return;
+    }
 
     // Cache the data
     localStorage.setItem(`${network}Subcourts`, safeJSONStringify(this.state.subcourts));
@@ -626,7 +711,10 @@ class App extends React.Component {
     );
 
     try {
-      return await contract.disputes(arbitratorDisputeID);
+      const dispute = await contract.disputes(arbitratorDisputeID);
+      //Some RPCs answer an out-of-range ID with an all-zero struct instead of reverting. A dispute is always created by an
+      //arbitrable, so a zero arbitrable address means there is no such dispute on this chain.
+      return isZeroAddress(dispute?.arbitrated) ? null : dispute;
     } catch (error) {
       //A reverted call means the dispute does not exist on this arbitrator. Any other error is a failed read
       //and is rethrown so the page can tell "not found" from "could not load".
@@ -751,7 +839,7 @@ class App extends React.Component {
     );
   }
 
-  processDynamicScript = async (metaEvidenceJSON, chainID, disputeId, arbitrated, arbitrator) => {
+  processDynamicScript = async (metaEvidenceJSON, chainID, disputeId, arbitrated, arbitrator, signal = undefined) => {
     const scriptURI =
       chainID === "1" && disputeId === "1621"
         ? urlNormalize("/ipfs/Qmf1k727vP7qZv21MDB8vwL6tfVEKPCUQAiw8CTfHStkjf")
@@ -759,7 +847,7 @@ class App extends React.Component {
 
     console.info("🧾 [getMetaEvidence] Fetching dynamic script file at", scriptURI);
 
-    const fileResponse = await fetch(scriptURI);
+    const fileResponse = await fetch(scriptURI, { signal });
     if (!fileResponse.ok) {
       console.error(`💥 [getMetaEvidence] Unable to fetch dynamic script file at ${scriptURI}.`);
       return null;
@@ -787,7 +875,7 @@ class App extends React.Component {
       console.warn(`Could not obtain a valid 'arbitrableJsonRpcUrl' for chain ID ${injectedParameters.arbitrableChainID}`);
     }
 
-    return fetchDataFromScript(scriptData, injectedParameters);
+    return fetchDataFromScript(scriptData, injectedParameters, { signal });
   };
 
   getMetaEvidence = async (arbitrated, disputeId) => {
@@ -800,9 +888,8 @@ class App extends React.Component {
     }
 
     const arbitrator = networkMap[this.state.network].KLEROS_LIQUID;
-    const startTime = Date.now();
-    const maxTime = 120000;
-    const waitTime = 5000;
+    //Every request below belongs to the chain this read started on: leaving that chain aborts them and ends the attempts.
+    const signal = this.getChainSignal(chainID);
 
     const invalidMetaEvidence = {
       description:
@@ -811,11 +898,11 @@ class App extends React.Component {
       rulingOptions: { type: "single-select", titles: [] },
     };
 
-    while (Date.now() - startTime < maxTime) {
+    for (let attempt = 1; attempt <= METAEVIDENCE_ATTEMPTS && !signal.aborted; attempt++) {
       try {
-        const metaEvidenceUriData = await fetch(
-          `${process.env.REACT_APP_METAEVIDENCE_URL}?chainId=${chainID}&disputeId=${disputeId}`
-        ).then(response => response.json());
+        const metaEvidenceUriData = await fetch(`${process.env.REACT_APP_METAEVIDENCE_URL}?chainId=${chainID}&disputeId=${disputeId}`, { signal }).then(response =>
+          response.json()
+        );
 
         const uri = metaEvidenceUriData.metaEvidenceUri;
         if (!uri) {
@@ -828,7 +915,7 @@ class App extends React.Component {
           return { metaEvidenceJSON: invalidMetaEvidence, invalid: true };
         }
 
-        let metaEvidenceJSON = await fetch(urlNormalize(uri)).then(response => response.json());
+        let metaEvidenceJSON = await fetch(urlNormalize(uri), { signal }).then(response => response.json());
 
         const updateDict = {
           evidenceDisplayInterfaceURL: "evidenceDisplayInterfaceURI",
@@ -851,14 +938,16 @@ class App extends React.Component {
             console.error(`💥 [getMetaEvidence] Rejecting non-content-addressed dynamicScriptURI for disputeId ${disputeId} on chainID ${chainID}: ${metaEvidenceJSON.dynamicScriptURI}`);
             return { metaEvidenceJSON: invalidMetaEvidence, invalid: true };
           }
-          const metaEvidenceEdits = await this.processDynamicScript(metaEvidenceJSON, chainID, disputeId, arbitrated, arbitrator);
+          const metaEvidenceEdits = await this.processDynamicScript(metaEvidenceJSON, chainID, disputeId, arbitrated, arbitrator, signal);
           metaEvidenceJSON = { ...metaEvidenceJSON, ...metaEvidenceEdits };
         }
 
         return { metaEvidenceJSON };
       } catch (err) {
-        await new Promise((r) => setTimeout(() => r(), waitTime));
-        console.warn(`💥 [getMetaEvidence] Failed to get the evidence:`, err);
+        //The chain changed meanwhile: this answer is for a chain the page has left, so there is nothing to retry.
+        if (signal.aborted) return null;
+        console.warn(`💥 [getMetaEvidence] Failed to get the evidence (attempt ${attempt} of ${METAEVIDENCE_ATTEMPTS}):`, err);
+        if (attempt < METAEVIDENCE_ATTEMPTS) await wait(METAEVIDENCE_RETRY_DELAY_MS, signal);
       }
     }
 
@@ -1375,12 +1464,18 @@ class App extends React.Component {
   renderUnsupportedNetwork = route => (
     <>
       {this.renderHeader(route)}
-      <UnsupportedNetwork network={this.state.network} networkMap={networkMap} />
+      <UnsupportedNetwork network={this.state.network} />
       {this.renderFooter()}
     </>
   );
 
   renderRedirect = () => <Redirect to={`${this.state.network}/ongoing`} />;
+
+  //Every branch of render mounts its routes through this, so the router's history is the one syncUrlWithChain rewrites.
+  withRouterHistory = render => route => {
+    this.routerHistory = route.history;
+    return render(route);
+  };
 
   renderOpenDisputes = route => (
     <>
@@ -1436,6 +1531,7 @@ class App extends React.Component {
           web3Provider={this.state.provider}
           subcourtDetails={this.state.subcourtDetails}
           subcourtsLoading={this.state.subcourtsLoading}
+          reloadSubcourtsCallback={this.loadSubcourtData}
           network={this.state.network}
           isAuthenticated={isAuthenticated}
           isSigningIn={this.state.isSigningIn}
@@ -1514,7 +1610,7 @@ class App extends React.Component {
       if (!networkMap[this.state.network]) {
         return (
           <BrowserRouter>
-            <Route render={this.renderUnsupportedNetwork} />
+            <Route render={this.withRouterHistory(this.renderUnsupportedNetwork)} />
           </BrowserRouter>
         );
       }
@@ -1526,20 +1622,24 @@ class App extends React.Component {
 
       return (
         <BrowserRouter>
-          <Switch>
-            <Route exact path={["/", "/:chainId", "/:chainId/disputes"]} render={this.renderRedirect} />
-            <Route exact path="/:chainId/ongoing" render={this.renderOpenDisputes} />
-            <Route exact path="/:chainId/create" render={(route) => this.renderCreate(route, isAuthenticated)} />
-            <Redirect from="/:chainId/interact/:id" to="/:chainId/cases/:id" />
-            <Route exact path="/:chainId/cases/:id?" render={(route) => this.renderInteract(route, isAuthenticated)} />
-            <Route render={this.renderNotFound} />
-          </Switch>
+          <Route
+            render={this.withRouterHistory(() => (
+              <Switch>
+                <Route exact path={["/", "/:chainId", "/:chainId/disputes"]} render={this.renderRedirect} />
+                <Route exact path="/:chainId/ongoing" render={this.renderOpenDisputes} />
+                <Route exact path="/:chainId/create" render={(route) => this.renderCreate(route, isAuthenticated)} />
+                <Redirect from="/:chainId/interact/:id" to="/:chainId/cases/:id" />
+                <Route exact path="/:chainId/cases/:id?" render={(route) => this.renderInteract(route, isAuthenticated)} />
+                <Route render={this.renderNotFound} />
+              </Switch>
+            ))}
+          />
         </BrowserRouter>
       );
     } else if (this.state.walletInitializing) {
       return (
         <BrowserRouter>
-          <Route path="/:chainId?" render={this.renderConnecting} />
+          <Route path="/:chainId?" render={this.withRouterHistory(this.renderConnecting)} />
         </BrowserRouter>
       );
     } else return <>Please enable a web3 provider.</>;

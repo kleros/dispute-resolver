@@ -264,7 +264,7 @@ class CreateForm extends React.Component {
   };
 
   renderArbitrationCost() {
-    const { network, subcourtsLoading } = this.props;
+    const { network, subcourtsLoading, onRetryCourts } = this.props;
     const { arbitrationCost, costStatus } = this.state;
     const currency = networkMap[network]?.CURRENCY_SHORT ?? "";
     const loading = costStatus === "loading" || (costStatus === "idle" && subcourtsLoading);
@@ -301,7 +301,12 @@ class CreateForm extends React.Component {
           )}
           {!loading && costStatus === "idle" && noCourts && (
             <div className={styles.costError} role="alert">
-              <span>The courts could not be loaded, so the cost is unknown. Reload the page to try again.</span>
+              <span>The courts could not be loaded, so the cost is unknown.{onRetryCourts ? "" : " Reload the page to try again."}</span>
+              {onRetryCourts && (
+                <button type="button" className={styles.retry} onClick={onRetryCourts}>
+                  Try again
+                </button>
+              )}
             </div>
           )}
           {!loading && costStatus === "idle" && !noCourts && <span className={styles.costHint}>Enter at least 1 vote to see the cost.</span>}
@@ -556,6 +561,7 @@ CreateForm.propTypes = {
   onNextButtonClickCallback: PropTypes.func.isRequired,
   subcourtDetails: PropTypes.array,
   subcourtsLoading: PropTypes.bool,
+  onRetryCourts: PropTypes.func,
   formData: PropTypes.object,
   network: PropTypes.string,
   isAuthenticated: PropTypes.bool.isRequired,
