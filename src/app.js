@@ -16,6 +16,7 @@ import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
 import { urlNormalize, IPFS_GATEWAY, getFormattedPath, isContentAddressed } from "./utils/urlNormalizer";
 import { fetchDataFromScript } from "./utils/utils";
+import { isDynamicScriptWhitelisted } from "./ethereum/dynamicScriptWhitelist";
 import { resolveAppealMultipliers } from "./utils/multipliers";
 
 // Constants to avoid magic numbers
@@ -714,6 +715,10 @@ class App extends React.Component {
         if (metaEvidenceJSON.dynamicScriptURI) {
           if (!isContentAddressed(metaEvidenceJSON.dynamicScriptURI)) {
             console.error(`💥 [getMetaEvidence] Rejecting non-content-addressed dynamicScriptURI for disputeId ${disputeId} on chainID ${chainID}: ${metaEvidenceJSON.dynamicScriptURI}`);
+            return { metaEvidenceJSON: invalidMetaEvidence, invalid: true };
+          }
+          if (!isDynamicScriptWhitelisted(metaEvidenceJSON.dynamicScriptURI, chainID)) {
+            console.warn(`💥 [getMetaEvidence] The dynamic script ${metaEvidenceJSON.dynamicScriptURI} is not whitelisted and was not run.`);
             return { metaEvidenceJSON: invalidMetaEvidence, invalid: true };
           }
           const metaEvidenceEdits = await this.processDynamicScript(metaEvidenceJSON, chainID, disputeId, arbitrated, arbitrator);
