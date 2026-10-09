@@ -17,8 +17,6 @@ import AlertMessage from "components/alertMessage";
 import styles from "components/styles/disputeDetails.module.css";
 
 // Constants to avoid magic numbers
-const PRECISION_SCALING_FACTOR = 1000n;
-const PRECISION_SCALING_DIVISOR = 1000;
 const PERCENTAGE_SCALING_FACTOR = 10000n;
 const PERCENTAGE_SCALING_DIVISOR = 100;
 const DISPUTE_PERIOD_APPEAL = 3;
@@ -96,33 +94,6 @@ class DisputeDetails extends React.Component {
     const stake = (appealCost * multipliers.loserStakeMultiplier) / multipliers.denominator;
 
     return BigInt(appealCost) + BigInt(stake);
-  };
-
-  calculateReturnOfInvestmentRatio = rulingOption => {
-    // Unslashed contract violates IDisputeResolver interface by not letting option 0: refuse to rule to be funded.
-    // Subsequently, in case of a ruling 0, contract considers remaining ruling options as winners, instead of losers.
-    // Therefore we have to make an exception in this function for the following list of irregular contracts.
-
-    const { currentRuling, multipliers, exceptionalContractAddresses, arbitrated } = this.props;
-
-    const winner = multipliers.winnerStakeMultiplier;
-    const loser = multipliers.loserStakeMultiplier;
-    const divisor = multipliers.denominator;
-
-    if (currentRuling == rulingOption || (exceptionalContractAddresses.includes(arbitrated) && currentRuling == 0)) {
-      return Number((winner + loser + divisor) * PRECISION_SCALING_FACTOR / (winner + divisor)) / PRECISION_SCALING_DIVISOR;
-    } else {
-      return Number((winner + loser + divisor) * PRECISION_SCALING_FACTOR / (loser + divisor)) / PRECISION_SCALING_DIVISOR;
-    }
-  };
-
-  calculateReturnOfInvestmentRatioForLoser = () => {
-    const { multipliers } = this.props;
-    const winner = multipliers.winnerStakeMultiplier;
-    const loser = multipliers.loserStakeMultiplier;
-    const divisor = multipliers.denominator;
-
-    return Number((winner + loser + divisor) * PRECISION_SCALING_FACTOR / (loser + divisor)) / PRECISION_SCALING_DIVISOR;
   };
 
   calculateAppealPeriod = rulingOption => {
@@ -527,7 +498,6 @@ class DisputeDetails extends React.Component {
             fundingPercentage={this.calculateFundingPercentage(0, contributions).toFixed(2)}
             appealPeriodEnd={this.calculateAppealPeriod(0)}
             suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(0))}
-            roi={this.calculateReturnOfInvestmentRatio(0).toFixed(2)}
             appealCallback={appealCallback}
             rulingOptionCode={0}
           />
@@ -548,7 +518,6 @@ class DisputeDetails extends React.Component {
               fundingPercentage={this.calculateFundingPercentage(hexToNumberString(rulingCode), contributions).toFixed(2)}
               appealPeriodEnd={this.calculateAppealPeriod(hexToNumberString(rulingCode))}
               suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(hexToNumberString(rulingCode)))}
-              roi={this.calculateReturnOfInvestmentRatio(hexToNumberString(rulingCode)).toFixed(2)}
               appealCallback={appealCallback}
               rulingOptionCode={hexToNumberString(rulingCode)}
             />
@@ -570,7 +539,6 @@ class DisputeDetails extends React.Component {
               fundingPercentage={this.calculateFundingPercentage(index + 1, contributions).toFixed(2)}
               appealPeriodEnd={this.calculateAppealPeriod(index + 1)}
               suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(index + 1))}
-              roi={this.calculateReturnOfInvestmentRatio(index + 1).toFixed(2)}
               appealCallback={appealCallback}
               rulingOptionCode={index + 1}
             />
@@ -596,7 +564,6 @@ class DisputeDetails extends React.Component {
               winner={currentRuling == comboValue + 1}
               fundingPercentage={this.calculateFundingPercentage(comboValue + 1, contributions).toFixed(2)}
               appealPeriodEnd={this.calculateAppealPeriod(comboValue + 1)}
-              roi={this.calculateReturnOfInvestmentRatio(comboValue + 1).toFixed(2)}
               suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(comboValue + 1))}
               appealCallback={appealCallback}
               rulingOptionCode={comboValue + 1}
@@ -618,7 +585,6 @@ class DisputeDetails extends React.Component {
               fundingPercentage={this.calculateFundingPercentage(index + 1, contributions).toFixed(2)}
               appealPeriodEnd={this.calculateAppealPeriod(index + 1)}
               suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(index + 1))}
-              roi={this.calculateReturnOfInvestmentRatio(index + 1).toFixed(2)}
               appealCallback={appealCallback}
               rulingOptionCode={index + 1}
             />
@@ -666,7 +632,6 @@ class DisputeDetails extends React.Component {
               fundingPercentage={this.calculateFundingPercentage(key, contributions).toFixed(2)}
               suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaised(key))}
               appealPeriodEnd={this.calculateAppealPeriod(key)}
-              roi={this.calculateReturnOfInvestmentRatio(key).toFixed(2)}
               appealCallback={appealCallback}
               metaevidenceJSON={metaevidenceJSON}
             />
@@ -692,7 +657,6 @@ class DisputeDetails extends React.Component {
             winner={true}
             fundingPercentage={this.calculateFundingPercentage(currentRuling, contributions).toFixed(2)}
             appealPeriodEnd={this.calculateAppealPeriod(currentRuling)}
-            roi={this.calculateReturnOfInvestmentRatio(currentRuling).toFixed(2)}
             suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaisedForLoser())}
             appealCallback={appealCallback}
             metaevidenceJSON={metaevidenceJSON}
@@ -709,7 +673,6 @@ class DisputeDetails extends React.Component {
           winner={false}
           fundingPercentage={0}
           appealPeriodEnd={this.calculateLoserAppealPeriod()}
-          roi={this.calculateReturnOfInvestmentRatioForLoser().toFixed(2)}
           suggestedContribution={ethers.formatEther(this.calculateAmountRemainsToBeRaisedForLoser())}
           appealCallback={appealCallback}
           metaevidenceJSON={metaevidenceJSON}
