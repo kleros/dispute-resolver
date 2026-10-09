@@ -71,7 +71,7 @@ class CrowdfundingCard extends React.Component {
 
 
   render() {
-    const { title, winner, fundingPercentage, appealPeriodEnd, variable, roi, suggestedContribution } = this.props;
+    const { title, winner, fundingPercentage, appealPeriodEnd, variable, suggestedContribution } = this.props;
     const { variableRulingOption, contribution, error } = this.state;
 
     return (
@@ -116,7 +116,7 @@ class CrowdfundingCard extends React.Component {
               </Button>
             </InputGroup.Append>
           </InputGroup>
-          <AlertMessage extraClass="mt-auto" type="info" title={`Return of Investment`} content={`If this ruling option wins, you will receive back ${roi} times of your contribution. `} />
+          <AlertMessage extraClass="mt-auto" type="info" title="Rewards" content="Rewards only apply if both sides are funded and this option wins. If no appeal takes place, your contribution is refunded." />
         </div>
       </div>
     );
