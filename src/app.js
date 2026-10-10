@@ -15,8 +15,10 @@ import { uploadToIpfs, getAuthToken, isTokenValid, isTokenForAccount, authentica
 import Archon from "@kleros/archon";
 import UnsupportedNetwork from "./components/unsupportedNetwork";
 import { urlNormalize, IPFS_GATEWAY, getFormattedPath, isContentAddressed } from "./utils/urlNormalizer";
-import { fetchDataFromScript } from "./utils/utils";
+import { isRealityScript, fetchDataFromScript } from "./utils/utils";
 import { isDynamicScriptWhitelisted } from "./ethereum/dynamicScriptWhitelist";
+import { fetchRealityQuestion, getRealityProxy } from "./ethereum/reality-question";
+import { deriveRealityRulingOptions, sanitizeRulingOptions } from "./ethereum/reality-ruling-options";
 import { resolveAppealMultipliers } from "./utils/multipliers";
 
 // Constants to avoid magic numbers
@@ -660,8 +662,13 @@ class App extends React.Component {
       console.warn(`Could not obtain a valid 'arbitrableJsonRpcUrl' for chain ID ${injectedParameters.arbitrableChainID}`);
     }
 
-    return fetchDataFromScript(scriptData, injectedParameters);
+    const { result, jsonDuplicateKeys } = await fetchDataFromScript(scriptData, injectedParameters);
+    return { result, jsonDuplicateKeys, realityScript: isRealityScript(scriptData) };
   };
+
+  //MetaEvidence must be an object with at least a title or rulingOptions.
+  isValidMetaEvidence = (metaEvidenceJSON) =>
+    Boolean(metaEvidenceJSON) && typeof metaEvidenceJSON === "object" && Boolean(metaEvidenceJSON.title || metaEvidenceJSON.rulingOptions);
 
   getMetaEvidence = async (arbitrated, disputeId) => {
     const chainID = this.state.network;
@@ -712,7 +719,10 @@ class App extends React.Component {
           metaEvidenceJSON.rulingOptions.type = "single-select";
         }
 
-        if (metaEvidenceJSON.dynamicScriptURI) {
+        //The dynamic scripts of known Reality.eth arbitrables are not run: their ruling options are derived from the
+        //on-chain question below, because the scripts render it with reality-eth-lib (see ./ethereum/reality-question.js).
+        const realityProxy = getRealityProxy(chainID, arbitrated);
+        if (metaEvidenceJSON.dynamicScriptURI && !realityProxy) {
           if (!isContentAddressed(metaEvidenceJSON.dynamicScriptURI)) {
             console.error(`💥 [getMetaEvidence] Rejecting non-content-addressed dynamicScriptURI for disputeId ${disputeId} on chainID ${chainID}: ${metaEvidenceJSON.dynamicScriptURI}`);
             return { metaEvidenceJSON: invalidMetaEvidence, invalid: true };
@@ -721,9 +731,27 @@ class App extends React.Component {
             console.warn(`💥 [getMetaEvidence] The dynamic script ${metaEvidenceJSON.dynamicScriptURI} is not whitelisted and was not run.`);
             return { metaEvidenceJSON: invalidMetaEvidence, invalid: true };
           }
-          const metaEvidenceEdits = await this.processDynamicScript(metaEvidenceJSON, chainID, disputeId, arbitrated, arbitrator);
-          metaEvidenceJSON = { ...metaEvidenceJSON, ...metaEvidenceEdits };
+          const script = await this.processDynamicScript(metaEvidenceJSON, chainID, disputeId, arbitrated, arbitrator);
+          metaEvidenceJSON = { ...metaEvidenceJSON, ...script?.result };
+
+          //Unknown Reality.eth arbitrable: its ruling options cannot be verified, and must be refused when the
+          //question JSON had duplicate keys.
+          if (script?.realityScript) {
+            metaEvidenceJSON.realityQuestion = { status: script.jsonDuplicateKeys ? "unresolvable" : "unverified" };
+            if (script.jsonDuplicateKeys) metaEvidenceJSON.rulingOptions = { type: "single-select", titles: [] };
+          }
         }
+
+        if (realityProxy && this.isValidMetaEvidence(metaEvidenceJSON)) {
+          const realityQuestionData = await fetchRealityQuestion({ arbitratorChainId: chainID, arbitrable: arbitrated, disputeId });
+          const { rulingOptions, realityQuestion, question } = deriveRealityRulingOptions(realityQuestionData, realityProxy);
+          metaEvidenceJSON.rulingOptions = rulingOptions;
+          metaEvidenceJSON.realityQuestion = realityQuestion;
+          if (question) metaEvidenceJSON.question = question;
+        }
+
+        //Only coerce the ruling options of otherwise valid MetaEvidence: invalid data must stay invalid.
+        if (this.isValidMetaEvidence(metaEvidenceJSON)) metaEvidenceJSON.rulingOptions = sanitizeRulingOptions(metaEvidenceJSON.rulingOptions);
 
         return { metaEvidenceJSON };
       } catch (err) {

@@ -13,6 +13,7 @@ import { ethers } from "ethers";
 import networkMap from "../ethereum/network-contract-mapping";
 
 import AlertMessage from "components/alertMessage";
+import RealityQuestionNotice from "components/realityQuestionNotice";
 
 import styles from "components/styles/disputeDetails.module.css";
 
@@ -735,6 +736,8 @@ class DisputeDetails extends React.Component {
         {this.renderDisputeInfo(arbitratorDisputeID, arbitratorDisputeDetails, arbitratorDispute, subcourtDetails)}
 
         {this.renderDecisionAlerts(disputePeriod, currentRuling, metaevidenceJSON, rulingFunded, incompatible)}
+
+        <RealityQuestionNotice realityQuestion={metaevidenceJSON?.realityQuestion} />
 
         <Accordion
           className={`mt-4 ${styles.accordion}`}

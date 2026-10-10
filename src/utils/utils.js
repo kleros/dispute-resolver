@@ -1,5 +1,6 @@
 import arbitrableWhitelist from "ethereum/arbitrableWhitelist";
 import { getReadOnlyRpcUrl } from "ethereum/network-contract-mapping";
+import { JSON_DUPLICATE_KEY_GUARD } from "ethereum/json-duplicate-key-guard";
 
 //RPCs to redirect followed by the chain ID from which to get the readonly RPC URL
 const RPCS_TO_REDIRECT = {
@@ -46,22 +47,40 @@ const rpcRedirectPatch = `
   })();
 `;
 
+//Dynamic scripts of Reality.eth arbitrables render the question with reality-eth-lib, which substitutes the question
+//parameters into the template without escaping them and then parses the result with JSON.parse: crafted parameters
+//can then override keys of the template (e.g. the question type or outcomes) through duplicate keys.
+export const isRealityScript = (scriptString) =>
+  typeof scriptString === "string" && scriptString.includes("populatedJSONForTemplate");
+
+//A script that errors inside its iframe never posts a result, which would leave the promise hanging forever.
+const DYNAMIC_SCRIPT_TIMEOUT_MS = 180000;
+
+//Resolves to { result, jsonDuplicateKeys }: the script's output and whether its question JSON had duplicate keys.
 export async function fetchDataFromScript(scriptString, scriptParameters) {
   const { default: iframe } = await import("iframe");
 
   let resolver;
-  const returnPromise = new Promise((resolve) => {
+  let rejecter;
+  const returnPromise = new Promise((resolve, reject) => {
     resolver = resolve;
+    rejecter = reject;
   });
+
+  const timeoutId = setTimeout(() => {
+    rejecter(new Error(`The dynamic script for dispute ${scriptParameters.disputeID} timed out.`));
+  }, DYNAMIC_SCRIPT_TIMEOUT_MS);
 
   window.onmessage = (message) => {
     if (message.data.target === "script") {
-      resolver(message.data.result);
+      clearTimeout(timeoutId);
+      resolver({ result: message.data.result, jsonDuplicateKeys: message.data.jsonDuplicateKeys === true });
     }
   };
 
   const frameBody = `
     <script type='text/javascript'>
+      ${isRealityScript(scriptString) ? JSON_DUPLICATE_KEY_GUARD : ""}
       ${rpcRedirectPatch}
       const scriptParameters = ${JSON.stringify(scriptParameters)}
       let resolveScript
@@ -74,7 +93,8 @@ export async function fetchDataFromScript(scriptString, scriptParameters) {
       returnPromise.then(result => {window.parent.postMessage(
         {
           target: 'script',
-          result
+          result,
+          jsonDuplicateKeys: window.__klerosJsonDuplicateKeys === true
         },
         '*'
       )})
