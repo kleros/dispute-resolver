@@ -1,0 +1,34 @@
+---
+status: accepted
+date: 2026-10-12
+---
+
+# Stack: Vite, React 18, viem and wagmi with Reown AppKit, the Kleros UI components library, and the shared Atlas client
+
+The rewrite adopts the Kleros v2 frontends' ethereum, wallet, Atlas and component-library stack (viem, wagmi, AppKit, `@kleros/kleros-app`, `@kleros/ui-components-library`), so that wallet, upload and design code is shared rather than hand-rolled and the resolver reads as a member of the v2 product family. It departs from `kleros-v2/web` on styling (Tailwind 4 rather than styled-components) and observability (no Sentry, no analytics, no internationalization). Several choices look wrong without context and are recorded here for that reason.
+
+## Decision
+
+- **Vite, TypeScript in strict mode, yarn 4 workspaces.** Two packages: `core` (no React, no DOM: the arbitrable registry, URL and CID rules, chain reads through an injected client, the Reality pipeline, the allowlists) and `web` (the React app, including the iframe sandbox runner because it needs a DOM). The package boundary makes "core cannot import React" a build error. This fixes only the package boundary; the module breakdown inside each package is deferred (ADR 0001).
+- **React 18.3, not 19.** `@kleros/ui-components-library` 3.9 and `@kleros/kleros-app` 3.1 both declare React 18 as their peer. React 19 is adopted when they do.
+- **viem 2 for every chain interaction, wagmi 2 with Reown AppKit (wagmi adapter) for wallets.** Wallets connect through EIP-6963 injected discovery (the standard by which browser-extension wallets announce themselves), WalletConnect and Coinbase, which are the adapter's defaults; connecting from inside the Safe app needs the explicit `safe` connector from `@wagmi/connectors`. AppKit is created with `features: { analytics: false, email: false, socials: [], swaps: false, onramp: false }`, because it enables all of these by default; `socials` must be an empty array, not `false`, because the wagmi adapter reads a falsy value as "use the default list" and would still register the embedded-wallet connector. A test asserts that the wagmi config contains no embedded-wallet connector, re-checked against the AppKit version the rewrite pins. The app loads read-only on the configured RPC endpoints and never prompts until the user presses Connect. The wallet's chain must equal the page's chain before any signature is requested; today's app does not check this, and it is a security-checklist row.
+- **ethers, web3, `@alch/alchemy-web3` and `@kleros/archon` are removed**, so every chain interaction goes through viem. The three archon functions the app used (`getDispute`, `getEvidence`, which also fetches the evidence JSON, and `getRuling`) are reimplemented in `core` with tests. Evidence URIs must be content-addressed (an `/ipfs/<CID>` path, not an IPNS name or an HTTP host), the rule the Kleros Court frontend adopted in kleros/court#594; items that fail it are counted visibly, not hidden silently.
+- **`@kleros/ui-components-library` with Tailwind 4** (its peer) and the Kleros v2 design tokens, dark mode included. antd, bootstrap, react-bootstrap, styled-components, sass, jquery and moment are removed. Every other current dependency (router, markdown renderer, dropzone, date picker, iframe resizer, blockies) is re-chosen during the build and is not carried over by default; the router must preserve the URLs frozen in ADR 0001.
+- **Atlas through `@kleros/kleros-app` 3.1, unforked.** Atlas is the Kleros backend that authenticates users by Sign-In with Ethereum (SIWE) and pins uploads to IPFS; each upload names a product and a role, and the resolver needs `CourtV1` with the `evidence` and `policy` roles, which the library provides. Its SIWE message fields, nonce and login mutations and multipart upload fields are the same as the current hand-rolled client; response handling differs (upload errors parsed as JSON, the result returned as `/ipfs/<cid>`), and sign-in is lazy. A thin wrapper in `web` sequences "sign in, then upload" in one click, wraps in-memory JSON blobs as `File` objects, and shows the per-role size limit Atlas serves instead of today's hardcoded 20 MB. The library keeps the token in per-tab session storage, so a freshly opened tab usually asks for a new signature while a reload of the same tab does not, once the wallet reconnects. That is how every Kleros v2 app behaves and is accepted as a deliberate deviation from the current cross-tab persistence; the same-tab reload guarantee has a Playwright assertion. `@kleros/kleros-app` declares wagmi 2 and viem 2 as peers, which is also why keeping ethers was rejected.
+- **TanStack Query** for reads, with a persisted cache that is versioned so a rule change (for instance to content addressing) invalidates every entry cached under the old rule; today's localStorage caches have no version, and the meta-evidence cache has no expiry. **Zod** validates meta-evidence and evidence JSON at the boundary so malformed data degrades a section instead of blanking the page. An error boundary wraps each section.
+- **Vitest** with React Testing Library for unit and component tests; **Playwright** for the golden-case suite against the branch deploy.
+- **Environment variable names are unchanged.** Vite's `envPrefix` accepts the existing `REACT_APP_*` names. At cutover Netlify needs one new variable, `REACT_APP_WALLETCONNECT_PROJECT_ID`, and `netlify.toml` needs the workspace build command and publish directory. A missing Atlas URI no longer blocks boot (today it throws at module load); the deviations ledger records this.
+- The layout is desktop-first and must stay usable on every screen size.
+- No Sentry, no analytics, no internationalization.
+
+## Considered options
+
+- **Keep ethers 6 and add a connect modal on top.** Rejected: the shared Atlas client requires wagmi and viem, so this would mean running both stacks and two conventions inside Kleros.
+- **RainbowKit instead of AppKit.** Rejected: simpler, but a second wallet convention inside Kleros; Kleros already runs a WalletConnect project for AppKit.
+- **Custom components (Tailwind, or the CSS Modules over react-bootstrap that the abandoned `feat/ui-overhaul` restyle branch uses, see ADR 0001) in that branch's v1 purple look.** Rejected: hand-rolling a component library is the work the shared library already did, and the v2 look is where the other Kleros products are.
+- **Bridging the Atlas token into localStorage to keep cross-tab sign-in** (seed the tab's storage from localStorage before the provider mounts, mirror writes back). Feasible, rejected: no v2 app does it, and per-tab sessions narrow the token's exposure.
+
+## Consequences
+
+- Upgrading to React 19 waits on two external libraries.
+- Replacing archon means the evidence-fetching semantics are now ours to document and test, including the content-addressing rule.
