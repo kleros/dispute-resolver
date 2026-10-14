@@ -35,7 +35,8 @@
   },
   "resolutions": {
     "@wagmi/connectors@>=5.9.9": "6.2.0",
-    "eslint-plugin-sonarjs/typescript": "~5.9.3"
+    "eslint-plugin-sonarjs/typescript": "~5.9.3",
+    "ws@npm:8.18.0": "8.21.0"
   },
   "engines": {
     "node": ">=22.22.2"

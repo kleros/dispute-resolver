@@ -18,7 +18,11 @@ vi.mock("@dispute-resolver/core", async (importOriginal) => {
 
 const actualCore = await vi.importActual<typeof core>("@dispute-resolver/core");
 
-const EVIDENCE: EvidenceList = { items: [], hiddenEvidenceCount: 0, hiddenByReason: { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 } };
+const EVIDENCE: EvidenceList = {
+  items: [],
+  hiddenEvidenceCount: 0,
+  hiddenByReason: { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 },
+};
 const FOUND_EVENT: Outcome<DisputeEventResult> = {
   ok: true,
   value: { status: "found", event: { metaEvidenceId: 0n, evidenceGroupId: 3n, blockNumber: 100n, createdAt: 1_700_000_000, transactionHash: "0x01" } },
@@ -60,7 +64,10 @@ function programReads(program: Program = {}): void {
       ),
     ),
   );
-  vi.mocked(core.readMultipliers).mockResolvedValue({ ok: true, value: { winnerStakeMultiplier: 10_000n, loserStakeMultiplier: 20_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n } });
+  vi.mocked(core.readMultipliers).mockResolvedValue({
+    ok: true,
+    value: { winnerStakeMultiplier: 10_000n, loserStakeMultiplier: 20_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n },
+  });
   vi.mocked(core.readRoundFunding).mockImplementation((_context, round) => Promise.resolve({ ok: true, value: { round, contributions: [], fundedRulings: [] } }));
   vi.mocked(core.readWithdrawable).mockResolvedValue({ status: "nothing" });
 }
@@ -345,8 +352,16 @@ describe("search box (spec 5.2, D-53)", () => {
     const view = renderCase("/1/cases/1");
     await settledDispute();
     await search("2");
+    // The debounce timer starts at the last keystroke; the URL must change before it could fire.
+    const lastKeystroke = performance.now();
     await userEvent.setup().keyboard("{Enter}");
-    expect(view.currentPath()).toBe("/1/cases/2");
+    await waitFor(
+      () => {
+        expect(view.currentPath()).toBe("/1/cases/2");
+      },
+      { timeout: SEARCH_DEBOUNCE_MS },
+    );
+    expect(performance.now() - lastKeystroke).toBeLessThan(SEARCH_DEBOUNCE_MS);
   });
 
   it("spec 5.11: a new dispute starts with the accordion collapsed", async () => {
