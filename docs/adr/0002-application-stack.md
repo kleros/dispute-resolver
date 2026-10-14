@@ -32,3 +32,71 @@ The rewrite adopts the Kleros v2 frontends' ethereum, wallet, Atlas and componen
 
 - Upgrading to React 19 waits on two external libraries.
 - Replacing archon means the evidence-fetching semantics are now ours to document and test, including the content-addressing rule.
+
+## Dependencies chosen during the build
+
+Recorded when the workspace was scaffolded (2026-10-14). Ranges are what the manifests declare; the lockfile pins the exact versions. Every direct dependency and devDependency is listed once, with the package that declares it in parentheses (root, `core`, `web`); a package declared in more than one place is listed once.
+
+**Node 22 LTS (22.23.2).** Node 20 is end-of-life, and the current majors of the toolchain need a newer Node than the 20.18.1 the repository pinned: Vite 8 needs 20.19 or 22.12, Vitest 5 needs 22.12, jsdom 30 needs 22.22.2. The version is set in `.nvmrc`, `.node-version`, the `volta` and `engines` fields of the root `package.json` and `NODE_VERSION` in `netlify.toml`.
+
+**TypeScript 5.9, not 6 or 7.** `typescript-eslint` 8 declares support for TypeScript below 6.1, and the type-aware lint rules are part of the security gate, so the compiler is held at `~5.9.3` until `typescript-eslint` supports the next major.
+
+**ESLint 9, not 10.** `eslint-plugin-react` 7.37 declares ESLint up to 9.x as its peer.
+
+**Runtime libraries**
+
+| Package | Range | Why |
+|---|---|---|
+| `viem` (core, web) | `^2.57.6` | Every chain interaction. `@reown/appkit-adapter-wagmi` 1.8 needs 2.55.13 or later; `@kleros/kleros-app` needs 2.24.1 or later. |
+| `zod` (core, web) | `^4.6.7` | Boundary validation of untrusted JSON. Version 4 compiles under `strict` and under core's `WebWorker`-only `lib`. |
+| `react`, `react-dom` (web) | `18.3.1` | React 18, not 19, as decided above. Pinned exactly. |
+| `react-is` (web) | `^18.3.1` | Peer of `@kleros/ui-components-library`. |
+| `@kleros/ui-components-library` (web) | `3.9.0` | The Kleros design system. Pinned exactly. |
+| `tailwindcss` (web) | `^4.3.3` | Peer of the component library; the styling system. |
+| `@tailwindcss/postcss` (web) | `^4.3.3` | Peer of the component library; it is also the Tailwind integration used for the Vite build, so no second Tailwind plugin is added. |
+| `tailwindcss-react-aria-components` (web) | `^2.2.0` | The Tailwind plugin that gives the library's `pressed:` and `hovered:` variants their meaning. The library's own stylesheet loads it; a consuming app has to load it too, and should not rely on hoisting to find it. |
+| `@kleros/kleros-app` (web) | `3.1.0` | Atlas sign-in and upload client. Pinned exactly. |
+| `wagmi` (web) | `^2.19.5` | Wallet hooks. Version 2, not 3, because `@kleros/kleros-app` 3.1 peers `^2.14.15`; 2.19.5 is the oldest 2.x the AppKit adapter accepts. |
+| `@wagmi/core` (web) | `^2.22.1` | Peer of the AppKit adapter (2.21.2 or later); declared so the 2.x line is resolved, not 3.x. |
+| `@reown/appkit`, `@reown/appkit-adapter-wagmi` (web) | `^1.8.24` | Wallet modal and its wagmi adapter. 1.8.24 accepts wagmi 2. |
+| `@tanstack/react-query` (web) | `^5.104.2` | Read cache. Floor set by the persist client's peer. |
+| `@tanstack/react-query-persist-client` (web) | `^5.104.2` | Persisted, versioned cache. |
+| `@tanstack/query-sync-storage-persister` (web) | — | Not needed; `data/persistence.ts` implements TanStack's `Persister` over `localStorage`. |
+| `graphql`, `graphql-request` (web) | `^16.14.2`, `^7.4.0` | Peers of `@kleros/kleros-app`. GraphQL 16, because 17 is outside the peer range. |
+| `react-router` (web) | `^7.18.4` | Router, library mode (`react-router` v7 is the single package; there is no separate `-dom`). Version 8 needs React 19. |
+| `@dispute-resolver/core` (web) | `workspace:^` | The core package, consumed from source. |
+| `react-markdown` (web) | `9.1.0` | Markdown descriptions rendered through React, raw HTML shown as text (A11), with link and image rules through `urlTransform` and element overrides (D-31). The version `@kleros/ui-components-library` already depends on, so no new packages are pulled in. |
+| `@fontsource/open-sans` (web) | `^5` | Self-hosted Open Sans, the Kleros v2 typeface; no font CDN (A20). |
+| (no `remark-gfm`) | | Today's renderer (`react-markdown` 4 on `remark-parse` 5) parses pipe tables, `~~strikethrough~~`, task items and literal `http(s)://` and `mailto:` links. `remark-gfm` parses more than that (single-tilde strikethrough, `www.` and e-mail literals, footnotes), so a small in-house remark plugin (`safe-content/legacyGfm.ts`) restores exactly today's set instead; a corpus recorded with `react-markdown` 4.2.2 pins it. |
+| `@internationalized/date` (web) | `^3.7.0` | Date values for the library's `Datepicker` (D-17); already present through the library. |
+| `@reality.eth/reality-eth-lib` (core) | `3.4.34` | The ported Reality.eth pipeline uses its answer encoder (`answerToBytes32`) and its question formatter, the latter only to flag questions that other interfaces render differently (the `divergent` status). Same version as today. |
+
+**Resolution override.** The root `package.json` pins `@wagmi/connectors@>=5.9.9` to `6.2.0`. `@reown/appkit-adapter-wagmi` declares that package as an optional dependency with an open range, which resolves to a release that requires `@wagmi/core` 3; `wagmi` 2.19.5 itself pins 6.2.0. Remove the override when the adapter bounds the range. A second override pins `eslint-plugin-sonarjs`'s own `typescript` dependency to the workspace's `~5.9.3`: the plugin's range (`>=5 <6.1.0`) otherwise resolves a nested TypeScript 6, whose different `TypeFlags` numbering makes `sonarjs/null-dereference`, `function-return-type`, `argument-type` and `different-types-comparison` misfire on ordinary code.
+
+**Tooling (devDependencies)**
+
+| Package | Range | Why |
+|---|---|---|
+| `vite` (core, web) | `^8.3.4` | Bundler and dev server. Newest major; builds with `@vitejs/plugin-react` 6 and Tailwind 4 on Node 22. Core lists it as the peer of Vitest. |
+| `@vitejs/plugin-react` (web) | `^6.1.2` | React transform; its peer is Vite 8. |
+| `vitest` (core, web) | `^5.0.4` | Unit and component tests. |
+| `jsdom` (web) | `^30.1.2` | DOM for component tests. |
+| `@testing-library/react` (web) | `^16.3.3` | Component tests. |
+| `@testing-library/dom` (web) | `^10.4.2` | Peer of `@testing-library/react`. |
+| `@testing-library/jest-dom` (web) | `^7.0.1` | DOM matchers. |
+| `@testing-library/user-event` (web) | `^14.6.8` | Realistic user input in tests. |
+| `@reown/appkit-controllers` (web) | `1.8.24` | Test-only, pinned to the `@reown/appkit` version. The C8 tests stub its `ApiController.fetchProjectConfig` and read `ConnectorController` and `OptionsController` to prove the wagmi configuration never holds an embedded-wallet connector, that AppKit registers its own `AUTH` connector only when the Reown dashboard enables social login or email (K-01), and that the app then fails closed (K-03). |
+| `@playwright/test` (web) | `^1.64.0` | Golden-case suite. Browsers are installed on demand (`yarn playwright install chromium`), never by `yarn install`. |
+| `@types/react`, `@types/react-dom` (web) | `^18.3.31`, `^18.3.7` | Types for React 18; pinned to 18 because `latest` is 19. |
+| `@types/node` (root, web) | `^22.20.5` | Node types for config files and Playwright, matching the Node major. Core does not load them. |
+| `typescript` (root, core, web) | `~5.9.3` | See above. |
+| `eslint`, `@eslint/js` (root; `eslint` also core, web) | `^9.39.5` | Linter. Declared in each workspace so `yarn lint` finds the binary there. |
+| `typescript-eslint` (root) | `^8.71.2` | Type-aware strict rules. |
+| `eslint-plugin-react` (root) | `^7.37.5` | React rules, including `react/no-danger`. |
+| `eslint-plugin-react-hooks` (root) | `^7.1.1` | Rules of hooks. |
+| `eslint-plugin-sonarjs` (root) | `^4.2.2` | The project is analysed by SonarCloud; this catches the same classes of issue locally. |
+| `globals` (root) | `^17.13.0` | Global-variable tables for the lint config. |
+| `prettier` (root, core, web) | `^3.9.10` | Formatting (`tabWidth` 2, `printWidth` 180, unchanged). The repository had 2.x. |
+| `@kleros/kleros`, `@kleros/arbitrable-proxy-contracts`, `@kleros/kleros-interaction`, `IDRv1` and `IDRv2` (aliases of `@kleros/dispute-resolver-interface-contract` 1.0.2 and 8.0.0) (core) | `0.1.5`, `5.0.3`, `0.9.3`, `1.0.2`, `8.0.0` | Test-only. Core embeds minimal `as const` ABIs; the tests check those ABIs and the probe selectors against the published contract artifacts, so a transcription typo cannot survive (registry schema §1). Never imported by production code. |
+| `tsx` (core) | `^4` | Runs the known-questions generator (`REALITY_OPS.md`, checklist A6) directly from core's TypeScript sources, whose extensionless imports Node's own type stripping cannot resolve. Operator tooling; never part of the bundle. |
+| `@reality.eth/contracts` (core) | `3.2.31` | Test-only. The Reality.eth v3.0 and v3.2 ABIs the ABI tests compare the embedded lookup entries against; already present through `@reality.eth/reality-eth-lib`, declared so the tests do not depend on hoisting. |

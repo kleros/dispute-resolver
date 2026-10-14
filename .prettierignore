@@ -1,0 +1,14 @@
+# old app, read-only reference until the hand-off phase
+/src
+/public
+/scripts
+/build
+/docs
+node_modules
+.yarn
+yarn.lock
+dist
+coverage
+test-results
+playwright-report
+.vite

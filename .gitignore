@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.js
 .yarn/
@@ -11,6 +11,13 @@
 
 # production
 /build
+packages/*/dist
+
+# test and tool output
+coverage
+test-results
+playwright-report
+.vite
 
 # misc
 .DS_Store
@@ -26,3 +33,7 @@ yarn-error.log*
 
 
 /.idea
+
+# golden-case gate outputs (scripts/golden-gate); only the README is committed
+/golden/*
+!/golden/README.md

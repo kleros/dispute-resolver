@@ -1,85 +1,60 @@
 # Claude AI Agent Guidelines for Dispute Resolver
 
-## Code Quality Standards
+The Dispute Resolver (`resolve.kleros.io`) is being rebuilt on branch `feat/rewrite`. The contract is `docs/parity/` (frozen on 2026-10-14): the behavioral spec of today's app (02), the security checklist (03), the golden cases (04), the deviations ledger (05) and the registry schema (06). The decisions are `docs/adr/`; behavior changes awaiting the maintainer's review are in `docs/ledger-proposals.md`.
 
-This project uses SonarCloud for code quality analysis. The SonarQube extension is already configured and connected to our SonarCloud project.
+- A behavior that is neither in the spec nor in the ledger is not built. A difference from the spec that is not a ledger entry is a regression.
+- The spec describes the old app; the ledger says what changes; the checklist gates the merge.
+- If a correct implementation seems to require a behavior difference that the ledger does not record, do not ship it silently: report it back. The orchestrator records it in `docs/ledger-proposals.md` for the maintainer's review.
 
-### Before Making Any Code Changes
+## Layout
 
-1. **Check Current Diagnostics**: Review any existing SonarCloud issues in files you plan to modify
-2. **Understand Context**: Read the existing code patterns and follow established conventions
-3. **Plan Changes**: Ensure changes align with SonarCloud quality profile
+- `packages/core` (`@dispute-resolver/core`): registry, URL and CID rules, chain reads through an injected client, the Reality pipeline, meta-evidence and evidence pipelines, appeal math, write-call builders, allowlists. No React, no DOM, no `window`, no `localStorage`.
+- `packages/web` (`@dispute-resolver/web`): the React app, the script runner page (`public/__runner/index.html`) and its host, the Netlify headers.
+- `src/`, `public/` at the repository root, `scripts/generate-reality-known-questions.js`: the **old app**, kept only as read-only reference until the hand-off phase removes it. Never import from it, never edit it.
 
-### During Code Development
-
-1. **Follow SonarCloud Rules**: Never introduce code that would trigger SonarCloud warnings
-2. **Fix Existing Issues**: When modifying a file, fix any existing SonarCloud issues if possible
-3. **Maintain Quality**: Ensure all new code meets or exceeds current quality standards
-
-### After Code Changes
-
-1. **Verify No New Issues**: Check that no new SonarCloud diagnostics appear
-2. **Test Functionality**: Ensure changes work correctly
-3. **Document Changes**: Update comments and documentation as needed
-
-## SonarCloud Quality Gates
-
-- **Critical/Blocker Issues**: Must be fixed immediately
-- **Major Issues**: Should be fixed when touching the code
-- **Minor Issues**: Fix opportunistically
-
-## Project-Specific Patterns
-
-### Web3/Ethereum Code
-- Always handle async operations properly
-- Use proper error handling for contract calls
-- Follow BigNumber handling patterns established in the codebase
-
-### React Components
-- Use hooks appropriately and follow React best practices
-- Maintain consistent prop types and state management
-- Follow established component structure patterns
-
-### Testing
-- Run existing tests after changes: `npm test`
-- Ensure no regressions in functionality
-- Add tests for new features when appropriate
-
-## Commands to Run
+## Commands
 
 ```bash
-# Start development server
-npm start
-
-# Run tests
-npm test
-
-# Build for production
-npm run build
-
-# Check for issues (if available)
-npm run lint
+yarn install
+yarn typecheck
+yarn lint
+yarn test
+yarn build
+yarn workspace @dispute-resolver/web dev
 ```
 
-## Quality Metrics
+## Hard rules
 
-- Maintain or improve SonarCloud quality rating
-- Keep code coverage stable or increasing
-- Ensure no security issues are introduced
-- Follow established code style and patterns
+**Security** (each maps to a row in `docs/parity/03-security-checklist.md`):
+- Untrusted: meta-evidence and evidence JSON, dynamic-script output, Reality questions and templates, every arbitrable contract, the chain ID in the URL, user input, anything a third-party frame sends back.
+- No `dangerouslySetInnerHTML`, `innerHTML`, `eval` or `new Function` anywhere in the app. The only place untrusted script text is evaluated is the runner page of ADR 0004.
+- Markdown never gets a raw-HTML plugin (`rehype-raw` is forbidden).
+- External links go through the shared link component: https only, `target="_blank" rel="noopener noreferrer"`.
+- Meta-evidence, evidence and dynamic-script URIs must pass the canonical content-addressing check in `core` before any fetch. Rejections are never cached.
+- The arbitrable used for any write comes from the arbitrator (`disputes(id).arbitrated`), never from meta-evidence.
+- Every write path checks that the wallet's chain equals the page's chain first, and refuses visibly when they differ.
+- Reads go through the configured per-chain RPC only; the wallet is used for signing only.
+- UI code never inspects a contract address. It asks the registry for the family and the overrides.
+- Registry addresses are lowercase; every override carries a justification.
 
-## Kleros Arbitration Standards (ERC-792 & ERC-1497)
+**No test-only code in the production bundle**: no fixture modes, mock providers, or flags that swap in fake data. Test doubles live in test files and the Playwright harness only.
 
-[... previous content remains unchanged ...]
+**Failure behavior**: a bad or malformed dispute degrades one section behind an error boundary, never blanks the page. Transaction failures are always shown to the user, never swallowed.
 
-## Memories and Learning Notes
+**Tests**: written first for `core`. Name tests after the row or entry they prove, for example `it("B2: rejects /ipfs/<cid>/../../ipns/x")` or `it("D-30: applies the round offset in the execution period")`, so the checklist audit can map rows to tests. Unit tests never touch the network; RPC is mocked through the injected transport. Recorded on-chain data lives in fixture files with the block number it was read at.
 
-### Interface Compatibility and Dispute Handling
-- Some arbitrables we load only implement IEvidence and IArbitrable, some implement IDisputeResolver in addition. 
-- Crowdfunded appeal and evidence submission functionalities are only guaranteed to work if the arbitrable implements IDisputeResolver. 
-- Other view functionality should work just fine.
-- There might be bad disputes, such as those that are badly configured and do not follow the standard. 
-- We don't have to figure out how to display them perfectly, but we must make sure they don't crash the application altogether. 
-- When a bad dispute is encountered, the application should fail gracefully.
+**Dependencies**: only the orchestrating session adds or removes dependencies. If a task needs one, report it back instead of running `yarn add`. Every dependency is justified in `docs/adr/0002-application-stack.md`.
 
-[... rest of the previous content remains unchanged ...]
+**Secrets**: never print, log, copy or commit values from `.env` (RPC URLs carry API keys). Scripts that need an RPC read `process.env` and print only results.
+
+**Git**: agents never run git commands that write (`add`, `commit`, `stash`, `checkout`, `reset`, `restore`, `clean`, `rebase`, `merge`, `push`). Commits are signed by the maintainer.
+
+## Code quality
+
+This project uses SonarCloud. Never introduce code that would trigger SonarCloud warnings; fix existing issues in files you touch. TypeScript is strict; `any` is not allowed, and untrusted JSON is typed `unknown` until a Zod schema parses it.
+
+## Kleros arbitration notes
+
+- Some arbitrables implement only IEvidence and IArbitrable; some implement IDisputeResolver as well. Evidence submission and crowdfunded appeals are only guaranteed through IDisputeResolver; other families are described in `docs/parity/06-registry-schema.md`.
+- View functionality must work for every dispute.
+- Bad disputes exist (badly configured, not following the standard). They do not need to render perfectly, but they must never crash the application.
