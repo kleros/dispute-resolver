@@ -229,7 +229,7 @@ describe("route table: 404 and unsupported network (spec §2.5, spec §2.6, D-18
 describe("route table: C1 patterns (ARCHITECTURE.md §3.1, §10.4)", () => {
   /** A concrete path for a Netlify pattern: `:chain` is chain 1 and `*` is dispute 5. */
   function samplePath(pattern: string): string {
-    return pattern.replace(":chain", "1").replace("*", "5");
+    return pattern.replaceAll(":chain", "1").replaceAll("*", "5");
   }
 
   it.each(APP_ROUTE_PATTERNS.filter((pattern) => pattern !== "/index.html"))("C1: the app route pattern %s is served by the app, never the 404", async (pattern) => {

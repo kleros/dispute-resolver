@@ -37,9 +37,6 @@ const OLD_READ_RPC: Readonly<Record<number, { readonly env: string } | { readonl
   84532: { env: "REACT_APP_BASE_SEPOLIA" },
 };
 
-/** The one URL the old runner's RPC patch rewrote, to chain 1's read RPC (spec 9.5, today's `RPCS_TO_REDIRECT`). */
-export const OLD_REDIRECTED_RPC = "https://mainnet.infura.io/v3/668b3268d5b241b5bab5c6cb886e4c61";
-
 /**
  * Today's `getReadOnlyRpcUrl({ chainId })`: `map[parseInt(chainId)].WEB3_PROVIDER`. A chain absent from the map makes
  * it throw (a TypeError on `undefined.WEB3_PROVIDER`); a mapped chain whose variable is unset yields `undefined`.
@@ -99,8 +96,11 @@ export function oldSandboxValue(params: OldScriptParameters, registry: Registry)
   return ["allow-scripts", flag].join(" ");
 }
 
-/** Today's redirect map: the hard-coded Infura URL to chain 1's read RPC, only when that RPC is set. */
-export function oldRedirectMap(env: Env): Readonly<Record<string, string>> {
+/**
+ * Today's redirect map (spec 9.5, `RPCS_TO_REDIRECT`): the hard-coded Infura URL, read from today's source by
+ * `loadLegacyRedirectUrl`, to chain 1's read RPC, only when that RPC is set.
+ */
+export function oldRedirectMap(env: Env, legacyRedirectUrl: string): Readonly<Record<string, string>> {
   const target = oldReadOnlyRpcUrl("1", env);
-  return target.ok && target.url ? { [OLD_REDIRECTED_RPC]: target.url } : {};
+  return target.ok && target.url ? { [legacyRedirectUrl]: target.url } : {};
 }

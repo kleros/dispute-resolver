@@ -1,18 +1,25 @@
 /**
  * The production bundle check (checklist C9, A20, C3): run after `yarn build`, it fails when the built site in
- * `packages/web/dist` carries a test double, loads a script or stylesheet from another origin, or lacks a file the
- * deploy depends on.
+ * `packages/web/dist` carries a test double, loads a script or stylesheet from another origin, carries an inline script in
+ * a page, or lacks a file the deploy depends on.
  *
  *   node packages/web/scripts/check-bundle.mjs [distDirectory]
+ *
+ * The directory defaults to packages/web/dist. One given on the command line is resolved against the working directory
+ * and must lie inside the repository, symbolic links followed; anything else is refused before a file is read.
  *
  * Exit code 0 when the bundle is clean; 1 with one line per problem otherwise. Findings name a file and a kind of
  * marker, never the matching text. Operator tooling: it is not part of the application and never ships.
  */
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parse } from "parse5";
 
 const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
+
+/** The repository root: a directory given on the command line must lie inside it. */
+const REPOSITORY_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
 /** Files the deploy cannot work without (C1 to C3: the headers file, the app page, the runner page and its bootstrap). */
 const REQUIRED_FILES = ["index.html", "_headers", "__runner/index.html", "__runner/bootstrap.js"];
@@ -23,8 +30,12 @@ const BINARY_EXTENSIONS = new Set([".woff", ".woff2", ".ttf", ".otf", ".eot", ".
 /** The directories of `packages/web/src/test/` (ARCHITECTURE.md 1.5); a test keeps this list equal to the directory. */
 const TEST_DIRECTORIES = ["atlas", "data", "routing", "runner", "safe-content", "shell", "wallet"];
 
-/** A fixture host is a name under a reserved TLD that tests use, in a string or a URL. Property accesses and CSS classes are not. */
-const HOST_PREFIX = String.raw`(?:\/\/|["'\x60])[a-z0-9-]+(?:\.[a-z0-9-]+)*`;
+/**
+ * A fixture host is a name under a reserved TLD that the test doubles use as the authority of a URL
+ * (`https://wallet.invalid`, `https://rpc.example/…`). Only the URL form counts: property accesses, CSS classes and
+ * dotted names inside library strings (zod's `Symbol.for("zod.compile.invalid")`) are not hosts.
+ */
+const HOST_PREFIX = String.raw`\/\/[a-z0-9-]+(?:\.[a-z0-9-]+)*`;
 
 /**
  * What a test double leaves in a bundle. Minified code loses identifiers but keeps strings, so the markers are the
@@ -44,56 +55,73 @@ export const TEST_DOUBLE_MARKERS = [
   },
 ];
 
-const ATTRIBUTE_VALUE = String.raw`"[^"]*"|'[^']*'|[^\s>]+`;
-const ATTRIBUTE = new RegExp(String.raw`([^\s=/>"']+)(?:\s*=\s*(${ATTRIBUTE_VALUE}))?`, "g");
-
-/** Splits the attributes of one tag into a lowercase-name map; a name without a value maps to the empty string. */
-function attributesOf(source) {
-  const attributes = new Map();
-  for (const [, rawName, rawValue = ""] of source.matchAll(ATTRIBUTE)) {
-    const name = rawName.toLowerCase();
-    if (!attributes.has(name)) attributes.set(name, rawValue.replace(/^(["'])(.*)\1$/s, "$2"));
-  }
-  return attributes;
-}
-
 /** Whether a URL leaves the page's origin: it names a scheme or is protocol-relative. */
 function isExternal(url) {
   return /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(url.trim());
 }
 
-/** The attribute text of the tag whose name ends at `start`: everything up to the first `>` outside quotes. */
-function tagSource(html, start) {
-  let quote = "";
-  for (let index = start; index < html.length; index += 1) {
-    const character = html[index];
-    if (quote !== "") {
-      if (character === quote) quote = "";
-    } else if (character === '"' || character === "'") {
-      quote = character;
-    } else if (character === ">") {
-      return html.slice(start, index);
-    }
-  }
-  return html.slice(start);
+/** The ASCII whitespace that separates the tokens of a `rel` attribute. */
+const HTML_WHITESPACE = /[\t\n\f\r ]+/;
+
+/** The value of an element's attribute as the parser kept it (the first of duplicates, name lowercased), or undefined. */
+function attribute(element, name) {
+  return element.attrs.find((candidate) => candidate.name === name)?.value;
 }
 
-/** The external scripts and stylesheets an HTML document loads, as short descriptions without the URL. */
-function externalResources(html) {
-  const withoutComments = html.replaceAll(/<!--[\s\S]*?-->/g, "");
-  const found = [];
-  for (const match of withoutComments.matchAll(/<(script|link)\b/gi)) {
-    const attributes = attributesOf(tagSource(withoutComments, match.index + match[0].length));
-    if (match[1].toLowerCase() === "script") {
-      const src = attributes.get("src");
-      if (src !== undefined && isExternal(src)) found.push("script");
-    } else {
-      const href = attributes.get("href");
-      const relations = (attributes.get("rel") ?? "").toLowerCase().split(/\s+/);
-      if (href !== undefined && relations.includes("stylesheet") && isExternal(href)) found.push("stylesheet");
-    }
+/** Whether a `rel` value names the stylesheet relation; its tokens match ASCII case-insensitively, as a browser matches them. */
+function isStylesheetRelation(rel) {
+  return rel.split(HTML_WHITESPACE).some((token) => token.toLowerCase() === "stylesheet");
+}
+
+/** Every element of a parse5 tree in document order. A template's contents are inert and stay unvisited. */
+function* elementsOf(root) {
+  const pending = [...root.childNodes].reverse();
+  while (pending.length > 0) {
+    const node = pending.pop();
+    if (node.tagName === undefined) continue;
+    yield node;
+    pending.push(...[...node.childNodes].reverse());
   }
-  return found;
+}
+
+/** The text a script element carries between its tags. */
+function scriptText(element) {
+  return element.childNodes
+    .filter((child) => child.nodeName === "#text")
+    .map((child) => child.value)
+    .join("");
+}
+
+/** What one element contributes: an external script or stylesheet it loads, or the inline script it carries. */
+function findingsOfElement(element) {
+  if (element.tagName === "script") {
+    const found = [];
+    const src = attribute(element, "src");
+    if (src !== undefined && isExternal(src)) found.push("loads an external script");
+    if (scriptText(element).trim() !== "") found.push("contains an inline script");
+    return found;
+  }
+  if (element.tagName === "link") {
+    const href = attribute(element, "href");
+    if (href !== undefined && isStylesheetRelation(attribute(element, "rel") ?? "") && isExternal(href)) return ["loads an external stylesheet"];
+  }
+  return [];
+}
+
+/** What one parse of a document shows, element by element. */
+function findingsOf(document) {
+  return [...elementsOf(document)].flatMap(findingsOfElement);
+}
+
+/**
+ * The external scripts and stylesheets an HTML document loads and the inline scripts it carries, as short descriptions
+ * without the URL or the script. The document is parsed as a browser parses it, so comments, tag case, quoting and
+ * malformed markup end where the browser ends them. It is parsed twice, with scripting enabled and disabled, because
+ * the two read `<noscript>` differently and a resource either reading finds is one some browser loads. Parsing loads
+ * nothing: parse5 is a parser only and neither fetches a resource nor runs a script.
+ */
+function htmlFindings(html) {
+  return new Set([true, false].flatMap((scriptingEnabled) => findingsOf(parse(html, { scriptingEnabled }))));
 }
 
 /** Every file below `directory`, as paths relative to it with forward slashes, sorted. */
@@ -145,20 +173,51 @@ export async function checkBundle(distDirectory = DEFAULT_DIST) {
       if (marker.pattern.test(text)) problems.push(`dist/${name} contains a ${marker.label} (C9).`);
     }
     if (name.endsWith(".html")) {
-      for (const kind of new Set(externalResources(text))) problems.push(`dist/${name} loads an external ${kind} (A20).`);
+      for (const finding of htmlFindings(text)) problems.push(`dist/${name} ${finding} (A20).`);
     }
   }
   return { problems, scanned };
 }
 
+/** Whether `location` is the repository root or lies below it. */
+function isInsideRepository(location, root) {
+  return location === root || location.startsWith(root + path.sep);
+}
+
+/**
+ * The dist directory a command-line argument names: `{ ok: true, directory }` when it resolves inside the repository,
+ * symbolic links included, else `{ ok: false, problem }`. No argument means packages/web/dist.
+ */
+export async function distDirectoryFrom(argument, root = REPOSITORY_ROOT) {
+  if (argument === undefined) return { ok: true, directory: DEFAULT_DIST };
+  const refusal = { ok: false, problem: "The dist directory must lie inside the repository; the argument names a path outside it." };
+  const resolvedRoot = path.resolve(root);
+  const directory = path.resolve(argument);
+  if (!isInsideRepository(directory, resolvedRoot)) return refusal;
+  const realRoot = await realpath(resolvedRoot);
+  const realDirectory = await realpath(directory).catch(() => null);
+  if (realDirectory !== null && !isInsideRepository(realDirectory, realRoot)) return refusal;
+  return { ok: true, directory };
+}
+
 async function main() {
-  const { problems, scanned } = await checkBundle(process.argv[2] === undefined ? DEFAULT_DIST : path.resolve(process.argv[2]));
+  const [argument, ...extra] = process.argv.slice(2);
+  if (extra.length > 0) {
+    console.error("Usage: node packages/web/scripts/check-bundle.mjs [distDirectory]");
+    return 1;
+  }
+  const target = await distDirectoryFrom(argument);
+  if (!target.ok) {
+    console.error(target.problem);
+    return 1;
+  }
+  const { problems, scanned } = await checkBundle(target.directory);
   if (problems.length > 0) {
     for (const problem of problems) console.error(problem);
     console.error(`Bundle check failed: ${String(problems.length)} problem(s).`);
     return 1;
   }
-  console.info(`Bundle check passed: ${String(scanned)} text files scanned, no test double, no external script or stylesheet, deploy files present.`);
+  console.info(`Bundle check passed: ${String(scanned)} text files scanned, no test double, no external script or stylesheet, no inline script, deploy files present.`);
   return 0;
 }
 

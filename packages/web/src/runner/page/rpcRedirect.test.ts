@@ -6,7 +6,7 @@ const TARGET = "https://rpc.example/mainnet";
 
 describe("redirectTarget (D-25)", () => {
   it("D-25: redirects any key on a known provider host, not only the legacy URL", () => {
-    expect(redirectTarget(SAMPLE_REDIRECTS, "https://mainnet.infura.io/v3/668b3268d5b241b5bab5c6cb886e4c61")).toBe(TARGET);
+    expect(redirectTarget(SAMPLE_REDIRECTS, "https://mainnet.infura.io/v3/deadbeefdeadbeefdeadbeefdeadbeef")).toBe(TARGET);
     expect(redirectTarget(SAMPLE_REDIRECTS, "https://mainnet.infura.io/v3/0123456789abcdef0123456789abcdef")).toBe(TARGET);
     expect(redirectTarget(SAMPLE_REDIRECTS, "https://MAINNET.infura.io/v3/key")).toBe(TARGET);
   });

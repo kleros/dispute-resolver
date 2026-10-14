@@ -86,6 +86,7 @@ Recorded when the workspace was scaffolded (2026-10-14). Ranges are what the man
 | `@testing-library/jest-dom` (web) | `^7.0.1` | DOM matchers. |
 | `@testing-library/user-event` (web) | `^14.6.8` | Realistic user input in tests. |
 | `@reown/appkit-controllers` (web) | `1.8.24` | Test-only, pinned to the `@reown/appkit` version. The C8 tests stub its `ApiController.fetchProjectConfig` and read `ConnectorController` and `OptionsController` to prove the wagmi configuration never holds an embedded-wallet connector, that AppKit registers its own `AUTH` connector only when the Reown dashboard enables social login or email (K-01), and that the app then fails closed (K-03). |
+| `parse5` (web) | `^8.0.1` | Test and CI tooling only. The post-build bundle check (`scripts/check-bundle.mjs`, checklist A20 and C9) parses the built HTML with it, with scripting on and off, instead of regular expressions; already present through jsdom. |
 | `@playwright/test` (web) | `^1.64.0` | Golden-case suite. Browsers are installed on demand (`yarn playwright install chromium`), never by `yarn install`. |
 | `@types/react`, `@types/react-dom` (web) | `^18.3.31`, `^18.3.7` | Types for React 18; pinned to 18 because `latest` is 19. |
 | `@types/node` (root, web) | `^22.20.5` | Node types for config files and Playwright, matching the Node major. Core does not load them. |

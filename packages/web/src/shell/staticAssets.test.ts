@@ -9,14 +9,16 @@ function read(path: string): string {
   return readFileSync(join(WEB_ROOT, path), "utf8");
 }
 
-/** Every `<script>` and `<link>` start tag of an HTML document. */
-function scriptAndLinkTags(html: string): readonly string[] {
-  return [...html.matchAll(/<(script|link)\b[^>]*>/gi)].map((match) => match[0]);
+/** index.html parsed as the browser parses it, so tag case, quoting and whitespace before `>` cannot hide an element. */
+function indexDocument(): Document {
+  return new DOMParser().parseFromString(read("index.html"), "text/html");
 }
 
-/** The `src` and `href` values of a tag; index.html writes every attribute in double quotes. */
-function urlsOf(tag: string): readonly string[] {
-  return [...tag.matchAll(/\b(?:src|href)="([^"]*)"/g)].map((match) => match[1] ?? "");
+/** The `src` of every `<script>` and the `href` of every `<link>`, as written in the document. */
+function scriptAndLinkUrls(document: Document): readonly string[] {
+  const scripts = [...document.querySelectorAll("script[src]")].map((element) => element.getAttribute("src") ?? "");
+  const links = [...document.querySelectorAll("link[href]")].map((element) => element.getAttribute("href") ?? "");
+  return [...scripts, ...links];
 }
 
 /** An absolute URL with a scheme, or a protocol-relative one. */
@@ -33,16 +35,15 @@ function productionSources(): readonly string[] {
 
 describe("index.html and the global stylesheet (A20)", () => {
   it("A20: index.html loads no external script or stylesheet", () => {
-    const tags = scriptAndLinkTags(read("index.html"));
-    expect(tags.length).toBeGreaterThan(0);
-    for (const tag of tags) expect(tag.match(/\b(?:src|href)=/g)?.length ?? 0).toBe(urlsOf(tag).length);
-    expect(tags.flatMap(urlsOf).filter(isExternal)).toEqual([]);
+    const urls = scriptAndLinkUrls(indexDocument());
+    expect(urls.length).toBeGreaterThan(0);
+    expect(urls.filter(isExternal)).toEqual([]);
   });
 
   it("A20: index.html has no inline script", () => {
-    const scripts = [...read("index.html").matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+    const scripts = [...indexDocument().querySelectorAll("script")];
     expect(scripts.length).toBeGreaterThan(0);
-    for (const [, , body] of scripts) expect(body?.trim()).toBe("");
+    for (const script of scripts) expect(script.textContent.trim()).toBe("");
   });
 
   it("A20: the stylesheet self-hosts Open Sans (400, 600, 700; latin and latin-ext) and loads nothing remote", () => {

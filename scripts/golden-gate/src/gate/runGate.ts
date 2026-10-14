@@ -25,6 +25,7 @@ import { GATE_LOG_JSON, GATE_LOG_MD, IPFS_CACHE_DIR, REFERENCES_FILE } from "../
 import { openGateBrowser } from "./browser";
 import { bundleHarnesses } from "./bundle";
 import { executePlan } from "./execute";
+import { defaultLegacySources, loadLegacyRedirectUrl } from "./legacyRedirect";
 import { oldRedirectMap } from "./oldParams";
 import { planRuns, type RunPlan } from "./plan";
 import { buildWebApp, startPreview } from "./preview";
@@ -110,6 +111,7 @@ async function fetchScripts(plans: readonly RunPlan[], ipfs: IpfsReader): Promis
  * write `golden/gate-log.json` and `golden/gate-log.md`. Everything written passes through `redact`.
  */
 export async function runGate(env: Env, options: GateOptions, redact: (text: string) => string, log: (line: string) => void): Promise<GateLog> {
+  const legacyRedirectUrl = await loadLegacyRedirectUrl(defaultLegacySources());
   const ipfs = createIpfsReader({ gateway: resolveGateway(env), get: nodeHttpGet, cacheDir: IPFS_CACHE_DIR });
   let references: ReferencesFile;
   if (options.reuseEnumeration) {
@@ -137,7 +139,7 @@ export async function runGate(env: Env, options: GateOptions, redact: (text: str
   let records: RunRecord[];
   try {
     let done = 0;
-    const deps = { browser, scripts, oldRedirectMap: oldRedirectMap(env), rpcEnv: rpcEnvironment(env), oldTimeoutMs: options.oldTimeoutMs, newTimeoutMs: options.newTimeoutMs };
+    const deps = { browser, scripts, oldRedirectMap: oldRedirectMap(env, legacyRedirectUrl), rpcEnv: rpcEnvironment(env), oldTimeoutMs: options.oldTimeoutMs, newTimeoutMs: options.newTimeoutMs };
     records = await mapWithConcurrency(plans, options.concurrency, async (plan) => {
       const record = await executePlan(plan, deps);
       done += 1;

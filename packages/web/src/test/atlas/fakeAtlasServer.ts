@@ -7,7 +7,7 @@ import { testJwt } from "./testJwt";
 export const TEST_ATLAS_URI = "https://atlas.invalid";
 
 /** The test wallet's RPC origin, where wagmi's mock connector sends `personal_sign` as `eth_sign`. */
-const WALLET_RPC_ORIGIN = "https://wallet.invalid";
+const WALLET_RPC_ORIGIN = new URL("https://wallet.invalid").origin;
 
 const MIB = 1024 * 1024;
 
@@ -147,7 +147,7 @@ export function installFakeAtlasServer(options: FakeAtlasServerOptions = {}): Fa
       const body = typeof init?.body === "string" ? init.body : "";
       if (url === `${TEST_ATLAS_URI}/graphql`) return Promise.resolve(graphql(body, init));
       if (url === `${TEST_ATLAS_URI}/ipfs/file`) return upload(init);
-      if (url.startsWith(WALLET_RPC_ORIGIN)) return Promise.resolve(walletRpc(body));
+      if (new URL(url).origin === WALLET_RPC_ORIGIN) return Promise.resolve(walletRpc(body));
       return Promise.reject(new TypeError(`Tests never touch the network: ${url}`));
     }),
   );

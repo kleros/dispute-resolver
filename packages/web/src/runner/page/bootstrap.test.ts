@@ -305,7 +305,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     let topLevelRequest: Promise<Response> | undefined;
     const fake = createFakeRunnerEnvironment({
       onEvaluate: () => {
-        topLevelRequest = fake.fetch("https://mainnet.infura.io/v3/668b3268d5b241b5bab5c6cb886e4c61");
+        topLevelRequest = fake.fetch("https://mainnet.infura.io/v3/deadbeefdeadbeefdeadbeefdeadbeef");
       },
     });
     bootstrapRunner(fake.env);

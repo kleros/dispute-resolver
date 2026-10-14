@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdir, mkdtemp, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { checkBundle, TEST_DOUBLE_MARKERS } from "./check-bundle.mjs";
+import { promisify } from "node:util";
+import { checkBundle, distDirectoryFrom, TEST_DOUBLE_MARKERS } from "./check-bundle.mjs";
 
 const INDEX_HTML = `<!doctype html>
 <html lang="en">
@@ -44,6 +46,13 @@ async function makeDist(overrides = {}) {
   return root;
 }
 
+/** The same URL over plain http, built rather than written so the clear-text form appears only where it is under test. */
+function clearTextUrl(secureUrl) {
+  const url = new URL(secureUrl);
+  url.protocol = "http:";
+  return url.href;
+}
+
 async function problemsOf(overrides) {
   return (await checkBundle(await makeDist(overrides))).problems;
 }
@@ -59,6 +68,10 @@ describe("C9: test doubles never ship", () => {
 
   it("C9: does not mistake a property access named invalid for a fixture host", async () => {
     assert.deepEqual(await problemsOf({ "assets/index-abc.js": "e.invalid=!0;t.example=1;" }), []);
+  });
+
+  it("C9: does not mistake a dotted library symbol name such as zod.compile.invalid for a fixture host", async () => {
+    assert.deepEqual(await problemsOf({ "assets/index-abc.js": "const k=Symbol.for(`zod.compile.invalid`);const j=\"a.b.example\";" }), []);
   });
 
   it("C9: rejects a .invalid fixture host", async () => {
@@ -125,13 +138,26 @@ describe("A20: no external script or stylesheet", () => {
   for (const [name, html] of Object.entries({
     "an https script": INDEX_HTML.replace("/assets/index-abc.js", "https://cdn.example.org/lib.js"),
     "a protocol-relative script": INDEX_HTML.replace("/assets/index-abc.js", "//cdn.org/lib.js"),
-    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- a clear-text stylesheet is the case under test.
-    "an http stylesheet": INDEX_HTML.replace("/assets/index-abc.css", "http://cdn.org/lib.css"),
+    "an http stylesheet": INDEX_HTML.replace("/assets/index-abc.css", clearTextUrl("https://cdn.org/lib.css")),
     "an uppercase tag with single quotes": INDEX_HTML.replace('<script type="module" crossorigin src="/assets/index-abc.js">', "<SCRIPT SRC='https://cdn.org/lib.js'>"),
     "an unquoted attribute": INDEX_HTML.replace('src="/assets/index-abc.js"', "src=https://cdn.org/lib.js"),
     "a stylesheet with several rel tokens": INDEX_HTML.replace(
       'rel="stylesheet" crossorigin href="/assets/index-abc.css"',
       'href="https://cdn.org/a.css" REL="alternate stylesheet"',
+    ),
+    "an uppercase stylesheet relation": INDEX_HTML.replace('rel="stylesheet" crossorigin href="/assets/index-abc.css"', 'rel="STYLESHEET" href="https://cdn.org/x.css"'),
+    "a mixed-case stylesheet relation": INDEX_HTML.replace('rel="stylesheet" crossorigin href="/assets/index-abc.css"', 'rel="StyleSheet" href="https://cdn.org/x.css"'),
+    "a mixed-case stylesheet relation among other tokens": INDEX_HTML.replace(
+      'rel="stylesheet" crossorigin href="/assets/index-abc.css"',
+      'rel="preload\tAlternate STYLESHEET" href="https://cdn.org/x.css"',
+    ),
+    "a script that a malformed noscript hides only when scripting is disabled": INDEX_HTML.replace(
+      "<body>",
+      '<body><noscript><style></noscript><script src="https://cdn.org/x.js"></script>',
+    ),
+    "a stylesheet inside noscript, which loads when scripting is disabled": INDEX_HTML.replace(
+      "</head>",
+      '<noscript><link rel="stylesheet" href="https://cdn.org/x.css"></noscript></head>',
     ),
   })) {
     it(`A20: rejects ${name} in index.html`, async () => {
@@ -157,6 +183,68 @@ describe("A20: no external script or stylesheet", () => {
     const html = INDEX_HTML.replace("</head>", '<!-- <script src="https://cdn.org/x.js"></script> --></head>');
     assert.deepEqual(await problemsOf({ "index.html": html }), []);
   });
+
+  const EXTERNAL_SCRIPT = '<script src="https://cdn.org/x.js"></script>';
+  const EXTERNAL_STYLESHEET = '<link rel="stylesheet" href="https://cdn.org/x.css">';
+
+  for (const [name, markup] of Object.entries({
+    "nested comment openers, the first --> closing both": `<!-- <!-- ${EXTERNAL_SCRIPT} --> -->`,
+    "a comment left open to the end of the document": `<!-- ${EXTERNAL_SCRIPT}`,
+    "a comment opener written inside a comment": `<!-- a <!-- b ${EXTERNAL_STYLESHEET} c -->`,
+  })) {
+    it(`A20 (js/incomplete-multi-character-sanitization): ignores an external resource hidden by ${name}`, async () => {
+      assert.deepEqual(await problemsOf({ "index.html": INDEX_HTML.replace("</head>", `${markup}</head>`) }), []);
+    });
+  }
+
+  for (const [name, markup] of Object.entries({
+    "a bogus comment wrapping a comment marker, which one strip pass turns into <!--": `<!<!-- x -->-- ${EXTERNAL_SCRIPT} -->`,
+    "overlapping markers <!-<!-- -->->": `<!-<!-- -->-> ${EXTERNAL_SCRIPT}`,
+    "an abruptly closed <!-->": `<!-->${EXTERNAL_SCRIPT}`,
+    "an abruptly closed <!--->": `<!--->${EXTERNAL_SCRIPT}`,
+    "a comment closed by --!>": `<!-- x --!>${EXTERNAL_STYLESHEET}`,
+    "two comments around it": `<!-- a -->${EXTERNAL_SCRIPT}<!-- b -->`,
+    "a closing marker written outside any comment": `--> ${EXTERNAL_SCRIPT}`,
+  })) {
+    it(`A20 (js/incomplete-multi-character-sanitization): finds an external resource after ${name}`, async () => {
+      const problems = await problemsOf({ "index.html": INDEX_HTML.replace("</head>", `${markup}</head>`) });
+      assert.equal(problems.length, 1, problems.join("\n"));
+      assert.match(problems[0], /index\.html loads an external/);
+    });
+  }
+
+  it("A20: finds an external script whose end tag has whitespace before the >", async () => {
+    const problems = await problemsOf({ "index.html": INDEX_HTML.replace("</head>", '<script src="https://cdn.org/x.js"></script ></head>') });
+    assert.equal(problems.length, 1, problems.join("\n"));
+  });
+});
+
+describe("A20: the built pages carry no inline script", () => {
+  const INLINE_SCRIPT = "<script>globalThis.injected=true;</script >";
+
+  for (const [name, markup] of Object.entries({
+    "an inline script whose end tag has whitespace before the >": INLINE_SCRIPT,
+    "an inline script in an uppercase tag": "<SCRIPT TYPE=module>globalThis.injected=true;</SCRIPT>",
+    "an inline script next to an external source": '<script src="/assets/a.js">globalThis.injected=true;</script>',
+  })) {
+    it(`A20: rejects ${name} in index.html without quoting it`, async () => {
+      const problems = await problemsOf({ "index.html": INDEX_HTML.replace("</head>", `${markup}</head>`) });
+      assert.equal(problems.length, 1, problems.join("\n"));
+      assert.match(problems[0], /dist\/index\.html contains an inline script \(A20\)/);
+      assert.doesNotMatch(problems[0], /injected/);
+    });
+  }
+
+  it("A20: rejects an inline script in the runner page", async () => {
+    const problems = await problemsOf({ "__runner/index.html": RUNNER_HTML.replace("</body>", `${INLINE_SCRIPT}</body>`) });
+    assert.equal(problems.length, 1, problems.join("\n"));
+    assert.match(problems[0], /__runner\/index\.html contains an inline script/);
+  });
+
+  it("A20: accepts script elements that hold only whitespace, and script text inside a comment", async () => {
+    const html = INDEX_HTML.replace("</head>", '<script src="/assets/b.js">\n  </script><!-- <script>globalThis.injected=true;</script> --></head>');
+    assert.deepEqual(await problemsOf({ "index.html": html }), []);
+  });
 });
 
 describe("C3: the deploy files exist", () => {
@@ -179,5 +267,51 @@ describe("C3: the deploy files exist", () => {
     const { problems } = await checkBundle(path.join(scratch, "does-not-exist"));
     assert.equal(problems.length, 1);
     assert.match(problems[0], /yarn build/);
+  });
+});
+
+describe("S8707: the dist directory argument stays inside the repository", () => {
+  const scriptPath = fileURLToPath(new URL("./check-bundle.mjs", import.meta.url));
+  const defaultDist = fileURLToPath(new URL("../dist", import.meta.url));
+  const runScript = promisify(execFile);
+
+  it("S8707: no argument checks packages/web/dist", async () => {
+    assert.deepEqual(await distDirectoryFrom(undefined), { ok: true, directory: defaultDist });
+  });
+
+  it("S8707: accepts a directory inside the repository, relative or absolute", async () => {
+    assert.deepEqual(await distDirectoryFrom("dist"), { ok: true, directory: path.resolve("dist") });
+    assert.deepEqual(await distDirectoryFrom(defaultDist), { ok: true, directory: defaultDist });
+  });
+
+  for (const [name, argument] of Object.entries({
+    "a relative path that climbs out": "../../../../../../../../etc",
+    "an absolute path outside": path.parse(process.cwd()).root,
+    "a sibling whose name starts with the repository's": `${fileURLToPath(new URL("../../..", import.meta.url)).replace(/[\\/]$/, "")}-copy/dist`,
+  })) {
+    it(`S8707: refuses ${name}`, async () => {
+      const target = await distDirectoryFrom(argument);
+      assert.equal(target.ok, false);
+      assert.match(target.problem, /inside the repository/);
+    });
+  }
+
+  it("S8707: refuses a link inside the repository that points outside it", async () => {
+    const root = path.join(scratch, "repository");
+    const outside = path.join(scratch, "outside");
+    await mkdir(root, { recursive: true });
+    await mkdir(outside, { recursive: true });
+    await symlink(outside, path.join(root, "dist"), "dir");
+    const target = await distDirectoryFrom(path.join(root, "dist"), root);
+    assert.equal(target.ok, false);
+  });
+
+  it("S8707: the command line refuses a directory outside the repository before reading it", async () => {
+    await assert.rejects(runScript(process.execPath, [scriptPath, path.parse(process.cwd()).root]), (error) => {
+      assert.equal(error.code, 1);
+      assert.match(error.stderr, /must lie inside the repository/);
+      assert.doesNotMatch(error.stderr, /Bundle check/);
+      return true;
+    });
   });
 });

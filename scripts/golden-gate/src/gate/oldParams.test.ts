@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { REGISTRY } from "../../../../packages/core/src/registry";
-import { OLD_REDIRECTED_RPC, buildOldScriptParameters, oldReadOnlyRpcUrl, oldRedirectMap, oldSandboxValue } from "./oldParams";
+import { buildOldScriptParameters, oldReadOnlyRpcUrl, oldRedirectMap, oldSandboxValue } from "./oldParams";
 
 const ENV = { REACT_APP_WEB3_PROVIDER_URL: "https://mainnet.rpc.test/key", REACT_APP_WEB3_XDAI_PROVIDER_URL: "https://gnosis.rpc.test/key" };
 const KLEROS_GOVERNOR = "0xe5bcEa6F87aAEe4a81f64dfDB4d30d400e0e5cf4";
 const RESOLVER = "0x99489D7bb33539F3D1A401741E56e8f02B9AE0Cf";
+/** Stands for the URL today's source declares; a synthetic key, the real one is read at run time. */
+const LEGACY_URL = `https://mainnet.infura.io/v3/${"feedface".repeat(4)}`;
 
 describe("old runner parameters (spec 9.5)", () => {
   it("§9.5: chain IDs default to the network as a string, the address stays checksummed, RPC URLs come from the old map", () => {
@@ -64,7 +66,7 @@ describe("old runner sandbox flags (spec 9.5, ADR 0004)", () => {
   });
 
   it("§9.5: the RPC patch redirects only the hard-coded Infura URL, and only when chain 1's RPC is set", () => {
-    expect(oldRedirectMap(ENV)).toEqual({ [OLD_REDIRECTED_RPC]: "https://mainnet.rpc.test/key" });
-    expect(oldRedirectMap({})).toEqual({});
+    expect(oldRedirectMap(ENV, LEGACY_URL)).toEqual({ [LEGACY_URL]: "https://mainnet.rpc.test/key" });
+    expect(oldRedirectMap({}, LEGACY_URL)).toEqual({});
   });
 });

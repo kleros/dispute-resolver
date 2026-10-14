@@ -41,8 +41,12 @@ jobs:
           corepack enable
           test "$(yarn --version)" = "4.9.2"
 
-      - name: Install dependencies from the lockfile
-        run: yarn install --immutable
+      # Lifecycle scripts (preinstall, install, postinstall) are disabled: the dependencies that declare one are not needed
+      # to typecheck, lint, test or build, and skipping them keeps a compromised package from running code on the runner.
+      - name: Install dependencies from the lockfile without lifecycle scripts
+        env:
+          YARN_ENABLE_SCRIPTS: "false"
+        run: yarn install --immutable --mode=skip-build
 
       - name: Typecheck
         run: yarn typecheck
