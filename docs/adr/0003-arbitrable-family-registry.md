@@ -11,7 +11,7 @@ Today the app changes its behavior per arbitrable contract in at least seven pla
 
 Two layers, both in `core`, both validated by tests.
 
-**Layer one, family detection**, evaluated top to bottom, first match wins. Every probe reads selector presence from the contract's function-dispatcher bytecode (4-byte selectors appear as PUSH4 operands), following the EIP-1967 implementation slot for proxies. A reverting `eth_call` is never read as "selector absent", because reverts depend on the arguments. The result is cached for the session only, never in the persisted query cache, so a redeployed contract is re-probed on the next visit.
+**Layer one, family detection**, evaluated top to bottom, first match wins. Every probe reads selector presence from the contract's function-dispatcher bytecode (4-byte selectors appear as PUSH4 operands), following the EIP-1967 implementation slot for upgradeable proxies; EIP-1167 minimal-proxy clones are not followed, which keeps today's view-only behavior for them. A reverting `eth_call` is never read as "selector absent", because reverts depend on the arguments. The result is cached for the session only, never in the persisted query cache, so a redeployed contract is re-probed on the next visit.
 
 | Family | Detected by |
 |---|---|
@@ -19,6 +19,7 @@ Two layers, both in `core`, both validated by tests.
 | Escrow V1 | `disputeIDtoTransactionID(uint256)` present and `externalIDtoLocalID(uint256)` absent |
 | Governor with URI-only evidence | `submitEvidence(string)` (`0xbac91e2e`) present and `submitEvidence(uint256,string)` absent |
 | IDisputeResolver v2 or v1 | v2 exposes `getTotalWithdrawableAmount(uint256,address,uint256)`, v1 exposes `getTotalWithdrawableAmount(uint256,address,uint256[])`; the Unslashed implementation carries the v1 selector only. The version also selects the withdraw ABI, which is why the Unslashed "old withdraw ABI" quirk needs no data entry. |
+| IDisputeResolver legacy | `externalIDtoLocalID(uint256)` present but neither withdraw selector; this is the older resolver proxy `0x135c5735…` with 70 mainnet disputes. Evidence and appeal funding through the selectors the contract carries; withdrawals are not available through the resolver (ledger D-46). Without this family the probe order would downgrade a working arbitrable to view-only. |
 | View only | none of the above |
 
 **Layer two, data overrides** keyed by chain and address, each with a mandatory `justification` string stating why no generic rule covers it:
