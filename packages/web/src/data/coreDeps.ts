@@ -1,0 +1,38 @@
+import { REGISTRY, createFamilyCache, createReadClients } from "@dispute-resolver/core";
+import type { AppConfig } from "../env";
+import { RUNNER_PATH, buildRpcRedirects, createIframeScriptRunner } from "../runner";
+import { createFetcher } from "./fetcher";
+import type { PersistStorage } from "./persistence";
+import { createRealityQuestionCache } from "./realityCache";
+import { createReceiptWaiter } from "./receipts";
+import type { CoreDeps } from "./types";
+
+/** At most four script frames at a time (D-29). */
+const MAX_CONCURRENT_SCRIPTS = 4;
+
+export interface CoreDepsEnvironment {
+  readonly document: Document;
+  readonly fetch: typeof fetch;
+  /** `window.localStorage`, or `undefined` when the browser refuses it. */
+  readonly storage: PersistStorage | undefined;
+}
+
+/** The one `CoreDeps` of the app (ARCHITECTURE.md §5.1). Creates no network request. */
+export function createCoreDeps(config: AppConfig, environment: CoreDepsEnvironment): CoreDeps {
+  return {
+    env: config.env,
+    getReadClient: createReadClients(config.env),
+    fetcher: createFetcher((url, init) => environment.fetch(url, init)),
+    runner: createIframeScriptRunner({
+      document: environment.document,
+      runnerUrl: RUNNER_PATH,
+      maxConcurrent: MAX_CONCURRENT_SCRIPTS,
+      rpcRedirects: buildRpcRedirects(config.env),
+    }),
+    familyCache: createFamilyCache(),
+    realityCache: createRealityQuestionCache(environment.storage),
+    gateway: config.gateway,
+    registry: REGISTRY,
+    waitForReceipt: createReceiptWaiter(config.env),
+  };
+}

@@ -1,0 +1,144 @@
+@import "tailwindcss";
+@import "@kleros/ui-components-library/theme.css";
+
+/*
+ * Open Sans, self-hosted (A20: no font CDN; font-src 'self'): the woff2 files of @fontsource/open-sans for weights 400,
+ * 600 and 700, latin and latin-ext subsets (ranges from the package's own stylesheets). The faces are declared here
+ * because Tailwind inlines an imported stylesheet without rebasing its relative URLs; Vite resolves the package paths
+ * and bundles the files under /assets.
+ */
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("@fontsource/open-sans/files/open-sans-latin-400-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("@fontsource/open-sans/files/open-sans-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url("@fontsource/open-sans/files/open-sans-latin-600-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url("@fontsource/open-sans/files/open-sans-latin-ext-600-normal.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("@fontsource/open-sans/files/open-sans-latin-700-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("@fontsource/open-sans/files/open-sans-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@plugin "tailwindcss-react-aria-components";
+@source "../../../node_modules/@kleros/ui-components-library";
+
+/* The library switches its colour tokens on a `dark` class on <html> (see theme.ts); utilities follow the same switch. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Open Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  :root.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--klerosUIComponentsLightBackground);
+    color: var(--klerosUIComponentsPrimaryText);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/*
+ * The v2 base typography (ARCHITECTURE.md §11.1), for app markup only: library elements carry token classes, so the
+ * selectors skip any element with a `klerosUIComponents` class and the library keeps its own text styles.
+ */
+@layer components {
+  h1:not([class*="klerosUIComponents"]) {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 600;
+  }
+
+  h2:not([class*="klerosUIComponents"]) {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 400;
+  }
+
+  h3:not([class*="klerosUIComponents"]) {
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 600;
+  }
+
+  p:not([class*="klerosUIComponents"]) {
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  small:not([class*="klerosUIComponents"]) {
+    font-size: 14px;
+    line-height: 18px;
+    font-weight: 600;
+  }
+
+  label:not([class*="klerosUIComponents"]) {
+    font-size: 14px;
+    line-height: 18px;
+    color: var(--klerosUIComponentsSecondaryText);
+  }
+
+  a:not([class*="klerosUIComponents"]) {
+    color: var(--klerosUIComponentsPrimaryBlue);
+  }
+}

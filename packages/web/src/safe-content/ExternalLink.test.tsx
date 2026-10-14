@@ -1,0 +1,57 @@
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { ExternalLink } from "./ExternalLink";
+
+describe("ExternalLink", () => {
+  it("A10: opens an https link in a new tab with rel noopener noreferrer", () => {
+    render(<ExternalLink href="https://kleros.io">Kleros</ExternalLink>);
+    const link = screen.getByRole("link", { name: "Kleros" });
+    expect(link).toHaveAttribute("href", "https://kleros.io");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("A9: links the trimmed URL", () => {
+    render(<ExternalLink href="  https://kleros.io/a  ">Kleros</ExternalLink>);
+    expect(screen.getByRole("link", { name: "Kleros" })).toHaveAttribute("href", "https://kleros.io/a");
+  });
+
+  it("D-32: shows an http:// value as text, never as a link", () => {
+    render(<ExternalLink href="http://example.com/file.pdf">file.pdf</ExternalLink>);
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByText("file.pdf").tagName).toBe("SPAN");
+  });
+
+  it.each(["javascript:alert(1)", "data:text/html,<b>x</b>", "//evil.example/x", "https:/evil.example", "/relative", ""])("A9: shows %j as text, never as a link", (href) => {
+    const { container } = render(<ExternalLink href={href}>label</ExternalLink>);
+    expect(container.querySelector("a")).toBeNull();
+    expect(container).toHaveTextContent("label");
+  });
+
+  it("D-32: shows the raw value when an unsafe link has no label", () => {
+    const { container } = render(<ExternalLink href="http://example.com/x" />);
+    expect(container.querySelector("a")).toBeNull();
+    expect(container).toHaveTextContent("http://example.com/x");
+  });
+
+  it("A10: uses the URL as the label when none is given", () => {
+    render(<ExternalLink href="https://kleros.io/x" />);
+    expect(screen.getByRole("link", { name: "https://kleros.io/x" })).toBeInTheDocument();
+  });
+
+  it("12: carries the parity test ID on the link and on the text fallback", () => {
+    const { rerender } = render(<ExternalLink href="https://court.kleros.io/cases/1" testId="link-court" />);
+    expect(screen.getByTestId("link-court")).toHaveAttribute("href", "https://court.kleros.io/cases/1");
+    rerender(<ExternalLink href="http://court.example/cases/1" testId="link-court" />);
+    expect(screen.getByTestId("link-court")).not.toHaveAttribute("href");
+  });
+
+  it("applies the caller's class instead of the default link style", () => {
+    render(
+      <ExternalLink href="https://kleros.io" className="custom">
+        Kleros
+      </ExternalLink>,
+    );
+    expect(screen.getByRole("link", { name: "Kleros" })).toHaveAttribute("class", "custom");
+  });
+});

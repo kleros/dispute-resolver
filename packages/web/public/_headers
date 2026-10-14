@@ -1,0 +1,57 @@
+# Netlify response headers (ARCHITECTURE.md §10; checklist C1, C2, C3; ADR 0004).
+# Netlify combines the headers of every rule a path matches and has no path negation, so the app's policies are
+# attached to the enumerated app route patterns, none of which matches the script runner under /__runner/.
+# The report-only policy placeholder is replaced at build time by the policy of C2 (src/routing/headers).
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  X-Frame-Options: SAMEORIGIN
+
+/
+  Content-Security-Policy: frame-ancestors 'none'
+  Content-Security-Policy-Report-Only: __APP_CSP__
+
+/index.html
+  Content-Security-Policy: frame-ancestors 'none'
+  Content-Security-Policy-Report-Only: __APP_CSP__
+
+/:chain
+  Content-Security-Policy: frame-ancestors 'none'
+  Content-Security-Policy-Report-Only: __APP_CSP__
+
+/:chain/ongoing
+  Content-Security-Policy: frame-ancestors 'none'
+  Content-Security-Policy-Report-Only: __APP_CSP__
+
+/:chain/create
+  Content-Security-Policy: frame-ancestors 'none'
+  Content-Security-Policy-Report-Only: __APP_CSP__
+
+/:chain/cases
+  Content-Security-Policy: frame-ancestors 'none'
+  Content-Security-Policy-Report-Only: __APP_CSP__
+
+/:chain/cases/*
+  Content-Security-Policy: frame-ancestors 'none'
+  Content-Security-Policy-Report-Only: __APP_CSP__
+
+/:chain/interact/*
+  Content-Security-Policy: frame-ancestors 'none'
+  Content-Security-Policy-Report-Only: __APP_CSP__
+
+/:chain/disputes
+  Content-Security-Policy: frame-ancestors 'none'
+  Content-Security-Policy-Report-Only: __APP_CSP__
+
+/cases/*
+  Content-Security-Policy: frame-ancestors 'none'
+  Content-Security-Policy-Report-Only: __APP_CSP__
+
+/interact/*
+  Content-Security-Policy: frame-ancestors 'none'
+  Content-Security-Policy-Report-Only: __APP_CSP__
+
+/__runner/*
+  Content-Security-Policy: sandbox allow-scripts; frame-ancestors 'self'; script-src 'self' 'unsafe-eval'; object-src 'none'; base-uri 'none'
