@@ -1,0 +1,32 @@
+{
+  "provenance": {
+    "chain": "eth_call through the mainnet read RPC at blockNumber: KlerosLiquid disputes(1621) and currentRuling(1621), the poh.eth governor's sessions(i) scanned down from getCurrentSessionNumber() to the session whose disputeID is 1621, and getSubmittedLists(session)",
+    "source": "verified KlerosGovernor.sol of the four deployed governors (Sourcify server v2, GET /server/v2/contract/{chainId}/{address}?fields=sources), fetched 2026-10-14",
+    "goldenOptions": "docs/parity/04-golden-cases.md, mainnet 1621: options \"List 7\", \"List 8\""
+  },
+  "chainId": 1,
+  "blockNumber": 26190697,
+  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
+  "governor": "0x327a29fce0a6490e4236240be176daa282eccfdf",
+  "disputeId": "1621",
+  "arbitrated": "0x327a29fce0a6490e4236240be176daa282eccfdf",
+  "numberOfChoices": "2",
+  "period": 4,
+  "ruled": true,
+  "currentRuling": "2",
+  "session": "18",
+  "sessionRuling": "2",
+  "sessionStatus": 2,
+  "submittedLists": ["7", "8"],
+  "goldenOptions": ["List 7", "List 8"],
+  "sourceRules": {
+    "fundAppeal": "if (winner == _submissionID + 1)",
+    "withdrawFeesAndRewards": "else if (session.ruling - 1 == _submissionID)",
+    "governors": [
+      "1:0x327a29fce0a6490e4236240be176daa282eccfdf",
+      "1:0x7510c77163683448b8dc8fe9e019d9482be1ed2b",
+      "100:0xf7de5537ecd69a94695fcf4bcdbdee6329b63322",
+      "1:0xe5bcea6f87aaee4a81f64dfdb4d30d400e0e5cf4"
+    ]
+  }
+}

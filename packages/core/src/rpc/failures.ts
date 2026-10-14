@@ -1,0 +1,46 @@
+import { BaseError, ContractFunctionRevertedError, ContractFunctionZeroDataError, ExecutionRevertedError } from "viem";
+import type { Unavailable } from "../types";
+import { isLookupLimitError } from "./errors";
+
+/**
+ * Node messages for a call the EVM itself failed. Nodes report the same failure differently, all recorded in the
+ * modules' `__fixtures__/`: `3 "execution reverted"` (Gnosis), `-32000 "invalid opcode: INVALID"` (Sepolia) and
+ * `-32003 "EVM error: InvalidFEOpcode"` (mainnet, Sepolia; the out-of-range `disputes(id)` of KlerosLiquid and
+ * `getRoundInfo` of a governor).
+ */
+const EXECUTION_FAILURE = /execution reverted|\breverted?\b|invalid opcode|InvalidFEOpcode|invalid jump|out of gas|stack (?:underflow|overflow)/i;
+
+/**
+ * Whether a failed `readContract` was a failure of the contract (a revert, an invalid opcode, no return data from a
+ * fallback function) rather than of the transport. The JSON-RPC code alone cannot tell: viem reads `-32603 "Internal
+ * error"` and an empty `0x` revert as a revert, and `-32000` also carries transport failures such as "header not found",
+ * so the node's message decides (D-53, D-36). Only a contract failure may be read as "absent" or "does not exist"; a
+ * transport failure never is (spec 10.9).
+ */
+export function isContractFailure(error: unknown): boolean {
+  if (!(error instanceof BaseError)) return false;
+  const failure = error.walk(
+    (cause) =>
+      cause instanceof ExecutionRevertedError ||
+      cause instanceof ContractFunctionZeroDataError ||
+      (cause instanceof ContractFunctionRevertedError && cause.raw !== undefined && cause.raw !== "0x") ||
+      (cause instanceof BaseError && EXECUTION_FAILURE.test(cause.details)),
+  );
+  return failure !== null;
+}
+
+/**
+ * A short reason for a failed read that is safe to show. A viem error's full `message` can carry the transport URL, and
+ * with it the RPC key, so only its `shortMessage` is used; any other error is named, never quoted.
+ */
+export function describeError(error: unknown): string {
+  if (error instanceof BaseError) return error.shortMessage;
+  if (isLookupLimitError(error)) return error.message;
+  if (error instanceof Error && error.name === "AbortError") return "The request was aborted.";
+  return "The request failed.";
+}
+
+/** Why a contract read that threw failed: `reverted` for a contract failure, else `rpc-error`, with a safe reason. */
+export function readFailure(what: string, error: unknown): Unavailable {
+  return { code: isContractFailure(error) ? "reverted" : "rpc-error", message: `Could not read ${what}: ${describeError(error)}` };
+}

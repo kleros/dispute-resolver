@@ -1,0 +1,221 @@
+import { numberToHex, pad, toEventSelector } from "viem";
+import { describe, expect, it } from "vitest";
+import { erc1497Abi } from "../abi";
+import { CHAINS } from "../chains";
+import type { Address } from "../types";
+import { evidenceScanStart, readDisputeEvent, readEvidenceLogs } from "./index";
+import { disputeLog, evidenceLog, fakeClient, recordedDispute, recordedNode, RECORDED, rpcError, type RpcLog } from "./testHelpers";
+
+const ARBITRATOR = RECORDED.arbitrator;
+const DISPUTE_1454 = recordedDispute(1454n);
+const DISPUTE_505 = recordedDispute(505n);
+const OTHER_ARBITRABLE: Address = "0x1111111111111111111111111111111111111111";
+
+function readRecorded(disputeId: bigint, arbitrable: Address, node = recordedNode()) {
+  const { client, requests } = fakeClient(node);
+  const result = readDisputeEvent({ client, arbitrable, arbitrator: ARBITRATOR, disputeId, fromBlock: RECORDED.scanFromBlock });
+  return { result, requests };
+}
+
+function syntheticDispute(blockNumber: bigint, logIndex: number): RpcLog {
+  return disputeLog({ arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, disputeId: 7n, metaEvidenceId: 3n, evidenceGroupId: 9n, blockNumber, logIndex });
+}
+
+describe("readDisputeEvent", () => {
+  it("§6.3: the ERC-1497 event selectors are the recorded ones", () => {
+    const dispute = erc1497Abi.find((item) => item.name === "Dispute");
+    const evidence = erc1497Abi.find((item) => item.name === "Evidence");
+    if (dispute === undefined || evidence === undefined) throw new Error("ERC-1497 events missing from the ABI");
+    expect(toEventSelector(dispute)).toBe(DISPUTE_1454.disputeLogs[0]?.topics[0]);
+    expect(toEventSelector(evidence)).toBe(DISPUTE_1454.evidenceLogs[0]?.topics[0]);
+  });
+
+  it("§6.3: reads the recorded Dispute event of mainnet 1454 with its block time as the creation time", async () => {
+    const { result } = readRecorded(1454n, DISPUTE_1454.arbitrable);
+    const recorded = DISPUTE_1454.disputeLogs[0];
+    if (recorded === undefined) throw new Error("fixture has no Dispute log");
+    expect(await result).toEqual({
+      ok: true,
+      value: {
+        status: "found",
+        event: {
+          metaEvidenceId: 0n,
+          evidenceGroupId: 0n,
+          blockNumber: BigInt(recorded.blockNumber),
+          createdAt: Number(DISPUTE_1454.timestamps[recorded.blockNumber]),
+          transactionHash: recorded.transactionHash,
+        },
+      },
+    });
+  });
+
+  it("§6.3: reads the recorded Dispute event of mainnet 505, whose evidence group equals its meta-evidence ID", async () => {
+    const { result } = readRecorded(505n, DISPUTE_505.arbitrable);
+    const outcome = await result;
+    expect(outcome.ok && outcome.value.status === "found" && outcome.value.event).toMatchObject({ metaEvidenceId: 57n, evidenceGroupId: 57n });
+  });
+
+  it("§6.3: filters on both indexed arguments, on the arbitrable", async () => {
+    const { result, requests } = readRecorded(1454n, DISPUTE_1454.arbitrable);
+    await result;
+    expect(requests.logs).toHaveLength(1);
+    expect(requests.logs[0]?.address).toBe(DISPUTE_1454.arbitrable);
+    expect(requests.logs[0]?.topics).toEqual([DISPUTE_1454.disputeLogs[0]?.topics[0], pad(ARBITRATOR), numberToHex(1454n, { size: 32 })]);
+  });
+
+  it("D-36: zero Dispute logs are reported as not-found, not thrown", async () => {
+    const { result } = readRecorded(1453n, DISPUTE_1454.arbitrable);
+    expect(await result).toEqual({ ok: true, value: { status: "not-found" } });
+  });
+
+  it("D-36: several Dispute logs are reported as ambiguous with their count, not thrown", async () => {
+    const node = recordedNode({ logs: [syntheticDispute(100n, 1), syntheticDispute(200n, 4)], timestamps: {} });
+    const { client } = fakeClient(node);
+    const outcome = await readDisputeEvent({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, disputeId: 7n, fromBlock: 0n });
+    expect(outcome).toEqual({ ok: true, value: { status: "ambiguous", count: 2 } });
+  });
+
+  it("D-36: a Dispute log whose data does not decode is invalid-data, not a crash", async () => {
+    const broken: RpcLog = { ...syntheticDispute(100n, 1), data: "0x1234" };
+    const { client } = fakeClient(recordedNode({ logs: [broken], timestamps: { [numberToHex(100n)]: "0x10" } }));
+    const outcome = await readDisputeEvent({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, disputeId: 7n, fromBlock: 0n });
+    expect(outcome.ok).toBe(false);
+    expect(!outcome.ok && outcome.error.code).toBe("invalid-data");
+  });
+
+  it("D-36: a failed log read degrades to rpc-error without leaking the node's message", async () => {
+    const secret = "https://mainnet.example/v3/SECRET-KEY";
+    const { result } = readRecorded(1454n, DISPUTE_1454.arbitrable, recordedNode({ failing: { eth_getLogs: rpcError(-32000, secret) } }));
+    const outcome = await result;
+    expect(outcome.ok).toBe(false);
+    expect(!outcome.ok && outcome.error.code).toBe("rpc-error");
+    expect(!outcome.ok && outcome.error.message).not.toContain("SECRET-KEY");
+  });
+
+  it("D-36: a failed head read or block read degrades to rpc-error", async () => {
+    for (const method of ["eth_blockNumber", "eth_getBlockByNumber"]) {
+      const { result } = readRecorded(1454n, DISPUTE_1454.arbitrable, recordedNode({ failing: { [method]: rpcError(-32000, "down") } }));
+      const outcome = await result;
+      expect(!outcome.ok && outcome.error.code).toBe("rpc-error");
+    }
+  });
+
+  it("D-36: a Dispute log in a block the node cannot return degrades to rpc-error", async () => {
+    const { result } = readRecorded(1454n, DISPUTE_1454.arbitrable, recordedNode({ timestamps: {} }));
+    const outcome = await result;
+    expect(!outcome.ok && outcome.error.code).toBe("rpc-error");
+  });
+
+  it("D-36: an aborted read degrades to rpc-error instead of rejecting", async () => {
+    const { client, requests } = fakeClient(recordedNode());
+    const controller = new AbortController();
+    controller.abort();
+    const outcome = await readDisputeEvent({
+      client,
+      arbitrable: DISPUTE_1454.arbitrable,
+      arbitrator: ARBITRATOR,
+      disputeId: 1454n,
+      fromBlock: RECORDED.scanFromBlock,
+      signal: controller.signal,
+    });
+    expect(!outcome.ok && outcome.error.code).toBe("rpc-error");
+    expect(requests.logs).toHaveLength(0);
+  });
+
+  it("§6.3: a node that caps log ranges is scanned in windows and still finds the event", async () => {
+    const recorded = DISPUTE_1454.disputeLogs[0];
+    if (recorded === undefined) throw new Error("fixture has no Dispute log");
+    const fromBlock = BigInt(recorded.blockNumber) - 25_000n;
+    const node = recordedNode({ head: BigInt(recorded.blockNumber) + 25_000n, maxLogRange: 10_000n });
+    const { client, requests } = fakeClient(node);
+    const outcome = await readDisputeEvent({ client, arbitrable: DISPUTE_1454.arbitrable, arbitrator: ARBITRATOR, disputeId: 1454n, fromBlock });
+    expect(outcome.ok && outcome.value.status).toBe("found");
+    expect(requests.logs.length).toBeGreaterThan(1);
+  });
+});
+
+describe("P-01: Evidence and Dispute-event scan start", () => {
+  const chainsWithArbitrator = Object.values(CHAINS).filter((chain) => chain.klerosLiquid !== undefined);
+
+  it("P-01: every chain with an arbitrator scans from its arbitrator deployment block, testnets included", () => {
+    expect(chainsWithArbitrator.map((chain) => chain.id).sort((a, b) => a - b)).toEqual([1, 100, 10200, 11155111]);
+    for (const chain of chainsWithArbitrator) {
+      expect(evidenceScanStart(chain)).toBe(BigInt(chain.arbitratorDeployedAtBlock ?? 0));
+    }
+  });
+
+  it("P-01: a chain without a deployment block scans from block 0", () => {
+    expect(evidenceScanStart({ id: 999, name: "Bare", currency: "ETH", isTestnet: true, maxLookback: 50_000 })).toBe(0n);
+  });
+
+  it("P-01: the Dispute and Evidence scans run from the scan start to the head, never from head − lookback", async () => {
+    for (const chain of chainsWithArbitrator) {
+      const fromBlock = evidenceScanStart(chain);
+      const head = fromBlock + BigInt(chain.maxLookback) * 10n;
+      const { client, requests } = fakeClient(recordedNode({ head, logs: [], timestamps: {} }));
+      await readDisputeEvent({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, disputeId: 7n, fromBlock });
+      await readEvidenceLogs({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, fromBlock });
+      expect(requests.logs.map((request) => [request.fromBlock, request.toBlock])).toEqual([
+        [fromBlock, head],
+        [fromBlock, head],
+      ]);
+    }
+  });
+});
+
+describe("readEvidenceLogs", () => {
+  it("§6.3: reads the recorded Evidence logs of mainnet 505 in chain order with lowercase submitters", async () => {
+    const { client, requests } = fakeClient(recordedNode());
+    const outcome = await readEvidenceLogs({
+      client,
+      arbitrable: DISPUTE_505.arbitrable,
+      arbitrator: ARBITRATOR,
+      evidenceGroupId: 57n,
+      fromBlock: RECORDED.scanFromBlock,
+    });
+    if (!outcome.ok) throw new Error(outcome.error.message);
+    expect(outcome.value).toHaveLength(5);
+    expect(outcome.value.map((log) => [log.blockNumber, log.logIndex])).toEqual(DISPUTE_505.evidenceLogs.map((log) => [BigInt(log.blockNumber), Number(log.logIndex)]));
+    expect(outcome.value.map((log) => log.submitter)).toEqual(DISPUTE_505.evidenceLogs.map((log) => `0x${(log.topics[3] ?? "").slice(26)}`));
+    expect(outcome.value.every((log) => log.submitter === log.submitter.toLowerCase())).toBe(true);
+    expect(outcome.value[0]?.evidenceUri).toBe("/ipfs/QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA/evidence.json");
+    expect(requests.logs[0]?.topics).toEqual([DISPUTE_505.evidenceLogs[0]?.topics[0], pad(ARBITRATOR), numberToHex(57n, { size: 32 }), null]);
+  });
+
+  it("§6.3: evidence submitted before the Dispute event is read, because the scan starts at the given block", async () => {
+    const early = evidenceLog({
+      arbitrable: OTHER_ARBITRABLE,
+      arbitrator: ARBITRATOR,
+      evidenceGroupId: 9n,
+      party: "0x2222222222222222222222222222222222222222",
+      uri: "/ipfs/QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA/evidence.json",
+      blockNumber: 50n,
+      logIndex: 0,
+    });
+    const { client } = fakeClient(recordedNode({ logs: [early, syntheticDispute(100n, 0)], timestamps: {} }));
+    const outcome = await readEvidenceLogs({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, fromBlock: 0n });
+    expect(outcome.ok && outcome.value.map((log) => log.blockNumber)).toEqual([50n]);
+  });
+
+  it("D-36: a failed scan degrades to rpc-error", async () => {
+    const { client } = fakeClient(recordedNode({ failing: { eth_getLogs: rpcError(-32000, "down") } }));
+    const outcome = await readEvidenceLogs({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, fromBlock: 0n });
+    expect(!outcome.ok && outcome.error.code).toBe("rpc-error");
+  });
+
+  it("D-22: an Evidence log whose data does not decode is left out here; loadEvidence counts it as hidden", async () => {
+    const valid = evidenceLog({
+      arbitrable: OTHER_ARBITRABLE,
+      arbitrator: ARBITRATOR,
+      evidenceGroupId: 9n,
+      party: "0x2222222222222222222222222222222222222222",
+      uri: "/ipfs/QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA/evidence.json",
+      blockNumber: 50n,
+      logIndex: 0,
+    });
+    const broken: RpcLog = { ...valid, data: "0xdeadbeef", logIndex: "0x1" };
+    const { client } = fakeClient(recordedNode({ logs: [valid, broken], timestamps: {} }));
+    const outcome = await readEvidenceLogs({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, fromBlock: 0n });
+    expect(outcome.ok && outcome.value.map((log) => log.logIndex)).toEqual([0]);
+  });
+});
