@@ -2,16 +2,16 @@
 
 **Status: draft.** These documents become the contract for the rewrite when the maintainer freezes them. After the freeze they change only through an entry in the deviations ledger. Until then, corrections are welcome in place.
 
-**Confirm before freeze.** The following were decided while reconciling the documents and have not been approved by the maintainer. Each needs a verdict, and the ledger entry is adjusted if the verdict differs.
+**Decisions taken before the freeze (2026-10-14, maintainer's verdicts).**
 
-1. **Safe wallet not supported** (ADR 0002, D-06, C1): the app forbids being framed, and Safe's connector only works inside Safe's iframe. Alternative: allow `frame-ancestors https://app.safe.global` on app routes, at the cost of one permitted embedder.
-2. **The URL is the page chain** (D-55): a wallet chain change no longer navigates or reloads; the header switcher changes the URL and asks the wallet to follow.
-3. **No appeal panel for families that cannot fund** (D-47): governor and view-only disputes show a note in the appeal period and nothing in execution, where today they show unusable cards or an empty withdraw body.
-4. **Withdrawals across several rulings in sequence** (D-51): one transaction per ruling, instead of today's first-non-zero ruling only.
-5. **Display allowlist keeps today's lookup key** (B6 accepted with mitigation, D-34), rather than re-keying by arbitrator chain.
-6. **Testnet Reality proxies stay unregistered** (06 §5.4).
-7. **Combination picker above eight options** (D-33) instead of 2ⁿ cards.
-8. **Uniform Unslashed round offset** (D-30), pending verification on mainnet 1678.
+1. **Safe wallet**: supported through WalletConnect; only the embedded-in-Safe mode is unsupported because the app forbids being framed (ADR 0002, D-06, C1).
+2. **Chain changes**: the app follows the wallet's chain as today, without the full page reload; writes still require the wallet and page chains to match (D-55, D-48).
+3. **Governor appeals are fixed, not removed**: funding and withdrawal go through the governor's own interface; families with no known funding interface (PoH v2, Curate, T2CR) show a note instead of cards that cannot fund (D-47).
+4. **Withdrawals across several rulings in sequence** (D-51).
+5. **Display allowlist keeps today's lookup key** with integer validation (B6 accepted with mitigation, D-34).
+6. **Testnet Reality proxies stay unregistered**; their cases keep the "unverified" path, which is testable; registering them is a possible later change (06 §5.4).
+7. **Multiple-select above four options** shows the current ruling, funded combinations and a composer instead of 2ⁿ cards (D-33).
+8. **Unslashed round offset** (D-30): the rule is being derived from the contract's on-chain events; the ledger entry carries the evidence.
 
 
 The rewrite (see `docs/adr/`) replaces the application without changing what it does for users, except where this set says so explicitly. Six files divide that promise into checkable parts:

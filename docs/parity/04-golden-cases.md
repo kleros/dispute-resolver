@@ -78,16 +78,16 @@ The list is compared as a set keyed by id. Disputes that change period between t
 | 1661 | same | cross-chain, 11 evidence | |
 | 1668 | `0xf0b37feda6cdf5f78b37e1fbccc24969059f2044` | cross-chain, home Base, 0 evidence | the only Base-home dispute |
 | 1586 | `0x68c4cc21…` Polkamarkets foreign proxy | cross-chain, home Polygon | must load; its production load status was not verified during research |
-| 1674 | `0xbE9834097A4E97689d9B667441acafb456D0480A` Proof of Humanity v2 | not IDisputeResolver; 3 evidence; executed | case-page view-only banner; appeal panel per D-47 (production shows the empty withdraw body) |
+| 1674 | `0xbE9834097A4E97689d9B667441acafb456D0480A` Proof of Humanity v2 | not IDisputeResolver; 3 evidence; executed | case-page view-only banner; executed, so no appeal cards; the D-47 note replaces production's empty withdraw body |
 | 1667 | same | PoH v2 with round count 2 | |
 | 1646 | `0xc5e9ddebb09cd64dfacab4011a0d5cedaf7c9bdb` Proof of Humanity v1 | view-only, 3 evidence, court 23 | |
 | 1255 | `0xEbcf3bcA271B26ae4B162Ba560e243055Af0E679` T2CR | evidence display named as `https://ipfs.kleros.io/ipfs/QmYs17m…/index.html`; meta-evidence event not decodable with a plain string decoder; 3 evidence | display iframe present with gateway origin (D-26); "Yes, Add It / No, Don't Add It"; loads as in production |
 | 1659 | `0xda03509bb770061a61615ad8fc8e1858520ebd86` LightGTCR | Curate dispute | |
 | 1649 | `0x4A9f8e73b3c4c9d7fA0210b9de457b1c493a3AdA` Seer Curate | Curate variant | |
 | 1100 | `0x99a0f0e0d9ee776d791d2e55c215d05ccf7286fc` GTCR classic | Curate classic | loads in production today; must load in the new app |
-| 1621 | `0x327a29fcE0a6490E4236240Be176dAA282EcCfdF` poh.eth governor | governor family; script `QmdpXX…` (production uses the `Qmf1k7…` override); 2 evidence | options "List 7", "List 8"; identical options from the original script (D-25); the evidence write path is exercised in the live tier |
+| 1621 | `0x327a29fcE0a6490E4236240Be176dAA282EcCfdF` poh.eth governor | governor family; script `QmdpXX…` (production uses the `Qmf1k7…` override); 2 evidence | options "List 7", "List 8"; identical options from the original script (D-25); withdraw panel through the governor dialect under the account context (D-47); the evidence write path is exercised in the live tier |
 | 1676 | same | recent governor dispute, 1 evidence | |
-| 1672, 535 | `0xe5bcEa6F87aAEe4a81f64dfDB4d30d400e0e5cf4` kleros.eth governor | governor without evidence function; script `QmX9qws…` runs same-origin in production today | "List N" options from the governor's submitted lists (observed "List 0", "List 1" on 535); case-page view-only banner, as today; appeal panel per D-47 |
+| 1672, 535 | `0xe5bcEa6F87aAEe4a81f64dfDB4d30d400e0e5cf4` kleros.eth governor | governor without evidence function; script `QmX9qws…` runs same-origin in production today | "List N" options from the governor's submitted lists (observed "List 0", "List 1" on 535); case-page view-only banner for evidence, as today; withdraw panel through the governor dialect under the account context (D-47) |
 | 878 | `0xC25a0b9681ABF6F090AEd71a8c08fB564b41dab6` Escrow V1 | Escrow family, 2 evidence | appeal panel kind `escrow-ended` in execution; "Tutorial UBI P2P" |
 | 168, 92 | `0x0d67440946949fe293b45c52efd8a9b3d51e2522` Escrow V1 (the lowercase entry) | 168: appealed, round count 3, 7 evidence; 92: 3 evidence | production treats it as IDisputeResolver because the address never matched (Q12); new app: Escrow family (D-12). Expected difference recorded |
 | 1678 | `0xe0e1bc8C6cd1B81993e2Fcfb80832d814886eA38` Unslashed | IDisputeResolver v1, round-index offset, 8 evidence, 0.273 ETH contributed and 0.823 withdrawn on local dispute 116 | withdraw panel amounts; decides the round-offset rule (D-30) |
