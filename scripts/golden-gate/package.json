@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "description": "Marks the gate tooling as ES modules for tsx, Vitest and Node; not a workspace, it has no dependencies of its own.",
+  "type": "module"
+}

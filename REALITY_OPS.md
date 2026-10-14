@@ -7,10 +7,10 @@ the resolver looks up the question and its template on-chain and derives the rul
 
 This document explains how to maintain the two data files behind this:
 
-| File                                      | Content                                                                   | Maintained |
-| ----------------------------------------- | ------------------------------------------------------------------------- | ---------- |
-| `src/ethereum/reality-proxies.js`         | Registry of the Reality.eth arbitrables (`REALITY_PROXIES`)               | By hand    |
-| `src/ethereum/reality-known-questions.js` | Question of every existing dispute of these arbitrables, up to a snapshot | Generated  |
+| File                                                    | Content                                                                   | Maintained |
+| ------------------------------------------------------- | ------------------------------------------------------------------------- | ---------- |
+| `packages/core/src/registry/realityProxies.ts`          | Registry of the Reality.eth arbitrables (`REGISTRY.realityProxies`)       | By hand    |
+| `packages/core/src/reality/knownQuestions.generated.ts` | Question of every existing dispute of these arbitrables, up to a snapshot | Generated  |
 
 ## How it works
 
@@ -33,8 +33,9 @@ This document explains how to maintain the two data files behind this:
 
 ## RPC endpoints
 
-The generator uses the same environment variables as the app (`src/ethereum/network-contract-mapping.js`), read from the environment or
-from `.env`:
+The generator (`packages/core/scripts/generate-known-questions.ts`) uses the read RPC variables of the chain table
+(`readRpcEnv` in `CHAINS`, `packages/core/src/chains/table.ts`), read from the environment or from the repository's
+`.env` (the environment wins):
 
 | Chain          | Variable                              |
 | -------------- | ------------------------------------- |
@@ -44,34 +45,39 @@ from `.env`:
 | Polygon (137)  | `REACT_APP_WEB3_POLYGON_PROVIDER_URL` |
 | Base (8453)    | `REACT_APP_BASE`                      |
 
-Only the chains used by `REALITY_PROXIES` are needed: the arbitrator chains (1, 100) and the Reality.eth chains of the
+Only the chains used by `REGISTRY.realityProxies` are needed: the arbitrator chains (1, 100) and the Reality.eth chains of the
 cross-chain proxies. Endpoints that limit the `eth_getLogs` block range work, but are slower (the scans fall back to
 10,000-block windows).
 
 ## Regenerating the known-question map
 
 Run it periodically (for instance monthly, and before a release) so that new disputes are looked up from a recent
-snapshot, and always after changing `REALITY_PROXIES`:
+snapshot, and always after changing `REGISTRY.realityProxies`:
 
 ```sh
-yarn reality:known-questions
+yarn workspace @dispute-resolver/core reality:known-questions
 ```
 
 The update is incremental: the disputes already in the file are re-verified with single-block queries, and the
 disputeID -> questionID events are only scanned after the previous snapshot block (from the deployment block for
 arbitrables without known disputes, such as newly added ones). It takes seconds. Options:
 
-- `node scripts/generate-reality-known-questions.js --full` rescans everything from the deployment blocks (slow on
-  endpoints that limit the block range: about 20 minutes with Gnosis endpoints capped at 10,000 blocks).
-- `yarn reality:known-questions:check` recomputes the map at its current snapshot blocks (full scan, about as slow as `--full`, without writing)
-  and exits with an error if the file differs.
+- `yarn workspace @dispute-resolver/core reality:known-questions --full` rescans everything from the deployment blocks
+  (slow on endpoints that limit the block range: about 20 minutes with Gnosis endpoints capped at 10,000 blocks).
+- `yarn workspace @dispute-resolver/core reality:known-questions:check` recomputes the map at its current snapshot blocks
+  (full scan, about as slow as `--full`, without writing) and exits with an error if the file differs.
+
+The command exits with 0 when it wrote the file or, with `--check`, the file matches the chain data. It exits with 1
+when `--check` finds a difference, on an unknown argument, and on any failure: a chain without a configured RPC, an RPC
+error, or an inconsistency in the chain data (a known question that moved or changed template, a dispute mapped twice,
+a log count other than one). Nothing is written on failure.
 
 Then review and commit the change:
 
 ```sh
-git diff src/ethereum/reality-known-questions.js   # only additions and the snapshot blocks should change
-yarn test src/ethereum
-git commit -S -m "chore: update the Reality.eth known-question map" src/ethereum/reality-known-questions.js
+git diff packages/core/src/reality/knownQuestions.generated.ts   # only additions and the snapshot blocks should change
+yarn workspace @dispute-resolver/core test
+git commit -S -m "chore: update the Reality.eth known-question map" packages/core/src/reality/knownQuestions.generated.ts
 ```
 
 Existing entries never change (the chain data is immutable): an entry that disappears or changes is an error to
@@ -106,9 +112,10 @@ that contains `populatedJSONForTemplate`.
    - `localizedLang`: `"es"` when the script translates the labels for Spanish questions (Kleros Moderate), else `null`.
    - `questionOverride`: `"title"` when the script returns `question: <question title>` (most cross-chain scripts),
      `"title-description"` when it returns `"<title>. <description>"`, else `null`.
-6. **Add the entry** to `REALITY_PROXIES`, keyed by `"<arbitrator chain ID>:<lowercase proxy address>"`, with a comment
-   naming the arbitrable and its dynamic script CID. Make sure `src/ethereum/network-contract-mapping.js` has a `WEB3_PROVIDER` for `realityChainId`.
-7. **Regenerate the known-question map** (`yarn reality:known-questions`) so that the existing disputes of the new
+6. **Add the entry** to `REALITY_PROXIES` in `packages/core/src/registry/realityProxies.ts`, keyed by
+   `"<arbitrator chain ID>:<lowercase proxy address>"`, with a comment naming the arbitrable and its dynamic script CID
+   and a `justification`. Make sure `CHAINS` (`packages/core/src/chains/table.ts`) has a `readRpcEnv` for `realityChainId`.
+7. **Regenerate the known-question map** (`yarn workspace @dispute-resolver/core reality:known-questions`) so that the existing disputes of the new
    arbitrable are included: they would otherwise never be found, since disputes missing from the map are only searched
    after the snapshot block.
 8. **Verify** that the derived options match what the arbitrable's script shows for its existing disputes (the resolver's
