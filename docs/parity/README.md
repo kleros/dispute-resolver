@@ -1,6 +1,6 @@
 # Parity documents for the Dispute Resolver rewrite
 
-**Status: draft.** These documents become the contract for the rewrite when the maintainer freezes them. After the freeze they change only through an entry in the deviations ledger. Until then, corrections are welcome in place.
+**Status: frozen on 2026-10-14.** These documents are the contract for the rewrite. They change only through an entry in the deviations ledger, reviewed by the maintainer; a change to the behavioral spec itself is allowed only to correct a description of the current app, with the evidence cited.
 
 **Decisions taken before the freeze (2026-10-14, maintainer's verdicts).**
 
@@ -55,6 +55,6 @@ Words the other files lean on. Definitions describe the Kleros v1 arbitration mo
 ## Process rules that have no other home
 
 - **CI gates** (per pull request to the integration branch): typecheck, lint, unit and component tests, build. Netlify builds with `CI=true` so warnings fail the build. The Playwright golden-case suite runs on demand and nightly against the branch deploy, not as a per-pull-request gate because it depends on live chains; it is the cutover gate (ADR 0001).
-- **Freeze**: the maintainer marks this README `Status: frozen` with the date. From then on, behavior changes are ledger entries first.
+- **Freeze**: frozen on 2026-10-14. From then on, behavior changes are ledger entries first.
 - **Reviews**: every security-checklist row is reviewed by someone other than its author before it is marked green.
 - **Inputs**: the research these documents distill from (security controls, hardcoded cases, branch audit, behavioral inventory, special-case root causes, Atlas and golden-case research, sandbox study) is kept outside the repository by the maintainer; statements here cite today's source directly where it matters.

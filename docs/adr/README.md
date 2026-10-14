@@ -9,4 +9,4 @@ Decisions that are hard to reverse, surprising without context, and the result o
 | [0003](0003-arbitrable-family-registry.md) | Per-arbitrable behavior in one registry; generic rule first, every data entry justified | accepted |
 | [0004](0004-dynamic-script-isolation.md) | Dynamic scripts in a dedicated opaque-origin runner page with explicit UTF-8; no `allow-same-origin` for scripts | accepted |
 
-The behavioral spec, security checklist, golden cases and deviations ledger these records refer to live in `docs/parity/` (to be written before any rewrite code).
+The behavioral spec, security checklist, golden cases and deviations ledger these records refer to live in `docs/parity/` (frozen on 2026-10-14).
