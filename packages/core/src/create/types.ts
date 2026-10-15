@@ -89,5 +89,5 @@ export interface CreatedMetaEvidence {
 export interface CreateLimits {
   readonly optionRange: readonly [number, number];
   readonly minVotes: number;
-  readonly requiredFields: readonly ("courtId" | "votes" | "title" | "question" | "optionTitles")[];
+  readonly requiredFields: readonly ("courtId" | "votes" | "title" | "questionType" | "optionCount" | "question" | "optionTitles")[];
 }

@@ -1,11 +1,11 @@
 import type { ChainId, ScriptKind } from "../../../../packages/core/src/types";
 import type { CidPath } from "../../../../packages/core/src/uri/types";
-import { testnetCheckComplete, type ChainEnumeration, type ReferencesFile, type TestnetCheckItem } from "../enumerate/enumerate";
+import { testnetCheckComplete, type ChainEnumeration, type DisputeNote, type ReferencesFile, type TestnetCheckItem } from "../enumerate/enumerate";
 import type { Diagnostics } from "./browser";
 import { PASSING_VERDICTS, REVIEW_VERDICTS, type SideOutcome, type Verdict } from "./compare";
 import { OVERRIDE_1621, type RunPurpose } from "./plan";
 
-/** One side of a run as logged: parameters with their RPC URLs redacted by the writer. */
+/** One side of a run as logged: RPC URLs in its parameters and every URL in a failure's detail as host and fingerprint. */
 export interface SideRecord {
   readonly scriptCid: CidPath;
   readonly params: unknown;
@@ -37,14 +37,24 @@ export interface RunRecord {
 export interface CoverageEntry {
   readonly chainId: ChainId;
   readonly cid: CidPath;
+  /** Runs that executed the script in both runners: a `harness-failure` run does not count. */
   readonly runs: number;
+  /** The verdicts of every run of the script, `harness-failure` included. */
   readonly verdicts: Readonly<Partial<Record<Verdict, number>>>;
   /** `null` when exercised; otherwise why no run covers the script. */
   readonly unexercisedReason: string | null;
 }
 
+/** One dispute of an arbitrator chain, as `--disputes` names it (`<chain>:<dispute>`). */
+export interface DisputeKey {
+  readonly chainId: ChainId;
+  readonly disputeId: number;
+}
+
 export interface GateOptions {
   readonly chains: readonly ChainId[];
+  /** Gate only these disputes, enumerating only them; `null` for every dispute of `chains`. */
+  readonly disputes: readonly DisputeKey[] | null;
   readonly cids: readonly string[] | null;
   readonly maxPerCid: number | null;
   readonly concurrency: number;
@@ -65,6 +75,8 @@ export interface GateLog {
     readonly generatedAt: string;
     readonly chains: readonly Omit<ChainEnumeration, "notes">[];
     readonly readErrors: readonly { readonly chainId: ChainId; readonly disputeId: number; readonly detail: string | null }[];
+    /** Disputes whose meta-evidence the gateway did not serve: the only ones that could hide a reference without failing the gate. */
+    readonly metaEvidenceUnfetched: readonly { readonly chainId: ChainId; readonly disputeId: number; readonly detail: string | null }[];
     readonly testnetRealityCheck: ReferencesFile["testnetRealityCheck"];
   };
   readonly summary: {
@@ -87,14 +99,19 @@ function count<T extends string>(items: readonly T[]): Partial<Record<T, number>
   return counts;
 }
 
-function unexercisedReason(chain: ChainEnumeration | undefined, cid: CidPath): string {
+function unexercisedReason(chain: ChainEnumeration | undefined, cid: CidPath, harnessFailures: number): string {
+  if (harnessFailures > 0) return `its ${String(harnessFailures)} run${harnessFailures === 1 ? "" : "s"} failed in the harness, so neither runner executed it`;
   if (chain === undefined) return "its chain was not enumerated in this run";
+  const listed = chain.scope === "listed" ? "listed " : "";
   const skipped = chain.notes.filter((note) => note.status === "registered-reality-proxy" && note.cid === cid).map((note) => note.disputeId);
-  if (skipped.length > 0) return `referenced only by registered Reality proxies, whose script neither app runs (spec 10.4): disputes ${skipped.join(", ")}`;
-  return "no dispute references it";
+  if (skipped.length > 0) return `referenced only by ${listed}registered Reality proxies, whose script neither app runs (spec 10.4): disputes ${skipped.join(", ")}`;
+  return `no ${listed}dispute references it`;
 }
 
-/** Per allowlisted CID of each enumerated chain (plus the dispute-1621 override), the runs that executed it. */
+/**
+ * Per allowlisted CID of each enumerated chain (plus the dispute-1621 override), the runs that executed it; a run the
+ * harness could not execute is listed in the verdicts but does not exercise the script.
+ */
 export function buildCoverage(references: ReferencesFile, runs: readonly RunRecord[], chains: readonly ChainId[]): CoverageEntry[] {
   const entries: CoverageEntry[] = [];
   for (const chainId of chains) {
@@ -102,13 +119,14 @@ export function buildCoverage(references: ReferencesFile, runs: readonly RunReco
     if (chainId === OVERRIDE_1621.chainId) listed.push(OVERRIDE_1621.cid);
     const chain = references.chains.find((item) => item.chainId === chainId);
     for (const cid of listed) {
-      const covering = runs.filter((run) => run.chainId === chainId && (run.production.scriptCid === cid || run.newApp.scriptCid === cid));
+      const planned = runs.filter((run) => run.chainId === chainId && (run.production.scriptCid === cid || run.newApp.scriptCid === cid));
+      const executed = planned.filter((run) => run.verdict !== "harness-failure").length;
       entries.push({
         chainId,
         cid,
-        runs: covering.length,
-        verdicts: count(covering.map((run) => run.verdict)),
-        unexercisedReason: covering.length > 0 ? null : unexercisedReason(chain, cid),
+        runs: executed,
+        verdicts: count(planned.map((run) => run.verdict)),
+        unexercisedReason: executed > 0 ? null : unexercisedReason(chain, cid, planned.length - executed),
       });
     }
   }
@@ -128,7 +146,9 @@ export function buildGateLog(input: {
   const forReview = verdicts.filter((verdict) => REVIEW_VERDICTS.has(verdict)).length;
   const failed = runs.length - passedRuns - forReview;
   const coverage = buildCoverage(references, runs, options.chains);
-  const readErrors = references.chains.flatMap((chain) => chain.notes.filter((note) => note.status === "read-error").map((note) => ({ chainId: chain.chainId, disputeId: note.disputeId, detail: note.detail })));
+  const notesWith = (status: DisputeNote["status"]) =>
+    references.chains.flatMap((chain) => chain.notes.filter((note) => note.status === status).map((note) => ({ chainId: chain.chainId, disputeId: note.disputeId, detail: note.detail })));
+  const readErrors = notesWith("read-error");
   const testnetComplete = testnetCheckComplete(references.testnetRealityCheck, input.partial);
   return {
     generatedAt: new Date().toISOString(),
@@ -141,11 +161,13 @@ export function buildGateLog(input: {
       chains: references.chains.map((chain) => ({
         chainId: chain.chainId,
         source: chain.source,
+        scope: chain.scope,
         blockNumber: chain.blockNumber,
         disputeCount: chain.disputeCount,
         statusCounts: chain.statusCounts,
       })),
       readErrors,
+      metaEvidenceUnfetched: notesWith("meta-evidence-fetch-failed"),
       testnetRealityCheck: references.testnetRealityCheck,
     },
     summary: { runs: runs.length, passed: passedRuns, forReview, failed, byVerdict: count(verdicts) },
@@ -161,7 +183,9 @@ function cell(text: string): string {
 }
 
 function outcomeText(outcome: SideOutcome): string {
-  return outcome.kind === "success" ? "success" : `${outcome.failureClass} (${outcome.detail})`;
+  if (outcome.kind === "success") return "success";
+  if (outcome.kind === "harness-failure") return `harness-failure (${outcome.detail})`;
+  return `${outcome.failureClass} (${outcome.detail})`;
 }
 
 function runRow(run: RunRecord): string {
@@ -193,15 +217,19 @@ export function renderGateLog(log: GateLog): string {
     "",
     `**Result: ${log.passed ? "PASSED" : "NOT PASSED"}${log.partial ? " (partial run: not valid for the cutover)" : ""}.** ${String(log.summary.runs)} runs: ${String(log.summary.passed)} passed, ${String(log.summary.forReview)} for manual review, ${String(log.summary.failed)} failed.`,
     "",
-    "Rule (04 §5): where production succeeds, outputs must be identical; an empty `{}` or charset-garbled production output counts as a production failure; where production fails, a new-runner success is reviewed by hand and recorded in the ledger; where both fail, the failure class must match.",
+    "Rule (04 §5): where production succeeds, outputs must be identical; an empty `{}` or charset-garbled production output counts as a production failure; where production fails, a new-runner success is reviewed by hand and recorded in the ledger; where both fail, the failure class must match. A run the gate's harness could not execute on either side is recorded as `harness-failure` and fails the gate.",
     "",
     "## Enumeration",
     "",
-    "| Chain | Source | Block | Disputes | Running an allowlisted script |",
+    "| Chain | Source | Block | Disputes read | Running an allowlisted script |",
     "|---|---|---|---|---|",
-    ...log.enumeration.chains.map((chain) => `| ${String(chain.chainId)} | ${chain.source} | ${String(chain.blockNumber)} | ${String(chain.disputeCount)} | ${String(chain.statusCounts.runs ?? 0)} |`),
+    ...log.enumeration.chains.map(
+      (chain) =>
+        `| ${String(chain.chainId)} | ${chain.source} | ${String(chain.blockNumber)} | ${String(chain.disputeCount)}${chain.scope === "listed" ? " (listed only)" : ""} | ${String(chain.statusCounts.runs ?? 0)} |`,
+    ),
     "",
     `Disputes left unread: ${listOrNone(log.enumeration.readErrors.map(disputeKey))}.`,
+    `Disputes whose meta-evidence the gateway did not serve (a script they name is not known): ${listOrNone(log.enumeration.metaEvidenceUnfetched.map(disputeKey))}.`,
     `Sepolia and Chiado Reality-proxy disputes listed: ${String(log.enumeration.testnetRealityCheck.listed)}; not running their script through the meta-evidence API: ${listOrNone(log.enumeration.testnetRealityCheck.missing.map(missingText))}.`,
     "",
   ];

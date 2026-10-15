@@ -23,7 +23,7 @@ function publicRpcEnv(id: ChainId): string {
   return `REACT_APP_PUBLIC_RPC_${String(id)}`;
 }
 
-/** The 15 chains of §7 after D-23, in the order of the spec table. */
+/** The 14 chains of §7 after D-23 and P-13, in the order of the spec table. */
 const CONFIGS: readonly ChainConfig[] = [
   {
     id: 1,
@@ -129,16 +129,6 @@ const CONFIGS: readonly ChainConfig[] = [
     explorerBaseUrl: "https://explorer.zksync.io",
   },
   {
-    id: 690,
-    name: "Redstone",
-    currency: "ETH",
-    isTestnet: false,
-    ...MIRRORS_MAINNET,
-    readRpcEnv: "REACT_APP_REDSTONE",
-    publicRpcEnv: publicRpcEnv(690),
-    explorerBaseUrl: "https://explorer.redstone.xyz",
-  },
-  {
     id: 42161,
     name: "Arbitrum One",
     currency: "ETH",
@@ -194,7 +184,7 @@ const CONFIGS: readonly ChainConfig[] = [
 /** The chain table, keyed by chain ID (§7 after D-23). Frozen, so no caller can reconfigure a chain. */
 export const CHAINS: ChainTable = Object.freeze(Object.fromEntries(CONFIGS.map((chain) => [chain.id, Object.freeze(chain)])));
 
-/** The configuration of a chain, or `undefined` when the chain is not one of the 15 (D-18: never throws). */
+/** The configuration of a chain, or `undefined` when the chain is not one of the 14 (D-18: never throws). */
 export function getChain(chainId: ChainId): ChainConfig | undefined {
   return Object.hasOwn(CHAINS, chainId) ? CHAINS[chainId] : undefined;
 }

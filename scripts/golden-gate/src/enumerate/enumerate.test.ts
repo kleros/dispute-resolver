@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Address } from "../../../../packages/core/src/types";
 import type { CanonicalIpfsPath } from "../../../../packages/core/src/uri/types";
 import type { IpfsReader } from "../ipfs";
-import { checkTestnetReality, checksummed, enumerateChain, recheckFromEvents, testnetCheckComplete, type EnumerationDeps } from "./enumerate";
+import { checkTestnetReality, enumerateChain, enumerateListed, recheckFromEvents, testnetCheckComplete, type EnumerationDeps } from "./enumerate";
 import type { LocatorResult } from "./locator";
 
 const RESOLVER: Address = "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf";
@@ -75,7 +75,25 @@ describe("C6 enumeration of the disputes that reference allowlisted scripts", ()
     });
     expect(chain.notes.find((item) => item.disputeId === 2)).toMatchObject({ status: "registered-reality-proxy", cid: "QmQGMR6MyC851poYVyBfGthzmCdvTuRFKp1UDB19p89Gcn/bundle.js" });
     expect(chain.notes.find((item) => item.disputeId === 6)).toMatchObject({ status: "read-error", detail: "rpc down" });
-    expect(chain).toMatchObject({ chainId: 1, blockNumber: 1000, disputeCount: 7, source: "meta-evidence-api" });
+    expect(chain).toMatchObject({ chainId: 1, blockNumber: 1000, disputeCount: 7, source: "meta-evidence-api", scope: "all" });
+  });
+
+  it("C6: a run restricted to listed disputes reads only those, re-reads a transport failure by its own ID, and says so", async () => {
+    const read: bigint[] = [];
+    const attempts = new Map<bigint, number>();
+    const restricted = deps({
+      count: () => Promise.reject(new Error("a listed run never counts the disputes")),
+      arbitrableOf: (disputeId) => {
+        read.push(disputeId);
+        const attempt = (attempts.get(disputeId) ?? 0) + 1;
+        attempts.set(disputeId, attempt);
+        return Promise.resolve(disputeId === 3n && attempt === 1 ? { ok: false, detail: "rate limited" } : { ok: true, arbitrable: RESOLVER });
+      },
+    });
+    const { chain, references } = await enumerateListed(restricted, [0n, 3n]);
+    expect(new Set(read)).toEqual(new Set([0n, 3n]));
+    expect(chain).toMatchObject({ scope: "listed", disputeCount: 2, statusCounts: { runs: 1, "script-not-allowlisted": 1 } });
+    expect(references.map((item) => item.disputeId)).toEqual([0]);
   });
 
   it("C6: a dispute left unread by a transport failure is read once more after the first pass", async () => {
@@ -124,9 +142,5 @@ describe("C6 enumeration of the disputes that reference allowlisted scripts", ()
     ]);
     expect(testnetCheckComplete(recheck.check, true)).toBe(true);
     expect(testnetCheckComplete(recheck.check, false)).toBe(false);
-  });
-
-  it("spec 9.5: the old app saw the arbitrable checksummed, as ethers returns it", () => {
-    expect(checksummed(RESOLVER)).toBe("0x99489D7bb33539F3D1A401741E56e8f02B9AE0Cf");
   });
 });

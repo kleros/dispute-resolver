@@ -14,10 +14,6 @@ export function writeTextAtomically(path: string, text: string): void {
   renameSync(temporary, path);
 }
 
-export function writeJson(path: string, value: unknown): void {
-  writeTextAtomically(path, toJson(value));
-}
-
 /** The parsed JSON of a file, `unknown` until a schema accepts it. */
 export function readJson(path: string): unknown {
   return JSON.parse(readFileSync(path, "utf8")) as unknown;

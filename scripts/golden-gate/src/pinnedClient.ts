@@ -13,7 +13,8 @@ const BLOCK_PARAMETER_INDEX: Readonly<Record<string, number>> = {
   eth_getTransactionCount: 1,
 };
 
-type RawRequest = (call: { readonly method: string; readonly params?: unknown }) => Promise<unknown>;
+/** A JSON-RPC request function that forwards any method, as the clients wrapping core's read client use it. */
+export type RawRequest = (call: { readonly method: string; readonly params?: unknown }) => Promise<unknown>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

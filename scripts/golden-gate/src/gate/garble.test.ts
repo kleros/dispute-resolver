@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasGarbledText, hasNonAsciiLiteral, looksGarbled } from "./garble";
+import { hasGarbledText, hasNonAsciiLiteral, keepsRealityDelimiter, looksGarbled } from "./garble";
 
 /** UTF-8 bytes of `text` decoded as windows-1252, as an opaque frame without a charset decodes a script. */
 function misdecode(text: string): string {
@@ -26,6 +26,12 @@ describe("charset-garbled output (04 §5, ADR 0004)", () => {
     expect(hasGarbledText({ rulingOptions: { titles: ["Yes", misdecode("Sí")] } })).toBe(true);
     expect(hasGarbledText({ [misdecode("clé")]: 1 })).toBe(true);
     expect(hasGarbledText({ rulingOptions: { titles: ["Yes", "Sí"] } })).toBe(false);
+  });
+
+  it("D-29: an output that still holds the reality-eth-lib delimiter was not split on it", () => {
+    expect(keepsRealityDelimiter({ question: "test5555␟misc␟", rulingOptions: { titles: ["No", "Yes"] } })).toBe(true);
+    expect(keepsRealityDelimiter({ rulingOptions: { titles: ["No", "Yes␟"] } })).toBe(true);
+    expect(keepsRealityDelimiter({ question: "test5555", rulingOptions: { titles: ["No", "Yes"] } })).toBe(false);
   });
 
   it("ADR 0004: a script with a literal non-ASCII character is charset-sensitive", () => {

@@ -18,7 +18,7 @@
     "format": "yarn workspaces foreach --all --parallel --include '@dispute-resolver/*' run format && prettier --write eslint.config.mjs tsconfig.base.json package.json",
     "golden-gate": "yarn workspace @dispute-resolver/core exec tsx ../../scripts/golden-gate/src/main.ts",
     "golden-gate:typecheck": "tsc --noEmit -p scripts/golden-gate/tsconfig.json",
-    "golden-gate:lint": "eslint --no-ignore scripts/golden-gate",
+    "golden-gate:lint": "eslint scripts/golden-gate",
     "golden-gate:test": "yarn workspace @dispute-resolver/web exec vitest run --config ../../scripts/golden-gate/vitest.config.ts"
   },
   "devDependencies": {

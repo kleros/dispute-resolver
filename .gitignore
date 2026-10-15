@@ -37,3 +37,6 @@ yarn-error.log*
 # golden-case gate outputs (scripts/golden-gate); only the README is committed
 /golden/*
 !/golden/README.md
+
+# golden-case parity suite reports (packages/web/e2e/golden, `yarn workspace @dispute-resolver/web golden`)
+/packages/web/e2e/golden/reports/

@@ -1,6 +1,7 @@
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import type { ScriptResult } from "../../../../packages/core/src/types";
 import type { GoldenGateWindow, NewRunInput, OldRunInput, OldRunOutput } from "../../browser/protocol";
+import { redactUrlsIn } from "../../../../packages/web/e2e/golden/redact";
 import type { HarnessBundles } from "./bundle";
 
 /**
@@ -13,11 +14,11 @@ const HARNESS_PATH = "/__golden-gate/harness.html";
 /** Today's app document declares UTF-8 (public/index.html), which a same-origin `blob:` frame without a charset inherits. */
 const HARNESS_HTML = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><title>Golden gate harness</title></head><body></body></html>';
 
-/** Console and error lines kept per run, each cut to this length. */
+/** Console and error lines kept per run, each cut to this length once redacted. */
 const MAX_DIAGNOSTICS = 8;
 const MAX_DIAGNOSTIC_LENGTH = 300;
 
-/** What a page logged while a script ran, for the run log (redacted by the caller). */
+/** What a page logged while a script ran, for the run log: every line already redacted, then cut. */
 export interface Diagnostics {
   readonly console: readonly string[];
   readonly pageErrors: readonly string[];
@@ -31,12 +32,23 @@ export interface GateBrowser {
   close(): Promise<void>;
 }
 
-function collector(page: Page): { readonly done: () => Diagnostics; blocked: () => void } {
+/** The page events the diagnostics are read from (a Playwright `Page`). */
+export interface DiagnosticSource {
+  on(event: "console", listener: (message: { type(): string; text(): string }) => void): unknown;
+  on(event: "pageerror", listener: (error: Error) => void): unknown;
+}
+
+/**
+ * Collects a page's warnings, errors and uncaught exceptions. Each line is redacted whole before it is cut, `.env`
+ * values first and then every remaining URL (a request URL a script logged, which can carry a third party's key) as its
+ * host and fingerprint: the redactors match complete secrets, so a key cut at the boundary would otherwise survive in part.
+ */
+export function collectDiagnostics(page: DiagnosticSource, redact: (text: string) => string): { readonly done: () => Diagnostics; blocked: () => void } {
   const console: string[] = [];
   const pageErrors: string[] = [];
   let blockedRequests = 0;
   const keep = (list: string[], line: string) => {
-    if (list.length < MAX_DIAGNOSTICS) list.push(line.slice(0, MAX_DIAGNOSTIC_LENGTH));
+    if (list.length < MAX_DIAGNOSTICS) list.push(redactUrlsIn(redact(line)).slice(0, MAX_DIAGNOSTIC_LENGTH));
   };
   page.on("console", (message) => {
     if (message.type() === "error" || message.type() === "warning") keep(console, `${message.type()}: ${message.text()}`);
@@ -57,9 +69,14 @@ function collector(page: Page): { readonly done: () => Diagnostics; blocked: () 
  * another's frames or its reassigned `window.onmessage`. The harness document is answered locally; any other request to
  * production's origin is blocked and counted, so nothing reaches the real host.
  */
-async function openHarness(context: BrowserContext, origin: string, script: string): Promise<{ readonly page: Page; readonly done: () => Diagnostics }> {
+async function openHarness(
+  context: BrowserContext,
+  origin: string,
+  script: string,
+  redact: (text: string) => string,
+): Promise<{ readonly page: Page; readonly done: () => Diagnostics }> {
   const page = await context.newPage();
-  const diagnostics = collector(page);
+  const diagnostics = collectDiagnostics(page, redact);
   // At the preview origin only the harness document is answered locally: the runner page and its bootstrap come from
   // the preview server untouched, with their policy headers.
   const pattern = origin === PRODUCTION_ORIGIN ? `${origin}/**` : `${origin}${HARNESS_PATH}`;
@@ -78,16 +95,17 @@ async function openHarness(context: BrowserContext, origin: string, script: stri
 
 /**
  * Launches Chromium with the two harnesses: the old runner replica at production's origin and the new runner host at
- * the preview server's origin, whose runner frames load the built app's /__runner/index.html.
+ * the preview server's origin, whose runner frames load the built app's /__runner/index.html. `redact` is applied to
+ * every diagnostic line the pages log.
  */
-export async function openGateBrowser(previewOrigin: string, bundles: HarnessBundles): Promise<GateBrowser> {
+export async function openGateBrowser(previewOrigin: string, bundles: HarnessBundles, redact: (text: string) => string): Promise<GateBrowser> {
   const browser: Browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
 
   return {
     version: browser.version(),
     async runOld(input) {
-      const { page, done } = await openHarness(context, PRODUCTION_ORIGIN, bundles.oldRunner);
+      const { page, done } = await openHarness(context, PRODUCTION_ORIGIN, bundles.oldRunner, redact);
       try {
         const output = await page.evaluate(async (run) => {
           const runner = (window as GoldenGateWindow).__goldenGateOldRunner;
@@ -100,7 +118,7 @@ export async function openGateBrowser(previewOrigin: string, bundles: HarnessBun
       }
     },
     async runNew(input) {
-      const { page, done } = await openHarness(context, previewOrigin, bundles.newRunner);
+      const { page, done } = await openHarness(context, previewOrigin, bundles.newRunner, redact);
       try {
         const output = await page.evaluate(async (run) => {
           const runner = (window as GoldenGateWindow).__goldenGateNewRunner;

@@ -4,8 +4,10 @@ import type { GoldenGateWindow, OldRunInput, OldRunOutput } from "./protocol";
 // `fetchDataFromScript` (src/utils/utils.js) and the `iframe` npm package 1.0.0 it calls, transcribed so the gate runs
 // the production runner with its production flags. Never imported by packages/web/src and never shipped (C9). The
 // frame text, the blob document without a charset, the sandbox value and the global `window.onmessage` channel are
-// reproduced exactly, because the differences they make (the windows-1252 fallback of an opaque frame, ADR 0004) are
-// what the gate measures. The 180 s timeout rejects today; here it settles as `{ status: "timeout" }`.
+// reproduced, because the differences they make (the windows-1252 fallback of an opaque frame, ADR 0004) are what the
+// gate measures. Two mechanics differ where they cannot change what a script sees or returns, each explained below: how
+// the frame element is inserted, and the handler's origin test. The 180 s timeout rejects today; here it settles as
+// `{ status: "timeout" }`.
 
 /** Today's `rpcRedirectPatch`, with the redirect map built from chain 1's read RPC (src/utils/utils.js). */
 function rpcRedirectPatch(redirectMap: Readonly<Record<string, string>>): string {
@@ -73,32 +75,37 @@ function frameBody(input: OldRunInput): string {
 
 /**
  * The `iframe` package 1.0.0 (`IFrame.prototype.setHTML`): the body wrapped in a document with an empty head and no
- * charset declaration, served from a `blob:` URL of type `text/html`, inserted by parsing the element's `outerHTML` at
- * the end of `document.body`, the last iframe of the container being the one returned.
+ * charset declaration, served from a `blob:` URL of type `text/html`, with the package's attributes and the `sandbox`
+ * value as given (spec 9.5). The package serializes a detached element to its `outerHTML` and parses that string back
+ * in at the end of `document.body`; the replica appends the detached element itself, which carries the same attributes
+ * and lands at the same place, so the frame's document, origin, charset and sandbox are the package's.
  */
 function createPackageIframe(body: string, sandbox: string): HTMLIFrameElement {
   const html = `<!DOCTYPE html><html><head></head><body>${body}</body></html>`;
   // The package passes `{ encoding: 'UTF-8', type: 'text/html' }`; `encoding` is not a Blob option and has no effect.
   const blob = new Blob([html], { type: "text/html" });
-  const targetUrl = URL.createObjectURL(blob);
-  const tempIframe = document.createElement("iframe");
-  tempIframe.src = targetUrl;
-  tempIframe.setAttribute("scrolling", "yes");
-  tempIframe.style.width = "100%";
-  tempIframe.style.height = "100%";
-  tempIframe.style.border = "0";
-  tempIframe.setAttribute("sandbox", sandbox);
-  const htmlSrc = tempIframe.outerHTML;
-  // eslint-disable-next-line no-restricted-syntax -- verbatim replica of iframe@1.0.0, test harness only (C9): the HTML is the element's own outerHTML.
-  document.body.insertAdjacentHTML("beforeend", htmlSrc);
-  const neighborIframes = document.body.querySelectorAll("iframe");
-  const created = neighborIframes[neighborIframes.length - 1];
-  if (created === undefined) throw new Error("The iframe package replica inserted no frame.");
-  return created;
+  const frame = document.createElement("iframe");
+  frame.src = URL.createObjectURL(blob);
+  frame.setAttribute("scrolling", "yes");
+  frame.style.width = "100%";
+  frame.style.height = "100%";
+  frame.style.border = "0";
+  frame.setAttribute("sandbox", sandbox);
+  document.body.append(frame);
+  return frame;
 }
 
 function isScriptMessage(data: unknown): data is { readonly target: "script"; readonly result: unknown; readonly jsonDuplicateKeys: unknown } {
   return typeof data === "object" && data !== null && (data as { readonly target?: unknown }).target === "script";
+}
+
+/**
+ * The origin the frame posts from: the harness's own for a same-origin frame, `"null"` for an opaque one. Today's handler
+ * checks no origin (spec 9.5 [W1]); in the harness page the frame is the only window that can post to it, so accepting
+ * exactly the frame's origin admits every message production would have taken from that frame and nothing else.
+ */
+function frameOrigin(sandbox: string): string {
+  return sandbox.split(" ").includes("allow-same-origin") ? window.location.origin : "null";
 }
 
 /** Today's `fetchDataFromScript(scriptString, scriptParameters)`, settled with its value or its timeout. */
@@ -108,10 +115,10 @@ function fetchDataFromScript(input: OldRunInput): Promise<OldRunOutput> {
       resolve({ status: "timeout" });
     }, input.timeoutMs);
 
-    // Today's global handler accepts a tagged message from any window and origin (spec 9.5 [W1]); the replica keeps it.
-    // eslint-disable-next-line sonarjs/post-message -- verbatim replica of the old runner's channel, test harness only (C9).
+    // Today's channel: the global `window.onmessage`, reassigned by every run, taking the first tagged message.
+    const expectedOrigin = frameOrigin(input.sandbox);
     window.onmessage = (message: MessageEvent<unknown>) => {
-      if (isScriptMessage(message.data)) {
+      if (message.origin === expectedOrigin && isScriptMessage(message.data)) {
         clearTimeout(timeoutId);
         resolve({ status: "result", result: message.data.result, jsonDuplicateKeys: message.data.jsonDuplicateKeys === true });
       }

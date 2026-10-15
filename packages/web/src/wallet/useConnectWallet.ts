@@ -6,10 +6,16 @@ import type { WalletModal } from "./types";
 /** Why no wallet can connect: no WalletConnect project ID (K-02), or AppKit registered an embedded wallet (K-03). */
 export type ConnectUnavailableReason = "unconfigured" | "misconfigured";
 
-/** What the Connect controls say instead of offering Connect. */
+/** What the Connect controls and the view-only banner say instead of offering Connect. */
 export const CONNECT_UNAVAILABLE_MESSAGES: Readonly<Record<ConnectUnavailableReason, string>> = {
   unconfigured: "Wallet connection is not configured on this deployment.",
   misconfigured: "Wallet connection is misconfigured on this deployment.",
+};
+
+/** The short form the header shows beside its disabled Connect button; the message above is the button's description. */
+export const CONNECT_UNAVAILABLE_LABELS: Readonly<Record<ConnectUnavailableReason, string>> = {
+  unconfigured: "Not configured",
+  misconfigured: "Misconfigured",
 };
 
 export interface ConnectWallet {

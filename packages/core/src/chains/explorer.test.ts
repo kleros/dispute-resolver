@@ -17,7 +17,6 @@ const EXPLORERS: Readonly<Record<number, string>> = {
   137: "https://polygonscan.com",
   300: "https://sepolia.explorer.zksync.io",
   324: "https://explorer.zksync.io",
-  690: "https://explorer.redstone.xyz",
   42161: "https://arbiscan.io",
   421614: "https://sepolia.arbiscan.io",
   11155420: "https://optimism-sepolia.blockscout.com",

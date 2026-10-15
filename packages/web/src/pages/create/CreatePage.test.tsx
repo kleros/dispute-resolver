@@ -206,7 +206,7 @@ describe("CreatePage", () => {
     expect(range).toHaveAttribute("data-max", "32");
     const byName = (left: string, right: string) => left.localeCompare(right);
     const required = new Set([...document.querySelectorAll('[data-field][data-required="true"]')].map((element) => element.getAttribute("data-field") ?? ""));
-    expect([...required].sort(byName)).toEqual([...core.CREATE_LIMITS.requiredFields].sort(byName));
+    expect([...required].sort(byName)).toEqual(["courtId", "votes", "title", "questionType", "optionCount", "question", "optionTitles"].sort(byName));
     for (const optional of ["category", "description", "optionDescriptions", "partyAliases", "partyAddresses", "primaryDocument"]) {
       expect(field(optional).length).toBeGreaterThan(0);
       for (const element of field(optional)) expect(element).not.toHaveAttribute("data-required");
@@ -275,6 +275,18 @@ describe("CreatePage", () => {
     await user.click(screen.getByRole("button", { name: "Create" }));
     await screen.findByText("Dispute 42 created");
     expect(uploadedMetaEvidence(uploader).rulingOptions.titles).toEqual(["A", "B"]);
+  });
+
+  it("spec §4: the steps follow the form and the summary, and the page logs no React warning about DOM attributes", async () => {
+    const consoleError = vi.spyOn(console, "error");
+    const { user } = await renderCreate({ connect: false });
+    await courtsLoaded();
+    expect(screen.getByRole("listitem", { name: "Form" })).toHaveAttribute("aria-current", "step");
+    await fillRequired(user);
+    await fillOptions(user, ["Yes", "No"]);
+    await toSummary(user);
+    expect(screen.getByRole("listitem", { name: "Summary" })).toHaveAttribute("aria-current", "step");
+    expect(consoleError.mock.calls.filter(([message]) => String(message).includes("non-boolean attribute"))).toEqual([]);
   });
 
   it("D-08: Return keeps every value, the chosen court and its cost", async () => {

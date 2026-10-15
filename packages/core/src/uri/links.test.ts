@@ -11,6 +11,7 @@ import {
   GNOSIS_416_PATH,
   HTTPS_SPELLINGS,
   landingHostsOnAppPages,
+  MAINNET_1657_ATTACHMENT_PATH,
   movesOnAppPages,
   T2CR_DISPLAY_CID,
 } from "./testHelpers";
@@ -64,6 +65,16 @@ describe("toAttachmentLink", () => {
   it("A10: links the %20-encoded document of Gnosis 416, labelled with its last path segment as today", () => {
     const label = GNOSIS_416_PATH.slice(GNOSIS_416_PATH.lastIndexOf("/") + 1);
     expect(toAttachmentLink(GNOSIS_416_PATH, GATEWAY)).toEqual({ kind: "link", href: `${DEFAULT_GATEWAY}${GNOSIS_416_PATH}`, label, attachmentKind: "other" });
+  });
+
+  it("5.14: links an attachment whose file name contains C1 characters through the gateway (mainnet 1657 evidence 3)", () => {
+    const encodedName = "Response%20to%20%C3%A2%C2%80%C2%9C'The%20new%20candidate'%20justification%20for%20Invalid%20stands%C3%A2%C2%80%C2%9D.pdf";
+    expect(toAttachmentLink(MAINNET_1657_ATTACHMENT_PATH, GATEWAY)).toEqual({
+      kind: "link",
+      href: `${DEFAULT_GATEWAY}/ipfs/QmRXgRaKkcKKfXjTFozwoWLosFHmtcEaeuj1cL1G8xKHJd/${encodedName}`,
+      label: lastPathSegment(MAINNET_1657_ATTACHMENT_PATH),
+      attachmentKind: "other",
+    });
   });
 
   it("A10: links an https attachment as is", () => {

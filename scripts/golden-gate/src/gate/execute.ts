@@ -6,6 +6,7 @@ import { PASSING_VERDICTS, classifyNew, classifyOld, compareOutcomes, type SideO
 import { hasNonAsciiLiteral } from "./garble";
 import type { RunPlan } from "./plan";
 import type { RunRecord, SideRecord } from "./report";
+import { redactRpcFields, redactUrlsIn } from "../../../../packages/web/e2e/golden/redact";
 
 /** Everything one run needs besides its plan. */
 export interface ExecutionDeps {
@@ -27,6 +28,20 @@ function kindOf(scriptText: string): ScriptKind {
   return isRealityScript(scriptText) ? "reality" : "standard";
 }
 
+/**
+ * A side as it is recorded: its RPC parameters as host and fingerprint, and every URL in a failure's detail (a request
+ * URL in a runner or harness error) the same way, so no API key reaches the log. The script's own output is kept as it
+ * resolved: it is what the gate compares.
+ */
+function recorded(side: SideRecord): SideRecord {
+  const { outcome } = side;
+  return {
+    ...side,
+    params: redactRpcFields(side.params),
+    outcome: outcome.kind === "success" ? outcome : { ...outcome, detail: redactUrlsIn(outcome.detail) },
+  };
+}
+
 function notRun(scriptCid: CidPath, params: unknown, outcome: SideOutcome): SideRecord {
   return { scriptCid, params, frame: null, outcome, durationMs: 0, diagnostics: null };
 }
@@ -35,8 +50,9 @@ function unavailable(scriptCid: CidPath): SideOutcome {
   return { kind: "failure", failureClass: "script-unavailable", detail: `the gateway did not serve ${scriptCid}` };
 }
 
+/** The gate's own tooling threw, so the script may not have run: never a failure class of the script. */
 function harnessFailure(error: unknown): SideOutcome {
-  return { kind: "failure", failureClass: "runner-error", detail: `the harness failed: ${error instanceof Error ? error.message : String(error)}` };
+  return { kind: "harness-failure", detail: `the harness failed: ${error instanceof Error ? error.message : String(error)}` };
 }
 
 async function runProduction(plan: RunPlan, deps: ExecutionDeps): Promise<SideRecord> {
@@ -45,17 +61,19 @@ async function runProduction(plan: RunPlan, deps: ExecutionDeps): Promise<SideRe
   if (!params.ok) return notRun(scriptCid, null, { kind: "failure", failureClass: "parameters-refused", detail: params.detail });
   if (scriptString === null) return notRun(scriptCid, params.params, unavailable(scriptCid));
   const frame = sandbox?.includes("allow-same-origin") === true ? "same-origin" : "opaque";
+  const scriptKind = kindOf(scriptString);
   const started = Date.now();
   try {
     const { output, diagnostics } = await deps.browser.runOld({
       scriptString,
       scriptParameters: params.params,
       redirectMap: deps.oldRedirectMap,
-      guardSource: isRealityScript(scriptString) ? JSON_DUPLICATE_KEY_GUARD : "",
+      guardSource: scriptKind === "reality" ? JSON_DUPLICATE_KEY_GUARD : "",
       sandbox: sandbox ?? "allow-scripts ",
       timeoutMs: deps.oldTimeoutMs,
     });
-    return { scriptCid, params: params.params, frame, outcome: classifyOld(output, deps.oldTimeoutMs), durationMs: Date.now() - started, diagnostics };
+    const outcome = classifyOld(output, deps.oldTimeoutMs, { frame, charsetSensitive: hasNonAsciiLiteral(scriptString), scriptKind });
+    return { scriptCid, params: params.params, frame, outcome, durationMs: Date.now() - started, diagnostics };
   } catch (error) {
     return { scriptCid, params: params.params, frame, outcome: harnessFailure(error), durationMs: Date.now() - started, diagnostics: null };
   }
@@ -78,13 +96,15 @@ async function runNewApp(plan: RunPlan, deps: ExecutionDeps): Promise<SideRecord
 
 function retriable(record: { readonly production: SideRecord; readonly newApp: SideRecord }, verdict: Verdict): boolean {
   if (PASSING_VERDICTS.has(verdict)) return false;
-  return [record.production.outcome, record.newApp.outcome].some((outcome) => outcome.kind === "failure" && RETRIED_CLASSES.has(outcome.failureClass));
+  return [record.production.outcome, record.newApp.outcome].some(
+    (outcome) => outcome.kind === "harness-failure" || (outcome.kind === "failure" && RETRIED_CLASSES.has(outcome.failureClass)),
+  );
 }
 
 /**
  * One gate run: production's runner, then the new app's, on the same dispute, compared under 04 §5. A run that fails
- * the rule with a missing result on either side (a timeout or a runner error, which a flaky RPC can cause) is run once
- * more and the second verdict kept; the first is recorded.
+ * the rule with a missing result on either side (a timeout or a runner error, which a flaky RPC can cause) or that the
+ * harness could not execute is run once more and the second verdict kept; the first is recorded.
  */
 export async function executePlan(plan: RunPlan, deps: ExecutionDeps): Promise<RunRecord> {
   const earlierVerdicts: Verdict[] = [];
@@ -99,6 +119,8 @@ export async function executePlan(plan: RunPlan, deps: ExecutionDeps): Promise<R
   }
   const text = deps.scripts.get(plan.new.scriptCid) ?? null;
   const scriptKind: ScriptKind | null = text === null ? null : kindOf(text);
+  production = recorded(production);
+  newApp = recorded(newApp);
   return {
     id: plan.id,
     purpose: plan.purpose,

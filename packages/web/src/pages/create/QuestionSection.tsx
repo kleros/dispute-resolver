@@ -3,7 +3,7 @@ import { DropdownSelect, NumberField, TextArea, TextField } from "@kleros/ui-com
 import { createOptionCountAttributes, createQuestionTypeAttributes } from "../../parity";
 import type { SectionProps } from "./CourtSection";
 import { QUESTION_TYPES, isSelectType, setOption, setOptionCount, setQuestionType, setText } from "./draft";
-import { FULL_WIDTH_FIELD, FULL_WIDTH_SELECT, FieldSlot, FormGroup, errorProps } from "./fields";
+import { FULL_WIDTH_FIELD, FULL_WIDTH_SELECT, FieldSlot, FormGroup, errorProps, fieldSlotAttributes } from "./fields";
 import { fieldErrorMessage } from "./messages";
 
 const QUESTION_TYPE_ITEMS = QUESTION_TYPES.map(({ type, label }) => ({ id: type, text: label }));
@@ -89,7 +89,7 @@ export function QuestionSection({ form, errors, onChange }: SectionProps) {
   return (
     <FormGroup title="Question and options" description="The question jurors answer, and the answers they can give.">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div {...createQuestionTypeAttributes(QUESTION_TYPE_LABELS)} className="min-w-0">
+        <div {...createQuestionTypeAttributes(QUESTION_TYPE_LABELS)} {...fieldSlotAttributes("questionType")} className="min-w-0">
           <DropdownSelect
             label="Question Type"
             items={QUESTION_TYPE_ITEMS}
@@ -104,7 +104,7 @@ export function QuestionSection({ form, errors, onChange }: SectionProps) {
           />
         </div>
         {select ? (
-          <div {...createOptionCountAttributes({ min: MIN_OPTIONS, max: MAX_OPTIONS })} className="min-w-0">
+          <div {...createOptionCountAttributes({ min: MIN_OPTIONS, max: MAX_OPTIONS })} {...fieldSlotAttributes("optionCount")} className="min-w-0">
             <NumberField
               label="Number of Options"
               isRequired

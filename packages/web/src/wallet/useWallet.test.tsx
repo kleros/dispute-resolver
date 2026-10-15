@@ -1,7 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { TestDataProvider } from "../test/data";
 import { TEST_WALLET_ADDRESS, UNCONFIGURED_CHAIN_ID, createTestWallet, walletWrapper } from "../test/wallet";
 import { toWalletState, useWallet } from "./useWallet";
+import { WalletSetupProvider } from "./WalletProvider";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -34,6 +37,27 @@ describe("toWalletState", () => {
 });
 
 describe("useWallet", () => {
+  function renderWhileAppKitLoads(pendingReconnect: boolean) {
+    const wallet = createTestWallet();
+    return renderHook(() => useWallet(), {
+      wrapper: ({ children }: { readonly children?: ReactNode }) => (
+        <TestDataProvider>
+          <WalletSetupProvider setup={wallet.setup} pending pendingReconnect={pendingReconnect}>
+            {children}
+          </WalletSetupProvider>
+        </TestDataProvider>
+      ),
+    });
+  }
+
+  it("§3.1: while AppKit loads a returning wallet is connecting, so routing waits as it does for wagmi's reconnect", () => {
+    expect(renderWhileAppKitLoads(true).result.current).toEqual({ status: "connecting", mode: "appkit" });
+  });
+
+  it("§3.1: while AppKit loads a visitor with no stored connection is disconnected, so routing does not wait for AppKit", () => {
+    expect(renderWhileAppKitLoads(false).result.current).toEqual({ status: "disconnected", mode: "appkit" });
+  });
+
   it("D-06: the app loads disconnected and nothing is requested from a wallet", () => {
     const wallet = createTestWallet();
     const { result } = renderHook(() => useWallet(), { wrapper: walletWrapper(wallet) });

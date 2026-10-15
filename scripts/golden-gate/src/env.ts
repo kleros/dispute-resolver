@@ -56,3 +56,12 @@ export function createRedactor(env: Env): (text: string) => string {
   const replacements = [...wholes, ...tokens].map(([secret, name]) => [new RegExp(escapeForRegExp(secret), "g"), name] as const);
   return (text) => replacements.reduce((current, [pattern, replacement]) => current.replace(pattern, replacement), text);
 }
+
+/**
+ * `redact`, then a secret the gate reads from somewhere other than `.env` replaced too: the whole value by `label`, its
+ * long URL tokens (a key in a path) by `<redacted>`. The old runner's redirected Infura URL carries a provider key.
+ */
+export function redactAlso(redact: (text: string) => string, secret: string, label: string): (text: string) => string {
+  const replacements = secretFragments(secret).map((fragment, index) => [fragment, index === 0 ? label : "<redacted>"] as const);
+  return (text) => replacements.reduce((current, [fragment, replacement]) => current.replaceAll(fragment, replacement), redact(text));
+}

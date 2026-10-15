@@ -1,6 +1,6 @@
-import type { ScriptResult } from "../../../../packages/core/src/types";
+import type { ScriptKind, ScriptResult } from "../../../../packages/core/src/types";
 import type { OldRunOutput } from "../../browser/protocol";
-import { hasGarbledText } from "./garble";
+import { hasGarbledText, keepsRealityDelimiter } from "./garble";
 
 /**
  * Why a runner produced no usable output, in classes that do not depend on the runner's mechanics: the old runner has
@@ -20,12 +20,28 @@ export type FailureClass =
   /** The new runner itself failed (frame not opened, malformed reply, aborted). */
   | "runner-error";
 
+/**
+ * How one side of a run settled. `harness-failure` is the gate's own tooling failing (Chromium closed, the harness page
+ * not loading): the script may never have run, so it says nothing about either app and is never compared.
+ */
 export type SideOutcome =
   | { readonly kind: "success"; readonly value: unknown; readonly jsonDuplicateKeys: boolean }
-  | { readonly kind: "failure"; readonly failureClass: FailureClass; readonly detail: string; readonly value?: unknown };
+  | { readonly kind: "failure"; readonly failureClass: FailureClass; readonly detail: string; readonly value?: unknown }
+  | { readonly kind: "harness-failure"; readonly detail: string };
 
-/** The 04 §5 verdicts. `identical` and `same-failure-class` pass; `improvement-for-review` is reviewed by hand; the rest fail. */
-export type Verdict = "identical" | "different-output" | "new-runner-failed" | "improvement-for-review" | "same-failure-class" | "different-failure-class";
+/**
+ * The 04 §5 verdicts. `identical` and `same-failure-class` pass; `improvement-for-review` is reviewed by hand; the rest
+ * fail. `harness-failure` is not a 04 §5 verdict: the rule was never applied because a side did not execute, which fails
+ * the run whatever the other side did.
+ */
+export type Verdict =
+  | "identical"
+  | "different-output"
+  | "new-runner-failed"
+  | "improvement-for-review"
+  | "same-failure-class"
+  | "different-failure-class"
+  | "harness-failure";
 
 export const PASSING_VERDICTS: ReadonlySet<Verdict> = new Set(["identical", "same-failure-class"]);
 export const REVIEW_VERDICTS: ReadonlySet<Verdict> = new Set(["improvement-for-review"]);
@@ -42,10 +58,35 @@ function resolved(value: unknown, jsonDuplicateKeys: boolean): SideOutcome {
   return { kind: "success", value, jsonDuplicateKeys };
 }
 
+/** How the old runner ran a script: the frame's origin, and the script's charset sensitivity and kind. */
+export interface OldRunContext {
+  readonly frame: "same-origin" | "opaque";
+  /** The script text holds a literal non-ASCII character (`hasNonAsciiLiteral`). */
+  readonly charsetSensitive: boolean;
+  readonly scriptKind: ScriptKind;
+}
+
+/**
+ * Whether a production result is a Reality renderer's question left unsplit by the charset fallback: an opaque frame
+ * without a charset decodes the script as windows-1252, so its `␟` literal no longer matches the delimiter in the
+ * question text, and the whole raw question becomes the title. The output text itself is clean, so `hasGarbledText`
+ * cannot see it (04 §5, D-29).
+ */
+function unsplitByCharset(value: unknown, context: OldRunContext): boolean {
+  return context.frame === "opaque" && context.charsetSensitive && context.scriptKind === "reality" && keepsRealityDelimiter(value);
+}
+
 /** The old runner's settlement (today's `fetchDataFromScript`). */
-export function classifyOld(output: OldRunOutput, timeoutMs: number): SideOutcome {
+export function classifyOld(output: OldRunOutput, timeoutMs: number, context: OldRunContext): SideOutcome {
   if (output.status === "timeout") return { kind: "failure", failureClass: "no-result", detail: `no result within ${String(timeoutMs / 1000)} s` };
-  return resolved(output.result, output.jsonDuplicateKeys);
+  const outcome = resolved(output.result, output.jsonDuplicateKeys);
+  if (outcome.kind !== "success" || !unsplitByCharset(output.result, context)) return outcome;
+  return {
+    kind: "failure",
+    failureClass: "garbled-result",
+    detail: "the question kept the ␟ delimiter: the script's non-ASCII literals were misread under the opaque frame's windows-1252 fallback (D-29)",
+    value: output.result,
+  };
 }
 
 /** The new runner's settlement (core's `ScriptResult`). */
@@ -68,9 +109,10 @@ export function canonicalJson(value: unknown): string {
 /**
  * 04 §5 and C6: where production succeeds the outputs (value and duplicate-key flag) must be identical; where
  * production fails (including `{}` and garbled output) a new-runner success is reviewed by hand; where both fail the
- * failure class must match.
+ * failure class must match. A side the harness could not execute fails the run before any of this applies.
  */
 export function compareOutcomes(production: SideOutcome, next: SideOutcome): Verdict {
+  if (production.kind === "harness-failure" || next.kind === "harness-failure") return "harness-failure";
   if (production.kind === "success") {
     if (next.kind === "failure") return "new-runner-failed";
     const same = canonicalJson(production.value) === canonicalJson(next.value) && production.jsonDuplicateKeys === next.jsonDuplicateKeys;

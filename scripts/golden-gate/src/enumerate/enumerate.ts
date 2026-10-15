@@ -1,4 +1,3 @@
-import { getAddress } from "viem";
 import { lookupDispute } from "../../../../packages/core/src/disputes";
 import { REGISTRY } from "../../../../packages/core/src/registry";
 import type { Registry } from "../../../../packages/core/src/registry/types";
@@ -57,10 +56,15 @@ export interface DisputeNote {
   readonly cid: CidPath | null;
 }
 
+/** Whether a chain's enumeration read every dispute or only those a restricted run listed. */
+export type EnumerationScope = "all" | "listed";
+
 export interface ChainEnumeration {
   readonly chainId: ChainId;
   readonly source: EnumerationSource;
+  readonly scope: EnumerationScope;
   readonly blockNumber: number;
+  /** The disputes read: every dispute of the chain, or the listed ones. */
   readonly disputeCount: number;
   readonly statusCounts: Readonly<Partial<Record<DisputeStatus, number>>>;
   /** Every dispute that runs no script, except the many with no script at all (counted in `statusCounts`). */
@@ -193,24 +197,24 @@ async function enumerateDispute(deps: EnumerationDeps, disputeId: bigint): Promi
   }
 }
 
-/** Every dispute of one chain, 0 to the count as of the reader's block. */
-export async function enumerateChain(deps: EnumerationDeps): Promise<{ readonly chain: ChainEnumeration; readonly references: ScriptReference[] }> {
+/** Reads `ids` of one chain and sorts them into references and notes. */
+async function enumerateIds(deps: EnumerationDeps, ids: readonly bigint[], scope: EnumerationScope): Promise<{ readonly chain: ChainEnumeration; readonly references: ScriptReference[] }> {
   const { chainId } = deps;
-  const count = await deps.count();
-  deps.onProgress(`chain ${String(chainId)}: ${count.toString()} disputes as of block ${deps.blockNumber.toString()} (${deps.source})`);
-  const ids = Array.from({ length: Number(count) }, (_, index) => BigInt(index));
   let done = 0;
   const outcomes = await mapWithConcurrency(ids, deps.concurrency, async (disputeId) => {
     const outcome = await enumerateDispute(deps, disputeId);
     done += 1;
-    if (done % 100 === 0) deps.onProgress(`chain ${String(chainId)}: ${String(done)}/${count.toString()} disputes read`);
+    if (done % 100 === 0) deps.onProgress(`chain ${String(chainId)}: ${String(done)}/${String(ids.length)} disputes read`);
     return outcome;
   });
   // A read error is a transport failure (the API or the RPC did not answer): those disputes are read once more, one at
   // a time, after the first pass, so a burst of refusals does not leave them out of the gate.
   const unread = outcomes.flatMap((outcome, index) => (outcome.status === "read-error" ? [index] : []));
   if (unread.length > 0) deps.onProgress(`chain ${String(chainId)}: reading ${String(unread.length)} disputes again after read errors`);
-  for (const index of unread) outcomes[index] = await enumerateDispute(deps, BigInt(index));
+  for (const index of unread) {
+    const disputeId = ids[index];
+    if (disputeId !== undefined) outcomes[index] = await enumerateDispute(deps, disputeId);
+  }
   const statusCounts: Partial<Record<DisputeStatus, number>> = {};
   const references: ScriptReference[] = [];
   const notes: DisputeNote[] = [];
@@ -220,9 +224,26 @@ export async function enumerateChain(deps: EnumerationDeps): Promise<{ readonly 
     else if (outcome.status !== "no-script") notes.push(outcome.note);
   }
   return {
-    chain: { chainId, source: deps.source, blockNumber: Number(deps.blockNumber), disputeCount: Number(count), statusCounts, notes },
+    chain: { chainId, source: deps.source, scope, blockNumber: Number(deps.blockNumber), disputeCount: ids.length, statusCounts, notes },
     references,
   };
+}
+
+/** Every dispute of one chain, 0 to the count as of the reader's block. */
+export async function enumerateChain(deps: EnumerationDeps): Promise<{ readonly chain: ChainEnumeration; readonly references: ScriptReference[] }> {
+  const count = await deps.count();
+  deps.onProgress(`chain ${String(deps.chainId)}: ${count.toString()} disputes as of block ${deps.blockNumber.toString()} (${deps.source})`);
+  return enumerateIds(
+    deps,
+    Array.from({ length: Number(count) }, (_, index) => BigInt(index)),
+    "all",
+  );
+}
+
+/** The listed disputes of one chain only (`--disputes`), as of the reader's block. */
+export async function enumerateListed(deps: EnumerationDeps, disputeIds: readonly bigint[]): Promise<{ readonly chain: ChainEnumeration; readonly references: ScriptReference[] }> {
+  deps.onProgress(`chain ${String(deps.chainId)}: ${String(disputeIds.length)} listed disputes as of block ${deps.blockNumber.toString()} (${deps.source})`);
+  return enumerateIds(deps, disputeIds, "listed");
 }
 
 /** The meta-evidence locator of a chain: production's API, or the chain's events (`chain-events`). */
@@ -265,9 +286,4 @@ export async function recheckFromEvents(deps: EnumerationDeps, check: TestnetChe
     missing.push({ ...item, onChain: outcome.status });
   }
   return { check: { listed: check.listed, missing }, references };
-}
-
-/** The address as ethers returned it to the old app: EIP-55 checksummed. */
-export function checksummed(address: Address): string {
-  return getAddress(address);
 }

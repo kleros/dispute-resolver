@@ -27,6 +27,10 @@ export const TRAILING_SLASH_ENTRY = "QmRnwMuc7kGipQkjzPY9jhcttRhebPRYwEvBVGTjmkM
 export const GNOSIS_416_PATH =
   "/ipfs/QmW4zDA8X95cyfAsW9Nq1t7XNTyP3sMQAWNRFoQhMpgAv7/Kleros%20Moderate%20x%20Reality.eth%20Oracle%20-%20Telegram%20Content%20Moderation%20Question%20Resolution%20Policy.pdf";
 
+/** The evidence-3 attachment of mainnet dispute 1657 (golden case 1:1657): its file name holds double-encoded curly quotes, so C1 characters. */
+export const MAINNET_1657_ATTACHMENT_PATH =
+  "/ipfs/QmRXgRaKkcKKfXjTFozwoWLosFHmtcEaeuj1cL1G8xKHJd/Response to \u00e2\u0080\u009c'The new candidate' justification for Invalid stands\u00e2\u0080\u009d.pdf";
+
 /** The default gateway of spec 6.4. */
 export const DEFAULT_GATEWAY = "https://cdn.kleros.link";
 

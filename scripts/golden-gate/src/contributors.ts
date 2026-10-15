@@ -60,7 +60,9 @@ export function firstContribution(logs: readonly ContributionLog[]): Contributio
 function localIdReason(resolution: LocalIdResolution, family: Family): string {
   switch (resolution.kind) {
     case "not-applicable":
-      return `the ${family} family has no local dispute ID, so it emits no Contribution events`;
+      return family === "governor"
+        ? "the governor emits no Contribution events: its contributions are read per contributor with getContributions (D-47), so its logs name no contributor"
+        : `the ${family} family has no local dispute ID, so it emits no Contribution events`;
     case "transaction-id":
       return "Escrow V1 transactions are appealed by paying the appeal cost and emit no Contribution events";
     case "unresolved":

@@ -118,14 +118,19 @@ describe("normalizeIpfsPath", () => {
       `/ipfs/${CID}/a\u0000b`,
       `/ipfs/${CID}/a\nb`,
       `/ipfs/${CID}/a\u007fb`,
-      `/ipfs/${CID}/a\u0085b`,
       `/ipfs/${CID}/a%00b`,
       `/ipfs/${CID}/.%09./.%09./ipns/x`,
       `/ipfs/${CID}/a%0Ab`,
       `/ipfs/${CID}/a%7Fb`,
-      `/ipfs/${CID}/a%C2%85b`,
     ];
     for (const input of inputs) expect(normalizeIpfsPath(input), JSON.stringify(input)).toBeNull();
+  });
+
+  it("5.14: keeps a path whose file name contains C1 characters, stored percent-encoded (mainnet 1657 evidence 3)", () => {
+    const encoded = `/ipfs/${CID}/a%C2%80%C2%9Cb.pdf`;
+    expect(normalizeIpfsPath(`/ipfs/${CID}/a\u0080\u009cb.pdf`)).toBe(encoded);
+    expect(normalizeIpfsPath(encoded)).toBe(encoded);
+    expect(normalizeIpfsPath(`/ipfs/${CID}/a\u0085b`)).toBe(`/ipfs/${CID}/a%C2%85b`);
   });
 
   it("B2: rejects a backslash or control character anywhere, even in the query or fragment it drops", () => {

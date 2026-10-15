@@ -70,7 +70,7 @@ describe("account context (04 §1)", () => {
 
   it("MC-7: a governor has no local dispute ID and no Contribution events", async () => {
     const record = await readFirstContributor(reads({ family: "governor", localId: { kind: "not-applicable" } }), 1621n);
-    expect(record).toMatchObject({ status: "no-local-id", account: null, family: "governor" });
+    expect(record).toMatchObject({ status: "no-local-id", account: null, family: "governor", reason: expect.stringContaining("the governor emits no Contribution events") as unknown });
   });
 
   it("a transport failure is an error record, never 'no account'", async () => {

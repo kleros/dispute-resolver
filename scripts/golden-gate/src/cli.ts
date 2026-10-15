@@ -2,7 +2,7 @@ import { parseArgs } from "node:util";
 import { CASE_PAGE_BUDGET_MS } from "../../../packages/core/src/metaEvidence";
 import type { ChainId } from "../../../packages/core/src/types";
 import { ARBITRATOR_CHAINS } from "./chains";
-import type { GateOptions } from "./gate/report";
+import type { DisputeKey, GateOptions } from "./gate/report";
 
 /** Today's `DYNAMIC_SCRIPT_TIMEOUT_MS` (spec 9.5). */
 export const OLD_RUNNER_TIMEOUT_MS = 180_000;
@@ -20,6 +20,7 @@ Commands:
 
 Options (enumerate, gate; any restriction makes the gate run partial):
   --chains <ids>          comma-separated arbitrator chains (default: 1,100,11155111,10200)
+  --disputes <list>       gate only, instead of --chains: comma-separated <chain>:<dispute> pairs, read and run alone
   --cids <cids>           gate only these scripts (a directory CID selects its files)
   --max-per-cid <n>       gate at most the n newest disputes of each script
   --concurrency <n>       disputes run at once (default ${String(DEFAULT_CONCURRENCY)})
@@ -54,6 +55,21 @@ function chainList(value: string | undefined): ChainId[] {
   return chains;
 }
 
+const DISPUTE_KEY = /^(\d+):(0|[1-9]\d*)$/;
+
+function disputeList(value: string | undefined): DisputeKey[] | null {
+  if (value === undefined) return null;
+  const keys = value.split(",").map((item) => {
+    const match = DISPUTE_KEY.exec(item.trim());
+    const chainId = Number(match?.[1]);
+    if (match === null || !ARBITRATOR_CHAINS.includes(chainId)) {
+      throw new Error(`--disputes takes <chain>:<dispute> pairs on chains ${ARBITRATOR_CHAINS.join(", ")} (got "${item}").`);
+    }
+    return { chainId, disputeId: Number(match[2]) };
+  });
+  return keys.filter((key, index) => keys.findIndex((other) => other.chainId === key.chainId && other.disputeId === key.disputeId) === index);
+}
+
 /** Parses the command line; throws with a message for the user on anything it does not accept. */
 export function parseCommandLine(args: readonly string[]): CliRequest {
   const { values, positionals } = parseArgs({
@@ -62,6 +78,7 @@ export function parseCommandLine(args: readonly string[]): CliRequest {
     strict: true,
     options: {
       chains: { type: "string" },
+      disputes: { type: "string" },
       cids: { type: "string" },
       "max-per-cid": { type: "string" },
       concurrency: { type: "string" },
@@ -72,6 +89,9 @@ export function parseCommandLine(args: readonly string[]): CliRequest {
   });
   const [command, ...extra] = positionals;
   if (command === undefined || !isCommand(command) || extra.length > 0) throw new Error(USAGE);
+  const disputes = disputeList(values.disputes);
+  if (disputes !== null && command !== "gate" && command !== "all") throw new Error("--disputes restricts the gate only: use it with gate or all.");
+  if (disputes !== null && values.chains !== undefined) throw new Error("--disputes names its chains: use --chains or --disputes, not both.");
   const timeout = positiveInteger("timeout-ms", values["timeout-ms"]);
   const cids = values.cids
     ?.split(",")
@@ -80,7 +100,8 @@ export function parseCommandLine(args: readonly string[]): CliRequest {
   return {
     command,
     gate: {
-      chains: chainList(values.chains),
+      chains: disputes === null ? chainList(values.chains) : [...new Set(disputes.map((key) => key.chainId))],
+      disputes,
       cids: cids === undefined || cids.length === 0 ? null : cids,
       maxPerCid: positiveInteger("max-per-cid", values["max-per-cid"]),
       concurrency: positiveInteger("concurrency", values.concurrency) ?? DEFAULT_CONCURRENCY,

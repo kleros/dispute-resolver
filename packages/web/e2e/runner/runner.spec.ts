@@ -2,7 +2,7 @@ import { expect, test, type Browser, type BrowserType, type LaunchOptions, type 
 
 // Playwright checks of the script runner (ADR 0004, ARCHITECTURE.md §7.4), run against `vite preview`, whose runner
 // plugin sends the runner policy of §10.1 on /__runner/*. Guard tests strip that header, as a header misconfiguration
-// would, so they prove the bootstrap's own checks (C4). Run with `yarn e2e e2e/runner`.
+// would, so they prove the bootstrap's own checks (C4). Run with `yarn e2e:runner` (Chromium, Firefox and WebKit).
 
 const RUNNER_URL = "/__runner/index.html";
 const SAME_ORIGIN_HARNESS = "/__runner-e2e/harness.html";
@@ -10,8 +10,8 @@ const FOREIGN_HARNESS = "http://foreign-parent.test/harness.html";
 
 // A runner page served through a test route has no network address, so Chromium's local network access checks would
 // stop it from loading its bootstrap from the loopback preview server and a guard test would pass without the
-// bootstrap ever running. Guard tests that strip the runner policy therefore run with those checks off and assert
-// that the bootstrap loaded.
+// bootstrap ever running. Guard tests that strip the runner policy therefore run with those checks off (Firefox and
+// WebKit have none) and assert that the bootstrap loaded.
 const WITHOUT_LOCAL_NETWORK_CHECKS = "--disable-features=LocalNetworkAccessChecks";
 const HARNESS_HTML = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Runner harness</title></head><body></body></html>';
 const RUNNER_POLICY = "sandbox allow-scripts; frame-ancestors 'self'; script-src 'self' 'unsafe-eval'; object-src 'none'; base-uri 'none'";
@@ -120,9 +120,10 @@ async function expectLoadedButIdle(page: Page, bootstrap: () => { readonly serve
   expect(await runnerFrame?.evaluate(() => typeof Reflect.get(globalThis, "scriptParameters"))).toBe("undefined");
 }
 
-/** A browser like the configured one, without Chromium's local network access checks. */
-async function launchWithoutLocalNetworkChecks(chromium: BrowserType, launchOptions: LaunchOptions): Promise<Browser> {
-  return chromium.launch({ ...launchOptions, args: [...(launchOptions.args ?? []), WITHOUT_LOCAL_NETWORK_CHECKS] });
+/** A browser of the project's engine with its launch options, without Chromium's local network access checks. */
+async function launchWithoutLocalNetworkChecks(engine: BrowserType, launchOptions: LaunchOptions): Promise<Browser> {
+  if (engine.name() !== "chromium") return engine.launch(launchOptions);
+  return engine.launch({ ...launchOptions, args: [...(launchOptions.args ?? []), WITHOUT_LOCAL_NETWORK_CHECKS] });
 }
 
 /** Serves the runner without its policy header, as a misconfigured deploy would. */
@@ -178,8 +179,8 @@ test.describe("script runner page (ADR 0004)", () => {
     await expectLoadedButIdle(page, bootstrap);
   });
 
-  test("C4: the runner framed by a parent outside the app evaluates nothing", async ({ playwright, launchOptions, baseURL }) => {
-    const browser = await launchWithoutLocalNetworkChecks(playwright.chromium, launchOptions);
+  test("C4: the runner framed by a parent outside the app evaluates nothing", async ({ playwright, browserName, launchOptions, baseURL }) => {
+    const browser = await launchWithoutLocalNetworkChecks(playwright[browserName], launchOptions);
     try {
       const page = await browser.newPage();
       const bootstrap = trackBootstrap(page);

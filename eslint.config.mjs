@@ -105,6 +105,13 @@ const testImportPattern = {
   message: "src/test/ is for tests only (C9). A production file must not import it.",
 };
 
+// C9: the Playwright suites under packages/web/e2e/ (the golden harness provider among them) are test code; no file under
+// src/ imports them, tests included (their doubles live in src/test/).
+const e2eImportPattern = {
+  regex: "^(?:\\.{1,2}/)+e2e(?:/.*)?$",
+  message: "packages/web/e2e/ is the Playwright harness (C9). No file under src/ may import it.",
+};
+
 // Builds the web no-restricted-imports option. The flags lift the single-directory exceptions of rule 4.
 const webImports = ({ reown = true, markdown = true, app = true, testImports = true } = {}) => [
   "error",
@@ -117,6 +124,7 @@ const webImports = ({ reown = true, markdown = true, app = true, testImports = t
       ...(markdown ? [{ group: ["react-markdown", "react-markdown/*"], message: "react-markdown is used only under packages/web/src/safe-content/ (SafeMarkdown)." }] : []),
       ...(app ? [{ group: ["@kleros/kleros-app", "@kleros/kleros-app/*"], message: "@kleros/kleros-app is used only under packages/web/src/atlas/ (section 8)." }] : []),
       ...(testImports ? [testImportPattern] : []),
+      e2eImportPattern,
     ],
   },
 ];
@@ -126,7 +134,9 @@ export default defineConfig([
     // The old app, kept as read-only reference until the hand-off phase.
     "src/**",
     "public/**",
-    "scripts/**",
+    "scripts/generate-reality-known-questions.js",
+    "scripts/check-quality.sh",
+    "scripts/pre-change-check.sh",
     "build/**",
     // Documentation, dependencies and generated output.
     "docs/**",

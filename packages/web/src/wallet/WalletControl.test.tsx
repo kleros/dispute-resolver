@@ -25,6 +25,7 @@ describe("WalletControl", () => {
     const button = screen.getByRole("button", { name: "Connect" });
     expect(button).toBeDisabled();
     expect(button).toHaveAccessibleDescription("Wallet connection is not configured on this deployment.");
+    expect(screen.getByText("Not configured")).toHaveAttribute("aria-hidden", "true");
   });
 
   it("K-03: once AppKit reports an embedded-wallet connector, Connect is disabled, explains why and never opens the modal", async () => {
@@ -35,6 +36,7 @@ describe("WalletControl", () => {
     });
     const button = screen.getByRole("button", { name: "Connect" });
     expect(button).toHaveAccessibleDescription("Wallet connection is misconfigured on this deployment.");
+    expect(screen.getByText("Misconfigured")).toHaveAttribute("aria-hidden", "true");
     await userEvent.click(button);
     expect(wallet.modal?.openConnect).not.toHaveBeenCalled();
   });

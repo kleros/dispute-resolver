@@ -1,122 +1,153 @@
-import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
-import { createAppKit, type AppKit } from "@reown/appkit";
-import type { Features, ThemeVariables } from "@reown/appkit";
-import { CHAINS, DEFAULT_CHAIN_ID, type ChainId } from "@dispute-resolver/core";
-import type { Chain } from "viem";
-import { createConfig } from "wagmi";
+import { CHAINS } from "@dispute-resolver/core";
+import { createConfig, type Config } from "wagmi";
+import { z } from "zod";
 import type { AppConfig } from "../env";
+import type { createAppKitSetup } from "./appKitSetup";
 import { configuredChains } from "./chains";
 import { walletTransports } from "./transports";
-import type { WalletModal, WalletSetup } from "./types";
+import type { AppKitWalletSetup, WalletModal, WalletSetup, WalletSetupState } from "./types";
+
+/** `createAppKitSetup`, which lives in its own chunk. */
+export type CreateAppKitSetup = typeof createAppKitSetup;
+
+/** Loads the AppKit chunk. */
+export type LoadAppKit = () => Promise<CreateAppKitSetup>;
 
 /**
- * AppKit's optional features, all off (C8, ADR 0002). `socials` is an empty array, never `false`: the wagmi adapter
- * reads a falsy value as "use the default list" and would register the embedded-wallet connector.
+ * The wallet setup over time (ARCHITECTURE.md §2.3), read through `useSyncExternalStore`. Without a WalletConnect
+ * project ID it is the read-only setup from the start; with one it starts as a stand-in and becomes the AppKit setup
+ * once `load` has fetched AppKit's chunk and created AppKit.
  */
-export const APPKIT_FEATURES: Readonly<Features> = { analytics: false, email: false, socials: [], swaps: false, onramp: false };
+export interface WalletSetupStore {
+  readonly getSnapshot: () => WalletSetupState;
+  readonly subscribe: (listener: () => void) => () => void;
+  /**
+   * Loads AppKit and creates it, once: later calls return the same promise. A chunk that failed to load is fetched
+   * again on the next call, so a Connect press retries it; resolves at once with the read-only setup without a project ID.
+   */
+  readonly load: () => Promise<WalletSetup>;
+}
+
+const loadAppKit: LoadAppKit = async () => (await import("./appKitSetup")).createAppKitSetup;
+
+/** Reads one item of the browser's storage. It may throw, as blocked storage does. */
+export type ReadStoredItem = (key: string) => string | null;
+
+const readLocalStorage: ReadStoredItem = (key) => window.localStorage.getItem(key);
 
 /**
- * The modal uses the app's typeface and accent. Naming a font family also stops AppKit from preloading its own fonts
- * from a third-party origin (A20: fonts are self-hosted).
+ * Where wagmi persists its connection state: its default storage is `localStorage` under the `wagmi` prefix, its store
+ * is persisted as `store`, and the AppKit wagmi adapter creates its config with that default storage.
  */
-const THEME_VARIABLES: ThemeVariables = {
-  "--w3m-font-family": '"Open Sans", system-ui, sans-serif',
-  "--w3m-accent": "var(--klerosUIComponentsPrimaryBlue)",
-  "--w3m-border-radius-master": "3px",
-};
+const WAGMI_STORE_KEY = "wagmi.store";
 
-const DARK_CLASS = "dark";
-
-function currentThemeMode(): "dark" | "light" {
-  return document.documentElement.classList.contains(DARK_CLASS) ? "dark" : "light";
-}
-
-/** Keeps the modal on the app's color scheme, which `theme.ts` sets as a `dark` class on the root element (§11.1). */
-function followColorScheme(appKit: AppKit): void {
-  const observer = new MutationObserver(() => {
-    if (appKit.getThemeMode() !== currentThemeMode()) appKit.setThemeMode(currentThemeMode());
-  });
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-}
-
-/** AppKit's embedded (custodial) wallet: the connector with id or type `AUTH` (C8, ADR 0002). */
-export function isEmbeddedWalletConnector(connector: { readonly id: string; readonly type: string }): boolean {
-  return connector.id === "AUTH" || connector.type.toUpperCase() === "AUTH";
-}
-
-/** Why `openConnect` refuses when AppKit registered an embedded wallet anyway (K-03). */
-export const EMBEDDED_WALLET_REFUSAL = "AppKit registered an embedded-wallet connector; the Reown project settings must disable social login and email (K-01).";
-
-function appKitModal(appKit: AppKit, networks: readonly Chain[]): WalletModal {
-  const hasEmbeddedWallet = async () => {
-    await appKit.ready();
-    return appKit.getConnectors().some(isEmbeddedWalletConnector);
-  };
-  return {
-    async openConnect(chainId: ChainId | undefined) {
-      // Checked here, not only by the Connect control, so no caller and no click before AppKit is ready can open the
-      // Connect view, whose embedded-wallet entry ADR 0002 rules out (K-03).
-      if (await hasEmbeddedWallet()) throw new Error(EMBEDDED_WALLET_REFUSAL);
-      const network = networks.find((chain) => chain.id === chainId);
-      if (network !== undefined) await appKit.switchNetwork(network);
-      await appKit.open({ view: "Connect" });
-    },
-    async openNetworks() {
-      await appKit.open({ view: "Networks" });
-    },
-    ready: () => appKit.ready(),
-    hasEmbeddedWallet,
-  };
-}
+/** The part of wagmi's persisted store read here: `current`, the connection a reconnect restores, `null` once disconnected. */
+const persistedConnection = z.object({ state: z.object({ current: z.string().min(1) }) });
 
 /**
- * The wallet setup of ARCHITECTURE.md §2.3. With a WalletConnect project ID: the AppKit wagmi adapter over the
- * configured chains and AppKit with every optional feature off (C8); no `connectors` option, so the adapter's defaults
- * apply (EIP-6963 discovery, injected, WalletConnect, Coinbase). Without one: a wagmi config with no connector and no
- * EIP-6963 discovery, so the app runs read-only (K-02). Either way each chain's transport is its configured read RPC or
- * one that always rejects (D-56).
+ * `true` when wagmi's storage holds a connection to restore: the same field wagmi's reconnect reads to report
+ * `reconnecting` rather than `connecting`. Storage that is empty, malformed or unreadable holds none.
  */
-export function createWalletSetup(config: AppConfig): WalletSetup {
+export function hasPersistedConnection(read: ReadStoredItem): boolean {
+  try {
+    const stored = read(WAGMI_STORE_KEY);
+    return stored !== null && persistedConnection.safeParse(JSON.parse(stored) as unknown).success;
+  } catch {
+    return false;
+  }
+}
+
+/** A wagmi config with no connector and no EIP-6963 discovery over the configured chains and their read RPCs (D-56). */
+function connectorlessConfig(config: AppConfig, persistent: boolean): Config {
   const chains = configuredChains();
   const transports = walletTransports(Object.values(CHAINS), config.env);
-  const projectId = config.walletConnectProjectId;
-
-  if (projectId === null) {
-    const wagmiConfig = createConfig({ chains, transports, connectors: [], multiInjectedProviderDiscovery: false, ssr: false });
-    return { mode: "unconfigured", wagmiConfig };
-  }
-
-  const networks: [Chain, ...Chain[]] = [...chains];
-  const adapter = new WagmiAdapter({ networks, projectId, transports, ssr: false });
-  const defaultNetwork = networks.find((chain) => chain.id === DEFAULT_CHAIN_ID) ?? networks[0];
-  const appKit = createAppKit({
-    adapters: [adapter],
-    networks,
-    projectId,
-    metadata: {
-      name: "Kleros Dispute Resolver",
-      description: "View, create and appeal Kleros disputes, and submit evidence.",
-      url: config.appOrigin,
-      icons: [`${config.appOrigin}/favicon.ico`],
-    },
-    defaultNetwork,
-    allowUnsupportedChain: true,
-    // A copy, so AppKit never holds the exported object.
-    features: { ...APPKIT_FEATURES, socials: [] },
-    themeMode: currentThemeMode(),
-    themeVariables: THEME_VARIABLES,
-  });
-  followColorScheme(appKit);
-  return { mode: "appkit", wagmiConfig: adapter.wagmiConfig, modal: appKitModal(appKit, networks) };
+  return createConfig({ chains, transports, connectors: [], multiInjectedProviderDiscovery: false, ssr: false, ...(persistent ? {} : { storage: null }) });
 }
 
-const setups = new WeakMap<AppConfig, WalletSetup>();
+/** The setup without a WalletConnect project ID: no wallet can connect, so the app runs read-only (K-02). */
+export function createReadOnlySetup(config: AppConfig): WalletSetup {
+  return { mode: "unconfigured", wagmiConfig: connectorlessConfig(config, true) };
+}
 
-/** The one setup of a configuration, created on first use: AppKit must be created once per page. */
-export function walletSetupFor(config: AppConfig): WalletSetup {
-  const existing = setups.get(config);
+/** A modal that loads AppKit first, so a Connect press made while the chunk loads opens the real modal once it is there. */
+function deferredModal(load: () => Promise<AppKitWalletSetup>): WalletModal {
+  return {
+    openConnect: async (chainId) => (await load()).modal.openConnect(chainId),
+    openNetworks: async () => (await load()).modal.openNetworks(),
+    ready: async () => (await load()).modal.ready(),
+    hasEmbeddedWallet: async () => (await load()).modal.hasEmbeddedWallet(),
+  };
+}
+
+function staticStore(state: WalletSetupState): WalletSetupStore {
+  return {
+    getSnapshot: () => state,
+    subscribe: () => () => undefined,
+    load: () => Promise.resolve(state.setup),
+  };
+}
+
+/**
+ * The store of `config`'s wallet setup. With a project ID, until AppKit is created the setup is a stand-in in the
+ * `appkit` mode: a wagmi config with no connector and no storage, so nothing it does touches the persisted connection
+ * the AppKit config reconnects from, and a modal that loads AppKit before opening. The state is `pending` until the
+ * first load settles; a failed load leaves the stand-in, not pending, so the app is read-only and Connect retries.
+ * `pendingReconnect` is read once, through `readStoredItem`, when the store is created (ARCHITECTURE.md §3.1).
+ */
+export function createWalletSetupStore(config: AppConfig, loadCreator: LoadAppKit = loadAppKit, readStoredItem: ReadStoredItem = readLocalStorage): WalletSetupStore {
+  const projectId = config.walletConnectProjectId;
+  if (projectId === null) return staticStore({ setup: createReadOnlySetup(config), pending: false, pendingReconnect: false });
+
+  const listeners = new Set<() => void>();
+  let loading: Promise<AppKitWalletSetup> | null = null;
+  const publish = (next: WalletSetupState) => {
+    state = next;
+    for (const listener of listeners) listener();
+  };
+  const load = (): Promise<AppKitWalletSetup> => {
+    loading ??= loadCreator()
+      .then(
+        (create) => create(config, projectId),
+        (error: unknown) => {
+          // Only a chunk that failed to load is retried: AppKit itself is never created twice.
+          loading = null;
+          throw error;
+        },
+      )
+      .then(
+        (setup) => {
+          publish({ setup, pending: false, pendingReconnect: false });
+          return setup;
+        },
+        (error: unknown) => {
+          publish({ setup: standIn, pending: false, pendingReconnect: false });
+          throw error;
+        },
+      );
+    return loading;
+  };
+  const standIn: WalletSetup = { mode: "appkit", wagmiConfig: connectorlessConfig(config, false), modal: deferredModal(load) };
+  let state: WalletSetupState = { setup: standIn, pending: true, pendingReconnect: hasPersistedConnection(readStoredItem) };
+
+  return {
+    getSnapshot: () => state,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    load,
+  };
+}
+
+const stores = new WeakMap<AppConfig, WalletSetupStore>();
+
+/** The one store of a configuration, created on first use: AppKit must be created once per page. */
+export function walletSetupStoreFor(config: AppConfig): WalletSetupStore {
+  const existing = stores.get(config);
   if (existing !== undefined) return existing;
-  const setup = createWalletSetup(config);
-  setups.set(config, setup);
-  return setup;
+  const store = createWalletSetupStore(config);
+  stores.set(config, store);
+  return store;
 }

@@ -1,18 +1,18 @@
 import type { CreateDisputeInput } from "@dispute-resolver/core";
-import { Steps } from "@kleros/ui-components-library";
 import { useCallback, useState } from "react";
 import { createPageAttributes } from "../../parity";
 import { usePageChain } from "../../routing";
 import { ExternalLink } from "../../safe-content";
 import { PageMessage, SectionBoundary } from "../../ui";
 import { CreateForm } from "./CreateForm";
+import { CreateSteps } from "./CreateSteps";
 import { CreateSummary } from "./CreateSummary";
 import { initialForm, type CreateForm as Form } from "./draft";
 
 /** Where today's precondition message sends users to ask for Create on their chain (spec §4.2). */
 export const FEATURE_REQUEST_URL = "https://github.com/kleros/dispute-resolver/issues";
 
-const STEPS = [{ title: "Form" }, { title: "Summary" }];
+const STEPS = ["Form", "Summary"];
 
 /** Spec §4.2: a chain without an ArbitrableProxy cannot create disputes. */
 function CreateUnavailable() {
@@ -47,7 +47,7 @@ export function CreatePage() {
       {capabilities.canCreate ? (
         <>
           <nav aria-label="Create dispute steps" className="w-full min-w-0 overflow-hidden px-8 lg:px-0">
-            <Steps horizontal items={STEPS} currentItemIndex={input === null ? 0 : 1} className="w-full" />
+            <CreateSteps titles={STEPS} current={input === null ? 0 : 1} />
           </nav>
           {input === null ? (
             <SectionBoundary key="form" section="Create form">

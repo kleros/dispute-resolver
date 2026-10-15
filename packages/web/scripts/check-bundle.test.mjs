@@ -6,6 +6,7 @@ import path from "node:path";
 import { after, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { build } from "vite";
 import { checkBundle, distDirectoryFrom, TEST_DOUBLE_MARKERS } from "./check-bundle.mjs";
 
 const INDEX_HTML = `<!doctype html>
@@ -71,7 +72,7 @@ describe("C9: test doubles never ship", () => {
   });
 
   it("C9: does not mistake a dotted library symbol name such as zod.compile.invalid for a fixture host", async () => {
-    assert.deepEqual(await problemsOf({ "assets/index-abc.js": "const k=Symbol.for(`zod.compile.invalid`);const j=\"a.b.example\";" }), []);
+    assert.deepEqual(await problemsOf({ "assets/index-abc.js": 'const k=Symbol.for(`zod.compile.invalid`);const j="a.b.example";' }), []);
   });
 
   it("C9: rejects a .invalid fixture host", async () => {
@@ -105,10 +106,35 @@ describe("C9: test doubles never ship", () => {
     assert.equal(problems.length, 2);
   });
 
+  it("C9: rejects a test double's message and fixture identifier", async () => {
+    const problems = await problemsOf({ "assets/index-abc.js": 'throw Error(`This test runs no dynamic script.`);const c="QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";' });
+    assert.equal(problems.length, 2, problems.join("\n"));
+  });
+
+  it("C9: rejects a string literal that is exactly a test double's literal, in any quotes", async () => {
+    for (const literal of ["`Test dispute`", '"storage is blocked"', "'storage is full'"]) {
+      const problems = await problemsOf({ "assets/index-abc.js": `const t=${literal};` });
+      assert.equal(problems.length, 1, literal);
+      assert.match(problems[0], /test double literal/);
+    }
+  });
+
+  it("C9: does not mistake app text that only contains a test double's literal for it", async () => {
+    assert.deepEqual(await problemsOf({ "assets/index-abc.js": 'const a="Test dispute resolution";const b=`Local storage is blocked by the browser.`;' }), []);
+  });
+
   it("C9: rejects an exported test double name", async () => {
     const problems = await problemsOf({ "assets/index-abc.js": "window.__x={createTestDeps:1};" });
     assert.equal(problems.length, 1);
     assert.match(problems[0], /test double name/);
+  });
+
+  it("C9: rejects the golden harness provider of e2e/golden/provider.ts", async () => {
+    for (const marker of ['const r="io.kleros.golden-harness";', "const p={isGoldenHarness:!0};", 'const n="Golden harness (read-only)";']) {
+      const problems = await problemsOf({ "assets/index-abc.js": marker });
+      assert.equal(problems.length, 1, marker);
+      assert.match(problems[0], /golden harness provider/);
+    }
   });
 
   it("C9: names each offending file once per marker and never quotes the surrounding content", async () => {
@@ -132,6 +158,93 @@ describe("C9: test doubles never ship", () => {
       assert.match(`/test/${name}/x.js`, pathMarker.pattern, `${name} is not covered`);
     }
   });
+});
+
+const WEB_ROOT = fileURLToPath(new URL("..", import.meta.url));
+const TEST_DIRECTORY = path.join(WEB_ROOT, "src", "test");
+
+/** Every module under src/test, as paths relative to it with forward slashes, sorted. */
+const TEST_MODULES = (await readdir(TEST_DIRECTORY, { recursive: true, withFileTypes: true }))
+  .filter((entry) => entry.isFile() && /\.tsx?$/.test(entry.name))
+  .map((entry) => path.relative(TEST_DIRECTORY, path.join(entry.parentPath, entry.name)).split(path.sep).join("/"))
+  .sort((a, b) => a.localeCompare(b));
+
+describe("C9: a minified production build that imports a test double fails the check", () => {
+  /** Markers that only match identifiers or source-map paths; a minified build without a source map keeps neither. */
+  const IDENTIFIER_MARKERS = new Set(["test double name", "test directory path"]);
+
+  /**
+   * Modules that carry no string of their own, so no marker can find them once minified. Each is inert without a double
+   * that is caught: `TestWalletProvider` renders the app's wallet provider over a `TestWallet`, which only
+   * `createTestWallet` makes.
+   */
+  const UNMARKED_MODULES = new Set(["wallet/TestWalletProvider.tsx"]);
+
+  /** Vite's settings for a client build of this package, without its config file (no plugin, no .env). */
+  const BASE_CONFIG = {
+    configFile: false,
+    envDir: false,
+    root: WEB_ROOT,
+    logLevel: "silent",
+    resolve: { mainFields: ["browser", "module", "jsnext:main", "jsnext"] },
+  };
+
+  function outputsOf(result) {
+    return (Array.isArray(result) ? result : [result]).flatMap((entry) => entry.output);
+  }
+
+  /** The names a module exports at run time, read from an unminified build of the module alone. */
+  async function runtimeExports(file) {
+    const result = await build({
+      ...BASE_CONFIG,
+      build: {
+        write: false,
+        minify: false,
+        rollupOptions: { input: file, preserveEntrySignatures: "strict", external: (id) => !id.startsWith(".") && !path.isAbsolute(id) },
+      },
+    });
+    return outputsOf(result).find((output) => output.type === "chunk" && output.isEntry).exports;
+  }
+
+  /**
+   * A production build (minified, no source map) of an app entry that imports each export of `file` under a local name
+   * and keeps it reachable, as an app module that leaked the double would. Resolves to the text of every output file.
+   */
+  async function leakedBuild(file) {
+    const names = await runtimeExports(file);
+    const entryId = "\0leaking-entry";
+    const locals = names.map((_, index) => `leaked${String(index)}`);
+    const imports = names.map((name, index) => `${name} as ${locals[index]}`).join(", ");
+    const source = `import { ${imports} } from ${JSON.stringify(file)};\nglobalThis.leaked = [${locals.join(", ")}];`;
+    const entry = { name: "leaking-entry", resolveId: (id) => (id === "leaking-entry" ? entryId : null), load: (id) => (id === entryId ? source : null) };
+    const result = await build({ ...BASE_CONFIG, plugins: [entry], build: { write: false, minify: true, sourcemap: false, rollupOptions: { input: "leaking-entry" } } });
+    return outputsOf(result).map((output) => (output.type === "chunk" ? output.code : String(output.source)));
+  }
+
+  it("C9: finds the modules of src/test", () => {
+    assert.ok(TEST_MODULES.length > 10);
+    for (const name of UNMARKED_MODULES) assert.ok(TEST_MODULES.includes(name), `${name} is no longer under src/test`);
+  });
+
+  /** The C9 findings, other than identifier markers, of a dist holding a minified build that imports `name`. */
+  async function survivingFindings(name) {
+    const outputs = await leakedBuild(path.join(TEST_DIRECTORY, name));
+    const files = Object.fromEntries(outputs.map((text, index) => [`assets/leaked-${String(index)}.js`, text]));
+    const problems = await problemsOf(files);
+    return problems.filter((problem) => /\(C9\)\.$/.test(problem) && ![...IDENTIFIER_MARKERS].some((label) => problem.includes(`a ${label} (C9)`)));
+  }
+
+  for (const name of TEST_MODULES.filter((module) => !UNMARKED_MODULES.has(module))) {
+    it(`C9: rejects a minified build that imports src/test/${name}`, async () => {
+      assert.ok((await survivingFindings(name)).length > 0, `a minified build importing src/test/${name} passes the bundle check`);
+    });
+  }
+
+  for (const name of UNMARKED_MODULES) {
+    it(`C9: src/test/${name} still carries no marker, so its exception is still needed`, async () => {
+      assert.deepEqual(await survivingFindings(name), []);
+    });
+  }
 });
 
 describe("A20: no external script or stylesheet", () => {

@@ -43,8 +43,13 @@ function options(count: number, title = "Option"): CreateDisputeDraft["options"]
 }
 
 describe("CREATE_LIMITS", () => {
-  it("§4.3: 2 to 32 options, at least one vote, and today's required fields", () => {
-    expect(CREATE_LIMITS).toEqual({ optionRange: [2, 32], minVotes: 1, requiredFields: ["courtId", "votes", "title", "question", "optionTitles"] });
+  it("§4.3: 2 to 32 options and at least one vote", () => {
+    expect(CREATE_LIMITS.optionRange).toEqual([2, 32]);
+    expect(CREATE_LIMITS.minVotes).toBe(1);
+  });
+
+  it("§4.3: Question Type and Number of Options are required like production, with the court, votes, title, question and option titles", () => {
+    expect([...CREATE_LIMITS.requiredFields].sort((a, b) => a.localeCompare(b))).toEqual(["courtId", "optionCount", "optionTitles", "question", "questionType", "title", "votes"]);
   });
 });
 

@@ -1,19 +1,23 @@
 import { CREATE_LIMITS, type CreateLimits } from "@dispute-resolver/core";
 import { Box } from "@kleros/ui-components-library";
 import type { ReactNode } from "react";
-import { fieldAttributes } from "../../parity";
+import { fieldAttributes, type DataAttributeStrings } from "../../parity";
 
 /** The `data-field` names of the form's wrappers (04 §1 `validation.requiredFields`): core's required fields and the optional ones. */
 export type FieldName = CreateLimits["requiredFields"][number] | "category" | "description" | "optionDescriptions" | "partyAliases" | "partyAddresses" | "primaryDocument";
 
+/** A field wrapper's parity hook (ARCHITECTURE.md §12.2): `data-required` is set exactly for core's required fields. */
+export function fieldSlotAttributes(name: FieldName): DataAttributeStrings {
+  return fieldAttributes({ field: name, required: (CREATE_LIMITS.requiredFields as readonly string[]).includes(name) });
+}
+
 /**
  * A form field's wrapper with its parity hook (ARCHITECTURE.md §12.2): the library fields drop `data-*` props (S-1), so
- * the hook sits on this `div`. `data-required` is set exactly for core's required fields.
+ * the hook sits on this `div`.
  */
 export function FieldSlot({ name, className, children }: { readonly name: FieldName; readonly className?: string; readonly children: ReactNode }) {
-  const required = (CREATE_LIMITS.requiredFields as readonly string[]).includes(name);
   return (
-    <div {...fieldAttributes({ field: name, required })} className={className === undefined ? "min-w-0" : `min-w-0 ${className}`}>
+    <div {...fieldSlotAttributes(name)} className={className === undefined ? "min-w-0" : `min-w-0 ${className}`}>
       {children}
     </div>
   );

@@ -1,13 +1,21 @@
 import { CHAINS } from "../../../../packages/core/src/chains";
 import type { Env } from "../../../../packages/core/src/types";
 import type { ScriptReference } from "../enumerate/enumerate";
+import type { GateOptions } from "./report";
 
 /**
- * The references a run covers: every one by default; with `cids`, those of the listed scripts; with `maxPerCid`, the
- * newest disputes of each script up to that many. Either restriction makes the run partial.
+ * The references a run covers: every one of the run's chains by default; with `disputes`, those disputes; with `cids`,
+ * those of the listed scripts; with `maxPerCid`, the newest disputes of each script up to that many. Any restriction
+ * makes the run partial.
  */
-export function selectReferences(references: readonly ScriptReference[], cids: readonly string[] | null, maxPerCid: number | null): ScriptReference[] {
-  const wanted = cids === null ? references : references.filter((reference) => cids.some((cid) => reference.cid === cid || reference.cid.startsWith(cid)));
+export function selectReferences(references: readonly ScriptReference[], options: Pick<GateOptions, "chains" | "disputes" | "cids" | "maxPerCid">): ScriptReference[] {
+  const { disputes, cids, maxPerCid } = options;
+  const wanted = references.filter(
+    (reference) =>
+      options.chains.includes(reference.chainId) &&
+      (disputes === null || disputes.some((key) => key.chainId === reference.chainId && key.disputeId === reference.disputeId)) &&
+      (cids === null || cids.some((cid) => reference.cid === cid || reference.cid.startsWith(cid))),
+  );
   if (maxPerCid === null) return [...wanted];
   const perCid = new Map<string, ScriptReference[]>();
   for (const reference of wanted) {

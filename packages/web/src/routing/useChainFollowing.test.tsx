@@ -48,6 +48,17 @@ describe("useChainFollowing (D-55, ARCHITECTURE.md §3.6)", () => {
     expect(view.currentPath()).toBe(`/${String(UNCONFIGURED_CHAIN_ID)}/ongoing`);
   });
 
+  it("P-13: a wallet change to chain 690 (Redstone, dropped) shows the unsupported-network screen", async () => {
+    const wallet = createTestWallet({ chainId: 1 });
+    await wallet.connect();
+    const view = renderAtPath(<PageProbe />, "/1/ongoing", { wallet });
+    await act(async () => {
+      await wallet.changeChain(690);
+    });
+    expect(await screen.findByRole("heading", { name: "Unsupported Network 690" })).toBeInTheDocument();
+    expect(view.currentPath()).toBe("/690/ongoing");
+  });
+
   it("D-55: from the unsupported-network screen, a wallet change to a configured chain shows that chain's page", async () => {
     const wallet = createTestWallet({ chainId: 137 });
     await wallet.connect();

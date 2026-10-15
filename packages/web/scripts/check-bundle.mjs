@@ -37,9 +37,40 @@ const TEST_DIRECTORIES = ["atlas", "data", "routing", "runner", "safe-content", 
  */
 const HOST_PREFIX = String.raw`\/\/[a-z0-9-]+(?:\.[a-z0-9-]+)*`;
 
+/** A pattern matching any of `texts` literally. */
+function literally(texts) {
+  return new RegExp(texts.map((text) => text.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)).join("|"));
+}
+
 /**
- * What a test double leaves in a bundle. Minified code loses identifiers but keeps strings, so the markers are the
- * strings the doubles and their fixtures contain (ARCHITECTURE.md 1.5), plus the double names for builds that keep them.
+ * Texts the test doubles of `src/test/` carry as string literals, which a minified build keeps: their error messages,
+ * the fake runner's answer, the fixture meta-evidence title and the markdown corpus. The bundle check test builds every
+ * module of `src/test/` minified and proves each one leaves at least one marker that survives minification.
+ */
+const TEST_DOUBLE_TEXTS = [
+  "This test runs no dynamic script.",
+  "Unexpected RPC request ",
+  "A fake write script must end with an outcome",
+  "Unit tests have no network",
+  "Tests read through core's test deps",
+  "The fake modal holds an embedded wallet.",
+  "The host has not attached the frame.",
+  "The host transferred no port.",
+  "Unexpected line in the headers file",
+  "The upload did not start.",
+  "Second paragraph with a soft",
+];
+
+/** Texts the doubles use as whole string literals; only a literal holding exactly the text counts. */
+const TEST_DOUBLE_LITERALS = ["Test dispute", "storage is blocked", "storage is full"];
+
+/** The fixture CIDs of `src/test/` and the signature of its session tokens ("test-signature" in base64url). */
+const TEST_FIXTURE_IDENTIFIERS = ["QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG", "QmQ2XoA25HmnPUEWDduxj6LYwMwp6jtXPFRMHcNF2EvJfU", "dGVzdC1zaWduYXR1cmU"];
+
+/**
+ * What a test double leaves in a bundle. Minified code loses identifiers but keeps strings, so most markers are strings
+ * the doubles and their fixtures contain (ARCHITECTURE.md 1.5); the double names and test paths catch a build that keeps
+ * identifiers or ships a source map.
  */
 export const TEST_DOUBLE_MARKERS = [
   { label: "test directory path", pattern: new RegExp(String.raw`src\/test\/|\/test\/(?:${TEST_DIRECTORIES.join("|")})\/`) },
@@ -48,6 +79,14 @@ export const TEST_DOUBLE_MARKERS = [
   { label: "test wallet address", pattern: /0x00000000000000000000000000000000000a11ce/i },
   { label: "test transaction hash", pattern: /0x(?:1{64}|2{64})(?![0-9a-f])/i },
   { label: "Playwright harness route", pattern: /__runner-e2e|foreign-parent\.test/ },
+  { label: "golden harness provider", pattern: /io\.kleros\.golden-harness|isGoldenHarness|Golden harness \(read-only\)/ },
+  { label: "test double text", pattern: literally(TEST_DOUBLE_TEXTS) },
+  { label: "test double literal", pattern: new RegExp(String.raw`(["'\x60])(?:${literally(TEST_DOUBLE_LITERALS).source})\1`) },
+  { label: "test fixture identifier", pattern: literally(TEST_FIXTURE_IDENTIFIERS) },
+  // Vitest's runtime, which a double that imports `vitest` pulls in. Kept to globals only Vitest's own code sets: a
+  // library in the app bundle ships its package.json with `@testing-library/` among its devDependencies, and
+  // `__vitest_worker__` is a global other code can probe to detect a test run.
+  { label: "test runtime", pattern: /__vitest_(?:mocker|required|poll_takeover|error_context)__/ },
   {
     label: "test double name",
     pattern:

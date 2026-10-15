@@ -3,10 +3,14 @@
  * RPC from the environment with core's own resolvers and checks each endpoint:
  *
  *   - `eth_getLogs` over a range of at least 10,000 blocks ending at the head it just read either succeeds or is
- *     refused as a range cap (reported as "capped"; the chunked scans of `rpc` cope with it); any other answer fails;
+ *     refused as a range cap. A capped endpoint is then asked for the smallest window of the chunked scans of `rpc`
+ *     (100 blocks) and is reported as "capped" only when it answers that window; an HTTP 429 is rate limiting, never a
+ *     cap. Any other answer fails;
  *   - the endpoint accepts a request from an opaque origin, which is what the script runner's sandbox sends
  *     (`Origin: null`): the CORS preflight and the request itself are answered with an `Access-Control-Allow-Origin` of
  *     `null` or `*`, and the preflight allows the `content-type` header.
+ *
+ * No request follows a redirect: a browser refuses a redirected CORS preflight, so a redirect fails the endpoint.
  *
  * Usage (run through tsx by the package script `rpc:preflight`): the repository's `.env` is read when present, the
  * environment winning. Output is one line per endpoint with the chain ID, the head and range checked and the results.
@@ -20,6 +24,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CHAINS, resolvePublicRpcUrl, resolveReadRpcUrl } from "../src/chains";
 import type { ChainTable } from "../src/chains";
+import { LOOKUP_LIMITS } from "../src/reality/constants";
 import { isRangeLimitError } from "../src/rpc";
 import type { Env } from "../src/types";
 
@@ -27,6 +32,9 @@ const ENV_FILE = resolve(import.meta.dirname, "../../../.env");
 
 /** The smallest range the pre-flight asks `eth_getLogs` for: the scan window of the chunked reads (spec 9.1). */
 const LOG_RANGE_BLOCKS = 10_000;
+/** The smallest window the chunked scans shrink to after a range refusal (spec 9.1); a capped endpoint must answer it. */
+export const MIN_WINDOW_BLOCKS = LOOKUP_LIMITS.minWindowSize;
+const HTTP_TOO_MANY_REQUESTS = 429;
 const DEFAULT_TIMEOUT_MS = 15_000;
 /** An address that never emitted a log, so the answer is empty and only the range can be refused. */
 const SILENT_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -73,6 +81,7 @@ interface JsonRpcReply {
 type CallOutcome =
   | { readonly kind: "reply"; readonly reply: JsonRpcReply; readonly response: Response }
   | { readonly kind: "http"; readonly status: number }
+  | { readonly kind: "redirected" }
   | { readonly kind: "unreadable" }
   | { readonly kind: "network"; readonly reason: string };
 
@@ -117,10 +126,15 @@ function isReply(value: unknown): value is JsonRpcReply {
 
 async function send(url: string, fetchFn: FetchLike, init: RequestInit, timeoutMs: number): Promise<{ response: Response } | { network: string }> {
   try {
-    return { response: await fetchFn(url, { ...init, signal: AbortSignal.timeout(timeoutMs) }) };
+    return { response: await fetchFn(url, { ...init, redirect: "manual", signal: AbortSignal.timeout(timeoutMs) }) };
   } catch (error) {
     return { network: describeNetworkError(error, timeoutMs) };
   }
+}
+
+/** Whether an answer is a redirect, as `redirect: "manual"` reports it in a browser (opaque) or in Node (the 3xx itself). */
+function isRedirect(response: Response): boolean {
+  return response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400);
 }
 
 async function call(
@@ -135,6 +149,7 @@ async function call(
   const sent = await send(url, fetchFn, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body }, timeoutMs);
   if ("network" in sent) return { kind: "network", reason: sent.network };
   const { response } = sent;
+  if (isRedirect(response)) return { kind: "redirected" };
   let parsed: unknown;
   try {
     parsed = await response.json();
@@ -160,6 +175,7 @@ async function readHead(url: string, fetchFn: FetchLike, timeoutMs: number): Pro
   const outcome = await call(url, fetchFn, "eth_blockNumber", [], {}, timeoutMs);
   if (outcome.kind === "network") return { reason: `block number unavailable: ${outcome.reason}` };
   if (outcome.kind === "http") return { reason: `block number unavailable: HTTP ${String(outcome.status)}` };
+  if (outcome.kind === "redirected") return { reason: "block number unavailable: redirected" };
   if (outcome.kind === "unreadable") return { reason: "block number unavailable: the answer is not JSON-RPC" };
   const { result, error } = outcome.reply;
   if (error !== undefined) return { reason: `block number unavailable: ${describeRpcError(error, url)}` };
@@ -167,23 +183,51 @@ async function readHead(url: string, fetchFn: FetchLike, timeoutMs: number): Pro
   return Number.isSafeInteger(head) ? { head } : { reason: "block number unavailable: the result is not a block number" };
 }
 
-async function checkLogs(url: string, fetchFn: FetchLike, head: number, timeoutMs: number): Promise<LogsResult> {
-  const fromBlock = Math.max(0, head - LOG_RANGE_BLOCKS);
-  const range = { fromBlock, toBlock: head };
-  const outcome = await call(url, fetchFn, "eth_getLogs", [{ fromBlock: hex(fromBlock), toBlock: hex(head), address: SILENT_ADDRESS }], {}, timeoutMs);
-  if (outcome.kind === "network") return { status: "failed", reason: outcome.reason, ...range };
-  if (outcome.kind === "unreadable") return { status: "failed", reason: "the answer is not JSON-RPC", ...range };
+/** What one `eth_getLogs` answer says about the range it asked for. */
+type LogsAnswer = { readonly kind: "ok"; readonly count: number } | { readonly kind: "capped"; readonly detail: string } | { readonly kind: "failed"; readonly reason: string };
+
+function describeHttpStatus(status: number): string {
+  return status === HTTP_TOO_MANY_REQUESTS ? "HTTP 429 (rate limited)" : `HTTP ${String(status)}`;
+}
+
+/** Classifies an `eth_getLogs` answer. HTTP 429 is rate limiting whatever its body says, so it is never a range cap. */
+function classifyLogs(outcome: CallOutcome, url: string): LogsAnswer {
+  if (outcome.kind === "network") return { kind: "failed", reason: outcome.reason };
+  if (outcome.kind === "unreadable") return { kind: "failed", reason: "the answer is not JSON-RPC" };
+  if (outcome.kind === "redirected") return { kind: "failed", reason: "redirected" };
   if (outcome.kind === "http") {
-    if (isRangeLimitError({ code: outcome.status, message: `HTTP ${String(outcome.status)}` })) return { status: "capped", detail: "HTTP 413", ...range };
-    return { status: "failed", reason: outcome.status === 429 ? "HTTP 429 (rate limited)" : `HTTP ${String(outcome.status)}`, ...range };
+    if (isRangeLimitError({ code: outcome.status, message: `HTTP ${String(outcome.status)}` })) return { kind: "capped", detail: `HTTP ${String(outcome.status)}` };
+    return { kind: "failed", reason: describeHttpStatus(outcome.status) };
   }
   const { result, error } = outcome.reply;
   if (error !== undefined) {
     const detail = describeRpcError(error, url);
+    if (outcome.response.status === HTTP_TOO_MANY_REQUESTS) return { kind: "failed", reason: `${describeHttpStatus(HTTP_TOO_MANY_REQUESTS)}: ${detail}` };
     const capped = isRangeLimitError({ code: error.code, message: typeof error.message === "string" ? error.message : "" });
-    return capped ? { status: "capped", detail, ...range } : { status: "failed", reason: detail, ...range };
+    return capped ? { kind: "capped", detail } : { kind: "failed", reason: detail };
   }
-  return Array.isArray(result) ? { status: "ok", count: result.length, ...range } : { status: "failed", reason: "the result is not a list of logs", ...range };
+  return Array.isArray(result) ? { kind: "ok", count: result.length } : { kind: "failed", reason: "the result is not a list of logs" };
+}
+
+async function requestLogs(url: string, fetchFn: FetchLike, range: { fromBlock: number; toBlock: number }, timeoutMs: number): Promise<LogsAnswer> {
+  const filter = { fromBlock: hex(range.fromBlock), toBlock: hex(range.toBlock), address: SILENT_ADDRESS };
+  return classifyLogs(await call(url, fetchFn, "eth_getLogs", [filter], {}, timeoutMs), url);
+}
+
+/**
+ * Asks for the 10,000-block range; when it is capped, asks for the smallest window of the chunked scans too, because an
+ * endpoint that refuses that window fails every scan the app makes.
+ */
+async function checkLogs(url: string, fetchFn: FetchLike, head: number, timeoutMs: number): Promise<LogsResult> {
+  const range = { fromBlock: Math.max(0, head - LOG_RANGE_BLOCKS), toBlock: head };
+  const answer = await requestLogs(url, fetchFn, range, timeoutMs);
+  if (answer.kind === "ok") return { status: "ok", count: answer.count, ...range };
+  if (answer.kind === "failed") return { status: "failed", reason: answer.reason, ...range };
+  const window = { fromBlock: Math.max(0, head - MIN_WINDOW_BLOCKS + 1), toBlock: head };
+  const floor = await requestLogs(url, fetchFn, window, timeoutMs);
+  if (floor.kind === "ok") return { status: "capped", detail: answer.detail, ...range };
+  const refusal = floor.kind === "capped" ? floor.detail : floor.reason;
+  return { status: "failed", reason: `range capped (${answer.detail}); the ${String(MIN_WINDOW_BLOCKS)}-block window of the chunked scans failed too (${refusal})`, ...window };
 }
 
 /** Whether an `Access-Control-Allow-Origin` value lets an opaque origin read the answer. */
@@ -208,6 +252,7 @@ async function checkCors(url: string, fetchFn: FetchLike, timeoutMs: number): Pr
   );
   if ("network" in preflight) return { status: "failed", reason: `preflight: ${preflight.network}` };
   const { response } = preflight;
+  if (isRedirect(response)) return { status: "failed", reason: "preflight: redirected" };
   if (!response.ok) return { status: "failed", reason: `preflight: HTTP ${String(response.status)}` };
   const preflightOrigin = allowsNullOrigin(response.headers.get("access-control-allow-origin"));
   if (preflightOrigin === "missing") return { status: "failed", reason: "preflight: no Access-Control-Allow-Origin" };
@@ -218,6 +263,7 @@ async function checkCors(url: string, fetchFn: FetchLike, timeoutMs: number): Pr
   const request = await call(url, fetchFn, "eth_blockNumber", [], { Origin: "null" }, timeoutMs);
   if (request.kind === "network") return { status: "failed", reason: `request: ${request.reason}` };
   if (request.kind === "http") return { status: "failed", reason: `request: HTTP ${String(request.status)}` };
+  if (request.kind === "redirected") return { status: "failed", reason: "request: redirected" };
   if (request.kind === "unreadable" || request.reply.error !== undefined) return { status: "failed", reason: "request: the endpoint did not answer a request with Origin: null" };
   const requestOrigin = allowsNullOrigin(request.response.headers.get("access-control-allow-origin"));
   if (requestOrigin === "missing") return { status: "failed", reason: "request: no Access-Control-Allow-Origin" };
@@ -283,7 +329,7 @@ export function summarize(reports: readonly ChainReport[]): { failed: number; ca
 function describeLogs(logs: LogsResult): string {
   const range = logs.status === "failed" && logs.fromBlock === undefined ? "" : ` ${String(logs.fromBlock)}-${String(logs.toBlock)}`;
   if (logs.status === "ok") return `eth_getLogs${range} ok, ${String(logs.count)} logs`;
-  if (logs.status === "capped") return `eth_getLogs${range} capped (${logs.detail})`;
+  if (logs.status === "capped") return `eth_getLogs${range} capped (${logs.detail}), ${String(MIN_WINDOW_BLOCKS)}-block window ok`;
   return `eth_getLogs${range} FAILED (${logs.reason})`;
 }
 

@@ -2,21 +2,20 @@ import { ApiController, ChainController, ConnectorController, OptionsController 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildAppConfig } from "../env";
 import { installOfflineAppKitEnvironment } from "../test/wallet";
-import { APPKIT_FEATURES, createWalletSetup, isEmbeddedWalletConnector } from "./setup";
-import type { WalletSetup } from "./types";
+import { APPKIT_FEATURES, createAppKitSetup, isEmbeddedWalletConnector } from "./appKitSetup";
+import type { AppKitWalletSetup } from "./types";
 
 // AppKit's controllers are module singletons, so the runs with the Reown dashboard enabling social login
 // (config.remoteSocial.test.tsx) and disabling it (config.remoteSocialDisabled.test.ts) live in their own files: vitest
 // isolates files, not tests.
 
-describe("createWalletSetup with a WalletConnect project ID, remote project configuration unreachable", () => {
-  let setup: WalletSetup;
+describe("createAppKitSetup with a WalletConnect project ID, remote project configuration unreachable", () => {
+  let setup: AppKitWalletSetup;
 
   beforeAll(async () => {
     installOfflineAppKitEnvironment();
     vi.spyOn(ApiController, "fetchProjectConfig").mockRejectedValue(new Error("Unit tests have no network (project config)."));
-    setup = createWalletSetup(buildAppConfig({ REACT_APP_WALLETCONNECT_PROJECT_ID: "c8-test-project" }, { host: "localhost", origin: "http://localhost" }));
-    if (setup.mode !== "appkit") throw new Error("Expected the AppKit setup.");
+    setup = createAppKitSetup(buildAppConfig({ REACT_APP_WALLETCONNECT_PROJECT_ID: "c8-test-project" }, { host: "localhost", origin: "http://localhost" }), "c8-test-project");
     await setup.modal.ready();
   });
 
@@ -44,7 +43,6 @@ describe("createWalletSetup with a WalletConnect project ID, remote project conf
   });
 
   it("K-03: the modal reports no embedded wallet, so Connect stays available", async () => {
-    if (setup.mode !== "appkit") throw new Error("Expected the AppKit setup.");
     await expect(setup.modal.hasEmbeddedWallet()).resolves.toBe(false);
   });
 
@@ -54,7 +52,6 @@ describe("createWalletSetup with a WalletConnect project ID, remote project conf
   });
 
   it("§2.3: Connect first makes the page chain AppKit's active network, so a WalletConnect session starts there", async () => {
-    if (setup.mode !== "appkit") throw new Error("Expected the AppKit setup.");
     await setup.modal.openConnect(100);
     expect(ChainController.state.activeCaipNetwork?.id).toBe(100);
   });

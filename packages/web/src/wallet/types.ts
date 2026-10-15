@@ -23,8 +23,24 @@ export interface WalletModal {
   hasEmbeddedWallet(): Promise<boolean>;
 }
 
-/** What `createWalletSetup` returns: the wagmi config and, with a WalletConnect project ID, the AppKit modal. */
+/** The wagmi config and, with a WalletConnect project ID, the AppKit modal (ARCHITECTURE.md §2.3). */
 export type WalletSetup = { readonly mode: "appkit"; readonly wagmiConfig: Config; readonly modal: WalletModal } | { readonly mode: "unconfigured"; readonly wagmiConfig: Config };
+
+/** The setup of the `appkit` mode, which `createAppKitSetup` returns. */
+export type AppKitWalletSetup = Extract<WalletSetup, { readonly mode: "appkit" }>;
+
+/** What the wallet hooks read: the setup and whether AppKit is still loading (ARCHITECTURE.md §2.3). */
+export interface WalletSetupState {
+  readonly setup: WalletSetup;
+  /** `true` while AppKit's chunk loads: no connector exists yet, so nothing reconnects. */
+  readonly pending: boolean;
+  /**
+   * `true` while `pending` when wagmi's storage holds a connection that AppKit's config will reconnect: `useWallet`
+   * then reports `connecting`, as wagmi does while it reconnects, so a returning wallet lands on its own chain (§3.1).
+   * Without a stored connection the wallet is `disconnected` at once and routing does not wait for AppKit.
+   */
+  readonly pendingReconnect: boolean;
+}
 
 export interface WalletProviderProps {
   readonly config: AppConfig;

@@ -49,6 +49,15 @@ export function oldReadOnlyRpcUrl(chainId: unknown, env: Env): { readonly ok: tr
 }
 
 /**
+ * Today's `field || chainID` (spec 9.5): every falsy value (0, "", null, false, NaN) falls back to the network, not
+ * only a missing one, so the default is a truthiness test rather than a nullish one.
+ */
+function falsyDefault(value: unknown, network: string): unknown {
+  if (value) return value;
+  return network;
+}
+
+/**
  * The parameters today's `processDynamicScript` builds (spec 9.5): each chain ID is the meta-evidence value when truthy,
  * else the network as the string the app keeps in its state; the arbitrable is ethers' checksummed address; the RPC
  * URLs come from `getReadOnlyRpcUrl`, whose throw for an unmapped chain fails the attempt before the script runs.
@@ -61,11 +70,8 @@ export function buildOldScriptParameters(input: {
   readonly env: Env;
 }): OldParametersResult {
   const network = String(input.chainId);
-  // Today's `field || chainID`: every falsy value (0, "", null, false) falls back, not only a missing one.
-  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing -- reproduces today's falsy default (spec 9.5) */
-  const arbitratorChainID = input.chainIdFields.arbitratorChainID || network;
-  const arbitrableChainID = input.chainIdFields.arbitrableChainID || network;
-  /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
+  const arbitratorChainID = falsyDefault(input.chainIdFields.arbitratorChainID, network);
+  const arbitrableChainID = falsyDefault(input.chainIdFields.arbitrableChainID, network);
   const arbitratorRpc = oldReadOnlyRpcUrl(arbitratorChainID, input.env);
   if (!arbitratorRpc.ok) return { ok: false, detail: `getReadOnlyRpcUrl throws for arbitratorChainID ${JSON.stringify(arbitratorChainID)}` };
   const arbitrableRpc = oldReadOnlyRpcUrl(arbitrableChainID, input.env);

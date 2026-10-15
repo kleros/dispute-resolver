@@ -2,8 +2,8 @@ import { ApiController, ConnectorController, OptionsController } from "@reown/ap
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildAppConfig } from "../env";
 import { installOfflineAppKitEnvironment } from "../test/wallet";
-import { APPKIT_FEATURES, createWalletSetup, isEmbeddedWalletConnector } from "./setup";
-import type { WalletSetup } from "./types";
+import { APPKIT_FEATURES, createAppKitSetup, isEmbeddedWalletConnector } from "./appKitSetup";
+import type { AppKitWalletSetup } from "./types";
 
 // A file of its own: AppKit's controllers are module singletons (see config.remoteSocial.test.tsx).
 
@@ -18,14 +18,13 @@ const SOCIAL_LOGIN_DISABLED = [
   { id: "onramp", isEnabled: false, config: ["meld"] },
 ];
 
-describe("createWalletSetup when the Reown dashboard disables social login and email (K-01)", () => {
-  let setup: WalletSetup;
+describe("createAppKitSetup when the Reown dashboard disables social login and email (K-01)", () => {
+  let setup: AppKitWalletSetup;
 
   beforeAll(async () => {
     installOfflineAppKitEnvironment();
     vi.spyOn(ApiController, "fetchProjectConfig").mockResolvedValue(SOCIAL_LOGIN_DISABLED as Awaited<ReturnType<typeof ApiController.fetchProjectConfig>>);
-    setup = createWalletSetup(buildAppConfig({ REACT_APP_WALLETCONNECT_PROJECT_ID: "c8-test-project" }, { host: "localhost", origin: "http://localhost" }));
-    if (setup.mode !== "appkit") throw new Error("Expected the AppKit setup.");
+    setup = createAppKitSetup(buildAppConfig({ REACT_APP_WALLETCONNECT_PROJECT_ID: "c8-test-project" }, { host: "localhost", origin: "http://localhost" }), "c8-test-project");
     await setup.modal.ready();
   });
 
@@ -56,7 +55,6 @@ describe("createWalletSetup when the Reown dashboard disables social login and e
   });
 
   it("K-03: the modal reports no embedded wallet, so Connect stays available", async () => {
-    if (setup.mode !== "appkit") throw new Error("Expected the AppKit setup.");
     await expect(setup.modal.hasEmbeddedWallet()).resolves.toBe(false);
   });
 });

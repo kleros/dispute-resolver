@@ -1,8 +1,8 @@
 import type { Address, ChainId } from "../types";
 
 /**
- * One supported chain (spec §7 minus the D-23 drops), 06 §2. The table holds 15 chains: 1, 100, 10200, 11155111 with
- * an arbitrator, and 130, 1301, 137, 300, 324, 690, 42161, 421614, 11155420, 8453, 84532 without one.
+ * One supported chain (spec §7 minus the D-23 drops and Redstone, P-13), 06 §2. The table holds 14 chains: 1, 100, 10200, 11155111 with
+ * an arbitrator, and 130, 1301, 137, 300, 324, 42161, 421614, 11155420, 8453, 84532 without one.
  */
 export interface ChainConfig {
   readonly id: ChainId;

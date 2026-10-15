@@ -6,8 +6,8 @@ import userEvent from "@testing-library/user-event";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildAppConfig } from "../env";
 import { installOfflineAppKitEnvironment } from "../test/wallet";
-import { APPKIT_FEATURES, EMBEDDED_WALLET_REFUSAL, createWalletSetup, isEmbeddedWalletConnector } from "./setup";
-import type { WalletSetup } from "./types";
+import { APPKIT_FEATURES, EMBEDDED_WALLET_REFUSAL, createAppKitSetup, isEmbeddedWalletConnector } from "./appKitSetup";
+import type { AppKitWalletSetup } from "./types";
 import { WalletControl } from "./WalletControl";
 import { WalletSetupProvider } from "./WalletProvider";
 
@@ -17,14 +17,13 @@ import { WalletSetupProvider } from "./WalletProvider";
 /** What the Reown dashboard returns for a project with social login and email enabled. */
 const SOCIAL_LOGIN_ENABLED = [{ id: "social_login", isEnabled: true, config: ["email", "google", "x", "github"] }];
 
-describe("createWalletSetup when the Reown dashboard enables social login", () => {
-  let setup: WalletSetup;
+describe("createAppKitSetup when the Reown dashboard enables social login", () => {
+  let setup: AppKitWalletSetup;
 
   beforeAll(async () => {
     installOfflineAppKitEnvironment();
     vi.spyOn(ApiController, "fetchProjectConfig").mockResolvedValue(SOCIAL_LOGIN_ENABLED as Awaited<ReturnType<typeof ApiController.fetchProjectConfig>>);
-    setup = createWalletSetup(buildAppConfig({ REACT_APP_WALLETCONNECT_PROJECT_ID: "c8-test-project" }, { host: "localhost", origin: "http://localhost" }));
-    if (setup.mode !== "appkit") throw new Error("Expected the AppKit setup.");
+    setup = createAppKitSetup(buildAppConfig({ REACT_APP_WALLETCONNECT_PROJECT_ID: "c8-test-project" }, { host: "localhost", origin: "http://localhost" }), "c8-test-project");
     await setup.modal.ready();
   });
 
@@ -54,7 +53,6 @@ describe("createWalletSetup when the Reown dashboard enables social login", () =
   });
 
   it("K-03 (AppKit 1.8.24): the modal reports the embedded wallet and refuses to open the Connect view", async () => {
-    if (setup.mode !== "appkit") throw new Error("Expected the AppKit setup.");
     await expect(setup.modal.hasEmbeddedWallet()).resolves.toBe(true);
     await expect(setup.modal.openConnect(1)).rejects.toThrow(EMBEDDED_WALLET_REFUSAL);
     expect(ModalController.state.open).toBe(false);

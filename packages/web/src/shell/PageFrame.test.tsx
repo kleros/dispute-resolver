@@ -64,6 +64,22 @@ describe("PageFrame header (spec §2.3)", () => {
     expect(screen.queryByRole("note", { name: "View mode only" })).not.toBeInTheDocument();
   });
 
+  it("K-02: without a project ID the view-only banner says that wallet connection is not configured, with no Metamask link", () => {
+    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet: createTestWallet({ mode: "unconfigured" }) });
+    const banner = screen.getByRole("note", { name: "View mode only" });
+    expect(banner).toHaveTextContent("View mode only: Actions that require an Ethereum account are disabled. Wallet connection is not configured on this deployment.");
+    expect(within(banner).queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("K-03: with an embedded-wallet connector registered the view-only banner says that wallet connection is misconfigured", async () => {
+    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet: createTestWallet({ embeddedWallet: true }) });
+    const banner = screen.getByRole("note", { name: "View mode only" });
+    await waitFor(() => {
+      expect(banner).toHaveTextContent("View mode only: Actions that require an Ethereum account are disabled. Wallet connection is misconfigured on this deployment.");
+    });
+    expect(within(banner).queryByRole("link")).not.toBeInTheDocument();
+  });
+
   it("D-06: loads read-only, offers Connect and opens no wallet prompt by itself", () => {
     const wallet = createTestWallet();
     renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet });

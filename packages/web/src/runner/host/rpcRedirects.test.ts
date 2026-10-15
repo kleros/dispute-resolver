@@ -36,7 +36,6 @@ describe("buildRpcRedirects (D-25, D-35)", () => {
       REACT_APP_UNICHAIN_SEPOLIA: "https://rpc.example/1301",
       REACT_APP_WEB3_XDAI_PROVIDER_URL: "https://rpc.example/100",
       REACT_APP_WEB3_CHIADO_PROVIDER_URL: "https://rpc.example/10200",
-      REACT_APP_REDSTONE: "https://rpc.example/690",
     });
     expect(Object.fromEntries(rules.map((rule) => [rule.host, rule.chainId]))).toEqual({
       "mainnet.infura.io": 1,

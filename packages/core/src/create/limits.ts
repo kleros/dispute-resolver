@@ -4,7 +4,7 @@ import type { CreateLimits } from "./types";
 export const CREATE_LIMITS: CreateLimits = {
   optionRange: [2, 32],
   minVotes: 1,
-  requiredFields: ["courtId", "votes", "title", "question", "optionTitles"],
+  requiredFields: ["courtId", "votes", "title", "questionType", "optionCount", "question", "optionTitles"],
 };
 
 /** The largest value of a uint256 word: the bound of the court ID and the vote count in `extraData` (spec 4.5). */

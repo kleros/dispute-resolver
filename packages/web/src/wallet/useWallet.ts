@@ -1,7 +1,7 @@
 import { getChain, toRegistryAddress } from "@dispute-resolver/core";
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
-import { useWalletSetup } from "./context";
+import { useWalletSetup, useWalletSetupPendingReconnect } from "./context";
 import type { WalletMode, WalletState } from "./types";
 
 type AccountStatus = ReturnType<typeof useAccount>["status"];
@@ -18,9 +18,15 @@ export function toWalletState(mode: WalletMode, status: AccountStatus, address: 
   return { status: "disconnected", mode };
 }
 
-/** The connected wallet, if any. Its chain follows the wallet's `chainChanged` events without a reload (D-55). */
+/**
+ * The connected wallet, if any. Its chain follows the wallet's `chainChanged` events without a reload (D-55). While
+ * AppKit loads, a wallet whose connection wagmi stored is `connecting`: it reconnects only once AppKit's config exists,
+ * and routing waits for that as it waits for wagmi's reconnect. Without a stored connection the wallet is
+ * `disconnected` from the first render, so routing never waits for AppKit (§3.1).
+ */
 export function useWallet(): WalletState {
   const { mode } = useWalletSetup();
+  const pendingReconnect = useWalletSetupPendingReconnect();
   const { status, address, chainId } = useAccount();
-  return useMemo(() => toWalletState(mode, status, address, chainId), [mode, status, address, chainId]);
+  return useMemo(() => toWalletState(mode, pendingReconnect ? "connecting" : status, address, chainId), [mode, pendingReconnect, status, address, chainId]);
 }

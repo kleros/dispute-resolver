@@ -24,7 +24,18 @@ describe("UnsupportedNetworkScreen (spec §2.5, P-03)", () => {
       .sort((left, right) => left - right)
       .map((id) => `${CHAINS[id]?.name ?? ""} (${String(id)})`);
     expect(labels).toEqual(expected);
-    expect(labels).toHaveLength(15);
+    expect(labels).toHaveLength(14);
+    expect(screen.queryByText("Unreachable page")).not.toBeInTheDocument();
+  });
+
+  it("P-13: a URL on chain 690 (Redstone, dropped) shows the unsupported-network state and does not offer 690", () => {
+    renderAtPath(<Unreachable />, "/690/ongoing");
+    expect(screen.getByRole("heading", { level: 1, name: "Unsupported Network 690" })).toBeInTheDocument();
+    const list = screen.getByRole("list", { name: "Supported networks" });
+    const labels = within(list)
+      .getAllByRole("button")
+      .map((button) => button.textContent);
+    expect(labels.filter((label) => label.includes("(690)") || label.includes("Redstone"))).toEqual([]);
     expect(screen.queryByText("Unreachable page")).not.toBeInTheDocument();
   });
 

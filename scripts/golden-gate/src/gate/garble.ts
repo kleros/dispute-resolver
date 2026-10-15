@@ -86,6 +86,18 @@ export function hasGarbledText(value: unknown): boolean {
   return stringsOf(value).some(looksGarbled);
 }
 
+/** reality-eth-lib's question delimiter (`delimiter()`), on which a Reality renderer splits the question text. */
+const REALITY_DELIMITER = "\u241F";
+
+/**
+ * Whether any string of a script's output still holds the reality-eth-lib delimiter, so the renderer never split the
+ * question on it: the sign that the script's own `␟` literal was read as `â\u0090\u009f` while the question, which
+ * arrives over JSON-RPC, kept the real character (D-29).
+ */
+export function keepsRealityDelimiter(value: unknown): boolean {
+  return stringsOf(value).some((text) => text.includes(REALITY_DELIMITER));
+}
+
 /** Whether a script's text holds a literal non-ASCII character, which an opaque frame without a charset misreads. */
 export function hasNonAsciiLiteral(scriptText: string): boolean {
   for (let index = 0; index < scriptText.length; index += 1) if (scriptText.charCodeAt(index) > 0x7f) return true;

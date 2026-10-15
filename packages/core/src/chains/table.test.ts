@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { chainCapabilities, CHAINS, currencySymbol, DEFAULT_CHAIN_ID, getChain, ongoingScanStart } from "./index";
 import { ascending, chainOf } from "./testHelpers";
 
-/** Spec §7 as frozen on 2026-10-14, minus the chains D-23 drops. Written out by hand so a typo in the table fails here. */
+/** Spec §7 as frozen on 2026-10-14, minus the chains D-23 and P-13 drop. Written out by hand so a typo in the table fails here. */
 const MAINNET_LIQUID = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
 const MAINNET_POLICY = "0xcf1f07713d5193fae5c1653c9f61953d048bece4";
 const SEPOLIA_POLICY = "0x88fb25d399310c07d35cb9091b8346d8b1893aa5";
@@ -120,16 +120,6 @@ const EXPECTED: readonly Expected[] = [
     defaultRpcUrl: "https://mainnet.era.zksync.io",
   },
   {
-    id: 690,
-    name: "Redstone",
-    currency: "ETH",
-    isTestnet: false,
-    policyRegistry: MAINNET_POLICY,
-    arbitratorDeployedAtBlock: 7303699,
-    maxLookback: 1_000_000,
-    readRpcEnv: "REACT_APP_REDSTONE",
-  },
-  {
     id: 42161,
     name: "Arbitrum One",
     currency: "ETH",
@@ -182,7 +172,7 @@ const EXPECTED: readonly Expected[] = [
 ];
 
 const WITH_ARBITRATOR = [1, 100, 10200, 11155111];
-const WITHOUT_ARBITRATOR = [130, 1301, 137, 300, 324, 690, 42161, 421614, 11155420, 8453, 84532];
+const WITHOUT_ARBITRATOR = [130, 1301, 137, 300, 324, 42161, 421614, 11155420, 8453, 84532];
 
 function everyAddress(): { chainId: number; field: string; value: string }[] {
   return Object.values(CHAINS).flatMap((chain) =>
@@ -194,11 +184,11 @@ function everyAddress(): { chainId: number; field: string; value: string }[] {
 }
 
 describe("chains table", () => {
-  it("D-23: holds exactly the 15 chains that stay, and none of the dropped ones", () => {
+  it("D-23: holds exactly the 14 chains that stay, and none of the dropped ones", () => {
     const ids = Object.keys(CHAINS).map(Number);
     expect(ascending(ids)).toEqual(ascending(EXPECTED.map((chain) => chain.id)));
-    expect(ids).toHaveLength(15);
-    for (const dropped of [3, 4, 5, 10, 42, 77, 80001]) {
+    expect(ids).toHaveLength(14);
+    for (const dropped of [3, 4, 5, 10, 42, 77, 80001, 690]) {
       expect(CHAINS[dropped]).toBeUndefined();
       expect(getChain(dropped)).toBeUndefined();
     }
@@ -290,7 +280,6 @@ describe("chains table", () => {
       137: "MATIC",
       300: "sETH",
       324: "ETH",
-      690: "ETH",
       42161: "ETH",
       421614: "ETH",
       11155420: "ETH",
@@ -315,7 +304,7 @@ describe("chains table", () => {
   });
 
   it("§6.3: chains without an arbitrator copy chain 1's or Sepolia's deploy block", () => {
-    for (const id of [130, 137, 324, 690, 42161, 8453]) expect(getChain(id)?.arbitratorDeployedAtBlock).toBe(7303699);
+    for (const id of [130, 137, 324, 42161, 8453]) expect(getChain(id)?.arbitratorDeployedAtBlock).toBe(7303699);
     for (const id of [1301, 300, 421614, 11155420, 84532]) expect(getChain(id)?.arbitratorDeployedAtBlock).toBe(3635742);
   });
 
