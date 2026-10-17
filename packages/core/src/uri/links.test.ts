@@ -14,7 +14,7 @@ import {
   MAINNET_1657_ATTACHMENT_PATH,
   movesOnAppPages,
   T2CR_DISPLAY_CID,
-} from "./testHelpers";
+} from "../test/uri/testHelpers";
 
 const GATEWAY: GatewayOrigin = DEFAULT_GATEWAY;
 const CID = T2CR_DISPLAY_CID;

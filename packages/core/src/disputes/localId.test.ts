@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { lookupDispute, resolveLocalId } from ".";
 import type { ArbitratedBinding } from "./types";
-import { fakeClient, GNOSIS, MAINNET, recordedDetection, recordedNode, rpcError } from "./testHelpers";
-import type { Recording } from "./testHelpers";
+import { fakeClient, GNOSIS, MAINNET, recordedDetection, recordedNode, rpcError } from "../test/disputes/testHelpers";
+import type { Recording } from "../test/disputes/testHelpers";
 
 async function bindingOf(recording: Recording, chainId: number, disputeId: bigint): Promise<ArbitratedBinding> {
   const { client } = fakeClient(recordedNode(recording));

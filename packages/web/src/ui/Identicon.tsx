@@ -20,7 +20,7 @@ export function Identicon({ address, size = DEFAULT_SIZE, className }: Identicon
     >
       <rect width="5" height="5" className="fill-klerosUIComponentsMediumBlue" />
       {filled.map((cell) => (
-        <rect key={cell.key} data-cell="" x={cell.x} y={cell.y} width="1" height="1" className={fill} />
+        <rect key={cell.key} x={cell.x} y={cell.y} width="1" height="1" className={fill} />
       ))}
     </svg>
   );

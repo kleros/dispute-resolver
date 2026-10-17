@@ -4,7 +4,7 @@ import { toRegistryAddress } from "../registry";
 import type { Hex } from "../types";
 import { recorded } from "./__fixtures__/recorded";
 import { isEip1167Clone, readEip1967Implementation } from "./index";
-import { fakeNodeClient, rpcError, slotWord } from "./testHelpers";
+import { fakeNodeClient, rpcError, slotWord } from "../test/families/testHelpers";
 
 const PROXY = toRegistryAddress("0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38");
 const IMPLEMENTATION = toRegistryAddress("0xa5eb6fec99f0c5b052078451c7dbb927d4b7054f");

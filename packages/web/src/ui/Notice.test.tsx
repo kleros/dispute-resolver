@@ -30,8 +30,8 @@ describe("Notice", () => {
   });
 
   it("spec 5.10: preserves line breaks in the body", () => {
-    render(<Notice variant="info" title="Question" body={"line one\nline two"} testId="case-reality-notice" />);
-    const notice = screen.getByTestId("case-reality-notice");
+    const { container } = render(<Notice variant="info" title="Question" body={"line one\nline two"} />);
+    const notice = container.firstElementChild;
     expect(notice).toHaveClass("whitespace-pre-line");
     expect(notice).toHaveTextContent("line one line two");
     expect(screen.getByText((_, element) => element?.tagName === "SMALL" && element.textContent === "line one\nline two")).toBeInTheDocument();

@@ -1,7 +1,6 @@
 import type { ChainId, MetaEvidence, MetaEvidenceResult, RulingOptions, Unavailable } from "@dispute-resolver/core";
 import { useId } from "react";
 import type { CaseSectionProps, SectionData } from "../../data";
-import { rulingOptionsAttributes, testId } from "../../parity";
 import { courtCaseUrl, ExternalLink } from "../../safe-content";
 import { EYEBROW, SectionSkeleton, SectionUnavailable } from "../../ui";
 import { questionTypeLabel, votingOptions } from "./questionOptions";
@@ -66,18 +65,10 @@ interface QuestionContentProps {
 function QuestionContent({ metaEvidence, disputeId, chainId }: QuestionContentProps) {
   const { question, rulingOptions } = metaEvidence;
   const label = rulingOptions === null ? null : questionTypeLabel(rulingOptions.type);
-  const hook =
-    rulingOptions === null
-      ? {}
-      : rulingOptionsAttributes({ type: rulingOptions.type, titles: rulingOptions.titles, reserved: rulingOptions.reserved, precision: rulingOptions.precision });
   return (
-    <div {...hook} className="flex min-w-0 flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-4">
       {label === null ? null : <p className={EYEBROW}>{label}</p>}
-      {question === null ? null : (
-        <p {...testId("case-question")} className="whitespace-pre-line text-lg font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">
-          {question}
-        </p>
-      )}
+      {question === null ? null : <p className="whitespace-pre-line text-lg font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">{question}</p>}
       {rulingOptions === null ? null : <VotingOptionsList options={rulingOptions} disputeId={disputeId} chainId={chainId} />}
     </div>
   );

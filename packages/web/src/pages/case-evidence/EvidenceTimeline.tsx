@@ -1,5 +1,4 @@
 import type { AppealDecisionEvent, ChainConfig, EvidenceItem, EvidenceList, UnixSeconds } from "@dispute-resolver/core";
-import { evidenceItemAttributes, hiddenEvidenceCountAttributes, testId } from "../../parity";
 import { Attachment } from "../../safe-content";
 import { AddressText, EmptyState, Identicon, Notice } from "../../ui";
 import { hiddenEvidenceText } from "./hiddenEvidence";
@@ -63,15 +62,11 @@ function TimelineEvent({ label, time }: { readonly label: string; readonly time:
 
 function EvidenceEntry({ item, chain }: { readonly item: EvidenceItem; readonly chain: ChainConfig }) {
   return (
-    <li {...evidenceItemAttributes({ submitter: item.submitter, timestamp: item.timestamp })} className="relative min-w-0 pl-6">
+    <li className="relative min-w-0 pl-6">
       <span aria-hidden="true" className={`${DOT_CLASS} top-1.5 bg-klerosUIComponentsPrimaryBlue`} />
       <article className="flex min-w-0 flex-col gap-2">
-        <h3 {...testId("evidence-title")} className="font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">
-          {item.title}
-        </h3>
-        <p {...testId("evidence-description")} className="max-w-[72ch] whitespace-pre-line text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">
-          {item.description}
-        </p>
+        <h3 className="font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">{item.title}</h3>
+        <p className="max-w-[72ch] whitespace-pre-line text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">{item.description}</p>
         <footer className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 text-sm text-klerosUIComponentsSecondaryText">
           <span className="inline-flex min-w-0 flex-wrap items-center gap-2">
             <Identicon address={item.submitter} />
@@ -81,7 +76,7 @@ function EvidenceEntry({ item, chain }: { readonly item: EvidenceItem; readonly 
           <Timestamp value={item.timestamp} />
           {item.attachment === null ? null : (
             <span className="min-w-0">
-              <Attachment attachment={item.attachment} testId="evidence-attachment" />
+              <Attachment attachment={item.attachment} />
             </span>
           )}
         </footer>
@@ -90,15 +85,11 @@ function EvidenceEntry({ item, chain }: { readonly item: EvidenceItem; readonly 
   );
 }
 
-/** The count of entries core hid (D-22); always present as a parity hook, visible only when something is hidden. */
+/** The count of entries core hid (D-22), shown only when something is hidden. */
 function HiddenCount({ list }: { readonly list: EvidenceList }) {
   const text = hiddenEvidenceText(list);
-  if (text === null) return <div {...hiddenEvidenceCountAttributes(0)} hidden />;
-  return (
-    <div {...hiddenEvidenceCountAttributes(list.hiddenEvidenceCount)}>
-      <Notice variant="info" title="Hidden evidence" body={`${text}. Only content-addressed evidence in the expected format is shown.`} />
-    </div>
-  );
+  if (text === null) return null;
+  return <Notice variant="info" title="Hidden evidence" body={`${text}. Only content-addressed evidence in the expected format is shown.`} />;
 }
 
 /**

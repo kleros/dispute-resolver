@@ -6,11 +6,6 @@ export interface ReadClientOptions {
   readonly timeoutMs?: number;
   /** Retries of a failed request, except an `eth_getLogs` range-limit refusal; default 2, after 500 ms and 2 s. */
   readonly retryCount?: number;
-  /**
-   * JSON-RPC batching (viem `batch`); default off, so each request is its own HTTP request with its own timeout, as in
-   * spec 9.1. When on, requests of the same tick share one HTTP request and its timeout.
-   */
-  readonly batch?: boolean;
 }
 
 /** The options of a read client built for one logical lookup, which may carry that lookup's request budget. */
@@ -34,16 +29,4 @@ export interface RequestBudget {
   spend(): void;
   /** Milliseconds left before the deadline, never negative. */
   remainingMs(): number;
-}
-
-/** Windowing parameters of the chunked log scans (the Reality lookup's constants, spec 9.1). */
-export interface LogScanLimits {
-  /** First window size when the whole range is refused; default 10,000 blocks. */
-  readonly windowSize: number;
-  /** Smallest window before giving up; default 100. */
-  readonly minWindowSize: number;
-  /** Divisor applied to the window after a refusal; default 5. */
-  readonly windowShrinkFactor: number;
-  /** Windows fetched in parallel; default 8. */
-  readonly concurrency: number;
 }

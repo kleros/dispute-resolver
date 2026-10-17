@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
@@ -13,7 +13,6 @@
     "check:bundle": "node scripts/check-bundle.mjs",
     "e2e": "playwright test --project=chromium",
     "e2e:runner": "playwright test e2e/runner --project=chromium --project=runner-firefox --project=runner-webkit",
-    "golden": "playwright test --project=golden",
     "format": "prettier --write . --ignore-path ../../.prettierignore"
   },
   "dependencies": {

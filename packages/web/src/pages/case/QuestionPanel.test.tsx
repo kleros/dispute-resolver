@@ -49,8 +49,8 @@ describe("QuestionPanel (spec 5.13)", () => {
   it("spec 5.13: shows the question type and the question as plain text", () => {
     renderPanel(sectionReady(testOkMetaEvidence({ question: "Should **Alice** be paid?\nAnswer carefully.", rulingOptions: { type: "uint", precision: 2 } })));
     expect(screen.getByText("Non-negative number")).toBeInTheDocument();
-    const question = screen.getByTestId("case-question");
-    expect(question).toHaveTextContent("Should **Alice** be paid? Answer carefully.");
+    const question = screen.getByText("Should **Alice** be paid? Answer carefully.");
+    expect(question.textContent).toBe("Should **Alice** be paid?\nAnswer carefully.");
     expect(question.querySelector("strong")).toBeNull();
   });
 
@@ -65,7 +65,6 @@ describe("QuestionPanel (spec 5.13)", () => {
     expect(court).toHaveAttribute("href", "https://court.kleros.io/cases/12?requiredChainId=100");
     expect(court).toHaveAttribute("target", "_blank");
     expect(court).toHaveAttribute("rel", "noopener noreferrer");
-    expect(court).not.toHaveAttribute("data-testid");
   });
 
   it("spec 5.13: a multiple-select question lists its reserved answers with shortened codes", () => {
@@ -83,32 +82,28 @@ describe("QuestionPanel (spec 5.13)", () => {
   });
 
   it("spec 5.13: an unknown question type has no label, as today", () => {
-    renderPanel(sectionReady(testOkMetaEvidence({ question: "Is it true?", rulingOptions: { type: "bool", titles: ["Yes"] } })));
-    expect(screen.getByTestId("case-question")).toHaveTextContent("Is it true?");
+    const { container } = renderPanel(sectionReady(testOkMetaEvidence({ question: "Is it true?", rulingOptions: { type: "bool", titles: ["Yes"] } })));
+    expect(container).toHaveTextContent(/^Is it true\?$/);
     expect(screen.queryByText(/Multiple choice/)).not.toBeInTheDocument();
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 
-  it("§12.1: case-ruling-options carries the type, titles, reserved answers and precision", () => {
-    renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: { type: "uint", titles: ["A"], reserved: { "0x01": "Too soon" }, precision: 0 } })));
-    expect(JSON.parse(screen.getByTestId("case-ruling-options").getAttribute("data-ruling-options") ?? "")).toEqual({
-      type: "uint",
-      titles: ["A"],
-      reserved: { "0x01": "Too soon" },
-      precision: 0,
-    });
+  it("spec 5.13: a number question shows its type alone, never the titles or reserved answers it carries", () => {
+    const { container } = renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: { type: "uint", titles: ["A"], reserved: { "0x01": "Too soon" }, precision: 0 } })));
+    expect(container).toHaveTextContent(/^Non-negative number$/);
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 
-  it("§12.1: case-question is absent when the meta-evidence has no question", () => {
-    renderPanel(sectionReady(testOkMetaEvidence({ question: null })));
-    expect(screen.queryByTestId("case-question")).not.toBeInTheDocument();
-    expect(screen.getByTestId("case-ruling-options")).toBeInTheDocument();
+  it("spec 5.13: a meta-evidence without a question shows the type and the options with nothing between them", () => {
+    const { container } = renderPanel(sectionReady(testOkMetaEvidence({ question: null })));
+    expect(container).toHaveTextContent(/^Multiple choice: single selectVoting options/);
+    expect(screen.getByRole("heading", { level: 3, name: "Voting options" })).toBeInTheDocument();
   });
 
   it("spec 5.13: meta-evidence without ruling options shows neither a type nor options", () => {
-    renderPanel(sectionReady(testOkMetaEvidence({ question: "Who wins?", rulingOptions: null })));
-    expect(screen.getByTestId("case-question")).toHaveTextContent("Who wins?");
-    expect(screen.queryByTestId("case-ruling-options")).not.toBeInTheDocument();
+    const { container } = renderPanel(sectionReady(testOkMetaEvidence({ question: "Who wins?", rulingOptions: null })));
+    expect(container).toHaveTextContent(/^Who wins\?$/);
+    expect(screen.queryByRole("heading", { name: "Voting options" })).not.toBeInTheDocument();
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 
@@ -136,6 +131,7 @@ describe("QuestionPanel (spec 5.13)", () => {
   it("spec 5.11: the panel shows a placeholder while the meta-evidence loads", () => {
     renderPanel(sectionLoading);
     expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
-    expect(screen.queryByTestId("case-ruling-options")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Multiple choice/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Voting options" })).not.toBeInTheDocument();
   });
 });

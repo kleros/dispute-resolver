@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { RegistryKey } from "../types";
 import { DISPUTE_ID_TO_QUESTION_ID } from "./events";
 import { generateKnownQuestions, renderKnownQuestionsModule, type KnownQuestionsData } from "./generator";
-import { createdLog, fakeNetwork, filterOf, mappingLog, nth, questionLog, templateLog, type FakeChain, type NodeCall } from "./testHelpers";
-import { CROSS_ENTRY, Q_KNOWN_CROSS, Q_KNOWN_SINGLE, Q_NEW_CROSS, Q_NEW_SINGLE, REALITY_1, REALITY_100, SINGLE, SINGLE_ENTRY } from "./testWorld";
+import { createdLog, fakeNetwork, filterOf, mappingLog, nth, questionLog, templateLog, type FakeChain, type NodeCall } from "../test/reality/testHelpers";
+import { CROSS_ENTRY, Q_KNOWN_CROSS, Q_KNOWN_SINGLE, Q_NEW_CROSS, Q_NEW_SINGLE, REALITY_1, REALITY_100, SINGLE, SINGLE_ENTRY } from "../test/reality/testWorld";
 
 const PROXIES: Record<RegistryKey, typeof SINGLE_ENTRY> = {
   [`1:${SINGLE}`]: SINGLE_ENTRY,

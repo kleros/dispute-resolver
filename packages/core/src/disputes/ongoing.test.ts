@@ -3,8 +3,8 @@ import { klerosLiquidAbi } from "../abi";
 import type { Address } from "../types";
 import { listOngoingDisputes } from ".";
 import type { Court } from "./types";
-import { answer, disputeCreationLog, fakeClient, failure, newPeriodLog, rpcError } from "./testHelpers";
-import type { CallAnswer, FakeNode } from "./testHelpers";
+import { answer, disputeCreationLog, fakeClient, failure, newPeriodLog, rpcError } from "../test/disputes/testHelpers";
+import type { CallAnswer, FakeNode } from "../test/disputes/testHelpers";
 
 /** Sepolia's arbitrator: a 50,000-block lookback from its deployment block 3,635,742 (§6.3). */
 const ARBITRATOR: Address = "0x90992fb4e15ce0c59aeffb376460fda4ee19c879";
@@ -73,7 +73,14 @@ describe("listOngoingDisputes", () => {
     const { client } = fakeClient(node());
     const list = await listOngoingDisputes({ chainId: 11155111, client }, COURTS);
     if (list.status !== "ok") throw new Error(list.status);
-    expect(list.disputes.find((dispute) => dispute.id === 12n)).toEqual({ id: 12n, arbitrated: ARBITRABLE, period: 3, subcourtId: 0n, lastPeriodChange: 3000, countdownTarget: 3400 });
+    expect(list.disputes.find((dispute) => dispute.id === 12n)).toEqual({
+      id: 12n,
+      arbitrated: ARBITRABLE,
+      period: 3,
+      subcourtId: 0n,
+      lastPeriodChange: 3000,
+      countdownTarget: 3400,
+    });
     expect(list.disputes.find((dispute) => dispute.id === 11n)?.countdownTarget).toBe(2020);
   });
 

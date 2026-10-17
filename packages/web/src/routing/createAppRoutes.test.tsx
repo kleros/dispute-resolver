@@ -2,11 +2,10 @@ import { act, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { useParams } from "react-router";
 import { describe, expect, it, vi } from "vitest";
-import { TestFrame, renderInRouter } from "../test/routing";
+import { APP_ROUTE_PATTERNS, TestFrame, renderInRouter } from "../test/routing";
 import { UNCONFIGURED_CHAIN_ID, createTestWallet, type TestWallet } from "../test/wallet";
 import { createAppRoutes } from "./createAppRoutes";
 import { usePageChain } from "./pageChain";
-import { APP_ROUTE_PATTERNS } from "./paths";
 
 function OngoingStub() {
   return <p>Ongoing page on {usePageChain().chainId}</p>;

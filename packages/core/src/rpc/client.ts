@@ -27,17 +27,6 @@ interface TransportPolicy extends Required<ReadClientOptions> {
   readonly budget: RequestBudget | undefined;
 }
 
-/** The read clients built with a request budget, each with the budget its transport spends per attempt. */
-const attemptBudgets = new WeakMap<ReadClient, RequestBudget>();
-
-/**
- * Whether `client` already spends `budget` before every attempt of every request, retries included, so a caller holding
- * the same budget must not spend it again for the same requests.
- */
-export function spendsBudgetPerAttempt(client: ReadClient, budget: RequestBudget): boolean {
-  return attemptBudgets.get(client) === budget;
-}
-
 /**
  * Range-limit refusals of `eth_getLogs` go straight back to the caller, which narrows the range (`getLogsChunked`);
  * retrying them would only repeat the refusal. Every other failure is retried (spec 9.1).
@@ -47,13 +36,14 @@ function isRetryable(method: string, error: unknown): boolean {
 }
 
 /**
- * A viem `http` transport to `url` with the retry policy of spec 9.1. viem's own retries are off because they retry
- * range refusals (-32005, HTTP 413, timeouts) and use a different backoff. Each attempt, retries included, first spends
- * the budget, which also checks the deadline; its `LookupLimitError` is thrown before the request and never retried.
+ * A viem `http` transport to `url` with the retry policy of spec 9.1. Batching is off, so each request is its own HTTP
+ * request with its own timeout (spec 9.1). viem's own retries are off because they retry range refusals (-32005, HTTP
+ * 413, timeouts) and use a different backoff. Each attempt, retries included, first spends the budget, which also checks
+ * the deadline; its `LookupLimitError` is thrown before the request and never retried.
  */
 function readTransport(url: string, options: TransportPolicy): Transport {
   return (parameters) => {
-    const base = http(url, { timeout: options.timeoutMs, batch: options.batch, retryCount: 0 })(parameters);
+    const base = http(url, { timeout: options.timeoutMs, batch: false, retryCount: 0 })(parameters);
     const attempt = async (call: JsonRpcRequest, attempted: number): Promise<unknown> => {
       options.budget?.spend();
       try {
@@ -94,16 +84,13 @@ function withDefaults(options: BudgetedReadClientOptions | undefined): Transport
   return {
     timeoutMs: options?.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     retryCount: options?.retryCount ?? DEFAULT_RETRY_COUNT,
-    batch: options?.batch ?? false,
     budget: options?.budget,
   };
 }
 
-/** A read client over `url`, registered with the budget its transport spends per attempt. */
+/** A read client over `url`, whose transport spends `policy.budget`, when there is one, before every attempt. */
 function buildReadClient(url: string, policy: TransportPolicy): ReadClient {
-  const client = createPublicClient({ transport: readTransport(url, policy) });
-  if (policy.budget !== undefined) attemptBudgets.set(client, policy.budget);
-  return client;
+  return createPublicClient({ transport: readTransport(url, policy) });
 }
 
 /**

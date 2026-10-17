@@ -4,7 +4,7 @@ import { erc1497Abi } from "../abi";
 import { CHAINS } from "../chains";
 import type { Address } from "../types";
 import { evidenceScanStart, readDisputeEvent, readEvidenceLogs } from "./index";
-import { disputeLog, evidenceLog, fakeClient, recordedDispute, recordedNode, RECORDED, rpcError, type RpcLog } from "./testHelpers";
+import { disputeLog, evidenceLog, fakeClient, recordedDispute, recordedNode, RECORDED, rpcError, type RpcLog } from "../test/evidence/testHelpers";
 
 const ARBITRATOR = RECORDED.arbitrator;
 const DISPUTE_1454 = recordedDispute(1454n);

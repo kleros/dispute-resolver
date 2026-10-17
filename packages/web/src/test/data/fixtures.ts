@@ -60,7 +60,6 @@ export function testFamily(overrides: Partial<FamilyDetection> = {}): FamilyDete
     },
     realityProxy: null,
     implementation: null,
-    selectors: [],
     ...overrides,
   };
 }

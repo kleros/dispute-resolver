@@ -10,17 +10,13 @@ const TEXT_CLASS = "[overflow-wrap:anywhere]";
  * `rel="noopener noreferrer"`; any other value is shown as plain text, never linked. A caller's `className` replaces the
  * default style.
  */
-export function ExternalLink({ href, children, className, testId }: ExternalLinkProps) {
+export function ExternalLink({ href, children, className }: ExternalLinkProps) {
   const label = children ?? href;
   if (!isSafeNavigationUrl(href)) {
-    return (
-      <span className={className ?? TEXT_CLASS} data-testid={testId}>
-        {label}
-      </span>
-    );
+    return <span className={className ?? TEXT_CLASS}>{label}</span>;
   }
   return (
-    <a href={href.trim()} target="_blank" rel="noopener noreferrer" className={className ?? LINK_CLASS} data-testid={testId}>
+    <a href={href.trim()} target="_blank" rel="noopener noreferrer" className={className ?? LINK_CLASS}>
       {label}
     </a>
   );

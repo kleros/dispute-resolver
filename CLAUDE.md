@@ -10,7 +10,7 @@ The Dispute Resolver (`resolve.kleros.io`) is being rebuilt on branch `feat/rewr
 
 - `packages/core` (`@dispute-resolver/core`): registry, URL and CID rules, chain reads through an injected client, the Reality pipeline, meta-evidence and evidence pipelines, appeal math, write-call builders, allowlists. No React, no DOM, no `window`, no `localStorage`.
 - `packages/web` (`@dispute-resolver/web`): the React app, the script runner page (`public/__runner/index.html`) and its host, the Netlify headers.
-- `src/`, `public/` at the repository root, `scripts/generate-reality-known-questions.js`: the **old app**, kept only as read-only reference until the hand-off phase removes it. Never import from it, never edit it.
+- The **old app** (`src/`, `public/`, `scripts/generate-reality-known-questions.js`) is no longer in this tree; it stays readable on `master`. Read its files with `git show master:<path>` (for example `git show master:src/app.js`) when the spec points at them. It is reference only: nothing in this tree imports from it.
 
 ## Commands
 

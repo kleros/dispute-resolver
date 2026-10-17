@@ -1,5 +1,4 @@
 import { useId, type ReactNode } from "react";
-import { testId, votesAttributes } from "../../parity";
 import { FACT_SMALL, LABEL, PAGE_TITLE, PeriodBadge, RECORD_BAND } from "../../ui";
 import type { CaseSectionProps } from "../../data";
 import { existingView, foundLookup } from "./caseState";
@@ -45,22 +44,12 @@ export function CaseOverview({ dispute, chain }: CaseSectionProps) {
           <Detail label="Network">{chain.name}</Detail>
           <Detail label="Court">
             <ViewDetail view={view} pick={(value) => value.court}>
-              {(court) =>
-                court.name === null ? (
-                  <span className="font-normal text-klerosUIComponentsSecondaryText">{`Court #${court.id.toString()} (name unavailable)`}</span>
-                ) : (
-                  <span {...testId("case-court")}>{court.name}</span>
-                )
-              }
+              {(court) => court.name ?? <span className="font-normal text-klerosUIComponentsSecondaryText">{`Court #${court.id.toString()} (name unavailable)`}</span>}
             </ViewDetail>
           </Detail>
           <Detail label="Number of votes">
             <ViewDetail view={view} pick={(value) => value.numberOfVotes}>
-              {(votes) => (
-                <span {...votesAttributes(votes)} className="tabular-nums">
-                  {votes}
-                </span>
-              )}
+              {(votes) => <span className="tabular-nums">{votes}</span>}
             </ViewDetail>
           </Detail>
         </dl>

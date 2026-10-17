@@ -7,11 +7,10 @@ const HREF = "https://cdn.kleros.link/ipfs/QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUd
 
 describe("Attachment", () => {
   it("A10: links an attachment in a new tab with rel noopener noreferrer and its label", () => {
-    render(<Attachment attachment={{ kind: "link", href: HREF, label: "photo.png", attachmentKind: "image" }} testId="evidence-attachment" />);
+    render(<Attachment attachment={{ kind: "link", href: HREF, label: "photo.png", attachmentKind: "image" }} />);
     const link = screen.getByRole("link", { name: "photo.png" });
     expect(link).toHaveAttribute("href", HREF);
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    expect(screen.getByTestId("evidence-attachment")).toBe(link);
   });
 
   it.each<AttachmentKind>(["image", "video", "text", "other"])("A17: never renders a %s attachment inline", (attachmentKind) => {
@@ -32,9 +31,9 @@ describe("Attachment", () => {
   });
 
   it("D-32: shows a text attachment as plain text", () => {
-    render(<Attachment attachment={{ kind: "text", text: "http://example.com/file.pdf" }} testId="link-meta-evidence-file" />);
+    render(<Attachment attachment={{ kind: "text", text: "http://example.com/file.pdf" }} />);
     expect(screen.queryByRole("link")).toBeNull();
-    expect(screen.getByTestId("link-meta-evidence-file")).toHaveTextContent("http://example.com/file.pdf");
+    expect(screen.getByText("http://example.com/file.pdf")).toBeInTheDocument();
   });
 
   it("names a link whose URI has no last segment", () => {

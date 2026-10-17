@@ -3,6 +3,13 @@ import { describe, expect, it } from "vitest";
 import { EmptyState } from "./EmptyState";
 import { PageMessage } from "./PageMessage";
 import { SectionSkeleton } from "./SectionSkeleton";
+import type { SectionSkeletonProps } from "./types";
+
+/** The placeholders under the skeleton's hidden content: its lines of text (`text`, `card`), its cards or its bars. */
+function placeholders(container: HTMLElement, variant: SectionSkeletonProps["variant"]): readonly Element[] {
+  if (variant === "text" || variant === "card") return [...container.querySelectorAll('[aria-hidden="true"] .animate-loading.h-4')];
+  return [...(container.querySelector('[aria-hidden="true"] > div')?.children ?? [])];
+}
 
 describe("SectionSkeleton", () => {
   it("11.3: announces a busy loading state", () => {
@@ -19,17 +26,17 @@ describe("SectionSkeleton", () => {
     ["bars", 3],
   ] as const)("11.3: the %s variant renders %i placeholders by default", (variant, count) => {
     const { container } = render(<SectionSkeleton variant={variant} />);
-    expect(container.querySelectorAll("[data-skeleton-item]")).toHaveLength(count);
+    expect(placeholders(container, variant)).toHaveLength(count);
   });
 
   it("11.3: renders the requested number of lines", () => {
     const { container } = render(<SectionSkeleton variant="text" lines={5} />);
-    expect(container.querySelectorAll("[data-skeleton-item]")).toHaveLength(5);
+    expect(placeholders(container, "text")).toHaveLength(5);
   });
 
   it("A-16: the bars variant renders the requested number of accordion bars", () => {
     const { container } = render(<SectionSkeleton variant="bars" lines={4} />);
-    expect(container.querySelectorAll("[data-skeleton-item]")).toHaveLength(4);
+    expect(placeholders(container, "bars")).toHaveLength(4);
   });
 
   it("11.3: uses the library's loading animation on token-colored blocks", () => {

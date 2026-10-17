@@ -129,7 +129,12 @@ function timelineRows(): string[] {
   const timeline = screen.getByRole("list", { name: "Evidence timeline" });
   return within(timeline)
     .getAllByRole("listitem")
-    .map((row) => within(row).queryByTestId("evidence-title")?.textContent ?? row.textContent);
+    .map((row) => within(row).queryByRole("heading", { level: 3 })?.textContent ?? row.textContent);
+}
+
+/** The evidence entries of the timeline, without its "Appealed" and "Dispute Raised" events. */
+function evidenceEntries(): HTMLElement[] {
+  return within(screen.getByRole("list", { name: "Evidence timeline" })).getAllByRole("article");
 }
 
 function appealedRow(appealedAt: number): string {
@@ -253,54 +258,55 @@ describe("EvidenceSection: evidence list (spec 5.14)", () => {
     const older = item({ title: "First", description: "**not markdown**" });
     await renderSection({ evidence: sectionReady(evidenceList([newer, older])) });
 
-    const entries = screen.getAllByTestId("evidence-item");
+    const entries = evidenceEntries();
     expect(entries).toHaveLength(2);
     const [first, second] = entries;
     if (first === undefined || second === undefined) throw new Error("Expected two entries.");
-    expect(first).toHaveAttribute("data-submitter", OTHER_SUBMITTER);
-    expect(first).toHaveAttribute("data-timestamp", "1700000900");
-    expect(screen.getAllByTestId("evidence-title").map((title) => title.textContent)).toEqual(["Second", "First"]);
-    expect(screen.getAllByTestId("evidence-description")[1]?.textContent).toBe("**not markdown**");
+    expect(within(first).getByTitle(OTHER_SUBMITTER)).toHaveTextContent(shortenAddress(OTHER_SUBMITTER));
+    expect(within(first).getByText(new Date(1_700_000_900_000).toUTCString())).toHaveAttribute("datetime", new Date(1_700_000_900_000).toISOString());
+    expect(entries.map((entry) => within(entry).getByRole("heading", { level: 3 }).textContent)).toEqual(["Second", "First"]);
+    expect(within(second).getByText("**not markdown**").tagName).toBe("P");
     expect(within(second).getByText(new Date(1_700_000_500_000).toUTCString())).toBeInTheDocument();
     expect(within(second).getByText(shortenAddress(SUBMITTER))).toBeInTheDocument();
   });
 
   it("A17: an attachment is a new-tab link with its icon, never rendered inline", async () => {
     await renderSection({ evidence: sectionReady(evidenceList([item({ attachment: attachmentLink("photo.png") })])) });
-    const link = screen.getByTestId("evidence-attachment");
-    expect(link.tagName).toBe("A");
+    const link = screen.getByRole("link", { name: /photo\.png/ });
     expect(link).toHaveAttribute("href", `https://cdn.kleros.link/ipfs/${ATTACHMENT_CID}/photo.png`);
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    const entry = screen.getByTestId("evidence-item");
-    expect(entry.querySelector("img, video, audio, iframe, object, embed")).toBeNull();
+    const [entry] = evidenceEntries();
+    expect(entry?.querySelector("img, video, audio, iframe, object, embed")).toBeNull();
   });
 
   it("D-32: an attachment that is not a safe link is shown as text", async () => {
     await renderSection({ evidence: sectionReady(evidenceList([item({ attachment: { kind: "text", text: "http://example.com/a.pdf" } })])) });
-    const attachment = screen.getByTestId("evidence-attachment");
+    const [entry] = evidenceEntries();
+    if (entry === undefined) throw new Error("Expected one entry.");
+    const attachment = within(entry).getByText("http://example.com/a.pdf");
     expect(attachment.tagName).toBe("SPAN");
-    expect(attachment).toHaveTextContent("http://example.com/a.pdf");
+    expect(within(entry).queryByRole("link", { name: /example\.com/ })).toBeNull();
   });
 
   it("D-22: shows how many entries were hidden and why", async () => {
     await renderSection({ evidence: sectionReady(evidenceList([item()], { "not-content-addressed": 2 })) });
-    const hidden = screen.getByTestId("evidence-hidden-count");
-    expect(hidden).toHaveAttribute("data-count", "2");
+    expect(screen.getByText("Hidden evidence")).toBeVisible();
+    const hidden = screen.getByText(/evidence items hidden/);
     expect(hidden).toBeVisible();
     expect(hidden).toHaveTextContent("2 evidence items hidden: not content-addressed");
   });
 
   it("D-22: labels an undecodable log among other reasons", async () => {
     await renderSection({ evidence: sectionReady(evidenceList([], { undecodable: 1, "fetch-failed": 1 })) });
-    expect(screen.getByTestId("evidence-hidden-count")).toHaveTextContent("2 evidence items hidden: 1 undecodable event log, 1 could not be fetched");
+    expect(screen.getByText(/evidence items hidden/)).toHaveTextContent("2 evidence items hidden: 1 undecodable event log, 1 could not be fetched");
   });
 
-  it("D-22: the hidden count is 0 and invisible when nothing is hidden", async () => {
+  it("D-22: no hidden count shows when nothing is hidden", async () => {
     await renderSection({ evidence: sectionReady(evidenceList([item()])) });
-    const hidden = screen.getByTestId("evidence-hidden-count");
-    expect(hidden).toHaveAttribute("data-count", "0");
-    expect(hidden).not.toBeVisible();
+    expect(evidenceEntries()).toHaveLength(1);
+    expect(screen.queryByText("Hidden evidence")).toBeNull();
+    expect(screen.queryByText(/hidden/)).toBeNull();
   });
 
   it("spec 5.14: an empty evidence array shows 'No evidence submitted yet.' and no 'Dispute Raised'", async () => {
@@ -359,7 +365,7 @@ describe("EvidenceSection: 'Appealed' markers (D-03)", () => {
       "Block 10601846, log 213",
       `Dispute Raised${new Date(1_596_657_000_000).toUTCString()}`,
     ]);
-    expect(screen.getAllByTestId("evidence-item")).toHaveLength(9);
+    expect(evidenceEntries()).toHaveLength(9);
   });
 
   it("D-03: Gnosis 121 shows an 'Appealed' marker at its AppealDecision block, among the entries by block", async () => {

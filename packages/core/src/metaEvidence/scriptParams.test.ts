@@ -15,7 +15,7 @@ import {
   json,
   scriptOk,
   servedMetaEvidence,
-} from "./testHelpers";
+} from "../test/metaEvidence/testHelpers";
 import type { MetaEvidence } from "./types";
 
 function metaEvidence(fields: Record<string, unknown>): MetaEvidence {

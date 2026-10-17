@@ -3,7 +3,7 @@ import type { FamilyDetection } from "../families/types";
 import type { RulingOptions } from "../rulings/types";
 import { deriveCompatibility, deriveDecision } from ".";
 import type { LocalIdResolution } from "./types";
-import { recordedDetection } from "./testHelpers";
+import { recordedDetection } from "../test/disputes/testHelpers";
 
 const YES_NO: RulingOptions = { type: "single-select", titles: ["Yes", "No"] };
 const RESOLVED: LocalIdResolution = { kind: "local-id", value: 0n };
@@ -74,7 +74,9 @@ describe("deriveDecision", () => {
     expect(deriveDecision({ period: 3, currentRuling: 2n, fundedRulings: [], rulingOptions: null, fallbackOutcomes: ["Red", "Blue"], compatibility: "full" })).toMatchObject({
       rulingText: "Blue",
     });
-    expect(deriveDecision({ period: 3, currentRuling: 7n, fundedRulings: [], rulingOptions: null, fallbackOutcomes: null, compatibility: "full" })).toMatchObject({ rulingText: "7" });
+    expect(deriveDecision({ period: 3, currentRuling: 7n, fundedRulings: [], rulingOptions: null, fallbackOutcomes: null, compatibility: "full" })).toMatchObject({
+      rulingText: "7",
+    });
   });
 
   // Meta-evidence `rulingOptions: {}` (the poh.eth governor, mainnet 1621, whenever its dynamic script does not run) is

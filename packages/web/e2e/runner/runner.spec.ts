@@ -224,10 +224,9 @@ test.describe("script runner page (ADR 0004)", () => {
   });
 });
 
-// C7 golden input, ADR 0004 gate check 2: the charset-sensitive Reality renderer against mainnet dispute 1650
-// (docs/parity/04-golden-cases.md). The script is fetched from the IPFS gateway by its content address; its chain reads
-// are answered from fixtures/mainnet-1650.rpc.json, recorded at the block it names, and anything else it requests is
-// aborted, so the test needs no RPC configuration.
+// C7, ADR 0004: the charset-sensitive Reality renderer against mainnet dispute 1650. The script is fetched from the IPFS
+// gateway by its content address; its chain reads are answered from fixtures/mainnet-1650.rpc.json, recorded at the
+// block it names, and anything else it requests is aborted, so the test needs no RPC configuration.
 const QMQGMR_URL = "https://cdn.kleros.link/ipfs/QmQGMR6MyC851poYVyBfGthzmCdvTuRFKp1UDB19p89Gcn/bundle.js";
 const RPC_FIXTURE_1650 = loadRpcFixture("mainnet-1650.rpc.json");
 /** Reality's reserved "Answered Too Soon" answer. */
@@ -265,7 +264,7 @@ async function routeScriptReads(page: Page, appOrigin: string, fixture: RpcFixtu
   return traffic;
 }
 
-test.describe("script runner golden case (C7)", () => {
+test.describe("script runner on a recorded dispute (C7)", () => {
   test("C7: QmQGMR… against mainnet dispute 1650 returns Harris, Trump and Answered Too Soon", async ({ page, request, baseURL }) => {
     test.setTimeout(120_000);
     const scriptResponse = await request.get(QMQGMR_URL);

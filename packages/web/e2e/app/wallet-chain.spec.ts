@@ -14,6 +14,11 @@ const ACCOUNT = "0x00000000000000000000000000000000000000e2";
 const CASE_PATH = "/1/cases/1621";
 const CASE_TITLE = "Proof of Humanity Governance Dispute";
 
+/** The dispute's title: the heading of its summary. */
+function caseTitle(page: Page) {
+  return page.getByRole("heading", { name: CASE_TITLE, exact: true, includeHidden: true });
+}
+
 /** Fails early, and says why, when the build connects no wallet (K-02: no WalletConnect project ID). */
 async function expectWalletConnected(page: Page): Promise<void> {
   await expect(
@@ -36,11 +41,11 @@ test("B3, D-48: with the wallet on Gnosis and the page on mainnet, Fund refuses 
   await expectWalletConnected(page);
   // D-55's one request at load is declined: the page stays on the URL's chain and is not asked again (D-48).
   await expect.poll(async () => countOf(await walletRequests(page), "wallet_switchEthereumChain")).toBe(1);
-  await expect(page.getByTestId("case-title")).toHaveText(CASE_TITLE);
+  await expect(caseTitle(page)).toBeVisible();
   await expect(page).toHaveURL(CASE_PATH);
 
   await page.getByRole("button", { name: "Appeal", exact: true }).click();
-  const panel = page.getByTestId("appeal-panel");
+  const panel = page.getByRole("region", { name: "Appeal", exact: true });
   const fund = panel.getByRole("button", { name: /^Fund / }).first();
   await expect(fund).toBeEnabled({ timeout: 30_000 });
   await fund.click();
@@ -71,7 +76,7 @@ test("D-55: a wallet chain change on a case page moves it to the same ID on the 
 
   await page.goto(`${CASE_PATH}?from=e2e`);
   await expectWalletConnected(page);
-  await expect(page.getByTestId("case-title")).toHaveText(CASE_TITLE);
+  await expect(caseTitle(page)).toBeVisible();
   // A full page load would drop this marker.
   await page.evaluate(() => {
     Reflect.set(window, "__e2eSameDocument", true);
@@ -81,7 +86,7 @@ test("D-55: a wallet chain change on a case page moves it to the same ID on the 
 
   await expect(page).toHaveURL("/100/cases/1621?from=e2e");
   await expect(page.getByText("Dispute with ID 1621 does not exist on this network.")).toBeVisible();
-  await expect(page.getByTestId("case-title")).toHaveCount(0);
+  await expect(caseTitle(page)).toHaveCount(0);
   expect(await page.evaluate(() => Reflect.get(window, "__e2eSameDocument") === true), "the page was reloaded").toBe(true);
   // The wallet moved on its own: the app follows it and asks for no switch back.
   expect(countOf(await walletRequests(page), "wallet_switchEthereumChain")).toBe(0);

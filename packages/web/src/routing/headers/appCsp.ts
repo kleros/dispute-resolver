@@ -13,9 +13,13 @@ export const WALLET_ORIGINS: readonly string[] = Object.freeze([
 ]);
 
 /** A bare origin: a scheme the app can connect with, a host and an optional port, and nothing after them. */
-const BARE_ORIGIN = /^(?:https?|wss?):\/\/[^/?#\s;,']+$/;
+const BARE_ORIGIN = /^(?:https|wss):\/\/[^/?#\s;,']+$/;
 
-const CONNECTABLE_PROTOCOLS = new Set(["https:", "http:", "wss:", "ws:"]);
+/** The schemes of the endpoints the policy lists: the deployed app is served over https and connects over TLS only. */
+const CONNECTABLE_PROTOCOLS = new Set(["https:", "wss:"]);
+
+/** Schemes a configured endpoint must not have: a plain http or ws endpoint fails the build instead of being dropped. */
+const PLAIN_PROTOCOLS = new Set(["http:", "ws:"]);
 
 /** A configured endpoint: `name` says where it came from (an env variable), never what it is. */
 interface Endpoint {
@@ -40,12 +44,14 @@ function configuredEndpoints(env: Env): Endpoint[] {
 }
 
 /**
- * The origin of an endpoint, or `null` when it is not a URL the app can connect to (the app cannot use it either). Only
- * the scheme, host and port leave this function: RPC URLs carry API keys in their path (ARCHITECTURE.md §10.2).
+ * The origin of an endpoint, or `null` when it is not a URL the app can connect to (the app cannot use it either). A
+ * plain http or ws endpoint throws, naming its variable. Only the scheme, host and port leave this function, and no
+ * error carries any part of the value: RPC URLs carry API keys in their path (ARCHITECTURE.md §10.2).
  */
 function endpointOrigin({ name, url }: Endpoint): string | null {
   if (!URL.canParse(url)) return null;
   const parsed = new URL(url);
+  if (PLAIN_PROTOCOLS.has(parsed.protocol)) throw new Error(`${name} is a plain http or ws URL. The build accepts only https and wss endpoints.`);
   if (!CONNECTABLE_PROTOCOLS.has(parsed.protocol)) return null;
   const { origin } = parsed;
   if (!BARE_ORIGIN.test(origin)) throw new Error(`The connect-src source generated from ${name} is not a bare origin.`);

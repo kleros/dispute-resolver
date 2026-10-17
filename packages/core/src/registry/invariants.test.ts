@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getChain } from "../chains";
 import { normalizeIpfsPath, toCidPath } from "../uri";
 import { REGISTRY } from "./registry";
-import { DISPUTE_1621_OVERRIDE, DISPUTE_1684_SCRIPT, REMOVED_UNSLASHED_ADDRESS, addressOfKey, chainOfKey, sortedStrings } from "./testHelpers";
+import { DISPUTE_1621_OVERRIDE, DISPUTE_1621_SCRIPT, DISPUTE_1684_SCRIPT, REMOVED_UNSLASHED_ADDRESS, addressOfKey, chainOfKey, sortedStrings } from "../test/registry/testHelpers";
 
 const ADDRESS_PATTERN = /^0x[0-9a-f]{40}$/;
 
@@ -109,6 +109,10 @@ describe("06 §3 invariant 4: the dynamic-script allowlist", () => {
     for (const [, entries] of lists) expect(entries).not.toContain(DISPUTE_1621_OVERRIDE);
   });
 
+  it("D-25: the script of dispute 1621's own meta-evidence is on the mainnet list, so it runs in place of the override", () => {
+    expect(REGISTRY.dynamicScriptAllowlist[1]).toContain(DISPUTE_1621_SCRIPT);
+  });
+
   it("A1: mainnet dispute 1684's wallet-hijack script is on no list", () => {
     for (const [, entries] of lists) expect(entries).not.toContain(DISPUTE_1684_SCRIPT);
   });
@@ -116,6 +120,16 @@ describe("06 §3 invariant 4: the dynamic-script allowlist", () => {
   it("A1: the default script is allowed on every chain that has a list", () => {
     expect(REGISTRY.defaultScriptCid).toBe("QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj");
     for (const [chain, entries] of lists) expect(entries, `chain ${chain}`).toContain(REGISTRY.defaultScriptCid);
+  });
+});
+
+describe("06 §3 invariant 5: the display allowlist", () => {
+  it("B6: keeps today's chain keys", () => {
+    expect(
+      Object.keys(REGISTRY.displayAllowlist)
+        .map(Number)
+        .sort((a, b) => a - b),
+    ).toEqual([1, 100, 130, 137, 300, 1301, 8453, 10200, 84532, 11155111, 11155420]);
   });
 });
 

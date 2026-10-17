@@ -9,17 +9,13 @@
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "yarn workspaces foreach --all --parallel --include '@dispute-resolver/*' run typecheck && yarn golden-gate:typecheck",
-    "lint": "yarn workspaces foreach --all --parallel --include '@dispute-resolver/*' run lint && eslint eslint.config.mjs && yarn golden-gate:lint",
-    "test": "yarn workspaces foreach --all --parallel --include '@dispute-resolver/*' run test && yarn golden-gate:test",
+    "typecheck": "yarn workspaces foreach --all --parallel --include '@dispute-resolver/*' run typecheck",
+    "lint": "yarn workspaces foreach --all --parallel --include '@dispute-resolver/*' run lint && eslint eslint.config.mjs",
+    "test": "yarn workspaces foreach --all --parallel --include '@dispute-resolver/*' run test",
     "build": "yarn workspaces foreach --all --topological --include '@dispute-resolver/*' run build",
     "check:bundle": "yarn workspace @dispute-resolver/web check:bundle",
     "rpc:preflight": "yarn workspace @dispute-resolver/core rpc:preflight",
-    "format": "yarn workspaces foreach --all --parallel --include '@dispute-resolver/*' run format && prettier --write eslint.config.mjs tsconfig.base.json package.json",
-    "golden-gate": "yarn workspace @dispute-resolver/core exec tsx ../../scripts/golden-gate/src/main.ts",
-    "golden-gate:typecheck": "tsc --noEmit -p scripts/golden-gate/tsconfig.json",
-    "golden-gate:lint": "eslint scripts/golden-gate",
-    "golden-gate:test": "yarn workspace @dispute-resolver/web exec vitest run --config ../../scripts/golden-gate/vitest.config.ts"
+    "format": "yarn workspaces foreach --all --parallel --include '@dispute-resolver/*' run format && prettier --write eslint.config.mjs tsconfig.base.json package.json"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

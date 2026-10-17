@@ -4,7 +4,7 @@ import { getChain } from "../chains";
 import type { ChainConfig } from "../chains/types";
 import type { ReadClient } from "../types";
 import { createReadClient, createReadClients, createRequestBudget, isLookupLimitError } from "./index";
-import { rpcCalls, stubEndpoint } from "./testHelpers";
+import { rpcCalls, stubEndpoint } from "../test/rpc/testHelpers";
 import type { BudgetedReadClientOptions } from "./types";
 
 /**
@@ -152,7 +152,7 @@ describe("createReadClient", () => {
     expect(endpoint.posts).toHaveLength(1);
   });
 
-  it("RPC-2 §9.1: sends each request in its own HTTP request by default", async () => {
+  it("RPC-2 §9.1: sends each request in its own HTTP request", async () => {
     const endpoint = stubEndpoint(() => ({ result: "0x1" }));
     const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
     await Promise.all([client.getBlockNumber({ cacheTime: 0 }), client.getCode({ address })]);
@@ -169,14 +169,6 @@ describe("createReadClient", () => {
     expect(await fast).toBe("0x1");
     await vi.advanceTimersByTimeAsync(20_000);
     await slow;
-  });
-
-  it("RPC-2 §9.1: batching is opt-in", async () => {
-    const endpoint = stubEndpoint(() => ({ result: "0x1" }));
-    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL }, { batch: true });
-    await Promise.all([client.getBlockNumber({ cacheTime: 0 }), client.getCode({ address })]);
-    expect(endpoint.posts).toHaveLength(1);
-    expect(endpoint.posts[0]?.calls.map((call) => call.method)).toEqual(["eth_blockNumber", "eth_getCode"]);
   });
 
   it("RPC-1 §9.1: every attempt spends the lookup's budget, retries included", async () => {

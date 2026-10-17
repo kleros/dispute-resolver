@@ -1,26 +1,9 @@
-import { CREATE_LIMITS, type CreateLimits } from "@dispute-resolver/core";
 import { Card } from "@kleros/ui-components-library";
 import type { ReactNode } from "react";
-import { fieldAttributes, type DataAttributeStrings } from "../../parity";
 
-/** The `data-field` names of the form's wrappers (04 §1 `validation.requiredFields`): core's required fields and the optional ones. */
-export type FieldName = CreateLimits["requiredFields"][number] | "category" | "description" | "optionDescriptions" | "partyAliases" | "partyAddresses" | "primaryDocument";
-
-/** A field wrapper's parity hook (ARCHITECTURE.md §12.2): `data-required` is set exactly for core's required fields. */
-export function fieldSlotAttributes(name: FieldName): DataAttributeStrings {
-  return fieldAttributes({ field: name, required: (CREATE_LIMITS.requiredFields as readonly string[]).includes(name) });
-}
-
-/**
- * A form field's wrapper with its parity hook (ARCHITECTURE.md §12.2): the library fields drop `data-*` props (S-1), so
- * the hook sits on this `div`.
- */
-export function FieldSlot({ name, className, children }: { readonly name: FieldName; readonly className?: string; readonly children: ReactNode }) {
-  return (
-    <div {...fieldSlotAttributes(name)} className={className === undefined ? "min-w-0" : `min-w-0 ${className}`}>
-      {children}
-    </div>
-  );
+/** A form field's grid cell: `min-w-0` keeps the library's fixed-width fields inside their column (ARCHITECTURE.md §11.1). */
+export function FieldSlot({ className, children }: { readonly className?: string; readonly children: ReactNode }) {
+  return <div className={className === undefined ? "min-w-0" : `min-w-0 ${className}`}>{children}</div>;
 }
 
 /** The library field props that show a validation message, or none. */

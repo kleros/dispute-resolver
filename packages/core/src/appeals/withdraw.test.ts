@@ -9,7 +9,18 @@ import { GOVERNOR_1621, UNSLASHED } from "./__fixtures__/recorded";
 import { governorSessionAbi } from "./governor";
 import { readWithdrawable, roundStartBlock, roundsToScan } from "./index";
 import type { AppealContext } from "./types";
-import { FAMILY_SIGNATURES, answer, detectionFor, fakeNode, recordedDetection, reverting, rpcLog, testBinding, type CallReply, type FakeNodeSpec } from "./testHelpers";
+import {
+  FAMILY_SIGNATURES,
+  answer,
+  detectionFor,
+  fakeNode,
+  recordedDetection,
+  reverting,
+  rpcLog,
+  testBinding,
+  type CallReply,
+  type FakeNodeSpec,
+} from "../test/appeals/testHelpers";
 
 const UNSLASHED_OVERRIDE = getOverride(REGISTRY, 1, UNSLASHED.arbitrable);
 const SYNTHETIC: Address = "0x00000000000000000000000000000000000000cc";

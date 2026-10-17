@@ -28,7 +28,7 @@ describe("EvidenceDisplayFrame", () => {
 
   it("A8: renders the computed source and sandbox", () => {
     render(<EvidenceDisplayFrame model={MODEL} />);
-    const frame = screen.getByTestId("evidence-display");
+    const frame = screen.getByTitle("Evidence display");
     expect(frame.tagName).toBe("IFRAME");
     expect(frame).toHaveAttribute("src", MODEL.src);
     expect(frame).toHaveAttribute("sandbox", "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox");
@@ -36,7 +36,7 @@ describe("EvidenceDisplayFrame", () => {
 
   it("A8: sets the sandbox before the source, so the frame never loads unsandboxed", () => {
     render(<EvidenceDisplayFrame model={{ ...MODEL, sandbox: ["allow-scripts"] }} />);
-    const names = screen.getByTestId("evidence-display").getAttributeNames();
+    const names = screen.getByTitle("Evidence display").getAttributeNames();
     expect(names.filter((name) => name === "sandbox" || name === "src")).toEqual(["sandbox", "src"]);
   });
 
@@ -57,15 +57,15 @@ describe("EvidenceDisplayFrame", () => {
       return frameWindow;
     });
     const { rerender } = render(<EvidenceDisplayFrame model={MODEL} />);
-    fireEvent.load(screen.getByTestId("evidence-display"));
+    fireEvent.load(screen.getByTitle("Evidence display"));
     rerender(<EvidenceDisplayFrame model={{ ...MODEL, src: `${MODEL.src}&y` }} />);
-    fireEvent.load(screen.getByTestId("evidence-display"));
+    fireEvent.load(screen.getByTitle("Evidence display"));
     expect(posted).not.toHaveBeenCalled();
   });
 
   it("spec 9.4: is full width and a fixed 360 px high", () => {
     render(<EvidenceDisplayFrame model={MODEL} />);
-    const classes = screen.getByTestId("evidence-display").classList;
+    const classes = screen.getByTitle("Evidence display").classList;
     expect(classes).toContain("w-full");
     expect(classes).toContain("h-[360px]");
     expect([...classes].filter((name) => /^(?:max-|min-)?[hw]-/.test(name)).sort((a, b) => a.localeCompare(b))).toEqual(["h-[360px]", "w-full"]);

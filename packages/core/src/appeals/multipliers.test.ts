@@ -5,7 +5,7 @@ import type { Address } from "../types";
 import { GOVERNOR_MULTIPLIERS, recordedValue, type RecordedGovernor } from "./__fixtures__/governorMultipliers";
 import { MULTIPLIER_GETTERS, type RecordedGetters } from "./__fixtures__/recorded";
 import { readMultipliers } from "./index";
-import { FAMILY_SIGNATURES, answer, callKey, detectionFor, fakeNode, recordedDetection, reverting, rpcError, type CallReply } from "./testHelpers";
+import { FAMILY_SIGNATURES, answer, callKey, detectionFor, fakeNode, recordedDetection, reverting, rpcError, type CallReply } from "../test/appeals/testHelpers";
 
 const SYNTHETIC: Address = "0x00000000000000000000000000000000000000aa";
 

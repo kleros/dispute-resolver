@@ -29,6 +29,7 @@ const TITLE_BEFORE_SCRIPT = "Title before the dynamic script";
 const SCRIPT_TITLE = "Title set by the fixture script";
 const FORGED_TITLE = "Title forged by a foreign window";
 const SCRIPT_OPTIONS = ["Fixture script option one", "Fixture script option two"] as const;
+const OPTIONS_BEFORE_SCRIPT = ["Option before the script A", "Option before the script B"] as const;
 
 /** How long the test script waits before resolving, so the runner frame is still open to be inspected. */
 const SCRIPT_DELAY_MS = 2_000;
@@ -41,7 +42,7 @@ const META_EVIDENCE = {
   title: TITLE_BEFORE_SCRIPT,
   description: "Meta-evidence served by the runner engine test.",
   question: "Which option does the fixture script choose?",
-  rulingOptions: { type: "single-select", titles: ["Option before the script A", "Option before the script B"] },
+  rulingOptions: { type: "single-select", titles: OPTIONS_BEFORE_SCRIPT },
   dynamicScriptURI: `/ipfs/${SCRIPT_CID}`,
 };
 
@@ -190,6 +191,11 @@ async function serve(route: Route, appOrigin: string, traffic: Traffic): Promise
   await route.abort("blockedbyclient");
 }
 
+/** The title the script set: the heading of the dispute's summary. */
+function scriptTitle(page: Page) {
+  return page.getByRole("heading", { name: SCRIPT_TITLE, exact: true });
+}
+
 async function routeCasePage(page: Page, baseURL: string | undefined): Promise<Traffic> {
   const traffic = newTraffic();
   const appOrigin = new URL(baseURL ?? "http://localhost").origin;
@@ -231,14 +237,22 @@ test.describe("case page dynamic script (ADR 0004)", () => {
     const started = Date.now();
     await page.goto(CASE_PATH);
     await expectConfiguredBuild(traffic);
-    await expect(page.getByTestId("case-title")).toHaveText(SCRIPT_TITLE, { timeout: RENDER_LIMIT_MS });
+    await expect(scriptTitle(page)).toBeVisible({ timeout: RENDER_LIMIT_MS });
     const renderedMs = Date.now() - started;
     test.info().annotations.push({ type: "script-rendered-ms", description: String(renderedMs) });
 
-    const options = await page.getByTestId("case-ruling-options").getAttribute("data-ruling-options");
-    expect(JSON.parse(options ?? "null")).toMatchObject({ type: "single-select", titles: SCRIPT_OPTIONS });
+    // The Question panel lists the script's options, not the meta-evidence file's.
+    await page.getByRole("button", { name: "Question", exact: true }).click();
+    const question = page.getByRole("region", { name: "Question", exact: true });
+    await expect(question.getByText("Multiple choice: single select", { exact: true })).toBeVisible();
+    await expect(question.getByRole("region", { name: "Voting options", exact: true }).getByRole("listitem")).toHaveText([
+      "Option 0 - Refuse to Arbitrate / Invalid",
+      `Option 1 - ${SCRIPT_OPTIONS[0]}`,
+      `Option 2 - ${SCRIPT_OPTIONS[1]}`,
+    ]);
+    for (const option of OPTIONS_BEFORE_SCRIPT) await expect(question.getByText(option)).toHaveCount(0);
     // Dispute 1621's recorded ruling is 2, so the decision names the script's second option.
-    await expect(page.getByTestId("case-decision-ruling")).toHaveText(SCRIPT_OPTIONS[1]);
+    await expect(page.getByRole("region", { name: /^(Jury decision|Winner)$/ }).getByText(SCRIPT_OPTIONS[1], { exact: true })).toBeVisible();
     // The run settled: the host removed its frame (B8).
     await expect(page.locator(RUNNER_FRAME)).toHaveCount(0);
     expect(renderedMs).toBeLessThan(RENDER_LIMIT_MS);
@@ -282,7 +296,7 @@ test.describe("case page dynamic script (ADR 0004)", () => {
     }, appOrigin);
     expect(inside).toEqual({ opaqueOrigin: true, framed: true, locationOriginIsApp: true, storageBlocked: true });
 
-    await expect(page.getByTestId("case-title")).toHaveText(SCRIPT_TITLE, { timeout: RENDER_LIMIT_MS });
+    await expect(scriptTitle(page)).toBeVisible({ timeout: RENDER_LIMIT_MS });
     const forger = page.frames().find((frame) => frame.url() === FORGER_URL);
     expect(forger).toBeDefined();
     const forged = await forger?.evaluate(() => ({ posts: Number(Reflect.get(globalThis, "forgedPosts")), replies: Number(Reflect.get(globalThis, "forgedReplies")) }));

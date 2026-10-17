@@ -34,7 +34,8 @@ describe("Identicon", () => {
     expect(svg).not.toBeNull();
     expect(svg).toHaveAttribute("aria-hidden", "true");
     expect(svg).toHaveAttribute("width", "32");
-    const filled = container.querySelectorAll("rect[data-cell]");
+    // The background is the one 5 × 5 rect; every filled cell is a 1 × 1 rect.
+    const filled = container.querySelectorAll('rect[width="1"]');
     expect(filled).toHaveLength(identiconPattern(A).cells.flat().filter(Boolean).length);
     filled.forEach((cell) => {
       expect(cell.getAttribute("class")).toMatch(/^fill-klerosUIComponents/);

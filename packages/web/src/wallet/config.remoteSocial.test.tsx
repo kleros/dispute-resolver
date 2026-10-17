@@ -64,7 +64,7 @@ describe("createAppKitSetup when the Reown dashboard enables social login", () =
     const queryClient = new QueryClient();
     render(
       <QueryClientProvider client={queryClient}>
-        <WalletSetupProvider setup={setup} reconnectOnMount={false}>
+        <WalletSetupProvider setup={setup}>
           <WalletControl chain={chain} />
         </WalletSetupProvider>
       </QueryClientProvider>,

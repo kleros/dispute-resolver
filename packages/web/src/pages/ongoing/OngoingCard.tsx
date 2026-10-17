@@ -3,7 +3,6 @@ import { Card } from "@kleros/ui-components-library";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import type { OngoingTitle, SectionData } from "../../data";
-import { ongoingCardAttributes, testId } from "../../parity";
 import { paths } from "../../routing";
 import { CHIP_INFO, Countdown, FACT_LEAD, FACT_SMALL, LABEL, PeriodBadge } from "../../ui";
 
@@ -33,7 +32,7 @@ export function courtLabel(courts: SectionData<readonly Court[]>, subcourtId: bi
 function CardTitle({ title, disputeId }: { readonly title: SectionData<OngoingTitle>; readonly disputeId: bigint }) {
   if (title.status === "loading") {
     return (
-      <h2 {...testId("ongoing-card-title")} aria-busy="true" className={`${TITLE_CLASS} flex flex-col justify-center gap-2`}>
+      <h2 aria-busy="true" className={`${TITLE_CLASS} flex flex-col justify-center gap-2`}>
         <span className="sr-only">Loading the title</span>
         <span aria-hidden="true" className={`${SKELETON_LINE} w-full`} />
         <span aria-hidden="true" className={`${SKELETON_LINE} w-2/3`} />
@@ -41,30 +40,22 @@ function CardTitle({ title, disputeId }: { readonly title: SectionData<OngoingTi
     );
   }
   if (title.status === "unavailable") {
-    return (
-      <h2 {...testId("ongoing-card-title")} className={`${TITLE_CLASS} font-normal text-klerosUIComponentsSecondaryText`}>
-        Dispute {disputeId.toString()}: title unavailable
-      </h2>
-    );
+    return <h2 className={`${TITLE_CLASS} font-normal text-klerosUIComponentsSecondaryText`}>Dispute {disputeId.toString()}: title unavailable</h2>;
   }
-  return (
-    <h2 {...testId("ongoing-card-title")} className={TITLE_CLASS}>
-      {title.value.kind === "title" ? title.value.text : "Meta Evidence Missing"}
-    </h2>
-  );
+  return <h2 className={TITLE_CLASS}>{title.value.kind === "title" ? title.value.text : "Meta Evidence Missing"}</h2>;
 }
 
 /** The court as an informational stamp chip (contract §7). Not the library `Tag`: that is a button, and the whole card is already a link (§3.4). */
 function CourtTag({ label }: { readonly label: string | null }) {
   if (label === null) {
     return (
-      <span {...testId("ongoing-card-court")} aria-busy="true" className="inline-flex h-7 w-28 animate-loading rounded-full bg-klerosUIComponentsStroke">
+      <span aria-busy="true" className="inline-flex h-7 w-28 animate-loading rounded-full bg-klerosUIComponentsStroke">
         <span className="sr-only">Loading the court</span>
       </span>
     );
   }
   return (
-    <span {...testId("ongoing-card-court")} className={`${CHIP_INFO} min-w-0 self-start`}>
+    <span className={`${CHIP_INFO} min-w-0 self-start`}>
       <span className="truncate">{label}</span>
     </span>
   );
@@ -99,36 +90,33 @@ export interface OngoingCardProps {
  * One open dispute (spec §3, ARCHITECTURE.md §11.5): period, ID, title, court and the time left in the period. As today,
  * the countdown shows whenever the period's end is known (its court is loaded), and a passed end reads as zeros: today's
  * guard compares an absolute timestamp with zero (`ongoing-card.js:15-25, 56`), so it never hides a passed period.
- * The parity hook sits on a wrapper element because the library `Card` does not forward `data-*` (§12.2).
  */
 export function OngoingCard({ chainId, dispute, title, courts }: OngoingCardProps) {
   const countdown = dispute.countdownTarget;
   return (
-    <div {...ongoingCardAttributes({ disputeId: dispute.id, period: dispute.period })} className="h-full">
-      <CardShell chainId={chainId} disputeId={dispute.id}>
-        <div className="flex items-center justify-between gap-3">
-          <PeriodBadge variant="pill" size="sm" period={dispute.period} />
-          <span className={`${FACT_SMALL} tabular-nums`}>#{dispute.id.toString()}</span>
+    <CardShell chainId={chainId} disputeId={dispute.id}>
+      <div className="flex items-center justify-between gap-3">
+        <PeriodBadge variant="pill" size="sm" period={dispute.period} />
+        <span className={`${FACT_SMALL} tabular-nums`}>#{dispute.id.toString()}</span>
+      </div>
+      <div className="flex min-w-0 flex-col gap-2">
+        <CardTitle title={title} disputeId={dispute.id} />
+        <CourtTag label={courtLabel(courts, dispute.subcourtId)} />
+      </div>
+      {countdown === null ? null : (
+        <div className={BAND_CLASS}>
+          <HourglassIcon />
+          <span className="sr-only">Period ends in</span>
+          <Countdown target={countdown} className={FACT_LEAD} />
         </div>
-        <div className="flex min-w-0 flex-col gap-2">
-          <CardTitle title={title} disputeId={dispute.id} />
-          <CourtTag label={courtLabel(courts, dispute.subcourtId)} />
-        </div>
-        {countdown === null ? null : (
-          <div className={BAND_CLASS}>
-            <HourglassIcon />
-            <span className="sr-only">Period ends in</span>
-            <Countdown target={countdown} className={FACT_LEAD} testId="ongoing-card-countdown" />
-          </div>
-        )}
-      </CardShell>
-    </div>
+      )}
+    </CardShell>
   );
 }
 
 /**
  * A listed dispute whose `disputes(id)` read failed (ARCHITECTURE.md §5.5): its ID with "details unavailable" instead of
- * dropping it (D-37). Its period is unknown, so it carries no parity hook and shows only under "Ongoing".
+ * dropping it (D-37). Its period is unknown, so it shows only under "Ongoing".
  */
 export function FailedDisputeCard({ chainId, disputeId }: { readonly chainId: ChainId; readonly disputeId: bigint }) {
   return (

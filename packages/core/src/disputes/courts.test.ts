@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { klerosLiquidAbi, policyRegistryAbi } from "../abi";
 import type { Env } from "../types";
 import { listCourts } from ".";
-import { answer, fakeClient, fakeFetcher, failure, GNOSIS, MAINNET, recordedNode, recordedPolicyBodies } from "./testHelpers";
+import { answer, fakeClient, fakeFetcher, failure, GNOSIS, MAINNET, recordedNode, recordedPolicyBodies } from "../test/disputes/testHelpers";
 
 const ENV: Env = {};
 const GET_SUBCOURT = toFunctionSelector("getSubcourt(uint96)").slice(2);

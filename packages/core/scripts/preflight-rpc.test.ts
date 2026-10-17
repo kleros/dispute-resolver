@@ -2,7 +2,7 @@ import { parseAbiItem } from "viem";
 import { describe, expect, it } from "vitest";
 import { CHAINS } from "../src/chains";
 import { getLogsChunked } from "../src/rpc";
-import { fakeLogsClient, rangeRefusal } from "../src/rpc/testHelpers";
+import { fakeLogsClient, rangeRefusal } from "../src/test/rpc/testHelpers";
 import type { Env } from "../src/types";
 import { MIN_WINDOW_BLOCKS, checkEndpoint, formatChainReport, isFailure, redact, runPreflight, summarize, type FetchLike } from "./preflight-rpc";
 

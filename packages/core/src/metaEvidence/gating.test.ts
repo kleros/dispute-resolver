@@ -24,7 +24,7 @@ import {
   realityCache,
   scriptOk,
   servedMetaEvidence,
-} from "./testHelpers";
+} from "../test/metaEvidence/testHelpers";
 
 const PLAIN = json({ title: "Plain dispute", rulingOptions: { type: "single-select", titles: ["A", "B"] } });
 
@@ -117,7 +117,9 @@ describe("loadMetaEvidence gating (A2)", () => {
     for (const uri of ["/ipns/kleros.eth/script.js", `/ipfs/${FIXTURE.mainnet1684.dynamicScriptCid}`, `/ipfs/${DEFAULT_SCRIPT_CID}`]) {
       const { fetcher, urls } = fakeFetcher(servedMetaEvidence(json({ title: "Q", dynamicScriptURI: uri })));
       const entry = proxyEntry(SINGLE_CHAIN_PROXY);
-      const cache = realityCache({ [realityQuestionCacheKey(1, entry, 1684n)]: { ...boolQuestion("Will it rain?"), reality: entry.reality, realityChainId: entry.realityChainId } });
+      const cache = realityCache({
+        [realityQuestionCacheKey(1, entry, 1684n)]: { ...boolQuestion("Will it rain?"), reality: entry.reality, realityChainId: entry.realityChainId },
+      });
       const result = await loadMetaEvidence(context({ fetcher, runner: UNUSED_RUNNER, arbitrable: SINGLE_CHAIN_PROXY, realityCache: cache }));
       expect(result).toMatchObject({ status: "ok", script: { ran: false, reason: "registered-reality-proxy" } });
       expect(urls).toEqual([locatorUrl(1, 1684n), META_URL]);
@@ -151,7 +153,10 @@ describe("loadMetaEvidence gating (A2)", () => {
   });
 
   it("§9.1 step 7.4: a script fetch that is not ok yields no merge and no Reality status", async () => {
-    const { fetcher } = fakeFetcher({ ...servedMetaEvidence(json({ title: "T", dynamicScriptURI: `/ipfs/${DEFAULT_SCRIPT_CID}` })), [DEFAULT_SCRIPT_URL]: { status: 404, body: "Not Found" } });
+    const { fetcher } = fakeFetcher({
+      ...servedMetaEvidence(json({ title: "T", dynamicScriptURI: `/ipfs/${DEFAULT_SCRIPT_CID}` })),
+      [DEFAULT_SCRIPT_URL]: { status: 404, body: "Not Found" },
+    });
     const result = await loadMetaEvidence(context({ fetcher, runner: UNUSED_RUNNER }));
     expect(result).toMatchObject({ status: "ok", script: { ran: false, reason: "script-fetch-failed" }, metaEvidence: { title: "T", realityQuestion: null } });
   });
@@ -179,7 +184,11 @@ describe("loadMetaEvidence gating (A2)", () => {
   });
 
   it("§9.1 step 4: the legacy evidenceDisplayInterfaceURL is renamed", async () => {
-    const { fetcher } = fakeFetcher(servedMetaEvidence(json({ title: "T", evidenceDisplayInterfaceURL: "/ipfs/QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh/index.html", evidenceDisplayInterfaceURI: "/ipfs/old" })));
+    const { fetcher } = fakeFetcher(
+      servedMetaEvidence(
+        json({ title: "T", evidenceDisplayInterfaceURL: "/ipfs/QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh/index.html", evidenceDisplayInterfaceURI: "/ipfs/old" }),
+      ),
+    );
     const result = await loadMetaEvidence(context({ fetcher }));
     expect(result.status === "ok" && result.metaEvidence.evidenceDisplayInterfaceURI).toBe("/ipfs/QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh/index.html");
   });
@@ -217,7 +226,9 @@ describe("loadMetaEvidence gating (A2)", () => {
   it("§10.4: a registered proxy's options, status and question come from the on-chain question", async () => {
     const entry = proxyEntry(CROSS_CHAIN_PROXY);
     const cache = realityCache({ [realityQuestionCacheKey(1, entry, 1684n)]: boolQuestion("Will it rain?") });
-    const { fetcher } = fakeFetcher(servedMetaEvidence(json({ title: "Reality question", question: "From the JSON", dynamicScriptURI: "/ipfs/QmWWsDmvjhR9UVRgkcG75vAKzfK3vB85EkZzudnaxwfAWr/bundle.js" })));
+    const { fetcher } = fakeFetcher(
+      servedMetaEvidence(json({ title: "Reality question", question: "From the JSON", dynamicScriptURI: "/ipfs/QmWWsDmvjhR9UVRgkcG75vAKzfK3vB85EkZzudnaxwfAWr/bundle.js" })),
+    );
     const result = await loadMetaEvidence(context({ fetcher, arbitrable: CROSS_CHAIN_PROXY, realityCache: cache }));
     expect(result).toMatchObject({
       status: "ok",

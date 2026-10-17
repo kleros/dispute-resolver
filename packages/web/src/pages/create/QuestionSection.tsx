@@ -1,20 +1,18 @@
 import { CREATE_LIMITS } from "@dispute-resolver/core";
 import { DropdownSelect, NumberField, TextArea, TextField } from "@kleros/ui-components-library";
-import { createOptionCountAttributes, createQuestionTypeAttributes } from "../../parity";
 import type { SectionProps } from "./CourtSection";
 import { QUESTION_TYPES, isSelectType, setOption, setOptionCount, setQuestionType, setText } from "./draft";
-import { FULL_WIDTH_FIELD, FULL_WIDTH_SELECT, FieldSlot, FormGroup, errorProps, fieldSlotAttributes } from "./fields";
+import { FULL_WIDTH_FIELD, FULL_WIDTH_SELECT, FieldSlot, FormGroup, errorProps } from "./fields";
 import { fieldErrorMessage } from "./messages";
 
 const QUESTION_TYPE_ITEMS = QUESTION_TYPES.map(({ type, label }) => ({ id: type, text: label }));
-const QUESTION_TYPE_LABELS = QUESTION_TYPES.map(({ label }) => label);
 const [MIN_OPTIONS, MAX_OPTIONS] = CREATE_LIMITS.optionRange;
 
 /** Title and description (spec §4.3). */
 export function DisputeSection({ form, errors, onChange }: SectionProps) {
   return (
     <FormGroup title="Dispute" description="What the dispute is about, as jurors will first read it.">
-      <FieldSlot name="title">
+      <FieldSlot>
         <TextField
           label="Title"
           isRequired
@@ -27,7 +25,7 @@ export function DisputeSection({ form, errors, onChange }: SectionProps) {
           {...errorProps(errors.title === undefined ? undefined : fieldErrorMessage("title", errors.title))}
         />
       </FieldSlot>
-      <FieldSlot name="description">
+      <FieldSlot>
         <TextArea
           label="Description (Optional)"
           value={form.description}
@@ -52,7 +50,7 @@ function OptionRows({ form, errors, onChange }: Pick<SectionProps, "form" | "err
         return (
           // Rows are positional: option N is always the N-th row, and rows past the count are removed (D-08).
           <li key={number} className="grid grid-cols-1 gap-3 max-lg:py-4 max-lg:first:pt-0 max-lg:last:pb-0 lg:grid-cols-2">
-            <FieldSlot name="optionTitles">
+            <FieldSlot>
               <TextField
                 label={`Ruling Option ${number}`}
                 isRequired
@@ -65,7 +63,7 @@ function OptionRows({ form, errors, onChange }: Pick<SectionProps, "form" | "err
                 {...errorProps(error === undefined ? undefined : fieldErrorMessage("optionTitle", error))}
               />
             </FieldSlot>
-            <FieldSlot name="optionDescriptions">
+            <FieldSlot>
               <TextField
                 label={`Ruling Option ${number} Description (Optional)`}
                 value={option.description}
@@ -89,7 +87,7 @@ export function QuestionSection({ form, errors, onChange }: SectionProps) {
   return (
     <FormGroup title="Question and options" description="The question jurors answer, and the answers they can give.">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div {...createQuestionTypeAttributes(QUESTION_TYPE_LABELS)} {...fieldSlotAttributes("questionType")} className="min-w-0">
+        <div className="min-w-0">
           <DropdownSelect
             label="Question Type"
             items={QUESTION_TYPE_ITEMS}
@@ -104,7 +102,7 @@ export function QuestionSection({ form, errors, onChange }: SectionProps) {
           />
         </div>
         {select ? (
-          <div {...createOptionCountAttributes({ min: MIN_OPTIONS, max: MAX_OPTIONS })} {...fieldSlotAttributes("optionCount")} className="min-w-0">
+          <div className="min-w-0">
             <NumberField
               label="Number of Options"
               isRequired
@@ -123,7 +121,7 @@ export function QuestionSection({ form, errors, onChange }: SectionProps) {
           </div>
         ) : null}
       </div>
-      <FieldSlot name="question">
+      <FieldSlot>
         <TextField
           label="Question"
           isRequired

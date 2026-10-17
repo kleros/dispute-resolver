@@ -1,13 +1,13 @@
 import { numberToHex, toEventSelector } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { rpcError } from "../rpc/testHelpers";
+import { rpcError } from "../test/rpc/testHelpers";
 import { createRequestBudget } from "../rpc";
 import type { Hex } from "../types";
 import { DISPUTE_ID_TO_QUESTION_ID, LOG_NEW_QUESTION } from "./events";
 import { findLatestLogs } from "./findLatestLogs";
 import { LOOKUP_LIMITS } from "./constants";
 import { fetchRealityQuestion } from "./question";
-import { filterOf, mappingLog, nth, questionLog, readClientOf, singleBlockLogs, type FakeChain, type NodeCall } from "./testHelpers";
+import { filterOf, mappingLog, nth, questionLog, readClientOf, singleBlockLogs, type FakeChain, type NodeCall } from "../test/reality/testHelpers";
 import {
   CROSS_BOUND,
   CROSS_ENTRY,
@@ -22,10 +22,10 @@ import {
   SINGLE,
   SINGLE_ENTRY,
   createWorld,
-} from "./testWorld";
+} from "../test/reality/testWorld";
 
 vi.mock("./knownQuestions.generated", async () => {
-  const world = await import("./testWorld");
+  const world = await import("../test/reality/testWorld");
   return { REGISTRY_SNAPSHOT_BLOCKS: world.MOCK_REGISTRY_SNAPSHOT_BLOCKS, KNOWN_DISPUTE_QUESTIONS: world.MOCK_KNOWN_DISPUTE_QUESTIONS };
 });
 

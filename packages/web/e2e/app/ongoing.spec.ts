@@ -77,8 +77,9 @@ function httpAnswer(request: HttpRequest): JsonAnswer | undefined {
 test("D-37: cards render as each dispute resolves, and a stalled title settles on 'title unavailable' well under a minute", async ({ context, page, baseURL }) => {
   test.setTimeout(SETTLE_LIMIT_MS + 30_000);
   await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, rpc: rpcAnswer, http: httpAnswer, hold: isStalled });
-  const card = (id: bigint) => page.locator(`[data-testid="ongoing-card"][data-dispute-id="${id.toString()}"]`);
-  const title = (id: bigint) => card(id).getByTestId("ongoing-card-title");
+  // Each card is a link to its case, labelled with the dispute's number; its title is the card's heading.
+  const card = (id: bigint) => page.getByRole("link").filter({ has: page.getByText(`#${id.toString()}`, { exact: true }) });
+  const title = (id: bigint) => card(id).getByRole("heading", { level: 2 });
 
   const started = Date.now();
   await page.goto("/1/ongoing");

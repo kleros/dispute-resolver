@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Address, Fetcher, Hex } from "../types";
 import type { EvidenceContext } from "./types";
 import { loadEvidence } from "./index";
-import { evidenceLog, fakeClient, fakeFetcher, recordedBodies, recordedDispute, recordedNode, RECORDED, rpcError, type FakeNode, type RpcLog } from "./testHelpers";
+import { evidenceLog, fakeClient, fakeFetcher, recordedBodies, recordedDispute, recordedNode, RECORDED, rpcError, type FakeNode, type RpcLog } from "../test/evidence/testHelpers";
 
 const ARBITRATOR = RECORDED.arbitrator;
 const GATEWAY = RECORDED.gateway;

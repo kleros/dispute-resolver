@@ -43,5 +43,5 @@ export function RealityNotice({ dispute }: CaseSectionProps) {
   if (notice.kind === "none") return null;
   const { variant, title, body } = NOTICES[notice.kind];
   const text = notice.title ? `${body}\n\nQuestion recorded on-chain: ${notice.title}` : body;
-  return <Notice variant={variant} title={title} body={text} testId="case-reality-notice" />;
+  return <Notice variant={variant} title={title} body={text} />;
 }

@@ -52,6 +52,25 @@ const coreBannedImports = [
   },
 ];
 
+// C9: core's test code is its *.test.ts files, the helpers under src/test/ and the recorded data under __fixtures__/. No
+// production file of core (module code or operator script) imports them, nor reads a file's source text through Vite's
+// `?raw` suffix, which only the tests declare (src/test/rawSource.d.ts).
+const coreTestFiles = ["packages/core/**/*.test.ts", "packages/core/src/test/**", "packages/core/src/**/__fixtures__/**"];
+const coreTestOnlyImports = [
+  {
+    regex: "^(?:\\.{1,2}/)+(?:src/)?test(?:/.*)?$",
+    message: "packages/core/src/test/ is for tests only (C9). A production file must not import it.",
+  },
+  {
+    regex: "(?:^|/)__fixtures__(?:/|$)",
+    message: "__fixtures__/ holds recorded test data (C9). A production file must not import it.",
+  },
+  {
+    regex: "\\?raw$",
+    message: "The ?raw import is declared for tests only (C9). A production file of core takes its inputs as parameters.",
+  },
+];
+
 const coreBannedGlobals = ["window", "document", "localStorage", "sessionStorage", "navigator"].map((name) => ({
   name,
   message: "core must not touch the DOM or browser storage. Take what you need as an injected parameter.",
@@ -123,7 +142,7 @@ const wagmiReadHooksPath = {
 };
 
 // ARCHITECTURE.md 1.4 rule 4 (section 1.3): a directory is imported through its index only.
-const dirs = "env|parity|ui|shell|routing|wallet|data|runner|atlas|safe-content";
+const dirs = "env|ui|shell|routing|wallet|data|runner|atlas|safe-content";
 const pageDirs = "ongoing|create|case|case-summary|case-appeal|case-evidence";
 const deepImportPattern = {
   regex: `^(?:\\.{1,2}/)+(?:(?:${dirs}|pages/(?:${pageDirs}))|(?:${pageDirs}))/(?!index(?:\\.[jt]sx?)?$).+`,
@@ -136,8 +155,8 @@ const testImportPattern = {
   message: "src/test/ is for tests only (C9). A production file must not import it.",
 };
 
-// C9: the Playwright suites under packages/web/e2e/ (the golden harness provider among them) are test code; no file under
-// src/ imports them, tests included (their doubles live in src/test/).
+// C9: the Playwright suites under packages/web/e2e/ are test code; no file under src/ imports them, tests included (their
+// doubles live in src/test/).
 const e2eImportPattern = {
   regex: "^(?:\\.{1,2}/)+e2e(?:/.*)?$",
   message: "packages/web/e2e/ is the Playwright harness (C9). No file under src/ may import it.",
@@ -162,14 +181,8 @@ const webImports = ({ reown = true, markdown = true, app = true, testImports = t
 
 export default defineConfig([
   globalIgnores([
-    // The old app, kept as read-only reference until the hand-off phase.
-    "src/**",
-    "public/**",
-    "scripts/generate-reality-known-questions.js",
-    "scripts/check-quality.sh",
-    "scripts/pre-change-check.sh",
-    "build/**",
     // Documentation, dependencies and generated output.
+    "build/**",
     "docs/**",
     ".yarn/**",
     "**/node_modules/**",
@@ -229,9 +242,11 @@ export default defineConfig([
     files: ["packages/core/**/*.ts"],
     rules: {
       "no-restricted-globals": ["error", ...coreBannedGlobals],
-      "no-restricted-imports": ["error", { patterns: coreBannedImports }],
+      "no-restricted-imports": ["error", { patterns: [...coreBannedImports, ...coreTestOnlyImports] }],
     },
   },
+  // C9: the test code of core may import its helpers and fixtures; the rest of the core list still applies.
+  { files: coreTestFiles, rules: { "no-restricted-imports": ["error", { patterns: coreBannedImports }] } },
   // ARCHITECTURE.md 1.4 rules 1 and 3: import.meta.env, JSX <a href> and JSX <iframe> are confined to one directory each.
   // 06-intro: no production file inspects a contract address. A later block replaces the rule wholesale, so each block
   // carries the full list minus its own exceptions.

@@ -5,7 +5,7 @@ import type { LocalIdResolution } from "../disputes/types";
 import type { FamilyDetection } from "../families/types";
 import governor1621 from "./__fixtures__/governor-1621.json";
 import { buildEscrowAppealCall, buildFundAppealCall } from "./index";
-import { decodedArgs, detectionFor, expectCall, FAMILY_SIGNATURES, selectorOf, testBinding } from "./testHelpers";
+import { decodedArgs, detectionFor, expectCall, FAMILY_SIGNATURES, selectorOf, testBinding } from "../test/writes/testHelpers";
 
 const ARBITRABLE = "0x135c573503f70dc290b1d60fe2e7f7eb114febd6";
 const binding = testBinding({ chainId: 1, disputeId: 505n, arbitrated: ARBITRABLE });

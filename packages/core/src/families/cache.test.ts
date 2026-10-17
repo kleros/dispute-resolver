@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { toRegistryAddress } from "../registry";
 import { recorded } from "./__fixtures__/recorded";
 import { createFamilyCache, detectFamily } from "./index";
-import { codeReads, fakeNodeClient, recordedNode, rpcError, type FakeNode } from "./testHelpers";
+import { codeReads, fakeNodeClient, recordedNode, rpcError, type FakeNode } from "../test/families/testHelpers";
 import type { FamilyDetection } from "./types";
 
 const ARBITRABLE = toRegistryAddress("0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf");

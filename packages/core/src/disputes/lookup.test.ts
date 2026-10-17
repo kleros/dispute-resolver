@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { klerosLiquidAbi } from "../abi";
 import type { Address } from "../types";
 import { lookupDispute, parseDisputeId } from ".";
-import { answer, fakeClient, failure, GNOSIS, MAINNET, recordedNode, rpcError, SEPOLIA } from "./testHelpers";
+import { answer, fakeClient, failure, GNOSIS, MAINNET, recordedNode, rpcError, SEPOLIA } from "../test/disputes/testHelpers";
 
 const MAINNET_ARBITRATOR = MAINNET.arbitrator;
 const NONEXISTENT = 1_000_000_000n;

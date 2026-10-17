@@ -1,5 +1,5 @@
 import * as core from "@dispute-resolver/core";
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { numberToHex, toEventSelector } from "viem";
@@ -38,6 +38,8 @@ const PROXY = SEPOLIA_CHAIN.arbitrableProxy;
 const CREATE_PATH = `/${String(SEPOLIA)}/create`;
 /** A configured chain that can also create disputes, for the chain-change tests (spec §4.1). */
 const GNOSIS = 100;
+const GNOSIS_CHAIN = core.getChain(GNOSIS);
+if (GNOSIS_CHAIN === undefined) throw new Error("Gnosis must be configured.");
 
 /** The fake cost depends on the court and the votes, so a test can tell which pair was read. */
 function costOf(extraData: core.Hex): bigint {
@@ -98,32 +100,47 @@ async function renderWithRealAtlas(wallet: TestWallet): Promise<{ readonly user:
   return { user, server };
 }
 
+/**
+ * The Primary Document field's file input. The library's drop zone hides it from the accessibility tree and offers a button
+ * named "Primary Document (Optional)" instead, so the input is reached through its group, the "Primary document" fieldset.
+ */
 function documentInput(): HTMLInputElement {
-  const input = document.querySelector<HTMLInputElement>('[data-field="primaryDocument"] input[type="file"]');
+  const input = screen.getByRole("group", { name: /^Primary document/ }).querySelector<HTMLInputElement>('input[type="file"]');
   if (input === null) throw new Error("no file input");
   return input;
 }
 
-function createPage(): HTMLElement {
-  const page = document.querySelector<HTMLElement>('[data-testid="create-page"]');
-  if (page === null) throw new Error("create-page missing");
-  return page;
-}
-
-function field(name: string): HTMLElement[] {
-  return [...document.querySelectorAll<HTMLElement>(`[data-field="${name}"]`)];
+/** A library dropdown's button: its accessible name is the selected value followed by the field's label. */
+function select(label: string): HTMLElement {
+  return screen.getByRole("button", { name: (name) => name.endsWith(` ${label} ${label}`) });
 }
 
 async function chooseOption(user: UserEvent, label: string, option: string) {
-  const button = screen.getAllByText(label).find((element) => element.nextElementSibling?.tagName === "BUTTON")?.nextElementSibling;
-  if (!(button instanceof HTMLElement)) throw new Error(`no select ${label}`);
-  await user.click(button);
+  await user.click(select(label));
   await user.click(await screen.findByRole("option", { name: option }));
+}
+
+/** The names of a dropdown's options, read by opening it and closed again with Escape. */
+async function optionsOf(user: UserEvent, label: string): Promise<string[]> {
+  await user.click(select(label));
+  const names = (await screen.findAllByRole("option")).map((option) => option.textContent);
+  await user.keyboard("{Escape}");
+  await waitFor(() => {
+    expect(screen.queryByRole("option")).toBeNull();
+  });
+  return names;
 }
 
 async function courtsLoaded() {
   await waitFor(() => {
-    expect(document.querySelector('[data-testid="create-court"] button')).toHaveTextContent("General Court");
+    expect(select("Court")).toHaveTextContent("General Court");
+  });
+}
+
+/** The Arbitration Cost output: `wei` shown with the chain's currency, its exact amount in the `data` element's value. */
+async function costShown(wei: bigint, chain: core.ChainConfig) {
+  await waitFor(() => {
+    expect(within(screen.getByRole("status", { name: "Arbitration Cost" })).getByText(formatAmount(wei, chain))).toHaveAttribute("value", wei.toString());
   });
 }
 
@@ -190,46 +207,64 @@ afterEach(() => {
 describe("CreatePage", () => {
   it("spec §4.2: a chain without an ArbitrableProxy shows the precondition message and its GitHub issues link", async () => {
     await renderCreate({ path: "/137/create", connect: false });
-    expect(createPage()).toHaveAttribute("data-available", "false");
-    expect(createPage()).toHaveAttribute("data-chain", "137");
     expect(screen.getByRole("heading", { name: /no arbitrable contract deployed/i })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Create dispute steps" })).toBeNull();
     expect(screen.getByRole("link", { name: /GitHub issues/ })).toHaveAttribute("href", "https://github.com/kleros/dispute-resolver/issues");
     expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
   });
 
-  it("04 §1: the Create snapshot hooks carry the chain, courts, default cost, question types, option range and required fields", async () => {
-    await renderCreate({ connect: false });
-    expect(createPage()).toHaveAttribute("data-available", "true");
-    expect(createPage()).toHaveAttribute("data-chain", String(SEPOLIA));
-    await waitFor(() => {
-      expect(document.querySelector('[data-testid="create-court"]')).toHaveAttribute("data-options", JSON.stringify(["General Court", "Blockchain", "Court #2 (name unavailable)"]));
-    });
-    await waitFor(() => {
-      expect(document.querySelector('[data-testid="create-cost"]')).toHaveAttribute("data-wei", costOf(core.encodeExtraData(0n, 3n)).toString());
-    });
-    expect(document.querySelector('[data-testid="create-question-type"]')).toHaveAttribute(
-      "data-options",
-      JSON.stringify(["Multiple choice: single select", "Multiple choice: multiple select", "Non-negative number", "Date"]),
-    );
-    const range = document.querySelector('[data-testid="create-option-count"]');
-    expect(range).toHaveAttribute("data-min", "2");
-    expect(range).toHaveAttribute("data-max", "32");
-    const byName = (left: string, right: string) => left.localeCompare(right);
-    const required = new Set([...document.querySelectorAll('[data-field][data-required="true"]')].map((element) => element.getAttribute("data-field") ?? ""));
-    expect([...required].sort(byName)).toEqual(["courtId", "votes", "title", "questionType", "optionCount", "question", "optionTitles"].sort(byName));
-    for (const optional of ["category", "description", "optionDescriptions", "partyAliases", "partyAddresses", "primaryDocument"]) {
-      expect(field(optional).length).toBeGreaterThan(0);
-      for (const element of field(optional)) expect(element).not.toHaveAttribute("data-required");
+  it("spec §4.3: a chain that can create shows the form with its courts, the default cost in its currency and the question types", async () => {
+    const { user } = await renderCreate({ connect: false });
+    expect(screen.getByRole("navigation", { name: "Create dispute steps" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
+    await courtsLoaded();
+    expect(await optionsOf(user, "Court")).toEqual(["General Court", "Blockchain", "Court #2 (name unavailable)"]);
+    await costShown(costOf(core.encodeExtraData(0n, 3n)), SEPOLIA_CHAIN);
+    expect(screen.getByRole("status", { name: "Arbitration Cost" })).toHaveTextContent(/ sETH$/);
+    expect(await optionsOf(user, "Question Type")).toEqual(["Multiple choice: single select", "Multiple choice: multiple select", "Non-negative number", "Date"]);
+  });
+
+  it("spec §4.3: the number of options stays between 2 and 32", async () => {
+    const { user } = await renderCreate({ connect: false });
+    const count = screen.getByRole("textbox", { name: "Number of Options" });
+    expect(count).toHaveValue("2");
+    expect(screen.getByRole("button", { name: "Decrease Number of Options" })).toBeDisabled();
+    await setNumber(user, "Number of Options", "1");
+    expect(count).toHaveValue("2");
+    await setNumber(user, "Number of Options", "40");
+    expect(count).toHaveValue("32");
+    expect(screen.getByRole("button", { name: "Increase Number of Options" })).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: "Ruling Option 32" })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Ruling Option 33" })).toBeNull();
+  });
+
+  it("spec §4.3: the required fields are marked required and the optional ones are not", async () => {
+    const { user } = await renderCreate({ connect: false });
+    await user.click(screen.getByRole("button", { name: "Add party" }));
+    for (const required of ["Number of Votes", "Title", "Number of Options", "Question", "Ruling Option 1", "Ruling Option 2"]) {
+      expect(screen.getByRole("textbox", { name: required }), required).toHaveAttribute("aria-required", "true");
     }
+    for (const optional of [
+      "Category (Optional)",
+      "Description (Optional)",
+      "Ruling Option 1 Description (Optional)",
+      "Ruling Option 2 Description (Optional)",
+      "Alias 1 (Optional)",
+      "Address 1 (Optional)",
+      "Alias 2 (Optional)",
+      "Address 2 (Optional)",
+    ]) {
+      expect(screen.getByRole("textbox", { name: optional }), optional).not.toHaveAttribute("aria-required");
+    }
+    expect(documentInput()).not.toBeRequired();
   });
 
   it("D-19: a court whose policy could not be read is listed by its ID with 'name unavailable'", async () => {
     const { user } = await renderCreate({ connect: false });
     await courtsLoaded();
     await chooseOption(user, "Court", "Court #2 (name unavailable)");
-    await waitFor(() => {
-      expect(document.querySelector('[data-testid="create-cost"]')).toHaveAttribute("data-wei", costOf(core.encodeExtraData(2n, 3n)).toString());
-    });
+    expect(select("Court")).toHaveTextContent("Court #2 (name unavailable)");
+    await costShown(costOf(core.encodeExtraData(2n, 3n)), SEPOLIA_CHAIN);
   });
 
   it("spec §4.3: a failed court list degrades the court field with its reason and a retry", async () => {
@@ -238,9 +273,9 @@ describe("CreatePage", () => {
     expect(await screen.findByText("The courts could not be read.")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Title" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /retry/i }));
-    await waitFor(() => {
-      expect(document.querySelector('[data-testid="create-court"]')).toHaveAttribute("data-options");
-    });
+    await courtsLoaded();
+    expect(select("Court")).toBeEnabled();
+    expect(screen.queryByText("The courts could not be read.")).toBeNull();
   });
 
   it("D-08: input typed while the courts load is kept once they arrive", async () => {
@@ -312,10 +347,8 @@ describe("CreatePage", () => {
     expect(screen.getByRole("textbox", { name: "Title" })).toHaveValue("Who keeps the deposit?");
     expect(screen.getByRole("textbox", { name: "Ruling Option 2" })).toHaveValue("No");
     expect(screen.getByRole("textbox", { name: "Number of Votes" })).toHaveValue("5");
-    expect(document.querySelector('[data-testid="create-court"] button')).toHaveTextContent("Blockchain");
-    await waitFor(() => {
-      expect(document.querySelector('[data-testid="create-cost"]')).toHaveAttribute("data-wei", costOf(core.encodeExtraData(1n, 5n)).toString());
-    });
+    expect(select("Court")).toHaveTextContent("Blockchain");
+    await costShown(costOf(core.encodeExtraData(1n, 5n)), SEPOLIA_CHAIN);
   });
 
   it.each([
@@ -333,7 +366,7 @@ describe("CreatePage", () => {
       await wallet.changeChain(GNOSIS);
     });
     await waitFor(() => {
-      expect(createPage()).toHaveAttribute("data-chain", String(GNOSIS));
+      expect(core.listCourts).toHaveBeenLastCalledWith(expect.objectContaining({ chainId: GNOSIS }));
     });
     expect(screen.getByRole("listitem", { name: "Form" })).toHaveAttribute("aria-current", "step");
     expect(screen.queryByRole("button", { name: "Create" })).toBeNull();
@@ -342,6 +375,7 @@ describe("CreatePage", () => {
     expect(screen.getByRole("textbox", { name: "Ruling Option 1" })).toHaveValue("");
     expect(screen.getByRole("textbox", { name: "Number of Votes" })).toHaveValue("3");
     await courtsLoaded();
+    await costShown(costOf(core.encodeExtraData(0n, 3n)), GNOSIS_CHAIN);
   });
 
   it("spec §4.4: the summary shows the title heading, description, court, votes, category, cost with its currency and the ruling options", async () => {
@@ -433,9 +467,7 @@ describe("CreatePage", () => {
   it("B16, WN-2: a primary document path that is not content-addressed is refused before it enters the draft", async () => {
     const uploader = fakeUploader({ upload: () => Promise.resolve({ ok: true, path: "/ipfs/not-a-cid/rules.pdf" }) });
     const { user } = await renderCreate({ uploader });
-    const input = document.querySelector<HTMLInputElement>('[data-field="primaryDocument"] input[type="file"]');
-    if (input === null) throw new Error("no file input");
-    await user.upload(input, new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
+    await user.upload(documentInput(), new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
     expect(await screen.findByText(/did not come back as a content-addressed IPFS path/)).toBeInTheDocument();
     await fillRequired(user);
     await fillOptions(user, ["Yes", "No"]);
@@ -453,9 +485,7 @@ describe("CreatePage", () => {
 
   it("Sepolia S1: multiple select with three options and a primary document creates with 2³ ruling options", async () => {
     const { user, uploader } = await renderCreate();
-    const input = document.querySelector<HTMLInputElement>('[data-field="primaryDocument"] input[type="file"]');
-    if (input === null) throw new Error("no file input");
-    await user.upload(input, new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
+    await user.upload(documentInput(), new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
     await screen.findByText("Uploaded rules.pdf.");
     await chooseOption(user, "Question Type", "Multiple choice: multiple select");
     await setNumber(user, "Number of Options", "3");

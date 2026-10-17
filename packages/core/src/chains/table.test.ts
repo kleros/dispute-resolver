@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { chainCapabilities, CHAINS, currencySymbol, DEFAULT_CHAIN_ID, getChain, ongoingScanStart } from "./index";
-import { ascending, chainOf } from "./testHelpers";
+import { ascending, chainOf } from "../test/chains/testHelpers";
 
 /** Spec §7 as frozen on 2026-10-14, minus the chains D-23 and P-13 drop. Written out by hand so a typo in the table fails here. */
 const MAINNET_LIQUID = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";

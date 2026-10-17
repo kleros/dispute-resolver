@@ -1,5 +1,4 @@
 import { isAddress, isHex } from "viem";
-import { SELECTORS } from "../abi";
 import { getRealityProxy, REGISTRY, toRegistryAddress } from "../registry";
 import type { Registry } from "../registry/types";
 import type { Address, ChainId, Hex, ReadClient } from "../types";
@@ -7,8 +6,6 @@ import { classifyRealityProxySelectors, classifySelectors } from "./classify";
 import { isEip1167Clone, readEip1967Implementation } from "./proxies";
 import { scanSelectors } from "./scanSelectors";
 import type { FamilyCache, FamilyDetection } from "./types";
-
-const PROBE_SELECTORS: readonly Hex[] = Object.values(SELECTORS);
 
 /**
  * The code of `address`, `0x` when it has none. Read as raw JSON-RPC because viem's `getCode` turns both `"0x"` and an
@@ -46,7 +43,6 @@ async function probe(client: ReadClient, chainId: ChainId, arbitrable: Address, 
     capabilities: probed.capabilities,
     realityProxy,
     implementation,
-    selectors: PROBE_SELECTORS.filter((selector) => scanned.has(selector)),
   };
 }
 

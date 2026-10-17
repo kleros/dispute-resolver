@@ -2,8 +2,8 @@ import { numberToHex, toFunctionSelector } from "viem";
 import { describe, expect, it } from "vitest";
 import { lookupDispute, readAppealDecisions, readDisputeDetails } from ".";
 import type { ArbitratedBinding, ArbitratorDispute } from "./types";
-import { appealDecisionLog, fakeClient, MAINNET, recordedDetection, recordedNode, rpcError } from "./testHelpers";
-import type { FakeNode } from "./testHelpers";
+import { appealDecisionLog, fakeClient, MAINNET, recordedDetection, recordedNode, rpcError } from "../test/disputes/testHelpers";
+import type { FakeNode } from "../test/disputes/testHelpers";
 
 const GET_DISPUTE = toFunctionSelector("getDispute(uint256)").slice(2);
 const DISPUTES = toFunctionSelector("disputes(uint256)").slice(2);

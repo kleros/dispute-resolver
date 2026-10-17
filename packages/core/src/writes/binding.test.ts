@@ -4,7 +4,7 @@ import type { ArbitratedBinding } from "../disputes/types";
 import type { FamilyDetection } from "../families/types";
 import type { WriteCall } from "../types";
 import { buildEscrowAppealCall, buildFundAppealCall, buildSubmitEvidenceCall, buildWithdrawCalls } from "./index";
-import { BENEFICIARY, detectionFor, EVIDENCE_CID, FAMILY_SIGNATURES, localIdFor, recordedDetections, selectorOf, testBinding } from "./testHelpers";
+import { BENEFICIARY, detectionFor, EVIDENCE_CID, FAMILY_SIGNATURES, localIdFor, recordedDetections, selectorOf, testBinding } from "../test/writes/testHelpers";
 import type { WriteBuild } from "./types";
 
 const EVIDENCE = `/ipfs/${EVIDENCE_CID}/evidence.json`;

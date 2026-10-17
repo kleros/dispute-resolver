@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRequestBudget, isLookupLimitError } from "../rpc";
-import { stubEndpoint } from "../rpc/testHelpers";
+import { stubEndpoint } from "../test/rpc/testHelpers";
 import type { ReadClient } from "../types";
 import { lookupClientsOf } from "./lookupClients";
 
