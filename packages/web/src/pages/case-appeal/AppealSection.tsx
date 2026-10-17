@@ -1,7 +1,6 @@
 import type { AppealPanel, ChainConfig } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import type { CaseSectionProps, CaseWriteContext, SectionData } from "../../data";
-import { appealPanelAttributes } from "../../parity";
 import { Notice, SectionSkeleton, SectionUnavailable } from "../../ui";
 import {
   ESCROW_ENDED,
@@ -19,20 +18,6 @@ import { useAppealActions, type AppealActions } from "./useAppealActions";
 import { useAppealRetry } from "./useAppealRetry";
 
 const SECTION = "Appeal";
-
-/** `data-withdrawable-wei` (§12.1): the withdrawable sum in execution, 0 when there is nothing, absent when it is not known. */
-function withdrawableWei(panel: AppealPanel): bigint | null {
-  if (panel.kind !== "withdraw") return null;
-  switch (panel.state.status) {
-    case "available":
-      return panel.state.total;
-    case "nothing":
-      return 0n;
-    case "no-account":
-    case "unavailable":
-      return null;
-  }
-}
 
 /** The kinds whose body offers a write. */
 function hasActions(panel: AppealPanel): boolean {
@@ -89,7 +74,6 @@ function PanelBody({ panel, actions, chain, onRetry }: PanelBodyProps) {
  * period, every kind of `AppealPanel` included (D-46, D-47), its writes going through the wallet's chain guard (B3,
  * D-48) and refreshing the case once mined (D-07, P-02). While the panel loads it shows a placeholder; a panel that
  * could not be built, or whose fees could not be calculated, says why with a Retry that reads its data again (D-36).
- * The `appeal-panel` hook is on a wrapper element (§12.1).
  */
 export function AppealSection({ dispute, chain }: CaseSectionProps) {
   const actions = useAppealActions(dispute, chain);
@@ -99,7 +83,7 @@ export function AppealSection({ dispute, chain }: CaseSectionProps) {
   if (appealPanel.status === "unavailable") return <SectionUnavailable section={SECTION} error={appealPanel.error} onRetry={retry} />;
   const panel = appealPanel.value;
   return (
-    <div className="flex min-w-0 flex-col gap-4" {...appealPanelAttributes({ kind: panel.kind, withdrawableWei: withdrawableWei(panel) })}>
+    <div className="flex min-w-0 flex-col gap-4">
       {hasActions(panel) ? <WriteContextNotice write={dispute.write} /> : null}
       <PanelBody panel={panel} actions={actions} chain={chain} onRetry={retry} />
     </div>

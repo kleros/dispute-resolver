@@ -1,4 +1,4 @@
-import type { Address, ChainId, Hex } from "../types";
+import type { Address, ChainId } from "../types";
 import type { RealityProxyEntry } from "../registry/types";
 
 /** The behavioral class of an arbitrable (06 §1), in detection order. */
@@ -51,8 +51,6 @@ export interface FamilyDetection {
   readonly realityProxy: RealityProxyEntry | null;
   /** The EIP-1967 implementation whose code was scanned, or `null` when the arbitrable's own code was scanned. */
   readonly implementation: Address | null;
-  /** Probe selectors found in the scanned code (for tests and diagnostics). */
-  readonly selectors: readonly Hex[];
 }
 
 /** Session-only cache of detections keyed by chain and address (C11): never persisted. */

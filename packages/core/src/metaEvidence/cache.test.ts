@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { realityQuestionCacheKey } from "../reality";
 import { REGISTRY, getRealityProxy } from "../registry";
 import { INVALID_META_EVIDENCE, loadMetaEvidence, metaEvidenceCachePolicy, parseCachedMetaEvidenceResult } from "./index";
-import { CROSS_CHAIN_PROXY, META_CID, META_URL, boolQuestion, context, fakeFetcher, json, realityCache, servedMetaEvidence } from "./testHelpers";
+import { CROSS_CHAIN_PROXY, META_CID, META_URL, boolQuestion, context, fakeFetcher, json, realityCache, servedMetaEvidence } from "../test/metaEvidence/testHelpers";
 import type { MetaEvidenceResult } from "./types";
 
 /** What the persisted query cache stores and reads back: a JSON round trip. */
@@ -63,7 +63,12 @@ describe("parseCachedMetaEvidenceResult", () => {
 
   it("ME-2 B15 §9.2: an accepted result with descriptions by reserved answer code reads back equal", async () => {
     const tooSoon = `0x${"f".repeat(64)}`;
-    const rulingOptions = { type: "single-select", titles: ["No", "Yes"], reserved: { [tooSoon]: "Answered Too Soon" }, descriptions: { "0": "Not paid", [tooSoon]: "The observation period has not ended" } };
+    const rulingOptions = {
+      type: "single-select",
+      titles: ["No", "Yes"],
+      reserved: { [tooSoon]: "Answered Too Soon" },
+      descriptions: { "0": "Not paid", [tooSoon]: "The observation period has not ended" },
+    };
     const { fetcher } = fakeFetcher(servedMetaEvidence(json({ title: "Reserved answers", rulingOptions })));
     const result = await loadMetaEvidence(context({ fetcher }));
     expect(result.status === "ok" && result.metaEvidence.rulingOptions).toEqual(rulingOptions);

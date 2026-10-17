@@ -48,7 +48,7 @@ export type HiddenEvidenceReason = "undecodable" | "not-content-addressed" | "fe
 export interface EvidenceList {
   /** Newest first (spec 5.14). */
   readonly items: readonly EvidenceItem[];
-  /** Parity snapshot `hiddenEvidenceCount`. */
+  /** How many entries were hidden, for every reason: the sum of `hiddenByReason`. */
   readonly hiddenEvidenceCount: number;
   readonly hiddenByReason: Readonly<Record<HiddenEvidenceReason, number>>;
 }

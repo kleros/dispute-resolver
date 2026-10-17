@@ -1,6 +1,5 @@
 import type { CreateDisputeInput } from "@dispute-resolver/core";
 import { useCallback, useState } from "react";
-import { createPageAttributes } from "../../parity";
 import { usePageChain } from "../../routing";
 import { ExternalLink } from "../../safe-content";
 import { PageMessage, SectionBoundary } from "../../ui";
@@ -31,7 +30,7 @@ function CreateUnavailable() {
  * returns to the form with the values cleared (spec §4.1). Each step degrades on its own (ARCHITECTURE.md §5.7).
  */
 export function CreatePage() {
-  const { chainId, chain, capabilities } = usePageChain();
+  const { chain, capabilities } = usePageChain();
   const [form, setForm] = useState<Form>(initialForm);
   const [input, setInput] = useState<CreateDisputeInput | null>(null);
 
@@ -43,7 +42,7 @@ export function CreatePage() {
   }, []);
 
   return (
-    <section {...createPageAttributes({ chain: chainId, available: capabilities.canCreate })} className="mx-auto flex w-full max-w-[1080px] min-w-0 flex-col gap-6 py-6 lg:py-10">
+    <section className="mx-auto flex w-full max-w-[1080px] min-w-0 flex-col gap-6 py-6 lg:py-10">
       {capabilities.canCreate ? (
         <>
           <nav aria-label="Create dispute steps" className="w-full min-w-0 overflow-hidden px-8 lg:px-0">

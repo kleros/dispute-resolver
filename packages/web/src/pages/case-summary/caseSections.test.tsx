@@ -82,12 +82,33 @@ function renderSection(Component: Section, dispute: CaseDispute) {
   );
 }
 
-function columns(): { name: string | null; state: string | null; text: string }[] {
-  return screen.getAllByTestId("timeline-column").map((column) => ({
-    name: column.getAttribute("data-name"),
-    state: column.getAttribute("data-state"),
-    text: column.textContent,
-  }));
+/** The labels the timeline gives its columns, as a reader sees them. */
+const COLUMN_NAMES = ["Evidence", "Commit", "Voting", "Appeal", "Execution"] as const;
+
+/** A column as the reader perceives it: its label, whether it is the current step, concluded or upcoming, and its text. */
+function columns(): { name: string | undefined; state: string; text: string }[] {
+  return within(screen.getByRole("list", { name: "Dispute timeline" }))
+    .getAllByRole("listitem")
+    .map((column) => {
+      const text = column.textContent;
+      let state = "upcoming";
+      if (column.getAttribute("aria-current") === "step") state = "current";
+      else if (text.includes("Concluded")) state = "concluded";
+      return { name: COLUMN_NAMES.find((name) => text.startsWith(name)), state, text };
+    });
+}
+
+/** The value of one entry of the info row, found by its visible label. */
+function detail(label: string): HTMLElement {
+  const index = screen.getAllByRole("term").findIndex((term) => term.textContent === label);
+  const value = screen.getAllByRole("definition")[index];
+  if (index === -1 || value === undefined) throw new Error(`No info row entry labelled ${label}.`);
+  return value;
+}
+
+/** The decision alert, a region named after its heading. */
+function decisionAlert(name: "Jury decision" | "Winner"): HTMLElement {
+  return screen.getByRole("region", { name });
 }
 
 beforeEach(() => {
@@ -104,36 +125,34 @@ describe("CaseOverview", () => {
     renderSection(CaseOverview, caseDispute({ period: 2, court: { name: "Blockchain Court" }, details: { votesLengths: { ok: true, value: [5n, 11n] } } }));
     expect(screen.getByRole("heading", { level: 1, name: "Dispute #1" })).toBeInTheDocument();
     expect(screen.getByText(MAINNET.name)).toBeInTheDocument();
-    expect(screen.getByTestId("case-votes")).toHaveAttribute("data-value", "5");
-    expect(screen.getByTestId("case-votes")).toHaveTextContent("5");
-    expect(screen.getByTestId("case-court")).toHaveTextContent("Blockchain Court");
+    expect(detail("Number of votes")).toHaveTextContent(/^5$/);
+    expect(detail("Court")).toHaveTextContent(/^Blockchain Court$/);
     expect(screen.getByText("Voting")).toBeInTheDocument();
   });
 
   it("P-20: shows the period from the lookup while the view is still loading", () => {
     renderSection(CaseOverview, caseDispute({ period: 3, view: "loading" }));
     expect(screen.getByText("Appeal")).toBeInTheDocument();
-    expect(screen.queryByTestId("case-votes")).not.toBeInTheDocument();
+    expect(within(detail("Number of votes")).getByRole("status")).toHaveAttribute("aria-busy", "true");
+    expect(detail("Number of votes")).not.toHaveTextContent(/\d/);
     expect(screen.getAllByRole("status").length).toBeGreaterThan(0);
   });
 
   it("D-36: a missing vote count degrades the votes only", () => {
     renderSection(CaseOverview, caseDispute({ details: { votesLengths: { ok: true, value: [] } } }));
-    expect(screen.queryByTestId("case-votes")).not.toBeInTheDocument();
-    expect(screen.getByText(/no valid vote count/)).toBeInTheDocument();
-    expect(screen.getByTestId("case-court")).toHaveTextContent("General Court");
+    expect(detail("Number of votes")).toHaveTextContent(/^Unavailable: .*no valid vote count/);
+    expect(detail("Court")).toHaveTextContent(/^General Court$/);
   });
 
   it("D-19: a court whose policy failed to load shows its ID instead of a name", () => {
     renderSection(CaseOverview, caseDispute({ court: { id: 0n, name: null } }));
-    expect(screen.queryByTestId("case-court")).not.toBeInTheDocument();
-    expect(screen.getByText("Court #0 (name unavailable)")).toBeInTheDocument();
+    expect(detail("Court")).toHaveTextContent(/^Court #0 \(name unavailable\)$/);
   });
 
   it("D-36: a court missing from the list shows the court as unavailable", () => {
     renderSection(CaseOverview, caseDispute({ courts: { ok: true, value: [] } }));
     expect(screen.getByText(/Court 0 is not in the court list/)).toBeInTheDocument();
-    expect(screen.getByTestId("case-votes")).toHaveAttribute("data-value", "3");
+    expect(detail("Number of votes")).toHaveTextContent(/^3$/);
   });
 
   it("D-53: renders nothing for a lookup that found no dispute", () => {
@@ -147,10 +166,10 @@ describe("DisputeTimeline", () => {
   it("spec 5.7: the current column counts down, past ones are concluded and upcoming ones show their duration", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 2, lastPeriodChange: NOW - HOUR, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }));
     expect(columns()).toEqual([
-      { name: "evidence", state: "concluded", text: expect.stringContaining("Concluded") as string },
-      { name: "vote", state: "current", text: expect.stringContaining("01d 23h 00m") as string },
-      { name: "appeal", state: "upcoming", text: expect.stringContaining("01d 00h 00m") as string },
-      { name: "execution", state: "upcoming", text: "Execution" },
+      { name: "Evidence", state: "concluded", text: expect.stringContaining("Concluded") as string },
+      { name: "Voting", state: "current", text: expect.stringContaining("01d 23h 00m") as string },
+      { name: "Appeal", state: "upcoming", text: expect.stringContaining("01d 00h 00m") as string },
+      { name: "Execution", state: "upcoming", text: "Execution" },
     ]);
     expect(within(screen.getByRole("list", { name: "Dispute timeline" })).getAllByRole("listitem")[1]).toHaveAttribute("aria-current", "step");
   });
@@ -167,21 +186,21 @@ describe("DisputeTimeline", () => {
   it("D-39: shows the commit column for a hidden-vote court", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 1, court: { hiddenVotes: true } }));
     expect(columns().map(({ name, state }) => [name, state])).toEqual([
-      ["evidence", "concluded"],
-      ["commit", "current"],
-      ["vote", "upcoming"],
-      ["appeal", "upcoming"],
-      ["execution", "upcoming"],
+      ["Evidence", "concluded"],
+      ["Commit", "current"],
+      ["Voting", "upcoming"],
+      ["Appeal", "upcoming"],
+      ["Execution", "upcoming"],
     ]);
   });
 
   it("D-39: in the execution period every earlier column is concluded and execution is current", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 4 }));
     expect(columns().map(({ name, state }) => [name, state])).toEqual([
-      ["evidence", "concluded"],
-      ["vote", "concluded"],
-      ["appeal", "concluded"],
-      ["execution", "current"],
+      ["Evidence", "concluded"],
+      ["Voting", "concluded"],
+      ["Appeal", "concluded"],
+      ["Execution", "current"],
     ]);
   });
 
@@ -194,8 +213,8 @@ describe("DisputeTimeline", () => {
       </TestDataProvider>,
     );
     expect(screen.getByText("Timeline unavailable")).toBeInTheDocument();
-    expect(screen.queryByTestId("timeline-column")).not.toBeInTheDocument();
-    expect(screen.getByTestId("case-decision")).toHaveAttribute("data-kind", "jury-decision");
+    expect(screen.queryByRole("list", { name: "Dispute timeline" })).not.toBeInTheDocument();
+    expect(decisionAlert("Jury decision")).toBeInTheDocument();
   });
 
   it("P-20: shows a loading placeholder until the view settles", () => {
@@ -206,18 +225,14 @@ describe("DisputeTimeline", () => {
 
 describe("DecisionAlert", () => {
   it.each([0, 1, 2] as const)("spec 5.9: shows no decision in period %i", (period) => {
-    renderSection(DecisionAlert, caseDispute({ period }));
-    const decision = screen.getByTestId("case-decision");
-    expect(decision).toHaveAttribute("data-kind", "none");
-    expect(decision).not.toHaveAttribute("data-won-by");
-    expect(decision).toBeEmptyDOMElement();
+    const { container } = renderSection(DecisionAlert, caseDispute({ period }));
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("spec 5.9: in the appeal period shows the jury decision and that it can be appealed", () => {
     renderSection(DecisionAlert, caseDispute({ period: 3, details: { currentRuling: { ok: true, value: 1n } } }));
-    expect(screen.getByTestId("case-decision")).toHaveAttribute("data-kind", "jury-decision");
     expect(screen.getByRole("heading", { name: "Jury decision" })).toBeInTheDocument();
-    expect(screen.getByTestId("case-decision-ruling")).toHaveTextContent(/^Yes$/);
+    expect(within(decisionAlert("Jury decision")).getByText("Yes")).toBeInTheDocument();
     expect(screen.getByText(/can be appealed within the appeal period/)).toBeInTheDocument();
     expect(screen.queryByText(/arbitrable application/)).not.toBeInTheDocument();
   });
@@ -229,31 +244,28 @@ describe("DecisionAlert", () => {
 
   it("spec 5.9: ruling 0 reads as refused to arbitrate", () => {
     renderSection(DecisionAlert, caseDispute({ period: 3, details: { currentRuling: { ok: true, value: 0n } } }));
-    expect(screen.getByTestId("case-decision-ruling")).toHaveTextContent(REFUSED_RULING_TEXT);
+    expect(within(decisionAlert("Jury decision")).getByText(REFUSED_RULING_TEXT)).toBeInTheDocument();
   });
 
   it("spec 5.9: in execution the single funded ruling wins by default", () => {
     renderSection(DecisionAlert, caseDispute({ period: 4, details: { currentRuling: { ok: true, value: 1n } }, fundedRulings: { ok: true, value: [2n] } }));
-    const decision = screen.getByTestId("case-decision");
-    expect(decision).toHaveAttribute("data-kind", "winner");
-    expect(decision).toHaveAttribute("data-won-by", "default");
     expect(screen.getByRole("heading", { name: "Winner" })).toBeInTheDocument();
-    expect(screen.getByTestId("case-decision-ruling")).toHaveTextContent(/^No$/);
-    expect(screen.getByText("Won by default")).toBeInTheDocument();
+    expect(within(decisionAlert("Winner")).getByText("No")).toBeInTheDocument();
+    expect(within(decisionAlert("Winner")).getByText("Won by default")).toBeInTheDocument();
   });
 
   it("spec 5.9: in execution without a single funded ruling the jury decision wins", () => {
     renderSection(DecisionAlert, caseDispute({ period: 4, details: { currentRuling: { ok: true, value: 1n } }, fundedRulings: { ok: true, value: [1n, 2n] } }));
-    expect(screen.getByTestId("case-decision")).toHaveAttribute("data-won-by", "jury");
-    expect(screen.getByTestId("case-decision-ruling")).toHaveTextContent(/^Yes$/);
-    expect(screen.getByText("Won by jury decision")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Winner" })).toBeInTheDocument();
+    expect(within(decisionAlert("Winner")).getByText("Yes")).toBeInTheDocument();
+    expect(within(decisionAlert("Winner")).getByText("Won by jury decision")).toBeInTheDocument();
   });
 
   it("D-36: a failed current-ruling read shows the decision as unavailable", () => {
     renderSection(DecisionAlert, caseDispute({ period: 3, details: { currentRuling: { ok: false, error: { code: "rpc-error", message: "currentRuling could not be read." } } } }));
     expect(screen.getByText("Decision unavailable")).toBeInTheDocument();
     expect(screen.getByText("currentRuling could not be read.")).toBeInTheDocument();
-    expect(screen.queryByTestId("case-decision")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /^(?:Jury decision|Winner)$/ })).not.toBeInTheDocument();
   });
 
   it("P-20: holds a placeholder in the appeal period until the view settles, and nothing before it", () => {
@@ -276,24 +288,23 @@ describe("RealityNotice", () => {
     [{ status: "malformed", divergent: true }, "Other interfaces may show different answer options for this question", ""],
     [{ status: "malformed" }, "The question parameters are malformed", ""],
   ])("spec 5.10: picks the notice by its fixed priority (%o)", (question, title, role) => {
-    renderSection(RealityNotice, withQuestion(question));
-    const notice = screen.getByTestId("case-reality-notice");
+    const { container } = renderSection(RealityNotice, withQuestion(question));
+    const notice = container.firstElementChild;
     expect(notice).toHaveTextContent(title);
-    expect(notice.getAttribute("role") ?? "").toBe(role);
+    expect(notice?.getAttribute("role") ?? "").toBe(role);
   });
 
   it("spec 5.10: appends the question recorded on-chain with its line breaks", () => {
-    renderSection(RealityNotice, withQuestion({ status: "unverified", title: "Will it rain?\nAnswer by noon." }));
-    const notice = screen.getByTestId("case-reality-notice");
-    expect(notice.textContent).toContain("Question recorded on-chain: Will it rain?\nAnswer by noon.");
+    const { container } = renderSection(RealityNotice, withQuestion({ status: "unverified", title: "Will it rain?\nAnswer by noon." }));
+    const notice = container.firstElementChild;
+    expect(notice?.textContent).toContain("Question recorded on-chain: Will it rain?\nAnswer by noon.");
     expect(notice).toHaveClass("whitespace-pre-line");
   });
 
   it("CS-1 spec 5.10: adds no on-chain question line for an empty question title", () => {
-    renderSection(RealityNotice, withQuestion({ status: "malformed", title: "" }));
-    const notice = screen.getByTestId("case-reality-notice");
-    expect(notice).toHaveTextContent("The question parameters are malformed");
-    expect(notice.textContent).not.toContain("Question recorded on-chain:");
+    const { container } = renderSection(RealityNotice, withQuestion({ status: "malformed", title: "" }));
+    expect(container).toHaveTextContent("The question parameters are malformed");
+    expect(container.textContent).not.toContain("Question recorded on-chain:");
   });
 
   it("spec 5.10: shows no notice for a verified question, without a Reality question, or before the meta-evidence loads", () => {

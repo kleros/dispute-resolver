@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Address, Hex } from "../types";
 import { CHAINS, explorerAddressUrl, explorerTxUrl } from "./index";
-import { ascending, chainOf } from "./testHelpers";
+import { ascending, chainOf } from "../test/chains/testHelpers";
 import type { ChainConfig } from "./types";
 
 const ADDRESS: Address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";

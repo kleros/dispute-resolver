@@ -16,10 +16,6 @@ export interface PageChain {
 export type ResolvedChain =
   { readonly kind: "page"; readonly page: PageChain } | { readonly kind: "fallback"; readonly page: PageChain; readonly unsupportedSegment: string | null };
 
-/** The app route patterns of C1, the single source for `AppRoutes.tsx` and the headers test (ARCHITECTURE.md §3.1, §10.4). */
-export type AppRoutePattern =
-  "/" | "/index.html" | "/:chain" | "/:chain/ongoing" | "/:chain/create" | "/:chain/cases" | "/:chain/cases/*" | "/:chain/interact/*" | "/:chain/disputes";
-
 /** Internal path builders (A19): validated chain IDs and numeric dispute IDs only. */
 export interface Paths {
   chainRoot(chainId: ChainId): string;

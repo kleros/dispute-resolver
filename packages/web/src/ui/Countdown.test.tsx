@@ -40,17 +40,15 @@ describe("Countdown", () => {
   });
 
   it("spec 3: shows the time left as DDd HHh MMm", () => {
-    render(<Countdown target={NOW_SECONDS + 2 * DAY + 5 * HOUR + 7 * MINUTE + 30} testId="ongoing-card-countdown" />);
-    const countdown = screen.getByTestId("ongoing-card-countdown");
-    expect(countdown).toHaveTextContent("02d 05h 07m");
+    render(<Countdown target={NOW_SECONDS + 2 * DAY + 5 * HOUR + 7 * MINUTE + 30} />);
+    const countdown = screen.getByText("02d 05h 07m");
     expect(countdown.tagName).toBe("TIME");
     expect(countdown).toHaveAttribute("datetime", "P2DT5H7M");
   });
 
   it("spec 5.12: ticks on the shared 30 s clock", () => {
-    render(<Countdown target={NOW_SECONDS + 3 * MINUTE + 30} testId="ongoing-card-countdown" />);
-    const countdown = screen.getByTestId("ongoing-card-countdown");
-    expect(countdown).toHaveTextContent("00d 00h 03m");
+    render(<Countdown target={NOW_SECONDS + 3 * MINUTE + 30} />);
+    const countdown = screen.getByText("00d 00h 03m");
     act(() => {
       vi.advanceTimersByTime(30_000);
     });
@@ -62,8 +60,8 @@ describe("Countdown", () => {
   });
 
   it("spec 5.7: shows zeros once the target has passed", () => {
-    render(<Countdown target={NOW_SECONDS - HOUR} testId="ongoing-card-countdown" />);
-    expect(screen.getByTestId("ongoing-card-countdown")).toHaveTextContent("00d 00h 00m");
+    render(<Countdown target={NOW_SECONDS - HOUR} />);
+    expect(screen.getByText("00d 00h 00m")).toBeInTheDocument();
   });
 
   it("11.3: every countdown shares one clock, stopped when the last one unmounts", () => {
@@ -86,14 +84,13 @@ describe("Countdown", () => {
     const first = render(<Countdown target={NOW_SECONDS + DAY} />);
     first.unmount();
     vi.setSystemTime((NOW_SECONDS + 12 * HOUR) * 1000);
-    render(<Countdown target={NOW_SECONDS + DAY} testId="ongoing-card-countdown" />);
-    expect(screen.getByTestId("ongoing-card-countdown")).toHaveTextContent("00d 12h 00m");
+    render(<Countdown target={NOW_SECONDS + DAY} />);
+    expect(screen.getByText("00d 12h 00m")).toBeInTheDocument();
   });
 
   it("B12: a non-finite target renders a placeholder instead of NaN", () => {
-    render(<Countdown target={Number.NaN} testId="ongoing-card-countdown" />);
-    const countdown = screen.getByTestId("ongoing-card-countdown");
-    expect(countdown).not.toHaveTextContent("NaN");
-    expect(countdown).toHaveTextContent("Unknown");
+    const { container } = render(<Countdown target={Number.NaN} />);
+    expect(container).not.toHaveTextContent("NaN");
+    expect(screen.getByText("Unknown")).toBeInTheDocument();
   });
 });

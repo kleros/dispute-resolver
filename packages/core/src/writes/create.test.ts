@@ -4,7 +4,7 @@ import { getChain } from "../chains";
 import type { ChainConfig } from "../chains/types";
 import type { Hex } from "../types";
 import { buildCreateDisputeCall } from "./index";
-import { decodedArgs, EVIDENCE_CID, expectCall, selectorOf } from "./testHelpers";
+import { decodedArgs, EVIDENCE_CID, expectCall, selectorOf } from "../test/writes/testHelpers";
 
 function chain(chainId: number): ChainConfig {
   const config = getChain(chainId);

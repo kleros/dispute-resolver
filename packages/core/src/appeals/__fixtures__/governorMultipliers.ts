@@ -7,7 +7,7 @@ import { z } from "zod";
 import { governorAbi } from "../../abi";
 import { toRegistryAddress } from "../../registry";
 import type { ChainId, Hex } from "../../types";
-import type { CallReply } from "../testHelpers";
+import type { CallReply } from "../../test/appeals/testHelpers";
 import recording from "./governor-multipliers.json";
 import type { RecordedGetters } from "./recorded";
 

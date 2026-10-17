@@ -1,9 +1,11 @@
 {
+  // Every TypeScript file of the package, tests and Playwright harness included: `yarn typecheck` and the editor.
+  // `yarn build` checks only what ships or runs in the build, through tsconfig.app.json and tsconfig.node.json.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "e2e", "vite.config.ts", "playwright.config.ts"]
+  "include": ["src", "e2e", "vite-plugins", "vite.config.ts", "vitest.config.ts", "playwright.config.ts"]
 }

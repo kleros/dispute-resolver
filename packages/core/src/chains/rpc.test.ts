@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CHAINS, resolvePublicRpcUrl, resolveReadRpcUrl } from "./index";
-import { ascending, chainOf } from "./testHelpers";
+import { ascending, chainOf } from "../test/chains/testHelpers";
 import type { ChainConfig } from "./types";
 
 const mainnet = chainOf(1);

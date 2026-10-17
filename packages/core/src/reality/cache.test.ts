@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { rpcError } from "../rpc/testHelpers";
+import { rpcError } from "../test/rpc/testHelpers";
 import { isValidCachedQuestion, realityQuestionCacheKey } from "./cache";
 import { fetchRealityQuestion } from "./question";
-import { CROSS_ENTRY, KEY_7, MOCK_KNOWN_DISPUTE_QUESTIONS, Q_KNOWN_SINGLE, Q_NEW_SINGLE, REALITY_1, REALITY_100, SINGLE_ENTRY, createWorld } from "./testWorld";
+import { CROSS_ENTRY, KEY_7, MOCK_KNOWN_DISPUTE_QUESTIONS, Q_KNOWN_SINGLE, Q_NEW_SINGLE, REALITY_1, REALITY_100, SINGLE_ENTRY, createWorld } from "../test/reality/testWorld";
 import type { RealityQuestion, RealityQuestionCache } from "./types";
 
 vi.mock("./knownQuestions.generated", async () => {
-  const world = await import("./testWorld");
+  const world = await import("../test/reality/testWorld");
   return { REGISTRY_SNAPSHOT_BLOCKS: world.MOCK_REGISTRY_SNAPSHOT_BLOCKS, KNOWN_DISPUTE_QUESTIONS: world.MOCK_KNOWN_DISPUTE_QUESTIONS };
 });
 

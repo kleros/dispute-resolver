@@ -39,13 +39,6 @@ describe("ExternalLink", () => {
     expect(screen.getByRole("link", { name: "https://kleros.io/x" })).toBeInTheDocument();
   });
 
-  it("12: carries the parity test ID on the link and on the text fallback", () => {
-    const { rerender } = render(<ExternalLink href="https://court.kleros.io/cases/1" testId="link-court" />);
-    expect(screen.getByTestId("link-court")).toHaveAttribute("href", "https://court.kleros.io/cases/1");
-    rerender(<ExternalLink href="http://court.example/cases/1" testId="link-court" />);
-    expect(screen.getByTestId("link-court")).not.toHaveAttribute("href");
-  });
-
   it("applies the caller's class instead of the default link style", () => {
     render(
       <ExternalLink href="https://kleros.io" className="custom">

@@ -37,9 +37,23 @@ function renderAppAt(path: string) {
   return render(<App />);
 }
 
+/** What each page shows first, whatever its data: the Ongoing heading, the Create steps, the case page's search. */
+const PAGE_LANDMARKS = {
+  ongoing: () => screen.findByRole("heading", { level: 1, name: "Ongoing Disputes" }),
+  create: () => screen.findByRole("navigation", { name: "Create dispute steps" }),
+  case: () => screen.findByRole("search", { name: "Search Disputes on Court" }),
+} as const;
+
 /** The header's navigation, whose links are built from the resolved chain (D-45). */
 function mainNavigation(): HTMLElement {
   return screen.getByRole("navigation", { name: "Main" });
+}
+
+/** The app's header, which shows the resolved chain (D-45): the banner around the main navigation, since jsdom also gives a page's own `header` the banner role. */
+function appHeader(): HTMLElement {
+  const header = screen.getAllByRole("banner").find((banner) => within(banner).queryByRole("navigation", { name: "Main" }) !== null);
+  if (header === undefined) throw new Error("The app header is not rendered.");
+  return header;
 }
 
 beforeEach(() => {
@@ -57,23 +71,24 @@ afterEach(() => {
 describe("App: the route table through the provider tree (ADR 0001 URL bullet, ARCHITECTURE.md §2.1, §3.1)", () => {
   it("ADR 0001: /:chainId/ongoing renders the Ongoing page inside the page frame", async () => {
     renderAppAt("/1/ongoing");
-    expect(await screen.findByRole("heading", { level: 1, name: "Ongoing Disputes" })).toBeInTheDocument();
-    expect(screen.getByTestId("ongoing-page")).toHaveAttribute("data-chain", "1");
+    expect(await PAGE_LANDMARKS.ongoing()).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/1/ongoing");
+    expect(within(appHeader()).getByText("Ethereum Mainnet")).toBeInTheDocument();
     expect(within(mainNavigation()).getByRole("link", { name: /Ongoing Disputes/ })).toHaveAttribute("href", "/1/ongoing");
     expect(screen.getByRole("contentinfo")).toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it.each([
-    { name: "ADR 0001: /:chainId/create renders the Create page by URL, even with no wallet connected", from: "/100/create", page: "create-page", to: "/100/create" },
-    { name: "ADR 0001: /:chainId/cases/:id renders the case page for that dispute", from: "/1/cases/5", page: "case-page", to: "/1/cases/5" },
-    { name: "ADR 0001: /:chainId/interact/:id redirects to the case page of :id", from: "/1/interact/5", page: "case-page", to: "/1/cases/5" },
-    { name: "D-01: / redirects to the default chain's Ongoing page", from: "/", page: "ongoing-page", to: "/1/ongoing" },
-    { name: "D-01: /:chainId/disputes redirects to that chain's Ongoing page", from: "/100/disputes", page: "ongoing-page", to: "/100/ongoing" },
-    { name: "D-01: a chain-less legacy case link redirects under the default chain", from: "/cases/5", page: "case-page", to: "/1/cases/5" },
+    { name: "ADR 0001: /:chainId/create renders the Create page by URL, even with no wallet connected", from: "/100/create", page: "create", to: "/100/create" },
+    { name: "ADR 0001: /:chainId/cases/:id renders the case page for that dispute", from: "/1/cases/5", page: "case", to: "/1/cases/5" },
+    { name: "ADR 0001: /:chainId/interact/:id redirects to the case page of :id", from: "/1/interact/5", page: "case", to: "/1/cases/5" },
+    { name: "D-01: / redirects to the default chain's Ongoing page", from: "/", page: "ongoing", to: "/1/ongoing" },
+    { name: "D-01: /:chainId/disputes redirects to that chain's Ongoing page", from: "/100/disputes", page: "ongoing", to: "/100/ongoing" },
+    { name: "D-01: a chain-less legacy case link redirects under the default chain", from: "/cases/5", page: "case", to: "/1/cases/5" },
   ] as const)("$name", async ({ from, page, to }) => {
     renderAppAt(from);
-    expect(await screen.findByTestId(page)).toBeInTheDocument();
+    expect(await PAGE_LANDMARKS[page]()).toBeInTheDocument();
     expect(window.location.pathname).toBe(to);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -81,14 +96,14 @@ describe("App: the route table through the provider tree (ADR 0001 URL bullet, A
   it("D-09: /:chainId/cases renders the case page's search state with no dispute loaded", async () => {
     renderAppAt("/1/cases");
     expect(await screen.findByRole("heading", { name: "Find a dispute" })).toBeInTheDocument();
-    expect(screen.getByTestId("case-page")).toBeInTheDocument();
+    expect(screen.getByRole("search", { name: "Search Disputes on Court" })).toBeInTheDocument();
   });
 
   it("D-45: an unconfigured chain shows the unsupported-network screen with header links on the resolved chain", async () => {
     renderAppAt("/424242/ongoing");
     expect(await screen.findByRole("heading", { name: "Unsupported Network 424242" })).toBeInTheDocument();
     expect(within(mainNavigation()).getByRole("link", { name: /Ongoing Disputes/ })).toHaveAttribute("href", "/1/ongoing");
-    expect(screen.queryByTestId("ongoing-page")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: "Ongoing Disputes" })).not.toBeInTheDocument();
   });
 
   it("D-45: an unknown path under a configured chain shows the 404 screen inside the frame", async () => {

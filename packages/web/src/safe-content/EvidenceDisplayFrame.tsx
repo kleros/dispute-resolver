@@ -10,7 +10,6 @@ export function EvidenceDisplayFrame({ model }: EvidenceDisplayFrameProps) {
       sandbox={model.sandbox.join(" ")}
       src={model.src}
       title="Evidence display"
-      data-testid="evidence-display"
       className="block h-[360px] w-full rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground"
     />
   );

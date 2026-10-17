@@ -85,9 +85,8 @@ export interface CreatedMetaEvidence {
   readonly dynamicScriptURI: CanonicalIpfsPath;
 }
 
-/** Field limits shown by the form and recorded in the Create parity snapshot (04 §1 `optionRange`, `requiredFields`). */
+/** The Create form's field limits (spec 4.3): the range of the ruling-option count and the least number of votes. */
 export interface CreateLimits {
   readonly optionRange: readonly [number, number];
   readonly minVotes: number;
-  readonly requiredFields: readonly ("courtId" | "votes" | "title" | "questionType" | "optionCount" | "question" | "optionTitles")[];
 }

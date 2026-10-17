@@ -10,6 +10,7 @@ import { renderWithProviders } from "../../test/shell";
 import { TEST_TX_HASH, fakeWriteController, testReceipt, type FakeWriteController } from "../../test/wallet";
 import type { WriteStatus } from "../../wallet";
 import { AppealSection } from "./AppealSection";
+import { FEES_UNAVAILABLE_TITLE, WITHDRAW_NOTHING } from "./copy";
 
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../../test/data/mockCoreReads")).mockCoreReads(importOriginal));
 
@@ -72,10 +73,18 @@ function CaseAppeal() {
   return data.status === "dispute" ? <AppealSection dispute={data} chain={testPageChain(1).chain} /> : null;
 }
 
+/** The card of ruling 1, "Yes", which leads. */
 function winnerCard(): HTMLElement {
-  const found = screen.queryAllByTestId("appeal-card").find((card) => card.getAttribute("data-code") === "1");
-  if (found === undefined) throw new Error("The card of ruling 1 is not shown.");
-  return found;
+  return screen.getByRole("listitem", { name: "Yes" });
+}
+
+function fundedPercent(card: HTMLElement): string | null {
+  return within(card).getByRole("progressbar").getAttribute("aria-valuenow");
+}
+
+/** The crowdfunding cards, shown once the panel is a crowdfunding panel. */
+function findRulingsToFund(): Promise<HTMLElement> {
+  return screen.findByRole("list", { name: "Rulings to fund" });
 }
 
 beforeEach(() => {
@@ -89,7 +98,7 @@ describe("AppealSection refresh after a mined write (proposal P-02, D-07)", () =
     programReads(3);
     renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps() });
     await waitFor(() => {
-      expect(winnerCard()).toHaveAttribute("data-funded-percent", "0");
+      expect(fundedPercent(winnerCard())).toBe("0");
     });
     expect(core.readRoundFunding).toHaveBeenCalledTimes(1);
     vi.mocked(core.readRoundFunding).mockResolvedValue({ ok: true, value: { round: 0n, contributions: [{ ruling: 1n, amount: ETH }], fundedRulings: [] } });
@@ -97,7 +106,7 @@ describe("AppealSection refresh after a mined write (proposal P-02, D-07)", () =
     await user.click(within(winnerCard()).getByRole("button", { name: /^Fund/ }));
 
     await waitFor(() => {
-      expect(winnerCard()).toHaveAttribute("data-funded-percent", "50");
+      expect(fundedPercent(winnerCard())).toBe("50");
     });
     expect(core.readRoundFunding).toHaveBeenCalledTimes(2);
     expect(core.readDisputeDetails).toHaveBeenCalledTimes(2);
@@ -123,16 +132,15 @@ describe("AppealSection refresh after a mined write (proposal P-02, D-07)", () =
   it("P-02: after the mined withdrawals the panel shows nothing withdrawable", async () => {
     const user = userEvent.setup();
     programReads(4);
-    renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps() });
+    const { container } = renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps() });
     const button = await screen.findByRole("button", { name: "Withdraw 1 ETH" });
     vi.mocked(core.readWithdrawable).mockResolvedValue({ status: "nothing" });
 
     await user.click(button);
 
     await waitFor(() => {
-      expect(screen.getByTestId("appeal-panel")).toHaveAttribute("data-withdrawable-wei", "0");
+      expect(container).toHaveTextContent(WITHDRAW_NOTHING);
     });
-    expect(screen.getByTestId("appeal-panel")).toHaveTextContent(/You don't have any amount to withdraw/);
     expect(screen.queryByRole("button", { name: /^Withdraw/ })).toBeNull();
     expect(core.readWithdrawable).toHaveBeenCalledTimes(2);
     expect(core.lookupDispute).toHaveBeenCalledTimes(1);
@@ -140,24 +148,18 @@ describe("AppealSection refresh after a mined write (proposal P-02, D-07)", () =
 });
 
 describe("AppealSection retry (D-36: Retry reads the section's data again)", () => {
-  function panelKind(): string | null {
-    return screen.getByTestId("appeal-panel").getAttribute("data-kind");
-  }
-
   it("CA-2, D-36: 'Retry the appeal fees' reads the multipliers again and shows the cards", async () => {
     const user = userEvent.setup();
     programReads(3);
     vi.mocked(core.readMultipliers).mockResolvedValueOnce({ ok: false, error: RPC_DOWN });
     renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps() });
     const retry = await screen.findByRole("button", { name: "Retry the appeal fees" });
-    expect(panelKind()).toBe("fees-unavailable");
+    expect(screen.getByText(FEES_UNAVAILABLE_TITLE)).toBeInTheDocument();
 
     await user.click(retry);
 
-    await waitFor(() => {
-      expect(panelKind()).toBe("crowdfunding");
-    });
-    expect(winnerCard()).toHaveAttribute("data-funded-percent", "0");
+    expect(await findRulingsToFund()).toBeInTheDocument();
+    expect(fundedPercent(winnerCard())).toBe("0");
     expect(core.readMultipliers).toHaveBeenCalledTimes(2);
     expect(core.detectFamily).toHaveBeenCalledTimes(1);
     expect(core.readDisputeEvent).toHaveBeenCalledTimes(1);
@@ -176,15 +178,13 @@ describe("AppealSection retry (D-36: Retry reads the section's data again)", () 
           : NO_FUNDING,
       ),
     );
-    renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps() });
+    const { container } = renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps() });
     const retry = await screen.findByRole("button", { name: "Retry the appeal fees" });
-    expect(screen.getByTestId("appeal-panel")).toHaveTextContent("The governor session is unknown");
+    expect(container).toHaveTextContent("The governor session is unknown");
 
     await user.click(retry);
 
-    await waitFor(() => {
-      expect(panelKind()).toBe("crowdfunding");
-    });
+    expect(await findRulingsToFund()).toBeInTheDocument();
     expect(core.readDisputeEvent).toHaveBeenCalledTimes(2);
     expect(winnerCard()).toBeInTheDocument();
   });
@@ -203,9 +203,7 @@ describe("AppealSection retry (D-36: Retry reads the section's data again)", () 
 
     await user.click(retry);
 
-    await waitFor(() => {
-      expect(panelKind()).toBe("crowdfunding");
-    });
+    expect(await findRulingsToFund()).toBeInTheDocument();
     expect(core.loadMetaEvidence).toHaveBeenCalledTimes(2);
   });
 
@@ -218,9 +216,7 @@ describe("AppealSection retry (D-36: Retry reads the section's data again)", () 
 
     await user.click(retry);
 
-    await waitFor(() => {
-      expect(panelKind()).toBe("crowdfunding");
-    });
+    expect(await findRulingsToFund()).toBeInTheDocument();
     expect(core.detectFamily).toHaveBeenCalledTimes(3);
   });
 });

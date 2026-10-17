@@ -1,15 +1,11 @@
 // @vitest-environment node
-// The headers file and its plugin are Node-side build code (ARCHITECTURE.md §10.3).
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+// The headers file and its policy are build-time code, tested in Node (ARCHITECTURE.md §10.3, §10.4).
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import type { ResolvedConfig } from "vite";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { headerValues, matchesPattern, matchingRules, parseNetlifyHeaders, policies } from "../../test/routing/netlifyHeaders";
-import { APP_ROUTE_PATTERNS } from "../paths";
+import { describe, expect, it } from "vitest";
+import { APP_ROUTE_PATTERNS } from "../../test/routing/appRoutePatterns";
+import { KEYED_ENV, headerValues, matchesPattern, matchingRules, parseNetlifyHeaders, policies } from "../../test/routing/netlifyHeaders";
 import { APP_CSP_PLACEHOLDER, WALLET_ORIGINS, applyAppCsp, buildAppCsp, connectSources } from "./appCsp";
-import { headersPlugin } from "./index";
 
 const HEADERS_PATH = fileURLToPath(new URL("../../../public/_headers", import.meta.url));
 const HEADERS_TEXT = await readFile(HEADERS_PATH, "utf8");
@@ -23,26 +19,17 @@ const RUNNER_PATHS = ["/__runner/index.html", "/__runner/bootstrap.js"] as const
 /** The sample paths of ARCHITECTURE.md §10.4 and the other app routes. */
 const APP_SAMPLE_PATHS = ["/", "/1", "/1/ongoing", "/1/create", "/1/cases", "/1/cases/5", "/1/interact/5", "/1/disputes", "/ongoing", "/cases/5", "/interact/5"];
 
-/** A policy whose keyed RPC URLs must never leak past their origin. */
-const KEYED_ENV = {
-  REACT_APP_WEB3_PROVIDER_URL: "https://mainnet.infura.io/v3/KEY-MAINNET-0001",
-  REACT_APP_WEB3_XDAI_PROVIDER_URL: "https://gnosis.example-rpc.io:8545/rpc/KEY-GNOSIS-0002?token=KEY-QUERY-0003#KEY-HASH-0004",
-  REACT_APP_PUBLIC_RPC_1: "https://public.example-rpc.io/eth/KEY-PUBLIC-0005",
-  REACT_APP_WEB3_SEPOLIA_PROVIDER_URL: "wss://sepolia.example-rpc.io/ws/KEY-WSS-0006",
-  REACT_APP_ATLAS_URI: "https://atlas.example.org/graphql",
-  REACT_APP_METAEVIDENCE_URL: "https://metaevidence.example.org/api/meta-evidence",
-  REACT_APP_IPFS_GATEWAY: "https://cdn.example-ipfs.io",
-} as const;
-
 /** Parts of the keyed values that only a path, query or fragment carries. */
 const KEY_FRAGMENTS = ["KEY-", "token="];
 
-function connectSrc(policy: string): readonly string[] {
-  const directive = policy
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith("connect-src "));
-  return directive === undefined ? [] : directive.split(" ").slice(1);
+/** The message `connectSources(env)` fails with; the test fails if it does not throw. */
+function failureOf(env: Record<string, string>): string {
+  try {
+    connectSources(env);
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  throw new Error("connectSources accepted the environment.");
 }
 
 describe("public/_headers (ARCHITECTURE.md §10.4)", () => {
@@ -137,7 +124,7 @@ describe("the report-only policy (C2, ARCHITECTURE.md §10.2)", () => {
       ]),
     );
     for (const source of sources) {
-      expect(source).toMatch(/^(?:https?|wss?):\/\/[^/?#]+$/);
+      expect(source).toMatch(/^(?:https|wss):\/\/[^/?#]+$/);
       for (const fragment of KEY_FRAGMENTS) expect(source).not.toContain(fragment);
     }
     expect(new Set(sources).size).toBe(sources.length);
@@ -155,6 +142,18 @@ describe("the report-only policy (C2, ARCHITECTURE.md §10.2)", () => {
     expect(sources.some((source) => source.includes("not a url"))).toBe(false);
   });
 
+  it.each([
+    ["REACT_APP_WEB3_PROVIDER_URL", "http://mainnet.rpc.example/v3/KEY-PLAIN-0007"],
+    ["REACT_APP_PUBLIC_RPC_1", "http://public.rpc.example:8545/eth/KEY-PLAIN-0008"],
+    ["REACT_APP_WEB3_SEPOLIA_PROVIDER_URL", "ws://sepolia.rpc.example/ws/KEY-PLAIN-0009"],
+    ["REACT_APP_ATLAS_URI", "http://atlas.host.example/graphql"],
+  ])("C2: fails the build when %s is a plain http or ws URL, naming the variable and never its value", (name, value) => {
+    const message = failureOf({ ...KEYED_ENV, [name]: value });
+    expect(message).toContain(name);
+    expect(message).toContain("plain http or ws URL");
+    for (const part of ["KEY-", "rpc.example", "host.example", "8545", "/v3/", "/eth/", "/ws/", "/graphql"]) expect(message).not.toContain(part);
+  });
+
   it("C2: refuses a headers file without the placeholder, and a policy that is not one header value", () => {
     expect(() => applyAppCsp("/*\n  X-Frame-Options: SAMEORIGIN\n", "default-src 'self'")).toThrow("placeholder");
     expect(() => applyAppCsp(HEADERS_TEXT, "default-src 'self'\n/evil\n  X: y")).toThrow("not a single header value");
@@ -163,54 +162,5 @@ describe("the report-only policy (C2, ARCHITECTURE.md §10.2)", () => {
 
   it("C2: a $ in the policy is written as it is", () => {
     expect(applyAppCsp(`/\n  Content-Security-Policy-Report-Only: ${APP_CSP_PLACEHOLDER}\n`, "connect-src https://a.example$&")).toContain("https://a.example$&");
-  });
-});
-
-describe("headersPlugin (ARCHITECTURE.md §10.3)", () => {
-  let workDir: string | null = null;
-
-  afterEach(async () => {
-    vi.unstubAllEnvs();
-    if (workDir !== null) await rm(workDir, { recursive: true, force: true });
-    workDir = null;
-  });
-
-  async function runPlugin(headers: string | null): Promise<string> {
-    workDir = await mkdtemp(path.join(tmpdir(), "headers-plugin-"));
-    const outDir = path.join(workDir, "dist");
-    await mkdir(outDir);
-    if (headers !== null) await writeFile(path.join(outDir, "_headers"), headers, "utf8");
-    const plugin = headersPlugin();
-    expect(plugin.apply).toBe("build");
-    const { configResolved, writeBundle } = plugin;
-    if (typeof configResolved !== "function" || typeof writeBundle !== "function") throw new Error("The plugin's hooks are not plain functions.");
-    const config = { root: workDir, mode: "production", envDir: false, build: { outDir: "dist" } } as unknown as ResolvedConfig;
-    await configResolved.call({} as ThisParameterType<typeof configResolved>, config);
-    await writeBundle.call({} as ThisParameterType<typeof writeBundle>, {} as Parameters<typeof writeBundle>[0], {});
-    return readFile(path.join(outDir, "_headers"), "utf8");
-  }
-
-  it("C2: given an env with keyed RPC URLs, writes a policy with their origins only", async () => {
-    for (const [name, value] of Object.entries(KEYED_ENV)) vi.stubEnv(name, value);
-    const written = await runPlugin(HEADERS_TEXT);
-    expect(written).not.toContain(APP_CSP_PLACEHOLDER);
-    for (const fragment of ["KEY-", "token=", "/v3/", "/rpc/"]) expect(written).not.toContain(fragment);
-    const built = parseNetlifyHeaders(written);
-    const [reportOnly = ""] = headerValues(built, "/1/cases/5", "Content-Security-Policy-Report-Only");
-    const sources = connectSrc(reportOnly);
-    expect(sources).toEqual(expect.arrayContaining(["'self'", "https://mainnet.infura.io", "https://gnosis.example-rpc.io:8545", "wss://sepolia.example-rpc.io"]));
-    for (const source of sources.slice(1)) expect(source).toMatch(/^(?:https?|wss?):\/\/[^/?#]+$/);
-    expect(policies(built, "/__runner/index.html", "Content-Security-Policy")).toHaveLength(1);
-  });
-
-  it("ARCHITECTURE.md §10.3: fails the build when _headers is missing from the output", async () => {
-    await expect(runPlugin(null)).rejects.toThrow("_headers is missing from the build output");
-  });
-
-  it("ARCHITECTURE.md §10.3: fails the build when the placeholder is missing, without printing any value", async () => {
-    vi.stubEnv("REACT_APP_WEB3_PROVIDER_URL", "https://mainnet.infura.io/v3/KEY-MAINNET-0001");
-    const failure = runPlugin("/*\n  X-Frame-Options: SAMEORIGIN\n");
-    await expect(failure).rejects.toThrow(APP_CSP_PLACEHOLDER);
-    await expect(failure).rejects.not.toThrow("KEY-");
   });
 });

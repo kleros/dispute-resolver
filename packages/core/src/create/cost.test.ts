@@ -5,7 +5,7 @@ import { getChain } from "../chains";
 import type { ChainConfig } from "../chains/types";
 import type { Hex } from "../types";
 import { encodeExtraData, readArbitrationCost } from "./index";
-import { type CallAnswer, callKey, fakeClient, rpcError } from "./testHelpers";
+import { type CallAnswer, callKey, fakeClient, rpcError } from "../test/create/testHelpers";
 
 function chain(chainId: number): ChainConfig {
   const config = getChain(chainId);

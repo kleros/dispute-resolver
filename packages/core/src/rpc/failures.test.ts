@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { klerosLiquidAbi } from "../abi";
 import type { Address } from "../types";
 import { LookupLimitError, describeError, isContractFailure, readFailure } from "./index";
-import { rpcError } from "./testHelpers";
+import { rpcError } from "../test/rpc/testHelpers";
 
 const ARBITRATOR: Address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
 

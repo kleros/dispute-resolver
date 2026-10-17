@@ -1,5 +1,4 @@
 import type { TimelineColumn, TimelineColumnName } from "@dispute-resolver/core";
-import { timelineColumnAttributes } from "../../parity";
 import { Countdown, FACT, LABEL, SectionSkeleton, formatDuration } from "../../ui";
 import type { CaseSectionProps } from "../../data";
 import { existingView, viewField } from "./caseState";
@@ -39,12 +38,7 @@ function TimelineColumns({ columns }: { readonly columns: readonly TimelineColum
         const current = column.state === "current";
         const connector = column.state === "concluded" ? "bg-klerosUIComponentsPrimaryBlue" : "bg-klerosUIComponentsStroke";
         return (
-          <li
-            key={column.name}
-            {...timelineColumnAttributes({ name: column.name, state: column.state })}
-            aria-current={current ? "step" : undefined}
-            className="flex min-w-0 gap-3 lg:flex-1 lg:flex-col lg:gap-2"
-          >
+          <li key={column.name} aria-current={current ? "step" : undefined} className="flex min-w-0 gap-3 lg:flex-1 lg:flex-col lg:gap-2">
             <div aria-hidden="true" className="flex flex-col items-center lg:flex-row">
               <TimelineBullet state={column.state} />
               {last ? null : <span className={`my-1 min-h-4 w-px grow lg:mx-2 lg:my-0 lg:h-px lg:min-h-0 lg:w-auto ${connector}`} />}

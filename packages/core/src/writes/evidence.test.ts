@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SELECTORS } from "../abi";
 import type { FamilyDetection } from "../families/types";
 import { buildSubmitEvidenceCall } from "./index";
-import { decodedArgs, detectionFor, EVIDENCE_CID, expectCall, FAMILY_SIGNATURES, selectorOf, testBinding } from "./testHelpers";
+import { decodedArgs, detectionFor, EVIDENCE_CID, expectCall, FAMILY_SIGNATURES, selectorOf, testBinding } from "../test/writes/testHelpers";
 
 const ARBITRABLE = "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf";
 const EVIDENCE = `/ipfs/${EVIDENCE_CID}/evidence.json`;

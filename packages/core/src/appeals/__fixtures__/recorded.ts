@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { AppealDecisionEvent } from "../../disputes/types";
 import { toRegistryAddress } from "../../registry";
 import type { Address, Hex } from "../../types";
-import { callKey, rpcLog, type CallReply, type RpcLog } from "../testHelpers";
+import { callKey, rpcLog, type CallReply, type RpcLog } from "../../test/appeals/testHelpers";
 import dispute1170Event from "./dispute-1170-dispute-event.json";
 import dispute1170 from "./dispute-1170-unslashed.json";
 import governor1621 from "./governor-1621.json";

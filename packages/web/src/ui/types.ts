@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import type { Address, ChainConfig, Period, Unavailable, UnixSeconds } from "@dispute-resolver/core";
-import type { TestId } from "../parity";
 
 /** The closed set of alert variants (D-14: no `danger`), mapped to the library `AlertMessage`. */
 export type NoticeVariant = "success" | "warning" | "error" | "info";
@@ -12,7 +11,6 @@ export interface NoticeProps {
   /** Plain text; line breaks are preserved (spec 5.10). */
   readonly body: string;
   readonly className?: string;
-  readonly testId?: TestId;
 }
 
 /**
@@ -61,7 +59,6 @@ export interface PageMessageProps {
 export interface CountdownProps {
   readonly target: UnixSeconds;
   readonly className?: string;
-  readonly testId?: TestId;
 }
 
 /** An amount in wei with the chain's currency symbol (D-10). */

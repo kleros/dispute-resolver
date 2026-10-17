@@ -1,7 +1,7 @@
 import { CHAINS } from "@dispute-resolver/core";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "../test/shell";
 import { createTestWallet } from "../test/wallet";
 
@@ -105,10 +105,18 @@ describe("PageFrame header (spec §2.3)", () => {
   });
 
   it("D-48: offers the switch to the page chain when the wallet is on another chain", async () => {
-    const wallet = createTestWallet({ chainId: 1 });
+    // The wallet declines the switch the app asks for at load (D-55), so it stays on Ethereum Mainnet.
+    const wallet = createTestWallet({ chainId: 1, switchChainError: true });
     await wallet.connect();
+    const [connector] = wallet.config.connectors;
+    if (connector === undefined) throw new Error("The test wallet has no connector.");
+    const switches = vi.spyOn(connector, "switchChain");
     renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page", wallet });
-    expect(within(header()).getByRole("button", { name: "Switch to Gnosis Network" })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(switches).toHaveBeenCalledWith(expect.objectContaining({ chainId: 100 }));
+    });
+    expect(wallet.config.state.chainId).toBe(1);
+    expect(within(header()).getByRole("button", { name: "Switch to Gnosis Network" })).toBeEnabled();
   });
 
   it("D-45: on the unsupported-network screen the header links use the default chain", () => {

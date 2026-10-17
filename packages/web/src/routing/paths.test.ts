@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { APP_ROUTE_PATTERNS, paths, replaceChainSegment } from "./paths";
+import { paths, replaceChainSegment } from "./paths";
 
 describe("paths (A19)", () => {
   it("A19: builds every internal target from a validated chain ID and a numeric dispute ID", () => {
@@ -60,21 +60,5 @@ describe("replaceChainSegment (spec §1.3)", () => {
   it("A19: never produces a protocol-relative target", () => {
     expect(replaceChainSegment("//evil.example/x", 1)).toBe("/1//evil.example/x");
     expect(replaceChainSegment("//evil.example/x", 1).startsWith("//")).toBe(false);
-  });
-});
-
-describe("APP_ROUTE_PATTERNS (C1)", () => {
-  it("C1: lists exactly the enumerated app route patterns", () => {
-    expect(APP_ROUTE_PATTERNS).toEqual([
-      "/",
-      "/index.html",
-      "/:chain",
-      "/:chain/ongoing",
-      "/:chain/create",
-      "/:chain/cases",
-      "/:chain/cases/*",
-      "/:chain/interact/*",
-      "/:chain/disputes",
-    ]);
   });
 });

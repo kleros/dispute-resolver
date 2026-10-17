@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { stubEndpoint } from "../rpc/testHelpers";
+import { stubEndpoint } from "../test/rpc/testHelpers";
 import { CASE_PAGE_BUDGET_MS, ONGOING_BUDGET_MS, loadMetaEvidence } from "./index";
 import {
   CROSS_CHAIN_PROXY,
@@ -16,7 +16,7 @@ import {
   locatorUrl,
   scriptOk,
   servedMetaEvidence,
-} from "./testHelpers";
+} from "../test/metaEvidence/testHelpers";
 import type { MetaEvidenceResult } from "./types";
 
 const SCRIPT_JSON = json({ title: "T", dynamicScriptURI: `/ipfs/${DEFAULT_SCRIPT_CID}` });

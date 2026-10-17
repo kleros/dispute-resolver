@@ -8,17 +8,13 @@ const LINK_CLASS = "inline-flex max-w-full items-center gap-2 rounded-base text-
  * An attachment or document reference (A10, A17, D-32): a link with the icon of its kind and its file name, or the
  * raw value as plain text when it is not a safe link. Never rendered inline.
  */
-export function Attachment({ attachment, testId }: AttachmentProps) {
+export function Attachment({ attachment }: AttachmentProps) {
   if (attachment === null) return null;
   if (attachment.kind === "text") {
-    return (
-      <span className="text-klerosUIComponentsSecondaryText [overflow-wrap:anywhere]" data-testid={testId}>
-        {attachment.text}
-      </span>
-    );
+    return <span className="text-klerosUIComponentsSecondaryText [overflow-wrap:anywhere]">{attachment.text}</span>;
   }
   return (
-    <ExternalLink href={attachment.href} className={LINK_CLASS} testId={testId}>
+    <ExternalLink href={attachment.href} className={LINK_CLASS}>
       <AttachmentIcon kind={attachment.attachmentKind} />
       <span className="min-w-0 [overflow-wrap:anywhere]">{attachment.label === "" ? "Attachment" : attachment.label}</span>
     </ExternalLink>

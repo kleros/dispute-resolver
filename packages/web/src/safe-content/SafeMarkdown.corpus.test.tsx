@@ -40,8 +40,8 @@ const DIFFERENCES: Readonly<Record<string, RecordedDifference>> = {
 };
 
 /**
- * What the parity snapshot can observe: the text without whitespace (react-markdown 9 writes a newline between block
- * elements where React 17's static markup of react-markdown 4 wrote none), the links and the images.
+ * What the comparison with today's rendering observes: the text without whitespace (react-markdown 9 writes a newline
+ * between block elements where React 17's static markup of react-markdown 4 wrote none), the links and the images.
  */
 function observe(root: HTMLElement): LegacyRendering {
   return {

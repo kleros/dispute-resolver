@@ -2,8 +2,11 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { SafeMarkdown } from "./SafeMarkdown";
 
-function renderMarkdown(source: string) {
-  return render(<SafeMarkdown source={source} testId="case-description" />).getByTestId("case-description");
+/** The markdown's root element, the one element `SafeMarkdown` renders around the content. */
+function renderMarkdown(source: string, className?: string): HTMLElement {
+  const root = render(<SafeMarkdown source={source} className={className} />).container.firstElementChild;
+  if (!(root instanceof HTMLElement)) throw new Error("SafeMarkdown rendered no root element.");
+  return root;
 }
 
 describe("SafeMarkdown raw HTML", () => {
@@ -87,9 +90,8 @@ describe("SafeMarkdown structure", () => {
     expect(root.querySelector("blockquote")).toHaveTextContent("quote");
   });
 
-  it("12: puts the parity test ID and the caller's class on its root", () => {
-    render(<SafeMarkdown source="text" className="custom" testId="evidence-description" />);
-    expect(screen.getByTestId("evidence-description")).toHaveClass("custom");
+  it("puts the caller's class on its root", () => {
+    expect(renderMarkdown("text", "custom")).toHaveClass("custom");
   });
 
   it("renders nothing but its root for an empty source", () => {

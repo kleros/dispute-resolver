@@ -180,11 +180,12 @@ describe("C9: a minified production build that imports a test double fails the c
   const IDENTIFIER_MARKERS = new Set(["test double name", "test directory path"]);
 
   /**
-   * Modules that carry no string of their own, so no marker can find them once minified. Each is inert without a double
-   * that is caught: `TestWalletProvider` renders the app's wallet provider over a `TestWallet`, which only
-   * `createTestWallet` makes.
+   * Modules no marker can find once minified. `TestWalletProvider` carries no string of its own and is inert without a
+   * double that is caught: it renders the app's wallet provider over a `TestWallet`, which only `createTestWallet` makes.
+   * `appRoutePatterns` holds only the Netlify route patterns that every build ships in `dist/_headers`, so a marker for
+   * them would flag every clean build.
    */
-  const UNMARKED_MODULES = new Set(["wallet/TestWalletProvider.tsx"]);
+  const UNMARKED_MODULES = new Set(["routing/appRoutePatterns.ts", "wallet/TestWalletProvider.tsx"]);
 
   /** Vite's settings for a client build of this package, without its config file (no plugin, no .env). */
   const BASE_CONFIG = {

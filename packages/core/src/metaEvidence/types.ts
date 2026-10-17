@@ -69,7 +69,7 @@ export type MetaEvidenceResult =
       readonly status: "ok";
       readonly metaEvidence: MetaEvidence;
       readonly uri: CanonicalIpfsPath;
-      /** Gateway URL of the meta-evidence file (parity snapshot `links.metaEvidenceFile`). */
+      /** Gateway URL of the meta-evidence JSON that was read. */
       readonly fileUrl: string;
       readonly script: ScriptOutcome;
     }

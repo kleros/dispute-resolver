@@ -66,7 +66,7 @@ export interface AppealContext {
 /** Where a card came from (spec 5.12 card set, D-04, D-33). */
 export type CardOrigin = "refuse" | "reserved" | "option" | "combination" | "contributed-value" | "current-ruling";
 
-/** One fixed crowdfunding card. Parity snapshot `cards[]`: `title`, `code`, `fundedPercent`, `remaining`, `deadline`. */
+/** One fixed crowdfunding card. */
 export interface CrowdfundingCard {
   readonly origin: CardOrigin;
   readonly title: string;

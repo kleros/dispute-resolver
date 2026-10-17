@@ -1,8 +1,8 @@
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
-import { configDefaults, defineConfig } from "vitest/config";
-import { headersPlugin } from "./src/routing/headers";
-import { runnerBootstrapPlugin } from "./src/runner/build";
+import { defineConfig } from "vite";
+import { headersPlugin } from "./vite-plugins/headersPlugin";
+import { runnerBootstrapPlugin } from "./vite-plugins/runnerBootstrapPlugin";
 
 // The repository root holds .env; only variables starting with REACT_APP_ reach the client bundle,
 // which keeps the existing variable names working unchanged.
@@ -12,8 +12,6 @@ export default defineConfig({
   plugins: [react(), runnerBootstrapPlugin(), headersPlugin()],
   envDir: repositoryRoot,
   envPrefix: "REACT_APP_",
-  // Vite's client default, stated so the test environment uses it too: @kleros/kleros-app 3.1.0 declares only `module`.
-  resolve: { mainFields: ["browser", "module", "jsnext:main", "jsnext"] },
   build: {
     outDir: "dist",
     emptyOutDir: true,
@@ -48,18 +46,5 @@ export default defineConfig({
         },
       },
     },
-  },
-  test: {
-    environment: "jsdom",
-    setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.test.{ts,tsx}"],
-    // Playwright specs live in e2e/ and run through `yarn e2e`, never through `yarn test`.
-    exclude: [...configDefaults.exclude, "e2e/**"],
-    // Component tests that drive whole pages with user-event run about three times slower on the GitHub runner than on a
-    // workstation: CreatePage.test.tsx took 65 s there against 24 s locally, and four of its tests passed the default 5 s
-    // limit (B22). A test that hangs still fails, after 30 s.
-    testTimeout: 30_000,
-    // The library imports its own CSS from JavaScript; Node cannot load that, so Vite has to process the package.
-    server: { deps: { inline: ["@kleros/ui-components-library"] } },
   },
 });

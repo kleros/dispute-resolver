@@ -4,7 +4,7 @@ import type { Address } from "../types";
 import { displayAllowlistKey, getOverride, getRealityProxy, isDisplayAllowlisted, isScriptAllowed, registryKey } from "./lookups";
 import { REGISTRY } from "./registry";
 import { toRegistryAddress } from "./address";
-import { DISPUTE_1621_OVERRIDE, DISPUTE_1684_SCRIPT, UNSLASHED_CHECKSUMMED, addr } from "./testHelpers";
+import { DISPUTE_1621_OVERRIDE, DISPUTE_1684_SCRIPT, UNSLASHED_CHECKSUMMED, addr } from "../test/registry/testHelpers";
 
 const MAINNET_REALITY_SCRIPT = "QmWWsDmvjhR9UVRgkcG75vAKzfK3vB85EkZzudnaxwfAWr/bundle.js";
 const DEFAULT_SCRIPT = REGISTRY.defaultScriptCid;

@@ -101,10 +101,10 @@ const REMARK_PLUGINS = [remarkLegacyGfm];
  * on line endings normalized to `\n` as remark-parse 5 did.
  * Headings start at `h3` because a description sits under the page's `h1` and the summary's `h2`.
  */
-export function SafeMarkdown({ source, className, testId }: SafeMarkdownProps) {
+export function SafeMarkdown({ source, className }: SafeMarkdownProps) {
   const rootClass = "min-w-0 break-words text-klerosUIComponentsPrimaryText [&>*+*]:mt-3";
   return (
-    <div className={className === undefined ? rootClass : `${rootClass} ${className}`} data-testid={testId}>
+    <div className={className === undefined ? rootClass : `${rootClass} ${className}`}>
       <Markdown urlTransform={markdownUrlTransform} components={COMPONENTS} remarkPlugins={REMARK_PLUGINS}>
         {source.replace(/\r\n?/g, "\n")}
       </Markdown>

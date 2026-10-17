@@ -17,7 +17,7 @@ import {
   type LogsRequest,
   type Reply,
   type RpcLog,
-} from "./testHelpers";
+} from "../test/rpc/testHelpers";
 import type { BudgetedReadClientOptions } from "./types";
 
 const BLOCK_HASH: Hex = `0x${"ab".repeat(32)}`;
@@ -90,17 +90,17 @@ describe("getLogsChunked over the production read transport", () => {
     const endpoint = stubEndpoint((call) => (logsRange(call).fromBlock === 0n && logsRange(call).toBlock === 79_999n ? RANGE_REFUSAL : HEADER_NOT_FOUND));
     const budget = createRequestBudget({ maxRequests: 9, deadlineMs: 90_000 });
     const client = mainnetReadClient({ budget });
-    const failure = expect(getLogsChunked(client, { ...scan, fromBlock: 0n, toBlock: 79_999n }, { budget })).rejects.toSatisfy(isLookupLimitError);
+    const failure = expect(getLogsChunked(client, { ...scan, fromBlock: 0n, toBlock: 79_999n })).rejects.toSatisfy(isLookupLimitError);
     await vi.runAllTimersAsync();
     await failure;
     expect(rpcCalls(endpoint)).toHaveLength(9);
   });
 
-  it("RPC-1 §9.1: a scan charges the budget of its read client once per attempt, never twice", async () => {
+  it("RPC-1 §9.1: a scan charges the budget of its read client once per attempt", async () => {
     const endpoint = stubEndpoint(cappedReply);
     const budget = createRequestBudget({ maxRequests: 3, deadlineMs: 90_000 });
     const client = mainnetReadClient({ budget });
-    await expect(getLogsChunked(client, { ...scan, fromBlock: 0n, toBlock: 19_999n }, { budget })).resolves.toEqual([]);
+    await expect(getLogsChunked(client, { ...scan, fromBlock: 0n, toBlock: 19_999n })).resolves.toEqual([]);
     expect(rpcCalls(endpoint)).toHaveLength(3);
   });
 
@@ -110,10 +110,27 @@ describe("getLogsChunked over the production read transport", () => {
     const budget = createRequestBudget({ maxRequests: 1_500, deadlineMs: 1_000 });
     const client = mainnetReadClient({ budget });
     const start = Date.now();
-    const failure = expect(getLogsChunked(client, { ...scan, fromBlock: 0n, toBlock: 19_999n }, { budget })).rejects.toSatisfy(isLookupLimitError);
+    const failure = expect(getLogsChunked(client, { ...scan, fromBlock: 0n, toBlock: 19_999n })).rejects.toSatisfy(isLookupLimitError);
     await vi.runAllTimersAsync();
     await failure;
     expect(endpoint.posts.every((post) => post.at - start <= 1_000)).toBe(true);
+    expect(rpcCalls(endpoint)).toHaveLength(5);
+  });
+
+  it("§9.1: every request spends the shared budget, the whole-range attempt included", async () => {
+    const endpoint = stubEndpoint(cappedReply);
+    const budget = createRequestBudget({ maxRequests: 1, deadlineMs: 90_000 });
+    const client = mainnetReadClient({ budget });
+    await expect(getLogsChunked(client, { ...scan, fromBlock: 0n, toBlock: 9_999n })).resolves.toEqual([]);
+    await expect(getLogsChunked(client, { ...scan, fromBlock: 0n, toBlock: 9_999n })).rejects.toSatisfy(isLookupLimitError);
+    expect(rpcCalls(endpoint)).toHaveLength(1);
+  });
+
+  it("§9.1: budget exhaustion stops a windowed scan with a LookupLimitError, never treated as a refusal", async () => {
+    const endpoint = stubEndpoint(cappedReply);
+    const budget = createRequestBudget({ maxRequests: 5, deadlineMs: 90_000 });
+    const client = mainnetReadClient({ budget });
+    await expect(getLogsChunked(client, { ...scan, fromBlock: 0n, toBlock: 349_999n })).rejects.toSatisfy(isLookupLimitError);
     expect(rpcCalls(endpoint)).toHaveLength(5);
   });
 
@@ -132,9 +149,6 @@ describe("getLogsChunked over the production read transport", () => {
     expect(peak).toBe(8);
     expect(endpoint.posts.every((post) => post.calls.length === 1)).toBe(true);
     expect(endpoint.posts).toHaveLength(1 + 36);
-    peak = 0;
-    await getLogsChunked(client, { ...scan, fromBlock: 14_600_000n, toBlock: 14_950_000n }, { limits: { concurrency: 3 } });
-    expect(peak).toBe(3);
   });
 
   it("RPC-2 §9.1: a window that times out does not time out the windows fetched beside it", async () => {
@@ -221,18 +235,6 @@ describe("getLogsChunked", () => {
     await expect(failure).rejects.toSatisfy(isRangeLimitError);
   });
 
-  it("§9.1: honours custom window limits", async () => {
-    const { client, requests } = fakeLogsClient(cappedNode(DISPUTE_1170_LOGS, 300n));
-    await getLogsChunked(client, { ...scan, fromBlock: 14_634_000n, toBlock: 14_635_999n }, { limits: { windowSize: 1_000, windowShrinkFactor: 4, minWindowSize: 250 } });
-    expect(requests.slice(1).map(size)).toEqual([1_000n, 1_000n, 250n, 250n, 250n, 250n, 250n, 250n, 250n, 250n]);
-  });
-
-  it("§9.1: limits below one block or one request are raised so the scan always advances", async () => {
-    const { client, requests } = fakeLogsClient(cappedNode(DISPUTE_1170_LOGS, 1_000n));
-    await getLogsChunked(client, { ...scan, fromBlock: 14_634_000n, toBlock: 14_635_999n }, { limits: { windowSize: 1_000.5, concurrency: 0, minWindowSize: 0 } });
-    expect(requests.slice(1).map(size)).toEqual([1_000n, 1_000n]);
-  });
-
   it("§9.1: a refused single-block range is rethrown without splitting", async () => {
     const { client, requests } = fakeLogsClient(() => Promise.resolve(rangeRefusal()));
     await expect(getLogsChunked(client, { ...scan, fromBlock: 14_634_725n, toBlock: 14_634_725n })).rejects.toSatisfy(isRangeLimitError);
@@ -280,20 +282,6 @@ describe("getLogsChunked", () => {
     const roundSix = DISPUTE_1170.contributions.filter((event) => event.decoded.round === "6");
     expect(roundSix.length).toBeGreaterThan(0);
     expect(positions(logs)).toEqual(roundSix.map((event) => [BigInt(event.blockNumber), event.logIndex]));
-  });
-
-  it("§9.1: every request spends the shared budget, the whole-range attempt included", async () => {
-    const budget = createRequestBudget({ maxRequests: 1, deadlineMs: 90_000 });
-    const { client } = fakeLogsClient(cappedNode(DISPUTE_1170_LOGS, 1n << 40n));
-    await getLogsChunked(client, scan, { budget });
-    await expect(getLogsChunked(client, scan, { budget })).rejects.toSatisfy(isLookupLimitError);
-  });
-
-  it("§9.1: budget exhaustion stops a windowed scan with a LookupLimitError, never treated as a refusal", async () => {
-    const budget = createRequestBudget({ maxRequests: 5, deadlineMs: 90_000 });
-    const { client, requests } = fakeLogsClient(cappedNode(DISPUTE_1170_LOGS, 10_000n));
-    await expect(getLogsChunked(client, { ...scan, fromBlock: 14_600_000n, toBlock: 14_950_000n }, { budget })).rejects.toSatisfy(isLookupLimitError);
-    expect(requests.length).toBeLessThanOrEqual(5);
   });
 
   it("§9.1: an aborted signal stops the scan before the next request", async () => {

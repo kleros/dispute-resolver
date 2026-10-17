@@ -31,7 +31,7 @@ function PartyFields({
   const messages = partyErrors(error);
   return (
     <li className="grid grid-cols-1 items-start gap-3 max-lg:py-4 max-lg:first:pt-0 max-lg:last:pb-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]">
-      <FieldSlot name="partyAliases">
+      <FieldSlot>
         <TextField
           label={`Alias ${number} (Optional)`}
           value={party.alias}
@@ -43,7 +43,7 @@ function PartyFields({
           {...errorProps(messages.alias)}
         />
       </FieldSlot>
-      <FieldSlot name="partyAddresses">
+      <FieldSlot>
         <TextField
           label={`Address ${number} (Optional)`}
           value={party.address}
@@ -108,7 +108,7 @@ export function DocumentSection({ form, errors, onChange }: SectionProps) {
   const code = refused ? "not-content-addressed" : errors.primaryDocument;
   return (
     <FormGroup title="Primary document" description="Optional. A file jurors can open from the dispute, such as a contract or the rules that apply.">
-      <FieldSlot name="primaryDocument">
+      <FieldSlot>
         <AtlasFileField
           role="evidence"
           label="Primary Document (Optional)"

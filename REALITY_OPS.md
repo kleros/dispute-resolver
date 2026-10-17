@@ -14,22 +14,27 @@ This document explains how to maintain the two data files behind this:
 
 ## How it works
 
-- `src/app.js` (`getMetaEvidence`): when the arbitrable of a dispute is in `REALITY_PROXIES`, the
-  dynamic script of its MetaEvidence is not run. The resolver fetches the question with `fetchRealityQuestion` and derives
-  the ruling options with `deriveRealityRulingOptions`. For other arbitrables whose dynamic script uses
-  `reality-eth-lib`, the script still runs, but inside an iframe whose `JSON.parse` rejects duplicate keys; the case is
-  then flagged as unverified (or unresolvable when duplicate keys were detected).
-- `src/ethereum/reality-question.js` (`fetchRealityQuestion`): finds the dispute's question ID (`DisputeIDToQuestionID` on
-  single-chain proxies, `ArbitrationCreated` on cross-chain foreign proxies), then the question (`LogNewQuestion`) and
-  its template (`LogNewTemplate`). For the disputes of `KNOWN_DISPUTE_QUESTIONS` this takes 3 requests. Disputes created
-  after `REGISTRY_SNAPSHOT_BLOCKS` are found by scanning the logs from the snapshot block, which gets slower as the
-  snapshot ages. Results are cached in `localStorage` (`@@kleros/court/reality-question/v1/...`).
-- `src/ethereum/reality-safe-question.js`: populates the template without letting the parameters change its structure.
-- `src/ethereum/reality-ruling-options.js`: derives the ruling options, reproducing the behaviour of the arbitrable's
-  dynamic script, and tells whether `reality-eth-lib` (used by other interfaces and by the evidence display) renders
-  different options.
-- `src/components/realityQuestionNotice.js`: warns users when the options differ from the `reality-eth-lib`
-  rendering, when the question is malformed, or when the options could not be verified or determined.
+- `packages/core/src/metaEvidence/load.ts` (`loadMetaEvidence`): when the arbitrable of a dispute is in
+  `REGISTRY.realityProxies` (`getRealityProxy`), the dynamic script of its MetaEvidence is not run. The resolver fetches
+  the question with `fetchRealityQuestion` and derives the ruling options with `deriveRealityRulingOptions`. For other
+  arbitrables whose dynamic script uses `reality-eth-lib`, the script still runs, but in the sandboxed script runner
+  (ADR 0004), whose `JSON.parse` rejects duplicate keys (`packages/core/src/reality/guard.ts`); the case is then flagged
+  as unverified (or unresolvable when duplicate keys were detected, `packages/core/src/metaEvidence/reality.ts`).
+- `packages/core/src/reality/question.ts` (`fetchRealityQuestion`): finds the dispute's question ID
+  (`DisputeIDToQuestionID` on single-chain proxies, `ArbitrationCreated` on cross-chain foreign proxies), then the
+  question (`LogNewQuestion`) and its template (`LogNewTemplate`). For the disputes of `KNOWN_DISPUTE_QUESTIONS` this
+  takes 3 requests. Disputes created after `REGISTRY_SNAPSHOT_BLOCKS` are found by scanning the logs from the snapshot
+  block, which gets slower as the snapshot ages. Results are cached in `localStorage` under
+  `@@kleros/court/reality-question/v1/...` (key from `packages/core/src/reality/cache.ts`, storage in
+  `packages/web/src/data/realityCache.ts`).
+- `packages/core/src/reality/safeQuestion.ts`: populates the template without letting the parameters change its
+  structure.
+- `packages/core/src/reality/rulingOptions.ts` (`deriveRealityRulingOptions`): derives the ruling options, reproducing
+  the behaviour of the arbitrable's dynamic script, and tells whether `reality-eth-lib` (used by other interfaces and by
+  the evidence display) renders different options.
+- `packages/web/src/pages/case-summary/RealityNotice.tsx`: warns users when the options differ from the
+  `reality-eth-lib` rendering, when the question is malformed, or when the options could not be verified or determined
+  (the notice is chosen by `realityNotice` in `packages/core/src/metaEvidence/reality.ts`).
 
 ## RPC endpoints
 
@@ -85,10 +90,11 @@ investigate, not to commit.
 
 ## Adding a Reality.eth arbitrable to the registry
 
-Every Reality.eth arbitrable whose disputes are shown by the resolver must be in `REALITY_PROXIES`; otherwise its dynamic
-script is run and its cases are flagged as unverified. Candidates are the arbitrables of `src/ethereum/reality-addresses.js`
-and `src/ethereum/arbitrableWhitelist.js`, and any new arbitrable whose MetaEvidence `dynamicScriptURI` points to a script
-that contains `populatedJSONForTemplate`.
+Every Reality.eth arbitrable whose disputes are shown by the resolver must be in `REGISTRY.realityProxies`; otherwise
+its dynamic script is run and its cases are flagged as unverified. Candidates are the arbitrables of the display
+allowlist (`packages/core/src/registry/displayAllowlist.ts`, which includes the old app's Reality addresses, readable
+with `git show master:src/ethereum/reality-addresses.js`), and any new arbitrable whose MetaEvidence `dynamicScriptURI`
+points to a script that contains `populatedJSONForTemplate` (`isRealityScript` in `packages/core/src/reality`).
 
 1. **Identify the proxy.** It must be the arbitrable of the disputes (the `_arbitrable` of `DisputeCreation` on
    KlerosLiquid on Ethereum, or xKlerosLiquid on Gnosis) and its `arbitrator()` must return that chain's KlerosLiquid.
@@ -127,9 +133,10 @@ To remove an arbitrable, delete its entry and regenerate the known-question map.
 
 - A case shows "The answer options of this question could not be determined": the question's parameters are malformed
   in a way that makes its outcomes untrustworthy, or its template is invalid. Check the question on-chain.
-- The case page of a registry arbitrable stays empty (no dispute details): the question lookup failed (RPC errors,
-  request budget or deadline, see `LOOKUP_LIMITS` in `src/ethereum/reality-question.js`; the browser console shows the
-  error). A stale snapshot makes new disputes slower to find: regenerate the known-question map.
+- The case page of a registry arbitrable shows its dispute details as unavailable ("The Reality.eth question could not
+  be read."): the question lookup failed (RPC errors, request budget or deadline, see `LOOKUP_LIMITS` in
+  `packages/core/src/reality/constants.ts`). A stale snapshot makes new disputes slower to find: regenerate the
+  known-question map.
 - A registry arbitrable's case shows different options than its dynamic script: expected only when the question was
   crafted to make `reality-eth-lib` render misleading options (the case then shows the divergence warning). Otherwise,
   check the entry's `answeredTooSoon`, `localizedLang` and `questionOverride` against the script.

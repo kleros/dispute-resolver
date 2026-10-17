@@ -38,9 +38,8 @@ const BODY_CLASS =
 
 /**
  * The case page accordion (spec 5.11): its items all collapsed at first, one open at a time, over the library accordion.
- * A collapsed body stays mounted, so the parity hooks inside it remain readable (§12), but it is `hidden` once its
- * collapse animation ends: the library only shrinks it to zero height, which would leave its buttons and fields
- * reachable by keyboard while invisible. Give the accordion a `key` that changes with the dispute, so a new dispute
+ * A collapsed body stays mounted, but it is `hidden` once its collapse animation ends: the library only shrinks it to
+ * zero height, which would leave its buttons and fields reachable by keyboard while invisible. Give the accordion a `key` that changes with the dispute, so a new dispute
  * starts collapsed, as today.
  */
 export function CaseAccordion({ items }: { readonly items: readonly CaseAccordionItem[] }) {

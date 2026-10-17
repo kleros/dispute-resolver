@@ -4,7 +4,7 @@ import type { FamilyDetection } from "../families/types";
 import type { Outcome, Period } from "../types";
 import { buildAppealPanel, buildCrowdfundingCards, computeAppealAmounts } from "./index";
 import type { AppealPanelInput, Multipliers, RoundFunding, WithdrawState } from "./types";
-import { FAMILY_SIGNATURES, detectionFor, recordedDetection } from "./testHelpers";
+import { FAMILY_SIGNATURES, detectionFor, recordedDetection } from "../test/appeals/testHelpers";
 
 const ADDRESS = "0x00000000000000000000000000000000000000dd";
 const APPEAL_INFO: AppealInfo = { appealCost: 1_000n, appealPeriodStart: 100, appealPeriodEnd: 300 };

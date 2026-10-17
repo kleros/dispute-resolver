@@ -3,7 +3,6 @@ import { Card } from "@kleros/ui-components-library";
 import { useQueryClient } from "@tanstack/react-query";
 import { useId } from "react";
 import { APP_CONFIG } from "../../env";
-import { testId } from "../../parity";
 import { Attachment, ExternalLink, SafeMarkdown } from "../../safe-content";
 import { EYEBROW, SectionBoundary, SectionSkeleton } from "../../ui";
 import { queryKeys, useCoreDeps, type CaseDispute, type CaseSectionProps, type SectionData } from "../../data";
@@ -64,21 +63,20 @@ function SummaryCard({ metaEvidence, dispute, chain, found }: SummaryCardProps) 
         <header className="flex flex-col gap-1">
           <p className={EYEBROW}>Interact with the dispute</p>
           <h2 id={headingId} className="text-xl font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">
-            <span {...testId("case-title")}>{metaEvidence.title}</span>
-            {metaEvidence.title === "" ? <span className="text-klerosUIComponentsSecondaryText">Untitled dispute</span> : null}
+            {metaEvidence.title === "" ? <span className="text-klerosUIComponentsSecondaryText">Untitled dispute</span> : metaEvidence.title}
           </h2>
         </header>
-        <SafeMarkdown source={metaEvidence.description} className="max-w-[72ch]" testId="case-description" />
+        <SafeMarkdown source={metaEvidence.description} className="max-w-[72ch]" />
         <Parties aliases={metaEvidence.aliases} chain={chain} />
         {appLink === null && attachment === null ? null : (
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-klerosUIComponentsStroke pt-4">
             {appLink === null ? null : (
-              <ExternalLink href={appLink} testId="link-arbitrable-app" className={APP_LINK_CLASS}>
+              <ExternalLink href={appLink} className={APP_LINK_CLASS}>
                 Go to the arbitrable application
                 <ExternalIcon />
               </ExternalLink>
             )}
-            <Attachment attachment={attachment} testId="link-meta-evidence-file" />
+            <Attachment attachment={attachment} />
           </div>
         )}
         {found === undefined ? null : (

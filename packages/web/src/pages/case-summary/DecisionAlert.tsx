@@ -1,6 +1,5 @@
 import type { Decision } from "@dispute-resolver/core";
 import { useId } from "react";
-import { decisionAttributes, testId } from "../../parity";
 import { FACT_LEAD, SectionSkeleton } from "../../ui";
 import type { CaseSectionProps } from "../../data";
 import { existingView, foundLookup, viewField } from "./caseState";
@@ -18,12 +17,10 @@ function explanation(decision: ShownDecision): string {
 
 function DecisionPanel({ decision }: { readonly decision: Decision }) {
   const headingId = useId();
-  const attributes = decisionAttributes({ kind: decision.kind, wonBy: decision.kind === "winner" ? decision.wonBy : null });
-  // Periods 0 to 2 show no decision; the hidden element still reports `none` to the parity snapshot (04 §1).
-  if (decision.kind === "none") return <div {...attributes} hidden />;
+  // Periods 0 to 2 show no decision alert (spec 5.9).
+  if (decision.kind === "none") return null;
   return (
     <section
-      {...attributes}
       aria-labelledby={headingId}
       className="grid grid-cols-[24px_minmax(0,1fr)] items-start gap-x-4 gap-y-1 rounded-[18px] border-2 border-klerosUIComponentsPrimaryBlue bg-klerosUIComponentsMediumBlue px-4 py-4 lg:px-8 lg:py-6"
     >
@@ -33,9 +30,7 @@ function DecisionPanel({ decision }: { readonly decision: Decision }) {
       <h2 id={headingId} className="text-base font-semibold text-klerosUIComponentsPrimaryText">
         {decision.kind === "winner" ? "Winner" : "Jury decision"}
       </h2>
-      <p {...testId("case-decision-ruling")} className={`${FACT_LEAD} [overflow-wrap:anywhere] empty:hidden`}>
-        {decision.rulingText}
-      </p>
+      <p className={`${FACT_LEAD} [overflow-wrap:anywhere] empty:hidden`}>{decision.rulingText}</p>
       <p className="col-start-2 text-sm text-klerosUIComponentsSecondaryText">{explanation(decision)}</p>
     </section>
   );

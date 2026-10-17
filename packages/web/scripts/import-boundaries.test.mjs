@@ -23,7 +23,7 @@ describe("C9: production files never import test-only code", () => {
   for (const file of ["packages/web/src/pages/case/CasePage.tsx", "packages/web/src/wallet/WalletControl.tsx", "packages/web/src/pages/case/CasePage.test.tsx"]) {
     it(`C9: ${file} may not import the Playwright harness under e2e/`, async () => {
       const patterns = await restrictedPatterns(file);
-      for (const specifier of ["../../../e2e/support/wallet", "../../e2e/support/wallet.ts", "../../e2e/golden/csp", "../../e2e"]) {
+      for (const specifier of ["../../../e2e/support/wallet", "../../e2e/support/wallet.ts", "../../e2e/runner/rpcFixture", "../../e2e"]) {
         assert.ok(isBanned(patterns, specifier), `${specifier} is not banned in ${file}`);
       }
     });

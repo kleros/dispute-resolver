@@ -37,10 +37,7 @@ export function SearchBox({ chainId, search }: SearchBoxProps) {
   return (
     <form role="search" aria-labelledby={labelId} onSubmit={onSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <p id={labelId} className={EYEBROW}>
-        Search Disputes on{" "}
-        <ExternalLink href={courtCaseUrl(shown ?? 0n, chainId)} testId="link-court">
-          Court
-        </ExternalLink>
+        Search Disputes on <ExternalLink href={courtCaseUrl(shown ?? 0n, chainId)}>Court</ExternalLink>
       </p>
       <NumberField
         aria-label="Dispute ID"

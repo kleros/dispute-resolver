@@ -1,11 +1,21 @@
 import type { AbiEvent, GetLogsParameters, GetLogsReturnType } from "viem";
 import type { Address, ReadClient } from "../types";
-import { spendsBudgetPerAttempt } from "./client";
 import { isRangeLimitError } from "./rangeLimit";
-import type { LogScanLimits, RequestBudget } from "./types";
 
-/** The Reality lookup's windowing constants (spec 9.1). */
-const DEFAULT_LIMITS: LogScanLimits = { windowSize: 10_000, minWindowSize: 100, windowShrinkFactor: 5, concurrency: 8 };
+/** Windowing parameters of the chunked log scans. */
+interface LogScanLimits {
+  /** First window size when the whole range is refused. */
+  readonly windowSize: number;
+  /** Smallest window before giving up. */
+  readonly minWindowSize: number;
+  /** Divisor applied to the window after a refusal. */
+  readonly windowShrinkFactor: number;
+  /** Windows fetched in parallel. */
+  readonly concurrency: number;
+}
+
+/** The Reality lookup's windowing constants (spec 9.1): 10,000 blocks, 8 at a time, shrunk by 5 down to 100. */
+const LIMITS: LogScanLimits = { windowSize: 10_000, minWindowSize: 100, windowShrinkFactor: 5, concurrency: 8 };
 
 interface BlockWindow {
   readonly from: bigint;
@@ -21,25 +31,11 @@ interface ScanRequest<TEvent extends AbiEvent> {
 }
 
 interface ScanOptions {
-  readonly limits?: Partial<LogScanLimits>;
-  readonly budget?: RequestBudget;
   readonly signal?: AbortSignal;
 }
 
 /** The logs of one scan over mined blocks (explicit block numbers, so never pending). */
 type Logs<TEvent extends AbiEvent> = GetLogsReturnType<TEvent, undefined, undefined, bigint, bigint>;
-
-/** The limits with defaults filled in, each a whole number of at least 1 so the scan always advances. */
-function scanLimits(overrides: Partial<LogScanLimits> | undefined): LogScanLimits {
-  const limits = { ...DEFAULT_LIMITS, ...overrides };
-  const atLeastOne = (value: number) => Math.max(1, Math.floor(value));
-  return {
-    windowSize: atLeastOne(limits.windowSize),
-    minWindowSize: atLeastOne(limits.minWindowSize),
-    windowShrinkFactor: limits.windowShrinkFactor,
-    concurrency: atLeastOne(limits.concurrency),
-  };
-}
 
 /** The next window size after a refusal, or `undefined` when the window cannot shrink any further. */
 function shrink(windowSize: number, limits: LogScanLimits): number | undefined {
@@ -137,8 +133,8 @@ async function scanRange<TEvent extends AbiEvent>(fetchWindows: FetchWindows<TEv
  * range is tried in one request first. When the provider refuses it for its range or size limits, the range is scanned
  * forward in windows of `windowSize` blocks, `concurrency` at a time, oldest first; a refused window shrinks by
  * `windowShrinkFactor` down to `minWindowSize`, after which the refusal is rethrown. Other errors are rethrown, never
- * split. A client built with the same `budget` (`createReadClient`) spends it before every attempt, retries included;
- * any other client is charged once per request here. `signal` is checked before each round of requests.
+ * split. A lookup with a request budget passes a client built with it (`createReadClient`), which spends it before every
+ * attempt, retries included. `signal` is checked before each round of requests.
  */
 export async function getLogsChunked<const TEvent extends AbiEvent>(
   client: ReadClient,
@@ -147,17 +143,8 @@ export async function getLogsChunked<const TEvent extends AbiEvent>(
 ): Promise<GetLogsReturnType<TEvent>> {
   const { fromBlock, toBlock } = request;
   if (toBlock < fromBlock) return [];
-  const limits = scanLimits(options.limits);
-  const { budget } = options;
-  const spendPerWindow = budget !== undefined && !spendsBudgetPerAttempt(client, budget);
-
   const fetchWindows: FetchWindows<TEvent> = (windows) => {
     options.signal?.throwIfAborted();
-    if (spendPerWindow) {
-      windows.forEach(() => {
-        budget.spend();
-      });
-    }
     return Promise.allSettled(
       windows.map((window) =>
         client.getLogs<TEvent, undefined, undefined, bigint, bigint>({
@@ -171,7 +158,7 @@ export async function getLogsChunked<const TEvent extends AbiEvent>(
     );
   };
 
-  const logs = normalizeLogs(await scanRange(fetchWindows, { from: fromBlock, to: toBlock }, limits));
+  const logs = normalizeLogs(await scanRange(fetchWindows, { from: fromBlock, to: toBlock }, LIMITS));
   // The scan's logs are typed for explicit block numbers; the public type spells the same never-pending logs through
   // viem's defaults, which TypeScript cannot unify while `TEvent` is generic.
   return logs as GetLogsReturnType<TEvent>;

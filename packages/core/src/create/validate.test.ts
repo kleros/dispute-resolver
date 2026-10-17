@@ -47,13 +47,24 @@ describe("CREATE_LIMITS", () => {
     expect(CREATE_LIMITS.optionRange).toEqual([2, 32]);
     expect(CREATE_LIMITS.minVotes).toBe(1);
   });
-
-  it("§4.3: Question Type and Number of Options are required like production, with the court, votes, title, question and option titles", () => {
-    expect([...CREATE_LIMITS.requiredFields].sort((a, b) => a.localeCompare(b))).toEqual(["courtId", "optionCount", "optionTitles", "question", "questionType", "title", "votes"]);
-  });
 });
 
 describe("validateCreateInput: required fields and integers (§4.3)", () => {
+  it("§4.3: exactly the court, votes, title, question, Number of Options and option titles are required, like production", () => {
+    // Question Type is required too, and a draft cannot lack it: it is a `CreateQuestionType`, the dropdown's current choice.
+    const blank = draft({
+      courtId: "",
+      votes: "",
+      category: "",
+      title: "",
+      description: "",
+      question: "",
+      options: [{ title: "", description: "" }],
+      parties: [{ alias: "", address: "" }],
+    });
+    expect(errors(blank)).toEqual({ courtId: "required", votes: "required", title: "required", question: "required", optionCount: "out-of-range", options: ["required"] });
+  });
+
   it("§4.3: a complete single-select draft becomes a typed input", () => {
     expect(accepted(draft({ courtId: "12", votes: "5", category: "Other", description: "Details" }))).toEqual({
       courtId: 12n,

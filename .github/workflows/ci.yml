@@ -1,6 +1,6 @@
 # Continuous integration for the rewrite (docs/parity/README.md "CI gates"; checklist A20, B22, C9, C14).
-# Pull requests and pushes to the integration branch and master run the same gates. The Playwright golden-case suite and
-# the RPC pre-flight need live chains and secrets, so they run on demand against the branch deploy and are not part of this workflow.
+# Pull requests and pushes to the integration branch and master run the same gates. The RPC pre-flight needs live chains
+# and secrets, so it runs on demand and is not part of this workflow.
 name: CI
 
 on:

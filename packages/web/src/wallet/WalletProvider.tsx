@@ -10,8 +10,6 @@ export interface WalletSetupProviderProps {
   readonly pending?: boolean;
   /** `true` when, while `pending`, a stored connection waits for AppKit: the wallet reads as `connecting`. Default `false`. */
   readonly pendingReconnect?: boolean;
-  /** Wagmi's silent reconnect of a previously authorized connector at mount; default `true` (D-06). */
-  readonly reconnectOnMount?: boolean;
   readonly children?: ReactNode;
 }
 
@@ -19,12 +17,12 @@ export interface WalletSetupProviderProps {
  * Wagmi plus the wallet setup, for an already created setup. Wagmi reconnects a previously authorized connector
  * silently and never requests accounts, so nothing prompts at load (D-06). A new `setup` keeps the tree mounted: wagmi's
  * hooks follow the new config and wagmi hydrates it, reconnecting then. Needs a TanStack `QueryClientProvider` above it
- * (`DataProvider`, ARCHITECTURE.md §2.1).
+ * (`DataProvider`, ARCHITECTURE.md §2.1). Tests render it over their own setup (`src/test/wallet`).
  */
-export function WalletSetupProvider({ setup, pending = false, pendingReconnect = false, reconnectOnMount = true, children }: WalletSetupProviderProps) {
+export function WalletSetupProvider({ setup, pending = false, pendingReconnect = false, children }: WalletSetupProviderProps) {
   const state = useMemo(() => ({ setup, pending, pendingReconnect }), [setup, pending, pendingReconnect]);
   return (
-    <WagmiProvider config={setup.wagmiConfig} reconnectOnMount={reconnectOnMount && !pending}>
+    <WagmiProvider config={setup.wagmiConfig} reconnectOnMount={!pending}>
       <WalletSetupContext.Provider value={state}>{children}</WalletSetupContext.Provider>
     </WagmiProvider>
   );

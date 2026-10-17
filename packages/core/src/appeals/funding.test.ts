@@ -7,7 +7,7 @@ import type { Address } from "../types";
 import { DISPUTE_1170, GOVERNOR_1621, UNSLASHED } from "./__fixtures__/recorded";
 import { readRoundFunding, roundStartBlock } from "./index";
 import type { AppealContext } from "./types";
-import { FAMILY_SIGNATURES, answer, detectionFor, fakeNode, recordedDetection, reverting, rpcError, rpcLog, testBinding, type FakeNodeSpec } from "./testHelpers";
+import { FAMILY_SIGNATURES, answer, detectionFor, fakeNode, recordedDetection, reverting, rpcError, rpcLog, testBinding, type FakeNodeSpec } from "../test/appeals/testHelpers";
 
 const UNSLASHED_OVERRIDE = getOverride(REGISTRY, 1, UNSLASHED.arbitrable);
 const SYNTHETIC: Address = "0x00000000000000000000000000000000000000bb";

@@ -3,7 +3,6 @@ import { DropdownSelect, NumberField, TextField } from "@kleros/ui-components-li
 import { useQueryClient } from "@tanstack/react-query";
 import { useId } from "react";
 import { queryKeys, useArbitrationCost, useCourts } from "../../data";
-import { createCostAttributes, createCourtAttributes, testId } from "../../parity";
 import { Amount, FACT, LABEL, SectionUnavailable } from "../../ui";
 import { formExtraData, setCourt, setText, type CreateForm } from "./draft";
 import { FULL_WIDTH_FIELD, FULL_WIDTH_SELECT, FieldSlot, FormGroup, errorProps } from "./fields";
@@ -42,9 +41,8 @@ function CourtSelect({ chainId, courtId, error, onSelect }: { readonly chainId: 
   }
   const list = courts.status === "ready" ? courts.value : [];
   const items = list.map((court) => ({ id: court.id.toString(), text: courtLabel(court) }));
-  const hook = courts.status === "ready" ? createCourtAttributes(items.map((item) => item.text)) : testId("create-court");
   return (
-    <div {...hook} className="min-w-0">
+    <div className="min-w-0">
       <DropdownSelect
         label="Court"
         items={items}
@@ -64,7 +62,7 @@ function CourtSelect({ chainId, courtId, error, onSelect }: { readonly chainId: 
   );
 }
 
-/** The arbitration cost of the chosen court and votes (spec §4.3): empty while either is unknown, `create-cost` once read. */
+/** The arbitration cost of the chosen court and votes (spec §4.3): empty while either is unknown, the amount once read. */
 function ArbitrationCost({ chain, form }: { readonly chain: ChainConfig; readonly form: CreateForm }) {
   const labelId = useId();
   const extraData = formExtraData(form);
@@ -81,11 +79,7 @@ function ArbitrationCost({ chain, form }: { readonly chain: ChainConfig; readonl
     surface = "border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground";
     value = <span className="text-sm text-klerosUIComponentsError">{cost.error.message}</span>;
   } else {
-    value = (
-      <span {...createCostAttributes(cost.value)}>
-        <Amount wei={cost.value} chain={chain} className={FACT} />
-      </span>
-    );
+    value = <Amount wei={cost.value} chain={chain} className={FACT} />;
   }
   return (
     <div className="flex min-w-0 flex-col gap-1">
@@ -111,7 +105,7 @@ export function CourtSection({ chain, form, errors, onChange }: SectionProps) {
   return (
     <FormGroup title="Court and cost" description="The court that rules on the dispute, how many jurors it draws, and what that costs.">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <FieldSlot name="courtId">
+        <FieldSlot>
           <CourtSelect
             chainId={chain.id}
             courtId={form.courtId}
@@ -121,7 +115,7 @@ export function CourtSection({ chain, form, errors, onChange }: SectionProps) {
             }}
           />
         </FieldSlot>
-        <FieldSlot name="votes">
+        <FieldSlot>
           <NumberField
             label="Number of Votes"
             isRequired
@@ -137,7 +131,7 @@ export function CourtSection({ chain, form, errors, onChange }: SectionProps) {
             {...errorProps(errors.votes === undefined ? undefined : fieldErrorMessage("votes", errors.votes))}
           />
         </FieldSlot>
-        <FieldSlot name="category">
+        <FieldSlot>
           <TextField
             label="Category (Optional)"
             value={form.category}

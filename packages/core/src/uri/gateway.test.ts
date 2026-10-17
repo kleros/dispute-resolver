@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import courtPolicies from "./__fixtures__/court-policies.json";
 import { gatewayUrl, normalizeIpfsPath, policyFetchUrl, reserveThroughGateway, resolveGateway } from "./index";
 import type { CanonicalIpfsPath, GatewayOrigin } from "./types";
-import { AUTHORITY_LESS_HTTPS, CIDV1, DEFAULT_GATEWAY, GNOSIS_416_PATH, T2CR_DISPLAY_CID } from "./testHelpers";
+import { AUTHORITY_LESS_HTTPS, CIDV1, DEFAULT_GATEWAY, GNOSIS_416_PATH, T2CR_DISPLAY_CID } from "../test/uri/testHelpers";
 
 const GATEWAY: GatewayOrigin = DEFAULT_GATEWAY;
 const OTHER_GATEWAY: GatewayOrigin = "https://ipfs.example.org";

@@ -26,12 +26,12 @@ test("D-53: searching a nonexistent ID while a dispute is shown clears it at onc
     rpc: (call) => (isDisputesCall(call, MAINNET_ARBITRATOR, BigInt(missing)) ? OUT_OF_RANGE_ON_MAINNET : undefined),
   });
   await page.goto("/1/cases/1621");
-  await expect(page.getByTestId("case-title")).toHaveText(CASE_TITLE);
+  await expect(page.getByRole("heading", { name: CASE_TITLE, exact: true })).toBeVisible();
 
   await page.getByRole("textbox", { name: "Dispute ID" }).fill(missing);
 
   // The shown dispute goes as soon as the field changes, before the debounced search loads the new ID.
-  await expect(page.getByTestId("case-title")).toHaveCount(0, { timeout: 500 });
+  await expect(page.getByRole("heading", { name: CASE_TITLE, exact: true, includeHidden: true })).toHaveCount(0, { timeout: 500 });
   await expect(page).toHaveURL(`/1/cases/${missing}`);
   await expect
     .poll(() => traffic.rpc.some((call) => isDisputesCall(call, MAINNET_ARBITRATOR, BigInt(missing))), {
@@ -40,7 +40,8 @@ test("D-53: searching a nonexistent ID while a dispute is shown clears it at onc
     .toBe(true);
   await expect(page.getByText(notFound(missing))).toBeVisible();
   await expect(page.getByText(CASE_TITLE)).toHaveCount(0);
-  await expect(page.getByTestId("appeal-panel")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Appeal", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Appeal", exact: true, includeHidden: true })).toHaveCount(0);
   // Nothing else is read for an ID that names no dispute.
   expect(locatorRequests(traffic.http, missing)).toBe(0);
 });

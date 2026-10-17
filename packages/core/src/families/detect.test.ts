@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { SELECTORS } from "../abi";
 import { getRealityProxy, REGISTRY, registryKey, toRegistryAddress } from "../registry";
 import type { Registry } from "../registry/types";
-import type { ChainId } from "../types";
+import type { ChainId, Hex } from "../types";
 import { RECORDED_CONTRACTS, recorded } from "./__fixtures__/recorded";
 import { classifySelectors, createFamilyCache, detectFamily, scanSelectors } from "./index";
-import { codeReads, fakeNodeClient, recordedNode, rpcError, slotWord, type FakeNode } from "./testHelpers";
+import { codeReads, fakeNodeClient, recordedNode, rpcError, slotWord, type FakeNode } from "../test/families/testHelpers";
 import type { FamilyDetection } from "./types";
 
 const KLEROS_ETH = "0xe5bcea6f87aaee4a81f64dfdb4d30d400e0e5cf4";
@@ -32,6 +32,18 @@ function detectRecorded(chainId: ChainId, address: string): Promise<FamilyDetect
   return detectOn(chainId, address).detection;
 }
 
+/** The probe selectors carried by `code`'s dispatcher, in `SELECTORS` order. */
+function probeSelectorsOf(code: Hex): Hex[] {
+  const scanned = scanSelectors(code);
+  return Object.values(SELECTORS).filter((selector) => scanned.has(selector));
+}
+
+/** The probe selectors of the dispatcher detection scans for a recorded contract: its implementation's, else its own. */
+function recordedProbeSelectors(chainId: ChainId, address: string): Hex[] {
+  const contract = recorded(chainId, address);
+  return probeSelectorsOf(contract.implementation?.code ?? contract.code);
+}
+
 describe("06 §3 invariant 8: family detection on the recorded bytecode", () => {
   it.each(RECORDED_CONTRACTS.map((contract) => [`${contract.label} (${String(contract.chainId)}:${contract.address}, block ${String(contract.blockNumber)})`, contract] as const))(
     "06 §3 invariant 8: %s",
@@ -41,7 +53,7 @@ describe("06 §3 invariant 8: family detection on the recorded bytecode", () => 
       expect(detection.chainId).toBe(contract.chainId);
       expect(detection.arbitrable).toBe(contract.address);
       expect(detection.implementation).toBe(contract.implementation?.address ?? null);
-      expect(detection.selectors).toEqual(contract.expectedSelectors);
+      expect(recordedProbeSelectors(contract.chainId, contract.address)).toEqual(contract.expectedSelectors);
       if (contract.expectedFamily === "reality-proxy") {
         expect(detection.realityProxy).toBe(getRealityProxy(REGISTRY, contract.chainId, contract.address));
       } else {
@@ -81,12 +93,14 @@ describe("06 §3 invariant 8: family detection on the recorded bytecode", () => 
 describe("F2 06 §1: probe selectors survive PUSH data skipping on real dispatchers", () => {
   it("F2 06 §1: ubi-voting.eth keeps getCurrentSessionNumber() among its probe selectors", async () => {
     const detection = await detectRecorded(1, "0x7510c77163683448b8dc8fe9e019d9482be1ed2b");
-    expect(detection.selectors).toContain(SELECTORS["getCurrentSessionNumber()"]);
+    expect(recordedProbeSelectors(1, "0x7510c77163683448b8dc8fe9e019d9482be1ed2b")).toContain(SELECTORS["getCurrentSessionNumber()"]);
+    expect(detection.family).toBe("governor");
   });
 
   it("F2 06 §1: the Base-Ethereum foreign proxy keeps fundAppeal(uint256,uint256) among its probe selectors", async () => {
     const detection = await detectRecorded(1, "0xf0b37feda6cdf5f78b37e1fbccc24969059f2044");
-    expect(detection.selectors).toContain(SELECTORS["fundAppeal(uint256,uint256)"]);
+    expect(recordedProbeSelectors(1, "0xf0b37feda6cdf5f78b37e1fbccc24969059f2044")).toContain(SELECTORS["fundAppeal(uint256,uint256)"]);
+    expect(detection.capabilities.appeal).toEqual({ kind: "idr", fundAppeal: "fundAppeal(uint256,uint256)" });
   });
 });
 
@@ -238,7 +252,7 @@ describe("C11: probes read bytecode, never call the arbitrable", () => {
       const result = await detection;
       expect(result.family).toBe("view-only");
       expect(result.implementation).toBeNull();
-      expect(result.selectors).toEqual([]);
+      expect(probeSelectorsOf(clone.code)).toEqual([]);
       expect(calls).toEqual([{ method: "eth_getCode", params: [address, "latest"] }]);
     }
   });
@@ -257,7 +271,7 @@ describe("C11: probes read bytecode, never call the arbitrable", () => {
     expect(result.family).toBe("view-only");
     expect(result.writeFamily).toBe("view-only");
     expect(result.implementation).toBeNull();
-    expect(result.selectors).toEqual([]);
+    expect(result.capabilities).toEqual(classifySelectors(new Set()).capabilities);
     expect(calls.map((call) => call.method)).toEqual(["eth_getCode"]);
   });
 

@@ -2,7 +2,6 @@ import type { ChainId, Court, OngoingDispute, OngoingList, Unavailable } from "@
 import { useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { queryKeys, useOngoing, useOngoingTitle, type SectionData } from "../../data";
-import { ongoingPageAttributes, type OngoingState } from "../../parity";
 import { usePageChain } from "../../routing";
 import { EmptyState, Notice, PageMessage, PAGE_TITLE, SectionBoundary, SectionSkeleton } from "../../ui";
 import { FailedDisputeCard, OngoingCard } from "./OngoingCard";
@@ -17,14 +16,9 @@ const GRID_CLASS = "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3";
 /** One grid entry, newest first: a dispute with its struct, or a listed ID whose struct could not be read (§5.5). */
 type Entry = { readonly kind: "dispute"; readonly dispute: OngoingDispute } | { readonly kind: "failed"; readonly id: bigint };
 
-/** The `ongoing-page` `data-state` (§12.2) of the list as it stands. */
-export function ongoingState(list: SectionData<OngoingList>): OngoingState {
-  if (list.status === "loading") return "loading";
-  if (list.status === "unavailable") return "failed";
-  const value = list.value;
-  if (value.status === "no-arbitrator") return "no-arbitrator";
-  if (value.status === "failed") return "failed";
-  return value.disputes.length === 0 && value.failedIds.length === 0 ? "empty" : "list";
+/** Whether the list read answered that the chain has no arbitrator (spec §3). */
+function hasNoArbitrator(list: SectionData<OngoingList>): boolean {
+  return list.status === "ready" && list.value.status === "no-arbitrator";
 }
 
 /** Every listed dispute and failed ID in one descending order (spec §3 step 3). */
@@ -39,9 +33,9 @@ function entriesOf(list: Extract<OngoingList, { status: "ok" }>): Entry[] {
   });
 }
 
-function NoArbitrator({ chainId }: { readonly chainId: ChainId }) {
+function NoArbitrator() {
   return (
-    <div {...ongoingPageAttributes({ chain: chainId, state: "no-arbitrator" })} className="flex w-full flex-1 flex-col">
+    <div className="flex w-full flex-1 flex-col">
       <PageMessage title={NO_ARBITRATOR} />
     </div>
   );
@@ -56,19 +50,23 @@ interface DisputeItemProps {
 
 /**
  * A grid cell. Its title keeps loading while the filter hides it, so switching back shows it at once; a hidden cell
- * renders no card, as today (spec §3). A card that throws degrades alone (D-36); Retry reloads its title.
+ * renders no card, as today (spec §3). A card that throws degrades alone (D-36); Retry reloads its title (S-3).
  */
 function DisputeItem({ chainId, dispute, courts, visible }: DisputeItemProps) {
   const title = useOngoingTitle(chainId, dispute);
   const queryClient = useQueryClient();
+  // Retry drops the title that broke the card and remounts its boundary in the same render, so the new card starts from
+  // the loading title rather than re-throwing on the cached one and latching the boundary before the new read lands.
+  const [attempt, setAttempt] = useState(0);
   const section = `Dispute ${dispute.id.toString()}`;
   const retry = () => {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.metaEvidence(chainId, dispute.id, dispute.arbitrated) });
+    void queryClient.resetQueries({ queryKey: queryKeys.metaEvidence(chainId, dispute.id, dispute.arbitrated) });
+    setAttempt((count) => count + 1);
   };
   return (
     <li hidden={!visible} className="min-w-0">
       {visible ? (
-        <SectionBoundary key={dispute.id.toString()} section={section} onRetry={retry}>
+        <SectionBoundary key={`${dispute.id.toString()}:${String(attempt)}`} section={section} onRetry={retry}>
           <OngoingCard chainId={chainId} dispute={dispute} title={title} courts={courts} />
         </SectionBoundary>
       ) : null}
@@ -135,10 +133,9 @@ function OngoingDisputes({ chainId, chainName }: { readonly chainId: ChainId; re
   const { list, courts } = useOngoing(chainId);
   const [filter, setFilter] = useState<PeriodFilter>(DEFAULT_PERIOD_FILTER);
   const headingId = useId();
-  const state = ongoingState(list);
-  if (state === "no-arbitrator") return <NoArbitrator chainId={chainId} />;
+  if (hasNoArbitrator(list)) return <NoArbitrator />;
   return (
-    <section {...ongoingPageAttributes({ chain: chainId, state })} aria-labelledby={headingId} className="flex w-full min-w-0 flex-col gap-6">
+    <section aria-labelledby={headingId} className="flex w-full min-w-0 flex-col gap-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex min-w-0 flex-col gap-1">
           <h1 id={headingId} className={PAGE_TITLE}>
@@ -156,10 +153,10 @@ function OngoingDisputes({ chainId, chainName }: { readonly chainId: ChainId; re
 }
 
 /**
- * The Ongoing disputes page (spec §3, D-37, ARCHITECTURE.md §5.5, §11.5, §12.2). It needs no wallet; on a chain without
+ * The Ongoing disputes page (spec §3, D-37, ARCHITECTURE.md §5.5, §11.5). It needs no wallet; on a chain without
  * an arbitrator it reads nothing and says so, as today.
  */
 export function OngoingPage() {
   const { chainId, chain, capabilities } = usePageChain();
-  return capabilities.hasArbitrator ? <OngoingDisputes chainId={chainId} chainName={chain.name} /> : <NoArbitrator chainId={chainId} />;
+  return capabilities.hasArbitrator ? <OngoingDisputes chainId={chainId} chainName={chain.name} /> : <NoArbitrator />;
 }

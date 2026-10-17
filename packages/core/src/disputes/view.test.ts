@@ -3,8 +3,8 @@ import type { MetaEvidence, MetaEvidenceResult } from "../metaEvidence/types";
 import type { Outcome } from "../types";
 import { buildDisputeView, listCourts, lookupDispute, readDisputeDetails } from ".";
 import type { Court, DisputeLookup, DisputeReads, DisputeView } from "./types";
-import { fakeClient, fakeFetcher, GNOSIS, MAINNET, recordedDetection, recordedNode, recordedPolicyBodies } from "./testHelpers";
-import type { Recording } from "./testHelpers";
+import { fakeClient, fakeFetcher, GNOSIS, MAINNET, recordedDetection, recordedNode, recordedPolicyBodies } from "../test/disputes/testHelpers";
+import type { Recording } from "../test/disputes/testHelpers";
 
 const NOT_READ: Outcome<never> = { ok: false, error: { code: "rpc-error", message: "not read" } };
 
@@ -93,7 +93,10 @@ describe("buildDisputeView", () => {
       decision: { ok: true, value: { kind: "winner", ruling: 0n, rulingText: "invalid / refused to arbitrate / tied", wonBy: "jury" } },
       realityNotice: { kind: "none", title: null },
     });
-    expect(view.timeline).toMatchObject({ ok: true, value: { columns: [{ state: "concluded" }, { state: "concluded" }, { state: "concluded" }, { state: "current", name: "execution" }] } });
+    expect(view.timeline).toMatchObject({
+      ok: true,
+      value: { columns: [{ state: "concluded" }, { state: "concluded" }, { state: "concluded" }, { state: "current", name: "execution" }] },
+    });
   });
 
   it("§5.8, 04 §1: numberOfVotes is the first round's count of an appealed dispute (mainnet 328)", async () => {

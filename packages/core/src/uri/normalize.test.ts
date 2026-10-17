@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { isContentAddressed, normalizeIpfsPath, toCidPath } from "./index";
-import { ALLOWLIST_ENTRIES, CIDV1, DEFAULT_SCRIPT_CID, GNOSIS_416_PATH, T2CR_DISPLAY_CID, TRAILING_SLASH_ENTRY } from "./testHelpers";
+import { ALLOWLIST_ENTRIES, CIDV1, DEFAULT_SCRIPT_CID, GNOSIS_416_PATH, T2CR_DISPLAY_CID, TRAILING_SLASH_ENTRY } from "../test/uri/testHelpers";
 import type { CidPath } from "./types";
 
 const CID = T2CR_DISPLAY_CID;

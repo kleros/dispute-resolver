@@ -1,7 +1,6 @@
 import type { ChainConfig, CrowdfundingCard } from "@dispute-resolver/core";
 import { Card } from "@kleros/ui-components-library";
 import { useId } from "react";
-import { appealCardAttributes, testId } from "../../parity";
 import { Amount, CHIP_STATUS, FACT_LEAD, PLATE } from "../../ui";
 import { FundAction } from "./FundAction";
 import { FundingProgress } from "./FundingProgress";
@@ -16,22 +15,18 @@ export interface FundingCardProps {
 
 /**
  * One fixed crowdfunding card (spec §5.12 card contents): its title, the latest-jury-decision mark, the funding and the
- * countdown to its deadline, then the contribution and Fund. The parity hooks sit on the list item, since the library
- * `Card` does not forward `data-*` attributes (§12.1).
+ * countdown to its deadline, then the contribution and Fund. The list item is named by the card's title.
  */
 export function FundingCard({ card, actions, chain }: FundingCardProps) {
   const titleId = useId();
-  const hooks = appealCardAttributes({ code: card.code, fundedPercent: card.fundedPercent, remainingWei: card.remaining, deadline: card.deadline });
   return (
-    <li className={CARD_ITEM_CLASS} aria-labelledby={titleId} {...hooks}>
+    <li className={CARD_ITEM_CLASS} aria-labelledby={titleId}>
       <Card className={card.isWinner ? `${CARD_CLASS} ${PLATE}` : CARD_CLASS}>
         <div className="flex flex-col items-start gap-2">
-          <h4 id={titleId} className={CARD_TITLE_CLASS} {...testId("appeal-card-title")}>
+          <h4 id={titleId} className={CARD_TITLE_CLASS}>
             {card.title}
           </h4>
-          {card.isWinner ? (
-            <span className={CHIP_STATUS}>Latest jury decision</span>
-          ) : null}
+          {card.isWinner ? <span className={CHIP_STATUS}>Latest jury decision</span> : null}
         </div>
         <div className={CARD_FOOTER_CLASS}>
           <FundingProgress percent={card.fundedPercent} deadline={card.deadline} />

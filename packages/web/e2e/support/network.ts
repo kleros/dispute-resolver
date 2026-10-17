@@ -4,11 +4,13 @@ import { z } from "zod";
 
 // A network-free world for the app's Playwright specs (C9: the doubles live in e2e only). One catch-all route of the
 // browser context answers every request that leaves the app's origin: JSON-RPC reads from a recording or from the spec,
-// the meta-evidence locator and the IPFS gateway from the spec or the recording, and nothing else (aborted). Requests
+// the meta-evidence locator and the IPFS gateway from the spec or the recording, Atlas from the spec when it serves
+// one, and nothing else (aborted). Requests
 // are recognized by their shape, never by host, so the build's configured URLs, which carry API keys, are never named,
 // compared or printed here. The build must have the read RPCs and the meta-evidence API configured, as a deploy does.
 
-const CORS_HEADERS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "*" };
+// The `*` of allow-headers never covers `Authorization`, which Atlas requests carry once signed in, so it is named too.
+const CORS_HEADERS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "*, authorization" };
 
 const RpcErrorSchema = z.object({ code: z.number(), message: z.string() });
 
@@ -54,6 +56,19 @@ export interface JsonAnswer {
 /** A gateway or locator answer: a JSON body, or a status with no body. */
 export type HttpAnswer = JsonAnswer | { readonly status: number };
 
+const GraphqlRequestSchema = z.object({ query: z.string(), variables: z.record(z.string(), z.unknown()).optional() });
+
+/**
+ * A request to Atlas, recognized by its shape: a GraphQL POST (a JSON body with a `query`), or the multipart upload POST
+ * to `…/ipfs/file`. `authorization` is the `Authorization` header the page sent, if any.
+ */
+export type AtlasRequest =
+  | { readonly kind: "graphql"; readonly query: string; readonly variables: Readonly<Record<string, unknown>>; readonly authorization: string | null }
+  | { readonly kind: "upload"; readonly authorization: string | null };
+
+/** An Atlas answer: a JSON body, or a text body (the upload's CID). */
+export type AtlasAnswer = JsonAnswer | { readonly text: string };
+
 export interface FakeNetworkOptions {
   /** The app's origin: its own files are served by the app's server. */
   readonly appOrigin: string;
@@ -65,6 +80,8 @@ export interface FakeNetworkOptions {
   readonly http?: (request: HttpRequest) => HttpAnswer | undefined;
   /** The locator and gateway requests never answered, as a stalled server does. */
   readonly hold?: (request: HttpRequest) => boolean;
+  /** Atlas, served by the spec; without it every Atlas request is aborted, as for any other service. */
+  readonly atlas?: (request: AtlasRequest) => AtlasAnswer;
 }
 
 /** A GET the page made outside its origin: the locator's query or a gateway path, never the host. */
@@ -119,6 +136,21 @@ function jsonRpcCall(request: Request): z.infer<typeof JsonRpcRequestSchema> | u
   return parsed.success ? parsed.data : undefined;
 }
 
+/** The Atlas request `request` is, or `undefined` when it is not shaped as one. */
+async function atlasRequestOf(request: Request, url: URL): Promise<AtlasRequest | undefined> {
+  if (request.method() !== "POST") return undefined;
+  const authorization = await request.headerValue("authorization");
+  if (url.pathname.endsWith("/ipfs/file") && (request.headers()["content-type"] ?? "").startsWith("multipart/form-data")) return { kind: "upload", authorization };
+  let body: unknown;
+  try {
+    body = JSON.parse(request.postData() ?? "");
+  } catch {
+    return undefined;
+  }
+  const parsed = GraphqlRequestSchema.safeParse(body);
+  return parsed.success ? { kind: "graphql", query: parsed.data.query, variables: parsed.data.variables ?? {}, authorization } : undefined;
+}
+
 /** The meta-evidence locator, recognized by its query (spec 9.1 step 1), or a gateway path; `undefined` for anything else. */
 function httpRequestOf(url: URL): HttpRequest | undefined {
   const chainId = url.searchParams.get("chainId");
@@ -132,10 +164,16 @@ async function fulfillJson(route: Route, body: unknown, status = 200): Promise<v
   await route.fulfill({ status, headers: CORS_HEADERS, contentType: "application/json", body: JSON.stringify(body) });
 }
 
+async function answerAtlas(route: Route, answer: AtlasAnswer): Promise<void> {
+  if ("json" in answer) await fulfillJson(route, answer.json);
+  else await route.fulfill({ status: 200, headers: CORS_HEADERS, contentType: "text/plain", body: answer.text });
+}
+
 /**
  * Routes every request of `context` that leaves the app's origin. JSON-RPC: the spec's answer, else the recorded one,
- * else a node error (counted as unanswered; `eth_blockNumber` answers the recording's block). Locator and gateway: the
- * spec's answer, else the recorded one, else 404. Everything else, the wallet services included, is aborted.
+ * else a node error (counted as unanswered; `eth_blockNumber` answers the recording's block). Atlas: the spec's answer
+ * when it serves Atlas. Locator and gateway: the spec's answer, else the recorded one, else 404. Everything else, the
+ * wallet services included, is aborted.
  */
 export async function fakeNetwork(context: BrowserContext, options: FakeNetworkOptions): Promise<Traffic> {
   const traffic: Traffic = { rpc: [], rpcUnanswered: [], http: [], aborted: 0 };
@@ -176,6 +214,8 @@ export async function fakeNetwork(context: BrowserContext, options: FakeNetworkO
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS_HEADERS });
     const call = jsonRpcCall(request);
     if (call !== undefined) return answerRpc(route, call.id, { method: call.method, params: call.params ?? [] });
+    const atlas = options.atlas === undefined ? undefined : await atlasRequestOf(request, url);
+    if (atlas !== undefined && options.atlas !== undefined) return answerAtlas(route, options.atlas(atlas));
     const http = request.method() === "GET" ? httpRequestOf(url) : undefined;
     if (http !== undefined) return answerHttp(route, http);
     traffic.aborted += 1;

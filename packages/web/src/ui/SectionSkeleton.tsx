@@ -46,7 +46,7 @@ function TextLines({ count }: { readonly count: number }) {
   return (
     <>
       {ids.map((id, position) => (
-        <div key={id} data-skeleton-item="" className={`${BLOCK} h-4 ${lineWidth(position, count)}`} />
+        <div key={id} className={`${BLOCK} h-4 ${lineWidth(position, count)}`} />
       ))}
     </>
   );
@@ -54,7 +54,7 @@ function TextLines({ count }: { readonly count: number }) {
 
 function GridCardPlaceholder() {
   return (
-    <div className={GRID_CARD} data-skeleton-item="">
+    <div className={GRID_CARD}>
       <div className="flex items-center justify-between">
         <div className={PILL_BLOCK} />
         <div className={`${BLOCK} h-5 w-12`} />
@@ -86,7 +86,7 @@ export function SectionSkeleton({ variant, lines }: SectionSkeletonProps) {
     content = (
       <div>
         {keys("bar", itemCount(lines, 3)).map((id) => (
-          <div key={id} data-skeleton-item="" className={BAR} />
+          <div key={id} className={BAR} />
         ))}
       </div>
     );

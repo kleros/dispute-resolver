@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { resolveDisplayUrl } from "./index";
 import type { GatewayOrigin } from "./types";
-import { AUTHORITY_LESS_HTTPS, CIDV1, DEFAULT_GATEWAY, EXPLICIT_AUTHORITY_HTTPS, HTTPS_SPELLINGS, movesOnAppPages, T2CR_DISPLAY_CID } from "./testHelpers";
+import { AUTHORITY_LESS_HTTPS, CIDV1, DEFAULT_GATEWAY, EXPLICIT_AUTHORITY_HTTPS, HTTPS_SPELLINGS, movesOnAppPages, T2CR_DISPLAY_CID } from "../test/uri/testHelpers";
 
 const GATEWAY: GatewayOrigin = DEFAULT_GATEWAY;
 const CID = T2CR_DISPLAY_CID;
