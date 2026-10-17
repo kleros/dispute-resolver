@@ -26,6 +26,7 @@ function caseDispute(metaEvidence: SectionData<MetaEvidenceResult>): CaseDispute
     metaEvidence,
     disputeEvent: sectionLoading,
     evidence: sectionLoading,
+    appealDecisions: sectionLoading,
     courts: sectionLoading,
     appealPanel: sectionLoading,
     write: sectionLoading,

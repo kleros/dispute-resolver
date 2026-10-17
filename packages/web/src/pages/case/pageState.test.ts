@@ -29,6 +29,7 @@ function caseDispute(overrides: Partial<CaseDispute> = {}): CaseDispute {
     metaEvidence: sectionLoading,
     disputeEvent: sectionLoading,
     evidence: sectionLoading,
+    appealDecisions: sectionLoading,
     courts: sectionLoading,
     appealPanel: sectionLoading,
     write: sectionLoading,
@@ -54,7 +55,7 @@ describe("casePageHook (§12.1)", () => {
     expect(casePageHook(caseDispute({ lookup: sectionReady({ status: "unavailable", error: { code: "rpc-error", message: "down" } }) }))).toEqual({ state: "unavailable" });
   });
 
-  it("S-4: a found dispute writes its arbitrable, period and last period change before the view settles", () => {
+  it("P-20: a found dispute writes its arbitrable, period and last period change before the view settles", () => {
     expect(casePageHook(caseDispute())).toEqual({
       state: "dispute",
       arbitrable: TEST_ARBITRABLE,

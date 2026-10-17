@@ -60,6 +60,7 @@ function SubmitEvidence({ context, chainId, disputeId }: SubmitEvidenceProps) {
         }}
         submitting={submission.inFlight}
         feedback={isOpen ? submission.feedback : null}
+        wrongChain={submission.guard?.phase === "wrong-chain" ? submission.guard : null}
       />
     </div>
   );
@@ -122,13 +123,31 @@ function useEvidenceRetry(dispute: CaseDispute): () => void {
   }, [binding, client, refresh]);
 }
 
+/** Reads the dispute details again, which hold the `AppealDecision` events; data exposes them only through the "appeal" refresh. */
+function AppealMarkersUnavailable({ dispute, error }: { readonly dispute: CaseDispute; readonly error: Unavailable }) {
+  const refresh = useCaseRefresh(dispute.chainId, dispute.disputeId);
+  const retry = useCallback(() => {
+    void refresh("appeal");
+  }, [refresh]);
+  return <SectionUnavailable section="Appeal markers" error={error} onRetry={retry} />;
+}
+
+/**
+ * The evidence list. The appeal decisions only add the "Appealed" markers (D-03): the entries show while they load, and
+ * when they failed the entries stay, with a notice that the markers are missing (D-36).
+ */
 function EvidenceListView({ dispute, chain }: CaseSectionProps) {
   const retry = useEvidenceRetry(dispute);
-  const { evidence, disputeEvent } = dispute;
-  if (evidence.status === "loading") return <SectionSkeleton variant="card" lines={3} />;
+  const { evidence, disputeEvent, appealDecisions } = dispute;
+  if (evidence.status === "loading") return <SectionSkeleton variant="text" lines={4} />;
   if (evidence.status === "unavailable") return <SectionUnavailable section={SECTION} error={evidence.error} onRetry={retry} />;
   const raisedAt = disputeEvent.status === "ready" && disputeEvent.value.status === "found" ? disputeEvent.value.event.createdAt : null;
-  return <EvidenceTimeline list={evidence.value} raisedAt={raisedAt} chain={chain} />;
+  return (
+    <div className="flex min-w-0 flex-col gap-4">
+      {appealDecisions.status === "unavailable" ? <AppealMarkersUnavailable dispute={dispute} error={appealDecisions.error} /> : null}
+      <EvidenceTimeline list={evidence.value} raisedAt={raisedAt} appealDecisions={appealDecisions.status === "ready" ? appealDecisions.value : []} chain={chain} />
+    </div>
+  );
 }
 
 /**

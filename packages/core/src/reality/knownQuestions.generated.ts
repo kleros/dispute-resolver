@@ -11,7 +11,7 @@ import type { ChainId } from "../types";
 import type { KnownDisputeQuestion } from "./types";
 
 /** Arbitrator chain ID => last block covered by KNOWN_DISPUTE_QUESTIONS. */
-export const REGISTRY_SNAPSHOT_BLOCKS: Readonly<Record<ChainId, number>> = { 1: 26162181, 100: 48685374 };
+export const REGISTRY_SNAPSHOT_BLOCKS: Readonly<Record<ChainId, number>> = { 1: 26202784, 100: 48780938 };
 
 export const KNOWN_DISPUTE_QUESTIONS: Readonly<Record<string, KnownDisputeQuestion>> = {
   "1:0x126697b552b83f08c7ebebae8d13eae2871e4e1e:156": {

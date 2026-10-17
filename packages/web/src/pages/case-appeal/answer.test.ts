@@ -17,17 +17,17 @@ describe("free-input answers (spec §5.12)", () => {
     expect(new Set(messages).size).toBe(codes.length);
   });
 
-  it("WN-4: an int answer of -1 funds ruling 0, the refuse-to-arbitrate ruling", () => {
+  it("P-21: an int answer of -1 funds ruling 0, the refuse-to-arbitrate ruling", () => {
     expect(intCode("-1")).toBe(0n);
     expect(fundedIntAnswer(intCode("-1"))).toBe(REFUSED_RULING_TEXT);
   });
 
-  it("WN-4: an int answer of -2 funds 2^256 - 1, Reality's answered-too-soon answer", () => {
+  it("P-21: an int answer of -2 funds 2^256 - 1, Reality's answered-too-soon answer", () => {
     expect(intCode("-2")).toBe((1n << 256n) - 1n);
     expect(fundedIntAnswer(intCode("-2"))).toBe("Answered too soon");
   });
 
-  it("WN-4: other int answers fund themselves, negative ones included", () => {
+  it("P-21: other int answers fund themselves, negative ones included", () => {
     expect(fundedIntAnswer(intCode("41"))).toBe("41");
     expect(fundedIntAnswer(intCode("0"))).toBe("0");
     expect(fundedIntAnswer(intCode("-3"))).toBe("-3");

@@ -2,10 +2,7 @@ import type { ChainId, Unavailable } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { Link } from "react-router";
 import { paths } from "../../routing";
-import { PageMessage, SectionSkeleton } from "../../ui";
-
-const ACTION_CLASS =
-  "inline-flex items-center rounded-base bg-klerosUIComponentsPrimaryBlue px-6 py-2 font-semibold text-klerosUIComponentsWhiteBackground hover:bg-klerosUIComponentsSecondaryBlue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klerosUIComponentsPrimaryBlue";
+import { ACTION_LINK_CLASS, PageMessage, SectionSkeleton } from "../../ui";
 
 /** The not-found copy of spec 5.4. `id` is shown as text only, never put in a URL or an attribute (A19). */
 function notFoundTitle(id: string): string {
@@ -14,7 +11,7 @@ function notFoundTitle(id: string): string {
 
 function OngoingLink({ chainId }: { readonly chainId: ChainId }) {
   return (
-    <Link to={paths.ongoing(chainId)} className={ACTION_CLASS}>
+    <Link to={paths.ongoing(chainId)} className={ACTION_LINK_CLASS}>
       View Ongoing Disputes
     </Link>
   );

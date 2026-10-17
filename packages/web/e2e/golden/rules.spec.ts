@@ -4,6 +4,7 @@ import { formatRuling } from "@dispute-resolver/core";
 import { expect, test } from "@playwright/test";
 import { checkAccountContext, checkDegradation, checkHighlights, checkSettled, evaluateCase, evaluateOngoing, type FieldResult } from "./compare/engine";
 import { REPOSITORY_ROOT } from "./config";
+import { blockedResourceOf, reportOnlyViolationOf, summarizeViolations } from "./csp";
 import { connectedAccountOf } from "./extract/newCase";
 import { displayParams, etherToWei, recordedPageUrl } from "./extract/common";
 import { sameAddress, sameWei, timeSign, withoutWhitespace } from "./compare/values";
@@ -107,7 +108,7 @@ test("04 §1: a difference no ledger entry explains fails the field", () => {
   expect(fieldOf(results, "courtName").status).toBe("difference");
 });
 
-test("D-39: the timeline is checked against the columns of production's period, Commit optional", () => {
+test("D-39: the timeline is checked against the columns of production's period, Commit optional only when the court is not recorded", () => {
   expect(fieldOf(evaluate(snapshot("production"), snapshot("new", { timeline: EXECUTION_TIMELINE })), "timeline")).toMatchObject({
     status: "expected-difference",
     entries: ["D-39"],
@@ -135,6 +136,24 @@ test("D-26: an attachment moved to the configured gateway compares on its /ipfs/
   expect(fieldOf(results, "evidence")).toMatchObject({ status: "expected-difference", entries: ["D-26"] });
 });
 
+function arbitrableAppLink(production: string | null, next: string | null): FieldResult {
+  const links = (arbitrableApp: string | null) => ({ court: "https://court.kleros.io/cases/1?requiredChainId=1", arbitrableApp, metaEvidenceFile: null });
+  return fieldOf(evaluate(snapshot("production", { links: links(production) }), snapshot("new", { links: links(next), timeline: EXECUTION_TIMELINE })), "links.arbitrableApp");
+}
+
+test("D-28: a link to the app's host name is hidden whatever its port, as core's host rule compares host names", () => {
+  expect(arbitrableAppLink("https://localhost:5173/1/cases/1", null)).toMatchObject({ status: "expected-difference", entries: ["D-28"] });
+  expect(arbitrableAppLink("https://LOCALHOST/1/cases/1", null)).toMatchObject({ status: "expected-difference", entries: ["D-28"] });
+  expect(arbitrableAppLink("https://example.com/1/cases/1", null).status).toBe("difference");
+});
+
+test("D-28: a link production hid only because resolve.kleros.io appears outside its host is the new app's to show", () => {
+  expect(arbitrableAppLink(null, "https://example.com/?via=resolve.kleros.io")).toMatchObject({ status: "expected-difference", entries: ["D-28"] });
+  expect(arbitrableAppLink(null, "https://resolve.kleros.io.example.com/")).toMatchObject({ status: "expected-difference", entries: ["D-28"] });
+  expect(arbitrableAppLink(null, "https://example.com/").status).toBe("difference");
+  expect(arbitrableAppLink(null, "https://localhost:5173/?via=resolve.kleros.io").status).toBe("difference");
+});
+
 /** A synthetic API key, never a real one: the redaction tests look for it in what is written. */
 const RPC_KEY = "0123456789abcdef0123456789abcdef";
 const KEYED_RPC_URL = `https://mainnet.example.invalid/v3/${RPC_KEY}`;
@@ -160,7 +179,14 @@ test("D-35: an RPC URL in the display parameters is stored as its host and a fin
 
 test("D-35: a report built from a snapshot holding a keyed RPC URL writes neither the key nor the URL", () => {
   const display = (jsonRpcUrl: string) =>
-    ({ present: true, srcOrigin: "https://cdn.kleros.link", srcPath: "/ipfs/QmDisplay/index.html", params: { jsonRpcUrl, disputeID: "1" }, sandbox: ["allow-scripts"] }) as const;
+    ({
+      present: true,
+      srcOrigin: "https://cdn.kleros.link",
+      srcPath: "/ipfs/QmDisplay/index.html",
+      params: { jsonRpcUrl, disputeID: "1" },
+      sandbox: ["allow-scripts"],
+      rendered: { documentUrl: null, text: "" },
+    }) as const;
   const production = snapshot("production", { evidenceDisplay: display(KEYED_RPC_URL) });
   const next = snapshot("new", { evidenceDisplay: display(`https://other.example.invalid/v2/${RPC_KEY}`), timeline: EXECUTION_TIMELINE });
   const fields = evaluate(production, next);
@@ -179,10 +205,11 @@ test("D-35: a report built from a snapshot holding a keyed RPC URL writes neithe
       fields,
       checks: [],
       snapshots: { production, next },
+      cspViolations: [],
     },
     directories,
   );
-  expect(buildReports(directories)).toEqual({ total: 1, failed: 0 });
+  expect(buildReports(directories)).toEqual({ total: 1, failed: 0, cspViolations: 0 });
   const written = [join(directories.cases, "case-1-1.json"), join(directories.reports, "golden-report.json"), join(directories.reports, "golden-report.md")].map((file) =>
     readFileSync(file, "utf8"),
   );
@@ -191,6 +218,61 @@ test("D-35: a report built from a snapshot holding a keyed RPC URL writes neithe
     expect(text.includes(KEYED_RPC_URL), "the full URL is written").toBe(false);
   }
   expect(written[1]?.includes("mainnet.example.invalid sha256:")).toBe(true);
+});
+
+test("C2: a report-only violation is recorded as its directive and the blocked origin, never a path or query", () => {
+  const app = "https://preview.example.invalid";
+  const raw = { disposition: "report", effectiveDirective: "connect-src", blockedURI: `${KEYED_RPC_URL}?key=${RPC_KEY}`, frameUrl: `${app}/1/cases/1454` };
+
+  expect(reportOnlyViolationOf(raw, app)).toEqual({ directive: "connect-src", blocked: "https://mainnet.example.invalid" });
+  expect(blockedResourceOf(`wss://relay.example.invalid/socket/${RPC_KEY}`)).toBe("wss://relay.example.invalid");
+  expect(blockedResourceOf("inline")).toBe("inline");
+  expect(blockedResourceOf("eval")).toBe("eval");
+  expect(blockedResourceOf("data:image/png;base64,AAAA")).toBe("data:");
+  expect(blockedResourceOf(`mainnet.example.invalid/v3/${RPC_KEY}`)).toBe("unparseable");
+  // The runner's enforced policy (C3) and a third-party frame's own policy are not the app's report-only policy.
+  expect(reportOnlyViolationOf({ ...raw, disposition: "enforce" }, app)).toBeNull();
+  expect(reportOnlyViolationOf({ ...raw, frameUrl: "https://cdn.example.invalid/ipfs/QmDisplay/index.html" }, app)).toBeNull();
+});
+
+test("C2: the report lists each screen's report-only violations and the run's total, without any key", () => {
+  const app = "https://preview.example.invalid";
+  const violation = (blockedURI: string) => reportOnlyViolationOf({ disposition: "report", effectiveDirective: "connect-src", blockedURI, frameUrl: `${app}/1/ongoing` }, app);
+  const hits = [violation(KEYED_RPC_URL), violation(`${KEYED_RPC_URL}/again`), violation("https://court-policy.example.invalid/policy.json")].filter((hit) => hit !== null);
+  const cspViolations = summarizeViolations(hits);
+  expect(cspViolations).toEqual([
+    { directive: "connect-src", blocked: "https://court-policy.example.invalid", count: 1 },
+    { directive: "connect-src", blocked: "https://mainnet.example.invalid", count: 2 },
+  ]);
+  const production = snapshot("production");
+  const next = snapshot("new");
+  const directories = { cases: test.info().outputPath("cases"), reports: test.info().outputPath("reports") };
+  writeScreenResult(
+    {
+      id: "case 1:1",
+      screen: "case",
+      chainId: 1,
+      disputeId: 1,
+      description: "report-only violations",
+      account: null,
+      accountNote: null,
+      passed: true,
+      attempt: 1,
+      fields: evaluate(production, next),
+      checks: [],
+      snapshots: { production, next },
+      cspViolations,
+    },
+    directories,
+  );
+
+  expect(buildReports(directories)).toEqual({ total: 1, failed: 0, cspViolations: 3 });
+  const markdown = readFileSync(join(directories.reports, "golden-report.md"), "utf8");
+  expect(markdown).toContain("## Report-only CSP violations (C2)");
+  expect(markdown).toContain("| connect-src | https://mainnet.example.invalid | 2 | case 1:1 |");
+  const json = readFileSync(join(directories.reports, "golden-report.json"), "utf8");
+  expect((JSON.parse(json) as { cspViolations: number }).cspViolations).toBe(3);
+  for (const text of [markdown, json]) expect(text.includes(RPC_KEY), "the key is written").toBe(false);
 });
 
 test("a page URL is recorded as the app's origin and the screen path, without the base URL's credentials, path or query", () => {
@@ -330,6 +412,30 @@ test("D-47: a per-case D-47 tag applies the view-only panel rules (Gnosis 41, 42
   const shown = snapshot("new", { family: "view-only", appealPanel: withdrawPanel("0"), timeline: EXECUTION_TIMELINE });
   expect(fieldOf(evaluateFor(stableCase(100, 41), production, shown), "appealPanel.kind").status).toBe("difference");
   expect(fieldOf(evaluateFor(stableCase(1, 1454), production, next), "appealPanel.kind").status).toBe("difference");
+});
+
+test("D-47: a live appeal pick with no recorded family on which production shows its view-only banner and the fees notice shows the note (mainnet 1684)", () => {
+  // As liveTier.ts builds a pick of a golden/live.json that records no family: a test case without 04 §2 highlights.
+  const livePick: StableCase = { chainId: 1, disputeId: 1684, arbitrable: "0x799cb978dea5d6ca00ccb1794d3c3d4c89e40cd1", exercises: "live tier: the appeal pick (04 §3)" };
+  const appealPeriod = { period: 3, compatibility: "view-only" } as const;
+  const feesUnavailable = snapshot("production", { ...appealPeriod, appealPanel: { kind: "fees-unavailable", cards: [], withdrawableWei: null } });
+  const note = snapshot("new", { ...appealPeriod, family: "view-only", appealPanel: { kind: "handled-by-arbitrable", cards: [], withdrawableWei: null } });
+  const card = { title: "Yes", code: "1", fundedPercent: 0, remainingWei: "1000", deadline: 2_000 };
+  const crowdfunding = snapshot("new", { ...appealPeriod, family: "view-only", appealPanel: { kind: "crowdfunding", cards: [card], withdrawableWei: null } });
+
+  expect(fieldOf(evaluateFor(livePick, feesUnavailable, note), "appealPanel.kind")).toMatchObject({ status: "expected-difference", entries: ["D-47"] });
+  expect(fieldOf(evaluateFor(livePick, feesUnavailable, crowdfunding), "appealPanel.kind").status).toBe("difference");
+  expect(fieldOf(evaluateFor(livePick, feesUnavailable, crowdfunding), "appealPanel.cards").status).toBe("difference");
+  // A recorded family decides instead of production's fields.
+  const governorPick: StableCase = { ...livePick, highlights: { family: "governor" } };
+  expect(fieldOf(evaluateFor(governorPick, feesUnavailable, note), "appealPanel.kind").status).toBe("difference");
+  // Production's banner alone does not: the governors show it too (mainnet 1672, 535), and they crowdfund.
+  const productionCards = snapshot("production", { ...appealPeriod, appealPanel: { kind: "crowdfunding", cards: [card], withdrawableWei: null } });
+  expect(fieldOf(evaluateFor(livePick, productionCards, note), "appealPanel.kind").status).toBe("difference");
+  // Execution is left out: production's withdraw body does not tell a view-only arbitrable from a governor.
+  const execution = { period: 4, compatibility: "view-only", timeline: EXECUTION_TIMELINE } as const;
+  const hidden = snapshot("new", { ...execution, family: "view-only", appealPanel: { kind: "hidden", cards: [], withdrawableWei: null } });
+  expect(fieldOf(evaluateFor(livePick, snapshot("production", { ...execution, appealPanel: withdrawPanel("0") }), hidden), "appealPanel.kind").status).toBe("difference");
 });
 
 /** Mainnet 1658's decision in both apps: production formats the current ruling, the new app the one funded ruling. */

@@ -1,6 +1,5 @@
-import { readFileSync } from "node:fs";
-import { expect, test, type Page, type Request, type Route } from "@playwright/test";
-import { z } from "zod";
+import { expect, test, type Page, type Route } from "@playwright/test";
+import { answerFromFixture, CORS_HEADERS, fulfillJson, jsonRpcCall, loadRpcFixture, type JsonRpcRequest } from "./rpcFixture";
 
 // The dynamic-script path of a case page end to end (ADR 0004, ARCHITECTURE.md §7), in every engine the runner projects
 // of playwright.config.ts name, against the built app under `vite preview`: the host frames the runner, the classic
@@ -69,11 +68,14 @@ const FORGED_PARAMS = {
   arbitrableJsonRpcUrl: "https://rpc.invalid/mainnet",
 };
 
-/** A well-formed run request carrying a script that would replace the title, so only the sender's identity can stop it. */
+/**
+ * A well-formed run request carrying a script that would replace the title with `FORGED_TITLE`, so only the sender's
+ * identity can stop it. The title is spelled out in the script text, which is a plain literal.
+ */
 const FORGED_REQUEST = {
   type: "dr-runner/run",
   version: 1,
-  scriptText: `var getMetaEvidence = function () { resolveScript({ title: ${JSON.stringify(FORGED_TITLE)} }); };`,
+  scriptText: 'var getMetaEvidence = function () { resolveScript({ title: "Title forged by a foreign window" }); };',
   params: FORGED_PARAMS,
   guardSource: null,
   rpcRedirects: [],
@@ -115,68 +117,7 @@ parent.postMessage("forged-request-sent", "*");
 const HARNESS_PATH = "/__runner-e2e/harness.html";
 const HARNESS_HTML = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Runner harness</title></head><body></body></html>';
 
-const CORS_HEADERS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "*" };
-
-const FixtureSchema = z.object({
-  readAtBlock: z.number(),
-  calls: z.array(
-    z.object({
-      method: z.string(),
-      params: z.array(z.unknown()),
-      result: z.unknown().optional(),
-      error: z.object({ code: z.number(), message: z.string() }).optional(),
-    }),
-  ),
-});
-
-const JsonRpcRequestSchema = z.object({
-  jsonrpc: z.literal("2.0"),
-  id: z.union([z.number(), z.string()]),
-  method: z.string(),
-  params: z.array(z.unknown()).optional(),
-});
-
-type JsonRpcRequest = z.infer<typeof JsonRpcRequestSchema>;
-type JsonRpcAnswer = { readonly result: unknown } | { readonly error: { readonly code: number; readonly message: string } };
-
-/** `value` as JSON with object keys sorted, so a fixture matches a request whatever order its keys were written in. */
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
-  if (typeof value === "object" && value !== null) {
-    const members = Object.entries(value)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, entry]) => `${JSON.stringify(key)}:${canonical(entry)}`);
-    return `{${members.join(",")}}`;
-  }
-  return JSON.stringify(value);
-}
-
-function rpcKey(method: string, params: readonly unknown[]): string {
-  return canonical([method, params]);
-}
-
-function loadRpcFixtures(): ReadonlyMap<string, JsonRpcAnswer> {
-  const parsed: unknown = JSON.parse(readFileSync(new URL("fixtures/mainnet-1621.rpc.json", import.meta.url), "utf8"));
-  const fixture = FixtureSchema.parse(parsed);
-  const answers = new Map<string, JsonRpcAnswer>();
-  for (const call of fixture.calls) answers.set(rpcKey(call.method, call.params), call.error === undefined ? { result: call.result } : { error: call.error });
-  return answers;
-}
-
-const RPC_FIXTURES = loadRpcFixtures();
-
-/** The JSON-RPC call a request carries, or `undefined` when it carries none. */
-function jsonRpcCall(request: Request): JsonRpcRequest | undefined {
-  if (request.method() !== "POST") return undefined;
-  let body: unknown;
-  try {
-    body = JSON.parse(request.postData() ?? "");
-  } catch {
-    return undefined;
-  }
-  const parsed = JsonRpcRequestSchema.safeParse(body);
-  return parsed.success ? parsed.data : undefined;
-}
+const RPC_FIXTURE = loadRpcFixture("mainnet-1621.rpc.json");
 
 /** What the routes served, as counts and method names only. */
 interface Traffic {
@@ -193,19 +134,9 @@ function newTraffic(): Traffic {
   return { locator: 0, metaEvidence: 0, script: 0, rpcAnswered: 0, rpcUnanswered: [], otherIpfs: 0, aborted: new Map() };
 }
 
-async function fulfillJson(route: Route, body: unknown): Promise<void> {
-  await route.fulfill({ headers: CORS_HEADERS, contentType: "application/json", body: JSON.stringify(body) });
-}
-
 async function answerRpc(route: Route, call: JsonRpcRequest, traffic: Traffic): Promise<void> {
-  const answer = RPC_FIXTURES.get(rpcKey(call.method, call.params ?? []));
-  if (answer === undefined) {
-    traffic.rpcUnanswered.push(call.method);
-    await fulfillJson(route, { jsonrpc: "2.0", id: call.id, error: { code: -32000, message: "Not in the test's recorded fixtures." } });
-    return;
-  }
-  traffic.rpcAnswered += 1;
-  await fulfillJson(route, { jsonrpc: "2.0", id: call.id, ...answer });
+  if (await answerFromFixture(route, RPC_FIXTURE, call)) traffic.rpcAnswered += 1;
+  else traffic.rpcUnanswered.push(call.method);
 }
 
 /** The meta-evidence locator, recognized by its query (spec 9.1 step 1), whatever host the build names. */

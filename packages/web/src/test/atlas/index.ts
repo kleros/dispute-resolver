@@ -9,8 +9,9 @@ export {
   type FakeAtlasServer,
   type FakeAtlasServerOptions,
   type RecordedGraphqlRequest,
+  type RecordedSignature,
   type RecordedUpload,
 } from "./fakeAtlasServer";
 export { TEST_ROLE_LIMITS, TEST_UPLOAD_CID, TEST_UPLOAD_PATH, fakeUploader, type FakeUploader } from "./fakeUploader";
 export { settle } from "./settle";
-export { sessionJwt, testJwt } from "./testJwt";
+export { jwtSubject, sessionJwt, testJwt } from "./testJwt";

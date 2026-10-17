@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { REGISTRY } from "../../../../packages/core/src/registry";
+import type { CidPath } from "../../../../packages/core/src/uri/types";
 import type { ScriptResult } from "../../../../packages/core/src/types";
 import type { NewRunInput, OldRunInput, OldRunOutput } from "../../browser/protocol";
 import type { ScriptReference } from "../enumerate/enumerate";
@@ -8,8 +9,8 @@ import { executePlan, type ExecutionDeps } from "./execute";
 import { planRuns, type RunPlan } from "./plan";
 
 const ENV = { REACT_APP_WEB3_PROVIDER_URL: "https://mainnet.rpc.test/key" };
-const DEFAULT_SCRIPT = "QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj";
-const REALITY_SCRIPT = "QmQGMR6MyC851poYVyBfGthzmCdvTuRFKp1UDB19p89Gcn/bundle.js";
+const DEFAULT_SCRIPT: CidPath = "QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj";
+const REALITY_SCRIPT: CidPath = "QmQGMR6MyC851poYVyBfGthzmCdvTuRFKp1UDB19p89Gcn/bundle.js";
 const OUTPUT = { arbitrableInterfaceURI: "https://resolve.kleros.io/cases/1454" };
 
 const REFERENCE: ScriptReference = {
@@ -43,7 +44,7 @@ function fakeBrowser(oldOutputs: OldRunOutput[], newOutputs: ScriptResult[]): Ex
   };
 }
 
-function deps(browser: ExecutionDeps["browser"], scripts: [string, string | null][] = [[DEFAULT_SCRIPT, "function getMetaEvidence() {}"]]): ExecutionDeps {
+function deps(browser: ExecutionDeps["browser"], scripts: [CidPath, string | null][] = [[DEFAULT_SCRIPT, "function getMetaEvidence() {}"]]): ExecutionDeps {
   return { browser, scripts: new Map(scripts), oldRedirectMap: {}, rpcEnv: {}, oldTimeoutMs: 180_000, newTimeoutMs: 120_000 };
 }
 

@@ -129,12 +129,18 @@ describe("C9: test doubles never ship", () => {
     assert.match(problems[0], /test double name/);
   });
 
-  it("C9: rejects the golden harness provider of e2e/golden/provider.ts", async () => {
-    for (const marker of ['const r="io.kleros.golden-harness";', "const p={isGoldenHarness:!0};", 'const n="Golden harness (read-only)";']) {
+  it("C9: rejects the injected wallet of e2e/support/wallet.ts", async () => {
+    for (const marker of ['const r="io.kleros.e2e-wallet";', "const p={isE2eWallet:!0};", "window.__e2eWallet=h;", 'const n={name:"E2E wallet"};']) {
       const problems = await problemsOf({ "assets/index-abc.js": marker });
       assert.equal(problems.length, 1, marker);
-      assert.match(problems[0], /golden harness provider/);
+      assert.match(problems[0], /e2e injected wallet/);
     }
+  });
+
+  it("C9: rejects a bundle built with the e2e build's WalletConnect project ID", async () => {
+    const problems = await problemsOf({ "assets/appKit-abc.js": 'const t={projectId:"e2e00000000000000000000000000000"};' });
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /e2e WalletConnect placeholder/);
   });
 
   it("C9: names each offending file once per marker and never quotes the surrounding content", async () => {

@@ -1,3 +1,4 @@
+import { hexToString, isHex } from "viem";
 import { vi } from "vitest";
 import { TEST_WALLET_ACCOUNT } from "../wallet";
 import { TEST_UPLOAD_CID } from "./fakeUploader";
@@ -27,6 +28,12 @@ export interface RecordedUpload {
   readonly authorization: string | null;
 }
 
+/** A sign-in signature the wallet was asked for: the signing account and the message, as `personal_sign` sent them. */
+export interface RecordedSignature {
+  readonly account: string;
+  readonly message: string;
+}
+
 export interface RecordedGraphqlRequest {
   readonly kind: AtlasRequestKind;
   readonly variables: unknown;
@@ -41,7 +48,7 @@ export interface FakeAtlasServerOptions {
   readonly roles?: readonly unknown[] | "fail" | "fail-once";
   /** `"fail"`: the `nonce` mutation answers with a GraphQL error, so sign-in fails before any signature. */
   readonly nonce?: "issue" | "fail";
-  /** The token `login` issues; defaults to a distinct one-hour token for the test wallet on every sign-in. */
+  /** The token `login` issues; defaults to a distinct one-hour token for the account that asked for the nonce. */
   readonly issueToken?: () => string;
   /** `"reject"`: the wallet declines the sign-in signature (EIP-1193 code 4001). */
   readonly signature?: "sign" | "reject";
@@ -54,6 +61,7 @@ export interface FakeAtlasServer {
   readonly requests: readonly AtlasRequestKind[];
   readonly uploads: readonly RecordedUpload[];
   readonly graphql: readonly RecordedGraphqlRequest[];
+  readonly signatures: readonly RecordedSignature[];
   count(kind: AtlasRequestKind): number;
 }
 
@@ -74,6 +82,20 @@ function graphqlKind(query: string): AtlasRequestKind {
   return "graphql";
 }
 
+function addressOf(variables: unknown): string | null {
+  if (typeof variables !== "object" || variables === null || !("address" in variables)) return null;
+  return typeof variables.address === "string" ? variables.address : null;
+}
+
+/** wagmi's mock connector sends `personal_sign` as `eth_sign` with the parameters swapped: `[account, hex message]`. */
+function signatureOf(params: unknown): RecordedSignature {
+  const [account, message] = Array.isArray(params) ? (params as readonly unknown[]) : [];
+  return {
+    account: typeof account === "string" ? account : "",
+    message: typeof message === "string" && isHex(message) ? hexToString(message) : "",
+  };
+}
+
 function headerOf(init: RequestInit | undefined, name: string): string | null {
   return new Headers(init?.headers).get(name);
 }
@@ -84,14 +106,17 @@ function headerOf(init: RequestInit | undefined, name: string): string | null {
  */
 export function installFakeAtlasServer(options: FakeAtlasServerOptions = {}): FakeAtlasServer {
   let issued = 0;
+  // Atlas issues the token to the address the nonce was issued for, which is the account the library signs in with.
+  let nonceAddress: string = TEST_WALLET_ACCOUNT;
   const distinctToken = () => {
     issued += 1;
-    return testJwt({ sub: TEST_WALLET_ACCOUNT, exp: Math.floor(Date.now() / 1000) + 3600, jti: `test-session-${String(issued)}` });
+    return testJwt({ sub: nonceAddress, exp: Math.floor(Date.now() / 1000) + 3600, jti: `test-session-${String(issued)}` });
   };
   const { roles = TEST_SERVER_ROLES, nonce = "issue", issueToken = distinctToken, signature = "sign" } = options;
   const requests: AtlasRequestKind[] = [];
   const uploads: RecordedUpload[] = [];
   const graphqlRequests: RecordedGraphqlRequest[] = [];
+  const signatures: RecordedSignature[] = [];
 
   const rolesAnswer = (): Response => {
     const failing = roles === "fail" || (roles === "fail-once" && requests.filter((kind) => kind === "roles").length === 1);
@@ -108,6 +133,7 @@ export function installFakeAtlasServer(options: FakeAtlasServerOptions = {}): Fa
       case "roles":
         return rolesAnswer();
       case "nonce":
+        nonceAddress = addressOf(variables) ?? nonceAddress;
         return nonce === "fail" ? json({ errors: [{ message: "Nonce unavailable" }] }) : json({ data: { nonce: "testnonce12345678" } });
       case "login":
         return json({ data: { login: { accessToken: issueToken() } } });
@@ -119,12 +145,13 @@ export function installFakeAtlasServer(options: FakeAtlasServerOptions = {}): Fa
   };
 
   const walletRpc = (body: string): Response => {
-    const { id, method } = JSON.parse(body) as { readonly id: number; readonly method: string };
+    const { id, method, params } = JSON.parse(body) as { readonly id: number; readonly method: string; readonly params?: unknown };
     if (method !== "eth_sign") {
       requests.push("rpc");
       return json({ jsonrpc: "2.0", id, error: { code: -32601, message: `${method} is not served` } });
     }
     requests.push("sign");
+    signatures.push(signatureOf(params));
     return signature === "reject"
       ? json({ jsonrpc: "2.0", id, error: { code: 4001, message: "User rejected the request." } })
       : json({ jsonrpc: "2.0", id, result: `0x${"ab".repeat(65)}` });
@@ -156,6 +183,7 @@ export function installFakeAtlasServer(options: FakeAtlasServerOptions = {}): Fa
     requests,
     uploads,
     graphql: graphqlRequests,
+    signatures,
     count: (kind) => requests.filter((request) => request === kind).length,
   };
 }

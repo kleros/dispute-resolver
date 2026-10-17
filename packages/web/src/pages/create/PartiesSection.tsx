@@ -30,7 +30,7 @@ function PartyFields({
   const number = String(position + 1);
   const messages = partyErrors(error);
   return (
-    <li className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]">
+    <li className="grid grid-cols-1 items-start gap-3 max-lg:py-4 max-lg:first:pt-0 max-lg:last:pb-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]">
       <FieldSlot name="partyAliases">
         <TextField
           label={`Alias ${number} (Optional)`}
@@ -76,7 +76,7 @@ export function PartiesSection({ form, errors, onChange }: SectionProps) {
   return (
     <FormGroup title="Parties" description="Optional. Name the addresses involved, so jurors see who is who.">
       {form.parties.length === 0 ? null : (
-        <ul className="flex flex-col gap-4" aria-label="Parties">
+        <ul className="flex flex-col gap-4 max-lg:gap-0 max-lg:divide-y max-lg:divide-klerosUIComponentsStroke" aria-label="Parties">
           {form.parties.map((party, position) => (
             <PartyFields key={party.key} party={party} position={position} error={errors.parties?.[position]} onChange={onChange} />
           ))}

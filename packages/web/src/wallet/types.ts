@@ -86,9 +86,6 @@ export interface WriteOptions {
 export interface WriteController {
   readonly status: WriteStatus;
   execute(build: WriteBuild, options: WriteOptions): Promise<WriteOutcome>;
-  /** Asks the wallet to switch; resolves `false` when declined or impossible. */
-  switchChain(chainId: ChainId): Promise<boolean>;
-  connect(): void;
   reset(): void;
 }
 

@@ -16,6 +16,7 @@ describe("SectionSkeleton", () => {
     ["text", 3],
     ["card", 3],
     ["grid", 6],
+    ["bars", 3],
   ] as const)("11.3: the %s variant renders %i placeholders by default", (variant, count) => {
     const { container } = render(<SectionSkeleton variant={variant} />);
     expect(container.querySelectorAll("[data-skeleton-item]")).toHaveLength(count);
@@ -24,6 +25,11 @@ describe("SectionSkeleton", () => {
   it("11.3: renders the requested number of lines", () => {
     const { container } = render(<SectionSkeleton variant="text" lines={5} />);
     expect(container.querySelectorAll("[data-skeleton-item]")).toHaveLength(5);
+  });
+
+  it("A-16: the bars variant renders the requested number of accordion bars", () => {
+    const { container } = render(<SectionSkeleton variant="bars" lines={4} />);
+    expect(container.querySelectorAll("[data-skeleton-item]")).toHaveLength(4);
   });
 
   it("11.3: uses the library's loading animation on token-colored blocks", () => {

@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useId } from "react";
 import { queryKeys, useArbitrationCost, useCourts } from "../../data";
 import { createCostAttributes, createCourtAttributes, testId } from "../../parity";
-import { Amount, SectionUnavailable } from "../../ui";
+import { Amount, FACT, LABEL, SectionUnavailable } from "../../ui";
 import { formExtraData, setCourt, setText, type CreateForm } from "./draft";
 import { FULL_WIDTH_FIELD, FULL_WIDTH_SELECT, FieldSlot, FormGroup, errorProps } from "./fields";
 import { fieldErrorMessage } from "./messages";
@@ -70,25 +70,29 @@ function ArbitrationCost({ chain, form }: { readonly chain: ChainConfig; readonl
   const extraData = formExtraData(form);
   const cost = useArbitrationCost(chain.id, extraData);
   let value;
+  // The plate (MediumBlue) carries the cost and the waiting texts; Error text never sits on it (3.92:1 in light), so the
+  // unavailable state keeps a white box with a Stroke edge.
+  let surface = "bg-klerosUIComponentsMediumBlue";
   if (extraData === undefined) {
-    value = <span className="text-klerosUIComponentsSecondaryText">Choose a court and a number of votes.</span>;
+    value = <span className="text-base text-klerosUIComponentsSecondaryText">Choose a court and a number of votes.</span>;
   } else if (cost.status === "loading") {
-    value = <span className="text-klerosUIComponentsSecondaryText">Calculating...</span>;
+    value = <span className="text-base text-klerosUIComponentsSecondaryText">Calculating...</span>;
   } else if (cost.status === "unavailable") {
-    value = <span className="text-klerosUIComponentsError">{cost.error.message}</span>;
+    surface = "border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground";
+    value = <span className="text-sm text-klerosUIComponentsError">{cost.error.message}</span>;
   } else {
     value = (
       <span {...createCostAttributes(cost.value)}>
-        <Amount wei={cost.value} chain={chain} className="font-semibold text-klerosUIComponentsPrimaryText" />
+        <Amount wei={cost.value} chain={chain} className={FACT} />
       </span>
     );
   }
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <span id={labelId} className="text-sm text-klerosUIComponentsSecondaryText">
+      <span id={labelId} className={LABEL}>
         Arbitration Cost
       </span>
-      <output aria-labelledby={labelId} aria-live="polite" className="flex min-h-[45px] items-center rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsLightBackground px-4 py-2 text-base [overflow-wrap:anywhere]">
+      <output aria-labelledby={labelId} aria-live="polite" className={`flex min-h-[45px] items-center rounded-base px-4 py-2 [overflow-wrap:anywhere] ${surface}`}>
         {value}
       </output>
     </div>

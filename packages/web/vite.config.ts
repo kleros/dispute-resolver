@@ -55,6 +55,10 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     // Playwright specs live in e2e/ and run through `yarn e2e`, never through `yarn test`.
     exclude: [...configDefaults.exclude, "e2e/**"],
+    // Component tests that drive whole pages with user-event run about three times slower on the GitHub runner than on a
+    // workstation: CreatePage.test.tsx took 65 s there against 24 s locally, and four of its tests passed the default 5 s
+    // limit (B22). A test that hangs still fails, after 30 s.
+    testTimeout: 30_000,
     // The library imports its own CSS from JavaScript; Node cannot load that, so Vite has to process the package.
     server: { deps: { inline: ["@kleros/ui-components-library"] } },
   },

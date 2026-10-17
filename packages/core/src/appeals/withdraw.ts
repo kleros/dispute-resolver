@@ -123,7 +123,7 @@ async function readGovernorWithdrawable(context: AppealContext, request: Withdra
 
 /**
  * What the beneficiary can withdraw across `rounds`, each starting at the block of the same index in
- * `roundStartBlocks` (spec 5.15, D-46, D-49, D-51, D-47): `no-account` without a beneficiary; `nothing` when every
+ * `roundStartBlocks` (spec 5.15, D-46, D-49, D-51, D-47): `no-account` without a beneficiary (P-22); `nothing` when every
  * amount is zero; `available` with one item per withdrawal and their sum. idr-legacy, Escrow V1 and view-only
  * arbitrables have no withdraw read (`unsupported`). Never rejects: a failed read is `unavailable`, never zero (D-36).
  */

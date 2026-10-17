@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 import { queryKeys, useOngoing, useOngoingTitle, type SectionData } from "../../data";
 import { ongoingPageAttributes, type OngoingState } from "../../parity";
 import { usePageChain } from "../../routing";
-import { EmptyState, Notice, PageMessage, SectionBoundary, SectionSkeleton } from "../../ui";
+import { EmptyState, Notice, PageMessage, PAGE_TITLE, SectionBoundary, SectionSkeleton } from "../../ui";
 import { FailedDisputeCard, OngoingCard } from "./OngoingCard";
 import { DEFAULT_PERIOD_FILTER, filterOption, matchesFilter, type PeriodFilter } from "./periodFilter";
 import { PeriodFilterSelect } from "./PeriodFilterSelect";
@@ -141,7 +141,7 @@ function OngoingDisputes({ chainId, chainName }: { readonly chainId: ChainId; re
     <section {...ongoingPageAttributes({ chain: chainId, state })} aria-labelledby={headingId} className="flex w-full min-w-0 flex-col gap-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex min-w-0 flex-col gap-1">
-          <h1 id={headingId} className="text-2xl font-semibold text-klerosUIComponentsPrimaryText">
+          <h1 id={headingId} className={PAGE_TITLE}>
             Ongoing Disputes
           </h1>
           <p className="text-sm text-klerosUIComponentsSecondaryText">Open disputes on {chainName}, newest first.</p>

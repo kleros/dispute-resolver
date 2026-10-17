@@ -122,6 +122,29 @@ describe("useChainFollowing (D-55, ARCHITECTURE.md §3.6)", () => {
     expect(switches).toHaveBeenCalledTimes(1);
   });
 
+  it("D-48, D-55: a reconnect of the same wallet is not a new connection, so a declined switch is not asked again", async () => {
+    const wallet = createTestWallet({ chainId: 100, switchChainError: true });
+    await wallet.connect();
+    const switches = spyOnSwitches(wallet);
+    const view = renderAtPath(<PageProbe />, "/1/ongoing", { wallet });
+    await waitFor(() => {
+      expect(switches).toHaveBeenCalledTimes(1);
+    });
+    // With an injected wallet the built app reconnects twice at load (e2e/app/wallet-chain.spec.ts): the connection
+    // passes through `reconnecting` and settles again on the same chain.
+    act(() => {
+      wallet.config.setState((state) => ({ ...state, status: "reconnecting" }));
+    });
+    act(() => {
+      wallet.config.setState((state) => ({ ...state, status: "connected" }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(switches).toHaveBeenCalledTimes(1);
+    expect(view.currentPath()).toBe("/1/ongoing");
+  });
+
   it("D-55: the user's first connect on another chain asks for the page chain once and never navigates", async () => {
     const wallet = createTestWallet({ chainId: 100 });
     const switches = spyOnSwitches(wallet);

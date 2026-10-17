@@ -6,6 +6,7 @@ import { numberToHex, toEventSelector } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { UploadResult } from "../../atlas";
 import type { WriteStatus } from "../../wallet";
+import { formatAmount } from "../../ui";
 import { ToastProvider } from "../../shell";
 import { TEST_UPLOAD_PATH, atlasWrapper, fakeUploader, installFakeAtlasServer, type FakeAtlasServer, type FakeUploader } from "../../test/atlas";
 import { testCourt } from "../../test/data";
@@ -35,6 +36,8 @@ if (SEPOLIA_CHAIN?.klerosLiquid === undefined || SEPOLIA_CHAIN.arbitrableProxy =
 const ARBITRATOR = SEPOLIA_CHAIN.klerosLiquid;
 const PROXY = SEPOLIA_CHAIN.arbitrableProxy;
 const CREATE_PATH = `/${String(SEPOLIA)}/create`;
+/** A configured chain that can also create disputes, for the chain-change tests (spec §4.1). */
+const GNOSIS = 100;
 
 /** The fake cost depends on the court and the votes, so a test can tell which pair was read. */
 function costOf(extraData: core.Hex): bigint {
@@ -149,6 +152,13 @@ async function fillOptions(user: UserEvent, titles: readonly string[]) {
 async function toSummary(user: UserEvent) {
   await user.click(screen.getByRole("button", { name: "Continue" }));
   await screen.findByRole("button", { name: "Create" });
+}
+
+/** The value the summary shows for `term`: the `dd` that follows the `dt` reading `term`. */
+function summaryValue(term: string): HTMLElement {
+  const value = [...document.querySelectorAll("dt")].find((element) => element.textContent === term)?.nextElementSibling;
+  if (!(value instanceof HTMLElement)) throw new Error(`no summary row ${term}`);
+  return value;
 }
 
 function uploadedMetaEvidence(uploader: FakeUploader): core.CreatedMetaEvidence {
@@ -308,6 +318,72 @@ describe("CreatePage", () => {
     });
   });
 
+  it.each([
+    ["the filled form", false],
+    ["the summary", true],
+  ] as const)("spec §8.3, §4.1: a wallet chain change on %s returns to page 1 with the form cleared", async (_step, onSummary) => {
+    const { user, wallet } = await renderCreate();
+    await courtsLoaded();
+    await chooseOption(user, "Court", "Blockchain");
+    await setNumber(user, "Number of Votes", "5");
+    await fillRequired(user);
+    await fillOptions(user, ["Yes", "No"]);
+    if (onSummary) await toSummary(user);
+    await act(async () => {
+      await wallet.changeChain(GNOSIS);
+    });
+    await waitFor(() => {
+      expect(createPage()).toHaveAttribute("data-chain", String(GNOSIS));
+    });
+    expect(screen.getByRole("listitem", { name: "Form" })).toHaveAttribute("aria-current", "step");
+    expect(screen.queryByRole("button", { name: "Create" })).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Title" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Question" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Ruling Option 1" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Number of Votes" })).toHaveValue("3");
+    await courtsLoaded();
+  });
+
+  it("spec §4.4: the summary shows the title heading, description, court, votes, category, cost with its currency and the ruling options", async () => {
+    const { user } = await renderCreate({ connect: false });
+    await courtsLoaded();
+    await chooseOption(user, "Court", "Blockchain");
+    await setNumber(user, "Number of Votes", "5");
+    await typeInto(user, "Category (Optional)", "Escrow");
+    await fillRequired(user);
+    await typeInto(user, "Description (Optional)", "A deposit dispute.");
+    await fillOptions(user, ["Yes", "No"]);
+    await typeInto(user, "Ruling Option 1 Description (Optional)", "The deposit goes back.");
+    await toSummary(user);
+
+    expect(screen.getByText("Summary", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Who keeps the deposit?" })).toBeInTheDocument();
+    expect(screen.getByText("A deposit dispute.")).toBeInTheDocument();
+    expect(summaryValue("Court")).toHaveTextContent(/^Blockchain$/);
+    expect(summaryValue("Number of Votes")).toHaveTextContent(/^5$/);
+    expect(summaryValue("Category (Optional)")).toHaveTextContent(/^Escrow$/);
+    await waitFor(() => {
+      expect(summaryValue("Arbitration Cost")).toHaveTextContent(formatAmount(costOf(core.encodeExtraData(1n, 5n)), SEPOLIA_CHAIN));
+    });
+    expect(summaryValue("Arbitration Cost")).toHaveTextContent(/ sETH$/);
+    expect(summaryValue("Multiple choice: single select")).toHaveTextContent(/^Which party is right\?$/);
+    const options = [...summaryValue("Ruling Options").querySelectorAll("li")].map((option) => option.textContent);
+    expect(options).toEqual(["YesThe deposit goes back.", "No"]);
+  });
+
+  it("D-36, spec 11.3: a court missing from the court list is named by its ID on the summary instead of breaking it", async () => {
+    vi.mocked(core.listCourts).mockResolvedValue({ ok: false, error: { code: "rpc-error", message: "The courts could not be read." } });
+    const { user } = await renderCreate({ connect: false });
+    expect(await screen.findByText("The courts could not be read.")).toBeInTheDocument();
+    await fillRequired(user);
+    await fillOptions(user, ["Yes", "No"]);
+    await toSummary(user);
+    expect(summaryValue("Court")).toHaveTextContent(/^Court #0$/);
+    expect(summaryValue("Category (Optional)")).toHaveTextContent(/^None$/);
+    expect(screen.getByRole("heading", { level: 1, name: "Who keeps the deposit?" })).toBeInTheDocument();
+    expect(screen.queryByText("The data for this section is malformed and cannot be displayed.")).toBeNull();
+  });
+
   it("D-08, B20: parties can be added and removed, and their addresses are validated and paired with their aliases", async () => {
     const { user, uploader } = await renderCreate();
     await fillRequired(user);
@@ -447,19 +523,24 @@ describe("CreatePage", () => {
     );
   });
 
-  it("D-07: a mined transaction without a DisputeCreation log is reported and nothing navigates", async () => {
+  it("spec §4.6, D-07: a mined transaction without a DisputeCreation log is reported, nothing navigates and Create re-enables", async () => {
     writes.controller = fakeWriteController(minedWith(null));
-    const { user, currentPath } = await renderCreate();
+    const { user, uploader, currentPath } = await renderCreate();
     await fillRequired(user);
     await fillOptions(user, ["Yes", "No"]);
     await toSummary(user);
     await user.click(screen.getByRole("button", { name: "Create" }));
     expect(await screen.findByText("Dispute ID not found")).toBeInTheDocument();
     expect(screen.queryByText(/successfully created dispute/)).toBeNull();
-    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Return" })).toBeEnabled();
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(currentPath()).toBe(CREATE_PATH);
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    await waitFor(() => {
+      expect(writes.controller?.executions).toHaveLength(2);
+    });
+    expect(uploader.uploadJson).toHaveBeenCalledTimes(1);
   });
 
   it("D-07: a rejected signature is a neutral notice and Create can be tried again with the same upload", async () => {

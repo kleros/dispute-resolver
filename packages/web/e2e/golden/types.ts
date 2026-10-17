@@ -67,6 +67,18 @@ export interface EvidenceDisplaySnapshot {
   /** The frame parameters; every URL in them is its host and a fingerprint of the whole URL, so no key reaches a report. */
   readonly params: Readonly<Record<string, string>>;
   readonly sandbox: readonly string[];
+  /** What the frame showed once the page settled; not compared, the `evidenceDisplay` highlight checks it (06 §5 item 2). */
+  readonly rendered: EvidenceDisplayRendering;
+}
+
+export interface EvidenceDisplayRendering {
+  /**
+   * The origin and path of the document the frame holds: the `src` when it loaded, the browser's error page
+   * (`chrome-error://chromewebdata/`) when it did not, `null` when the frame has no document.
+   */
+  readonly documentUrl: string | null;
+  /** The frame body's visible text, whitespace collapsed, every URL as its host and a fingerprint, cut at 300 characters. */
+  readonly text: string;
 }
 
 /** The fields of the Case snapshot the comparison walks, in report order. */

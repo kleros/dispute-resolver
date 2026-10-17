@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type BrowserType, type LaunchOptions, type Page } from "@playwright/test";
+import { answerFromFixture, CORS_HEADERS, jsonRpcCall, loadRpcFixture, type RpcFixture } from "./rpcFixture";
 
 // Playwright checks of the script runner (ADR 0004, ARCHITECTURE.md §7.4), run against `vite preview`, whose runner
 // plugin sends the runner policy of §10.1 on /__runner/*. Guard tests strip that header, as a header misconfiguration
@@ -223,35 +224,67 @@ test.describe("script runner page (ADR 0004)", () => {
   });
 });
 
-// C7 golden input: the charset-sensitive Reality renderer against mainnet dispute 1650 (docs/parity/04-golden-cases.md).
-// It reads the chain, so it needs network access and the chain-1 read RPC (the variable named by core's CHAINS[1]).
-const MAINNET_RPC = process.env.REACT_APP_PUBLIC_RPC_1 ?? process.env.REACT_APP_WEB3_PROVIDER_URL;
+// C7 golden input, ADR 0004 gate check 2: the charset-sensitive Reality renderer against mainnet dispute 1650
+// (docs/parity/04-golden-cases.md). The script is fetched from the IPFS gateway by its content address; its chain reads
+// are answered from fixtures/mainnet-1650.rpc.json, recorded at the block it names, and anything else it requests is
+// aborted, so the test needs no RPC configuration.
 const QMQGMR_URL = "https://cdn.kleros.link/ipfs/QmQGMR6MyC851poYVyBfGthzmCdvTuRFKp1UDB19p89Gcn/bundle.js";
+const RPC_FIXTURE_1650 = loadRpcFixture("mainnet-1650.rpc.json");
+/** Reality's reserved "Answered Too Soon" answer. */
+const ANSWERED_TOO_SOON = "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
+
+/** What the script's routes served, as counts and method names only. */
+interface ScriptTraffic {
+  rpcAnswered: number;
+  readonly rpcUnanswered: string[];
+  aborted: number;
+}
+
+/** Answers the script's JSON-RPC calls from `fixture` and aborts every other request that leaves the app's origin. */
+async function routeScriptReads(page: Page, appOrigin: string, fixture: RpcFixture): Promise<ScriptTraffic> {
+  const traffic: ScriptTraffic = { rpcAnswered: 0, rpcUnanswered: [], aborted: 0 };
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    if (new URL(request.url()).origin === appOrigin) {
+      await route.continue();
+      return;
+    }
+    if (request.method() === "OPTIONS") {
+      await route.fulfill({ status: 204, headers: CORS_HEADERS });
+      return;
+    }
+    const call = jsonRpcCall(request);
+    if (call === undefined) {
+      traffic.aborted += 1;
+      await route.abort("blockedbyclient");
+      return;
+    }
+    if (await answerFromFixture(route, fixture, call)) traffic.rpcAnswered += 1;
+    else traffic.rpcUnanswered.push(call.method);
+  });
+  return traffic;
+}
 
 test.describe("script runner golden case (C7)", () => {
-  // Skipped without a mainnet RPC: the renderer reads dispute 1650's question from the chain.
-  test.skip(MAINNET_RPC === undefined || MAINNET_RPC.trim() === "", "needs REACT_APP_PUBLIC_RPC_1 or REACT_APP_WEB3_PROVIDER_URL and network access");
-
-  test("C7: QmQGMR… against mainnet dispute 1650 returns Harris, Trump and Answered Too Soon", async ({ page, request }) => {
+  test("C7: QmQGMR… against mainnet dispute 1650 returns Harris, Trump and Answered Too Soon", async ({ page, request, baseURL }) => {
     test.setTimeout(120_000);
     const scriptResponse = await request.get(QMQGMR_URL);
     expect(scriptResponse.ok()).toBe(true);
     const scriptText = await scriptResponse.text();
 
+    const traffic = await routeScriptReads(page, new URL(baseURL ?? "http://localhost").origin, RPC_FIXTURE_1650);
     await serveHarness(page, `**${SAME_ORIGIN_HARNESS}`);
     await page.goto(SAME_ORIGIN_HARNESS);
-    const rpc = MAINNET_RPC?.trim() ?? "";
-    const { reply } = await runInRunner(page, {
-      scriptText,
-      params: { ...PARAMS_1650, arbitratorJsonRpcUrl: rpc, arbitrableJsonRpcUrl: rpc },
-      sandbox: true,
-      waitMs: 90_000,
-    });
+    const { reply } = await runInRunner(page, { scriptText, sandbox: true, waitMs: 90_000 });
 
-    expect(reply).toMatchObject({ type: "dr-runner/result", jsonDuplicateKeys: false });
-    const value = (reply as { value: { rulingOptions: { titles: unknown; reserved: Record<string, unknown> } } }).value;
-    expect(value.rulingOptions.titles).toEqual(["Harris", "Trump"]);
-    expect(Object.values(value.rulingOptions.reserved)).toEqual(["Answered Too Soon"]);
+    expect(reply).toEqual({
+      type: "dr-runner/result",
+      value: { rulingOptions: { type: "single-select", titles: ["Harris", "Trump"], reserved: { [ANSWERED_TOO_SOON]: "Answered Too Soon" } } },
+      jsonDuplicateKeys: false,
+    });
+    expect(traffic.rpcAnswered, "JSON-RPC reads answered from the fixture").toBeGreaterThan(0);
+    expect(traffic.rpcUnanswered, "JSON-RPC reads missing from the fixture").toEqual([]);
+    expect(traffic.aborted, "requests other than JSON-RPC reads").toBe(0);
   });
 });
 

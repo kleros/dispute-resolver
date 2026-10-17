@@ -2,7 +2,7 @@ import type { ChainConfig, CrowdfundingCard } from "@dispute-resolver/core";
 import { Card } from "@kleros/ui-components-library";
 import { useId } from "react";
 import { appealCardAttributes, testId } from "../../parity";
-import { Amount } from "../../ui";
+import { Amount, CHIP_STATUS, FACT_LEAD, PLATE } from "../../ui";
 import { FundAction } from "./FundAction";
 import { FundingProgress } from "./FundingProgress";
 import { CARD_CLASS, CARD_FOOTER_CLASS, CARD_ITEM_CLASS, CARD_TITLE_CLASS } from "./styles";
@@ -24,19 +24,24 @@ export function FundingCard({ card, actions, chain }: FundingCardProps) {
   const hooks = appealCardAttributes({ code: card.code, fundedPercent: card.fundedPercent, remainingWei: card.remaining, deadline: card.deadline });
   return (
     <li className={CARD_ITEM_CLASS} aria-labelledby={titleId} {...hooks}>
-      <Card className={CARD_CLASS}>
+      <Card className={card.isWinner ? `${CARD_CLASS} ${PLATE}` : CARD_CLASS}>
         <div className="flex flex-col items-start gap-2">
           <h4 id={titleId} className={CARD_TITLE_CLASS} {...testId("appeal-card-title")}>
             {card.title}
           </h4>
           {card.isWinner ? (
-            <span className="rounded-base bg-klerosUIComponentsMediumBlue px-2 py-0.5 text-sm font-semibold text-klerosUIComponentsPrimaryBlue">Latest jury decision</span>
+            <span className={CHIP_STATUS}>Latest jury decision</span>
           ) : null}
         </div>
         <div className={CARD_FOOTER_CLASS}>
           <FundingProgress percent={card.fundedPercent} deadline={card.deadline} />
-          <p className="text-sm text-klerosUIComponentsSecondaryText">
-            Remaining <Amount wei={card.remaining} chain={chain} className="font-semibold text-klerosUIComponentsPrimaryText" /> of <Amount wei={card.required} chain={chain} />
+          <p className="flex flex-col gap-1 text-sm text-klerosUIComponentsSecondaryText">
+            <span>{"Remaining "}</span>
+            <span className="flex flex-wrap items-baseline gap-x-2">
+              <Amount wei={card.remaining} chain={chain} className={FACT_LEAD} />
+              <span>{" of "}</span>
+              <Amount wei={card.required} chain={chain} />
+            </span>
           </p>
           <FundAction subject={card.title} code={card.code} suggested={card.remaining} actions={actions} chain={chain} />
         </div>

@@ -26,8 +26,9 @@ export function metaEvidenceStaleTime(result: MetaEvidenceResult | undefined): n
 }
 
 /**
- * The meta-evidence query of one dispute, shared by the case page and the Ongoing cards (ARCHITECTURE.md §5.3):
- * whichever mounts first runs the pipeline with its own budget. `arbitrable` is the arbitrator's `arbitrated` (A22).
+ * The meta-evidence query of one dispute, shared by the case page and the Ongoing cards (ARCHITECTURE.md §5.3): an
+ * Ongoing card runs the pipeline with its budget only when no fresh result is stored, the case page on every mount
+ * (`useMetaEvidence`). `arbitrable` is the arbitrator's `arbitrated` (A22).
  * Without a target the query is idle and never runs.
  */
 export function metaEvidenceQuery(deps: CoreDeps, chainId: ChainId, target: MetaEvidenceTarget | undefined, budget: MetaEvidenceBudget) {

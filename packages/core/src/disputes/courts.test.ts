@@ -80,7 +80,7 @@ describe("listCourts", () => {
     expect(courts.value.slice(0, 3).map((court) => court.name)).toEqual([null, null, null]);
   });
 
-  it("D-19, B7: a policy URI that is neither https nor content-addressed is never fetched", async () => {
+  it("D-19, P-17: a policy URI that is neither https nor content-addressed is never fetched", async () => {
     const arbitrator = MAINNET.arbitrator;
     const node = recordedNode(MAINNET, {
       extraCalls: [

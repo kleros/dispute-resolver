@@ -33,7 +33,7 @@ const SOCIAL_LINKS: readonly SocialLink[] = [
   { name: "LinkedIn", href: "https://www.linkedin.com/company/kleros/", Icon: LinkedInIcon },
 ];
 
-const ICON_LINK = `inline-flex size-9 items-center justify-center opacity-90 transition-opacity hover:opacity-100 ${BAR_FOCUS}`;
+const ICON_LINK = `inline-flex size-10 items-center justify-center opacity-90 transition-opacity hover:opacity-100 ${BAR_FOCUS}`;
 
 /**
  * The footer (spec §2.4): Secured by Kleros, the resolved chain, I need help, the chain's explorer link to its
@@ -42,7 +42,7 @@ const ICON_LINK = `inline-flex size-9 items-center justify-center opacity-90 tra
 export function Footer({ chainLabel, explorer }: FooterProps) {
   return (
     <footer className={`${BAR_SURFACE} ${GUTTER}`}>
-      <div className={`${CONTENT} flex flex-col items-center gap-4 py-6 text-sm sm:flex-row sm:flex-wrap sm:justify-between lg:py-5`}>
+      <div className={`${CONTENT} flex flex-col items-center gap-4 py-6 text-sm sm:flex-row sm:flex-wrap sm:justify-between`}>
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-8">
           <ExternalLink href="https://kleros.io" className={`inline-flex ${BAR_FOCUS}`}>
             <img src={securedByKlerosUrl} alt="Secured by Kleros" width={130} height={24} className="h-6 w-auto" />
@@ -50,11 +50,11 @@ export function Footer({ chainLabel, explorer }: FooterProps) {
           {chainLabel === null ? null : <span className="font-semibold">{chainLabel}</span>}
         </div>
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-6">
-          <ExternalLink href="https://t.me/kleros" className={`inline-flex items-center gap-2 font-semibold hover:underline ${BAR_FOCUS}`}>
+          <ExternalLink href="https://t.me/kleros" className={`-my-2 inline-flex items-center gap-2 py-2 font-semibold hover:underline ${BAR_FOCUS}`}>
             I need help
             <HelpIcon className="size-4" />
           </ExternalLink>
-          <ul aria-label="Kleros channels" className="flex flex-wrap items-center justify-center gap-1">
+          <ul aria-label="Kleros channels" className="flex flex-wrap items-center justify-center gap-0">
             {explorer === null ? null : (
               <li>
                 <ExternalLink href={explorer.href} className={ICON_LINK}>

@@ -4,7 +4,7 @@ import type { CaseDispute, SectionData } from "../../data";
 export type FoundLookup = Extract<DisputeLookup, { status: "found" }>;
 export type ExistingView = Extract<DisputeView, { exists: true }>;
 
-/** The arbitrator's record of the dispute once the lookup found it; the header renders from it before `view` settles (S-4). */
+/** The arbitrator's record of the dispute once the lookup found it; the header renders from it before `view` settles (P-20). */
 export function foundLookup(dispute: CaseDispute): FoundLookup | undefined {
   const { lookup } = dispute;
   return lookup.status === "ready" && lookup.value.status === "found" ? lookup.value : undefined;

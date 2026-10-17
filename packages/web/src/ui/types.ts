@@ -36,9 +36,12 @@ export interface SectionUnavailableProps {
 }
 
 export interface SectionSkeletonProps {
-  /** `text`: lines of text; `card`: one card with a heading and lines; `grid`: a 3/2/1-column grid of cards. */
-  readonly variant: "text" | "card" | "grid";
-  /** Lines of text (`text`, `card`; default 3) or cards (`grid`; default 6). */
+  /**
+   * `text`: lines of text; `card`: one card with a heading and lines; `grid`: a 3/2/1-column grid of cards; `bars`:
+   * collapsed accordion bars.
+   */
+  readonly variant: "text" | "card" | "grid" | "bars";
+  /** Lines of text (`text`, `card`; default 3), cards (`grid`; default 6) or bars (`bars`; default 3). */
   readonly lines?: number;
 }
 
@@ -86,5 +89,9 @@ export interface IdenticonProps {
 /** A colored dot plus the period's name. */
 export interface PeriodBadgeProps {
   readonly period: Period;
+  /** `dot`: a coloured dot and the period's name (default); `pill`: the same inside the status stamp (contract §7). */
+  readonly variant?: "dot" | "pill";
+  /** The pill's size (default `sm`); ignored by the `dot` variant. */
+  readonly size?: "sm" | "lg";
   readonly className?: string;
 }

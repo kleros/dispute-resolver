@@ -1,9 +1,9 @@
 import { AuthorizationError, Roles, useAtlasProvider } from "@kleros/kleros-app";
 import klerosAppPackage from "@kleros/kleros-app/package.json";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { atlasWrapper, installFakeAtlasServer, sessionJwt, settle, testJwt } from "../test/atlas";
-import { TEST_WALLET_ACCOUNT, createTestWallet } from "../test/wallet";
+import { atlasWrapper, installFakeAtlasServer, jwtSubject, sessionJwt, settle, testJwt } from "../test/atlas";
+import { TEST_WALLET_ACCOUNT, TEST_WALLET_SECOND_ACCOUNT, createTestWallet } from "../test/wallet";
 import { useAtlasUpload } from "./context";
 import { LIBRARY_TOKEN_KEY, clearRejectedToken, isLiveToken, readStoredToken, tokenExpiry } from "./session";
 
@@ -157,6 +157,60 @@ describe("@kleros/kleros-app 3.1.0 session storage coupling", () => {
       expect(result.current.isVerified).toBe(false);
     });
     expect(sessionStorage.getItem("authToken")).toBe(JSON.stringify(token));
+  });
+
+  it("§8.6 SIWE steps 1-4, A15, @kleros/kleros-app 3.1.0: the sign-in message is EIP-4361 for this host, the server nonce and the wallet's chain, expiring in 10 minutes", async () => {
+    const server = installFakeAtlasServer();
+    const wallet = createTestWallet({ chainId: 100 });
+    await wallet.connect();
+    const { result } = renderHook(() => useAtlasUpload(), { wrapper: atlasWrapper(wallet) });
+    await waitFor(() => {
+      expect(result.current.limits("evidence")).not.toBeNull();
+    });
+
+    const outcome = await settle(() => result.current.upload(new File(["%PDF"], "brief.pdf", { type: "application/pdf" }), "evidence"));
+
+    expect(outcome.ok).toBe(true);
+    const [signature] = server.signatures;
+    expect(signature?.account.toLowerCase()).toBe(TEST_WALLET_ACCOUNT.toLowerCase());
+    const message = signature?.message ?? "";
+    const lines = message.split("\n");
+    expect(lines.slice(0, 5)).toEqual([
+      `${window.location.host} wants you to sign in with your Ethereum account:`,
+      TEST_WALLET_ACCOUNT,
+      "",
+      "Sign In to Kleros with Ethereum.",
+      "",
+    ]);
+    expect(lines).toEqual(expect.arrayContaining([`URI: ${window.location.origin}`, "Version: 1", "Chain ID: 100", "Nonce: testnonce12345678"]));
+    const field = (name: string) => Date.parse(lines.find((line) => line.startsWith(`${name}: `))?.slice(name.length + 2) ?? "");
+    expect(field("Expiration Time") - field("Issued At")).toBeGreaterThanOrEqual(10 * 60 * 1000 - 1000);
+    expect(field("Expiration Time") - field("Issued At")).toBeLessThanOrEqual(10 * 60 * 1000 + 1000);
+    expect(server.graphql.find(({ kind }) => kind === "nonce")?.variables).toEqual({ address: TEST_WALLET_ACCOUNT });
+    expect(server.graphql.find(({ kind }) => kind === "login")?.variables).toMatchObject({ message });
+    expect(jwtSubject(server.uploads[0]?.authorization)?.toLowerCase()).toBe(TEST_WALLET_ACCOUNT.toLowerCase());
+  });
+
+  it("§2.9 isAuthenticated, D-20, B16, A15, @kleros/kleros-app 3.1.0: a stored token is a verified session only for the account in its sub", async () => {
+    installFakeAtlasServer();
+    sessionStorage.setItem("authToken", JSON.stringify(sessionJwt(TEST_WALLET_SECOND_ACCOUNT)));
+    const wallet = createTestWallet();
+    await wallet.connect();
+    const { result } = renderHook(() => ({ uploader: useAtlasUpload(), library: useAtlasProvider() }), { wrapper: atlasWrapper(wallet) });
+    await waitFor(() => {
+      expect(result.current.library.roleRestrictions).toBeDefined();
+    });
+    expect(result.current.library.isVerified).toBe(false);
+    expect(result.current.uploader.isSignedIn).toBe(false);
+
+    act(() => {
+      wallet.changeAccount(TEST_WALLET_SECOND_ACCOUNT);
+    });
+
+    await waitFor(() => {
+      expect(result.current.library.isVerified).toBe(true);
+    });
+    expect(result.current.uploader.isSignedIn).toBe(true);
   });
 
   it("@kleros/kleros-app 3.1.0: a token stored that way before mount is the library's verified session", async () => {

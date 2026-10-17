@@ -19,7 +19,7 @@ export const ANSWER_ERROR_MESSAGES: Readonly<Record<AnswerEncodingError, string>
 const INT_OPTIONS: RulingOptions = { type: "int" };
 
 /**
- * The answer an int card funds, as the court will show the ruling (WN-4): an answer of -1 encodes to ruling 0, the
+ * The answer an int card funds, as the court will show the ruling (P-21): an answer of -1 encodes to ruling 0, the
  * refuse-to-arbitrate ruling, and -2 to 2²⁵⁶ − 1, Reality's "answered too soon" answer (D-16).
  */
 export function fundedIntAnswer(code: bigint): string {

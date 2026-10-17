@@ -23,7 +23,7 @@ export function WalletControl({ chain }: WalletControlProps) {
     return (
       <div className="flex items-center gap-2 whitespace-nowrap">
         <Button text="Connect" small isDisabled aria-describedby={noteId} />
-        <span aria-hidden="true" className="text-xs opacity-85">
+        <span aria-hidden="true" className="text-sm opacity-85">
           {CONNECT_UNAVAILABLE_LABELS[connect.unavailableReason]}
         </span>
         <span id={noteId} className="sr-only">

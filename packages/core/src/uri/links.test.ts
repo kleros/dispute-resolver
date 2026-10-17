@@ -150,6 +150,14 @@ describe("isSelfLink", () => {
     for (const url of urls) expect(isSelfLink(url, HOSTS), url).toBe(false);
   });
 
+  it("D-28: a self-link spelled with a trailing-dot host is hidden", () => {
+    expect(isSelfLink("https://resolve.kleros.io./1/cases/5", HOSTS)).toBe(true);
+    expect(isSelfLink(`https://${PREVIEW_HOST}./1/ongoing`, HOSTS)).toBe(true);
+    expect(isSelfLink("https://resolve.kleros.io/", { appHost: "resolve.kleros.io.", canonicalHosts: [] })).toBe(true);
+    expect(resolveArbitrableAppLink("https://resolve.kleros.io./1/cases/5", HOSTS)).toBeNull();
+    expect(isSelfLink("https://resolve.kleros.io.evil.example./", HOSTS)).toBe(false);
+  });
+
   it("D-28: an unparseable URL is not a self-link", () => {
     expect(isSelfLink("resolve.kleros.io", HOSTS)).toBe(false);
     expect(isSelfLink("", HOSTS)).toBe(false);

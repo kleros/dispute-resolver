@@ -286,6 +286,14 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     expect(core.readRoundFunding).not.toHaveBeenCalled();
     expect(core.readWithdrawable).not.toHaveBeenCalled();
     expect(current.view).toMatchObject({ status: "ready", value: { decision: { ok: false, error: { message: "logs refused" } } } });
+    expect(current.appealDecisions).toMatchObject({ status: "unavailable", error: { code: "rpc-error", message: "logs refused" } });
+  });
+
+  it("D-03: the AppealDecision events of the details reach the evidence section", async () => {
+    programReads(4);
+    const { result } = renderCase(1n);
+    const current = await settledCase(result);
+    expect(current.appealDecisions).toEqual({ status: "ready", value: [{ blockNumber: 500n, appealedAt: 1_700_000_100 }] });
   });
 
   it("D-56: an unconfigured chain degrades to no-rpc without a read", async () => {

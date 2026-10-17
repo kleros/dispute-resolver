@@ -2,7 +2,7 @@ import type { DisputeLookup } from "@dispute-resolver/core";
 import type { CaseDispute } from "../../data";
 import type { CasePageHook, CasePageState } from "../../parity";
 
-/** The arbitrator's record once the lookup has found the dispute; the header renders from it before the view (S-4). */
+/** The arbitrator's record once the lookup has found the dispute; the header renders from it before the view (P-20). */
 export function foundDispute(dispute: CaseDispute): Extract<DisputeLookup, { status: "found" }> | undefined {
   const { lookup } = dispute;
   return lookup.status === "ready" && lookup.value.status === "found" ? lookup.value : undefined;
@@ -17,7 +17,7 @@ function lookupState(dispute: CaseDispute): CasePageState {
 
 /**
  * The `case-page` hook of a dispute (§12.1): the state from the lookup; the arbitrable (the arbitrator's, A22), the
- * period and the last period change as soon as the lookup found it (S-4); the family once detected (`unknown` when
+ * period and the last period change as soon as the lookup found it (P-20); the family once detected (`unknown` when
  * detection failed, D-36); the compatibility and the Reality notice once the view has settled.
  */
 export function casePageHook(dispute: CaseDispute): CasePageHook {

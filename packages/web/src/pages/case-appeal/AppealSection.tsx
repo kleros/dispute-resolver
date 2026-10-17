@@ -60,7 +60,7 @@ function PanelBody({ panel, actions, chain, onRetry }: PanelBodyProps) {
     case "handled-by-arbitrable":
       return <Notice variant="info" title={HANDLED_BY_ARBITRABLE_TITLE} body={HANDLED_BY_ARBITRABLE_BODY} />;
     case "escrow-appeal":
-      return <EscrowAppealPanel appealCost={panel.appealCost} deadline={panel.deadline} actions={actions} chain={chain} />;
+      return <EscrowAppealPanel appealCost={panel.appealCost} actions={actions} chain={chain} />;
     case "escrow-ended":
       return <h3>{ESCROW_ENDED}</h3>;
     case "crowdfunding":
@@ -95,7 +95,7 @@ export function AppealSection({ dispute, chain }: CaseSectionProps) {
   const actions = useAppealActions(dispute, chain);
   const retry = useAppealRetry(dispute);
   const { appealPanel } = dispute;
-  if (appealPanel.status === "loading") return <SectionSkeleton variant="grid" lines={3} />;
+  if (appealPanel.status === "loading") return <SectionSkeleton variant="text" lines={6} />;
   if (appealPanel.status === "unavailable") return <SectionUnavailable section={SECTION} error={appealPanel.error} onRetry={retry} />;
   const panel = appealPanel.value;
   return (

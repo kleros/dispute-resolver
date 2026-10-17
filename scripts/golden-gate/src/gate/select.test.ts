@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
+import type { CidPath } from "../../../../packages/core/src/uri/types";
 import type { ScriptReference } from "../enumerate/enumerate";
 import type { GateOptions } from "./report";
 import { rpcEnvironment, selectReferences } from "./select";
 
-function reference(chainId: number, disputeId: number, cid: string): ScriptReference {
+function reference(chainId: number, disputeId: number, cid: CidPath): ScriptReference {
   return { chainId, disputeId, arbitrable: "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf", cid, scriptUri: `/ipfs/${cid}`, metaEvidenceUri: "/ipfs/QmX", metaEvidenceSource: "meta-evidence-api", chainIdFields: {} };
 }
 

@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import { isContentAddressed, normalizeIpfsPath, toCidPath } from "./index";
 import { ALLOWLIST_ENTRIES, CIDV1, DEFAULT_SCRIPT_CID, GNOSIS_416_PATH, T2CR_DISPLAY_CID, TRAILING_SLASH_ENTRY } from "./testHelpers";
+import type { CidPath } from "./types";
 
 const CID = T2CR_DISPLAY_CID;
 const CANONICAL = `/ipfs/${CID}`;
@@ -226,6 +227,16 @@ describe("toCidPath", () => {
         if (path !== null) expect(toCidPath(path)).toBe(entry);
       }
     }
+  });
+
+  it("06 §3 invariant 4: a CidPath is typed to start with a CID, so a malformed allowlist entry does not compile", () => {
+    expectTypeOf<typeof DEFAULT_SCRIPT_CID>().toExtend<CidPath>();
+    expectTypeOf<typeof CIDV1>().toExtend<CidPath>();
+    expectTypeOf<`${typeof DEFAULT_SCRIPT_CID}/bundle.js`>().toExtend<CidPath>();
+    expectTypeOf<`/ipfs/${typeof DEFAULT_SCRIPT_CID}`>().not.toExtend<CidPath>();
+    expectTypeOf<`ipfs://${typeof DEFAULT_SCRIPT_CID}`>().not.toExtend<CidPath>();
+    expectTypeOf<string>().not.toExtend<CidPath>();
+    expectTypeOf(toCidPath).returns.toEqualTypeOf<CidPath>();
   });
 
   it("B18: removes the trailing slash of the Gnosis allowlist entry", () => {

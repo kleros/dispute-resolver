@@ -17,10 +17,11 @@ import {
   type WithdrawState,
   type WriteCall,
 } from "@dispute-resolver/core";
+import { getLocalTimeZone, resetLocalTimeZone, setLocalTimeZone } from "@internationalized/date";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import type { CaseDispute, CaseWriteContext, SectionData } from "../../data";
 import { TEST_ARBITRABLE, sectionLoading, sectionReady, sectionUnavailable, testFamily, testFoundLookup, testOkMetaEvidence } from "../../test/data";
 import { renderWithProviders } from "../../test/shell";
@@ -122,6 +123,7 @@ function caseDispute(panel: AppealPanel | SectionData<AppealPanel>, options: Dis
     metaEvidence: sectionReady(testOkMetaEvidence()),
     disputeEvent: sectionLoading,
     evidence: sectionLoading,
+    appealDecisions: sectionLoading,
     courts: sectionLoading,
     appealPanel: "status" in panel ? panel : sectionReady(panel),
     write: options.write ?? sectionReady(context),
@@ -195,6 +197,15 @@ async function nextRead(user: ReturnType<typeof userEvent.setup>): Promise<void>
 
 function freeInputCard(): HTMLElement {
   return screen.getByRole("listitem", { name: "Fund a new answer" });
+}
+
+/** Types a date (MMDDYYYY) and a time (HHMM) into the free-input card's date field, from its month segment. */
+async function typeDateAnswer(user: ReturnType<typeof userEvent.setup>, date: string, time: string): Promise<void> {
+  const [month] = within(freeInputCard()).getAllByRole("spinbutton", { name: /month/i });
+  if (month === undefined) throw new Error("The date field has no month segment.");
+  await user.click(month);
+  await user.keyboard(date);
+  await user.keyboard(time);
 }
 
 function composerCard(): HTMLElement {
@@ -306,6 +317,12 @@ describe("AppealSection: crowdfunding cards (spec §5.12)", () => {
     expect(within(card(1n)).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
     expect(card(1n)).toHaveTextContent("25.00% Funded");
     expect(card(1n)).toHaveTextContent("1.5 ETH");
+  });
+
+  it("P-21: a fixed card shows its remaining amount and total, the free-input card its required total", () => {
+    renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "uint", precision: 0 }, contributions: [{ ruling: 1n, amount: ETH / 2n }] })));
+    expect(card(1n)).toHaveTextContent("Remaining 1.5 ETH of 2 ETH");
+    expect(freeInputCard()).toHaveTextContent("Required 3 ETH");
   });
 
   it("§5.12: the contribution is prefilled with the remaining amount", () => {
@@ -489,13 +506,13 @@ describe("AppealSection: crowdfunding cards (spec §5.12)", () => {
     ["-2", "Answered too soon"],
     ["-3", "-3"],
     ["12", "12"],
-  ])("WN-4: an int answer of %s shows that the card funds %s", (typed, funded) => {
+  ])("P-21: an int answer of %s shows that the card funds %s", (typed, funded) => {
     renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "int" } })));
     fireEvent.change(within(freeInputCard()).getByRole("textbox", { name: /Answer/ }), { target: { value: typed } });
     expect(freeInputCard()).toHaveTextContent(`This card funds the answer: ${funded}`);
   });
 
-  it("WN-4: only int answers show the answer they fund", () => {
+  it("P-21: only int answers show the answer they fund", () => {
     renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "uint", precision: 0 } })));
     fireEvent.change(within(freeInputCard()).getByRole("textbox", { name: /Answer/ }), { target: { value: "5" } });
     expect(freeInputCard()).not.toHaveTextContent("This card funds the answer");
@@ -573,17 +590,30 @@ describe("AppealSection: funding (spec §5.12 fund action, §6.1)", () => {
     const user = userEvent.setup();
     writes.fake = fakeWriteController(SENT);
     renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
-    const [month] = within(freeInputCard()).getAllByRole("spinbutton", { name: /month/i });
-    if (month === undefined) throw new Error("The date field has no month segment.");
-    await user.click(month);
-    await user.keyboard("10202026");
-    await user.keyboard("1545");
+    await typeDateAnswer(user, "10202026", "1545");
     expect(fundButton(freeInputCard())).toBeEnabled();
     await user.click(fundButton(freeInputCard()));
     await waitFor(() => {
       expect(writes.fake?.executions).toHaveLength(1);
     });
     expect(sentCalls(writes.fake)).toMatchObject([{ args: [7n, BigInt(Date.UTC(2026, 9, 20, 15, 45) / 1000) + 1n], value: LOSER_TOTAL }]);
+  });
+
+  it("P-18: a datetime answer is read in UTC whatever the browser's zone", async () => {
+    // UTC+14: a date and time read in the browser's zone would be fourteen hours earlier than the same reading in UTC.
+    setLocalTimeZone("Pacific/Kiritimati");
+    onTestFinished(resetLocalTimeZone);
+    expect(getLocalTimeZone()).toBe("Pacific/Kiritimati");
+    const user = userEvent.setup();
+    writes.fake = fakeWriteController(SENT);
+    renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
+    expect(within(freeInputCard()).getByText("Answer (date and time, UTC)")).toBeInTheDocument();
+    await typeDateAnswer(user, "10202026", "0030");
+    await user.click(fundButton(freeInputCard()));
+    await waitFor(() => {
+      expect(writes.fake?.executions).toHaveLength(1);
+    });
+    expect(sentCalls(writes.fake)).toMatchObject([{ args: [7n, BigInt(Date.UTC(2026, 9, 20, 0, 30) / 1000) + 1n], value: LOSER_TOTAL }]);
   });
 
   it("D-15: the free input funds the encoded answer at the loser amount", async () => {
@@ -662,6 +692,39 @@ describe("AppealSection: Escrow V1 appeal (spec §10.2)", () => {
     expect(sentCalls(writes.fake)).toMatchObject([{ kind: "escrow-appeal", functionName: "appeal", args: [9n], value: ETH }]);
     expect(writes.fake.executions[0]?.options.onMined).toBeTypeOf("function");
   });
+
+  it("§5.11, §10.2: the Escrow V1 appeal body has no countdown", () => {
+    renderSection(caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, { family: ESCROW }));
+    expect(panelElement()).not.toHaveTextContent("Time left to appeal");
+    expect(panelElement().querySelector("time")).toBeNull();
+  });
+
+  it("§11.2, D-07: a failed Escrow V1 appeal is reported as an error", async () => {
+    const user = userEvent.setup();
+    writes.fake = fakeWriteController([{ phase: "pending" }, { phase: "failed", hash: TEST_TX_HASH, explorerUrl: null, message: "The transaction reverted." }]);
+    renderSection(caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, { family: ESCROW, localId: { kind: "transaction-id", value: 9n } }));
+    await user.click(screen.getByRole("button", { name: "Appeal - 1 ETH" }));
+    expect(await within(panelElement()).findByRole("alert")).toHaveTextContent("The transaction reverted.");
+  });
+
+  it("§11.2, D-07: a rejected Escrow V1 appeal is a neutral notice, not an error", async () => {
+    const user = userEvent.setup();
+    writes.fake = fakeWriteController([{ phase: "pending" }, { phase: "rejected" }]);
+    renderSection(caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, { family: ESCROW, localId: { kind: "transaction-id", value: 9n } }));
+    await user.click(screen.getByRole("button", { name: "Appeal - 1 ETH" }));
+    expect(await within(panelElement()).findByText("Transaction cancelled")).toBeInTheDocument();
+    expect(within(panelElement()).queryByRole("alert")).toBeNull();
+  });
+
+  it("B3: refuses the Escrow V1 appeal when the wallet is on another chain, and offers the switch", async () => {
+    const user = userEvent.setup();
+    const wallet = createTestWallet({ chainId: 100, switchChainError: true });
+    renderSection(caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, { family: ESCROW, localId: { kind: "transaction-id", value: 9n } }), wallet);
+    await act(() => wallet.connect());
+    await user.click(screen.getByRole("button", { name: "Appeal - 1 ETH" }));
+    expect(await within(panelElement()).findByText("Wrong network")).toBeInTheDocument();
+    expect(within(panelElement()).getByRole("button", { name: /^Switch to/ })).toBeInTheDocument();
+  });
 });
 
 describe("AppealSection: withdraw (spec §5.15, D-51)", () => {
@@ -695,7 +758,7 @@ describe("AppealSection: withdraw (spec §5.15, D-51)", () => {
     expect(within(panelElement()).queryByRole("button")).toBeNull();
   });
 
-  it("§5.15: without a wallet it asks to connect one, with no button of its own", () => {
+  it("P-22: without a wallet it asks to connect one, with no button of its own", () => {
     renderSection(caseDispute({ kind: "withdraw", state: { status: "no-account" } }));
     expect(panelElement()).not.toHaveAttribute("data-withdrawable-wei");
     expect(panelElement()).toHaveTextContent(/Connect a wallet/);

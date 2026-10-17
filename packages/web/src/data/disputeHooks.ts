@@ -60,16 +60,19 @@ export function useFamily(chainId: ChainId, arbitrable: Address | undefined): Se
 
 /**
  * The meta-evidence of the dispute (spec §9.1) with the case page's or the Ongoing page's budget (D-37, D-38). The
- * case page refetches on mount any result that is not `ok`.
+ * case page loads it uncached (spec §9.1, §6.5): it runs the pipeline on every mount and shows no stored result,
+ * whatever its status, until that run settles. Only the Ongoing cards are served from the stored results.
  */
 export function useMetaEvidence(chainId: ChainId, binding: ArbitratedBinding | undefined, budget: MetaEvidenceBudget): SectionData<MetaEvidenceResult> {
   const deps = useCoreDeps();
   const target = binding === undefined ? undefined : { disputeId: binding.disputeId, arbitrable: binding.arbitrated };
+  const uncached = budget === "case";
   const query = useQuery({
     ...metaEvidenceQuery(deps, chainId, target, budget),
-    refetchOnMount: budget === "case" ? (current) => (current.state.data?.status === "ok" ? true : "always") : true,
+    refetchOnMount: uncached ? "always" : true,
   });
-  return binding === undefined ? LOADING : fromQuery(query, ready);
+  if (binding === undefined || (uncached && !query.isFetchedAfterMount)) return LOADING;
+  return fromQuery(query, ready);
 }
 
 /** The ERC-1497 `Dispute` event: never goes stale once found. */

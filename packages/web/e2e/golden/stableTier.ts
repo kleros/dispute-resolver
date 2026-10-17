@@ -6,6 +6,8 @@
 // withdrawable amount the account-context ledger tests compare against (D-02, D-30); `fundedRuling` is the on-chain
 // RulingFunded event the D-02 decision rule compares the new app's winner against; `currentRuling` is the on-chain
 // current ruling the P-14 decision rule reads; `productionMayFail` marks a case production may not settle, and why.
+// After the stable tier come the executed disputes a ledger Test clause names (`LEDGER_CASES`), with `recordedEvidence`
+// where their test needs the on-chain blocks of the Dispute and Evidence events (P-01). Each case's court is in courts.ts.
 
 /** How a bad dispute must degrade on the new app. */
 export type Degradation =
@@ -25,6 +27,8 @@ export interface CaseHighlights {
   readonly realityNotice?: string;
   readonly arbitrableAppHidden?: boolean;
   readonly evidenceDisplay?: boolean;
+  /** Text the evidence display's frame must render once loaded: the item it shows, not an error page (06 §5 item 2). */
+  readonly evidenceDisplayText?: string;
 }
 
 /**
@@ -68,6 +72,18 @@ export interface RecordedFundedRuling {
  */
 export type ProductionMayFail = { readonly cause: "does-not-load" } | { readonly cause: "environment"; readonly reason: string };
 
+/**
+ * The Dispute event and the Evidence events of a dispute, recorded on-chain for a case whose ledger test needs them
+ * older than a look-back window (P-01): their blocks and how many Evidence events the dispute's evidence group has,
+ * read at `block`.
+ */
+export interface RecordedEvidenceScan {
+  readonly disputeCreatedAt: number;
+  readonly lastEvidenceAt: number;
+  readonly evidenceEvents: number;
+  readonly block: number;
+}
+
 /** The arbitrator's `currentRuling(disputeID)`, in decimal, read on 2026-10-15 at `block`. */
 export interface RecordedCurrentRuling {
   readonly ruling: string;
@@ -78,7 +94,7 @@ export interface RecordedCurrentRuling {
 const MAX_UINT256 = (2n ** 256n - 1n).toString();
 
 export interface StableCase {
-  readonly chainId: 1 | 100;
+  readonly chainId: number;
   readonly disputeId: number;
   /** The arbitrable as §2 names it (a prefix where §2 abbreviates it). */
   readonly arbitrable: string;
@@ -92,6 +108,7 @@ export interface StableCase {
   readonly deviations?: readonly string[];
   readonly accountContext?: RecordedAccountContext;
   readonly fundedRuling?: RecordedFundedRuling;
+  readonly recordedEvidence?: RecordedEvidenceScan;
 }
 
 export function caseKey(chainId: number, disputeId: number): string {
@@ -211,7 +228,14 @@ const MAINNET: readonly StableCase[] = [
     disputeId: 1255,
     arbitrable: "0xEbcf3bcA271B26ae4B162Ba560e243055Af0E679",
     exercises: "T2CR evidence display on the dead ipfs.kleros.io host, 3 evidence",
-    highlights: { family: "view-only", titles: ["Yes, Add It", "No, Don't Add It"], evidenceCount: 3, evidenceDisplay: true },
+    highlights: {
+      family: "view-only",
+      titles: ["Yes, Add It", "No, Don't Add It"],
+      evidenceCount: 3,
+      evidenceDisplay: true,
+      // 06 §5 item 2: the T2CR item the display renders through the gateway (golden run of 2026-10-16).
+      evidenceDisplayText: "The Token in Question: Revolt 2 Earn RVLT",
+    },
   },
   { chainId: 1, disputeId: 1659, arbitrable: "0xda03509bb770061a61615ad8fc8e1858520ebd86", exercises: "LightGTCR Curate dispute", highlights: { family: "view-only" } },
   { chainId: 1, disputeId: 1649, arbitrable: "0x4A9f8e73b3c4c9d7fA0210b9de457b1c493a3AdA", exercises: "Seer Curate variant", highlights: { family: "view-only" } },
@@ -462,12 +486,34 @@ const GNOSIS: readonly StableCase[] = [
 
 export const STABLE_TIER: readonly StableCase[] = [...MAINNET, ...GNOSIS];
 
+/**
+ * Executed disputes that a ledger or proposal Test clause names and 04 §2 does not list. They run with the stable tier.
+ * - P-01, "a Sepolia dispute older than 50,000 blocks shows its evidence": Sepolia 365, created through the Sepolia
+ *   ArbitrableProxy at block 10,944,579 with its 3 Evidence events by block 10,944,643, read at block 11,925,583 (about
+ *   980,000 blocks later). Production scans the Dispute and Evidence events from head − 50,000 on testnets, so it finds
+ *   neither and lists no evidence; the new app scans from the arbitrator's deployment block (block 0 on Sepolia).
+ */
+const LEDGER_CASES: readonly StableCase[] = [
+  {
+    chainId: 11155111,
+    disputeId: 365,
+    arbitrable: "0x009cA5A0B816156F91B29A93d7688c52480BaB24",
+    exercises: "P-01: evidence older than the testnet look-back of 50,000 blocks, 3 evidence",
+    highlights: { evidenceCount: 3 },
+    deviations: ["P-01"],
+    recordedEvidence: { disputeCreatedAt: 10_944_579, lastEvidenceAt: 10_944_643, evidenceEvents: 3, block: 11_925_583 },
+  },
+];
+
+/** Every case the golden run compares: the stable tier, then the ledger's named cases. */
+export const GOLDEN_CASES: readonly StableCase[] = [...STABLE_TIER, ...LEDGER_CASES];
+
 /** The chains the Ongoing and Create screens are compared on. */
 export const SCREEN_CHAINS = [1, 100] as const;
 
 /** Restricts the run to `GOLDEN_CASES` (comma-separated `chain:id` keys) when it is set. */
 export function selectedCases(filter: string | undefined): readonly StableCase[] {
-  if (filter === undefined || filter.trim() === "") return STABLE_TIER;
+  if (filter === undefined || filter.trim() === "") return GOLDEN_CASES;
   const keys = new Set(filter.split(",").map((key) => key.trim()));
-  return STABLE_TIER.filter((entry) => keys.has(caseKey(entry.chainId, entry.disputeId)));
+  return GOLDEN_CASES.filter((entry) => keys.has(caseKey(entry.chainId, entry.disputeId)));
 }

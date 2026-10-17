@@ -79,6 +79,105 @@
 @theme {
   --font-sans: "Open Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  /*
+   * Motion (contract §9: state only, 150 to 250 ms). These redefine the library's own variables, which its components
+   * read through `entering:animate-scale-in`, `exiting:animate-scale-out`, `animate-fade-in` and `animate-fade-out`.
+   * - The select popover opens over 250 ms and closes over 150 ms on the `scale` property with opacity, instead of the
+   *   library's unroll from scaleY(0). The library's close never ran: 3.9.0 names a `slideOut` keyframe that does not
+   *   exist (reported upstream). The out keyframe states both ends because the exiting popover carries a static
+   *   `scale-y-0`, and only a running animation on `scale` holds it visible until react-aria unmounts it.
+   * - The tooltip and the number-field arrow column fade over 150 ms (the library's 300 ms exceeded the ceiling).
+   */
+  --animate-scale-in: dr-dropdown-in 250ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-scale-out: dr-dropdown-out 150ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-fade-in: fadeIn 150ms ease-out;
+  --animate-fade-out: fadeOut 150ms ease-out;
+
+  @keyframes dr-dropdown-in {
+    from {
+      opacity: 0;
+      scale: 0.97;
+    }
+  }
+
+  @keyframes dr-dropdown-out {
+    from {
+      opacity: 1;
+      scale: 1;
+    }
+    to {
+      opacity: 0;
+      scale: 0.99;
+    }
+  }
+}
+
+/*
+ * The library's hover and transition utilities (contract §0 correction: the library ships them only in its style.css,
+ * which is never imported, so `.hover-short-transition{transition:all .1s}` was never in the bundle). Hover fills use
+ * the library tokens; hover-out is the same transition as hover-in. The transition's property list is a deliberate
+ * superset: the library `Card` carries `hover-short-transition`, so whichever of it and the Ongoing card's
+ * `transition-[border-color,box-shadow] duration-200` wins the utilities sort, the card still transitions its border
+ * and shadow within the 150 to 250 ms band.
+ */
+@utility hover-medium-blue {
+  &:hover {
+    background-color: var(--klerosUIComponentsMediumBlue);
+  }
+}
+
+@utility hover-white-background {
+  &:hover {
+    background-color: var(--klerosUIComponentsWhiteBackground);
+  }
+}
+
+@utility hover-short-transition {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@utility hover-long-transition {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/*
+ * Library-internal corrections. Each selector is more specific than the library utility it corrects (0,1,0), so it
+ * wins inside the utilities layer without adding an unlayered rule.
+ * - The select trigger's chevron draws --dr-control-border (3.45:1 light, 4.92:1 dark) instead of Stroke; the
+ *   trigger's period dot is a div with an inline background and is not matched.
+ * - The select popover is as wide as its trigger (react-aria's --trigger-width; the library fixes it at 14.875rem),
+ *   bounded by the viewport because it is portaled.
+ * - Field descriptions and error messages, and the dropzone's line, start-align like the rest of the form; the
+ *   dropzone's line is the small step.
+ */
+@layer utilities {
+  button[aria-haspopup="listbox"]:not(:disabled) svg.fill-klerosUIComponentsStroke {
+    fill: var(--dr-control-border);
+  }
+
+  [data-trigger="Select"] > div {
+    width: var(--trigger-width, 14.875rem);
+    max-width: calc(100vw - 2rem);
+  }
+
+  [data-trigger="Select"] [role="listbox"] {
+    width: 100%;
+  }
+
+  span[slot="description"] {
+    text-align: start;
+  }
+
+  #dropzone-label {
+    text-align: start;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
 }
 
 @layer base {
@@ -90,55 +189,232 @@
     color-scheme: dark;
   }
 
+  /*
+   * Light-only token corrections (contract §4). The library's light values fail WCAG AA as text and fills (#009aff is
+   * 2.97:1 on white, #999999 is 2.85:1), so they are overridden here; `:root.dark` outranks `:root`, so dark keeps the
+   * library's values, which pass every measured text check (its Stroke is corrected in the dark block below).
+   * - PrimaryBlue #0072c6: 4.97:1 on white, 4.67:1 on MediumBlue #f0f9ff, 4.80:1 on LightBackground #fafbfc; white on it
+   *   4.97:1. The brand hue #009aff survives in the logo and in dark mode (#6cc5ff).
+   * - SecondaryBlue #005fa8: the library primary-button hover; white on it 6.56:1 (the library's #7bcbff gave 1.78:1).
+   * - SecondaryText #6b6b6b: 5.33:1 on white, 5.00:1 on MediumBlue, 5.14:1 on LightBackground, 5.11:1 on LightGrey.
+   * - Warning #a85400: 5.34:1 on white, 5.15:1 on LightBackground, 5.01:1 on MediumBlue, 4.75:1 on TintPurple (the
+   *   library's #ff9900 is 2.14:1 on white).
+   * - Error #c8102e: 5.88:1 on white, 5.68:1 on LightBackground, 5.52:1 on MediumBlue, 5.24:1 on TintPurple (the
+   *   library's #f60c36 is 4.18:1 on white).
+   * - Success #007a1f: 5.52:1 on white, 5.33:1 on LightBackground, 5.18:1 on MediumBlue, 4.91:1 on TintPurple (the
+   *   library's #00c42b is 2.35:1 on white).
+   * The three clear every alert title, field message and inline error; their non-text uses (period dots, alert edges
+   * and icons, identicon fills, invalid-field borders) only darken. Dark keeps the library's values (Warning 11.29:1,
+   * Error 5.90:1, Success 10.22:1 on WhiteBackground #220050).
+   */
+  :root {
+    --klerosUIComponentsPrimaryBlue: #0072c6;
+    --klerosUIComponentsSecondaryBlue: #005fa8;
+    --klerosUIComponentsSecondaryText: #6b6b6b;
+    --klerosUIComponentsWarning: #a85400;
+    --klerosUIComponentsError: #c8102e;
+    --klerosUIComponentsSuccess: #007a1f;
+  }
+
+  /*
+   * Dark token correction (bolder-pass contract §5). Stroke #5a5490: the library's dark Stroke #392c74 mixed 25 % toward
+   * the dark SecondaryText #becce5 in sRGB, written as a literal because the token cannot reference itself. Role: every
+   * 1 px edge in dark (cards, dividers, bars, rails, rings; the library's own edges and Stroke fills follow). Non-text:
+   * 2.62:1 on WhiteBackground #220050, 2.78:1 on LightBackground #1b003f, 2.02:1 on MediumBlue #2e206c, 2.10:1 on
+   * MediumPurple #390f6c; the library's value is 1.51:1 on WhiteBackground and drew no edge. Light is untouched.
+   */
+  :root.dark {
+    --klerosUIComponentsStroke: #5a5490;
+  }
+
+  /*
+   * App tokens (contract §4).
+   * - --dr-control-border: edges of inputs, textareas and select triggers only (cards keep Stroke). Light #8a8a8a:
+   *   3.24:1 on MediumBlue, 3.33:1 on LightBackground, 3.45:1 on white. Dark #8a7bd0: 3.78:1 on MediumBlue #2e206c,
+   *   4.92:1 on WhiteBackground #220050.
+   * - --dr-focus: the focus ring, PrimaryBlue (light 4.97:1 on white; dark #6cc5ff 7.19:1 on WhiteBackground).
+   * - --dr-focus-bar: the ring on the purple bars, which the header and footer assign to --dr-focus. Light #7bcbff:
+   *   5.99:1 on PrimaryPurple #4d00b4. Dark #a5dbff: 10.47:1 on the
+   *   dark bar surface LightBlue #2a1260.
+   * - --dr-record-surface: the record band of the dispute header and the Create summary cover. Light TintPurple
+   *   #f4f0fa: PrimaryText 11.25:1, SecondaryText 4.74:1; PrimaryBlue is 4.43:1 on it, so no link sits on the band.
+   *   Dark MediumPurple #390f6c: PrimaryText 12.26:1, SecondaryText 8.88:1.
+   * - --dr-record-edge: the band's 1 px edge and its inner rule (non-text). Light: PrimaryPurple mixed 20 % into Stroke
+   *   (about #c7b7db), 1.67:1 on the band and 1.84:1 on the page, where Stroke alone is 1.12:1 on TintPurple. Dark:
+   *   Stroke, 2.10:1 on the band.
+   * - --dr-elevation: the hover of an Ongoing card, the open mobile menu panel and the account menu panel; an offset
+   *   with a soft blur tinted from the palette (light PrimaryPurple at 14 %, dark the library's HoveredShadow). A
+   *   shadow, not text or a control edge, so no contrast ratio applies.
+   * - --dr-success-bar and --dr-warning-bar: the header chain dot on the purple bar. Any colour at or above 4.5:1 on
+   *   white is at most 2.36:1 on the light bar, so the bar takes the dark theme's shades in both themes. Light #65dc7f:
+   *   6.13:1 on PrimaryPurple #4d00b4; #ffc46b: 6.77:1. Dark: the library's Success and Warning.
+   */
+  :root {
+    --dr-success-bar: #65dc7f;
+    --dr-warning-bar: #ffc46b;
+    --dr-control-border: #8a8a8a;
+    --dr-focus: var(--klerosUIComponentsPrimaryBlue);
+    --dr-focus-bar: #7bcbff;
+    --dr-record-surface: var(--klerosUIComponentsTintPurple);
+    --dr-record-edge: color-mix(in srgb, var(--klerosUIComponentsPrimaryPurple) 20%, var(--klerosUIComponentsStroke));
+    --dr-elevation: 0 8px 24px color-mix(in srgb, var(--klerosUIComponentsPrimaryPurple) 14%, transparent);
+  }
+
+  :root.dark {
+    --dr-success-bar: var(--klerosUIComponentsSuccess);
+    --dr-warning-bar: var(--klerosUIComponentsWarning);
+    --dr-control-border: #8a7bd0;
+    --dr-focus-bar: #a5dbff;
+    --dr-record-surface: var(--klerosUIComponentsMediumPurple);
+    --dr-record-edge: var(--klerosUIComponentsStroke);
+    --dr-elevation: 0 8px 24px var(--klerosUIComponentsHoveredShadow);
+  }
+
   body {
     background-color: var(--klerosUIComponentsLightBackground);
     color: var(--klerosUIComponentsPrimaryText);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-}
 
-/*
- * The v2 base typography (ARCHITECTURE.md §11.1), for app markup only: library elements carry token classes, so the
- * selectors skip any element with a `klerosUIComponents` class and the library keeps its own text styles.
- */
-@layer components {
-  h1:not([class*="klerosUIComponents"]) {
-    font-size: 24px;
-    line-height: 32px;
+  /* Browser surfaces (contract §7): selection, scrollbar, caret and tabular numerals follow the palette. */
+  ::selection {
+    background: color-mix(in srgb, var(--klerosUIComponentsPrimaryBlue) 24%, transparent);
+    color: inherit;
+  }
+
+  /*
+   * The sticky header is h-16 at every width; focusing or scrolling to an element leaves it and its 2 px ring (offset
+   * 2 px) below the bar.
+   */
+  html {
+    scrollbar-color: var(--klerosUIComponentsStroke) transparent;
+    scroll-padding-top: calc(4rem + 8px);
+  }
+
+  :where(input, textarea) {
+    caret-color: var(--klerosUIComponentsPrimaryBlue);
+  }
+
+  :where(time, data) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * The focus ring's rest state (contract §6, §8): library controls transition `all`, so without a rest width, colour
+   * and offset the ring would grow from a 3px currentColor outline for 250ms; only the discrete outline-style flips now.
+   */
+  :where(a, button, input, textarea, select, summary, iframe, [role="button"], [tabindex], [data-rac]) {
+    outline-width: 2px;
+    outline-color: var(--dr-focus);
+    outline-offset: 2px;
+  }
+
+  :where([role="option"]) {
+    outline-offset: -2px;
+  }
+
+  /*
+   * The base type scale (contract §3, §7), in rem. Every utility, the library's included, still beats these rules
+   * because @layer utilities outranks @layer base, so library text keeps its own size. The selectors are plain element
+   * selectors rather than the contract's :where(): Tailwind's preflight, in this same layer, resets h1-h6 to
+   * `inherit` and <small> to 80% at specificity 0,0,1, which a zero-specificity :where() rule loses to; at equal
+   * specificity the later rule here wins. They no longer skip elements with a `klerosUIComponents` class: that guard
+   * also matched every app element carrying a token colour utility, so the scale only applied by accident. Links are
+   * coloured inside <main> only, so the header, footer and banner anchors keep their bar colour.
+   */
+  h1 {
+    font-size: 1.5rem;
+    line-height: 2rem;
     font-weight: 600;
   }
 
-  h2:not([class*="klerosUIComponents"]) {
-    font-size: 24px;
-    line-height: 32px;
-    font-weight: 400;
-  }
-
-  h3:not([class*="klerosUIComponents"]) {
-    font-size: 16px;
-    line-height: 24px;
+  h2 {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
     font-weight: 600;
   }
 
-  p:not([class*="klerosUIComponents"]) {
-    font-size: 16px;
-    line-height: 24px;
-  }
-
-  small:not([class*="klerosUIComponents"]) {
-    font-size: 14px;
-    line-height: 18px;
+  h3 {
+    font-size: 1rem;
+    line-height: 1.5rem;
     font-weight: 600;
   }
 
-  label:not([class*="klerosUIComponents"]) {
-    font-size: 14px;
-    line-height: 18px;
+  p {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  small {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  label {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
     color: var(--klerosUIComponentsSecondaryText);
   }
 
-  a:not([class*="klerosUIComponents"]) {
+  :where(main) a {
     color: var(--klerosUIComponentsPrimaryBlue);
   }
+
+  /*
+   * Reduced motion: one guard for the app and the library. Durations go near zero rather than `animation: none` so
+   * react-aria still receives animationend and unmounts the select popover, the tooltip and the modal; with one
+   * iteration the skeleton rests at opacity 1, a busy button's logo at scale 1 and the toast at translateY(0). A layered
+   * !important outranks every layer and every unlayered rule, so the five unlayered rules stay five.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/*
+ * The unlayered rules (contract §0). Unlayered styles beat every layer, utilities included, so these are the only places
+ * a component's own classes are overridden.
+ */
+
+/*
+ * Focus (contract §6): one ring shape everywhere. The header and footer set --dr-focus to --dr-focus-bar. A react-aria
+ * `[data-focus-visible]` container (the DropZone, the Select trigger) is matched too; a listbox option keeps its ring
+ * inside the list.
+ */
+:where(a, button, input, textarea, select, summary, iframe, [role="button"], [tabindex]):focus-visible,
+[data-focus-visible] {
+  outline: 2px solid var(--dr-focus);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+[role="option"][data-focus-visible] {
+  outline-offset: -2px;
+}
+
+/*
+ * Control edges (contract §4): inputs, textareas and select triggers at rest draw --dr-control-border (3:1 or more on
+ * every surface) instead of Stroke. The library's variant classes (Error, focus) replace the Stroke class through
+ * tailwind-merge, and the states are excluded here, so an invalid or focused field keeps the library border.
+ */
+:where(input, textarea, button[aria-haspopup="listbox"]).border-klerosUIComponentsStroke:not(:focus, :invalid, [aria-invalid="true"], [data-invalid], :disabled) {
+  border-color: var(--dr-control-border);
+}
+
+/* Disabled buttons (contract §5): a grey fill with a Stroke ring and a SecondaryText label (5.11:1 on LightGrey). */
+button:where(:disabled, [data-disabled]) {
+  background-color: var(--klerosUIComponentsLightGrey);
+  box-shadow: inset 0 0 0 1px var(--klerosUIComponentsStroke);
+}
+
+button:where(:disabled, [data-disabled]) .button-text {
+  color: var(--klerosUIComponentsSecondaryText);
 }

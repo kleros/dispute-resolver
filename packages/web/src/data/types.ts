@@ -1,4 +1,5 @@
 import type {
+  AppealDecisionEvent,
   AppealInfo,
   AppealPanel,
   ArbitratedBinding,
@@ -88,6 +89,8 @@ export interface CaseDispute {
   readonly metaEvidence: SectionData<MetaEvidenceResult>;
   readonly disputeEvent: SectionData<DisputeEventResult>;
   readonly evidence: SectionData<EvidenceList>;
+  /** The `AppealDecision` events of the dispute details, oldest first: the "Appealed" markers of the evidence timeline (D-03). */
+  readonly appealDecisions: SectionData<readonly AppealDecisionEvent[]>;
   readonly courts: SectionData<readonly Court[]>;
   readonly appealPanel: SectionData<AppealPanel>;
   readonly write: SectionData<CaseWriteContext>;

@@ -12,6 +12,8 @@ vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../te
 
 const DISPUTE: OngoingDispute = { id: 42n, arbitrated: TEST_ARBITRABLE, period: 1, subcourtId: 0n, lastPeriodChange: 1_700_000_000, countdownTarget: 1_700_086_400 };
 const COURTS: Outcome<readonly Court[]> = { ok: true, value: [testCourt()] };
+/** Today's subcourt cache is reused for 3 hours (spec §2.2, §6.5). */
+const COURT_CACHE_AGE_MS = 3 * 60 * 60 * 1_000;
 
 function wrapperWith(seed: readonly (readonly [readonly unknown[], unknown])[] = [], client = createTestQueryClient(), deps = createTestDeps()) {
   return function Wrapper({ children }: { readonly children?: ReactNode }) {
@@ -71,6 +73,32 @@ describe("Ongoing page data (ARCHITECTURE.md §5.5, D-37)", () => {
     const { result } = renderHook(() => useOngoing(1), { wrapper: wrapperWith() });
     await waitFor(() => {
       expect(result.current.list).toEqual({ status: "unavailable", error: { code: "rpc-error", message: "getLogs refused" } });
+    });
+  });
+
+  /** A client holding the court list as restored from the persisted cache, written `ageMs` before the frozen now. */
+  function clientWithCourtsAged(ageMs: number) {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const client = createTestQueryClient();
+    client.setQueryData(queryKeys.courts(1), COURTS, { updatedAt: Date.now() - ageMs });
+    return client;
+  }
+
+  it("§2.2, §6.5: a court list under 3 hours old is used without reading the courts again", async () => {
+    vi.mocked(core.listCourts).mockResolvedValue(COURTS);
+    const client = clientWithCourtsAged(COURT_CACHE_AGE_MS - 1);
+    const { result } = renderHook(() => useCourts(1), { wrapper: wrapperWith([], client) });
+    expect(result.current).toEqual({ status: "ready", value: COURTS.value });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(core.listCourts).not.toHaveBeenCalled();
+  });
+
+  it("§2.2, §6.5: a court list 3 hours old or more is read again", async () => {
+    vi.mocked(core.listCourts).mockResolvedValue(COURTS);
+    const client = clientWithCourtsAged(COURT_CACHE_AGE_MS + 1);
+    renderHook(() => useCourts(1), { wrapper: wrapperWith([], client) });
+    await waitFor(() => {
+      expect(core.listCourts).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -152,6 +180,14 @@ describe("Ongoing page data (ARCHITECTURE.md §5.5, D-37)", () => {
     await waitFor(() => {
       expect(result.current).toEqual({ status: "ready", value: { kind: "title", text: "Invalid meta-evidence" } });
     });
+  });
+
+  it("§6.5: a stored accepted meta-evidence serves a card's title without running the pipeline", async () => {
+    const wrapper = wrapperWith([[queryKeys.metaEvidence(1, 42n, TEST_ARBITRABLE), testOkMetaEvidence({ title: "Stored title" })]]);
+    const { result } = renderHook(() => useOngoingTitle(1, DISPUTE), { wrapper });
+    expect(result.current).toEqual({ status: "ready", value: { kind: "title", text: "Stored title" } });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(core.loadMetaEvidence).not.toHaveBeenCalled();
   });
 
   it("D-38: a failed title is kept briefly instead of reloading on every mount", async () => {

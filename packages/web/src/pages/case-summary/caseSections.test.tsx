@@ -63,6 +63,7 @@ function caseDispute(options: CaseOptions = {}): CaseDispute {
     metaEvidence,
     disputeEvent: sectionLoading,
     evidence: sectionLoading,
+    appealDecisions: sectionLoading,
     courts: sectionReady([testCourt(options.court)]),
     appealPanel: sectionLoading,
     write: sectionLoading,
@@ -109,7 +110,7 @@ describe("CaseOverview", () => {
     expect(screen.getByText("Voting")).toBeInTheDocument();
   });
 
-  it("S-4: shows the period from the lookup while the view is still loading", () => {
+  it("P-20: shows the period from the lookup while the view is still loading", () => {
     renderSection(CaseOverview, caseDispute({ period: 3, view: "loading" }));
     expect(screen.getByText("Appeal")).toBeInTheDocument();
     expect(screen.queryByTestId("case-votes")).not.toBeInTheDocument();
@@ -197,7 +198,7 @@ describe("DisputeTimeline", () => {
     expect(screen.getByTestId("case-decision")).toHaveAttribute("data-kind", "jury-decision");
   });
 
-  it("S-4: shows a loading placeholder until the view settles", () => {
+  it("P-20: shows a loading placeholder until the view settles", () => {
     renderSection(DisputeTimeline, caseDispute({ view: "loading" }));
     expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
   });
@@ -255,7 +256,7 @@ describe("DecisionAlert", () => {
     expect(screen.queryByTestId("case-decision")).not.toBeInTheDocument();
   });
 
-  it("S-4: holds a placeholder in the appeal period until the view settles, and nothing before it", () => {
+  it("P-20: holds a placeholder in the appeal period until the view settles, and nothing before it", () => {
     const { unmount } = renderSection(DecisionAlert, caseDispute({ period: 3, view: "loading" }));
     expect(screen.getByRole("status")).toBeInTheDocument();
     unmount();

@@ -6,18 +6,21 @@ import { useAtlasUpload } from "../../atlas";
 import { useArbitrationCost, useCoreDeps, useCourts } from "../../data";
 import { paths } from "../../routing";
 import { Attachment } from "../../safe-content";
-import { AddressText, Amount, Notice } from "../../ui";
+import { AddressText, Amount, EYEBROW, FACT, FACT_SMALL, LABEL, Notice } from "../../ui";
 import { WriteStatusNotice, type WriteStatus } from "../../wallet";
 import { courtLabel } from "./CourtSection";
 import { questionTypeLabel } from "./draft";
 import { UPLOAD_FAILURE_TITLES } from "./messages";
 import { useCreateDispute, type CreateActionState } from "./useCreateDispute";
 
-function Row({ term, children }: { readonly term: string; readonly children: ReactNode }) {
+const VALUE = "m-0 min-w-0 text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]";
+
+/** A summary row: the term as a label over (below lg) or beside (from lg) its value; `valueClass` raises a fact's tier. */
+function Row({ term, valueClass, children }: { readonly term: string; readonly valueClass?: string; readonly children: ReactNode }) {
   return (
     <div className="grid min-w-0 grid-cols-1 gap-1 border-b border-klerosUIComponentsStroke py-3 last:border-b-0 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-4">
-      <dt className="text-sm text-klerosUIComponentsSecondaryText">{term}</dt>
-      <dd className="m-0 min-w-0 text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">{children}</dd>
+      <dt className={LABEL}>{term}</dt>
+      <dd className={valueClass === undefined ? VALUE : `${VALUE} ${valueClass}`}>{children}</dd>
     </div>
   );
 }
@@ -30,7 +33,7 @@ function CourtName({ chain, courtId }: { readonly chain: ChainConfig; readonly c
 
 function Cost({ chain, input }: { readonly chain: ChainConfig; readonly input: CreateDisputeInput }) {
   const cost = useArbitrationCost(chain.id, encodeExtraData(input.courtId, input.votes));
-  if (cost.status === "ready") return <Amount wei={cost.value} chain={chain} />;
+  if (cost.status === "ready") return <Amount wei={cost.value} chain={chain} className={FACT} />;
   if (cost.status === "loading") return <span className="text-klerosUIComponentsSecondaryText">Calculating...</span>;
   return <span className="text-klerosUIComponentsError">{cost.error.message}</span>;
 }
@@ -51,12 +54,12 @@ function RulingOptions({ input }: { readonly input: CreateDisputeInput }) {
   if (input.options.length === 0) return null;
   return (
     <Row term="Ruling Options">
-      <ol className="m-0 flex list-decimal flex-col gap-2 pl-5">
+      <ol className="m-0 flex list-decimal flex-col gap-2 pl-6">
         {input.options.map((option, index) => (
           // Options are positional: their index is their ruling code minus one (spec §4.5).
           <li key={String(index)}>
             <span className="font-semibold">{option.title}</span>
-            {option.description === "" ? null : <span className="block text-sm text-klerosUIComponentsSecondaryText">{option.description}</span>}
+            {option.description === "" ? null : <span className="block text-sm text-klerosUIComponentsPrimaryText">{option.description}</span>}
           </li>
         ))}
       </ol>
@@ -101,7 +104,7 @@ function ActionNotice({ state, writeStatus, chain }: { readonly state: CreateAct
       return (
         <div className="flex flex-col gap-2">
           <Notice variant="success" title={`Dispute ${state.disputeId.toString()} created`} body="Opening the dispute..." />
-          <Link to={paths.case(chain.id, state.disputeId)} className="text-klerosUIComponentsPrimaryBlue hover:underline">
+          <Link to={paths.case(chain.id, state.disputeId)} className="text-klerosUIComponentsPrimaryBlue underline decoration-1 underline-offset-2 hover:decoration-2">
             Open dispute {state.disputeId.toString()}
           </Link>
         </div>
@@ -125,31 +128,38 @@ export function CreateSummary({ chain, input, onReturn }: CreateSummaryProps) {
   const titleId = useId();
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-klerosUIComponentsSecondaryText">Summary</p>
-        <h1 id={titleId} className="text-2xl font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">
-          {input.title}
-        </h1>
-        {input.description === "" ? null : <p className="mt-2 whitespace-pre-line text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">{input.description}</p>}
-      </header>
-      <dl className="m-0 flex flex-col rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground px-4 lg:px-6">
-        <Row term="Court">
-          <CourtName chain={chain} courtId={input.courtId} />
-        </Row>
-        <Row term="Number of Votes">{input.votes.toString()}</Row>
-        <Row term="Category (Optional)">{input.category === "" ? <span className="text-klerosUIComponentsSecondaryText">None</span> : input.category}</Row>
-        <Row term="Arbitration Cost">
-          <Cost chain={chain} input={input} />
-        </Row>
-        <Parties chain={chain} aliases={input.aliases} />
-        <Row term={questionTypeLabel(input.questionType)}>{input.question}</Row>
-        <RulingOptions input={input} />
-        {input.primaryDocument === null ? null : (
-          <Row term="Primary Document">
-            <Attachment attachment={toAttachmentLink(input.primaryDocument, gateway)} />
+      {/* One sheet: the record band as its cover, then the rows. No overflow-hidden, so Copiable tooltips escape it. */}
+      <div className="flex flex-col rounded-[18px] border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground">
+        <header className="flex flex-col gap-1 rounded-t-[17px] border-b border-(--dr-record-edge) bg-(--dr-record-surface) p-4 lg:px-8 lg:py-6">
+          <p className={EYEBROW}>Summary</p>
+          <h1 id={titleId} className="text-2xl font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">
+            {input.title}
+          </h1>
+          {input.description === "" ? null : (
+            <p className="mt-2 max-w-[72ch] whitespace-pre-line text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">{input.description}</p>
+          )}
+        </header>
+        <dl className="m-0 flex flex-col px-4 lg:px-8">
+          <Row term="Court" valueClass={FACT_SMALL}>
+            <CourtName chain={chain} courtId={input.courtId} />
           </Row>
-        )}
-      </dl>
+          <Row term="Number of Votes" valueClass={`${FACT_SMALL} tabular-nums`}>
+            {input.votes.toString()}
+          </Row>
+          <Row term="Category (Optional)">{input.category === "" ? <span className="text-klerosUIComponentsSecondaryText">None</span> : input.category}</Row>
+          <Row term="Arbitration Cost">
+            <Cost chain={chain} input={input} />
+          </Row>
+          <Parties chain={chain} aliases={input.aliases} />
+          <Row term={questionTypeLabel(input.questionType)}>{input.question}</Row>
+          <RulingOptions input={input} />
+          {input.primaryDocument === null ? null : (
+            <Row term="Primary Document">
+              <Attachment attachment={toAttachmentLink(input.primaryDocument, gateway)} />
+            </Row>
+          )}
+        </dl>
+      </div>
       <div aria-live="polite">
         <ActionNotice state={action.state} writeStatus={action.writeStatus} chain={chain} />
       </div>
@@ -158,7 +168,7 @@ export function CreateSummary({ chain, input, onReturn }: CreateSummaryProps) {
         <Button
           text="Create"
           isLoading={action.isBusy && action.state.kind !== "created"}
-          isDisabled={action.isCreateDisabled}
+          isDisabled={action.isBusy}
           onPress={() => {
             void action.create();
           }}

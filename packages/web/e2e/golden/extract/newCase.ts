@@ -12,6 +12,7 @@ import type {
   TimelineState,
 } from "../types";
 import { sameAddress } from "../compare/values";
+import { SUBMIT_EVIDENCE_LABEL, VIEW_ONLY_SUBMIT_LABEL, type SubmitControlState } from "../liveChecks";
 import { attributeOf, evidenceDisplayOf, integerOrNull, nowSeconds, recordedPageUrl, textOf, utcStringToSeconds, waitUntilStable } from "./common";
 
 // The new app's extractor reads the parity hooks of packages/web/ARCHITECTURE.md §12.1 (`src/parity`). Two things §12
@@ -150,6 +151,18 @@ async function metaEvidenceFailureOf(page: Page): Promise<string | null> {
   const heading = page.locator("h2", { hasText: SUMMARY_UNAVAILABLE });
   if ((await heading.count()) === 0) return null;
   return (await textOf(heading.first().locator("xpath=following-sibling::small[1]"))) ?? "";
+}
+
+/**
+ * The submit-evidence control of the Evidence panel (spec 5.14), which §12 has no hook for: the button by its accessible
+ * name, inside the collapsed accordion body too. `{ label: null }` when the panel shows neither button.
+ */
+export async function submitControlOf(page: Page): Promise<SubmitControlState> {
+  for (const label of [SUBMIT_EVIDENCE_LABEL, VIEW_ONLY_SUBMIT_LABEL]) {
+    const button = page.getByRole("button", { name: label, exact: true, includeHidden: true });
+    if ((await button.count()) > 0) return { label, disabled: await button.first().isDisabled() };
+  }
+  return { label: null, disabled: null };
 }
 
 function compatibilityFrom(value: string | null): "full" | "view-only" | null {

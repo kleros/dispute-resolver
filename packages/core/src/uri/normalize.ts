@@ -44,7 +44,8 @@ export function isContentAddressed(input: unknown): boolean {
 
 /** The canonical path without its `/ipfs/` prefix: the form of dynamic-script allowlist entries (06 §3 invariant 4). */
 export function toCidPath(path: CanonicalIpfsPath): CidPath {
-  return path.slice(IPFS_PATH_PREFIX.length);
+  // A canonical path comes only from `normalizeIpfsPath`, which checked that the segment after `/ipfs/` is a CID.
+  return path.slice(IPFS_PATH_PREFIX.length) as CidPath;
 }
 
 function isCid(segment: string): boolean {

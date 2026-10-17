@@ -114,6 +114,16 @@ describe("AtlasFileField", () => {
     expect(screen.getByRole("group", { name: "Attachment" })).toBeInTheDocument();
   });
 
+  it("A11Y-04: the visible file-picker button is named by the field's label, also after a remount", async () => {
+    const upload = vi.fn(() => Promise.resolve(failure.uploadFailed("network")));
+    const { input } = await renderField({ label: "Attachment", uploader: fakeUploader({ upload }) });
+
+    expect(screen.getByRole("button", { name: "Attachment" })).toBeInTheDocument();
+    choose(input, pdf());
+    await screen.findByText(failure.uploadFailed("network").message);
+    expect(screen.getByRole("button", { name: "Attachment" })).toBeInTheDocument();
+  });
+
   it("D-08: shows Uploading to IPFS... during the upload and the file name afterwards", async () => {
     const upload = pendingUpload();
     const uploader = fakeUploader({ phase: "uploading", upload: () => upload.promise });

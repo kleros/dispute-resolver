@@ -94,6 +94,7 @@ function caseDispute(options: { readonly metaEvidence?: SectionData<MetaEvidence
     metaEvidence,
     disputeEvent: sectionLoading,
     evidence: sectionLoading,
+    appealDecisions: sectionLoading,
     courts: sectionReady([testCourt()]),
     appealPanel: sectionLoading,
     write: sectionLoading,
@@ -223,7 +224,7 @@ describe("DisputeSummary", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("S-4: renders the summary while the dispute view is still loading", () => {
+  it("P-20: renders the summary while the dispute view is still loading", () => {
     renderSummary(caseDispute({ viewLoading: true }));
     expect(screen.getByTestId("case-title")).toHaveTextContent("Test dispute");
   });

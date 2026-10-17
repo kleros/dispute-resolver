@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { CidPath } from "../../../../packages/core/src/uri/types";
 import type { ChainEnumeration, ReferencesFile } from "../enumerate/enumerate";
 import type { SideOutcome, Verdict } from "./compare";
 import { OVERRIDE_1621 } from "./plan";
 import { buildGateLog, renderGateLog, type GateOptions, type RunRecord } from "./report";
 
-const DEFAULT_SCRIPT = "QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj";
+const DEFAULT_SCRIPT: CidPath = "QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj";
 const GOVERNOR_SCRIPT = "QmX9qwsueTCvL7CRVi35BTTh3knDGCg9TFDqn25vth4Tf1";
 
 const OPTIONS: GateOptions = {

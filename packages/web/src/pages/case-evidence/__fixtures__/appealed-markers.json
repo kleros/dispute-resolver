@@ -1,0 +1,169 @@
+{
+  "description": "AppealDecision events (block and block time, as recorded in packages/core/src/disputes/__fixtures__/arbitrator-1.json and arbitrator-100.json) and the Evidence logs of the dispute's evidence group (block, log index, block time, party, URI, transaction), read through the configured RPC for the D-03 'Appealed' marker test. Evidence logs were scanned from the Dispute event's block to evidenceScanToBlock.",
+  "cases": [
+    {
+      "name": "mainnet 328",
+      "chainId": 1,
+      "disputeId": 328,
+      "arbitrable": "0x135c573503f70dc290b1d60fe2e7f7eb114febd6",
+      "readAtBlock": 26203156,
+      "disputeEventBlock": 10601775,
+      "evidenceScanToBlock": 10900000,
+      "appealDecisions": [
+        { "blockNumber": 10659157, "appealedAt": 1597421545 },
+        { "blockNumber": 10717404, "appealedAt": 1598196423 },
+        { "blockNumber": 10773369, "appealedAt": 1598937988 }
+      ],
+      "evidence": [
+        {
+          "blockNumber": 10601846,
+          "logIndex": 213,
+          "timestamp": 1596658465,
+          "party": "0xd0e3d6ff191924f5abc2c64e8f7bea43377b6c96",
+          "uri": "/ipfs/QmXFb4k3BqpWiV3HtiEUi7tPN8rJAc3jJnz6h5CsbJoAa2/evidence.json",
+          "transactionHash": "0x03487e52b7ff46429f349c1c11fa97989f5073b7d25959106c8ab7417ad51de5"
+        },
+        {
+          "blockNumber": 10614432,
+          "logIndex": 221,
+          "timestamp": 1596826089,
+          "party": "0x010afb8548a5d1a3a3d62f58ca0a5a1329974206",
+          "uri": "/ipfs/QmXkb1NkoCFCKWHmzDsW43RBgitCEyBs1q1Es9YyJvyiHw/evidence.json",
+          "transactionHash": "0xea5ca899f4d0aa5171ffaf27682ebb333c6d6db2cd0b4b766cdbba241c856743"
+        },
+        {
+          "blockNumber": 10614432,
+          "logIndex": 222,
+          "timestamp": 1596826089,
+          "party": "0x010afb8548a5d1a3a3d62f58ca0a5a1329974206",
+          "uri": "/ipfs/QmZT92szaHUZoB4BjhiFngBh5a4ZGGe5jSzBEzmfGXDMjc/evidence.json",
+          "transactionHash": "0xf4023fa01042b73c54b71c8b2b1a3cc9eee92a7fc452b37d852992d10e6bf7be"
+        },
+        {
+          "blockNumber": 10622819,
+          "logIndex": 65,
+          "timestamp": 1596937976,
+          "party": "0xd0e3d6ff191924f5abc2c64e8f7bea43377b6c96",
+          "uri": "/ipfs/QmaEbZCdxuHXb9kTTyouaaS4y4P6BXv6PnXeR6aYdZ2C1z/evidence.json",
+          "transactionHash": "0x9b5527f95dbd53bf6fe1cce3d4dd2ffe76925d3eda05e98a2f12a147c0da9df4"
+        },
+        {
+          "blockNumber": 10666659,
+          "logIndex": 99,
+          "timestamp": 1597521701,
+          "party": "0xdf60dcbb3bfcf9b4cd6e12359b27b6740013bbb5",
+          "uri": "/ipfs/QmSNHA7aPPmCT3nr9yLqv9yEFBg1WfbkjiQ2fZSq5ZvhXU/evidence.json",
+          "transactionHash": "0x35287fe81603555e02a975cbcc81c12e187ca07e73ec4f13f9bd4c29787521bd"
+        },
+        {
+          "blockNumber": 10666672,
+          "logIndex": 253,
+          "timestamp": 1597521789,
+          "party": "0x71f84aa585e1eda8852dad8dff3a69d114366dba",
+          "uri": "/ipfs/QmVctVaD8uUZ9ucLr7kcPpnyH3NUA5dJQWKD54n1ZZpGxt/evidence.json",
+          "transactionHash": "0xe25528a416073066f2ed6f242e8d7a879773645638bea4040ac506206e0e9862"
+        },
+        {
+          "blockNumber": 10671637,
+          "logIndex": 70,
+          "timestamp": 1597588493,
+          "party": "0xd0e3d6ff191924f5abc2c64e8f7bea43377b6c96",
+          "uri": "/ipfs/QmcxDiYLTsJ5f4NYEQdfrEpbK6R6nz7EQhyUWbbVJi9gaT/evidence.json",
+          "transactionHash": "0xbf7572f010794ffc7b3dc3b4c84d80372c1f537603a79fe210a8f67fef53f8f9"
+        },
+        {
+          "blockNumber": 10773376,
+          "logIndex": 310,
+          "timestamp": 1598938058,
+          "party": "0xd0e3d6ff191924f5abc2c64e8f7bea43377b6c96",
+          "uri": "/ipfs/Qmc14MwqCufa4dbMGBhjh7hjVRe4HzBzqwgVSwSSF3Xcih/evidence.json",
+          "transactionHash": "0x28cca2fe72af833e0599c6bb5963e500aff4aaae149d721df4ce490759e3adb4"
+        },
+        {
+          "blockNumber": 10813792,
+          "logIndex": 197,
+          "timestamp": 1599472393,
+          "party": "0x010afb8548a5d1a3a3d62f58ca0a5a1329974206",
+          "uri": "/ipfs/QmNNWHbcKxC3nxzX8WE5o2MuwdJ62u3UTioxuPAhwvz1Sg/evidence.json",
+          "transactionHash": "0x86cf5fbf829c801a26e5565e544f7446b0b3cef152fe7dcd6fba981fc4509332"
+        }
+      ]
+    },
+    {
+      "name": "Gnosis 121",
+      "chainId": 100,
+      "disputeId": 121,
+      "arbitrable": "0xe04f5791d671d5c4e08ab49b39807087b591ea3e",
+      "readAtBlock": 48781677,
+      "disputeEventBlock": 29691989,
+      "evidenceScanToBlock": 29900000,
+      "appealDecisions": [{ "blockNumber": 29725812, "appealedAt": 1693418600 }],
+      "evidence": [
+        {
+          "blockNumber": 29692074,
+          "logIndex": 3,
+          "timestamp": 1693244715,
+          "party": "0xe0441ecf50205d3548456b29fde2a3010f9a61f3",
+          "uri": "/ipfs/QmfWgjjPT79n9W9f97TwfSKuNtgqRGNekt5s6aqVaCnntx/Evidence.json",
+          "transactionHash": "0x701817abb47a36a4612ef3a2199e4b2a6c115b3797164653d086260db57a5c85"
+        },
+        {
+          "blockNumber": 29692153,
+          "logIndex": 10,
+          "timestamp": 1693245120,
+          "party": "0xe0441ecf50205d3548456b29fde2a3010f9a61f3",
+          "uri": "/ipfs/QmVQ6dZL9Vq9Ace1ZmrqsNf8AUcDrjeuvzWjpjBc1rSLND/Evidence.json",
+          "transactionHash": "0xb7126d20c27cdc280ffaef0c9cdf431881506c5a39582292dffb1fb2fc00f0fc"
+        },
+        {
+          "blockNumber": 29695526,
+          "logIndex": 18,
+          "timestamp": 1693262435,
+          "party": "0xe0441ecf50205d3548456b29fde2a3010f9a61f3",
+          "uri": "/ipfs/QmbbQ2KRjSk1R3Z4xKRzVAS65bmHkcPyVgvCojLvyiGCiU/Evidence.json",
+          "transactionHash": "0x32f623b1f986c4a14ae904a32f8e3eab2948fc64b089631c0b3e8507eb982234"
+        },
+        {
+          "blockNumber": 29710858,
+          "logIndex": 0,
+          "timestamp": 1693341615,
+          "party": "0xb38eb0a73f4be055046fdaacb8c35d9792bf7e0e",
+          "uri": "/ipfs/QmS1q6NMNtLLsMK3kctMEtMbXTFjWv5t8Trs8X5RSjia71/evidence.json",
+          "transactionHash": "0x3422b9e9f3f512aa7b68bcb25c1a5c739788ff28ed4145323b04fbd9bc8f0171"
+        },
+        {
+          "blockNumber": 29712139,
+          "logIndex": 9,
+          "timestamp": 1693348270,
+          "party": "0xb38eb0a73f4be055046fdaacb8c35d9792bf7e0e",
+          "uri": "/ipfs/QmXpLCuSw6iaE3XW9kPf7eYGY71KJuHmZjnbR2ATWw93ZE/evidence.json",
+          "transactionHash": "0xbab6195c470ba83b02fe607139c1f4d4a77bd3c0b4efe1619f638fdc210a1072"
+        },
+        {
+          "blockNumber": 29718757,
+          "logIndex": 8,
+          "timestamp": 1693382310,
+          "party": "0xe0441ecf50205d3548456b29fde2a3010f9a61f3",
+          "uri": "/ipfs/QmSJ5JEAsL7kLcxhfgnWEfSP1b18pz9UZWpaeBgYhPmujz/Evidence.json",
+          "transactionHash": "0x5f879085e8c511a46643c79ddcb7fb4462d60f4d1ad363f7889f896dca226fe2"
+        },
+        {
+          "blockNumber": 29726351,
+          "logIndex": 0,
+          "timestamp": 1693421370,
+          "party": "0xb38eb0a73f4be055046fdaacb8c35d9792bf7e0e",
+          "uri": "/ipfs/QmPGBjk9roPy2dEQ8B244m24ZcT1q1L1LtbRGrore9pRWT/evidence.json",
+          "transactionHash": "0x78b028917857735512634698510f090c243606f84458e95b73cbb851f2ad83c5"
+        },
+        {
+          "blockNumber": 29726877,
+          "logIndex": 26,
+          "timestamp": 1693424100,
+          "party": "0xe0441ecf50205d3548456b29fde2a3010f9a61f3",
+          "uri": "/ipfs/QmfLH6rL8LevkBavgCLhX2NjoesVX2DouxyQKi4nfRJhnt/Evidence.json",
+          "transactionHash": "0x9c2bdcbb8f03f687835f4cd430e3338a586b2be3399f2d2a8891a3c82d6d7594"
+        }
+      ]
+    }
+  ]
+}

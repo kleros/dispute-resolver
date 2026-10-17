@@ -1,8 +1,8 @@
 import * as core from "@dispute-resolver/core";
 import type { DisputeEventResult, DisputeLookup, EvidenceList, FamilyDetection, MetaEvidenceResult, Outcome, Period } from "@dispute-resolver/core";
 import { act, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { Route, Routes, useNavigate } from "react-router";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
+import { Route, Routes, useNavigate, useNavigationType } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { testCourt, testDetails, testFamily, testFoundLookup, testOkMetaEvidence, TEST_ARBITRABLE } from "../../test/data";
 import { testMetaEvidence } from "../../test/safe-content";
@@ -32,7 +32,6 @@ const GOVERNOR: FamilyDetection = testFamily({
   writeFamily: "governor",
   capabilities: { localId: "none", evidence: { kind: "none" }, appeal: { kind: "governor" }, withdraw: { kind: "governor" } },
 });
-const SEARCH_WAIT = { timeout: SEARCH_DEBOUNCE_MS * 3 };
 
 interface Program {
   readonly period?: Period;
@@ -87,6 +86,11 @@ function GoTo({ to }: { readonly to: string }) {
   );
 }
 
+/** How the router reached the current URL: a push, a replace or a pop (the history replace of spec 1.4). */
+function NavigationType() {
+  return <output data-testid="navigation-type">{useNavigationType()}</output>;
+}
+
 /** The case page under the app's `/:chainId` layout, at the route the app serves it on (S-2). */
 function renderCase(path: string, goTo?: string) {
   return renderWithProviders(
@@ -94,6 +98,7 @@ function renderCase(path: string, goTo?: string) {
       <Routes>
         <Route path="cases/:id?" element={<CasePage />} />
       </Routes>
+      <NavigationType />
       {goTo === undefined ? null : <GoTo to={goTo} />}
     </>,
     { path },
@@ -116,10 +121,72 @@ function searchField(): HTMLElement {
   return screen.getByRole("textbox", { name: "Dispute ID" });
 }
 
-async function search(text: string) {
+/**
+ * Runs a user-event interaction inside act(), so every update it scheduled is committed when it returns. user-event
+ * dispatches outside act() in this setup: it loads its own copy of @testing-library/dom, which RTL never configures.
+ * The router commits a URL change in a transition, on React's scheduler, so without act() the URL would land some time
+ * after the interaction returns, later on a loaded machine.
+ */
+async function interact(steps: (user: UserEvent) => Promise<void>) {
   const user = userEvent.setup();
-  await user.clear(searchField());
-  if (text !== "") await user.type(searchField(), text);
+  await act(() => steps(user));
+}
+
+/** Empties the search field and types `text` (none for an empty field). */
+async function search(text: string) {
+  await interact(async (user) => {
+    await user.clear(searchField());
+    if (text !== "") await user.type(searchField(), text);
+  });
+}
+
+/** The search debounce, held by the test. */
+interface SearchDebounce {
+  /** How many debounces wait to elapse. */
+  readonly pending: number;
+  /** Lets every waiting debounce elapse now, inside act(), so the load it starts has begun when this returns. */
+  elapse(): void;
+}
+
+/**
+ * Holds the search debounce instead of scheduling it (D-53, P-19): the hook's `setTimeout(…, SEARCH_DEBOUNCE_MS)` is
+ * recorded, and the debounce elapses only when the test calls `elapse()`, never by the wall clock. A real 750 ms timer
+ * on a loaded machine can fire before an "at once" assertion runs, or use up most of the wait that follows it. Every
+ * other timer (React Query's, user-event's, waitFor's, the accordion's) runs as usual; nothing else on this page waits
+ * exactly 750 ms. `vi.restoreAllMocks()` puts the real timers back.
+ */
+function holdSearchDebounce(): SearchDebounce {
+  const realSetTimeout = globalThis.setTimeout;
+  const realClearTimeout = globalThis.clearTimeout;
+  const held = new Map<ReturnType<typeof setTimeout>, () => void>();
+  const issued = new Set<ReturnType<typeof setTimeout>>();
+  vi.spyOn(globalThis, "setTimeout").mockImplementation((handler, delay, ...args) => {
+    if (delay !== SEARCH_DEBOUNCE_MS) return realSetTimeout(handler, delay, ...args);
+    // A real timer cancelled at once: a handle of the real type that no live timer shares.
+    const handle = realSetTimeout(() => undefined, 0);
+    realClearTimeout(handle);
+    issued.add(handle);
+    held.set(handle, () => {
+      handler(...args);
+    });
+    return handle;
+  });
+  vi.spyOn(globalThis, "clearTimeout").mockImplementation((handle) => {
+    if (handle !== undefined && typeof handle === "object" && issued.has(handle)) held.delete(handle);
+    else realClearTimeout(handle);
+  });
+  return {
+    get pending() {
+      return held.size;
+    },
+    elapse() {
+      const due = [...held.values()];
+      held.clear();
+      act(() => {
+        for (const run of due) run();
+      });
+    },
+  };
 }
 
 function accordionButton(name: string): HTMLElement {
@@ -137,11 +204,13 @@ function accordionBody(name: string): HTMLElement {
 }
 
 let breakRealityNotice = false;
+let debounce: SearchDebounce;
 
 beforeEach(() => {
   vi.clearAllMocks();
   // jsdom has no ResizeObserver, which the library accordion uses; this double stubs it with the rest of the browser surface.
   installOfflineAppKitEnvironment();
+  debounce = holdSearchDebounce();
   breakRealityNotice = false;
   vi.mocked(core.realityNotice).mockImplementation((question) => {
     if (breakRealityNotice) throw new Error("Malformed Reality question");
@@ -219,7 +288,22 @@ describe("case page states (spec 5.1, 5.4, §12.1)", () => {
     expect(await screen.findByTestId("case-title")).toHaveTextContent("Dispute 1 title");
   });
 
-  it("S-4: the header renders from the lookup while the meta-evidence still loads", async () => {
+  it("P-19: the URL's dispute is read at mount, without the search debounce", async () => {
+    renderCase("/1/cases/1");
+    await act(() => Promise.resolve());
+    expect(core.lookupDispute).toHaveBeenCalledWith(expect.anything(), 1n);
+  });
+
+  it("P-20: while the lookup runs the search box and section placeholders show", () => {
+    vi.mocked(core.lookupDispute).mockReturnValue(new Promise<DisputeLookup>(() => undefined));
+    renderCase("/1/cases/1");
+    expect(page()).toHaveAttribute("data-state", "loading");
+    expect(searchField()).toBeInTheDocument();
+    expect(within(page()).getAllByRole("status").length).toBeGreaterThan(0);
+    expect(screen.queryByTestId("case-title")).not.toBeInTheDocument();
+  });
+
+  it("P-20: the header renders from the lookup while the meta-evidence still loads", async () => {
     programReads({ period: 1, metaEvidence: { "1": "pending" } });
     renderCase("/1/cases/1");
     await waitFor(() => {
@@ -306,6 +390,27 @@ describe("search box (spec 5.2, D-53)", () => {
     });
   });
 
+  it("spec 1.4, 5.2: every change replaces the URL at once, and only the load waits for the debounce", async () => {
+    programReads({ lookups: { "1": testFoundLookup(), "34": testFoundLookup({ disputeId: 34n }) } });
+    const view = renderCase("/1/cases/1");
+    await settledDispute();
+    await search("3");
+    expect(view.currentPath()).toBe("/1/cases/3");
+    expect(screen.getByTestId("navigation-type")).toHaveTextContent("REPLACE");
+    await interact((user) => user.type(searchField(), "4"));
+    expect(searchField()).toHaveValue("34");
+    expect(view.currentPath()).toBe("/1/cases/34");
+    expect(page()).toHaveAttribute("data-state", "loading");
+    expect(core.lookupDispute).not.toHaveBeenCalledWith(expect.anything(), 34n);
+    // The second key restarted the debounce: the one the first key started is gone.
+    expect(debounce.pending).toBe(1);
+
+    debounce.elapse();
+    expect(await screen.findByTestId("case-title")).toHaveTextContent("Dispute 34 title");
+    expect(core.lookupDispute).not.toHaveBeenCalledWith(expect.anything(), 3n);
+    expect(searchField()).toHaveValue("34");
+  });
+
   it("D-53: a search clears the shown dispute at once and loads the new ID after the debounce", async () => {
     programReads({ lookups: { "1": testFoundLookup(), "2": testFoundLookup({ disputeId: 2n }) } });
     const view = renderCase("/1/cases/1");
@@ -313,14 +418,14 @@ describe("search box (spec 5.2, D-53)", () => {
     expect(await screen.findByTestId("case-title")).toHaveTextContent("Dispute 1 title");
 
     await search("2");
+    expect(view.currentPath()).toBe("/1/cases/2");
     expect(page()).toHaveAttribute("data-state", "loading");
     expect(screen.queryByTestId("case-title")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Dispute #1" })).not.toBeInTheDocument();
     expect(core.lookupDispute).not.toHaveBeenCalledWith(expect.anything(), 2n);
+    expect(debounce.pending).toBe(1);
 
-    await waitFor(() => {
-      expect(view.currentPath()).toBe("/1/cases/2");
-    }, SEARCH_WAIT);
+    debounce.elapse();
     expect(await screen.findByTestId("case-title")).toHaveTextContent("Dispute 2 title");
     expect(screen.getByTestId("link-court")).toHaveAttribute("href", "https://court.kleros.io/cases/2?requiredChainId=1");
   });
@@ -329,39 +434,39 @@ describe("search box (spec 5.2, D-53)", () => {
     renderCase("/1/cases/1");
     await settledDispute();
     await search("99");
+    debounce.elapse();
     await waitFor(() => {
       expect(page()).toHaveAttribute("data-state", "not-found");
-    }, SEARCH_WAIT);
+    });
     expect(screen.getByRole("heading", { name: "Dispute with ID 99 does not exist on this network." })).toBeInTheDocument();
     expect(screen.queryByTestId("case-title")).not.toBeInTheDocument();
   });
 
-  it("D-09: clearing the search goes to the case page without an ID", async () => {
+  it("spec 5.1, 5.2: clearing the search shows no dispute and leaves the URL as it is", async () => {
     const view = renderCase("/1/cases/1");
     await settledDispute();
     await search("");
     expect(page()).toHaveAttribute("data-state", "no-id");
-    await waitFor(() => {
-      expect(view.currentPath()).toBe("/1/cases");
-    }, SEARCH_WAIT);
     expect(screen.getByTestId("link-court")).toHaveAttribute("href", "https://court.kleros.io/cases/0?requiredChainId=1");
+    // act() in `search` committed any navigation the clear asked for, so the URL read below is final; and past the
+    // debounce, nothing has changed.
+    debounce.elapse();
+    expect(view.currentPath()).toBe("/1/cases/1");
+    expect(page()).toHaveAttribute("data-state", "no-id");
+    expect(searchField()).toHaveValue("");
   });
 
-  it("spec 5.2: Enter loads the typed ID without waiting for the debounce", async () => {
+  it("P-19: Enter loads the typed ID without waiting for the debounce", async () => {
     programReads({ lookups: { "1": testFoundLookup(), "2": testFoundLookup({ disputeId: 2n }) } });
-    const view = renderCase("/1/cases/1");
+    renderCase("/1/cases/1");
     await settledDispute();
     await search("2");
-    // The debounce timer starts at the last keystroke; the URL must change before it could fire.
-    const lastKeystroke = performance.now();
-    await userEvent.setup().keyboard("{Enter}");
-    await waitFor(
-      () => {
-        expect(view.currentPath()).toBe("/1/cases/2");
-      },
-      { timeout: SEARCH_DEBOUNCE_MS },
-    );
-    expect(performance.now() - lastKeystroke).toBeLessThan(SEARCH_DEBOUNCE_MS);
+    expect(core.lookupDispute).not.toHaveBeenCalledWith(expect.anything(), 2n);
+    await interact((user) => user.keyboard("{Enter}"));
+    // The debounce is held and never elapses in this test, so only Enter can have started the read.
+    await waitFor(() => {
+      expect(core.lookupDispute).toHaveBeenCalledWith(expect.anything(), 2n);
+    });
   });
 
   it("spec 5.11: a new dispute starts with the accordion collapsed", async () => {
@@ -371,10 +476,10 @@ describe("search box (spec 5.2, D-53)", () => {
     await userEvent.setup().click(accordionButton("Question"));
     expect(accordionButton("Question")).toHaveAttribute("aria-expanded", "true");
     await search("2");
-    await waitFor(() => {
-      expect(screen.getByTestId("link-court")).toHaveAttribute("href", "https://court.kleros.io/cases/2?requiredChainId=1");
-    });
+    expect(screen.getByTestId("link-court")).toHaveAttribute("href", "https://court.kleros.io/cases/2?requiredChainId=1");
+    debounce.elapse();
     await settledDispute();
+    expect(screen.getByRole("heading", { level: 1, name: "Dispute #2" })).toBeInTheDocument();
     expect(accordionButton("Question")).toHaveAttribute("aria-expanded", "false");
   });
 });
@@ -412,7 +517,9 @@ describe("section degradation (D-36, S-3, D-18)", () => {
 
     breakRealityNotice = false;
     await search("2");
-    expect(await screen.findByText("Dispute 2 title", undefined, SEARCH_WAIT)).toBeInTheDocument();
+    debounce.elapse();
+    // The summary shows once the view settles, which is never before the Reality notice has rendered.
+    expect(await screen.findByText("Dispute 2 title")).toBeInTheDocument();
     expect(screen.queryByText("Reality notice unavailable")).not.toBeInTheDocument();
   });
 
@@ -449,9 +556,7 @@ describe("network change (spec 5.16, D-55)", () => {
     const view = renderCase("/1/cases/5", "/100/cases/5");
     await settledDispute();
     vi.mocked(core.lookupDispute).mockImplementation(() => new Promise<DisputeLookup>(() => undefined));
-    await act(async () => {
-      await userEvent.setup().click(screen.getByRole("button", { name: "Go to /100/cases/5" }));
-    });
+    await interact((user) => user.click(screen.getByRole("button", { name: "Go to /100/cases/5" })));
     expect(view.currentPath()).toBe("/100/cases/5");
     expect(page()).toHaveAttribute("data-state", "loading");
     expect(screen.queryByTestId("case-title")).not.toBeInTheDocument();

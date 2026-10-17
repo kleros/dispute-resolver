@@ -20,16 +20,10 @@ describe("fakeWriteController (ARCHITECTURE.md §1.5)", () => {
     expect(fake.executions).toHaveLength(1);
   });
 
-  it("§1.5: starts from a given status and records switch and connect requests", async () => {
-    const fake = fakeWriteController([], { initial: { phase: "wrong-chain", walletChainId: 100, pageChainId: 1 }, switchSucceeds: false });
+  it("§1.5: starts from a given status", () => {
+    const fake = fakeWriteController([], { initial: { phase: "wrong-chain", walletChainId: 100, pageChainId: 1 } });
     const { result } = renderHook(() => fake.useWrite());
-    expect(result.current.status.phase).toBe("wrong-chain");
-    expect(await result.current.switchChain(1)).toBe(false);
-    act(() => {
-      result.current.connect();
-    });
-    expect(fake.switchRequests).toEqual([1]);
-    expect(fake.connectCalls.count).toBe(1);
+    expect(result.current.status).toEqual({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 });
   });
 
   it("§1.5: a script must end with an outcome", async () => {

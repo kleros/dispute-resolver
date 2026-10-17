@@ -53,6 +53,13 @@ describe("AddressText", () => {
     await expect(navigator.clipboard.readText()).resolves.toBe(CHECKSUMMED);
   });
 
+  it("A11Y-09: the copy control is one Tab stop", () => {
+    const { container } = render(<AddressText address={ADDRESS} chain={MAINNET} />);
+    const copy = screen.getByRole("button", { name: "Copy address" });
+    const stops = [...container.querySelectorAll<HTMLElement>("a, button, [tabindex]")].filter((element) => element.tabIndex >= 0);
+    expect(stops).toEqual([screen.getByRole("link"), copy]);
+  });
+
   it("B12: a malformed address renders as given, never throws", () => {
     const malformed = "0xnot-an-address" as Address;
     render(<AddressText address={malformed} chain={NO_EXPLORER} />);

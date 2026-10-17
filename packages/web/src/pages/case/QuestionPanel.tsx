@@ -3,7 +3,7 @@ import { useId } from "react";
 import type { CaseSectionProps, SectionData } from "../../data";
 import { rulingOptionsAttributes, testId } from "../../parity";
 import { courtCaseUrl, ExternalLink } from "../../safe-content";
-import { SectionSkeleton, SectionUnavailable } from "../../ui";
+import { EYEBROW, SectionSkeleton, SectionUnavailable } from "../../ui";
 import { questionTypeLabel, votingOptions } from "./questionOptions";
 
 const SECTION = "Question";
@@ -42,11 +42,11 @@ function VotingOptionsList({ options, disputeId, chainId }: VotingOptionsListPro
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3">
       <h3 id={headingId}>Voting options</h3>
-      <ul className="flex flex-col divide-y divide-klerosUIComponentsStroke rounded-base border border-klerosUIComponentsStroke">
+      <ul className="flex flex-col divide-y divide-klerosUIComponentsStroke border-y border-klerosUIComponentsStroke">
         {items.map((item) => (
-          <li key={item.key} className="px-4 py-3 text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">
+          <li key={item.key} className="py-3 text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">
             <span className="font-semibold">{item.label}</span>
-            {item.description === undefined ? null : <span className="text-klerosUIComponentsSecondaryText">{`: ${item.description}`}</span>}
+            {item.description === undefined ? null : <span>{`: ${item.description}`}</span>}
           </li>
         ))}
       </ul>
@@ -72,7 +72,7 @@ function QuestionContent({ metaEvidence, disputeId, chainId }: QuestionContentPr
       : rulingOptionsAttributes({ type: rulingOptions.type, titles: rulingOptions.titles, reserved: rulingOptions.reserved, precision: rulingOptions.precision });
   return (
     <div {...hook} className="flex min-w-0 flex-col gap-4">
-      {label === null ? null : <p className="text-sm font-semibold text-klerosUIComponentsSecondaryText">{label}</p>}
+      {label === null ? null : <p className={EYEBROW}>{label}</p>}
       {question === null ? null : (
         <p {...testId("case-question")} className="whitespace-pre-line text-lg font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">
           {question}

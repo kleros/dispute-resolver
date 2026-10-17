@@ -7,9 +7,11 @@
  */
 export type CanonicalIpfsPath = `/ipfs/${string}`;
 
-/** A canonical path without the `/ipfs/` prefix: the form of dynamic-script allowlist entries (06 §3 invariant 4). */
-// eslint-disable-next-line sonarjs/redundant-type-aliases -- names the allowlist entry form (06 §3 invariant 4).
-export type CidPath = string;
+/**
+ * A canonical path without the `/ipfs/` prefix: the form of dynamic-script allowlist entries (06 §3 invariant 4). It
+ * starts with the CID, so it starts with `Qm` (CIDv0) or `b` (base32 CIDv1); a listed entry that does not fails to compile.
+ */
+export type CidPath = `${"Qm" | "b"}${string}`;
 
 /** The configured IPFS gateway origin, `https://...` without a trailing slash (`REACT_APP_IPFS_GATEWAY`, default `https://cdn.kleros.link`). */
 export type GatewayOrigin = `https://${string}`;
