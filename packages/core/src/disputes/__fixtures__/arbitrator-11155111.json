@@ -1,0 +1,22 @@
+{
+  "description": "The one KlerosLiquid eth_call answer the disputes module's Sepolia not-found test replays (D-53): disputes(1000000000), out of range, as the raw JSON-RPC error the node returned at readAtBlock.",
+  "chainId": 11155111,
+  "readAtBlock": 11913201,
+  "arbitrator": "0x90992fb4e15ce0c59aeffb376460fda4ee19c879",
+  "policyRegistry": "0x88fb25d399310c07d35cb9091b8346d8b1893aa5",
+  "gateway": "https://cdn.kleros.link",
+  "calls": [
+    {
+      "label": "disputes(1000000000)",
+      "to": "0x90992fb4e15ce0c59aeffb376460fda4ee19c879",
+      "data": "0x564a565d000000000000000000000000000000000000000000000000000000003b9aca00",
+      "error": {
+        "code": -32000,
+        "message": "invalid opcode: INVALID"
+      }
+    }
+  ],
+  "logs": [],
+  "timestamps": {},
+  "policies": {}
+}

@@ -1,0 +1,163 @@
+{
+  "provenance": "Raw JSON-RPC replies of eth_call with each multiplier getter selector (spec 10.9) and sharedMultiplier() (P-05), no arguments, sent to each chain's read RPC at that chain's pinned block (chains[].blockNumber), recorded 2026-10-14 by packages/core/scripts/record-governor-multipliers.ts. A result of \"0x\" is a contract whose fallback function answers any unknown selector with no data.",
+  "chains": [
+    {
+      "chainId": 1,
+      "blockNumber": 26191877
+    },
+    {
+      "chainId": 100,
+      "blockNumber": 48755121
+    }
+  ],
+  "contracts": [
+    {
+      "label": "poh.eth governor",
+      "chainId": 1,
+      "address": "0x327a29fce0a6490e4236240be176daa282eccfdf",
+      "calls": {
+        "getMultipliers()": {
+          "result": "0x"
+        },
+        "winnerStakeMultiplier()": {
+          "result": "0x"
+        },
+        "winnerMultiplier()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
+        },
+        "loserStakeMultiplier()": {
+          "result": "0x"
+        },
+        "loserMultiplier()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000004e20"
+        },
+        "denominator()": {
+          "result": "0x"
+        },
+        "MULTIPLIER_DIVISOR()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
+        },
+        "MULTIPLIER_DENOMINATOR()": {
+          "result": "0x"
+        },
+        "loserAppealPeriodMultiplier()": {
+          "result": "0x"
+        },
+        "sharedMultiplier()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
+        }
+      }
+    },
+    {
+      "label": "ubi-voting.eth governor",
+      "chainId": 1,
+      "address": "0x7510c77163683448b8dc8fe9e019d9482be1ed2b",
+      "calls": {
+        "getMultipliers()": {
+          "result": "0x"
+        },
+        "winnerStakeMultiplier()": {
+          "result": "0x"
+        },
+        "winnerMultiplier()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
+        },
+        "loserStakeMultiplier()": {
+          "result": "0x"
+        },
+        "loserMultiplier()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000004e20"
+        },
+        "denominator()": {
+          "result": "0x"
+        },
+        "MULTIPLIER_DIVISOR()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
+        },
+        "MULTIPLIER_DENOMINATOR()": {
+          "result": "0x"
+        },
+        "loserAppealPeriodMultiplier()": {
+          "result": "0x"
+        },
+        "sharedMultiplier()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
+        }
+      }
+    },
+    {
+      "label": "fork-dao.eth governor",
+      "chainId": 100,
+      "address": "0xf7de5537ecd69a94695fcf4bcdbdee6329b63322",
+      "calls": {
+        "getMultipliers()": {
+          "result": "0x"
+        },
+        "winnerStakeMultiplier()": {
+          "result": "0x"
+        },
+        "winnerMultiplier()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
+        },
+        "loserStakeMultiplier()": {
+          "result": "0x"
+        },
+        "loserMultiplier()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000004e20"
+        },
+        "denominator()": {
+          "result": "0x"
+        },
+        "MULTIPLIER_DIVISOR()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
+        },
+        "MULTIPLIER_DENOMINATOR()": {
+          "result": "0x"
+        },
+        "loserAppealPeriodMultiplier()": {
+          "result": "0x"
+        },
+        "sharedMultiplier()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
+        }
+      }
+    },
+    {
+      "label": "kleros.eth governor",
+      "chainId": 1,
+      "address": "0xe5bcea6f87aaee4a81f64dfdb4d30d400e0e5cf4",
+      "calls": {
+        "getMultipliers()": {
+          "result": "0x"
+        },
+        "winnerStakeMultiplier()": {
+          "result": "0x"
+        },
+        "winnerMultiplier()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
+        },
+        "loserStakeMultiplier()": {
+          "result": "0x"
+        },
+        "loserMultiplier()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000004e20"
+        },
+        "denominator()": {
+          "result": "0x"
+        },
+        "MULTIPLIER_DIVISOR()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
+        },
+        "MULTIPLIER_DENOMINATOR()": {
+          "result": "0x"
+        },
+        "loserAppealPeriodMultiplier()": {
+          "result": "0x"
+        },
+        "sharedMultiplier()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+/build
+/docs
+node_modules
+.yarn
+yarn.lock
+dist
+coverage
+test-results
+playwright-report
+.vite
+tsconfig.base.json

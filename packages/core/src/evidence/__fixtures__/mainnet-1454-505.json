@@ -1,0 +1,195 @@
+{
+  "chainId": 1,
+  "readAtBlock": 26190208,
+  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
+  "scanFromBlock": 7303699,
+  "gateway": "https://cdn.kleros.link",
+  "disputes": [
+    {
+      "disputeId": "1454",
+      "arbitrable": "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf",
+      "evidenceGroupId": "0",
+      "metaEvidenceId": "0",
+      "disputeLogs": [
+        {
+          "address": "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf",
+          "topics": [
+            "0x74baab670a4015ab2f1b467c5252a96141a2573f2908e58a92081e80d3cfde3d",
+            "0x000000000000000000000000988b3a538b618c7a603e1c11ab82cd16dbe28069",
+            "0x00000000000000000000000000000000000000000000000000000000000005ae"
+          ],
+          "data": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "blockNumber": "0xf9ad5a",
+          "blockHash": "0x6637d5c788bb797e02024e6f836967a1d431c9988b04bf95e7f0fcc339d55950",
+          "transactionHash": "0x9b8407d50107cb0cb364d7821077e2ffd718632b28b1c2dd864866e45a4eff33",
+          "transactionIndex": "0xec",
+          "logIndex": "0x2b",
+          "removed": false
+        }
+      ],
+      "evidenceLogs": [
+        {
+          "address": "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf",
+          "topics": [
+            "0xdccf2f8b2cc26eafcd61905cba744cff4b81d14740725f6376390dc6298a6a3c",
+            "0x000000000000000000000000988b3a538b618c7a603e1c11ab82cd16dbe28069",
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "0x000000000000000000000000f9eaab27b00b9bbc8fbfa6c58dc2653bef4b461a"
+          ],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000422f697066732f516d5159384635456a7274477676543373774146355932556279544e41356d6e42674c5137596d71426e647858772f65766964656e63652e6a736f6e000000000000000000000000000000000000000000000000000000000000",
+          "blockNumber": "0xf9fef0",
+          "blockHash": "0x53fdcf67ea17e7244268176388258cf8f754352aedaa934b9a288c808b9261a3",
+          "transactionHash": "0x5e5cc590d1f06ce42143fdd89231ebaa9d5c036d37ce22408eecd9e41d784ba8",
+          "transactionIndex": "0x32",
+          "logIndex": "0xb6",
+          "removed": false
+        },
+        {
+          "address": "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf",
+          "topics": [
+            "0xdccf2f8b2cc26eafcd61905cba744cff4b81d14740725f6376390dc6298a6a3c",
+            "0x000000000000000000000000988b3a538b618c7a603e1c11ab82cd16dbe28069",
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "0x000000000000000000000000f313d85c7fef79118fcd70498c71bf94e75fc2f6"
+          ],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000422f697066732f516d50347a6a7558314c574a4a414a55513447706235437566656b564d6962734242424d735a674d37314146506d2f65766964656e63652e6a736f6e000000000000000000000000000000000000000000000000000000000000",
+          "blockNumber": "0xf9fefc",
+          "blockHash": "0xc2519e6696d12751bc447d32037b7ea5bc6046b6f2038521b0563406af677c56",
+          "transactionHash": "0x792a8e3988d7ec753882acd00ea3d3cd3c3e6825b1933720db1ca9b9613a6bcd",
+          "transactionIndex": "0x1b",
+          "logIndex": "0x7a",
+          "removed": false
+        }
+      ],
+      "blockTimestamps": {
+        "0xf9ad5a": "0x63badb47",
+        "0xf9fef0": "0x63beb2e7",
+        "0xf9fefc": "0x63beb377"
+      },
+      "documents": {
+        "/ipfs/QmQY8F5EjrtGvvT3swAF5Y2UbyTNA5mnBgLQ7YmqBndxXw/evidence.json": "{\"name\":\"Draco Malfoy is guilty of attempted murder in the assassination plot against Albus Dumbledore.\",\"description\":\"In the given background, it is stated that Draco Malfoy is entrusted with the task of assassinating Dumbledore by Lord Voldemort. Also it is stated that Malfoy ultimately decides to go through with the assassination attempt, leading to a confrontation between Dumbledore and Malfoy.\\nIt indicates that Malfoy had the intention and actively moving towards to commit the murder. And As per the legal definition of attempted murder is when a person has intent to kill and takes a direct step towards committing the murder. Therefore, based on the information provided, it can be concluded that Draco Malfoy is guilty of attempted murder in the assassination plot against Albus Dumbledore.\",\"evidenceSide\":0}",
+        "/ipfs/QmP4zjuX1LWJJAJUQ4Gpb5CufekVMibsBBBMsZgM71AFPm/evidence.json": "{\"name\":\"Draco Malfoy should not be found guilty.\",\"description\":\"Draco Malfoy did not have the intent to commit murder, but rather was forced or coerced into participating in the assassination plot against Albus Dumbledore. It could be argued that Malfoy was under duress or fear of harm to himself or his loved ones if he did not comply with Voldemort's orders, and therefore, his actions should be considered involuntary. Additionally, it could be argued that the background provides little information on the specific details of the confrontation between Dumbledore and Malfoy and it is not clear if Malfoy was able to express his reluctance or if he was still under duress. In this view, it could be argued that Draco Malfoy should not be found guilty of attempted murder as his actions were not fully voluntary and he may not have had the intent to kill.\",\"evidenceSide\":0}"
+      }
+    },
+    {
+      "disputeId": "505",
+      "arbitrable": "0x135c573503f70dc290b1d60fe2e7f7eb114febd6",
+      "evidenceGroupId": "57",
+      "metaEvidenceId": "57",
+      "disputeLogs": [
+        {
+          "address": "0x135c573503f70dc290b1d60fe2e7f7eb114febd6",
+          "topics": [
+            "0x74baab670a4015ab2f1b467c5252a96141a2573f2908e58a92081e80d3cfde3d",
+            "0x000000000000000000000000988b3a538b618c7a603e1c11ab82cd16dbe28069",
+            "0x00000000000000000000000000000000000000000000000000000000000001f9"
+          ],
+          "data": "0x00000000000000000000000000000000000000000000000000000000000000390000000000000000000000000000000000000000000000000000000000000039",
+          "blockNumber": "0xae0373",
+          "blockHash": "0x2898c78d16059d363e3ef505189ea4f91c08fc4851ec77445bdfb8f09018f7f4",
+          "transactionHash": "0x8e6d3c4d34b7de9e152bbd468440685246870d51f9376b96f5069f3039a0d565",
+          "transactionIndex": "0x4e",
+          "logIndex": "0x80",
+          "removed": false
+        }
+      ],
+      "evidenceLogs": [
+        {
+          "address": "0x135c573503f70dc290b1d60fe2e7f7eb114febd6",
+          "topics": [
+            "0xdccf2f8b2cc26eafcd61905cba744cff4b81d14740725f6376390dc6298a6a3c",
+            "0x000000000000000000000000988b3a538b618c7a603e1c11ab82cd16dbe28069",
+            "0x0000000000000000000000000000000000000000000000000000000000000039",
+            "0x000000000000000000000000d5429f831374674a7d878c560c169f833f6144d2"
+          ],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000422f697066732f516d50694c48734848687a66574461535957586a61414e414a7959326855395642507437547863393453435473412f65766964656e63652e6a736f6e000000000000000000000000000000000000000000000000000000000000",
+          "blockNumber": "0xae074c",
+          "blockHash": "0x139eef2923781df3b0aa353631c160096b4870709e73a9b5dd2b3e1a59def35c",
+          "transactionHash": "0xb27e18a4fce3bd7d9b7c25a85e0a843786e6e613641e6e6737e1ad20042d2e25",
+          "transactionIndex": "0x31",
+          "logIndex": "0x89",
+          "removed": false
+        },
+        {
+          "address": "0x135c573503f70dc290b1d60fe2e7f7eb114febd6",
+          "topics": [
+            "0xdccf2f8b2cc26eafcd61905cba744cff4b81d14740725f6376390dc6298a6a3c",
+            "0x000000000000000000000000988b3a538b618c7a603e1c11ab82cd16dbe28069",
+            "0x0000000000000000000000000000000000000000000000000000000000000039",
+            "0x000000000000000000000000c639fac53e86834c764b6d16304c33f850a91f1b"
+          ],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000422f697066732f516d6236424d48697879416a783146333644543953656f5842436e316d61316d4765793834467171387a566e634b2f65766964656e63652e6a736f6e000000000000000000000000000000000000000000000000000000000000",
+          "blockNumber": "0xae0c6b",
+          "blockHash": "0xd7f7fb95e7ef77fee7a833f7263b10192f1be6547ded747d8c0c79f4777f0aa8",
+          "transactionHash": "0x2944b141087e2403f7fa19fcf7b56f17f152ccefd0130cf278054f52161b9cda",
+          "transactionIndex": "0x69",
+          "logIndex": "0x108",
+          "removed": false
+        },
+        {
+          "address": "0x135c573503f70dc290b1d60fe2e7f7eb114febd6",
+          "topics": [
+            "0xdccf2f8b2cc26eafcd61905cba744cff4b81d14740725f6376390dc6298a6a3c",
+            "0x000000000000000000000000988b3a538b618c7a603e1c11ab82cd16dbe28069",
+            "0x0000000000000000000000000000000000000000000000000000000000000039",
+            "0x0000000000000000000000000da8b71d69aa0692a0a7f8fd345575e9a5aab282"
+          ],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000422f697066732f516d6331786b364c374342686d466e61643168704571654358717a70414a68616b5a504a47384d55616b7a5348332f65766964656e63652e6a736f6e000000000000000000000000000000000000000000000000000000000000",
+          "blockNumber": "0xae2c5a",
+          "blockHash": "0xc1c2d85bf205100850ee790f0e1469b9b46211737125f1b13ebe45a9647af767",
+          "transactionHash": "0xb6be35cfa62571024301d7867e57c84b3872377e8fe6803237321ada863be1f2",
+          "transactionIndex": "0xc5",
+          "logIndex": "0x136",
+          "removed": false
+        },
+        {
+          "address": "0x135c573503f70dc290b1d60fe2e7f7eb114febd6",
+          "topics": [
+            "0xdccf2f8b2cc26eafcd61905cba744cff4b81d14740725f6376390dc6298a6a3c",
+            "0x000000000000000000000000988b3a538b618c7a603e1c11ab82cd16dbe28069",
+            "0x0000000000000000000000000000000000000000000000000000000000000039",
+            "0x000000000000000000000000f86e2f89daaa7cbab4160c2245038ce21a993fde"
+          ],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000422f697066732f516d5163624b57563852714541515053326f4773744c695a4232756f33774a5154387167576762775571744875792f65766964656e63652e6a736f6e000000000000000000000000000000000000000000000000000000000000",
+          "blockNumber": "0xae2d26",
+          "blockHash": "0x8c3166fff7ba452800d5f4e39694b063c5a17ae46ee9d7a35ca1ea672ef573ce",
+          "transactionHash": "0xc053ab7a5171da0f400cbe442c387e6533e410c0be6dfbfc77e23d0aa5eb96b9",
+          "transactionIndex": "0x9c",
+          "logIndex": "0x65",
+          "removed": false
+        },
+        {
+          "address": "0x135c573503f70dc290b1d60fe2e7f7eb114febd6",
+          "topics": [
+            "0xdccf2f8b2cc26eafcd61905cba744cff4b81d14740725f6376390dc6298a6a3c",
+            "0x000000000000000000000000988b3a538b618c7a603e1c11ab82cd16dbe28069",
+            "0x0000000000000000000000000000000000000000000000000000000000000039",
+            "0x000000000000000000000000f86e2f89daaa7cbab4160c2245038ce21a993fde"
+          ],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000422f697066732f516d563453764d77626e555434357565686771374c32564645793650354a4c73754b477373566e7a446d3743426f2f65766964656e63652e6a736f6e000000000000000000000000000000000000000000000000000000000000",
+          "blockNumber": "0xae5a34",
+          "blockHash": "0xf5cc74aa7fb21db957fdfb9faa2270ce31bf190862c190ec1d394da5d8ac6db1",
+          "transactionHash": "0x1391520bbf812ba4b4b0712be8175ec283eec56cfb32c6e4583444e02bae1f95",
+          "transactionIndex": "0x63",
+          "logIndex": "0xeb",
+          "removed": false
+        }
+      ],
+      "blockTimestamps": {
+        "0xae0373": "0x5fcdcf68",
+        "0xae074c": "0x5fce0495",
+        "0xae0c6b": "0x5fce4817",
+        "0xae2c5a": "0x5fcff362",
+        "0xae2d26": "0x5fcffdb2",
+        "0xae5a34": "0x5fd2516b"
+      },
+      "documents": {
+        "/ipfs/QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA/evidence.json": "{\"name\":\"Video Capture\",\"description\":\"It looks like the vast majority of the contributions are indeed providing an in-game address, therefor expecting a kickback\",\"fileURI\":\"/ipfs/QmW5SHp9B1uuqNhwxmEa6nrRTX6CWDxtWUfDzzjULtejHW/Kleros_505-Gitcoin_SoS.mp4\",\"evidenceSide\":\"1\"}",
+        "/ipfs/Qmb6BMHixyAjx1F36DT9SeoXBCn1ma1mGey84Fqq8zVncK/evidence.json": "{\"name\":\"Screenshot from Twitter\",\"description\":\"Here is a screenshot from the twitter page of the game where you can see that they give in-game items to the contributors.\\nHere is the link to the twitter page : https://twitter.com/synergyofserra\",\"fileURI\":\"/ipfs/QmUh6cFr7pKg7PZoFqhZfp4jEaoC2GtdLyaZKLn1RkJgbV/SOS.jpg\",\"evidenceSide\":\"1\"}",
+        "/ipfs/Qmc1xk6L7CBhmFnad1hpEqeCXqzpAJhakZPJG8MUakzSH3/evidence.json": "{\"name\":\"\\\"Screenshot from the Twitter\\\"\",\"description\":\"We have a screenshot that proves that there were special benefits provided to those who donate >1$ for project. \\n\\n\\\"It is forbidden to offer a reward to people funding the grant.\\\"- Rules.\",\"fileURI\":\"/ipfs/QmTGGHpNd8mxjGr1nm6rZVpuUXCeF8g3rHkkdyzwZbGeQA/Twitter_Screen.jpg\",\"evidenceSide\":\"1\"}",
+        "/ipfs/QmQcbKWV8RqEAQPS2oGstLiZB2uo3wJQT8qgWgbwUqtHuy/evidence.json": "{\"name\":\"Forbidden to offer reward?\",\"description\":\"I can't find anywhere stating it's forbidden to offer a reward. I searched through Gitcoin's CoC, Wiki, and Legal pages. Websites such as kickstarter and gofundme support offering rewards to donators. \",\"evidenceSide\":\"0\"}",
+        "/ipfs/QmV4SvMwbnUT45uehgq7L2VFEy6P5JLsuKGssVnzDm7CBo/evidence.json": "{\"name\":\"quid-pro-quo against Gitcoin's tos\",\"description\":\"ok my bad found it: https://gitcoin.co/wiki/grants/\",\"fileURI\":\"/ipfs/QmfX3DGJenwRUGfYVAWVNyrHk5WSv7MYk2CYs86p3d5L1Q/firefox_dwZdaleN4z.png\",\"evidenceSide\":\"1\"}"
+      }
+    }
+  ]
+}
