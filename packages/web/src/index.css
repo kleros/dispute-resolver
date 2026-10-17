@@ -121,14 +121,12 @@
  * `transition-[border-color,box-shadow] duration-200` wins the utilities sort, the card still transitions its border
  * and shadow within the 150 to 250 ms band.
  */
-@utility hover-medium-blue {
-  &:hover {
+@layer utilities {
+  .hover-medium-blue:hover {
     background-color: var(--klerosUIComponentsMediumBlue);
   }
-}
 
-@utility hover-white-background {
-  &:hover {
+  .hover-white-background:hover {
     background-color: var(--klerosUIComponentsWhiteBackground);
   }
 }
