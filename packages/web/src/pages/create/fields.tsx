@@ -1,5 +1,5 @@
 import { CREATE_LIMITS, type CreateLimits } from "@dispute-resolver/core";
-import { Box } from "@kleros/ui-components-library";
+import { Card } from "@kleros/ui-components-library";
 import type { ReactNode } from "react";
 import { fieldAttributes, type DataAttributeStrings } from "../../parity";
 
@@ -31,15 +31,15 @@ export function errorProps(message: string | undefined): { readonly isInvalid?: 
 /** A titled group of fields (ARCHITECTURE.md §11.5): Court and cost; Dispute; Question and options; Parties; Primary document. */
 export function FormGroup({ title, description, children }: { readonly title: string; readonly description?: string; readonly children: ReactNode }) {
   return (
-    <Box className="h-auto w-full min-w-0 p-4 lg:p-6">
+    <Card round className="h-auto w-full min-w-0 p-4 lg:p-6">
       <fieldset className="m-0 flex min-w-0 flex-col gap-4 border-0 p-0">
         <legend className="float-left mb-0 w-full p-0">
-          <h2 className="text-lg font-semibold text-klerosUIComponentsPrimaryText">{title}</h2>
+          <h2 className="text-xl font-semibold text-klerosUIComponentsPrimaryText">{title}</h2>
           {description === undefined ? null : <p className="mt-1 text-sm text-klerosUIComponentsSecondaryText">{description}</p>}
         </legend>
         {children}
       </fieldset>
-    </Box>
+    </Card>
   );
 }
 

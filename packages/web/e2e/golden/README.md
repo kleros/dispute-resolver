@@ -1,24 +1,27 @@
 # Golden-case parity suite
 
-The Playwright suite of `docs/parity/04-golden-cases.md` §1 and §2: every stable-tier case page, and the Ongoing and
-Create screens of mainnet and Gnosis, are extracted from production and from the new app in the same run and compared
-field by field. It is the `golden` project of `../../playwright.config.ts`; `yarn test` never runs it and `yarn e2e`
-runs only the `chromium` project.
+The Playwright suite of `docs/parity/04-golden-cases.md` §1 to §3: every stable-tier case page, the executed disputes a
+ledger Test clause names, the live-tier picks of `golden/live.json`, and the Ongoing and Create screens of mainnet and
+Gnosis, are extracted from production and from the new app in the same run and compared field by field. It is the
+`golden` project of `../../playwright.config.ts`; `yarn test` never runs it and `yarn e2e` runs only the `chromium`
+project.
 
 ```bash
 yarn workspace @dispute-resolver/web playwright install chromium   # once
 yarn workspace @dispute-resolver/web golden                        # builds and previews the app, then runs the suite
 ```
 
-| Variable            | Default                                                            | Effect                                                                                                                                                                                                                                                |
-| ------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PROD_URL`          | `https://resolve.kleros.io`                                        | Production.                                                                                                                                                                                                                                           |
-| `NEW_URL`           | `http://localhost:4173` (the `vite preview` the web server starts) | The new app; set it to a deploy preview to check a PR.                                                                                                                                                                                                |
-| `GOLDEN_CASES`      | all of §2                                                          | Comma-separated `chain:id` keys, for example `1:1454,100:0`.                                                                                                                                                                                          |
-| `GOLDEN_SCREENS`    | on                                                                 | `0` leaves out the Ongoing and Create screens.                                                                                                                                                                                                        |
-| `GOLDEN_WORKERS`    | `2`                                                                | Cases run in parallel.                                                                                                                                                                                                                                |
-| `GOLDEN_ACCOUNTS`   | `golden/accounts.json`                                             | The account-context file, relative to the repository root.                                                                                                                                                                                            |
-| `GOLDEN_NEW_WALLET` | from the build                                                     | `configured` or `unconfigured`: whether the new app's build has `REACT_APP_WALLETCONNECT_PROJECT_ID`. Needed for a remote `NEW_URL`; for the local preview the suite checks the environment and `.env` for the variable's presence (never its value). |
+| Variable            | Default                                                            | Effect                                                                                                                                                                                                                                      |
+| ------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PROD_URL`          | `https://resolve.kleros.io`                                        | Production.                                                                                                                                                                                                                                 |
+| `NEW_URL`           | `http://localhost:4173` (the `vite preview` the web server starts) | The new app; set it to a deploy preview to check a PR.                                                                                                                                                                                      |
+| `GOLDEN_CASES`      | all of §2 and the ledger's named cases                             | Comma-separated `chain:id` keys, for example `1:1454,100:0`.                                                                                                                                                                                |
+| `GOLDEN_SCREENS`    | on                                                                 | `0` leaves out the Ongoing and Create screens.                                                                                                                                                                                              |
+| `GOLDEN_WORKERS`    | `2`                                                                | Cases run in parallel.                                                                                                                                                                                                                      |
+| `GOLDEN_ACCOUNTS`   | `golden/accounts.json`                                             | The account-context file, relative to the repository root.                                                                                                                                                                                  |
+| `GOLDEN_LIVE`       | every pick of `golden/live.json`                                   | `0` leaves out the live tier; comma-separated `chain:period` keys, for example `100:1`, run those picks, and a named pick that cannot run fails.                                                                                            |
+| `GOLDEN_LIVE_FILE`  | `golden/live.json`                                                 | The live-tier file (`yarn golden-gate live`), relative to the repository root.                                                                                                                                                              |
+| `GOLDEN_NEW_WALLET` | from the build                                                     | `configured` or `unconfigured`: whether the new app's build has `REACT_APP_WALLETCONNECT_PROJECT_ID`. Needed for a remote `NEW_URL`; the local preview is built with a placeholder ID (`playwright.config.ts`), so it counts as configured. |
 
 ## How a case is compared
 
@@ -62,10 +65,35 @@ the report records the attempt. The bad-dispute preconditions 04 §2 recorded (t
 "invalid or tampered" placeholder) are reported as notes, not failures: the D-36 checks that block are that the page
 renders with its dispute info and timeline and that the meta-evidence section never renders nothing.
 
+## Ledger cases and recorded courts
+
+`stableTier.ts` ends with `LEDGER_CASES`: executed disputes that a ledger Test clause names and 04 §2 does not list. They
+run with the stable tier. Sepolia 365 is P-01's "Sepolia dispute older than 50,000 blocks": its Dispute and Evidence
+events, recorded with their blocks, predate production's testnet look-back, so production lists no evidence and the new
+app lists 3. `courts.ts` records every golden case's court and whether it hides votes, read on-chain with the block, so
+the D-39 timeline rule requires the Commit column for a hidden-vote court (Gnosis courts 0 and 19) and forbids it
+otherwise; in the commit period Commit is always required.
+
+## Live tier (04 §3)
+
+`live.spec.ts` runs the picks of `golden/live.json` (`yarn golden-gate live`, run first): per chain and period 0 to 3, the
+newest open dispute in that period at the block the file records. Each pick is compared with production like a stable
+case, with the arbitrable from the arbitrator and the family the selection detected for it as its `family` highlight:
+the new app is held to that family, and the family's ledger rules key on it as on a stable case's (D-47: a view-only
+pick in the appeal period shows the note, not production's crowdfunding cards; a file written before picks recorded a
+family gives them no highlight). `liveChecks.ts` adds the period-dependent checks of 04 §3 on the new app,
+following the period it shows: the timeline's columns and states (Commit current in the commit period, D-39), the
+submit-evidence control (enabled for a compatible arbitrable and disabled for a view-only one in periods 0 to 3, absent in
+execution; read by its button's name, since ARCHITECTURE.md §12 has no hook for it), the appeal panel only in periods 3
+and 4, and in period 3 every card's funded percentage, remaining amount and deadline, with the winner's deadline not
+earlier than a loser's. Whether the dispute is still in the period it was picked in is a note: picks move on within days,
+so the file is regenerated before a run. Outside the commit period a live pick's court is not recorded, so its Commit
+column is optional. A period with no open dispute, or a chain whose selection failed, is an annotation of the first test.
+
 ## Account context
 
-For a case with a contributor in `golden/accounts.json` (`yarn golden-gate accounts`), `provider.ts` injects a read-only
-EIP-1193 provider with `addInitScript` that announces that account on the page's chain and refuses every signing or
+For a case with a contributor in `golden/accounts.json` (`yarn golden-gate accounts`), `e2e/support/wallet.ts` injects an
+EIP-1193 wallet with `addInitScript` that announces that account on the page's chain and refuses every signing or
 sending method. Production reads it from `window.ethereum`. The new app connects a wallet only when its build has
 `REACT_APP_WALLETCONNECT_PROJECT_ID` (K-02); otherwise the provider is not injected there. Each snapshot records the
 account the app actually used: production's once its header left the no-account state, the new app's as its header
@@ -85,3 +113,14 @@ redacted again: every RPC-named field and every value compared under the D-35 RP
 which the comparison reads). The report names production and the new app by their origins, and each snapshot records
 the page it loaded as the app's origin and the screen path only, without the credentials, path or query that `PROD_URL`
 or `NEW_URL` may carry (a password-protected deploy preview).
+
+## Report-only CSP run (checklist C2)
+
+Every page of the new app runs with `csp.ts`, which collects the violations of the app's
+`Content-Security-Policy-Report-Only` policy from the browser's `securitypolicyviolation` events, across navigations.
+Each violation is written as its directive and the blocked resource's origin (or `data:`, `inline`, `eval`), never a
+path or query, so a blocked RPC request cannot write its key. Violations of an enforced policy (the runner's, C3) and of a
+third-party frame's own policy are left out. Each screen's violations are in its result, and the report ends with the
+run's violations by directive and origin; they never fail a test. `vite preview` does not send `public/_headers`, so
+only a run with `NEW_URL` set to a Netlify deploy of the branch exercises the policy: that run's log is the evidence C2
+asks for before the header is enforced.

@@ -1,7 +1,7 @@
 import { combinationCode, combinationTitle, type ChainConfig, type CrowdfundingCard, type MultipleSelectComposer } from "@dispute-resolver/core";
 import { Card, Checkbox } from "@kleros/ui-components-library";
 import { useId, useState } from "react";
-import { Amount } from "../../ui";
+import { Amount, FACT_LEAD } from "../../ui";
 import { FundAction } from "./FundAction";
 import { FundingProgress } from "./FundingProgress";
 import { CARD_TITLE_CLASS, COMPOSER_CARD_CLASS } from "./styles";
@@ -66,8 +66,9 @@ export function ComposerCard({ composer, cards, actions, chain }: ComposerCardPr
         </div>
         <div className="flex min-w-0 flex-col gap-4 lg:border-l lg:border-klerosUIComponentsStroke lg:pl-8">
           <FundingProgress percent={funded?.fundedPercent ?? 0} deadline={composer.deadline} />
-          <p className="text-sm text-klerosUIComponentsSecondaryText">
-            Required <Amount wei={composer.required} chain={chain} className="font-semibold text-klerosUIComponentsPrimaryText" />
+          <p className="flex flex-col gap-1 text-sm text-klerosUIComponentsSecondaryText">
+            <span>{"Required "}</span>
+            <Amount wei={composer.required} chain={chain} className={FACT_LEAD} />
           </p>
           <FundAction subject="the selected combination" code={code} suggested={composer.required} actions={actions} chain={chain} />
         </div>

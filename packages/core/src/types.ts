@@ -7,7 +7,6 @@
 import type { Abi, ContractFunctionArgs, ContractFunctionName, PublicClient } from "viem";
 
 /** An EVM chain ID. Only integers that name a configured chain are accepted from untrusted input (`chains`). */
-// eslint-disable-next-line sonarjs/redundant-type-aliases -- the domain name is the contract of 06 §2 and documents intent at every use.
 export type ChainId = number;
 
 /** An EVM address, always lowercase inside core (registry invariant 1, 06 §2). */
@@ -20,7 +19,6 @@ export type Hex = `0x${string}`;
 export type RegistryKey = `${ChainId}:${Address}`;
 
 /** Unix time in seconds. */
-// eslint-disable-next-line sonarjs/redundant-type-aliases -- distinguishes seconds from milliseconds and block numbers.
 export type UnixSeconds = number;
 
 /**

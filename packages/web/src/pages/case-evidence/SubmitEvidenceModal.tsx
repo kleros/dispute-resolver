@@ -2,8 +2,9 @@ import { Button, Modal, TextArea, TextField } from "@kleros/ui-components-librar
 import { useMemo, useState } from "react";
 import { AtlasFileField, AtlasUploaderProvider, useAtlasUpload, type AtlasUploader } from "../../atlas";
 import { Notice } from "../../ui";
+import { WriteStatusNotice } from "../../wallet";
 import { SubmissionFeedbackNotice } from "./SubmissionFeedbackNotice";
-import type { EvidenceDraft, SubmissionFeedback } from "./useEvidenceSubmission";
+import type { EvidenceDraft, SubmissionFeedback, WrongChainStatus } from "./useEvidenceSubmission";
 
 export interface SubmitEvidenceModalProps {
   readonly isOpen: boolean;
@@ -15,6 +16,12 @@ export interface SubmitEvidenceModalProps {
   /** A submission is in flight: Submit reads "Awaiting Confirmation" and is disabled. */
   readonly submitting: boolean;
   readonly feedback: SubmissionFeedback | null;
+  /** The wallet is on another chain than the page: the attachment field is locked and the switch is offered (B3, D-48). */
+  readonly wrongChain: WrongChainStatus | null;
+}
+
+function isWrongChain(feedback: SubmissionFeedback | null): boolean {
+  return feedback?.kind === "write" && feedback.status.phase === "wrong-chain";
 }
 
 /**
@@ -42,16 +49,25 @@ function useCountedUploads(uploader: AtlasUploader): { readonly counted: AtlasUp
 }
 
 /**
+ * The overlay fades in over 250 ms and out over 150 ms (motion band of contract §9); the library's tailwind-merge replaces
+ * its own 100 ms entering and exiting classes with these, and its backdrop blur stays.
+ */
+const OVERLAY_MOTION = "entering:animate-[fadeIn_250ms_cubic-bezier(0.22,1,0.36,1)] exiting:animate-[fadeOut_150ms_cubic-bezier(0.22,1,0.36,1)]";
+
+/**
  * The "Submit Evidence" modal of spec 5.14: title, a five-row description and an attachment dropzone (role `evidence`,
  * signing in to Atlas within the drop when needed, D-52), with "Return" and "Submit". No field is validated. Submit is
- * disabled while a submission or an upload runs. The overlay, Escape and "Return" close it; a failed submission keeps it
- * open with the outcome (D-07).
+ * disabled while a submission or an upload runs. With the wallet on another chain the attachment field is locked and the
+ * switch is offered under it, so no sign-in is requested (B3, D-48); a Submit refused for the same reason adds no second
+ * notice. Without a wallet the field's own Connect offer applies. The overlay, Escape and "Return" close it; a failed
+ * submission keeps it open with the outcome (D-07).
  */
-export function SubmitEvidenceModal({ isOpen, draft, onDraftChange, onClose, onSubmit, submitting, feedback }: SubmitEvidenceModalProps) {
+export function SubmitEvidenceModal({ isOpen, draft, onDraftChange, onClose, onSubmit, submitting, feedback, wrongChain }: SubmitEvidenceModalProps) {
   const uploader = useAtlasUpload();
   const attachment = useCountedUploads(uploader);
   const unconfigured = uploader.availability === "unconfigured";
   const uploading = attachment.inFlight || uploader.phase !== "idle";
+  const shownFeedback = wrongChain !== null && isWrongChain(feedback) ? null : feedback;
   return (
     <Modal
       isOpen={isOpen}
@@ -61,8 +77,9 @@ export function SubmitEvidenceModal({ isOpen, draft, onDraftChange, onClose, onS
       }}
       ariaLabel="Submit Evidence"
       className="h-auto max-h-[calc(100dvh-32px)] w-[calc(100vw-32px)] max-w-[600px] overflow-y-auto"
+      modalOverlayClassname={OVERLAY_MOTION}
     >
-      <div className="flex min-w-0 flex-col gap-5 p-4 sm:p-6">
+      <div className="flex min-w-0 flex-col gap-4 p-4 sm:p-6">
         <h2 className="font-semibold text-klerosUIComponentsPrimaryText">Submit Evidence</h2>
         <TextField
           label="Evidence Title"
@@ -89,7 +106,7 @@ export function SubmitEvidenceModal({ isOpen, draft, onDraftChange, onClose, onS
             role="evidence"
             label="Attachment (optional)"
             value={draft.attachment}
-            isDisabled={submitting}
+            isDisabled={submitting || wrongChain !== null}
             onUploaded={(file) => {
               onDraftChange({ attachment: file });
             }}
@@ -98,11 +115,12 @@ export function SubmitEvidenceModal({ isOpen, draft, onDraftChange, onClose, onS
             }}
           />
         </AtlasUploaderProvider>
+        {wrongChain === null ? null : <WriteStatusNotice status={wrongChain} />}
         {unconfigured ? (
           <Notice variant="warning" title="Submission unavailable" body="Evidence is uploaded to IPFS before it is submitted, and uploads are unavailable on this deployment." />
         ) : null}
-        {feedback === null ? null : <SubmissionFeedbackNotice feedback={feedback} />}
-        <div className="flex flex-wrap justify-end gap-3">
+        {shownFeedback === null ? null : <SubmissionFeedbackNotice feedback={shownFeedback} />}
+        <div className="sticky bottom-0 -mx-4 -mb-4 flex flex-wrap justify-end gap-3 border-t border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground px-4 py-3 sm:-mx-6 sm:-mb-6 sm:px-6">
           <Button text="Return" variant="secondary" onPress={onClose} />
           <Button text={submitting ? "Awaiting Confirmation" : "Submit"} isLoading={submitting} isDisabled={submitting || uploading || unconfigured} onPress={onSubmit} />
         </div>

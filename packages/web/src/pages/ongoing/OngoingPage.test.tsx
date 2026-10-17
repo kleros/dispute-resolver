@@ -1,10 +1,11 @@
 import * as core from "@dispute-resolver/core";
 import type { Court, MetaEvidenceResult, OngoingDispute, OngoingList, Outcome, Period } from "@dispute-resolver/core";
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { testCourt, testOkMetaEvidence, TEST_ARBITRABLE } from "../../test/data";
 import { renderWithProviders } from "../../test/shell";
+import { createTestWallet } from "../../test/wallet";
 import { OngoingPage } from "./OngoingPage";
 
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../../test/data/mockCoreReads")).mockCoreReads(importOriginal));
@@ -104,6 +105,26 @@ describe("Ongoing page (spec §3, ARCHITECTURE.md §5.5, §12.2)", () => {
     expect(within(page()).getByRole("status")).toHaveAttribute("aria-busy", "true");
   });
 
+  it("spec §8.3, §3: a wallet chain change lists the new chain's open disputes and drops the old chain's cards", async () => {
+    vi.mocked(core.listOngoingDisputes).mockImplementation(({ chainId }) => Promise.resolve(chainId === 1 ? listOf([dispute(12n, 0)]) : listOf([dispute(7n, 3)])));
+    const wallet = createTestWallet({ chainId: 1 });
+    await wallet.connect();
+    renderWithProviders(<OngoingPage />, { path: "/1/ongoing", wallet });
+    await settledPage("list");
+    expect(cardIds()).toEqual(["12"]);
+
+    await act(async () => {
+      await wallet.changeChain(100);
+    });
+    await waitFor(() => {
+      expect(page()).toHaveAttribute("data-chain", "100");
+    });
+    await settledPage("list");
+    expect(cardIds()).toEqual(["7"]);
+    expect(core.listOngoingDisputes).toHaveBeenLastCalledWith(expect.objectContaining({ chainId: 100 }), COURTS.value);
+    expect(core.listCourts).toHaveBeenLastCalledWith(expect.objectContaining({ chainId: 100 }));
+  });
+
   it("spec §3: a failed scan shows 'Failed to load disputes.' with the RPC hint and the reason", async () => {
     vi.mocked(core.listOngoingDisputes).mockResolvedValue({ status: "failed", error: { code: "rpc-error", message: "Could not read the open disputes: getLogs refused" } });
     renderOngoing();
@@ -200,7 +221,7 @@ describe("Ongoing page (spec §3, ARCHITECTURE.md §5.5, §12.2)", () => {
     });
   });
 
-  it("ONG-1 spec §3: the countdown shows whenever the period's end is known, a passed end as zeros, as today", async () => {
+  it("MC-10, ONG-1: the countdown shows whenever the period's end is known, a passed end as zeros, as today", async () => {
     vi.mocked(core.listOngoingDisputes).mockResolvedValue(
       listOf([dispute(30n, 0), dispute(20n, 3, { countdownTarget: nowSeconds() - 60 }), dispute(10n, 1, { countdownTarget: null })]),
     );

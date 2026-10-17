@@ -62,6 +62,26 @@ describe("index.html and the global stylesheet (A20)", () => {
   });
 });
 
+describe("web-app manifest (§1.5)", () => {
+  it("§1.5: index.html links manifest.json, which public/ ships", () => {
+    const links = [...indexDocument().querySelectorAll('link[rel="manifest"]')].map((element) => element.getAttribute("href"));
+    expect(links).toEqual(["/manifest.json"]);
+  });
+
+  it("§1.5: manifest.json carries the old app's name, icon, standalone display and colors", () => {
+    expect(JSON.parse(read("public/manifest.json"))).toEqual({
+      short_name: "Dispute Resolver",
+      name: "Dispute Resolver",
+      icons: [{ src: "favicon.ico", sizes: "64x64 32x32 24x24 16x16", type: "image/x-icon" }],
+      start_url: ".",
+      display: "standalone",
+      theme_color: "#000000",
+      background_color: "#ffffff",
+    });
+    expect(readdirSync(join(WEB_ROOT, "public"))).toContain("favicon.ico");
+  });
+});
+
 describe("shell production code (C9)", () => {
   it("C9: no production file of shell imports a test double", () => {
     const sources = productionSources();

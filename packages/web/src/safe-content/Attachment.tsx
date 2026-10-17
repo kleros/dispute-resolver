@@ -2,8 +2,7 @@ import { AttachmentIcon } from "./AttachmentIcon";
 import { ExternalLink } from "./ExternalLink";
 import type { AttachmentProps } from "./types";
 
-const LINK_CLASS =
-  "inline-flex max-w-full items-center gap-2 rounded-base text-klerosUIComponentsPrimaryBlue hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klerosUIComponentsPrimaryBlue";
+const LINK_CLASS = "inline-flex max-w-full items-center gap-2 rounded-base text-klerosUIComponentsPrimaryBlue hover:underline";
 
 /**
  * An attachment or document reference (A10, A17, D-32): a link with the icon of its kind and its file name, or the

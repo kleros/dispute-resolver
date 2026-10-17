@@ -6,21 +6,29 @@ import { paths } from "../../routing";
 /** Today's trailing debounce between a change of the search box and the load of the new ID (spec 5.1, 5.2). */
 export const SEARCH_DEBOUNCE_MS = 750;
 
-const DIGITS = /^\d*$/;
-
 /** What the search box shows and does (spec 5.2, D-53). */
 export interface DisputeSearch {
   /** The typed text still waiting for the debounce, or `null` when the page shows the URL's dispute. */
   readonly pending: string | null;
   /** The ID the field shows: the pending text, else the URL's ID; `null` for an empty field. */
   readonly shownId: bigint | null;
-  /** A new text in the field: digits only, anything else is ignored. */
+  /** A new text in the field: an empty field or a dispute ID, anything else is ignored. */
   change(text: string): void;
-  /** Loads the pending text at once (Enter). */
+  /** Loads the pending ID at once (Enter, P-19). */
   submit(): void;
 }
 
-/** What a text loads: its dispute ID as decimal digits, or "" for the case page without an ID (D-09). */
+/**
+ * A typed text and the URL IDs it applies to: the one it was typed on and the one it wrote, the same when it left the
+ * URL as it was. The router commits the URL in a transition, after the text, so the search holds on both.
+ */
+interface Search {
+  readonly text: string;
+  readonly from: string | undefined;
+  readonly to: string | undefined;
+}
+
+/** What a text loads: its dispute ID as decimal digits, or "" for an empty field. */
 function targetOf(text: string): string {
   return parseDisputeId(text)?.toString() ?? "";
 }
@@ -32,63 +40,55 @@ function urlTarget(urlId: string | undefined): string {
 }
 
 /**
- * The search box's state (spec 5.2): every change clears the shown dispute at once (D-53) and, after today's 750 ms
- * debounce, replaces the URL with the case page of the typed ID, or with the case page without an ID when the field
- * is empty (D-09). The target is built only from a parsed ID (A19). Typing the ID already shown changes nothing, and
- * any change of the URL (the search itself, back, a header link) ends the pending search.
+ * The search box's state (spec 1.4, 5.2): every change clears the shown dispute at once (D-53) and replaces the URL
+ * at once with the case page of the typed ID, built only from the parsed ID (A19); only the load of that ID waits for
+ * today's 750 ms debounce, or for Enter (P-19). An empty field shows no dispute and, as today's `<Redirect>` guard,
+ * leaves the URL as it is. Typing the ID already shown changes nothing, and a change of the URL the search did not
+ * make (back, a header link) ends the pending search.
  */
 export function useDisputeSearch(chainId: ChainId, urlId: string | undefined): DisputeSearch {
   const navigate = useNavigate();
-  const [pending, setPending] = useState<string | null>(null);
-  const [searchedUrlId, setSearchedUrlId] = useState(urlId);
+  const [search, setSearch] = useState<Search | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const active = search !== null && (urlId === search.from || urlId === search.to) ? search.text : null;
 
-  // The URL moved: what was typed for the previous one no longer applies. Reset during render, so the page never
-  // shows the new URL with the old search.
-  let active = pending;
-  if (searchedUrlId !== urlId) {
-    setSearchedUrlId(urlId);
-    setPending(null);
-    active = null;
-  }
-
-  // A navigation, or leaving the page, drops the debounce that was waiting.
+  // Leaving the page drops the debounce that was waiting.
   useEffect(
     () => () => {
       clearTimeout(timer.current);
     },
-    [urlId],
+    [],
   );
 
-  const load = useCallback(
-    (text: string) => {
-      clearTimeout(timer.current);
-      const id = parseDisputeId(text);
-      void navigate(id === null ? paths.cases(chainId) : paths.case(chainId, id), { replace: true });
-    },
-    [chainId, navigate],
-  );
+  const settle = useCallback(() => {
+    clearTimeout(timer.current);
+    setSearch(null);
+  }, []);
 
   const change = useCallback(
     (text: string) => {
-      if (!DIGITS.test(text)) return;
+      const id = parseDisputeId(text);
+      if (text !== "" && id === null) return;
       if (active !== null && targetOf(active) === targetOf(text)) return;
       clearTimeout(timer.current);
       if (targetOf(text) === urlTarget(urlId)) {
-        setPending(null);
+        setSearch(null);
         return;
       }
-      setPending(text);
-      timer.current = setTimeout(() => {
-        load(text);
-      }, SEARCH_DEBOUNCE_MS);
+      if (id === null) {
+        setSearch({ text, from: urlId, to: urlId });
+        return;
+      }
+      setSearch({ text, from: urlId, to: id.toString() });
+      void navigate(paths.case(chainId, id), { replace: true });
+      timer.current = setTimeout(settle, SEARCH_DEBOUNCE_MS);
     },
-    [active, load, urlId],
+    [active, chainId, navigate, settle, urlId],
   );
 
   const submit = useCallback(() => {
-    if (active !== null) load(active);
-  }, [active, load]);
+    if (active !== null && active !== "") settle();
+  }, [active, settle]);
 
   const shown = active ?? urlId;
   return { pending: active, shownId: shown === undefined ? null : parseDisputeId(shown), change, submit };

@@ -1,5 +1,5 @@
 import { Button, FileUploader } from "@kleros/ui-components-library";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useConnectWallet, useWallet } from "../wallet";
 import { useAtlasUpload } from "./context";
 import { UNCONFIGURED_MESSAGE, failure, reasonOf } from "./failures";
@@ -51,6 +51,14 @@ export function AtlasFileField({ role, value, onUploaded, onCleared, label = "Fi
   // Remounting the library's dropzone is the only way to clear the file name it keeps after a failed or reset upload.
   const [failures, setFailures] = useState(0);
   const uploadedFile = useMemo(() => (value === null ? undefined : new File([], value.fileName)), [value]);
+  const fieldRef = useRef<HTMLDivElement>(null);
+  const valuePath = value?.path;
+
+  // The library's visible file-picker button has no name of its own (its dropzone points at a missing "dropzone-label"),
+  // so the field's own label names it, after every mount and remount of the dropzone (the `key` below).
+  useEffect(() => {
+    fieldRef.current?.querySelector("button[data-rac]:not([aria-label])")?.setAttribute("aria-labelledby", labelId);
+  }, [failures, valuePath, labelId]);
 
   const unavailable = uploader.availability === "unconfigured";
   const limits = uploader.limits(role);
@@ -87,7 +95,8 @@ export function AtlasFileField({ role, value, onUploaded, onCleared, label = "Fi
       <span id={labelId} className="text-sm text-klerosUIComponentsSecondaryText">
         {label}
       </span>
-      <div aria-live="polite" className="w-full min-w-0">
+      {/* While a file is over the dropzone (react-aria's `data-drop-target`) its dashed edge turns solid on a white fill. */}
+      <div ref={fieldRef} aria-live="polite" className="w-full min-w-0 [&_[data-drop-target]]:border-solid [&_[data-drop-target]]:bg-klerosUIComponentsWhiteBackground">
         <FileUploader
           key={`${String(failures)}:${value?.path ?? ""}`}
           className="w-full [overflow-wrap:anywhere]"

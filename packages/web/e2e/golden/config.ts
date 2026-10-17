@@ -1,8 +1,7 @@
-import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 // Run configuration of the golden suite. Nothing here is printed or written to a report except the origins of the base
-// URLs and the reasons for skipped fields; the `.env` file is only checked for the presence of one variable name.
+// URLs and the reasons for skipped fields.
 
 export const PREVIEW_PORT = "4173";
 const LOCAL_PREVIEW = `http://localhost:${PREVIEW_PORT}`;
@@ -33,30 +32,22 @@ export const NEW_IS_LOCAL_PREVIEW = NEW_URL === LOCAL_PREVIEW;
 /** `golden/accounts.json`, written by `yarn golden-gate accounts` (04 §1 account context); `GOLDEN_ACCOUNTS` overrides it. */
 export const ACCOUNTS_FILE = resolve(REPOSITORY_ROOT, process.env.GOLDEN_ACCOUNTS ?? "golden/accounts.json");
 
-const WALLET_VARIABLE = "REACT_APP_WALLETCONNECT_PROJECT_ID";
+/** `golden/live.json`, written by `yarn golden-gate live` (04 §3 live tier); `GOLDEN_LIVE_FILE` overrides it. */
+export const LIVE_FILE = resolve(REPOSITORY_ROOT, process.env.GOLDEN_LIVE_FILE ?? "golden/live.json");
 
-/** Whether `.env` defines `name` with a non-empty value; the value itself is never read into a variable. */
-function dotEnvDefines(name: string): boolean {
-  const file = resolve(REPOSITORY_ROOT, ".env");
-  if (!existsSync(file)) return false;
-  const pattern = new RegExp(`^\\s*${name}\\s*=\\s*\\S`, "m");
-  return pattern.test(readFileSync(file, "utf8"));
-}
+const WALLET_VARIABLE = "REACT_APP_WALLETCONNECT_PROJECT_ID";
 
 /**
  * Why the new app cannot show account-dependent fields, or `null` when it can. Without
- * `REACT_APP_WALLETCONNECT_PROJECT_ID` it connects no wallet at all (K-02). For a remote `NEW_URL` the build's setting is
- * unknown, so `GOLDEN_NEW_WALLET=configured` declares it.
+ * `REACT_APP_WALLETCONNECT_PROJECT_ID` it connects no wallet at all (K-02). The local preview is built by the Playwright
+ * web server, which always sets one (playwright.config.ts); for a remote `NEW_URL` the build's setting is unknown, so
+ * `GOLDEN_NEW_WALLET=configured` declares it.
  */
 export function newAppWalletUnavailableReason(): string | null {
   const declared = process.env.GOLDEN_NEW_WALLET?.trim();
-  if (declared === "configured") return null;
+  if (declared === "configured" || (declared === undefined && NEW_IS_LOCAL_PREVIEW)) return null;
   if (declared === "unconfigured") return `${WALLET_VARIABLE} is unset in the new app's build (GOLDEN_NEW_WALLET=unconfigured), so it connects no wallet (K-02)`;
-  const configured = NEW_IS_LOCAL_PREVIEW ? (process.env[WALLET_VARIABLE]?.trim() ?? "") !== "" || dotEnvDefines(WALLET_VARIABLE) : false;
-  if (configured) return null;
-  return NEW_IS_LOCAL_PREVIEW
-    ? `${WALLET_VARIABLE} is unset for the local build, so the new app connects no wallet (K-02)`
-    : `the wallet setting of ${new URL(NEW_URL).origin} is unknown; set GOLDEN_NEW_WALLET=configured when its build has ${WALLET_VARIABLE} (K-02)`;
+  return `the wallet setting of ${new URL(NEW_URL).origin} is unknown; set GOLDEN_NEW_WALLET=configured when its build has ${WALLET_VARIABLE} (K-02)`;
 }
 
 /** How long one app may take to settle a case page: the meta-evidence budget plus the dispute reads (D-38). */

@@ -76,15 +76,17 @@ export function WithdrawPanel({ state, actions, chain }: WithdrawPanelProps) {
         <WithdrawExplanation state={state} />
       </div>
       {state.status === "available" ? (
-        <Button
-          text={`Withdraw ${formatAmount(state.total, chain)}`}
-          className="self-start"
-          isLoading={running}
-          isDisabled={running || context === null}
-          onPress={() => {
-            void withdraw();
-          }}
-        />
+        <div className="flex flex-col border-t border-klerosUIComponentsStroke pt-4">
+          <Button
+            text={`Withdraw ${formatAmount(state.total, chain)}`}
+            className="self-start"
+            isLoading={running}
+            isDisabled={running || context === null}
+            onPress={() => {
+              void withdraw();
+            }}
+          />
+        </div>
       ) : null}
       {progress === null ? null : <WriteStatusNotice status={progress.current} progress={{ index: progress.index, total: progress.total }} />}
     </>

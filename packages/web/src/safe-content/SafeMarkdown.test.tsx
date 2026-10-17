@@ -117,6 +117,34 @@ describe("SafeMarkdown GitHub-flavored syntax of today's renderer", () => {
     expect(screen.getByRole("link", { name: "https://a.com" })).toHaveAttribute("href", "https://b.com");
   });
 
+  it("§5.6: reads a literal URL before the emphasis inside it and renders one link, as today", () => {
+    const root = renderMarkdown("https://x(*https://y*)");
+    const links = [...root.querySelectorAll("a")];
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(["https://x(*https://y*"]);
+    expect(links[0]?.querySelector("em")).toHaveTextContent(/^https:\/\/y$/);
+    expect(root.querySelector("p")).toHaveTextContent(/^https:\/\/x\(https:\/\/y\)$/);
+  });
+
+  it("§5.6: renders link syntax inside a link's label as text, as today", () => {
+    const root = renderMarkdown("[x <https://a> *<b@c.co>*](https://y) and https://z(*[d](https://e)*), ~~https://z(*[f]*)~~\n\n[f]: https://g");
+    expect([...root.querySelectorAll("a")].map((link) => link.textContent)).toEqual(["x <https://a> <b@c.co>", "https://z([d](https://e))", "https://z([f]"]);
+    expect([...root.querySelectorAll("a em")].map((emphasis) => emphasis.textContent)).toEqual(["<b@c.co>", "[d](https://e)", "[f]"]);
+    expect(root.querySelector("p")).toHaveTextContent(/^x <https:\/\/a> <b@c\.co> and https:\/\/z\(\[d\]\(https:\/\/e\)\), https:\/\/z\(\[f\]\)$/);
+  });
+
+  it.each([
+    ["https&#58;//x", "https://x"],
+    ["https:/&#47;x", "https://x"],
+    ["&#104;ttps://x", "https://x"],
+    ["HTTP&#58;//example.com", "HTTP://example.com"],
+    ["mailto&#58;a@b.co", "mailto:a@b.co"],
+    ["http\\://example.com", "http://example.com"],
+  ])("§5.6: a URL scheme written with a character reference or an escape (%j) is no link", (source, text) => {
+    const root = renderMarkdown(`${source} and https://y`);
+    expect([...root.querySelectorAll("a")].map((link) => link.getAttribute("href"))).toEqual(["https://y"]);
+    expect(root).toHaveTextContent(`${text} and https://y`);
+  });
+
   it("SC-01 §5.6: strikes through ~~text~~ but not ~single~ or escaped tildes", () => {
     const root = renderMarkdown("This is ~~struck~~ text, ~single~ and \\~~escaped~~.");
     expect([...root.querySelectorAll("del")].map((element) => element.textContent)).toEqual(["struck"]);
@@ -148,6 +176,17 @@ describe("SafeMarkdown GitHub-flavored syntax of today's renderer", () => {
     const root = renderMarkdown("Intro\n| a | b |\n|---|---|");
     expect(root.querySelector("table")).toBeNull();
     expect(root).toHaveTextContent("| a | b |");
+  });
+
+  it.each([
+    ["a|b\n-&#124;-", "a|b -|-"],
+    ["a|b\n-\\|-", "a|b -|-"],
+    ["a|b\n&#45;|-", "a|b -|-"],
+    ["a|b\n&#58;-|-", "a|b :-|-"],
+  ])("§5.6: an alignment row with a pipe, dash or colon written as a reference or an escape (%j) is text, as today", (source, text) => {
+    const root = renderMarkdown(source);
+    expect(root.querySelector("table")).toBeNull();
+    expect(root.querySelector("p")).toHaveTextContent(text);
   });
 
   it("SC-01 §5.6: renders task items as read-only checkboxes without their markers", () => {
@@ -193,6 +232,62 @@ describe("SafeMarkdown GitHub-flavored syntax of today's renderer", () => {
     expect(root).toHaveTextContent("Kleros and [kept], [] and ![alt]");
   });
 
+  it.each([
+    ["[a <https://b>]", "a <https://b>"],
+    ["[a <b@c.co>] d", "a <b@c.co> d"],
+    ["x[<https://b>]", "x<https://b>"],
+    ["[a <https://b>][]", "a <https://b>"],
+    ["[a <https://b>] [c]", "a <https://b>"],
+    ["[a][<https://b>]", "a"],
+  ])("P-10 §5.6: an autolink in or after the label of an undefined reference is text, as today (%j)", (source, text) => {
+    const root = renderMarkdown(source);
+    expect(root.querySelector("a")).toBeNull();
+    expect(root.querySelector("p")?.textContent).toBe(text);
+  });
+
+  it("P-10 §5.6: an autolink that emphasis or strikethrough holds in the label of an undefined reference is text, as today", () => {
+    const root = renderMarkdown("[a *<https://b>*]\n\n[a ~~<https://b>~~]");
+    expect(root.querySelector("a")).toBeNull();
+    expect([...root.querySelectorAll("p")].map((paragraph) => paragraph.textContent)).toEqual(["a <https://b>", "a <https://b>"]);
+    expect(root.querySelector("em")).toHaveTextContent(/^<https:\/\/b>$/);
+    expect(root.querySelector("del")).toHaveTextContent(/^<https:\/\/b>$/);
+  });
+
+  it.each([
+    ["[a *[b](https://c)*]", "[a b]", ["b"]],
+    ["[a *[b]*]", "[a b]", []],
+    ["[a `[`]", "[a []", []],
+    ["[a *<https://x/[>*]", "[a https://x/[]", ["https://x/["]],
+    ["[a <https://x/[> d]", "[a https://x/[ d]", ["https://x/["]],
+    ["[a *\\[x*]", "a [x", []],
+  ])("P-10 §5.6: a bracket in a node inside the brackets of %j keeps them, as today, unless escaped", (source, text, links) => {
+    const root = renderMarkdown(source);
+    expect(root.querySelector("p")?.textContent).toBe(text);
+    expect([...root.querySelectorAll("a")].map((link) => link.textContent)).toEqual(links);
+  });
+
+  it.each([
+    ["[a `[` b] c][x]", "a [ b] c"],
+    ["[a <https://x/[> b] c][x]", "a <https://x/[> b] c"],
+  ])("P-10 §5.6: a `[` in a node's source opens a bracket, as today, so %j is one undefined reference", (source, text) => {
+    const root = renderMarkdown(source);
+    expect(root.querySelector("a")).toBeNull();
+    expect(root.querySelector("p")?.textContent).toBe(text);
+  });
+
+  it("P-10 §5.6: a `[` in a code span takes the `]` after it, as today, so the brackets around it pair with nothing", () => {
+    const root = renderMarkdown("[<mailto:c@d.co>`[`https://x][r]");
+    expect([...root.querySelectorAll("a")].map((link) => link.textContent)).toEqual(["c@d.co", "https://x"]);
+    expect(root.querySelector("p")?.textContent).toBe("[c@d.co[https://x]r");
+  });
+
+  it("P-10 §5.6: a link or an image in the label of an undefined reference with an identifier stays inside it, as today", () => {
+    const root = renderMarkdown("[a [b](https://c) d][x]\n\n[a ![i](https://c) d][x]");
+    expect(root.querySelector("a")).toBeNull();
+    expect([...root.querySelectorAll("p")].map((paragraph) => paragraph.textContent)).toEqual(["a [b](https://c) d", "a  d"]);
+    expect(root.querySelector("img")).toHaveAttribute("alt", "i");
+  });
+
   it("P-10: a bare task marker is text without its brackets, as today, and no link", () => {
     const root = renderMarkdown("- [x]\n- [ ] open");
     expect(root.querySelector("a")).toBeNull();
@@ -206,5 +301,45 @@ describe("SafeMarkdown GitHub-flavored syntax of today's renderer", () => {
     const root = renderMarkdown(source);
     expect(performance.now() - started).toBeLessThan(5_000);
     expect(root.textContent).toContain("[".repeat(100));
+  });
+});
+
+/** Renders `source` and returns its root with how long the render took, in milliseconds. */
+function timedRender(source: string): { root: HTMLElement; elapsed: number } {
+  const started = performance.now();
+  const root = renderMarkdown(source);
+  return { root, elapsed: performance.now() - started };
+}
+
+describe("SafeMarkdown on hostile descriptions", () => {
+  it("§5.6: reads a 40,000-column alignment row in linear time", () => {
+    const { root, elapsed } = timedRender("a|b\n" + "|-".repeat(40_000) + "|x");
+    expect(elapsed).toBeLessThan(1_000);
+    expect(root.querySelector("table")).toBeNull();
+    expect(root.textContent).toContain("|-|-|x");
+  });
+
+  it("§5.6: walks a failed mailto: literal URL once, not again from each later mailto:", () => {
+    const { root, elapsed } = timedRender("mailto:".repeat(7_000) + "x".repeat(50_000) + ")@a");
+    expect(elapsed).toBeLessThan(1_000);
+    expect(root.querySelector("a")).toBeNull();
+    expect(root.textContent).toContain("x)@a");
+  });
+
+  it("§5.6: a failed mailto: still lets a strikethrough, an https URL and a later address inside it through", () => {
+    const root = renderMarkdown("mailto:~~x~~)@a\n\nmailto:https://k.io)@a\n\nmailto:a)mailto:(x)@a\n\nmailto:x]mailto:y@z.co");
+    expect(root.querySelector("del")).toHaveTextContent(/^x$/);
+    expect([...root.querySelectorAll("a")].map((link) => [link.textContent, link.getAttribute("href")])).toEqual([
+      ["https://k.io", "https://k.io"],
+      ["(x)@a", "mailto:(x)@a"],
+      ["y@z.co", "mailto:y@z.co"],
+    ]);
+  });
+
+  it("§5.6: scans 300 levels of nested emphasis around 200,000 characters in linear time", () => {
+    const { root, elapsed } = timedRender("*a ".repeat(300) + "x".repeat(200_000) + " a*".repeat(300));
+    expect(elapsed).toBeLessThan(1_500);
+    expect(root.querySelectorAll("em")).toHaveLength(300);
+    expect(root.textContent).toContain("x".repeat(200_000));
   });
 });

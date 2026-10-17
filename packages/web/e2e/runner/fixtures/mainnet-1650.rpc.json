@@ -1,0 +1,103 @@
+{
+  "description": "JSON-RPC answers the Reality renderer QmQGMR6MyC851poYVyBfGthzmCdvTuRFKp1UDB19p89Gcn/bundle.js read for mainnet dispute 1650 (Seer Reality proxy), keyed by method and params as the script sent them, recorded from the chain-1 read RPC on 2026-10-16 with every \"latest\" read pinned to the block below. Used by the C7 test of e2e/runner/runner.spec.ts (ADR 0004 gate check 2); the script itself is fetched from the IPFS gateway.",
+  "chainId": 1,
+  "disputeId": "1650",
+  "readAtBlock": 26203553,
+  "calls": [
+    {
+      "method": "eth_call",
+      "params": [
+        {
+          "data": "0xbc8802a2",
+          "to": "0x2018038203aee8e7a29dabd73771b0355d4f85ad"
+        },
+        "latest"
+      ],
+      "result": "0x0000000000000000000000005b7dd1e86623548af054a4985f7fc8ccbb554e2c"
+    },
+    {
+      "method": "eth_getLogs",
+      "params": [
+        {
+          "fromBlock": "0x0",
+          "toBlock": "latest",
+          "topics": ["0xcbb827f06aed2dd1e157f8e6b29f32604bc4e88360964014c4d4ad259f8d3fa8", "0x0000000000000000000000000000000000000000000000000000000000000672"],
+          "address": "0x2018038203aee8e7a29dabd73771b0355d4f85ad"
+        }
+      ],
+      "result": [
+        {
+          "address": "0x2018038203aee8e7a29dabd73771b0355d4f85ad",
+          "blockHash": "0x6975163606dcad38408da77fb0fa0f92e676fd13888360f444cf993bbc994fe2",
+          "blockNumber": "0x13f279f",
+          "blockTimestamp": "0x670446d7",
+          "data": "0xe6bd07f1d5de2ab5266e94083c49bcfd364707385e633362d52d9d6a562c5ca7",
+          "logIndex": "0x14c",
+          "removed": false,
+          "topics": ["0xcbb827f06aed2dd1e157f8e6b29f32604bc4e88360964014c4d4ad259f8d3fa8", "0x0000000000000000000000000000000000000000000000000000000000000672"],
+          "transactionHash": "0x58ff3a6d66f0e4781387129b74bb8f383a548a96e7b661eeb921c2d57030f3cf",
+          "transactionIndex": "0x38"
+        }
+      ]
+    },
+    {
+      "method": "eth_getLogs",
+      "params": [
+        {
+          "fromBlock": "0x0",
+          "toBlock": "latest",
+          "topics": ["0xfe2dac156a3890636ce13f65f4fdf41dcaee11526e4a5374531572d92194796c", "0xe6bd07f1d5de2ab5266e94083c49bcfd364707385e633362d52d9d6a562c5ca7", null, null],
+          "address": "0x5b7dd1e86623548af054a4985f7fc8ccbb554e2c"
+        }
+      ],
+      "result": [
+        {
+          "address": "0x5b7dd1e86623548af054a4985f7fc8ccbb554e2c",
+          "blockHash": "0x6f602b1943b7cfe429d0260e47f1e8f2071a6ba74560f1b9546ec76bd80baeae",
+          "blockNumber": "0x13f260b",
+          "blockTimestamp": "0x670433db",
+          "data": "0x000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000e00000000000000000000000002018038203aee8e7a29dabd73771b0355d4f85ad0000000000000000000000000000000000000000000000000000000000049d400000000000000000000000000000000000000000000000000000000067043dc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000670433db000000000000000000000000000000000000000000000000000000000000006057686963682063616e6469646174652077696c6c2077696e2050656e6e73796c76616e696120696e20746865203230323420555320656c656374696f6e3fe2909f22486172726973222c225472756d7022e2909f6d697363e2909f656e5f5553",
+          "logIndex": "0xc1",
+          "removed": false,
+          "topics": [
+            "0xfe2dac156a3890636ce13f65f4fdf41dcaee11526e4a5374531572d92194796c",
+            "0xe6bd07f1d5de2ab5266e94083c49bcfd364707385e633362d52d9d6a562c5ca7",
+            "0x0000000000000000000000001f728c2fd6a3008935c1446a965a313e657b7904",
+            "0x4566ff3adc25b3ac8da3ab30969745b9523e5f6f9b76697cea2c7476fc1bc9e0"
+          ],
+          "transactionHash": "0x180d6cb34cd1daadb6cbf31884eb807711551b96bc0557c599ea33aab9999529",
+          "transactionIndex": "0x1b"
+        }
+      ]
+    },
+    {
+      "method": "eth_getLogs",
+      "params": [
+        {
+          "fromBlock": "0x0",
+          "toBlock": "latest",
+          "topics": ["0xb87fb721c0a557bb8dff89a86796466931d82ba530a66a239263eb8735ade2e4", "0x0000000000000000000000000000000000000000000000000000000000000002", null],
+          "address": "0x5b7dd1e86623548af054a4985f7fc8ccbb554e2c"
+        }
+      ],
+      "result": [
+        {
+          "address": "0x5b7dd1e86623548af054a4985f7fc8ccbb554e2c",
+          "blockHash": "0x25860aa62db085fcaa7e01c752ef6fd4f584a205626e60c304236b019969388e",
+          "blockNumber": "0xc955b4",
+          "blockTimestamp": "0x613a9f91",
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000005a7b227469746c65223a20222573222c202274797065223a202273696e676c652d73656c656374222c20226f7574636f6d6573223a205b25735d2c202263617465676f7279223a20222573222c20226c616e67223a20222573227d000000000000",
+          "logIndex": "0x1ee",
+          "removed": false,
+          "topics": [
+            "0xb87fb721c0a557bb8dff89a86796466931d82ba530a66a239263eb8735ade2e4",
+            "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "0x00000000000000000000000082dee48926513afc0d7fc21bb4baa443fccbc288"
+          ],
+          "transactionHash": "0xf53cc1090366baef73eeb00bcadb83ae26e879fb4d5185005eb5f388e72efba1",
+          "transactionIndex": "0xe3"
+        }
+      ]
+    }
+  ]
+}

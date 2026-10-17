@@ -21,7 +21,7 @@ interface DisputeSectionsProps {
 /**
  * The sections of one dispute, top to bottom (ARCHITECTURE.md §11.5): the case header with the info row, the
  * compatibility banner, the summary, the timeline, the decision, the Reality notice, then the accordion of Appeal,
- * Question and Evidence. Each renders as soon as its own data allows (S-4) behind its own boundary, keyed by the chain
+ * Question and Evidence. Each renders as soon as its own data allows (P-20) behind its own boundary, keyed by the chain
  * and dispute so a failure never outlives its dispute (D-36, S-3); Retry reads that section's data again.
  */
 export function DisputeSections({ dispute, chain }: DisputeSectionsProps) {
@@ -75,7 +75,7 @@ export function DisputeSections({ dispute, chain }: DisputeSectionsProps) {
       <SectionBoundary key={`reality:${disputeKey}`} section="Reality notice" onRetry={retryMetaEvidence}>
         <RealityNotice {...props} />
       </SectionBoundary>
-      {found === undefined ? <SectionSkeleton variant="text" lines={3} /> : <CaseAccordion key={`${disputeKey}:${String(items.length)}`} items={items} />}
+      {found === undefined ? <SectionSkeleton variant="bars" lines={3} /> : <CaseAccordion key={`${disputeKey}:${String(items.length)}`} items={items} />}
     </>
   );
 }

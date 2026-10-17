@@ -1,7 +1,7 @@
 import { encodeAnswer, type AnswerInput, type ChainConfig, type CrowdfundingCard, type FreeInputCard as FreeInput } from "@dispute-resolver/core";
 import { Card } from "@kleros/ui-components-library";
 import { useId, useState } from "react";
-import { Amount } from "../../ui";
+import { Amount, FACT_LEAD } from "../../ui";
 import { AnswerField } from "./AnswerField";
 import { ANSWER_ERROR_MESSAGES, fundedIntAnswer } from "./answer";
 import { FundAction } from "./FundAction";
@@ -21,7 +21,7 @@ export interface FreeInputCardProps {
  * The free-input card of a variable-type question (spec §5.12, D-04): the user types a new answer, core encodes it into
  * the ruling code (D-15, D-16, D-17), and the card funds it at the loser amount until the loser deadline. An answer that
  * cannot be encoded is explained (WN-3); an int answer shows which answer it funds, since -1 and -2 land on reserved
- * rulings (WN-4).
+ * rulings (P-21).
  */
 export function FreeInputCard({ freeInput, cards, actions, chain }: FreeInputCardProps) {
   const titleId = useId();
@@ -44,8 +44,9 @@ export function FreeInputCard({ freeInput, cards, actions, chain }: FreeInputCar
         ) : null}
         <div className={CARD_FOOTER_CLASS}>
           <FundingProgress percent={funded?.fundedPercent ?? 0} deadline={freeInput.deadline} />
-          <p className="text-sm text-klerosUIComponentsSecondaryText">
-            Required <Amount wei={freeInput.required} chain={chain} className="font-semibold text-klerosUIComponentsPrimaryText" />
+          <p className="flex flex-col gap-1 text-sm text-klerosUIComponentsSecondaryText">
+            <span>{"Required "}</span>
+            <Amount wei={freeInput.required} chain={chain} className={FACT_LEAD} />
           </p>
           <FundAction subject="the new answer" code={code} suggested={freeInput.required} actions={actions} chain={chain} />
         </div>

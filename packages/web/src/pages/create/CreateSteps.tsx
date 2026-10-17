@@ -21,7 +21,7 @@ function StepBullet({ number, active, completed }: StepState & { readonly number
   }
   const colors = active
     ? "border-klerosUIComponentsPrimaryBlue bg-klerosUIComponentsPrimaryBlue text-klerosUIComponentsWhiteBackground"
-    : "border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground text-klerosUIComponentsStroke";
+    : "border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground text-klerosUIComponentsSecondaryText";
   return (
     <span aria-hidden="true" className={`flex size-6 shrink-0 items-center justify-center rounded-full border text-xs ${colors}`}>
       {number}

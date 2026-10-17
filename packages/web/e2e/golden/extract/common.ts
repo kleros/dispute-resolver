@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { redactUrl, redactUrlsIn } from "../redact";
-import type { EvidenceDisplaySnapshot } from "../types";
+import type { EvidenceDisplayRendering, EvidenceDisplaySnapshot } from "../types";
 
 // Helpers both extractors share. They run in Node and read the page through Playwright locators; text is read with
 // `textContent`, which includes collapsed accordion bodies.
@@ -84,7 +84,45 @@ export function displayParams(query: string): Record<string, string> {
   return params;
 }
 
-/** The evidence-display iframe: origin, path, parameters (URLs redacted to host and fingerprint) and sandbox tokens. */
+/** How long a display may take to render its item: it reads the chain through the RPC its parameters name. */
+const DISPLAY_RENDER_MS = 30_000;
+const DISPLAY_POLL_MS = 2_000;
+/** The rendered text kept in a snapshot: enough to show which item rendered. */
+const DISPLAY_TEXT_LIMIT = 300;
+
+/** A frame document's URL as origin and path; its query carries the display parameters (RPC URLs), so it is dropped. */
+export function documentUrlOf(raw: string): string | null {
+  if (raw === "" || !URL.canParse(raw)) return null;
+  const url = new URL(raw);
+  if (url.protocol === "http:" || url.protocol === "https:") return `${url.origin}${url.pathname}`;
+  return `${url.protocol}//${url.host}${url.pathname}`;
+}
+
+/** What the display frame shows once its text stops changing, or after `DISPLAY_RENDER_MS`. */
+async function renderingOf(frame: Locator): Promise<EvidenceDisplayRendering> {
+  const content = await (await frame.first().elementHandle()).contentFrame();
+  if (content === null) return { documentUrl: null, text: "" };
+  const readText = async () =>
+    content
+      .locator("body")
+      .innerText({ timeout: DISPLAY_POLL_MS })
+      .catch(() => "");
+  await waitUntilStable(
+    frame.page(),
+    async () => {
+      const text = await readText();
+      return text.trim() === "" ? null : text;
+    },
+    DISPLAY_RENDER_MS,
+    DISPLAY_POLL_MS,
+  );
+  return { documentUrl: documentUrlOf(content.url()), text: redactUrlsIn(collapse(await readText())).slice(0, DISPLAY_TEXT_LIMIT) };
+}
+
+/**
+ * The evidence-display iframe: origin, path, parameters (URLs redacted to host and fingerprint), sandbox tokens, and
+ * what the frame rendered.
+ */
 export async function evidenceDisplayOf(frame: Locator, pageUrl: string): Promise<EvidenceDisplaySnapshot | null> {
   const src = await attributeOf(frame, "src");
   if (src === null) return null;
@@ -99,6 +137,7 @@ export async function evidenceDisplayOf(frame: Locator, pageUrl: string): Promis
       .split(/\s+/)
       .filter((token) => token !== "")
       .sort((a, b) => a.localeCompare(b)),
+    rendered: await renderingOf(frame),
   };
 }
 

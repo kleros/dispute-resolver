@@ -28,6 +28,23 @@ describe("account context cases (04 §1)", () => {
     ]);
   });
 
+  it("P-04: the governor appeal pick gets its account context; a dispute picked twice records its period once", () => {
+    const [chain] = LIVE.chains;
+    const withGovernorPick = (disputeId: number) => ({ ...LIVE, chains: [{ ...chain, governorAppeal: { disputeId } }] });
+    expect(parseLiveCases(withGovernorPick(1679)).cases.map((item) => [Number(item.disputeId), item.livePeriod])).toEqual([
+      [1690, 0],
+      [1684, 2],
+      [1680, 3],
+      [1679, 3],
+    ]);
+    const merged = mergeCases([], parseLiveCases(withGovernorPick(1680)).cases);
+    expect(merged.map(({ item, livePeriods }) => [Number(item.disputeId), livePeriods])).toEqual([
+      [1680, [3]],
+      [1684, [2]],
+      [1690, [0]],
+    ]);
+  });
+
   it("04 §1: a live pick that is also a stable case keeps its stable tier and records its live period", () => {
     const merged = mergeCases(
       [

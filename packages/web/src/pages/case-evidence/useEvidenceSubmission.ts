@@ -1,5 +1,5 @@
 import { buildEvidenceDocument, buildSubmitEvidenceCall, checkChainMatch, normalizeIpfsPath, type ChainId } from "@dispute-resolver/core";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useAtlasUpload, type UploadResult, type UploadedFile } from "../../atlas";
 import type { NoticeVariant } from "../../ui";
 import { useCaseRefresh, type CaseWriteContext } from "../../data";
@@ -17,6 +17,12 @@ export interface EvidenceDraft {
 
 type ActiveWriteStatus = Exclude<WriteStatus, { readonly phase: "idle" }>;
 
+/** A refusal of the chain guard, as the write status `WriteStatusNotice` renders with its Connect and Switch offers. */
+export type GuardStatus = Extract<WriteStatus, { readonly phase: "needs-wallet" | "wrong-chain" }>;
+
+/** The guard's refusal for a wallet connected on another chain than the page's. */
+export type WrongChainStatus = Extract<GuardStatus, { readonly phase: "wrong-chain" }>;
+
 /** A failure outside the write flow: the evidence JSON upload, or an unexpected error. */
 export interface SubmissionNotice {
   readonly variant: NoticeVariant;
@@ -28,6 +34,11 @@ export interface SubmissionNotice {
 export type SubmissionFeedback = { readonly kind: "write"; readonly status: ActiveWriteStatus } | { readonly kind: "notice"; readonly notice: SubmissionNotice };
 
 export interface EvidenceSubmission {
+  /**
+   * The chain guard every signature of the submission passes first (B3, D-48): `null` when the wallet is connected on
+   * the page chain, otherwise why not. It covers the Atlas sign-in of the attachment as well as Submit.
+   */
+  readonly guard: GuardStatus | null;
   /** `null` before the first attempt and after `clear()`. */
   readonly feedback: SubmissionFeedback | null;
   /** From the click until the write's outcome, the evidence JSON upload included. */
@@ -64,14 +75,16 @@ export function useEvidenceSubmission(context: CaseWriteContext, pageChainId: Ch
   const [inFlight, setInFlight] = useState(false);
   const busy = useRef(false);
   const walletChainId = wallet.status === "connected" ? wallet.chainId : undefined;
+  const guard = useMemo<GuardStatus | null>(() => {
+    const match = checkChainMatch(walletChainId, pageChainId);
+    if (match.ok) return null;
+    return match.reason === "no-wallet" ? { phase: "needs-wallet", pageChainId } : { phase: "wrong-chain", walletChainId: match.walletChainId, pageChainId: match.pageChainId };
+  }, [walletChainId, pageChainId]);
 
   const send = useCallback(
     async (draft: EvidenceDraft): Promise<boolean> => {
-      const guard = checkChainMatch(walletChainId, pageChainId);
-      if (!guard.ok) {
-        const status: ActiveWriteStatus =
-          guard.reason === "no-wallet" ? { phase: "needs-wallet", pageChainId } : { phase: "wrong-chain", walletChainId: guard.walletChainId, pageChainId };
-        setLocal({ kind: "write", status });
+      if (guard !== null) {
+        setLocal({ kind: "write", status: guard });
         return false;
       }
       const fileUri = draft.attachment === null ? null : normalizeIpfsPath(draft.attachment.path);
@@ -89,7 +102,7 @@ export function useEvidenceSubmission(context: CaseWriteContext, pageChainId: Ch
       const outcome = await write.execute(build, { pageChainId, onMined: () => refresh("evidence") });
       return outcome.phase === "mined";
     },
-    [context, pageChainId, refresh, uploader, walletChainId, write],
+    [context, guard, pageChainId, refresh, uploader, write],
   );
 
   const submit = useCallback(
@@ -119,5 +132,5 @@ export function useEvidenceSubmission(context: CaseWriteContext, pageChainId: Ch
   }, [write]);
 
   const feedback: SubmissionFeedback | null = local ?? (write.status.phase === "idle" ? null : { kind: "write", status: write.status });
-  return { feedback, inFlight, submit, clear };
+  return { guard, feedback, inFlight, submit, clear };
 }

@@ -76,6 +76,21 @@ describe("deriveDecision", () => {
     });
     expect(deriveDecision({ period: 3, currentRuling: 7n, fundedRulings: [], rulingOptions: null, fallbackOutcomes: null, compatibility: "full" })).toMatchObject({ rulingText: "7" });
   });
+
+  // Meta-evidence `rulingOptions: {}` (the poh.eth governor, mainnet 1621, whenever its dynamic script does not run) is
+  // title-less single-select options. §5.9 keeps reality-eth-lib's empty label (P-06) and skips the fallback outcomes,
+  // while the §5.12 item 5 cards read the fallback outcomes or Yes/No; aligning them is proposal P-24.
+  it("P-24 (today, §5.9): title-less single-select options read as the library's empty label, fallback outcomes or not", () => {
+    const untitled: RulingOptions = { type: "single-select" };
+    expect(deriveDecision({ period: 3, currentRuling: 2n, fundedRulings: [], rulingOptions: untitled, fallbackOutcomes: null, compatibility: "full" })).toMatchObject({
+      ruling: 2n,
+      rulingText: "",
+    });
+    expect(deriveDecision({ period: 4, currentRuling: 2n, fundedRulings: [], rulingOptions: untitled, fallbackOutcomes: ["Red", "Blue"], compatibility: "full" })).toMatchObject({
+      ruling: 2n,
+      rulingText: "",
+    });
+  });
 });
 
 describe("deriveCompatibility", () => {

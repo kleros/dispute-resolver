@@ -1,7 +1,7 @@
 import { validateCreateInput, type ChainConfig, type CreateDisputeInput, type CreateValidationErrors } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { Notice } from "../../ui";
+import { EYEBROW, Notice, PAGE_TITLE } from "../../ui";
 import { CourtSection, type SectionProps } from "./CourtSection";
 import { toDraft, type CreateForm as Form } from "./draft";
 import { DocumentSection, PartiesSection } from "./PartiesSection";
@@ -47,8 +47,8 @@ export function CreateForm({ chain, form, onChange, onContinue }: CreateFormProp
   return (
     <form ref={formRef} noValidate aria-labelledby={headingId} className="flex flex-col gap-6" onSubmit={handleSubmit}>
       <header className="flex flex-col gap-1">
-        <p className="text-sm text-klerosUIComponentsSecondaryText">Fill up the form to</p>
-        <h1 id={headingId} className="text-2xl font-semibold text-klerosUIComponentsPrimaryText">
+        <p className={EYEBROW}>Fill up the form to</p>
+        <h1 id={headingId} className={PAGE_TITLE}>
           Create a custom dispute
         </h1>
       </header>

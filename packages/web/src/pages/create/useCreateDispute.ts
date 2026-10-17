@@ -42,13 +42,11 @@ export type CreateActionState =
 export interface CreateDisputeAction {
   readonly state: CreateActionState;
   readonly writeStatus: WriteStatus;
-  /** Something is in progress, or the dispute was created and is about to open: Create and Return are disabled. */
-  readonly isBusy: boolean;
   /**
-   * Create is disabled: while busy, and once a transaction was mined without a readable dispute ID, since a dispute was
-   * most likely created and a second click would create another one.
+   * Something is in progress, or the dispute was created and is about to open: Create and Return are disabled. Every
+   * other outcome re-enables them, a mined transaction without a dispute ID included (spec §4.6).
    */
-  readonly isCreateDisabled: boolean;
+  readonly isBusy: boolean;
   create(): Promise<void>;
 }
 
@@ -78,7 +76,8 @@ function uploadFailure(error: unknown): UploadResult {
  * The Create action (spec §4.5): upload the generated meta-evidence with role `policy` (A16), read the arbitration cost,
  * then `createDispute` through the write hook, and on a mined receipt open the new dispute (spec §4.6). The wallet and
  * its chain are checked before anything is signed, the Atlas sign-in included (B3, D-48); every failure is shown (D-07).
- * The uploaded meta-evidence is reused when the user retries after a refused, rejected or failed transaction.
+ * The uploaded meta-evidence is reused when the user retries after a refused, rejected or failed transaction, or after
+ * a mined one whose receipt had no dispute ID.
  */
 export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction {
   const { chainId, chain } = usePageChain();
@@ -155,6 +154,5 @@ export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction
     };
   }, [createdId, chainId, navigate]);
 
-  const busy = isBusy(state, write.status);
-  return { state, writeStatus: write.status, isBusy: busy, isCreateDisabled: busy || state.kind === "no-dispute-id", create };
+  return { state, writeStatus: write.status, isBusy: isBusy(state, write.status), create };
 }

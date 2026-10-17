@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { EvidenceDisplayFrame } from "./EvidenceDisplayFrame";
 import type { EvidenceDisplayModel } from "./types";
 
@@ -22,6 +22,10 @@ const MODEL: EvidenceDisplayModel = {
 };
 
 describe("EvidenceDisplayFrame", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("A8: renders the computed source and sandbox", () => {
     render(<EvidenceDisplayFrame model={MODEL} />);
     const frame = screen.getByTestId("evidence-display");
@@ -41,5 +45,29 @@ describe("EvidenceDisplayFrame", () => {
     const frame = screen.getByTitle("Evidence display");
     expect(frame).not.toHaveAttribute("allow");
     expect(frame).not.toHaveAttribute("referrerpolicy");
+  });
+
+  it("spec 9.4: the page sends no postMessage to the frame, on mount, on load or on a re-render", () => {
+    const posted = vi.fn();
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, "contentWindow");
+    if (descriptor?.get === undefined) throw new Error("jsdom exposes no contentWindow getter");
+    vi.spyOn(HTMLIFrameElement.prototype, "contentWindow", "get").mockImplementation(function (this: HTMLIFrameElement) {
+      const frameWindow = descriptor.get?.call(this) as Window | null;
+      if (frameWindow !== null) frameWindow.postMessage = posted;
+      return frameWindow;
+    });
+    const { rerender } = render(<EvidenceDisplayFrame model={MODEL} />);
+    fireEvent.load(screen.getByTestId("evidence-display"));
+    rerender(<EvidenceDisplayFrame model={{ ...MODEL, src: `${MODEL.src}&y` }} />);
+    fireEvent.load(screen.getByTestId("evidence-display"));
+    expect(posted).not.toHaveBeenCalled();
+  });
+
+  it("spec 9.4: is full width and a fixed 360 px high", () => {
+    render(<EvidenceDisplayFrame model={MODEL} />);
+    const classes = screen.getByTestId("evidence-display").classList;
+    expect(classes).toContain("w-full");
+    expect(classes).toContain("h-[360px]");
+    expect([...classes].filter((name) => /^(?:max-|min-)?[hw]-/.test(name)).sort((a, b) => a.localeCompare(b))).toEqual(["h-[360px]", "w-full"]);
   });
 });

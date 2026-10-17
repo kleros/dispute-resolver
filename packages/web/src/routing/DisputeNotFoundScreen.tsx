@@ -1,10 +1,7 @@
 import type { ChainId } from "@dispute-resolver/core";
 import { Link } from "react-router";
-import { PageMessage } from "../ui";
+import { ACTION_LINK_CLASS, PageMessage } from "../ui";
 import { paths } from "./paths";
-
-const ACTION_CLASS =
-  "inline-flex items-center rounded-base bg-klerosUIComponentsPrimaryBlue px-6 py-2 font-semibold text-klerosUIComponentsWhiteBackground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klerosUIComponentsPrimaryBlue";
 
 export interface DisputeNotFoundScreenProps {
   /** The page chain, from which the only link is built (A19). */
@@ -22,7 +19,7 @@ export function DisputeNotFoundScreen({ chainId, id }: DisputeNotFoundScreenProp
     <PageMessage
       title={`Dispute with ID ${id} does not exist on this network.`}
       action={
-        <Link to={paths.ongoing(chainId)} className={ACTION_CLASS}>
+        <Link to={paths.ongoing(chainId)} className={ACTION_LINK_CLASS}>
           View Ongoing Disputes
         </Link>
       }

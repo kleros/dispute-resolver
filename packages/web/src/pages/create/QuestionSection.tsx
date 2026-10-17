@@ -45,13 +45,13 @@ export function DisputeSection({ form, errors, onChange }: SectionProps) {
 
 function OptionRows({ form, errors, onChange }: Pick<SectionProps, "form" | "errors" | "onChange">) {
   return (
-    <ol className="flex flex-col gap-4" aria-label="Ruling options">
+    <ol className="flex flex-col gap-4 max-lg:gap-0 max-lg:divide-y max-lg:divide-klerosUIComponentsStroke" aria-label="Ruling options">
       {form.options.map((option, index) => {
         const number = String(index + 1);
         const error = errors.options?.[index];
         return (
           // Rows are positional: option N is always the N-th row, and rows past the count are removed (D-08).
-          <li key={number} className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <li key={number} className="grid grid-cols-1 gap-3 max-lg:py-4 max-lg:first:pt-0 max-lg:last:pb-0 lg:grid-cols-2">
             <FieldSlot name="optionTitles">
               <TextField
                 label={`Ruling Option ${number}`}

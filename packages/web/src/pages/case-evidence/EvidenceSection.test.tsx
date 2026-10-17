@@ -1,9 +1,13 @@
 import {
   getChain,
+  type Address,
+  type AppealDecisionEvent,
   type AttachmentLink,
   type ChainConfig,
+  type ChainId,
   type CanonicalIpfsPath,
   type EvidenceItem,
+  type Hex,
   type EvidenceList,
   type HiddenEvidenceReason,
   type Period,
@@ -12,6 +16,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import type { CaseDispute, CaseWriteContext } from "../../data";
 import { TEST_UPLOAD_PATH, fakeUploader, type FakeUploader } from "../../test/atlas";
 import { TEST_ARBITRABLE, sectionLoading, sectionReady, sectionUnavailable, testFamily, testFoundLookup } from "../../test/data";
@@ -21,6 +26,7 @@ import { TEST_TX_HASH, createTestWallet, fakeWriteController, testReceipt, type 
 import type { UploadResult } from "../../atlas";
 import type { WriteStatus } from "../../wallet";
 import { EvidenceSection } from "./EvidenceSection";
+import appealedMarkers from "./__fixtures__/appealed-markers.json";
 
 const writes = vi.hoisted(() => ({ fake: null as FakeWriteController | null }));
 
@@ -35,7 +41,7 @@ vi.mock("../../wallet", async (importOriginal) => {
   };
 });
 
-const CHAIN = mainnet();
+const CHAIN = configuredChain(1);
 const SUBMITTER = "0x1111111111111111111111111111111111111111";
 const OTHER_SUBMITTER = "0x2222222222222222222222222222222222222222";
 const ATTACHMENT_CID = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
@@ -43,9 +49,9 @@ const MINED: WriteStatus = { phase: "mined", hash: TEST_TX_HASH, explorerUrl: nu
 const SUBMITTED: WriteStatus = { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null };
 const NO_HIDDEN: Readonly<Record<HiddenEvidenceReason, number>> = { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 };
 
-function mainnet(): ChainConfig {
-  const chain = getChain(1);
-  if (chain === undefined) throw new Error("Chain 1 is configured.");
+function configuredChain(chainId: ChainId): ChainConfig {
+  const chain = getChain(chainId);
+  if (chain === undefined) throw new Error(`Chain ${chainId.toString()} is configured.`);
   return chain;
 }
 
@@ -86,6 +92,50 @@ function evidenceList(items: readonly EvidenceItem[], hidden: Partial<Record<Hid
   return { items, hiddenEvidenceCount: Object.values(hiddenByReason).reduce((sum, count) => sum + count, 0), hiddenByReason };
 }
 
+const address = z.custom<Address>((value) => typeof value === "string" && /^0x[\da-f]{40}$/.test(value));
+const hex = z.custom<Hex>((value) => typeof value === "string" && /^0x[\da-f]*$/.test(value));
+const ipfsPath = z.custom<CanonicalIpfsPath>((value) => typeof value === "string" && value.startsWith("/ipfs/"));
+const recordedCase = z.object({
+  name: z.string(),
+  chainId: z.number(),
+  readAtBlock: z.number(),
+  appealDecisions: z.array(z.object({ blockNumber: z.number(), appealedAt: z.number() })),
+  evidence: z.array(z.object({ blockNumber: z.number(), logIndex: z.number(), timestamp: z.number(), party: address, uri: ipfsPath, transactionHash: hex })),
+});
+const RECORDED = z.object({ cases: z.array(recordedCase) }).parse(appealedMarkers);
+
+/** A recorded case of `__fixtures__/appealed-markers.json`, as core hands it to the section: evidence newest first, decisions oldest first. */
+function recorded(name: string): { readonly chain: ChainConfig; readonly evidence: EvidenceList; readonly decisions: readonly AppealDecisionEvent[] } {
+  const entry = RECORDED.cases.find((candidate) => candidate.name === name);
+  if (entry === undefined) throw new Error(`No recorded case ${name}.`);
+  const items = entry.evidence
+    .map((log) =>
+      item({
+        title: `Block ${log.blockNumber.toString()}, log ${log.logIndex.toString()}`,
+        submitter: log.party,
+        timestamp: log.timestamp,
+        blockNumber: BigInt(log.blockNumber),
+        transactionHash: log.transactionHash,
+        uri: log.uri,
+      }),
+    )
+    .reverse();
+  const decisions = entry.appealDecisions.map((decision) => ({ blockNumber: BigInt(decision.blockNumber), appealedAt: decision.appealedAt }));
+  return { chain: configuredChain(entry.chainId), evidence: evidenceList(items), decisions };
+}
+
+/** The label of a timeline row: an entry's title, or the event name and its UTC time. */
+function timelineRows(): string[] {
+  const timeline = screen.getByRole("list", { name: "Evidence timeline" });
+  return within(timeline)
+    .getAllByRole("listitem")
+    .map((row) => within(row).queryByTestId("evidence-title")?.textContent ?? row.textContent);
+}
+
+function appealedRow(appealedAt: number): string {
+  return `Appealed${new Date(appealedAt * 1000).toUTCString()}`;
+}
+
 function writeContext(overrides: Partial<CaseWriteContext> = {}): CaseWriteContext {
   const lookup = testFoundLookup();
   return { binding: lookup.binding, family: testFamily(), localId: { kind: "local-id", value: 7n }, override: undefined, appealInfo: null, ...overrides };
@@ -96,9 +146,16 @@ interface DisputeOptions {
   readonly evidence?: CaseDispute["evidence"];
   readonly write?: CaseDispute["write"];
   readonly raisedAt?: number;
+  readonly appealDecisions?: CaseDispute["appealDecisions"];
 }
 
-function caseDispute({ period = 0, evidence = sectionReady(evidenceList([])), write = sectionReady(writeContext()), raisedAt = 1_700_000_000 }: DisputeOptions = {}): CaseDispute {
+function caseDispute({
+  period = 0,
+  evidence = sectionReady(evidenceList([])),
+  write = sectionReady(writeContext()),
+  raisedAt = 1_700_000_000,
+  appealDecisions = sectionReady([]),
+}: DisputeOptions = {}): CaseDispute {
   const lookup = testFoundLookup({ period });
   return {
     status: "dispute",
@@ -113,6 +170,7 @@ function caseDispute({ period = 0, evidence = sectionReady(evidenceList([])), wr
       event: { metaEvidenceId: 0n, evidenceGroupId: 1n, blockNumber: 400n, createdAt: raisedAt, transactionHash: TEST_TX_HASH },
     }),
     evidence,
+    appealDecisions,
     courts: sectionLoading,
     appealPanel: sectionLoading,
     write,
@@ -123,11 +181,12 @@ interface RenderOptions extends DisputeOptions {
   readonly uploader?: FakeUploader;
   readonly wallet?: TestWallet;
   readonly connected?: boolean;
+  readonly chain?: ChainConfig;
 }
 
-async function renderSection({ uploader = fakeUploader(), wallet = createTestWallet(), connected = true, ...dispute }: RenderOptions = {}) {
+async function renderSection({ uploader = fakeUploader(), wallet = createTestWallet(), connected = true, chain = CHAIN, ...dispute }: RenderOptions = {}) {
   if (connected) await wallet.connect();
-  const view = renderWithProviders(<EvidenceSection dispute={caseDispute(dispute)} chain={CHAIN} />, { wallet, uploader });
+  const view = renderWithProviders(<EvidenceSection dispute={caseDispute(dispute)} chain={chain} />, { wallet, uploader });
   return { ...view, uploader, user: userEvent.setup() };
 }
 
@@ -142,6 +201,17 @@ function dialog() {
 async function openModal(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "Submit New Evidence" }));
   return dialog();
+}
+
+/**
+ * The modal's overlay: the outermost element of the portal the dialog renders in, which covers the page around the
+ * dialog. A click on it lands outside the dialog.
+ */
+function modalOverlay(modal: HTMLElement): HTMLElement {
+  let node = modal;
+  while (node.parentElement !== null && node.parentElement !== document.body) node = node.parentElement;
+  if (node === modal) throw new Error("The dialog has no overlay.");
+  return node;
 }
 
 async function fillAndSubmit(user: ReturnType<typeof userEvent.setup>, title = "Contract", description = "The signed contract.") {
@@ -270,6 +340,76 @@ describe("EvidenceSection: evidence list (spec 5.14)", () => {
   });
 });
 
+describe("EvidenceSection: 'Appealed' markers (D-03)", () => {
+  it("D-03: mainnet 328 shows an 'Appealed' marker at each of its three AppealDecision blocks, among the entries by block", async () => {
+    const { chain, evidence, decisions } = recorded("mainnet 328");
+    await renderSection({ chain, evidence: sectionReady(evidence), appealDecisions: sectionReady(decisions), raisedAt: 1_596_657_000 });
+    expect(timelineRows()).toEqual([
+      "Block 10813792, log 197",
+      "Block 10773376, log 310",
+      appealedRow(1_598_937_988),
+      appealedRow(1_598_196_423),
+      "Block 10671637, log 70",
+      "Block 10666672, log 253",
+      "Block 10666659, log 99",
+      appealedRow(1_597_421_545),
+      "Block 10622819, log 65",
+      "Block 10614432, log 222",
+      "Block 10614432, log 221",
+      "Block 10601846, log 213",
+      `Dispute Raised${new Date(1_596_657_000_000).toUTCString()}`,
+    ]);
+    expect(screen.getAllByTestId("evidence-item")).toHaveLength(9);
+  });
+
+  it("D-03: Gnosis 121 shows an 'Appealed' marker at its AppealDecision block, among the entries by block", async () => {
+    const { chain, evidence, decisions } = recorded("Gnosis 121");
+    await renderSection({ chain, evidence: sectionReady(evidence), appealDecisions: sectionReady(decisions), raisedAt: 1_693_244_000 });
+    expect(timelineRows()).toEqual([
+      "Block 29726877, log 26",
+      "Block 29726351, log 0",
+      appealedRow(1_693_418_600),
+      "Block 29718757, log 8",
+      "Block 29712139, log 9",
+      "Block 29710858, log 0",
+      "Block 29695526, log 18",
+      "Block 29692153, log 10",
+      "Block 29692074, log 3",
+      `Dispute Raised${new Date(1_693_244_000_000).toUTCString()}`,
+    ]);
+  });
+
+  it("D-03: an appeal in the block of an entry is placed below that entry", async () => {
+    const entry = item({ title: "Same block", blockNumber: 700n });
+    await renderSection({ evidence: sectionReady(evidenceList([entry])), appealDecisions: sectionReady([{ blockNumber: 700n, appealedAt: 1_700_000_700 }]) });
+    expect(timelineRows().slice(0, 2)).toEqual(["Same block", appealedRow(1_700_000_700)]);
+  });
+
+  it("D-03: with no evidence the markers show above 'No evidence submitted yet.', without 'Dispute Raised'", async () => {
+    await renderSection({ appealDecisions: sectionReady([{ blockNumber: 700n, appealedAt: 1_700_000_700 }]) });
+    expect(timelineRows()).toEqual([appealedRow(1_700_000_700)]);
+    expect(screen.getByText("No evidence submitted yet.")).toBeInTheDocument();
+    expect(screen.queryByText("Dispute Raised")).toBeNull();
+  });
+
+  it("D-03, D-36: the entries show while the appeal decisions load", async () => {
+    await renderSection({ evidence: sectionReady(evidenceList([item({ title: "Only entry" })])), appealDecisions: sectionLoading });
+    expect(timelineRows()).toEqual(["Only entry", `Dispute Raised${new Date(1_700_000_000_000).toUTCString()}`]);
+  });
+
+  it("D-03, D-36: unreadable appeal decisions keep the entries and say the markers are unavailable, with a Retry that reads the details again", async () => {
+    const { user } = await renderSection({
+      evidence: sectionReady(evidenceList([item({ title: "Only entry" })])),
+      appealDecisions: sectionUnavailable("rpc-error", "logs refused"),
+    });
+    expect(screen.getByText("Appeal markers unavailable")).toBeInTheDocument();
+    expect(screen.getByText("logs refused")).toBeInTheDocument();
+    expect(timelineRows()[0]).toBe("Only entry");
+    await user.click(screen.getByRole("button", { name: "Retry Appeal markers" }));
+    expect(invalidations).toEqual(expect.arrayContaining([["dr", "details", 1, "1"]]));
+  });
+});
+
 describe("EvidenceSection: submit control (spec 5.14)", () => {
   it("spec 5.14: no submit control in the execution period", async () => {
     await renderSection({ period: 4 });
@@ -315,6 +455,25 @@ describe("EvidenceSection: submit control (spec 5.14)", () => {
     const { user } = await renderSection();
     const modal = await openModal(user);
     await user.click(within(modal).getByRole("button", { name: "Return" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+  });
+
+  it("spec 5.14: clicking the overlay closes the modal", async () => {
+    const { user } = await renderSection();
+    const modal = await openModal(user);
+    const overlay = modalOverlay(modal);
+    await user.click(overlay);
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+  });
+
+  it("spec 5.14: Escape closes the modal", async () => {
+    const { user } = await renderSection();
+    await openModal(user);
+    await user.keyboard("{Escape}");
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();
     });
@@ -484,9 +643,22 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     const { user, uploader } = await renderSection({ wallet: createTestWallet({ chainId: 100, switchChainError: true }) });
     const modal = await fillAndSubmit(user);
     expect(await within(modal).findByText("Wrong network")).toBeInTheDocument();
+    expect(within(modal).getAllByText("Wrong network")).toHaveLength(1);
     expect(within(modal).getByRole("button", { name: /^Switch to / })).toBeInTheDocument();
     expect(uploader.uploadJson).not.toHaveBeenCalled();
     expect(writes.fake?.executions).toHaveLength(0);
+  });
+
+  it("B3, D-48: with the wallet on another chain the attachment field is locked and the switch is offered before any sign-in", async () => {
+    const uploader = fakeUploader({ isSignedIn: false });
+    const { user } = await renderSection({ uploader, wallet: createTestWallet({ chainId: 100, switchChainError: true }) });
+    const modal = await openModal(user);
+    attach(pdf());
+    expect(uploader.upload).not.toHaveBeenCalled();
+    expect(uploader.uploadJson).not.toHaveBeenCalled();
+    expect(within(modal).queryByText("Uploading to IPFS...")).toBeNull();
+    expect(within(modal).getByText("Wrong network")).toBeInTheDocument();
+    expect(within(modal).getByRole("button", { name: "Switch to Ethereum Mainnet" })).toBeInTheDocument();
   });
 
   it("B3: without a wallet the modal offers Connect and nothing is uploaded", async () => {

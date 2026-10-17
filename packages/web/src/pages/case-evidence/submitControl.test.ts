@@ -20,6 +20,7 @@ function dispute(period: Period, write: SectionData<CaseWriteContext>, evidence:
     metaEvidence: sectionLoading,
     disputeEvent: sectionLoading,
     evidence,
+    appealDecisions: sectionLoading,
     courts: sectionLoading,
     appealPanel: sectionLoading,
     write,

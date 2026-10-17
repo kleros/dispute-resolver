@@ -1,10 +1,21 @@
 import { buildEvidenceDocument } from "@dispute-resolver/core";
 import { useAtlasProvider } from "@kleros/kleros-app";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TEST_ATLAS_URI, TEST_UPLOAD_CID, TEST_UPLOAD_PATH, atlasWrapper, installFakeAtlasServer, sessionJwt, settle, testJwt, type FakeAtlasServerOptions } from "../test/atlas";
-import { TEST_WALLET_ACCOUNT, createTestWallet, type TestWallet } from "../test/wallet";
+import {
+  TEST_ATLAS_URI,
+  TEST_UPLOAD_CID,
+  TEST_UPLOAD_PATH,
+  atlasWrapper,
+  installFakeAtlasServer,
+  jwtSubject,
+  sessionJwt,
+  settle,
+  testJwt,
+  type FakeAtlasServerOptions,
+} from "../test/atlas";
+import { TEST_WALLET_ACCOUNT, TEST_WALLET_SECOND_ACCOUNT, createTestWallet, type TestWallet } from "../test/wallet";
 import { useAtlasUpload } from "./context";
 
 const MIB = 1024 * 1024;
@@ -123,6 +134,40 @@ describe("upload", () => {
     expect(second.ok).toBe(true);
     expect(server.count("sign")).toBe(1);
     expect(server.count("upload")).toBe(2);
+  });
+
+  it("§2.9 isAuthenticated, §8.3, D-20, A15: an account switch makes the session unverified, so the next upload signs in again from the new account", async () => {
+    const server = installFakeAtlasServer();
+    const wallet = createTestWallet();
+    await wallet.connect();
+    const { result } = renderHook(() => ({ uploader: useAtlasUpload(), library: useAtlasProvider() }), { wrapper: atlasWrapper(wallet) });
+    await waitFor(() => {
+      expect(result.current.uploader.limits("evidence")).not.toBeNull();
+    });
+    expect((await settle(() => result.current.uploader.upload(pdf(), "evidence"))).ok).toBe(true);
+    await waitFor(() => {
+      expect(result.current.uploader.isSignedIn).toBe(true);
+    });
+
+    act(() => {
+      wallet.changeAccount(TEST_WALLET_SECOND_ACCOUNT);
+    });
+
+    await waitFor(() => {
+      expect(result.current.library.isVerified).toBe(false);
+    });
+    expect(result.current.uploader.isSignedIn).toBe(false);
+    const outcome = await settle(() => result.current.uploader.upload(pdf("second.pdf"), "evidence"));
+
+    expect(outcome).toEqual({ ok: true, path: TEST_UPLOAD_PATH });
+    expect(server.signatures.map(({ account }) => account.toLowerCase())).toEqual([TEST_WALLET_ACCOUNT.toLowerCase(), TEST_WALLET_SECOND_ACCOUNT.toLowerCase()]);
+    expect(server.uploads.map(({ authorization }) => jwtSubject(authorization)?.toLowerCase())).toEqual([
+      TEST_WALLET_ACCOUNT.toLowerCase(),
+      TEST_WALLET_SECOND_ACCOUNT.toLowerCase(),
+    ]);
+    await waitFor(() => {
+      expect(result.current.uploader.isSignedIn).toBe(true);
+    });
   });
 
   it("A16: user files are uploaded for CourtV1 under the evidence role", async () => {

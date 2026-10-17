@@ -1,8 +1,8 @@
 import { isSafeNavigationUrl } from "@dispute-resolver/core";
 import type { ExternalLinkProps } from "./types";
 
-const LINK_CLASS =
-  "rounded-base text-klerosUIComponentsPrimaryBlue underline-offset-2 [overflow-wrap:anywhere] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klerosUIComponentsPrimaryBlue";
+/** The inline-prose link (contract §5 a): underlined at rest, a thicker underline on hover; the focus ring is global. */
+const LINK_CLASS = "rounded-base text-klerosUIComponentsPrimaryBlue underline decoration-1 underline-offset-2 hover:decoration-2 [overflow-wrap:anywhere]";
 const TEXT_CLASS = "[overflow-wrap:anywhere]";
 
 /**

@@ -56,7 +56,7 @@ const MY_LOGS = [
 ];
 
 describe("readWithdrawable (IDisputeResolver)", () => {
-  it("§5.15: without a connected account nothing is read", async () => {
+  it("P-22: without a connected account nothing is read", async () => {
     const { context: ctx, requests } = context({ head: 1_000n }, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]));
     expect(await readWithdrawable(ctx, { beneficiary: undefined, rounds: [0n], roundStartBlocks: [0n] })).toEqual({ status: "no-account" });
     expect(requests.methods).toEqual([]);

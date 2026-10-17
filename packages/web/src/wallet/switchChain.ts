@@ -32,8 +32,8 @@ export type NetworkSwitchState =
 export interface NetworkSwitch {
   readonly state: NetworkSwitchState;
   /** Resolves `true` once the wallet is on `chainId`; otherwise the failure is in `state` for an inline message (P-03). */
-  switchTo(chainId: ChainId): Promise<boolean>;
-  reset(): void;
+  readonly switchTo: (chainId: ChainId) => Promise<boolean>;
+  readonly reset: () => void;
 }
 
 const IDLE: NetworkSwitchState = { status: "idle" };

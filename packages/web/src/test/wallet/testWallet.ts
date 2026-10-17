@@ -1,11 +1,14 @@
 import { CHAINS, type Address } from "@dispute-resolver/core";
 import { connect, createConfig, disconnect, mock, type Config } from "@wagmi/core";
-import { custom, defineChain, numberToHex, type Chain, type EIP1193RequestFn } from "viem";
+import { custom, defineChain, getAddress, numberToHex, type Chain, type EIP1193RequestFn } from "viem";
 import { vi, type Mock } from "vitest";
 import type { WalletMode, WalletModal, WalletSetup } from "../../wallet";
 
 /** The account of the test wallet (checksummed, as wallets report it). */
 export const TEST_WALLET_ACCOUNT = "0x00000000000000000000000000000000000A11cE";
+
+/** A second account of the test wallet (checksummed), for a user who switches account inside the wallet (D-20). */
+export const TEST_WALLET_SECOND_ACCOUNT = "0x0000000000000000000000000000000000000B0b";
 
 /** The test wallet's account as the app reports it (`WalletState.address`, lowercased). */
 export const TEST_WALLET_ADDRESS: Address = "0x00000000000000000000000000000000000a11ce";
@@ -60,6 +63,8 @@ export interface TestWallet {
   disconnect(): Promise<void>;
   /** The user changes the network inside the wallet (a `chainChanged` event), not through the app. */
   changeChain(chainId: number): Promise<void>;
+  /** The user switches to `account` inside the wallet (an `accountsChanged` event); later signatures come from it. */
+  changeAccount(account: string): void;
 }
 
 function fakeModal(embeddedWallet: boolean): FakeWalletModal {
@@ -103,6 +108,9 @@ export function createTestWallet(options: TestWalletOptions = {}): TestWallet {
     async changeChain(next: number) {
       const provider = (await created.getProvider()) as { readonly request: EIP1193RequestFn };
       await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: numberToHex(next) }] });
+    },
+    changeAccount(account: string) {
+      created.onAccountsChanged([getAddress(account)]);
     },
   };
 }

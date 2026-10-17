@@ -1,4 +1,4 @@
-import type { ChainId, WriteBuild } from "@dispute-resolver/core";
+import type { WriteBuild } from "@dispute-resolver/core";
 import { useCallback, useMemo, useState } from "react";
 import type { WriteController, WriteOptions, WriteOutcome, WriteSequenceController, WriteSequenceStatus, WriteStatus } from "../../wallet";
 
@@ -11,8 +11,6 @@ function isOutcome(status: WriteStatus): status is WriteOutcome {
 export interface FakeWriteOptions {
   /** The status before any `execute`; default `idle`. */
   readonly initial?: WriteStatus;
-  /** What `switchChain` resolves to; default `true`. */
-  readonly switchSucceeds?: boolean;
 }
 
 export interface FakeWriteController {
@@ -22,8 +20,6 @@ export interface FakeWriteController {
   useWriteSequence(): WriteSequenceController;
   /** Every `execute` call, in order, with the builds it received. */
   readonly executions: { readonly builds: readonly WriteBuild[]; readonly options: WriteOptions }[];
-  readonly switchRequests: ChainId[];
-  readonly connectCalls: { count: number };
 }
 
 /** Plays `script`, one status per microtask, so each intermediate status renders. Returns the last status. */
@@ -45,10 +41,8 @@ async function play(script: readonly WriteStatus[], options: WriteOptions, repor
  * `mined` status is shown, as in the real hook (D-07).
  */
 export function fakeWriteController(script: readonly WriteStatus[], options: FakeWriteOptions = {}): FakeWriteController {
-  const { initial = { phase: "idle" }, switchSucceeds = true } = options;
+  const { initial = { phase: "idle" } } = options;
   const executions: { builds: readonly WriteBuild[]; options: WriteOptions }[] = [];
-  const switchRequests: ChainId[] = [];
-  const connectCalls = { count: 0 };
 
   function useWrite(): WriteController {
     const [status, setStatus] = useState<WriteStatus>(initial);
@@ -56,17 +50,10 @@ export function fakeWriteController(script: readonly WriteStatus[], options: Fak
       executions.push({ builds: [build], options: writeOptions });
       return play(script, writeOptions, setStatus, true);
     }, []);
-    const switchChain = useCallback((chainId: ChainId) => {
-      switchRequests.push(chainId);
-      return Promise.resolve(switchSucceeds);
-    }, []);
-    const connect = useCallback(() => {
-      connectCalls.count += 1;
-    }, []);
     const reset = useCallback(() => {
       setStatus({ phase: "idle" });
     }, []);
-    return useMemo(() => ({ status, execute, switchChain, connect, reset }), [status, execute, switchChain, connect, reset]);
+    return useMemo(() => ({ status, execute, reset }), [status, execute, reset]);
   }
 
   function useWriteSequence(): WriteSequenceController {
@@ -89,5 +76,5 @@ export function fakeWriteController(script: readonly WriteStatus[], options: Fak
     return useMemo(() => ({ status, execute, reset }), [status, execute, reset]);
   }
 
-  return { useWrite, useWriteSequence, executions, switchRequests, connectCalls };
+  return { useWrite, useWriteSequence, executions };
 }

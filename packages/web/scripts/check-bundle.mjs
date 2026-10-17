@@ -79,7 +79,9 @@ export const TEST_DOUBLE_MARKERS = [
   { label: "test wallet address", pattern: /0x00000000000000000000000000000000000a11ce/i },
   { label: "test transaction hash", pattern: /0x(?:1{64}|2{64})(?![0-9a-f])/i },
   { label: "Playwright harness route", pattern: /__runner-e2e|foreign-parent\.test/ },
-  { label: "golden harness provider", pattern: /io\.kleros\.golden-harness|isGoldenHarness|Golden harness \(read-only\)/ },
+  { label: "e2e injected wallet", pattern: /io\.kleros\.e2e-wallet|isE2eWallet|__e2eWallet|"E2E wallet"/ },
+  // The e2e build's WalletConnect project ID (playwright.config.ts): a bundle holding it is the e2e build, not a deploy's.
+  { label: "e2e WalletConnect placeholder", pattern: /e2e0{29}(?!0)/ },
   { label: "test double text", pattern: literally(TEST_DOUBLE_TEXTS) },
   { label: "test double literal", pattern: new RegExp(String.raw`(["'\x60])(?:${literally(TEST_DOUBLE_LITERALS).source})\1`) },
   { label: "test fixture identifier", pattern: literally(TEST_FIXTURE_IDENTIFIERS) },

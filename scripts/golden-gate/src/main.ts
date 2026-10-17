@@ -14,7 +14,7 @@ import { createRedactor, loadEnvironment } from "./env";
 import { enumerateReferences, runGate } from "./gate/runGate";
 import { nodeHttpGet } from "./http";
 import { createIpfsReader } from "./ipfs";
-import { selectLive } from "./live";
+import { selectLive, type LivePick } from "./live";
 import { toJson, writeTextAtomically } from "./output";
 import { ACCOUNTS_FILE, IPFS_CACHE_DIR, LIVE_FILE, REFERENCES_FILE } from "./paths";
 
@@ -22,6 +22,11 @@ type Redact = (text: string) => string;
 
 function log(line: string): void {
   console.info(line);
+}
+
+/** A live pick in the run's log: its dispute and the family recorded for it. */
+function describePick(pick: LivePick | null): string {
+  return pick === null ? "none" : `${String(pick.disputeId)} (${pick.family})`;
 }
 
 async function live(env: Env, redact: Redact): Promise<boolean> {
@@ -32,8 +37,9 @@ async function live(env: Env, redact: Redact): Promise<boolean> {
       log(`live: chain ${String(chain.chainId)} failed: ${chain.message}`);
       continue;
     }
-    const picks = Object.entries(chain.periods).map(([period, pick]) => `period ${period}: ${pick === null ? "none" : String(pick.disputeId)}`);
-    log(`live: chain ${String(chain.chainId)} at block ${String(chain.blockNumber)}: ${picks.join(", ")}`);
+    const picks = Object.entries(chain.periods).map(([period, pick]) => `period ${period}: ${describePick(pick)}`);
+    const governor = `governor appeal (P-04): ${chain.governorAppeal === null ? "none" : String(chain.governorAppeal.disputeId)}`;
+    log(`live: chain ${String(chain.chainId)} at block ${String(chain.blockNumber)}: ${[...picks, governor].join(", ")}`);
   }
   log("Wrote golden/live.json.");
   return file.chains.every((chain) => chain.status === "ok");
@@ -44,7 +50,11 @@ async function accounts(env: Env, redact: Redact): Promise<boolean> {
   writeTextAtomically(ACCOUNTS_FILE, redact(toJson(file)));
   const withAccount = file.entries.filter((entry) => entry.account !== null).length;
   log(`accounts: ${String(file.entries.length)} cases, ${String(withAccount)} with a contributor, ${String(file.errors)} unread. Wrote golden/accounts.json.`);
-  for (const entry of file.entries.filter((item) => item.record.status === "error")) log(`accounts: ${entry.key}: ${entry.record.status === "error" ? entry.record.message : ""}`);
+  for (const { key, record } of file.entries) {
+    if (record.status === "error") log(`accounts: ${key}: ${record.message}`);
+    // MC-7: a funded governor case has contributors no event names, so it runs with no account; say so on every run.
+    if (record.status === "governor-funded") log(`accounts: ${key}: ${record.reason}`);
+  }
   return file.errors === 0;
 }
 

@@ -152,11 +152,11 @@ describe("policyFetchUrl", () => {
     }
   });
 
-  it("§6.4: a content-addressed path containing 'http' goes through the gateway", () => {
+  it("P-17: a content-addressed path containing 'http' goes through the gateway", () => {
     expect(policyFetchUrl(`/ipfs/${CID}/http-policy.json`, GATEWAY)).toBe(`${DEFAULT_GATEWAY}/ipfs/${CID}/http-policy.json`);
   });
 
-  it("§6.4: refuses a policy URI that is neither https nor content-addressed", () => {
+  it("P-17: refuses a policy URI that is neither https nor content-addressed", () => {
     const inputs = ["", "http://example.org/policy.json", "/ipns/kleros.io/policy.json", `/ipfs/${CID}/../../ipns/x`, "javascript:alert(1)", "policy.json"];
     for (const input of inputs) expect(policyFetchUrl(input, GATEWAY), input).toBeNull();
   });

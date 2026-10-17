@@ -4,7 +4,7 @@ import { paths, type ResolvedChain } from "../routing";
 import { ChainIndicator, WalletControl } from "../wallet";
 import { BrandLogo } from "./BrandLogo";
 import { CloseIcon, MenuIcon } from "./icons";
-import { BAR_FOCUS, BAR_TEXT, CONTENT, GUTTER } from "./layout";
+import { BAR_FOCUS, BAR_FOCUS_TOKEN, BAR_TEXT, CONTENT, GUTTER } from "./layout";
 
 interface HeaderProps {
   readonly resolvedChain: ResolvedChain;
@@ -46,14 +46,27 @@ export function Header({ resolvedChain, connected }: HeaderProps) {
   }, [menuOpen]);
 
   return (
-    <header className={`sticky top-0 z-40 bg-klerosUIComponentsPrimaryPurple shadow-default dark:bg-klerosUIComponentsLightBlue/65 dark:backdrop-blur-md ${BAR_TEXT} ${GUTTER}`}>
+    <header className={`sticky top-0 z-40 bg-klerosUIComponentsPrimaryPurple dark:bg-klerosUIComponentsLightBlue ${BAR_TEXT} ${BAR_FOCUS_TOKEN} ${GUTTER}`}>
       <div className={`${CONTENT} relative flex h-16 items-center gap-3 lg:gap-8`}>
         <Link to={paths.chainRoot(chainId)} onClick={close} className={`inline-flex shrink-0 ${BAR_FOCUS}`}>
           <BrandLogo />
         </Link>
+        <button
+          ref={toggleRef}
+          type="button"
+          aria-label="Menu"
+          aria-expanded={menuOpen}
+          aria-controls={panelId}
+          onClick={() => {
+            setMenuOpen((open) => !open);
+          }}
+          className={`ml-auto inline-flex size-11 shrink-0 items-center justify-center lg:hidden ${BAR_FOCUS}`}
+        >
+          {menuOpen ? <CloseIcon className="size-6" /> : <MenuIcon className="size-6" />}
+        </button>
         <div
           id={panelId}
-          className={`${menuOpen ? "flex" : "hidden"} flex-col gap-4 lg:flex lg:flex-1 lg:flex-row lg:items-center lg:justify-between lg:gap-8 max-lg:absolute max-lg:inset-x-[-1rem] max-lg:top-full max-lg:border-t max-lg:border-klerosUIComponentsStroke/30 max-lg:bg-klerosUIComponentsPrimaryPurple max-lg:px-4 max-lg:pt-2 max-lg:pb-5 max-lg:shadow-default dark:max-lg:bg-klerosUIComponentsLightBlue`}
+          className={`${menuOpen ? "flex" : "hidden"} flex-col gap-4 lg:flex lg:flex-1 lg:flex-row lg:items-center lg:justify-between lg:gap-8 max-lg:absolute max-lg:inset-x-[-1rem] max-lg:top-full max-lg:border-b max-lg:border-klerosUIComponentsStroke max-lg:bg-klerosUIComponentsPrimaryPurple max-lg:px-4 max-lg:pt-2 max-lg:pb-6 max-lg:shadow-(--dr-elevation) dark:max-lg:bg-klerosUIComponentsLightBlue`}
         >
           <nav aria-label="Main">
             <ul className="flex flex-col lg:flex-row lg:items-center lg:gap-2">
@@ -81,19 +94,6 @@ export function Header({ resolvedChain, connected }: HeaderProps) {
             <WalletControl chain={chain} />
           </div>
         </div>
-        <button
-          ref={toggleRef}
-          type="button"
-          aria-label="Menu"
-          aria-expanded={menuOpen}
-          aria-controls={panelId}
-          onClick={() => {
-            setMenuOpen((open) => !open);
-          }}
-          className={`ml-auto inline-flex size-10 shrink-0 items-center justify-center lg:hidden ${BAR_FOCUS}`}
-        >
-          {menuOpen ? <CloseIcon className="size-6" /> : <MenuIcon className="size-6" />}
-        </button>
       </div>
     </header>
   );

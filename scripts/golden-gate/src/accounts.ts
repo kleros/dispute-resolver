@@ -11,6 +11,11 @@ import { LIVE_FILE } from "./paths";
 /** Contributor reads in flight per chain. */
 const READS_PER_CHAIN = 4;
 
+const livePickSchema = z.object({ disputeId: z.number().int().nonnegative() });
+
+/** The period of P-04's governor pick: the appeal period. */
+const GOVERNOR_APPEAL_PERIOD = 3;
+
 const liveFileSchema = z.object({
   generatedAt: z.string(),
   chains: z.array(
@@ -19,7 +24,9 @@ const liveFileSchema = z.object({
         status: z.literal("ok"),
         chainId: z.number().int(),
         blockNumber: z.number().int(),
-        periods: z.record(z.string(), z.object({ disputeId: z.number().int().nonnegative() }).nullable()),
+        periods: z.record(z.string(), livePickSchema.nullable()),
+        /** P-04's governor pick; absent from a selection written before it existed. */
+        governorAppeal: livePickSchema.nullable().optional(),
       }),
       z.object({ status: z.literal("failed"), chainId: z.number().int(), message: z.string() }),
     ]),
@@ -30,16 +37,20 @@ export interface LiveCase extends GoldenCase {
   readonly livePeriod: number;
 }
 
-/** The live-tier cases of `golden/live.json`, one per selected period, and when the selection was taken. */
+/**
+ * The live-tier cases of `golden/live.json`, one per selected period and one for P-04's governor pick, and when the
+ * selection was taken.
+ */
 export function parseLiveCases(value: unknown): { readonly generatedAt: string; readonly cases: LiveCase[] } {
   const live = liveFileSchema.parse(value);
-  const cases = live.chains.flatMap((chain) =>
-    chain.status === "ok"
-      ? Object.entries(chain.periods).flatMap(([period, pick]) =>
-          pick === null ? [] : [{ chainId: chain.chainId, disputeId: BigInt(pick.disputeId), tier: "live" as const, livePeriod: Number(period) }],
-        )
-      : [],
-  );
+  const cases = live.chains.flatMap((chain) => {
+    if (chain.status !== "ok") return [];
+    const picks = [
+      ...Object.entries(chain.periods).map(([period, pick]) => ({ livePeriod: Number(period), pick })),
+      { livePeriod: GOVERNOR_APPEAL_PERIOD, pick: chain.governorAppeal ?? null },
+    ];
+    return picks.flatMap(({ livePeriod, pick }) => (pick === null ? [] : [{ chainId: chain.chainId, disputeId: BigInt(pick.disputeId), tier: "live" as const, livePeriod }]));
+  });
   return { generatedAt: live.generatedAt, cases };
 }
 
@@ -65,7 +76,7 @@ export interface AccountsFile {
 
 /**
  * Merges the stable and live cases: a dispute selected for the live tier that is also a stable case keeps its stable
- * tier and records the live periods it was picked for.
+ * tier and records the live periods it was picked for, each once (P-04's governor pick can repeat 04 §3's appeal pick).
  */
 export function mergeCases(stable: readonly GoldenCase[], live: readonly LiveCase[]): { readonly item: GoldenCase; readonly livePeriods: number[] }[] {
   const merged = new Map<string, { item: GoldenCase; livePeriods: number[] }>();
@@ -74,7 +85,7 @@ export function mergeCases(stable: readonly GoldenCase[], live: readonly LiveCas
     const key = caseKey(item.chainId, item.disputeId);
     const existing = merged.get(key);
     if (existing === undefined) merged.set(key, { item, livePeriods: [item.livePeriod] });
-    else existing.livePeriods.push(item.livePeriod);
+    else if (!existing.livePeriods.includes(item.livePeriod)) existing.livePeriods.push(item.livePeriod);
   }
   return [...merged.values()].sort((a, b) => a.item.chainId - b.item.chainId || (a.item.disputeId < b.item.disputeId ? -1 : 1));
 }

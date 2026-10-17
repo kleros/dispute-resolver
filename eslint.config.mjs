@@ -77,6 +77,37 @@ const iframeSyntax = {
   message: "A JSX <iframe> is allowed only under packages/web/src/safe-content/.",
 };
 
+// 06-intro (CLAUDE.md hard rule, ARCHITECTURE.md "Rules for every builder"): UI code never inspects a contract address; it
+// asks core's registry for the family and the overrides. A production file holds no address literal and does not compare
+// or switch on an arbitrable, arbitrator or proxy address. Test files are exempt from the syntax rules (their fixtures are
+// addresses); viem's isAddressEqual is banned in every web file.
+const addressLiteral = "/(^|[^0-9a-fA-F])0x[0-9a-fA-F]{40}([^0-9a-fA-F]|$)/";
+const contractName = "/^(arbitrable|arbitrated|arbitrator|proxy)(address)?$/i";
+const contractOperand = (side) =>
+  [`${side}.name`, `${side}.property.name`, `${side}.callee.object.name`, `${side}.callee.object.property.name`].map((path) => `[${path}=${contractName}]`);
+const addressMessage = "06-intro: UI code never inspects a contract address. Ask the registry in @dispute-resolver/core for the family and the overrides.";
+const addressSyntax = [
+  { selector: `Literal[value=${addressLiteral}]`, message: addressMessage },
+  { selector: `TemplateElement[value.cooked=${addressLiteral}]`, message: addressMessage },
+  {
+    // An equality check against undefined, null or a boolean only asks whether the address is known yet. The type test
+    // matters: esquery stringifies a missing attribute, so a bare [left.name='undefined'] matches every non-identifier.
+    selector: `BinaryExpression[operator=/^[!=]==?$/]:matches(${[...contractOperand("left"), ...contractOperand("right")].join(", ")}):not([left.type='Identifier'][left.name='undefined'], [right.type='Identifier'][right.name='undefined'], [left.raw=/^(null|true|false)$/], [right.raw=/^(null|true|false)$/])`,
+    message: addressMessage,
+  },
+  { selector: `SwitchStatement:matches(${contractOperand("discriminant").join(", ")})`, message: addressMessage },
+];
+const addressEqualPath = { name: "viem", importNames: ["isAddressEqual"], message: addressMessage };
+
+// Builds the web no-restricted-syntax option. The flags lift the exceptions of rules 1 and 3 and exempt test files from 06-intro.
+const webSyntax = ({ env = true, links = true, addresses = true } = {}) => [
+  "error",
+  ...restrictedSyntax,
+  ...(env ? [importMetaEnvSyntax] : []),
+  ...(links ? [anchorSyntax, iframeSyntax] : []),
+  ...(addresses ? addressSyntax : []),
+];
+
 // ARCHITECTURE.md 1.4 rule 4 (A17): the library's FileViewer renders attachments inline.
 const fileViewerPath = {
   name: "@kleros/ui-components-library",
@@ -116,7 +147,7 @@ const e2eImportPattern = {
 const webImports = ({ reown = true, markdown = true, app = true, testImports = true } = {}) => [
   "error",
   {
-    paths: [fileViewerPath, wagmiReadHooksPath],
+    paths: [fileViewerPath, wagmiReadHooksPath, addressEqualPath],
     patterns: [
       rehypeRawBan,
       deepImportPattern,
@@ -202,20 +233,22 @@ export default defineConfig([
     },
   },
   // ARCHITECTURE.md 1.4 rules 1 and 3: import.meta.env, JSX <a href> and JSX <iframe> are confined to one directory each.
-  {
-    files: [`${webSrc}/**/*.{ts,tsx}`],
-    rules: { "no-restricted-syntax": ["error", ...restrictedSyntax, importMetaEnvSyntax, anchorSyntax, iframeSyntax] },
-  },
+  // 06-intro: no production file inspects a contract address. A later block replaces the rule wholesale, so each block
+  // carries the full list minus its own exceptions.
+  { files: [`${webSrc}/**/*.{ts,tsx}`], rules: { "no-restricted-syntax": webSyntax() } },
+  { files: webTestFiles, rules: { "no-restricted-syntax": webSyntax({ addresses: false }) } },
   {
     // Rule 1 override: env.ts is the one reader of import.meta.env.
     files: [`${webSrc}/env/env.ts`],
-    rules: { "no-restricted-syntax": ["error", ...restrictedSyntax, anchorSyntax, iframeSyntax] },
+    rules: { "no-restricted-syntax": webSyntax({ env: false }) },
   },
   {
     // Rule 3 override: safe-content renders the links and frames.
     files: [`${webSrc}/safe-content/**/*.{ts,tsx}`],
-    rules: { "no-restricted-syntax": ["error", ...restrictedSyntax, importMetaEnvSyntax] },
+    ignores: webTestFiles,
+    rules: { "no-restricted-syntax": webSyntax({ links: false }) },
   },
+  { files: [`${webSrc}/safe-content/**/*.test.{ts,tsx}`], rules: { "no-restricted-syntax": webSyntax({ links: false, addresses: false }) } },
 
   // ARCHITECTURE.md 1.4 rules 4 and 5: restricted imports. A later block replaces an earlier one wholesale, so each
   // exception directory gets the full list minus its own entry, in a production variant and a test variant.
@@ -229,6 +262,15 @@ export default defineConfig([
     { files: [`${webSrc}/${dir}/**/*.{ts,tsx}`], ignores: webTestFiles, rules: { "no-restricted-imports": webImports(lift) } },
     { files: [`${webSrc}/${dir}/**/*.test.{ts,tsx}`], rules: { "no-restricted-imports": webImports({ ...lift, testImports: false }) } },
   ]),
+
+  {
+    // 06 §2 declares `type ChainId = number`, and core adds `type UnixSeconds = number` beside it: named aliases of a
+    // primitive that tell a chain ID or a time in seconds apart from the other numbers at every use. A branded type would
+    // make every number literal unassignable, so the redundant-alias rule is off for the file that declares them, and only
+    // there. The matching SonarCloud rule (S6564) needs the same exemption on this file in the project's quality settings.
+    files: ["packages/core/src/types.ts"],
+    rules: { "sonarjs/redundant-type-aliases": "off" },
+  },
 
   {
     // ARCHITECTURE.md 1.4 rule 2 (ADR 0004, section 7): the runner page evaluates the fetched script, and this is the only

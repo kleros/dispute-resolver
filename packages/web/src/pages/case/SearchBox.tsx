@@ -2,6 +2,7 @@ import type { ChainId } from "@dispute-resolver/core";
 import { NumberField } from "@kleros/ui-components-library";
 import { useId, type ChangeEvent, type FormEvent, type SVGAttributes } from "react";
 import { courtCaseUrl, ExternalLink } from "../../safe-content";
+import { EYEBROW } from "../../ui";
 import type { DisputeSearch } from "./useDisputeSearch";
 
 /** Whole IDs only, written without grouping: "1234", never "1,234". */
@@ -23,8 +24,8 @@ interface SearchBoxProps {
 
 /**
  * The search row of the case page (spec 5.2): "Search Disputes on Court", with Court opening the shown dispute on Court
- * (dispute 0 while the field is empty, as today), and the dispute ID field. Typing searches as today, after the
- * debounce; Enter searches at once.
+ * (dispute 0 while the field is empty, as today), and the dispute ID field. Every change replaces the URL at once and
+ * loads the typed ID after today's debounce (spec 1.4); Enter loads it at once (P-19).
  */
 export function SearchBox({ chainId, search }: SearchBoxProps) {
   const labelId = useId();
@@ -35,7 +36,7 @@ export function SearchBox({ chainId, search }: SearchBoxProps) {
   };
   return (
     <form role="search" aria-labelledby={labelId} onSubmit={onSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-      <p id={labelId} className="text-sm font-semibold text-klerosUIComponentsSecondaryText">
+      <p id={labelId} className={EYEBROW}>
         Search Disputes on{" "}
         <ExternalLink href={courtCaseUrl(shown ?? 0n, chainId)} testId="link-court">
           Court

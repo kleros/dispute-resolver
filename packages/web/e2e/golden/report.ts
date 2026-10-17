@@ -2,6 +2,7 @@ import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "nod
 import { join } from "node:path";
 import type { CheckResult, FieldResult } from "./compare/engine";
 import { CASE_REPORTS_DIR, NEW_URL, PROD_URL, REPORTS_DIR } from "./config";
+import { summarizeViolations, type CspViolation } from "./csp";
 import { LEDGER } from "./ledger";
 import { redactRpcFields } from "./redact";
 import type { Snapshot } from "./types";
@@ -28,6 +29,8 @@ export interface ScreenResult {
   readonly fields: readonly FieldResult[];
   readonly checks: readonly CheckResult[];
   readonly snapshots: { readonly production: Snapshot; readonly next: Snapshot };
+  /** The new app's report-only CSP violations on this screen (C2); never blocking. */
+  readonly cspViolations: readonly CspViolation[];
 }
 
 export function resetCaseReports(): void {
@@ -94,10 +97,39 @@ function summaryRow(result: ScreenResult): string {
     count(result, "skipped") + count(result, "unobservable"),
     failedChecks,
     notes,
+    cspCount(result),
     result.attempt,
     result.account ?? `none (${result.accountNote ?? "no contributor"})`,
   ];
   return `| ${columns.map((column) => cell(column, 120)).join(" | ")} |`;
+}
+
+function cspCount(result: ScreenResult): number {
+  return result.cspViolations.reduce((total, violation) => total + violation.count, 0);
+}
+
+function cspRows(result: ScreenResult): string[] {
+  if (result.cspViolations.length === 0) return [];
+  return [
+    "",
+    "| Report-only CSP violation (C2) | Blocked | Count |",
+    "|---|---|---|",
+    ...result.cspViolations.map((violation) => `| ${cell(violation.directive)} | ${cell(violation.blocked)} | ${violation.count.toString()} |`),
+  ];
+}
+
+/** Every screen's violations together: one row per directive and blocked resource, with the screens that hit it. */
+function cspRunRows(results: readonly ScreenResult[]): string[] {
+  const all = results.flatMap((result) => result.cspViolations.flatMap((violation) => Array.from({ length: violation.count }, () => violation)));
+  if (all.length === 0) return ["No violation of the report-only policy on any screen of this run."];
+  return [
+    "| Directive | Blocked | Count | Screens |",
+    "|---|---|---|---|",
+    ...summarizeViolations(all).map((violation) => {
+      const screens = results.filter((result) => result.cspViolations.some(({ directive, blocked }) => directive === violation.directive && blocked === violation.blocked));
+      return `| ${cell(violation.directive)} | ${cell(violation.blocked)} | ${violation.count.toString()} | ${cell(screens.map((result) => result.id).join(", "), 400)} |`;
+    }),
+  ];
 }
 
 function fieldRows(result: ScreenResult): string[] {
@@ -144,27 +176,42 @@ function markdown(results: readonly ScreenResult[], generatedAt: string): string
     "",
     "Rules (docs/parity/04-golden-cases.md §1): addresses case-insensitive, amounts as wei integers, markdown as plain text with all whitespace removed, countdowns and deadlines on presence and sign, withdrawable amounts only under the account context. Ledger entries (D-nn) and proposals (P-nn) are applied per field. Production values it never renders (the arbitrable, `lastPeriodChange`, full evidence submitters, appeal-card ruling codes) are read from the old app's own React component state; everything it renders is read from its DOM.",
     "",
-    "| Screen | Result | Match | Expected (ledger) | Unexplained | Skipped | Failed checks | Notes | Attempt | Account |",
-    "|---|---|---|---|---|---|---|---|---|---|",
+    "| Screen | Result | Match | Expected (ledger) | Unexplained | Skipped | Failed checks | Notes | CSP report-only | Attempt | Account |",
+    "|---|---|---|---|---|---|---|---|---|---|---|",
     ...results.map(summaryRow),
   ];
   for (const result of results) {
-    lines.push("", `## ${result.id}: ${result.passed ? "pass" : "FAIL"}`, "", result.description, "", ...fieldRows(result), ...checkRows(result));
+    lines.push("", `## ${result.id}: ${result.passed ? "pass" : "FAIL"}`, "", result.description, "", ...fieldRows(result), ...checkRows(result), ...cspRows(result));
   }
+  lines.push(
+    "",
+    "## Report-only CSP violations (C2)",
+    "",
+    `The new app's \`Content-Security-Policy-Report-Only\` violations in this run, by directive and blocked origin (never a path or query). The header is enforced only after a run against the branch deploy shows none. ${NEW_ORIGIN} sends the policy only when it serves \`_headers\` (a Netlify deploy, not \`vite preview\`).`,
+    "",
+    ...cspRunRows(results),
+  );
   lines.push("", "## Expected-difference table", "", ...ledgerRows(), "");
   return lines.join("\n");
 }
 
 /** Assembles `golden-report.json` and `golden-report.md` from the per-screen results of this run. */
-export function buildReports(directories: ReportDirectories = DEFAULT_DIRECTORIES): { readonly total: number; readonly failed: number } {
+export function buildReports(directories: ReportDirectories = DEFAULT_DIRECTORIES): { readonly total: number; readonly failed: number; readonly cspViolations: number } {
   const results = readResults(directories.cases).map((result) => redactRpcFields(result) as ScreenResult);
   const generatedAt = new Date().toISOString();
   mkdirSync(directories.reports, { recursive: true });
-  const summary = { generatedAt, productionUrl: PRODUCTION_ORIGIN, newUrl: NEW_ORIGIN, total: results.length, failed: results.filter((result) => !result.passed).length };
+  const summary = {
+    generatedAt,
+    productionUrl: PRODUCTION_ORIGIN,
+    newUrl: NEW_ORIGIN,
+    total: results.length,
+    failed: results.filter((result) => !result.passed).length,
+    cspViolations: results.reduce((total, result) => total + cspCount(result), 0),
+  };
   writeFileSync(
     join(directories.reports, "golden-report.json"),
     `${JSON.stringify({ ...summary, ledger: LEDGER.map(({ id, title, fields, note }) => ({ id, title, fields, note })), results }, null, 2)}\n`,
   );
   writeFileSync(join(directories.reports, "golden-report.md"), markdown(results, generatedAt));
-  return { total: summary.total, failed: summary.failed };
+  return { total: summary.total, failed: summary.failed, cspViolations: summary.cspViolations };
 }

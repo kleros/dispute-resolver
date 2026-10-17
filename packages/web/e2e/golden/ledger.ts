@@ -1,6 +1,7 @@
-import { formatRuling, normalizeIpfsPath, type RulingOptions } from "@dispute-resolver/core";
+import { formatRuling, isSelfLink, normalizeIpfsPath, REGISTRY, type RulingOptions } from "@dispute-resolver/core";
 import type { Mismatch } from "./compare/caseFields";
 import { ipfsPath, sameAddress, sameJson, sameWei, weiAtLeast, withoutWhitespace } from "./compare/values";
+import { recordedCourt } from "./courts";
 import type { StableCase } from "./stableTier";
 import type { AppealCardSnapshot, CaseSnapshot, CreateSnapshot, OngoingSnapshot, TimelineColumn, TimelineState } from "./types";
 
@@ -93,19 +94,36 @@ function isCaseOf(context: CaseContext, entry: string): boolean {
 }
 
 /**
- * The family 04 §2 names for the case (its `family` highlight), never the family the new app reports: a misdetected
- * family must not switch on the rule that hides its own symptoms. The highlight check holds the new app to it.
+ * The family 04 §2 names for the case (its `family` highlight), or for a live pick the family `yarn golden-gate live`
+ * recorded (liveTier.ts), never the family the new app reports: a misdetected family must not switch on the rule that
+ * hides its own symptoms. The highlight check holds the new app to it.
  */
 function expectedFamily(context: CaseContext): string | null {
   return context.testCase?.highlights?.family ?? null;
 }
 
 /**
- * D-47 applies to the cases 04 §2 names view-only and to the cases tagged with it, whose view-only family stableTier.ts
- * justifies from recorded bytecode; never by the family the new app reports.
+ * A pick with no recorded family (a `golden/live.json` written before picks recorded one) in the appeal period, on which
+ * production itself shows the view-only family: its view-only banner, so the arbitrable answers no `externalIDtoLocalID`
+ * (no resolver family), together with the "Appeal fees could not be calculated" notice, so neither stake-multiplier
+ * getter answers (spec 10.9 step 3), which the governors' `winnerMultiplier` and `loserMultiplier` do; an Escrow V1
+ * dispute shows production's escrow appeal instead. The banner alone is the governors' too (mainnet 1672, 535). Execution
+ * is left out: production's withdraw body does not tell a view-only arbitrable from a governor.
+ */
+function productionShowsViewOnlyAppeal(context: CaseContext): boolean {
+  const { production } = context;
+  return expectedFamily(context) === null && production.period === 3 && production.compatibility === "view-only" && production.appealPanel.kind === "fees-unavailable";
+}
+
+/**
+ * D-47 applies to the cases 04 §2 names view-only, to the live picks whose recorded family is view-only, to the cases
+ * tagged with it, whose view-only family stableTier.ts justifies from recorded bytecode, and to a pick with no recorded
+ * family on which production shows the view-only family in the appeal period (`productionShowsViewOnlyAppeal`); never by
+ * the family the new app reports, nor by the compatibility production reports alone, which is view-only for the
+ * governors too.
  */
 function hasNoFundingInterface(context: CaseContext): boolean {
-  return expectedFamily(context) === "view-only" || isCaseOf(context, "D-47");
+  return expectedFamily(context) === "view-only" || isCaseOf(context, "D-47") || productionShowsViewOnlyAppeal(context);
 }
 
 const VARIABLE_TYPES: ReadonlySet<string> = new Set(["uint", "int", "string", "datetime", "hash"]);
@@ -130,6 +148,20 @@ function codesOf(value: unknown): string[] {
 function cardsSubset(mismatch: Mismatch): boolean {
   const productionCodes = codesOf(mismatch.production);
   return codesOf(mismatch.next).every((code) => productionCodes.includes(code));
+}
+
+/**
+ * D-28 "Today" (master src/components/disputeSummary.js): production hid the link when its URL contained the canonical
+ * host anywhere, case-sensitively. It only explains why production hid a link; it never decides that a link may be
+ * shown, which is `isNewAppSelfLink`'s parsed host-name comparison.
+ */
+function productionHidAsSelfLink(url: string): boolean {
+  return REGISTRY.canonicalHosts.some((host) => url.includes(host));
+}
+
+/** D-28 "New": core's self-link rule on the hosts the new app runs with, its origin's host and the registry's canonical hosts. */
+function isNewAppSelfLink(url: string, context: CaseContext): boolean {
+  return isSelfLink(url, { appHost: new URL(context.newOrigin).host, canonicalHosts: REGISTRY.canonicalHosts });
 }
 
 function isHttpsUrl(value: unknown): boolean {
@@ -200,8 +232,8 @@ function stateFor(column: number, period: number): TimelineState {
   return period === column ? "current" : "upcoming";
 }
 
-/** D-39: every period the dispute passes through; Commit appears only for hidden-vote courts, so it is optional. */
-function expectedTimeline(period: number, withCommit: boolean): TimelineColumn[] {
+/** D-39: every period the dispute passes through, Commit included when `withCommit`. */
+export function expectedTimeline(period: number, withCommit: boolean): TimelineColumn[] {
   const columns: [string, number][] = [
     ["evidence", 0],
     ["commit", 1],
@@ -210,6 +242,22 @@ function expectedTimeline(period: number, withCommit: boolean): TimelineColumn[]
     ["execution", 4],
   ];
   return columns.filter(([name]) => withCommit || name !== "commit").map(([name, index]) => ({ name, state: stateFor(index, period) }));
+}
+
+/**
+ * D-39: whether the timeline must have a Commit column, from production's period. In the commit period it must
+ * (KlerosLiquid enters it only for a hidden-vote court, and core keeps the column there); otherwise as the case's
+ * recorded court says (courts.ts). `null` for a live-tier pick outside commit, whose court is not recorded.
+ */
+function commitColumnRequired(context: CaseContext): boolean | null {
+  if (context.production.period === 1) return true;
+  const { testCase } = context;
+  return testCase === null ? null : (recordedCourt(testCase.chainId, testCase.disputeId)?.hiddenVotes ?? null);
+}
+
+/** P-01: on a testnet the new app lists evidence that production's look-back missed, so its list is the longer one. */
+function listsEvidenceBeyondLookback(context: CaseContext): boolean {
+  return ![1, 100].includes(chainOf(context)) && (context.next.evidence?.length ?? 0) > (context.production.evidence?.length ?? 0);
 }
 
 /** The appeal panel the entry expects in a period: `[period 3 kind, period 4 kind]`, hidden before. */
@@ -369,7 +417,11 @@ const DEVIATIONS: readonly LedgerEntry[] = [
       ),
     ],
   },
-  noField("D-03", "Appealed markers", "The markers are evidence-timeline events, not evidence items of the snapshot: mainnet 328 and Gnosis 121 by component test."),
+  noField(
+    "D-03",
+    "Appealed markers",
+    "The markers are evidence-timeline events, not evidence items of the snapshot: mainnet 328 and Gnosis 121 by the D-03 tests of src/pages/case-evidence/EvidenceSection.test.tsx, on recorded blocks.",
+  ),
   {
     id: "D-04",
     title: "Variable-type appeal cards",
@@ -465,7 +517,11 @@ const DEVIATIONS: readonly LedgerEntry[] = [
       acceptCase("courtName", "the court ID with 'name unavailable'", (m) => (m.production === null || m.production === "") && (asString(m.next) ?? "").includes("unavailable")),
     ],
   },
-  noField("D-20", "Atlas sessions per tab", "Uploads: Playwright sign-in and reload."),
+  noField(
+    "D-20",
+    "Atlas sessions per tab",
+    "Uploads: unit tests in src/atlas (reload, account switch); the Playwright sign-in, reload and account switch needs a build with a wallet.",
+  ),
   noField("D-21", "Missing Atlas configuration", "Boot: unit test."),
   {
     id: "D-22",
@@ -476,7 +532,7 @@ const DEVIATIONS: readonly LedgerEntry[] = [
       replaceCase(
         "hiddenEvidenceCount",
         "production's items minus the new list, at most the hidden count",
-        (c) => c.production.evidence !== null && c.next.evidence !== null,
+        (c) => c.production.evidence !== null && c.next.evidence !== null && !listsEvidenceBeyondLookback(c),
         (c) => {
           const shown = c.next.evidence?.length ?? 0;
           const before = c.production.evidence?.length ?? 0;
@@ -531,10 +587,9 @@ const DEVIATIONS: readonly LedgerEntry[] = [
         const after = asString(m.next);
         if (after === null) {
           const before = asString(m.production);
-          return before !== null && new URL(before).host === new URL(c.newOrigin).host;
+          return before !== null && isNewAppSelfLink(before, c);
         }
-        const host = new URL(after).host;
-        return m.production === null && after.includes("resolve.kleros.io") && host !== "resolve.kleros.io" && host !== new URL(c.newOrigin).host;
+        return m.production === null && productionHidAsSelfLink(after) && !isNewAppSelfLink(after, c);
       }),
     ],
   },
@@ -636,7 +691,7 @@ const DEVIATIONS: readonly LedgerEntry[] = [
     id: "D-37",
     title: "Ongoing page loading",
     fields: ["disputes"],
-    note: "A dispute whose meta-evidence fails shows its ID with 'title unavailable'; production dropped its card or titled it 'Meta Evidence Missing'.",
+    note: "A dispute whose meta-evidence fails shows its ID with 'title unavailable'; production dropped its card or titled it 'Meta Evidence Missing'. Timing: e2e/app/ongoing.spec.ts.",
     rules: [
       acceptOngoing("disputes[].membership", "the dispute's card with 'title unavailable'", (m) => {
         const card = m.next as { readonly title?: unknown } | null;
@@ -654,22 +709,23 @@ const DEVIATIONS: readonly LedgerEntry[] = [
     id: "D-39",
     title: "Timeline columns",
     fields: ["timeline"],
-    note: "Every period the dispute passes through, Commit for hidden-vote courts and Execution included; computed from production's period.",
+    note: "Every period the dispute passes through, Execution included, with states from production's period. Commit is required in the commit period and for a case whose recorded court hides votes (courts.ts), forbidden for one whose court does not, either way for a live pick outside commit.",
     rules: [
       replaceCase(
         "timeline",
-        "evidence, [commit], vote, appeal, execution with states from the period",
+        "evidence, commit when the court hides votes, vote, appeal, execution with states from the period",
         (c) => c.production.timeline !== null && c.production.period !== null,
         (c) => {
           const period = c.production.period ?? 0;
-          const options = [expectedTimeline(period, false), expectedTimeline(period, true)];
-          return { ok: options.some((option) => sameJson(option, c.next.timeline)), expected: options[0] };
+          const required = commitColumnRequired(c);
+          const options = required === null ? [expectedTimeline(period, false), expectedTimeline(period, true)] : [expectedTimeline(period, required)];
+          return { ok: options.some((option) => sameJson(option, c.next.timeline)), expected: options.length === 1 ? options[0] : options };
         },
       ),
     ],
   },
   noField("D-40", "Explorer links", "Address and transaction links are not snapshot fields: component test per chain."),
-  noField("D-41", "Response headers", "Deploy tests (C1 to C3)."),
+  noField("D-41", "Response headers", "Deploy tests (C1 to C3): e2e/deploy/headers.spec.ts with DR_E2E_DEPLOY_URL."),
   {
     id: "D-42",
     title: "Dependencies and stack",
@@ -679,7 +735,7 @@ const DEVIATIONS: readonly LedgerEntry[] = [
   },
   noField("D-43", "Period-3 appeal text", "Copy of the panel: component test on a period-3 fixture."),
   noField("D-44", "Evidence modal state", "Write path: component test."),
-  noField("D-45", "Header links on error screens", "Header: Playwright on an unsupported chain."),
+  noField("D-45", "Header links on error screens", "Header: Playwright on an unsupported chain and a 404, e2e/app/error-screens.spec.ts."),
   {
     id: "D-46",
     title: "Contracts with IDisputeResolver IDs but no withdraw functions",
@@ -707,7 +763,7 @@ const DEVIATIONS: readonly LedgerEntry[] = [
     id: "D-47",
     title: "Appeal funding for governors is fixed; families with no funding interface show a note",
     fields: ["appealPanel.kind", "appealPanel.cards", "appealPanel.withdrawableWei"],
-    note: "The cases 04 §2 names view-only, and the cases tagged D-47 on recorded bytecode (Gnosis 41, 42, 44, 140, 863), show 'appeals happen in the arbitrable application' in the appeal period and no panel in execution; the governors crowdfund and withdraw through their own interface, compared with a recorded on-chain amount under the account context.",
+    note: "The cases 04 §2 names view-only, the cases tagged D-47 on recorded bytecode (Gnosis 41, 42, 44, 140, 863), the live picks whose family `yarn golden-gate live` recorded as view-only (for instance a Curate list in the appeal period, where production still shows crowdfunding cards), and, in the appeal period, a pick with no recorded family on which production shows its view-only banner with the 'Appeal fees could not be calculated' notice (mainnet 1684), show 'appeals happen in the arbitrable application' in the appeal period and no panel in execution; the governors crowdfund and withdraw through their own interface, compared with a recorded on-chain amount under the account context.",
     rules: [
       replaceCase("appealPanel.kind", "handled-by-arbitrable in the appeal period, no panel in execution", hasNoFundingInterface, (c) => {
         const expected = panelForPeriod(c.next.period, "handled-by-arbitrable", "hidden");
@@ -718,12 +774,12 @@ const DEVIATIONS: readonly LedgerEntry[] = [
       recordedWithdrawable((c) => expectedFamily(c) === "governor"),
     ],
   },
-  noField("D-48", "Wallet chain must match the page chain", "Write guard: unit test; Playwright with the wallet on another chain."),
+  noField("D-48", "Wallet chain must match the page chain", "Write guard: unit test; Playwright with the wallet on another chain, e2e/app/wallet-chain.spec.ts (B3)."),
   {
     id: "D-49",
     title: "IDisputeResolver v1 contracts other than Unslashed",
     fields: ["appealPanel.withdrawableWei"],
-    note: "Withdrawals use the v1 signatures where production's v2 call reverted to zero: Gnosis 0 under the account context, compared with a recorded on-chain amount.",
+    note: "Withdrawals use the v1 signatures where production's v2 call reverted to zero, compared with a recorded on-chain amount under the account context. No stable D-49 case has one (Gnosis 0 has no recorded contributor, MC-11), so the rule applies to none today; core's bytecode-fixture and withdraw tests prove D-49.",
     rules: [recordedWithdrawable((c) => isCaseOf(c, "D-49"))],
   },
   noField("D-50", "Families detected beyond today's lists", "No stable case is an unlisted deployment: bytecode fixtures; the live tier."),
@@ -735,9 +791,9 @@ const DEVIATIONS: readonly LedgerEntry[] = [
     rules: [],
   },
   noField("D-52", "Atlas sign-in trigger", "Uploads: component test; Playwright on Sepolia S1."),
-  noField("D-53", "Search for a nonexistent dispute", "Search flow: Playwright."),
+  noField("D-53", "Search for a nonexistent dispute", "Search flow: Playwright, e2e/app/search.spec.ts."),
   noField("D-54", "Contribution input follows the suggested amount", "Card input: component test."),
-  noField("D-55", "Chain changes without a full reload", "Wallet chain change: Playwright."),
+  noField("D-55", "Chain changes without a full reload", "Wallet chain change: Playwright, e2e/app/wallet-chain.spec.ts."),
   noField("D-56", "Chain without an RPC variable", "No stable case on a chain without an RPC: unit test."),
 ];
 
@@ -745,14 +801,23 @@ const PROPOSALS: readonly LedgerEntry[] = [
   {
     id: "P-01",
     title: "Evidence and Dispute-event scans on testnets",
-    fields: ["evidence"],
-    note: "Testnets only; the stable tier is mainnet and Gnosis, where the scans are unchanged.",
+    fields: ["evidence", "hiddenEvidenceCount"],
+    note: "Testnets only: Sepolia 365 (LEDGER_CASES in stableTier.ts), whose evidence is older than the 50,000-block look-back, so production lists none. The stable tier is mainnet and Gnosis, where the scans are unchanged.",
     rules: [
       acceptCase("evidence[].membership", "evidence older than the lookback is listed", (m, c) => ![1, 100].includes(chainOf(c)) && listLength(m.next) > listLength(m.production)),
+      // D-22's count assumes the new list is a part of production's; here production's is the shorter one.
+      replaceCase("hiddenEvidenceCount", "the new app's hidden count, production's list being the shorter one", listsEvidenceBeyondLookback, (c) => ({
+        ok: c.next.hiddenEvidenceCount !== null,
+        expected: "present",
+      })),
     ],
   },
   noField("P-02", "What a mined write refreshes", "After a write: component tests."),
-  noField("P-03", "Network switching from the unsupported-network screen and the header", "Switching: component tests."),
+  noField(
+    "P-03",
+    "Network switching from the unsupported-network screen and the header",
+    "Switching: component tests, and the add-chain fallback through wagmi's injected connector; Playwright needs a build with a wallet.",
+  ),
   {
     id: "P-04",
     title: "No 'refuse to arbitrate' card for governors",
@@ -815,7 +880,7 @@ const PROPOSALS: readonly LedgerEntry[] = [
     id: "P-08",
     title: "Zeroed dispute struct means 'does not exist'",
     fields: ["exists"],
-    note: "A Gnosis or Chiado ID never created is the not-found state; production rendered a case for the zero arbitrable.",
+    note: "A Gnosis or Chiado ID never created is the not-found state; production rendered a case for the zero arbitrable. Search: e2e/app/search.spec.ts.",
     rules: [
       replaceCase(
         "exists",
@@ -858,6 +923,35 @@ const PROPOSALS: readonly LedgerEntry[] = [
     "P-16",
     "Fail fast when the script runner frame never starts",
     "Recorded, not implemented: the runner protocol, not a snapshot field; an end-to-end test that blocks the runner page once approved.",
+  ),
+  noField(
+    "P-17",
+    "Court policy URIs must be https or content-addressed",
+    "Every policy URI recorded on mainnet and Gnosis resolves under the new rule (uri/gateway.test.ts), so no stable case's courtName differs: unit tests.",
+  ),
+  noField("P-18", "Datetime answers are typed in UTC", "Free-input funding, not a snapshot field: component test."),
+  noField("P-19", "The URL's dispute loads at mount", "Load timing, not a snapshot field: component test."),
+  noField("P-20", "What the case page shows while the dispute loads", "Snapshots are taken once the page settles: component tests."),
+  noField("P-21", "Funding totals and the int answer on crowdfunding cards", "The snapshot's cards carry no total and no funded-answer line: component tests."),
+  noField(
+    "P-22",
+    "The withdraw panel without a connected account",
+    "Without an account the withdrawable amount is not compared (04 §1), so cases with no account context skip the field: unit and component tests.",
+  ),
+  noField(
+    "P-23",
+    "Bound the parse cost of hostile descriptions",
+    "Recorded, not implemented: no snapshot field changes; the descriptions are compared as today. Hostile-input timing tests once approved.",
+  ),
+  noField(
+    "P-24",
+    "Decision text for options without titles",
+    "Recorded, not implemented: decision.rulingText is compared as today (the poh.eth governor's blank decision is production's); decision.test.ts pins today's behavior.",
+  ),
+  noField(
+    "P-25",
+    "Check the meta-evidence locator's answer against the chain",
+    "Recorded, not implemented: both apps read the same locator, so the meta-evidence fields are compared as today; a flake on Gnosis 460 is the locator answering differently between the two extractions.",
   ),
 ];
 

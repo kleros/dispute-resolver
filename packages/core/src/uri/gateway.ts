@@ -40,7 +40,7 @@ export function reserveThroughGateway(url: string, gateway: GatewayOrigin): stri
 }
 
 /**
- * Where to fetch a court policy (spec 6.4, B7 accepted): an https URL as is, a content-addressed path through the
+ * Where to fetch a court policy (spec 6.4, P-17): an https URL as is, a content-addressed path through the
  * gateway, anything else `null`. Replaces today's "contains `http`" test.
  */
 export function policyFetchUrl(uri: string, gateway: GatewayOrigin): string | null {

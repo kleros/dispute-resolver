@@ -1,4 +1,4 @@
-import type { RunnerEnvironment } from "../types";
+import type { RunnerEnvironment, XhrOpen } from "../types";
 import { evaluateInGlobalScope, runScriptInGlobalScope } from "./evaluate";
 
 /** The runner page's actual window, as `bootstrapRunner` sees it (ARCHITECTURE.md §7.2). */
@@ -27,8 +27,10 @@ export function realEnvironment(): RunnerEnvironment {
         window.fetch = wrap(window.fetch.bind(window));
       },
       wrapXhrOpen(wrap) {
-        // eslint-disable-next-line @typescript-eslint/unbound-method -- the wrapper only ever calls it with .call(this) on the request (rpcRedirect.ts).
-        XMLHttpRequest.prototype.open = wrap(XMLHttpRequest.prototype.open);
+        // Seen through XhrOpen, the native open declares `this: XMLHttpRequest`, so the type itself makes every caller of
+        // the captured original supply the request (rpcRedirect.ts calls it with .call(this)).
+        const prototype: { open: XhrOpen } = XMLHttpRequest.prototype;
+        prototype.open = wrap(prototype.open);
       },
     },
   };

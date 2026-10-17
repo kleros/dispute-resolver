@@ -58,12 +58,18 @@ describe("dispute hooks (ARCHITECTURE.md §5.3)", () => {
     expect(core.loadMetaEvidence).toHaveBeenCalledWith(expect.objectContaining({ budgetMs: core.CASE_PAGE_BUDGET_MS, arbitrable: BINDING.arbitrated, disputeId: 9n }));
   });
 
-  it("D-38: an accepted meta-evidence is not reloaded when the case page mounts", async () => {
-    const deps = createTestDeps();
-    const { result } = renderHook(() => useMetaEvidence(1, BINDING, "case"), { wrapper: wrapperWith(deps, [[queryKeys.metaEvidence(1, 9n, BINDING.arbitrated), testOkMetaEvidence()]]) });
-    expect(result.current).toEqual({ status: "ready", value: testOkMetaEvidence() });
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(core.loadMetaEvidence).not.toHaveBeenCalled();
+  it("§9.1: the case page runs the meta-evidence pipeline when it mounts and shows no stored result meanwhile", async () => {
+    vi.mocked(core.loadMetaEvidence).mockResolvedValue(testOkMetaEvidence({ title: "Fresh title" }));
+    const stored = testOkMetaEvidence({ title: "Stored title" });
+    const { result } = renderHook(() => useMetaEvidence(1, BINDING, "case"), {
+      wrapper: wrapperWith(createTestDeps(), [[queryKeys.metaEvidence(1, 9n, BINDING.arbitrated), stored]]),
+    });
+    expect(result.current).toEqual({ status: "loading" });
+    await waitFor(() => {
+      expect(result.current).toEqual({ status: "ready", value: testOkMetaEvidence({ title: "Fresh title" }) });
+    });
+    expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
+    expect(core.loadMetaEvidence).toHaveBeenCalledWith(expect.objectContaining({ budgetMs: core.CASE_PAGE_BUDGET_MS, arbitrable: BINDING.arbitrated, disputeId: 9n }));
   });
 
   it("D-38: accepted results never go stale, failures stay 30 s, rejections none (A2)", () => {

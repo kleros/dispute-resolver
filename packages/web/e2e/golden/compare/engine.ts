@@ -161,8 +161,11 @@ function check(name: string, expected: unknown, actual: unknown, blocking = true
 
 type HighlightReader = (snapshot: CaseSnapshot) => unknown;
 
+/** The highlights compared as a value; `evidenceDisplayText` is checked with the rendered display (`evidenceDisplayChecks`). */
+type ValueHighlight = Exclude<keyof CaseHighlights, "evidenceDisplayText">;
+
 /** How each 04 §2 highlight is read from the new app's snapshot. */
-const HIGHLIGHT_READERS: Readonly<Record<keyof CaseHighlights, HighlightReader>> = {
+const HIGHLIGHT_READERS: Readonly<Record<ValueHighlight, HighlightReader>> = {
   compatibility: (s) => s.compatibility,
   family: (s) => s.family,
   titles: (s) => s.rulingOptions?.titles ?? null,
@@ -176,14 +179,31 @@ const HIGHLIGHT_READERS: Readonly<Record<keyof CaseHighlights, HighlightReader>>
   evidenceDisplay: (s) => s.evidenceDisplay !== null,
 };
 
+function isValueHighlight(name: keyof CaseHighlights): name is ValueHighlight {
+  return name !== "evidenceDisplayText";
+}
+
+/**
+ * 06 §5 item 2: an evidence display the case shows must render, not only be pointed at. The frame holds the document
+ * of its `src` (not the browser's error page) and, when the case names it, shows the item's text.
+ */
+function evidenceDisplayChecks(highlights: CaseHighlights, next: CaseSnapshot): CheckResult[] {
+  const display = next.evidenceDisplay;
+  if (highlights.evidenceDisplay !== true || display === null) return [];
+  const checks = [check("06 §5 item 2: the evidence display holds the document of its src", `${display.srcOrigin}${display.srcPath}`, display.rendered.documentUrl)];
+  const text = highlights.evidenceDisplayText;
+  if (text !== undefined) checks.push(check(`06 §5 item 2: the evidence display renders "${text}"`, true, display.rendered.text.includes(text)));
+  return checks;
+}
+
 /** The concrete values 04 §2 states for the case, checked on the new app, plus the arbitrable from the arbitrator. */
 export function checkHighlights(testCase: StableCase, next: CaseSnapshot): CheckResult[] {
   const checks = [check("arbitrable (04 §2 prefix)", testCase.arbitrable.toLowerCase(), next.arbitrable?.toLowerCase().slice(0, testCase.arbitrable.length) ?? null)];
   const highlights = testCase.highlights ?? {};
-  for (const name of Object.keys(highlights) as (keyof CaseHighlights)[]) {
+  for (const name of (Object.keys(highlights) as (keyof CaseHighlights)[]).filter(isValueHighlight)) {
     checks.push(check(name, highlights[name], HIGHLIGHT_READERS[name](next)));
   }
-  return checks;
+  return [...checks, ...evidenceDisplayChecks(highlights, next)];
 }
 
 function lowercase(address: string | null): string | null {

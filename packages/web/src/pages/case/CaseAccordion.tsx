@@ -29,6 +29,14 @@ function ExpandIndicator({ index, expanded, onExpandedChange }: ExpandIndicatorP
 const COLLAPSE_MS = 250;
 
 /**
+ * The body box joined to its header (A-08). The library pads the measured body wrapper with `p-4 md:p-8`; the negative
+ * margins cancel that padding inside the wrapper's border box, so the measured height still equals this box and nothing
+ * is clipped. The horizontal padding matches the header's text inset (`px-4 md:px-8`).
+ */
+const BODY_CLASS =
+  "-mx-4 -mt-4 -mb-4 md:-mx-8 md:-mt-8 md:-mb-8 rounded-b-base border border-t-0 border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground px-4 py-4 md:px-8 md:py-6";
+
+/**
  * The case page accordion (spec 5.11): its items all collapsed at first, one open at a time, over the library accordion.
  * A collapsed body stays mounted, so the parity hooks inside it remain readable (§12), but it is `hidden` once its
  * collapse animation ends: the library only shrinks it to zero height, which would leave its buttons and fields
@@ -59,11 +67,11 @@ export function CaseAccordion({ items }: { readonly items: readonly CaseAccordio
   }, []);
   return (
     <CustomAccordion
-      className="max-w-none"
+      className="max-w-none [&>div>button[aria-expanded=true]]:rounded-b-none"
       items={items.map((item, index) => ({
         title: <span className="text-base font-semibold text-klerosUIComponentsPrimaryText">{item.title}</span>,
         body: (
-          <div role="region" aria-label={item.title} hidden={!shown.includes(index)}>
+          <div role="region" aria-label={item.title} hidden={!shown.includes(index)} className={BODY_CLASS}>
             {item.body}
           </div>
         ),
