@@ -83,6 +83,16 @@ describe("persisted query cache (ARCHITECTURE.md §5.4)", () => {
     expect(restored.getQueryCache().getAll()).toHaveLength(0);
   });
 
+  it("P-25, D-13: the cache version is dr-cache-4, so entries persisted without a source are dropped", async () => {
+    expect(CACHE_VERSION).toBe("dr-cache-4");
+    const { source, ...withoutSource } = testOkMetaEvidence();
+    expect(source).toEqual({ kind: "locator", event: "not-read" });
+    const previousVersion = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: withoutSource }], "dr-cache-3"));
+    expect(previousVersion.getQueryCache().getAll()).toHaveLength(0);
+    const currentVersion = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: withoutSource }]));
+    expect(currentVersion.getQueryData(metaEvidenceKey)).toBeUndefined();
+  });
+
   it("D-13: a version bump removes the old blob from storage", async () => {
     const storage = createMemoryStorage({ [PERSISTED_CACHE_KEY]: blob([{ queryKey: queryKeys.courts(1), data: { ok: true, value: [] } }], "dr-cache-old") });
     await persistQueryClientRestore({ queryClient: new QueryClient(), ...createPersistOptions(storage) });

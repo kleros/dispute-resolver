@@ -2,6 +2,7 @@ import { createPublicClient, custom, encodeAbiParameters, encodeEventTopics, num
 import { erc1497Abi } from "../../abi";
 import type { Address, FetchInit, FetchResponse, Fetcher, Hex, ReadClient } from "../../types";
 import fixture from "../../evidence/__fixtures__/mainnet-1454-505.json";
+import gnosisFixture from "../../evidence/__fixtures__/gnosis-460-863-meta-evidence.json";
 
 /** A log as a JSON-RPC node returns it. */
 export interface RpcLog {
@@ -165,6 +166,26 @@ export function disputeLog(input: {
   };
 }
 
+/** A synthetic `MetaEvidence` log whose `_evidence` string is `uri`. */
+export function metaEvidenceLog(input: {
+  readonly arbitrable: Address;
+  readonly metaEvidenceId: bigint;
+  readonly uri: string;
+  readonly blockNumber: bigint;
+  readonly logIndex: number;
+}): RpcLog {
+  const topics = encodeEventTopics({ abi: erc1497Abi, eventName: "MetaEvidence", args: { _metaEvidenceID: input.metaEvidenceId } });
+  return {
+    ...LOG_DEFAULTS,
+    address: input.arbitrable,
+    topics: topics as Hex[],
+    data: encodeAbiParameters([{ type: "string" }], [input.uri]),
+    blockNumber: numberToHex(input.blockNumber),
+    transactionHash: syntheticTxHash(input.blockNumber, input.logIndex),
+    logIndex: numberToHex(input.logIndex),
+  };
+}
+
 function syntheticTxHash(blockNumber: bigint, logIndex: number): Hex {
   return numberToHex((blockNumber << 32n) + BigInt(logIndex), { size: 32 });
 }
@@ -215,4 +236,39 @@ export function recordedBodies(): Record<string, string> {
     {},
     ...RECORDED.disputes.map((dispute) => Object.fromEntries(Object.entries(dispute.documents).map(([uri, body]) => [`${RECORDED.gateway}${uri}`, body]))),
   ) as Record<string, string>;
+}
+
+/**
+ * The recorded Gnosis disputes 460, 431 and 863 (P-25), read at block 48,850,832
+ * (`__fixtures__/gnosis-460-863-meta-evidence.json`): each one's Dispute log and every MetaEvidence log of its ID.
+ */
+export const RECORDED_GNOSIS = {
+  readAtBlock: BigInt(gnosisFixture.readAtBlock),
+  arbitrator: gnosisFixture.arbitrator as Address,
+  scanFromBlock: BigInt(gnosisFixture.scanFromBlock),
+  disputes: gnosisFixture.disputes.map((dispute) => ({
+    disputeId: BigInt(dispute.disputeId),
+    arbitrable: dispute.arbitrable as Address,
+    metaEvidenceId: BigInt(dispute.metaEvidenceId),
+    disputeLogs: dispute.disputeLogs as RpcLog[],
+    metaEvidenceLogs: dispute.metaEvidenceLogs as RpcLog[],
+    timestamps: stringEntries(dispute.blockTimestamps) as Record<string, Hex>,
+  })),
+};
+
+/** One recorded Gnosis dispute by ID. */
+export function recordedGnosisDispute(disputeId: bigint): (typeof RECORDED_GNOSIS.disputes)[number] {
+  const dispute = RECORDED_GNOSIS.disputes.find((candidate) => candidate.disputeId === disputeId);
+  if (dispute === undefined) throw new Error(`Gnosis dispute ${String(disputeId)} is not recorded`);
+  return dispute;
+}
+
+/** A fake Gnosis node holding every recorded Dispute and MetaEvidence log and timestamp at the recorded head. */
+export function recordedGnosisNode(overrides: Partial<FakeNode> = {}): FakeNode {
+  return {
+    head: RECORDED_GNOSIS.readAtBlock,
+    logs: RECORDED_GNOSIS.disputes.flatMap((dispute) => [...dispute.disputeLogs, ...dispute.metaEvidenceLogs]),
+    timestamps: Object.assign({}, ...RECORDED_GNOSIS.disputes.map((dispute) => dispute.timestamps)) as Record<string, Hex>,
+    ...overrides,
+  };
 }

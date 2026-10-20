@@ -10,10 +10,17 @@ function fallbackOutcome(ruling: bigint, fallback: FallbackOutcomes): string | u
   return fallback[Number(ruling - 1n)];
 }
 
+/** Whether the options are a single-select question without titles, absent or empty (P-24). */
+function isTitleLessSelect(options: RulingOptions): boolean {
+  return options.type === "single-select" && (options.titles === undefined || options.titles.length === 0);
+}
+
 /**
  * The text of a ruling (spec 5.9): ruling 0 is the refused text; a hash question reads the ruling as 64 hex digits;
  * with ruling options it is reality-eth-lib's answer string for ruling − 1; without them it is the fallback outcome.
- * Anything that cannot be formatted reads as the ruling's decimal value. Never throws.
+ * A single-select without titles (absent or empty) whose label is empty reads as the ruling's decimal value (P-24);
+ * the library is asked first, so reserved answers keep its label (P-14). Anything that cannot be formatted reads as the
+ * ruling's decimal value. Never throws.
  */
 export function formatRuling(ruling: bigint, options: RulingOptions | null, fallback: FallbackOutcomes): string {
   if (ruling === 0n) return REFUSED_RULING_TEXT;
@@ -21,7 +28,9 @@ export function formatRuling(ruling: bigint, options: RulingOptions | null, fall
   if (!isUint256(ruling)) return decimal;
   if (options === null) return fallbackOutcome(ruling, fallback) ?? decimal;
   if (options.type === "hash") return toHexWord(ruling);
-  return answerString({ type: options.type, decimals: options.precision, outcomes: options.titles }, ruling - 1n) ?? decimal;
+  const label = answerString({ type: options.type, decimals: options.precision, outcomes: options.titles }, ruling - 1n);
+  if (label === "" && isTitleLessSelect(options)) return decimal;
+  return label ?? decimal;
 }
 
 /** The bytes of a uint256, big-endian, without leading zero bytes. */

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RunnerReplyMessage } from "../types";
-import { createFakeRunnerEnvironment, runRequest } from "../../test/runner";
+import { ACCEPTED, collectUntilSettled, createFakeRunnerEnvironment, runRequest } from "../../test/runner";
 import { bootstrapRunner } from "./bootstrap";
 import { evaluateInGlobalScope, runScriptInGlobalScope } from "./evaluate";
 
@@ -19,20 +18,19 @@ describe("runner page with the default script (spec §9.5)", () => {
   it("§7.2: the default script, whose getMetaEvidence is a const, resolves through the port", async () => {
     const fake = createFakeRunnerEnvironment();
     const channel = new MessageChannel();
-    const reply = new Promise<RunnerReplyMessage>((resolve) => {
-      channel.port1.onmessage = (event: MessageEvent<RunnerReplyMessage>) => {
-        resolve(event.data);
-      };
-    });
+    const replies = collectUntilSettled(channel.port1);
 
     bootstrapRunner({ ...fake.env, globals: globalThis, evaluate: evaluateInGlobalScope, runScript: runScriptInGlobalScope });
     fake.deliver({ ...fake.fromParent(runRequest({ scriptText: DEFAULT_SCRIPT })), ports: [channel.port2] });
 
-    await expect(reply).resolves.toEqual({
-      type: "dr-runner/result",
-      value: { arbitrableInterfaceURI: "https://resolve.kleros.io/interact/1650" },
-      jsonDuplicateKeys: false,
-    });
+    await expect(replies).resolves.toEqual([
+      ACCEPTED,
+      {
+        type: "dr-runner/result",
+        value: { arbitrableInterfaceURI: "https://resolve.kleros.io/interact/1650" },
+        jsonDuplicateKeys: false,
+      },
+    ]);
     channel.port1.close();
   });
 });

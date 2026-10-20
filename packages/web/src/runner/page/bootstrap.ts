@@ -1,5 +1,5 @@
 import type { ScriptParameters } from "@dispute-resolver/core";
-import { ERROR_MESSAGE_TYPE, RESULT_MESSAGE_TYPE } from "../protocol";
+import { ACCEPTED_MESSAGE_TYPE, ERROR_MESSAGE_TYPE, RESULT_MESSAGE_TYPE } from "../protocol";
 import type { ReplyPort, RunnerEnvironment, RunnerMessageEvent, RunnerReplyMessage, RunnerRequestMessage } from "../types";
 import { parseRunRequest } from "./request";
 import { installRpcRedirect } from "./rpcRedirect";
@@ -113,7 +113,8 @@ function run(env: RunnerEnvironment, { request, port }: AcceptedRun): void {
 
 /**
  * The runner page (ADR 0004, ARCHITECTURE.md §7.2): checks it is a sandboxed frame, accepts one run request from its
- * parent, defines the script-facing globals, installs the RPC redirect and, for Reality scripts, the duplicate-key
+ * parent, acknowledges it on the request's port (P-16; a refused request gets nothing, so no window learns whether a
+ * runner is alive, C4), defines the script-facing globals, installs the RPC redirect and, for Reality scripts, the duplicate-key
  * guard, evaluates the script and calls `getMetaEvidence()`. Results leave only through the request's port.
  */
 export function bootstrapRunner(env: RunnerEnvironment): void {
@@ -125,6 +126,7 @@ export function bootstrapRunner(env: RunnerEnvironment): void {
     if (acceptedRun === undefined) return;
     accepted = true;
     removeListener();
+    acceptedRun.port.postMessage({ type: ACCEPTED_MESSAGE_TYPE });
     run(env, acceptedRun);
   });
 }

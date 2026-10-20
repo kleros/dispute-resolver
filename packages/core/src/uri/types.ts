@@ -20,8 +20,9 @@ export type GatewayOrigin = `https://${string}`;
 export type AttachmentKind = "image" | "video" | "text" | "other";
 
 /**
- * An untrusted attachment or document reference made safe to show (A10, B19, D-32). A `link` is always an absolute
- * https URL (gateway URL for IPFS paths); anything else that is non-empty is shown as plain `text`.
+ * An untrusted attachment or document reference made safe to show (A10, B19, D-32, MC-5). A `link` is always an absolute
+ * https URL (the gateway URL for IPFS paths and for `http(s)://<host>/ipfs/<CID>` URLs); anything else that is non-empty is
+ * shown as plain `text`.
  */
 export type AttachmentLink =
   { readonly kind: "link"; readonly href: string; readonly label: string; readonly attachmentKind: AttachmentKind } | { readonly kind: "text"; readonly text: string };

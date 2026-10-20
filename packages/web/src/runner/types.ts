@@ -24,7 +24,7 @@ export interface IframeRunnerOptions {
 /** The one message the host posts to a runner frame, with one transferred `MessagePort` (ARCHITECTURE.md §7.2). */
 export interface RunnerRequestMessage {
   readonly type: "dr-runner/run";
-  readonly version: 1;
+  readonly version: 2;
   readonly scriptText: string;
   readonly params: ScriptParameters;
   /** Core's `JSON_DUPLICATE_KEY_GUARD` for `kind === "reality"` (A4), else `null`. */
@@ -32,9 +32,14 @@ export interface RunnerRequestMessage {
   readonly rpcRedirects: readonly RpcRedirectRule[];
 }
 
-/** What the runner page posts back, only through the transferred port (B1, D-05). */
+/**
+ * What the runner page posts back, only through the transferred port (B1, D-05): exactly one `accepted`, then at most
+ * one `result` or `error` (P-16).
+ */
 export type RunnerReplyMessage =
-  { readonly type: "dr-runner/result"; readonly value: unknown; readonly jsonDuplicateKeys: boolean } | { readonly type: "dr-runner/error"; readonly message: string };
+  | { readonly type: "dr-runner/accepted" }
+  | { readonly type: "dr-runner/result"; readonly value: unknown; readonly jsonDuplicateKeys: boolean }
+  | { readonly type: "dr-runner/error"; readonly message: string };
 
 /** The end of a run's `MessagePort` the runner page keeps: results leave the page only through it (B1, D-05). */
 export interface ReplyPort {

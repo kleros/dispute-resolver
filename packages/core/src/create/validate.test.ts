@@ -239,10 +239,34 @@ describe("validateCreateInput: parties (D-08, B20)", () => {
   it("create-01 D-08/B20: the EIP-55 checksum is enforced, so a mistyped digit or a wrong case pattern is rejected", () => {
     const wrongDigit = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAfd";
     const wrongCase = "0x5AAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
-    const allUppercase = `0x${ALICE.slice(2).toUpperCase()}`;
-    for (const address of [wrongDigit, wrongCase, allUppercase]) {
+    for (const address of [wrongDigit, wrongCase]) {
       expect(errors(draft({ parties: [{ alias: "Alice", address }] }))).toEqual({ parties: ["invalid-address"] });
     }
+  });
+
+  it("MC-8: an all-uppercase address is accepted as EIP-55's unchecksummed form and stored lowercase", () => {
+    expect(accepted(draft({ parties: [{ alias: "Alice", address: `0x${ALICE.slice(2).toUpperCase()}` }] })).aliases).toEqual({ [ALICE.toLowerCase()]: "Alice" });
+  });
+
+  it("MC-8: a 0X prefix and a mixed-case address with a wrong checksum stay rejected", () => {
+    const upperPrefix = `0X${ALICE.slice(2).toUpperCase()}`;
+    const wrongCase = "0x5AAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
+    for (const address of [upperPrefix, wrongCase]) {
+      expect(errors(draft({ parties: [{ alias: "Alice", address }] }))).toEqual({ parties: ["invalid-address"] });
+    }
+  });
+
+  it("MC-8, B20: an all-uppercase address duplicates its lowercase form", () => {
+    expect(
+      errors(
+        draft({
+          parties: [
+            { alias: "Alice", address: ALICE.toLowerCase() },
+            { alias: "Also Alice", address: `0x${ALICE.slice(2).toUpperCase()}` },
+          ],
+        }),
+      ),
+    ).toEqual({ parties: [undefined, "duplicate-address"] });
   });
 
   it("D-08: a lowercase or checksummed address is accepted, and surrounding whitespace is dropped", () => {

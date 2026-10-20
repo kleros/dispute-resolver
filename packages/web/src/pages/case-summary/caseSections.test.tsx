@@ -261,6 +261,12 @@ describe("DecisionAlert", () => {
     expect(within(decisionAlert("Winner")).getByText("Won by jury decision")).toBeInTheDocument();
   });
 
+  it("P-24: the decision alert names a title-less single-select ruling by its number", () => {
+    const metaEvidence = sectionReady(testOkMetaEvidence({ rulingOptions: { type: "single-select" } }));
+    renderSection(DecisionAlert, caseDispute({ period: 3, metaEvidence, details: { currentRuling: { ok: true, value: 2n } } }));
+    expect(within(decisionAlert("Jury decision")).getByText("2")).toBeInTheDocument();
+  });
+
   it("D-36: a failed current-ruling read shows the decision as unavailable", () => {
     renderSection(DecisionAlert, caseDispute({ period: 3, details: { currentRuling: { ok: false, error: { code: "rpc-error", message: "currentRuling could not be read." } } } }));
     expect(screen.getByText("Decision unavailable")).toBeInTheDocument();

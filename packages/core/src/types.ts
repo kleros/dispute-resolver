@@ -80,10 +80,15 @@ export interface ScriptRunRequest {
   readonly signal?: AbortSignal;
 }
 
-/** The runner's answer. It never rejects: a script that throws, never reports or is aborted settles as `failed`. */
+/**
+ * The runner's answer. It never rejects: a script that throws, never reports or is aborted settles as `failed`. A
+ * `runner-error` means the runner cannot run this request (refused parameters, no frame, a malformed reply) and is never
+ * retried; `not-started` means the runner did not acknowledge the run in time, which a slow connection causes as well as
+ * a blocker, so core retries it like any other transient failure (P-16, D-38).
+ */
 export type ScriptResult =
   | { readonly status: "ok"; readonly value: unknown; readonly jsonDuplicateKeys: boolean }
-  | { readonly status: "failed"; readonly reason: "timeout" | "aborted" | "script-error" | "runner-error"; readonly message: string };
+  | { readonly status: "failed"; readonly reason: "timeout" | "aborted" | "script-error" | "not-started" | "runner-error"; readonly message: string };
 
 /** Implemented in `web` by the runner host (ADR 0004). Core only calls it. */
 export interface ScriptRunner {

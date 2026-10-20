@@ -42,7 +42,7 @@ export {
   parseCachedMetaEvidenceResult,
   realityNotice,
 } from "./metaEvidence";
-export { buildEvidenceDocument, evidenceScanStart, loadEvidence, readDisputeEvent } from "./evidence";
+export { buildEvidenceDocument, evidenceScanStart, loadEvidence, readDisputeEvent, readMetaEvidenceEvent } from "./evidence";
 export {
   buildDisputeView,
   deriveCompatibility,

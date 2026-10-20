@@ -15,9 +15,12 @@ export const SAMPLE_PARAMS: RunnerRequestMessage["params"] = {
 
 export const SAMPLE_REDIRECTS: readonly RpcRedirectRule[] = [{ chainId: 1, host: "mainnet.infura.io", pathPrefix: "/v3/", target: "https://rpc.example/mainnet" }];
 
+/** The fixed acknowledgement the page posts on the port as soon as it accepts a run (P-16). */
+export const ACCEPTED: RunnerReplyMessage = { type: "dr-runner/accepted" };
+
 /** A well-formed request with one script; override any field. */
 export function runRequest(overrides: Partial<RunnerRequestMessage> = {}): RunnerRequestMessage {
-  return { type: "dr-runner/run", version: 1, scriptText: "script", params: SAMPLE_PARAMS, guardSource: null, rpcRedirects: [], ...overrides };
+  return { type: "dr-runner/run", version: 2, scriptText: "script", params: SAMPLE_PARAMS, guardSource: null, rpcRedirects: [], ...overrides };
 }
 
 /** What the fake runner globals hold after a run: the script-facing globals and whatever the "script" defined. */
@@ -170,5 +173,16 @@ export function createFakeRunnerEnvironment(options: FakeRunnerEnvironmentOption
 export async function flushMicrotasks(): Promise<void> {
   await new Promise((resolve) => {
     setTimeout(resolve, 0);
+  });
+}
+
+/** Every message `port` receives, in order, up to and including the first one that is not the acknowledgement (P-16). */
+export function collectUntilSettled(port: MessagePort): Promise<RunnerReplyMessage[]> {
+  const messages: RunnerReplyMessage[] = [];
+  return new Promise((resolve) => {
+    port.onmessage = (event: MessageEvent<RunnerReplyMessage>) => {
+      messages.push(event.data);
+      if (event.data.type !== "dr-runner/accepted") resolve(messages);
+    };
   });
 }

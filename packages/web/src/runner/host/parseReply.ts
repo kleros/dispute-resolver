@@ -1,6 +1,6 @@
 import type { ScriptResult } from "@dispute-resolver/core";
 import { z } from "zod";
-import { ERROR_MESSAGE_TYPE, RESULT_MESSAGE_TYPE } from "../protocol";
+import { ACCEPTED_MESSAGE_TYPE, ERROR_MESSAGE_TYPE, RESULT_MESSAGE_TYPE } from "../protocol";
 
 /** Untrusted text from a script is bounded before it becomes part of a message. */
 const MAX_SCRIPT_MESSAGE_LENGTH = 300;
@@ -15,19 +15,30 @@ export function failedResult(reason: FailureReason, message: string): ScriptResu
   return { status: "failed", reason, message };
 }
 
-const replySchema = z.discriminatedUnion("type", [
+// The acknowledgement's schema reads no field but its type: anything else it carries is dropped here (P-16, B1).
+const portMessageSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal(ACCEPTED_MESSAGE_TYPE) }),
   z.object({ type: z.literal(RESULT_MESSAGE_TYPE), value: z.unknown(), jsonDuplicateKeys: z.boolean() }),
   z.object({ type: z.literal(ERROR_MESSAGE_TYPE), message: z.string() }),
 ]);
 
+/** One message from a run's port: the page's acknowledgement, which settles nothing, or the run's outcome (P-16). */
+export type PortMessage = { readonly kind: "acknowledged" } | { readonly kind: "settled"; readonly result: ScriptResult };
+
+/** A port message that is not one of the three the page sends, or one the port could not deserialize. */
+export const MALFORMED_REPLY = failedResult("runner-error", "The script runner sent a malformed reply.");
+
+const MALFORMED: PortMessage = { kind: "settled", result: MALFORMED_REPLY };
+
 /**
- * What one reply from a run's port means (ARCHITECTURE.md §7.3 step 5). The value stays `unknown`: core validates it
- * after the merge (A23, C13).
+ * What one message from a run's port means (ARCHITECTURE.md §7.3 step 5). A result's value stays `unknown`: core
+ * validates it after the merge (A23, C13).
  */
-export function parseReply(data: unknown): ScriptResult {
-  const parsed = replySchema.safeParse(data);
-  if (!parsed.success) return failedResult("runner-error", "The script runner sent a malformed reply.");
-  const reply = parsed.data;
-  if (reply.type === RESULT_MESSAGE_TYPE) return okResult(reply.value, reply.jsonDuplicateKeys);
-  return failedResult("script-error", `The dynamic script failed: ${reply.message.slice(0, MAX_SCRIPT_MESSAGE_LENGTH)}`);
+export function parsePortMessage(data: unknown): PortMessage {
+  const parsed = portMessageSchema.safeParse(data);
+  if (!parsed.success) return MALFORMED;
+  const message = parsed.data;
+  if (message.type === ACCEPTED_MESSAGE_TYPE) return { kind: "acknowledged" };
+  if (message.type === RESULT_MESSAGE_TYPE) return { kind: "settled", result: okResult(message.value, message.jsonDuplicateKeys) };
+  return { kind: "settled", result: failedResult("script-error", `The dynamic script failed: ${message.message.slice(0, MAX_SCRIPT_MESSAGE_LENGTH)}`) };
 }

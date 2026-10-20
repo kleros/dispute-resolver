@@ -50,7 +50,7 @@ export type CreateFieldErrorCode =
   | "required"
   | "not-an-integer"
   | "out-of-range" // votes < 1, options outside 2..32
-  | "invalid-address" // not `isAddress` (D-08)
+  | "invalid-address" // not all-lowercase, all-uppercase or EIP-55 checksummed `0x` + 40 hex (D-08, create-01, MC-8)
   | "duplicate-address"
   | "alias-without-address"
   | "address-without-alias"

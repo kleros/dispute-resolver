@@ -89,12 +89,11 @@ describe("Create form draft", () => {
     expect(validation.ok ? null : validation.errors.parties).toEqual([undefined, "duplicate-address"]);
   });
 
-  it("MC-8: an all-uppercase party address is rejected as invalid, as core does", () => {
+  it("MC-8: an all-uppercase party address is accepted, as core does", () => {
     const [row] = filled().parties;
     if (row === undefined) throw new Error("one row expected");
     const form = setParty(setParty(filled(), row.key, "alias", "Upper"), row.key, "address", "0xFB6916095CA1DF60BB79CE92CE3EA74C37C5D359");
-    const validation = validateCreateInput(toDraft(form));
-    expect(validation.ok ? null : validation.errors.parties).toEqual(["invalid-address"]);
+    expect(validInput(form).aliases).toEqual({ "0xfb6916095ca1df60bb79ce92ce3ea74c37c5d359": "Upper" });
   });
 
   it("B16, WN-2: the uploaded path is normalized before it enters the draft, and a path that is not content-addressed is refused", () => {

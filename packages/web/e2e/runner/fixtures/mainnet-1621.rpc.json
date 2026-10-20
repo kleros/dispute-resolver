@@ -1,5 +1,5 @@
 {
-  "description": "JSON-RPC answers the case page of mainnet dispute 1621 (poh.eth governor) read, keyed by method and params, recorded from the chain-1 read RPC on 2026-10-15 with eth_blockNumber pinned to the block below. Used by e2e/runner/case-page-script.spec.ts; the meta-evidence, the script and every other network dependency are served by the test itself.",
+  "description": "JSON-RPC answers the case page of mainnet dispute 1621 (poh.eth governor) read, keyed by method and params, recorded from the chain-1 read RPC on 2026-10-15 with eth_blockNumber pinned to the block below. Used by e2e/runner/case-page-script.spec.ts; the meta-evidence, the script and every other network dependency are served by the test itself. P-25: the governor's MetaEvidence(0) eth_getLogs answer was added on 2026-10-20, read from the chain-1 read RPC at readAtBlock by packages/core/scripts/record-meta-evidence-events.ts.",
   "chainId": 1,
   "disputeId": "1621",
   "readAtBlock": 26198271,
@@ -789,6 +789,31 @@
       "method": "eth_getStorageAt",
       "params": ["0x327a29fce0a6490e4236240be176daa282eccfdf", "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc", "latest"],
       "result": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "method": "eth_getLogs",
+      "params": [
+        {
+          "address": "0x327a29fce0a6490e4236240be176daa282eccfdf",
+          "topics": ["0x61606860eb6c87306811e2695215385101daab53bd6ab4e9f9049aead9363c7d", "0x0000000000000000000000000000000000000000000000000000000000000000"],
+          "fromBlock": "0x6f7213",
+          "toBlock": "0x18fc0ff"
+        }
+      ],
+      "result": [
+        {
+          "address": "0x327a29fce0a6490e4236240be176daa282eccfdf",
+          "blockHash": "0xc12354870d41664e5148fde82159c3aa9decd517243a84f5c05c58ed880e2f52",
+          "blockNumber": "0xb8dc3d",
+          "blockTimestamp": "0x605de7b3",
+          "data": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000462f697066732f516d5a33436d6e697038626d464e727575547543647850796d456a794b395663514579663262654459636148614b2f6d65746145766964656e63652e6a736f6e",
+          "logIndex": "0x11d",
+          "removed": false,
+          "topics": ["0x61606860eb6c87306811e2695215385101daab53bd6ab4e9f9049aead9363c7d", "0x0000000000000000000000000000000000000000000000000000000000000000"],
+          "transactionHash": "0xbe7ddb691bafa25af50860ab0b3e71d4ef569d0a5cb9c8e97724c893901043ac",
+          "transactionIndex": "0x119"
+        }
+      ]
     }
   ]
 }

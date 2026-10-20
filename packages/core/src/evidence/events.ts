@@ -5,9 +5,10 @@ import { toRegistryAddress } from "../registry";
 import { describeError, getLogsChunked } from "../rpc";
 import type { Address, Outcome, ReadClient } from "../types";
 import { fail, succeed } from "./outcome";
-import type { DisputeEventResult, EvidenceLog } from "./types";
+import type { DisputeEventResult, EvidenceLog, MetaEvidenceEventResult } from "./types";
 
 const DISPUTE_EVENT = getAbiItem({ abi: erc1497Abi, name: "Dispute" });
+const META_EVIDENCE_EVENT = getAbiItem({ abi: erc1497Abi, name: "MetaEvidence" });
 const EVIDENCE_EVENT = getAbiItem({ abi: erc1497Abi, name: "Evidence" });
 
 interface ScanRequest {
@@ -74,6 +75,48 @@ export async function readDisputeEvent(request: {
     });
   } catch (error) {
     return fail("rpc-error", `Could not read the Dispute event: ${describeError(error)}`);
+  }
+}
+
+/** Whether `log` was emitted after `other`: a later block, or a later log index in the same block. */
+function isLater(log: { readonly blockNumber: bigint; readonly logIndex: number }, other: { readonly blockNumber: bigint; readonly logIndex: number }): boolean {
+  return log.blockNumber === other.blockNumber ? log.logIndex > other.logIndex : log.blockNumber > other.blockNumber;
+}
+
+/**
+ * The ERC-1497 `MetaEvidence(_metaEvidenceID)` event of an arbitrable (P-25): the URI the arbitrable recorded for the
+ * dispute's meta-evidence ID. Two passes: `[fromBlock, head]`, then, only when that finds nothing and `fromBlock > 0`,
+ * `[0, fromBlock - 1]`, because the emission carries no arbitrator and can precede the arbitrator's deployment. Both are
+ * chunked where the RPC caps ranges. Several logs are not ambiguous: the latest by block and log index wins, and
+ * `emissions` counts them; a latest log whose `_evidence` does not decode is `invalid-data`, with no fallback to an older
+ * emission. Never rejects: a failed or aborted read is `rpc-error` (D-36).
+ */
+export async function readMetaEvidenceEvent(request: {
+  readonly client: ReadClient;
+  readonly arbitrable: Address;
+  readonly metaEvidenceId: bigint;
+  readonly fromBlock: bigint;
+  readonly signal?: AbortSignal;
+}): Promise<Outcome<MetaEvidenceEventResult>> {
+  const { client, signal } = request;
+  const scan = (fromBlock: bigint, toBlock: bigint) =>
+    getLogsChunked(client, { address: request.arbitrable, event: META_EVIDENCE_EVENT, args: { _metaEvidenceID: request.metaEvidenceId }, fromBlock, toBlock }, { signal });
+  try {
+    signal?.throwIfAborted();
+    const head = await client.getBlockNumber();
+    let logs = await scan(request.fromBlock, head);
+    if (logs.length === 0 && request.fromBlock > 0n) logs = await scan(0n, request.fromBlock - 1n);
+    const [first, ...rest] = logs;
+    if (first === undefined) return succeed({ status: "not-found" });
+    const latest = rest.reduce((current, log) => (isLater(log, current) ? log : current), first);
+    const uri = latest.args._evidence;
+    if (uri === undefined) return fail("invalid-data", "The latest MetaEvidence event's data does not decode.");
+    return succeed({
+      status: "found",
+      event: { uri, blockNumber: latest.blockNumber, logIndex: latest.logIndex, transactionHash: latest.transactionHash, emissions: logs.length },
+    });
+  } catch (error) {
+    return fail("rpc-error", `Could not read the MetaEvidence event: ${describeError(error)}`);
   }
 }
 

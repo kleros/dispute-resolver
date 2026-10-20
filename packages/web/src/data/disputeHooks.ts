@@ -5,7 +5,6 @@ import {
   loadEvidence,
   lookupDispute,
   readDisputeDetails,
-  readDisputeEvent,
   type Address,
   type ArbitratedBinding,
   type ArbitratorDispute,
@@ -16,12 +15,12 @@ import {
   type EvidenceList,
   type FamilyDetection,
   type MetaEvidenceResult,
-  type Outcome,
 } from "@dispute-resolver/core";
-import { skipToken, useQuery } from "@tanstack/react-query";
+import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { STALE_TIME_MS } from "./constants";
 import { useCoreDeps } from "./context";
 import { metaEvidenceQuery } from "./metaEvidenceQuery";
+import { disputeEventQuery, onChainMetaEvidenceReader } from "./onChainMetaEvidence";
 import { IDLE_KEY, queryKeys } from "./queryKeys";
 import { LOADING, fromOutcome, fromQuery, noRpcError, ready, unavailable, unavailableFrom } from "./sectionData";
 import type { MetaEvidenceBudget, SectionData } from "./types";
@@ -46,10 +45,7 @@ export function useFamily(chainId: ChainId, arbitrable: Address | undefined): Se
   const client = deps.getReadClient(chainId);
   const query = useQuery({
     queryKey: arbitrable === undefined ? IDLE_KEY : queryKeys.family(chainId, arbitrable),
-    queryFn:
-      arbitrable === undefined || client === undefined
-        ? skipToken
-        : () => detectFamily({ client, chainId, arbitrable, registry: deps.registry, cache: deps.familyCache }),
+    queryFn: arbitrable === undefined || client === undefined ? skipToken : () => detectFamily({ client, chainId, arbitrable, registry: deps.registry, cache: deps.familyCache }),
     staleTime: Number.POSITIVE_INFINITY,
     retry: 1,
   });
@@ -61,48 +57,30 @@ export function useFamily(chainId: ChainId, arbitrable: Address | undefined): Se
 /**
  * The meta-evidence of the dispute (spec §9.1) with the case page's or the Ongoing page's budget (D-37, D-38). The
  * case page loads it uncached (spec §9.1, §6.5): it runs the pipeline on every mount and shows no stored result,
- * whatever its status, until that run settles. Only the Ongoing cards are served from the stored results.
+ * whatever its status, until that run settles. Only the Ongoing cards are served from the stored results. The case page
+ * passes the on-chain reader (P-25), whose `MetaEvidence` event URI wins over the locator's when it is found.
  */
 export function useMetaEvidence(chainId: ChainId, binding: ArbitratedBinding | undefined, budget: MetaEvidenceBudget): SectionData<MetaEvidenceResult> {
   const deps = useCoreDeps();
+  const client = useQueryClient();
   const target = binding === undefined ? undefined : { disputeId: binding.disputeId, arbitrable: binding.arbitrated };
   const uncached = budget === "case";
+  const onChain = uncached && binding !== undefined ? onChainMetaEvidenceReader(client, deps, chainId, binding) : undefined;
   const query = useQuery({
-    ...metaEvidenceQuery(deps, chainId, target, budget),
+    ...metaEvidenceQuery(deps, chainId, target, budget, onChain),
     refetchOnMount: uncached ? "always" : true,
   });
   if (binding === undefined || (uncached && !query.isFetchedAfterMount)) return LOADING;
   return fromQuery(query, ready);
 }
 
-/** The ERC-1497 `Dispute` event: never goes stale once found. */
+/** The ERC-1497 `Dispute` event: never goes stale once found. Shared with the case page's on-chain reader (P-25). */
 export function useDisputeEvent(chainId: ChainId, binding: ArbitratedBinding | undefined): SectionData<DisputeEventResult> {
   const deps = useCoreDeps();
-  const client = deps.getReadClient(chainId);
-  const chain = getChain(chainId);
-  const query = useQuery({
-    queryKey: binding === undefined ? IDLE_KEY : queryKeys.disputeEvent(chainId, binding.disputeId, binding.arbitrated),
-    queryFn:
-      binding === undefined || client === undefined || chain === undefined
-        ? skipToken
-        : ({ signal }) =>
-            readDisputeEvent({
-              client,
-              arbitrable: binding.arbitrated,
-              arbitrator: binding.arbitrator,
-              disputeId: binding.disputeId,
-              fromBlock: evidenceScanStart(chain),
-              signal,
-            }),
-    staleTime: (current) => (isFoundEvent(current.state.data) ? Number.POSITIVE_INFINITY : STALE_TIME_MS.disputeEventPending),
-  });
+  const query = useQuery(disputeEventQuery(deps, chainId, binding));
   if (binding === undefined) return LOADING;
-  if (client === undefined || chain === undefined) return unavailableFrom(noRpcError(chainId));
+  if (deps.getReadClient(chainId) === undefined || getChain(chainId) === undefined) return unavailableFrom(noRpcError(chainId));
   return fromQuery(query, fromOutcome);
-}
-
-function isFoundEvent(data: Outcome<DisputeEventResult> | undefined): boolean {
-  return data?.ok === true && data.value.status === "found";
 }
 
 /** Why the evidence of a dispute cannot be listed without its `Dispute` event (D-36: say so instead of an empty list). */
@@ -155,12 +133,16 @@ export interface FoundDispute {
  * Per-dispute arbitrator reads (spec §5.3 step 3, D-11). `found` is `undefined` until the caller has settled the
  * family (`undefined` when detection failed) and the Dispute-event block (`null` when there is none). Never persisted.
  */
-export function useDisputeDetails(chainId: ChainId, found: FoundDispute | undefined, family: FamilyDetection | undefined, disputeEventBlock: bigint | null): SectionData<DisputeReads> {
+export function useDisputeDetails(
+  chainId: ChainId,
+  found: FoundDispute | undefined,
+  family: FamilyDetection | undefined,
+  disputeEventBlock: bigint | null,
+): SectionData<DisputeReads> {
   const deps = useCoreDeps();
   const query = useQuery({
     queryKey: found === undefined ? IDLE_KEY : queryKeys.details(chainId, found.dispute.id, family?.writeFamily ?? "unknown", disputeEventBlock),
-    queryFn:
-      found === undefined ? skipToken : ({ signal }) => readDisputeDetails({ chainId, client: deps.getReadClient(chainId), signal }, found, family, disputeEventBlock),
+    queryFn: found === undefined ? skipToken : ({ signal }) => readDisputeDetails({ chainId, client: deps.getReadClient(chainId), signal }, found, family, disputeEventBlock),
     staleTime: STALE_TIME_MS.details,
   });
   return found === undefined ? LOADING : fromQuery(query, ready);

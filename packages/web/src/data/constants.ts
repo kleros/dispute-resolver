@@ -3,9 +3,10 @@
  * schema or a persisted shape changes: a restored cache whose version differs is discarded whole. Version 2: core reads
  * `rulingOptions.precision` differently and drops trailing empty option descriptions (P-09), and a meta-evidence result
  * restored from version 1 would keep the old reading. Version 3: core reads a hexadecimal `precision` (`"0x12"`) in base
- * 16, as reality-eth-lib does, where version 2 stored 0.
+ * 16, as reality-eth-lib does, where version 2 stored 0. Version 4: an accepted meta-evidence carries the `source` that
+ * decided it (P-25), and the locator's wrong answers stored under version 3 (Gnosis 460) are dropped.
  */
-export const CACHE_VERSION = "dr-cache-3";
+export const CACHE_VERSION = "dr-cache-4";
 
 /** localStorage key of the persisted query cache (ARCHITECTURE.md §5.4). */
 export const PERSISTED_CACHE_KEY = "dr-query-cache";

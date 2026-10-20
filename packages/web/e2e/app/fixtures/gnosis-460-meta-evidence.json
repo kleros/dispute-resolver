@@ -1,0 +1,91 @@
+{
+  "description": "Gnosis dispute 460 (ArbitrableProxy, local meta-evidence ID 84) for P-25: its raw Dispute and MetaEvidence(84) logs read from the Gnosis read RPC on 2026-10-20 with the head at readAtBlock, the two meta-evidence files read from https://cdn.kleros.link the same day (the chain's /ipfs/QmbtSnH8BB3cgDLwtY6aT7fggnzhyEMVHExqsiVPjBxmcz/metaEvidence.json and the API's /ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaEvidence.json), and the meta-evidence API's answer of that day (locator). The default script both files name is answered 404, so the files render without it. The spec answers eth_getLogs by topic from logs and builds every other read itself.",
+  "chainId": 100,
+  "disputeId": "460",
+  "readAtBlock": 48850832,
+  "arbitrable": "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
+  "logs": {
+    "dispute": [
+      {
+        "address": "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
+        "topics": [
+          "0x74baab670a4015ab2f1b467c5252a96141a2573f2908e58a92081e80d3cfde3d",
+          "0x0000000000000000000000009c1da9a04925bdfdedf0f6421bc7eea8305f9002",
+          "0x00000000000000000000000000000000000000000000000000000000000001cc"
+        ],
+        "data": "0x00000000000000000000000000000000000000000000000000000000000000540000000000000000000000000000000000000000000000000000000000000054",
+        "blockNumber": "0x2650cdc",
+        "transactionHash": "0x58c509e01def3dac704b44321147baa70478fb07974b874ca71182b681e82a9b",
+        "transactionIndex": "0x1",
+        "blockHash": "0x948584b58730010a25b6694f2eaf8f7554c1c1e9649c44fe3958a885c4f8466e",
+        "logIndex": "0x4",
+        "blockTimestamp": "0x682dee85",
+        "removed": false
+      }
+    ],
+    "metaEvidence": [
+      {
+        "address": "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
+        "topics": ["0x61606860eb6c87306811e2695215385101daab53bd6ab4e9f9049aead9363c7d", "0x0000000000000000000000000000000000000000000000000000000000000054"],
+        "data": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000462f697066732f516d6274536e48384242336367444c777459366154376667676e7a6879454d5648457871736956506a42786d637a2f6d65746145766964656e63652e6a736f6e0000000000000000000000000000000000000000000000000000",
+        "blockNumber": "0x2650cdc",
+        "transactionHash": "0x58c509e01def3dac704b44321147baa70478fb07974b874ca71182b681e82a9b",
+        "transactionIndex": "0x1",
+        "blockHash": "0x948584b58730010a25b6694f2eaf8f7554c1c1e9649c44fe3958a885c4f8466e",
+        "logIndex": "0x3",
+        "blockTimestamp": "0x682dee85",
+        "removed": false
+      }
+    ]
+  },
+  "blockTimestamps": {
+    "0x2650cdc": "0x682dee85"
+  },
+  "calls": [],
+  "locator": {
+    "metaEvidenceUri": "/ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaEvidence.json"
+  },
+  "files": [
+    {
+      "path": "/ipfs/QmbtSnH8BB3cgDLwtY6aT7fggnzhyEMVHExqsiVPjBxmcz/metaEvidence.json",
+      "status": 200,
+      "body": {
+        "title": "DAI token compliance Review ",
+        "category": "",
+        "description": "",
+        "aliases": {},
+        "question": "Does the DAI stablecoin meet all the requirements for inclusion in the Token Registry?",
+        "rulingOptions": {
+          "type": "single-select",
+          "titles": ["Yes, Accept DAI", "No, Reject DAI"],
+          "descriptions": []
+        },
+        "fileURI": "",
+        "dynamicScriptURI": "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj"
+      }
+    },
+    {
+      "path": "/ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaEvidence.json",
+      "status": 200,
+      "body": {
+        "title": "¿Debería la empresa pagar la compensación exigida por el usuario?",
+        "category": "",
+        "description": "",
+        "aliases": {},
+        "question": "¿Debería la empresa pagar la compensación exigida por el usuario?",
+        "rulingOptions": {
+          "type": "single-select",
+          "titles": ["Si", "No."],
+          "descriptions": ["Compensar al usuario.", "No compensar al usuario."]
+        },
+        "fileURI": "/ipfs/QmWuXCDoL6Vks4WtPu9y18wqmrq2JMNmL6JZUStunQjQmc/PoliÌtica de InterpretacioÌn de Disputas Lemon.pdf",
+        "dynamicScriptURI": "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj"
+      }
+    },
+    {
+      "path": "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj",
+      "status": 404,
+      "body": null
+    }
+  ]
+}

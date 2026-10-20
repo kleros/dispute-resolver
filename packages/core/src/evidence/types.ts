@@ -15,6 +15,20 @@ export interface DisputeEvent {
 export type DisputeEventResult =
   { readonly status: "found"; readonly event: DisputeEvent } | { readonly status: "not-found" } | { readonly status: "ambiguous"; readonly count: number };
 
+/** The ERC-1497 `MetaEvidence` event of an arbitrable for one meta-evidence ID: its latest emission (P-25). */
+export interface MetaEvidenceEvent {
+  /** The raw, untrusted `_evidence` string; content addressing is checked by the meta-evidence pipeline (A2). */
+  readonly uri: string;
+  readonly blockNumber: bigint;
+  readonly logIndex: number;
+  readonly transactionHash: Hex;
+  /** How many `MetaEvidence` logs the arbitrable emitted for this ID; the latest one is `uri` (MODULES.md). */
+  readonly emissions: number;
+}
+
+/** Several emissions of one ID are not ambiguous: the latest by block and log index wins (P-25). */
+export type MetaEvidenceEventResult = { readonly status: "found"; readonly event: MetaEvidenceEvent } | { readonly status: "not-found" };
+
 /** One raw ERC-1497 `Evidence` log, before its JSON is fetched. */
 export interface EvidenceLog {
   readonly evidenceUri: string;

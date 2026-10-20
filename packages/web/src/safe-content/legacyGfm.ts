@@ -15,8 +15,10 @@
  * - a link never holds a link: a literal URL is read before the syntax inside it, and link syntax that CommonMark read
  *   inside a link's label or an undefined reference's (an autolink in a link's text, a link in emphasis that a literal
  *   URL takes in) is text, as remark-parse 5 read no link inside a link.
- * A character written as a backslash escape or a character reference is never syntax. Links made here still pass
- * through `urlTransform`, so the A11 allowlist applies to them.
+ * A character written as a backslash escape or a character reference is never syntax. The table row test, like
+ * remark-parse 5's raw-source rule, reads the line as written: a pipe written as a character reference is no pipe; one
+ * written as a backslash escape still makes the row. Links made here still pass through `urlTransform`, so the A11
+ * allowlist applies to them.
  */
 
 interface MarkdownPoint {
@@ -36,10 +38,13 @@ interface MarkdownNode {
 
 type TableAlign = "left" | "right" | "center" | null;
 
+/** Where a character of a text value came from: written as itself, as a backslash escape or as a character reference. */
+type CharacterSource = "literal" | "backslash" | "reference";
+
 interface Context {
   readonly source: string;
-  /** Per text node, which characters came from a backslash escape or a character reference. */
-  readonly escaped: WeakMap<MarkdownNode, readonly boolean[]>;
+  /** Per text node, where each character came from: itself, a backslash escape or a character reference. */
+  readonly escaped: WeakMap<MarkdownNode, readonly CharacterSource[]>;
   /** Per inline node, the summary of its source. */
   readonly summaries: WeakMap<MarkdownNode, Readonly<SourceSummary>>;
   /** The nodes whose content is still to be read, each with the way to read it (`readInline`). */
@@ -54,6 +59,9 @@ interface Unread {
 const WHITESPACE = /\s/;
 const ASCII_PUNCTUATION = /[!-/:-@[-`{-~]/;
 const CHARACTER_REFERENCE = /^&(?:#\d{1,7}|#[Xx][\dA-Fa-f]{1,6}|[A-Za-z][\dA-Za-z]{1,31});/;
+/** The pipe's code point, and the named character references that decode to it. */
+const PIPE_CODE = 0x7c;
+const PIPE_REFERENCE_NAMES = new Set(["vert", "verbar", "VerticalLine"]);
 const TASK_MARKER = /^\[([\t xX])\][\t ]/;
 const URL_PROTOCOLS = ["http://", "https://", "mailto:"] as const;
 const MAILTO = "mailto:";
@@ -67,6 +75,11 @@ const LINE_PREFIX = new Set([" ", "\t", ">"]);
  * unknown (one this plugin made).
  */
 const NODE_CHARACTER = "\uFFFC";
+
+/** A character written as a backslash escape or a character reference, which is never syntax. */
+function isEscaped(source: CharacterSource | undefined): boolean {
+  return source === "backslash" || source === "reference";
+}
 
 function isWhitespace(character: string): boolean {
   return character !== "" && WHITESPACE.test(character);
@@ -102,9 +115,9 @@ function referenceLength(value: string, at: number, source: string, resume: numb
 }
 
 interface AlignedCharacters {
-  /** How many characters of the value this step covers, and whether they were escaped. */
+  /** How many characters of the value this step covers, and where they came from. */
   readonly count: number;
-  readonly escaped: boolean;
+  readonly source: CharacterSource;
   /** Where the source continues. */
   readonly next: number;
 }
@@ -114,45 +127,104 @@ function alignCharacter(value: string, index: number, source: string, at: number
   const character = value.charAt(index);
   if (character === "\n") {
     const next = skipLineEnding(source, at, value.charAt(index + 1));
-    return next === undefined ? undefined : { count: 1, escaped: false, next };
+    return next === undefined ? undefined : { count: 1, source: "literal", next };
   }
   if (source.charAt(at) === "\\" && ASCII_PUNCTUATION.test(character) && source.charAt(at + 1) === character) {
-    return { count: 1, escaped: true, next: at + 2 };
+    return { count: 1, source: "backslash", next: at + 2 };
   }
   const reference = source.charAt(at) === "&" ? CHARACTER_REFERENCE.exec(source.slice(at, at + 40)) : null;
   const decoded = reference === null ? undefined : referenceLength(value, index, source, at + reference[0].length);
-  if (reference !== null && decoded !== undefined) return { count: decoded, escaped: true, next: at + reference[0].length };
-  return source.charAt(at) === character ? { count: 1, escaped: false, next: at + 1 } : undefined;
+  if (reference !== null && decoded !== undefined) return { count: decoded, source: "reference", next: at + reference[0].length };
+  return source.charAt(at) === character ? { count: 1, source: "literal", next: at + 1 } : undefined;
 }
 
-/** Aligns a text value with its source and marks each character that was escaped; `undefined` when they do not align. */
-function alignEscapes(value: string, source: string, start: number): boolean[] | undefined {
-  const escaped: boolean[] = [];
+/** Aligns a text value with its source and marks where each character came from; `undefined` when they do not align. */
+function alignEscapes(value: string, source: string, start: number): CharacterSource[] | undefined {
+  const sources: CharacterSource[] = [];
   let at = start;
-  while (escaped.length < value.length) {
-    const step = alignCharacter(value, escaped.length, source, at);
+  while (sources.length < value.length) {
+    const step = alignCharacter(value, sources.length, source, at);
     if (step === undefined) return undefined;
-    for (let count = 0; count < step.count; count++) escaped.push(step.escaped);
+    for (let count = 0; count < step.count; count++) sources.push(step.source);
     at = step.next;
   }
-  return escaped;
+  return sources;
 }
 
-/** Which characters of a text node are escaped. A node that cannot be aligned with its source counts as all escaped. */
-function escapesOf(node: MarkdownNode, context: Context): readonly boolean[] {
+/** Whether a character reference (`&…;`) decodes to a pipe. Names are case-sensitive: `&Vert;` is `‖`. */
+function isPipeReference(reference: string): boolean {
+  const name = reference.slice(1, -1);
+  if (name.startsWith("#x") || name.startsWith("#X")) return Number.parseInt(name.slice(2), 16) === PIPE_CODE;
+  if (name.startsWith("#")) return Number.parseInt(name.slice(1), 10) === PIPE_CODE;
+  return PIPE_REFERENCE_NAMES.has(name);
+}
+
+interface SourceStep {
+  /** Where the pipe this step writes came from; `undefined` when it writes no pipe. */
+  readonly pipe: CharacterSource | undefined;
+  readonly next: number;
+}
+
+/** Reads one character of a text's source as written: a backslash escape, a character reference or itself. */
+function readSourceCharacter(raw: string, at: number): SourceStep {
+  const character = raw.charAt(at);
+  if (character === "\\" && ASCII_PUNCTUATION.test(raw.charAt(at + 1))) {
+    return { pipe: raw.charAt(at + 1) === "|" ? "backslash" : undefined, next: at + 2 };
+  }
+  const reference = character === "&" ? CHARACTER_REFERENCE.exec(raw.slice(at, at + 40)) : null;
+  if (reference !== null) return { pipe: isPipeReference(reference[0]) ? "reference" : undefined, next: at + reference[0].length };
+  return { pipe: character === "|" ? "literal" : undefined, next: at + 1 };
+}
+
+/** Where each pipe of a text's source came from, in the order they are written. */
+function pipeSources(raw: string): CharacterSource[] {
+  const pipes: CharacterSource[] = [];
+  let at = 0;
+  while (at < raw.length) {
+    const step = readSourceCharacter(raw, at);
+    if (step.pipe !== undefined) pipes.push(step.pipe);
+    at = step.next;
+  }
+  return pipes;
+}
+
+/**
+ * A text node that cannot be aligned with its source, as backslash escapes: never syntax. Its pipes keep where they
+ * came from, read from the source in order, since a text holds its source's pipes in the order they are written: a
+ * pipe written as a character reference stays a reference, so the row test still reads the line as written (MC-12).
+ * When the pipes of the value and the source do not match, each pipe counts as a reference; without a source, none does.
+ */
+function unalignedSources(value: string, raw: string | undefined): CharacterSource[] {
+  const sources = new Array<CharacterSource>(value.length).fill("backslash");
+  if (raw === undefined) return sources;
+  const written = pipeSources(raw);
+  const pipes: number[] = [];
+  for (let index = value.indexOf("|"); index !== -1; index = value.indexOf("|", index + 1)) pipes.push(index);
+  pipes.forEach((index, order) => {
+    if (written.length !== pipes.length || written[order] === "reference") sources[index] = "reference";
+  });
+  return sources;
+}
+
+/**
+ * Where each character of a text node came from. A node that cannot be aligned with its source counts as backslash
+ * escapes, except a pipe written as a character reference (`unalignedSources`): never syntax, yet a pipe written as
+ * itself or as a backslash escape still counts for the row test.
+ */
+function escapesOf(node: MarkdownNode, context: Context): readonly CharacterSource[] {
   const known = context.escaped.get(node);
   if (known !== undefined) return known;
   const value = node.value ?? "";
   const raw = rawSource(node, context);
   const start = node.position?.start.offset;
-  let escaped: readonly boolean[];
-  if (raw === value) escaped = new Array<boolean>(value.length).fill(false);
-  else escaped = (start === undefined ? undefined : alignEscapes(value, context.source, start)) ?? new Array<boolean>(value.length).fill(true);
+  let escaped: readonly CharacterSource[];
+  if (raw === value) escaped = new Array<CharacterSource>(value.length).fill("literal");
+  else escaped = (start === undefined ? undefined : alignEscapes(value, context.source, start)) ?? unalignedSources(value, raw);
   context.escaped.set(node, escaped);
   return escaped;
 }
 
-function textNode(value: string, escaped: readonly boolean[], context: Context): MarkdownNode {
+function textNode(value: string, escaped: readonly CharacterSource[], context: Context): MarkdownNode {
   const node: MarkdownNode = { type: "text", value };
   context.escaped.set(node, escaped);
   return node;
@@ -401,7 +473,7 @@ function buildRun(children: readonly MarkdownNode[], context: Context): Run {
     const escaped = segment.kind === "text" ? escapesOf(segment.node, context) : [];
     for (let index = segment.start; index < segment.end; index++) {
       segmentOf.push(position);
-      literal.push(segment.kind === "text" && escaped[index - segment.start] === false);
+      literal.push(segment.kind === "text" && escaped[index - segment.start] === "literal");
     }
   });
   const characters: RunCharacters = { text, segments, segmentOf, literal };
@@ -685,7 +757,7 @@ function relabelMailAutolink(link: MarkdownNode, context: Context): void {
 /** Source shown as it is written, which is never syntax. */
 function sourceNode(from: number, to: number, context: Context): MarkdownNode {
   const value = context.source.slice(from, to);
-  return textNode(value, new Array<boolean>(value.length).fill(true), context);
+  return textNode(value, new Array<CharacterSource>(value.length).fill("backslash"), context);
 }
 
 /**
@@ -779,13 +851,27 @@ function splitLines(children: readonly MarkdownNode[], context: Context): Line[]
   return lines;
 }
 
-function lineText(line: Line, context: Context): string {
-  return line.nodes.map((node) => (node.type === "text" ? (node.value ?? "") : (rawSource(node, context) ?? NODE_CHARACTER))).join("");
+/** A text node's value with each character decoded from a character reference as `NODE_CHARACTER`. */
+function withoutReferences(node: MarkdownNode, context: Context): string {
+  const value = node.value ?? "";
+  const sources = escapesOf(node, context);
+  if (!sources.includes("reference")) return value;
+  let text = "";
+  for (let index = 0; index < value.length; index++) text += sources[index] === "reference" ? NODE_CHARACTER : value.charAt(index);
+  return text;
 }
 
-/** remark-parse 5 took a line as a table row when it has a pipe after its first character. */
+/** A line as remark-parse 5's row test read it: references are not their characters, other nodes are their source. */
+function rowText(line: Line, context: Context): string {
+  return line.nodes.map((node) => (node.type === "text" ? withoutReferences(node, context) : (rawSource(node, context) ?? NODE_CHARACTER))).join("");
+}
+
+/**
+ * remark-parse 5 took a line as a table row when its source has a pipe after its first character, so a pipe written as
+ * a character reference makes no row and one written as a backslash escape does.
+ */
 function isRow(line: Line, context: Context): boolean {
-  return lineText(line, context).includes("|", 1);
+  return rowText(line, context).includes("|", 1);
 }
 
 /** An alignment row being read. It is changed in place, so a row of any width is read in linear time. */
@@ -838,7 +924,7 @@ function parseAlignment(line: Line, context: Context): TableAlign[] | undefined 
     const value = node.value ?? "";
     const escaped = escapesOf(node, context);
     for (let index = 0; index < value.length; index++) {
-      if (escaped[index] === true || !readAlignment(row, value.charAt(index))) return undefined;
+      if (isEscaped(escaped[index]) || !readAlignment(row, value.charAt(index))) return undefined;
     }
   }
   if (row.alignment !== false) row.align.push(row.alignment);
@@ -874,7 +960,7 @@ function rowCells(line: Line, context: Context): MarkdownNode[][] {
     const escaped = escapesOf(node, context);
     let from = 0;
     for (let index = 0; index < value.length; index++) {
-      if (value.charAt(index) !== "|" || escaped[index] === true) continue;
+      if (value.charAt(index) !== "|" || isEscaped(escaped[index])) continue;
       cell.push(sliceText(node, from, index, context));
       cells.push(cell);
       cell = [];
@@ -891,7 +977,7 @@ function rowCells(line: Line, context: Context): MarkdownNode[][] {
 function joinLines(lines: readonly Line[], context: Context): MarkdownNode[] {
   return lines.flatMap((line, index) => {
     if (index === lines.length - 1) return line.nodes;
-    return [...line.nodes, line.ending ?? textNode("\n", [false], context)];
+    return [...line.nodes, line.ending ?? textNode("\n", ["literal"], context)];
   });
 }
 
@@ -924,7 +1010,7 @@ function markTask(item: MarkdownNode, context: Context): void {
   const [head, ...rest] = paragraph?.type === "paragraph" ? (paragraph.children ?? []) : [];
   if (paragraph === undefined || head?.type !== "text") return;
   const marker = TASK_MARKER.exec(head.value ?? "");
-  if (marker === null || escapesOf(head, context).slice(0, marker[0].length).includes(true)) return;
+  if (marker === null || escapesOf(head, context).slice(0, marker[0].length).some(isEscaped)) return;
   item.checked = marker[1]?.toLowerCase() === "x";
   const remainder = sliceText(head, marker[0].length, (head.value ?? "").length, context);
   paragraph.children = remainder.value === "" ? rest : [remainder, ...rest];

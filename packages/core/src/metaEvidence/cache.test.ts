@@ -3,7 +3,7 @@ import { realityQuestionCacheKey } from "../reality";
 import { REGISTRY, getRealityProxy } from "../registry";
 import { INVALID_META_EVIDENCE, loadMetaEvidence, metaEvidenceCachePolicy, parseCachedMetaEvidenceResult } from "./index";
 import { CROSS_CHAIN_PROXY, META_CID, META_URL, boolQuestion, context, fakeFetcher, json, realityCache, servedMetaEvidence } from "../test/metaEvidence/testHelpers";
-import type { MetaEvidenceResult } from "./types";
+import type { MetaEvidenceResult, MetaEvidenceSource } from "./types";
 
 /** What the persisted query cache stores and reads back: a JSON round trip. */
 function persisted(value: unknown): unknown {
@@ -59,6 +59,36 @@ describe("parseCachedMetaEvidenceResult", () => {
     const result = await loadMetaEvidence(context({ fetcher }));
     expect(result.status).toBe("ok");
     expect(parseCachedMetaEvidenceResult(persisted(result))).toEqual(result);
+  });
+
+  it("P-25, B15: an accepted result with its source reads back equal", async () => {
+    const base = await okResult();
+    const sources: MetaEvidenceSource[] = [
+      { kind: "event", locator: "disagrees", locatorPath: `/ipfs/${META_CID}` },
+      { kind: "event", locator: "unavailable", locatorPath: null },
+      { kind: "locator", event: "not-read" },
+      { kind: "locator", event: "dispute-event-ambiguous" },
+    ];
+    for (const source of sources) {
+      const result = { ...base, source };
+      expect(parseCachedMetaEvidenceResult(persisted(result))).toEqual(result);
+    }
+  });
+
+  it("P-25, B15: a persisted entry without a source is ignored", async () => {
+    const good = persisted(await okResult()) as Record<string, unknown>;
+    const { source, ...withoutSource } = good;
+    expect(source).toEqual({ kind: "locator", event: "not-read" });
+    expect(parseCachedMetaEvidenceResult(withoutSource)).toBeNull();
+    const malformed: unknown[] = [
+      { kind: "event", locator: "trust-me", locatorPath: null },
+      { kind: "event", locator: "agrees", locatorPath: "/ipns/kleros.eth" },
+      { kind: "event", locator: "agrees" },
+      { kind: "locator", event: "found" },
+      { kind: "chain" },
+      null,
+    ];
+    for (const variant of malformed) expect(parseCachedMetaEvidenceResult({ ...good, source: variant })).toBeNull();
   });
 
   it("ME-2 B15 §9.2: an accepted result with descriptions by reserved answer code reads back equal", async () => {

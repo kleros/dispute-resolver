@@ -33,6 +33,7 @@ function okMetaEvidence(metaEvidence: Partial<MetaEvidence> = {}): MetaEvidenceR
     uri: "/ipfs/QmZZHwJEYi6YFrhSvbDYXuBDT9vC9eCdK7gLaRwP1bYBDP",
     fileUrl: "https://cdn.kleros.link/ipfs/QmZZHwJEYi6YFrhSvbDYXuBDT9vC9eCdK7gLaRwP1bYBDP",
     script: { ran: false, reason: "no-script" },
+    source: { kind: "locator", event: "not-read" },
   };
 }
 

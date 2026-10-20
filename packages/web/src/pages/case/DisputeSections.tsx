@@ -27,7 +27,8 @@ interface DisputeSectionsProps {
  * compatibility banner, the summary, the timeline, the decision, the Reality notice, then the accordion of Appeal,
  * Question and Evidence. Each renders as soon as its own data allows (P-20) behind its own boundary, keyed by the chain
  * and dispute so a failure never outlives its dispute (D-36, S-3); Retry reads that section's data again and remounts
- * its boundary on the new read.
+ * its boundary on the new read. The evidence display, inside the summary, has its own boundary and Retry, scoped
+ * `evidence-display`, which re-reads the meta-evidence (P-26).
  */
 export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProps) {
   const client = useQueryClient();
@@ -63,6 +64,14 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
     );
   };
 
+  const displayScope = `evidence-display:${disputeKey}`;
+  const displayRetry = {
+    key: retries.key(displayScope),
+    onRetry: () => {
+      retries.retry(displayScope, rereadMetaEvidence);
+    },
+  };
+
   const { view } = dispute;
   const viewOnly = view.status === "ready" && view.value.exists && view.value.compatibility === "view-only";
 
@@ -78,7 +87,7 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
     <>
       {boundary("overview", "Dispute details", rereadDetails, <CaseOverview {...props} />)}
       {viewOnly ? <CompatibilityBanner /> : null}
-      {boundary("summary", "Dispute summary", rereadMetaEvidence, <DisputeSummary {...props} />)}
+      {boundary("summary", "Dispute summary", rereadMetaEvidence, <DisputeSummary {...props} displayRetry={displayRetry} />)}
       {boundary("timeline", "Timeline", rereadDetails, <DisputeTimeline {...props} />)}
       {boundary("decision", "Decision", rereadAppeal, <DecisionAlert {...props} />)}
       {boundary("reality", "Reality notice", rereadMetaEvidence, <RealityNotice {...props} />)}

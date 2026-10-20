@@ -10,6 +10,16 @@ function setup(maxConcurrent = 4) {
   return { fake, runner };
 }
 
+/** Whether `run` is still unsettled once the host's port and timer callbacks have run. */
+async function isPending(run: Promise<unknown>): Promise<boolean> {
+  let settled = false;
+  void run.then(() => {
+    settled = true;
+  });
+  await settleMacrotasks();
+  return !settled;
+}
+
 function frameAt(fake: FakeRunnerDocument, index: number): FakeRunnerFrame {
   const frame = fake.frames[index];
   if (frame === undefined) throw new Error(`The host created no frame ${String(index)}.`);
@@ -115,7 +125,7 @@ describe("runner frame (C4, ARCHITECTURE.md §7.3)", () => {
     expect(posted.ports).toHaveLength(1);
     expect(posted.message).toEqual({
       type: "dr-runner/run",
-      version: 1,
+      version: 2,
       scriptText: "function getMetaEvidence() {}",
       params: SAMPLE_PARAMS,
       guardSource: null,
@@ -250,6 +260,126 @@ describe("timeout and abort (B8, D-38)", () => {
     const { fake, runner } = setup();
     await expect(runner.run(request({ signal: AbortSignal.abort() }))).resolves.toMatchObject({ status: "failed", reason: "aborted" });
     expect(fake.frames).toEqual([]);
+  });
+});
+
+describe("acknowledgement window (P-16)", () => {
+  const NOT_STARTED = /did not start within 5 seconds/;
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  });
+
+  it("P-16: a frame whose load never fires settles runner-error when the acknowledgement window ends, and is removed", async () => {
+    const { fake, runner } = setup();
+    const run = runner.run(request({ timeoutMs: 60_000 }));
+    vi.advanceTimersByTime(4_999);
+    expect(await isPending(run)).toBe(true);
+    expect(fake.attachedFrames()).toHaveLength(1);
+    vi.advanceTimersByTime(1);
+    await expect(run).resolves.toEqual({ status: "failed", reason: "runner-error", message: expect.stringMatching(NOT_STARTED) as unknown });
+    expect(fake.attachedFrames()).toEqual([]);
+  });
+
+  it("P-16: a frame that loads but never acknowledges settles runner-error at the window", async () => {
+    const { fake, runner } = setup();
+    const run = runner.run(request());
+    frameAt(fake, 0).load();
+    vi.advanceTimersByTime(5_000);
+    await expect(run).resolves.toMatchObject({ status: "failed", reason: "runner-error", message: expect.stringMatching(NOT_STARTED) as unknown });
+    expect(fake.attachedFrames()).toEqual([]);
+  });
+
+  it("P-16: the acknowledgement cancels the window and the run then waits for its result until its timeout", async () => {
+    const { fake, runner } = setup();
+    const run = runner.run(request({ timeoutMs: 60_000 }));
+    vi.advanceTimersByTime(4_900);
+    frameAt(fake, 0).load().acknowledge();
+    await settleMacrotasks();
+    vi.advanceTimersByTime(200);
+    expect(await isPending(run)).toBe(true);
+    expect(fake.attachedFrames()).toHaveLength(1);
+    vi.advanceTimersByTime(60_000 - 5_100);
+    await expect(run).resolves.toEqual({ status: "failed", reason: "timeout", message: "The dynamic script for dispute 1650 timed out." });
+    expect(fake.attachedFrames()).toEqual([]);
+  });
+
+  it("P-16, B1: the acknowledgement never settles the run and carries nothing through", async () => {
+    const { fake, runner } = setup();
+    const run = runner.run(request());
+    const posted = frameAt(fake, 0).load();
+    posted.reply({ type: "dr-runner/accepted", value: { title: "smuggled" }, jsonDuplicateKeys: false });
+    expect(await isPending(run)).toBe(true);
+    posted.reply({ type: "dr-runner/result", value: { title: "genuine" }, jsonDuplicateKeys: false });
+    await expect(run).resolves.toEqual({ status: "ok", value: { title: "genuine" }, jsonDuplicateKeys: false });
+  });
+
+  it("P-16: a second acknowledgement is ignored", async () => {
+    const { fake, runner } = setup();
+    const run = runner.run(request());
+    const posted = frameAt(fake, 0).load();
+    posted.acknowledge();
+    await settleMacrotasks();
+    posted.acknowledge();
+    await settleMacrotasks();
+    vi.advanceTimersByTime(5_000);
+    expect(await isPending(run)).toBe(true);
+    posted.reply({ type: "dr-runner/result", value: { title: "after two" }, jsonDuplicateKeys: false });
+    await expect(run).resolves.toEqual({ status: "ok", value: { title: "after two" }, jsonDuplicateKeys: false });
+  });
+
+  it("P-16: a result without a prior acknowledgement still settles the run (lenient ordering)", async () => {
+    const { fake, runner } = setup();
+    const run = runner.run(request());
+    frameAt(fake, 0)
+      .load()
+      .reply({ type: "dr-runner/result", value: { title: "unacknowledged" }, jsonDuplicateKeys: false });
+    await expect(run).resolves.toEqual({ status: "ok", value: { title: "unacknowledged" }, jsonDuplicateKeys: false });
+  });
+
+  it("P-16, B8: aborting during the acknowledgement window settles aborted and clears both timers", async () => {
+    const { fake, runner } = setup();
+    const controller = new AbortController();
+    const run = runner.run(request({ signal: controller.signal }));
+    frameAt(fake, 0).load();
+    vi.advanceTimersByTime(2_000);
+    controller.abort();
+    await expect(run).resolves.toMatchObject({ status: "failed", reason: "aborted" });
+    expect(fake.attachedFrames()).toEqual([]);
+    expect(vi.getTimerCount()).toBe(0);
+    vi.advanceTimersByTime(3_000);
+    vi.advanceTimersByTime(60_000);
+    await expect(run).resolves.toMatchObject({ status: "failed", reason: "aborted" });
+  });
+
+  it("P-16, D-38: a run whose remaining budget is shorter than the window times out first", async () => {
+    const { fake, runner } = setup();
+    const run = runner.run(request({ timeoutMs: 1_000 }));
+    frameAt(fake, 0).load();
+    vi.advanceTimersByTime(1_000);
+    await expect(run).resolves.toMatchObject({ status: "failed", reason: "timeout" });
+    expect(fake.attachedFrames()).toEqual([]);
+  });
+
+  it("P-16: the acknowledgement window counts from the frame's append, not from run()", async () => {
+    const { fake, runner } = setup(1);
+    const controller = new AbortController();
+    const first = runner.run(request({ signal: controller.signal }));
+    const queued = runner.run(request());
+    frameAt(fake, 0).load().acknowledge();
+    await settleMacrotasks();
+    vi.advanceTimersByTime(6_000);
+    expect(fake.frames).toHaveLength(1);
+    controller.abort();
+    await expect(first).resolves.toMatchObject({ status: "failed", reason: "aborted" });
+    expect(fake.attachedFrames()).toHaveLength(1);
+    expect(fake.frames).toHaveLength(2);
+
+    vi.advanceTimersByTime(4_999);
+    expect(await isPending(queued)).toBe(true);
+    vi.advanceTimersByTime(1);
+    await expect(queued).resolves.toMatchObject({ status: "failed", reason: "runner-error", message: expect.stringMatching(NOT_STARTED) as unknown });
+    expect(fake.attachedFrames()).toEqual([]);
   });
 });
 

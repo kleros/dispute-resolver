@@ -104,8 +104,31 @@ describe("formatRuling", () => {
     expect(formatRuling(5n, { type: "uint", precision: 1e9 }, null)).toBe("5");
   });
 
-  it("A7 (consumer): the invalid placeholder options format without throwing", () => {
-    expect(formatRuling(1n, { type: "single-select", titles: [] }, OUTCOMES)).toBe("");
+  it("A7 (consumer), P-24: the invalid placeholder options read the ruling's decimal value without throwing", () => {
+    expect(formatRuling(1n, { type: "single-select", titles: [] }, OUTCOMES)).toBe("1");
+  });
+
+  it("P-24: a title-less single-select ruling reads as its decimal value, titles absent or empty, fallback outcomes or not", () => {
+    expect(formatRuling(2n, { type: "single-select" }, null)).toBe("2");
+    expect(formatRuling(2n, { type: "single-select", titles: [] }, ["Red", "Blue"])).toBe("2");
+    expect(formatRuling(1n, { type: "single-select" }, null)).toBe("1");
+  });
+
+  it("P-24, P-14: the reserved answers keep their labels on a title-less single-select", () => {
+    expect(formatRuling(MAX_UINT256, { type: "single-select" }, null)).toBe("Answered too soon");
+    expect(formatRuling(MAX_UINT256, { type: "single-select", titles: [] }, null)).toBe("Answered too soon");
+  });
+
+  it("P-24: the library's empty label for the invalid answer on a title-less select reads as the decimal", () => {
+    expect(formatRuling(MAX_UINT256 - 1n, { type: "single-select" }, null)).toBe((MAX_UINT256 - 1n).toString());
+    // A titled select already read this ruling as its decimal value before P-24 (probed at HEAD 24383c4).
+    expect(formatRuling(MAX_UINT256 - 1n, { type: "single-select", titles: ["A"] }, null)).toBe((MAX_UINT256 - 1n).toString());
+  });
+
+  it("P-24: an empty title, a multiple-select without titles and ruling 0 keep their text", () => {
+    expect(formatRuling(1n, { type: "single-select", titles: [""] }, null)).toBe("");
+    expect(formatRuling(1n, { type: "multiple-select" }, null)).toBe("");
+    expect(formatRuling(0n, { type: "single-select" }, null)).toBe(REFUSED_RULING_TEXT);
   });
 });
 

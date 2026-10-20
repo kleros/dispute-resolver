@@ -191,6 +191,64 @@ describe("SafeMarkdown GitHub-flavored syntax of today's renderer", () => {
     expect(root.querySelector("p")).toHaveTextContent(text);
   });
 
+  it.each([["a&#124;b\n-|-"], ["a&#x7C;b\n-|-"]])("MC-12: a header row whose only pipe is a character reference (%j) is text, as today", (source) => {
+    const root = renderMarkdown(source);
+    expect(root.querySelector("table")).toBeNull();
+    expect(root.querySelector("p")?.textContent).toBe("a|b\n-|-");
+  });
+
+  it("MC-12: a named reference to a pipe makes no row", () => {
+    expect(renderMarkdown("a&vert;b\n-|-").querySelector("table")).toBeNull();
+    expect(renderMarkdown("a&verbar;b\n-|-").querySelector("table")).toBeNull();
+  });
+
+  it("MC-12: a body row whose only pipe is a character reference ends the table, as today", () => {
+    const root = renderMarkdown("a|b\n-|-\nc&#124;d");
+    expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["a", "b"]);
+    expect(screen.queryAllByRole("cell")).toEqual([]);
+    const after = root.lastElementChild;
+    expect(after?.tagName).toBe("P");
+    expect(after?.textContent).toBe("c|d");
+    expect(root.querySelectorAll("p")).toHaveLength(1);
+  });
+
+  it("MC-12: a literal pipe still makes the row and a referenced pipe stays inside its cell", () => {
+    renderMarkdown("a&#124;b|c\n-|-");
+    expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["a|b", "c"]);
+  });
+
+  it("MC-12: a backslash-escaped pipe still makes a row, with the escaped pipe inside its first cell", () => {
+    renderMarkdown("a\\|b\n-|-");
+    expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["a|b", ""]);
+  });
+
+  it("MC-12: a pipe written as a character reference makes no row when its text cannot be aligned with its source", () => {
+    const root = renderMarkdown("a&#124;b &fjlig;j *c*\n-|-");
+    expect(root.querySelector("table")).toBeNull();
+    expect(root.querySelector("p")?.textContent).toBe("a|b fjj c\n-|-");
+  });
+
+  it.each([["a|b &fjlig;j *c*\n-|-"], ["a\\|b &fjlig;j *c*\n-|-"], ["&#124;a|b &fjlig;j *c*\n-|-"], ["a\\&#124;b|c &fjlig;j *c*\n-|-"], ["a&Vert;b|c &fjlig;j *c*\n-|-"]])(
+    "MC-12: a pipe written as itself or as a backslash escape still makes a row when its text cannot be aligned with its source (%j)",
+    (source) => {
+      expect(renderMarkdown(source).querySelector("table")).not.toBeNull();
+    },
+  );
+
+  it("MC-12: an unaligned text's pipes keep their order, so a literal pipe first and a referenced one after make no row", () => {
+    const root = renderMarkdown("|a&#124;b &fjlig;j *c*\n-|-");
+    expect(root.querySelector("table")).toBeNull();
+    expect(root.querySelector("p")?.textContent).toBe("|a|b fjj c\n-|-");
+  });
+
+  it("MC-12: a body line cut from an unaligned text ends the table when its only pipe is a character reference", () => {
+    const root = renderMarkdown("a|b\n-|-\nc|d *x*\ne|f\ng&#124;h &fjlig;j");
+    expect(root.querySelectorAll("tbody tr")).toHaveLength(2);
+    const after = root.lastElementChild;
+    expect(after?.tagName).toBe("P");
+    expect(after?.textContent).toBe("g|h fjj");
+  });
+
   it("SC-01 §5.6: renders task items as read-only checkboxes without their markers", () => {
     const root = renderMarkdown("- [ ] open task\n- [x] done task");
     const boxes = screen.getAllByRole("checkbox", { name: "Task" });

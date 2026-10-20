@@ -42,7 +42,7 @@ function AccountPanel({ id, rootRef, onClose, address, walletChainId, chain }: A
       id={id}
       role="dialog"
       aria-label="Account"
-      className="absolute right-0 z-50 mt-2 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-4 rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground p-4 text-klerosUIComponentsPrimaryText shadow-(--dr-elevation)"
+      className="absolute left-0 z-50 lg:left-auto lg:right-0 mt-2 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-4 rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground p-4 text-klerosUIComponentsPrimaryText shadow-(--dr-elevation)"
     >
       <div className="flex min-w-0 items-center gap-3">
         <Identicon address={address} size={32} />

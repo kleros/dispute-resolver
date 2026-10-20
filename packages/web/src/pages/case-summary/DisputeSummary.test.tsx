@@ -115,8 +115,11 @@ function renderWithData(ui: ReactElement, deps: CoreDeps = createTestDeps()) {
   return { ...result, client };
 }
 
-function renderSummary(dispute: CaseDispute, deps?: CoreDeps) {
-  return renderWithData(<DisputeSummary dispute={dispute} chain={MAINNET} />, deps);
+/** The case page's Retry of the evidence display (P-26), which this file renders without the case page. */
+const DISPLAY_RETRY = { key: "display", onRetry: () => undefined };
+
+function renderSummary(dispute: CaseDispute, deps?: CoreDeps, displayRetry = DISPLAY_RETRY) {
+  return renderWithData(<DisputeSummary dispute={dispute} chain={MAINNET} displayRetry={displayRetry} />, deps);
 }
 
 function displayFrame(): HTMLIFrameElement {
@@ -350,8 +353,9 @@ describe("DisputeSummary", () => {
     expect(displayFrame().getAttribute("src")).not.toContain("secret-key");
   });
 
-  it("D-36: a display that cannot be built degrades the evidence display only", () => {
+  it("D-36, P-26: a display that cannot be built degrades the evidence display only, and its Retry calls the case page's display retry", async () => {
     overrides.failDisplay = true;
+    const onRetry = vi.fn();
     // React logs the caught render error and jsdom reports the rethrow; both are expected here.
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const silence = (event: ErrorEvent) => {
@@ -359,9 +363,13 @@ describe("DisputeSummary", () => {
     };
     window.addEventListener("error", silence);
     try {
-      renderSummary(withMetaEvidence({ title: "Still here", evidenceDisplayInterfaceURI: DISPLAY_URI }));
+      renderSummary(withMetaEvidence({ title: "Still here", evidenceDisplayInterfaceURI: DISPLAY_URI }), undefined, { key: "display", onRetry });
       expect(screen.getByText("Evidence display unavailable")).toBeInTheDocument();
       expectSummaryTitle("Still here");
+
+      await userEvent.click(screen.getByRole("button", { name: "Retry Evidence display" }));
+
+      expect(onRetry).toHaveBeenCalledTimes(1);
     } finally {
       window.removeEventListener("error", silence);
       vi.restoreAllMocks();
@@ -376,7 +384,7 @@ describe("D-18: a meta-evidence naming an unconfigured chain", () => {
     renderWithData(
       <>
         <CaseOverview dispute={dispute} chain={MAINNET} />
-        <DisputeSummary dispute={dispute} chain={MAINNET} />
+        <DisputeSummary dispute={dispute} chain={MAINNET} displayRetry={DISPLAY_RETRY} />
         <DisputeTimeline dispute={dispute} chain={MAINNET} />
         <DecisionAlert dispute={dispute} chain={MAINNET} />
         <RealityNotice dispute={dispute} chain={MAINNET} />

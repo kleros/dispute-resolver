@@ -1,7 +1,8 @@
+import { vi } from "vitest";
 import type { RealityQuestion, RealityQuestionCache } from "../../reality/types";
 import type { Address, Env, FetchInit, FetchResponse, Fetcher, ScriptResult, ScriptRunRequest, ScriptRunner } from "../../types";
 import fixture from "../../metaEvidence/__fixtures__/disputes.json";
-import type { MetaEvidenceContext } from "../../metaEvidence/types";
+import type { MetaEvidenceContext, MetaEvidenceResult, OnChainMetaEvidence, OnChainMetaEvidenceReader } from "../../metaEvidence/types";
 
 /** The default gateway (`resolveGateway` without `REACT_APP_IPFS_GATEWAY`). */
 export const GATEWAY = "https://cdn.kleros.link";
@@ -118,6 +119,26 @@ export function fakeRunner(reply: ScriptResult | typeof HANG | ((request: Script
   return { runner, requests };
 }
 
+/**
+ * An on-chain reader (P-25) answering every call with `answer`, recording each call's signal. An `Error` is a rejection;
+ * `HANG` never settles, even when its signal aborts (a reader that ignores its signal).
+ */
+export function fakeOnChain(answer: OnChainMetaEvidence | Error | typeof HANG): { reader: OnChainMetaEvidenceReader; signals: AbortSignal[] } {
+  const signals: AbortSignal[] = [];
+  const reader: OnChainMetaEvidenceReader = (signal) => {
+    signals.push(signal);
+    if (answer === HANG) return new Promise<OnChainMetaEvidence>(() => undefined);
+    if (answer instanceof Error) return Promise.reject(answer);
+    return Promise.resolve(answer);
+  };
+  return { reader, signals };
+}
+
+/** The on-chain answer of an arbitrable whose MetaEvidence event carries `uri`. */
+export function eventFound(uri: string): OnChainMetaEvidence {
+  return { status: "found", uri };
+}
+
 /** A runner that fails the test if it is ever called. */
 export const UNUSED_RUNNER: ScriptRunner = {
   run() {
@@ -172,4 +193,18 @@ export function boolQuestion(title: string): RealityQuestion {
     reality: "0xe78996a233895be74a66f451f1019ca9734205cc",
     realityChainId: 100,
   };
+}
+
+/** Under fake timers: lets time run for `ms` and returns the load's settled result with the time it took. */
+export async function settle(load: Promise<MetaEvidenceResult>, ms: number): Promise<{ result: MetaEvidenceResult; elapsedMs: number }> {
+  const start = Date.now();
+  let settledAt: number | undefined;
+  const tracked = load.then((result) => {
+    settledAt = Date.now();
+    return result;
+  });
+  await vi.advanceTimersByTimeAsync(ms);
+  const result = await tracked;
+  if (settledAt === undefined) throw new Error("the load did not settle");
+  return { result, elapsedMs: settledAt - start };
 }

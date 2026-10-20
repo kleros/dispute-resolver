@@ -32,7 +32,9 @@ export function testDispute(overrides: Partial<ArbitratorDispute> = {}): Arbitra
 }
 
 /** A `found` lookup of dispute `disputeId` on `chainId` in `period`. */
-export function testFoundLookup(options: { readonly chainId?: ChainId; readonly disputeId?: bigint; readonly period?: Period; readonly arbitrable?: Address } = {}): Extract<DisputeLookup, { status: "found" }> {
+export function testFoundLookup(
+  options: { readonly chainId?: ChainId; readonly disputeId?: bigint; readonly period?: Period; readonly arbitrable?: Address } = {},
+): Extract<DisputeLookup, { status: "found" }> {
   const { chainId = 1, disputeId = 1n, period = 0, arbitrable = TEST_ARBITRABLE } = options;
   return {
     status: "found",
@@ -72,6 +74,7 @@ export function testOkMetaEvidence(overrides: Partial<MetaEvidence> = {}): Extra
     uri: TEST_META_EVIDENCE_URI,
     fileUrl: `https://cdn.kleros.link${TEST_META_EVIDENCE_URI}`,
     script: { ran: false, reason: "no-script" },
+    source: { kind: "locator", event: "not-read" },
   };
 }
 

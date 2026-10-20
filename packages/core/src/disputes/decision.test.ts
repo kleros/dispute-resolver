@@ -80,17 +80,26 @@ describe("deriveDecision", () => {
   });
 
   // Meta-evidence `rulingOptions: {}` (the poh.eth governor, mainnet 1621, whenever its dynamic script does not run) is
-  // title-less single-select options. §5.9 keeps reality-eth-lib's empty label (P-06) and skips the fallback outcomes,
-  // while the §5.12 item 5 cards read the fallback outcomes or Yes/No; aligning them is proposal P-24.
-  it("P-24 (today, §5.9): title-less single-select options read as the library's empty label, fallback outcomes or not", () => {
+  // title-less single-select options. P-24 (option b) reads their ruling as its decimal value and still skips the
+  // fallback outcomes (§5.9); the §5.12 item 5 appeal cards are unchanged and read the fallback outcomes or Yes/No.
+  it("P-24: a title-less single-select decision reads as the ruling's decimal value, fallback outcomes or not", () => {
     const untitled: RulingOptions = { type: "single-select" };
     expect(deriveDecision({ period: 3, currentRuling: 2n, fundedRulings: [], rulingOptions: untitled, fallbackOutcomes: null, compatibility: "full" })).toMatchObject({
+      kind: "jury-decision",
       ruling: 2n,
-      rulingText: "",
+      rulingText: "2",
     });
     expect(deriveDecision({ period: 4, currentRuling: 2n, fundedRulings: [], rulingOptions: untitled, fallbackOutcomes: ["Red", "Blue"], compatibility: "full" })).toMatchObject({
+      kind: "winner",
       ruling: 2n,
-      rulingText: "",
+      rulingText: "2",
+      wonBy: "jury",
+    });
+    expect(deriveDecision({ period: 4, currentRuling: 2n, fundedRulings: [1n], rulingOptions: untitled, fallbackOutcomes: null, compatibility: "full" })).toMatchObject({
+      kind: "winner",
+      ruling: 1n,
+      rulingText: "1",
+      wonBy: "default",
     });
   });
 });

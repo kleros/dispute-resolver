@@ -21,6 +21,7 @@ export async function mockCoreReads(importOriginal: () => Promise<unknown>): Pro
     detectFamily: vi.fn(),
     loadMetaEvidence: vi.fn(),
     readDisputeEvent: vi.fn(),
+    readMetaEvidenceEvent: vi.fn(),
     loadEvidence: vi.fn(),
     readDisputeDetails: vi.fn(),
     readMultipliers: vi.fn(),

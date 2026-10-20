@@ -4,9 +4,10 @@ import { withoutQueryOrFragment } from "./syntax";
 import type { AttachmentKind, AttachmentLink, GatewayOrigin } from "./types";
 
 /**
- * An untrusted attachment reference made safe to show (A10, B19, D-26, D-32). A content-addressed path, or an https URL,
- * becomes a `link` through the same rule as displays; any other non-empty value (`http:`, `javascript:`, `/ipns/`, a
- * path that is not content-addressed) is shown as `text`. Empty or non-string values give `null`.
+ * An untrusted attachment reference made safe to show (A10, B19, D-26, D-32, MC-5). A content-addressed path, an `http:` or
+ * `https:` URL with an explicit authority whose path is `/ipfs/<CID>` (re-served through the gateway), or another https URL
+ * becomes a `link` through the same rule as displays; any other non-empty value (other `http:` values, `javascript:`,
+ * `/ipns/`, a path that is not content-addressed) is shown as `text`. Empty or non-string values give `null`.
  */
 export function toAttachmentLink(uri: unknown, gateway: GatewayOrigin): AttachmentLink | null {
   if (typeof uri !== "string") return null;

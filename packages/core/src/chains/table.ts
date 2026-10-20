@@ -49,7 +49,7 @@ const CONFIGS: readonly ChainConfig[] = [
     maxLookback: MAINNET_LOOKBACK,
     readRpcEnv: "REACT_APP_WEB3_XDAI_PROVIDER_URL",
     publicRpcEnv: publicRpcEnv(100),
-    explorerBaseUrl: "https://gnosisscan.io",
+    explorerBaseUrl: "https://gnosis.blockscout.com",
   },
   {
     id: 10200,

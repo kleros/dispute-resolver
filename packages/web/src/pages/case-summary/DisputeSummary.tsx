@@ -5,7 +5,7 @@ import { useId } from "react";
 import { APP_CONFIG } from "../../env";
 import { Attachment, ExternalLink, SafeMarkdown } from "../../safe-content";
 import { EYEBROW, SectionBoundary, SectionSkeleton } from "../../ui";
-import { queryKeys, useCoreDeps, type CaseDispute, type CaseSectionProps, type SectionData } from "../../data";
+import { queryKeys, useCoreDeps, type CaseSectionProps, type SectionData } from "../../data";
 import { existingView, foundLookup, type FoundLookup } from "./caseState";
 import { EvidenceDisplay } from "./EvidenceDisplay";
 import { Parties } from "./Parties";
@@ -45,14 +45,23 @@ function ExternalIcon() {
   );
 }
 
-interface SummaryCardProps {
-  readonly metaEvidence: MetaEvidence;
-  readonly dispute: CaseDispute;
-  readonly chain: CaseSectionProps["chain"];
-  readonly found: FoundLookup | undefined;
+/**
+ * The evidence display's Retry, held by the case page (P-26, S-3): the key of its boundary, and what re-reads the
+ * meta-evidence and remounts that boundary on the new read. The key names the chain and the dispute (D-36).
+ */
+interface DisplayRetry {
+  readonly key: string;
+  readonly onRetry: () => void;
 }
 
-function SummaryCard({ metaEvidence, dispute, chain, found }: SummaryCardProps) {
+interface SummaryCardProps {
+  readonly metaEvidence: MetaEvidence;
+  readonly chain: CaseSectionProps["chain"];
+  readonly found: FoundLookup | undefined;
+  readonly displayRetry: DisplayRetry;
+}
+
+function SummaryCard({ metaEvidence, chain, found, displayRetry }: SummaryCardProps) {
   const headingId = useId();
   const { gateway } = useCoreDeps();
   const appLink = resolveArbitrableAppLink(metaEvidence.arbitrableInterfaceURI, APP_CONFIG.selfHosts);
@@ -80,7 +89,7 @@ function SummaryCard({ metaEvidence, dispute, chain, found }: SummaryCardProps) 
           </div>
         )}
         {found === undefined ? null : (
-          <SectionBoundary key={`${dispute.chainId.toString()}:${dispute.disputeId.toString()}`} section="Evidence display">
+          <SectionBoundary key={displayRetry.key} section="Evidence display" onRetry={displayRetry.onRetry}>
             <EvidenceDisplay metaEvidence={metaEvidence} chainId={chain.id} found={found} />
           </SectionBoundary>
         )}
@@ -92,9 +101,10 @@ function SummaryCard({ metaEvidence, dispute, chain, found }: SummaryCardProps) 
 /**
  * The dispute summary (spec 5.6): title, markdown description, parties, the arbitrable-app link, the meta-evidence's
  * attachment and the evidence display. It renders from the meta-evidence alone, before the rest of the view settles
- * (P-20); a failed load degrades this section only and Retry loads the meta-evidence again (D-36).
+ * (P-20); a failed load degrades this section only and Retry loads the meta-evidence again (D-36). The evidence display
+ * has its own boundary, whose Retry is the case page's `displayRetry` (P-26).
  */
-export function DisputeSummary({ dispute, chain }: CaseSectionProps) {
+export function DisputeSummary({ dispute, chain, displayRetry }: CaseSectionProps & { readonly displayRetry: DisplayRetry }) {
   const client = useQueryClient();
   if (existingView(dispute) === null) return null;
   const found = foundLookup(dispute);
@@ -106,7 +116,7 @@ export function DisputeSummary({ dispute, chain }: CaseSectionProps) {
         };
   return (
     <SectionContent data={summaryData(dispute.metaEvidence)} section="Dispute summary" loading={<SectionSkeleton variant="card" lines={5} />} onRetry={retry}>
-      {(metaEvidence) => <SummaryCard metaEvidence={metaEvidence} dispute={dispute} chain={chain} found={found} />}
+      {(metaEvidence) => <SummaryCard metaEvidence={metaEvidence} chain={chain} found={found} displayRetry={displayRetry} />}
     </SectionContent>
   );
 }

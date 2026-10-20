@@ -5,6 +5,8 @@ export interface PostedRun {
   readonly ports: readonly MessagePort[];
   /** Answers on the transferred port, as the runner page does. */
   reply(data: unknown): void;
+  /** Posts the runner page's acknowledgement on the transferred port (P-16). */
+  acknowledge(): void;
 }
 
 /** A runner frame the host created, driven by the test instead of a real runner page (jsdom never loads one). */
@@ -46,14 +48,18 @@ function fakeFrame(element: HTMLIFrameElement): FakeRunnerFrame {
     const recorded: PostedRun[] = [];
     target.postMessage = (message: unknown, targetOrigin?: unknown, transfer?: unknown) => {
       const ports = Array.isArray(transfer) ? transfer.filter(isMessagePort) : [];
+      const reply = (data: unknown): void => {
+        const [port] = ports;
+        if (port === undefined) throw new Error("The host transferred no port.");
+        port.postMessage(data);
+      };
       recorded.push({
         message,
         targetOrigin,
         ports,
-        reply(data) {
-          const [port] = ports;
-          if (port === undefined) throw new Error("The host transferred no port.");
-          port.postMessage(data);
+        reply,
+        acknowledge() {
+          reply({ type: "dr-runner/accepted" });
         },
       });
     };

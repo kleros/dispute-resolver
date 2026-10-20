@@ -22,7 +22,7 @@ export function fieldErrorMessage(field: ErrorField, code: CreateFieldErrorCode)
     required: REQUIRED[field],
     "not-an-integer": "Please enter a whole number.",
     "out-of-range": field === "optionCount" ? "Please choose between 2 and 32 options." : "Please enter at least 1.",
-    "invalid-address": "This is not a valid address. Use all lowercase or the checksummed form.",
+    "invalid-address": "This is not a valid address. Use all lowercase, all uppercase or the checksummed form.",
     "duplicate-address": "This address is already used by another party.",
     "alias-without-address": "Please enter this party's address.",
     "address-without-alias": "Please enter this party's alias.",

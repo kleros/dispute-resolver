@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { stubEndpoint } from "../test/rpc/testHelpers";
+import type { ScriptResult } from "../types";
 import { CASE_PAGE_BUDGET_MS, ONGOING_BUDGET_MS, loadMetaEvidence } from "./index";
 import {
   CROSS_CHAIN_PROXY,
@@ -16,24 +17,20 @@ import {
   locatorUrl,
   scriptOk,
   servedMetaEvidence,
+  settle,
 } from "../test/metaEvidence/testHelpers";
-import type { MetaEvidenceResult } from "./types";
 
 const SCRIPT_JSON = json({ title: "T", dynamicScriptURI: `/ipfs/${DEFAULT_SCRIPT_CID}` });
 const SCRIPT = "function getMetaEvidence() {}";
 
-/** Starts a load, lets fake time run for `ms`, and returns the settled result with the time it took. */
-async function settle(load: Promise<MetaEvidenceResult>, ms: number): Promise<{ result: MetaEvidenceResult; elapsedMs: number }> {
-  const start = Date.now();
-  let settledAt: number | undefined;
-  const tracked = load.then((result) => {
-    settledAt = Date.now();
-    return result;
+/** The host's answer for a runner page that has not acknowledged the run within its window (P-16); core never sees the window. */
+const NOT_STARTED_MESSAGE = "The dynamic script's runner did not start in time.";
+const ACKNOWLEDGEMENT_WAIT_MS = 5_000;
+
+function notStartedAfterWindow(): Promise<ScriptResult> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ACKNOWLEDGEMENT_WAIT_MS, { status: "failed", reason: "not-started", message: NOT_STARTED_MESSAGE });
   });
-  await vi.advanceTimersByTimeAsync(ms);
-  const result = await tracked;
-  if (settledAt === undefined) throw new Error("the load did not settle");
-  return { result, elapsedMs: settledAt - start };
 }
 
 describe("meta-evidence budget (D-38)", () => {
@@ -136,6 +133,39 @@ describe("meta-evidence budget (D-38)", () => {
     const { result } = await settle(loadMetaEvidence(context({ fetcher, runner, budgetMs: 12_000 })), 20_000);
     expect(result).toMatchObject({ status: "failed", reason: "script-failed" });
     expect(requests).toHaveLength(3);
+  });
+
+  it("P-16, D-38: a runner-error result is final: reported as script-failed at once, never retried", async () => {
+    const message = "The script runner sent a malformed reply.";
+    const { fetcher } = fakeFetcher({ ...servedMetaEvidence(SCRIPT_JSON), [DEFAULT_SCRIPT_URL]: SCRIPT });
+    const { runner, requests } = fakeRunner({ status: "failed", reason: "runner-error", message });
+    const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, runner, budgetMs: 12_000 })), 20_000);
+    expect(result).toEqual({ status: "failed", reason: "script-failed", error: { code: "rpc-error", message } });
+    expect(requests).toHaveLength(1);
+    expect(elapsedMs).toBe(0);
+  });
+
+  it("P16-R1, D-38: a runner that did not start is retried while the budget allows, then reported with the runner's own message", async () => {
+    const { fetcher } = fakeFetcher({ ...servedMetaEvidence(SCRIPT_JSON), [DEFAULT_SCRIPT_URL]: SCRIPT });
+    const { runner, requests } = fakeRunner(notStartedAfterWindow);
+    const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, runner, budgetMs: 30_000 })), 40_000);
+    expect(result).toEqual({ status: "failed", reason: "script-failed", error: { code: "rpc-error", message: NOT_STARTED_MESSAGE } });
+    expect(requests).toHaveLength(3);
+    expect(elapsedMs).toBe(25_000);
+  });
+
+  it("P16-R1, D-38: a runner that starts late is not a final failure: the retry renders the script's result", async () => {
+    const { fetcher } = fakeFetcher({ ...servedMetaEvidence(SCRIPT_JSON), [DEFAULT_SCRIPT_URL]: SCRIPT });
+    let runs = 0;
+    const { runner, requests } = fakeRunner(() => {
+      runs += 1;
+      return runs === 1 ? notStartedAfterWindow() : scriptOk({ title: "From the script" });
+    });
+    const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, runner })), 20_000);
+    expect(result).toMatchObject({ status: "ok", metaEvidence: { title: "From the script" }, script: { ran: true } });
+    expect(requests).toHaveLength(2);
+    expect(requests[1]?.timeoutMs).toBe(CASE_PAGE_BUDGET_MS - 10_000);
+    expect(elapsedMs).toBe(10_000);
   });
 
   it("D-38: a fetch that ignores its abort signal is still cut by the budget", async () => {

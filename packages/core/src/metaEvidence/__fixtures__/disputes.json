@@ -13,7 +13,11 @@
     "disputeId": "863",
     "arbitrable": "0x25fa9432832efdd48deec6d4cf1cd3f139678a5b",
     "metaEvidenceUri": "https://cdn.kleros.link/ipfs/QmSynthetic863GatewayUrLxxxxxxxxxxxxxxxxxxxxxx/metaEvidence.json",
-    "source": "The arbitrable re-emitted MetaEvidence 0 with an absolute https://cdn.kleros.link/ipfs/... URL (golden case Gnosis 863). The CID here is a synthetic placeholder of the same shape; only the absolute gateway form matters to the gate."
+    "source": "The arbitrable re-emitted MetaEvidence 0 with an absolute https://cdn.kleros.link/ipfs/... URL (golden case Gnosis 863). The CID here is a synthetic placeholder of the same shape; only the absolute gateway form matters to the gate. recordedEventUris are the two MetaEvidence(0) emissions of the arbitrable, oldest first (blocks 47,021,786 and 47,029,860), read from the Gnosis read RPC on 2026-10-20 at block 48,850,832 (evidence/__fixtures__/gnosis-460-863-meta-evidence.json).",
+    "recordedEventUris": [
+      "ipfs://bafkreigi53smvtvoi2s5zh3wd5ztu7pzl4lao5v4y7xihd3bjrpwtuyk2a",
+      "https://cdn.kleros.link/ipfs/bafkreigi53smvtvoi2s5zh3wd5ztu7pzl4lao5v4y7xihd3bjrpwtuyk2a"
+    ]
   },
   "mainnet1621": {
     "chainId": 1,
@@ -35,5 +39,14 @@
     "arbitrable": "0x62b286a93d6f720a654745a3451f71cf71481b81",
     "body": "{\"title\": \"Unparseable meta-evidence\", \"description\": \"cut short",
     "source": "Golden case Gnosis 140: unparseable meta-evidence JSON. The body is a truncated JSON document of the same kind."
+  },
+  "gnosis460": {
+    "chainId": 100,
+    "disputeId": "460",
+    "arbitrable": "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
+    "eventMetaEvidenceUri": "/ipfs/QmbtSnH8BB3cgDLwtY6aT7fggnzhyEMVHExqsiVPjBxmcz/metaEvidence.json",
+    "locatorMetaEvidenceUri": "/ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaEvidence.json",
+    "eventMetaEvidenceBody": "{\"title\": \"DAI token compliance Review \", \"category\": \"\", \"description\": \"\", \"aliases\": {}, \"question\": \"Does the DAI stablecoin meet all the requirements for inclusion in the Token Registry?\", \"rulingOptions\": {\"type\": \"single-select\", \"titles\": [\"Yes, Accept DAI\", \"No, Reject DAI\"], \"descriptions\": []}, \"fileURI\": \"\", \"dynamicScriptURI\": \"/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj\"}",
+    "source": "P-25: the arbitrable's MetaEvidence(84) log at block 40,176,860 (log index 3, the same transaction as the Dispute log of dispute 460, metaEvidenceID 84) carries eventMetaEvidenceUri, read from the Gnosis read RPC on 2026-10-20 at block 48,850,832; the meta-evidence API answered locatorMetaEvidenceUri (another arbitrable's file) on every request that day. eventMetaEvidenceBody is the file read from https://cdn.kleros.link the same day."
   }
 }

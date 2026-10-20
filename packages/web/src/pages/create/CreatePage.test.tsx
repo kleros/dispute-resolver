@@ -442,16 +442,18 @@ describe("CreatePage", () => {
     expect(uploadedMetaEvidence(uploader).aliases).toEqual({ "0x2222222222222222222222222222222222222222": "Bob", "0x1111111111111111111111111111111111111111": "Alice" });
   });
 
-  it("MC-8: an all-uppercase party address is rejected as invalid", async () => {
-    const { user } = await renderCreate({ connect: false });
+  it("MC-8: an all-uppercase party address is accepted and reaches the summary", async () => {
+    const { user, uploader } = await renderCreate();
     await fillRequired(user);
     await fillOptions(user, ["Yes", "No"]);
     await typeInto(user, "Alias 1 (Optional)", "Upper");
     await typeInto(user, "Address 1 (Optional)", "0xFB6916095CA1DF60BB79CE92CE3EA74C37C5D359");
-    await user.click(screen.getByRole("button", { name: "Continue" }));
-    expect(await screen.findByText(/not a valid address/)).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Address 1 (Optional)" })).toHaveAttribute("aria-invalid", "true");
-    expect(screen.queryByRole("button", { name: "Create" })).toBeNull();
+    await toSummary(user);
+    expect(screen.queryByText(/not a valid address/)).toBeNull();
+    expect(screen.getByText("Party 1")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    await screen.findByText("Dispute 42 created");
+    expect(uploadedMetaEvidence(uploader).aliases).toEqual({ "0xfb6916095ca1df60bb79ce92ce3ea74c37c5d359": "Upper" });
   });
 
   it("A15, D-52: nothing is uploaded or signed until the user's first upload action", async () => {

@@ -40,12 +40,21 @@ const VIEM_CHAINS: readonly Chain[] = [
 ];
 
 /**
- * The viem chain of a configured chain, named as the app names it. A chain viem does not know is defined from the core
- * table with no RPC URL, so nothing can read through it (D-56).
+ * The viem chain of a configured chain, named as the app names it, with the core table's explorer for a chain viem
+ * knows too, so AppKit links to the same explorer as the app (MC-1). A chain viem does not know is defined from the
+ * core table with no RPC URL, so nothing can read through it (D-56).
  */
 export function toViemChain(config: ChainConfig): Chain {
   const known = VIEM_CHAINS.find((chain) => chain.id === config.id);
-  if (known !== undefined) return { ...known, name: config.name };
+  if (known !== undefined) {
+    return {
+      ...known,
+      name: config.name,
+      ...(config.explorerBaseUrl === undefined
+        ? {}
+        : { blockExplorers: { default: { name: known.blockExplorers?.default.name ?? config.name, url: config.explorerBaseUrl } } }),
+    };
+  }
   return defineChain({
     id: config.id,
     name: config.name,

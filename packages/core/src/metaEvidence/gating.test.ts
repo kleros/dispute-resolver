@@ -171,6 +171,7 @@ describe("loadMetaEvidence gating (A2)", () => {
     const result = await loadMetaEvidence(context({ fetcher }));
     expect(result).toEqual({
       status: "ok",
+      source: { kind: "locator", event: "not-read" },
       uri: `/ipfs/${META_CID}`,
       fileUrl: META_URL,
       script: { ran: false, reason: "no-script" },
@@ -232,6 +233,7 @@ describe("loadMetaEvidence gating (A2)", () => {
     const result = await loadMetaEvidence(context({ fetcher, arbitrable: CROSS_CHAIN_PROXY, realityCache: cache }));
     expect(result).toMatchObject({
       status: "ok",
+      source: { kind: "locator", event: "not-read" },
       script: { ran: false, reason: "registered-reality-proxy" },
       metaEvidence: {
         title: "Reality question",

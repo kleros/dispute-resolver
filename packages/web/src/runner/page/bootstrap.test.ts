@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { FAKE_APP_ORIGIN, SAMPLE_PARAMS, SAMPLE_REDIRECTS, createFakeRunnerEnvironment, flushMicrotasks, runRequest, type ScriptApi } from "../../test/runner";
+import { ACCEPTED, FAKE_APP_ORIGIN, SAMPLE_PARAMS, SAMPLE_REDIRECTS, createFakeRunnerEnvironment, flushMicrotasks, runRequest, type ScriptApi } from "../../test/runner";
+import type { RunnerMessageEvent } from "../types";
 import { bootstrapRunner } from "./bootstrap";
 
 /** A fake script whose `getMetaEvidence` resolves with `value`. */
@@ -19,6 +20,7 @@ describe("bootstrapRunner guards (C4)", () => {
     expect(fake.listenerCount()).toBe(0);
     fake.deliver(fake.fromParent(runRequest()));
     expect(fake.evaluated).toEqual([]);
+    expect(fake.replies).toEqual([]);
   });
 
   it("C4: refuses when top-level", () => {
@@ -27,6 +29,7 @@ describe("bootstrapRunner guards (C4)", () => {
     expect(fake.listenerCount()).toBe(0);
     fake.deliver(fake.fromParent(runRequest()));
     expect(fake.evaluated).toEqual([]);
+    expect(fake.replies).toEqual([]);
   });
 
   it("C4: ignores a message whose source is not window.parent", () => {
@@ -35,6 +38,7 @@ describe("bootstrapRunner guards (C4)", () => {
     fake.deliver({ ...fake.fromParent(runRequest()), source: {} });
     fake.deliver({ ...fake.fromParent(runRequest()), source: null });
     expect(fake.evaluated).toEqual([]);
+    expect(fake.replies).toEqual([]);
     expect(fake.listenerCount()).toBe(1);
   });
 
@@ -44,6 +48,7 @@ describe("bootstrapRunner guards (C4)", () => {
     fake.deliver({ ...fake.fromParent(runRequest()), origin: "https://attacker.example" });
     fake.deliver({ ...fake.fromParent(runRequest()), origin: "null" });
     expect(fake.evaluated).toEqual([]);
+    expect(fake.replies).toEqual([]);
     expect(fake.listenerCount()).toBe(1);
   });
 
@@ -52,6 +57,7 @@ describe("bootstrapRunner guards (C4)", () => {
     bootstrapRunner(fake.env);
     fake.deliver({ ...fake.fromParent(runRequest()), origin: "null" });
     expect(fake.evaluated).toEqual([]);
+    expect(fake.replies).toEqual([]);
   });
 
   it("C4: ignores a request that does not carry exactly one port", () => {
@@ -61,6 +67,7 @@ describe("bootstrapRunner guards (C4)", () => {
     fake.deliver({ ...event, ports: [] });
     fake.deliver({ ...event, ports: [...event.ports, ...event.ports] });
     expect(fake.evaluated).toEqual([]);
+    expect(fake.replies).toEqual([]);
     expect(fake.listenerCount()).toBe(1);
   });
 
@@ -71,7 +78,8 @@ describe("bootstrapRunner guards (C4)", () => {
       null,
       "dr-runner/run",
       { ...runRequest(), type: "dr-runner/result" },
-      { ...runRequest(), version: 2 },
+      { ...runRequest(), version: 1 },
+      { ...runRequest(), version: 3 },
       { ...runRequest(), scriptText: 42 },
       { ...runRequest(), guardSource: 1 },
       { ...runRequest(), params: { ...SAMPLE_PARAMS, arbitratorChainID: "1" } },
@@ -84,6 +92,7 @@ describe("bootstrapRunner guards (C4)", () => {
     ];
     for (const data of malformed) fake.deliver(fake.fromParent(data));
     expect(fake.evaluated).toEqual([]);
+    expect(fake.replies).toEqual([]);
     fake.deliver(fake.fromParent(runRequest()));
     expect(fake.evaluated).toEqual(["script"]);
   });
@@ -95,6 +104,70 @@ describe("bootstrapRunner guards (C4)", () => {
     fake.deliver(fake.fromParent(runRequest({ scriptText: "second" })));
     expect(fake.evaluated).toEqual(["first"]);
     expect(fake.listenerCount()).toBe(0);
+  });
+});
+
+describe("bootstrapRunner acknowledgement (P-16)", () => {
+  it("P-16: posts the acknowledgement on the request's port before the guard or the script is evaluated", async () => {
+    const seenAtFirstEvaluation: unknown[][] = [];
+    const fake = createFakeRunnerEnvironment({
+      onEvaluate: (source, api) => {
+        if (seenAtFirstEvaluation.length === 0) seenAtFirstEvaluation.push([...fake.replies]);
+        if (source === "script")
+          api.globals.getMetaEvidence = () => {
+            api.resolveScript({ title: "after" });
+          };
+      },
+    });
+    bootstrapRunner(fake.env);
+    fake.deliver(fake.fromParent(runRequest({ guardSource: "guard" })));
+    expect(fake.evaluated).toEqual(["guard", "script"]);
+    expect(seenAtFirstEvaluation).toEqual([[ACCEPTED]]);
+    await flushMicrotasks();
+    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { title: "after" }, jsonDuplicateKeys: false }]);
+  });
+
+  it('P-16: the acknowledgement is exactly { type: "dr-runner/accepted" } with no other field', () => {
+    const fake = createFakeRunnerEnvironment({ onEvaluate: resolvingScript({}) });
+    bootstrapRunner(fake.env);
+    fake.deliver(fake.fromParent(runRequest()));
+    expect(fake.replies[0]).toStrictEqual({ type: "dr-runner/accepted" });
+  });
+
+  it("P-16, C4: a refused request gets no acknowledgement (no liveness oracle)", async () => {
+    for (const options of [{ selfOrigin: FAKE_APP_ORIGIN }, { isTopLevel: true }, { locationOrigin: "null" }]) {
+      const refusing = createFakeRunnerEnvironment(options);
+      bootstrapRunner(refusing.env);
+      refusing.deliver({ ...refusing.fromParent(runRequest()), origin: "null" });
+      refusing.deliver(refusing.fromParent(runRequest()));
+      expect(refusing.replies).toEqual([]);
+    }
+
+    const fake = createFakeRunnerEnvironment({ onEvaluate: resolvingScript({ title: "accepted" }) });
+    bootstrapRunner(fake.env);
+    const event = fake.fromParent(runRequest());
+    const refused: RunnerMessageEvent[] = [
+      { ...event, source: {} },
+      { ...event, source: null },
+      { ...event, origin: "https://attacker.example" },
+      { ...event, origin: "null" },
+      { ...event, ports: [] },
+      { ...event, ports: [...event.ports, ...event.ports] },
+      fake.fromParent(null),
+      fake.fromParent({ ...runRequest(), type: "dr-runner/result" }),
+      fake.fromParent({ ...runRequest(), version: 1 }),
+      fake.fromParent({ ...runRequest(), version: 3 }),
+      fake.fromParent({ ...runRequest(), scriptText: 42 }),
+      fake.fromParent({ ...runRequest(), params: { ...SAMPLE_PARAMS, disputeID: 1650 } }),
+      fake.fromParent({ ...runRequest(), rpcRedirects: "mainnet.infura.io" }),
+    ];
+    for (const refusedEvent of refused) fake.deliver(refusedEvent);
+    expect(fake.replies).toEqual([]);
+    expect(fake.evaluated).toEqual([]);
+
+    fake.deliver(fake.fromParent(runRequest()));
+    await flushMicrotasks();
+    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { title: "accepted" }, jsonDuplicateKeys: false }]);
   });
 });
 
@@ -126,7 +199,7 @@ describe("bootstrapRunner script-facing globals (§7.2, spec §9.5)", () => {
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
     await flushMicrotasks();
-    expect(fake.replies).toEqual([{ type: "dr-runner/result", value: { seen: "1650" }, jsonDuplicateKeys: false }]);
+    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { seen: "1650" }, jsonDuplicateKeys: false }]);
   });
 });
 
@@ -136,7 +209,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
     await flushMicrotasks();
-    expect(fake.replies).toEqual([{ type: "dr-runner/result", value: { rulingOptions: { titles: ["Yes", "No"] } }, jsonDuplicateKeys: false }]);
+    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { rulingOptions: { titles: ["Yes", "No"] } }, jsonDuplicateKeys: false }]);
   });
 
   it("A4: evaluates the duplicate-key guard before the script when the host sends one", () => {
@@ -166,10 +239,10 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest({ guardSource: "guard" })));
     await flushMicrotasks();
-    expect(fake.replies).toEqual([{ type: "dr-runner/result", value: {}, jsonDuplicateKeys: true }]);
+    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: {}, jsonDuplicateKeys: true }]);
   });
 
-  it("§7.2: a synchronous throw while evaluating the script posts an error", async () => {
+  it("§7.2, P-16: a synchronous script failure is reported after the acknowledgement", async () => {
     const fake = createFakeRunnerEnvironment({
       onEvaluate: () => {
         throw new SyntaxError("Unexpected token");
@@ -178,7 +251,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
     await flushMicrotasks();
-    expect(fake.replies).toEqual([{ type: "dr-runner/error", message: "Unexpected token" }]);
+    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "Unexpected token" }]);
   });
 
   it("§7.2: a synchronous throw from getMetaEvidence posts an error", async () => {
@@ -192,7 +265,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
     await flushMicrotasks();
-    expect(fake.replies).toEqual([{ type: "dr-runner/error", message: "boom" }]);
+    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "boom" }]);
   });
 
   it("§7.2: a script without getMetaEvidence posts an error", async () => {
@@ -200,7 +273,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
     await flushMicrotasks();
-    expect(fake.replies).toEqual([{ type: "dr-runner/error", message: "getMetaEvidence is not defined" }]);
+    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "getMetaEvidence is not defined" }]);
   });
 
   it("§7.2: rejectScript posts an error", async () => {
@@ -214,7 +287,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
     await flushMicrotasks();
-    expect(fake.replies).toEqual([{ type: "dr-runner/error", message: "question not found" }]);
+    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "question not found" }]);
   });
 
   it("§7.2: a rejection reason that is not an Error still posts an error", async () => {
@@ -228,10 +301,10 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
     await flushMicrotasks();
-    expect(fake.replies).toEqual([{ type: "dr-runner/error", message: "The script reported a failure." }]);
+    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "The script reported a failure." }]);
   });
 
-  it("§7.2: only the first resolve or reject is posted", async () => {
+  it("§7.2, P-16: only the first resolve or reject follows the acknowledgement", async () => {
     const fake = createFakeRunnerEnvironment({
       onEvaluate: (_source, api) => {
         api.globals.getMetaEvidence = () => {
@@ -246,7 +319,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
     await flushMicrotasks();
-    expect(fake.replies).toEqual([{ type: "dr-runner/result", value: { rulingOptions: { type: "single-select" } }, jsonDuplicateKeys: false }]);
+    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { rulingOptions: { type: "single-select" } }, jsonDuplicateKeys: false }]);
   });
 
   it("§7.2: resolveScript adopts a promise, as the old runner's promise resolver did", async () => {
@@ -260,7 +333,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
     await flushMicrotasks();
-    expect(fake.replies).toEqual([{ type: "dr-runner/result", value: { title: "adopted" }, jsonDuplicateKeys: false }]);
+    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { title: "adopted" }, jsonDuplicateKeys: false }]);
   });
 
   it("§7.2: a resolved promise that rejects posts an error", async () => {
@@ -274,7 +347,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
     await flushMicrotasks();
-    expect(fake.replies).toEqual([{ type: "dr-runner/error", message: "rpc down" }]);
+    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "rpc down" }]);
   });
 
   it("§7.2: a value that cannot be structured-cloned posts an error instead", async () => {
@@ -282,10 +355,10 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
     await flushMicrotasks();
-    expect(fake.replies).toEqual([{ type: "dr-runner/error", message: "The script's result cannot be copied out of the runner." }]);
+    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "The script's result cannot be copied out of the runner." }]);
   });
 
-  it("§7.2: asynchronous errors are not reported; the host's timeout settles the run", async () => {
+  it("§7.2, P-16: asynchronous errors are not reported after the acknowledgement; the host's timeout settles the run", async () => {
     const fake = createFakeRunnerEnvironment({
       onEvaluate: (_source, api) => {
         api.globals.getMetaEvidence = () => {
@@ -298,7 +371,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
     await flushMicrotasks();
-    expect(fake.replies).toEqual([]);
+    expect(fake.replies).toEqual([ACCEPTED]);
   });
 
   it("D-25: installs the RPC redirect before the script is evaluated", async () => {

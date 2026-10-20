@@ -52,6 +52,11 @@ describe("runner bootstrap build (ARCHITECTURE.md §7.1)", () => {
     expect(bootstrap).toContain("dr-runner/run");
   });
 
+  it("P-16, §7.1: the built bootstrap carries the acknowledgement type and protocol version 2", () => {
+    expect(bootstrap).toContain("dr-runner/accepted");
+    expect(bootstrap).toMatch(/version\s*[!=]==?\s*2\b/);
+  });
+
   it("C7: the bootstrap is pure ASCII, so its own charset can never garble it", () => {
     expect(Array.from(bootstrap).filter((character) => (character.codePointAt(0) ?? 0) > 0x7e)).toEqual([]);
   });

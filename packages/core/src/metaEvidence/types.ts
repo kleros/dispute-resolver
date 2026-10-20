@@ -55,7 +55,7 @@ export type MetaEvidenceFailure =
   | "not-json" // the file is not JSON (mainnet 560 is a PDF, Gnosis 140 is unparseable)
   | "schema-invalid" // the merged JSON is not a plain object
   | "unknown-chain" // a script parameter chain ID is invalid or unconfigured (B5, D-18)
-  | "script-failed" // the runner reported failure (timeout, error) within the budget
+  | "script-failed" // timeout/script error retried; runner error final (P-16)
   | "reality-lookup-failed" // the on-chain Reality lookup failed (A5)
   | "budget-exhausted"; // the overall budget of D-38 ran out
 
@@ -63,6 +63,37 @@ export type MetaEvidenceFailure =
 export type ScriptOutcome =
   | { readonly ran: false; readonly reason: "no-script" | "registered-reality-proxy" | "script-fetch-failed" }
   | { readonly ran: true; readonly kind: ScriptKind; readonly jsonDuplicateKeys: boolean };
+
+/** Why the arbitrable's `MetaEvidence` event did not decide the URI, so the locator did (P-25). */
+export type OnChainFallbackReason = "dispute-event-not-found" | "dispute-event-ambiguous" | "meta-evidence-event-not-found";
+
+/**
+ * The URI the arbitrable recorded in its `MetaEvidence` event for the dispute's meta-evidence ID (P-25): the raw,
+ * untrusted string of the latest emission, or why there is none. Built by the caller (web), which owns the chain reads.
+ */
+export type OnChainMetaEvidence =
+  | { readonly status: "found"; readonly uri: string }
+  | { readonly status: "not-found"; readonly reason: OnChainFallbackReason }
+  | { readonly status: "unavailable"; readonly error: Unavailable };
+
+/**
+ * Reads the on-chain meta-evidence URI of the loaded dispute. Called once per load with the reader's own signal, which
+ * aborts at `ON_CHAIN_WAIT_MS`, when the load ends and when the load's budget or caller aborts. A rejection or an abort is
+ * `unavailable`.
+ */
+export type OnChainMetaEvidenceReader = (signal: AbortSignal) => Promise<OnChainMetaEvidence>;
+
+/** What the meta-evidence locator answered next to a found event (P-25): compared by canonical path, never used. */
+export type LocatorComparison = "agrees" | "disagrees" | "missing" | "unavailable";
+
+/**
+ * Which source decided an accepted meta-evidence (P-25). `event`: the arbitrable's `MetaEvidence` event won, with the
+ * locator's answer for comparison and its canonical path when it had one. `locator`: the locator decided as today, with
+ * why the event did not (`not-read` when the load had no on-chain reader).
+ */
+export type MetaEvidenceSource =
+  | { readonly kind: "event"; readonly locator: LocatorComparison; readonly locatorPath: CanonicalIpfsPath | null }
+  | { readonly kind: "locator"; readonly event: "not-read" | OnChainFallbackReason | "unavailable" };
 
 export type MetaEvidenceResult =
   | {
@@ -72,9 +103,10 @@ export type MetaEvidenceResult =
       /** Gateway URL of the meta-evidence JSON that was read. */
       readonly fileUrl: string;
       readonly script: ScriptOutcome;
+      readonly source: MetaEvidenceSource;
     }
   | { readonly status: "invalid"; readonly metaEvidence: MetaEvidence; readonly reason: MetaEvidenceRejection }
-  | { readonly status: "missing" } // the locator returned no `metaEvidenceUri` (spec 9.1 step 1)
+  | { readonly status: "missing" } // the locator, in charge, returned no `metaEvidenceUri` (spec 9.1 step 1)
   | { readonly status: "failed"; readonly reason: MetaEvidenceFailure; readonly error: Unavailable };
 
 /** How a result may be cached (A2, B15, D-13, D-38): only `ok` is persisted; rejections are never cached. */
@@ -103,5 +135,10 @@ export interface MetaEvidenceContext {
   readonly registry?: Registry;
   /** Total budget for locator, fetch, script and Reality lookup together (D-38): `CASE_PAGE_BUDGET_MS` or `ONGOING_BUDGET_MS`. */
   readonly budgetMs: number;
+  /**
+   * The on-chain meta-evidence URI (P-25): when it is found it wins over the locator's. Absent, the locator decides as
+   * today (the Ongoing cards, D-37).
+   */
+  readonly onChain?: OnChainMetaEvidenceReader;
   readonly signal?: AbortSignal;
 }

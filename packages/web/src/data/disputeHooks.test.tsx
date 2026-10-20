@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TestDataProvider, createTestDeps, testBinding, testFamily, testOkMetaEvidence } from "../test/data";
 import { useFamily, useMetaEvidence } from "./disputeHooks";
 import { metaEvidenceStaleTime } from "./metaEvidenceQuery";
+import { useOngoingTitle } from "./ongoingHooks";
 import { queryKeys } from "./queryKeys";
 import type { CoreDeps } from "./types";
 
@@ -70,6 +71,26 @@ describe("dispute hooks (ARCHITECTURE.md §5.3)", () => {
     });
     expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
     expect(core.loadMetaEvidence).toHaveBeenCalledWith(expect.objectContaining({ budgetMs: core.CASE_PAGE_BUDGET_MS, arbitrable: BINDING.arbitrated, disputeId: 9n }));
+  });
+
+  it("P-25: the case page's meta-evidence load receives an on-chain reader; the Ongoing title's does not", async () => {
+    vi.mocked(core.loadMetaEvidence).mockResolvedValue(testOkMetaEvidence({ title: "Loaded" }));
+    const casePage = renderHook(() => useMetaEvidence(1, BINDING, "case"), { wrapper: wrapperWith(createTestDeps()) });
+    await waitFor(() => {
+      expect(casePage.result.current.status).toBe("ready");
+    });
+    expect(core.loadMetaEvidence).toHaveBeenCalledWith(expect.objectContaining({ budgetMs: core.CASE_PAGE_BUDGET_MS, onChain: expect.any(Function) as unknown }));
+    casePage.unmount();
+
+    vi.mocked(core.loadMetaEvidence).mockClear();
+    const ongoing = { id: 10n, arbitrated: BINDING.arbitrated, period: 0, subcourtId: 0n, lastPeriodChange: 0, countdownTarget: null } as const;
+    const card = renderHook(() => useOngoingTitle(1, ongoing), { wrapper: wrapperWith(createTestDeps()) });
+    await waitFor(() => {
+      expect(card.result.current.status).toBe("ready");
+    });
+    expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(core.loadMetaEvidence).mock.calls[0]?.[0]).toMatchObject({ budgetMs: core.ONGOING_BUDGET_MS });
+    expect(vi.mocked(core.loadMetaEvidence).mock.calls[0]?.[0].onChain).toBeUndefined();
   });
 
   it("D-38: accepted results never go stale, failures stay 30 s, rejections none (A2)", () => {

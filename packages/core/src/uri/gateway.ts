@@ -25,16 +25,23 @@ export function gatewayUrl(path: CanonicalIpfsPath, gateway: GatewayOrigin): str
 }
 
 /**
- * D-26: an absolute https URL whose path, after dot-segment resolution, begins `/ipfs/<CID>` is served from the configured
- * gateway instead of its own host (the T2CR display on the dead `ipfs.kleros.io` host). The path must still pass
+ * An `http:` or `https:` scheme followed by `//`, the explicit authority. Without it a browser resolves the reference against
+ * the current page (URI-01), so an authority-less `https:/host/ipfs/<CID>` is never re-served.
+ */
+const EXPLICIT_HTTP_OR_HTTPS_AUTHORITY = /^https?:\/\//i;
+
+/**
+ * D-26, MC-5: an absolute `http:` or `https:` URL with an explicit authority whose path, after dot-segment resolution,
+ * begins `/ipfs/<CID>` is served from the configured https gateway instead of its own host (the T2CR display on the dead
+ * `ipfs.kleros.io` host). The host, port, credentials, query and fragment are never used. The path must still pass
  * `normalizeIpfsPath`; anything else yields `null`. Never used for meta-evidence, evidence or script URIs, which must
  * already be content-addressed.
  */
 export function reserveThroughGateway(url: string, gateway: GatewayOrigin): string | null {
   const trimmed = url.trim();
-  if (hasForbiddenCharacter(trimmed)) return null;
+  if (hasForbiddenCharacter(trimmed) || !EXPLICIT_HTTP_OR_HTTPS_AUTHORITY.test(trimmed)) return null;
   const parsed = parseAbsoluteUrl(trimmed);
-  if (parsed?.protocol !== "https:" || !parsed.pathname.startsWith(IPFS_PATH_PREFIX)) return null;
+  if (!parsed?.pathname.startsWith(IPFS_PATH_PREFIX)) return null;
   const path = normalizeIpfsPath(parsed.pathname);
   return path === null ? null : gatewayUrl(path, gateway);
 }

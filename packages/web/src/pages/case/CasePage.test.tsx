@@ -33,6 +33,20 @@ vi.mock("@dispute-resolver/core", async (importOriginal) => {
   };
 });
 
+/** The evidence-display URI whose display the mocked builder cannot build (P-26); every other input builds as in production. */
+const { BROKEN_DISPLAY_URI } = vi.hoisted(() => ({ BROKEN_DISPLAY_URI: "/ipfs/QmQ2XoA25HmnPUEWDduxj6LYwMwp6jtXPFRMHcNF2EvJfU/broken.html" }));
+
+vi.mock("../../safe-content", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../safe-content")>();
+  return {
+    ...actual,
+    buildEvidenceDisplay: (...args: Parameters<typeof actual.buildEvidenceDisplay>) => {
+      if (args[0].metaEvidence.evidenceDisplayInterfaceURI === BROKEN_DISPLAY_URI) throw new Error("display builder failed");
+      return actual.buildEvidenceDisplay(...args);
+    },
+  };
+});
+
 const actualCore = await vi.importActual<typeof core>("@dispute-resolver/core");
 
 const EVIDENCE: EvidenceList = {
@@ -344,6 +358,8 @@ function evidenceItem(title: string): EvidenceItem {
 interface RetryCase {
   /** The section's name, as in "{section} unavailable" and "Retry {section}". */
   readonly section: string;
+  /** The rows and ledger entries the case's test names carry, when not the defaults of `breaks`. */
+  readonly rows?: string;
   /** How a bad read breaks it: its render throws (its boundary catches it, D-36), or its data is unavailable. */
   readonly breaks: "throws" | "fails";
   /** The accordion item holding the section, opened before Retry; a section above the accordion has none. */
@@ -441,6 +457,17 @@ const RETRY_CASES: readonly RetryCase[] = [
     item: "Evidence",
     ...answers(vi.mocked(core.loadEvidence), evidenceRead([evidenceItem(UNRENDERABLE)]), evidenceRead([evidenceItem("Recovered evidence")])),
     content: () => within(accordionBody("Evidence")).findByRole("heading", { level: 3, name: "Recovered evidence" }),
+  },
+  {
+    section: "Evidence display",
+    rows: "P-26, S-3",
+    breaks: "throws",
+    ...answers(
+      metaEvidenceReads,
+      testOkMetaEvidence({ title: "Dispute 1 title", evidenceDisplayInterfaceURI: BROKEN_DISPLAY_URI }),
+      testOkMetaEvidence({ title: "Dispute 1 title", evidenceDisplayInterfaceURI: "/ipfs/QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh/index.html" }),
+    ),
+    content: () => screen.findByTitle("Evidence display"),
   },
   {
     section: "Dispute summary",
@@ -863,7 +890,7 @@ describe("section degradation (D-36, S-3, D-18)", () => {
 describe("section Retry (spec 11.3, D-36, S-3)", () => {
   for (const retryCase of RETRY_CASES) {
     const { section, breaks } = retryCase;
-    const rows = breaks === "throws" ? "11.3, D-36, S-3" : "D-36, S-3";
+    const rows = retryCase.rows ?? (breaks === "throws" ? "11.3, D-36, S-3" : "D-36, S-3");
     const broken = breaks === "throws" ? "a read it could not render" : "a failed read";
 
     it(`${rows}: Retry on ${section} after ${broken} shows the good read that follows, with no notice left`, async () => {

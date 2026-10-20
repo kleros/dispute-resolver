@@ -37,10 +37,13 @@ describe("resolveDisplayUrl", () => {
     expect(resolveDisplayUrl(url, GATEWAY)).toBe(url);
   });
 
-  it("§9.4: a display that is not https renders nothing", () => {
+  it("MC-5: an http display whose path is /ipfs/<CID> goes through the gateway", () => {
+    expect(resolveDisplayUrl(`http://ipfs.kleros.io/ipfs/${CID}/index.html`, GATEWAY)).toBe(T2CR_ON_GATEWAY);
+  });
+
+  it("§9.4, MC-5: a display that is not https, other than an http /ipfs/<CID> URL, renders nothing", () => {
     const inputs = [
       "http://example.org/display/index.html",
-      `http://ipfs.kleros.io/ipfs/${CID}/index.html`,
       "//example.org/display/index.html",
       "javascript:alert(1)",
       "data:text/html,<p>x</p>",

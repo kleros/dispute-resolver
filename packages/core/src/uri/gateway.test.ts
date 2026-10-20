@@ -110,13 +110,27 @@ describe("reserveThroughGateway", () => {
     expect(reserveThroughGateway(`${DEFAULT_GATEWAY}${GNOSIS_416_PATH}`, GATEWAY)).toBe(`${DEFAULT_GATEWAY}${GNOSIS_416_PATH}`);
   });
 
-  it("D-26: returns null for anything that is not an https URL with an /ipfs/<CID> path", () => {
+  it("MC-5: re-serves an http URL whose path is /ipfs/<CID> from the configured gateway", () => {
+    const inputs = [
+      `http://ipfs.kleros.io/ipfs/${CID}/index.html`,
+      `HTTP://ipfs.kleros.io/ipfs/${CID}/index.html`,
+      `http://u:p@ipfs.kleros.io:8080/ipfs/${CID}/index.html?x=1#f`,
+    ];
+    for (const input of inputs) expect(reserveThroughGateway(input, GATEWAY), input).toBe(T2CR_ON_GATEWAY);
+  });
+
+  it("D-26, MC-5: returns null for anything that is not an http(s) URL with an explicit authority and an /ipfs/<CID> path", () => {
     const inputs = [
       "",
       `/ipfs/${CID}/index.html`,
       CID,
       `ipfs://${CID}/index.html`,
-      `http://ipfs.kleros.io/ipfs/${CID}/index.html`,
+      `http:/ipfs.kleros.io/ipfs/${CID}/index.html`,
+      `http:ipfs.kleros.io/ipfs/${CID}`,
+      `https:/ipfs.kleros.io/ipfs/${CID}/index.html`,
+      "http://example.org/ipfs/not-a-cid/x",
+      "http://example.org/ipns/x",
+      `http://example.org/ipfs/${CID}/../../ipns/x`,
       `//ipfs.kleros.io/ipfs/${CID}/index.html`,
       "https://example.org/index.html",
       "https://example.org/ipns/kleros.io/index.html",

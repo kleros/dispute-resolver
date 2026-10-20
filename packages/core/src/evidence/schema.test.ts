@@ -67,6 +67,10 @@ describe("parseEvidenceDocument", () => {
     expect(parsed({ name: "n", fileURI: "http://example.org/file.pdf" }).attachment).toEqual({ kind: "text", text: "http://example.org/file.pdf" });
   });
 
+  it("MC-5: an evidence attachment at http://<host>/ipfs/<CID> links through the gateway", () => {
+    expect(parsed({ name: "n", fileURI: `http://ipfs.kleros.io/ipfs/${CID}/file.pdf` }).attachment).toMatchObject({ kind: "link", href: `${GATEWAY}/ipfs/${CID}/file.pdf` });
+  });
+
   it("B7: an https attachment stays a link to its own host (navigations keep today's rule)", () => {
     expect(parsed({ name: "n", fileURI: "https://example.org/file.pdf" }).attachment).toMatchObject({ kind: "link", href: "https://example.org/file.pdf" });
   });

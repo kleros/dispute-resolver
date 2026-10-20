@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RunnerReplyMessage } from "../types";
-import { createFakeRunnerEnvironment, runRequest } from "../../test/runner";
+import { ACCEPTED, collectUntilSettled, createFakeRunnerEnvironment, runRequest } from "../../test/runner";
 import { bootstrapRunner } from "./bootstrap";
 import { evaluateInGlobalScope, runScriptInGlobalScope } from "./evaluate";
 
@@ -21,20 +20,19 @@ describe("runner page charset (C7)", () => {
   it("C7: a script with a non-ASCII literal round-trips through the runner and its port", async () => {
     const fake = createFakeRunnerEnvironment();
     const channel = new MessageChannel();
-    const reply = new Promise<RunnerReplyMessage>((resolve) => {
-      channel.port1.onmessage = (event: MessageEvent<RunnerReplyMessage>) => {
-        resolve(event.data);
-      };
-    });
+    const replies = collectUntilSettled(channel.port1);
 
     bootstrapRunner({ ...fake.env, globals: globalThis, evaluate: evaluateInGlobalScope, runScript: runScriptInGlobalScope });
     fake.deliver({ ...fake.fromParent(runRequest({ scriptText: RENDERER })), ports: [channel.port2] });
 
-    await expect(reply).resolves.toEqual({
-      type: "dr-runner/result",
-      value: { rulingOptions: { type: "single-select", titles: ["Harris", "Trump"], reserved: { [ANSWERED_TOO_SOON]: "Answered Too Soon" } } },
-      jsonDuplicateKeys: false,
-    });
+    await expect(replies).resolves.toEqual([
+      ACCEPTED,
+      {
+        type: "dr-runner/result",
+        value: { rulingOptions: { type: "single-select", titles: ["Harris", "Trump"], reserved: { [ANSWERED_TOO_SOON]: "Answered Too Soon" } } },
+        jsonDuplicateKeys: false,
+      },
+    ]);
     channel.port1.close();
   });
 });

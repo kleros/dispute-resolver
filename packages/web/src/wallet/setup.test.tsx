@@ -277,6 +277,14 @@ describe("toViemChain", () => {
     expect(viemChain.blockExplorers?.default.url).toBe("https://explorer.example.org");
   });
 
+  it("MC-1, §2.3: AppKit's explorer of every configured chain is the core table's, Gnosis on Blockscout", () => {
+    for (const config of Object.values(CHAINS)) {
+      if (config.explorerBaseUrl === undefined) continue;
+      expect(toViemChain(config).blockExplorers?.default.url, `chain ${String(config.id)}`).toBe(config.explorerBaseUrl);
+    }
+    expect(toViemChain(chain(100)).blockExplorers?.default.url).toBe("https://gnosis.blockscout.com");
+  });
+
   it("§2.3: the configured chains start with chain 1", () => {
     expect(configuredChains()[0].id).toBe(1);
   });

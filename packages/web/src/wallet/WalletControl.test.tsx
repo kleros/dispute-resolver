@@ -52,7 +52,7 @@ describe("WalletControl", () => {
     expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
   });
 
-  it("§11.2: a connected wallet shows its short address and the app's account menu", async () => {
+  it("MC-1, §11.2: a connected wallet shows its short address and the app's account menu, linking a Gnosis wallet to Blockscout", async () => {
     const wallet = createTestWallet({ chainId: 100 });
     await wallet.connect();
     render(<WalletControl chain={chain(100)} />, { wrapper: walletWrapper(wallet) });
@@ -65,7 +65,7 @@ describe("WalletControl", () => {
     expect(screen.getByRole("button", { name: "Copy address" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /view on Gnosis Network explorer/ })).toHaveAttribute(
       "href",
-      "https://gnosisscan.io/address/0x00000000000000000000000000000000000a11ce",
+      "https://gnosis.blockscout.com/address/0x00000000000000000000000000000000000a11ce",
     );
     expect(wallet.modal?.openConnect).not.toHaveBeenCalled();
   });

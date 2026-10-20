@@ -38,3 +38,7 @@ This decision covers dynamic scripts only. Evidence displays of the allowlisted 
 - A future allowlisted script that needs parent storage or DOM fails visibly rather than running with the app's origin.
 - Scripts that hardcode a dead host that is not a known RPC provider (the old `ipfs.kleros.io` gateway in the Sepolia Curate scripts) still fail, as they do now.
 - Scripts' network requests carry `Origin: null`; an endpoint with an origin allowlist would refuse them. None of the endpoints tested does.
+
+## Amendment (2026-10-20, P-16)
+
+The runner acknowledges a run before it evaluates anything. On the run's port, the bootstrap first posts `{ type: "dr-runner/accepted" }`, and it posts nothing for a request it refuses. The host gives each frame an acknowledgement window of 5 s, counted from the frame's append. If no acknowledgement arrives in that window, the run settles as a runner error and the frame is removed, so a runner page that a content blocker or a captive portal keeps from starting fails within seconds instead of after the 120 s meta-evidence budget. Core treats a runner error as final. The request message's protocol version is 2. Results still come back only through the port, and a result without an acknowledgement is still accepted. See P-16 in `docs/ledger-proposals.md`.

@@ -9,6 +9,8 @@ import type { CreateDisputeDraft, CreateFieldErrorCode, CreateOptionDraft, Creat
 type Checked<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: CreateFieldErrorCode };
 
 const DECIMAL = /^\d+$/;
+/** EIP-55 treats an all-uppercase hex address as valid and unchecksummed; viem's strict `isAddress` does not (MC-8). */
+const ALL_UPPERCASE_ADDRESS = /^0x[0-9A-F]{40}$/;
 
 function valid<T>(value: T): Checked<T> {
   return { ok: true, value };
@@ -49,16 +51,17 @@ function checkOptions(draft: CreateDisputeDraft): { readonly optionCount?: Creat
 }
 
 /**
- * One party row (D-08, B20): ignored when both fields are blank; otherwise both are needed, and the address must pass
- * `isAddress` with its EIP-55 checksum check (all-lowercase or correctly checksummed) and not repeat an earlier row's
- * (case-insensitive). The alias is kept as typed, paired with its address.
+ * One party row (D-08, B20, MC-8): ignored when both fields are blank; otherwise both are needed, and the address must
+ * be `0x` plus 40 hex digits that are all-lowercase, all-uppercase or correctly EIP-55 checksummed (create-01: a
+ * mixed-case address with a wrong checksum is rejected) and not repeat an earlier row's (case-insensitive). The address
+ * is stored lowercase; the alias is kept as typed, paired with its address.
  */
 function checkParty(party: CreatePartyDraft, seen: Set<Address>): Checked<readonly [Address, string] | null> {
   const address = party.address.trim();
   const hasAlias = party.alias.trim() !== "";
   if (!hasAlias && address === "") return valid(null);
   if (address === "") return invalid("alias-without-address");
-  if (!isAddress(address)) return invalid("invalid-address");
+  if (!isAddress(address) && !ALL_UPPERCASE_ADDRESS.test(address)) return invalid("invalid-address");
   if (!hasAlias) return invalid("address-without-alias");
   const key = toRegistryAddress(address);
   if (seen.has(key)) return invalid("duplicate-address");

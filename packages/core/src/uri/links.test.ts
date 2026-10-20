@@ -95,9 +95,24 @@ describe("toAttachmentLink", () => {
     });
   });
 
-  it("D-32: shows a plain http:// attachment as text", () => {
-    expect(toAttachmentLink("http://example.org/report.pdf", GATEWAY)).toEqual({ kind: "text", text: "http://example.org/report.pdf" });
-    expect(toAttachmentLink(`http://ipfs.kleros.io/ipfs/${CID}/report.pdf`, GATEWAY)).toEqual({ kind: "text", text: `http://ipfs.kleros.io/ipfs/${CID}/report.pdf` });
+  it("D-32, MC-5: an http:// attachment outside /ipfs/<CID> is shown as text", () => {
+    const inputs = [
+      "http://example.org/report.pdf",
+      "http://h/ipfs/not-a-cid/report.pdf",
+      "http://h/ipns/x/report.pdf",
+      `http:/h/ipfs/${CID}/report.pdf`,
+      `http://h/ipfs/${CID}/../../ipns/x/report.pdf`,
+    ];
+    for (const input of inputs) expect(toAttachmentLink(input, GATEWAY), input).toEqual({ kind: "text", text: input });
+  });
+
+  it("MC-5: an http:// attachment whose path is /ipfs/<CID> links through the gateway", () => {
+    expect(toAttachmentLink(`http://ipfs.kleros.io/ipfs/${CID}/report.pdf`, GATEWAY)).toEqual({
+      kind: "link",
+      href: `${DEFAULT_GATEWAY}/ipfs/${CID}/report.pdf`,
+      label: "report.pdf",
+      attachmentKind: attachmentKind("report.pdf"),
+    });
   });
 
   it("B19: shows dangerous schemes, protocol-relative URLs and mutable paths as text", () => {

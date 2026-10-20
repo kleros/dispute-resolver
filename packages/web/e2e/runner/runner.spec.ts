@@ -47,6 +47,21 @@ var getMetaEvidence = function () {
   });
 };`;
 
+/** What the probe resolves with in a correctly sandboxed runner (§7.1, B4, C7). */
+const PROBE_RESULT = {
+  type: "dr-runner/result",
+  value: {
+    origin: "null",
+    ownStorage: "blocked:SecurityError",
+    parentStorage: "blocked:SecurityError",
+    parentDocument: "blocked:SecurityError",
+    charset: "UTF-8",
+    delimiterParts: ["Harris", "Trump"],
+    disputeID: "1650",
+  },
+  jsonDuplicateKeys: false,
+};
+
 interface RunInput {
   readonly scriptText: string;
   readonly params?: Record<string, unknown>;
@@ -56,8 +71,13 @@ interface RunInput {
 }
 
 interface RunOutput {
+  /** Every message the port carried, in order, until the reply or the end of the wait (P-16). */
+  readonly messages: unknown[];
+  /** The first message that is not the acknowledgement, or `null` when none came within the wait. */
   readonly reply: unknown;
   readonly evaluatedSignal: boolean;
+  /** Milliseconds from appending the frame to the acknowledgement, as the host's window counts them; `null` without one. */
+  readonly ackLatencyMs: number | null;
 }
 
 /** Frames the runner from the current page, posts one run request with a fresh port and collects what comes back. */
@@ -73,6 +93,7 @@ async function runInRunner(page: Page, input: RunInput): Promise<RunOutput> {
       window.addEventListener("message", (event) => {
         if (runnerOrigins.has(event.origin) && event.data === "evaluated") evaluatedSignal = true;
       });
+      const appendedAt = performance.now();
       await new Promise<void>((resolve) => {
         frame.addEventListener("load", () => {
           resolve();
@@ -80,17 +101,23 @@ async function runInRunner(page: Page, input: RunInput): Promise<RunOutput> {
         document.body.append(frame);
       });
       const channel = new MessageChannel();
+      const messages: unknown[] = [];
+      let ackLatencyMs: number | null = null;
       const reply = new Promise<unknown>((resolve) => {
         channel.port1.onmessage = (event: MessageEvent<unknown>) => {
-          resolve(event.data);
+          const data: unknown = event.data;
+          messages.push(data);
+          const isAcknowledgement = typeof data === "object" && data !== null && Reflect.get(data, "type") === "dr-runner/accepted";
+          if (!isAcknowledgement) resolve(data);
+          else ackLatencyMs ??= Math.round(performance.now() - appendedAt);
         };
         setTimeout(() => {
           resolve(null);
         }, waitMs);
       });
       // eslint-disable-next-line sonarjs/post-message -- ADR 0004: "*" is the only target origin an opaque-origin runner accepts.
-      frame.contentWindow?.postMessage({ type: "dr-runner/run", version: 1, scriptText, params, guardSource: null, rpcRedirects: [] }, "*", [channel.port2]);
-      return { reply: await reply, evaluatedSignal };
+      frame.contentWindow?.postMessage({ type: "dr-runner/run", version: 2, scriptText, params, guardSource: null, rpcRedirects: [] }, "*", [channel.port2]);
+      return { reply: await reply, messages: [...messages], evaluatedSignal, ackLatencyMs };
     },
     { scriptText: input.scriptText, params: input.params ?? PARAMS_1650, runnerUrl: input.runnerUrl ?? RUNNER_URL, sandbox: input.sandbox, waitMs: input.waitMs },
   );
@@ -152,19 +179,19 @@ test.describe("script runner page (ADR 0004)", () => {
 
     const { reply } = await runInRunner(page, { scriptText: PROBE_SCRIPT, sandbox: true, waitMs: 15_000 });
 
-    expect(reply).toEqual({
-      type: "dr-runner/result",
-      value: {
-        origin: "null",
-        ownStorage: "blocked:SecurityError",
-        parentStorage: "blocked:SecurityError",
-        parentDocument: "blocked:SecurityError",
-        charset: "UTF-8",
-        delimiterParts: ["Harris", "Trump"],
-        disputeID: "1650",
-      },
-      jsonDuplicateKeys: false,
-    });
+    expect(reply).toEqual(PROBE_RESULT);
+  });
+
+  test("P-16, §7.1: the sandboxed runner acknowledges on the port before it replies", async ({ page }) => {
+    await serveHarness(page, `**${SAME_ORIGIN_HARNESS}`);
+    await page.goto(SAME_ORIGIN_HARNESS);
+
+    const { messages, reply, ackLatencyMs } = await runInRunner(page, { scriptText: PROBE_SCRIPT, sandbox: true, waitMs: 15_000 });
+
+    test.info().annotations.push({ type: "ack-latency-ms", description: String(ackLatencyMs) });
+    expect(messages).toEqual([{ type: "dr-runner/accepted" }, PROBE_RESULT]);
+    expect(reply).toEqual(PROBE_RESULT);
+    expect(ackLatencyMs).not.toBeNull();
   });
 
   test("C4: the runner loaded without the sandbox attribute or its header evaluates nothing", async ({ page }) => {
@@ -173,8 +200,10 @@ test.describe("script runner page (ADR 0004)", () => {
     await serveHarness(page, `**${SAME_ORIGIN_HARNESS}`);
     await page.goto(SAME_ORIGIN_HARNESS);
 
-    const { reply, evaluatedSignal } = await runInRunner(page, { scriptText: PROBE_SCRIPT, sandbox: false, waitMs: SILENCE_MS });
+    const { messages, reply, evaluatedSignal } = await runInRunner(page, { scriptText: PROBE_SCRIPT, sandbox: false, waitMs: SILENCE_MS });
 
+    // Not even an acknowledgement: a refused request learns nothing (C4, P-16).
+    expect(messages).toEqual([]);
     expect(reply).toBeNull();
     expect(evaluatedSignal).toBe(false);
     await expectLoadedButIdle(page, bootstrap);
@@ -189,8 +218,15 @@ test.describe("script runner page (ADR 0004)", () => {
       await serveHarness(page, FOREIGN_HARNESS);
       await page.goto(FOREIGN_HARNESS);
 
-      const { reply, evaluatedSignal } = await runInRunner(page, { scriptText: PROBE_SCRIPT, runnerUrl: `${baseURL ?? ""}${RUNNER_URL}`, sandbox: true, waitMs: SILENCE_MS });
+      const { messages, reply, evaluatedSignal } = await runInRunner(page, {
+        scriptText: PROBE_SCRIPT,
+        runnerUrl: `${baseURL ?? ""}${RUNNER_URL}`,
+        sandbox: true,
+        waitMs: SILENCE_MS,
+      });
 
+      // Not even an acknowledgement: a refused request learns nothing (C4, P-16).
+      expect(messages).toEqual([]);
       expect(reply).toBeNull();
       expect(evaluatedSignal).toBe(false);
       await expectLoadedButIdle(page, bootstrap);
@@ -204,22 +240,20 @@ test.describe("script runner page (ADR 0004)", () => {
     await page.goto(RUNNER_URL);
     const evaluated = await page.evaluate(
       async ({ scriptText, params, waitMs }) => {
+        // Every message on the port for the whole wait: a refused request gets none, not even an acknowledgement (P-16).
         const channel = new MessageChannel();
-        const reply = new Promise<unknown>((resolve) => {
-          channel.port1.onmessage = (event: MessageEvent<unknown>) => {
-            resolve(event.data);
-          };
-          setTimeout(() => {
-            resolve(null);
-          }, waitMs);
-        });
+        const messages: unknown[] = [];
+        channel.port1.onmessage = (event: MessageEvent<unknown>) => {
+          messages.push(event.data);
+        };
         // eslint-disable-next-line sonarjs/post-message -- the top-level runner is sandboxed by its header, so its own origin is opaque.
-        window.postMessage({ type: "dr-runner/run", version: 1, scriptText, params, guardSource: null, rpcRedirects: [] }, "*", [channel.port2]);
-        return { reply: await reply, scriptParameters: typeof Reflect.get(globalThis, "scriptParameters") };
+        window.postMessage({ type: "dr-runner/run", version: 2, scriptText, params, guardSource: null, rpcRedirects: [] }, "*", [channel.port2]);
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+        return { messages, reply: messages[0] ?? null, scriptParameters: typeof Reflect.get(globalThis, "scriptParameters") };
       },
       { scriptText: "var getMetaEvidence = function () { resolveScript({}); };", params: PARAMS_1650, waitMs: SILENCE_MS },
     );
-    expect(evaluated).toEqual({ reply: null, scriptParameters: "undefined" });
+    expect(evaluated).toEqual({ messages: [], reply: null, scriptParameters: "undefined" });
     expect(bootstrap()).toEqual({ served: true, failed: false });
   });
 });

@@ -3,12 +3,21 @@ import type { ScriptKind } from "../types";
 import { normalizeIpfsPath } from "../uri";
 import type { CanonicalIpfsPath } from "../uri/types";
 import { metaEvidenceShape, oneOf } from "./schema";
-import type { MetaEvidenceCachePolicy, MetaEvidenceResult, ScriptOutcome } from "./types";
+import type { LocatorComparison, MetaEvidenceCachePolicy, MetaEvidenceResult, MetaEvidenceSource, ScriptOutcome } from "./types";
 
 type NotRunReason = Extract<ScriptOutcome, { ran: false }>["reason"];
+type LocatorDecidedReason = Extract<MetaEvidenceSource, { kind: "locator" }>["event"];
 
 const NOT_RUN_REASONS: Readonly<Record<NotRunReason, true>> = { "no-script": true, "registered-reality-proxy": true, "script-fetch-failed": true };
 const SCRIPT_KINDS: Readonly<Record<ScriptKind, true>> = { reality: true, standard: true };
+const LOCATOR_COMPARISONS: Readonly<Record<LocatorComparison, true>> = { agrees: true, disagrees: true, missing: true, unavailable: true };
+const LOCATOR_DECIDED_REASONS: Readonly<Record<LocatorDecidedReason, true>> = {
+  "not-read": true,
+  "dispute-event-not-found": true,
+  "dispute-event-ambiguous": true,
+  "meta-evidence-event-not-found": true,
+  unavailable: true,
+};
 
 const scriptOutcomeShape = z.discriminatedUnion("ran", [
   z.object({ ran: z.literal(false), reason: oneOf(NOT_RUN_REASONS) }),
@@ -28,8 +37,14 @@ function isGatewayFileUrl(fileUrl: string, uri: string): boolean {
   }
 }
 
+/** Which source decided the meta-evidence (P-25); an entry persisted without one is fetched again. */
+const sourceShape = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("event"), locator: oneOf(LOCATOR_COMPARISONS), locatorPath: canonicalPath.nullable() }),
+  z.object({ kind: z.literal("locator"), event: oneOf(LOCATOR_DECIDED_REASONS) }),
+]);
+
 const cachedOkShape = z
-  .object({ status: z.literal("ok"), metaEvidence: metaEvidenceShape, uri: canonicalPath, fileUrl: z.string(), script: scriptOutcomeShape })
+  .object({ status: z.literal("ok"), metaEvidence: metaEvidenceShape, uri: canonicalPath, fileUrl: z.string(), script: scriptOutcomeShape, source: sourceShape })
   .refine((result) => isGatewayFileUrl(result.fileUrl, result.uri));
 
 /**
