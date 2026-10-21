@@ -20,7 +20,7 @@
     "@fontsource/open-sans": "^5",
     "@internationalized/date": "^3.7.0",
     "@kleros/kleros-app": "3.1.0",
-    "@kleros/ui-components-library": "3.9.0",
+    "@kleros/ui-components-library": "3.10.0",
     "@reown/appkit": "^1.8.24",
     "@reown/appkit-adapter-wagmi": "^1.8.24",
     "@tailwindcss/postcss": "^4.3.3",

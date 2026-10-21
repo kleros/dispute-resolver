@@ -51,7 +51,7 @@ Recorded when the workspace was scaffolded (2026-10-14). Ranges are what the man
 | `zod` (core, web) | `^4.6.7` | Boundary validation of untrusted JSON. Version 4 compiles under `strict` and under core's `WebWorker`-only `lib`. |
 | `react`, `react-dom` (web) | `18.3.1` | React 18, not 19, as decided above. Pinned exactly. |
 | `react-is` (web) | `^18.3.1` | Peer of `@kleros/ui-components-library`. |
-| `@kleros/ui-components-library` (web) | `3.9.0` | The Kleros design system. Pinned exactly. |
+| `@kleros/ui-components-library` (web) | `3.10.0` | The Kleros design system. Pinned exactly. |
 | `tailwindcss` (web) | `^4.3.3` | Peer of the component library; the styling system. |
 | `@tailwindcss/postcss` (web) | `^4.3.3` | Peer of the component library; it is also the Tailwind integration used for the Vite build, so no second Tailwind plugin is added. |
 | `tailwindcss-react-aria-components` (web) | `^2.2.0` | The Tailwind plugin that gives the library's `pressed:` and `hovered:` variants their meaning. The library's own stylesheet loads it; a consuming app has to load it too, and should not rely on hoisting to find it. |

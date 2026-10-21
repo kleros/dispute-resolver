@@ -112,7 +112,7 @@ function documentInput(): HTMLInputElement {
 
 /** A library dropdown's button: its accessible name is the selected value followed by the field's label. */
 function select(label: string): HTMLElement {
-  return screen.getByRole("button", { name: (name) => name.endsWith(` ${label} ${label}`) });
+  return screen.getByRole("button", { name: (name) => name.endsWith(` ${label}`) });
 }
 
 async function chooseOption(user: UserEvent, label: string, option: string) {

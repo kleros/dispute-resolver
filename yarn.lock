@@ -425,7 +425,7 @@ __metadata:
     "@fontsource/open-sans": "npm:^5"
     "@internationalized/date": "npm:^3.7.0"
     "@kleros/kleros-app": "npm:3.1.0"
-    "@kleros/ui-components-library": "npm:3.9.0"
+    "@kleros/ui-components-library": "npm:3.10.0"
     "@playwright/test": "npm:^1.64.0"
     "@reown/appkit": "npm:^1.8.24"
     "@reown/appkit-adapter-wagmi": "npm:^1.8.24"
@@ -1510,9 +1510,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@kleros/ui-components-library@npm:3.9.0":
-  version: 3.9.0
-  resolution: "@kleros/ui-components-library@npm:3.9.0"
+"@kleros/ui-components-library@npm:3.10.0":
+  version: 3.10.0
+  resolution: "@kleros/ui-components-library@npm:3.10.0"
   dependencies:
     "@cyntler/react-doc-viewer": "npm:^1.17.0"
     "@internationalized/date": "npm:^3.7.0"
@@ -1535,7 +1535,7 @@ __metadata:
     react-dom: ^18.0.0
     react-is: ^18.0.0
     tailwindcss: ^4.0.11
-  checksum: 10c0/d36c7aaa15796e4c28be70b77623230ac8edace3587a176c8f79658b80645a5c7e8f6219db5dc0ff7910cbfa39f09babf19df8ae8130044eac4621774c84d95c
+  checksum: 10c0/e057decfec8c1ab915b2d179c90e3e3f9f94f79f8e00a1603def64a2b13e3eb90d7da85a616b29b686d2cab7bda697d3a51c8f33cc8bff77223db32be213568b
   languageName: node
   linkType: hard
 
