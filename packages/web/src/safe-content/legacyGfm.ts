@@ -6,7 +6,8 @@
  * - a literal `http://`, `https://` or `mailto:` URL becomes a link; a scheme in capitals only where an inline run
  *   starts, because remark-parse 5 looked for the lowercase schemes; `mailto:` is dropped from the label;
  * - `~~text~~` becomes strikethrough;
- * - a paragraph whose first two lines are a pipe row and an alignment row becomes a table;
+ * - a paragraph whose first two lines are a pipe row and an alignment row becomes a table; each row keeps only its own
+ *   cells, never padded to the alignment row or the widest row, and each cell takes the alignment of its column;
  * - a list item that starts with `[ ]` or `[x]` becomes a task item;
  * - an angle autolink to `mailto:` is labelled without the scheme;
  * - bracketed text that CommonMark left as text because no definition names it loses its brackets, as remark-parse 5's
@@ -31,7 +32,7 @@ interface MarkdownNode {
   value?: string;
   url?: string;
   checked?: boolean | null;
-  align?: TableAlign[];
+  data?: { hProperties?: { align: Exclude<TableAlign, null> } };
   children?: MarkdownNode[];
   position?: { readonly start: MarkdownPoint; readonly end: MarkdownPoint };
 }
@@ -981,6 +982,12 @@ function joinLines(lines: readonly Line[], context: Context): MarkdownNode[] {
   });
 }
 
+/** A table cell; its column's alignment, if any, renders as the cell's own `text-align`. */
+function tableCell(children: MarkdownNode[], align: TableAlign): MarkdownNode {
+  if (align === null) return { type: "tableCell", children };
+  return { type: "tableCell", children, data: { hProperties: { align } } };
+}
+
 /** A paragraph that starts with a table, as the table and the paragraph of the lines after it. */
 function splitTable(paragraph: MarkdownNode, context: Context): MarkdownNode[] {
   const lines = splitLines(paragraph.children ?? [], context);
@@ -992,11 +999,10 @@ function splitTable(paragraph: MarkdownNode, context: Context): MarkdownNode[] {
   let end = 2;
   while (end < lines.length && isRow(lines[end] ?? { nodes: [] }, context)) end++;
   const rows = [header, ...lines.slice(2, end)].map((line) => rowCells(line, context));
-  const columns = rows.reduce((widest, cells) => Math.max(widest, cells.length), align.length);
+  // No table alignment: mdast-util-to-hast pads or cuts every row to its length; today each row keeps its own cells.
   const table: MarkdownNode = {
     type: "table",
-    align: Array.from({ length: columns }, (_, index) => align[index] ?? null),
-    children: rows.map((cells) => ({ type: "tableRow", children: cells.map((cell) => ({ type: "tableCell", children: cell })) })),
+    children: rows.map((cells) => ({ type: "tableRow", children: cells.map((cell, index) => tableCell(cell, align[index] ?? null)) })),
   };
   const rest = lines.slice(end);
   return rest.length === 0 ? [table] : [table, { type: "paragraph", children: joinLines(rest, context) }];

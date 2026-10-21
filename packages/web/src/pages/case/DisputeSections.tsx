@@ -5,7 +5,7 @@ import { queryKeys, useCaseRefresh, type CaseDispute } from "../../data";
 import { SectionBoundary, SectionSkeleton } from "../../ui";
 import { AppealSection } from "../case-appeal";
 import { EvidenceSection } from "../case-evidence";
-import { CaseOverview, DecisionAlert, DisputeSummary, DisputeTimeline, RealityNotice } from "../case-summary";
+import { CaseOverview, DecisionAlert, DisputeSummary, DisputeTimeline, MetaEvidenceSourceNotice, RealityNotice } from "../case-summary";
 import { CaseAccordion, type CaseAccordionItem } from "./CaseAccordion";
 import { CompatibilityBanner } from "./CompatibilityBanner";
 import { foundDispute } from "./pageState";
@@ -24,11 +24,11 @@ interface DisputeSectionsProps {
 
 /**
  * The sections of one dispute, top to bottom (ARCHITECTURE.md §11.5): the case header with the info row, the
- * compatibility banner, the summary, the timeline, the decision, the Reality notice, then the accordion of Appeal,
- * Question and Evidence. Each renders as soon as its own data allows (P-20) behind its own boundary, keyed by the chain
- * and dispute so a failure never outlives its dispute (D-36, S-3); Retry reads that section's data again and remounts
- * its boundary on the new read. The evidence display, inside the summary, has its own boundary and Retry, scoped
- * `evidence-display`, which re-reads the meta-evidence (P-26).
+ * compatibility banner, the meta-evidence source warning (P-25), the summary, the timeline, the decision, the Reality
+ * notice, then the accordion of Appeal, Question and Evidence. Each renders as soon as its own data allows (P-20)
+ * behind its own boundary, keyed by the chain and dispute so a failure never outlives its dispute (D-36, S-3); Retry
+ * reads that section's data again and remounts its boundary on the new read. The evidence display, inside the summary,
+ * has its own boundary and Retry, scoped `evidence-display`, which re-reads the meta-evidence (P-26).
  */
 export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProps) {
   const client = useQueryClient();
@@ -87,6 +87,7 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
     <>
       {boundary("overview", "Dispute details", rereadDetails, <CaseOverview {...props} />)}
       {viewOnly ? <CompatibilityBanner /> : null}
+      {boundary("meta-evidence-source", "Meta-evidence source", rereadMetaEvidence, <MetaEvidenceSourceNotice {...props} />)}
       {boundary("summary", "Dispute summary", rereadMetaEvidence, <DisputeSummary {...props} displayRetry={displayRetry} />)}
       {boundary("timeline", "Timeline", rereadDetails, <DisputeTimeline {...props} />)}
       {boundary("decision", "Decision", rereadAppeal, <DecisionAlert {...props} />)}

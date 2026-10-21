@@ -625,8 +625,22 @@ describe("case page states (spec 5.1, 5.4)", () => {
     expect(core.loadMetaEvidence).toHaveBeenCalledWith(expect.objectContaining({ disputeId: 1n, arbitrable: TEST_ARBITRABLE }));
     expect(screen.queryByText("View mode only for this dispute")).not.toBeInTheDocument();
     expect(
-      screen.queryByText(/^The answer options of this question|^Other interfaces may show different answer options|^The question parameters are malformed/),
+      screen.queryByText(
+        /^The answer options of this question|^Other interfaces may show different answer options|^The question parameters are malformed|^The meta-evidence API pointed to/,
+      ),
     ).not.toBeInTheDocument();
+  });
+
+  it("P-25: a meta-evidence the API disagrees with shows the warning between the header and the summary", async () => {
+    programReads({ metaEvidence: { "1": { ...testOkMetaEvidence({ title: "Dispute 1 title" }), source: { kind: "event", locator: "disagrees", locatorPath: null } } } });
+    renderCase("/1/cases/1");
+    const warning = await screen.findByText("The meta-evidence API pointed to a file that cannot be verified");
+    expect(warning.closest('[role="status"]')).not.toBeNull();
+    const heading = screen.getByRole("heading", { level: 1, name: "Dispute #1" });
+    const title = await screen.findByRole("heading", { level: 2, name: "Dispute 1 title" });
+    expect(heading.compareDocumentPosition(warning)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(warning.compareDocumentPosition(title)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("P-19: the URL's dispute is read at mount, without the search debounce", async () => {

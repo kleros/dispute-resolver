@@ -49,7 +49,7 @@ const CONFIGS: readonly ChainConfig[] = [
     maxLookback: MAINNET_LOOKBACK,
     readRpcEnv: "REACT_APP_WEB3_XDAI_PROVIDER_URL",
     publicRpcEnv: publicRpcEnv(100),
-    explorerBaseUrl: "https://gnosis.blockscout.com",
+    explorerBaseUrl: "https://gnosisscan.io",
   },
   {
     id: 10200,
@@ -63,7 +63,7 @@ const CONFIGS: readonly ChainConfig[] = [
     maxLookback: TESTNET_LOOKBACK,
     readRpcEnv: "REACT_APP_WEB3_CHIADO_PROVIDER_URL",
     publicRpcEnv: publicRpcEnv(10200),
-    explorerBaseUrl: "https://blockscout.chiadochain.net",
+    explorerBaseUrl: "https://gnosis-chiado.blockscout.com",
   },
   {
     id: 11155111,

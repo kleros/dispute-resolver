@@ -217,9 +217,28 @@ describe("SafeMarkdown GitHub-flavored syntax of today's renderer", () => {
     expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["a|b", "c"]);
   });
 
-  it("MC-12: a backslash-escaped pipe still makes a row, with the escaped pipe inside its first cell", () => {
+  it("MC-12, MC-12b: a backslash-escaped pipe still makes a row, with the escaped pipe inside its only cell, as today", () => {
     renderMarkdown("a\\|b\n-|-");
-    expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["a|b", ""]);
+    expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["a|b"]);
+  });
+
+  it.each([
+    ["a\\|b\n-|-", ["a|b"], []],
+    ["| a \\| b |\n|---|---|", ["a | b"], []],
+    ["a|b\n-|-|-", ["a", "b"], []],
+    ["a|b\n-|-\nc|", ["a", "b"], ["c"]],
+    ["a|b\n-|-\nc\\|d", ["a", "b"], ["c|d"]],
+    ["a|b\n-|-\nc|d|e", ["a", "b"], ["c", "d", "e"]],
+  ])("MC-12b: a row has only its own cells, never padded to the alignment row or the widest row (%j), as today", (source, header, body) => {
+    renderMarkdown(source);
+    expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(header);
+    expect(screen.queryAllByRole("cell").map((cell) => cell.textContent)).toEqual(body);
+  });
+
+  it("MC-12b: each cell takes the alignment of its column, and a cell past the alignment row has none, as today", () => {
+    renderMarkdown(":a|b\n:-|-:\nc|d|e");
+    expect(screen.getAllByRole("columnheader").map((cell) => cell.style.textAlign)).toEqual(["left", "right"]);
+    expect(screen.getAllByRole("cell").map((cell) => cell.style.textAlign)).toEqual(["left", "right", ""]);
   });
 
   it("MC-12: a pipe written as a character reference makes no row when its text cannot be aligned with its source", () => {
