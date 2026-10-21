@@ -15,7 +15,7 @@ function withReason(sentence: string, reason: string | null): string {
   return reason === null ? sentence : `${sentence} (${reason})`;
 }
 
-export const UNCONFIGURED_MESSAGE = "Uploads are unavailable on this deployment.";
+export const UNCONFIGURED_MESSAGE = "Uploads are unavailable.";
 
 /** Each refusal as shown to the user. Copy is free (ledger preamble); the error codes are the contract. */
 export const failure = {

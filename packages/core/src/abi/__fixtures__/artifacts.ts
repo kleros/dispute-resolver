@@ -4,7 +4,7 @@
  * indexed flags and mutability are kept; `internalType`, `constant` and `payable` (which solc 0.4 artifacts and Sourcify
  * spell differently) are dropped.
  */
-import { z } from "zod";
+import { z } from "../../zod";
 import realityEth30Abi from "@reality.eth/contracts/abi/solc-0.8.6/RealityETH-3.0.abi.json";
 import realityEth32Abi from "@reality.eth/contracts/abi/solc-0.8.6/RealityETH-3.2.abi.json";
 import arbitrableProxy from "@kleros/arbitrable-proxy-contracts/build/contracts/ArbitrableProxy.json";

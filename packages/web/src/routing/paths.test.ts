@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { paths, replaceChainSegment } from "./paths";
+import { paths, replaceChainSegment, switchChainSegment } from "./paths";
 
 describe("paths (A19)", () => {
   it("A19: builds every internal target from a validated chain ID and a numeric dispute ID", () => {
@@ -33,32 +33,46 @@ describe("paths (A19)", () => {
 });
 
 describe("replaceChainSegment (spec §1.3)", () => {
-  it("D-55: replaces an all-digit first segment and keeps the rest of the path", () => {
+  it("replaces an all-digit first segment and keeps the rest of the path", () => {
     expect(replaceChainSegment("/1/cases/5", 100)).toBe("/100/cases/5");
     expect(replaceChainSegment("/1/ongoing/", 137)).toBe("/137/ongoing/");
     expect(replaceChainSegment("/10/create", 1)).toBe("/1/create");
     expect(replaceChainSegment("/1", 100)).toBe("/100");
   });
 
-  it("D-55: inserts the chain when the first segment is not all digits", () => {
+  it("inserts the chain when the first segment is not all digits", () => {
     expect(replaceChainSegment("/ongoing", 1)).toBe("/1/ongoing");
     expect(replaceChainSegment("/index.html", 100)).toBe("/100/index.html");
     expect(replaceChainSegment("/1x/cases", 100)).toBe("/100/1x/cases");
     expect(replaceChainSegment("/", 1)).toBe("/1/");
   });
 
-  it("D-55: accepts an unconfigured wallet chain, which then shows the unsupported-network screen", () => {
+  it("accepts a wallet chain that is not configured, which then shows the unsupported-network screen", () => {
     expect(replaceChainSegment("/1/cases/5", 10)).toBe("/10/cases/5");
   });
 
-  it("A19: refuses a chain ID that is not a positive safe integer", () => {
+  it("refuses a chain ID that is not a positive safe integer", () => {
     expect(() => replaceChainSegment("/1/ongoing", 0)).toThrow(RangeError);
     expect(() => replaceChainSegment("/1/ongoing", 1.5)).toThrow(RangeError);
     expect(() => replaceChainSegment("/1/ongoing", Number.MAX_SAFE_INTEGER + 1)).toThrow(RangeError);
   });
 
-  it("A19: never produces a protocol-relative target", () => {
+  it("never produces a protocol-relative target", () => {
     expect(replaceChainSegment("//evil.example/x", 1)).toBe("/1//evil.example/x");
     expect(replaceChainSegment("//evil.example/x", 1).startsWith("//")).toBe(false);
+  });
+});
+
+describe("switchChainSegment", () => {
+  it("the switcher replaces whatever first segment the URL has, digits or not", () => {
+    expect(switchChainSegment("/abc/ongoing", 1)).toBe("/1/ongoing");
+    expect(switchChainSegment("/1/cases/55", 100)).toBe("/100/cases/55");
+    expect(switchChainSegment("/999/ongoing", 1)).toBe("/1/ongoing");
+    expect(switchChainSegment("/", 1)).toBe("/1");
+  });
+
+  it("the switcher only moves to a configured chain and never to a protocol-relative target", () => {
+    expect(() => switchChainSegment("/1/ongoing", 10)).toThrow(RangeError);
+    expect(switchChainSegment("//evil.example/x", 1)).toBe("/1/evil.example/x");
   });
 });

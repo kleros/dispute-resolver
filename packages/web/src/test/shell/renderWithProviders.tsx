@@ -3,7 +3,8 @@ import { Route, Routes } from "react-router";
 import type { AtlasUploader } from "../../atlas";
 import type { CoreDeps } from "../../data";
 import { ChainLayout } from "../../routing";
-import { PageFrame, ToastProvider } from "../../shell";
+import { ColorSchemeProvider, PageFrame, ToastProvider } from "../../shell";
+import { createColorSchemeStore, type ColorSchemeStore } from "../../theme";
 import { TestAtlasProvider } from "../atlas";
 import { TestDataProvider } from "../data";
 import { renderAtPath, renderInRouter, type RoutedRenderResult } from "../routing";
@@ -20,6 +21,8 @@ export interface RenderWithProvidersOptions {
   readonly uploader?: AtlasUploader;
   /** `test` (default): routing's `TestFrame`, children only. `page`: the app's `PageFrame` with header and footer. */
   readonly frame?: "test" | "page";
+  /** The colour scheme; default a fresh light store on a detached element, so no test themes the document. */
+  readonly colorScheme?: ColorSchemeStore;
 }
 
 export interface ProvidersRenderResult extends RoutedRenderResult {
@@ -28,18 +31,21 @@ export interface ProvidersRenderResult extends RoutedRenderResult {
 
 /**
  * Renders `ui` as a screen of the app (ARCHITECTURE.md §1.5): `TestDataProvider` → `TestWalletProvider` →
- * `TestAtlasProvider` → `ToastProvider` around a `MemoryRouter` at `path`, under the `/:chainId` layout route, so
+ * `TestAtlasProvider` → `ToastProvider` → `ColorSchemeProvider` around a `MemoryRouter` at `path`, under the `/:chainId` layout route, so
  * `usePageChain()`, `useResolvedChain()`, chain following and `useToast()` behave as in the app.
  */
 export function renderWithProviders(ui: ReactElement, options: RenderWithProvidersOptions = {}): ProvidersRenderResult {
   const { path = "/1", deps, uploader, frame = "test" } = options;
   const wallet = options.wallet ?? createTestWallet();
+  const colorScheme = options.colorScheme ?? createColorSchemeStore({ root: document.createElement("div"), media: null, storage: null });
   function Providers({ children }: { readonly children?: ReactNode }) {
     return (
       <TestDataProvider deps={deps}>
         <TestWalletProvider wallet={wallet}>
           <TestAtlasProvider uploader={uploader}>
-            <ToastProvider>{children}</ToastProvider>
+            <ToastProvider>
+              <ColorSchemeProvider store={colorScheme}>{children}</ColorSchemeProvider>
+            </ToastProvider>
           </TestAtlasProvider>
         </TestWalletProvider>
       </TestDataProvider>

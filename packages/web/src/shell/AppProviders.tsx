@@ -1,5 +1,6 @@
 import { BrowserRouter } from "react-router";
 import { WalletProvider } from "../wallet";
+import { ColorSchemeProvider } from "./colorScheme";
 import { RootErrorBoundary } from "./RootErrorBoundary";
 import { ToastProvider } from "./ToastProvider";
 import type { AppProvidersProps } from "./types";
@@ -9,14 +10,16 @@ import type { AppProvidersProps } from "./types";
  * it, the Atlas library needs both, and routing and every page need all three. The root boundary is outermost, so a
  * failure anywhere in the tree keeps a minimal frame.
  */
-export function AppProviders({ config, dataProvider: DataLayer, atlasGate: AtlasLayer, children }: AppProvidersProps) {
+export function AppProviders({ config, dataProvider: DataLayer, atlasGate: AtlasLayer, colorScheme, children }: AppProvidersProps) {
   return (
     <RootErrorBoundary>
       <DataLayer config={config}>
         <WalletProvider config={config}>
           <AtlasLayer config={config}>
             <BrowserRouter>
-              <ToastProvider>{children}</ToastProvider>
+              <ToastProvider>
+                <ColorSchemeProvider store={colorScheme}>{children}</ColorSchemeProvider>
+              </ToastProvider>
             </BrowserRouter>
           </AtlasLayer>
         </WalletProvider>

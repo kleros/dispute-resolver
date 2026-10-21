@@ -1,6 +1,8 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
+import type { ImgHTMLAttributes, ReactElement } from "react";
 import { describe, expect, it } from "vitest";
+import { BrandLogo } from "./BrandLogo";
 
 const WEB_ROOT = resolve(import.meta.dirname, "../..");
 const SHELL_DIR = import.meta.dirname;
@@ -59,6 +61,14 @@ describe("index.html and the global stylesheet (A20)", () => {
 
   it("§11.1: the stylesheet uses Open Sans as the sans-serif family", () => {
     expect(read("src/index.css")).toMatch(/--font-sans:\s*"Open Sans"/);
+  });
+});
+
+describe("tab title", () => {
+  it("the tab title is Dispute Resolver while the logo keeps the full product name", () => {
+    expect(indexDocument().title).toBe("Dispute Resolver");
+    const logo: ReactElement<ImgHTMLAttributes<HTMLImageElement>> = BrandLogo();
+    expect(logo.props.alt).toBe("Kleros Dispute Resolver");
   });
 });
 

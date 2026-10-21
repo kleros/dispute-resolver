@@ -1,5 +1,5 @@
 import { isAddress } from "viem";
-import { z } from "zod";
+import { z } from "../zod";
 import { parseChainId } from "../chains";
 import type { RealityStatus, SafePopulateReason } from "../reality/types";
 import { parsePrecision, toText } from "../rulings";

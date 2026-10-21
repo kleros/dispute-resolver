@@ -1,5 +1,6 @@
 import {
   getChain,
+  z,
   type Address,
   type AppealDecisionEvent,
   type AttachmentLink,
@@ -13,10 +14,9 @@ import {
   type Period,
 } from "@dispute-resolver/core";
 import { QueryClient } from "@tanstack/react-query";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { z } from "zod";
 import type { CaseDispute, CaseWriteContext } from "../../data";
 import { TEST_UPLOAD_PATH, fakeUploader, type FakeUploader } from "../../test/atlas";
 import { TEST_ARBITRABLE, sectionLoading, sectionReady, sectionUnavailable, testFamily, testFoundLookup } from "../../test/data";
@@ -645,7 +645,7 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(writes.fake?.executions).toHaveLength(0);
   });
 
-  it("B3, D-48: a wallet on another chain (the load-time switch declined) is refused with the switch offer before anything is uploaded", async () => {
+  it("a wallet on another chain is refused at Submit with the switch offer before anything is uploaded", async () => {
     const { user, uploader } = await renderSection({ wallet: createTestWallet({ chainId: 100, switchChainError: true }) });
     const modal = await fillAndSubmit(user);
     expect(await within(modal).findByText("Wrong network")).toBeInTheDocument();
@@ -655,7 +655,7 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(writes.fake?.executions).toHaveLength(0);
   });
 
-  it("B3, D-48: with the wallet on another chain the attachment field is locked and the switch is offered before any sign-in", async () => {
+  it("with the wallet on another chain the attachment field is locked and the switch is offered before any sign-in", async () => {
     const uploader = fakeUploader({ isSignedIn: false });
     const { user } = await renderSection({ uploader, wallet: createTestWallet({ chainId: 100, switchChainError: true }) });
     const modal = await openModal(user);
@@ -667,12 +667,35 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(within(modal).getByRole("button", { name: "Switch to Ethereum Mainnet" })).toBeInTheDocument();
   });
 
-  it("B3: without a wallet the modal offers Connect and nothing is uploaded", async () => {
+  it("Submit New Evidence is disabled without a wallet and says one is needed", async () => {
     const { user, uploader } = await renderSection({ connected: false });
-    const modal = await fillAndSubmit(user);
-    expect(await within(modal).findByText("Wallet required")).toBeInTheDocument();
-    expect(within(modal).getByRole("button", { name: "Connect" })).toBeInTheDocument();
+    const button = screen.getByRole("button", { name: "Submit New Evidence" });
+    expect(button).toBeDisabled();
+    expect(screen.getByText("Connect a wallet to submit evidence.")).toBeInTheDocument();
+    await user.click(button);
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(uploader.uploadJson).not.toHaveBeenCalled();
+  });
+
+  it("locks the open modal when the wallet disconnects and keeps the draft", async () => {
+    const uploader = fakeUploader();
+    const { user, wallet } = await renderSection({ uploader });
+    const modal = await openModal(user);
+    await user.type(within(modal).getByLabelText("Evidence Title"), "Contract");
+
+    await act(() => wallet.disconnect());
+
+    expect(within(modal).getByText("Connect a wallet to submit evidence.")).toBeInTheDocument();
+    expect(submitButton()).toBeDisabled();
+    attach(pdf());
+    expect(uploader.upload).not.toHaveBeenCalled();
+    expect(within(modal).getByLabelText("Evidence Title")).toHaveValue("Contract");
+    expect(within(modal).getByLabelText("Evidence Title")).toBeEnabled();
+
+    await act(() => wallet.connect());
+
+    expect(submitButton()).toBeEnabled();
+    expect(within(modal).queryByText("Connect a wallet to submit evidence.")).toBeNull();
   });
 
   it("spec 5.14: Submit reads 'Awaiting Confirmation' and is disabled while the submission runs", async () => {
@@ -725,10 +748,11 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(submitButton()).toBeDisabled();
   });
 
-  it("D-21: without Atlas the modal explains that evidence cannot be submitted", async () => {
+  it("without Atlas the modal explains that evidence cannot be submitted, without naming the deployment", async () => {
     const { user } = await renderSection({ uploader: fakeUploader({ availability: "unconfigured" }) });
     const modal = await openModal(user);
     expect(submitButton()).toBeDisabled();
     expect(within(modal).getByText("Submission unavailable")).toBeInTheDocument();
+    expect(within(modal).getByText("Evidence is uploaded to IPFS before it is submitted, and uploads are unavailable.")).toBeInTheDocument();
   });
 });

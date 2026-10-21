@@ -1,5 +1,5 @@
 import { isAddress } from "viem";
-import { z } from "zod";
+import { z } from "../zod";
 import type { Address } from "../types";
 
 const addressInputSchema = z.string().refine((value) => isAddress(value, { strict: false }), { message: "Not an EVM address" });

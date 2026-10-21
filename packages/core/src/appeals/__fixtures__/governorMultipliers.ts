@@ -3,7 +3,7 @@
  * governors, each chain read at its own pinned block (P-05). Parsed with Zod so a malformed recording fails loudly.
  */
 import { decodeFunctionResult } from "viem";
-import { z } from "zod";
+import { z } from "../../zod";
 import { governorAbi } from "../../abi";
 import { toRegistryAddress } from "../../registry";
 import type { ChainId, Hex } from "../../types";

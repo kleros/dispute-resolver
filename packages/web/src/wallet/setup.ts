@@ -1,6 +1,5 @@
-import { CHAINS } from "@dispute-resolver/core";
+import { CHAINS, z } from "@dispute-resolver/core";
 import { createConfig, type Config } from "wagmi";
-import { z } from "zod";
 import type { AppConfig } from "../env";
 import type { createAppKitSetup } from "./appKitSetup";
 import { configuredChains } from "./chains";

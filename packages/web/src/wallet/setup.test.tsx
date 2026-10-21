@@ -244,13 +244,13 @@ describe("walletTransport", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("D-56: the error names the chain", () => {
-    expect(noRpcConfiguredError(100).message).toBe("No RPC configured for chain 100.");
+  it("the error names the chain without mentioning configuration", () => {
+    expect(noRpcConfiguredError(100).message).toBe("Reads on chain 100 are unavailable.");
   });
 
-  it("D-56: the unconfigured mode's chain transports follow the same rule (the AppKit adapter adds Reown's fallback, §6.4)", async () => {
+  it("a read-only setup's chain without an RPC rejects every request the same way", async () => {
     const setup = createReadOnlySetup(buildAppConfig({}, LOCATION));
-    await expect(setup.wagmiConfig.getClient({ chainId: 1 }).request({ method: "eth_blockNumber" })).rejects.toThrow("No RPC configured for chain 1.");
+    await expect(setup.wagmiConfig.getClient({ chainId: 1 }).request({ method: "eth_blockNumber" })).rejects.toThrow("Reads on chain 1 are unavailable.");
   });
 });
 

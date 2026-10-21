@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "../zod";
 import type { RealityProxyEntry } from "../registry/types";
 import type { ChainId } from "../types";
 import type { KnownDisputeQuestion, RealityQuestion, RealityQuestionCache } from "./types";

@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from "react";
-import { FACT_SMALL, LABEL, PAGE_TITLE, PeriodBadge, RECORD_BAND } from "../../ui";
+import { FACT_SMALL, LABEL, PAGE_TITLE, PeriodBadge } from "../../ui";
 import type { CaseSectionProps } from "../../data";
 import { existingView, foundLookup } from "./caseState";
 import { ViewDetail } from "./ViewDetail";
@@ -25,7 +25,7 @@ export function CaseOverview({ dispute, chain }: CaseSectionProps) {
   const found = foundLookup(dispute);
   return (
     <section aria-labelledby={headingId}>
-      <div className={`${RECORD_BAND} flex flex-col gap-4 p-4 lg:px-8 lg:py-6`}>
+      <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
           <h1 id={headingId} className={`${PAGE_TITLE} min-w-0 [overflow-wrap:anywhere]`}>
             {"Dispute #"}

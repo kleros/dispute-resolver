@@ -58,7 +58,7 @@ describe("createAppKitSetup when the Reown dashboard enables social login", () =
     expect(ModalController.state.open).toBe(false);
   });
 
-  it("K-03 (AppKit 1.8.24): WalletControl disables Connect with the misconfiguration message, and the app stays read-only", async () => {
+  it("with AppKit 1.8.24 reporting an embedded-wallet connector, Connect is disabled and the modal is not opened", async () => {
     const chain = getChain(1);
     if (chain === undefined) throw new Error("Chain 1 is not configured.");
     const queryClient = new QueryClient();
@@ -73,7 +73,7 @@ describe("createAppKitSetup when the Reown dashboard enables social login", () =
       expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
     });
     const button = screen.getByRole("button", { name: "Connect" });
-    expect(button).toHaveAccessibleDescription("Wallet connection is misconfigured on this deployment.");
+    expect(button).toHaveAccessibleDescription("Wallet connection is unavailable.");
     await userEvent.click(button);
     expect(ModalController.state.open).toBe(false);
     expect(setup.wagmiConfig.state.current).toBeNull();

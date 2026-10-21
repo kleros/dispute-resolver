@@ -9,6 +9,10 @@ export const REWARDS_TITLE = "Rewards";
 export const REWARDS_BODY = "Rewards only apply if both sides are funded and the option you fund wins. If no appeal takes place, your contribution is refunded.";
 
 export const ESCROW_EXPLANATION = "In order to appeal the decision, you need to pay the appeal cost.";
+
+/** Under the panels' write controls while no wallet is connected; they are disabled until one is. */
+export const FUND_NEEDS_WALLET = "Connect a wallet to fund an appeal.";
+export const APPEAL_NEEDS_WALLET = "Connect a wallet to appeal.";
 export const ESCROW_ENDED = "Appeal period ended";
 
 export const FEES_UNAVAILABLE_TITLE = "Appeal fees could not be calculated";

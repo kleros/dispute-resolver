@@ -1,7 +1,6 @@
-import { metaEvidenceCachePolicy, parseCachedMetaEvidenceResult } from "@dispute-resolver/core";
+import { metaEvidenceCachePolicy, parseCachedMetaEvidenceResult, z } from "@dispute-resolver/core";
 import { defaultShouldDehydrateQuery, hashKey, type DehydratedState, type Query, type QueryKey } from "@tanstack/react-query";
 import type { PersistedClient, PersistQueryClientOptions, Persister } from "@tanstack/react-query-persist-client";
-import { z } from "zod";
 import { CACHE_VERSION, PERSIST_THROTTLE_MS, PERSISTED_CACHE_KEY, PERSISTED_CACHE_MAX_AGE_MS, PERSISTED_QUERY_GC_TIME_MS } from "./constants";
 
 /** The storage calls the persister makes; `window.localStorage` in the app, a Map-backed object in tests. */

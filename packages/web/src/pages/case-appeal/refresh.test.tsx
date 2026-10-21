@@ -7,7 +7,7 @@ import { useCase } from "../../data";
 import { createTestDeps, testCourt, testDetails, testFamily, testFoundLookup, testOkMetaEvidence } from "../../test/data";
 import { testPageChain } from "../../test/routing";
 import { renderWithProviders } from "../../test/shell";
-import { TEST_TX_HASH, fakeWriteController, testReceipt, type FakeWriteController } from "../../test/wallet";
+import { TEST_TX_HASH, createTestWallet, fakeWriteController, testReceipt, type FakeWriteController } from "../../test/wallet";
 import type { WriteStatus } from "../../wallet";
 import { AppealSection } from "./AppealSection";
 import { FEES_UNAVAILABLE_TITLE, WITHDRAW_NOTHING } from "./copy";
@@ -73,6 +73,13 @@ function CaseAppeal() {
   return data.status === "dispute" ? <AppealSection dispute={data} chain={testPageChain(1).chain} /> : null;
 }
 
+/** Renders the case's appeal section with a wallet connected on the page chain, as every write needs. */
+async function renderCase() {
+  const wallet = createTestWallet();
+  await wallet.connect();
+  return renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps(), wallet });
+}
+
 /** The card of ruling 1, "Yes", which leads. */
 function winnerCard(): HTMLElement {
   return screen.getByRole("listitem", { name: "Yes" });
@@ -96,7 +103,7 @@ describe("AppealSection refresh after a mined write (proposal P-02, D-07)", () =
   it("P-02: after a mined funding the panel shows the refreshed totals", async () => {
     const user = userEvent.setup();
     programReads(3);
-    renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps() });
+    await renderCase();
     await waitFor(() => {
       expect(fundedPercent(winnerCard())).toBe("0");
     });
@@ -116,7 +123,7 @@ describe("AppealSection refresh after a mined write (proposal P-02, D-07)", () =
   it("P-02, D-54: once a funding is mined, an edited contribution follows the refreshed remaining amount again", async () => {
     const user = userEvent.setup();
     programReads(3);
-    renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps() });
+    await renderCase();
     const field = await waitFor(() => within(winnerCard()).getByRole("spinbutton", { name: /Contribution/ }));
     await user.clear(field);
     await user.type(field, "0.5");
@@ -132,7 +139,7 @@ describe("AppealSection refresh after a mined write (proposal P-02, D-07)", () =
   it("P-02: after the mined withdrawals the panel shows nothing withdrawable", async () => {
     const user = userEvent.setup();
     programReads(4);
-    const { container } = renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps() });
+    const { container } = await renderCase();
     const button = await screen.findByRole("button", { name: "Withdraw 1 ETH" });
     vi.mocked(core.readWithdrawable).mockResolvedValue({ status: "nothing" });
 
@@ -152,7 +159,7 @@ describe("AppealSection retry (D-36: Retry reads the section's data again)", () 
     const user = userEvent.setup();
     programReads(3);
     vi.mocked(core.readMultipliers).mockResolvedValueOnce({ ok: false, error: RPC_DOWN });
-    renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps() });
+    await renderCase();
     const retry = await screen.findByRole("button", { name: "Retry the appeal fees" });
     expect(screen.getByText(FEES_UNAVAILABLE_TITLE)).toBeInTheDocument();
 
@@ -178,7 +185,7 @@ describe("AppealSection retry (D-36: Retry reads the section's data again)", () 
           : NO_FUNDING,
       ),
     );
-    const { container } = renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps() });
+    const { container } = await renderCase();
     const retry = await screen.findByRole("button", { name: "Retry the appeal fees" });
     expect(container).toHaveTextContent("The governor session is unknown");
 
@@ -197,7 +204,7 @@ describe("AppealSection retry (D-36: Retry reads the section's data again)", () 
       reason: "fetch-error",
       error: { code: "rpc-error", message: "The meta-evidence file could not be fetched." },
     });
-    renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps() });
+    await renderCase();
     const retry = await screen.findByRole("button", { name: "Retry Appeal" });
     expect(screen.getByText("The meta-evidence file could not be fetched.")).toBeInTheDocument();
 
@@ -211,7 +218,7 @@ describe("AppealSection retry (D-36: Retry reads the section's data again)", () 
     const user = userEvent.setup();
     programReads(3);
     vi.mocked(core.detectFamily).mockRejectedValueOnce(new Error("probe failed")).mockRejectedValueOnce(new Error("probe failed"));
-    renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps() });
+    await renderCase();
     const retry = await screen.findByRole("button", { name: "Retry Appeal" });
 
     await user.click(retry);

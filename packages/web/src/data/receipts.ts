@@ -1,5 +1,6 @@
 import { getChain, resolveReadRpcUrl, type ChainId, type Env, type Hex } from "@dispute-resolver/core";
 import { createPublicClient, http, type PublicClient } from "viem";
+import { noRpcError } from "./sectionData";
 import type { WriteReceipt } from "./types";
 
 type ReceiptClient = Pick<PublicClient, "waitForTransactionReceipt">;
@@ -17,7 +18,7 @@ export function createReceiptWaiter(env: Env): (chainId: ChainId, hash: Hex) => 
     if (existing !== undefined) return existing;
     const chain = getChain(chainId);
     const resolution = chain === undefined ? undefined : resolveReadRpcUrl(chain, env);
-    if (resolution?.status !== "configured") throw new Error(`No RPC is configured for chain ${String(chainId)}.`);
+    if (resolution?.status !== "configured") throw new Error(noRpcError(chainId).message);
     const client = createPublicClient({ transport: http(resolution.url) });
     clients.set(chainId, client);
     return client;

@@ -1,6 +1,6 @@
 import * as core from "@dispute-resolver/core";
-import type { MetaEvidenceResult } from "@dispute-resolver/core";
-import { renderHook, waitFor } from "@testing-library/react";
+import type { ArbitratedBinding, MetaEvidenceResult } from "@dispute-resolver/core";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TestDataProvider, createTestDeps, testBinding, testFamily, testOkMetaEvidence } from "../test/data";
@@ -15,7 +15,11 @@ vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../te
 const BINDING = testBinding({ disputeId: 9n });
 const FAILED: MetaEvidenceResult = { status: "failed", reason: "fetch-error", error: { code: "rpc-error", message: "gateway down" } };
 
-function wrapperWith(deps: CoreDeps, seed: readonly (readonly [readonly unknown[], unknown])[] = []) {
+const STORED_KEY = queryKeys.metaEvidence(1, 9n, BINDING.arbitrated);
+
+type Seed = readonly (readonly [readonly unknown[], unknown])[];
+
+function wrapperWith(deps: CoreDeps, seed: Seed = []) {
   return function Wrapper({ children }: { readonly children?: ReactNode }) {
     return (
       <TestDataProvider deps={deps} seed={seed}>
@@ -23,6 +27,15 @@ function wrapperWith(deps: CoreDeps, seed: readonly (readonly [readonly unknown[
       </TestDataProvider>
     );
   };
+}
+
+/** The case page's meta-evidence before its lookup settles, as `useCase` mounts it. */
+function renderCaseMetaEvidence(seed: Seed) {
+  const unbound: { readonly binding: ArbitratedBinding | undefined } = { binding: undefined };
+  return renderHook(({ binding }: { readonly binding: ArbitratedBinding | undefined }) => useMetaEvidence(1, binding, "case"), {
+    initialProps: unbound,
+    wrapper: wrapperWith(createTestDeps(), seed),
+  });
 }
 
 beforeEach(() => {
@@ -71,6 +84,43 @@ describe("dispute hooks (ARCHITECTURE.md §5.3)", () => {
     });
     expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
     expect(core.loadMetaEvidence).toHaveBeenCalledWith(expect.objectContaining({ budgetMs: core.CASE_PAGE_BUDGET_MS, arbitrable: BINDING.arbitrated, disputeId: 9n }));
+  });
+
+  it("runs the case page's meta-evidence pipeline when the binding arrives after mount although an ok result is stored", async () => {
+    vi.mocked(core.loadMetaEvidence).mockResolvedValue(testOkMetaEvidence({ title: "Fresh title" }));
+    const { result, rerender } = renderCaseMetaEvidence([[STORED_KEY, testOkMetaEvidence({ title: "Stored title" })]]);
+    expect(result.current).toEqual({ status: "loading" });
+    rerender({ binding: BINDING });
+    expect(result.current).toEqual({ status: "loading" });
+    await waitFor(() => {
+      expect(result.current).toEqual({ status: "ready", value: testOkMetaEvidence({ title: "Fresh title" }) });
+    });
+    expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
+    expect(core.loadMetaEvidence).toHaveBeenCalledWith(expect.objectContaining({ budgetMs: core.CASE_PAGE_BUDGET_MS, arbitrable: BINDING.arbitrated, disputeId: 9n }));
+    rerender({ binding: BINDING });
+    await act(() => Promise.resolve());
+    expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs the pipeline again for a failure stored less than 30 seconds ago when the binding arrives after mount", async () => {
+    vi.mocked(core.loadMetaEvidence).mockResolvedValue(testOkMetaEvidence({ title: "Fresh title" }));
+    const { result, rerender } = renderCaseMetaEvidence([[STORED_KEY, FAILED]]);
+    rerender({ binding: BINDING });
+    await waitFor(() => {
+      expect(result.current).toEqual({ status: "ready", value: testOkMetaEvidence({ title: "Fresh title" }) });
+    });
+    expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
+  });
+
+  it("serves an Ongoing card from the stored ok result without running the pipeline", async () => {
+    vi.mocked(core.loadMetaEvidence).mockResolvedValue(testOkMetaEvidence({ title: "Fresh title" }));
+    const ongoing = { id: 9n, arbitrated: BINDING.arbitrated, period: 0, subcourtId: 0n, lastPeriodChange: 0, countdownTarget: null } as const;
+    const { result } = renderHook(() => useOngoingTitle(1, ongoing), {
+      wrapper: wrapperWith(createTestDeps(), [[STORED_KEY, testOkMetaEvidence({ title: "Stored title" })]]),
+    });
+    expect(result.current).toEqual({ status: "ready", value: { kind: "title", text: "Stored title" } });
+    await act(() => Promise.resolve());
+    expect(core.loadMetaEvidence).not.toHaveBeenCalled();
   });
 
   it("P-25: the case page's meta-evidence load receives an on-chain reader; the Ongoing title's does not", async () => {

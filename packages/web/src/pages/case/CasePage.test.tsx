@@ -63,6 +63,35 @@ const GOVERNOR: FamilyDetection = testFamily({
   writeFamily: "governor",
   capabilities: { localId: "none", evidence: { kind: "none" }, appeal: { kind: "governor" }, withdraw: { kind: "governor" } },
 });
+const VIEW_ONLY: FamilyDetection = testFamily({
+  family: "view-only",
+  writeFamily: "view-only",
+  capabilities: { localId: "none", evidence: { kind: "none" }, appeal: { kind: "none" }, withdraw: { kind: "none" } },
+});
+
+/** A promise the test settles by hand. */
+function deferred<T>() {
+  const control: { resolve?: (value: T) => void } = {};
+  const promise = new Promise<T>((resolve) => {
+    control.resolve = resolve;
+  });
+  return {
+    promise,
+    resolve(value: T) {
+      control.resolve?.(value);
+    },
+  };
+}
+
+/** Family detection that fails on the first load, its automatic retry included, and answers the next read when the test resolves it. */
+function failFamilyOnFirstLoad() {
+  const next = deferred<FamilyDetection>();
+  vi.mocked(core.detectFamily)
+    .mockRejectedValueOnce(new Error("socket hang up"))
+    .mockRejectedValueOnce(new Error("socket hang up"))
+    .mockReturnValueOnce(next.promise);
+  return next;
+}
 
 interface Program {
   readonly period?: Period;
@@ -157,6 +186,17 @@ function headerDetail(header: HTMLElement, label: string): HTMLElement {
   const value = within(header).getAllByRole("definition")[index];
   if (index === -1 || value === undefined) throw new Error(`No info row entry labelled ${label}.`);
   return value;
+}
+
+function isRecordBand(element: Element): boolean {
+  return element.classList.contains("bg-(--dr-record-surface)");
+}
+
+/** The tinted record band holding `element`, or `null` when it sits outside one. */
+function recordBand(element: Element): Element | null {
+  let current = element.parentElement;
+  while (current !== null && !isRecordBand(current)) current = current.parentElement;
+  return current;
 }
 
 /** The summary title of a dispute this file programs (`Dispute N title`), when one shows. */
@@ -631,7 +671,7 @@ describe("case page states (spec 5.1, 5.4)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("P-25: a meta-evidence the API disagrees with shows the warning between the header and the summary", async () => {
+  it("shows the warning about a meta-evidence the API disagrees with between the header and the summary", async () => {
     programReads({ metaEvidence: { "1": { ...testOkMetaEvidence({ title: "Dispute 1 title" }), source: { kind: "event", locator: "disagrees", locatorPath: null } } } });
     renderCase("/1/cases/1");
     const warning = await screen.findByText("The meta-evidence API pointed to a file that cannot be verified");
@@ -641,6 +681,30 @@ describe("case page states (spec 5.1, 5.4)", () => {
     expect(heading.compareDocumentPosition(warning)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(warning.compareDocumentPosition(title)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("the timeline sits inside the header band and the decision follows the band before the compatibility banner and the summary", async () => {
+    programReads({ period: 3, family: VIEW_ONLY });
+    renderCase("/1/cases/1");
+    await settledDispute();
+    const timeline = await screen.findByRole("list", { name: "Dispute timeline" });
+    const heading = screen.getByRole("heading", { level: 1, name: "Dispute #1" });
+    expect(recordBand(timeline)).not.toBeNull();
+    expect(recordBand(timeline)).toBe(recordBand(heading));
+    const decision = await screen.findByRole("heading", { level: 2, name: "Jury decision" });
+    const banner = screen.getByText("View mode only for this dispute");
+    const title = await screen.findByRole("heading", { level: 2, name: "Dispute 1 title" });
+    expect(timeline.compareDocumentPosition(decision) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(decision.compareDocumentPosition(banner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(banner.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("a lookup that finds no dispute leaves no empty header band", async () => {
+    renderCase("/1/cases/42");
+    await waitFor(() => {
+      expect(notFoundHeading("42")).toBeInTheDocument();
+    });
+    expect(Array.from(document.querySelectorAll("[class]")).filter(isRecordBand)).toEqual([]);
   });
 
   it("P-19: the URL's dispute is read at mount, without the search debounce", async () => {
@@ -736,6 +800,150 @@ describe("accordion (spec 5.11)", () => {
       expect(accordionBody("Question")).not.toBeVisible();
     });
     expect(within(accordionBody("Question")).getByText("Multiple choice: single select")).toBeInTheDocument();
+  });
+
+  it("shows no Appeal item for a view-only dispute in execution", async () => {
+    programReads({ period: 4, family: VIEW_ONLY });
+    renderCase("/1/cases/1");
+    await settledDispute();
+    expect(screen.queryByRole("button", { name: "Appeal" })).not.toBeInTheDocument();
+    for (const name of ["Question", "Evidence"]) {
+      expect(accordionButton(name)).toHaveAttribute("aria-expanded", "false");
+      expect(accordionBody(name)).not.toBeVisible();
+    }
+  });
+
+  it("keeps an opened item open while the appeal panel settles after the accordion appeared", async () => {
+    // The item list is decided from the period and the family alone. If useCaseRefresh("appeal") ever read the family
+    // again, the list could change after load, and the library accordion, which tracks the open item by index, would close it.
+    programReads({ period: 4, family: VIEW_ONLY });
+    const details = deferred<DisputeReads>();
+    detailsReads.mockReturnValue(details.promise);
+    renderCase("/1/cases/1");
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Question" }));
+    expect(accordionButton("Question")).toHaveAttribute("aria-expanded", "true");
+    await waitFor(() => {
+      expect(accordionBody("Question")).toBeVisible();
+    });
+
+    await act(() => {
+      details.resolve(detailsRead(4, 1n));
+      return Promise.resolve();
+    });
+    await settledDispute();
+    await waitFor(() => {
+      expect(core.buildAppealPanel).toHaveBeenCalled();
+    });
+
+    expect(accordionButton("Question")).toHaveAttribute("aria-expanded", "true");
+    expect(accordionBody("Question")).toBeVisible();
+  });
+
+  it("waits for the family before showing the accordion of a dispute in the appeal period", async () => {
+    programReads({ period: 3 });
+    const family = deferred<FamilyDetection>();
+    vi.mocked(core.detectFamily).mockReturnValue(family.promise);
+    renderCase("/1/cases/1");
+    await waitFor(() => {
+      expect(core.detectFamily).toHaveBeenCalled();
+    });
+    expect(caseHeader(1)).toBeInTheDocument();
+    expect(screen.getAllByRole("status").length).toBeGreaterThan(0);
+    for (const name of ["Appeal", "Question", "Evidence"]) expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+
+    await act(() => {
+      family.resolve(testFamily());
+      return Promise.resolve();
+    });
+    await settledDispute();
+    const titles = screen.getAllByRole("button", { expanded: false }).map((button) => button.textContent);
+    expect(titles.slice(0, 3)).toEqual(["Appeal", "Question", "Evidence"]);
+  });
+
+  it("keeps an Appeal item that says why it is unavailable when the family could not be detected in execution", async () => {
+    programReads({ period: 4 });
+    vi.mocked(core.detectFamily).mockRejectedValue(new Error("socket hang up"));
+    renderCase("/1/cases/1");
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Appeal" }));
+    await waitFor(() => {
+      expect(accordionBody("Appeal")).toBeVisible();
+    });
+    expect(await within(accordionBody("Appeal")).findByText("Appeal unavailable")).toBeInTheDocument();
+    expect(within(accordionBody("Appeal")).getByRole("button", { name: "Retry Appeal" })).toBeInTheDocument();
+    expect(core.detectFamily).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    { period: 3, stage: "appeal period" },
+    { period: 4, stage: "execution period" },
+  ] as const)("keeps the Appeal item open while its Retry reads a failed family again in the $stage", async ({ period }) => {
+    programReads({ period });
+    const family = failFamilyOnFirstLoad();
+    renderCase("/1/cases/1");
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Appeal" }));
+    await user.click(await within(accordionBody("Appeal")).findByRole("button", { name: "Retry Appeal" }));
+    await waitFor(() => {
+      expect(within(accordionBody("Appeal")).queryByText("Appeal unavailable")).not.toBeInTheDocument();
+    });
+    expect(core.detectFamily).toHaveBeenCalledTimes(3);
+    expect(accordionButton("Appeal")).toHaveAttribute("aria-expanded", "true");
+    for (const name of ["Question", "Evidence"]) expect(accordionButton(name)).toHaveAttribute("aria-expanded", "false");
+
+    await act(() => {
+      family.resolve(testFamily());
+      return Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(core.buildAppealPanel).toHaveBeenCalled();
+    });
+    expect(accordionButton("Appeal")).toHaveAttribute("aria-expanded", "true");
+    expect(accordionBody("Appeal")).toBeVisible();
+  });
+
+  it("keeps the Evidence item open while its submission Retry reads a failed family again", async () => {
+    programReads({ period: 3 });
+    const family = failFamilyOnFirstLoad();
+    renderCase("/1/cases/1");
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Evidence" }));
+    await user.click(await within(accordionBody("Evidence")).findByRole("button", { name: "Retry Evidence submission" }));
+    await waitFor(() => {
+      expect(within(accordionBody("Evidence")).queryByText("Evidence submission unavailable")).not.toBeInTheDocument();
+    });
+    expect(core.detectFamily).toHaveBeenCalledTimes(3);
+    expect(accordionButton("Evidence")).toHaveAttribute("aria-expanded", "true");
+
+    await act(() => {
+      family.resolve(testFamily());
+      return Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(core.buildAppealPanel).toHaveBeenCalled();
+    });
+    expect(accordionButton("Evidence")).toHaveAttribute("aria-expanded", "true");
+    expect(accordionBody("Evidence")).toBeVisible();
+  });
+
+  it("drops the Appeal item once its Retry finds the arbitrable view-only in execution", async () => {
+    programReads({ period: 4 });
+    const family = failFamilyOnFirstLoad();
+    renderCase("/1/cases/1");
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Appeal" }));
+    await user.click(await within(accordionBody("Appeal")).findByRole("button", { name: "Retry Appeal" }));
+    await waitFor(() => {
+      expect(core.detectFamily).toHaveBeenCalledTimes(3);
+    });
+
+    await act(() => {
+      family.resolve(VIEW_ONLY);
+      return Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Appeal" })).not.toBeInTheDocument();
+    });
+    for (const name of ["Question", "Evidence"]) expect(accordionButton(name)).toHaveAttribute("aria-expanded", "false");
   });
 });
 

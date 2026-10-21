@@ -1,9 +1,10 @@
 import { resolveReadRpcUrl, type ChainConfig, type Env } from "@dispute-resolver/core";
 import { custom, http, type Transport } from "viem";
 
-/** The error every request of an unconfigured chain's transport rejects with (D-56). */
+/** The error every request of an unconfigured chain's transport rejects with (D-56); a failed receipt shows its text. */
 export function noRpcConfiguredError(chainId: number): Error {
-  return new Error(`No RPC configured for chain ${String(chainId)}.`);
+  // data/sectionData.ts words the same case for a section it cannot read; keep the two sentences identical.
+  return new Error(`Reads on chain ${String(chainId)} are unavailable.`);
 }
 
 /**

@@ -67,10 +67,21 @@ function Harness({ initial = null, onUploaded, onCleared, ...props }: HarnessPro
 interface RenderOptions extends HarnessProps {
   readonly uploader?: FakeUploader;
   readonly wallet?: TestWallet;
+  /** Connects the wallet before rendering; default `true`. */
+  readonly connect?: boolean;
 }
 
-async function renderField({ uploader = fakeUploader(), wallet = createTestWallet(), ...props }: RenderOptions = {}) {
-  await wallet.connect();
+/** The classes that give the library's disabled dropzone a neutral look instead of its enabled blue one. */
+const LOCKED_LOOK = [
+  "[&_[data-disabled]]:border-klerosUIComponentsStroke",
+  "[&_[data-disabled]]:bg-klerosUIComponentsLightGrey",
+  "[&_[data-disabled]]:hover:bg-klerosUIComponentsLightGrey",
+  "[&_[data-disabled]]:cursor-not-allowed",
+  "[&_[data-disabled]_svg]:fill-klerosUIComponentsSecondaryText",
+];
+
+async function renderField({ uploader = fakeUploader(), wallet = createTestWallet(), connect = true, ...props }: RenderOptions = {}) {
+  if (connect) await wallet.connect();
   const ui = (children: ReactNode) => (
     <TestDataProvider>
       <TestWalletProvider wallet={wallet}>
@@ -187,22 +198,37 @@ describe("AtlasFileField", () => {
     expect(await screen.findByText("An error occurred while uploading the file. Please try again. (Network down)")).toBeInTheDocument();
   });
 
-  it("D-21: shows uploads as unavailable on a deployment without Atlas and ignores picks", async () => {
+  it("without Atlas the field says uploads are unavailable and ignores picks", async () => {
     const uploader = fakeUploader({ availability: "unconfigured", isSignedIn: false, limits: () => null });
     const { input } = await renderField({ uploader });
 
     choose(input, pdf());
 
-    expect(screen.getByText("Uploads are unavailable on this deployment.")).toBeInTheDocument();
+    expect(screen.getByText("Uploads are unavailable.")).toBeInTheDocument();
     expect(uploader.upload).not.toHaveBeenCalled();
   });
 
-  it("ignores picks while the form disables it", async () => {
-    const { input, uploader } = await renderField({ isDisabled: true });
+  it("looks disabled and is unreachable while the form locks it", async () => {
+    const { input, uploader, container } = await renderField({ isDisabled: true });
 
+    expect(input).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Primary document" })).toBeDisabled();
+    expect(container.querySelector("[data-disabled]")).not.toBeNull();
+    expect(input.closest("fieldset")?.parentElement).toHaveClass(...LOCKED_LOOK);
     choose(input, pdf());
 
     expect(uploader.upload).not.toHaveBeenCalled();
+  });
+
+  it("says that uploading needs a wallet while locked without one", async () => {
+    const withoutWallet = await renderField({ isDisabled: true, connect: false });
+    expect(screen.getByText("Connect a wallet to upload files.")).toBeInTheDocument();
+    withoutWallet.unmount();
+
+    await renderField({ isDisabled: true });
+
+    expect(screen.getByText("Drop a file here or click to select one. Maximum size: 20 MB.")).toBeInTheDocument();
+    expect(screen.queryByText("Connect a wallet to upload files.")).not.toBeInTheDocument();
   });
 
   it("D-44: a form reset of the controlled value empties the field", async () => {

@@ -1,15 +1,15 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Link, NavLink } from "react-router";
 import { paths, type ResolvedChain } from "../routing";
-import { ChainIndicator, WalletControl } from "../wallet";
+import { WalletControl } from "../wallet";
 import { BrandLogo } from "./BrandLogo";
+import { ChainSwitcher } from "./ChainSwitcher";
 import { CloseIcon, MenuIcon } from "./icons";
 import { BAR_FOCUS, BAR_FOCUS_TOKEN, BAR_TEXT, CONTENT, GUTTER } from "./layout";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface HeaderProps {
   readonly resolvedChain: ResolvedChain;
-  /** A wallet is connected: the Create link is shown only then (spec §2.3). */
-  readonly connected: boolean;
 }
 
 const NAV_LINK = `block px-3 py-2 whitespace-nowrap text-base transition-opacity lg:py-1 ${BAR_FOCUS}`;
@@ -19,11 +19,12 @@ function navLinkClass({ isActive }: { readonly isActive: boolean }): string {
 }
 
 /**
- * The sticky header bar (spec §2.3, ARCHITECTURE.md §11.2): the brand and the navigation on the left, the chain and the
- * wallet control on the right. Below `lg` everything but the brand collapses into a menu panel, as in the v2 apps. Every
- * link is built from the resolved chain, so error screens never link to `/undefined` (D-45).
+ * The sticky header bar: the brand and the navigation, then the network pill, the theme toggle and the wallet control.
+ * Below `lg` only the navigation collapses into a menu panel; the controls take a second row, so changing chain or
+ * connecting never needs the menu. Every link is built from the resolved chain, so error screens never link to
+ * `/undefined`.
  */
-export function Header({ resolvedChain, connected }: HeaderProps) {
+export function Header({ resolvedChain }: HeaderProps) {
   const { chainId, chain } = resolvedChain.page;
   const [menuOpen, setMenuOpen] = useState(false);
   const panelId = useId();
@@ -47,8 +48,8 @@ export function Header({ resolvedChain, connected }: HeaderProps) {
 
   return (
     <header className={`sticky top-0 z-40 bg-klerosUIComponentsPrimaryPurple dark:bg-klerosUIComponentsLightBlue ${BAR_TEXT} ${BAR_FOCUS_TOKEN} ${GUTTER}`}>
-      <div className={`${CONTENT} relative flex h-16 items-center gap-3 lg:gap-8`}>
-        <Link to={paths.chainRoot(chainId)} onClick={close} className={`inline-flex shrink-0 ${BAR_FOCUS}`}>
+      <div className={`${CONTENT} relative flex flex-wrap items-center gap-x-3 lg:h-16 lg:flex-nowrap lg:gap-8`}>
+        <Link to={paths.chainRoot(chainId)} onClick={close} className={`order-1 inline-flex h-16 shrink-0 items-center ${BAR_FOCUS}`}>
           <BrandLogo />
         </Link>
         <button
@@ -60,13 +61,13 @@ export function Header({ resolvedChain, connected }: HeaderProps) {
           onClick={() => {
             setMenuOpen((open) => !open);
           }}
-          className={`ml-auto inline-flex size-11 shrink-0 items-center justify-center lg:hidden ${BAR_FOCUS}`}
+          className={`order-2 ml-auto inline-flex size-11 shrink-0 items-center justify-center lg:hidden ${BAR_FOCUS}`}
         >
           {menuOpen ? <CloseIcon className="size-6" /> : <MenuIcon className="size-6" />}
         </button>
         <div
           id={panelId}
-          className={`${menuOpen ? "flex" : "hidden"} flex-col gap-4 lg:flex lg:flex-1 lg:flex-row lg:items-center lg:justify-between lg:gap-8 max-lg:absolute max-lg:inset-x-[-1rem] max-lg:top-full max-lg:border-b max-lg:border-klerosUIComponentsStroke max-lg:bg-klerosUIComponentsPrimaryPurple max-lg:px-4 max-lg:pt-2 max-lg:pb-6 max-lg:shadow-(--dr-elevation) dark:max-lg:bg-klerosUIComponentsLightBlue`}
+          className={`${menuOpen ? "flex" : "hidden"} order-4 flex-col lg:order-2 lg:flex lg:flex-1 lg:flex-row lg:items-center max-lg:absolute max-lg:inset-x-[-1rem] max-lg:top-full max-lg:border-b max-lg:border-klerosUIComponentsStroke max-lg:bg-klerosUIComponentsPrimaryPurple max-lg:px-4 max-lg:pt-2 max-lg:pb-6 max-lg:shadow-(--dr-elevation) dark:max-lg:bg-klerosUIComponentsLightBlue`}
         >
           <nav aria-label="Main">
             <ul className="flex flex-col lg:flex-row lg:items-center lg:gap-2">
@@ -75,22 +76,23 @@ export function Header({ resolvedChain, connected }: HeaderProps) {
                   Ongoing Disputes
                 </NavLink>
               </li>
-              {connected ? (
-                <li>
-                  <NavLink to={paths.create(chainId)} onClick={close} className={navLinkClass}>
-                    Create
-                  </NavLink>
-                </li>
-              ) : null}
               <li>
                 <NavLink to={paths.cases(chainId)} onClick={close} className={navLinkClass}>
-                  Interact
+                  Case Lookup
+                </NavLink>
+              </li>
+              <li>
+                <NavLink to={paths.create(chainId)} onClick={close} className={navLinkClass}>
+                  Create
                 </NavLink>
               </li>
             </ul>
           </nav>
-          <div className="flex min-w-0 flex-col items-start gap-3 px-3 lg:flex-row lg:items-center lg:gap-6 lg:px-0">
-            <ChainIndicator chain={chain} isPageChain={resolvedChain.kind === "page"} />
+        </div>
+        <div className="order-3 flex w-full min-w-0 items-center justify-between gap-3 pb-3 lg:w-auto lg:gap-4 lg:pb-0">
+          <ChainSwitcher resolvedChain={resolvedChain} />
+          <div className="flex shrink-0 items-center gap-3 lg:gap-4">
+            <ThemeToggle />
             <WalletControl chain={chain} />
           </div>
         </div>

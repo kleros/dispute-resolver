@@ -85,6 +85,16 @@ function cardIds(): string[] {
   return disputeCards().map(shownId);
 }
 
+/** The card's ID, drawn as a muted "#" and the number in two spans. */
+function cardId(link: HTMLElement, id: string): HTMLElement {
+  return within(link).getByText((_, element) => element?.textContent === `#${id}` && element.children.length === 1);
+}
+
+/** The arrow at the end of the card's foot, the one icon that slides on hover. */
+function arrowIn(container: HTMLElement): Element | null {
+  return container.querySelector('svg[class*="group-hover:translate-x-1"]');
+}
+
 function cardTitle(id: string): HTMLElement {
   return within(card(id)).getByRole("heading", { level: 2 });
 }
@@ -186,7 +196,7 @@ describe("Ongoing page (spec §3, ARCHITECTURE.md §5.5)", () => {
     expect(screen.queryByRole("list", { name: "Open disputes" })).toBeNull();
   });
 
-  it("spec §3: each card shows its dispute ID and period, newest first, with the title, court and countdown", async () => {
+  it("each card shows its dispute ID and period, newest first, with the title, court and countdown", async () => {
     vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(12n, 2, { subcourtId: 2n }), dispute(9n, 0)]));
     titles({ "12": testOkMetaEvidence({ title: "Was the delivery on time?" }), "9": testOkMetaEvidence({ title: "Is the logo original?" }) });
     renderOngoing();
@@ -201,7 +211,39 @@ describe("Ongoing page (spec §3, ARCHITECTURE.md §5.5)", () => {
     expect(within(twelve).getByText("Blockchain")).toBeInTheDocument();
     expect(within(twelve).getByText("Period ends in")).toBeInTheDocument();
     expect(within(twelve).getByText(COUNTDOWN)).toBeInTheDocument();
-    expect(within(twelve).getByText("#12")).toBeInTheDocument();
+    expect(cardId(twelve, "12")).toBeInTheDocument();
+  });
+
+  it("every card ends in a foot that points at the case, with the countdown and its label when the period end is known", async () => {
+    vi.mocked(core.listCourts).mockResolvedValue({ ok: false, error: { code: "rpc-error", message: "down" } });
+    vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(12n, 2), dispute(4n, 0, { countdownTarget: null })]));
+    renderOngoing();
+    await settledList();
+    await waitFor(() => {
+      expect(within(card("4")).getByText("Court 0 (unavailable)")).toBeInTheDocument();
+    });
+    const twelve = card("12");
+    expect(within(twelve).getByText("Period ends in")).not.toHaveClass("sr-only");
+    const countdown = within(twelve).getByText(COUNTDOWN);
+    expect(countdown.tagName).toBe("TIME");
+    const foot = countdown.closest("div");
+    if (foot === null) throw new Error("No foot around the countdown.");
+    expect(arrowIn(foot)).toHaveAttribute("aria-hidden", "true");
+
+    expect(arrowIn(card("4"))).toHaveAttribute("aria-hidden", "true");
+    expect(card("4").querySelector("time")).toBeNull();
+  });
+
+  it("the court is a plain line with the scales mark, not a stamp", async () => {
+    vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(12n, 2, { subcourtId: 2n })]));
+    renderOngoing();
+    await settledList();
+    const court = within(card("12")).getByText("Blockchain");
+    const line = court.parentElement;
+    expect(line?.className).not.toMatch(/rounded-full|\bborder\b/);
+    const mark = court.previousElementSibling;
+    expect(mark?.tagName.toLowerCase()).toBe("svg");
+    expect(mark).toHaveAttribute("aria-hidden", "true");
   });
 
   it("§3.4: a card is a router link to its case page", async () => {
@@ -402,7 +444,7 @@ describe("Ongoing page (spec §3, ARCHITECTURE.md §5.5)", () => {
     expect(screen.getByRole("button", { name: "Retry Dispute 1" })).toBeInTheDocument();
   });
 
-  it("spec §3: the dropdown shows the selected filter's name", async () => {
+  it("the dropdown shows the selected filter's name", async () => {
     vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(1n, 0)]));
     renderOngoing();
     await settledList();

@@ -83,18 +83,18 @@ describe("WriteStatusNotice", () => {
     expect(wallet.modal?.openConnect).toHaveBeenCalledWith(100);
   });
 
-  it("K-02: needs-wallet without a project ID explains that connection is not configured", () => {
-    renderNotice({ phase: "needs-wallet" }, createTestWallet({ mode: "unconfigured" }));
-    expect(screen.queryByRole("button")).toBeNull();
-    expect(screen.getByText("Wallet connection is not configured on this deployment.")).toBeInTheDocument();
-  });
-
-  it("K-03: needs-wallet with an embedded-wallet connector registered explains that connection is misconfigured", async () => {
-    const wallet = createTestWallet({ embeddedWallet: true });
-    renderNotice({ phase: "needs-wallet", pageChainId: 1 }, wallet);
-    expect(await screen.findByText("Wallet connection is misconfigured on this deployment.")).toBeInTheDocument();
-    expect(screen.queryByRole("button")).toBeNull();
-    expect(wallet.modal?.openConnect).not.toHaveBeenCalled();
+  it.each([
+    ["without a project ID", { mode: "unconfigured" }],
+    ["with an embedded-wallet connector registered", { embeddedWallet: true }],
+  ] as const)("needs-wallet shows no Connect offer and no explanation when no wallet can connect (%s)", async (_case, options) => {
+    const { container } = renderNotice({ phase: "needs-wallet", pageChainId: 1 }, createTestWallet(options));
+    await waitFor(() => {
+      expect(screen.queryByRole("button")).toBeNull();
+    });
+    expect(screen.getByText("Connect a wallet to continue.")).toBeInTheDocument();
+    // The notice alone: no offer and no sentence under it.
+    expect(container.querySelector("[aria-live]")?.children).toHaveLength(1);
+    expect(container).not.toHaveTextContent(/configured|deployment|unavailable/i);
   });
 
   it.each<WriteRefusal>([

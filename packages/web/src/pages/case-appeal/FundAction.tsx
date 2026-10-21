@@ -15,6 +15,8 @@ export interface FundActionProps {
   readonly suggested: bigint;
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
+  /** Fund stays disabled whatever the amount, as without a wallet; the contribution stays editable. */
+  readonly isDisabled?: boolean;
 }
 
 function inFlight(status: WriteStatus): boolean {
@@ -25,8 +27,8 @@ function inFlight(status: WriteStatus): boolean {
  * The contribution field, Fund and the write's status (spec §5.12 card contents and fund action). The field shows the
  * suggested amount and follows it until the user edits it (D-54); once a funding is mined it follows the refreshed
  * amount again. When the suggested amount drops to 0 the edit is dropped, so the disabled field shows 0. Fund is
- * disabled when the suggested amount is 0, without an answer to fund, for an amount that cannot be sent (D-14), and
- * while a funding is in flight. The write goes through the wallet's chain guard (B3, D-48) to the arbitrable the
+ * disabled when the suggested amount is 0, without an answer to fund, for an amount that cannot be sent (D-14), while
+ * a funding is in flight, and when the panel disables it. The write goes through the wallet's chain guard (B3, D-48) to the arbitrable the
  * arbitrator names (A22, B10), and the case refreshes once it is mined (D-07, P-02).
  *
  * The amount sent is always the text the field shows. The library field reports a parsed value through `onChange` but
@@ -34,7 +36,7 @@ function inFlight(status: WriteStatus): boolean {
  * For one input event React runs `onInput` before `onChange`, so a value the field rewrites (a negative amount becomes
  * 0) ends on what the field shows.
  */
-export function FundAction({ subject, code, suggested, actions, chain }: FundActionProps) {
+export function FundAction({ subject, code, suggested, actions, chain, isDisabled = false }: FundActionProps) {
   const write = useWrite();
   /** The contribution as the field shows it once the user edited it; `null` while it follows the suggested amount. */
   const [edited, setEdited] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export function FundAction({ subject, code, suggested, actions, chain }: FundAct
   const contribution = parseContribution(edited ?? formatEther(suggested));
   const busy = inFlight(write.status);
   const { context } = actions;
-  const canFund = context !== null && code !== null && contribution.ok && !nothingToFund && !busy;
+  const canFund = !isDisabled && context !== null && code !== null && contribution.ok && !nothingToFund && !busy;
 
   const fund = async () => {
     if (context === null || code === null || !contribution.ok) return;

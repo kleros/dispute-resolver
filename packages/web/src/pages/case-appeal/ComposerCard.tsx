@@ -13,6 +13,8 @@ export interface ComposerCardProps {
   readonly cards: readonly CrowdfundingCard[];
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
+  /** Disables Fund, as without a wallet. */
+  readonly isFundDisabled: boolean;
 }
 
 /**
@@ -20,7 +22,7 @@ export interface ComposerCardProps {
  * options of the answer and funds that combination (bitmask + 1) at the loser amount until the loser deadline, like a
  * free input. Ticking nothing funds "None", which is a combination too (spec §5.12 item 4).
  */
-export function ComposerCard({ composer, cards, actions, chain }: ComposerCardProps) {
+export function ComposerCard({ composer, cards, actions, chain, isFundDisabled }: ComposerCardProps) {
   const titleId = useId();
   const [selected, setSelected] = useState<ReadonlySet<number>>(() => new Set());
   const code = combinationCode([...selected].sort((a, b) => a - b));
@@ -70,7 +72,7 @@ export function ComposerCard({ composer, cards, actions, chain }: ComposerCardPr
             <span>{"Required "}</span>
             <Amount wei={composer.required} chain={chain} className={FACT_LEAD} />
           </p>
-          <FundAction subject="the selected combination" code={code} suggested={composer.required} actions={actions} chain={chain} />
+          <FundAction subject="the selected combination" code={code} suggested={composer.required} actions={actions} chain={chain} isDisabled={isFundDisabled} />
         </div>
       </Card>
     </li>

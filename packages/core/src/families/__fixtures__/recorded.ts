@@ -4,7 +4,7 @@
  * signatures each dispatcher carries (the implementation's for EIP-1967 proxies), transcribed once by an independent
  * disassembler, so detection is checked against reviewed data rather than against the scanner under test.
  */
-import { z } from "zod";
+import { z } from "../../zod";
 import { SELECTORS } from "../../abi";
 import type { ProbeSignature } from "../../abi";
 import { toRegistryAddress } from "../../registry";

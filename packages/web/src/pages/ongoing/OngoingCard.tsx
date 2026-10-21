@@ -4,22 +4,23 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import type { OngoingTitle, SectionData } from "../../data";
 import { paths } from "../../routing";
-import { CHIP_INFO, Countdown, FACT_LEAD, FACT_SMALL, LABEL, PeriodBadge } from "../../ui";
+import { Countdown, FACT_SMALL, LABEL, PeriodBadge } from "../../ui";
 
 /** The library `Card` is a fixed 328×200 box; the grid sizes the cards instead (ARCHITECTURE.md §11.5). */
 const CARD_CLASS =
-  "flex h-full w-full flex-col gap-4 overflow-hidden p-4 transition-[border-color,box-shadow] duration-200 motion-reduce:transition-none group-hover:border-klerosUIComponentsPrimaryBlue group-hover:shadow-(--dr-elevation) lg:p-6";
+  "flex h-full w-full flex-col overflow-hidden p-0 transition-[border-color,box-shadow] duration-200 motion-reduce:transition-none group-hover:border-klerosUIComponentsPrimaryBlue group-hover:shadow-(--dr-elevation)";
 /** The focus ring sits on this link, outside the card's `overflow-hidden`, so it is never clipped (contract §8). */
 const LINK_CLASS = "group block h-full rounded-[18px] text-klerosUIComponentsPrimaryText no-underline";
 const TITLE_CLASS = "line-clamp-2 min-h-14 text-lg leading-7 font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]";
-/** The countdown band: the plate under the card's decisive fact, bleeding to the card's edges (contract §1, §12). */
-const BAND_CLASS = "mt-auto -mx-4 -mb-4 flex items-center gap-2 bg-klerosUIComponentsMediumBlue px-4 py-3 lg:-mx-6 lg:-mb-6 lg:px-6";
+const HEAD_CLASS = "flex items-center justify-between gap-3 px-4 pt-4 lg:px-6 lg:pt-6";
+const BODY_CLASS = "flex min-w-0 flex-1 flex-col gap-4 px-4 pt-3 pb-4 lg:px-6 lg:pb-6";
+/** Always drawn, even without a countdown, so every card in a row ends on the same strip and the arrow. */
+const FOOT_CLASS = "flex min-h-12 items-center justify-between gap-3 border-t border-klerosUIComponentsStroke bg-klerosUIComponentsMediumBlue px-4 py-3 lg:px-6";
 const SKELETON_LINE = "block h-4 animate-loading rounded-base bg-klerosUIComponentsStroke";
 
 /**
- * The court badge's text (spec §3): the court's name; its ID with "name unavailable" when its policy failed (D-19);
- * its ID with "unavailable" when the court list failed or does not hold it (D-36: today's card throws). `null` while the
- * courts load.
+ * The court line's text: the court's name; its ID with "name unavailable" when its policy failed; its ID with
+ * "unavailable" when the court list failed or does not hold it, where the old card threw. `null` while the courts load.
  */
 export function courtLabel(courts: SectionData<readonly Court[]>, subcourtId: bigint): string | null {
   if (courts.status === "loading") return null;
@@ -45,17 +46,42 @@ function CardTitle({ title, disputeId }: { readonly title: SectionData<OngoingTi
   return <h2 className={TITLE_CLASS}>{title.value.kind === "title" ? title.value.text : "Meta Evidence Missing"}</h2>;
 }
 
-/** The court as an informational stamp chip (contract §7). Not the library `Tag`: that is a button, and the whole card is already a link (§3.4). */
-function CourtTag({ label }: { readonly label: string | null }) {
+function ScalesIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4 shrink-0 fill-none stroke-klerosUIComponentsSecondaryText" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 2v12M5 14h6M3 4.5h10M8 3.5l-5 1M8 3.5l5 1M3 4.5 1.25 9a1.75 1.75 0 0 0 3.5 0L3 4.5ZM13 4.5 11.25 9a1.75 1.75 0 0 0 3.5 0L13 4.5Z" />
+    </svg>
+  );
+}
+
+/** `ml-auto` keeps the arrow at the right end when the foot holds no countdown. */
+function ArrowIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      className="ml-auto size-4 shrink-0 fill-none stroke-klerosUIComponentsPrimaryBlue transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 8h10M9 4l4 4-4 4" />
+    </svg>
+  );
+}
+
+/** A plain line, not the library `Tag`: that is a button, and the whole card is already a link. */
+function CourtLine({ label }: { readonly label: string | null }) {
   if (label === null) {
     return (
-      <span aria-busy="true" className="inline-flex h-7 w-28 animate-loading rounded-full bg-klerosUIComponentsStroke">
+      <span aria-busy="true" className="mt-auto inline-flex h-5 w-32 animate-loading rounded-base bg-klerosUIComponentsStroke">
         <span className="sr-only">Loading the court</span>
       </span>
     );
   }
   return (
-    <span className={`${CHIP_INFO} min-w-0 self-start`}>
+    <span className={`${LABEL} mt-auto flex min-w-0 items-center gap-2`}>
+      <ScalesIcon />
       <span className="truncate">{label}</span>
     </span>
   );
@@ -95,21 +121,26 @@ export function OngoingCard({ chainId, dispute, title, courts }: OngoingCardProp
   const countdown = dispute.countdownTarget;
   return (
     <CardShell chainId={chainId} disputeId={dispute.id}>
-      <div className="flex items-center justify-between gap-3">
+      <div className={HEAD_CLASS}>
         <PeriodBadge variant="pill" size="sm" period={dispute.period} />
-        <span className={`${FACT_SMALL} tabular-nums`}>#{dispute.id.toString()}</span>
+        <span className="text-sm text-klerosUIComponentsSecondaryText tabular-nums">
+          #<span className="font-semibold text-klerosUIComponentsPrimaryText">{dispute.id.toString()}</span>
+        </span>
       </div>
-      <div className="flex min-w-0 flex-col gap-2">
+      <div className={BODY_CLASS}>
         <CardTitle title={title} disputeId={dispute.id} />
-        <CourtTag label={courtLabel(courts, dispute.subcourtId)} />
+        <CourtLine label={courtLabel(courts, dispute.subcourtId)} />
       </div>
-      {countdown === null ? null : (
-        <div className={BAND_CLASS}>
-          <HourglassIcon />
-          <span className="sr-only">Period ends in</span>
-          <Countdown target={countdown} className={FACT_LEAD} />
-        </div>
-      )}
+      <div className={FOOT_CLASS}>
+        {countdown === null ? null : (
+          <span className="flex min-w-0 items-center gap-2">
+            <HourglassIcon />
+            <span className={LABEL}>Period ends in</span>
+            <Countdown target={countdown} className={FACT_SMALL} />
+          </span>
+        )}
+        <ArrowIcon />
+      </div>
     </CardShell>
   );
 }
@@ -121,15 +152,17 @@ export function OngoingCard({ chainId, dispute, title, courts }: OngoingCardProp
 export function FailedDisputeCard({ chainId, disputeId }: { readonly chainId: ChainId; readonly disputeId: bigint }) {
   return (
     <CardShell chainId={chainId} disputeId={disputeId}>
-      <div className="flex items-center justify-between gap-3">
+      <div className={HEAD_CLASS}>
         <span className="inline-flex items-center gap-2 text-sm font-semibold text-klerosUIComponentsSecondaryText">
           <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-klerosUIComponentsSecondaryText" />
           Period unknown
         </span>
         <span className="text-sm font-semibold text-klerosUIComponentsSecondaryText tabular-nums">#{disputeId.toString()}</span>
       </div>
-      <h2 className={`${TITLE_CLASS} font-normal text-klerosUIComponentsSecondaryText`}>Dispute {disputeId.toString()}: details unavailable</h2>
-      <p className={`${LABEL} mt-auto`}>The arbitrator&apos;s record of this dispute could not be read.</p>
+      <div className={BODY_CLASS}>
+        <h2 className={`${TITLE_CLASS} font-normal text-klerosUIComponentsSecondaryText`}>Dispute {disputeId.toString()}: details unavailable</h2>
+        <p className={`${LABEL} mt-auto`}>The arbitrator&apos;s record of this dispute could not be read.</p>
+      </div>
     </CardShell>
   );
 }

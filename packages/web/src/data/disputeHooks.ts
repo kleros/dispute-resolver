@@ -55,10 +55,11 @@ export function useFamily(chainId: ChainId, arbitrable: Address | undefined): Se
 }
 
 /**
- * The meta-evidence of the dispute (spec §9.1) with the case page's or the Ongoing page's budget (D-37, D-38). The
- * case page loads it uncached (spec §9.1, §6.5): it runs the pipeline on every mount and shows no stored result,
- * whatever its status, until that run settles. Only the Ongoing cards are served from the stored results. The case page
- * passes the on-chain reader (P-25), whose `MetaEvidence` event URI wins over the locator's when it is found.
+ * The meta-evidence of the dispute with the case page's or the Ongoing page's budget. The case page loads it uncached:
+ * a mount, and the move from the idle key to the dispute's key once the lookup settles, always run the pipeline, and
+ * no stored result, whatever its status, is shown until that run settles. Only the Ongoing cards are served from the
+ * stored results. The case page passes the on-chain reader, whose `MetaEvidence` event URI wins over the locator's
+ * when it is found.
  */
 export function useMetaEvidence(chainId: ChainId, binding: ArbitratedBinding | undefined, budget: MetaEvidenceBudget): SectionData<MetaEvidenceResult> {
   const deps = useCoreDeps();
@@ -69,6 +70,9 @@ export function useMetaEvidence(chainId: ChainId, binding: ArbitratedBinding | u
   const query = useQuery({
     ...metaEvidenceQuery(deps, chainId, target, budget, onChain),
     refetchOnMount: uncached ? "always" : true,
+    // A key switch fetches only a stale query, so the stored result must count as stale for this observer. A refetch
+    // trigger that consults staleness (focus, reconnect, an interval) would re-run the 120 s pipeline: keep them off.
+    ...(uncached ? { staleTime: 0 } : {}),
   });
   if (binding === undefined || (uncached && !query.isFetchedAfterMount)) return LOADING;
   return fromQuery(query, ready);

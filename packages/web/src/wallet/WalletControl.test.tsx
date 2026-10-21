@@ -19,24 +19,24 @@ describe("WalletControl", () => {
     expect(wallet.modal?.openConnect).toHaveBeenCalledWith(100);
   });
 
-  it("K-02: without a project ID Connect is disabled and explains why", () => {
+  it("without a project ID Connect is disabled and nothing on the control mentions configuration", () => {
     const wallet = createTestWallet({ mode: "unconfigured" });
-    render(<WalletControl chain={chain(1)} />, { wrapper: walletWrapper(wallet) });
+    const { container } = render(<WalletControl chain={chain(1)} />, { wrapper: walletWrapper(wallet) });
     const button = screen.getByRole("button", { name: "Connect" });
     expect(button).toBeDisabled();
-    expect(button).toHaveAccessibleDescription("Wallet connection is not configured on this deployment.");
-    expect(screen.getByText("Not configured")).toHaveAttribute("aria-hidden", "true");
+    expect(button).toHaveAccessibleDescription("Wallet connection is unavailable.");
+    expect(container).not.toHaveTextContent(/configured|deployment/i);
   });
 
-  it("K-03: once AppKit reports an embedded-wallet connector, Connect is disabled, explains why and never opens the modal", async () => {
+  it("once AppKit reports an embedded-wallet connector Connect is disabled the same way and never opens the modal", async () => {
     const wallet = createTestWallet({ embeddedWallet: true });
-    render(<WalletControl chain={chain(1)} />, { wrapper: walletWrapper(wallet) });
+    const { container } = render(<WalletControl chain={chain(1)} />, { wrapper: walletWrapper(wallet) });
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
     });
     const button = screen.getByRole("button", { name: "Connect" });
-    expect(button).toHaveAccessibleDescription("Wallet connection is misconfigured on this deployment.");
-    expect(screen.getByText("Misconfigured")).toHaveAttribute("aria-hidden", "true");
+    expect(button).toHaveAccessibleDescription("Wallet connection is unavailable.");
+    expect(container).not.toHaveTextContent(/configured|deployment/i);
     await userEvent.click(button);
     expect(wallet.modal?.openConnect).not.toHaveBeenCalled();
   });

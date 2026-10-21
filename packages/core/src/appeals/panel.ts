@@ -1,4 +1,5 @@
-import type { Outcome } from "../types";
+import type { FamilyDetection } from "../families/types";
+import type { Outcome, Period } from "../types";
 import { computeAppealAmounts } from "./amounts";
 import { buildCrowdfundingCards } from "./cards";
 import { governorListIndex } from "./governor";
@@ -69,6 +70,15 @@ function withdraw(input: AppealPanelInput): AppealPanel {
 }
 
 /**
+ * Whether a dispute has an appeal panel at all. It needs only the period and the family, which are known before the
+ * panel's other reads, so the case page can lay out its sections once instead of dropping one after the reads settle.
+ */
+export function hasAppealPanel(period: Period, family: Pick<FamilyDetection, "writeFamily">): boolean {
+  if (period === 3) return true;
+  return period === 4 && family.writeFamily !== "view-only";
+}
+
+/**
  * The appeal panel of a dispute (06 §1 table, spec 5.11, D-43, D-46, D-47), keyed by the family the write paths use
  * (`writeFamily`), so a registered Reality proxy is treated as the resolver family its bytecode matches and one that
  * matches none gets the note. No panel before the appeal period. In the appeal period: Escrow V1 pays the appeal cost;
@@ -79,13 +89,13 @@ function withdraw(input: AppealPanelInput): AppealPanel {
  */
 export function buildAppealPanel(input: AppealPanelInput): AppealPanel {
   const { period } = input;
-  if (period !== 3 && period !== 4) return HIDDEN;
+  if (!hasAppealPanel(period, input.family)) return HIDDEN;
   const inAppeal = period === 3;
   switch (input.family.writeFamily) {
     case "escrow-v1":
       return inAppeal ? escrowAppeal(input) : { kind: "escrow-ended" };
     case "view-only":
-      return inAppeal ? { kind: "handled-by-arbitrable" } : HIDDEN;
+      return { kind: "handled-by-arbitrable" };
     case "idr-legacy":
       return inAppeal ? crowdfunding(input, "idr") : { kind: "withdraw-unsupported" };
     case "idr-v2":

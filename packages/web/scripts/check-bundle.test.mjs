@@ -27,6 +27,7 @@ const CLEAN_FILES = {
   "__runner/bootstrap.js": "(function(){})();",
   "assets/index-abc.js": 'export const rpc="https://eth-mainnet.g.alchemy.com";',
   "assets/index-abc.css": ".invalid\\:border-red:is(:where(.x)){color:red}",
+  "assets/core-abc.js": "Z.config({jitless:!0});",
 };
 
 const scratch = await mkdtemp(path.join(tmpdir(), "check-bundle-"));
@@ -387,6 +388,32 @@ describe("C3: the deploy files exist", () => {
     const { problems } = await checkBundle(path.join(scratch, "does-not-exist"));
     assert.equal(problems.length, 1);
     assert.match(problems[0], /yarn build/);
+  });
+});
+
+describe("the zod configuration ships in the bundle", () => {
+  it("fails when the bundle lacks the zod configuration marker", async () => {
+    const problems = await problemsOf({ "assets/core-abc.js": "Z.config({});" });
+    assert.equal(problems.length, 1, problems.join("\n"));
+    assert.match(problems[0], /zod configuration is missing/);
+    assert.doesNotMatch(problems[0], /jitless/);
+  });
+
+  it("passes a bundle that carries it once", async () => {
+    assert.deepEqual(await problemsOf({}), []);
+  });
+
+  it("fails when the bundle carries the zod configuration more than once", async () => {
+    const problems = await problemsOf({ "assets/other-abc.js": "Y.config({jitless:!0});" });
+    assert.equal(problems.length, 1, problems.join("\n"));
+    assert.match(problems[0], /zod configuration appears 2 times/);
+    assert.doesNotMatch(problems[0], /jitless/);
+  });
+
+  it("counts the marker only in the scripts under assets", async () => {
+    const problems = await problemsOf({ "assets/core-abc.js": "Z.config({});", "assets/core-abc.js.map": '{"x":"jitless:!0"}', "__runner/bootstrap.js": "({jitless:!0});" });
+    assert.equal(problems.length, 1, problems.join("\n"));
+    assert.match(problems[0], /zod configuration is missing/);
   });
 });
 

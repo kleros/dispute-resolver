@@ -35,11 +35,11 @@ export function metaEvidenceStaleTime(result: MetaEvidenceResult | undefined): n
 }
 
 /**
- * The meta-evidence query of one dispute, shared by the case page and the Ongoing cards (ARCHITECTURE.md §5.3): an
- * Ongoing card runs the pipeline with its budget only when no fresh result is stored, the case page on every mount
- * (`useMetaEvidence`). `arbitrable` is the arbitrator's `arbitrated` (A22). `onChain` is the case page's on-chain reader
- * (P-25); the Ongoing cards pass none, so they make no per-dispute log read (D-37).
- * Without a target the query is idle and never runs.
+ * The meta-evidence query of one dispute, shared by the case page and the Ongoing cards: an Ongoing card runs the
+ * pipeline with its budget only when no fresh result is stored; the case page's observer overrides the stale time to 0,
+ * so its mount and its move from the idle key always run it (`useMetaEvidence`). `arbitrable` is the arbitrator's
+ * `arbitrated`, never the meta-evidence's. `onChain` is the case page's on-chain reader; the Ongoing cards pass none, so
+ * they make no per-dispute log read. Without a target the query is idle and never runs.
  */
 export function metaEvidenceQuery(deps: CoreDeps, chainId: ChainId, target: MetaEvidenceTarget | undefined, budget: MetaEvidenceBudget, onChain?: OnChainMetaEvidenceReader) {
   return queryOptions<MetaEvidenceResult>({

@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 import type { AppConfig } from "../env";
 import type { ResolvedChain } from "../routing";
+import type { ColorSchemeStore } from "../theme";
 
 /** The library `PushMessage` variants. */
 export type ToastVariant = "success" | "error" | "sync";
@@ -37,5 +38,7 @@ export interface AppProvidersProps {
   readonly dataProvider: ConfiguredProvider;
   /** `AtlasGate` (atlas): the Atlas provider when the URI is configured. */
   readonly atlasGate: ConfiguredProvider;
+  /** Created by `main.tsx` before the first render, so the first paint is already themed. */
+  readonly colorScheme: ColorSchemeStore;
   readonly children?: ReactNode;
 }

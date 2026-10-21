@@ -4,7 +4,7 @@ import { persistQueryClientRestore, persistQueryClientSave } from "@tanstack/rea
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMemoryStorage, testBinding, testCourt, testFamily, testFoundLookup, testOkMetaEvidence } from "../test/data";
 import { CACHE_VERSION, PERSISTED_CACHE_KEY, PERSISTED_CACHE_MAX_AGE_MS } from "./constants";
-import { createPersistOptions, createStoragePersister, deserializePersistedClient, shouldPersistQuery } from "./persistence";
+import { createPersistOptions, createStoragePersister, deserializePersistedClient, serializePersistedClient, shouldPersistQuery } from "./persistence";
 import { queryKeys } from "./queryKeys";
 
 const ARBITRABLE = testBinding().arbitrated;
@@ -61,11 +61,46 @@ async function restoreBlob(text: string): Promise<QueryClient> {
   return client;
 }
 
+/** Runs `body` while the global Function constructor counts every call and construction, and returns the count. */
+function countFunctionConstructorUses(body: () => void): number {
+  const original = globalThis.Function;
+  let uses = 0;
+  globalThis.Function = new Proxy(original, {
+    apply(target, thisArgument, argumentList: unknown[]) {
+      uses += 1;
+      return Reflect.apply(target, thisArgument, argumentList) as unknown;
+    },
+    construct(target, argumentList: unknown[], newTarget: NewableFunction) {
+      uses += 1;
+      return Reflect.construct(target, argumentList, newTarget) as object;
+    },
+  });
+  try {
+    body();
+  } finally {
+    globalThis.Function = original;
+  }
+  return uses;
+}
+
 afterEach(() => {
   vi.useRealTimers();
 });
 
 describe("persisted query cache (ARCHITECTURE.md §5.4)", () => {
+  it("restores the persisted cache without the Function constructor", () => {
+    const source = new QueryClient();
+    source.setQueryData(queryKeys.courts(1), courtsOk);
+    source.setQueryData(metaEvidenceKey, testOkMetaEvidence());
+    const client = { timestamp: Date.now(), buster: CACHE_VERSION, clientState: dehydrate(source, { shouldDehydrateQuery: shouldPersistQuery }) };
+    let restoredQueries = 0;
+    const uses = countFunctionConstructorUses(() => {
+      restoredQueries = deserializePersistedClient(serializePersistedClient(client)).clientState.queries.length;
+    });
+    expect(restoredQueries).toBe(2);
+    expect(uses).toBe(0);
+  });
+
   it("B15: an ok court list and an ok meta-evidence round-trip, bigints included", async () => {
     const source = new QueryClient();
     source.setQueryData(queryKeys.courts(1), courtsOk);

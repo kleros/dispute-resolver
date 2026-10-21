@@ -8,7 +8,13 @@ import { fakeUploader } from "../test/atlas";
 import { createTestDeps } from "../test/data";
 import { renderWithProviders } from "../test/shell";
 import { useWallet } from "../wallet";
+import { useColorScheme } from "./colorScheme";
 import { useToast } from "./ToastProvider";
+
+function ColorSchemeProbe() {
+  const { scheme } = useColorScheme();
+  return <p>Scheme {scheme}</p>;
+}
 
 function Probe() {
   const page = usePageChain();
@@ -65,5 +71,13 @@ describe("renderWithProviders (ARCHITECTURE.md §1.5)", () => {
     expect(screen.getByRole("banner")).toBeInTheDocument();
     expect(screen.getByRole("contentinfo")).toBeInTheDocument();
     expect(screen.getByText("Chain Ethereum Mainnet")).toBeInTheDocument();
+  });
+
+  it("every screen renders under a colour-scheme provider", () => {
+    const testFrame = renderWithProviders(<ColorSchemeProbe />);
+    expect(screen.getByText("Scheme light")).toBeInTheDocument();
+    testFrame.unmount();
+    renderWithProviders(<ColorSchemeProbe />, { frame: "page" });
+    expect(screen.getByText("Scheme light")).toBeInTheDocument();
   });
 });

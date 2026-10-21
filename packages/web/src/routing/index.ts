@@ -7,6 +7,6 @@ export { NotFoundScreen } from "./NotFoundScreen";
 export { UnsupportedNetworkScreen } from "./UnsupportedNetworkScreen";
 export { createAppRoutes } from "./createAppRoutes";
 export { usePageChain, useResolvedChain } from "./pageChain";
-export { paths, replaceChainSegment } from "./paths";
+export { paths, replaceChainSegment, switchChainSegment } from "./paths";
 export { ChainlessRedirect, RedirectToOngoing } from "./redirects";
 export { useChainFollowing } from "./useChainFollowing";

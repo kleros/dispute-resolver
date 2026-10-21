@@ -4,6 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "../test/shell";
 import { createTestWallet } from "../test/wallet";
+import { createColorSchemeStore } from "../theme";
+
+const VIEW_ONLY_SENTENCE = "View mode only: Actions that require an Ethereum account are disabled.";
 
 function Screen() {
   return <p>Screen content</p>;
@@ -35,24 +38,23 @@ describe("PageFrame header (spec §2.3)", () => {
     expect(footer()).toBeInTheDocument();
   });
 
-  it("spec §2.3: the brand links to the chain root and the navigation to Ongoing and Interact", () => {
-    renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page" });
-    expect(within(header()).getByRole("link", { name: "Kleros Dispute Resolver" })).toHaveAttribute("href", "/100");
-    expect(navLinks().getByRole("link", { name: "Ongoing Disputes" })).toHaveAttribute("href", "/100/ongoing");
-    expect(navLinks().getByRole("link", { name: "Interact" })).toHaveAttribute("href", "/100/cases");
-  });
-
-  it("spec §2.3: marks the link of the current page", () => {
-    renderWithProviders(<Screen />, { path: "/1/cases/5", frame: "page" });
-    expect(navLinks().getByRole("link", { name: "Interact" })).toHaveAttribute("aria-current", "page");
-    expect(navLinks().getByRole("link", { name: "Ongoing Disputes" })).not.toHaveAttribute("aria-current");
-  });
-
-  it("spec §2.3: Create is shown only while a wallet is connected", async () => {
-    const view = renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
-    expect(navLinks().queryByRole("link", { name: "Create" })).not.toBeInTheDocument();
+  it("links Ongoing Disputes, Case Lookup and Create in that order on every wallet state", async () => {
+    const view = renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page" });
+    const expectNavigation = () => {
+      expect(within(header()).getByRole("link", { name: "Kleros Dispute Resolver" })).toHaveAttribute("href", "/100");
+      const links = navLinks().getAllByRole("link");
+      expect(links.map((link) => link.textContent)).toEqual(["Ongoing Disputes", "Case Lookup", "Create"]);
+      expect(links.map((link) => link.getAttribute("href"))).toEqual(["/100/ongoing", "/100/cases", "/100/create"]);
+    };
+    expectNavigation();
     await act(() => view.wallet.connect());
-    expect(navLinks().getByRole("link", { name: "Create" })).toHaveAttribute("href", "/1/create");
+    expectNavigation();
+  });
+
+  it("marks the Case Lookup link on a case page", () => {
+    renderWithProviders(<Screen />, { path: "/1/cases/5", frame: "page" });
+    expect(navLinks().getByRole("link", { name: "Case Lookup" })).toHaveAttribute("aria-current", "page");
+    expect(navLinks().getByRole("link", { name: "Ongoing Disputes" })).not.toHaveAttribute("aria-current");
   });
 
   it("spec §2.3: shows the view-only banner with the Metamask link only while no wallet is connected", async () => {
@@ -64,18 +66,18 @@ describe("PageFrame header (spec §2.3)", () => {
     expect(screen.queryByRole("note", { name: "View mode only" })).not.toBeInTheDocument();
   });
 
-  it("K-02: without a project ID the view-only banner says that wallet connection is not configured, with no Metamask link", () => {
+  it("without a project ID the banner says that actions need an account and nothing else", () => {
     renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet: createTestWallet({ mode: "unconfigured" }) });
     const banner = screen.getByRole("note", { name: "View mode only" });
-    expect(banner).toHaveTextContent("View mode only: Actions that require an Ethereum account are disabled. Wallet connection is not configured on this deployment.");
+    expect(banner.textContent.trim()).toBe(VIEW_ONLY_SENTENCE);
     expect(within(banner).queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("K-03: with an embedded-wallet connector registered the view-only banner says that wallet connection is misconfigured", async () => {
+  it("with an embedded-wallet connector registered the banner says the same", async () => {
     renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet: createTestWallet({ embeddedWallet: true }) });
     const banner = screen.getByRole("note", { name: "View mode only" });
     await waitFor(() => {
-      expect(banner).toHaveTextContent("View mode only: Actions that require an Ethereum account are disabled. Wallet connection is misconfigured on this deployment.");
+      expect(banner.textContent.trim()).toBe(VIEW_ONLY_SENTENCE);
     });
     expect(within(banner).queryByRole("link")).not.toBeInTheDocument();
   });
@@ -97,9 +99,9 @@ describe("PageFrame header (spec §2.3)", () => {
     expect(wallet.modal?.openConnect).toHaveBeenCalledWith(100);
   });
 
-  it("§11.2: the header shows the resolved chain and the connected account", async () => {
+  it("the header shows the resolved chain on the pill and the connected account", async () => {
     const view = renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
-    expect(within(header()).getByText("Ethereum Mainnet")).toBeInTheDocument();
+    expect(within(header()).getByRole("button", { name: "Network: Ethereum Mainnet. Change network" })).toHaveTextContent("Ethereum Mainnet");
     await act(() => view.wallet.connect());
     expect(within(header()).getByRole("button", { name: /^Account 0x/ })).toBeInTheDocument();
   });
@@ -119,25 +121,25 @@ describe("PageFrame header (spec §2.3)", () => {
     expect(within(header()).getByRole("button", { name: "Switch to Gnosis Network" })).toBeEnabled();
   });
 
-  it("D-45: on the unsupported-network screen the header links use the default chain", () => {
+  it("on the unsupported-network screen the header links use the default chain", () => {
     renderWithProviders(<Screen />, { path: "/999/ongoing", frame: "page" });
     expect(screen.getByRole("heading", { level: 1, name: "Unsupported Network 999" })).toBeInTheDocument();
     expect(within(header()).getByRole("link", { name: "Kleros Dispute Resolver" })).toHaveAttribute("href", "/1");
     expect(navLinks().getByRole("link", { name: "Ongoing Disputes" })).toHaveAttribute("href", "/1/ongoing");
-    expect(navLinks().getByRole("link", { name: "Interact" })).toHaveAttribute("href", "/1/cases");
+    expect(navLinks().getByRole("link", { name: "Case Lookup" })).toHaveAttribute("href", "/1/cases");
     for (const link of within(header()).getAllByRole("link")) expect(link.getAttribute("href")).not.toContain("undefined");
   });
 
-  it("D-45: on the unsupported-network screen the header links follow a wallet on a configured chain", async () => {
+  it("on the unsupported-network screen the header links follow a wallet on a configured chain", async () => {
     const wallet = createTestWallet({ chainId: 100 });
     await wallet.connect();
     renderWithProviders(<Screen />, { path: "/abc/ongoing", frame: "page", wallet });
     expect(navLinks().getByRole("link", { name: "Ongoing Disputes" })).toHaveAttribute("href", "/100/ongoing");
     expect(navLinks().getByRole("link", { name: "Create" })).toHaveAttribute("href", "/100/create");
-    expect(navLinks().getByRole("link", { name: "Interact" })).toHaveAttribute("href", "/100/cases");
+    expect(navLinks().getByRole("link", { name: "Case Lookup" })).toHaveAttribute("href", "/100/cases");
   });
 
-  it("D-45: on the 404 screen the header links use the URL's chain", () => {
+  it("on the 404 screen the header links use the URL's chain", () => {
     renderWithProviders(<Screen />, { path: "/100/nowhere", frame: "page" });
     expect(navLinks().getByRole("link", { name: "Ongoing Disputes" })).toHaveAttribute("href", "/100/ongoing");
   });
@@ -157,16 +159,47 @@ describe("PageFrame header (spec §2.3)", () => {
     expect(toggle).toHaveFocus();
   });
 
-  it("§11.1: following a link closes the menu", async () => {
+  it("following a link closes the menu", async () => {
     const user = userEvent.setup();
     const view = renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
     const toggle = within(header()).getByRole("button", { name: "Menu" });
     await user.click(toggle);
-    await user.click(navLinks().getByRole("link", { name: "Interact" }));
+    await user.click(navLinks().getByRole("link", { name: "Case Lookup" }));
     await waitFor(() => {
       expect(view.currentPath()).toBe("/1/cases");
     });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("the chain pill, the theme toggle and Connect are outside the collapsible menu panel", () => {
+    renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page" });
+    const panel = document.getElementById(within(header()).getByRole("button", { name: "Menu" }).getAttribute("aria-controls") ?? "");
+    if (panel === null) throw new Error("The menu button controls no element.");
+    expect(panel).toContainElement(screen.getByRole("navigation", { name: "Main" }));
+    for (const control of [
+      within(header()).getByRole("button", { name: /^Network:/ }),
+      within(header()).getByRole("button", { name: /^Switch to (dark|light) theme$/ }),
+      within(header()).getByRole("button", { name: "Connect" }),
+    ]) {
+      expect(panel).not.toContainElement(control);
+    }
+  });
+
+  it("the header has a theme toggle beside the network pill", async () => {
+    const user = userEvent.setup();
+    const root = document.createElement("div");
+    const colorScheme = createColorSchemeStore({ root, media: null, storage: null });
+    renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page", colorScheme });
+    const pill = within(header()).getByRole("button", { name: /^Network:/ });
+    const toggle = within(header()).getByRole("button", { name: "Switch to dark theme" });
+    let cluster = toggle.parentElement;
+    while (cluster !== null && !cluster.contains(pill)) cluster = cluster.parentElement;
+    expect(cluster).toContainElement(within(header()).getByRole("button", { name: "Connect" }));
+    expect(cluster).not.toContainElement(screen.getByRole("navigation", { name: "Main" }));
+    expect(pill.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await user.click(toggle);
+    expect(root).toHaveClass("dark");
+    expect(within(header()).getByRole("button", { name: "Switch to light theme" })).toBeInTheDocument();
   });
 });
 

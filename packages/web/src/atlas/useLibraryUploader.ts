@@ -1,7 +1,9 @@
 import { normalizeIpfsPath } from "@dispute-resolver/core";
 import { AuthorizationError, useAtlasProvider, type IAtlasProvider } from "@kleros/kleros-app";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { getAccount, type Config } from "@wagmi/core";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useConfig } from "wagmi";
 import { isUserRejection, useWallet } from "../wallet";
 import { failure, reasonOf } from "./failures";
 import { LIBRARY_ROLES, refuseFile, roleLimits } from "./limits";
@@ -67,6 +69,41 @@ function serverToken(): null {
   return null;
 }
 
+/** The wallet an upload started with: the sign-in and the upload are refused if it disconnects or changes chain. */
+interface WalletSnapshot {
+  readonly connected: boolean;
+  readonly chainId: number | null;
+}
+
+/** Why the wallet no longer matches the one the upload started with, or `null` when it still does. */
+function walletChange(started: WalletSnapshot, now: WalletSnapshot): Failure | null {
+  if (!now.connected) return failure.noWallet();
+  if (now.chainId !== started.chainId) return failure.uploadFailed("the wallet changed chain");
+  return null;
+}
+
+/** wagmi's current account, not the last committed render's: a `chainChanged` event updates it before React renders. */
+function liveWallet(config: Config): WalletSnapshot {
+  const account = getAccount(config);
+  return account.status === "connected" ? { connected: true, chainId: account.chainId } : { connected: false, chainId: null };
+}
+
+/**
+ * The mutation key of wagmi's `useSignMessage`, which the library signs in with. `authoriseUser()` awaits the nonce and
+ * then asks for the signature with no hook in between, so the wallet is checked again in this mutation's `onMutate`.
+ */
+const SIGN_MESSAGE_KEY = ["signMessage"] as const;
+
+class WalletChangedError extends Error {
+  readonly refusal: Failure;
+
+  constructor(refusal: Failure) {
+    super(refusal.message);
+    this.name = "WalletChangedError";
+    this.refusal = refusal;
+  }
+}
+
 /**
  * The `AtlasUploader` over `@kleros/kleros-app` (ARCHITECTURE.md §8.2). Must render inside the library's `AtlasProvider`.
  * Nothing here runs at mount: the first signature is requested by the first upload that needs one (A15, D-52).
@@ -74,18 +111,39 @@ function serverToken(): null {
 export function useLibraryUploader(): AtlasUploader {
   const atlas = useAtlasProvider();
   const wallet = useWallet();
+  const wagmiConfig = useConfig();
   const queryClient = useQueryClient();
   const token = useSyncExternalStore(subscribeToRenders, readLibraryToken, serverToken);
   const [phase, setPhase] = useState<UploadPhase>("idle");
   const committed = useRef<Session>({ atlas, token });
+  const walletConnected = wallet.status === "connected";
+  const walletChainId = wallet.status === "connected" ? wallet.chainId : null;
+  const walletNow = useRef<WalletSnapshot>({ connected: walletConnected, chainId: walletChainId });
   const listeners = useRef(new Set<() => void>());
+  const signingFor = useRef<WalletSnapshot | null>(null);
 
   // The library's `uploadFile` closes over the session of the render it came from: calling one from before the sign-in
   // silently returns `null`. Each commit is recorded here, so the upload can use the first one that has the new session.
+  // The wallet is recorded too: an upload can wait seconds for the limits, and the user can disconnect meanwhile.
   useLayoutEffect(() => {
     committed.current = { atlas, token };
+    walletNow.current = { connected: walletConnected, chainId: walletChainId };
     for (const listener of listeners.current) listener();
-  }, [atlas, token]);
+  }, [atlas, token, walletConnected, walletChainId]);
+
+  // Registered before the library's provider runs its passive effects, where its sign-message mutation takes its options.
+  useLayoutEffect(() => {
+    queryClient.setMutationDefaults(SIGN_MESSAGE_KEY, {
+      onMutate: () => {
+        const started = signingFor.current;
+        const refusal = started === null ? null : walletChange(started, liveWallet(wagmiConfig));
+        if (refusal !== null) throw new WalletChangedError(refusal);
+      },
+    });
+    return () => {
+      queryClient.setMutationDefaults(SIGN_MESSAGE_KEY, {});
+    };
+  }, [queryClient, wagmiConfig]);
 
   const waitForNewSession = useCallback(
     (previousToken: string | null) =>
@@ -110,11 +168,15 @@ export function useLibraryUploader(): AtlasUploader {
   );
 
   const signIn = useCallback(
-    async (session: Session): Promise<Session | Failure> => {
+    async (session: Session, started: WalletSnapshot): Promise<Session | Failure> => {
+      signingFor.current = started;
       try {
         await session.atlas.authoriseUser();
       } catch (error) {
+        if (error instanceof WalletChangedError) return error.refusal;
         return isUserRejection(error) ? failure.signInRejected() : failure.signInFailed(reasonOf(error));
+      } finally {
+        signingFor.current = null;
       }
       return (await waitForNewSession(session.token)) ?? failure.signInFailed("the session did not start");
     },
@@ -122,14 +184,18 @@ export function useLibraryUploader(): AtlasUploader {
   );
 
   const signInAndUpload = useCallback(
-    async (file: File, role: UploadRole): Promise<UploadResult> => {
+    async (file: File, role: UploadRole, started: WalletSnapshot): Promise<UploadResult> => {
       let session = committed.current;
       if (!isSessionLive(session)) {
+        const beforeSignIn = walletChange(started, walletNow.current);
+        if (beforeSignIn !== null) return beforeSignIn;
         setPhase("signing-in");
-        const signedIn = await signIn(session);
+        const signedIn = await signIn(session, started);
         if ("ok" in signedIn) return signedIn;
         session = signedIn;
       }
+      const beforeUpload = walletChange(started, walletNow.current);
+      if (beforeUpload !== null) return beforeUpload;
       setPhase("uploading");
       let path: string | null;
       try {
@@ -146,21 +212,21 @@ export function useLibraryUploader(): AtlasUploader {
     [signIn],
   );
 
-  const isConnected = wallet.status === "connected";
   const upload = useCallback(
     async (file: File, role: UploadRole): Promise<UploadResult> => {
-      if (!isConnected) return failure.noWallet();
+      const started = walletNow.current;
+      if (!started.connected) return failure.noWallet();
       const limits = roleLimits(committed.current.atlas.roleRestrictions, role) ?? roleLimits(await refetchRoleRestrictions(queryClient), role);
       if (limits === null) return failure.limitsUnavailable();
       const refusal = refuseFile(file, limits);
       if (refusal !== null) return failure.refused(refusal, file, limits);
       try {
-        return await signInAndUpload(file, role);
+        return await signInAndUpload(file, role, started);
       } finally {
         setPhase("idle");
       }
     },
-    [isConnected, queryClient, signInAndUpload],
+    [queryClient, signInAndUpload],
   );
 
   const uploadJson = useCallback(

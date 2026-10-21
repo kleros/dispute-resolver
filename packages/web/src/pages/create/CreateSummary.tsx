@@ -7,7 +7,7 @@ import { useArbitrationCost, useCoreDeps, useCourts } from "../../data";
 import { paths } from "../../routing";
 import { Attachment } from "../../safe-content";
 import { AddressText, Amount, EYEBROW, FACT, FACT_SMALL, LABEL, Notice } from "../../ui";
-import { WriteStatusNotice, type WriteStatus } from "../../wallet";
+import { WriteStatusNotice, useConnectWallet, type WriteAccess, type WriteStatus } from "../../wallet";
 import { courtLabel } from "./CourtSection";
 import { questionTypeLabel } from "./draft";
 import { UPLOAD_FAILURE_TITLES } from "./messages";
@@ -27,6 +27,7 @@ function Row({ term, valueClass, children }: { readonly term: string; readonly v
 
 function CourtName({ chain, courtId }: { readonly chain: ChainConfig; readonly courtId: bigint }) {
   const courts = useCourts(chain.id);
+  if (courts.status === "loading") return <span className="text-klerosUIComponentsSecondaryText">Loading...</span>;
   const court = courts.status === "ready" ? courts.value.find((entry) => entry.id === courtId) : undefined;
   return <>{court === undefined ? `Court #${courtId.toString()}` : courtLabel(court)}</>;
 }
@@ -112,6 +113,28 @@ function ActionNotice({ state, writeStatus, chain }: { readonly state: CreateAct
   }
 }
 
+/** Why Create is disabled, shown before any click: the switch offer, or Connect when a wallet can connect. */
+function AccessNotice({ access, chain }: { readonly access: WriteAccess; readonly chain: ChainConfig }) {
+  const connect = useConnectWallet();
+  if (access.status === "ready") return null;
+  if (access.status === "wrong-chain") return <WriteStatusNotice status={access.guard} />;
+  return (
+    <div className="flex flex-col gap-2">
+      <Notice variant="info" title="Wallet required" body="Connect a wallet to create a dispute." />
+      {connect.available ? (
+        <Button
+          text="Connect"
+          small
+          className="self-start"
+          onPress={() => {
+            connect.open(chain.id);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 export interface CreateSummaryProps {
   readonly chain: ChainConfig;
   readonly input: CreateDisputeInput;
@@ -119,8 +142,9 @@ export interface CreateSummaryProps {
 }
 
 /**
- * Page 2 (spec §4.4): everything the dispute will be created with, Return (the form keeps its values, D-08) and Create
- * (spec §4.5). Create signs in to Atlas when needed instead of requiring a separate sign-in (D-52).
+ * Page 2: everything the dispute will be created with, Return (the form keeps its values) and Create, which stays
+ * disabled until a wallet is connected on the page chain. Create signs in to Atlas when needed instead of requiring a
+ * separate sign-in.
  */
 export function CreateSummary({ chain, input, onReturn }: CreateSummaryProps) {
   const { gateway } = useCoreDeps();
@@ -161,17 +185,19 @@ export function CreateSummary({ chain, input, onReturn }: CreateSummaryProps) {
         </dl>
       </div>
       <div aria-live="polite">
+        {action.state.kind === "idle" ? <AccessNotice access={action.access} chain={chain} /> : null}
         <ActionNotice state={action.state} writeStatus={action.writeStatus} chain={chain} />
       </div>
-      <div className="flex flex-wrap justify-end gap-3">
-        <Button text="Return" variant="secondary" isDisabled={action.isBusy} onPress={onReturn} />
+      <div className="grid grid-cols-2 gap-3 lg:flex lg:justify-end">
+        <Button text="Return" variant="secondary" isDisabled={action.isBusy} onPress={onReturn} className="w-full lg:w-auto" />
         <Button
           text="Create"
           isLoading={action.isBusy && action.state.kind !== "created"}
-          isDisabled={action.isBusy}
+          isDisabled={action.isBusy || action.access.status !== "ready"}
           onPress={() => {
             void action.create();
           }}
+          className="w-full lg:w-auto"
         />
       </div>
     </section>

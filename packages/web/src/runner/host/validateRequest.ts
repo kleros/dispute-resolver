@@ -1,5 +1,4 @@
-import { JSON_DUPLICATE_KEY_GUARD, parseChainId, type ScriptRunRequest } from "@dispute-resolver/core";
-import { z } from "zod";
+import { JSON_DUPLICATE_KEY_GUARD, parseChainId, z, type ScriptRunRequest } from "@dispute-resolver/core";
 import { PROTOCOL_VERSION, RUN_MESSAGE_TYPE } from "../protocol";
 import type { RpcRedirectRule, RunnerRequestMessage } from "../types";
 import { isHttpsUrl } from "./httpsUrl";

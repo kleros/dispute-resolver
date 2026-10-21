@@ -108,3 +108,19 @@ export function CloseIcon(props: IconProps) {
     </Icon>
   );
 }
+
+export function ChevronIcon(props: IconProps) {
+  return (
+    <Icon viewBox="0 0 24 24" {...props}>
+      <path d="M5.3 8.3a1 1 0 0 1 1.4 0L12 13.58l5.3-5.3a1 1 0 1 1 1.4 1.42l-6 6a1 1 0 0 1-1.4 0l-6-6a1 1 0 0 1 0-1.4Z" />
+    </Icon>
+  );
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <Icon viewBox="0 0 16 16" {...props}>
+      <path d="M13.03 4.22a.75.75 0 0 1 0 1.06l-6.5 6.5a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 1 1 1.06-1.06L6 10.19l5.97-5.97a.75.75 0 0 1 1.06 0Z" />
+    </Icon>
+  );
+}

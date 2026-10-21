@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@dispute-resolver/core";
 
 /**
  * Where `@kleros/kleros-app` 3.1.0 keeps the Atlas session token: its `useSessionStorage("authToken")` stores the token

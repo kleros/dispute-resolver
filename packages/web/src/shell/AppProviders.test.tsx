@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, renderHook, screen } from "@testing-library/react";
 import { QueryClientContext, useQueryClient } from "@tanstack/react-query";
 import { useContext, type ReactNode } from "react";
 import { useInRouterContext, useLocation } from "react-router";
@@ -6,7 +6,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { useConfig, WagmiContext } from "wagmi";
 import { buildAppConfig, type AppConfig } from "../env";
 import { TestDataProvider } from "../test/data";
+import { createColorSchemeStore } from "../theme";
 import { AppProviders } from "./AppProviders";
+import { useColorScheme } from "./colorScheme";
 import { useToast } from "./ToastProvider";
 import type { ConfiguredProvider } from "./types";
 
@@ -51,6 +53,15 @@ vi.mock("./ToastProvider", async (importOriginal) => {
   return { ...actual, ToastProvider: RecordedToastProvider };
 });
 
+vi.mock("./colorScheme", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./colorScheme")>();
+  function RecordedColorSchemeProvider(props: Readonly<Parameters<typeof actual.ColorSchemeProvider>[0]>) {
+    useRecordLayer("colour scheme");
+    return <actual.ColorSchemeProvider {...props} />;
+  }
+  return { ...actual, ColorSchemeProvider: RecordedColorSchemeProvider };
+});
+
 /** jsdom reports each error React rethrows in development; the report is expected here. */
 function silenceErrorReport(event: ErrorEvent): void {
   event.preventDefault();
@@ -78,10 +89,11 @@ function BrokenData(): never {
   throw new Error("data layer failed");
 }
 
-/** Routing, toasts, wagmi and the QueryClient are all reachable from the routes. */
+/** Routing, toasts, the colour scheme, wagmi and the QueryClient are all reachable from the routes. */
 function RouteProbe() {
   const location = useLocation();
   useToast();
+  useColorScheme();
   useConfig();
   useQueryClient();
   useRecordLayer("routes");
@@ -90,7 +102,12 @@ function RouteProbe() {
 
 function renderApp(dataProvider: ConfiguredProvider, children: ReactNode) {
   return render(
-    <AppProviders config={CONFIG} dataProvider={dataProvider} atlasGate={AtlasProbe}>
+    <AppProviders
+      config={CONFIG}
+      dataProvider={dataProvider}
+      atlasGate={AtlasProbe}
+      colorScheme={createColorSchemeStore({ root: document.createElement("div"), media: null, storage: null })}
+    >
       {children}
     </AppProviders>,
   );
@@ -103,15 +120,16 @@ afterEach(() => {
 });
 
 describe("AppProviders (ARCHITECTURE.md §2.1)", () => {
-  it("SHELL-1 §2.1: composes data, wallet, atlas, router and toasts in that order around the routes", () => {
+  it("composes data, wallet, atlas, router, toasts and the colour scheme in that order around the routes", () => {
     renderApp(DataProbe, <RouteProbe />);
     expect(screen.getByText("Routes at /")).toBeInTheDocument();
-    expect(order.slice(0, 6)).toEqual([
+    expect(order.slice(0, 7)).toEqual([
       "data query:false wagmi:false router:false",
       "wallet query:true wagmi:false router:false",
       "atlas query:true wagmi:true router:false",
       "router query:true wagmi:true router:false",
       "toasts query:true wagmi:true router:true",
+      "colour scheme query:true wagmi:true router:true",
       "routes query:true wagmi:true router:true",
     ]);
   });
@@ -123,5 +141,14 @@ describe("AppProviders (ARCHITECTURE.md §2.1)", () => {
     renderApp(BrokenData, <RouteProbe />);
     expect(screen.getByRole("heading", { level: 1, name: "Something went wrong" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
+  });
+});
+
+describe("useColorScheme", () => {
+  it("useColorScheme outside the provider is a programming error", () => {
+    // React logs the thrown render error; the log is expected here.
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    window.addEventListener("error", silenceErrorReport);
+    expect(() => renderHook(() => useColorScheme())).toThrow("useColorScheme must be used inside ColorSchemeProvider.");
   });
 });

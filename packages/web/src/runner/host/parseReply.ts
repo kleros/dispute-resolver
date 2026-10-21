@@ -1,5 +1,4 @@
-import type { ScriptResult } from "@dispute-resolver/core";
-import { z } from "zod";
+import { z, type ScriptResult } from "@dispute-resolver/core";
 import { ACCEPTED_MESSAGE_TYPE, ERROR_MESSAGE_TYPE, RESULT_MESSAGE_TYPE } from "../protocol";
 
 /** Untrusted text from a script is bounded before it becomes part of a message. */

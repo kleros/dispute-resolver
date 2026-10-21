@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { AppealInfo } from "../disputes/types";
 import type { FamilyDetection } from "../families/types";
 import type { Outcome, Period } from "../types";
-import { buildAppealPanel, buildCrowdfundingCards, computeAppealAmounts } from "./index";
+import { buildAppealPanel, buildCrowdfundingCards, computeAppealAmounts, hasAppealPanel } from "./index";
 import type { AppealPanelInput, Multipliers, RoundFunding, WithdrawState } from "./types";
 import { FAMILY_SIGNATURES, detectionFor, recordedDetection } from "../test/appeals/testHelpers";
 
@@ -53,6 +53,28 @@ const EXPECTED_CARDS = buildCrowdfundingCards({
 
 /** The governor funds list `ruling − 1` (D-47): the same cards without the ruling-0 refuse card. */
 const EXPECTED_GOVERNOR_CARDS = { ...EXPECTED_CARDS, cards: EXPECTED_CARDS.cards.filter((card) => card.code !== 0n) };
+
+describe("hasAppealPanel", () => {
+  it("has an appeal panel from the appeal period for every family except a view-only arbitrable in execution", () => {
+    const periodsWithPanel: Readonly<Record<keyof typeof FAMILY_SIGNATURES, readonly Period[]>> = {
+      "idr-v2": [3, 4],
+      "idr-v1": [3, 4],
+      "idr-legacy": [3, 4],
+      "escrow-v1": [3, 4],
+      governor: [3, 4],
+      "view-only": [3],
+    };
+    for (const [name, withPanel] of Object.entries(periodsWithPanel) as [keyof typeof FAMILY_SIGNATURES, readonly Period[]][]) {
+      for (const detection of [family(name), realityProxy(family(name))]) {
+        for (const period of [0, 1, 2, 3, 4] as const) {
+          const expected = withPanel.includes(period);
+          expect(hasAppealPanel(period, detection), `${detection.family} as ${name} in period ${String(period)}`).toBe(expected);
+          expect(buildAppealPanel(input(detection, period)).kind === "hidden", `${detection.family} as ${name} in period ${String(period)}`).toBe(!expected);
+        }
+      }
+    }
+  });
+});
 
 describe("buildAppealPanel", () => {
   it("§5.11: no panel before the appeal period, for every family", () => {

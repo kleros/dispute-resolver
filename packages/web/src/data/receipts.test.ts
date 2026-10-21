@@ -184,10 +184,10 @@ describe("receipt client (ARCHITECTURE.md §6.4)", () => {
     expect(receipt).not.toHaveProperty("replacement");
   });
 
-  it("D-56: a chain without a configured RPC rejects instead of falling back", async () => {
+  it("a chain without a read RPC rejects the receipt instead of falling back", async () => {
     const calls = stubRpc({});
-    await expect(createReceiptWaiter({})(1, HASH)).rejects.toThrow("No RPC is configured for chain 1.");
-    await expect(createReceiptWaiter({ REACT_APP_WEB3_PROVIDER_URL: READ_RPC })(10, HASH)).rejects.toThrow("No RPC is configured for chain 10.");
+    await expect(createReceiptWaiter({})(1, HASH)).rejects.toThrow("Reads on chain 1 are unavailable.");
+    await expect(createReceiptWaiter({ REACT_APP_WEB3_PROVIDER_URL: READ_RPC })(10, HASH)).rejects.toThrow("Reads on chain 10 are unavailable.");
     expect(calls).toEqual([]);
   });
 });

@@ -1,9 +1,9 @@
-import { buildEvidenceDocument, buildSubmitEvidenceCall, checkChainMatch, normalizeIpfsPath, type ChainId } from "@dispute-resolver/core";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { buildEvidenceDocument, buildSubmitEvidenceCall, normalizeIpfsPath, type ChainId } from "@dispute-resolver/core";
+import { useCallback, useRef, useState } from "react";
 import { useAtlasUpload, type UploadResult, type UploadedFile } from "../../atlas";
 import type { NoticeVariant } from "../../ui";
 import { useCaseRefresh, type CaseWriteContext } from "../../data";
-import { useWallet, useWrite, type WriteStatus } from "../../wallet";
+import { useWrite, useWriteAccess, type NeedsWalletGuard, type WriteAccess, type WriteStatus, type WrongChainGuard } from "../../wallet";
 
 /** The evidence JSON's file name on Atlas (spec 5.14 step 1). */
 export const EVIDENCE_FILE_NAME = "evidence.json";
@@ -18,10 +18,10 @@ export interface EvidenceDraft {
 type ActiveWriteStatus = Exclude<WriteStatus, { readonly phase: "idle" }>;
 
 /** A refusal of the chain guard, as the write status `WriteStatusNotice` renders with its Connect and Switch offers. */
-export type GuardStatus = Extract<WriteStatus, { readonly phase: "needs-wallet" | "wrong-chain" }>;
+export type GuardStatus = NeedsWalletGuard | WrongChainGuard;
 
 /** The guard's refusal for a wallet connected on another chain than the page's. */
-export type WrongChainStatus = Extract<GuardStatus, { readonly phase: "wrong-chain" }>;
+export type WrongChainStatus = WrongChainGuard;
 
 /** A failure outside the write flow: the evidence JSON upload, or an unexpected error. */
 export interface SubmissionNotice {
@@ -35,10 +35,10 @@ export type SubmissionFeedback = { readonly kind: "write"; readonly status: Acti
 
 export interface EvidenceSubmission {
   /**
-   * The chain guard every signature of the submission passes first (B3, D-48): `null` when the wallet is connected on
-   * the page chain, otherwise why not. It covers the Atlas sign-in of the attachment as well as Submit.
+   * The chain guard every signature of the submission passes first (B3, D-48). It covers the Atlas sign-in of the
+   * attachment as well as Submit.
    */
-  readonly guard: GuardStatus | null;
+  readonly access: WriteAccess;
   /** `null` before the first attempt and after `clear()`. */
   readonly feedback: SubmissionFeedback | null;
   /** From the click until the write's outcome, the evidence JSON upload included. */
@@ -68,18 +68,13 @@ function errorText(error: unknown): string {
  */
 export function useEvidenceSubmission(context: CaseWriteContext, pageChainId: ChainId, disputeId: bigint): EvidenceSubmission {
   const write = useWrite();
-  const wallet = useWallet();
+  const access = useWriteAccess(pageChainId);
   const uploader = useAtlasUpload();
   const refresh = useCaseRefresh(pageChainId, disputeId);
   const [local, setLocal] = useState<SubmissionFeedback | null>(null);
   const [inFlight, setInFlight] = useState(false);
   const busy = useRef(false);
-  const walletChainId = wallet.status === "connected" ? wallet.chainId : undefined;
-  const guard = useMemo<GuardStatus | null>(() => {
-    const match = checkChainMatch(walletChainId, pageChainId);
-    if (match.ok) return null;
-    return match.reason === "no-wallet" ? { phase: "needs-wallet", pageChainId } : { phase: "wrong-chain", walletChainId: match.walletChainId, pageChainId: match.pageChainId };
-  }, [walletChainId, pageChainId]);
+  const guard: GuardStatus | null = access.status === "ready" ? null : access.guard;
 
   const send = useCallback(
     async (draft: EvidenceDraft): Promise<boolean> => {
@@ -132,5 +127,5 @@ export function useEvidenceSubmission(context: CaseWriteContext, pageChainId: Ch
   }, [write]);
 
   const feedback: SubmissionFeedback | null = local ?? (write.status.phase === "idle" ? null : { kind: "write", status: write.status });
-  return { guard, feedback, inFlight, submit, clear };
+  return { access, feedback, inFlight, submit, clear };
 }

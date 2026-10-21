@@ -15,6 +15,8 @@ export interface FreeInputCardProps {
   readonly cards: readonly CrowdfundingCard[];
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
+  /** Disables Fund, as without a wallet. */
+  readonly isFundDisabled: boolean;
 }
 
 /**
@@ -23,7 +25,7 @@ export interface FreeInputCardProps {
  * cannot be encoded is explained (WN-3); an int answer shows which answer it funds, since -1 and -2 land on reserved
  * rulings (P-21).
  */
-export function FreeInputCard({ freeInput, cards, actions, chain }: FreeInputCardProps) {
+export function FreeInputCard({ freeInput, cards, actions, chain, isFundDisabled }: FreeInputCardProps) {
   const titleId = useId();
   const [answer, setAnswer] = useState<AnswerInput | null>(null);
   const encoding = answer === null ? null : encodeAnswer(answer, { type: freeInput.type, precision: freeInput.precision });
@@ -48,7 +50,7 @@ export function FreeInputCard({ freeInput, cards, actions, chain }: FreeInputCar
             <span>{"Required "}</span>
             <Amount wei={freeInput.required} chain={chain} className={FACT_LEAD} />
           </p>
-          <FundAction subject="the new answer" code={code} suggested={freeInput.required} actions={actions} chain={chain} />
+          <FundAction subject="the new answer" code={code} suggested={freeInput.required} actions={actions} chain={chain} isDisabled={isFundDisabled} />
         </div>
       </Card>
     </li>

@@ -28,7 +28,14 @@ const restrictedSyntax = [
 
 const rehypeRawBan = { group: ["rehype-raw", "rehype-raw/*"], message: "rehype-raw lets untrusted markdown inject raw HTML and is forbidden." };
 
-const coreBannedImports = [
+// Zod compiles its object parsers with the Function constructor unless it is configured jitless before the first schema
+// exists; packages/core/src/zod.ts does that, so every schema module takes z from there (web through the core package).
+const zodBan = {
+  regex: "^zod(?:/.*)?$",
+  message: "Import z from packages/core/src/zod.ts, which turns zod's compiled parsers off before any schema exists (C2: no unsafe-eval).",
+};
+
+const coreBannedImportsExceptZod = [
   rehypeRawBan,
   {
     group: [
@@ -51,6 +58,7 @@ const coreBannedImports = [
     message: "core has no React, no wallet stack and no UI library. Keep it free of the DOM so it can run anywhere.",
   },
 ];
+const coreBannedImports = [...coreBannedImportsExceptZod, zodBan];
 
 // C9: core's test code is its *.test.ts files, the helpers under src/test/ and the recorded data under __fixtures__/. No
 // production file of core (module code or operator script) imports them, nor reads a file's source text through Vite's
@@ -175,6 +183,7 @@ const webImports = ({ reown = true, markdown = true, app = true, testImports = t
       ...(app ? [{ group: ["@kleros/kleros-app", "@kleros/kleros-app/*"], message: "@kleros/kleros-app is used only under packages/web/src/atlas/ (section 8)." }] : []),
       ...(testImports ? [testImportPattern] : []),
       e2eImportPattern,
+      zodBan,
     ],
   },
 ];
@@ -247,6 +256,12 @@ export default defineConfig([
   },
   // C9: the test code of core may import its helpers and fixtures; the rest of the core list still applies.
   { files: coreTestFiles, rules: { "no-restricted-imports": ["error", { patterns: coreBannedImports }] } },
+  // zod.ts is the one module of core that imports zod itself; the operator scripts run in Node, where no policy applies.
+  {
+    files: ["packages/core/src/zod.ts", "packages/core/scripts/**/*.ts"],
+    ignores: coreTestFiles,
+    rules: { "no-restricted-imports": ["error", { patterns: [...coreBannedImportsExceptZod, ...coreTestOnlyImports] }] },
+  },
   // ARCHITECTURE.md 1.4 rules 1 and 3: import.meta.env, JSX <a href> and JSX <iframe> are confined to one directory each.
   // 06-intro: no production file inspects a contract address. A later block replaces the rule wholesale, so each block
   // carries the full list minus its own exceptions.

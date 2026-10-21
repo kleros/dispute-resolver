@@ -110,14 +110,6 @@ export interface WalletControlProps {
   readonly chain: ChainConfig;
 }
 
-/** Props of `ChainIndicator` (ARCHITECTURE.md §11.2). */
-export interface ChainIndicatorProps {
-  /** The header's resolved chain (ARCHITECTURE.md §3.2), whose name is shown. */
-  readonly chain: ChainConfig;
-  /** `true` when `chain` is the page chain named by the URL; only then is a wallet on another chain offered the switch (D-48). */
-  readonly isPageChain: boolean;
-}
-
 /** Props of `SmartContractWalletWarning` (A14). */
 export interface SmartContractWalletWarningProps {
   /** The chain whose code is read for the connected account: the resolved chain of the header. */

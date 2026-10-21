@@ -2,9 +2,11 @@ import { Button, Modal, TextArea, TextField } from "@kleros/ui-components-librar
 import { useMemo, useState } from "react";
 import { AtlasFileField, AtlasUploaderProvider, useAtlasUpload, type AtlasUploader } from "../../atlas";
 import { Notice } from "../../ui";
-import { WriteStatusNotice } from "../../wallet";
+import { WriteStatusNotice, useConnectWallet, type NeedsWalletGuard, type WriteAccess } from "../../wallet";
 import { SubmissionFeedbackNotice } from "./SubmissionFeedbackNotice";
-import type { EvidenceDraft, SubmissionFeedback, WrongChainStatus } from "./useEvidenceSubmission";
+import type { EvidenceDraft, SubmissionFeedback } from "./useEvidenceSubmission";
+
+const NEEDS_WALLET = "Connect a wallet to submit evidence.";
 
 export interface SubmitEvidenceModalProps {
   readonly isOpen: boolean;
@@ -16,12 +18,33 @@ export interface SubmitEvidenceModalProps {
   /** A submission is in flight: Submit reads "Awaiting Confirmation" and is disabled. */
   readonly submitting: boolean;
   readonly feedback: SubmissionFeedback | null;
-  /** The wallet is on another chain than the page: the attachment field is locked and the switch is offered (B3, D-48). */
-  readonly wrongChain: WrongChainStatus | null;
+  /** Whether the wallet can sign on the page chain now; anything but `ready` locks the attachment field (B3, D-48). */
+  readonly access: WriteAccess;
 }
 
-function isWrongChain(feedback: SubmissionFeedback | null): boolean {
-  return feedback?.kind === "write" && feedback.status.phase === "wrong-chain";
+/** A refusal the modal already shows from `access`, so the submission's copy of it is not shown twice. */
+function isGuardRefusal(feedback: SubmissionFeedback | null): boolean {
+  return feedback?.kind === "write" && (feedback.status.phase === "wrong-chain" || feedback.status.phase === "needs-wallet");
+}
+
+/** The wallet disconnected while the modal was open: what was typed stays, and Connect is offered when a wallet can connect. */
+function WalletNeeded({ guard }: { readonly guard: NeedsWalletGuard }) {
+  const connect = useConnectWallet();
+  return (
+    <div className="flex flex-col gap-2">
+      <Notice variant="info" title="Wallet required" body={NEEDS_WALLET} />
+      {connect.available ? (
+        <Button
+          text="Connect"
+          small
+          className="self-start"
+          onPress={() => {
+            connect.open(guard.pageChainId);
+          }}
+        />
+      ) : null}
+    </div>
+  );
 }
 
 /**
@@ -59,15 +82,17 @@ const OVERLAY_MOTION = "entering:animate-[fadeIn_250ms_cubic-bezier(0.22,1,0.36,
  * signing in to Atlas within the drop when needed, D-52), with "Return" and "Submit". No field is validated. Submit is
  * disabled while a submission or an upload runs. With the wallet on another chain the attachment field is locked and the
  * switch is offered under it, so no sign-in is requested (B3, D-48); a Submit refused for the same reason adds no second
- * notice. Without a wallet the field's own Connect offer applies. The overlay, Escape and "Return" close it; a failed
- * submission keeps it open with the outcome (D-07).
+ * notice. A wallet that disconnects while the modal is open locks the attachment field and Submit as well, and the
+ * typed fields stay editable. The overlay, Escape and "Return" close it; a failed submission keeps it open with the
+ * outcome (D-07).
  */
-export function SubmitEvidenceModal({ isOpen, draft, onDraftChange, onClose, onSubmit, submitting, feedback, wrongChain }: SubmitEvidenceModalProps) {
+export function SubmitEvidenceModal({ isOpen, draft, onDraftChange, onClose, onSubmit, submitting, feedback, access }: SubmitEvidenceModalProps) {
   const uploader = useAtlasUpload();
   const attachment = useCountedUploads(uploader);
   const unconfigured = uploader.availability === "unconfigured";
   const uploading = attachment.inFlight || uploader.phase !== "idle";
-  const shownFeedback = wrongChain !== null && isWrongChain(feedback) ? null : feedback;
+  const needsWallet = access.status === "needs-wallet";
+  const shownFeedback = access.status !== "ready" && isGuardRefusal(feedback) ? null : feedback;
   return (
     <Modal
       isOpen={isOpen}
@@ -106,7 +131,7 @@ export function SubmitEvidenceModal({ isOpen, draft, onDraftChange, onClose, onS
             role="evidence"
             label="Attachment (optional)"
             value={draft.attachment}
-            isDisabled={submitting || wrongChain !== null}
+            isDisabled={submitting || access.status !== "ready"}
             onUploaded={(file) => {
               onDraftChange({ attachment: file });
             }}
@@ -115,14 +140,18 @@ export function SubmitEvidenceModal({ isOpen, draft, onDraftChange, onClose, onS
             }}
           />
         </AtlasUploaderProvider>
-        {wrongChain === null ? null : <WriteStatusNotice status={wrongChain} />}
-        {unconfigured ? (
-          <Notice variant="warning" title="Submission unavailable" body="Evidence is uploaded to IPFS before it is submitted, and uploads are unavailable on this deployment." />
-        ) : null}
+        {access.status === "wrong-chain" ? <WriteStatusNotice status={access.guard} /> : null}
+        {access.status === "needs-wallet" ? <WalletNeeded guard={access.guard} /> : null}
+        {unconfigured ? <Notice variant="warning" title="Submission unavailable" body="Evidence is uploaded to IPFS before it is submitted, and uploads are unavailable." /> : null}
         {shownFeedback === null ? null : <SubmissionFeedbackNotice feedback={shownFeedback} />}
         <div className="sticky bottom-0 -mx-4 -mb-4 flex flex-wrap justify-end gap-3 border-t border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground px-4 py-3 sm:-mx-6 sm:-mb-6 sm:px-6">
           <Button text="Return" variant="secondary" onPress={onClose} />
-          <Button text={submitting ? "Awaiting Confirmation" : "Submit"} isLoading={submitting} isDisabled={submitting || uploading || unconfigured} onPress={onSubmit} />
+          <Button
+            text={submitting ? "Awaiting Confirmation" : "Submit"}
+            isLoading={submitting}
+            isDisabled={submitting || uploading || unconfigured || needsWallet}
+            onPress={onSubmit}
+          />
         </div>
       </div>
     </Modal>

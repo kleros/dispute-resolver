@@ -3,14 +3,24 @@ import { useEffect, useRef } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { useNetworkSwitch, useWallet } from "../wallet";
 import { CHAIN_PARAM } from "./pageChain";
-import { isChainNumber, replaceChainSegment } from "./paths";
+import { isChainNumber } from "./paths";
+
+/**
+ * In this layout the first segment is always the route's chain parameter, even one that names no chain (`/abc/ongoing`):
+ * inserting the wallet's chain in front of it would keep the bad segment and land on the 404 screen.
+ */
+function withChainSegment(pathname: string, chainId: number): string {
+  const parts = pathname.split("/");
+  parts[1] = String(chainId);
+  return parts.join("/");
+}
 
 /**
  * Keeps the page and the wallet on one chain without a reload (D-55, ARCHITECTURE.md §3.6). Runs once, in the
  * `/:chainId` layout route.
  *
- * - When the connected wallet changes chain, the app moves to that chain: the URL's chain segment is replaced (spec
- *   §1.3) with `replace`, keeping the rest of the path and the search. An unconfigured chain shows the
+ * - When the connected wallet changes chain, the app moves to that chain: the URL's chain segment is replaced with
+ *   `replace`, keeping the rest of the path, the search and the hash. An unconfigured chain shows the
  *   unsupported-network screen.
  * - When a wallet becomes connected (wagmi's reconnect settling at load, or the user's first connect) on a chain other
  *   than a configured page chain, the wallet is asked once to switch to the page chain. Declining leaves reads on the
@@ -44,7 +54,7 @@ export function useChainFollowing(): void {
     }
     // A switch the app requested lands on the page chain; there is nothing to follow.
     if (walletChainId === pageChainId) return;
-    const target = { pathname: replaceChainSegment(location.pathname, walletChainId), search: location.search, hash: location.hash };
+    const target = { pathname: withChainSegment(location.pathname, walletChainId), search: location.search, hash: location.hash };
     // A declarative router navigates synchronously; the Promise in navigate's return type belongs to data routers.
     void Promise.resolve(navigate(target, { replace: true }));
   }, [reconnecting, walletChainId, pageChainId, location, navigate, switchTo]);

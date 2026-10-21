@@ -5,4 +5,4 @@ export { readRoundFunding } from "./funding";
 export { computeAppealAmounts, fundedPercent, isWinningCode } from "./amounts";
 export { buildCrowdfundingCards } from "./cards";
 export { readWithdrawable } from "./withdraw";
-export { buildAppealPanel } from "./panel";
+export { buildAppealPanel, hasAppealPanel } from "./panel";

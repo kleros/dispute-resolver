@@ -11,13 +11,15 @@ export interface FundingCardProps {
   readonly card: CrowdfundingCard;
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
+  /** Disables Fund, as without a wallet. */
+  readonly isFundDisabled: boolean;
 }
 
 /**
  * One fixed crowdfunding card (spec §5.12 card contents): its title, the latest-jury-decision mark, the funding and the
  * countdown to its deadline, then the contribution and Fund. The list item is named by the card's title.
  */
-export function FundingCard({ card, actions, chain }: FundingCardProps) {
+export function FundingCard({ card, actions, chain, isFundDisabled }: FundingCardProps) {
   const titleId = useId();
   return (
     <li className={CARD_ITEM_CLASS} aria-labelledby={titleId}>
@@ -38,7 +40,7 @@ export function FundingCard({ card, actions, chain }: FundingCardProps) {
               <Amount wei={card.required} chain={chain} />
             </span>
           </p>
-          <FundAction subject={card.title} code={card.code} suggested={card.remaining} actions={actions} chain={chain} />
+          <FundAction subject={card.title} code={card.code} suggested={card.remaining} actions={actions} chain={chain} isDisabled={isFundDisabled} />
         </div>
       </Card>
     </li>

@@ -33,7 +33,7 @@ export function PageFrame({ resolvedChain, children }: PageFrameProps) {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <Header resolvedChain={resolvedChain} connected={connected} />
+      <Header resolvedChain={resolvedChain} />
       {connected ? (
         <div className={GUTTER}>
           <div className={`${CONTENT} [&>*]:pt-4`}>

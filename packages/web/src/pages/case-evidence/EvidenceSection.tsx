@@ -21,7 +21,11 @@ interface SubmitEvidenceProps {
   readonly disputeId: bigint;
 }
 
-/** "Submit New Evidence", its modal, and, once the modal is closed, the outcome of a submission still in progress or just mined. */
+/**
+ * "Submit New Evidence", its modal, and, once the modal is closed, the outcome of a submission still in progress or just
+ * mined. Without a wallet the button is disabled and says why; a wallet on another chain keeps it enabled, and Submit
+ * then offers the switch.
+ */
 function SubmitEvidence({ context, chainId, disputeId }: SubmitEvidenceProps) {
   const submission = useEvidenceSubmission(context, chainId, disputeId);
   const [isOpen, setOpen] = useState(false);
@@ -44,9 +48,11 @@ function SubmitEvidence({ context, chainId, disputeId }: SubmitEvidenceProps) {
     }
   };
 
+  const needsWallet = submission.access.status === "needs-wallet";
   return (
     <div className="flex min-w-0 flex-col gap-3">
-      <Button text="Submit New Evidence" className={BUTTON_CLASS} onPress={open} />
+      <Button text="Submit New Evidence" className={BUTTON_CLASS} isDisabled={needsWallet} onPress={open} />
+      {needsWallet ? <p className="text-sm text-klerosUIComponentsSecondaryText">Connect a wallet to submit evidence.</p> : null}
       {!isOpen && submission.feedback !== null ? <SubmissionFeedbackNotice feedback={submission.feedback} /> : null}
       <SubmitEvidenceModal
         isOpen={isOpen}
@@ -60,7 +66,7 @@ function SubmitEvidence({ context, chainId, disputeId }: SubmitEvidenceProps) {
         }}
         submitting={submission.inFlight}
         feedback={isOpen ? submission.feedback : null}
-        wrongChain={submission.guard?.phase === "wrong-chain" ? submission.guard : null}
+        access={submission.access}
       />
     </div>
   );

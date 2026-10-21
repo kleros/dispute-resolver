@@ -1,7 +1,7 @@
 /**
- * The production bundle check (checklist C9, A20, C3): run after `yarn build`, it fails when the built site in
+ * The production bundle check (checklist C9, A20, C3, C2): run after `yarn build`, it fails when the built site in
  * `packages/web/dist` carries a test double, loads a script or stylesheet from another origin, carries an inline script in
- * a page, or lacks a file the deploy depends on.
+ * a page, lacks a file the deploy depends on, or lacks core's zod configuration.
  *
  *   node packages/web/scripts/check-bundle.mjs [distDirectory]
  *
@@ -23,6 +23,13 @@ const REPOSITORY_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
 /** Files the deploy cannot work without (C1 to C3: the headers file, the app page, the runner page and its bootstrap). */
 const REQUIRED_FILES = ["index.html", "_headers", "__runner/index.html", "__runner/bootstrap.js"];
+
+/**
+ * What `z.config({ jitless: true })` in packages/core/src/zod.ts minifies to. Without it zod compiles its parsers with the
+ * Function constructor, which the page's policy forbids (no 'unsafe-eval'), and the bundler drops the call silently when
+ * the side-effects exception in vite.config.ts is lost; exactly one copy means one zod, configured once.
+ */
+const ZOD_CONFIGURATION_MARKER = "jitless:!0";
 
 /** Extensions of files that hold no text worth scanning. */
 const BINARY_EXTENSIONS = new Set([".woff", ".woff2", ".ttf", ".otf", ".eot", ".ico", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".wasm", ".mp4", ".webm", ".pdf"]);
@@ -198,6 +205,27 @@ async function requiredFileProblems(distDirectory) {
   return problems;
 }
 
+/** Whether a dist file is one of the bundle's scripts, `assets/*.js`. */
+function isAssetScript(name) {
+  return /^assets\/[^/]+\.js$/.test(name);
+}
+
+/** The problem with how many zod configuration markers the scripts hold, or null when they hold exactly one. */
+function zodConfigurationProblem(count) {
+  if (count === 0) return "dist/assets/: the zod configuration is missing from the bundle (C2).";
+  if (count > 1) return `dist/assets/: the zod configuration appears ${String(count)} times in the bundle, not once (C2).`;
+  return null;
+}
+
+/** The test doubles one text file of the bundle carries and, for a page, what it loads or runs inline. */
+function textFileProblems(name, text) {
+  const problems = TEST_DOUBLE_MARKERS.filter((marker) => marker.pattern.test(text)).map((marker) => `dist/${name} contains a ${marker.label} (C9).`);
+  if (name.endsWith(".html")) {
+    for (const finding of htmlFindings(text)) problems.push(`dist/${name} ${finding} (A20).`);
+  }
+  return problems;
+}
+
 /**
  * Checks a built site. Resolves to `{ problems, scanned }`: the problems as sentences (empty when the bundle is
  * clean) and the number of text files scanned.
@@ -206,17 +234,16 @@ export async function checkBundle(distDirectory = DEFAULT_DIST) {
   if (!(await isDirectory(distDirectory))) return { problems: [`dist/ does not exist. Run yarn build first.`], scanned: 0 };
   const problems = await requiredFileProblems(distDirectory);
   let scanned = 0;
+  let zodConfigurations = 0;
   for (const name of await filesBelow(distDirectory)) {
     if (BINARY_EXTENSIONS.has(path.extname(name).toLowerCase())) continue;
     const text = await readFile(path.join(distDirectory, name), "utf8");
     scanned += 1;
-    for (const marker of TEST_DOUBLE_MARKERS) {
-      if (marker.pattern.test(text)) problems.push(`dist/${name} contains a ${marker.label} (C9).`);
-    }
-    if (name.endsWith(".html")) {
-      for (const finding of htmlFindings(text)) problems.push(`dist/${name} ${finding} (A20).`);
-    }
+    if (isAssetScript(name)) zodConfigurations += text.split(ZOD_CONFIGURATION_MARKER).length - 1;
+    problems.push(...textFileProblems(name, text));
   }
+  const zodProblem = zodConfigurationProblem(zodConfigurations);
+  if (zodProblem !== null) problems.push(zodProblem);
   return { problems, scanned };
 }
 
@@ -258,7 +285,9 @@ async function main() {
     console.error(`Bundle check failed: ${String(problems.length)} problem(s).`);
     return 1;
   }
-  console.info(`Bundle check passed: ${String(scanned)} text files scanned, no test double, no external script or stylesheet, no inline script, deploy files present.`);
+  console.info(
+    `Bundle check passed: ${String(scanned)} text files scanned, no test double, no external script or stylesheet, no inline script, deploy files present, zod configured.`,
+  );
   return 0;
 }
 

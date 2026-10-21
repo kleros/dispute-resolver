@@ -3,7 +3,7 @@
  * selector tests need: the code whose dispatcher carries the selectors (the implementation's code behind an EIP-1967
  * proxy, else the contract's own).
  */
-import { z } from "zod";
+import { z } from "../../zod";
 import type { Hex } from "../../types";
 import bytecode1 from "../../families/__fixtures__/bytecode-1.json";
 import bytecode100 from "../../families/__fixtures__/bytecode-100.json";

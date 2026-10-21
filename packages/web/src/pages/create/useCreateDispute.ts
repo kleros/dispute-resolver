@@ -13,11 +13,10 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAtlasUpload, type UploadError, type UploadResult } from "../../atlas";
-import { useCoreDeps } from "../../data";
+import { noRpcError, useCoreDeps } from "../../data";
 import { paths, usePageChain } from "../../routing";
 import { useToast } from "../../shell";
-import { useWrite, type WriteStatus } from "../../wallet";
-import { useChainGuard, type GuardStatus } from "./chainGuard";
+import { useWrite, useWriteAccess, type NeedsWalletGuard, type WriteAccess, type WriteStatus, type WrongChainGuard } from "../../wallet";
 
 /** The page opens the new dispute this long after the success toast (spec §4.6). */
 export const NAVIGATION_DELAY_MS = 2000;
@@ -31,7 +30,7 @@ export const META_EVIDENCE_FILE_NAME = "metaEvidence.json";
  */
 export type CreateActionState =
   | { readonly kind: "idle" }
-  | { readonly kind: "blocked"; readonly status: GuardStatus }
+  | { readonly kind: "blocked"; readonly status: NeedsWalletGuard | WrongChainGuard }
   | { readonly kind: "publishing" }
   | { readonly kind: "publish-failed"; readonly error: UploadError; readonly message: string }
   | { readonly kind: "cost-failed"; readonly error: Unavailable }
@@ -40,6 +39,8 @@ export type CreateActionState =
   | { readonly kind: "no-dispute-id" };
 
 export interface CreateDisputeAction {
+  /** Whether Create can be signed now, and why not. */
+  readonly access: WriteAccess;
   readonly state: CreateActionState;
   readonly writeStatus: WriteStatus;
   /**
@@ -81,7 +82,7 @@ function uploadFailure(error: unknown): UploadResult {
  */
 export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction {
   const { chainId, chain } = usePageChain();
-  const guard = useChainGuard();
+  const access = useWriteAccess(chainId);
   const uploader = useAtlasUpload();
   const write = useWrite();
   const deps = useCoreDeps();
@@ -93,8 +94,8 @@ export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction
 
   const run = useCallback(async () => {
     write.reset();
-    if (guard !== null) {
-      setState({ kind: "blocked", status: guard });
+    if (access.status !== "ready") {
+      setState({ kind: "blocked", status: access.guard });
       return;
     }
 
@@ -112,8 +113,7 @@ export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction
 
     const extraData = encodeExtraData(input.courtId, input.votes);
     const client = deps.getReadClient(chainId);
-    const cost: Outcome<bigint> =
-      client === undefined ? { ok: false, error: { code: "no-rpc", message: `No RPC is configured for chain ${String(chainId)}.` } } : await readArbitrationCost(client, chain, extraData);
+    const cost: Outcome<bigint> = client === undefined ? { ok: false, error: noRpcError(chainId) } : await readArbitrationCost(client, chain, extraData);
     if (!cost.ok) {
       setState({ kind: "cost-failed", error: cost.error });
       return;
@@ -131,7 +131,7 @@ export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction
     }
     toast.show({ variant: "success", title: "Transaction Confirmed", message: `You have successfully created dispute ${disputeId.toString()}!` });
     setState({ kind: "created", disputeId });
-  }, [write, guard, chainId, uploader, input, deps, chain, toast]);
+  }, [write, access, chainId, uploader, input, deps, chain, toast]);
 
   const create = useCallback(async () => {
     if (running.current) return;
@@ -154,5 +154,5 @@ export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction
     };
   }, [createdId, chainId, navigate]);
 
-  return { state, writeStatus: write.status, isBusy: isBusy(state, write.status), create };
+  return { access, state, writeStatus: write.status, isBusy: isBusy(state, write.status), create };
 }

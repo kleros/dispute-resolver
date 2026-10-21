@@ -15,9 +15,10 @@ export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
-    // Just above the one chunk that cannot be split: @kleros/ui-components-library 3.9.0 ships its file viewer as a
-    // single prebuilt module (`dist/index-*.js`, about 705 kB with its bundled polyfills), about 515 kB minified. The
-    // case page loads it lazily; every other chunk stays under Vite's default of 500 kB.
+    // Just above the one chunk that cannot be split: @kleros/ui-components-library 3.10.0 ships its document viewer as a
+    // single prebuilt module, emitted as its own chunk of about 515 kB minified. Only two of the library's own chunks
+    // reference it, and it references them back; no chunk of the app's own code does. Every other chunk stays under
+    // Vite's default of 500 kB.
     chunkSizeWarningLimit: 520,
     rolldownOptions: {
       treeshake: {
@@ -25,8 +26,13 @@ export default defineConfig({
         // exports are unused can be dropped. Without this, the barrels (`data`, `@dispute-resolver/core`) keep every
         // module they re-export in the entry's graph: core's `rulings` then pulls reality-eth-lib (ethers, marked,
         // DOMPurify) into the first paint although only the case page uses it. Stylesheets and dependencies keep the
-        // default, so `import "./index.css"` and every package's own `sideEffects` field still apply.
-        moduleSideEffects: [{ test: /\/packages\/(core|web)\/src\/.+\.tsx?$/, sideEffects: false }],
+        // default, so `import "./index.css"` and every package's own `sideEffects` field still apply. The first rule a
+        // module matches wins: core's zod.ts configures zod at import time, and under the general rule the bundler drops
+        // that call although the module's export is used (scripts/check-bundle.mjs fails the build's check without it).
+        moduleSideEffects: [
+          { test: /\/packages\/core\/src\/zod\.ts$/, sideEffects: true },
+          { test: /\/packages\/(core|web)\/src\/.+\.tsx?$/, sideEffects: false },
+        ],
       },
       output: {
         codeSplitting: {

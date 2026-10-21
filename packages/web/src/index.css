@@ -84,8 +84,8 @@
    * Motion (contract §9: state only, 150 to 250 ms). These redefine the library's own variables, which its components
    * read through `entering:animate-scale-in`, `exiting:animate-scale-out`, `animate-fade-in` and `animate-fade-out`.
    * - The select popover opens over 250 ms and closes over 150 ms on the `scale` property with opacity, instead of the
-   *   library's unroll from scaleY(0). The library's close never ran: 3.9.0 names a `slideOut` keyframe that does not
-   *   exist (reported upstream). The out keyframe states both ends because the exiting popover carries a static
+   *   library's unroll from scaleY(0). The library's close never runs: 3.10.0 still names a `slideOut` keyframe that
+   *   does not exist (reported upstream). The out keyframe states both ends because the exiting popover carries a static
    *   `scale-y-0`, and only a running animation on `scale` holds it visible until react-aria unmounts it.
    * - The tooltip and the number-field arrow column fade over 150 ms (the library's 300 ms exceeded the ceiling).
    */
@@ -282,12 +282,17 @@
   }
 
   /*
-   * The sticky header is h-16 at every width; focusing or scrolling to an element leaves it and its 2 px ring (offset
-   * 2 px) below the bar.
+   * The sticky header is two rows on phones (the 4rem brand row, then the network and wallet row with its padding) and
+   * one 4rem row from lg, which the library's theme sets at 56.25rem; focusing or scrolling to an element leaves it and
+   * its 2 px ring (offset 2 px) below the bar.
    */
   html {
     scrollbar-color: var(--klerosUIComponentsStroke) transparent;
-    scroll-padding-top: calc(4rem + 8px);
+    scroll-padding-top: calc(7.5rem + 8px);
+
+    @variant lg {
+      scroll-padding-top: calc(4rem + 8px);
+    }
   }
 
   :where(input, textarea) {
@@ -407,8 +412,11 @@
   border-color: var(--dr-control-border);
 }
 
-/* Disabled buttons (contract §5): a grey fill with a Stroke ring and a SecondaryText label (5.11:1 on LightGrey). */
-button:where(:disabled, [data-disabled]) {
+/*
+ * Disabled buttons (contract §5): a grey fill with a Stroke ring and a SecondaryText label (5.11:1 on LightGrey). A button
+ * inside a disabled fieldset is part of a control that draws its own disabled look, so it gets no plate of its own.
+ */
+button:where(:disabled, [data-disabled]):not(:where(fieldset:disabled *)) {
   background-color: var(--klerosUIComponentsLightGrey);
   box-shadow: inset 0 0 0 1px var(--klerosUIComponentsStroke);
 }

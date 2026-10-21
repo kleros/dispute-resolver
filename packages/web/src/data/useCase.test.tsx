@@ -4,7 +4,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { TestDataProvider, createTestDeps, createTestQueryClient, testCourt, testDetails, testFamily, testFoundLookup, testOkMetaEvidence } from "../test/data";
+import { TEST_ARBITRABLE, TestDataProvider, createTestDeps, createTestQueryClient, testCourt, testDetails, testFamily, testFoundLookup, testOkMetaEvidence } from "../test/data";
 import { queryKeys } from "./queryKeys";
 import type { CaseData, CaseDispute, CoreDeps } from "./types";
 import { useCase } from "./useCase";
@@ -112,6 +112,17 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     const current = await settledCase(result);
     expect(current.write).toMatchObject({ status: "ready", value: { binding: testFoundLookup().binding, localId: { kind: "local-id", value: 7n } } });
     expect(core.loadMetaEvidence).toHaveBeenCalledWith(expect.objectContaining({ arbitrable: testFoundLookup().binding.arbitrated, budgetMs: core.CASE_PAGE_BUDGET_MS }));
+  });
+
+  it("reaches ready on the case page when the Ongoing page already stored the meta-evidence", async () => {
+    const client = createTestQueryClient();
+    client.setQueryData(queryKeys.metaEvidence(1, 1n, TEST_ARBITRABLE), testOkMetaEvidence({ title: "Stored" }));
+    const { result } = renderCase(1n, { client });
+    const current = await settledCase(result);
+    expect(current.metaEvidence).toEqual({ status: "ready", value: testOkMetaEvidence() });
+    expect(current.view).toMatchObject({ status: "ready", value: { exists: true } });
+    expect(current.appealPanel.status).toBe("ready");
+    expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
   });
 
   it("D-53: a nonexistent ID shows the not-found state and reads nothing else", async () => {

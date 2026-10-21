@@ -2,7 +2,7 @@
  * Test-only typed view of the appeals fixtures, each read at the block its file names. Parsed with Zod so a malformed
  * recording fails loudly instead of feeding the tests undefined values.
  */
-import { z } from "zod";
+import { z } from "../../zod";
 import type { AppealDecisionEvent } from "../../disputes/types";
 import { toRegistryAddress } from "../../registry";
 import type { Address, Hex } from "../../types";

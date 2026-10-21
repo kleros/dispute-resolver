@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "../zod";
 import type { Env } from "../types";
 import type { ChainConfig, RpcUrlResolution } from "./types";
 

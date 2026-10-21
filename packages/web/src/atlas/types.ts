@@ -59,6 +59,7 @@ export interface AtlasFileFieldProps {
   readonly onUploaded: (file: UploadedFile) => void;
   readonly onCleared: () => void;
   readonly label?: string;
+  /** Locks the field; without a connected wallet the field says that uploading needs one. */
   readonly isDisabled?: boolean;
 }
 

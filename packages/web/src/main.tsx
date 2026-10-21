@@ -1,14 +1,12 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
-import { applyColorScheme } from "./theme";
+import { browserColorSchemeMedia, browserLocalStorage, createColorSchemeStore } from "./theme";
 import "./index.css";
 
-const colorScheme = window.matchMedia("(prefers-color-scheme: dark)");
-applyColorScheme(document.documentElement, colorScheme.matches);
-colorScheme.addEventListener("change", (event) => {
-  applyColorScheme(document.documentElement, event.matches);
-});
+// Created outside React so StrictMode's double render cannot create a second one, and before the first render so the
+// first paint is already themed.
+const colorScheme = createColorSchemeStore({ root: document.documentElement, media: browserColorSchemeMedia(), storage: browserLocalStorage() });
 
 const container = document.getElementById("root");
 if (!container) {
@@ -17,6 +15,6 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    <App />
+    <App colorScheme={colorScheme} />
   </StrictMode>,
 );

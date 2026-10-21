@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "../zod";
 import type { ScriptKind } from "../types";
 import { normalizeIpfsPath } from "../uri";
 import type { CanonicalIpfsPath } from "../uri/types";

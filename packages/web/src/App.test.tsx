@@ -1,9 +1,11 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ComponentType, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { TestDataProvider } from "./test/data";
 import { installOfflineAppKitEnvironment } from "./test/wallet";
+import { createColorSchemeStore } from "./theme";
 
 // No RPC, no WalletConnect project ID and no Atlas URI, whatever the repository's .env holds: the wallet runs in its
 // read-only `unconfigured` mode and the Atlas gate requests nothing (ARCHITECTURE.md §2.2).
@@ -33,8 +35,11 @@ testData.Provider = TestDataProvider;
 const fetchSpy = vi.fn<typeof fetch>(() => Promise.reject(new Error("App test made a network request")));
 
 function renderAppAt(path: string) {
+  // A detached root per render, so one test's theme choice never reaches the next.
+  const root = document.createElement("div");
+  const colorScheme = createColorSchemeStore({ root, media: null, storage: null });
   window.history.replaceState(null, "", path);
-  return render(<App />);
+  return { ...render(<App colorScheme={colorScheme} />), root };
 }
 
 /** What each page shows first, whatever its data: the Ongoing heading, the Create steps, the case page's search. */
@@ -111,5 +116,15 @@ describe("App: the route table through the provider tree (ADR 0001 URL bullet, A
     expect(await screen.findByRole("heading", { name: "404" })).toBeInTheDocument();
     expect(screen.getByText("Something went wrong in Athens!")).toBeInTheDocument();
     expect(within(mainNavigation()).getByRole("link", { name: /Ongoing Disputes/ })).toHaveAttribute("href", "/100/ongoing");
+  });
+
+  it("switches the page to the dark theme from the header's toggle and back", async () => {
+    const user = userEvent.setup();
+    const { root } = renderAppAt("/1/ongoing");
+    await PAGE_LANDMARKS.ongoing();
+    await user.click(within(appHeader()).getByRole("button", { name: "Switch to dark theme" }));
+    expect(root).toHaveClass("dark");
+    await user.click(within(appHeader()).getByRole("button", { name: "Switch to light theme" }));
+    expect(root).not.toHaveClass("dark");
   });
 });

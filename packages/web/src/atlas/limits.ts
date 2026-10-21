@@ -1,5 +1,5 @@
 import { Roles } from "@kleros/kleros-app";
-import { z } from "zod";
+import { z } from "@dispute-resolver/core";
 import type { RoleLimits, UploadRole } from "./types";
 
 /** The library role each upload role is sent as (A16): user files under `evidence`, generated JSON under `policy`. */

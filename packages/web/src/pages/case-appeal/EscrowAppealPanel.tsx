@@ -1,8 +1,8 @@
 import { buildEscrowAppealCall, type ChainConfig } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { formatAmount } from "../../ui";
-import { WriteStatusNotice, useWrite } from "../../wallet";
-import { APPEAL_HEADING, ESCROW_EXPLANATION } from "./copy";
+import { WriteStatusNotice, useWrite, useWriteAccess } from "../../wallet";
+import { APPEAL_HEADING, APPEAL_NEEDS_WALLET, ESCROW_EXPLANATION } from "./copy";
 import { BODY_TEXT_CLASS } from "./styles";
 import type { AppealActions } from "./useAppealActions";
 
@@ -15,11 +15,12 @@ export interface EscrowAppealPanelProps {
 /**
  * Escrow V1 in the appeal period (spec §10.2, §5.11): one appeal paying the arbitrator's appeal cost, labelled in the
  * chain's currency (D-10), sent through the chain guard (B3) to the arbitrated escrow (A22); the case refreshes once
- * the appeal is mined (D-07, P-02).
+ * the appeal is mined (D-07, P-02). Without a wallet the button is disabled and says why.
  */
 export function EscrowAppealPanel({ appealCost, actions, chain }: EscrowAppealPanelProps) {
   const write = useWrite();
   const busy = write.status.phase === "pending" || write.status.phase === "submitted";
+  const needsWallet = useWriteAccess(actions.pageChainId).status === "needs-wallet";
   const { context } = actions;
 
   const appeal = async () => {
@@ -38,11 +39,12 @@ export function EscrowAppealPanel({ appealCost, actions, chain }: EscrowAppealPa
         text={`Appeal - ${formatAmount(appealCost, chain)}`}
         className="self-start"
         isLoading={busy}
-        isDisabled={busy || context === null}
+        isDisabled={busy || context === null || needsWallet}
         onPress={() => {
           void appeal();
         }}
       />
+      {needsWallet ? <p className={BODY_TEXT_CLASS}>{APPEAL_NEEDS_WALLET}</p> : null}
       <WriteStatusNotice status={write.status} />
     </>
   );

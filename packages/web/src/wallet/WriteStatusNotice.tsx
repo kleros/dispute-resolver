@@ -5,7 +5,7 @@ import { Notice } from "../ui";
 import { chainName } from "./chains";
 import { useNetworkSwitch } from "./switchChain";
 import type { WriteStatusNoticeProps } from "./types";
-import { CONNECT_UNAVAILABLE_MESSAGES, useConnectWallet } from "./useConnectWallet";
+import { useConnectWallet } from "./useConnectWallet";
 import { useWallet } from "./useWallet";
 import { writeMessage } from "./writeMessages";
 
@@ -41,7 +41,7 @@ function ConnectOffer({ pageChainId }: { readonly pageChainId: ChainId | undefin
   const wallet = useWallet();
   const connect = useConnectWallet();
   if (wallet.status === "connected") return <p className="text-sm">Wallet connected. Try again.</p>;
-  if (connect.unavailableReason !== null) return <p className="text-sm">{CONNECT_UNAVAILABLE_MESSAGES[connect.unavailableReason]}</p>;
+  if (!connect.available) return null;
   return (
     <Button
       text="Connect"
@@ -56,8 +56,9 @@ function ConnectOffer({ pageChainId }: { readonly pageChainId: ChainId | undefin
 
 /**
  * Any `WriteStatus` as a library alert (ARCHITECTURE.md §6.1, D-14), placed next to the action: the explorer link of a
- * submitted, mined or failed transaction (D-40), the switch offer of a wrong chain (B3, D-48, P-03) and the connect
- * offer when no wallet is connected. A rejected signature is a neutral notice (D-07). `idle` renders nothing.
+ * submitted, mined or failed transaction (D-40), the switch offer of a wrong chain (B3, D-48, P-03) and, when a wallet
+ * can connect, the connect offer while none is connected. A rejected signature is a neutral notice (D-07). `idle`
+ * renders nothing.
  */
 export function WriteStatusNotice({ status, progress, className }: WriteStatusNoticeProps) {
   if (status.phase === "idle") return null;

@@ -33,7 +33,7 @@ function documentField(page: Page): Locator {
 
 /** Waits until the field knows Atlas's limits (the `roles` query at load), failing with a hint when Atlas is not configured. */
 async function expectFieldReady(field: Locator): Promise<void> {
-  await expect(field.getByText("Uploads are unavailable on this deployment."), "uploads are unavailable (the build needs REACT_APP_ATLAS_URI)").toHaveCount(0);
+  await expect(field.getByText("Uploads are unavailable."), "uploads are unavailable (the build needs REACT_APP_ATLAS_URI)").toHaveCount(0);
   await expect(field.getByText(/Maximum size: 20 MB\.$/)).toBeVisible({ timeout: 30_000 });
 }
 

@@ -44,3 +44,13 @@ export function replaceChainSegment(pathname: string, chainId: number): string {
   else parts.splice(1, 0, String(chainId));
   return parts.join("/");
 }
+
+/**
+ * The header's network switcher: inside the `/:chainId` layout the first segment is always the route's chain parameter,
+ * even when it names no chain (`/abc/ongoing`), so it is replaced rather than kept. Only a configured chain is a target.
+ */
+export function switchChainSegment(pathname: string, chainId: ChainId): string {
+  const parts = pathname.split("/");
+  parts[1] = chainSegment(chainId);
+  return parts.join("/");
+}

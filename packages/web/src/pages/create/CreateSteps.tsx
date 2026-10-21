@@ -32,8 +32,8 @@ function StepBullet({ number, active, completed }: StepState & { readonly number
 /**
  * The Create page's horizontal progress steps, laid out like the UI library's horizontal `Steps`: a bullet per step
  * joined by a line, the title beside the bullet from `lg` and centered under it below. The library's component passes
- * its boolean `active` prop through to a `div`, which React reports as an invalid DOM attribute (ui-components-library
- * 3.9.0), so the page renders its own.
+ * its boolean `active` prop through to a `div`, which React reports as an invalid DOM attribute (still so in
+ * ui-components-library 3.10.0), so the page renders its own.
  */
 export function CreateSteps({ titles, current }: CreateStepsProps) {
   return (

@@ -8,12 +8,12 @@ export interface PeriodFilterOption {
   readonly id: string;
   readonly filter: PeriodFilter;
   readonly label: string;
-  /** The period's color, as `PeriodBadge` draws it; transparent for "Ongoing", which keeps the slot. */
+  /** The period's color, as `PeriodBadge` draws it; "Ongoing" covers every period, so its dot is the neutral text colour. */
   readonly dot: string;
 }
 
 /** "Ongoing": every card, the default (spec §3). */
-const ALL_PERIODS: PeriodFilterOption = { id: "all", filter: "all", label: "Ongoing", dot: "transparent" };
+const ALL_PERIODS: PeriodFilterOption = { id: "all", filter: "all", label: "Ongoing", dot: "var(--klerosUIComponentsPrimaryText)" };
 
 /** Today's order and names (spec §3): Evidence, Commit, Voting, Appeal, then "Ongoing". */
 export const PERIOD_FILTER_OPTIONS: readonly PeriodFilterOption[] = [

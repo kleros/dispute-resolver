@@ -13,10 +13,12 @@ import {
   sessionJwt,
   settle,
   testJwt,
+  type FakeAtlasServer,
   type FakeAtlasServerOptions,
 } from "../test/atlas";
 import { TEST_WALLET_ACCOUNT, TEST_WALLET_SECOND_ACCOUNT, createTestWallet, type TestWallet } from "../test/wallet";
 import { useAtlasUpload } from "./context";
+import type { UploadResult } from "./types";
 
 const MIB = 1024 * 1024;
 
@@ -51,6 +53,45 @@ async function renderReady(setup: Setup = {}) {
     expect(rendered.result.current.limits("evidence")).not.toBeNull();
   });
   return rendered;
+}
+
+const GRAPHQL_OPERATIONS = { roles: /\broles\s*\(/, nonce: /\bnonce\s*\(/ } as const;
+
+/** Holds the next `operation` request until `release()`, so the test can change the wallet while an upload waits on it. */
+function holdNextRequest(operation: keyof typeof GRAPHQL_OPERATIONS) {
+  const serve = globalThis.fetch;
+  const gate: { release?: () => void } = {};
+  const opened = new Promise<void>((resolve) => {
+    gate.release = resolve;
+  });
+  let held = false;
+  vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) => {
+    if (!held && typeof init?.body === "string" && GRAPHQL_OPERATIONS[operation].test(init.body)) {
+      held = true;
+      return opened.then(() => serve(input, init));
+    }
+    return serve(input, init);
+  });
+  return {
+    isHeld: () => held,
+    release: () => {
+      gate.release?.();
+    },
+  };
+}
+
+/** Starts an upload inside `act` and returns it without waiting. */
+function startUpload(start: () => Promise<UploadResult>): Promise<UploadResult> {
+  const started: { promise?: Promise<UploadResult> } = {};
+  act(() => {
+    started.promise = start();
+  });
+  if (started.promise === undefined) throw new Error("The upload did not start.");
+  return started.promise;
+}
+
+function signInAndUploadRequests(server: FakeAtlasServer): number {
+  return server.count("nonce") + server.count("sign") + server.count("login") + server.count("upload");
 }
 
 beforeEach(() => {
@@ -255,6 +296,57 @@ describe("upload", () => {
     expect(outcome).toMatchObject({ ok: false, error: "mime-not-allowed" });
     expect(server.count("roles")).toBe(2);
     expect(server.count("sign")).toBe(0);
+  });
+
+  it("asks for no signature when the wallet disconnects while the role limits are being fetched", async () => {
+    const { server, wallet, result } = await renderUploader({ server: { roles: "fail-once" } });
+    const roles = holdNextRequest("roles");
+    const upload = startUpload(() => result.current.upload(pdf(), "evidence"));
+    await waitFor(() => {
+      expect(roles.isHeld()).toBe(true);
+    });
+
+    await act(() => wallet.disconnect());
+    roles.release();
+    const outcome = await settle(() => upload);
+
+    expect(outcome).toMatchObject({ ok: false, error: "no-wallet" });
+    expect(signInAndUploadRequests(server)).toBe(0);
+  });
+
+  it("asks for no signature when the wallet changes chain before the sign-in", async () => {
+    const { server, wallet, result } = await renderUploader({ server: { roles: "fail-once" } });
+    const roles = holdNextRequest("roles");
+    const upload = startUpload(() => result.current.upload(pdf(), "evidence"));
+    await waitFor(() => {
+      expect(roles.isHeld()).toBe(true);
+    });
+
+    await act(() => wallet.changeChain(100));
+    roles.release();
+    const outcome = await settle(() => upload);
+
+    expect(outcome).toMatchObject({ ok: false, error: "upload-failed", message: expect.stringContaining("chain") as unknown });
+    expect(signInAndUploadRequests(server)).toBe(0);
+  });
+
+  it("asks for no signature when the wallet changes chain while Atlas issues the sign-in nonce", async () => {
+    const { server, wallet, result } = await renderReady();
+    const nonce = holdNextRequest("nonce");
+    const upload = startUpload(() => result.current.upload(pdf(), "evidence"));
+    await waitFor(() => {
+      expect(nonce.isHeld()).toBe(true);
+    });
+
+    await act(() => wallet.changeChain(100));
+    nonce.release();
+    const outcome = await settle(() => upload);
+
+    expect(outcome).toMatchObject({ ok: false, error: "upload-failed", message: expect.stringContaining("chain") as unknown });
+    expect(server.count("sign")).toBe(0);
+    expect(server.count("login")).toBe(0);
+    expect(server.count("upload")).toBe(0);
+    expect(result.current.phase).toBe("idle");
   });
 
   it("B16: a stored token without exp is treated as expired, so the upload signs in again", async () => {

@@ -70,6 +70,17 @@ describe("useChainFollowing (D-55, ARCHITECTURE.md §3.6)", () => {
     expect(view.currentPath()).toBe("/100/ongoing");
   });
 
+  it("a wallet change on a page whose first segment names no chain replaces that segment instead of keeping it", async () => {
+    const wallet = createTestWallet({ chainId: 1 });
+    await wallet.connect();
+    const view = renderAtPath(<PageProbe />, "/abc/cases/5?ref=share#e", { wallet });
+    await act(async () => {
+      await wallet.changeChain(100);
+    });
+    expect(await screen.findByText("Page on 100")).toBeInTheDocument();
+    expect(view.currentPath()).toBe("/100/cases/5?ref=share#e");
+  });
+
   it("D-55: at load, a wallet on another chain than the URL's is asked once to switch, and the URL stays", async () => {
     const wallet = createTestWallet({ chainId: 100 });
     await wallet.connect();

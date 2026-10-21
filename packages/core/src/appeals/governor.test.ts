@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
+import { z } from "../zod";
 import { ARTIFACTS, findBySignature, normalizeAbi } from "../abi/__fixtures__/artifacts";
 import verifiedSessions from "./__fixtures__/governor-sessions-abi.json";
 import { governorSessionAbi } from "./governor";

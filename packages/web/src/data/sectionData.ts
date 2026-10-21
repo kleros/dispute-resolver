@@ -19,9 +19,9 @@ export function unavailableFrom(error: Unavailable): UnavailableSection {
   return { status: "unavailable", error };
 }
 
-/** D-56, D-18: a chain without a configured read RPC is a section state, never an exception. */
+/** A chain without a read RPC is a section state, never an exception; the code keeps the cause diagnosable. */
 export function noRpcError(chainId: ChainId): Unavailable {
-  return { code: "no-rpc", message: `No RPC is configured for chain ${String(chainId)}.` };
+  return { code: "no-rpc", message: `Reads on chain ${String(chainId)} are unavailable.` };
 }
 
 export function fromOutcome<T>(outcome: Outcome<T>): SectionData<T> {

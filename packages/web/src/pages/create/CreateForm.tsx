@@ -58,7 +58,7 @@ export function CreateForm({ chain, form, onChange, onContinue }: CreateFormProp
       <PartiesSection {...sectionProps} />
       <DocumentSection {...sectionProps} />
       {attempted && !validation.ok ? <Notice variant="error" title="Some fields need attention" body="Correct the highlighted fields to continue." /> : null}
-      <Button type="submit" text="Continue" className="self-end" />
+      <Button type="submit" text="Continue" className="w-full sm:w-auto sm:self-end" />
     </form>
   );
 }

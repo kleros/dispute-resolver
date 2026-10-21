@@ -1,7 +1,8 @@
 import type { AppealPanel, ChainConfig, CrowdfundingCard } from "@dispute-resolver/core";
 import { Notice } from "../../ui";
+import { useWriteAccess } from "../../wallet";
 import { ComposerCard } from "./ComposerCard";
-import { APPEAL_HEADING, CROWDFUNDING_EXPLANATION, REWARDS_BODY, REWARDS_TITLE } from "./copy";
+import { APPEAL_HEADING, CROWDFUNDING_EXPLANATION, FUND_NEEDS_WALLET, REWARDS_BODY, REWARDS_TITLE } from "./copy";
 import { FreeInputCard } from "./FreeInputCard";
 import { FundingCard } from "./FundingCard";
 import { BODY_TEXT_CLASS } from "./styles";
@@ -30,9 +31,12 @@ function keyedCards(cards: readonly CrowdfundingCard[]): readonly { readonly key
 /**
  * The appeal-period panel of the crowdfunding families (spec §5.11, §5.12): the explanation without the withdraw text
  * (D-43), the rewards note, then the fixed cards, the free input of variable types (D-04) and the multiple-select
- * composer (D-33), in a 3/2/1-column grid. A governor's cards are already those of its lists (P-04, P-05).
+ * composer (D-33), in a 3/2/1-column grid. A governor's cards are already those of its lists (P-04, P-05). Without a
+ * wallet every Fund is disabled and one line above the cards says why; a wallet on another chain can still press Fund,
+ * which then offers the switch.
  */
 export function CrowdfundingPanel({ panel, actions, chain }: CrowdfundingPanelProps) {
+  const needsWallet = useWriteAccess(actions.pageChainId).status === "needs-wallet";
   return (
     <>
       <div className="flex flex-col gap-2">
@@ -40,12 +44,13 @@ export function CrowdfundingPanel({ panel, actions, chain }: CrowdfundingPanelPr
         <p className={BODY_TEXT_CLASS}>{CROWDFUNDING_EXPLANATION}</p>
       </div>
       <Notice variant="info" title={REWARDS_TITLE} body={REWARDS_BODY} />
+      {needsWallet ? <p className={BODY_TEXT_CLASS}>{FUND_NEEDS_WALLET}</p> : null}
       <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Rulings to fund">
         {keyedCards(panel.cards).map(({ key, card }) => (
-          <FundingCard key={key} card={card} actions={actions} chain={chain} />
+          <FundingCard key={key} card={card} actions={actions} chain={chain} isFundDisabled={needsWallet} />
         ))}
-        {panel.freeInput === null ? null : <FreeInputCard freeInput={panel.freeInput} cards={panel.cards} actions={actions} chain={chain} />}
-        {panel.composer === null ? null : <ComposerCard composer={panel.composer} cards={panel.cards} actions={actions} chain={chain} />}
+        {panel.freeInput === null ? null : <FreeInputCard freeInput={panel.freeInput} cards={panel.cards} actions={actions} chain={chain} isFundDisabled={needsWallet} />}
+        {panel.composer === null ? null : <ComposerCard composer={panel.composer} cards={panel.cards} actions={actions} chain={chain} isFundDisabled={needsWallet} />}
       </ul>
     </>
   );

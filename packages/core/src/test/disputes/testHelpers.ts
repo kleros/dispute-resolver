@@ -4,7 +4,7 @@
  */
 import { createPublicClient, custom, encodeAbiParameters, encodeEventTopics, encodeFunctionData, encodeFunctionResult, numberToHex, pad } from "viem";
 import type { Abi, ContractFunctionArgs, ContractFunctionName, ContractFunctionReturnType } from "viem";
-import { z } from "zod";
+import { z } from "../../zod";
 import { EIP1967_IMPLEMENTATION_SLOT, klerosLiquidAbi } from "../../abi";
 import { detectFamily } from "../../families";
 import type { FamilyDetection } from "../../families/types";

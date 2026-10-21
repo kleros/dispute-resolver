@@ -5,11 +5,12 @@ import type { ReactNode } from "react";
 import { numberToHex, toEventSelector } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { UploadResult } from "../../atlas";
+import type { CoreDeps } from "../../data";
 import type { WriteStatus } from "../../wallet";
 import { formatAmount } from "../../ui";
 import { ToastProvider } from "../../shell";
 import { TEST_UPLOAD_PATH, atlasWrapper, fakeUploader, installFakeAtlasServer, type FakeAtlasServer, type FakeUploader } from "../../test/atlas";
-import { testCourt } from "../../test/data";
+import { createTestDeps, testCourt } from "../../test/data";
 import { renderAtPath } from "../../test/routing";
 import { renderWithProviders } from "../../test/shell";
 import { TEST_TX_HASH, createTestWallet, fakeWriteController, installOfflineAppKitEnvironment, testReceipt, type FakeWriteController, type TestWallet } from "../../test/wallet";
@@ -55,7 +56,11 @@ function minedWith(disputeId: bigint | null): WriteStatus[] {
     disputeId === null
       ? []
       : [{ address: ARBITRATOR, topics: [toEventSelector("DisputeCreation(uint256,address)"), numberToHex(disputeId, { size: 32 }), numberToHex(BigInt(PROXY), { size: 32 })] }];
-  return [{ phase: "pending" }, { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null }, { phase: "mined", hash: TEST_TX_HASH, explorerUrl: null, receipt: { ...testReceipt(), logs } }];
+  return [
+    { phase: "pending" },
+    { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null },
+    { phase: "mined", hash: TEST_TX_HASH, explorerUrl: null, receipt: { ...testReceipt(), logs } },
+  ];
 }
 
 interface Rendered {
@@ -65,11 +70,19 @@ interface Rendered {
   readonly currentPath: () => string;
 }
 
-async function renderCreate(options: { readonly path?: string; readonly uploader?: FakeUploader; readonly wallet?: TestWallet; readonly connect?: boolean } = {}): Promise<Rendered> {
+interface RenderCreateOptions {
+  readonly path?: string;
+  readonly uploader?: FakeUploader;
+  readonly wallet?: TestWallet;
+  readonly connect?: boolean;
+  readonly deps?: CoreDeps;
+}
+
+async function renderCreate(options: RenderCreateOptions = {}): Promise<Rendered> {
   const uploader = options.uploader ?? fakeUploader();
   const wallet = options.wallet ?? createTestWallet({ chainId: SEPOLIA });
   const user = userEvent.setup();
-  const result = renderWithProviders(<CreatePage />, { path: options.path ?? CREATE_PATH, wallet, uploader });
+  const result = renderWithProviders(<CreatePage />, { path: options.path ?? CREATE_PATH, wallet, uploader, deps: options.deps });
   if (options.connect ?? true) {
     await act(async () => {
       await wallet.connect();
@@ -334,7 +347,7 @@ describe("CreatePage", () => {
     expect(consoleError.mock.calls.filter(([message]) => String(message).includes("non-boolean attribute"))).toEqual([]);
   });
 
-  it("D-08: Return keeps every value, the chosen court and its cost", async () => {
+  it("Return keeps every value, the chosen court and its cost", async () => {
     const { user } = await renderCreate({ connect: false });
     await courtsLoaded();
     await chooseOption(user, "Court", "Blockchain");
@@ -405,7 +418,38 @@ describe("CreatePage", () => {
     expect(options).toEqual(["YesThe deposit goes back.", "No"]);
   });
 
-  it("D-36, spec 11.3: a court missing from the court list is named by its ID on the summary instead of breaking it", async () => {
+  it("says the court is loading on the summary until the court list arrives, then shows its name", async () => {
+    let resolveCourts: ((value: core.Outcome<readonly core.Court[]>) => void) | undefined;
+    const pending = new Promise<core.Outcome<readonly core.Court[]>>((resolve) => {
+      resolveCourts = resolve;
+    });
+    // Leaving the form cancels its in-flight court fetch and the summary starts another, so every call stays pending.
+    vi.mocked(core.listCourts).mockReturnValue(pending);
+    const { user } = await renderCreate({ connect: false });
+    await fillRequired(user);
+    await fillOptions(user, ["Yes", "No"]);
+    await toSummary(user);
+    expect(summaryValue("Court")).toHaveTextContent(/^Loading\.\.\.$/);
+    await act(async () => {
+      resolveCourts?.({ ok: true, value: COURTS });
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(summaryValue("Court")).toHaveTextContent(/^General Court$/);
+    });
+  });
+
+  it("shows a court whose policy name could not be read by its ID with 'name unavailable' on the summary", async () => {
+    const { user } = await renderCreate({ connect: false });
+    await courtsLoaded();
+    await chooseOption(user, "Court", "Court #2 (name unavailable)");
+    await fillRequired(user);
+    await fillOptions(user, ["Yes", "No"]);
+    await toSummary(user);
+    expect(summaryValue("Court")).toHaveTextContent(/^Court #2 \(name unavailable\)$/);
+  });
+
+  it("names a court by its ID on the summary when the court list failed, instead of breaking the summary", async () => {
     vi.mocked(core.listCourts).mockResolvedValue({ ok: false, error: { code: "rpc-error", message: "The courts could not be read." } });
     const { user } = await renderCreate({ connect: false });
     expect(await screen.findByText("The courts could not be read.")).toBeInTheDocument();
@@ -418,7 +462,7 @@ describe("CreatePage", () => {
     expect(screen.queryByText("The data for this section is malformed and cannot be displayed.")).toBeNull();
   });
 
-  it("D-08, B20: parties can be added and removed, and their addresses are validated and paired with their aliases", async () => {
+  it("parties can be added and removed with their trash buttons, and their addresses are validated and paired with their aliases", async () => {
     const { user, uploader } = await renderCreate();
     await fillRequired(user);
     await fillOptions(user, ["Yes", "No"]);
@@ -456,7 +500,7 @@ describe("CreatePage", () => {
     expect(uploadedMetaEvidence(uploader).aliases).toEqual({ "0xfb6916095ca1df60bb79ce92ce3ea74c37c5d359": "Upper" });
   });
 
-  it("A15, D-52: nothing is uploaded or signed until the user's first upload action", async () => {
+  it("nothing is uploaded or signed until the user's first upload action", async () => {
     const { user, uploader } = await renderCreate();
     await fillRequired(user);
     await fillOptions(user, ["Yes", "No"]);
@@ -477,9 +521,9 @@ describe("CreatePage", () => {
     expect(screen.queryByText("Primary Document")).toBeNull();
   });
 
-  it("D-21: without Atlas the document field says uploads are unavailable and the rest of the form works", async () => {
+  it("without Atlas the document field says uploads are unavailable and the rest of the form works", async () => {
     const { user } = await renderCreate({ uploader: fakeUploader({ availability: "unconfigured" }), connect: false });
-    expect(screen.getByText(/unavailable on this deployment/i)).toBeInTheDocument();
+    expect(screen.getByText("Uploads are unavailable.")).toBeInTheDocument();
     await fillRequired(user);
     await fillOptions(user, ["Yes", "No"]);
     await toSummary(user);
@@ -595,7 +639,11 @@ describe("CreatePage", () => {
   });
 
   it("D-07: a failed transaction is shown as an error", async () => {
-    writes.controller = fakeWriteController([{ phase: "pending" }, { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null }, { phase: "failed", hash: TEST_TX_HASH, explorerUrl: null, message: "execution reverted" }]);
+    writes.controller = fakeWriteController([
+      { phase: "pending" },
+      { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null },
+      { phase: "failed", hash: TEST_TX_HASH, explorerUrl: null, message: "execution reverted" },
+    ]);
     const { user } = await renderCreate();
     await fillRequired(user);
     await fillOptions(user, ["Yes", "No"]);
@@ -634,29 +682,98 @@ describe("CreatePage", () => {
     expect(writes.controller?.executions).toHaveLength(0);
   });
 
-  it("B3, D-48: with the wallet on another chain nothing is uploaded or signed and the switch is offered", async () => {
+  it("with the wallet on another chain, Create is disabled and the switch is offered up front", async () => {
     const wallet = createTestWallet({ chainId: 1, switchChainError: true });
     const { user, uploader } = await renderCreate({ wallet });
     await fillRequired(user);
     await fillOptions(user, ["Yes", "No"]);
     await toSummary(user);
-    await user.click(screen.getByRole("button", { name: "Create" }));
-    expect(await screen.findByText("Wrong network")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+    expect(screen.getByText("Wrong network")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Switch to / })).toBeInTheDocument();
     expect(uploader.uploadJson).not.toHaveBeenCalled();
     expect(writes.controller?.executions).toHaveLength(0);
   });
 
-  it("spec §4.5: without a wallet nothing is uploaded and Connect is offered", async () => {
+  it("without a wallet, Create is disabled and the summary says to connect one", async () => {
     const { user, uploader, wallet } = await renderCreate({ connect: false });
     await fillRequired(user);
     await fillOptions(user, ["Yes", "No"]);
     await toSummary(user);
-    await user.click(screen.getByRole("button", { name: "Create" }));
-    expect(await screen.findByText("Wallet required")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+    expect(screen.getByText("Connect a wallet to create a dispute.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Connect" }));
     expect(wallet.modal?.openConnect).toHaveBeenCalledWith(SEPOLIA);
     expect(uploader.uploadJson).not.toHaveBeenCalled();
+    expect(screen.queryByText(/configured|deployment/i)).toBeNull();
+  });
+
+  it("connecting a wallet on the page chain enables Create and the document field", async () => {
+    const { user, wallet } = await renderCreate({ connect: false });
+    expect(documentInput()).toBeDisabled();
+    await fillRequired(user);
+    await fillOptions(user, ["Yes", "No"]);
+    await toSummary(user);
+    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+    await act(async () => {
+      await wallet.connect();
+    });
+    expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
+    expect(screen.queryByText("Connect a wallet to create a dispute.")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Return" }));
+    expect(documentInput()).toBeEnabled();
+  });
+
+  it("the primary document field is locked without a wallet and says why", async () => {
+    const { user, uploader } = await renderCreate({ connect: false });
+    expect(documentInput()).toBeDisabled();
+    expect(documentInput().closest("fieldset")).toBeDisabled();
+    expect(screen.getByText("Connect a wallet to upload files.")).toBeInTheDocument();
+    await user.upload(documentInput(), new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
+    expect(uploader.upload).not.toHaveBeenCalled();
+  });
+
+  it("each party row has a trash button named for its party, beside the address field", async () => {
+    const { user } = await renderCreate({ connect: false });
+    await user.click(screen.getByRole("button", { name: "Add party" }));
+    for (const number of ["1", "2"]) {
+      const remove = screen.getByRole("button", { name: `Remove party ${number}` });
+      expect(remove).toHaveTextContent(/^$/);
+      expect(remove.querySelector("svg")).not.toBeNull();
+      const row = remove.closest("li");
+      expect(row).toHaveClass("grid-cols-[minmax(0,1fr)_auto]", "lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]");
+      expect(remove.parentElement).toBe(row);
+      const alias = screen.getByRole("textbox", { name: `Alias ${number} (Optional)` });
+      expect(alias.closest("li > div")).toHaveClass("col-span-2", "lg:col-span-1");
+      expect(row).toContainElement(screen.getByRole("textbox", { name: `Address ${number} (Optional)` }));
+    }
+    expect(screen.queryByText("Remove")).toBeNull();
+  });
+
+  it("the Continue button spans the row on phones and the summary actions are equal width below lg", async () => {
+    const { user } = await renderCreate();
+    expect(screen.getByRole("button", { name: "Continue" })).toHaveClass("w-full", "sm:w-auto", "sm:self-end");
+    await fillRequired(user);
+    await fillOptions(user, ["Yes", "No"]);
+    await toSummary(user);
+    const create = screen.getByRole("button", { name: "Create" });
+    const back = screen.getByRole("button", { name: "Return" });
+    for (const button of [create, back]) expect(button).toHaveClass("w-full", "lg:w-auto");
+    expect(create.parentElement).toBe(back.parentElement);
+    expect(create.parentElement).toHaveClass("grid", "grid-cols-2", "lg:flex", "lg:justify-end");
+  });
+
+  it("a chain without a read RPC reports the cost as unavailable with the neutral sentence", async () => {
+    const { user } = await renderCreate({ deps: createTestDeps({ unconfiguredChains: [SEPOLIA] }) });
+    await fillRequired(user);
+    await fillOptions(user, ["Yes", "No"]);
+    await toSummary(user);
+    await waitFor(() => {
+      expect(summaryValue("Arbitration Cost")).toHaveTextContent(/^Reads on chain 11155111 are unavailable\.$/);
+    });
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    expect(await screen.findByText("Reads on chain 11155111 are unavailable. Nothing was sent.")).toBeInTheDocument();
+    expect(writes.controller?.executions).toHaveLength(0);
   });
 
   describe("with the real Atlas provider", () => {
@@ -668,10 +785,11 @@ describe("CreatePage", () => {
       sessionStorage.clear();
     });
 
-    it("F1, B3, D-48: with the wallet on another chain the primary document is refused before any sign-in and the switch is offered", async () => {
+    it("with the wallet on another chain the primary document is locked before any sign-in and the switch is offered", async () => {
       const wallet = createTestWallet({ chainId: 1, switchChainError: true });
       const { user, server } = await renderWithRealAtlas(wallet);
 
+      expect(documentInput()).toBeDisabled();
       await user.upload(documentInput(), new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
 
       expect(await screen.findByText("Wrong network")).toBeInTheDocument();
@@ -683,7 +801,7 @@ describe("CreatePage", () => {
       expect(server.count("upload")).toBe(0);
     });
 
-    it("F1, B3: with the wallet on the page chain the primary document signs in once, uploads and enters the draft", async () => {
+    it("with the wallet on the page chain the primary document signs in once, uploads and enters the draft", async () => {
       const wallet = createTestWallet({ chainId: SEPOLIA });
       const { user, server } = await renderWithRealAtlas(wallet);
       await waitFor(() => {

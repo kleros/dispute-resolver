@@ -15,6 +15,7 @@ interface StatusLine {
 
 interface FieldState {
   readonly unavailable: boolean;
+  readonly needsWallet: boolean;
   readonly pending: File | null;
   readonly phase: UploadPhase;
   readonly failed: Failure | null;
@@ -24,9 +25,17 @@ interface FieldState {
 
 const SELECT_PROMPT = "Drop a file here or click to select one.";
 
+/**
+ * The library marks only its dropzone `data-disabled` and keeps the enabled blue edge, fill and icon on it, so a locked
+ * field would still look like it takes a file.
+ */
+const LOCKED_LOOK =
+  "[&_[data-disabled]]:border-klerosUIComponentsStroke [&_[data-disabled]]:bg-klerosUIComponentsLightGrey [&_[data-disabled]]:hover:bg-klerosUIComponentsLightGrey [&_[data-disabled]]:cursor-not-allowed [&_[data-disabled]_svg]:fill-klerosUIComponentsSecondaryText";
+
 /** The one message line under the dropzone: availability, progress (D-08), the outcome, or the server's size limit (D-42). */
-function statusLine({ unavailable, pending, phase, failed, value, limits }: FieldState): StatusLine {
+function statusLine({ unavailable, needsWallet, pending, phase, failed, value, limits }: FieldState): StatusLine {
   if (unavailable) return { msg: UNCONFIGURED_MESSAGE, variant: "warning" };
+  if (needsWallet && pending === null && failed === null && value === null) return { msg: failure.noWallet().message, variant: "info" };
   if (pending !== null) {
     return phase === "signing-in" ? { msg: "Sign the message in your wallet to start the upload.", variant: "info" } : { msg: "Uploading to IPFS...", variant: "info" };
   }
@@ -62,12 +71,13 @@ export function AtlasFileField({ role, value, onUploaded, onCleared, label = "Fi
 
   const unavailable = uploader.availability === "unconfigured";
   const limits = uploader.limits(role);
-  const status = statusLine({ unavailable, pending, phase: uploader.phase, failed, value, limits });
+  const needsWallet = isDisabled && wallet.status !== "connected";
+  const status = statusLine({ unavailable, needsWallet, pending, phase: uploader.phase, failed, value, limits });
 
   const isLocked = unavailable || isDisabled || pending !== null;
 
   const handleFile = async (file: File) => {
-    // The library disables only its drop target; its file picker button stays usable, so a locked field ignores picks.
+    // A locked field ignores any pick that still reaches it.
     if (isLocked) return;
     if (value !== null) onCleared();
     setFailed(null);
@@ -96,21 +106,28 @@ export function AtlasFileField({ role, value, onUploaded, onCleared, label = "Fi
         {label}
       </span>
       {/* While a file is over the dropzone (react-aria's `data-drop-target`) its dashed edge turns solid on a white fill. */}
-      <div ref={fieldRef} aria-live="polite" className="w-full min-w-0 [&_[data-drop-target]]:border-solid [&_[data-drop-target]]:bg-klerosUIComponentsWhiteBackground">
-        <FileUploader
-          key={`${String(failures)}:${value?.path ?? ""}`}
-          className="w-full [overflow-wrap:anywhere]"
-          callback={(file) => {
-            void handleFile(file);
-          }}
-          msg={status.msg}
-          variant={status.variant}
-          // The dropzone's own type filter matches exact types only and would silently refuse drops for `type/*` entries,
-          // so the server's list goes to the file picker alone; `upload` applies the library's rule to every file (B16).
-          fileTriggerProps={limits === null ? undefined : { acceptedFileTypes: [...limits.allowedMimeTypes] }}
-          isDisabled={isLocked}
-          selectedFile={pending ?? uploadedFile}
-        />
+      <div
+        ref={fieldRef}
+        aria-live="polite"
+        className={`w-full min-w-0 [&_[data-drop-target]]:border-solid [&_[data-drop-target]]:bg-klerosUIComponentsWhiteBackground ${LOCKED_LOOK}`}
+      >
+        {/* The library disables only its drop target; the disabled fieldset also disables its file-picker button and input. */}
+        <fieldset disabled={isLocked} className="m-0 min-w-0 border-0 p-0">
+          <FileUploader
+            key={`${String(failures)}:${value?.path ?? ""}`}
+            className="w-full [overflow-wrap:anywhere]"
+            callback={(file) => {
+              void handleFile(file);
+            }}
+            msg={status.msg}
+            variant={status.variant}
+            // The dropzone's own type filter matches exact types only and would silently refuse drops for `type/*` entries,
+            // so the server's list goes to the file picker alone; `upload` applies the library's rule to every file (B16).
+            fileTriggerProps={limits === null ? undefined : { acceptedFileTypes: [...limits.allowedMimeTypes] }}
+            isDisabled={isLocked}
+            selectedFile={pending ?? uploadedFile}
+          />
+        </fieldset>
       </div>
       {offerConnect || offerRemove ? (
         <div className="flex flex-wrap gap-2">
