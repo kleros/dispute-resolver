@@ -2,219 +2,204 @@
 
 ## Overview
 
-This document outlines the workflow for AI agents working with this codebase to ensure compliance with SonarCloud quality standards using the existing SonarQube extension.
+This document outlines the workflow for AI agents working with this codebase to stay within SonarCloud's quality standards. The rules of the tree itself (layout, security, tests, dependencies, git) are in [CLAUDE.md](../CLAUDE.md), which wins wherever the two differ.
+
+SonarCloud analyses the project as organization `kleros`, project key `kleros_dispute-resolver`. Locally, the same family of rules is available in two ways:
+
+- **`eslint-plugin-sonarjs`**, its `recommended` config wired into the root `eslint.config.mjs`, run by `yarn lint` locally and in CI.
+- **SonarLint in connected mode** (`.sonarlint/connectedMode.json`, `.vscode/settings.json`), which shows the SonarCloud ruleset as IDE diagnostics in real time.
 
 ## Prerequisites
 
-- SonarQube extension is installed and configured in your IDE
-- Extension is connected to the SonarCloud project
-- Real-time analysis is enabled
+- Node 22 (`.nvmrc`; Volta pins 22.23.2) and yarn 4; `yarn install` at the repository root.
+- Optional: the SonarLint extension (`sonarsource.sonarlint-vscode`) bound to the SonarCloud project, for real-time diagnostics.
 
 ## Workflow Steps
 
 ### 1. Before Making Any Changes
 
 #### Check Current State
-```bash
-# Run quality check
-./scripts/check-quality.sh
 
-# Check specific file
-./scripts/pre-change-check.sh src/path/to/file.js
+```bash
+yarn lint        # ESLint with eslint-plugin-sonarjs over both packages and eslint.config.mjs
+yarn typecheck   # strict TypeScript over both packages
 ```
 
+To lint one package only: `yarn workspace @dispute-resolver/core lint` or `yarn workspace @dispute-resolver/web lint`.
+
 #### Review IDE Diagnostics
-- Open the file in your IDE
-- Check the Problems panel for SonarCloud issues
-- Look for SonarLint annotations in the code
-- Note any existing issues that should be fixed
+
+- Open the file in your IDE, or call `mcp__ide__getDiagnostics(uri="file:///absolute/path/to/packages/web/src/file.tsx")`
+- Check the Problems panel for SonarLint issues
+- Note any existing issues that should be fixed (CLAUDE.md: fix existing issues in files you touch)
 
 ### 2. During Development
 
 #### Follow SonarCloud Patterns
-- **Code Style**: Match existing code patterns
-- **Error Handling**: Use try/catch for async operations
-- **Security**: Avoid eval(), innerHTML, document.write
-- **Complexity**: Keep functions small and focused
-- **Performance**: Avoid unnecessary computations
 
-#### Common SonarCloud Rules to Follow
-
-**JavaScript/React Specific:**
-- Use `const` and `let` instead of `var`
-- Prefer arrow functions for callbacks
-- Use proper error handling for async operations
-- Avoid console.log in production code
-- Use meaningful variable names
-- Keep functions under 50 lines when possible
-
-**React Component Patterns:**
-- Use hooks appropriately
-- Avoid direct state mutations
-- Use proper prop types
-- Handle component lifecycle correctly
-
-**Web3/Ethereum Patterns:**
-- Handle BigNumber operations carefully
-- Use proper error handling for contract calls
-- Validate addresses and parameters
-- Use safe arithmetic operations
+- **Code style**: match existing code patterns; Prettier formats with `tabWidth: 2`, `printWidth: 180`
+- **Types**: TypeScript strict, no `any`; untrusted JSON is `unknown` until a Zod schema parses it
+- **Security**: no `eval`, `new Function`, `innerHTML` or `dangerouslySetInnerHTML` (the single exception is the script runner of ADR 0004)
+- **Complexity**: keep functions small and focused (`sonarjs/cognitive-complexity`)
+- **Errors**: core returns failures as values (`Outcome`) instead of throwing; transaction failures are always shown to the user, never swallowed
 
 ### 3. After Making Changes
 
 #### Verify Quality
-```bash
-# Quick check for common issues
-./scripts/check-quality.sh
 
-# Check modified file specifically
-./scripts/pre-change-check.sh src/path/to/modified/file.js
+```bash
+yarn lint
+yarn typecheck
+yarn test        # Vitest; unit tests never touch the network
 ```
 
+CI runs `yarn typecheck`, `yarn lint`, `yarn test`, `yarn build` and `yarn check:bundle`.
+
 #### IDE Verification
-- Check Problems panel for new issues
+
+- Check the Problems panel for new issues
 - Ensure no new SonarCloud warnings appear
 - Verify existing issues are fixed (if touched)
 
 ### 4. Quality Gates
 
 #### Must Fix (Blocker/Critical)
+
 - Security vulnerabilities
 - Major bugs or logic errors
 - Critical performance issues
 
 #### Should Fix (Major)
+
 - Code smells in modified files
 - Maintainability issues
-- Performance improvements
 
 #### Can Fix (Minor)
+
 - Style inconsistencies
 - Documentation improvements
 - Minor optimizations
 
 ## Common SonarCloud Issues and Solutions
 
-### 1. Complexity Issues
-```javascript
-// ❌ Too complex
-function processData(data) {
-  if (data && data.length > 0) {
-    for (let i = 0; i < data.length; i++) {
-      if (data[i].status === 'active') {
+### 1. Complexity
+
+```ts
+// Too complex: nested conditions and a loop doing several jobs
+function activeTitles(items: readonly Item[] | undefined): string[] {
+  const titles: string[] = [];
+  if (items && items.length > 0) {
+    for (const item of items) {
+      if (item.status === "active") {
         // lots of nested logic...
       }
     }
   }
+  return titles;
 }
 
-// ✅ Simplified
-function processData(data) {
-  if (!data?.length) return;
-  
-  const activeItems = data.filter(item => item.status === 'active');
-  return activeItems.map(processActiveItem);
-}
-
-function processActiveItem(item) {
-  // focused logic
+// Simplified
+function activeTitles(items: readonly Item[] | undefined): string[] {
+  return (items ?? []).filter((item) => item.status === "active").map(titleOf);
 }
 ```
 
-### 2. Async/Await Error Handling
-```javascript
-// ❌ No error handling
-async function fetchData() {
-  const response = await fetch('/api/data');
+### 2. Async Error Handling
+
+```ts
+// No status check, untyped result
+async function fetchJson(url: string) {
+  const response = await fetch(url);
   return response.json();
 }
 
-// ✅ Proper error handling
-async function fetchData() {
+// A failure is a value, and the body stays `unknown` until a schema parses it
+async function fetchJson(fetcher: Fetcher, url: string): Promise<Outcome<unknown>> {
   try {
-    const response = await fetch('/api/data');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
+    const response = await fetcher(url);
+    if (!response.ok) return fail("rpc-error", `HTTP ${String(response.status)}`);
+    return succeed((await response.json()) as unknown);
   } catch (error) {
-    console.error('Error fetching data:', error);
-    throw error;
+    return fail("rpc-error", describeError(error));
   }
 }
 ```
 
-### 3. React Component Issues
-```javascript
-// ❌ Direct state mutation
-this.state.items.push(newItem);
+### 3. React State
 
-// ✅ Proper state update
-this.setState(prevState => ({
-  items: [...prevState.items, newItem]
-}));
+```tsx
+// Direct state mutation
+items.push(newItem);
+setItems(items);
+
+// New array
+setItems((previous) => [...previous, newItem]);
 ```
 
-### 4. Web3 Patterns
-```javascript
-// ❌ No validation
-function transfer(address, amount) {
-  contract.transfer(address, amount);
+### 4. Chain Values
+
+```ts
+// No validation
+function target(address: string) {
+  return { address };
 }
 
-// ✅ Proper validation
-function transfer(address, amount) {
-  if (!ethers.utils.isAddress(address)) {
-    throw new Error('Invalid address');
-  }
-  if (amount <= 0) {
-    throw new Error('Amount must be positive');
-  }
-  return contract.transfer(address, amount);
+// viem's validation, and the lowercase form the registry uses
+import { isAddress } from "viem";
+
+function target(address: string): Address | null {
+  return isAddress(address) ? toRegistryAddress(address) : null;
 }
 ```
+
+Amounts are `bigint` (viem); never convert them through `Number`.
 
 ## AI Agent Best Practices
 
 ### 1. Proactive Quality Checking
-- Always check file quality before modifications
-- Use IDE diagnostics as primary source of truth
-- Run scripts to understand current state
+
+- Check file quality before modifications
+- Use `yarn lint` and the IDE diagnostics as the sources of truth
 
 ### 2. Incremental Improvements
+
 - Fix existing issues when touching files
 - Don't introduce new quality issues
-- Maintain or improve overall quality score
+- Maintain or improve the overall quality score
 
 ### 3. Documentation
+
 - Update comments when changing logic
 - Document complex business rules
-- Explain Web3/blockchain specific patterns
+- Explain blockchain-specific patterns
 
 ### 4. Testing
-- Run existing tests after changes
+
+- Run the tests of the package you changed after changes
 - Ensure no regressions
-- Add tests for new functionality
+- Add tests for new functionality, named after the rule they prove (CLAUDE.md)
 
 ## Troubleshooting
 
-### SonarQube Extension Issues
-- Restart VS Code if analysis stops working
-- Check extension status in VS Code
-- Verify connection to SonarCloud project
+### SonarLint Extension Issues
+
+- Restart the IDE if analysis stops working
+- Check the extension status
+- Verify the connection to the SonarCloud project (`.sonarlint/connectedMode.json`)
 
 ### Common Problems
-- **No diagnostics appearing**: Check extension configuration
-- **Too many false positives**: Review SonarCloud project settings
-- **Performance issues**: Consider excluding large files from analysis
+
+- **No diagnostics appearing**: check the extension configuration; `yarn lint` still applies the sonarjs rules
+- **Too many false positives**: review the SonarCloud project settings
+- **Performance issues**: consider excluding large generated files from analysis
 
 ## Resources
 
 - [SonarCloud Documentation](https://docs.sonarcloud.io/)
 - [SonarLint VS Code Extension](https://marketplace.visualstudio.com/items?itemName=SonarSource.sonarlint-vscode)
-- [Project CLAUDE.md](../CLAUDE.md) - AI agent guidelines
-- [Quality Check Script](../scripts/check-quality.sh)
+- [Project CLAUDE.md](../CLAUDE.md): AI agent guidelines
+- [ESLint configuration](../eslint.config.mjs)
 
 ## Summary
 
-This workflow ensures that AI agents can effectively use the existing SonarQube extension to maintain code quality without requiring additional tools. The key is to leverage the real-time feedback from the IDE and follow established patterns in the codebase.
+Agents keep the code within SonarCloud's rules with `yarn lint` (which carries `eslint-plugin-sonarjs`) and, when available, SonarLint's real-time diagnostics, and follow the patterns already in the codebase.

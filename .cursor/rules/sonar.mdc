@@ -3,78 +3,75 @@ alwaysApply: true
 ---
 # Cursor Rules for Dispute Resolver Project
 
+`CLAUDE.md` at the repository root is the authority for agents working in this tree (layout, hard rules, security, tests, dependencies, git). This rule only adds the SonarCloud checking recipe; where they differ, `CLAUDE.md` wins.
+
 ## SonarCloud Quality Assurance
 
-### Always Check SonarCloud Issues Before Code Changes
+SonarCloud analyses the project (organization `kleros`, project key `kleros_dispute-resolver`). Locally, the same family of rules comes from two places:
 
-When asked about SonarCloud issues or code quality, use this recipe:
+- `eslint-plugin-sonarjs` (its `recommended` config, wired in `eslint.config.mjs`), run by `yarn lint`.
+- SonarLint in connected mode (`.sonarlint/connectedMode.json`, `.vscode/settings.json`), which shows the SonarCloud ruleset as IDE diagnostics.
 
-1. **Primary Method - IDE Diagnostics (Real-time)**:
-   ```
-   mcp__ide__getDiagnostics()  # Get all current issues
-   ```
+### Checking for issues
 
-2. **Verify SonarLint Extension**:
+1. **Lint and types (always available)**:
    ```bash
-   code --list-extensions | grep -i sonar
-   ```
-   Expected: `sonarsource.sonarlint-vscode`
-
-3. **Check Specific Files** (for modified files from git status):
-   ```
-   mcp__ide__getDiagnostics(uri="file:///absolute/path/to/file.js")
+   yarn lint        # ESLint with eslint-plugin-sonarjs over both packages and eslint.config.mjs
+   yarn typecheck   # strict TypeScript over both packages
    ```
 
-4. **Fallback - Read Existing Reports**:
+2. **IDE diagnostics (real time, when SonarLint is installed)**:
    ```
-   Read("sonarcloud-issues-report.md")
-   Read("sonarcloud-remaining-issues.md")
+   mcp__ide__getDiagnostics()                                              # all current issues
+   mcp__ide__getDiagnostics(uri="file:///absolute/path/to/packages/web/src/file.tsx")  # one file
    ```
+   Verify the extension with `code --list-extensions | grep -i sonar` (expected: `sonarsource.sonarlint-vscode`).
+
+3. **No local reports exist.** There is no checked-in SonarCloud report; use the IDE diagnostics, `yarn lint`, or the SonarCloud project page.
 
 ### Interpretation Guidelines
 
-- **Empty diagnostics = Clean code** - No SonarCloud violations
-- **Focus on real-time data** - IDE diagnostics over static reports
-- **Check modified files first** - Use git status to identify changed files
-- **Verify extension status** - Ensure SonarLint is active for accurate results
+- **Empty diagnostics and a clean `yarn lint` = no known violations**
+- **Check modified files first** - use git status to identify changed files
+- **Verify extension status** - ensure SonarLint is active for accurate IDE results
 
 ### Code Quality Standards
 
 - **Before making changes**: Check existing SonarCloud issues in target files
 - **During development**: Follow established patterns and avoid introducing new issues
-- **After changes**: Verify no new SonarCloud violations appear
+- **After changes**: Verify no new SonarCloud violations appear; fix existing issues in files you touch
 - **Critical/Blocker issues**: Must be fixed immediately
 - **Major issues**: Fix when touching the code
 - **Minor issues**: Fix opportunistically
 
 ### Project-Specific Commands
 
+Run with Node 22 (`.nvmrc`, Volta pins 22.23.2) and yarn 4.
+
 ```bash
-# Development
-npm start
-
-# Testing
-npm test
-
-# Build
-npm run build
-
-# Linting (if available)
-npm run lint
+yarn install
+yarn typecheck
+yarn lint
+yarn test                                  # Vitest in both packages plus web's node:test script tests; never touches the network
+yarn build
+yarn workspace @dispute-resolver/web dev   # development server
 ```
 
 ### Technology Stack Context
 
-- React 17 with Create React App
-- Web3/Ethereum integration with ethers.js
-- SCSS styling with Bootstrap
-- SonarCloud for code quality analysis
+- yarn 4 workspaces: `packages/core` (`@dispute-resolver/core`, no React, no DOM) and `packages/web` (`@dispute-resolver/web`, the React app)
+- TypeScript in strict mode; `any` is not allowed and untrusted JSON is `unknown` until a Zod schema parses it
+- React 18.3 on Vite, React Router 7, TanStack Query
+- viem and wagmi 2 with Reown AppKit
+- Tailwind 4 with `@kleros/ui-components-library`
+- Vitest (with React Testing Library) and Playwright
+- SonarCloud for code quality analysis, CodeQL in CI
 
 ### Quality Gates
 
-- Maintain or improve SonarCloud quality rating
-- Keep code coverage stable or increasing
-- Ensure no security issues are introduced
+- CI runs `yarn typecheck`, `yarn lint`, `yarn test`, `yarn build` and `yarn check:bundle`
+- Maintain or improve the SonarCloud quality rating
+- Ensure no security issues are introduced (see the hard rules in `CLAUDE.md`)
 - Follow established code style and patterns
 
 ## General Development Rules
@@ -83,7 +80,7 @@ npm run lint
 - **Prefer Editing**: Always prefer editing existing files over creating new ones
 - **No Unsolicited Documentation**: Never create README or .md files unless explicitly requested
 - **Follow Patterns**: Mimic existing code style and conventions
-- **Security First**: Never expose secrets, keys, or sensitive information
+- **Security First**: Never expose secrets, keys, or sensitive information; never print values from `.env`
 - **Test After Changes**: Run tests to ensure no regressions
 
 This ensures consistent SonarCloud quality checking across all AI interactions with the project.
