@@ -5,7 +5,7 @@ import type { RealityStatus, SafePopulateReason } from "../reality/types";
 import { parsePrecision, toText } from "../rulings";
 import type { RulingOptions } from "../rulings/types";
 import type { Hex, Outcome } from "../types";
-import { type JsonObject, isPlainObject, isTruthy, own } from "./json";
+import { type JsonObject, isPlainObject, own } from "./json";
 import type { ChainIdField, MetaEvidence } from "./types";
 
 /** A string schema accepting exactly the keys of `members`; the record type makes the member list exhaustive. */
@@ -31,7 +31,6 @@ const SAFE_POPULATE_REASONS: Readonly<Record<SafePopulateReason, true>> = {
 const QUESTION_ID = /^0x[0-9a-fA-F]{64}$/;
 const DECIMAL = /^\d+$/;
 
-/** Ruling options as `parseRulingOptions` produces them. Also the check of a cached entry (B15). */
 const rulingOptionsShape = z.object({
   type: z.string(),
   titles: z.array(z.string()).optional(),
@@ -59,10 +58,7 @@ function isAliasAddress(key: string): boolean {
   return isAddress(key, { strict: false });
 }
 
-/**
- * A `MetaEvidence` as the pipeline produces it: every field validated, nothing coercible left. `parseMetaEvidence` pipes
- * its coerced output through it, and `parseCachedMetaEvidenceResult` checks a persisted entry with it (B15, D-13).
- */
+/** Every field validated, nothing coercible left; a persisted entry is checked against it too. */
 export const metaEvidenceShape = z.object({
   title: z.string(),
   description: z.string(),
@@ -81,26 +77,24 @@ export const metaEvidenceShape = z.object({
   realityQuestion: realityQuestionShape.nullable(),
 });
 
-/** `String()` over every element, holes included, as `titles.map(String)` does for a JSON array. */
+/** Holes included, which `map` would skip. */
 function textArray(value: readonly unknown[]): string[] {
   return Array.from(value, toText);
 }
 
-/** Spec 5.13 shows a description only when it is defined: neither `null` nor `undefined`. */
 function isDefined(value: unknown): boolean {
   return value !== null && value !== undefined;
 }
 
-/** The defined entries of `entries` as strings, keys as written. */
 function definedTexts(entries: readonly (readonly [string, unknown])[]): Record<string, string> {
   return Object.fromEntries(entries.filter((entry) => isDefined(entry[1])).map(([key, value]) => [key, toText(value)]));
 }
 
 /**
- * `descriptions` (spec 5.13, 9.2), looked up by position for titles and by code for reserved options: an array whose
- * every position is defined stays a positional array of strings; an object, or an array with an undefined position or a
- * hole, becomes a record of its defined entries as strings, keyed as written (positions as decimal strings). Any other
- * value is removed. Only own entries are read, so a sparse array costs its defined positions, not its length.
+ * Looked up by position for titles and by code for reserved options: an array whose every position is defined stays a
+ * positional array of strings; an object, or an array with an undefined position or a hole, becomes a record of its
+ * defined entries as strings, keyed as written. Only own entries are read, so a sparse array costs its defined
+ * positions, not its length.
  */
 function descriptionsField(options: JsonObject): { descriptions?: string[] | Record<string, string> } {
   const descriptions = own(options, "descriptions");
@@ -111,16 +105,13 @@ function descriptionsField(options: JsonObject): { descriptions?: string[] | Rec
   return { descriptions: positional ? entries.map((entry) => toText(entry[1])) : definedTexts(entries) };
 }
 
-/** `precision` as reality-eth-lib reads it for display and encoding (`parsePrecision`), removed when unusable. */
+/** Read as reality-eth-lib reads it, so the precision shown is the one encoded. */
 function precisionField(options: JsonObject): { precision?: number } {
   const precision = parsePrecision(own(options, "precision"));
   return precision === undefined ? {} : { precision };
 }
 
-/**
- * Today's `sanitizeRulingOptions` (spec 9.1 step 9, A7) as a schema. Unknown keys are dropped; the five known ones keep
- * today's rules, so a `type` string the app does not know is kept verbatim (MODULES.md choice 7).
- */
+/** Unknown keys are dropped, but a `type` string the app does not know is kept verbatim. */
 const rulingOptionsSchema = z
   .custom<JsonObject>(isPlainObject)
   .transform((options) => {
@@ -138,24 +129,16 @@ const rulingOptionsSchema = z
   .pipe(rulingOptionsShape)
   .catch(() => ({ type: "single-select", titles: [] }));
 
-/**
- * Validated ruling options (A7): a non-object becomes `{type: "single-select", titles: []}`; a non-string `type` becomes
- * "single-select"; `titles`, when present, become strings (`[]` when not an array); `reserved` becomes an object of string
- * values, or is removed when not an object; `precision` is read as reality-eth-lib reads it (`parsePrecision`: removed
- * when its `Number()` is not finite or it is `null`, `false` or `""`, else `parseInt(String(precision))` with its radix
- * inference, 0 when not positive); `descriptions`, by position or by reserved code, keep their defined entries as
- * strings, or are removed when neither an array nor an object (spec 5.13, 9.2). Never throws.
- */
+/** Never throws: a value that is not a plain object becomes the empty single-select. */
 export function parseRulingOptions(value: unknown): RulingOptions {
   return rulingOptionsSchema.parse(value);
 }
 
-/** Spec 9.1: meta-evidence is valid when it is an object with a truthy `title` or `rulingOptions`. */
 export function isValidMetaEvidence(value: unknown): value is JsonObject {
-  return isPlainObject(value) && (isTruthy(own(value, "title")) || isTruthy(own(value, "rulingOptions")));
+  return isPlainObject(value) && (Boolean(own(value, "title")) || Boolean(own(value, "rulingOptions")));
 }
 
-/** Rendered text (B12): strings as they are, numbers and booleans through `String()`, anything else dropped. */
+/** Anything but a string, number or boolean is dropped, so an object title cannot reach the renderer. */
 function displayText(value: unknown): string | undefined {
   if (typeof value === "string") return value;
   return typeof value === "number" || typeof value === "boolean" ? String(value) : undefined;
@@ -165,23 +148,18 @@ function stringOrNull(value: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
 
-/** Today's `field || chainID` default (spec 9.5): falsy is absent; anything else must name a configured chain (B5, B6). */
 function chainIdField(value: unknown): ChainIdField {
-  if (!isTruthy(value)) return { status: "absent" };
+  if (!value) return { status: "absent" };
   const chainId = parseChainId(value);
   return chainId === undefined ? { status: "invalid" } : { status: "valid", chainId };
 }
 
-/**
- * `_v` (spec 9.4): today's `const { _v = "0" } = json; _v === "0"` selects the JSON encoding. Absent is `null`; a string
- * is kept; any other present value is `""`, which, like the value itself today, is not `"0"` and selects `URLSearchParams`.
- */
+/** A present non-string `_v` becomes `""`: like the value itself, it is not `"0"`, so it selects `URLSearchParams`. */
 function displayParamsVersion(value: unknown): string | null {
   if (value === undefined) return null;
   return typeof value === "string" ? value : "";
 }
 
-/** `{address: name}` entries whose key is an address (any case) and whose name is a string, keys as written. */
 function aliases(value: unknown): Record<string, string> {
   if (!isPlainObject(value)) return {};
   return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => isAliasAddress(entry[0]) && typeof entry[1] === "string"));
@@ -198,7 +176,6 @@ function readPath(value: unknown, path: readonly string[]): unknown {
   return current;
 }
 
-/** Spec 5.9 and 9.2: the first non-empty array of the four legacy Reality paths, each outcome as text, indexes kept. */
 function fallbackOutcomes(json: JsonObject): string[] | null {
   for (const path of FALLBACK_OUTCOME_PATHS) {
     const outcomes = readPath(json, path);
@@ -207,10 +184,7 @@ function fallbackOutcomes(json: JsonObject): string[] | null {
   return null;
 }
 
-/**
- * The field-by-field coercion of a meta-evidence object (C13); its result always satisfies `metaEvidenceShape`, which
- * `parseMetaEvidence` checks. `realityQuestion` is derived, never read.
- */
+/** Its result always satisfies `metaEvidenceShape`. `realityQuestion` is derived by the pipeline, never read. */
 export function coerceMetaEvidence(json: JsonObject): z.input<typeof metaEvidenceShape> {
   return {
     title: displayText(own(json, "title")) ?? "",
@@ -234,12 +208,8 @@ export function coerceMetaEvidence(json: JsonObject): z.input<typeof metaEvidenc
 const metaEvidenceSchema = z.custom<JsonObject>(isPlainObject).transform(coerceMetaEvidence).pipe(metaEvidenceShape);
 
 /**
- * Validates meta-evidence after the dynamic-script merge (A23, C13, B12). The merged value must be a plain object, else
- * `invalid-data`. An object with neither `title` nor `rulingOptions` stays valid with `rulingOptions: null` and renders
- * what it has (MODULES.md choice 8); otherwise `rulingOptions` goes through `parseRulingOptions` (spec 9.1 step 9).
- * Strings are kept; a non-string `title`, `description` or `question` is coerced only from a number or boolean and
- * otherwise dropped; `aliases` keep address keys with string names; chain IDs become `ChainIdField`s; `fallbackOutcomes`
- * come from the legacy Reality paths. `realityQuestion` is always `null` here: only the pipeline derives it. Never throws.
+ * Never throws. An object with neither `title` nor `rulingOptions` stays valid with `rulingOptions: null` and renders
+ * what it has.
  */
 export function parseMetaEvidence(merged: unknown): Outcome<MetaEvidence> {
   const parsed = metaEvidenceSchema.safeParse(merged);
@@ -250,7 +220,7 @@ export function parseMetaEvidence(merged: unknown): Outcome<MetaEvidence> {
 const PLACEHOLDER_TITLES: readonly string[] = Object.freeze([]);
 const ABSENT: ChainIdField = Object.freeze({ status: "absent" });
 
-/** The "invalid or tampered" placeholder of spec 9.1 (A2). Frozen; never cached. */
+/** The placeholder for a rejected meta-evidence; never cached. */
 export const INVALID_META_EVIDENCE: MetaEvidence = Object.freeze({
   title: "Invalid or tampered case data, refuse to arbitrate.",
   description:

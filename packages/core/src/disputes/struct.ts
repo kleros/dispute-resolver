@@ -5,10 +5,8 @@ import type { Address, Outcome, Period, ReadClient } from "../types";
 import { fail, succeed } from "./outcome";
 import type { ArbitratorDispute } from "./types";
 
-/** The raw `KlerosLiquid.disputes(id)` tuple as viem decodes it. */
 type DisputeTuple = readonly [bigint, `0x${string}`, bigint, number, bigint, bigint, bigint, boolean];
 
-/** Reads `KlerosLiquid.disputes(id)`; rejects when the read fails. */
 export function readDisputeStruct(client: ReadClient, arbitrator: Address, disputeId: bigint): Promise<DisputeTuple> {
   return client.readContract({ address: arbitrator, abi: klerosLiquidAbi, functionName: "disputes", args: [disputeId] });
 }
@@ -18,10 +16,8 @@ function isPeriod(value: number): value is Period {
 }
 
 /**
- * The dispute struct in core's types, or `null` when the struct names no arbitrated contract: KlerosLiquid on Gnosis
- * and Chiado keeps disputes in a mapping, so an ID that was never created reads as a zeroed struct instead of reverting
- * (recorded in `__fixtures__/arbitrator-100.json`). A period outside 0–4 or a timestamp beyond the safe integers is
- * `invalid-data` (D-36).
+ * `null` when the struct names no arbitrated contract: KlerosLiquid on Gnosis and Chiado keeps disputes in a mapping, so
+ * an ID that was never created reads as a zeroed struct instead of reverting.
  */
 export function toArbitratorDispute(disputeId: bigint, tuple: DisputeTuple): Outcome<ArbitratorDispute | null> {
   const [subcourtId, arbitrated, numberOfChoices, period, lastPeriodChange, , , ruled] = tuple;

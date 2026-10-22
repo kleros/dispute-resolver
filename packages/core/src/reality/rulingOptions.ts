@@ -1,5 +1,5 @@
 import type { RealityProxyEntry } from "../registry/types";
-import { parsePrecision, toText } from "../rulings";
+import { parseRealityDecimals, toText } from "../rulings";
 import type { RulingOptions } from "../rulings/types";
 import { QUESTION_PARAMS_DELIMITER } from "./constants";
 import { isPlainObject } from "./jsonParser";
@@ -13,7 +13,6 @@ const LOCALIZED_LABELS = {
   es: { yes: "Sí", answeredTooSoon: "Respondió demasiado pronto" },
 } as const;
 
-/** What the entry's registered script reproduces (REALITY_OPS.md, step 5). */
 export interface RulingOptionsFlags {
   /** Whether to offer the reserved "Answered Too Soon" answer (Reality.eth v3 only); default true. */
   readonly answeredTooSoon?: boolean;
@@ -21,11 +20,7 @@ export interface RulingOptionsFlags {
   readonly localizedLang?: "es" | null;
 }
 
-/**
- * Kleros ruling options for a Reality.eth question, as computed by the kleros/realitio-script dynamic script.
- * `null` for an unsupported question type. Outcome titles are read as today's sanitizer reads them (spec 9.1 step 9):
- * `String(title)`, made total by `toText`.
- */
+/** Mirrors the kleros/realitio-script dynamic script; `null` for an unsupported question type. */
 export function rulingOptionsFromRealityQuestion(question: PopulatedQuestion, { answeredTooSoon = true, localizedLang = null }: RulingOptionsFlags = {}): RulingOptions | null {
   if (!isPlainObject(question)) return null;
   const labels = localizedLang !== null && question.lang === localizedLang ? LOCALIZED_LABELS[localizedLang] : undefined;
@@ -34,10 +29,8 @@ export function rulingOptionsFromRealityQuestion(question: PopulatedQuestion, { 
   switch (question.type) {
     case "bool":
       return withReserved({ type: "single-select", titles: ["No", labels?.yes ?? "Yes"] });
-    case "uint": {
-      const precision = parsePrecision(question.decimals);
-      return withReserved(precision === undefined ? { type: "uint" } : { type: "uint", precision });
-    }
+    case "uint":
+      return withReserved({ type: "uint", precision: parseRealityDecimals(question.decimals) });
     case "single-select":
     case "multiple-select":
       if (!Array.isArray(question.outcomes)) return null;
@@ -50,10 +43,8 @@ export function rulingOptionsFromRealityQuestion(question: PopulatedQuestion, { 
 }
 
 /**
- * Kleros ruling options derived from the template alone, ignoring the question parameters. Only possible for question
- * types whose answers do not depend on the parameters (bool, datetime, and uint when `decimals` is a literal number).
- * Used as a fallback when the question parameters are malformed. `null` when the parameters are needed to know the
- * answers.
+ * The fallback for malformed question parameters. Only bool, datetime, and uint with a literal `decimals` have answers
+ * that do not depend on the parameters; `null` otherwise.
  */
 export function rulingOptionsFromTemplate(templateText: string, options?: RulingOptionsFlags): RulingOptions | null {
   const template = analyzedTemplate(templateText);
@@ -69,7 +60,7 @@ export function rulingOptionsFromTemplate(templateText: string, options?: Ruling
  * The ruling options of what reality-eth-lib's `populatedJSONForTemplate` yields (raw parameter substitution, then
  * `JSON.parse` where the last duplicate key wins): used only to tell whether other interfaces rendering the question may
  * show different options. `null` when that rendering has no options or fails anywhere, parsing or deriving: hostile
- * comparison data then reads as divergent and never aborts the safe derivation (A5).
+ * comparison data then reads as divergent and never aborts the safe derivation.
  */
 function unsafeRulingOptions(templateText: string, questionText: string, flags: RulingOptionsFlags): RulingOptions | null {
   const params = questionText.split(QUESTION_PARAMS_DELIMITER);
@@ -87,7 +78,6 @@ function sameRulingOptions(a: RulingOptions | null, b: RulingOptions): boolean {
   return a !== null && a.type === b.type && JSON.stringify(a.titles ?? null) === JSON.stringify(b.titles ?? null) && String(a.precision ?? "") === String(b.precision ?? "");
 }
 
-/** The question text a registry entry replaces the meta-evidence question with. */
 function questionOverride(question: PopulatedQuestion | undefined, override: NonNullable<RealityProxyEntry["questionOverride"]>): string | undefined {
   if (question === undefined || typeof question.title !== "string") return undefined;
   if (override === "title-description" && typeof question.description === "string" && question.description !== "") {
@@ -97,12 +87,10 @@ function questionOverride(question: PopulatedQuestion | undefined, override: Non
 }
 
 /**
- * Derives the ruling options of a Reality.eth dispute from its on-chain template and question (spec 9.1 step 8, A5).
- *
  * `realityQuestion.status` is "verified" (question rendered safely), "malformed" (malformed question parameters: the
  * options come from a best-effort rendering or from the template alone) or "unresolvable" (no trustworthy options).
  * `realityQuestion.divergent` is true when reality-eth-lib, used by other interfaces and by the evidence display,
- * renders options that differ from the derived ones. `question` is the meta-evidence question override, if any.
+ * renders options that differ from the derived ones.
  */
 export function deriveRealityRulingOptions(
   question: RealityQuestion,

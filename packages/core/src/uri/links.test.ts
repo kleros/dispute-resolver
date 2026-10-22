@@ -24,26 +24,26 @@ const PRODUCTION_HOSTS: SelfHosts = { appHost: "resolve.kleros.io", canonicalHos
 const DANGEROUS_SCHEMES = ["javascript:alert(1)", "JaVaScRiPt:alert(1)", "data:text/html,<script>alert(1)</script>", "vbscript:msgbox(1)", "file:///etc/passwd"];
 
 describe("isSafeNavigationUrl", () => {
-  it("A9: accepts an absolute https URL", () => {
+  it("accepts an absolute https URL", () => {
     expect(isSafeNavigationUrl("https://kleros.io")).toBe(true);
     expect(isSafeNavigationUrl(" https://curate.kleros.io/tcr/100/0x1?x=1#y ")).toBe(true);
     expect(isSafeNavigationUrl("HTTPS://kleros.io")).toBe(true);
   });
 
-  it("A9: rejects protocol-relative, http and dangerous schemes", () => {
+  it("rejects protocol-relative, http and dangerous schemes", () => {
     const inputs = ["//kleros.io/path", "http://kleros.io", "ftp://kleros.io", ...DANGEROUS_SCHEMES, " javascript:alert(1)", "/relative/path", "kleros.io", "", "   "];
     for (const input of inputs) expect(isSafeNavigationUrl(input), input).toBe(false);
   });
 
-  it("A9: rejects non-strings", () => {
+  it("rejects non-strings", () => {
     for (const input of [undefined, null, 42, {}, new URL("https://kleros.io")]) expect(isSafeNavigationUrl(input)).toBe(false);
   });
 
-  it("URI-01 A9: rejects an https reference without an explicit authority, which a browser resolves against the current page", () => {
+  it("rejects an https reference without an explicit authority, which a browser resolves against the current page", () => {
     for (const input of AUTHORITY_LESS_HTTPS) expect(isSafeNavigationUrl(input), input).toBe(false);
   });
 
-  it("URI-01 A9: an accepted URL leads where it was checked from every page of the app", () => {
+  it("an accepted URL leads where it was checked from every page of the app", () => {
     const accepted = HTTPS_SPELLINGS.filter((input) => isSafeNavigationUrl(input));
     expect(accepted).toEqual(EXPLICIT_AUTHORITY_HTTPS);
     expect(accepted.filter(movesOnAppPages)).toEqual([]);
@@ -51,23 +51,23 @@ describe("isSafeNavigationUrl", () => {
 });
 
 describe("toAttachmentLink", () => {
-  it("A10: links every IPFS spelling the old getFormattedPath mapped to /ipfs/ through the gateway", () => {
+  it("links every accepted IPFS spelling through the gateway", () => {
     const href = `${DEFAULT_GATEWAY}/ipfs/${CID}/photo.png`;
     for (const uri of [`/ipfs/${CID}/photo.png`, `ipfs/${CID}/photo.png`, `ipfs://${CID}/photo.png`, `${CID}/photo.png`]) {
       expect(toAttachmentLink(uri, GATEWAY), uri).toEqual({ kind: "link", href, label: "photo.png", attachmentKind: "image" });
     }
   });
 
-  it("A10: links a bare CID through the gateway, labelled with the CID", () => {
+  it("links a bare CID through the gateway, labelled with the CID", () => {
     expect(toAttachmentLink(CIDV1, GATEWAY)).toEqual({ kind: "link", href: `${DEFAULT_GATEWAY}/ipfs/${CIDV1}`, label: CIDV1, attachmentKind: "other" });
   });
 
-  it("A10: links the %20-encoded document of Gnosis 416, labelled with its last path segment as today", () => {
+  it("links the %20-encoded document of Gnosis 416, labelled with its last path segment", () => {
     const label = GNOSIS_416_PATH.slice(GNOSIS_416_PATH.lastIndexOf("/") + 1);
     expect(toAttachmentLink(GNOSIS_416_PATH, GATEWAY)).toEqual({ kind: "link", href: `${DEFAULT_GATEWAY}${GNOSIS_416_PATH}`, label, attachmentKind: "other" });
   });
 
-  it("5.14: links an attachment whose file name contains C1 characters through the gateway (mainnet 1657 evidence 3)", () => {
+  it("links an attachment whose file name contains C1 characters through the gateway", () => {
     const encodedName = "Response%20to%20%C3%A2%C2%80%C2%9C'The%20new%20candidate'%20justification%20for%20Invalid%20stands%C3%A2%C2%80%C2%9D.pdf";
     expect(toAttachmentLink(MAINNET_1657_ATTACHMENT_PATH, GATEWAY)).toEqual({
       kind: "link",
@@ -77,7 +77,7 @@ describe("toAttachmentLink", () => {
     });
   });
 
-  it("A10: links an https attachment as is", () => {
+  it("links an https attachment as is", () => {
     expect(toAttachmentLink("https://example.org/files/report.txt", GATEWAY)).toEqual({
       kind: "link",
       href: "https://example.org/files/report.txt",
@@ -86,7 +86,7 @@ describe("toAttachmentLink", () => {
     });
   });
 
-  it("D-26: re-serves an https attachment on a dead gateway host from the configured gateway", () => {
+  it("re-serves an https attachment on a dead gateway host from the configured gateway", () => {
     expect(toAttachmentLink(`https://ipfs.kleros.io/ipfs/${CID}/clip.mp4`, GATEWAY)).toEqual({
       kind: "link",
       href: `${DEFAULT_GATEWAY}/ipfs/${CID}/clip.mp4`,
@@ -95,7 +95,7 @@ describe("toAttachmentLink", () => {
     });
   });
 
-  it("D-32, MC-5: an http:// attachment outside /ipfs/<CID> is shown as text", () => {
+  it("an http:// attachment outside /ipfs/<CID> is shown as text", () => {
     const inputs = [
       "http://example.org/report.pdf",
       "http://h/ipfs/not-a-cid/report.pdf",
@@ -106,7 +106,7 @@ describe("toAttachmentLink", () => {
     for (const input of inputs) expect(toAttachmentLink(input, GATEWAY), input).toEqual({ kind: "text", text: input });
   });
 
-  it("MC-5: an http:// attachment whose path is /ipfs/<CID> links through the gateway", () => {
+  it("an http:// attachment whose path is /ipfs/<CID> links through the gateway", () => {
     expect(toAttachmentLink(`http://ipfs.kleros.io/ipfs/${CID}/report.pdf`, GATEWAY)).toEqual({
       kind: "link",
       href: `${DEFAULT_GATEWAY}/ipfs/${CID}/report.pdf`,
@@ -115,20 +115,20 @@ describe("toAttachmentLink", () => {
     });
   });
 
-  it("B19: shows dangerous schemes, protocol-relative URLs and mutable paths as text", () => {
+  it("shows dangerous schemes, protocol-relative URLs and mutable paths as text", () => {
     const inputs = [...DANGEROUS_SCHEMES, "//evil.example/report.pdf", "/ipns/kleros.io/report.pdf", `/ipfs/${CID}/../../ipns/x`, "report.pdf"];
     for (const input of inputs) expect(toAttachmentLink(input, GATEWAY), input).toEqual({ kind: "text", text: input });
   });
 
-  it("A10: gives no attachment for an empty or non-string value", () => {
+  it("gives no attachment for an empty or non-string value", () => {
     for (const input of [undefined, null, "", "   ", 42, {}]) expect(toAttachmentLink(input, GATEWAY)).toBeNull();
   });
 
-  it("URI-01 A10 B19: shows an https attachment without an explicit authority as text", () => {
+  it("shows an https attachment without an explicit authority as text", () => {
     for (const input of AUTHORITY_LESS_HTTPS) expect(toAttachmentLink(input, GATEWAY), input).toEqual({ kind: "text", text: input.trim() });
   });
 
-  it("URI-01 A10: every attachment link leads to the same URL from every page of the app", () => {
+  it("every attachment link leads to the same URL from every page of the app", () => {
     const hrefs = HTTPS_SPELLINGS.flatMap((input) => {
       const attachment = toAttachmentLink(input, GATEWAY);
       return attachment?.kind === "link" ? [attachment.href] : [];
@@ -139,7 +139,7 @@ describe("toAttachmentLink", () => {
 });
 
 describe("isSelfLink", () => {
-  it("D-28: a URL on the app's host or a canonical host is a self-link", () => {
+  it("a URL on the app's host or a canonical host is a self-link", () => {
     expect(isSelfLink("https://resolve.kleros.io/", HOSTS)).toBe(true);
     expect(isSelfLink("https://resolve.kleros.io/1/cases/5", HOSTS)).toBe(true);
     expect(isSelfLink("https://RESOLVE.Kleros.io:443/", HOSTS)).toBe(true);
@@ -147,13 +147,13 @@ describe("isSelfLink", () => {
     expect(isSelfLink("https://resolve.kleros.io/", { appHost: "Resolve.Kleros.IO", canonicalHosts: [] })).toBe(true);
   });
 
-  it("D-28: compares host names without the port, so a dev server's host matches its own links", () => {
+  it("compares host names without the port, so a dev server's host matches its own links", () => {
     const local: SelfHosts = { appHost: "localhost:5173", canonicalHosts: ["resolve.kleros.io"] };
     expect(isSelfLink("http://localhost:5173/1/cases/5", local)).toBe(true);
     expect(isSelfLink("https://localhost/", local)).toBe(true);
   });
 
-  it("D-28: hosts match exactly, never by substring", () => {
+  it("hosts match exactly, never by substring", () => {
     const urls = [
       "https://resolve.kleros.io.evil.example/",
       "https://evil.example/?next=resolve.kleros.io",
@@ -165,7 +165,7 @@ describe("isSelfLink", () => {
     for (const url of urls) expect(isSelfLink(url, HOSTS), url).toBe(false);
   });
 
-  it("D-28: a self-link spelled with a trailing-dot host is hidden", () => {
+  it("a self-link spelled with a trailing-dot host is hidden", () => {
     expect(isSelfLink("https://resolve.kleros.io./1/cases/5", HOSTS)).toBe(true);
     expect(isSelfLink(`https://${PREVIEW_HOST}./1/ongoing`, HOSTS)).toBe(true);
     expect(isSelfLink("https://resolve.kleros.io/", { appHost: "resolve.kleros.io.", canonicalHosts: [] })).toBe(true);
@@ -173,7 +173,7 @@ describe("isSelfLink", () => {
     expect(isSelfLink("https://resolve.kleros.io.evil.example./", HOSTS)).toBe(false);
   });
 
-  it("D-28: an unparseable URL is not a self-link", () => {
+  it("an unparseable URL is not a self-link", () => {
     expect(isSelfLink("resolve.kleros.io", HOSTS)).toBe(false);
     expect(isSelfLink("", HOSTS)).toBe(false);
     expect(isSelfLink("https://resolve.kleros.io/", { appHost: "", canonicalHosts: ["", "not a host"] })).toBe(false);
@@ -181,33 +181,33 @@ describe("isSelfLink", () => {
 });
 
 describe("resolveArbitrableAppLink", () => {
-  it("§5.6: links an https arbitrable application", () => {
+  it("links an https arbitrable application", () => {
     expect(resolveArbitrableAppLink("https://curate.kleros.io/tcr/100/0xabc", HOSTS)).toBe("https://curate.kleros.io/tcr/100/0xabc");
     expect(resolveArbitrableAppLink("  https://curate.kleros.io/  ", HOSTS)).toBe("https://curate.kleros.io/");
   });
 
-  it("D-28: hides the self-link the default script and the create flow emit", () => {
+  it("hides the self-link the default script and the create flow emit", () => {
     expect(resolveArbitrableAppLink("https://resolve.kleros.io", HOSTS)).toBeNull();
     expect(resolveArbitrableAppLink("https://resolve.kleros.io/1/cases/1700", HOSTS)).toBeNull();
     expect(resolveArbitrableAppLink(`https://${PREVIEW_HOST}/100/cases/3`, HOSTS)).toBeNull();
   });
 
-  it("D-28: keeps a link that only mentions resolve.kleros.io outside its host", () => {
+  it("keeps a link that only mentions resolve.kleros.io outside its host", () => {
     expect(resolveArbitrableAppLink("https://example.org/?from=resolve.kleros.io", HOSTS)).toBe("https://example.org/?from=resolve.kleros.io");
   });
 
-  it("A9: gives no link for a value that is not an https URL", () => {
+  it("gives no link for a value that is not an https URL", () => {
     for (const input of ["http://curate.kleros.io", "//curate.kleros.io", ...DANGEROUS_SCHEMES, "", undefined, null, 42]) {
       expect(resolveArbitrableAppLink(input, HOSTS), String(input)).toBeNull();
     }
   });
 
-  it("URI-01 D-28: hides a self-link spelled without an authority", () => {
+  it("hides a self-link spelled without an authority", () => {
     expect(resolveArbitrableAppLink("https:/1/cases/5", PRODUCTION_HOSTS)).toBeNull();
     for (const input of AUTHORITY_LESS_HTTPS) expect(resolveArbitrableAppLink(input, PRODUCTION_HOSTS), input).toBeNull();
   });
 
-  it("URI-01 D-28: a returned link lands where the self-link check looked, never on the app, from every page of the app", () => {
+  it("a returned link lands where the self-link check looked, never on the app, from every page of the app", () => {
     const links = HTTPS_SPELLINGS.map((input) => resolveArbitrableAppLink(input, PRODUCTION_HOSTS)).filter((link) => link !== null);
     expect(links).toHaveLength(EXPLICIT_AUTHORITY_HTTPS.length);
     expect(links.filter(movesOnAppPages)).toEqual([]);
@@ -216,7 +216,7 @@ describe("resolveArbitrableAppLink", () => {
 });
 
 describe("attachmentKind", () => {
-  it("A17: picks the icon from the extension, image before video before text", () => {
+  it("picks the icon from the extension, image before video before text", () => {
     const cases: readonly (readonly [string, AttachmentKind])[] = [
       ["photo.png", "image"],
       ["photo.JPG", "image"],
@@ -237,12 +237,12 @@ describe("attachmentKind", () => {
     for (const [input, kind] of cases) expect(attachmentKind(input), input).toBe(kind);
   });
 
-  it("A17: keeps today's extension tables, minus the capitalized entries the old matchers never matched", () => {
+  it("leaves out the capitalized extension entries, which a lowercase match never hits", () => {
     expect([IMAGE_EXTENSIONS.size, VIDEO_EXTENSIONS.size, TEXT_EXTENSIONS.size]).toEqual([110, 34, 324]);
     for (const extension of [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS, ...TEXT_EXTENSIONS]) expect(extension).toBe(extension.toLowerCase());
   });
 
-  it("A17: reads the extension of the last path segment of a path or URL", () => {
+  it("reads the extension of the last path segment of a path or URL", () => {
     expect(attachmentKind(`/ipfs/${CID}/photo.png`)).toBe("image");
     expect(attachmentKind(`https://example.org/a.b/clip.mov`)).toBe("video");
     expect(attachmentKind("https://example.org/photo.png?width=200#top")).toBe("image");
@@ -254,7 +254,7 @@ describe("attachmentKind", () => {
 });
 
 describe("lastPathSegment", () => {
-  it("§5.6: is the text after the last slash, as today's label", () => {
+  it("is the text after the last slash", () => {
     expect(lastPathSegment(`/ipfs/${CID}/report.pdf`)).toBe("report.pdf");
     expect(lastPathSegment(CID)).toBe(CID);
     expect(lastPathSegment("https://example.org/files/")).toBe("");

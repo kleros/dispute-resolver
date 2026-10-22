@@ -1,7 +1,7 @@
 import type { Address } from "../types";
 import type { CanonicalIpfsPath } from "../uri/types";
 
-/** Question types the Create form offers (spec 4.3); `int` and `string` stay unavailable. */
+/** `int` and `string` are deliberately not offered. */
 export type CreateQuestionType = "single-select" | "multiple-select" | "uint" | "datetime";
 
 export interface CreateOptionDraft {
@@ -23,14 +23,13 @@ export interface CreateDisputeDraft {
   readonly description: string;
   readonly questionType: CreateQuestionType;
   readonly question: string;
-  /** Trimmed to the chosen option count before validation (D-08). */
+  /** Trimmed to the chosen option count before validation. */
   readonly options: readonly CreateOptionDraft[];
-  /** Several rows (D-08). A row with both fields empty is ignored. */
+  /** A row with both fields empty is ignored. */
   readonly parties: readonly CreatePartyDraft[];
   readonly primaryDocument: CanonicalIpfsPath | null;
 }
 
-/** A validated form. */
 export interface CreateDisputeInput {
   readonly courtId: bigint;
   readonly votes: bigint;
@@ -41,7 +40,7 @@ export interface CreateDisputeInput {
   readonly question: string;
   /** Empty for `uint` and `datetime`. 2 to 32 entries for the select types. */
   readonly options: readonly CreateOptionDraft[];
-  /** Address → alias, names kept paired with their addresses (D-08, B20). */
+  /** Lowercased address → alias. */
   readonly aliases: Readonly<Record<Address, string>>;
   readonly primaryDocument: CanonicalIpfsPath | null;
 }
@@ -50,11 +49,11 @@ export type CreateFieldErrorCode =
   | "required"
   | "not-an-integer"
   | "out-of-range" // votes < 1, options outside 2..32
-  | "invalid-address" // not all-lowercase, all-uppercase or EIP-55 checksummed `0x` + 40 hex (D-08, create-01, MC-8)
+  | "invalid-address" // not all-lowercase, all-uppercase or EIP-55 checksummed `0x` + 40 hex
   | "duplicate-address"
   | "alias-without-address"
   | "address-without-alias"
-  | "not-content-addressed"; // the primary document path failed the canonical check (B16)
+  | "not-content-addressed"; // the primary document path failed the canonical check
 
 export interface CreateValidationErrors {
   readonly courtId?: CreateFieldErrorCode;
@@ -71,7 +70,7 @@ export interface CreateValidationErrors {
 
 export type CreateValidation = { readonly ok: true; readonly value: CreateDisputeInput } | { readonly ok: false; readonly errors: CreateValidationErrors };
 
-/** The meta-evidence the Create page uploads with role `policy` (spec 4.5 step 4). */
+/** Uploaded with role `policy`. */
 export interface CreatedMetaEvidence {
   readonly title: string;
   readonly category: string;
@@ -85,7 +84,6 @@ export interface CreatedMetaEvidence {
   readonly dynamicScriptURI: CanonicalIpfsPath;
 }
 
-/** The Create form's field limits (spec 4.3): the range of the ruling-option count and the least number of votes. */
 export interface CreateLimits {
   readonly optionRange: readonly [number, number];
   readonly minVotes: number;

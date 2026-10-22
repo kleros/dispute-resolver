@@ -1,9 +1,8 @@
 import type { RealityLookupLimits } from "./types";
 
 /**
- * Tunables of the question lookup (spec 9.1). The request timeout and the retry delays are the transport policy of the
- * read clients (`rpc.createReadClient` defaults, 20 s and 500 ms then 2 s); the scan window constants are applied here, and
- * the request budget and deadline are spent by those clients on every attempt, retries included.
+ * The request timeout and retry delays are enforced by the read clients (`rpc.createReadClient` defaults), not here; the
+ * request budget and deadline are spent by those clients on every attempt, retries included.
  */
 export const LOOKUP_LIMITS: RealityLookupLimits = {
   requestTimeoutMs: 20_000, // Per JSON-RPC request.

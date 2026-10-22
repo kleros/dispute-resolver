@@ -4,10 +4,9 @@ import { describeError, isContractFailure } from "../rpc";
 import { policyFetchUrl, resolveGateway } from "../uri";
 import type { GatewayOrigin } from "../uri/types";
 import type { Address, Fetcher, Outcome, ReadClient } from "../types";
-import { fail, succeed } from "./outcome";
+import { fail, NETWORK_DATA_UNAVAILABLE, succeed } from "./outcome";
 import type { Court, CourtsContext } from "./types";
 
-/** Courts probed in parallel per round of the enumeration. */
 const COURTS_PER_ROUND = 8;
 
 interface CourtRead {
@@ -17,7 +16,7 @@ interface CourtRead {
   readonly timesPerPeriod: readonly [bigint, bigint, bigint, bigint];
 }
 
-/** One court's arbitrator reads, `null` when `getSubcourt(id)` fails in the contract (past the last court). Rejects otherwise. */
+/** `null` when `getSubcourt(id)` fails in the contract, which marks the end of the court list. */
 async function readCourt(client: ReadClient, arbitrator: Address, id: bigint): Promise<CourtRead | null> {
   const [subcourt, court] = await Promise.allSettled([
     client.readContract({ address: arbitrator, abi: klerosLiquidAbi, functionName: "getSubcourt", args: [id] }),
@@ -33,11 +32,7 @@ async function readCourt(client: ReadClient, arbitrator: Address, id: bigint): P
   return { id, parent, hiddenVotes, timesPerPeriod };
 }
 
-/**
- * Every court, from 0 up to the first whose `getSubcourt` fails in the contract (today's estimate-gas loop, spec 6.1).
- * Courts are probed `COURTS_PER_ROUND` at a time; a transport failure of any court before the end rejects, so the list
- * is never silently truncated (D-19).
- */
+/** A transport failure of any court before the end rejects, so the list is never silently truncated. */
 async function enumerateCourts(client: ReadClient, arbitrator: Address, signal: AbortSignal | undefined): Promise<CourtRead[]> {
   const courts: CourtRead[] = [];
   for (;;) {
@@ -52,14 +47,13 @@ async function enumerateCourts(client: ReadClient, arbitrator: Address, signal: 
   }
 }
 
-/** The court name from a policy JSON: its `name` when a string, else `null`. */
 function policyName(policy: unknown): string | null {
   if (typeof policy !== "object" || policy === null || Array.isArray(policy)) return null;
   const name: unknown = (policy as Record<string, unknown>).name;
   return typeof name === "string" ? name : null;
 }
 
-/** One court's policy URI and name. Any failure leaves them `null` for this court only (D-19). */
+/** Any failure leaves the policy fields `null` for this court only. */
 async function readPolicy(
   context: { readonly client: ReadClient; readonly fetcher: Fetcher; readonly gateway: GatewayOrigin; readonly signal: AbortSignal | undefined },
   policyRegistry: Address | undefined,
@@ -83,17 +77,13 @@ async function readPolicy(
   }
 }
 
-/**
- * The arbitrator's courts with their policy names (spec 6.1, D-19). `courts(i)` and `getSubcourt(i)` are read until the
- * first contract failure; each `policies(i)` JSON is fetched independently through `policyFetchUrl`, and a failing
- * policy only leaves that court's `name` null. A failure of the court reads fails the list.
- */
+/** A failing policy only leaves that court's `name` null; a failure of the court reads fails the list. */
 export async function listCourts(context: CourtsContext): Promise<Outcome<readonly Court[]>> {
   const chain = getChain(context.chainId);
   const arbitrator = chain?.klerosLiquid;
   if (arbitrator === undefined) return fail("unsupported", "This network has no arbitrator.");
   const { client, signal } = context;
-  if (client === undefined) return fail("no-rpc", "This network has no read RPC configured.");
+  if (client === undefined) return fail("no-rpc", NETWORK_DATA_UNAVAILABLE);
   let courts: CourtRead[];
   try {
     courts = await enumerateCourts(client, arbitrator, signal);

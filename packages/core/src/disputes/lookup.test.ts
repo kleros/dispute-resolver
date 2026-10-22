@@ -9,13 +9,13 @@ const NONEXISTENT = 1_000_000_000n;
 const UINT256_MAX = 2n ** 256n - 1n;
 
 describe("parseDisputeId", () => {
-  it("A19: accepts ASCII digits, including dispute 0", () => {
+  it("accepts ASCII digits, including dispute 0", () => {
     expect(parseDisputeId("0")).toBe(0n);
     expect(parseDisputeId("1454")).toBe(1454n);
     expect(parseDisputeId(UINT256_MAX.toString())).toBe(UINT256_MAX);
   });
 
-  it("A19: accepts non-negative safe integers and in-range bigints", () => {
+  it("accepts non-negative safe integers and in-range bigints", () => {
     expect(parseDisputeId(121)).toBe(121n);
     expect(parseDisputeId(5n)).toBe(5n);
   });
@@ -33,7 +33,7 @@ describe("parseDisputeId", () => {
     ["markup", "1</script>"],
     ["non-ASCII digits", "١٢"],
     ["above uint256", (UINT256_MAX + 1n).toString()],
-  ])("A19: rejects %s", (_, input) => {
+  ])("rejects a string input: %s", (_, input) => {
     expect(parseDisputeId(input)).toBeNull();
   });
 
@@ -47,18 +47,18 @@ describe("parseDisputeId", () => {
     ["null", null],
     ["undefined", undefined],
     ["object", { toString: () => "1" }],
-  ])("A19: rejects a %s", (_, input) => {
+  ])("rejects a non-string input: %s", (_, input) => {
     expect(parseDisputeId(input)).toBeNull();
   });
 
-  it("D-09: a missing ID is not dispute 0", () => {
+  it("a missing ID is not dispute 0", () => {
     expect(parseDisputeId(undefined)).toBeNull();
     expect(parseDisputeId("")).toBeNull();
   });
 });
 
 describe("lookupDispute", () => {
-  it("§5.3 step 1: reads disputes(id) and returns the struct with the arbitrated contract lowercased (B21)", async () => {
+  it("reads disputes(id) and returns the struct with the arbitrated contract lowercased", async () => {
     const { client } = fakeClient(recordedNode(MAINNET));
     const lookup = await lookupDispute({ chainId: 1, client }, 1454n);
     expect(lookup).toMatchObject({
@@ -75,7 +75,7 @@ describe("lookupDispute", () => {
     });
   });
 
-  it("A22: the binding's arbitrable comes from the arbitrator's disputes(id).arbitrated", async () => {
+  it("the binding's arbitrable comes from the arbitrator's disputes(id).arbitrated", async () => {
     const { client, requests } = fakeClient(recordedNode(MAINNET));
     const lookup = await lookupDispute({ chainId: 1, client }, 328n);
     if (lookup.status !== "found") throw new Error("expected a found dispute");
@@ -84,28 +84,28 @@ describe("lookupDispute", () => {
     expect(requests.calls.every((key) => key.startsWith(MAINNET_ARBITRATOR))).toBe(true);
   });
 
-  it("A22: keeps a bad dispute's struct as read, 2^128 - 1 choices (mainnet 150)", async () => {
+  it("keeps a bad dispute's struct as read, 2^128 - 1 choices (mainnet 150)", async () => {
     const { client } = fakeClient(recordedNode(MAINNET));
     const lookup = await lookupDispute({ chainId: 1, client }, 150n);
     expect(lookup).toMatchObject({ status: "found", dispute: { numberOfChoices: 2n ** 128n - 1n, arbitrated: "0x594ec762b59978c97c82bc36ab493ed8b1f1f368" } });
   });
 
-  it("D-53: an out-of-range ID that the node reports as -32003 InvalidFEOpcode is not-found (mainnet)", async () => {
+  it("an out-of-range ID that the node reports as -32003 InvalidFEOpcode is not-found (mainnet)", async () => {
     const { client } = fakeClient(recordedNode(MAINNET));
     expect(await lookupDispute({ chainId: 1, client }, NONEXISTENT)).toEqual({ status: "not-found" });
   });
 
-  it("D-53: an out-of-range ID that the node reports as -32000 invalid opcode is not-found (Sepolia)", async () => {
+  it("an out-of-range ID that the node reports as -32000 invalid opcode is not-found (Sepolia)", async () => {
     const { client } = fakeClient(recordedNode(SEPOLIA));
     expect(await lookupDispute({ chainId: 11155111, client }, NONEXISTENT)).toEqual({ status: "not-found" });
   });
 
-  it("D-53: a zeroed struct with no arbitrated contract is not-found (Gnosis keeps disputes in a mapping)", async () => {
+  it("a zeroed struct with no arbitrated contract is not-found (Gnosis keeps disputes in a mapping)", async () => {
     const { client } = fakeClient(recordedNode(GNOSIS));
     expect(await lookupDispute({ chainId: 100, client }, NONEXISTENT)).toEqual({ status: "not-found" });
   });
 
-  it("D-53: a code 3 execution reverted answer is not-found", async () => {
+  it("a code 3 execution reverted answer is not-found", async () => {
     const node = recordedNode(MAINNET, {
       extraCalls: [failure({ to: MAINNET_ARBITRATOR, abi: klerosLiquidAbi, functionName: "disputes", args: [7n], error: { code: 3, message: "execution reverted" } })],
     });
@@ -118,7 +118,7 @@ describe("lookupDispute", () => {
     ["-32000 header not found", -32000, "header not found"],
     ["-32005 rate limited", -32005, "daily request count exceeded, request rate limited"],
     ["-32099 unknown", -32099, "upstream unavailable"],
-  ])("D-53: a transport error (%s) is unavailable, never not-found", async (_, code, message) => {
+  ])("a transport error (%s) is unavailable, never not-found", async (_, code, message) => {
     const node = recordedNode(MAINNET, {
       extraCalls: [failure({ to: MAINNET_ARBITRATOR, abi: klerosLiquidAbi, functionName: "disputes", args: [7n], error: { code, message } })],
     });
@@ -127,13 +127,13 @@ describe("lookupDispute", () => {
     expect(lookup).toMatchObject({ status: "unavailable", error: { code: "rpc-error" } });
   });
 
-  it("D-53: a failed fetch (no JSON-RPC answer) is unavailable", async () => {
+  it("a failed fetch (no JSON-RPC answer) is unavailable", async () => {
     const { client } = fakeClient(recordedNode(MAINNET, { failing: { eth_call: new Error("fetch failed") } }));
     const lookup = await lookupDispute({ chainId: 1, client }, 1454n);
     expect(lookup).toMatchObject({ status: "unavailable", error: { code: "rpc-error" } });
   });
 
-  it("D-53: the unavailable reason never quotes the transport's full message", async () => {
+  it("the unavailable reason never quotes the transport's full message", async () => {
     const { client } = fakeClient(recordedNode(MAINNET, { failing: { eth_call: rpcError(-32000, "header not found") } }));
     const lookup = await lookupDispute({ chainId: 1, client }, 1454n);
     if (lookup.status !== "unavailable") throw new Error("expected unavailable");
@@ -141,7 +141,7 @@ describe("lookupDispute", () => {
     expect(lookup.error.message).not.toContain("Request body");
   });
 
-  it("D-53: every lookup is independent, so a not-found after a found dispute carries nothing of it", async () => {
+  it("every lookup is independent, so a not-found after a found dispute carries nothing of it", async () => {
     const { client } = fakeClient(recordedNode(MAINNET));
     const first = await lookupDispute({ chainId: 1, client }, 1454n);
     const second = await lookupDispute({ chainId: 1, client }, NONEXISTENT);
@@ -149,17 +149,19 @@ describe("lookupDispute", () => {
     expect(second).toEqual({ status: "not-found" });
   });
 
-  it("§5.4: a chain without an arbitrator is no-arbitrator, without any read", async () => {
+  it("a chain without an arbitrator is no-arbitrator, without any read", async () => {
     const { client, requests } = fakeClient(recordedNode(MAINNET));
     expect(await lookupDispute({ chainId: 137, client }, 1n)).toEqual({ status: "no-arbitrator" });
     expect(requests.methods).toEqual([]);
   });
 
-  it("D-56: a chain without a read RPC is unavailable with no-rpc", async () => {
-    expect(await lookupDispute({ chainId: 1, client: undefined }, 1n)).toMatchObject({ status: "unavailable", error: { code: "no-rpc" } });
+  it("a chain without a read RPC is unavailable with no-rpc", async () => {
+    const lookup = await lookupDispute({ chainId: 1, client: undefined }, 1n);
+    expect(lookup).toMatchObject({ status: "unavailable", error: { code: "no-rpc", message: "This network's data is unavailable." } });
+    if (lookup.status === "unavailable") expect(lookup.error.message).not.toMatch(/configur|RPC|REACT_APP/i);
   });
 
-  it("D-36: a period outside 0–4 is invalid data, not a dispute", async () => {
+  it("a period outside 0–4 is invalid data, not a dispute", async () => {
     const arbitrated: Address = "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf";
     const node = recordedNode(MAINNET, {
       extraCalls: [answer({ to: MAINNET_ARBITRATOR, abi: klerosLiquidAbi, functionName: "disputes", args: [9n], result: [1n, arbitrated, 2n, 5, 1n, 0n, 0n, false] })],
@@ -168,7 +170,7 @@ describe("lookupDispute", () => {
     expect(await lookupDispute({ chainId: 1, client }, 9n)).toMatchObject({ status: "unavailable", error: { code: "invalid-data" } });
   });
 
-  it("D-53: an aborted lookup is unavailable, never not-found", async () => {
+  it("an aborted lookup is unavailable, never not-found", async () => {
     const { client } = fakeClient(recordedNode(MAINNET));
     const controller = new AbortController();
     controller.abort();

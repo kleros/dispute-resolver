@@ -7,11 +7,10 @@ import { arbitrableLocalId, built, describesBinding, refused } from "./build";
 import type { WriteBuild } from "./types";
 
 /**
- * One withdrawal per item, in the order of `items`, each its own transaction with no value (spec 5.15, D-51). The
- * result is indexed like `items`. idr-v2 sends `withdrawFeesAndRewardsForAllRounds(localID, beneficiary, ruling)`,
- * idr-v1 the same with `[ruling]` (D-49), governors `withdrawFeesAndRewards(beneficiary, session, round, listIndex)`
- * (D-47). idr-legacy (D-46), Escrow V1 and view-only arbitrables refuse every item, and so does an item whose dialect
- * is not the family's.
+ * One transaction per item, with no value, indexed like `items`. idr-v2 sends
+ * `withdrawFeesAndRewardsForAllRounds(localID, beneficiary, ruling)`, idr-v1 the same with `[ruling]`, governors
+ * `withdrawFeesAndRewards(beneficiary, session, round, listIndex)`. idr-legacy, Escrow V1 and view-only arbitrables
+ * refuse every item, and so does an item whose dialect is not the family's.
  */
 export function buildWithdrawCalls(input: {
   readonly binding: ArbitratedBinding;

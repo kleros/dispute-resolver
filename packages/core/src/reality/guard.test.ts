@@ -7,24 +7,24 @@ async function sha256(text: string): Promise<string> {
 }
 
 describe("JSON_DUPLICATE_KEY_GUARD", () => {
-  it("A4: is the text of today's runner bootstrap, byte for byte", async () => {
-    // SHA-256 of `JSON_DUPLICATE_KEY_GUARD` in src/ethereum/json-duplicate-key-guard.js at the freeze of the parity documents.
+  it("matches the reviewed bootstrap text byte for byte", async () => {
+    // The guard runs next to untrusted scripts: update this hash only after reviewing the new text.
     expect(JSON_DUPLICATE_KEY_GUARD).toHaveLength(1271);
     expect(await sha256(JSON_DUPLICATE_KEY_GUARD)).toBe("f749e16bce8831194dbdf07c3d147afd622cdc75b729b0fb4bb0164d36c6d7dd");
   });
 
-  it("A4: records the rejection where the host reads it", () => {
+  it("records the rejection in the global the host reads", () => {
     expect(JSON_DUPLICATE_KEY_GUARD).toContain("window.__klerosJsonDuplicateKeys = true");
     expect(JSON_DUPLICATE_KEY_GUARD).toContain('throw new SyntaxError("Duplicate keys in JSON document")');
   });
 });
 
 describe("isRealityScript", () => {
-  it("A4: is true for a script that renders with reality-eth-lib's template population", () => {
+  it("detects a script that uses reality-eth-lib's template population", () => {
     expect(isRealityScript("const json = populatedJSONForTemplate(template, question);")).toBe(true);
   });
 
-  it("A4: is false for any other script", () => {
+  it("does not flag any other script", () => {
     expect(isRealityScript("resolveScript({ title: 'x' })")).toBe(false);
     expect(isRealityScript("")).toBe(false);
     expect(isRealityScript("populatedJSONFor")).toBe(false);

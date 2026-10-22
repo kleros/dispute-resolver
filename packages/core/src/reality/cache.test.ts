@@ -21,7 +21,6 @@ const VALID: RealityQuestion = {
   realityChainId: 1,
 };
 
-/** A cache over a map that records what the lookup does to it. */
 function memoryCache(initial: Readonly<Record<string, unknown>> = {}) {
   const store = new Map<string, unknown>(Object.entries(initial));
   const removed: string[] = [];
@@ -47,19 +46,19 @@ afterEach(() => {
 });
 
 describe("realityQuestionCacheKey", () => {
-  it("A5: is today's key, shared with the old app's entries", () => {
+  it("builds the stored key from chain, proxy and dispute ID", () => {
     expect(realityQuestionCacheKey(1, SINGLE_ENTRY, 7n)).toBe(KEY_7);
     expect(realityQuestionCacheKey(1, CROSS_ENTRY, 10n)).toBe(`@@kleros/court/reality-question/v1/1/${CROSS_ENTRY.proxy}/10`);
   });
 });
 
 describe("isValidCachedQuestion", () => {
-  it("A5: accepts the question of the entry", () => {
+  it("accepts a question matching the entry", () => {
     expect(isValidCachedQuestion(VALID, SINGLE_ENTRY, undefined)).toBe(true);
     expect(isValidCachedQuestion(VALID, SINGLE_ENTRY, KNOWN_SINGLE)).toBe(true);
   });
 
-  it("A5: compares the known question ID without regard to case", () => {
+  it("compares the known question ID case-insensitively", () => {
     const upper = { ...VALID, questionId: `0x${"01".repeat(32)}`.toUpperCase().replace("0X", "0x") };
     expect(isValidCachedQuestion(upper, SINGLE_ENTRY, KNOWN_SINGLE)).toBe(true);
   });
@@ -76,13 +75,13 @@ describe("isValidCachedQuestion", () => {
     ["another question than the known one", { ...VALID, questionId: Q_NEW_SINGLE }],
     ["another Reality.eth contract", { ...VALID, reality: REALITY_100 }],
     ["another chain", { ...VALID, realityChainId: 100 }],
-  ])("A5: rejects %s", (_name, value) => {
+  ])("rejects %s", (_name, value) => {
     expect(isValidCachedQuestion(value, SINGLE_ENTRY, KNOWN_SINGLE)).toBe(false);
   });
 });
 
 describe("fetchRealityQuestion cache", () => {
-  it("A5: caches results and serves them without requests", async () => {
+  it("serves a cached question without requests", async () => {
     const world = createWorld();
     const { cache, store } = memoryCache();
     const first = await lookup(world, cache);
@@ -98,7 +97,7 @@ describe("fetchRealityQuestion cache", () => {
     ["missing fields", { questionId: Q_KNOWN_SINGLE }],
     ["another question than the known one", { ...VALID, questionId: Q_NEW_SINGLE }],
     ["another Reality.eth contract", { ...VALID, reality: REALITY_100 }],
-  ])("A5: drops invalid entries (%s) and fetches again", async (_name, value) => {
+  ])("drops an invalid entry (%s) and fetches again", async (_name, value) => {
     const world = createWorld();
     const { cache, store, removed } = memoryCache({ [KEY_7]: value });
     const question = await lookup(world, cache);
@@ -108,14 +107,14 @@ describe("fetchRealityQuestion cache", () => {
     expect(store.get(KEY_7)).toEqual(question);
   });
 
-  it("A5: leaves an absent entry alone", async () => {
+  it("removes nothing when no entry is cached", async () => {
     const world = createWorld();
     const { cache, removed } = memoryCache();
     await lookup(world, cache);
     expect(removed).toEqual([]);
   });
 
-  it("A5: does not cache failures", async () => {
+  it("does not cache a failed lookup", async () => {
     const world = createWorld();
     world.chains[1].onRequest = () => rpcError(-32000, "down");
     const { cache, store } = memoryCache();
@@ -123,7 +122,7 @@ describe("fetchRealityQuestion cache", () => {
     expect(store.has(KEY_7)).toBe(false);
   });
 
-  it("A5: works when storage is unavailable", async () => {
+  it("looks the question up when storage throws", async () => {
     const world = createWorld();
     const denied = (): never => {
       throw new Error("denied");
@@ -132,7 +131,7 @@ describe("fetchRealityQuestion cache", () => {
     expect(question.questionId).toBe(Q_KNOWN_SINGLE);
   });
 
-  it("A5: works when an invalid entry cannot be removed", async () => {
+  it("looks the question up when an invalid entry cannot be removed", async () => {
     const world = createWorld();
     const denied = (): never => {
       throw new Error("denied");

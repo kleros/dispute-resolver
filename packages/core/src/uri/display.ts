@@ -4,9 +4,8 @@ import { normalizeIpfsPath } from "./normalize";
 import type { GatewayOrigin } from "./types";
 
 /**
- * The URL of an untrusted display or document (spec 9.4 source, D-26, MC-5, A8): a content-addressed path goes through the
- * gateway; an absolute `http:` or `https:` URL with an explicit authority whose path is `/ipfs/<CID>` is re-served through
- * the gateway; any other absolute https URL is used as is (any https host, B19 accepted); anything else is `null`.
+ * Any https host is accepted as is; only an `http(s)://<host>/ipfs/<CID>` URL is re-served through the gateway, `http:`
+ * included.
  */
 export function resolveDisplayUrl(uri: unknown, gateway: GatewayOrigin): string | null {
   if (typeof uri !== "string") return null;

@@ -12,8 +12,8 @@ function byRuling(a: RulingAmount, b: RulingAmount): number {
 
 /**
  * `Contribution(localId, round)` amounts summed per ruling and the `RulingFunded(localId, round)` rulings in event order,
- * scanned on the arbitrable from `fromBlock` to the head through the chunked scan (D-02): the same range on every reload,
- * however long after the round's start a contribution came.
+ * scanned from `fromBlock` to the head: the same range on every reload, however long after the round's start a
+ * contribution came.
  */
 async function readResolverFunding(context: AppealContext, round: bigint, fromBlock: bigint): Promise<Outcome<RoundFunding>> {
   const localId = idrLocalId(context.localId);
@@ -45,8 +45,8 @@ async function readResolverFunding(context: AppealContext, round: bigint, fromBl
 }
 
 /**
- * The governor dialect (D-47): `getRoundInfo(session, round)`, list index i being ruling i + 1 (verified source). The
- * fees paid per list are the contributions and the fully paid lists the funded rulings.
+ * The governor dialect: `getRoundInfo(session, round)`, list index i being ruling i + 1. The fees paid per list are the
+ * contributions and the fully paid lists the funded rulings.
  */
 async function readGovernorFunding(context: AppealContext, round: bigint): Promise<Outcome<RoundFunding>> {
   const session = governorSession(context);
@@ -64,10 +64,9 @@ async function readGovernorFunding(context: AppealContext, round: bigint): Promi
 }
 
 /**
- * The funding of one round (D-02, D-30, D-47): for the IDisputeResolver families the `Contribution` and `RulingFunded`
- * events of the round, which need a resolved local ID; for governors the round of the dispute's session. Other
- * families have no funding to read (`unsupported`). Never rejects: a failed read is a failed `Outcome`, never an
- * empty funding (D-36).
+ * The funding of one round: for the IDisputeResolver families the `Contribution` and `RulingFunded` events of the
+ * round, which need a resolved local ID; for governors the round of the dispute's session. Never rejects: a failed read
+ * is a failed `Outcome`, never an empty funding.
  */
 export function readRoundFunding(context: AppealContext, round: bigint, fromBlock: bigint): Promise<Outcome<RoundFunding>> {
   const checked = checkContext(context);

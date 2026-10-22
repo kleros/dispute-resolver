@@ -17,7 +17,6 @@ const WITHDRAW_ITEMS: readonly WithdrawItem[] = [
   { dialect: "governor", session: 0n, round: 0n, listIndex: 0n, amount: 1n },
 ];
 
-/** Every build the module can produce for a dispute of `family`. */
 function everyBuild(binding: ArbitratedBinding, family: FamilyDetection): readonly WriteBuild[] {
   const localId = localIdFor(family, 1n);
   return [
@@ -33,7 +32,7 @@ function callsOf(builds: readonly WriteBuild[]): WriteCall[] {
 }
 
 describe("write target binding", () => {
-  it("A22: every call targets the arbitrable the arbitrator names, on the arbitrator's chain", () => {
+  it("every call targets the arbitrable the arbitrator names, on the arbitrator's chain", () => {
     for (const name of Object.keys(FAMILY_SIGNATURES) as (keyof typeof FAMILY_SIGNATURES)[]) {
       for (const chainId of [1, 100]) {
         const binding = testBinding({ chainId, disputeId: 5n, arbitrated: ARBITRATED });
@@ -45,7 +44,7 @@ describe("write target binding", () => {
     }
   });
 
-  it("A22: a family detected for another address (one meta-evidence names) cannot redirect or re-dialect a write", () => {
+  it("a family detected for another address (one meta-evidence names) cannot redirect or re-dialect a write", () => {
     const binding = testBinding({ chainId: 1, disputeId: 5n, arbitrated: ARBITRATED });
     const spoofed = detectionFor(1, SPOOFED, FAMILY_SIGNATURES["idr-v2"]);
     const builds = everyBuild(binding, spoofed);
@@ -53,13 +52,13 @@ describe("write target binding", () => {
     expect(builds.every((build) => !build.ok && build.refusal === "family-mismatch")).toBe(true);
   });
 
-  it("A22: a family detected on another chain cannot be used for the binding's dispute", () => {
+  it("a family detected on another chain cannot be used for the binding's dispute", () => {
     const binding = testBinding({ chainId: 1, disputeId: 5n, arbitrated: ARBITRATED });
     const builds = everyBuild(binding, detectionFor(100, ARBITRATED, FAMILY_SIGNATURES["idr-v2"]));
     expect(builds.every((build) => !build.ok && build.refusal === "family-mismatch")).toBe(true);
   });
 
-  it("A22: the builders accept only an ArbitratedBinding, never a bare address", () => {
+  it("the builders accept only an ArbitratedBinding, never a bare address", () => {
     const fromMetaEvidence = { chainId: 1, disputeId: 5n, arbitrator: ARBITRATED, arbitrated: ARBITRATED } as const;
     expectTypeOf(fromMetaEvidence).not.toExtend<ArbitratedBinding>();
     expectTypeOf<Parameters<typeof buildSubmitEvidenceCall>[0]["binding"]>().toEqualTypeOf<ArbitratedBinding>();
@@ -68,12 +67,12 @@ describe("write target binding", () => {
     expectTypeOf<Parameters<typeof buildWithdrawCalls>[0]["binding"]>().toEqualTypeOf<ArbitratedBinding>();
   });
 
-  it("B10: unknown arbitrables are view-only, so no write is built for them", () => {
+  it("unknown arbitrables are view-only, so no write is built for them", () => {
     const binding = testBinding({ chainId: 1, disputeId: 5n, arbitrated: ARBITRATED });
     expect(callsOf(everyBuild(binding, detectionFor(1, ARBITRATED, FAMILY_SIGNATURES["view-only"])))).toEqual([]);
   });
 
-  it("B10: every call built for a recorded contract uses a selector its dispatcher carries (06 §3 invariant 8 contracts)", () => {
+  it("every call built for a recorded contract uses a selector its dispatcher carries", () => {
     const families = new Set<string>();
     for (const { label, detection, dispatcher } of recordedDetections()) {
       const binding = testBinding({ chainId: detection.chainId, disputeId: 1n, arbitrated: detection.arbitrable });

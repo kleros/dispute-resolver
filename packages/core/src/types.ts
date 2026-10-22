@@ -2,20 +2,20 @@
  * Cross-cutting primitives of `@dispute-resolver/core`, and the barrel that re-exports every module's types.
  *
  * This file is a barrel, not a layer: modules import primitives from `../types` and other modules' types only through
- * `../<module>/types`, never through this file. See MODULES.md.
+ * `../<module>/types`, never through this file.
  */
 import type { Abi, ContractFunctionArgs, ContractFunctionName, PublicClient } from "viem";
 
 /** An EVM chain ID. Only integers that name a configured chain are accepted from untrusted input (`chains`). */
 export type ChainId = number;
 
-/** An EVM address, always lowercase inside core (registry invariant 1, 06 §2). */
+/** An EVM address, always lowercase inside core. */
 export type Address = `0x${Lowercase<string>}`;
 
 /** Hex data: bytecode, calldata, selectors, storage words, transaction hashes. */
 export type Hex = `0x${string}`;
 
-/** `"<arbitrator chain ID>:<lowercase arbitrable>"`, the key of every registry table (06 §2). */
+/** `"<arbitrator chain ID>:<lowercase arbitrable>"`, the key of every registry table. */
 export type RegistryKey = `${ChainId}:${Address}`;
 
 /** Unix time in seconds. */
@@ -23,19 +23,19 @@ export type UnixSeconds = number;
 
 /**
  * The deployment environment, passed in by the caller. Core never reads `process.env` or `import.meta.env`.
- * Keys keep today's `REACT_APP_*` names (ADR 0002).
+ * Keys keep the `REACT_APP_*` names the deployments already set.
  */
 export type Env = Readonly<Record<string, string | undefined>>;
 
 /**
  * The subset of a viem `PublicClient` core reads through. Built only from the configured per-chain read RPC (`rpc`),
- * never from a wallet (A13). `request` is the raw JSON-RPC call, for reads whose viem action would hide a missing
+ * never from a wallet. `request` is the raw JSON-RPC call, for reads whose viem action would hide a missing
  * result (`getCode` maps both `"0x"` and no result to `undefined`). Tests build one with
  * `createPublicClient({ transport: custom({ request }) })`.
  */
 export type ReadClient = Pick<PublicClient, "readContract" | "getLogs" | "getContractEvents" | "getCode" | "getStorageAt" | "getBlockNumber" | "getBlock" | "call" | "request">;
 
-/** Returns the read client of a chain, or `undefined` when the chain has no RPC configured (D-56, D-18). */
+/** Returns the read client of a chain, or `undefined` when the chain has no RPC configured. */
 export type GetReadClient = (chainId: ChainId) => ReadClient | undefined;
 
 /** Options core passes to an injected fetch. */
@@ -56,8 +56,8 @@ export interface FetchResponse {
 export type Fetcher = (url: string, init?: FetchInit) => Promise<FetchResponse>;
 
 /**
- * Parameters given to a dynamic script (spec 9.5), validated before the run: both chain IDs are integers naming a
- * configured chain (B5), and the RPC URLs are the public per-chain setting of D-35, `null` when the chain has none.
+ * Parameters given to a dynamic script, validated before the run: both chain IDs are integers naming a configured
+ * chain, and the RPC URLs are the public per-chain setting, `null` when the chain has none.
  */
 export interface ScriptParameters {
   readonly disputeID: string;
@@ -68,10 +68,10 @@ export interface ScriptParameters {
   readonly arbitrableJsonRpcUrl: string | null;
 }
 
-/** `reality` runs the script with the duplicate-key JSON guard installed (A4); `standard` runs it without. */
+/** `reality` runs the script with the duplicate-key JSON guard installed; `standard` runs it without. */
 export type ScriptKind = "reality" | "standard";
 
-/** One dynamic-script run, handed to the runner of ADR 0004. */
+/** One dynamic-script run, handed to the sandboxed script runner. */
 export interface ScriptRunRequest {
   readonly scriptText: string;
   readonly params: ScriptParameters;
@@ -84,13 +84,13 @@ export interface ScriptRunRequest {
  * The runner's answer. It never rejects: a script that throws, never reports or is aborted settles as `failed`. A
  * `runner-error` means the runner cannot run this request (refused parameters, no frame, a malformed reply) and is never
  * retried; `not-started` means the runner did not acknowledge the run in time, which a slow connection causes as well as
- * a blocker, so core retries it like any other transient failure (P-16, D-38).
+ * a blocker, so core retries it like any other transient failure.
  */
 export type ScriptResult =
   | { readonly status: "ok"; readonly value: unknown; readonly jsonDuplicateKeys: boolean }
   | { readonly status: "failed"; readonly reason: "timeout" | "aborted" | "script-error" | "not-started" | "runner-error"; readonly message: string };
 
-/** Implemented in `web` by the runner host (ADR 0004). Core only calls it. */
+/** Implemented in `web` by the runner host. Core only calls it. */
 export interface ScriptRunner {
   run(request: ScriptRunRequest): Promise<ScriptResult>;
 }
@@ -98,9 +98,9 @@ export interface ScriptRunner {
 /** A dispute's period on the arbitrator: evidence, commit, vote, appeal, execution. */
 export type Period = 0 | 1 | 2 | 3 | 4;
 
-/** Why a section of data could not be produced (D-36: degrade with a reason, never fake data). */
+/** Why a section of data could not be produced: sections degrade with a reason, never with fake data. */
 export type UnavailableCode =
-  | "no-rpc" // the chain has no read RPC configured (D-56) or is not configured at all (D-18)
+  | "no-rpc" // the chain has no read RPC configured or is not configured at all
   | "rpc-error" // transport failure, timeout or budget exhausted
   | "reverted" // the contract reverted
   | "not-found" // an event or record that must exist was not found, or was found more than once
@@ -115,14 +115,14 @@ export interface Unavailable {
 /** A value or the reason it is unavailable. Every independently degradable read returns one. */
 export type Outcome<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: Unavailable };
 
-/** What a write call does, so the UI can label pending, success and failure states (D-07). */
+/** What a write call does, so the UI can label pending, success and failure states. */
 export type WriteKind = "create-dispute" | "submit-evidence" | "fund-appeal" | "escrow-appeal" | "withdraw";
 
 type WriteFunctionName<TAbi extends Abi> = ContractFunctionName<TAbi, "payable" | "nonpayable">;
 
 /**
  * A pure description of a transaction. Core never signs; `web` hands it to wagmi after the chain-match guard of
- * `writes` (B3, D-48).
+ * `writes`.
  */
 export interface WriteCall<TAbi extends Abi = Abi, TFunctionName extends WriteFunctionName<TAbi> = WriteFunctionName<TAbi>> {
   readonly kind: WriteKind;

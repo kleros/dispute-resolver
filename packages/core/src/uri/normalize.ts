@@ -2,8 +2,8 @@ import { hasForbiddenCharacter, IPFS_PATH_PREFIX, withoutQueryOrFragment } from 
 import type { CanonicalIpfsPath, CidPath } from "./types";
 
 /**
- * Today's accepted spellings (spec 9.1 step 2): an `ipfs:` or `fs:` scheme with any slashes, then an optional `/` and an
- * optional `ipfs/`. Applied in this order, they strip `ipfs://`, `fs:/ipfs/`, `/ipfs/`, `ipfs/` and a leading `/`.
+ * The accepted spellings: an `ipfs:` or `fs:` scheme with any slashes, then an optional `/` and an optional `ipfs/`.
+ * Applied in this order, they strip `ipfs://`, `fs:/ipfs/`, `/ipfs/`, `ipfs/` and a leading `/`.
  */
 const SCHEME_PREFIX = /^(?:ipfs:|fs:)\/*/;
 const PATH_PREFIX = /^\/?(?:ipfs\/)?/;
@@ -12,7 +12,7 @@ const CID_V0 = /^Qm[1-9A-HJ-NP-Za-km-z]{44}$/;
 const CID_V1_BASE32 = /^b[a-z2-7]{50,}$/;
 
 /**
- * The one content-addressing rule of the codebase (A3, B2, B18, D-24). Returns `/ipfs/<CID>[/<segment>…]` or `null`.
+ * The only content-addressing rule; every URI check goes through it. Returns `/ipfs/<CID>[/<segment>…]` or `null`.
  *
  * The input is trimmed and must carry no control character or backslash. One accepted prefix is stripped and the query
  * and fragment are dropped. Each segment is percent-decoded once (a malformed escape, a decoded `/`, backslash or
@@ -37,12 +37,12 @@ export function normalizeIpfsPath(input: unknown): CanonicalIpfsPath | null {
   return `/ipfs/${cid}${tail}`;
 }
 
-/** Whether a meta-evidence, evidence or dynamic-script URI may be fetched (A3). */
+/** Whether a meta-evidence, evidence or dynamic-script URI may be fetched. */
 export function isContentAddressed(input: unknown): boolean {
   return normalizeIpfsPath(input) !== null;
 }
 
-/** The canonical path without its `/ipfs/` prefix: the form of dynamic-script allowlist entries (06 §3 invariant 4). */
+/** The form of dynamic-script allowlist entries. */
 export function toCidPath(path: CanonicalIpfsPath): CidPath {
   // A canonical path comes only from `normalizeIpfsPath`, which checked that the segment after `/ipfs/` is a CID.
   return path.slice(IPFS_PATH_PREFIX.length) as CidPath;

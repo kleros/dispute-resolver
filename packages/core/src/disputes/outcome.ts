@@ -1,6 +1,8 @@
 import { readFailure } from "../rpc";
 import type { Outcome, UnavailableCode } from "../types";
 
+export const NETWORK_DATA_UNAVAILABLE = "This network's data is unavailable.";
+
 export function succeed<T>(value: T): Outcome<T> {
   return { ok: true, value };
 }

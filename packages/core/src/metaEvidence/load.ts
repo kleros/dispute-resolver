@@ -4,11 +4,11 @@ import type { RealityQuestionInfo } from "../reality/types";
 import { REGISTRY, getRealityProxy, isScriptAllowed } from "../registry";
 import type { RealityProxyEntry, Registry } from "../registry/types";
 import { isLookupLimitError } from "../rpc";
-import type { ChainId, Env, ScriptKind, UnavailableCode } from "../types";
+import type { ChainId, Env, ScriptKind, ScriptParameters, UnavailableCode } from "../types";
 import { gatewayUrl, normalizeIpfsPath, resolveGateway } from "../uri";
 import type { CanonicalIpfsPath, GatewayOrigin } from "../uri/types";
 import { type Deadline, Interrupted, pause, startDeadline, untilAborted } from "./deadline";
-import { type JsonObject, isPlainObject, isTruthy, own } from "./json";
+import { type JsonObject, isPlainObject, own } from "./json";
 import { lookupClientsOf } from "./lookupClients";
 import { realityFromScript } from "./reality";
 import { INVALID_META_EVIDENCE, coerceMetaEvidence, isValidMetaEvidence, parseMetaEvidence } from "./schema";
@@ -24,30 +24,28 @@ import type {
   ScriptOutcome,
 } from "./types";
 
-/** The case page's budget: today's 120 s retry budget, now including the script (D-38, MODULES.md choice 1). */
+/** The case page's budget, which the dynamic script's run shares. */
 export const CASE_PAGE_BUDGET_MS = 120_000;
 
-/** The budget of each Ongoing card, well under a minute (D-37). */
 export const ONGOING_BUDGET_MS = 40_000;
 
-/** The longest a load waits for the on-chain meta-evidence URI before the locator decides (P-25). */
+/** The longest a load waits for the on-chain meta-evidence URI before the locator decides. */
 export const ON_CHAIN_WAIT_MS = 30_000;
 
-/** The longest a found event waits for the locator's answer, which is read for comparison only (P-25). */
+/** The longest a found event waits for the locator's answer, which is read for comparison only. */
 export const LOCATOR_COMPARE_GRACE_MS = 5_000;
 
-/** Today's wait before a new attempt (spec 9.1). */
 const RETRY_DELAY_MS = 5_000;
 
-const UNCONFIGURED_MESSAGE = "No meta-evidence API is configured (REACT_APP_METAEVIDENCE_URL).";
+const NO_SOURCE_MESSAGE = "The dispute details are unavailable.";
 
-/** A reader that rejected, or did not answer within `ON_CHAIN_WAIT_MS` or the load's budget (P-25). */
+/** A reader that rejected, or did not answer within `ON_CHAIN_WAIT_MS` or the load's budget. */
 const ON_CHAIN_UNAVAILABLE: OnChainMetaEvidence = Object.freeze({
   status: "unavailable",
   error: Object.freeze({ code: "rpc-error", message: "The arbitrable's MetaEvidence event could not be read." }),
 });
 
-/** Failures worth another attempt while the budget lasts (D-38). Every other failure is deterministic. */
+/** Failures worth another attempt while the budget lasts. Every other failure is deterministic. */
 type TransientReason = Extract<MetaEvidenceFailure, "locator-error" | "fetch-error" | "script-failed" | "reality-lookup-failed">;
 
 const TRANSIENT_MESSAGES: Readonly<Record<TransientReason, string>> = {
@@ -57,7 +55,6 @@ const TRANSIENT_MESSAGES: Readonly<Record<TransientReason, string>> = {
   "reality-lookup-failed": "The Reality.eth question could not be read.",
 };
 
-/** Spec 9.1 step 4: legacy keys renamed before anything reads the meta-evidence. */
 const LEGACY_KEYS: ReadonlyMap<string, string> = new Map([
   ["evidenceDisplayInterfaceURL", "evidenceDisplayInterfaceURI"],
   ["evidenceDisplayInterfaceURLHash", "evidenceDisplayInterfaceHash"],
@@ -66,6 +63,7 @@ const LEGACY_KEYS: ReadonlyMap<string, string> = new Map([
 const NO_SCRIPT: ScriptOutcome = Object.freeze({ ran: false, reason: "no-script" });
 const REGISTERED_PROXY: ScriptOutcome = Object.freeze({ ran: false, reason: "registered-reality-proxy" });
 const SCRIPT_FETCH_FAILED: ScriptOutcome = Object.freeze({ ran: false, reason: "script-fetch-failed" });
+const SCRIPT_CHAIN_UNAVAILABLE: ScriptOutcome = Object.freeze({ ran: false, reason: "script-chain-unavailable" });
 
 /** A transient failure the pipeline detects itself: an HTTP error, a locator answer that is not JSON, a failed script run. */
 class TransientFailure extends Error {
@@ -78,7 +76,6 @@ class TransientFailure extends Error {
   }
 }
 
-/** One load: its inputs, its budget, and the step in progress, which names an interrupted or failed step. */
 interface Load {
   readonly context: MetaEvidenceContext;
   /** `null` when the meta-evidence API is not configured (only possible with an on-chain reader). */
@@ -86,21 +83,20 @@ interface Load {
   readonly gateway: GatewayOrigin;
   readonly registry: Registry;
   readonly deadline: Deadline;
-  /** The on-chain answer, read once per load and shared by every attempt (P-25); `null` without a reader. Never rejects. */
+  /** The on-chain answer, read once per load and shared by every attempt; `null` without a reader. Never rejects. */
   readonly onChain: Promise<OnChainMetaEvidence> | null;
   /** The current attempt's locator request: aborted once it is no longer awaited, and when the load ends. */
   locatorRequest: AbortController | null;
+  /** The step in progress, which names the failure when that step is interrupted or throws. */
   stage: TransientReason;
 }
 
-/** The on-chain read of one load and how to end it. */
 interface OnChainRead {
   readonly answer: Promise<OnChainMetaEvidence>;
-  /** Aborts the reader's signal and releases the timer. */
   dispose(): void;
 }
 
-/** The URI that decides an attempt, still untrusted, and which source it came from (P-25). */
+/** `uri` is still untrusted: the content-addressing check comes after the choice. */
 interface Chosen {
   readonly uri: unknown;
   readonly source: MetaEvidenceSource;
@@ -113,10 +109,8 @@ interface Merged {
   readonly realityQuestion: RealityQuestionInfo | null;
 }
 
-/** A pipeline step either goes on with a value or ends the attempt with a result. */
 type Step<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly result: MetaEvidenceResult };
 
-/** `${REACT_APP_METAEVIDENCE_URL}?chainId=…&disputeId=…` (spec 9.1 step 1), or `null` when the API is not configured. */
 export function metaEvidenceLocatorUrl(env: Env, chainId: ChainId, disputeId: bigint): string | null {
   const base = env.REACT_APP_METAEVIDENCE_URL?.trim() ?? "";
   return base === "" ? null : `${base}?chainId=${String(chainId)}&disputeId=${disputeId.toString()}`;
@@ -126,8 +120,8 @@ function failure(reason: MetaEvidenceFailure, code: UnavailableCode, message: st
   return { status: "failed", reason, error: { code, message } };
 }
 
-function unconfigured(): MetaEvidenceResult {
-  return failure("locator-error", "unsupported", UNCONFIGURED_MESSAGE);
+function noSource(): MetaEvidenceResult {
+  return failure("locator-error", "unsupported", NO_SOURCE_MESSAGE);
 }
 
 function rejected(reason: MetaEvidenceRejection): MetaEvidenceResult {
@@ -142,7 +136,6 @@ function stop(result: MetaEvidenceResult): Step<never> {
   return { ok: false, result };
 }
 
-/** Runs one I/O step of the load: it is named `stage` until the next one starts, and is cut when the load's signal aborts. */
 function step<T>(load: Load, stage: TransientReason, task: (signal: AbortSignal) => Promise<T>): Promise<T> {
   load.stage = stage;
   return untilAborted(load.deadline.signal, task);
@@ -157,8 +150,8 @@ function parseJson(text: string): { readonly ok: true; readonly value: unknown }
 }
 
 /**
- * Spec 9.1 step 1. As today, the answer is read as JSON whatever its HTTP status, so an answer without a truthy
- * `metaEvidenceUri` is "missing"; an answer that is not JSON, or JSON `null`, is a `locator-error`.
+ * The answer is read as JSON whatever its HTTP status, so an error answer without a truthy `metaEvidenceUri` is
+ * "missing", not a failure; an answer that is not JSON, or JSON `null`, is a `locator-error`.
  */
 function locatedUri(text: string): unknown {
   const body = parseJson(text);
@@ -168,7 +161,7 @@ function locatedUri(text: string): unknown {
 
 /**
  * Starts this attempt's locator request under its own controller, linked to the load's signal, so a found event can
- * stop waiting for it and the load can abort it when it ends (P-25). The request is marked handled: the locator-first
+ * stop waiting for it and the load can abort it when it ends. The request is marked handled: the locator-first
  * path awaits it and rethrows its failure, the event path compares its answer.
  */
 function startLocator(load: Load, url: string): Promise<unknown> {
@@ -190,7 +183,7 @@ function startLocator(load: Load, url: string): Promise<unknown> {
 }
 
 /**
- * Starts the on-chain read of a load (P-25) under its own signal, which aborts after `ON_CHAIN_WAIT_MS`, when the
+ * Starts the on-chain read of a load under its own signal, which aborts after `ON_CHAIN_WAIT_MS`, when the
  * load's signal aborts, and on `dispose`. A rejection or an abort, even of a reader that ignores its signal, settles the
  * answer as `unavailable`: it never reaches `classify`, so it is never retried.
  */
@@ -213,7 +206,6 @@ function startOnChain(reader: OnChainMetaEvidenceReader, deadline: Deadline): On
   };
 }
 
-/** `promise`'s value, or `undefined` once `ms` have passed without it. */
 function withinGrace<T>(promise: Promise<T>, ms: number): Promise<T | undefined> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const grace = new Promise<undefined>((resolve) => {
@@ -229,7 +221,7 @@ function eventSource(locator: Extract<MetaEvidenceSource, { kind: "event" }>["lo
 }
 
 /**
- * What the locator said next to a found event (P-25): it is awaited at most `LOCATOR_COMPARE_GRACE_MS`, then aborted, and
+ * What the locator said next to a found event: it is awaited at most `LOCATOR_COMPARE_GRACE_MS`, then aborted, and
  * compared by canonical path, so `ipfs://CID/x` and `/ipfs/CID/x` agree. It never decides, retries or fails the load.
  */
 async function compareLocator(load: Load, locator: Promise<unknown> | null, eventUri: string): Promise<MetaEvidenceSource> {
@@ -243,22 +235,20 @@ async function compareLocator(load: Load, locator: Promise<unknown> | null, even
   );
   load.locatorRequest?.abort(new Interrupted());
   if (answer === undefined || answer === null) return eventSource("unavailable", null);
-  if (!isTruthy(answer.located)) return eventSource("missing", null);
+  if (!answer.located) return eventSource("missing", null);
   const locatorPath = normalizeIpfsPath(answer.located);
   if (locatorPath === null) return eventSource("disagrees", null);
   return eventSource(locatorPath === normalizeIpfsPath(eventUri) ? "agrees" : "disagrees", locatorPath);
 }
 
-/** Why the locator decides when the event did not (P-25). */
 function fallbackSource(event: OnChainMetaEvidence | null): MetaEvidenceSource {
   if (event === null) return { kind: "locator", event: "not-read" };
   return { kind: "locator", event: event.status === "not-found" ? event.reason : "unavailable" };
 }
 
 /**
- * Spec 9.1 step 1 with P-25: the locator is asked while the on-chain answer is awaited. A found event's URI wins, the
- * locator compared only; otherwise the locator decides as today (`missing`, transient failures thrown for a retry), and
- * an unconfigured locator is today's final configuration failure.
+ * The locator is asked while the on-chain answer is awaited. A found event's URI wins and the locator is only compared;
+ * otherwise the locator decides, and its transient failures are thrown for a retry.
  */
 async function choose(load: Load): Promise<Step<Chosen>> {
   const locator = load.locatorUrl === null ? null : startLocator(load, load.locatorUrl);
@@ -266,12 +256,12 @@ async function choose(load: Load): Promise<Step<Chosen>> {
   const event = load.onChain === null ? null : await load.onChain;
   load.deadline.signal.throwIfAborted();
   if (event?.status === "found") return { ok: true, value: { uri: event.uri, source: await compareLocator(load, locator, event.uri) } };
-  if (locator === null) return stop(unconfigured());
+  if (locator === null) return stop(noSource());
   const located = await locator;
-  return isTruthy(located) ? { ok: true, value: { uri: located, source: fallbackSource(event) } } : stop({ status: "missing" });
+  return located ? { ok: true, value: { uri: located, source: fallbackSource(event) } } : stop({ status: "missing" });
 }
 
-/** Spec 9.1 step 3: an HTTP error is a transient `fetch-error`; a file that is not JSON is a deterministic `not-json`. */
+/** An HTTP error is a transient `fetch-error`; a file that is not JSON is a deterministic `not-json`. */
 async function fetchDocument(load: Load, fileUrl: string): Promise<Step<unknown>> {
   const text = await step(load, "fetch-error", async (signal) => {
     const response = await load.context.fetcher(fileUrl, { signal });
@@ -282,23 +272,23 @@ async function fetchDocument(load: Load, fileUrl: string): Promise<Step<unknown>
   return body.ok ? { ok: true, value: body.value } : stop(failure("not-json", "invalid-data", "The meta-evidence file is not JSON."));
 }
 
-/** Spec 9.1 steps 4 and 5: legacy keys renamed (a truthy legacy value wins), and a falsy `rulingOptions.type` defaulted. */
+/** A truthy legacy value wins over the current key; a falsy `rulingOptions.type` defaults to single-select. */
 function prepare(json: unknown): unknown {
   if (!isPlainObject(json)) return json;
   const kept: [string, unknown][] = [];
   const renamed: [string, unknown][] = [];
   for (const [key, value] of Object.entries(json)) {
-    const current = isTruthy(value) ? LEGACY_KEYS.get(key) : undefined;
+    const current = value ? LEGACY_KEYS.get(key) : undefined;
     if (current === undefined) kept.push([key, value]);
     else renamed.push([current, value]);
   }
   const prepared: JsonObject = Object.fromEntries([...kept, ...renamed]);
   const options = own(prepared, "rulingOptions");
-  if (!isPlainObject(options) || isTruthy(own(options, "type"))) return prepared;
+  if (!isPlainObject(options) || Boolean(own(options, "type"))) return prepared;
   return { ...prepared, rulingOptions: { ...options, type: "single-select" } };
 }
 
-/** The script's text, or `null` when the gateway answers with an HTTP error (spec 9.1 step 7.4: no merge). */
+/** `null` on an HTTP error: the meta-evidence is then used without a merge, and the attempt is not retried. */
 function fetchScript(load: Load, url: string): Promise<string | null> {
   return step(load, "fetch-error", async (signal) => {
     const response = await load.context.fetcher(url, { signal });
@@ -307,26 +297,18 @@ function fetchScript(load: Load, url: string): Promise<string | null> {
 }
 
 /**
- * Spec 9.1 step 7 for an arbitrable that is not a registered Reality proxy: the script URI must be content-addressed
- * (A3) and allowlisted for the arbitrator chain (A1), or the meta-evidence is replaced by the placeholder (A2). The
- * script is fetched from its canonical path, then run with validated parameters (B5) and the remaining budget as its
- * timeout (D-38); its result is shallow-merged when it is a plain object (A23), and a Reality renderer's status is mapped
- * (A4).
+ * The script URI must be content-addressed and allowlisted for the arbitrator chain, or the whole meta-evidence becomes
+ * the placeholder. The script is fetched from its canonical path, never from the raw URI. Its parameters are checked
+ * before the fetch, so a gateway that fails or hangs cannot turn a script that would never run into a failed load.
  */
 async function applyScript(load: Load, prepared: unknown): Promise<Step<Merged>> {
   if (!isPlainObject(prepared)) return merged(prepared, NO_SCRIPT);
   const scriptUri = own(prepared, "dynamicScriptURI");
-  if (!isTruthy(scriptUri)) return merged(prepared, NO_SCRIPT);
+  if (!scriptUri) return merged(prepared, NO_SCRIPT);
   const scriptPath = normalizeIpfsPath(scriptUri);
   if (scriptPath === null) return stop(rejected("script-uri-not-content-addressed"));
-  if (!isScriptAllowed(load.registry, load.context.arbitratorChainId, scriptUri)) return stop(rejected("script-not-allowlisted"));
-  const scriptText = await fetchScript(load, gatewayUrl(scriptPath, load.gateway));
-  if (scriptText === null) return merged(prepared, SCRIPT_FETCH_FAILED);
-  return runScript(load, prepared, scriptText);
-}
-
-async function runScript(load: Load, prepared: JsonObject, scriptText: string): Promise<Step<Merged>> {
-  const { context, deadline } = load;
+  const { context } = load;
+  if (!isScriptAllowed(load.registry, context.arbitratorChainId, scriptUri)) return stop(rejected("script-not-allowlisted"));
   const params = buildScriptParameters({
     metaEvidence: coerceMetaEvidence(prepared),
     arbitratorChainId: context.arbitratorChainId,
@@ -334,12 +316,18 @@ async function runScript(load: Load, prepared: JsonObject, scriptText: string): 
     arbitrable: context.arbitrable,
     env: context.env,
   });
-  if (!params.ok) return stop({ status: "failed", reason: "unknown-chain", error: params.error });
+  if (!params.ok) return merged(prepared, SCRIPT_CHAIN_UNAVAILABLE);
+  const scriptText = await fetchScript(load, gatewayUrl(scriptPath, load.gateway));
+  if (scriptText === null) return merged(prepared, SCRIPT_FETCH_FAILED);
+  return runScript(load, prepared, scriptText, params.value);
+}
 
+async function runScript(load: Load, prepared: JsonObject, scriptText: string, params: ScriptParameters): Promise<Step<Merged>> {
+  const { context, deadline } = load;
   const kind: ScriptKind = isRealityScript(scriptText) ? "reality" : "standard";
-  const result = await step(load, "script-failed", (signal) => context.runner.run({ scriptText, params: params.value, kind, timeoutMs: deadline.remainingMs(), signal }));
+  const result = await step(load, "script-failed", (signal) => context.runner.run({ scriptText, params, kind, timeoutMs: deadline.remainingMs(), signal }));
   if (result.status === "failed") {
-    // A runner error (refused parameters, no frame, a malformed reply) is deterministic (P-16). A runner that did not
+    // A runner error (refused parameters, no frame, a malformed reply) is deterministic. A runner that did not
     // start may only be slow, so it is retried, and the host's explanation is what the user reads if it never does.
     if (result.reason === "runner-error") return stop(failure("script-failed", "rpc-error", result.message));
     throw new TransientFailure("script-failed", result.reason === "not-started" ? result.message : `The dynamic script failed (${result.reason}).`);
@@ -353,8 +341,8 @@ async function runScript(load: Load, prepared: JsonObject, scriptText: string): 
 }
 
 /**
- * Spec 9.1 steps 6 and 8, spec 10.4: a registered Reality proxy never runs its script. When its meta-evidence is valid,
- * the on-chain question sets `rulingOptions`, `realityQuestion` and, for entries with a `questionOverride`, `question`.
+ * A registered Reality proxy never runs its script. When its meta-evidence is valid, the on-chain question sets
+ * `rulingOptions`, `realityQuestion` and, for entries with a `questionOverride`, `question`.
  */
 async function applyRealityProxy(load: Load, entry: RealityProxyEntry, prepared: unknown): Promise<Step<Merged>> {
   if (!isValidMetaEvidence(prepared)) return merged(prepared, REGISTERED_PROXY);
@@ -375,7 +363,7 @@ async function applyRealityProxy(load: Load, entry: RealityProxyEntry, prepared:
   return merged(json, REGISTERED_PROXY, derived.realityQuestion);
 }
 
-/** Spec 9.1 step 9 and C13: the merged result is validated; `realityQuestion` is the derived one, never the JSON's. */
+/** `realityQuestion` is the derived one, never the JSON's. */
 function accept(result: Merged, uri: CanonicalIpfsPath, fileUrl: string, source: MetaEvidenceSource): MetaEvidenceResult {
   const parsed = parseMetaEvidence(result.json);
   if (!parsed.ok) return failure("schema-invalid", parsed.error.code, parsed.error.message);
@@ -383,9 +371,8 @@ function accept(result: Merged, uri: CanonicalIpfsPath, fileUrl: string, source:
 }
 
 /**
- * One attempt of spec 9.1, in the gating order of A2. The content-addressing check applies to whichever URI won (P-25):
- * a rejected on-chain URI is the placeholder, never a fallback to the locator's. Throws on a transient failure; returns
- * every other outcome.
+ * The content-addressing check applies to whichever URI won: a rejected on-chain URI is the placeholder, never a
+ * fallback to the locator's. Throws on a transient failure; returns every other outcome.
  */
 async function runAttempt(load: Load): Promise<MetaEvidenceResult> {
   const chosen = await choose(load);
@@ -417,7 +404,7 @@ function cancelled(stage: TransientReason): MetaEvidenceResult {
   return failure(stage, "rpc-error", "The meta-evidence load was cancelled.");
 }
 
-/** What a thrown attempt means: a cancellation or the end of the budget is final; anything else is worth a retry. */
+/** An unexpected error is treated as transient; only a cancellation or the end of the budget is final. */
 function classify(load: Load, error: unknown): { readonly result: MetaEvidenceResult; readonly final: boolean } {
   if (load.deadline.cancelled()) return { result: cancelled(load.stage), final: true };
   if (load.deadline.expired()) return { result: budgetExhausted(), final: true };
@@ -427,7 +414,6 @@ function classify(load: Load, error: unknown): { readonly result: MetaEvidenceRe
   return { result: failure(load.stage, "rpc-error", detail === null ? message : `${message} ${detail}`), final: false };
 }
 
-/** D-38: attempts until one settles, a transient failure leaves no room for the 5 s wait and another attempt, or the caller aborts. */
 async function attemptWithinBudget(load: Load): Promise<MetaEvidenceResult> {
   const { deadline } = load;
   for (;;) {
@@ -444,22 +430,13 @@ async function attemptWithinBudget(load: Load): Promise<MetaEvidenceResult> {
 }
 
 /**
- * Loads a dispute's meta-evidence (spec 9.1, A2) within `context.budgetMs` (D-38). Never rejects.
- *
- * Order: the URI, from the arbitrable's `MetaEvidence` event when `context.onChain` finds it (P-25: read once per load,
- * waited at most `ON_CHAIN_WAIT_MS`; the locator is then compared only, waited at most `LOCATOR_COMPARE_GRACE_MS`), else
- * from the locator (`missing` without a `metaEvidenceUri`); the content-addressing check of that URI (else the
- * placeholder); the file through the gateway (`not-json`); legacy keys and the default `rulingOptions.type`; then either
- * the registered Reality proxy path (script skipped, options from the on-chain question) or the dynamic-script gates and
- * run; finally the schema on the merged result (C13). Rejections (`invalid`) are never cached (A2). Transient failures
- * are retried after 5 s while the budget can hold another attempt, then reported, a runner that did not start included
- * (P16-R1); deterministic ones, a runner error included (P-16), are not retried; a step still running when the budget
- * ends is `budget-exhausted`; the caller's abort ends the load at once. The reader's signal and the last locator request
- * are aborted when the load ends.
+ * Never rejects. Transient failures are retried after 5 s while the budget can hold another attempt; deterministic ones,
+ * a runner error included, are not. A step still running when the budget ends is `budget-exhausted`, and the caller's
+ * abort ends the load at once.
  */
 export async function loadMetaEvidence(context: MetaEvidenceContext): Promise<MetaEvidenceResult> {
   const locatorUrl = metaEvidenceLocatorUrl(context.env, context.arbitratorChainId, context.disputeId);
-  if (locatorUrl === null && context.onChain === undefined) return unconfigured();
+  if (locatorUrl === null && context.onChain === undefined) return noSource();
   const deadline = startDeadline(context.budgetMs, context.signal);
   const onChain = context.onChain === undefined ? null : startOnChain(context.onChain, deadline);
   const load: Load = {

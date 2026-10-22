@@ -3,9 +3,8 @@ import { governorAbi } from "../abi";
 import type { Address, ReadClient } from "../types";
 
 /**
- * `sessions(uint256)`, the public getter of the governor's `Session` struct (its arrays and mapping omitted). The
- * `abi` module does not embed it; `governor.test.ts` pins it to the `@kleros/kleros` artifact and to the verified ABIs
- * of the four deployed governors, which share this layout.
+ * `sessions(uint256)`, the public getter of the governor's `Session` struct (its arrays and mapping omitted). A test pins
+ * it to the `@kleros/kleros` artifact and to the verified ABIs of the deployed governors, which share this layout.
  */
 export const governorSessionAbi = [
   {
@@ -23,14 +22,13 @@ export const governorSessionAbi = [
   },
 ] as const satisfies Abi;
 
-/** `Session.status` once the arbitrator's ruling is executed: `withdrawFeesAndRewards` requires it (verified source). */
+/** `Session.status` once the arbitrator's ruling is executed: `withdrawFeesAndRewards` requires it. */
 const SESSION_RESOLVED = 2;
 
-/** The parts of `sessions(session)` the withdraw read needs. */
 export interface GovernorSession {
   /**
-   * The ruling the governor settled on (D-47): the jury's, unless exactly one list fully funded the final round, which
-   * then wins as the governor's shadow winner (`rule()` executes `shadowWinner + 1`, verified source).
+   * The ruling the governor settled on: the jury's, unless exactly one list fully funded the final round, which then
+   * wins as the governor's shadow winner (`rule()` executes `shadowWinner + 1`).
    */
   readonly ruling: bigint;
   readonly disputeId: bigint;
@@ -67,23 +65,22 @@ export function readGovernorContributions(client: ReadClient, governor: Address,
   return client.readContract({ address: governor, abi: governorAbi, functionName: "getContributions", args: [session, round, contributor] });
 }
 
-/** A ruling as the governor numbers lists (verified source): ruling r is list index r − 1; ruling 0 names no list. */
+/** Ruling r is governor list index r − 1; ruling 0 names no list. */
 export function governorListIndex(ruling: bigint): bigint | null {
   return ruling >= 1n ? ruling - 1n : null;
 }
 
-/** The list index of `ruling` among the round's `lists`, or `null` when it names none of them. */
 function rulingListIndex(ruling: bigint, lists: number): number | null {
   const listIndex = governorListIndex(ruling);
   return listIndex !== null && listIndex < BigInt(lists) ? Number(listIndex) : null;
 }
 
 /**
- * What `withdrawFeesAndRewards(beneficiary, session, round, listIndex)` pays for one contribution, as the verified
- * governor source computes it once the session is resolved with its settled `ruling` (D-47), the same for every round:
- * an unfunded side is refunded; when the ruling is 0 or the winner's side was not fully paid, every paid side shares the fee rewards in proportion to the
- * successfully paid fees; otherwise the winner's contributors share them in proportion to the winner's paid fees, and
- * a fully paid losing side gets nothing.
+ * What `withdrawFeesAndRewards(beneficiary, session, round, listIndex)` pays for one contribution, as the governor
+ * computes it once the session is resolved with its settled `ruling`, the same for every round: an unfunded side is
+ * refunded; when the ruling is 0 or the winner's side was not fully paid, every paid side shares the fee rewards in
+ * proportion to the successfully paid fees; otherwise the winner's contributors share them in proportion to the
+ * winner's paid fees, and a fully paid losing side gets nothing.
  */
 export function governorReward(round: GovernorRound, contribution: bigint, listIndex: number, ruling: bigint): bigint {
   if (round.hasPaid[listIndex] !== true) return contribution;

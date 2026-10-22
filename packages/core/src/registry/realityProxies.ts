@@ -2,8 +2,7 @@ import type { RealityProxyEntry } from "./types";
 import type { RegistryKey } from "../types";
 
 /**
- * Today's `REALITY_PROXIES` (29 entries), fields unchanged, plus a justification. Maintenance follows REALITY_OPS.md.
- * Each entry's comment names the arbitrable and the dynamic script its MetaEvidence points at.
+ * Maintenance follows REALITY_OPS.md. Each entry's comment names the arbitrable and the dynamic script its MetaEvidence points at.
  */
 export const REALITY_PROXIES: Readonly<Record<RegistryKey, RealityProxyEntry>> = {
   // Realitio_v2_1_ArbitratorWithAppeals (Gnosis, B script) (dynamic script QmWWsDmvjhR9UVRgkcG75vAKzfK3vB85EkZzudnaxwfAWr)

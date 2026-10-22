@@ -120,9 +120,9 @@ function unslashedDispute(disputeId: string): RecordedUnslashedDispute {
 export const UNSLASHED = {
   arbitrable: recordedUnslashed.arbitrable,
   readAtBlock: BigInt(recordedUnslashed.readAtBlock),
-  /** Golden 1678: no appeal; the 0.273 ETH contribution to ruling 2 and its `RulingFunded` sit in round 1. */
+  /** Dispute 1678: no appeal; the 0.273 ETH contribution to ruling 2 and its `RulingFunded` sit in round 1. */
   dispute1678: unslashedDispute("1678"),
-  /** Golden 1226: one appeal; rulings 2 and 1 both funded in round 1, the first 56,623 blocks after the Dispute event. */
+  /** Dispute 1226: one appeal; rulings 2 and 1 both funded in round 1, the first 56,623 blocks after the Dispute event. */
   dispute1226: unslashedDispute("1226"),
 } as const;
 
@@ -140,7 +140,7 @@ export interface RecordedGetters {
   readonly replies: Readonly<Record<string, CallReply>>;
 }
 
-/** The raw replies of every multiplier getter of spec 10.9 on six mainnet contracts, read at block 26,190,905. */
+/** The raw replies of every multiplier getter on six mainnet contracts, read at block 26,190,905. */
 export const MULTIPLIER_GETTERS: readonly RecordedGetters[] = recordedMultipliers.contracts.map((contract) => ({
   label: contract.label,
   address: contract.address,

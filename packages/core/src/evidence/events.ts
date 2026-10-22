@@ -19,25 +19,19 @@ interface ScanRequest {
   readonly signal?: AbortSignal;
 }
 
-/** The Evidence logs of one evidence group, and how many matching logs could not be decoded. */
 export interface EvidenceScan {
   readonly logs: readonly EvidenceLog[];
   readonly undecodable: number;
 }
 
-/**
- * First block of the Dispute-event and Evidence scans (MODULES.md choice 3, proposal P-01): the chain's arbitrator
- * deployment block, or 0, on every chain. Today's testnet scans start at `head − lookback` and miss older disputes.
- */
+/** The arbitrator deployment block on every chain, testnets included: a scan from `head − lookback` misses older disputes. */
 export function evidenceScanStart(chain: ChainConfig): bigint {
   return BigInt(chain.arbitratorDeployedAtBlock ?? 0);
 }
 
 /**
- * The ERC-1497 `Dispute(_arbitrator, _disputeID)` event of a dispute on its arbitrable, archon's `getDispute` (spec 6.3).
- * Scans `[fromBlock, head]` with both indexed arguments filtered, chunked where the RPC caps ranges. Zero or several
- * logs are reported, not thrown; the block timestamp is the creation time. Never rejects: a failed read is `rpc-error`,
- * a log whose data does not decode is `invalid-data` (D-36).
+ * Zero or several logs are reported, not thrown. Never rejects: a failed read is `rpc-error`, a log whose data does not
+ * decode is `invalid-data`.
  */
 export async function readDisputeEvent(request: {
   readonly client: ReadClient;
@@ -78,18 +72,15 @@ export async function readDisputeEvent(request: {
   }
 }
 
-/** Whether `log` was emitted after `other`: a later block, or a later log index in the same block. */
 function isLater(log: { readonly blockNumber: bigint; readonly logIndex: number }, other: { readonly blockNumber: bigint; readonly logIndex: number }): boolean {
   return log.blockNumber === other.blockNumber ? log.logIndex > other.logIndex : log.blockNumber > other.blockNumber;
 }
 
 /**
- * The ERC-1497 `MetaEvidence(_metaEvidenceID)` event of an arbitrable (P-25): the URI the arbitrable recorded for the
- * dispute's meta-evidence ID. Two passes: `[fromBlock, head]`, then, only when that finds nothing and `fromBlock > 0`,
- * `[0, fromBlock - 1]`, because the emission carries no arbitrator and can precede the arbitrator's deployment. Both are
- * chunked where the RPC caps ranges. Several logs are not ambiguous: the latest by block and log index wins, and
+ * Two passes: `[fromBlock, head]`, then, only when that finds nothing, `[0, fromBlock - 1]`, because the emission carries
+ * no arbitrator and can precede the arbitrator's deployment. Several logs are not ambiguous: the latest wins and
  * `emissions` counts them; a latest log whose `_evidence` does not decode is `invalid-data`, with no fallback to an older
- * emission. Never rejects: a failed or aborted read is `rpc-error` (D-36).
+ * emission. Never rejects: a failed or aborted read is `rpc-error`.
  */
 export async function readMetaEvidenceEvent(request: {
   readonly client: ReadClient;
@@ -121,9 +112,8 @@ export async function readMetaEvidenceEvent(request: {
 }
 
 /**
- * The ERC-1497 `Evidence(_arbitrator, _evidenceGroupID)` logs of an evidence group, archon's `getEvidence` without the
- * fetch (spec 6.3), in chain order. The scan starts at `fromBlock`, not at the dispute, because evidence can precede the
- * dispute. Logs whose URI or submitter does not decode are left out here; `loadEvidence` counts them as hidden (D-22).
+ * The scan starts at `fromBlock`, not at the dispute, because evidence can precede the dispute. Logs whose URI or
+ * submitter does not decode are left out here; `loadEvidence` counts them as hidden.
  */
 export async function readEvidenceLogs(request: {
   readonly client: ReadClient;
@@ -141,7 +131,7 @@ export async function readEvidenceLogs(request: {
   }
 }
 
-/** The Evidence scan behind `readEvidenceLogs` and `loadEvidence`. Rejects when a read fails. */
+/** Unlike `readEvidenceLogs`, rejects when a read fails. */
 export async function scanEvidenceLogs(request: ScanRequest & { readonly evidenceGroupId: bigint }): Promise<EvidenceScan> {
   const { client, signal } = request;
   signal?.throwIfAborted();

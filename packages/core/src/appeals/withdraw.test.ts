@@ -28,7 +28,7 @@ const ARBITRATOR: Address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
 const ME: Address = "0x00000000000000000000000000000000000000a1";
 const OTHER: Address = "0x00000000000000000000000000000000000000a2";
 const CONTRIBUTION = getAbiItem({ abi: idrV2Abi, name: "Contribution" });
-/** The governor's `Session.status` values (verified source): `DisputeCreated` while the dispute runs, `Resolved` once ruled. */
+/** The governor's `Session.status` values: `DisputeCreated` while the dispute runs, `Resolved` once ruled. */
 const DISPUTE_CREATED = 1;
 const RESOLVED = 2;
 
@@ -67,13 +67,13 @@ const MY_LOGS = [
 ];
 
 describe("readWithdrawable (IDisputeResolver)", () => {
-  it("P-22: without a connected account nothing is read", async () => {
+  it("reads nothing without a connected account", async () => {
     const { context: ctx, requests } = context({ head: 1_000n }, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]));
     expect(await readWithdrawable(ctx, { beneficiary: undefined, rounds: [0n], roundStartBlocks: [0n] })).toEqual({ status: "no-account" });
     expect(requests.methods).toEqual([]);
   });
 
-  it("D-51: idr-v2 sums every ruling the account contributed to across the rounds, one item per non-zero ruling", async () => {
+  it("sums every ruling the account contributed to across the rounds on idr-v2, one item per non-zero ruling", async () => {
     const { context: ctx, requests } = context(
       { head: 1_000n, logs: MY_LOGS, calls: [v2Withdrawable(1n, 40n), v2Withdrawable(2n, 0n)] },
       detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]),
@@ -83,7 +83,7 @@ describe("readWithdrawable (IDisputeResolver)", () => {
     expect(requests.calls).toEqual([v2Withdrawable(1n, 0n)[0], v2Withdrawable(2n, 0n)[0]]);
   });
 
-  it("D-51: several non-zero rulings are several items, withdrawn one by one; the total is their sum", async () => {
+  it("makes several non-zero rulings several items, withdrawn one by one, with their sum as the total", async () => {
     const { context: ctx } = context(
       { head: 1_000n, logs: MY_LOGS, calls: [v2Withdrawable(1n, 40n), v2Withdrawable(2n, 2n)] },
       detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]),
@@ -100,7 +100,7 @@ describe("readWithdrawable (IDisputeResolver)", () => {
     });
   });
 
-  it("D-49: idr-v1 reads getTotalWithdrawableAmount with a one-ruling array", async () => {
+  it("reads getTotalWithdrawableAmount on idr-v1 with a one-ruling array", async () => {
     const { context: ctx, requests } = context(
       { head: 1_000n, logs: MY_LOGS, calls: [v1Withdrawable(1n, 5n), v1Withdrawable(2n, 6n)] },
       detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v1"]),
@@ -118,7 +118,7 @@ describe("readWithdrawable (IDisputeResolver)", () => {
     expect(requests.calls).toEqual([v1Withdrawable(1n, 0n)[0], v1Withdrawable(2n, 0n)[0]]);
   });
 
-  it("D-30, D-49: golden 1678 reads the round-1 contribution of its first contributor through the v1 signature (already withdrawn: nothing)", async () => {
+  it("reads the round-1 contribution of dispute 1678's first contributor through the v1 signature (already withdrawn: nothing)", async () => {
     const dispute = UNSLASHED.dispute1678;
     const { client, requests } = fakeNode({ head: UNSLASHED.readAtBlock, logs: dispute.fundingLogs, calls: dispute.withdrawCalls });
     const family = await recordedDetection(1, UNSLASHED.arbitrable);
@@ -136,7 +136,7 @@ describe("readWithdrawable (IDisputeResolver)", () => {
     expect(requests.calls).toEqual(dispute.withdrawCalls.map(([key]) => key));
   });
 
-  it("§5.15: only the account's own contributions in the given rounds are considered", async () => {
+  it("considers only the account's own contributions in the given rounds", async () => {
     const { context: ctx, requests } = context(
       { head: 1_000n, logs: MY_LOGS, calls: [v2Withdrawable(1n, 0n), v2Withdrawable(2n, 0n)] },
       detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]),
@@ -145,7 +145,7 @@ describe("readWithdrawable (IDisputeResolver)", () => {
     expect(requests.calls).toHaveLength(2);
   });
 
-  it("D-02: one scan from the earliest round start to the head", async () => {
+  it("scans once from the earliest round start to the head", async () => {
     const { context: ctx, requests } = context(
       { head: 1_000n, logs: MY_LOGS, calls: [v2Withdrawable(1n, 1n), v2Withdrawable(2n, 1n)] },
       detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]),
@@ -155,13 +155,13 @@ describe("readWithdrawable (IDisputeResolver)", () => {
     expect(requests.logs[0]).toMatchObject({ fromBlock: 100n, toBlock: 1_000n });
   });
 
-  it("§5.15: an account that contributed nothing has nothing to withdraw, without a withdrawable read", async () => {
+  it("has nothing to withdraw for an account that contributed nothing, without a withdrawable read", async () => {
     const { context: ctx, requests } = context({ head: 1_000n, logs: MY_LOGS }, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]));
     expect(await readWithdrawable(ctx, { beneficiary: "0x00000000000000000000000000000000000000a9", rounds: [0n, 1n], roundStartBlocks: [0n, 0n] })).toEqual({ status: "nothing" });
     expect(requests.calls).toEqual([]);
   });
 
-  it("D-36: a failed read is unavailable, never zero", async () => {
+  it("reports a failed read as unavailable, never zero", async () => {
     const reverted = context(
       { head: 1_000n, logs: MY_LOGS, calls: [v2Withdrawable(1n, 1n), reverting({ to: SYNTHETIC, abi: idrV2Abi, functionName: "getTotalWithdrawableAmount", args: [7n, ME, 2n] })] },
       detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]),
@@ -177,18 +177,18 @@ describe("readWithdrawable (IDisputeResolver)", () => {
     });
   });
 
-  it("§5.3: an unresolved local ID is unavailable", async () => {
+  it("reports an unresolved local ID as unavailable", async () => {
     const { context: ctx, requests } = context({ head: 1_000n }, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]), { localId: { kind: "unresolved", reason: "reverted" } });
     expect(await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n], roundStartBlocks: [0n] })).toMatchObject({ status: "unavailable", error: { code: "reverted" } });
     expect(requests.methods).toEqual([]);
   });
 
-  it("D-36: rounds without a start block each are invalid input", async () => {
+  it("rejects rounds without a start block each as invalid input", async () => {
     const { context: ctx } = context({ head: 1_000n }, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]));
     expect(await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n, 1n], roundStartBlocks: [0n] })).toMatchObject({ status: "unavailable", error: { code: "invalid-data" } });
   });
 
-  it("D-46: idr-legacy, Escrow V1 and view-only arbitrables have no withdraw read", async () => {
+  it("has no withdraw read for idr-legacy, Escrow V1 and view-only arbitrables", async () => {
     for (const signatures of [FAMILY_SIGNATURES["idr-legacy"], FAMILY_SIGNATURES["escrow-v1"], FAMILY_SIGNATURES["view-only"]]) {
       const { context: ctx, requests } = context({ head: 1_000n }, detectionFor(SYNTHETIC, signatures));
       expect(await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n], roundStartBlocks: [0n] })).toMatchObject({ status: "unavailable", error: { code: "unsupported" } });
@@ -212,7 +212,7 @@ describe("readWithdrawable (governor dialect)", () => {
   const contributions = (session: bigint, round: bigint, result: readonly bigint[]) =>
     answer({ to: GOVERNOR, abi: governorAbi, functionName: "getContributions", args: [session, round, ME], result });
 
-  it("D-47: the winner's contributors share the round's fee rewards; an unfunded side is refunded; items are per (round, list)", async () => {
+  it("shares the round's fee rewards among the winner's contributors, refunds an unfunded side and itemizes per (round, list)", async () => {
     const { context: ctx } = context(
       {
         head: 1_000n,
@@ -238,7 +238,7 @@ describe("readWithdrawable (governor dialect)", () => {
     });
   });
 
-  it("D-47: when the winner's side was not fully paid, every paid side is reimbursed in proportion", async () => {
+  it("reimburses every paid side in proportion when the winner's side was not fully paid", async () => {
     const { context: ctx } = context(
       { head: 1_000n, calls: [sessionState(2n, RESOLVED), roundInfo(5n, 0n, [[3_000n, 100n], [true, false], 3_000n, 3_000n]), contributions(5n, 0n, [1_500n, 50n])] },
       await governorFamily(),
@@ -254,7 +254,7 @@ describe("readWithdrawable (governor dialect)", () => {
     });
   });
 
-  it("D-47: with ruling 0 the paid sides are reimbursed in proportion to the successfully paid fees", async () => {
+  it("reimburses the paid sides in proportion to the successfully paid fees when the ruling is 0", async () => {
     const { context: ctx } = context(
       { head: 1_000n, calls: [sessionState(0n, RESOLVED), roundInfo(5n, 0n, [[2_000n, 2_000n], [true, true], 3_000n, 4_000n]), contributions(5n, 0n, [1_000n, 0n])] },
       await governorFamily(),
@@ -267,7 +267,7 @@ describe("readWithdrawable (governor dialect)", () => {
     });
   });
 
-  it("D-47: a losing side that was fully paid gets nothing", async () => {
+  it("gives nothing to a losing side that was fully paid", async () => {
     const { context: ctx } = context(
       { head: 1_000n, calls: [sessionState(1n, RESOLVED), roundInfo(5n, 0n, [[2_000n, 3_000n], [true, true], 4_000n, 5_000n]), contributions(5n, 0n, [0n, 3_000n])] },
       await governorFamily(),
@@ -276,7 +276,7 @@ describe("readWithdrawable (governor dialect)", () => {
     expect(await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n], roundStartBlocks: [0n] })).toEqual({ status: "nothing" });
   });
 
-  it("D-47: golden 1621 reads session 18 (the Dispute event's evidence group); round 0 holds nothing for the account", async () => {
+  it("reads session 18 of dispute 1621 from the Dispute event's evidence group; round 0 holds nothing for the account", async () => {
     const { context: ctx, requests } = context(
       {
         head: GOVERNOR_1621.blockNumber,
@@ -292,13 +292,13 @@ describe("readWithdrawable (governor dialect)", () => {
     expect(requests.calls).toContain(answer({ to: GOVERNOR, abi: governorSessionAbi, functionName: "sessions", args: [18n], result: [2n, 1621n, 0n, RESOLVED, 0n] })[0]);
   });
 
-  it("D-47: before the ruling is executed the governor session is not resolved, so nothing is withdrawable", async () => {
+  it("has nothing withdrawable before the ruling is executed and the governor session resolved", async () => {
     const { context: ctx, requests } = context({ head: 1_000n, calls: [sessionState(0n, DISPUTE_CREATED)] }, await governorFamily(), { evidenceGroupId: 5n });
     expect(await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n], roundStartBlocks: [0n] })).toEqual({ status: "nothing" });
     expect(requests.calls).toEqual([sessionState(0n, DISPUTE_CREATED)[0]]);
   });
 
-  it("F1 D-47: the governor's settled ruling, not the jury's, decides the rewards when only one list funded the final round", async () => {
+  it("rewards under the governor's settled ruling, not the jury's, when only one list funded the final round", async () => {
     const { context: ctx } = context(
       {
         head: 1_000n,
@@ -322,7 +322,7 @@ describe("readWithdrawable (governor dialect)", () => {
     });
   });
 
-  it("F1 D-47: a session that belongs to another dispute is invalid data, never a reward", async () => {
+  it("treats a session that belongs to another dispute as invalid data, never a reward", async () => {
     const { context: ctx } = context(
       { head: 1_000n, calls: [sessionState(1n, RESOLVED, 98n), roundInfo(5n, 0n, [[3_000n, 2_000n], [true, true], 4_000n, 5_000n]), contributions(5n, 0n, [1_500n, 0n])] },
       await governorFamily(),
@@ -331,7 +331,7 @@ describe("readWithdrawable (governor dialect)", () => {
     expect(await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n], roundStartBlocks: [0n] })).toMatchObject({ status: "unavailable", error: { code: "invalid-data" } });
   });
 
-  it("D-47: without the Dispute event's evidence group the session is unknown", async () => {
+  it("reports the session as unknown without the Dispute event's evidence group", async () => {
     const { context: ctx, requests } = context({ head: 1_000n }, await governorFamily());
     expect(await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n], roundStartBlocks: [0n] })).toMatchObject({ status: "unavailable", error: { code: "not-found" } });
     expect(requests.methods).toEqual([]);

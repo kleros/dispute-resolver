@@ -37,7 +37,6 @@ export interface FakeNode {
   readonly maxLogRange?: bigint;
 }
 
-/** Every request the fake node received, by method. */
 export interface NodeRequests {
   readonly logs: LogsRequest[];
   readonly blocks: bigint[];
@@ -144,7 +143,6 @@ export function evidenceLog(input: {
   };
 }
 
-/** A synthetic `Dispute` log. */
 export function disputeLog(input: {
   readonly arbitrable: Address;
   readonly arbitrator: Address;
@@ -213,7 +211,6 @@ function stringEntries(value: object): Record<string, string> {
   return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
 }
 
-/** One recorded dispute by ID. */
 export function recordedDispute(disputeId: bigint): (typeof RECORDED.disputes)[number] {
   const dispute = RECORDED.disputes.find((candidate) => candidate.disputeId === disputeId);
   if (dispute === undefined) throw new Error(`dispute ${String(disputeId)} is not recorded`);
@@ -239,7 +236,7 @@ export function recordedBodies(): Record<string, string> {
 }
 
 /**
- * The recorded Gnosis disputes 460, 431 and 863 (P-25), read at block 48,850,832
+ * The recorded Gnosis disputes 460, 431 and 863, read at block 48,850,832
  * (`__fixtures__/gnosis-460-863-meta-evidence.json`): each one's Dispute log and every MetaEvidence log of its ID.
  */
 export const RECORDED_GNOSIS = {
@@ -256,7 +253,6 @@ export const RECORDED_GNOSIS = {
   })),
 };
 
-/** One recorded Gnosis dispute by ID. */
 export function recordedGnosisDispute(disputeId: bigint): (typeof RECORDED_GNOSIS.disputes)[number] {
   const dispute = RECORDED_GNOSIS.disputes.find((candidate) => candidate.disputeId === disputeId);
   if (dispute === undefined) throw new Error(`Gnosis dispute ${String(disputeId)} is not recorded`);

@@ -5,13 +5,11 @@ import type { FamilyDetection } from "../families/types";
 import { describeError, getLogsChunked } from "../rpc";
 import type { Outcome, ReadClient } from "../types";
 import { resolveLocalId } from "./localId";
-import { fail, readOutcome, succeed } from "./outcome";
+import { fail, NETWORK_DATA_UNAVAILABLE, readOutcome, succeed } from "./outcome";
 import type { AppealDecisionEvent, AppealInfo, ArbitratedBinding, ArbitratorDispute, DisputeReadContext, DisputeReads, LocalIdResolution } from "./types";
 
 const APPEAL_DECISION_EVENT = getAbiItem({ abi: klerosLiquidAbi, name: "AppealDecision" });
-const NO_RPC = "This network has no read RPC configured.";
 
-/** The block timestamp of each distinct block, one `getBlock` per block. */
 async function blockTimestamps(client: ReadClient, blocks: readonly bigint[], signal: AbortSignal | undefined): Promise<ReadonlyMap<bigint, number>> {
   signal?.throwIfAborted();
   const entries = await Promise.all(
@@ -20,14 +18,10 @@ async function blockTimestamps(client: ReadClient, blocks: readonly bigint[], si
   return new Map(entries);
 }
 
-/**
- * The `AppealDecision(id)` events of a dispute on its arbitrator, oldest first, scanned `[fromBlock, head]` and chunked
- * where the RPC caps ranges (spec 6.3). `fromBlock` is the Dispute event's block, else the arbitrator's deployment
- * block. Never rejects: a failed scan or block read is a failed `Outcome` (D-36).
- */
+/** Never rejects: a failed scan or block read is a failed `Outcome`. */
 export async function readAppealDecisions(context: DisputeReadContext, binding: ArbitratedBinding, fromBlock: bigint): Promise<Outcome<readonly AppealDecisionEvent[]>> {
   const { client, signal } = context;
-  if (client === undefined) return fail("no-rpc", NO_RPC);
+  if (client === undefined) return fail("no-rpc", NETWORK_DATA_UNAVAILABLE);
   try {
     signal?.throwIfAborted();
     const head = await client.getBlockNumber();
@@ -53,7 +47,6 @@ export async function readAppealDecisions(context: DisputeReadContext, binding: 
   }
 }
 
-/** `appealCost(id, 0x)` and `appealPeriod(id)` together (spec 5.3 step 7). */
 function readAppealInfo(client: ReadClient, binding: ArbitratedBinding, signal: AbortSignal | undefined): Promise<Outcome<AppealInfo>> {
   const { arbitrator, disputeId } = binding;
   return readOutcome(
@@ -73,9 +66,8 @@ function hasAppealInfo(dispute: ArbitratorDispute): boolean {
   return dispute.period === 3 || dispute.period === 4;
 }
 
-/** Every read failing for want of a client (D-56). */
 function readsWithoutClient(found: { readonly dispute: ArbitratorDispute; readonly binding: ArbitratedBinding }): DisputeReads {
-  const noRpc = fail<never>("no-rpc", NO_RPC);
+  const noRpc = fail<never>("no-rpc", NETWORK_DATA_UNAVAILABLE);
   return {
     ...found,
     votesLengths: noRpc,
@@ -86,11 +78,7 @@ function readsWithoutClient(found: { readonly dispute: ArbitratorDispute; readon
   };
 }
 
-/**
- * The per-dispute reads of the case page (spec 5.3 step 3 without the dead `ruling` and second `getDispute` reads, Q11,
- * D-11), in parallel: `getDispute(id)` for the vote counts, `currentRuling(id)`, the appeal decisions, the local ID
- * when the family is known, and the appeal cost and period in periods 3 and 4. Each read degrades on its own (D-36).
- */
+/** Each read degrades on its own instead of failing the whole dispute. */
 export async function readDisputeDetails(
   context: DisputeReadContext,
   found: { readonly dispute: ArbitratorDispute; readonly binding: ArbitratedBinding },

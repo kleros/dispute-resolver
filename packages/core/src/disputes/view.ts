@@ -12,14 +12,12 @@ import type { ArbitratorDispute, Compatibility, Court, Decision, DisputeLookup, 
 const NO_NOTICE: RealityNotice = { kind: "none", title: null };
 const DETAILS_NOT_READ = "The dispute details were not read.";
 
-/** The court of the dispute from the list: a failed list keeps its reason, a list without the court is `not-found` (D-36). */
 function findCourt(courts: Outcome<readonly Court[]>, subcourtId: bigint): Outcome<Court> {
   if (!courts.ok) return courts;
   const court = courts.value.find((candidate) => candidate.id === subcourtId);
   return court === undefined ? fail("not-found", `Court ${subcourtId.toString()} is not in the court list.`) : succeed(court);
 }
 
-/** `votesLengths[0]`, the first round's vote count (spec 5.8); an empty list is `invalid-data` (D-36). */
 function numberOfVotes(reads: DisputeReads | null): Outcome<number> {
   if (reads === null) return fail("rpc-error", DETAILS_NOT_READ);
   if (!reads.votesLengths.ok) return reads.votesLengths;
@@ -28,7 +26,6 @@ function numberOfVotes(reads: DisputeReads | null): Outcome<number> {
   return succeed(Number(first));
 }
 
-/** Ruling options and fallback outcomes from the loaded meta-evidence, or the INVALID placeholder (spec 5.9, A2). */
 function rulingSources(metaEvidence: MetaEvidenceResult | null): { readonly rulingOptions: RulingOptions | null; readonly fallbackOutcomes: FallbackOutcomes } {
   if (metaEvidence?.status === "ok" || metaEvidence?.status === "invalid") {
     return { rulingOptions: metaEvidence.metaEvidence.rulingOptions, fallbackOutcomes: metaEvidence.metaEvidence.fallbackOutcomes };
@@ -37,9 +34,8 @@ function rulingSources(metaEvidence: MetaEvidenceResult | null): { readonly ruli
 }
 
 /**
- * The decision alert from the reads (spec 5.9). Periods 0–2 need no read. The appeal and execution periods need the
- * current ruling; execution also needs the current round's funded rulings, where `null` means the arbitrable was not
- * scanned (no funded ruling) and a failed scan degrades the decision instead of guessing (D-36).
+ * `fundedRulings` `null` means the arbitrable was not scanned (no funded ruling); a failed scan degrades the decision
+ * instead of guessing.
  */
 function decision(
   dispute: ArbitratorDispute,
@@ -60,11 +56,7 @@ function decision(
   return succeed(deriveDecision({ period, currentRuling: reads.currentRuling.value, fundedRulings: funded, ...rulingSources(metaEvidence), compatibility }));
 }
 
-/**
- * Everything the case page renders above the accordion (04 §1). A lookup without a dispute is `exists: false` with its
- * reason; an existing dispute degrades field by field when an input is missing or failed, never as a whole (D-36). The
- * arbitrable is the arbitrator's (A22), the Reality notice comes from loaded meta-evidence only.
- */
+/** An existing dispute degrades field by field when an input is missing or failed, never as a whole. */
 export function buildDisputeView(input: {
   readonly lookup: DisputeLookup;
   readonly reads: DisputeReads | null;

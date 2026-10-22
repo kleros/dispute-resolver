@@ -4,17 +4,17 @@ import type { FamilyDetection } from "../families/types";
 import { arbitrableLocalId, built, describesBinding, isUint256, refused } from "./build";
 import type { WriteBuild } from "./types";
 
-/** The older resolver proxy's `fundAppeal(uint256,uint8)` alone, so the encoder cannot pick the other overload (D-46). */
+/** The older resolver proxy's `fundAppeal(uint256,uint8)` alone, so the encoder cannot pick the other overload. */
 const [, legacyUint8FundAppeal] = idrLegacyFundAppealAbi;
 const fundAppealUint8Abi = [legacyUint8FundAppeal] as const;
 
 const UINT8_MAX = 255n;
 
 /**
- * Appeal funding of one ruling, paying `value` (spec 5.12 fund action): IDisputeResolver `fundAppeal(localID, ruling)`
- * through the selector the family carries (the `uint8` one of the older resolver proxy, D-46), or the governor's
- * `fundAppeal(listIndex)` (D-47). The governor's verified source maps a ruling to `listIndex = ruling − 1`; ruling 0,
- * "refuse to arbitrate", names no list. Escrow V1 appeals through `buildEscrowAppealCall` instead.
+ * IDisputeResolver `fundAppeal(localID, ruling)` through the selector the family carries (the older resolver proxy's
+ * takes a `uint8`), or the governor's `fundAppeal(listIndex)`. The governor's verified source maps a ruling to
+ * `listIndex = ruling − 1`; ruling 0, "refuse to arbitrate", names no list. Escrow V1 appeals through
+ * `buildEscrowAppealCall` instead.
  */
 export function buildFundAppealCall(input: {
   readonly binding: ArbitratedBinding;
@@ -49,7 +49,7 @@ export function buildFundAppealCall(input: {
   }
 }
 
-/** Escrow V1's `appeal(transactionID)` paying the arbitrator's appeal cost (spec 10.2); only for `escrow-pay-cost`. */
+/** Escrow V1 appeals by paying the arbitrator's whole appeal cost, not by crowdfunding. */
 export function buildEscrowAppealCall(input: {
   readonly binding: ArbitratedBinding;
   readonly family: FamilyDetection;

@@ -10,17 +10,14 @@ export class Interrupted extends Error {
 }
 
 /**
- * The single budget of one meta-evidence load (D-38). `signal` aborts when the budget runs out or the caller aborts, and
- * every request and script run of the load carries it.
+ * The single budget of one meta-evidence load. `signal` aborts when the budget runs out or the caller aborts, and every
+ * request and script run of the load carries it.
  */
 export interface Deadline {
   readonly signal: AbortSignal;
   remainingMs(): number;
-  /** The budget is spent. */
   expired(): boolean;
-  /** The caller aborted the load. */
   cancelled(): boolean;
-  /** Stops the deadline timer and detaches from the caller's signal. */
   dispose(): void;
 }
 

@@ -1,5 +1,5 @@
 /**
- * Test-only view of the recorded `eth_getCode` fixtures of the families module (06 §5 item 5), reduced to what the
+ * Test-only view of the recorded `eth_getCode` fixtures of the families module, reduced to what the
  * selector tests need: the code whose dispatcher carries the selectors (the implementation's code behind an EIP-1967
  * proxy, else the contract's own).
  */

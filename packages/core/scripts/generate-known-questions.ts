@@ -1,8 +1,8 @@
 /**
- * The known-questions generator (A6, REALITY_OPS.md): regenerates `src/reality/knownQuestions.generated.ts`, the
+ * The known-questions generator (see REALITY_OPS.md): regenerates `src/reality/knownQuestions.generated.ts`, the
  * Reality.eth question of every dispute created by the registered Reality.eth proxies (`REGISTRY.realityProxies`), up to
  * the latest finalized block of each arbitrator chain. Read-only RPC calls through the read clients of `CHAINS`, built
- * from the environment (06 §3 invariant 3); the repository's `.env` is read when present, the environment winning.
+ * from the environment; the repository's `.env` is read when present, the environment winning.
  *
  * Usage (run through tsx by the package scripts):
  *   reality:known-questions           incremental update to the latest finalized blocks
@@ -11,7 +11,6 @@
  *
  * Exit code 0 when the file was written or, with `--check`, matches the chain data; 1 when `--check` finds a
  * difference, on an unknown argument, or on any failure (a missing RPC, an RPC error, an inconsistency in the chain data).
- * Operator tooling: the only core code that reads `process.env`.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";

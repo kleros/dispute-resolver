@@ -1,9 +1,6 @@
 import type { Abi } from "viem";
 
-/**
- * KlerosLiquid, the arbitrator (`@kleros/kleros`). Reads of spec 6.1 (subcourt count and timelines, dispute struct,
- * vote counts, appeal period, current ruling, costs) and the list events of 6.3.
- */
+/** KlerosLiquid (`@kleros/kleros`). */
 export const klerosLiquidAbi = [
   {
     type: "function",
@@ -122,7 +119,7 @@ export const klerosLiquidAbi = [
   },
 ] as const satisfies Abi;
 
-/** PolicyRegistry (`@kleros/kleros`): the policy URI of a court, whose JSON carries the court name (spec 6.1). */
+/** PolicyRegistry (`@kleros/kleros`): the policy URI of a court, whose JSON carries the court name. */
 export const policyRegistryAbi = [
   {
     type: "function",
@@ -133,7 +130,7 @@ export const policyRegistryAbi = [
   },
 ] as const satisfies Abi;
 
-/** ERC-792 `IArbitrator` (`@kleros/arbitrable-proxy-contracts`): the create cost, the appeal cost and the arbitrator's events (spec 6.1, 6.3). */
+/** ERC-792 `IArbitrator` (`@kleros/arbitrable-proxy-contracts`). */
 export const erc792Abi = [
   {
     type: "function",
@@ -172,7 +169,7 @@ export const erc792Abi = [
   },
 ] as const satisfies Abi;
 
-/** ERC-1497 `IEvidence` (`@kleros/arbitrable-proxy-contracts`): the arbitrable's meta-evidence, evidence and dispute events (spec 6.3). */
+/** ERC-1497 `IEvidence` (`@kleros/arbitrable-proxy-contracts`). */
 export const erc1497Abi = [
   {
     type: "event",

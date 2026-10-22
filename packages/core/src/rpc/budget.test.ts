@@ -11,7 +11,7 @@ describe("createRequestBudget", () => {
     vi.useRealTimers();
   });
 
-  it("§9.1: allows exactly maxRequests requests, then throws a LookupLimitError", () => {
+  it("allows exactly maxRequests requests, then throws a LookupLimitError", () => {
     const budget = createRequestBudget({ maxRequests: 3, deadlineMs: 90_000 });
     budget.spend();
     budget.spend();
@@ -21,7 +21,7 @@ describe("createRequestBudget", () => {
     }).toThrow(LookupLimitError);
   });
 
-  it("§9.1: keeps refusing once exhausted", () => {
+  it("keeps refusing once exhausted", () => {
     const budget = createRequestBudget({ maxRequests: 1, deadlineMs: 90_000 });
     budget.spend();
     expect(() => {
@@ -32,7 +32,7 @@ describe("createRequestBudget", () => {
     }).toThrow(LookupLimitError);
   });
 
-  it("§9.1: refuses requests after the deadline", () => {
+  it("refuses requests after the deadline", () => {
     const budget = createRequestBudget({ maxRequests: 1_500, deadlineMs: 90_000 });
     vi.advanceTimersByTime(90_000);
     budget.spend();
@@ -42,14 +42,14 @@ describe("createRequestBudget", () => {
     }).toThrow(/90000 ms deadline/);
   });
 
-  it("§9.1: the deadline is fixed when the budget is created", () => {
+  it("the deadline is fixed when the budget is created", () => {
     const budget = createRequestBudget({ maxRequests: 1_500, deadlineMs: 1_000 });
     vi.advanceTimersByTime(400);
     budget.spend();
     expect(budget.remainingMs()).toBe(600);
   });
 
-  it("§9.1: remainingMs counts down and never goes negative", () => {
+  it("remainingMs counts down and never goes negative", () => {
     const budget = createRequestBudget({ maxRequests: 1_500, deadlineMs: 90_000 });
     expect(budget.remainingMs()).toBe(90_000);
     vi.advanceTimersByTime(30_000);
@@ -58,7 +58,7 @@ describe("createRequestBudget", () => {
     expect(budget.remainingMs()).toBe(0);
   });
 
-  it("§9.1: the thrown error is recognized as a lookup limit", () => {
+  it("the thrown error is recognized as a lookup limit", () => {
     const budget = createRequestBudget({ maxRequests: 0, deadlineMs: 90_000 });
     let thrown: unknown;
     try {
@@ -71,14 +71,14 @@ describe("createRequestBudget", () => {
 });
 
 describe("isLookupLimitError", () => {
-  it("§9.1: is true only for LookupLimitError instances", () => {
+  it("is true only for LookupLimitError instances", () => {
     expect(isLookupLimitError(new LookupLimitError("over budget"))).toBe(true);
     expect(isLookupLimitError(new Error("over budget"))).toBe(false);
     expect(isLookupLimitError({ message: "over budget", lookupLimit: true })).toBe(false);
     expect(isLookupLimitError(undefined)).toBe(false);
   });
 
-  it("§9.1: LookupLimitError is an Error with its own name", () => {
+  it("LookupLimitError is an Error with its own name", () => {
     const error = new LookupLimitError("over budget");
     expect(error).toBeInstanceOf(Error);
     expect(error.name).toBe("LookupLimitError");

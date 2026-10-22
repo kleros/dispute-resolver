@@ -23,8 +23,8 @@ function syntheticNode(logs: readonly RpcLog[], overrides: Partial<FakeNode> = {
   return { head: 1_000_000n, logs, timestamps: {}, ...overrides };
 }
 
-describe("readMetaEvidenceEvent (P-25)", () => {
-  it("P-25: reads the recorded MetaEvidence(84) log of Gnosis 460 from the arbitrable, filtered on the selector and the ID", async () => {
+describe("readMetaEvidenceEvent", () => {
+  it("reads the recorded MetaEvidence(84) log of Gnosis 460 from the arbitrable, filtered on the selector and the ID", async () => {
     const { result, requests } = read(DISPUTE_460.arbitrable, 84n);
     const [recorded] = DISPUTE_460.metaEvidenceLogs;
     if (recorded === undefined) throw new Error("fixture has no MetaEvidence log");
@@ -49,7 +49,7 @@ describe("readMetaEvidenceEvent (P-25)", () => {
     expect(requests.logs[0]?.toBlock).toBe(RECORDED_GNOSIS.readAtBlock);
   });
 
-  it("P-25: several emissions of one ID: the latest by block and log index wins (Gnosis 863's re-emitted https URL)", async () => {
+  it("several emissions of one ID: the latest by block and log index wins (Gnosis 863's re-emitted https URL)", async () => {
     const { result } = read(DISPUTE_863.arbitrable, 0n);
     const outcome = await result;
     expect(outcome.ok && outcome.value.status === "found" && outcome.value.event).toMatchObject({
@@ -60,14 +60,14 @@ describe("readMetaEvidenceEvent (P-25)", () => {
     });
   });
 
-  it("P-25: the latest emission wins over an older one in the same block by log index", async () => {
+  it("the latest emission wins over an older one in the same block by log index", async () => {
     const node = syntheticNode([synthetic("/ipfs/QmLater/meta.json", 500n, 7), synthetic("/ipfs/QmEarlier/meta.json", 500n, 2)]);
     const { result } = read(SYNTHETIC, 5n, node, 0n);
     const outcome = await result;
     expect(outcome.ok && outcome.value.status === "found" && outcome.value.event).toMatchObject({ uri: "/ipfs/QmLater/meta.json", logIndex: 7, emissions: 2 });
   });
 
-  it("P-25, D-36: zero logs are not-found, a failed read is rpc-error without the node's message, an undecodable latest log is invalid-data, an aborted read is rpc-error", async () => {
+  it("zero logs are not-found, a failed read is rpc-error without the node's message, an undecodable latest log is invalid-data, an aborted read is rpc-error", async () => {
     const none = read(SYNTHETIC, 5n, syntheticNode([]), 0n);
     expect(await none.result).toEqual({ ok: true, value: { status: "not-found" } });
 
@@ -87,7 +87,7 @@ describe("readMetaEvidenceEvent (P-25)", () => {
     expect(aborted.requests.logs).toHaveLength(0);
   });
 
-  it("P-25: a MetaEvidence emission older than the arbitrator's deployment is found by the second pass over the blocks before it", async () => {
+  it("a MetaEvidence emission older than the arbitrator's deployment is found by the second pass over the blocks before it", async () => {
     const fromBlock = 16_895_601n;
     const node = syntheticNode([synthetic("/ipfs/QmBeforeDeployment/meta.json", fromBlock - 1_000n, 0)], { head: 20_000_000n });
     const { result, requests } = read(SYNTHETIC, 5n, node, fromBlock);
@@ -103,7 +103,7 @@ describe("readMetaEvidenceEvent (P-25)", () => {
     ]);
   });
 
-  it("P-25: no second pass when the first finds a log, and none when fromBlock is 0", async () => {
+  it("no second pass when the first finds a log, and none when fromBlock is 0", async () => {
     const found = read(SYNTHETIC, 5n, syntheticNode([synthetic("/ipfs/QmAfter/meta.json", 900_000n, 0)]), 800_000n);
     await found.result;
     expect(found.requests.logs).toHaveLength(1);

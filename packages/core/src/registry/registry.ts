@@ -4,7 +4,7 @@ import { REALITY_PROXIES } from "./realityProxies";
 import { DEFAULT_SCRIPT_CID, DYNAMIC_SCRIPT_ALLOWLIST } from "./scripts";
 import type { Registry } from "./types";
 
-/** The registry of 06 §2. Invariants are enforced by the tests of this module (06 §3). */
+/** Its invariants are enforced by `invariants.test.ts`. */
 export const REGISTRY: Registry = {
   realityProxies: REALITY_PROXIES,
   overrides: OVERRIDES,

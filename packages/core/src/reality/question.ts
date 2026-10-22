@@ -5,7 +5,6 @@ import { KNOWN_DISPUTE_QUESTIONS } from "./knownQuestions.generated";
 import { lookupRealityQuestion } from "./lookup";
 import type { LookupReadClients, RealityQuestion, RealityQuestionCache } from "./types";
 
-/** A lookup in progress, shared by every caller asking for the same dispute. */
 interface SharedLookup {
   readonly promise: Promise<RealityQuestion>;
   readonly controller: AbortController;
@@ -14,7 +13,6 @@ interface SharedLookup {
 
 const inFlightLookups = new Map<string, SharedLookup>();
 
-/** `"<arbitrator chain>:<lowercase proxy>:<dispute ID>"`, the key of the known-questions map. */
 function knownDisputeKey(arbitratorChainId: ChainId, entry: RealityProxyEntry, disputeId: bigint): string {
   return `${String(arbitratorChainId)}:${entry.proxy}:${String(disputeId)}`;
 }
@@ -29,15 +27,11 @@ function startSharedLookup(key: string, start: (signal: AbortSignal) => Promise<
   return shared;
 }
 
-/** Why a caller stopped waiting: the reason of its signal, as an `Error`. */
 function abortError(signal: AbortSignal | undefined): Error {
   return signal?.reason instanceof Error ? signal.reason : new DOMException("The lookup was aborted.", "AbortError");
 }
 
-/**
- * The result of a shared lookup for one caller. A caller that aborts stops waiting, and the lookup itself stops once no
- * caller is waiting for it any more, so one caller's abort never fails the others.
- */
+/** The lookup itself stops only once no caller is waiting, so one caller's abort never fails the others. */
 function waitForLookup(key: string, shared: SharedLookup, signal: AbortSignal | undefined): Promise<RealityQuestion> {
   shared.waiters += 1;
   return new Promise<RealityQuestion>((resolve, reject) => {
@@ -57,12 +51,10 @@ function waitForLookup(key: string, shared: SharedLookup, signal: AbortSignal | 
 }
 
 /**
- * Fetches the Reality.eth question and template behind a dispute of a registered Reality.eth proxy (spec 9.1, A5):
- * served from `cache` when a valid entry exists, otherwise looked up on the chains through the clients `clients` builds
- * around the lookup's request budget (every attempt, retries included, spends it) and cached on success. Failures are never cached. Concurrent lookups of the same dispute share one in-flight promise.
+ * Failures are never cached. Concurrent lookups of the same dispute share one in-flight promise.
  *
- * Rejects on a missing client for either chain ("no RPC configured for chain N", D-18), RPC errors, an exhausted request
- * budget or deadline, an abort of `signal`, and inconsistent data.
+ * Rejects on a missing client for either chain, RPC errors, an exhausted request budget or deadline, an abort of
+ * `signal`, and inconsistent data.
  */
 export async function fetchRealityQuestion(request: {
   readonly entry: RealityProxyEntry;

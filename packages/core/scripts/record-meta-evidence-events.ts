@@ -1,5 +1,5 @@
 /**
- * Recorder of the on-chain meta-evidence fixtures of P-25: the raw `Dispute` and `MetaEvidence` logs of Gnosis disputes
+ * Recorder of the on-chain meta-evidence fixtures: the raw `Dispute` and `MetaEvidence` logs of Gnosis disputes
  * 460, 431 and 863 read at one pinned block (`src/evidence/__fixtures__/gnosis-460-863-meta-evidence.json`), the 460
  * Playwright recording (`packages/web/e2e/app/fixtures/gnosis-460-meta-evidence.json`), and the `MetaEvidence(0)`
  * `eth_getLogs` answer of the mainnet 1621 governor added to the two mainnet 1621 recordings of packages/web/e2e, at
@@ -22,7 +22,7 @@ import { loadRepositoryEnv, rawRpcFor, type RawRpc } from "./recordingRpc";
 const RECORDED_ON = "2026-10-20";
 const GNOSIS: ChainId = 100;
 const MAINNET: ChainId = 1;
-/** The Gnosis head the P-25 facts were verified at. */
+/** The Gnosis head the recorded facts were verified at. */
 const GNOSIS_HEAD = 48_850_832n;
 /** `CHAINS[100].klerosLiquid` and its deployment block (`arbitratorDeployedAtBlock`). */
 const GNOSIS_ARBITRATOR = "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002";
@@ -126,8 +126,7 @@ async function recordGnosisDispute(rpc: RawRpc, dispute: (typeof GNOSIS_DISPUTES
   const [metaEvidenceId] = decodeAbiParameters([{ type: "uint256" }, { type: "uint256" }], disputeLog.data as Hex);
   const metaEvidenceLogs = await scan(rpc, dispute.arbitrable, metaEvidenceTopics(metaEvidenceId), 0n, GNOSIS_HEAD);
   const blocks = [...new Set([disputeLog, ...metaEvidenceLogs].map((log) => log.blockNumber))];
-  const blockTimestamps: Record<string, Hex> = {};
-  for (const number of blocks) blockTimestamps[number] = await timestampOf(rpc, number);
+  const blockTimestamps: Record<string, Hex> = Object.fromEntries(await Promise.all(blocks.map(async (number) => [number, await timestampOf(rpc, number)] as const)));
   return { disputeId: dispute.disputeId.toString(), arbitrable: dispute.arbitrable, metaEvidenceId: metaEvidenceId.toString(), disputeLogs, metaEvidenceLogs, blockTimestamps };
 }
 
@@ -166,9 +165,8 @@ async function record460E2e(dispute: GnosisDispute): Promise<void> {
   const eventLog = latest(dispute.metaEvidenceLogs);
   if (eventLog === undefined) throw new Error("Gnosis 460 has no MetaEvidence log.");
   const eventPath = decodedUri(eventLog);
-  const files = [];
-  for (const path of [eventPath, LOCATOR_460]) files.push({ path, status: 200, body: await fetchGatewayJson(path) });
-  files.push({ path: DEFAULT_SCRIPT_PATH, status: 404, body: null });
+  const recorded = await Promise.all([eventPath, LOCATOR_460].map(async (path) => ({ path, status: 200, body: await fetchGatewayJson(path) })));
+  const files = [...recorded, { path: DEFAULT_SCRIPT_PATH, status: 404, body: null }];
   const fixture = {
     description: `Gnosis dispute 460 (ArbitrableProxy, local meta-evidence ID 84) for P-25: its raw Dispute and MetaEvidence(84) logs read from the Gnosis read RPC on ${RECORDED_ON} with the head at readAtBlock, the two meta-evidence files read from ${GATEWAY} the same day (the chain's ${eventPath} and the API's ${LOCATOR_460}), and the meta-evidence API's answer of that day (locator). The default script both files name is answered 404, so the files render without it. The spec answers eth_getLogs by topic from logs and builds every other read itself.`,
     chainId: GNOSIS,

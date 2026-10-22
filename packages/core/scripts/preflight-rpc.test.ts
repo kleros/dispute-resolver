@@ -103,8 +103,8 @@ function fakeNode(options: NodeOptions = {}): { fetchFn: FetchLike; requests: Re
 
 const SETTINGS = { timeoutMs: 1000 };
 
-describe("C10: eth_getLogs over at least 10,000 blocks", () => {
-  it("C10: asks for a range of at least 10,000 blocks ending at the head it recorded", async () => {
+describe("eth_getLogs over at least 10,000 blocks", () => {
+  it("asks for a range of at least 10,000 blocks ending at the head it recorded", async () => {
     const { fetchFn, requests } = fakeNode();
     const report = await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     const call = requests.find((request) => request.rpcMethod === "eth_getLogs");
@@ -117,7 +117,7 @@ describe("C10: eth_getLogs over at least 10,000 blocks", () => {
     expect(report.head).toBe(HEAD);
   });
 
-  it("C10: starts at block 0 on a chain younger than 10,000 blocks", async () => {
+  it("starts at block 0 on a chain younger than 10,000 blocks", async () => {
     const { fetchFn, requests } = fakeNode({ head: 500 });
     await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     const filter = requests.find((request) => request.rpcMethod === "eth_getLogs")?.params[0] as { fromBlock: string };
@@ -129,14 +129,14 @@ describe("C10: eth_getLogs over at least 10,000 blocks", () => {
     ["a range message under -32000", { error: { code: -32000, message: "eth_getLogs is limited to a 10,000 range" } }],
     ["an Alchemy-style -32600 refusal", { error: { code: -32600, message: "Log response size exceeded" } }],
     ["HTTP 413", { status: 413, body: "payload too large" }],
-  ] as const)("C10: reports %s as capped, not as a failure, when the smallest scan window is answered", async (_name, logs) => {
+  ] as const)("reports %s as capped, not as a failure, when the smallest scan window is answered", async (_name, logs) => {
     const { fetchFn } = fakeNode({ logs, logsCap: 1000, postAllowOrigin: "*" });
     const report = await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     expect(report.logs.status).toBe("capped");
     expect(isFailure({ chainId: 1, endpoints: [{ roles: ["read"], outcome: report }] })).toBe(false);
   });
 
-  it("C10: asks a capped endpoint for exactly the smallest window of the chunked scans, ending at the head", async () => {
+  it("asks a capped endpoint for exactly the smallest window of the chunked scans, ending at the head", async () => {
     const { fetchFn, requests } = fakeNode({ logs: { error: { code: -32005, message: "query returned more than 10000 results" } }, logsCap: MIN_WINDOW_BLOCKS });
     const report = await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     const ranges = requests
@@ -150,7 +150,7 @@ describe("C10: eth_getLogs over at least 10,000 blocks", () => {
     expect(report.logs.status).toBe("capped");
   });
 
-  it("C10: the smallest window it asks for is the smallest window getLogsChunked shrinks to", async () => {
+  it("the smallest window it asks for is the smallest window getLogsChunked shrinks to", async () => {
     const { client, requests } = fakeLogsClient(() => Promise.resolve(rangeRefusal()));
     const event = parseAbiItem("event Ruling(address indexed _arbitrator, uint256 indexed _disputeID, uint256 _ruling)");
     const scan = getLogsChunked(client, { address: "0x0000000000000000000000000000000000000001", event, fromBlock: 0n, toBlock: 99_999n });
@@ -163,7 +163,7 @@ describe("C10: eth_getLogs over at least 10,000 blocks", () => {
     ["an Alchemy free-tier 10-block cap", { error: { code: -32600, message: "Under the Free tier plan, you can make eth_getLogs requests with up to a 10 block range." } }, 10],
     ["a -32602 refusal of every range", { error: { code: -32602, message: "invalid argument 0: json: cannot unmarshal" } }, undefined],
     ["HTTP 413 at every range", { status: 413, body: "payload too large" }, undefined],
-  ] as const)("C10: fails on %s, which refuses the smallest window of the chunked scans too", async (_name, logs, logsCap) => {
+  ] as const)("fails on %s, which refuses the smallest window of the chunked scans too", async (_name, logs, logsCap) => {
     const { fetchFn } = fakeNode({ logs, logsCap, postAllowOrigin: "*" });
     const report = await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     expect(report.logs).toMatchObject({ status: "failed", fromBlock: HEAD - MIN_WINDOW_BLOCKS + 1, toBlock: HEAD });
@@ -180,21 +180,21 @@ describe("C10: eth_getLogs over at least 10,000 blocks", () => {
     ],
     ["HTTP 500", { status: 500, body: "" }],
     ["a body that is not JSON", { status: 200, body: "<html>" }],
-  ] as const)("C10: fails on %s", async (_name, logs) => {
+  ] as const)("fails on %s", async (_name, logs) => {
     const { fetchFn } = fakeNode({ logs, logsCap: 1000 });
     const report = await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     expect(report.logs.status).toBe("failed");
     expect(isFailure({ chainId: 1, endpoints: [{ roles: ["read"], outcome: report }] })).toBe(true);
   });
 
-  it("C10: reports HTTP 429 as rate limiting even when its JSON-RPC body carries a range-cap code", async () => {
+  it("reports HTTP 429 as rate limiting even when its JSON-RPC body carries a range-cap code", async () => {
     const body = JSON.stringify({ jsonrpc: "2.0", id: 1, error: { code: -32005, message: "project ID request rate exceeded" } });
     const { fetchFn } = fakeNode({ logs: { status: 429, body }, logsCap: 1000 });
     const report = await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     expect(report.logs).toMatchObject({ status: "failed", reason: "HTTP 429 (rate limited): JSON-RPC error -32005: project ID request rate exceeded" });
   });
 
-  it("C10: fails, without asking for logs, when the head cannot be read", async () => {
+  it("fails, without asking for logs, when the head cannot be read", async () => {
     const { fetchFn, requests } = fakeNode({ failWith: Object.assign(new TypeError("fetch failed"), { cause: { code: "ECONNREFUSED" } }) });
     const report = await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     expect(report.logs).toEqual({ status: "failed", reason: "block number unavailable: connection failed (ECONNREFUSED)" });
@@ -202,8 +202,8 @@ describe("C10: eth_getLogs over at least 10,000 blocks", () => {
   });
 });
 
-describe("C10: Origin: null", () => {
-  it("C10: sends Origin: null on the preflight and on the request, and asks to send content-type", async () => {
+describe("requests with Origin: null", () => {
+  it("sends Origin: null on the preflight and on the request, and asks to send content-type", async () => {
     const { fetchFn, requests } = fakeNode({ postAllowOrigin: "*" });
     await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     const preflight = requests.find((request) => request.method === "OPTIONS");
@@ -213,23 +213,23 @@ describe("C10: Origin: null", () => {
     expect(posts.length).toBeGreaterThanOrEqual(1);
   });
 
-  it.each(["*", "null"])("C10: accepts Access-Control-Allow-Origin: %s", async (allowed) => {
+  it.each(["*", "null"])("accepts Access-Control-Allow-Origin: %s", async (allowed) => {
     const { fetchFn } = fakeNode({ postAllowOrigin: allowed, preflight: { headers: { ...ALLOW_ALL, "access-control-allow-origin": allowed } } });
     const report = await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     expect(report.cors).toEqual({ status: "ok" });
   });
 
-  it("C10: accepts Content-Type listed among several allowed headers in any case", async () => {
+  it("accepts Content-Type listed among several allowed headers in any case", async () => {
     const { fetchFn } = fakeNode({ postAllowOrigin: "*", preflight: { headers: { ...ALLOW_ALL, "access-control-allow-headers": "Authorization, Content-Type" } } });
     expect((await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS)).cors).toEqual({ status: "ok" });
   });
 
-  it("C10: fails when the answer carries no Access-Control-Allow-Origin", async () => {
+  it("fails when the answer carries no Access-Control-Allow-Origin", async () => {
     const { fetchFn } = fakeNode({ preflight: { headers: { "access-control-allow-headers": "content-type" } } });
     expect((await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS)).cors).toEqual({ status: "failed", reason: "preflight: no Access-Control-Allow-Origin" });
   });
 
-  it("C10: fails when only another origin is allowed", async () => {
+  it("fails when only another origin is allowed", async () => {
     const { fetchFn } = fakeNode({
       postAllowOrigin: "https://resolve.kleros.io",
       preflight: { headers: { ...ALLOW_ALL, "access-control-allow-origin": "https://resolve.kleros.io" } },
@@ -240,12 +240,12 @@ describe("C10: Origin: null", () => {
     });
   });
 
-  it("C10: fails when the preflight is refused", async () => {
+  it("fails when the preflight is refused", async () => {
     const { fetchFn } = fakeNode({ preflight: { status: 403 } });
     expect((await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS)).cors).toEqual({ status: "failed", reason: "preflight: HTTP 403" });
   });
 
-  it("C10: fails when the preflight does not allow content-type", async () => {
+  it("fails when the preflight does not allow content-type", async () => {
     const { fetchFn } = fakeNode({ preflight: { headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "authorization" } } });
     expect((await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS)).cors).toEqual({
       status: "failed",
@@ -253,43 +253,43 @@ describe("C10: Origin: null", () => {
     });
   });
 
-  it("C10: never follows a redirect, as a browser never follows one for a CORS preflight", async () => {
+  it("never follows a redirect, as a browser never follows one for a CORS preflight", async () => {
     const { fetchFn, requests } = fakeNode({ postAllowOrigin: "*" });
     await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     expect(requests.length).toBeGreaterThan(0);
     expect(requests.every((request) => request.redirect === "manual")).toBe(true);
   });
 
-  it("C10: fails when the preflight is redirected, though the redirect target would allow Origin: null", async () => {
+  it("fails when the preflight is redirected, though the redirect target would allow Origin: null", async () => {
     const { fetchFn } = fakeNode({ postAllowOrigin: "*", preflight: { redirect: true } });
     expect((await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS)).cors).toEqual({ status: "failed", reason: "preflight: redirected" });
   });
 
-  it("C10: fails when the request with Origin: null is redirected", async () => {
+  it("fails when the request with Origin: null is redirected", async () => {
     const { fetchFn } = fakeNode({ postAllowOrigin: "*", postRedirect: true });
     const report = await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     expect(report.cors).toEqual({ status: "failed", reason: "request: redirected" });
     expect(report.logs).toEqual({ status: "failed", reason: "block number unavailable: redirected" });
   });
 
-  it("C10: fails when the actual answer lacks the allowance the preflight gave", async () => {
+  it("fails when the actual answer lacks the allowance the preflight gave", async () => {
     const { fetchFn } = fakeNode({});
     expect((await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS)).cors).toEqual({ status: "failed", reason: "request: no Access-Control-Allow-Origin" });
   });
 });
 
-describe("C10: no URL or key in any output", () => {
-  it("C10: redact removes the URL, its host, its path segments and its query values", () => {
+describe("no URL or key in any output", () => {
+  it("redact removes the URL, its host, its path segments and its query values", () => {
     const text = `request to ${URL_WITH_KEY} failed: host eth-mainnet.example-provider.io rejected key 0123456789abcdef0123456789abcdef and secretvalue123`;
     const redacted = redact(text, [URL_WITH_KEY]);
     for (const secret of ["eth-mainnet.example-provider.io", "0123456789abcdef", "secretvalue123", "https://"]) expect(redacted).not.toContain(secret);
   });
 
-  it("C10: redact removes any URL even when it is not the configured one", () => {
+  it("redact removes any URL even when it is not the configured one", () => {
     expect(redact("see https://other.example/path?k=v for details", [])).toBe("see <url> for details");
   });
 
-  it("C10: a provider error that echoes the URL and key is reported without them", async () => {
+  it("a provider error that echoes the URL and key is reported without them", async () => {
     const message = `invalid key in ${URL_WITH_KEY}`;
     const { fetchFn } = fakeNode({ logs: { error: { code: -32000, message } } });
     const report = await checkEndpoint(URL_WITH_KEY, fetchFn, SETTINGS);
@@ -299,7 +299,7 @@ describe("C10: no URL or key in any output", () => {
     expect(line).toContain("-32000");
   });
 
-  it("C10: a network failure is named by its code, never by its message", async () => {
+  it("a network failure is named by its code, never by its message", async () => {
     const { fetchFn } = fakeNode({
       failWith: Object.assign(new TypeError(`fetch failed for ${URL_WITH_KEY}`), { cause: { code: "ENOTFOUND", message: `getaddrinfo ENOTFOUND ${URL_WITH_KEY}` } }),
     });
@@ -308,14 +308,14 @@ describe("C10: no URL or key in any output", () => {
     expect(report.logs).toMatchObject({ status: "failed", reason: expect.stringContaining("ENOTFOUND") as string });
   });
 
-  it("C10: a timeout is reported as a timeout", async () => {
+  it("a timeout is reported as a timeout", async () => {
     const { fetchFn } = fakeNode({ failWith: Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" }) });
     const report = await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     expect(report.logs).toEqual({ status: "failed", reason: "block number unavailable: timed out after 1000 ms" });
   });
 });
 
-describe("C10, checklist D: every chain, read and public RPC", () => {
+describe("every chain, read and public RPC", () => {
   /** Every chain's read variable set to a distinct host, as an operator's .env would. */
   function fullEnv(extra: Env = {}): Env {
     const entries = Object.values(CHAINS).flatMap((chain) => (chain.readRpcEnv === undefined ? [] : [[chain.readRpcEnv, `https://read-${String(chain.id)}.invalid/key`] as const]));
@@ -335,18 +335,18 @@ describe("C10, checklist D: every chain, read and public RPC", () => {
     };
   };
 
-  it("C10: reports every chain of CHAINS", async () => {
+  it("reports every chain of CHAINS", async () => {
     const reports = await runPreflight({ env: fullEnv(), fetchFn: routes({}) });
     expect(reports.map((report) => report.chainId)).toEqual(Object.values(CHAINS).map((chain) => chain.id));
   });
 
-  it("C10: resolves with the read and public resolvers, so an identical URL is checked once for both roles", async () => {
+  it("resolves with the read and public resolvers, so an identical URL is checked once for both roles", async () => {
     const reports = await runPreflight({ env: fullEnv(), fetchFn: routes({}) });
     const mainnet = reports.find((report) => report.chainId === 1);
     expect(mainnet?.endpoints.map((endpoint) => endpoint.roles)).toEqual([["read", "public"]]);
   });
 
-  it("C10, D-35: checks a distinct public RPC separately from the read RPC", async () => {
+  it("checks a distinct public RPC separately from the read RPC", async () => {
     const env = fullEnv({ REACT_APP_PUBLIC_RPC_1: "https://public-1.invalid/key" });
     const reports = await runPreflight({ env, fetchFn: routes({ "public-1.invalid": { preflight: { status: 403 } } }) });
     const mainnet = reports.find((report) => report.chainId === 1);
@@ -355,7 +355,7 @@ describe("C10, checklist D: every chain, read and public RPC", () => {
     expect(isFailure(reports.find((report) => report.chainId === 100) ?? { chainId: 100, endpoints: [] })).toBe(false);
   });
 
-  it("D-56: a chain with no read RPC fails, and its public setting does not stand in for it", async () => {
+  it("a chain with no read RPC fails, and its public setting does not stand in for it", async () => {
     const env = { ...fullEnv({ REACT_APP_PUBLIC_RPC_100: "https://public-100.invalid/key" }), REACT_APP_WEB3_XDAI_PROVIDER_URL: undefined };
     const reports = await runPreflight({ env, fetchFn: routes({}) });
     const gnosis = reports.find((report) => report.chainId === 100);
@@ -367,14 +367,14 @@ describe("C10, checklist D: every chain, read and public RPC", () => {
     expect(formatChainReport(gnosis ?? { chainId: 100, endpoints: [] })[0]).toBe("chain 100 read: FAILED, no read RPC is configured");
   });
 
-  it("C10: formats a chain without any URL", async () => {
+  it("formats a chain without any URL", async () => {
     const reports = await runPreflight({ env: fullEnv(), fetchFn: routes({ "read-1.invalid": { logs: { error: { code: -32005, message: "limit exceeded" } }, logsCap: 1000 } }) });
     const lines = reports.flatMap(formatChainReport);
     expect(lines.join("\n")).not.toMatch(/invalid|https?:/);
     expect(lines[0]).toMatch(/^chain 1 read\+public: head \d+; eth_getLogs \d+-\d+ capped/);
   });
 
-  it("C10: summarizes failures and capped endpoints for the exit code", async () => {
+  it("summarizes failures and capped endpoints for the exit code", async () => {
     const env = fullEnv();
     const ok = await runPreflight({ env, fetchFn: routes({ "read-1.invalid": { logs: { error: { code: -32005, message: "limit exceeded" } }, logsCap: 1000 } }) });
     expect(summarize(ok)).toEqual({ failed: 0, capped: 1, endpoints: Object.keys(CHAINS).length });

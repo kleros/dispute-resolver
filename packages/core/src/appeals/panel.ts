@@ -8,12 +8,12 @@ import type { AppealAmounts, AppealPanel, AppealPanelInput, CrowdfundingCard, Wi
 
 const HIDDEN: AppealPanel = { kind: "hidden" };
 
-/** A read the period needs, or why it is missing: a `null` read was not made, which is never shown as zero (D-36). */
+/** A read the period needs, or why it is missing: a `null` read was not made, which is never shown as zero. */
 function required<T>(read: Outcome<T> | null, what: string): Outcome<T> {
   return read ?? fail("not-found", `${what} was not read.`);
 }
 
-/** Escrow V1 (spec 10.2): one appeal paying the arbitrator's appeal cost, until the end of the appeal period. */
+/** Escrow V1: one appeal paying the arbitrator's appeal cost, until the end of the appeal period. */
 function escrowAppeal(input: AppealPanelInput): AppealPanel {
   const appealInfo = required(input.appealInfo, "The appeal cost");
   if (!appealInfo.ok) return { kind: "fees-unavailable", error: appealInfo.error };
@@ -21,16 +21,16 @@ function escrowAppeal(input: AppealPanelInput): AppealPanel {
 }
 
 /**
- * The cards a governor can fund (D-47): its `fundAppeal(listIndex)` funds list `ruling − 1`, so a card whose ruling
- * names no list (ruling 0, "refuse to arbitrate") could never be funded and is not offered.
+ * A governor's `fundAppeal(listIndex)` funds list `ruling − 1`, so a card whose ruling names no list (ruling 0, "refuse
+ * to arbitrate") could never be funded and is not offered.
  */
 function fundsGovernorList(card: CrowdfundingCard): boolean {
   return governorListIndex(card.code) !== null;
 }
 
 /**
- * The amounts the cards are costed with. A governor whose current ruling is 0 charges every list the shared amount until
- * the end of the appeal period (P-05, `KlerosGovernor.fundAppeal`), so both sides take it; otherwise spec 5.12's sides.
+ * A governor whose current ruling is 0 charges every list the shared amount until the end of the appeal period
+ * (`KlerosGovernor.fundAppeal`), so both sides take it.
  */
 function cardAmounts(amounts: AppealAmounts, dialect: "idr" | "governor", currentRuling: bigint): AppealAmounts {
   if (dialect !== "governor" || currentRuling !== 0n || amounts.shared === undefined) return amounts;
@@ -38,9 +38,8 @@ function cardAmounts(amounts: AppealAmounts, dialect: "idr" | "governor", curren
 }
 
 /**
- * The crowdfunding cards (spec 5.11, 5.12) when the appeal cost and period, the multipliers, the round's funding and the
- * current ruling are all known; otherwise the "appeal fees could not be calculated" notice with the first missing read.
- * A governor panel drops the cards whose ruling names no list, and costs a tie with the shared multiplier (P-05).
+ * The crowdfunding cards when the appeal cost and period, the multipliers, the round's funding and the current ruling
+ * are all known; otherwise the "appeal fees could not be calculated" notice with the first missing read.
  */
 function crowdfunding(input: AppealPanelInput, dialect: "idr" | "governor"): AppealPanel {
   const appealInfo = required(input.appealInfo, "The appeal cost and period");
@@ -63,7 +62,7 @@ function crowdfunding(input: AppealPanelInput, dialect: "idr" | "governor"): App
   return { kind: "crowdfunding", dialect, ...set, cards };
 }
 
-/** The execution-period withdraw panel (spec 5.11, 5.15); a state that was not read is unavailable (D-36). */
+/** The execution-period withdraw panel; a state that was not read is unavailable, never empty. */
 function withdraw(input: AppealPanelInput): AppealPanel {
   const state: WithdrawState = input.withdraw ?? { status: "unavailable", error: { code: "not-found", message: "The withdrawable amount was not read." } };
   return { kind: "withdraw", state };
@@ -79,13 +78,31 @@ export function hasAppealPanel(period: Period, family: Pick<FamilyDetection, "wr
 }
 
 /**
- * The appeal panel of a dispute (06 §1 table, spec 5.11, D-43, D-46, D-47), keyed by the family the write paths use
- * (`writeFamily`), so a registered Reality proxy is treated as the resolver family its bytecode matches and one that
- * matches none gets the note. No panel before the appeal period. In the appeal period: Escrow V1 pays the appeal cost;
- * the resolver families and governors crowdfund, governors without the ruling-0 card; view-only arbitrables show that
- * appeals happen in the arbitrable application. In execution: Escrow V1 shows the appeal period ended, idr-legacy that withdrawals are unsupported,
- * idr-v1, idr-v2 and governors the withdraw panel, view-only nothing. The withdraw state only ever appears in execution
- * (D-43).
+ * Whether the appeal panel reads the ruling options: only the crowdfunding cards do. Every other panel (Escrow V1's
+ * appeal, withdrawals, the arbitrable's own appeals, the ended notices) is built without them, so a dispute whose
+ * meta-evidence is missing or failed still gets it.
+ */
+export function needsRulingOptions(period: Period, family: Pick<FamilyDetection, "writeFamily">): boolean {
+  if (period !== 3) return false;
+  switch (family.writeFamily) {
+    case "idr-legacy":
+    case "idr-v1":
+    case "idr-v2":
+    case "governor":
+      return true;
+    case "escrow-v1":
+    case "view-only":
+      return false;
+  }
+}
+
+/**
+ * The appeal panel of a dispute, keyed by the family the write paths use (`writeFamily`), so a registered Reality proxy
+ * is treated as the resolver family its bytecode matches and one that matches none gets the note. No panel before the
+ * appeal period. In the appeal period: Escrow V1 pays the appeal cost; the resolver families and governors crowdfund;
+ * view-only arbitrables show that appeals happen in the arbitrable application. In execution: Escrow V1 shows the
+ * appeal period ended, idr-legacy that withdrawals are unsupported, idr-v1, idr-v2 and governors the withdraw panel,
+ * view-only nothing.
  */
 export function buildAppealPanel(input: AppealPanelInput): AppealPanel {
   const { period } = input;

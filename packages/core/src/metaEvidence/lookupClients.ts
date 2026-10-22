@@ -4,11 +4,9 @@ import { createReadClient } from "../rpc";
 import type { ChainId, Env, ReadClient } from "../types";
 
 /**
- * The Reality lookup's clients (`reality.LookupReadClients`): for each lookup, one client per chain over the chain's read
- * RPC (A13), built by `rpc.createReadClient` with the lookup's request budget and transport options. Every attempt the
+ * One client per chain per lookup, over the chain's read RPC and carrying the lookup's request budget. Every attempt the
  * transport sends, retries included, spends the budget first, so the lookup's request count, its deadline and an abort
- * bound what is actually sent, and a lookup's `retryCount` override applies (spec 9.1, A5). A chain that is not in the
- * chain table (D-18) or has no read RPC (D-56) has no client.
+ * bound what is actually sent. A chain that is not in the chain table or has no read RPC has no client.
  */
 export function lookupClientsOf(env: Env): LookupReadClients {
   return (budget, options) => {

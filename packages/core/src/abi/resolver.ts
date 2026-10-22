@@ -1,6 +1,6 @@
 import type { Abi } from "viem";
 
-/** The ArbitrableProxy this app creates disputes through and submits evidence to (`@kleros/arbitrable-proxy-contracts`, spec 6.2). */
+/** The ArbitrableProxy this app creates disputes through and submits evidence to (`@kleros/arbitrable-proxy-contracts`). */
 export const arbitrableProxyAbi = [
   {
     type: "function",
@@ -26,8 +26,7 @@ export const arbitrableProxyAbi = [
 ] as const satisfies Abi;
 
 /**
- * IDisputeResolver v2 (`IDRv2`, the `idr-v2` family): the local dispute ID, the multipliers, crowdfunded appeal funding,
- * the withdrawable read and the withdrawal, plus the two crowdfunding events (spec 6.1 to 6.3, 10.8).
+ * IDisputeResolver v2 (the `idr-v2` family).
  *
  * `externalIDtoLocalID` is `view` here, as every deployed implementation exposes it (a public mapping); the interface
  * declares it without `view`, which only matters to Solidity callers. That lets `readContract` reach it.
@@ -109,8 +108,8 @@ export const idrV2Abi = [
 ] as const satisfies Abi;
 
 /**
- * IDisputeResolver v1 (`IDRv1`, the `idr-v1` family, Unslashed among them): the withdrawable read and the withdrawal take
- * the array of rulings the contributor funded (spec 10.1, D-49).
+ * IDisputeResolver v1 (the `idr-v1` family, Unslashed among them): the withdrawable read and the withdrawal take the
+ * array of rulings the contributor funded.
  */
 export const idrV1Abi = [
   {
@@ -138,7 +137,7 @@ export const idrV1Abi = [
 ] as const satisfies Abi;
 
 /**
- * The two `fundAppeal` overloads of the `idr-legacy` family (D-46). `(uint256,uint256)` is the IDisputeResolver one;
+ * The two `fundAppeal` overloads of the `idr-legacy` family. `(uint256,uint256)` is the IDisputeResolver one;
  * `(uint256,uint8)` is the older resolver proxy's (verified source of `0x135c5735…`, the party as a `uint8`).
  */
 export const idrLegacyFundAppealAbi = [
@@ -164,7 +163,7 @@ export const idrLegacyFundAppealAbi = [
   },
 ] as const satisfies Abi;
 
-/** Escrow V1, `MultipleArbitrableTokenTransaction` (`@kleros/kleros-interaction`): the transaction behind a dispute, the appeal and evidence (spec 6.1, 6.2, 10.2). */
+/** Escrow V1, `MultipleArbitrableTokenTransaction` (`@kleros/kleros-interaction`). */
 export const escrowV1Abi = [
   {
     type: "function",
@@ -202,7 +201,7 @@ const uint256Getter = <const TName extends string>(name: TName) =>
   }) as const;
 
 /**
- * The single-value multiplier getters of spec 10.9, tried field by field when `getMultipliers()` fails: the
+ * The single-value multiplier getters, tried field by field when `getMultipliers()` fails: the
  * ArbitrableProxy names, the governor names (`winnerMultiplier`, `loserMultiplier`, `MULTIPLIER_DIVISOR`) and the two
  * denominator spellings some arbitrables use.
  */

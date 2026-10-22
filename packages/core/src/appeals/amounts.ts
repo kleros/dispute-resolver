@@ -6,11 +6,9 @@ const PERCENT_SCALE = 10_000n;
 const PERCENT_DIVISOR = 100;
 
 /**
- * Required totals and deadlines of each side (spec 5.12), in integer arithmetic as the contracts compute them. The
- * winner pays `cost + cost × winnerStake / denominator` until the end of the appeal period; the loser pays
- * `cost + cost × loserStake / denominator` until `start + (end − start) × loserAppealPeriod / denominator`. With a
- * governor's `sharedMultiplier` (P-05), `shared` is what every list pays when the current ruling is 0:
- * `cost + cost × sharedMultiplier / denominator` until the end of the appeal period, as `KlerosGovernor.fundAppeal`
+ * Required totals and deadlines of each side, in integer arithmetic as the contracts compute them, so the amounts match
+ * what `fundAppeal` charges to the wei. The loser's deadline is `start + (end − start) × loserAppealPeriod /
+ * denominator`. `shared` is what every governor list pays when the current ruling is 0, as `KlerosGovernor.fundAppeal`
  * charges it. `readMultipliers` never yields a zero denominator.
  */
 export function computeAppealAmounts(appealInfo: AppealInfo, multipliers: Multipliers): AppealAmounts {
@@ -26,14 +24,14 @@ export function computeAppealAmounts(appealInfo: AppealInfo, multipliers: Multip
 }
 
 /**
- * Whether a ruling code is costed and timed as the winner (spec 10.1): it is the current ruling, or the current ruling
- * is 0 on an arbitrable whose option 0 is not fundable (Unslashed), which treats every option as a winner.
+ * Whether a ruling code is costed and timed as the winner: it is the current ruling, or the current ruling is 0 on an
+ * arbitrable whose option 0 is not fundable (Unslashed), which treats every option as a winner.
  */
 export function isWinningCode(code: bigint, currentRuling: bigint, override: BehaviorOverride | undefined): boolean {
   return code === currentRuling || (currentRuling === 0n && override?.refuseToArbitrateFundable === false);
 }
 
-/** `contributed × 10000 / required / 100`: a percentage with two decimals, 0 when nothing is required (spec 5.12). */
+/** A percentage with two decimals, truncated rather than rounded; 0 when nothing is required. */
 export function fundedPercent(contributed: bigint, required: bigint): number {
   if (required === 0n) return 0;
   return Number((contributed * PERCENT_SCALE) / required) / PERCENT_DIVISOR;

@@ -23,7 +23,7 @@ import {
 const SCRIPT_JSON = json({ title: "T", dynamicScriptURI: `/ipfs/${DEFAULT_SCRIPT_CID}` });
 const SCRIPT = "function getMetaEvidence() {}";
 
-/** The host's answer for a runner page that has not acknowledged the run within its window (P-16); core never sees the window. */
+/** The host's answer for a runner page that has not acknowledged the run within its window; core never sees the window. */
 const NOT_STARTED_MESSAGE = "The dynamic script's runner did not start in time.";
 const ACKNOWLEDGEMENT_WAIT_MS = 5_000;
 
@@ -33,7 +33,7 @@ function notStartedAfterWindow(): Promise<ScriptResult> {
   });
 }
 
-describe("meta-evidence budget (D-38)", () => {
+describe("meta-evidence budget", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -43,12 +43,12 @@ describe("meta-evidence budget (D-38)", () => {
     vi.useRealTimers();
   });
 
-  it("D-37, D-38: the case page budget is 120 s and the Ongoing budget is well under a minute", () => {
+  it("the case page budget is 120 s and the Ongoing budget is well under a minute", () => {
     expect(CASE_PAGE_BUDGET_MS).toBe(120_000);
     expect(ONGOING_BUDGET_MS).toBe(40_000);
   });
 
-  it("D-38: transient locator failures retry every 5 s and stop within the budget with the last failure", async () => {
+  it("transient locator failures retry every 5 s and stop within the budget with the last failure", async () => {
     const { fetcher, urls } = fakeFetcher({ [locatorUrl(1, 1684n)]: "<html>502 Bad Gateway</html>" });
     const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, budgetMs: 40_000 })), 60_000);
     expect(result).toMatchObject({ status: "failed", reason: "locator-error", error: { code: "rpc-error" } });
@@ -56,7 +56,7 @@ describe("meta-evidence budget (D-38)", () => {
     expect(elapsedMs).toBeLessThanOrEqual(40_000);
   });
 
-  it("D-38: a gateway failure is retried and a later success is accepted", async () => {
+  it("a gateway failure is retried and a later success is accepted", async () => {
     const { fetcher, urls } = fakeFetcher(servedMetaEvidence([{ status: 504, body: "Gateway Timeout" }, new TypeError("Failed to fetch"), json({ title: "Third time" })]));
     const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher })), 20_000);
     expect(result).toMatchObject({ status: "ok", metaEvidence: { title: "Third time" } });
@@ -64,36 +64,39 @@ describe("meta-evidence budget (D-38)", () => {
     expect(elapsedMs).toBe(10_000);
   });
 
-  it("D-36, D-38: an unpinned file (mainnet 150) fails with fetch-error once the budget cannot hold another attempt", async () => {
+  it("an unpinned file (mainnet 150) fails with fetch-error once the budget cannot hold another attempt", async () => {
     const { fetcher } = fakeFetcher(servedMetaEvidence({ status: 504, body: "Gateway Timeout" }, { disputeId: 150n }));
     const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, disputeId: 150n })), 130_000);
     expect(result).toMatchObject({ status: "failed", reason: "fetch-error" });
     expect(elapsedMs).toBeLessThanOrEqual(CASE_PAGE_BUDGET_MS);
   });
 
-  it("D-38: deterministic failures are not retried", async () => {
-    const cases: [Parameters<typeof fakeFetcher>[0], string][] = [
-      [servedMetaEvidence("%PDF-1.4"), "not-json"],
-      [servedMetaEvidence(json(5)), "schema-invalid"],
-      [{ ...servedMetaEvidence(json({ title: "T", dynamicScriptURI: `/ipfs/${DEFAULT_SCRIPT_CID}`, arbitratorChainID: "1.0" })), [DEFAULT_SCRIPT_URL]: SCRIPT }, "unknown-chain"],
+  it("deterministic outcomes are not retried", async () => {
+    const cases: [Parameters<typeof fakeFetcher>[0], Record<string, unknown>][] = [
+      [servedMetaEvidence("%PDF-1.4"), { status: "failed", reason: "not-json" }],
+      [servedMetaEvidence(json(5)), { status: "failed", reason: "schema-invalid" }],
+      [
+        { ...servedMetaEvidence(json({ title: "T", dynamicScriptURI: `/ipfs/${DEFAULT_SCRIPT_CID}`, arbitratorChainID: "1.0" })), [DEFAULT_SCRIPT_URL]: SCRIPT },
+        { status: "ok", script: { ran: false, reason: "script-chain-unavailable" } },
+      ],
     ];
-    for (const [routes, reason] of cases) {
+    for (const [routes, expected] of cases) {
       const { fetcher, urls } = fakeFetcher(routes);
       const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher })), 1);
-      expect(result).toMatchObject({ status: "failed", reason });
+      expect(result).toMatchObject(expected);
       expect(elapsedMs).toBe(0);
       expect(urls.filter((url) => url === locatorUrl(1, 1684n))).toHaveLength(1);
     }
   });
 
-  it("A2, D-38: rejections are not retried", async () => {
+  it("rejections are not retried", async () => {
     const { fetcher, urls } = fakeFetcher({ [locatorUrl(1, 1684n)]: json({ metaEvidenceUri: "https://example.org/meta.json" }) });
     const { result } = await settle(loadMetaEvidence(context({ fetcher })), 1);
     expect(result).toMatchObject({ status: "invalid" });
     expect(urls).toHaveLength(1);
   });
 
-  it("D-38: the script timeout is the budget that remains, after the time spent on earlier attempts", async () => {
+  it("the script timeout is the budget that remains, after the time spent on earlier attempts", async () => {
     const { fetcher } = fakeFetcher({ ...servedMetaEvidence([{ status: 502, body: "" }, SCRIPT_JSON]), [DEFAULT_SCRIPT_URL]: SCRIPT });
     const { runner, requests } = fakeRunner(scriptOk({ title: "From the script" }));
     const { result } = await settle(loadMetaEvidence(context({ fetcher, runner, budgetMs: ONGOING_BUDGET_MS })), 10_000);
@@ -102,7 +105,7 @@ describe("meta-evidence budget (D-38)", () => {
     expect(requests[0]?.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it("D-38: a script that never reports is cut at the budget: failed / budget-exhausted, never three minutes", async () => {
+  it("a script that never reports is cut at the budget: failed / budget-exhausted", async () => {
     const { fetcher } = fakeFetcher({ ...servedMetaEvidence(SCRIPT_JSON), [DEFAULT_SCRIPT_URL]: SCRIPT });
     const { runner, requests } = fakeRunner(HANG);
     const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, runner })), 200_000);
@@ -112,7 +115,7 @@ describe("meta-evidence budget (D-38)", () => {
     expect(requests[0]?.signal?.aborted).toBe(true);
   });
 
-  it("D-38: a runner timeout at the end of the budget is budget-exhausted", async () => {
+  it("a runner timeout at the end of the budget is budget-exhausted", async () => {
     const { fetcher } = fakeFetcher({ ...servedMetaEvidence(SCRIPT_JSON), [DEFAULT_SCRIPT_URL]: SCRIPT });
     const { runner } = fakeRunner(
       (request) =>
@@ -127,7 +130,7 @@ describe("meta-evidence budget (D-38)", () => {
     expect(elapsedMs).toBe(ONGOING_BUDGET_MS);
   });
 
-  it("D-38: a failing script is retried while the budget allows, then reported as script-failed", async () => {
+  it("a failing script is retried while the budget allows, then reported as script-failed", async () => {
     const { fetcher } = fakeFetcher({ ...servedMetaEvidence(SCRIPT_JSON), [DEFAULT_SCRIPT_URL]: SCRIPT });
     const { runner, requests } = fakeRunner({ status: "failed", reason: "script-error", message: "x is not defined" });
     const { result } = await settle(loadMetaEvidence(context({ fetcher, runner, budgetMs: 12_000 })), 20_000);
@@ -135,7 +138,7 @@ describe("meta-evidence budget (D-38)", () => {
     expect(requests).toHaveLength(3);
   });
 
-  it("P-16, D-38: a runner-error result is final: reported as script-failed at once, never retried", async () => {
+  it("a runner-error result is final: reported as script-failed at once, never retried", async () => {
     const message = "The script runner sent a malformed reply.";
     const { fetcher } = fakeFetcher({ ...servedMetaEvidence(SCRIPT_JSON), [DEFAULT_SCRIPT_URL]: SCRIPT });
     const { runner, requests } = fakeRunner({ status: "failed", reason: "runner-error", message });
@@ -145,7 +148,7 @@ describe("meta-evidence budget (D-38)", () => {
     expect(elapsedMs).toBe(0);
   });
 
-  it("P16-R1, D-38: a runner that did not start is retried while the budget allows, then reported with the runner's own message", async () => {
+  it("a runner that did not start is retried while the budget allows, then reported with the runner's own message", async () => {
     const { fetcher } = fakeFetcher({ ...servedMetaEvidence(SCRIPT_JSON), [DEFAULT_SCRIPT_URL]: SCRIPT });
     const { runner, requests } = fakeRunner(notStartedAfterWindow);
     const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, runner, budgetMs: 30_000 })), 40_000);
@@ -154,7 +157,7 @@ describe("meta-evidence budget (D-38)", () => {
     expect(elapsedMs).toBe(25_000);
   });
 
-  it("P16-R1, D-38: a runner that starts late is not a final failure: the retry renders the script's result", async () => {
+  it("a runner that starts late is not a final failure: the retry renders the script's result", async () => {
     const { fetcher } = fakeFetcher({ ...servedMetaEvidence(SCRIPT_JSON), [DEFAULT_SCRIPT_URL]: SCRIPT });
     let runs = 0;
     const { runner, requests } = fakeRunner(() => {
@@ -168,7 +171,7 @@ describe("meta-evidence budget (D-38)", () => {
     expect(elapsedMs).toBe(10_000);
   });
 
-  it("D-38: a fetch that ignores its abort signal is still cut by the budget", async () => {
+  it("a fetch that ignores its abort signal is still cut by the budget", async () => {
     const { fetcher, inits } = fakeFetcher({ [locatorUrl(1, 1684n)]: HANG });
     const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, budgetMs: ONGOING_BUDGET_MS })), 60_000);
     expect(result).toMatchObject({ status: "failed", reason: "budget-exhausted" });
@@ -176,7 +179,7 @@ describe("meta-evidence budget (D-38)", () => {
     expect(inits[0]?.signal?.aborted).toBe(true);
   });
 
-  it("A5, D-38: a failed Reality lookup is retried within the budget and then reported", async () => {
+  it("a failed Reality lookup is retried within the budget and then reported", async () => {
     const { fetcher, urls } = fakeFetcher(servedMetaEvidence(json({ title: "Reality question" }), { disputeId: 999_001n }));
     const { result } = await settle(loadMetaEvidence(context({ fetcher, arbitrable: CROSS_CHAIN_PROXY, disputeId: 999_001n, budgetMs: 12_000 })), 20_000);
     expect(result).toMatchObject({ status: "failed", reason: "reality-lookup-failed" });
@@ -184,7 +187,7 @@ describe("meta-evidence budget (D-38)", () => {
     expect(result.status === "failed" && result.error.message).toContain("Reality.eth question");
   });
 
-  it("ME-1 A5 D-38: a Reality lookup through the read RPC stops its transport retries at the lookup's deadline", async () => {
+  it("a Reality lookup through the read RPC stops its transport retries at the lookup's deadline", async () => {
     const env = { ...ENV, REACT_APP_WEB3_PROVIDER_URL: "https://read.rpc.test/budget-me-1" };
     const endpoint = stubEndpoint(() => ({ status: 503 }));
     const { fetcher } = fakeFetcher(servedMetaEvidence(json({ title: "Reality question" }), { disputeId: 999_002n }));
@@ -195,7 +198,7 @@ describe("meta-evidence budget (D-38)", () => {
     expect(endpoint.posts.map((post) => post.at - start)).toEqual([0, 500]);
   });
 
-  it("D-38: the caller's abort settles the load at once, without a retry; loadMetaEvidence never rejects", async () => {
+  it("the caller's abort settles the load at once, without a retry; loadMetaEvidence never rejects", async () => {
     const controller = new AbortController();
     const { fetcher, urls } = fakeFetcher({ [locatorUrl(1, 1684n)]: HANG });
     const load = loadMetaEvidence(context({ fetcher, signal: controller.signal }));
@@ -207,14 +210,14 @@ describe("meta-evidence budget (D-38)", () => {
     expect(urls).toHaveLength(1);
   });
 
-  it("D-38: an already aborted signal makes no request", async () => {
+  it("an already aborted signal makes no request", async () => {
     const { fetcher, urls } = fakeFetcher({});
     const { result } = await settle(loadMetaEvidence(context({ fetcher, signal: AbortSignal.abort() })), 0);
     expect(result).toMatchObject({ status: "failed" });
     expect(urls).toHaveLength(0);
   });
 
-  it("D-38: an abort during the wait before a retry ends the load with the last failure", async () => {
+  it("an abort during the wait before a retry ends the load with the last failure", async () => {
     const controller = new AbortController();
     const { fetcher, urls } = fakeFetcher({ [locatorUrl(1, 1684n)]: "not json" });
     const load = loadMetaEvidence(context({ fetcher, signal: controller.signal }));
@@ -225,14 +228,14 @@ describe("meta-evidence budget (D-38)", () => {
     expect(urls).toHaveLength(1);
   });
 
-  it("D-38: a zero budget fails without a request", async () => {
+  it("a zero budget fails without a request", async () => {
     const { fetcher, urls } = fakeFetcher({});
     const { result } = await settle(loadMetaEvidence(context({ fetcher, budgetMs: 0 })), 0);
     expect(result).toMatchObject({ status: "failed", reason: "budget-exhausted" });
     expect(urls).toHaveLength(0);
   });
 
-  it("D-38: every request carries the load's abort signal", async () => {
+  it("every request carries the load's abort signal", async () => {
     const { fetcher, inits } = fakeFetcher({ ...servedMetaEvidence(SCRIPT_JSON), [DEFAULT_SCRIPT_URL]: SCRIPT });
     const { runner } = fakeRunner(scriptOk({}));
     await settle(loadMetaEvidence(context({ fetcher, runner })), 0);

@@ -1,7 +1,7 @@
 import type { Abi } from "viem";
 
 /**
- * The governor dialect (D-47), as the deployed governors' verified sources declare it: poh.eth, ubi-voting.eth and
+ * The governor dialect, as the deployed governors' verified sources declare it: poh.eth, ubi-voting.eth and
  * fork-dao.eth carry every entry, kleros.eth every entry but `submitEvidence(string)`. Funding takes the submission
  * index (`_submissionID`), not a ruling; the governor has no local dispute ID, and its session number is the
  * dispute's evidence group.

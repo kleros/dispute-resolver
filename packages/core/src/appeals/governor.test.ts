@@ -11,7 +11,7 @@ const VERIFIED_GOVERNORS = z
   .parse(verifiedSessions).governors;
 
 describe("governor session getter", () => {
-  it("F1 D-47: the sessions(uint256) fragment is the published getter and the verified getter of every deployed governor", () => {
+  it("embeds the sessions(uint256) getter exactly as published and as verified on every deployed governor", () => {
     const embedded = findBySignature(normalizeAbi(governorSessionAbi), SIGNATURE, "function");
     expect(embedded).toEqual(findBySignature(ARTIFACTS.klerosGovernor, SIGNATURE, "function"));
     expect(VERIFIED_GOVERNORS.map((governor) => `${String(governor.chainId)}:${governor.address}`)).toEqual([

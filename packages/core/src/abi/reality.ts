@@ -1,8 +1,8 @@
 import type { Abi } from "viem";
 
 /**
- * Reality.eth, the entries of the question lookup (spec 6.1, 6.3, 9.1). Versions 2 and 3 declare the same ones:
- * `templates(id)` returns the block of the template's `LogNewTemplate`.
+ * Reality.eth versions 2 and 3 declare the same entries. `templates(id)` returns the block of the template's
+ * `LogNewTemplate`, not the template itself.
  */
 export const realityAbi = [
   {
@@ -42,9 +42,8 @@ export const realityAbi = [
 ] as const satisfies Abi;
 
 /**
- * The dispute-to-question mapping of the registered Reality proxies (spec 6.3, 9.1): single-chain proxies emit
- * `DisputeIDToQuestionID`; cross-chain foreign proxies emit `ArbitrationCreated` and some expose the block it was
- * emitted in through `arbitrationCreatedBlock`.
+ * Single-chain Reality proxies emit `DisputeIDToQuestionID`; cross-chain foreign proxies emit `ArbitrationCreated`,
+ * and only some expose the block it was emitted in through `arbitrationCreatedBlock`.
  */
 export const realityProxyAbi = [
   {

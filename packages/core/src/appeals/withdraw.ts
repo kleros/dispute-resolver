@@ -16,7 +16,6 @@ function unavailableState(error: Unavailable): WithdrawState {
   return { status: "unavailable", error };
 }
 
-/** The items with something to withdraw, and their sum (D-51). */
 function settled(beneficiary: Address, items: readonly WithdrawItem[]): WithdrawState {
   const withdrawable = items.filter((item) => item.amount > 0n);
   if (withdrawable.length === 0) return { status: "nothing" };
@@ -29,8 +28,8 @@ function ascending(a: bigint, b: bigint): number {
 }
 
 /**
- * The rulings the beneficiary contributed to in `rounds`, from its own `Contribution` logs, scanned once from the earliest
- * round start to the head (D-02). `null` when a log cannot be decoded.
+ * The rulings the beneficiary contributed to in `rounds`, from its own `Contribution` logs, scanned once from the
+ * earliest round start to the head. `null` when a log cannot be decoded.
  */
 async function contributedRulings(context: AppealContext, localId: bigint, request: WithdrawRequest): Promise<readonly bigint[] | null> {
   const { client, binding, signal } = context;
@@ -55,10 +54,7 @@ async function contributedRulings(context: AppealContext, localId: bigint, reque
   return [...rulings].sort(ascending);
 }
 
-/**
- * IDisputeResolver (spec 5.15, D-49, D-51): `getTotalWithdrawableAmount` for every ruling the beneficiary contributed
- * to, with a single ruling on v2 and a one-ruling array on v1; one item per ruling with a non-zero amount.
- */
+/** `getTotalWithdrawableAmount` per contributed ruling: a single ruling on v2, a one-ruling array on v1. */
 async function readResolverWithdrawable(context: AppealContext, dialect: "idr-v2" | "idr-v1", request: WithdrawRequest): Promise<WithdrawState> {
   const localId = idrLocalId(context.localId);
   if (!localId.ok) return unavailableState(localId.error);
@@ -85,10 +81,9 @@ async function readResolverWithdrawable(context: AppealContext, dialect: "idr-v2
 }
 
 /**
- * The governor dialect (D-47): `sessions(session)` must name this dispute; nothing until the arbitrator has executed
- * the ruling, which resolves the session; then, per round of the session, the beneficiary's contributions per list
- * index and the round's fees, rewarded under the session's settled ruling (never the arbitrator's `currentRuling`, which
- * a one-sided final round overrides), each non-zero reward an item `(session, round, listIndex)`.
+ * The governor dialect: `sessions(session)` must name this dispute; nothing until the arbitrator has executed the
+ * ruling, which resolves the session; then, per round, the beneficiary's contributions per list index rewarded under the
+ * session's settled ruling (never the arbitrator's `currentRuling`, which a one-sided final round overrides).
  */
 async function readGovernorWithdrawable(context: AppealContext, request: WithdrawRequest): Promise<WithdrawState> {
   const session = governorSession(context);
@@ -123,9 +118,8 @@ async function readGovernorWithdrawable(context: AppealContext, request: Withdra
 
 /**
  * What the beneficiary can withdraw across `rounds`, each starting at the block of the same index in
- * `roundStartBlocks` (spec 5.15, D-46, D-49, D-51, D-47): `no-account` without a beneficiary (P-22); `nothing` when every
- * amount is zero; `available` with one item per withdrawal and their sum. idr-legacy, Escrow V1 and view-only
- * arbitrables have no withdraw read (`unsupported`). Never rejects: a failed read is `unavailable`, never zero (D-36).
+ * `roundStartBlocks`. idr-legacy, Escrow V1 and view-only arbitrables have no withdraw read (`unsupported`). Never
+ * rejects: a failed read is `unavailable`, never zero.
  */
 export async function readWithdrawable(
   context: AppealContext,

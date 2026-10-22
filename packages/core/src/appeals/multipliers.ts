@@ -7,7 +7,7 @@ import type { Multipliers } from "./types";
 
 type GetterName = (typeof multiplierGetterAbi)[number]["name"];
 
-/** The single getters of spec 10.9, per field, in the order they are tried. */
+/** The single getters per field, in the order they are tried: deployed arbitrables name them differently. */
 const FIELD_GETTERS = {
   winnerStakeMultiplier: ["winnerStakeMultiplier", "winnerMultiplier"],
   loserStakeMultiplier: ["loserStakeMultiplier", "loserMultiplier"],
@@ -15,8 +15,18 @@ const FIELD_GETTERS = {
   loserAppealPeriodMultiplier: ["loserAppealPeriodMultiplier"],
 } as const satisfies Readonly<Record<Exclude<keyof Multipliers, "sharedMultiplier">, readonly GetterName[]>>;
 
-/** The Kleros default when a contract keeps its divisor private (spec 10.9 item 4). */
-const DEFAULT_DENOMINATOR = 10_000n;
+const UNSUPPORTED = "This arbitrable does not expose all of its appeal multipliers.";
+
+/**
+ * KlerosGovernor.sol fixes these: `MULTIPLIER_DIVISOR = 10000` (:78) and "The loser must pay during the first half of the
+ * appeal period" (:345), with no getter for the latter; the recorded governor fixtures confirm both.
+ */
+function governorFallback(denominator: bigint | null): Pick<Multipliers, "denominator" | "loserAppealPeriodMultiplier"> {
+  const resolved = denominator ?? 10_000n;
+  return { denominator: resolved, loserAppealPeriodMultiplier: resolved / 2n };
+}
+
+type Fallback = typeof governorFallback;
 
 /**
  * The value of the first getter in `names` that answers, or `null` when every one fails in the contract (a revert, an
@@ -33,7 +43,7 @@ async function firstAnswer(client: ReadClient, address: Address, names: readonly
   return null;
 }
 
-/** `getMultipliers()` (spec 10.9 item 1), or `null` when the contract fails it. A transport failure is rethrown. */
+/** `getMultipliers()`, or `null` when the contract fails it. A transport failure is rethrown. */
 async function readStruct(client: ReadClient, address: Address): Promise<Multipliers | null> {
   try {
     const [winnerStakeMultiplier, loserStakeMultiplier, loserAppealPeriodMultiplier, denominator] = await client.readContract({
@@ -53,27 +63,23 @@ function validated(multipliers: Multipliers): Outcome<Multipliers> {
   return succeed(multipliers);
 }
 
-/** Spec 10.9 items 2 to 5: each field through its own getters, with the denominator and loser-window defaults. */
-async function readSingleGetters(client: ReadClient, address: Address): Promise<Outcome<Multipliers>> {
+async function readSingleGetters(client: ReadClient, address: Address, fallback?: Fallback): Promise<Outcome<Multipliers>> {
   const [winnerStakeMultiplier, loserStakeMultiplier, denominator, loserAppealPeriodMultiplier] = await Promise.all([
     firstAnswer(client, address, FIELD_GETTERS.winnerStakeMultiplier),
     firstAnswer(client, address, FIELD_GETTERS.loserStakeMultiplier),
     firstAnswer(client, address, FIELD_GETTERS.denominator),
     firstAnswer(client, address, FIELD_GETTERS.loserAppealPeriodMultiplier),
   ]);
-  if (winnerStakeMultiplier === null || loserStakeMultiplier === null) {
-    return fail("unsupported", "The arbitrable exposes no appeal stake multipliers this interface understands.");
+  if (winnerStakeMultiplier === null || loserStakeMultiplier === null) return fail("unsupported", UNSUPPORTED);
+  if (denominator !== null && loserAppealPeriodMultiplier !== null) {
+    return validated({ winnerStakeMultiplier, loserStakeMultiplier, loserAppealPeriodMultiplier, denominator });
   }
-  const resolvedDenominator = denominator ?? DEFAULT_DENOMINATOR;
-  return validated({
-    winnerStakeMultiplier,
-    loserStakeMultiplier,
-    loserAppealPeriodMultiplier: loserAppealPeriodMultiplier ?? resolvedDenominator / 2n,
-    denominator: resolvedDenominator,
-  });
+  if (fallback === undefined) return fail("unsupported", UNSUPPORTED);
+  const fixed = fallback(denominator);
+  return validated({ winnerStakeMultiplier, loserStakeMultiplier, loserAppealPeriodMultiplier: loserAppealPeriodMultiplier ?? fixed.loserAppealPeriodMultiplier, denominator: fixed.denominator });
 }
 
-/** A governor's `sharedMultiplier()` (P-05), or `undefined` when the contract fails it. A transport failure is rethrown. */
+/** A governor's `sharedMultiplier()`, or `undefined` when the contract fails it. A transport failure is rethrown. */
 async function readSharedMultiplier(client: ReadClient, address: Address): Promise<bigint | undefined> {
   try {
     return await client.readContract({ address, abi: governorAbi, functionName: "sharedMultiplier" });
@@ -83,19 +89,18 @@ async function readSharedMultiplier(client: ReadClient, address: Address): Promi
   }
 }
 
-/** A governor's multipliers (D-47): the single getters, plus `sharedMultiplier()` for a tie (P-05). */
 async function readGovernorMultipliers(client: ReadClient, address: Address): Promise<Outcome<Multipliers>> {
-  const [multipliers, sharedMultiplier] = await Promise.all([readSingleGetters(client, address), readSharedMultiplier(client, address)]);
+  const [multipliers, sharedMultiplier] = await Promise.all([readSingleGetters(client, address, governorFallback), readSharedMultiplier(client, address)]);
   return multipliers.ok && sharedMultiplier !== undefined ? succeed({ ...multipliers.value, sharedMultiplier }) : multipliers;
 }
 
 /**
- * The arbitrable's appeal multipliers (spec 10.9): `getMultipliers()`, and when the contract fails it, each field through
- * the first single getter that answers. A missing stake multiplier is `unsupported`; a missing denominator is 10000 and a
- * missing loser appeal-period multiplier half the denominator. Only a failure of the contract means "try the next
- * getter"; a transport failure is `rpc-error`. Governors have no `getMultipliers()` and go straight to the getters
- * (D-47), and also read `sharedMultiplier()`, which they charge every list when the current ruling is 0 (P-05). A zero
- * denominator is `invalid-data`, so the amounts never divide by zero (D-36). Never rejects.
+ * The arbitrable's appeal multipliers: `getMultipliers()`, and when the contract fails it, each field through the first
+ * single getter that answers; any field no getter answers is `unsupported`. Only a failure of the contract means "try the
+ * next getter"; a transport failure is `rpc-error`. Governors have no `getMultipliers()` and go straight to the getters,
+ * take a missing denominator and loser appeal-period multiplier from what KlerosGovernor fixes, and also read
+ * `sharedMultiplier()`, which they charge every list when the current ruling is 0. A zero denominator is
+ * `invalid-data`, so the amounts never divide by zero. Never rejects.
  */
 export async function readMultipliers(client: ReadClient, family: FamilyDetection): Promise<Outcome<Multipliers>> {
   const address = family.arbitrable;

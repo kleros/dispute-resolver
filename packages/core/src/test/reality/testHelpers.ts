@@ -90,7 +90,7 @@ const FAKE_ABI = [...realityAbi.filter((item) => item.type === "function"), ...r
 
 const BLOCK_HASH: Hex = `0x${"ab".repeat(32)}`;
 const RETRY_DELAY_MS = 1;
-/** The retry policy of a read client (`rpc.createReadClient`, spec 9.1): two retries, except range refusals of getLogs. */
+/** The retry policy of a read client (`rpc.createReadClient`): two retries, except range refusals of getLogs. */
 const RETRIES = 2;
 
 function fakeBlock(chain: FakeChain, block: bigint): unknown {

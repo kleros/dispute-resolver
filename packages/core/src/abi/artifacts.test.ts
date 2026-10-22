@@ -30,8 +30,6 @@ interface Entry {
 }
 
 interface AbiCase {
-  /** The spec row or ledger entry the ABI half of which is proven here; test names start with it. */
-  readonly id: string;
   readonly name: string;
   readonly abi: Abi;
   readonly entries: readonly Entry[];
@@ -47,7 +45,6 @@ const CROSS_CHAIN_PROXY_ABIS = VERIFIED.crossChainRealityProxies.map((proxy) => 
 
 const CASES: readonly AbiCase[] = [
   {
-    id: "§6.1",
     name: "klerosLiquidAbi",
     abi: klerosLiquidAbi,
     entries: [
@@ -64,9 +61,8 @@ const CASES: readonly AbiCase[] = [
       ev("AppealDecision(uint256,address)", ARTIFACTS.klerosLiquid),
     ],
   },
-  { id: "§6.1", name: "policyRegistryAbi", abi: policyRegistryAbi, entries: [fn("policies(uint256)", ARTIFACTS.policyRegistry)] },
+  { name: "policyRegistryAbi", abi: policyRegistryAbi, entries: [fn("policies(uint256)", ARTIFACTS.policyRegistry)] },
   {
-    id: "§6.2",
     name: "arbitrableProxyAbi",
     abi: arbitrableProxyAbi,
     entries: [
@@ -75,7 +71,6 @@ const CASES: readonly AbiCase[] = [
     ],
   },
   {
-    id: "§6.1",
     name: "idrV2Abi",
     abi: idrV2Abi,
     entries: [
@@ -90,25 +85,21 @@ const CASES: readonly AbiCase[] = [
     ],
   },
   {
-    id: "D-49",
     name: "idrV1Abi",
     abi: idrV1Abi,
     entries: [fn("getTotalWithdrawableAmount(uint256,address,uint256[])", ARTIFACTS.idrV1), fn("withdrawFeesAndRewardsForAllRounds(uint256,address,uint256[])", ARTIFACTS.idrV1)],
   },
   {
-    id: "D-46",
     name: "idrLegacyFundAppealAbi",
     abi: idrLegacyFundAppealAbi,
     entries: [fn("fundAppeal(uint256,uint256)", ARTIFACTS.idrV2, ARTIFACTS.idrV1, ARTIFACTS.arbitrableProxy), fn("fundAppeal(uint256,uint8)", VERIFIED.legacyResolver.abi)],
   },
   {
-    id: "§6.2",
     name: "escrowV1Abi",
     abi: escrowV1Abi,
     entries: [fn("disputeIDtoTransactionID(uint256)", ARTIFACTS.escrowV1), fn("appeal(uint256)", ARTIFACTS.escrowV1), fn("submitEvidence(uint256,string)", ARTIFACTS.escrowV1)],
   },
   {
-    id: "D-47",
     name: "governorAbi",
     abi: governorAbi,
     entries: [
@@ -125,7 +116,6 @@ const CASES: readonly AbiCase[] = [
     ],
   },
   {
-    id: "§10.9",
     name: "multiplierGetterAbi",
     abi: multiplierGetterAbi,
     entries: [
@@ -140,7 +130,6 @@ const CASES: readonly AbiCase[] = [
     ],
   },
   {
-    id: "§6.3",
     name: "realityAbi",
     abi: realityAbi,
     entries: [
@@ -150,7 +139,6 @@ const CASES: readonly AbiCase[] = [
     ],
   },
   {
-    id: "§6.3",
     name: "realityProxyAbi",
     abi: realityProxyAbi,
     entries: [
@@ -160,7 +148,6 @@ const CASES: readonly AbiCase[] = [
     ],
   },
   {
-    id: "§6.1",
     name: "erc792Abi",
     abi: erc792Abi,
     entries: [
@@ -171,7 +158,6 @@ const CASES: readonly AbiCase[] = [
     ],
   },
   {
-    id: "§6.3",
     name: "erc1497Abi",
     abi: erc1497Abi,
     entries: [
@@ -182,7 +168,7 @@ const CASES: readonly AbiCase[] = [
   },
 ];
 
-/** The §10.9 single getters have no artifact for `denominator` and `MULTIPLIER_DENOMINATOR`: the shape is `() view returns (uint256)`. */
+/** No published artifact declares `denominator` or `MULTIPLIER_DENOMINATOR`, so their entries are built by hand. */
 function constructedGetter(name: string): NormalizedItem[] {
   return [{ type: "function", name, inputs: [], outputs: [{ name: "", type: "uint256" }], stateMutability: "view" }];
 }
@@ -193,7 +179,7 @@ function embeddedItems(abi: Abi): NormalizedItem[] {
 
 describe("every embedded entry is the published or verified entry, nothing else is embedded", () => {
   for (const abiCase of CASES) {
-    it(`${abiCase.id}: ${abiCase.name} embeds exactly the listed entries`, () => {
+    it(`${abiCase.name} embeds exactly the listed entries`, () => {
       const embedded = embeddedItems(abiCase.abi)
         .map((item) => `${item.type} ${signatureOf(item)}`)
         .sort(byText);
@@ -202,7 +188,7 @@ describe("every embedded entry is the published or verified entry, nothing else 
     });
 
     for (const entry of abiCase.entries) {
-      it(`${abiCase.id}: ${abiCase.name} ${entry.kind} ${entry.signature} equals its source (name, inputs, outputs, indexed flags, mutability)`, () => {
+      it(`${abiCase.name} ${entry.kind} ${entry.signature} equals its source (name, inputs, outputs, indexed flags, mutability)`, () => {
         const embedded = findBySignature(embeddedItems(abiCase.abi), entry.signature, entry.kind);
         expect(entry.sources.length).toBeGreaterThan(0);
         for (const source of entry.sources) expect(embedded).toEqual(findBySignature(source, entry.signature, entry.kind));
@@ -211,8 +197,8 @@ describe("every embedded entry is the published or verified entry, nothing else 
   }
 });
 
-describe("D-47: governor sources", () => {
-  it("D-47: the verified governors are the four of the deployed set, kleros.eth without submitEvidence(string)", () => {
+describe("governor sources", () => {
+  it("the verified governors are the four deployed ones, and only kleros.eth lacks submitEvidence(string)", () => {
     expect(VERIFIED.governors.map((governor) => governor.address)).toEqual([
       "0x327a29fce0a6490e4236240be176daa282eccfdf",
       "0x7510c77163683448b8dc8fe9e019d9482be1ed2b",
@@ -224,15 +210,15 @@ describe("D-47: governor sources", () => {
     expect(GOVERNORS_WITH_EVIDENCE).toHaveLength(3);
   });
 
-  it("D-47: the fundAppeal argument is the verified submission index, not a ruling", () => {
+  it("the governor fundAppeal argument is the submission index, not a ruling", () => {
     const entry = findBySignature(embeddedItems(governorAbi), "fundAppeal(uint256)", "function") as NormalizedFunction;
     expect(entry.inputs).toEqual([{ name: "_submissionID", type: "uint256" }]);
     expect(entry.stateMutability).toBe("payable");
   });
 });
 
-describe("D-46: externalIDtoLocalID mutability", () => {
-  it("D-46: the deployed implementations expose a view getter and IDRv2 declares the same signature nonpayable", () => {
+describe("externalIDtoLocalID mutability", () => {
+  it("deployed implementations expose a view getter while IDRv2 declares the same signature nonpayable", () => {
     const signature = "externalIDtoLocalID(uint256)";
     const deployed = [ARTIFACTS.arbitrableProxy, VERIFIED.legacyResolver.abi].map((source) => findBySignature(source, signature, "function"));
     const declared = findBySignature(ARTIFACTS.idrV2, signature, "function") as NormalizedFunction;
@@ -243,7 +229,7 @@ describe("D-46: externalIDtoLocalID mutability", () => {
   });
 });
 
-describe("§6.3: event topics the Reality lookup filters on", () => {
+describe("event topics the Reality lookup filters on", () => {
   const TOPIC_SIGNATURES: readonly [ABI: Abi, name: string, signature: string][] = [
     [realityProxyAbi, "DisputeIDToQuestionID", "DisputeIDToQuestionID(uint256,bytes32)"],
     [realityProxyAbi, "ArbitrationCreated", "ArbitrationCreated(bytes32,address,uint256)"],
@@ -251,13 +237,13 @@ describe("§6.3: event topics the Reality lookup filters on", () => {
     [realityAbi, "LogNewTemplate", "LogNewTemplate(uint256,address,string)"],
   ];
 
-  it.each(TOPIC_SIGNATURES)("§6.3: %# %s topic is the signature the old lookup hashed", (abi, name, signature) => {
+  it.each(TOPIC_SIGNATURES)("$1 topic is the hash of its full signature", (abi, name, signature) => {
     const item = abi.find((entry) => entry.type === "event" && entry.name === name);
     expect(item).toBeDefined();
     expect(toEventSelector(item as Parameters<typeof toEventSelector>[0])).toBe(toEventSelector(signature));
   });
 
-  it("§6.3: Reality.eth v2 and v3 declare the same lookup entries", () => {
+  it("Reality.eth v2 and v3 declare the same lookup events", () => {
     for (const signature of ["LogNewQuestion(bytes32,address,uint256,string,bytes32,address,uint32,uint32,uint256,uint256)", "LogNewTemplate(uint256,address,string)"]) {
       const reference = findBySignature(ARTIFACTS.realitio, signature, "event");
       expect(findBySignature(ARTIFACTS.realityEth30, signature, "event")).toEqual(reference);
@@ -266,8 +252,8 @@ describe("§6.3: event topics the Reality lookup filters on", () => {
   });
 });
 
-describe("§6.3: topics of the arbitrator events", () => {
-  it("§6.3: DisputeCreation(uint256,address) and Evidence(address,uint256,address,string) have the topics recorded in the governor notes", () => {
+describe("arbitrator event topics", () => {
+  it("DisputeCreation and Evidence have their known on-chain topic hashes", () => {
     const dispute = getAbiItem({ abi: klerosLiquidAbi, name: "DisputeCreation" });
     const evidence = getAbiItem({ abi: erc1497Abi, name: "Evidence" });
     expect(toEventSelector(dispute)).toBe("0x141dfc18aa6a56fc816f44f0e9e2f1ebc92b15ab167770e17db5b084c10ed995");
@@ -275,14 +261,14 @@ describe("§6.3: topics of the arbitrator events", () => {
   });
 });
 
-describe("§6.1: viem infers and encodes through the embedded ABIs", () => {
-  it("§6.1: getSubcourt takes a bigint and encodes the selector of the published signature", () => {
+describe("encoding through the embedded ABIs", () => {
+  it("getSubcourt takes a bigint and encodes the selector of the published signature", () => {
     const data = encodeFunctionData({ abi: klerosLiquidAbi, functionName: "getSubcourt", args: [3n] });
     expect(data.slice(0, 10)).toBe(toFunctionSelector("getSubcourt(uint96)"));
     expect(data).toHaveLength(2 + 8 + 64);
   });
 
-  it("D-49: the v1 withdrawable read encodes the array of rulings", () => {
+  it("the v1 withdrawable read encodes the array of rulings", () => {
     const data = encodeFunctionData({
       abi: idrV1Abi,
       functionName: "getTotalWithdrawableAmount",
@@ -291,13 +277,13 @@ describe("§6.1: viem infers and encodes through the embedded ABIs", () => {
     expect(data.slice(0, 10)).toBe(toFunctionSelector("getTotalWithdrawableAmount(uint256,address,uint256[])"));
   });
 
-  it("D-46: each fundAppeal overload encodes under its own selector", () => {
+  it("each legacy fundAppeal overload encodes under its own selector", () => {
     const [wide, narrow] = idrLegacyFundAppealAbi;
     expect(encodeFunctionData({ abi: [wide], functionName: "fundAppeal", args: [1n, 2n] }).slice(0, 10)).toBe(toFunctionSelector("fundAppeal(uint256,uint256)"));
     expect(encodeFunctionData({ abi: [narrow], functionName: "fundAppeal", args: [1n, 1] }).slice(0, 10)).toBe(toFunctionSelector("fundAppeal(uint256,uint8)"));
   });
 
-  it("§6.3: the Contribution event decodes its ruling and amount", () => {
+  it("the Contribution event decodes its ruling and amount", () => {
     const padded = (value: bigint): Hex => encodeAbiParameters([{ type: "uint256" }], [value]);
     const contributor = encodeAbiParameters([{ type: "address" }], ["0x0000000000000000000000000000000000000002"]);
     const decoded = decodeEventLog({

@@ -13,7 +13,7 @@ export const RULING_FUNDED_EVENT = getAbiItem({ abi: idrV2Abi, name: "RulingFund
 
 /**
  * Whether the detection describes the binding's arbitrable on the binding's chain. Every read targets the arbitrable the
- * arbitrator names (A22); a detection of another contract would apply its dialect to the wrong one.
+ * arbitrator names; a detection of another contract would apply its dialect to the wrong one.
  */
 export function checkContext(context: AppealContext): Outcome<AppealContext> {
   const { family, binding } = context;
@@ -23,7 +23,7 @@ export function checkContext(context: AppealContext): Outcome<AppealContext> {
   return succeed(context);
 }
 
-/** The local dispute ID the IDisputeResolver reads need (spec 5.3 step 2); an unresolved one keeps its failure kind. */
+/** The local dispute ID the IDisputeResolver reads need; an unresolved one keeps its failure kind. */
 export function idrLocalId(localId: LocalIdResolution): Outcome<bigint> {
   switch (localId.kind) {
     case "local-id":
@@ -37,9 +37,9 @@ export function idrLocalId(localId: LocalIdResolution): Outcome<bigint> {
 }
 
 /**
- * The governor session of the dispute (D-47): the evidence group of its ERC-1497 `Dispute` event, which the governor
- * emits as `sessions.length − 1` when it creates the dispute (verified source). The governor's current session is not
- * used: it moves on once the ruling is executed (golden 1621: session 18, current session 24).
+ * The governor session of the dispute: the evidence group of its ERC-1497 `Dispute` event, which the governor emits as
+ * `sessions.length − 1` when it creates the dispute. The governor's current session is not used: it moves on once the
+ * ruling is executed.
  */
 export function governorSession(context: AppealContext): Outcome<bigint> {
   if (context.evidenceGroupId === undefined) return fail("not-found", "The governor session is unknown: the dispute's Dispute event was not read.");

@@ -8,18 +8,12 @@ const CACHE_PREFIX = "@@kleros/court/reality-question/v1";
 const QUESTION_ID = /^0x[0-9a-fA-F]{64}$/;
 const DECIMAL_STRING = /^\d+$/;
 
-/**
- * The key of a looked-up question in the persistent cache: today's
- * `@@kleros/court/reality-question/v1/{chain}/{proxy}/{disputeId}` (the cache is shared with the old app's entries).
- */
+/** Keep this format: entries already stored in users' browsers are read back under it. */
 export function realityQuestionCacheKey(arbitratorChainId: ChainId, entry: RealityProxyEntry, disputeId: bigint): string {
   return `${CACHE_PREFIX}/${String(arbitratorChainId)}/${entry.proxy}/${String(disputeId)}`;
 }
 
-/**
- * Whether a value read back from the cache is the question of this entry: well formed, from the entry's Reality.eth
- * contract and chain, and the known question when the dispute is a known one (A5). Everything else is dropped.
- */
+/** Storage is untrusted: an entry must match this proxy's Reality.eth contract and chain, and the known question if any. */
 export function isValidCachedQuestion(value: unknown, entry: RealityProxyEntry, known: KnownDisputeQuestion | undefined): value is RealityQuestion {
   const schema = z.object({
     questionId: z
@@ -35,7 +29,6 @@ export function isValidCachedQuestion(value: unknown, entry: RealityProxyEntry, 
   return schema.safeParse(value).success;
 }
 
-/** The cached question when it is valid, else `undefined`; an invalid entry is removed. A cache that throws is no cache. */
 export function readCachedQuestion(
   cache: RealityQuestionCache | undefined,
   key: string,
@@ -54,7 +47,6 @@ export function readCachedQuestion(
   return undefined;
 }
 
-/** Caching is best-effort: a cache that throws is ignored. */
 export function writeCachedQuestion(cache: RealityQuestionCache | undefined, key: string, question: RealityQuestion): void {
   try {
     cache?.set(key, question);

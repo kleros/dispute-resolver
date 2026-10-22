@@ -43,14 +43,14 @@ function options(count: number, title = "Option"): CreateDisputeDraft["options"]
 }
 
 describe("CREATE_LIMITS", () => {
-  it("§4.3: 2 to 32 options and at least one vote", () => {
+  it("allows 2 to 32 options and at least one vote", () => {
     expect(CREATE_LIMITS.optionRange).toEqual([2, 32]);
     expect(CREATE_LIMITS.minVotes).toBe(1);
   });
 });
 
-describe("validateCreateInput: required fields and integers (§4.3)", () => {
-  it("§4.3: exactly the court, votes, title, question, Number of Options and option titles are required, like production", () => {
+describe("validateCreateInput: required fields and integers", () => {
+  it("requires exactly the court, votes, title, question, Number of Options and option titles", () => {
     // Question Type is required too, and a draft cannot lack it: it is a `CreateQuestionType`, the dropdown's current choice.
     const blank = draft({
       courtId: "",
@@ -65,7 +65,7 @@ describe("validateCreateInput: required fields and integers (§4.3)", () => {
     expect(errors(blank)).toEqual({ courtId: "required", votes: "required", title: "required", question: "required", optionCount: "out-of-range", options: ["required"] });
   });
 
-  it("§4.3: a complete single-select draft becomes a typed input", () => {
+  it("a complete single-select draft becomes a typed input", () => {
     expect(accepted(draft({ courtId: "12", votes: "5", category: "Other", description: "Details" }))).toEqual({
       courtId: 12n,
       votes: 5n,
@@ -83,47 +83,47 @@ describe("validateCreateInput: required fields and integers (§4.3)", () => {
     });
   });
 
-  it("§4.3: title and question are required", () => {
+  it("title and question are required", () => {
     expect(errors(draft({ title: "", question: "" }))).toEqual({ title: "required", question: "required" });
   });
 
-  it("§4.3: title and question keep today's browser rule: only the empty string is missing", () => {
+  it("only an empty title or question counts as missing", () => {
     expect(accepted(draft({ title: " ", question: " " }))).toMatchObject({ title: " ", question: " " });
   });
 
-  it("§4.3: category and description are optional and kept as typed", () => {
+  it("category and description are optional and kept as typed", () => {
     expect(accepted(draft({ category: "", description: "" }))).toMatchObject({ category: "", description: "" });
   });
 
-  it("§4.3: court and votes are required", () => {
+  it("court and votes are required", () => {
     expect(errors(draft({ courtId: "", votes: "" }))).toEqual({ courtId: "required", votes: "required" });
   });
 
-  it("§4.3: court and votes must be non-negative decimal integers", () => {
+  it("court and votes must be non-negative decimal integers", () => {
     for (const value of ["3.5", "1e3", "abc", "-1", "+3", " 3", "0x10", "３"]) {
       expect(errors(draft({ courtId: value, votes: value }))).toEqual({ courtId: "not-an-integer", votes: "not-an-integer" });
     }
   });
 
-  it("§4.3: votes start at 1 (min=1); court 0 is the general court", () => {
+  it("votes start at 1; court 0 is the general court", () => {
     expect(errors(draft({ votes: "0" }))).toEqual({ votes: "out-of-range" });
     expect(accepted(draft({ courtId: "0", votes: "1" }))).toMatchObject({ courtId: 0n, votes: 1n });
   });
 
-  it("§4.5: court and votes must fit the uint256 words of extraData", () => {
+  it("court and votes must fit the uint256 words of extraData", () => {
     const tooLarge = (2n ** 256n).toString();
     expect(errors(draft({ courtId: tooLarge, votes: tooLarge }))).toEqual({ courtId: "out-of-range", votes: "out-of-range" });
     const max = (2n ** 256n - 1n).toString();
     expect(accepted(draft({ courtId: max, votes: max }))).toMatchObject({ courtId: 2n ** 256n - 1n, votes: 2n ** 256n - 1n });
   });
 
-  it("§4.3: large vote counts keep their exact value", () => {
+  it("large vote counts keep their exact value", () => {
     expect(accepted(draft({ votes: "9007199254740993" })).votes).toBe(9_007_199_254_740_993n);
   });
 });
 
-describe("validateCreateInput: ruling options (§4.3, D-08)", () => {
-  it("§4.3: select types need 2 to 32 options", () => {
+describe("validateCreateInput: ruling options", () => {
+  it("select types need 2 to 32 options", () => {
     for (const questionType of ["single-select", "multiple-select"] as const) {
       expect(errors(draft({ questionType, options: options(1) }))).toEqual({ optionCount: "out-of-range" });
       expect(errors(draft({ questionType, options: options(33) }))).toEqual({ optionCount: "out-of-range" });
@@ -133,7 +133,7 @@ describe("validateCreateInput: ruling options (§4.3, D-08)", () => {
     }
   });
 
-  it("§4.3: every option title is required; descriptions are optional", () => {
+  it("every option title is required; descriptions are optional", () => {
     const result = errors(
       draft({
         options: [
@@ -146,11 +146,11 @@ describe("validateCreateInput: ruling options (§4.3, D-08)", () => {
     expect(result).toEqual({ options: [undefined, "required", undefined] });
   });
 
-  it("§4.3: a too-short list still reports its empty titles", () => {
+  it("a too-short list still reports its empty titles", () => {
     expect(errors(draft({ options: [{ title: "", description: "" }] }))).toEqual({ optionCount: "out-of-range", options: ["required"] });
   });
 
-  it("D-08: the options passed are the ones written, each with its own description", () => {
+  it("the options passed are the ones written, each with its own description", () => {
     const value = accepted(
       draft({
         questionType: "multiple-select",
@@ -168,7 +168,7 @@ describe("validateCreateInput: ruling options (§4.3, D-08)", () => {
     ]);
   });
 
-  it("D-08: uint and datetime ignore option rows, so no stale titles or descriptions are written", () => {
+  it("uint and datetime ignore option rows, so no stale titles or descriptions are written", () => {
     for (const questionType of ["uint", "datetime"] as const) {
       const value = accepted(draft({ questionType, options: [{ title: "", description: "stale" }] }));
       expect(value.options).toEqual([]);
@@ -177,8 +177,8 @@ describe("validateCreateInput: ruling options (§4.3, D-08)", () => {
   });
 });
 
-describe("validateCreateInput: parties (D-08, B20)", () => {
-  it("D-08: a row with both fields empty is ignored", () => {
+describe("validateCreateInput: parties", () => {
+  it("a row with both fields empty is ignored", () => {
     expect(
       accepted(
         draft({
@@ -191,7 +191,7 @@ describe("validateCreateInput: parties (D-08, B20)", () => {
     ).toEqual({});
   });
 
-  it("D-08: several parties, each alias keyed by its own lowercased address", () => {
+  it("several parties, each alias keyed by its own lowercased address", () => {
     const value = accepted(
       draft({
         parties: [
@@ -203,7 +203,7 @@ describe("validateCreateInput: parties (D-08, B20)", () => {
     expect(value.aliases).toEqual({ [ALICE.toLowerCase()]: "Alice", [BOB.toLowerCase()]: "Bob" });
   });
 
-  it("B20: names stay paired with their addresses when an earlier row is empty", () => {
+  it("names stay paired with their addresses when an earlier row is empty", () => {
     const value = accepted(
       draft({
         parties: [
@@ -216,7 +216,7 @@ describe("validateCreateInput: parties (D-08, B20)", () => {
     expect(value.aliases).toEqual({ [BOB.toLowerCase()]: "Bob", [ALICE.toLowerCase()]: "Alice" });
   });
 
-  it("B20: an alias without an address and an address without an alias are rejected on their own rows", () => {
+  it("an alias without an address and an address without an alias are rejected on their own rows", () => {
     expect(
       errors(
         draft({
@@ -230,13 +230,13 @@ describe("validateCreateInput: parties (D-08, B20)", () => {
     ).toEqual({ parties: ["alias-without-address", "address-without-alias", "address-without-alias"] });
   });
 
-  it("D-08: addresses are checked with isAddress", () => {
+  it("rejects values that are not a 0x-prefixed 40-digit hex address", () => {
     for (const address of ["0x123", "alice.eth", "5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed", `0x${"g".repeat(40)}`, `${ALICE}00`]) {
       expect(errors(draft({ parties: [{ alias: "Alice", address }] }))).toEqual({ parties: ["invalid-address"] });
     }
   });
 
-  it("create-01 D-08/B20: the EIP-55 checksum is enforced, so a mistyped digit or a wrong case pattern is rejected", () => {
+  it("enforces the EIP-55 checksum, so a mistyped digit or a wrong case pattern is rejected", () => {
     const wrongDigit = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAfd";
     const wrongCase = "0x5AAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
     for (const address of [wrongDigit, wrongCase]) {
@@ -244,11 +244,11 @@ describe("validateCreateInput: parties (D-08, B20)", () => {
     }
   });
 
-  it("MC-8: an all-uppercase address is accepted as EIP-55's unchecksummed form and stored lowercase", () => {
+  it("an all-uppercase address is accepted as EIP-55's unchecksummed form and stored lowercase", () => {
     expect(accepted(draft({ parties: [{ alias: "Alice", address: `0x${ALICE.slice(2).toUpperCase()}` }] })).aliases).toEqual({ [ALICE.toLowerCase()]: "Alice" });
   });
 
-  it("MC-8: a 0X prefix and a mixed-case address with a wrong checksum stay rejected", () => {
+  it("a 0X prefix and a mixed-case address with a wrong checksum stay rejected", () => {
     const upperPrefix = `0X${ALICE.slice(2).toUpperCase()}`;
     const wrongCase = "0x5AAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
     for (const address of [upperPrefix, wrongCase]) {
@@ -256,7 +256,7 @@ describe("validateCreateInput: parties (D-08, B20)", () => {
     }
   });
 
-  it("MC-8, B20: an all-uppercase address duplicates its lowercase form", () => {
+  it("an all-uppercase address duplicates its lowercase form", () => {
     expect(
       errors(
         draft({
@@ -269,16 +269,16 @@ describe("validateCreateInput: parties (D-08, B20)", () => {
     ).toEqual({ parties: [undefined, "duplicate-address"] });
   });
 
-  it("D-08: a lowercase or checksummed address is accepted, and surrounding whitespace is dropped", () => {
+  it("a lowercase or checksummed address is accepted, and surrounding whitespace is dropped", () => {
     expect(accepted(draft({ parties: [{ alias: "Alice", address: ALICE.toLowerCase() }] })).aliases).toEqual({ [ALICE.toLowerCase()]: "Alice" });
     expect(accepted(draft({ parties: [{ alias: "Alice", address: ` ${ALICE} ` }] })).aliases).toEqual({ [ALICE.toLowerCase()]: "Alice" });
   });
 
-  it("D-08: the alias is written as typed", () => {
+  it("the alias is written as typed", () => {
     expect(accepted(draft({ parties: [{ alias: " Alice (buyer) ", address: ALICE }] })).aliases).toEqual({ [ALICE.toLowerCase()]: " Alice (buyer) " });
   });
 
-  it("B20: duplicate addresses are rejected case-insensitively, on every repeat after the first", () => {
+  it("duplicate addresses are rejected case-insensitively, on every repeat after the first", () => {
     expect(
       errors(
         draft({
@@ -294,17 +294,17 @@ describe("validateCreateInput: parties (D-08, B20)", () => {
   });
 });
 
-describe("validateCreateInput: primary document (B16)", () => {
-  it("B16: no document is accepted", () => {
+describe("validateCreateInput: primary document", () => {
+  it("a draft without a document is accepted", () => {
     expect(accepted(draft({ primaryDocument: null })).primaryDocument).toBeNull();
   });
 
-  it("B16: a canonical document path is accepted unchanged", () => {
+  it("a canonical document path is accepted unchanged", () => {
     const path: CanonicalIpfsPath = `/ipfs/${CID}/contract.pdf`;
     expect(accepted(draft({ primaryDocument: path })).primaryDocument).toBe(path);
   });
 
-  it("B16: a path that is not canonical is refused, never written into the meta-evidence", () => {
+  it("a path that is not canonical is refused, never written into the meta-evidence", () => {
     for (const path of [`/ipfs/${CID}/../../ipns/x`, "/ipfs/not-a-cid/file.pdf", `/ipfs/${CID}/a/../b.pdf`, `/ipfs/${CID}/`, "/ipns/example.eth/file.pdf"]) {
       expect(errors(draft({ primaryDocument: path as CanonicalIpfsPath }))).toEqual({ primaryDocument: "not-content-addressed" });
     }
@@ -312,7 +312,7 @@ describe("validateCreateInput: primary document (B16)", () => {
 });
 
 describe("validateCreateInput: several errors at once", () => {
-  it("§4.3: every invalid field is reported together", () => {
+  it("every invalid field is reported together", () => {
     expect(
       errors(
         draft({

@@ -2,7 +2,6 @@ import type { AbiEvent, GetLogsParameters, GetLogsReturnType } from "viem";
 import type { Address, ReadClient } from "../types";
 import { isRangeLimitError } from "./rangeLimit";
 
-/** Windowing parameters of the chunked log scans. */
 interface LogScanLimits {
   /** First window size when the whole range is refused. */
   readonly windowSize: number;
@@ -14,7 +13,6 @@ interface LogScanLimits {
   readonly concurrency: number;
 }
 
-/** The Reality lookup's windowing constants (spec 9.1): 10,000 blocks, 8 at a time, shrunk by 5 down to 100. */
 const LIMITS: LogScanLimits = { windowSize: 10_000, minWindowSize: 100, windowShrinkFactor: 5, concurrency: 8 };
 
 interface BlockWindow {
@@ -34,27 +32,22 @@ interface ScanOptions {
   readonly signal?: AbortSignal;
 }
 
-/** The logs of one scan over mined blocks (explicit block numbers, so never pending). */
+/** Explicit block numbers, so never pending. */
 type Logs<TEvent extends AbiEvent> = GetLogsReturnType<TEvent, undefined, undefined, bigint, bigint>;
 
-/** The next window size after a refusal, or `undefined` when the window cannot shrink any further. */
 function shrink(windowSize: number, limits: LogScanLimits): number | undefined {
   if (windowSize <= limits.minWindowSize) return undefined;
   const next = Math.max(limits.minWindowSize, Math.floor(windowSize / limits.windowShrinkFactor));
   return next < windowSize ? next : undefined;
 }
 
-/**
- * The first window size once the whole range of `span` blocks was refused: the configured size, shrunk until it is
- * smaller than the refused range. `undefined` when no smaller window is allowed.
- */
+/** Shrunk until it is smaller than the refused range, so the first windows never repeat the refused request. */
 function firstWindowSize(span: bigint, limits: LogScanLimits): number | undefined {
   let windowSize: number | undefined = limits.windowSize;
   while (windowSize !== undefined && BigInt(windowSize) >= span) windowSize = shrink(windowSize, limits);
   return windowSize;
 }
 
-/** Up to `count` consecutive windows of `windowSize` blocks from `from`, oldest first, clipped at `to`. */
 function planWindows(from: bigint, to: bigint, windowSize: number, count: number): BlockWindow[] {
   const size = BigInt(windowSize);
   const windows: BlockWindow[] = [];
@@ -64,10 +57,7 @@ function planWindows(from: bigint, to: bigint, windowSize: number, count: number
   return windows;
 }
 
-/**
- * Removed logs dropped, duplicates (same transaction hash and log index, which some providers return twice) dropped,
- * sorted by block and log index.
- */
+/** Some providers return the same log (transaction hash and log index) twice. */
 function normalizeLogs<TEvent extends AbiEvent>(logs: Logs<TEvent>): Logs<TEvent> {
   const seen = new Set<string>();
   const unique = logs.filter((log) => {
@@ -86,8 +76,7 @@ function normalizeLogs<TEvent extends AbiEvent>(logs: Logs<TEvent>): Logs<TEvent
 type FetchWindows<TEvent extends AbiEvent> = (windows: readonly BlockWindow[]) => Promise<PromiseSettledResult<Logs<TEvent>>[]>;
 
 /**
- * The windowed scan after the whole range was refused: forward from `fromBlock`, `concurrency` windows at a time. The
- * logs of the windows before the first refused one are kept; that window and the later ones are fetched again with a
+ * The logs of the windows before the first refused one are kept; that window and the later ones are fetched again with a
  * smaller window. A refusal at the smallest window, or any other error, is rethrown.
  */
 async function scanWindows<TEvent extends AbiEvent>(
@@ -118,7 +107,6 @@ async function scanWindows<TEvent extends AbiEvent>(
   return collected;
 }
 
-/** The whole range in one request, or the windowed scan when the provider refuses it for its range limits. */
 async function scanRange<TEvent extends AbiEvent>(fetchWindows: FetchWindows<TEvent>, range: BlockWindow, limits: LogScanLimits): Promise<Logs<TEvent>> {
   const [whole] = await fetchWindows([range]);
   if (whole?.status === "fulfilled") return whole.value;
@@ -129,12 +117,8 @@ async function scanRange<TEvent extends AbiEvent>(fetchWindows: FetchWindows<TEv
 }
 
 /**
- * Every log of `request.event` emitted by `request.address` in `[fromBlock, toBlock]` (D-02, spec 6.3). The whole
- * range is tried in one request first. When the provider refuses it for its range or size limits, the range is scanned
- * forward in windows of `windowSize` blocks, `concurrency` at a time, oldest first; a refused window shrinks by
- * `windowShrinkFactor` down to `minWindowSize`, after which the refusal is rethrown. Other errors are rethrown, never
- * split. A lookup with a request budget passes a client built with it (`createReadClient`), which spends it before every
- * attempt, retries included. `signal` is checked before each round of requests.
+ * The whole range is tried in one request first; only a range or size refusal splits it into windows. Other errors are
+ * rethrown, never split. A lookup with a request budget passes a client built with it (`createReadClient`).
  */
 export async function getLogsChunked<const TEvent extends AbiEvent>(
   client: ReadClient,

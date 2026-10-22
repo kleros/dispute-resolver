@@ -137,7 +137,8 @@ class JsonScanner {
     const start = this.position;
     this.position += 1; // Opening quote.
     while (this.position < this.text.length && this.current() !== '"') {
-      if (this.text.charCodeAt(this.position) < 0x20) this.fail("Control character in string");
+      const code = this.text.codePointAt(this.position);
+      if (code === undefined || code < 0x20) this.fail("Control character in string");
       this.position += this.current() === "\\" ? 2 : 1;
     }
     if (this.position >= this.text.length) this.fail("Unterminated string");

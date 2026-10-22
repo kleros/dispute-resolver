@@ -8,9 +8,8 @@ import { scanSelectors } from "./scanSelectors";
 import type { FamilyCache, FamilyDetection } from "./types";
 
 /**
- * The code of `address`, `0x` when it has none. Read as raw JSON-RPC because viem's `getCode` turns both `"0x"` and an
- * answer without a result into `undefined`; only the literal `"0x"` is an empty account. A missing result or malformed
- * code rejects rather than reading as "no selectors" (C11).
+ * Read as raw JSON-RPC because viem's `getCode` turns both `"0x"` and an answer without a result into `undefined`; only
+ * the literal `"0x"` is an empty account. A missing result or malformed code rejects rather than reading as "no selectors".
  */
 async function readCode(client: ReadClient, address: Address): Promise<Hex> {
   const code: unknown = await client.request({ method: "eth_getCode", params: [address, "latest"] });
@@ -18,10 +17,6 @@ async function readCode(client: ReadClient, address: Address): Promise<Hex> {
   return code;
 }
 
-/**
- * The code whose dispatcher decides the family: the implementation's behind an EIP-1967 proxy, else the contract's own.
- * An empty account or an EIP-1167 clone is scanned as is, without reading the implementation slot (C11).
- */
 async function readDispatcher(client: ReadClient, address: Address): Promise<{ readonly code: Hex; readonly implementation: Address | null }> {
   const code = await readCode(client, address);
   if (code === "0x" || isEip1167Clone(code)) return { code, implementation: null };
@@ -47,10 +42,8 @@ async function probe(client: ReadClient, chainId: ChainId, arbitrable: Address, 
 }
 
 /**
- * The family of an arbitrable on an arbitrator chain (06 §1, ADR 0003 layer one). A registered Reality proxy is
- * `reality-proxy` with its write family from rows 4–6; any other arbitrable gets rows 2–7 on its dispatcher bytecode.
- * Detection reads code and the EIP-1967 slot only, never calls the arbitrable, and rejects on any RPC error: a failure
- * is never read as "selector absent" (C11). With a `cache`, one detection per chain and address is shared.
+ * Reads code and the EIP-1967 slot only, never calls the arbitrable, and rejects on any RPC error: a failure is never
+ * read as "selector absent".
  */
 export function detectFamily(request: {
   readonly client: ReadClient;

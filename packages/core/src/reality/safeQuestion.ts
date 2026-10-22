@@ -18,7 +18,7 @@ import type { PopulatedQuestion, SafePopulateReason, SafePopulateResult } from "
  *   scalar (number, string, true, false or null);
  * - anywhere else (that is, inside an object key): rejected.
  * The result is then parsed with a strict parser that rejects duplicate keys and checked against the template's keys and
- * type (A5).
+ * type.
  */
 
 const PLACEHOLDER = "%s";
@@ -27,7 +27,7 @@ const PLACEHOLDER = "%s";
 const DERIVED_KEYS = ["title_html", "title_text"];
 
 const JSON_NUMBER = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
-const JSON_LITERALS = ["true", "false", "null"];
+const JSON_LITERALS: ReadonlySet<string> = new Set(["true", "false", "null"]);
 
 type TemplateAnalysis =
   | {
@@ -50,7 +50,6 @@ function countPlaceholders(templateText: string): number {
   return templateText.split(PLACEHOLDER).length - 1;
 }
 
-/** Learns each `%s` placeholder's JSON context from the template. */
 function analyzeTemplate(templateText: string): TemplateAnalysis {
   const count = countPlaceholders(templateText);
   const sentinels = new Sentinels(templateText);
@@ -99,7 +98,7 @@ function encodeArrayParam(param: string): string | null {
 
 function encodeValueParam(param: string): string | null {
   const trimmed = param.trim();
-  if (JSON_NUMBER.test(trimmed) || JSON_LITERALS.includes(trimmed)) return trimmed; // Number text is kept as written.
+  if (JSON_NUMBER.test(trimmed) || JSON_LITERALS.has(trimmed)) return trimmed; // Number text is kept as written.
   if (!trimmed.startsWith('"')) return null;
   try {
     const value: unknown = JSON.parse(trimmed);
@@ -109,7 +108,6 @@ function encodeValueParam(param: string): string | null {
   }
 }
 
-/** The text a parameter contributes in its context, or the reason it cannot. */
 function encodeParam(context: PlaceholderContext, param: string): { readonly encoded: string } | { readonly reason: SafePopulateReason } {
   if (context === "string") return { encoded: encodeStringParam(param) };
   if (context === "array") {
@@ -156,9 +154,8 @@ function buildQuestion(templateText: string, analysis: Extract<TemplateAnalysis,
 }
 
 /**
- * Populates a Reality.eth question template with the question parameters, without letting the parameters alter the
- * structure of the resulting JSON. Parameters missing for the template's placeholders are filled with "" and extra ones
- * are ignored, like reality-eth-lib does; that case reports `param-count-mismatch` with the best-effort question.
+ * Parameters missing for the template's placeholders are filled with "" and extra ones are ignored, like reality-eth-lib
+ * does; that case reports `param-count-mismatch` with the best-effort question.
  */
 export function safePopulatedJSONForTemplate(templateText: string, questionText: string): SafePopulateResult {
   if (typeof templateText !== "string" || typeof questionText !== "string") return { ok: false, reason: "invalid-input" };
@@ -180,7 +177,6 @@ export function safePopulatedJSONForTemplate(templateText: string, questionText:
   return buildQuestion(template, analysis, params);
 }
 
-/** The template parsed with its placeholders in place, for the ruling options that do not depend on the parameters. */
 export function analyzedTemplate(templateText: string): PopulatedQuestion | null {
   if (typeof templateText !== "string") return null;
   const analysis = analyzeTemplate(withoutNul(templateText));

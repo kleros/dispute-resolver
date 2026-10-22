@@ -37,12 +37,10 @@ export const MAINNET_RPC = "https://read.rpc.test/mainnet";
 export const MAINNET_PUBLIC_RPC = "https://public.rpc.test/mainnet";
 export const GNOSIS_RPC = "https://read.rpc.test/gnosis";
 
-/** The locator URL of a dispute, as today's app builds it (spec 9.1 step 1). */
 export function locatorUrl(chainId: number, disputeId: bigint): string {
   return `${LOCATOR}?chainId=${String(chainId)}&disputeId=${String(disputeId)}`;
 }
 
-/** A JSON body. */
 export function json(value: unknown): string {
   return JSON.stringify(value);
 }
@@ -120,7 +118,7 @@ export function fakeRunner(reply: ScriptResult | typeof HANG | ((request: Script
 }
 
 /**
- * An on-chain reader (P-25) answering every call with `answer`, recording each call's signal. An `Error` is a rejection;
+ * An on-chain reader answering every call with `answer`, recording each call's signal. An `Error` is a rejection;
  * `HANG` never settles, even when its signal aborts (a reader that ignores its signal).
  */
 export function fakeOnChain(answer: OnChainMetaEvidence | Error | typeof HANG): { reader: OnChainMetaEvidenceReader; signals: AbortSignal[] } {

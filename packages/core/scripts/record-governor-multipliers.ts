@@ -1,5 +1,5 @@
 /**
- * Recorder of `appeals/__fixtures__/governor-multipliers.json` (P-05, spec 10.9): the raw `eth_call` replies of every
+ * Recorder of `appeals/__fixtures__/governor-multipliers.json`: the raw `eth_call` replies of every
  * multiplier getter of the four deployed governors (poh.eth, ubi-voting.eth, kleros.eth on chain 1, fork-dao.eth on
  * chain 100, the list of `governor-sessions-abi.json`), each read at one pinned block per chain.
  *
@@ -22,7 +22,7 @@ const FIXTURES = resolve(import.meta.dirname, "../src/appeals/__fixtures__");
 const OUTPUT_FILE = resolve(FIXTURES, "governor-multipliers.json");
 const GOVERNORS_FILE = resolve(FIXTURES, "governor-sessions-abi.json");
 
-/** The getters of spec 10.9 `readMultipliers` tries, plus P-05's `sharedMultiplier()`. */
+/** The getters `readMultipliers` tries, plus `sharedMultiplier()`. */
 const GETTERS = [
   "getMultipliers()",
   "winnerStakeMultiplier()",
@@ -71,13 +71,14 @@ function readRecorded(): Recording | undefined {
 
 /** The block each chain is read at: the recorded one, unless re-pinning or no file exists. */
 async function pinnedBlocks(chainIds: readonly ChainId[], previous: Recording | undefined, mode: Mode): Promise<Map<ChainId, bigint>> {
-  const blocks = new Map<ChainId, bigint>();
-  for (const chainId of chainIds) {
-    const recorded = previous?.chains.find((chain) => chain.chainId === chainId);
-    if (mode !== "repin" && recorded !== undefined) blocks.set(chainId, BigInt(recorded.blockNumber));
-    else blocks.set(chainId, await finalizedBlock(rawRpcFor(chainId)));
-  }
-  return blocks;
+  const entries = await Promise.all(
+    chainIds.map(async (chainId) => {
+      const recorded = previous?.chains.find((chain) => chain.chainId === chainId);
+      const block = mode !== "repin" && recorded !== undefined ? BigInt(recorded.blockNumber) : await finalizedBlock(rawRpcFor(chainId));
+      return [chainId, block] as const;
+    }),
+  );
+  return new Map(entries);
 }
 
 async function record(previous: Recording | undefined, mode: Mode): Promise<Recording> {

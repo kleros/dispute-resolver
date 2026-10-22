@@ -5,10 +5,8 @@ import type { ReadClient } from "../types";
 import type { ArbitratedBinding, LocalIdResolution } from "./types";
 
 /**
- * The arbitrable's own ID for the dispute, by the family's local-ID source (spec 5.3 step 2): `externalIDtoLocalID` for
- * the IDisputeResolver families, `disputeIDtoTransactionID` for Escrow V1, none otherwise. The call goes to the
- * arbitrator's `arbitrated` (A22). A contract failure is `unresolved` / `reverted`, a transport failure `rpc-error`.
- * Today's `DisputeCreation` re-resolution is not run: KlerosLiquid records and emits the same arbitrable (D-11).
+ * The call goes to the arbitrator's `arbitrated`, never to an address from meta-evidence. There is no `DisputeCreation`
+ * re-resolution: KlerosLiquid records and emits the same arbitrable.
  */
 export async function resolveLocalId(client: ReadClient, binding: ArbitratedBinding, family: FamilyDetection): Promise<LocalIdResolution> {
   const { arbitrated, disputeId } = binding;

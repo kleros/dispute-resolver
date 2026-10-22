@@ -9,7 +9,7 @@ import type { CreateDisputeDraft, CreateFieldErrorCode, CreateOptionDraft, Creat
 type Checked<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: CreateFieldErrorCode };
 
 const DECIMAL = /^\d+$/;
-/** EIP-55 treats an all-uppercase hex address as valid and unchecksummed; viem's strict `isAddress` does not (MC-8). */
+/** EIP-55 treats an all-uppercase hex address as valid and unchecksummed; viem's strict `isAddress` does not. */
 const ALL_UPPERCASE_ADDRESS = /^0x[0-9A-F]{40}$/;
 
 function valid<T>(value: T): Checked<T> {
@@ -32,7 +32,7 @@ function checkInteger(input: string, min: bigint): Checked<bigint> {
   return value < min || value > MAX_UINT256 ? invalid("out-of-range") : valid(value);
 }
 
-/** Today's `required` text inputs: only the empty string is missing (spec 4.3). */
+/** Like an HTML `required` input: only the empty string is missing, so whitespace alone counts as a value. */
 function checkRequired(input: string): Checked<string> {
   return input === "" ? invalid("required") : valid(input);
 }
@@ -41,7 +41,6 @@ function isSelectType(questionType: CreateDisputeDraft["questionType"]): boolean
   return questionType === "single-select" || questionType === "multiple-select";
 }
 
-/** Select types need 2 to 32 options, each with a title (spec 4.3); other types carry none (D-08). */
 function checkOptions(draft: CreateDisputeDraft): { readonly optionCount?: CreateFieldErrorCode; readonly options: readonly (CreateFieldErrorCode | undefined)[] } {
   if (!isSelectType(draft.questionType)) return { options: [] };
   const [min, max] = CREATE_LIMITS.optionRange;
@@ -50,12 +49,6 @@ function checkOptions(draft: CreateDisputeDraft): { readonly optionCount?: Creat
   return { ...(optionCount === undefined ? {} : { optionCount }), options: draft.options.map((option) => errorOf(checkRequired(option.title))) };
 }
 
-/**
- * One party row (D-08, B20, MC-8): ignored when both fields are blank; otherwise both are needed, and the address must
- * be `0x` plus 40 hex digits that are all-lowercase, all-uppercase or correctly EIP-55 checksummed (create-01: a
- * mixed-case address with a wrong checksum is rejected) and not repeat an earlier row's (case-insensitive). The address
- * is stored lowercase; the alias is kept as typed, paired with its address.
- */
 function checkParty(party: CreatePartyDraft, seen: Set<Address>): Checked<readonly [Address, string] | null> {
   const address = party.address.trim();
   const hasAlias = party.alias.trim() !== "";
@@ -69,7 +62,7 @@ function checkParty(party: CreatePartyDraft, seen: Set<Address>): Checked<readon
   return valid([key, party.alias]);
 }
 
-/** The primary document must already be a canonical content-addressed path (B16): its own normalization. */
+/** The path must already be canonical: equal to its own normalization. */
 function checkDocument(document: CanonicalIpfsPath | null): Checked<CanonicalIpfsPath | null> {
   if (document === null) return valid(null);
   return normalizeIpfsPath(document) === document ? valid(document) : invalid("not-content-addressed");
@@ -79,10 +72,7 @@ function selectedOptions(draft: CreateDisputeDraft): readonly CreateOptionDraft[
   return isSelectType(draft.questionType) ? draft.options.map(({ title, description }) => ({ title, description })) : [];
 }
 
-/**
- * Validates the Create form (spec 4.3, D-08, B16, B20). Every invalid field is reported at once; on success the draft
- * becomes a typed input whose aliases map each party's lowercased address to its own alias.
- */
+/** Reports every invalid field at once. */
 export function validateCreateInput(draft: CreateDisputeDraft): CreateValidation {
   const courtId = checkInteger(draft.courtId, 0n);
   const votes = checkInteger(draft.votes, BigInt(CREATE_LIMITS.minVotes));

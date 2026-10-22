@@ -1,21 +1,20 @@
 import type { Address, ChainId } from "../types";
 import type { ChainCapabilities, ChainConfig, ChainTable } from "./types";
 
-/** The target of chain-less redirects (D-01). */
+/** The target of chain-less redirects. */
 export const DEFAULT_CHAIN_ID: ChainId = 1;
 
 const MAINNET_LOOKBACK = 1_000_000;
-/** Testnet RPCs cap `eth_getLogs` ranges, so today's app scans 50,000 blocks on them (§6.3). */
+/** Testnet RPCs cap `eth_getLogs` ranges. */
 const TESTNET_LOOKBACK = 50_000;
 
 const MAINNET_POLICY_REGISTRY: Address = "0xcf1f07713d5193fae5c1653c9f61953d048bece4";
 const SEPOLIA_POLICY_REGISTRY: Address = "0x88fb25d399310c07d35cb9091b8346d8b1893aa5";
 
-/** Today's `QUERY_FROM_BLOCK`. Chains without an arbitrator copy chain 1's or Sepolia's value, as today (06 §2). */
+/** Chains without an arbitrator copy chain 1's or Sepolia's deploy block. */
 const MAINNET_DEPLOY_BLOCK = 7303699;
 const SEPOLIA_DEPLOY_BLOCK = 3635742;
 
-/** Fields shared by the chains that mirror an arbitrator living on chain 1 (mainnet) or Sepolia. */
 const MIRRORS_MAINNET = { maxLookback: MAINNET_LOOKBACK, arbitratorDeployedAtBlock: MAINNET_DEPLOY_BLOCK, policyRegistry: MAINNET_POLICY_REGISTRY } as const;
 const MIRRORS_SEPOLIA = { maxLookback: TESTNET_LOOKBACK, arbitratorDeployedAtBlock: SEPOLIA_DEPLOY_BLOCK, policyRegistry: SEPOLIA_POLICY_REGISTRY } as const;
 
@@ -23,7 +22,6 @@ function publicRpcEnv(id: ChainId): string {
   return `REACT_APP_PUBLIC_RPC_${String(id)}`;
 }
 
-/** The 14 chains of §7 after D-23 and P-13, in the order of the spec table. */
 const CONFIGS: readonly ChainConfig[] = [
   {
     id: 1,
@@ -169,7 +167,6 @@ const CONFIGS: readonly ChainConfig[] = [
     explorerBaseUrl: "https://basescan.org",
   },
   {
-    // Today's table reads the deploy block through the mistyped key "111155111" and gets `undefined`; D-23 fixes it.
     id: 84532,
     name: "Base Sepolia",
     currency: "ETH",
@@ -181,25 +178,24 @@ const CONFIGS: readonly ChainConfig[] = [
   },
 ];
 
-/** The chain table, keyed by chain ID (§7 after D-23). Frozen, so no caller can reconfigure a chain. */
+/** Frozen, so no caller can reconfigure a chain. */
 export const CHAINS: ChainTable = Object.freeze(Object.fromEntries(CONFIGS.map((chain) => [chain.id, Object.freeze(chain)])));
 
-/** The configuration of a chain, or `undefined` when the chain is not one of the 14 (D-18: never throws). */
+/** `undefined` for an unsupported chain; never throws. */
 export function getChain(chainId: ChainId): ChainConfig | undefined {
   return Object.hasOwn(CHAINS, chainId) ? CHAINS[chainId] : undefined;
 }
 
-/** What the chain can do (§4.2, §7): the Ongoing list and cases need an arbitrator, Create needs the proxy. */
+/** The Ongoing list and cases need an arbitrator, Create needs the proxy. */
 export function chainCapabilities(chain: ChainConfig): ChainCapabilities {
   return { hasArbitrator: chain.klerosLiquid !== undefined, canCreate: chain.arbitrableProxy !== undefined };
 }
 
-/** The currency symbol shown next to every amount on this chain (D-10). */
 export function currencySymbol(chain: ChainConfig): string {
   return chain.currency;
 }
 
-/** First block of the Ongoing list window (§6.3): the later of the deploy block and `head − maxLookback`, never below 0. */
+/** First block of the Ongoing list window: the later of the deploy block and `head − maxLookback`, never below 0. */
 export function ongoingScanStart(chain: ChainConfig, head: bigint): bigint {
   const windowStart = head - BigInt(chain.maxLookback);
   const deployed = BigInt(chain.arbitratorDeployedAtBlock ?? 0);

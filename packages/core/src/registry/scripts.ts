@@ -2,16 +2,16 @@ import type { ChainId } from "../types";
 import type { CidPath } from "../uri/types";
 
 /**
- * The pinned dynamic-script allowlist (A1): a script runs only if the canonical path of its URI exactly matches an entry
- * listed under the arbitrator chain of the dispute. Entries are `CidPath`s: the CID, or CID/file for a script inside a
- * directory, with no scheme, no leading slash and no trailing slash (06 §3 invariant 4).
+ * A script runs only if the canonical path of its URI exactly matches an entry listed under the arbitrator chain of the
+ * dispute. Entries are `CidPath`s: the CID, or CID/file for a script inside a directory, with no scheme, no leading slash
+ * and no trailing slash.
  *
  * Provenance (2026-10-05): the meta-evidence of every dispute was resolved through the court's meta-evidence endpoint for
  * mainnet disputes 1-1684, Gnosis 1-1026 and Sepolia 1-452, each distinct meta-evidence file was fetched from the IPFS
  * gateway, and every distinct dynamic script URI was collected. All are listed except two: the script of mainnet dispute
  * 1684, a wallet-hijack attempt, and the script URI of Sepolia dispute 63, which points at a JSON file. Two mainnet
  * meta-evidence files could not be fetched (dispute 150, unpinned; dispute 560, a PDF); neither can carry a script. The
- * dispute 1621 override script `Qmf1k727vP7qZv21MDB8vwL6tfVEKPCUQAiw8CTfHStkjf` is not listed (D-25). A script of a later
+ * dispute 1621 override script `Qmf1k727vP7qZv21MDB8vwL6tfVEKPCUQAiw8CTfHStkjf` is not listed. A script of a later
  * dispute that is not listed shows the tamper notice until it is reviewed and added.
  *
  * Chiado is not served by that endpoint: on 2026-10-06 the meta-evidence events of the four arbitrables that ever had a
@@ -71,7 +71,7 @@ const SEPOLIA: readonly CidPath[] = [
   "QmVmXuzGMapNGkpS2zyT8PCKd1qMFCSGUoEUQgfzpxJhZc",
 ];
 
-/** Arbitrator chain to the scripts its disputes may run. A chain without a list rejects every script. */
+/** Keyed by arbitrator chain. A chain without a list rejects every script. */
 export const DYNAMIC_SCRIPT_ALLOWLIST: Readonly<Record<ChainId, readonly CidPath[]>> = {
   1: MAINNET,
   100: GNOSIS,

@@ -9,7 +9,6 @@ const COLUMNS: readonly { readonly name: TimelineColumnName; readonly period: Pe
   { name: "execution", period: 4 },
 ];
 
-/** Seconds of a period from the court's `timesPerPeriod`; execution has no duration. */
 function periodDuration(court: Court, period: Period): bigint | null {
   return period === 4 ? null : court.timesPerPeriod[period];
 }
@@ -21,12 +20,7 @@ function column(name: TimelineColumnName, period: Period, current: Period, lastP
   return { name, state: "upcoming", durationSeconds: duration };
 }
 
-/**
- * The timeline columns of a dispute (spec 5.7, D-39): Evidence, Commit, Vote, Appeal and Execution, every period the
- * dispute passes through. Commit appears for hidden-vote courts, and for a dispute currently in commit whatever its
- * court says now. Earlier periods are concluded; the current one ends at `lastPeriodChange + timesPerPeriod[period]`
- * (no deadline in execution); later ones show their duration (none for execution).
- */
+/** Commit appears for hidden-vote courts, and for a dispute currently in commit whatever its court says now. */
 export function deriveTimeline(input: { readonly period: Period; readonly lastPeriodChange: UnixSeconds; readonly court: Court }): Timeline {
   const { period, lastPeriodChange, court } = input;
   const passesCommit = court.hiddenVotes || period === 1;

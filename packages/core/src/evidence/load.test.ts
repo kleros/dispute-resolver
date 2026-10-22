@@ -31,7 +31,6 @@ function recordedContext(dispute: ReturnType<typeof recordedDispute>, fetcher: F
   return { context, requests };
 }
 
-/** A synthetic evidence log at `block`, with `uri` as its evidence URI. */
 function entry(uri: string, block: bigint, logIndex = 0): RpcLog {
   return evidenceLog({ arbitrable: ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: GROUP, party: PARTY, uri, blockNumber: block, logIndex });
 }
@@ -62,7 +61,7 @@ const byNumber = (a: bigint, b: bigint): number => Number(a - b);
 const NOTHING_HIDDEN = { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 };
 
 describe("loadEvidence", () => {
-  it("§5.14: loads the five recorded entries of mainnet 505, newest first", async () => {
+  it("loads the five recorded entries of mainnet 505, newest first", async () => {
     const { context } = recordedContext(DISPUTE_505, fakeFetcher(recordedBodies()).fetcher);
     const outcome = await loadEvidence(context);
     if (!outcome.ok) throw new Error(outcome.error.message);
@@ -79,7 +78,7 @@ describe("loadEvidence", () => {
     expect(outcome.value.hiddenByReason).toEqual(NOTHING_HIDDEN);
   });
 
-  it("D-03: each entry carries its submitter, block number and block time (the data Appealed markers interleave on), transaction, canonical URI and attachment", async () => {
+  it("each entry carries its submitter, block number, block time, transaction, canonical URI and attachment", async () => {
     const { context } = recordedContext(DISPUTE_505, fakeFetcher(recordedBodies()).fetcher);
     const outcome = await loadEvidence(context);
     const newest = outcome.ok ? outcome.value.items[0] : undefined;
@@ -103,7 +102,7 @@ describe("loadEvidence", () => {
     expect(outcome.ok && outcome.value.items[1]?.attachment).toBeNull();
   });
 
-  it("§9.3: loads the two recorded entries of mainnet 1454, titled by name", async () => {
+  it("loads the two recorded entries of mainnet 1454, titled by name", async () => {
     const { context } = recordedContext(DISPUTE_1454, fakeFetcher(recordedBodies()).fetcher);
     const outcome = await loadEvidence(context);
     expect(outcome.ok && outcome.value.items.map((item) => item.title)).toEqual([
@@ -112,7 +111,7 @@ describe("loadEvidence", () => {
     ]);
   });
 
-  it("B7: only the evidence JSON is fetched, through the gateway; attachments never are", async () => {
+  it("only the evidence JSON is fetched, through the gateway; attachments never are", async () => {
     const fake = fakeFetcher(recordedBodies());
     const { context } = recordedContext(DISPUTE_505, fake.fetcher);
     await loadEvidence(context);
@@ -120,7 +119,7 @@ describe("loadEvidence", () => {
     expect(new Set(fake.urls)).toEqual(new Set(Object.keys(DISPUTE_505.documents).map((uri) => `${GATEWAY}${uri}`)));
   });
 
-  it("§6.3: one block read per distinct block of the shown entries", async () => {
+  it("one block read per distinct block of the shown entries", async () => {
     const logs = [entry(`/ipfs/${CID_A}`, 10n, 0), entry(`/ipfs/${CID_A}`, 10n, 1), entry(`/ipfs/${CID_B}`, 20n, 0), entry("https://example.org/e.json", 30n, 0)];
     const body = JSON.stringify({ name: "n" });
     const { context, requests } = syntheticContext(logs, { [`${GATEWAY}/ipfs/${CID_A}`]: body, [`${GATEWAY}/ipfs/${CID_B}`]: body });
@@ -129,7 +128,7 @@ describe("loadEvidence", () => {
     expect([...requests.blocks].sort(byNumber)).toEqual([10n, 20n]);
   });
 
-  it("§5.14: entries with the same timestamp keep chain order, as today's stable sort by time does", async () => {
+  it("entries with the same timestamp keep chain order", async () => {
     const logs = [entry(`/ipfs/${CID_A}`, 10n, 0), entry(`/ipfs/${CID_B}`, 10n, 3), entry(`/ipfs/${CID_A}/second`, 20n, 0)];
     const { context } = syntheticContext(logs, {
       [`${GATEWAY}/ipfs/${CID_A}`]: JSON.stringify({ name: "first" }),
@@ -140,7 +139,7 @@ describe("loadEvidence", () => {
     expect(outcome.ok && outcome.value.items.map((item) => item.title)).toEqual(["newest", "first", "same block, later log"]);
   });
 
-  it("D-22: an http(s) evidence URI is not content-addressed: hidden, counted and never fetched", async () => {
+  it("an http(s) evidence URI is not content-addressed: hidden, counted and never fetched", async () => {
     const logs = [entry("https://ipfs.kleros.io/ipfs/QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA", 10n), entry("http://example.org/evidence.json", 11n)];
     const { context, urls } = syntheticContext(logs, {});
     const outcome = await loadEvidence(context);
@@ -148,7 +147,7 @@ describe("loadEvidence", () => {
     expect(urls).toEqual([]);
   });
 
-  it("D-22: /ipns/, dot-segment escapes and percent-encoded variants are hidden without a fetch", async () => {
+  it("/ipns/, dot-segment escapes and percent-encoded variants are hidden without a fetch", async () => {
     const uris = [`/ipns/${CID_A}`, `/ipfs/${CID_A}/../../ipns/x`, `/ipfs/${CID_A}/%2e%2e/%2e%2e/ipns/x`, `/ipfs/${CID_A}\\..\\..\\ipns\\x`, "", "not a uri"];
     const { context, urls } = syntheticContext(
       uris.map((uri, index) => entry(uri, 10n + BigInt(index))),
@@ -159,7 +158,7 @@ describe("loadEvidence", () => {
     expect(urls).toEqual([]);
   });
 
-  it("D-22: content-addressed spellings are fetched at their canonical gateway path", async () => {
+  it("content-addressed spellings are fetched at their canonical gateway path", async () => {
     const logs = [entry(`ipfs://${CID_A}/e.json`, 10n), entry(CIDV1, 11n)];
     const body = JSON.stringify({ name: "n" });
     const { context, urls } = syntheticContext(logs, { [`${GATEWAY}/ipfs/${CID_A}/e.json`]: body, [`${GATEWAY}/ipfs/${CIDV1}`]: body });
@@ -168,20 +167,20 @@ describe("loadEvidence", () => {
     expect(new Set(urls)).toEqual(new Set([`${GATEWAY}/ipfs/${CID_A}/e.json`, `${GATEWAY}/ipfs/${CIDV1}`]));
   });
 
-  it("D-22: a failed or rejected fetch is hidden as fetch-failed", async () => {
+  it("a failed or rejected fetch is hidden as fetch-failed", async () => {
     const logs = [entry(`/ipfs/${CID_A}`, 10n), entry(`/ipfs/${CID_B}`, 11n)];
     const { context } = syntheticContext(logs, { [`${GATEWAY}/ipfs/${CID_B}`]: new TypeError("network down") });
     const outcome = await loadEvidence(context);
     expect(outcome.ok && outcome.value).toEqual({ items: [], hiddenEvidenceCount: 2, hiddenByReason: { ...NOTHING_HIDDEN, "fetch-failed": 2 } });
   });
 
-  it("D-22: a body that is not JSON is hidden as not-json", async () => {
+  it("a body that is not JSON is hidden as not-json", async () => {
     const { context } = syntheticContext([entry(`/ipfs/${CID_A}`, 10n)], { [`${GATEWAY}/ipfs/${CID_A}`]: "%PDF-1.4 binary" });
     const outcome = await loadEvidence(context);
     expect(outcome.ok && outcome.value.hiddenByReason).toEqual({ ...NOTHING_HIDDEN, "not-json": 1 });
   });
 
-  it("A17: malformed evidence JSON is hidden as schema-invalid; valid entries still show", async () => {
+  it("malformed evidence JSON is hidden as schema-invalid; valid entries still show", async () => {
     const malformed = [
       JSON.stringify([1, 2]),
       JSON.stringify("text"),
@@ -203,7 +202,7 @@ describe("loadEvidence", () => {
     });
   });
 
-  it("D-22: hiddenEvidenceCount is the sum of the hidden reasons", async () => {
+  it("hiddenEvidenceCount is the sum of the hidden reasons", async () => {
     const logs = [
       entry("https://example.org/e.json", 10n),
       entry(`/ipfs/${CID_A}/missing`, 11n),
@@ -224,7 +223,7 @@ describe("loadEvidence", () => {
     });
   });
 
-  it("D-22: an Evidence log whose data does not decode is counted as undecodable, never dropped silently", async () => {
+  it("an Evidence log whose data does not decode is counted as undecodable, never dropped silently", async () => {
     const broken: RpcLog = { ...entry(`/ipfs/${CID_A}`, 10n), data: "0xdeadbeef" };
     const { context } = syntheticContext([broken, entry(`/ipfs/${CID_B}`, 11n)], { [`${GATEWAY}/ipfs/${CID_B}`]: JSON.stringify({ name: "shown" }) });
     const outcome = await loadEvidence(context);
@@ -233,24 +232,24 @@ describe("loadEvidence", () => {
     expect(outcome.ok && outcome.value.items).toHaveLength(1);
   });
 
-  it("§5.14: no Evidence logs give an empty list with nothing hidden", async () => {
+  it("no Evidence logs give an empty list with nothing hidden", async () => {
     const { context } = syntheticContext([], {});
     expect(await loadEvidence(context)).toEqual({ ok: true, value: { items: [], hiddenEvidenceCount: 0, hiddenByReason: NOTHING_HIDDEN } });
   });
 
-  it("D-36: a failed log scan degrades to rpc-error instead of rejecting", async () => {
+  it("a failed log scan degrades to rpc-error instead of rejecting", async () => {
     const { context } = syntheticContext([entry(`/ipfs/${CID_A}`, 10n)], {}, { failing: { eth_getLogs: rpcError(-32000, "down") } });
     const outcome = await loadEvidence(context);
     expect(!outcome.ok && outcome.error.code).toBe("rpc-error");
   });
 
-  it("D-36: a failed block read degrades to rpc-error instead of rejecting", async () => {
+  it("a failed block read degrades to rpc-error instead of rejecting", async () => {
     const { context } = syntheticContext([entry(`/ipfs/${CID_A}`, 10n)], { [`${GATEWAY}/ipfs/${CID_A}`]: JSON.stringify({ name: "n" }) }, { timestamps: {} });
     const outcome = await loadEvidence(context);
     expect(!outcome.ok && outcome.error.code).toBe("rpc-error");
   });
 
-  it("D-36: an aborted load degrades to rpc-error instead of rejecting, and the signal reaches the fetcher", async () => {
+  it("an aborted load degrades to rpc-error instead of rejecting, and the signal reaches the fetcher", async () => {
     const controller = new AbortController();
     const logs = [entry(`/ipfs/${CID_A}`, 10n)];
     const { client } = fakeClient({ head: 1_000n, logs, timestamps: timestampsOf(logs) });
@@ -276,7 +275,7 @@ describe("loadEvidence", () => {
     expect(!outcome.ok && outcome.error.code).toBe("rpc-error");
   });
 
-  it("§6.3: evidence fetches run with bounded concurrency", async () => {
+  it("evidence fetches run with bounded concurrency", async () => {
     const count = 40;
     const logs = Array.from({ length: count }, (_, index) => entry(`/ipfs/${CID_A}/${String(index)}`, 10n + BigInt(index)));
     const { client } = fakeClient({ head: 1_000n, logs, timestamps: timestampsOf(logs) });

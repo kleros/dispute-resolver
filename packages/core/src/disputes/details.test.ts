@@ -9,6 +9,7 @@ const GET_DISPUTE = toFunctionSelector("getDispute(uint256)").slice(2);
 const DISPUTES = toFunctionSelector("disputes(uint256)").slice(2);
 const APPEAL_COST = toFunctionSelector("appealCost(uint256,bytes)").slice(2);
 const APPEAL_PERIOD = toFunctionSelector("appealPeriod(uint256)").slice(2);
+const CURRENT_RULING = toFunctionSelector("currentRuling(uint256)").slice(2);
 const MAINNET_DEPLOY_BLOCK = 7303699n;
 /** Block of the recorded ERC-1497 Dispute event of mainnet 1454 (`evidence/__fixtures__/mainnet-1454-505.json`). */
 const DISPUTE_1454_EVENT_BLOCK = 0xf9ad5an;
@@ -31,7 +32,7 @@ async function found(disputeId: bigint, node: FakeNode = recordedNode(MAINNET)):
 }
 
 describe("readDisputeDetails", () => {
-  it("§5.3 step 3: reads votesLengths, the current ruling, the appeal decisions, the local ID and, in execution, the appeal info (mainnet 328)", async () => {
+  it("reads votesLengths, the current ruling, the appeal decisions, the local ID and, in execution, the appeal info (mainnet 328)", async () => {
     const dispute = await found(328n);
     const family = await recordedDetection(1, dispute.binding.arbitrated);
     const { client } = fakeClient(recordedNode(MAINNET));
@@ -52,7 +53,7 @@ describe("readDisputeDetails", () => {
     });
   });
 
-  it("D-11: reads getDispute once and never reads the Ruling event or a second dispute struct", async () => {
+  it("reads getDispute once and never reads the Ruling event or a second dispute struct", async () => {
     const dispute = await found(1454n);
     const family = await recordedDetection(1, dispute.binding.arbitrated);
     const { client, requests } = fakeClient(recordedNode(MAINNET));
@@ -64,21 +65,21 @@ describe("readDisputeDetails", () => {
     expect(requests.logs[0]?.address).toBe(MAINNET.arbitrator);
   });
 
-  it("§6.3: the AppealDecision scan starts at the Dispute event's block when known", async () => {
+  it("starts the AppealDecision scan at the Dispute event's block when known", async () => {
     const dispute = await found(1454n);
     const { client, requests } = fakeClient(recordedNode(MAINNET));
     await readDisputeDetails({ chainId: 1, client }, dispute, undefined, DISPUTE_1454_EVENT_BLOCK);
     expect(requests.logs[0]).toMatchObject({ fromBlock: DISPUTE_1454_EVENT_BLOCK, toBlock: MAINNET.readAtBlock });
   });
 
-  it("§6.3: without the Dispute event the AppealDecision scan starts at the arbitrator's deployment block", async () => {
+  it("without the Dispute event the AppealDecision scan starts at the arbitrator's deployment block", async () => {
     const dispute = await found(1454n);
     const { client, requests } = fakeClient(recordedNode(MAINNET));
     await readDisputeDetails({ chainId: 1, client }, dispute, undefined, null);
     expect(requests.logs[0]?.fromBlock).toBe(MAINNET_DEPLOY_BLOCK);
   });
 
-  it("§5.3 step 7: appealCost and appealPeriod are read only in periods 3 and 4", async () => {
+  it("reads appealCost and appealPeriod only in periods 3 and 4", async () => {
     const executed = await found(1454n);
     const inVote = { ...executed, dispute: { ...executed.dispute, period: 2 as const } };
     const { client, requests } = fakeClient(recordedNode(MAINNET));
@@ -89,7 +90,7 @@ describe("readDisputeDetails", () => {
     expect(selectors).not.toContain(APPEAL_PERIOD);
   });
 
-  it("D-36: each read degrades on its own: a failing getDispute leaves the other reads intact", async () => {
+  it("a failing getDispute leaves the other reads intact", async () => {
     const dispute = await found(328n);
     const family = await recordedDetection(1, dispute.binding.arbitrated);
     const node = recordedNode(MAINNET);
@@ -104,7 +105,23 @@ describe("readDisputeDetails", () => {
     expect(reads.appealInfo?.ok).toBe(true);
   });
 
-  it("D-36: a failing log scan degrades only the appeal decisions", async () => {
+  it("a failing currentRuling read leaves the other reads intact and is never read as ruling 0", async () => {
+    const dispute = await found(328n);
+    const family = await recordedDetection(1, dispute.binding.arbitrated);
+    const node = recordedNode(MAINNET);
+    const calls = new Map(node.calls);
+    for (const key of calls.keys()) if (selectorOf(key) === CURRENT_RULING) calls.set(key, { error: { code: -32000, message: "header not found" } });
+    const { client } = fakeClient({ ...node, calls });
+    const reads = await readDisputeDetails({ chainId: 1, client }, dispute, family, null);
+    expect(reads.currentRuling).toMatchObject({ ok: false, error: { code: "rpc-error" } });
+    expect(reads.currentRuling).not.toHaveProperty("value");
+    expect(reads.votesLengths).toEqual({ ok: true, value: [3n, 7n, 15n, 31n] });
+    expect(reads.localId).toEqual({ kind: "local-id", value: 51n });
+    expect(reads.appealDecisions.ok).toBe(true);
+    expect(reads.appealInfo?.ok).toBe(true);
+  });
+
+  it("a failing log scan degrades only the appeal decisions", async () => {
     const dispute = await found(1454n);
     const { client } = fakeClient(recordedNode(MAINNET, { failing: { eth_getLogs: rpcError(-32000, "header not found") } }));
     const reads = await readDisputeDetails({ chainId: 1, client }, dispute, undefined, null);
@@ -113,7 +130,7 @@ describe("readDisputeDetails", () => {
     expect(reads.currentRuling).toEqual({ ok: true, value: 0n });
   });
 
-  it("D-36: a reverted read keeps its kind (reverted), not a fake value", async () => {
+  it("a reverted read keeps its kind (reverted), not a fake value", async () => {
     const dispute = await found(1454n);
     const node = recordedNode(MAINNET);
     const calls = new Map(node.calls);
@@ -123,7 +140,7 @@ describe("readDisputeDetails", () => {
     expect(reads.appealInfo).toMatchObject({ ok: false, error: { code: "reverted" } });
   });
 
-  it("§5.3 step 2: without a known family the local ID is not read and stays unresolved", async () => {
+  it("without a known family the local ID is not read and stays unresolved", async () => {
     const dispute = await found(1454n);
     const { client, requests } = fakeClient(recordedNode(MAINNET));
     const reads = await readDisputeDetails({ chainId: 1, client }, dispute, undefined, null);
@@ -131,7 +148,7 @@ describe("readDisputeDetails", () => {
     expect(requests.calls.some((key) => key.startsWith(dispute.binding.arbitrated))).toBe(false);
   });
 
-  it("D-56: without a read RPC every read is unavailable with no-rpc", async () => {
+  it("without a read RPC every read is unavailable with no-rpc", async () => {
     const dispute = await found(1454n);
     const reads = await readDisputeDetails({ chainId: 1, client: undefined }, dispute, undefined, null);
     expect(reads.votesLengths).toMatchObject({ ok: false, error: { code: "no-rpc" } });
@@ -139,11 +156,15 @@ describe("readDisputeDetails", () => {
     expect(reads.appealDecisions).toMatchObject({ ok: false, error: { code: "no-rpc" } });
     expect(reads.appealInfo).toMatchObject({ ok: false, error: { code: "no-rpc" } });
     expect(reads.localId).toEqual({ kind: "unresolved", reason: "rpc-error" });
+    for (const outcome of [reads.votesLengths, reads.currentRuling, reads.appealDecisions, reads.appealInfo]) {
+      expect(outcome).toMatchObject({ ok: false, error: { message: "This network's data is unavailable." } });
+      if (outcome?.ok === false) expect(outcome.error.message).not.toMatch(/configur|RPC|REACT_APP/i);
+    }
   });
 });
 
 describe("readAppealDecisions", () => {
-  it("§6.3: reads AppealDecision(id) from the given block to the head, with one block read per distinct block", async () => {
+  it("reads AppealDecision(id) from the given block to the head, with one block read per distinct block", async () => {
     const dispute = await found(1454n);
     const { arbitrator, arbitrated, disputeId } = dispute.binding;
     const node: FakeNode = {
@@ -172,7 +193,7 @@ describe("readAppealDecisions", () => {
     expect(requests.blocks).toEqual([120n, 300n]);
   });
 
-  it("D-36: a missing block is a failed read, not an appeal at time 0", async () => {
+  it("a missing block is a failed read, not an appeal at time 0", async () => {
     const dispute = await found(1454n);
     const { arbitrator, arbitrated, disputeId } = dispute.binding;
     const node: FakeNode = { head: 500n, calls: new Map(), logs: [appealDecisionLog(arbitrator, disputeId, arbitrated, 120n)], timestamps: {} };
@@ -180,7 +201,7 @@ describe("readAppealDecisions", () => {
     expect((await readAppealDecisions({ chainId: 1, client }, dispute.binding, 0n)).ok).toBe(false);
   });
 
-  it("§6.3: an aborted scan is a failed read", async () => {
+  it("an aborted scan is a failed read", async () => {
     const dispute = await found(1454n);
     const controller = new AbortController();
     controller.abort();

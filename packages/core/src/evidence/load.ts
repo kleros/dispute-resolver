@@ -20,12 +20,9 @@ interface Candidate {
 }
 
 /**
- * The evidence of a dispute's evidence group, archon's `getEvidence` with content addressing (spec 5.14, 9.3, D-22).
- * A log whose data does not decode is hidden `undecodable`. Each other log's URI must pass `normalizeIpfsPath` (else
- * hidden `not-content-addressed`, never fetched; http(s) URIs included); its JSON is fetched through the gateway with
- * bounded concurrency (`fetch-failed`), parsed (`not-json`) and validated by `parseEvidenceDocument` (`schema-invalid`). Hidden entries are counted by reason, never dropped
- * silently. Timestamps come from one block read per distinct block. Items are newest first, entries with the same time
- * in chain order (today's stable sort by time). Never rejects: a failed log or block read, or an abort, is `rpc-error`.
+ * A URI that fails `normalizeIpfsPath` is never fetched, http(s) included. Hidden entries are counted by reason, never
+ * dropped silently. Items are newest first; entries with the same time keep chain order because the sort is stable.
+ * Never rejects: a failed log or block read, or an abort, is `rpc-error`.
  */
 export async function loadEvidence(context: EvidenceContext): Promise<Outcome<EvidenceList>> {
   const { client, signal } = context;
@@ -77,7 +74,7 @@ export async function loadEvidence(context: EvidenceContext): Promise<Outcome<Ev
   }
 }
 
-/** Fetches and validates one evidence document. Never rejects: every failure is a hidden reason. */
+/** Never rejects: every failure is a hidden reason. */
 async function fetchDocument(fetcher: Fetcher, url: string, gateway: GatewayOrigin, signal: AbortSignal | undefined): Promise<Fetched> {
   let body: unknown;
   try {
@@ -95,7 +92,7 @@ async function fetchDocument(fetcher: Fetcher, url: string, gateway: GatewayOrig
   return document.ok ? { status: "shown", document: document.value } : { status: "hidden", reason: "schema-invalid" };
 }
 
-/** The timestamp of each distinct block, read `CONCURRENCY` at a time. Rejects when a block cannot be read. */
+/** Rejects when a block cannot be read. */
 async function blockTimestamps(client: ReadClient, blockNumbers: readonly bigint[]): Promise<ReadonlyMap<bigint, UnixSeconds>> {
   const distinct = [...new Set(blockNumbers)];
   const entries = await mapBounded(distinct, async (blockNumber) => [blockNumber, Number((await client.getBlock({ blockNumber })).timestamp)] as const);
@@ -108,7 +105,7 @@ function timestampOf(timestamps: ReadonlyMap<bigint, UnixSeconds>, blockNumber: 
   return timestamp;
 }
 
-/** `task` over every item, at most `CONCURRENCY` at a time, results in input order. */
+/** Results keep input order, which the stable newest-first sort in `loadEvidence` relies on. */
 async function mapBounded<T, R>(items: readonly T[], task: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = [];
   const queue = items.entries();

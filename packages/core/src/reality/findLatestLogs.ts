@@ -7,7 +7,6 @@ import { LOOKUP_LIMITS } from "./constants";
 /** The logs of one request over mined blocks (explicit block numbers, so never pending). */
 type Logs<TEvent extends AbiEvent> = GetLogsReturnType<TEvent, undefined, undefined, bigint, bigint>;
 
-/** An `eth_getLogs` request: the event of one contract over a block range. */
 export interface LogsRequest<TEvent extends AbiEvent> {
   readonly address: Address;
   readonly event: TEvent;
@@ -29,7 +28,7 @@ interface BlockWindow {
   readonly to: bigint;
 }
 
-/** Removed logs dropped and logs returned twice (same transaction hash and log index, which some providers do) dropped. */
+/** Some providers return the same log twice. */
 function uniqueLogs<TEvent extends AbiEvent>(logs: Logs<TEvent>): Logs<TEvent> {
   const seen = new Set<string>();
   return logs.filter((log) => {
@@ -53,7 +52,6 @@ async function fetchWindow<TEvent extends AbiEvent>(client: ReadClient, budget: 
   return uniqueLogs<TEvent>(logs);
 }
 
-/** Up to `concurrency` consecutive windows of `windowSize` blocks ending at `high`, newest first, clipped at `low`. */
 function planWindows(low: bigint, high: bigint, windowSize: number): BlockWindow[] {
   const size = BigInt(windowSize);
   const windows: BlockWindow[] = [];
@@ -67,13 +65,12 @@ function shrunkWindowSize(windowSize: number): number {
   return Math.max(LOOKUP_LIMITS.minWindowSize, Math.floor(windowSize / LOOKUP_LIMITS.windowShrinkFactor));
 }
 
-/** What one round of windows found: logs, a refused window to narrow, or nothing (the scan continues below `nextHigh`). */
 type RoundOutcome<TEvent extends AbiEvent> =
   | { readonly kind: "found"; readonly logs: Logs<TEvent> }
   | { readonly kind: "refused"; readonly window: BlockWindow; readonly reason: unknown }
   | { readonly kind: "empty"; readonly nextHigh: bigint };
 
-/** Reads the results of one round, newest window first: the first window with logs or with a range refusal decides. */
+/** The newest window with logs or with a range refusal decides, even if an older one succeeded. */
 function readRound<TEvent extends AbiEvent>(windows: readonly BlockWindow[], results: readonly PromiseSettledResult<Logs<TEvent>>[]): RoundOutcome<TEvent> {
   let nextHigh = windows[0]?.to ?? 0n;
   for (const [index, window] of windows.entries()) {
@@ -89,11 +86,6 @@ function readRound<TEvent extends AbiEvent>(windows: readonly BlockWindow[], res
   return { kind: "empty", nextHigh };
 }
 
-/**
- * Scans `[fromBlock, toBlock]` backwards (newest blocks first) in windows fetched `concurrency` at a time, and stops at
- * the newest window with logs. A window the provider refuses for its range limits shrinks the windows and is fetched
- * again; a refusal at the smallest window, or any other error, is rethrown.
- */
 async function scanBackwards<TEvent extends AbiEvent>(
   fetchLogs: (window: BlockWindow) => Promise<Logs<TEvent>>,
   range: BlockWindow,
@@ -119,10 +111,7 @@ async function scanBackwards<TEvent extends AbiEvent>(
   return [];
 }
 
-/**
- * The same as `findLatestLogs`, remembering in `memory` the window size the provider accepts. A lookup passes one memory
- * per read client, so its later searches skip the whole-range request the provider already refused.
- */
+/** A lookup passes one memory per read client, so its later searches skip the whole-range request already refused. */
 export async function findLatestLogsRemembering<TEvent extends AbiEvent>(
   client: ReadClient,
   request: LogsRequest<TEvent>,
@@ -147,11 +136,9 @@ export async function findLatestLogsRemembering<TEvent extends AbiEvent>(
 }
 
 /**
- * The newest logs of `request.event` emitted by `request.address` in `[fromBlock, toBlock]` (spec 9.1). The whole range
- * is tried in one request first. If the provider refuses it for its range or size limits, the range is scanned backwards
- * (newest blocks first) in windows of `windowSize` blocks fetched `concurrency` at a time, shrinking the windows while
- * they are refused, and the scan stops at the newest window with logs. Other errors are thrown, never split. Each request
- * spends `budget`. Logs returned twice are dropped.
+ * The newest logs of `request.event` in `[fromBlock, toBlock]`. The whole range is tried first; only a range or size
+ * refusal falls back to a backwards scan in shrinking windows, and the scan stops at the newest window with logs. Other
+ * errors are thrown, never split.
  */
 export function findLatestLogs<const TEvent extends AbiEvent>(
   client: ReadClient,

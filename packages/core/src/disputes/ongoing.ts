@@ -3,6 +3,7 @@ import { klerosLiquidAbi } from "../abi";
 import { getChain, ongoingScanStart } from "../chains";
 import { describeError, getLogsChunked } from "../rpc";
 import type { Address, ReadClient } from "../types";
+import { NETWORK_DATA_UNAVAILABLE } from "./outcome";
 import { readDisputeStruct, toArbitratorDispute } from "./struct";
 import type { ArbitratorDispute, Court, DisputeReadContext, OngoingDispute, OngoingList } from "./types";
 
@@ -10,10 +11,7 @@ const DISPUTE_CREATION_EVENT = getAbiItem({ abi: klerosLiquidAbi, name: "Dispute
 const NEW_PERIOD_EVENT = getAbiItem({ abi: klerosLiquidAbi, name: "NewPeriod" });
 const EXECUTION_PERIOD = 4;
 
-/**
- * The IDs of the disputes still open in `[fromBlock, head]` (spec 6.3): every distinct ID of a `DisputeCreation` minus
- * the IDs with a `NewPeriod` to the execution period, newest first (spec 3 step 3).
- */
+/** Every distinct `DisputeCreation` ID minus those with a `NewPeriod` to execution, newest first. */
 async function openDisputeIds(client: ReadClient, arbitrator: Address, fromBlock: bigint, head: bigint, signal: AbortSignal | undefined): Promise<bigint[]> {
   const range = { address: arbitrator, fromBlock, toBlock: head };
   const [created, periods] = await Promise.all([
@@ -25,7 +23,6 @@ async function openDisputeIds(client: ReadClient, arbitrator: Address, fromBlock
   return [...open].sort((a, b) => (a < b ? 1 : -1));
 }
 
-/** The card of a dispute: its struct and the end of its current period when its court is known (spec 3). */
 function toOngoing(dispute: ArbitratorDispute, courts: readonly Court[] | null): OngoingDispute {
   const court = courts?.find((candidate) => candidate.id === dispute.subcourtId);
   const duration = court === undefined || dispute.period === EXECUTION_PERIOD ? undefined : court.timesPerPeriod[dispute.period];
@@ -39,7 +36,6 @@ function toOngoing(dispute: ArbitratorDispute, courts: readonly Court[] | null):
   };
 }
 
-/** The struct of one listed dispute, or `null` when it cannot be read or names no arbitrated contract. */
 async function readOpenDispute(client: ReadClient, arbitrator: Address, id: bigint, signal: AbortSignal | undefined): Promise<ArbitratorDispute | null> {
   try {
     signal?.throwIfAborted();
@@ -50,17 +46,13 @@ async function readOpenDispute(client: ReadClient, arbitrator: Address, id: bigi
   }
 }
 
-/**
- * The Ongoing page's disputes (spec 3, D-37): the open IDs of the chain's look-back window (`ongoingScanStart` to head),
- * newest first, each with its `disputes(id)` struct. A dispute whose struct cannot be read is reported in `failedIds`
- * instead of being dropped silently. Titles are joined in `web` from the meta-evidence pipeline.
- */
+/** A dispute whose struct cannot be read is reported in `failedIds` instead of being dropped silently. */
 export async function listOngoingDisputes(context: DisputeReadContext, courts: readonly Court[] | null): Promise<OngoingList> {
   const chain = getChain(context.chainId);
   const arbitrator = chain?.klerosLiquid;
   if (chain === undefined || arbitrator === undefined) return { status: "no-arbitrator" };
   const { client, signal } = context;
-  if (client === undefined) return { status: "failed", error: { code: "no-rpc", message: "This network has no read RPC configured." } };
+  if (client === undefined) return { status: "failed", error: { code: "no-rpc", message: NETWORK_DATA_UNAVAILABLE } };
   let ids: bigint[];
   try {
     signal?.throwIfAborted();

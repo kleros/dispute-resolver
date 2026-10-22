@@ -84,7 +84,7 @@ afterEach(() => {
 });
 
 describe("fetchRealityQuestion", () => {
-  it("A5: looks up a known single-chain dispute with single-block requests only", async () => {
+  it("looks up a known single-chain dispute with single-block requests only", async () => {
     const world = createWorld();
     const question = await lookup(world);
     expect(question).toEqual({
@@ -103,7 +103,7 @@ describe("fetchRealityQuestion", () => {
     }
   });
 
-  it("A5: looks up a known cross-chain dispute on the Reality.eth chain only", async () => {
+  it("looks up a known cross-chain dispute on the Reality.eth chain only", async () => {
     const world = createWorld();
     const question = await lookup(world, CROSS_ENTRY, 8n);
     expect(question).toMatchObject({ questionId: Q_KNOWN_CROSS, templateId: "3", templateText: "template 3 on 100", questionText: "known cross", realityChainId: 100 });
@@ -111,19 +111,19 @@ describe("fetchRealityQuestion", () => {
     expect(countCalls(world.calls, (call) => call.chainId !== 100)).toBe(0);
   });
 
-  it("A5: rejects a known question whose log does not use the expected template", async () => {
+  it("rejects a known question whose log does not use the expected template", async () => {
     const world = createWorld();
     world.chains[1].logs[0] = questionLog(REALITY_1, 400_000, Q_KNOWN_SINGLE, 5, "known single");
     await expect(lookup(world)).rejects.toThrow(/template 5, expected 2/);
   });
 
-  it("A5: rejects a known question whose template does not exist", async () => {
+  it("rejects a known question whose template does not exist", async () => {
     const world = createWorld();
     world.chains[1].templates = {};
     await expect(lookup(world)).rejects.toThrow("Template 2 does not exist.");
   });
 
-  it("A5: searches an unknown single-chain dispute after the snapshot, in windows when the range is refused", async () => {
+  it("searches an unknown single-chain dispute after the snapshot, in windows when the range is refused", async () => {
     const world = createWorld();
     world.chains[1].maxRange = 10_000n;
     const question = await lookup(world, SINGLE_ENTRY, 9n);
@@ -141,7 +141,7 @@ describe("fetchRealityQuestion", () => {
     expect(filterOf(nth(questionCalls, 0))).toMatchObject({ address: REALITY_1, fromBlock: hex(840_001), toBlock: hex(850_000) });
   });
 
-  it("A5: tries the whole range first on a provider that has not refused a range yet", async () => {
+  it("tries the whole range first on a provider that has not refused a range yet", async () => {
     const world = createWorld();
     world.chains[100].maxRange = 100_000n;
     await lookup(world, CROSS_ENTRY, 10n);
@@ -150,7 +150,7 @@ describe("fetchRealityQuestion", () => {
     expect(filterOf(nth(questionCalls, 1))).toMatchObject({ fromBlock: hex(CROSS_BOUND - 9999n), toBlock: hex(CROSS_BOUND) });
   });
 
-  it("A5: shrinks the windows while the provider still refuses them", async () => {
+  it("shrinks the windows while the provider still refuses them", async () => {
     const world = createWorld();
     world.chains[1].maxRange = 500n;
     const question = await lookup(world, SINGLE_ENTRY, 9n);
@@ -160,13 +160,13 @@ describe("fetchRealityQuestion", () => {
     expect(Math.max(...sizes.slice(sizes.findIndex((size) => size === 400n)).map(Number))).toBeLessThanOrEqual(400);
   });
 
-  it("A5: throws when the provider refuses even the smallest window", async () => {
+  it("throws when the provider refuses even the smallest window", async () => {
     const world = createWorld();
     world.chains[1].maxRange = 50n;
     await expect(lookup(world, SINGLE_ENTRY, 9n)).rejects.toThrow(/max block range/);
   });
 
-  it("A5: retries other errors a couple of times and throws them without splitting the range", async () => {
+  it("retries other errors a couple of times and throws them without splitting the range", async () => {
     const world = createWorld();
     world.chains[1].onRequest = (method) => (method === "eth_getLogs" ? rpcError(-32000, "internal server error") : undefined);
     await expect(lookup(world, SINGLE_ENTRY, 9n)).rejects.toThrow("internal server error");
@@ -175,7 +175,7 @@ describe("fetchRealityQuestion", () => {
     for (const call of logCalls) expect(filterOf(call)).toMatchObject({ fromBlock: hex(500_001) });
   });
 
-  it("A5: does not mistake rate limiting for a range limit", async () => {
+  it("does not mistake rate limiting for a range limit", async () => {
     const world = createWorld();
     let limited = 2;
     world.chains[1].onRequest = (method) => (method === "eth_getLogs" && limited-- > 0 ? rpcError(-32005, "rate limit exceeded") : undefined);
@@ -185,7 +185,7 @@ describe("fetchRealityQuestion", () => {
     expect(getLogsCalls(world.calls)).toHaveLength(5);
   });
 
-  it("A5: throws once the request budget is exhausted", async () => {
+  it("throws once the request budget is exhausted", async () => {
     const world = createWorld();
     world.chains[1].maxRange = 100n;
     world.chains[1].logs = world.chains[1].logs.filter((log) => log.topics[0] !== T.map);
@@ -193,14 +193,14 @@ describe("fetchRealityQuestion", () => {
     expect(world.calls.length).toBeLessThanOrEqual(LOOKUP_LIMITS.requestBudget);
   });
 
-  it("A5: throws once the deadline is exceeded", async () => {
+  it("throws once the deadline is exceeded", async () => {
     const world = createWorld();
     world.chains[1].maxRange = 100n;
     await expect(fetchRealityQuestion({ entry: SINGLE_ENTRY, arbitratorChainId: 1, disputeId: 9n, clients: world.lookupClients, deadlineMs: -1 })).rejects.toThrow(/deadline/);
     expect(world.calls).toHaveLength(0);
   });
 
-  it("R-5 A5: clips the requested deadline to the lookup limit", async () => {
+  it("clips the requested deadline to the lookup limit", async () => {
     const world = createWorld();
     advanceClockAtFirst(world.chains[1], "eth_blockNumber", LOOKUP_LIMITS.deadlineMs + 1);
     await expect(
@@ -209,13 +209,13 @@ describe("fetchRealityQuestion", () => {
     expect(getLogsCalls(world.calls)).toHaveLength(0);
   });
 
-  it("R-5 A5: keeps a requested deadline shorter than the lookup limit", async () => {
+  it("keeps a requested deadline shorter than the lookup limit", async () => {
     const world = createWorld();
     advanceClockAtFirst(world.chains[1], "eth_blockNumber", 1001);
     await expect(fetchRealityQuestion({ entry: SINGLE_ENTRY, arbitratorChainId: 1, disputeId: 9n, clients: world.lookupClients, deadlineMs: 1000 })).rejects.toThrow(/deadline/);
   });
 
-  it("R-1 A5: counts the retries of a request against the request budget", async () => {
+  it("counts the retries of a request against the request budget", async () => {
     const limits = { ...LOOKUP_LIMITS };
     Object.assign(LOOKUP_LIMITS, { requestBudget: 3 });
     try {
@@ -228,21 +228,21 @@ describe("fetchRealityQuestion", () => {
     }
   });
 
-  it("R-1 A5: a lookup whose requests need retries succeeds within the budget, every attempt being sent", async () => {
+  it("succeeds within the budget when requests need retries, sending every attempt", async () => {
     const world = createWorld();
     failFirstAttempts(world.chains[1], 2);
     expect((await lookup(world)).questionId).toBe(Q_KNOWN_SINGLE);
     expect(world.calls).toHaveLength(9);
   });
 
-  it("R-1 A5: stops retrying once the deadline has passed", async () => {
+  it("stops retrying once the deadline has passed", async () => {
     const world = createWorld();
     advanceClockAtFirst(world.chains[1], "eth_getLogs", LOOKUP_LIMITS.deadlineMs + 1, rpcError(-32000, "internal server error"));
     await expect(lookup(world)).rejects.toThrow(/deadline/);
     expect(getLogsCalls(world.calls).length).toBeLessThanOrEqual(2);
   });
 
-  it("A5: searches the question of an unknown cross-chain dispute back from the arbitration creation time", async () => {
+  it("searches the question of an unknown cross-chain dispute back from the arbitration creation time", async () => {
     const world = createWorld();
     world.chains[100].maxRange = 100_000n;
     const question = await lookup(world, CROSS_ENTRY, 10n);
@@ -253,7 +253,7 @@ describe("fetchRealityQuestion", () => {
     expect(countCalls(world.calls, (call) => call.method === "eth_getBlockByNumber")).toBeLessThanOrEqual(3 + 8);
   });
 
-  it("A5: searches the question of an unknown cross-chain dispute back from the Reality.eth chain head as a fallback", async () => {
+  it("searches the question of an unknown cross-chain dispute back from the Reality.eth chain head as a fallback", async () => {
     const world = createWorld();
     world.chains[1].onRequest = (method) => (method === "eth_getBlockByNumber" ? rpcError(-32000, "header not found") : undefined);
     const question = await lookup(world, CROSS_ENTRY, 10n);
@@ -265,7 +265,7 @@ describe("fetchRealityQuestion", () => {
     expect(filterOf(questionCall)).toMatchObject({ fromBlock: hex(100), toBlock: hex(3_000_000) });
   });
 
-  it("A5: uses arbitrationCreatedBlock when the proxy has it", async () => {
+  it("uses arbitrationCreatedBlock when the proxy has it", async () => {
     const world = createWorld();
     const question = await lookup(world, CROSS_WITH_BLOCK_ENTRY, 11n);
     expect(question.questionId).toBe(Q_NEW_CROSS);
@@ -274,7 +274,7 @@ describe("fetchRealityQuestion", () => {
     expect(filterOf(nth(mapping, 0))).toMatchObject({ address: CROSS_WITH_BLOCK, fromBlock: hex(870_000), toBlock: hex(870_000) });
   });
 
-  it("A5: falls back to the scan when arbitrationCreatedBlock fails", async () => {
+  it("falls back to the scan when arbitrationCreatedBlock fails", async () => {
     const world = createWorld();
     world.chains[1].onRequest = (method) => (method === "eth_call" ? rpcError(-32000, "header not found") : undefined);
     const question = await lookup(world, CROSS_WITH_BLOCK_ENTRY, 11n);
@@ -282,53 +282,53 @@ describe("fetchRealityQuestion", () => {
     expect(filterOf(nth(getLogsCalls(world.calls, 1), 0))).toMatchObject({ fromBlock: hex(500_001) });
   });
 
-  it("R-3 A5: reads arbitrationCreatedBlock once, without retries", async () => {
+  it("reads arbitrationCreatedBlock once, without retries", async () => {
     const world = createWorld();
     world.chains[1].onRequest = (method) => (method === "eth_call" ? rpcError(-32000, "header not found") : undefined);
     await lookup(world, CROSS_WITH_BLOCK_ENTRY, 11n);
     expect(countCalls(world.calls, (call) => call.chainId === 1 && call.method === "eth_call")).toBe(1);
   });
 
-  it("A5: falls back to the scan when the arbitrationCreatedBlock getLogs fails", async () => {
+  it("falls back to the scan when the arbitrationCreatedBlock getLogs fails", async () => {
     const world = createWorld();
     world.chains[1].onRequest = (method, params) => (singleBlockLogs(method, params) ? rpcError(-32000, "unknown block") : undefined);
     const question = await lookup(world, CROSS_WITH_BLOCK_ENTRY, 11n);
     expect(question.questionId).toBe(Q_NEW_CROSS);
   });
 
-  it("A5: deduplicates logs returned twice", async () => {
+  it("deduplicates logs returned twice", async () => {
     const world = createWorld();
     world.chains[1].duplicateLogs = true;
     const question = await lookup(world, SINGLE_ENTRY, 9n);
     expect(question.questionId).toBe(Q_NEW_SINGLE);
   });
 
-  it("A5: rejects distinct duplicate mapping logs", async () => {
+  it("rejects distinct duplicate mapping logs", async () => {
     const world = createWorld();
     world.chains[1].logs.push(mappingLog(SINGLE, 860_000, 9, `0x${"05".repeat(32)}`));
     await expect(lookup(world, SINGLE_ENTRY, 9n)).rejects.toThrow("Expected exactly one DisputeIDToQuestionID log, found 2.");
   });
 
-  it("A5: rejects an unknown dispute without mapping log", async () => {
+  it("rejects an unknown dispute without mapping log", async () => {
     const world = createWorld();
     await expect(lookup(world, SINGLE_ENTRY, 12n)).rejects.toThrow("found 0");
   });
 
-  it("A5: rejects a negative dispute ID without a request", async () => {
+  it("rejects a negative dispute ID without a request", async () => {
     const world = createWorld();
     await expect(lookup(world, SINGLE_ENTRY, -1n)).rejects.toThrow("Invalid dispute ID -1.");
     expect(world.calls).toHaveLength(0);
   });
 
-  it("D-18: rejects with the chain when the arbitrator chain has no RPC configured", async () => {
+  it("names the arbitrator chain when it has no read client", async () => {
     const world = createWorld();
     await expect(fetchRealityQuestion({ entry: SINGLE_ENTRY, arbitratorChainId: 10, disputeId: 7n, clients: world.lookupClients })).rejects.toThrow(
-      "no RPC configured for chain 10",
+      "reads on chain 10 are unavailable",
     );
     expect(world.calls).toHaveLength(0);
   });
 
-  it("D-56: rejects with the chain when the Reality.eth chain has no RPC configured", async () => {
+  it("names the Reality.eth chain when it has no read client", async () => {
     const world = createWorld();
     await expect(
       fetchRealityQuestion({
@@ -337,11 +337,11 @@ describe("fetchRealityQuestion", () => {
         disputeId: 8n,
         clients: (budget, options) => (chainId) => (chainId === 1 ? world.lookupClients(budget, options)(1) : undefined),
       }),
-    ).rejects.toThrow("no RPC configured for chain 100");
+    ).rejects.toThrow("reads on chain 100 are unavailable");
     expect(world.calls).toHaveLength(0);
   });
 
-  it("A5: shares concurrent lookups of the same dispute", async () => {
+  it("shares concurrent lookups of the same dispute", async () => {
     const world = createWorld();
     const [a, b, c] = await Promise.all([lookup(world), lookup(world), lookup(world, CROSS_ENTRY, 8n)]);
     expect(a).toBe(b);
@@ -349,7 +349,7 @@ describe("fetchRealityQuestion", () => {
     expect(world.calls).toHaveLength(6);
   });
 
-  it("§9.1: a caller that aborts stops waiting without failing the caller sharing its lookup", async () => {
+  it("lets an aborting caller stop waiting without failing the caller sharing its lookup", async () => {
     const world = createWorld();
     const first = new AbortController();
     const aborted = fetchRealityQuestion({ entry: SINGLE_ENTRY, arbitratorChainId: 1, disputeId: 7n, clients: world.lookupClients, signal: first.signal });
@@ -359,7 +359,7 @@ describe("fetchRealityQuestion", () => {
     expect((await shared).questionId).toBe(Q_KNOWN_SINGLE);
   });
 
-  it("§9.1: aborting every caller stops the lookup before its next request", async () => {
+  it("stops the lookup before its next request once every caller aborts", async () => {
     const world = createWorld();
     const controller = new AbortController();
     world.chains[1].onRequest = (method) => {
@@ -371,7 +371,7 @@ describe("fetchRealityQuestion", () => {
     expect(getLogsCalls(world.calls)).toHaveLength(0);
   });
 
-  it("§9.1: an aborted signal rejects before any request", async () => {
+  it("rejects an already aborted signal before any request", async () => {
     const world = createWorld();
     await expect(
       fetchRealityQuestion({ entry: SINGLE_ENTRY, arbitratorChainId: 1, disputeId: 7n, clients: world.lookupClients, signal: AbortSignal.abort(new Error("stop")) }),
@@ -384,13 +384,13 @@ describe("findLatestLogs", () => {
   const budget = () => createRequestBudget({ maxRequests: 100, deadlineMs: 60_000 });
   const request = { address: SINGLE, event: DISPUTE_ID_TO_QUESTION_ID, args: { _disputeID: 9n }, fromBlock: 500_001n, toBlock: 900_000n } as const;
 
-  it("A5: returns no logs for an empty range without requests", async () => {
+  it("returns no logs for an empty range without requests", async () => {
     const world = createWorld();
     expect(await findLatestLogs(readClientOf(world.clients, 1), { ...request, fromBlock: 10n, toBlock: 9n }, budget())).toEqual([]);
     expect(world.calls).toHaveLength(0);
   });
 
-  it("A5: returns the logs of the newest window that has any", async () => {
+  it("returns the logs of the newest window that has any", async () => {
     const world = createWorld();
     world.chains[1].maxRange = 10_000n;
     const logs = await findLatestLogs(readClientOf(world.clients, 1), request, budget());
@@ -398,7 +398,7 @@ describe("findLatestLogs", () => {
     expect(logs[0]?.args._questionID).toBe(Q_NEW_SINGLE);
   });
 
-  it("A5: spends the budget on every request", async () => {
+  it("spends the budget on every request", async () => {
     const world = createWorld();
     world.chains[1].maxRange = 100n;
     await expect(findLatestLogs(readClientOf(world.clients, 1), request, createRequestBudget({ maxRequests: 5, deadlineMs: 60_000 }))).rejects.toThrow(/budget of 5 requests/);

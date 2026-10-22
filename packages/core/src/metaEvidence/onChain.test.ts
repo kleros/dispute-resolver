@@ -38,8 +38,8 @@ function gnosis460(onChain: OnChainMetaEvidence) {
   return { load, urls, reader };
 }
 
-describe("meta-evidence from the chain (P-25)", () => {
-  it("P-25: the on-chain URI wins over the locator's: Gnosis 460 renders QmbtSnH8... while the locator serves QmPMaPs...", async () => {
+describe("meta-evidence from the chain", () => {
+  it("the on-chain URI wins over the locator's: Gnosis 460 renders QmbtSnH8... while the locator serves QmPMaPs...", async () => {
     const { load, urls, reader } = gnosis460(eventFound(GNOSIS_460.eventMetaEvidenceUri));
     const result = await load;
     expect(result).toMatchObject({
@@ -59,7 +59,7 @@ describe("meta-evidence from the chain (P-25)", () => {
     expect(reader.signals[0]?.aborted).toBe(true);
   });
 
-  it("P-25: event and locator agree across spellings (ipfs://CID/x vs /ipfs/CID/x)", async () => {
+  it("event and locator agree across spellings (ipfs://CID/x vs /ipfs/CID/x)", async () => {
     const routes = { ...servedMetaEvidence(PLAIN, { uri: `${CANONICAL_META}/metaEvidence.json` }), [`${META_URL}/metaEvidence.json`]: PLAIN };
     const served = fakeFetcher(routes);
     const { reader } = fakeOnChain(eventFound(`ipfs://${META_CID}/metaEvidence.json`));
@@ -68,7 +68,7 @@ describe("meta-evidence from the chain (P-25)", () => {
     expect(result.status === "ok" && result.source).toEqual({ kind: "event", locator: "agrees", locatorPath: `${CANONICAL_META}/metaEvidence.json` });
   });
 
-  it("P-25: without an on-chain reader the locator decides as today, with no extra fetch", async () => {
+  it("without an on-chain reader the locator decides, with no extra fetch", async () => {
     const { fetcher, urls } = fakeFetcher(servedMetaEvidence(PLAIN));
     const result = await loadMetaEvidence(context({ fetcher }));
     expect(result).toMatchObject({ status: "ok", uri: CANONICAL_META, metaEvidence: { title: "Plain dispute" } });
@@ -76,7 +76,7 @@ describe("meta-evidence from the chain (P-25)", () => {
     expect(urls).toEqual([LOCATOR_1684, META_URL]);
   });
 
-  it("P-25: an event that is not found, ambiguous or unavailable leaves the locator in charge and records why", async () => {
+  it("an event that is not found, ambiguous or unavailable leaves the locator in charge and records why", async () => {
     const answers: [OnChainMetaEvidence, string][] = [
       [{ status: "not-found", reason: "dispute-event-not-found" }, "dispute-event-not-found"],
       [{ status: "not-found", reason: "dispute-event-ambiguous" }, "dispute-event-ambiguous"],
@@ -94,7 +94,7 @@ describe("meta-evidence from the chain (P-25)", () => {
     }
   });
 
-  it("P-25: a reader that rejects is unavailable, never a retried transient", async () => {
+  it("a reader that rejects is unavailable, never a retried transient", async () => {
     const { fetcher, urls } = fakeFetcher(servedMetaEvidence(PLAIN));
     const { reader, signals } = fakeOnChain(new Error("https://rpc.example/v3/SECRET-KEY exploded"));
     const result = await loadMetaEvidence(context({ fetcher, onChain: reader }));
@@ -105,13 +105,13 @@ describe("meta-evidence from the chain (P-25)", () => {
     expect(signals).toHaveLength(1);
   });
 
-  it("P-25: the locator still answers missing as today when the event is not found", async () => {
+  it("the locator still answers missing when the event is not found", async () => {
     const { fetcher } = fakeFetcher({ [LOCATOR_1684]: json({}) });
     const { reader } = fakeOnChain({ status: "not-found", reason: "meta-evidence-event-not-found" });
     expect(await loadMetaEvidence(context({ fetcher, onChain: reader }))).toEqual({ status: "missing" });
   });
 
-  it("P-25, A2: the content-addressing check applies to the winning URI: Gnosis 863's on-chain https URL yields the placeholder even though the locator's URI is content-addressed, with no gateway fetch", async () => {
+  it("the content-addressing check applies to the winning URI: Gnosis 863's on-chain https URL yields the placeholder even though the locator's URI is content-addressed, with no gateway fetch", async () => {
     const locator = locatorUrl(100, 863n);
     const { fetcher, urls } = fakeFetcher({ [locator]: json({ metaEvidenceUri: CANONICAL_META }), [META_URL]: PLAIN });
     const { reader } = fakeOnChain(eventFound(GNOSIS_863_LATEST_URI ?? ""));
@@ -121,7 +121,7 @@ describe("meta-evidence from the chain (P-25)", () => {
     expect(urls).toEqual([locator]);
   });
 
-  it("P-25, A2: an on-chain CID wins over a locator /ipns/ URI and renders", async () => {
+  it("an on-chain CID wins over a locator /ipns/ URI and renders", async () => {
     const { fetcher, urls } = fakeFetcher({ [LOCATOR_1684]: json({ metaEvidenceUri: "/ipns/kleros.eth/metaEvidence.json" }), [META_URL]: PLAIN });
     const { reader } = fakeOnChain(eventFound(CANONICAL_META));
     const result = await loadMetaEvidence(context({ fetcher, onChain: reader }));
@@ -130,7 +130,7 @@ describe("meta-evidence from the chain (P-25)", () => {
     expect(urls).toEqual([LOCATOR_1684, META_URL]);
   });
 
-  it("P-25: the event wins when the locator has no metaEvidenceUri (missing) and when it answers garbage (unavailable), without a retry", async () => {
+  it("the event wins when the locator has no metaEvidenceUri (missing) and when it answers garbage (unavailable), without a retry", async () => {
     const cases: [string, string][] = [
       [json({}), "missing"],
       ["<html>502 Bad Gateway</html>", "unavailable"],
@@ -146,7 +146,7 @@ describe("meta-evidence from the chain (P-25)", () => {
     }
   });
 
-  it("P-25: with the locator unconfigured, a found event still renders and the locator is recorded unavailable", async () => {
+  it("with the locator unconfigured, a found event still renders and the locator is recorded unavailable", async () => {
     const { fetcher, urls } = fakeFetcher({ [META_URL]: PLAIN });
     const { reader } = fakeOnChain(eventFound(CANONICAL_META));
     const result = await loadMetaEvidence(context({ env: {}, fetcher, onChain: reader }));
@@ -155,11 +155,11 @@ describe("meta-evidence from the chain (P-25)", () => {
     expect(urls).toEqual([META_URL]);
   });
 
-  it("P-25: with the locator unconfigured and no event, today's configuration failure is returned at once", async () => {
+  it("with the locator unconfigured and no event, the details are unavailable at once", async () => {
     const unconfigured = {
       status: "failed",
       reason: "locator-error",
-      error: { code: "unsupported", message: "No meta-evidence API is configured (REACT_APP_METAEVIDENCE_URL)." },
+      error: { code: "unsupported", message: "The dispute details are unavailable." },
     };
     const absent = fakeFetcher({});
     expect(await loadMetaEvidence(context({ env: {}, fetcher: absent.fetcher }))).toEqual(unconfigured);
@@ -171,9 +171,18 @@ describe("meta-evidence from the chain (P-25)", () => {
     expect(notFound.urls).toEqual([]);
     expect(signals).toHaveLength(1);
   });
+
+  it("without a meta-evidence source the reason names no configuration", async () => {
+    const { reader } = fakeOnChain({ status: "not-found", reason: "dispute-event-not-found" });
+    for (const onChain of [undefined, reader]) {
+      const result = await loadMetaEvidence(context({ env: {}, fetcher: fakeFetcher({}).fetcher, ...(onChain === undefined ? {} : { onChain }) }));
+      if (result.status !== "failed") throw new Error(`expected a failure, got ${result.status}`);
+      expect(result.error.message).not.toMatch(/configur|REACT_APP|env|deploy|API/i);
+    }
+  });
 });
 
-describe("meta-evidence from the chain within the budget (P-25, D-38)", () => {
+describe("meta-evidence from the chain within the budget", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -182,12 +191,12 @@ describe("meta-evidence from the chain within the budget (P-25, D-38)", () => {
     vi.useRealTimers();
   });
 
-  it("P-25, D-38: the waits are 30 s for the chain and 5 s for the locator's comparison", () => {
+  it("the waits are 30 s for the chain and 5 s for the locator's comparison", () => {
     expect(ON_CHAIN_WAIT_MS).toBe(30_000);
     expect(LOCATOR_COMPARE_GRACE_MS).toBe(5_000);
   });
 
-  it("P-25, D-38: the on-chain read happens once per load, not once per retry attempt", async () => {
+  it("the on-chain read happens once per load, not once per retry attempt", async () => {
     const { fetcher, urls } = fakeFetcher(servedMetaEvidence([{ status: 504, body: "Gateway Timeout" }, PLAIN]));
     const { reader, signals } = fakeOnChain(eventFound(CANONICAL_META));
     const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, onChain: reader })), 20_000);
@@ -197,7 +206,7 @@ describe("meta-evidence from the chain within the budget (P-25, D-38)", () => {
     expect(elapsedMs).toBe(5_000);
   });
 
-  it("P-25, D-38: a locator that never answers holds a found event at most 5 s, and its request is aborted", async () => {
+  it("a locator that never answers holds a found event at most 5 s, and its request is aborted", async () => {
     const { fetcher, urls, inits } = fakeFetcher({ [LOCATOR_1684]: HANG, [META_URL]: PLAIN });
     const { reader } = fakeOnChain(eventFound(CANONICAL_META));
     const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, onChain: reader })), 20_000);
@@ -207,7 +216,7 @@ describe("meta-evidence from the chain within the budget (P-25, D-38)", () => {
     expect(inits[0]?.signal?.aborted).toBe(true);
   });
 
-  it("P-25, D-38: an on-chain reader that never answers gives way to the locator after ON_CHAIN_WAIT_MS, and its signal is aborted", async () => {
+  it("an on-chain reader that never answers gives way to the locator after ON_CHAIN_WAIT_MS, and its signal is aborted", async () => {
     const { fetcher, urls } = fakeFetcher(servedMetaEvidence(PLAIN));
     const { reader, signals } = fakeOnChain(HANG);
     const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, onChain: reader })), 60_000);
@@ -217,7 +226,7 @@ describe("meta-evidence from the chain within the budget (P-25, D-38)", () => {
     expect(urls).toEqual([LOCATOR_1684, META_URL]);
   });
 
-  it("P-25: aborting the load aborts the reader and the locator request", async () => {
+  it("aborting the load aborts the reader and the locator request", async () => {
     const controller = new AbortController();
     const { fetcher, inits } = fakeFetcher({ [LOCATOR_1684]: HANG });
     const { reader, signals } = fakeOnChain(HANG);

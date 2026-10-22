@@ -4,10 +4,8 @@ import type { Period } from "../types";
 import type { Compatibility, Decision } from "./types";
 
 /**
- * The decision alert (spec 5.9). Periods 0–2 have none. In the appeal period it is the jury's current ruling, with the
- * hint to appeal in the arbitrable application when the dispute is view-only. In execution the winner is the single
- * funded ruling of the current round when exactly one was funded ("won by default"), else the current ruling ("won by
- * jury decision"). The text is `formatRuling`'s.
+ * In execution, when exactly one ruling of the current round was funded, that ruling won by default even if the jury's
+ * current ruling differs.
  */
 export function deriveDecision(input: {
   readonly period: Period;

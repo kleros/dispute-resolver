@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { AppealInfo } from "../disputes/types";
 import type { FamilyDetection } from "../families/types";
-import type { Outcome, Period } from "../types";
-import { buildAppealPanel, buildCrowdfundingCards, computeAppealAmounts, hasAppealPanel } from "./index";
+import type { Address, Outcome, Period } from "../types";
+import { idrV2Abi, multiplierGetterAbi } from "../abi";
+import { buildAppealPanel, buildCrowdfundingCards, computeAppealAmounts, hasAppealPanel, needsRulingOptions, readMultipliers } from "./index";
 import type { AppealPanelInput, Multipliers, RoundFunding, WithdrawState } from "./types";
-import { FAMILY_SIGNATURES, detectionFor, recordedDetection } from "../test/appeals/testHelpers";
+import { FAMILY_SIGNATURES, answer, detectionFor, fakeNode, recordedDetection, reverting } from "../test/appeals/testHelpers";
 
-const ADDRESS = "0x00000000000000000000000000000000000000dd";
+const ADDRESS: Address = "0x00000000000000000000000000000000000000dd";
 const APPEAL_INFO: AppealInfo = { appealCost: 1_000n, appealPeriodStart: 100, appealPeriodEnd: 300 };
 const MULTIPLIERS: Multipliers = { winnerStakeMultiplier: 10_000n, loserStakeMultiplier: 20_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n };
 const FUNDING: RoundFunding = { round: 0n, contributions: [{ ruling: 1n, amount: 500n }], fundedRulings: [] };
@@ -51,7 +52,7 @@ const EXPECTED_CARDS = buildCrowdfundingCards({
   override: undefined,
 });
 
-/** The governor funds list `ruling − 1` (D-47): the same cards without the ruling-0 refuse card. */
+/** A governor funds list `ruling − 1`, so it has the same cards without the ruling-0 refuse card. */
 const EXPECTED_GOVERNOR_CARDS = { ...EXPECTED_CARDS, cards: EXPECTED_CARDS.cards.filter((card) => card.code !== 0n) };
 
 describe("hasAppealPanel", () => {
@@ -76,21 +77,46 @@ describe("hasAppealPanel", () => {
   });
 });
 
+describe("needsRulingOptions", () => {
+  it("needs the ruling options only for a crowdfunded appeal in the appeal period", () => {
+    const crowdfunded: readonly (keyof typeof FAMILY_SIGNATURES)[] = ["idr-v2", "idr-v1", "idr-legacy", "governor"];
+    for (const name of Object.keys(FAMILY_SIGNATURES) as (keyof typeof FAMILY_SIGNATURES)[]) {
+      for (const detection of [family(name), realityProxy(family(name))]) {
+        for (const period of [0, 1, 2, 3, 4] as const) {
+          const expected = period === 3 && crowdfunded.includes(name);
+          expect(needsRulingOptions(period, detection), `${detection.family} as ${name} in period ${String(period)}`).toBe(expected);
+        }
+      }
+    }
+  });
+
+  it("builds the same panel whatever the ruling options when they are not needed", () => {
+    for (const name of Object.keys(FAMILY_SIGNATURES) as (keyof typeof FAMILY_SIGNATURES)[]) {
+      for (const period of [0, 1, 2, 3, 4] as const) {
+        if (needsRulingOptions(period, family(name))) continue;
+        const withOptions = buildAppealPanel(input(family(name), period));
+        const withoutOptions = buildAppealPanel(input(family(name), period, { rulingOptions: { type: "single-select" }, fallbackOutcomes: null }));
+        expect(withoutOptions, `${name} in period ${String(period)}`).toEqual(withOptions);
+      }
+    }
+  });
+});
+
 describe("buildAppealPanel", () => {
-  it("§5.11: no panel before the appeal period, for every family", () => {
+  it("shows no panel before the appeal period, for every family", () => {
     for (const name of Object.keys(FAMILY_SIGNATURES) as (keyof typeof FAMILY_SIGNATURES)[]) {
       for (const period of [0, 1, 2] as const) expect(buildAppealPanel(input(family(name), period))).toEqual({ kind: "hidden" });
     }
   });
 
-  it("06 §1: idr-v2 and idr-v1 crowdfund in the appeal period and withdraw in execution", () => {
+  it("crowdfunds idr-v2 and idr-v1 in the appeal period and withdraws in execution", () => {
     for (const name of ["idr-v2", "idr-v1"] as const) {
       expect(buildAppealPanel(input(family(name), 3))).toEqual({ kind: "crowdfunding", dialect: "idr", ...EXPECTED_CARDS });
       expect(buildAppealPanel(input(family(name), 4))).toEqual({ kind: "withdraw", state: WITHDRAW });
     }
   });
 
-  it("06 §1: a registered Reality proxy follows its write family, never its display family", async () => {
+  it("follows a registered Reality proxy's write family, never its display family", async () => {
     expect(buildAppealPanel(input(realityProxy(family("idr-v2")), 3))).toEqual({ kind: "crowdfunding", dialect: "idr", ...EXPECTED_CARDS });
     expect(buildAppealPanel(input(realityProxy(family("idr-v2")), 4))).toEqual({ kind: "withdraw", state: WITHDRAW });
     const golden150 = await recordedDetection(1, "0x594ec762b59978c97c82bc36ab493ed8b1f1f368");
@@ -99,21 +125,21 @@ describe("buildAppealPanel", () => {
     expect(buildAppealPanel(input(golden150, 4))).toEqual({ kind: "hidden" });
   });
 
-  it("D-46: idr-legacy crowdfunds in the appeal period and says withdrawals are unsupported in execution", () => {
+  it("crowdfunds idr-legacy in the appeal period and says withdrawals are unsupported in execution", () => {
     expect(buildAppealPanel(input(family("idr-legacy"), 3))).toEqual({ kind: "crowdfunding", dialect: "idr", ...EXPECTED_CARDS });
     expect(buildAppealPanel(input(family("idr-legacy"), 4, { withdraw: null }))).toEqual({ kind: "withdraw-unsupported" });
   });
 
-  it("§10.2: Escrow V1 appeals by paying the appeal cost, due at the end of the appeal period, and ends in execution", () => {
+  it("appeals Escrow V1 by paying the appeal cost, due at the end of the appeal period, and shows it ended in execution", () => {
     expect(buildAppealPanel(input(family("escrow-v1"), 3, { multipliers: null, funding: null }))).toEqual({ kind: "escrow-appeal", appealCost: 1_000n, deadline: 300 });
     expect(buildAppealPanel(input(family("escrow-v1"), 4, { withdraw: null }))).toEqual({ kind: "escrow-ended" });
   });
 
-  it("D-36: Escrow V1 without the appeal cost shows the fees as unavailable", () => {
+  it("shows the fees as unavailable for Escrow V1 without the appeal cost", () => {
     expect(buildAppealPanel(input(family("escrow-v1"), 3, { appealInfo: { ok: false, error: RPC_DOWN } }))).toEqual({ kind: "fees-unavailable", error: RPC_DOWN });
   });
 
-  it("D-47: governors crowdfund and withdraw through their own dialect, kleros.eth included", async () => {
+  it("crowdfunds and withdraws governors through their own dialect, kleros.eth included", async () => {
     for (const address of ["0x327a29fce0a6490e4236240be176daa282eccfdf", "0xe5bcea6f87aaee4a81f64dfdb4d30d400e0e5cf4"]) {
       const governor = await recordedDetection(1, address);
       expect(governor.writeFamily).toBe("governor");
@@ -122,7 +148,7 @@ describe("buildAppealPanel", () => {
     }
   });
 
-  it("F3 D-47: a governor panel offers no ruling-0 card; every card funds one of the governor's lists", async () => {
+  it("offers no ruling-0 card on a governor panel; every card funds one of the governor's lists", async () => {
     const governor = await recordedDetection(1, "0x327a29fce0a6490e4236240be176daa282eccfdf");
     const titles = ["List 7", "List 8"];
     for (const currentRuling of [2n, 0n]) {
@@ -136,8 +162,8 @@ describe("buildAppealPanel", () => {
     }
   });
 
-  it("P-05: a governor tie costs every list with the shared multiplier until the end of the appeal period", async () => {
-    // The reviewer's example: cost 1,000 over [100, 300]; the loser rule would ask 3,000 by 200 and show 2,000 as 66.66%.
+  it("costs every list of a governor tie with the shared multiplier until the end of the appeal period", async () => {
+    // Cost 1,000 over [100, 300]: the loser rule would ask 3,000 by 200 and show 2,000 as 66.66%.
     const governor = await recordedDetection(1, "0x327a29fce0a6490e4236240be176daa282eccfdf");
     const panel = buildAppealPanel(
       input(governor, 3, {
@@ -154,7 +180,7 @@ describe("buildAppealPanel", () => {
     ]);
   });
 
-  it("P-05: the shared multiplier applies only to a governor tie: a governor ruling and an idr tie keep spec 5.12's sides", async () => {
+  it("applies the shared multiplier only to a governor tie: a governor ruling and an idr tie keep the winner and loser sides", async () => {
     const governor = await recordedDetection(1, "0x327a29fce0a6490e4236240be176daa282eccfdf");
     const shared = { multipliers: ok({ ...MULTIPLIERS, sharedMultiplier: 10_000n }) };
     const required = (panel: ReturnType<typeof buildAppealPanel>) => (panel.kind === "crowdfunding" ? panel.cards.map((card) => [card.code, card.required, card.deadline]) : []);
@@ -169,12 +195,12 @@ describe("buildAppealPanel", () => {
     ]);
   });
 
-  it("D-47: view-only disputes show the arbitrable-application note in the appeal period and no panel in execution", () => {
+  it("shows view-only disputes the arbitrable-application note in the appeal period and no panel in execution", () => {
     expect(buildAppealPanel(input(family("view-only"), 3))).toEqual({ kind: "handled-by-arbitrable" });
     expect(buildAppealPanel(input(family("view-only"), 4))).toEqual({ kind: "hidden" });
   });
 
-  it("§5.11: crowdfunding needs the appeal info, multipliers, funding and current ruling; otherwise the first error is shown", () => {
+  it("crowdfunds only with the appeal info, multipliers, funding and current ruling, otherwise shows the first error", () => {
     const failed = (code: "rpc-error" | "unsupported" | "reverted" | "not-found", message: string) => ({ ok: false as const, error: { code, message } });
     const idr = family("idr-v2");
     expect(buildAppealPanel(input(idr, 3, { multipliers: failed("unsupported", "no multipliers") }))).toEqual({
@@ -201,30 +227,50 @@ describe("buildAppealPanel", () => {
     ).toEqual({ kind: "fees-unavailable", error: { code: "rpc-error", message: "first" } });
   });
 
-  it("D-36: a read that was not made in the appeal period shows the fees as unavailable, never as zero", () => {
+  it("an arbitrable missing a multiplier getter shows that its appeal fees could not be calculated, with the reason and no cards", async () => {
+    const getter = (functionName: (typeof multiplierGetterAbi)[number]["name"]) => ({ to: ADDRESS, abi: multiplierGetterAbi, functionName });
+    const { client } = fakeNode({
+      head: 1n,
+      calls: [
+        reverting({ to: ADDRESS, abi: idrV2Abi, functionName: "getMultipliers" }),
+        answer({ ...getter("winnerStakeMultiplier"), result: 10_000n }),
+        answer({ ...getter("loserStakeMultiplier"), result: 20_000n }),
+        answer({ ...getter("denominator"), result: 10_000n }),
+        reverting(getter("loserAppealPeriodMultiplier")),
+      ],
+    });
+    const idr = family("idr-v2");
+    const panel = buildAppealPanel(input(idr, 3, { multipliers: await readMultipliers(client, idr) }));
+    expect(panel).toEqual({
+      kind: "fees-unavailable",
+      error: { code: "unsupported", message: "This arbitrable does not expose all of its appeal multipliers." },
+    });
+  });
+
+  it("shows the fees as unavailable, never as zero, for a read not made in the appeal period", () => {
     for (const missing of ["appealInfo", "multipliers", "funding"] as const) {
       const panel = buildAppealPanel(input(family("idr-v2"), 3, { [missing]: null }));
       expect(panel).toMatchObject({ kind: "fees-unavailable", error: { code: "not-found" } });
     }
   });
 
-  it("D-36: an execution-period withdraw state that was not read is unavailable", () => {
+  it("reports an execution-period withdraw state that was not read as unavailable", () => {
     expect(buildAppealPanel(input(family("idr-v2"), 4, { withdraw: null }))).toMatchObject({ kind: "withdraw", state: { status: "unavailable", error: { code: "not-found" } } });
   });
 
-  it("D-43: the appeal period never carries the withdraw state or its text", () => {
+  it("never carries the withdraw state or its text in the appeal period", () => {
     for (const name of Object.keys(FAMILY_SIGNATURES) as (keyof typeof FAMILY_SIGNATURES)[]) {
       const panel = buildAppealPanel(input(family(name), 3, { withdraw: WITHDRAW }));
       expect(["withdraw", "withdraw-unsupported"]).not.toContain(panel.kind);
     }
   });
 
-  it("D-33: the multiple-select composer travels inside the crowdfunding panel", () => {
+  it("carries the multiple-select composer inside the crowdfunding panel", () => {
     const panel = buildAppealPanel(input(family("idr-v2"), 3, { rulingOptions: { type: "multiple-select", titles: ["A", "B", "C", "D", "E"] } }));
     expect(panel).toMatchObject({ kind: "crowdfunding", composer: { titles: ["A", "B", "C", "D", "E"], required: 3_000n, deadline: 200 } });
   });
 
-  it("D-04: the variable-type free input travels inside the crowdfunding panel", () => {
+  it("carries the variable-type free input inside the crowdfunding panel", () => {
     const panel = buildAppealPanel(input(family("idr-v2"), 3, { rulingOptions: { type: "uint" } }));
     expect(panel).toMatchObject({ kind: "crowdfunding", freeInput: { type: "uint", required: 3_000n, deadline: 200 } });
   });

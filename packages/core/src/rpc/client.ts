@@ -6,7 +6,6 @@ import { isLookupLimitError } from "./errors";
 import { isRangeLimitError } from "./rangeLimit";
 import type { BudgetedReadClientOptions, ReadClientOptions, ReadClientResolution, RequestBudget } from "./types";
 
-/** Spec 9.1: 20 s per request, two retries after 500 ms and 2 s, each request in its own HTTP request. */
 const DEFAULT_TIMEOUT_MS = 20_000;
 const DEFAULT_RETRY_COUNT = 2;
 const FIRST_RETRY_DELAY_MS = 500;
@@ -29,17 +28,16 @@ interface TransportPolicy extends Required<ReadClientOptions> {
 
 /**
  * Range-limit refusals of `eth_getLogs` go straight back to the caller, which narrows the range (`getLogsChunked`);
- * retrying them would only repeat the refusal. Every other failure is retried (spec 9.1).
+ * retrying them would only repeat the refusal.
  */
 function isRetryable(method: string, error: unknown): boolean {
   return !(method === "eth_getLogs" && isRangeLimitError(error));
 }
 
 /**
- * A viem `http` transport to `url` with the retry policy of spec 9.1. Batching is off, so each request is its own HTTP
- * request with its own timeout (spec 9.1). viem's own retries are off because they retry range refusals (-32005, HTTP
- * 413, timeouts) and use a different backoff. Each attempt, retries included, first spends the budget, which also checks
- * the deadline; its `LookupLimitError` is thrown before the request and never retried.
+ * Batching is off so each request has its own timeout. viem's own retries are off because they retry range refusals
+ * (-32005, HTTP 413, timeouts) and use a different backoff. Each attempt, retries included, spends the budget first, so
+ * its `LookupLimitError` is thrown before the request and never retried.
  */
 function readTransport(url: string, options: TransportPolicy): Transport {
   return (parameters) => {
@@ -68,8 +66,8 @@ function readTransport(url: string, options: TransportPolicy): Transport {
 }
 
 /**
- * The `LookupLimitError` that `error` wraps, or `error` itself. viem wraps every error a transport throws that is not its
- * own (as an `UnknownRpcError`), so the budget's error is unwrapped for callers to recognise with `isLookupLimitError`.
+ * viem wraps every error a transport throws that is not its own in an `UnknownRpcError`, so the budget's error is
+ * unwrapped for callers to recognise with `isLookupLimitError`.
  */
 function unwrapLookupLimit(error: unknown): unknown {
   let current = error;
@@ -88,15 +86,13 @@ function withDefaults(options: BudgetedReadClientOptions | undefined): Transport
   };
 }
 
-/** A read client over `url`, whose transport spends `policy.budget`, when there is one, before every attempt. */
 function buildReadClient(url: string, policy: TransportPolicy): ReadClient {
   return createPublicClient({ transport: readTransport(url, policy) });
 }
 
 /**
- * The read client of a chain, built only from its configured read RPC (A13); `unconfigured` when the chain has none
- * (D-56). Never wraps a wallet. A logical lookup with a request budget builds its own client with `options.budget`, so
- * every attempt it sends is counted (spec 9.1).
+ * Built only from the chain's configured read RPC, never from a wallet. A lookup with a request budget builds its own
+ * client so that every attempt it sends is counted.
  */
 export function createReadClient(chain: ChainConfig, env: Env, options?: BudgetedReadClientOptions): ReadClientResolution {
   const rpc = resolveReadRpcUrl(chain, env);
@@ -105,10 +101,7 @@ export function createReadClient(chain: ChainConfig, env: Env, options?: Budgete
   return resolution;
 }
 
-/**
- * One memoized read client per chain, shared by every caller and so without a request budget. Unknown chains (D-18) and
- * chains without a read RPC (D-56) yield `undefined`.
- */
+/** Shared by every caller, so these clients carry no request budget. */
 export function createReadClients(env: Env, options?: ReadClientOptions): GetReadClient {
   const clients = new Map<ChainId, ReadClient | undefined>();
   return (chainId) => {

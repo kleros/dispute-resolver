@@ -14,7 +14,6 @@ const PROXIES: Record<RegistryKey, typeof SINGLE_ENTRY> = {
 const Q_NEWEST: `0x${string}` = `0x${"06".repeat(32)}`;
 const MAP_TOPIC = toEventSelector(DISPUTE_ID_TO_QUESTION_ID);
 
-/** Chain 1 is final up to block 800,000 and has reached 900,000; chain 100 is final up to 2,900,000. */
 function chains(): Record<1 | 100, FakeChain> {
   const base = { maxRange: BigInt(Number.MAX_SAFE_INTEGER), createdBlocks: {}, templates: {} };
   return {
@@ -66,13 +65,12 @@ function mappingScans(calls: readonly NodeCall[], address: string): NodeCall[] {
 }
 
 describe("generateKnownQuestions", () => {
-  it("A6: an incremental update re-verifies the known disputes and scans the proxies only after the previous snapshot", async () => {
+  it("re-verifies known disputes and scans proxies only after the previous snapshot in incremental mode", async () => {
     const { result, calls } = run();
     const data = await result;
     expect(data.snapshotBlocks).toEqual({ 1: 800_000 });
     expect(data.questions).toEqual(EXPECTED_QUESTIONS);
 
-    // The proxy with known disputes is scanned from the previous snapshot, the one without from its deployment block.
     expect(filterOf(nth(mappingScans(calls, SINGLE), 0))).toMatchObject({ fromBlock: numberToHex(500_001), toBlock: numberToHex(800_000) });
     expect(
       filterOf(
@@ -85,18 +83,17 @@ describe("generateKnownQuestions", () => {
       fromBlock: numberToHex(1000),
       toBlock: numberToHex(800_000),
     });
-    // The known dispute is re-verified with a single-block query at its recorded block.
     expect(calls.some((call) => call.method === "eth_getLogs" && filterOf(call).fromBlock === numberToHex(1990) && filterOf(call).toBlock === numberToHex(1990))).toBe(true);
   });
 
-  it("A6: a full update rescans every proxy from its deployment block", async () => {
+  it("rescans every proxy from its deployment block in full mode", async () => {
     const { result, calls } = run({ mode: "full" });
     const data = await result;
     expect(data.questions).toEqual(EXPECTED_QUESTIONS);
     expect(filterOf(nth(mappingScans(calls, SINGLE), 0))).toMatchObject({ fromBlock: numberToHex(1000), toBlock: numberToHex(800_000) });
   });
 
-  it("A6: a full update scans through a provider that caps eth_getLogs ranges", async () => {
+  it("scans through a provider that caps eth_getLogs ranges in full mode", async () => {
     const nodes = chains();
     nodes[1].maxRange = 10_000n;
     nodes[100].maxRange = 10_000n;
@@ -104,7 +101,7 @@ describe("generateKnownQuestions", () => {
     expect(data.questions).toEqual(EXPECTED_QUESTIONS);
   });
 
-  it("A6: the check recomputes the committed data at its own snapshot blocks and reproduces it", async () => {
+  it("reproduces the committed data at its own snapshot blocks in check mode", async () => {
     const committed: KnownQuestionsData = { snapshotBlocks: { 1: 800_000 }, questions: EXPECTED_QUESTIONS };
     const { result, calls } = run({ mode: "check", previous: committed });
     const data = await result;
@@ -113,7 +110,7 @@ describe("generateKnownQuestions", () => {
     expect(calls.filter((call) => call.chainId === 1 && call.method === "eth_getBlockByNumber")).toHaveLength(0);
   });
 
-  it("A6: the check notices a committed question that is not on the chain", async () => {
+  it("fails the check when a committed question is not on the chain", async () => {
     const committed: KnownQuestionsData = {
       snapshotBlocks: { 1: 800_000 },
       questions: { ...EXPECTED_QUESTIONS, [`1:${SINGLE}:2`]: { questionId: Q_NEW_SINGLE, questionBlock: 749_991, templateId: 2 } },
@@ -121,41 +118,41 @@ describe("generateKnownQuestions", () => {
     await expect(run({ mode: "check", previous: committed }).result).rejects.toThrow(`1:${SINGLE}: LogNewQuestion of ${Q_NEW_SINGLE} not at 749991`);
   });
 
-  it("A6: a known question whose template changed is an error to investigate", async () => {
+  it("rejects a known question whose template changed", async () => {
     const previous: KnownQuestionsData = { ...PREVIOUS, questions: { [`1:${SINGLE}:1`]: { questionId: Q_KNOWN_SINGLE, questionBlock: 1990, templateId: 5 } } };
     await expect(run({ previous }).result).rejects.toThrow(`1:${SINGLE}: template of ${Q_KNOWN_SINGLE} changed`);
   });
 
-  it("A6: a known dispute that the scan finds again is an error", async () => {
+  it("rejects a known dispute that the scan finds again", async () => {
     const nodes = chains();
     nodes[1].logs.push(mappingLog(SINGLE, 600_000, 1, Q_KNOWN_SINGLE));
     await expect(run({}, nodes).result).rejects.toThrow(`1:${SINGLE}: dispute 1 mapped twice`);
   });
 
-  it("A6: a dispute mapped twice by the proxy is an error", async () => {
+  it("rejects a dispute the proxy mapped twice", async () => {
     const nodes = chains();
     nodes[1].logs.push(mappingLog(SINGLE, 760_000, 2, Q_NEWEST));
     await expect(run({}, nodes).result).rejects.toThrow(`1:${SINGLE}: dispute 2 mapped twice`);
   });
 
-  it("A6: a question that cannot be found exactly once is an error", async () => {
+  it("rejects a question that is not found exactly once", async () => {
     const nodes = chains();
     nodes[1].logs = nodes[1].logs.filter((log) => log.blockNumber !== numberToHex(749_990));
     await expect(run({}, nodes).result).rejects.toThrow(`Expected exactly one LogNewQuestion for ${Q_NEW_SINGLE} (1:${SINGLE}) log, found 0.`);
   });
 
-  it("A6: the check needs the snapshot block of every arbitrator chain", async () => {
+  it("requires the snapshot block of every arbitrator chain in check mode", async () => {
     await expect(run({ mode: "check", previous: { snapshotBlocks: {}, questions: {} } }).result).rejects.toThrow("No snapshot block for chain 1");
   });
 
-  it("D-56: rejects when a chain of the registry has no RPC configured", async () => {
+  it("rejects when a registry chain has no read client", async () => {
     const network = fakeNetwork(chains());
     await expect(
       generateKnownQuestions({ proxies: PROXIES, previous: PREVIOUS, mode: "incremental", clients: (chainId) => (chainId === 1 ? network.clients(1) : undefined) }),
-    ).rejects.toThrow("no RPC configured for chain 100");
+    ).rejects.toThrow("reads on chain 100 are unavailable");
   });
 
-  it("A6: reports each proxy's progress", async () => {
+  it("reports each proxy's progress", async () => {
     const lines: string[] = [];
     await run({ onProgress: (line) => lines.push(line) }).result;
     expect(lines).toEqual([`1:${SINGLE}: 2 dispute(s)`, `1:${CROSS_ENTRY.proxy}: 1 dispute(s)`]);
@@ -165,7 +162,7 @@ describe("generateKnownQuestions", () => {
 describe("renderKnownQuestionsModule", () => {
   const question = (block: number) => ({ questionId: Q_NEW_CROSS, questionBlock: block, templateId: 0 });
 
-  it("A6: sorts by chain, then proxy, then dispute ID numerically", () => {
+  it("sorts by chain, then proxy, then dispute ID numerically", () => {
     const source = renderKnownQuestionsModule({
       snapshotBlocks: { 100: 7, 1: 5 },
       questions: {
@@ -180,7 +177,7 @@ describe("renderKnownQuestionsModule", () => {
     expect(keys).toEqual([`1:${SINGLE}:9`, `1:${SINGLE}:10`, `1:${CROSS_ENTRY.proxy}:2`, `100:${SINGLE}:1`]);
   });
 
-  it("A6: writes one expanded object per dispute, the layout prettier keeps", () => {
+  it("writes one expanded object per dispute in the layout prettier keeps", () => {
     const source = renderKnownQuestionsModule({ snapshotBlocks: { 1: 5 }, questions: { [`1:${SINGLE}:9`]: question(3) } });
     expect(source).toContain(`  "1:${SINGLE}:9": {\n    questionId: "${Q_NEW_CROSS}",\n    questionBlock: 3,\n    templateId: 0,\n  },\n};\n`);
   });

@@ -1,3 +1,4 @@
+import { getAnswerString, padToBytes32 } from "@reality.eth/reality-eth-lib/formatters/question.js";
 import { describe, expect, it } from "vitest";
 import golden from "./__fixtures__/golden-rulings.json";
 import { REFUSED_RULING_TEXT, decodeRulingCode, encodeAnswer, formatRuling } from "./index";
@@ -22,110 +23,128 @@ function goldenDispute(chainId: number, disputeId: string): GoldenDispute {
 }
 
 describe("formatRuling", () => {
-  it("§5.9: ruling 0 reads the refused text, whatever the options", () => {
+  it("ruling 0 reads the refused text, whatever the options", () => {
     expect(REFUSED_RULING_TEXT).toBe("invalid / refused to arbitrate / tied");
     expect(formatRuling(0n, SELECT_YES_NO, null)).toBe(REFUSED_RULING_TEXT);
     expect(formatRuling(0n, { type: "hash" }, null)).toBe(REFUSED_RULING_TEXT);
     expect(formatRuling(0n, null, OUTCOMES)).toBe(REFUSED_RULING_TEXT);
   });
 
-  it("§5.9: a single-select ruling reads its title (ruling − 1 into the titles)", () => {
+  it("a single-select ruling reads its title (ruling − 1 into the titles)", () => {
     expect(formatRuling(1n, SELECT_YES_NO, null)).toBe("Yes");
     expect(formatRuling(2n, SELECT_YES_NO, null)).toBe("No");
   });
 
-  it("§5.9: Gnosis 0's multiple-select ruling 5 decodes the bitmask 4 to C", () => {
+  it("Gnosis 0's multiple-select ruling 5 decodes the bitmask 4 to C", () => {
     const dispute = goldenDispute(100, "0");
     expect(formatRuling(BigInt(dispute.currentRuling), dispute.rulingOptions ?? null, null)).toBe("C");
   });
 
-  it("§5.9: a multiple-select ruling joins its titles as reality-eth-lib does", () => {
+  it("a multiple-select ruling joins its titles as reality-eth-lib does", () => {
     expect(formatRuling(4n, SELECT_ABC, null)).toBe("A / B");
     expect(formatRuling(8n, SELECT_ABC, null)).toBe("A / B / C");
   });
 
-  it("§5.9: mainnet 1657's max-uint ruling reads reality-eth-lib's answered-too-soon text", () => {
+  it("mainnet 1657's max-uint ruling reads reality-eth-lib's answered-too-soon text", () => {
     const dispute = goldenDispute(1, "1657");
     expect(BigInt(dispute.currentRuling)).toBe(MAX_UINT256);
     expect(formatRuling(MAX_UINT256, SELECT_YES_NO, null)).toBe("Answered too soon");
     expect(formatRuling(MAX_UINT256, { type: "uint", precision: 18 }, null)).toBe("Answered too soon");
   });
 
-  it("§5.9: mainnet 1658's uint ruling is decoded as a number with the question's decimals", () => {
+  it("mainnet 1658's uint ruling is decoded as a number with the question's decimals", () => {
     const dispute = goldenDispute(1, "1658");
     expect(formatRuling(BigInt(dispute.currentRuling), dispute.rulingOptions ?? null, null)).toBe("0.000000004243172404");
   });
 
-  it("§5.9: uint rulings honor precision 0 and read without decimals when precision is absent", () => {
+  it("a uint ruling without a precision reads with 18 decimals, the precision its answer is encoded with", () => {
+    expect(formatRuling(4243172405n, { type: "uint" }, null)).toBe("0.000000004243172404");
     expect(formatRuling(4243172405n, { type: "uint", precision: 0 }, null)).toBe("4243172404");
-    expect(formatRuling(4243172405n, { type: "uint" }, null)).toBe("4243172404");
     expect(formatRuling(151n, { type: "uint", precision: 2 }, null)).toBe("1.5");
   });
 
-  it("§5.9: int rulings decode reality-eth-lib's two's complement", () => {
+  it("int rulings decode reality-eth-lib's two's complement", () => {
     expect(formatRuling(43n, { type: "int" }, null)).toBe("42");
     expect(formatRuling(MAX_UINT256 - 1n, { type: "int" }, null)).toBe("-3");
   });
 
-  it("§5.9: datetime rulings read as a UTC date", () => {
+  it("datetime rulings read as a UTC date", () => {
     expect(formatRuling(1_700_006_400n + 1n, { type: "datetime" }, null)).toBe("2023-11-15");
   });
 
-  it("§5.9: a hash ruling reads 0x and the ruling itself as 64 hex digits", () => {
-    expect(formatRuling(0xabcn, { type: "hash" }, null)).toBe(`0x${"0".repeat(61)}abc`);
-    expect(formatRuling(MAX_UINT256, { type: "hash" }, null)).toBe(`0x${"f".repeat(64)}`);
+  it("a hash ruling reads 0x and ruling − 1 as 64 hex digits, as every other type reads ruling − 1", () => {
+    expect(formatRuling(0xabcn, { type: "hash" }, null)).toBe(`0x${"0".repeat(61)}abb`);
+    expect(formatRuling(1n, { type: "hash" }, null)).toBe(`0x${"0".repeat(64)}`);
   });
 
-  it("§5.9: without rulingOptions the fallback outcomes are indexed by ruling − 1", () => {
+  it("the hash ruling 2²⁵⁶ − 1 reads reality-eth-lib's Answered too soon, as for every other type", () => {
+    expect(formatRuling(MAX_UINT256, { type: "hash" }, null)).toBe("Answered too soon");
+  });
+
+  it("a hash answer reads back as typed: encodeAnswer, then formatRuling and decodeRulingCode", () => {
+    for (const value of ["0x0", "0xabc", `0x${"ab".repeat(32)}`, "1234", `0x${"f".repeat(63)}d`]) {
+      const encoded = encodeAnswer({ type: "hash", value }, { type: "hash" });
+      const typed = `0x${BigInt(value).toString(16).padStart(64, "0")}`;
+      expect(encoded.ok && formatRuling(encoded.code, { type: "hash" }, null)).toBe(typed);
+      expect(encoded.ok && decodeRulingCode(encoded.code, { type: "hash" }, null)).toBe(typed);
+    }
+  });
+
+  it("without rulingOptions the fallback outcomes are indexed by ruling − 1", () => {
     expect(formatRuling(1n, null, OUTCOMES)).toBe("Kept");
     expect(formatRuling(2n, null, OUTCOMES)).toBe("Removed");
   });
 
-  it("§5.9: without rulingOptions a ruling outside the fallback outcomes reads its decimal value", () => {
+  it("without rulingOptions a ruling outside the fallback outcomes reads its decimal value", () => {
     expect(formatRuling(3n, null, OUTCOMES)).toBe("3");
     expect(formatRuling(7n, null, null)).toBe("7");
     expect(formatRuling(1n, null, [])).toBe("1");
   });
 
-  it("§5.9: fallback outcomes are consulted only without rulingOptions", () => {
+  it("fallback outcomes are consulted only without rulingOptions", () => {
     expect(formatRuling(1n, { type: "uint", precision: 0 }, OUTCOMES)).toBe("0");
   });
 
-  it("§5.9: a formatter failure reads the decimal value and never throws", () => {
+  it("a formatter failure reads the decimal value and never throws", () => {
     expect(formatRuling(3n, SELECT_YES_NO, null)).toBe("3");
     expect(formatRuling(2n ** 300n, { type: "uint" }, null)).toBe((2n ** 300n).toString());
   });
 
-  it("§5.9: a numeric ruling with more decimals than the display cap reads the decimal value", () => {
+  it("a uint ruling with more decimals than the display cap reads the decimal value", () => {
     expect(formatRuling(5n, { type: "uint", precision: 80 }, null)).toBe(`0.${"0".repeat(79)}4`);
     expect(formatRuling(5n, { type: "uint", precision: 1001 }, null)).toBe("5");
-    expect(formatRuling(5n, { type: "int", precision: 1001 }, null)).toBe("5");
-    expect(formatRuling(5n, { type: "datetime", precision: 1e9 }, null)).toBe("5");
     expect(formatRuling(5n, { type: "uint", precision: 1e9 }, null)).toBe("5");
   });
 
-  it("A7 (consumer), P-24: the invalid placeholder options read the ruling's decimal value without throwing", () => {
+  it("an int or datetime ruling ignores the precision, since its answer is encoded without decimals", () => {
+    expect(formatRuling(5n, { type: "int", precision: 1001 }, null)).toBe("4");
+    expect(formatRuling(5n, { type: "int", precision: 81 }, null)).toBe("4");
+    const timestamp4: unknown = getAnswerString({ type: "datetime" }, padToBytes32("4"));
+    expect(formatRuling(5n, { type: "datetime", precision: 1e9 }, null)).toBe(timestamp4);
+    expect(formatRuling(5n, { type: "datetime", precision: 2 }, null)).toBe(timestamp4);
+  });
+
+  it("placeholder options with empty titles read the ruling's decimal value without throwing", () => {
     expect(formatRuling(1n, { type: "single-select", titles: [] }, OUTCOMES)).toBe("1");
   });
 
-  it("P-24: a title-less single-select ruling reads as its decimal value, titles absent or empty, fallback outcomes or not", () => {
+  it("a title-less single-select ruling reads as its decimal value, titles absent or empty, fallback outcomes or not", () => {
     expect(formatRuling(2n, { type: "single-select" }, null)).toBe("2");
     expect(formatRuling(2n, { type: "single-select", titles: [] }, ["Red", "Blue"])).toBe("2");
     expect(formatRuling(1n, { type: "single-select" }, null)).toBe("1");
   });
 
-  it("P-24, P-14: the reserved answers keep their labels on a title-less single-select", () => {
+  it("the reserved answers keep their labels on a title-less single-select", () => {
     expect(formatRuling(MAX_UINT256, { type: "single-select" }, null)).toBe("Answered too soon");
     expect(formatRuling(MAX_UINT256, { type: "single-select", titles: [] }, null)).toBe("Answered too soon");
   });
 
-  it("P-24: the library's empty label for the invalid answer on a title-less select reads as the decimal", () => {
+  it("the library's empty label for the invalid answer on a title-less select reads as the decimal", () => {
     expect(formatRuling(MAX_UINT256 - 1n, { type: "single-select" }, null)).toBe((MAX_UINT256 - 1n).toString());
-    // A titled select already read this ruling as its decimal value before P-24 (probed at HEAD 24383c4).
     expect(formatRuling(MAX_UINT256 - 1n, { type: "single-select", titles: ["A"] }, null)).toBe((MAX_UINT256 - 1n).toString());
   });
 
-  it("P-24: an empty title, a multiple-select without titles and ruling 0 keep their text", () => {
+  it("an empty title, a multiple-select without titles and ruling 0 keep their text", () => {
     expect(formatRuling(1n, { type: "single-select", titles: [""] }, null)).toBe("");
     expect(formatRuling(1n, { type: "multiple-select" }, null)).toBe("");
     expect(formatRuling(0n, { type: "single-select" }, null)).toBe(REFUSED_RULING_TEXT);
@@ -133,52 +152,52 @@ describe("formatRuling", () => {
 });
 
 describe("decodeRulingCode", () => {
-  it("§5.12: a contributed string key reads as its UTF-8 text", () => {
+  it("a contributed string key reads as its UTF-8 text", () => {
     const code = new TextEncoder().encode("héllo").reduce((value, byte) => (value << 8n) | BigInt(byte), 0n);
     expect(decodeRulingCode(code, { type: "string" }, null)).toBe("héllo");
   });
 
-  it("§5.12: a contributed string key that is not valid UTF-8 reads with replacement characters", () => {
+  it("a contributed string key that is not valid UTF-8 reads with replacement characters", () => {
     expect(decodeRulingCode(0x41ffn, { type: "string" }, null)).toBe("A�");
   });
 
-  it("§5.12: a contributed hash key reads as 64 hex digits", () => {
-    expect(decodeRulingCode(0x1234n, { type: "hash" }, null)).toBe(`0x${"0".repeat(60)}1234`);
+  it("a contributed hash code reads code − 1 as 64 hex digits, and code 0 the refused text", () => {
+    expect(decodeRulingCode(0x1234n, { type: "hash" }, null)).toBe(`0x${"0".repeat(60)}1233`);
+    expect(decodeRulingCode(0n, { type: "hash" }, null)).toBe(REFUSED_RULING_TEXT);
   });
 
-  it("§5.12: other contributed keys read through the §5.9 formatter", () => {
+  it("other contributed keys read through the ruling formatter", () => {
     expect(decodeRulingCode(43n, { type: "int" }, null)).toBe("42");
     expect(decodeRulingCode(1_700_006_401n, { type: "datetime" }, null)).toBe("2023-11-15");
     expect(decodeRulingCode(0n, { type: "uint" }, null)).toBe(REFUSED_RULING_TEXT);
   });
 });
 
-describe("review regressions", () => {
-  it("R2 §5.9 A7: a precision beyond the encoder's 80 decimals still formats select labels", () => {
+describe("extreme precisions, empty labels and byte-order marks", () => {
+  it("a precision beyond the encoder's 80 decimals still formats select labels", () => {
     expect(formatRuling(1n, { type: "single-select", titles: ["A"], precision: 81 }, null)).toBe("A");
     expect(formatRuling(4n, { type: "multiple-select", titles: ["A", "B"], precision: 1e9 }, null)).toBe("A / B");
   });
 
-  it("R2 §5.9 A7: reserved answers read their text whatever the precision", () => {
+  it("reserved answers read their text whatever the precision", () => {
     expect(formatRuling(MAX_UINT256, { type: "uint", precision: 81 }, null)).toBe("Answered too soon");
     expect(formatRuling(MAX_UINT256, { type: "int", precision: 1e9 }, null)).toBe("Answered too soon");
     expect(formatRuling(MAX_UINT256, { type: "datetime", precision: 1e9 }, null)).toBe("Answered too soon");
   });
 
-  it("R2 §5.9 A7: numeric rulings keep reality-eth-lib's result for safe precisions beyond 80 decimals", () => {
+  it("uint rulings keep reality-eth-lib's result for safe precisions beyond 80 decimals", () => {
     expect(formatRuling(5n, { type: "uint", precision: 81 }, null)).toBe(`0.${"0".repeat(80)}4`);
     expect(formatRuling(5n, { type: "uint", precision: 1000 }, null)).toBe(`0.${"0".repeat(999)}4`);
-    expect(formatRuling(5n, { type: "int", precision: 81 }, null)).toBe(`0.${"0".repeat(80)}4`);
   });
 
-  it("R6 §5.9: an empty reality-eth-lib label is the ruling text, not a formatter failure", () => {
+  it("an empty reality-eth-lib label is the ruling text, not a formatter failure", () => {
     expect(formatRuling(1n, { type: "multiple-select", titles: ["A", "B"] }, null)).toBe("");
     expect(formatRuling(1n, { type: "single-select", titles: [""] }, null)).toBe("");
     expect(formatRuling(5n, { type: "string" }, null)).toBe("");
     expect(formatRuling(5n, { type: "not-a-reality-type" }, null)).toBe("");
   });
 
-  it("R5 §5.12: a contributed string key keeps a leading U+FEFF", () => {
+  it("a contributed string key keeps a leading U+FEFF", () => {
     const encoded = encodeAnswer({ type: "string", value: "﻿A" }, { type: "string" });
     expect(encoded).toEqual({ ok: true, code: 0xefbbbf41n });
     expect(encoded.ok && decodeRulingCode(encoded.code, { type: "string" }, null)).toBe("﻿A");

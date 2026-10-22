@@ -1,5 +1,5 @@
 /**
- * The RPC pre-flight (checklist C10 and section D): for every chain of `CHAINS` it resolves the read RPC and the public
+ * The RPC pre-flight: for every chain of `CHAINS` it resolves the read RPC and the public
  * RPC from the environment with core's own resolvers and checks each endpoint:
  *
  *   - `eth_getLogs` over a range of at least 10,000 blocks ending at the head it just read either succeeds or is
@@ -17,7 +17,7 @@
  * Endpoint URLs carry API keys, so they and anything derived from them never reach the output.
  *
  * Exit code 0 when no endpoint failed (capped endpoints are reported, not failures); 1 when any endpoint failed, a chain
- * has no read RPC, or the arguments are wrong. Operator tooling: the only core code besides the generator that reads `process.env`.
+ * has no read RPC, or the arguments are wrong.
  */
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -30,9 +30,9 @@ import type { Env } from "../src/types";
 
 const ENV_FILE = resolve(import.meta.dirname, "../../../.env");
 
-/** The smallest range the pre-flight asks `eth_getLogs` for: the scan window of the chunked reads (spec 9.1). */
+/** The range the pre-flight asks `eth_getLogs` for first: the scan window of the chunked reads. */
 const LOG_RANGE_BLOCKS = 10_000;
-/** The smallest window the chunked scans shrink to after a range refusal (spec 9.1); a capped endpoint must answer it. */
+/** The smallest window the chunked scans shrink to after a range refusal; a capped endpoint must answer it. */
 export const MIN_WINDOW_BLOCKS = LOOKUP_LIMITS.minWindowSize;
 const HTTP_TOO_MANY_REQUESTS = 429;
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -239,8 +239,8 @@ function allowsNullOrigin(value: string | null): "missing" | "other" | "allowed"
 
 function allowsContentType(value: string | null): boolean {
   if (value === null) return false;
-  const names = value.split(",").map((name) => name.trim().toLowerCase());
-  return names.includes("content-type") || names.includes("*");
+  const names = new Set(value.split(",").map((name) => name.trim().toLowerCase()));
+  return names.has("content-type") || names.has("*");
 }
 
 async function checkCors(url: string, fetchFn: FetchLike, timeoutMs: number): Promise<CorsResult> {

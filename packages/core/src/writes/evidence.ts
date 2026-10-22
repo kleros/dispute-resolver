@@ -7,9 +7,8 @@ import { arbitrableLocalId, built, describesBinding, refused } from "./build";
 import type { WriteBuild } from "./types";
 
 /**
- * Evidence submission on the arbitrated contract with no value (spec 5.14, 6.2): `submitEvidence(localID, uri)` for
- * the local-ID dialect (the transaction ID for Escrow V1), `submitEvidence(uri)` for governors that have it. The
- * evidence upload result must be content-addressed and is written in canonical form (B16).
+ * `submitEvidence(localID, uri)` for the local-ID dialect (the transaction ID for Escrow V1), `submitEvidence(uri)` for
+ * governors that have it. The evidence upload result must be content-addressed and is written in canonical form.
  */
 export function buildSubmitEvidenceCall(input: {
   readonly binding: ArbitratedBinding;

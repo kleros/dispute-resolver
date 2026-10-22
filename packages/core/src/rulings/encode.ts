@@ -1,9 +1,7 @@
+import { DEFAULT_UINT_PRECISION } from "./precision";
 import { answerToUint, hasSupportedDecimals, MAX_UINT256 } from "./realityLib";
 import type { LibQuestion } from "./realityLib";
 import type { AnswerEncoding, AnswerEncodingError, AnswerInput, RulingOptions } from "./types";
-
-/** Decimals of a uint answer when the question gives none (spec 5.12). */
-const DEFAULT_UINT_DECIMALS = 18;
 
 /** reality-eth-lib's int range, `±(2²⁵⁶ − 1) / 2`. */
 const MAX_INT = MAX_UINT256 / 2n;
@@ -53,16 +51,16 @@ function trimFraction(value: string): string {
   return end === 0 ? "0" : value.slice(0, end);
 }
 
-/** uint: reality-eth-lib's encoding at the question's precision (default 18, 0 respected, D-15), plus 1. */
+/** uint: reality-eth-lib's encoding at the question's precision, plus 1. A precision of 0 is respected, not replaced by 18. */
 function encodeUint(value: string, precision: number | undefined): AnswerEncoding {
   if (value.length === 0) return failed("empty");
   if (!UNSIGNED_DECIMAL.test(value)) {
     return value.startsWith("-") && UNSIGNED_DECIMAL.test(value.slice(1)) ? failed("negative-uint") : failed("not-a-number");
   }
-  return encodeLibAnswer(trimFraction(value), { type: "uint", decimals: precision ?? DEFAULT_UINT_DECIMALS }, answerPlusOne);
+  return encodeLibAnswer(trimFraction(value), { type: "uint", decimals: precision ?? DEFAULT_UINT_PRECISION }, answerPlusOne);
 }
 
-/** int: reality-eth-lib's two's-complement encoding over its full range, plus 1, modulo 2²⁵⁶ (D-16). */
+/** int: reality-eth-lib's two's-complement encoding over its full range, plus 1, modulo 2²⁵⁶. */
 function encodeInt(value: string): AnswerEncoding {
   if (value.length === 0) return failed("empty");
   if (!INTEGER.test(value)) return failed("not-a-number");
@@ -71,7 +69,7 @@ function encodeInt(value: string): AnswerEncoding {
   return encodeLibAnswer(value, { type: "int" }, (answer) => encoded((answer + 1n) & MAX_UINT256));
 }
 
-/** string: the UTF-8 bytes as an unsigned integer, with no +1, as today (spec 5.12); text with an isolated surrogate is malformed. */
+/** string: the UTF-8 bytes as an unsigned integer, with no +1; text with an isolated surrogate has no UTF-8 encoding. */
 function encodeString(value: string): AnswerEncoding {
   if (value.length === 0) return failed("empty");
   if (LONE_SURROGATE.test(value)) return failed("malformed");
@@ -80,7 +78,7 @@ function encodeString(value: string): AnswerEncoding {
   return encoded(bytes.reduce((code, byte) => (code << 8n) | BigInt(byte), 0n));
 }
 
-/** datetime: the chosen Unix timestamp, time of day included (D-17), plus 1. */
+/** datetime: the chosen Unix timestamp, time of day included, plus 1. */
 function encodeDatetime(timestamp: number): AnswerEncoding {
   if (!Number.isInteger(timestamp)) return failed("not-a-number");
   if (timestamp < 0 || !Number.isSafeInteger(timestamp)) return failed("out-of-range");
@@ -88,8 +86,8 @@ function encodeDatetime(timestamp: number): AnswerEncoding {
 }
 
 /**
- * hash: `BigInt(value)` plus 1, which must be a uint256 (spec 5.12). Every form BigInt reads is accepted: hex, decimal,
- * octal and binary, with surrounding whitespace trimmed.
+ * hash: `BigInt(value)` plus 1, which must be a uint256. Every form BigInt reads is accepted: hex, decimal, octal and
+ * binary, with surrounding whitespace trimmed.
  */
 function encodeHash(value: string): AnswerEncoding {
   if (value.length === 0) return failed("empty");
@@ -102,10 +100,7 @@ function encodeHash(value: string): AnswerEncoding {
   return parsed < 0n ? failed("out-of-range") : answerPlusOne(parsed);
 }
 
-/**
- * The ruling code sent to `fundAppeal` for a free-input answer (spec 5.12 code table with D-15, D-16, D-17). Bad input
- * returns an error code and never throws (D-14).
- */
+/** The ruling code sent to `fundAppeal` for a free-input answer. Bad input returns an error code and never throws. */
 export function encodeAnswer(input: AnswerInput, options: RulingOptions): AnswerEncoding {
   switch (input.type) {
     case "uint":

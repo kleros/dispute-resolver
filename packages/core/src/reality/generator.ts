@@ -7,7 +7,6 @@ import { blockOf, requireHex, requireSingleLog } from "./logs";
 import { requireClient } from "./lookup";
 import type { KnownDisputeQuestion } from "./types";
 
-/** The contents of the generated file: the snapshot block of each arbitrator chain and the known questions. */
 export interface KnownQuestionsData {
   /** Arbitrator chain ID → last block covered by `questions`. */
   readonly snapshotBlocks: Readonly<Record<ChainId, number>>;
@@ -28,7 +27,7 @@ export interface GeneratorRequest {
   readonly proxies: Readonly<Record<RegistryKey, RealityProxyEntry>>;
   readonly previous: KnownQuestionsData;
   readonly mode: GeneratorMode;
-  /** Read clients built from the registry chains' configured RPCs (06 §3 invariant 3). */
+  /** Built from the registry chains' configured RPCs. */
   readonly clients: GetReadClient;
   readonly onProgress?: (line: string) => void;
 }
@@ -45,7 +44,6 @@ async function finalizedBlock(client: ReadClient): Promise<number> {
   return Number((await client.getBlock({ blockTag: "finalized", includeTransactions: false })).number);
 }
 
-/** The disputeID → questionID events of the proxy in `[fromBlock, toBlock]`, by dispute ID. */
 async function collectDisputes(key: string, entry: RealityProxyEntry, client: ReadClient, fromBlock: bigint, toBlock: bigint): Promise<Map<bigint, DisputeMapping>> {
   const event = entry.kind === "single-chain" ? DISPUTE_ID_TO_QUESTION_ID : ARBITRATION_CREATED;
   const logs = await getLogsChunked(client, { address: entry.proxy, event, fromBlock, toBlock });
@@ -71,13 +69,11 @@ function questionLogs(entry: RealityProxyEntry, client: ReadClient, questionId: 
   return findLatestLogs(client, { address: entry.reality, event: LOG_NEW_QUESTION, args: { question_id: questionId }, fromBlock, toBlock }, UNLIMITED);
 }
 
-/** The question of `questionId` among the `LogNewQuestion` logs of `[fromBlock, toBlock]`. */
 async function questionIn(key: string, entry: RealityProxyEntry, client: ReadClient, questionId: Hex, fromBlock: bigint, toBlock: bigint): Promise<KnownDisputeQuestion> {
   const logs = await questionLogs(entry, client, questionId, fromBlock, toBlock);
   return questionFromLog(requireSingleLog(logs, `LogNewQuestion for ${questionId} (${key})`), questionId);
 }
 
-/** Re-verifies a known question with a single-block query. */
 async function verifyQuestion(key: string, entry: RealityProxyEntry, client: ReadClient, known: KnownDisputeQuestion): Promise<KnownDisputeQuestion> {
   const block = BigInt(known.questionBlock);
   const [log, ...others] = await questionLogs(entry, client, known.questionId, block, block);
@@ -87,12 +83,10 @@ async function verifyQuestion(key: string, entry: RealityProxyEntry, client: Rea
   return question;
 }
 
-/** Splits `"<chain>:<proxy>"`; the chain is the registry key's own. */
 function chainOfKey(key: string): ChainId {
   return Number(key.slice(0, key.indexOf(":")));
 }
 
-/** The known questions of `key`'s proxy in `previous`, by dispute ID. */
 function previousDisputes(previous: KnownQuestionsData, key: string): [string, KnownDisputeQuestion][] {
   return Object.entries(previous.questions)
     .filter(([knownKey]) => knownKey.startsWith(`${key}:`))
@@ -138,10 +132,8 @@ async function generateProxy(
 }
 
 /**
- * Computes the known-questions map of every registered Reality.eth proxy up to the latest finalized block of its
- * arbitrator chain (A6, REALITY_OPS.md): the question of every dispute the proxies created. Read-only RPC calls through
- * `clients`. Rejects on any inconsistency: a known question that moved or changed template, a dispute mapped twice, a log
- * count other than one.
+ * Rejects on any inconsistency: a known question that moved or changed template, a dispute mapped twice, a log count
+ * other than one.
  */
 export async function generateKnownQuestions(request: GeneratorRequest): Promise<KnownQuestionsData> {
   const entries = Object.entries(request.proxies) as [RegistryKey, RealityProxyEntry][];
@@ -161,7 +153,6 @@ export async function generateKnownQuestions(request: GeneratorRequest): Promise
   return { snapshotBlocks, questions };
 }
 
-/** Orders keys by chain, proxy address, then dispute ID, numerically where the part is a number. */
 function compareKeys(a: string, b: string): number {
   const [chainA = "", proxyA = "", disputeA = "0"] = a.split(":");
   const [chainB = "", proxyB = "", disputeB = "0"] = b.split(":");
@@ -173,9 +164,8 @@ function compareKeys(a: string, b: string): number {
 }
 
 /**
- * The source of the generated module `knownQuestions.generated.ts` for `data`: sorted, one expanded object per dispute,
- * in the layout prettier keeps, so a regeneration only changes what the chain data changed. `--check` compares this text
- * with the committed file.
+ * Sorted, in the layout prettier keeps, so a regeneration only changes what the chain data changed. `--check` compares
+ * this text with the committed file.
  */
 export function renderKnownQuestionsModule(data: KnownQuestionsData): string {
   const blocks = Object.entries(data.snapshotBlocks)

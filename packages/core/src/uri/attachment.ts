@@ -4,10 +4,8 @@ import { withoutQueryOrFragment } from "./syntax";
 import type { AttachmentKind, AttachmentLink, GatewayOrigin } from "./types";
 
 /**
- * An untrusted attachment reference made safe to show (A10, B19, D-26, D-32, MC-5). A content-addressed path, an `http:` or
- * `https:` URL with an explicit authority whose path is `/ipfs/<CID>` (re-served through the gateway), or another https URL
- * becomes a `link` through the same rule as displays; any other non-empty value (other `http:` values, `javascript:`,
- * `/ipns/`, a path that is not content-addressed) is shown as `text`. Empty or non-string values give `null`.
+ * Links follow the same rule as displays; any other non-empty value (other `http:` values, `javascript:`, `/ipns/`, a
+ * path that is not content-addressed) is shown as `text`.
  */
 export function toAttachmentLink(uri: unknown, gateway: GatewayOrigin): AttachmentLink | null {
   if (typeof uri !== "string") return null;
@@ -18,12 +16,11 @@ export function toAttachmentLink(uri: unknown, gateway: GatewayOrigin): Attachme
   return { kind: "link", href, label: lastPathSegment(value), attachmentKind: attachmentKind(value) };
 }
 
-/** The text after the last `/`, today's attachment label (spec 5.6). */
 export function lastPathSegment(uri: string): string {
   return uri.slice(uri.lastIndexOf("/") + 1);
 }
 
-/** The icon class of an attachment from its extension (A17): image, then video, then text, else other, as today. */
+/** The order matters: some extensions (`mng`, `svg`) are in more than one table. */
 export function attachmentKind(pathOrUrl: string): AttachmentKind {
   const extension = extensionOf(pathOrUrl);
   if (IMAGE_EXTENSIONS.has(extension)) return "image";
@@ -32,10 +29,7 @@ export function attachmentKind(pathOrUrl: string): AttachmentKind {
   return "other";
 }
 
-/**
- * The lowercase extension of the last path segment, ignoring the query, the fragment and trailing slashes, with
- * `path.extname` semantics: a name that starts with its only dot (`.png`) has none.
- */
+/** `path.extname` semantics: a name that starts with its only dot (`.png`) has no extension. */
 function extensionOf(pathOrUrl: string): string {
   const name = lastPathSegment(withoutTrailingSlashes(withoutQueryOrFragment(pathOrUrl)));
   const dot = name.lastIndexOf(".");

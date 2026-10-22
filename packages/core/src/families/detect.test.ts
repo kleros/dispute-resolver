@@ -19,7 +19,6 @@ const GNOSIS_CURATE_CLONE = "0x957a53a994860be4750810131d9c876b2f52d6e1";
 const GNOSIS_863_CLONE = "0x25fa9432832efdd48deec6d4cf1cd3f139678a5b";
 const VIEW_ONLY_REALITY_PROXY = "0x594ec762b59978c97c82bc36ab493ed8b1f1f368";
 const LOCKLER_REALITY_PROXY = "0x1c2811550551d84030cd1b608e6fe3fd6fd5fc0d";
-/** An address in no list of the old app and no registry table. */
 const UNLISTED = toRegistryAddress("0x1111111111111111111111111111111111111111");
 
 function detectOn(chainId: ChainId, address: string, node: FakeNode = recordedNode(chainId), registry?: Registry) {
@@ -38,15 +37,14 @@ function probeSelectorsOf(code: Hex): Hex[] {
   return Object.values(SELECTORS).filter((selector) => scanned.has(selector));
 }
 
-/** The probe selectors of the dispatcher detection scans for a recorded contract: its implementation's, else its own. */
 function recordedProbeSelectors(chainId: ChainId, address: string): Hex[] {
   const contract = recorded(chainId, address);
   return probeSelectorsOf(contract.implementation?.code ?? contract.code);
 }
 
-describe("06 §3 invariant 8: family detection on the recorded bytecode", () => {
+describe("family detection on recorded bytecode", () => {
   it.each(RECORDED_CONTRACTS.map((contract) => [`${contract.label} (${String(contract.chainId)}:${contract.address}, block ${String(contract.blockNumber)})`, contract] as const))(
-    "06 §3 invariant 8: %s",
+    "detects the expected family for %s",
     async (_name, contract) => {
       const detection = await detectRecorded(contract.chainId, contract.address);
       expect(detection.family).toBe(contract.expectedFamily);
@@ -64,7 +62,7 @@ describe("06 §3 invariant 8: family detection on the recorded bytecode", () => 
     },
   );
 
-  it("06 §3 invariant 8: every registered Reality proxy has recorded bytecode and detects as reality-proxy", async () => {
+  it("every registered Reality proxy has recorded bytecode and detects as reality-proxy", async () => {
     const recordedKeys = RECORDED_CONTRACTS.filter((contract) => contract.expectedFamily === "reality-proxy").map((contract) => registryKey(contract.chainId, contract.address));
     expect([...recordedKeys].sort((a, b) => a.localeCompare(b))).toEqual(Object.keys(REGISTRY.realityProxies).sort((a, b) => a.localeCompare(b)));
     for (const [key, entry] of Object.entries(REGISTRY.realityProxies)) {
@@ -75,7 +73,7 @@ describe("06 §3 invariant 8: family detection on the recorded bytecode", () => 
     }
   });
 
-  it("06 §3 invariant 8: the current ArbitrableProxy of every chain is idr-v2", async () => {
+  it("the current ArbitrableProxy of every chain is idr-v2", async () => {
     const proxies = [
       [1, MAINNET_ARBITRABLE_PROXY],
       [100, "0xc7add3c961f7935cb4914e37da991d2f1cd7986c"],
@@ -90,28 +88,28 @@ describe("06 §3 invariant 8: family detection on the recorded bytecode", () => 
   });
 });
 
-describe("F2 06 §1: probe selectors survive PUSH data skipping on real dispatchers", () => {
-  it("F2 06 §1: ubi-voting.eth keeps getCurrentSessionNumber() among its probe selectors", async () => {
+describe("probe selectors survive PUSH data skipping on real dispatchers", () => {
+  it("ubi-voting.eth keeps getCurrentSessionNumber() among its probe selectors", async () => {
     const detection = await detectRecorded(1, "0x7510c77163683448b8dc8fe9e019d9482be1ed2b");
     expect(recordedProbeSelectors(1, "0x7510c77163683448b8dc8fe9e019d9482be1ed2b")).toContain(SELECTORS["getCurrentSessionNumber()"]);
     expect(detection.family).toBe("governor");
   });
 
-  it("F2 06 §1: the Base-Ethereum foreign proxy keeps fundAppeal(uint256,uint256) among its probe selectors", async () => {
+  it("the Base-Ethereum foreign proxy keeps fundAppeal(uint256,uint256) among its probe selectors", async () => {
     const detection = await detectRecorded(1, "0xf0b37feda6cdf5f78b37e1fbccc24969059f2044");
     expect(recordedProbeSelectors(1, "0xf0b37feda6cdf5f78b37e1fbccc24969059f2044")).toContain(SELECTORS["fundAppeal(uint256,uint256)"]);
     expect(detection.capabilities.appeal).toEqual({ kind: "idr", fundAppeal: "fundAppeal(uint256,uint256)" });
   });
 });
 
-describe("06 §3 invariant 6: kleros.eth governor", () => {
-  it("06 §3 invariant 6: kleros.eth detects as governor with appeal funding and without evidence submission", async () => {
+describe("kleros.eth governor", () => {
+  it("kleros.eth detects as governor with appeal funding and without evidence submission", async () => {
     const detection = await detectRecorded(1, KLEROS_ETH);
     expect(detection.family).toBe("governor");
     expect(detection.capabilities).toEqual({ localId: "none", evidence: { kind: "none" }, appeal: { kind: "governor" }, withdraw: { kind: "governor" } });
   });
 
-  it("06 §3 invariant 6: the other governors keep URI-only evidence", async () => {
+  it("the other governors keep URI-only evidence", async () => {
     for (const [chainId, address] of [
       [1, POH_GOVERNOR],
       [1, "0x7510c77163683448b8dc8fe9e019d9482be1ed2b"],
@@ -124,29 +122,29 @@ describe("06 §3 invariant 6: kleros.eth governor", () => {
   });
 });
 
-describe("06 §1 row 1: registered Reality proxies", () => {
-  it("06 §1 row 1: a registered proxy matching an IDisputeResolver row gets that write family and its capabilities", async () => {
+describe("registered Reality proxies", () => {
+  it("a registered proxy matching an IDisputeResolver rule gets that write family and its capabilities", async () => {
     const detection = await detectRecorded(1, LOCKLER_REALITY_PROXY);
     expect(detection.family).toBe("reality-proxy");
     expect(detection.writeFamily).toBe("idr-v2");
     expect(detection.capabilities).toEqual(classifySelectors(new Set(recorded(1, LOCKLER_REALITY_PROXY).expectedSelectors)).capabilities);
   });
 
-  it("06 §1 row 1: a registered proxy matching none of rows 4 to 6 is view-only for writes (golden mainnet 150)", async () => {
+  it("a registered proxy matching no IDisputeResolver rule is view-only for writes", async () => {
     const detection = await detectRecorded(1, VIEW_ONLY_REALITY_PROXY);
     expect(detection.family).toBe("reality-proxy");
     expect(detection.writeFamily).toBe("view-only");
     expect(detection.capabilities).toEqual({ localId: "none", evidence: { kind: "none" }, appeal: { kind: "none" }, withdraw: { kind: "none" } });
   });
 
-  it("06 §1 row 1: rows 2 and 3 never apply to a registered proxy", async () => {
+  it("the escrow and governor rules never apply to a registered proxy", async () => {
     const escrowCode = recorded(1, MAINNET_ESCROW).code;
     const detection = await detectOn(1, LOCKLER_REALITY_PROXY, { code: { [LOCKLER_REALITY_PROXY]: escrowCode } }).detection;
     expect(detection.family).toBe("reality-proxy");
     expect(detection.writeFamily).toBe("view-only");
   });
 
-  it("06 §1 row 1: the registry decides, keyed by arbitrator chain and address", async () => {
+  it("the registry decides, keyed by arbitrator chain and address", async () => {
     const withoutProxies: Registry = { ...REGISTRY, realityProxies: {} };
     const unregistered = await detectOn(1, LOCKLER_REALITY_PROXY, recordedNode(1), withoutProxies).detection;
     expect(unregistered.family).toBe("idr-v2");
@@ -158,8 +156,8 @@ describe("06 §1 row 1: registered Reality proxies", () => {
   });
 });
 
-describe("C11: probes read bytecode, never call the arbitrable", () => {
-  it("C11: detection only reads code and the EIP-1967 slot, never eth_call", async () => {
+describe("probes read bytecode and never call the arbitrable", () => {
+  it("detection only reads code and the EIP-1967 slot, never eth_call", async () => {
     for (const contract of RECORDED_CONTRACTS) {
       const { detection, calls } = detectOn(contract.chainId, contract.address);
       await detection;
@@ -167,22 +165,22 @@ describe("C11: probes read bytecode, never call the arbitrable", () => {
     }
   });
 
-  it("C11: an RPC error reading the arbitrable's code rejects instead of reading as view-only", async () => {
+  it("an RPC error reading the arbitrable's code rejects instead of reading as view-only", async () => {
     const node: FakeNode = { ...recordedNode(1), fail: (call) => (call.method === "eth_getCode" ? rpcError(-32000, "header not found") : undefined) };
     await expect(detectOn(1, MAINNET_ARBITRABLE_PROXY, node).detection).rejects.toThrow();
   });
 
-  it("C11: a revert-style error is never read as a missing selector", async () => {
+  it("a revert-style error is never read as a missing selector", async () => {
     const node: FakeNode = { ...recordedNode(1), fail: () => rpcError(3, "execution reverted") };
     await expect(detectOn(1, MAINNET_ARBITRABLE_PROXY, node).detection).rejects.toThrow();
   });
 
-  it("C11: an RPC error reading the EIP-1967 slot rejects", async () => {
+  it("an RPC error reading the EIP-1967 slot rejects", async () => {
     const node: FakeNode = { ...recordedNode(1), fail: (call) => (call.method === "eth_getStorageAt" ? rpcError(-32000, "timeout") : undefined) };
     await expect(detectOn(1, MAINNET_ARBITRABLE_PROXY, node).detection).rejects.toThrow();
   });
 
-  it("C11: an RPC error reading the implementation's code rejects", async () => {
+  it("an RPC error reading the implementation's code rejects", async () => {
     const node: FakeNode = {
       ...recordedNode(1),
       fail: (call) => (call.method === "eth_getCode" && call.params[0] === UNSLASHED_IMPLEMENTATION ? rpcError(-32000, "timeout") : undefined),
@@ -190,22 +188,22 @@ describe("C11: probes read bytecode, never call the arbitrable", () => {
     await expect(detectOn(1, UNSLASHED, node).detection).rejects.toThrow();
   });
 
-  it("F3 C11: an eth_getCode answer without a result rejects instead of reading as no code (mainnet ArbitrableProxy)", async () => {
+  it("an eth_getCode answer without a result rejects instead of reading as no code (mainnet ArbitrableProxy)", async () => {
     const node: FakeNode = { ...recordedNode(1), noResult: (call) => call.method === "eth_getCode" };
     await expect(detectOn(1, MAINNET_ARBITRABLE_PROXY, node).detection).rejects.toThrow();
   });
 
-  it("F3 C11: an eth_getStorageAt answer without a result rejects instead of reading as not a proxy (Unslashed)", async () => {
+  it("an eth_getStorageAt answer without a result rejects instead of reading as not a proxy (Unslashed)", async () => {
     const node: FakeNode = { ...recordedNode(1), noResult: (call) => call.method === "eth_getStorageAt" };
     await expect(detectOn(1, UNSLASHED, node).detection).rejects.toThrow();
   });
 
-  it("F3 C11: an implementation whose eth_getCode answer has no result rejects (Unslashed)", async () => {
+  it("an implementation whose eth_getCode answer has no result rejects (Unslashed)", async () => {
     const node: FakeNode = { ...recordedNode(1), noResult: (call) => call.method === "eth_getCode" && call.params[0] === UNSLASHED_IMPLEMENTATION };
     await expect(detectOn(1, UNSLASHED, node).detection).rejects.toThrow();
   });
 
-  it("F3 C11: a detection rejected for a missing result is not cached, so the next one reads the chain again", async () => {
+  it("a detection rejected for a missing result is not cached, so the next one reads the chain again", async () => {
     const cache = createFamilyCache();
     let answered = false;
     const { client, calls } = fakeNodeClient({ ...recordedNode(1), noResult: (call) => call.method === "eth_getCode" && !answered });
@@ -215,11 +213,11 @@ describe("C11: probes read bytecode, never call the arbitrable", () => {
     expect(codeReads(calls)).toEqual([MAINNET_ARBITRABLE_PROXY, MAINNET_ARBITRABLE_PROXY]);
   });
 
-  it("C11: malformed code from the node rejects", async () => {
+  it("malformed code from the node rejects", async () => {
     await expect(detectOn(1, UNLISTED, { code: { [UNLISTED]: "0x63zz" } }).detection).rejects.toThrow();
   });
 
-  it("C11: follows the EIP-1967 slot: the Unslashed proxy is scanned through its implementation and detects as idr-v1", async () => {
+  it("follows the EIP-1967 slot: the Unslashed proxy is scanned through its implementation and detects as idr-v1", async () => {
     const { detection, calls } = detectOn(1, UNSLASHED);
     const result = await detection;
     expect(result.implementation).toBe(UNSLASHED_IMPLEMENTATION);
@@ -228,11 +226,11 @@ describe("C11: probes read bytecode, never call the arbitrable", () => {
     expect(codeReads(calls)).toEqual([UNSLASHED, UNSLASHED_IMPLEMENTATION]);
   });
 
-  it("C11: the Unslashed proxy's own code carries no probe selector, so following the slot is what classifies it", () => {
+  it("the Unslashed proxy's own code carries no probe selector, so following the slot is what classifies it", () => {
     expect(classifySelectors(scanSelectors(recorded(1, UNSLASHED).code)).family).toBe("view-only");
   });
 
-  it("C11: the Proof of Humanity v2 proxies are followed and stay view-only", async () => {
+  it("the Proof of Humanity v2 proxies are followed and stay view-only", async () => {
     for (const [chainId, address] of [
       [1, "0xbe9834097a4e97689d9b667441acafb456d0480a"],
       [100, "0xa4ac94c4fa65bb352efa30e3408e64f72ac857bc"],
@@ -243,7 +241,7 @@ describe("C11: probes read bytecode, never call the arbitrable", () => {
     }
   });
 
-  it("C11: an EIP-1167 clone is not followed, even when its target is an IDisputeResolver", async () => {
+  it("an EIP-1167 clone is not followed, even when its target is an IDisputeResolver", async () => {
     for (const address of [GNOSIS_CURATE_CLONE, GNOSIS_863_CLONE]) {
       const clone = recorded(100, address);
       const target = toRegistryAddress(`0x${clone.code.slice(22, 62)}`);
@@ -257,7 +255,7 @@ describe("C11: probes read bytecode, never call the arbitrable", () => {
     }
   });
 
-  it("C11: a contract whose implementation slot is zero is scanned from its own code", async () => {
+  it("a contract whose implementation slot is zero is scanned from its own code", async () => {
     const { detection, calls } = detectOn(1, MAINNET_ARBITRABLE_PROXY);
     const result = await detection;
     expect(result.implementation).toBeNull();
@@ -265,7 +263,7 @@ describe("C11: probes read bytecode, never call the arbitrable", () => {
     expect(codeReads(calls)).toEqual([MAINNET_ARBITRABLE_PROXY]);
   });
 
-  it("06 §1 row 7: an address without code is view-only and nothing else is read", async () => {
+  it("an address without code is view-only and nothing else is read", async () => {
     const { detection, calls } = detectOn(1, UNLISTED, { code: {} });
     const result = await detection;
     expect(result.family).toBe("view-only");
@@ -275,7 +273,7 @@ describe("C11: probes read bytecode, never call the arbitrable", () => {
     expect(calls.map((call) => call.method)).toEqual(["eth_getCode"]);
   });
 
-  it("06 §1 row 7: an EIP-1967 proxy whose implementation has no code is view-only", async () => {
+  it("an EIP-1967 proxy whose implementation has no code is view-only", async () => {
     const empty = toRegistryAddress("0x2222222222222222222222222222222222222222");
     const result = await detectOn(1, UNLISTED, { code: { [UNLISTED]: recorded(1, UNSLASHED).code }, implementationSlot: { [UNLISTED]: slotWord(empty) } }).detection;
     expect(result.family).toBe("view-only");
@@ -283,15 +281,15 @@ describe("C11: probes read bytecode, never call the arbitrable", () => {
   });
 });
 
-describe("ledger entries decided by the probes", () => {
-  it("D-12: the lowercase-listed escrow 0x0d674409… is escrow-v1 with the pay-the-cost appeal", async () => {
+describe("known deployments decided by the probes", () => {
+  it("the escrow 0x0d674409… is escrow-v1 with the pay-the-cost appeal", async () => {
     const detection = await detectRecorded(1, "0x0d67440946949fe293b45c52efd8a9b3d51e2522");
     expect(detection.family).toBe("escrow-v1");
     expect(detection.capabilities.appeal).toEqual({ kind: "escrow-pay-cost" });
     expect(detection.capabilities.localId).toBe("disputeIDtoTransactionID");
   });
 
-  it("D-12: the input address is normalized, so a checksummed escrow address detects the same", async () => {
+  it("the input address is normalized, so a checksummed escrow address detects the same", async () => {
     const node = recordedNode(1);
     const { client } = fakeNodeClient(node);
     const checksummed = "0x0D67440946949FE293B45c52eFD8A9b3d51e2522" as `0x${Lowercase<string>}`;
@@ -300,14 +298,14 @@ describe("ledger entries decided by the probes", () => {
     expect(detection.arbitrable).toBe("0x0d67440946949fe293b45c52efd8a9b3d51e2522");
   });
 
-  it("B21: an arbitrable that is not an address rejects without reading the chain", async () => {
+  it("an arbitrable that is not an address rejects without reading the chain", async () => {
     const { client, calls } = fakeNodeClient({ code: {} });
     const notAnAddress = "0x1234" as `0x${Lowercase<string>}`;
     await expect(detectFamily({ client, chainId: 1, arbitrable: notAnAddress })).rejects.toThrow("Not an EVM address");
     expect(calls).toEqual([]);
   });
 
-  it("D-49: 0x4b89e798… (mainnet) and 0x1128ed55… (Gnosis) are idr-v1 and withdraw with the v1 signatures", async () => {
+  it("0x4b89e798… (mainnet) and 0x1128ed55… (Gnosis) are idr-v1 and withdraw with the v1 signatures", async () => {
     for (const [chainId, address] of [
       [1, "0x4b89e798b10478a839ea0abcf86c4b94a3c782a4"],
       [100, "0x1128ed55ab2d796fa92d2f8e1f336d745354a77a"],
@@ -318,7 +316,7 @@ describe("ledger entries decided by the probes", () => {
     }
   });
 
-  it("D-46: the older resolver proxy 0x135c5735… is idr-legacy, funds through the fundAppeal it carries and cannot withdraw", async () => {
+  it("the older resolver proxy 0x135c5735… is idr-legacy, funds through the fundAppeal it carries and cannot withdraw", async () => {
     const detection = await detectRecorded(1, OLDER_RESOLVER_PROXY);
     expect(detection.family).toBe("idr-legacy");
     expect(detection.capabilities).toEqual({
@@ -329,13 +327,13 @@ describe("ledger entries decided by the probes", () => {
     });
   });
 
-  it("D-47: the governors fund and withdraw through the governor dialect", async () => {
+  it("the governors fund and withdraw through the governor dialect", async () => {
     const detection = await detectRecorded(1, POH_GOVERNOR);
     expect(detection.capabilities.appeal).toEqual({ kind: "governor" });
     expect(detection.capabilities.withdraw).toEqual({ kind: "governor" });
   });
 
-  it("D-47: Proof of Humanity v2, T2CR and the Curate clone have no funding interface", async () => {
+  it("Proof of Humanity v2, T2CR and the Curate clone have no funding interface", async () => {
     for (const [chainId, address] of [
       [1, "0xbe9834097a4e97689d9b667441acafb456d0480a"],
       [1, "0xebcf3bca271b26ae4b162ba560e243055af0e679"],
@@ -347,13 +345,13 @@ describe("ledger entries decided by the probes", () => {
     }
   });
 
-  it("D-50: an escrow deployment in no list (an unlisted address on Gnosis, whose escrow list is empty today) is escrow-v1", async () => {
+  it("an escrow deployment at an unlisted address on Gnosis is escrow-v1", async () => {
     const detection = await detectOn(100, UNLISTED, { code: { [UNLISTED]: recorded(11155111, "0x338f1a474e0fb0ae9e913cfa3d7c6aa19b92015b").code } }).detection;
     expect(detection.family).toBe("escrow-v1");
     expect(detection.capabilities.evidence).toEqual({ kind: "local-id" });
   });
 
-  it("D-50: a governor deployment in no list (an unlisted address on Sepolia) is a governor with URI-only evidence", async () => {
+  it("a governor deployment at an unlisted address on Sepolia is a governor with URI-only evidence", async () => {
     const detection = await detectOn(11155111, UNLISTED, { code: { [UNLISTED]: recorded(1, POH_GOVERNOR).code } }).detection;
     expect(detection.family).toBe("governor");
     expect(detection.capabilities.evidence).toEqual({ kind: "uri-only" });

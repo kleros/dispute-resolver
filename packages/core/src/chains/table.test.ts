@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { chainCapabilities, CHAINS, currencySymbol, DEFAULT_CHAIN_ID, getChain, ongoingScanStart } from "./index";
 import { ascending, chainOf } from "../test/chains/testHelpers";
 
-/** Spec §7 as frozen on 2026-10-14, minus the chains D-23 and P-13 drop. Written out by hand so a typo in the table fails here. */
+// Written out by hand so a typo in the table fails here.
 const MAINNET_LIQUID = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
 const MAINNET_POLICY = "0xcf1f07713d5193fae5c1653c9f61953d048bece4";
 const SEPOLIA_POLICY = "0x88fb25d399310c07d35cb9091b8346d8b1893aa5";
@@ -184,7 +184,7 @@ function everyAddress(): { chainId: number; field: string; value: string }[] {
 }
 
 describe("chains table", () => {
-  it("D-23: holds exactly the 14 chains that stay, and none of the dropped ones", () => {
+  it("holds exactly the 14 supported chains and none of the unsupported ones", () => {
     const ids = Object.keys(CHAINS).map(Number);
     expect(ascending(ids)).toEqual(ascending(EXPECTED.map((chain) => chain.id)));
     expect(ids).toHaveLength(14);
@@ -194,13 +194,13 @@ describe("chains table", () => {
     }
   });
 
-  it("D-23: every config is keyed by its own id", () => {
+  it("keys every config by its own id", () => {
     for (const [key, chain] of Object.entries(CHAINS)) {
       expect(chain.id).toBe(Number(key));
     }
   });
 
-  it.each(EXPECTED)("D-23: chain $id matches spec §7 field by field", (expected) => {
+  it.each(EXPECTED)("chain $id has the expected config field by field", (expected) => {
     const chain = getChain(expected.id);
     expect(chain).toMatchObject({
       id: expected.id,
@@ -216,7 +216,7 @@ describe("chains table", () => {
     expect(chain?.defaultRpcUrl).toBe(expected.defaultRpcUrl);
   });
 
-  it("D-23: only chains 1, 100, 10200 and 11155111 have an arbitrator, and they are the ones that can create", () => {
+  it("only chains 1, 100, 10200 and 11155111 have an arbitrator, and they are the ones that can create", () => {
     const withArbitrator = Object.values(CHAINS)
       .filter((chain) => chain.klerosLiquid !== undefined)
       .map((chain) => chain.id);
@@ -231,19 +231,19 @@ describe("chains table", () => {
     }
   });
 
-  it("D-23: chain 84532 takes Sepolia's deploy block, not the undefined that today's mistyped key produced", () => {
+  it("chain 84532 takes Sepolia's deploy block", () => {
     expect(getChain(84532)?.arbitratorDeployedAtBlock).toBe(3635742);
     expect(getChain(84532)?.arbitratorDeployedAtBlock).toBe(getChain(11155111)?.arbitratorDeployedAtBlock);
   });
 
-  it("D-23: every Reality home chain (1, 100, 130, 137, 8453) has a read RPC source", () => {
+  it("every Reality home chain (1, 100, 130, 137, 8453) has a read RPC source", () => {
     for (const id of [1, 100, 130, 137, 8453]) {
       const chain = getChain(id);
       expect(chain?.readRpcEnv ?? chain?.defaultRpcUrl).toBeTruthy();
     }
   });
 
-  it("D-23: every chain has a read RPC source, and only 300 and 324 have a literal URL", () => {
+  it("every chain has a read RPC source, and only 300 and 324 have a literal URL", () => {
     for (const chain of Object.values(CHAINS)) {
       expect(chain.readRpcEnv ?? chain.defaultRpcUrl, `chain ${String(chain.id)}`).toBeTruthy();
     }
@@ -253,7 +253,7 @@ describe("chains table", () => {
     expect(ascending(withLiteral)).toEqual([300, 324]);
   });
 
-  it("D-23: every address in the table is lowercase, 40 hex characters", () => {
+  it("every address in the table is lowercase, 40 hex characters", () => {
     const addresses = everyAddress();
     expect(addresses.length).toBeGreaterThan(0);
     for (const { chainId, field, value } of addresses) {
@@ -261,14 +261,14 @@ describe("chains table", () => {
     }
   });
 
-  it("D-23: testnet flag is the §7 testnet set minus chains 5 and 80001", () => {
+  it("flags exactly the testnets", () => {
     const testnets = Object.values(CHAINS)
       .filter((chain) => chain.isTestnet)
       .map((chain) => chain.id);
     expect(ascending(testnets)).toEqual([300, 1301, 10200, 84532, 421614, 11155111, 11155420]);
   });
 
-  it("D-10: currency symbols are ETH, with xDai on 100 and 10200, sETH on 11155111 and 300, MATIC on 137", () => {
+  it("currency symbols are ETH, with xDai on 100 and 10200, sETH on 11155111 and 300, MATIC on 137", () => {
     const symbols = Object.fromEntries(Object.values(CHAINS).map((chain) => [chain.id, currencySymbol(chain)]));
     expect(symbols).toEqual({
       1: "ETH",
@@ -288,12 +288,12 @@ describe("chains table", () => {
     });
   });
 
-  it("D-10: Gnosis amounts are never labelled ETH", () => {
+  it("never labels Gnosis amounts ETH", () => {
     expect(currencySymbol(chainOf(100))).not.toBe("ETH");
     expect(currencySymbol(chainOf(10200))).not.toBe("ETH");
   });
 
-  it("§6.3: the lookback is 50,000 blocks on the testnets of §6.3 and 1,000,000 elsewhere", () => {
+  it("the lookback is 50,000 blocks on the testnets and 1,000,000 elsewhere", () => {
     const fifty = Object.values(CHAINS)
       .filter((chain) => chain.maxLookback === 50_000)
       .map((chain) => chain.id);
@@ -303,41 +303,41 @@ describe("chains table", () => {
     }
   });
 
-  it("§6.3: chains without an arbitrator copy chain 1's or Sepolia's deploy block", () => {
+  it("chains without an arbitrator copy chain 1's or Sepolia's deploy block", () => {
     for (const id of [130, 137, 324, 42161, 8453]) expect(getChain(id)?.arbitratorDeployedAtBlock).toBe(7303699);
     for (const id of [1301, 300, 421614, 11155420, 84532]) expect(getChain(id)?.arbitratorDeployedAtBlock).toBe(3635742);
   });
 
-  it("D-35: every chain names the REACT_APP_PUBLIC_RPC_<chainId> setting", () => {
+  it("every chain names the REACT_APP_PUBLIC_RPC_<chainId> setting", () => {
     for (const chain of Object.values(CHAINS)) {
       expect(chain.publicRpcEnv).toBe(`REACT_APP_PUBLIC_RPC_${String(chain.id)}`);
     }
   });
 
-  it("D-01: the default chain is mainnet", () => {
+  it("the default chain is mainnet", () => {
     expect(DEFAULT_CHAIN_ID).toBe(1);
     expect(getChain(DEFAULT_CHAIN_ID)).toBeDefined();
   });
 
-  it("D-18: getChain returns undefined for ids that are not configured, never throws", () => {
+  it("getChain returns undefined for ids that are not configured, never throws", () => {
     for (const id of [0, -1, 10, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 2 ** 60]) {
       expect(getChain(id)).toBeUndefined();
     }
   });
 
-  it("D-18: getChain does not resolve object prototype keys", () => {
+  it("getChain does not resolve object prototype keys", () => {
     expect(getChain("constructor" as unknown as number)).toBeUndefined();
     expect(getChain("__proto__" as unknown as number)).toBeUndefined();
   });
 
-  it("§7: the table is frozen, so no caller can reconfigure a chain", () => {
+  it("the table is frozen, so no caller can reconfigure a chain", () => {
     expect(Object.isFrozen(CHAINS)).toBe(true);
     expect(Object.isFrozen(CHAINS[1])).toBe(true);
   });
 });
 
 describe("chainCapabilities", () => {
-  it("§7: hasArbitrator iff klerosLiquid is set, canCreate iff arbitrableProxy is set", () => {
+  it("hasArbitrator iff klerosLiquid is set, canCreate iff arbitrableProxy is set", () => {
     for (const chain of Object.values(CHAINS)) {
       expect(chainCapabilities(chain)).toEqual({
         hasArbitrator: chain.klerosLiquid !== undefined,
@@ -346,7 +346,7 @@ describe("chainCapabilities", () => {
     }
   });
 
-  it("§7: the 11 chains without an arbitrator can do neither, the 4 with one can do both", () => {
+  it("the chains without an arbitrator can do neither, the 4 with one can do both", () => {
     for (const id of WITHOUT_ARBITRATOR) expect(chainCapabilities(chainOf(id))).toEqual({ hasArbitrator: false, canCreate: false });
     for (const id of WITH_ARBITRATOR) expect(chainCapabilities(chainOf(id))).toEqual({ hasArbitrator: true, canCreate: true });
   });
@@ -356,23 +356,23 @@ describe("ongoingScanStart", () => {
   const mainnet = chainOf(1);
   const sepolia = chainOf(11155111);
 
-  it("§6.3: starts at head minus the lookback once the chain is old enough", () => {
+  it("starts at head minus the lookback once the chain is old enough", () => {
     expect(ongoingScanStart(mainnet, 20_000_000n)).toBe(19_000_000n);
     expect(ongoingScanStart(sepolia, 9_000_000n)).toBe(8_950_000n);
   });
 
-  it("§6.3: never starts before the arbitrator was deployed", () => {
+  it("never starts before the arbitrator was deployed", () => {
     expect(ongoingScanStart(mainnet, 7_500_000n)).toBe(7_303_699n);
     expect(ongoingScanStart(sepolia, 3_700_000n)).toBe(3_650_000n);
     expect(ongoingScanStart(sepolia, 3_660_000n)).toBe(3_635_742n);
   });
 
-  it("§6.3: never starts below zero when the head is younger than the lookback", () => {
+  it("never starts below zero when the head is younger than the lookback", () => {
     expect(ongoingScanStart({ ...mainnet, arbitratorDeployedAtBlock: undefined }, 10n)).toBe(0n);
     expect(ongoingScanStart({ ...mainnet, arbitratorDeployedAtBlock: undefined }, -5n)).toBe(0n);
   });
 
-  it("§6.3: a chain without a deploy block starts at head minus the lookback", () => {
+  it("a chain without a deploy block starts at head minus the lookback", () => {
     const chain = { ...mainnet, arbitratorDeployedAtBlock: undefined };
     expect(ongoingScanStart(chain, 5_000_000n)).toBe(4_000_000n);
   });

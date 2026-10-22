@@ -25,35 +25,35 @@ const EXPLORERS: Readonly<Record<number, string>> = {
 };
 
 describe("explorer links", () => {
-  it("MC-1: Gnosis (100) links addresses and transactions to gnosisscan.io", () => {
+  it("Gnosis (100) links addresses and transactions to gnosisscan.io", () => {
     const gnosis = chainOf(100);
     expect(gnosis.explorerBaseUrl).toBe("https://gnosisscan.io");
     expect(explorerAddressUrl(gnosis, ADDRESS)).toBe(`https://gnosisscan.io/address/${ADDRESS}`);
     expect(explorerTxUrl(gnosis, HASH)).toBe(`https://gnosisscan.io/tx/${HASH}`);
   });
 
-  it("MC-1: Gnosis Chiado (10200) links addresses and transactions to gnosis-chiado.blockscout.com", () => {
+  it("Gnosis Chiado (10200) links addresses and transactions to gnosis-chiado.blockscout.com", () => {
     const chiado = chainOf(10200);
     expect(chiado.explorerBaseUrl).toBe("https://gnosis-chiado.blockscout.com");
     expect(explorerAddressUrl(chiado, ADDRESS)).toBe(`https://gnosis-chiado.blockscout.com/address/${ADDRESS}`);
     expect(explorerTxUrl(chiado, HASH)).toBe(`https://gnosis-chiado.blockscout.com/tx/${HASH}`);
   });
 
-  it.each(Object.entries(EXPLORERS))("D-40: chain %s links addresses and transactions to %s", (id, base) => {
+  it.each(Object.entries(EXPLORERS))("chain %s links addresses and transactions to %s", (id, base) => {
     const chain = chainOf(Number(id));
     expect(chain.explorerBaseUrl).toBe(base);
     expect(explorerAddressUrl(chain, ADDRESS)).toBe(`${base}/address/${ADDRESS}`);
     expect(explorerTxUrl(chain, HASH)).toBe(`${base}/tx/${HASH}`);
   });
 
-  it("D-40: every configured chain has an explorer", () => {
+  it("every configured chain has an explorer", () => {
     expect(ascending(Object.keys(EXPLORERS).map(Number))).toEqual(ascending(Object.keys(CHAINS).map(Number)));
     for (const chain of Object.values(CHAINS)) {
       expect(explorerAddressUrl(chain, ADDRESS), `chain ${String(chain.id)}`).not.toBeNull();
     }
   });
 
-  it("D-40: every explorer origin is https with no path, query or trailing slash", () => {
+  it("every explorer origin is https with no path, query or trailing slash", () => {
     for (const chain of Object.values(CHAINS)) {
       const base = chain.explorerBaseUrl;
       expect(base).toBeDefined();
@@ -62,7 +62,7 @@ describe("explorer links", () => {
     }
   });
 
-  it("D-40: a chain without an explorer yields null", () => {
+  it("a chain without an explorer yields null links", () => {
     const bare: ChainConfig = { id: 999, name: "Bare", currency: "ETH", isTestnet: true, maxLookback: 1 };
     expect(explorerAddressUrl(bare, ADDRESS)).toBeNull();
     expect(explorerTxUrl(bare, HASH)).toBeNull();

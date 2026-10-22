@@ -11,19 +11,12 @@ const STORAGE_WORD = /^0x[0-9a-f]{0,64}$/i;
 const ADDRESS_HEX_LENGTH = 40;
 const WORD_HEX_LENGTH = 64;
 
-/**
- * Whether `code` is an EIP-1167 minimal-proxy clone (06 §1, C11). Clones are never followed: their own code carries no
- * selector, so they classify as view-only, as today.
- */
+/** Clones are never followed: their own code carries no selector, so they classify as view-only. */
 export function isEip1167Clone(code: Hex): boolean {
   return EIP1167_CLONE.test(code);
 }
 
-/**
- * The implementation an EIP-1967 proxy delegates to (C11): the address in the low 20 bytes of the implementation slot,
- * lowercased (B21), or `null` when that address is zero. An RPC error, an answer without a result or a malformed word
- * rejects; none is ever read as "not a proxy".
- */
+/** An RPC error, an answer without a result or a malformed word rejects; none is ever read as "not a proxy". */
 export async function readEip1967Implementation(client: ReadClient, address: Address): Promise<Address | null> {
   const word = await client.getStorageAt({ address, slot: EIP1967_IMPLEMENTATION_SLOT });
   if (word === undefined || !STORAGE_WORD.test(word)) throw new Error(`Malformed EIP-1967 implementation slot of ${address}`);

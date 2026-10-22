@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { encodeAnswer, formatRuling } from "../rulings";
 import attack from "./__fixtures__/attack-questions.json";
 import { deriveRealityRulingOptions, rulingOptionsFromRealityQuestion } from "./rulingOptions";
 import type { RealityQuestion } from "./types";
@@ -19,7 +20,7 @@ function onChain(templateText: string, questionText: string, templateId = "1"): 
 }
 
 describe("deriveRealityRulingOptions", () => {
-  it("A5: derives the bool labels of dispute 1680's template and flags the divergent rendering of reality-eth-lib", () => {
+  it("derives the bool labels of dispute 1680's template and flags reality-eth-lib's divergent rendering", () => {
     const { rulingOptions, realityQuestion, question } = deriveRealityRulingOptions(onChain(TEMPLATE_20, QUESTION_0x7eea, "20"), ENTRY);
     expect(rulingOptions).toEqual({ type: "single-select", titles: ["No", "Yes"], reserved: RESERVED });
     expect(realityQuestion).toMatchObject({ status: "verified", divergent: true, templateId: "20" });
@@ -27,7 +28,7 @@ describe("deriveRealityRulingOptions", () => {
     expect(question).toBeUndefined();
   });
 
-  it("A5: reports no divergence for a clean question and overrides the question with its title when asked to", () => {
+  it("reports no divergence for a clean question and overrides the question with its title when asked to", () => {
     const { rulingOptions, realityQuestion, question } = deriveRealityRulingOptions(onChain(TEMPLATE_SINGLE_SELECT, ["Who?", '"A","B"', "misc", "en_US"].join(D)), {
       ...ENTRY,
       questionOverride: "title",
@@ -37,12 +38,12 @@ describe("deriveRealityRulingOptions", () => {
     expect(question).toBe("Who?");
   });
 
-  it("A5: omits the reserved answer for Reality.eth v2 arbitrables", () => {
+  it("omits the reserved answer for Reality.eth v2 arbitrables", () => {
     const question = onChain(TEMPLATE_BOOL, ["Yes?", "misc", "en_US"].join(D));
     expect(deriveRealityRulingOptions(question, { ...ENTRY, answeredTooSoon: false }).rulingOptions).toEqual({ type: "single-select", titles: ["No", "Yes"] });
   });
 
-  it("A5: localizes the labels like the Kleros Moderate script", () => {
+  it("localizes the labels like the Kleros Moderate script", () => {
     const question = onChain(TEMPLATE_BOOL, ["¿Sí?", "misc", "es"].join(D));
     expect(deriveRealityRulingOptions(question, { ...ENTRY, localizedLang: "es" }).rulingOptions).toEqual({
       type: "single-select",
@@ -52,25 +53,25 @@ describe("deriveRealityRulingOptions", () => {
     expect(deriveRealityRulingOptions(question, { ...ENTRY, localizedLang: "es" }).realityQuestion.divergent).toBe(false);
   });
 
-  it("A5: uses the best-effort question when a select question misses parameters", () => {
+  it("uses the best-effort question when a select question misses parameters", () => {
     const { rulingOptions, realityQuestion } = deriveRealityRulingOptions(onChain(TEMPLATE_SINGLE_SELECT, ["Who?", '"A","B"', "misc"].join(D)), ENTRY);
     expect(rulingOptions.titles).toEqual(["A", "B"]);
     expect(realityQuestion).toMatchObject({ status: "malformed", reason: "param-count-mismatch" });
   });
 
-  it("A5: falls back to the template for malformed parameters of a bool question", () => {
+  it("falls back to the template for malformed parameters of a bool question", () => {
     const { rulingOptions, realityQuestion } = deriveRealityRulingOptions(onChain(TEMPLATE_BOOL, ['He said "hi"', "misc", "en_US", "extra"].join(D)), ENTRY);
     expect(rulingOptions.titles).toEqual(["No", "Yes"]);
     expect(realityQuestion.status).toBe("malformed");
   });
 
-  it("A5: offers no options when a select question's outcomes cannot be trusted", () => {
+  it("offers no options when a select question's outcomes cannot be trusted", () => {
     const { rulingOptions, realityQuestion } = deriveRealityRulingOptions(onChain(TEMPLATE_SINGLE_SELECT, ["Who?", '"A"],"type":"bool","z":["', "misc", "en_US"].join(D)), ENTRY);
     expect(rulingOptions).toEqual({ type: "single-select", titles: [] });
     expect(realityQuestion).toMatchObject({ status: "unresolvable", reason: "invalid-outcomes" });
   });
 
-  it("§10.4: an unresolvable question is not flagged divergent and has no question override", () => {
+  it("neither flags an unresolvable question divergent nor overrides its question", () => {
     const result = deriveRealityRulingOptions(onChain(TEMPLATE_SINGLE_SELECT, ["Who?", '"A"],"type":"bool","z":["', "misc", "en_US"].join(D)), {
       ...ENTRY,
       questionOverride: "title",
@@ -79,7 +80,7 @@ describe("deriveRealityRulingOptions", () => {
     expect(result).not.toHaveProperty("question");
   });
 
-  it("§10.4: the title-description override joins the title and the description", () => {
+  it("joins the title and the description for the title-description override", () => {
     const question = onChain(TEMPLATE_DESCRIBED, ["Is it?", "Details here."].join(D));
     expect(deriveRealityRulingOptions(question, { ...ENTRY, questionOverride: "title-description" }).question).toBe("Is it?. Details here.");
     expect(deriveRealityRulingOptions(onChain(TEMPLATE_DESCRIBED, ["Is it?", ""].join(D)), { ...ENTRY, questionOverride: "title-description" }).question).toBe("Is it?");
@@ -89,19 +90,19 @@ describe("deriveRealityRulingOptions", () => {
     expect(deriveRealityRulingOptions(question, { ...ENTRY, questionOverride: "title" }).question).toBe("Is it?");
   });
 
-  it("R2 A5 §9.1: outcomes that String() cannot convert are titled as the meta-evidence sanitizer titles them", () => {
+  it("titles outcomes that String() cannot convert as the meta-evidence sanitizer does", () => {
     const question = { type: "single-select", outcomes: [{ toString: 1 }, "B", 3] };
     expect(rulingOptionsFromRealityQuestion(question, { answeredTooSoon: false })).toEqual({ type: "single-select", titles: ["[object Object]", "B", "3"] });
   });
 
-  it("R2 A5 §9.1: a hostile unsafe rendering is reported as divergent and never discards the safely derived options", () => {
+  it("reports a hostile unsafe rendering as divergent and keeps the safely derived options", () => {
     const hostileLang = 'en", "type": "single-select", "outcomes": [{"toString": 1}], "z": "';
     const { rulingOptions, realityQuestion } = deriveRealityRulingOptions(onChain(TEMPLATE_BOOL, ["Yes?", "misc", hostileLang].join(D)), ENTRY);
     expect(rulingOptions).toEqual({ type: "single-select", titles: ["No", "Yes"], reserved: RESERVED });
     expect(realityQuestion).toMatchObject({ status: "verified", divergent: true });
   });
 
-  it("A5: carries decimals as the precision reality-eth-lib reads, so the precision shown is the one encoded", () => {
+  it("carries decimals as the precision reality-eth-lib reads, so the precision shown is the one encoded", () => {
     const template = '{"title": "%s", "type": "uint", "decimals": %s}';
     const precisionOf = (decimals: string) => deriveRealityRulingOptions(onChain(template, ["How many?", decimals].join(D)), ENTRY).rulingOptions.precision;
     expect(precisionOf("18")).toBe(18);
@@ -113,24 +114,31 @@ describe("deriveRealityRulingOptions", () => {
     expect(precisionOf("-3")).toBe(0);
   });
 
-  it("R1 A5 D-15: carries a hexadecimal decimals as the precision reality-eth-lib reads", () => {
+  it("carries a hexadecimal decimals as the precision reality-eth-lib reads", () => {
     const template = '{"title": "%s", "type": "uint", "decimals": %s}';
     const { rulingOptions, realityQuestion } = deriveRealityRulingOptions(onChain(template, ["How many?", '"0x12"'].join(D)), ENTRY);
     expect(rulingOptions.precision).toBe(18);
     expect(realityQuestion).toMatchObject({ status: "verified", divergent: false });
   });
 
-  it("A5: drops a decimals that today's app encodes with the default 18 (not a finite number, or null, false or empty)", () => {
+  it("reads a decimals that is null, false, empty or not a number as reality-eth-lib does", () => {
     const template = '{"title": "%s", "type": "uint", "decimals": %s}';
     const precisionOf = (decimals: string) => deriveRealityRulingOptions(onChain(template, ["How many?", decimals].join(D)), ENTRY).rulingOptions.precision;
-    expect(precisionOf("null")).toBeUndefined();
-    expect(precisionOf("false")).toBeUndefined();
-    expect(precisionOf('""')).toBeUndefined();
-    expect(precisionOf('"1_000"')).toBeUndefined();
-    expect(precisionOf('"abc"')).toBeUndefined();
+    expect(precisionOf("null")).toBe(0);
+    expect(precisionOf("false")).toBe(0);
+    expect(precisionOf('""')).toBe(0);
+    expect(precisionOf('"abc"')).toBe(0);
+    expect(precisionOf('"1_000"')).toBe(1);
   });
 
-  it("A5: stringifies outcomes of the template that are not strings", () => {
+  it("a uint question without decimals has precision 0, so the answer 5 encodes to ruling 6 and ruling 6 reads 5", () => {
+    const { rulingOptions } = deriveRealityRulingOptions(onChain('{"title": "%s", "type": "uint"}', "How many?"), ENTRY);
+    expect(rulingOptions).toEqual({ type: "uint", precision: 0, reserved: RESERVED });
+    expect(encodeAnswer({ type: "uint", value: "5" }, rulingOptions)).toEqual({ ok: true, code: 6n });
+    expect(formatRuling(6n, rulingOptions, null)).toBe("5");
+  });
+
+  it("stringifies outcomes of the template that are not strings", () => {
     const template = '{"title": "%s", "type": "single-select", "outcomes": ["A", 1, null, {"b": 2}]}';
     expect(deriveRealityRulingOptions(onChain(template, "Which?"), ENTRY).rulingOptions.titles).toEqual(["A", "1", "null", "[object Object]"]);
   });

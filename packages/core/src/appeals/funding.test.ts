@@ -121,7 +121,7 @@ describe("readRoundFunding (IDisputeResolver)", () => {
     { round: 6n, contributions: [{ ruling: 2n, amount: 9_562_500_000_000_000_000n }], fundedRulings: [2n] },
   ];
 
-  it("D-02, D-30: every round of dispute 1170 sums its recorded Contribution events per ruling and lists its RulingFunded rulings", async () => {
+  it("sums the recorded Contribution events of every round of dispute 1170 per ruling and lists its RulingFunded rulings", async () => {
     const { context } = await unslashedContext({ head: DISPUTE_1170.readAtBlock, logs: DISPUTE_1170.fundingLogs }, DISPUTE_1170.disputeId, DISPUTE_1170.localId);
     for (const expected of rounds1170) {
       const fromBlock = roundStartBlock(expected.round, DISPUTE_1170.appealDecisions, UNSLASHED_OVERRIDE, DISPUTE_1170.disputeStartBlock);
@@ -129,7 +129,7 @@ describe("readRoundFunding (IDisputeResolver)", () => {
     }
   });
 
-  it("D-02: scans each round from its start block to the head, with no 10,000-block window", async () => {
+  it("scans each round from its start block to the head, with no 10,000-block window", async () => {
     const { context, requests } = await unslashedContext({ head: DISPUTE_1170.readAtBlock, logs: DISPUTE_1170.fundingLogs }, DISPUTE_1170.disputeId, DISPUTE_1170.localId);
     const fromBlock = roundStartBlock(4n, DISPUTE_1170.appealDecisions, UNSLASHED_OVERRIDE, DISPUTE_1170.disputeStartBlock);
     await readRoundFunding(context, 4n, fromBlock);
@@ -139,7 +139,7 @@ describe("readRoundFunding (IDisputeResolver)", () => {
     }
   });
 
-  it("D-30: golden 1678 finds the 0.273 ETH contribution and the funded ruling in round 1", async () => {
+  it("finds dispute 1678's 0.273 ETH contribution and funded ruling in round 1", async () => {
     const dispute = UNSLASHED.dispute1678;
     const { context } = await unslashedContext({ head: UNSLASHED.readAtBlock, logs: dispute.fundingLogs }, dispute.disputeId, dispute.localId);
     const result = await readRoundFunding(context, 1n, roundStartBlock(1n, dispute.appealDecisions, UNSLASHED_OVERRIDE, dispute.disputeStartBlock));
@@ -147,7 +147,7 @@ describe("readRoundFunding (IDisputeResolver)", () => {
     expect(await readRoundFunding(context, 0n, dispute.disputeStartBlock)).toEqual({ ok: true, value: { round: 0n, contributions: [], fundedRulings: [] } });
   });
 
-  it("D-02, D-30: golden 1226 finds rulings 1 and 2 in round 1, the first 56,623 blocks after the Dispute event, through a capped RPC", async () => {
+  it("finds rulings 1 and 2 of dispute 1226 in round 1, the first 56,623 blocks after the Dispute event, through a capped RPC", async () => {
     const dispute = UNSLASHED.dispute1226;
     const { context, requests } = await unslashedContext({ head: UNSLASHED.readAtBlock, logs: dispute.fundingLogs, maxRange: 10_000n }, dispute.disputeId, dispute.localId);
     const result = await readRoundFunding(context, 1n, roundStartBlock(1n, dispute.appealDecisions, UNSLASHED_OVERRIDE, dispute.disputeStartBlock));
@@ -167,7 +167,7 @@ describe("readRoundFunding (IDisputeResolver)", () => {
     expect(round2).toEqual({ ok: true, value: { round: 2n, contributions: [], fundedRulings: [] } });
   });
 
-  it("D-02: a contribution more than 10,000 blocks after the anchor is counted", async () => {
+  it("counts a contribution more than 10,000 blocks after the anchor", async () => {
     const logs = [
       contributionLog({ localId: 7n, round: 2n, ruling: 1n, contributor: CONTRIBUTOR, amount: 5n, block: 1_000n }),
       contributionLog({ localId: 7n, round: 2n, ruling: 1n, contributor: CONTRIBUTOR, amount: 6n, block: 21_000n }),
@@ -177,7 +177,7 @@ describe("readRoundFunding (IDisputeResolver)", () => {
     expect(await readRoundFunding(context, 2n, 1_000n)).toEqual({ ok: true, value: { round: 2n, contributions: [{ ruling: 1n, amount: 11n }], fundedRulings: [1n] } });
   });
 
-  it("D-02: a reload scans the same range and shows the same totals", async () => {
+  it("scans the same range and shows the same totals on a reload", async () => {
     const logs = [contributionLog({ localId: 7n, round: 0n, ruling: 2n, contributor: CONTRIBUTOR, amount: 9n, block: 50_000n })];
     const { context, requests } = syntheticContext({ head: 90_000n, logs });
     const first = await readRoundFunding(context, 0n, 10n);
@@ -191,7 +191,7 @@ describe("readRoundFunding (IDisputeResolver)", () => {
     ]);
   });
 
-  it("§6.3: only the dispute's own local ID and round are counted", async () => {
+  it("counts only the dispute's own local ID and round", async () => {
     const logs = [
       contributionLog({ localId: 7n, round: 1n, ruling: 1n, contributor: CONTRIBUTOR, amount: 5n, block: 100n }),
       contributionLog({ localId: 8n, round: 1n, ruling: 1n, contributor: CONTRIBUTOR, amount: 50n, block: 100n, logIndex: 2 }),
@@ -202,12 +202,12 @@ describe("readRoundFunding (IDisputeResolver)", () => {
     expect(await readRoundFunding(context, 1n, 0n)).toEqual({ ok: true, value: { round: 1n, contributions: [{ ruling: 1n, amount: 5n }], fundedRulings: [] } });
   });
 
-  it("D-36: a failed scan is rpc-error, never an empty funding", async () => {
+  it("reports a failed scan as rpc-error, never an empty funding", async () => {
     const { context } = syntheticContext({ head: 200n, failing: { eth_getLogs: rpcError(-32000, "header not found") } });
     expect(await readRoundFunding(context, 1n, 0n)).toMatchObject({ ok: false, error: { code: "rpc-error" } });
   });
 
-  it("§5.3: an IDisputeResolver family needs a resolved local ID", async () => {
+  it("needs a resolved local ID for an IDisputeResolver family", async () => {
     const reverted = syntheticContext({ head: 1n }, { kind: "unresolved", reason: "reverted" });
     expect(await readRoundFunding(reverted.context, 0n, 0n)).toMatchObject({ ok: false, error: { code: "reverted" } });
     expect(reverted.requests.methods).toEqual([]);
@@ -217,7 +217,7 @@ describe("readRoundFunding (IDisputeResolver)", () => {
     expect(await readRoundFunding(notApplicable.context, 0n, 0n)).toMatchObject({ ok: false, error: { code: "unsupported" } });
   });
 
-  it("D-47: families without a funding dialect are unsupported", async () => {
+  it("reports families without a funding dialect as unsupported", async () => {
     for (const signatures of [FAMILY_SIGNATURES["escrow-v1"], FAMILY_SIGNATURES["view-only"]]) {
       const { context, requests } = syntheticContext({ head: 1n });
       const result = await readRoundFunding({ ...context, family: detectionFor(SYNTHETIC, signatures) }, 0n, 0n);
@@ -226,7 +226,7 @@ describe("readRoundFunding (IDisputeResolver)", () => {
     }
   });
 
-  it("A22: a detection of another contract than the binding's arbitrable is refused", async () => {
+  it("refuses a detection of another contract than the binding's arbitrable", async () => {
     const { context, requests } = syntheticContext({ head: 1n });
     const result = await readRoundFunding({ ...context, family: detectionFor("0x00000000000000000000000000000000000000ee", FAMILY_SIGNATURES["idr-v2"]) }, 0n, 0n);
     expect(result).toMatchObject({ ok: false, error: { code: "invalid-data" } });
@@ -248,7 +248,7 @@ describe("readRoundFunding (governor dialect)", () => {
     return { context, requests };
   };
 
-  it("D-47: golden 1621 reads round 0 of session 18, the Dispute event's evidence group, not the current session", async () => {
+  it("reads round 0 of session 18 for dispute 1621, the Dispute event's evidence group, not the current session", async () => {
     expect(GOVERNOR_1621.evidenceGroupId).toBe(18n);
     const { context, requests } = await governorContext({ head: GOVERNOR_1621.blockNumber, calls: GOVERNOR_1621.calls }, GOVERNOR_1621.evidenceGroupId);
     expect(await readRoundFunding(context, 0n, GOVERNOR_1621.disputeStartBlock)).toEqual({ ok: true, value: { round: 0n, contributions: [], fundedRulings: [] } });
@@ -257,7 +257,7 @@ describe("readRoundFunding (governor dialect)", () => {
     expect(requests.methods).not.toContain("eth_getLogs");
   });
 
-  it("D-47: list index i is ruling i + 1; paid fees are the contributions, fully paid lists the funded rulings", async () => {
+  it("maps list index i to ruling i + 1, paid fees to contributions and fully paid lists to funded rulings", async () => {
     const { context } = await governorContext(
       {
         head: 1n,
@@ -280,18 +280,18 @@ describe("readRoundFunding (governor dialect)", () => {
     });
   });
 
-  it("D-47: without the Dispute event's evidence group the governor session is unknown", async () => {
+  it("reports the governor session as unknown without the Dispute event's evidence group", async () => {
     const { context, requests } = await governorContext({ head: 1n }, undefined);
     expect(await readRoundFunding(context, 0n, 0n)).toMatchObject({ ok: false, error: { code: "not-found" } });
     expect(requests.methods).toEqual([]);
   });
 
-  it("D-36: a round the governor does not have is reverted, not empty", async () => {
+  it("reports a round the governor does not have as reverted, not empty", async () => {
     const { context } = await governorContext({ head: GOVERNOR_1621.blockNumber, calls: GOVERNOR_1621.calls }, 18n);
     expect(await readRoundFunding(context, 1n, 0n)).toMatchObject({ ok: false, error: { code: "reverted" } });
   });
 
-  it("D-36: a governor transport failure is rpc-error", async () => {
+  it("reports a governor transport failure as rpc-error", async () => {
     const { context } = await governorContext(
       {
         head: 1n,

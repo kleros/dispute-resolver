@@ -1,6 +1,6 @@
 /**
- * Public entry of `@dispute-resolver/core`. `web` imports core only from here (packages/core/MODULES.md, "Public surface").
- * Every public type, plus one line of values per module; ABIs, selector scans and other internals stay unexported.
+ * Public entry of `@dispute-resolver/core`. `web` imports core only from here. Every public type, plus one line of
+ * values per module; ABIs, selector scans and other internals stay unexported.
  */
 export type * from "./types";
 export {
@@ -58,15 +58,18 @@ export {
   buildAppealPanel,
   buildCrowdfundingCards,
   computeAppealAmounts,
+  enteredAnswerFunding,
   fundedPercent,
   fundingRound,
   hasAppealPanel,
+  needsRulingOptions,
   readMultipliers,
   readRoundFunding,
   readWithdrawable,
   roundStartBlock,
   roundsToScan,
+  type EnteredAnswerFunding,
 } from "./appeals";
 export { CREATE_LIMITS, buildCreatedMetaEvidence, disputeIdFromReceipt, encodeExtraData, numberOfRulingOptions, readArbitrationCost, validateCreateInput } from "./create";
-export { buildCreateDisputeCall, buildEscrowAppealCall, buildFundAppealCall, buildSubmitEvidenceCall, buildWithdrawCalls, checkChainMatch } from "./writes";
+export { buildCreateDisputeCall, buildEscrowAppealCall, buildFundAppealCall, buildSubmitEvidenceCall, buildWithdrawCalls, checkChainMatch, readAppealCost } from "./writes";
 export { z } from "./zod";

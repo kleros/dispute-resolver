@@ -40,7 +40,6 @@ const QUESTION_0x7eea = attack.question0x7eea.questionText;
 const TEMPLATE_35 = attack.template35.templateText;
 const QUESTION_0xdd28 = attack.syntheticFrom0xdd28.questionText;
 
-/** The question of a result that must have populated, with the `ok` assertion of the old tests. */
 function populated(result: SafePopulateResult): PopulatedQuestion {
   expect(result.ok).toBe(true);
   if (!result.ok) throw new Error(`expected a populated question, got ${result.reason}`);
@@ -48,19 +47,18 @@ function populated(result: SafePopulateResult): PopulatedQuestion {
 }
 
 describe("safePopulatedJSONForTemplate", () => {
-  it("A5: does not let question 0x7eea… turn a bool template into a single-select", () => {
+  it("does not let question 0x7eea… turn a bool template into a single-select", () => {
     const question = populated(safePopulatedJSONForTemplate(TEMPLATE_20, QUESTION_0x7eea));
     expect(question.type).toBe("bool");
     expect(Object.keys(question)).toEqual(["lang", "type", "category", "title"]);
     expect(question).not.toHaveProperty("outcomes");
-    // The injected text stays inside the title.
     expect(question.title).toMatch(
       /^Did the Snapshot proposal with the id 0x1275956c","title":"Did the Snapshot proposal .*"type":"single-select","outcomes":\["Yes","No"\],"has_invalid":false,"z":" in the 1inch\.eth space pass the execution of the array of Module transactions that have the hash 0xe423d891/,
     );
     expect(rulingOptionsFromRealityQuestion(question)).toEqual({ type: "single-select", titles: ["No", "Yes"], reserved: RESERVED });
   });
 
-  it("A5: differs from reality-eth-lib, which is fooled by question 0x7eea… (single-select with Yes/No swapped)", () => {
+  it("differs from reality-eth-lib, which is fooled by question 0x7eea… (single-select with Yes/No swapped)", () => {
     const unsafe = naivePopulate(TEMPLATE_20, QUESTION_0x7eea);
     expect(unsafe.type).toBe("single-select");
     expect(unsafe.outcomes).toEqual(["Yes", "No"]);
@@ -68,7 +66,7 @@ describe("safePopulatedJSONForTemplate", () => {
     expect(rulingOptionsFromRealityQuestion(unsafe)?.titles).toEqual(["Yes", "No"]);
   });
 
-  it("A5: does not let question 0xdd28… add title_html", () => {
+  it("does not let question 0xdd28… add title_html", () => {
     const question = populated(safePopulatedJSONForTemplate(TEMPLATE_35, QUESTION_0xdd28));
     expect(question.type).toBe("bool");
     expect(question).not.toHaveProperty("title_html");
@@ -81,7 +79,7 @@ describe("safePopulatedJSONForTemplate", () => {
     expect(unsafe.title_html).toContain("<img src=x");
   });
 
-  it("A5: renders a clean single-select question with escaped quotes in the title", () => {
+  it("renders a clean single-select question with escaped quotes in the title", () => {
     const question = `Will \\"Team A\\" win?${D}"A","B"${D}sports${D}en_US`;
     const result = safePopulatedJSONForTemplate(TEMPLATE_SINGLE_SELECT, question);
     expect(result).toEqual({
@@ -101,7 +99,7 @@ describe("safePopulatedJSONForTemplate", () => {
     expect(rulingOptionsFromRealityQuestion(safe)).toEqual({ type: "single-select", titles: ["A", "B"], reserved: RESERVED });
   });
 
-  it("A5: renders a uint question", () => {
+  it("renders a uint question", () => {
     const result = safePopulatedJSONForTemplate(TEMPLATE_UINT, `How many goals will be scored?${D}sports${D}en_US`);
     expect(result.ok).toBe(true);
     const question = populated(result);
@@ -115,14 +113,14 @@ describe("safePopulatedJSONForTemplate", () => {
     expect(rulingOptionsFromRealityQuestion(question)).toEqual({ type: "uint", precision: 18, reserved: RESERVED });
   });
 
-  it("A5: renders a multiple-select question", () => {
+  it("renders a multiple-select question", () => {
     const question = populated(safePopulatedJSONForTemplate(TEMPLATE_MULTIPLE_SELECT, `Which teams will qualify?${D}"Red","Green","Blue"${D}sports${D}en_US`));
     expect(question.type).toBe("multiple-select");
     expect(question.outcomes).toEqual(["Red", "Green", "Blue"]);
     expect(rulingOptionsFromRealityQuestion(question)).toEqual({ type: "multiple-select", titles: ["Red", "Green", "Blue"], reserved: RESERVED });
   });
 
-  it("A5: renders a title containing a raw unescaped quote (which reality-eth-lib reports as broken)", () => {
+  it("renders a title containing a raw unescaped quote (which reality-eth-lib reports as broken)", () => {
     const question = `Will "Team A" win?${D}sports${D}en_US`;
     const result = populated(safePopulatedJSONForTemplate(TEMPLATE_BOOL, question));
     expect(result.title).toBe('Will "Team A" win?');
@@ -130,29 +128,29 @@ describe("safePopulatedJSONForTemplate", () => {
     expect(naivePopulate(TEMPLATE_BOOL, question).type).toBe("broken-question");
   });
 
-  it("A5: escapes backslashes, control characters and invalid escapes in string parameters", () => {
+  it("escapes backslashes, control characters and invalid escapes in string parameters", () => {
     const result = populated(safePopulatedJSONForTemplate(TEMPLATE_BOOL, `a\\_b\nc\\${D}misc${D}en`));
     expect(result.title).toBe("a\\_b\nc\\");
   });
 
-  it("A5: keeps valid escape sequences", () => {
+  it("keeps valid escape sequences", () => {
     const result = populated(safePopulatedJSONForTemplate(TEMPLATE_BOOL, `line\\nbreak \\u00e9${D}misc${D}en`));
     expect(result.title).toBe("line\nbreak é");
   });
 
-  it("A5: rejects outcomes that break out of the array", () => {
+  it("rejects outcomes that break out of the array", () => {
     const question = `Title${D}"A"],"type":"bool","x":["B"${D}misc${D}en`;
     expect(safePopulatedJSONForTemplate(TEMPLATE_SINGLE_SELECT, question)).toEqual({ ok: false, reason: "invalid-outcomes" });
   });
 
-  it("A5: rejects non-string outcomes", () => {
+  it("rejects non-string outcomes", () => {
     const numbers = safePopulatedJSONForTemplate(TEMPLATE_SINGLE_SELECT, `Title${D}3,4,5${D}misc${D}en`);
     expect(numbers.ok || numbers.reason).toBe("invalid-outcomes");
     const withNull = safePopulatedJSONForTemplate(TEMPLATE_SINGLE_SELECT, `Title${D}"A",null${D}misc${D}en`);
     expect(withNull.ok || withNull.reason).toBe("invalid-outcomes");
   });
 
-  it("A5: reports a parameter count mismatch with a best-effort question", () => {
+  it("reports a parameter count mismatch with a best-effort question", () => {
     expect(safePopulatedJSONForTemplate(TEMPLATE_BOOL, "Title only")).toEqual({
       ok: false,
       reason: "param-count-mismatch",
@@ -164,7 +162,7 @@ describe("safePopulatedJSONForTemplate", () => {
     expect(extra.ok ? undefined : extra.question?.lang).toBe("en");
   });
 
-  it("A5: rejects templates that are not valid JSON or have duplicate keys", () => {
+  it("rejects templates that are not valid JSON or have duplicate keys", () => {
     const reason = (template: string) => {
       const result = safePopulatedJSONForTemplate(template, "x");
       return result.ok || result.reason;
@@ -174,12 +172,12 @@ describe("safePopulatedJSONForTemplate", () => {
     expect(reason('["%s"]')).toBe("invalid-template");
   });
 
-  it("A5: rejects placeholders in object keys", () => {
+  it("rejects placeholders in object keys", () => {
     const result = safePopulatedJSONForTemplate('{"title": "t", "%s": "x", "type": "bool"}', "title");
     expect(result.ok || result.reason).toBe("unsupported-placeholder");
   });
 
-  it("A5: accepts a single JSON scalar for a bare value placeholder (Kleros Moderate templates)", () => {
+  it("accepts a single JSON scalar for a bare value placeholder (Kleros Moderate templates)", () => {
     const template = '{"title": "%s", "type": "bool", "askedBy": %s}';
     expect(populated(safePopulatedJSONForTemplate(template, `Title${D}1234567890`)).askedBy).toBe(1234567890);
     const injected = safePopulatedJSONForTemplate(template, `Title${D}1, "type": "uint"`);
@@ -188,13 +186,13 @@ describe("safePopulatedJSONForTemplate", () => {
     expect(object.ok || object.reason).toBe("invalid-value");
   });
 
-  it("A5: rejects a template whose type comes from a parameter when it would change the type", () => {
+  it("rejects a template whose type comes from a parameter when it would change the type", () => {
     const template = '{"title": "%s", "type": %s}';
     const result = safePopulatedJSONForTemplate(template, `Title${D}"single-select"`);
     expect(result.ok || result.reason).toBe("type-mismatch");
   });
 
-  it("A5: drops title_html and title_text even when the template declares them", () => {
+  it("drops title_html and title_text even when the template declares them", () => {
     const template = '{"title": "%s", "type": "bool", "title_html": "<b>%s</b>", "title_text": "x"}';
     const result = safePopulatedJSONForTemplate(template, `Title${D}bold`);
     expect(result.ok).toBe(true);
@@ -203,12 +201,12 @@ describe("safePopulatedJSONForTemplate", () => {
 });
 
 describe("rulingOptionsFromRealityQuestion", () => {
-  it("A5: maps datetime questions", () => {
+  it("maps datetime questions", () => {
     const question = populated(safePopulatedJSONForTemplate(TEMPLATE_DATETIME, `When?${D}misc${D}en`));
     expect(rulingOptionsFromRealityQuestion(question)).toEqual({ type: "datetime", reserved: RESERVED });
   });
 
-  it("A5: returns null for unknown types and invalid input", () => {
+  it("returns null for unknown types and invalid input", () => {
     expect(rulingOptionsFromRealityQuestion({ type: "int" })).toBeNull();
     expect(rulingOptionsFromRealityQuestion({ type: "broken-question" })).toBeNull();
     expect(rulingOptionsFromRealityQuestion(undefined as unknown as PopulatedQuestion)).toBeNull();
@@ -217,21 +215,21 @@ describe("rulingOptionsFromRealityQuestion", () => {
 });
 
 describe("rulingOptionsFromTemplate", () => {
-  it("A5: derives No/Yes from a bool template regardless of the parameters", () => {
+  it("derives No/Yes from a bool template regardless of the parameters", () => {
     expect(rulingOptionsFromTemplate(TEMPLATE_20)).toEqual({ type: "single-select", titles: ["No", "Yes"], reserved: RESERVED });
     expect(rulingOptionsFromTemplate(TEMPLATE_BOOL)).toEqual({ type: "single-select", titles: ["No", "Yes"], reserved: RESERVED });
   });
 
-  it("A5: derives uint options only when decimals is a literal number", () => {
+  it("derives uint options only when decimals is a literal number", () => {
     expect(rulingOptionsFromTemplate(TEMPLATE_UINT)).toEqual({ type: "uint", precision: 18, reserved: RESERVED });
     expect(rulingOptionsFromTemplate('{"title": "%s", "type": "uint", "decimals": %s}')).toBeNull();
   });
 
-  it("A5: derives datetime options", () => {
+  it("derives datetime options", () => {
     expect(rulingOptionsFromTemplate(TEMPLATE_DATETIME)).toEqual({ type: "datetime", reserved: RESERVED });
   });
 
-  it("A5: returns null when the answers depend on the parameters or the template is invalid", () => {
+  it("returns null when the answers depend on the parameters or the template is invalid", () => {
     expect(rulingOptionsFromTemplate(TEMPLATE_SINGLE_SELECT)).toBeNull();
     expect(rulingOptionsFromTemplate(TEMPLATE_MULTIPLE_SELECT)).toBeNull();
     expect(rulingOptionsFromTemplate("{title: %s}")).toBeNull();
@@ -240,7 +238,7 @@ describe("rulingOptionsFromTemplate", () => {
 });
 
 describe("hostile templates", () => {
-  it("R-4 A5: analyzes a template stuffed with every nonce candidate in linear time", () => {
+  it("analyzes a template stuffed with every nonce candidate in linear time", () => {
     const candidates = Array.from({ length: 40_000 }, (_unused, index) => `@@kleros${String(index)}#`);
     const hostile = `{"title": "${candidates.join(" ")}%s", "type": "bool", "category": "%s", "lang": "%s"}`;
     expect(hostile.length).toBeGreaterThan(400_000);
@@ -253,7 +251,7 @@ describe("hostile templates", () => {
     expect(elapsedMs).toBeLessThan(500);
   });
 
-  it("R-4 A5: reads token-looking text of a template as plain text", () => {
+  it("reads token-looking text of a template as plain text", () => {
     const template = '{"title": "@@kleros0#0@@ @@kleros1#1@@ %s", "type": "bool", "category": "%s", "lang": "%s"}';
     expect(safePopulatedJSONForTemplate(template, `a${D}b${D}c`)).toMatchObject({ ok: true, question: { title: "@@kleros0#0@@ @@kleros1#1@@ a", category: "b", lang: "c" } });
   });

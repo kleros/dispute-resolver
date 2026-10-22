@@ -1,6 +1,6 @@
 /**
- * Test-only view of the recorded `eth_getCode` fixtures (06 §5 item 5): every contract of 06 §3 invariant 8, read at the
- * block number each file names, with the implementation's code for EIP-1967 proxies. `expectedSelectors` freezes the probe
+ * Test-only view of the recorded `eth_getCode` fixtures: contracts of every family on each chain, read at the block
+ * number each file names, with the implementation's code for EIP-1967 proxies. `expectedSelectors` freezes the probe
  * signatures each dispatcher carries (the implementation's for EIP-1967 proxies), transcribed once by an independent
  * disassembler, so detection is checked against reviewed data rather than against the scanner under test.
  */

@@ -5,10 +5,7 @@ import { normalizeIpfsPath } from "../uri";
 import { built, isUint256, refused } from "./build";
 import type { WriteBuild } from "./types";
 
-/**
- * `ArbitrableProxy.createDispute(extraData, metaEvidenceURI, numberOfRulingOptions)` paying the arbitration cost (spec
- * 4.5, 6.2). The meta-evidence upload result must be content-addressed and is written in canonical form (B16).
- */
+/** The meta-evidence upload result must be content-addressed and is written in canonical form. */
 export function buildCreateDisputeCall(input: {
   readonly chain: ChainConfig;
   readonly extraData: Hex;

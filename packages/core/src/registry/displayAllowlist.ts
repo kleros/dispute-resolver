@@ -1,10 +1,8 @@
 import type { Address, ChainId } from "../types";
 
 /**
- * Today's `arbitrableWhitelist` (the literal lists plus the addresses of `reality-addresses.js`), lowercase, keyed exactly as today:
- * the lookup key is the validated meta-evidence `arbitrableChainID`, else the arbitrator chain (B6, D-34). It only feeds
- * the evidence-display iframe flags; it plays no role in sandboxing scripts or detecting families (ADR 0003, ADR 0004).
- * A trailing comment names the contract when today's source did.
+ * Keyed by the validated meta-evidence `arbitrableChainID`, else the arbitrator chain. It only feeds the evidence-display
+ * iframe flags; it plays no role in sandboxing scripts or detecting families.
  */
 export const DISPLAY_ALLOWLIST: Readonly<Record<ChainId, readonly Address[]>> = {
   1: [

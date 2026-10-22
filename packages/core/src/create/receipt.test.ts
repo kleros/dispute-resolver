@@ -16,33 +16,33 @@ function creationLog(address: string, disputeId: bigint): { readonly address: st
 const OTHER_EVENT = { address: PROXY, topics: [toEventSelector("MetaEvidence(uint256,string)"), numberToHex(7n, { size: 32 })] as const };
 
 describe("disputeIdFromReceipt", () => {
-  it("§4.5 step 8: the dispute ID is topics[1] of the arbitrator's DisputeCreation log", () => {
+  it("reads the dispute ID from topics[1] of the arbitrator's DisputeCreation log", () => {
     expect(disputeIdFromReceipt([OTHER_EVENT, creationLog(ARBITRATOR, 1710n)], ARBITRATOR)).toBe(1710n);
   });
 
-  it("§4.5 step 8: the topic is DisputeCreation(uint256,address)", () => {
+  it("matches the DisputeCreation(uint256,address) topic", () => {
     expect(creationLog(ARBITRATOR, 1n).topics[0]).toBe(toEventSelector("DisputeCreation(uint256,address)"));
   });
 
-  it("§4.5 step 8: the first matching log wins", () => {
+  it("takes the first matching log", () => {
     expect(disputeIdFromReceipt([creationLog(ARBITRATOR, 5n), creationLog(ARBITRATOR, 6n)], ARBITRATOR)).toBe(5n);
   });
 
-  it("§4.5 step 8: the log address is compared case-insensitively, as receipts carry checksummed addresses", () => {
+  it("compares the log address case-insensitively, as receipts carry checksummed addresses", () => {
     expect(disputeIdFromReceipt([creationLog("0x988B3A538b618C7A603e1c11Ab82Cd16dbE28069", 9n)], ARBITRATOR)).toBe(9n);
   });
 
-  it("§4.5 step 8: a DisputeCreation log from another contract is not the arbitrator's", () => {
+  it("ignores a DisputeCreation log from another contract", () => {
     expect(disputeIdFromReceipt([creationLog(PROXY, 666n), creationLog(ARBITRATOR, 12n)], ARBITRATOR)).toBe(12n);
     expect(disputeIdFromReceipt([creationLog(PROXY, 666n)], ARBITRATOR)).toBeNull();
   });
 
-  it("§4.6 / D-07: no DisputeCreation log gives null, which the UI reports instead of navigating", () => {
+  it("gives null when there is no DisputeCreation log", () => {
     expect(disputeIdFromReceipt([], ARBITRATOR)).toBeNull();
     expect(disputeIdFromReceipt([OTHER_EVENT], ARBITRATOR)).toBeNull();
   });
 
-  it("D-07: a malformed DisputeCreation log gives null rather than a wrong ID", () => {
+  it("gives null rather than a wrong ID for a malformed DisputeCreation log", () => {
     const selector = toEventSelector("DisputeCreation(uint256,address)");
     expect(disputeIdFromReceipt([{ address: ARBITRATOR, topics: [selector] }], ARBITRATOR)).toBeNull();
     expect(disputeIdFromReceipt([{ address: ARBITRATOR, topics: [selector, "0x12"] }], ARBITRATOR)).toBeNull();

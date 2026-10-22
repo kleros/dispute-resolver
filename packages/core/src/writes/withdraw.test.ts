@@ -40,7 +40,7 @@ const v2Items: readonly WithdrawItem[] = [
 ];
 
 describe("buildWithdrawCalls", () => {
-  it("D-51: one withdrawal per contributed ruling, in the order of the items", () => {
+  it("one withdrawal per contributed ruling, in the order of the items", () => {
     const builds = buildWithdrawCalls({ binding, family: family("idr-v2"), localId: LOCAL_ID, beneficiary: BENEFICIARY, items: v2Items });
     expect(builds).toHaveLength(2);
     const calls = builds.map(expectCall);
@@ -50,14 +50,14 @@ describe("buildWithdrawCalls", () => {
     ]);
   });
 
-  it("§5.15: idr-v2 withdraws through withdrawFeesAndRewardsForAllRounds(localID, beneficiary, ruling) with no value", () => {
+  it("idr-v2 withdraws through withdrawFeesAndRewardsForAllRounds(localID, beneficiary, ruling) with no value", () => {
     const [build] = buildWithdrawCalls({ binding, family: family("idr-v2"), localId: LOCAL_ID, beneficiary: BENEFICIARY, items: v2Items.slice(0, 1) });
     const call = expectCall(build ?? { ok: false, refusal: "withdraw-unsupported" });
     expect(call).toMatchObject({ kind: "withdraw", chainId: 1, address: ARBITRABLE, functionName: "withdrawFeesAndRewardsForAllRounds", value: 0n });
     expect(selectorOf(call)).toBe(V2_WITHDRAW);
   });
 
-  it("D-49: idr-v1 withdraws each ruling through the array signature, one ruling per transaction (Unslashed, mainnet 0x4b89…, Gnosis 0x1128…)", () => {
+  it("idr-v1 withdraws each ruling through the array signature, one ruling per transaction (Unslashed, mainnet 0x4b89…, Gnosis 0x1128…)", () => {
     for (const [chainId, address] of [
       [1, "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38"],
       [1, "0x4b89e798b10478a839ea0abcf86c4b94a3c782a4"],
@@ -80,7 +80,7 @@ describe("buildWithdrawCalls", () => {
     }
   });
 
-  it("D-47: a governor withdraws through withdrawFeesAndRewards(beneficiary, session, round, listIndex) (golden 1621)", () => {
+  it("a governor withdraws through withdrawFeesAndRewards(beneficiary, session, round, listIndex) (dispute 1621)", () => {
     const governor = recordedFamily(1, governor1621.governor);
     const governorBinding = testBinding({ chainId: 1, disputeId: 1621n, arbitrated: governor1621.arbitrated });
     const session = BigInt(governor1621.session);
@@ -98,14 +98,14 @@ describe("buildWithdrawCalls", () => {
     expect(calls[0]).toMatchObject({ kind: "withdraw", chainId: 1, address: governor1621.governor, functionName: "withdrawFeesAndRewards", value: 0n });
   });
 
-  it("D-46: idr-legacy cannot withdraw through the resolver, so every item is refused", () => {
+  it("idr-legacy cannot withdraw through the resolver, so every item is refused", () => {
     expect(buildWithdrawCalls({ binding, family: family("idr-legacy-uint8"), localId: LOCAL_ID, beneficiary: BENEFICIARY, items: v2Items })).toEqual([
       { ok: false, refusal: "withdraw-unsupported" },
       { ok: false, refusal: "withdraw-unsupported" },
     ]);
   });
 
-  it("D-46: escrow and view-only arbitrables have no withdrawal", () => {
+  it("escrow and view-only arbitrables have no withdrawal", () => {
     for (const [name, localId] of [
       ["escrow-v1", { kind: "transaction-id", value: 1n }],
       ["view-only", { kind: "not-applicable" }],
@@ -117,7 +117,7 @@ describe("buildWithdrawCalls", () => {
     }
   });
 
-  it("D-49: an item of another dialect than the family's is refused, never sent with the wrong signature", () => {
+  it("an item of another dialect than the family's is refused, never sent with the wrong signature", () => {
     const builds = buildWithdrawCalls({
       binding,
       family: family("idr-v1"),
@@ -136,14 +136,14 @@ describe("buildWithdrawCalls", () => {
     expect(selectorOf(expectCall(builds[2] ?? { ok: false, refusal: "withdraw-unsupported" }))).toBe(V1_WITHDRAW);
   });
 
-  it("§5.15: an IDisputeResolver withdrawal without a resolved local ID is refused", () => {
+  it("an IDisputeResolver withdrawal without a resolved local ID is refused", () => {
     expect(buildWithdrawCalls({ binding, family: family("idr-v2"), localId: { kind: "unresolved", reason: "reverted" }, beneficiary: BENEFICIARY, items: v2Items })).toEqual([
       { ok: false, refusal: "local-id-unresolved" },
       { ok: false, refusal: "local-id-unresolved" },
     ]);
   });
 
-  it("D-51: nothing to withdraw builds no call", () => {
+  it("nothing to withdraw builds no call", () => {
     expect(buildWithdrawCalls({ binding, family: family("idr-v2"), localId: LOCAL_ID, beneficiary: BENEFICIARY, items: [] })).toEqual([]);
   });
 });

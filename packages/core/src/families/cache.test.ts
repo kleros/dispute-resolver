@@ -7,7 +7,6 @@ import type { FamilyDetection } from "./types";
 
 const ARBITRABLE = toRegistryAddress("0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf");
 
-/** Lets every pending promise callback run. */
 function settle(): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, 0);
@@ -15,7 +14,7 @@ function settle(): Promise<void> {
 }
 
 describe("createFamilyCache", () => {
-  it("C11: concurrent detections of one arbitrable share one promise and one code read", async () => {
+  it("concurrent detections of one arbitrable share one promise and one code read", async () => {
     const cache = createFamilyCache();
     const { client, calls } = fakeNodeClient(recordedNode(1));
     const first = detectFamily({ client, chainId: 1, arbitrable: ARBITRABLE, cache });
@@ -26,7 +25,7 @@ describe("createFamilyCache", () => {
     expect(codeReads(calls)).toEqual([ARBITRABLE]);
   });
 
-  it("C11: a settled detection is reused for the rest of the session without RPC calls", async () => {
+  it("a settled detection is reused for the rest of the session without RPC calls", async () => {
     const cache = createFamilyCache();
     const { client, calls } = fakeNodeClient(recordedNode(1));
     const first = await detectFamily({ client, chainId: 1, arbitrable: ARBITRABLE, cache });
@@ -36,7 +35,7 @@ describe("createFamilyCache", () => {
     expect(calls).toHaveLength(callsAfterFirst);
   });
 
-  it("C11: a rejected detection is evicted, so the next call probes again", async () => {
+  it("a rejected detection is evicted, so the next call probes again", async () => {
     const cache = createFamilyCache();
     let failing = true;
     const node: FakeNode = { ...recordedNode(1), fail: () => (failing ? rpcError(-32000, "timeout") : undefined) };
@@ -48,7 +47,7 @@ describe("createFamilyCache", () => {
     await expect(detectFamily({ client, chainId: 1, arbitrable: ARBITRABLE, cache })).resolves.toMatchObject({ family: "idr-v2" });
   });
 
-  it("C11: the cache is keyed by arbitrator chain and address", async () => {
+  it("the cache is keyed by arbitrator chain and address", async () => {
     const cache = createFamilyCache();
     const code = recorded(1, ARBITRABLE).code;
     const { client, calls } = fakeNodeClient({ code: { [ARBITRABLE]: code } });
@@ -59,21 +58,21 @@ describe("createFamilyCache", () => {
     expect(codeReads(calls)).toEqual([ARBITRABLE, ARBITRABLE]);
   });
 
-  it("C11: each cache is its own in-memory session store", async () => {
+  it("each cache is its own in-memory session store", async () => {
     const { client, calls } = fakeNodeClient(recordedNode(1));
     await detectFamily({ client, chainId: 1, arbitrable: ARBITRABLE, cache: createFamilyCache() });
     await detectFamily({ client, chainId: 1, arbitrable: ARBITRABLE, cache: createFamilyCache() });
     expect(codeReads(calls)).toEqual([ARBITRABLE, ARBITRABLE]);
   });
 
-  it("C11: without a cache every call probes", async () => {
+  it("without a cache every call probes", async () => {
     const { client, calls } = fakeNodeClient(recordedNode(1));
     await detectFamily({ client, chainId: 1, arbitrable: ARBITRABLE });
     await detectFamily({ client, chainId: 1, arbitrable: ARBITRABLE });
     expect(codeReads(calls)).toEqual([ARBITRABLE, ARBITRABLE]);
   });
 
-  it("C11: get, set and delete hold the promise itself", async () => {
+  it("get, set and delete hold the promise itself", async () => {
     const cache = createFamilyCache();
     const detection = Promise.resolve({ family: "view-only" } as FamilyDetection);
     cache.set(1, ARBITRABLE, detection);
@@ -84,7 +83,7 @@ describe("createFamilyCache", () => {
     await detection;
   });
 
-  it("C11: a stored promise that rejects is evicted by the cache itself", async () => {
+  it("a stored promise that rejects is evicted by the cache itself", async () => {
     const cache = createFamilyCache();
     const failed = Promise.reject(new Error("timeout"));
     cache.set(1, ARBITRABLE, failed);
@@ -93,7 +92,7 @@ describe("createFamilyCache", () => {
     expect(cache.get(1, ARBITRABLE)).toBeUndefined();
   });
 
-  it("C11: a late rejection does not evict the promise that replaced it", async () => {
+  it("a late rejection does not evict the promise that replaced it", async () => {
     const cache = createFamilyCache();
     const deferred: { reject?: (reason: Error) => void } = {};
     const old = new Promise<FamilyDetection>((_resolve, reject) => {

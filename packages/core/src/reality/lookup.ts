@@ -15,7 +15,6 @@ import type { KnownDisputeQuestion, LookupReadClients, RealityQuestion } from ".
 const CLOCK_SKEW_MARGIN_S = 3600;
 const MAX_BLOCK_SEARCH_STEPS = 8;
 
-/** The state shared by every request of one lookup. */
 interface Lookup {
   readonly entry: RealityProxyEntry;
   readonly arbitrator: ReadClient;
@@ -65,7 +64,7 @@ function lookupBudget(deadlineMs: number | undefined, signal: AbortSignal | unde
 
 export function requireClient(clients: GetReadClient, chainId: ChainId): ReadClient {
   const client = clients(chainId);
-  if (client === undefined) throw new Error(`no RPC configured for chain ${String(chainId)}`);
+  if (client === undefined) throw new Error(`reads on chain ${String(chainId)} are unavailable`);
   return client;
 }
 
@@ -75,7 +74,7 @@ async function findLogs<const TEvent extends AbiEvent>(lookup: Lookup, client: R
   return findLatestLogsRemembering(client, request, lookup.counted, memory);
 }
 
-async function headBlock(client: ReadClient): Promise<bigint> {
+function headBlock(client: ReadClient): Promise<bigint> {
   return client.getBlockNumber({ cacheTime: 0 });
 }
 
@@ -206,8 +205,8 @@ function toQuestion(entry: RealityProxyEntry, questionId: Hex, question: { reado
 }
 
 /**
- * Looks up the Reality.eth question and template behind a dispute of a registered proxy straight from the chain (spec
- * 9.1). Rejects on any failure: a missing client, an exhausted budget or deadline, an abort, an RPC error, a log count
+ * Looks up the Reality.eth question and template behind a dispute of a registered proxy straight from the chain.
+ * Rejects on any failure: a missing client, an exhausted budget or deadline, an abort, an RPC error, a log count
  * other than one, inconsistent data.
  */
 export async function lookupRealityQuestion(request: LookupRequest): Promise<RealityQuestion> {

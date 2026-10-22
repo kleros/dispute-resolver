@@ -1,8 +1,6 @@
 /**
- * Today's attachment icon table (`src/components/evidenceTimeline.js`, A17), copied from the versions the old app's lockfile
- * resolves: `is-image` 3.1.0, `is-video` 1.0.1 with `video-extensions` 1.2.0, `is-text-path` 2.0.0 with `text-extensions`
- * 2.4.0. Those matchers lowercase the extension before the lookup, so the source entries with capitals (`PI1`, `PI2`,
- * `PI3`, `tmLanguage`, `tmTheme`) never matched and are left out.
+ * Taken from `is-image` 3.1.0, `video-extensions` 1.2.0 and `text-extensions` 2.4.0. Extensions are matched lowercase,
+ * so the upstream entries with capitals (`PI1`, `PI2`, `PI3`, `tmLanguage`, `tmTheme`) could never match and are left out.
  */
 
 function extensionSet(list: string): ReadonlySet<string> {

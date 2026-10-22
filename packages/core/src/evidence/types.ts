@@ -1,7 +1,6 @@
 import type { Address, ChainId, Fetcher, Hex, ReadClient, UnixSeconds } from "../types";
 import type { AttachmentLink, CanonicalIpfsPath, GatewayOrigin } from "../uri/types";
 
-/** The ERC-1497 `Dispute` event of a dispute on its arbitrable (archon `getDispute` replacement). */
 export interface DisputeEvent {
   readonly metaEvidenceId: bigint;
   readonly evidenceGroupId: bigint;
@@ -11,25 +10,24 @@ export interface DisputeEvent {
   readonly transactionHash: Hex;
 }
 
-/** Exactly one `Dispute` log is required; zero or several are reported, not thrown (D-36). */
+/** Exactly one `Dispute` log is required; zero or several are reported, not thrown. */
 export type DisputeEventResult =
   { readonly status: "found"; readonly event: DisputeEvent } | { readonly status: "not-found" } | { readonly status: "ambiguous"; readonly count: number };
 
-/** The ERC-1497 `MetaEvidence` event of an arbitrable for one meta-evidence ID: its latest emission (P-25). */
+/** The latest emission of the `MetaEvidence` event for one meta-evidence ID. */
 export interface MetaEvidenceEvent {
-  /** The raw, untrusted `_evidence` string; content addressing is checked by the meta-evidence pipeline (A2). */
+  /** The raw, untrusted `_evidence` string; content addressing is checked by the meta-evidence pipeline. */
   readonly uri: string;
   readonly blockNumber: bigint;
   readonly logIndex: number;
   readonly transactionHash: Hex;
-  /** How many `MetaEvidence` logs the arbitrable emitted for this ID; the latest one is `uri` (MODULES.md). */
+  /** How many `MetaEvidence` logs the arbitrable emitted for this ID; the latest one is `uri`. */
   readonly emissions: number;
 }
 
-/** Several emissions of one ID are not ambiguous: the latest by block and log index wins (P-25). */
+/** Several emissions of one ID are not ambiguous: the latest by block and log index wins. */
 export type MetaEvidenceEventResult = { readonly status: "found"; readonly event: MetaEvidenceEvent } | { readonly status: "not-found" };
 
-/** One raw ERC-1497 `Evidence` log, before its JSON is fetched. */
 export interface EvidenceLog {
   readonly evidenceUri: string;
   readonly submitter: Address;
@@ -38,9 +36,8 @@ export interface EvidenceLog {
   readonly transactionHash: Hex;
 }
 
-/** One evidence entry that passed content addressing (D-22) and the schema (A17). */
 export interface EvidenceItem {
-  /** `title`, or `name` when `title` is empty (spec 9.3). */
+  /** `title`, or `name` when `title` is empty. */
   readonly title: string;
   /** Plain text, never markdown. */
   readonly description: string;
@@ -49,31 +46,27 @@ export interface EvidenceItem {
   readonly blockNumber: bigint;
   readonly transactionHash: Hex;
   readonly uri: CanonicalIpfsPath;
-  /** From `fileURI`, or the legacy `evidence` key; never fetched, never rendered inline (A17, B7). */
+  /** From `fileURI`, or the legacy `evidence` key; never fetched, never rendered inline. */
   readonly attachment: AttachmentLink | null;
 }
 
-/**
- * Why an entry was hidden. Counted, never silently dropped (D-22). `undecodable` is an Evidence log whose `_evidence` or
- * `_party` did not decode, so it has no URI to judge.
- */
+/** `undecodable` is an Evidence log whose `_evidence` or `_party` did not decode, so it has no URI to judge. */
 export type HiddenEvidenceReason = "undecodable" | "not-content-addressed" | "fetch-failed" | "not-json" | "schema-invalid";
 
 export interface EvidenceList {
-  /** Newest first (spec 5.14). */
+  /** Newest first. */
   readonly items: readonly EvidenceItem[];
-  /** How many entries were hidden, for every reason: the sum of `hiddenByReason`. */
+  /** The sum of `hiddenByReason`. */
   readonly hiddenEvidenceCount: number;
   readonly hiddenByReason: Readonly<Record<HiddenEvidenceReason, number>>;
 }
 
-/** Inputs of `loadEvidence`. */
 export interface EvidenceContext {
   readonly chainId: ChainId;
   readonly client: ReadClient;
   readonly fetcher: Fetcher;
   readonly gateway: GatewayOrigin;
-  /** From the arbitrator (A22). */
+  /** Read from the arbitrator, never from meta-evidence. */
   readonly arbitrable: Address;
   readonly arbitrator: Address;
   readonly evidenceGroupId: bigint;
@@ -82,7 +75,7 @@ export interface EvidenceContext {
   readonly signal?: AbortSignal;
 }
 
-/** The evidence JSON the app uploads (spec 5.14 step 1); `evidenceSide` is always 0. */
+/** The evidence JSON the app uploads before `submitEvidence`. */
 export interface EvidenceDocument {
   readonly name: string;
   readonly description: string;
