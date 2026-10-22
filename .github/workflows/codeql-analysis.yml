@@ -1,4 +1,4 @@
-# CodeQL code scanning (checklist A21): pushes and pull requests to the integration branch, master and legacy, plus a weekly run.
+# CodeQL code scanning: pushes and pull requests to the integration branch, master and legacy, plus a weekly run.
 # JavaScript and TypeScript need no build, so the analysis reads the sources directly.
 name: "CodeQL"
 

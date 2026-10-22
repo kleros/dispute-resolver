@@ -17,8 +17,8 @@ This document explains how to maintain the two data files behind this:
 - `packages/core/src/metaEvidence/load.ts` (`loadMetaEvidence`): when the arbitrable of a dispute is in
   `REGISTRY.realityProxies` (`getRealityProxy`), the dynamic script of its MetaEvidence is not run. The resolver fetches
   the question with `fetchRealityQuestion` and derives the ruling options with `deriveRealityRulingOptions`. For other
-  arbitrables whose dynamic script uses `reality-eth-lib`, the script still runs, but in the sandboxed script runner
-  (ADR 0004), whose `JSON.parse` rejects duplicate keys (`packages/core/src/reality/guard.ts`); the case is then flagged
+  arbitrables whose dynamic script uses `reality-eth-lib`, the script still runs, but in the sandboxed script runner,
+  whose `JSON.parse` rejects duplicate keys (`packages/core/src/reality/guard.ts`); the case is then flagged
   as unverified (or unresolvable when duplicate keys were detected, `packages/core/src/metaEvidence/reality.ts`).
 - `packages/core/src/reality/question.ts` (`fetchRealityQuestion`): finds the dispute's question ID
   (`DisputeIDToQuestionID` on single-chain proxies, `ArbitrationCreated` on cross-chain foreign proxies), then the
@@ -92,8 +92,7 @@ investigate, not to commit.
 
 Every Reality.eth arbitrable whose disputes are shown by the resolver must be in `REGISTRY.realityProxies`; otherwise
 its dynamic script is run and its cases are flagged as unverified. Candidates are the arbitrables of the display
-allowlist (`packages/core/src/registry/displayAllowlist.ts`, which includes the old app's Reality addresses, readable
-with `git show master:src/ethereum/reality-addresses.js`), and any new arbitrable whose MetaEvidence `dynamicScriptURI`
+allowlist (`packages/core/src/registry/displayAllowlist.ts`), and any new arbitrable whose MetaEvidence `dynamicScriptURI`
 points to a script that contains `populatedJSONForTemplate` (`isRealityScript` in `packages/core/src/reality`).
 
 1. **Identify the proxy.** It must be the arbitrable of the disputes (the `_arbitrable` of `DisputeCreation` on
