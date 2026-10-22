@@ -4,14 +4,14 @@ import { installRpcRedirect, redirectTarget } from "./rpcRedirect";
 
 const TARGET = "https://rpc.example/mainnet";
 
-describe("redirectTarget (D-25)", () => {
-  it("D-25: redirects any key on a known provider host, not only the legacy URL", () => {
+describe("redirectTarget", () => {
+  it("redirects any key on a known provider host", () => {
     expect(redirectTarget(SAMPLE_REDIRECTS, "https://mainnet.infura.io/v3/deadbeefdeadbeefdeadbeefdeadbeef")).toBe(TARGET);
     expect(redirectTarget(SAMPLE_REDIRECTS, "https://mainnet.infura.io/v3/0123456789abcdef0123456789abcdef")).toBe(TARGET);
     expect(redirectTarget(SAMPLE_REDIRECTS, "https://MAINNET.infura.io/v3/key")).toBe(TARGET);
   });
 
-  it("D-25: leaves every other URL alone", () => {
+  it("leaves every other URL alone", () => {
     const plainHttp = new URL("https://mainnet.infura.io/v3/key");
     plainHttp.protocol = "http:";
     for (const url of [
@@ -30,13 +30,13 @@ describe("redirectTarget (D-25)", () => {
     }
   });
 
-  it("D-25: redirects nothing when the host sent no rules", () => {
+  it("redirects nothing when the host sent no rules", () => {
     expect(redirectTarget([], "https://mainnet.infura.io/v3/key")).toBeUndefined();
   });
 });
 
-describe("installRpcRedirect (D-25)", () => {
-  it("D-25: rewrites a matching fetch given as a string, a URL or a Request", async () => {
+describe("installRpcRedirect", () => {
+  it("rewrites a matching fetch given as a string, a URL or a Request", async () => {
     const fake = createFakeRunnerEnvironment();
     installRpcRedirect(fake.env.network, SAMPLE_REDIRECTS);
 
@@ -53,7 +53,7 @@ describe("installRpcRedirect (D-25)", () => {
     await expect((third?.input as Request).text()).resolves.toBe("{}");
   });
 
-  it("D-25: passes a non-matching fetch through untouched", async () => {
+  it("passes a non-matching fetch through untouched", async () => {
     const fake = createFakeRunnerEnvironment();
     installRpcRedirect(fake.env.network, SAMPLE_REDIRECTS);
     const request = new Request("https://cdn.kleros.link/ipfs/Qm");
@@ -61,7 +61,7 @@ describe("installRpcRedirect (D-25)", () => {
     expect(fake.requests[0]?.input).toBe(request);
   });
 
-  it("D-25: rewrites a matching XMLHttpRequest and keeps the other arguments exactly as given", () => {
+  it("rewrites a matching XMLHttpRequest and keeps the other arguments exactly as given", () => {
     const fake = createFakeRunnerEnvironment();
     installRpcRedirect(fake.env.network, SAMPLE_REDIRECTS);
 
@@ -76,7 +76,7 @@ describe("installRpcRedirect (D-25)", () => {
     ]);
   });
 
-  it("D-25: wraps nothing when there are no rules", async () => {
+  it("wraps nothing when there are no rules", async () => {
     const fake = createFakeRunnerEnvironment();
     let wrapped = 0;
     installRpcRedirect(

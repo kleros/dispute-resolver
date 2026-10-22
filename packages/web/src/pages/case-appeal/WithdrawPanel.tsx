@@ -47,10 +47,8 @@ function WithdrawExplanation({ state }: { readonly state: WithdrawState }) {
 }
 
 /**
- * The execution-period withdraw panel (spec §5.15, D-46, D-47, D-49, D-51): the sum the connected account can withdraw
- * across every ruling it contributed to, in the chain's currency (D-10), withdrawn in sequence, one transaction per
- * ruling, each through the chain guard (B3) for the beneficiary the amounts were read for. The withdrawable amount is
- * refreshed once after the last mined withdrawal (P-02).
+ * One transaction per ruling contributed to, sent in sequence for the beneficiary the amounts were read for. The
+ * withdrawable amount is refreshed once, after the last mined withdrawal.
  */
 export function WithdrawPanel({ state, actions, chain }: WithdrawPanelProps) {
   const sequence = useWriteSequence();

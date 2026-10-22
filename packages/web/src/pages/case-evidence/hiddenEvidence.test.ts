@@ -10,26 +10,26 @@ function list(hidden: Partial<Record<HiddenEvidenceReason, number>>): EvidenceLi
   return { items: [], hiddenEvidenceCount, hiddenByReason };
 }
 
-describe("hiddenEvidenceText (D-22)", () => {
-  it("D-22: nothing hidden has no text", () => {
+describe("hiddenEvidenceText", () => {
+  it("nothing hidden has no text", () => {
     expect(hiddenEvidenceText(list({}))).toBeNull();
   });
 
-  it("D-22: one reason reads as the ledger's example", () => {
+  it("a single reason follows the total without its own count", () => {
     expect(hiddenEvidenceText(list({ "not-content-addressed": 2 }))).toBe("2 evidence items hidden: not content-addressed");
   });
 
-  it("D-22: a single hidden item is singular", () => {
+  it("a single hidden item is singular", () => {
     expect(hiddenEvidenceText(list({ "fetch-failed": 1 }))).toBe("1 evidence item hidden: could not be fetched");
   });
 
-  it("D-22: several reasons are counted one by one", () => {
+  it("several reasons are counted one by one", () => {
     expect(hiddenEvidenceText(list({ undecodable: 1, "not-json": 2, "schema-invalid": 1 }))).toBe(
       "4 evidence items hidden: 1 undecodable event log, 2 not valid JSON, 1 not a valid evidence document",
     );
   });
 
-  it.each(Object.keys(NONE) as HiddenEvidenceReason[])("D-22: labels the %s reason", (reason) => {
+  it.each(Object.keys(NONE) as HiddenEvidenceReason[])("labels the %s reason", (reason) => {
     expect(HIDDEN_REASON_LABELS[reason]).toMatch(/\S/);
     expect(hiddenEvidenceText(list({ [reason]: 3 }))).toBe(`3 evidence items hidden: ${HIDDEN_REASON_LABELS[reason]}`);
   });

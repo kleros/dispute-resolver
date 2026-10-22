@@ -29,8 +29,8 @@ afterEach(() => {
   reload.mockReset();
 });
 
-describe("RootErrorBoundary (ARCHITECTURE.md §2.1, §5.7)", () => {
-  it("§2.1: renders its children while nothing throws", () => {
+describe("RootErrorBoundary", () => {
+  it("renders its children while nothing throws", () => {
     render(
       <RootErrorBoundary>
         <p>App</p>
@@ -39,7 +39,7 @@ describe("RootErrorBoundary (ARCHITECTURE.md §2.1, §5.7)", () => {
     expect(screen.getByText("App")).toBeInTheDocument();
   });
 
-  it("D-36: a render error keeps a minimal frame instead of a blank page", () => {
+  it("a render error keeps a minimal frame instead of a blank page", () => {
     render(
       <RootErrorBoundary>
         <Broken />
@@ -50,7 +50,7 @@ describe("RootErrorBoundary (ARCHITECTURE.md §2.1, §5.7)", () => {
     expect(within(screen.getByRole("contentinfo")).getByRole("link", { name: "I need help" })).toHaveAttribute("href", "https://t.me/kleros");
   });
 
-  it("D-36: does not show the error's text, which may come from untrusted data", () => {
+  it("does not show the error's text, which may come from untrusted data", () => {
     render(
       <RootErrorBoundary>
         <Broken />
@@ -59,7 +59,7 @@ describe("RootErrorBoundary (ARCHITECTURE.md §2.1, §5.7)", () => {
     expect(screen.queryByText(/render failed/)).not.toBeInTheDocument();
   });
 
-  it("§2.1: the reload button reloads the page", async () => {
+  it("the reload button reloads the page", async () => {
     const user = userEvent.setup();
     render(
       <RootErrorBoundary>
@@ -70,7 +70,7 @@ describe("RootErrorBoundary (ARCHITECTURE.md §2.1, §5.7)", () => {
     expect(reload).toHaveBeenCalledTimes(1);
   });
 
-  it("§2.1: the footer of the minimal frame names no chain and links no explorer", () => {
+  it("the footer of the minimal frame names no chain and links no explorer", () => {
     render(
       <RootErrorBoundary>
         <Broken />

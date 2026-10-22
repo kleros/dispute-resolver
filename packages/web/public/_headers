@@ -1,7 +1,7 @@
-# Netlify response headers (ARCHITECTURE.md §10; checklist C1, C2, C3; ADR 0004).
+# Netlify response headers: the app's policies and the separate policy of the script runner page.
 # Netlify combines the headers of every rule a path matches and has no path negation, so the app's policies are
 # attached to the enumerated app route patterns, none of which matches the script runner under /__runner/.
-# The report-only policy placeholder is replaced at build time by the policy of C2 (src/routing/headers).
+# The report-only policy placeholder is replaced at build time by the policy built in src/routing/headers.
 
 /*
   X-Content-Type-Options: nosniff

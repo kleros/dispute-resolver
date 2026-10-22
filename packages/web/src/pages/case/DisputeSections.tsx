@@ -2,10 +2,10 @@ import { hasAppealPanel, type ChainConfig, type FamilyDetection, type Period } f
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { queryKeys, useCaseRefresh, type CaseDispute, type SectionData } from "../../data";
-import { RECORD_BAND, SectionBoundary, SectionSkeleton } from "../../ui";
+import { RECORD_BAND, SectionBoundary, SectionSkeleton, useRevealIn } from "../../ui";
 import { AppealSection } from "../case-appeal";
 import { EvidenceSection } from "../case-evidence";
-import { CaseOverview, DecisionAlert, DisputeSummary, DisputeTimeline, MetaEvidenceSourceNotice, RealityNotice } from "../case-summary";
+import { CaseOverview, DecisionAlert, DisputeSummary, DisputeTimeline, MetaEvidenceSourceNotice, RealityNotice, ScriptDetailsNotice } from "../case-summary";
 import { CaseAccordion, type CaseAccordionItem } from "./CaseAccordion";
 import { CompatibilityBanner } from "./CompatibilityBanner";
 import { foundDispute } from "./pageState";
@@ -56,6 +56,9 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
   const disputeKey = `${dispute.chainId.toString()}:${dispute.disputeId.toString()}`;
   const props = { dispute, chain };
   const appealItem = useAppealItem(disputeKey, found?.dispute.period, dispute.family);
+  // Only the accordion as a whole reveals: a CSS animation restarts each time `hidden` is removed, so a reveal inside a
+  // body would replay on every open, nested in the body's own fade.
+  const accordionReveal = useRevealIn(appealItem === undefined);
 
   const rereadMetaEvidence = async () => {
     if (found !== undefined) await client.invalidateQueries({ queryKey: queryKeys.metaEvidence(dispute.chainId, dispute.disputeId, found.binding.arbitrated) });
@@ -111,12 +114,18 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
           {boundary("timeline", "Timeline", rereadDetails, <DisputeTimeline {...props} />)}
         </div>
       )}
-      {boundary("decision", "Decision", rereadAppeal, <DecisionAlert {...props} />)}
-      {viewOnly ? <CompatibilityBanner /> : null}
+      {/* The notices come before the decision: they qualify everything below the band. */}
       {boundary("meta-evidence-source", "Meta-evidence source", rereadMetaEvidence, <MetaEvidenceSourceNotice {...props} />)}
+      {boundary("script-details", "Script details notice", rereadMetaEvidence, <ScriptDetailsNotice {...props} />)}
+      {viewOnly ? <CompatibilityBanner /> : null}
+      {boundary("decision", "Decision", rereadAppeal, <DecisionAlert {...props} />)}
       {boundary("summary", "Dispute summary", rereadMetaEvidence, <DisputeSummary {...props} displayRetry={displayRetry} />)}
       {boundary("reality", "Reality notice", rereadMetaEvidence, <RealityNotice {...props} />)}
-      {appealItem === undefined ? <SectionSkeleton variant="bars" lines={3} /> : <CaseAccordion key={`${disputeKey}:${items.map((item) => item.title).join("|")}`} items={items} />}
+      {appealItem === undefined ? (
+        <SectionSkeleton variant="bars" lines={3} />
+      ) : (
+        <CaseAccordion key={`${disputeKey}:${items.map((item) => item.title).join("|")}`} items={items} className={accordionReveal} />
+      )}
     </>
   );
 }

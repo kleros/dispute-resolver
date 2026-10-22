@@ -23,7 +23,7 @@ function TrashIcon() {
   );
 }
 
-/** Which of a party row's two fields a validation error belongs to (D-08, B20). */
+/** Which of a party row's two fields a validation error belongs to. */
 function partyErrors(code: CreateFieldErrorCode | undefined): { readonly alias?: string; readonly address?: string } {
   if (code === undefined) return {};
   const message = fieldErrorMessage("party", code);
@@ -86,7 +86,6 @@ function PartyFields({
   );
 }
 
-/** The parties and their aliases (spec §4.3): several rows, each address paired with its own alias (D-08, B20). */
 export function PartiesSection({ form, errors, onChange }: SectionProps) {
   return (
     <FormGroup title="Parties" description="Optional. Name the addresses involved, so jurors see who is who.">
@@ -111,9 +110,8 @@ export function PartiesSection({ form, errors, onChange }: SectionProps) {
 }
 
 /**
- * The primary document: uploading it signs in to Atlas when needed; the returned path goes through core's canonical
- * check before it enters the draft, and a path that fails it is refused with a message. Until a wallet is connected on
- * the page chain the field is locked, so no sign-in is requested; on another chain the switch is offered under it.
+ * The uploaded path goes through core's canonical check before it enters the draft. Until a wallet is connected on the
+ * page chain the field is locked, so no sign-in is requested.
  */
 export function DocumentSection({ chain, form, errors, onChange }: SectionProps) {
   const [refused, setRefused] = useState(false);
@@ -138,7 +136,7 @@ export function DocumentSection({ chain, form, errors, onChange }: SectionProps)
             onChange((current) => setPrimaryDocument(current, null));
           }}
         />
-        {wrongChain === null ? null : <WriteStatusNotice status={wrongChain} className="mt-2" />}
+        {wrongChain === null ? null : <WriteStatusNotice status={wrongChain} beforeAttempt className="mt-2" />}
         {code === undefined ? null : (
           <p role="alert" className="mt-2 text-sm text-klerosUIComponentsError">
             {fieldErrorMessage("primaryDocument", code)}

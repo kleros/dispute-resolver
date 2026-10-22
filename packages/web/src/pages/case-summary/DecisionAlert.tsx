@@ -8,21 +8,24 @@ import { TimelineBullet } from "./TimelineBullet";
 
 type ShownDecision = Exclude<Decision, { kind: "none" }>;
 
-/** The explanation under the ruling (spec 5.9). */
 function explanation(decision: ShownDecision): string {
   if (decision.kind === "winner") return decision.wonBy === "default" ? "Won by default" : "Won by jury decision";
   const appeal = "This decision can be appealed within the appeal period.";
   return decision.appealHint ? `${appeal} Go to the arbitrable application to appeal this ruling.` : appeal;
 }
 
-function DecisionPanel({ decision }: { readonly decision: Decision }) {
+function DecisionPanel({ decision, className }: { readonly decision: Decision; readonly className: string | undefined }) {
   const headingId = useId();
-  // Periods 0 to 2 show no decision alert (spec 5.9).
   if (decision.kind === "none") return null;
   return (
     <section
       aria-labelledby={headingId}
-      className="grid grid-cols-[24px_minmax(0,1fr)] items-start gap-x-4 gap-y-1 rounded-[18px] border-2 border-klerosUIComponentsPrimaryBlue bg-klerosUIComponentsMediumBlue px-4 py-4 lg:px-8 lg:py-6"
+      className={[
+        "grid grid-cols-[24px_minmax(0,1fr)] items-start gap-x-4 gap-y-1 rounded-[18px] border-2 border-klerosUIComponentsPrimaryBlue bg-klerosUIComponentsMediumBlue px-4 py-4 lg:px-8 lg:py-6",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       <span aria-hidden="true" className="row-span-2 mt-0.5">
         <TimelineBullet state={decision.kind === "winner" ? "concluded" : "current"} />
@@ -37,9 +40,8 @@ function DecisionPanel({ decision }: { readonly decision: Decision }) {
 }
 
 /**
- * The decision (spec 5.9): the jury decision in the appeal period, the winner in execution, nothing before. Its text
- * waits for the settled view so it never flips from fallback text to the meta-evidence's options (P-20); a failed read
- * degrades this section only (D-36).
+ * The text waits for the settled view so it never flips from fallback text to the meta-evidence's options; a failed read
+ * degrades this section only.
  */
 export function DecisionAlert({ dispute }: CaseSectionProps) {
   const view = existingView(dispute);
@@ -48,7 +50,7 @@ export function DecisionAlert({ dispute }: CaseSectionProps) {
   const decided = period === 3 || period === 4;
   return (
     <SectionContent data={viewField(view, (value) => value.decision)} section="Decision" loading={decided ? <SectionSkeleton variant="card" lines={1} /> : null}>
-      {(decision) => <DecisionPanel decision={decision} />}
+      {(decision, reveal) => <DecisionPanel decision={decision} className={reveal} />}
     </SectionContent>
   );
 }

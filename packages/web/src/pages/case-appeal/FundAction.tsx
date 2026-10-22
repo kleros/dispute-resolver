@@ -9,9 +9,9 @@ import type { AppealActions } from "./useAppealActions";
 export interface FundActionProps {
   /** What is funded, for the accessible names of the field and the button ("Yes", "the new answer"). */
   readonly subject: string;
-  /** The ruling code to fund; `null` while the card has no answer to fund (spec §5.12: Fund stays disabled). */
+  /** `null` while the card has no answer to fund. */
   readonly code: bigint | null;
-  /** The suggested contribution: the remaining amount of a fixed card, the loser total of a free input or composer. */
+  /** The suggested contribution: what remains to fund of the card, or of the answer entered into it. */
   readonly suggested: bigint;
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
@@ -24,12 +24,8 @@ function inFlight(status: WriteStatus): boolean {
 }
 
 /**
- * The contribution field, Fund and the write's status (spec §5.12 card contents and fund action). The field shows the
- * suggested amount and follows it until the user edits it (D-54); once a funding is mined it follows the refreshed
- * amount again. When the suggested amount drops to 0 the edit is dropped, so the disabled field shows 0. Fund is
- * disabled when the suggested amount is 0, without an answer to fund, for an amount that cannot be sent (D-14), while
- * a funding is in flight, and when the panel disables it. The write goes through the wallet's chain guard (B3, D-48) to the arbitrable the
- * arbitrator names (A22, B10), and the case refreshes once it is mined (D-07, P-02).
+ * The field follows the suggested amount until the user edits it, and again once a funding is mined or the answer
+ * under the field changes. When the suggested amount drops to 0 the edit is dropped, so the disabled field shows 0.
  *
  * The amount sent is always the text the field shows. The library field reports a parsed value through `onChange` but
  * stays silent for text it treats as unfinished, such as "-" alone, so the raw text also arrives through `onInput`.
@@ -40,7 +36,12 @@ export function FundAction({ subject, code, suggested, actions, chain, isDisable
   const write = useWrite();
   /** The contribution as the field shows it once the user edited it; `null` while it follows the suggested amount. */
   const [edited, setEdited] = useState<string | null>(null);
+  const [previousCode, setPreviousCode] = useState(code);
   const nothingToFund = suggested === 0n;
+  if (code !== previousCode) {
+    setPreviousCode(code);
+    setEdited(null);
+  }
   if (nothingToFund && edited !== null) setEdited(null);
   const contribution = parseContribution(edited ?? formatEther(suggested));
   const busy = inFlight(write.status);

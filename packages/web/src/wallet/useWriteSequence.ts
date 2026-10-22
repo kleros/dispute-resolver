@@ -9,16 +9,16 @@ async function refreshAfter(options: WriteOptions, receipt: WriteReceipt): Promi
   try {
     await options.onMined?.(receipt);
   } catch {
-    // The withdrawals are mined; a failed refresh leaves the panel showing its own unavailable state (D-36).
+    // The withdrawals are mined; a failed refresh leaves the panel showing its own unavailable state.
   }
 }
 
 /**
- * Withdrawals in sequence (D-51, ARCHITECTURE.md §6.2): one transaction per build, in order, each signed only after
- * the previous receipt is mined; the chain guard runs before every signature. The sequence stops at the first outcome
- * other than `mined`. `options.onMined` runs once, after the last mined receipt or at a stop that follows at least one
- * mined write, so the withdrawable amount is refreshed once (P-02). A refused item refuses the sequence before any
- * signature; an empty list is refused as `withdraw-unsupported` (nothing to withdraw).
+ * Withdrawals in sequence: one transaction per build, in order, each signed only after the previous receipt is mined;
+ * the chain guard runs before every signature. The sequence stops at the first outcome other than `mined`.
+ * `options.onMined` runs once, after the last mined receipt or at a stop that follows at least one mined write, so the
+ * withdrawable amount is refreshed once. A refused item refuses the sequence before any signature; an empty list is
+ * refused as `withdraw-unsupported` (nothing to withdraw).
  */
 export function useWriteSequence(): WriteSequenceController {
   const environment = useWriteEnvironment();
@@ -30,7 +30,6 @@ export function useWriteSequence(): WriteSequenceController {
       const report = (index: number) => (current: WriteStatus) => {
         setStatus({ index, total, current });
       };
-      // A refused item refuses the whole sequence before anything is signed (D-07).
       const refusedIndex = builds.findIndex((build) => !build.ok);
       const refused = builds[refusedIndex];
       if (refused !== undefined) return performWrite(environment, refused, options, report(refusedIndex));

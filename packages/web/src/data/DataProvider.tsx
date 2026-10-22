@@ -6,7 +6,7 @@ import { createCoreDeps } from "./coreDeps";
 import { createPersistOptions, type PersistStorage } from "./persistence";
 import { createQueryClient } from "./queryClient";
 
-/** `window.localStorage`, or `undefined` when reading the property throws (blocked storage, sandboxed contexts). */
+/** Reading `window.localStorage` itself throws when storage is blocked or the context is sandboxed. */
 function browserStorage(): PersistStorage | undefined {
   let storage: PersistStorage | undefined;
   try {
@@ -17,10 +17,7 @@ function browserStorage(): PersistStorage | undefined {
   return storage;
 }
 
-/**
- * The data layer's root (ARCHITECTURE.md §2.1, §5): one QueryClient whose allowlisted queries persist to localStorage
- * through the validating deserializer (§5.4), and one `CoreDeps` (§5.1). Mounting makes no network request.
- */
+/** Mounting makes no network request. */
 export function DataProvider({ config, children }: { readonly config: AppConfig; readonly children?: ReactNode }) {
   const [setup] = useState(() => {
     const storage = browserStorage();

@@ -16,13 +16,14 @@ import {
 import { QueryClient } from "@tanstack/react-query";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useEffect, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { CaseDispute, CaseWriteContext } from "../../data";
+import type { CaseDispute } from "../../data";
 import { TEST_UPLOAD_PATH, fakeUploader, type FakeUploader } from "../../test/atlas";
-import { TEST_ARBITRABLE, sectionLoading, sectionReady, sectionUnavailable, testFamily, testFoundLookup } from "../../test/data";
+import { TEST_ARBITRABLE, sectionLoading, sectionReady, sectionUnavailable, testFamily, testFoundLookup, testWriteContext } from "../../test/data";
 import { renderWithProviders } from "../../test/shell";
 import { shortenAddress } from "../../ui";
-import { TEST_TX_HASH, createTestWallet, fakeWriteController, testReceipt, type FakeWriteController, type TestWallet } from "../../test/wallet";
+import { TEST_TX_HASH, createTestWallet, fakeWriteController, holdChainSwitches, testReceipt, type FakeWriteController, type TestWallet } from "../../test/wallet";
 import type { UploadResult } from "../../atlas";
 import type { WriteStatus } from "../../wallet";
 import { EvidenceSection } from "./EvidenceSection";
@@ -55,7 +56,6 @@ function configuredChain(chainId: ChainId): ChainConfig {
   return chain;
 }
 
-/** A promise the test settles by hand. */
 function deferred<T>() {
   const control: { resolve?: (value: T) => void } = {};
   const promise = new Promise<T>((resolve) => {
@@ -124,7 +124,6 @@ function recorded(name: string): { readonly chain: ChainConfig; readonly evidenc
   return { chain: configuredChain(entry.chainId), evidence: evidenceList(items), decisions };
 }
 
-/** The label of a timeline row: an entry's title, or the event name and its UTC time. */
 function timelineRows(): string[] {
   const timeline = screen.getByRole("list", { name: "Evidence timeline" });
   return within(timeline)
@@ -132,18 +131,12 @@ function timelineRows(): string[] {
     .map((row) => within(row).queryByRole("heading", { level: 3 })?.textContent ?? row.textContent);
 }
 
-/** The evidence entries of the timeline, without its "Appealed" and "Dispute Raised" events. */
 function evidenceEntries(): HTMLElement[] {
   return within(screen.getByRole("list", { name: "Evidence timeline" })).getAllByRole("article");
 }
 
 function appealedRow(appealedAt: number): string {
   return `Appealed${new Date(appealedAt * 1000).toUTCString()}`;
-}
-
-function writeContext(overrides: Partial<CaseWriteContext> = {}): CaseWriteContext {
-  const lookup = testFoundLookup();
-  return { binding: lookup.binding, family: testFamily(), localId: { kind: "local-id", value: 7n }, override: undefined, appealInfo: null, ...overrides };
 }
 
 interface DisputeOptions {
@@ -157,7 +150,7 @@ interface DisputeOptions {
 function caseDispute({
   period = 0,
   evidence = sectionReady(evidenceList([])),
-  write = sectionReady(writeContext()),
+  write = sectionReady(testWriteContext()),
   raisedAt = 1_700_000_000,
   appealDecisions = sectionReady([]),
 }: DisputeOptions = {}): CaseDispute {
@@ -187,6 +180,24 @@ interface RenderOptions extends DisputeOptions {
   readonly wallet?: TestWallet;
   readonly connected?: boolean;
   readonly chain?: ChainConfig;
+}
+
+/** The evidence section mounted with its list still loading; `onReady` hands over what settles the list in place. */
+function SettlingSection({ onReady }: { readonly onReady: (settle: () => void) => void }) {
+  const [dispute, setDispute] = useState(() => caseDispute({ evidence: sectionLoading }));
+  useEffect(() => {
+    onReady(() => {
+      setDispute(caseDispute());
+    });
+  }, [onReady]);
+  return <EvidenceSection dispute={dispute} chain={CHAIN} />;
+}
+
+/** A wallet on `chainId` that has not answered the switch to the page chain the app asks for once it connects. */
+function walletAwaitingSwitch(chainId: number): TestWallet {
+  const wallet = createTestWallet({ chainId });
+  holdChainSwitches(wallet);
+  return wallet;
 }
 
 async function renderSection({ uploader = fakeUploader(), wallet = createTestWallet(), connected = true, chain = CHAIN, ...dispute }: RenderOptions = {}) {
@@ -252,8 +263,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("EvidenceSection: evidence list (spec 5.14)", () => {
-  it("spec 5.14: lists valid entries newest first with title, plain-text description, submitter and UTC time", async () => {
+describe("EvidenceSection: evidence list", () => {
+  it("lists valid entries newest first with title, plain-text description, submitter and UTC time", async () => {
     const newer = item({ title: "Second", submitter: OTHER_SUBMITTER, timestamp: 1_700_000_900, transactionHash: "0x02".padEnd(66, "0") as `0x${string}` });
     const older = item({ title: "First", description: "**not markdown**" });
     await renderSection({ evidence: sectionReady(evidenceList([newer, older])) });
@@ -270,7 +281,7 @@ describe("EvidenceSection: evidence list (spec 5.14)", () => {
     expect(within(second).getByText(shortenAddress(SUBMITTER))).toBeInTheDocument();
   });
 
-  it("A17: an attachment is a new-tab link with its icon, never rendered inline", async () => {
+  it("an attachment is a new-tab link with its icon, never rendered inline", async () => {
     await renderSection({ evidence: sectionReady(evidenceList([item({ attachment: attachmentLink("photo.png") })])) });
     const link = screen.getByRole("link", { name: /photo\.png/ });
     expect(link).toHaveAttribute("href", `https://cdn.kleros.link/ipfs/${ATTACHMENT_CID}/photo.png`);
@@ -280,7 +291,7 @@ describe("EvidenceSection: evidence list (spec 5.14)", () => {
     expect(entry?.querySelector("img, video, audio, iframe, object, embed")).toBeNull();
   });
 
-  it("D-32: an attachment that is not a safe link is shown as text", async () => {
+  it("an attachment that is not a safe link is shown as text", async () => {
     await renderSection({ evidence: sectionReady(evidenceList([item({ attachment: { kind: "text", text: "http://example.com/a.pdf" } })])) });
     const [entry] = evidenceEntries();
     if (entry === undefined) throw new Error("Expected one entry.");
@@ -289,7 +300,7 @@ describe("EvidenceSection: evidence list (spec 5.14)", () => {
     expect(within(entry).queryByRole("link", { name: /example\.com/ })).toBeNull();
   });
 
-  it("D-22: shows how many entries were hidden and why", async () => {
+  it("shows how many entries were hidden and why", async () => {
     await renderSection({ evidence: sectionReady(evidenceList([item()], { "not-content-addressed": 2 })) });
     expect(screen.getByText("Hidden evidence")).toBeVisible();
     const hidden = screen.getByText(/evidence items hidden/);
@@ -297,44 +308,44 @@ describe("EvidenceSection: evidence list (spec 5.14)", () => {
     expect(hidden).toHaveTextContent("2 evidence items hidden: not content-addressed");
   });
 
-  it("D-22: labels an undecodable log among other reasons", async () => {
+  it("labels an undecodable log among other reasons", async () => {
     await renderSection({ evidence: sectionReady(evidenceList([], { undecodable: 1, "fetch-failed": 1 })) });
     expect(screen.getByText(/evidence items hidden/)).toHaveTextContent("2 evidence items hidden: 1 undecodable event log, 1 could not be fetched");
   });
 
-  it("D-22: no hidden count shows when nothing is hidden", async () => {
+  it("no hidden count shows when nothing is hidden", async () => {
     await renderSection({ evidence: sectionReady(evidenceList([item()])) });
     expect(evidenceEntries()).toHaveLength(1);
     expect(screen.queryByText("Hidden evidence")).toBeNull();
     expect(screen.queryByText(/hidden/)).toBeNull();
   });
 
-  it("spec 5.14: an empty evidence array shows 'No evidence submitted yet.' and no 'Dispute Raised'", async () => {
+  it("an empty evidence array shows 'No evidence submitted yet.' and no 'Dispute Raised'", async () => {
     await renderSection();
     expect(screen.getByText("No evidence submitted yet.")).toBeInTheDocument();
     expect(screen.queryByText("Dispute Raised")).toBeNull();
   });
 
-  it("spec 5.14: 'Dispute Raised' shows the Dispute event's time below the entries, even when every entry is hidden", async () => {
+  it("'Dispute Raised' shows the Dispute event's time below the entries, even when every entry is hidden", async () => {
     await renderSection({ evidence: sectionReady(evidenceList([], { "schema-invalid": 1 })), raisedAt: 1_700_000_000 });
     expect(screen.getByText("Dispute Raised")).toBeInTheDocument();
     expect(screen.getByText(new Date(1_700_000_000_000).toUTCString())).toBeInTheDocument();
     expect(screen.queryByText("No evidence submitted yet.")).toBeNull();
   });
 
-  it("D-36: the list shows a skeleton while loading", async () => {
+  it("the list shows a skeleton while loading", async () => {
     await renderSection({ evidence: sectionLoading });
     expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
   });
 
-  it("S-5: a missing Dispute event degrades the list only, and submission stays available", async () => {
+  it("a missing Dispute event degrades the list only, and submission stays available", async () => {
     await renderSection({ evidence: sectionUnavailable("not-found", "The Dispute event of this dispute was not found.") });
     expect(screen.getByText("Evidence unavailable")).toBeInTheDocument();
     expect(screen.getByText("The Dispute event of this dispute was not found.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Submit New Evidence" })).toBeEnabled();
   });
 
-  it("S-5: Retry reads the Dispute event and the evidence again", async () => {
+  it("Retry reads the Dispute event and the evidence again", async () => {
     const { user } = await renderSection({ evidence: sectionUnavailable("rpc-error") });
     await user.click(screen.getByRole("button", { name: "Retry Evidence" }));
     expect(invalidations).toEqual(
@@ -346,8 +357,8 @@ describe("EvidenceSection: evidence list (spec 5.14)", () => {
   });
 });
 
-describe("EvidenceSection: 'Appealed' markers (D-03)", () => {
-  it("D-03: mainnet 328 shows an 'Appealed' marker at each of its three AppealDecision blocks, among the entries by block", async () => {
+describe("EvidenceSection: 'Appealed' markers", () => {
+  it("mainnet 328 shows an 'Appealed' marker at each of its three AppealDecision blocks, among the entries by block", async () => {
     const { chain, evidence, decisions } = recorded("mainnet 328");
     await renderSection({ chain, evidence: sectionReady(evidence), appealDecisions: sectionReady(decisions), raisedAt: 1_596_657_000 });
     expect(timelineRows()).toEqual([
@@ -368,7 +379,7 @@ describe("EvidenceSection: 'Appealed' markers (D-03)", () => {
     expect(evidenceEntries()).toHaveLength(9);
   });
 
-  it("D-03: Gnosis 121 shows an 'Appealed' marker at its AppealDecision block, among the entries by block", async () => {
+  it("Gnosis 121 shows an 'Appealed' marker at its AppealDecision block, among the entries by block", async () => {
     const { chain, evidence, decisions } = recorded("Gnosis 121");
     await renderSection({ chain, evidence: sectionReady(evidence), appealDecisions: sectionReady(decisions), raisedAt: 1_693_244_000 });
     expect(timelineRows()).toEqual([
@@ -385,25 +396,25 @@ describe("EvidenceSection: 'Appealed' markers (D-03)", () => {
     ]);
   });
 
-  it("D-03: an appeal in the block of an entry is placed below that entry", async () => {
+  it("an appeal in the block of an entry is placed below that entry", async () => {
     const entry = item({ title: "Same block", blockNumber: 700n });
     await renderSection({ evidence: sectionReady(evidenceList([entry])), appealDecisions: sectionReady([{ blockNumber: 700n, appealedAt: 1_700_000_700 }]) });
     expect(timelineRows().slice(0, 2)).toEqual(["Same block", appealedRow(1_700_000_700)]);
   });
 
-  it("D-03: with no evidence the markers show above 'No evidence submitted yet.', without 'Dispute Raised'", async () => {
+  it("with no evidence the markers show above 'No evidence submitted yet.', without 'Dispute Raised'", async () => {
     await renderSection({ appealDecisions: sectionReady([{ blockNumber: 700n, appealedAt: 1_700_000_700 }]) });
     expect(timelineRows()).toEqual([appealedRow(1_700_000_700)]);
     expect(screen.getByText("No evidence submitted yet.")).toBeInTheDocument();
     expect(screen.queryByText("Dispute Raised")).toBeNull();
   });
 
-  it("D-03, D-36: the entries show while the appeal decisions load", async () => {
+  it("the entries show while the appeal decisions load", async () => {
     await renderSection({ evidence: sectionReady(evidenceList([item({ title: "Only entry" })])), appealDecisions: sectionLoading });
     expect(timelineRows()).toEqual(["Only entry", `Dispute Raised${new Date(1_700_000_000_000).toUTCString()}`]);
   });
 
-  it("D-03, D-36: unreadable appeal decisions keep the entries and say the markers are unavailable, with a Retry that reads the details again", async () => {
+  it("unreadable appeal decisions keep the entries and say the markers are unavailable, with a Retry that reads the details again", async () => {
     const { user } = await renderSection({
       evidence: sectionReady(evidenceList([item({ title: "Only entry" })])),
       appealDecisions: sectionUnavailable("rpc-error", "logs refused"),
@@ -416,19 +427,19 @@ describe("EvidenceSection: 'Appealed' markers (D-03)", () => {
   });
 });
 
-describe("EvidenceSection: submit control (spec 5.14)", () => {
-  it("spec 5.14: no submit control in the execution period", async () => {
+describe("EvidenceSection: submit control", () => {
+  it("no submit control in the execution period", async () => {
     await renderSection({ period: 4 });
     expect(screen.queryByRole("button", { name: /Submit New Evidence|Go to Arbitrable Application/ })).toBeNull();
   });
 
-  it("spec 5.14: a view-only arbitrable gets the disabled 'Go to Arbitrable Application' button", async () => {
+  it("a view-only arbitrable gets the disabled 'Go to Arbitrable Application' button", async () => {
     const family = testFamily({ family: "view-only", capabilities: { localId: "none", evidence: { kind: "none" }, appeal: { kind: "none" }, withdraw: { kind: "none" } } });
-    await renderSection({ write: sectionReady(writeContext({ family })) });
+    await renderSection({ write: sectionReady(testWriteContext({ family })) });
     expect(screen.getByRole("button", { name: "Go to Arbitrable Application to Submit Evidence" })).toBeDisabled();
   });
 
-  it("CE-2, D-36: a failed write context read shows 'Evidence submission unavailable' with the reason, not view-only", async () => {
+  it("a failed write context read shows 'Evidence submission unavailable' with the reason, not view-only", async () => {
     await renderSection({ write: sectionUnavailable("rpc-error", "The RPC request timed out.") });
     expect(screen.getByText("Evidence submission unavailable")).toBeInTheDocument();
     expect(screen.getByText("The RPC request timed out.")).toBeInTheDocument();
@@ -436,7 +447,7 @@ describe("EvidenceSection: submit control (spec 5.14)", () => {
     expect(screen.queryByText("This arbitrable contract does not accept evidence through the Dispute Resolver.")).toBeNull();
   });
 
-  it("CE-2, D-36: Retry reads the family and the dispute details again", async () => {
+  it("Retry reads the family and the dispute details again", async () => {
     const { user } = await renderSection({ write: sectionUnavailable("rpc-error") });
     await user.click(screen.getByRole("button", { name: "Retry Evidence submission" }));
     expect(invalidations).toEqual(
@@ -447,7 +458,7 @@ describe("EvidenceSection: submit control (spec 5.14)", () => {
     );
   });
 
-  it("D-52: no sign-in control and no signature before the first upload action", async () => {
+  it("no sign-in control and no signature before the first upload action", async () => {
     const uploader = fakeUploader({ isSignedIn: false });
     const { user } = await renderSection({ uploader });
     expect(screen.queryByRole("button", { name: /sign in/i })).toBeNull();
@@ -457,7 +468,7 @@ describe("EvidenceSection: submit control (spec 5.14)", () => {
     expect(uploader.uploadJson).not.toHaveBeenCalled();
   });
 
-  it("spec 5.14: Return closes the modal", async () => {
+  it("Return closes the modal", async () => {
     const { user } = await renderSection();
     const modal = await openModal(user);
     await user.click(within(modal).getByRole("button", { name: "Return" }));
@@ -466,7 +477,7 @@ describe("EvidenceSection: submit control (spec 5.14)", () => {
     });
   });
 
-  it("spec 5.14: clicking the overlay closes the modal", async () => {
+  it("clicking the overlay closes the modal", async () => {
     const { user } = await renderSection();
     const modal = await openModal(user);
     const overlay = modalOverlay(modal);
@@ -476,7 +487,7 @@ describe("EvidenceSection: submit control (spec 5.14)", () => {
     });
   });
 
-  it("spec 5.14: Escape closes the modal", async () => {
+  it("Escape closes the modal", async () => {
     const { user } = await renderSection();
     await openModal(user);
     await user.keyboard("{Escape}");
@@ -486,8 +497,8 @@ describe("EvidenceSection: submit control (spec 5.14)", () => {
   });
 });
 
-describe("EvidenceSection: submission (spec 5.14)", () => {
-  it("A16, A22: uploads evidence.json with role policy, then calls submitEvidence(localId, uri) on the arbitrated contract", async () => {
+describe("EvidenceSection: submission", () => {
+  it("uploads evidence.json with role policy, then calls submitEvidence(localId, uri) on the arbitrated contract", async () => {
     const { user, uploader } = await renderSection();
     await fillAndSubmit(user, "Contract", "The signed contract.");
     await waitFor(() => {
@@ -502,12 +513,12 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(build.call).toMatchObject({ address: TEST_ARBITRABLE, chainId: 1, functionName: "submitEvidence", args: [7n, TEST_UPLOAD_PATH], value: 0n });
   });
 
-  it("spec 5.14: a governor with submitEvidence(string) gets the URI only", async () => {
+  it("a governor with submitEvidence(string) gets the URI only", async () => {
     const family = testFamily({
       family: "governor",
       capabilities: { localId: "none", evidence: { kind: "uri-only" }, appeal: { kind: "governor" }, withdraw: { kind: "governor" } },
     });
-    const { user } = await renderSection({ write: sectionReady(writeContext({ family, localId: { kind: "not-applicable" } })) });
+    const { user } = await renderSection({ write: sectionReady(testWriteContext({ family, localId: { kind: "not-applicable" } })) });
     await fillAndSubmit(user);
     await waitFor(() => {
       expect(writes.fake?.executions).toHaveLength(1);
@@ -517,7 +528,7 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(build.call).toMatchObject({ functionName: "submitEvidence", args: [TEST_UPLOAD_PATH] });
   });
 
-  it("D-07: refreshes the evidence once the transaction is mined, and reports the success", async () => {
+  it("refreshes the evidence once the transaction is mined, and reports the success", async () => {
     const { user } = await renderSection();
     await fillAndSubmit(user);
     await waitFor(() => {
@@ -532,7 +543,7 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(screen.getByText("Transaction confirmed")).toBeInTheDocument();
   });
 
-  it("D-44: a mined submission resets every field, the attachment included", async () => {
+  it("a mined submission resets every field, the attachment included", async () => {
     const { user, uploader } = await renderSection();
     const modal = await openModal(user);
     await user.type(within(modal).getByLabelText("Evidence Title"), "Photo");
@@ -562,7 +573,7 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(uploader.uploadJson).toHaveBeenLastCalledWith("evidence.json", { name: "", description: "", fileURI: "", evidenceSide: 0 }, "policy");
   });
 
-  it("WN-2: the attachment path is normalized before it enters evidence.json", async () => {
+  it("the attachment path is normalized before it enters evidence.json", async () => {
     const uploader = fakeUploader({ upload: () => Promise.resolve({ ok: true, path: `/ipfs/${ATTACHMENT_CID}/./docs/../contract.pdf/` as CanonicalIpfsPath }) });
     const { user } = await renderSection({ uploader });
     const modal = await openModal(user);
@@ -577,7 +588,7 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(uploader.uploadJson.mock.calls[0]?.[1]).toMatchObject({ fileURI: `/ipfs/${ATTACHMENT_CID}/contract.pdf` });
   });
 
-  it("B16: an attachment path that is not content-addressed is refused before anything is uploaded", async () => {
+  it("an attachment path that is not content-addressed is refused before anything is uploaded", async () => {
     const uploader = fakeUploader({ upload: () => Promise.resolve({ ok: true, path: "/ipfs/not-a-cid/file.pdf" }) });
     const { user } = await renderSection({ uploader });
     const modal = await openModal(user);
@@ -591,7 +602,7 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(writes.fake?.executions).toHaveLength(0);
   });
 
-  it("D-07: a failed submission keeps the modal open with the error and the typed fields", async () => {
+  it("a failed submission keeps the modal open with the error and the typed fields", async () => {
     writes.fake = fakeWriteController([{ phase: "pending" }, SUBMITTED, { phase: "failed", hash: TEST_TX_HASH, explorerUrl: null, message: "execution reverted" }]);
     const { user } = await renderSection();
     const modal = await fillAndSubmit(user, "Kept");
@@ -602,7 +613,7 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(invalidations).toEqual([]);
   });
 
-  it("D-07: a rejected signature is a neutral notice and keeps the modal open", async () => {
+  it("a rejected signature is a neutral notice and keeps the modal open", async () => {
     writes.fake = fakeWriteController([{ phase: "pending" }, { phase: "rejected" }]);
     const { user } = await renderSection();
     const modal = await fillAndSubmit(user);
@@ -610,7 +621,7 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(within(modal).queryByRole("alert")).toBeNull();
   });
 
-  it("D-07: a failure that arrives after the modal was closed is shown in the panel", async () => {
+  it("a failure that arrives after the modal was closed is shown in the panel", async () => {
     const upload = deferred<UploadResult>();
     writes.fake = fakeWriteController([{ phase: "failed", hash: null, explorerUrl: null, message: "wallet error" }]);
     const uploader = fakeUploader({ uploadJson: () => upload.promise });
@@ -622,7 +633,7 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("D-07: an evidence.json upload failure is shown and nothing is sent", async () => {
+  it("an evidence.json upload failure is shown and nothing is sent", async () => {
     const uploader = fakeUploader({
       uploadJson: () => Promise.resolve({ ok: false, error: "upload-failed", message: "An error occurred while uploading the file. Please try again." }),
     });
@@ -633,7 +644,7 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(writes.fake?.executions).toHaveLength(0);
   });
 
-  it("D-52: a declined Atlas sign-in is neutral and nothing is sent", async () => {
+  it("a declined Atlas sign-in is neutral and nothing is sent", async () => {
     const uploader = fakeUploader({
       isSignedIn: false,
       uploadJson: () => Promise.resolve({ ok: false, error: "sign-in-rejected", message: "Signature declined. Nothing was uploaded." }),
@@ -645,26 +656,26 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(writes.fake?.executions).toHaveLength(0);
   });
 
-  it("a wallet on another chain is refused at Submit with the switch offer before anything is uploaded", async () => {
-    const { user, uploader } = await renderSection({ wallet: createTestWallet({ chainId: 100, switchChainError: true }) });
+  it("while the wallet's switch to the page chain waits, Submit is refused with the waiting switch before anything is uploaded", async () => {
+    const { user, uploader } = await renderSection({ wallet: walletAwaitingSwitch(100) });
     const modal = await fillAndSubmit(user);
     expect(await within(modal).findByText("Wrong network")).toBeInTheDocument();
     expect(within(modal).getAllByText("Wrong network")).toHaveLength(1);
-    expect(within(modal).getByRole("button", { name: /^Switch to / })).toBeInTheDocument();
+    expect(within(modal).getByText("A switch to Ethereum Mainnet is waiting in your wallet.")).toBeInTheDocument();
     expect(uploader.uploadJson).not.toHaveBeenCalled();
     expect(writes.fake?.executions).toHaveLength(0);
   });
 
-  it("with the wallet on another chain the attachment field is locked and the switch is offered before any sign-in", async () => {
+  it("while the wallet's switch to the page chain waits, the attachment field is locked and the waiting switch is shown before any sign-in", async () => {
     const uploader = fakeUploader({ isSignedIn: false });
-    const { user } = await renderSection({ uploader, wallet: createTestWallet({ chainId: 100, switchChainError: true }) });
+    const { user } = await renderSection({ uploader, wallet: walletAwaitingSwitch(100) });
     const modal = await openModal(user);
     attach(pdf());
     expect(uploader.upload).not.toHaveBeenCalled();
     expect(uploader.uploadJson).not.toHaveBeenCalled();
     expect(within(modal).queryByText("Uploading to IPFS...")).toBeNull();
     expect(within(modal).getByText("Wrong network")).toBeInTheDocument();
-    expect(within(modal).getByRole("button", { name: "Switch to Ethereum Mainnet" })).toBeInTheDocument();
+    expect(within(modal).getByText("A switch to Ethereum Mainnet is waiting in your wallet.")).toBeInTheDocument();
   });
 
   it("Submit New Evidence is disabled without a wallet and says one is needed", async () => {
@@ -698,7 +709,7 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(within(modal).queryByText("Connect a wallet to submit evidence.")).toBeNull();
   });
 
-  it("spec 5.14: Submit reads 'Awaiting Confirmation' and is disabled while the submission runs", async () => {
+  it("Submit reads 'Awaiting Confirmation' and is disabled while the submission runs", async () => {
     const upload = deferred<UploadResult>();
     const uploader = fakeUploader({ uploadJson: () => upload.promise });
     const { user } = await renderSection({ uploader });
@@ -710,7 +721,7 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     });
   });
 
-  it("CE-1, spec 5.14: Submit is disabled while the field's attachment upload runs, before the uploader leaves 'idle'", async () => {
+  it("Submit is disabled while the field's attachment upload runs, before the uploader leaves 'idle'", async () => {
     const upload = deferred<UploadResult>();
     const uploader = fakeUploader({ upload: () => upload.promise });
     const { user } = await renderSection({ uploader });
@@ -725,7 +736,7 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(submitButton()).toBeEnabled();
   });
 
-  it("CE-1, spec 5.14: replacing an attachment keeps Submit disabled until the new upload finishes", async () => {
+  it("replacing an attachment keeps Submit disabled until the new upload finishes", async () => {
     const second = deferred<UploadResult>();
     const uploader = fakeUploader();
     uploader.upload.mockResolvedValueOnce({ ok: true, path: TEST_UPLOAD_PATH }).mockReturnValueOnce(second.promise);
@@ -742,17 +753,44 @@ describe("EvidenceSection: submission (spec 5.14)", () => {
     expect(submitButton()).toBeEnabled();
   });
 
-  it("spec 5.14: Submit is disabled while the uploader signs in or uploads", async () => {
+  it("Submit is disabled while the uploader signs in or uploads", async () => {
     const { user } = await renderSection({ uploader: fakeUploader({ phase: "uploading" }) });
     await openModal(user);
     expect(submitButton()).toBeDisabled();
   });
 
-  it("without Atlas the modal explains that evidence cannot be submitted, without naming the deployment", async () => {
+  it("without Atlas Submit New Evidence is disabled and nothing says uploads are unavailable", async () => {
     const { user } = await renderSection({ uploader: fakeUploader({ availability: "unconfigured" }) });
-    const modal = await openModal(user);
-    expect(submitButton()).toBeDisabled();
-    expect(within(modal).getByText("Submission unavailable")).toBeInTheDocument();
-    expect(within(modal).getByText("Evidence is uploaded to IPFS before it is submitted, and uploads are unavailable.")).toBeInTheDocument();
+    const opener = await screen.findByRole("button", { name: "Submit New Evidence" });
+    expect(opener).toBeDisabled();
+    await user.click(opener);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.body).not.toHaveTextContent(/unavailable/i);
+  });
+
+  it("shows an evidence list that arrives after its placeholder without a reveal of its own", async () => {
+    const wallet = createTestWallet();
+    await wallet.connect();
+    let settle: (() => void) | undefined;
+    renderWithProviders(
+      <SettlingSection
+        onReady={(callback) => {
+          settle = callback;
+        }}
+      />,
+      { wallet, uploader: fakeUploader() },
+    );
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+    act(() => {
+      settle?.();
+    });
+    await screen.findByText("No evidence submitted yet.");
+    expect(document.body.innerHTML).not.toContain("t-reveal-in");
+  });
+
+  it("shows an evidence list that was ready on the first render without motion", async () => {
+    const { container } = await renderSection();
+    await screen.findByText("No evidence submitted yet.");
+    expect(container.innerHTML).not.toContain("t-reveal-in");
   });
 });

@@ -15,8 +15,8 @@ export interface TestDataProviderProps {
 }
 
 /**
- * A fresh QueryClient with the app's defaults (no retries, no focus refetch) and no persister (ARCHITECTURE.md §1.5).
- * The one retry `useFamily` asks for happens without delay.
+ * A fresh QueryClient with the app's defaults (no retries, no focus refetch) and no persister. The one retry
+ * `useFamily` asks for happens without delay.
  */
 export function createTestQueryClient(): QueryClient {
   const client = createQueryClient();

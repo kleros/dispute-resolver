@@ -7,7 +7,7 @@ export interface EvidenceTimelineProps {
   readonly list: EvidenceList;
   /** The Dispute event's time ("Dispute Raised"), `null` when unknown. */
   readonly raisedAt: UnixSeconds | null;
-  /** The `AppealDecision` events, each shown as an "Appealed" marker (D-03); empty while they load or when they failed. */
+  /** Each shown as an "Appealed" marker; empty while they load or when they failed. */
   readonly appealDecisions: readonly AppealDecisionEvent[];
   readonly chain: ChainConfig;
 }
@@ -26,9 +26,8 @@ function newerBlockFirst(a: TimelineEntry, b: TimelineEntry): number {
 }
 
 /**
- * The entries and one "Appealed" marker per `AppealDecision` event, newest block first (D-03). The sort is stable and
- * the entries come first, so entries keep core's order, and an appeal in the block of an entry, whose order within the
- * block is not read, is placed below it.
+ * Newest block first. The sort is stable and the entries come first, so entries keep core's order, and an appeal in the
+ * block of an entry, whose order within the block is not read, is placed below it.
  */
 function timelineEntries(items: readonly EvidenceItem[], decisions: readonly AppealDecisionEvent[]): TimelineEntry[] {
   const entries: TimelineEntry[] = items.map((item) => ({ kind: "evidence", item }));
@@ -38,14 +37,12 @@ function timelineEntries(items: readonly EvidenceItem[], decisions: readonly App
 
 const DOT_CLASS = "absolute -left-[5.5px] size-2.5 rounded-full ring-4 ring-klerosUIComponentsWhiteBackground";
 
-/** Today's "submission time as a UTC string" (spec 5.14), inside a machine-readable `<time>`. */
 function Timestamp({ value }: { readonly value: UnixSeconds }) {
   const date = new Date(value * 1000);
   if (Number.isNaN(date.getTime())) return <span>Unknown time</span>;
   return <time dateTime={date.toISOString()}>{date.toUTCString()}</time>;
 }
 
-/** A dated event of the timeline: "Dispute Raised" or "Appealed" (spec 5.14, D-03). */
 function TimelineEvent({ label, time }: { readonly label: string; readonly time: UnixSeconds | null }) {
   return (
     <li className="relative pl-6">
@@ -85,7 +82,6 @@ function EvidenceEntry({ item, chain }: { readonly item: EvidenceItem; readonly 
   );
 }
 
-/** The count of entries core hid (D-22), shown only when something is hidden. */
 function HiddenCount({ list }: { readonly list: EvidenceList }) {
   const text = hiddenEvidenceText(list);
   if (text === null) return null;
@@ -93,10 +89,8 @@ function HiddenCount({ list }: { readonly list: EvidenceList }) {
 }
 
 /**
- * The evidence list of spec 5.14: valid entries newest first, each with its title, plain-text description, submitter,
- * UTC time and attachment link (never rendered inline, A17), with an "Appealed" marker at each appeal's block (D-03),
- * then "Dispute Raised" when the evidence array is not empty, or "No evidence submitted yet." when it is. Entries core
- * hid are counted visibly (D-22).
+ * Attachments are links, never rendered inline. "Dispute Raised" closes the list only when there is evidence, hidden
+ * entries included.
  */
 export function EvidenceTimeline({ list, raisedAt, appealDecisions, chain }: EvidenceTimelineProps) {
   const isEmpty = list.items.length === 0 && list.hiddenEvidenceCount === 0;

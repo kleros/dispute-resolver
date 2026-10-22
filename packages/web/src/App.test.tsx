@@ -8,14 +8,14 @@ import { installOfflineAppKitEnvironment } from "./test/wallet";
 import { createColorSchemeStore } from "./theme";
 
 // No RPC, no WalletConnect project ID and no Atlas URI, whatever the repository's .env holds: the wallet runs in its
-// read-only `unconfigured` mode and the Atlas gate requests nothing (ARCHITECTURE.md §2.2).
+// read-only `unconfigured` mode and the Atlas gate requests nothing.
 vi.mock("./env", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./env")>();
   return { ...actual, APP_CONFIG: actual.buildAppConfig({}, { host: "localhost:5173", origin: "http://localhost:5173" }) };
 });
 
 // The data layer's test double replaces the persisted QueryClient and the real read clients, so every read the pages
-// start is answered locally (ARCHITECTURE.md §1.5); the pages' hooks stay the real ones. The double imports `./data`
+// start is answered locally; the pages' hooks stay the real ones. The double imports `./data`
 // itself, so the factory cannot import it; the provider is handed over once the test module has loaded.
 const testData = vi.hoisted(() => ({ Provider: null as ComponentType<{ readonly children?: ReactNode }> | null }));
 
@@ -49,12 +49,12 @@ const PAGE_LANDMARKS = {
   case: () => screen.findByRole("search", { name: "Search Disputes on Court" }),
 } as const;
 
-/** The header's navigation, whose links are built from the resolved chain (D-45). */
+/** The header's navigation, whose links are built from the resolved chain. */
 function mainNavigation(): HTMLElement {
   return screen.getByRole("navigation", { name: "Main" });
 }
 
-/** The app's header, which shows the resolved chain (D-45): the banner around the main navigation, since jsdom also gives a page's own `header` the banner role. */
+/** The banner around the main navigation, since jsdom also gives a page's own `header` the banner role. */
 function appHeader(): HTMLElement {
   const header = screen.getAllByRole("banner").find((banner) => within(banner).queryByRole("navigation", { name: "Main" }) !== null);
   if (header === undefined) throw new Error("The app header is not rendered.");
@@ -73,8 +73,8 @@ afterEach(() => {
   window.history.replaceState(null, "", "/");
 });
 
-describe("App: the route table through the provider tree (ADR 0001 URL bullet, ARCHITECTURE.md §2.1, §3.1)", () => {
-  it("ADR 0001: /:chainId/ongoing renders the Ongoing page inside the page frame", async () => {
+describe("App routes through the provider tree", () => {
+  it("/:chainId/ongoing renders the Ongoing page inside the page frame", async () => {
     renderAppAt("/1/ongoing");
     expect(await PAGE_LANDMARKS.ongoing()).toBeInTheDocument();
     expect(window.location.pathname).toBe("/1/ongoing");
@@ -85,12 +85,12 @@ describe("App: the route table through the provider tree (ADR 0001 URL bullet, A
   });
 
   it.each([
-    { name: "ADR 0001: /:chainId/create renders the Create page by URL, even with no wallet connected", from: "/100/create", page: "create", to: "/100/create" },
-    { name: "ADR 0001: /:chainId/cases/:id renders the case page for that dispute", from: "/1/cases/5", page: "case", to: "/1/cases/5" },
-    { name: "ADR 0001: /:chainId/interact/:id redirects to the case page of :id", from: "/1/interact/5", page: "case", to: "/1/cases/5" },
-    { name: "D-01: / redirects to the default chain's Ongoing page", from: "/", page: "ongoing", to: "/1/ongoing" },
-    { name: "D-01: /:chainId/disputes redirects to that chain's Ongoing page", from: "/100/disputes", page: "ongoing", to: "/100/ongoing" },
-    { name: "D-01: a chain-less legacy case link redirects under the default chain", from: "/cases/5", page: "case", to: "/1/cases/5" },
+    { name: "/:chainId/create renders the Create page by URL, even with no wallet connected", from: "/100/create", page: "create", to: "/100/create" },
+    { name: "/:chainId/cases/:id renders the case page for that dispute", from: "/1/cases/5", page: "case", to: "/1/cases/5" },
+    { name: "/:chainId/interact/:id redirects to the case page of :id", from: "/1/interact/5", page: "case", to: "/1/cases/5" },
+    { name: "/ redirects to the default chain's Ongoing page", from: "/", page: "ongoing", to: "/1/ongoing" },
+    { name: "/:chainId/disputes redirects to that chain's Ongoing page", from: "/100/disputes", page: "ongoing", to: "/100/ongoing" },
+    { name: "a chain-less legacy case link redirects under the default chain", from: "/cases/5", page: "case", to: "/1/cases/5" },
   ] as const)("$name", async ({ from, page, to }) => {
     renderAppAt(from);
     expect(await PAGE_LANDMARKS[page]()).toBeInTheDocument();
@@ -98,20 +98,20 @@ describe("App: the route table through the provider tree (ADR 0001 URL bullet, A
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("D-09: /:chainId/cases renders the case page's search state with no dispute loaded", async () => {
+  it("/:chainId/cases renders the case page's search state with no dispute loaded", async () => {
     renderAppAt("/1/cases");
     expect(await screen.findByRole("heading", { name: "Find a dispute" })).toBeInTheDocument();
     expect(screen.getByRole("search", { name: "Search Disputes on Court" })).toBeInTheDocument();
   });
 
-  it("D-45: an unconfigured chain shows the unsupported-network screen with header links on the resolved chain", async () => {
+  it("an unconfigured chain shows the unsupported-network screen with header links on the resolved chain", async () => {
     renderAppAt("/424242/ongoing");
     expect(await screen.findByRole("heading", { name: "Unsupported Network 424242" })).toBeInTheDocument();
     expect(within(mainNavigation()).getByRole("link", { name: /Ongoing Disputes/ })).toHaveAttribute("href", "/1/ongoing");
     expect(screen.queryByRole("heading", { level: 1, name: "Ongoing Disputes" })).not.toBeInTheDocument();
   });
 
-  it("D-45: an unknown path under a configured chain shows the 404 screen inside the frame", async () => {
+  it("an unknown path under a configured chain shows the 404 screen inside the frame", async () => {
     renderAppAt("/100/nowhere");
     expect(await screen.findByRole("heading", { name: "404" })).toBeInTheDocument();
     expect(screen.getByText("Something went wrong in Athens!")).toBeInTheDocument();

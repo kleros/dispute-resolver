@@ -16,13 +16,8 @@ const NO_META_EVIDENCE: Unavailable = {
   message: "This dispute has no meta-evidence, so its title and description cannot be shown.",
 };
 
-const APP_LINK_CLASS =
-  "inline-flex items-center gap-1.5 rounded-base font-semibold text-klerosUIComponentsPrimaryBlue underline-offset-2 [overflow-wrap:anywhere] hover:underline";
+const APP_LINK_CLASS = "inline-flex items-center gap-1.5 rounded-base font-semibold text-klerosUIComponentsPrimaryBlue underline-offset-2 [overflow-wrap:anywhere] hover:underline";
 
-/**
- * The meta-evidence the summary shows: an accepted one, or the "invalid or tampered" placeholder that replaces a rejected
- * one (A2). A dispute without meta-evidence, or whose meta-evidence failed to load, has no summary (spec 5.4, D-36).
- */
 function summaryData(metaEvidence: SectionData<MetaEvidenceResult>): SectionData<MetaEvidence> {
   if (metaEvidence.status !== "ready") return metaEvidence;
   const result = metaEvidence.value;
@@ -46,8 +41,8 @@ function ExternalIcon() {
 }
 
 /**
- * The evidence display's Retry, held by the case page (P-26, S-3): the key of its boundary, and what re-reads the
- * meta-evidence and remounts that boundary on the new read. The key names the chain and the dispute (D-36).
+ * Held by the case page: `onRetry` re-reads the meta-evidence, and the new `key` remounts the display's boundary on the
+ * new read.
  */
 interface DisplayRetry {
   readonly key: string;
@@ -59,26 +54,38 @@ interface SummaryCardProps {
   readonly chain: CaseSectionProps["chain"];
   readonly found: FoundLookup | undefined;
   readonly displayRetry: DisplayRetry;
+  /** Reveals the header, the description and the parties; the card and the evidence display stay still. */
+  readonly reveal: string | undefined;
 }
 
-function SummaryCard({ metaEvidence, chain, found, displayRetry }: SummaryCardProps) {
+function SummaryCard({ metaEvidence, chain, found, displayRetry, reveal }: SummaryCardProps) {
   const headingId = useId();
   const { gateway } = useCoreDeps();
   const appLink = resolveArbitrableAppLink(metaEvidence.arbitrableInterfaceURI, APP_CONFIG.selfHosts);
   const attachment = toAttachmentLink(metaEvidence.fileURI, gateway);
   return (
     <section aria-labelledby={headingId}>
-      <Card round className="flex h-auto w-full flex-col gap-6 p-4 lg:px-8 lg:py-6">
-        <header className="flex flex-col gap-1">
-          <p className={EYEBROW}>Interact with the dispute</p>
-          <h2 id={headingId} className="text-xl font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">
-            {metaEvidence.title === "" ? <span className="text-klerosUIComponentsSecondaryText">Untitled dispute</span> : metaEvidence.title}
-          </h2>
-        </header>
-        <SafeMarkdown source={metaEvidence.description} className="max-w-[72ch]" />
-        <Parties aliases={metaEvidence.aliases} chain={chain} />
+      <Card round className="flex h-auto w-full flex-col p-0">
+        <div className="flex min-w-0 flex-col gap-6 p-4 lg:px-8 lg:py-6">
+          <header className={["flex flex-col gap-1", reveal].filter(Boolean).join(" ")}>
+            <p className={EYEBROW}>Interact with the dispute</p>
+            <h2 id={headingId} className="text-xl font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">
+              {metaEvidence.title === "" ? <span className="text-klerosUIComponentsSecondaryText">Untitled dispute</span> : metaEvidence.title}
+            </h2>
+          </header>
+          <SafeMarkdown source={metaEvidence.description} className={["max-w-[72ch]", reveal].filter(Boolean).join(" ")} />
+          {/* Without aliases the parties render nothing, and the empty wrapper must not add a gap. */}
+          <div className={["empty:hidden", reveal].filter(Boolean).join(" ")}>
+            <Parties aliases={metaEvidence.aliases} chain={chain} />
+          </div>
+          {found === undefined ? null : (
+            <SectionBoundary key={displayRetry.key} section="Evidence display" onRetry={displayRetry.onRetry}>
+              <EvidenceDisplay metaEvidence={metaEvidence} chainId={chain.id} found={found} />
+            </SectionBoundary>
+          )}
+        </div>
         {appLink === null && attachment === null ? null : (
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-klerosUIComponentsStroke pt-4">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-b-[17px] border-t border-klerosUIComponentsStroke bg-klerosUIComponentsLightBackground px-4 py-4 lg:px-8">
             {appLink === null ? null : (
               <ExternalLink href={appLink} className={APP_LINK_CLASS}>
                 Go to the arbitrable application
@@ -88,21 +95,14 @@ function SummaryCard({ metaEvidence, chain, found, displayRetry }: SummaryCardPr
             <Attachment attachment={attachment} />
           </div>
         )}
-        {found === undefined ? null : (
-          <SectionBoundary key={displayRetry.key} section="Evidence display" onRetry={displayRetry.onRetry}>
-            <EvidenceDisplay metaEvidence={metaEvidence} chainId={chain.id} found={found} />
-          </SectionBoundary>
-        )}
       </Card>
     </section>
   );
 }
 
 /**
- * The dispute summary (spec 5.6): title, markdown description, parties, the arbitrable-app link, the meta-evidence's
- * attachment and the evidence display. It renders from the meta-evidence alone, before the rest of the view settles
- * (P-20); a failed load degrades this section only and Retry loads the meta-evidence again (D-36). The evidence display
- * has its own boundary, whose Retry is the case page's `displayRetry` (P-26).
+ * Renders from the meta-evidence alone, before the rest of the view settles. The evidence display has its own boundary,
+ * whose Retry is the case page's `displayRetry`.
  */
 export function DisputeSummary({ dispute, chain, displayRetry }: CaseSectionProps & { readonly displayRetry: DisplayRetry }) {
   const client = useQueryClient();
@@ -116,7 +116,7 @@ export function DisputeSummary({ dispute, chain, displayRetry }: CaseSectionProp
         };
   return (
     <SectionContent data={summaryData(dispute.metaEvidence)} section="Dispute summary" loading={<SectionSkeleton variant="card" lines={5} />} onRetry={retry}>
-      {(metaEvidence) => <SummaryCard metaEvidence={metaEvidence} chain={chain} found={found} displayRetry={displayRetry} />}
+      {(metaEvidence, reveal) => <SummaryCard metaEvidence={metaEvidence} chain={chain} found={found} displayRetry={displayRetry} reveal={reveal} />}
     </SectionContent>
   );
 }

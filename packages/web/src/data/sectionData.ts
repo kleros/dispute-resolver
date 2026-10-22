@@ -28,23 +28,19 @@ export function fromOutcome<T>(outcome: Outcome<T>): SectionData<T> {
   return outcome.ok ? ready(outcome.value) : unavailableFrom(outcome.error);
 }
 
-/** A rejected read is `rpc-error` with its message (ARCHITECTURE.md §5.3); hooks never throw to React. */
+/** Hooks never throw to React: a rejected read becomes a section state. */
 export function rejectionError(error: unknown): Unavailable {
   const message = error instanceof Error && error.message !== "" ? error.message : "The read failed.";
   return { code: "rpc-error", message };
 }
 
-/**
- * Maps a query to `SectionData`: pending (fetching or waiting for its inputs) is `loading`, a rejection is
- * `unavailable`, and data goes through `map`, which turns a core `Outcome` or result union into the section state.
- */
+/** A query waiting for its inputs (`skipToken`) is also `pending`, so it reads as `loading`. */
 export function fromQuery<TData, TValue>(query: UseQueryResult<TData>, map: (data: TData) => SectionData<TValue>): SectionData<TValue> {
   if (query.status === "error") return unavailableFrom(rejectionError(query.error));
   if (query.status === "pending") return LOADING;
   return map(query.data);
 }
 
-/** The value when ready, else `undefined`. */
 export function valueOf<T>(section: SectionData<T>): T | undefined {
   return section.status === "ready" ? section.value : undefined;
 }

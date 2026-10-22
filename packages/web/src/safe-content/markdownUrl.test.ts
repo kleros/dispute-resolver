@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { markdownUrlTransform } from "./markdownUrl";
 
 describe("markdownUrlTransform", () => {
-  it.each(["http://example.com", "https://kleros.io/a?b=c#d", "mailto:a@b.co", "tel:+123", "HTTPS://KLEROS.IO", "MailTo:a@b.co"])("A11: keeps the allowed scheme in %s", (url) => {
+  it.each(["http://example.com", "https://kleros.io/a?b=c#d", "mailto:a@b.co", "tel:+123", "HTTPS://KLEROS.IO", "MailTo:a@b.co"])("keeps the allowed scheme in %s", (url) => {
     expect(markdownUrlTransform(url)).toBe(url);
   });
 
-  it.each(["/cases/1", "#top", "relative/path", "?a=b:c", "#a:b", "//kleros.io/x"])("A11: keeps the relative URL %s", (url) => {
+  it.each(["/cases/1", "#top", "relative/path", "?a=b:c", "#a:b", "//kleros.io/x"])("keeps the relative URL %s", (url) => {
     expect(markdownUrlTransform(url)).toBe(url);
   });
 
@@ -22,11 +22,11 @@ describe("markdownUrlTransform", () => {
     "irc://irc.example.com",
     "xmpp:a@b.co",
     "a/b:c",
-  ])("A11: refuses %j", (url) => {
+  ])("refuses %j", (url) => {
     expect(markdownUrlTransform(url)).toBe("");
   });
 
-  it("A11: trims surrounding whitespace as today's transformer does", () => {
+  it("trims surrounding whitespace", () => {
     expect(markdownUrlTransform("  https://kleros.io  ")).toBe("https://kleros.io");
   });
 });

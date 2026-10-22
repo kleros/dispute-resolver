@@ -3,17 +3,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useWalletSetup } from "./context";
 import type { WalletModal } from "./types";
 
-/** Why no wallet can connect: no WalletConnect project ID (K-02), or AppKit registered an embedded wallet (K-03). */
+/** `unconfigured`: no WalletConnect project ID; `misconfigured`: AppKit registered an embedded wallet. */
 export type ConnectUnavailableReason = "unconfigured" | "misconfigured";
 
 export interface ConnectWallet {
-  /** `false` when no wallet can connect; `unavailableReason` says why. */
   readonly available: boolean;
-  /** `null` while Connect is available. */
   readonly unavailableReason: ConnectUnavailableReason | null;
   /**
-   * Opens AppKit's Connect view on `chainId` (the page chain), so a WalletConnect session starts there (ARCHITECTURE.md
-   * §2.3). Closing the modal or rejecting the wallet's prompt leaves the app read-only, with no error (D-06).
+   * Opens AppKit's Connect view on `chainId` (the page chain), so a WalletConnect session starts there. Closing the
+   * modal or rejecting the wallet's prompt leaves the app read-only, with no error.
    */
   readonly open: (chainId?: ChainId) => void;
 }
@@ -21,7 +19,7 @@ export interface ConnectWallet {
 /** What each modal's check found, so a control mounted later renders the answer at once instead of after a tick. */
 const embeddedWalletChecks = new WeakMap<WalletModal, boolean>();
 
-/** `true` once AppKit is ready with an embedded-wallet connector registered (K-03); `false` before that is known. */
+/** `true` once AppKit is ready with an embedded-wallet connector registered; `false` before that is known. */
 function useEmbeddedWallet(modal: WalletModal | null): boolean {
   const [embedded, setEmbedded] = useState(() => modal !== null && embeddedWalletChecks.get(modal) === true);
   useEffect(() => {
@@ -47,7 +45,7 @@ export function useConnectWallet(): ConnectWallet {
   const misconfigured = useEmbeddedWallet(modal);
   const open = useCallback(
     (chainId?: ChainId) => {
-      // A modal that fails or refuses to open leaves the app read-only, which is the outcome of declining (D-06, K-03).
+      // A modal that fails or refuses to open leaves the app read-only, which is the outcome of declining.
       modal?.openConnect(chainId).catch(() => undefined);
     },
     [modal],

@@ -40,8 +40,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("DataProvider (ARCHITECTURE.md §2.2, §5)", () => {
-  it("§2.2: mounting restores the validated cache and makes no network request", async () => {
+describe("DataProvider", () => {
+  it("restores the validated cache on mount without any network request", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
     localStorage.setItem(PERSISTED_CACHE_KEY, storedCourts(CACHE_VERSION));
@@ -57,7 +57,7 @@ describe("DataProvider (ARCHITECTURE.md §2.2, §5)", () => {
     expect(document.querySelectorAll("iframe")).toHaveLength(0);
   });
 
-  it("D-13: a cache written under another version is discarded at boot", async () => {
+  it("discards a cache written under another version at boot", async () => {
     localStorage.setItem(PERSISTED_CACHE_KEY, storedCourts("dr-cache-0"));
     render(
       <DataProvider config={CONFIG}>
@@ -70,7 +70,7 @@ describe("DataProvider (ARCHITECTURE.md §2.2, §5)", () => {
     expect(localStorage.getItem(PERSISTED_CACHE_KEY)).toBeNull();
   });
 
-  it("D-56: a chain without a configured RPC has no read client", async () => {
+  it("gives a chain without a configured RPC no read client", async () => {
     render(
       <DataProvider config={buildAppConfig({}, { host: "localhost", origin: "http://localhost" })}>
         <Probe />

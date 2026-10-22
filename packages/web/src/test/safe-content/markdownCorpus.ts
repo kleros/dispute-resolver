@@ -1,12 +1,9 @@
 /* eslint-disable sonarjs/no-clear-text-protocols -- the corpus exercises plain http:// URLs on purpose. */
 /**
- * The markdown corpus of ARCHITECTURE.md 9.2 and what today's renderer makes of it.
- *
- * `legacy` was recorded on 2026-10-14 by rendering each `source` with `react-markdown` 4.2.2 (and 4.3.1, the version
- * today's lockfile resolves; both gave byte-identical HTML; the three `reference-undefined*` entries with 4.2.2 only) on React 17.0.0 with `react-dom/server`'s
- * `renderToStaticMarkup` and default options, in a scratch install outside the repository. `text` is the rendered
- * `textContent` with whitespace runs collapsed; `links` and `images` are every `<a>` and `<img>` in document order.
- * Today's `uriTransformer` writes `javascript:void(0)` for a refused link, which is recorded as rendered.
+ * `legacy` is what `react-markdown` 4.2.2 on React 17.0.0 renders for each `source` (`renderToStaticMarkup`, default
+ * options), recorded on 2026-10-14. `text` is the rendered `textContent` with whitespace runs collapsed; `links` and
+ * `images` are every `<a>` and `<img>` in document order. That renderer writes `javascript:void(0)` for a refused link,
+ * which is recorded as rendered.
  */
 export interface LegacyRendering {
   readonly text: string;
@@ -403,9 +400,9 @@ export const MARKDOWN_CORPUS: readonly MarkdownCorpusEntry[] = [
   },
   {
     id: "entities-escapes",
-    source: "&amp; &copy; &#35; \\*not emphasis\\* \\<tag\\>",
+    source: String.raw`&amp; &copy; &#35; \*not emphasis\* \<tag\>`,
     legacy: {
-      text: "& © # *not emphasis* \\<tag>",
+      text: String.raw`& © # *not emphasis* \<tag>`,
       links: [],
       images: [],
     },
@@ -414,7 +411,7 @@ export const MARKDOWN_CORPUS: readonly MarkdownCorpusEntry[] = [
     id: "line-break-backslash",
     source: "Line one\\\nLine two",
     legacy: {
-      text: "Line one\\ Line two",
+      text: String.raw`Line one\ Line two`,
       links: [],
       images: [],
     },
@@ -651,7 +648,7 @@ export const MARKDOWN_CORPUS: readonly MarkdownCorpusEntry[] = [
   },
   {
     id: "strike-escaped",
-    source: "\\~~not struck~~",
+    source: String.raw`\~~not struck~~`,
     legacy: {
       text: "~~not struck~~",
       links: [],
@@ -830,7 +827,7 @@ export const MARKDOWN_CORPUS: readonly MarkdownCorpusEntry[] = [
   },
   {
     id: "reference-undefined-forms",
-    source: "Refs [1][2], [a] [b], [c][] and [x [y] z]; \\[kept] and [] stays.",
+    source: String.raw`Refs [1][2], [a] [b], [c][] and [x [y] z]; \[kept] and [] stays.`,
     legacy: {
       text: "Refs 1, a, c and [x y z]; [kept] and [] stays.",
       links: [

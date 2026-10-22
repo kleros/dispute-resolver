@@ -1,27 +1,29 @@
 import type { ChainId, Court, OngoingDispute, OngoingList, Unavailable } from "@dispute-resolver/core";
+import { Button } from "@kleros/ui-components-library";
 import { useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
+import { useSearchParams } from "react-router";
 import { queryKeys, useOngoing, useOngoingTitle, type SectionData } from "../../data";
 import { usePageChain } from "../../routing";
-import { EmptyState, Notice, PageMessage, PAGE_TITLE, SectionBoundary, SectionSkeleton } from "../../ui";
-import { FailedDisputeCard, OngoingCard } from "./OngoingCard";
-import { DEFAULT_PERIOD_FILTER, filterOption, matchesFilter, type PeriodFilter } from "./periodFilter";
+import { EmptyState, Notice, PageMessage, PAGE_TITLE, SectionBoundary, SectionSkeleton, useRevealIn } from "../../ui";
+import { FailedDisputeCard, OngoingCard, ScalesIcon } from "./OngoingCard";
+import { OtherChainAction, otherSwitchableChain } from "./OtherChainAction";
+import { DEFAULT_PERIOD_FILTER, filterFromParam, filterOption, matchesFilter, type PeriodFilter } from "./periodFilter";
 import { PeriodFilterSelect } from "./PeriodFilterSelect";
 
 const NO_ARBITRATOR = "There is no arbitrator on this network, thus no disputes.";
 const FAILED_TITLE = "Failed to load disputes.";
-const FAILED_HINT = "There may be a problem with the RPC endpoint. Please refresh the page to try again.";
+const PERIOD_PARAM = "period";
 const GRID_CLASS = "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3";
 
-/** One grid entry, newest first: a dispute with its struct, or a listed ID whose struct could not be read (§5.5). */
+/** A dispute with its struct, or a listed ID whose struct could not be read. */
 type Entry = { readonly kind: "dispute"; readonly dispute: OngoingDispute } | { readonly kind: "failed"; readonly id: bigint };
 
-/** Whether the list read answered that the chain has no arbitrator (spec §3). */
 function hasNoArbitrator(list: SectionData<OngoingList>): boolean {
   return list.status === "ready" && list.value.status === "no-arbitrator";
 }
 
-/** Every listed dispute and failed ID in one descending order (spec §3 step 3). */
+/** Every listed dispute and failed ID in one descending order, so a failed ID keeps its place. */
 function entriesOf(list: Extract<OngoingList, { status: "ok" }>): Entry[] {
   const entries: Entry[] = [...list.disputes.map((dispute) => ({ kind: "dispute" as const, dispute })), ...list.failedIds.map((id) => ({ kind: "failed" as const, id }))];
   const idOf = (entry: Entry) => (entry.kind === "dispute" ? entry.dispute.id : entry.id);
@@ -50,7 +52,7 @@ interface DisputeItemProps {
 
 /**
  * A grid cell. Its title keeps loading while the filter hides it, so switching back shows it at once; a hidden cell
- * renders no card, as today (spec §3). A card that throws degrades alone (D-36); Retry reloads its title (S-3).
+ * renders no card.
  */
 function DisputeItem({ chainId, dispute, courts, visible }: DisputeItemProps) {
   const title = useOngoingTitle(chainId, dispute);
@@ -79,15 +81,17 @@ interface DisputeGridProps {
   readonly list: Extract<OngoingList, { status: "ok" }>;
   readonly courts: SectionData<readonly Court[]>;
   readonly filter: PeriodFilter;
+  /** Set when the list loaded during this mount, so the grid takes over from the skeleton with a reveal. */
+  readonly reveal: string | undefined;
 }
 
-function DisputeGrid({ chainId, list, courts, filter }: DisputeGridProps) {
+function DisputeGrid({ chainId, list, courts, filter, reveal }: DisputeGridProps) {
   const entries = entriesOf(list);
   const anyVisible = entries.some((entry) => (entry.kind === "dispute" ? matchesFilter(entry.dispute.period, filter) : filter === "all"));
   return (
     <>
       {anyVisible ? null : <EmptyState title={`No open dispute is in the ${filterOption(filter).label} period.`} />}
-      <ul aria-label="Open disputes" className={GRID_CLASS}>
+      <ul aria-label="Open disputes" className={reveal === undefined ? GRID_CLASS : `${GRID_CLASS} ${reveal}`}>
         {entries.map((entry) =>
           entry.kind === "dispute" ? (
             <DisputeItem key={entry.dispute.id.toString()} chainId={chainId} dispute={entry.dispute} courts={courts} visible={matchesFilter(entry.dispute.period, filter)} />
@@ -102,36 +106,75 @@ function DisputeGrid({ chainId, list, courts, filter }: DisputeGridProps) {
   );
 }
 
-function FailedNotice({ error }: { readonly error: Unavailable }) {
-  return <Notice variant="error" title={FAILED_TITLE} body={`${FAILED_HINT}\n${error.message}`} />;
+function FailedNotice({ chainId, error }: { readonly chainId: ChainId; readonly error: Unavailable }) {
+  const queryClient = useQueryClient();
+  // The list's key depends on whether the courts loaded; resetting both variants refetches whichever is on screen.
+  const tryAgain = () => {
+    void queryClient.resetQueries({ queryKey: queryKeys.ongoing(chainId, "ok") });
+    void queryClient.resetQueries({ queryKey: queryKeys.ongoing(chainId, "none") });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.chainTime(chainId) });
+  };
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <Notice variant="error" title={FAILED_TITLE} body={error.message} className="w-full" />
+      <Button variant="secondary" small text="Try again" onPress={tryAgain} />
+    </div>
+  );
+}
+
+function NoOpenDisputes({ chainId, chainName }: { readonly chainId: ChainId; readonly chainName: string }) {
+  const other = otherSwitchableChain(chainId);
+  return (
+    <EmptyState
+      title="There are no open disputes."
+      body={`New disputes on ${chainName} will show up here.`}
+      icon={<ScalesIcon className="size-6 stroke-klerosUIComponentsPrimaryBlue" />}
+      action={other === undefined ? undefined : <OtherChainAction target={other} />}
+    />
+  );
 }
 
 interface ListBodyProps {
   readonly chainId: ChainId;
+  readonly chainName: string;
   readonly list: SectionData<OngoingList>;
   readonly courts: SectionData<readonly Court[]>;
   readonly filter: PeriodFilter;
 }
 
-function ListBody({ chainId, list, courts, filter }: ListBodyProps) {
+function ListBody({ chainId, chainName, list, courts, filter }: ListBodyProps) {
+  const reveal = useRevealIn(list.status === "loading");
   if (list.status === "loading") return <SectionSkeleton variant="grid" lines={6} />;
-  if (list.status === "unavailable") return <FailedNotice error={list.error} />;
+  if (list.status === "unavailable") return <FailedNotice chainId={chainId} error={list.error} />;
   const value = list.value;
   switch (value.status) {
     case "failed":
-      return <FailedNotice error={value.error} />;
+      return <FailedNotice chainId={chainId} error={value.error} />;
     case "no-arbitrator":
       return null;
     case "ok":
-      if (value.disputes.length === 0 && value.failedIds.length === 0) return <EmptyState title="There are no open disputes." />;
-      return <DisputeGrid chainId={chainId} list={value} courts={courts} filter={filter} />;
+      if (value.disputes.length === 0 && value.failedIds.length === 0) return <NoOpenDisputes chainId={chainId} chainName={chainName} />;
+      return <DisputeGrid chainId={chainId} list={value} courts={courts} filter={filter} reveal={reveal} />;
   }
 }
 
-/** The Ongoing page of a chain with an arbitrator: the list renders as soon as it resolves, each title on its own (D-37). */
+/** The list renders as soon as it resolves, each title loading on its own. */
 function OngoingDisputes({ chainId, chainName }: { readonly chainId: ChainId; readonly chainName: string }) {
   const { list, courts } = useOngoing(chainId);
-  const [filter, setFilter] = useState<PeriodFilter>(DEFAULT_PERIOD_FILTER);
+  // The filter lives in the address so Back from a case returns to it; changing it replaces the entry instead of adding one.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filter = filterFromParam(searchParams.get(PERIOD_PARAM));
+  const setFilter = (next: PeriodFilter) => {
+    setSearchParams(
+      (current) => {
+        const params = new URLSearchParams(current);
+        if (next === DEFAULT_PERIOD_FILTER) params.delete(PERIOD_PARAM);
+        else params.set(PERIOD_PARAM, filterOption(next).id);
+        return params;
+      },
+      { replace: true },
+    );
+  };
   const headingId = useId();
   if (hasNoArbitrator(list)) return <NoArbitrator />;
   return (
@@ -147,15 +190,12 @@ function OngoingDisputes({ chainId, chainName }: { readonly chainId: ChainId; re
           <PeriodFilterSelect value={filter} onChange={setFilter} />
         </SectionBoundary>
       </header>
-      <ListBody chainId={chainId} list={list} courts={courts} filter={filter} />
+      <ListBody chainId={chainId} chainName={chainName} list={list} courts={courts} filter={filter} />
     </section>
   );
 }
 
-/**
- * The Ongoing disputes page (spec §3, D-37, ARCHITECTURE.md §5.5, §11.5). It needs no wallet; on a chain without
- * an arbitrator it reads nothing and says so, as today.
- */
+/** Needs no wallet; on a chain without an arbitrator it reads nothing and says so. */
 export function OngoingPage() {
   const { chainId, chain, capabilities } = usePageChain();
   return capabilities.hasArbitrator ? <OngoingDisputes chainId={chainId} chainName={chain.name} /> : <NoArbitrator />;

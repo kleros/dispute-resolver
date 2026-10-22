@@ -6,7 +6,7 @@ import { evaluateInGlobalScope, runScriptInGlobalScope } from "./evaluate";
 const ANSWERED_TOO_SOON = "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
 
 // Shaped like the Reality renderer QmQGMR…: a webpack `var` export that splits the question on a literal "␟" delimiter.
-// Under the old windows-1252 fallback the literal no longer matched and the renderer returned {} (ADR 0004).
+// Decoded as windows-1252 instead of UTF-8, the literal no longer matches and the renderer returns {}.
 const RENDERER = `
 var getMetaEvidence = function () {
   var question = 'Who will win the 2024 US presidential election?␟"Harris","Trump"␟politics␟en_US';
@@ -16,8 +16,8 @@ var getMetaEvidence = function () {
 
 // Keep this file to a single test: bootstrapRunner defines non-configurable globals on the real globalThis here, so a
 // second run in the same file would fail with "Cannot redefine property".
-describe("runner page charset (C7)", () => {
-  it("C7: a script with a non-ASCII literal round-trips through the runner and its port", async () => {
+describe("runner page charset", () => {
+  it("a script with a non-ASCII literal round-trips through the runner and its port", async () => {
     const fake = createFakeRunnerEnvironment();
     const channel = new MessageChannel();
     const replies = collectUntilSettled(channel.port1);

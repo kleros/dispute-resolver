@@ -33,7 +33,7 @@ function providerError(code: number, message: string): Error {
 }
 
 /**
- * A browser wallet as an EIP-1193 provider (ARCHITECTURE.md §1.5) for the switch flow of P-03: it answers
+ * A browser wallet as an EIP-1193 provider for the chain-switch flow: it answers
  * `wallet_switchEthereumChain` for a chain it does not know with error 4902, as MetaMask does, and records every
  * `wallet_addEthereumChain` request. Driven through wagmi's real `injected` connector, so the add-chain fallback under
  * test is wagmi's own. Nothing reaches a network: every read transport rejects.

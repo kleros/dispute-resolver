@@ -18,17 +18,16 @@ function causes(error: unknown): unknown[] {
   return [...seen];
 }
 
-/** The user declined in the wallet: viem's `UserRejectedRequestError` or EIP-1193 code 4001 anywhere in the chain (D-07). */
+/** The user declined in the wallet: viem's `UserRejectedRequestError` or EIP-1193 code 4001 anywhere in the chain. */
 export function isUserRejection(error: unknown): boolean {
   return causes(error).some((cause) => cause instanceof UserRejectedRequestError || hasCode(cause, USER_REJECTED_CODE));
 }
 
-/** viem's own chain check rejected the signature: the wallet changed chain after the app's guard ran (B3). */
+/** viem's own chain check rejected the signature: the wallet changed chain after the app's guard ran. */
 export function isChainMismatch(error: unknown): boolean {
   return causes(error).some((cause) => cause instanceof ChainMismatchError);
 }
 
-/** A short, human-readable reason: viem's `shortMessage` when there is one, else the error's message. */
 export function errorMessage(error: unknown): string {
   if (error instanceof BaseError) return error.shortMessage;
   if (error instanceof Error && error.message.trim() !== "") return error.message;

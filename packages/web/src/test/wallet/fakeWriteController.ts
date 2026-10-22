@@ -36,9 +36,9 @@ async function play(script: readonly WriteStatus[], options: WriteOptions, repor
 }
 
 /**
- * Drives every `WriteStatus` without a wallet (ARCHITECTURE.md §1.5): each `execute` plays `script` (for example
- * pending → submitted → mined) and resolves with its last status, which must be an outcome. `onMined` runs before a
- * `mined` status is shown, as in the real hook (D-07).
+ * Drives every `WriteStatus` without a wallet: each `execute` plays `script` (for example pending → submitted → mined)
+ * and resolves with its last status, which must be an outcome. `onMined` runs before a `mined` status is shown, as in
+ * the real hook.
  */
 export function fakeWriteController(script: readonly WriteStatus[], options: FakeWriteOptions = {}): FakeWriteController {
   const { initial = { phase: "idle" } } = options;
@@ -62,9 +62,14 @@ export function fakeWriteController(script: readonly WriteStatus[], options: Fak
       executions.push({ builds, options: writeOptions });
       let outcome: WriteOutcome = { phase: "refused", refusal: "withdraw-unsupported" };
       for (const index of builds.keys()) {
-        outcome = await play(script, writeOptions, (current) => {
-          setStatus({ index, total: builds.length, current });
-        }, false);
+        outcome = await play(
+          script,
+          writeOptions,
+          (current) => {
+            setStatus({ index, total: builds.length, current });
+          },
+          false,
+        );
         if (outcome.phase !== "mined") break;
       }
       if (outcome.phase === "mined") await writeOptions.onMined?.(outcome.receipt);

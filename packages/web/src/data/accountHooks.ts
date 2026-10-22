@@ -6,7 +6,6 @@ import { IDLE_KEY, queryKeys } from "./queryKeys";
 import { LOADING, fromOutcome, fromQuery, noRpcError, ready, unavailable, unavailableFrom } from "./sectionData";
 import type { SectionData } from "./types";
 
-/** The arbitration cost of a court and vote count for the Create form (spec §4.3). `undefined`: no extraData yet. */
 export function useArbitrationCost(chainId: ChainId, extraData: Hex | undefined): SectionData<bigint> {
   const deps = useCoreDeps();
   const chain = getChain(chainId);
@@ -22,18 +21,14 @@ export function useArbitrationCost(chainId: ChainId, extraData: Hex | undefined)
   return fromQuery(query, fromOutcome);
 }
 
-/** EIP-7702 delegated EOAs carry this code prefix and are not smart-contract wallets (spec §2.3). */
+/** EIP-7702 delegated EOAs carry this code prefix and are not smart-contract wallets. */
 const EIP7702_DELEGATION_PREFIX = "0xef0100";
 
-/** A14 / spec §2.3: an account with code, other than an EIP-7702 delegation, is a smart-contract wallet. */
 export function isContractCode(code: Hex | undefined): boolean {
   return code !== undefined && code !== "0x" && !code.toLowerCase().startsWith(EIP7702_DELEGATION_PREFIX);
 }
 
-/**
- * Whether the connected account is a smart-contract wallet on the page chain (A14). Without an account, an RPC or a
- * successful read the answer is `false`, as today (spec §2.3: an error hides the warning). Never persisted.
- */
+/** Without an account, an RPC or a successful read the answer is `false`, so a failed read hides the warning. */
 export function useIsContractAccount(chainId: ChainId, account: Address | undefined): SectionData<boolean> {
   const deps = useCoreDeps();
   const client = deps.getReadClient(chainId);

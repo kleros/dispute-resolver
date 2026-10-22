@@ -1,7 +1,6 @@
 import type { SectionSkeletonProps } from "./types";
 
 const BLOCK = "animate-loading rounded-base bg-klerosUIComponentsStroke";
-/** A page-level card (contract §6): 18 px, the section-card padding. */
 const CARD = "flex flex-col gap-3 rounded-[18px] border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground p-4 lg:px-8 lg:py-6";
 /**
  * An Ongoing card placeholder in the loaded card's rows: the period pill and the ID, the two-line title over the court
@@ -71,7 +70,6 @@ function GridCardPlaceholder() {
   );
 }
 
-/** The loading state every section shares (11.3): token-colored blocks with the library's loading animation. */
 export function SectionSkeleton({ variant, lines }: SectionSkeletonProps) {
   let content;
   if (variant === "grid") {

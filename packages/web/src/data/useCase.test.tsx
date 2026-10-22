@@ -12,7 +12,11 @@ import { useCase } from "./useCase";
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../test/data/mockCoreReads")).mockCoreReads(importOriginal));
 
 const ACCOUNT: Address = "0x1111111111111111111111111111111111111111";
-const EVIDENCE: EvidenceList = { items: [], hiddenEvidenceCount: 0, hiddenByReason: { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 } };
+const EVIDENCE: EvidenceList = {
+  items: [],
+  hiddenEvidenceCount: 0,
+  hiddenByReason: { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 },
+};
 const FOUND_EVENT: Outcome<DisputeEventResult> = {
   ok: true,
   value: { status: "found", event: { metaEvidenceId: 0n, evidenceGroupId: 3n, blockNumber: 100n, createdAt: 1_700_000_000, transactionHash: "0x01" } },
@@ -52,7 +56,10 @@ function programReads(period: Period = 0): void {
       ),
     ),
   );
-  vi.mocked(core.readMultipliers).mockResolvedValue({ ok: true, value: { winnerStakeMultiplier: 10_000n, loserStakeMultiplier: 20_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n } });
+  vi.mocked(core.readMultipliers).mockResolvedValue({
+    ok: true,
+    value: { winnerStakeMultiplier: 10_000n, loserStakeMultiplier: 20_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n },
+  });
   vi.mocked(core.readRoundFunding).mockImplementation((_context, round) => Promise.resolve({ ok: true, value: { round, contributions: [], fundedRulings: [] } }));
   vi.mocked(core.readWithdrawable).mockResolvedValue({ status: "nothing" });
 }
@@ -87,14 +94,14 @@ beforeEach(() => {
   programReads();
 });
 
-describe("useCase (ARCHITECTURE.md §5.3)", () => {
-  it("D-09: no dispute ID makes no read", () => {
+describe("useCase", () => {
+  it("reads nothing without a dispute ID", () => {
     const { result } = renderCase(null);
     expect(result.current).toEqual({ status: "no-id", chainId: 1 });
     expect(core.lookupDispute).not.toHaveBeenCalled();
   });
 
-  it("D-36: every section of a found dispute becomes ready", async () => {
+  it("brings every section of a found dispute to ready", async () => {
     const { result } = renderCase(1n);
     const current = await settledCase(result);
     expect(current.view).toMatchObject({ status: "ready", value: { exists: true, period: 0, numberOfVotes: { ok: true, value: 3 } } });
@@ -103,10 +110,15 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     expect(current.appealPanel).toEqual({ status: "ready", value: { kind: "hidden" } });
     expect(current.write.status).toBe("ready");
     expect(core.loadEvidence).toHaveBeenCalledWith(expect.objectContaining({ evidenceGroupId: 3n, arbitrable: testFoundLookup().binding.arbitrated }));
-    expect(core.readDisputeDetails).toHaveBeenCalledWith(expect.objectContaining({ chainId: 1 }), expect.objectContaining({ binding: testFoundLookup().binding }), testFamily(), 100n);
+    expect(core.readDisputeDetails).toHaveBeenCalledWith(
+      expect.objectContaining({ chainId: 1 }),
+      expect.objectContaining({ binding: testFoundLookup().binding }),
+      testFamily(),
+      100n,
+    );
   });
 
-  it("A22: the write context's binding is the arbitrator's, whatever the meta-evidence says", async () => {
+  it("takes the write context's binding from the arbitrator, whatever the meta-evidence says", async () => {
     vi.mocked(core.loadMetaEvidence).mockResolvedValue(testOkMetaEvidence({ aliases: { "0x2222222222222222222222222222222222222222": "Attacker" } }));
     const { result } = renderCase(1n);
     const current = await settledCase(result);
@@ -125,7 +137,7 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
   });
 
-  it("D-53: a nonexistent ID shows the not-found state and reads nothing else", async () => {
+  it("shows the not-found state for a nonexistent ID and reads nothing else", async () => {
     vi.mocked(core.lookupDispute).mockResolvedValue({ status: "not-found" });
     const { result } = renderCase(99n);
     await waitFor(() => {
@@ -138,7 +150,7 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     expect(core.loadMetaEvidence).not.toHaveBeenCalled();
   });
 
-  it("D-53: a new ID shows nothing of the previous dispute while its lookup runs", async () => {
+  it("shows nothing of the previous dispute while a new ID's lookup runs", async () => {
     const { result, rerender } = renderCase(1n);
     await settledCase(result);
     vi.mocked(core.lookupDispute).mockReturnValue(new Promise(() => undefined));
@@ -150,7 +162,7 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     }
   });
 
-  it("D-36: a failed family detection degrades the appeal panel and the write context only", async () => {
+  it("degrades only the appeal panel and the write context when family detection fails", async () => {
     vi.mocked(core.detectFamily).mockRejectedValue(new Error("eth_getCode failed"));
     const { result } = renderCase(1n);
     const current = await settledCase(result);
@@ -163,7 +175,7 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     expect(current.evidence.status).toBe("ready");
   });
 
-  it("D-36: without a Dispute event the evidence section says why, and details read without its block", async () => {
+  it("explains the missing Dispute event in the evidence section and reads the details without its block", async () => {
     vi.mocked(core.readDisputeEvent).mockResolvedValue({ ok: true, value: { status: "not-found" } });
     const { result } = renderCase(1n);
     const current = await settledCase(result);
@@ -173,7 +185,7 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     expect(current.view.status).toBe("ready");
   });
 
-  it("D-36: a failed Dispute-event scan degrades the evidence section with its reason", async () => {
+  it("degrades the evidence section with the reason of a failed Dispute-event scan", async () => {
     const error = { code: "rpc-error", message: "getLogs refused" } as const;
     vi.mocked(core.readDisputeEvent).mockResolvedValue({ ok: false, error });
     const { result } = renderCase(1n);
@@ -184,7 +196,8 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     expect(current.view.status).toBe("ready");
   });
 
-  it("B12: a meta-evidence that failed to load degrades the appeal panel, not the rest of the page", async () => {
+  it("degrades the appeal cards, not the rest of the page, when the meta-evidence fails to load", async () => {
+    programReads(3);
     const failed: MetaEvidenceResult = { status: "failed", reason: "not-json", error: { code: "invalid-data", message: "The meta-evidence is not JSON." } };
     vi.mocked(core.loadMetaEvidence).mockResolvedValue(failed);
     const { result } = renderCase(1n);
@@ -195,7 +208,7 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     expect(current.evidence.status).toBe("ready");
   });
 
-  it("D-02: in the appeal period the current round's funding is scanned from the round's start block", async () => {
+  it("scans the current round's funding from the round's start block in the appeal period", async () => {
     programReads(3);
     const { result } = renderCase(1n);
     const current = await settledCase(result);
@@ -206,7 +219,24 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     expect(current.write).toMatchObject({ status: "ready", value: { appealInfo: { appealCost: 1_000n } } });
   });
 
-  it("06 §1: an arbitrable that does not crowdfund is never scanned for funding", async () => {
+  it("the write context re-reads the appeal cost from the arbitrator on the page chain's read client", async () => {
+    programReads(3);
+    vi.mocked(core.detectFamily).mockResolvedValue(escrowFamily);
+    vi.mocked(core.readAppealCost).mockResolvedValue({ ok: true, value: 2_000n });
+    const deps = createTestDeps();
+    const { result } = renderCase(1n, { deps });
+    const current = await settledCase(result);
+    if (current.write.status !== "ready") throw new Error("The write context is not ready.");
+    expect(core.readAppealCost).not.toHaveBeenCalled();
+
+    await expect(current.write.value.readAppealCost()).resolves.toEqual({ ok: true, value: 2_000n });
+    expect(core.readAppealCost).toHaveBeenCalledTimes(1);
+    const [context, binding] = vi.mocked(core.readAppealCost).mock.calls[0] ?? [];
+    expect(context?.client).toBe(deps.getReadClient(1));
+    expect(binding).toEqual(testFoundLookup().binding);
+  });
+
+  it("never scans an arbitrable that does not crowdfund for funding", async () => {
     programReads(3);
     vi.mocked(core.detectFamily).mockResolvedValue(escrowFamily);
     const { result } = renderCase(1n);
@@ -216,16 +246,20 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     expect(current.appealPanel).toMatchObject({ status: "ready", value: { kind: "escrow-appeal" } });
   });
 
-  it("D-51: in execution the connected account's withdrawable amount is read over every round", async () => {
+  it("reads the connected account's withdrawable amount over every round in execution", async () => {
     programReads(4);
     const { result } = renderCase(1n, { account: ACCOUNT });
     const current = await settledCase(result);
-    expect(core.readWithdrawable).toHaveBeenCalledWith(expect.objectContaining({ binding: testFoundLookup().binding }), { beneficiary: ACCOUNT, rounds: [0n, 1n], roundStartBlocks: [100n, 500n] });
+    expect(core.readWithdrawable).toHaveBeenCalledWith(expect.objectContaining({ binding: testFoundLookup().binding }), {
+      beneficiary: ACCOUNT,
+      rounds: [0n, 1n],
+      roundStartBlocks: [100n, 500n],
+    });
     expect(core.readMultipliers).not.toHaveBeenCalled();
     expect(current.appealPanel).toEqual({ status: "ready", value: { kind: "withdraw", state: { status: "nothing" } } });
   });
 
-  it("WN-1 / D-47: a governor dispute in the appeal period funds the session of its Dispute event", async () => {
+  it("funds the session of a governor dispute's Dispute event in the appeal period", async () => {
     programReads(3);
     vi.mocked(core.detectFamily).mockResolvedValue(governorFamily);
     const { result } = renderCase(1n);
@@ -234,16 +268,20 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     expect(current.appealPanel).toMatchObject({ status: "ready", value: { kind: "crowdfunding" } });
   });
 
-  it("WN-1 / D-47: a governor dispute in execution reads the withdrawable amount of its Dispute event's session", async () => {
+  it("reads the withdrawable amount of a governor dispute's Dispute-event session in execution", async () => {
     programReads(4);
     vi.mocked(core.detectFamily).mockResolvedValue(governorFamily);
     const { result } = renderCase(1n, { account: ACCOUNT });
     const current = await settledCase(result);
-    expect(core.readWithdrawable).toHaveBeenCalledWith(expect.objectContaining({ family: governorFamily, evidenceGroupId: 3n }), { beneficiary: ACCOUNT, rounds: [0n, 1n], roundStartBlocks: [100n, 500n] });
+    expect(core.readWithdrawable).toHaveBeenCalledWith(expect.objectContaining({ family: governorFamily, evidenceGroupId: 3n }), {
+      beneficiary: ACCOUNT,
+      rounds: [0n, 1n],
+      roundStartBlocks: [100n, 500n],
+    });
     expect(current.appealPanel).toEqual({ status: "ready", value: { kind: "withdraw", state: { status: "nothing" } } });
   });
 
-  it("R4 / D-47: a governor's withdrawable amount is read again for the session of a Dispute event that recovers", async () => {
+  it("reads a governor's withdrawable amount again for the session of a Dispute event that recovers", async () => {
     programReads(4);
     vi.mocked(core.detectFamily).mockResolvedValue(governorFamily);
     vi.mocked(core.readDisputeEvent).mockResolvedValue({ ok: false, error: { code: "rpc-error", message: "getLogs refused" } });
@@ -267,7 +305,7 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     });
   });
 
-  it("R4 / D-47: a governor's round funding is read again for the session of a Dispute event that recovers", async () => {
+  it("reads a governor's round funding again for the session of a Dispute event that recovers", async () => {
     programReads(3);
     vi.mocked(core.detectFamily).mockResolvedValue(governorFamily);
     vi.mocked(core.readDisputeEvent).mockResolvedValue({ ok: false, error: { code: "rpc-error", message: "getLogs refused" } });
@@ -287,7 +325,7 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     expect(core.readRoundFunding).toHaveBeenLastCalledWith(expect.objectContaining({ family: governorFamily, evidenceGroupId: 3n }), 1n, 500n);
   });
 
-  it("D-36: failed appeal decisions degrade the funding-dependent sections instead of guessing a round", async () => {
+  it("degrades the funding-dependent sections instead of guessing a round when the appeal decisions fail", async () => {
     programReads(4);
     vi.mocked(core.readDisputeDetails).mockImplementation((_context, found) =>
       Promise.resolve(testDetails({ status: "found", ...found }, { appealDecisions: { ok: false, error: { code: "rpc-error", message: "logs refused" } } })),
@@ -300,14 +338,14 @@ describe("useCase (ARCHITECTURE.md §5.3)", () => {
     expect(current.appealDecisions).toMatchObject({ status: "unavailable", error: { code: "rpc-error", message: "logs refused" } });
   });
 
-  it("D-03: the AppealDecision events of the details reach the evidence section", async () => {
+  it("passes the AppealDecision events of the details to the evidence section", async () => {
     programReads(4);
     const { result } = renderCase(1n);
     const current = await settledCase(result);
     expect(current.appealDecisions).toEqual({ status: "ready", value: [{ blockNumber: 500n, appealedAt: 1_700_000_100 }] });
   });
 
-  it("D-56: an unconfigured chain degrades to no-rpc without a read", async () => {
+  it("degrades an unconfigured chain to no-rpc without a read", async () => {
     vi.mocked(core.lookupDispute).mockResolvedValue({ status: "unavailable", error: { code: "no-rpc", message: "No RPC is configured for chain 1." } });
     const { result } = renderCase(1n, { deps: createTestDeps({ unconfiguredChains: [1] }) });
     await waitFor(() => {

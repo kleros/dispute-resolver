@@ -1,7 +1,7 @@
 /**
- * Today's GitHub-flavored syntax for `SafeMarkdown` (ARCHITECTURE.md 9.2, spec §5.6). Today's react-markdown 4 parses
- * with remark-parse 5 in its default `gfm` mode; react-markdown 9 parses CommonMark only. This remark plugin rewrites
- * the CommonMark tree with remark-parse 5's own rules, which remark-gfm does not share (it links `www.` and bare e-mail
+ * The GitHub-flavored syntax of remark-parse 5's default `gfm` mode, which existing descriptions were written for, for
+ * `SafeMarkdown`: react-markdown 9 parses CommonMark only. This remark plugin rewrites the CommonMark tree with
+ * remark-parse 5's own rules, which remark-gfm does not share (it links `www.` and bare e-mail
  * addresses, keeps a balanced `)` in a URL and strikes through `~single~` tildes):
  * - a literal `http://`, `https://` or `mailto:` URL becomes a link; a scheme in capitals only where an inline run
  *   starts, because remark-parse 5 looked for the lowercase schemes; `mailto:` is dropped from the label;
@@ -11,14 +11,14 @@
  * - a list item that starts with `[ ]` or `[x]` becomes a task item;
  * - an angle autolink to `mailto:` is labelled without the scheme;
  * - bracketed text that CommonMark left as text because no definition names it loses its brackets, as remark-parse 5's
- *   reference did, but is not a link: today's link to the current page led nowhere (P-10). Footnote markers and their
+ *   reference did, but is not a link: remark-parse 5's link to the current page led nowhere. Footnote markers and their
  *   definitions (`[^1]`, `[^1]: text`) and a bare task marker (`- [x]`) are such text;
  * - a link never holds a link: a literal URL is read before the syntax inside it, and link syntax that CommonMark read
  *   inside a link's label or an undefined reference's (an autolink in a link's text, a link in emphasis that a literal
  *   URL takes in) is text, as remark-parse 5 read no link inside a link.
  * A character written as a backslash escape or a character reference is never syntax. The table row test, like
  * remark-parse 5's raw-source rule, reads the line as written: a pipe written as a character reference is no pipe; one
- * written as a backslash escape still makes the row. Links made here still pass through `urlTransform`, so the A11
+ * written as a backslash escape still makes the row. Links made here still pass through `urlTransform`, so its
  * allowlist applies to them.
  */
 
@@ -192,7 +192,7 @@ function pipeSources(raw: string): CharacterSource[] {
 /**
  * A text node that cannot be aligned with its source, as backslash escapes: never syntax. Its pipes keep where they
  * came from, read from the source in order, since a text holds its source's pipes in the order they are written: a
- * pipe written as a character reference stays a reference, so the row test still reads the line as written (MC-12).
+ * pipe written as a character reference stays a reference, so the row test still reads the line as written.
  * When the pipes of the value and the source do not match, each pipe counts as a reference; without a source, none does.
  */
 function unalignedSources(value: string, raw: string | undefined): CharacterSource[] {
@@ -697,9 +697,9 @@ function referenceSuffix(run: Run, close: number): readonly [end: number, suffix
  * Bracketed text that CommonMark left as text (no definition names it), read with remark-parse 5's reference rule: a
  * `[` not preceded by `!`, its closing `]`, and an optional `[identifier]` after optional whitespace. Without anything
  * after it the label must not be empty, and only a non-empty identifier allows brackets in the label, a `[` in the
- * source of a node in the label among them, since remark-parse 5 read the label's source. Today it became a link to
- * the current page; it now renders its label's text without the brackets and without a link (P-10). The label is read
- * as link text was, so nothing in it becomes a link.
+ * source of a node in the label among them, since remark-parse 5 read the label's source. remark-parse 5 linked it to
+ * the current page; it renders its label's text without the brackets and without a link. The label is read as link
+ * text, so nothing in it becomes a link.
  */
 function matchReference(run: Run, index: number, context: Context): Construct | undefined {
   if (!isLiteralCharacter(run, index, "[") || isLiteralCharacter(run, index - 1, "!")) return undefined;
@@ -999,7 +999,7 @@ function splitTable(paragraph: MarkdownNode, context: Context): MarkdownNode[] {
   let end = 2;
   while (end < lines.length && isRow(lines[end] ?? { nodes: [] }, context)) end++;
   const rows = [header, ...lines.slice(2, end)].map((line) => rowCells(line, context));
-  // No table alignment: mdast-util-to-hast pads or cuts every row to its length; today each row keeps its own cells.
+  // No table alignment: mdast-util-to-hast would pad or cut every row to its length, and each row keeps its own cells.
   const table: MarkdownNode = {
     type: "table",
     children: rows.map((cells) => ({ type: "tableRow", children: cells.map((cell, index) => tableCell(cell, align[index] ?? null)) })),
@@ -1033,7 +1033,6 @@ function transformBlock(node: MarkdownNode, context: Context): void {
   for (const child of node.children) transformBlock(child, context);
 }
 
-/** The remark plugin: `remarkPlugins={[remarkLegacyGfm]}`. */
 export function remarkLegacyGfm() {
   return (tree: MarkdownNode, file: { readonly value: unknown }): void => {
     transformBlock(tree, { source: typeof file.value === "string" ? file.value : "", escaped: new WeakMap(), summaries: new WeakMap(), unread: [] });

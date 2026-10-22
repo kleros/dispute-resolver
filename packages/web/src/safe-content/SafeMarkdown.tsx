@@ -11,10 +11,7 @@ type ElementProps<Tag extends keyof JSX.IntrinsicElements> = ComponentProps<Tag>
 const LINK_CLASS =
   "rounded-base text-klerosUIComponentsPrimaryBlue underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klerosUIComponentsPrimaryBlue";
 
-/**
- * A description link (A11, D-31): the transformed URL in a new tab with `rel="noopener noreferrer"`. A refused URL
- * arrives empty and its label is kept as text. `http:` stays a link here: D-32 covers attachments and interfaces only.
- */
+/** A refused URL arrives empty and keeps its label as text. `http:` stays a link here, unlike in `ExternalLink`. */
 function MarkdownLink({ href, title, children }: ElementProps<"a">) {
   if (href === undefined || href === "") return <span>{children}</span>;
   return (
@@ -24,13 +21,11 @@ function MarkdownLink({ href, title, children }: ElementProps<"a">) {
   );
 }
 
-/** A description image (D-31): loaded only from an absolute https URL, without a referrer; otherwise its alt text. */
 function MarkdownImage({ src, alt, title }: ElementProps<"img">) {
   if (!isSafeNavigationUrl(src)) return alt ? <span>{alt}</span> : null;
   return <img src={src} alt={alt ?? ""} title={title} referrerPolicy="no-referrer" loading="lazy" className="inline-block h-auto max-w-full align-middle" />;
 }
 
-/** A task item's box (spec §5.6): shows its state and cannot be changed. */
 function TaskCheckbox({ type, checked }: ElementProps<"input">) {
   if (type !== "checkbox") return null;
   return <input type="checkbox" checked={checked === true} disabled readOnly aria-label="Task" className="mr-2 size-4 align-middle accent-klerosUIComponentsPrimaryBlue" />;
@@ -95,11 +90,9 @@ const COMPONENTS: Components = {
 const REMARK_PLUGINS = [remarkLegacyGfm];
 
 /**
- * Untrusted markdown (A11, B14, D-31), rendered through React with no rehype plugin: raw HTML in the source is shown
- * as text, link URLs follow today's allowlist, links open in a new tab and images load only from https. Today's
- * GitHub-flavored syntax (literal URLs, strikethrough, tables, task items) is restored by `remarkLegacyGfm` (§5.6),
- * on line endings normalized to `\n` as remark-parse 5 did.
- * Headings start at `h3` because a description sits under the page's `h1` and the summary's `h2`.
+ * Untrusted markdown, rendered through React with no rehype plugin so raw HTML in the source is shown as text.
+ * `remarkLegacyGfm` reads remark-parse 5's GitHub-flavored syntax, on line endings normalized to `\n` as remark-parse 5
+ * did. Headings start at `h3` because a description sits under the page's `h1` and the summary's `h2`.
  */
 export function SafeMarkdown({ source, className }: SafeMarkdownProps) {
   const rootClass = "min-w-0 break-words text-klerosUIComponentsPrimaryText [&>*+*]:mt-3";

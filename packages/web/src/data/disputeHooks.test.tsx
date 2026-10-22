@@ -42,8 +42,8 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("dispute hooks (ARCHITECTURE.md §5.3)", () => {
-  it("A13: family detection reads through the chain's configured read client and the session cache", async () => {
+describe("dispute hooks", () => {
+  it("detects the family through the chain's configured read client and the session cache", async () => {
     vi.mocked(core.detectFamily).mockResolvedValue(testFamily());
     const deps = createTestDeps();
     const { result } = renderHook(() => useFamily(1, BINDING.arbitrated), { wrapper: wrapperWith(deps) });
@@ -53,7 +53,7 @@ describe("dispute hooks (ARCHITECTURE.md §5.3)", () => {
     expect(core.detectFamily).toHaveBeenCalledWith({ client: deps.getReadClient(1), chainId: 1, arbitrable: BINDING.arbitrated, registry: deps.registry, cache: deps.familyCache });
   });
 
-  it("C11: a rejected detection is retried once, then unavailable", async () => {
+  it("retries a rejected family detection once, then reports it unavailable", async () => {
     vi.mocked(core.detectFamily).mockRejectedValue(new Error("eth_getCode failed"));
     const { result } = renderHook(() => useFamily(1, BINDING.arbitrated), { wrapper: wrapperWith(createTestDeps()) });
     await waitFor(() => {
@@ -62,7 +62,7 @@ describe("dispute hooks (ARCHITECTURE.md §5.3)", () => {
     expect(core.detectFamily).toHaveBeenCalledTimes(2);
   });
 
-  it("§5.3: the case page reloads a meta-evidence that is not ok when it mounts", async () => {
+  it("reloads a stored failed meta-evidence when the case page mounts", async () => {
     vi.mocked(core.loadMetaEvidence).mockResolvedValue(testOkMetaEvidence());
     const deps = createTestDeps();
     const { result } = renderHook(() => useMetaEvidence(1, BINDING, "case"), { wrapper: wrapperWith(deps, [[queryKeys.metaEvidence(1, 9n, BINDING.arbitrated), FAILED]]) });
@@ -72,7 +72,7 @@ describe("dispute hooks (ARCHITECTURE.md §5.3)", () => {
     expect(core.loadMetaEvidence).toHaveBeenCalledWith(expect.objectContaining({ budgetMs: core.CASE_PAGE_BUDGET_MS, arbitrable: BINDING.arbitrated, disputeId: 9n }));
   });
 
-  it("§9.1: the case page runs the meta-evidence pipeline when it mounts and shows no stored result meanwhile", async () => {
+  it("runs the meta-evidence pipeline when the case page mounts and shows no stored result meanwhile", async () => {
     vi.mocked(core.loadMetaEvidence).mockResolvedValue(testOkMetaEvidence({ title: "Fresh title" }));
     const stored = testOkMetaEvidence({ title: "Stored title" });
     const { result } = renderHook(() => useMetaEvidence(1, BINDING, "case"), {
@@ -123,7 +123,7 @@ describe("dispute hooks (ARCHITECTURE.md §5.3)", () => {
     expect(core.loadMetaEvidence).not.toHaveBeenCalled();
   });
 
-  it("P-25: the case page's meta-evidence load receives an on-chain reader; the Ongoing title's does not", async () => {
+  it("passes an on-chain reader to the case page's meta-evidence load but not to an Ongoing title's", async () => {
     vi.mocked(core.loadMetaEvidence).mockResolvedValue(testOkMetaEvidence({ title: "Loaded" }));
     const casePage = renderHook(() => useMetaEvidence(1, BINDING, "case"), { wrapper: wrapperWith(createTestDeps()) });
     await waitFor(() => {
@@ -143,7 +143,7 @@ describe("dispute hooks (ARCHITECTURE.md §5.3)", () => {
     expect(vi.mocked(core.loadMetaEvidence).mock.calls[0]?.[0].onChain).toBeUndefined();
   });
 
-  it("D-38: accepted results never go stale, failures stay 30 s, rejections none (A2)", () => {
+  it("keeps accepted meta-evidence fresh forever, failed or missing results for 30 seconds, and rejections not at all", () => {
     expect(metaEvidenceStaleTime(testOkMetaEvidence())).toBe(Number.POSITIVE_INFINITY);
     expect(metaEvidenceStaleTime(FAILED)).toBe(30_000);
     expect(metaEvidenceStaleTime({ status: "missing" })).toBe(30_000);

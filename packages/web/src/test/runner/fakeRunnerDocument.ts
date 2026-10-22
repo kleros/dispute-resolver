@@ -5,14 +5,14 @@ export interface PostedRun {
   readonly ports: readonly MessagePort[];
   /** Answers on the transferred port, as the runner page does. */
   reply(data: unknown): void;
-  /** Posts the runner page's acknowledgement on the transferred port (P-16). */
+  /** Posts the runner page's acknowledgement on the transferred port. */
   acknowledge(): void;
 }
 
 /** A runner frame the host created, driven by the test instead of a real runner page (jsdom never loads one). */
 export interface FakeRunnerFrame {
   readonly element: HTMLIFrameElement;
-  /** Every attribute the host set, in order, observed as DOM mutations (C4: `sandbox` before `src`). */
+  /** Every attribute the host set, in order, observed as DOM mutations, so a test can check `sandbox` precedes `src`. */
   attributeOrder(): string[];
   /** Records posts to the frame's window from now on and returns them. */
   watchPosts(): PostedRun[];
@@ -88,8 +88,7 @@ function fakeFrame(element: HTMLIFrameElement): FakeRunnerFrame {
 
 /**
  * A document for `createIframeScriptRunner` whose iframes are real jsdom elements the test drives: it fires their
- * `load` events and answers on the transferred ports (ARCHITECTURE.md §7.4). Only `createElement` and `body` are used
- * by the host.
+ * `load` events and answers on the transferred ports. Only `createElement` and `body` are used by the host.
  */
 export function createFakeRunnerDocument(): FakeRunnerDocument {
   const frames: FakeRunnerFrame[] = [];

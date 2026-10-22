@@ -21,14 +21,9 @@ export interface AnswerFieldProps {
   readonly type: VariableQuestionType;
   /** The typed answer, or `null` while there is none (a cleared date). */
   readonly onChange: (answer: AnswerInput | null) => void;
-  /** Why the answer cannot be encoded (WN-3). */
   readonly error: string | undefined;
 }
 
-/**
- * The free input of a variable-type card (spec §5.12): a text field whose raw text core encodes and validates (uint,
- * int, string, hash), or a date and time picker in UTC whose chosen time is kept (D-17).
- */
 export function AnswerField({ type, onChange, error }: AnswerFieldProps) {
   return type === "datetime" ? <DateAnswerField onChange={onChange} error={error} /> : <TextAnswerField type={type} onChange={onChange} error={error} />;
 }
@@ -54,9 +49,8 @@ function TextAnswerField({ type, onChange, error }: { readonly type: TextAnswerT
 }
 
 /**
- * The date picker starts empty, so the card has no answer until one is picked (spec §5.12). Picking a day commits it at
- * once, at 00:00 UTC unless a time is set: the library's Select button closes the popover without committing a day
- * picked on an empty field, so waiting for it would drop the choice. The time stays adjustable afterwards (D-17).
+ * Picking a day commits it at once, at 00:00 UTC unless a time is set: the library's Select button closes the popover
+ * without committing a day picked on an empty field, so waiting for it would drop the choice.
  */
 function DateAnswerField({ onChange, error }: Omit<AnswerFieldProps, "type">) {
   const [value, setValue] = useState<DateValue | null>(null);

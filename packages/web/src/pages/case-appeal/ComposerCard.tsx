@@ -1,9 +1,7 @@
-import { combinationCode, combinationTitle, type ChainConfig, type CrowdfundingCard, type MultipleSelectComposer } from "@dispute-resolver/core";
+import { combinationCode, combinationTitle, enteredAnswerFunding, type ChainConfig, type CrowdfundingCard, type MultipleSelectComposer } from "@dispute-resolver/core";
 import { Card, Checkbox } from "@kleros/ui-components-library";
 import { useId, useState } from "react";
-import { Amount, FACT_LEAD } from "../../ui";
-import { FundAction } from "./FundAction";
-import { FundingProgress } from "./FundingProgress";
+import { EnteredAnswerFooter, MatchedCardNote } from "./FreeInputCard";
 import { CARD_TITLE_CLASS, COMPOSER_CARD_CLASS } from "./styles";
 import type { AppealActions } from "./useAppealActions";
 
@@ -13,20 +11,18 @@ export interface ComposerCardProps {
   readonly cards: readonly CrowdfundingCard[];
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
-  /** Disables Fund, as without a wallet. */
   readonly isFundDisabled: boolean;
 }
 
 /**
- * The multiple-select composer of D-33: above four options the combinations are not enumerated, so the user ticks the
- * options of the answer and funds that combination (bitmask + 1) at the loser amount until the loser deadline, like a
- * free input. Ticking nothing funds "None", which is a combination too (spec §5.12 item 4).
+ * Above four options the combinations are not enumerated as cards, so the user ticks the options of the answer and
+ * funds that combination (bitmask + 1). Ticking nothing funds "None", which is a combination too.
  */
 export function ComposerCard({ composer, cards, actions, chain, isFundDisabled }: ComposerCardProps) {
   const titleId = useId();
   const [selected, setSelected] = useState<ReadonlySet<number>>(() => new Set());
   const code = combinationCode([...selected].sort((a, b) => a - b));
-  const funded = cards.find((card) => card.code === code);
+  const funding = enteredAnswerFunding(cards, composer, code);
   const options = composer.titles.map((title, position) => ({ title, position, id: `option-${String(position)}` }));
 
   const toggle = (position: number, isSelected: boolean) => {
@@ -65,14 +61,17 @@ export function ComposerCard({ composer, cards, actions, chain, isFundDisabled }
           <p className="text-sm [overflow-wrap:anywhere]" aria-live="polite">
             Answer to fund: <strong className="font-semibold">{combinationTitle(code - 1n, composer.titles)}</strong>
           </p>
+          <MatchedCardNote funding={funding} kind="combination" chain={chain} />
         </div>
         <div className="flex min-w-0 flex-col gap-4 lg:border-l lg:border-klerosUIComponentsStroke lg:pl-8">
-          <FundingProgress percent={funded?.fundedPercent ?? 0} deadline={composer.deadline} />
-          <p className="flex flex-col gap-1 text-sm text-klerosUIComponentsSecondaryText">
-            <span>{"Required "}</span>
-            <Amount wei={composer.required} chain={chain} className={FACT_LEAD} />
-          </p>
-          <FundAction subject="the selected combination" code={code} suggested={composer.required} actions={actions} chain={chain} isDisabled={isFundDisabled} />
+          <EnteredAnswerFooter
+            funding={funding}
+            subject={funding.card?.title ?? "the selected combination"}
+            code={code}
+            actions={actions}
+            chain={chain}
+            isFundDisabled={isFundDisabled}
+          />
         </div>
       </Card>
     </li>

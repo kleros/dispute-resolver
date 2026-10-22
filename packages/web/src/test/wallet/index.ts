@@ -1,4 +1,3 @@
-// Test doubles of `wallet` (ARCHITECTURE.md §1.5). Imported only by tests and other test doubles (C9, lint rule 5).
 export { installOfflineAppKitEnvironment } from "./appKitEnvironment";
 export { createFakeInjectedWallet, type AddChainRequest, type FakeInjectedWallet, type FakeInjectedWalletOptions } from "./fakeInjectedWallet";
 export { fakeWriteController, type FakeWriteController, type FakeWriteOptions } from "./fakeWriteController";
@@ -10,6 +9,7 @@ export {
   TEST_WALLET_SECOND_ACCOUNT,
   UNCONFIGURED_CHAIN_ID,
   createTestWallet,
+  holdChainSwitches,
   type FakeWalletModal,
   type TestWallet,
   type TestWalletOptions,

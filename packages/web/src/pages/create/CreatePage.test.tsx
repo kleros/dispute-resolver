@@ -1,7 +1,8 @@
 import * as core from "@dispute-resolver/core";
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 import { numberToHex, toEventSelector } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { UploadResult } from "../../atlas";
@@ -9,11 +10,20 @@ import type { CoreDeps } from "../../data";
 import type { WriteStatus } from "../../wallet";
 import { formatAmount } from "../../ui";
 import { ToastProvider } from "../../shell";
-import { TEST_UPLOAD_PATH, atlasWrapper, fakeUploader, installFakeAtlasServer, type FakeAtlasServer, type FakeUploader } from "../../test/atlas";
+import { TEST_UPLOAD_CID, TEST_UPLOAD_PATH, atlasWrapper, fakeUploader, installFakeAtlasServer, type FakeAtlasServer, type FakeUploader } from "../../test/atlas";
 import { createTestDeps, testCourt } from "../../test/data";
 import { renderAtPath } from "../../test/routing";
 import { renderWithProviders } from "../../test/shell";
-import { TEST_TX_HASH, createTestWallet, fakeWriteController, installOfflineAppKitEnvironment, testReceipt, type FakeWriteController, type TestWallet } from "../../test/wallet";
+import {
+  TEST_TX_HASH,
+  createTestWallet,
+  fakeWriteController,
+  holdChainSwitches,
+  installOfflineAppKitEnvironment,
+  testReceipt,
+  type FakeWriteController,
+  type TestWallet,
+} from "../../test/wallet";
 import { CreatePage } from "./index";
 
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../../test/data/mockCoreReads")).mockCoreReads(importOriginal));
@@ -37,7 +47,7 @@ if (SEPOLIA_CHAIN?.klerosLiquid === undefined || SEPOLIA_CHAIN.arbitrableProxy =
 const ARBITRATOR = SEPOLIA_CHAIN.klerosLiquid;
 const PROXY = SEPOLIA_CHAIN.arbitrableProxy;
 const CREATE_PATH = `/${String(SEPOLIA)}/create`;
-/** A configured chain that can also create disputes, for the chain-change tests (spec §4.1). */
+/** A configured chain that can also create disputes, for the chain-change tests. */
 const GNOSIS = 100;
 const GNOSIS_CHAIN = core.getChain(GNOSIS);
 if (GNOSIS_CHAIN === undefined) throw new Error("Gnosis must be configured.");
@@ -203,7 +213,11 @@ function createCall(controller: FakeWriteController): core.WriteCall {
   return build.call;
 }
 
+/** Changing step scrolls the steps into view; jsdom lays nothing out and has no scrollIntoView. */
+const scrollIntoView = vi.fn<(options?: ScrollIntoViewOptions) => void>();
+
 beforeEach(() => {
+  Element.prototype.scrollIntoView = scrollIntoView;
   // jsdom has no ResizeObserver, which the library's Steps and popovers use; this double stubs it with the rest of the browser surface.
   installOfflineAppKitEnvironment();
   vi.mocked(core.listCourts).mockResolvedValue({ ok: true, value: COURTS });
@@ -212,13 +226,15 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+  scrollIntoView.mockReset();
   writes.controller = null;
   vi.clearAllMocks();
   vi.unstubAllGlobals();
 });
 
 describe("CreatePage", () => {
-  it("spec §4.2: a chain without an ArbitrableProxy shows the precondition message and its GitHub issues link", async () => {
+  it("a chain without an ArbitrableProxy shows the precondition message and its GitHub issues link", async () => {
     await renderCreate({ path: "/137/create", connect: false });
     expect(screen.getByRole("heading", { name: /no arbitrable contract deployed/i })).toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Create dispute steps" })).toBeNull();
@@ -226,7 +242,7 @@ describe("CreatePage", () => {
     expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
   });
 
-  it("spec §4.3: a chain that can create shows the form with its courts, the default cost in its currency and the question types", async () => {
+  it("a chain that can create shows the form with its courts, the default cost in its currency and the question types", async () => {
     const { user } = await renderCreate({ connect: false });
     expect(screen.getByRole("navigation", { name: "Create dispute steps" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
@@ -237,7 +253,7 @@ describe("CreatePage", () => {
     expect(await optionsOf(user, "Question Type")).toEqual(["Multiple choice: single select", "Multiple choice: multiple select", "Non-negative number", "Date"]);
   });
 
-  it("spec §4.3: the number of options stays between 2 and 32", async () => {
+  it("the number of options stays between 2 and 32", async () => {
     const { user } = await renderCreate({ connect: false });
     const count = screen.getByRole("textbox", { name: "Number of Options" });
     expect(count).toHaveValue("2");
@@ -251,7 +267,7 @@ describe("CreatePage", () => {
     expect(screen.queryByRole("textbox", { name: "Ruling Option 33" })).toBeNull();
   });
 
-  it("spec §4.3: the required fields are marked required and the optional ones are not", async () => {
+  it("the required fields are marked required and the optional ones are not", async () => {
     const { user } = await renderCreate({ connect: false });
     await user.click(screen.getByRole("button", { name: "Add party" }));
     for (const required of ["Number of Votes", "Title", "Number of Options", "Question", "Ruling Option 1", "Ruling Option 2"]) {
@@ -272,7 +288,7 @@ describe("CreatePage", () => {
     expect(documentInput()).not.toBeRequired();
   });
 
-  it("D-19: a court whose policy could not be read is listed by its ID with 'name unavailable'", async () => {
+  it("a court whose policy could not be read is listed by its ID with 'name unavailable'", async () => {
     const { user } = await renderCreate({ connect: false });
     await courtsLoaded();
     await chooseOption(user, "Court", "Court #2 (name unavailable)");
@@ -280,7 +296,7 @@ describe("CreatePage", () => {
     await costShown(costOf(core.encodeExtraData(2n, 3n)), SEPOLIA_CHAIN);
   });
 
-  it("spec §4.3: a failed court list degrades the court field with its reason and a retry", async () => {
+  it("a failed court list degrades the court field with its reason and a retry", async () => {
     vi.mocked(core.listCourts).mockResolvedValueOnce({ ok: false, error: { code: "rpc-error", message: "The courts could not be read." } });
     const { user } = await renderCreate({ connect: false });
     expect(await screen.findByText("The courts could not be read.")).toBeInTheDocument();
@@ -291,7 +307,7 @@ describe("CreatePage", () => {
     expect(screen.queryByText("The courts could not be read.")).toBeNull();
   });
 
-  it("D-08: input typed while the courts load is kept once they arrive", async () => {
+  it("input typed while the courts load is kept once they arrive", async () => {
     let resolveCourts: ((value: core.Outcome<readonly core.Court[]>) => void) | undefined;
     const pending = new Promise<core.Outcome<readonly core.Court[]>>((resolve) => {
       resolveCourts = resolve;
@@ -308,7 +324,7 @@ describe("CreatePage", () => {
     expect(screen.getByRole("textbox", { name: "Title" })).toHaveValue("Typed early");
   });
 
-  it("spec §4.3, D-08: Continue reports every invalid field and moves on only once the form is valid", async () => {
+  it("Continue reports every invalid field and moves on only once the form is valid", async () => {
     const { user } = await renderCreate({ connect: false });
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(await screen.findByText("Some fields need attention")).toBeInTheDocument();
@@ -322,7 +338,7 @@ describe("CreatePage", () => {
     await toSummary(user);
   });
 
-  it("D-08: changing the number of options trims the rows and what is submitted", async () => {
+  it("changing the number of options trims the rows and what is submitted", async () => {
     const { user, uploader } = await renderCreate();
     await fillRequired(user);
     await setNumber(user, "Number of Options", "3");
@@ -335,7 +351,7 @@ describe("CreatePage", () => {
     expect(uploadedMetaEvidence(uploader).rulingOptions.titles).toEqual(["A", "B"]);
   });
 
-  it("spec §4: the steps follow the form and the summary, and the page logs no React warning about DOM attributes", async () => {
+  it("the steps follow the form and the summary, and the page logs no DOM-attribute warning beyond the library's known one", async () => {
     const consoleError = vi.spyOn(console, "error");
     const { user } = await renderCreate({ connect: false });
     await courtsLoaded();
@@ -344,7 +360,9 @@ describe("CreatePage", () => {
     await fillOptions(user, ["Yes", "No"]);
     await toSummary(user);
     expect(screen.getByRole("listitem", { name: "Summary" })).toHaveAttribute("aria-current", "step");
-    expect(consoleError.mock.calls.filter(([message]) => String(message).includes("non-boolean attribute"))).toEqual([]);
+    const attributeWarnings = consoleError.mock.calls.filter((call) => call.map(String).join(" ").includes("non-boolean attribute"));
+    // The library's horizontal Steps forwards its `active` prop to a div; React warns in development and writes nothing.
+    expect(attributeWarnings.filter((call) => !call.includes("active"))).toEqual([]);
   });
 
   it("Return keeps every value, the chosen court and its cost", async () => {
@@ -364,10 +382,170 @@ describe("CreatePage", () => {
     await costShown(costOf(core.encodeExtraData(1n, 5n)), SEPOLIA_CHAIN);
   });
 
+  describe("changing step", () => {
+    function stepsNav(): HTMLElement {
+      return screen.getByRole("navigation", { name: "Create dispute steps" });
+    }
+
+    it("moves the focus to the summary heading and brings the steps into view on Continue, and back to the form heading on Return", async () => {
+      const { user } = await renderCreate({ connect: false });
+      await courtsLoaded();
+      expect(document.activeElement).toBe(document.body);
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      await fillRequired(user);
+      await fillOptions(user, ["Yes", "No"]);
+      await toSummary(user);
+      expect(screen.getByRole("heading", { level: 1, name: "Who keeps the deposit?" })).toHaveFocus();
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      expect(scrollIntoView.mock.contexts[0]).toBe(stepsNav());
+      expect(scrollIntoView).toHaveBeenLastCalledWith({ block: "nearest", behavior: "smooth" });
+
+      await user.click(screen.getByRole("button", { name: "Return" }));
+      expect(screen.getByRole("heading", { level: 1, name: "Create a custom dispute" })).toHaveFocus();
+      expect(scrollIntoView).toHaveBeenCalledTimes(2);
+      expect(scrollIntoView.mock.contexts[1]).toBe(stepsNav());
+    });
+
+    it("brings the steps into view without smooth scrolling when the user prefers reduced motion", async () => {
+      vi.stubGlobal("matchMedia", (query: string): MediaQueryList => ({
+        matches: query === "(prefers-reduced-motion: reduce)",
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(() => false),
+      }));
+      const { user } = await renderCreate({ connect: false });
+      await fillRequired(user);
+      await fillOptions(user, ["Yes", "No"]);
+      await toSummary(user);
+      expect(scrollIntoView).toHaveBeenLastCalledWith({ block: "nearest", behavior: "instant" });
+    });
+  });
+
+  describe("motion", () => {
+    const SLIDE_FROM_LEFT = "animate-[t-page-in-left_var(--page-slide-dur)_var(--page-slide-ease)_backwards]";
+    const SLIDE_FROM_RIGHT = "animate-[t-page-in-right_var(--page-slide-dur)_var(--page-slide-ease)_backwards]";
+    const SWAP_IN = "animate-[t-text-swap-in_var(--text-swap-dur)_var(--text-swap-ease)_backwards]";
+
+    function step(name: "form" | "summary"): HTMLElement {
+      const root = document.querySelector(`[data-create-step="${name}"]`);
+      if (!(root instanceof HTMLElement)) throw new Error(`no ${name} step`);
+      return root;
+    }
+
+    /** The grid cell that holds the field labelled `label`. */
+    function slotOf(label: string): HTMLElement {
+      const slot = screen.getByRole("textbox", { name: label }).closest("[data-field-slot]");
+      if (!(slot instanceof HTMLElement)) throw new Error(`no field slot for ${label}`);
+      return slot;
+    }
+
+    function revealing(text: string): boolean {
+      return screen.getByText(text).closest("[class*='t-stagger-in']") !== null;
+    }
+
+    it("leaves the form still on the first render, slides the summary in from the right after Continue and the form from the left after Return", async () => {
+      const { user } = await renderCreate({ connect: false });
+      expect(step("form").className).not.toContain("animate-");
+      await fillRequired(user);
+      await fillOptions(user, ["Yes", "No"]);
+      await toSummary(user);
+      expect(step("summary").className).toContain(SLIDE_FROM_RIGHT);
+      expect(step("summary").className).toContain("motion-reduce:animate-none");
+      expect(document.querySelector('[data-create-step="form"]')).toBeNull();
+
+      await user.click(screen.getByRole("button", { name: "Return" }));
+      expect(step("form").className).toContain(SLIDE_FROM_LEFT);
+      expect(step("form").className).toContain("motion-reduce:animate-none");
+      expect(document.querySelector('[data-create-step="summary"]')).toBeNull();
+    });
+
+    it("shakes the invalid fields on every failed Continue, never the valid ones, and settles when the shake ends", async () => {
+      const { user } = await renderCreate({ connect: false });
+      await typeInto(user, "Title", "x");
+      expect(slotOf("Question")).not.toHaveAttribute("data-shaking");
+
+      await user.click(screen.getByRole("button", { name: "Continue" }));
+      expect(slotOf("Question")).toHaveAttribute("data-shaking");
+      expect(slotOf("Ruling Option 1")).toHaveAttribute("data-shaking");
+      expect(slotOf("Title")).not.toHaveAttribute("data-shaking");
+      expect(slotOf("Category (Optional)")).not.toHaveAttribute("data-shaking");
+
+      fireEvent.animationEnd(screen.getByRole("textbox", { name: "Question" }));
+      expect(slotOf("Question")).toHaveAttribute("data-shaking");
+      fireEvent.animationEnd(slotOf("Question"));
+      expect(slotOf("Question")).not.toHaveAttribute("data-shaking");
+
+      await typeInto(user, "Question", "Which party is right?");
+      expect(slotOf("Question")).not.toHaveAttribute("data-shaking");
+      await user.click(screen.getByRole("button", { name: "Continue" }));
+      expect(slotOf("Question")).not.toHaveAttribute("data-shaking");
+      expect(slotOf("Ruling Option 1")).toHaveAttribute("data-shaking");
+    });
+
+    it("shimmers the waiting labels with their text copied for the sweep", async () => {
+      vi.mocked(core.listCourts).mockReturnValue(new Promise(() => undefined));
+      vi.mocked(core.readArbitrationCost).mockReturnValue(new Promise(() => undefined));
+      const { user } = await renderCreate({ connect: false });
+      const calculating = within(screen.getByRole("status", { name: "Arbitration Cost" })).getByText("Calculating...");
+      expect(calculating).toHaveClass("t-shimmer");
+      expect(calculating).toHaveAttribute("data-text", "Calculating...");
+
+      await fillRequired(user);
+      await fillOptions(user, ["Yes", "No"]);
+      await toSummary(user);
+      for (const term of ["Court", "Arbitration Cost"]) {
+        const label = summaryValue(term).querySelector(".t-shimmer");
+        expect(label).not.toBeNull();
+        expect(label?.getAttribute("data-text")).toBe(label?.textContent);
+      }
+    });
+
+    it("eases in a cost that arrives after Calculating..., but not one already known when the form opens", async () => {
+      let resolveCost: ((value: core.Outcome<bigint>) => void) | undefined;
+      vi.mocked(core.readArbitrationCost).mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveCost = resolve;
+        }),
+      );
+      const { user } = await renderCreate({ connect: false });
+      await act(async () => {
+        resolveCost?.({ ok: true, value: costOf(core.encodeExtraData(0n, 3n)) });
+        await Promise.resolve();
+      });
+      await costShown(costOf(core.encodeExtraData(0n, 3n)), SEPOLIA_CHAIN);
+      const arrived = within(screen.getByRole("status", { name: "Arbitration Cost" })).getByText(formatAmount(costOf(core.encodeExtraData(0n, 3n)), SEPOLIA_CHAIN));
+      expect(arrived.className).toContain(SWAP_IN);
+      expect(arrived.className).toContain("motion-reduce:animate-none");
+
+      await fillRequired(user);
+      await fillOptions(user, ["Yes", "No"]);
+      await toSummary(user);
+      await user.click(screen.getByRole("button", { name: "Return" }));
+      const known = within(screen.getByRole("status", { name: "Arbitration Cost" })).getByText(formatAmount(costOf(core.encodeExtraData(0n, 3n)), SEPOLIA_CHAIN));
+      expect(known.className).not.toContain(SWAP_IN);
+    });
+
+    it("reveals the form's attention notice and the created notice as they appear", async () => {
+      const { user } = await renderCreate();
+      await user.click(screen.getByRole("button", { name: "Continue" }));
+      expect(revealing("Some fields need attention")).toBe(true);
+      await fillRequired(user);
+      await fillOptions(user, ["Yes", "No"]);
+      await toSummary(user);
+      await user.click(screen.getByRole("button", { name: "Create" }));
+      await screen.findByText("Dispute 42 created");
+      expect(revealing("Dispute 42 created")).toBe(true);
+    });
+  });
+
   it.each([
     ["the filled form", false],
     ["the summary", true],
-  ] as const)("spec §8.3, §4.1: a wallet chain change on %s returns to page 1 with the form cleared", async (_step, onSummary) => {
+  ] as const)("a wallet chain change on %s returns to page 1 with the form cleared", async (_step, onSummary) => {
     const { user, wallet } = await renderCreate();
     await courtsLoaded();
     await chooseOption(user, "Court", "Blockchain");
@@ -391,7 +569,7 @@ describe("CreatePage", () => {
     await costShown(costOf(core.encodeExtraData(0n, 3n)), GNOSIS_CHAIN);
   });
 
-  it("spec §4.4: the summary shows the title heading, description, court, votes, category, cost with its currency and the ruling options", async () => {
+  it("the summary shows the title heading, description, court, votes, category, cost with its currency and the ruling options", async () => {
     const { user } = await renderCreate({ connect: false });
     await courtsLoaded();
     await chooseOption(user, "Court", "Blockchain");
@@ -486,7 +664,7 @@ describe("CreatePage", () => {
     expect(uploadedMetaEvidence(uploader).aliases).toEqual({ "0x2222222222222222222222222222222222222222": "Bob", "0x1111111111111111111111111111111111111111": "Alice" });
   });
 
-  it("MC-8: an all-uppercase party address is accepted and reaches the summary", async () => {
+  it("an all-uppercase party address is accepted and reaches the summary", async () => {
     const { user, uploader } = await renderCreate();
     await fillRequired(user);
     await fillOptions(user, ["Yes", "No"]);
@@ -500,6 +678,32 @@ describe("CreatePage", () => {
     expect(uploadedMetaEvidence(uploader).aliases).toEqual({ "0xfb6916095ca1df60bb79ce92ce3ea74c37c5d359": "Upper" });
   });
 
+  it("the summary shows each party's full checksummed address, not a shortened one", async () => {
+    const { user } = await renderCreate();
+    await fillRequired(user);
+    await fillOptions(user, ["Yes", "No"]);
+    await typeInto(user, "Alias 1 (Optional)", "Lower");
+    await typeInto(user, "Address 1 (Optional)", "0xfb6916095ca1df60bb79ce92ce3ea74c37c5d359");
+    await toSummary(user);
+    const party = summaryValue("Party 1");
+    expect(party).toHaveTextContent("Lower");
+    expect(within(party).getByText("0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359")).toHaveClass("font-mono");
+    expect(party).not.toHaveTextContent("…");
+    expect(within(party).getByRole("button", { name: "Copy address" })).toBeInTheDocument();
+  });
+
+  it("the summary names the primary document by its file name and shows its CID beneath", async () => {
+    const { user } = await renderCreate();
+    await user.upload(documentInput(), new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
+    await screen.findByText("Uploaded rules.pdf.");
+    await fillRequired(user);
+    await fillOptions(user, ["Yes", "No"]);
+    await toSummary(user);
+    const primary = summaryValue("Primary Document");
+    expect(within(primary).getByRole("link", { name: "rules.pdf" })).toHaveAttribute("href", expect.stringContaining(TEST_UPLOAD_PATH) as string);
+    expect(within(primary).getByText(TEST_UPLOAD_CID)).toHaveClass("text-sm", "text-klerosUIComponentsSecondaryText");
+  });
+
   it("nothing is uploaded or signed until the user's first upload action", async () => {
     const { user, uploader } = await renderCreate();
     await fillRequired(user);
@@ -510,7 +714,7 @@ describe("CreatePage", () => {
     expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
   });
 
-  it("B16, WN-2: a primary document path that is not content-addressed is refused before it enters the draft", async () => {
+  it("a primary document path that is not content-addressed is refused before it enters the draft", async () => {
     const uploader = fakeUploader({ upload: () => Promise.resolve({ ok: true, path: "/ipfs/not-a-cid/rules.pdf" }) });
     const { user } = await renderCreate({ uploader });
     await user.upload(documentInput(), new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
@@ -521,15 +725,22 @@ describe("CreatePage", () => {
     expect(screen.queryByText("Primary Document")).toBeNull();
   });
 
-  it("without Atlas the document field says uploads are unavailable and the rest of the form works", async () => {
-    const { user } = await renderCreate({ uploader: fakeUploader({ availability: "unconfigured" }), connect: false });
-    expect(screen.getByText("Uploads are unavailable.")).toBeInTheDocument();
+  it("without Atlas the document field is locked, the form still reaches the summary, and Create stays disabled with no upload message", async () => {
+    const { user, uploader } = await renderCreate({ uploader: fakeUploader({ availability: "unconfigured" }) });
+    expect(documentInput()).toBeDisabled();
+    expect(document.body).not.toHaveTextContent(/uploads? (are )?unavailable/i);
     await fillRequired(user);
     await fillOptions(user, ["Yes", "No"]);
     await toSummary(user);
+    const create = screen.getByRole("button", { name: "Create" });
+    expect(create).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Return" })).toBeEnabled();
+    await user.click(create);
+    expect(uploader.uploadJson).not.toHaveBeenCalled();
+    expect(document.body).not.toHaveTextContent(/uploads? (are )?unavailable/i);
   });
 
-  it("Sepolia S1: multiple select with three options and a primary document creates with 2³ ruling options", async () => {
+  it("multiple select with three options and a primary document creates with 2³ ruling options", async () => {
     const { user, uploader } = await renderCreate();
     await user.upload(documentInput(), new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
     await screen.findByText("Uploaded rules.pdf.");
@@ -567,7 +778,7 @@ describe("CreatePage", () => {
   it.each([
     ["Sepolia S2", "Non-negative number", "uint"],
     ["Sepolia S3", "Date", "datetime"],
-  ] as const)("%s: a %s question creates with 0 ruling options and no titles", async (_name, label, type) => {
+  ] as const)("a $1 question creates with 0 ruling options and no titles", async (_name, label, type) => {
     const { user, uploader } = await renderCreate();
     await chooseOption(user, "Question Type", label);
     expect(screen.queryByRole("textbox", { name: "Number of Options" })).toBeNull();
@@ -580,7 +791,7 @@ describe("CreatePage", () => {
     expect(createCall(writes.controller ?? fakeWriteController([])).args[2]).toBe(0n);
   });
 
-  it("Sepolia S4, spec §4.6: single select with two options creates, shows the toast and opens the dispute after 2 seconds", async () => {
+  it("single select with two options creates, shows the toast and opens the dispute after 2 seconds", async () => {
     const { user, uploader, currentPath } = await renderCreate();
     await fillRequired(user);
     await fillOptions(user, ["Yes", "No"]);
@@ -599,7 +810,7 @@ describe("CreatePage", () => {
     );
   });
 
-  it("spec §4.6, D-07: a mined transaction without a DisputeCreation log is reported, nothing navigates and Create re-enables", async () => {
+  it("a mined transaction without a DisputeCreation log is reported, nothing navigates and Create re-enables", async () => {
     writes.controller = fakeWriteController(minedWith(null));
     const { user, uploader, currentPath } = await renderCreate();
     await fillRequired(user);
@@ -619,7 +830,7 @@ describe("CreatePage", () => {
     expect(uploader.uploadJson).toHaveBeenCalledTimes(1);
   });
 
-  it("D-07: a rejected signature is a neutral notice and Create can be tried again with the same upload", async () => {
+  it("a rejected signature is a neutral notice and Create can be tried again with the same upload", async () => {
     writes.controller = fakeWriteController([{ phase: "pending" }, { phase: "rejected" }]);
     const { user, uploader } = await renderCreate();
     await fillRequired(user);
@@ -638,7 +849,7 @@ describe("CreatePage", () => {
     expect(uploader.uploadJson).toHaveBeenCalledTimes(1);
   });
 
-  it("D-07: a failed transaction is shown as an error", async () => {
+  it("a failed transaction is shown as an error", async () => {
     writes.controller = fakeWriteController([
       { phase: "pending" },
       { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null },
@@ -657,7 +868,7 @@ describe("CreatePage", () => {
   it.each([
     ["upload-failed", "Upload failed", "error"],
     ["sign-in-rejected", "Sign-in cancelled", "info"],
-  ] as const)("D-07: a meta-evidence upload that ends with %s is shown and nothing is sent", async (error, title, variant) => {
+  ] as const)("a meta-evidence upload that ends with %s is shown and nothing is sent", async (error, title, variant) => {
     const failed: UploadResult = { ok: false, error, message: "Atlas said no." };
     const { user } = await renderCreate({ uploader: fakeUploader({ uploadJson: () => Promise.resolve(failed) }) });
     await fillRequired(user);
@@ -671,7 +882,7 @@ describe("CreatePage", () => {
     expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
   });
 
-  it("D-07: a failed cost read is shown and nothing is sent", async () => {
+  it("a failed cost read is shown and nothing is sent", async () => {
     const { user } = await renderCreate();
     await fillRequired(user);
     await fillOptions(user, ["Yes", "No"]);
@@ -682,16 +893,57 @@ describe("CreatePage", () => {
     expect(writes.controller?.executions).toHaveLength(0);
   });
 
-  it("with the wallet on another chain, Create is disabled and the switch is offered up front", async () => {
-    const wallet = createTestWallet({ chainId: 1, switchChainError: true });
+  it("while the wallet's switch to the page chain waits, Create is disabled and the waiting switch is shown without claiming that nothing was sent", async () => {
+    const wallet = createTestWallet({ chainId: 1 });
+    holdChainSwitches(wallet);
     const { user, uploader } = await renderCreate({ wallet });
     await fillRequired(user);
     await fillOptions(user, ["Yes", "No"]);
     await toSummary(user);
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
     expect(screen.getByText("Wrong network")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Switch to / })).toBeInTheDocument();
+    expect(screen.getByText("A switch to Ethereum Testnet Sepolia is waiting in your wallet.")).toBeInTheDocument();
+    expect(screen.getByText(/^Your wallet is on .+, but this page is on Ethereum Testnet Sepolia\.$/)).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing was sent/)).toBeNull();
     expect(uploader.uploadJson).not.toHaveBeenCalled();
+    expect(writes.controller?.executions).toHaveLength(0);
+  });
+
+  it("a dispute data upload that finishes after a link moved the page to another chain asks the wallet for no transaction", async () => {
+    const wallet = createTestWallet({ chainId: SEPOLIA });
+    holdChainSwitches(wallet);
+    const upload: { finish?: (result: UploadResult) => void } = {};
+    const uploader = fakeUploader({
+      uploadJson: () =>
+        new Promise<UploadResult>((resolve) => {
+          upload.finish = resolve;
+        }),
+    });
+    const user = userEvent.setup();
+    const { currentPath } = renderWithProviders(
+      <>
+        <CreatePage />
+        <Link to={`/${String(GNOSIS)}/ongoing`}>Gnosis disputes</Link>
+      </>,
+      { path: CREATE_PATH, wallet, uploader },
+    );
+    await act(async () => {
+      await wallet.connect();
+    });
+    await fillRequired(user);
+    await fillOptions(user, ["Yes", "No"]);
+    await toSummary(user);
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    expect(await screen.findByText("Publishing the dispute data")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("link", { name: "Gnosis disputes" }));
+    expect(currentPath()).toBe(`/${String(GNOSIS)}/ongoing`);
+    await act(async () => {
+      upload.finish?.({ ok: true, path: TEST_UPLOAD_PATH });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(uploader.uploadJson).toHaveBeenCalledTimes(1);
     expect(writes.controller?.executions).toHaveLength(0);
   });
 
@@ -785,15 +1037,18 @@ describe("CreatePage", () => {
       sessionStorage.clear();
     });
 
-    it("with the wallet on another chain the primary document is locked before any sign-in and the switch is offered", async () => {
-      const wallet = createTestWallet({ chainId: 1, switchChainError: true });
+    it("while the wallet's switch to the page chain waits, the primary document is locked before any sign-in and the waiting switch is shown without claiming that nothing was sent", async () => {
+      const wallet = createTestWallet({ chainId: 1 });
+      holdChainSwitches(wallet);
       const { user, server } = await renderWithRealAtlas(wallet);
 
       expect(documentInput()).toBeDisabled();
       await user.upload(documentInput(), new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
 
       expect(await screen.findByText("Wrong network")).toBeInTheDocument();
-      await user.click(screen.getByRole("button", { name: /^Switch to / }));
+      expect(screen.getByText(/^Your wallet is on .+, but this page is on Ethereum Testnet Sepolia\.$/)).toBeInTheDocument();
+      expect(screen.queryByText(/Nothing was sent/)).toBeNull();
+      expect(screen.getByText("A switch to Ethereum Testnet Sepolia is waiting in your wallet.")).toBeInTheDocument();
       expect(screen.getByText("Wrong network")).toBeInTheDocument();
       expect(screen.getByText(/^Drop a file here or click to select one\./)).toBeInTheDocument();
       expect(server.count("nonce")).toBe(0);

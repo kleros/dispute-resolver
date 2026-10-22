@@ -12,7 +12,6 @@ vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../te
 
 const DISPUTE: OngoingDispute = { id: 42n, arbitrated: TEST_ARBITRABLE, period: 1, subcourtId: 0n, lastPeriodChange: 1_700_000_000, countdownTarget: 1_700_086_400 };
 const COURTS: Outcome<readonly Court[]> = { ok: true, value: [testCourt()] };
-/** Today's subcourt cache is reused for 3 hours (spec §2.2, §6.5). */
 const COURT_CACHE_AGE_MS = 3 * 60 * 60 * 1_000;
 
 function wrapperWith(seed: readonly (readonly [readonly unknown[], unknown])[] = [], client = createTestQueryClient(), deps = createTestDeps()) {
@@ -38,8 +37,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("Ongoing page data (ARCHITECTURE.md §5.5, D-37)", () => {
-  it("D-37: the list waits for the courts and scans once, with them", async () => {
+describe("Ongoing page data", () => {
+  it("waits for the courts and scans the list once, with them", async () => {
     const resolvers: ((courts: Outcome<readonly Court[]>) => void)[] = [];
     vi.mocked(core.listCourts).mockReturnValue(new Promise((resolve) => resolvers.push(resolve)));
     vi.mocked(core.listOngoingDisputes).mockResolvedValue({ status: "ok", disputes: [DISPUTE], failedIds: [7n] });
@@ -57,7 +56,7 @@ describe("Ongoing page data (ARCHITECTURE.md §5.5, D-37)", () => {
     expect(result.current.courts).toEqual({ status: "ready", value: COURTS.value });
   });
 
-  it("D-37: a failed court read still lists the disputes, without courts", async () => {
+  it("still lists the disputes, without courts, when the court read fails", async () => {
     vi.mocked(core.listCourts).mockResolvedValue({ ok: false, error: { code: "rpc-error", message: "down" } });
     vi.mocked(core.listOngoingDisputes).mockResolvedValue({ status: "ok", disputes: [], failedIds: [] });
     const { result } = renderHook(() => useOngoing(1), { wrapper: wrapperWith() });
@@ -67,7 +66,7 @@ describe("Ongoing page data (ARCHITECTURE.md §5.5, D-37)", () => {
     expect(core.listOngoingDisputes).toHaveBeenCalledWith(expect.anything(), null);
   });
 
-  it("spec §3: a failed scan is the list's unavailable state", async () => {
+  it("reports a failed scan as the list's unavailable state", async () => {
     vi.mocked(core.listCourts).mockResolvedValue(COURTS);
     vi.mocked(core.listOngoingDisputes).mockResolvedValue({ status: "failed", error: { code: "rpc-error", message: "getLogs refused" } });
     const { result } = renderHook(() => useOngoing(1), { wrapper: wrapperWith() });
@@ -84,7 +83,7 @@ describe("Ongoing page data (ARCHITECTURE.md §5.5, D-37)", () => {
     return client;
   }
 
-  it("§2.2, §6.5: a court list under 3 hours old is used without reading the courts again", async () => {
+  it("uses a court list under 3 hours old without reading the courts again", async () => {
     vi.mocked(core.listCourts).mockResolvedValue(COURTS);
     const client = clientWithCourtsAged(COURT_CACHE_AGE_MS - 1);
     const { result } = renderHook(() => useCourts(1), { wrapper: wrapperWith([], client) });
@@ -93,7 +92,7 @@ describe("Ongoing page data (ARCHITECTURE.md §5.5, D-37)", () => {
     expect(core.listCourts).not.toHaveBeenCalled();
   });
 
-  it("§2.2, §6.5: a court list 3 hours old or more is read again", async () => {
+  it("reads a court list 3 hours old or more again", async () => {
     vi.mocked(core.listCourts).mockResolvedValue(COURTS);
     const client = clientWithCourtsAged(COURT_CACHE_AGE_MS + 1);
     renderHook(() => useCourts(1), { wrapper: wrapperWith([], client) });
@@ -102,7 +101,7 @@ describe("Ongoing page data (ARCHITECTURE.md §5.5, D-37)", () => {
     });
   });
 
-  it("DATA-2 / §5.4: a court list nobody observes any more stays in memory until it is persisted", async () => {
+  it("keeps a court list nobody observes any more in memory until it is persisted", async () => {
     vi.mocked(core.listCourts).mockResolvedValue(COURTS);
     const client = createTestQueryClient();
     const { result, unmount } = renderHook(() => useCourts(1), { wrapper: wrapperWith([], client) });
@@ -114,7 +113,7 @@ describe("Ongoing page data (ARCHITECTURE.md §5.5, D-37)", () => {
     expect(client.getQueryData(queryKeys.courts(1))).toEqual(COURTS);
   });
 
-  it("DATA-2 / §5.4: a card's meta-evidence nobody observes any more stays in memory until it is persisted", async () => {
+  it("keeps a card's meta-evidence nobody observes any more in memory until it is persisted", async () => {
     vi.mocked(core.loadMetaEvidence).mockResolvedValue(testOkMetaEvidence());
     const client = createTestQueryClient();
     const { result, unmount } = renderHook(() => useOngoingTitle(1, DISPUTE), { wrapper: wrapperWith([], client) });
@@ -126,7 +125,7 @@ describe("Ongoing page data (ARCHITECTURE.md §5.5, D-37)", () => {
     expect(client.getQueryData(queryKeys.metaEvidence(1, 42n, TEST_ARBITRABLE))).toEqual(testOkMetaEvidence());
   });
 
-  it("DATA-4 / D-37, D-19: the courts' policy fetches are bounded, so a stalled gateway cannot hold the list back", async () => {
+  it("bounds the courts' policy fetches, so a stalled gateway cannot hold the list back", async () => {
     vi.mocked(core.listCourts).mockReturnValue(new Promise(() => undefined));
     const stalledGateway = createTestDeps({ fetcher: () => new Promise(() => undefined) });
     renderHook(() => useOngoing(1), { wrapper: wrapperWith([], createTestQueryClient(), stalledGateway) });
@@ -145,7 +144,7 @@ describe("Ongoing page data (ARCHITECTURE.md §5.5, D-37)", () => {
     expect(await Promise.race([outcome, Promise.resolve("pending")])).toBe("rejected");
   });
 
-  it("D-37: a card's title loads with the Ongoing budget, bound to the arbitrator's arbitrable", async () => {
+  it("loads a card's title with the Ongoing budget, bound to the arbitrator's arbitrable", async () => {
     const { result } = renderTitle(testOkMetaEvidence({ title: "Is the item compliant?" }));
     await waitFor(() => {
       expect(result.current).toEqual({ status: "ready", value: { kind: "title", text: "Is the item compliant?" } });
@@ -153,28 +152,28 @@ describe("Ongoing page data (ARCHITECTURE.md §5.5, D-37)", () => {
     expect(core.loadMetaEvidence).toHaveBeenCalledWith(expect.objectContaining({ disputeId: 42n, arbitrable: TEST_ARBITRABLE, budgetMs: core.ONGOING_BUDGET_MS }));
   });
 
-  it("D-37: a dispute whose meta-evidence fails shows title unavailable", async () => {
+  it("shows title unavailable for a dispute whose meta-evidence fails", async () => {
     const { result } = renderTitle({ status: "failed", reason: "budget-exhausted", error: { code: "rpc-error", message: "The meta-evidence did not load in time." } });
     await waitFor(() => {
       expect(result.current).toEqual({ status: "unavailable", error: { code: "rpc-error", message: "The meta-evidence did not load in time." } });
     });
   });
 
-  it("spec §3: an empty title is Meta Evidence Missing", async () => {
+  it("shows Meta Evidence Missing for an empty title", async () => {
     const { result } = renderTitle(testOkMetaEvidence({ title: "" }));
     await waitFor(() => {
       expect(result.current).toEqual({ status: "ready", value: { kind: "missing" } });
     });
   });
 
-  it("spec §3: a dispute the locator knows no meta-evidence for is Meta Evidence Missing", async () => {
+  it("shows Meta Evidence Missing when the locator knows no meta-evidence for the dispute", async () => {
     const { result } = renderTitle({ status: "missing" });
     await waitFor(() => {
       expect(result.current).toEqual({ status: "ready", value: { kind: "missing" } });
     });
   });
 
-  it("A2: a rejected meta-evidence shows the placeholder title", async () => {
+  it("shows the placeholder title of a rejected meta-evidence", async () => {
     const placeholder = testOkMetaEvidence({ title: "Invalid meta-evidence" }).metaEvidence;
     const { result } = renderTitle({ status: "invalid", metaEvidence: placeholder, reason: "script-not-allowlisted" });
     await waitFor(() => {
@@ -182,7 +181,7 @@ describe("Ongoing page data (ARCHITECTURE.md §5.5, D-37)", () => {
     });
   });
 
-  it("§6.5: a stored accepted meta-evidence serves a card's title without running the pipeline", async () => {
+  it("serves a card's title from a stored accepted meta-evidence without running the pipeline", async () => {
     const wrapper = wrapperWith([[queryKeys.metaEvidence(1, 42n, TEST_ARBITRABLE), testOkMetaEvidence({ title: "Stored title" })]]);
     const { result } = renderHook(() => useOngoingTitle(1, DISPUTE), { wrapper });
     expect(result.current).toEqual({ status: "ready", value: { kind: "title", text: "Stored title" } });
@@ -190,7 +189,7 @@ describe("Ongoing page data (ARCHITECTURE.md §5.5, D-37)", () => {
     expect(core.loadMetaEvidence).not.toHaveBeenCalled();
   });
 
-  it("D-38: a failed title is kept briefly instead of reloading on every mount", async () => {
+  it("keeps a failed title briefly instead of reloading it on every mount", async () => {
     const failed: MetaEvidenceResult = { status: "failed", reason: "fetch-error", error: { code: "rpc-error", message: "gateway down" } };
     const wrapper = wrapperWith([[queryKeys.metaEvidence(1, 42n, TEST_ARBITRABLE), failed]]);
     const { result } = renderHook(() => useOngoingTitle(1, DISPUTE), { wrapper });

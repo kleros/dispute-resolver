@@ -14,9 +14,8 @@ interface RootErrorBoundaryState {
 }
 
 /**
- * The frame of a failure the boundary caught. It sits above the data, wallet and router providers, so it uses none of
- * them: the brand, the message with a reload button, and the footer without a chain. The error's own text is not shown,
- * since it may come from untrusted data.
+ * The boundary sits above the data, wallet and router providers, so this frame uses none of them. The error's own text
+ * is not shown, since it may come from untrusted data.
  */
 function RootFailure() {
   return (
@@ -45,11 +44,7 @@ function RootFailure() {
   );
 }
 
-/**
- * The last-resort boundary of the provider tree (ARCHITECTURE.md §2.1, §5.7). Sections fail behind their own
- * `SectionBoundary`; only an error outside every section reaches this one, which keeps a minimal frame instead of the
- * blank page of spec §2.1 (D-36).
- */
+/** Sections fail behind their own `SectionBoundary`; only an error outside every section reaches this one. */
 export class RootErrorBoundary extends Component<RootErrorBoundaryProps, RootErrorBoundaryState> {
   override state: RootErrorBoundaryState = { failed: false };
 

@@ -39,20 +39,20 @@ function renderWhileAppKitLoads(path: string, pendingReconnect: boolean) {
   return renderInRouter(createElement(AppRoutes), path, { wrapper: Wrapper });
 }
 
-describe("chain-less redirects while AppKit loads (D-01, ARCHITECTURE.md §3.1)", () => {
-  it("§3.1: / goes to the default chain's Ongoing page before AppKit loads when no connection is stored", async () => {
+describe("chain-less redirects while AppKit loads", () => {
+  it("/ goes to the default chain's Ongoing page before AppKit loads when no connection is stored", async () => {
     const view = renderWhileAppKitLoads("/", false);
     expect(await screen.findByText("Ongoing page on 1")).toBeInTheDocument();
     expect(view.currentPath()).toBe("/1/ongoing");
   });
 
-  it("§3.1: a chain-less case path goes to the default chain before AppKit loads when no connection is stored", async () => {
+  it("a chain-less case path goes to the default chain before AppKit loads when no connection is stored", async () => {
     const view = renderWhileAppKitLoads("/cases/5?tab=evidence", false);
     expect(await screen.findByText("Case page on 1 for 5")).toBeInTheDocument();
     expect(view.currentPath()).toBe("/1/cases/5?tab=evidence");
   });
 
-  it("§3.1: / waits for AppKit when a connection is stored, so a returning wallet lands on its own chain", () => {
+  it("/ waits for AppKit when a connection is stored, so a returning wallet lands on its own chain", () => {
     const view = renderWhileAppKitLoads("/", true);
     expect(view.currentPath()).toBe("/");
     expect(screen.queryByText(/Ongoing page/)).not.toBeInTheDocument();

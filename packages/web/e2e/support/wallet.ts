@@ -1,17 +1,19 @@
 import type { BrowserContext, Page } from "@playwright/test";
 
-// An injected EIP-1193 wallet for the Playwright suites (checklist C9: harness only, never in the bundle), installed with
-// `addInitScript` before any app script. It announces one account on one chain through EIP-6963 (the app's wagmi
-// discovers it and reconnects it when a wallet is configured). It sends nothing, and signs a message only when the spec
+// An injected EIP-1193 wallet for the Playwright suites, installed with `addInitScript` before any app script. It
+// announces one account on one chain through EIP-6963 (the app's wagmi discovers it and reconnects it when a wallet is
+// configured). It sends nothing, and signs a message only when the spec
 // says so (`signs`, for the Atlas sign-in); every other method is refused with 4200. A switch request is declined (4001)
-// as many times as the spec says, then followed; the spec can also move the wallet to another chain or account, as a
-// user does in the wallet itself.
+// as many times as the spec says, then followed, or never answered (`heldSwitches`); the spec can also move the wallet to
+// another chain or account, as a user does in the wallet itself.
 
 export interface InjectedWalletOptions {
   readonly account: string;
   readonly chainId: number;
   /** How many `wallet_switchEthereumChain` requests the user declines before the wallet follows them (default 0). */
   readonly declinedSwitches?: number;
+  /** The wallet never answers `wallet_switchEthereumChain`, as a user who leaves the prompt open (default false). */
+  readonly heldSwitches?: boolean;
   /** Whether the user signs the messages `personal_sign` asks for (default: refused with 4200, like any other method). */
   readonly signs?: boolean;
 }
@@ -74,6 +76,7 @@ function installWallet(options: InjectedWalletOptions & { readonly rdns: string;
     return Promise.resolve(`0x${"ab".repeat(65)}`);
   };
   const switchChain = (params: unknown): Promise<unknown> => {
+    if (options.heldSwitches === true) return new Promise(() => undefined);
     if (declinesLeft > 0) {
       declinesLeft -= 1;
       return refuse(4001, "User rejected the request.");
@@ -137,7 +140,6 @@ function installWallet(options: InjectedWalletOptions & { readonly rdns: string;
   }
 }
 
-/** Installs the wallet in every page of `context`. */
 export async function injectWallet(context: BrowserContext, options: InjectedWalletOptions): Promise<void> {
   await context.addInitScript(installWallet, { ...options, rdns: WALLET_RDNS, handle: HANDLE });
 }
@@ -163,11 +165,11 @@ export async function changeWalletAccount(page: Page, account: string): Promise<
 }
 
 /** The messages the user signed in the page's current document, in order. */
-export async function walletSignatures(page: Page): Promise<SignedMessage[]> {
+export function walletSignatures(page: Page): Promise<SignedMessage[]> {
   return page.evaluate((handle) => [...(Reflect.get(window, handle) as WalletHandle).signed], HANDLE);
 }
 
 /** The methods the page asked the wallet for, in order. */
-export async function walletRequests(page: Page): Promise<string[]> {
+export function walletRequests(page: Page): Promise<string[]> {
   return page.evaluate((handle) => [...(Reflect.get(window, handle) as WalletHandle).requests], HANDLE);
 }

@@ -1,7 +1,7 @@
 /**
- * The production bundle check (checklist C9, A20, C3, C2): run after `yarn build`, it fails when the built site in
- * `packages/web/dist` carries a test double, loads a script or stylesheet from another origin, carries an inline script in
- * a page, lacks a file the deploy depends on, or lacks core's zod configuration.
+ * The production bundle check: run after `yarn build`, it fails when the built site in `packages/web/dist` carries a
+ * test double, loads a script or stylesheet from another origin, carries an inline script in a page, lacks a file the
+ * deploy depends on, or lacks core's zod configuration.
  *
  *   node packages/web/scripts/check-bundle.mjs [distDirectory]
  *
@@ -21,7 +21,6 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
 /** The repository root: a directory given on the command line must lie inside it. */
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
-/** Files the deploy cannot work without (C1 to C3: the headers file, the app page, the runner page and its bootstrap). */
 const REQUIRED_FILES = ["index.html", "_headers", "__runner/index.html", "__runner/bootstrap.js"];
 
 /**
@@ -34,7 +33,7 @@ const ZOD_CONFIGURATION_MARKER = "jitless:!0";
 /** Extensions of files that hold no text worth scanning. */
 const BINARY_EXTENSIONS = new Set([".woff", ".woff2", ".ttf", ".otf", ".eot", ".ico", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".wasm", ".mp4", ".webm", ".pdf"]);
 
-/** The directories of `packages/web/src/test/` (ARCHITECTURE.md 1.5); a test keeps this list equal to the directory. */
+/** The directories of `packages/web/src/test/`; a test keeps this list equal to the directory. */
 const TEST_DIRECTORIES = ["atlas", "data", "routing", "runner", "safe-content", "shell", "wallet"];
 
 /**
@@ -44,7 +43,6 @@ const TEST_DIRECTORIES = ["atlas", "data", "routing", "runner", "safe-content", 
  */
 const HOST_PREFIX = String.raw`\/\/[a-z0-9-]+(?:\.[a-z0-9-]+)*`;
 
-/** A pattern matching any of `texts` literally. */
 function literally(texts) {
   return new RegExp(texts.map((text) => text.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)).join("|"));
 }
@@ -76,7 +74,7 @@ const TEST_FIXTURE_IDENTIFIERS = ["QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbd
 
 /**
  * What a test double leaves in a bundle. Minified code loses identifiers but keeps strings, so most markers are strings
- * the doubles and their fixtures contain (ARCHITECTURE.md 1.5); the double names and test paths catch a build that keeps
+ * the doubles and their fixtures contain; the double names and test paths catch a build that keeps
  * identifiers or ships a source map.
  */
 export const TEST_DOUBLE_MARKERS = [
@@ -132,7 +130,6 @@ function* elementsOf(root) {
   }
 }
 
-/** The text a script element carries between its tags. */
 function scriptText(element) {
   return element.childNodes
     .filter((child) => child.nodeName === "#text")
@@ -140,7 +137,6 @@ function scriptText(element) {
     .join("");
 }
 
-/** What one element contributes: an external script or stylesheet it loads, or the inline script it carries. */
 function findingsOfElement(element) {
   if (element.tagName === "script") {
     const found = [];
@@ -156,7 +152,6 @@ function findingsOfElement(element) {
   return [];
 }
 
-/** What one parse of a document shows, element by element. */
 function findingsOf(document) {
   return [...elementsOf(document)].flatMap(findingsOfElement);
 }
@@ -172,7 +167,6 @@ function htmlFindings(html) {
   return new Set([true, false].flatMap((scriptingEnabled) => findingsOf(parse(html, { scriptingEnabled }))));
 }
 
-/** Every file below `directory`, as paths relative to it with forward slashes, sorted. */
 async function filesBelow(directory) {
   const entries = await readdir(directory, { recursive: true, withFileTypes: true });
   return entries
@@ -189,35 +183,31 @@ async function isDirectory(location) {
   }
 }
 
-async function requiredFileProblems(distDirectory) {
-  const problems = [];
-  for (const name of REQUIRED_FILES) {
-    const location = path.join(distDirectory, name);
-    let size;
-    try {
-      size = (await stat(location)).size;
-    } catch {
-      problems.push(`dist/${name} is missing.`);
-      continue;
-    }
-    if (size === 0) problems.push(`dist/${name} is empty.`);
+async function requiredFileProblem(distDirectory, name) {
+  let size;
+  try {
+    size = (await stat(path.join(distDirectory, name))).size;
+  } catch {
+    return `dist/${name} is missing.`;
   }
-  return problems;
+  return size === 0 ? `dist/${name} is empty.` : null;
 }
 
-/** Whether a dist file is one of the bundle's scripts, `assets/*.js`. */
+async function requiredFileProblems(distDirectory) {
+  const problems = await Promise.all(REQUIRED_FILES.map((name) => requiredFileProblem(distDirectory, name)));
+  return problems.filter((problem) => problem !== null);
+}
+
 function isAssetScript(name) {
   return /^assets\/[^/]+\.js$/.test(name);
 }
 
-/** The problem with how many zod configuration markers the scripts hold, or null when they hold exactly one. */
 function zodConfigurationProblem(count) {
   if (count === 0) return "dist/assets/: the zod configuration is missing from the bundle (C2).";
   if (count > 1) return `dist/assets/: the zod configuration appears ${String(count)} times in the bundle, not once (C2).`;
   return null;
 }
 
-/** The test doubles one text file of the bundle carries and, for a page, what it loads or runs inline. */
 function textFileProblems(name, text) {
   const problems = TEST_DOUBLE_MARKERS.filter((marker) => marker.pattern.test(text)).map((marker) => `dist/${name} contains a ${marker.label} (C9).`);
   if (name.endsWith(".html")) {
@@ -233,21 +223,18 @@ function textFileProblems(name, text) {
 export async function checkBundle(distDirectory = DEFAULT_DIST) {
   if (!(await isDirectory(distDirectory))) return { problems: [`dist/ does not exist. Run yarn build first.`], scanned: 0 };
   const problems = await requiredFileProblems(distDirectory);
-  let scanned = 0;
   let zodConfigurations = 0;
-  for (const name of await filesBelow(distDirectory)) {
-    if (BINARY_EXTENSIONS.has(path.extname(name).toLowerCase())) continue;
-    const text = await readFile(path.join(distDirectory, name), "utf8");
-    scanned += 1;
+  const names = (await filesBelow(distDirectory)).filter((name) => !BINARY_EXTENSIONS.has(path.extname(name).toLowerCase()));
+  const files = await Promise.all(names.map(async (name) => [name, await readFile(path.join(distDirectory, name), "utf8")]));
+  for (const [name, text] of files) {
     if (isAssetScript(name)) zodConfigurations += text.split(ZOD_CONFIGURATION_MARKER).length - 1;
     problems.push(...textFileProblems(name, text));
   }
   const zodProblem = zodConfigurationProblem(zodConfigurations);
   if (zodProblem !== null) problems.push(zodProblem);
-  return { problems, scanned };
+  return { problems, scanned: files.length };
 }
 
-/** Whether `location` is the repository root or lies below it. */
 function isInsideRepository(location, root) {
   return location === root || location.startsWith(root + path.sep);
 }

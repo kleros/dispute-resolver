@@ -17,7 +17,7 @@ const NO_ACKNOWLEDGEMENT = failedResult(
   "The dynamic script's runner did not start within 5 seconds; a content-blocking extension may be preventing the page from loading it.",
 );
 
-/** The message for `request`, or `undefined` when it is invalid; never throws, so `run` never rejects. */
+/** Never throws, so `run` never rejects. */
 function safeRequestMessage(request: ScriptRunRequest, options: IframeRunnerOptions): RunnerRequestMessage | undefined {
   try {
     return buildRequestMessage(request, options.rpcRedirects);
@@ -26,13 +26,6 @@ function safeRequestMessage(request: ScriptRunRequest, options: IframeRunnerOpti
   }
 }
 
-/**
- * Opens a frame for one run and posts the request once it loads (ARCHITECTURE.md §7.3 steps 3 to 5): a fresh
- * `MessageChannel` per run, one end transferred with target `'*'` (the only origin an opaque document accepts), and
- * replies read only from the kept end. A frame that has not acknowledged the request within
- * `ACKNOWLEDGEMENT_WINDOW_MS` of being appended, whether or not it fired `load`, is a runner that never started (P-16).
- * Returns the teardown that clears that timer, closes the port and removes the frame.
- */
 function openFrame(container: HTMLElement, document: Document, runnerUrl: string, message: RunnerRequestMessage, settle: (result: ScriptResult) => void): () => void {
   const frame = createRunnerFrame(document, runnerUrl);
   let port: MessagePort | undefined;
@@ -54,15 +47,15 @@ function openFrame(container: HTMLElement, document: Document, runnerUrl: string
     port.onmessageerror = () => {
       settle(MALFORMED_REPLY);
     };
-    // The target origin is "*" on purpose: it is the only one an opaque-origin document accepts (ADR 0004, C4). The
-    // reply can only come back through the transferred port.
-    // eslint-disable-next-line sonarjs/post-message -- ADR 0004 requires "*" for the opaque-origin runner frame.
+    // The target origin is "*" on purpose: it is the only one an opaque-origin document accepts. The reply can only
+    // come back through the transferred port.
+    // eslint-disable-next-line sonarjs/post-message -- an opaque-origin frame accepts no other target origin.
     target.postMessage(message, "*", [channel.port2]);
   };
 
   frame.addEventListener("load", onLoad, { once: true });
   container.append(frame);
-  // Counted from the append, not from `load`, which a cancelled frame navigation may never fire (P-16).
+  // Counted from the append, not from `load`, which a cancelled frame navigation may never fire.
   const acknowledgementTimer = setTimeout(() => {
     settle(NO_ACKNOWLEDGEMENT);
   }, ACKNOWLEDGEMENT_WINDOW_MS);
@@ -80,10 +73,9 @@ function openFrame(container: HTMLElement, document: Document, runnerUrl: string
 }
 
 /**
- * Core's `ScriptRunner` over sandboxed runner frames (ADR 0004, ARCHITECTURE.md §7.3). Each run validates its
- * parameters (B5), waits for one of `maxConcurrent` slots (D-29), runs in its own frame and port (B1, B8, D-05) and
- * settles exactly once, on its reply, its timeout (counted from the call, D-38) or its abort, removing its frame.
- * The promise never rejects.
+ * Core's `ScriptRunner` over sandboxed runner frames. Each run validates its parameters, waits for one of
+ * `maxConcurrent` slots, runs in its own frame and port and settles exactly once, on its reply, its timeout (counted
+ * from the call, so time spent queued counts) or its abort, removing its frame. The promise never rejects.
  */
 export function createIframeScriptRunner(options: IframeRunnerOptions): ScriptRunner {
   const queue = createSlotQueue(options.maxConcurrent);

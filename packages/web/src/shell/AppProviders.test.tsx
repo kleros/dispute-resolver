@@ -53,6 +53,15 @@ vi.mock("./ToastProvider", async (importOriginal) => {
   return { ...actual, ToastProvider: RecordedToastProvider };
 });
 
+vi.mock("./ChainNoticeToasts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./ChainNoticeToasts")>();
+  function RecordedChainNoticeToasts(props: Readonly<Parameters<typeof actual.ChainNoticeToasts>[0]>) {
+    useRecordLayer("chain notices");
+    return <actual.ChainNoticeToasts {...props} />;
+  }
+  return { ...actual, ChainNoticeToasts: RecordedChainNoticeToasts };
+});
+
 vi.mock("./colorScheme", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./colorScheme")>();
   function RecordedColorSchemeProvider(props: Readonly<Parameters<typeof actual.ColorSchemeProvider>[0]>) {
@@ -78,7 +87,7 @@ function DataProbe({ config, children }: ProviderProps) {
   return <TestDataProvider>{children}</TestDataProvider>;
 }
 
-/** The Atlas gate sits below the QueryClient and the wagmi config it needs (ARCHITECTURE.md §2.1). */
+/** The Atlas gate sits below the QueryClient and the wagmi config it needs. */
 function AtlasProbe({ config, children }: ProviderProps) {
   expect(config).toBe(CONFIG);
   useRecordLayer("atlas");
@@ -119,22 +128,23 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("AppProviders (ARCHITECTURE.md §2.1)", () => {
-  it("composes data, wallet, atlas, router, toasts and the colour scheme in that order around the routes", () => {
+describe("AppProviders", () => {
+  it("composes data, wallet, atlas, router, toasts, chain notices and the colour scheme in that order around the routes", () => {
     renderApp(DataProbe, <RouteProbe />);
     expect(screen.getByText("Routes at /")).toBeInTheDocument();
-    expect(order.slice(0, 7)).toEqual([
+    expect(order.slice(0, 8)).toEqual([
       "data query:false wagmi:false router:false",
       "wallet query:true wagmi:false router:false",
       "atlas query:true wagmi:true router:false",
       "router query:true wagmi:true router:false",
       "toasts query:true wagmi:true router:true",
+      "chain notices query:true wagmi:true router:true",
       "colour scheme query:true wagmi:true router:true",
       "routes query:true wagmi:true router:true",
     ]);
   });
 
-  it("§2.1: the root boundary is outermost, so a failing provider keeps the minimal frame", () => {
+  it("the root boundary is outermost, so a failing provider keeps the minimal frame", () => {
     // React logs every caught render error; the log is expected here.
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     window.addEventListener("error", silenceErrorReport);

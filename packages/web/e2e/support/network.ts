@@ -2,12 +2,9 @@ import { readFileSync } from "node:fs";
 import type { BrowserContext, Request, Route } from "@playwright/test";
 import { z } from "zod";
 
-// A network-free world for the app's Playwright specs (C9: the doubles live in e2e only). One catch-all route of the
-// browser context answers every request that leaves the app's origin: JSON-RPC reads from a recording or from the spec,
-// the meta-evidence locator and the IPFS gateway from the spec or the recording, Atlas from the spec when it serves
-// one, and nothing else (aborted). Requests
-// are recognized by their shape, never by host, so the build's configured URLs, which carry API keys, are never named,
-// compared or printed here. The build must have the read RPCs and the meta-evidence API configured, as a deploy does.
+// Requests are recognized by their shape, never by host, so the build's configured URLs, which carry API keys, are never
+// named, compared or printed here. The build must have the read RPCs and the meta-evidence API configured, as a deploy
+// does.
 
 // The `*` of allow-headers never covers `Authorization`, which Atlas requests carry once signed in, so it is named too.
 const CORS_HEADERS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "*, authorization" };
@@ -37,7 +34,6 @@ const JsonRpcRequestSchema = z.object({
   params: z.array(z.unknown()).optional(),
 });
 
-/** One JSON-RPC call the page made. */
 export interface RpcCall {
   readonly method: string;
   readonly params: readonly unknown[];
@@ -111,7 +107,6 @@ function callKey(method: string, params: readonly unknown[]): string {
   return canonical([method, params]);
 }
 
-/** The recorded answers by call, and the gateway's recorded files by path. */
 function indexRecordings(recordings: readonly Recording[]) {
   const calls = new Map<string, RpcAnswer>();
   const files = new Map<string, HttpAnswer>();
@@ -136,7 +131,6 @@ function jsonRpcCall(request: Request): z.infer<typeof JsonRpcRequestSchema> | u
   return parsed.success ? parsed.data : undefined;
 }
 
-/** The Atlas request `request` is, or `undefined` when it is not shaped as one. */
 async function atlasRequestOf(request: Request, url: URL): Promise<AtlasRequest | undefined> {
   if (request.method() !== "POST") return undefined;
   const authorization = await request.headerValue("authorization");
@@ -151,7 +145,7 @@ async function atlasRequestOf(request: Request, url: URL): Promise<AtlasRequest 
   return parsed.success ? { kind: "graphql", query: parsed.data.query, variables: parsed.data.variables ?? {}, authorization } : undefined;
 }
 
-/** The meta-evidence locator, recognized by its query (spec 9.1 step 1), or a gateway path; `undefined` for anything else. */
+/** The meta-evidence locator is recognized by its query, whatever host the build names. */
 function httpRequestOf(url: URL): HttpRequest | undefined {
   const chainId = url.searchParams.get("chainId");
   const disputeId = url.searchParams.get("disputeId");
@@ -170,10 +164,9 @@ async function answerAtlas(route: Route, answer: AtlasAnswer): Promise<void> {
 }
 
 /**
- * Routes every request of `context` that leaves the app's origin. JSON-RPC: the spec's answer, else the recorded one,
- * else a node error (counted as unanswered; `eth_blockNumber` answers the recording's block). Atlas: the spec's answer
- * when it serves Atlas. Locator and gateway: the spec's answer, else the recorded one, else 404. Everything else, the
- * wallet services included, is aborted.
+ * JSON-RPC: the spec's answer, else the recorded one, else a node error (counted as unanswered; `eth_blockNumber`
+ * answers the recording's block). Atlas: the spec's answer when it serves Atlas. Locator and gateway: the spec's answer,
+ * else the recorded one, else 404. Everything else, the wallet services included, is aborted.
  */
 export async function fakeNetwork(context: BrowserContext, options: FakeNetworkOptions): Promise<Traffic> {
   const traffic: Traffic = { rpc: [], rpcUnanswered: [], http: [], aborted: 0 };
@@ -185,7 +178,10 @@ export async function fakeNetwork(context: BrowserContext, options: FakeNetworkO
     const answer =
       options.rpc?.(call) ??
       recorded.calls.get(callKey(call.method, call.params)) ??
-      (call.method === "eth_blockNumber" && head !== undefined ? { result: `0x${head.toString(16)}` } : undefined);
+      (call.method === "eth_blockNumber" && head !== undefined ? { result: `0x${head.toString(16)}` } : undefined) ??
+      (call.method === "eth_getBlockByNumber" && call.params[0] === "latest"
+        ? { result: { number: "0x1", timestamp: `0x${Math.floor(Date.now() / 1_000).toString(16)}`, hash: `0x${"cd".repeat(32)}`, transactions: [] } }
+        : undefined);
     if (answer === undefined) {
       const selector = callData(call)?.slice(0, 10);
       traffic.rpcUnanswered.push(selector === undefined ? call.method : `${call.method} ${selector}`);

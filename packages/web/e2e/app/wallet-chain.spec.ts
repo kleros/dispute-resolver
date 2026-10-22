@@ -1,25 +1,23 @@
 import { expect, test, type Page } from "@playwright/test";
-import { GNOSIS_ARBITRATOR, isDisputesCall, NEVER_CREATED_ON_GNOSIS } from "../support/arbitrator";
 import { fakeNetwork, loadRecording } from "../support/network";
 import { changeWalletChain, injectWallet, walletRequests } from "../support/wallet";
 
-// The write guard and chain following with a real browser wallet (checklist B3, ledger D-48 and D-55), on the built app
-// with a wallet configured (playwright.config.ts gives the e2e build a WalletConnect project ID; every wallet service is
-// aborted, so the injected wallet is the only one). The case page is mainnet dispute 1621 from its recording, where the
-// arbitrator reports the appeal period, so its crowdfunding cards offer Fund. The build needs the chain-1 and Gnosis read
-// RPCs and the meta-evidence API configured, as a deploy has.
+// playwright.config.ts gives the e2e build a WalletConnect project ID; every wallet service is aborted, so the injected
+// wallet is the only one. With a wallet connected the wallet's chain is the truth: a page on another chain asks the
+// wallet once to switch, and a refusal moves the app to the wallet's chain. Mainnet dispute 1621 is recorded in the
+// appeal period, so its crowdfunding cards offer Fund. The build needs the chain-1 and Gnosis read RPCs and the
+// meta-evidence API configured, as a deploy has.
 
 const RECORDING = loadRecording(new URL("fixtures/mainnet-1621-appeal.json", import.meta.url));
 const ACCOUNT = "0x00000000000000000000000000000000000000e2";
 const CASE_PATH = "/1/cases/1621";
 const CASE_TITLE = "Proof of Humanity Governance Dispute";
 
-/** The dispute's title: the heading of its summary. */
 function caseTitle(page: Page) {
   return page.getByRole("heading", { name: CASE_TITLE, exact: true, includeHidden: true });
 }
 
-/** Fails early, and says why, when the build connects no wallet (K-02: no WalletConnect project ID). */
+/** Fails early, and says why, when the build connects no wallet (no WalletConnect project ID). */
 async function expectWalletConnected(page: Page): Promise<void> {
   await expect(
     page.getByRole("button", { name: /^Account 0x0000…00E2$/i }),
@@ -33,14 +31,35 @@ function countOf(requests: readonly string[], method: string): number {
   return requests.filter((request) => request === method).length;
 }
 
-test("B3, D-48: with the wallet on Gnosis and the page on mainnet, Fund refuses visibly, sends nothing and offers the switch", async ({ context, page, baseURL }) => {
-  await injectWallet(context, { account: ACCOUNT, chainId: 100, declinedSwitches: 1 });
+async function switchRequests(page: Page): Promise<number> {
+  return countOf(await walletRequests(page), "wallet_switchEthereumChain");
+}
+
+function notifications(page: Page) {
+  return page.getByRole("region", { name: "Notifications" });
+}
+
+function ongoingHeading(page: Page) {
+  return page.getByRole("heading", { name: "Ongoing Disputes", level: 1 });
+}
+
+/** Counts full page loads from now on; an in-app navigation fires none. */
+function countLoads(page: Page): () => number {
+  let loads = 0;
+  page.on("load", () => {
+    loads += 1;
+  });
+  return () => loads;
+}
+
+test("refuses Fund visibly and sends nothing while the wallet's switch to the page chain waits", async ({ context, page, baseURL }) => {
+  await injectWallet(context, { account: ACCOUNT, chainId: 100, heldSwitches: true });
   const traffic = await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, recordings: [RECORDING] });
 
   await page.goto(CASE_PATH);
   await expectWalletConnected(page);
-  // D-55's one request at load is declined: the page stays on the URL's chain and is not asked again (D-48).
-  await expect.poll(async () => countOf(await walletRequests(page), "wallet_switchEthereumChain")).toBe(1);
+  // The one switch request at load is never answered: the page stays on the URL's chain meanwhile.
+  await expect.poll(() => switchRequests(page)).toBe(1);
   await expect(caseTitle(page)).toBeVisible();
   await expect(page).toHaveURL(CASE_PATH);
 
@@ -51,28 +70,19 @@ test("B3, D-48: with the wallet on Gnosis and the page on mainnet, Fund refuses 
   await fund.click();
 
   await expect(panel.getByText("Wrong network", { exact: true })).toBeVisible();
-  await expect(
-    panel.getByText("Your wallet is on Gnosis Network, but this page is on Ethereum Mainnet. Switch your wallet to Ethereum Mainnet to continue. Nothing was sent."),
-  ).toBeVisible();
+  await expect(panel.getByText("Your wallet is on Gnosis Network, but this page is on Ethereum Mainnet. Nothing was sent.")).toBeVisible();
+  await expect(panel.getByText("A switch to Ethereum Mainnet is waiting in your wallet.")).toBeVisible();
+  await expect(panel.getByRole("button", { name: /Switch/ })).toHaveCount(0);
   const requests = await walletRequests(page);
   expect(countOf(requests, "eth_sendTransaction"), "a transaction was requested from the wallet").toBe(0);
-  expect(countOf(requests, "wallet_switchEthereumChain"), "the refusal asked for a switch on its own").toBe(1);
-
-  // The refusal offers the switch again; this time the user accepts, and the refusal says the wallet is now on the page's chain.
-  await panel.getByRole("button", { name: "Switch to Ethereum Mainnet" }).click();
-  await expect(panel.getByText("Your wallet is now on Ethereum Mainnet. Try again.")).toBeVisible();
-  expect(countOf(await walletRequests(page), "eth_sendTransaction")).toBe(0);
+  expect(countOf(requests, "wallet_switchEthereumChain"), "the refusal asked for another switch").toBe(1);
   await expect(page).toHaveURL(CASE_PATH);
   expect(traffic.rpcUnanswered, "case page reads missing from the recording").toEqual([]);
 });
 
-test("D-55: a wallet chain change on a case page moves it to the same ID on the new chain, without a reload", async ({ context, page, baseURL }) => {
+test("when the wallet changes chain on its own, a case page opens the new chain's Ongoing Disputes without a reload and asks for no switch", async ({ context, page, baseURL }) => {
   await injectWallet(context, { account: ACCOUNT, chainId: 1 });
-  await fakeNetwork(context, {
-    appOrigin: new URL(baseURL ?? "http://localhost").origin,
-    recordings: [RECORDING],
-    rpc: (call) => (isDisputesCall(call, GNOSIS_ARBITRATOR, 1621n) ? NEVER_CREATED_ON_GNOSIS : undefined),
-  });
+  await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, recordings: [RECORDING] });
 
   await page.goto(`${CASE_PATH}?from=e2e`);
   await expectWalletConnected(page);
@@ -84,10 +94,90 @@ test("D-55: a wallet chain change on a case page moves it to the same ID on the 
 
   await changeWalletChain(page, 100);
 
-  await expect(page).toHaveURL("/100/cases/1621?from=e2e");
-  await expect(page.getByText("Dispute with ID 1621 does not exist on this network.")).toBeVisible();
+  await expect(page).toHaveURL("/100/ongoing");
+  await expect(ongoingHeading(page)).toBeVisible();
   await expect(caseTitle(page)).toHaveCount(0);
   expect(await page.evaluate(() => Reflect.get(window, "__e2eSameDocument") === true), "the page was reloaded").toBe(true);
   // The wallet moved on its own: the app follows it and asks for no switch back.
-  expect(countOf(await walletRequests(page), "wallet_switchEthereumChain")).toBe(0);
+  expect(await switchRequests(page)).toBe(0);
 });
+
+test("a pasted case link on the other chain, declined in the wallet, opens the wallet chain's Ongoing Disputes with one toast", async ({ context, page, baseURL }) => {
+  await injectWallet(context, { account: ACCOUNT, chainId: 100, declinedSwitches: 1 });
+  await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, recordings: [RECORDING] });
+
+  await page.goto(CASE_PATH);
+  await expectWalletConnected(page);
+
+  await expect(page).toHaveURL("/100/ongoing");
+  const toast = notifications(page).getByRole("status");
+  await expect(toast).toHaveCount(1);
+  await expect(toast).toContainText("Wallet stayed on Gnosis Network");
+  await expect(toast).toContainText("Dispute 1621 is on Ethereum Mainnet, so the app is showing Ongoing Disputes on Gnosis Network.");
+  await expect(notifications(page).getByRole("alert")).toHaveCount(0);
+  await expect(ongoingHeading(page)).toBeVisible();
+  await expect(caseTitle(page)).toHaveCount(0);
+  expect(await switchRequests(page), "the app asked again after its move to the wallet's chain").toBe(1);
+});
+
+test("a pasted case link on the other chain, accepted in the wallet, stays on the case", async ({ context, page, baseURL }) => {
+  await injectWallet(context, { account: ACCOUNT, chainId: 100 });
+  const traffic = await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, recordings: [RECORDING] });
+
+  await page.goto(CASE_PATH);
+  await expectWalletConnected(page);
+
+  await expect.poll(() => switchRequests(page)).toBe(1);
+  await expect(caseTitle(page)).toBeVisible();
+  await expect(page).toHaveURL(CASE_PATH);
+  await expect(notifications(page).getByRole("status")).toHaveCount(0);
+  await expect(notifications(page).getByRole("alert")).toHaveCount(0);
+  expect(await switchRequests(page)).toBe(1);
+  expect(traffic.rpcUnanswered, "case page reads missing from the recording").toEqual([]);
+});
+
+test("a list page on the other chain, declined, moves to the same path on the wallet's chain keeping the search and hash", async ({ context, page, baseURL }) => {
+  await injectWallet(context, { account: ACCOUNT, chainId: 100, declinedSwitches: 1 });
+  await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin });
+  const loads = countLoads(page);
+
+  await page.goto("/1/ongoing?from=e2e#list");
+  await expectWalletConnected(page);
+
+  await expect(page).toHaveURL("/100/ongoing?from=e2e#list");
+  const toast = notifications(page).getByRole("status");
+  await expect(toast).toHaveCount(1);
+  await expect(toast).toContainText("Wallet stayed on Gnosis Network");
+  await expect(toast).toContainText("The app is now showing Gnosis Network.");
+  await expect(ongoingHeading(page)).toBeVisible();
+  expect(loads(), "the move to the wallet's chain reloaded the page").toBe(1);
+  expect(await switchRequests(page)).toBe(1);
+});
+
+function networkPill(page: Page) {
+  return page.getByRole("banner").getByRole("button", { name: /^Network: / });
+}
+
+for (const [from, to] of [
+  ["/1/ongoing?from=e2e#list", "/100/ongoing?from=e2e#list"],
+  [CASE_PATH, "/100/ongoing"],
+] as const) {
+  test(`picking Gnosis Network from the header pill on ${from} asks the wallet once, and the app follows it to ${to} with no toast`, async ({ context, page, baseURL }) => {
+    await injectWallet(context, { account: ACCOUNT, chainId: 1 });
+    await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, recordings: [RECORDING] });
+
+    await page.goto(from);
+    await expectWalletConnected(page);
+    await networkPill(page).click();
+    await page.getByRole("menuitem", { name: "Gnosis Network" }).click();
+
+    await expect(page).toHaveURL(to);
+    await expect(ongoingHeading(page)).toBeVisible();
+    await expect(networkPill(page)).toHaveAccessibleName("Network: Gnosis Network. Change network");
+    // The app asking the wallet back to the chain it just left would be a second request.
+    expect(await switchRequests(page), "the app asked the wallet again after it followed the pill's switch").toBe(1);
+    await expect(page).toHaveURL(to);
+    await expect(notifications(page).getByRole("status")).toHaveCount(0);
+    await expect(notifications(page).getByRole("alert")).toHaveCount(0);
+  });
+}

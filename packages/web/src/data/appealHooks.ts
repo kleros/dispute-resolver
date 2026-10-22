@@ -17,7 +17,6 @@ import { IDLE_KEY, queryKeys } from "./queryKeys";
 import { LOADING, fromOutcome, fromQuery, noRpcError, ready, unavailableFrom } from "./sectionData";
 import type { SectionData } from "./types";
 
-/** The arbitrable's appeal multipliers (spec §10.9), read in the appeal period. `undefined` family: not read yet. */
 export function useMultipliers(chainId: ChainId, family: FamilyDetection | undefined): SectionData<Multipliers> {
   const deps = useCoreDeps();
   const client = deps.getReadClient(chainId);
@@ -31,11 +30,7 @@ export function useMultipliers(chainId: ChainId, family: FamilyDetection | undef
   return fromQuery(query, fromOutcome);
 }
 
-/**
- * Contributions and funded rulings of one round, scanned from the round's start block to the latest block on every
- * read, so a reload shows the same totals (D-02, D-30). Keyed by the context's governor session (D-47). `undefined`
- * inputs: not read yet.
- */
+/** Scans from the round's start block to the latest block on every read, so a reload shows the same totals. */
 export function useRoundFunding(context: AppealContext | undefined, round: bigint | undefined, fromBlock: bigint | undefined): SectionData<RoundFunding> {
   const enabled = context !== undefined && round !== undefined && fromBlock !== undefined;
   const query = useQuery({
@@ -46,11 +41,6 @@ export function useRoundFunding(context: AppealContext | undefined, round: bigin
   return enabled ? fromQuery(query, fromOutcome) : LOADING;
 }
 
-/**
- * What `account` can withdraw across `rounds` (spec §5.15, D-46, D-49, D-51), each round scanned from its start block
- * in `starts`. Keyed by the account and the context's governor session (D-47), and never persisted. `undefined` context:
- * not read yet.
- */
 export function useWithdrawable(
   context: AppealContext | undefined,
   account: Address | undefined,

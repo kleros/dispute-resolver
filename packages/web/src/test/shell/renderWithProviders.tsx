@@ -3,7 +3,7 @@ import { Route, Routes } from "react-router";
 import type { AtlasUploader } from "../../atlas";
 import type { CoreDeps } from "../../data";
 import { ChainLayout } from "../../routing";
-import { ColorSchemeProvider, PageFrame, ToastProvider } from "../../shell";
+import { ChainNoticeToasts, ColorSchemeProvider, PageFrame, ToastProvider } from "../../shell";
 import { createColorSchemeStore, type ColorSchemeStore } from "../../theme";
 import { TestAtlasProvider } from "../atlas";
 import { TestDataProvider } from "../data";
@@ -30,9 +30,8 @@ export interface ProvidersRenderResult extends RoutedRenderResult {
 }
 
 /**
- * Renders `ui` as a screen of the app (ARCHITECTURE.md §1.5): `TestDataProvider` → `TestWalletProvider` →
- * `TestAtlasProvider` → `ToastProvider` → `ColorSchemeProvider` around a `MemoryRouter` at `path`, under the `/:chainId` layout route, so
- * `usePageChain()`, `useResolvedChain()`, chain following and `useToast()` behave as in the app.
+ * Renders `ui` as a screen of the app, in a `MemoryRouter` at `path` under the `/:chainId` layout route, so
+ * `usePageChain()`, `useResolvedChain()`, chain following, its toasts and `useToast()` behave as in the app.
  */
 export function renderWithProviders(ui: ReactElement, options: RenderWithProvidersOptions = {}): ProvidersRenderResult {
   const { path = "/1", deps, uploader, frame = "test" } = options;
@@ -44,7 +43,9 @@ export function renderWithProviders(ui: ReactElement, options: RenderWithProvide
         <TestWalletProvider wallet={wallet}>
           <TestAtlasProvider uploader={uploader}>
             <ToastProvider>
-              <ColorSchemeProvider store={colorScheme}>{children}</ColorSchemeProvider>
+              <ChainNoticeToasts>
+                <ColorSchemeProvider store={colorScheme}>{children}</ColorSchemeProvider>
+              </ChainNoticeToasts>
             </ToastProvider>
           </TestAtlasProvider>
         </TestWalletProvider>

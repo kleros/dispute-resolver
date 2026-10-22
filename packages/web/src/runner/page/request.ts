@@ -2,9 +2,8 @@ import type { Address, ScriptParameters } from "@dispute-resolver/core";
 import { PROTOCOL_VERSION, RUN_MESSAGE_TYPE } from "../protocol";
 import type { RpcRedirectRule, RunnerRequestMessage } from "../types";
 
-// Hand-written checks of the one message the page accepts (ARCHITECTURE.md §7.2): the bootstrap is its own small
-// build and imports no validation library. The host validated the parameters already (B5); these checks only make
-// sure the page never works on a value of the wrong shape.
+// Hand-written because the bootstrap is its own small build and imports no validation library. The host validated
+// the parameters already; these checks only make sure the page never works on a value of the wrong shape.
 
 type UnknownRecord = Readonly<Record<string, unknown>>;
 
@@ -53,7 +52,6 @@ function parseRules(value: unknown): RpcRedirectRule[] | undefined {
   return rules;
 }
 
-/** The run request carried by `data`, copied field by field, or `undefined` when `data` is anything else. */
 export function parseRunRequest(data: unknown): RunnerRequestMessage | undefined {
   if (!isRecord(data) || data.type !== RUN_MESSAGE_TYPE || data.version !== PROTOCOL_VERSION) return;
   const { scriptText, guardSource } = data;

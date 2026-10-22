@@ -3,7 +3,7 @@ import type { Unavailable } from "@dispute-resolver/core";
 import { SectionUnavailable } from "./SectionUnavailable";
 import type { SectionBoundaryProps } from "./types";
 
-/** A render that throws means the section's data broke an assumption the screen relies on: a bad dispute (D-36). */
+/** A render that throws means the section's data broke an assumption the screen relies on: a bad dispute. */
 const RENDER_FAILURE: Unavailable = {
   code: "invalid-data",
   message: "The data for this section is malformed and cannot be displayed.",
@@ -13,10 +13,6 @@ interface SectionBoundaryState {
   readonly failed: boolean;
 }
 
-/**
- * Wraps one independently degradable section (ARCHITECTURE.md 5.7, D-36, B12). A render error replaces only this
- * section with `SectionUnavailable`; Retry resets the boundary and calls `onRetry` so the caller can refetch.
- */
 export class SectionBoundary extends Component<SectionBoundaryProps, SectionBoundaryState> {
   override state: SectionBoundaryState = { failed: false };
 

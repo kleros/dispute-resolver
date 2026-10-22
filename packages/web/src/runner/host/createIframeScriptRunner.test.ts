@@ -49,7 +49,7 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe("parameter validation (B5)", () => {
+describe("parameter validation", () => {
   it.each([
     ["a disputeID carrying markup", { disputeID: "1</script><script>alert(1)</script>" }],
     ["a disputeID with a leading zero", { disputeID: "01" }],
@@ -64,26 +64,26 @@ describe("parameter validation (B5)", () => {
     ["a plain-http RPC URL", { arbitratorJsonRpcUrl: "http://rpc.example/mainnet" }],
     ["a javascript: RPC URL", { arbitrableJsonRpcUrl: "javascript:alert(1)" }],
     ["a relative RPC URL", { arbitratorJsonRpcUrl: "/rpc" }],
-  ])("B5: refuses %s without creating a frame", async (_label, overrides) => {
+  ])("refuses %s without creating a frame", async (_label, overrides) => {
     const { fake, runner } = setup();
     await expect(runner.run(withParams(overrides))).resolves.toMatchObject({ status: "failed", reason: "runner-error" });
     expect(fake.frames).toEqual([]);
   });
 
-  it("B5: refuses a script text that is not a string", async () => {
+  it("refuses a script text that is not a string", async () => {
     const { fake, runner } = setup();
     await expect(runner.run(request({ scriptText: 42 as unknown as string }))).resolves.toMatchObject({ status: "failed", reason: "runner-error" });
     expect(fake.frames).toEqual([]);
   });
 
-  it("B5: accepts null RPC URLs and other configured chains", async () => {
+  it("accepts null RPC URLs and other configured chains", async () => {
     const { fake, runner } = setup();
     const run = runner.run(withParams({ arbitrableChainID: 100, arbitratorJsonRpcUrl: null, arbitrableJsonRpcUrl: null }));
     frameAt(fake, 0).load().reply({ type: "dr-runner/result", value: {}, jsonDuplicateKeys: false });
     await expect(run).resolves.toEqual({ status: "ok", value: {}, jsonDuplicateKeys: false });
   });
 
-  it("B5: posts only the six parameters, never extra fields", () => {
+  it("posts only the six script parameters, never extra fields", () => {
     const { fake, runner } = setup();
     void runner.run(withParams({ jsonRpcUrl: "https://rpc.example/extra" }));
     const posted = frameAt(fake, 0).load().message as { params: Record<string, unknown> };
@@ -92,8 +92,8 @@ describe("parameter validation (B5)", () => {
   });
 });
 
-describe("runner frame (C4, ARCHITECTURE.md §7.3)", () => {
-  it("C4: sets the sandbox before the source", () => {
+describe("runner frame", () => {
+  it("sets the sandbox before the source", () => {
     const { fake, runner } = setup();
     void runner.run(request());
     const order = frameAt(fake, 0).attributeOrder();
@@ -102,7 +102,7 @@ describe("runner frame (C4, ARCHITECTURE.md §7.3)", () => {
     expect(order.findIndex((name) => name === "sandbox")).toBeLessThan(order.findIndex((name) => name === "src"));
   });
 
-  it("C4: sandboxes the frame with allow-scripts only, hidden and without a referrer", () => {
+  it("sandboxes the frame with allow-scripts only, hidden and without a referrer", () => {
     const { fake, runner } = setup();
     void runner.run(request());
     const frame = frameAt(fake, 0).element;
@@ -115,7 +115,7 @@ describe("runner frame (C4, ARCHITECTURE.md §7.3)", () => {
     expect(frame.isConnected).toBe(true);
   });
 
-  it("C4: posts nothing before the frame loads, then one request with target '*' and one fresh port", () => {
+  it("posts nothing before the frame loads, then one request with target '*' and one fresh port", () => {
     const { fake, runner } = setup();
     void runner.run(request());
     const frame = frameAt(fake, 0);
@@ -133,13 +133,13 @@ describe("runner frame (C4, ARCHITECTURE.md §7.3)", () => {
     });
   });
 
-  it("A4: sends core's duplicate-key guard for a Reality script", () => {
+  it("sends core's duplicate-key guard for a Reality script", () => {
     const { fake, runner } = setup();
     void runner.run(request({ kind: "reality" }));
     expect(frameAt(fake, 0).load().message).toMatchObject({ guardSource: JSON_DUPLICATE_KEY_GUARD });
   });
 
-  it("B8: gives every run its own frame and its own port", () => {
+  it("gives every run its own frame and its own port", () => {
     const { fake, runner } = setup();
     void runner.run(request());
     void runner.run(request());
@@ -153,8 +153,8 @@ describe("runner frame (C4, ARCHITECTURE.md §7.3)", () => {
   });
 });
 
-describe("results (B1, B8, D-05)", () => {
-  it("B1: settles ok with the value and duplicate-key flag the port carried", async () => {
+describe("results", () => {
+  it("settles ok with the value and duplicate-key flag the port carried", async () => {
     const { fake, runner } = setup();
     const run = runner.run(request({ kind: "reality" }));
     frameAt(fake, 0)
@@ -163,7 +163,7 @@ describe("results (B1, B8, D-05)", () => {
     await expect(run).resolves.toEqual({ status: "ok", value: { rulingOptions: { titles: ["Harris", "Trump"] } }, jsonDuplicateKeys: true });
   });
 
-  it("B1: settles script-error when the script failed", async () => {
+  it("settles script-error when the script failed", async () => {
     const { fake, runner } = setup();
     const run = runner.run(request());
     frameAt(fake, 0).load().reply({ type: "dr-runner/error", message: "question not found" });
@@ -175,14 +175,14 @@ describe("results (B1, B8, D-05)", () => {
     ["a result without its flag", { type: "dr-runner/result", value: {} }],
     ["an error without a message", { type: "dr-runner/error" }],
     ["a bare value", "{}"],
-  ])("B1: settles runner-error for %s", async (_label, reply) => {
+  ])("settles runner-error for %s", async (_label, reply) => {
     const { fake, runner } = setup();
     const run = runner.run(request());
     frameAt(fake, 0).load().reply(reply);
     await expect(run).resolves.toMatchObject({ status: "failed", reason: "runner-error" });
   });
 
-  it("B1, D-05: a message posted to the window by another frame is ignored", async () => {
+  it("ignores a message posted to the window by another frame", async () => {
     const addEventListener = vi.spyOn(window, "addEventListener");
     const { fake, runner } = setup();
     const run = runner.run(request());
@@ -198,7 +198,7 @@ describe("results (B1, B8, D-05)", () => {
     expect(addEventListener.mock.calls.map(([type]) => type)).not.toContain("message");
   });
 
-  it("B8: two concurrent runs resolve to their own results", async () => {
+  it("resolves two concurrent runs to their own results", async () => {
     const { fake, runner } = setup();
     const first = runner.run(request({ params: { ...SAMPLE_PARAMS, disputeID: "1" } }));
     const second = runner.run(request({ params: { ...SAMPLE_PARAMS, disputeID: "2" } }));
@@ -212,7 +212,7 @@ describe("results (B1, B8, D-05)", () => {
     await expect(second).resolves.toEqual({ status: "ok", value: { title: "dispute 2" }, jsonDuplicateKeys: false });
   });
 
-  it("B8: removes the frame once the run settles and ignores later replies", async () => {
+  it("removes the frame once the run settles and ignores later replies", async () => {
     const { fake, runner } = setup();
     const run = runner.run(request());
     const posted = frameAt(fake, 0).load();
@@ -226,8 +226,8 @@ describe("results (B1, B8, D-05)", () => {
   });
 });
 
-describe("timeout and abort (B8, D-38)", () => {
-  it("B8: a run that never answers times out and its frame is removed", async () => {
+describe("timeout and abort", () => {
+  it("times out a run that never answers and removes its frame", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const { fake, runner } = setup();
     const run = runner.run(request({ timeoutMs: 1_000 }));
@@ -239,14 +239,14 @@ describe("timeout and abort (B8, D-38)", () => {
     expect(fake.attachedFrames()).toEqual([]);
   });
 
-  it("D-38: a run with no budget left times out without a frame", async () => {
+  it("times out a run with no budget left without creating a frame", async () => {
     const { fake, runner } = setup();
     await expect(runner.run(request({ timeoutMs: 0 }))).resolves.toMatchObject({ status: "failed", reason: "timeout" });
     await expect(runner.run(request({ timeoutMs: -5 }))).resolves.toMatchObject({ status: "failed", reason: "timeout" });
     expect(fake.frames).toEqual([]);
   });
 
-  it("B8: aborting a running script removes its frame", async () => {
+  it("removes the frame when a running script is aborted", async () => {
     const { fake, runner } = setup();
     const controller = new AbortController();
     const run = runner.run(request({ signal: controller.signal }));
@@ -256,21 +256,21 @@ describe("timeout and abort (B8, D-38)", () => {
     expect(fake.attachedFrames()).toEqual([]);
   });
 
-  it("B8: an already aborted run creates no frame", async () => {
+  it("creates no frame for an already aborted run", async () => {
     const { fake, runner } = setup();
     await expect(runner.run(request({ signal: AbortSignal.abort() }))).resolves.toMatchObject({ status: "failed", reason: "aborted" });
     expect(fake.frames).toEqual([]);
   });
 });
 
-describe("acknowledgement window (P-16)", () => {
+describe("acknowledgement window", () => {
   const NOT_STARTED = /did not start within 5 seconds/;
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   });
 
-  it("P-16: a frame whose load never fires settles runner-error when the acknowledgement window ends, and is removed", async () => {
+  it("a frame whose load never fires settles runner-error when the acknowledgement window ends, and is removed", async () => {
     const { fake, runner } = setup();
     const run = runner.run(request({ timeoutMs: 60_000 }));
     vi.advanceTimersByTime(4_999);
@@ -281,7 +281,7 @@ describe("acknowledgement window (P-16)", () => {
     expect(fake.attachedFrames()).toEqual([]);
   });
 
-  it("P-16: a frame that loads but never acknowledges settles runner-error at the window", async () => {
+  it("a frame that loads but never acknowledges settles runner-error at the window", async () => {
     const { fake, runner } = setup();
     const run = runner.run(request());
     frameAt(fake, 0).load();
@@ -290,7 +290,7 @@ describe("acknowledgement window (P-16)", () => {
     expect(fake.attachedFrames()).toEqual([]);
   });
 
-  it("P-16: the acknowledgement cancels the window and the run then waits for its result until its timeout", async () => {
+  it("the acknowledgement cancels the window and the run then waits for its result until its timeout", async () => {
     const { fake, runner } = setup();
     const run = runner.run(request({ timeoutMs: 60_000 }));
     vi.advanceTimersByTime(4_900);
@@ -304,7 +304,7 @@ describe("acknowledgement window (P-16)", () => {
     expect(fake.attachedFrames()).toEqual([]);
   });
 
-  it("P-16, B1: the acknowledgement never settles the run and carries nothing through", async () => {
+  it("the acknowledgement never settles the run and carries nothing through", async () => {
     const { fake, runner } = setup();
     const run = runner.run(request());
     const posted = frameAt(fake, 0).load();
@@ -314,7 +314,7 @@ describe("acknowledgement window (P-16)", () => {
     await expect(run).resolves.toEqual({ status: "ok", value: { title: "genuine" }, jsonDuplicateKeys: false });
   });
 
-  it("P-16: a second acknowledgement is ignored", async () => {
+  it("ignores a second acknowledgement", async () => {
     const { fake, runner } = setup();
     const run = runner.run(request());
     const posted = frameAt(fake, 0).load();
@@ -328,7 +328,7 @@ describe("acknowledgement window (P-16)", () => {
     await expect(run).resolves.toEqual({ status: "ok", value: { title: "after two" }, jsonDuplicateKeys: false });
   });
 
-  it("P-16: a result without a prior acknowledgement still settles the run (lenient ordering)", async () => {
+  it("a result without a prior acknowledgement still settles the run", async () => {
     const { fake, runner } = setup();
     const run = runner.run(request());
     frameAt(fake, 0)
@@ -337,7 +337,7 @@ describe("acknowledgement window (P-16)", () => {
     await expect(run).resolves.toEqual({ status: "ok", value: { title: "unacknowledged" }, jsonDuplicateKeys: false });
   });
 
-  it("P-16, B8: aborting during the acknowledgement window settles aborted and clears both timers", async () => {
+  it("aborting during the acknowledgement window settles aborted and clears both timers", async () => {
     const { fake, runner } = setup();
     const controller = new AbortController();
     const run = runner.run(request({ signal: controller.signal }));
@@ -352,7 +352,7 @@ describe("acknowledgement window (P-16)", () => {
     await expect(run).resolves.toMatchObject({ status: "failed", reason: "aborted" });
   });
 
-  it("P-16, D-38: a run whose remaining budget is shorter than the window times out first", async () => {
+  it("a run whose remaining budget is shorter than the window times out first", async () => {
     const { fake, runner } = setup();
     const run = runner.run(request({ timeoutMs: 1_000 }));
     frameAt(fake, 0).load();
@@ -361,7 +361,7 @@ describe("acknowledgement window (P-16)", () => {
     expect(fake.attachedFrames()).toEqual([]);
   });
 
-  it("P-16: the acknowledgement window counts from the frame's append, not from run()", async () => {
+  it("the acknowledgement window counts from the frame's append, not from run()", async () => {
     const { fake, runner } = setup(1);
     const controller = new AbortController();
     const first = runner.run(request({ signal: controller.signal }));
@@ -383,8 +383,8 @@ describe("acknowledgement window (P-16)", () => {
   });
 });
 
-describe("concurrency (D-29)", () => {
-  it("D-29: runs at most four scripts at a time and starts the next one when a run settles", async () => {
+describe("concurrency", () => {
+  it("runs at most four scripts at a time and starts the next one when a run settles", async () => {
     const { fake, runner } = setup(4);
     const runs = [1, 2, 3, 4, 5, 6].map((id) => runner.run(request({ params: { ...SAMPLE_PARAMS, disputeID: String(id) } })));
     expect(fake.frames).toHaveLength(4);
@@ -398,7 +398,7 @@ describe("concurrency (D-29)", () => {
     expect(frameAt(fake, 4).load().message).toMatchObject({ params: { disputeID: "5" } });
   });
 
-  it("D-38: time spent queued counts against the run's timeout", async () => {
+  it("counts time spent queued against the run's timeout", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const { fake, runner } = setup(1);
     const first = runner.run(request({ timeoutMs: 10_000 }));
@@ -412,7 +412,7 @@ describe("concurrency (D-29)", () => {
     expect(fake.frames).toHaveLength(1);
   });
 
-  it("D-29: aborting a queued run settles it without a frame and keeps the queue moving", async () => {
+  it("aborting a queued run settles it without a frame and keeps the queue moving", async () => {
     const { fake, runner } = setup(1);
     const controller = new AbortController();
     const first = runner.run(request());
@@ -430,14 +430,14 @@ describe("concurrency (D-29)", () => {
     await expect(third).resolves.toMatchObject({ status: "ok", value: { title: "3" } });
   });
 
-  it("D-29: refuses a concurrency cap that is not a positive integer", () => {
+  it("refuses a concurrency cap that is not a positive integer", () => {
     const fake = createFakeRunnerDocument();
     expect(() => createIframeScriptRunner({ document: fake.document, runnerUrl: RUNNER_PATH, maxConcurrent: 0, rpcRedirects: [] })).toThrow(RangeError);
   });
 });
 
-describe("frame failures (ARCHITECTURE.md §7.3)", () => {
-  it("§7.3: a run whose frame cannot be opened fails without rejecting and frees its slot", async () => {
+describe("frame failures", () => {
+  it("a run whose frame cannot be opened fails without rejecting and frees its slot", async () => {
     const brokenDocument = {
       body: document.body,
       createElement() {
@@ -451,7 +451,7 @@ describe("frame failures (ARCHITECTURE.md §7.3)", () => {
     await expect(second).resolves.toMatchObject({ status: "failed", reason: "runner-error" });
   });
 
-  it("§7.3: keeps frames in one hidden container and recreates it if the page removed it", () => {
+  it("keeps frames in one hidden container and recreates it if the page removed it", () => {
     const { fake, runner } = setup();
     void runner.run(request());
     const firstContainer = frameAt(fake, 0).element.parentElement;

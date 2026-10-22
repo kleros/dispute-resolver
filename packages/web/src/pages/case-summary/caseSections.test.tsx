@@ -12,9 +12,11 @@ import {
 } from "@dispute-resolver/core";
 import { act, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SectionBoundary } from "../../ui";
+import { LG_MEDIA_QUERY, SectionBoundary } from "../../ui";
 import type { CaseDispute, SectionData } from "../../data";
 import { TestDataProvider, sectionLoading, sectionReady, sectionUnavailable, testCourt, testDetails, testFamily, testFoundLookup, testOkMetaEvidence } from "../../test/data";
+import { installOfflineAppKitEnvironment } from "../../test/wallet";
+import { FIVE_STEPS_MEDIA_QUERY } from "./DisputeTimeline";
 import { CaseOverview, DecisionAlert, DisputeTimeline, RealityNotice } from "./index";
 
 const NOW = 1_700_000_000;
@@ -83,23 +85,26 @@ function renderSection(Component: Section, dispute: CaseDispute) {
   );
 }
 
-/** The labels the timeline gives its columns, as a reader sees them. */
-const COLUMN_NAMES = ["Evidence", "Commit", "Voting", "Appeal", "Execution"] as const;
-
-/** A column as the reader perceives it: its label, whether it is the current step, concluded or upcoming, and its text. */
-function columns(): { name: string | undefined; state: string; text: string }[] {
-  return within(screen.getByRole("list", { name: "Dispute timeline" }))
-    .getAllByRole("listitem")
-    .map((column) => {
-      const text = column.textContent;
-      let state = "upcoming";
-      if (column.getAttribute("aria-current") === "step") state = "current";
-      else if (text.includes("Concluded")) state = "concluded";
-      return { name: COLUMN_NAMES.find((name) => text.startsWith(name)), state, text };
-    });
+/** The library's list inside the group a reader hears as "Dispute timeline". */
+function timelineList(): HTMLElement {
+  return within(screen.getByRole("group", { name: "Dispute timeline" })).getByRole("list");
 }
 
-/** The value of one entry of the info row, found by its visible label. */
+function steps(): HTMLElement[] {
+  return within(timelineList()).getAllByRole("listitem");
+}
+
+/** A step as the reader perceives it: its name, whether it is concluded, the current step or upcoming, and its text. */
+function columns(): { name: string | null; state: string; text: string }[] {
+  return steps().map((step) => {
+    let state = "concluded";
+    if (step.getAttribute("aria-current") === "step") state = "current";
+    else if (step.getAttribute("aria-disabled") === "true") state = "upcoming";
+    const text = Array.from(step.querySelectorAll("h2, small"), (element) => element.textContent).join("");
+    return { name: step.getAttribute("aria-label"), state, text };
+  });
+}
+
 function detail(label: string): HTMLElement {
   const index = screen.getAllByRole("term").findIndex((term) => term.textContent === label);
   const value = screen.getAllByRole("definition")[index];
@@ -107,26 +112,24 @@ function detail(label: string): HTMLElement {
   return value;
 }
 
-/** The timeline's steps, in order. */
-function steps(): HTMLElement[] {
-  return within(screen.getByRole("list", { name: "Dispute timeline" })).getAllByRole("listitem");
+/** A `matchMedia` for a viewport every query matches, so the timeline lays out as from lg. */
+function matchEverything(query: string): MediaQueryList {
+  return matchOnly([query])(query);
 }
 
-/** The two halves of a step's rail, the line arriving at its bullet and the line leaving it. */
-function railHalves(step: HTMLElement): Element[] {
-  const rail = step.querySelector('[aria-hidden="true"]');
-  if (rail === null) throw new Error("The step has no rail.");
-  return Array.from(rail.children).filter((child) => child.classList.contains("h-px"));
+function matchOnly(matching: readonly string[]): (query: string) => MediaQueryList {
+  return (query) => ({
+    matches: matching.includes(query),
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(() => false),
+  });
 }
 
-/** The element wrapping the text `text` as the step shows it. */
-function stepDetail(text: string): HTMLElement {
-  const element = screen.getByText(text).parentElement;
-  if (element === null) throw new Error(`No detail for ${text}.`);
-  return element;
-}
-
-/** The decision alert, a region named after its heading. */
 function decisionAlert(name: "Jury decision" | "Winner"): HTMLElement {
   return screen.getByRole("region", { name });
 }
@@ -138,10 +141,11 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe("CaseOverview", () => {
-  it("spec 5.8: shows the dispute ID, the network, the number of votes and the court", () => {
+  it("shows the dispute ID, the network, the number of votes and the court", () => {
     renderSection(CaseOverview, caseDispute({ period: 2, court: { name: "Blockchain Court" }, details: { votesLengths: { ok: true, value: [5n, 11n] } } }));
     expect(screen.getByRole("heading", { level: 1, name: "Dispute #1" })).toBeInTheDocument();
     expect(screen.getByText(MAINNET.name)).toBeInTheDocument();
@@ -150,7 +154,7 @@ describe("CaseOverview", () => {
     expect(screen.getByText("Voting")).toBeInTheDocument();
   });
 
-  it("P-20: shows the period from the lookup while the view is still loading", () => {
+  it("shows the period from the lookup while the view is still loading", () => {
     renderSection(CaseOverview, caseDispute({ period: 3, view: "loading" }));
     expect(screen.getByText("Appeal")).toBeInTheDocument();
     expect(within(detail("Number of votes")).getByRole("status")).toHaveAttribute("aria-busy", "true");
@@ -158,30 +162,30 @@ describe("CaseOverview", () => {
     expect(screen.getAllByRole("status").length).toBeGreaterThan(0);
   });
 
-  it("D-36: a missing vote count degrades the votes only", () => {
+  it("a missing vote count degrades the votes only", () => {
     renderSection(CaseOverview, caseDispute({ details: { votesLengths: { ok: true, value: [] } } }));
     expect(detail("Number of votes")).toHaveTextContent(/^Unavailable: .*no valid vote count/);
     expect(detail("Court")).toHaveTextContent(/^General Court$/);
   });
 
-  it("D-19: a court whose policy failed to load shows its ID instead of a name", () => {
+  it("a court whose policy failed to load shows its ID instead of a name", () => {
     renderSection(CaseOverview, caseDispute({ court: { id: 0n, name: null } }));
     expect(detail("Court")).toHaveTextContent(/^Court #0 \(name unavailable\)$/);
   });
 
-  it("D-36: a court missing from the list shows the court as unavailable", () => {
+  it("a court missing from the list shows the court as unavailable", () => {
     renderSection(CaseOverview, caseDispute({ courts: { ok: true, value: [] } }));
     expect(screen.getByText(/Court 0 is not in the court list/)).toBeInTheDocument();
     expect(detail("Number of votes")).toHaveTextContent(/^3$/);
   });
 
-  it("D-53: renders nothing for a lookup that found no dispute", () => {
+  it("renders nothing for a lookup that found no dispute", () => {
     const dispute = caseDispute();
     const { container } = renderSection(CaseOverview, { ...dispute, view: sectionReady({ exists: false, reason: "not-found" }) });
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("the header card no longer draws its own band", () => {
+  it("the header card draws no tinted band of its own", () => {
     const { container } = renderSection(CaseOverview, caseDispute({ period: 2 }));
     expect(screen.getByRole("heading", { level: 1, name: "Dispute #1" })).toBeInTheDocument();
     const tinted = Array.from(container.querySelectorAll("[class]")).filter((element) => element.classList.contains("bg-(--dr-record-surface)"));
@@ -190,15 +194,17 @@ describe("CaseOverview", () => {
 });
 
 describe("DisputeTimeline", () => {
+  const COUNTDOWN = /^\d{2}d \d{2}h \d{2}m$/;
+
   it("counts the current step down, marks past steps concluded and gives upcoming steps their duration", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 2, lastPeriodChange: NOW - HOUR, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }));
     expect(columns()).toEqual([
       { name: "Evidence", state: "concluded", text: expect.stringContaining("Concluded") as string },
-      { name: "Voting", state: "current", text: expect.stringContaining("01d 23h 00m") as string },
+      { name: "Voting", state: "current", text: expect.stringContaining("Ends in 01d 23h 00m") as string },
       { name: "Appeal", state: "upcoming", text: expect.stringContaining("01d 00h 00m") as string },
       { name: "Execution", state: "upcoming", text: "Execution" },
     ]);
-    expect(within(screen.getByRole("list", { name: "Dispute timeline" })).getAllByRole("listitem")[1]).toHaveAttribute("aria-current", "step");
+    expect(steps()[1]).toHaveAttribute("aria-current", "step");
   });
 
   it("advances the countdown on the shared clock", () => {
@@ -208,6 +214,50 @@ describe("DisputeTimeline", () => {
       vi.advanceTimersByTime(HOUR * 1000);
     });
     expect(columns()[0]?.text).toContain("00d 23h 00m");
+  });
+
+  it("shows each new minute of the countdown without an entrance animation", () => {
+    renderSection(DisputeTimeline, caseDispute({ period: 0, lastPeriodChange: NOW, court: { timesPerPeriod: [BigInt(DAY), 0n, BigInt(DAY), BigInt(DAY)] } }));
+    const list = timelineList();
+    expect(list.className).not.toMatch(/small\+small\]:animate-/);
+    act(() => {
+      vi.advanceTimersByTime(30 * 1000);
+    });
+    const before = within(list).getByText(COUNTDOWN);
+    expect(before).toHaveTextContent("00d 23h 59m");
+    act(() => {
+      vi.advanceTimersByTime(30 * 1000);
+    });
+    expect(within(list).getByText(COUNTDOWN)).toBe(before);
+    act(() => {
+      vi.advanceTimersByTime(30 * 1000);
+    });
+    expect(before).not.toBeInTheDocument();
+    expect(within(list).getByText(COUNTDOWN)).toHaveTextContent("00d 23h 58m");
+  });
+
+  it.each([
+    ["vertical", false],
+    ["horizontal", true],
+  ] as const)("eases the steps' colours over the shared tab timing and snaps them under reduced motion (%s)", (_orientation, horizontal) => {
+    if (horizontal) {
+      installOfflineAppKitEnvironment();
+      vi.stubGlobal("matchMedia", matchEverything);
+    }
+    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
+    const list = timelineList();
+    for (const target of ["[&_[aria-hidden]>*]", "[&_[aria-hidden]_span]", "[&_h2]"]) {
+      expect(list).toHaveClass(`${target}:transition-colors`, `${target}:duration-(--tabs-dur)`, `${target}:ease-(--tabs-ease)`, `${target}:motion-reduce:transition-none`);
+    }
+    expect(list.className).not.toContain("duration-200");
+    if (horizontal) {
+      expect(list).toHaveClass(
+        "[&_li]:after:transition-colors",
+        "[&_li]:after:duration-(--tabs-dur)",
+        "[&_li]:after:ease-(--tabs-ease)",
+        "[&_li]:after:motion-reduce:transition-none",
+      );
+    }
   });
 
   it("shows the commit step for a hidden-vote court", () => {
@@ -240,7 +290,7 @@ describe("DisputeTimeline", () => {
       </TestDataProvider>,
     );
     expect(screen.getByText("Timeline unavailable")).toBeInTheDocument();
-    expect(screen.queryByRole("list", { name: "Dispute timeline" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Dispute timeline" })).not.toBeInTheDocument();
     expect(decisionAlert("Jury decision")).toBeInTheDocument();
   });
 
@@ -249,72 +299,164 @@ describe("DisputeTimeline", () => {
     expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
   });
 
-  it("renders the current countdown once at every width", () => {
+  it("renders the current countdown once", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 2, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }));
-    expect(screen.getAllByRole("time")).toHaveLength(1);
-    expect(screen.getAllByText(/^Ends in/)).toHaveLength(1);
+    const group = screen.getByRole("group", { name: "Dispute timeline" });
+    expect(within(group).getAllByText(COUNTDOWN)).toHaveLength(1);
+    expect(within(group).getAllByText(/^Ends in/)).toHaveLength(1);
   });
 
-  it("anchors the phone countdown inside the rail's reserved room", () => {
-    const { unmount } = renderSection(DisputeTimeline, caseDispute({ period: 2, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }));
-    const current = screen.getByRole("time").parentElement;
-    expect(current).toHaveClass("max-lg:absolute", "max-lg:inset-x-0", "max-lg:bottom-0", "lg:static");
-    expect(current).not.toHaveClass("top-full");
-    expect(current).not.toHaveClass("max-lg:top-full");
-    expect(screen.getByRole("list", { name: "Dispute timeline" })).toHaveClass("relative", "max-lg:pb-14");
-    expect(steps()[1]).not.toHaveClass("relative");
-    unmount();
-
-    renderSection(DisputeTimeline, caseDispute({ period: 4 }));
-    expect(screen.queryByRole("time")).not.toBeInTheDocument();
-    expect(screen.getByRole("list", { name: "Dispute timeline" })).not.toHaveClass("max-lg:pb-14");
-    expect(document.querySelector('[class~="max-lg:absolute"]')).toBeNull();
+  it("shows every step's state as visible text", () => {
+    renderSection(DisputeTimeline, caseDispute({ period: 2, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }));
+    const list = timelineList();
+    expect(within(list).getByText("Concluded")).toBeInTheDocument();
+    expect(within(list).getByText("Lasts 01d 00h 00m")).toBeInTheDocument();
+    expect(within(list).getByText("Ends in")).toBeInTheDocument();
+    expect(within(list).getByText(COUNTDOWN)).toBeInTheDocument();
+    expect(list.querySelectorAll('[class*="sr-only"]')).toHaveLength(0);
   });
 
-  it("keeps every step name at the small size and marks the current step by colour and aria-current", () => {
+  it("lifts only the current name one size below lg", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    const names = steps().map((step) => within(step).getByText(/^(?:Evidence|Commit|Voting|Appeal|Execution)$/));
-    for (const name of names) {
-      expect(name).toHaveClass("text-sm", "font-semibold");
-      expect(name).not.toHaveClass("text-base");
-      expect(name.className).not.toMatch(/(?:^|\s)[\w-]+:text-(?:xs|base|lg)/);
-    }
+    const names = steps().map((step) => within(step).getByRole("heading", { level: 2 }));
+    expect(names.map((name) => name.textContent)).toEqual(["Evidence", "Voting", "Appeal", "Execution"]);
     expect(steps().map((step) => step.getAttribute("aria-current"))).toEqual([null, "step", null, null]);
-    expect(names.map((name) => name.classList.contains("text-klerosUIComponentsPrimaryText"))).toEqual([false, true, false, false]);
-    expect(names.map((name) => name.classList.contains("text-klerosUIComponentsSecondaryText"))).toEqual([true, false, true, true]);
+    expect(timelineList()).toHaveClass("[&_li[aria-current]_h2]:text-base");
   });
 
-  it("draws the rail in halves so the first and last bullets have no outer line", () => {
+  it("renders the vertical steps where the browser has no media queries", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    const halves = steps().map(railHalves);
-    expect(halves.map((pair) => pair.length)).toEqual([2, 2, 2, 2]);
-    const [first, second, third, last] = halves;
-    expect(first?.[0]).toHaveClass("invisible");
-    expect(last?.[1]).toHaveClass("invisible");
-    expect(first?.[1]).toHaveClass("bg-klerosUIComponentsPrimaryBlue");
-    expect(second?.[0]).toHaveClass("bg-klerosUIComponentsPrimaryBlue");
-    expect(second?.[1]).toHaveClass("bg-klerosUIComponentsStroke");
-    expect(third?.[0]).toHaveClass("bg-klerosUIComponentsStroke");
-    expect(third?.[1]).toHaveClass("bg-klerosUIComponentsStroke");
-    expect(last?.[0]).toHaveClass("bg-klerosUIComponentsStroke");
+    const list = timelineList();
+    expect(list).toHaveAccessibleName("Vertical progress steps");
+    expect(list).toHaveClass("[&_[aria-hidden]>*+*]:min-h-6", "[&_div>li>div:last-child]:pb-4");
+    expect(list).not.toHaveClass("w-full");
   });
 
-  it("hides the concluded and upcoming details from sighted phone readers only", () => {
+  it("renders the horizontal steps when the lg query matches", () => {
+    installOfflineAppKitEnvironment();
+    vi.stubGlobal("matchMedia", matchEverything);
     renderSection(DisputeTimeline, caseDispute({ period: 2, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }));
-    expect(screen.getByText("Concluded")).toHaveClass("max-sm:sr-only", "text-sm", "text-klerosUIComponentsSecondaryText");
-    expect(screen.getByText("Lasts 01d 00h 00m")).toHaveClass("max-sm:sr-only", "text-sm", "text-klerosUIComponentsSecondaryText");
-    expect(stepDetail("Ends in")).not.toHaveClass("max-sm:sr-only");
-    expect(stepDetail("Ends in").closest('[class~="max-sm:sr-only"]')).toBeNull();
+    const list = timelineList();
+    expect(list).toHaveAccessibleName("Horizontal progress steps");
+    expect(list.querySelectorAll(":scope > li")).toHaveLength(4);
+    expect(list).toHaveClass("w-full");
+    expect(list.className).not.toContain("min-h-6");
+    expect(list.className).not.toContain("pb-4");
+    expect(within(list).getAllByText(COUNTDOWN)).toHaveLength(1);
+  });
+
+  it("keeps five steps vertical until the wide query matches", () => {
+    installOfflineAppKitEnvironment();
+    vi.stubGlobal("matchMedia", matchOnly([LG_MEDIA_QUERY]));
+    renderSection(DisputeTimeline, caseDispute({ period: 1, court: { hiddenVotes: true } }));
+    expect(timelineList()).toHaveAccessibleName("Vertical progress steps");
+    expect(steps()).toHaveLength(5);
+  });
+
+  it("lays four steps out in a row as soon as the lg query matches", () => {
+    installOfflineAppKitEnvironment();
+    vi.stubGlobal("matchMedia", matchOnly([LG_MEDIA_QUERY]));
+    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
+    expect(timelineList()).toHaveAccessibleName("Horizontal progress steps");
+    expect(steps()).toHaveLength(4);
+  });
+
+  it("lays five steps out in a row once the wide query matches", () => {
+    installOfflineAppKitEnvironment();
+    vi.stubGlobal("matchMedia", matchOnly([LG_MEDIA_QUERY, FIVE_STEPS_MEDIA_QUERY]));
+    renderSection(DisputeTimeline, caseDispute({ period: 1, court: { hiddenVotes: true } }));
+    expect(timelineList()).toHaveAccessibleName("Horizontal progress steps");
+    expect(steps()).toHaveLength(5);
+  });
+
+  it("lists five steps for a hidden-vote court", () => {
+    renderSection(DisputeTimeline, caseDispute({ period: 1, court: { hiddenVotes: true } }));
+    expect(steps()).toHaveLength(5);
+  });
+
+  it("names the timeline from outside the library list", () => {
+    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
+    expect(within(screen.getByRole("group", { name: "Dispute timeline" })).getAllByRole("list")).toHaveLength(1);
+  });
+
+  it("shows no state text for the execution step", () => {
+    renderSection(DisputeTimeline, caseDispute({ period: 4 }));
+    const execution = within(timelineList()).getByRole("listitem", { name: "Execution" });
+    expect(execution).toHaveAttribute("aria-current", "step");
+    expect(execution.querySelector("small")).toBeNull();
+  });
+
+  it("draws the upcoming bullet ring with the band's edge", () => {
+    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
+    expect(timelineList()).toHaveClass("[&_li[aria-disabled]_[aria-hidden]>div:first-child]:border-(--dr-record-edge)");
+    expect(steps().map((step) => step.getAttribute("aria-disabled"))).toEqual([null, null, "true", "true"]);
+  });
+});
+
+describe("content replacing its placeholder", () => {
+  const REVEAL = "animate-[t-reveal-in_var(--reveal-dur)_var(--reveal-ease)_backwards]";
+
+  function renderThenSettle(Component: Section, loading: CaseDispute, ready: CaseDispute) {
+    const { rerender } = renderSection(Component, loading);
+    rerender(
+      <TestDataProvider>
+        <SectionBoundary section="Section">
+          <Component dispute={ready} chain={MAINNET} />
+        </SectionBoundary>
+      </TestDataProvider>,
+    );
+  }
+
+  it("fades the timeline in when it arrives after its placeholder, and holds it still under reduced motion", () => {
+    renderThenSettle(DisputeTimeline, caseDispute({ period: 2, view: "loading" }), caseDispute({ period: 2 }));
+    const content = screen.getByRole("group", { name: "Dispute timeline" }).parentElement;
+    expect(content).toHaveClass(REVEAL, "motion-reduce:animate-none");
+  });
+
+  it("shows a timeline that was ready on the first render without motion", () => {
+    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
+    expect(screen.getByRole("group", { name: "Dispute timeline" }).parentElement?.className).not.toContain("t-reveal-in");
+  });
+
+  it("fades the decision in when it arrives after its placeholder, but not when it was ready at once", () => {
+    renderThenSettle(DecisionAlert, caseDispute({ period: 3, view: "loading" }), caseDispute({ period: 3 }));
+    expect(decisionAlert("Jury decision")).toHaveClass(REVEAL, "motion-reduce:animate-none");
+  });
+
+  it("shows a decision that was ready on the first render without motion", () => {
+    renderSection(DecisionAlert, caseDispute({ period: 3 }));
+    expect(decisionAlert("Jury decision").className).not.toContain("t-reveal-in");
+  });
+
+  it("fades in each info value that arrives after its placeholder", () => {
+    renderThenSettle(CaseOverview, caseDispute({ period: 2, view: "loading" }), caseDispute({ period: 2 }));
+    for (const label of ["Court", "Number of votes"]) {
+      const value = detail(label).firstElementChild;
+      expect(value).toHaveClass(REVEAL, "motion-reduce:animate-none");
+    }
+  });
+
+  it("shows info values that were ready on the first render without motion", () => {
+    renderSection(CaseOverview, caseDispute({ period: 2 }));
+    for (const label of ["Court", "Number of votes"]) {
+      expect(detail(label).innerHTML).not.toContain("t-reveal-in");
+    }
+  });
+
+  it("fades the period pill in when the lookup finds the dispute after its placeholder", () => {
+    const ready = caseDispute({ period: 2 });
+    renderThenSettle(CaseOverview, { ...ready, lookup: sectionLoading }, ready);
+    expect(screen.getByText("Voting").closest("span")).toHaveClass(REVEAL, "motion-reduce:animate-none");
   });
 });
 
 describe("DecisionAlert", () => {
-  it.each([0, 1, 2] as const)("spec 5.9: shows no decision in period %i", (period) => {
+  it.each([0, 1, 2] as const)("shows no decision in period %i", (period) => {
     const { container } = renderSection(DecisionAlert, caseDispute({ period }));
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("spec 5.9: in the appeal period shows the jury decision and that it can be appealed", () => {
+  it("in the appeal period shows the jury decision and that it can be appealed", () => {
     renderSection(DecisionAlert, caseDispute({ period: 3, details: { currentRuling: { ok: true, value: 1n } } }));
     expect(screen.getByRole("heading", { name: "Jury decision" })).toBeInTheDocument();
     expect(within(decisionAlert("Jury decision")).getByText("Yes")).toBeInTheDocument();
@@ -322,44 +464,44 @@ describe("DecisionAlert", () => {
     expect(screen.queryByText(/arbitrable application/)).not.toBeInTheDocument();
   });
 
-  it("spec 5.9: a view-only dispute points to the arbitrable application to appeal", () => {
+  it("a view-only dispute points to the arbitrable application to appeal", () => {
     renderSection(DecisionAlert, caseDispute({ period: 3, details: { localId: { kind: "unresolved", reason: "reverted" } } }));
     expect(screen.getByText(/Go to the arbitrable application to appeal this ruling/)).toBeInTheDocument();
   });
 
-  it("spec 5.9: ruling 0 reads as refused to arbitrate", () => {
+  it("ruling 0 reads as refused to arbitrate", () => {
     renderSection(DecisionAlert, caseDispute({ period: 3, details: { currentRuling: { ok: true, value: 0n } } }));
     expect(within(decisionAlert("Jury decision")).getByText(REFUSED_RULING_TEXT)).toBeInTheDocument();
   });
 
-  it("spec 5.9: in execution the single funded ruling wins by default", () => {
+  it("in execution the single funded ruling wins by default", () => {
     renderSection(DecisionAlert, caseDispute({ period: 4, details: { currentRuling: { ok: true, value: 1n } }, fundedRulings: { ok: true, value: [2n] } }));
     expect(screen.getByRole("heading", { name: "Winner" })).toBeInTheDocument();
     expect(within(decisionAlert("Winner")).getByText("No")).toBeInTheDocument();
     expect(within(decisionAlert("Winner")).getByText("Won by default")).toBeInTheDocument();
   });
 
-  it("spec 5.9: in execution without a single funded ruling the jury decision wins", () => {
+  it("in execution without a single funded ruling the jury decision wins", () => {
     renderSection(DecisionAlert, caseDispute({ period: 4, details: { currentRuling: { ok: true, value: 1n } }, fundedRulings: { ok: true, value: [1n, 2n] } }));
     expect(screen.getByRole("heading", { name: "Winner" })).toBeInTheDocument();
     expect(within(decisionAlert("Winner")).getByText("Yes")).toBeInTheDocument();
     expect(within(decisionAlert("Winner")).getByText("Won by jury decision")).toBeInTheDocument();
   });
 
-  it("P-24: the decision alert names a title-less single-select ruling by its number", () => {
+  it("the decision alert names a title-less single-select ruling by its number", () => {
     const metaEvidence = sectionReady(testOkMetaEvidence({ rulingOptions: { type: "single-select" } }));
     renderSection(DecisionAlert, caseDispute({ period: 3, metaEvidence, details: { currentRuling: { ok: true, value: 2n } } }));
     expect(within(decisionAlert("Jury decision")).getByText("2")).toBeInTheDocument();
   });
 
-  it("D-36: a failed current-ruling read shows the decision as unavailable", () => {
+  it("a failed current-ruling read shows the decision as unavailable", () => {
     renderSection(DecisionAlert, caseDispute({ period: 3, details: { currentRuling: { ok: false, error: { code: "rpc-error", message: "currentRuling could not be read." } } } }));
     expect(screen.getByText("Decision unavailable")).toBeInTheDocument();
     expect(screen.getByText("currentRuling could not be read.")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /^(?:Jury decision|Winner)$/ })).not.toBeInTheDocument();
   });
 
-  it("P-20: holds a placeholder in the appeal period until the view settles, and nothing before it", () => {
+  it("holds a placeholder in the appeal period until the view settles, and nothing before it", () => {
     const { unmount } = renderSection(DecisionAlert, caseDispute({ period: 3, view: "loading" }));
     expect(screen.getByRole("status")).toBeInTheDocument();
     unmount();
@@ -378,27 +520,27 @@ describe("RealityNotice", () => {
     [{ status: "unverified", divergent: true }, "The answer options of this question could not be verified", ""],
     [{ status: "malformed", divergent: true }, "Other interfaces may show different answer options for this question", ""],
     [{ status: "malformed" }, "The question parameters are malformed", ""],
-  ])("spec 5.10: picks the notice by its fixed priority (%o)", (question, title, role) => {
+  ])("picks the notice by its fixed priority (%o)", (question, title, role) => {
     const { container } = renderSection(RealityNotice, withQuestion(question));
     const notice = container.firstElementChild;
     expect(notice).toHaveTextContent(title);
     expect(notice?.getAttribute("role") ?? "").toBe(role);
   });
 
-  it("spec 5.10: appends the question recorded on-chain with its line breaks", () => {
+  it("appends the question recorded on-chain with its line breaks", () => {
     const { container } = renderSection(RealityNotice, withQuestion({ status: "unverified", title: "Will it rain?\nAnswer by noon." }));
     const notice = container.firstElementChild;
     expect(notice?.textContent).toContain("Question recorded on-chain: Will it rain?\nAnswer by noon.");
     expect(notice).toHaveClass("whitespace-pre-line");
   });
 
-  it("CS-1 spec 5.10: adds no on-chain question line for an empty question title", () => {
+  it("adds no on-chain question line for an empty question title", () => {
     const { container } = renderSection(RealityNotice, withQuestion({ status: "malformed", title: "" }));
     expect(container).toHaveTextContent("The question parameters are malformed");
     expect(container.textContent).not.toContain("Question recorded on-chain:");
   });
 
-  it("spec 5.10: shows no notice for a verified question, without a Reality question, or before the meta-evidence loads", () => {
+  it("shows no notice for a verified question, without a Reality question, or before the meta-evidence loads", () => {
     const { container, unmount } = renderSection(RealityNotice, withQuestion({ status: "verified", divergent: false }));
     expect(container).toBeEmptyDOMElement();
     unmount();

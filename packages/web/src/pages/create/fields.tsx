@@ -1,17 +1,19 @@
 import { Card } from "@kleros/ui-components-library";
 import type { ReactNode } from "react";
 
-/** A form field's grid cell: `min-w-0` keeps the library's fixed-width fields inside their column (ARCHITECTURE.md §11.1). */
+/** `min-w-0` keeps the library's fixed-width fields inside their column. */
 export function FieldSlot({ className, children }: { readonly className?: string; readonly children: ReactNode }) {
-  return <div className={className === undefined ? "min-w-0" : `min-w-0 ${className}`}>{children}</div>;
+  return (
+    <div data-field-slot className={className === undefined ? "min-w-0" : `min-w-0 ${className}`}>
+      {children}
+    </div>
+  );
 }
 
-/** The library field props that show a validation message, or none. */
 export function errorProps(message: string | undefined): { readonly isInvalid?: true; readonly variant?: "error"; readonly message?: string } {
   return message === undefined ? {} : { isInvalid: true, variant: "error", message };
 }
 
-/** A titled group of fields (ARCHITECTURE.md §11.5): Court and cost; Dispute; Question and options; Parties; Primary document. */
 export function FormGroup({ title, description, children }: { readonly title: string; readonly description?: string; readonly children: ReactNode }) {
   return (
     <Card round className="h-auto w-full min-w-0 p-4 lg:p-6">
@@ -26,6 +28,6 @@ export function FormGroup({ title, description, children }: { readonly title: st
   );
 }
 
-/** Class names that let the library's fixed-width fields fill their column (ARCHITECTURE.md §11.1: usable at every width). */
+/** The library's fields have a fixed width; these let them fill their column. */
 export const FULL_WIDTH_FIELD = "w-full min-w-0";
 export const FULL_WIDTH_SELECT = "w-full min-w-0 [&_button]:w-full";

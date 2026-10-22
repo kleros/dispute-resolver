@@ -30,7 +30,7 @@ function seedBytes(address: string): Uint8Array {
 }
 
 /**
- * The 5×5 symmetric grid of an address (11.3, replaces Blockies): one byte per cell of the left three columns, mirrored to
+ * The 5×5 symmetric grid of an address (replaces Blockies): one byte per cell of the left three columns, mirrored to
  * the right, and the fill chosen by the remaining bytes. Any string is accepted; the same address in any case gives the
  * same pattern.
  */

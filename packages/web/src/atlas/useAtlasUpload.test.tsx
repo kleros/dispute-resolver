@@ -28,7 +28,7 @@ function pdf(name = "brief.pdf"): File {
 
 interface Setup {
   readonly connected?: boolean;
-  /** `false`: a deployment without Atlas (D-21). */
+  /** `false`: a deployment without Atlas. */
   readonly configured?: boolean;
   readonly server?: FakeAtlasServerOptions;
 }
@@ -121,19 +121,19 @@ describe("useAtlasUpload outside AtlasGate", () => {
 });
 
 describe("AtlasGate", () => {
-  it("D-21: without REACT_APP_ATLAS_URI uploads are unavailable and nothing is requested", async () => {
+  it("requests nothing without an Atlas URI, and an upload reports a plain upload failure", async () => {
     const { server, result } = await renderUploader({ configured: false });
 
     expect(result.current.availability).toBe("unconfigured");
     expect(result.current.limits("evidence")).toBeNull();
     const outcome = await settle(() => result.current.upload(pdf(), "evidence"));
-    expect(outcome).toMatchObject({ ok: false, error: "unconfigured" });
+    expect(outcome).toMatchObject({ ok: false, error: "upload-failed", message: "An error occurred while uploading the file. Please try again." });
     const json = await settle(() => result.current.uploadJson("evidence.json", buildEvidenceDocument({ name: "n", description: "d", fileUri: null }), "policy"));
-    expect(json).toMatchObject({ ok: false, error: "unconfigured" });
+    expect(json).toMatchObject({ ok: false, error: "upload-failed", message: "An error occurred while uploading the file. Please try again." });
     expect(server.requests).toEqual([]);
   });
 
-  it("D-20: the only request at load is the unauthenticated roles(CourtV1) query", async () => {
+  it("requests only the unauthenticated roles(CourtV1) query at load", async () => {
     const { server, result } = await renderReady();
 
     expect(result.current.availability).toBe("ready");
@@ -141,7 +141,7 @@ describe("AtlasGate", () => {
     expect(server.graphql).toEqual([{ kind: "roles", variables: { product: "CourtV1" }, authorization: null }]);
   });
 
-  it("A15: no signature is requested before the user's first upload action", async () => {
+  it("requests no signature before the user's first upload action", async () => {
     const { server, result } = await renderReady();
 
     expect(result.current.isSignedIn).toBe(false);
@@ -151,7 +151,7 @@ describe("AtlasGate", () => {
 });
 
 describe("upload", () => {
-  it("D-52: one upload action signs in, then uploads", async () => {
+  it("signs in, then uploads, in one upload action", async () => {
     const token = sessionJwt(TEST_WALLET_ACCOUNT);
     const { server, result } = await renderReady({ server: { issueToken: () => token } });
 
@@ -166,7 +166,7 @@ describe("upload", () => {
     expect(result.current.phase).toBe("idle");
   });
 
-  it("D-20: a signed-in session uploads again without a new signature", async () => {
+  it("uploads again without a new signature while the session is signed in", async () => {
     const { server, result } = await renderReady();
     await settle(() => result.current.upload(pdf(), "evidence"));
 
@@ -177,7 +177,7 @@ describe("upload", () => {
     expect(server.count("upload")).toBe(2);
   });
 
-  it("§2.9 isAuthenticated, §8.3, D-20, A15: an account switch makes the session unverified, so the next upload signs in again from the new account", async () => {
+  it("makes the session unverified on an account switch, so the next upload signs in again from the new account", async () => {
     const server = installFakeAtlasServer();
     const wallet = createTestWallet();
     await wallet.connect();
@@ -211,7 +211,7 @@ describe("upload", () => {
     });
   });
 
-  it("A16: user files are uploaded for CourtV1 under the evidence role", async () => {
+  it("uploads user files for CourtV1 under the evidence role", async () => {
     const { server, result } = await renderReady();
 
     await settle(() => result.current.upload(pdf("brief.pdf"), "evidence"));
@@ -220,7 +220,7 @@ describe("upload", () => {
     expect(server.uploads[0]).toMatchObject({ product: "CourtV1", role: "evidence", name: "brief.pdf" });
   });
 
-  it("A16: uploadJson sends the document as an application/json file under the policy role", async () => {
+  it("sends the uploadJson document as an application/json file under the policy role", async () => {
     const { server, result } = await renderReady();
     const document = buildEvidenceDocument({ name: "Title", description: "Why", fileUri: TEST_UPLOAD_PATH });
 
@@ -233,7 +233,7 @@ describe("upload", () => {
     expect(JSON.parse(await (uploaded?.file.text() ?? Promise.resolve("null")))).toEqual(document);
   });
 
-  it("no-wallet: without a connected wallet nothing is signed or uploaded", async () => {
+  it("signs and uploads nothing without a connected wallet", async () => {
     const { server, result } = await renderReady({ connected: false });
 
     const outcome = await settle(() => result.current.upload(pdf(), "evidence"));
@@ -242,26 +242,30 @@ describe("upload", () => {
     expect(server.requests).toEqual(["roles"]);
   });
 
-  it("B16: a type the role does not allow is refused before anything is signed", async () => {
+  it("refuses a type the role does not allow before anything is signed, and says what would be accepted", async () => {
     const { server, result } = await renderReady();
 
     const outcome = await settle(() => result.current.upload(new File(["<script>"], "page.html", { type: "text/html" }), "evidence"));
 
-    expect(outcome).toMatchObject({ ok: false, error: "mime-not-allowed" });
+    expect(outcome).toMatchObject({
+      ok: false,
+      error: "mime-not-allowed",
+      message: "This file type can't be uploaded. Choose a PDF or an image, up to 20 MB.",
+    });
     expect(server.requests).toEqual(["roles"]);
   });
 
-  it("B16: a file over the role's maxSize is refused before anything is signed", async () => {
+  it("refuses a file over the role's size limit before anything is signed, and says what would be accepted", async () => {
     const { server, result } = await renderReady();
 
     const big = new File([new Uint8Array(MIB + 1)], "big.json", { type: "application/json" });
     const outcome = await settle(() => result.current.upload(big, "policy"));
 
-    expect(outcome).toMatchObject({ ok: false, error: "too-large", message: "The file is larger than the 1 MB limit." });
+    expect(outcome).toMatchObject({ ok: false, error: "too-large", message: "This file is too large. Choose a JSON file, up to 1 MB." });
     expect(server.requests).toEqual(["roles"]);
   });
 
-  it("B16: nothing is uploaded without the server's limits", async () => {
+  it("uploads nothing without the server's limits", async () => {
     const { server, result } = await renderUploader({ server: { roles: "fail" } });
 
     expect(result.current.limits("evidence")).toBeNull();
@@ -274,7 +278,7 @@ describe("upload", () => {
     expect(server.count("upload")).toBe(0);
   });
 
-  it("B16: limits that failed to load at first are fetched again by the next upload, which then proceeds", async () => {
+  it("fetches limits that failed to load at first again on the next upload, which then proceeds", async () => {
     const { server, result } = await renderUploader({ server: { roles: "fail-once" } });
 
     expect(result.current.limits("evidence")).toBeNull();
@@ -288,7 +292,7 @@ describe("upload", () => {
     });
   });
 
-  it("B16: a recovered roles query still refuses a file its limits do not allow, before anything is signed", async () => {
+  it("still refuses a file the recovered limits do not allow, before anything is signed", async () => {
     const { server, result } = await renderUploader({ server: { roles: "fail-once" } });
 
     const outcome = await settle(() => result.current.upload(new File(["x"], "notes.txt", { type: "text/plain" }), "evidence"));
@@ -349,7 +353,7 @@ describe("upload", () => {
     expect(result.current.phase).toBe("idle");
   });
 
-  it("B16: a stored token without exp is treated as expired, so the upload signs in again", async () => {
+  it("treats a stored token without exp as expired, so the upload signs in again", async () => {
     sessionStorage.setItem("authToken", JSON.stringify(testJwt({ sub: TEST_WALLET_ACCOUNT })));
     const token = sessionJwt(TEST_WALLET_ACCOUNT);
     const server = installFakeAtlasServer({ issueToken: () => token });
@@ -371,7 +375,7 @@ describe("upload", () => {
     expect(server.uploads[0]?.authorization).toBe(`Bearer ${token}`);
   });
 
-  it("B16: an expired stored token makes the upload sign in again", async () => {
+  it("signs in again when the stored token has expired", async () => {
     sessionStorage.setItem("authToken", JSON.stringify(sessionJwt(TEST_WALLET_ACCOUNT, -60)));
     const { server, result } = await renderReady();
 
@@ -381,7 +385,7 @@ describe("upload", () => {
     expect(server.count("sign")).toBe(1);
   });
 
-  it("B16: a returned path that is not content-addressed never reaches the caller", async () => {
+  it("never passes a returned path that is not content-addressed to the caller", async () => {
     const { result } = await renderReady({ server: { uploadResponse: () => new Response("../../ipns/attacker.eth") } });
 
     const outcome = await settle(() => result.current.upload(pdf(), "evidence"));
@@ -389,7 +393,7 @@ describe("upload", () => {
     expect(outcome).toMatchObject({ ok: false, error: "not-content-addressed" });
   });
 
-  it("D-52: a declined signature is reported neutrally and nothing is uploaded", async () => {
+  it("reports a declined signature neutrally and uploads nothing", async () => {
     const { server, result } = await renderReady({ server: { signature: "reject" } });
 
     const outcome = await settle(() => result.current.upload(pdf(), "evidence"));
@@ -400,7 +404,7 @@ describe("upload", () => {
     expect(result.current.isSignedIn).toBe(false);
   });
 
-  it("sign-in-failed: a failed sign-in is shown and nothing is signed or uploaded", async () => {
+  it("shows a failed sign-in and signs and uploads nothing", async () => {
     const { server, result } = await renderReady({ server: { nonce: "fail" } });
 
     const outcome = await settle(() => result.current.upload(pdf(), "evidence"));
@@ -411,7 +415,7 @@ describe("upload", () => {
     expect(server.count("upload")).toBe(0);
   });
 
-  it("upload-failed: the server's error is shown, and after an authorization failure the next upload signs in again", async () => {
+  it("shows the server's upload error, and signs in again on the next upload after an authorization failure", async () => {
     let uploads = 0;
     const uploadResponse = () => {
       uploads += 1;
@@ -434,7 +438,7 @@ describe("upload", () => {
     expect(server.count("sign")).toBe(2);
   });
 
-  it("F2 (§6.4, A15): an authorization failure ends the session for the tab, so a reload signs in again", async () => {
+  it("ends the session for the tab on an authorization failure, so a reload signs in again", async () => {
     let uploads = 0;
     const uploadResponse = () => {
       uploads += 1;
@@ -469,7 +473,7 @@ describe("upload", () => {
     expect(server.uploads[2]?.authorization).not.toBe(server.uploads[1]?.authorization);
   });
 
-  it("F2 (D-20): an upload failure that is not an authorization failure keeps the session", async () => {
+  it("keeps the session after an upload failure that is not an authorization failure", async () => {
     let uploads = 0;
     const uploadResponse = () => {
       uploads += 1;
@@ -489,7 +493,7 @@ describe("upload", () => {
     expect(server.count("sign")).toBe(1);
   });
 
-  it("D-52: reports signing-in, then uploading, then idle", async () => {
+  it("reports signing-in, then uploading, then idle", async () => {
     // A slow answer, as over a network, so the uploading phase renders on its own.
     installFakeAtlasServer({
       uploadResponse: () =>

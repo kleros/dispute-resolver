@@ -7,8 +7,7 @@ import { TEST_ATLAS_URI } from "./fakeAtlasServer";
 
 /**
  * A `wrapper` for `render`/`renderHook` that runs the real `AtlasGate` and `@kleros/kleros-app` provider over the test
- * wallet: `TestDataProvider` → `TestWalletProvider` → `AtlasGate`. With the default URI, pair it with
- * `installFakeAtlasServer()`; `atlasUri: null` is a deployment without Atlas (D-21).
+ * wallet. With the default URI, pair it with `installFakeAtlasServer()`; `atlasUri: null` is a deployment without Atlas.
  */
 export function atlasWrapper(wallet: TestWallet, atlasUri: string | null = TEST_ATLAS_URI) {
   const config = { ...APP_CONFIG, atlasUri };

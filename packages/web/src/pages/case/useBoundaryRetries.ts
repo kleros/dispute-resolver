@@ -1,10 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
-/** The Retry of the case page's section boundaries, held by the component that reads the case (D-36, S-3). */
 export interface BoundaryRetries {
-  /** The key of the boundary named `scope`: `scope` and how many of its Retries have read again. */
   key(scope: string): string;
-  /** Runs `reread`, then remounts the boundary named `scope` on what was read. */
   retry(scope: string, reread: () => Promise<unknown>): void;
 }
 

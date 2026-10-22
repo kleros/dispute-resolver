@@ -1,4 +1,4 @@
-// Entry of the runner page's classic bootstrap, built on its own by runnerBootstrapPlugin (ARCHITECTURE.md §7.1).
+// Built on its own as a classic script by runnerBootstrapPlugin, outside the app bundle.
 import { bootstrapRunner } from "./bootstrap";
 import { realEnvironment } from "./realEnvironment";
 

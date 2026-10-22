@@ -131,8 +131,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("receipt client (ARCHITECTURE.md §6.4)", () => {
-  it("A13: the receipt is read through the chain's configured read RPC and mapped to a WriteReceipt", async () => {
+describe("createReceiptWaiter", () => {
+  it("reads the receipt through the chain's configured read RPC and maps it to a WriteReceipt", async () => {
     const calls = stubRpc({ eth_blockNumber: "0x10", eth_getTransactionReceipt: RECEIPT, eth_chainId: "0x1" });
     const waitForReceipt = createReceiptWaiter({ REACT_APP_WEB3_PROVIDER_URL: READ_RPC });
 
@@ -148,13 +148,13 @@ describe("receipt client (ARCHITECTURE.md §6.4)", () => {
     expect(calls.every((call) => call.url === READ_RPC)).toBe(true);
   });
 
-  it("D-07: a reverted transaction is reported as reverted", async () => {
+  it("reports a reverted transaction as reverted", async () => {
     stubRpc({ eth_blockNumber: "0x10", eth_getTransactionReceipt: { ...RECEIPT, status: "0x0" }, eth_chainId: "0x1" });
     const receipt = await createReceiptWaiter({ REACT_APP_WEB3_PROVIDER_URL: READ_RPC })(1, HASH);
     expect(receipt.status).toBe("reverted");
   });
 
-  describe("a transaction replaced in the wallet is reported with viem's reason and the awaited hash (D-07, D-51)", () => {
+  describe("a transaction replaced in the wallet is reported with viem's reason and the awaited hash", () => {
     it("repriced: the same call at another gas price (a wallet's Speed up)", async () => {
       stubRpc(replacedOnChain({ to: ARBITRATOR, value: "0x64", input: CALLDATA }));
       const receipt = await createReceiptWaiter({ REACT_APP_WEB3_PROVIDER_URL: READ_RPC })(1, HASH);

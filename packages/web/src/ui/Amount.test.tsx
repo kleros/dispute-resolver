@@ -14,19 +14,19 @@ describe("formatAmount", () => {
     [GNOSIS, 15n * 10n ** 17n, "1.5 xDai"],
     [SEPOLIA, 1n, "0.000000000000000001 sETH"],
     [GNOSIS, 0n, "0 xDai"],
-  ])("D-10: formats the amount with the chain's currency", (chain, wei, expected) => {
+  ])("formats the amount with the chain's currency", (chain, wei, expected) => {
     expect(formatAmount(wei, chain)).toBe(expected);
   });
 });
 
 describe("Amount", () => {
-  it("D-10: a Gnosis amount says xDai, never ETH", () => {
+  it("labels a Gnosis amount xDai, never ETH", () => {
     render(<Amount wei={2n * 10n ** 18n} chain={GNOSIS} />);
     const amount = screen.getByText("2 xDai");
     expect(amount).not.toHaveTextContent("ETH");
   });
 
-  it("D-10: keeps the exact wei value machine-readable", () => {
+  it("keeps the exact wei value machine-readable", () => {
     render(<Amount wei={123_456_789n} chain={MAINNET} />);
     const amount = screen.getByText("0.000000000123456789 ETH");
     expect(amount.tagName).toBe("DATA");

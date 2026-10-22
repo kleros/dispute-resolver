@@ -1,31 +1,25 @@
 import path from "node:path";
 import { build, type Connect, type Plugin } from "vite";
 
-// Node-side build code for the runner page (ARCHITECTURE.md §7.1), wired by vite.config.ts. It lives outside src/, so it
-// never enters the app's module graph.
+// Lives outside src/, so it never enters the app's module graph.
 
-/** The page's entry, relative to the web package root. */
+/** Relative to the web package root. */
 const BOOTSTRAP_ENTRY = "src/runner/page/main.ts";
 
 /** Changes under this directory, relative to the web package root, invalidate the dev server's bootstrap. */
 const RUNNER_SOURCE_DIR = "src/runner";
 
-/** The runner page's directory as served. */
 const RUNNER_DIRECTORY = "/__runner/";
 
 /** The classic bootstrap that public/__runner/index.html loads. */
 const RUNNER_BOOTSTRAP_PATH = "/__runner/bootstrap.js";
 
-/**
- * The runner path's enforced policy of ARCHITECTURE.md §10.1 (C3), sent by the dev and preview servers too, so the
- * runner behaves locally as on the deploy, where `public/_headers` sends it.
- */
+/** Sent by the dev and preview servers too, so the runner behaves locally as on the deploy, where `public/_headers` sends it. */
 export const RUNNER_CONTENT_SECURITY_POLICY = "sandbox allow-scripts; frame-ancestors 'self'; script-src 'self' 'unsafe-eval'; object-src 'none'; base-uri 'none'";
 
 /**
- * Builds the runner bootstrap as one classic IIFE (ARCHITECTURE.md §7.1): a nested library build of the page's
- * entry, kept in memory. A classic script loads in the opaque-origin runner document, where a module script would be
- * refused (its CORS request carries `Origin: null`).
+ * One classic IIFE, kept in memory: a classic script loads in the opaque-origin runner document, where a module script
+ * would be refused (its CORS request carries `Origin: null`).
  */
 export async function buildRunnerBootstrap(root: string): Promise<string> {
   const result = await build({
@@ -54,16 +48,11 @@ function pathname(url: string | undefined): string {
   return new URL(url ?? "/", "http://localhost").pathname;
 }
 
-/** Adds the runner policy to every response under the runner's directory. */
 const runnerPolicyHeaders: Connect.NextHandleFunction = (request, response, next) => {
   if (pathname(request.url).startsWith(RUNNER_DIRECTORY)) response.setHeader("Content-Security-Policy", RUNNER_CONTENT_SECURITY_POLICY);
   next();
 };
 
-/**
- * Emits `__runner/bootstrap.js` next to the static runner page in `vite build`, serves the same build from memory in
- * `vite dev`, and sends the runner policy on the runner's path in dev and preview (ARCHITECTURE.md §7.1, §7.4).
- */
 export function runnerBootstrapPlugin(): Plugin {
   let root = process.cwd();
 

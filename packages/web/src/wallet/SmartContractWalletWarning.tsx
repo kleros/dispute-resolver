@@ -10,9 +10,8 @@ import { useWallet } from "./useWallet";
 const LEARN_MORE_URL = "https://docs.kleros.io/welcome/faq#can-i-use-a-smart-contract-account-to-stake-in-the-court";
 
 /**
- * A14 / spec §2.3: a dismissible warning when the connected account has code on the page chain other than an EIP-7702
- * delegation. An RPC error, a missing account or a chain without RPC counts as "not a smart-contract wallet". The
- * dismissal is stored per address under today's key.
+ * Code other than an EIP-7702 delegation marks a smart-contract wallet. An RPC error, a missing account or a chain
+ * without RPC counts as "not a smart-contract wallet", so a failed read never warns.
  */
 export function SmartContractWalletWarning({ chainId }: SmartContractWalletWarningProps) {
   const wallet = useWallet();

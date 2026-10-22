@@ -28,13 +28,7 @@ function keyedCards(cards: readonly CrowdfundingCard[]): readonly { readonly key
   });
 }
 
-/**
- * The appeal-period panel of the crowdfunding families (spec §5.11, §5.12): the explanation without the withdraw text
- * (D-43), the rewards note, then the fixed cards, the free input of variable types (D-04) and the multiple-select
- * composer (D-33), in a 3/2/1-column grid. A governor's cards are already those of its lists (P-04, P-05). Without a
- * wallet every Fund is disabled and one line above the cards says why; a wallet on another chain can still press Fund,
- * which then offers the switch.
- */
+/** Without a wallet every Fund is disabled; a wallet on another chain can still press Fund, which then offers the switch. */
 export function CrowdfundingPanel({ panel, actions, chain }: CrowdfundingPanelProps) {
   const needsWallet = useWriteAccess(actions.pageChainId).status === "needs-wallet";
   return (

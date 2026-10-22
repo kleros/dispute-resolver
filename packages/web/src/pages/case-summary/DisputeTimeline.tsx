@@ -1,9 +1,9 @@
 import type { TimelineColumn, TimelineColumnName } from "@dispute-resolver/core";
-import { Countdown, FACT, LABEL, SectionSkeleton, formatDuration } from "../../ui";
+import { Steps } from "@kleros/ui-components-library";
+import { LG_MEDIA_QUERY, SectionSkeleton, formatDuration, useMediaQuery, useNowSeconds } from "../../ui";
 import type { CaseSectionProps } from "../../data";
 import { existingView, viewField } from "./caseState";
 import { SectionContent } from "./SectionContent";
-import { TimelineBullet } from "./TimelineBullet";
 
 const COLUMN_LABELS: Readonly<Record<TimelineColumnName, string>> = {
   evidence: "Evidence",
@@ -13,63 +13,54 @@ const COLUMN_LABELS: Readonly<Record<TimelineColumnName, string>> = {
   execution: "Execution",
 };
 
-const OTHER_DETAIL = "text-sm text-klerosUIComponentsSecondaryText max-sm:sr-only";
+/**
+ * When a period ends while the page is open, the bullets, their numbers and the titles ease between the current and the
+ * other steps' colours.
+ */
+const STEP_COLOUR_MOTION =
+  "[&_[aria-hidden]>*]:transition-colors [&_[aria-hidden]>*]:duration-(--tabs-dur) [&_[aria-hidden]>*]:ease-(--tabs-ease) [&_[aria-hidden]>*]:motion-reduce:transition-none [&_[aria-hidden]_span]:transition-colors [&_[aria-hidden]_span]:duration-(--tabs-dur) [&_[aria-hidden]_span]:ease-(--tabs-ease) [&_[aria-hidden]_span]:motion-reduce:transition-none [&_h2]:transition-colors [&_h2]:duration-(--tabs-dur) [&_h2]:ease-(--tabs-ease) [&_h2]:motion-reduce:transition-none";
+
+export const TIMELINE_V = `[&_small]:text-sm [&_small]:leading-5 [&_li[aria-current]_small+small]:text-xl [&_li[aria-current]_small+small]:leading-7 [&_li[aria-current]_small+small]:font-semibold [&_li[aria-current]_small+small]:text-klerosUIComponentsPrimaryText [&_li[aria-current]_small+small]:tabular-nums [&_li[aria-disabled]_[aria-hidden]>div:first-child]:border-(--dr-record-edge) [&_li[aria-disabled]_[aria-hidden]_span]:text-klerosUIComponentsSecondaryText [&_[aria-hidden]>*+*]:min-h-6 [&_div>li>div:last-child]:pb-4 [&_li[aria-current]_h2]:text-base [&_li[aria-current]_h2]:leading-5 ${STEP_COLOUR_MOTION}`;
+
+export const TIMELINE_H = `w-full [&_small]:text-sm [&_small]:leading-5 [&_li[aria-current]_small+small]:text-xl [&_li[aria-current]_small+small]:leading-7 [&_li[aria-current]_small+small]:font-semibold [&_li[aria-current]_small+small]:text-klerosUIComponentsPrimaryText [&_li[aria-current]_small+small]:tabular-nums [&_li[aria-disabled]_[aria-hidden]>div:first-child]:border-(--dr-record-edge) [&_li[aria-disabled]_[aria-hidden]_span]:text-klerosUIComponentsSecondaryText [&_li]:after:transition-colors [&_li]:after:duration-(--tabs-dur) [&_li]:after:ease-(--tabs-ease) [&_li]:after:motion-reduce:transition-none ${STEP_COLOUR_MOTION}`;
 
 /**
- * Below lg the columns are too narrow for a countdown, so the current one leaves its column for a centred line in the
- * room the list reserves under the rail; from lg it sits in its own column.
+ * "Concluded" for a past period, the countdown for the current one, the duration of an upcoming one. The countdown is its
+ * own line after "Ends in " so the class strings can give it the fact size alone. A step without a state gets no lines at
+ * all: the library would still render and announce an empty one.
  */
-const CURRENT_DETAIL = "flex items-baseline justify-center gap-2 max-lg:absolute max-lg:inset-x-0 max-lg:bottom-0 lg:static lg:flex-col lg:items-center lg:gap-0.5";
-
-/** "Concluded" for a past period, the countdown for the current one, the duration of an upcoming one. */
-function ColumnDetail({ column }: { readonly column: TimelineColumn }) {
+function stateLines(column: TimelineColumn, now: number): string[] | undefined {
   switch (column.state) {
     case "concluded":
-      return <span className={OTHER_DETAIL}>Concluded</span>;
+      return ["Concluded"];
     case "current":
-      return column.deadline === null ? null : (
-        <span className={CURRENT_DETAIL}>
-          <span className={LABEL}>{"Ends in "}</span>
-          <Countdown target={column.deadline} className={FACT} />
-        </span>
-      );
+      if (column.deadline === null) return undefined;
+      return ["Ends in ", Number.isFinite(column.deadline) ? formatDuration(column.deadline - now) : "Unknown"];
     case "upcoming":
-      return column.durationSeconds === null ? null : <span className={OTHER_DETAIL}>{`Lasts ${formatDuration(column.durationSeconds)}`}</span>;
+      return column.durationSeconds === null ? undefined : [`Lasts ${formatDuration(column.durationSeconds)}`];
   }
 }
 
-/** The line leaving a step, in the concluded colour once the step is over. */
-function lineAfter(column: TimelineColumn): string {
-  return column.state === "concluded" ? "bg-klerosUIComponentsPrimaryBlue" : "bg-klerosUIComponentsStroke";
-}
+/**
+ * Where five steps fit in one horizontal row: from lg up to about 1060 px, the band's inner width is short of five steps'
+ * titles, countdown and connectors, so the countdown and the durations would wrap and the connectors collapse.
+ */
+export const FIVE_STEPS_MEDIA_QUERY = "(min-width: 67.5rem)";
 
 /**
- * Every period as one equal column, the line drawn in halves around each bullet so the first and the last bullets sit as
- * far from the edges as the others from each other.
+ * One `Steps` at a time, so the countdown is rendered once: vertical until the row fits, horizontal from then on. Four
+ * steps fit from lg; five need the wider query.
  */
-function TimelineColumns({ columns }: { readonly columns: readonly TimelineColumn[] }) {
-  const counting = columns.some((column) => column.state === "current" && column.deadline !== null);
+function TimelineSteps({ columns }: { readonly columns: readonly TimelineColumn[] }) {
+  const now = useNowSeconds();
+  const fourFit = useMediaQuery(LG_MEDIA_QUERY);
+  const fiveFit = useMediaQuery(FIVE_STEPS_MEDIA_QUERY);
+  const wide = columns.length > 4 ? fiveFit : fourFit;
+  const items = columns.map((column) => ({ title: COLUMN_LABELS[column.name], subitems: stateLines(column, now) }));
   return (
-    <ol aria-label="Dispute timeline" className={`relative grid auto-cols-fr grid-flow-col max-lg:-mx-2 ${counting ? "max-lg:pb-14" : ""}`}>
-      {columns.map((column, index) => {
-        const previous = columns[index - 1];
-        const last = index === columns.length - 1;
-        const current = column.state === "current";
-        return (
-          <li key={column.name} aria-current={current ? "step" : undefined} className="flex min-w-0 flex-col items-center gap-2 text-center">
-            <div aria-hidden="true" className="flex w-full items-center">
-              <span className={`h-px flex-1 ${previous === undefined ? "invisible" : lineAfter(previous)}`} />
-              <TimelineBullet state={column.state} />
-              <span className={`h-px flex-1 ${last ? "invisible" : lineAfter(column)}`} />
-            </div>
-            <p className={`text-sm leading-6 font-semibold ${current ? "text-klerosUIComponentsPrimaryText" : "text-klerosUIComponentsSecondaryText"}`}>
-              {COLUMN_LABELS[column.name]}
-            </p>
-            <ColumnDetail column={column} />
-          </li>
-        );
-      })}
-    </ol>
+    <div role="group" aria-label="Dispute timeline">
+      <Steps items={items} currentItemIndex={columns.findIndex((column) => column.state === "current")} horizontal={wide} className={wide ? TIMELINE_H : TIMELINE_V} />
+    </div>
   );
 }
 
@@ -82,9 +73,9 @@ export function DisputeTimeline({ dispute }: CaseSectionProps) {
   if (view === null) return null;
   return (
     <SectionContent data={viewField(view, (value) => value.timeline)} section="Timeline" loading={<SectionSkeleton variant="text" lines={2} />}>
-      {(timeline) => (
-        <div className="border-t border-(--dr-record-edge) pt-6">
-          <TimelineColumns columns={timeline.columns} />
+      {(timeline, reveal) => (
+        <div className={["border-t border-(--dr-record-edge) pt-6", reveal].filter(Boolean).join(" ")}>
+          <TimelineSteps columns={timeline.columns} />
         </div>
       )}
     </SectionContent>

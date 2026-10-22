@@ -6,12 +6,12 @@ import { realEnvironment } from "./realEnvironment";
 
 const nativeOpen = Object.getOwnPropertyDescriptor(XMLHttpRequest.prototype, "open");
 
-describe("realEnvironment network hooks (D-25)", () => {
+describe("realEnvironment network hooks", () => {
   afterEach(() => {
     if (nativeOpen) Object.defineProperty(XMLHttpRequest.prototype, "open", nativeOpen);
   });
 
-  it("D-25: wrapXhrOpen hands the wrapper the native open, called on the request", () => {
+  it("wrapXhrOpen hands the wrapper the native open, called on the request", () => {
     const receivers: unknown[] = [];
     realEnvironment().network.wrapXhrOpen(
       (original: XhrOpen): XhrOpen =>
@@ -28,7 +28,7 @@ describe("realEnvironment network hooks (D-25)", () => {
     expect(request.readyState).toBe(XMLHttpRequest.OPENED);
   });
 
-  it("D-25: the runner page's sources carry no lint suppression", () => {
+  it("the runner page's sources carry no lint suppression", () => {
     const sources = readdirSync(import.meta.dirname).filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts"));
     const suppressed = sources.filter((name) => /eslint-disable|NOSONAR/.test(readFileSync(join(import.meta.dirname, name), "utf8")));
     expect(sources).toContain("realEnvironment.ts");

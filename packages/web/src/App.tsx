@@ -9,7 +9,6 @@ export interface AppProps {
   readonly colorScheme: ColorSchemeStore;
 }
 
-/** The provider tree of ARCHITECTURE.md §2.1 around the route table. */
 export default function App({ colorScheme }: AppProps) {
   return (
     <AppProviders config={APP_CONFIG} dataProvider={DataProvider} atlasGate={AtlasGate} colorScheme={colorScheme}>

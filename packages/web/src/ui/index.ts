@@ -1,8 +1,7 @@
-// Public surface of `ui` (ARCHITECTURE.md §11.3): section states, the section error boundary of §5.7, and the shared
-// primitives for alerts, countdowns, amounts, addresses and periods, and the fact-tier classes (facts.ts).
 export type * from "./types";
 export { ACTION_LINK_CLASS } from "./actionLink";
 export { AddressText } from "./AddressText";
+export { BAR_PILL, ChevronIcon } from "./barPill";
 export { Amount } from "./Amount";
 export { Countdown } from "./Countdown";
 export { EmptyState } from "./EmptyState";
@@ -17,3 +16,18 @@ export { SectionUnavailable } from "./SectionUnavailable";
 export { shortenAddress } from "./address";
 export { formatAmount } from "./amount";
 export { formatDuration } from "./duration";
+export { ChainClockProvider, useNowSeconds } from "./clock";
+export { LG_MEDIA_QUERY, useMediaQuery } from "./useMediaQuery";
+export {
+  DROPDOWN_CLOSING_CLASS,
+  DROPDOWN_OPEN_CLASS,
+  ICON_SWAP_CLASS,
+  ICON_SWAP_HIDDEN,
+  ICON_SWAP_SHOWN,
+  readMotionMs,
+  useAfterLoading,
+  usePresence,
+  useRevealIn,
+  type Presence,
+  type PresencePhase,
+} from "./motion";

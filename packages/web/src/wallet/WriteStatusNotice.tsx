@@ -3,27 +3,27 @@ import { Button } from "@kleros/ui-components-library";
 import { ExternalLink } from "../safe-content";
 import { Notice } from "../ui";
 import { chainName } from "./chains";
-import { useNetworkSwitch } from "./switchChain";
+import { useNetworkSwitch, type NetworkSwitch } from "./switchChain";
 import type { WriteStatusNoticeProps } from "./types";
 import { useConnectWallet } from "./useConnectWallet";
 import { useWallet } from "./useWallet";
 import { writeMessage } from "./writeMessages";
 
-function SwitchOffer({ pageChainId }: { readonly pageChainId: ChainId }) {
+function SwitchOffer({ pageChainId, network }: { readonly pageChainId: ChainId; readonly network: NetworkSwitch }) {
   const wallet = useWallet();
-  const network = useNetworkSwitch();
   if (wallet.status === "connected" && wallet.chainId === pageChainId) {
     return <p className="text-sm">Your wallet is now on {chainName(pageChainId)}. Try again.</p>;
   }
-  const switching = network.state.status === "switching";
+  // Any waiting request, whatever its chain, replaces the button: the wallet answers one request at a time.
+  if (network.state.status === "switching") {
+    return <p className="text-sm">A switch to {chainName(network.state.chainId)} is waiting in your wallet.</p>;
+  }
   return (
     <div className="flex flex-col gap-2">
       <Button
         text={`Switch to ${chainName(pageChainId)}`}
         small
         className="self-start"
-        isLoading={switching}
-        isDisabled={switching}
         onPress={() => {
           void network.switchTo(pageChainId);
         }}
@@ -54,22 +54,18 @@ function ConnectOffer({ pageChainId }: { readonly pageChainId: ChainId | undefin
   );
 }
 
-/**
- * Any `WriteStatus` as a library alert (ARCHITECTURE.md §6.1, D-14), placed next to the action: the explorer link of a
- * submitted, mined or failed transaction (D-40), the switch offer of a wrong chain (B3, D-48, P-03) and, when a wallet
- * can connect, the connect offer while none is connected. A rejected signature is a neutral notice (D-07). `idle`
- * renders nothing.
- */
-export function WriteStatusNotice({ status, progress, className }: WriteStatusNoticeProps) {
+/** A rejected signature is a neutral notice, not an error. */
+export function WriteStatusNotice({ status, progress, beforeAttempt = false, className }: WriteStatusNoticeProps) {
+  const network = useNetworkSwitch();
   if (status.phase === "idle") return null;
-  const message = writeMessage(status);
+  const message = writeMessage(status, { beforeAttempt, switching: network.state.status === "switching" });
   const title = progress === undefined || progress.total < 2 ? message.title : `${message.title} (${String(progress.index + 1)} of ${String(progress.total)})`;
   const explorerUrl = "explorerUrl" in status ? status.explorerUrl : null;
   return (
     <div className={className === undefined ? "flex flex-col gap-2" : `flex flex-col gap-2 ${className}`} aria-live="polite">
-      <Notice variant={message.variant} title={title} body={message.body} />
+      <Notice reveal variant={message.variant} title={title} body={message.body} />
       {explorerUrl === null ? null : <ExternalLink href={explorerUrl}>View the transaction on the block explorer</ExternalLink>}
-      {status.phase === "wrong-chain" ? <SwitchOffer pageChainId={status.pageChainId} /> : null}
+      {status.phase === "wrong-chain" ? <SwitchOffer pageChainId={status.pageChainId} network={network} /> : null}
       {status.phase === "needs-wallet" ? <ConnectOffer pageChainId={status.pageChainId} /> : null}
     </div>
   );

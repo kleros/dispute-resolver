@@ -7,10 +7,7 @@ export type Contribution = { readonly ok: true; readonly wei: bigint } | { reado
 const PLAIN_DECIMAL = /^\d+(?:\.(\d+))?$/;
 const MAX_DECIMALS = 18;
 
-/**
- * A typed contribution in the chain's currency as wei (spec §5.12 fund action). An amount that cannot be sent as typed
- * is refused with a message instead of being rounded or sent as zero (D-14).
- */
+/** An amount that cannot be sent as typed is refused with a message instead of being rounded or sent as zero. */
 export function parseContribution(text: string): Contribution {
   const match = PLAIN_DECIMAL.exec(text);
   if (match === null) return { ok: false, message: "Enter the amount as a number, such as 0.5." };

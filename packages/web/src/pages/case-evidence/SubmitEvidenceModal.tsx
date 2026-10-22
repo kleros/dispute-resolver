@@ -15,10 +15,9 @@ export interface SubmitEvidenceModalProps {
   readonly onDraftChange: (patch: Partial<EvidenceDraft>) => void;
   readonly onClose: () => void;
   readonly onSubmit: () => void;
-  /** A submission is in flight: Submit reads "Awaiting Confirmation" and is disabled. */
   readonly submitting: boolean;
   readonly feedback: SubmissionFeedback | null;
-  /** Whether the wallet can sign on the page chain now; anything but `ready` locks the attachment field (B3, D-48). */
+  /** Anything but `ready` locks the attachment field, so no Atlas sign-in is requested off the page chain. */
   readonly access: WriteAccess;
 }
 
@@ -27,7 +26,7 @@ function isGuardRefusal(feedback: SubmissionFeedback | null): boolean {
   return feedback?.kind === "write" && (feedback.status.phase === "wrong-chain" || feedback.status.phase === "needs-wallet");
 }
 
-/** The wallet disconnected while the modal was open: what was typed stays, and Connect is offered when a wallet can connect. */
+/** Shown when the wallet disconnects while the modal is open; what was typed stays. */
 function WalletNeeded({ guard }: { readonly guard: NeedsWalletGuard }) {
   const connect = useConnectWallet();
   return (
@@ -50,7 +49,7 @@ function WalletNeeded({ guard }: { readonly guard: NeedsWalletGuard }) {
 /**
  * The uploader with its `upload` counted, so the modal knows when the attachment field has an upload in flight. The
  * uploader's own `phase` stays "idle" until it has the role limits, which can take a refetch, while the field already
- * shows the upload and has cleared the previous attachment (spec 5.14).
+ * shows the upload and has cleared the previous attachment.
  */
 function useCountedUploads(uploader: AtlasUploader): { readonly counted: AtlasUploader; readonly inFlight: boolean } {
   const [inFlight, setInFlight] = useState(0);
@@ -72,19 +71,22 @@ function useCountedUploads(uploader: AtlasUploader): { readonly counted: AtlasUp
 }
 
 /**
- * The overlay fades in over 250 ms and out over 150 ms (motion band of contract §9); the library's tailwind-merge replaces
- * its own 100 ms entering and exiting classes with these, and its backdrop blur stays.
+ * The overlay fades in and out, and the dialog scales up from 0.96 with it and dips back on close; the library's backdrop
+ * blur stays. Both are keyframes, not transitions: react-aria waits for the running animations of the overlay and of its
+ * Modal child before it unmounts them, and it cancels transitions. The dialog's rules target that Modal child, which the
+ * library renders without a class of ours. The overlay names its theme animations as variables because the library's
+ * tailwind-merge only replaces its own 100 ms fades with an animate class it recognises, and it does not know theme names.
  */
-const OVERLAY_MOTION = "entering:animate-[fadeIn_250ms_cubic-bezier(0.22,1,0.36,1)] exiting:animate-[fadeOut_150ms_cubic-bezier(0.22,1,0.36,1)]";
+const OVERLAY_MOTION = [
+  "entering:animate-(--animate-t-overlay-in) exiting:animate-(--animate-t-overlay-out)",
+  "[&>[data-entering]]:animate-[t-modal-in_var(--modal-open-dur)_var(--modal-ease)_backwards]",
+  "[&>[data-exiting]]:animate-[t-modal-out_var(--modal-close-dur)_var(--modal-ease)_forwards]",
+].join(" ");
 
 /**
- * The "Submit Evidence" modal of spec 5.14: title, a five-row description and an attachment dropzone (role `evidence`,
- * signing in to Atlas within the drop when needed, D-52), with "Return" and "Submit". No field is validated. Submit is
- * disabled while a submission or an upload runs. With the wallet on another chain the attachment field is locked and the
- * switch is offered under it, so no sign-in is requested (B3, D-48); a Submit refused for the same reason adds no second
- * notice. A wallet that disconnects while the modal is open locks the attachment field and Submit as well, and the
- * typed fields stay editable. The overlay, Escape and "Return" close it; a failed submission keeps it open with the
- * outcome (D-07).
+ * No field is validated. With the wallet on another chain the attachment field is locked and the switch is offered under
+ * it, so no sign-in is requested; a Submit refused for the same reason adds no second notice. A failed submission keeps
+ * the modal open with the outcome.
  */
 export function SubmitEvidenceModal({ isOpen, draft, onDraftChange, onClose, onSubmit, submitting, feedback, access }: SubmitEvidenceModalProps) {
   const uploader = useAtlasUpload();
@@ -140,9 +142,8 @@ export function SubmitEvidenceModal({ isOpen, draft, onDraftChange, onClose, onS
             }}
           />
         </AtlasUploaderProvider>
-        {access.status === "wrong-chain" ? <WriteStatusNotice status={access.guard} /> : null}
+        {access.status === "wrong-chain" ? <WriteStatusNotice status={access.guard} beforeAttempt /> : null}
         {access.status === "needs-wallet" ? <WalletNeeded guard={access.guard} /> : null}
-        {unconfigured ? <Notice variant="warning" title="Submission unavailable" body="Evidence is uploaded to IPFS before it is submitted, and uploads are unavailable." /> : null}
         {shownFeedback === null ? null : <SubmissionFeedbackNotice feedback={shownFeedback} />}
         <div className="sticky bottom-0 -mx-4 -mb-4 flex flex-wrap justify-end gap-3 border-t border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground px-4 py-3 sm:-mx-6 sm:-mb-6 sm:px-6">
           <Button text="Return" variant="secondary" onPress={onClose} />

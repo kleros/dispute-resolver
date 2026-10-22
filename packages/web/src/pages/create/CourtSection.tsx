@@ -3,29 +3,38 @@ import { DropdownSelect, NumberField, TextField } from "@kleros/ui-components-li
 import { useQueryClient } from "@tanstack/react-query";
 import { useId } from "react";
 import { queryKeys, useArbitrationCost, useCourts } from "../../data";
-import { Amount, FACT, LABEL, SectionUnavailable } from "../../ui";
+import { Amount, FACT, LABEL, SectionUnavailable, useAfterLoading } from "../../ui";
 import { formExtraData, setCourt, setText, type CreateForm } from "./draft";
 import { FULL_WIDTH_FIELD, FULL_WIDTH_SELECT, FieldSlot, FormGroup, errorProps } from "./fields";
 import { fieldErrorMessage } from "./messages";
 
-/** A court's name, or its ID with "name unavailable" when its policy could not be read (D-19). */
 export function courtLabel(court: Court): string {
   return court.name ?? `Court #${court.id.toString()} (name unavailable)`;
 }
 
 const INTEGER_FORMAT: Intl.NumberFormatOptions = { useGrouping: false, maximumFractionDigits: 0 };
 
-/** A form integer as the number field shows it: `NaN` (empty) unless the draft holds ASCII digits. */
+/** The number field shows `NaN` as empty. */
 export function numberValue(value: string): number {
   return /^\d+$/.test(value) ? Number(value) : Number.NaN;
 }
 
-/** The number field's value back into the draft: an empty field is `""`, so core reports it as required. */
+/** An empty field becomes `""`, so core reports it as required. */
 export function draftNumber(value: number): string {
   return Number.isFinite(value) ? String(value) : "";
 }
 
-function CourtSelect({ chainId, courtId, error, onSelect }: { readonly chainId: ChainId; readonly courtId: string; readonly error: string | undefined; readonly onSelect: (courtId: string) => void }) {
+function CourtSelect({
+  chainId,
+  courtId,
+  error,
+  onSelect,
+}: {
+  readonly chainId: ChainId;
+  readonly courtId: string;
+  readonly error: string | undefined;
+  readonly onSelect: (courtId: string) => void;
+}) {
   const courts = useCourts(chainId);
   const queryClient = useQueryClient();
   if (courts.status === "unavailable") {
@@ -62,11 +71,13 @@ function CourtSelect({ chainId, courtId, error, onSelect }: { readonly chainId: 
   );
 }
 
-/** The arbitration cost of the chosen court and votes (spec §4.3): empty while either is unknown, the amount once read. */
+const COST_SWAP_IN = "animate-[t-text-swap-in_var(--text-swap-dur)_var(--text-swap-ease)_backwards] motion-reduce:animate-none";
+
 function ArbitrationCost({ chain, form }: { readonly chain: ChainConfig; readonly form: CreateForm }) {
   const labelId = useId();
   const extraData = formExtraData(form);
   const cost = useArbitrationCost(chain.id, extraData);
+  const arrived = useAfterLoading(extraData !== undefined && cost.status === "loading");
   let value;
   // The plate (MediumBlue) carries the cost and the waiting texts; Error text never sits on it (3.92:1 in light), so the
   // unavailable state keeps a white box with a Stroke edge.
@@ -74,12 +85,16 @@ function ArbitrationCost({ chain, form }: { readonly chain: ChainConfig; readonl
   if (extraData === undefined) {
     value = <span className="text-base text-klerosUIComponentsSecondaryText">Choose a court and a number of votes.</span>;
   } else if (cost.status === "loading") {
-    value = <span className="text-base text-klerosUIComponentsSecondaryText">Calculating...</span>;
+    value = (
+      <span className="t-shimmer text-base" data-text="Calculating...">
+        Calculating...
+      </span>
+    );
   } else if (cost.status === "unavailable") {
     surface = "border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground";
     value = <span className="text-sm text-klerosUIComponentsError">{cost.error.message}</span>;
   } else {
-    value = <Amount wei={cost.value} chain={chain} className={FACT} />;
+    value = <Amount wei={cost.value} chain={chain} className={arrived ? `${FACT} ${COST_SWAP_IN}` : FACT} />;
   }
   return (
     <div className="flex min-w-0 flex-col gap-1">
@@ -100,7 +115,6 @@ export interface SectionProps {
   readonly onChange: (update: (form: CreateForm) => CreateForm) => void;
 }
 
-/** Court, votes, category and the resulting cost (spec §4.3). */
 export function CourtSection({ chain, form, errors, onChange }: SectionProps) {
   return (
     <FormGroup title="Court and cost" description="The court that rules on the dispute, how many jurors it draws, and what that costs.">

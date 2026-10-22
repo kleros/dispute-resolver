@@ -34,7 +34,7 @@ describe("workspace wiring", () => {
     expect(toRegistryAddress("0x988b3A538b618C7A603e1c11Ab82Cd16dbE28069")).toBe("0x988b3a538b618c7a603e1c11ab82cd16dbe28069");
   });
 
-  it("A22: the data hooks drive core through the test deps' custom-transport client", async () => {
+  it("the data hooks drive core through the test deps' custom-transport client", async () => {
     const { result } = renderHook(
       () => {
         const lookup = useDisputeLookup(1, 1650n);
@@ -46,7 +46,10 @@ describe("workspace wiring", () => {
     await waitFor(() => {
       expect(result.current.family.status).toBe("ready");
     });
-    expect(result.current.lookup).toMatchObject({ status: "ready", value: { status: "found", dispute: { id: 1650n, period: 4, subcourtId: 3n }, binding: { arbitrated: TEST_ARBITRABLE, disputeId: 1650n } } });
+    expect(result.current.lookup).toMatchObject({
+      status: "ready",
+      value: { status: "found", dispute: { id: 1650n, period: 4, subcourtId: 3n }, binding: { arbitrated: TEST_ARBITRABLE, disputeId: 1650n } },
+    });
     expect(result.current.family).toMatchObject({ status: "ready", value: { family: "view-only" } });
   });
 });

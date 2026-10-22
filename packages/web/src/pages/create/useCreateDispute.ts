@@ -18,16 +18,12 @@ import { paths, usePageChain } from "../../routing";
 import { useToast } from "../../shell";
 import { useWrite, useWriteAccess, type NeedsWalletGuard, type WriteAccess, type WriteStatus, type WrongChainGuard } from "../../wallet";
 
-/** The page opens the new dispute this long after the success toast (spec §4.6). */
+/** The page opens the new dispute this long after the success toast. */
 export const NAVIGATION_DELAY_MS = 2000;
 
-/** The file name the generated meta-evidence is uploaded under (spec §4.5 step 5). */
 export const META_EVIDENCE_FILE_NAME = "metaEvidence.json";
 
-/**
- * Where the create action stands (spec §4.5, §4.6, D-07). `writing` means the write hook's own status is the one to show,
- * from waiting for the wallet to its outcome.
- */
+/** `writing` means the write hook's own status is the one to show, from waiting for the wallet to its outcome. */
 export type CreateActionState =
   | { readonly kind: "idle" }
   | { readonly kind: "blocked"; readonly status: NeedsWalletGuard | WrongChainGuard }
@@ -39,14 +35,10 @@ export type CreateActionState =
   | { readonly kind: "no-dispute-id" };
 
 export interface CreateDisputeAction {
-  /** Whether Create can be signed now, and why not. */
   readonly access: WriteAccess;
   readonly state: CreateActionState;
   readonly writeStatus: WriteStatus;
-  /**
-   * Something is in progress, or the dispute was created and is about to open: Create and Return are disabled. Every
-   * other outcome re-enables them, a mined transaction without a dispute ID included (spec §4.6).
-   */
+  /** Also true once the dispute is created and about to open; a mined transaction without a dispute ID is not busy. */
   readonly isBusy: boolean;
   create(): Promise<void>;
 }
@@ -74,11 +66,9 @@ function uploadFailure(error: unknown): UploadResult {
 }
 
 /**
- * The Create action (spec §4.5): upload the generated meta-evidence with role `policy` (A16), read the arbitration cost,
- * then `createDispute` through the write hook, and on a mined receipt open the new dispute (spec §4.6). The wallet and
- * its chain are checked before anything is signed, the Atlas sign-in included (B3, D-48); every failure is shown (D-07).
- * The uploaded meta-evidence is reused when the user retries after a refused, rejected or failed transaction, or after
- * a mined one whose receipt had no dispute ID.
+ * The wallet and its chain are checked before anything is signed, the Atlas sign-in included. The uploaded
+ * meta-evidence is reused when the user retries after a refused, rejected or failed transaction, or after a mined one
+ * whose receipt had no dispute ID.
  */
 export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction {
   const { chainId, chain } = usePageChain();
@@ -91,6 +81,14 @@ export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction
   const [state, setState] = useState<CreateActionState>({ kind: "idle" });
   const published = useRef<CanonicalIpfsPath | null>(null);
   const running = useRef(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const run = useCallback(async () => {
     write.reset();
@@ -119,6 +117,9 @@ export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction
       return;
     }
 
+    // The layout remounts the page on a chain change, so an upload or cost read that settles after the page is gone
+    // still carries the old page chain, which the wallet may well be on: the wallet's own chain guard would pass.
+    if (!mounted.current) return;
     setState({ kind: "writing" });
     const build = buildCreateDisputeCall({ chain, extraData, metaEvidenceUri, numberOfRulingOptions: numberOfRulingOptions(input), cost: cost.value });
     const outcome = await write.execute(build, { pageChainId: chainId });
@@ -134,14 +135,15 @@ export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction
   }, [write, access, chainId, uploader, input, deps, chain, toast]);
 
   const create = useCallback(async () => {
-    if (running.current) return;
+    // The meta-evidence can only be published through Atlas, so without it there is nothing to start.
+    if (running.current || uploader.availability === "unconfigured") return;
     running.current = true;
     try {
       await run();
     } finally {
       running.current = false;
     }
-  }, [run]);
+  }, [run, uploader.availability]);
 
   const createdId = state.kind === "created" ? state.disputeId : null;
   useEffect(() => {

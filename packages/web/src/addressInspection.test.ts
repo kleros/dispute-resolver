@@ -4,12 +4,12 @@ import { ESLint, Linter } from "eslint";
 import tseslint from "typescript-eslint";
 import { describe, expect, it } from "vitest";
 
-// 06-intro (docs/parity/06-registry-schema.md, CLAUDE.md hard rules): UI code never inspects a contract address; it asks
-// core's registry for the family and the overrides. The root eslint configuration enforces it in every production file
-// under packages/web/src, and leaves test files free to hold the fixture addresses they need.
+// The root eslint configuration keeps UI code from inspecting contract addresses in every production file under
+// packages/web/src, and leaves test files free to hold the fixture addresses they need.
 
 const REPOSITORY_ROOT = resolve(import.meta.dirname, "../../..");
 const RULES = ["no-restricted-syntax", "no-restricted-imports"] as const;
+const ADDRESS_RULE_MESSAGE = "never inspects a contract address";
 
 const PRODUCTION_FILES = [
   "packages/web/src/data/useCase.ts",
@@ -39,18 +39,18 @@ async function addressFindings(file: string, code: string): Promise<string[]> {
   return messages
     .filter((message) => message.fatal !== true)
     .map((message) => message.message)
-    .filter((message) => message.includes("06-intro"));
+    .filter((message) => message.includes(ADDRESS_RULE_MESSAGE));
 }
 
-describe("06-intro: UI code never inspects a contract address", () => {
+describe("UI code never inspects a contract address", () => {
   for (const file of PRODUCTION_FILES) {
-    it(`06-intro: ${file} may not hold an address literal`, async () => {
+    it(`${file} may not hold an address literal`, async () => {
       expect(await addressFindings(file, `export const SPECIAL = "${ARBITRABLE}";`)).toHaveLength(1);
       expect(await addressFindings(file, `export const SPECIAL = "${CHECKSUMMED}";`)).toHaveLength(1);
       expect(await addressFindings(file, `export const SPECIAL = \`${ARBITRABLE}\`;`)).toHaveLength(1);
     });
 
-    it(`06-intro: ${file} may not branch on an arbitrable, arbitrator or proxy address`, async () => {
+    it(`${file} may not branch on an arbitrable, arbitrator or proxy address`, async () => {
       const declarations = "declare const binding: { arbitrated: string }; declare const arbitrable: string; declare const proxy: string; declare const other: string;";
       for (const comparison of ["binding.arbitrated === other", "other !== arbitrable", "binding.arbitrated.toLowerCase() === other", "other == proxy.toLowerCase()"]) {
         expect(await addressFindings(file, `${declarations} export const special = ${comparison};`), comparison).toHaveLength(1);
@@ -59,7 +59,7 @@ describe("06-intro: UI code never inspects a contract address", () => {
       expect(await addressFindings(file, `import { isAddressEqual } from "viem"; export { isAddressEqual };`)).toHaveLength(1);
     });
 
-    it(`06-intro: ${file} may still check that an address is known`, async () => {
+    it(`${file} may still check that an address is known`, async () => {
       const code = [
         "declare const binding: { arbitrated: string } | undefined; declare const arbitrable: string | undefined; declare const hasArbitrator: boolean;",
         "export const loading = arbitrable === undefined || binding?.arbitrated === undefined || hasArbitrator !== true;",
@@ -71,7 +71,7 @@ describe("06-intro: UI code never inspects a contract address", () => {
   }
 
   for (const file of TEST_FILES) {
-    it(`06-intro: ${file} is a test file and may hold fixture addresses`, async () => {
+    it(`${file} is a test file and may hold fixture addresses`, async () => {
       expect(await addressFindings(file, `export const TEST_ARBITRABLE = "${ARBITRABLE}"; export const same = TEST_ARBITRABLE === "${CHECKSUMMED}";`)).toEqual([]);
     });
   }

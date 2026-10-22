@@ -13,8 +13,8 @@ const QUESTION: RealityQuestion = {
   realityChainId: 1,
 };
 
-describe("Reality question cache (ARCHITECTURE.md §5.1, spec §6.5)", () => {
-  it("A5: stores under core's key and returns the stored value as unknown for core to validate", () => {
+describe("Reality question cache", () => {
+  it("stores under core's key and returns the stored value as unknown for core to validate", () => {
     const storage = createMemoryStorage();
     const cache = createRealityQuestionCache(storage);
     cache.set(KEY, QUESTION);
@@ -24,12 +24,12 @@ describe("Reality question cache (ARCHITECTURE.md §5.1, spec §6.5)", () => {
     expect(cache.get(KEY)).toBeUndefined();
   });
 
-  it("A5: an entry that is not JSON reads as absent", () => {
+  it("reads an entry that is not JSON as absent", () => {
     const cache = createRealityQuestionCache(createMemoryStorage({ [KEY]: "{oops" }));
     expect(cache.get(KEY)).toBeUndefined();
   });
 
-  it("spec §6.5: a storage that throws never reaches the caller", () => {
+  it("never lets a storage that throws reach the caller", () => {
     const storage = createMemoryStorage({ [KEY]: JSON.stringify(QUESTION) });
     storage.failing = true;
     const cache = createRealityQuestionCache(storage);
@@ -42,7 +42,7 @@ describe("Reality question cache (ARCHITECTURE.md §5.1, spec §6.5)", () => {
     }).not.toThrow();
   });
 
-  it("spec §6.5: without a storage the cache holds nothing", () => {
+  it("holds nothing without a storage", () => {
     const cache = createRealityQuestionCache(undefined);
     cache.set(KEY, QUESTION);
     expect(cache.get(KEY)).toBeUndefined();

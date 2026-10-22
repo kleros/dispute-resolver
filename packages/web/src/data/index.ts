@@ -1,4 +1,3 @@
-// Public surface of `data` (owner: data; ARCHITECTURE.md §5).
 export type * from "./types";
 export { CACHE_VERSION } from "./constants";
 export { CoreDepsProvider, useCoreDeps } from "./context";
@@ -10,5 +9,6 @@ export { useCourts, useOngoing, useOngoingList, useOngoingTitle } from "./ongoin
 export { useDisputeDetails, useDisputeEvent, useDisputeLookup, useEvidence, useFamily, useMetaEvidence } from "./disputeHooks";
 export { useMultipliers, useRoundFunding, useWithdrawable } from "./appealHooks";
 export { useArbitrationCost, useIsContractAccount } from "./accountHooks";
+export { useChainClockOffset } from "./chainTime";
 export { useCase } from "./useCase";
 export { useCaseRefresh } from "./useCaseRefresh";

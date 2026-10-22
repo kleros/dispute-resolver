@@ -115,7 +115,7 @@ function renderWithData(ui: ReactElement, deps: CoreDeps = createTestDeps()) {
   return { ...result, client };
 }
 
-/** The case page's Retry of the evidence display (P-26), which this file renders without the case page. */
+/** The case page's Retry of the evidence display, which this file renders without the case page. */
 const DISPLAY_RETRY = { key: "display", onRetry: () => undefined };
 
 function renderSummary(dispute: CaseDispute, deps?: CoreDeps, displayRetry = DISPLAY_RETRY) {
@@ -138,13 +138,12 @@ function displayParams(): Record<string, unknown> {
 const DISPLAY_URI = `/ipfs/${DISPLAY_CID}/index.html`;
 const APP_LINK = "Go to the arbitrable application";
 
-/** Asserts the summary's heading is named after the dispute's title and reads the title alone. */
 function expectSummaryTitle(name: string): void {
   expect(screen.getByRole("heading", { level: 2, name }).textContent).toBe(name);
 }
 
 describe("DisputeSummary", () => {
-  it("spec 5.6: shows the title, the markdown description, the parties, the arbitrable-app link and the attachment", () => {
+  it("shows the title, the markdown description, the parties, the arbitrable-app link and the attachment", () => {
     const party: Address = "0x1111111111111111111111111111111111111111";
     renderSummary(
       withMetaEvidence({
@@ -168,14 +167,35 @@ describe("DisputeSummary", () => {
     expect(screen.getByRole("link", { name: "policy.pdf" })).toBeInTheDocument();
   });
 
-  it("spec 5.6: the attachment links to the gateway URL of fileURI, not to the meta-evidence file", () => {
+  it("the attachment links to the gateway URL of fileURI, not to the meta-evidence file", () => {
     renderSummary(withMetaEvidence({ fileURI: `/ipfs/${FILE_CID}/policy.pdf` }));
     const link = screen.getByRole("link", { name: "policy.pdf" });
     expect(link).toHaveAttribute("href", `${GATEWAY}/ipfs/${FILE_CID}/policy.pdf`);
     expect(link).not.toHaveAttribute("href", testOkMetaEvidence().fileUrl);
   });
 
-  it("spec 5.6: shows no link, attachment or evidence display when the meta-evidence names none", () => {
+  it("places the evidence display after the parties and the links in the card's footer", () => {
+    const { unmount } = renderSummary(
+      withMetaEvidence({
+        aliases: { "0x1111111111111111111111111111111111111111": "Alice" },
+        arbitrableInterfaceURI: "https://app.example.org/item/1",
+        evidenceDisplayInterfaceURI: DISPLAY_URI,
+      }),
+    );
+    const frame = displayFrame();
+    const link = screen.getByRole("link", { name: APP_LINK });
+    expect(screen.getByText("Party 1").compareDocumentPosition(frame)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(frame.compareDocumentPosition(link)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(link.closest(".border-t")).toHaveClass("bg-klerosUIComponentsLightBackground", "rounded-b-[17px]");
+    unmount();
+
+    const { container } = renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: DISPLAY_URI }));
+    expect(displayFrame()).toBeInTheDocument();
+    expect(container.querySelector('[class~="rounded-b-[17px]"]')).toBeNull();
+    expect(container.querySelector('[class~="bg-klerosUIComponentsLightBackground"]')).toBeNull();
+  });
+
+  it("shows no link, attachment or evidence display when the meta-evidence names none", () => {
     const { container } = renderSummary(withMetaEvidence({}));
     expect(screen.queryByText(APP_LINK)).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
@@ -184,24 +204,28 @@ describe("DisputeSummary", () => {
     expect(screen.queryByText(/^Party/)).not.toBeInTheDocument();
   });
 
-  it("spec 5.6: an empty title still shows a visible heading", () => {
+  it("an empty title still shows a visible heading", () => {
     renderSummary(withMetaEvidence({ title: "" }));
     expectSummaryTitle("Untitled dispute");
   });
 
-  it("A2: shows the invalid-or-tampered placeholder for a rejected meta-evidence", () => {
-    const rejected: MetaEvidenceResult = { status: "invalid", metaEvidence: testOkMetaEvidence({ title: "Invalid or tampered case data, refuse to arbitrate." }).metaEvidence, reason: "uri-not-content-addressed" };
+  it("shows the invalid-or-tampered placeholder for a rejected meta-evidence", () => {
+    const rejected: MetaEvidenceResult = {
+      status: "invalid",
+      metaEvidence: testOkMetaEvidence({ title: "Invalid or tampered case data, refuse to arbitrate." }).metaEvidence,
+      reason: "uri-not-content-addressed",
+    };
     renderSummary(caseDispute({ metaEvidence: sectionReady(rejected) }));
     expectSummaryTitle("Invalid or tampered case data, refuse to arbitrate.");
   });
 
-  it("spec 5.4: shows a loading placeholder while the meta-evidence loads", () => {
+  it("shows a loading placeholder while the meta-evidence loads", () => {
     renderSummary(caseDispute({ metaEvidence: sectionLoading }));
     expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByText("Test dispute")).not.toBeInTheDocument();
   });
 
-  it("D-36: a failed meta-evidence shows the summary as unavailable with its reason, and Retry reloads it", async () => {
+  it("a failed meta-evidence shows the summary as unavailable with its reason, and Retry reloads it", async () => {
     const failed: MetaEvidenceResult = { status: "failed", reason: "fetch-error", error: { code: "rpc-error", message: "The meta-evidence file could not be fetched." } };
     const { client } = renderSummary(caseDispute({ metaEvidence: sectionReady(failed) }));
     const invalidate = vi.spyOn(client, "invalidateQueries");
@@ -214,36 +238,36 @@ describe("DisputeSummary", () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.metaEvidence(1, 1n, TEST_ARBITRABLE) });
   });
 
-  it("D-36: a dispute without meta-evidence shows the summary as unavailable", () => {
+  it("a dispute without meta-evidence shows the summary as unavailable", () => {
     renderSummary(caseDispute({ metaEvidence: sectionReady({ status: "missing" }) }));
     expect(screen.getByText("Dispute summary unavailable")).toBeInTheDocument();
     expect(screen.getByText(/has no meta-evidence/)).toBeInTheDocument();
   });
 
-  it("D-36: a meta-evidence read that failed in the data layer shows its reason", () => {
+  it("a meta-evidence read that failed in the data layer shows its reason", () => {
     renderSummary(caseDispute({ metaEvidence: sectionUnavailable("rpc-error", "The meta-evidence locator did not answer.") }));
     expect(screen.getByText("The meta-evidence locator did not answer.")).toBeInTheDocument();
   });
 
-  it("D-53: renders nothing for a lookup that found no dispute", () => {
+  it("renders nothing for a lookup that found no dispute", () => {
     const dispute = caseDispute({ metaEvidence: sectionUnavailable("not-found", "Dispute with ID 1 does not exist on this network.") });
     const { container } = renderSummary({ ...dispute, view: sectionReady({ exists: false, reason: "not-found" }) });
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("P-20: renders the summary while the dispute view is still loading", () => {
+  it("renders the summary while the dispute view is still loading", () => {
     renderSummary(caseDispute({ viewLoading: true }));
     expectSummaryTitle("Test dispute");
   });
 
-  it("A11: raw HTML in the description renders as text and a javascript: link has no href", () => {
+  it("raw HTML in the description renders as text and a javascript: link has no href", () => {
     const { container } = renderSummary(withMetaEvidence({ description: "<img src=x onerror=alert(1)>\n\n[click](javascript:alert(1))" }));
     expect(container.querySelector("img")).toBeNull();
     expect(screen.getByText("<img src=x onerror=alert(1)>")).toBeInTheDocument();
     for (const anchor of container.querySelectorAll("a")) expect(anchor.getAttribute("href") ?? "").not.toMatch(/javascript:/i);
   });
 
-  it("B14, D-31: description links open in a new tab with rel, and non-https images do not load", () => {
+  it("description links open in a new tab with rel, and non-https images do not load", () => {
     const { container } = renderSummary(withMetaEvidence({ description: "[rules](https://kleros.io/rules)\n\n![chart](http://example.org/chart.png)" }));
     const link = screen.getByRole("link", { name: "rules" });
     expect(link).toHaveAttribute("target", "_blank");
@@ -251,7 +275,7 @@ describe("DisputeSummary", () => {
     expect(container.querySelector("img")).toBeNull();
   });
 
-  it("A10: every external anchor of the summary opens in a new tab with rel=noopener noreferrer", () => {
+  it("every external anchor of the summary opens in a new tab with rel=noopener noreferrer", () => {
     const { container } = renderSummary(
       withMetaEvidence({
         description: "See [the policy](https://kleros.io/policy).",
@@ -269,7 +293,7 @@ describe("DisputeSummary", () => {
     }
   });
 
-  it("D-28: hides the arbitrable-app link when it points at resolve.kleros.io or at the running app", () => {
+  it("hides the arbitrable-app link when it points at resolve.kleros.io or at the running app", () => {
     const { unmount } = renderSummary(withMetaEvidence({ arbitrableInterfaceURI: "https://resolve.kleros.io/1/cases/1" }));
     expect(screen.queryByText(APP_LINK)).not.toBeInTheDocument();
     unmount();
@@ -277,19 +301,19 @@ describe("DisputeSummary", () => {
     expect(screen.queryByText(APP_LINK)).not.toBeInTheDocument();
   });
 
-  it("D-28: keeps a link whose URL only contains resolve.kleros.io outside its host", () => {
+  it("keeps a link whose URL only contains resolve.kleros.io outside its host", () => {
     renderSummary(withMetaEvidence({ arbitrableInterfaceURI: "https://app.example.org/?from=resolve.kleros.io" }));
     expect(screen.getByRole("link", { name: APP_LINK })).toHaveAttribute("href", "https://app.example.org/?from=resolve.kleros.io");
   });
 
-  it("D-32: a plain http:// arbitrable interface or attachment is never linked", () => {
+  it("a plain http:// arbitrable interface or attachment is never linked", () => {
     renderSummary(withMetaEvidence({ arbitrableInterfaceURI: "http://app.example.org", fileURI: "http://files.example.org/a.pdf" }));
     expect(screen.queryByText(APP_LINK)).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     expect(screen.getByText("http://files.example.org/a.pdf").tagName).toBe("SPAN");
   });
 
-  it("A8: renders the evidence display over https with allow-scripts only for an arbitrable that is not allowlisted", () => {
+  it("renders the evidence display over https with allow-scripts only for an arbitrable that is not allowlisted", () => {
     const allowlist: readonly Address[] = REGISTRY.displayAllowlist[1] ?? [];
     expect(allowlist).not.toContain(UNLISTED_ARBITRABLE);
     renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: DISPLAY_URI }, UNLISTED_ARBITRABLE));
@@ -300,7 +324,7 @@ describe("DisputeSummary", () => {
     expect(frame).not.toHaveAttribute("allow");
   });
 
-  it("A8: gives an allowlisted arbitrable's display the relaxed sandbox and the arbitrator's binding", () => {
+  it("gives an allowlisted arbitrable's display the relaxed sandbox and the arbitrator's binding", () => {
     const allowlisted = REGISTRY.displayAllowlist[1]?.[0];
     if (allowlisted === undefined) throw new Error("mainnet has no allowlisted display");
     renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: DISPLAY_URI }, allowlisted));
@@ -308,20 +332,20 @@ describe("DisputeSummary", () => {
     expect(displayParams()).toMatchObject({ disputeID: "1", chainID: 1, arbitrableContractAddress: allowlisted, arbitratorChainID: 1, arbitrableChainID: 1 });
   });
 
-  it("A8: a display URL that is not https renders no frame", () => {
+  it("a display URL that is not https renders no frame", () => {
     renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: "javascript:alert(1)" }));
     expect(screen.queryByTitle("Evidence display")).not.toBeInTheDocument();
     expectSummaryTitle("Test dispute");
   });
 
-  it("A8: _v other than 0 encodes the display parameters with URLSearchParams", () => {
+  it("_v other than 0 encodes the display parameters with URLSearchParams", () => {
     renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: DISPLAY_URI, displayParamsVersion: "1" }));
     const src = new URL(displayFrame().getAttribute("src") ?? "");
     expect(src.searchParams.get("disputeID")).toBe("1");
     expect(src.searchParams.get("arbitrableContractAddress")).toBe(TEST_ARBITRABLE);
   });
 
-  it("C5: a display served from the app's own origin never gets allow-same-origin", () => {
+  it("a display served from the app's own origin never gets allow-same-origin", () => {
     const allowlisted = REGISTRY.displayAllowlist[1]?.[0];
     if (allowlisted === undefined) throw new Error("mainnet has no allowlisted display");
     overrides.appOrigin = "https://display.example.org";
@@ -329,17 +353,17 @@ describe("DisputeSummary", () => {
     expect(displayFrame()).toHaveAttribute("sandbox", "allow-scripts");
   });
 
-  it("D-26: an absolute https://…/ipfs/<CID> display is served from the configured gateway", () => {
+  it("an absolute https://…/ipfs/<CID> display is served from the configured gateway", () => {
     renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: `https://ipfs.kleros.io/ipfs/${DISPLAY_CID}/index.html` }));
     expect(displayFrame().getAttribute("src")).toMatch(new RegExp(`^${GATEWAY}/ipfs/${DISPLAY_CID}/index.html\\?`));
   });
 
-  it("B6, D-34: a non-integer or unconfigured arbitrableChainID falls back to the page chain", () => {
+  it("a non-integer or unconfigured arbitrableChainID falls back to the page chain", () => {
     renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: DISPLAY_URI, arbitrableChainID: { status: "invalid" }, arbitratorChainID: { status: "invalid" } }));
     expect(displayParams()).toMatchObject({ arbitrableChainID: 1, arbitratorChainID: 1, chainID: 1 });
   });
 
-  it("D-35: passes the public RPC URLs to the display, never the read RPC", () => {
+  it("passes the public RPC URLs to the display, never the read RPC", () => {
     const publicEnv = MAINNET.publicRpcEnv;
     const readEnv = MAINNET.readRpcEnv;
     if (publicEnv === undefined || readEnv === undefined) throw new Error("mainnet names no RPC variables");
@@ -353,7 +377,7 @@ describe("DisputeSummary", () => {
     expect(displayFrame().getAttribute("src")).not.toContain("secret-key");
   });
 
-  it("D-36, P-26: a display that cannot be built degrades the evidence display only, and its Retry calls the case page's display retry", async () => {
+  it("a display that cannot be built degrades the evidence display only, and its Retry calls the case page's display retry", async () => {
     overrides.failDisplay = true;
     const onRetry = vi.fn();
     // React logs the caught render error and jsdom reports the rethrow; both are expected here.
@@ -377,9 +401,9 @@ describe("DisputeSummary", () => {
   });
 });
 
-describe("D-18: a meta-evidence naming an unconfigured chain", () => {
-  it("D-18: arbitrableChainID 10 degrades only the display parameters; every case section still renders", () => {
-    // Chain 10 is not in the chain table, so core parses `arbitrableChainID: 10` as `invalid` (metaEvidence/schema).
+describe("a meta-evidence naming an unconfigured chain", () => {
+  it("an arbitrable chain the app does not know degrades only the display parameters; every case section still renders", () => {
+    // Chain 10 is not in the chain table, so core parses `arbitrableChainID: 10` as `invalid`.
     const dispute = withMetaEvidence({ title: "Cross-chain question", evidenceDisplayInterfaceURI: DISPLAY_URI, arbitrableChainID: { status: "invalid" } });
     renderWithData(
       <>
@@ -393,17 +417,51 @@ describe("D-18: a meta-evidence naming an unconfigured chain", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Dispute #1" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Cross-chain question" })).toBeInTheDocument();
     expect(displayParams()).toMatchObject({ arbitrableChainID: 1 });
-    expect(within(screen.getByRole("list", { name: "Dispute timeline" })).getAllByRole("listitem").length).toBeGreaterThan(0);
-    // Period 2: the decision section renders and shows no decision (spec 5.9).
+    expect(within(screen.getByRole("group", { name: "Dispute timeline" })).getAllByRole("listitem").length).toBeGreaterThan(0);
+    // Period 2 shows no decision.
     expect(screen.queryByRole("heading", { name: /^(?:Jury decision|Winner)$/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/unavailable/i)).not.toBeInTheDocument();
   });
 
-  it("D-18: a configured chain without an RPC gives the display no RPC URL for it instead of failing", () => {
+  it("a configured chain without an RPC gives the display no RPC URL for it instead of failing", () => {
     const polygon = chainConfig(137);
     const dispute = withMetaEvidence({ evidenceDisplayInterfaceURI: DISPLAY_URI, arbitrableChainID: { status: "valid", chainId: polygon.id } });
     renderSummary(dispute, createTestDeps({ env: {} }));
     expect(displayParams()).toMatchObject({ arbitrableChainID: 137, arbitrableJsonRpcUrl: null });
     expectSummaryTitle("Test dispute");
+  });
+});
+
+describe("the summary replacing its placeholder", () => {
+  it("fades the title, the description and the parties in after the placeholder, never the card or the evidence display", () => {
+    const loading = caseDispute({ metaEvidence: sectionLoading });
+    const ready = caseDispute({
+      metaEvidence: sectionReady(testOkMetaEvidence({ description: "The description.", aliases: { [TEST_ARBITRABLE]: "Alice" }, evidenceDisplayInterfaceURI: DISPLAY_URI })),
+    });
+    const { rerender, client } = renderSummary(loading);
+    rerender(
+      <TestDataProvider deps={createTestDeps()} client={client}>
+        <DisputeSummary dispute={ready} chain={MAINNET} displayRetry={DISPLAY_RETRY} />
+      </TestDataProvider>,
+    );
+    const revealed = Array.from(document.querySelectorAll("[class*='t-reveal-in']"));
+    expect(revealed.map((element) => element.tagName.toLowerCase())).toEqual(["header", "div", "div"]);
+    expect(revealed[0]).toContainElement(screen.getByRole("heading", { level: 2 }));
+    expect(revealed[1]).toHaveTextContent("The description.");
+    expect(revealed[2]).toHaveTextContent("Alice");
+    for (const element of revealed) expect(element).toHaveClass("motion-reduce:animate-none");
+    expect(revealed.some((element) => element.contains(displayFrame()))).toBe(false);
+  });
+
+  it("shows a summary that was ready on the first render without motion", () => {
+    const { container } = renderSummary(caseDispute());
+    expect(container.innerHTML).not.toContain("t-reveal-in");
+  });
+
+  it("adds no gap for parties that render nothing", () => {
+    renderSummary(withMetaEvidence({ aliases: {} }));
+    const heading = screen.getByRole("heading", { level: 2 });
+    const empty = heading.closest("section")?.querySelector("div.empty\\:hidden");
+    expect(empty).toBeEmptyDOMElement();
   });
 });

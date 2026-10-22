@@ -14,90 +14,90 @@ afterEach(() => {
 });
 
 describe("buildAppConfig", () => {
-  it("§2.2: an empty environment builds a config without throwing", () => {
+  it("an empty environment builds a config without throwing", () => {
     const config = configure({});
     expect(config.walletConnectProjectId).toBeNull();
     expect(config.atlasUri).toBeNull();
     expect(config.gateway).toBe("https://cdn.kleros.link");
   });
 
-  it("§4: passes the environment through to core calls unchanged", () => {
+  it("passes the environment through to core calls unchanged", () => {
     const env: Env = Object.freeze({ REACT_APP_WEB3_PROVIDER_URL: "https://rpc.example.org/key" });
     expect(configure(env).env).toBe(env);
   });
 
-  it("§4: the config is frozen", () => {
+  it("the config is frozen", () => {
     const config = configure({});
     expect(Object.isFrozen(config)).toBe(true);
     expect(Object.isFrozen(config.selfHosts)).toBe(true);
   });
 
   describe("walletConnectProjectId", () => {
-    it("§2.3: a configured project ID is trimmed", () => {
+    it("a configured project ID is trimmed", () => {
       expect(configure({ REACT_APP_WALLETCONNECT_PROJECT_ID: "  abc123  " }).walletConnectProjectId).toBe("abc123");
     });
 
-    it.each([undefined, "", "   ", "\t\n"])("§2.3: %j means unconfigured (null)", (value) => {
+    it.each([undefined, "", "   ", "\t\n"])("%j means unconfigured (null)", (value) => {
       expect(configure({ REACT_APP_WALLETCONNECT_PROJECT_ID: value }).walletConnectProjectId).toBeNull();
     });
   });
 
   describe("atlasUri", () => {
-    it("D-21: an unset Atlas URI is null and does not throw", () => {
+    it("an unset Atlas URI is null and does not throw", () => {
       expect(() => configure({})).not.toThrow();
       expect(configure({}).atlasUri).toBeNull();
     });
 
     it.each(["", "   ", "not a url", "atlas.example.org", "//atlas.example.org", "http://atlas.example.org", "javascript:alert(1)", "ftp://atlas.example.org", "https://"])(
-      "D-21: %j is not an https URL, so uploads are unavailable (null)",
+      "%j is not an https URL, so uploads are unavailable (null)",
       (value) => {
         expect(configure({ REACT_APP_ATLAS_URI: value }).atlasUri).toBeNull();
       },
     );
 
     it.each(["https://user:secret@atlas.example.org", "https://atlas.example.org?x=1", "https://atlas.example.org/#frag"])(
-      "D-21: %j cannot carry the appended endpoint paths, so it is unconfigured (null)",
+      "%j cannot carry the appended endpoint paths, so it is unconfigured (null)",
       (value) => {
         expect(configure({ REACT_APP_ATLAS_URI: value }).atlasUri).toBeNull();
       },
     );
 
-    it("D-21: an https URL is accepted, trimmed and lacks a trailing slash", () => {
+    it("an https URL is accepted, trimmed and lacks a trailing slash", () => {
       expect(configure({ REACT_APP_ATLAS_URI: "https://atlas.example.org" }).atlasUri).toBe("https://atlas.example.org");
       expect(configure({ REACT_APP_ATLAS_URI: "  https://atlas.example.org/  " }).atlasUri).toBe("https://atlas.example.org");
       expect(configure({ REACT_APP_ATLAS_URI: "https://atlas.example.org///" }).atlasUri).toBe("https://atlas.example.org");
     });
 
-    it("D-21: a path is preserved so that /graphql and /ipfs/file can be appended", () => {
+    it("a path is preserved so that /graphql and /ipfs/file can be appended", () => {
       expect(configure({ REACT_APP_ATLAS_URI: "https://atlas.example.org/api/" }).atlasUri).toBe("https://atlas.example.org/api");
     });
 
-    it("D-21: the host is normalized to lowercase", () => {
+    it("the host is normalized to lowercase", () => {
       expect(configure({ REACT_APP_ATLAS_URI: "HTTPS://Atlas.Example.ORG" }).atlasUri).toBe("https://atlas.example.org");
     });
   });
 
   describe("gateway", () => {
-    it("§6.4: is core's resolveGateway of the environment", () => {
+    it("is core's resolveGateway of the environment", () => {
       expect(configure({ REACT_APP_IPFS_GATEWAY: "https://ipfs.example.org/" }).gateway).toBe("https://ipfs.example.org");
     });
 
-    it("§6.4: a malformed gateway falls back to the default", () => {
+    it("a malformed gateway falls back to the default", () => {
       expect(configure({ REACT_APP_IPFS_GATEWAY: "http://ipfs.example.org" }).gateway).toBe("https://cdn.kleros.link");
     });
   });
 
-  it("D-28: selfHosts are the running app's host plus the registry's canonical hosts", () => {
+  it("selfHosts are the running app's host plus the registry's canonical hosts", () => {
     expect(configure({}).selfHosts).toEqual({ appHost: LOCATION.host, canonicalHosts: REGISTRY.canonicalHosts });
   });
 
-  it("C5: appOrigin is the page origin", () => {
+  it("appOrigin is the page origin", () => {
     expect(configure({}).appOrigin).toBe(LOCATION.origin);
   });
 });
 
 describe("APP_CONFIG", () => {
-  it("§4: is built once from the real environment and window.location", async () => {
+  it("is built once from the real environment and window.location", async () => {
     vi.stubEnv("REACT_APP_WALLETCONNECT_PROJECT_ID", "stubbed-project-id");
     vi.stubEnv("REACT_APP_ATLAS_URI", "https://atlas.example.org/");
     const { APP_CONFIG } = await import("./config");
@@ -107,7 +107,7 @@ describe("APP_CONFIG", () => {
     expect(APP_CONFIG.selfHosts.appHost).toBe(window.location.host);
   });
 
-  it("D-21: boots with the Atlas URI and the project ID unset", async () => {
+  it("boots with the Atlas URI and the project ID unset", async () => {
     vi.stubEnv("REACT_APP_WALLETCONNECT_PROJECT_ID", undefined);
     vi.stubEnv("REACT_APP_ATLAS_URI", undefined);
     const { APP_CONFIG } = await import("./config");

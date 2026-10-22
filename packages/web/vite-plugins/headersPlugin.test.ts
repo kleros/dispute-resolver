@@ -1,5 +1,4 @@
 // @vitest-environment node
-// The headers plugin is Node-side build code (ARCHITECTURE.md §10.3).
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -24,7 +23,7 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-describe("headersPlugin (ARCHITECTURE.md §10.3)", () => {
+describe("headersPlugin", () => {
   let workDir: string | null = null;
 
   afterEach(async () => {
@@ -48,7 +47,7 @@ describe("headersPlugin (ARCHITECTURE.md §10.3)", () => {
     return readFile(path.join(outDir, "_headers"), "utf8");
   }
 
-  it("C2: given an env with keyed RPC URLs, writes a policy with their origins only", async () => {
+  it("given an env with keyed RPC URLs, writes a policy with their origins only", async () => {
     for (const [name, value] of Object.entries(KEYED_ENV)) vi.stubEnv(name, value);
     const written = await runPlugin(HEADERS_TEXT);
     expect(written).not.toContain(APP_CSP_PLACEHOLDER);
@@ -61,18 +60,18 @@ describe("headersPlugin (ARCHITECTURE.md §10.3)", () => {
     expect(policies(built, "/__runner/index.html", "Content-Security-Policy")).toHaveLength(1);
   });
 
-  it("ARCHITECTURE.md §10.3: fails the build when _headers is missing from the output", async () => {
+  it("fails the build when _headers is missing from the output", async () => {
     await expect(runPlugin(null)).rejects.toThrow("_headers is missing from the build output");
   });
 
-  it("ARCHITECTURE.md §10.3: fails the build when the placeholder is missing, without printing any value", async () => {
+  it("fails the build when the placeholder is missing, without printing any value", async () => {
     vi.stubEnv("REACT_APP_WEB3_PROVIDER_URL", "https://mainnet.infura.io/v3/KEY-MAINNET-0001");
     const failure = runPlugin("/*\n  X-Frame-Options: SAMEORIGIN\n");
     await expect(failure).rejects.toThrow(APP_CSP_PLACEHOLDER);
     await expect(failure).rejects.not.toThrow("KEY-");
   });
 
-  it("C2: fails the build when an RPC endpoint is a plain http URL, naming the variable and never its value", async () => {
+  it("fails the build when an RPC endpoint is a plain http URL, naming the variable and never its value", async () => {
     vi.stubEnv("REACT_APP_WEB3_PROVIDER_URL", "http://mainnet.rpc.example/v3/KEY-PLAIN-0007");
     const message = await runPlugin(HEADERS_TEXT).then(() => "the build succeeded", messageOf);
     expect(message).toContain("REACT_APP_WEB3_PROVIDER_URL is a plain http or ws URL");

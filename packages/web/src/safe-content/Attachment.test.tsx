@@ -6,19 +6,19 @@ import { Attachment } from "./Attachment";
 const HREF = "https://cdn.kleros.link/ipfs/QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh/photo.png";
 
 describe("Attachment", () => {
-  it("A10: links an attachment in a new tab with rel noopener noreferrer and its label", () => {
+  it("links an attachment in a new tab with rel noopener noreferrer and its label", () => {
     render(<Attachment attachment={{ kind: "link", href: HREF, label: "photo.png", attachmentKind: "image" }} />);
     const link = screen.getByRole("link", { name: "photo.png" });
     expect(link).toHaveAttribute("href", HREF);
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
-  it.each<AttachmentKind>(["image", "video", "text", "other"])("A17: never renders a %s attachment inline", (attachmentKind) => {
+  it.each<AttachmentKind>(["image", "video", "text", "other"])("never renders a %s attachment inline", (attachmentKind) => {
     const { container } = render(<Attachment attachment={{ kind: "link", href: HREF, label: "file", attachmentKind }} />);
     expect(container.querySelector("img, video, audio, iframe, object, embed")).toBeNull();
   });
 
-  it("A17: chooses the icon from the attachment kind", () => {
+  it("chooses the icon from the attachment kind", () => {
     const icons = (["image", "video", "text", "other"] as const).map((attachmentKind) => {
       const { container, unmount } = render(<Attachment attachment={{ kind: "link", href: HREF, label: "file", attachmentKind }} />);
       const icon = container.querySelector("svg");
@@ -30,7 +30,7 @@ describe("Attachment", () => {
     expect(new Set(icons).size).toBe(4);
   });
 
-  it("D-32: shows a text attachment as plain text", () => {
+  it("shows a text attachment as plain text", () => {
     render(<Attachment attachment={{ kind: "text", text: "http://example.com/file.pdf" }} />);
     expect(screen.queryByRole("link")).toBeNull();
     expect(screen.getByText("http://example.com/file.pdf")).toBeInTheDocument();

@@ -1,27 +1,25 @@
-import { getChain, type ChainConfig, type ChainId } from "@dispute-resolver/core";
-import { Button } from "@kleros/ui-components-library";
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import type { ChainConfig } from "@dispute-resolver/core";
+import { useCallback, useEffect, useId, useRef, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { Link, useLocation } from "react-router";
-import { switchChainSegment, type ResolvedChain } from "../routing";
+import { SWITCHABLE_CHAINS, switchChainSegment, type ResolvedChain } from "../routing";
 import { useNetworkSwitch, useWallet } from "../wallet";
-import { CheckIcon, ChevronIcon } from "./icons";
+import { BAR_PILL, ChevronIcon, DROPDOWN_CLOSING_CLASS, DROPDOWN_OPEN_CLASS, usePresence } from "../ui";
+import { asSentence, NOT_SWITCHED_TITLE } from "./ChainNoticeToasts";
+import { CheckIcon } from "./icons";
 import { BAR_FOCUS } from "./layout";
+import { useToast } from "./ToastProvider";
+import { isUnsupportedNetwork, UNSUPPORTED_NETWORK_LABEL } from "./unsupportedNetwork";
 
-/** Only the production chains with a court are offered; a testnet page is reached by URL alone. */
-const SWITCHABLE_CHAIN_IDS: readonly ChainId[] = [1, 100];
-
-const SWITCHABLE_CHAINS: readonly ChainConfig[] = SWITCHABLE_CHAIN_IDS.map((id) => getChain(id)).filter((chain): chain is ChainConfig => chain !== undefined);
-
-const TRIGGER_CLASS = `inline-flex h-10 min-w-0 items-center gap-2 rounded-full bg-current/10 px-3 text-sm font-semibold hover:bg-current/15 ${BAR_FOCUS}`;
-// The header points --dr-focus at the bar's ring colour, which would vanish on the white panel.
+const TRIGGER_CLASS = `group inline-flex max-w-full min-w-0 items-center gap-2 aria-busy:cursor-progress ${BAR_PILL} ${BAR_FOCUS}`;
+// The header points --dr-focus at the bar's ring colour, which would vanish on the white panel. The panel grows from the
+// corner it is anchored to: its left edge below lg, its right edge from lg.
 const PANEL_CLASS =
-  "absolute left-0 z-50 mt-2 flex w-64 max-w-[calc(100vw-2rem)] flex-col rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground py-2 text-klerosUIComponentsPrimaryText shadow-(--dr-elevation) [--dr-focus:var(--klerosUIComponentsPrimaryBlue)] lg:left-auto lg:right-0";
+  "absolute left-0 z-50 mt-2 flex w-64 max-w-[calc(100vw-2rem)] origin-top-left flex-col rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground py-2 text-klerosUIComponentsPrimaryText shadow-(--dr-elevation) [--dr-focus:var(--klerosUIComponentsPrimaryBlue)] lg:left-auto lg:right-0 lg:origin-top-right";
 const ITEM_CLASS =
-  "flex h-10 w-full items-center gap-3 px-4 text-left text-sm text-klerosUIComponentsPrimaryText no-underline outline-offset-[-2px] hover:bg-klerosUIComponentsMediumBlue aria-[current=page]:font-semibold aria-disabled:cursor-not-allowed";
+  "flex h-10 w-full items-center gap-3 px-4 text-left text-sm text-klerosUIComponentsPrimaryText no-underline outline-offset-[-2px] hover:bg-klerosUIComponentsMediumBlue aria-[current=page]:font-semibold aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent";
 
-/** On the bar: green on the page chain, the warning shade while the wallet is elsewhere, neutral on a fallback chain. */
-function dotTone(isPageChain: boolean, offerSwitch: boolean): string {
-  if (offerSwitch) return "bg-(--dr-warning-bar)";
+/** On the bar: green on the page chain, neutral on a fallback chain. */
+function dotTone(isPageChain: boolean): string {
   return isPageChain ? "bg-(--dr-success-bar)" : "bg-current/50";
 }
 
@@ -32,11 +30,14 @@ function menuItems(list: HTMLUListElement | null): HTMLElement[] {
 interface NetworkMenuProps {
   readonly id: string;
   readonly rootRef: RefObject<HTMLDivElement | null>;
+  readonly panelRef: RefObject<HTMLDivElement>;
+  /** The menu is animating out: it takes no input and unmounts when its animation ends. */
+  readonly closing: boolean;
   readonly onClose: (returnFocus: boolean) => void;
   readonly children: ReactNode;
 }
 
-function NetworkMenu({ id, rootRef, onClose, children }: NetworkMenuProps) {
+function NetworkMenu({ id, rootRef, panelRef, closing, onClose, children }: NetworkMenuProps) {
   const listRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
@@ -45,6 +46,7 @@ function NetworkMenu({ id, rootRef, onClose, children }: NetworkMenuProps) {
   }, []);
 
   useEffect(() => {
+    if (closing) return undefined;
     const closeOnOutsidePress = (event: PointerEvent) => {
       if (event.target instanceof Node && rootRef.current?.contains(event.target) !== true) onClose(false);
     };
@@ -52,7 +54,7 @@ function NetworkMenu({ id, rootRef, onClose, children }: NetworkMenuProps) {
     return () => {
       document.removeEventListener("pointerdown", closeOnOutsidePress);
     };
-  }, [rootRef, onClose]);
+  }, [closing, rootRef, onClose]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLUListElement>) => {
     const items = menuItems(listRef.current);
@@ -88,8 +90,8 @@ function NetworkMenu({ id, rootRef, onClose, children }: NetworkMenuProps) {
   };
 
   return (
-    <div id={id} className={PANEL_CLASS}>
-      <ul ref={listRef} role="menu" aria-label="Network" onKeyDown={onKeyDown} className="flex flex-col">
+    <div ref={panelRef} id={id} className={`${PANEL_CLASS} ${closing ? DROPDOWN_CLOSING_CLASS : DROPDOWN_OPEN_CLASS}`}>
+      <ul ref={listRef} role="menu" aria-label="Network" onKeyDown={closing ? undefined : onKeyDown} className="flex flex-col">
         {children}
       </ul>
     </div>
@@ -102,37 +104,36 @@ interface ChainSwitcherProps {
 
 /**
  * The header's network pill. Without a wallet, or when the wallet is already on the chosen chain, a choice moves the page
- * to that chain and keeps the rest of the URL. With a wallet on another chain, the wallet is asked to switch and the page
- * follows the wallet once it does; a refusal stays on this page and is said under the pill. A wallet away from the page
- * chain is also offered the switch back beside the pill.
+ * to that chain and keeps the rest of the URL. With a wallet on another chain, the wallet is asked to switch and the app
+ * follows the wallet once it does (a case page to that chain's Ongoing Disputes); a refusal changes nothing, since the
+ * app already shows the wallet's chain, and any other failure is a toast. While any switch request waits, the chains take
+ * no press. A long chain name truncates inside the pill; its accessible name always carries the full name. On the
+ * unsupported-network screen the pill names no chain, since the page is on none.
  */
 export function ChainSwitcher({ resolvedChain }: ChainSwitcherProps) {
   const { chain } = resolvedChain.page;
   const isPageChain = resolvedChain.kind === "page";
+  const unsupported = isUnsupportedNetwork(resolvedChain);
   const location = useLocation();
   const wallet = useWallet();
   const network = useNetworkSwitch();
-  const [open, setOpen] = useState(false);
-  const [shownChainId, setShownChainId] = useState(chain.id);
+  const toaster = useToast();
+  const { phase, mountKey, panelRef, open: openMenu, close: closeMenu } = usePresence<HTMLDivElement>();
+  const open = phase === "open";
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  // A failure belongs to the page it happened on: once the page moves to another chain it no longer applies.
-  if (shownChainId !== chain.id) {
-    setShownChainId(chain.id);
-    network.reset();
-  }
-
   const walletChainId = wallet.status === "connected" ? wallet.chainId : undefined;
-  const offerSwitch = walletChainId !== undefined && isPageChain && walletChainId !== chain.id;
   const switching = network.state.status === "switching";
-  const failure = network.state.status === "failed" ? network.state.message : null;
 
-  const close = useCallback((returnFocus: boolean) => {
-    setOpen(false);
-    if (returnFocus) triggerRef.current?.focus();
-  }, []);
+  const close = useCallback(
+    (returnFocus: boolean) => {
+      closeMenu();
+      if (returnFocus) triggerRef.current?.focus();
+    },
+    [closeMenu],
+  );
 
   const item = (target: ChainConfig) => {
     const current = isPageChain && target.id === chain.id;
@@ -156,7 +157,9 @@ export function ChainSwitcher({ resolvedChain }: ChainSwitcherProps) {
           onClick={() => {
             if (switching) return;
             close(true);
-            void network.switchTo(target.id);
+            void network.switchTo(target.id).then((result) => {
+              if (!result.ok && result.reason === "failed") toaster.show({ variant: "error", title: NOT_SWITCHED_TITLE, message: asSentence(result.message) });
+            });
           }}
         >
           {content}
@@ -190,52 +193,38 @@ export function ChainSwitcher({ resolvedChain }: ChainSwitcherProps) {
   };
 
   return (
-    <div className="flex min-w-0 flex-col items-start gap-1 lg:items-end">
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <div ref={rootRef} className="relative min-w-0">
-          <button
-            ref={triggerRef}
-            type="button"
-            aria-label={`Network: ${chain.name}. Change network`}
-            aria-haspopup="menu"
-            aria-expanded={open}
-            aria-controls={open ? menuId : undefined}
-            aria-busy={switching || undefined}
-            className={TRIGGER_CLASS}
-            onClick={() => {
-              setOpen((current) => !current);
-            }}
-          >
-            <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${dotTone(isPageChain, offerSwitch)}`} />
-            <span className="truncate">{chain.name}</span>
-            <ChevronIcon className={`size-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`} />
-          </button>
-          {open ? (
-            <NetworkMenu id={menuId} rootRef={rootRef} onClose={close}>
-              {SWITCHABLE_CHAINS.map((target) => (
-                <li key={target.id} role="none">
-                  {item(target)}
-                </li>
-              ))}
-            </NetworkMenu>
-          ) : null}
-        </div>
-        {offerSwitch ? (
-          <Button
-            text={`Switch to ${chain.name}`}
-            small
-            isLoading={switching}
-            isDisabled={switching}
-            onPress={() => {
-              void network.switchTo(chain.id);
-            }}
-          />
-        ) : null}
-      </div>
-      {failure === null ? null : (
-        <p role="alert" className="max-w-xs text-sm lg:text-right">
-          {failure}
-        </p>
+    <div ref={rootRef} className="relative min-w-0">
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label={unsupported ? "Network: unsupported. Change network" : `Network: ${chain.name}. Change network`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
+        aria-busy={switching || undefined}
+        className={TRIGGER_CLASS}
+        onClick={() => {
+          if (open) {
+            close(false);
+            return;
+          }
+          openMenu();
+        }}
+      >
+        <span aria-hidden="true" className={`size-2 shrink-0 rounded-full group-aria-busy:opacity-40 ${dotTone(isPageChain)}`} />
+        <span className="truncate">{unsupported ? UNSUPPORTED_NETWORK_LABEL : chain.name}</span>
+        <ChevronIcon
+          className={`size-4 shrink-0 transition-transform ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${open ? "-scale-y-100 duration-250" : "duration-150"}`}
+        />
+      </button>
+      {phase === "closed" ? null : (
+        <NetworkMenu key={mountKey} id={menuId} rootRef={rootRef} panelRef={panelRef} closing={phase === "closing"} onClose={close}>
+          {SWITCHABLE_CHAINS.map((target) => (
+            <li key={target.id} role="none">
+              {item(target)}
+            </li>
+          ))}
+        </NetworkMenu>
       )}
     </div>
   );

@@ -40,7 +40,7 @@ beforeEach(() => {
 });
 
 describe("useWriteSequence", () => {
-  it("D-51: withdraws in sequence, signing the next only after the previous receipt is mined", async () => {
+  it("withdraws in sequence, signing the next only after the previous receipt is mined", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const events: string[] = [];
@@ -63,7 +63,7 @@ describe("useWriteSequence", () => {
     expect(result.current.status).toMatchObject({ index: 2, total: 3, current: { phase: "mined", hash: hashAt(2) } });
   });
 
-  it("P-02: refreshes once, after the last mined receipt", async () => {
+  it("refreshes once, after the last mined receipt", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const onMined = vi.fn();
@@ -75,7 +75,7 @@ describe("useWriteSequence", () => {
     expect(onMined).toHaveBeenCalledWith(testReceipt(hashAt(2)));
   });
 
-  it("D-51: stops at the first rejected signature and still refreshes what was withdrawn", async () => {
+  it("stops at the first rejected signature and still refreshes what was withdrawn", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     writeContractMock.mockResolvedValueOnce(hashAt(0)).mockRejectedValueOnce(new UserRejectedRequestError(new Error("denied")));
@@ -92,7 +92,7 @@ describe("useWriteSequence", () => {
     expect(onMined).toHaveBeenCalledWith(testReceipt(hashAt(0)));
   });
 
-  it("D-51: stops at the first failed transaction", async () => {
+  it("stops at the first failed transaction", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const onMined = vi.fn();
@@ -105,7 +105,7 @@ describe("useWriteSequence", () => {
     expect(onMined).not.toHaveBeenCalled();
   });
 
-  it("R2 / D-51: stops after a cancelled withdrawal and does not sign the next one", async () => {
+  it("stops after a cancelled withdrawal and does not sign the next one", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const onMined = vi.fn();
@@ -121,7 +121,7 @@ describe("useWriteSequence", () => {
     expect(onMined).toHaveBeenCalledWith(testReceipt(hashAt(0)));
   });
 
-  it("B3: checks the chain before every signature in the sequence", async () => {
+  it("checks the chain before every signature in the sequence", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const { result } = renderSequence(wallet, async (_chainId, hash) => {
@@ -135,7 +135,7 @@ describe("useWriteSequence", () => {
     expect(writeContractMock).toHaveBeenCalledTimes(1);
   });
 
-  it("D-07: a refused item refuses the sequence before anything is signed", async () => {
+  it("a refused item refuses the sequence before anything is signed", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const { result } = renderSequence(wallet, (_chainId, hash) => Promise.resolve(testReceipt(hash)));
@@ -146,7 +146,20 @@ describe("useWriteSequence", () => {
     expect(writeContractMock).not.toHaveBeenCalled();
   });
 
-  it("D-51: an empty list withdraws nothing", async () => {
+  it("a sequence whose first call targets another chain is refused before any signature", async () => {
+    const wallet = createTestWallet();
+    await wallet.connect();
+    const { result } = renderSequence(wallet, (_chainId, hash) => Promise.resolve(testReceipt(hash)));
+    let outcome: WriteOutcome | undefined;
+    await act(async () => {
+      outcome = await result.current.execute([testWriteBuild(100, 1n), testWriteBuild(1, 2n)], { pageChainId: 1 });
+    });
+    expect(outcome).toEqual({ phase: "refused", refusal: "call-chain-mismatch" });
+    expect(result.current.status).toEqual({ index: 0, total: 2, current: { phase: "refused", refusal: "call-chain-mismatch" } });
+    expect(writeContractMock).not.toHaveBeenCalled();
+  });
+
+  it("an empty list withdraws nothing", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const { result } = renderSequence(wallet, (_chainId, hash) => Promise.resolve(testReceipt(hash)));
@@ -157,7 +170,7 @@ describe("useWriteSequence", () => {
     expect(writeContractMock).not.toHaveBeenCalled();
   });
 
-  it("D-51: reset clears the status", async () => {
+  it("reset clears the status", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const { result } = renderSequence(wallet, (_chainId, hash) => Promise.resolve(testReceipt(hash)));

@@ -40,8 +40,8 @@ function Probe() {
   );
 }
 
-describe("renderWithProviders (ARCHITECTURE.md §1.5)", () => {
-  it("§1.5: renders a screen under the chain layout with every provider and the test frame", () => {
+describe("renderWithProviders", () => {
+  it("renders a screen under the chain layout with every provider and the test frame", () => {
     const view = renderWithProviders(<Probe />, { path: "/100/ongoing" });
     expect(screen.getByText("Chain Gnosis Network")).toBeInTheDocument();
     expect(screen.getByText("Uploads ready")).toBeInTheDocument();
@@ -50,7 +50,7 @@ describe("renderWithProviders (ARCHITECTURE.md §1.5)", () => {
     expect(view.currentPath()).toBe("/100/ongoing");
   });
 
-  it("§1.5: passes the given deps, uploader and wallet", async () => {
+  it("passes the given deps, uploader and wallet", async () => {
     const deps = createTestDeps({ env: { REACT_APP_TEST: "1" } });
     const view = renderWithProviders(<Probe />, { deps, uploader: fakeUploader({ availability: "unconfigured" }) });
     expect(screen.getByText("Env REACT_APP_TEST")).toBeInTheDocument();
@@ -59,14 +59,14 @@ describe("renderWithProviders (ARCHITECTURE.md §1.5)", () => {
     expect(screen.getByText("Wallet connected")).toBeInTheDocument();
   });
 
-  it("§1.5: toasts work below it", async () => {
+  it("toasts work below it", async () => {
     const user = userEvent.setup();
     renderWithProviders(<Probe />);
     await user.click(screen.getByRole("button", { name: "Toast" }));
     expect(screen.getByRole("status")).toHaveTextContent("Toast shown");
   });
 
-  it("§1.5: frame page renders the app's header and footer around the screen", () => {
+  it("the frame option renders the app's header and footer around the screen", () => {
     renderWithProviders(<Probe />, { frame: "page" });
     expect(screen.getByRole("banner")).toBeInTheDocument();
     expect(screen.getByRole("contentinfo")).toBeInTheDocument();

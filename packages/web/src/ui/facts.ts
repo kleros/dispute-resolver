@@ -1,6 +1,3 @@
-// The fact tiers, status stamps and surfaces of the bolder-pass contract (§1), shared by every page so one owner changes
-// them. Colours are library tokens or the app tokens of index.css.
-
 /** The one decisive fact of a surface: the ruling in the decision panel, a funding card's Remaining or Required amount. */
 export const FACT_LEAD = "text-xl font-semibold tracking-[-0.01em] text-klerosUIComponentsPrimaryText tabular-nums sm:text-2xl";
 
@@ -13,7 +10,7 @@ export const FACT_SMALL = "text-base font-semibold text-klerosUIComponentsPrimar
 /** The label before or above a fact: every dt, "Remaining", "of", "Time left to fund", "Ends in", "Submitted by", timestamps, helper text. */
 export const LABEL = "text-sm text-klerosUIComponentsSecondaryText";
 
-/** The spec eyebrows ("Interact with the dispute", "Fill up the form to", "Summary", "Search Disputes on", the question-type label), styled like a label so the heading under them leads. */
+/** The eyebrows ("Interact with the dispute", "Fill up the form to", "Summary", "Search Disputes on", the question-type label), styled like a label so the heading under them leads. */
 export const EYEBROW = LABEL;
 
 /** The display step of the product's own page titles: "Ongoing Disputes", "Dispute #N", "Create a custom dispute". */

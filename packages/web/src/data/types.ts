@@ -21,30 +21,28 @@ import type {
   LocalIdResolution,
   MetaEvidenceResult,
   OngoingList,
+  Outcome,
   RealityQuestionCache,
   Registry,
   ScriptRunner,
   Unavailable,
 } from "@dispute-resolver/core";
 
-/** What every data hook returns (ARCHITECTURE.md §5.3). Hooks never throw to React. */
 export type SectionData<T> = { readonly status: "loading" } | { readonly status: "ready"; readonly value: T } | { readonly status: "unavailable"; readonly error: Unavailable };
 
-/** A mined transaction, read through the configured RPC (A13, ARCHITECTURE.md §6.4). */
 export interface WriteReceipt {
   readonly transactionHash: Hex;
   readonly status: "success" | "reverted";
   readonly blockNumber: bigint;
-  /** Enough for `disputeIdFromReceipt` (spec 4.5 step 8). */
+  /** Enough for `disputeIdFromReceipt`. */
   readonly logs: readonly { readonly address: string; readonly topics: readonly Hex[] }[];
   /**
    * Set when the awaited transaction was replaced and this is the receipt of the replacement, with viem's
-   * `ReplacementReason` and the awaited hash. Only `repriced` executed the awaited call (D-07, D-51).
+   * `ReplacementReason` and the awaited hash. Only `repriced` executed the awaited call.
    */
   readonly replacement?: { readonly reason: "cancelled" | "replaced" | "repriced"; readonly replacedHash: Hex };
 }
 
-/** The injected dependencies of every core call, built once by `DataProvider` (ARCHITECTURE.md §5.1). */
 export interface CoreDeps {
   readonly env: Env;
   readonly getReadClient: GetReadClient;
@@ -57,10 +55,9 @@ export interface CoreDeps {
   waitForReceipt(chainId: ChainId, hash: Hex): Promise<WriteReceipt>;
 }
 
-/** Which meta-evidence budget a caller uses: `CASE_PAGE_BUDGET_MS` or `ONGOING_BUDGET_MS` (D-37, D-38). */
 export type MetaEvidenceBudget = "case" | "ongoing";
 
-/** The title of an Ongoing card (spec 3, D-37). A failed load is the hook's `unavailable` state ("title unavailable"). */
+/** A failed load is the hook's `unavailable` state, not a variant of this type. */
 export type OngoingTitle = { readonly kind: "title"; readonly text: string } | { readonly kind: "missing" };
 
 export interface OngoingData {
@@ -68,7 +65,7 @@ export interface OngoingData {
   readonly courts: SectionData<readonly Court[]>;
 }
 
-/** Everything the write builders of core need for this dispute; the target always comes from the arbitrator (A22). */
+/** The write target always comes from the arbitrator, never from the meta-evidence. */
 export interface CaseWriteContext {
   readonly binding: ArbitratedBinding;
   readonly family: FamilyDetection;
@@ -76,9 +73,11 @@ export interface CaseWriteContext {
   readonly override: BehaviorOverride | undefined;
   /** Periods 3 and 4 only. */
   readonly appealInfo: AppealInfo | null;
+  /** Re-reads the arbitrator's appeal cost for a write about to be built. */
+  readAppealCost(): Promise<Outcome<bigint>>;
 }
 
-/** One dispute on the case page; every field degrades on its own (D-36). */
+/** Every field degrades on its own. */
 export interface CaseDispute {
   readonly status: "dispute";
   readonly chainId: ChainId;
@@ -89,21 +88,19 @@ export interface CaseDispute {
   readonly metaEvidence: SectionData<MetaEvidenceResult>;
   readonly disputeEvent: SectionData<DisputeEventResult>;
   readonly evidence: SectionData<EvidenceList>;
-  /** The `AppealDecision` events of the dispute details, oldest first: the "Appealed" markers of the evidence timeline (D-03). */
+  /** Oldest first: the "Appealed" markers of the evidence timeline. */
   readonly appealDecisions: SectionData<readonly AppealDecisionEvent[]>;
   readonly courts: SectionData<readonly Court[]>;
   readonly appealPanel: SectionData<AppealPanel>;
   readonly write: SectionData<CaseWriteContext>;
 }
 
-/** `useCase` result: no ID in the URL (D-09) or one dispute. */
+/** `no-id`: the URL holds no dispute ID. */
 export type CaseData = { readonly status: "no-id"; readonly chainId: ChainId } | CaseDispute;
 
-/** Props of every case section component (`case-summary`, `case-appeal`, `case-evidence`). */
 export interface CaseSectionProps {
   readonly dispute: CaseDispute;
   readonly chain: ChainConfig;
 }
 
-/** What a mined write refreshes (ARCHITECTURE.md §5.6). */
 export type RefreshScope = "evidence" | "appeal" | "withdraw";

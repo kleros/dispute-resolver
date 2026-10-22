@@ -5,7 +5,6 @@ import { courtCaseUrl, ExternalLink } from "../../safe-content";
 import { EYEBROW } from "../../ui";
 import type { DisputeSearch } from "./useDisputeSearch";
 
-/** Whole IDs only, written without grouping: "1234", never "1,234". */
 const ID_FORMAT: Intl.NumberFormatOptions = { useGrouping: false, maximumFractionDigits: 0 };
 
 function MagnifierIcon({ className, ...props }: Readonly<SVGAttributes<SVGElement>>) {
@@ -22,11 +21,6 @@ interface SearchBoxProps {
   readonly search: DisputeSearch;
 }
 
-/**
- * The search row of the case page (spec 5.2): "Search Disputes on Court", with Court opening the shown dispute on Court
- * (dispute 0 while the field is empty, as today), and the dispute ID field. Every change replaces the URL at once and
- * loads the typed ID after today's debounce (spec 1.4); Enter loads it at once (P-19).
- */
 export function SearchBox({ chainId, search }: SearchBoxProps) {
   const labelId = useId();
   const shown = search.shownId;
@@ -35,7 +29,7 @@ export function SearchBox({ chainId, search }: SearchBoxProps) {
     search.submit();
   };
   return (
-    <form role="search" aria-labelledby={labelId} onSubmit={onSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+    <form role="search" aria-labelledby={labelId} onSubmit={onSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
       <p id={labelId} className={EYEBROW}>
         Search Disputes on <ExternalLink href={courtCaseUrl(shown ?? 0n, chainId)}>Court</ExternalLink>
       </p>
@@ -54,7 +48,7 @@ export function SearchBox({ chainId, search }: SearchBoxProps) {
           },
         }}
         Icon={MagnifierIcon}
-        className="w-full sm:w-72"
+        className="w-full sm:w-72 [&_input::placeholder]:opacity-100"
       />
     </form>
   );

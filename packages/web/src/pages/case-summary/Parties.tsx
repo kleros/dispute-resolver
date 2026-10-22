@@ -3,14 +3,13 @@ import { Fragment } from "react";
 import { AddressText, LABEL } from "../../ui";
 
 interface PartiesProps {
-  /** Meta-evidence `aliases`: `{address: name}`, keys already accepted as addresses by core. */
+  /** `{address: name}`, keys already accepted as addresses by core. */
   readonly aliases: Readonly<Record<string, string>>;
   readonly chain: ChainConfig;
 }
 
 const VALUE_CLASS = "min-w-0 text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]";
 
-/** "Party N" with its alias and "Party N address" for each meta-evidence alias (spec 5.6), addresses linked to the explorer (D-40). */
 export function Parties({ aliases, chain }: PartiesProps) {
   const entries = Object.entries(aliases);
   if (entries.length === 0) return null;

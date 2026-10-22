@@ -33,7 +33,7 @@ vi.mock("@dispute-resolver/core", async (importOriginal) => {
   };
 });
 
-/** The evidence-display URI whose display the mocked builder cannot build (P-26); every other input builds as in production. */
+/** The evidence-display URI whose display the mocked builder cannot build; every other input builds as in production. */
 const { BROKEN_DISPLAY_URI } = vi.hoisted(() => ({ BROKEN_DISPLAY_URI: "/ipfs/QmQ2XoA25HmnPUEWDduxj6LYwMwp6jtXPFRMHcNF2EvJfU/broken.html" }));
 
 vi.mock("../../safe-content", async (importOriginal) => {
@@ -69,7 +69,6 @@ const VIEW_ONLY: FamilyDetection = testFamily({
   capabilities: { localId: "none", evidence: { kind: "none" }, appeal: { kind: "none" }, withdraw: { kind: "none" } },
 });
 
-/** A promise the test settles by hand. */
 function deferred<T>() {
   const control: { resolve?: (value: T) => void } = {};
   const promise = new Promise<T>((resolve) => {
@@ -86,10 +85,7 @@ function deferred<T>() {
 /** Family detection that fails on the first load, its automatic retry included, and answers the next read when the test resolves it. */
 function failFamilyOnFirstLoad() {
   const next = deferred<FamilyDetection>();
-  vi.mocked(core.detectFamily)
-    .mockRejectedValueOnce(new Error("socket hang up"))
-    .mockRejectedValueOnce(new Error("socket hang up"))
-    .mockReturnValueOnce(next.promise);
+  vi.mocked(core.detectFamily).mockRejectedValueOnce(new Error("socket hang up")).mockRejectedValueOnce(new Error("socket hang up")).mockReturnValueOnce(next.promise);
   return next;
 }
 
@@ -102,7 +98,7 @@ interface Program {
   readonly metaEvidence?: Readonly<Record<string, MetaEvidenceResult | "pending">>;
 }
 
-/** Programs core's reads (S-7): dispute 1 on chain 1 by default, in `period`, every read successful. */
+/** Dispute 1 on chain 1 by default, in `period`, every read successful. */
 function programReads(program: Program = {}): void {
   const period = program.period ?? 0;
   const lookups = program.lookups ?? { "1": testFoundLookup({ period }) };
@@ -131,7 +127,6 @@ function programReads(program: Program = {}): void {
   vi.mocked(core.readWithdrawable).mockResolvedValue({ status: "nothing" });
 }
 
-/** Moves the app to another URL, as the header or a chain change would. */
 function GoTo({ to }: { readonly to: string }) {
   const navigate = useNavigate();
   return (
@@ -146,12 +141,10 @@ function GoTo({ to }: { readonly to: string }) {
   );
 }
 
-/** How the router reached the current URL: a push, a replace or a pop (the history replace of spec 1.4). */
 function NavigationType() {
   return <p>{`Navigation: ${useNavigationType()}`}</p>;
 }
 
-/** The case page under the app's `/:chainId` layout, at the route the app serves it on (S-2). */
 function renderCase(path: string, goTo?: string) {
   return renderWithProviders(
     <>
@@ -165,7 +158,6 @@ function renderCase(path: string, goTo?: string) {
   );
 }
 
-/** The case header, a region named after the dispute it shows. */
 function caseHeader(id: number): HTMLElement {
   return screen.getByRole("region", { name: `Dispute #${String(id)}` });
 }
@@ -178,7 +170,6 @@ async function settledDispute(id = 1): Promise<HTMLElement> {
   return caseHeader(id);
 }
 
-/** The value of one entry of the header's info row, found by its visible label. */
 function headerDetail(header: HTMLElement, label: string): HTMLElement {
   const index = within(header)
     .getAllByRole("term")
@@ -192,14 +183,12 @@ function isRecordBand(element: Element): boolean {
   return element.classList.contains("bg-(--dr-record-surface)");
 }
 
-/** The tinted record band holding `element`, or `null` when it sits outside one. */
 function recordBand(element: Element): Element | null {
   let current = element.parentElement;
   while (current !== null && !isRecordBand(current)) current = current.parentElement;
   return current;
 }
 
-/** The summary title of a dispute this file programs (`Dispute N title`), when one shows. */
 function queryTitle(): HTMLElement | null {
   return screen.queryByRole("heading", { level: 2, name: /^Dispute \d+ title$/ });
 }
@@ -208,10 +197,8 @@ function notFoundHeading(id: string): HTMLElement {
   return screen.getByRole("heading", { level: 1, name: `Dispute with ID ${id} does not exist on this network.` });
 }
 
-/** The page message of each state that shows no dispute (spec 5.1, 5.4, D-36). */
 const PAGE_MESSAGE = /^(?:Find a dispute|Dispute with ID .+ does not exist on this network\.|Dispute #\d+ could not be loaded)$/;
 
-/** No dispute is found yet: placeholders stand in, no page message shows, and the accordion of a found dispute is absent. */
 function expectLoading(): void {
   expect(screen.getAllByRole("status").length).toBeGreaterThan(0);
   expect(screen.queryByRole("heading", { level: 1, name: PAGE_MESSAGE })).not.toBeInTheDocument();
@@ -223,9 +210,8 @@ function searchCourtLink(): HTMLElement {
   return within(screen.getByRole("search")).getByRole("link", { name: "Court" });
 }
 
-/** The timeline's columns, as list items of the list a reader hears as "Dispute timeline". */
 function timelineColumns(): HTMLElement[] {
-  return within(screen.getByRole("list", { name: "Dispute timeline" })).getAllByRole("listitem");
+  return within(screen.getByRole("group", { name: "Dispute timeline" })).getAllByRole("listitem");
 }
 
 function searchField(): HTMLElement {
@@ -243,7 +229,6 @@ async function interact(steps: (user: UserEvent) => Promise<void>) {
   await act(() => steps(user));
 }
 
-/** Empties the search field and types `text` (none for an empty field). */
 async function search(text: string) {
   await interact(async (user) => {
     await user.clear(searchField());
@@ -251,16 +236,14 @@ async function search(text: string) {
   });
 }
 
-/** The search debounce, held by the test. */
 interface SearchDebounce {
-  /** How many debounces wait to elapse. */
   readonly pending: number;
   /** Lets every waiting debounce elapse now, inside act(), so the load it starts has begun when this returns. */
   elapse(): void;
 }
 
 /**
- * Holds the search debounce instead of scheduling it (D-53, P-19): the hook's `setTimeout(…, SEARCH_DEBOUNCE_MS)` is
+ * Holds the search debounce instead of scheduling it: the hook's `setTimeout(…, SEARCH_DEBOUNCE_MS)` is
  * recorded, and the debounce elapses only when the test calls `elapse()`, never by the wall clock. A real 750 ms timer
  * on a loaded machine can fire before an "at once" assertion runs, or use up most of the wait that follows it. Every
  * other timer (React Query's, user-event's, waitFor's, the accordion's) runs as usual; nothing else on this page waits
@@ -316,7 +299,6 @@ function labelled(scope: HTMLElement, role: string, label: string): HTMLElement 
   return element;
 }
 
-/** The body of an accordion item, a region labelled after it; a collapsed one is hidden. */
 function accordionBody(name: string): HTMLElement {
   return labelled(document.body, "region", name);
 }
@@ -333,7 +315,7 @@ function expectRenderErrors() {
   });
 }
 
-/** A text React cannot render: a plain object where a string belongs, as a bad dispute's data can hold (spec 11.3). */
+/** A text React cannot render: a plain object where a string belongs, as a bad dispute's data can hold. */
 const UNRENDERABLE = { malformed: true } as unknown as string;
 /** A text a template string cannot print: a symbol where a string belongs. */
 const UNPRINTABLE = Symbol("malformed") as unknown as string;
@@ -347,7 +329,6 @@ const RPC_DOWN = { code: "rpc-error", message: "The RPC did not answer." } as co
 
 type ExistingView = Extract<DisputeView, { exists: true }>;
 
-/** The details read of dispute 1 in `period` with `currentRuling`, every other read successful. */
 function detailsRead(period: Period, currentRuling: bigint, overrides: Partial<DisputeReads> = {}): DisputeReads {
   return testDetails(testFoundLookup({ period }), {
     currentRuling: { ok: true, value: currentRuling },
@@ -398,18 +379,14 @@ function evidenceItem(title: string): EvidenceItem {
 interface RetryCase {
   /** The section's name, as in "{section} unavailable" and "Retry {section}". */
   readonly section: string;
-  /** The rows and ledger entries the case's test names carry, when not the defaults of `breaks`. */
-  readonly rows?: string;
-  /** How a bad read breaks it: its render throws (its boundary catches it, D-36), or its data is unavailable. */
+  /** How a bad read breaks it: its render throws and its boundary catches it, or its data is unavailable. */
   readonly breaks: "throws" | "fails";
   /** The accordion item holding the section, opened before Retry; a section above the accordion has none. */
   readonly item?: "Appeal" | "Question" | "Evidence";
   readonly period?: Period;
   /** Programs the read the section's Retry repeats: its first `badReads` answers break the section, later ones are good. */
   readonly program: (badReads: number) => void;
-  /** How many times that read ran. */
   readonly reads: () => number;
-  /** The section's content from a good read. */
   readonly content: () => Promise<HTMLElement>;
 }
 
@@ -455,7 +432,7 @@ const RETRY_CASES: readonly RetryCase[] = [
     ...answers(detailsReads, detailsRead(0, MALFORMED_RULING), detailsRead(0, 1n), () => {
       breakViewOnMalformedDetails({ timeline: { ok: true, value: { columns: null as unknown as Timeline["columns"] } } });
     }),
-    content: () => screen.findByRole("list", { name: "Dispute timeline" }),
+    content: () => screen.findByRole("group", { name: "Dispute timeline" }),
   },
   {
     section: "Decision",
@@ -500,7 +477,6 @@ const RETRY_CASES: readonly RetryCase[] = [
   },
   {
     section: "Evidence display",
-    rows: "P-26, S-3",
     breaks: "throws",
     ...answers(
       metaEvidenceReads,
@@ -604,15 +580,15 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("case page states (spec 5.1, 5.4)", () => {
-  it("D-09: the case page without an ID shows the search box and loads no dispute", () => {
+describe("case page states", () => {
+  it("the case page without an ID shows the search box and loads no dispute", () => {
     renderCase("/1/cases");
     expect(searchField()).toHaveValue("");
     expect(screen.getByRole("heading", { level: 1, name: "Find a dispute" })).toBeInTheDocument();
     expect(core.lookupDispute).not.toHaveBeenCalled();
   });
 
-  it("A19: an ID that does not parse is the not-found state, read nowhere and linked nowhere", () => {
+  it("an ID that does not parse is the not-found state, read nowhere and linked nowhere", () => {
     renderCase("/1/cases/abc");
     expect(notFoundHeading("abc")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View Ongoing Disputes" })).toHaveAttribute("href", "/1/ongoing");
@@ -620,7 +596,7 @@ describe("case page states (spec 5.1, 5.4)", () => {
     expect(core.lookupDispute).not.toHaveBeenCalled();
   });
 
-  it("spec 5.4: a dispute the arbitrator does not know shows the not-found state with a link to Ongoing", async () => {
+  it("a dispute the arbitrator does not know shows the not-found state with a link to Ongoing", async () => {
     renderCase("/1/cases/42");
     await waitFor(() => {
       expect(notFoundHeading("42")).toBeInTheDocument();
@@ -630,14 +606,14 @@ describe("case page states (spec 5.1, 5.4)", () => {
     expect(searchField()).toHaveValue("42");
   });
 
-  it("spec 5.4: a chain without an arbitrator shows the not-found copy and reads nothing", () => {
+  it("a chain without an arbitrator shows the not-found copy and reads nothing", () => {
     renderCase("/137/cases/5");
     expect(notFoundHeading("5")).toBeInTheDocument();
     expect(screen.getByText(/There is no arbitrator on/)).toBeInTheDocument();
     expect(core.lookupDispute).not.toHaveBeenCalled();
   });
 
-  it("D-36: a lookup that fails in transport is unavailable, not missing, with a Retry that reads it again", async () => {
+  it("a lookup that fails in transport is unavailable, not missing, with a Retry that reads it again", async () => {
     vi.mocked(core.lookupDispute).mockRejectedValueOnce(new Error("socket hang up"));
     renderCase("/1/cases/1");
     expect(await screen.findByRole("heading", { level: 1, name: "Dispute #1 could not be loaded" })).toBeInTheDocument();
@@ -647,7 +623,7 @@ describe("case page states (spec 5.1, 5.4)", () => {
     expect(core.lookupDispute).toHaveBeenCalledTimes(2);
   });
 
-  it("D-36: a lookup the arbitrator answers as unavailable shows the unavailable state, not 'does not exist'", async () => {
+  it("a lookup the arbitrator answers as unavailable shows the unavailable state, not 'does not exist'", async () => {
     programReads({ lookups: { "1": { status: "unavailable", error: { code: "rpc-error", message: "The arbitrator did not answer." } } } });
     renderCase("/1/cases/1");
     expect(await screen.findByRole("heading", { level: 1, name: "Dispute #1 could not be loaded" })).toBeInTheDocument();
@@ -655,7 +631,7 @@ describe("case page states (spec 5.1, 5.4)", () => {
     expect(screen.queryByText(/does not exist/)).not.toBeInTheDocument();
   });
 
-  it("spec 5.5, 5.8, 5.10, A22: a found dispute shows its header and summary, read for the arbitrator's arbitrable, with no banner or notice", async () => {
+  it("a found dispute shows its header and summary, read for the arbitrator's arbitrable, with no banner or notice", async () => {
     programReads({ period: 2, family: testFamily({ family: "idr-v1" }) });
     renderCase("/1/cases/1");
     const header = await settledDispute();
@@ -671,32 +647,42 @@ describe("case page states (spec 5.1, 5.4)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows the warning about a meta-evidence the API disagrees with between the header and the summary", async () => {
-    programReads({ metaEvidence: { "1": { ...testOkMetaEvidence({ title: "Dispute 1 title" }), source: { kind: "event", locator: "disagrees", locatorPath: null } } } });
+  it("puts the meta-evidence source warning, then the compatibility banner, right under the record band and before the jury decision and the summary", async () => {
+    programReads({
+      period: 3,
+      family: VIEW_ONLY,
+      metaEvidence: { "1": { ...testOkMetaEvidence({ title: "Dispute 1 title" }), source: { kind: "event", locator: "disagrees", locatorPath: null } } },
+    });
     renderCase("/1/cases/1");
     const warning = await screen.findByText("The meta-evidence API pointed to a file that cannot be verified");
-    expect(warning.closest('[role="status"]')).not.toBeNull();
+    expect(warning.closest("output")).not.toBeNull();
     const heading = screen.getByRole("heading", { level: 1, name: "Dispute #1" });
+    const decision = await screen.findByRole("heading", { level: 2, name: "Jury decision" });
+    const banner = screen.getByText("View mode only for this dispute");
     const title = await screen.findByRole("heading", { level: 2, name: "Dispute 1 title" });
-    expect(heading.compareDocumentPosition(warning)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(warning.compareDocumentPosition(title)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(recordBand(heading)).not.toBeNull();
+    expect(recordBand(warning)).toBeNull();
+    expect(heading.compareDocumentPosition(warning) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(warning.compareDocumentPosition(banner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(banner.compareDocumentPosition(decision) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(decision.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("the timeline sits inside the header band and the decision follows the band before the compatibility banner and the summary", async () => {
+  it("the timeline sits inside the header band, and the compatibility banner follows the band before the decision and the summary", async () => {
     programReads({ period: 3, family: VIEW_ONLY });
     renderCase("/1/cases/1");
     await settledDispute();
-    const timeline = await screen.findByRole("list", { name: "Dispute timeline" });
+    const timeline = await screen.findByRole("group", { name: "Dispute timeline" });
     const heading = screen.getByRole("heading", { level: 1, name: "Dispute #1" });
     expect(recordBand(timeline)).not.toBeNull();
     expect(recordBand(timeline)).toBe(recordBand(heading));
     const decision = await screen.findByRole("heading", { level: 2, name: "Jury decision" });
     const banner = screen.getByText("View mode only for this dispute");
     const title = await screen.findByRole("heading", { level: 2, name: "Dispute 1 title" });
-    expect(timeline.compareDocumentPosition(decision) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(decision.compareDocumentPosition(banner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(banner.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(timeline.compareDocumentPosition(banner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(banner.compareDocumentPosition(decision) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(decision.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("a lookup that finds no dispute leaves no empty header band", async () => {
@@ -707,13 +693,13 @@ describe("case page states (spec 5.1, 5.4)", () => {
     expect(Array.from(document.querySelectorAll("[class]")).filter(isRecordBand)).toEqual([]);
   });
 
-  it("P-19: the URL's dispute is read at mount, without the search debounce", async () => {
+  it("reads the URL's dispute at mount, without the search debounce", async () => {
     renderCase("/1/cases/1");
     await act(() => Promise.resolve());
     expect(core.lookupDispute).toHaveBeenCalledWith(expect.anything(), 1n);
   });
 
-  it("P-20: while the lookup runs the search box and section placeholders show", () => {
+  it("while the lookup runs the search box and section placeholders show", () => {
     vi.mocked(core.lookupDispute).mockReturnValue(new Promise<DisputeLookup>(() => undefined));
     renderCase("/1/cases/1");
     expectLoading();
@@ -721,7 +707,7 @@ describe("case page states (spec 5.1, 5.4)", () => {
     expect(queryTitle()).not.toBeInTheDocument();
   });
 
-  it("P-20: the header renders from the lookup while the meta-evidence still loads", async () => {
+  it("renders the header from the lookup while the meta-evidence still loads", async () => {
     programReads({ period: 1, metaEvidence: { "1": "pending" } });
     renderCase("/1/cases/1");
     await waitFor(() => {
@@ -734,15 +720,15 @@ describe("case page states (spec 5.1, 5.4)", () => {
   });
 });
 
-describe("compatibility banner (spec 5.5)", () => {
-  it("spec 5.5: a view-only dispute shows the 'View mode only' banner", async () => {
+describe("compatibility banner", () => {
+  it("a view-only dispute shows the 'View mode only' banner", async () => {
     programReads({ family: GOVERNOR });
     renderCase("/1/cases/1");
     expect(await screen.findByText("View mode only for this dispute")).toBeInTheDocument();
     expect(screen.getByText(/You can't submit evidence or fund appeals on this interface\./)).toBeInTheDocument();
   });
 
-  it("D-36, spec 5.5: a family that could not be detected is view-only, and the page still renders", async () => {
+  it("a family that could not be detected is view-only, and the page still renders", async () => {
     vi.mocked(core.detectFamily).mockRejectedValue(new Error("socket hang up"));
     renderCase("/1/cases/1");
     await settledDispute();
@@ -751,15 +737,15 @@ describe("compatibility banner (spec 5.5)", () => {
     expect(await screen.findByRole("heading", { level: 2, name: "Dispute 1 title" })).toBeInTheDocument();
   });
 
-  it("spec 5.5: a compatible dispute shows no banner", async () => {
+  it("a compatible dispute shows no banner", async () => {
     renderCase("/1/cases/1");
     await settledDispute();
     expect(screen.queryByText("View mode only for this dispute")).not.toBeInTheDocument();
   });
 });
 
-describe("accordion (spec 5.11)", () => {
-  it("spec 5.11: before the appeal period the accordion holds Question and Evidence, all collapsed", async () => {
+describe("accordion", () => {
+  it("before the appeal period the accordion holds Question and Evidence, all collapsed", async () => {
     renderCase("/1/cases/1");
     await settledDispute();
     expect(screen.queryByRole("button", { name: "Appeal" })).not.toBeInTheDocument();
@@ -769,7 +755,7 @@ describe("accordion (spec 5.11)", () => {
     }
   });
 
-  it("spec 5.11: from the appeal period the Appeal panel comes first", async () => {
+  it("from the appeal period the Appeal panel comes first", async () => {
     programReads({ period: 3 });
     renderCase("/1/cases/1");
     await settledDispute();
@@ -781,7 +767,7 @@ describe("accordion (spec 5.11)", () => {
     });
   });
 
-  it("spec 5.11: one panel is open at a time, and a collapsed body stays mounted but hidden", async () => {
+  it("one panel is open at a time, and a collapsed body stays mounted but hidden", async () => {
     renderCase("/1/cases/1");
     await settledDispute();
     const user = userEvent.setup();
@@ -800,6 +786,46 @@ describe("accordion (spec 5.11)", () => {
       expect(accordionBody("Question")).not.toBeVisible();
     });
     expect(within(accordionBody("Question")).getByText("Multiple choice: single select")).toBeInTheDocument();
+  });
+
+  it("fades an opening body in, fades a collapsing one out before hiding it, and folds the plus into a minus", async () => {
+    renderCase("/1/cases/1");
+    await settledDispute();
+    const user = userEvent.setup();
+    const bar = () => accordionButton("Question").querySelector('path[d="M8 2v12"]');
+    expect(accordionBody("Question")).toHaveAttribute("data-open", "false");
+    expect(bar()).toHaveClass("scale-y-100", "origin-center", "[transform-box:fill-box]", "motion-reduce:transition-none");
+    expect(bar()).toHaveAttribute("vector-effect", "non-scaling-stroke");
+
+    await user.click(accordionButton("Question"));
+    await waitFor(() => {
+      expect(accordionBody("Question")).toBeVisible();
+    });
+    const body = accordionBody("Question");
+    expect(body).toHaveAttribute("data-open", "true");
+    expect(body).toHaveClass(
+      "animate-[t-acc-in_var(--acc-expand)_var(--acc-ease)_backwards]",
+      "data-[open=false]:opacity-0",
+      "data-[open=false]:blur-[2px]",
+      "motion-reduce:animate-none",
+      "motion-reduce:transition-none",
+    );
+    expect(bar()).toHaveClass("scale-y-0");
+
+    await user.click(accordionButton("Question"));
+    expect(body).toHaveAttribute("data-open", "false");
+    expect(body).not.toHaveAttribute("hidden");
+    expect(bar()).toHaveClass("scale-y-100");
+    await waitFor(() => {
+      expect(body).not.toBeVisible();
+    });
+  });
+
+  it("eases the library's height tween on the accordion's curve", async () => {
+    renderCase("/1/cases/1");
+    await settledDispute();
+    const accordion = accordionButton("Question").parentElement?.parentElement;
+    expect(accordion).toHaveClass("[&>div>div:last-child]:ease-(--acc-ease)");
   });
 
   it("shows no Appeal item for a view-only dispute in execution", async () => {
@@ -858,6 +884,22 @@ describe("accordion (spec 5.11)", () => {
     await settledDispute();
     const titles = screen.getAllByRole("button", { expanded: false }).map((button) => button.textContent);
     expect(titles.slice(0, 3)).toEqual(["Appeal", "Question", "Evidence"]);
+  });
+
+  it("fades the accordion in when it replaces its placeholder, and holds it still under reduced motion", async () => {
+    programReads({ period: 3 });
+    const family = deferred<FamilyDetection>();
+    vi.mocked(core.detectFamily).mockReturnValue(family.promise);
+    renderCase("/1/cases/1");
+    await waitFor(() => {
+      expect(core.detectFamily).toHaveBeenCalled();
+    });
+    await act(() => {
+      family.resolve(testFamily());
+      return Promise.resolve();
+    });
+    const accordion = (await screen.findByRole("button", { name: "Appeal" })).parentElement?.parentElement;
+    expect(accordion).toHaveClass("animate-[t-reveal-in_var(--reveal-dur)_var(--reveal-ease)_backwards]", "motion-reduce:animate-none");
   });
 
   it("keeps an Appeal item that says why it is unavailable when the family could not be detected in execution", async () => {
@@ -947,8 +989,8 @@ describe("accordion (spec 5.11)", () => {
   });
 });
 
-describe("search box (spec 5.2, D-53)", () => {
-  it("spec 5.2: the label links Court to the shown dispute on Court", async () => {
+describe("search box", () => {
+  it("the label links Court to the shown dispute on Court", async () => {
     renderCase("/100/cases/7");
     expect(screen.getByRole("search", { name: "Search Disputes on Court" })).toBeInTheDocument();
     expect(searchCourtLink()).toHaveAttribute("href", "https://court.kleros.io/cases/7?requiredChainId=100");
@@ -958,7 +1000,19 @@ describe("search box (spec 5.2, D-53)", () => {
     });
   });
 
-  it("spec 1.4, 5.2: every change replaces the URL at once, and only the load waits for the debounce", async () => {
+  it("names the dispute ID field without a visible label, beside the magnifier icon", async () => {
+    renderCase("/1/cases/1");
+    await settledDispute();
+    const form = screen.getByRole("search");
+    expect(searchField()).toHaveAttribute("aria-label", "Dispute ID");
+    expect(searchField()).toHaveAttribute("placeholder", "Dispute ID");
+    expect(within(form).queryByText("Dispute ID", { selector: "label" })).toBeNull();
+    expect(form.querySelector('svg[aria-hidden="true"].stroke-klerosUIComponentsPrimaryBlue')).not.toBeNull();
+    await search("12");
+    expect(searchField()).toHaveValue("12");
+  });
+
+  it("every change replaces the URL at once, and only the load waits for the debounce", async () => {
     programReads({ lookups: { "1": testFoundLookup(), "34": testFoundLookup({ disputeId: 34n }) } });
     const view = renderCase("/1/cases/1");
     await settledDispute();
@@ -979,7 +1033,7 @@ describe("search box (spec 5.2, D-53)", () => {
     expect(searchField()).toHaveValue("34");
   });
 
-  it("D-53: a search clears the shown dispute at once and loads the new ID after the debounce", async () => {
+  it("a search clears the shown dispute at once and loads the new ID after the debounce", async () => {
     programReads({ lookups: { "1": testFoundLookup(), "2": testFoundLookup({ disputeId: 2n }) } });
     const view = renderCase("/1/cases/1");
     await settledDispute();
@@ -998,7 +1052,7 @@ describe("search box (spec 5.2, D-53)", () => {
     expect(searchCourtLink()).toHaveAttribute("href", "https://court.kleros.io/cases/2?requiredChainId=1");
   });
 
-  it("D-53: searching a nonexistent ID while a dispute is shown shows the not-found state", async () => {
+  it("searching a nonexistent ID while a dispute is shown shows the not-found state", async () => {
     renderCase("/1/cases/1");
     await settledDispute();
     await search("99");
@@ -1009,7 +1063,7 @@ describe("search box (spec 5.2, D-53)", () => {
     expect(queryTitle()).not.toBeInTheDocument();
   });
 
-  it("spec 5.1, 5.2: clearing the search shows no dispute and leaves the URL as it is", async () => {
+  it("clearing the search shows no dispute and leaves the URL as it is", async () => {
     const view = renderCase("/1/cases/1");
     await settledDispute();
     await search("");
@@ -1023,7 +1077,7 @@ describe("search box (spec 5.2, D-53)", () => {
     expect(searchField()).toHaveValue("");
   });
 
-  it("P-19: Enter loads the typed ID without waiting for the debounce", async () => {
+  it("Enter loads the typed ID without waiting for the debounce", async () => {
     programReads({ lookups: { "1": testFoundLookup(), "2": testFoundLookup({ disputeId: 2n }) } });
     renderCase("/1/cases/1");
     await settledDispute();
@@ -1036,7 +1090,7 @@ describe("search box (spec 5.2, D-53)", () => {
     });
   });
 
-  it("spec 5.11: a new dispute starts with the accordion collapsed", async () => {
+  it("a new dispute starts with the accordion collapsed", async () => {
     programReads({ lookups: { "1": testFoundLookup(), "2": testFoundLookup({ disputeId: 2n }) } });
     renderCase("/1/cases/1");
     await settledDispute();
@@ -1051,8 +1105,52 @@ describe("search box (spec 5.2, D-53)", () => {
   });
 });
 
-describe("section degradation (D-36, S-3, D-18)", () => {
-  it("D-36: a failed meta-evidence load degrades the summary and the question, and the rest renders", async () => {
+const RECORDED_META_EVIDENCE = {
+  title: "Recorded title",
+  description: "Recorded in the meta-evidence",
+  dynamicScriptURI: "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj",
+  arbitrableChainID: 10,
+  rulingOptions: { type: "single-select", titles: ["Pay the seller", "Refund the buyer"] },
+};
+
+function fetched(body: string): core.FetchResponse {
+  return { ok: true, status: 200, json: () => Promise.resolve(JSON.parse(body) as unknown), text: () => Promise.resolve(body) };
+}
+
+/**
+ * Dispute 1's meta-evidence loaded by core itself: the locator names a file that carries the Create page's allowlisted
+ * script and arbitrable chain 10. The runner only counts runs.
+ */
+async function loadWithUnconfiguredScriptChain() {
+  const locator = "https://locator.test/meta-evidence";
+  const routes: Readonly<Record<string, string>> = {
+    [`${locator}?chainId=1&disputeId=1`]: JSON.stringify({ metaEvidenceUri: TEST_META_EVIDENCE_URI }),
+    [`https://cdn.kleros.link${TEST_META_EVIDENCE_URI}`]: JSON.stringify(RECORDED_META_EVIDENCE),
+    [`https://cdn.kleros.link${RECORDED_META_EVIDENCE.dynamicScriptURI}`]: "function getMetaEvidence() {}",
+  };
+  let runs = 0;
+  const metaEvidence = await actualCore.loadMetaEvidence({
+    arbitratorChainId: 1,
+    disputeId: 1n,
+    arbitrable: TEST_ARBITRABLE,
+    env: { REACT_APP_METAEVIDENCE_URL: locator },
+    fetcher: (url) => {
+      const body = routes[url];
+      return body === undefined ? Promise.reject(new Error("unexpected fetch")) : Promise.resolve(fetched(body));
+    },
+    runner: {
+      run: () => {
+        runs += 1;
+        return Promise.resolve({ status: "ok", value: { title: "From the script" }, jsonDuplicateKeys: false });
+      },
+    },
+    budgetMs: 1_000,
+  });
+  return { metaEvidence, scriptRuns: () => runs };
+}
+
+describe("section degradation", () => {
+  it("a failed meta-evidence load degrades the summary and the question, and the rest renders", async () => {
     programReads({ metaEvidence: { "1": { status: "failed", reason: "not-json", error: { code: "invalid-data", message: "The meta-evidence file is not JSON." } } } });
     renderCase("/1/cases/1");
     await settledDispute();
@@ -1064,7 +1162,7 @@ describe("section degradation (D-36, S-3, D-18)", () => {
     expect(headerDetail(caseHeader(1), "Court")).toHaveTextContent(/^General Court$/);
   });
 
-  it("S-3: a section that throws degrades alone, and its failure does not carry over to the next dispute", async () => {
+  it("a section that throws degrades alone, and its failure does not carry over to the next dispute", async () => {
     expectRenderErrors();
     breakRealityNotice = true;
     programReads({ lookups: { "1": testFoundLookup(), "2": testFoundLookup({ disputeId: 2n }) } });
@@ -1082,21 +1180,25 @@ describe("section degradation (D-36, S-3, D-18)", () => {
     expect(screen.queryByText("Reality notice unavailable")).not.toBeInTheDocument();
   });
 
-  it("D-18: a meta-evidence naming unconfigured chain 10 degrades only the section that needs that chain", async () => {
-    const metaEvidence = testMetaEvidence({ arbitrableChainID: { status: "invalid" }, dynamicScriptURI: "/ipfs/QmQ2XoA25HmnPUEWDduxj6LYwMwp6jtXPFRMHcNF2EvJfU/script.js" });
-    const params = actualCore.buildScriptParameters({ metaEvidence, arbitratorChainId: 1, disputeId: 1n, arbitrable: TEST_ARBITRABLE, env: {} });
-    if (params.ok) throw new Error("chain 10 must not be accepted as a script parameter");
-    programReads({ metaEvidence: { "1": { status: "failed", reason: "unknown-chain", error: params.error } } });
+  it("a meta-evidence whose script names unconfigured chain 10 shows its static summary, its appeal cards and one notice that the script's details are unavailable", async () => {
+    const result = await loadWithUnconfiguredScriptChain();
+    programReads({ period: 3, metaEvidence: { "1": result.metaEvidence } });
     renderCase("/1/cases/1");
     await settledDispute();
-    expect(await screen.findByText("Dispute summary unavailable")).toBeInTheDocument();
-    expect(screen.getAllByText(params.error.message).length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { level: 1, name: "Dispute #1" })).toBeInTheDocument();
-    expect(timelineColumns().length).toBeGreaterThan(0);
-    expect(headerDetail(caseHeader(1), "Number of votes")).toHaveTextContent(/^3$/);
+    expect(await screen.findByRole("heading", { level: 2, name: "Recorded title" })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(labelled(accordionBody("Appeal"), "list", "Rulings to fund")).toBeInTheDocument();
+    });
+    const cards = labelled(accordionBody("Appeal"), "list", "Rulings to fund");
+    expect(within(cards).getByText("Pay the seller")).toBeInTheDocument();
+    expect(within(cards).getByText("Refund the buyer")).toBeInTheDocument();
+    expect(screen.queryByText("Appeal unavailable")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dispute summary unavailable")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Details from the arbitrable's script are unavailable")).toHaveLength(1);
+    expect(result.scriptRuns()).toBe(0);
   });
 
-  it("D-18, D-34: an evidence display for chain 10 falls back to the arbitrator chain and the page renders", async () => {
+  it("an evidence display for chain 10 falls back to the arbitrator chain and the page renders", async () => {
     const metaEvidence = testMetaEvidence({ arbitrableChainID: { status: "invalid" }, evidenceDisplayInterfaceURI: "https://display.example/index.html" });
     programReads({ metaEvidence: { "1": { ...testOkMetaEvidence(), metaEvidence } } });
     renderCase("/1/cases/1");
@@ -1109,13 +1211,12 @@ describe("section degradation (D-36, S-3, D-18)", () => {
   });
 });
 
-describe("section Retry (spec 11.3, D-36, S-3)", () => {
+describe("section Retry", () => {
   for (const retryCase of RETRY_CASES) {
     const { section, breaks } = retryCase;
-    const rows = retryCase.rows ?? (breaks === "throws" ? "11.3, D-36, S-3" : "D-36, S-3");
     const broken = breaks === "throws" ? "a read it could not render" : "a failed read";
 
-    it(`${rows}: Retry on ${section} after ${broken} shows the good read that follows, with no notice left`, async () => {
+    it(`Retry on ${section} after ${broken} shows the good read that follows, with no notice left`, async () => {
       await renderBrokenSection(retryCase, 1);
 
       await pressRetry(section);
@@ -1124,7 +1225,7 @@ describe("section Retry (spec 11.3, D-36, S-3)", () => {
       expect(retryCase.reads()).toBe(2);
     });
 
-    it(`${rows}: a Retry on ${section} whose read is still bad degrades it again and keeps offering a Retry that recovers it`, async () => {
+    it(`a Retry on ${section} after ${broken} whose read is still bad degrades it again and keeps offering a Retry that recovers it`, async () => {
       await renderBrokenSection(retryCase, 2);
 
       await pressRetry(section);
@@ -1139,7 +1240,7 @@ describe("section Retry (spec 11.3, D-36, S-3)", () => {
     });
   }
 
-  it("S-3, D-36: while a section's Retry reads again, the other sections keep their content", async () => {
+  it("while a section's Retry reads again, the other sections keep their content", async () => {
     expectRenderErrors();
     metaEvidenceReads.mockResolvedValueOnce(testOkMetaEvidence({ title: UNRENDERABLE })).mockReturnValueOnce(new Promise<MetaEvidenceResult>(() => undefined));
     renderCase("/1/cases/1");
@@ -1158,8 +1259,8 @@ describe("section Retry (spec 11.3, D-36, S-3)", () => {
   });
 });
 
-describe("network change (spec 5.16, D-55)", () => {
-  it("D-55: a chain change loads the same ID on the new chain, with nothing of the old one left", async () => {
+describe("network change", () => {
+  it("a chain change loads the same ID on the new chain, with nothing of the old one left", async () => {
     programReads({ lookups: { "5": testFoundLookup({ disputeId: 5n }) } });
     const view = renderCase("/1/cases/5", "/100/cases/5");
     await settledDispute(5);

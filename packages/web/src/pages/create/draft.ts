@@ -1,7 +1,7 @@
 import { CREATE_LIMITS, encodeExtraData, normalizeIpfsPath, type CreateDisputeDraft, type CreateOptionDraft, type CreateQuestionType, type Hex } from "@dispute-resolver/core";
 import type { UploadedFile } from "../../atlas";
 
-/** One party row of the form; `key` is a stable React key, never written anywhere. */
+/** `key` is a stable React key, never written anywhere. */
 export interface PartyRow {
   readonly key: number;
   readonly alias: string;
@@ -9,9 +9,8 @@ export interface PartyRow {
 }
 
 /**
- * The Create form as typed (spec §4.3). It lives on the page, above both steps, so Return restores every field,
- * including the chosen court (D-08). `options` always holds exactly the rows shown: one per chosen option for the select
- * types, none for `uint` and `datetime` (D-08: titles beyond the chosen count are dropped).
+ * `options` always holds exactly the rows shown: one per chosen option for the select types, none for `uint` and
+ * `datetime`.
  */
 export interface CreateForm {
   readonly courtId: string;
@@ -29,7 +28,6 @@ export interface CreateForm {
 
 export type TextField = "votes" | "category" | "title" | "description" | "question";
 
-/** The question types the form offers, in today's order, with today's labels (spec §4.3; 04 §1 `questionTypes`). */
 export const QUESTION_TYPES: readonly { readonly type: CreateQuestionType; readonly label: string }[] = [
   { type: "single-select", label: "Multiple choice: single select" },
   { type: "multiple-select", label: "Multiple choice: multiple select" },
@@ -47,7 +45,6 @@ export function isSelectType(type: CreateQuestionType): boolean {
 
 const EMPTY_OPTION: CreateOptionDraft = { title: "", description: "" };
 
-/** Today's defaults (spec §4.3): court 0, three votes, single select with two options, one party row. */
 export function initialForm(): CreateForm {
   return {
     courtId: "0",
@@ -64,7 +61,6 @@ export function initialForm(): CreateForm {
   };
 }
 
-/** `options` resized to `count` rows: rows past the count are dropped (D-08), new rows start empty. */
 function resizeOptions(options: readonly CreateOptionDraft[], count: number): readonly CreateOptionDraft[] {
   return Array.from({ length: count }, (_, index) => options[index] ?? EMPTY_OPTION);
 }
@@ -77,16 +73,12 @@ export function setCourt(form: CreateForm, courtId: string): CreateForm {
   return { ...form, courtId };
 }
 
-/** Choosing a select type sets two options; any other type has none (spec §4.3). */
 export function setQuestionType(form: CreateForm, questionType: CreateQuestionType): CreateForm {
   const [min] = CREATE_LIMITS.optionRange;
   return { ...form, questionType, options: isSelectType(questionType) ? resizeOptions(form.options, min) : [] };
 }
 
-/**
- * Sets the number of options of a select type (2 to 32, spec §4.3). A count outside the range or not an integer is
- * ignored, so the field keeps showing the rows that will be submitted.
- */
+/** An invalid count is ignored, so the field keeps showing the rows that will be submitted. */
 export function setOptionCount(form: CreateForm, count: number): CreateForm {
   const [min, max] = CREATE_LIMITS.optionRange;
   if (!isSelectType(form.questionType) || !Number.isInteger(count) || count < min || count > max) return form;
@@ -97,7 +89,6 @@ export function setOption(form: CreateForm, index: number, field: keyof CreateOp
   return { ...form, options: form.options.map((option, at) => (at === index ? { ...option, [field]: value } : option)) };
 }
 
-/** Several parties (D-08): a new empty row at the end. */
 export function addParty(form: CreateForm): CreateForm {
   return { ...form, parties: [...form.parties, { key: form.nextPartyKey, alias: "", address: "" }], nextPartyKey: form.nextPartyKey + 1 };
 }
@@ -110,10 +101,6 @@ export function setParty(form: CreateForm, key: number, field: "alias" | "addres
   return { ...form, parties: form.parties.map((party) => (party.key === key ? { ...party, [field]: value } : party)) };
 }
 
-/**
- * The uploaded primary document, in canonical form (B16): the Atlas path goes through core's `normalizeIpfsPath` before
- * it enters the draft, and a path that is not content-addressed is refused (`null`).
- */
 export function canonicalDocument(file: UploadedFile): UploadedFile | null {
   const path = normalizeIpfsPath(file.path);
   return path === null ? null : { path, fileName: file.fileName };
@@ -123,7 +110,6 @@ export function setPrimaryDocument(form: CreateForm, primaryDocument: UploadedFi
   return { ...form, primaryDocument };
 }
 
-/** The draft core validates (spec §4.3): the rows shown, the parties in order, the canonical document path. */
 export function toDraft(form: CreateForm): CreateDisputeDraft {
   return {
     courtId: form.courtId,
@@ -142,14 +128,12 @@ export function toDraft(form: CreateForm): CreateDisputeDraft {
 const DECIMAL = /^\d+$/;
 const UINT256_DIGITS = 78;
 
-/** A court ID or vote count the cost can be read for: ASCII digits within a uint256 word, votes at least one. */
 function costInput(value: string, min: bigint): bigint | undefined {
   if (!DECIMAL.test(value) || value.length > UINT256_DIGITS) return undefined;
   const parsed = BigInt(value);
   return parsed >= min && parsed < 2n ** 256n ? parsed : undefined;
 }
 
-/** The `extraData` of the chosen court and vote count (spec §4.5), or `undefined` while either is not a valid number. */
 export function formExtraData(form: Pick<CreateForm, "courtId" | "votes">): Hex | undefined {
   const court = costInput(form.courtId, 0n);
   const votes = costInput(form.votes, BigInt(CREATE_LIMITS.minVotes));

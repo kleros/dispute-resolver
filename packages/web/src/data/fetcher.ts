@@ -3,15 +3,13 @@ import type { FetchResponse, Fetcher } from "@dispute-resolver/core";
 type FetchFunction = (input: string, init?: RequestInit) => Promise<Response>;
 
 /**
- * Core's injected fetch over the browser's (ARCHITECTURE.md §5.1). Only core's options are forwarded, and no request
- * ever carries credentials: every URL core fetches (the meta-evidence API, the IPFS gateway, court policies) is a
- * third party.
+ * Only core's options are forwarded, and no request ever carries credentials: every URL core fetches (the
+ * meta-evidence API, the IPFS gateway, court policies) is a third party.
  */
 export function createFetcher(fetchFunction: FetchFunction): Fetcher {
   return (url, init) => fetchFunction(url, { credentials: "omit", signal: init?.signal ?? null, headers: { ...init?.headers } });
 }
 
-/** `promise`, or a rejection with the signal's reason as soon as `signal` aborts. */
 function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   if (signal.aborted) return Promise.reject(signal.reason as Error);
   return new Promise<T>((resolve, reject) => {
@@ -26,9 +24,8 @@ function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
 }
 
 /**
- * `fetcher` with each exchange bounded by `timeoutMs`, the body read included (D-37): past the bound the request and any
- * pending body read reject with a `TimeoutError`, and the signal forwarded to `fetcher` aborts. The caller's own signal
- * still aborts it. The clock stops once the body is read or the request fails.
+ * Bounds each exchange, the body read included: past the bound the request and any pending body read reject with a
+ * `TimeoutError`, and the signal forwarded to `fetcher` aborts. The clock stops once the body is read or the request fails.
  */
 export function withTimeout(fetcher: Fetcher, timeoutMs: number): Fetcher {
   return async (url, init) => {

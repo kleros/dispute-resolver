@@ -35,33 +35,33 @@ function respond(middlewares: Connect.NextHandleFunction[], url: string): Record
   return headers;
 }
 
-describe("runner bootstrap build (ARCHITECTURE.md §7.1)", () => {
+describe("runner bootstrap build", () => {
   let bootstrap = "";
 
   beforeAll(async () => {
     bootstrap = await buildRunnerBootstrap(webRoot);
   }, 60_000);
 
-  it("§7.1: the bootstrap is one classic IIFE without module syntax", () => {
+  it("the bootstrap is one classic IIFE without module syntax", () => {
     expect(bootstrap.trimStart().startsWith("(function")).toBe(true);
     expect(bootstrap).not.toMatch(/\bimport\s*[{*\w(]|\bexport\s*[{*\w]|\brequire\(/);
   });
 
-  it("§7.1: the bootstrap bundles neither React nor core", () => {
+  it("the bootstrap bundles neither React nor core", () => {
     expect(bootstrap).not.toMatch(/react|@dispute-resolver|zod/i);
     expect(bootstrap).toContain("dr-runner/run");
   });
 
-  it("P-16, §7.1: the built bootstrap carries the acknowledgement type and protocol version 2", () => {
+  it("the built bootstrap carries the acknowledgement type and protocol version 2", () => {
     expect(bootstrap).toContain("dr-runner/accepted");
     expect(bootstrap).toMatch(/version\s*[!=]==?\s*2\b/);
   });
 
-  it("C7: the bootstrap is pure ASCII, so its own charset can never garble it", () => {
+  it("the bootstrap is pure ASCII, so its own charset can never garble it", () => {
     expect(Array.from(bootstrap).filter((character) => (character.codePointAt(0) ?? 0) > 0x7e)).toEqual([]);
   });
 
-  it("§7.1: vite build emits the bootstrap next to the static runner page", async () => {
+  it("vite build emits the bootstrap next to the static runner page", async () => {
     const plugin = runnerBootstrapPlugin();
     hookHandler(plugin.configResolved)({ root: webRoot });
     const emitted: unknown[] = [];
@@ -70,7 +70,7 @@ describe("runner bootstrap build (ARCHITECTURE.md §7.1)", () => {
   }, 60_000);
 });
 
-describe("runner policy on the preview server (C3, ARCHITECTURE.md §7.4)", () => {
+describe("runner policy on the preview server", () => {
   function previewMiddlewares(): Connect.NextHandleFunction[] {
     const middlewares: Connect.NextHandleFunction[] = [];
     const server = { middlewares: { use: (middleware: Connect.NextHandleFunction) => middlewares.push(middleware) } };
@@ -78,7 +78,7 @@ describe("runner policy on the preview server (C3, ARCHITECTURE.md §7.4)", () =
     return middlewares;
   }
 
-  it("C3: the runner's files carry its enforced sandbox policy", () => {
+  it("the runner's files carry its enforced sandbox policy", () => {
     for (const url of ["/__runner/index.html", "/__runner/bootstrap.js", "/__runner/index.html?x=1"]) {
       expect(respond(previewMiddlewares(), url)["content-security-policy"]).toBe(RUNNER_CONTENT_SECURITY_POLICY);
     }
@@ -87,22 +87,22 @@ describe("runner policy on the preview server (C3, ARCHITECTURE.md §7.4)", () =
     expect(RUNNER_CONTENT_SECURITY_POLICY).not.toContain("allow-same-origin");
   });
 
-  it("C3, §7.4: the runner rule of public/_headers sends exactly the policy the dev and preview servers send", async () => {
+  it("the runner rule of public/_headers sends exactly the policy the dev and preview servers send", async () => {
     const rules = parseNetlifyHeaders(await readFile(new URL("../public/_headers", import.meta.url), "utf8"));
     const runnerRules = rules.filter((rule) => rule.pattern === "/__runner/*");
     expect(runnerRules).toHaveLength(1);
     expect(headerValues(runnerRules, "/__runner/index.html", "Content-Security-Policy")).toEqual([RUNNER_CONTENT_SECURITY_POLICY]);
   });
 
-  it("C3: no app path gets the runner policy", () => {
+  it("no app path gets the runner policy", () => {
     for (const url of ["/", "/1/cases/1650", "/__runner", "/assets/index.js"]) {
       expect(respond(previewMiddlewares(), url)["content-security-policy"]).toBeUndefined();
     }
   });
 });
 
-describe("runner bootstrap on the dev server (ARCHITECTURE.md §7.1)", () => {
-  it("§7.1: vite dev serves the same bootstrap from memory, with the runner policy", async () => {
+describe("runner bootstrap on the dev server", () => {
+  it("vite dev serves the same bootstrap from memory, with the runner policy", async () => {
     const middlewares: Connect.NextHandleFunction[] = [];
     const server = {
       config: { root: webRoot },

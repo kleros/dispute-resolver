@@ -1,6 +1,5 @@
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
-import { createAppKit, type AppKit } from "@reown/appkit";
-import type { Features, ThemeVariables } from "@reown/appkit";
+import { createAppKit, type AppKit, type Features, type ThemeVariables } from "@reown/appkit";
 import { CHAINS, DEFAULT_CHAIN_ID, type ChainId } from "@dispute-resolver/core";
 import type { Chain } from "viem";
 import type { AppConfig } from "../env";
@@ -8,18 +7,18 @@ import { configuredChains } from "./chains";
 import { walletTransports } from "./transports";
 import type { AppKitWalletSetup, WalletModal } from "./types";
 
-// The AppKit half of the wallet setup (ARCHITECTURE.md §2.3). Only `setup.ts` imports it, and only through a dynamic
-// import, so AppKit, WalletConnect and the adapter's connectors stay out of the bundle the first paint waits for.
+// Only `setup.ts` imports this module, and only through a dynamic import, so AppKit, WalletConnect and the adapter's
+// connectors stay out of the bundle the first paint waits for.
 
 /**
- * AppKit's optional features, all off (C8, ADR 0002). `socials` is an empty array, never `false`: the wagmi adapter
- * reads a falsy value as "use the default list" and would register the embedded-wallet connector.
+ * AppKit's optional features, all off. `socials` is an empty array, never `false`: the wagmi adapter reads a falsy value
+ * as "use the default list" and would register the embedded-wallet connector.
  */
 export const APPKIT_FEATURES: Readonly<Features> = { analytics: false, email: false, socials: [], swaps: false, onramp: false };
 
 /**
  * The modal uses the app's typeface and accent. Naming a font family also stops AppKit from preloading its own fonts
- * from a third-party origin (A20: fonts are self-hosted).
+ * from a third-party origin; the app's fonts are self-hosted.
  */
 const THEME_VARIABLES: ThemeVariables = {
   "--w3m-font-family": '"Open Sans", system-ui, sans-serif',
@@ -33,7 +32,7 @@ function currentThemeMode(): "dark" | "light" {
   return document.documentElement.classList.contains(DARK_CLASS) ? "dark" : "light";
 }
 
-/** Keeps the modal on the app's color scheme, which `theme.ts` sets as a `dark` class on the root element (§11.1). */
+/** Keeps the modal on the app's color scheme, which `theme.ts` sets as a `dark` class on the root element. */
 function followColorScheme(appKit: AppKit): void {
   const observer = new MutationObserver(() => {
     if (appKit.getThemeMode() !== currentThemeMode()) appKit.setThemeMode(currentThemeMode());
@@ -41,13 +40,12 @@ function followColorScheme(appKit: AppKit): void {
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 }
 
-/** AppKit's embedded (custodial) wallet: the connector with id or type `AUTH` (C8, ADR 0002). */
+/** AppKit's embedded (custodial) wallet: the connector with id or type `AUTH`. */
 export function isEmbeddedWalletConnector(connector: { readonly id: string; readonly type: string }): boolean {
   return connector.id === "AUTH" || connector.type.toUpperCase() === "AUTH";
 }
 
-/** Why `openConnect` refuses when AppKit registered an embedded wallet anyway (K-03). */
-export const EMBEDDED_WALLET_REFUSAL = "AppKit registered an embedded-wallet connector; the Reown project settings must disable social login and email (K-01).";
+export const EMBEDDED_WALLET_REFUSAL = "AppKit registered an embedded-wallet connector; the Reown project settings must disable social login and email.";
 
 function appKitModal(appKit: AppKit, networks: readonly Chain[]): WalletModal {
   const hasEmbeddedWallet = async () => {
@@ -57,7 +55,7 @@ function appKitModal(appKit: AppKit, networks: readonly Chain[]): WalletModal {
   return {
     async openConnect(chainId: ChainId | undefined) {
       // Checked here, not only by the Connect control, so no caller and no click before AppKit is ready can open the
-      // Connect view, whose embedded-wallet entry ADR 0002 rules out (K-03).
+      // Connect view with its embedded-wallet entry.
       if (await hasEmbeddedWallet()) throw new Error(EMBEDDED_WALLET_REFUSAL);
       const network = networks.find((chain) => chain.id === chainId);
       if (network !== undefined) await appKit.switchNetwork(network);
@@ -72,11 +70,9 @@ function appKitModal(appKit: AppKit, networks: readonly Chain[]): WalletModal {
 }
 
 /**
- * The AppKit setup of ARCHITECTURE.md §2.3, for a configuration with a WalletConnect project ID: the AppKit wagmi
- * adapter over the configured chains and AppKit with every optional feature off (C8); no `connectors` option, so the
- * adapter's defaults apply (EIP-6963 discovery, injected, WalletConnect, Coinbase). Each chain's transport is its
- * configured read RPC or one that always rejects (D-56). It creates AppKit, which must happen once per page: callers go
- * through `createWalletSetupStore`, which calls it once per configuration.
+ * No `connectors` option, so the adapter's defaults apply (EIP-6963 discovery, injected, WalletConnect, Coinbase). It
+ * creates AppKit, which must happen once per page: callers go through `createWalletSetupStore`, which calls it once per
+ * configuration.
  */
 export function createAppKitSetup(config: AppConfig, projectId: string): AppKitWalletSetup {
   const networks: [Chain, ...Chain[]] = [...configuredChains()];

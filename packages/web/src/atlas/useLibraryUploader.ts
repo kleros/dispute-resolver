@@ -20,9 +20,9 @@ export const LIMITS_REFETCH_MS = 10_000;
 
 /**
  * The library's query of the server's role restrictions (`@kleros/kleros-app` 3.1.0, registered in the app's
- * QueryClient, ARCHITECTURE.md §2.1, §5.4). Its query function turns every error into `undefined` and it is never stale,
- * and the app's QueryClient neither retries nor refetches on focus, so one failed request at load would otherwise leave
- * the limits unknown for the whole session.
+ * QueryClient). Its query function turns every error into `undefined` and it is never stale, and the app's QueryClient
+ * neither retries nor refetches on focus, so one failed request at load would otherwise leave the limits unknown for the
+ * whole session.
  */
 const ROLE_RESTRICTIONS_KEY = ["RoleRestrictions"] as const;
 
@@ -45,13 +45,11 @@ async function refetchRoleRestrictions(queryClient: QueryClient): Promise<unknow
   return queryClient.getQueryData(ROLE_RESTRICTIONS_KEY);
 }
 
-/** One committed render of the library's context, with the token stored when it rendered. */
 interface Session {
   readonly atlas: IAtlasProvider;
   readonly token: string | null;
 }
 
-/** Signed in: the library says `isVerified` and the stored token has a numeric `exp` in the future (B16). */
 function isSessionLive(session: Session): boolean {
   return session.atlas.isVerified && isLiveToken(session.token, nowInSeconds());
 }
@@ -105,8 +103,8 @@ class WalletChangedError extends Error {
 }
 
 /**
- * The `AtlasUploader` over `@kleros/kleros-app` (ARCHITECTURE.md §8.2). Must render inside the library's `AtlasProvider`.
- * Nothing here runs at mount: the first signature is requested by the first upload that needs one (A15, D-52).
+ * Must render inside the library's `AtlasProvider`. Nothing here runs at mount: the first signature is requested by the
+ * first upload that needs one.
  */
 export function useLibraryUploader(): AtlasUploader {
   const atlas = useAtlasProvider();
@@ -219,7 +217,7 @@ export function useLibraryUploader(): AtlasUploader {
       const limits = roleLimits(committed.current.atlas.roleRestrictions, role) ?? roleLimits(await refetchRoleRestrictions(queryClient), role);
       if (limits === null) return failure.limitsUnavailable();
       const refusal = refuseFile(file, limits);
-      if (refusal !== null) return failure.refused(refusal, file, limits);
+      if (refusal !== null) return failure.refused(refusal, limits);
       try {
         return await signInAndUpload(file, role, started);
       } finally {

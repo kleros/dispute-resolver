@@ -1,10 +1,8 @@
 import type { CreateFieldErrorCode } from "@dispute-resolver/core";
 import type { UploadError } from "../../atlas";
 
-/** The fields that report a validation error. */
 export type ErrorField = "courtId" | "votes" | "title" | "question" | "optionCount" | "optionTitle" | "party" | "primaryDocument";
 
-/** One message per field for "required" (copy is free; today's wording is kept where it existed, spec §4.3). */
 const REQUIRED: Readonly<Record<ErrorField, string>> = {
   courtId: "Please select a court.",
   votes: "Please enter the number of votes.",
@@ -16,7 +14,6 @@ const REQUIRED: Readonly<Record<ErrorField, string>> = {
   primaryDocument: "Please upload the document again.",
 };
 
-/** The message for a field's validation error (spec §4.3, D-08, B16, B20). Exhaustive over core's codes. */
 export function fieldErrorMessage(field: ErrorField, code: CreateFieldErrorCode): string {
   const messages: Readonly<Record<CreateFieldErrorCode, string>> = {
     required: REQUIRED[field],
@@ -31,9 +28,8 @@ export function fieldErrorMessage(field: ErrorField, code: CreateFieldErrorCode)
   return messages[code];
 }
 
-/** Titles of the summary's notice when publishing the dispute data fails; `sign-in-rejected` is neutral (D-07). */
+/** `sign-in-rejected` is deliberately neutral. */
 export const UPLOAD_FAILURE_TITLES: Readonly<Record<UploadError, string>> = {
-  unconfigured: "Uploads unavailable",
   "no-wallet": "Wallet required",
   "limits-unavailable": "Upload unavailable",
   "mime-not-allowed": "Upload refused",

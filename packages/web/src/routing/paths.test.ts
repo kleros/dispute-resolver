@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { paths, replaceChainSegment, switchChainSegment } from "./paths";
+import { pathDisputeId, paths, replaceChainSegment, switchChainSegment, walletChainLocation } from "./paths";
 
-describe("paths (A19)", () => {
-  it("A19: builds every internal target from a validated chain ID and a numeric dispute ID", () => {
+describe("paths", () => {
+  it("builds every internal target from a validated chain ID and a numeric dispute ID", () => {
     expect(paths.chainRoot(1)).toBe("/1");
     expect(paths.ongoing(100)).toBe("/100/ongoing");
     expect(paths.create(11155111)).toBe("/11155111/create");
@@ -11,19 +11,19 @@ describe("paths (A19)", () => {
     expect(paths.case(1, 2n ** 256n - 1n)).toBe(`/1/cases/${(2n ** 256n - 1n).toString()}`);
   });
 
-  it("A19: header links are written without a trailing slash", () => {
+  it("targets are written without a trailing slash", () => {
     for (const path of [paths.chainRoot(1), paths.ongoing(1), paths.create(1), paths.cases(1), paths.case(1, 0n)]) {
       expect(path.endsWith("/")).toBe(false);
     }
   });
 
-  it("A19: rejects a chain that is not configured", () => {
+  it("rejects a chain that is not configured", () => {
     expect(() => paths.ongoing(10)).toThrow(RangeError);
     expect(() => paths.chainRoot(0)).toThrow(RangeError);
     expect(() => paths.cases(Number.NaN)).toThrow(RangeError);
   });
 
-  it("A19: rejects non-numeric and out-of-range dispute IDs", () => {
+  it("rejects non-numeric and out-of-range dispute IDs", () => {
     const hostile: readonly unknown[] = ["5", "5/../../evil", "//evil.example", 5, -1n, 2n ** 256n, null];
     for (const disputeId of hostile) {
       // The builder's type only admits bigint; the cast stands for any caller that bypasses it.
@@ -32,7 +32,7 @@ describe("paths (A19)", () => {
   });
 });
 
-describe("replaceChainSegment (spec §1.3)", () => {
+describe("replaceChainSegment", () => {
   it("replaces an all-digit first segment and keeps the rest of the path", () => {
     expect(replaceChainSegment("/1/cases/5", 100)).toBe("/100/cases/5");
     expect(replaceChainSegment("/1/ongoing/", 137)).toBe("/137/ongoing/");
@@ -74,5 +74,69 @@ describe("switchChainSegment", () => {
   it("the switcher only moves to a configured chain and never to a protocol-relative target", () => {
     expect(() => switchChainSegment("/1/ongoing", 10)).toThrow(RangeError);
     expect(switchChainSegment("//evil.example/x", 1)).toBe("/1/evil.example/x");
+  });
+});
+
+describe("walletChainLocation", () => {
+  it("a list or form path keeps its rest, search and hash on the wallet chain", () => {
+    expect(walletChainLocation({ pathname: "/1/ongoing", search: "?period=4", hash: "#list" }, 100)).toEqual({ pathname: "/100/ongoing", search: "?period=4", hash: "#list" });
+    expect(walletChainLocation({ pathname: "/100/create", search: "", hash: "" }, 1)).toEqual({ pathname: "/1/create", search: "", hash: "" });
+    expect(walletChainLocation({ pathname: "/1/nowhere/else", search: "?x=1", hash: "" }, 100)).toEqual({ pathname: "/100/nowhere/else", search: "?x=1", hash: "" });
+  });
+
+  it("a case path with an ID goes to the wallet chain's Ongoing Disputes without search or hash", () => {
+    expect(walletChainLocation({ pathname: "/1/cases/1621", search: "?ref=share", hash: "#evidence" }, 100)).toEqual({ pathname: "/100/ongoing", search: "", hash: "" });
+    expect(walletChainLocation({ pathname: "/1/cases/not-a-number", search: "", hash: "" }, 100)).toEqual({ pathname: "/100/ongoing", search: "", hash: "" });
+  });
+
+  it("the case lookup without an ID keeps its path on the wallet chain", () => {
+    expect(walletChainLocation({ pathname: "/1/cases", search: "?q=5", hash: "" }, 100)).toEqual({ pathname: "/100/cases", search: "?q=5", hash: "" });
+    expect(walletChainLocation({ pathname: "/1/cases/", search: "", hash: "" }, 100)).toEqual({ pathname: "/100/cases/", search: "", hash: "" });
+  });
+
+  it("an interact path with an ID counts as a case", () => {
+    expect(walletChainLocation({ pathname: "/1/interact/5/evidence", search: "?x=1", hash: "" }, 100)).toEqual({ pathname: "/100/ongoing", search: "", hash: "" });
+  });
+
+  it("a case path counts as a case however the router would still open it: other letter case or percent-encoded segments", () => {
+    for (const pathname of ["/1/CASES/5", "/1/%63ases/5", "/%31/cases/5", "/1/cases/%35", "/1/Interact/5/evidence"]) {
+      expect(walletChainLocation({ pathname, search: "?ref=share", hash: "#e" }, 100)).toEqual({ pathname: "/100/ongoing", search: "", hash: "" });
+    }
+  });
+
+  it("a path the case route does not match keeps its path, as the router shows no dispute there", () => {
+    expect(walletChainLocation({ pathname: "/1/cases/5/extra", search: "", hash: "" }, 100)).toEqual({ pathname: "/100/cases/5/extra", search: "", hash: "" });
+    expect(walletChainLocation({ pathname: "/1/casesx/5", search: "", hash: "" }, 100)).toEqual({ pathname: "/100/casesx/5", search: "", hash: "" });
+  });
+
+  it("a page whose chain segment names no configured chain keeps its path", () => {
+    expect(walletChainLocation({ pathname: "/abc/cases/5", search: "?ref=share", hash: "#e" }, 100)).toEqual({ pathname: "/100/cases/5", search: "?ref=share", hash: "#e" });
+    expect(walletChainLocation({ pathname: "/10/ongoing", search: "", hash: "" }, 1)).toEqual({ pathname: "/1/ongoing", search: "", hash: "" });
+  });
+
+  it("an unconfigured wallet chain gets a path to the unsupported-network screen without throwing", () => {
+    expect(walletChainLocation({ pathname: "/1/ongoing", search: "?period=4", hash: "" }, 10)).toEqual({ pathname: "/10/ongoing", search: "?period=4", hash: "" });
+    expect(walletChainLocation({ pathname: "/1/cases/1621", search: "", hash: "" }, 10)).toEqual({ pathname: "/10/ongoing", search: "", hash: "" });
+  });
+
+  it("never produces a protocol-relative target", () => {
+    expect(walletChainLocation({ pathname: "//evil.example/x", search: "", hash: "" }, 1).pathname.startsWith("//")).toBe(false);
+  });
+});
+
+describe("pathDisputeId", () => {
+  it("reads the dispute ID of a case or interact path and nothing else", () => {
+    expect(pathDisputeId("/1/cases/1621")).toBe(1621n);
+    expect(pathDisputeId("/1/interact/5/evidence")).toBe(5n);
+    expect(pathDisputeId("/1/cases")).toBeNull();
+    expect(pathDisputeId("/1/cases/not-a-number")).toBeNull();
+    expect(pathDisputeId("/1/ongoing")).toBeNull();
+  });
+
+  it("reads the ID as the router does, whatever the letter case or percent-encoding of the path", () => {
+    expect(pathDisputeId("/1/CASES/1621")).toBe(1621n);
+    expect(pathDisputeId("/1/%63ases/1621")).toBe(1621n);
+    expect(pathDisputeId("/1/cases/%31621")).toBe(1621n);
+    expect(pathDisputeId("/1/INTERACT/5/evidence")).toBe(5n);
   });
 });

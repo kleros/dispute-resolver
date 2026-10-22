@@ -25,7 +25,7 @@ export function parseNetlifyHeaders(text: string): readonly HeaderRule[] {
 }
 
 function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 /** Whether a Netlify pattern matches `path`: `:placeholder` is one segment, a trailing `*` is the rest of the path. */
@@ -41,7 +41,6 @@ export function matchesPattern(pattern: string, path: string): boolean {
   return new RegExp(`^${source}$`).test(path);
 }
 
-/** The rules whose pattern matches `path`. */
 export function matchingRules(rules: readonly HeaderRule[], path: string): readonly HeaderRule[] {
   return rules.filter((rule) => matchesPattern(rule.pattern, path));
 }
@@ -66,7 +65,7 @@ export function policies(rules: readonly HeaderRule[], path: string, name: strin
 
 /**
  * A build environment whose RPC URLs carry keys in their path, query and fragment, as a deploy's do: the tests of the
- * policy that the build writes into the headers file (ARCHITECTURE.md §10.4) check that nothing past an origin reaches it.
+ * policy that the build writes into the headers file check that nothing past an origin reaches it.
  */
 export const KEYED_ENV = {
   REACT_APP_WEB3_PROVIDER_URL: "https://mainnet.infura.io/v3/KEY-MAINNET-0001",

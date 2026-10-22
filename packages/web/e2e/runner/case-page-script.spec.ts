@@ -13,14 +13,11 @@ import {
 } from "./casePageRoutes";
 import { caseSectionHeader, expectCaseSectionsSettled, openCaseSection } from "./caseSections";
 
-// The dynamic-script path of a case page end to end (ADR 0004, ARCHITECTURE.md §7), in every engine the runner projects
-// of playwright.config.ts name, against the built app under `vite preview`: the host frames the runner, the classic
-// bootstrap runs the script in an opaque-origin document and the result is rendered. Run with `yarn e2e:runner`. The
-// case page's routes, network-free, are those of casePageRoutes.ts.
+// Runs against the built app under `vite preview` with the network-free routes of casePageRoutes.ts. Run with
+// `yarn e2e:runner`, which covers every engine of the runner projects in playwright.config.ts.
 
-/** The case page's meta-evidence budget: `CASE_PAGE_BUDGET_MS` of packages/core/src/metaEvidence/load.ts (D-38). */
+/** Mirrors `CASE_PAGE_BUDGET_MS` in packages/core/src/metaEvidence/load.ts. */
 const CASE_PAGE_BUDGET_MS = 120_000;
-/** "Well within the budget": a quarter of the case page's meta-evidence budget (D-38). */
 const RENDER_LIMIT_MS = CASE_PAGE_BUDGET_MS / 4;
 
 const FORGED_TITLE = "Title forged by a foreign window";
@@ -54,7 +51,7 @@ const FORGED_REQUEST = {
   rpcRedirects: [],
 };
 
-/** A forged result, as a window posting straight to the app would send it (B1, D-05). */
+/** A forged result, as a window posting straight to the app would send it. */
 const FORGED_RESULT = { type: "dr-runner/result", value: { title: FORGED_TITLE }, jsonDuplicateKeys: false };
 
 /**
@@ -90,13 +87,12 @@ parent.postMessage("forged-request-sent", "*");
 const HARNESS_PATH = "/__runner-e2e/harness.html";
 const HARNESS_HTML = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Runner harness</title></head><body></body></html>';
 
-/** The title the script set: the heading of the dispute's summary. */
 function scriptTitle(page: Page) {
   return page.getByRole("heading", { name: SCRIPT_TITLE, exact: true });
 }
 
-test.describe("case page dynamic script (ADR 0004)", () => {
-  test("§7.3, D-38: an allowlisted script's title and ruling options are rendered well within the budget", async ({ page, baseURL }) => {
+test.describe("case page dynamic script", () => {
+  test("renders an allowlisted script's title and ruling options well within the budget", async ({ page, baseURL }) => {
     test.setTimeout(RENDER_LIMIT_MS + 30_000);
     const traffic = await routeCasePage(page, baseURL);
 
@@ -109,7 +105,7 @@ test.describe("case page dynamic script (ADR 0004)", () => {
 
     // Dispute 1621's recorded ruling is 2, so the decision names the script's second option.
     await expect(page.getByRole("region", { name: /^(Jury decision|Winner)$/ }).getByText(SCRIPT_OPTIONS[1], { exact: true })).toBeVisible();
-    // The Question panel lists the script's options, not the meta-evidence file's. Opened once the page settled (P16-R3).
+    // The Question panel lists the script's options, not the meta-evidence file's.
     const question = await openCaseSection(page, "Question");
     await expect(question.getByText("Multiple choice: single select", { exact: true })).toBeVisible();
     await expect(question.getByRole("region", { name: "Voting options", exact: true }).getByRole("listitem")).toHaveText([
@@ -118,13 +114,13 @@ test.describe("case page dynamic script (ADR 0004)", () => {
       `Option 2 - ${SCRIPT_OPTIONS[1]}`,
     ]);
     for (const option of OPTIONS_BEFORE_SCRIPT) await expect(question.getByText(option)).toHaveCount(0);
-    // The run settled: the host removed its frame (B8).
+    // The run settled: the host removed its frame.
     await expect(page.locator(RUNNER_FRAME)).toHaveCount(0);
     expect(renderedMs).toBeLessThan(RENDER_LIMIT_MS);
     expectEveryDependencyServed(traffic);
   });
 
-  test("P16-R3: once no case section is loading, the accordion stays in place, so a click on its header is not lost", async ({ page, baseURL }) => {
+  test("once no case section is loading, the accordion stays in place, so a click on its header is not lost", async ({ page, baseURL }) => {
     test.setTimeout(RENDER_LIMIT_MS + 30_000);
     const traffic = await routeCasePage(page, baseURL);
     await page.goto(CASE_PATH);
@@ -136,14 +132,14 @@ test.describe("case page dynamic script (ADR 0004)", () => {
     const header = caseSectionHeader(page, "Question");
     const settled = await header.boundingBox();
     expect(settled, "the Question header's box").not.toBeNull();
-    // The sections that render last on this dispute, and the end of the run (B8): the header has not moved.
-    await expect(page.getByRole("list", { name: "Dispute timeline", exact: true })).toBeVisible();
+    // The sections that render last on this dispute, and the end of the run: the header has not moved.
+    await expect(page.getByRole("group", { name: "Dispute timeline", exact: true }).getByRole("list")).toBeVisible();
     await expect(page.getByRole("region", { name: "Winner", exact: true }).getByText(SCRIPT_OPTIONS[1], { exact: true })).toBeVisible();
     await expect(page.locator(RUNNER_FRAME)).toHaveCount(0);
     expect(await header.boundingBox()).toEqual(settled);
   });
 
-  test("B4, C4, B1, D-05: the app's runner frame is sandboxed without allow-same-origin, runs at an opaque origin and ignores a foreign window", async ({ page, baseURL }) => {
+  test("the app's runner frame is sandboxed without allow-same-origin, runs at an opaque origin and ignores a foreign window", async ({ page, baseURL }) => {
     test.setTimeout(RENDER_LIMIT_MS + 30_000);
     const traffic = await routeCasePage(page, baseURL, { [FORGER_URL]: FORGER_HTML });
     const appOrigin = new URL(baseURL ?? "http://localhost").origin;
@@ -197,7 +193,7 @@ test.describe("case page dynamic script (ADR 0004)", () => {
     { name: "a foreign-origin window", forgerUrl: () => FORGER_ONCE_URL },
   ] as const;
   for (const forgerCase of forgers) {
-    test(`C4: a run request from ${forgerCase.name} other than the parent is ignored, and the parent's own request still runs`, async ({ page, baseURL }) => {
+    test(`a run request from ${forgerCase.name} other than the parent is ignored, and the parent's own request still runs`, async ({ page, baseURL }) => {
       const appOrigin = new URL(baseURL ?? "http://localhost").origin;
       const forgerUrl = forgerCase.forgerUrl(appOrigin);
       await page.route(`**${HARNESS_PATH}`, (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: HARNESS_HTML }));
@@ -227,7 +223,7 @@ test.describe("case page dynamic script (ADR 0004)", () => {
           await forgedSent;
           await new Promise((resolve) => setTimeout(resolve, 300));
 
-          // Every message on the port until the result (P-16: the acknowledgement comes first) or the wait ends.
+          // Every message on the port until the result (the acknowledgement comes first) or the wait ends.
           const channel = new MessageChannel();
           const messages: unknown[] = [];
           const answer = new Promise<unknown>((resolve) => {
@@ -240,7 +236,7 @@ test.describe("case page dynamic script (ADR 0004)", () => {
               resolve(null);
             }, 10_000);
           });
-          // eslint-disable-next-line sonarjs/post-message -- ADR 0004: "*" is the only target origin an opaque-origin runner accepts.
+          // eslint-disable-next-line sonarjs/post-message -- "*" is the only target origin an opaque-origin runner accepts.
           runner.contentWindow?.postMessage({ type: "dr-runner/run", version: 2, scriptText, params, guardSource: null, rpcRedirects: [] }, "*", [channel.port2]);
           return { reply: await answer, messages };
         },
@@ -254,7 +250,7 @@ test.describe("case page dynamic script (ADR 0004)", () => {
       );
 
       expect(reply).toEqual({ type: "dr-runner/result", value: { from: "parent" }, jsonDuplicateKeys: false });
-      // The parent's own request is acknowledged first (P-16); the forger's, refused, got no acknowledgement (C4).
+      // The parent's own request is acknowledged first; the forger's, refused, got no acknowledgement.
       expect(messages).toEqual([{ type: "dr-runner/accepted" }, reply]);
       const forger = page.frames().find((frame) => frame.url() === forgerUrl);
       expect(forger).toBeDefined();

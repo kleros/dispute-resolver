@@ -7,7 +7,7 @@ const A = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
 const B = "0x0000000000000000000000000000000000000001";
 
 describe("identiconPattern", () => {
-  it("11.3: is a 5×5 grid mirrored around the middle column", () => {
+  it("is a 5×5 grid mirrored around the middle column", () => {
     const { cells } = identiconPattern(A);
     expect(cells).toHaveLength(5);
     for (const row of cells) {
@@ -17,18 +17,18 @@ describe("identiconPattern", () => {
     }
   });
 
-  it("11.3: is derived from the address bytes, ignoring case", () => {
+  it("is derived from the address bytes, ignoring case", () => {
     expect(identiconPattern(A)).toEqual(identiconPattern(A.toUpperCase().replace("0X", "0x")));
     expect(identiconPattern(A)).not.toEqual(identiconPattern(B));
   });
 
-  it.each(["", "not an address", "0x12"])("B12: never throws on %j", (value) => {
+  it.each(["", "not an address", "0x12"])("never throws on %j", (value) => {
     expect(() => identiconPattern(value)).not.toThrow();
   });
 });
 
 describe("Identicon", () => {
-  it("11.3: renders a decorative token-colored SVG", () => {
+  it("renders a decorative token-colored SVG", () => {
     const { container } = render(<Identicon address={A} size={32} />);
     const svg = container.querySelector("svg");
     expect(svg).not.toBeNull();

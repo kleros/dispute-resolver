@@ -14,25 +14,21 @@ export function failedResult(reason: FailureReason, message: string): ScriptResu
   return { status: "failed", reason, message };
 }
 
-// The acknowledgement's schema reads no field but its type: anything else it carries is dropped here (P-16, B1).
+// The acknowledgement's schema reads no field but its type: anything else it carries is dropped here.
 const portMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(ACCEPTED_MESSAGE_TYPE) }),
   z.object({ type: z.literal(RESULT_MESSAGE_TYPE), value: z.unknown(), jsonDuplicateKeys: z.boolean() }),
   z.object({ type: z.literal(ERROR_MESSAGE_TYPE), message: z.string() }),
 ]);
 
-/** One message from a run's port: the page's acknowledgement, which settles nothing, or the run's outcome (P-16). */
+/** The page's acknowledgement settles nothing; only a result or an error settles the run. */
 export type PortMessage = { readonly kind: "acknowledged" } | { readonly kind: "settled"; readonly result: ScriptResult };
 
-/** A port message that is not one of the three the page sends, or one the port could not deserialize. */
 export const MALFORMED_REPLY = failedResult("runner-error", "The script runner sent a malformed reply.");
 
 const MALFORMED: PortMessage = { kind: "settled", result: MALFORMED_REPLY };
 
-/**
- * What one message from a run's port means (ARCHITECTURE.md §7.3 step 5). A result's value stays `unknown`: core
- * validates it after the merge (A23, C13).
- */
+/** A result's value stays `unknown`: core validates it once it is merged into the meta-evidence. */
 export function parsePortMessage(data: unknown): PortMessage {
   const parsed = portMessageSchema.safeParse(data);
   if (!parsed.success) return MALFORMED;

@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes, useLocation, type Location } from "react-r
 import { ChainLayout, type FrameProps, type PageChain } from "../../routing";
 import { createTestWallet, walletWrapper, type TestWallet } from "../wallet";
 
-/** The page chain of a configured chain, as `usePageChain()` returns it under `/:chainId` (ARCHITECTURE.md §1.5). */
+/** The page chain of a configured chain, as `usePageChain()` returns it under `/:chainId`. */
 export function testPageChain(chainId: ChainId): PageChain {
   const chain = getChain(chainId);
   if (chain === undefined) throw new Error(`testPageChain: chain ${String(chainId)} is not configured.`);
@@ -70,9 +70,9 @@ export function renderInRouter(routes: ReactElement, path: string, options: Rend
 }
 
 /**
- * Renders `ui` at `path` under the app's `/:chainId` layout (ARCHITECTURE.md §1.5): `usePageChain()`,
- * `useResolvedChain()` and chain following behave as in the app, and an unconfigured chain shows the
- * unsupported-network screen. The frame is `TestFrame`.
+ * Renders `ui` at `path` under the app's `/:chainId` layout: `usePageChain()`, `useResolvedChain()` and chain
+ * following behave as in the app, and an unconfigured chain shows the unsupported-network screen. The frame is
+ * `TestFrame`.
  */
 export function renderAtPath(ui: ReactElement, path: string, options: RenderInRouterOptions = {}): RoutedRenderResult {
   return renderInRouter(

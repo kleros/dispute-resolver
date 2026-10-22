@@ -24,17 +24,17 @@ afterEach(() => {
 });
 
 describe("createReadOnlySetup (no WalletConnect project ID)", () => {
-  it("§2.3: boots the unconfigured read-only mode without creating AppKit", () => {
+  it("boots the unconfigured read-only mode without creating AppKit", () => {
     const setup = createReadOnlySetup(buildAppConfig({}, LOCATION));
     expect(setup.mode).toBe("unconfigured");
     expect("modal" in setup).toBe(false);
   });
 
-  it("K-02: the wagmi config has no connector", () => {
+  it("the wagmi config has no connector", () => {
     expect(createReadOnlySetup(buildAppConfig({}, LOCATION)).wagmiConfig.connectors).toEqual([]);
   });
 
-  it("K-02: a browser wallet announcing itself through EIP-6963 is not added", async () => {
+  it("a browser wallet announcing itself through EIP-6963 is not added", async () => {
     const setup = createReadOnlySetup(buildAppConfig({}, LOCATION));
     // Wagmi adds announced wallets only once WagmiProvider has hydrated its store at mount.
     render(
@@ -58,7 +58,7 @@ describe("createReadOnlySetup (no WalletConnect project ID)", () => {
     expect(provider.request).not.toHaveBeenCalled();
   });
 
-  it("§2.3: knows every configured chain, in ascending ID order", () => {
+  it("knows every configured chain, in ascending ID order", () => {
     const ids = createReadOnlySetup(buildAppConfig({}, LOCATION)).wagmiConfig.chains.map((candidate) => candidate.id);
     expect(ids).toEqual(
       Object.values(CHAINS)
@@ -92,25 +92,25 @@ function storedWagmiStore(stored: string): ReadStoredItem {
 }
 
 describe("hasPersistedConnection", () => {
-  it("§3.1: wagmi's stored current connection is a connection to restore", () => {
+  it("wagmi's stored current connection is a connection to restore", () => {
     expect(hasPersistedConnection(storedWagmiStore(CONNECTED_WAGMI_STORE))).toBe(true);
   });
 
-  it("§3.1: a first visit, with nothing stored, has no connection to restore", () => {
+  it("a first visit, with nothing stored, has no connection to restore", () => {
     expect(hasPersistedConnection(() => null)).toBe(false);
   });
 
-  it("§3.1: a wallet that disconnected has no connection to restore, though wagmi keeps its store", () => {
+  it("a wallet that disconnected has no connection to restore, though wagmi keeps its store", () => {
     expect(hasPersistedConnection(storedWagmiStore(DISCONNECTED_WAGMI_STORE))).toBe(false);
   });
 
-  it("§3.1: malformed or unexpected stored values hold no connection", () => {
+  it("malformed or unexpected stored values hold no connection", () => {
     for (const stored of ["{", "null", '"text"', '{"state":{"current":""}}', '{"state":{"current":7}}', '{"current":"bcfb5cd94f3"}']) {
       expect(hasPersistedConnection(storedWagmiStore(stored))).toBe(false);
     }
   });
 
-  it("§3.1: storage that throws on read holds no connection", () => {
+  it("storage that throws on read holds no connection", () => {
     expect(
       hasPersistedConnection(() => {
         throw new DOMException("The storage is blocked.", "SecurityError");
@@ -120,7 +120,7 @@ describe("hasPersistedConnection", () => {
 });
 
 describe("createWalletSetupStore", () => {
-  it("K-02: without a project ID the setup is read-only from the start and AppKit is never loaded", async () => {
+  it("without a project ID the setup is read-only from the start and AppKit is never loaded", async () => {
     const loadAppKit = vi.fn<() => Promise<CreateAppKitSetup>>();
     const store = createWalletSetupStore(buildAppConfig({}, LOCATION), loadAppKit, storedWagmiStore(CONNECTED_WAGMI_STORE));
     expect(store.getSnapshot().pending).toBe(false);
@@ -130,7 +130,7 @@ describe("createWalletSetupStore", () => {
     expect(loadAppKit).not.toHaveBeenCalled();
   });
 
-  it("§2.3: with a project ID the first render gets a pending stand-in with no connector and no storage, before AppKit loads", () => {
+  it("with a project ID the first render gets a pending stand-in with no connector and no storage, before AppKit loads", () => {
     const loadAppKit = vi.fn<() => Promise<CreateAppKitSetup>>();
     const store = createWalletSetupStore(buildAppConfig(WITH_PROJECT_ID, LOCATION), loadAppKit);
     const { setup, pending } = store.getSnapshot();
@@ -141,7 +141,7 @@ describe("createWalletSetupStore", () => {
     expect(loadAppKit).not.toHaveBeenCalled();
   });
 
-  it("§3.1: while AppKit loads, the store waits for a reconnect only when wagmi stored a connection", () => {
+  it("while AppKit loads, the store waits for a reconnect only when wagmi stored a connection", () => {
     const config = buildAppConfig(WITH_PROJECT_ID, LOCATION);
     const neverLoads = () => new Promise<CreateAppKitSetup>(() => undefined);
     expect(createWalletSetupStore(config, neverLoads, storedWagmiStore(CONNECTED_WAGMI_STORE)).getSnapshot()).toEqual(
@@ -150,7 +150,7 @@ describe("createWalletSetupStore", () => {
     expect(createWalletSetupStore(config, neverLoads, () => null).getSnapshot()).toEqual(expect.objectContaining({ pending: true, pendingReconnect: false }));
   });
 
-  it("§3.1: by default the store reads wagmi's connection from localStorage, once, at creation", () => {
+  it("by default the store reads wagmi's connection from localStorage, once, at creation", () => {
     const config = buildAppConfig(WITH_PROJECT_ID, LOCATION);
     const neverLoads = () => new Promise<CreateAppKitSetup>(() => undefined);
     try {
@@ -164,14 +164,14 @@ describe("createWalletSetupStore", () => {
     }
   });
 
-  it("§3.1: once AppKit is loaded, nothing is pending", async () => {
+  it("once AppKit is loaded, nothing is pending", async () => {
     const appKit = fakeAppKit();
     const store = createWalletSetupStore(buildAppConfig(WITH_PROJECT_ID, LOCATION), () => Promise.resolve(appKit.create), storedWagmiStore(CONNECTED_WAGMI_STORE));
     await store.load();
     expect(store.getSnapshot()).toEqual({ setup: appKit.setup, pending: false, pendingReconnect: false });
   });
 
-  it("§2.3: load creates AppKit once with the project ID and publishes its setup", async () => {
+  it("load creates AppKit once with the project ID and publishes its setup", async () => {
     const appKit = fakeAppKit();
     const config = buildAppConfig(WITH_PROJECT_ID, LOCATION);
     const store = createWalletSetupStore(config, () => Promise.resolve(appKit.create));
@@ -186,7 +186,7 @@ describe("createWalletSetupStore", () => {
     expect(listener).toHaveBeenCalled();
   });
 
-  it("D-06: a chunk that fails to load leaves the app read-only, not pending, and the next load retries it", async () => {
+  it("a chunk that fails to load leaves the app read-only, not pending, and the next load retries it", async () => {
     const appKit = fakeAppKit();
     const loadAppKit = vi.fn<() => Promise<CreateAppKitSetup>>().mockRejectedValueOnce(new Error("The chunk did not load.")).mockResolvedValue(appKit.create);
     const store = createWalletSetupStore(buildAppConfig(WITH_PROJECT_ID, LOCATION), loadAppKit);
@@ -198,7 +198,7 @@ describe("createWalletSetupStore", () => {
     expect(store.getSnapshot().setup).toBe(appKit.setup);
   });
 
-  it("§2.3: AppKit that fails to be created is not created again", async () => {
+  it("AppKit that fails to be created is not created again", async () => {
     const create = vi.fn<CreateAppKitSetup>(() => {
       throw new Error("AppKit could not be created.");
     });
@@ -209,7 +209,7 @@ describe("createWalletSetupStore", () => {
     expect(store.getSnapshot().pending).toBe(false);
   });
 
-  it("§2.3: Connect pressed on the stand-in opens AppKit's Connect view on the page chain once AppKit is loaded", async () => {
+  it("Connect pressed on the stand-in opens AppKit's Connect view on the page chain once AppKit is loaded", async () => {
     const appKit = fakeAppKit();
     const store = createWalletSetupStore(buildAppConfig(WITH_PROJECT_ID, LOCATION), () => Promise.resolve(appKit.create));
     const standIn = store.getSnapshot().setup;
@@ -221,21 +221,21 @@ describe("createWalletSetupStore", () => {
 });
 
 describe("walletSetupStoreFor", () => {
-  it("§2.3: creates the store of a configuration once", () => {
+  it("creates the store of a configuration once", () => {
     const config = buildAppConfig({}, LOCATION);
     expect(walletSetupStoreFor(config)).toBe(walletSetupStoreFor(config));
   });
 });
 
 describe("walletTransport", () => {
-  it("D-56: a chain with its RPC variable set uses that RPC", () => {
+  it("a chain with its RPC variable set uses that RPC", () => {
     const env: Env = { REACT_APP_WEB3_PROVIDER_URL: SECRET_RPC };
     const transport = walletTransport(chain(1), env)({});
     expect(transport.config.type).toBe("http");
     expect(transport.value).toEqual(expect.objectContaining({ url: SECRET_RPC }));
   });
 
-  it("D-56: a chain without an RPC rejects every request instead of using a public default", async () => {
+  it("a chain without an RPC rejects every request instead of using a public default", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
     const transport = walletTransport(chain(1), {})({});
@@ -255,12 +255,12 @@ describe("walletTransport", () => {
 });
 
 describe("toViemChain", () => {
-  it("A13: a configured RPC URL never becomes part of a chain definition handed to wallets", () => {
+  it("a configured RPC URL never becomes part of a chain definition handed to wallets", () => {
     const setup = createReadOnlySetup(buildAppConfig({ REACT_APP_WEB3_PROVIDER_URL: SECRET_RPC }, LOCATION));
     expect(JSON.stringify(setup.wagmiConfig.chains)).not.toContain("secret-key");
   });
 
-  it("§2.3: every configured chain has a viem definition with the app's name", () => {
+  it("every configured chain has a viem definition with the app's name", () => {
     for (const config of Object.values(CHAINS)) {
       const viemChain = toViemChain(config);
       expect(viemChain.id).toBe(config.id);
@@ -269,7 +269,7 @@ describe("toViemChain", () => {
     }
   });
 
-  it("§2.3: a chain viem does not know is defined from the core table without any RPC URL", () => {
+  it("a chain viem does not know is defined from the core table without any RPC URL", () => {
     const unknown: ChainConfig = { ...chain(1), id: 999_999_001, name: "Test Chain", currency: "TST", explorerBaseUrl: "https://explorer.example.org" };
     const viemChain = toViemChain(unknown);
     expect(viemChain).toEqual(expect.objectContaining({ id: 999_999_001, name: "Test Chain", nativeCurrency: { name: "TST", symbol: "TST", decimals: 18 } }));
@@ -277,7 +277,7 @@ describe("toViemChain", () => {
     expect(viemChain.blockExplorers?.default.url).toBe("https://explorer.example.org");
   });
 
-  it("MC-1, §2.3: AppKit's explorer of every configured chain is the core table's, Gnosis on gnosisscan.io and Chiado on gnosis-chiado.blockscout.com", () => {
+  it("AppKit's explorer of every configured chain is the core table's, Gnosis on gnosisscan.io and Chiado on gnosis-chiado.blockscout.com", () => {
     for (const config of Object.values(CHAINS)) {
       if (config.explorerBaseUrl === undefined) continue;
       expect(toViemChain(config).blockExplorers?.default.url, `chain ${String(config.id)}`).toBe(config.explorerBaseUrl);
@@ -286,7 +286,7 @@ describe("toViemChain", () => {
     expect(toViemChain(chain(10200)).blockExplorers?.default).toEqual({ name: "Blockscout", url: "https://gnosis-chiado.blockscout.com" });
   });
 
-  it("§2.3: the configured chains start with chain 1", () => {
+  it("the configured chains start with chain 1", () => {
     expect(configuredChains()[0].id).toBe(1);
   });
 });

@@ -8,7 +8,7 @@ export interface TestAtlasProviderProps {
   readonly children?: ReactNode;
 }
 
-/** The atlas layer for component tests (ARCHITECTURE.md §1.5): `useAtlasUpload()` below it returns `uploader`. */
+/** The atlas layer for component tests: `useAtlasUpload()` below it returns `uploader`. */
 export function TestAtlasProvider({ uploader, children }: TestAtlasProviderProps) {
   const [fallback] = useState(() => fakeUploader());
   return <AtlasUploaderProvider uploader={uploader ?? fallback}>{children}</AtlasUploaderProvider>;

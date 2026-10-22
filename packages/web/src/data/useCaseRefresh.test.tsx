@@ -3,7 +3,9 @@ import type { Address, EvidenceList, Outcome, DisputeEventResult } from "@disput
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { TestDataProvider, createTestDeps, testCourt, testDetails, testFamily, testFoundLookup, testOkMetaEvidence } from "../test/data";
+import { numberToHex } from "viem";
+import { TestDataProvider, createTestDeps, testCourt, testDetails, testFamily, testFoundLookup, testOkMetaEvidence, type RpcHandler } from "../test/data";
+import { useChainClockOffset } from "./chainTime";
 import type { CaseData, CaseDispute } from "./types";
 import { useCase } from "./useCase";
 import { useCaseRefresh } from "./useCaseRefresh";
@@ -11,7 +13,11 @@ import { useCaseRefresh } from "./useCaseRefresh";
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../test/data/mockCoreReads")).mockCoreReads(importOriginal));
 
 const ACCOUNT: Address = "0x1111111111111111111111111111111111111111";
-const EVIDENCE: EvidenceList = { items: [], hiddenEvidenceCount: 0, hiddenByReason: { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 } };
+const EVIDENCE: EvidenceList = {
+  items: [],
+  hiddenEvidenceCount: 0,
+  hiddenByReason: { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 },
+};
 const FOUND_EVENT: Outcome<DisputeEventResult> = {
   ok: true,
   value: { status: "found", event: { metaEvidenceId: 0n, evidenceGroupId: 3n, blockNumber: 100n, createdAt: 1_700_000_000, transactionHash: "0x01" } },
@@ -26,21 +32,27 @@ function programReads(period: 3 | 4): void {
   vi.mocked(core.listCourts).mockResolvedValue({ ok: true, value: [testCourt()] });
   vi.mocked(core.readDisputeDetails).mockImplementation((_context, found) =>
     Promise.resolve(
-      testDetails(
-        { status: "found", ...found },
-        { appealInfo: { ok: true, value: { appealCost: 1_000n, appealPeriodStart: 1_700_000_000, appealPeriodEnd: 4_000_000_000 } } },
-      ),
+      testDetails({ status: "found", ...found }, { appealInfo: { ok: true, value: { appealCost: 1_000n, appealPeriodStart: 1_700_000_000, appealPeriodEnd: 4_000_000_000 } } }),
     ),
   );
-  vi.mocked(core.readMultipliers).mockResolvedValue({ ok: true, value: { winnerStakeMultiplier: 10_000n, loserStakeMultiplier: 20_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n } });
+  vi.mocked(core.readMultipliers).mockResolvedValue({
+    ok: true,
+    value: { winnerStakeMultiplier: 10_000n, loserStakeMultiplier: 20_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n },
+  });
   vi.mocked(core.readRoundFunding).mockResolvedValue({ ok: true, value: { round: 0n, contributions: [], fundedRulings: [] } });
   vi.mocked(core.readWithdrawable).mockResolvedValue({ status: "available", beneficiary: ACCOUNT, total: 5n, items: [{ dialect: "idr-v2", ruling: 1n, amount: 5n }] });
 }
 
+/** The only RPC request left once core's reads are mocked: the latest block, for the chain clock. */
+const latestBlock = vi.fn<RpcHandler>(({ method }) => {
+  if (method !== "eth_getBlockByNumber") throw new Error(`unexpected ${method}`);
+  return { number: "0x10", timestamp: numberToHex(1_700_000_000), hash: `0x${"cd".repeat(32)}`, transactions: [] };
+});
+
 function renderCaseWithRefresh() {
-  const deps = createTestDeps();
+  const deps = createTestDeps({ rpc: latestBlock });
   const wrapper = ({ children }: { readonly children?: ReactNode }) => <TestDataProvider deps={deps}>{children}</TestDataProvider>;
-  return renderHook(() => ({ data: useCase(1, 1n, ACCOUNT), refresh: useCaseRefresh(1, 1n) }), { wrapper });
+  return renderHook(() => ({ data: useCase(1, 1n, ACCOUNT), refresh: useCaseRefresh(1, 1n), clockOffset: useChainClockOffset(1) }), { wrapper });
 }
 
 function dispute(data: CaseData): CaseDispute {
@@ -59,8 +71,8 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("useCaseRefresh (ARCHITECTURE.md §5.6)", () => {
-  it("D-07: nothing is read again until a mined write asks for it, and evidence rereads the lookup and the evidence", async () => {
+describe("useCaseRefresh", () => {
+  it("reads nothing again until a mined write asks, and an evidence refresh rereads only the lookup and the evidence", async () => {
     programReads(3);
     const { result } = renderCaseWithRefresh();
     await settled(result);
@@ -75,7 +87,7 @@ describe("useCaseRefresh (ARCHITECTURE.md §5.6)", () => {
     expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
   });
 
-  it("P-02: after a mined funding the panel shows the refreshed totals, current ruling and appeal cost included", async () => {
+  it("shows the refreshed totals, current ruling and appeal cost included, after a mined funding", async () => {
     programReads(3);
     const { result } = renderCaseWithRefresh();
     await settled(result);
@@ -94,7 +106,24 @@ describe("useCaseRefresh (ARCHITECTURE.md §5.6)", () => {
     });
   });
 
-  it("P-02: after the mined withdrawals the panel shows nothing withdrawable", async () => {
+  it("a refresh after a mined funding reads the chain time again with the details", async () => {
+    programReads(3);
+    const { result } = renderCaseWithRefresh();
+    await settled(result);
+    await waitFor(() => {
+      expect(latestBlock).toHaveBeenCalledTimes(1);
+    });
+
+    await act(() => result.current.refresh("evidence"));
+    expect(latestBlock).toHaveBeenCalledTimes(1);
+
+    await act(() => result.current.refresh("appeal"));
+    expect(core.readDisputeDetails).toHaveBeenCalledTimes(2);
+    expect(latestBlock).toHaveBeenCalledTimes(2);
+    expect(latestBlock).toHaveBeenLastCalledWith({ chainId: 1, method: "eth_getBlockByNumber", params: ["latest", false] });
+  });
+
+  it("shows nothing withdrawable after the mined withdrawals", async () => {
     programReads(4);
     const { result } = renderCaseWithRefresh();
     await settled(result);

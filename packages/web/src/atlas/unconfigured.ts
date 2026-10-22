@@ -1,12 +1,15 @@
 import { failure } from "./failures";
 import type { AtlasUploader } from "./types";
 
-/** D-21: without `REACT_APP_ATLAS_URI` nothing is requested and every upload reports `unconfigured`. */
+/**
+ * Without `REACT_APP_ATLAS_URI` nothing is requested. Every caller locks its upload control on `availability`, so the
+ * uploads below are never reached from the UI; if one is, it fails like any other upload.
+ */
 export const UNCONFIGURED_UPLOADER: AtlasUploader = Object.freeze({
   availability: "unconfigured",
   phase: "idle",
   isSignedIn: false,
   limits: () => null,
-  upload: () => Promise.resolve(failure.unconfigured()),
-  uploadJson: () => Promise.resolve(failure.unconfigured()),
+  upload: () => Promise.resolve(failure.uploadFailed(null)),
+  uploadJson: () => Promise.resolve(failure.uploadFailed(null)),
 });

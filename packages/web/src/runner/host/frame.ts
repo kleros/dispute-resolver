@@ -1,7 +1,6 @@
 /**
- * Creates one hidden runner frame (ARCHITECTURE.md §7.3 step 3). The `sandbox` attribute is set before `src`, so the
- * runner document never exists without it (C4), and it grants `allow-scripts` only, which gives the frame an opaque
- * origin (B4). The caller appends the frame once it listens for `load`.
+ * The `sandbox` attribute is set before `src`, so the runner document never exists without it, and it grants
+ * `allow-scripts` only, which gives the frame an opaque origin. The caller appends the frame once it listens for `load`.
  */
 export function createRunnerFrame(document: Document, runnerUrl: string): HTMLIFrameElement {
   const frame = document.createElement("iframe");
@@ -14,7 +13,7 @@ export function createRunnerFrame(document: Document, runnerUrl: string): HTMLIF
   return frame;
 }
 
-/** The hidden element runner frames live in, at the end of `document.body`; created again if something removed it. */
+/** Created again if something removed it from the page. */
 export function createFrameContainer(document: Document): () => HTMLElement {
   let container: HTMLElement | undefined;
   return () => {

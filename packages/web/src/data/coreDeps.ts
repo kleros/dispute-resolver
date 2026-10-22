@@ -7,7 +7,6 @@ import { createRealityQuestionCache } from "./realityCache";
 import { createReceiptWaiter } from "./receipts";
 import type { CoreDeps } from "./types";
 
-/** At most four script frames at a time (D-29). */
 const MAX_CONCURRENT_SCRIPTS = 4;
 
 export interface CoreDepsEnvironment {
@@ -17,7 +16,7 @@ export interface CoreDepsEnvironment {
   readonly storage: PersistStorage | undefined;
 }
 
-/** The one `CoreDeps` of the app (ARCHITECTURE.md §5.1). Creates no network request. */
+/** Creates no network request. */
 export function createCoreDeps(config: AppConfig, environment: CoreDepsEnvironment): CoreDeps {
   return {
     env: config.env,

@@ -1,7 +1,5 @@
-/** The appeal panel's wording (spec §5.11, §5.12, §5.15, D-43, D-46, D-47). */
 export const APPEAL_HEADING = "Appeal the decision";
 
-/** Spec §5.11, without the withdraw sentence that today's conditional also prints in the appeal period (D-43). */
 export const CROWDFUNDING_EXPLANATION =
   "In order to appeal the decision, you need to fully fund the crowdfunding deposit. The dispute will be sent to the jurors when the full deposit is reached. Note that if the previous round loser funds its side, the previous round winner should also fully fund its side in order not to lose the case.";
 
@@ -10,7 +8,6 @@ export const REWARDS_BODY = "Rewards only apply if both sides are funded and the
 
 export const ESCROW_EXPLANATION = "In order to appeal the decision, you need to pay the appeal cost.";
 
-/** Under the panels' write controls while no wallet is connected; they are disabled until one is. */
 export const FUND_NEEDS_WALLET = "Connect a wallet to fund an appeal.";
 export const APPEAL_NEEDS_WALLET = "Connect a wallet to appeal.";
 export const ESCROW_ENDED = "Appeal period ended";
@@ -32,3 +29,24 @@ export const WITHDRAW_UNSUPPORTED =
   "Withdrawals are not supported through the Dispute Resolver for this contract. Use the arbitrable application to withdraw your rewards and refunds.";
 
 export const FREE_INPUT_PLACEHOLDER = "Enter a new ruling option";
+
+export function matchedCardLine(title: string): string {
+  return `This answer has its own card, “${title}”: its funding is shown here.`;
+}
+
+/** What an entry with no card of its own funds, for screen readers: the entered card's numbers are the new answer's. */
+export function newAnswerLine(kind: "answer" | "combination"): string {
+  return `This ${kind} has no card of its own: it is funded as a new ${kind}.`;
+}
+
+export const APPEAL_COST_CHECKING = "Checking the appeal cost…";
+
+export const APPEAL_COST_CHANGED_TITLE = "The appeal cost changed";
+export function appealCostChangedBody(amount: string): string {
+  return `The appeal now costs ${amount}. Press Appeal again to pay it. Nothing was sent.`;
+}
+
+export const APPEAL_COST_UNREAD_TITLE = "Appeal cost unavailable";
+export function appealCostUnreadBody(reason: string): string {
+  return `The appeal cost could not be read again, so nothing was sent. ${reason}`;
+}

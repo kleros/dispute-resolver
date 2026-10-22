@@ -13,8 +13,8 @@ function resolvingScript(value: unknown) {
   };
 }
 
-describe("bootstrapRunner guards (C4)", () => {
-  it('C4: evaluates nothing unless self.origin is "null"', () => {
+describe("bootstrapRunner guards", () => {
+  it('evaluates nothing unless self.origin is "null"', () => {
     const fake = createFakeRunnerEnvironment({ selfOrigin: FAKE_APP_ORIGIN });
     bootstrapRunner(fake.env);
     expect(fake.listenerCount()).toBe(0);
@@ -23,7 +23,7 @@ describe("bootstrapRunner guards (C4)", () => {
     expect(fake.replies).toEqual([]);
   });
 
-  it("C4: refuses when top-level", () => {
+  it("refuses to run in a top-level window", () => {
     const fake = createFakeRunnerEnvironment({ isTopLevel: true });
     bootstrapRunner(fake.env);
     expect(fake.listenerCount()).toBe(0);
@@ -32,7 +32,7 @@ describe("bootstrapRunner guards (C4)", () => {
     expect(fake.replies).toEqual([]);
   });
 
-  it("C4: ignores a message whose source is not window.parent", () => {
+  it("ignores a message whose source is not window.parent", () => {
     const fake = createFakeRunnerEnvironment();
     bootstrapRunner(fake.env);
     fake.deliver({ ...fake.fromParent(runRequest()), source: {} });
@@ -42,7 +42,7 @@ describe("bootstrapRunner guards (C4)", () => {
     expect(fake.listenerCount()).toBe(1);
   });
 
-  it("C4: ignores a message whose origin is not location.origin", () => {
+  it("ignores a message whose origin is not location.origin", () => {
     const fake = createFakeRunnerEnvironment();
     bootstrapRunner(fake.env);
     fake.deliver({ ...fake.fromParent(runRequest()), origin: "https://attacker.example" });
@@ -52,7 +52,7 @@ describe("bootstrapRunner guards (C4)", () => {
     expect(fake.listenerCount()).toBe(1);
   });
 
-  it("C4: ignores every message when the runner's own URL has an opaque origin", () => {
+  it("ignores every message when the runner's own URL has an opaque origin", () => {
     const fake = createFakeRunnerEnvironment({ locationOrigin: "null" });
     bootstrapRunner(fake.env);
     fake.deliver({ ...fake.fromParent(runRequest()), origin: "null" });
@@ -60,7 +60,7 @@ describe("bootstrapRunner guards (C4)", () => {
     expect(fake.replies).toEqual([]);
   });
 
-  it("C4: ignores a request that does not carry exactly one port", () => {
+  it("ignores a request that does not carry exactly one port", () => {
     const fake = createFakeRunnerEnvironment();
     bootstrapRunner(fake.env);
     const event = fake.fromParent(runRequest());
@@ -71,7 +71,7 @@ describe("bootstrapRunner guards (C4)", () => {
     expect(fake.listenerCount()).toBe(1);
   });
 
-  it("C4: ignores a message that is not a well-formed run request, then accepts one that is", () => {
+  it("ignores a message that is not a well-formed run request, then accepts one that is", () => {
     const fake = createFakeRunnerEnvironment();
     bootstrapRunner(fake.env);
     const malformed: unknown[] = [
@@ -97,7 +97,7 @@ describe("bootstrapRunner guards (C4)", () => {
     expect(fake.evaluated).toEqual(["script"]);
   });
 
-  it("C4: accepts one request per frame and ignores every later one", () => {
+  it("accepts one request per frame and ignores every later one", () => {
     const fake = createFakeRunnerEnvironment();
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest({ scriptText: "first" })));
@@ -107,8 +107,8 @@ describe("bootstrapRunner guards (C4)", () => {
   });
 });
 
-describe("bootstrapRunner acknowledgement (P-16)", () => {
-  it("P-16: posts the acknowledgement on the request's port before the guard or the script is evaluated", async () => {
+describe("bootstrapRunner acknowledgement", () => {
+  it("posts the acknowledgement on the request's port before the guard or the script is evaluated", async () => {
     const seenAtFirstEvaluation: unknown[][] = [];
     const fake = createFakeRunnerEnvironment({
       onEvaluate: (source, api) => {
@@ -127,14 +127,14 @@ describe("bootstrapRunner acknowledgement (P-16)", () => {
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { title: "after" }, jsonDuplicateKeys: false }]);
   });
 
-  it('P-16: the acknowledgement is exactly { type: "dr-runner/accepted" } with no other field', () => {
+  it('the acknowledgement is exactly { type: "dr-runner/accepted" } with no other field', () => {
     const fake = createFakeRunnerEnvironment({ onEvaluate: resolvingScript({}) });
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
     expect(fake.replies[0]).toStrictEqual({ type: "dr-runner/accepted" });
   });
 
-  it("P-16, C4: a refused request gets no acknowledgement (no liveness oracle)", async () => {
+  it("a refused request gets no acknowledgement, so no window learns whether a runner is alive", async () => {
     for (const options of [{ selfOrigin: FAKE_APP_ORIGIN }, { isTopLevel: true }, { locationOrigin: "null" }]) {
       const refusing = createFakeRunnerEnvironment(options);
       bootstrapRunner(refusing.env);
@@ -171,8 +171,8 @@ describe("bootstrapRunner acknowledgement (P-16)", () => {
   });
 });
 
-describe("bootstrapRunner script-facing globals (§7.2, spec §9.5)", () => {
-  it("§7.2: defines a frozen copy of scriptParameters and the two callbacks as fixed globals", () => {
+describe("bootstrapRunner script-facing globals", () => {
+  it("defines a frozen copy of scriptParameters and the two callbacks as fixed globals", () => {
     const fake = createFakeRunnerEnvironment();
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
@@ -187,7 +187,7 @@ describe("bootstrapRunner script-facing globals (§7.2, spec §9.5)", () => {
     expect(typeof fake.globals.rejectScript).toBe("function");
   });
 
-  it("§7.2: defines the globals before evaluating the script, which reads them at top level", async () => {
+  it("defines the globals before evaluating the script, which reads them at top level", async () => {
     const fake = createFakeRunnerEnvironment({
       onEvaluate: (_source, api) => {
         const params = api.globals.scriptParameters as { disputeID: string };
@@ -203,8 +203,8 @@ describe("bootstrapRunner script-facing globals (§7.2, spec §9.5)", () => {
   });
 });
 
-describe("bootstrapRunner run and reply (§7.2)", () => {
-  it("B1: posts the resolved value through the transferred port", async () => {
+describe("bootstrapRunner run and reply", () => {
+  it("posts the resolved value through the transferred port", async () => {
     const fake = createFakeRunnerEnvironment({ onEvaluate: resolvingScript({ rulingOptions: { titles: ["Yes", "No"] } }) });
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
@@ -212,21 +212,21 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { rulingOptions: { titles: ["Yes", "No"] } }, jsonDuplicateKeys: false }]);
   });
 
-  it("A4: evaluates the duplicate-key guard before the script when the host sends one", () => {
+  it("evaluates the duplicate-key guard before the script when the host sends one", () => {
     const fake = createFakeRunnerEnvironment();
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest({ guardSource: "guard" })));
     expect(fake.evaluated).toEqual(["guard", "script"]);
   });
 
-  it("A4: evaluates no guard when the host sends none", () => {
+  it("evaluates no guard when the host sends none", () => {
     const fake = createFakeRunnerEnvironment();
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest({ guardSource: null })));
     expect(fake.evaluated).toEqual(["script"]);
   });
 
-  it("A4: reports the duplicate keys the guard recorded", async () => {
+  it("reports the duplicate keys the guard recorded", async () => {
     const fake = createFakeRunnerEnvironment({
       onEvaluate: (source, api) => {
         if (source === "guard") return;
@@ -242,7 +242,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: {}, jsonDuplicateKeys: true }]);
   });
 
-  it("§7.2, P-16: a synchronous script failure is reported after the acknowledgement", async () => {
+  it("reports a synchronous script failure after the acknowledgement", async () => {
     const fake = createFakeRunnerEnvironment({
       onEvaluate: () => {
         throw new SyntaxError("Unexpected token");
@@ -254,7 +254,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "Unexpected token" }]);
   });
 
-  it("§7.2: a synchronous throw from getMetaEvidence posts an error", async () => {
+  it("posts an error when getMetaEvidence throws synchronously", async () => {
     const fake = createFakeRunnerEnvironment({
       onEvaluate: (_source, api) => {
         api.globals.getMetaEvidence = () => {
@@ -268,7 +268,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "boom" }]);
   });
 
-  it("§7.2: a script without getMetaEvidence posts an error", async () => {
+  it("posts an error for a script without getMetaEvidence", async () => {
     const fake = createFakeRunnerEnvironment();
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
@@ -276,7 +276,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "getMetaEvidence is not defined" }]);
   });
 
-  it("§7.2: rejectScript posts an error", async () => {
+  it("posts an error when the script calls rejectScript", async () => {
     const fake = createFakeRunnerEnvironment({
       onEvaluate: (_source, api) => {
         api.globals.getMetaEvidence = () => {
@@ -290,7 +290,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "question not found" }]);
   });
 
-  it("§7.2: a rejection reason that is not an Error still posts an error", async () => {
+  it("still posts an error for a rejection reason that is not an Error", async () => {
     const fake = createFakeRunnerEnvironment({
       onEvaluate: (_source, api) => {
         api.globals.getMetaEvidence = () => {
@@ -304,7 +304,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "The script reported a failure." }]);
   });
 
-  it("§7.2, P-16: only the first resolve or reject follows the acknowledgement", async () => {
+  it("posts only the first resolve or reject after the acknowledgement", async () => {
     const fake = createFakeRunnerEnvironment({
       onEvaluate: (_source, api) => {
         api.globals.getMetaEvidence = () => {
@@ -322,7 +322,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { rulingOptions: { type: "single-select" } }, jsonDuplicateKeys: false }]);
   });
 
-  it("§7.2: resolveScript adopts a promise, as the old runner's promise resolver did", async () => {
+  it("resolveScript adopts a promise", async () => {
     const fake = createFakeRunnerEnvironment({
       onEvaluate: (_source, api) => {
         api.globals.getMetaEvidence = () => {
@@ -336,7 +336,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { title: "adopted" }, jsonDuplicateKeys: false }]);
   });
 
-  it("§7.2: a resolved promise that rejects posts an error", async () => {
+  it("posts an error when a promise given to resolveScript rejects", async () => {
     const fake = createFakeRunnerEnvironment({
       onEvaluate: (_source, api) => {
         api.globals.getMetaEvidence = () => {
@@ -350,7 +350,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "rpc down" }]);
   });
 
-  it("§7.2: a value that cannot be structured-cloned posts an error instead", async () => {
+  it("posts an error instead of a value that cannot be structured-cloned", async () => {
     const fake = createFakeRunnerEnvironment({ onEvaluate: resolvingScript({ title: "x", render: () => "not cloneable" }) });
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
@@ -358,7 +358,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "The script's result cannot be copied out of the runner." }]);
   });
 
-  it("§7.2, P-16: asynchronous errors are not reported after the acknowledgement; the host's timeout settles the run", async () => {
+  it("does not report asynchronous errors after the acknowledgement, leaving the host's timeout to settle the run", async () => {
     const fake = createFakeRunnerEnvironment({
       onEvaluate: (_source, api) => {
         api.globals.getMetaEvidence = () => {
@@ -374,7 +374,7 @@ describe("bootstrapRunner run and reply (§7.2)", () => {
     expect(fake.replies).toEqual([ACCEPTED]);
   });
 
-  it("D-25: installs the RPC redirect before the script is evaluated", async () => {
+  it("installs the RPC redirect before the script is evaluated", async () => {
     let topLevelRequest: Promise<Response> | undefined;
     const fake = createFakeRunnerEnvironment({
       onEvaluate: () => {

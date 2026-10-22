@@ -30,8 +30,8 @@ export interface FakeUploader extends AtlasUploader {
 }
 
 /**
- * A ready, signed-in uploader for `TestAtlasProvider` (ARCHITECTURE.md §1.5). By default `limits` answers
- * `TEST_ROLE_LIMITS` and every upload succeeds with `TEST_UPLOAD_PATH`; `overrides` replace any member.
+ * A ready, signed-in uploader for `TestAtlasProvider`. By default `limits` answers `TEST_ROLE_LIMITS` and every upload
+ * succeeds with `TEST_UPLOAD_PATH`; `overrides` replace any member.
  */
 export function fakeUploader(overrides: Partial<AtlasUploader> = {}): FakeUploader {
   const uploaded: UploadResult = { ok: true, path: TEST_UPLOAD_PATH };

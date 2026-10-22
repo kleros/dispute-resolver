@@ -7,9 +7,8 @@ import { PageChainContext } from "./pageChain";
 import { paths, replaceChainSegment } from "./paths";
 
 /**
- * The chain a chain-less URL goes to (ARCHITECTURE.md §3.1): the connected wallet's chain when it is configured,
- * otherwise the default chain. `null` while wagmi is still reconnecting a returning wallet, so that user lands on their
- * wallet's chain instead of being moved there afterwards.
+ * `null` while wagmi is still reconnecting a returning wallet, so that user lands on their wallet's chain instead of
+ * being moved there afterwards.
  */
 function useDefaultChain(): ChainId | null {
   const wallet = useWallet();
@@ -18,10 +17,6 @@ function useDefaultChain(): ChainId | null {
   return DEFAULT_CHAIN_ID;
 }
 
-/**
- * `/`, `/:chainId` and `/:chainId/disputes` (D-01): the Ongoing page of the page chain, or, outside a chain, of the
- * default chain once the wallet has settled.
- */
 export function RedirectToOngoing() {
   const page = useContext(PageChainContext);
   const fallback = useDefaultChain();
@@ -30,10 +25,6 @@ export function RedirectToOngoing() {
   return <Navigate to={paths.ongoing(chainId)} replace />;
 }
 
-/**
- * A chain-less legacy path (`/ongoing`, `/create`, `/cases/5`, `/interact/5`, `/disputes`; D-01): the same path, search
- * and hash under the default chain once the wallet has settled.
- */
 export function ChainlessRedirect() {
   const location = useLocation();
   const chainId = useDefaultChain();
@@ -42,8 +33,8 @@ export function ChainlessRedirect() {
 }
 
 /**
- * `/:chainId/interact/:id/*` (spec §1.2): the case page of that dispute. Targets are built from the parsed ID only
- * (A19), so an ID that does not parse renders the case page's not-found state in place, without navigating (P-11).
+ * Targets are built from the parsed ID only, so an ID that does not parse renders the not-found state in place, without
+ * navigating.
  */
 export function InteractRedirect() {
   const page = useContext(PageChainContext);

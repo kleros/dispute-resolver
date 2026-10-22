@@ -2,10 +2,8 @@ import type { RealityQuestion, RealityQuestionCache } from "@dispute-resolver/co
 import type { PersistStorage } from "./persistence";
 
 /**
- * The Reality question cache over localStorage (ARCHITECTURE.md §5.1, spec §6.5). Keys are core's
- * `realityQuestionCacheKey` (today's `@@kleros/court/reality-question/v1/{chain}/{proxy}/{disputeId}`); values come back
- * as `unknown` and core validates them before use (A5). Every storage access is guarded: a blocked or full storage
- * only means the question is looked up again.
+ * Values come back as `unknown` and core validates them before use. Every storage access is guarded: a blocked or full
+ * storage only means the question is looked up again.
  */
 export function createRealityQuestionCache(storage: PersistStorage | undefined): RealityQuestionCache {
   return {

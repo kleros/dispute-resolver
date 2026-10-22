@@ -3,7 +3,6 @@ import { defaultShouldDehydrateQuery, hashKey, type DehydratedState, type Query,
 import type { PersistedClient, PersistQueryClientOptions, Persister } from "@tanstack/react-query-persist-client";
 import { CACHE_VERSION, PERSIST_THROTTLE_MS, PERSISTED_CACHE_KEY, PERSISTED_CACHE_MAX_AGE_MS, PERSISTED_QUERY_GC_TIME_MS } from "./constants";
 
-/** The storage calls the persister makes; `window.localStorage` in the app, a Map-backed object in tests. */
 export interface PersistStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -41,10 +40,9 @@ const persistedClientSchema = z.object({
 });
 
 /**
- * The persistable value of a query, or `null` (ARCHITECTURE.md §5.4). An allowlist: an `ok` court list, and a
- * meta-evidence result whose cache policy is `persist`. Everything else stays in memory: bindings (A22), family
- * detections (C11), account-keyed reads, every rejection (A2), every brief failure (D-38), and the keys of
- * `@kleros/kleros-app` (`UserSettings` holds the user's email).
+ * An allowlist: an `ok` court list, and a meta-evidence result whose cache policy is `persist`. Everything else stays
+ * in memory, notably bindings, which must come from the chain, and the keys of `@kleros/kleros-app` (`UserSettings`
+ * holds the user's email).
  */
 function persistableData(queryKey: QueryKey, data: unknown): unknown {
   if (courtsKeySchema.safeParse(queryKey).success) {
@@ -109,11 +107,6 @@ function restoredQuery(entry: unknown): DehydratedState["queries"][number] | nul
   };
 }
 
-/**
- * Reads the persisted blob back (B15, D-13): parsed inside try/catch, then every query is kept only when its key is on
- * the allowlist and its data passes the validator for that key kind (`parseCachedMetaEvidenceResult` from core for
- * meta-evidence, the Zod schema above for courts). A blob that does not parse is discarded whole.
- */
 export function deserializePersistedClient(text: string): PersistedClient {
   let raw: unknown;
   try {
@@ -128,10 +121,8 @@ export function deserializePersistedClient(text: string): PersistedClient {
 }
 
 /**
- * A persister over a synchronous storage: the three methods of TanStack's `Persister`, written here the way the
- * deprecated `createSyncStoragePersister` implements them (that package is not a dependency), with every storage call
- * guarded. Writes are throttled (the latest
- * client wins); a storage that refuses a write keeps the previous blob, and one that refuses a read restores nothing.
+ * Written the way the deprecated `createSyncStoragePersister` implements it (that package is not a dependency), with
+ * every storage call guarded. Writes are throttled and the latest client wins.
  */
 export function createStoragePersister(storage: PersistStorage | undefined, throttleMs: number = PERSIST_THROTTLE_MS): Persister {
   let pending: PersistedClient | undefined;
@@ -170,7 +161,6 @@ export function createStoragePersister(storage: PersistStorage | undefined, thro
 }
 
 /**
- * The options of `PersistQueryClientProvider` (ARCHITECTURE.md §5.4); `storage` is `undefined` when it is unusable.
  * Restored entries get `PERSISTED_QUERY_GC_TIME_MS`: with TanStack's 5-minute default, an entry no screen observes in
  * the session that restores it would be collected and left out of the next blob, long before its maxAge.
  */

@@ -28,8 +28,8 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe("the app's CoreDeps (ARCHITECTURE.md §5.1)", () => {
-  it("D-29: the app's script runner keeps at most four frames at a time and starts a queued run when one settles", async () => {
+describe("createCoreDeps", () => {
+  it("keeps at most four script frames at a time and starts a queued run when one settles", async () => {
     const fake = createFakeRunnerDocument();
     const deps = createCoreDeps(CONFIG, { document: fake.document, fetch: vi.fn<typeof fetch>(), storage: undefined });
 

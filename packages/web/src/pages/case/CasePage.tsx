@@ -16,7 +16,6 @@ interface CaseFrameProps {
   readonly children: ReactNode;
 }
 
-/** The page's reading column: the search row, then the state. */
 function CaseFrame({ search, children }: CaseFrameProps) {
   return (
     <div className="mx-auto flex w-full max-w-[1080px] min-w-0 flex-col gap-6">
@@ -32,7 +31,6 @@ interface DisputeStateProps {
   readonly retries: BoundaryRetries;
 }
 
-/** One dispute as its lookup stands: its sections while loading or found, else why there is none (spec 5.4, D-53). */
 function DisputeState({ dispute, chain, retries }: DisputeStateProps) {
   const client = useQueryClient();
   const { lookup, chainId, disputeId } = dispute;
@@ -54,7 +52,6 @@ function DisputeState({ dispute, chain, retries }: DisputeStateProps) {
   }
 }
 
-/** What the page shows when it loads no dispute: a pending search, no ID, an ID that does not parse, or no arbitrator. */
 type Placeholder =
   | { readonly kind: "pending"; readonly empty: boolean }
   | { readonly kind: "no-id" }
@@ -81,11 +78,8 @@ function PlaceholderState({ placeholder, chainId, chainName }: PlaceholderStateP
 }
 
 /**
- * The case page (spec 5.1 to 5.5, 5.16; ARCHITECTURE.md §3.1, §11.5) at `/:chainId/cases` and
- * `/:chainId/cases/:id`. The ID is parsed only with core's `parseDisputeId` (A19): none is the search box with no
- * dispute (D-09), one that does not parse is the not-found state with no read, and a chain without an arbitrator reads
- * nothing. A typed search clears the shown dispute at once (D-53). The layout route keys the page by its chain, so a
- * chain change loads the same ID on the new chain without a reload (D-55).
+ * The URL ID is parsed only with core's `parseDisputeId`; one that does not parse is the not-found state with no read.
+ * The layout route keys the page by its chain, so a chain change loads the same ID on the new chain without a reload.
  */
 export function CasePage() {
   const { chainId, chain, capabilities } = usePageChain();
@@ -95,7 +89,7 @@ export function CasePage() {
   const search = useDisputeSearch(chainId, urlId);
   const loadedId = search.pending === null && capabilities.hasArbitrator ? parsedId : null;
   const data = useCase(chainId, loadedId, wallet.status === "connected" ? wallet.address : undefined);
-  // Next to `useCase`, so a section's boundary remounts in a render that reads its new data (S-3).
+  // Next to `useCase`, so a section's boundary remounts in a render that reads its new data.
   const retries = useBoundaryRetries();
   const searchBox = <SearchBox chainId={chainId} search={search} />;
 

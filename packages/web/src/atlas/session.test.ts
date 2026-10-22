@@ -14,23 +14,23 @@ function storageWith(value: string | null): Pick<Storage, "getItem"> {
 }
 
 describe("tokenExpiry and isLiveToken", () => {
-  it("B16: a token with an exp in the future counts", () => {
+  it("counts a token with an exp in the future", () => {
     const token = testJwt({ sub: TEST_WALLET_ACCOUNT, exp: NOW + 60 });
     expect(tokenExpiry(token)).toBe(NOW + 60);
     expect(isLiveToken(token, NOW)).toBe(true);
   });
 
-  it("B16: a token without exp is treated as expired", () => {
+  it("treats a token without exp as expired", () => {
     expect(isLiveToken(testJwt({ sub: TEST_WALLET_ACCOUNT }), NOW)).toBe(false);
     expect(isLiveToken(testJwt({ sub: TEST_WALLET_ACCOUNT, exp: String(NOW + 60) }), NOW)).toBe(false);
   });
 
-  it("B16: an expired token counts as signed out", () => {
+  it("counts an expired token as signed out", () => {
     expect(isLiveToken(testJwt({ sub: TEST_WALLET_ACCOUNT, exp: NOW }), NOW)).toBe(false);
     expect(isLiveToken(testJwt({ sub: TEST_WALLET_ACCOUNT, exp: NOW - 1 }), NOW)).toBe(false);
   });
 
-  it("B16: an undecodable token counts as signed out", () => {
+  it("counts an undecodable token as signed out", () => {
     expect(isLiveToken(null, NOW)).toBe(false);
     expect(isLiveToken("not-a-jwt", NOW)).toBe(false);
     expect(isLiveToken("a.b", NOW)).toBe(false);
@@ -42,11 +42,11 @@ describe("tokenExpiry and isLiveToken", () => {
 });
 
 describe("readStoredToken", () => {
-  it("D-20: reads the JSON-encoded token string the library stores", () => {
+  it("reads the JSON-encoded token string the library stores", () => {
     expect(readStoredToken(storageWith(JSON.stringify("header.payload.signature")))).toBe("header.payload.signature");
   });
 
-  it("B16: anything else is no token", () => {
+  it("reads anything else as no token", () => {
     expect(readStoredToken(null)).toBeNull();
     expect(readStoredToken(storageWith(null))).toBeNull();
     expect(readStoredToken(storageWith("header.payload.signature"))).toBeNull();
@@ -72,7 +72,7 @@ describe("clearRejectedToken", () => {
     };
   }
 
-  it("F2 (A15): removes the stored token Atlas rejected", () => {
+  it("removes the stored token Atlas rejected", () => {
     const storage = storageHolding("rejected.token.value");
 
     clearRejectedToken(storage, "rejected.token.value");
@@ -80,7 +80,7 @@ describe("clearRejectedToken", () => {
     expect(storage.items.has(LIBRARY_TOKEN_KEY)).toBe(false);
   });
 
-  it("F2 (D-20): keeps a token stored by a newer sign-in", () => {
+  it("keeps a token stored by a newer sign-in", () => {
     const storage = storageHolding("newer.token.value");
 
     clearRejectedToken(storage, "rejected.token.value");
@@ -88,7 +88,7 @@ describe("clearRejectedToken", () => {
     expect(readStoredToken(storage)).toBe("newer.token.value");
   });
 
-  it("F2: storage the browser refuses is left alone without throwing", () => {
+  it("leaves storage the browser refuses alone without throwing", () => {
     const refusing = {
       getItem: () => JSON.stringify("rejected.token.value"),
       removeItem: () => {
@@ -115,11 +115,11 @@ describe("@kleros/kleros-app 3.1.0 session storage coupling", () => {
     sessionStorage.clear();
   });
 
-  it("@kleros/kleros-app 3.1.0: is the installed version this coupling was written against", () => {
+  it("is the installed version this coupling was written against", () => {
     expect(klerosAppPackage.version).toBe("3.1.0");
   });
 
-  it('@kleros/kleros-app 3.1.0: after sign-in the token is stored JSON-encoded under sessionStorage "authToken"', async () => {
+  it('stores the token JSON-encoded under sessionStorage "authToken" after sign-in', async () => {
     const token = sessionJwt(TEST_WALLET_ACCOUNT);
     installFakeAtlasServer({ issueToken: () => token });
     const wallet = createTestWallet();
@@ -136,7 +136,7 @@ describe("@kleros/kleros-app 3.1.0 session storage coupling", () => {
     expect(sessionStorage.getItem("authToken")).toBe(JSON.stringify(token));
   });
 
-  it("@kleros/kleros-app 3.1.0: an HTTP 401 from an upload throws AuthorizationError and keeps the stored token in the library", async () => {
+  it("throws AuthorizationError on an HTTP 401 from an upload and keeps the stored token in the library", async () => {
     const token = sessionJwt(TEST_WALLET_ACCOUNT);
     installFakeAtlasServer({ uploadResponse: () => new Response(JSON.stringify({ message: "Token revoked" }), { status: 401 }) });
     sessionStorage.setItem("authToken", JSON.stringify(token));
@@ -159,7 +159,7 @@ describe("@kleros/kleros-app 3.1.0 session storage coupling", () => {
     expect(sessionStorage.getItem("authToken")).toBe(JSON.stringify(token));
   });
 
-  it("§8.6 SIWE steps 1-4, A15, @kleros/kleros-app 3.1.0: the sign-in message is EIP-4361 for this host, the server nonce and the wallet's chain, expiring in 10 minutes", async () => {
+  it("signs in with an EIP-4361 message for this host, the server nonce and the wallet's chain, expiring in 10 minutes", async () => {
     const server = installFakeAtlasServer();
     const wallet = createTestWallet({ chainId: 100 });
     await wallet.connect();
@@ -191,7 +191,7 @@ describe("@kleros/kleros-app 3.1.0 session storage coupling", () => {
     expect(jwtSubject(server.uploads[0]?.authorization)?.toLowerCase()).toBe(TEST_WALLET_ACCOUNT.toLowerCase());
   });
 
-  it("§2.9 isAuthenticated, D-20, B16, A15, @kleros/kleros-app 3.1.0: a stored token is a verified session only for the account in its sub", async () => {
+  it("treats a stored token as a verified session only for the account in its sub", async () => {
     installFakeAtlasServer();
     sessionStorage.setItem("authToken", JSON.stringify(sessionJwt(TEST_WALLET_SECOND_ACCOUNT)));
     const wallet = createTestWallet();
@@ -213,7 +213,7 @@ describe("@kleros/kleros-app 3.1.0 session storage coupling", () => {
     expect(result.current.uploader.isSignedIn).toBe(true);
   });
 
-  it("@kleros/kleros-app 3.1.0: a token stored that way before mount is the library's verified session", async () => {
+  it("treats a token stored that way before mount as the library's verified session", async () => {
     installFakeAtlasServer();
     sessionStorage.setItem("authToken", JSON.stringify(sessionJwt(TEST_WALLET_ACCOUNT)));
     const wallet = createTestWallet();

@@ -1,6 +1,6 @@
 import type { EvidenceList, HiddenEvidenceReason } from "@dispute-resolver/core";
 
-/** Why core hid an evidence entry, in the user's terms (D-22). Exhaustive, so a new core reason fails the typecheck. */
+/** Exhaustive, so a new core reason fails the typecheck. */
 export const HIDDEN_REASON_LABELS: Readonly<Record<HiddenEvidenceReason, string>> = {
   undecodable: "undecodable event log",
   "not-content-addressed": "not content-addressed",
@@ -12,9 +12,8 @@ export const HIDDEN_REASON_LABELS: Readonly<Record<HiddenEvidenceReason, string>
 const REASONS = Object.keys(HIDDEN_REASON_LABELS) as readonly HiddenEvidenceReason[];
 
 /**
- * The visible count of hidden entries (D-22), for example "2 evidence items hidden: not content-addressed"; with
- * several reasons each is counted ("3 evidence items hidden: 1 not valid JSON, 2 could not be fetched"). `null` when
- * nothing is hidden.
+ * For example "2 evidence items hidden: not content-addressed"; with several reasons each is counted ("3 evidence items
+ * hidden: 1 not valid JSON, 2 could not be fetched").
  */
 export function hiddenEvidenceText(list: EvidenceList): string | null {
   const total = list.hiddenEvidenceCount;

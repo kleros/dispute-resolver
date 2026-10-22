@@ -1,4 +1,4 @@
-import type { AppealPanel, ChainConfig } from "@dispute-resolver/core";
+import type { AppealPanel, ChainConfig, UnavailableCode } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import type { CaseSectionProps, CaseWriteContext, SectionData } from "../../data";
 import { Notice, SectionSkeleton, SectionUnavailable } from "../../ui";
@@ -19,12 +19,13 @@ import { useAppealRetry } from "./useAppealRetry";
 
 const SECTION = "Appeal";
 
-/** The kinds whose body offers a write. */
 function hasActions(panel: AppealPanel): boolean {
   return panel.kind === "crowdfunding" || panel.kind === "escrow-appeal" || (panel.kind === "withdraw" && panel.state.status === "available");
 }
 
-/** Why the panel's actions cannot be built: the write context of the dispute failed to load (D-36). */
+/** Codes a new read can change; a missing getter, bad data or an unread network stay as they are. */
+const RETRYABLE: ReadonlySet<UnavailableCode> = new Set(["rpc-error", "reverted", "not-found"]);
+
 function WriteContextNotice({ write }: { readonly write: SectionData<CaseWriteContext> }) {
   if (write.status !== "unavailable") return null;
   return <Notice variant="warning" title="Appeal actions unavailable" body={write.error.message} />;
@@ -34,7 +35,6 @@ interface PanelBodyProps {
   readonly panel: AppealPanel;
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
-  /** Reads the panel's data again (D-36), for the fees notice. */
   readonly onRetry: () => void;
 }
 
@@ -54,7 +54,7 @@ function PanelBody({ panel, actions, chain, onRetry }: PanelBodyProps) {
       return (
         <div className="flex flex-col items-start gap-3">
           <Notice variant="warning" title={FEES_UNAVAILABLE_TITLE} body={`${FEES_UNAVAILABLE_BODY}\n\nReason: ${panel.error.message}`} className="w-full" />
-          <Button text="Retry" aria-label="Retry the appeal fees" variant="secondary" small onPress={onRetry} />
+          {RETRYABLE.has(panel.error.code) ? <Button text="Retry" aria-label="Retry the appeal fees" variant="secondary" small onPress={onRetry} /> : null}
         </div>
       );
     case "withdraw":
@@ -69,12 +69,6 @@ function PanelBody({ panel, actions, chain, onRetry }: PanelBodyProps) {
   }
 }
 
-/**
- * The body of the case page's Appeal panel (spec §5.11, 06 §1): the panel core builds for the dispute's family and
- * period, every kind of `AppealPanel` included (D-46, D-47), its writes going through the wallet's chain guard (B3,
- * D-48) and refreshing the case once mined (D-07, P-02). While the panel loads it shows a placeholder; a panel that
- * could not be built, or whose fees could not be calculated, says why with a Retry that reads its data again (D-36).
- */
 export function AppealSection({ dispute, chain }: CaseSectionProps) {
   const actions = useAppealActions(dispute, chain);
   const retry = useAppealRetry(dispute);

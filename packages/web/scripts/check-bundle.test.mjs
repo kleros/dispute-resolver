@@ -59,60 +59,60 @@ async function problemsOf(overrides) {
   return (await checkBundle(await makeDist(overrides))).problems;
 }
 
-describe("C9: test doubles never ship", () => {
-  it("C9: accepts a clean bundle", async () => {
+describe("test doubles never ship", () => {
+  it("accepts a clean bundle", async () => {
     assert.deepEqual(await problemsOf({}), []);
   });
 
-  it("C9: does not mistake a CSS class named invalid for a fixture host", async () => {
+  it("does not mistake a CSS class named invalid for a fixture host", async () => {
     assert.deepEqual(await problemsOf({ "assets/index-abc.css": ".invalid{color:red}.a .invalid\\:b{x:y}" }), []);
   });
 
-  it("C9: does not mistake a property access named invalid for a fixture host", async () => {
+  it("does not mistake a property access named invalid for a fixture host", async () => {
     assert.deepEqual(await problemsOf({ "assets/index-abc.js": "e.invalid=!0;t.example=1;" }), []);
   });
 
-  it("C9: does not mistake a dotted library symbol name such as zod.compile.invalid for a fixture host", async () => {
+  it("does not mistake a dotted library symbol name such as zod.compile.invalid for a fixture host", async () => {
     assert.deepEqual(await problemsOf({ "assets/index-abc.js": 'const k=Symbol.for(`zod.compile.invalid`);const j="a.b.example";' }), []);
   });
 
-  it("C9: rejects a .invalid fixture host", async () => {
+  it("rejects a .invalid fixture host", async () => {
     const problems = await problemsOf({ "assets/index-abc.js": 'fetch("https://atlas.invalid/graphql")' });
     assert.equal(problems.length, 1);
     assert.match(problems[0], /assets\/index-abc\.js/);
     assert.match(problems[0], /fixture host/);
   });
 
-  it("C9: rejects a .example fixture host such as rpc.example", async () => {
+  it("rejects a .example fixture host such as rpc.example", async () => {
     const problems = await problemsOf({ "assets/index-abc.js": "const u='https://rpc.example/mainnet';" });
     assert.equal(problems.length, 1);
     assert.match(problems[0], /fixture host/);
   });
 
-  it("C9: rejects the wagmi mock connector", async () => {
+  it("rejects the wagmi mock connector", async () => {
     const problems = await problemsOf({ "assets/index-abc.js": 'const c={id:"mock",name:"Mock Connector",type:"mock"};' });
     assert.equal(problems.length, 1);
     assert.match(problems[0], /wagmi mock connector/);
   });
 
-  it("C9: rejects a src/test path left in a bundle or source map", async () => {
+  it("rejects a src/test path left in a bundle or source map", async () => {
     const problems = await problemsOf({ "assets/index-abc.js.map": '{"sources":["../../src/test/data/createTestDeps.ts"]}' });
     assert.ok(problems.some((problem) => /test directory path/.test(problem)));
   });
 
-  it("C9: rejects the test wallet address and transaction hashes in any case", async () => {
+  it("rejects the test wallet address and transaction hashes in any case", async () => {
     const problems = await problemsOf({
       "assets/index-abc.js": 'const a="0x00000000000000000000000000000000000A11CE";const h="0x' + "1".repeat(64) + '";',
     });
     assert.equal(problems.length, 2);
   });
 
-  it("C9: rejects a test double's message and fixture identifier", async () => {
+  it("rejects a test double's message and fixture identifier", async () => {
     const problems = await problemsOf({ "assets/index-abc.js": 'throw Error(`This test runs no dynamic script.`);const c="QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";' });
     assert.equal(problems.length, 2, problems.join("\n"));
   });
 
-  it("C9: rejects a string literal that is exactly a test double's literal, in any quotes", async () => {
+  it("rejects a string literal that is exactly a test double's literal, in any quotes", async () => {
     for (const literal of ["`Test dispute`", '"storage is blocked"', "'storage is full'"]) {
       const problems = await problemsOf({ "assets/index-abc.js": `const t=${literal};` });
       assert.equal(problems.length, 1, literal);
@@ -120,17 +120,17 @@ describe("C9: test doubles never ship", () => {
     }
   });
 
-  it("C9: does not mistake app text that only contains a test double's literal for it", async () => {
+  it("does not mistake app text that only contains a test double's literal for it", async () => {
     assert.deepEqual(await problemsOf({ "assets/index-abc.js": 'const a="Test dispute resolution";const b=`Local storage is blocked by the browser.`;' }), []);
   });
 
-  it("C9: rejects an exported test double name", async () => {
+  it("rejects an exported test double name", async () => {
     const problems = await problemsOf({ "assets/index-abc.js": "window.__x={createTestDeps:1};" });
     assert.equal(problems.length, 1);
     assert.match(problems[0], /test double name/);
   });
 
-  it("C9: rejects the injected wallet of e2e/support/wallet.ts", async () => {
+  it("rejects the injected wallet of e2e/support/wallet.ts", async () => {
     for (const marker of ['const r="io.kleros.e2e-wallet";', "const p={isE2eWallet:!0};", "window.__e2eWallet=h;", 'const n={name:"E2E wallet"};']) {
       const problems = await problemsOf({ "assets/index-abc.js": marker });
       assert.equal(problems.length, 1, marker);
@@ -138,24 +138,24 @@ describe("C9: test doubles never ship", () => {
     }
   });
 
-  it("C9: rejects a bundle built with the e2e build's WalletConnect project ID", async () => {
+  it("rejects a bundle built with the e2e build's WalletConnect project ID", async () => {
     const problems = await problemsOf({ "assets/appKit-abc.js": 'const t={projectId:"e2e00000000000000000000000000000"};' });
     assert.equal(problems.length, 1);
     assert.match(problems[0], /e2e WalletConnect placeholder/);
   });
 
-  it("C9: names each offending file once per marker and never quotes the surrounding content", async () => {
+  it("names each offending file once per marker and never quotes the surrounding content", async () => {
     const problems = await problemsOf({ "assets/index-abc.js": "'https://a.example','https://b.example','https://c.example'" });
     assert.equal(problems.length, 1);
     assert.doesNotMatch(problems[0], /https/);
   });
 
-  it("C9: scans a marker in the headers file and the runner files too", async () => {
+  it("scans a marker in the headers file and the runner files too", async () => {
     const problems = await problemsOf({ _headers: "connect-src https://rpc.example\n", "__runner/bootstrap.js": "x='//a.invalid/'" });
     assert.equal(problems.length, 2);
   });
 
-  it("C9: the marker list names every directory under src/test", async () => {
+  it("names every directory under src/test in the marker list", async () => {
     const testDirectory = fileURLToPath(new URL("../src/test", import.meta.url));
     const directories = (await readdir(testDirectory, { withFileTypes: true })).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
     assert.ok(directories.length > 0);
@@ -170,13 +170,12 @@ describe("C9: test doubles never ship", () => {
 const WEB_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const TEST_DIRECTORY = path.join(WEB_ROOT, "src", "test");
 
-/** Every module under src/test, as paths relative to it with forward slashes, sorted. */
 const TEST_MODULES = (await readdir(TEST_DIRECTORY, { recursive: true, withFileTypes: true }))
   .filter((entry) => entry.isFile() && /\.tsx?$/.test(entry.name))
   .map((entry) => path.relative(TEST_DIRECTORY, path.join(entry.parentPath, entry.name)).split(path.sep).join("/"))
   .sort((a, b) => a.localeCompare(b));
 
-describe("C9: a minified production build that imports a test double fails the check", () => {
+describe("a minified production build that imports a test double fails the check", () => {
   /** Markers that only match identifiers or source-map paths; a minified build without a source map keeps neither. */
   const IDENTIFIER_MARKERS = new Set(["test double name", "test directory path"]);
 
@@ -229,12 +228,12 @@ describe("C9: a minified production build that imports a test double fails the c
     return outputsOf(result).map((output) => (output.type === "chunk" ? output.code : String(output.source)));
   }
 
-  it("C9: finds the modules of src/test", () => {
+  it("finds the modules of src/test", () => {
     assert.ok(TEST_MODULES.length > 10);
     for (const name of UNMARKED_MODULES) assert.ok(TEST_MODULES.includes(name), `${name} is no longer under src/test`);
   });
 
-  /** The C9 findings, other than identifier markers, of a dist holding a minified build that imports `name`. */
+  /** The test-double findings, other than identifier markers, of a dist holding a minified build that imports `name`. */
   async function survivingFindings(name) {
     const outputs = await leakedBuild(path.join(TEST_DIRECTORY, name));
     const files = Object.fromEntries(outputs.map((text, index) => [`assets/leaked-${String(index)}.js`, text]));
@@ -243,19 +242,19 @@ describe("C9: a minified production build that imports a test double fails the c
   }
 
   for (const name of TEST_MODULES.filter((module) => !UNMARKED_MODULES.has(module))) {
-    it(`C9: rejects a minified build that imports src/test/${name}`, async () => {
+    it(`rejects a minified build that imports src/test/${name}`, async () => {
       assert.ok((await survivingFindings(name)).length > 0, `a minified build importing src/test/${name} passes the bundle check`);
     });
   }
 
   for (const name of UNMARKED_MODULES) {
-    it(`C9: src/test/${name} still carries no marker, so its exception is still needed`, async () => {
+    it(`still finds no marker in src/test/${name}, so its exception is still needed`, async () => {
       assert.deepEqual(await survivingFindings(name), []);
     });
   }
 });
 
-describe("A20: no external script or stylesheet", () => {
+describe("no external script or stylesheet", () => {
   for (const [name, html] of Object.entries({
     "an https script": INDEX_HTML.replace("/assets/index-abc.js", "https://cdn.example.org/lib.js"),
     "a protocol-relative script": INDEX_HTML.replace("/assets/index-abc.js", "//cdn.org/lib.js"),
@@ -281,7 +280,7 @@ describe("A20: no external script or stylesheet", () => {
       '<noscript><link rel="stylesheet" href="https://cdn.org/x.css"></noscript></head>',
     ),
   })) {
-    it(`A20: rejects ${name} in index.html`, async () => {
+    it(`rejects ${name} in index.html`, async () => {
       const problems = await problemsOf({ "index.html": html });
       assert.equal(problems.length, 1, problems.join("\n"));
       assert.match(problems[0], /index\.html/);
@@ -289,18 +288,18 @@ describe("A20: no external script or stylesheet", () => {
     });
   }
 
-  it("A20: rejects an external script in the runner page", async () => {
+  it("rejects an external script in the runner page", async () => {
     const problems = await problemsOf({ "__runner/index.html": RUNNER_HTML.replace("/__runner/bootstrap.js", "https://cdn.org/x.js") });
     assert.equal(problems.length, 1);
     assert.match(problems[0], /__runner\/index\.html/);
   });
 
-  it("A20: accepts same-origin scripts, stylesheets, icons and external links that are not stylesheets", async () => {
+  it("accepts same-origin scripts, stylesheets, icons and external links that are not stylesheets", async () => {
     const html = INDEX_HTML.replace("</head>", '<link rel="icon" href="https://cdn.org/i.ico"><link rel="canonical" href="https://resolve.kleros.io/"></head>');
     assert.deepEqual(await problemsOf({ "index.html": html }), []);
   });
 
-  it("A20: ignores an external script inside an HTML comment", async () => {
+  it("ignores an external script inside an HTML comment", async () => {
     const html = INDEX_HTML.replace("</head>", '<!-- <script src="https://cdn.org/x.js"></script> --></head>');
     assert.deepEqual(await problemsOf({ "index.html": html }), []);
   });
@@ -313,7 +312,7 @@ describe("A20: no external script or stylesheet", () => {
     "a comment left open to the end of the document": `<!-- ${EXTERNAL_SCRIPT}`,
     "a comment opener written inside a comment": `<!-- a <!-- b ${EXTERNAL_STYLESHEET} c -->`,
   })) {
-    it(`A20 (js/incomplete-multi-character-sanitization): ignores an external resource hidden by ${name}`, async () => {
+    it(`ignores an external resource hidden by ${name}`, async () => {
       assert.deepEqual(await problemsOf({ "index.html": INDEX_HTML.replace("</head>", `${markup}</head>`) }), []);
     });
   }
@@ -327,20 +326,20 @@ describe("A20: no external script or stylesheet", () => {
     "two comments around it": `<!-- a -->${EXTERNAL_SCRIPT}<!-- b -->`,
     "a closing marker written outside any comment": `--> ${EXTERNAL_SCRIPT}`,
   })) {
-    it(`A20 (js/incomplete-multi-character-sanitization): finds an external resource after ${name}`, async () => {
+    it(`finds an external resource after ${name}`, async () => {
       const problems = await problemsOf({ "index.html": INDEX_HTML.replace("</head>", `${markup}</head>`) });
       assert.equal(problems.length, 1, problems.join("\n"));
       assert.match(problems[0], /index\.html loads an external/);
     });
   }
 
-  it("A20: finds an external script whose end tag has whitespace before the >", async () => {
+  it("finds an external script whose end tag has whitespace before the >", async () => {
     const problems = await problemsOf({ "index.html": INDEX_HTML.replace("</head>", '<script src="https://cdn.org/x.js"></script ></head>') });
     assert.equal(problems.length, 1, problems.join("\n"));
   });
 });
 
-describe("A20: the built pages carry no inline script", () => {
+describe("the built pages carry no inline script", () => {
   const INLINE_SCRIPT = "<script>globalThis.injected=true;</script >";
 
   for (const [name, markup] of Object.entries({
@@ -348,7 +347,7 @@ describe("A20: the built pages carry no inline script", () => {
     "an inline script in an uppercase tag": "<SCRIPT TYPE=module>globalThis.injected=true;</SCRIPT>",
     "an inline script next to an external source": '<script src="/assets/a.js">globalThis.injected=true;</script>',
   })) {
-    it(`A20: rejects ${name} in index.html without quoting it`, async () => {
+    it(`rejects ${name} in index.html without quoting it`, async () => {
       const problems = await problemsOf({ "index.html": INDEX_HTML.replace("</head>", `${markup}</head>`) });
       assert.equal(problems.length, 1, problems.join("\n"));
       assert.match(problems[0], /dist\/index\.html contains an inline script \(A20\)/);
@@ -356,21 +355,21 @@ describe("A20: the built pages carry no inline script", () => {
     });
   }
 
-  it("A20: rejects an inline script in the runner page", async () => {
+  it("rejects an inline script in the runner page", async () => {
     const problems = await problemsOf({ "__runner/index.html": RUNNER_HTML.replace("</body>", `${INLINE_SCRIPT}</body>`) });
     assert.equal(problems.length, 1, problems.join("\n"));
     assert.match(problems[0], /__runner\/index\.html contains an inline script/);
   });
 
-  it("A20: accepts script elements that hold only whitespace, and script text inside a comment", async () => {
+  it("accepts script elements that hold only whitespace, and script text inside a comment", async () => {
     const html = INDEX_HTML.replace("</head>", '<script src="/assets/b.js">\n  </script><!-- <script>globalThis.injected=true;</script> --></head>');
     assert.deepEqual(await problemsOf({ "index.html": html }), []);
   });
 });
 
-describe("C3: the deploy files exist", () => {
+describe("the deploy files exist", () => {
   for (const missing of ["_headers", "__runner/index.html", "__runner/bootstrap.js", "index.html"]) {
-    it(`C3: rejects a bundle without ${missing}`, async () => {
+    it(`rejects a bundle without ${missing}`, async () => {
       const problems = await problemsOf({ [missing]: null });
       assert.ok(
         problems.some((problem) => problem.includes(`dist/${missing}`) && /missing/.test(problem)),
@@ -379,12 +378,12 @@ describe("C3: the deploy files exist", () => {
     });
   }
 
-  it("C3: rejects an empty bootstrap", async () => {
+  it("rejects an empty bootstrap", async () => {
     const problems = await problemsOf({ "__runner/bootstrap.js": "" });
     assert.ok(problems.some((problem) => /bootstrap\.js is empty/.test(problem)));
   });
 
-  it("C9: a missing dist directory asks for a build", async () => {
+  it("asks for a build when the dist directory is missing", async () => {
     const { problems } = await checkBundle(path.join(scratch, "does-not-exist"));
     assert.equal(problems.length, 1);
     assert.match(problems[0], /yarn build/);
@@ -417,16 +416,16 @@ describe("the zod configuration ships in the bundle", () => {
   });
 });
 
-describe("S8707: the dist directory argument stays inside the repository", () => {
+describe("the dist directory argument stays inside the repository", () => {
   const scriptPath = fileURLToPath(new URL("./check-bundle.mjs", import.meta.url));
   const defaultDist = fileURLToPath(new URL("../dist", import.meta.url));
   const runScript = promisify(execFile);
 
-  it("S8707: no argument checks packages/web/dist", async () => {
+  it("checks packages/web/dist without an argument", async () => {
     assert.deepEqual(await distDirectoryFrom(undefined), { ok: true, directory: defaultDist });
   });
 
-  it("S8707: accepts a directory inside the repository, relative or absolute", async () => {
+  it("accepts a directory inside the repository, relative or absolute", async () => {
     assert.deepEqual(await distDirectoryFrom("dist"), { ok: true, directory: path.resolve("dist") });
     assert.deepEqual(await distDirectoryFrom(defaultDist), { ok: true, directory: defaultDist });
   });
@@ -436,14 +435,14 @@ describe("S8707: the dist directory argument stays inside the repository", () =>
     "an absolute path outside": path.parse(process.cwd()).root,
     "a sibling whose name starts with the repository's": `${fileURLToPath(new URL("../../..", import.meta.url)).replace(/[\\/]$/, "")}-copy/dist`,
   })) {
-    it(`S8707: refuses ${name}`, async () => {
+    it(`refuses ${name}`, async () => {
       const target = await distDirectoryFrom(argument);
       assert.equal(target.ok, false);
       assert.match(target.problem, /inside the repository/);
     });
   }
 
-  it("S8707: refuses a link inside the repository that points outside it", async () => {
+  it("refuses a link inside the repository that points outside it", async () => {
     const root = path.join(scratch, "repository");
     const outside = path.join(scratch, "outside");
     await mkdir(root, { recursive: true });
@@ -453,7 +452,7 @@ describe("S8707: the dist directory argument stays inside the repository", () =>
     assert.equal(target.ok, false);
   });
 
-  it("S8707: the command line refuses a directory outside the repository before reading it", async () => {
+  it("refuses a directory outside the repository on the command line before reading it", async () => {
     await assert.rejects(runScript(process.execPath, [scriptPath, path.parse(process.cwd()).root]), (error) => {
       assert.equal(error.code, 1);
       assert.match(error.stderr, /must lie inside the repository/);

@@ -1,8 +1,7 @@
 import { defineConfig, mergeConfig } from "vitest/config";
 import viteConfig from "./vite.config";
 
-// The unit and component tests (`yarn test`). Vitest reads this file instead of vite.config.ts, so it starts from the
-// app's configuration (the React transform, the env directory and prefix, the plugins) and adds what only the tests need.
+// Vitest reads this file instead of vite.config.ts, so it has to start from the app's configuration.
 export default mergeConfig(
   viteConfig,
   defineConfig({
@@ -11,11 +10,11 @@ export default mergeConfig(
     test: {
       environment: "jsdom",
       setupFiles: ["./src/test/setup.ts"],
-      // The app's tests and the build plugins' tests. The Playwright specs in e2e/ run through `yarn e2e`, never here.
+      // The Playwright specs in e2e/ run through `yarn e2e`, never here.
       include: ["src/**/*.test.{ts,tsx}", "vite-plugins/**/*.test.ts"],
       // Component tests that drive whole pages with user-event run about three times slower on the GitHub runner than on
       // a workstation: CreatePage.test.tsx took 65 s there against 24 s locally, and four of its tests passed the default
-      // 5 s limit (B22). A test that hangs still fails, after 30 s.
+      // 5 s limit. A test that hangs still fails, after 30 s.
       testTimeout: 30_000,
       server: {
         deps: {

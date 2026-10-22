@@ -1,6 +1,6 @@
 /**
- * The app route patterns of C1, in Netlify's syntax (ARCHITECTURE.md §3.1, §10.4): the route table's coverage test
- * checks the app serves each one, and the headers test checks `public/_headers` gives each one the app's policy.
+ * The app route patterns, in Netlify's syntax: the route table's coverage test checks the app serves each one, and
+ * the headers test checks `public/_headers` gives each one the app's policy.
  */
 export const APP_ROUTE_PATTERNS = [
   "/",

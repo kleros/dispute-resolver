@@ -30,10 +30,7 @@ function pad(value: bigint): string {
   return value.toString().padStart(2, "0");
 }
 
-/**
- * A duration as `DDd HHh MMm` (spec 3, spec 5.7, spec 5.12), rounded down to the minute like today's countdowns. Used for
- * countdowns and for the durations of upcoming timeline columns.
- */
+/** Rounds down to the minute. */
 export function formatDuration(seconds: number | bigint): string {
   const { days, hours, minutes } = durationParts(seconds);
   return `${pad(days)}d ${pad(hours)}h ${pad(minutes)}m`;

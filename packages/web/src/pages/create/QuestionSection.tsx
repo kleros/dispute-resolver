@@ -8,7 +8,6 @@ import { fieldErrorMessage } from "./messages";
 const QUESTION_TYPE_ITEMS = QUESTION_TYPES.map(({ type, label }) => ({ id: type, text: label }));
 const [MIN_OPTIONS, MAX_OPTIONS] = CREATE_LIMITS.optionRange;
 
-/** Title and description (spec §4.3). */
 export function DisputeSection({ form, errors, onChange }: SectionProps) {
   return (
     <FormGroup title="Dispute" description="What the dispute is about, as jurors will first read it.">
@@ -48,7 +47,7 @@ function OptionRows({ form, errors, onChange }: Pick<SectionProps, "form" | "err
         const number = String(index + 1);
         const error = errors.options?.[index];
         return (
-          // Rows are positional: option N is always the N-th row, and rows past the count are removed (D-08).
+          // Rows are positional: option N is always the N-th row, and rows past the count are removed.
           <li key={number} className="grid grid-cols-1 gap-3 max-lg:py-4 max-lg:first:pt-0 max-lg:last:pb-0 lg:grid-cols-2">
             <FieldSlot>
               <TextField
@@ -80,7 +79,6 @@ function OptionRows({ form, errors, onChange }: Pick<SectionProps, "form" | "err
   );
 }
 
-/** Question type, number of options, question and the ruling options (spec §4.3, D-08). */
 export function QuestionSection({ form, errors, onChange }: SectionProps) {
   const select = isSelectType(form.questionType);
   const optionCountError = errors.optionCount === undefined ? undefined : fieldErrorMessage("optionCount", errors.optionCount);

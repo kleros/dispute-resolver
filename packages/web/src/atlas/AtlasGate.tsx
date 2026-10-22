@@ -12,9 +12,9 @@ function LibraryUploaderProvider({ children }: { readonly children?: ReactNode }
 }
 
 /**
- * The atlas context for everything below it (ARCHITECTURE.md §8.1). With `REACT_APP_ATLAS_URI` set it mounts the library's
- * `AtlasProvider` for `CourtV1`, whose only request at load is the unauthenticated `roles(CourtV1)` query (D-20); without
- * it nothing is requested and uploads report `unconfigured` (D-21).
+ * With `REACT_APP_ATLAS_URI` set it mounts the library's `AtlasProvider` for `CourtV1`, whose only request at load is the
+ * unauthenticated `roles(CourtV1)` query; without it nothing is requested and the uploader reports itself unconfigured,
+ * so every upload control stays disabled.
  */
 export function AtlasGate({ config, children }: AtlasGateProps) {
   const wagmiConfig = useConfig();

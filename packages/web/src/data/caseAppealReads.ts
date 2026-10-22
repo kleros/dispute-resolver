@@ -1,18 +1,26 @@
-import { fundingRound, roundStartBlock, roundsToScan, type Address, type AppealContext, type AppealDecisionEvent, type BehaviorOverride, type FamilyDetection, type Period } from "@dispute-resolver/core";
+import {
+  fundingRound,
+  roundStartBlock,
+  roundsToScan,
+  type Address,
+  type AppealContext,
+  type AppealDecisionEvent,
+  type BehaviorOverride,
+  type FamilyDetection,
+  type Period,
+} from "@dispute-resolver/core";
 import { useMultipliers, useRoundFunding, useWithdrawable } from "./appealHooks";
 import type { AppealReads } from "./caseAssembly";
 import { LOADING, unavailableFrom } from "./sectionData";
 import type { SectionData } from "./types";
 
-/** Everything the appeal reads of a found dispute need, once its family and details are known. */
 export interface AppealPlan {
   readonly context: AppealContext;
   readonly decisions: SectionData<readonly AppealDecisionEvent[]>;
-  /** The Dispute event's block, or the arbitrator's deployment block without one: where round 0 starts (D-02). */
+  /** Where round 0 starts: the Dispute event's block, or the arbitrator's deployment block without one. */
   readonly disputeStartBlock: bigint;
 }
 
-/** The appeal-money reads a period and family need: only families that crowdfund are scanned (06 §1). */
 export function appealNeeds(period: Period, family: FamilyDetection): { readonly funding: boolean; readonly multipliers: boolean; readonly withdraw: boolean } {
   const { appeal, withdraw } = family.capabilities;
   const crowdfunds = appeal.kind === "idr" || appeal.kind === "governor";
@@ -27,7 +35,6 @@ interface RoundPlan {
   readonly starts: readonly bigint[];
 }
 
-/** The current funding round and every round to scan, each with its start block (D-02, D-30). */
 export function roundPlan(period: Period, decisions: readonly AppealDecisionEvent[], override: BehaviorOverride | undefined, disputeStartBlock: bigint): RoundPlan {
   const current = fundingRound(decisions.length, override);
   const rounds = roundsToScan(period, decisions.length, override);
@@ -39,16 +46,12 @@ export function roundPlan(period: Period, decisions: readonly AppealDecisionEven
   };
 }
 
-/** The reads of a period whose plan failed: each read the period needs carries the failure, the others are not read. */
 function failedReads(period: Period, state: Extract<SectionData<AppealPlan>, { status: "unavailable" }>): AppealReads {
   const failed = unavailableFrom(state.error);
   return { multipliers: period === 3 ? failed : null, funding: period >= 3 ? failed : null, withdraw: period === 4 ? failed : null };
 }
 
-/**
- * The multipliers, current-round funding and withdrawable amount of a found dispute's period (ARCHITECTURE.md §5.3).
- * Every hook runs on every render, disabled until its inputs exist; reads a period or family does not need are `null`.
- */
+/** Every hook runs on every render, disabled until its inputs exist; a read the period or family does not need is `null`. */
 export function useAppealReads(planState: SectionData<AppealPlan>, period: Period, account: Address | undefined): AppealReads {
   const plan = planState.status === "ready" ? planState.value : undefined;
   const needs = plan === undefined ? undefined : appealNeeds(period, plan.context.family);

@@ -8,7 +8,6 @@ interface NoticeCopy {
   readonly body: string;
 }
 
-/** The fixed alerts of spec 5.10, chosen by core in their fixed priority order. */
 const NOTICES: Readonly<Record<Exclude<RealityNoticeKind, "none">, NoticeCopy>> = {
   unresolvable: {
     variant: "error",
@@ -32,10 +31,6 @@ const NOTICES: Readonly<Record<Exclude<RealityNoticeKind, "none">, NoticeCopy>> 
   },
 };
 
-/**
- * The Reality question notice (spec 5.10): at most one alert, from the loaded meta-evidence's Reality question, with the
- * question recorded on-chain appended and its line breaks kept. Nothing shows until the meta-evidence has loaded.
- */
 export function RealityNotice({ dispute }: CaseSectionProps) {
   const { metaEvidence } = dispute;
   if (metaEvidence.status !== "ready" || metaEvidence.value.status !== "ok") return null;

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { buildRpcRedirects } from "./rpcRedirects";
 
-describe("buildRpcRedirects (D-25, D-35)", () => {
-  it("D-25: redirects every key on a chain's Infura host to that chain's public RPC", () => {
+describe("buildRpcRedirects", () => {
+  it("redirects every key on a chain's Infura host to that chain's public RPC", () => {
     const rules = buildRpcRedirects({
       REACT_APP_WEB3_PROVIDER_URL: "https://read.example/mainnet",
       REACT_APP_PUBLIC_RPC_1: "https://public.example/mainnet",
@@ -12,17 +12,17 @@ describe("buildRpcRedirects (D-25, D-35)", () => {
     expect(rules).toContainEqual({ chainId: 11155111, host: "sepolia.infura.io", pathPrefix: "/v3/", target: "https://read.example/sepolia" });
   });
 
-  it("D-35: the target defaults to the read RPC when no public RPC is set", () => {
+  it("defaults the target to the read RPC when no public RPC is set", () => {
     const rules = buildRpcRedirects({ REACT_APP_WEB3_PROVIDER_URL: "https://read.example/mainnet" });
     expect(rules.find((rule) => rule.chainId === 1)?.target).toBe("https://read.example/mainnet");
   });
 
-  it("D-25: emits no rule for a chain without a configured RPC", () => {
+  it("emits no rule for a chain without a configured RPC", () => {
     const rules = buildRpcRedirects({ REACT_APP_WEB3_PROVIDER_URL: "  " });
     expect(rules.map((rule) => rule.chainId).sort((a, b) => a - b)).toEqual([300, 324]);
   });
 
-  it("D-25: covers exactly the Infura networks of the configured chains", () => {
+  it("covers exactly the Infura networks of the configured chains", () => {
     const rules = buildRpcRedirects({
       REACT_APP_WEB3_PROVIDER_URL: "https://rpc.example/1",
       REACT_APP_WEB3_SEPOLIA_PROVIDER_URL: "https://rpc.example/11155111",
@@ -55,7 +55,7 @@ describe("buildRpcRedirects (D-25, D-35)", () => {
     expect(rules.find((rule) => rule.chainId === 324)?.target).toBe("https://mainnet.era.zksync.io");
   });
 
-  it("D-25: emits no rule whose target is not https, which the https runner could not reach", () => {
+  it("emits no rule whose target is not https, which the https runner could not reach", () => {
     const rules = buildRpcRedirects({ REACT_APP_WEB3_PROVIDER_URL: "http://localhost:8545" });
     expect(rules.find((rule) => rule.chainId === 1)).toBeUndefined();
   });

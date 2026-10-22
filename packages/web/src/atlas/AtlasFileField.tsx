@@ -2,28 +2,39 @@ import { Button, FileUploader } from "@kleros/ui-components-library";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useConnectWallet, useWallet } from "../wallet";
 import { useAtlasUpload } from "./context";
-import { UNCONFIGURED_MESSAGE, failure, reasonOf } from "./failures";
-import { formatSize } from "./limits";
+import { failure, reasonOf } from "./failures";
+import { limitsHint } from "./limits";
 import type { AtlasFileFieldProps, RoleLimits, UploadPhase, UploadResult, UploadedFile } from "./types";
 
 type Failure = Extract<UploadResult, { readonly ok: false }>;
 
 interface StatusLine {
-  readonly msg: string;
+  readonly msg?: string;
   readonly variant?: "success" | "warning" | "error" | "info";
 }
 
 interface FieldState {
   readonly unavailable: boolean;
-  readonly needsWallet: boolean;
+  /** Why the field is locked, while it is: the wallet it needs or the form's reason. */
+  readonly lockedReason: string | null;
   readonly pending: File | null;
   readonly phase: UploadPhase;
   readonly failed: Failure | null;
   readonly value: UploadedFile | null;
   readonly limits: RoleLimits | null;
+  readonly signInHint: boolean;
 }
 
 const SELECT_PROMPT = "Drop a file here or click to select one.";
+const SIGN_IN_HINT = "Your wallet will ask you to sign in before the first upload.";
+
+const DROPZONE = "w-full [overflow-wrap:anywhere]";
+// The dropzone remounts on every failure, so a refused file replays the shake; a network or sign-in failure does not shake.
+const REFUSED_DROPZONE = `${DROPZONE} animate-[t-input-shake_calc(var(--shake-dur-a)*2+var(--shake-dur-b)*2)_linear] motion-reduce:animate-none`;
+
+function isRefusal(failed: Failure | null): boolean {
+  return failed?.error === "too-large" || failed?.error === "mime-not-allowed";
+}
 
 /**
  * The library marks only its dropzone `data-disabled` and keeps the enabled blue edge, fill and icon on it, so a locked
@@ -32,25 +43,32 @@ const SELECT_PROMPT = "Drop a file here or click to select one.";
 const LOCKED_LOOK =
   "[&_[data-disabled]]:border-klerosUIComponentsStroke [&_[data-disabled]]:bg-klerosUIComponentsLightGrey [&_[data-disabled]]:hover:bg-klerosUIComponentsLightGrey [&_[data-disabled]]:cursor-not-allowed [&_[data-disabled]_svg]:fill-klerosUIComponentsSecondaryText";
 
-/** The one message line under the dropzone: availability, progress (D-08), the outcome, or the server's size limit (D-42). */
-function statusLine({ unavailable, needsWallet, pending, phase, failed, value, limits }: FieldState): StatusLine {
-  if (unavailable) return { msg: UNCONFIGURED_MESSAGE, variant: "warning" };
-  if (needsWallet && pending === null && failed === null && value === null) return { msg: failure.noWallet().message, variant: "info" };
+/**
+ * The one message line under the dropzone: the wallet it needs or why else it is locked, progress, the outcome, or what
+ * it accepts. A field without an upload service has no line at all: it is only locked.
+ */
+function statusLine({ unavailable, lockedReason, pending, phase, failed, value, limits, signInHint }: FieldState): StatusLine {
+  if (unavailable) return {};
+  if (lockedReason !== null && pending === null && failed === null && value === null) return { msg: lockedReason, variant: "info" };
   if (pending !== null) {
     return phase === "signing-in" ? { msg: "Sign the message in your wallet to start the upload.", variant: "info" } : { msg: "Uploading to IPFS...", variant: "info" };
   }
   if (failed !== null) return { msg: failed.message, variant: failed.error === "sign-in-rejected" ? "warning" : "error" };
   if (value !== null) return { msg: `Uploaded ${value.fileName}.`, variant: "success" };
-  if (limits === null) return { msg: SELECT_PROMPT };
-  return { msg: `${SELECT_PROMPT} Maximum size: ${formatSize(limits.maxSize)}.` };
+  const invitation = limits === null ? SELECT_PROMPT : `${SELECT_PROMPT} ${limitsHint(limits)}`;
+  return { msg: signInHint ? `${invitation} ${SIGN_IN_HINT}` : invitation };
+}
+
+function whyLocked(walletConnected: boolean, formReason: string | undefined): string | null {
+  if (!walletConnected) return failure.noWallet().message;
+  return formReason ?? null;
 }
 
 /**
- * The upload dropzone of Create and of the evidence modal (ARCHITECTURE.md §8.3). Choosing a file signs in when needed
- * and uploads it in one action (D-52); the field shows the server's limit (D-42), the progress and the chosen file's name
- * (D-08), and every failure. `value` is controlled so a form can reset it (D-44). The file itself is never rendered (A17).
+ * The upload dropzone of Create and of the evidence modal. Choosing a file signs in when needed and uploads it in one
+ * action. `value` is controlled so a form can reset it. The file itself is never rendered: it is untrusted content.
  */
-export function AtlasFileField({ role, value, onUploaded, onCleared, label = "File", isDisabled = false }: AtlasFileFieldProps) {
+export function AtlasFileField({ role, value, onUploaded, onCleared, label = "File", isDisabled = false, lockedReason }: AtlasFileFieldProps) {
   const uploader = useAtlasUpload();
   const wallet = useWallet();
   const connect = useConnectWallet();
@@ -63,21 +81,36 @@ export function AtlasFileField({ role, value, onUploaded, onCleared, label = "Fi
   const fieldRef = useRef<HTMLDivElement>(null);
   const valuePath = value?.path;
 
-  // The library's visible file-picker button has no name of its own (its dropzone points at a missing "dropzone-label"),
-  // so the field's own label names it, after every mount and remount of the dropzone (the `key` below).
-  useEffect(() => {
-    fieldRef.current?.querySelector("button[data-rac]:not([aria-label])")?.setAttribute("aria-labelledby", labelId);
-  }, [failures, valuePath, labelId]);
-
   const unavailable = uploader.availability === "unconfigured";
   const limits = uploader.limits(role);
-  const needsWallet = isDisabled && wallet.status !== "connected";
-  const status = statusLine({ unavailable, needsWallet, pending, phase: uploader.phase, failed, value, limits });
+  const status = statusLine({
+    unavailable,
+    lockedReason: isDisabled ? whyLocked(wallet.status === "connected", lockedReason) : null,
+    pending,
+    phase: uploader.phase,
+    failed,
+    value,
+    limits,
+    signInHint: uploader.availability === "ready" && !uploader.isSignedIn && !isDisabled,
+  });
+
+  const hasMessage = status.msg !== undefined;
+
+  // The library gives its visible file-picker button no name and no description: its hidden drop target alone points at
+  // the message line (the fixed id "dropzone-label"). The field's label names the button and the message describes it,
+  // after every mount and remount of the dropzone (the `key` below) and whenever the message line comes or goes.
+  useEffect(() => {
+    const picker = fieldRef.current?.querySelector("button[data-rac]:not([aria-label])");
+    if (!picker) return;
+    picker.setAttribute("aria-labelledby", labelId);
+    const message = fieldRef.current?.querySelector("small#dropzone-label");
+    if (message) picker.setAttribute("aria-describedby", message.id);
+    else picker.removeAttribute("aria-describedby");
+  }, [failures, valuePath, labelId, hasMessage]);
 
   const isLocked = unavailable || isDisabled || pending !== null;
 
   const handleFile = async (file: File) => {
-    // A locked field ignores any pick that still reaches it.
     if (isLocked) return;
     if (value !== null) onCleared();
     setFailed(null);
@@ -98,10 +131,10 @@ export function AtlasFileField({ role, value, onUploaded, onCleared, label = "Fi
   };
 
   const offerConnect = failed?.error === "no-wallet" && wallet.status !== "connected" && connect.available;
-  const offerRemove = value !== null && pending === null && !isDisabled;
+  const offerRemove = value !== null && pending === null && !isDisabled && !unavailable;
 
   return (
-    <div role="group" aria-labelledby={labelId} className="flex w-full min-w-0 flex-col gap-2">
+    <fieldset aria-labelledby={labelId} className="m-0 flex w-full min-w-0 flex-col gap-2 border-0 p-0">
       <span id={labelId} className="text-sm text-klerosUIComponentsSecondaryText">
         {label}
       </span>
@@ -115,14 +148,14 @@ export function AtlasFileField({ role, value, onUploaded, onCleared, label = "Fi
         <fieldset disabled={isLocked} className="m-0 min-w-0 border-0 p-0">
           <FileUploader
             key={`${String(failures)}:${value?.path ?? ""}`}
-            className="w-full [overflow-wrap:anywhere]"
+            className={isRefusal(failed) ? REFUSED_DROPZONE : DROPZONE}
             callback={(file) => {
               void handleFile(file);
             }}
             msg={status.msg}
             variant={status.variant}
             // The dropzone's own type filter matches exact types only and would silently refuse drops for `type/*` entries,
-            // so the server's list goes to the file picker alone; `upload` applies the library's rule to every file (B16).
+            // so the server's list goes to the file picker alone; `upload` applies the library's rule to every file.
             fileTriggerProps={limits === null ? undefined : { acceptedFileTypes: [...limits.allowedMimeTypes] }}
             isDisabled={isLocked}
             selectedFile={pending ?? uploadedFile}
@@ -143,6 +176,6 @@ export function AtlasFileField({ role, value, onUploaded, onCleared, label = "Fi
           {offerRemove ? <Button text="Remove file" variant="secondary" small onPress={onCleared} /> : null}
         </div>
       ) : null}
-    </div>
+    </fieldset>
   );
 }

@@ -38,14 +38,13 @@ function documentOf(source: string): TreeNode {
   return { type: "root", children: [{ type: "paragraph", children, position: span(0, source.length) }], position: span(0, source.length) };
 }
 
-/** Runs the plugin on a document and returns its first block. */
 function transform(source: string, tree: TreeNode): TreeNode | undefined {
   remarkLegacyGfm()(tree, { value: source });
   return tree.children?.[0];
 }
 
 describe("remarkLegacyGfm on large descriptions", () => {
-  it("§5.6: reads a table of 130,000 rows", () => {
+  it("reads a table of 130,000 rows", () => {
     const source = "|a|\n|-|\n" + "|b|\n".repeat(COUNT);
     const table = transform(source, documentOf(source.slice(0, -1)));
     expect(table?.type).toBe("table");
@@ -53,14 +52,14 @@ describe("remarkLegacyGfm on large descriptions", () => {
     expect(table?.children?.at(-1)?.children?.[0]?.children).toEqual([expect.objectContaining({ type: "text", value: "b" })]);
   });
 
-  it("§5.6: links a literal URL after 130,000 code spans", () => {
+  it("links a literal URL after 130,000 code spans", () => {
     const source = `${CODE_SPAN} `.repeat(COUNT) + "https://x";
     const children = transform(source, documentOf(source))?.children ?? [];
     expect(children).toHaveLength(2 * COUNT + 1);
     expect(children.at(-1)).toMatchObject({ type: "link", url: "https://x" });
   });
 
-  it("§5.6: links a literal URL before 130,000 code spans", () => {
+  it("links a literal URL before 130,000 code spans", () => {
     const source = ("https://x " + `${CODE_SPAN} `.repeat(COUNT)).trimEnd();
     const children = transform(source, documentOf(source))?.children ?? [];
     expect(children).toHaveLength(2 * COUNT + 1);

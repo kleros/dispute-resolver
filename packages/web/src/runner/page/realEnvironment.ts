@@ -1,7 +1,6 @@
 import type { RunnerEnvironment, XhrOpen } from "../types";
 import { evaluateInGlobalScope, runScriptInGlobalScope } from "./evaluate";
 
-/** The runner page's actual window, as `bootstrapRunner` sees it (ARCHITECTURE.md §7.2). */
 export function realEnvironment(): RunnerEnvironment {
   return {
     selfOrigin: self.origin,
@@ -9,8 +8,6 @@ export function realEnvironment(): RunnerEnvironment {
     parent: window.parent,
     locationOrigin: location.origin,
     addMessageListener(listener) {
-      // Only messages from the runner URL's own origin are passed on; bootstrapRunner checks the origin again,
-      // together with the source window and the port (C4).
       const onMessage = (event: MessageEvent): void => {
         if (event.origin === location.origin) listener(event);
       };

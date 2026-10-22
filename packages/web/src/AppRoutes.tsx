@@ -19,7 +19,6 @@ function lazyPage(load: () => Promise<ComponentType>, skeleton: SectionSkeletonP
   };
 }
 
-/** The route table of ARCHITECTURE.md §3.1 with shell's page frame and the app's three pages. */
 export const AppRoutes = createAppRoutes({
   PageFrame,
   OngoingPage: lazyPage(async () => (await import("./pages/ongoing")).OngoingPage, "grid"),

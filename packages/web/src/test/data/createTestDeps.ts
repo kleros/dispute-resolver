@@ -1,4 +1,16 @@
-import { REGISTRY, createFamilyCache, resolveGateway, type ChainId, type FetchResponse, type Fetcher, type RealityQuestion, type RealityQuestionCache, type ReadClient, type ScriptResult, type ScriptRunRequest } from "@dispute-resolver/core";
+import {
+  REGISTRY,
+  createFamilyCache,
+  resolveGateway,
+  type ChainId,
+  type FetchResponse,
+  type Fetcher,
+  type RealityQuestion,
+  type RealityQuestionCache,
+  type ReadClient,
+  type ScriptResult,
+  type ScriptRunRequest,
+} from "@dispute-resolver/core";
 import { createPublicClient, custom } from "viem";
 import type { CoreDeps } from "../../data";
 
@@ -18,7 +30,7 @@ export type FetchStub = { readonly json: unknown } | { readonly text: string } |
 export interface TestDepsOptions extends Partial<CoreDeps> {
   /** JSON-RPC answers of every chain's read client; without it every RPC request fails. */
   readonly rpc?: RpcHandler;
-  /** Chains whose read client is missing, as with an unset RPC variable (D-56). */
+  /** Chains whose read client is missing, as with an unset RPC variable. */
   readonly unconfiguredChains?: readonly ChainId[];
   /** HTTP answers by exact URL for the stub fetcher; any other URL answers 404. */
   readonly responses?: Readonly<Record<string, FetchStub>>;
@@ -49,9 +61,9 @@ function createMemoryRealityCache(): RealityQuestionCache {
 const failedRun: ScriptResult = { status: "failed", reason: "runner-error", message: "This test runs no dynamic script." };
 
 /**
- * A `CoreDeps` for tests (ARCHITECTURE.md §1.5): read clients over a viem custom transport answering from `rpc`, a
- * stub fetcher answering from `responses`, a fake script runner, in-memory caches, and receipts that never arrive
- * unless `waitForReceipt` is given. Any `CoreDeps` field can be replaced directly.
+ * A `CoreDeps` for tests: read clients over a viem custom transport answering from `rpc`, a stub fetcher answering
+ * from `responses`, a fake script runner, in-memory caches, and receipts that never arrive unless `waitForReceipt` is
+ * given. Any `CoreDeps` field can be replaced directly.
  */
 export function createTestDeps(options: TestDepsOptions = {}): CoreDeps {
   const { rpc, unconfiguredChains = [], responses = {}, runScript, ...overrides } = options;

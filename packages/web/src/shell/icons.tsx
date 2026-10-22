@@ -1,8 +1,8 @@
 import type { SVGProps } from "react";
 
 /**
- * The footer's and header's icons, drawn inline (ARCHITECTURE.md §11.2: no icon dependency). They are decorative: the
- * link or button around each one carries the accessible name. Every icon paints with `currentColor`.
+ * The footer's, header's and network pill's icons, drawn inline so the app takes no icon dependency. They are decorative:
+ * the link or button around each one carries the accessible name. Every icon paints with `currentColor`.
  */
 type IconProps = Readonly<Omit<SVGProps<SVGSVGElement>, "viewBox" | "children">>;
 
@@ -82,7 +82,7 @@ export function HelpIcon(props: IconProps) {
   );
 }
 
-/** A generic block-explorer mark (a magnifier over a block), used for every chain's explorer (D-40). */
+/** A generic block-explorer mark (a magnifier over a block), used for every chain's explorer. */
 export function ExplorerIcon(props: IconProps) {
   return (
     <Icon viewBox="0 0 24 24" {...props}>
@@ -105,14 +105,6 @@ export function CloseIcon(props: IconProps) {
   return (
     <Icon viewBox="0 0 24 24" {...props}>
       <path d="M5.3 5.3a1 1 0 0 1 1.4 0L12 10.58l5.3-5.3a1 1 0 1 1 1.4 1.42L13.42 12l5.3 5.3a1 1 0 0 1-1.42 1.4L12 13.42l-5.3 5.3a1 1 0 0 1-1.4-1.42L10.58 12 5.3 6.7a1 1 0 0 1 0-1.4Z" />
-    </Icon>
-  );
-}
-
-export function ChevronIcon(props: IconProps) {
-  return (
-    <Icon viewBox="0 0 24 24" {...props}>
-      <path d="M5.3 8.3a1 1 0 0 1 1.4 0L12 13.58l5.3-5.3a1 1 0 1 1 1.4 1.42l-6 6a1 1 0 0 1-1.4 0l-6-6a1 1 0 0 1 0-1.4Z" />
     </Icon>
   );
 }

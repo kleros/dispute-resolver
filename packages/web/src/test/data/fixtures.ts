@@ -12,6 +12,7 @@ import type {
   MetaEvidenceResult,
   Period,
 } from "@dispute-resolver/core";
+import type { CaseWriteContext } from "../../data";
 import { testMetaEvidence } from "../safe-content";
 
 export const TEST_ARBITRATOR: Address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
@@ -19,8 +20,8 @@ export const TEST_ARBITRABLE: Address = "0xc5e9ddebb09cd64dfacab4011a0d5cedaf7c9
 export const TEST_META_EVIDENCE_URI: CanonicalIpfsPath = "/ipfs/QmQ2XoA25HmnPUEWDduxj6LYwMwp6jtXPFRMHcNF2EvJfU/metaEvidence.json";
 
 /**
- * A binding as `lookupDispute` returns it. Only core constructs `ArbitratedBinding` in the app (A22); a test builds
- * one through this cast to stand in for a lookup it does not run.
+ * A binding as `lookupDispute` returns it. Only core constructs `ArbitratedBinding` in the app; a test builds one
+ * through this cast to stand in for a lookup it does not run.
  */
 export function testBinding(overrides: Partial<Omit<ArbitratedBinding, symbol>> = {}): ArbitratedBinding {
   const binding = { chainId: 1, disputeId: 1n, arbitrator: TEST_ARBITRATOR, arbitrated: TEST_ARBITRABLE, ...overrides };
@@ -88,6 +89,19 @@ export function testDetails(lookup: Extract<DisputeLookup, { status: "found" }>,
     appealDecisions: { ok: true, value: [] },
     appealInfo: null,
     localId: { kind: "local-id", value: 7n },
+    ...overrides,
+  };
+}
+
+/** The write context of `testFoundLookup()`'s dispute. Its appeal cost cannot be read again unless a test gives one. */
+export function testWriteContext(overrides: Partial<CaseWriteContext> = {}): CaseWriteContext {
+  return {
+    binding: testFoundLookup().binding,
+    family: testFamily(),
+    localId: { kind: "local-id", value: 7n },
+    override: undefined,
+    appealInfo: null,
+    readAppealCost: () => Promise.resolve({ ok: false, error: { code: "not-found", message: "This test reads no appeal cost." } }),
     ...overrides,
   };
 }

@@ -4,10 +4,7 @@ import type { AttachmentProps } from "./types";
 
 const LINK_CLASS = "inline-flex max-w-full items-center gap-2 rounded-base text-klerosUIComponentsPrimaryBlue hover:underline";
 
-/**
- * An attachment or document reference (A10, A17, D-32): a link with the icon of its kind and its file name, or the
- * raw value as plain text when it is not a safe link. Never rendered inline.
- */
+/** Never rendered inline, whatever its kind. */
 export function Attachment({ attachment }: AttachmentProps) {
   if (attachment === null) return null;
   if (attachment.kind === "text") {

@@ -5,8 +5,8 @@ import type { WriteStatus } from "./types";
 
 const MINED: WriteStatus = { phase: "mined", hash: TEST_TX_HASH, explorerUrl: null, receipt: testReceipt() };
 
-describe("fakeWriteController (ARCHITECTURE.md §1.5)", () => {
-  it("§1.5: plays its script, runs onMined before mined, and records the call", async () => {
+describe("fakeWriteController", () => {
+  it("plays its script, runs onMined before mined, and records the call", async () => {
     const fake = fakeWriteController([{ phase: "pending" }, { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null }, MINED]);
     const { result } = renderHook(() => fake.useWrite());
     const onMined = vi.fn();
@@ -20,13 +20,13 @@ describe("fakeWriteController (ARCHITECTURE.md §1.5)", () => {
     expect(fake.executions).toHaveLength(1);
   });
 
-  it("§1.5: starts from a given status", () => {
+  it("starts from a given status", () => {
     const fake = fakeWriteController([], { initial: { phase: "wrong-chain", walletChainId: 100, pageChainId: 1 } });
     const { result } = renderHook(() => fake.useWrite());
     expect(result.current.status).toEqual({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 });
   });
 
-  it("§1.5: a script must end with an outcome", async () => {
+  it("a script must end with an outcome", async () => {
     const fake = fakeWriteController([{ phase: "pending" }]);
     const { result } = renderHook(() => fake.useWrite());
     await act(async () => {
@@ -34,7 +34,7 @@ describe("fakeWriteController (ARCHITECTURE.md §1.5)", () => {
     });
   });
 
-  it("D-51: the sequence fake plays the script per build and refreshes once", async () => {
+  it("the sequence fake plays the script per build and refreshes once", async () => {
     const fake = fakeWriteController([{ phase: "pending" }, MINED]);
     const { result } = renderHook(() => fake.useWriteSequence());
     const onMined = vi.fn();

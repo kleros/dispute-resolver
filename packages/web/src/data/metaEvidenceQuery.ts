@@ -13,7 +13,7 @@ import { PERSISTED_QUERY_GC_TIME_MS, STALE_TIME_MS } from "./constants";
 import { IDLE_KEY, queryKeys } from "./queryKeys";
 import type { CoreDeps, MetaEvidenceBudget } from "./types";
 
-/** The dispute whose meta-evidence is loaded, bound to its arbitrable by the arbitrator (A22). */
+/** `arbitrable` is the arbitrator's `arbitrated`, never the meta-evidence's. */
 export interface MetaEvidenceTarget {
   readonly disputeId: bigint;
   readonly arbitrable: Address;
@@ -21,7 +21,6 @@ export interface MetaEvidenceTarget {
 
 const BUDGET_MS: Readonly<Record<MetaEvidenceBudget, number>> = { case: CASE_PAGE_BUDGET_MS, ongoing: ONGOING_BUDGET_MS };
 
-/** `persist` results never go stale, failures are kept briefly (D-38), rejections not at all (A2). */
 export function metaEvidenceStaleTime(result: MetaEvidenceResult | undefined): number {
   if (result === undefined) return 0;
   switch (metaEvidenceCachePolicy(result)) {
@@ -35,11 +34,9 @@ export function metaEvidenceStaleTime(result: MetaEvidenceResult | undefined): n
 }
 
 /**
- * The meta-evidence query of one dispute, shared by the case page and the Ongoing cards: an Ongoing card runs the
- * pipeline with its budget only when no fresh result is stored; the case page's observer overrides the stale time to 0,
- * so its mount and its move from the idle key always run it (`useMetaEvidence`). `arbitrable` is the arbitrator's
- * `arbitrated`, never the meta-evidence's. `onChain` is the case page's on-chain reader; the Ongoing cards pass none, so
- * they make no per-dispute log read. Without a target the query is idle and never runs.
+ * Shared by the case page and the Ongoing cards: an Ongoing card runs the pipeline only when no fresh result is stored,
+ * while the case page's observer overrides the stale time to 0 (`useMetaEvidence`). The Ongoing cards pass no `onChain`
+ * reader, so they make no per-dispute log read.
  */
 export function metaEvidenceQuery(deps: CoreDeps, chainId: ChainId, target: MetaEvidenceTarget | undefined, budget: MetaEvidenceBudget, onChain?: OnChainMetaEvidenceReader) {
   return queryOptions<MetaEvidenceResult>({

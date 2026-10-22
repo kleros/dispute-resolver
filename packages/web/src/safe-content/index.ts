@@ -1,4 +1,3 @@
-// Public surface of `safe-content` (owner: safe-content), ARCHITECTURE.md §9.
 export type * from "./types";
 export { Attachment } from "./Attachment";
 export { courtCaseUrl } from "./courtCaseUrl";

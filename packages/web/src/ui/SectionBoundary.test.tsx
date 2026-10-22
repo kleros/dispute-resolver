@@ -10,7 +10,7 @@ function silenceErrorReport(event: ErrorEvent): void {
   event.preventDefault();
 }
 
-/** Renders a meta-evidence title the way a section would, and throws like today's app does on a non-string title (spec 11.3). */
+/** Stands in for a section that renders a non-string meta-evidence title, which React rejects. */
 function Title({ title }: { readonly title: unknown }) {
   if (shouldThrow) {
     throw new TypeError("Objects are not valid as a React child");
@@ -31,7 +31,7 @@ describe("SectionBoundary", () => {
     vi.restoreAllMocks();
   });
 
-  it("B12: a render error degrades only its own section", () => {
+  it("a render error replaces only its own section", () => {
     render(
       <main>
         <SectionBoundary section="Summary">
@@ -46,7 +46,7 @@ describe("SectionBoundary", () => {
     expect(screen.getByText("Timeline content")).toBeInTheDocument();
   });
 
-  it("D-36: shows the reason and no fake data", () => {
+  it("shows the reason and no fake data", () => {
     render(
       <SectionBoundary section="Summary">
         <Title title={{}} />
@@ -56,7 +56,7 @@ describe("SectionBoundary", () => {
     expect(screen.queryByRole("heading", { level: 2, name: "[object Object]" })).toBeNull();
   });
 
-  it("D-36: Retry resets the boundary and calls onRetry", async () => {
+  it("Retry resets the boundary and calls onRetry", async () => {
     const onRetry = vi.fn();
     render(
       <SectionBoundary section="Summary" onRetry={onRetry}>
@@ -70,7 +70,7 @@ describe("SectionBoundary", () => {
     expect(screen.queryByText("Summary unavailable")).toBeNull();
   });
 
-  it("D-36: Retry works without an onRetry handler", async () => {
+  it("Retry works without an onRetry handler", async () => {
     render(
       <SectionBoundary section="Summary">
         <Title title="Recovered title" />
@@ -81,7 +81,7 @@ describe("SectionBoundary", () => {
     expect(screen.getByRole("heading", { name: "Recovered title" })).toBeInTheDocument();
   });
 
-  it("D-36: renders its children when nothing throws", () => {
+  it("renders its children when nothing throws", () => {
     shouldThrow = false;
     render(
       <SectionBoundary section="Summary">

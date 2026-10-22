@@ -19,8 +19,8 @@ import {
 
 /**
  * The viem definitions of the configured chains, imported one by one so the bundle carries only these. Their
- * `rpcUrls` are the public endpoints a wallet receives in `wallet_addEthereumChain` (P-03); the app never reads
- * through them (A13): reads use core's read clients, and wagmi's transports are built from the configured RPC only.
+ * `rpcUrls` are the public endpoints a wallet receives in `wallet_addEthereumChain`; the app never reads through
+ * them: reads use core's read clients, and wagmi's transports are built from the configured RPC only.
  */
 const VIEM_CHAINS: readonly Chain[] = [
   mainnet,
@@ -41,8 +41,8 @@ const VIEM_CHAINS: readonly Chain[] = [
 
 /**
  * The viem chain of a configured chain, named as the app names it, with the core table's explorer for a chain viem
- * knows too, so AppKit links to the same explorer as the app (MC-1). A chain viem does not know is defined from the
- * core table with no RPC URL, so nothing can read through it (D-56).
+ * knows too, so AppKit links to the same explorer as the app. A chain viem does not know is defined from the core
+ * table with no RPC URL, so nothing can read through it.
  */
 export function toViemChain(config: ChainConfig): Chain {
   const known = VIEM_CHAINS.find((chain) => chain.id === config.id);
@@ -50,9 +50,7 @@ export function toViemChain(config: ChainConfig): Chain {
     return {
       ...known,
       name: config.name,
-      ...(config.explorerBaseUrl === undefined
-        ? {}
-        : { blockExplorers: { default: { name: known.blockExplorers?.default.name ?? config.name, url: config.explorerBaseUrl } } }),
+      ...(config.explorerBaseUrl === undefined ? {} : { blockExplorers: { default: { name: known.blockExplorers?.default.name ?? config.name, url: config.explorerBaseUrl } } }),
     };
   }
   return defineChain({

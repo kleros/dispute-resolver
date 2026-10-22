@@ -4,7 +4,7 @@ import { MARKDOWN_CORPUS } from "../test/safe-content";
 import { Attachment, ExternalLink, SafeMarkdown } from ".";
 
 describe("safe-content anchors", () => {
-  it("A10: every anchor opens in a new tab with rel noopener noreferrer", () => {
+  it("every anchor opens in a new tab with rel noopener noreferrer", () => {
     const { container } = render(
       <>
         <ExternalLink href="https://kleros.io">Kleros</ExternalLink>
@@ -58,7 +58,6 @@ const ATOMS = [
   " ",
 ] as const;
 
-/** The constructs generated descriptions nest, as their opening and closing source. */
 const CONSTRUCTS: readonly (readonly [open: string, close: string])[] = [
   ["*", "*"],
   ["**", "**"],
@@ -77,7 +76,6 @@ const CONSTRUCTS: readonly (readonly [open: string, close: string])[] = [
   ["mailto:a@b.co", ""],
 ];
 
-/** How a generated line starts: a paragraph, a quote, a list item, a heading or a table row. */
 const LINE_STARTS = ["", "", "> ", "- ", "- [ ] ", "# ", "| "] as const;
 
 /** Link definitions that the generated descriptions may end with, so that their references are links. */
@@ -114,7 +112,6 @@ function pick<T>(next: (bound: number) => number, values: readonly T[]): T {
   return value;
 }
 
-/** Inline content: atoms and constructs, nested up to `depth` levels. */
 function inline(next: (bound: number) => number, depth: number): string {
   return Array.from({ length: 1 + next(3) }, () => {
     if (depth === 0 || next(3) === 0) return pick(next, ATOMS);
@@ -132,7 +129,6 @@ function generatedDescriptions(count: number): string[] {
   });
 }
 
-/** The descriptions among `sources` whose rendering holds an anchor inside an anchor. */
 function nestingAnchors(sources: readonly string[]): string[] {
   return sources.filter((source) => {
     const { container, unmount } = render(<SafeMarkdown source={source} />);
@@ -143,11 +139,11 @@ function nestingAnchors(sources: readonly string[]): string[] {
 }
 
 describe("SafeMarkdown anchors", () => {
-  it("§5.6: no corpus entry or known nesting renders an anchor inside an anchor", () => {
+  it("no corpus entry or known nesting renders an anchor inside an anchor", () => {
     expect(nestingAnchors([...MARKDOWN_CORPUS.map((entry) => entry.source), ...KNOWN_NESTINGS])).toEqual([]);
   });
 
-  it("§5.6: no generated description renders an anchor inside an anchor", () => {
+  it("no generated description renders an anchor inside an anchor", () => {
     expect(nestingAnchors(generatedDescriptions(2_000))).toEqual([]);
   });
 });

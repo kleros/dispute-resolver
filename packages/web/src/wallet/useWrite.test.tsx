@@ -2,7 +2,7 @@ import type { ChainId, Hex } from "@dispute-resolver/core";
 import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { writeContract } from "@wagmi/core";
-import { ChainMismatchError, UserRejectedRequestError } from "viem";
+import { ChainMismatchError, UserRejectedRequestError, type EIP1193RequestFn } from "viem";
 import { mainnet } from "viem/chains";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WriteReceipt } from "../data";
@@ -30,12 +30,27 @@ function renderWrite(wallet: TestWallet, waitForReceipt: (chainId: ChainId, hash
   return { ...view, statuses };
 }
 
-/** A screen in miniature: one `useWrite` with its `WriteStatusNotice` beside it (ARCHITECTURE.md §6.1). */
+/** A screen in miniature: one `useWrite` with its `WriteStatusNotice` beside it. */
 function WriteWithNotice({ onRender }: { readonly onRender: (write: WriteController) => void }) {
   const write = useWrite();
   onRender(write);
   return <WriteStatusNotice status={write.status} />;
 }
+
+/** Renders `WriteWithNotice` and returns the latest controller. */
+function renderWriteWithNotice(wallet: TestWallet): () => WriteController {
+  const writes: WriteController[] = [];
+  render(<WriteWithNotice onRender={(write) => writes.push(write)} />, {
+    wrapper: walletWrapper(wallet, createTestDeps({ waitForReceipt: () => Promise.resolve(testReceipt()) })),
+  });
+  return () => {
+    const write = writes.at(-1);
+    if (write === undefined) throw new Error("WriteWithNotice has not rendered.");
+    return write;
+  };
+}
+
+const CALL_CHAIN_MISMATCH = "This action was prepared for a different network than this page, so nothing was sent.";
 
 beforeEach(() => {
   writeContractMock.mockReset();
@@ -47,12 +62,12 @@ afterEach(() => {
 });
 
 describe("useWrite chain guard", () => {
-  it("D-48: the controller has no switch or Connect of its own; WriteStatusNotice offers both", () => {
+  it("the controller has no switch or Connect of its own; WriteStatusNotice offers both", () => {
     const { result } = renderWrite(createTestWallet());
     expect(Object.keys(result.current).sort((a, b) => a.localeCompare(b))).toEqual(["execute", "reset", "status"]);
   });
 
-  it("B3: refuses to sign when the wallet is on another chain", async () => {
+  it("refuses to sign when the wallet is on another chain", async () => {
     const wallet = createTestWallet({ chainId: 100 });
     await wallet.connect();
     const { result } = renderWrite(wallet);
@@ -65,16 +80,10 @@ describe("useWrite chain guard", () => {
     expect(writeContractMock).not.toHaveBeenCalled();
   });
 
-  it("D-48: the refusal's switch offer moves the wallet, the refusal stays until the retry, and the retry signs on the page chain", async () => {
+  it("the refusal's switch offer moves the wallet, the refusal stays until the retry, and the retry signs on the page chain", async () => {
     const wallet = createTestWallet({ chainId: 100 });
     await wallet.connect();
-    const writes: WriteController[] = [];
-    render(<WriteWithNotice onRender={(write) => writes.push(write)} />, { wrapper: walletWrapper(wallet, createTestDeps({ waitForReceipt: () => Promise.resolve(testReceipt()) })) });
-    const latest = () => {
-      const write = writes.at(-1);
-      if (write === undefined) throw new Error("WriteWithNotice has not rendered.");
-      return write;
-    };
+    const latest = renderWriteWithNotice(wallet);
     await act(async () => {
       await latest().execute(testWriteBuild(1), { pageChainId: 1 });
     });
@@ -90,7 +99,7 @@ describe("useWrite chain guard", () => {
     expect(latest().status.phase).toBe("mined");
   });
 
-  it("B3: a wallet that changed chain after the page loaded is refused, not signed for", async () => {
+  it("a wallet that changed chain after the page loaded is refused, not signed for", async () => {
     const wallet = createTestWallet({ chainId: 1 });
     await wallet.connect();
     const { result } = renderWrite(wallet);
@@ -104,20 +113,65 @@ describe("useWrite chain guard", () => {
     expect(writeContractMock).not.toHaveBeenCalled();
   });
 
-  it("B3: signs with the call's chain ID, so wagmi itself rejects a mismatch as a second barrier", async () => {
+  it("refuses before signing a call built for another chain than the page, even with the wallet on the page chain", async () => {
     const wallet = createTestWallet({ chainId: 1 });
     await wallet.connect();
-    const { result } = renderWrite(wallet);
+    const latest = renderWriteWithNotice(wallet);
+    let outcome: WriteStatus | undefined;
     await act(async () => {
-      await result.current.execute(testWriteBuild(1, 2n), { pageChainId: 1 });
+      outcome = await latest().execute(testWriteBuild(100), { pageChainId: 1 });
     });
-    expect(writeContractMock).toHaveBeenCalledWith(
-      wallet.config,
-      expect.objectContaining({ chainId: 1, address: "0x00000000000000000000000000000000000000aa", functionName: "fundAppeal", args: [7n, 2n], value: 1_000n }),
-    );
+    expect(outcome).toEqual({ phase: "refused", refusal: "call-chain-mismatch" });
+    expect(writeContractMock).not.toHaveBeenCalled();
+    expect(screen.getByText("Action unavailable")).toBeInTheDocument();
+    expect(screen.getByText(CALL_CHAIN_MISMATCH)).toBeInTheDocument();
   });
 
-  it("B3: a chain change during signing that wagmi rejects ends as a wrong-chain refusal", async () => {
+  it("refuses a call built for the wallet's chain while the page is on another one, without offering a switch", async () => {
+    const wallet = createTestWallet({ chainId: 100 });
+    await wallet.connect();
+    const latest = renderWriteWithNotice(wallet);
+    await act(async () => {
+      await latest().execute(testWriteBuild(100), { pageChainId: 1 });
+    });
+    expect(latest().status).toEqual({ phase: "refused", refusal: "call-chain-mismatch" });
+    expect(writeContractMock).not.toHaveBeenCalled();
+    expect(screen.getByText(CALL_CHAIN_MISMATCH)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Switch to/ })).toBeNull();
+  });
+
+  it("a wallet that leaves the page chain between the last check and the signature is refused by the signing library, and nothing is sent", async () => {
+    const actual = await vi.importActual<typeof import("@wagmi/core")>("@wagmi/core");
+    const wallet = createTestWallet({ chainId: 1 });
+    await wallet.connect();
+    const [connector] = wallet.config.connectors;
+    if (connector === undefined) throw new Error("The test wallet has no connector.");
+    const methods: string[] = [];
+    const getProvider = connector.getProvider.bind(connector);
+    vi.spyOn(connector, "getProvider").mockImplementation(async (parameters) => {
+      const provider = (await getProvider(parameters)) as { readonly request: EIP1193RequestFn };
+      const request: EIP1193RequestFn = (args, options) => {
+        methods.push(args.method);
+        return provider.request(args, options);
+      };
+      return { ...provider, request };
+    });
+    writeContractMock.mockImplementation(async (config, parameters) => {
+      await wallet.changeChain(100);
+      return actual.writeContract(config, parameters);
+    });
+    const { result } = renderWrite(wallet);
+    let outcome: WriteStatus | undefined;
+    await act(async () => {
+      outcome = await result.current.execute(testWriteBuild(1), { pageChainId: 1 });
+    });
+    expect(outcome).toEqual({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 });
+    // Both methods are answered by the mock connector itself; any other one would go out to the chain's RPC.
+    expect(methods).toContain("eth_chainId");
+    expect(methods.filter((method) => method !== "eth_chainId" && method !== "wallet_switchEthereumChain")).toEqual([]);
+  });
+
+  it("a chain change during signing that wagmi rejects ends as a wrong-chain refusal", async () => {
     const wallet = createTestWallet({ chainId: 1 });
     await wallet.connect();
     writeContractMock.mockImplementation(async () => {
@@ -131,7 +185,7 @@ describe("useWrite chain guard", () => {
     expect(result.current.status).toEqual({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 });
   });
 
-  it("D-48: needs a wallet when none is connected, and keeps the page chain for the Connect offer", async () => {
+  it("needs a wallet when none is connected, and keeps the page chain for the Connect offer", async () => {
     const wallet = createTestWallet();
     const { result } = renderWrite(wallet);
     await act(async () => {
@@ -143,7 +197,7 @@ describe("useWrite chain guard", () => {
 });
 
 describe("useWrite outcomes", () => {
-  it("D-07: a refused build sends nothing and shows the refusal", async () => {
+  it("a refused build sends nothing and shows the refusal", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const { result } = renderWrite(wallet);
@@ -154,7 +208,7 @@ describe("useWrite outcomes", () => {
     expect(writeContractMock).not.toHaveBeenCalled();
   });
 
-  it("D-07: pending, then submitted with the explorer link, then mined after onMined ran", async () => {
+  it("pending, then submitted with the explorer link, then mined after onMined ran", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     let releaseReceipt: ((receipt: WriteReceipt) => void) | undefined;
@@ -183,7 +237,7 @@ describe("useWrite outcomes", () => {
     expect(statuses.map((status) => status.phase)).toEqual(expect.arrayContaining(["idle", "pending", "submitted", "mined"]));
   });
 
-  it("D-07: a rejected signature is not an error", async () => {
+  it("a rejected signature is not an error", async () => {
     writeContractMock.mockRejectedValue(new UserRejectedRequestError(new Error("User denied transaction signature.")));
     const wallet = createTestWallet();
     await wallet.connect();
@@ -194,7 +248,7 @@ describe("useWrite outcomes", () => {
     expect(result.current.status).toEqual({ phase: "rejected" });
   });
 
-  it("D-07: an EIP-1193 4001 deep in the cause chain is a rejection too", async () => {
+  it("an EIP-1193 4001 deep in the cause chain is a rejection too", async () => {
     writeContractMock.mockRejectedValue(new Error("Contract call failed.", { cause: Object.assign(new Error("denied"), { code: 4001 }) }));
     const wallet = createTestWallet();
     await wallet.connect();
@@ -205,7 +259,7 @@ describe("useWrite outcomes", () => {
     expect(result.current.status).toEqual({ phase: "rejected" });
   });
 
-  it("D-07: a wallet error before submission is a failure with its message", async () => {
+  it("a wallet error before submission is a failure with its message", async () => {
     writeContractMock.mockRejectedValue(new Error("insufficient funds for gas"));
     const wallet = createTestWallet();
     await wallet.connect();
@@ -216,7 +270,7 @@ describe("useWrite outcomes", () => {
     expect(result.current.status).toEqual({ phase: "failed", hash: null, explorerUrl: null, message: "insufficient funds for gas" });
   });
 
-  it("D-07: a reverted receipt is a failure with the hash and explorer link, and onMined does not run", async () => {
+  it("a reverted receipt is a failure with the hash and explorer link, and onMined does not run", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const onMined = vi.fn();
@@ -228,7 +282,7 @@ describe("useWrite outcomes", () => {
     expect(onMined).not.toHaveBeenCalled();
   });
 
-  it("D-07: a receipt that cannot be read is a failure that keeps the hash", async () => {
+  it("a receipt that cannot be read is a failure that keeps the hash", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const { result } = renderWrite(wallet, () => Promise.reject(new Error("No RPC configured for chain 1.")));
@@ -243,7 +297,7 @@ describe("useWrite outcomes", () => {
     });
   });
 
-  it("§6.4: the receipt is read through the data layer's configured RPC, on the call's chain", async () => {
+  it("the receipt is read through the data layer's configured RPC, on the call's chain", async () => {
     const wallet = createTestWallet({ chainId: 100 });
     await wallet.connect();
     const waitForReceipt = vi.fn<(chainId: ChainId, hash: Hex) => Promise<WriteReceipt>>(() => Promise.resolve(testReceipt()));
@@ -255,7 +309,7 @@ describe("useWrite outcomes", () => {
     expect(result.current.status.phase).toBe("mined");
   });
 
-  it("R2 / D-07: a cancelled transaction is a failure shown with the cancelling hash, and nothing is refreshed", async () => {
+  it("a cancelled transaction is a failure shown with the cancelling hash, and nothing is refreshed", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const onMined = vi.fn();
@@ -272,7 +326,7 @@ describe("useWrite outcomes", () => {
     expect(onMined).not.toHaveBeenCalled();
   });
 
-  it("R2 / D-07: a transaction replaced by another operation is a failure", async () => {
+  it("a transaction replaced by another operation is a failure", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const onMined = vi.fn();
@@ -289,7 +343,7 @@ describe("useWrite outcomes", () => {
     expect(onMined).not.toHaveBeenCalled();
   });
 
-  it("R2 / D-07: a receipt of another transaction without replacement details is a failure, never a success", async () => {
+  it("a receipt of another transaction without replacement details is a failure, never a success", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const onMined = vi.fn();
@@ -307,7 +361,7 @@ describe("useWrite outcomes", () => {
     expect(onMined).not.toHaveBeenCalled();
   });
 
-  it("R2 / D-07: a repriced transaction is mined under its new hash and explorer link", async () => {
+  it("a repriced transaction is mined under its new hash and explorer link", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const onMined = vi.fn();
@@ -325,7 +379,7 @@ describe("useWrite outcomes", () => {
     expect(onMined).toHaveBeenCalledWith(repriced);
   });
 
-  it("R2 / D-07: a repriced transaction that reverts fails under its new hash", async () => {
+  it("a repriced transaction that reverts fails under its new hash", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const { result } = renderWrite(wallet, (_chainId, hash) => Promise.resolve(testReplacementReceipt(hash, "repriced", TEST_REPLACEMENT_TX_HASH, "reverted")));
@@ -340,7 +394,7 @@ describe("useWrite outcomes", () => {
     });
   });
 
-  it("D-07: a refresh that fails after mining still reports the write as mined", async () => {
+  it("a refresh that fails after mining still reports the write as mined", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const { result } = renderWrite(wallet);
@@ -350,7 +404,7 @@ describe("useWrite outcomes", () => {
     expect(result.current.status.phase).toBe("mined");
   });
 
-  it("D-07: reset returns to idle", async () => {
+  it("reset returns to idle", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const { result } = renderWrite(wallet);

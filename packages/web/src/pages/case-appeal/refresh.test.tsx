@@ -80,7 +80,6 @@ async function renderCase() {
   return renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps(), wallet });
 }
 
-/** The card of ruling 1, "Yes", which leads. */
 function winnerCard(): HTMLElement {
   return screen.getByRole("listitem", { name: "Yes" });
 }
@@ -89,7 +88,6 @@ function fundedPercent(card: HTMLElement): string | null {
   return within(card).getByRole("progressbar").getAttribute("aria-valuenow");
 }
 
-/** The crowdfunding cards, shown once the panel is a crowdfunding panel. */
 function findRulingsToFund(): Promise<HTMLElement> {
   return screen.findByRole("list", { name: "Rulings to fund" });
 }
@@ -99,8 +97,8 @@ beforeEach(() => {
   writes.fake = fakeWriteController(SENT);
 });
 
-describe("AppealSection refresh after a mined write (proposal P-02, D-07)", () => {
-  it("P-02: after a mined funding the panel shows the refreshed totals", async () => {
+describe("AppealSection refresh after a mined write", () => {
+  it("after a mined funding the panel shows the refreshed totals", async () => {
     const user = userEvent.setup();
     programReads(3);
     await renderCase();
@@ -120,7 +118,7 @@ describe("AppealSection refresh after a mined write (proposal P-02, D-07)", () =
     expect(within(winnerCard()).getByText("Transaction confirmed")).toBeInTheDocument();
   });
 
-  it("P-02, D-54: once a funding is mined, an edited contribution follows the refreshed remaining amount again", async () => {
+  it("once a funding is mined, an edited contribution follows the refreshed remaining amount again", async () => {
     const user = userEvent.setup();
     programReads(3);
     await renderCase();
@@ -136,7 +134,7 @@ describe("AppealSection refresh after a mined write (proposal P-02, D-07)", () =
     });
   });
 
-  it("P-02: after the mined withdrawals the panel shows nothing withdrawable", async () => {
+  it("after the mined withdrawals the panel shows nothing withdrawable", async () => {
     const user = userEvent.setup();
     programReads(4);
     const { container } = await renderCase();
@@ -154,8 +152,8 @@ describe("AppealSection refresh after a mined write (proposal P-02, D-07)", () =
   });
 });
 
-describe("AppealSection retry (D-36: Retry reads the section's data again)", () => {
-  it("CA-2, D-36: 'Retry the appeal fees' reads the multipliers again and shows the cards", async () => {
+describe("AppealSection retry", () => {
+  it("'Retry the appeal fees' reads the multipliers again and shows the cards", async () => {
     const user = userEvent.setup();
     programReads(3);
     vi.mocked(core.readMultipliers).mockResolvedValueOnce({ ok: false, error: RPC_DOWN });
@@ -173,7 +171,7 @@ describe("AppealSection retry (D-36: Retry reads the section's data again)", () 
     expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
   });
 
-  it("CA-2, D-47: 'Retry the appeal fees' reads a governor's Dispute event again, which gives its session", async () => {
+  it("'Retry the appeal fees' reads a governor's Dispute event again, which gives its session", async () => {
     const user = userEvent.setup();
     programReads(3);
     vi.mocked(core.detectFamily).mockResolvedValue(GOVERNOR);
@@ -196,7 +194,7 @@ describe("AppealSection retry (D-36: Retry reads the section's data again)", () 
     expect(winnerCard()).toBeInTheDocument();
   });
 
-  it("CA-2, D-36: Retry on an unavailable panel reads the meta-evidence again", async () => {
+  it("Retry on an unavailable panel reads the meta-evidence again", async () => {
     const user = userEvent.setup();
     programReads(3);
     vi.mocked(core.loadMetaEvidence).mockResolvedValueOnce({
@@ -214,7 +212,7 @@ describe("AppealSection retry (D-36: Retry reads the section's data again)", () 
     expect(core.loadMetaEvidence).toHaveBeenCalledTimes(2);
   });
 
-  it("CA-2, D-36: Retry on an unavailable panel detects the family again", async () => {
+  it("Retry on an unavailable panel detects the family again", async () => {
     const user = userEvent.setup();
     programReads(3);
     vi.mocked(core.detectFamily).mockRejectedValueOnce(new Error("probe failed")).mockRejectedValueOnce(new Error("probe failed"));

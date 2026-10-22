@@ -2,14 +2,13 @@ import { readFileSync } from "node:fs";
 import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { encodeEventTopics, hexToBigInt, numberToHex, parseAbi, type Hex } from "viem";
 import { z } from "zod";
-import { ARBITRATOR_ABI, GNOSIS_ARBITRATOR, disputeStruct, isDisputesCall } from "../support/arbitrator";
+import { ARBITRATOR_ABI, GNOSIS_ARBITRATOR, caseDetailsAnswers, disputeStruct, isDisputesCall } from "../support/arbitrator";
 import { fakeNetwork, loadRecording, type HttpAnswer, type HttpRequest, type RpcAnswer, type RpcCall, type Traffic } from "../support/network";
 
-// The on-chain meta-evidence of P-25 on the built app: Gnosis dispute 460, whose arbitrable recorded "DAI token
-// compliance Review" in its MetaEvidence(84) event while the meta-evidence API answered another arbitrable's file (the
-// Lemon case) on 2026-10-20. Its raw Dispute and MetaEvidence logs, both files and the API's answer are recorded in
-// fixtures/gnosis-460-meta-evidence.json; the spec builds the arbitrator's answers itself. The build needs the Gnosis
-// read RPC and the meta-evidence API configured, as a deploy has.
+// Gnosis dispute 460: its arbitrable recorded "DAI token compliance Review" in its MetaEvidence(84) event while the
+// meta-evidence API answered another arbitrable's file (the Lemon case) on 2026-10-20. Its raw Dispute and MetaEvidence
+// logs, both files and the API's answer are recorded in fixtures/gnosis-460-meta-evidence.json; the spec builds the
+// arbitrator's answers itself. The build needs the Gnosis read RPC and the meta-evidence API configured, as a deploy has.
 
 const FIXTURE_URL = new URL("fixtures/gnosis-460-meta-evidence.json", import.meta.url);
 const RECORDING = loadRecording(FIXTURE_URL);
@@ -32,6 +31,7 @@ const LOCATOR_PATH = "/ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaE
 const NOT_CONTENT_ADDRESSED = "/ipns/k51qzi5uqu5dlvj2baxnqndepeb86cbk3ng7n3i46uzyxzyqj2xjonzllnv0v8";
 const WARNING_TITLE = /^The meta-evidence API pointed to/;
 const BANNER_TITLE = "View mode only for this dispute";
+const UNAVAILABLE_SECTIONS = ["Dispute details unavailable", "Timeline unavailable", "Decision unavailable"];
 
 const ERC1497_ABI = parseAbi(["event MetaEvidence(uint256 indexed _metaEvidenceID, string _evidence)"]);
 const [META_EVIDENCE_TOPIC] = encodeEventTopics({ abi: ERC1497_ABI, eventName: "MetaEvidence" });
@@ -48,7 +48,6 @@ function filterOf(call: RpcCall): LogFilter {
   return call.params[0] ?? {};
 }
 
-/** The recorded logs a node returns for `filter`: same address, every non-null topic, inside the block range. */
 function recordedLogs(filter: LogFilter): RpcAnswer {
   const from = filter.fromBlock === undefined ? 0n : hexToBigInt(filter.fromBlock);
   const to = filter.toBlock === undefined ? BigInt(RECORDING.readAtBlock) : hexToBigInt(filter.toBlock);
@@ -60,9 +59,13 @@ function recordedLogs(filter: LogFilter): RpcAnswer {
   return { result: matching };
 }
 
-/** `disputes(460)` in the execution period, the recorded logs, and the blocks they were mined in. */
+const detailsRpc = caseDetailsAnswers(GNOSIS_ARBITRATOR, 460n);
+
+/** The appeal period: in execution the decision also needs the family, which the harness never detects. */
 function caseRpc(call: RpcCall): RpcAnswer | undefined {
-  if (isDisputesCall(call, GNOSIS_ARBITRATOR, 460n)) return disputeStruct({ arbitrated: ARBITRABLE, period: 4, lastPeriodChange: 1_747_840_645n });
+  if (isDisputesCall(call, GNOSIS_ARBITRATOR, 460n)) return disputeStruct({ arbitrated: ARBITRABLE, period: 3, lastPeriodChange: 1_747_840_645n });
+  const details = detailsRpc(call);
+  if (details !== undefined) return details;
   if (call.method === "eth_getLogs") return recordedLogs(filterOf(call));
   if (call.method === "eth_getBlockByNumber") {
     const [number] = call.params as [Hex];
@@ -88,7 +91,6 @@ function gatewayPaths(traffic: Traffic): string[] {
   return traffic.http.flatMap((request) => (request.kind === "gateway" ? [request.path] : []));
 }
 
-/** The P-25 warning: the shared Notice inside the case page's polite status region. */
 function sourceWarning(page: Page) {
   return page.getByRole("status").filter({ hasText: WARNING_TITLE });
 }
@@ -99,7 +101,11 @@ async function boxOf(locator: Locator): Promise<{ readonly top: number; readonly
   return { top: box.y, bottom: box.y + box.height };
 }
 
-test("P-25: Gnosis 460 renders the on-chain meta-evidence while the locator points elsewhere", async ({ context, page, baseURL }) => {
+test("Gnosis 460 renders the on-chain meta-evidence while the meta-evidence API points elsewhere, with the warning under the record band, above the view-only banner and the decision, and on screen", async ({
+  context,
+  page,
+  baseURL,
+}) => {
   const traffic = await openCase(context, page, baseURL, caseRpc);
 
   await expect(page.getByRole("heading", { name: EVENT_TITLE, exact: true })).toBeVisible({ timeout: 30_000 });
@@ -109,19 +115,23 @@ test("P-25: Gnosis 460 renders the on-chain meta-evidence while the locator poin
   await expect(warning).toContainText("Ongoing Disputes list");
   await expect(warning).not.toContainText("/ipfs/");
 
-  // The harness answers no eth_getCode, so the family is unavailable after one retry and the dispute is view-only: the
-  // banner inserts above the warning about a second later while the header facts leave their skeletons. Measure after.
+  // The harness answers no eth_getCode, so the family is unavailable after one retry and the dispute is view-only. The
+  // banner comes in between the warning and the decision about a second later, the last section to settle: measure once
+  // it shows.
   const banner = page.getByText(BANNER_TITLE);
   await expect(banner).toBeVisible({ timeout: 30_000 });
   const band = page.getByRole("region", { name: "Dispute #460" });
   await expect(band.locator('[aria-busy="true"]')).toHaveCount(0);
-  const heading = await boxOf(band.getByRole("heading", { level: 1, name: "Dispute #460" }));
+  for (const unavailable of UNAVAILABLE_SECTIONS) await expect(page.getByText(unavailable, { exact: true })).toHaveCount(0);
+  const bandBox = await boxOf(band);
+  const decision = await boxOf(page.getByRole("heading", { level: 2, name: "Jury decision", exact: true }));
   const bannerBox = await boxOf(banner);
   // The region is `display: contents` and has no box of its own: measure the Notice it holds.
   const warningBox = await boxOf(warning.locator(":scope > *"));
   const title = await boxOf(page.getByRole("heading", { level: 2, name: EVENT_TITLE, exact: true }));
-  expect(warningBox.top).toBeGreaterThan(heading.bottom);
-  expect(warningBox.top).toBeGreaterThan(bannerBox.bottom);
+  expect(warningBox.top).toBeGreaterThanOrEqual(bandBox.bottom);
+  expect(warningBox.bottom).toBeLessThanOrEqual(bannerBox.top);
+  expect(bannerBox.bottom).toBeLessThanOrEqual(decision.top);
   expect(warningBox.bottom).toBeLessThan(title.top);
   expect(warningBox.bottom).toBeLessThanOrEqual(page.viewportSize()?.height ?? 0);
 
@@ -132,7 +142,7 @@ test("P-25: Gnosis 460 renders the on-chain meta-evidence while the locator poin
   expect(metaEvidenceScans.map((call) => filterOf(call).address?.toLowerCase())).toEqual([ARBITRABLE]);
 });
 
-test("P-25: when the arbitrable's logs cannot be read the locator's meta-evidence renders, as today", async ({ context, page, baseURL }) => {
+test("renders the locator's meta-evidence when the arbitrable's logs cannot be read", async ({ context, page, baseURL }) => {
   const failingLogs = (call: RpcCall): RpcAnswer | undefined =>
     call.method === "eth_getLogs" && filterOf(call).address?.toLowerCase() === ARBITRABLE ? { error: { code: -32000, message: "header not found" } } : caseRpc(call);
   const traffic = await openCase(context, page, baseURL, failingLogs);
@@ -144,13 +154,11 @@ test("P-25: when the arbitrable's logs cannot be read the locator's meta-evidenc
   expect(gatewayPaths(traffic)).not.toContain(EVENT_PATH);
 });
 
-test("P-25: an API answer that is not content-addressed is named as unverifiable next to the on-chain meta-evidence", async ({ context, page, baseURL }) => {
+test("names an API answer that is not content-addressed as unverifiable next to the on-chain meta-evidence", async ({ context, page, baseURL }) => {
   // Pathnames only: frame and RPC URLs carry keys in their parameters. The harness aborts /ipns/ requests uncounted.
   const requested: string[] = [];
   context.on("request", (request) => requested.push(new URL(request.url()).pathname));
-  const traffic = await openCase(context, page, baseURL, caseRpc, (request) =>
-    request.kind === "locator" ? { json: { metaEvidenceUri: NOT_CONTENT_ADDRESSED } } : undefined,
-  );
+  const traffic = await openCase(context, page, baseURL, caseRpc, (request) => (request.kind === "locator" ? { json: { metaEvidenceUri: NOT_CONTENT_ADDRESSED } } : undefined));
 
   await expect(page.getByRole("heading", { name: EVENT_TITLE, exact: true })).toBeVisible({ timeout: 30_000 });
   const warning = sourceWarning(page);
@@ -161,7 +169,7 @@ test("P-25: an API answer that is not content-addressed is named as unverifiable
   expect(requested.filter((path) => path.startsWith("/ipns/"))).toEqual([]);
 });
 
-test("P-25: no warning when the API does not answer next to a found event", async ({ context, page, baseURL }) => {
+test("shows no warning when the API does not answer and the event is found", async ({ context, page, baseURL }) => {
   const traffic = await openCase(context, page, baseURL, caseRpc, (request) => (request.kind === "locator" ? { status: 500 } : undefined));
 
   await expect(page.getByRole("heading", { name: EVENT_TITLE, exact: true })).toBeVisible({ timeout: 30_000 });
@@ -193,7 +201,7 @@ function ongoingRpc(call: RpcCall): RpcAnswer | undefined {
   return { result: blockNumber >= from && blockNumber <= to ? [creation] : [] };
 }
 
-test("P-25, D-37: the Ongoing page reads no logs of the arbitrables", async ({ context, page, baseURL }) => {
+test("reads no logs of the arbitrables on the Ongoing page", async ({ context, page, baseURL }) => {
   const traffic = await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, recordings: [RECORDING], rpc: ongoingRpc });
   const card = page.getByRole("link").filter({ has: page.getByText("#460", { exact: true }) });
 

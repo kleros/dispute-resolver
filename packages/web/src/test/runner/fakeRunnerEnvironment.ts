@@ -3,7 +3,7 @@ import type { FetchFunction, RpcRedirectRule, RunnerEnvironment, RunnerMessageEv
 /** The app origin the fake runner URL and its parent share. */
 export const FAKE_APP_ORIGIN = "https://resolve.kleros.io";
 
-/** Valid parameters for mainnet dispute 1650 (golden case, C7). */
+/** Valid parameters for mainnet dispute 1650. */
 export const SAMPLE_PARAMS: RunnerRequestMessage["params"] = {
   disputeID: "1650",
   arbitrableContractAddress: "0x2018038203aee8e7a29dabd73771b0355d4f85ad",
@@ -15,7 +15,7 @@ export const SAMPLE_PARAMS: RunnerRequestMessage["params"] = {
 
 export const SAMPLE_REDIRECTS: readonly RpcRedirectRule[] = [{ chainId: 1, host: "mainnet.infura.io", pathPrefix: "/v3/", target: "https://rpc.example/mainnet" }];
 
-/** The fixed acknowledgement the page posts on the port as soon as it accepts a run (P-16). */
+/** The fixed acknowledgement the page posts on the port as soon as it accepts a run. */
 export const ACCEPTED: RunnerReplyMessage = { type: "dr-runner/accepted" };
 
 /** A well-formed request with one script; override any field. */
@@ -74,8 +74,8 @@ function callable(value: unknown, name: string): (argument: unknown) => void {
 }
 
 /**
- * A fake `RunnerEnvironment` for `bootstrapRunner` (ARCHITECTURE.md §7.4): a sandboxed, framed page on the app's URL
- * by default, whose `evaluate` runs `onEvaluate` instead of real code and whose port records replies.
+ * A fake `RunnerEnvironment` for `bootstrapRunner`: a sandboxed, framed page on the app's URL by default, whose
+ * `evaluate` runs `onEvaluate` instead of real code and whose port records replies.
  */
 export function createFakeRunnerEnvironment(options: FakeRunnerEnvironmentOptions = {}): FakeRunnerEnvironment {
   const parent = {};
@@ -146,7 +146,7 @@ export function createFakeRunnerEnvironment(options: FakeRunnerEnvironmentOption
     requests,
     listenerCount: () => listeners.size,
     deliver(event) {
-      for (const listener of [...listeners]) listener(event);
+      for (const listener of listeners) listener(event);
     },
     fromParent(data) {
       return {
@@ -176,7 +176,7 @@ export async function flushMicrotasks(): Promise<void> {
   });
 }
 
-/** Every message `port` receives, in order, up to and including the first one that is not the acknowledgement (P-16). */
+/** Every message `port` receives, in order, up to and including the first one that is not the acknowledgement. */
 export function collectUntilSettled(port: MessagePort): Promise<RunnerReplyMessage[]> {
   const messages: RunnerReplyMessage[] = [];
   return new Promise((resolve) => {

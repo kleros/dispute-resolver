@@ -1,10 +1,10 @@
 import type { AtlasAnswer, AtlasRequest } from "./network";
 
-// An Atlas server for the Playwright specs (C9: harness only), answering the requests `@kleros/kleros-app` 3.1.0 makes:
-// `roles(product)` at load, `nonce(address)` and `login(message, signature)` to sign in, `user` once verified, and the
-// multipart upload. It keeps its state across page loads, as the real server does, so a spec can reload the tab and
-// see whether the session survived. The shapes copy the unit tests' fake server (src/test/atlas/fakeAtlasServer.ts); it
-// is not imported, since the unit tests' modules load Vitest and jsdom, which Playwright's loader does not.
+// An Atlas server for the Playwright specs, answering the requests `@kleros/kleros-app` 3.1.0 makes: `roles(product)` at
+// load, `nonce(address)` and `login(message, signature)` to sign in, `user` once verified, and the multipart upload. It
+// keeps its state across page loads, as the real server does, so a spec can reload the tab and see whether the session
+// survived. The shapes copy the unit tests' fake server (src/test/atlas/fakeAtlasServer.ts); it is not imported, since
+// the unit tests' modules load Vitest and jsdom, which Playwright's loader does not.
 
 const MIB = 1024 * 1024;
 

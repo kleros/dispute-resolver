@@ -8,22 +8,16 @@ const OPAQUE_ORIGIN = "null";
 const NOT_CLONEABLE = "The script's result cannot be copied out of the runner.";
 const UNDESCRIBED_FAILURE = "The script reported a failure.";
 
-/** One accepted run: the validated request and the port its reply goes through. */
 interface AcceptedRun {
   readonly request: RunnerRequestMessage;
   readonly port: ReplyPort;
 }
 
-/** Step 1 (C4): run only in a sandboxed (opaque-origin) document that is framed. */
 function isSandboxedFrame(env: RunnerEnvironment): boolean {
   return env.selfOrigin === OPAQUE_ORIGIN && !env.isTopLevel;
 }
 
-/**
- * Step 2 (C4): a request counts only when it comes from the parent window, on the app's origin (the runner URL's own
- * origin, which an opaque document still reports through `location.origin`), carries exactly one port and is a
- * well-formed run request.
- */
+/** The runner URL's own origin is the app's, and an opaque document still reports it through `location.origin`. */
 function acceptRun(env: RunnerEnvironment, event: RunnerMessageEvent): AcceptedRun | undefined {
   if (event.source !== env.parent || env.locationOrigin === OPAQUE_ORIGIN || event.origin !== env.locationOrigin) return;
   const [port, ...extraPorts] = event.ports;
@@ -59,8 +53,8 @@ interface Reporter {
 }
 
 /**
- * Settles the run once: the first resolve or reject wins, as with the promise of the old runner, and a promise given
- * to `resolve` is adopted. The duplicate-key flag is read when the value is posted.
+ * The first resolve or reject wins, as with a promise, and a promise given to `resolve` is adopted. The duplicate-key
+ * flag is read when the value is posted.
  */
 function createReporter(globals: object, port: ReplyPort): Reporter {
   let settled = false;
@@ -87,7 +81,6 @@ function defineFixedGlobal(globals: object, name: string, value: unknown): void 
   Object.defineProperty(globals, name, { value, writable: false, configurable: false, enumerable: true });
 }
 
-/** Step 3: the globals the pinned scripts rely on (spec §9.5). */
 function defineScriptGlobals(globals: object, params: ScriptParameters, reporter: Reporter): void {
   defineFixedGlobal(globals, "scriptParameters", Object.freeze({ ...params }));
   defineFixedGlobal(globals, "resolveScript", (value: unknown) => {
@@ -98,7 +91,6 @@ function defineScriptGlobals(globals: object, params: ScriptParameters, reporter
   });
 }
 
-/** Steps 3 to 6 for the accepted request. A synchronous failure at any step is reported once. */
 function run(env: RunnerEnvironment, { request, port }: AcceptedRun): void {
   const reporter = createReporter(env.globals, port);
   try {
@@ -112,10 +104,8 @@ function run(env: RunnerEnvironment, { request, port }: AcceptedRun): void {
 }
 
 /**
- * The runner page (ADR 0004, ARCHITECTURE.md §7.2): checks it is a sandboxed frame, accepts one run request from its
- * parent, acknowledges it on the request's port (P-16; a refused request gets nothing, so no window learns whether a
- * runner is alive, C4), defines the script-facing globals, installs the RPC redirect and, for Reality scripts, the duplicate-key
- * guard, evaluates the script and calls `getMetaEvidence()`. Results leave only through the request's port.
+ * Accepts one run request from the parent and acknowledges it on the request's port. A refused request gets nothing,
+ * so no window learns whether a runner is alive. Results leave only through the request's port.
  */
 export function bootstrapRunner(env: RunnerEnvironment): void {
   if (!isSandboxedFrame(env)) return;

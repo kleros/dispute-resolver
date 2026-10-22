@@ -1,22 +1,24 @@
 import type { ComponentType, ReactNode } from "react";
 import type { ChainCapabilities, ChainConfig, ChainId } from "@dispute-resolver/core";
 
-/** The chain named by the URL, parsed with core's `parseChainId` (A19). Every read of a page uses it. */
 export interface PageChain {
   readonly chainId: ChainId;
   readonly chain: ChainConfig;
   readonly capabilities: ChainCapabilities;
 }
 
-/**
- * The chain the header and footer use on every screen (D-45): the page chain when the URL names a configured chain;
- * otherwise the connected wallet's configured chain, else chain 1, with the unparsed URL segment kept for the
- * unsupported-network heading.
- */
+/** A fallback keeps the unparsed URL segment for the unsupported-network heading. */
 export type ResolvedChain =
   { readonly kind: "page"; readonly page: PageChain } | { readonly kind: "fallback"; readonly page: PageChain; readonly unsupportedSegment: string | null };
 
-/** Internal path builders (A19): validated chain IDs and numeric dispute IDs only. */
+/** The parts of an in-app location that a move to another chain keeps or drops. */
+export interface PathLocation {
+  readonly pathname: string;
+  readonly search: string;
+  readonly hash: string;
+}
+
+/** Validated chain IDs and numeric dispute IDs only. */
 export interface Paths {
   chainRoot(chainId: ChainId): string;
   ongoing(chainId: ChainId): string;
@@ -25,31 +27,46 @@ export interface Paths {
   case(chainId: ChainId, disputeId: bigint): string;
 }
 
-/** What the route table hands the page frame (structurally shell's `PageFrameProps`; routing never imports shell). */
+/** A switch to the page chain that the wallet declined or that failed, after which the app moved to the wallet's chain. */
+export interface ChainNotice {
+  readonly outcome: "declined" | "failed";
+  /** The chain the app moved to; it may be unconfigured. */
+  readonly walletChainId: number;
+  /** The chain of the page the app left. */
+  readonly pageChainId: ChainId;
+  /** The dispute of the case page the app left; `null` on any other page or when its ID does not parse. */
+  readonly disputeId: bigint | null;
+  /** The switch result's message. */
+  readonly reason: string;
+}
+
+export interface ChainNoticeProviderProps {
+  readonly onNotice: (notice: ChainNotice) => void;
+  readonly children?: ReactNode;
+}
+
+/** Structurally shell's `PageFrameProps`: routing never imports shell. */
 export interface FrameProps {
   readonly resolvedChain: ResolvedChain;
   readonly children: ReactNode;
 }
 
-/** The page frame around every screen (shell's `PageFrame`), injected so routing stays below shell (ARCHITECTURE.md §1.3). */
+/** Shell's `PageFrame`, injected so routing stays below shell. */
 export type FrameComponent = ComponentType<FrameProps>;
 
-/** Props of `ChainLayout`, the `/:chainId` layout route element (ARCHITECTURE.md §3.1, §3.6). */
 export interface ChainLayoutProps {
   readonly frame: FrameComponent;
 }
 
-/** The components the route table places (ARCHITECTURE.md §3.1); `AppRoutes.tsx` passes shell's frame and the pages. */
 export interface AppRouteComponents {
   readonly PageFrame: FrameComponent;
   readonly OngoingPage: ComponentType;
   readonly CreatePage: ComponentType;
-  /** Serves `/:chainId/cases` (no ID, D-09) and `/:chainId/cases/:id`; it reads `:id` and parses it with `parseDisputeId`. */
+  /** Serves `/:chainId/cases` with no ID too; it parses `:id` itself. */
   readonly CasePage: ComponentType;
 }
 
-/** Props of `UnsupportedNetworkScreen` (spec §2.5). */
 export interface UnsupportedNetworkScreenProps {
-  /** The URL's first segment as written (decoded by the router), shown as text in the heading. */
+  /** Decoded by the router; shown as text only. */
   readonly segment: string;
 }

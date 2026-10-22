@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { STORAGE_KEY, applyColorScheme, browserLocalStorage, createColorSchemeStore, type ColorSchemeMedia, type ColorSchemeStorage } from "./theme";
+import { STORAGE_KEY, SWITCHING_ATTRIBUTE, applyColorScheme, browserLocalStorage, createColorSchemeStore, type ColorSchemeMedia, type ColorSchemeStorage } from "./theme";
 
 /** A `(prefers-color-scheme: dark)` query whose answer the test changes, dispatching `change` like the browser does. */
 function fakeMedia(matches: boolean) {
@@ -57,6 +57,31 @@ describe("applyColorScheme", () => {
 });
 
 describe("createColorSchemeStore", () => {
+  it("pauses transitions while a flip applies and lifts the pause on the next frame, but not for the first paint", async () => {
+    const root = document.createElement("html");
+    const media = fakeMedia(false);
+    const store = createColorSchemeStore({ root, media, storage: memoryStorage({ [STORAGE_KEY]: "dark" }) });
+    expect(isDark(root)).toBe(true);
+    expect(root).not.toHaveAttribute(SWITCHING_ATTRIBUTE);
+
+    store.toggle();
+    expect(isDark(root)).toBe(false);
+    expect(root).toHaveAttribute(SWITCHING_ATTRIBUTE);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(root).not.toHaveAttribute(SWITCHING_ATTRIBUTE);
+  });
+
+  it("pauses transitions for a flip that follows the OS preference too", async () => {
+    const root = document.createElement("html");
+    const media = fakeMedia(false);
+    createColorSchemeStore({ root, media, storage: null });
+    media.change(true);
+    expect(isDark(root)).toBe(true);
+    expect(root).toHaveAttribute(SWITCHING_ATTRIBUTE);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(root).not.toHaveAttribute(SWITCHING_ATTRIBUTE);
+  });
+
   it("uses the OS preference until a choice is stored and follows OS changes meanwhile", () => {
     const root = document.createElement("div");
     const media = fakeMedia(true);

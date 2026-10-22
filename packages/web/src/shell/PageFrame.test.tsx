@@ -1,10 +1,13 @@
 import { CHAINS } from "@dispute-resolver/core";
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { numberToHex } from "viem";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createTestDeps, type RpcHandler } from "../test/data";
 import { renderWithProviders } from "../test/shell";
 import { createTestWallet } from "../test/wallet";
 import { createColorSchemeStore } from "../theme";
+import { Countdown } from "../ui";
 
 const VIEW_ONLY_SENTENCE = "View mode only: Actions that require an Ethereum account are disabled.";
 
@@ -14,6 +17,17 @@ function Screen() {
 
 function header() {
   return screen.getByRole("banner");
+}
+
+/** The dimmed layer under the phone drawer, which carries no role or name. */
+function queryScrim(): Element | null {
+  return document.querySelector("div[aria-hidden='true'].fixed.inset-0");
+}
+
+function menuPanel(): HTMLElement {
+  const panel = document.getElementById(within(header()).getByRole("button", { name: "Menu" }).getAttribute("aria-controls") ?? "");
+  if (panel === null) throw new Error("The menu button controls no element.");
+  return panel;
 }
 
 function footer() {
@@ -30,8 +44,8 @@ function expectExternal(link: HTMLElement, href: string) {
   expect(link).toHaveAttribute("rel", "noopener noreferrer");
 }
 
-describe("PageFrame header (spec §2.3)", () => {
-  it("spec §2.3: renders the screen between the header and the footer", () => {
+describe("PageFrame header", () => {
+  it("renders the screen between the header and the footer", () => {
     renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
     expect(within(screen.getByRole("main")).getByText("Screen content")).toBeInTheDocument();
     expect(header()).toBeInTheDocument();
@@ -57,7 +71,7 @@ describe("PageFrame header (spec §2.3)", () => {
     expect(navLinks().getByRole("link", { name: "Ongoing Disputes" })).not.toHaveAttribute("aria-current");
   });
 
-  it("spec §2.3: shows the view-only banner with the Metamask link only while no wallet is connected", async () => {
+  it("shows the view-only banner with the Metamask link only while no wallet is connected", async () => {
     const view = renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
     const banner = screen.getByRole("note", { name: "View mode only" });
     expect(banner).toHaveTextContent("View mode only: Actions that require an Ethereum account are disabled. To use them, connect a wallet such as Metamask.");
@@ -82,7 +96,7 @@ describe("PageFrame header (spec §2.3)", () => {
     expect(within(banner).queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("D-06: loads read-only, offers Connect and opens no wallet prompt by itself", () => {
+  it("loads read-only, offers Connect and opens no wallet prompt by itself", () => {
     const wallet = createTestWallet();
     renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet });
     expect(within(header()).getByRole("button", { name: "Connect" })).toBeEnabled();
@@ -91,7 +105,7 @@ describe("PageFrame header (spec §2.3)", () => {
     expect(wallet.config.state.status).toBe("disconnected");
   });
 
-  it("D-06: Connect opens the wallet's Connect view on the page chain", async () => {
+  it("Connect opens the wallet's Connect view on the page chain", async () => {
     const user = userEvent.setup();
     const wallet = createTestWallet();
     renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page", wallet });
@@ -106,19 +120,24 @@ describe("PageFrame header (spec §2.3)", () => {
     expect(within(header()).getByRole("button", { name: /^Account 0x/ })).toBeInTheDocument();
   });
 
-  it("D-48: offers the switch to the page chain when the wallet is on another chain", async () => {
-    // The wallet declines the switch the app asks for at load (D-55), so it stays on Ethereum Mainnet.
+  it("with the wallet on another chain at load nothing is offered under the header: the app asks the wallet and, on a refusal, shows the wallet's chain", async () => {
+    // The wallet declines the switch the app asks for at load, so it stays on Ethereum Mainnet.
     const wallet = createTestWallet({ chainId: 1, switchChainError: true });
     await wallet.connect();
     const [connector] = wallet.config.connectors;
     if (connector === undefined) throw new Error("The test wallet has no connector.");
     const switches = vi.spyOn(connector, "switchChain");
-    renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page", wallet });
+    const view = renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page", wallet });
     await waitFor(() => {
-      expect(switches).toHaveBeenCalledWith(expect.objectContaining({ chainId: 100 }));
+      expect(view.currentPath()).toBe("/1/ongoing");
     });
-    expect(wallet.config.state.chainId).toBe(1);
-    expect(within(header()).getByRole("button", { name: "Switch to Gnosis Network" })).toBeEnabled();
+    expect(switches).toHaveBeenCalledTimes(1);
+    expect(switches).toHaveBeenCalledWith(expect.objectContaining({ chainId: 100 }));
+    expect(within(header()).getByRole("button", { name: "Network: Ethereum Mainnet. Change network" })).toBeInTheDocument();
+    expect(within(screen.getByRole("main")).getByText("Screen content")).toBeInTheDocument();
+    expect(screen.queryByText(/^Your wallet is on /)).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("button", { name: /^Switch to (?!(dark|light) theme$)/ })).toEqual([]);
+    expect(within(screen.getByRole("region", { name: "Notifications" })).getByRole("status")).toHaveTextContent("Wallet stayed on Ethereum Mainnet");
   });
 
   it("on the unsupported-network screen the header links use the default chain", () => {
@@ -144,7 +163,7 @@ describe("PageFrame header (spec §2.3)", () => {
     expect(navLinks().getByRole("link", { name: "Ongoing Disputes" })).toHaveAttribute("href", "/100/ongoing");
   });
 
-  it("§11.1: the menu button shows and hides the navigation below the lg breakpoint", async () => {
+  it("the menu button shows and hides the navigation", async () => {
     const user = userEvent.setup();
     renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
     const toggle = within(header()).getByRole("button", { name: "Menu" });
@@ -157,6 +176,28 @@ describe("PageFrame header (spec §2.3)", () => {
     await user.keyboard("{Escape}");
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(toggle).toHaveFocus();
+  });
+
+  it("a press outside the bar and the menu panel closes the menu, and a press on the bar or inside the panel keeps it open", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
+    const toggle = within(header()).getByRole("button", { name: "Menu" });
+    await user.click(toggle);
+    await user.pointer({ keys: "[MouseLeft]", target: screen.getByRole("navigation", { name: "Main" }) });
+    await user.pointer({ keys: "[MouseLeft]", target: within(header()).getByRole("link", { name: "Kleros Dispute Resolver" }).parentElement ?? header() });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await user.click(screen.getByText("Screen content"));
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).not.toHaveFocus();
+  });
+
+  it("pressing the Menu button again closes the open menu", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
+    const toggle = within(header()).getByRole("button", { name: "Menu" });
+    await user.click(toggle);
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 
   it("following a link closes the menu", async () => {
@@ -201,9 +242,77 @@ describe("PageFrame header (spec §2.3)", () => {
     expect(root).toHaveClass("dark");
     expect(within(header()).getByRole("button", { name: "Switch to light theme" })).toBeInTheDocument();
   });
+
+  it("the menu panel grows in below xl and shrinks away inert, with its scrim, before it hides again", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
+    expect(queryScrim()).toBeNull();
+    await user.click(within(header()).getByRole("button", { name: "Menu" }));
+    const opened = menuPanel();
+    expect(opened).toHaveClass("flex", "max-xl:animate-scale-in", "max-lg:origin-top", "lg:max-xl:origin-top-right");
+    expect(opened).not.toHaveAttribute("inert");
+    expect(queryScrim()).toHaveClass("animate-t-overlay-in");
+    await user.keyboard("{Escape}");
+    const closing = menuPanel();
+    expect(closing).toHaveClass("flex", "max-xl:animate-scale-out", "max-xl:opacity-0", "max-xl:pointer-events-none");
+    expect(closing).toHaveAttribute("inert");
+    expect(queryScrim()).toHaveClass("animate-t-overlay-out");
+    fireEvent.animationEnd(closing);
+    expect(menuPanel()).toHaveClass("hidden");
+    expect(menuPanel()).not.toHaveAttribute("inert");
+    expect(queryScrim()).toBeNull();
+  });
+
+  it("the inline navigation from xl carries no animation of its own", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
+    await user.click(within(header()).getByRole("button", { name: "Menu" }));
+    await user.keyboard("{Escape}");
+    for (const name of [...menuPanel().classList].filter((value) => /animate-|opacity-0|pointer-events-none/.test(value))) {
+      expect(name).toMatch(/^max-xl:/);
+    }
+  });
+
+  it("the Menu button cross-fades its menu and close icons in one cell", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
+    const toggle = within(header()).getByRole("button", { name: "Menu" });
+    const swap = toggle.querySelector("[data-icon-swap]");
+    if (swap === null) throw new Error("The Menu button has no icon swap.");
+    const [menuIcon, closeIcon] = [...swap.querySelectorAll("svg")];
+    expect(swap).toHaveAttribute("data-state", "menu");
+    expect(menuIcon).toHaveClass("[grid-area:1/1]", "opacity-100", "scale-100", "motion-reduce:transition-none");
+    expect(closeIcon).toHaveClass("[grid-area:1/1]", "opacity-0", "scale-25");
+    await user.click(toggle);
+    expect(swap).toHaveAttribute("data-state", "close");
+    expect(menuIcon).toHaveClass("opacity-0", "scale-25");
+    expect(closeIcon).toHaveClass("opacity-100", "scale-100");
+  });
 });
 
-describe("PageFrame footer (spec §2.4)", () => {
+describe("PageFrame chain clock", () => {
+  const CHAIN_SECONDS = 1_700_000_000;
+  const HOUR = 3_600;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("a countdown on a page counts from the page chain's block time when the browser clock is an hour off", async () => {
+    vi.setSystemTime((CHAIN_SECONDS + HOUR) * 1000);
+    const rpc = vi.fn<RpcHandler>(({ method }) => {
+      if (method !== "eth_getBlockByNumber") throw new Error(`unexpected ${method}`);
+      return { number: "0x10", timestamp: numberToHex(CHAIN_SECONDS), hash: `0x${"cd".repeat(32)}`, transactions: [] };
+    });
+    renderWithProviders(<Countdown target={CHAIN_SECONDS + 48 * HOUR} />, { path: "/100/ongoing", frame: "page", deps: createTestDeps({ rpc }) });
+    const main = within(screen.getByRole("main"));
+    expect(main.getByText("01d 23h 00m")).toBeInTheDocument();
+    expect(await main.findByText("02d 00h 00m")).toBeInTheDocument();
+    expect(rpc).toHaveBeenCalledWith({ chainId: 100, method: "eth_getBlockByNumber", params: ["latest", false] });
+  });
+});
+
+describe("PageFrame footer", () => {
   const SOCIAL_LINKS: readonly (readonly [string, string])[] = [
     ["GitHub", "https://github.com/kleros/dispute-resolver"],
     ["Slack", "https://slack.kleros.io"],
@@ -214,7 +323,7 @@ describe("PageFrame footer (spec §2.4)", () => {
     ["LinkedIn", "https://www.linkedin.com/company/kleros/"],
   ];
 
-  it("spec §2.4: links Secured by Kleros, I need help and every social channel", () => {
+  it("links Secured by Kleros, I need help and every social channel", () => {
     renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
     const links = within(footer());
     expectExternal(links.getByRole("link", { name: "Secured by Kleros" }), "https://kleros.io");
@@ -222,19 +331,19 @@ describe("PageFrame footer (spec §2.4)", () => {
     for (const [name, href] of SOCIAL_LINKS) expectExternal(links.getByRole("link", { name }), href);
   });
 
-  it("spec §2.4: shows the resolved chain's name", () => {
+  it("shows the resolved chain's name", () => {
     renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page" });
     expect(within(footer()).getByText("Gnosis Network")).toBeInTheDocument();
   });
 
-  it("spec §2.4: shows Unsupported Network on the unsupported-network screen, without an explorer link", () => {
+  it("shows Unsupported Network on the unsupported-network screen, without an explorer link", () => {
     renderWithProviders(<Screen />, { path: "/999/ongoing", frame: "page" });
     expect(within(footer()).getByText("Unsupported Network")).toBeInTheDocument();
     expect(within(footer()).queryByRole("link", { name: /explorer/ })).not.toBeInTheDocument();
   });
 
   it.each(Object.values(CHAINS).filter((chain) => chain.explorerBaseUrl !== undefined && chain.arbitrableProxy !== undefined))(
-    "D-40: links the ArbitrableProxy on the explorer of $name",
+    "links the ArbitrableProxy on the explorer of $name",
     (chain) => {
       renderWithProviders(<Screen />, { path: `/${String(chain.id)}/ongoing`, frame: "page" });
       const link = within(footer()).getByRole("link", { name: `ArbitrableProxy contract on the ${chain.name} explorer` });
@@ -243,7 +352,7 @@ describe("PageFrame footer (spec §2.4)", () => {
   );
 
   it.each(Object.values(CHAINS).filter((chain) => chain.explorerBaseUrl === undefined || chain.arbitrableProxy === undefined))(
-    "D-40: shows no explorer link on $name, which has no ArbitrableProxy",
+    "shows no explorer link on $name, which has no ArbitrableProxy",
     (chain) => {
       renderWithProviders(<Screen />, { path: `/${String(chain.id)}/ongoing`, frame: "page" });
       expect(within(footer()).queryByRole("link", { name: /explorer/ })).not.toBeInTheDocument();

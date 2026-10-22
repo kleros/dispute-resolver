@@ -1,9 +1,18 @@
-import { encodeAnswer, type AnswerInput, type ChainConfig, type CrowdfundingCard, type FreeInputCard as FreeInput } from "@dispute-resolver/core";
+import {
+  encodeAnswer,
+  enteredAnswerFunding,
+  type AnswerInput,
+  type ChainConfig,
+  type CrowdfundingCard,
+  type EnteredAnswerFunding,
+  type FreeInputCard as FreeInput,
+} from "@dispute-resolver/core";
 import { Card } from "@kleros/ui-components-library";
 import { useId, useState } from "react";
-import { Amount, FACT_LEAD } from "../../ui";
+import { Amount, FACT_LEAD, formatAmount } from "../../ui";
 import { AnswerField } from "./AnswerField";
 import { ANSWER_ERROR_MESSAGES, fundedIntAnswer } from "./answer";
+import { matchedCardLine, newAnswerLine } from "./copy";
 import { FundAction } from "./FundAction";
 import { FundingProgress } from "./FundingProgress";
 import { CARD_CLASS, CARD_FOOTER_CLASS, CARD_ITEM_CLASS, CARD_TITLE_CLASS } from "./styles";
@@ -15,23 +24,67 @@ export interface FreeInputCardProps {
   readonly cards: readonly CrowdfundingCard[];
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
-  /** Disables Fund, as without a wallet. */
   readonly isFundDisabled: boolean;
 }
 
+const NOTE_CLASS = "text-sm [overflow-wrap:anywhere]";
+
 /**
- * The free-input card of a variable-type question (spec §5.12, D-04): the user types a new answer, core encodes it into
- * the ruling code (D-15, D-16, D-17), and the card funds it at the loser amount until the loser deadline. An answer that
- * cannot be encoded is explained (WN-3); an int answer shows which answer it funds, since -1 and -2 land on reserved
- * rulings (P-21).
+ * Names the card whose numbers the entered card shows, with its amounts in words, or says the entry funds a new answer.
+ * The region stays mounted so each change is announced: a region mounted with its text is not.
  */
+export function MatchedCardNote({ funding, kind, chain }: { readonly funding: EnteredAnswerFunding; readonly kind: "answer" | "combination"; readonly chain: ChainConfig }) {
+  const { card } = funding;
+  return (
+    <p className={card === null ? "sr-only" : NOTE_CLASS} aria-live="polite" aria-atomic="true">
+      {card === null ? (
+        newAnswerLine(kind)
+      ) : (
+        <>
+          {matchedCardLine(card.title)}
+          <span className="sr-only">{` ${formatAmount(funding.remaining, chain)} remaining of ${formatAmount(funding.required, chain)}.`}</span>
+        </>
+      )}
+    </p>
+  );
+}
+
+export interface EnteredAnswerFooterProps {
+  readonly funding: EnteredAnswerFunding;
+  /** What is funded, for the accessible names of the contribution field and Fund: the matched card's title when there is one. */
+  readonly subject: string;
+  readonly code: bigint | null;
+  readonly actions: AppealActions;
+  readonly chain: ChainConfig;
+  readonly isFundDisabled: boolean;
+}
+
+/** The funding of an entered answer as a fixed card shows its own: nothing remaining disables the field and Fund. */
+export function EnteredAnswerFooter({ funding, subject, code, actions, chain, isFundDisabled }: EnteredAnswerFooterProps) {
+  return (
+    <>
+      <FundingProgress percent={funding.fundedPercent} deadline={funding.deadline} />
+      <p className="flex flex-col gap-1 text-sm text-klerosUIComponentsSecondaryText">
+        <span>{"Remaining "}</span>
+        <span className="flex flex-wrap items-baseline gap-x-2">
+          <Amount wei={funding.remaining} chain={chain} className={FACT_LEAD} />
+          <span>{" of "}</span>
+          <Amount wei={funding.required} chain={chain} />
+        </span>
+      </p>
+      <FundAction subject={subject} code={code} suggested={funding.remaining} actions={actions} chain={chain} isDisabled={isFundDisabled} />
+    </>
+  );
+}
+
+/** An int answer shows which answer it funds, since -1 and -2 land on reserved rulings. */
 export function FreeInputCard({ freeInput, cards, actions, chain, isFundDisabled }: FreeInputCardProps) {
   const titleId = useId();
   const [answer, setAnswer] = useState<AnswerInput | null>(null);
   const encoding = answer === null ? null : encodeAnswer(answer, { type: freeInput.type, precision: freeInput.precision });
   const code = encoding?.ok === true ? encoding.code : null;
   const error = encoding === null || encoding.ok ? undefined : ANSWER_ERROR_MESSAGES[encoding.error];
-  const funded = code === null ? undefined : cards.find((card) => card.code === code);
+  const funding = enteredAnswerFunding(cards, freeInput, code);
   return (
     <li className={CARD_ITEM_CLASS} aria-labelledby={titleId}>
       <Card className={CARD_CLASS}>
@@ -39,18 +92,18 @@ export function FreeInputCard({ freeInput, cards, actions, chain, isFundDisabled
           Fund a new answer
         </h4>
         <AnswerField type={freeInput.type} onChange={setAnswer} error={error} />
-        {freeInput.type === "int" && code !== null ? (
-          <p className="text-sm [overflow-wrap:anywhere]" aria-live="polite">
-            This card funds the answer: <strong className="font-semibold">{fundedIntAnswer(code)}</strong>
+        {freeInput.type === "int" ? (
+          <p className={code === null ? "sr-only" : NOTE_CLASS} aria-live="polite" aria-atomic="true">
+            {code === null ? null : (
+              <>
+                This card funds the answer: <strong className="font-semibold">{fundedIntAnswer(code)}</strong>
+              </>
+            )}
           </p>
         ) : null}
+        <MatchedCardNote funding={funding} kind="answer" chain={chain} />
         <div className={CARD_FOOTER_CLASS}>
-          <FundingProgress percent={funded?.fundedPercent ?? 0} deadline={freeInput.deadline} />
-          <p className="flex flex-col gap-1 text-sm text-klerosUIComponentsSecondaryText">
-            <span>{"Required "}</span>
-            <Amount wei={freeInput.required} chain={chain} className={FACT_LEAD} />
-          </p>
-          <FundAction subject="the new answer" code={code} suggested={freeInput.required} actions={actions} chain={chain} isDisabled={isFundDisabled} />
+          <EnteredAnswerFooter funding={funding} subject={funding.card?.title ?? "the new answer"} code={code} actions={actions} chain={chain} isFundDisabled={isFundDisabled} />
         </div>
       </Card>
     </li>

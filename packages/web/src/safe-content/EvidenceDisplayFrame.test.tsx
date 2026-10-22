@@ -26,7 +26,7 @@ describe("EvidenceDisplayFrame", () => {
     vi.restoreAllMocks();
   });
 
-  it("A8: renders the computed source and sandbox", () => {
+  it("renders the computed source and sandbox", () => {
     render(<EvidenceDisplayFrame model={MODEL} />);
     const frame = screen.getByTitle("Evidence display");
     expect(frame.tagName).toBe("IFRAME");
@@ -34,20 +34,20 @@ describe("EvidenceDisplayFrame", () => {
     expect(frame).toHaveAttribute("sandbox", "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox");
   });
 
-  it("A8: sets the sandbox before the source, so the frame never loads unsandboxed", () => {
+  it("sets the sandbox before the source, so the frame never loads unsandboxed", () => {
     render(<EvidenceDisplayFrame model={{ ...MODEL, sandbox: ["allow-scripts"] }} />);
     const names = screen.getByTitle("Evidence display").getAttributeNames();
     expect(names.filter((name) => name === "sandbox" || name === "src")).toEqual(["sandbox", "src"]);
   });
 
-  it("spec 9.4: has an accessible title and no allow or referrerpolicy attribute", () => {
+  it("has an accessible title and no allow or referrerpolicy attribute", () => {
     render(<EvidenceDisplayFrame model={MODEL} />);
     const frame = screen.getByTitle("Evidence display");
     expect(frame).not.toHaveAttribute("allow");
     expect(frame).not.toHaveAttribute("referrerpolicy");
   });
 
-  it("spec 9.4: the page sends no postMessage to the frame, on mount, on load or on a re-render", () => {
+  it("sends no postMessage to the frame, on mount, on load or on a re-render", () => {
     const posted = vi.fn();
     const descriptor = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, "contentWindow");
     if (descriptor?.get === undefined) throw new Error("jsdom exposes no contentWindow getter");
@@ -63,11 +63,26 @@ describe("EvidenceDisplayFrame", () => {
     expect(posted).not.toHaveBeenCalled();
   });
 
-  it("spec 9.4: is full width and a fixed 360 px high", () => {
+  it("is full width and a fixed 360 px high", () => {
     render(<EvidenceDisplayFrame model={MODEL} />);
     const classes = screen.getByTitle("Evidence display").classList;
     expect(classes).toContain("w-full");
     expect(classes).toContain("h-[360px]");
     expect([...classes].filter((name) => /^(?:max-|min-)?[hw]-/.test(name)).sort((a, b) => a.localeCompare(b))).toEqual(["h-[360px]", "w-full"]);
+  });
+
+  it("calls onLoad with no arguments when the page loads", () => {
+    const onLoad = vi.fn();
+    render(<EvidenceDisplayFrame model={MODEL} onLoad={onLoad} />);
+    fireEvent.load(screen.getByTitle("Evidence display"));
+    expect(onLoad).toHaveBeenCalledTimes(1);
+    expect(onLoad.mock.calls[0]).toHaveLength(0);
+  });
+
+  it("draws the sheet on the display paper with a light colour scheme", () => {
+    render(<EvidenceDisplayFrame model={MODEL} />);
+    const classes = [...screen.getByTitle("Evidence display").classList];
+    expect(classes).toEqual(expect.arrayContaining(["bg-(--dr-display-paper)", "[color-scheme:light]", "dr-display-frame"]));
+    for (const name of ["border", "border-klerosUIComponentsStroke", "rounded-base", "bg-klerosUIComponentsWhiteBackground"]) expect(classes).not.toContain(name);
   });
 });

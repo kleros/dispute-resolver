@@ -1,5 +1,5 @@
 function base64Url(text: string): string {
-  const binary = Array.from(new TextEncoder().encode(text), (byte) => String.fromCharCode(byte)).join("");
+  const binary = Array.from(new TextEncoder().encode(text), (byte) => String.fromCodePoint(byte)).join("");
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 

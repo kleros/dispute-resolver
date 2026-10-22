@@ -7,7 +7,7 @@ import type { WalletMode, WalletModal, WalletSetup } from "../../wallet";
 /** The account of the test wallet (checksummed, as wallets report it). */
 export const TEST_WALLET_ACCOUNT = "0x00000000000000000000000000000000000A11cE";
 
-/** A second account of the test wallet (checksummed), for a user who switches account inside the wallet (D-20). */
+/** A second account of the test wallet (checksummed), for a user who switches account inside the wallet. */
 export const TEST_WALLET_SECOND_ACCOUNT = "0x0000000000000000000000000000000000000B0b";
 
 /** The test wallet's account as the app reports it (`WalletState.address`, lowercased). */
@@ -35,9 +35,9 @@ function testChains(first: number): readonly [Chain, ...Chain[]] {
 }
 
 export interface TestWalletOptions {
-  /** `appkit` (default) gives a fake modal recording its calls; `unconfigured` has none (K-02). */
+  /** `appkit` (default) gives a fake modal recording its calls; `unconfigured` has none. */
   readonly mode?: WalletMode;
-  /** `true`: the fake modal reports an embedded-wallet connector once ready, as AppKit does when the Reown dashboard is misconfigured (K-03). */
+  /** `true`: the fake modal reports an embedded-wallet connector once ready, as AppKit does when the Reown dashboard is misconfigured. */
   readonly embeddedWallet?: boolean;
   /** The wallet's chain once connected; default 1. */
   readonly chainId?: number;
@@ -77,10 +77,10 @@ function fakeModal(embeddedWallet: boolean): FakeWalletModal {
 }
 
 /**
- * A wallet for component and hook tests (ARCHITECTURE.md §1.5): a wagmi config whose only connector is wagmi's `mock`
- * connector, no storage, no EIP-6963 discovery, and transports that reject. Render it with `TestWalletProvider` inside
- * `TestDataProvider` (wagmi needs the QueryClient). Signing through it fails (its RPC is unreachable); drive write states
- * with `fakeWriteController`, or mock `writeContract` of `@wagmi/core` in a hook test.
+ * A wallet for component and hook tests: a wagmi config whose only connector is wagmi's `mock` connector, no storage,
+ * no EIP-6963 discovery, and transports that reject. Render it with `TestWalletProvider` inside `TestDataProvider`
+ * (wagmi needs the QueryClient). Signing through it fails (its RPC is unreachable); drive write states with
+ * `fakeWriteController`, or mock `writeContract` of `@wagmi/core` in a hook test.
  */
 export function createTestWallet(options: TestWalletOptions = {}): TestWallet {
   const { mode = "appkit", chainId = 1, switchChainError, embeddedWallet = false } = options;
@@ -113,4 +113,11 @@ export function createTestWallet(options: TestWalletOptions = {}): TestWallet {
       created.onAccountsChanged([getAddress(account)]);
     },
   };
+}
+
+/** Leaves every chain switch the wallet is asked for pending, so a test can look at a control while it waits. */
+export function holdChainSwitches(wallet: TestWallet): void {
+  const [connector] = wallet.config.connectors;
+  if (connector === undefined) throw new Error("The test wallet has no connector.");
+  vi.spyOn(connector, "switchChain").mockReturnValue(new Promise<never>(() => undefined));
 }

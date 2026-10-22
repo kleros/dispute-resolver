@@ -35,6 +35,28 @@ export function applyColorScheme(root: HTMLElement, prefersDark: boolean): void 
   root.classList.toggle("dark", prefersDark);
 }
 
+/** Set on the root while a scheme change is applied; index.css pauses every transition under it but the toggle's icon. */
+export const SWITCHING_ATTRIBUTE = "data-theme-switching";
+
+/**
+ * Applies a scheme change on a page already showing. Without the pause, every element with a colour transition would tween
+ * while the rest of the page snaps, so the flip would look patchy; the new colours are computed while the pause holds, and
+ * it lifts on the next frame.
+ */
+function switchColorScheme(root: HTMLElement, prefersDark: boolean): void {
+  root.setAttribute(SWITCHING_ATTRIBUTE, "");
+  applyColorScheme(root, prefersDark);
+  const view = root.ownerDocument.defaultView;
+  if (view === null || typeof view.requestAnimationFrame !== "function") {
+    root.removeAttribute(SWITCHING_ATTRIBUTE);
+    return;
+  }
+  view.getComputedStyle(root).getPropertyValue("color");
+  view.requestAnimationFrame(() => {
+    root.removeAttribute(SWITCHING_ATTRIBUTE);
+  });
+}
+
 function isColorScheme(value: unknown): value is ColorScheme {
   return value === "light" || value === "dark";
 }
@@ -71,7 +93,7 @@ export function createColorSchemeStore({ root, media, storage }: ColorSchemeStor
 
   function apply(next: ColorScheme): void {
     scheme = next;
-    applyColorScheme(root, next === "dark");
+    switchColorScheme(root, next === "dark");
     for (const listener of listeners) listener();
   }
 

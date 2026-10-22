@@ -9,13 +9,12 @@ import type { AppKitWalletSetup, WalletModal, WalletSetup, WalletSetupState } fr
 /** `createAppKitSetup`, which lives in its own chunk. */
 export type CreateAppKitSetup = typeof createAppKitSetup;
 
-/** Loads the AppKit chunk. */
 export type LoadAppKit = () => Promise<CreateAppKitSetup>;
 
 /**
- * The wallet setup over time (ARCHITECTURE.md §2.3), read through `useSyncExternalStore`. Without a WalletConnect
- * project ID it is the read-only setup from the start; with one it starts as a stand-in and becomes the AppKit setup
- * once `load` has fetched AppKit's chunk and created AppKit.
+ * The wallet setup over time, read through `useSyncExternalStore`. Without a WalletConnect project ID it is the
+ * read-only setup from the start; with one it starts as a stand-in and becomes the AppKit setup once `load` has fetched
+ * AppKit's chunk and created AppKit.
  */
 export interface WalletSetupStore {
   readonly getSnapshot: () => WalletSetupState;
@@ -56,14 +55,13 @@ export function hasPersistedConnection(read: ReadStoredItem): boolean {
   }
 }
 
-/** A wagmi config with no connector and no EIP-6963 discovery over the configured chains and their read RPCs (D-56). */
+/** A wagmi config with no connector and no EIP-6963 discovery over the configured chains and their read RPCs. */
 function connectorlessConfig(config: AppConfig, persistent: boolean): Config {
   const chains = configuredChains();
   const transports = walletTransports(Object.values(CHAINS), config.env);
   return createConfig({ chains, transports, connectors: [], multiInjectedProviderDiscovery: false, ssr: false, ...(persistent ? {} : { storage: null }) });
 }
 
-/** The setup without a WalletConnect project ID: no wallet can connect, so the app runs read-only (K-02). */
 export function createReadOnlySetup(config: AppConfig): WalletSetup {
   return { mode: "unconfigured", wagmiConfig: connectorlessConfig(config, true) };
 }
@@ -91,7 +89,7 @@ function staticStore(state: WalletSetupState): WalletSetupStore {
  * `appkit` mode: a wagmi config with no connector and no storage, so nothing it does touches the persisted connection
  * the AppKit config reconnects from, and a modal that loads AppKit before opening. The state is `pending` until the
  * first load settles; a failed load leaves the stand-in, not pending, so the app is read-only and Connect retries.
- * `pendingReconnect` is read once, through `readStoredItem`, when the store is created (ARCHITECTURE.md §3.1).
+ * `pendingReconnect` is read once, through `readStoredItem`, when the store is created.
  */
 export function createWalletSetupStore(config: AppConfig, loadCreator: LoadAppKit = loadAppKit, readStoredItem: ReadStoredItem = readLocalStorage): WalletSetupStore {
   const projectId = config.walletConnectProjectId;

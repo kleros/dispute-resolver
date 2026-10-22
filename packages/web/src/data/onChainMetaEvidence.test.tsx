@@ -45,8 +45,8 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("on-chain meta-evidence reader (P-25)", () => {
-  it("P-25: the reader resolves the Dispute event through the shared query and then reads the MetaEvidence event directly", async () => {
+describe("onChainMetaEvidenceReader", () => {
+  it("resolves the Dispute event through the shared query and then reads the MetaEvidence event directly", async () => {
     vi.mocked(core.readDisputeEvent).mockResolvedValue(FOUND_DISPUTE);
     vi.mocked(core.readMetaEvidenceEvent).mockResolvedValue(FOUND_META);
     const answers: OnChainMetaEvidence[] = [];
@@ -78,7 +78,7 @@ describe("on-chain meta-evidence reader (P-25)", () => {
     });
   });
 
-  it("P-25 (R1): a second load reads the MetaEvidence event again, so a re-emission between two loads is seen", async () => {
+  it("reads the MetaEvidence event again on a second load, so a re-emission between two loads is seen", async () => {
     vi.mocked(core.readDisputeEvent).mockResolvedValue(FOUND_DISPUTE);
     const reemitted: Outcome<MetaEvidenceEventResult> = {
       ok: true,
@@ -92,7 +92,7 @@ describe("on-chain meta-evidence reader (P-25)", () => {
     expect(core.readDisputeEvent).toHaveBeenCalledTimes(1);
   });
 
-  it("P-25 (R2): aborting the load aborts the MetaEvidence read and leaves the shared Dispute-event query running", async () => {
+  it("aborts the MetaEvidence read with the load and leaves the shared Dispute-event query running", async () => {
     const client = createTestQueryClient();
     const deps = createTestDeps();
     const key = queryKeys.disputeEvent(1, BINDING.disputeId, BINDING.arbitrated);
@@ -135,7 +135,7 @@ describe("on-chain meta-evidence reader (P-25)", () => {
     expect(core.readDisputeEvent).toHaveBeenCalledTimes(1);
   });
 
-  it("P-25: not-found and ambiguous Dispute events, a missing MetaEvidence log and a failed read map to the fallback reasons", async () => {
+  it("maps not-found and ambiguous Dispute events, a missing MetaEvidence log and a failed read to the fallback reasons", async () => {
     const cases: [Outcome<DisputeEventResult>, Outcome<MetaEvidenceEventResult> | null, OnChainMetaEvidence][] = [
       [disputeEvent({ status: "not-found" }), null, { status: "not-found", reason: "dispute-event-not-found" }],
       [disputeEvent({ status: "ambiguous", count: 2 }), null, { status: "not-found", reason: "dispute-event-ambiguous" }],
@@ -153,14 +153,14 @@ describe("on-chain meta-evidence reader (P-25)", () => {
     }
   });
 
-  it("P-25: a reader on a chain without a read RPC is unavailable (D-56)", async () => {
+  it("is unavailable without reading on a chain without a read RPC", async () => {
     const reader = onChainMetaEvidenceReader(createTestQueryClient(), createTestDeps({ unconfiguredChains: [1] }), 1, BINDING);
     expect(await reader(new AbortController().signal)).toEqual({ status: "unavailable", error: noRpcError(1) });
     expect(core.readDisputeEvent).not.toHaveBeenCalled();
     expect(core.readMetaEvidenceEvent).not.toHaveBeenCalled();
   });
 
-  it("P-25: a new load re-reads a Dispute event whose previous read failed", async () => {
+  it("re-reads a Dispute event whose previous read failed on the next load", async () => {
     vi.mocked(core.readDisputeEvent).mockResolvedValueOnce({ ok: false, error: FAILED }).mockResolvedValue(FOUND_DISPUTE);
     vi.mocked(core.readMetaEvidenceEvent).mockResolvedValue(FOUND_META);
     const reader = onChainMetaEvidenceReader(createTestQueryClient(), createTestDeps(), 1, BINDING);

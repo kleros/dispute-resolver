@@ -8,7 +8,6 @@ interface PeriodFilterSelectProps {
   readonly onChange: (filter: PeriodFilter) => void;
 }
 
-/** The period dropdown of the Ongoing page (spec §3), showing the selected filter with its period's color. */
 export function PeriodFilterSelect({ value, onChange }: PeriodFilterSelectProps) {
   return (
     <div className="w-full sm:w-auto">

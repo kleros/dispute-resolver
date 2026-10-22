@@ -5,10 +5,8 @@ import type { NoticeVariant } from "../../ui";
 import { useCaseRefresh, type CaseWriteContext } from "../../data";
 import { useWrite, useWriteAccess, type NeedsWalletGuard, type WriteAccess, type WriteStatus, type WrongChainGuard } from "../../wallet";
 
-/** The evidence JSON's file name on Atlas (spec 5.14 step 1). */
 export const EVIDENCE_FILE_NAME = "evidence.json";
 
-/** What the user typed and attached in the modal. */
 export interface EvidenceDraft {
   readonly title: string;
   readonly description: string;
@@ -20,7 +18,6 @@ type ActiveWriteStatus = Exclude<WriteStatus, { readonly phase: "idle" }>;
 /** A refusal of the chain guard, as the write status `WriteStatusNotice` renders with its Connect and Switch offers. */
 export type GuardStatus = NeedsWalletGuard | WrongChainGuard;
 
-/** The guard's refusal for a wallet connected on another chain than the page's. */
 export type WrongChainStatus = WrongChainGuard;
 
 /** A failure outside the write flow: the evidence JSON upload, or an unexpected error. */
@@ -30,13 +27,12 @@ export interface SubmissionNotice {
   readonly body: string;
 }
 
-/** What the submission last reported: a status of the write flow, or a notice of its own. */
 export type SubmissionFeedback = { readonly kind: "write"; readonly status: ActiveWriteStatus } | { readonly kind: "notice"; readonly notice: SubmissionNotice };
 
 export interface EvidenceSubmission {
   /**
-   * The chain guard every signature of the submission passes first (B3, D-48). It covers the Atlas sign-in of the
-   * attachment as well as Submit.
+   * The chain guard every signature of the submission passes first. It covers the Atlas sign-in of the attachment as
+   * well as Submit.
    */
   readonly access: WriteAccess;
   /** `null` before the first attempt and after `clear()`. */
@@ -49,7 +45,7 @@ export interface EvidenceSubmission {
   readonly clear: () => void;
 }
 
-/** Why the evidence JSON was not uploaded; a declined Atlas sign-in is the user's choice, not an error (D-07, D-52). */
+/** A declined Atlas sign-in is the user's choice, not an error. */
 function uploadNotice(failure: Extract<UploadResult, { readonly ok: false }>): SubmissionNotice {
   if (failure.error === "sign-in-rejected") return { variant: "info", title: "Sign-in declined", body: failure.message };
   return { variant: "error", title: "Evidence not uploaded", body: failure.message };
@@ -60,11 +56,8 @@ function errorText(error: unknown): string {
 }
 
 /**
- * Submits evidence (spec 5.14 "Submit"): the chain guard first (B3, D-48), so nothing is uploaded or signed for a wallet
- * on another chain; then the attachment path is normalized (B16, triage WN-2) into `evidence.json`, uploaded with role
- * `policy` (A16), signing in to Atlas within the same click when needed (D-52); then the family's `submitEvidence` is
- * built by core on the arbitrated contract from the arbitrator (A22) and sent through the write hook. The list refreshes
- * once the transaction is mined (D-07), and every outcome is reported.
+ * The chain guard runs first, so nothing is uploaded or signed for a wallet on another chain. `submitEvidence` is built
+ * on the arbitrated contract read from the arbitrator, never from meta-evidence.
  */
 export function useEvidenceSubmission(context: CaseWriteContext, pageChainId: ChainId, disputeId: bigint): EvidenceSubmission {
   const write = useWrite();

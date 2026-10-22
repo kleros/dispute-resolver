@@ -1,6 +1,6 @@
 import type { Address } from "@dispute-resolver/core";
 
-/** Today's key, kept so a warning dismissed in the old app stays dismissed (spec §6.5). */
+/** Must not change: browsers already hold dismissals under this key. */
 const STORAGE_KEY = "@kleros/dispute-resolver/alert/smart-contract-wallet-warning";
 
 function storageKey(address: Address): string {
@@ -8,8 +8,8 @@ function storageKey(address: Address): string {
 }
 
 /**
- * Whether the warning should show for `address` (spec §2.3): nothing stored, unreadable storage or an unparseable value
- * show it; otherwise the stored value decides, as today (`false` once dismissed).
+ * Nothing stored, unreadable storage or an unparseable value show the warning; otherwise the stored value decides
+ * (`false` once dismissed).
  */
 export function isWarningShown(address: Address): boolean {
   try {

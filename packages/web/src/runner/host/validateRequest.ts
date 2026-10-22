@@ -3,7 +3,7 @@ import { PROTOCOL_VERSION, RUN_MESSAGE_TYPE } from "../protocol";
 import type { RpcRedirectRule, RunnerRequestMessage } from "../types";
 import { isHttpsUrl } from "./httpsUrl";
 
-// B5: the host re-checks the parameters core built before any frame exists, so nothing malformed reaches a script.
+// The host re-checks the parameters core built before any frame exists, so nothing malformed reaches a script.
 const configuredChainId = z.number().refine((id) => parseChainId(id) === id);
 const rpcUrl = z.union([z.null(), z.string().refine(isHttpsUrl)]);
 
@@ -20,10 +20,7 @@ const runRequestSchema = z.object({
   }),
 });
 
-/**
- * The message to post for `request`, or `undefined` when its parameters or script text are invalid (B5). The
- * parameters are copied field by field, so only the six of spec §9.5 reach the script.
- */
+/** The parameters are copied field by field, so no extra field reaches the script. */
 export function buildRequestMessage(request: ScriptRunRequest, rpcRedirects: readonly RpcRedirectRule[]): RunnerRequestMessage | undefined {
   if (!runRequestSchema.safeParse(request).success) return;
   const { scriptText, params, kind } = request;

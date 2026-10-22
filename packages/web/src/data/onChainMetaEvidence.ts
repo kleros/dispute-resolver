@@ -20,11 +20,7 @@ function isFoundEvent(data: Outcome<DisputeEventResult> | undefined): boolean {
   return data?.ok === true && data.value.status === "found";
 }
 
-/**
- * The ERC-1497 `Dispute` event query (ARCHITECTURE.md §5.3), shared by `useDisputeEvent` and the case page's on-chain
- * meta-evidence reader, so the page reads the event once: it never goes stale once found. Idle without a binding, a read
- * RPC (D-56) or a configured chain.
- */
+/** Shared by `useDisputeEvent` and the case page's on-chain meta-evidence reader, so the page reads the event once. */
 export function disputeEventQuery(deps: CoreDeps, chainId: ChainId, binding: ArbitratedBinding | undefined) {
   const client = deps.getReadClient(chainId);
   const chain = getChain(chainId);
@@ -46,7 +42,7 @@ export function disputeEventQuery(deps: CoreDeps, chainId: ChainId, binding: Arb
   });
 }
 
-/** `promise`, or a rejection as soon as `signal` aborts; the work behind `promise` is left running. */
+/** Rejects as soon as `signal` aborts, but leaves the work behind `promise` running. */
 function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   if (signal.aborted) return Promise.reject(new DOMException("The on-chain meta-evidence read was aborted.", "AbortError"));
   return new Promise<T>((resolve, reject) => {
@@ -61,12 +57,10 @@ function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
 }
 
 /**
- * The case page's on-chain meta-evidence reader (P-25, ARCHITECTURE.md §5.3): the dispute's `Dispute` event through the
- * shared query, then the arbitrable's `MetaEvidence` event for its meta-evidence ID, read directly on every load (no
- * query, no cache), so a re-emission between two loads is seen. The shared query never receives the reader's signal: an
- * abort stops the wait for it, never the query, which `useDisputeEvent` also observes; a Dispute event that was not found
- * or failed is read again by a new load. The `MetaEvidence` read carries the reader's signal and is cancelled with the
- * load. The arbitrable is the arbitrator's `arbitrated` (A22).
+ * The `MetaEvidence` event is read directly on every load (no query, no cache), so a re-emission between two loads is
+ * seen. The shared Dispute-event query never receives the reader's signal: an abort stops the wait for it, never the
+ * query, which `useDisputeEvent` also observes; a Dispute event that was not found or failed is read again by a new
+ * load. The `MetaEvidence` read carries the reader's signal and is cancelled with the load.
  */
 export function onChainMetaEvidenceReader(client: QueryClient, deps: CoreDeps, chainId: ChainId, binding: ArbitratedBinding): OnChainMetaEvidenceReader {
   return async (signal): Promise<OnChainMetaEvidence> => {

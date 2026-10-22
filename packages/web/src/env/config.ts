@@ -3,7 +3,7 @@ import type { Env } from "@dispute-resolver/core";
 import { ENV } from "./env";
 import type { AppConfig, AppLocation } from "./types";
 
-/** `REACT_APP_WALLETCONNECT_PROJECT_ID`, trimmed; empty or unset is `null` and boots the read-only wallet mode (ARCHITECTURE.md §2.3). */
+/** `REACT_APP_WALLETCONNECT_PROJECT_ID`, trimmed; empty or unset is `null` and boots the read-only wallet mode. */
 function readWalletConnectProjectId(env: Env): string | null {
   const projectId = env.REACT_APP_WALLETCONNECT_PROJECT_ID?.trim() ?? "";
   return projectId === "" ? null : projectId;
@@ -16,7 +16,7 @@ function withoutTrailingSlashes(path: string): string {
 }
 
 /**
- * D-21: `REACT_APP_ATLAS_URI` is accepted only as an `https:` URL without credentials, query or fragment (the upload and
+ * `REACT_APP_ATLAS_URI` is accepted only as an `https:` URL without credentials, query or fragment (the upload and
  * sign-in endpoints are appended to it); a path is kept, trailing slashes are dropped. Anything else, including an unset
  * variable, is `null` and uploads are shown as unavailable. Never throws.
  */
@@ -34,8 +34,8 @@ function readAtlasUri(env: Env): string | null {
 }
 
 /**
- * Derives the app configuration from an environment and the page location (ARCHITECTURE.md §4). Pure and total: a missing
- * or malformed variable yields a `null` field, never an exception (D-21, §2.2 step 1).
+ * Derives the app configuration from an environment and the page location. Pure and total: a missing or malformed
+ * variable yields a `null` field, never an exception, so the app always boots.
  */
 export function buildAppConfig(env: Env, location: AppLocation): AppConfig {
   return Object.freeze({

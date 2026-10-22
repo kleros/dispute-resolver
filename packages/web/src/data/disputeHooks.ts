@@ -25,10 +25,7 @@ import { IDLE_KEY, queryKeys } from "./queryKeys";
 import { LOADING, fromOutcome, fromQuery, noRpcError, ready, unavailable, unavailableFrom } from "./sectionData";
 import type { MetaEvidenceBudget, SectionData } from "./types";
 
-/**
- * `disputes(id)` and the binding to its arbitrable (spec §5.3 step 1, §5.4, A22, D-53). `null` is the D-09 state: no
- * read. Never persisted: the binding must come from the chain, never from storage.
- */
+/** A `null` ID reads nothing. Never persisted: the binding must come from the chain, never from storage. */
 export function useDisputeLookup(chainId: ChainId, disputeId: bigint | null): SectionData<DisputeLookup> {
   const deps = useCoreDeps();
   const query = useQuery({
@@ -39,7 +36,6 @@ export function useDisputeLookup(chainId: ChainId, disputeId: bigint | null): Se
   return disputeId === null ? LOADING : fromQuery(query, ready);
 }
 
-/** Family detection of the arbitrable (ADR 0003). In memory only (C11); one retry when the RPC rejects. */
 export function useFamily(chainId: ChainId, arbitrable: Address | undefined): SectionData<FamilyDetection> {
   const deps = useCoreDeps();
   const client = deps.getReadClient(chainId);
@@ -55,11 +51,10 @@ export function useFamily(chainId: ChainId, arbitrable: Address | undefined): Se
 }
 
 /**
- * The meta-evidence of the dispute with the case page's or the Ongoing page's budget. The case page loads it uncached:
- * a mount, and the move from the idle key to the dispute's key once the lookup settles, always run the pipeline, and
- * no stored result, whatever its status, is shown until that run settles. Only the Ongoing cards are served from the
- * stored results. The case page passes the on-chain reader, whose `MetaEvidence` event URI wins over the locator's
- * when it is found.
+ * The case page loads it uncached: a mount, and the move from the idle key to the dispute's key once the lookup
+ * settles, always run the pipeline, and no stored result, whatever its status, is shown until that run settles. Only
+ * the Ongoing cards are served from the stored results. The case page passes the on-chain reader, whose `MetaEvidence`
+ * event URI wins over the locator's when it is found.
  */
 export function useMetaEvidence(chainId: ChainId, binding: ArbitratedBinding | undefined, budget: MetaEvidenceBudget): SectionData<MetaEvidenceResult> {
   const deps = useCoreDeps();
@@ -78,7 +73,6 @@ export function useMetaEvidence(chainId: ChainId, binding: ArbitratedBinding | u
   return fromQuery(query, ready);
 }
 
-/** The ERC-1497 `Dispute` event: never goes stale once found. Shared with the case page's on-chain reader (P-25). */
 export function useDisputeEvent(chainId: ChainId, binding: ArbitratedBinding | undefined): SectionData<DisputeEventResult> {
   const deps = useCoreDeps();
   const query = useQuery(disputeEventQuery(deps, chainId, binding));
@@ -87,14 +81,13 @@ export function useDisputeEvent(chainId: ChainId, binding: ArbitratedBinding | u
   return fromQuery(query, fromOutcome);
 }
 
-/** Why the evidence of a dispute cannot be listed without its `Dispute` event (D-36: say so instead of an empty list). */
+/** Without its `Dispute` event the evidence group is unknown: the section says so instead of showing an empty list. */
 function missingEventMessage(event: Exclude<DisputeEventResult, { status: "found" }>): string {
   return event.status === "ambiguous"
     ? `The dispute's Dispute event was found ${event.count.toString()} times, so its evidence group is unknown.`
     : "The dispute's Dispute event was not found, so its evidence group is unknown.";
 }
 
-/** The evidence list of the dispute's evidence group (spec §5.14, D-22); a failed Dispute-event read degrades it with its reason (D-36). */
 export function useEvidence(chainId: ChainId, binding: ArbitratedBinding | undefined, disputeEvent: SectionData<DisputeEventResult>): SectionData<EvidenceList> {
   const deps = useCoreDeps();
   const client = deps.getReadClient(chainId);
@@ -127,15 +120,14 @@ export function useEvidence(chainId: ChainId, binding: ArbitratedBinding | undef
   return fromQuery(query, fromOutcome);
 }
 
-/** The found dispute: its struct and binding, as `readDisputeDetails` takes them. */
 export interface FoundDispute {
   readonly dispute: ArbitratorDispute;
   readonly binding: ArbitratedBinding;
 }
 
 /**
- * Per-dispute arbitrator reads (spec §5.3 step 3, D-11). `found` is `undefined` until the caller has settled the
- * family (`undefined` when detection failed) and the Dispute-event block (`null` when there is none). Never persisted.
+ * `found` is `undefined` until the caller has settled the family (`undefined` when detection failed) and the
+ * Dispute-event block (`null` when there is none).
  */
 export function useDisputeDetails(
   chainId: ChainId,

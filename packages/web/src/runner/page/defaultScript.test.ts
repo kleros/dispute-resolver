@@ -3,8 +3,8 @@ import { ACCEPTED, collectUntilSettled, createFakeRunnerEnvironment, runRequest 
 import { bootstrapRunner } from "./bootstrap";
 import { evaluateInGlobalScope, runScriptInGlobalScope } from "./evaluate";
 
-// The full text of the default script /ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj (golden cases mainnet 1454,
-// 505, 912 and Gnosis 431, 0). Its entry point is a `const`, which only the same evaluation can see.
+// The full text of the default script /ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj. Its entry point is a
+// `const`, which only the same evaluation can see.
 const DEFAULT_SCRIPT = `const getMetaEvidence = () => {
   resolveScript({
     arbitrableInterfaceURI: \`https://resolve.kleros.io/interact/\${scriptParameters.disputeID}\`,
@@ -14,8 +14,8 @@ const DEFAULT_SCRIPT = `const getMetaEvidence = () => {
 
 // Keep this file to a single test: bootstrapRunner defines non-configurable globals on the real globalThis here, so a
 // second run in the same file would fail with "Cannot redefine property".
-describe("runner page with the default script (spec §9.5)", () => {
-  it("§7.2: the default script, whose getMetaEvidence is a const, resolves through the port", async () => {
+describe("runner page with the default script", () => {
+  it("the default script, whose getMetaEvidence is a const, resolves through the port", async () => {
     const fake = createFakeRunnerEnvironment();
     const channel = new MessageChannel();
     const replies = collectUntilSettled(channel.port1);

@@ -10,8 +10,7 @@ const TITLE_DIFFERENT_FILE = "The meta-evidence API pointed to a different file 
 const TITLE_UNVERIFIABLE = "The meta-evidence API pointed to a file that cannot be verified";
 const BODY_DIFFERENT_FILE =
   "This page shows the meta-evidence file the arbitrable contract recorded on-chain. Other interfaces may show the other file's details, and the Ongoing Disputes list may show its title.";
-const BODY_UNVERIFIABLE =
-  "This page shows the meta-evidence file the arbitrable contract recorded on-chain. Other interfaces may show different details for this dispute.";
+const BODY_UNVERIFIABLE = "This page shows the meta-evidence file the arbitrable contract recorded on-chain. Other interfaces may show different details for this dispute.";
 const LOCATOR_PATH = "/ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaEvidence.json";
 
 function gnosis(): ChainConfig {
@@ -66,8 +65,8 @@ function expectSilentRegion(container: HTMLElement): void {
   expect(region).toHaveClass("contents");
 }
 
-describe("MetaEvidenceSourceNotice (P-25)", () => {
-  it("P-25: a meta-evidence the meta-evidence API disagrees with shows the warning as a polite status, not an alert", () => {
+describe("MetaEvidenceSourceNotice", () => {
+  it("a meta-evidence the meta-evidence API disagrees with shows the warning as a polite status, not an alert", () => {
     const { container } = renderNotice(withSource({ kind: "event", locator: "disagrees", locatorPath: LOCATOR_PATH }));
     const region = screen.getByRole("status");
     expect(region).toHaveTextContent(TITLE_DIFFERENT_FILE);
@@ -77,7 +76,7 @@ describe("MetaEvidenceSourceNotice (P-25)", () => {
     expect(container.textContent).not.toContain("/ipfs/");
   });
 
-  it("P-25: an API answer that is not content-addressed shows the warning with the unverifiable-file wording", () => {
+  it("an API answer that is not content-addressed shows the warning with the unverifiable-file wording", () => {
     const { container } = renderNotice(withSource({ kind: "event", locator: "disagrees", locatorPath: null }));
     const region = screen.getByRole("status");
     expect(region).toHaveTextContent(TITLE_UNVERIFIABLE);
@@ -85,7 +84,7 @@ describe("MetaEvidenceSourceNotice (P-25)", () => {
     expect(container.textContent).not.toContain("Ongoing Disputes");
   });
 
-  it("P-25: agreement, a missing or failed API answer, and an API-decided meta-evidence show no warning", () => {
+  it("agreement, a missing or failed API answer, and an API-decided meta-evidence show no warning", () => {
     const sources: MetaEvidenceSource[] = [
       { kind: "event", locator: "agrees", locatorPath: LOCATOR_PATH },
       { kind: "event", locator: "missing", locatorPath: null },
@@ -103,7 +102,7 @@ describe("MetaEvidenceSourceNotice (P-25)", () => {
     }
   });
 
-  it("P-25: no warning while the meta-evidence loads, or when it is unavailable, missing, failed or rejected", () => {
+  it("no warning while the meta-evidence loads, or when it is unavailable, missing, failed or rejected", () => {
     const states: SectionData<MetaEvidenceResult>[] = [
       sectionLoading,
       sectionUnavailable("rpc-error"),
@@ -118,7 +117,7 @@ describe("MetaEvidenceSourceNotice (P-25)", () => {
     }
   });
 
-  it("P-25: the status region exists before the comparison settles, so the warning is an addition to it, not a new region", () => {
+  it("the status region exists before the comparison settles, so the warning is an addition to it, not a new region", () => {
     const { rerender } = renderNotice(sectionLoading);
     const region = screen.getByRole("status");
     expect(region).toBeEmptyDOMElement();

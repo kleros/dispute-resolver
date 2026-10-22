@@ -1,4 +1,3 @@
-// Test doubles of `runner` (ARCHITECTURE.md §1.5, §7.4). Tests only: nothing under src/ outside tests imports this (C9).
 export {
   ACCEPTED,
   FAKE_APP_ORIGIN,

@@ -2,12 +2,12 @@ import { z } from "@dispute-resolver/core";
 
 /**
  * Where `@kleros/kleros-app` 3.1.0 keeps the Atlas session token: its `useSessionStorage("authToken")` stores the token
- * string JSON-encoded under this sessionStorage key (ARCHITECTURE.md §8.2 step 3, D-20). This is a coupling to the
- * library's internals, pinned by the version-named test in `session.test.ts`.
+ * string JSON-encoded under this sessionStorage key. This is a coupling to the library's internals, pinned by a
+ * version-named test.
  */
 export const LIBRARY_TOKEN_KEY = "authToken";
 
-/** The claims the wrapper relies on. A token without a numeric `exp` fails here and counts as signed out (B16). */
+/** The claims the wrapper relies on. A token without a numeric `exp` fails here and counts as signed out. */
 const claimsSchema = z.object({ exp: z.number(), sub: z.string() });
 
 /** The tab's sessionStorage, or `null` where the browser refuses access to it. */
@@ -39,8 +39,8 @@ export function readStoredToken(storage: Pick<Storage, "getItem"> | null): strin
 }
 
 /**
- * Removes the library's stored token when it is still `rejected`, so a reload does not revive a session Atlas refused
- * (A15). A token stored since, by a newer sign-in, is kept.
+ * Removes the library's stored token when it is still `rejected`, so a reload does not revive a session Atlas refused.
+ * A token stored since, by a newer sign-in, is kept.
  */
 export function clearRejectedToken(storage: Pick<Storage, "getItem" | "removeItem"> | null, rejected: string): void {
   if (storage === null || readStoredToken(storage) !== rejected) return;
@@ -59,7 +59,7 @@ function decodeBase64Url(segment: string): string | null {
     .padEnd(Math.ceil(segment.length / 4) * 4, "=");
   try {
     const binary = atob(base64);
-    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    const bytes = Uint8Array.from(binary, (char) => char.codePointAt(0) ?? 0);
     return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
     return null;
@@ -82,7 +82,7 @@ export function tokenExpiry(token: string): number | null {
   return parsed.success ? parsed.data.exp : null;
 }
 
-/** B16: a token counts only when it carries an `exp` in the future; one without `exp`, undecodable, or expired does not. */
+/** A token counts only when it carries an `exp` in the future; one without `exp`, undecodable, or expired does not. */
 export function isLiveToken(token: string | null, nowSeconds: number): boolean {
   if (token === null) return false;
   const expiry = tokenExpiry(token);

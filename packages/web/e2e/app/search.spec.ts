@@ -2,10 +2,9 @@ import { expect, test } from "@playwright/test";
 import { GNOSIS_ARBITRATOR, isDisputesCall, MAINNET_ARBITRATOR, NEVER_CREATED_ON_GNOSIS, OUT_OF_RANGE_ON_MAINNET } from "../support/arbitrator";
 import { fakeNetwork, loadRecording, type HttpRequest } from "../support/network";
 
-// The case page's search box on the built app (ledger D-53, proposal P-08): a search clears the shown dispute at once,
-// and an ID that names no dispute shows the not-found state with nothing of the previous dispute. Mainnet's arbitrator
-// reverts past its last dispute; Gnosis keeps disputes in a mapping, so an ID never created reads as a zeroed struct.
-// The build needs the chain-1 and Gnosis read RPCs and the meta-evidence API configured, as a deploy has.
+// Mainnet's arbitrator reverts past its last dispute; Gnosis keeps disputes in a mapping, so an ID never created reads
+// as a zeroed struct. The build needs the chain-1 and Gnosis read RPCs and the meta-evidence API configured, as a deploy
+// has.
 
 const RECORDING = loadRecording(new URL("fixtures/mainnet-1621-appeal.json", import.meta.url));
 const CASE_TITLE = "Proof of Humanity Governance Dispute";
@@ -18,7 +17,7 @@ function locatorRequests(requests: readonly HttpRequest[], disputeId: string): n
   return requests.filter((request) => request.kind === "locator" && request.disputeId === disputeId).length;
 }
 
-test("D-53: searching a nonexistent ID while a dispute is shown clears it at once and shows the not-found state", async ({ context, page, baseURL }) => {
+test("clears the shown dispute at once and shows the not-found state when searching a nonexistent ID", async ({ context, page, baseURL }) => {
   const missing = "99999999";
   const traffic = await fakeNetwork(context, {
     appOrigin: new URL(baseURL ?? "http://localhost").origin,
@@ -42,11 +41,10 @@ test("D-53: searching a nonexistent ID while a dispute is shown clears it at onc
   await expect(page.getByText(CASE_TITLE)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Appeal", exact: true })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Appeal", exact: true, includeHidden: true })).toHaveCount(0);
-  // Nothing else is read for an ID that names no dispute.
   expect(locatorRequests(traffic.http, missing)).toBe(0);
 });
 
-test("P-08, D-53: searching an unused Gnosis ID, a zeroed struct, shows the not-found state", async ({ context, page, baseURL }) => {
+test("shows the not-found state for an unused Gnosis ID that reads as a zeroed struct", async ({ context, page, baseURL }) => {
   const unused = "5000000";
   const traffic = await fakeNetwork(context, {
     appOrigin: new URL(baseURL ?? "http://localhost").origin,

@@ -87,7 +87,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("persisted query cache (ARCHITECTURE.md §5.4)", () => {
+describe("persisted query cache", () => {
   it("restores the persisted cache without the Function constructor", () => {
     const source = new QueryClient();
     source.setQueryData(queryKeys.courts(1), courtsOk);
@@ -101,7 +101,7 @@ describe("persisted query cache (ARCHITECTURE.md §5.4)", () => {
     expect(uses).toBe(0);
   });
 
-  it("B15: an ok court list and an ok meta-evidence round-trip, bigints included", async () => {
+  it("round-trips an ok court list and an ok meta-evidence, bigints included", async () => {
     const source = new QueryClient();
     source.setQueryData(queryKeys.courts(1), courtsOk);
     source.setQueryData(metaEvidenceKey, testOkMetaEvidence());
@@ -110,7 +110,7 @@ describe("persisted query cache (ARCHITECTURE.md §5.4)", () => {
     expect(restored.getQueryData(metaEvidenceKey)).toEqual(testOkMetaEvidence());
   });
 
-  it("D-13: a version bump invalidates every entry", async () => {
+  it("drops every entry after a version bump", async () => {
     const source = new QueryClient();
     source.setQueryData(queryKeys.courts(1), courtsOk);
     source.setQueryData(metaEvidenceKey, testOkMetaEvidence());
@@ -118,54 +118,54 @@ describe("persisted query cache (ARCHITECTURE.md §5.4)", () => {
     expect(restored.getQueryCache().getAll()).toHaveLength(0);
   });
 
-  it("P-25, D-13: the cache version is dr-cache-4, so entries persisted without a source are dropped", async () => {
-    expect(CACHE_VERSION).toBe("dr-cache-4");
+  it("drops meta-evidence entries persisted without a source, under the previous version or the current one", async () => {
+    expect(CACHE_VERSION).toBe("dr-cache-5");
     const { source, ...withoutSource } = testOkMetaEvidence();
     expect(source).toEqual({ kind: "locator", event: "not-read" });
-    const previousVersion = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: withoutSource }], "dr-cache-3"));
+    const previousVersion = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: withoutSource }], "dr-cache-4"));
     expect(previousVersion.getQueryCache().getAll()).toHaveLength(0);
     const currentVersion = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: withoutSource }]));
     expect(currentVersion.getQueryData(metaEvidenceKey)).toBeUndefined();
   });
 
-  it("D-13: a version bump removes the old blob from storage", async () => {
+  it("removes the old blob from storage after a version bump", async () => {
     const storage = createMemoryStorage({ [PERSISTED_CACHE_KEY]: blob([{ queryKey: queryKeys.courts(1), data: { ok: true, value: [] } }], "dr-cache-old") });
     await persistQueryClientRestore({ queryClient: new QueryClient(), ...createPersistOptions(storage) });
     expect(storage.entries.has(PERSISTED_CACHE_KEY)).toBe(false);
   });
 
-  it("A2: an invalid result is never written", () => {
+  it("never writes an invalid meta-evidence result", () => {
     const client = new QueryClient();
     client.setQueryData(metaEvidenceKey, invalidResult);
     expect(persistedKeys(client)).toEqual([]);
   });
 
-  it("D-38: a failed or missing meta-evidence stays in memory", () => {
+  it("never writes a failed or missing meta-evidence", () => {
     const client = new QueryClient();
     client.setQueryData(metaEvidenceKey, failedResult);
     client.setQueryData(queryKeys.metaEvidence(1, 6n, ARBITRABLE), { status: "missing" } satisfies MetaEvidenceResult);
     expect(persistedKeys(client)).toEqual([]);
   });
 
-  it("D-13: a failed court list is never written", () => {
+  it("never writes a failed court list", () => {
     const client = new QueryClient();
     client.setQueryData(queryKeys.courts(1), { ok: false, error: { code: "rpc-error", message: "down" } } satisfies Outcome<readonly Court[]>);
     expect(persistedKeys(client)).toEqual([]);
   });
 
-  it("A22: a lookup holding a binding is never written", () => {
+  it("never writes a lookup holding a binding", () => {
     const client = new QueryClient();
     client.setQueryData(queryKeys.lookup(1, 1n), testFoundLookup());
     expect(persistedKeys(client)).toEqual([]);
   });
 
-  it("C11: family detections are never written", () => {
+  it("never writes family detections", () => {
     const client = new QueryClient();
     client.setQueryData(queryKeys.family(1, ARBITRABLE), testFamily());
     expect(persistedKeys(client)).toEqual([]);
   });
 
-  it("§5.4: the library's UserSettings and RoleRestrictions queries are never written", () => {
+  it("never writes the library's UserSettings and RoleRestrictions queries", () => {
     const client = new QueryClient();
     client.setQueryData(["UserSettings"], { email: "user@example.com" });
     client.setQueryData(["RoleRestrictions"], []);
@@ -173,7 +173,7 @@ describe("persisted query cache (ARCHITECTURE.md §5.4)", () => {
     expect(persistedKeys(client)).toEqual([queryKeys.courts(1)]);
   });
 
-  it("DATA-3 / §5.4, A2, A22, C11: the persister writes only allowlisted entries to storage", async () => {
+  it("writes only allowlisted entries to storage", async () => {
     const client = new QueryClient();
     client.setQueryData(["UserSettings"], { email: "user@example.com" });
     client.setQueryData(metaEvidenceKey, invalidResult);
@@ -185,7 +185,7 @@ describe("persisted query cache (ARCHITECTURE.md §5.4)", () => {
     expect(await writtenKeys(client)).toEqual([queryKeys.courts(1)]);
   });
 
-  it("DATA-2 / §5.4: a restored entry survives the whole maxAge without an observer", async () => {
+  it("keeps a restored entry for the whole maxAge without an observer", async () => {
     vi.useFakeTimers();
     const storage = createMemoryStorage({ [PERSISTED_CACHE_KEY]: blob([{ queryKey: queryKeys.courts(1), data: courtsOk }]) });
     const client = new QueryClient();
@@ -196,7 +196,7 @@ describe("persisted query cache (ARCHITECTURE.md §5.4)", () => {
     expect(await writtenKeys(client, storage)).toEqual([queryKeys.courts(1)]);
   });
 
-  it("B15: a malformed meta-evidence entry is ignored", async () => {
+  it("ignores a malformed meta-evidence entry and keeps the valid ones", async () => {
     const malformed = { ...testOkMetaEvidence(), metaEvidence: { ...testOkMetaEvidence().metaEvidence, title: { toString: "x" } } };
     const restored = await restoreBlob(
       blob([
@@ -208,17 +208,17 @@ describe("persisted query cache (ARCHITECTURE.md §5.4)", () => {
     expect(restored.getQueryData(queryKeys.courts(1))).toEqual(courtsOk);
   });
 
-  it("B15: a meta-evidence entry that is not content-addressed is ignored", async () => {
+  it("ignores a meta-evidence entry that is not content-addressed", async () => {
     const restored = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: { ...testOkMetaEvidence(), uri: "/ipns/example.eth" } }]));
     expect(restored.getQueryData(metaEvidenceKey)).toBeUndefined();
   });
 
-  it("B15: a court list with a number where a bigint belongs is ignored", async () => {
+  it("ignores a court list with a number where a bigint belongs", async () => {
     const restored = await restoreBlob(blob([{ queryKey: queryKeys.courts(1), data: { ok: true, value: [{ ...testCourt(), id: 0 }] } }]));
     expect(restored.getQueryData(queryKeys.courts(1))).toBeUndefined();
   });
 
-  it("A22: a restored entry under a key outside the allowlist is ignored", async () => {
+  it("ignores a restored entry under a key outside the allowlist", async () => {
     const restored = await restoreBlob(
       blob([
         { queryKey: queryKeys.lookup(1, 1n), data: { status: "found" } },
@@ -228,7 +228,7 @@ describe("persisted query cache (ARCHITECTURE.md §5.4)", () => {
     expect(restored.getQueryCache().getAll()).toHaveLength(0);
   });
 
-  it("B15: a blob that does not parse is discarded whole", async () => {
+  it("discards a blob that does not parse whole", async () => {
     const storage = createMemoryStorage({ [PERSISTED_CACHE_KEY]: "{not json" });
     const client = new QueryClient();
     await persistQueryClientRestore({ queryClient: client, ...createPersistOptions(storage) });
@@ -236,12 +236,12 @@ describe("persisted query cache (ARCHITECTURE.md §5.4)", () => {
     expect(storage.entries.has(PERSISTED_CACHE_KEY)).toBe(false);
   });
 
-  it("B15: a forged $bigint that is not a decimal stays an object and fails validation", () => {
+  it("leaves a forged $bigint that is not a decimal as an object that fails validation", () => {
     const text = blob([{ queryKey: queryKeys.courts(1), data: { ok: true, value: [{ ...testCourt(), id: { $bigint: "1e3" } }] } }]);
     expect(deserializePersistedClient(text).clientState.queries).toEqual([]);
   });
 
-  it("§5.4: a storage that throws restores nothing and never reaches the app", async () => {
+  it("restores nothing from a storage that throws, without the error reaching the app", async () => {
     const storage = createMemoryStorage();
     storage.failing = true;
     const client = new QueryClient();
@@ -255,7 +255,7 @@ describe("persisted query cache (ARCHITECTURE.md §5.4)", () => {
     expect(target.getQueryCache().getAll()).toHaveLength(0);
   });
 
-  it("§5.4: writes are throttled to one per second, keeping the latest state", async () => {
+  it("throttles writes to one per second, keeping the latest state", async () => {
     vi.useFakeTimers();
     const storage = createMemoryStorage();
     const persister = createStoragePersister(storage);

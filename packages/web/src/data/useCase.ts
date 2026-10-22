@@ -23,18 +23,16 @@ import type { CaseData, CaseDispute, SectionData } from "./types";
 
 type FoundLookup = Extract<DisputeLookup, { status: "found" }>;
 
-/** The found Dispute event, or `undefined` while loading, without one, or when its read failed. */
 function foundEvent(event: SectionData<DisputeEventResult>): DisputeEvent | undefined {
   return event.status === "ready" && event.value.status === "found" ? event.value.event : undefined;
 }
 
-/** The settled Dispute-event block for the details key: `null` without a found event, `undefined` while loading. */
+/** `null` without a found event, `undefined` while loading. */
 function settledEventBlock(event: SectionData<DisputeEventResult>): bigint | null | undefined {
   if (event.status === "loading") return undefined;
   return foundEvent(event)?.blockNumber ?? null;
 }
 
-/** The `AppealDecision` events of the details: the appeal rounds (D-30) and the "Appealed" markers (D-03). */
 function appealDecisionsOf(details: SectionData<DisputeReads>): SectionData<readonly AppealDecisionEvent[]> {
   if (details.status !== "ready") return details;
   const { appealDecisions } = details.value;
@@ -42,9 +40,8 @@ function appealDecisionsOf(details: SectionData<DisputeReads>): SectionData<read
 }
 
 /**
- * The appeal reads' inputs, or why they cannot exist: the family, the details and the Dispute event must all be settled.
- * The Dispute event gives where round 0 starts (the arbitrator's scan start without one, D-02, P-01) and the evidence
- * group, which is a governor's session (D-47).
+ * The Dispute event gives where round 0 starts (the arbitrator's scan start without one) and the evidence group, which
+ * is a governor's session.
  */
 function appealPlan(
   found: FoundLookup | undefined,
@@ -70,10 +67,8 @@ function appealPlan(
 }
 
 /**
- * The case page's data (ARCHITECTURE.md §5.3): lookup, then family, meta-evidence, Dispute event and courts in
- * parallel, then the details, then the appeal reads of the period, assembled into one `SectionData` per section so a
- * failing read degrades one section (D-36). `null` is the D-09 state; a new ID or chain starts from a fresh lookup,
- * and nothing of the previous dispute is shown (D-53). `account` is the connected wallet, for the withdraw panel.
+ * Each section gets its own `SectionData`, so a failing read degrades one section. A new ID or chain starts from a
+ * fresh lookup, and nothing of the previous dispute is shown. `account` is the connected wallet, for the withdraw panel.
  */
 export function useCase(chainId: ChainId, disputeId: bigint | null, account?: Address): CaseData {
   const deps = useCoreDeps();
@@ -92,7 +87,8 @@ export function useCase(chainId: ChainId, disputeId: bigint | null, account?: Ad
   const details = useDisputeDetails(chainId, detailsInput, valueOf(family), eventBlock ?? null);
 
   const override = binding === undefined ? undefined : getOverride(deps.registry, chainId, binding.arbitrated);
-  const plan = appealPlan(found, family, details, disputeEvent, deps.getReadClient(chainId), override);
+  const readClient = deps.getReadClient(chainId);
+  const plan = appealPlan(found, family, details, disputeEvent, readClient, override);
   const appeal = useAppealReads(plan, found?.dispute.period ?? 0, account);
 
   if (disputeId === null) return { status: "no-id", chainId };
@@ -104,7 +100,7 @@ export function useCase(chainId: ChainId, disputeId: bigint | null, account?: Ad
     return { ...base, ...everySection(unavailableFrom(error)), view: ready(viewWithoutDispute(lookup.value, error)) };
   }
 
-  const reads: FoundCaseReads = { lookup: lookup.value, family, metaEvidence, courts, details, appeal, override };
+  const reads: FoundCaseReads = { lookup: lookup.value, family, metaEvidence, courts, details, appeal, override, readClient };
   return {
     ...base,
     view: assembleView(reads),
@@ -118,7 +114,6 @@ export function useCase(chainId: ChainId, disputeId: bigint | null, account?: Ad
   };
 }
 
-/** Every dispute-dependent section in one state: all loading with the lookup, or all failing with its error. */
 function everySection(state: Exclude<SectionData<unknown>, { status: "ready" }>): Omit<CaseDispute, "status" | "chainId" | "disputeId" | "lookup" | "courts"> {
   const section = state.status === "loading" ? LOADING : unavailableFrom(state.error);
   return { view: section, family: section, metaEvidence: section, disputeEvent: section, evidence: section, appealDecisions: section, appealPanel: section, write: section };

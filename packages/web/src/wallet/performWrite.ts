@@ -4,7 +4,7 @@ import type { WriteReceipt } from "../data";
 import { errorMessage, isChainMismatch, isUserRejection } from "./errors";
 import type { WriteOptions, WriteOutcome, WriteStatus } from "./types";
 
-/** What one write needs besides the call: wagmi to sign, and the configured read RPC for the receipt (§6.4). */
+/** What one write needs besides the call: wagmi to sign, and the configured read RPC for the receipt. */
 export interface WriteEnvironment {
   readonly config: Config;
   waitForReceipt(chainId: ChainId, hash: Hex): Promise<WriteReceipt>;
@@ -12,7 +12,6 @@ export interface WriteEnvironment {
 
 type Report = (status: WriteStatus) => void;
 
-/** The refusal of a failed guard; `null` when the wallet is on the page chain (B3, D-48). */
 function guardOutcome(match: ChainMatch, pageChainId: ChainId): WriteOutcome | null {
   if (match.ok) return null;
   if (match.reason === "no-wallet") return { phase: "needs-wallet", pageChainId };
@@ -25,10 +24,9 @@ function connectedChainId(config: Config): number | undefined {
 }
 
 /** The connector's own current chain, read immediately before signing; `undefined` without a connection. */
-async function connectorChainId(config: Config): Promise<number | undefined> {
+function connectorChainId(config: Config): Promise<number | undefined> {
   const { connector, status } = getAccount(config);
-  if (status !== "connected") return undefined;
-  return connector.getChainId();
+  return status === "connected" ? connector.getChainId() : Promise.resolve(undefined);
 }
 
 function explorerUrl(chainId: ChainId, hash: Hex): string | null {
@@ -36,7 +34,7 @@ function explorerUrl(chainId: ChainId, hash: Hex): string | null {
   return chain === undefined ? null : explorerTxUrl(chain, hash);
 }
 
-/** Signs one call. A chain change between the guard and the signature is caught by wagmi's `chainId` check (B3). */
+/** Signs one call. A chain change between the guard and the signature is caught by wagmi's `chainId` check. */
 async function sign(config: Config, call: WriteCall, pageChainId: ChainId): Promise<{ readonly hash: Hex } | { readonly outcome: WriteOutcome }> {
   try {
     const hash = await writeContract(config, {
@@ -76,9 +74,9 @@ function replacementFailure(receipt: WriteReceipt, hash: Hex): string | null {
 }
 
 /**
- * Waits for the receipt through the configured RPC; a revert or a lost receipt is a failure shown with the hash (D-07).
+ * Waits for the receipt through the configured RPC; a revert or a lost receipt is a failure shown with the hash.
  * The receipt is that of the transaction actually mined: a repricing counts as the call under its new hash, and a
- * cancellation or another replacing transaction is a failure, so a withdrawal sequence stops there (D-51).
+ * cancellation or another replacing transaction is a failure, so a withdrawal sequence stops there.
  */
 async function confirm(environment: WriteEnvironment, call: WriteCall, hash: Hex, options: WriteOptions): Promise<WriteOutcome> {
   let receipt: WriteReceipt;
@@ -95,16 +93,15 @@ async function confirm(environment: WriteEnvironment, call: WriteCall, hash: Hex
   try {
     await options.onMined?.(receipt);
   } catch {
-    // The transaction is mined; a refresh that fails leaves its sections showing their own unavailable state (D-36).
+    // The transaction is mined; a refresh that fails leaves its sections showing their own unavailable state.
   }
   return { phase: "mined", hash: minedHash, explorerUrl: url, receipt };
 }
 
 /**
- * One write (ARCHITECTURE.md §6.1): a refused build sends nothing (D-07, D-47); the wallet must be connected and on the
- * page chain, checked from wagmi's state and again on the connector right before signing (B3, D-48); then pending →
- * submitted → mined, or failed, or rejected (a user rejection is not an error, D-07). Every status goes to `report`;
- * the final one is also returned. Never throws.
+ * The call must target the page chain, whatever the wallet state. The wallet must be on the page chain too, checked
+ * from wagmi's state and again on the connector right before signing. A user rejection is not an error. Every status
+ * goes to `report`; the final one is also returned. Never throws.
  */
 export async function performWrite(environment: WriteEnvironment, build: WriteBuild, options: WriteOptions, report: Report): Promise<WriteOutcome> {
   const settle = (outcome: WriteOutcome): WriteOutcome => {
@@ -113,6 +110,7 @@ export async function performWrite(environment: WriteEnvironment, build: WriteBu
   };
   if (!build.ok) return settle({ phase: "refused", refusal: build.refusal });
   const { pageChainId } = options;
+  if (build.call.chainId !== pageChainId) return settle({ phase: "refused", refusal: "call-chain-mismatch" });
   const { config } = environment;
 
   const guard = guardOutcome(checkChainMatch(connectedChainId(config), pageChainId), pageChainId);

@@ -22,11 +22,12 @@ const everyKey = [
   queryKeys.withdrawable(1, 5n, undefined, [], undefined),
   queryKeys.cost(1, "0x00"),
   queryKeys.accountCode(1, ARBITRABLE),
+  queryKeys.chainTime(100),
   IDLE_KEY,
 ];
 
-describe("query keys (ARCHITECTURE.md §5.2)", () => {
-  it("§5.2: every key holds strings and numbers only, starts with dr, and hashes", () => {
+describe("query keys", () => {
+  it("holds strings and numbers only in every key, starts each with dr, and hashes them", () => {
     for (const key of everyKey) {
       expect(key[0]).toBe("dr");
       for (const part of key) expect(["string", "number"]).toContain(typeof part);
@@ -34,18 +35,22 @@ describe("query keys (ARCHITECTURE.md §5.2)", () => {
     }
   });
 
-  it("§5.2: dispute IDs, rounds and blocks are decimal strings", () => {
+  it("writes dispute IDs, rounds and blocks as decimal strings", () => {
     expect(queryKeys.lookup(1, 2n ** 255n)).toEqual(["dr", "lookup", 1, (2n ** 255n).toString()]);
     expect(queryKeys.funding(1, 5n, 2n, 1_000n, undefined)).toEqual(["dr", "funding", 1, "5", "2", "1000", "none"]);
     expect(queryKeys.withdrawable(1, 5n, ARBITRABLE, [0n, 1n], undefined)).toEqual(["dr", "withdrawable", 1, "5", ARBITRABLE, "0,1", "none"]);
   });
 
-  it("R4 / D-47: funding and withdraw keys differ by the governor session, so a recovered session is read again", () => {
+  it("distinguishes funding and withdraw keys by the governor session, so a recovered session is read again", () => {
     expect(queryKeys.funding(1, 5n, 2n, 1_000n, 3n)).toEqual(["dr", "funding", 1, "5", "2", "1000", "3"]);
     expect(queryKeys.withdrawable(1, 5n, ARBITRABLE, [0n, 1n], 3n)).toEqual(["dr", "withdrawable", 1, "5", ARBITRABLE, "0,1", "3"]);
   });
 
-  it("§5.6: a dispute prefix matches every key of that dispute and kind", () => {
+  it("keys the chain time by chain alone, so every page of a chain shares one latest-block read", () => {
+    expect(queryKeys.chainTime(100)).toEqual(["dr", "chainTime", 100]);
+  });
+
+  it("matches every key of a dispute and kind with its dispute prefix", () => {
     expect(queryKeys.funding(1, 5n, 2n, 1_000n, 3n).slice(0, 4)).toEqual([...disputeKeyPrefix("funding", 1, 5n)]);
     expect(queryKeys.evidence(1, 5n, ARBITRABLE, 9n).slice(0, 4)).toEqual([...disputeKeyPrefix("evidence", 1, 5n)]);
   });

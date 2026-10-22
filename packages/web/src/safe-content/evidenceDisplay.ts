@@ -5,12 +5,11 @@ import type { DisplayParams, EvidenceDisplayInput, EvidenceDisplayModel, Sandbox
 const RELAXED_SANDBOX: readonly SandboxToken[] = ["allow-scripts", "allow-same-origin", "allow-popups", "allow-popups-to-escape-sandbox"];
 const STRICT_SANDBOX: readonly SandboxToken[] = ["allow-scripts"];
 
-/** A meta-evidence chain ID when valid, else the page chain (spec 9.4, D-34). */
 function chainIdOr(field: ChainIdField, pageChainId: ChainId): ChainId {
   return field.status === "valid" ? field.chainId : pageChainId;
 }
 
-/** The RPC URL a third-party frame may receive for a chain (D-35), or `null` when none is configured. */
+/** The RPC URL a third-party frame may receive for a chain, or `null` when none is configured. */
 function publicRpcUrl(chainId: ChainId, env: Env): string | null {
   const chain = getChain(chainId);
   if (chain === undefined) return null;
@@ -25,9 +24,8 @@ function encodeParams(params: DisplayParams, encoding: EvidenceDisplayModel["enc
 }
 
 /**
- * The evidence-display iframe of a dispute (spec 9.4, A8, B6, C5, D-26, D-34, D-35), or `null` when the meta-evidence
- * names no display or its URL is not https. The relaxed sandbox is kept for allowlisted arbitrables only, and never for
- * a display served from the app's own origin.
+ * `null` when the meta-evidence names no display or its URL is not https. The relaxed sandbox is kept for allowlisted
+ * arbitrables only, and never for a display served from the app's own origin.
  */
 export function buildEvidenceDisplay(input: EvidenceDisplayInput): EvidenceDisplayModel | null {
   const { metaEvidence, arbitratorChainId, env } = input;
@@ -36,7 +34,7 @@ export function buildEvidenceDisplay(input: EvidenceDisplayInput): EvidenceDispl
 
   const displayArbitratorChainId = chainIdOr(metaEvidence.arbitratorChainID, arbitratorChainId);
   const displayArbitrableChainId = chainIdOr(metaEvidence.arbitrableChainID, arbitratorChainId);
-  // Key order follows today's object (spec 9.4), so the JSON form of the query is unchanged.
+  // Existing displays parse this JSON query, so the key order is part of its format.
   const params: DisplayParams = {
     disputeID: input.disputeId.toString(),
     chainID: arbitratorChainId,

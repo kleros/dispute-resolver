@@ -4,26 +4,20 @@ import { fileURLToPath } from "node:url";
 import { loadEnv, runnerImport, type Plugin } from "vite";
 import type * as AppCsp from "../src/routing/headers/appCsp";
 
-// Node-side build code for the Netlify headers (ARCHITECTURE.md §10.3), wired by vite.config.ts. The policy itself is
-// routing's (src/routing/headers/appCsp.ts); this plugin only writes it into the build output.
-
-/** The Netlify headers file as Vite copies it from `public/`. */
 const HEADERS_FILE = "_headers";
 
-/** The variables the policy is computed from: the ones core's chain table and the app read (ARCHITECTURE.md §10.3). */
+/** The prefix of the variables core's chain table and the app read. */
 const ENV_PREFIX = "REACT_APP_";
 
 /**
- * The policy module. Vite's config loader leaves bare imports to Node, which cannot load core's TypeScript sources, so
- * the module (and core through it) is loaded with Vite's module runner when the plugin runs.
+ * Vite's config loader leaves bare imports to Node, which cannot load core's TypeScript sources, so the module (and core
+ * through it) is loaded with Vite's module runner when the plugin runs.
  */
 const APP_CSP_MODULE = fileURLToPath(new URL("../src/routing/headers/appCsp.ts", import.meta.url));
 
 /**
- * Replaces the report-only policy placeholder in the built `_headers` with the policy of C2, computed from the build's
- * environment (`.env` files of `envDir` and `process.env`, through `loadEnv`). Build only. The build fails when the
- * file or its placeholder is missing, a configured endpoint is a plain http or ws URL, or a generated source is not a
- * bare origin; the failure names the variable, never its value.
+ * The policy is computed from the build's environment (`.env` files of `envDir` and `process.env`, through `loadEnv`).
+ * Every failure names the variable, never its value.
  */
 export function headersPlugin(): Plugin {
   let root: string | null = null;

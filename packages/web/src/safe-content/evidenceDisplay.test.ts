@@ -38,29 +38,29 @@ function withDisplay(uri: string | null, overrides: Partial<EvidenceDisplayInput
 }
 
 describe("buildEvidenceDisplay source", () => {
-  it("A8: renders no frame without an evidenceDisplayInterfaceURI", () => {
+  it("renders no frame without an evidenceDisplayInterfaceURI", () => {
     expect(buildEvidenceDisplay(withDisplay(null))).toBeNull();
   });
 
   it.each(["javascript:alert(1)", "data:text/html,<script>alert(1)</script>", "http://display.example/index.html", "//display.example/index.html", "/ipns/kleros.io"])(
-    "A8: renders no frame for the non-https source %j",
+    "renders no frame for the non-https source %j",
     (uri) => {
       expect(buildEvidenceDisplay(withDisplay(uri))).toBeNull();
     },
   );
 
-  it("D-26: serves a canonical IPFS path through the configured gateway", () => {
+  it("serves a canonical IPFS path through the configured gateway", () => {
     const model = buildEvidenceDisplay(withDisplay(`/ipfs/${CID}/index.html`));
     expect(model?.src.startsWith(`${GATEWAY}/ipfs/${CID}/index.html?`)).toBe(true);
     expect(model?.srcOrigin).toBe(GATEWAY);
   });
 
-  it("D-26: re-serves the T2CR display URL through the configured gateway without naming the contract", () => {
+  it("re-serves the T2CR display URL through the configured gateway without naming the contract", () => {
     const model = buildEvidenceDisplay(withDisplay(`https://ipfs.kleros.io/ipfs/${CID}/index.html`, { arbitrable: ALLOWLISTED_ON_1 }));
     expect(model?.src.startsWith(`${GATEWAY}/ipfs/${CID}/index.html?`)).toBe(true);
   });
 
-  it("A8: uses any other https display as is (B19 accepted)", () => {
+  it("uses any other https display as is", () => {
     const model = buildEvidenceDisplay(withDisplay("https://display.example/app/"));
     expect(model?.src.startsWith("https://display.example/app/?")).toBe(true);
     expect(model?.srcOrigin).toBe("https://display.example");
@@ -68,7 +68,7 @@ describe("buildEvidenceDisplay source", () => {
 });
 
 describe("buildEvidenceDisplay parameters", () => {
-  it("spec 9.4: passes the dispute, the page chain, the arbitrator and the arbitrable from the binding", () => {
+  it("passes the dispute, the page chain, the arbitrator and the arbitrable from the binding", () => {
     const model = buildEvidenceDisplay(input());
     expect(model?.params).toEqual({
       disputeID: "1255",
@@ -83,26 +83,26 @@ describe("buildEvidenceDisplay parameters", () => {
     });
   });
 
-  it("D-35: gives frames the public RPC setting and never the read RPC when the public one is set", () => {
+  it("gives frames the public RPC setting and never the read RPC when the public one is set", () => {
     const model = buildEvidenceDisplay(input());
     expect(model?.src).not.toContain("secret-key");
   });
 
-  it("D-35: falls back to the read RPC when the chain has no public setting", () => {
+  it("falls back to the read RPC when the chain has no public setting", () => {
     const model = buildEvidenceDisplay(
       input({ metaEvidence: testMetaEvidence({ evidenceDisplayInterfaceURI: `/ipfs/${CID}`, arbitrableChainID: { status: "valid", chainId: 100 } }) }),
     );
     expect(model?.params.arbitrableJsonRpcUrl).toBe("https://gnosis.read.example/secret-key");
   });
 
-  it("D-35: writes null for a chain with no RPC configured", () => {
+  it("writes null for a chain with no RPC configured", () => {
     const model = buildEvidenceDisplay(input({ env: {} }));
     expect(model?.params.arbitratorJsonRpcUrl).toBeNull();
     expect(model?.params.arbitrableJsonRpcUrl).toBeNull();
     expect(model?.params.jsonRpcUrl).toBeNull();
   });
 
-  it("spec 9.4: takes the chain IDs from valid meta-evidence fields", () => {
+  it("takes the chain IDs from valid meta-evidence fields", () => {
     const metaEvidence = testMetaEvidence({
       evidenceDisplayInterfaceURI: `/ipfs/${CID}`,
       arbitratorChainID: { status: "valid", chainId: 100 },
@@ -116,7 +116,7 @@ describe("buildEvidenceDisplay parameters", () => {
     expect(model?.params.jsonRpcUrl).toBe("https://mainnet.public.example");
   });
 
-  it("D-34: falls back to the page chain for an invalid chain ID field", () => {
+  it("falls back to the page chain for an invalid chain ID field", () => {
     const metaEvidence = testMetaEvidence({ evidenceDisplayInterfaceURI: `/ipfs/${CID}`, arbitratorChainID: { status: "invalid" }, arbitrableChainID: { status: "invalid" } });
     const model = buildEvidenceDisplay(input({ metaEvidence }));
     expect(model?.params.arbitratorChainID).toBe(1);
@@ -125,7 +125,7 @@ describe("buildEvidenceDisplay parameters", () => {
 });
 
 describe("buildEvidenceDisplay encoding", () => {
-  it.each([null, "0"])("A8: encodes the parameters as JSON when _v is %j", (version) => {
+  it.each([null, "0"])("encodes the parameters as JSON when _v is %j", (version) => {
     const metaEvidence = testMetaEvidence({ evidenceDisplayInterfaceURI: `/ipfs/${CID}/index.html`, displayParamsVersion: version });
     const model = buildEvidenceDisplay(input({ metaEvidence }));
     expect(model?.encoding).toBe("json");
@@ -144,7 +144,7 @@ describe("buildEvidenceDisplay encoding", () => {
     ]);
   });
 
-  it("A8: encodes URLSearchParams for any other _v, writing unconfigured RPC URLs as empty strings", () => {
+  it("encodes URLSearchParams for any other _v, writing unconfigured RPC URLs as empty strings", () => {
     const metaEvidence = testMetaEvidence({ evidenceDisplayInterfaceURI: `/ipfs/${CID}/index.html`, displayParamsVersion: "1" });
     const model = buildEvidenceDisplay(input({ metaEvidence, env: {} }));
     expect(model?.encoding).toBe("search-params");
@@ -164,31 +164,31 @@ describe("buildEvidenceDisplay encoding", () => {
 });
 
 describe("buildEvidenceDisplay sandbox", () => {
-  it("A8: gives allowlisted arbitrables the relaxed flags", () => {
+  it("gives allowlisted arbitrables the relaxed flags", () => {
     expect(buildEvidenceDisplay(input({ arbitrable: ALLOWLISTED_ON_1 }))?.sandbox).toEqual(RELAXED);
   });
 
-  it("A8: gives every other arbitrable allow-scripts only", () => {
+  it("gives every other arbitrable allow-scripts only", () => {
     expect(buildEvidenceDisplay(input())?.sandbox).toEqual(["allow-scripts"]);
   });
 
-  it("D-34: keys the allowlist on a valid meta-evidence arbitrableChainID", () => {
+  it("keys the allowlist on a valid meta-evidence arbitrableChainID", () => {
     const metaEvidence = testMetaEvidence({ evidenceDisplayInterfaceURI: `/ipfs/${CID}`, arbitrableChainID: { status: "valid", chainId: 100 } });
     expect(buildEvidenceDisplay(input({ metaEvidence, arbitrable: ALLOWLISTED_ON_100 }))?.sandbox).toEqual(RELAXED);
   });
 
-  it("B6: falls back to the arbitrator chain for a non-integer or unconfigured arbitrableChainID", () => {
+  it("falls back to the arbitrator chain for a non-integer or unconfigured arbitrableChainID", () => {
     const metaEvidence = testMetaEvidence({ evidenceDisplayInterfaceURI: `/ipfs/${CID}`, arbitrableChainID: { status: "invalid" } });
     expect(buildEvidenceDisplay(input({ metaEvidence, arbitrable: ALLOWLISTED_ON_100 }))?.sandbox).toEqual(["allow-scripts"]);
     expect(buildEvidenceDisplay(input({ metaEvidence, arbitrable: ALLOWLISTED_ON_1 }))?.sandbox).toEqual(RELAXED);
   });
 
-  it("C5: never gives allow-same-origin to a display on the app's own origin", () => {
+  it("never gives allow-same-origin to a display on the app's own origin", () => {
     const model = buildEvidenceDisplay(withDisplay("https://resolve.kleros.io/display/index.html", { arbitrable: ALLOWLISTED_ON_1 }));
     expect(model?.sandbox).toEqual(["allow-scripts"]);
   });
 
-  it("C5: compares origins, so a gateway display stays relaxed when the app runs elsewhere", () => {
+  it("compares origins, so a gateway display stays relaxed when the app runs elsewhere", () => {
     const model = buildEvidenceDisplay(input({ arbitrable: ALLOWLISTED_ON_1, appOrigin: "https://cdn.kleros.link:8443" }));
     expect(model?.sandbox).toEqual(RELAXED);
   });

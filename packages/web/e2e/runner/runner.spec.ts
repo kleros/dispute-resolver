@@ -1,9 +1,9 @@
 import { expect, test, type Browser, type BrowserType, type LaunchOptions, type Page } from "@playwright/test";
 import { answerFromFixture, CORS_HEADERS, jsonRpcCall, loadRpcFixture, type RpcFixture } from "./rpcFixture";
 
-// Playwright checks of the script runner (ADR 0004, ARCHITECTURE.md §7.4), run against `vite preview`, whose runner
-// plugin sends the runner policy of §10.1 on /__runner/*. Guard tests strip that header, as a header misconfiguration
-// would, so they prove the bootstrap's own checks (C4). Run with `yarn e2e:runner` (Chromium, Firefox and WebKit).
+// Run against `vite preview`, whose runner plugin sends the runner policy on /__runner/*. Guard tests strip that header,
+// as a header misconfiguration would, so they prove the bootstrap's own checks. Run with `yarn e2e:runner` (Chromium,
+// Firefox and WebKit).
 
 const RUNNER_URL = "/__runner/index.html";
 const SAME_ORIGIN_HARNESS = "/__runner-e2e/harness.html";
@@ -47,7 +47,7 @@ var getMetaEvidence = function () {
   });
 };`;
 
-/** What the probe resolves with in a correctly sandboxed runner (§7.1, B4, C7). */
+/** What the probe resolves with in a correctly sandboxed runner. */
 const PROBE_RESULT = {
   type: "dr-runner/result",
   value: {
@@ -71,7 +71,7 @@ interface RunInput {
 }
 
 interface RunOutput {
-  /** Every message the port carried, in order, until the reply or the end of the wait (P-16). */
+  /** Every message the port carried, in order, until the reply or the end of the wait. */
   readonly messages: unknown[];
   /** The first message that is not the acknowledgement, or `null` when none came within the wait. */
   readonly reply: unknown;
@@ -80,7 +80,6 @@ interface RunOutput {
   readonly ackLatencyMs: number | null;
 }
 
-/** Frames the runner from the current page, posts one run request with a fresh port and collects what comes back. */
 async function runInRunner(page: Page, input: RunInput): Promise<RunOutput> {
   return page.evaluate(
     async ({ scriptText, params, runnerUrl, sandbox, waitMs }) => {
@@ -115,7 +114,7 @@ async function runInRunner(page: Page, input: RunInput): Promise<RunOutput> {
           resolve(null);
         }, waitMs);
       });
-      // eslint-disable-next-line sonarjs/post-message -- ADR 0004: "*" is the only target origin an opaque-origin runner accepts.
+      // eslint-disable-next-line sonarjs/post-message -- "*" is the only target origin an opaque-origin runner accepts.
       frame.contentWindow?.postMessage({ type: "dr-runner/run", version: 2, scriptText, params, guardSource: null, rpcRedirects: [] }, "*", [channel.port2]);
       return { reply: await reply, messages: [...messages], evaluatedSignal, ackLatencyMs };
     },
@@ -127,7 +126,6 @@ async function serveHarness(page: Page, url: string): Promise<void> {
   await page.route(url, (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: HARNESS_HTML }));
 }
 
-/** Records whether the runner bootstrap was served and whether any request for it failed. */
 function trackBootstrap(page: Page): () => { readonly served: boolean; readonly failed: boolean } {
   let served = false;
   let failed = false;
@@ -140,7 +138,6 @@ function trackBootstrap(page: Page): () => { readonly served: boolean; readonly 
   return () => ({ served, failed });
 }
 
-/** Asserts the runner frame loaded its bootstrap and that no script-facing global was ever defined in it. */
 async function expectLoadedButIdle(page: Page, bootstrap: () => { readonly served: boolean; readonly failed: boolean }): Promise<void> {
   expect(bootstrap()).toEqual({ served: true, failed: false });
   const runnerFrame = page.frames().find((frame) => frame.url().endsWith(RUNNER_URL));
@@ -148,7 +145,6 @@ async function expectLoadedButIdle(page: Page, bootstrap: () => { readonly serve
   expect(await runnerFrame?.evaluate(() => typeof Reflect.get(globalThis, "scriptParameters"))).toBe("undefined");
 }
 
-/** A browser of the project's engine with its launch options, without Chromium's local network access checks. */
 async function launchWithoutLocalNetworkChecks(engine: BrowserType, launchOptions: LaunchOptions): Promise<Browser> {
   if (engine.name() !== "chromium") return engine.launch(launchOptions);
   return engine.launch({ ...launchOptions, args: [...(launchOptions.args ?? []), WITHOUT_LOCAL_NETWORK_CHECKS] });
@@ -163,14 +159,14 @@ async function stripRunnerPolicy(page: Page): Promise<void> {
   });
 }
 
-test.describe("script runner page (ADR 0004)", () => {
-  test("C3: the runner is served with its enforced sandbox policy", async ({ request }) => {
+test.describe("script runner page", () => {
+  test("the runner is served with its enforced sandbox policy", async ({ request }) => {
     const response = await request.get(RUNNER_URL);
     expect(response.headers()["content-security-policy"]).toBe(RUNNER_POLICY);
     expect((await request.get("/__runner/bootstrap.js")).headers()["content-security-policy"]).toBe(RUNNER_POLICY);
   });
 
-  test("§7.1, B4, C7: a sandboxed runner loads its classic bootstrap, runs the script with an opaque origin and replies through the port", async ({ page }) => {
+  test("a sandboxed runner loads its classic bootstrap, runs the script with an opaque origin and replies through the port", async ({ page }) => {
     await serveHarness(page, `**${SAME_ORIGIN_HARNESS}`);
     await page.goto(SAME_ORIGIN_HARNESS);
     await page.evaluate(() => {
@@ -182,7 +178,7 @@ test.describe("script runner page (ADR 0004)", () => {
     expect(reply).toEqual(PROBE_RESULT);
   });
 
-  test("P-16, §7.1: the sandboxed runner acknowledges on the port before it replies", async ({ page }) => {
+  test("the sandboxed runner acknowledges on the port before it replies", async ({ page }) => {
     await serveHarness(page, `**${SAME_ORIGIN_HARNESS}`);
     await page.goto(SAME_ORIGIN_HARNESS);
 
@@ -194,7 +190,7 @@ test.describe("script runner page (ADR 0004)", () => {
     expect(ackLatencyMs).not.toBeNull();
   });
 
-  test("C4: the runner loaded without the sandbox attribute or its header evaluates nothing", async ({ page }) => {
+  test("the runner loaded without the sandbox attribute or its header evaluates nothing", async ({ page }) => {
     const bootstrap = trackBootstrap(page);
     await stripRunnerPolicy(page);
     await serveHarness(page, `**${SAME_ORIGIN_HARNESS}`);
@@ -202,14 +198,14 @@ test.describe("script runner page (ADR 0004)", () => {
 
     const { messages, reply, evaluatedSignal } = await runInRunner(page, { scriptText: PROBE_SCRIPT, sandbox: false, waitMs: SILENCE_MS });
 
-    // Not even an acknowledgement: a refused request learns nothing (C4, P-16).
+    // Not even an acknowledgement: a refused request learns nothing.
     expect(messages).toEqual([]);
     expect(reply).toBeNull();
     expect(evaluatedSignal).toBe(false);
     await expectLoadedButIdle(page, bootstrap);
   });
 
-  test("C4: the runner framed by a parent outside the app evaluates nothing", async ({ playwright, browserName, launchOptions, baseURL }) => {
+  test("the runner framed by a parent outside the app evaluates nothing", async ({ playwright, browserName, launchOptions, baseURL }) => {
     const browser = await launchWithoutLocalNetworkChecks(playwright[browserName], launchOptions);
     try {
       const page = await browser.newPage();
@@ -225,7 +221,7 @@ test.describe("script runner page (ADR 0004)", () => {
         waitMs: SILENCE_MS,
       });
 
-      // Not even an acknowledgement: a refused request learns nothing (C4, P-16).
+      // Not even an acknowledgement: a refused request learns nothing.
       expect(messages).toEqual([]);
       expect(reply).toBeNull();
       expect(evaluatedSignal).toBe(false);
@@ -235,12 +231,12 @@ test.describe("script runner page (ADR 0004)", () => {
     }
   });
 
-  test("C4: the runner opened as the top-level page evaluates nothing", async ({ page }) => {
+  test("the runner opened as the top-level page evaluates nothing", async ({ page }) => {
     const bootstrap = trackBootstrap(page);
     await page.goto(RUNNER_URL);
     const evaluated = await page.evaluate(
       async ({ scriptText, params, waitMs }) => {
-        // Every message on the port for the whole wait: a refused request gets none, not even an acknowledgement (P-16).
+        // Every message on the port for the whole wait: a refused request gets none, not even an acknowledgement.
         const channel = new MessageChannel();
         const messages: unknown[] = [];
         channel.port1.onmessage = (event: MessageEvent<unknown>) => {
@@ -258,9 +254,9 @@ test.describe("script runner page (ADR 0004)", () => {
   });
 });
 
-// C7, ADR 0004: the charset-sensitive Reality renderer against mainnet dispute 1650. The script is fetched from the IPFS
-// gateway by its content address; its chain reads are answered from fixtures/mainnet-1650.rpc.json, recorded at the
-// block it names, and anything else it requests is aborted, so the test needs no RPC configuration.
+// The charset-sensitive Reality renderer against mainnet dispute 1650. The script is fetched from the IPFS gateway by its
+// content address; its chain reads are answered from fixtures/mainnet-1650.rpc.json, recorded at the block it names, and
+// anything else it requests is aborted, so the test needs no RPC configuration.
 const QMQGMR_URL = "https://cdn.kleros.link/ipfs/QmQGMR6MyC851poYVyBfGthzmCdvTuRFKp1UDB19p89Gcn/bundle.js";
 const RPC_FIXTURE_1650 = loadRpcFixture("mainnet-1650.rpc.json");
 /** Reality's reserved "Answered Too Soon" answer. */
@@ -273,7 +269,6 @@ interface ScriptTraffic {
   aborted: number;
 }
 
-/** Answers the script's JSON-RPC calls from `fixture` and aborts every other request that leaves the app's origin. */
 async function routeScriptReads(page: Page, appOrigin: string, fixture: RpcFixture): Promise<ScriptTraffic> {
   const traffic: ScriptTraffic = { rpcAnswered: 0, rpcUnanswered: [], aborted: 0 };
   await page.route("**/*", async (route) => {
@@ -298,8 +293,8 @@ async function routeScriptReads(page: Page, appOrigin: string, fixture: RpcFixtu
   return traffic;
 }
 
-test.describe("script runner on a recorded dispute (C7)", () => {
-  test("C7: QmQGMR… against mainnet dispute 1650 returns Harris, Trump and Answered Too Soon", async ({ page, request, baseURL }) => {
+test.describe("script runner on a recorded dispute", () => {
+  test("QmQGMR… against mainnet dispute 1650 returns Harris, Trump and Answered Too Soon", async ({ page, request, baseURL }) => {
     test.setTimeout(120_000);
     const scriptResponse = await request.get(QMQGMR_URL);
     expect(scriptResponse.ok()).toBe(true);
@@ -321,16 +316,15 @@ test.describe("script runner on a recorded dispute (C7)", () => {
   });
 });
 
-// B1 needs the C1 headers (frame-ancestors 'none' on the app), which only the deploy sends: `vite preview` does not
-// apply public/_headers. Set DR_E2E_DEPLOY_URL to the branch deploy's origin to run it.
+// The app's frame-ancestors 'none' header is sent only by the deploy: `vite preview` does not apply public/_headers. Set DR_E2E_DEPLOY_URL to the branch deploy's origin to run it.
 const DEPLOY_URL = process.env.DR_E2E_DEPLOY_URL;
 const PUBLIC_FOREIGN_HARNESS = "https://foreign-parent.example/harness.html";
 
-test.describe("app framing (B1)", () => {
-  // Skipped without a deploy URL: only the deploy sends the C1 headers this test proves.
-  test.skip(DEPLOY_URL === undefined || DEPLOY_URL.trim() === "", "needs DR_E2E_DEPLOY_URL (the branch deploy) for the C1 headers");
+test.describe("app framing", () => {
+  // Skipped without a deploy URL: only the deploy sends the app's frame-ancestors header.
+  test.skip(DEPLOY_URL === undefined || DEPLOY_URL.trim() === "", "needs DR_E2E_DEPLOY_URL (the branch deploy) for the app's frame-ancestors header");
 
-  test("B1: a page outside the app cannot frame it, so it has no app window to inject a result into", async ({ page }) => {
+  test("a page outside the app cannot frame it, so it has no app window to inject a result into", async ({ page }) => {
     const appUrl = new URL("/1/cases/1650", DEPLOY_URL).href;
     const refusals: string[] = [];
     page.on("console", (message) => {

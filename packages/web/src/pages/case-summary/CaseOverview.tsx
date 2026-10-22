@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from "react";
-import { FACT_SMALL, LABEL, PAGE_TITLE, PeriodBadge } from "../../ui";
+import { FACT_SMALL, LABEL, PAGE_TITLE, PeriodBadge, useRevealIn } from "../../ui";
 import type { CaseSectionProps } from "../../data";
 import { existingView, foundLookup } from "./caseState";
 import { ViewDetail } from "./ViewDetail";
@@ -14,15 +14,15 @@ function Detail({ label, children }: { readonly label: string; readonly children
 }
 
 /**
- * The case header card with the info row (spec 5.8, ARCHITECTURE.md 11.5): the dispute ID and its period as soon as the
- * lookup has found it (P-20), the network, and the court and first-round vote count once the view has settled, each
- * degrading on its own (D-36).
+ * The dispute ID and its period show as soon as the lookup finds the dispute; the court and the first-round vote count
+ * wait for the settled view, each degrading on its own.
  */
 export function CaseOverview({ dispute, chain }: CaseSectionProps) {
   const headingId = useId();
+  const found = foundLookup(dispute);
+  const pillReveal = useRevealIn(found === undefined);
   const view = existingView(dispute);
   if (view === null) return null;
-  const found = foundLookup(dispute);
   return (
     <section aria-labelledby={headingId}>
       <div className="flex flex-col gap-4">
@@ -37,7 +37,7 @@ export function CaseOverview({ dispute, chain }: CaseSectionProps) {
               <span aria-hidden="true" className="block h-9 w-28 animate-loading rounded-full bg-klerosUIComponentsStroke" />
             </div>
           ) : (
-            <PeriodBadge variant="pill" size="lg" period={found.dispute.period} />
+            <PeriodBadge variant="pill" size="lg" period={found.dispute.period} className={pillReveal} />
           )}
         </div>
         <dl className="grid grid-cols-1 gap-4 border-t border-(--dr-record-edge) pt-4 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-(--dr-record-edge)">

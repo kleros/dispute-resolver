@@ -28,5 +28,6 @@ export async function mockCoreReads(importOriginal: () => Promise<unknown>): Pro
     readRoundFunding: vi.fn(),
     readWithdrawable: vi.fn(),
     readArbitrationCost: vi.fn(),
+    readAppealCost: vi.fn(),
   };
 }

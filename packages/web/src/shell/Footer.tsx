@@ -4,7 +4,6 @@ import { ExplorerIcon, ForumIcon, GitHubIcon, HelpIcon, LinkedInIcon, RedditIcon
 import { BAR_FOCUS, BAR_SURFACE, CONTENT, GUTTER } from "./layout";
 import securedByKlerosUrl from "./secured-by-kleros.svg";
 
-/** The chain's explorer page of its ArbitrableProxy (spec §2.4, D-40). */
 export interface FooterExplorerLink {
   readonly href: string;
   readonly chainName: string;
@@ -22,7 +21,6 @@ interface SocialLink {
   readonly Icon: ComponentType<{ readonly className?: string }>;
 }
 
-/** spec §2.4, in today's order. */
 const SOCIAL_LINKS: readonly SocialLink[] = [
   { name: "GitHub", href: "https://github.com/kleros/dispute-resolver", Icon: GitHubIcon },
   { name: "Slack", href: "https://slack.kleros.io", Icon: SlackIcon },
@@ -33,12 +31,8 @@ const SOCIAL_LINKS: readonly SocialLink[] = [
   { name: "LinkedIn", href: "https://www.linkedin.com/company/kleros/", Icon: LinkedInIcon },
 ];
 
-const ICON_LINK = `inline-flex size-10 items-center justify-center opacity-90 transition-opacity hover:opacity-100 ${BAR_FOCUS}`;
+const ICON_LINK = `inline-flex size-10 items-center justify-center opacity-90 transition-opacity duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:opacity-100 ${BAR_FOCUS}`;
 
-/**
- * The footer (spec §2.4): Secured by Kleros, the resolved chain, I need help, the chain's explorer link to its
- * ArbitrableProxy when the chain has both (D-40), and the social channels. Every link is an `ExternalLink` (A10).
- */
 export function Footer({ chainLabel, explorer }: FooterProps) {
   return (
     <footer className={`${BAR_SURFACE} ${GUTTER}`}>

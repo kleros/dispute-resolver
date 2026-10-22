@@ -24,39 +24,39 @@ describe("createAppKitSetup with a WalletConnect project ID, remote project conf
     vi.restoreAllMocks();
   });
 
-  it("§2.3: a project ID selects the AppKit mode", () => {
+  it("a project ID selects the AppKit mode", () => {
     expect(setup.mode).toBe("appkit");
   });
 
-  it("C8 (AppKit 1.8.24): the wagmi config holds no embedded-wallet connector once AppKit is ready", () => {
+  it("the wagmi config holds no embedded-wallet connector once AppKit is ready", () => {
     expect(setup.wagmiConfig.connectors.length).toBeGreaterThan(0);
     expect(setup.wagmiConfig.connectors.filter(isEmbeddedWalletConnector)).toEqual([]);
   });
 
-  it("C8 (AppKit 1.8.24): AppKit registers no embedded-wallet connector", () => {
+  it("AppKit registers no embedded-wallet connector", () => {
     expect(ConnectorController.state.connectors.filter(isEmbeddedWalletConnector)).toEqual([]);
   });
 
-  it("C8 (AppKit 1.8.24): AppKit keeps the C8 features object", () => {
+  it("AppKit keeps every optional feature off", () => {
     expect(OptionsController.state.features).toEqual(expect.objectContaining(APPKIT_FEATURES));
     expect(OptionsController.state.features?.socials).toEqual([]);
   });
 
-  it("K-03: the modal reports no embedded wallet, so Connect stays available", async () => {
+  it("the modal reports no embedded wallet, so Connect stays available", async () => {
     await expect(setup.modal.hasEmbeddedWallet()).resolves.toBe(false);
   });
 
-  it("D-06: no connector is connected and nothing prompts at load", () => {
+  it("no connector is connected and nothing prompts at load", () => {
     expect(setup.wagmiConfig.state.status).not.toBe("connected");
     expect(setup.wagmiConfig.state.current).toBeNull();
   });
 
-  it("§2.3: Connect first makes the page chain AppKit's active network, so a WalletConnect session starts there", async () => {
+  it("Connect first makes the page chain AppKit's active network, so a WalletConnect session starts there", async () => {
     await setup.modal.openConnect(100);
     expect(ChainController.state.activeCaipNetwork?.id).toBe(100);
   });
 
-  it("A20: the modal uses the app's font, so AppKit preloads no third-party font", () => {
+  it("the modal uses the app's font, so AppKit preloads no third-party font", () => {
     const preloads = [...document.head.querySelectorAll<HTMLLinkElement>('link[rel="preload"][as="font"]')].map((link) => link.href);
     expect(preloads).toEqual([]);
   });

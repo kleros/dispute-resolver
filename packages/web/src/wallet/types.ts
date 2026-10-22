@@ -4,39 +4,34 @@ import type { Address, ChainConfig, ChainId, Hex, WriteBuild, WriteRefusal } fro
 import type { WriteReceipt } from "../data";
 import type { AppConfig } from "../env";
 
-/** `appkit` with a WalletConnect project ID; `unconfigured` (read-only, Connect disabled) without one (ARCHITECTURE.md §2.3). */
+/** `unconfigured` means no WalletConnect project ID: the app is read-only and Connect is disabled. */
 export type WalletMode = "appkit" | "unconfigured";
 
-/** The parts of the AppKit modal the app uses: only its Connect and Networks views (ARCHITECTURE.md §2.3, §11.2). */
 export interface WalletModal {
   /** Makes `chainId` the modal's active network, so a WalletConnect session starts on it, then opens the Connect view. */
   openConnect(chainId: ChainId | undefined): Promise<void>;
-  /** Opens the Networks view, which asks the connected wallet to change chain; the app follows (D-55). */
   openNetworks(): Promise<void>;
   /** Resolves once AppKit has finished initializing (connectors synced, remote project settings applied). */
   ready(): Promise<void>;
   /**
    * Resolves once AppKit is ready: `true` when its connector registry holds the embedded-wallet (`AUTH`) connector, which
-   * AppKit adds when the Reown dashboard enables social login or email (K-01). The app then never opens the Connect
-   * view and stays read-only (K-03).
+   * AppKit adds when the Reown dashboard enables social login or email. The app then never opens the Connect view and
+   * stays read-only.
    */
   hasEmbeddedWallet(): Promise<boolean>;
 }
 
-/** The wagmi config and, with a WalletConnect project ID, the AppKit modal (ARCHITECTURE.md §2.3). */
 export type WalletSetup = { readonly mode: "appkit"; readonly wagmiConfig: Config; readonly modal: WalletModal } | { readonly mode: "unconfigured"; readonly wagmiConfig: Config };
 
-/** The setup of the `appkit` mode, which `createAppKitSetup` returns. */
 export type AppKitWalletSetup = Extract<WalletSetup, { readonly mode: "appkit" }>;
 
-/** What the wallet hooks read: the setup and whether AppKit is still loading (ARCHITECTURE.md §2.3). */
 export interface WalletSetupState {
   readonly setup: WalletSetup;
   /** `true` while AppKit's chunk loads: no connector exists yet, so nothing reconnects. */
   readonly pending: boolean;
   /**
    * `true` while `pending` when wagmi's storage holds a connection that AppKit's config will reconnect: `useWallet`
-   * then reports `connecting`, as wagmi does while it reconnects, so a returning wallet lands on its own chain (§3.1).
+   * then reports `connecting`, as wagmi does while it reconnects, so a returning wallet lands on its own chain.
    * Without a stored connection the wallet is `disconnected` at once and routing does not wait for AppKit.
    */
   readonly pendingReconnect: boolean;
@@ -56,11 +51,10 @@ export type WalletState =
       /** Lowercased through `toRegistryAddress`. */
       readonly address: Address;
       readonly chainId: number;
-      /** The wallet's chain is one of the configured chains. */
       readonly isConfiguredChain: boolean;
     };
 
-/** Every state of one write (D-07, B3, D-48). `pending` is "waiting for the wallet". */
+/** `pending` is "waiting for the wallet". */
 export type WriteStatus =
   | { readonly phase: "idle" }
   | { readonly phase: "refused"; readonly refusal: WriteRefusal }
@@ -76,13 +70,12 @@ export type WriteStatus =
 export type WriteOutcome = Extract<WriteStatus, { readonly phase: "refused" | "needs-wallet" | "wrong-chain" | "mined" | "failed" | "rejected" }>;
 
 export interface WriteOptions {
-  /** The chain of the page the action is on; the wallet must be on it (B3, D-48). */
+  /** The chain of the page the action is on; the wallet must be on it. */
   readonly pageChainId: ChainId;
-  /** Runs after the receipt is mined, before the status becomes `mined` (D-07: refresh only once mined). */
+  /** Runs after the receipt is mined, before the status becomes `mined`. */
   readonly onMined?: (receipt: WriteReceipt) => Promise<void> | void;
 }
 
-/** `useWrite()` (ARCHITECTURE.md §6.1). */
 export interface WriteController {
   readonly status: WriteStatus;
   execute(build: WriteBuild, options: WriteOptions): Promise<WriteOutcome>;
@@ -90,13 +83,11 @@ export interface WriteController {
 }
 
 export interface WriteSequenceStatus {
-  /** Zero-based index of the write in progress. */
   readonly index: number;
   readonly total: number;
   readonly current: WriteStatus;
 }
 
-/** `useWriteSequence()`: withdrawals in sequence, one transaction per item (D-51, ARCHITECTURE.md §6.2). */
 export interface WriteSequenceController {
   readonly status: WriteSequenceStatus | null;
   /** Stops at the first outcome other than `mined` and returns it; returns the last `mined` outcome otherwise. */
@@ -104,22 +95,21 @@ export interface WriteSequenceController {
   reset(): void;
 }
 
-/** Props of `WalletControl` (ARCHITECTURE.md §11.2). */
 export interface WalletControlProps {
   /** The header's resolved chain: Connect starts on it and the account menu links to its explorer. */
   readonly chain: ChainConfig;
 }
 
-/** Props of `SmartContractWalletWarning` (A14). */
 export interface SmartContractWalletWarningProps {
   /** The chain whose code is read for the connected account: the resolved chain of the header. */
   readonly chainId: ChainId;
 }
 
-/** Props of `WriteStatusNotice` (ARCHITECTURE.md §6.1). */
 export interface WriteStatusNoticeProps {
   readonly status: WriteStatus;
-  /** For a sequence (D-51): which transaction the status belongs to, shown as "n of total". */
+  /** For a sequence: which transaction the status belongs to, shown as "n of total". */
   readonly progress?: Pick<WriteSequenceStatus, "index" | "total">;
+  /** The notice says why an action is locked before anything was tried, rather than reporting a refused write. */
+  readonly beforeAttempt?: boolean;
   readonly className?: string;
 }

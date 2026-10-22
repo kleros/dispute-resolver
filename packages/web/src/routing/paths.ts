@@ -1,17 +1,23 @@
-import { getChain, type ChainId } from "@dispute-resolver/core";
-import type { Paths } from "./types";
+import { getChain, parseChainId, parseDisputeId, type ChainId } from "@dispute-resolver/core";
+import { matchRoutes, type RouteObject } from "react-router";
+import type { PathLocation, Paths } from "./types";
 
-/** The largest dispute ID the arbitrator can hold (uint256). */
+export const CHAIN_PARAM = "chainId";
+
+/** The case routes under `/:chainId`, as `createAppRoutes` declares them. */
+export const CASE_ROUTE = "cases/:id?";
+export const INTERACT_ROUTE = "interact/:id/*";
+
 const UINT256_MAX = 2n ** 256n - 1n;
 
 const ALL_DIGITS = /^\d+$/;
 
-/** Whether `chainId` can be a chain ID at all: a positive safe integer. Configured or not is a separate question. */
+/** Says nothing about whether the chain is configured. */
 export function isChainNumber(chainId: number): boolean {
   return Number.isSafeInteger(chainId) && chainId > 0;
 }
 
-/** A path segment for a configured chain; anything else is a programming error, never a URL (A19). */
+/** Anything but a configured chain is a programming error, never a URL. */
 function chainSegment(chainId: ChainId): string {
   if (!isChainNumber(chainId) || getChain(chainId) === undefined) throw new RangeError("A path needs a configured chain ID.");
   return String(chainId);
@@ -22,7 +28,6 @@ function disputeSegment(disputeId: bigint): string {
   return disputeId.toString();
 }
 
-/** Internal navigation targets (A19, spec §1.4), written without a trailing slash. */
 export const paths: Paths = Object.freeze({
   chainRoot: (chainId: ChainId) => `/${chainSegment(chainId)}`,
   ongoing: (chainId: ChainId) => `/${chainSegment(chainId)}/ongoing`,
@@ -31,11 +36,7 @@ export const paths: Paths = Object.freeze({
   case: (chainId: ChainId, disputeId: bigint) => `/${chainSegment(chainId)}/cases/${disputeSegment(disputeId)}`,
 });
 
-/**
- * Today's `syncUrlWithChain` rule (spec §1.3): an all-digit first segment is replaced by `chainId`; otherwise `chainId`
- * is inserted as the first segment. The rest of the path is kept as it is. `chainId` is the wallet's chain, which may be
- * unconfigured (the result then shows the unsupported-network screen), but it must be a positive integer.
- */
+/** `chainId` is the wallet's chain, so it may be unconfigured: the result then shows the unsupported-network screen. */
 export function replaceChainSegment(pathname: string, chainId: number): string {
   if (!isChainNumber(chainId)) throw new RangeError("A chain ID is a positive integer.");
   const parts = pathname.split("/");
@@ -46,11 +47,56 @@ export function replaceChainSegment(pathname: string, chainId: number): string {
 }
 
 /**
- * The header's network switcher: inside the `/:chainId` layout the first segment is always the route's chain parameter,
- * even when it names no chain (`/abc/ongoing`), so it is replaced rather than kept. Only a configured chain is a target.
+ * Inside the `/:chainId` layout the first segment is always the chain parameter, even one that names no chain
+ * (`/abc/ongoing`), so it is replaced rather than kept.
  */
-export function switchChainSegment(pathname: string, chainId: ChainId): string {
+function withChainSegment(pathname: string, segment: string): string {
   const parts = pathname.split("/");
-  parts[1] = chainSegment(chainId);
+  parts[1] = segment;
   return parts.join("/");
+}
+
+export function switchChainSegment(pathname: string, chainId: ChainId): string {
+  return withChainSegment(pathname, chainSegment(chainId));
+}
+
+/** The wallet's chain may be unconfigured: its path then shows the unsupported-network screen. */
+function walletChainSegment(chainId: number): string {
+  if (!isChainNumber(chainId)) throw new RangeError("A chain ID is a positive integer.");
+  return String(chainId);
+}
+
+const CASE_ROUTES: RouteObject[] = [{ path: `:${CHAIN_PARAM}`, children: [{ path: CASE_ROUTE }, { path: INTERACT_ROUTE }] }];
+
+interface CaseSegments {
+  readonly chain: string;
+  readonly id: string;
+}
+
+/**
+ * The chain and ID segments of a case page with an ID; `null` on any other page. The router decodes a path and ignores
+ * letter case before matching, so `/1/CASES/5` and `/1/%63ases/5` open case 5 too: the raw segments cannot tell.
+ */
+function caseSegments(pathname: string): CaseSegments | null {
+  const params = matchRoutes(CASE_ROUTES, pathname)?.at(-1)?.params;
+  const id = params?.id;
+  return id === undefined || id === "" ? null : { chain: params?.[CHAIN_PARAM] ?? "", id };
+}
+
+/** The dispute ID of a case page's path; `null` on any other page or when the ID does not parse. */
+export function pathDisputeId(pathname: string): bigint | null {
+  const segments = caseSegments(pathname);
+  return segments === null ? null : parseDisputeId(segments.id);
+}
+
+/**
+ * Where the app goes when it moves to the wallet's chain. A case page goes to that chain's Ongoing Disputes: the same
+ * number there is another dispute. Every other page keeps its path, search and hash, including a page whose chain
+ * segment names no configured chain.
+ */
+export function walletChainLocation({ pathname, search, hash }: PathLocation, walletChainId: number): PathLocation {
+  const segment = walletChainSegment(walletChainId);
+  const segments = caseSegments(pathname);
+  if (segments !== null && parseChainId(segments.chain) !== undefined) return { pathname: `/${segment}/ongoing`, search: "", hash: "" };
+  return { pathname: withChainSegment(pathname, segment), search, hash };
 }

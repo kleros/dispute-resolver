@@ -1,14 +1,15 @@
 import { BrowserRouter } from "react-router";
 import { WalletProvider } from "../wallet";
+import { ChainNoticeToasts } from "./ChainNoticeToasts";
 import { ColorSchemeProvider } from "./colorScheme";
 import { RootErrorBoundary } from "./RootErrorBoundary";
 import { ToastProvider } from "./ToastProvider";
 import type { AppProvidersProps } from "./types";
 
 /**
- * The provider tree of ARCHITECTURE.md §2.1, in its forced order: wagmi needs the QueryClient of the data layer above
- * it, the Atlas library needs both, and routing and every page need all three. The root boundary is outermost, so a
- * failure anywhere in the tree keeps a minimal frame.
+ * The order is forced: wagmi needs the QueryClient of the data layer above it, the Atlas library needs both, and
+ * routing and every page need all three. Routing's chain notices become toasts, so their provider sits inside the
+ * toasts. The root boundary is outermost, so a failure anywhere in the tree keeps a minimal frame.
  */
 export function AppProviders({ config, dataProvider: DataLayer, atlasGate: AtlasLayer, colorScheme, children }: AppProvidersProps) {
   return (
@@ -18,7 +19,9 @@ export function AppProviders({ config, dataProvider: DataLayer, atlasGate: Atlas
           <AtlasLayer config={config}>
             <BrowserRouter>
               <ToastProvider>
-                <ColorSchemeProvider store={colorScheme}>{children}</ColorSchemeProvider>
+                <ChainNoticeToasts>
+                  <ColorSchemeProvider store={colorScheme}>{children}</ColorSchemeProvider>
+                </ChainNoticeToasts>
               </ToastProvider>
             </BrowserRouter>
           </AtlasLayer>

@@ -3,15 +3,15 @@ import { useId } from "react";
 import { Countdown, FACT, LABEL } from "../../ui";
 
 export interface FundingProgressProps {
-  /** Spec §5.12 funding percentage; above 100 when a side was over-funded, which the bar shows as full. */
+  /** Above 100 when a side was over-funded; the bar shows it as full. */
   readonly percent: number;
   readonly deadline: UnixSeconds;
 }
 
-/**
- * "{pct}% Funded" with a progress bar and the countdown to the side's deadline (spec §5.12 card contents). The bar is a
- * plain track and fill (contract §12): PrimaryBlue on Stroke, static, named by its label.
- */
+/** The track is the element itself in Firefox and its `-webkit-progress-bar` elsewhere; the fill is the progress value. */
+const BAR_CLASS =
+  "block h-2 w-full appearance-none overflow-hidden rounded-full border-0 bg-klerosUIComponentsStroke [&::-webkit-progress-bar]:bg-klerosUIComponentsStroke [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-klerosUIComponentsPrimaryBlue [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-klerosUIComponentsPrimaryBlue";
+
 export function FundingProgress({ percent, deadline }: FundingProgressProps) {
   const labelId = useId();
   const label = `${percent.toFixed(2)}% Funded`;
@@ -22,17 +22,7 @@ export function FundingProgress({ percent, deadline }: FundingProgressProps) {
         <span id={labelId} className="text-sm font-semibold text-klerosUIComponentsPrimaryText">
           {label}
         </span>
-        <div
-          role="progressbar"
-          aria-labelledby={labelId}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={clamped}
-          aria-valuetext={label}
-          className="h-2 w-full overflow-hidden rounded-full bg-klerosUIComponentsStroke"
-        >
-          <div className="h-full rounded-full bg-klerosUIComponentsPrimaryBlue" style={{ width: `${String(clamped)}%` }} />
-        </div>
+        <progress value={clamped} max={100} aria-labelledby={labelId} aria-valuenow={clamped} aria-valuetext={label} className={BAR_CLASS} />
       </div>
       <p className="flex flex-wrap items-baseline justify-between gap-2">
         <span className={LABEL}>Time left to fund</span>

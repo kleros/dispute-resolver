@@ -3,12 +3,10 @@ import { useCallback } from "react";
 import { queryKeys, useCaseRefresh, type CaseDispute } from "../../data";
 
 /**
- * The Retry of the appeal panel's notices (D-36, ARCHITECTURE.md §5.7): reads again what the panel is built from. The
- * "appeal" refresh reads the lookup, the details (appeal cost and period, current ruling, appeal decisions) and the
- * funding again. The multipliers keep a failed read as their data under a key of their own, so they are read again
- * too (06 §1: unreadable multipliers are what the fees notice usually reports). The family, the meta-evidence and the
- * Dispute event, which gives a governor its session (D-47), are read again only when they did not load, so a Retry
- * never repeats a log scan or a meta-evidence fetch that succeeded.
+ * The "appeal" refresh does not cover the multipliers, which keep a failed read as their data under a key of their
+ * own, so they are invalidated too: unreadable multipliers are what the fees notice usually reports. The family, the
+ * meta-evidence and the Dispute event are read again only when they did not load, so a Retry never repeats a log scan
+ * or a meta-evidence fetch that succeeded.
  */
 export function useAppealRetry(dispute: CaseDispute): () => void {
   const client = useQueryClient();

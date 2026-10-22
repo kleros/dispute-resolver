@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import type { Request, Route } from "@playwright/test";
 import { z } from "zod";
 
-// Recorded chain reads for the runner specs (C9: the doubles live in e2e only). A fixture under e2e/runner/fixtures holds
-// the JSON-RPC answers one page or script read, keyed by method and params, with the block they were read at.
+// A fixture under e2e/runner/fixtures holds the JSON-RPC answers one page or script read, keyed by method and params,
+// with the block they were read at.
 
 export const CORS_HEADERS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "*" };
 
@@ -29,9 +29,7 @@ const JsonRpcRequestSchema = z.object({
 export type JsonRpcRequest = z.infer<typeof JsonRpcRequestSchema>;
 export type JsonRpcAnswer = { readonly result: unknown } | { readonly error: { readonly code: number; readonly message: string } };
 
-/** The recorded answers of one fixture file. */
 export interface RpcFixture {
-  /** The recorded answer to `call`, or `undefined` when the recording has none. */
   answer(call: JsonRpcRequest): JsonRpcAnswer | undefined;
 }
 
@@ -51,16 +49,20 @@ function rpcKey(method: string, params: readonly unknown[]): string {
   return canonical([method, params]);
 }
 
-/** Loads `fileName` from e2e/runner/fixtures. */
 export function loadRpcFixture(fileName: string): RpcFixture {
   const parsed: unknown = JSON.parse(readFileSync(new URL(`fixtures/${fileName}`, import.meta.url), "utf8"));
   const fixture = FixtureSchema.parse(parsed);
   const answers = new Map<string, JsonRpcAnswer>();
   for (const call of fixture.calls) answers.set(rpcKey(call.method, call.params), call.error === undefined ? { result: call.result } : { error: call.error });
-  return { answer: (call) => answers.get(rpcKey(call.method, call.params ?? [])) };
+  return { answer: (call) => answers.get(rpcKey(call.method, call.params ?? [])) ?? latestBlockAnswer(call) };
 }
 
-/** The JSON-RPC call a request carries, or `undefined` when it carries none. */
+/** The case page reads the chain's latest block only for its clock, so any block stamped with the present serves. */
+export function latestBlockAnswer(call: { readonly method: string; readonly params?: readonly unknown[] }): JsonRpcAnswer | undefined {
+  if (call.method !== "eth_getBlockByNumber" || call.params?.[0] !== "latest") return undefined;
+  return { result: { number: "0x1", timestamp: `0x${Math.floor(Date.now() / 1_000).toString(16)}`, hash: `0x${"cd".repeat(32)}`, transactions: [] } };
+}
+
 export function jsonRpcCall(request: Request): JsonRpcRequest | undefined {
   if (request.method() !== "POST") return undefined;
   let body: unknown;
@@ -77,7 +79,7 @@ export async function fulfillJson(route: Route, body: unknown): Promise<void> {
   await route.fulfill({ headers: CORS_HEADERS, contentType: "application/json", body: JSON.stringify(body) });
 }
 
-/** Answers `call` from `fixture`, or with a node error when the fixture has no answer; says whether it was answered. */
+/** Answers with a node error when the fixture has no answer; returns whether it had one. */
 export async function answerFromFixture(route: Route, fixture: RpcFixture, call: JsonRpcRequest): Promise<boolean> {
   const answer = fixture.answer(call);
   if (answer === undefined) {
