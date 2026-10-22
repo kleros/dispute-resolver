@@ -21,9 +21,8 @@ const UNSUPPORTED = "This arbitrable does not expose all of its appeal multiplie
  * KlerosGovernor.sol fixes these: `MULTIPLIER_DIVISOR = 10000` (:78) and "The loser must pay during the first half of the
  * appeal period" (:345), with no getter for the latter; the recorded governor fixtures confirm both.
  */
-function governorFallback(denominator: bigint | null): Pick<Multipliers, "denominator" | "loserAppealPeriodMultiplier"> {
-  const resolved = denominator ?? 10_000n;
-  return { denominator: resolved, loserAppealPeriodMultiplier: resolved / 2n };
+function governorFallback(denominator = 10_000n): Pick<Multipliers, "denominator" | "loserAppealPeriodMultiplier"> {
+  return { denominator, loserAppealPeriodMultiplier: denominator / 2n };
 }
 
 type Fallback = typeof governorFallback;
@@ -75,7 +74,7 @@ async function readSingleGetters(client: ReadClient, address: Address, fallback?
     return validated({ winnerStakeMultiplier, loserStakeMultiplier, loserAppealPeriodMultiplier, denominator });
   }
   if (fallback === undefined) return fail("unsupported", UNSUPPORTED);
-  const fixed = fallback(denominator);
+  const fixed = fallback(denominator ?? undefined);
   return validated({ winnerStakeMultiplier, loserStakeMultiplier, loserAppealPeriodMultiplier: loserAppealPeriodMultiplier ?? fixed.loserAppealPeriodMultiplier, denominator: fixed.denominator });
 }
 

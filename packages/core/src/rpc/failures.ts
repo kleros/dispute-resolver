@@ -9,6 +9,11 @@ import { isLookupLimitError } from "./errors";
  */
 const EXECUTION_FAILURE = /execution reverted|\breverted?\b|invalid opcode|InvalidFEOpcode|invalid jump|out of gas|stack (?:underflow|overflow)/i;
 
+/** Whether a node's error message reports a failure of the contract's own execution. */
+export function isExecutionFailureMessage(message: string): boolean {
+  return EXECUTION_FAILURE.test(message);
+}
+
 /**
  * Whether a failed `readContract` was a failure of the contract (a revert, an invalid opcode, no return data from a
  * fallback function) rather than of the transport. The JSON-RPC code alone cannot tell: viem reads `-32603 "Internal
@@ -23,7 +28,7 @@ export function isContractFailure(error: unknown): boolean {
       cause instanceof ExecutionRevertedError ||
       cause instanceof ContractFunctionZeroDataError ||
       (cause instanceof ContractFunctionRevertedError && cause.raw !== undefined && cause.raw !== "0x") ||
-      (cause instanceof BaseError && EXECUTION_FAILURE.test(cause.details)),
+      (cause instanceof BaseError && isExecutionFailureMessage(cause.details)),
   );
   return failure !== null;
 }

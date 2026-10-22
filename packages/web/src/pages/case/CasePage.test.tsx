@@ -211,7 +211,7 @@ function searchCourtLink(): HTMLElement {
 }
 
 function timelineColumns(): HTMLElement[] {
-  return within(screen.getByRole("group", { name: "Dispute timeline" })).getAllByRole("listitem");
+  return within(screen.getByRole("region", { name: "Dispute timeline" })).getAllByRole("listitem");
 }
 
 function searchField(): HTMLElement {
@@ -432,7 +432,7 @@ const RETRY_CASES: readonly RetryCase[] = [
     ...answers(detailsReads, detailsRead(0, MALFORMED_RULING), detailsRead(0, 1n), () => {
       breakViewOnMalformedDetails({ timeline: { ok: true, value: { columns: null as unknown as Timeline["columns"] } } });
     }),
-    content: () => screen.findByRole("group", { name: "Dispute timeline" }),
+    content: () => screen.findByRole("region", { name: "Dispute timeline" }),
   },
   {
     section: "Decision",
@@ -673,7 +673,7 @@ describe("case page states", () => {
     programReads({ period: 3, family: VIEW_ONLY });
     renderCase("/1/cases/1");
     await settledDispute();
-    const timeline = await screen.findByRole("group", { name: "Dispute timeline" });
+    const timeline = await screen.findByRole("region", { name: "Dispute timeline" });
     const heading = screen.getByRole("heading", { level: 1, name: "Dispute #1" });
     expect(recordBand(timeline)).not.toBeNull();
     expect(recordBand(timeline)).toBe(recordBand(heading));

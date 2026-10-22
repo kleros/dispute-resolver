@@ -1,9 +1,10 @@
-import { createPublicClient, custom, http, type EIP1193RequestOptions, type Transport } from "viem";
+import { createPublicClient, custom, type EIP1193RequestOptions, type Transport } from "viem";
 import { getChain, resolveReadRpcUrl } from "../chains";
 import type { ChainConfig } from "../chains/types";
 import type { ChainId, Env, GetReadClient, ReadClient } from "../types";
 import { isLookupLimitError } from "./errors";
 import { isRangeLimitError } from "./rangeLimit";
+import { redactingHttp } from "./redactingHttp";
 import type { BudgetedReadClientOptions, ReadClientOptions, ReadClientResolution, RequestBudget } from "./types";
 
 const DEFAULT_TIMEOUT_MS = 20_000;
@@ -41,7 +42,7 @@ function isRetryable(method: string, error: unknown): boolean {
  */
 function readTransport(url: string, options: TransportPolicy): Transport {
   return (parameters) => {
-    const base = http(url, { timeout: options.timeoutMs, batch: false, retryCount: 0 })(parameters);
+    const base = redactingHttp(url, { timeout: options.timeoutMs, batch: false, retryCount: 0 })(parameters);
     const attempt = async (call: JsonRpcRequest, attempted: number): Promise<unknown> => {
       options.budget?.spend();
       try {

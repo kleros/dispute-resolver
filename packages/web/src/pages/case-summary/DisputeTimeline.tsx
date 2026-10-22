@@ -57,10 +57,11 @@ function TimelineSteps({ columns }: { readonly columns: readonly TimelineColumn[
   const fiveFit = useMediaQuery(FIVE_STEPS_MEDIA_QUERY);
   const wide = columns.length > 4 ? fiveFit : fourFit;
   const items = columns.map((column) => ({ title: COLUMN_LABELS[column.name], subitems: stateLines(column, now) }));
+  // The library hard-codes its list's name to the orientation alone, so the section carries what the steps are.
   return (
-    <div role="group" aria-label="Dispute timeline">
+    <section aria-label="Dispute timeline">
       <Steps items={items} currentItemIndex={columns.findIndex((column) => column.state === "current")} horizontal={wide} className={wide ? TIMELINE_H : TIMELINE_V} />
-    </div>
+    </section>
   );
 }
 

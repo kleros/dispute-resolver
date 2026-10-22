@@ -130,6 +130,20 @@ describe("createReadClient", () => {
     expect(endpoint.posts).toHaveLength(1);
   });
 
+  it.each([
+    ["an HTTP failure", { status: 401 }],
+    ["a node error", { error: { code: -32000, message: "header not found" } }],
+    ["a node error that repeats the key", { error: { code: -32000, message: "key abc123SECRETxyz over quota" } }],
+  ] as const)("%s names the read RPC by its origin, never with its key", async (_, reply) => {
+    stubEndpoint(() => reply);
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: "https://rpc.example/v2/abc123SECRETxyz" }, { retryCount: 0 });
+    const error: unknown = await client.getCode({ address }).catch((caught: unknown) => caught);
+    const texts: string[] = [];
+    for (let link: unknown = error; link instanceof Error; link = link.cause) texts.push(link.message, link.stack ?? "");
+    expect(texts.join("\n")).toContain("URL: https://rpc.example");
+    expect(texts.join("\n")).not.toContain("abc123SECRETxyz");
+  });
+
   it("each request times out after 20 s by default", async () => {
     vi.useFakeTimers();
     stubEndpoint(() => "hang");

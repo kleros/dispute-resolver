@@ -417,7 +417,7 @@ describe("a meta-evidence naming an unconfigured chain", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Dispute #1" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Cross-chain question" })).toBeInTheDocument();
     expect(displayParams()).toMatchObject({ arbitrableChainID: 1 });
-    expect(within(screen.getByRole("group", { name: "Dispute timeline" })).getAllByRole("listitem").length).toBeGreaterThan(0);
+    expect(within(screen.getByRole("region", { name: "Dispute timeline" })).getAllByRole("listitem").length).toBeGreaterThan(0);
     // Period 2 shows no decision.
     expect(screen.queryByRole("heading", { name: /^(?:Jury decision|Winner)$/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/unavailable/i)).not.toBeInTheDocument();

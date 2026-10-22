@@ -58,7 +58,8 @@ function NetworkMenu({ id, rootRef, panelRef, closing, onClose, children }: Netw
 
   const onKeyDown = (event: KeyboardEvent<HTMLUListElement>) => {
     const items = menuItems(listRef.current);
-    const index = items.findIndex((item) => item === document.activeElement);
+    const active = document.activeElement;
+    const index = active instanceof HTMLElement ? items.indexOf(active) : -1;
     const focusAt = (position: number) => {
       items.at(((position % items.length) + items.length) % items.length)?.focus();
     };

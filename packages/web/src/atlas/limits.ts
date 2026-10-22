@@ -86,7 +86,7 @@ function acceptedFormats(allowedMimeTypes: readonly string[]): readonly Format[]
 
 function joinWithOr(items: readonly string[]): string {
   if (items.length < 2) return items.join("");
-  return `${items.slice(0, -1).join(", ")} or ${items[items.length - 1] ?? ""}`;
+  return `${items.slice(0, -1).join(", ")} or ${items.at(-1) ?? ""}`;
 }
 
 function capitalized(text: string): string {

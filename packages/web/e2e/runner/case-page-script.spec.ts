@@ -133,7 +133,7 @@ test.describe("case page dynamic script", () => {
     const settled = await header.boundingBox();
     expect(settled, "the Question header's box").not.toBeNull();
     // The sections that render last on this dispute, and the end of the run: the header has not moved.
-    await expect(page.getByRole("group", { name: "Dispute timeline", exact: true }).getByRole("list")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Dispute timeline", exact: true }).getByRole("list")).toBeVisible();
     await expect(page.getByRole("region", { name: "Winner", exact: true }).getByText(SCRIPT_OPTIONS[1], { exact: true })).toBeVisible();
     await expect(page.locator(RUNNER_FRAME)).toHaveCount(0);
     expect(await header.boundingBox()).toEqual(settled);

@@ -1,4 +1,5 @@
 import { CHAINS, type ChainConfig, type Env } from "@dispute-resolver/core";
+import { getBalance } from "@wagmi/core";
 import { render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TestDataProvider } from "../test/data";
@@ -12,6 +13,7 @@ import { noRpcConfiguredError, walletTransport } from "./transports";
 
 const LOCATION = { host: "localhost", origin: "http://localhost" };
 const SECRET_RPC = "https://mainnet.example.org/v3/secret-key";
+const KEY = "abc123SECRETxyz";
 
 function chain(id: number): ChainConfig {
   const config = Object.values(CHAINS).find((candidate) => candidate.id === id);
@@ -242,6 +244,22 @@ describe("walletTransport", () => {
     expect(transport.config.type).toBe("custom");
     await expect(transport.request({ method: "eth_blockNumber" })).rejects.toThrow(noRpcConfiguredError(1).message);
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["an HTTP error", () => new Response(`invalid API key ${KEY}`, { status: 401 })],
+    ["a node error", () => Response.json({ jsonrpc: "2.0", id: 0, error: { code: -32000, message: `key ${KEY} over quota` } })],
+    ["an answer that is not JSON", () => new Response(`{"error": ${KEY}}`, { status: 200 })],
+  ])("a balance read failing with %s that repeats the key, which AppKit logs as it is, names the RPC by its origin and never carries the key", async (_, answer) => {
+    vi.stubGlobal("fetch", () => Promise.resolve(answer()));
+    // Chiado: AppKit gives it no fallback to Reown's RPC, so its balance read fails with the configured RPC's own error.
+    const setup = createReadOnlySetup(buildAppConfig({ REACT_APP_WEB3_CHIADO_PROVIDER_URL: `https://rpc.example/v2/${KEY}` }, LOCATION));
+    const error: unknown = await getBalance(setup.wagmiConfig, { address: "0x1111111111111111111111111111111111111111", chainId: 10200 }).catch((caught: unknown) => caught);
+    const texts: string[] = [];
+    for (let link: unknown = error; link instanceof Error; link = link.cause) texts.push(link.message, link.stack ?? "", String(Reflect.get(link, "details")));
+    expect(texts.join("\n")).toContain("URL: https://rpc.example");
+    // Six characters in a row is what a parse error quoting the start of an answer can leave of the key.
+    for (let start = 0; start + 6 <= KEY.length; start += 1) expect(texts.join("\n")).not.toContain(KEY.slice(start, start + 6));
   });
 
   it("the error names the chain without mentioning configuration", () => {

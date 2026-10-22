@@ -85,9 +85,13 @@ function renderSection(Component: Section, dispute: CaseDispute) {
   );
 }
 
-/** The library's list inside the group a reader hears as "Dispute timeline". */
+/** The section a reader hears as "Dispute timeline"; the library names its list by orientation only. */
+function timeline(): HTMLElement {
+  return screen.getByRole("region", { name: "Dispute timeline" });
+}
+
 function timelineList(): HTMLElement {
-  return within(screen.getByRole("group", { name: "Dispute timeline" })).getByRole("list");
+  return within(timeline()).getByRole("list");
 }
 
 function steps(): HTMLElement[] {
@@ -290,7 +294,7 @@ describe("DisputeTimeline", () => {
       </TestDataProvider>,
     );
     expect(screen.getByText("Timeline unavailable")).toBeInTheDocument();
-    expect(screen.queryByRole("group", { name: "Dispute timeline" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Dispute timeline" })).not.toBeInTheDocument();
     expect(decisionAlert("Jury decision")).toBeInTheDocument();
   });
 
@@ -301,9 +305,8 @@ describe("DisputeTimeline", () => {
 
   it("renders the current countdown once", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 2, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }));
-    const group = screen.getByRole("group", { name: "Dispute timeline" });
-    expect(within(group).getAllByText(COUNTDOWN)).toHaveLength(1);
-    expect(within(group).getAllByText(/^Ends in/)).toHaveLength(1);
+    expect(within(timeline()).getAllByText(COUNTDOWN)).toHaveLength(1);
+    expect(within(timeline()).getAllByText(/^Ends in/)).toHaveLength(1);
   });
 
   it("shows every step's state as visible text", () => {
@@ -376,7 +379,7 @@ describe("DisputeTimeline", () => {
 
   it("names the timeline from outside the library list", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    expect(within(screen.getByRole("group", { name: "Dispute timeline" })).getAllByRole("list")).toHaveLength(1);
+    expect(within(timeline()).getAllByRole("list")).toHaveLength(1);
   });
 
   it("shows no state text for the execution step", () => {
@@ -409,13 +412,13 @@ describe("content replacing its placeholder", () => {
 
   it("fades the timeline in when it arrives after its placeholder, and holds it still under reduced motion", () => {
     renderThenSettle(DisputeTimeline, caseDispute({ period: 2, view: "loading" }), caseDispute({ period: 2 }));
-    const content = screen.getByRole("group", { name: "Dispute timeline" }).parentElement;
+    const content = timeline().parentElement;
     expect(content).toHaveClass(REVEAL, "motion-reduce:animate-none");
   });
 
   it("shows a timeline that was ready on the first render without motion", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    expect(screen.getByRole("group", { name: "Dispute timeline" }).parentElement?.className).not.toContain("t-reveal-in");
+    expect(timeline().parentElement?.className).not.toContain("t-reveal-in");
   });
 
   it("fades the decision in when it arrives after its placeholder, but not when it was ready at once", () => {

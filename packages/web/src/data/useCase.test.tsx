@@ -166,11 +166,11 @@ describe("useCase", () => {
     vi.mocked(core.detectFamily).mockRejectedValue(new Error("eth_getCode failed"));
     const { result } = renderCase(1n);
     const current = await settledCase(result);
-    expect(current.family).toEqual({ status: "unavailable", error: { code: "rpc-error", message: "eth_getCode failed" } });
+    expect(current.family).toEqual({ status: "unavailable", error: { code: "rpc-error", message: "The request failed." } });
     expect(core.detectFamily).toHaveBeenCalledTimes(2);
     expect(core.readDisputeDetails).toHaveBeenCalledWith(expect.anything(), expect.anything(), undefined, 100n);
     expect(current.view).toMatchObject({ status: "ready", value: { exists: true, family: { ok: false } } });
-    expect(current.appealPanel).toMatchObject({ status: "unavailable", error: { message: "eth_getCode failed" } });
+    expect(current.appealPanel).toMatchObject({ status: "unavailable", error: { message: "The request failed." } });
     expect(current.write.status).toBe("unavailable");
     expect(current.evidence.status).toBe("ready");
   });

@@ -17,6 +17,7 @@ import { decodeAbiParameters, encodeEventTopics, numberToHex, type Hex } from "v
 import { z } from "zod";
 import { erc1497Abi } from "../src/abi";
 import type { ChainId } from "../src/types";
+import { failureMessage } from "./failureMessage";
 import { loadRepositoryEnv, rawRpcFor, type RawRpc } from "./recordingRpc";
 
 const RECORDED_ON = "2026-10-20";
@@ -242,6 +243,6 @@ async function main(): Promise<number> {
 try {
   process.exitCode = await main();
 } catch (error) {
-  console.error(error instanceof Error ? error.message : "The recording failed.");
+  console.error(failureMessage(error));
   process.exitCode = 1;
 }

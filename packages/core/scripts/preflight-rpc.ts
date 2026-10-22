@@ -27,6 +27,7 @@ import type { ChainTable } from "../src/chains";
 import { LOOKUP_LIMITS } from "../src/reality/constants";
 import { isRangeLimitError } from "../src/rpc";
 import type { Env } from "../src/types";
+import { failureMessage, redact } from "./failureMessage";
 
 const ENV_FILE = resolve(import.meta.dirname, "../../../.env");
 
@@ -84,29 +85,6 @@ type CallOutcome =
   | { readonly kind: "redirected" }
   | { readonly kind: "unreadable" }
   | { readonly kind: "network"; readonly reason: string };
-
-/**
- * Removes every URL and everything that identifies one from a text: the configured URLs' hosts, path segments and query
- * values, any other URL, and any long token (a key a provider echoes without its URL).
- */
-export function redact(text: string, urls: readonly string[]): string {
-  let redacted = text.replaceAll(/https?:\/\/\S+/g, "<url>");
-  for (const configured of urls) {
-    const pieces = new Set<string>();
-    try {
-      const parsed = new URL(configured);
-      pieces.add(parsed.host);
-      for (const segment of parsed.pathname.split("/")) pieces.add(segment);
-      for (const value of parsed.searchParams.values()) pieces.add(value);
-    } catch {
-      pieces.add(configured);
-    }
-    for (const piece of pieces) {
-      if (piece.length >= 6) redacted = redacted.replaceAll(piece, "<redacted>");
-    }
-  }
-  return redacted.replaceAll(/[A-Za-z0-9_-]{16,}/g, "<redacted>");
-}
 
 function truncate(text: string): string {
   return text.length > MAX_DETAIL_LENGTH ? `${text.slice(0, MAX_DETAIL_LENGTH)}...` : text;
@@ -363,5 +341,10 @@ async function main(): Promise<number> {
 }
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  process.exitCode = await main();
+  try {
+    process.exitCode = await main();
+  } catch (error) {
+    console.error(failureMessage(error));
+    process.exitCode = 1;
+  }
 }

@@ -14,10 +14,10 @@
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { BaseError } from "viem";
 import { KNOWN_DISPUTE_QUESTIONS, REGISTRY_SNAPSHOT_BLOCKS, generateKnownQuestions, renderKnownQuestionsModule, type GeneratorMode } from "../src/reality";
 import { REGISTRY } from "../src/registry";
-import { createReadClients, describeError } from "../src/rpc";
+import { createReadClients } from "../src/rpc";
+import { failureMessage } from "./failureMessage";
 
 const GENERATED_FILE = resolve(import.meta.dirname, "../src/reality/knownQuestions.generated.ts");
 const ENV_FILE = resolve(import.meta.dirname, "../../../.env");
@@ -30,11 +30,6 @@ function modeOf(args: readonly string[]): GeneratorMode {
   const mode = FLAGS[flag];
   if (mode === undefined || rest.length > 0) throw new Error(`Usage: generate-known-questions [--full | --check] (got ${args.join(" ")})`);
   return mode;
-}
-
-/** A failure's reason without the RPC URL a viem error's full message carries, which can hold an API key. */
-function reasonOf(error: unknown): string {
-  return error instanceof Error && !(error instanceof BaseError) ? error.message : describeError(error);
 }
 
 async function main(): Promise<number> {
@@ -67,6 +62,6 @@ async function main(): Promise<number> {
 try {
   process.exitCode = await main();
 } catch (error) {
-  console.error(reasonOf(error));
+  console.error(failureMessage(error));
   process.exitCode = 1;
 }

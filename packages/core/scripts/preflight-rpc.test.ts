@@ -4,7 +4,7 @@ import { CHAINS } from "../src/chains";
 import { getLogsChunked } from "../src/rpc";
 import { fakeLogsClient, rangeRefusal } from "../src/test/rpc/testHelpers";
 import type { Env } from "../src/types";
-import { MIN_WINDOW_BLOCKS, checkEndpoint, formatChainReport, isFailure, redact, runPreflight, summarize, type FetchLike } from "./preflight-rpc";
+import { MIN_WINDOW_BLOCKS, checkEndpoint, formatChainReport, isFailure, runPreflight, summarize, type FetchLike } from "./preflight-rpc";
 
 const HEAD = 24_000_000;
 const URL_WITH_KEY = "https://eth-mainnet.example-provider.io/v3/0123456789abcdef0123456789abcdef?apikey=secretvalue123";
@@ -279,16 +279,6 @@ describe("requests with Origin: null", () => {
 });
 
 describe("no URL or key in any output", () => {
-  it("redact removes the URL, its host, its path segments and its query values", () => {
-    const text = `request to ${URL_WITH_KEY} failed: host eth-mainnet.example-provider.io rejected key 0123456789abcdef0123456789abcdef and secretvalue123`;
-    const redacted = redact(text, [URL_WITH_KEY]);
-    for (const secret of ["eth-mainnet.example-provider.io", "0123456789abcdef", "secretvalue123", "https://"]) expect(redacted).not.toContain(secret);
-  });
-
-  it("redact removes any URL even when it is not the configured one", () => {
-    expect(redact("see https://other.example/path?k=v for details", [])).toBe("see <url> for details");
-  });
-
   it("a provider error that echoes the URL and key is reported without them", async () => {
     const message = `invalid key in ${URL_WITH_KEY}`;
     const { fetchFn } = fakeNode({ logs: { error: { code: -32000, message } } });

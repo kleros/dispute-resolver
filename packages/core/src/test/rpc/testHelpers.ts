@@ -84,7 +84,8 @@ export interface JsonRpcCall {
  * What the fake endpoint answers to one call: a JSON-RPC result, a JSON-RPC error, an HTTP status, or nothing. An HTTP
  * request carrying several calls (a batch) gets the HTTP status or the silence of its first call.
  */
-export type Reply = { readonly result: unknown } | { readonly error: { readonly code: number; readonly message: string } } | { readonly status: number } | "hang";
+export type Reply =
+  { readonly result: unknown } | { readonly error: { readonly code: number; readonly message: string; readonly data?: unknown } } | { readonly status: number } | "hang";
 
 export interface FakeEndpoint {
   /** Each HTTP request: its URL, the JSON-RPC calls in its body and when it was sent. */

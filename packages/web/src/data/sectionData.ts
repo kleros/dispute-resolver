@@ -1,4 +1,4 @@
-import type { ChainId, Outcome, Unavailable, UnavailableCode } from "@dispute-resolver/core";
+import { describeError, type ChainId, type Outcome, type Unavailable, type UnavailableCode } from "@dispute-resolver/core";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { SectionData } from "./types";
 
@@ -28,10 +28,12 @@ export function fromOutcome<T>(outcome: Outcome<T>): SectionData<T> {
   return outcome.ok ? ready(outcome.value) : unavailableFrom(outcome.error);
 }
 
-/** Hooks never throw to React: a rejected read becomes a section state. */
+/**
+ * Hooks never throw to React: a rejected read becomes a section state. A viem error's full message carries the read
+ * RPC's URL and with it the API key, so only its short message reaches the section.
+ */
 export function rejectionError(error: unknown): Unavailable {
-  const message = error instanceof Error && error.message !== "" ? error.message : "The read failed.";
-  return { code: "rpc-error", message };
+  return { code: "rpc-error", message: describeError(error) };
 }
 
 /** A query waiting for its inputs (`skipToken`) is also `pending`, so it reads as `loading`. */

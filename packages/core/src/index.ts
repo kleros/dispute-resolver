@@ -30,7 +30,7 @@ export {
 } from "./uri";
 export { REFUSED_RULING_TEXT, asQuestionType, combinationCode, combinationTitle, encodeAnswer, formatRuling, isVariableType } from "./rulings";
 export { REGISTRY, displayAllowlistKey, getOverride, isDisplayAllowlisted, toRegistryAddress } from "./registry";
-export { createReadClients } from "./rpc";
+export { createReadClients, describeError, redactingHttp } from "./rpc";
 export { createFamilyCache, detectFamily } from "./families";
 export { JSON_DUPLICATE_KEY_GUARD, realityQuestionCacheKey } from "./reality";
 export {

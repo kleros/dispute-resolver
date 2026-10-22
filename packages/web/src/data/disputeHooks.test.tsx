@@ -2,6 +2,7 @@ import * as core from "@dispute-resolver/core";
 import type { ArbitratedBinding, MetaEvidenceResult } from "@dispute-resolver/core";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { HttpRequestError } from "viem";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TestDataProvider, createTestDeps, testBinding, testFamily, testOkMetaEvidence } from "../test/data";
 import { useFamily, useMetaEvidence } from "./disputeHooks";
@@ -53,11 +54,11 @@ describe("dispute hooks", () => {
     expect(core.detectFamily).toHaveBeenCalledWith({ client: deps.getReadClient(1), chainId: 1, arbitrable: BINDING.arbitrated, registry: deps.registry, cache: deps.familyCache });
   });
 
-  it("retries a rejected family detection once, then reports it unavailable", async () => {
-    vi.mocked(core.detectFamily).mockRejectedValue(new Error("eth_getCode failed"));
+  it("retries a rejected family detection once, then reports it unavailable by the error's short message, without the RPC URL", async () => {
+    vi.mocked(core.detectFamily).mockRejectedValue(new HttpRequestError({ body: { method: "eth_getCode" }, status: 429, url: "https://rpc.example/v2/abc123SECRETxyz" }));
     const { result } = renderHook(() => useFamily(1, BINDING.arbitrated), { wrapper: wrapperWith(createTestDeps()) });
     await waitFor(() => {
-      expect(result.current).toEqual({ status: "unavailable", error: { code: "rpc-error", message: "eth_getCode failed" } });
+      expect(result.current).toEqual({ status: "unavailable", error: { code: "rpc-error", message: "HTTP request failed." } });
     });
     expect(core.detectFamily).toHaveBeenCalledTimes(2);
   });
