@@ -5,6 +5,7 @@ export { BAR_PILL, ChevronIcon } from "./barPill";
 export { Amount } from "./Amount";
 export { Countdown } from "./Countdown";
 export { EmptyState } from "./EmptyState";
+export { ExpandIndicator } from "./ExpandIndicator";
 export { CHIP, CHIP_STATUS, EYEBROW, FACT, FACT_LEAD, FACT_SMALL, LABEL, PAGE_TITLE, PLATE, RECORD_BAND } from "./facts";
 export { Identicon } from "./Identicon";
 export { Notice } from "./Notice";

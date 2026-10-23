@@ -81,6 +81,12 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
   /*
+   * The app's hover ease as a named utility, for a library control whose own `ease-ease` tailwind-merge does not know
+   * and so keeps: Tailwind orders two utilities of the same properties by name, and `ease-smooth-out` comes after it.
+   */
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /*
    * These redefine the library's own variables, which its components read through `entering:animate-scale-in`,
    * `exiting:animate-scale-out`, `animate-fade-in` and `animate-fade-out`; the app's menus use the same two.
    * - A popover grows from its trigger on the `scale` property with opacity, instead of the library's unroll from
@@ -348,9 +354,12 @@
      *   app's conformance claim.
      * - --dr-display-focus: the ring inside the evidence display, on that paper in both themes: #0072c6 is 4.97:1 on white
      *   and about 4.7:1 on #f4f0fa, where the dark --dr-focus #6cc5ff would be 1.90:1.
+     * - --dr-display-skeleton: the loading bars on that paper. The sheet is a light surface in both themes, so the bars
+     *   are the light Stroke in both; the dark Stroke would be heavy on it. A placeholder, not text, so no ratio applies.
      */
     --dr-display-paper: var(--klerosUIComponentsWhiteBackground);
     --dr-display-focus: #0072c6;
+    --dr-display-skeleton: var(--klerosUIComponentsStroke);
     --dr-success-bar: #65dc7f;
     --dr-control-border: #8a8a8a;
     --dr-focus: var(--klerosUIComponentsPrimaryBlue);
@@ -475,6 +484,7 @@
 
     --dr-display-paper: #f4f0fa;
     --dr-display-focus: #0072c6;
+    --dr-display-skeleton: #e5e5e5;
     --dr-success-bar: var(--klerosUIComponentsSuccess);
     --dr-control-border: #8a7bd0;
     --dr-focus-bar: #a5dbff;
@@ -629,14 +639,11 @@
 }
 
 /*
- * The evidence display's ring is drawn inset on its window, on the frame's paper, so the window's 256 px clip never cuts
- * it and it holds 3:1 on the paper in both themes; an inset ring on the 360 px frame would lose its bottom edge below the
- * cut. An iframe never matches :focus or :focus-visible while its page holds focus, so EvidenceDisplay marks the window
- * itself while keyboard focus is inside the frame. The same mark opens the window to the full frame, so a focused link of
- * the page is never hidden below the cut. The frame draws no ring of its own, so no engine ever shows two.
+ * The evidence display's ring is drawn inset on its window, on the frame's paper, so it holds 3:1 on the paper in both
+ * themes. An iframe never matches :focus or :focus-visible while its page holds focus, so EvidenceDisplay marks the
+ * window itself while keyboard focus is inside the frame. The frame draws no ring of its own, so no engine ever shows two.
  */
 .dr-display-window[data-frame-focus] {
-  height: 360px;
   outline: 2px solid var(--dr-display-focus);
   outline-offset: -2px;
 }
@@ -777,6 +784,13 @@ button:where(:disabled, [data-disabled]) .button-text {
   from {
     opacity: 0;
     filter: blur(2px);
+  }
+}
+
+@keyframes t-acc-unfold {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
   }
 }
 

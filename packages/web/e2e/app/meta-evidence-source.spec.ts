@@ -143,6 +143,8 @@ test("Gnosis 460 renders the on-chain meta-evidence while the meta-evidence API 
 });
 
 test("renders the locator's meta-evidence when the arbitrable's logs cannot be read", async ({ context, page, baseURL }) => {
+  // The read client retries the failing log scan before the locator takes over, which can outlast the default 30 s.
+  test.setTimeout(90_000);
   const failingLogs = (call: RpcCall): RpcAnswer | undefined =>
     call.method === "eth_getLogs" && filterOf(call).address?.toLowerCase() === ARBITRABLE ? { error: { code: -32000, message: "header not found" } } : caseRpc(call);
   const traffic = await openCase(context, page, baseURL, failingLogs);

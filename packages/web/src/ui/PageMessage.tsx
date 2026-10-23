@@ -4,10 +4,13 @@ import type { PageMessageProps } from "./types";
 const FIRST_LINE = "animate-[t-stagger-in_var(--stagger-dur)_var(--stagger-ease)_backwards] motion-reduce:animate-none";
 const NEXT_LINE = "animate-[t-stagger-in_var(--stagger-dur)_var(--stagger-ease)_var(--stagger-stagger)_backwards] motion-reduce:animate-none";
 
-export function PageMessage({ title, body, action }: PageMessageProps) {
+export function PageMessage({ title, body, action, compact = false }: PageMessageProps) {
   const headingId = useId();
   return (
-    <section aria-labelledby={headingId} className="mx-auto flex w-full max-w-xl flex-col items-center gap-4 px-4 py-16 text-center [overflow-wrap:anywhere]">
+    <section
+      aria-labelledby={headingId}
+      className={`mx-auto flex w-full max-w-xl flex-col items-center gap-4 px-4 text-center [overflow-wrap:anywhere] ${compact ? "pt-8 pb-16" : "py-16"}`}
+    >
       <h1 id={headingId} className={`text-2xl font-semibold text-klerosUIComponentsPrimaryText ${FIRST_LINE}`}>
         {title}
       </h1>

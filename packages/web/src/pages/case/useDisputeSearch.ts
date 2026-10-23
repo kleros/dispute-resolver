@@ -60,19 +60,21 @@ export function useDisputeSearch(chainId: ChainId, urlId: string | undefined): D
       if (text !== "" && id === null) return;
       if (active !== null && targetOf(active) === targetOf(text)) return;
       clearTimeout(timer.current);
-      if (targetOf(text) === urlTarget(urlId)) {
+      // Until the active search's navigation lands, `urlId` is the URL being left; the URL ends on that search's target.
+      const landing = active === null ? urlId : search?.to;
+      if (landing === urlId && targetOf(text) === urlTarget(urlId)) {
         setSearch(null);
         return;
       }
       if (id === null) {
-        setSearch({ text, from: urlId, to: urlId });
+        setSearch({ text, from: urlId, to: landing });
         return;
       }
       setSearch({ text, from: urlId, to: id.toString() });
       void navigate(paths.case(chainId, id), { replace: true });
       timer.current = setTimeout(settle, SEARCH_DEBOUNCE_MS);
     },
-    [active, chainId, navigate, settle, urlId],
+    [active, chainId, navigate, search, settle, urlId],
   );
 
   const submit = useCallback(() => {

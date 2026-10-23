@@ -9,21 +9,17 @@ import { expectCaseSectionsSettled } from "./caseSections";
 /** A content-addressed path the app serves through its gateway; the route answers it with `DISPLAY_HTML`. */
 const DISPLAY_PATH = "/ipfs/QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh/index.html";
 
-const COLLAPSED_PX = 256;
 const FULL_PX = 360;
 
-/**
- * One link in the top 100 px of the frame and one at y = 300, below the collapsed window's cut; the page counts every
- * message it receives.
- */
+/** One link near the top of the frame and one near its bottom; the page counts every message it receives. */
 const DISPLAY_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Fixture display</title><style>
 html, body { margin: 0; }
 a { position: absolute; left: 16px; display: block; height: 20px; line-height: 20px; }
 #above { top: 40px; }
 #below { top: 300px; }
 </style></head><body>
-<a id="above" href="#above">Link above the cut</a>
-<a id="below" href="#below">Link below the cut</a>
+<a id="above" href="#above">Link near the top</a>
+<a id="below" href="#below">Link near the bottom</a>
 <script>
 var receivedMessages = 0;
 window.addEventListener("message", function () { receivedMessages += 1; });
@@ -31,35 +27,49 @@ window.addEventListener("message", function () { receivedMessages += 1; });
 </body></html>`;
 
 const FRAME = 'iframe[title="Evidence display"]';
-const CONTROL_NAME = /^(Show full frame|Show less)$/;
 
 function display(release?: Promise<void>): DisplayPage {
   return { path: DISPLAY_PATH, html: DISPLAY_HTML, release };
 }
 
-function control(page: Page): Locator {
-  return page.getByRole("button", { name: CONTROL_NAME });
+function row(page: Page): Locator {
+  return page.getByRole("button", { name: "Evidence display", exact: true });
 }
 
 function frameElement(page: Page): Locator {
   return page.locator(FRAME);
 }
 
-/** The element the control's aria-controls names: the window the frame is shown through. */
-async function displayWindow(page: Page): Promise<Locator> {
-  const id = await control(page).getAttribute("aria-controls");
-  expect(id, "the control names the window it controls").toBeTruthy();
-  return page.locator(`[id="${id ?? ""}"]`);
+/** The box the frame is shown in, which draws the inset ring while keyboard focus is inside the frame. */
+function displayWindow(page: Page): Locator {
+  return page.locator(".dr-display-window");
 }
 
-/** The innermost block that holds both the control and the frame. */
-function displayBlock(page: Page): Locator {
-  return page.locator("div").filter({ has: control(page) }).filter({ has: frameElement(page) }).last();
+/** The element the row's aria-controls names: the region the row hides. */
+async function displayRegion(page: Page): Promise<Locator> {
+  const id = await row(page).getAttribute("aria-controls");
+  expect(id, "the row names the region it controls").toBeTruthy();
+  return page.locator(`[id="${id ?? ""}"]`);
 }
 
 async function height(locator: Locator): Promise<number> {
   const box = await locator.boundingBox();
   return box?.height ?? Number.NaN;
+}
+
+/** The text a sighted reader sees in the region: text in boxes larger than the 1 px of a screen-reader-only element. */
+async function visibleText(region: Locator): Promise<string> {
+  return region.evaluate((element) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let text = "";
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      const parent = node.parentElement;
+      if (parent === null || getComputedStyle(parent).visibility !== "visible") continue;
+      const box = parent.getBoundingClientRect();
+      if (box.width > 1 && box.height > 1) text += node.textContent ?? "";
+    }
+    return text.trim();
+  });
 }
 
 /** Reloads the case page and waits until the display has loaded again and no section is loading. */
@@ -92,53 +102,32 @@ async function focusIsOnTheFrame(page: Page): Promise<boolean> {
   return page.evaluate((selector) => document.activeElement === document.querySelector(selector), FRAME);
 }
 
-/** Tabs from the element before the control onto the control. */
-async function tabToTheControl(page: Page): Promise<void> {
-  await control(page).focus();
+/** Tabs from the element before the row onto the row. */
+async function tabToTheRow(page: Page): Promise<void> {
+  await row(page).focus();
   await page.keyboard.press("Shift+Tab");
-  await expect(control(page)).not.toBeFocused();
+  await expect(row(page)).not.toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(control(page)).toBeFocused();
+  await expect(row(page)).toBeFocused();
 }
 
-/** Tabs from the element before the control onto the control, then into the frame, until its first link has focus. */
-async function tabIntoTheFrame(page: Page): Promise<void> {
-  await tabToTheControl(page);
-  await tabFromTheControlIntoTheFrame(page);
-}
-
-/** Tabs from the focused control into the frame, until its first link has focus. */
-async function tabFromTheControlIntoTheFrame(page: Page): Promise<void> {
+/** Tabs from the focused row into the frame, until its first link has focus. */
+async function tabFromTheRowIntoTheFrame(page: Page): Promise<void> {
   await page.keyboard.press("Tab");
-  expect(await focusIsOnTheFrame(page), "the Tab after the control enters the frame").toBe(true);
+  expect(await focusIsOnTheFrame(page), "the Tab after the row enters the frame").toBe(true);
   const above = page.frameLocator(FRAME).locator("#above");
   // An engine may stop once on the frame's document before its first link.
   if (!(await above.evaluate((link) => link === document.activeElement))) await page.keyboard.press("Tab");
   await expect(above).toBeFocused();
 }
 
-/** Shift+Tabs back to the control; an engine may stop on the frame's document on the way out. */
-async function shiftTabToControl(page: Page): Promise<void> {
+/** Shift+Tabs back to the row; an engine may stop on the frame's document on the way out. */
+async function shiftTabToTheRow(page: Page): Promise<void> {
   for (let presses = 0; presses < 4; presses += 1) {
     await page.keyboard.press("Shift+Tab");
-    if (await control(page).evaluate((button) => button === document.activeElement)) return;
+    if (await row(page).evaluate((button) => button === document.activeElement)) return;
   }
-  await expect(control(page)).toBeFocused();
-}
-
-/** Resolves once the window's height has stopped changing: two frames for a transition to start, then its end. */
-async function settled(window: Locator): Promise<void> {
-  await window.evaluate(async (element) => {
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    await Promise.allSettled(element.getAnimations().map((animation) => animation.finished));
-  });
-}
-
-/** Whether `inner` lies entirely inside the window's box. */
-async function liesInside(inner: Locator, outer: Locator): Promise<boolean> {
-  const [box, frame] = await Promise.all([inner.boundingBox(), outer.boundingBox()]);
-  if (box === null || frame === null) return false;
-  return box.y >= frame.y && box.y + box.height <= frame.y + frame.height && box.x >= frame.x && box.x + box.width <= frame.x + frame.width;
+  await expect(row(page)).toBeFocused();
 }
 
 /** Counts, never values: where the frame's source appears in the display block and the document's text. */
@@ -151,7 +140,9 @@ async function sourceExposure(page: Page) {
     while (block !== null && block.querySelector("button[aria-controls]") === null) block = block.parentElement;
     const elements = block === null ? [] : [block, ...block.querySelectorAll("*")];
     const carriesSource = (value: string) => value.includes(src) || value.includes(query);
-    const leaking = elements.flatMap((element) => [...element.attributes].filter((attribute) => !(element === frame && attribute.name === "src") && carriesSource(attribute.value)));
+    const leaking = elements.flatMap((element) =>
+      [...element.attributes].filter((attribute) => !(element === frame && attribute.name === "src") && carriesSource(attribute.value)),
+    );
     return {
       hasSource: src.length > 0 && query.length > 0,
       blockFound: block !== null,
@@ -190,28 +181,34 @@ async function windowRing(window: Locator) {
 const INSET_RING = { style: "solid", width: "2px", offset: "-2px", colorIsDisplayFocus: true };
 
 test.describe("case page evidence display", () => {
-  test("the evidence display is collapsed by default and the full frame opens on the control", async ({ page, baseURL }) => {
+  test("the whole frame is shown by default, and the row hides it completely and shows it again without reloading it", async ({ page, baseURL }) => {
     const traffic = await openWithDisplay(page, baseURL);
-    const window = await displayWindow(page);
     const frame = frameElement(page);
-    await expect(control(page)).toHaveText("Show full frame");
-    await expect(control(page)).toHaveAttribute("aria-expanded", "false");
-    await expect.poll(() => height(window)).toBeCloseTo(COLLAPSED_PX, 0);
+    const region = await displayRegion(page);
+    await expect(row(page)).toHaveAttribute("aria-expanded", "true");
+    await expect(frame).toBeVisible();
+    expect(await height(displayWindow(page))).toBeCloseTo(FULL_PX, 0);
     expect(await height(frame)).toBeCloseTo(FULL_PX, 0);
+    await expect(page.getByRole("button", { name: /^(Show full frame|Show less)$/ })).toHaveCount(0);
     const handle = await frame.elementHandle();
     const srcBefore = await frame.getAttribute("src");
 
-    await control(page).click();
-    await expect(control(page)).toHaveText("Show less");
-    await expect(control(page)).toHaveAttribute("aria-expanded", "true");
-    await expect.poll(() => height(window)).toBeCloseTo(FULL_PX, 0);
-    expect(await height(frame)).toBeCloseTo(FULL_PX, 0);
+    await row(page).click();
+    await expect(row(page)).toHaveAttribute("aria-expanded", "false");
+    await expect(region).toBeHidden();
+    await expect(frame).toBeHidden();
+    await expect(row(page)).toBeVisible();
+
+    await row(page).click();
+    await expect(row(page)).toHaveAttribute("aria-expanded", "true");
+    await expect(frame).toBeVisible();
+    expect(await height(displayWindow(page))).toBeCloseTo(FULL_PX, 0);
     expect(await frame.evaluate((element, before) => element === before, handle), "the same iframe element").toBe(true);
     expect((await frame.getAttribute("src")) === srcBefore, "the src attribute is unchanged").toBe(true);
-    expect(traffic.display, "the display page loaded once, not again on the toggle").toBe(1);
+    expect(traffic.display, "the display page loaded once, not again on hiding and showing").toBe(1);
   });
 
-  test("the loading status clears when the page loads", async ({ page, baseURL }) => {
+  test("the section skeleton holds the frame's place until the page loads, with no visible text and no way into the frame", async ({ page, baseURL }) => {
     let release = (): void => undefined;
     const released = new Promise<void>((resolve) => {
       release = resolve;
@@ -222,101 +219,129 @@ test.describe("case page evidence display", () => {
     await expect.poll(() => traffic.display, { message: "the display page was never requested" }).toBeGreaterThan(0);
 
     // The gateway holds the page, so the frame has not loaded yet.
-    const status = displayBlock(page).getByRole("status");
+    const region = await displayRegion(page);
+    const skeleton = displayWindow(page).locator(".animate-loading");
+    const status = region.getByRole("status");
     await expect(status).toHaveText("Loading…");
     await expect(page.getByRole("main").getByRole("status").filter({ hasText: "Loading…" })).toHaveCount(1);
+    await expect(skeleton.first()).toBeVisible();
+    await expect(frameElement(page)).toBeHidden();
+    expect(await height(displayWindow(page))).toBeCloseTo(FULL_PX, 0);
+    expect(await visibleText(region), "visible text in the loading display").toBe("");
+    await tabToTheRow(page);
+    await page.keyboard.press("Tab");
+    expect(await focusIsOnTheFrame(page), "the Tab after the row passes the loading frame by").toBe(false);
 
     release();
     await expect(status).toHaveCount(0);
+    await expect(skeleton).toHaveCount(0);
+    await expect(frameElement(page)).toBeVisible();
+    expect(await height(displayWindow(page))).toBeCloseTo(FULL_PX, 0);
     await expectCaseSectionsSettled(page);
+    await tabToTheRow(page);
+    await tabFromTheRowIntoTheFrame(page);
   });
 
-  test("keyboard focus reaches the control before the frame, and a focused link below the cut opens the window instead of hiding", async ({ page, baseURL, browserName }) => {
+  test("keyboard focus reaches the row before the frame, and every link of the frame is reachable inside the window", async ({ page, baseURL }) => {
     await openWithDisplay(page, baseURL);
-    const window = await displayWindow(page);
     const below = page.frameLocator(FRAME).locator("#below");
 
-    await tabIntoTheFrame(page);
+    await tabToTheRow(page);
+    await tabFromTheRowIntoTheFrame(page);
     await page.keyboard.press("Tab");
     await expect(below).toBeFocused();
-    await expect(control(page)).toHaveAttribute("aria-expanded", "false");
-    await settled(window);
-    const inside = await liesInside(below, window);
-    const focusedHeight = Math.round(await height(window));
-    // Recorded before the assertions, so the report carries each engine's fact whether or not the window opened.
-    test.info().annotations.push({
-      type: "focus below the cut while collapsed",
-      description: `${browserName}: the focused link at y = 300 is ${inside ? "inside" : "hidden below"} the window (${String(focusedHeight)} px) while the control reads "Show full frame"`,
-    });
-    // Keyboard focus inside the frame opens the window to the full frame, so the focused link is never below the cut.
-    expect.soft(inside, "the focused link lies inside the window").toBe(true);
-    expect.soft(focusedHeight, "the window's height while focus is in the frame").toBe(FULL_PX);
+    const [link, window] = await Promise.all([below.boundingBox(), displayWindow(page).boundingBox()]);
+    expect(link !== null && window !== null && link.y + link.height <= window.y + window.height, "the focused link lies inside the window").toBe(true);
 
-    // Focus back on the control: the window returns to the cut and the link lies below it again.
-    await shiftTabToControl(page);
-    await expect.poll(() => height(window)).toBeCloseTo(COLLAPSED_PX, 0);
-    expect(await liesInside(below, window)).toBe(false);
-
-    await page.keyboard.press("Enter");
-    await expect(control(page)).toHaveText("Show less");
-    await expect.poll(() => liesInside(below, window)).toBe(true);
+    await shiftTabToTheRow(page);
+    await expect(row(page)).toHaveAttribute("aria-expanded", "true");
   });
 
-  test("a pointer click inside the frame leaves the window at the cut and draws no ring", async ({ page, baseURL, browserName }) => {
+  test("hiding the display while focus is inside the frame moves focus to the row", async ({ page, baseURL }) => {
     await openWithDisplay(page, baseURL);
-    const window = await displayWindow(page);
+    await tabToTheRow(page);
+    await tabFromTheRowIntoTheFrame(page);
+
+    // A screen reader's activation: a click that does not move focus first.
+    await row(page).dispatchEvent("click");
+    await expect(row(page)).toHaveAttribute("aria-expanded", "false");
+    await expect(frameElement(page)).toBeHidden();
+    await expect(row(page)).toBeFocused();
+  });
+
+  test("a pointer click inside the frame draws no ring", async ({ page, baseURL, browserName }) => {
+    await openWithDisplay(page, baseURL);
+    const window = displayWindow(page);
 
     await page.frameLocator(FRAME).locator("#above").click();
     await expect.poll(() => focusIsOnTheFrame(page), { message: "the click puts focus inside the frame" }).toBe(true);
-    await expect(control(page)).toHaveAttribute("aria-expanded", "false");
-    await settled(window);
-    const clickedHeight = Math.round(await height(window));
     const ring = await windowRing(window);
     test.info().annotations.push({
-      type: "pointer click inside the frame while collapsed",
-      description: `${browserName}: the window is ${String(clickedHeight)} px with outline style ${ring.style} after a click on the link above the cut`,
+      type: "pointer click inside the frame",
+      description: `${browserName}: the window's outline style is ${ring.style} after a click on a link of the frame`,
     });
-    expect.soft(clickedHeight, "the window's height after a pointer click inside the frame").toBeCloseTo(COLLAPSED_PX, 0);
     expect.soft(ring.style, "the window's outline after a pointer click inside the frame").toBe("none");
+    expect(await height(window)).toBeCloseTo(FULL_PX, 0);
   });
 
   test("the frame never receives a message and never exposes its source", async ({ page, baseURL }) => {
     await openWithDisplay(page, baseURL);
     expect(await sourceExposure(page), "after load").toEqual(NO_EXPOSURE);
 
-    await control(page).click();
-    await expect(control(page)).toHaveText("Show less");
-    expect(await sourceExposure(page), "after Show full frame").toEqual(NO_EXPOSURE);
+    await row(page).click();
+    await expect(row(page)).toHaveAttribute("aria-expanded", "false");
+    expect(await sourceExposure(page), "after hiding").toEqual(NO_EXPOSURE);
 
-    await control(page).click();
-    await expect(control(page)).toHaveText("Show full frame");
-    expect(await sourceExposure(page), "after Show less").toEqual(NO_EXPOSURE);
+    await row(page).click();
+    await expect(row(page)).toHaveAttribute("aria-expanded", "true");
+    expect(await sourceExposure(page), "after showing").toEqual(NO_EXPOSURE);
 
     const frame = await fixtureFrame(page);
     expect(await frame.evaluate(() => Number(Reflect.get(globalThis, "receivedMessages"))), "messages the display page received").toBe(0);
   });
 
-  test("the inset ring is four-sided in both states", async ({ page, baseURL }) => {
+  test("the row's fill eases on the hover clock and the frame fades on the reveal clock, and reduced motion removes both and the fold", async ({ page, baseURL }) => {
+    await openWithDisplay(page, baseURL);
+    const region = await displayRegion(page);
+    const holder = frameElement(page).locator("..");
+    const motion = (locator: Locator) =>
+      locator.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return { property: style.transitionProperty, duration: style.transitionDuration, easing: style.transitionTimingFunction };
+      });
+    expect(await motion(row(page))).toEqual({ property: "background-color", duration: "0.15s", easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+    expect(await motion(holder)).toEqual({ property: "opacity", duration: "0.25s", easing: "ease-in-out" });
+    expect((await motion(region)).property).toBe("grid-template-rows, opacity");
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    expect((await motion(row(page))).property).toBe("none");
+    expect((await motion(holder)).property).toBe("none");
+    expect((await motion(region)).property).toBe("none");
+    await row(page).click();
+    await expect(region).toBeHidden();
+    await row(page).click();
+    await expect(frameElement(page)).toBeVisible();
+    expect(await height(displayWindow(page))).toBeCloseTo(FULL_PX, 0);
+  });
+
+  test("the inset ring is four-sided in both themes", async ({ page, baseURL }) => {
     const traffic = await openWithDisplay(page, baseURL);
     const html = page.locator("html");
 
     for (const colorScheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme });
-      for (const expanded of [false, true]) {
-        // A fresh page for each state: once focus had left the frame by keyboard, Firefox kept the next Tabs on the frame.
-        await reopen(page, traffic);
-        if (colorScheme === "dark") await expect(html).toHaveClass(/\bdark\b/);
-        else await expect(html).not.toHaveClass(/\bdark\b/);
-        await tabToTheControl(page);
-        if (expanded) await page.keyboard.press("Enter");
-        await expect(control(page)).toHaveAttribute("aria-expanded", String(expanded));
-        await tabFromTheControlIntoTheFrame(page);
-        const window = await displayWindow(page);
-        const state = `${colorScheme}, ${expanded ? "expanded" : "collapsed"}`;
-        // The window is marked a tick after the Tab, so the ring is polled rather than read once.
-        await expect.configure({ soft: true }).poll(() => windowRing(window), { message: state }).toEqual(INSET_RING);
-        expect.soft(await frameElement(page).evaluate((element) => getComputedStyle(element).outlineStyle), `${state}: the frame draws no ring of its own`).toBe("none");
-      }
+      // A fresh page for each theme: once focus had left the frame by keyboard, Firefox kept the next Tabs on the frame.
+      await reopen(page, traffic);
+      if (colorScheme === "dark") await expect(html).toHaveClass(/\bdark\b/);
+      else await expect(html).not.toHaveClass(/\bdark\b/);
+      await tabToTheRow(page);
+      await tabFromTheRowIntoTheFrame(page);
+      // The window is marked a tick after the Tab, so the ring is polled rather than read once.
+      await expect
+        .configure({ soft: true })
+        .poll(() => windowRing(displayWindow(page)), { message: colorScheme })
+        .toEqual(INSET_RING);
+      expect.soft(await frameElement(page).evaluate((element) => getComputedStyle(element).outlineStyle), `${colorScheme}: the frame draws no ring of its own`).toBe("none");
     }
   });
 });

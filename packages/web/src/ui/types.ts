@@ -53,6 +53,8 @@ export interface PageMessageProps {
   readonly title: string;
   readonly body?: string;
   readonly action?: ReactNode;
+  /** Halves the space above, for a message that answers a field just above it rather than standing on its own. */
+  readonly compact?: boolean;
 }
 
 /** Time left until `target` as `DDd HHh MMm`, on one shared 30 s clock. */

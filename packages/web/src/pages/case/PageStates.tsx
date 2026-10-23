@@ -18,11 +18,11 @@ function OngoingLink({ chainId }: { readonly chainId: ChainId }) {
 }
 
 export function NoDisputeMessage() {
-  return <PageMessage title="Find a dispute" body="Enter a dispute ID above to see its summary, timeline, evidence and appeal." />;
+  return <PageMessage compact title="Find a dispute" body="Enter a dispute ID above to see its summary, timeline, evidence and appeal." />;
 }
 
 export function NotFoundMessage({ chainId, id }: { readonly chainId: ChainId; readonly id: string }) {
-  return <PageMessage title={notFoundTitle(id)} action={<OngoingLink chainId={chainId} />} />;
+  return <PageMessage compact title={notFoundTitle(id)} action={<OngoingLink chainId={chainId} />} />;
 }
 
 interface NoArbitratorMessageProps {
@@ -32,7 +32,7 @@ interface NoArbitratorMessageProps {
 }
 
 export function NoArbitratorMessage({ chainId, chainName, id }: NoArbitratorMessageProps) {
-  return <PageMessage title={notFoundTitle(id)} body={`There is no arbitrator on ${chainName}.`} action={<OngoingLink chainId={chainId} />} />;
+  return <PageMessage compact title={notFoundTitle(id)} body={`There is no arbitrator on ${chainName}.`} action={<OngoingLink chainId={chainId} />} />;
 }
 
 interface UnavailableMessageProps {
@@ -45,6 +45,7 @@ interface UnavailableMessageProps {
 export function UnavailableMessage({ disputeId, error, onRetry }: UnavailableMessageProps) {
   return (
     <PageMessage
+      compact
       title={`Dispute #${disputeId.toString()} could not be loaded`}
       body={error.message}
       action={<Button text="Retry" aria-label={`Retry loading dispute ${disputeId.toString()}`} variant="secondary" onPress={onRetry} />}

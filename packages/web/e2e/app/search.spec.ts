@@ -27,7 +27,7 @@ test("clears the shown dispute at once and shows the not-found state when search
   await page.goto("/1/cases/1621");
   await expect(page.getByRole("heading", { name: CASE_TITLE, exact: true })).toBeVisible();
 
-  await page.getByRole("textbox", { name: "Dispute ID" }).fill(missing);
+  await page.getByRole("searchbox", { name: "Dispute ID" }).fill(missing);
 
   // The shown dispute goes as soon as the field changes, before the debounced search loads the new ID.
   await expect(page.getByRole("heading", { name: CASE_TITLE, exact: true, includeHidden: true })).toHaveCount(0, { timeout: 500 });
@@ -52,7 +52,7 @@ test("shows the not-found state for an unused Gnosis ID that reads as a zeroed s
   });
   await page.goto("/100/cases");
 
-  await page.getByRole("textbox", { name: "Dispute ID" }).fill(unused);
+  await page.getByRole("searchbox", { name: "Dispute ID" }).fill(unused);
 
   await expect(page).toHaveURL(`/100/cases/${unused}`);
   await expect

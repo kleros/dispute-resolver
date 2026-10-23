@@ -205,17 +205,12 @@ function expectLoading(): void {
   expect(screen.queryByRole("button", { name: "Question" })).not.toBeInTheDocument();
 }
 
-/** The Court link of the search row; the Question panel has a Court link of its own. */
-function searchCourtLink(): HTMLElement {
-  return within(screen.getByRole("search")).getByRole("link", { name: "Court" });
-}
-
 function timelineColumns(): HTMLElement[] {
   return within(screen.getByRole("region", { name: "Dispute timeline" })).getAllByRole("listitem");
 }
 
 function searchField(): HTMLElement {
-  return screen.getByRole("textbox", { name: "Dispute ID" });
+  return screen.getByRole("searchbox", { name: "Dispute ID" });
 }
 
 /**
@@ -586,6 +581,14 @@ describe("case page states", () => {
     expect(searchField()).toHaveValue("");
     expect(screen.getByRole("heading", { level: 1, name: "Find a dispute" })).toBeInTheDocument();
     expect(core.lookupDispute).not.toHaveBeenCalled();
+  });
+
+  it("the case page without an ID starts with the search field focused, and a case page leaves focus alone", () => {
+    const { unmount } = renderCase("/1/cases");
+    expect(searchField()).toHaveFocus();
+    unmount();
+    renderCase("/1/cases/1");
+    expect(searchField()).not.toHaveFocus();
   });
 
   it("an ID that does not parse is the not-found state, read nowhere and linked nowhere", () => {
@@ -990,11 +993,11 @@ describe("accordion", () => {
 });
 
 describe("search box", () => {
-  it("the label links Court to the shown dispute on Court", async () => {
+  it("is the search landmark with no label line and no Court link", async () => {
     renderCase("/100/cases/7");
-    expect(screen.getByRole("search", { name: "Search Disputes on Court" })).toBeInTheDocument();
-    expect(searchCourtLink()).toHaveAttribute("href", "https://court.kleros.io/cases/7?requiredChainId=100");
-    expect(searchCourtLink()).toHaveAttribute("target", "_blank");
+    const form = screen.getByRole("search", { name: "Search by dispute ID" });
+    expect(within(form).queryByRole("link")).not.toBeInTheDocument();
+    expect(form.textContent).toBe("");
     await waitFor(() => {
       expect(notFoundHeading("7")).toBeInTheDocument();
     });
@@ -1007,9 +1010,17 @@ describe("search box", () => {
     expect(searchField()).toHaveAttribute("aria-label", "Dispute ID");
     expect(searchField()).toHaveAttribute("placeholder", "Dispute ID");
     expect(within(form).queryByText("Dispute ID", { selector: "label" })).toBeNull();
-    expect(form.querySelector('svg[aria-hidden="true"].stroke-klerosUIComponentsPrimaryBlue')).not.toBeNull();
+    expect(form.querySelector("svg")).not.toBeNull();
     await search("12");
     expect(searchField()).toHaveValue("12");
+  });
+
+  it("an ID above 2^53 keeps every digit in the field and the URL", async () => {
+    const view = renderCase("/1/cases/1");
+    await settledDispute();
+    await search("9007199254740993");
+    expect(searchField()).toHaveValue("9007199254740993");
+    expect(view.currentPath()).toBe("/1/cases/9007199254740993");
   });
 
   it("every change replaces the URL at once, and only the load waits for the debounce", async () => {
@@ -1049,7 +1060,7 @@ describe("search box", () => {
 
     debounce.elapse();
     expect(await screen.findByRole("heading", { level: 2, name: "Dispute 2 title" })).toBeInTheDocument();
-    expect(searchCourtLink()).toHaveAttribute("href", "https://court.kleros.io/cases/2?requiredChainId=1");
+    expect(searchField()).toHaveValue("2");
   });
 
   it("searching a nonexistent ID while a dispute is shown shows the not-found state", async () => {
@@ -1068,7 +1079,6 @@ describe("search box", () => {
     await settledDispute();
     await search("");
     expect(screen.getByRole("heading", { level: 1, name: "Find a dispute" })).toBeInTheDocument();
-    expect(searchCourtLink()).toHaveAttribute("href", "https://court.kleros.io/cases/0?requiredChainId=1");
     // act() in `search` committed any navigation the clear asked for, so the URL read below is final; and past the
     // debounce, nothing has changed.
     debounce.elapse();
@@ -1097,7 +1107,6 @@ describe("search box", () => {
     await userEvent.setup().click(accordionButton("Question"));
     expect(accordionButton("Question")).toHaveAttribute("aria-expanded", "true");
     await search("2");
-    expect(searchCourtLink()).toHaveAttribute("href", "https://court.kleros.io/cases/2?requiredChainId=1");
     debounce.elapse();
     await settledDispute(2);
     expect(screen.getByRole("heading", { level: 1, name: "Dispute #2" })).toBeInTheDocument();

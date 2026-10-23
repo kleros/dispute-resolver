@@ -97,6 +97,14 @@ describe("PageMessage", () => {
     expect(screen.getByRole("region", { name: "Dispute with ID 99 does not exist on this network." })).toBeInTheDocument();
   });
 
+  it("stands 64 px clear above and below on its own, and halves the space above when it answers a field", () => {
+    const { rerender } = render(<PageMessage title="Find a dispute" />);
+    expect(screen.getByRole("region")).toHaveClass("py-16");
+    rerender(<PageMessage title="Find a dispute" compact />);
+    expect(screen.getByRole("region")).toHaveClass("pt-8", "pb-16");
+    expect(screen.getByRole("region")).not.toHaveClass("py-16");
+  });
+
   it("raises the heading first and the body and action just after it, holding still under reduced motion", () => {
     render(<PageMessage title="Search for a dispute" body="Enter a dispute ID to see its details." action={<button type="button">Go</button>} />);
     expect(screen.getByRole("heading", { level: 1 })).toHaveClass(FIRST_LINE, "motion-reduce:animate-none");

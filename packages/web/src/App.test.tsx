@@ -46,7 +46,7 @@ function renderAppAt(path: string) {
 const PAGE_LANDMARKS = {
   ongoing: () => screen.findByRole("heading", { level: 1, name: "Ongoing Disputes" }),
   create: () => screen.findByRole("navigation", { name: "Create dispute steps" }),
-  case: () => screen.findByRole("search", { name: "Search Disputes on Court" }),
+  case: () => screen.findByRole("search", { name: "Search by dispute ID" }),
 } as const;
 
 /** The header's navigation, whose links are built from the resolved chain. */
@@ -101,7 +101,7 @@ describe("App routes through the provider tree", () => {
   it("/:chainId/cases renders the case page's search state with no dispute loaded", async () => {
     renderAppAt("/1/cases");
     expect(await screen.findByRole("heading", { name: "Find a dispute" })).toBeInTheDocument();
-    expect(screen.getByRole("search", { name: "Search Disputes on Court" })).toBeInTheDocument();
+    expect(screen.getByRole("search", { name: "Search by dispute ID" })).toBeInTheDocument();
   });
 
   it("an unconfigured chain shows the unsupported-network screen with header links on the resolved chain", async () => {

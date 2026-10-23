@@ -1,5 +1,6 @@
 import { CustomAccordion } from "@kleros/ui-components-library";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { ExpandIndicator } from "../../ui";
 
 export interface CaseAccordionItem {
   readonly title: string;
@@ -11,30 +12,23 @@ type ExpandedChange = (index: number, expanded: boolean) => void;
 /** The `expandButton` render functions are built outside the accordion component, so the callback reaches them through context. */
 const ExpandedChangeContext = createContext<ExpandedChange>(() => undefined);
 
-interface ExpandIndicatorProps {
+interface ReportingIndicatorProps {
   readonly index: number;
   readonly expanded: boolean;
 }
 
-const BAR_MOTION = "origin-center [transform-box:fill-box] transition-transform duration-(--acc-chevron) ease-(--acc-ease) motion-reduce:transition-none";
-
 /** Also tells the accordion which item the library opened: the library does not expose its open state. */
-function ExpandIndicator({ index, expanded }: ExpandIndicatorProps) {
+function ReportingIndicator({ index, expanded }: ReportingIndicatorProps) {
   const onExpandedChange = useContext(ExpandedChangeContext);
   useEffect(() => {
     onExpandedChange(index, expanded);
   }, [index, expanded, onExpandedChange]);
-  return (
-    <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4 shrink-0 fill-none stroke-klerosUIComponentsPrimaryText" strokeWidth="1.75" strokeLinecap="round">
-      <path d="M2 8h12" />
-      <path d="M8 2v12" vectorEffect="non-scaling-stroke" className={`${BAR_MOTION} ${expanded ? "scale-y-0" : "scale-y-100"}`} />
-    </svg>
-  );
+  return <ExpandIndicator expanded={expanded} />;
 }
 
 function expandIndicatorFor(index: number) {
   return function renderExpandIndicator({ expanded }: { readonly expanded: boolean }) {
-    return <ExpandIndicator index={index} expanded={expanded} />;
+    return <ReportingIndicator index={index} expanded={expanded} />;
   };
 }
 

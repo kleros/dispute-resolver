@@ -91,7 +91,8 @@ export function CasePage() {
   const data = useCase(chainId, loadedId, wallet.status === "connected" ? wallet.address : undefined);
   // Next to `useCase`, so a section's boundary remounts in a render that reads its new data.
   const retries = useBoundaryRetries();
-  const searchBox = <SearchBox chainId={chainId} search={search} />;
+  // The empty lookup page has nothing to do but type an ID; a case page is there to be read, so it keeps focus where it is.
+  const searchBox = <SearchBox search={search} autoFocus={urlId === undefined} />;
 
   let placeholder: Placeholder | null = null;
   if (search.pending !== null) placeholder = { kind: "pending", empty: search.pending === "" };
