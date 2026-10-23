@@ -19,6 +19,8 @@ interface Search {
   readonly text: string;
   readonly from: string | undefined;
   readonly to: string | undefined;
+  /** Whether the search has added its history entry; a clear changes no URL, so it adds none. */
+  readonly navigated: boolean;
 }
 
 function targetOf(text: string): string {
@@ -32,15 +34,25 @@ function urlTarget(urlId: string | undefined): string {
 }
 
 /**
- * Every change replaces the URL at once, built only from the parsed ID; only the load of that ID waits for the debounce
- * or for Enter. An empty field shows no dispute and leaves the URL as it is. A change of the URL the search did not make
+ * Every change sets the URL at once, built only from the parsed ID; only the load of that ID waits for the debounce or
+ * for Enter. A search's first URL gets a new history entry and its later ones replace it, so Back returns to the dispute
+ * it left. An empty field shows no dispute and leaves the URL as it is. A change of the URL the search did not make
  * (back, a header link) ends the pending search.
  */
 export function useDisputeSearch(chainId: ChainId, urlId: string | undefined): DisputeSearch {
   const navigate = useNavigate();
   const [search, setSearch] = useState<Search | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const active = search !== null && (urlId === search.from || urlId === search.to) ? search.text : null;
+  // The URL a search left holds it only until the search's own navigation lands: Back to it afterwards ends the search.
+  // An ended search is dropped, not kept aside: Forward back to its URL would otherwise revive it.
+  if (search !== null && urlId !== search.from && urlId !== search.to) setSearch(null);
+  else if (search !== null && urlId === search.to && search.from !== search.to) setSearch({ ...search, from: search.to });
+  const current = search !== null && (urlId === search.from || urlId === search.to) ? search : null;
+  const active = current?.text ?? null;
+
+  useEffect(() => {
+    if (search === null) clearTimeout(timer.current);
+  }, [search]);
 
   useEffect(
     () => () => {
@@ -50,7 +62,6 @@ export function useDisputeSearch(chainId: ChainId, urlId: string | undefined): D
   );
 
   const settle = useCallback(() => {
-    clearTimeout(timer.current);
     setSearch(null);
   }, []);
 
@@ -61,20 +72,21 @@ export function useDisputeSearch(chainId: ChainId, urlId: string | undefined): D
       if (active !== null && targetOf(active) === targetOf(text)) return;
       clearTimeout(timer.current);
       // Until the active search's navigation lands, `urlId` is the URL being left; the URL ends on that search's target.
-      const landing = active === null ? urlId : search?.to;
+      const landing = current === null ? urlId : current.to;
+      const navigated = current?.navigated ?? false;
       if (landing === urlId && targetOf(text) === urlTarget(urlId)) {
         setSearch(null);
         return;
       }
       if (id === null) {
-        setSearch({ text, from: urlId, to: landing });
+        setSearch({ text, from: urlId, to: landing, navigated });
         return;
       }
-      setSearch({ text, from: urlId, to: id.toString() });
-      void navigate(paths.case(chainId, id), { replace: true });
+      setSearch({ text, from: urlId, to: id.toString(), navigated: true });
+      void navigate(paths.case(chainId, id), { replace: navigated });
       timer.current = setTimeout(settle, SEARCH_DEBOUNCE_MS);
     },
-    [active, chainId, navigate, search, settle, urlId],
+    [active, chainId, current, navigate, settle, urlId],
   );
 
   const submit = useCallback(() => {

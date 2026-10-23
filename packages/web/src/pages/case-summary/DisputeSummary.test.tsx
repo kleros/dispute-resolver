@@ -195,6 +195,14 @@ describe("DisputeSummary", () => {
     expect(container.querySelector('[class~="bg-klerosUIComponentsLightBackground"]')).toBeNull();
   });
 
+  it("closes a card with no footer on its own padding below the display, with no line after the display", () => {
+    const { container } = renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: DISPLAY_URI }));
+    const content = displayFrame().closest('[class~="p-4"]');
+    expect(content).toHaveClass("p-4", "lg:py-6");
+    expect(content?.nextElementSibling).toBeNull();
+    expect(container.querySelector('[class~="border-b"]')).toBeNull();
+  });
+
   it("shows no link, attachment or evidence display when the meta-evidence names none", () => {
     const { container } = renderSummary(withMetaEvidence({}));
     expect(screen.queryByText(APP_LINK)).not.toBeInTheDocument();

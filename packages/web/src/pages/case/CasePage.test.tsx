@@ -1023,16 +1023,17 @@ describe("search box", () => {
     expect(view.currentPath()).toBe("/1/cases/9007199254740993");
   });
 
-  it("every change replaces the URL at once, and only the load waits for the debounce", async () => {
+  it("a search's first change adds a history entry at once, later changes replace it, and only the load waits for the debounce", async () => {
     programReads({ lookups: { "1": testFoundLookup(), "34": testFoundLookup({ disputeId: 34n }) } });
     const view = renderCase("/1/cases/1");
     await settledDispute();
     await search("3");
     expect(view.currentPath()).toBe("/1/cases/3");
-    expect(screen.getByText("Navigation: REPLACE")).toBeInTheDocument();
+    expect(screen.getByText("Navigation: PUSH")).toBeInTheDocument();
     await interact((user) => user.type(searchField(), "4"));
     expect(searchField()).toHaveValue("34");
     expect(view.currentPath()).toBe("/1/cases/34");
+    expect(screen.getByText("Navigation: REPLACE")).toBeInTheDocument();
     expectLoading();
     expect(core.lookupDispute).not.toHaveBeenCalledWith(expect.anything(), 34n);
     // The second key restarted the debounce: the one the first key started is gone.

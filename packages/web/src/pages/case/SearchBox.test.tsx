@@ -49,6 +49,19 @@ function pasteAsTransfer(text: string): boolean {
   return fireEvent(field(), event);
 }
 
+/**
+ * An insertion whose `beforeinput` cannot be cancelled, as a composing keyboard's: the browser puts the text in whatever
+ * the field says, then reports the new value.
+ */
+function insertUncancellable(text: string, inputType = "insertText"): void {
+  const input = field();
+  const { value } = input;
+  const start = input.selectionStart ?? value.length;
+  const end = input.selectionEnd ?? start;
+  fireEvent(input, new InputEvent("beforeinput", { inputType, data: text, bubbles: true, cancelable: false }));
+  fireEvent.input(input, { target: { value: value.slice(0, start) + text + value.slice(end) } });
+}
+
 function form(): HTMLElement {
   return screen.getByRole("search", { name: "Search by dispute ID" });
 }
@@ -154,11 +167,11 @@ describe("SearchBox", () => {
     expect(field().selectionEnd).toBe(3);
   });
 
-  it("a paste of mixed text into the middle of an ID leaves the caret after the digits it kept", async () => {
+  it("a paste of an ID wrapped in whitespace into the middle of an ID leaves the caret after the pasted digits", async () => {
     const { change, user } = renderSearch();
     await user.type(field(), "1650");
     await user.keyboard("{ArrowLeft}{ArrowLeft}");
-    await user.paste("x7");
+    await user.paste(" 7\n");
     expect(field()).toHaveValue("16750");
     expect(change).toHaveBeenLastCalledWith("16750");
     expect(field().selectionStart).toBe(3);
@@ -168,47 +181,128 @@ describe("SearchBox", () => {
     expect(field()).toHaveValue("167850");
   });
 
-  it("a paste of mixed text over selected digits replaces them with its digits and leaves the caret after them", async () => {
+  it("a paste of an ID wrapped in whitespace over selected digits replaces them and leaves the caret after it", async () => {
     const { user } = renderSearch();
     await user.type(field(), "1650");
     field().setSelectionRange(1, 3);
-    await user.paste("#7#");
+    await user.paste(" 7 ");
     expect(field()).toHaveValue("170");
     expect(field().selectionStart).toBe(2);
   });
 
-  it("a paste the browser hands over as transferred text is filtered like any other", async () => {
+  it("a paste of an ID wrapped in whitespace enters as the ID alone", async () => {
+    const { change, user } = renderSearch();
+    await user.click(field());
+    await user.paste(" 1650\n");
+    expect(field()).toHaveValue("1650");
+    expect(change.mock.calls).toEqual([["1650"]]);
+  });
+
+  it("a paste the browser hands over as transferred text is refused or let through like any other", async () => {
     const { user } = renderSearch();
     await user.type(field(), "12");
     expect(pasteAsTransfer("abc")).toBe(false);
+    expect(pasteAsTransfer("#3")).toBe(false);
     expect(pasteAsTransfer("3")).toBe(true);
   });
 
-  it.each([
-    ["#1650", "1650"],
-    ["1,650", "1650"],
-    [" 1650\n", "1650"],
-    ["ID: 16-50", "1650"],
-  ])("a paste of %j keeps only its digits", async (pasted, digits) => {
-    const { change, user } = renderSearch();
+  it("a pasted case link is refused whole rather than read as the chain ID glued to the dispute ID", async () => {
+    const { change, user } = renderSearch({ shownId: 1621n });
     await user.click(field());
-    await user.paste(pasted);
-    expect(field()).toHaveValue(digits);
-    expect(change.mock.calls).toEqual([[digits]]);
+    field().setSelectionRange(1, 3);
+    await user.paste("https://resolve.kleros.io/1/cases/1650");
+    expect(field()).toHaveValue("1621");
+    expect(field().selectionStart).toBe(1);
+    expect(field().selectionEnd).toBe(3);
+    expect(change).not.toHaveBeenCalled();
+    expectNoMessage();
   });
 
-  it("a paste with no digits leaves the field as it was", async () => {
-    const { change, user } = renderSearch({ shownId: 12n });
+  it.each(["#1650", "1,650", "16 50", "ID: 16-50", "x7", "abc", "#"])("a paste of %j is refused and leaves the field, its caret and its selection as they were", async (pasted) => {
+    const { change, user } = renderSearch({ shownId: 1621n });
     await user.click(field());
-    await user.paste("abc");
-    expect(field()).toHaveValue("12");
+    field().setSelectionRange(2, 2);
+    await user.paste(pasted);
+    expect(field()).toHaveValue("1621");
+    expect(field().selectionStart).toBe(2);
+    expect(field().selectionEnd).toBe(2);
     expect(change).not.toHaveBeenCalled();
+
+    field().setSelectionRange(1, 3);
+    await user.paste(pasted);
+    expect(field()).toHaveValue("1621");
+    expect(field().selectionStart).toBe(1);
+    expect(field().selectionEnd).toBe(3);
+    expect(change).not.toHaveBeenCalled();
+  });
+
+  it("text that reaches the field without an insertion it could refuse, as a composing keyboard's can, enters only when it is an ID", () => {
+    const { change } = renderSearch({ shownId: 1621n });
+    fireEvent.change(field(), { target: { value: "1/cases/1621" } });
+    expect(field()).toHaveValue("1621");
+    expect(change).not.toHaveBeenCalled();
+
+    fireEvent.change(field(), { target: { value: "16217" } });
+    expect(field()).toHaveValue("16217");
+    expect(change.mock.calls).toEqual([["16217"]]);
+  });
+
+  it.each(["16 50", "16\t50", "1 621", "1621 ", " 1621", "\t"])("text %j that reaches the field without an insertion it could refuse is refused, never read as the ID without its whitespace", (text) => {
+    const { change } = renderSearch({ shownId: 1621n });
+    fireEvent.change(field(), { target: { value: text } });
+    expect(field()).toHaveValue("1621");
+    expect(change).not.toHaveBeenCalled();
+  });
+
+  it("an ID wrapped in whitespace that reaches the field without an insertion it could refuse enters as the ID alone", () => {
+    const { change } = renderSearch({ shownId: 1621n });
+    fireEvent.change(field(), { target: { value: " 1650\t" } });
+    expect(field()).toHaveValue("1650");
+    expect(change.mock.calls).toEqual([["1650"]]);
+  });
+
+  it.each(["1x1", "1 1", " ", "\t"])("an insertion of %j the field could not cancel is undone, keeping the selection it would have replaced", (text) => {
+    const { change } = renderSearch({ shownId: 1621n });
+    field().setSelectionRange(1, 3);
+    insertUncancellable(text);
+    expect(field()).toHaveValue("1621");
+    expect(field().selectionStart).toBe(1);
+    expect(field().selectionEnd).toBe(3);
+
+    field().setSelectionRange(2, 2);
+    insertUncancellable(text);
+    expect(field()).toHaveValue("1621");
+    expect(field().selectionStart).toBe(2);
+    expect(field().selectionEnd).toBe(2);
+    expect(change).not.toHaveBeenCalled();
+  });
+
+  it("a composed character that is not a digit is undone and leaves the caret where the composition started", () => {
+    const { change } = renderSearch({ shownId: 1621n });
+    field().setSelectionRange(2, 2);
+    fireEvent.compositionStart(field(), { data: "" });
+    insertUncancellable("x", "insertCompositionText");
+    fireEvent.compositionEnd(field(), { data: "x" });
+    expect(field()).toHaveValue("1621");
+    expect(field().selectionStart).toBe(2);
+    expect(field().selectionEnd).toBe(2);
+    expect(change).not.toHaveBeenCalled();
+  });
+
+  it("an ID wrapped in whitespace that the field could not cancel enters as the ID alone, with the caret after it", () => {
+    const { change } = renderSearch({ shownId: 1650n });
+    field().setSelectionRange(2, 2);
+    insertUncancellable(" 7 ");
+    expect(field()).toHaveValue("16750");
+    expect(change.mock.calls).toEqual([["16750"]]);
+    expect(field().selectionStart).toBe(3);
+    expect(field().selectionEnd).toBe(3);
   });
 
   it("cuts anything longer than the largest dispute ID, 78 digits, to 78", async () => {
     const { change, user } = renderSearch();
     await user.click(field());
-    await user.paste(`#${LARGEST_ID}123`);
+    await user.paste(`${LARGEST_ID}123`);
     expect(field()).toHaveValue(LARGEST_ID);
     expect(change.mock.calls).toEqual([[LARGEST_ID]]);
 

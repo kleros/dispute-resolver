@@ -174,14 +174,14 @@ describe("EvidenceDisplay", () => {
     expect(verticalBar()).toHaveClass("scale-y-0");
   });
 
-  it("keeps only the hairline and the row while the display is hidden, and closes the shown display with a second hairline", async () => {
+  it("draws one hairline, above the row, and ends the shown display on its window with no closing hairline", async () => {
     const { container } = renderDisplay();
     const root = blockRoot(container);
     expect(root).toHaveClass("border-t", "border-klerosUIComponentsStroke");
-    const closing = displayWindow().parentElement;
-    expect(closing).toHaveClass("border-b", "border-klerosUIComponentsStroke");
-    expect(region()).toContainElement(closing);
+    expect(region().firstElementChild).toBe(displayWindow().parentElement);
     for (const element of [root, ...root.querySelectorAll("*")]) {
+      const edges = [...element.classList].filter((name) => /^border-[bty](?:-|$)/.test(name));
+      expect(edges, `${element.tagName} ${element.getAttribute("class") ?? ""}`).toEqual(element === root ? ["border-t"] : []);
       expect(element).not.toHaveClass("-m-1");
       expect(element).not.toHaveClass("p-1");
     }

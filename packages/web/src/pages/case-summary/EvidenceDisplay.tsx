@@ -25,7 +25,7 @@ const SKELETON_LINES = 12;
 
 /**
  * The library button as a full-width row: its icon slot comes before its text, so the row is reversed to put the title
- * first. The negative margins let the hover plate pass the hairlines while the title stays flush with the text above.
+ * first. The negative margins let the hover plate pass the hairline while the title stays flush with the text above.
  * The button's own transition tweens its press scale only, and the row has none, so the hover fill eases on the app's
  * hover clock like the section headers below (`ease-smooth-out`, not the arbitrary ease: the button's `ease-ease` stays
  * in the class list and outranks that one).
@@ -215,27 +215,25 @@ export function EvidenceDisplay({ metaEvidence, chainId, found }: EvidenceDispla
               {status}
             </output>
           )}
-          <div className="border-b border-klerosUIComponentsStroke">
-            <div
-              data-frame-focus={focusInside ? "" : undefined}
-              aria-busy={loaded ? undefined : true}
-              className="dr-display-window relative overflow-clip rounded-base bg-(--dr-display-paper)"
-            >
-              <div className={loaded ? FRAME_REVEAL_CLASS : `${FRAME_REVEAL_CLASS} invisible opacity-0`}>
-                <EvidenceDisplayFrame
-                  model={model}
-                  onLoad={() => {
-                    setLoaded(true);
-                  }}
-                />
-              </div>
-              {/* The skeleton's own status would mount already filled, so it goes unannounced; the output above speaks instead. */}
-              {covered ? (
-                <div aria-hidden="true" className={loaded ? `${COVER_CLASS} pointer-events-none opacity-0` : COVER_CLASS}>
-                  <SectionSkeleton variant="text" lines={SKELETON_LINES} />
-                </div>
-              ) : null}
+          <div
+            data-frame-focus={focusInside ? "" : undefined}
+            aria-busy={loaded ? undefined : true}
+            className="dr-display-window relative overflow-clip rounded-base bg-(--dr-display-paper)"
+          >
+            <div className={loaded ? FRAME_REVEAL_CLASS : `${FRAME_REVEAL_CLASS} invisible opacity-0`}>
+              <EvidenceDisplayFrame
+                model={model}
+                onLoad={() => {
+                  setLoaded(true);
+                }}
+              />
             </div>
+            {/* The skeleton's own status would mount already filled, so it goes unannounced; the output above speaks instead. */}
+            {covered ? (
+              <div aria-hidden="true" className={loaded ? `${COVER_CLASS} pointer-events-none opacity-0` : COVER_CLASS}>
+                <SectionSkeleton variant="text" lines={SKELETON_LINES} />
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

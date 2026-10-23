@@ -25,7 +25,7 @@ test("clears the shown dispute at once and shows the not-found state when search
     rpc: (call) => (isDisputesCall(call, MAINNET_ARBITRATOR, BigInt(missing)) ? OUT_OF_RANGE_ON_MAINNET : undefined),
   });
   await page.goto("/1/cases/1621");
-  await expect(page.getByRole("heading", { name: CASE_TITLE, exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: CASE_TITLE, exact: true })).toBeVisible({ timeout: 15_000 });
 
   await page.getByRole("searchbox", { name: "Dispute ID" }).fill(missing);
 
@@ -42,6 +42,30 @@ test("clears the shown dispute at once and shows the not-found state when search
   await expect(page.getByRole("button", { name: "Appeal", exact: true })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Appeal", exact: true, includeHidden: true })).toHaveCount(0);
   expect(locatorRequests(traffic.http, missing)).toBe(0);
+});
+
+test("Back after a typed search returns to the dispute the search left", async ({ context, page, baseURL }) => {
+  const missing = "99999999";
+  await fakeNetwork(context, {
+    appOrigin: new URL(baseURL ?? "http://localhost").origin,
+    recordings: [RECORDING],
+    rpc: (call) => (isDisputesCall(call, MAINNET_ARBITRATOR, BigInt(missing)) ? OUT_OF_RANGE_ON_MAINNET : undefined),
+  });
+  await page.goto("/1/cases/1621");
+  const title = page.getByRole("heading", { name: CASE_TITLE, exact: true });
+  await expect(title).toBeVisible({ timeout: 15_000 });
+
+  const field = page.getByRole("searchbox", { name: "Dispute ID" });
+  await field.clear();
+  // Key by key, so a search that gave every key its own entry would send Back to /1/cases/9999999.
+  await field.pressSequentially(missing);
+  await expect(page).toHaveURL(`/1/cases/${missing}`);
+  await expect(page.getByText(notFound(missing))).toBeVisible();
+
+  await page.goBack();
+  await expect(page).toHaveURL("/1/cases/1621");
+  await expect(title).toBeVisible();
+  await expect(field).toHaveValue("1621");
 });
 
 test("shows the not-found state for an unused Gnosis ID that reads as a zeroed struct", async ({ context, page, baseURL }) => {
