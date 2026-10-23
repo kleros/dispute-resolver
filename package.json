@@ -35,14 +35,14 @@
     "ws@npm:8.18.0": "8.21.0"
   },
   "engines": {
-    "node": ">=22.22.2"
+    "node": ">=22.23.4"
   },
   "prettier": {
     "tabWidth": 2,
     "printWidth": 180
   },
   "volta": {
-    "node": "22.23.2",
+    "node": "22.23.4",
     "yarn": "4.9.2"
   }
 }

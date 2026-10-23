@@ -26,7 +26,7 @@ The app is built with Vite, React 18, viem and wagmi with Reown AppKit, and `@kl
 
 ## Requirements
 
-- Node 22.23.2 (`.nvmrc`, `.node-version` and the `volta` field of `package.json` pin it).
+- Node 22.23.4 (`.nvmrc`, `.node-version` and the `volta` field of `package.json` pin it).
 - Yarn 4.9.2 (the `packageManager` field; enable it with `corepack enable`).
 
 ## Install and commands
@@ -83,7 +83,7 @@ zkSync Era (324) and zkSync Era Sepolia (300) have no read RPC variable; they us
 
 `netlify.toml` configures the site:
 
-- Build command: `yarn build` (Node 22.23.2 and Yarn 4.9.2, dependencies installed with lifecycle scripts disabled).
+- Build command: `yarn build` (Node 22.23.4 and Yarn 4.9.2, dependencies installed with lifecycle scripts disabled).
 - Publish directory: `packages/web/dist`.
 - Headers: `packages/web/public/_headers`, copied to `dist/_headers` by the build, which fills in the app's report-only Content-Security-Policy from the configured endpoints. It holds the app's policies and the separate policy of the script runner page (`/__runner/`).
 - Every path is rewritten to `/index.html` for the client-side router.
