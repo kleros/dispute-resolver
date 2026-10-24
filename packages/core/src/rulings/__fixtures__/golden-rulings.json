@@ -1,0 +1,37 @@
+{
+  "note": "KlerosLiquid currentRuling(id) and disputes(id) of the golden disputes whose decision text the ruling tests check. Ruling options: Gnosis 0 from its meta-evidence /ipfs/QmbiA9YYz1hhRzZVSbrVFbQ66qqqi3Qg6bn8xGKHxw47aK/metaEvidence.json; mainnet 1658 asks a Reality question created from template 1, whose built-in text fixes type uint with 18 decimals.",
+  "disputes": [
+    {
+      "chainId": 1,
+      "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
+      "disputeId": "1657",
+      "readAtBlock": "26189988",
+      "arbitrated": "0xfe0eb5fc686f929eb26d541d75bb59f816c0aa68",
+      "numberOfChoices": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+      "period": 4,
+      "currentRuling": "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+    },
+    {
+      "chainId": 1,
+      "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
+      "disputeId": "1658",
+      "readAtBlock": "26189988",
+      "arbitrated": "0x3fb8314c628e9afe7677946d3e23443ce748ac17",
+      "numberOfChoices": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+      "period": 4,
+      "currentRuling": "4243172405",
+      "rulingOptions": { "type": "uint", "precision": 18 }
+    },
+    {
+      "chainId": 100,
+      "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
+      "disputeId": "0",
+      "readAtBlock": "48750510",
+      "arbitrated": "0x1128ed55ab2d796fa92d2f8e1f336d745354a77a",
+      "numberOfChoices": "8",
+      "period": 4,
+      "currentRuling": "5",
+      "rulingOptions": { "type": "multiple-select", "titles": ["A", "B", "C"] }
+    }
+  ]
+}

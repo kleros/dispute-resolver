@@ -1,0 +1,36 @@
+import { describe, expect, it } from "vitest";
+import { ACCEPTED, collectUntilSettled, createFakeRunnerEnvironment, runRequest } from "../../test/runner";
+import { bootstrapRunner } from "./bootstrap";
+import { evaluateInGlobalScope, runScriptInGlobalScope } from "./evaluate";
+
+// The full text of the default script /ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj. Its entry point is a
+// `const`, which only the same evaluation can see.
+const DEFAULT_SCRIPT = `const getMetaEvidence = () => {
+  resolveScript({
+    arbitrableInterfaceURI: \`https://resolve.kleros.io/interact/\${scriptParameters.disputeID}\`,
+  });
+};
+`;
+
+// Keep this file to a single test: bootstrapRunner defines non-configurable globals on the real globalThis here, so a
+// second run in the same file would fail with "Cannot redefine property".
+describe("runner page with the default script", () => {
+  it("the default script, whose getMetaEvidence is a const, resolves through the port", async () => {
+    const fake = createFakeRunnerEnvironment();
+    const channel = new MessageChannel();
+    const replies = collectUntilSettled(channel.port1);
+
+    bootstrapRunner({ ...fake.env, globals: globalThis, evaluate: evaluateInGlobalScope, runScript: runScriptInGlobalScope });
+    fake.deliver({ ...fake.fromParent(runRequest({ scriptText: DEFAULT_SCRIPT })), ports: [channel.port2] });
+
+    await expect(replies).resolves.toEqual([
+      ACCEPTED,
+      {
+        type: "dr-runner/result",
+        value: { arbitrableInterfaceURI: "https://resolve.kleros.io/interact/1650" },
+        jsonDuplicateKeys: false,
+      },
+    ]);
+    channel.port1.close();
+  });
+});

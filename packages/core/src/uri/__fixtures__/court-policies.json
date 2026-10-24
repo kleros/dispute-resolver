@@ -1,0 +1,64 @@
+{
+  "description": "PolicyRegistry.policies(i) for every court of KlerosLiquid on chains 1 and 100, read with eth_call at the block number given per chain (public RPCs, 2026-10-14). Used by policyFetchUrl tests: every on-chain court policy URI must still resolve.",
+  "chains": [
+    {
+      "chainId": 1,
+      "policyRegistry": "0xcf1f07713d5193fae5c1653c9f61953d048bece4",
+      "blockNumber": 26189983,
+      "policies": [
+        "/ipfs/Qmd1TMEbtic3TSonu5dfqa5k3aSrjxRGY8oJH3ruGgazRB",
+        "/ipfs/QmYMdCkb7WULmiK6aQrgsayGG3VYisQwsHSLC3TLkzEHCm",
+        "/ipfs/QmdJYHubLGQCt2GxpJch2riSYVxZzDC4cBg2mNPXuiY6rX",
+        "/ipfs/QmeyojE13mcQtWqQQddYypafDRChVND8z6dcHLbaarmbbx",
+        "/ipfs/QmcBjGYfmKmkpYc8HYkaiBa9ot2eoWAa2Mhfef7i7QKd5H",
+        "/ipfs/QmbSwJ4acdQP9EF6DfDU6czaG8ePha3eyvcSpPgAR8tPZ4",
+        "/ipfs/QmSn2RJX7a4BQ8rDtfvKLjKQSC3eHWjayPTSkFo3QMbjBx",
+        "/ipfs/QmXvtokEk3qPiB2WPXXUpd4xCoAr5xeceS1n4BHHqNpP7p",
+        "/ipfs/QmbC7uhDEC33V8zyp8u6xozuD3GwtMp4Eaw25EzscEJk3R/Bce1VQaKwHGhMXxqgsmzJLH79ngeP4c57hGBeQQmSCZmPJcgrq4jBj3eFuMsgXuJhfYCXbARyNDx8oNvgusd9pDLjt",
+        "/ipfs/QmWcf4mgnPyxUVbRMKmNjx9pzk3scQRg8bVbNjDdfgh2Nq",
+        "/ipfs/Qmb3r65GXcoWfkpb6m3mnzgCyTyz7dk59UaY4iW6eTKkqJ",
+        "/ipfs/QmSu7HxnTmQQz23EPTAMv7oF1NsBM752mEEytCDrgdoAUx",
+        "/ipfs/QmeGQ5pq7eDcS3NmKXyPsRFLEXd9pJe3MHKdDviy3buDce",
+        "/ipfs/QmY79fya7FQAzvhjzS6S5w9N8TkXZTQ5TSajqdC26VVK6L",
+        "/ipfs/QmQtCrG1EQzLiboYtQ15oWYstPrBUgftBUHmhUSZGk3jWc",
+        "/ipfs/QmYdR9v8LzYnw9pT4ZCcWyoivFMPNyQcBFXgCW3PZRSMCF",
+        "/ipfs/QmcqBRYin9Ug4YX7ysGf65xDjAQecuRzWp7nSucGvBcpwP",
+        "/ipfs/QmXoSvQJCW4HVjB6vreL8YwXj2HHJSpwNzroMkojos7p6c",
+        "/ipfs/QmUJGjgDCX9Bsn5fL6ZAZdXRLke3Pbdhwo312hJSewsKwg",
+        "/ipfs/QmWQ5NCSjZM8NK3quv72wcD7nbs9MfMxWajYnUgrZRAWch",
+        "/ipfs/QmNSpBnACohhHwSpqg5nG8ZVxED2B4pMiputfZqZdbZvuc",
+        "/ipfs/QmbuTx2dcWGSqGo7ykMhMDbvs6oM1AcbC8LvbfAQohup25",
+        "/ipfs/QmRPz626unSwc7fxo3ikoZzXmCpVm5EHfiSz2bfErCsHti",
+        "/ipfs/QmQKEJbyw89Qh5AurQ4kvidCSr32ihQUdAQZ646cPkJV34",
+        "/ipfs/QmRNKyST212j2DLLkA7WDBDH65tcGAVxiTkJ54LsZkVat7"
+      ]
+    },
+    {
+      "chainId": 100,
+      "policyRegistry": "0x9d494768936b6bdaabc46733b8d53a937a6c6d7e",
+      "blockNumber": 48750499,
+      "policies": [
+        "/ipfs/QmTsPLwhozEqjWnYKsnamZiJW47LFT7LzkQhKw5ygQxqyH/xDai-General-Court-Policy.json",
+        "/ipfs/QmWQDgtUWALrnCgakAAoFWdX1P7iDGmr5imZLZzyYtPqcE/xDai-Curation-Court-Policy.json",
+        "/ipfs/QmPLD9Zj8aZj5sVH9WcsHXbARR3RfRnEwHRrVeDM8AbPLt/xDai-English-Language-Court-Policy.json",
+        "/ipfs/QmXJbzzuKQQVa7PFrwhb8r4in1yy1sRRQseCZ6g8EZWpHZ/xDai-Spanish-English-Language-Court-Policy.json",
+        "/ipfs/QmUYsy6mVozbGn885ssCk3LKC8iXT363RwY7DH3QuRCu1Y/xDai-French-English-Language-Court-Policy.json",
+        "/ipfs/QmRZviKJzgkr6AyxcAULjnoQArt5DvNPssvEzVNxHjAUzb/xDai-Portuguese-English-Language-Court-Policy.json",
+        "/ipfs/Qmf6hiaVdzHHVV5jAp7AM6MA9EHLoAtVbbDnFDhPqwU4TL/xDai-German-English-Language-Court-Policy.json",
+        "/ipfs/QmViD1v5PBkYwtAeWiLktDZtBVCRvDd3LrLSzQ7TTEsTtb/xDai-Russian-English-Language-Court-Policy.json",
+        "/ipfs/QmZZaTxzkJsWd1JTKvSQsBPBSDWbPc5og6By7Vx8F7Wcdt/xDai-Korean-English-Language-Court-Policy.json",
+        "/ipfs/QmWqxZhKFyR17JYU4GwXtumMinfACtw9z2r9cXumVcUbek/xDai-Japanese-English-Language-Court-Policy.json",
+        "/ipfs/QmZxbiUdvC9CwsTiLGhqnnYYBUJNFp28ZNFWJfhSXFXY8K/xDai-Turkish-English-Language-Court-Policy.json",
+        "/ipfs/QmTERr8X73QTnTXNDMSWew2znWYWrcgvFWTUbEJeXPXmBU/xDai-Chinese-English-Language-Court-Policy.json",
+        "/ipfs/QmXW1MKX2NegMgHrYACkcpeKES45zGpXfWaYA1q4M3cx3W/xDai-Development-Court-Policy-v2.json",
+        "/ipfs/QmXW1MKX2NegMgHrYACkcpeKES45zGpXfWaYA1q4M3cx3W/xDai-Solidity-Court-Policy-v2.json",
+        "/ipfs/QmXW1MKX2NegMgHrYACkcpeKES45zGpXfWaYA1q4M3cx3W/xDai-Javascript-Court-Policy-v2.json",
+        "/ipfs/QmNotPsy4BKY2kxRqbWchCTJrgGMqnQrxfE5b5Jd63A7rj/xDai-Spanish-General-Court-Policy.json",
+        "/ipfs/QmQeHpuaL9RViwKnPNRMCAbPakdPSDefBmhPpMAi45vRLS/xDai-Spanish-Curation-Court-Policy.json",
+        "/ipfs/QmVxh7KmFrimGz6WMvLMRXZhwQFDoj28KEYLTpYoUTGwAj/xDai-Blockchain-No-Tecnica-Policy.json",
+        "/ipfs/QmQKEJbyw89Qh5AurQ4kvidCSr32ihQUdAQZ646cPkJV34",
+        "/ipfs/QmbhNThPBeZU6HxW53xDD6kHy4VabuwNmLCCH6Yc9jJbfd"
+      ]
+    }
+  ]
+}

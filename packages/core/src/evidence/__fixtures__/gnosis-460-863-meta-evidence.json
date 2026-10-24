@@ -1,0 +1,142 @@
+{
+  "provenance": "Raw eth_getLogs objects and block timestamps read from the Gnosis (chain 100) read RPC on 2026-10-20 with the chain head at block 48850832 (readAtBlock), by packages/core/scripts/record-meta-evidence-events.ts: each dispute's ERC-1497 Dispute log (filtered on the arbitrator and the dispute ID over [scanFromBlock, readAtBlock]) and every MetaEvidence log of its metaEvidenceID (over [0, readAtBlock]). The meta-evidence API answered /ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaEvidence.json for dispute 460 on every request of that day.",
+  "chainId": 100,
+  "readAtBlock": 48850832,
+  "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
+  "scanFromBlock": 16895601,
+  "disputes": [
+    {
+      "disputeId": "460",
+      "arbitrable": "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
+      "metaEvidenceId": "84",
+      "disputeLogs": [
+        {
+          "address": "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
+          "topics": [
+            "0x74baab670a4015ab2f1b467c5252a96141a2573f2908e58a92081e80d3cfde3d",
+            "0x0000000000000000000000009c1da9a04925bdfdedf0f6421bc7eea8305f9002",
+            "0x00000000000000000000000000000000000000000000000000000000000001cc"
+          ],
+          "data": "0x00000000000000000000000000000000000000000000000000000000000000540000000000000000000000000000000000000000000000000000000000000054",
+          "blockNumber": "0x2650cdc",
+          "transactionHash": "0x58c509e01def3dac704b44321147baa70478fb07974b874ca71182b681e82a9b",
+          "transactionIndex": "0x1",
+          "blockHash": "0x948584b58730010a25b6694f2eaf8f7554c1c1e9649c44fe3958a885c4f8466e",
+          "logIndex": "0x4",
+          "blockTimestamp": "0x682dee85",
+          "removed": false
+        }
+      ],
+      "metaEvidenceLogs": [
+        {
+          "address": "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
+          "topics": ["0x61606860eb6c87306811e2695215385101daab53bd6ab4e9f9049aead9363c7d", "0x0000000000000000000000000000000000000000000000000000000000000054"],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000462f697066732f516d6274536e48384242336367444c777459366154376667676e7a6879454d5648457871736956506a42786d637a2f6d65746145766964656e63652e6a736f6e0000000000000000000000000000000000000000000000000000",
+          "blockNumber": "0x2650cdc",
+          "transactionHash": "0x58c509e01def3dac704b44321147baa70478fb07974b874ca71182b681e82a9b",
+          "transactionIndex": "0x1",
+          "blockHash": "0x948584b58730010a25b6694f2eaf8f7554c1c1e9649c44fe3958a885c4f8466e",
+          "logIndex": "0x3",
+          "blockTimestamp": "0x682dee85",
+          "removed": false
+        }
+      ],
+      "blockTimestamps": {
+        "0x2650cdc": "0x682dee85"
+      }
+    },
+    {
+      "disputeId": "431",
+      "arbitrable": "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
+      "metaEvidenceId": "79",
+      "disputeLogs": [
+        {
+          "address": "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
+          "topics": [
+            "0x74baab670a4015ab2f1b467c5252a96141a2573f2908e58a92081e80d3cfde3d",
+            "0x0000000000000000000000009c1da9a04925bdfdedf0f6421bc7eea8305f9002",
+            "0x00000000000000000000000000000000000000000000000000000000000001af"
+          ],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000004f000000000000000000000000000000000000000000000000000000000000004f",
+          "blockNumber": "0x232dbc5",
+          "transactionHash": "0x6df889dbcc348ef821ab0c76a6e375b0050f443c46f2084ac36350f9c5ab6792",
+          "transactionIndex": "0xa",
+          "blockHash": "0xa13053d19d79798baa8ce47fa4e2970d1ae24493372c1dbafa1f4db400e8e648",
+          "logIndex": "0x1f",
+          "blockTimestamp": "0x672b9591",
+          "removed": false
+        }
+      ],
+      "metaEvidenceLogs": [
+        {
+          "address": "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
+          "topics": ["0x61606860eb6c87306811e2695215385101daab53bd6ab4e9f9049aead9363c7d", "0x000000000000000000000000000000000000000000000000000000000000004f"],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000462f697066732f516d58354a69375a5353456747796a4743737859634b7477537953315531394a4b79436e4133534e5878447144542f6d65746145766964656e63652e6a736f6e0000000000000000000000000000000000000000000000000000",
+          "blockNumber": "0x232dbc5",
+          "transactionHash": "0x6df889dbcc348ef821ab0c76a6e375b0050f443c46f2084ac36350f9c5ab6792",
+          "transactionIndex": "0xa",
+          "blockHash": "0xa13053d19d79798baa8ce47fa4e2970d1ae24493372c1dbafa1f4db400e8e648",
+          "logIndex": "0x1e",
+          "blockTimestamp": "0x672b9591",
+          "removed": false
+        }
+      ],
+      "blockTimestamps": {
+        "0x232dbc5": "0x672b9591"
+      }
+    },
+    {
+      "disputeId": "863",
+      "arbitrable": "0x25fa9432832efdd48deec6d4cf1cd3f139678a5b",
+      "metaEvidenceId": "0",
+      "disputeLogs": [
+        {
+          "address": "0x25fa9432832efdd48deec6d4cf1cd3f139678a5b",
+          "topics": [
+            "0x74baab670a4015ab2f1b467c5252a96141a2573f2908e58a92081e80d3cfde3d",
+            "0x0000000000000000000000009c1da9a04925bdfdedf0f6421bc7eea8305f9002",
+            "0x000000000000000000000000000000000000000000000000000000000000035f"
+          ],
+          "data": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "blockNumber": "0x2cd7eda",
+          "transactionHash": "0x26ebb44cf7b43b348473a3f9ced840e9af2db91c7bf5e2614f2fc0d1771b16d2",
+          "transactionIndex": "0x12",
+          "blockHash": "0x68a319fca8b783b5038176e4dddd1a0634e141cedde5697ad97faddabcfb17a0",
+          "logIndex": "0x2a",
+          "blockTimestamp": "0x6a48607e",
+          "removed": false
+        }
+      ],
+      "metaEvidenceLogs": [
+        {
+          "address": "0x25fa9432832efdd48deec6d4cf1cd3f139678a5b",
+          "topics": ["0x61606860eb6c87306811e2695215385101daab53bd6ab4e9f9049aead9363c7d", "0x0000000000000000000000000000000000000000000000000000000000000000"],
+          "data": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000042697066733a2f2f6261666b72656967693533736d7674766f693273357a68337764357a747537707a6c346c616f35763479377869686433626a7270777475796b3261000000000000000000000000000000000000000000000000000000000000",
+          "blockNumber": "0x2cd7eda",
+          "transactionHash": "0x26ebb44cf7b43b348473a3f9ced840e9af2db91c7bf5e2614f2fc0d1771b16d2",
+          "transactionIndex": "0x12",
+          "blockHash": "0x68a319fca8b783b5038176e4dddd1a0634e141cedde5697ad97faddabcfb17a0",
+          "logIndex": "0x28",
+          "blockTimestamp": "0x6a48607e",
+          "removed": false
+        },
+        {
+          "address": "0x25fa9432832efdd48deec6d4cf1cd3f139678a5b",
+          "topics": ["0x61606860eb6c87306811e2695215385101daab53bd6ab4e9f9049aead9363c7d", "0x0000000000000000000000000000000000000000000000000000000000000000"],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000005868747470733a2f2f63646e2e6b6c65726f732e6c696e6b2f697066732f6261666b72656967693533736d7674766f693273357a68337764357a747537707a6c346c616f35763479377869686433626a7270777475796b32610000000000000000",
+          "blockNumber": "0x2cd9e64",
+          "transactionHash": "0xdc93797dc4d07476882dfebdfa7e0f7d8286ccef13438e35c534f7e403ff2532",
+          "transactionIndex": "0x11",
+          "blockHash": "0x6a83979eb1b7145547acaea89e2bbc5651f2d61f37a40b688802d14e8126b8d3",
+          "logIndex": "0x31",
+          "blockTimestamp": "0x6a49017d",
+          "removed": false
+        }
+      ],
+      "blockTimestamps": {
+        "0x2cd7eda": "0x6a48607e",
+        "0x2cd9e64": "0x6a49017d"
+      }
+    }
+  ]
+}

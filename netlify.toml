@@ -1,11 +1,13 @@
 [build]
   command = "yarn build"
-  publish = "build"
+  publish = "packages/web/dist"
 
 [build.environment]
-  NODE_VERSION = "20.18.1"
+  NODE_VERSION = "22"
   YARN_VERSION = "4.9.2"
-  CI = "false"
+  CI = "true"
+  # Dependencies install with lifecycle scripts disabled, as in CI: the build needs none of them, and this environment holds the RPC keys.
+  YARN_ENABLE_SCRIPTS = "false"
 
 [[redirects]]
   from = "/*"

@@ -1,0 +1,176 @@
+{
+  "provenance": {
+    "source": "Sourcify server v2, GET /server/v2/contract/{chainId}/{address}?fields=abi (verified source ABIs), reduced to the sessions(uint256) getter",
+    "fetchedAt": "2026-10-14"
+  },
+  "governors": [
+    {
+      "label": "poh.eth governor",
+      "chainId": 1,
+      "address": "0x327a29fce0a6490e4236240be176daa282eccfdf",
+      "abi": [
+        {
+          "name": "sessions",
+          "type": "function",
+          "inputs": [
+            {
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "ruling",
+              "type": "uint256"
+            },
+            {
+              "name": "disputeID",
+              "type": "uint256"
+            },
+            {
+              "name": "sumDeposit",
+              "type": "uint256"
+            },
+            {
+              "name": "status",
+              "type": "uint8"
+            },
+            {
+              "name": "durationOffset",
+              "type": "uint256"
+            }
+          ],
+          "payable": false,
+          "constant": true,
+          "stateMutability": "view"
+        }
+      ]
+    },
+    {
+      "label": "ubi-voting.eth governor",
+      "chainId": 1,
+      "address": "0x7510c77163683448b8dc8fe9e019d9482be1ed2b",
+      "abi": [
+        {
+          "name": "sessions",
+          "type": "function",
+          "inputs": [
+            {
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "ruling",
+              "type": "uint256"
+            },
+            {
+              "name": "disputeID",
+              "type": "uint256"
+            },
+            {
+              "name": "sumDeposit",
+              "type": "uint256"
+            },
+            {
+              "name": "status",
+              "type": "uint8"
+            },
+            {
+              "name": "durationOffset",
+              "type": "uint256"
+            }
+          ],
+          "payable": false,
+          "constant": true,
+          "stateMutability": "view"
+        }
+      ]
+    },
+    {
+      "label": "fork-dao.eth governor",
+      "chainId": 100,
+      "address": "0xf7de5537ecd69a94695fcf4bcdbdee6329b63322",
+      "abi": [
+        {
+          "name": "sessions",
+          "type": "function",
+          "inputs": [
+            {
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "ruling",
+              "type": "uint256"
+            },
+            {
+              "name": "disputeID",
+              "type": "uint256"
+            },
+            {
+              "name": "sumDeposit",
+              "type": "uint256"
+            },
+            {
+              "name": "status",
+              "type": "uint8"
+            },
+            {
+              "name": "durationOffset",
+              "type": "uint256"
+            }
+          ],
+          "payable": false,
+          "constant": true,
+          "stateMutability": "view"
+        }
+      ]
+    },
+    {
+      "label": "kleros.eth governor",
+      "chainId": 1,
+      "address": "0xe5bcea6f87aaee4a81f64dfdb4d30d400e0e5cf4",
+      "abi": [
+        {
+          "name": "sessions",
+          "type": "function",
+          "inputs": [
+            {
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "ruling",
+              "type": "uint256"
+            },
+            {
+              "name": "disputeID",
+              "type": "uint256"
+            },
+            {
+              "name": "sumDeposit",
+              "type": "uint256"
+            },
+            {
+              "name": "status",
+              "type": "uint8"
+            },
+            {
+              "name": "durationOffset",
+              "type": "uint256"
+            }
+          ],
+          "payable": false,
+          "constant": true,
+          "stateMutability": "view"
+        }
+      ]
+    }
+  ]
+}

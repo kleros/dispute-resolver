@@ -1,85 +1,48 @@
 {
   "name": "dispute-resolver",
-  "author": "Ferit <ferit@cryptolab.net> (https://github.com/0xferit)",
+  "private": true,
   "version": "1.0.0",
+  "author": "Ferit <ferit@cryptolab.net> (https://github.com/0xferit)",
+  "license": "MIT",
   "packageManager": "yarn@4.9.2",
-  "dependencies": {
-    "@alch/alchemy-web3": "^1.4.7",
-    "@babel/helper-call-delegate": "^7.12.1",
-    "@kleros/arbitrable-proxy-contracts": "^5.0.0",
-    "@kleros/archon": "2.4.0",
-    "@kleros/kleros": "^0.1.2",
-    "@reality.eth/reality-eth-lib": "^3.4.34",
-    "IDRv1": "npm:@kleros/dispute-resolver-interface-contract@1.0.2",
-    "IDRv2": "npm:@kleros/dispute-resolver-interface-contract@8.0.0",
-    "antd": "^4.16.13",
-    "bootstrap": "^5.0.0",
-    "ethers": "^6.14.1",
-    "iframe": "^1.0.0",
-    "iframe-resizer-react": "^1.1.0",
-    "is-image": "^3.0.0",
-    "is-text-path": "^2.0.0",
-    "is-video": "^1.0.1",
-    "jquery": "^3.7.1",
-    "js-levenshtein": "^1.1.6",
-    "lodash.debounce": "^4.0.8",
-    "lodash.throttle": "^4.1.1",
-    "moment": "^2.29.4",
-    "popper.js": "^1.16.1",
-    "prop-types": "^15.8.1",
-    "react": "17.0.0",
-    "react-blockies": "^1.4.1",
-    "react-bootstrap": "^1.4.0",
-    "react-countdown": "^2.3.1",
-    "react-datetime-picker": "^3.4.0",
-    "react-dom": "17.0.0",
-    "react-dropzone": "^10.1.9",
-    "react-is": "^17.0.0",
-    "react-markdown": "^4.2.2",
-    "react-router-bootstrap": "^0.25.0",
-    "react-router-dom": "^5.0.1",
-    "react-scripts": "4.0.0",
-    "sass": "^1.77.5",
-    "styled-components": "^5.2.1",
-    "typescript": "^5.5.4",
-    "web3": "^1.10.4"
-  },
-  "resolutions": {
-    "@babel/core": "^7.28.0",
-    "html-to-text": "^7.0.0"
-  },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "start": "NODE_OPTIONS=--openssl-legacy-provider react-scripts start",
-    "build": "NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
-    "test": "react-scripts test",
-    "reality:known-questions": "node scripts/generate-reality-known-questions.js",
-    "reality:known-questions:check": "node scripts/generate-reality-known-questions.js --check",
-    "eject": "react-scripts eject"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ]
-  },
-  "engines": {
-    "node": ">=20.0.0"
+    "typecheck": "yarn workspaces foreach --all --parallel --include '@dispute-resolver/*' run typecheck",
+    "lint": "yarn workspaces foreach --all --parallel --include '@dispute-resolver/*' run lint && eslint eslint.config.mjs",
+    "test": "yarn workspaces foreach --all --parallel --include '@dispute-resolver/*' run test",
+    "build": "yarn workspaces foreach --all --topological --include '@dispute-resolver/*' run build",
+    "check:bundle": "yarn workspace @dispute-resolver/web check:bundle",
+    "rpc:preflight": "yarn workspace @dispute-resolver/core rpc:preflight",
+    "format": "yarn workspaces foreach --all --parallel --include '@dispute-resolver/*' run format && prettier --write eslint.config.mjs tsconfig.base.json package.json"
   },
   "devDependencies": {
-    "prettier": "^2.0.2"
+    "@eslint/js": "^9.39.5",
+    "@types/node": "^22.20.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-sonarjs": "^4.2.2",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.71.2"
+  },
+  "resolutions": {
+    "@wagmi/connectors@>=5.9.9": "6.2.0",
+    "eslint-plugin-sonarjs/typescript": "~5.9.3",
+    "ws@npm:8.18.0": "8.21.0"
+  },
+  "engines": {
+    "node": ">=22.23.4"
   },
   "prettier": {
     "tabWidth": 2,
     "printWidth": 180
   },
   "volta": {
-    "node": "20.18.1",
+    "node": "22.23.4",
     "yarn": "4.9.2"
   }
 }
