@@ -19,7 +19,6 @@
  * Exit code 0 when no endpoint failed (capped endpoints are reported, not failures); 1 when any endpoint failed, a chain
  * has no read RPC, or the arguments are wrong.
  */
-import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CHAINS, resolvePublicRpcUrl, resolveReadRpcUrl } from "../src/chains";
@@ -28,8 +27,7 @@ import { LOOKUP_LIMITS } from "../src/reality/constants";
 import { isRangeLimitError } from "../src/rpc";
 import type { Env } from "../src/types";
 import { failureMessage, redact } from "./failureMessage";
-
-const ENV_FILE = resolve(import.meta.dirname, "../../../.env");
+import { loadRepositoryEnv } from "./recordingRpc";
 
 /** The range the pre-flight asks `eth_getLogs` for first: the scan window of the chunked reads. */
 const LOG_RANGE_BLOCKS = 10_000;
@@ -44,27 +42,27 @@ const MAX_DETAIL_LENGTH = 160;
 /** `fetch`, or a double of it in tests. */
 export type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
 
-export type LogsResult =
+type LogsResult =
   | { readonly status: "ok"; readonly fromBlock: number; readonly toBlock: number; readonly count: number }
   | { readonly status: "capped"; readonly fromBlock: number; readonly toBlock: number; readonly detail: string }
   | { readonly status: "failed"; readonly reason: string; readonly fromBlock?: number; readonly toBlock?: number };
 
-export type CorsResult = { readonly status: "ok" } | { readonly status: "failed"; readonly reason: string };
+type CorsResult = { readonly status: "ok" } | { readonly status: "failed"; readonly reason: string };
 
-export interface EndpointReport {
+interface EndpointReport {
   readonly head?: number;
   readonly logs: LogsResult;
   readonly cors: CorsResult;
 }
 
-export type Role = "read" | "public";
+type Role = "read" | "public";
 
-export interface EndpointEntry {
+interface EndpointEntry {
   readonly roles: readonly Role[];
   readonly outcome: EndpointReport | "unconfigured";
 }
 
-export interface ChainReport {
+interface ChainReport {
   readonly chainId: number;
   readonly endpoints: readonly EndpointEntry[];
 }
@@ -328,7 +326,7 @@ async function main(): Promise<number> {
     console.error("Usage: preflight-rpc (no arguments; the RPC settings come from the environment and the repository's .env)");
     return 1;
   }
-  if (existsSync(ENV_FILE)) process.loadEnvFile(ENV_FILE);
+  loadRepositoryEnv();
   const reports = await runPreflight({ env: process.env, fetchFn: fetch });
   for (const line of reports.flatMap(formatChainReport)) console.info(line);
   const { failed, capped, endpoints } = summarize(reports);

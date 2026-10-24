@@ -38,7 +38,7 @@ const GETTERS = [
 ] as const;
 
 const PROVENANCE =
-  "Raw JSON-RPC replies of eth_call with each multiplier getter selector (spec 10.9) and sharedMultiplier() (P-05), no arguments, sent to each chain's read RPC at that chain's pinned block (chains[].blockNumber), recorded 2026-10-14 by packages/core/scripts/record-governor-multipliers.ts. A result of \"0x\" is a contract whose fallback function answers any unknown selector with no data.";
+  "Raw JSON-RPC replies of eth_call with each multiplier getter selector and sharedMultiplier(), no arguments, sent to each chain's read RPC at that chain's pinned block (chains[].blockNumber), recorded 2026-10-14 by packages/core/scripts/record-governor-multipliers.ts. A result of \"0x\" is a contract whose fallback function answers any unknown selector with no data.";
 
 const governorList = z.object({ governors: z.array(z.object({ label: z.string(), chainId: z.number(), address: z.string() })) });
 const reply = z.union([z.object({ result: z.string() }), z.object({ error: z.object({ code: z.number(), message: z.string() }) })]);

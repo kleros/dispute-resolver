@@ -59,7 +59,7 @@ describe("renderWithProviders", () => {
     expect(screen.getByText("Wallet connected")).toBeInTheDocument();
   });
 
-  it("toasts work below it", async () => {
+  it("a toast shown by a descendant appears in the notifications region", async () => {
     const user = userEvent.setup();
     renderWithProviders(<Probe />);
     await user.click(screen.getByRole("button", { name: "Toast" }));

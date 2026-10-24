@@ -12,15 +12,15 @@
  * Exit code 0 when the file was written or, with `--check`, matches the chain data; 1 when `--check` finds a
  * difference, on an unknown argument, or on any failure (a missing RPC, an RPC error, an inconsistency in the chain data).
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { KNOWN_DISPUTE_QUESTIONS, REGISTRY_SNAPSHOT_BLOCKS, generateKnownQuestions, renderKnownQuestionsModule, type GeneratorMode } from "../src/reality";
 import { REGISTRY } from "../src/registry";
 import { createReadClients } from "../src/rpc";
 import { failureMessage } from "./failureMessage";
+import { loadRepositoryEnv } from "./recordingRpc";
 
 const GENERATED_FILE = resolve(import.meta.dirname, "../src/reality/knownQuestions.generated.ts");
-const ENV_FILE = resolve(import.meta.dirname, "../../../.env");
 const FLAGS: Readonly<Record<string, GeneratorMode>> = { "--full": "full", "--check": "check" };
 
 /** The mode named by the arguments: none is `incremental`, else exactly one of `--full` and `--check`. */
@@ -34,7 +34,7 @@ function modeOf(args: readonly string[]): GeneratorMode {
 
 async function main(): Promise<number> {
   const mode = modeOf(process.argv.slice(2));
-  if (existsSync(ENV_FILE)) process.loadEnvFile(ENV_FILE);
+  loadRepositoryEnv();
   const data = await generateKnownQuestions({
     proxies: REGISTRY.realityProxies,
     previous: { snapshotBlocks: REGISTRY_SNAPSHOT_BLOCKS, questions: KNOWN_DISPUTE_QUESTIONS },

@@ -1,10 +1,10 @@
 import { parseEther } from "viem";
 
 /** A contribution in wei, or why the typed amount cannot be sent. */
-export type Contribution = { readonly ok: true; readonly wei: bigint } | { readonly ok: false; readonly message: string };
+type Contribution = { readonly ok: true; readonly wei: bigint } | { readonly ok: false; readonly message: string };
 
-/** Every supported chain's currency has 18 decimals. */
 const PLAIN_DECIMAL = /^\d+(?:\.(\d+))?$/;
+/** Every supported chain's currency has 18 decimals. */
 const MAX_DECIMALS = 18;
 
 /** An amount that cannot be sent as typed is refused with a message instead of being rounded or sent as zero. */

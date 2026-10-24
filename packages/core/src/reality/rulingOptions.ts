@@ -59,8 +59,8 @@ export function rulingOptionsFromTemplate(templateText: string, options?: Ruling
 /**
  * The ruling options of what reality-eth-lib's `populatedJSONForTemplate` yields (raw parameter substitution, then
  * `JSON.parse` where the last duplicate key wins): used only to tell whether other interfaces rendering the question may
- * show different options. `null` when that rendering has no options or fails anywhere, parsing or deriving: hostile
- * comparison data then reads as divergent and never aborts the safe derivation.
+ * show different options. `null` when that rendering has no options or fails anywhere, parsing or deriving: comparison
+ * data that fails then reads as divergent and never aborts the safe derivation.
  */
 function unsafeRulingOptions(templateText: string, questionText: string, flags: RulingOptionsFlags): RulingOptions | null {
   const params = questionText.split(QUESTION_PARAMS_DELIMITER);

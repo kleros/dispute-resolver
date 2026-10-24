@@ -1,4 +1,4 @@
-import type { Address, ChainId, Fetcher, Hex, ReadClient, UnixSeconds } from "../types";
+import type { Address, Fetcher, Hex, ReadClient, UnixSeconds } from "../types";
 import type { AttachmentLink, CanonicalIpfsPath, GatewayOrigin } from "../uri/types";
 
 export interface DisputeEvent {
@@ -62,7 +62,6 @@ export interface EvidenceList {
 }
 
 export interface EvidenceContext {
-  readonly chainId: ChainId;
   readonly client: ReadClient;
   readonly fetcher: Fetcher;
   readonly gateway: GatewayOrigin;

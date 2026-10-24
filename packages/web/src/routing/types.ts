@@ -45,7 +45,7 @@ export interface ChainNoticeProviderProps {
   readonly children?: ReactNode;
 }
 
-/** Structurally shell's `PageFrameProps`: routing never imports shell. */
+/** Shell's `PageFrameProps`; defined here because routing never imports shell. */
 export interface FrameProps {
   readonly resolvedChain: ResolvedChain;
   readonly children: ReactNode;

@@ -45,14 +45,14 @@ describe("WalletProvider", () => {
   it("with a stored connection the wallet is connecting until AppKit has loaded", async () => {
     window.localStorage.setItem(WALLET_STORE_KEY, CONNECTED_WAGMI_STORE);
     const seen = renderWalletProvider();
-    expect(seen[0]).toEqual({ status: "connecting", mode: "appkit" });
+    expect(seen[0]).toEqual({ status: "connecting" });
     await waitFor(() => {
-      expect(seen.at(-1)).toEqual({ status: "disconnected", mode: "appkit" });
+      expect(seen.at(-1)).toEqual({ status: "disconnected" });
     });
   });
 
   it("without a stored connection the wallet is disconnected from the first render, before AppKit loads", () => {
     const seen = renderWalletProvider();
-    expect(seen[0]).toEqual({ status: "disconnected", mode: "appkit" });
+    expect(seen[0]).toEqual({ status: "disconnected" });
   });
 });

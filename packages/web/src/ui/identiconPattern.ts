@@ -1,7 +1,7 @@
 import { hexToBytes, isHex } from "viem";
 
 /** Token fills for the cells; the background is a token too, so the icon follows light and dark mode. */
-export const IDENTICON_FILLS = [
+const IDENTICON_FILLS = [
   "fill-klerosUIComponentsPrimaryPurple",
   "fill-klerosUIComponentsSecondaryPurple",
   "fill-klerosUIComponentsPrimaryBlue",
@@ -10,9 +10,9 @@ export const IDENTICON_FILLS = [
   "fill-klerosUIComponentsWarning",
 ] as const;
 
-export type IdenticonFill = (typeof IDENTICON_FILLS)[number];
+type IdenticonFill = (typeof IDENTICON_FILLS)[number];
 
-export interface IdenticonPattern {
+interface IdenticonPattern {
   /** Five rows of five cells, each row mirrored around its middle cell. */
   readonly cells: readonly (readonly boolean[])[];
   readonly fill: IdenticonFill;

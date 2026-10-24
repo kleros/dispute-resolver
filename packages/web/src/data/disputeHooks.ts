@@ -17,8 +17,9 @@ import {
   type MetaEvidenceResult,
 } from "@dispute-resolver/core";
 import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
-import { STALE_TIME_MS } from "./constants";
+import { EVIDENCE_FETCH_TIMEOUT_MS, STALE_TIME_MS } from "./constants";
 import { useCoreDeps } from "./context";
+import { withTimeout } from "./fetcher";
 import { metaEvidenceQuery } from "./metaEvidenceQuery";
 import { disputeEventQuery, onChainMetaEvidenceReader } from "./onChainMetaEvidence";
 import { IDLE_KEY, queryKeys } from "./queryKeys";
@@ -101,9 +102,8 @@ export function useEvidence(chainId: ChainId, binding: ArbitratedBinding | undef
         ? skipToken
         : ({ signal }) =>
             loadEvidence({
-              chainId,
               client,
-              fetcher: deps.fetcher,
+              fetcher: withTimeout(deps.fetcher, EVIDENCE_FETCH_TIMEOUT_MS),
               gateway: deps.gateway,
               arbitrable: binding.arbitrated,
               arbitrator: binding.arbitrator,

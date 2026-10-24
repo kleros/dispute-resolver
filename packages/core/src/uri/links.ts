@@ -3,8 +3,8 @@ import type { SelfHosts } from "./types";
 
 /**
  * An `https:` scheme followed by `//`, the explicit authority. Without it a parser given no base reads what follows as the
- * host, but a browser resolves the same `href` (or `fetch` argument) on an https page against that page: `https:/1/cases/5`
- * parses as host `0.0.0.1` yet leads to `/1/cases/5` on the app itself.
+ * host, but a browser resolves the same `href` (or `fetch` argument) on an https page against that page, so the two
+ * disagree on where it leads.
  */
 const EXPLICIT_HTTPS_AUTHORITY = /^https:\/\//i;
 

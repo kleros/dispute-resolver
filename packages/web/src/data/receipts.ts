@@ -30,7 +30,7 @@ export function createReceiptWaiter(env: Env): (chainId: ChainId, hash: Hex) => 
       // A wallet's "Speed up" or "Cancel" mines another hash; viem then resolves with that receipt and reports why, so
       // the write flow can tell a repricing (the same call) from a cancellation or a different call.
       onReplaced: ({ reason }) => {
-        replacement = { reason, replacedHash: hash };
+        replacement = { reason };
       },
     });
     return {

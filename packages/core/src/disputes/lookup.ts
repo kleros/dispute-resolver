@@ -1,11 +1,10 @@
+import { maxUint256 } from "viem";
 import { getChain } from "../chains";
 import { describeError, isContractFailure } from "../rpc";
 import type { Address, ChainId } from "../types";
 import { NETWORK_DATA_UNAVAILABLE } from "./outcome";
 import { readDisputeStruct, toArbitratorDispute } from "./struct";
 import type { ArbitratedBinding, ArbitratorDispute, DisputeLookup, DisputeReadContext } from "./types";
-
-const UINT256_MAX = 2n ** 256n - 1n;
 
 /** The brand cannot be named outside its type declaration, so the object is asserted to the branded type here and nowhere else. */
 function bindDispute(chainId: ChainId, arbitrator: Address, dispute: ArbitratorDispute): ArbitratedBinding {
@@ -21,7 +20,7 @@ export async function lookupDispute(context: DisputeReadContext, disputeId: bigi
   if (arbitrator === undefined) return { status: "no-arbitrator" };
   const { client, signal } = context;
   if (client === undefined) return { status: "unavailable", error: { code: "no-rpc", message: NETWORK_DATA_UNAVAILABLE } };
-  if (disputeId < 0n || disputeId > UINT256_MAX) return { status: "not-found" };
+  if (disputeId < 0n || disputeId > maxUint256) return { status: "not-found" };
   let tuple;
   try {
     signal?.throwIfAborted();

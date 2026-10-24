@@ -1,8 +1,6 @@
 import { BaseError } from "viem";
 import { limitsChoice } from "./limits";
-import type { RoleLimits, UploadError, UploadResult } from "./types";
-
-type Failure = Extract<UploadResult, { readonly ok: false }>;
+import type { RoleLimits, UploadError, UploadFailure } from "./types";
 
 /** A short reason for an error from the library or the wallet. */
 export function reasonOf(error: unknown): string | null {
@@ -22,27 +20,27 @@ const REFUSAL_LEADS: Readonly<Record<"mime-not-allowed" | "too-large", string>> 
 
 /** The error codes are the stable contract; the copy may change. */
 export const failure = {
-  noWallet: (): Failure => ({ ok: false, error: "no-wallet", message: "Connect a wallet to upload files." }),
-  limitsUnavailable: (): Failure => ({
+  noWallet: (): UploadFailure => ({ ok: false, error: "no-wallet", message: "Connect a wallet to upload files." }),
+  limitsUnavailable: (): UploadFailure => ({
     ok: false,
     error: "limits-unavailable",
     message: "The upload limits could not be loaded, so nothing was uploaded. Try again; if this keeps happening, reloading the page may help.",
   }),
-  refused: (error: "mime-not-allowed" | "too-large", limits: RoleLimits): Failure => ({
+  refused: (error: "mime-not-allowed" | "too-large", limits: RoleLimits): UploadFailure => ({
     ok: false,
     error,
     message: `${REFUSAL_LEADS[error]} ${limitsChoice(limits)}`,
   }),
-  signInRejected: (): Failure => ({ ok: false, error: "sign-in-rejected", message: "Signature declined. Nothing was uploaded." }),
-  signInFailed: (reason: string | null): Failure => ({ ok: false, error: "sign-in-failed", message: withReason("Sign-in failed. Please try again.", reason) }),
-  uploadFailed: (reason: string | null): Failure => ({
+  signInRejected: (): UploadFailure => ({ ok: false, error: "sign-in-rejected", message: "Signature declined. Nothing was uploaded." }),
+  signInFailed: (reason: string | null): UploadFailure => ({ ok: false, error: "sign-in-failed", message: withReason("Sign-in failed. Please try again.", reason) }),
+  uploadFailed: (reason: string | null): UploadFailure => ({
     ok: false,
     error: "upload-failed",
     message: withReason("An error occurred while uploading the file. Please try again.", reason),
   }),
-  notContentAddressed: (): Failure => ({
+  notContentAddressed: (): UploadFailure => ({
     ok: false,
     error: "not-content-addressed",
     message: "The upload service returned an address that is not content-addressed, so it was not used. Please try again.",
   }),
-} as const satisfies Record<string, (...args: never[]) => Failure & { readonly error: UploadError }>;
+} as const satisfies Record<string, (...args: never[]) => UploadFailure & { readonly error: UploadError }>;

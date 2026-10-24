@@ -14,7 +14,7 @@ const ABORTED = failedResult("aborted", "The dynamic script run was aborted.");
 const NO_FRAME = failedResult("runner-error", "The script runner frame could not be opened.");
 const NO_ACKNOWLEDGEMENT = failedResult(
   "runner-error",
-  "The dynamic script's runner did not start within 5 seconds; a content-blocking extension may be preventing the page from loading it.",
+  `The dynamic script's runner did not start within ${String(ACKNOWLEDGEMENT_WINDOW_MS / 1000)} seconds; a content-blocking extension may be preventing the page from loading it.`,
 );
 
 /** Never throws, so `run` never rejects. */

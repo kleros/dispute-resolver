@@ -39,11 +39,8 @@ export interface Registry {
   readonly dynamicScriptAllowlist: Readonly<Record<ChainId, readonly CidPath[]>>;
   /** Looked up by the validated meta-evidence `arbitrableChainID`, else the arbitrator chain. Evidence-display iframe flags only. */
   readonly displayAllowlist: Readonly<Record<ChainId, readonly Address[]>>;
-  /** "QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj", written into meta-evidence by the Create page. */
+  /** Written into meta-evidence by the Create page. */
   readonly defaultScriptCid: string;
   /** Hosts whose links are suppressed as self-links. */
   readonly canonicalHosts: readonly string[];
 }
-
-/** Evidence-display iframe sandbox tier. `relaxed` = `allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox`. */
-export type DisplaySandboxTier = "strict" | "relaxed";

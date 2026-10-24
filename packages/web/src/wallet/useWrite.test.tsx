@@ -313,7 +313,7 @@ describe("useWrite outcomes", () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const onMined = vi.fn();
-    const { result } = renderWrite(wallet, (_chainId, hash) => Promise.resolve(testReplacementReceipt(hash, "cancelled")));
+    const { result } = renderWrite(wallet, () => Promise.resolve(testReplacementReceipt("cancelled")));
     await act(async () => {
       await result.current.execute(testWriteBuild(1), { pageChainId: 1, onMined });
     });
@@ -330,7 +330,7 @@ describe("useWrite outcomes", () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const onMined = vi.fn();
-    const { result } = renderWrite(wallet, (_chainId, hash) => Promise.resolve(testReplacementReceipt(hash, "replaced")));
+    const { result } = renderWrite(wallet, () => Promise.resolve(testReplacementReceipt("replaced")));
     await act(async () => {
       await result.current.execute(testWriteBuild(1), { pageChainId: 1, onMined });
     });
@@ -347,7 +347,7 @@ describe("useWrite outcomes", () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const onMined = vi.fn();
-    const { result } = renderWrite(wallet, (_chainId, hash) => Promise.resolve(testReplacementReceipt(hash)));
+    const { result } = renderWrite(wallet, () => Promise.resolve(testReplacementReceipt()));
     await act(async () => {
       await result.current.execute(testWriteBuild(1), { pageChainId: 1, onMined });
     });
@@ -365,7 +365,7 @@ describe("useWrite outcomes", () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const onMined = vi.fn();
-    const repriced = testReplacementReceipt(TEST_TX_HASH, "repriced");
+    const repriced = testReplacementReceipt("repriced");
     const { result } = renderWrite(wallet, () => Promise.resolve(repriced));
     await act(async () => {
       await result.current.execute(testWriteBuild(1), { pageChainId: 1, onMined });
@@ -382,7 +382,7 @@ describe("useWrite outcomes", () => {
   it("a repriced transaction that reverts fails under its new hash", async () => {
     const wallet = createTestWallet();
     await wallet.connect();
-    const { result } = renderWrite(wallet, (_chainId, hash) => Promise.resolve(testReplacementReceipt(hash, "repriced", TEST_REPLACEMENT_TX_HASH, "reverted")));
+    const { result } = renderWrite(wallet, () => Promise.resolve(testReplacementReceipt("repriced", TEST_REPLACEMENT_TX_HASH, "reverted")));
     await act(async () => {
       await result.current.execute(testWriteBuild(1), { pageChainId: 1 });
     });

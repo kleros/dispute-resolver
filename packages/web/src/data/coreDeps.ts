@@ -9,7 +9,7 @@ import type { CoreDeps } from "./types";
 
 const MAX_CONCURRENT_SCRIPTS = 4;
 
-export interface CoreDepsEnvironment {
+interface CoreDepsEnvironment {
   readonly document: Document;
   readonly fetch: typeof fetch;
   /** `window.localStorage`, or `undefined` when the browser refuses it. */

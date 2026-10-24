@@ -8,7 +8,6 @@ import { z } from "../../zod";
 import realityEth30Abi from "@reality.eth/contracts/abi/solc-0.8.6/RealityETH-3.0.abi.json";
 import realityEth32Abi from "@reality.eth/contracts/abi/solc-0.8.6/RealityETH-3.2.abi.json";
 import arbitrableProxy from "@kleros/arbitrable-proxy-contracts/build/contracts/ArbitrableProxy.json";
-import iArbitrator from "@kleros/arbitrable-proxy-contracts/build/contracts/IArbitrator.json";
 import iEvidence from "@kleros/arbitrable-proxy-contracts/build/contracts/IEvidence.json";
 import klerosGovernor from "@kleros/kleros/build/contracts/KlerosGovernor.json";
 import klerosLiquid from "@kleros/kleros/build/contracts/KlerosLiquid.json";
@@ -116,7 +115,6 @@ export const ARTIFACTS = {
   klerosGovernor: fromArtifact(klerosGovernor),
   policyRegistry: fromArtifact(policyRegistry),
   arbitrableProxy: fromArtifact(arbitrableProxy),
-  iArbitrator: fromArtifact(iArbitrator),
   iEvidence: fromArtifact(iEvidence),
   idrV1: fromArtifact(idrV1),
   idrV2: fromArtifact(idrV2),

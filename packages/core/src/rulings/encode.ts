@@ -1,10 +1,11 @@
+import { maxUint256 } from "viem";
 import { DEFAULT_UINT_PRECISION } from "./precision";
-import { answerToUint, hasSupportedDecimals, MAX_UINT256 } from "./realityLib";
+import { answerToUint, hasSupportedDecimals } from "./realityLib";
 import type { LibQuestion } from "./realityLib";
 import type { AnswerEncoding, AnswerEncodingError, AnswerInput, RulingOptions } from "./types";
 
 /** reality-eth-lib's int range, `±(2²⁵⁶ − 1) / 2`. */
-const MAX_INT = MAX_UINT256 / 2n;
+const MAX_INT = maxUint256 / 2n;
 
 /** A string answer is one bytes32 word. */
 const MAX_STRING_BYTES = 32;
@@ -26,7 +27,7 @@ function failed(error: AnswerEncodingError): AnswerEncoding {
 
 /** The code of a Reality answer: the answer + 1, which must stay within uint256. */
 function answerPlusOne(answer: bigint): AnswerEncoding {
-  return answer < MAX_UINT256 ? encoded(answer + 1n) : failed("out-of-range");
+  return answer < maxUint256 ? encoded(answer + 1n) : failed("out-of-range");
 }
 
 /** Encodes an answer through reality-eth-lib; whatever the library rejects is out of range. */
@@ -66,7 +67,7 @@ function encodeInt(value: string): AnswerEncoding {
   if (!INTEGER.test(value)) return failed("not-a-number");
   const parsed = BigInt(value);
   if (parsed > MAX_INT || parsed < -MAX_INT) return failed("out-of-range");
-  return encodeLibAnswer(value, { type: "int" }, (answer) => encoded((answer + 1n) & MAX_UINT256));
+  return encodeLibAnswer(value, { type: "int" }, (answer) => encoded((answer + 1n) & maxUint256));
 }
 
 /** string: the UTF-8 bytes as an unsigned integer, with no +1; text with an isolated surrogate has no UTF-8 encoding. */

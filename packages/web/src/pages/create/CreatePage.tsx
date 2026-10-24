@@ -8,7 +8,7 @@ import { CreateSteps } from "./CreateSteps";
 import { CreateSummary } from "./CreateSummary";
 import { initialForm, type CreateForm as Form } from "./draft";
 
-export const FEATURE_REQUEST_URL = "https://github.com/kleros/dispute-resolver/issues";
+const FEATURE_REQUEST_URL = "https://github.com/kleros/dispute-resolver/issues";
 
 const STEPS = ["Form", "Summary"];
 
@@ -60,9 +60,6 @@ export function CreatePage() {
     navRef.current?.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "instant" : "smooth" });
   }, [stepChanges]);
 
-  const update = useCallback((change: (current: Form) => Form) => {
-    setForm(change);
-  }, []);
   const toSummary = useCallback((value: CreateDisputeInput) => {
     setInput(value);
     setStepChanges((count) => count + 1);
@@ -83,7 +80,7 @@ export function CreatePage() {
           {input === null ? (
             <SectionBoundary key="form" section="Create form">
               <div data-create-step="form" className={stepClass(0, stepChanges)}>
-                <CreateForm chain={chain} form={form} onChange={update} headingRef={headingRef} onContinue={toSummary} />
+                <CreateForm chain={chain} form={form} onChange={setForm} headingRef={headingRef} onContinue={toSummary} />
               </div>
             </SectionBoundary>
           ) : (

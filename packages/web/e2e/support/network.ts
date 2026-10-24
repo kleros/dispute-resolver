@@ -76,6 +76,8 @@ export interface FakeNetworkOptions {
   readonly http?: (request: HttpRequest) => HttpAnswer | undefined;
   /** The locator and gateway requests never answered, as a stalled server does. */
   readonly hold?: (request: HttpRequest) => boolean;
+  /** The JSON-RPC calls never answered, as a stalled node does. */
+  readonly holdRpc?: (call: RpcCall) => boolean;
   /** Atlas, served by the spec; without it every Atlas request is aborted, as for any other service. */
   readonly atlas?: (request: AtlasRequest) => AtlasAnswer;
 }
@@ -175,6 +177,7 @@ export async function fakeNetwork(context: BrowserContext, options: FakeNetworkO
 
   const answerRpc = async (route: Route, id: number | string, call: RpcCall): Promise<void> => {
     traffic.rpc.push(call);
+    if (options.holdRpc?.(call) === true) return;
     const answer =
       options.rpc?.(call) ??
       recorded.calls.get(callKey(call.method, call.params)) ??

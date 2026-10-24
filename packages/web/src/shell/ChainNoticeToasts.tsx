@@ -1,6 +1,7 @@
 import { getChain } from "@dispute-resolver/core";
 import { useCallback, type ReactNode } from "react";
 import { ChainNoticeProvider, type ChainNotice } from "../routing";
+import { chainName } from "../wallet";
 import { useToast } from "./ToastProvider";
 import type { ToastInput } from "./types";
 
@@ -16,10 +17,6 @@ export function asSentence(text: string): string {
   return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
 }
 
-function chainLabel(chainId: number): string {
-  return getChain(chainId)?.name ?? `chain ${String(chainId)}`;
-}
-
 /**
  * The toast for a notice, or `null` for a declined switch away from an unconfigured wallet chain: the app then shows the
  * unsupported-network screen, which says it all. Chain names come from the configuration and the dispute ID is parsed, so
@@ -33,7 +30,7 @@ export function chainNoticeToast(notice: ChainNotice): ToastInput | null {
   const shown =
     notice.disputeId === null
       ? `The app is now showing ${walletChain.name}.`
-      : `Dispute ${notice.disputeId.toString()} is on ${chainLabel(notice.pageChainId)}, so the app is showing Ongoing Disputes on ${walletChain.name}.`;
+      : `Dispute ${notice.disputeId.toString()} is on ${chainName(notice.pageChainId)}, so the app is showing Ongoing Disputes on ${walletChain.name}.`;
   if (notice.outcome === "declined") return { variant: "sync", title: `Wallet stayed on ${walletChain.name}`, message: shown, autoHideMs: NEUTRAL_NOTICE_MS };
   return { variant: "error", title: NOT_SWITCHED_TITLE, message: `${asSentence(notice.reason)} ${shown}`, autoHideMs: ERROR_NOTICE_MS };
 }

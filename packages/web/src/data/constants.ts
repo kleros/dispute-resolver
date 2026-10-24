@@ -27,6 +27,21 @@ export const PERSIST_THROTTLE_MS = SECOND_MS;
  */
 export const COURT_POLICY_FETCH_TIMEOUT_MS = 10 * SECOND_MS;
 
+/**
+ * Covers the body read too. Evidence documents are fetched six at a time and the timeline renders once every fetch has
+ * settled, so one that never answers would hold the whole list; one that misses the bound is counted as fetch-failed.
+ * Longer than the court policies' bound because an evidence document may be pinned on a single node the gateway has
+ * to find first.
+ */
+export const EVIDENCE_FETCH_TIMEOUT_MS = 20 * SECOND_MS;
+
+/**
+ * The most the fetcher reads of one body: a meta-evidence API answer, a meta-evidence or evidence document, a dynamic
+ * script or a court policy. The largest allowlisted dynamic script is 2.1 MB and the largest recorded meta-evidence
+ * document is under 1 MB.
+ */
+export const FETCH_BODY_MAX_BYTES = 4 * 1024 * 1024;
+
 export const STALE_TIME_MS = {
   courts: 3 * HOUR_MS,
   ongoing: MINUTE_MS,

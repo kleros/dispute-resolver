@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chainCapabilities, CHAINS, currencySymbol, DEFAULT_CHAIN_ID, getChain, ongoingScanStart } from "./index";
+import { chainCapabilities, CHAINS, DEFAULT_CHAIN_ID, getChain, ongoingScanStart } from "./index";
 import { ascending, chainOf } from "../test/chains/testHelpers";
 
 // Written out by hand so a typo in the table fails here.
@@ -269,7 +269,7 @@ describe("chains table", () => {
   });
 
   it("currency symbols are ETH, with xDai on 100 and 10200, sETH on 11155111 and 300, MATIC on 137", () => {
-    const symbols = Object.fromEntries(Object.values(CHAINS).map((chain) => [chain.id, currencySymbol(chain)]));
+    const symbols = Object.fromEntries(Object.values(CHAINS).map((chain) => [chain.id, chain.currency]));
     expect(symbols).toEqual({
       1: "ETH",
       100: "xDai",
@@ -289,8 +289,8 @@ describe("chains table", () => {
   });
 
   it("never labels Gnosis amounts ETH", () => {
-    expect(currencySymbol(chainOf(100))).not.toBe("ETH");
-    expect(currencySymbol(chainOf(10200))).not.toBe("ETH");
+    expect(chainOf(100).currency).not.toBe("ETH");
+    expect(chainOf(10200).currency).not.toBe("ETH");
   });
 
   it("the lookback is 50,000 blocks on the testnets and 1,000,000 elsewhere", () => {

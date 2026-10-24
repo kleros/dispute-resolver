@@ -4,7 +4,7 @@ export interface Slot {
 }
 
 /** At most `limit` runs at a time, started in the order they asked. */
-export interface SlotQueue {
+interface SlotQueue {
   /** Calls `start` now when a slot is free, otherwise when one frees up. */
   acquire(start: () => void): Slot;
 }

@@ -1,8 +1,7 @@
 export type * from "./types";
-export type { ConnectUnavailableReason, ConnectWallet } from "./useConnectWallet";
-export type { WalletSetupProviderProps } from "./WalletProvider";
-export type { NetworkSwitch, NetworkSwitchState } from "./switchChain";
+export type { NetworkSwitch } from "./switchChain";
 export type { NeedsWalletGuard, WriteAccess, WrongChainGuard } from "./useWriteAccess";
+export { chainName } from "./chains";
 export { SmartContractWalletWarning } from "./SmartContractWalletWarning";
 export { WalletControl } from "./WalletControl";
 export { WalletProvider, WalletSetupProvider } from "./WalletProvider";

@@ -3,7 +3,7 @@ import type { Period } from "@dispute-resolver/core";
 /** One of the four open periods, or "all" (labelled "Ongoing"), which shows every card. */
 export type PeriodFilter = Exclude<Period, 4> | "all";
 
-export interface PeriodFilterOption {
+interface PeriodFilterOption {
   readonly id: string;
   readonly filter: PeriodFilter;
   readonly label: string;

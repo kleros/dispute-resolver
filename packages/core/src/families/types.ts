@@ -50,5 +50,4 @@ export interface FamilyDetection {
 export interface FamilyCache {
   get(chainId: ChainId, address: Address): Promise<FamilyDetection> | undefined;
   set(chainId: ChainId, address: Address, detection: Promise<FamilyDetection>): void;
-  delete(chainId: ChainId, address: Address): void;
 }

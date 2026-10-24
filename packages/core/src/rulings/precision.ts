@@ -1,4 +1,4 @@
-/** The old app's encoding of a uint answer whose meta-evidence `rulingOptions` has no precision. */
+/** Decimals of a uint answer when the meta-evidence `rulingOptions` gives no precision. */
 export const DEFAULT_UINT_PRECISION = 18;
 
 /** A `0x` or `0X` prefix after optional leading whitespace and sign: where `parseInt` without a radix reads base 16. */

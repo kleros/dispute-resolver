@@ -56,16 +56,17 @@ const UNFOLD_CLASS = "animate-[t-acc-unfold_var(--acc-expand)_var(--acc-ease)_ba
  * Visible as soon as the page loads, so it can be focused at once while it fades in over the paper. A transition, not a
  * keyframe, so showing the region again does not replay it.
  */
-const FRAME_REVEAL_CLASS = "transition-opacity duration-250 ease-(--reveal-ease) motion-reduce:transition-none";
+const FRAME_REVEAL_CLASS = "transition-opacity duration-(--display-reveal) ease-(--reveal-ease) motion-reduce:transition-none";
 
-/** `duration-250` above: the skeleton leaves the tree once the reveal it fades out under has run. */
-const REVEAL_MS = 250;
+/** Used when `--display-reveal` cannot be read; the skeleton leaves the tree once the reveal it fades out under has run. */
+const REVEAL_FALLBACK_MS = 250;
 
 /**
- * The skeleton over the frame's place, on the paper, so its bars take the paper's tone rather than the card's. It fades
- * out on the frame's reveal and lets the pointer through from then on, so the first click reaches the page.
+ * The skeleton over the frame's place, on the paper, so its bars take the paper's tone rather than the card's. Inset on
+ * every side like a page's own content, so its bars never touch the sheet's edge. It fades out on the frame's reveal and
+ * lets the pointer through from then on, so the first click reaches the page.
  */
-const COVER_CLASS = `absolute inset-0 py-4 [&_.animate-loading]:bg-(--dr-display-skeleton) ${FRAME_REVEAL_CLASS}`;
+const COVER_CLASS = `absolute inset-0 p-4 [&_.animate-loading]:bg-(--dr-display-skeleton) ${FRAME_REVEAL_CLASS}`;
 
 /**
  * Whether keyboard focus is inside the region's frame. An iframe never matches :focus while its page holds focus and
@@ -120,9 +121,12 @@ export function EvidenceDisplay({ metaEvidence, chainId, found }: EvidenceDispla
   const [covered, setCovered] = useState(true);
   useEffect(() => {
     if (!loaded) return undefined;
-    const id = window.setTimeout(() => {
-      setCovered(false);
-    }, REVEAL_MS);
+    const id = window.setTimeout(
+      () => {
+        setCovered(false);
+      },
+      readMotionMs("--display-reveal", REVEAL_FALLBACK_MS),
+    );
     return () => {
       window.clearTimeout(id);
     };

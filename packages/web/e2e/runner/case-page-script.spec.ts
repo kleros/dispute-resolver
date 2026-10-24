@@ -26,7 +26,7 @@ const FORGED_TITLE = "Title forged by a foreign window";
 const FOREIGN_ORIGIN = "http://foreign-window.test";
 const FORGER_URL = `${FOREIGN_ORIGIN}/forger.html`;
 const FORGER_ONCE_URL = `${FOREIGN_ORIGIN}/forger-once.html`;
-/** The same forger page on the app's own origin: its messages pass the runner's origin check, so only the source check can stop them. */
+/** The same page on the app's own origin: its messages pass the runner's origin check, so the source check decides. */
 const SAME_ORIGIN_FORGER_PATH = "/__runner-e2e/forger-once.html";
 
 const FORGED_PARAMS = {
@@ -39,8 +39,8 @@ const FORGED_PARAMS = {
 };
 
 /**
- * A well-formed run request carrying a script that would replace the title with `FORGED_TITLE`, so only the sender's
- * identity can stop it. The title is spelled out in the script text, which is a plain literal.
+ * A well-formed run request whose script would set the title to `FORGED_TITLE`, so only the sender's identity decides
+ * whether it runs. The title is spelled out in the script text, which is a plain literal.
  */
 const FORGED_REQUEST = {
   type: "dr-runner/run",
@@ -51,11 +51,11 @@ const FORGED_REQUEST = {
   rpcRedirects: [],
 };
 
-/** A forged result, as a window posting straight to the app would send it. */
+/** A result message in the runner's shape, posted to the app outside any run's port. */
 const FORGED_RESULT = { type: "dr-runner/result", value: { title: FORGED_TITLE }, jsonDuplicateKeys: false };
 
 /**
- * Posts the forged request, with a port of its own, to every other frame of its parent and the forged result to the
+ * Posts the run request, with a port of its own, to every other frame of its parent and the result message to the
  * parent, every 20 ms; counts what comes back on its ports.
  */
 const FORGER_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Foreign window</title></head><body><script>
@@ -75,7 +75,7 @@ function forge() {
 setInterval(forge, 20);
 </script></body></html>`;
 
-/** Posts the forged request once to its parent's first frame (the runner), then tells the parent it did. */
+/** Posts the run request once to its parent's first frame (the runner), then tells the parent it did. */
 const FORGER_ONCE_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Foreign window</title></head><body><script>
 var forgedReplies = 0;
 var channel = new MessageChannel();
@@ -145,7 +145,7 @@ test.describe("case page dynamic script", () => {
     const appOrigin = new URL(baseURL ?? "http://localhost").origin;
 
     await page.goto(CASE_PATH);
-    // A foreign window joins the page before the runner frame exists and keeps forging requests and results.
+    // A foreign window joins the page before the runner frame exists and keeps posting run requests and results.
     await page.evaluate((src) => {
       const frame = document.createElement("iframe");
       frame.title = "Foreign window";
@@ -186,8 +186,8 @@ test.describe("case page dynamic script", () => {
     expectEveryDependencyServed(traffic);
   });
 
-  // The forger is a sibling frame of the runner. On the app's own origin its request passes the runner's origin check, so
-  // only the source check (event.source === window.parent) can stop it; on a foreign origin the origin check stops it first.
+  // A sibling frame of the runner sends a run request. From the app's own origin it passes the origin check and the source
+  // check (event.source === window.parent) ignores it; from a foreign origin the origin check ignores it first.
   const forgers = [
     { name: "a same-origin sibling window", forgerUrl: (appOrigin: string) => `${appOrigin}${SAME_ORIGIN_FORGER_PATH}` },
     { name: "a foreign-origin window", forgerUrl: () => FORGER_ONCE_URL },
@@ -211,7 +211,7 @@ test.describe("case page dynamic script", () => {
             });
             document.body.append(runner);
           });
-          // The forger posts its request first, while the runner still waits for its one run.
+          // The sibling posts its request first, while the runner still waits for its one run.
           const forger = document.createElement("iframe");
           const forgedSent = new Promise<void>((resolve) => {
             window.addEventListener("message", (event) => {
@@ -250,7 +250,7 @@ test.describe("case page dynamic script", () => {
       );
 
       expect(reply).toEqual({ type: "dr-runner/result", value: { from: "parent" }, jsonDuplicateKeys: false });
-      // The parent's own request is acknowledged first; the forger's, refused, got no acknowledgement.
+      // The parent's own request is acknowledged; the sibling's got no acknowledgement.
       expect(messages).toEqual([{ type: "dr-runner/accepted" }, reply]);
       const forger = page.frames().find((frame) => frame.url() === forgerUrl);
       expect(forger).toBeDefined();

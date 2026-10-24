@@ -25,7 +25,7 @@ function fromOngoingList(list: OngoingList): SectionData<OngoingList> {
 }
 
 /** Starts once the courts have settled, with or without them, so a cold load scans once instead of twice. */
-export function useOngoingList(chainId: ChainId): SectionData<OngoingList> {
+function useOngoingList(chainId: ChainId): SectionData<OngoingList> {
   const deps = useCoreDeps();
   const courts = useCourts(chainId);
   const courtList = courts.status === "ready" ? courts.value : null;
@@ -38,7 +38,7 @@ export function useOngoingList(chainId: ChainId): SectionData<OngoingList> {
   return fromQuery(query, fromOngoingList);
 }
 
-export function ongoingTitle(result: MetaEvidenceResult): SectionData<OngoingTitle> {
+function ongoingTitle(result: MetaEvidenceResult): SectionData<OngoingTitle> {
   switch (result.status) {
     case "ok":
       return ready(result.metaEvidence.title === "" ? { kind: "missing" } : { kind: "title", text: result.metaEvidence.title });

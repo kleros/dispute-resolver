@@ -66,10 +66,8 @@ export interface DerivedRealityOptions {
 }
 
 export interface RealityLookupLimits {
-  readonly requestTimeoutMs: number;
   readonly deadlineMs: number;
   readonly requestBudget: number;
-  readonly retryDelaysMs: readonly number[];
   readonly windowSize: number;
   readonly minWindowSize: number;
   readonly windowShrinkFactor: number;

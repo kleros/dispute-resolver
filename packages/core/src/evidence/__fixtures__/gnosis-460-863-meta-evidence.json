@@ -1,5 +1,5 @@
 {
-  "provenance": "Raw eth_getLogs objects and block timestamps read from the Gnosis (chain 100) read RPC on 2026-10-20 with the chain head at block 48850832 (readAtBlock), by packages/core/scripts/record-meta-evidence-events.ts: each dispute's ERC-1497 Dispute log (filtered on the arbitrator and the dispute ID over [scanFromBlock, readAtBlock]) and every MetaEvidence log of its metaEvidenceID (over [0, readAtBlock]). P-25: the meta-evidence API answered /ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaEvidence.json for dispute 460 on every request of that day.",
+  "provenance": "Raw eth_getLogs objects and block timestamps read from the Gnosis (chain 100) read RPC on 2026-10-20 with the chain head at block 48850832 (readAtBlock), by packages/core/scripts/record-meta-evidence-events.ts: each dispute's ERC-1497 Dispute log (filtered on the arbitrator and the dispute ID over [scanFromBlock, readAtBlock]) and every MetaEvidence log of its metaEvidenceID (over [0, readAtBlock]). The meta-evidence API answered /ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaEvidence.json for dispute 460 on every request of that day.",
   "chainId": 100,
   "readAtBlock": 48850832,
   "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",

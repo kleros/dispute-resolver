@@ -18,8 +18,8 @@ const FIELD_GETTERS = {
 const UNSUPPORTED = "This arbitrable does not expose all of its appeal multipliers.";
 
 /**
- * KlerosGovernor.sol fixes these: `MULTIPLIER_DIVISOR = 10000` (:78) and "The loser must pay during the first half of the
- * appeal period" (:345), with no getter for the latter; the recorded governor fixtures confirm both.
+ * KlerosGovernor.sol fixes these: `MULTIPLIER_DIVISOR = 10000` and "The loser must pay during the first half of the
+ * appeal period", with no getter for the latter; the recorded governor fixtures confirm both.
  */
 function governorFallback(denominator = 10_000n): Pick<Multipliers, "denominator" | "loserAppealPeriodMultiplier"> {
   return { denominator, loserAppealPeriodMultiplier: denominator / 2n };
@@ -75,7 +75,12 @@ async function readSingleGetters(client: ReadClient, address: Address, fallback?
   }
   if (fallback === undefined) return fail("unsupported", UNSUPPORTED);
   const fixed = fallback(denominator ?? undefined);
-  return validated({ winnerStakeMultiplier, loserStakeMultiplier, loserAppealPeriodMultiplier: loserAppealPeriodMultiplier ?? fixed.loserAppealPeriodMultiplier, denominator: fixed.denominator });
+  return validated({
+    winnerStakeMultiplier,
+    loserStakeMultiplier,
+    loserAppealPeriodMultiplier: loserAppealPeriodMultiplier ?? fixed.loserAppealPeriodMultiplier,
+    denominator: fixed.denominator,
+  });
 }
 
 /** A governor's `sharedMultiplier()`, or `undefined` when the contract fails it. A transport failure is rethrown. */

@@ -13,7 +13,7 @@ import { printable } from "./failureMessage";
 const ENV_FILE = resolve(import.meta.dirname, "../../../.env");
 
 /** A node's JSON-RPC error, as recorded in a fixture. */
-export interface NodeError {
+interface NodeError {
   readonly code: number;
   readonly message: string;
 }

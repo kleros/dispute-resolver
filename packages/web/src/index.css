@@ -354,8 +354,9 @@
      *   app's conformance claim.
      * - --dr-display-focus: the ring inside the evidence display, on that paper in both themes: #0072c6 is 4.97:1 on white
      *   and about 4.7:1 on #f4f0fa, where the dark --dr-focus #6cc5ff would be 1.90:1.
-     * - --dr-display-skeleton: the loading bars on that paper. The sheet is a light surface in both themes, so the bars
-     *   are the light Stroke in both; the dark Stroke would be heavy on it. A placeholder, not text, so no ratio applies.
+     * - --dr-display-skeleton: the loading bars on that paper. Light: the Stroke, 1.26:1 on white. Dark: a purple-grey
+     *   matched to that ratio on the sheet (#dbd5e3, 1.27:1 on #f4f0fa), where the light Stroke would be 1.12:1 and all
+     *   but vanish and the dark Stroke would be heavy. A placeholder, not text, so no text ratio applies.
      */
     --dr-display-paper: var(--klerosUIComponentsWhiteBackground);
     --dr-display-focus: #0072c6;
@@ -396,13 +397,10 @@
     --check-y-amount: 40px;
     --check-blur-dur: 500ms;
     --check-blur-from: 10px;
-    --check-path-dur: 500ms;
-    --check-path-delay: 80ms;
     --check-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
     --check-ease-opacity: cubic-bezier(0.22, 1, 0.36, 1);
     --check-ease-rotate: cubic-bezier(0.22, 1, 0.36, 1);
     --check-ease-bob: cubic-bezier(0.34, 1.35, 0.64, 1);
-    --check-ease-path: cubic-bezier(0.22, 1, 0.36, 1);
 
     --shake-distance: 6px;
     --shake-overshoot: 4px;
@@ -413,6 +411,8 @@
     --reveal-dur: 400ms;
     --reveal-blur: 2px;
     --reveal-ease: ease-in-out;
+    /* The evidence display's cross-fade, capped at the contract's 250 ms; EvidenceDisplay reads it to drop the skeleton. */
+    --display-reveal: 250ms;
 
     --shimmer-dur: 2000ms;
     --shimmer-base: var(--klerosUIComponentsSecondaryText);
@@ -451,15 +451,10 @@
     --learn-out: 350ms;
     --learn-ease: cubic-bezier(0.22, 1, 0.36, 1);
 
-    --resize-dur: 300ms;
-    --resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
-
     --page-slide-dur: 250ms;
-    --page-fade-dur: 250ms;
     --page-slide-distance: 8px;
     --page-blur: 3px;
     --page-slide-ease: cubic-bezier(0.22, 1, 0.36, 1);
-    --page-fade-ease: cubic-bezier(0.22, 1, 0.36, 1);
 
     --text-swap-dur: 150ms;
     --text-swap-translate-y: 4px;
@@ -484,7 +479,7 @@
 
     --dr-display-paper: #f4f0fa;
     --dr-display-focus: #0072c6;
-    --dr-display-skeleton: #e5e5e5;
+    --dr-display-skeleton: #dbd5e3;
     --dr-success-bar: var(--klerosUIComponentsSuccess);
     --dr-control-border: #8a7bd0;
     --dr-focus-bar: #a5dbff;

@@ -1,7 +1,7 @@
 import type { CreateFieldErrorCode } from "@dispute-resolver/core";
 import type { UploadError } from "../../atlas";
 
-export type ErrorField = "courtId" | "votes" | "title" | "question" | "optionCount" | "optionTitle" | "party" | "primaryDocument";
+type ErrorField = "courtId" | "votes" | "title" | "question" | "optionCount" | "optionTitle" | "party" | "primaryDocument";
 
 const REQUIRED: Readonly<Record<ErrorField, string>> = {
   courtId: "Please select a court.",

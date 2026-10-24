@@ -1,17 +1,14 @@
+import { maxUint256 } from "viem";
 import { answerToBytes32, getAnswerString, padToBytes32 } from "@reality.eth/reality-eth-lib/formatters/question.js";
 import { libDecimals } from "./precision";
-
-/** Largest uint256, the ceiling of every ruling code. */
-export const MAX_UINT256 = (1n << 256n) - 1n;
 
 /** The most decimals answer encoding supports: reality-eth-lib encodes through ethers' FixedNumber, which caps them at 80. */
 const MAX_ENCODE_DECIMALS = 80;
 
 /**
  * The most decimals a numeric label is formatted with. reality-eth-lib computes `10n ** decimals` and strips trailing
- * zeros with a quadratic regex, so an untrusted precision such as 1e9 would freeze the page (10,000 decimals already take
- * tens of milliseconds); up to this cap a label costs well under a millisecond. Beyond it the label is a formatting
- * failure.
+ * zeros with a quadratic regex, so the cost grows fast with the precision (10,000 decimals already take tens of
+ * milliseconds); up to this cap a label costs well under a millisecond. Beyond it the label is a formatting failure.
  */
 const MAX_DISPLAY_DECIMALS = 1000;
 
@@ -19,7 +16,7 @@ const MAX_DISPLAY_DECIMALS = 1000;
 const DECIMAL_TYPES: ReadonlySet<string> = new Set(["uint", "int", "datetime"]);
 
 /** reality-eth-lib's "Answered too soon" answer; it and the invalid answer above it are labelled without decimals. */
-const ANSWERED_TOO_SOON = MAX_UINT256 - 1n;
+const ANSWERED_TOO_SOON = maxUint256 - 1n;
 
 /** The question fields reality-eth-lib reads when it formats or encodes an answer. */
 export interface LibQuestion {
@@ -39,7 +36,7 @@ function exceedsDisplayDecimals(question: LibQuestion, answer: bigint): boolean 
 }
 
 export function isUint256(value: bigint): boolean {
-  return value >= 0n && value <= MAX_UINT256;
+  return value >= 0n && value <= maxUint256;
 }
 
 /** `0x` and the value as 64 lowercase hex digits. */

@@ -130,45 +130,6 @@ export const policyRegistryAbi = [
   },
 ] as const satisfies Abi;
 
-/** ERC-792 `IArbitrator` (`@kleros/arbitrable-proxy-contracts`). */
-export const erc792Abi = [
-  {
-    type: "function",
-    name: "arbitrationCost",
-    stateMutability: "view",
-    inputs: [{ name: "_extraData", type: "bytes" }],
-    outputs: [{ name: "cost", type: "uint256" }],
-  },
-  {
-    type: "function",
-    name: "appealCost",
-    stateMutability: "view",
-    inputs: [
-      { name: "_disputeID", type: "uint256" },
-      { name: "_extraData", type: "bytes" },
-    ],
-    outputs: [{ name: "cost", type: "uint256" }],
-  },
-  {
-    type: "event",
-    name: "DisputeCreation",
-    anonymous: false,
-    inputs: [
-      { name: "_disputeID", type: "uint256", indexed: true },
-      { name: "_arbitrable", type: "address", indexed: true },
-    ],
-  },
-  {
-    type: "event",
-    name: "AppealDecision",
-    anonymous: false,
-    inputs: [
-      { name: "_disputeID", type: "uint256", indexed: true },
-      { name: "_arbitrable", type: "address", indexed: true },
-    ],
-  },
-] as const satisfies Abi;
-
 /** ERC-1497 `IEvidence` (`@kleros/arbitrable-proxy-contracts`). */
 export const erc1497Abi = [
   {

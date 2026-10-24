@@ -1,5 +1,5 @@
 {
-  "description": "AppealDecision events (block and block time, as recorded in packages/core/src/disputes/__fixtures__/arbitrator-1.json and arbitrator-100.json) and the Evidence logs of the dispute's evidence group (block, log index, block time, party, URI, transaction), read through the configured RPC for the D-03 'Appealed' marker test. Evidence logs were scanned from the Dispute event's block to evidenceScanToBlock.",
+  "description": "AppealDecision events (block and block time, as recorded in packages/core/src/disputes/__fixtures__/arbitrator-1.json and arbitrator-100.json) and the Evidence logs of the dispute's evidence group (block, log index, block time, party, URI, transaction), read through the configured RPC for the 'Appealed' marker test. Evidence logs were scanned from the Dispute event's block to evidenceScanToBlock.",
   "cases": [
     {
       "name": "mainnet 328",

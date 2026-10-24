@@ -142,7 +142,6 @@ export function assembleAppealPanel(reads: FoundCaseReads): SectionData<AppealPa
     buildAppealPanel({
       family: family.value,
       period: reads.lookup.dispute.period,
-      localId: details.value.localId,
       override: reads.override,
       rulingOptions: rulingOptions ?? NO_RULING_OPTIONS,
       fallbackOutcomes,
@@ -159,14 +158,11 @@ export function assembleWriteContext(reads: FoundCaseReads): SectionData<CaseWri
   const { family, details } = reads;
   if (family.status !== "ready") return family;
   if (details.status !== "ready") return details;
-  const { appealInfo } = details.value;
   const { binding } = reads.lookup;
   return ready({
     binding,
     family: family.value,
     localId: details.value.localId,
-    override: reads.override,
-    appealInfo: appealInfo?.ok === true ? appealInfo.value : null,
     readAppealCost: () => readAppealCost({ client: reads.readClient }, binding),
   });
 }

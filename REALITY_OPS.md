@@ -1,9 +1,9 @@
 # Reality.eth disputes: operations
 
-The resolver does not trust the dynamic scripts of Reality.eth arbitrables to compute the ruling options of their
-disputes: those scripts render the question with `reality-eth-lib`, whose template population lets crafted question
-parameters alter the question (for instance its type or outcomes). Instead, for every arbitrable listed in a registry,
-the resolver looks up the question and its template on-chain and derives the ruling options itself.
+The resolver does not run the dynamic scripts of Reality.eth arbitrables to compute the ruling options of their
+disputes: those scripts render the question with `reality-eth-lib`, whose template population does not keep each
+question parameter inside the placeholder it fills. Instead, for every arbitrable listed in a registry, the resolver
+looks up the question and its template on-chain and derives the ruling options itself.
 
 This document explains how to maintain the two data files behind this:
 
@@ -136,6 +136,6 @@ To remove an arbitrable, delete its entry and regenerate the known-question map.
   be read."): the question lookup failed (RPC errors, request budget or deadline, see `LOOKUP_LIMITS` in
   `packages/core/src/reality/constants.ts`). A stale snapshot makes new disputes slower to find: regenerate the
   known-question map.
-- A registry arbitrable's case shows different options than its dynamic script: expected only when the question was
-  crafted to make `reality-eth-lib` render misleading options (the case then shows the divergence warning). Otherwise,
+- A registry arbitrable's case shows different options than its dynamic script: expected when `reality-eth-lib`'s
+  rendering of the question differs from the derived one (the case then shows the divergence warning). Otherwise,
   check the entry's `answeredTooSoon`, `localizedLang` and `questionOverride` against the script.

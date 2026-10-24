@@ -9,6 +9,15 @@ function UnavailableValue({ error }: { readonly error: Unavailable }) {
   return <span className="text-sm font-normal text-klerosUIComponentsSecondaryText [overflow-wrap:anywhere]">{`Unavailable: ${error.message}`}</span>;
 }
 
+/** A detail's value while its read is pending. */
+export function DetailPlaceholder() {
+  return (
+    <div className="w-32 max-w-full">
+      <SectionSkeleton variant="text" lines={1} />
+    </div>
+  );
+}
+
 interface ViewDetailProps<T> {
   readonly view: SectionData<ExistingView>;
   /** The field of the view this detail shows; each degrades on its own. */
@@ -21,11 +30,7 @@ export function ViewDetail<T>({ view, pick, children }: ViewDetailProps<T>) {
   const reveal = useRevealIn(field.status === "loading");
   switch (field.status) {
     case "loading":
-      return (
-        <div className="w-32 max-w-full">
-          <SectionSkeleton variant="text" lines={1} />
-        </div>
-      );
+      return <DetailPlaceholder />;
     case "unavailable":
       return <UnavailableValue error={field.error} />;
     case "ready":

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { BodyTooLargeError } from "../fetch";
 import { stubEndpoint } from "../test/rpc/testHelpers";
-import type { ScriptResult } from "../types";
+import type { Fetcher, ScriptResult } from "../types";
 import { CASE_PAGE_BUDGET_MS, ONGOING_BUDGET_MS, loadMetaEvidence } from "./index";
 import {
   CROSS_CHAIN_PROXY,
@@ -87,6 +88,28 @@ describe("meta-evidence budget", () => {
       expect(elapsedMs).toBe(0);
       expect(urls.filter((url) => url === locatorUrl(1, 1684n))).toHaveLength(1);
     }
+  });
+
+  it("a meta-evidence body over the fetch cap fails at once, without a retry", async () => {
+    const base = fakeFetcher(servedMetaEvidence(json({ title: "Huge" })));
+    const fetcher: Fetcher = async (url, init) => {
+      const response = await base.fetcher(url, init);
+      return url === META_URL ? { ...response, json: () => Promise.reject(new BodyTooLargeError(1)), text: () => Promise.reject(new BodyTooLargeError(1)) } : response;
+    };
+    const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher })), 10_000);
+    expect(result).toMatchObject({ status: "failed", reason: "fetch-error", error: { code: "invalid-data" } });
+    expect(elapsedMs).toBe(0);
+    expect(base.urls.filter((url) => url === META_URL)).toHaveLength(1);
+  });
+
+  it("a dynamic script over the fetch cap leaves the meta-evidence without a merge, without a retry", async () => {
+    const base = fakeFetcher({ ...servedMetaEvidence(SCRIPT_JSON), [DEFAULT_SCRIPT_URL]: SCRIPT });
+    const fetcher: Fetcher = (url, init) => (url === DEFAULT_SCRIPT_URL ? Promise.reject(new BodyTooLargeError(1)) : base.fetcher(url, init));
+    const { runner, requests } = fakeRunner(scriptOk({ title: "From the script" }));
+    const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, runner })), 10_000);
+    expect(result).toMatchObject({ status: "ok", metaEvidence: { title: "T" }, script: { ran: false, reason: "script-fetch-failed" } });
+    expect(requests).toHaveLength(0);
+    expect(elapsedMs).toBe(0);
   });
 
   it("rejections are not retried", async () => {

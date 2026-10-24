@@ -4,9 +4,7 @@ import { useConnectWallet, useWallet } from "../wallet";
 import { useAtlasUpload } from "./context";
 import { failure, reasonOf } from "./failures";
 import { limitsHint } from "./limits";
-import type { AtlasFileFieldProps, RoleLimits, UploadPhase, UploadResult, UploadedFile } from "./types";
-
-type Failure = Extract<UploadResult, { readonly ok: false }>;
+import type { AtlasFileFieldProps, RoleLimits, UploadFailure, UploadPhase, UploadResult, UploadedFile } from "./types";
 
 interface StatusLine {
   readonly msg?: string;
@@ -19,7 +17,7 @@ interface FieldState {
   readonly lockedReason: string | null;
   readonly pending: File | null;
   readonly phase: UploadPhase;
-  readonly failed: Failure | null;
+  readonly failed: UploadFailure | null;
   readonly value: UploadedFile | null;
   readonly limits: RoleLimits | null;
   readonly signInHint: boolean;
@@ -32,7 +30,7 @@ const DROPZONE = "w-full [overflow-wrap:anywhere]";
 // The dropzone remounts on every failure, so a refused file replays the shake; a network or sign-in failure does not shake.
 const REFUSED_DROPZONE = `${DROPZONE} animate-[t-input-shake_calc(var(--shake-dur-a)*2+var(--shake-dur-b)*2)_linear] motion-reduce:animate-none`;
 
-function isRefusal(failed: Failure | null): boolean {
+function isRefusal(failed: UploadFailure | null): boolean {
   return failed?.error === "too-large" || failed?.error === "mime-not-allowed";
 }
 
@@ -74,7 +72,7 @@ export function AtlasFileField({ role, value, onUploaded, onCleared, label = "Fi
   const connect = useConnectWallet();
   const labelId = useId();
   const [pending, setPending] = useState<File | null>(null);
-  const [failed, setFailed] = useState<Failure | null>(null);
+  const [failed, setFailed] = useState<UploadFailure | null>(null);
   // Remounting the library's dropzone is the only way to clear the file name it keeps after a failed or reset upload.
   const [failures, setFailures] = useState(0);
   const uploadedFile = useMemo(() => (value === null ? undefined : new File([], value.fileName)), [value]);

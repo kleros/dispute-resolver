@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { INVALID_META_EVIDENCE, parseMetaEvidence, parseRulingOptions } from "./index";
+import { INVALID_META_EVIDENCE, parseMetaEvidence } from "./index";
 import type { MetaEvidence } from "./types";
 
 const ADDRESS = "0x799cb978dea5d6ca00ccb1794d3c3d4c89e40cd1";
@@ -14,65 +14,71 @@ function parsed(merged: unknown): MetaEvidence {
   return outcome.value;
 }
 
-describe("parseRulingOptions", () => {
+function rulingOptionsOf(value: unknown): NonNullable<MetaEvidence["rulingOptions"]> {
+  const { rulingOptions } = parsed({ title: "Title", rulingOptions: value });
+  if (rulingOptions === null) throw new Error("expected ruling options");
+  return rulingOptions;
+}
+
+describe("rulingOptions", () => {
   it("defaults missing or invalid ruling options", () => {
-    expect(parseRulingOptions(undefined)).toEqual({ type: "single-select", titles: [] });
-    expect(parseRulingOptions("x")).toEqual({ type: "single-select", titles: [] });
-    expect(parseRulingOptions({ titles: ["a"] })).toEqual({ type: "single-select", titles: ["a"] });
+    expect(rulingOptionsOf(undefined)).toEqual({ type: "single-select", titles: [] });
+    expect(rulingOptionsOf("x")).toEqual({ type: "single-select", titles: [] });
+    expect(rulingOptionsOf({ titles: ["a"] })).toEqual({ type: "single-select", titles: ["a"] });
   });
 
   it("coerces titles, reserved answers and precision", () => {
-    expect(parseRulingOptions({ type: "single-select", titles: "a,b" }).titles).toEqual([]);
-    expect(parseRulingOptions({ type: "single-select", titles: [1, { a: 1 }] }).titles).toEqual(["1", "[object Object]"]);
-    expect(parseRulingOptions({ type: "single-select", reserved: [1] })).not.toHaveProperty("reserved");
-    expect(parseRulingOptions({ type: "single-select", reserved: { "0x1": 2 } }).reserved).toEqual({ "0x1": "2" });
-    expect(parseRulingOptions({ type: "uint", precision: "x" })).not.toHaveProperty("precision");
-    expect(parseRulingOptions({ type: "uint", precision: 18 }).precision).toBe(18);
+    expect(rulingOptionsOf({ type: "single-select", titles: "a,b" }).titles).toEqual([]);
+    expect(rulingOptionsOf({ type: "single-select", titles: [1, { a: 1 }] }).titles).toEqual(["1", "[object Object]"]);
+    expect(rulingOptionsOf({ type: "single-select", reserved: [1] })).not.toHaveProperty("reserved");
+    expect(rulingOptionsOf({ type: "single-select", reserved: { "0x1": 2 } }).reserved).toEqual({ "0x1": "2" });
+    expect(rulingOptionsOf({ type: "uint", precision: "x" })).not.toHaveProperty("precision");
+    expect(rulingOptionsOf({ type: "uint", precision: 18 }).precision).toBe(18);
   });
 
   it("a hexadecimal precision is read as reality-eth-lib reads it", () => {
-    expect(parseRulingOptions({ type: "uint", precision: "0x12" }).precision).toBe(18);
-    expect(parseRulingOptions({ type: "uint", precision: " 0X12 " }).precision).toBe(18);
+    expect(rulingOptionsOf({ type: "uint", precision: "0x12" }).precision).toBe(18);
+    expect(rulingOptionsOf({ type: "uint", precision: " 0X12 " }).precision).toBe(18);
   });
 
   it("a non-object (null, array, number) becomes the empty single-select", () => {
-    for (const value of [null, [], ["a"], 5, true]) expect(parseRulingOptions(value)).toEqual({ type: "single-select", titles: [] });
+    for (const value of [null, [], ["a"], 5, true]) expect(rulingOptionsOf(value)).toEqual({ type: "single-select", titles: [] });
   });
 
   it("a non-string type becomes single-select and an unknown type string is kept verbatim", () => {
-    expect(parseRulingOptions({ type: 3, titles: ["a"] }).type).toBe("single-select");
-    expect(parseRulingOptions({ type: "ranked-choice" }).type).toBe("ranked-choice");
+    expect(rulingOptionsOf({ type: 3, titles: ["a"] }).type).toBe("single-select");
+    expect(rulingOptionsOf({ type: "ranked-choice" }).type).toBe("ranked-choice");
   });
 
   it("titles are left absent when absent, and reserved and precision are dropped only when unusable", () => {
-    expect(parseRulingOptions({ type: "uint" })).toEqual({ type: "uint" });
-    expect(parseRulingOptions({ type: "uint", precision: Number.POSITIVE_INFINITY })).toEqual({ type: "uint" });
-    expect(parseRulingOptions({ type: "uint", reserved: null })).toEqual({ type: "uint" });
+    expect(rulingOptionsOf({ type: "uint" })).toEqual({ type: "uint" });
+    expect(rulingOptionsOf({ type: "uint", precision: Number.POSITIVE_INFINITY })).toEqual({ type: "uint" });
+    expect(rulingOptionsOf({ type: "uint", reserved: null })).toEqual({ type: "uint" });
   });
 
   it("keeps a precision of 0 and reads a numeric string precision as its number", () => {
-    expect(parseRulingOptions({ type: "uint", precision: 0 }).precision).toBe(0);
-    expect(parseRulingOptions({ type: "uint", precision: "6" }).precision).toBe(6);
+    expect(rulingOptionsOf({ type: "uint", precision: 0 }).precision).toBe(0);
+    expect(rulingOptionsOf({ type: "uint", precision: "6" }).precision).toBe(6);
   });
 
   it("reads precision as reality-eth-lib does, so the precision shown is the one encoded", () => {
-    expect(parseRulingOptions({ type: "uint", precision: true }).precision).toBe(0);
-    expect(parseRulingOptions({ type: "uint", precision: "1e2" }).precision).toBe(1);
-    expect(parseRulingOptions({ type: "uint", precision: 2.7 }).precision).toBe(2);
-    expect(parseRulingOptions({ type: "uint", precision: -3 }).precision).toBe(0);
+    expect(rulingOptionsOf({ type: "uint", precision: true }).precision).toBe(0);
+    expect(rulingOptionsOf({ type: "uint", precision: "1e2" }).precision).toBe(1);
+    expect(rulingOptionsOf({ type: "uint", precision: 2.7 }).precision).toBe(2);
+    expect(rulingOptionsOf({ type: "uint", precision: -3 }).precision).toBe(0);
   });
 
   it("removes a precision that would encode with the default 18 (null, false, empty, or not a finite number)", () => {
-    for (const precision of [null, false, "", "1_000"]) expect(parseRulingOptions({ type: "uint", precision })).toEqual({ type: "uint" });
+    for (const precision of [null, false, "", "1_000"]) expect(rulingOptionsOf({ type: "uint", precision })).toEqual({ type: "uint" });
   });
 
   it("descriptions become strings; a value that is neither an array nor an object is removed", () => {
-    expect(parseRulingOptions({ type: "single-select", titles: ["a"], descriptions: ["first", 2] }).descriptions).toEqual(["first", "2"]);
-    for (const descriptions of ["first", 3, true, null]) expect(parseRulingOptions({ type: "single-select", descriptions })).not.toHaveProperty("descriptions");
+    expect(rulingOptionsOf({ type: "single-select", titles: ["a"], descriptions: ["first", 2] }).descriptions).toEqual(["first", "2"]);
+    for (const descriptions of ["first", 3, true, null]) expect(rulingOptionsOf({ type: "single-select", descriptions })).not.toHaveProperty("descriptions");
   });
 
   it("descriptions keyed by reserved answer code are kept", () => {
-    const options = parseRulingOptions({
+    const options = rulingOptionsOf({
       type: "single-select",
       titles: ["Yes", "No"],
       reserved: { [TOO_SOON]: "Answered Too Soon" },
@@ -88,7 +94,7 @@ describe("parseRulingOptions", () => {
 
   it("an object of descriptions serves positions and reserved codes, keys as written, values as strings", () => {
     const descriptions = { "0": "First option", "1": 2, "0xFF": false, [TOO_SOON_UPPER]: "Upper-case code" };
-    expect(parseRulingOptions({ type: "single-select", titles: ["A", "B"], descriptions }).descriptions).toEqual({
+    expect(rulingOptionsOf({ type: "single-select", titles: ["A", "B"], descriptions }).descriptions).toEqual({
       "0": "First option",
       "1": "2",
       "0xFF": "false",
@@ -97,22 +103,22 @@ describe("parseRulingOptions", () => {
   });
 
   it("a description that is null or undefined is not a description, and keeps the other positions", () => {
-    expect(parseRulingOptions({ type: "single-select", descriptions: { [TOO_SOON]: null, "0": "Kept" } }).descriptions).toEqual({ "0": "Kept" });
-    expect(parseRulingOptions({ type: "single-select", titles: ["A", "B", "C"], descriptions: [null, "Second", undefined] }).descriptions).toEqual({ "1": "Second" });
+    expect(rulingOptionsOf({ type: "single-select", descriptions: { [TOO_SOON]: null, "0": "Kept" } }).descriptions).toEqual({ "0": "Kept" });
+    expect(rulingOptionsOf({ type: "single-select", titles: ["A", "B", "C"], descriptions: [null, "Second", undefined] }).descriptions).toEqual({ "1": "Second" });
     // A script's structured-clone result can hold an array with holes, which JSON cannot.
     const sparse: unknown[] = [];
     sparse[1] = "Second";
-    expect(parseRulingOptions({ type: "single-select", titles: ["A", "B"], descriptions: sparse }).descriptions).toEqual({ "1": "Second" });
+    expect(rulingOptionsOf({ type: "single-select", titles: ["A", "B"], descriptions: sparse }).descriptions).toEqual({ "1": "Second" });
   });
 
   it("a hostile description never throws", () => {
     const hostile = { toString: 1, valueOf: 2 };
-    expect(parseRulingOptions({ type: "single-select", descriptions: { [TOO_SOON]: hostile } }).descriptions).toEqual({ [TOO_SOON]: "[object Object]" });
+    expect(rulingOptionsOf({ type: "single-select", descriptions: { [TOO_SOON]: hostile } }).descriptions).toEqual({ [TOO_SOON]: "[object Object]" });
   });
 
   it("a hostile toString or valueOf never throws", () => {
     const hostile = { toString: 1, valueOf: 2 };
-    expect(parseRulingOptions({ type: "uint", titles: [hostile, [hostile]], reserved: { "0x1": hostile }, precision: hostile })).toEqual({
+    expect(rulingOptionsOf({ type: "uint", titles: [hostile, [hostile]], reserved: { "0x1": hostile }, precision: hostile })).toEqual({
       type: "uint",
       titles: ["[object Object]", "[object Array]"],
       reserved: { "0x1": "[object Object]" },
@@ -120,7 +126,7 @@ describe("parseRulingOptions", () => {
   });
 
   it("extra keys are dropped", () => {
-    expect(parseRulingOptions({ type: "single-select", titles: ["a"], onClick: "x" })).toEqual({ type: "single-select", titles: ["a"] });
+    expect(rulingOptionsOf({ type: "single-select", titles: ["a"], onClick: "x" })).toEqual({ type: "single-select", titles: ["a"] });
   });
 });
 

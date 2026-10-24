@@ -12,27 +12,21 @@ afterEach(() => {
 
 describe("toWalletState", () => {
   it("a reconnecting wallet is still connecting, so routing waits for the reconnect to settle", () => {
-    expect(toWalletState("appkit", "reconnecting", "0x00000000000000000000000000000000000A11cE", 1)).toEqual({ status: "connecting", mode: "appkit" });
+    expect(toWalletState("reconnecting", "0x00000000000000000000000000000000000A11cE", 1)).toEqual({ status: "connecting" });
   });
 
   it("a connected address is lowercased", () => {
-    expect(toWalletState("appkit", "connected", "0x00000000000000000000000000000000000A11cE", 100)).toEqual({
+    expect(toWalletState("connected", "0x00000000000000000000000000000000000A11cE", 100)).toEqual({
       status: "connected",
-      mode: "appkit",
       address: TEST_WALLET_ADDRESS,
       chainId: 100,
-      isConfiguredChain: true,
     });
   });
 
-  it("a wallet on a chain outside the configured ones is connected but not on a configured chain", () => {
-    expect(toWalletState("appkit", "connected", "0x00000000000000000000000000000000000A11cE", UNCONFIGURED_CHAIN_ID)).toEqual(
-      expect.objectContaining({ isConfiguredChain: false }),
+  it("a wallet on a chain outside the configured ones is still connected, on that chain", () => {
+    expect(toWalletState("connected", "0x00000000000000000000000000000000000A11cE", UNCONFIGURED_CHAIN_ID)).toEqual(
+      expect.objectContaining({ status: "connected", chainId: UNCONFIGURED_CHAIN_ID }),
     );
-  });
-
-  it("carries the unconfigured mode", () => {
-    expect(toWalletState("unconfigured", "disconnected", undefined, undefined)).toEqual({ status: "disconnected", mode: "unconfigured" });
   });
 });
 
@@ -51,17 +45,17 @@ describe("useWallet", () => {
   }
 
   it("while AppKit loads a returning wallet is connecting, so routing waits as it does for wagmi's reconnect", () => {
-    expect(renderWhileAppKitLoads(true).result.current).toEqual({ status: "connecting", mode: "appkit" });
+    expect(renderWhileAppKitLoads(true).result.current).toEqual({ status: "connecting" });
   });
 
   it("while AppKit loads a visitor with no stored connection is disconnected, so routing does not wait for AppKit", () => {
-    expect(renderWhileAppKitLoads(false).result.current).toEqual({ status: "disconnected", mode: "appkit" });
+    expect(renderWhileAppKitLoads(false).result.current).toEqual({ status: "disconnected" });
   });
 
   it("the app loads disconnected and nothing is requested from a wallet", () => {
     const wallet = createTestWallet();
     const { result } = renderHook(() => useWallet(), { wrapper: walletWrapper(wallet) });
-    expect(result.current).toEqual({ status: "disconnected", mode: "appkit" });
+    expect(result.current).toEqual({ status: "disconnected" });
     expect(wallet.modal?.openConnect).not.toHaveBeenCalled();
   });
 
@@ -79,13 +73,13 @@ describe("useWallet", () => {
       await wallet.changeChain(100);
     });
     await waitFor(() => {
-      expect(result.current).toEqual(expect.objectContaining({ status: "connected", chainId: 100, isConfiguredChain: true }));
+      expect(result.current).toEqual(expect.objectContaining({ status: "connected", chainId: 100 }));
     });
     await act(async () => {
       await wallet.changeChain(UNCONFIGURED_CHAIN_ID);
     });
     await waitFor(() => {
-      expect(result.current).toEqual(expect.objectContaining({ chainId: UNCONFIGURED_CHAIN_ID, isConfiguredChain: false }));
+      expect(result.current).toEqual(expect.objectContaining({ status: "connected", chainId: UNCONFIGURED_CHAIN_ID }));
     });
     expect(reload).not.toHaveBeenCalled();
   });
@@ -97,6 +91,6 @@ describe("useWallet", () => {
     await act(async () => {
       await wallet.disconnect();
     });
-    expect(result.current).toEqual({ status: "disconnected", mode: "appkit" });
+    expect(result.current).toEqual({ status: "disconnected" });
   });
 });

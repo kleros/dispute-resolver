@@ -3,12 +3,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useWalletSetup } from "./context";
 import type { WalletModal } from "./types";
 
-/** `unconfigured`: no WalletConnect project ID; `misconfigured`: AppKit registered an embedded wallet. */
-export type ConnectUnavailableReason = "unconfigured" | "misconfigured";
-
 export interface ConnectWallet {
+  /** `false` without a WalletConnect project ID, or when AppKit registered an embedded wallet. */
   readonly available: boolean;
-  readonly unavailableReason: ConnectUnavailableReason | null;
   /**
    * Opens AppKit's Connect view on `chainId` (the page chain), so a WalletConnect session starts there. Closing the
    * modal or rejecting the wallet's prompt leaves the app read-only, with no error.
@@ -50,8 +47,5 @@ export function useConnectWallet(): ConnectWallet {
     },
     [modal],
   );
-  let unavailableReason: ConnectUnavailableReason | null = null;
-  if (modal === null) unavailableReason = "unconfigured";
-  else if (misconfigured) unavailableReason = "misconfigured";
-  return { available: unavailableReason === null, unavailableReason, open };
+  return { available: modal !== null && !misconfigured, open };
 }

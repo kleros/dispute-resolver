@@ -112,7 +112,7 @@ describe("switchWalletChain", () => {
 });
 
 describe("useNetworkSwitch", () => {
-  it("keeps a failure for an inline message until reset", async () => {
+  it("keeps a failure in its state for an inline message", async () => {
     const wallet = createTestWallet();
     const { result } = renderHook(() => useNetworkSwitch(), { wrapper: walletWrapper(wallet) });
     let outcome: SwitchResult | undefined;
@@ -121,10 +121,6 @@ describe("useNetworkSwitch", () => {
     });
     expect(outcome).toEqual({ ok: false, reason: "no-wallet", message: "Connect a wallet to switch to Gnosis Network." });
     expect(result.current.state).toEqual({ status: "failed", chainId: 100, message: "Connect a wallet to switch to Gnosis Network." });
-    act(() => {
-      result.current.reset();
-    });
-    expect(result.current.state).toEqual({ status: "idle" });
   });
 
   it("every switch control shows a request another one started as switching until it settles", async () => {

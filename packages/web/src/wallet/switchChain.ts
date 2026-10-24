@@ -67,7 +67,6 @@ export interface NetworkSwitch {
   readonly state: NetworkSwitchState;
   /** Resolves with the outcome; a failure also stays in `state` for an inline message, and `pending` changes nothing. */
   readonly switchTo: (chainId: ChainId) => Promise<SwitchResult>;
-  readonly reset: () => void;
 }
 
 const IDLE: NetworkSwitchState = { status: "idle" };
@@ -103,9 +102,6 @@ export function useNetworkSwitch(): NetworkSwitch {
     },
     [config],
   );
-  const reset = useCallback(() => {
-    setSettled(IDLE);
-  }, []);
   const state = useMemo<NetworkSwitchState>(() => (inFlight === null ? settled : { status: "switching", chainId: inFlight.chainId }), [inFlight, settled]);
-  return { state, switchTo, reset };
+  return { state, switchTo };
 }

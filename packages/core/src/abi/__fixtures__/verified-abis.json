@@ -638,7 +638,7 @@
     }
   ],
   "legacyResolver": {
-    "label": "older resolver proxy (idr-legacy, D-46)",
+    "label": "older resolver proxy (idr-legacy)",
     "chainId": 1,
     "address": "0x135c573503f70dc290b1d60fe2e7f7eb114febd6",
     "abi": [

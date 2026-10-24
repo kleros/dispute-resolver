@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { isContentAddressed, normalizeIpfsPath, toCidPath } from "./index";
+import { normalizeIpfsPath, toCidPath } from "./index";
 import { ALLOWLIST_ENTRIES, CIDV1, DEFAULT_SCRIPT_CID, GNOSIS_416_PATH, T2CR_DISPLAY_CID, TRAILING_SLASH_ENTRY } from "../test/uri/testHelpers";
 import type { CidPath } from "./types";
 
@@ -257,14 +257,5 @@ describe("toCidPath", () => {
       const path = normalizeIpfsPath(variant);
       expect(path === null ? null : listed.has(toCidPath(path)), variant).not.toBe(true);
     }
-  });
-});
-
-describe("isContentAddressed", () => {
-  it("accepts exactly the values normalizeIpfsPath accepts", () => {
-    const inputs: unknown[] = [CID, CIDV1, CANONICAL_FILE, `fs:/ipfs/${CID}`, `/ipfs/${CID}/../../ipns/x`, "/ipns/x", `https://cdn.kleros.link${CANONICAL}`, 42, null];
-    for (const input of inputs) expect(isContentAddressed(input), String(input)).toBe(normalizeIpfsPath(input) !== null);
-    expect(isContentAddressed(CANONICAL_FILE)).toBe(true);
-    expect(isContentAddressed("/ipns/x")).toBe(false);
   });
 });

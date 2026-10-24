@@ -28,6 +28,13 @@ describe("deriveRealityRulingOptions", () => {
     expect(question).toBeUndefined();
   });
 
+  it("a template nested thousands of levels deep gives no options and the unresolvable status", () => {
+    const templateText = `{"title": "%s", "type": "bool", "x": ${"[".repeat(20_000)}${"]".repeat(20_000)}}`;
+    const { rulingOptions, realityQuestion } = deriveRealityRulingOptions(onChain(templateText, "a"), ENTRY);
+    expect(rulingOptions).toEqual({ type: "single-select", titles: [] });
+    expect(realityQuestion).toMatchObject({ status: "unresolvable", reason: "invalid-template", divergent: false });
+  });
+
   it("reports no divergence for a clean question and overrides the question with its title when asked to", () => {
     const { rulingOptions, realityQuestion, question } = deriveRealityRulingOptions(onChain(TEMPLATE_SINGLE_SELECT, ["Who?", '"A","B"', "misc", "en_US"].join(D)), {
       ...ENTRY,

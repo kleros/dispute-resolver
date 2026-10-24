@@ -160,21 +160,21 @@ describe("createReceiptWaiter", () => {
       const receipt = await createReceiptWaiter({ REACT_APP_WEB3_PROVIDER_URL: READ_RPC })(1, HASH);
       expect(receipt.transactionHash).toBe(REPLACEMENT_HASH);
       expect(receipt.status).toBe("success");
-      expect(receipt.replacement).toEqual({ reason: "repriced", replacedHash: HASH });
+      expect(receipt.replacement).toEqual({ reason: "repriced" });
     });
 
     it("cancelled: a zero-value transaction to the sender itself (a wallet's Cancel)", async () => {
       stubRpc(replacedOnChain({ to: SENDER, value: "0x0", input: "0x" }));
       const receipt = await createReceiptWaiter({ REACT_APP_WEB3_PROVIDER_URL: READ_RPC })(1, HASH);
       expect(receipt.transactionHash).toBe(REPLACEMENT_HASH);
-      expect(receipt.replacement).toEqual({ reason: "cancelled", replacedHash: HASH });
+      expect(receipt.replacement).toEqual({ reason: "cancelled" });
     });
 
     it("replaced: a different call with the same nonce", async () => {
       stubRpc(replacedOnChain({ to: ARBITRATOR, value: "0x0", input: CALLDATA }));
       const receipt = await createReceiptWaiter({ REACT_APP_WEB3_PROVIDER_URL: READ_RPC })(1, HASH);
       expect(receipt.transactionHash).toBe(REPLACEMENT_HASH);
-      expect(receipt.replacement).toEqual({ reason: "replaced", replacedHash: HASH });
+      expect(receipt.replacement).toEqual({ reason: "replaced" });
     });
   });
 

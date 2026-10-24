@@ -1,14 +1,16 @@
 import * as core from "@dispute-resolver/core";
-import type { ArbitratedBinding, MetaEvidenceResult } from "@dispute-resolver/core";
+import type { ArbitratedBinding, DisputeEventResult, MetaEvidenceResult } from "@dispute-resolver/core";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { HttpRequestError } from "viem";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TestDataProvider, createTestDeps, testBinding, testFamily, testOkMetaEvidence } from "../test/data";
-import { useFamily, useMetaEvidence } from "./disputeHooks";
+import { EVIDENCE_FETCH_TIMEOUT_MS } from "./constants";
+import { useEvidence, useFamily, useMetaEvidence } from "./disputeHooks";
 import { metaEvidenceStaleTime } from "./metaEvidenceQuery";
 import { useOngoingTitle } from "./ongoingHooks";
 import { queryKeys } from "./queryKeys";
+import { ready } from "./sectionData";
 import type { CoreDeps } from "./types";
 
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../test/data/mockCoreReads")).mockCoreReads(importOriginal));
@@ -43,7 +45,38 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+const FOUND_EVENT: DisputeEventResult = {
+  status: "found",
+  event: { metaEvidenceId: 0n, evidenceGroupId: 3n, blockNumber: 10n, createdAt: 1_700_000_000, transactionHash: `0x${"ab".repeat(32)}` },
+};
+
 describe("dispute hooks", () => {
+  it("cuts an evidence document fetch that never answers at the evidence timeout", async () => {
+    vi.mocked(core.loadEvidence).mockResolvedValue({
+      ok: true,
+      value: { items: [], hiddenEvidenceCount: 0, hiddenByReason: { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 } },
+    });
+    const deps = createTestDeps({ fetcher: () => new Promise(() => undefined) });
+    renderHook(() => useEvidence(1, BINDING, ready(FOUND_EVENT)), { wrapper: wrapperWith(deps) });
+    await waitFor(() => {
+      expect(core.loadEvidence).toHaveBeenCalled();
+    });
+    const context = vi.mocked(core.loadEvidence).mock.calls[0]?.[0];
+    if (context === undefined) throw new Error("loadEvidence was not called");
+
+    vi.useFakeTimers();
+    const outcome = context.fetcher("https://cdn.kleros.link/ipfs/QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA").then(
+      () => "answered",
+      (error: unknown) => (error instanceof DOMException ? error.name : "rejected"),
+    );
+    await vi.advanceTimersByTimeAsync(EVIDENCE_FETCH_TIMEOUT_MS);
+    await expect(Promise.race([outcome, Promise.resolve("pending")])).resolves.toBe("TimeoutError");
+  });
+
   it("detects the family through the chain's configured read client and the session cache", async () => {
     vi.mocked(core.detectFamily).mockResolvedValue(testFamily());
     const deps = createTestDeps();

@@ -26,7 +26,7 @@ export interface CreateForm {
   readonly primaryDocument: UploadedFile | null;
 }
 
-export type TextField = "votes" | "category" | "title" | "description" | "question";
+type TextField = "votes" | "category" | "title" | "description" | "question";
 
 export const QUESTION_TYPES: readonly { readonly type: CreateQuestionType; readonly label: string }[] = [
   { type: "single-select", label: "Multiple choice: single select" },

@@ -27,7 +27,6 @@ function input(family: FamilyDetection, period: Period, overrides: Partial<Appea
   return {
     family,
     period,
-    localId: family.capabilities.localId === "none" ? { kind: "not-applicable" } : { kind: "local-id", value: 1n },
     override: undefined,
     rulingOptions: { type: "single-select", titles: ["Yes", "No"] },
     fallbackOutcomes: null,

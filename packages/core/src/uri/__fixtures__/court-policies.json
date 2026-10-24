@@ -1,5 +1,5 @@
 {
-  "description": "PolicyRegistry.policies(i) for every court of KlerosLiquid on chains 1 and 100, read with eth_call at the block number given per chain (public RPCs, 2026-10-14). Used by policyFetchUrl tests: every on-chain court policy URI must still resolve (spec 6.4, checklist B7).",
+  "description": "PolicyRegistry.policies(i) for every court of KlerosLiquid on chains 1 and 100, read with eth_call at the block number given per chain (public RPCs, 2026-10-14). Used by policyFetchUrl tests: every on-chain court policy URI must still resolve.",
   "chains": [
     {
       "chainId": 1,

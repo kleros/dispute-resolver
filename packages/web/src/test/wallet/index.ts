@@ -1,6 +1,6 @@
 export { installOfflineAppKitEnvironment } from "./appKitEnvironment";
 export { createFakeInjectedWallet, type AddChainRequest, type FakeInjectedWallet, type FakeInjectedWalletOptions } from "./fakeInjectedWallet";
-export { fakeWriteController, type FakeWriteController, type FakeWriteOptions } from "./fakeWriteController";
+export { fakeWriteController, type FakeWriteController } from "./fakeWriteController";
 export { TestWalletProvider, type TestWalletProviderProps } from "./TestWalletProvider";
 export { walletWrapper } from "./walletWrapper";
 export {
@@ -12,6 +12,5 @@ export {
   holdChainSwitches,
   type FakeWalletModal,
   type TestWallet,
-  type TestWalletOptions,
 } from "./testWallet";
 export { TEST_REPLACEMENT_TX_HASH, TEST_TX_HASH, testReceipt, testReplacementReceipt, testWriteBuild } from "./writeFixtures";

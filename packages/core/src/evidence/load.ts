@@ -74,7 +74,7 @@ export async function loadEvidence(context: EvidenceContext): Promise<Outcome<Ev
   }
 }
 
-/** Never rejects: every failure is a hidden reason. */
+/** Never rejects: every failure is a hidden reason. Only a parse failure is `not-json`; a body read that is cut short is a failed fetch. */
 async function fetchDocument(fetcher: Fetcher, url: string, gateway: GatewayOrigin, signal: AbortSignal | undefined): Promise<Fetched> {
   let body: unknown;
   try {
@@ -82,8 +82,8 @@ async function fetchDocument(fetcher: Fetcher, url: string, gateway: GatewayOrig
     if (!response.ok) return { status: "hidden", reason: "fetch-failed" };
     try {
       body = await response.json();
-    } catch {
-      return { status: "hidden", reason: "not-json" };
+    } catch (error) {
+      return { status: "hidden", reason: error instanceof SyntaxError ? "not-json" : "fetch-failed" };
     }
   } catch {
     return { status: "hidden", reason: "fetch-failed" };

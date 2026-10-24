@@ -72,14 +72,12 @@ describe("createFamilyCache", () => {
     expect(codeReads(calls)).toEqual([ARBITRABLE, ARBITRABLE]);
   });
 
-  it("get, set and delete hold the promise itself", async () => {
+  it("get returns the promise set for the same chain and address, and nothing for another chain", async () => {
     const cache = createFamilyCache();
     const detection = Promise.resolve({ family: "view-only" } as FamilyDetection);
     cache.set(1, ARBITRABLE, detection);
     expect(cache.get(1, ARBITRABLE)).toBe(detection);
     expect(cache.get(100, ARBITRABLE)).toBeUndefined();
-    cache.delete(1, ARBITRABLE);
-    expect(cache.get(1, ARBITRABLE)).toBeUndefined();
     await detection;
   });
 

@@ -92,6 +92,11 @@ describe("PageMessage", () => {
     expect(screen.getByRole("button", { name: "Go" })).toBeInTheDocument();
   });
 
+  it("asks the browser for pretty wrapping on the body", () => {
+    render(<PageMessage title="Find a dispute" body="Enter a dispute ID above to see its summary, timeline, evidence and appeal." />);
+    expect(screen.getByText(/^Enter a dispute ID above/)).toHaveClass("text-pretty");
+  });
+
   it("shows a title alone as a named region", () => {
     render(<PageMessage title="Dispute with ID 99 does not exist on this network." />);
     expect(screen.getByRole("region", { name: "Dispute with ID 99 does not exist on this network." })).toBeInTheDocument();

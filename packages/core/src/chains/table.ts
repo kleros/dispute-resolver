@@ -191,10 +191,6 @@ export function chainCapabilities(chain: ChainConfig): ChainCapabilities {
   return { hasArbitrator: chain.klerosLiquid !== undefined, canCreate: chain.arbitrableProxy !== undefined };
 }
 
-export function currencySymbol(chain: ChainConfig): string {
-  return chain.currency;
-}
-
 /** First block of the Ongoing list window: the later of the deploy block and `head − maxLookback`, never below 0. */
 export function ongoingScanStart(chain: ChainConfig, head: bigint): bigint {
   const windowStart = head - BigInt(chain.maxLookback);

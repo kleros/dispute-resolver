@@ -3,8 +3,40 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFetcher, withTimeout } from "./fetcher";
 
 const BOUND_MS = 1_000;
+const CAP_BYTES = 10;
 const URL = "https://cdn.kleros.link/ipfs/QmPolicy/policy.json";
 const never = <T>(): Promise<T> => new Promise<T>(() => undefined);
+
+/** A 200 answer whose body arrives in `chunks`, counting how many the reader asked for and whether the body was cancelled. */
+function streamed(chunks: readonly string[], headers: HeadersInit = {}) {
+  const encoder = new TextEncoder();
+  let index = 0;
+  let pulls = 0;
+  let cancelled = false;
+  // A high-water mark of 0 keeps the stream from pulling a chunk before anyone reads.
+  const stream = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        pulls += 1;
+        const chunk = chunks[index++];
+        if (chunk === undefined) controller.close();
+        else controller.enqueue(encoder.encode(chunk));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    },
+    { highWaterMark: 0 },
+  );
+  return { response: new Response(stream, { status: 200, headers }), pulls: () => pulls, cancelled: () => cancelled };
+}
+
+async function rejectionName(promise: Promise<unknown>): Promise<string> {
+  return promise.then(
+    () => "answered",
+    (error: unknown) => (error instanceof Error ? error.name : "rejected"),
+  );
+}
 
 function answer(body: () => Promise<unknown>): FetchResponse {
   return { ok: true, status: 200, json: body, text: () => body().then(String) };
@@ -26,14 +58,46 @@ afterEach(() => {
 
 describe("createFetcher", () => {
   it("never sends credentials and forwards only core's signal and headers", async () => {
-    const response = new Response("{}", { status: 200 });
-    const fetchFunction = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() => Promise.resolve(response));
+    const fetchFunction = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() => Promise.resolve(new Response('{"name":"n"}', { status: 200 })));
     const controller = new AbortController();
     const fetcher = createFetcher(fetchFunction);
 
-    await expect(fetcher("https://cdn.kleros.link/ipfs/Qm", { signal: controller.signal, headers: { accept: "application/json" } })).resolves.toBe(response);
+    const response = await fetcher("https://cdn.kleros.link/ipfs/Qm", { signal: controller.signal, headers: { accept: "application/json" } });
 
     expect(fetchFunction).toHaveBeenCalledWith("https://cdn.kleros.link/ipfs/Qm", { credentials: "omit", signal: controller.signal, headers: { accept: "application/json" } });
+    expect(response).toMatchObject({ ok: true, status: 200 });
+    await expect(response.json()).resolves.toEqual({ name: "n" });
+  });
+
+  it("reads a body within the cap as text and as JSON", async () => {
+    const { response } = streamed(['{"na', 'me":', '"n"}']);
+    const fetcher = createFetcher(() => Promise.resolve(response), CAP_BYTES + 2);
+    const answer = await fetcher(URL);
+    await expect(answer.text()).resolves.toBe('{"name":"n"}');
+    await expect(answer.json()).resolves.toEqual({ name: "n" });
+  });
+
+  it("rejects a body whose declared length is over the cap without reading it, and cancels the body", async () => {
+    const { response, pulls, cancelled } = streamed(["x".repeat(20)], { "content-length": "20" });
+    if (response.body === null) throw new Error("the answer has no body");
+    const getReader = vi.spyOn(response.body, "getReader");
+    await expect(rejectionName(createFetcher(() => Promise.resolve(response), CAP_BYTES)(URL))).resolves.toBe("BodyTooLargeError");
+    expect(getReader).not.toHaveBeenCalled();
+    expect(pulls()).toBe(0);
+    expect(cancelled()).toBe(true);
+  });
+
+  it("stops reading a body once it passes the cap and rejects the read", async () => {
+    const chunks = Array.from({ length: 10 }, () => "abcd");
+    const { response, pulls } = streamed(chunks);
+    const answer = await createFetcher(() => Promise.resolve(response), CAP_BYTES)(URL);
+    await expect(rejectionName(answer.json())).resolves.toBe("BodyTooLargeError");
+    expect(pulls()).toBeLessThan(chunks.length);
+  });
+
+  it("a body that is not JSON rejects json() with a SyntaxError", async () => {
+    const answer = await createFetcher(() => Promise.resolve(new Response("%PDF-1.4", { status: 200 })))(URL);
+    await expect(rejectionName(answer.json())).resolves.toBe("SyntaxError");
   });
 
   it("omits credentials on a call without options", async () => {

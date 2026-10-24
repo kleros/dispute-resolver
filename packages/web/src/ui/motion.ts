@@ -100,6 +100,10 @@ export const ICON_SWAP_CLASS = "[grid-area:1/1] transition-[opacity,filter,scale
 export const ICON_SWAP_SHOWN = "opacity-100 [filter:blur(0)] scale-100";
 export const ICON_SWAP_HIDDEN = "opacity-0 [filter:blur(2px)] scale-25";
 
+/** A staggered reveal: the first line, then each later line one `--stagger-stagger` after it. */
+export const STAGGER_FIRST = "animate-[t-stagger-in_var(--stagger-dur)_var(--stagger-ease)_backwards] motion-reduce:animate-none";
+export const STAGGER_NEXT = "animate-[t-stagger-in_var(--stagger-dur)_var(--stagger-ease)_var(--stagger-stagger)_backwards] motion-reduce:animate-none";
+
 /**
  * A menu panel's look while it opens and while it closes. The static opacity-0 holds the panel invisible between the end
  * of the close animation and its unmount; under reduced motion the global guard shortens the animation instead of

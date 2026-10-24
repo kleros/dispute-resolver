@@ -9,14 +9,14 @@ import type { AppKitWalletSetup, WalletModal, WalletSetup, WalletSetupState } fr
 /** `createAppKitSetup`, which lives in its own chunk. */
 export type CreateAppKitSetup = typeof createAppKitSetup;
 
-export type LoadAppKit = () => Promise<CreateAppKitSetup>;
+type LoadAppKit = () => Promise<CreateAppKitSetup>;
 
 /**
  * The wallet setup over time, read through `useSyncExternalStore`. Without a WalletConnect project ID it is the
  * read-only setup from the start; with one it starts as a stand-in and becomes the AppKit setup once `load` has fetched
  * AppKit's chunk and created AppKit.
  */
-export interface WalletSetupStore {
+interface WalletSetupStore {
   readonly getSnapshot: () => WalletSetupState;
   readonly subscribe: (listener: () => void) => () => void;
   /**
@@ -70,7 +70,6 @@ export function createReadOnlySetup(config: AppConfig): WalletSetup {
 function deferredModal(load: () => Promise<AppKitWalletSetup>): WalletModal {
   return {
     openConnect: async (chainId) => (await load()).modal.openConnect(chainId),
-    openNetworks: async () => (await load()).modal.openNetworks(),
     ready: async () => (await load()).modal.ready(),
     hasEmbeddedWallet: async () => (await load()).modal.hasEmbeddedWallet(),
   };

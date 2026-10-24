@@ -33,7 +33,7 @@ export type Env = Readonly<Record<string, string | undefined>>;
  * result (`getCode` maps both `"0x"` and no result to `undefined`). Tests build one with
  * `createPublicClient({ transport: custom({ request }) })`.
  */
-export type ReadClient = Pick<PublicClient, "readContract" | "getLogs" | "getContractEvents" | "getCode" | "getStorageAt" | "getBlockNumber" | "getBlock" | "call" | "request">;
+export type ReadClient = Pick<PublicClient, "readContract" | "getLogs" | "getCode" | "getStorageAt" | "getBlockNumber" | "getBlock" | "request">;
 
 /** Returns the read client of a chain, or `undefined` when the chain has no RPC configured. */
 export type GetReadClient = (chainId: ChainId) => ReadClient | undefined;

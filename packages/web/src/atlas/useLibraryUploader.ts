@@ -8,15 +8,13 @@ import { isUserRejection, useWallet } from "../wallet";
 import { failure, reasonOf } from "./failures";
 import { LIBRARY_ROLES, refuseFile, roleLimits } from "./limits";
 import { browserSessionStorage, clearRejectedToken, isLiveToken, nowInSeconds, readStoredToken, tokenExpiry } from "./session";
-import type { AtlasUploader, JsonUpload, UploadPhase, UploadResult, UploadRole } from "./types";
-
-type Failure = Extract<UploadResult, { readonly ok: false }>;
+import type { AtlasUploader, JsonUpload, UploadFailure, UploadPhase, UploadResult, UploadRole } from "./types";
 
 /** How long the wrapper waits, once `authoriseUser()` resolves, for a committed render that carries the new session. */
-export const SIGN_IN_SETTLE_MS = 10_000;
+const SIGN_IN_SETTLE_MS = 10_000;
 
 /** How long an upload waits for the library's `roles(CourtV1)` query to be fetched again when the limits are unknown. */
-export const LIMITS_REFETCH_MS = 10_000;
+const LIMITS_REFETCH_MS = 10_000;
 
 /**
  * The library's query of the server's role restrictions (`@kleros/kleros-app` 3.1.0, registered in the app's
@@ -74,7 +72,7 @@ interface WalletSnapshot {
 }
 
 /** Why the wallet no longer matches the one the upload started with, or `null` when it still does. */
-function walletChange(started: WalletSnapshot, now: WalletSnapshot): Failure | null {
+function walletChange(started: WalletSnapshot, now: WalletSnapshot): UploadFailure | null {
   if (!now.connected) return failure.noWallet();
   if (now.chainId !== started.chainId) return failure.uploadFailed("the wallet changed chain");
   return null;
@@ -93,9 +91,9 @@ function liveWallet(config: Config): WalletSnapshot {
 const SIGN_MESSAGE_KEY = ["signMessage"] as const;
 
 class WalletChangedError extends Error {
-  readonly refusal: Failure;
+  readonly refusal: UploadFailure;
 
-  constructor(refusal: Failure) {
+  constructor(refusal: UploadFailure) {
     super(refusal.message);
     this.name = "WalletChangedError";
     this.refusal = refusal;
@@ -166,7 +164,7 @@ export function useLibraryUploader(): AtlasUploader {
   );
 
   const signIn = useCallback(
-    async (session: Session, started: WalletSnapshot): Promise<Session | Failure> => {
+    async (session: Session, started: WalletSnapshot): Promise<Session | UploadFailure> => {
       signingFor.current = started;
       try {
         await session.atlas.authoriseUser();

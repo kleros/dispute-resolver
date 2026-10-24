@@ -123,7 +123,6 @@ export type AppealPanel =
 export interface AppealPanelInput {
   readonly family: FamilyDetection;
   readonly period: Period;
-  readonly localId: LocalIdResolution;
   readonly override: BehaviorOverride | undefined;
   readonly rulingOptions: RulingOptions;
   readonly fallbackOutcomes: FallbackOutcomes;

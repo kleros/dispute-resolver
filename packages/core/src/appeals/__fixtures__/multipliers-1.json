@@ -1,5 +1,5 @@
 {
-  "provenance": "Raw JSON-RPC replies of eth_call with each multiplier getter selector (spec 10.9) and no arguments, sent to the mainnet read RPC at blockNumber, recorded 2026-10-14. A result of \"0x\" is a contract whose fallback function answers any unknown selector with no data (the governors).",
+  "provenance": "Raw JSON-RPC replies of eth_call with each multiplier getter selector and no arguments, sent to the mainnet read RPC at blockNumber, recorded 2026-10-14. A result of \"0x\" is a contract whose fallback function answers any unknown selector with no data (the governors).",
   "chainId": 1,
   "blockNumber": 26190905,
   "contracts": [

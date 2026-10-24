@@ -13,7 +13,7 @@ export interface ColorSchemeMedia {
 
 export type ColorSchemeStorage = Pick<Storage, "getItem" | "setItem">;
 
-export interface ColorSchemeStoreOptions {
+interface ColorSchemeStoreOptions {
   readonly root: HTMLElement;
   readonly media: ColorSchemeMedia | null;
   readonly storage: ColorSchemeStorage | null;
@@ -61,7 +61,7 @@ function isColorScheme(value: unknown): value is ColorScheme {
   return value === "light" || value === "dark";
 }
 
-export function readStoredScheme(storage: ColorSchemeStorage | null): ColorScheme | null {
+function readStoredScheme(storage: ColorSchemeStorage | null): ColorScheme | null {
   if (storage === null) return null;
   try {
     const value = storage.getItem(STORAGE_KEY);
@@ -72,7 +72,7 @@ export function readStoredScheme(storage: ColorSchemeStorage | null): ColorSchem
 }
 
 /** A storage that refuses the write (private mode, quota) leaves the choice in effect for this page only. */
-export function writeStoredScheme(storage: ColorSchemeStorage | null, scheme: ColorScheme): void {
+function writeStoredScheme(storage: ColorSchemeStorage | null, scheme: ColorScheme): void {
   if (storage === null) return;
   try {
     storage.setItem(STORAGE_KEY, scheme);
@@ -81,7 +81,7 @@ export function writeStoredScheme(storage: ColorSchemeStorage | null, scheme: Co
   }
 }
 
-export function resolveColorScheme(stored: ColorScheme | null, systemDark: boolean): ColorScheme {
+function resolveColorScheme(stored: ColorScheme | null, systemDark: boolean): ColorScheme {
   return stored ?? (systemDark ? "dark" : "light");
 }
 

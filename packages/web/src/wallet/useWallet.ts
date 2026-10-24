@@ -1,8 +1,8 @@
-import { getChain, toRegistryAddress } from "@dispute-resolver/core";
+import { toRegistryAddress } from "@dispute-resolver/core";
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
-import { useWalletSetup, useWalletSetupPendingReconnect } from "./context";
-import type { WalletMode, WalletState } from "./types";
+import { useWalletSetupPendingReconnect } from "./context";
+import type { WalletState } from "./types";
 
 type AccountStatus = ReturnType<typeof useAccount>["status"];
 
@@ -10,12 +10,12 @@ type AccountStatus = ReturnType<typeof useAccount>["status"];
  * Wagmi's account as the app's `WalletState`. Only a settled connection is `connected`: while wagmi reconnects a
  * returning wallet the state is `connecting`, so routing can wait for the reconnect to settle.
  */
-export function toWalletState(mode: WalletMode, status: AccountStatus, address: string | undefined, chainId: number | undefined): WalletState {
+export function toWalletState(status: AccountStatus, address: string | undefined, chainId: number | undefined): WalletState {
   if (status === "connected" && address !== undefined && chainId !== undefined) {
-    return { status: "connected", mode, address: toRegistryAddress(address), chainId, isConfiguredChain: getChain(chainId) !== undefined };
+    return { status: "connected", address: toRegistryAddress(address), chainId };
   }
-  if (status === "connecting" || status === "reconnecting") return { status: "connecting", mode };
-  return { status: "disconnected", mode };
+  if (status === "connecting" || status === "reconnecting") return { status: "connecting" };
+  return { status: "disconnected" };
 }
 
 /**
@@ -25,8 +25,7 @@ export function toWalletState(mode: WalletMode, status: AccountStatus, address: 
  * `disconnected` from the first render, so routing never waits for AppKit.
  */
 export function useWallet(): WalletState {
-  const { mode } = useWalletSetup();
   const pendingReconnect = useWalletSetupPendingReconnect();
   const { status, address, chainId } = useAccount();
-  return useMemo(() => toWalletState(mode, pendingReconnect ? "connecting" : status, address, chainId), [mode, pendingReconnect, status, address, chainId]);
+  return useMemo(() => toWalletState(pendingReconnect ? "connecting" : status, address, chainId), [pendingReconnect, status, address, chainId]);
 }

@@ -21,7 +21,7 @@ export interface AppealPlan {
   readonly disputeStartBlock: bigint;
 }
 
-export function appealNeeds(period: Period, family: FamilyDetection): { readonly funding: boolean; readonly multipliers: boolean; readonly withdraw: boolean } {
+function appealNeeds(period: Period, family: FamilyDetection): { readonly funding: boolean; readonly multipliers: boolean; readonly withdraw: boolean } {
   const { appeal, withdraw } = family.capabilities;
   const crowdfunds = appeal.kind === "idr" || appeal.kind === "governor";
   const withdraws = withdraw.kind === "idr-v2" || withdraw.kind === "idr-v1" || withdraw.kind === "governor";
@@ -35,7 +35,7 @@ interface RoundPlan {
   readonly starts: readonly bigint[];
 }
 
-export function roundPlan(period: Period, decisions: readonly AppealDecisionEvent[], override: BehaviorOverride | undefined, disputeStartBlock: bigint): RoundPlan {
+function roundPlan(period: Period, decisions: readonly AppealDecisionEvent[], override: BehaviorOverride | undefined, disputeStartBlock: bigint): RoundPlan {
   const current = fundingRound(decisions.length, override);
   const rounds = roundsToScan(period, decisions.length, override);
   return {

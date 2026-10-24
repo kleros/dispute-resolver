@@ -2,12 +2,13 @@ import { hasAppealPanel, type ChainConfig, type FamilyDetection, type Period } f
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { queryKeys, useCaseRefresh, type CaseDispute, type SectionData } from "../../data";
-import { RECORD_BAND, SectionBoundary, SectionSkeleton, useRevealIn } from "../../ui";
+import { SectionBoundary, SectionSkeleton, useRevealIn } from "../../ui";
 import { AppealSection } from "../case-appeal";
 import { EvidenceSection } from "../case-evidence";
 import { CaseOverview, DecisionAlert, DisputeSummary, DisputeTimeline, MetaEvidenceSourceNotice, RealityNotice, ScriptDetailsNotice } from "../case-summary";
 import { CaseAccordion, type CaseAccordionItem } from "./CaseAccordion";
 import { CompatibilityBanner } from "./CompatibilityBanner";
+import { CASE_BAND } from "./PageStates";
 import { foundDispute } from "./pageState";
 import { QuestionPanel } from "./QuestionPanel";
 import type { BoundaryRetries } from "./useBoundaryRetries";
@@ -109,7 +110,7 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
   return (
     <>
       {view.status === "ready" && !view.value.exists ? null : (
-        <div className={`${RECORD_BAND} flex min-w-0 flex-col gap-6 p-4 lg:px-8 lg:py-6`}>
+        <div className={CASE_BAND}>
           {boundary("overview", "Dispute details", rereadDetails, <CaseOverview {...props} />)}
           {boundary("timeline", "Timeline", rereadDetails, <DisputeTimeline {...props} />)}
         </div>

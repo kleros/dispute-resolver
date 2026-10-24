@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { parseDisputeId } from "@dispute-resolver/core";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SearchBox } from "./SearchBox";
@@ -13,7 +14,10 @@ interface Start {
   readonly autoFocus?: boolean;
 }
 
-/** Holds the typed text the way the page's search does, so typed keys build on each other. */
+/**
+ * Holds the typed text the way the page's search does, so typed keys build on each other, and refuses what it refuses:
+ * a number above the largest dispute ID changes nothing.
+ */
 function renderSearch({ pending = null, shownId = null, autoFocus = false }: Start = {}) {
   const change = vi.fn<(text: string) => void>();
   const submit = vi.fn<() => void>();
@@ -24,6 +28,7 @@ function renderSearch({ pending = null, shownId = null, autoFocus = false }: Sta
       shownId,
       change(next) {
         change(next);
+        if (next !== "" && parseDisputeId(next) === null) return;
         setText(next);
       },
       submit,
@@ -247,12 +252,15 @@ describe("SearchBox", () => {
     expect(change.mock.calls).toEqual([["16217"]]);
   });
 
-  it.each(["16 50", "16\t50", "1 621", "1621 ", " 1621", "\t"])("text %j that reaches the field without an insertion it could refuse is refused, never read as the ID without its whitespace", (text) => {
-    const { change } = renderSearch({ shownId: 1621n });
-    fireEvent.change(field(), { target: { value: text } });
-    expect(field()).toHaveValue("1621");
-    expect(change).not.toHaveBeenCalled();
-  });
+  it.each(["16 50", "16\t50", "1 621", "1621 ", " 1621", "\t"])(
+    "text %j that reaches the field without an insertion it could refuse is refused, never read as the ID without its whitespace",
+    (text) => {
+      const { change } = renderSearch({ shownId: 1621n });
+      fireEvent.change(field(), { target: { value: text } });
+      expect(field()).toHaveValue("1621");
+      expect(change).not.toHaveBeenCalled();
+    },
+  );
 
   it("an ID wrapped in whitespace that reaches the field without an insertion it could refuse enters as the ID alone", () => {
     const { change } = renderSearch({ shownId: 1621n });
@@ -261,7 +269,7 @@ describe("SearchBox", () => {
     expect(change.mock.calls).toEqual([["1650"]]);
   });
 
-  it.each(["1x1", "1 1", " ", "\t"])("an insertion of %j the field could not cancel is undone, keeping the selection it would have replaced", (text) => {
+  it.each(["1x1", "1 1", " ", "\t", "9".repeat(78)])("an insertion of %j the field could not cancel is undone, keeping the selection it would have replaced", (text) => {
     const { change } = renderSearch({ shownId: 1621n });
     field().setSelectionRange(1, 3);
     insertUncancellable(text);
@@ -309,6 +317,23 @@ describe("SearchBox", () => {
     await user.type(field(), "1");
     expect(field()).toHaveValue(LARGEST_ID);
     expect(change).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses a 78-digit number above the largest dispute ID and keeps the caret where it was", async () => {
+    const { user } = renderSearch({ shownId: 1650n });
+    await user.click(field());
+    field().setSelectionRange(2, 2);
+    await user.paste("9".repeat(78));
+    expect(field()).toHaveValue("1650");
+    expect(field().selectionStart).toBe(2);
+    expect(field().selectionEnd).toBe(2);
+
+    field().setSelectionRange(1, 3);
+    await user.paste("9".repeat(78));
+    expect(field()).toHaveValue("1650");
+    expect(field().selectionStart).toBe(1);
+    expect(field().selectionEnd).toBe(3);
+    expectNoMessage();
   });
 
   it("never shows a message, whatever is typed or pasted", async () => {

@@ -1,18 +1,16 @@
-import { getChain, type ChainConfig, type ChainId } from "@dispute-resolver/core";
+import type { ChainConfig, ChainId } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { useLocation, useNavigate } from "react-router";
-import { switchChainSegment } from "../../routing";
+import { SWITCHABLE_CHAINS, switchChainSegment } from "../../routing";
 import { Notice } from "../../ui";
 import { switchingLabel, useNetworkSwitch, useWallet } from "../../wallet";
 
-const ETHEREUM_MAINNET: ChainId = 1;
-const GNOSIS: ChainId = 100;
 // The library's button text never wraps (`whitespace-pre`); "View disputes on Ethereum Mainnet" must, at 320 px.
 const BUTTON_CLASS = "h-auto max-w-full [&_p]:whitespace-normal";
 
 /** The header pill's other production chain; a testnet page, reached by URL alone, is offered Ethereum Mainnet. */
 export function otherSwitchableChain(pageChainId: ChainId): ChainConfig | undefined {
-  return getChain(pageChainId === ETHEREUM_MAINNET ? GNOSIS : ETHEREUM_MAINNET);
+  return SWITCHABLE_CHAINS.find((chain) => chain.id !== pageChainId);
 }
 
 /**

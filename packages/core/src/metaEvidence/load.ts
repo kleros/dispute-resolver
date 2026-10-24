@@ -1,4 +1,5 @@
 import { BaseError } from "viem";
+import { isBodyTooLargeError } from "../fetch";
 import { deriveRealityRulingOptions, fetchRealityQuestion, isRealityScript } from "../reality";
 import type { RealityQuestionInfo } from "../reality/types";
 import { REGISTRY, getRealityProxy, isScriptAllowed } from "../registry";
@@ -288,11 +289,16 @@ function prepare(json: unknown): unknown {
   return { ...prepared, rulingOptions: { ...options, type: "single-select" } };
 }
 
-/** `null` on an HTTP error: the meta-evidence is then used without a merge, and the attempt is not retried. */
+/** `null` on an HTTP error or a script over the fetch cap: the meta-evidence is then used without a merge, and the attempt is not retried. */
 function fetchScript(load: Load, url: string): Promise<string | null> {
   return step(load, "fetch-error", async (signal) => {
-    const response = await load.context.fetcher(url, { signal });
-    return response.ok ? response.text() : null;
+    try {
+      const response = await load.context.fetcher(url, { signal });
+      return response.ok ? await response.text() : null;
+    } catch (error) {
+      if (isBodyTooLargeError(error)) return null;
+      throw error;
+    }
   });
 }
 
@@ -404,10 +410,11 @@ function cancelled(stage: TransientReason): MetaEvidenceResult {
   return failure(stage, "rpc-error", "The meta-evidence load was cancelled.");
 }
 
-/** An unexpected error is treated as transient; only a cancellation or the end of the budget is final. */
+/** An unexpected error is treated as transient; only a cancellation, the end of the budget or a body over the fetch cap is final. */
 function classify(load: Load, error: unknown): { readonly result: MetaEvidenceResult; readonly final: boolean } {
   if (load.deadline.cancelled()) return { result: cancelled(load.stage), final: true };
   if (load.deadline.expired()) return { result: budgetExhausted(), final: true };
+  if (isBodyTooLargeError(error)) return { result: failure(load.stage, "invalid-data", error.message), final: true };
   if (error instanceof TransientFailure) return { result: failure(error.reason, "rpc-error", error.message), final: false };
   const detail = errorDetail(error);
   const message = TRANSIENT_MESSAGES[load.stage];

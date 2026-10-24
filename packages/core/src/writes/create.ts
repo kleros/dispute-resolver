@@ -2,7 +2,8 @@ import { arbitrableProxyAbi } from "../abi";
 import type { ChainConfig } from "../chains/types";
 import type { Hex } from "../types";
 import { normalizeIpfsPath } from "../uri";
-import { built, isUint256, refused } from "./build";
+import { isUint256 } from "../rulings";
+import { built, refused } from "./build";
 import type { WriteBuild } from "./types";
 
 /** The meta-evidence upload result must be content-addressed and is written in canonical form. */

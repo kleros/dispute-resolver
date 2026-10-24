@@ -9,7 +9,8 @@ import { configuredChains, toViemChain } from "./chains";
 import { createTestWallet } from "../test/wallet";
 import type { AppKitWalletSetup } from "./types";
 import { createReadOnlySetup, createWalletSetupStore, hasPersistedConnection, walletSetupStoreFor, type CreateAppKitSetup, type ReadStoredItem } from "./setup";
-import { noRpcConfiguredError, walletTransport } from "./transports";
+import { noRpcError } from "../data";
+import { walletTransport } from "./transports";
 
 const LOCATION = { host: "localhost", origin: "http://localhost" };
 const SECRET_RPC = "https://mainnet.example.org/v3/secret-key";
@@ -242,7 +243,7 @@ describe("walletTransport", () => {
     vi.stubGlobal("fetch", fetchSpy);
     const transport = walletTransport(chain(1), {})({});
     expect(transport.config.type).toBe("custom");
-    await expect(transport.request({ method: "eth_blockNumber" })).rejects.toThrow(noRpcConfiguredError(1).message);
+    await expect(transport.request({ method: "eth_blockNumber" })).rejects.toThrow(noRpcError(1).message);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -262,8 +263,8 @@ describe("walletTransport", () => {
     for (let start = 0; start + 6 <= KEY.length; start += 1) expect(texts.join("\n")).not.toContain(KEY.slice(start, start + 6));
   });
 
-  it("the error names the chain without mentioning configuration", () => {
-    expect(noRpcConfiguredError(100).message).toBe("Reads on chain 100 are unavailable.");
+  it("the error names the chain without mentioning configuration", async () => {
+    await expect(walletTransport(chain(100), {})({}).request({ method: "eth_blockNumber" })).rejects.toThrow("Reads on chain 100 are unavailable.");
   });
 
   it("a read-only setup's chain without an RPC rejects every request the same way", async () => {

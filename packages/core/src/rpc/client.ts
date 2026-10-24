@@ -97,9 +97,7 @@ function buildReadClient(url: string, policy: TransportPolicy): ReadClient {
  */
 export function createReadClient(chain: ChainConfig, env: Env, options?: BudgetedReadClientOptions): ReadClientResolution {
   const rpc = resolveReadRpcUrl(chain, env);
-  const resolution: ReadClientResolution =
-    rpc.status === "configured" ? { status: "ok", client: buildReadClient(rpc.url, withDefaults(options)) } : { status: "unconfigured", chainId: chain.id };
-  return resolution;
+  return rpc.status === "configured" ? { status: "ok", client: buildReadClient(rpc.url, withDefaults(options)) } : { status: "unconfigured", chainId: chain.id };
 }
 
 /** Shared by every caller, so these clients carry no request budget. */

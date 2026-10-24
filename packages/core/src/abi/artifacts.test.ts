@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import {
   arbitrableProxyAbi,
   erc1497Abi,
-  erc792Abi,
   escrowV1Abi,
   governorAbi,
   idrLegacyFundAppealAbi,
@@ -145,16 +144,6 @@ const CASES: readonly AbiCase[] = [
       fn("arbitrationCreatedBlock(uint256)", ...CROSS_CHAIN_PROXY_ABIS),
       ev("DisputeIDToQuestionID(uint256,bytes32)", ARTIFACTS.realitioArbitratorProxy),
       ev("ArbitrationCreated(bytes32,address,uint256)", ...CROSS_CHAIN_PROXY_ABIS),
-    ],
-  },
-  {
-    name: "erc792Abi",
-    abi: erc792Abi,
-    entries: [
-      fn("arbitrationCost(bytes)", ARTIFACTS.iArbitrator),
-      fn("appealCost(uint256,bytes)", ARTIFACTS.iArbitrator),
-      ev("DisputeCreation(uint256,address)", ARTIFACTS.iArbitrator),
-      ev("AppealDecision(uint256,address)", ARTIFACTS.iArbitrator),
     ],
   },
   {

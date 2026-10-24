@@ -113,25 +113,8 @@ export async function readMetaEvidenceEvent(request: {
 
 /**
  * The scan starts at `fromBlock`, not at the dispute, because evidence can precede the dispute. Logs whose URI or
- * submitter does not decode are left out here; `loadEvidence` counts them as hidden.
+ * submitter does not decode are left out and counted; `loadEvidence` shows them as hidden. Rejects when a read fails.
  */
-export async function readEvidenceLogs(request: {
-  readonly client: ReadClient;
-  readonly arbitrable: Address;
-  readonly arbitrator: Address;
-  readonly evidenceGroupId: bigint;
-  readonly fromBlock: bigint;
-  readonly signal?: AbortSignal;
-}): Promise<Outcome<readonly EvidenceLog[]>> {
-  try {
-    const { logs } = await scanEvidenceLogs(request);
-    return succeed(logs);
-  } catch (error) {
-    return fail("rpc-error", `Could not read the evidence: ${describeError(error)}`);
-  }
-}
-
-/** Unlike `readEvidenceLogs`, rejects when a read fails. */
 export async function scanEvidenceLogs(request: ScanRequest & { readonly evidenceGroupId: bigint }): Promise<EvidenceScan> {
   const { client, signal } = request;
   signal?.throwIfAborted();

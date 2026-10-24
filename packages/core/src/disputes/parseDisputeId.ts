@@ -1,10 +1,10 @@
-const UINT256_MAX = 2n ** 256n - 1n;
+import { maxUint256 } from "viem";
 /** Rejects over-long strings before `BigInt` parses them. */
 const UINT256_MAX_DIGITS = 78;
 const DIGITS = /^\d+$/;
 
 function inRange(value: bigint): bigint | null {
-  return value >= 0n && value <= UINT256_MAX ? value : null;
+  return value >= 0n && value <= maxUint256 ? value : null;
 }
 
 /** An empty or missing ID is `null`, so a route without an ID never loads dispute 0. */

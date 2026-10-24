@@ -6,7 +6,7 @@ export { Amount } from "./Amount";
 export { Countdown } from "./Countdown";
 export { EmptyState } from "./EmptyState";
 export { ExpandIndicator } from "./ExpandIndicator";
-export { CHIP, CHIP_STATUS, EYEBROW, FACT, FACT_LEAD, FACT_SMALL, LABEL, PAGE_TITLE, PLATE, RECORD_BAND } from "./facts";
+export { CHIP_STATUS, EYEBROW, FACT, FACT_LEAD, FACT_SMALL, LABEL, PAGE_TITLE, PLATE, RECORD_BAND } from "./facts";
 export { Identicon } from "./Identicon";
 export { Notice } from "./Notice";
 export { PageMessage } from "./PageMessage";
@@ -29,6 +29,5 @@ export {
   useAfterLoading,
   usePresence,
   useRevealIn,
-  type Presence,
   type PresencePhase,
 } from "./motion";

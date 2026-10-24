@@ -17,8 +17,5 @@ export function createFamilyCache(): FamilyCache {
         if (entries.get(key) === detection) entries.delete(key);
       });
     },
-    delete: (chainId, address) => {
-      entries.delete(registryKey(chainId, address));
-    },
   };
 }

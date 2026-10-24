@@ -149,7 +149,7 @@ async function recordGnosis(): Promise<GnosisDispute[]> {
   const disputes: GnosisDispute[] = [];
   for (const dispute of GNOSIS_DISPUTES) disputes.push(await recordGnosisDispute(rpc, dispute));
   const fixture = {
-    provenance: `Raw eth_getLogs objects and block timestamps read from the Gnosis (chain 100) read RPC on ${RECORDED_ON} with the chain head at block ${String(GNOSIS_HEAD)} (readAtBlock), by packages/core/scripts/record-meta-evidence-events.ts: each dispute's ERC-1497 Dispute log (filtered on the arbitrator and the dispute ID over [scanFromBlock, readAtBlock]) and every MetaEvidence log of its metaEvidenceID (over [0, readAtBlock]). P-25: the meta-evidence API answered ${LOCATOR_460} for dispute 460 on every request of that day.`,
+    provenance: `Raw eth_getLogs objects and block timestamps read from the Gnosis (chain 100) read RPC on ${RECORDED_ON} with the chain head at block ${String(GNOSIS_HEAD)} (readAtBlock), by packages/core/scripts/record-meta-evidence-events.ts: each dispute's ERC-1497 Dispute log (filtered on the arbitrator and the dispute ID over [scanFromBlock, readAtBlock]) and every MetaEvidence log of its metaEvidenceID (over [0, readAtBlock]). The meta-evidence API answered ${LOCATOR_460} for dispute 460 on every request of that day.`,
     chainId: GNOSIS,
     readAtBlock: Number(GNOSIS_HEAD),
     arbitrator: GNOSIS_ARBITRATOR,
@@ -169,7 +169,7 @@ async function record460E2e(dispute: GnosisDispute): Promise<void> {
   const recorded = await Promise.all([eventPath, LOCATOR_460].map(async (path) => ({ path, status: 200, body: await fetchGatewayJson(path) })));
   const files = [...recorded, { path: DEFAULT_SCRIPT_PATH, status: 404, body: null }];
   const fixture = {
-    description: `Gnosis dispute 460 (ArbitrableProxy, local meta-evidence ID 84) for P-25: its raw Dispute and MetaEvidence(84) logs read from the Gnosis read RPC on ${RECORDED_ON} with the head at readAtBlock, the two meta-evidence files read from ${GATEWAY} the same day (the chain's ${eventPath} and the API's ${LOCATOR_460}), and the meta-evidence API's answer of that day (locator). The default script both files name is answered 404, so the files render without it. The spec answers eth_getLogs by topic from logs and builds every other read itself.`,
+    description: `Gnosis dispute 460 (ArbitrableProxy, local meta-evidence ID 84): its raw Dispute and MetaEvidence(84) logs read from the Gnosis read RPC on ${RECORDED_ON} with the head at readAtBlock, the two meta-evidence files read from ${GATEWAY} the same day (the chain's ${eventPath} and the API's ${LOCATOR_460}), and the meta-evidence API's answer of that day (locator). The default script both files name is answered 404, so the files render without it. The spec answers eth_getLogs by topic from logs and builds every other read itself.`,
     chainId: GNOSIS,
     disputeId: dispute.disputeId,
     readAtBlock: Number(GNOSIS_HEAD),
@@ -221,7 +221,7 @@ async function recordMainnet1621(file: string, rpc: RawRpc): Promise<void> {
     `${name}: ${String(added.length)} pass(es), latest MetaEvidence(0) ${latestLog === undefined ? "none" : decodedUri(latestLog)}, ${String(missing.length)} call(s) added`,
   );
   if (missing.length === 0) return;
-  const provenance = ` P-25: the governor's MetaEvidence(0) eth_getLogs answer was added on ${RECORDED_ON}, read from the chain-1 read RPC at readAtBlock by packages/core/scripts/record-meta-evidence-events.ts.`;
+  const provenance = ` The governor's MetaEvidence(0) eth_getLogs answer was added on ${RECORDED_ON}, read from the chain-1 read RPC at readAtBlock by packages/core/scripts/record-meta-evidence-events.ts.`;
   const end = callsEnd(text);
   const inserted = missing.map((call) => `,\n    ${JSON.stringify(call)}`).join("");
   // The provenance is appended inside the description's JSON string, which keeps its own escapes.

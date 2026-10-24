@@ -37,11 +37,6 @@ export function normalizeIpfsPath(input: unknown): CanonicalIpfsPath | null {
   return `/ipfs/${cid}${tail}`;
 }
 
-/** Whether a meta-evidence, evidence or dynamic-script URI may be fetched. */
-export function isContentAddressed(input: unknown): boolean {
-  return normalizeIpfsPath(input) !== null;
-}
-
 /** The form of dynamic-script allowlist entries. */
 export function toCidPath(path: CanonicalIpfsPath): CidPath {
   // A canonical path comes only from `normalizeIpfsPath`, which checked that the segment after `/ipfs/` is a CID.

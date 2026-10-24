@@ -19,9 +19,9 @@ import { useToast } from "../../shell";
 import { useWrite, useWriteAccess, type NeedsWalletGuard, type WriteAccess, type WriteStatus, type WrongChainGuard } from "../../wallet";
 
 /** The page opens the new dispute this long after the success toast. */
-export const NAVIGATION_DELAY_MS = 2000;
+const NAVIGATION_DELAY_MS = 2000;
 
-export const META_EVIDENCE_FILE_NAME = "metaEvidence.json";
+const META_EVIDENCE_FILE_NAME = "metaEvidence.json";
 
 /** `writing` means the write hook's own status is the one to show, from waiting for the wallet to its outcome. */
 export type CreateActionState =
@@ -34,7 +34,7 @@ export type CreateActionState =
   | { readonly kind: "created"; readonly disputeId: bigint }
   | { readonly kind: "no-dispute-id" };
 
-export interface CreateDisputeAction {
+interface CreateDisputeAction {
   readonly access: WriteAccess;
   readonly state: CreateActionState;
   readonly writeStatus: WriteStatus;

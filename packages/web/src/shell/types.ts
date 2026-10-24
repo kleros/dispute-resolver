@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 import type { AppConfig } from "../env";
-import type { ResolvedChain } from "../routing";
+import type { FrameProps } from "../routing";
 import type { ColorSchemeStore } from "../theme";
 
 export type ToastVariant = "success" | "error" | "sync";
@@ -17,10 +17,7 @@ export interface Toaster {
   show(toast: ToastInput): void;
 }
 
-export interface PageFrameProps {
-  readonly resolvedChain: ResolvedChain;
-  readonly children: ReactNode;
-}
+export type PageFrameProps = FrameProps;
 
 export type ConfiguredProvider = ComponentType<{ readonly config: AppConfig; readonly children?: ReactNode }>;
 

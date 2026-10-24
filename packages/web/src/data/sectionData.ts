@@ -2,8 +2,8 @@ import { describeError, type ChainId, type Outcome, type Unavailable, type Unava
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { SectionData } from "./types";
 
-export type LoadingSection = Extract<SectionData<never>, { readonly status: "loading" }>;
-export type UnavailableSection = Extract<SectionData<never>, { readonly status: "unavailable" }>;
+type LoadingSection = Extract<SectionData<never>, { readonly status: "loading" }>;
+type UnavailableSection = Extract<SectionData<never>, { readonly status: "unavailable" }>;
 
 export const LOADING: LoadingSection = Object.freeze({ status: "loading" });
 

@@ -110,7 +110,6 @@ function chainConfig(chainId: ChainId): ChainConfig {
 
 interface PanelOptions {
   readonly family?: FamilyDetection;
-  readonly localId?: LocalIdResolution;
   readonly rulingOptions?: RulingOptions;
   readonly currentRuling?: bigint;
   /** The arbitrator's `currentRuling` read; `currentRuling` gives a successful one. */
@@ -124,7 +123,6 @@ function crowdfunding(options: PanelOptions = {}): AppealPanel {
   const input: AppealPanelInput = {
     family: options.family ?? testFamily(),
     period: 3,
-    localId: options.localId ?? LOCAL_ID,
     override: undefined,
     rulingOptions: options.rulingOptions ?? YES_NO,
     fallbackOutcomes: null,
@@ -156,7 +154,6 @@ function caseDispute(panel: AppealPanel | SectionData<AppealPanel>, options: Dis
     binding: lookup.binding,
     family,
     localId: options.localId ?? LOCAL_ID,
-    appealInfo: APPEAL_INFO,
     readAppealCost: options.readAppealCost ?? (() => Promise.resolve({ ok: true, value: shownCost })),
   });
   return {
@@ -586,7 +583,11 @@ describe("AppealSection: crowdfunding cards", () => {
   it("a contribution edited for one combination is dropped when the composer's ticks change to a combination with its own card, which then prefills and funds that card's remaining amount", async () => {
     const user = userEvent.setup();
     writes.fake = fakeWriteController(SENT);
-    await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "multiple-select", titles: ["A", "B", "C", "D", "E"] }, currentRuling: 3n, contributions: [{ ruling: 3n, amount: ETH / 2n }] })));
+    await renderSection(
+      caseDispute(
+        crowdfunding({ rulingOptions: { type: "multiple-select", titles: ["A", "B", "C", "D", "E"] }, currentRuling: 3n, contributions: [{ ruling: 3n, amount: ETH / 2n }] }),
+      ),
+    );
     await user.clear(contributionField(composerCard()));
     await user.type(contributionField(composerCard()), "10");
     expect(contributionField(composerCard())).toHaveValue("10");
@@ -827,9 +828,7 @@ describe("AppealSection: crowdfunding cards", () => {
   });
 
   it("a governor panel has no ruling-0 card", async () => {
-    await renderSection(
-      caseDispute(crowdfunding({ family: GOVERNOR, localId: { kind: "not-applicable" }, rulingOptions: { type: "single-select", titles: ["A", "B", "C"] } }), { family: GOVERNOR }),
-    );
+    await renderSection(caseDispute(crowdfunding({ family: GOVERNOR, rulingOptions: { type: "single-select", titles: ["A", "B", "C"] } }), { family: GOVERNOR }));
     expect(cardTitles()).toEqual(["A", "B", "C"]);
   });
 
@@ -838,12 +837,9 @@ describe("AppealSection: crowdfunding cards", () => {
     const multipliers: Multipliers = { ...MULTIPLIERS, sharedMultiplier: 15_000n };
     const shared = ETH + (ETH * 15_000n) / 10_000n;
     await renderSection(
-      caseDispute(
-        crowdfunding({ family: GOVERNOR, localId: { kind: "not-applicable" }, currentRuling: 0n, multipliers, rulingOptions: { type: "single-select", titles: ["A", "B"] } }),
-        {
-          family: GOVERNOR,
-        },
-      ),
+      caseDispute(crowdfunding({ family: GOVERNOR, currentRuling: 0n, multipliers, rulingOptions: { type: "single-select", titles: ["A", "B"] } }), {
+        family: GOVERNOR,
+      }),
     );
     expect(cardTitles()).toEqual(["A", "B"]);
     for (const element of cardElements()) {
@@ -976,7 +972,7 @@ describe("AppealSection: funding", () => {
   it("a refused funding renders its reason and the page stays", async () => {
     const user = userEvent.setup();
     const unresolved: LocalIdResolution = { kind: "unresolved", reason: "reverted" };
-    await renderSection(caseDispute(crowdfunding({ localId: unresolved }), { localId: unresolved }));
+    await renderSection(caseDispute(crowdfunding(), { localId: unresolved }));
     await user.click(fundButton(card("No")));
     const alert = await within(card("No")).findByRole("alert");
     expect(alert).toHaveTextContent("could not be read, so nothing was sent");

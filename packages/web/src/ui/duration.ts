@@ -2,14 +2,14 @@ const SECONDS_PER_MINUTE = 60n;
 const SECONDS_PER_HOUR = 3_600n;
 const SECONDS_PER_DAY = 86_400n;
 
-export interface DurationParts {
+interface DurationParts {
   readonly days: bigint;
   readonly hours: bigint;
   readonly minutes: bigint;
 }
 
 /** Whole days, hours and minutes of a duration; a negative, NaN or infinite duration counts as zero. */
-export function durationParts(seconds: number | bigint): DurationParts {
+function durationParts(seconds: number | bigint): DurationParts {
   let total: bigint;
   if (typeof seconds === "bigint") {
     total = seconds;

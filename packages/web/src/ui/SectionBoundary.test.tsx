@@ -70,7 +70,7 @@ describe("SectionBoundary", () => {
     expect(screen.queryByText("Summary unavailable")).toBeNull();
   });
 
-  it("Retry works without an onRetry handler", async () => {
+  it("Retry renders the section again even when no onRetry handler is given", async () => {
     render(
       <SectionBoundary section="Summary">
         <Title title="Recovered title" />

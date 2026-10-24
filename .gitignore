@@ -2,15 +2,12 @@
 
 # dependencies
 node_modules/
-/.pnp
-.pnp.js
 .yarn/
 
 # testing
 /coverage
 
 # production
-/build
 packages/*/dist
 
 # test and tool output

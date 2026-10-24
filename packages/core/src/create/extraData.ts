@@ -1,8 +1,8 @@
+import { maxUint256 } from "viem";
 import type { Hex } from "../types";
-import { MAX_UINT256 } from "./limits";
 
 function uint256Word(value: bigint, name: string): string {
-  if (value < 0n || value > MAX_UINT256) throw new RangeError(`${name} must fit a uint256, got ${value.toString()}`);
+  if (value < 0n || value > maxUint256) throw new RangeError(`${name} must fit a uint256, got ${value.toString()}`);
   return value.toString(16).padStart(64, "0");
 }
 

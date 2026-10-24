@@ -245,6 +245,18 @@ describe("loadMetaEvidence gating", () => {
     });
   });
 
+  it("a registered proxy whose template nests deeper than the parser reads gets unresolvable options at once", async () => {
+    const entry = proxyEntry(CROSS_CHAIN_PROXY);
+    const templateText = `{"title": "%s", "type": "bool", "x": ${"[".repeat(20_000)}${"]".repeat(20_000)}}`;
+    const cache = realityCache({ [realityQuestionCacheKey(1, entry, 1684n)]: { ...boolQuestion("Will it rain?"), templateText } });
+    const { fetcher } = fakeFetcher(servedMetaEvidence(json({ title: "Reality question" })));
+    const result = await loadMetaEvidence(context({ fetcher, arbitrable: CROSS_CHAIN_PROXY, realityCache: cache, budgetMs: 1_000 }));
+    expect(result).toMatchObject({
+      status: "ok",
+      metaEvidence: { rulingOptions: { type: "single-select", titles: [] }, realityQuestion: { status: "unresolvable", reason: "invalid-template" } },
+    });
+  });
+
   it("a registered proxy whose meta-evidence has neither title nor rulingOptions is not looked up", async () => {
     const cache = realityCache({});
     const { fetcher } = fakeFetcher(servedMetaEvidence(json({ description: "No title" })));

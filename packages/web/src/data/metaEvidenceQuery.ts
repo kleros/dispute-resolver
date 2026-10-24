@@ -14,7 +14,7 @@ import { IDLE_KEY, queryKeys } from "./queryKeys";
 import type { CoreDeps, MetaEvidenceBudget } from "./types";
 
 /** `arbitrable` is the arbitrator's `arbitrated`, never the meta-evidence's. */
-export interface MetaEvidenceTarget {
+interface MetaEvidenceTarget {
   readonly disputeId: bigint;
   readonly arbitrable: Address;
 }

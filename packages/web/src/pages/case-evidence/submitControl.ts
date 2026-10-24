@@ -1,7 +1,7 @@
 import { deriveCompatibility, type Unavailable } from "@dispute-resolver/core";
 import type { CaseDispute, CaseWriteContext } from "../../data";
 
-export type SubmitControl =
+type SubmitControl =
   | { readonly kind: "hidden" } // no dispute, or the execution period
   | { readonly kind: "loading" }
   | { readonly kind: "unavailable"; readonly error: Unavailable } // the family or the details read failed

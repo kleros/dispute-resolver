@@ -1,9 +1,9 @@
-import { isAddress } from "viem";
+import { isAddress, maxUint256 } from "viem";
 import { toRegistryAddress } from "../registry";
 import type { Address } from "../types";
 import { normalizeIpfsPath } from "../uri";
 import type { CanonicalIpfsPath } from "../uri/types";
-import { CREATE_LIMITS, MAX_UINT256 } from "./limits";
+import { CREATE_LIMITS } from "./limits";
 import type { CreateDisputeDraft, CreateFieldErrorCode, CreateOptionDraft, CreatePartyDraft, CreateValidation } from "./types";
 
 type Checked<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: CreateFieldErrorCode };
@@ -29,7 +29,7 @@ function checkInteger(input: string, min: bigint): Checked<bigint> {
   if (input === "") return invalid("required");
   if (!DECIMAL.test(input)) return invalid("not-an-integer");
   const value = BigInt(input);
-  return value < min || value > MAX_UINT256 ? invalid("out-of-range") : valid(value);
+  return value < min || value > maxUint256 ? invalid("out-of-range") : valid(value);
 }
 
 /** Like an HTML `required` input: only the empty string is missing, so whitespace alone counts as a value. */

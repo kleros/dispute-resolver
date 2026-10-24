@@ -61,9 +61,6 @@ function appKitModal(appKit: AppKit, networks: readonly Chain[]): WalletModal {
       if (network !== undefined) await appKit.switchNetwork(network);
       await appKit.open({ view: "Connect" });
     },
-    async openNetworks() {
-      await appKit.open({ view: "Networks" });
-    },
     ready: () => appKit.ready(),
     hasEmbeddedWallet,
   };

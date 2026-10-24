@@ -53,7 +53,7 @@ function DisputeState({ dispute, chain, retries }: DisputeStateProps) {
 }
 
 type Placeholder =
-  | { readonly kind: "pending"; readonly empty: boolean }
+  | { readonly kind: "pending"; readonly empty: boolean; readonly disputeId: bigint | null }
   | { readonly kind: "no-id" }
   | { readonly kind: "not-found"; readonly id: string }
   | { readonly kind: "no-arbitrator"; readonly id: string };
@@ -67,7 +67,7 @@ interface PlaceholderStateProps {
 function PlaceholderState({ placeholder, chainId, chainName }: PlaceholderStateProps) {
   switch (placeholder.kind) {
     case "pending":
-      return placeholder.empty ? <NoDisputeMessage /> : <PendingSearch />;
+      return placeholder.empty ? <NoDisputeMessage /> : <PendingSearch disputeId={placeholder.disputeId} chainName={chainName} />;
     case "no-id":
       return <NoDisputeMessage />;
     case "not-found":
@@ -95,7 +95,7 @@ export function CasePage() {
   const searchBox = <SearchBox search={search} autoFocus={urlId === undefined} />;
 
   let placeholder: Placeholder | null = null;
-  if (search.pending !== null) placeholder = { kind: "pending", empty: search.pending === "" };
+  if (search.pending !== null) placeholder = { kind: "pending", empty: search.pending === "", disputeId: parsedId };
   else if (urlId === undefined) placeholder = { kind: "no-id" };
   else if (parsedId === null) placeholder = { kind: "not-found", id: urlId };
   else if (!capabilities.hasArbitrator) placeholder = { kind: "no-arbitrator", id: parsedId.toString() };

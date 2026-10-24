@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BodyTooLargeError } from "../fetch";
 import type { Address, Fetcher, Hex } from "../types";
 import type { EvidenceContext } from "./types";
 import { loadEvidence } from "./index";
@@ -19,7 +20,6 @@ const CIDV1 = "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi";
 function recordedContext(dispute: ReturnType<typeof recordedDispute>, fetcher: Fetcher, node: FakeNode = recordedNode()) {
   const { client, requests } = fakeClient(node);
   const context: EvidenceContext = {
-    chainId: 1,
     client,
     fetcher,
     gateway: GATEWAY,
@@ -44,7 +44,6 @@ function syntheticContext(logs: readonly RpcLog[], bodies: Readonly<Record<strin
   const { client, requests } = fakeClient({ head: 1_000n, logs, timestamps: timestampsOf(logs), ...node });
   const fake = fakeFetcher(bodies);
   const context: EvidenceContext = {
-    chainId: 1,
     client,
     fetcher: fake.fetcher,
     gateway: GATEWAY,
@@ -174,6 +173,20 @@ describe("loadEvidence", () => {
     expect(outcome.ok && outcome.value).toEqual({ items: [], hiddenEvidenceCount: 2, hiddenByReason: { ...NOTHING_HIDDEN, "fetch-failed": 2 } });
   });
 
+  it("a body over the fetch cap is hidden as fetch-failed, not as not-json", async () => {
+    const { context } = syntheticContext([entry(`/ipfs/${CID_A}`, 10n), entry(`/ipfs/${CID_B}`, 11n)], {
+      [`${GATEWAY}/ipfs/${CID_A}`]: JSON.stringify({ name: "read past the cap" }),
+      [`${GATEWAY}/ipfs/${CID_B}`]: new BodyTooLargeError(1),
+    });
+    const base = context.fetcher;
+    const fetcher: Fetcher = async (url, init) => {
+      const response = await base(url, init);
+      return url === `${GATEWAY}/ipfs/${CID_A}` ? { ...response, json: () => Promise.reject(new BodyTooLargeError(1)) } : response;
+    };
+    const outcome = await loadEvidence({ ...context, fetcher });
+    expect(outcome.ok && outcome.value).toEqual({ items: [], hiddenEvidenceCount: 2, hiddenByReason: { ...NOTHING_HIDDEN, "fetch-failed": 2 } });
+  });
+
   it("a body that is not JSON is hidden as not-json", async () => {
     const { context } = syntheticContext([entry(`/ipfs/${CID_A}`, 10n)], { [`${GATEWAY}/ipfs/${CID_A}`]: "%PDF-1.4 binary" });
     const outcome = await loadEvidence(context);
@@ -260,7 +273,6 @@ describe("loadEvidence", () => {
       return Promise.reject(new DOMException("aborted", "AbortError"));
     };
     const context: EvidenceContext = {
-      chainId: 1,
       client,
       fetcher,
       gateway: GATEWAY,
@@ -288,7 +300,7 @@ describe("loadEvidence", () => {
       inFlight -= 1;
       return { ok: true, status: 200, json: () => Promise.resolve({ name: "n" }), text: () => Promise.resolve("") };
     };
-    const context: EvidenceContext = { chainId: 1, client, fetcher, gateway: GATEWAY, arbitrable: ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: GROUP, fromBlock: 0n };
+    const context: EvidenceContext = { client, fetcher, gateway: GATEWAY, arbitrable: ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: GROUP, fromBlock: 0n };
     const outcome = await loadEvidence(context);
     expect(outcome.ok && outcome.value.items).toHaveLength(count);
     expect(peak).toBeGreaterThan(1);

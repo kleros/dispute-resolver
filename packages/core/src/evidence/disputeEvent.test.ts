@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { erc1497Abi } from "../abi";
 import { CHAINS } from "../chains";
 import type { Address } from "../types";
-import { evidenceScanStart, readDisputeEvent, readEvidenceLogs } from "./index";
+import { scanEvidenceLogs } from "./events";
+import { evidenceScanStart, readDisputeEvent } from "./index";
 import { disputeLog, evidenceLog, fakeClient, recordedDispute, recordedNode, RECORDED, rpcError, type RpcLog } from "../test/evidence/testHelpers";
 
 const ARBITRATOR = RECORDED.arbitrator;
@@ -154,7 +155,7 @@ describe("Evidence and Dispute-event scan start", () => {
       const head = fromBlock + BigInt(chain.maxLookback) * 10n;
       const { client, requests } = fakeClient(recordedNode({ head, logs: [], timestamps: {} }));
       await readDisputeEvent({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, disputeId: 7n, fromBlock });
-      await readEvidenceLogs({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, fromBlock });
+      await scanEvidenceLogs({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, fromBlock });
       expect(requests.logs.map((request) => [request.fromBlock, request.toBlock])).toEqual([
         [fromBlock, head],
         [fromBlock, head],
@@ -163,22 +164,21 @@ describe("Evidence and Dispute-event scan start", () => {
   });
 });
 
-describe("readEvidenceLogs", () => {
+describe("scanEvidenceLogs", () => {
   it("reads the recorded Evidence logs of mainnet 505 in chain order with lowercase submitters", async () => {
     const { client, requests } = fakeClient(recordedNode());
-    const outcome = await readEvidenceLogs({
+    const { logs } = await scanEvidenceLogs({
       client,
       arbitrable: DISPUTE_505.arbitrable,
       arbitrator: ARBITRATOR,
       evidenceGroupId: 57n,
       fromBlock: RECORDED.scanFromBlock,
     });
-    if (!outcome.ok) throw new Error(outcome.error.message);
-    expect(outcome.value).toHaveLength(5);
-    expect(outcome.value.map((log) => [log.blockNumber, log.logIndex])).toEqual(DISPUTE_505.evidenceLogs.map((log) => [BigInt(log.blockNumber), Number(log.logIndex)]));
-    expect(outcome.value.map((log) => log.submitter)).toEqual(DISPUTE_505.evidenceLogs.map((log) => `0x${(log.topics[3] ?? "").slice(26)}`));
-    expect(outcome.value.every((log) => log.submitter === log.submitter.toLowerCase())).toBe(true);
-    expect(outcome.value[0]?.evidenceUri).toBe("/ipfs/QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA/evidence.json");
+    expect(logs).toHaveLength(5);
+    expect(logs.map((log) => [log.blockNumber, log.logIndex])).toEqual(DISPUTE_505.evidenceLogs.map((log) => [BigInt(log.blockNumber), Number(log.logIndex)]));
+    expect(logs.map((log) => log.submitter)).toEqual(DISPUTE_505.evidenceLogs.map((log) => `0x${(log.topics[3] ?? "").slice(26)}`));
+    expect(logs.every((log) => log.submitter === log.submitter.toLowerCase())).toBe(true);
+    expect(logs[0]?.evidenceUri).toBe("/ipfs/QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA/evidence.json");
     expect(requests.logs[0]?.topics).toEqual([DISPUTE_505.evidenceLogs[0]?.topics[0], pad(ARBITRATOR), numberToHex(57n, { size: 32 }), null]);
   });
 
@@ -193,14 +193,13 @@ describe("readEvidenceLogs", () => {
       logIndex: 0,
     });
     const { client } = fakeClient(recordedNode({ logs: [early, syntheticDispute(100n, 0)], timestamps: {} }));
-    const outcome = await readEvidenceLogs({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, fromBlock: 0n });
-    expect(outcome.ok && outcome.value.map((log) => log.blockNumber)).toEqual([50n]);
+    const { logs } = await scanEvidenceLogs({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, fromBlock: 0n });
+    expect(logs.map((log) => log.blockNumber)).toEqual([50n]);
   });
 
-  it("a failed scan degrades to rpc-error", async () => {
+  it("a failed scan rejects", async () => {
     const { client } = fakeClient(recordedNode({ failing: { eth_getLogs: rpcError(-32000, "down") } }));
-    const outcome = await readEvidenceLogs({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, fromBlock: 0n });
-    expect(!outcome.ok && outcome.error.code).toBe("rpc-error");
+    await expect(scanEvidenceLogs({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, fromBlock: 0n })).rejects.toThrow();
   });
 
   it("leaves out an Evidence log whose data does not decode", async () => {
@@ -215,7 +214,8 @@ describe("readEvidenceLogs", () => {
     });
     const broken: RpcLog = { ...valid, data: "0xdeadbeef", logIndex: "0x1" };
     const { client } = fakeClient(recordedNode({ logs: [valid, broken], timestamps: {} }));
-    const outcome = await readEvidenceLogs({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, fromBlock: 0n });
-    expect(outcome.ok && outcome.value.map((log) => log.logIndex)).toEqual([0]);
+    const scan = await scanEvidenceLogs({ client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, fromBlock: 0n });
+    expect(scan.logs.map((log) => log.logIndex)).toEqual([0]);
+    expect(scan.undecodable).toBe(1);
   });
 });

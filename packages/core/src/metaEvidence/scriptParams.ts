@@ -22,7 +22,7 @@ function publicRpcUrl(chainId: ChainId, env: Env): string | null {
 }
 
 /**
- * A present chain ID that is not an integer naming a configured chain (`"1</script>"`, `"1.0"`, Optimism's 10) fails
+ * A present chain ID that is not an integer naming a configured chain (`"1.0"`, Optimism's 10) fails
  * with `no-rpc`, and the script is not run. The arbitrable must be the arbitrator's, never one the meta-evidence names.
  */
 export function buildScriptParameters(input: {

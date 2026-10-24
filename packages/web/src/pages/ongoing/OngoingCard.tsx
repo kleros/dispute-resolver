@@ -24,7 +24,7 @@ const ARROW_APEX = { transformOrigin: "13px 8px" } as const;
  * The court line's text: the court's name; its ID with "name unavailable" when its policy failed; its ID with
  * "unavailable" when the court list failed or does not hold it. `null` while the courts load.
  */
-export function courtLabel(courts: SectionData<readonly Court[]>, subcourtId: bigint): string | null {
+function courtLabel(courts: SectionData<readonly Court[]>, subcourtId: bigint): string | null {
   if (courts.status === "loading") return null;
   const court = courts.status === "ready" ? courts.value.find((candidate) => candidate.id === subcourtId) : undefined;
   if (court === undefined) return `Court ${subcourtId.toString()} (unavailable)`;

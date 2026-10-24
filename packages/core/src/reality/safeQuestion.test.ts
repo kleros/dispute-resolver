@@ -237,6 +237,11 @@ describe("rulingOptionsFromTemplate", () => {
   });
 });
 
+/** A bool template whose `x` key holds `depth` nested arrays. */
+function nestedTemplate(depth: number): string {
+  return `{"title": "%s", "type": "bool", "x": ${"[".repeat(depth)}${"]".repeat(depth)}}`;
+}
+
 describe("hostile templates", () => {
   it("analyzes a template stuffed with every nonce candidate in linear time", () => {
     const candidates = Array.from({ length: 40_000 }, (_unused, index) => `@@kleros${String(index)}#`);
@@ -249,6 +254,15 @@ describe("hostile templates", () => {
 
     expect(result).toMatchObject({ ok: true, question: { type: "bool", category: "b", lang: "c" } });
     expect(elapsedMs).toBeLessThan(500);
+  });
+
+  it("reads a template nested a few levels deep", () => {
+    expect(safePopulatedJSONForTemplate(nestedTemplate(10), "a")).toMatchObject({ ok: true, question: { title: "a", type: "bool" } });
+  });
+
+  it("rejects a template nested deeper than the parser reads as an invalid template", () => {
+    expect(safePopulatedJSONForTemplate(nestedTemplate(100), "a")).toEqual({ ok: false, reason: "invalid-template" });
+    expect(safePopulatedJSONForTemplate(nestedTemplate(20_000), "a")).toEqual({ ok: false, reason: "invalid-template" });
   });
 
   it("reads token-looking text of a template as plain text", () => {

@@ -6,8 +6,7 @@ import type { PopulatedQuestion, SafePopulateReason, SafePopulateResult } from "
  * Safe replacement for reality-eth-lib's `populatedJSONForTemplate(template, question)`.
  *
  * reality-eth-lib splits the question on U+241F and pastes each part verbatim into the template's `%s` placeholders
- * before calling `JSON.parse`, so a crafted parameter containing `"` can close the string it lands in and add or
- * override keys of the question JSON (`type`, `outcomes`, `title_html`...).
+ * before calling `JSON.parse`, so a part is not confined to the placeholder it fills.
  *
  * Here every placeholder's JSON context is learned from the template first, and each parameter is encoded so that it
  * can only ever be the content of that context:
@@ -79,7 +78,7 @@ function analyzeTemplate(templateText: string): TemplateAnalysis {
 function encodeStringParam(param: string): string {
   try {
     JSON.parse(`"${param}"`);
-    return param; // Already a correctly escaped JSON string fragment.
+    return param;
   } catch {
     return JSON.stringify(param).slice(1, -1);
   }
@@ -98,7 +97,7 @@ function encodeArrayParam(param: string): string | null {
 
 function encodeValueParam(param: string): string | null {
   const trimmed = param.trim();
-  if (JSON_NUMBER.test(trimmed) || JSON_LITERALS.has(trimmed)) return trimmed; // Number text is kept as written.
+  if (JSON_NUMBER.test(trimmed) || JSON_LITERALS.has(trimmed)) return trimmed;
   if (!trimmed.startsWith('"')) return null;
   try {
     const value: unknown = JSON.parse(trimmed);

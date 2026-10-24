@@ -1,11 +1,6 @@
 import { redactingHttp, resolveReadRpcUrl, type ChainConfig, type Env } from "@dispute-resolver/core";
 import { custom, type Transport } from "viem";
-
-/** The error every request of an unconfigured chain's transport rejects with; a failed receipt shows its text. */
-export function noRpcConfiguredError(chainId: number): Error {
-  // data/sectionData.ts words the same case for a section it cannot read; keep the two sentences identical.
-  return new Error(`Reads on chain ${String(chainId)} are unavailable.`);
-}
+import { noRpcError } from "../data";
 
 /**
  * The configured read RPC, or, when the chain has none, a transport whose every request rejects: there is never a public
@@ -15,7 +10,8 @@ export function noRpcConfiguredError(chainId: number): Error {
 export function walletTransport(chain: ChainConfig, env: Env): Transport {
   const resolution = resolveReadRpcUrl(chain, env);
   if (resolution.status === "configured") return redactingHttp(resolution.url);
-  return custom({ request: () => Promise.reject(noRpcConfiguredError(chain.id)) }, { retryCount: 0 });
+  // A failed receipt shows this text, so it is the sentence a section without a read RPC shows.
+  return custom({ request: () => Promise.reject(new Error(noRpcError(chain.id).message)) }, { retryCount: 0 });
 }
 
 export function walletTransports(chains: readonly ChainConfig[], env: Env): Record<number, Transport> {

@@ -109,7 +109,7 @@ describe("useWriteSequence", () => {
     const wallet = createTestWallet();
     await wallet.connect();
     const onMined = vi.fn();
-    const { result } = renderSequence(wallet, (_chainId, hash) => Promise.resolve(hash === hashAt(1) ? testReplacementReceipt(hash, "cancelled") : testReceipt(hash)));
+    const { result } = renderSequence(wallet, (_chainId, hash) => Promise.resolve(hash === hashAt(1) ? testReplacementReceipt("cancelled") : testReceipt(hash)));
     let outcome: WriteOutcome | undefined;
     await act(async () => {
       outcome = await result.current.execute(BUILDS, { pageChainId: 1, onMined });

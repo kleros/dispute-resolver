@@ -15,12 +15,12 @@ export function courtLabel(court: Court): string {
 const INTEGER_FORMAT: Intl.NumberFormatOptions = { useGrouping: false, maximumFractionDigits: 0 };
 
 /** The number field shows `NaN` as empty. */
-export function numberValue(value: string): number {
+function numberValue(value: string): number {
   return /^\d+$/.test(value) ? Number(value) : Number.NaN;
 }
 
 /** An empty field becomes `""`, so core reports it as required. */
-export function draftNumber(value: number): string {
+function draftNumber(value: number): string {
   return Number.isFinite(value) ? String(value) : "";
 }
 

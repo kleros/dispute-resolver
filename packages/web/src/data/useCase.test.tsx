@@ -216,7 +216,7 @@ describe("useCase", () => {
     expect(core.readMultipliers).toHaveBeenCalledTimes(1);
     expect(core.readWithdrawable).not.toHaveBeenCalled();
     expect(current.appealPanel).toMatchObject({ status: "ready", value: { kind: "crowdfunding" } });
-    expect(current.write).toMatchObject({ status: "ready", value: { appealInfo: { appealCost: 1_000n } } });
+    expect(current.write.status).toBe("ready");
   });
 
   it("the write context re-reads the appeal cost from the arbitrator on the page chain's read client", async () => {

@@ -1,9 +1,7 @@
 import type {
   AppealDecisionEvent,
-  AppealInfo,
   AppealPanel,
   ArbitratedBinding,
-  BehaviorOverride,
   ChainConfig,
   ChainId,
   Court,
@@ -38,9 +36,9 @@ export interface WriteReceipt {
   readonly logs: readonly { readonly address: string; readonly topics: readonly Hex[] }[];
   /**
    * Set when the awaited transaction was replaced and this is the receipt of the replacement, with viem's
-   * `ReplacementReason` and the awaited hash. Only `repriced` executed the awaited call.
+   * `ReplacementReason`. Only `repriced` executed the awaited call.
    */
-  readonly replacement?: { readonly reason: "cancelled" | "replaced" | "repriced"; readonly replacedHash: Hex };
+  readonly replacement?: { readonly reason: "cancelled" | "replaced" | "repriced" };
 }
 
 export interface CoreDeps {
@@ -70,9 +68,6 @@ export interface CaseWriteContext {
   readonly binding: ArbitratedBinding;
   readonly family: FamilyDetection;
   readonly localId: LocalIdResolution;
-  readonly override: BehaviorOverride | undefined;
-  /** Periods 3 and 4 only. */
-  readonly appealInfo: AppealInfo | null;
   /** Re-reads the arbitrator's appeal cost for a write about to be built. */
   readAppealCost(): Promise<Outcome<bigint>>;
 }

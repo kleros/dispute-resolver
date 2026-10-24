@@ -12,7 +12,7 @@ export interface RoleLimits {
   readonly allowedMimeTypes: readonly string[];
 }
 
-export type AtlasAvailability = "unconfigured" | "ready";
+type AtlasAvailability = "unconfigured" | "ready";
 
 export type UploadPhase = "idle" | "signing-in" | "uploading";
 
@@ -28,6 +28,8 @@ export type UploadError =
   | "not-content-addressed"; // the returned path failed core's canonical check
 
 export type UploadResult = { readonly ok: true; readonly path: CanonicalIpfsPath } | { readonly ok: false; readonly error: UploadError; readonly message: string };
+
+export type UploadFailure = Extract<UploadResult, { readonly ok: false }>;
 
 export type JsonUpload = CreatedMetaEvidence | EvidenceDocument;
 

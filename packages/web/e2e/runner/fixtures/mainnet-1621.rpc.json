@@ -1,5 +1,5 @@
 {
-  "description": "JSON-RPC answers the case page of mainnet dispute 1621 (poh.eth governor) read, keyed by method and params, recorded from the chain-1 read RPC on 2026-10-15 with eth_blockNumber pinned to the block below. Used by e2e/runner/case-page-script.spec.ts; the meta-evidence, the script and every other network dependency are served by the test itself. P-25: the governor's MetaEvidence(0) eth_getLogs answer was added on 2026-10-20, read from the chain-1 read RPC at readAtBlock by packages/core/scripts/record-meta-evidence-events.ts.",
+  "description": "JSON-RPC answers the case page of mainnet dispute 1621 (poh.eth governor) read, keyed by method and params, recorded from the chain-1 read RPC on 2026-10-15 with eth_blockNumber pinned to the block below. Used by e2e/runner/case-page-script.spec.ts; the meta-evidence, the script and every other network dependency are served by the test itself. The governor's MetaEvidence(0) eth_getLogs answer was added on 2026-10-20, read from the chain-1 read RPC at readAtBlock by packages/core/scripts/record-meta-evidence-events.ts.",
   "chainId": 1,
   "disputeId": "1621",
   "readAtBlock": 26198271,

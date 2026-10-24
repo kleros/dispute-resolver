@@ -1,4 +1,3 @@
-import { maxUint256 } from "viem";
 import type { Abi, ContractFunctionName } from "viem";
 import type { ArbitratedBinding, LocalIdResolution } from "../disputes/types";
 import type { FamilyDetection } from "../families/types";
@@ -14,10 +13,6 @@ export function built<const TAbi extends Abi, TFunctionName extends WriteFunctio
 
 export function refused(refusal: WriteRefusal): WriteBuild {
   return { ok: false, refusal };
-}
-
-export function isUint256(value: bigint): boolean {
-  return value >= 0n && value <= maxUint256;
 }
 
 /**

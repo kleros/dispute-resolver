@@ -3,7 +3,6 @@ import { z } from "../zod";
 import { parseChainId } from "../chains";
 import type { RealityStatus, SafePopulateReason } from "../reality/types";
 import { parsePrecision, toText } from "../rulings";
-import type { RulingOptions } from "../rulings/types";
 import type { Hex, Outcome } from "../types";
 import { type JsonObject, isPlainObject, own } from "./json";
 import type { ChainIdField, MetaEvidence } from "./types";
@@ -128,11 +127,6 @@ const rulingOptionsSchema = z
   })
   .pipe(rulingOptionsShape)
   .catch(() => ({ type: "single-select", titles: [] }));
-
-/** Never throws: a value that is not a plain object becomes the empty single-select. */
-export function parseRulingOptions(value: unknown): RulingOptions {
-  return rulingOptionsSchema.parse(value);
-}
 
 export function isValidMetaEvidence(value: unknown): value is JsonObject {
   return isPlainObject(value) && (Boolean(own(value, "title")) || Boolean(own(value, "rulingOptions")));

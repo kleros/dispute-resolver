@@ -4,9 +4,9 @@ import { ACCEPTED_MESSAGE_TYPE, ERROR_MESSAGE_TYPE, RESULT_MESSAGE_TYPE } from "
 /** Untrusted text from a script is bounded before it becomes part of a message. */
 const MAX_SCRIPT_MESSAGE_LENGTH = 300;
 
-export type FailureReason = Extract<ScriptResult, { status: "failed" }>["reason"];
+type FailureReason = Extract<ScriptResult, { status: "failed" }>["reason"];
 
-export function okResult(value: unknown, jsonDuplicateKeys: boolean): ScriptResult {
+function okResult(value: unknown, jsonDuplicateKeys: boolean): ScriptResult {
   return { status: "ok", value, jsonDuplicateKeys };
 }
 
@@ -22,7 +22,7 @@ const portMessageSchema = z.discriminatedUnion("type", [
 ]);
 
 /** The page's acknowledgement settles nothing; only a result or an error settles the run. */
-export type PortMessage = { readonly kind: "acknowledged" } | { readonly kind: "settled"; readonly result: ScriptResult };
+type PortMessage = { readonly kind: "acknowledged" } | { readonly kind: "settled"; readonly result: ScriptResult };
 
 export const MALFORMED_REPLY = failedResult("runner-error", "The script runner sent a malformed reply.");
 

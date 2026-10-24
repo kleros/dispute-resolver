@@ -1,8 +1,8 @@
 /**
- * Characters no accepted URI may carry: C0 controls and DEL (WHATWG parsers strip tab, LF and CR, so `.\t.` would
- * become `..`), backslashes (which WHATWG parsers read as `/` in http(s) URLs) and lone surrogates (which cannot be
- * percent-encoded). C1 controls are allowed: both WHATWG parsers and `encodeURIComponent` percent-encode them, and real
- * file names carry them.
+ * Characters no accepted URI may carry: C0 controls and DEL (WHATWG parsers strip tab, LF and CR, which changes the
+ * path that was checked), backslashes (which WHATWG parsers read as `/` in http(s) URLs) and lone surrogates (which
+ * cannot be percent-encoded). C1 controls are allowed: both WHATWG parsers and `encodeURIComponent` percent-encode
+ * them, and real file names carry them.
  */
 const LONE_SURROGATE_OR_BACKSLASH = /[\p{Cs}\\]/u;
 const LAST_C0_CONTROL = 0x1f;

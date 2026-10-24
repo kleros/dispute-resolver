@@ -9,7 +9,7 @@ const ROW = "Evidence display";
 const OWNER = "Shown by the arbitrable application";
 /** `--acc-collapse`, which jsdom cannot read, so the display falls back to the same value. */
 const FOLD_MS = 250;
-/** The frame's reveal, which the skeleton's fade shares. */
+/** `--display-reveal`, which jsdom cannot read, so the skeleton's removal falls back to the same value. */
 const REVEAL_MS = 250;
 const UNFOLD = "animate-[t-acc-unfold_var(--acc-expand)_var(--acc-ease)_backwards]";
 
@@ -287,10 +287,10 @@ describe("EvidenceDisplay", () => {
     }
   });
 
-  it("carries the reveal classes on the frame's holder and the skeleton: a 250 ms opacity transition with the reduced-motion guard, the holder hidden until load", () => {
+  it("carries the reveal classes on the frame's holder and the skeleton: an opacity transition on the display's reveal clock with the reduced-motion guard, the holder hidden until load", () => {
     renderDisplay();
     const holder = frame().parentElement;
-    const reveal = ["transition-opacity", "duration-250", "ease-(--reveal-ease)", "motion-reduce:transition-none"];
+    const reveal = ["transition-opacity", "duration-(--display-reveal)", "ease-(--reveal-ease)", "motion-reduce:transition-none"];
     expect(holder).toHaveClass(...reveal, "invisible", "opacity-0");
     expect(skeletonCover()).toHaveClass(...reveal);
     expect(skeletonCover()).not.toHaveClass("opacity-0");
@@ -302,10 +302,10 @@ describe("EvidenceDisplay", () => {
     expect(skeletonCover()).toHaveClass(...reveal, "opacity-0");
   });
 
-  it("keeps the paper under the frame from the first paint, with the skeleton's bars toned for the paper", () => {
+  it("keeps the paper under the frame from the first paint, with the skeleton's bars toned for the paper and inset from its edges", () => {
     renderDisplay();
     expect(displayWindow()).toHaveClass("bg-(--dr-display-paper)");
-    expect(skeletonCover()).toHaveClass("[&_.animate-loading]:bg-(--dr-display-skeleton)");
+    expect(skeletonCover()).toHaveClass("[&_.animate-loading]:bg-(--dr-display-skeleton)", "p-4");
     expect(frame()).toHaveClass("bg-(--dr-display-paper)");
   });
 

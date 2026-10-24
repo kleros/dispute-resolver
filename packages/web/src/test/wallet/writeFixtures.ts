@@ -32,15 +32,14 @@ export function testReceipt(hash: Hex = TEST_TX_HASH, status: WriteReceipt["stat
 export const TEST_REPLACEMENT_TX_HASH: Hex = "0x2222222222222222222222222222222222222222222222222222222222222222";
 
 /**
- * The receipt the receipt waiter returns when `replacedHash` was replaced by `hash`: viem's replacement detection
- * resolves with the replacement's receipt. Without `reason` it carries no replacement details.
+ * The receipt the receipt waiter returns when the awaited transaction was replaced by `hash`: viem's replacement
+ * detection resolves with the replacement's receipt. Without `reason` it carries no replacement details.
  */
 export function testReplacementReceipt(
-  replacedHash: Hex,
   reason?: NonNullable<WriteReceipt["replacement"]>["reason"],
   hash: Hex = TEST_REPLACEMENT_TX_HASH,
   status: WriteReceipt["status"] = "success",
 ): WriteReceipt {
   const receipt = testReceipt(hash, status);
-  return reason === undefined ? receipt : { ...receipt, replacement: { reason, replacedHash } };
+  return reason === undefined ? receipt : { ...receipt, replacement: { reason } };
 }

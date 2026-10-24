@@ -16,13 +16,13 @@ const REFUSALS: Readonly<Record<WriteRefusal, string>> = {
   "call-chain-mismatch": "This action was prepared for a different network than this page, so nothing was sent.",
 };
 
-export interface WriteMessage {
+interface WriteMessage {
   readonly variant: NoticeVariant;
   readonly title: string;
   readonly body: string;
 }
 
-export interface WriteMessageOptions {
+interface WriteMessageOptions {
   /** Before any attempt, the wrong-chain notice explains why the action is locked, so it does not claim that nothing was sent. */
   readonly beforeAttempt?: boolean;
   /** A switch request waits in the wallet: the wrong-chain notice stops asking for a switch that was already asked. */

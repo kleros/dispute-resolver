@@ -48,7 +48,6 @@ export interface TestWalletOptions {
 /** The fake AppKit modal: every call is recorded and resolves at once. */
 export interface FakeWalletModal extends WalletModal {
   readonly openConnect: Mock<WalletModal["openConnect"]>;
-  readonly openNetworks: Mock<WalletModal["openNetworks"]>;
   readonly ready: Mock<WalletModal["ready"]>;
   readonly hasEmbeddedWallet: Mock<WalletModal["hasEmbeddedWallet"]>;
 }
@@ -70,7 +69,6 @@ export interface TestWallet {
 function fakeModal(embeddedWallet: boolean): FakeWalletModal {
   return {
     openConnect: vi.fn<WalletModal["openConnect"]>(() => (embeddedWallet ? Promise.reject(new Error("The fake modal holds an embedded wallet.")) : Promise.resolve())),
-    openNetworks: vi.fn<WalletModal["openNetworks"]>(() => Promise.resolve()),
     ready: vi.fn<WalletModal["ready"]>(() => Promise.resolve()),
     hasEmbeddedWallet: vi.fn<WalletModal["hasEmbeddedWallet"]>(() => Promise.resolve(embeddedWallet)),
   };

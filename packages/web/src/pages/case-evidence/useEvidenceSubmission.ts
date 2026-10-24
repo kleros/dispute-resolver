@@ -1,11 +1,11 @@
 import { buildEvidenceDocument, buildSubmitEvidenceCall, normalizeIpfsPath, type ChainId } from "@dispute-resolver/core";
 import { useCallback, useRef, useState } from "react";
-import { useAtlasUpload, type UploadResult, type UploadedFile } from "../../atlas";
+import { useAtlasUpload, type UploadFailure, type UploadedFile } from "../../atlas";
 import type { NoticeVariant } from "../../ui";
 import { useCaseRefresh, type CaseWriteContext } from "../../data";
 import { useWrite, useWriteAccess, type NeedsWalletGuard, type WriteAccess, type WriteStatus, type WrongChainGuard } from "../../wallet";
 
-export const EVIDENCE_FILE_NAME = "evidence.json";
+const EVIDENCE_FILE_NAME = "evidence.json";
 
 export interface EvidenceDraft {
   readonly title: string;
@@ -16,12 +16,10 @@ export interface EvidenceDraft {
 type ActiveWriteStatus = Exclude<WriteStatus, { readonly phase: "idle" }>;
 
 /** A refusal of the chain guard, as the write status `WriteStatusNotice` renders with its Connect and Switch offers. */
-export type GuardStatus = NeedsWalletGuard | WrongChainGuard;
-
-export type WrongChainStatus = WrongChainGuard;
+type GuardStatus = NeedsWalletGuard | WrongChainGuard;
 
 /** A failure outside the write flow: the evidence JSON upload, or an unexpected error. */
-export interface SubmissionNotice {
+interface SubmissionNotice {
   readonly variant: NoticeVariant;
   readonly title: string;
   readonly body: string;
@@ -29,7 +27,7 @@ export interface SubmissionNotice {
 
 export type SubmissionFeedback = { readonly kind: "write"; readonly status: ActiveWriteStatus } | { readonly kind: "notice"; readonly notice: SubmissionNotice };
 
-export interface EvidenceSubmission {
+interface EvidenceSubmission {
   /**
    * The chain guard every signature of the submission passes first. It covers the Atlas sign-in of the attachment as
    * well as Submit.
@@ -46,7 +44,7 @@ export interface EvidenceSubmission {
 }
 
 /** A declined Atlas sign-in is the user's choice, not an error. */
-function uploadNotice(failure: Extract<UploadResult, { readonly ok: false }>): SubmissionNotice {
+function uploadNotice(failure: UploadFailure): SubmissionNotice {
   if (failure.error === "sign-in-rejected") return { variant: "info", title: "Sign-in declined", body: failure.message };
   return { variant: "error", title: "Evidence not uploaded", body: failure.message };
 }

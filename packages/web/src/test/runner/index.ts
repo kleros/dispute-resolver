@@ -7,7 +7,6 @@ export {
   createFakeRunnerEnvironment,
   flushMicrotasks,
   runRequest,
-  type FakeGlobals,
   type FakeRunnerEnvironment,
   type ScriptApi,
 } from "./fakeRunnerEnvironment";

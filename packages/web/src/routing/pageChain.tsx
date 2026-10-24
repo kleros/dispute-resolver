@@ -5,7 +5,7 @@ import { useWallet } from "../wallet";
 import { CHAIN_PARAM } from "./paths";
 import type { PageChain, ResolvedChain } from "./types";
 
-export function toPageChain(chainId: ChainId): PageChain | undefined {
+function toPageChain(chainId: ChainId): PageChain | undefined {
   const chain = getChain(chainId);
   return chain === undefined ? undefined : { chainId: chain.id, chain, capabilities: chainCapabilities(chain) };
 }
@@ -16,7 +16,7 @@ function requirePageChain(chainId: ChainId): PageChain {
   return page;
 }
 
-export function resolveChain(segment: string | undefined, walletChainId: number | undefined): ResolvedChain {
+function resolveChain(segment: string | undefined, walletChainId: number | undefined): ResolvedChain {
   const urlChainId = parseChainId(segment);
   if (urlChainId !== undefined) return { kind: "page", page: requirePageChain(urlChainId) };
   const walletPage = walletChainId === undefined ? undefined : toPageChain(walletChainId);
@@ -33,7 +33,7 @@ export function usePageChain(): PageChain {
   return page;
 }
 
-export function useConnectedChainId(): number | undefined {
+function useConnectedChainId(): number | undefined {
   const wallet = useWallet();
   return wallet.status === "connected" ? wallet.chainId : undefined;
 }

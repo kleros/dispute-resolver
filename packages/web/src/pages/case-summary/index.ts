@@ -1,4 +1,4 @@
-export { CaseOverview } from "./CaseOverview";
+export { CaseOverview, PendingOverview } from "./CaseOverview";
 export { DecisionAlert } from "./DecisionAlert";
 export { DisputeSummary } from "./DisputeSummary";
 export { DisputeTimeline } from "./DisputeTimeline";

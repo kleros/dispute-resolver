@@ -24,6 +24,9 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+/** Far deeper than any Reality.eth template nests (two or three levels); past it the text is rejected like any other syntax error. */
+const MAX_DEPTH = 64;
+
 const NUMBER = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y;
 const WHITESPACE = " \t\n\r";
 const DIGITS = "0123456789";
@@ -34,7 +37,7 @@ const TOKEN_PREFIX = /@@kleros(\d+)#/g;
 /**
  * Placeholder tokens a template's `%s` are replaced with before it is analyzed: `@@kleros<n>#<index>@@`. The template is
  * untrusted (anyone can create one), so `<n>` is the first counter whose prefix `@@kleros<n>#` does not occur in it,
- * found in a single pass: a template stuffed with prefixes cannot make the choice cost more than reading it once.
+ * found in a single pass: the choice costs one read of the template, whatever it contains.
  */
 export class Sentinels {
   private readonly prefix: string;
@@ -82,6 +85,7 @@ export class Sentinels {
  */
 class JsonScanner {
   private position = 0;
+  private depth = 0;
   private duplicateKeys = false;
   private readonly placeholders: PlaceholderUse[] = [];
 
@@ -119,8 +123,7 @@ class JsonScanner {
   private parseValue(): unknown {
     this.skipWhitespace();
     const char = this.current();
-    if (char === "{") return this.parseObject();
-    if (char === "[") return this.parseArray();
+    if (char === "{" || char === "[") return this.parseNested(char);
     if (char === '"') return this.parseString(false);
     if (char === "t") return this.parseLiteral("true", true);
     if (char === "f") return this.parseLiteral("false", false);
@@ -133,16 +136,24 @@ class JsonScanner {
     return this.parseNumber();
   }
 
+  private parseNested(opening: "{" | "["): unknown {
+    this.depth += 1;
+    if (this.depth > MAX_DEPTH) this.fail("Nesting too deep");
+    const value = opening === "{" ? this.parseObject() : this.parseArray();
+    this.depth -= 1;
+    return value;
+  }
+
   private parseString(isKey: boolean): string {
     const start = this.position;
-    this.position += 1; // Opening quote.
+    this.position += 1;
     while (this.position < this.text.length && this.current() !== '"') {
       const code = this.text.codePointAt(this.position);
       if (code === undefined || code < 0x20) this.fail("Control character in string");
       this.position += this.current() === "\\" ? 2 : 1;
     }
     if (this.position >= this.text.length) this.fail("Unterminated string");
-    this.position += 1; // Closing quote.
+    this.position += 1;
     const raw = this.text.slice(start, this.position);
     const value = this.validatedString(raw);
     for (const index of this.sentinels?.indexesIn(raw) ?? []) this.placeholders.push({ index, context: isKey ? "key" : "string" });
@@ -175,7 +186,7 @@ class JsonScanner {
   }
 
   private parseArray(): unknown[] {
-    this.position += 1; // [
+    this.position += 1;
     this.skipWhitespace();
     if (this.parseWholeArrayPlaceholder()) return [];
     const array: unknown[] = [];
@@ -212,7 +223,7 @@ class JsonScanner {
   }
 
   private parseObject(): Record<string, unknown> {
-    this.position += 1; // {
+    this.position += 1;
     const object: Record<string, unknown> = {};
     const seen = new Set<string>();
     this.skipWhitespace();

@@ -1,3 +1,4 @@
+import { parseDisputeId } from "@dispute-resolver/core";
 import { Searchbar } from "@kleros/ui-components-library";
 import { useEffect, useLayoutEffect, useRef, type FormEvent } from "react";
 import { useMediaQuery } from "../../ui";
@@ -18,12 +19,15 @@ function insertedText(event: InputEvent): string | null {
 
 /**
  * The field's text as the ID it holds, or `null` when it holds anything else. Whitespace counts only around an ID: the
- * field never holds any, so whitespace alone was inserted, not left by clearing it.
+ * field never holds any, so whitespace alone was inserted, not left by clearing it. A number the search would refuse
+ * (78 digits above the largest ID) is refused here, where the caret and selection can still be kept.
  */
 function idOf(text: string): string | null {
   if (text === "") return "";
   const id = text.trim();
-  return ID_TEXT.test(id) ? id.slice(0, MAX_ID_DIGITS) : null;
+  if (!ID_TEXT.test(id)) return null;
+  const capped = id.slice(0, MAX_ID_DIGITS);
+  return parseDisputeId(capped) === null ? null : capped;
 }
 
 /** Where the caret belongs once React has replaced an insertion with its digits, without its whitespace or past the cap. */
@@ -79,7 +83,7 @@ export function SearchBox({ search, autoFocus = false }: SearchBoxProps) {
       const before = current.slice(0, selectionStart);
       const after = current.slice(selectionEnd);
       const next = (before + id + after).slice(0, MAX_ID_DIGITS);
-      if (!ID_TEXT.test(id) || next === current) {
+      if (!ID_TEXT.test(id) || next === current || parseDisputeId(next) === null) {
         event.preventDefault();
         return;
       }

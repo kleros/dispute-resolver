@@ -2,7 +2,8 @@ import type { ChainId, Unavailable } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { Link } from "react-router";
 import { paths } from "../../routing";
-import { ACTION_LINK_CLASS, PageMessage, SectionSkeleton } from "../../ui";
+import { ACTION_LINK_CLASS, PageMessage, RECORD_BAND, SectionSkeleton } from "../../ui";
+import { PendingOverview } from "../case-summary";
 
 /** `id` is untrusted URL text: shown as text only, never put in a URL or an attribute. */
 function notFoundTitle(id: string): string {
@@ -53,11 +54,25 @@ export function UnavailableMessage({ disputeId, error, onRetry }: UnavailableMes
   );
 }
 
-export function PendingSearch() {
+/** The record band: the overview over the timeline. */
+export const CASE_BAND = `${RECORD_BAND} flex min-w-0 flex-col gap-6 p-4 lg:px-8 lg:py-6`;
+
+interface PendingSearchProps {
+  /** The typed ID, already in the URL, or `null` when the text is no ID. */
+  readonly disputeId: bigint | null;
+  readonly chainName: string;
+}
+
+/** The page the lookup shows while it loads (the record band, the summary card, the section bars), so the page keeps still when the lookup starts. */
+export function PendingSearch({ disputeId, chainName }: PendingSearchProps) {
   return (
     <div className="flex flex-col gap-6">
-      <SectionSkeleton variant="card" lines={2} />
+      <div className={CASE_BAND}>
+        <PendingOverview disputeId={disputeId} chainName={chainName} />
+        <SectionSkeleton variant="text" lines={2} />
+      </div>
       <SectionSkeleton variant="card" lines={5} />
+      <SectionSkeleton variant="bars" lines={3} />
     </div>
   );
 }

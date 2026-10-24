@@ -10,7 +10,6 @@ export type WalletMode = "appkit" | "unconfigured";
 export interface WalletModal {
   /** Makes `chainId` the modal's active network, so a WalletConnect session starts on it, then opens the Connect view. */
   openConnect(chainId: ChainId | undefined): Promise<void>;
-  openNetworks(): Promise<void>;
   /** Resolves once AppKit has finished initializing (connectors synced, remote project settings applied). */
   ready(): Promise<void>;
   /**
@@ -43,15 +42,13 @@ export interface WalletProviderProps {
 }
 
 export type WalletState =
-  | { readonly status: "disconnected"; readonly mode: WalletMode }
-  | { readonly status: "connecting"; readonly mode: WalletMode }
+  | { readonly status: "disconnected" }
+  | { readonly status: "connecting" }
   | {
       readonly status: "connected";
-      readonly mode: WalletMode;
       /** Lowercased through `toRegistryAddress`. */
       readonly address: Address;
       readonly chainId: number;
-      readonly isConfiguredChain: boolean;
     };
 
 /** `pending` is "waiting for the wallet". */
