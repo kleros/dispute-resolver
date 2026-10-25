@@ -14,10 +14,7 @@ export interface CrowdfundingPanelProps {
   readonly chain: ChainConfig;
 }
 
-/**
- * A stable key per card. Codes are unique per origin in core's card set, but reserved keys come from untrusted
- * meta-evidence ("0x1" and "0x01" name one code), so repeats are numbered.
- */
+/** A stable key per card. Core's card set codes each card once per origin; a repeat is still numbered rather than trusted. */
 function keyedCards(cards: readonly CrowdfundingCard[]): readonly { readonly key: string; readonly card: CrowdfundingCard }[] {
   const seen = new Map<string, number>();
   return cards.map((card) => {

@@ -76,7 +76,7 @@ async function readResolverWithdrawable(context: AppealContext, dialect: "idr-v2
     );
     return settled(beneficiary, items);
   } catch (error) {
-    return unavailableState(readFailure("the withdrawable amount", error));
+    return unavailableState(readFailure("the withdrawable amount", error, binding.chainId));
   }
 }
 
@@ -112,7 +112,7 @@ async function readGovernorWithdrawable(context: AppealContext, request: Withdra
     );
     return settled(beneficiary, perRound.flat());
   } catch (error) {
-    return unavailableState(readFailure("the withdrawable amount", error));
+    return unavailableState(readFailure("the withdrawable amount", error, binding.chainId));
   }
 }
 

@@ -48,9 +48,10 @@ export async function readAppealDecisions(context: DisputeReadContext, binding: 
 }
 
 function readAppealInfo(client: ReadClient, binding: ArbitratedBinding, signal: AbortSignal | undefined): Promise<Outcome<AppealInfo>> {
-  const { arbitrator, disputeId } = binding;
+  const { arbitrator, disputeId, chainId } = binding;
   return readOutcome(
     "the appeal cost and period",
+    chainId,
     async () => {
       const [appealCost, [start, end]] = await Promise.all([
         client.readContract({ address: arbitrator, abi: klerosLiquidAbi, functionName: "appealCost", args: [disputeId, "0x"] }),
@@ -88,19 +89,20 @@ export async function readDisputeDetails(
   const { client, signal } = context;
   if (client === undefined) return readsWithoutClient(found);
   const { binding } = found;
-  const { arbitrator, disputeId } = binding;
-  const fromBlock = disputeEventBlock ?? BigInt(getChain(binding.chainId)?.arbitratorDeployedAtBlock ?? 0);
+  const { arbitrator, disputeId, chainId } = binding;
+  const fromBlock = disputeEventBlock ?? BigInt(getChain(chainId)?.arbitratorDeployedAtBlock ?? 0);
   const unresolved: LocalIdResolution = { kind: "unresolved", reason: "rpc-error" };
   const [votesLengths, currentRuling, appealDecisions, localId, appealInfo] = await Promise.all([
     readOutcome(
       "the vote counts",
+      chainId,
       async () => {
         const [votes] = await client.readContract({ address: arbitrator, abi: klerosLiquidAbi, functionName: "getDispute", args: [disputeId] });
         return votes;
       },
       signal,
     ),
-    readOutcome("the current ruling", () => client.readContract({ address: arbitrator, abi: klerosLiquidAbi, functionName: "currentRuling", args: [disputeId] }), signal),
+    readOutcome("the current ruling", chainId, () => client.readContract({ address: arbitrator, abi: klerosLiquidAbi, functionName: "currentRuling", args: [disputeId] }), signal),
     readAppealDecisions(context, binding, fromBlock),
     family === undefined ? unresolved : resolveLocalId(client, binding, family),
     hasAppealInfo(found.dispute) ? readAppealInfo(client, binding, signal) : null,

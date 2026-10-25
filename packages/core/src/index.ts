@@ -10,7 +10,7 @@ export { REGISTRY, displayAllowlistKey, getOverride, isDisplayAllowlisted, toReg
 export { createReadClients, describeError, redactingHttp } from "./rpc";
 export { createFamilyCache, detectFamily } from "./families";
 export { JSON_DUPLICATE_KEY_GUARD } from "./reality";
-export { CASE_PAGE_BUDGET_MS, ONGOING_BUDGET_MS, loadMetaEvidence, metaEvidenceCachePolicy, parseCachedMetaEvidenceResult, realityNotice } from "./metaEvidence";
+export { CASE_PAGE_BUDGET_MS, ONGOING_BUDGET_MS, loadMetaEvidence, metaEvidenceCachePolicy, parseCachedMetaEvidenceResult, parseMetaEvidence, realityNotice } from "./metaEvidence";
 export { buildEvidenceDocument, evidenceScanStart, loadEvidence, readDisputeEvent, readMetaEvidenceEvent } from "./evidence";
 export { buildDisputeView, deriveCompatibility, listCourts, listOngoingDisputes, lookupDispute, parseDisputeId, readDisputeDetails } from "./disputes";
 export {

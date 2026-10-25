@@ -2,7 +2,8 @@ import { isAddress } from "viem";
 import { z } from "../zod";
 import { parseChainId } from "../chains";
 import type { RealityStatus, SafePopulateReason } from "../reality/types";
-import { parsePrecision, toText } from "../rulings";
+import { parsePrecision, toText, unshadowedReserved } from "../rulings";
+import type { FallbackOutcomes } from "../rulings/types";
 import type { Hex, Outcome } from "../types";
 import { type JsonObject, isPlainObject, own } from "./json";
 import type { ChainIdField, MetaEvidence } from "./types";
@@ -178,15 +179,26 @@ function fallbackOutcomes(json: JsonObject): string[] | null {
   return null;
 }
 
+type ParsedRulingOptions = z.output<typeof rulingOptionsSchema>;
+
+/** The question's own codes (0, then its options) keep their reading: a reserved answer written on one of them is dropped. */
+function rulingOptionsField(json: JsonObject, fallback: FallbackOutcomes): ParsedRulingOptions | null {
+  if (!isValidMetaEvidence(json)) return null;
+  const { reserved, ...options } = rulingOptionsSchema.parse(own(json, "rulingOptions"));
+  const kept = unshadowedReserved({ ...options, reserved }, fallback);
+  return kept === undefined ? options : { ...options, reserved: kept };
+}
+
 /** Its result always satisfies `metaEvidenceShape`. `realityQuestion` is derived by the pipeline, never read. */
 export function coerceMetaEvidence(json: JsonObject): z.input<typeof metaEvidenceShape> {
+  const fallback = fallbackOutcomes(json);
   return {
     title: displayText(own(json, "title")) ?? "",
     description: displayText(own(json, "description")) ?? "",
     question: displayText(own(json, "question")) ?? null,
     category: stringOrNull(own(json, "category")),
-    rulingOptions: isValidMetaEvidence(json) ? rulingOptionsSchema.parse(own(json, "rulingOptions")) : null,
-    fallbackOutcomes: fallbackOutcomes(json),
+    rulingOptions: rulingOptionsField(json, fallback),
+    fallbackOutcomes: fallback,
     fileURI: stringOrNull(own(json, "fileURI")),
     evidenceDisplayInterfaceURI: stringOrNull(own(json, "evidenceDisplayInterfaceURI")),
     arbitrableInterfaceURI: stringOrNull(own(json, "arbitrableInterfaceURI")),

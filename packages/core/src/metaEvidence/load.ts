@@ -4,7 +4,7 @@ import { deriveRealityRulingOptions, fetchRealityQuestion, isRealityScript } fro
 import type { RealityQuestionInfo } from "../reality/types";
 import { REGISTRY, getRealityProxy, isScriptAllowed } from "../registry";
 import type { RealityProxyEntry, Registry } from "../registry/types";
-import { isLookupLimitError } from "../rpc";
+import { describeError, isLookupLimitError } from "../rpc";
 import type { ChainId, Env, ScriptKind, ScriptParameters, UnavailableCode } from "../types";
 import { gatewayUrl, normalizeIpfsPath, resolveGateway } from "../uri";
 import type { CanonicalIpfsPath, GatewayOrigin } from "../uri/types";
@@ -396,10 +396,9 @@ async function runAttempt(load: Load): Promise<MetaEvidenceResult> {
   return result.ok ? accept(result.value, uri, fileUrl, source) : result.result;
 }
 
-/** A safe detail of an unexpected error: a viem error's `message` can carry the RPC URL and its key, so only `shortMessage`. */
+/** A safe detail of an unexpected error, as `describeError` words it; `null` for an error it would only name. */
 function errorDetail(error: unknown): string | null {
-  if (error instanceof BaseError) return error.shortMessage;
-  return isLookupLimitError(error) ? error.message : null;
+  return error instanceof BaseError || isLookupLimitError(error) ? describeError(error) : null;
 }
 
 function budgetExhausted(): MetaEvidenceResult {

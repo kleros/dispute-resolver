@@ -10,6 +10,11 @@ import type { Outcome, ReadClient } from "../types";
 export function readAppealCost(context: { readonly client: ReadClient | undefined; readonly signal?: AbortSignal }, binding: ArbitratedBinding): Promise<Outcome<bigint>> {
   const { client, signal } = context;
   if (client === undefined) return Promise.resolve(fail("no-rpc", "The appeal cost could not be read."));
-  const { arbitrator, disputeId } = binding;
-  return readOutcome("the appeal cost", () => client.readContract({ address: arbitrator, abi: klerosLiquidAbi, functionName: "appealCost", args: [disputeId, "0x"] }), signal);
+  const { arbitrator, disputeId, chainId } = binding;
+  return readOutcome(
+    "the appeal cost",
+    chainId,
+    () => client.readContract({ address: arbitrator, abi: klerosLiquidAbi, functionName: "appealCost", args: [disputeId, "0x"] }),
+    signal,
+  );
 }

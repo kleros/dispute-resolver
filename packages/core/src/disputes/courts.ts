@@ -88,7 +88,7 @@ export async function listCourts(context: CourtsContext): Promise<Outcome<readon
   try {
     courts = await enumerateCourts(client, arbitrator, signal);
   } catch (error) {
-    return { ok: false, error: readFailure("the courts", error) };
+    return { ok: false, error: readFailure("the courts", error, context.chainId) };
   }
   const policyContext = { client, fetcher: context.fetcher, gateway: resolveGateway(context.env), signal };
   const policies = await Promise.all(courts.map((court) => readPolicy(policyContext, chain?.policyRegistry, court.id)));

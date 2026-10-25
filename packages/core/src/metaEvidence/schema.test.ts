@@ -31,7 +31,7 @@ describe("rulingOptions", () => {
     expect(rulingOptionsOf({ type: "single-select", titles: "a,b" }).titles).toEqual([]);
     expect(rulingOptionsOf({ type: "single-select", titles: [1, { a: 1 }] }).titles).toEqual(["1", "[object Object]"]);
     expect(rulingOptionsOf({ type: "single-select", reserved: [1] })).not.toHaveProperty("reserved");
-    expect(rulingOptionsOf({ type: "single-select", reserved: { "0x1": 2 } }).reserved).toEqual({ "0x1": "2" });
+    expect(rulingOptionsOf({ type: "single-select", reserved: { "0x5": 2 } }).reserved).toEqual({ "0x5": "2" });
     expect(rulingOptionsOf({ type: "uint", precision: "x" })).not.toHaveProperty("precision");
     expect(rulingOptionsOf({ type: "uint", precision: 18 }).precision).toBe(18);
   });
@@ -127,6 +127,80 @@ describe("rulingOptions", () => {
 
   it("extra keys are dropped", () => {
     expect(rulingOptionsOf({ type: "single-select", titles: ["a"], onClick: "x" })).toEqual({ type: "single-select", titles: ["a"] });
+  });
+});
+
+describe("reserved answers on codes the question itself uses", () => {
+  function reservedOf(rulingOptions: unknown, rest: Record<string, unknown> = {}): Record<string, string> | undefined {
+    return parsed({ title: "Title", rulingOptions, ...rest }).rulingOptions?.reserved;
+  }
+
+  it("a single-select keeps only the reserved answers outside code 0 and its titles' codes 1..n, so the titles win", () => {
+    const reserved = { "0x0": "Nope", "0x1": "No", "0x2": "Also no", "0x3": "Kept", [TOO_SOON]: "Answered Too Soon" };
+    expect(reservedOf({ type: "single-select", titles: ["Yes", "No"], reserved })).toEqual({ "0x3": "Kept", [TOO_SOON]: "Answered Too Soon" });
+  });
+
+  it("the reserved codes are compared as numbers, however the key is written", () => {
+    expect(reservedOf({ type: "single-select", titles: ["Yes", "No"], reserved: { "0x01": "a", "0X02": "b", "0x0000": "c", "0x03": "Kept" } })).toEqual({ "0x03": "Kept" });
+  });
+
+  it("a multiple-select's combination codes 1..2^n belong to its titles", () => {
+    const reserved = { "0x1": "None?", "0x3": "B", "0x4": "A and B", "0x5": "Kept" };
+    expect(reservedOf({ type: "multiple-select", titles: ["A", "B"], reserved })).toEqual({ "0x5": "Kept" });
+  });
+
+  it("a multiple-select with more than four titles still claims every combination code without enumerating them", () => {
+    const titles = Array.from({ length: 34 }, (_, index) => `Option ${String(index + 1)}`);
+    const everyOption = `0x${(1n << 34n).toString(16)}`;
+    const above = `0x${((1n << 34n) + 1n).toString(16)}`;
+    expect(reservedOf({ type: "multiple-select", titles, reserved: { [everyOption]: "All", [above]: "Kept" } })).toEqual({ [above]: "Kept" });
+  });
+
+  it("without titles the fallback outcomes code 1..n, and without those Yes and No code 1 and 2", () => {
+    expect(reservedOf({ type: "single-select", reserved: { "0x2": "x", "0x3": "y", "0x4": "Kept" } }, { outcomes: ["No", "Yes", "Maybe"] })).toEqual({ "0x4": "Kept" });
+    expect(reservedOf({ type: "single-select", reserved: { "0x2": "x", "0x3": "Kept" } })).toEqual({ "0x3": "Kept" });
+    expect(reservedOf({ type: "bool", reserved: { "0x2": "x", "0x3": "Kept" } })).toEqual({ "0x3": "Kept" });
+  });
+
+  it("a type the app does not know takes the fallback outcomes or Yes and No, never its own titles", () => {
+    expect(reservedOf({ type: "bool", titles: ["No", "Yes", "Maybe"], reserved: { "0x2": "x", "0x3": "Kept" } })).toEqual({ "0x3": "Kept" });
+  });
+
+  it("a select with an empty title list claims no option code, a multiple-select with one only the empty combination", () => {
+    expect(reservedOf({ type: "single-select", titles: [], reserved: { "0x1": "Kept" } })).toEqual({ "0x1": "Kept" });
+    expect(reservedOf({ type: "multiple-select", titles: [], reserved: { "0x1": "x", "0x2": "Kept" } })).toEqual({ "0x2": "Kept" });
+  });
+
+  it("a uint, int, string, datetime or hash question keeps every reserved answer but code 0", () => {
+    for (const type of ["uint", "int", "string", "datetime", "hash"]) {
+      expect(reservedOf({ type, reserved: { "0x0": "x", "0x1": "Kept", [TOO_SOON]: "Answered Too Soon" } })).toEqual({ "0x1": "Kept", [TOO_SOON]: "Answered Too Soon" });
+    }
+  });
+
+  it("reserved is absent when no reserved answer remains", () => {
+    expect(parsed({ title: "Title", rulingOptions: { type: "single-select", titles: ["Yes"], reserved: { "0x1": "No" } } }).rulingOptions).toEqual({
+      type: "single-select",
+      titles: ["Yes"],
+    });
+  });
+
+  it("a key that is not hex is dropped, since it codes no answer that could be listed or funded", () => {
+    expect(reservedOf({ type: "single-select", titles: ["Yes"], reserved: { soon: "Odd key", "0": "Yes", "1": "No", "0x5": "Kept" } })).toEqual({ "0x5": "Kept" });
+    expect(reservedOf({ type: "single-select", titles: ["Yes"], reserved: { soon: "Odd key" } })).toBeUndefined();
+  });
+
+  it("one code written in several spellings with one title keeps its first spelling, so its description still resolves", () => {
+    const rulingOptions = { type: "single-select", titles: ["Yes"], reserved: { "0x05": "Soon", "0x5": "Soon", "0X005": "Soon" }, descriptions: { "0x05": "Described" } };
+    const options = parsed({ title: "Title", rulingOptions }).rulingOptions;
+    expect(options?.reserved).toEqual({ "0x05": "Soon" });
+    expect(options?.descriptions).toEqual({ "0x05": "Described" });
+  });
+
+  it("one code written in several spellings with different titles is dropped altogether, whatever the order", () => {
+    expect(reservedOf({ type: "single-select", titles: ["Yes"], reserved: { "0x5": "Pay Alice", "0x05": "Pay Bob", "0X005": "Refund", "0x6": "Kept" } })).toEqual({
+      "0x6": "Kept",
+    });
+    expect(reservedOf({ type: "single-select", titles: ["Yes"], reserved: { "0x05": "Pay Bob", "0x5": "Pay Alice" } })).toBeUndefined();
   });
 });
 

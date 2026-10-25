@@ -1,5 +1,7 @@
-import { BaseError, ContractFunctionRevertedError, ContractFunctionZeroDataError, ExecutionRevertedError } from "viem";
-import type { Unavailable } from "../types";
+import { BaseError, ContractFunctionExecutionError, ContractFunctionRevertedError, ContractFunctionZeroDataError, ExecutionRevertedError } from "viem";
+import { CHAINS } from "../chains";
+import { REGISTRY, registryKey } from "../registry";
+import type { Address, ChainId, Unavailable } from "../types";
 import { isLookupLimitError } from "./errors";
 
 /**
@@ -8,6 +10,8 @@ import { isLookupLimitError } from "./errors";
  * and `getRoundInfo` of a governor).
  */
 const EXECUTION_FAILURE = /execution reverted|\breverted?\b|invalid opcode|InvalidFEOpcode|invalid jump|out of gas|stack (?:underflow|overflow)/i;
+
+const CONTRACT_REJECTED = "The contract rejected the call.";
 
 /** Whether a node's error message reports a failure of the contract's own execution. */
 export function isExecutionFailureMessage(message: string): boolean {
@@ -33,17 +37,58 @@ export function isContractFailure(error: unknown): boolean {
   return failure !== null;
 }
 
+let knownContracts: ReadonlySet<string> | undefined;
+
+/**
+ * The contracts whose own failure text may be shown, each on its own chain only: the chain table's arbitrator and
+ * arbitrable proxy, and every arbitrable the registry lists (Reality proxies, overrides, display allowlist). Built on
+ * first use, since the tables load after this module.
+ */
+function isKnownContract(chainId: ChainId, address: string): boolean {
+  knownContracts ??= new Set<string>([
+    ...Object.values(CHAINS).flatMap((chain) =>
+      [chain.klerosLiquid, chain.arbitrableProxy].flatMap((contract) => (contract === undefined ? [] : [registryKey(chain.id, contract)])),
+    ),
+    ...Object.keys(REGISTRY.realityProxies),
+    ...Object.keys(REGISTRY.overrides),
+    ...Object.entries(REGISTRY.displayAllowlist).flatMap(([chainKey, addresses]) => addresses.map((contract) => registryKey(Number(chainKey), contract))),
+  ]);
+  // The cast is sound: viem recorded a `0x`-prefixed address, and lowercasing it yields the lowercase form.
+  return knownContracts.has(registryKey(chainId, address.toLowerCase() as Address));
+}
+
+/** The address of the contract the failed call targeted, as viem recorded it on the request; `null` when it recorded none. */
+function calledContract(error: BaseError): string | null {
+  const execution = error.walk((cause) => cause instanceof ContractFunctionExecutionError);
+  return execution instanceof ContractFunctionExecutionError && execution.contractAddress !== undefined ? execution.contractAddress : null;
+}
+
+/**
+ * Whether the error's short message quotes the called contract's own text: a contract failure, or a revert viem built
+ * from the node's message alone (JSON-RPC code 3 or -32603 with no return data), whose reason is that whole message.
+ */
+function quotesContractText(error: BaseError): boolean {
+  return isContractFailure(error) || error.walk((cause) => cause instanceof ContractFunctionRevertedError) !== null;
+}
+
 /**
  * A viem error's full `message` can carry the transport URL, and with it the RPC key, so only its `shortMessage` is
- * shown; any other error is named, never quoted.
+ * shown. The contract's own text is shown only for a known contract (the chain's arbitrator or arbitrable proxy, a
+ * registry arbitrable) on `chainId`, the chain the call was made on, and is otherwise one fixed sentence, also when
+ * `chainId` is not given. Any other error is named, never quoted.
  */
-export function describeError(error: unknown): string {
-  if (error instanceof BaseError) return error.shortMessage;
+export function describeError(error: unknown, chainId?: ChainId): string {
+  if (error instanceof BaseError) {
+    if (!quotesContractText(error)) return error.shortMessage;
+    const address = calledContract(error);
+    return chainId !== undefined && address !== null && isKnownContract(chainId, address) ? error.shortMessage : CONTRACT_REJECTED;
+  }
   if (isLookupLimitError(error)) return error.message;
   if (error instanceof Error && error.name === "AbortError") return "The request was aborted.";
   return "The request failed.";
 }
 
-export function readFailure(what: string, error: unknown): Unavailable {
-  return { code: isContractFailure(error) ? "reverted" : "rpc-error", message: `Could not read ${what}: ${describeError(error)}` };
+/** `chainId` is the chain the failed read was made on, as `describeError` takes it. */
+export function readFailure(what: string, error: unknown, chainId?: ChainId): Unavailable {
+  return { code: isContractFailure(error) ? "reverted" : "rpc-error", message: `Could not read ${what}: ${describeError(error, chainId)}` };
 }

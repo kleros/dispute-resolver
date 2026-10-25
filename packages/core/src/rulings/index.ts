@@ -5,4 +5,5 @@ export { encodeAnswer } from "./encode";
 export { parsePrecision, parseRealityDecimals } from "./precision";
 export { toText } from "./text";
 export { combinationCode, combinationTitle, reservedCode } from "./combinations";
+export { unshadowedReserved } from "./reserved";
 export { isUint256 } from "./realityLib";

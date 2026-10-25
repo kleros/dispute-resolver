@@ -53,7 +53,7 @@ async function sign(config: Config, call: WriteCall, pageChainId: ChainId): Prom
       const guard = guardOutcome(checkChainMatch(walletChainId, pageChainId), pageChainId);
       if (guard !== null) return { outcome: guard };
     }
-    return { outcome: { phase: "failed", hash: null, explorerUrl: null, message: errorMessage(error) } };
+    return { outcome: { phase: "failed", hash: null, explorerUrl: null, message: errorMessage(error, call.chainId) } };
   }
 }
 
@@ -83,7 +83,7 @@ async function confirm(environment: WriteEnvironment, call: WriteCall, hash: Hex
   try {
     receipt = await environment.waitForReceipt(call.chainId, hash);
   } catch (error) {
-    return { phase: "failed", hash, explorerUrl: explorerUrl(call.chainId, hash), message: `The transaction could not be confirmed: ${errorMessage(error)}` };
+    return { phase: "failed", hash, explorerUrl: explorerUrl(call.chainId, hash), message: `The transaction could not be confirmed: ${errorMessage(error, call.chainId)}` };
   }
   const minedHash = receipt.transactionHash;
   const url = explorerUrl(call.chainId, minedHash);

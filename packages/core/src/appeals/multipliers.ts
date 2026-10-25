@@ -113,6 +113,6 @@ export async function readMultipliers(client: ReadClient, family: FamilyDetectio
     const struct = await readStruct(client, address);
     return struct === null ? await readSingleGetters(client, address) : validated(struct);
   } catch (error) {
-    return fail("rpc-error", `Could not read the appeal multipliers: ${describeError(error)}`);
+    return fail("rpc-error", `Could not read the appeal multipliers: ${describeError(error, family.chainId)}`);
   }
 }

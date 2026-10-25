@@ -1,5 +1,6 @@
 import { stringToHex } from "viem";
 import { describe, expect, it } from "vitest";
+import { parseMetaEvidence } from "../metaEvidence";
 import { REGISTRY, getOverride } from "../registry";
 import { combinationTitle, decodeRulingCode, formatRuling } from "../rulings";
 import type { FallbackOutcomes, RulingOptions } from "../rulings/types";
@@ -310,6 +311,77 @@ describe("buildCrowdfundingCards", () => {
     const set = build({ rulingOptions: { type: "datetime", reserved: { [`0x${"f".repeat(63)}e`]: "Answered Too Soon" } }, currentRuling: 1_700_000_001n });
     expect(set.cards.map((card) => card.origin)).toEqual(["refuse", "reserved", "current-ruling"]);
     expect(set.freeInput).toMatchObject({ type: "datetime" });
+  });
+
+  describe("reserved answers of a parsed meta-evidence", () => {
+    function parsedOptions(rulingOptions: unknown): RulingOptions {
+      const outcome = parseMetaEvidence({ title: "Title", rulingOptions });
+      if (!outcome.ok || outcome.value.rulingOptions === null) throw new Error("expected ruling options");
+      return outcome.value.rulingOptions;
+    }
+
+    it("a reserved answer on a code one of the titles already has gets no card, so the title's card is the only one sending that code", () => {
+      const set = build({ rulingOptions: parsedOptions({ type: "single-select", titles: ["Yes", "No"], reserved: { "0x1": "No" } }), currentRuling: 1n });
+      expect(summary(set.cards)).toEqual([
+        [0n, REFUSED_TITLE],
+        [1n, "Yes"],
+        [2n, "No"],
+      ]);
+    });
+
+    it("a reserved answer on code 0 gets no card beside the refuse card", () => {
+      const set = build({ rulingOptions: parsedOptions({ type: "single-select", titles: ["Yes", "No"], reserved: { "0x0": "No" } }), currentRuling: 1n });
+      expect(set.cards.filter((card) => card.code === 0n)).toEqual([expect.objectContaining({ origin: "refuse", title: REFUSED_TITLE })]);
+      expect(set.cards).toHaveLength(3);
+    });
+
+    it("a reserved answer on a multiple-select combination code gets no card, so the combination's title is the only one for that code", () => {
+      const set = build({ rulingOptions: parsedOptions({ type: "multiple-select", titles: ["A", "B"], reserved: { "0x3": "A" } }), currentRuling: 2n });
+      expect(summary(set.cards)).toEqual([
+        [0n, REFUSED_TITLE],
+        [1n, "None"],
+        [2n, "A"],
+        [3n, "B"],
+        [4n, "A, B"],
+      ]);
+    });
+
+    it("a uint question's Answered Too Soon keeps its card", () => {
+      const set = build({ rulingOptions: parsedOptions({ type: "uint", precision: 0, reserved: ANSWERED_TOO_SOON }), currentRuling: 5n });
+      expect(summary(set.cards)).toEqual([
+        [0n, REFUSED_TITLE],
+        [MAX_UINT, "Answered Too Soon"],
+        [5n, "4"],
+      ]);
+    });
+
+    it("a reserved code written in several spellings with one title funds one card, and with different titles none", () => {
+      const oneTitle = build({
+        rulingOptions: parsedOptions({ type: "single-select", titles: ["Yes", "No"], reserved: { "0x5": "Soon", "0x05": "Soon", "0X005": "Soon" } }),
+        currentRuling: 1n,
+      });
+      expect(summary(oneTitle.cards)).toEqual([
+        [0n, REFUSED_TITLE],
+        [5n, "Soon"],
+        [1n, "Yes"],
+        [2n, "No"],
+      ]);
+      const differing = build({ rulingOptions: parsedOptions({ type: "uint", precision: 0, reserved: { "0x5": "Pay Alice", "0x05": "Pay Bob" } }), currentRuling: 1n });
+      expect(differing.cards.filter((card) => card.code === 5n)).toEqual([]);
+    });
+
+    it("no two cards of a single-select or multiple-select send the same code, and every option card reads as the court reads its code", () => {
+      const questions = [
+        { type: "single-select", titles: ["Yes", "No"], reserved: { "0x1": "No", "0x2": "Yes", "0x7": "Soon", "0x07": "Soon", [`0x${"f".repeat(64)}`]: "Answered Too Soon" } },
+        { type: "multiple-select", titles: ["A", "B", "C"], reserved: { "0x5": "A", "0x9": "Soon", "0x09": "Later", [`0x${"f".repeat(64)}`]: "Answered Too Soon" } },
+      ];
+      for (const question of questions) {
+        const rulingOptions = parsedOptions(question);
+        const { cards } = build({ rulingOptions, currentRuling: 1n });
+        expect(new Set(cards.map((card) => card.code)).size).toBe(cards.length);
+        for (const card of cards.filter((candidate) => candidate.origin === "option")) expect(card.title).toBe(formatRuling(card.code, rulingOptions, null));
+      }
+    });
   });
 
   it("updates the suggested amount when the funding is refreshed", () => {

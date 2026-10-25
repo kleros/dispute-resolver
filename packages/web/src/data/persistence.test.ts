@@ -119,10 +119,10 @@ describe("persisted query cache", () => {
   });
 
   it("drops meta-evidence entries persisted without a source, under the previous version or the current one", async () => {
-    expect(CACHE_VERSION).toBe("dr-cache-5");
+    expect(CACHE_VERSION).toBe("dr-cache-6");
     const { source, ...withoutSource } = testOkMetaEvidence();
     expect(source).toEqual({ kind: "locator", event: "not-read" });
-    const previousVersion = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: withoutSource }], "dr-cache-4"));
+    const previousVersion = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: withoutSource }], "dr-cache-5"));
     expect(previousVersion.getQueryCache().getAll()).toHaveLength(0);
     const currentVersion = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: withoutSource }]));
     expect(currentVersion.getQueryData(metaEvidenceKey)).toBeUndefined();

@@ -27,7 +27,7 @@ export async function lookupDispute(context: DisputeReadContext, disputeId: bigi
     tuple = await readDisputeStruct(client, arbitrator, disputeId);
   } catch (error) {
     if (isContractFailure(error)) return { status: "not-found" };
-    return { status: "unavailable", error: { code: "rpc-error", message: `Could not read the dispute: ${describeError(error)}` } };
+    return { status: "unavailable", error: { code: "rpc-error", message: `Could not read the dispute: ${describeError(error, context.chainId)}` } };
   }
   const dispute = toArbitratorDispute(disputeId, tuple);
   if (!dispute.ok) return { status: "unavailable", error: dispute.error };

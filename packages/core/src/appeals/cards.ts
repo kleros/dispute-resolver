@@ -42,7 +42,7 @@ function card(context: CardContext, origin: CardOrigin, title: string, code: big
   };
 }
 
-/** One card per reserved answer, coded with its hex key; a key that is not hex is skipped. */
+/** One card per reserved answer, coded with its hex key. */
 function reservedCards(context: CardContext, reserved: RulingOptions["reserved"]): CrowdfundingCard[] {
   return Object.entries(reserved ?? {}).flatMap(([key, title]) => {
     const code = reservedCode(key);

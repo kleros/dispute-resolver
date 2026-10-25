@@ -59,7 +59,7 @@ async function readGovernorFunding(context: AppealContext, round: bigint): Promi
     const fundedRulings = info.hasPaid.flatMap((paid, index) => (paid ? [BigInt(index + 1)] : []));
     return succeed({ round, contributions, fundedRulings });
   } catch (error) {
-    return failedRead("the governor's appeal round", error);
+    return failedRead("the governor's appeal round", error, binding.chainId);
   }
 }
 

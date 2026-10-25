@@ -2,7 +2,7 @@ import type { ChainId, Hex } from "@dispute-resolver/core";
 import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { writeContract } from "@wagmi/core";
-import { ChainMismatchError, UserRejectedRequestError, type EIP1193RequestFn } from "viem";
+import { ChainMismatchError, ContractFunctionExecutionError, ContractFunctionRevertedError, UserRejectedRequestError, type EIP1193RequestFn } from "viem";
 import { mainnet } from "viem/chains";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WriteReceipt } from "../data";
@@ -268,6 +268,24 @@ describe("useWrite outcomes", () => {
       await result.current.execute(testWriteBuild(1), { pageChainId: 1 });
     });
     expect(result.current.status).toEqual({ phase: "failed", hash: null, explorerUrl: null, message: "insufficient funds for gas" });
+  });
+
+  it("the page chain's arbitrator rejecting the call before submission keeps its own reason", async () => {
+    const reason = "appeal period is over";
+    writeContractMock.mockRejectedValue(
+      new ContractFunctionExecutionError(new ContractFunctionRevertedError({ abi: [], functionName: "appeal", message: reason }), {
+        abi: [],
+        functionName: "appeal",
+        contractAddress: "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
+      }),
+    );
+    const wallet = createTestWallet();
+    await wallet.connect();
+    const { result } = renderWrite(wallet);
+    await act(async () => {
+      await result.current.execute(testWriteBuild(1), { pageChainId: 1 });
+    });
+    expect(result.current.status).toEqual({ phase: "failed", hash: null, explorerUrl: null, message: expect.stringContaining(reason) as unknown });
   });
 
   it("a reverted receipt is a failure with the hash and explorer link, and onMined does not run", async () => {

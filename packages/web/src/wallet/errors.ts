@@ -1,3 +1,4 @@
+import { describeError, type ChainId } from "@dispute-resolver/core";
 import { BaseError, ChainMismatchError, UserRejectedRequestError } from "viem";
 
 /** EIP-1193's "user rejected the request". */
@@ -28,8 +29,12 @@ export function isChainMismatch(error: unknown): boolean {
   return causes(error).some((cause) => cause instanceof ChainMismatchError);
 }
 
-export function errorMessage(error: unknown): string {
-  if (error instanceof BaseError) return error.shortMessage;
+/**
+ * A viem error is worded by core, which decides from `chainId`, the chain the call went to, whose contract failure text
+ * may be shown; any other error keeps its message.
+ */
+export function errorMessage(error: unknown, chainId?: ChainId): string {
+  if (error instanceof BaseError) return describeError(error, chainId);
   if (error instanceof Error && error.message.trim() !== "") return error.message;
   return "Unknown error.";
 }
