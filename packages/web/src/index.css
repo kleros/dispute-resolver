@@ -533,8 +533,12 @@
     outline-offset: 2px;
   }
 
-  :where([role="option"], .dr-display-row) {
+  :where([role="option"]) {
     outline-offset: -2px;
+  }
+
+  :where(.dr-display-row) {
+    outline-offset: 0;
   }
 
   /*
@@ -634,7 +638,7 @@
 }
 
 .dr-display-row:is(:focus-visible, [data-focus-visible]) {
-  outline-offset: -2px;
+  outline-offset: 0;
 }
 
 /*

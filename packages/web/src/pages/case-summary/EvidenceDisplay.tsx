@@ -28,11 +28,11 @@ const SKELETON_LINES = 12;
 /**
  * The library button as a full-width row: its icon slot comes before its text, so the row is reversed to put the title
  * first. The negative margins widen the hover plate past the text column while the title stays flush with the text
- * above; the plate is 44 px under the wrapper's 4 px top padding, so it stands clear of the hairline and the row keeps
- * 48 px. The button's own transition tweens its press scale only, and the row has none, so the hover fill eases on the
- * app's hover clock like the section headers below (`ease-smooth-out`, not the arbitrary ease: the button's `ease-ease`
- * stays in the class list and outranks that one). `dr-display-row` draws its focus ring inside the plate: the window
- * under the row would paint over a ring drawn outside it.
+ * above; the plate is 44 px under the wrapper's 4 px top padding, so it stands clear of the hairline above and, with
+ * the window's 4 px margin, of the display below. The button's own transition tweens its press scale only, and the row
+ * has none, so the hover fill eases on the app's hover clock like the section headers below (`ease-smooth-out`, not the
+ * arbitrary ease: the button's `ease-ease` stays in the class list and outranks that one). `dr-display-row` draws its
+ * focus ring on the plate's edge, inside those two 4 px gaps, where neither the hairline nor the window covers it.
  */
 const ROW_CLASS =
   "dr-display-row -mx-2 h-11 w-[calc(100%+1rem)] flex-row-reverse justify-between gap-2 bg-transparent px-2 py-0 hover:bg-klerosUIComponentsMediumBlue pressed:scale-100 transition-[background-color] duration-150 ease-smooth-out motion-reduce:transition-none [&_.button-text]:text-klerosUIComponentsPrimaryText";
@@ -232,7 +232,7 @@ export function EvidenceDisplay({ metaEvidence, chainId, found }: EvidenceDispla
           <div
             data-frame-focus={focusInside ? "" : undefined}
             aria-busy={loaded ? undefined : true}
-            className="dr-display-window relative overflow-clip rounded-base bg-(--dr-display-paper)"
+            className="dr-display-window relative mt-1 overflow-clip rounded-base bg-(--dr-display-paper)"
           >
             <div className={loaded ? undefined : "invisible"}>
               <EvidenceDisplayFrame
