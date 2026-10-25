@@ -1,9 +1,9 @@
-import type { AppealDecisionEvent, ChainConfig, EvidenceItem, EvidenceList, UnixSeconds } from "@dispute-resolver/core";
+import { compareBigint, type AppealDecisionEvent, type ChainConfig, type EvidenceItem, type EvidenceList, type UnixSeconds } from "@dispute-resolver/core";
 import { Attachment } from "../../safe-content";
 import { AddressText, EmptyState, Identicon, Notice } from "../../ui";
 import { hiddenEvidenceText } from "./hiddenEvidence";
 
-export interface EvidenceTimelineProps {
+interface EvidenceTimelineProps {
   readonly list: EvidenceList;
   /** The Dispute event's time ("Dispute Raised"), `null` when unknown. */
   readonly raisedAt: UnixSeconds | null;
@@ -18,13 +18,6 @@ function entryBlock(entry: TimelineEntry): bigint {
   return entry.kind === "evidence" ? entry.item.blockNumber : entry.decision.blockNumber;
 }
 
-function newerBlockFirst(a: TimelineEntry, b: TimelineEntry): number {
-  const blockA = entryBlock(a);
-  const blockB = entryBlock(b);
-  if (blockA === blockB) return 0;
-  return blockA > blockB ? -1 : 1;
-}
-
 /**
  * Newest block first. The sort is stable and the entries come first, so entries keep core's order, and an appeal in the
  * block of an entry, whose order within the block is not read, is placed below it.
@@ -32,7 +25,7 @@ function newerBlockFirst(a: TimelineEntry, b: TimelineEntry): number {
 function timelineEntries(items: readonly EvidenceItem[], decisions: readonly AppealDecisionEvent[]): TimelineEntry[] {
   const entries: TimelineEntry[] = items.map((item) => ({ kind: "evidence", item }));
   const markers: TimelineEntry[] = decisions.map((decision) => ({ kind: "appealed", decision }));
-  return [...entries, ...markers].sort(newerBlockFirst);
+  return [...entries, ...markers].sort((a, b) => compareBigint(entryBlock(b), entryBlock(a)));
 }
 
 const DOT_CLASS = "absolute -left-[5.5px] size-2.5 rounded-full ring-4 ring-klerosUIComponentsWhiteBackground";

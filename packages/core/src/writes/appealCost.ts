@@ -1,5 +1,5 @@
 import { klerosLiquidAbi } from "../abi";
-import { fail, readOutcome } from "../disputes/outcome";
+import { fail, readOutcome } from "../outcome";
 import type { ArbitratedBinding } from "../disputes/types";
 import type { Outcome, ReadClient } from "../types";
 

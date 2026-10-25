@@ -26,7 +26,7 @@ export interface CreateForm {
   readonly primaryDocument: UploadedFile | null;
 }
 
-type TextField = "votes" | "category" | "title" | "description" | "question";
+type TextField = "courtId" | "votes" | "category" | "title" | "description" | "question";
 
 export const QUESTION_TYPES: readonly { readonly type: CreateQuestionType; readonly label: string }[] = [
   { type: "single-select", label: "Multiple choice: single select" },
@@ -67,10 +67,6 @@ function resizeOptions(options: readonly CreateOptionDraft[], count: number): re
 
 export function setText(form: CreateForm, field: TextField, value: string): CreateForm {
   return { ...form, [field]: value };
-}
-
-export function setCourt(form: CreateForm, courtId: string): CreateForm {
-  return { ...form, courtId };
 }
 
 export function setQuestionType(form: CreateForm, questionType: CreateQuestionType): CreateForm {

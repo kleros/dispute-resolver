@@ -1,8 +1,9 @@
 import { escrowV1Abi, governorAbi, idrLegacyFundAppealAbi, idrV2Abi } from "../abi";
 import type { ArbitratedBinding, LocalIdResolution } from "../disputes/types";
 import type { FamilyDetection } from "../families/types";
-import { isUint256 } from "../rulings";
-import { arbitrableLocalId, built, describesBinding, refused } from "./build";
+import { isUint256 } from "../bigint";
+import { describesBinding } from "../disputes/localId";
+import { arbitrableLocalId, built, refused } from "./build";
 import type { WriteBuild } from "./types";
 
 /** The older resolver proxy's `fundAppeal(uint256,uint8)` alone, so the encoder cannot pick the other overload. */

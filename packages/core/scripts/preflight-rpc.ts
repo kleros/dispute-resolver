@@ -26,7 +26,7 @@ import type { ChainTable } from "../src/chains";
 import { LOOKUP_LIMITS } from "../src/reality/constants";
 import { isRangeLimitError } from "../src/rpc";
 import type { Env } from "../src/types";
-import { failureMessage, redact } from "./failureMessage";
+import { redact, runScript } from "./failureMessage";
 import { loadRepositoryEnv } from "./recordingRpc";
 
 /** The range the pre-flight asks `eth_getLogs` for first: the scan window of the chunked reads. */
@@ -339,10 +339,5 @@ async function main(): Promise<number> {
 }
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try {
-    process.exitCode = await main();
-  } catch (error) {
-    console.error(failureMessage(error));
-    process.exitCode = 1;
-  }
+  await runScript(main);
 }

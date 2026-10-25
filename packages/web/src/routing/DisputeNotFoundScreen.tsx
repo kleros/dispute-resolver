@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { ACTION_LINK_CLASS, PageMessage } from "../ui";
 import { paths } from "./paths";
 
-export interface DisputeNotFoundScreenProps {
+interface DisputeNotFoundScreenProps {
   readonly chainId: ChainId;
   /** The raw `:id` segment, shown as text and never used to build a URL. */
   readonly id: string;

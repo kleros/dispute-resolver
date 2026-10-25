@@ -1,4 +1,4 @@
-import { getChain, resolvePublicRpcUrl, type ChainId, type Env } from "@dispute-resolver/core";
+import { publicRpcUrl, type ChainId, type Env } from "@dispute-resolver/core";
 import type { RpcRedirectRule } from "../types";
 import { isHttpsUrl } from "./httpsUrl";
 
@@ -26,10 +26,8 @@ const INFURA_PATH_PREFIX = "/v3/";
  */
 export function buildRpcRedirects(env: Env): readonly RpcRedirectRule[] {
   return INFURA_NETWORKS.flatMap(([network, chainId]): RpcRedirectRule[] => {
-    const chain = getChain(chainId);
-    if (chain === undefined) return [];
-    const resolution = resolvePublicRpcUrl(chain, env);
-    if (resolution.status !== "configured" || !isHttpsUrl(resolution.url)) return [];
-    return [{ chainId, host: `${network}.infura.io`, pathPrefix: INFURA_PATH_PREFIX, target: resolution.url }];
+    const url = publicRpcUrl(chainId, env);
+    if (url === null || !isHttpsUrl(url)) return [];
+    return [{ chainId, host: `${network}.infura.io`, pathPrefix: INFURA_PATH_PREFIX, target: url }];
   });
 }

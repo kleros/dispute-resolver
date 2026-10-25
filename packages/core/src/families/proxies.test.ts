@@ -3,7 +3,7 @@ import { EIP1967_IMPLEMENTATION_SLOT } from "../abi";
 import { toRegistryAddress } from "../registry";
 import type { Hex } from "../types";
 import { recorded } from "./__fixtures__/recorded";
-import { isEip1167Clone, readEip1967Implementation } from "./index";
+import { isEip1167Clone, readEip1967Implementation } from "./proxies";
 import { fakeNodeClient, rpcError, slotWord } from "../test/families/testHelpers";
 
 const PROXY = toRegistryAddress("0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38");

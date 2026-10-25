@@ -50,7 +50,7 @@ export function MatchedCardNote({ funding, kind, chain }: { readonly funding: En
 }
 
 export interface EnteredAnswerFooterProps {
-  readonly funding: EnteredAnswerFunding;
+  readonly funding: Pick<EnteredAnswerFunding, "fundedPercent" | "deadline" | "remaining" | "required">;
   /** What is funded, for the accessible names of the contribution field and Fund: the matched card's title when there is one. */
   readonly subject: string;
   readonly code: bigint | null;
@@ -59,7 +59,7 @@ export interface EnteredAnswerFooterProps {
   readonly isFundDisabled: boolean;
 }
 
-/** The funding of an entered answer as a fixed card shows its own: nothing remaining disables the field and Fund. */
+/** A card's funding and Fund, for fixed and entered cards alike: nothing remaining disables the field and Fund. */
 export function EnteredAnswerFooter({ funding, subject, code, actions, chain, isFundDisabled }: EnteredAnswerFooterProps) {
   return (
     <>

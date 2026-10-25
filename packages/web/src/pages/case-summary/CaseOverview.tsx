@@ -1,7 +1,7 @@
 import { useId, type ReactNode } from "react";
 import { FACT_SMALL, LABEL, PAGE_TITLE, PeriodBadge, useRevealIn } from "../../ui";
-import type { CaseSectionProps } from "../../data";
-import { existingView, foundLookup } from "./caseState";
+import { foundLookup, type CaseSectionProps } from "../../data";
+import { existingView } from "./caseState";
 import { DetailPlaceholder, ViewDetail } from "./ViewDetail";
 
 function Detail({ label, children }: { readonly label: string; readonly children: ReactNode }) {

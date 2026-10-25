@@ -7,7 +7,7 @@ import { numberToHex } from "viem";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { createTestDeps, testCourt, testOkMetaEvidence, TEST_ARBITRABLE, type RpcHandler } from "../../test/data";
 import { renderWithProviders } from "../../test/shell";
-import { createTestWallet, holdChainSwitches } from "../../test/wallet";
+import { createConnectedTestWallet, holdChainSwitches } from "../../test/wallet";
 import { OngoingPage } from "./OngoingPage";
 
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../../test/data/mockCoreReads")).mockCoreReads(importOriginal));
@@ -182,8 +182,7 @@ describe("Ongoing page", () => {
 
   it("a wallet chain change lists the new chain's open disputes and drops the old chain's cards", async () => {
     vi.mocked(core.listOngoingDisputes).mockImplementation(({ chainId }) => Promise.resolve(chainId === 1 ? listOf([dispute(12n, 0)]) : listOf([dispute(7n, 3)])));
-    const wallet = createTestWallet({ chainId: 1 });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ chainId: 1 });
     renderWithProviders(<OngoingPage />, { path: "/1/ongoing", wallet });
     await settledList();
     expect(within(page()).getByText(chainSubtitle(1))).toBeInTheDocument();
@@ -298,7 +297,7 @@ describe("Ongoing page", () => {
     expect(cardId(twelve, "12")).toBeInTheDocument();
   });
 
-  it("every card ends in a foot that points at the case, with the countdown and its label when the period end is known", async () => {
+  it("every card ends in a foot that points at the case, with the countdown and its label when the period end is known, and renders without the court list", async () => {
     vi.mocked(core.listCourts).mockResolvedValue({ ok: false, error: { code: "rpc-error", message: "down" } });
     vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(12n, 2), dispute(4n, 0, { countdownTarget: null })]));
     renderOngoing();
@@ -478,17 +477,6 @@ describe("Ongoing page", () => {
     renderOngoing();
     await settledList();
     expect(within(card("4")).getByText("Court 99 (unavailable)")).toBeInTheDocument();
-  });
-
-  it("without the court list the cards still render, with the court unavailable", async () => {
-    vi.mocked(core.listCourts).mockResolvedValue({ ok: false, error: { code: "rpc-error", message: "down" } });
-    vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(4n, 0, { countdownTarget: null })]));
-    renderOngoing();
-    await settledList();
-    await waitFor(() => {
-      expect(within(card("4")).getByText("Court 0 (unavailable)")).toBeInTheDocument();
-    });
-    expect(within(card("4")).queryByText(COUNTDOWN)).toBeNull();
   });
 
   it("a dispute whose record could not be read shows its ID, 'details unavailable', an unknown period and the arrow to its case", async () => {
@@ -716,8 +704,7 @@ describe("the other chain's disputes from the zero state", () => {
   });
 
   it("with a wallet connected, the action asks the wallet to switch and the page follows it", async () => {
-    const wallet = createTestWallet({ chainId: 1 });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ chainId: 1 });
     const view = renderWithProviders(<OngoingPage />, { path: "/1/ongoing", wallet });
     const action = await screen.findByRole("button", { name: "View disputes on Gnosis Network" });
 
@@ -732,9 +719,7 @@ describe("the other chain's disputes from the zero state", () => {
   });
 
   it("names the action while the wallet has not answered its switch, though the library hides the button's text while loading", async () => {
-    const wallet = createTestWallet({ chainId: 1 });
-    await wallet.connect();
-    holdChainSwitches(wallet);
+    const wallet = holdChainSwitches(await createConnectedTestWallet({ chainId: 1 }));
     renderWithProviders(<OngoingPage />, { path: "/1/ongoing", wallet });
 
     await userEvent.setup().click(await screen.findByRole("button", { name: "View disputes on Gnosis Network" }));
@@ -745,8 +730,7 @@ describe("the other chain's disputes from the zero state", () => {
   });
 
   it("a switch the wallet declines leaves the page where it is and says so", async () => {
-    const wallet = createTestWallet({ chainId: 1, switchChainError: true });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ chainId: 1, switchChainError: true });
     const view = renderWithProviders(<OngoingPage />, { path: "/1/ongoing", wallet });
     const action = await screen.findByRole("button", { name: "View disputes on Gnosis Network" });
 

@@ -2,6 +2,7 @@ import { render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildAppConfig } from "../env";
 import { TestDataProvider } from "../test/data";
+import { CONNECTED_WAGMI_STORE } from "../test/wallet";
 import type { WalletState } from "./types";
 import { useWallet } from "./useWallet";
 import { WalletProvider } from "./WalletProvider";
@@ -14,9 +15,6 @@ vi.mock("./appKitSetup", () => ({
 }));
 
 const WALLET_STORE_KEY = "wagmi.store";
-/** Wagmi's persisted store with a current connection (wagmi 2.22, recorded from a connect). */
-const CONNECTED_WAGMI_STORE =
-  '{"state":{"connections":{"__type":"Map","value":[["bcfb5cd94f3",{"accounts":["0x00000000000000000000000000000000000A11cE"],"chainId":1,"connector":{"id":"injected","name":"Injected","type":"injected","uid":"bcfb5cd94f3"}}]]},"chainId":1,"current":"bcfb5cd94f3"},"version":2}';
 
 afterEach(() => {
   window.localStorage.removeItem(WALLET_STORE_KEY);

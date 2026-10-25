@@ -9,6 +9,7 @@ const RESERVED = { "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 const TEMPLATE_BOOL = '{"title": "%s", "type": "bool", "category": "%s", "lang": "%s"}';
 const TEMPLATE_SINGLE_SELECT = '{"title": "%s", "type": "single-select", "outcomes": [%s], "category": "%s", "lang": "%s"}';
 const TEMPLATE_DESCRIBED = '{"title": "%s", "description": "%s", "type": "bool"}';
+const TEMPLATE_UINT_DECIMALS = '{"title": "%s", "type": "uint", "decimals": %s}';
 const TEMPLATE_20 = attack.template20.templateText;
 const QUESTION_0x7eea = attack.question0x7eea.questionText;
 
@@ -17,6 +18,10 @@ const ENTRY = { answeredTooSoon: true, localizedLang: null, questionOverride: nu
 
 function onChain(templateText: string, questionText: string, templateId = "1"): RealityQuestion {
   return { questionId: `0x${"ab".repeat(32)}`, templateId, templateText, questionText, reality: "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd", realityChainId: 1 };
+}
+
+function precisionOf(decimals: string): number | undefined {
+  return deriveRealityRulingOptions(onChain(TEMPLATE_UINT_DECIMALS, ["How many?", decimals].join(D)), ENTRY).rulingOptions.precision;
 }
 
 describe("deriveRealityRulingOptions", () => {
@@ -110,8 +115,6 @@ describe("deriveRealityRulingOptions", () => {
   });
 
   it("carries decimals as the precision reality-eth-lib reads, so the precision shown is the one encoded", () => {
-    const template = '{"title": "%s", "type": "uint", "decimals": %s}';
-    const precisionOf = (decimals: string) => deriveRealityRulingOptions(onChain(template, ["How many?", decimals].join(D)), ENTRY).rulingOptions.precision;
     expect(precisionOf("18")).toBe(18);
     expect(precisionOf("0")).toBe(0);
     expect(precisionOf('"6"')).toBe(6);
@@ -122,15 +125,12 @@ describe("deriveRealityRulingOptions", () => {
   });
 
   it("carries a hexadecimal decimals as the precision reality-eth-lib reads", () => {
-    const template = '{"title": "%s", "type": "uint", "decimals": %s}';
-    const { rulingOptions, realityQuestion } = deriveRealityRulingOptions(onChain(template, ["How many?", '"0x12"'].join(D)), ENTRY);
+    const { rulingOptions, realityQuestion } = deriveRealityRulingOptions(onChain(TEMPLATE_UINT_DECIMALS, ["How many?", '"0x12"'].join(D)), ENTRY);
     expect(rulingOptions.precision).toBe(18);
     expect(realityQuestion).toMatchObject({ status: "verified", divergent: false });
   });
 
   it("reads a decimals that is null, false, empty or not a number as reality-eth-lib does", () => {
-    const template = '{"title": "%s", "type": "uint", "decimals": %s}';
-    const precisionOf = (decimals: string) => deriveRealityRulingOptions(onChain(template, ["How many?", decimals].join(D)), ENTRY).rulingOptions.precision;
     expect(precisionOf("null")).toBe(0);
     expect(precisionOf("false")).toBe(0);
     expect(precisionOf('""')).toBe(0);

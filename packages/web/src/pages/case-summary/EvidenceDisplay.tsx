@@ -3,9 +3,8 @@ import { Button } from "@kleros/ui-components-library";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { APP_CONFIG } from "../../env";
 import { buildEvidenceDisplay, EvidenceDisplayFrame } from "../../safe-content";
-import { useCoreDeps } from "../../data";
+import { useCoreDeps, type FoundLookup } from "../../data";
 import { ExpandIndicator, LABEL, readMotionMs, SectionSkeleton } from "../../ui";
-import type { FoundLookup } from "./caseState";
 
 interface EvidenceDisplayProps {
   readonly metaEvidence: MetaEvidence;

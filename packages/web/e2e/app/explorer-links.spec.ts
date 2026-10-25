@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { fakeNetwork } from "../support/network";
+import { appOriginOf, fakeNetwork } from "../support/network";
 
 // No RPC answers and no recordings: the footer is drawn from the chain table alone, whatever the reads give.
 
 test("links the Gnosis ArbitrableProxy on gnosisscan.io in the footer", async ({ context, page, baseURL }) => {
-  await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin });
+  await fakeNetwork(context, { appOrigin: appOriginOf(baseURL) });
   await page.goto("/100/cases");
   await expect(page.getByRole("link", { name: "ArbitrableProxy contract on the Gnosis Network explorer" })).toHaveAttribute(
     "href",
@@ -13,7 +13,7 @@ test("links the Gnosis ArbitrableProxy on gnosisscan.io in the footer", async ({
 });
 
 test("links the Chiado ArbitrableProxy on gnosis-chiado.blockscout.com in the footer", async ({ context, page, baseURL }) => {
-  await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin });
+  await fakeNetwork(context, { appOrigin: appOriginOf(baseURL) });
   await page.goto("/10200/cases");
   await expect(page.getByRole("link", { name: "ArbitrableProxy contract on the Gnosis Testnet Chiado explorer" })).toHaveAttribute(
     "href",

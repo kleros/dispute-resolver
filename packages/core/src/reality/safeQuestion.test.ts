@@ -101,7 +101,6 @@ describe("safePopulatedJSONForTemplate", () => {
 
   it("renders a uint question", () => {
     const result = safePopulatedJSONForTemplate(TEMPLATE_UINT, `How many goals will be scored?${D}sports${D}en_US`);
-    expect(result.ok).toBe(true);
     const question = populated(result);
     expect(question).toEqual({
       title: "How many goals will be scored?",
@@ -195,7 +194,6 @@ describe("safePopulatedJSONForTemplate", () => {
   it("drops title_html and title_text even when the template declares them", () => {
     const template = '{"title": "%s", "type": "bool", "title_html": "<b>%s</b>", "title_text": "x"}';
     const result = safePopulatedJSONForTemplate(template, `Title${D}bold`);
-    expect(result.ok).toBe(true);
     expect(populated(result)).toEqual({ title: "Title", type: "bool" });
   });
 });

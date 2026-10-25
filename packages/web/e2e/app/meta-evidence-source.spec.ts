@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test";
-import { encodeEventTopics, hexToBigInt, numberToHex, parseAbi, type Hex } from "viem";
+import { encodeEventTopics, hexToBigInt, parseAbi, type Hex } from "viem";
 import { z } from "zod";
-import { ARBITRATOR_ABI, GNOSIS_ARBITRATOR, caseDetailsAnswers, disputeStruct, isDisputesCall } from "../support/arbitrator";
-import { fakeNetwork, loadRecording, type HttpAnswer, type HttpRequest, type RpcAnswer, type RpcCall, type Traffic } from "../support/network";
+import { DISPUTE_CREATION_TOPIC, GNOSIS_ARBITRATOR, caseDetailsAnswers, creationLog, disputeStruct, isDisputesCall } from "../support/arbitrator";
+import { appOriginOf, fakeNetwork, loadRecording, type HttpAnswer, type HttpRequest, type RpcAnswer, type RpcCall, type Traffic } from "../support/network";
 
 // Gnosis dispute 460: its arbitrable recorded "DAI token compliance Review" in its MetaEvidence(84) event while the
 // meta-evidence API answered another arbitrable's file (the Lemon case) on 2026-10-20. Its raw Dispute and MetaEvidence
@@ -35,7 +35,6 @@ const UNAVAILABLE_SECTIONS = ["Dispute details unavailable", "Timeline unavailab
 
 const ERC1497_ABI = parseAbi(["event MetaEvidence(uint256 indexed _metaEvidenceID, string _evidence)"]);
 const [META_EVIDENCE_TOPIC] = encodeEventTopics({ abi: ERC1497_ABI, eventName: "MetaEvidence" });
-const [DISPUTE_CREATION_TOPIC] = encodeEventTopics({ abi: ARBITRATOR_ABI, eventName: "DisputeCreation" });
 
 interface LogFilter {
   readonly address?: string;
@@ -82,7 +81,7 @@ async function openCase(
   rpc: (call: RpcCall) => RpcAnswer | undefined,
   http?: (request: HttpRequest) => HttpAnswer | undefined,
 ): Promise<Traffic> {
-  const traffic = await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, recordings: [RECORDING], rpc, http });
+  const traffic = await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), recordings: [RECORDING], rpc, http });
   await page.goto(CASE_PATH);
   return traffic;
 }
@@ -187,24 +186,14 @@ function ongoingRpc(call: RpcCall): RpcAnswer | undefined {
   const filter = filterOf(call);
   if (filter.address?.toLowerCase() !== GNOSIS_ARBITRATOR || filter.topics?.[0] !== DISPUTE_CREATION_TOPIC) return { result: [] };
   const blockNumber = BigInt(RECORDING.readAtBlock) - 10n;
-  const creation = {
-    address: GNOSIS_ARBITRATOR,
-    topics: encodeEventTopics({ abi: ARBITRATOR_ABI, eventName: "DisputeCreation", args: { _disputeID: 460n, _arbitrable: ARBITRABLE } }),
-    data: "0x",
-    blockNumber: numberToHex(blockNumber),
-    blockHash: `0x${blockNumber.toString(16).padStart(64, "0")}`,
-    transactionHash: `0x${"46".repeat(32)}`,
-    transactionIndex: "0x0",
-    logIndex: "0x0",
-    removed: false,
-  };
+  const creation = creationLog({ arbitrator: GNOSIS_ARBITRATOR, id: 460n, arbitrable: ARBITRABLE, blockNumber, transactionHash: `0x${"46".repeat(32)}` });
   const from = filter.fromBlock === undefined ? 0n : hexToBigInt(filter.fromBlock);
   const to = filter.toBlock === undefined ? blockNumber : hexToBigInt(filter.toBlock);
   return { result: blockNumber >= from && blockNumber <= to ? [creation] : [] };
 }
 
 test("reads no logs of the arbitrables on the Ongoing page", async ({ context, page, baseURL }) => {
-  const traffic = await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, recordings: [RECORDING], rpc: ongoingRpc });
+  const traffic = await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), recordings: [RECORDING], rpc: ongoingRpc });
   const card = page.getByRole("link").filter({ has: page.getByText("#460", { exact: true }) });
 
   await page.goto("/100/ongoing");

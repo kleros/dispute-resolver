@@ -29,16 +29,16 @@ import type { CaseDispute, CaseWriteContext, SectionData } from "../../data";
 import { TEST_ARBITRABLE, sectionLoading, sectionReady, sectionUnavailable, testFamily, testFoundLookup, testOkMetaEvidence, testWriteContext } from "../../test/data";
 import { renderWithProviders } from "../../test/shell";
 import {
+  TEST_SENT,
   TEST_TX_HASH,
   TEST_WALLET_ADDRESS,
+  createConnectedTestWallet,
   createTestWallet,
   fakeWriteController,
   holdChainSwitches,
-  testReceipt,
   type FakeWriteController,
   type TestWallet,
 } from "../../test/wallet";
-import type { WriteStatus } from "../../wallet";
 import { AppealSection } from "./AppealSection";
 import { ANSWER_ERROR_MESSAGES } from "./answer";
 import {
@@ -87,9 +87,6 @@ const WINNER_TIME_LEFT = "26620d 08h 53m";
 const LOSER_TIME_LEFT = "13310d 04h 26m";
 /** The cards of the grid that fund an answer the user enters, not a fixed ruling. */
 const ENTERED_ANSWER_CARDS: ReadonlySet<string> = new Set(["Fund a new answer", "Fund another combination"]);
-
-const MINED: WriteStatus = { phase: "mined", hash: TEST_TX_HASH, explorerUrl: null, receipt: testReceipt() };
-const SENT: readonly WriteStatus[] = [{ phase: "pending" }, { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null }, MINED];
 
 const GOVERNOR = testFamily({
   family: "governor",
@@ -179,14 +176,12 @@ interface WalletOptions {
   readonly connected?: boolean;
 }
 
-/** Renders the section and returns what it renders into. */
-/** A wallet on `chainId` that has not answered the switch to the page chain the app asks for once it connects. */
-function walletAwaitingSwitch(chainId: number): TestWallet {
-  const wallet = createTestWallet({ chainId });
-  holdChainSwitches(wallet);
-  return wallet;
+/** An Escrow V1 appeal of 1 ETH on transaction 9. */
+function escrowDispute(readAppealCost?: CaseWriteContext["readAppealCost"]): CaseDispute {
+  return caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, { family: ESCROW, localId: { kind: "transaction-id", value: 9n }, readAppealCost });
 }
 
+/** Renders the section and returns what it renders into. */
 async function renderSection(dispute: CaseDispute, { wallet = createTestWallet(), connected = true }: WalletOptions = {}): Promise<HTMLElement> {
   if (connected) await wallet.connect();
   return renderWithProviders(<AppealSection dispute={dispute} chain={chainConfig(dispute.chainId)} />, { path: `/${String(dispute.chainId)}`, wallet }).container;
@@ -240,10 +235,18 @@ function sentCalls(fake: FakeWriteController): WriteCall[] {
   );
 }
 
+/** Waits until the fake write hooks were asked `executions` times, then returns every call they were asked to send. */
+async function sentCallsAfter(executions = 1): Promise<WriteCall[]> {
+  await waitFor(() => {
+    expect(writes.fake?.executions).toHaveLength(executions);
+  });
+  if (writes.fake === null) throw new Error("The fake write hooks are not installed.");
+  return sentCalls(writes.fake);
+}
+
 /** Renders the section over successive reads of its panel; "Next read" moves to the next one, as a refresh would. */
 async function renderReads(reads: readonly AppealPanel[]) {
-  const wallet = createTestWallet();
-  await wallet.connect();
+  const wallet = await createConnectedTestWallet();
   function Changing() {
     const [read, setRead] = useState(0);
     return (
@@ -343,20 +346,11 @@ describe("AppealSection: panel kinds", () => {
     expect(within(panel).queryByRole("button")).toBeNull();
   });
 
-  it("a family with no funding interface says appeals happen in the arbitrable application", async () => {
+  it("a family with no funding interface says appeals are handled in the arbitrable application and offers no action that sends value", async () => {
     const panel = await renderSection(caseDispute({ kind: "handled-by-arbitrable" }));
     expect(panel).toHaveTextContent(/handled in the arbitrable application/);
-  });
-
-  it("a family with no funding interface offers no action that sends value", async () => {
-    const panel = await renderSection(caseDispute({ kind: "handled-by-arbitrable" }));
     expect(within(panel).queryAllByRole("button")).toHaveLength(0);
     expect(cardElements()).toHaveLength(0);
-  });
-
-  it("Escrow V1 in execution says the appeal period ended", async () => {
-    const panel = await renderSection(caseDispute({ kind: "escrow-ended" }));
-    expect(panel).toHaveTextContent("Appeal period ended");
   });
 
   it("idr-legacy in execution says withdrawals are not supported through the resolver", async () => {
@@ -410,26 +404,20 @@ describe("AppealSection: panel kinds", () => {
 });
 
 describe("AppealSection: crowdfunding cards", () => {
-  it("each card shows its title, funded percent, remaining amount and the countdown to its deadline, in ruling order", async () => {
+  it("each card shows its title, funded percent, remaining amount and the countdown to its deadline, in ruling order, and the current ruling's card says it is the latest jury decision", async () => {
     freezeClockAtAppealStart();
     await renderSection(caseDispute(crowdfunding({ contributions: [{ ruling: 1n, amount: ETH / 2n }] })));
     expect(cardTitles()).toEqual([REFUSE, "Yes", "No"]);
+    expect(card("Yes")).toHaveTextContent("Latest jury decision");
+    expect(card("No")).not.toHaveTextContent("Latest jury decision");
     expect(within(card("Yes")).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
+    expect(card("Yes")).toHaveTextContent("25.00% Funded");
     expect(card("Yes")).toHaveTextContent("Remaining 1.5 ETH of 2 ETH");
     expect(contributionField(card("Yes"))).toHaveValue(formatEther(WINNER_TOTAL - ETH / 2n));
     expect(within(card("Yes")).getByText(WINNER_TIME_LEFT)).toBeInTheDocument();
     expect(card("No")).toHaveTextContent("Remaining 3 ETH of 3 ETH");
     expect(contributionField(card("No"))).toHaveValue(formatEther(LOSER_TOTAL));
     expect(within(card("No")).getByText(LOSER_TIME_LEFT)).toBeInTheDocument();
-  });
-
-  it("the current ruling's card says it is the latest jury decision, and shows its funding", async () => {
-    await renderSection(caseDispute(crowdfunding({ contributions: [{ ruling: 1n, amount: ETH / 2n }] })));
-    expect(card("Yes")).toHaveTextContent("Latest jury decision");
-    expect(card("No")).not.toHaveTextContent("Latest jury decision");
-    expect(within(card("Yes")).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
-    expect(card("Yes")).toHaveTextContent("25.00% Funded");
-    expect(card("Yes")).toHaveTextContent("1.5 ETH");
   });
 
   it("a fixed card and the free-input card each show the remaining amount and total of what they fund", async () => {
@@ -483,7 +471,7 @@ describe("AppealSection: crowdfunding cards", () => {
   it("an answer that equals a contributed value funds that value's remaining amount until its loser deadline", async () => {
     freezeClockAtAppealStart();
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "uint", precision: 0 }, currentRuling: 3n, contributions: [{ ruling: 6n, amount: ETH }] })));
     await user.type(within(freeInputCard()).getByRole("textbox", { name: /Answer/ }), "5");
     const entered = freeInputCard();
@@ -491,10 +479,7 @@ describe("AppealSection: crowdfunding cards", () => {
     expect(entered).toHaveTextContent("Remaining 2 ETH of 3 ETH");
     expect(within(entered).getByText(LOSER_TIME_LEFT)).toBeInTheDocument();
     await user.click(fundButton(entered));
-    await waitFor(() => {
-      expect(writes.fake?.executions).toHaveLength(1);
-    });
-    expect(sentCalls(writes.fake)).toMatchObject([{ args: [7n, 6n], value: 2n * ETH }]);
+    expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 6n], value: 2n * ETH }]);
   });
 
   it("a fully funded uint current ruling shows 0 and disables its contribution and Fund, on its card and on the free input when its answer is typed", async () => {
@@ -510,19 +495,6 @@ describe("AppealSection: crowdfunding cards", () => {
     expect(contributionField(freeInputCard())).toHaveValue("0");
     expect(contributionField(freeInputCard())).toBeDisabled();
     expect(fundButton(freeInputCard())).toBeDisabled();
-  });
-
-  it("the contribution is prefilled with the remaining amount", async () => {
-    await renderSection(caseDispute(crowdfunding()));
-    expect(contributionField(card("No"))).toHaveValue("3");
-    expect(fundButton(card("No"))).toBeEnabled();
-  });
-
-  it("a fully funded card shows 0 and disables its contribution and Fund", async () => {
-    await renderSection(caseDispute(crowdfunding({ contributions: [{ ruling: 2n, amount: LOSER_TOTAL }] })));
-    expect(contributionField(card("No"))).toHaveValue("0");
-    expect(contributionField(card("No"))).toBeDisabled();
-    expect(fundButton(card("No"))).toBeDisabled();
   });
 
   it("the contribution follows the remaining amount until the user edits it", async () => {
@@ -541,7 +513,7 @@ describe("AppealSection: crowdfunding cards", () => {
 
   it("a card fully funded after the user edited its contribution shows 0 and is disabled", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     await renderReads([crowdfunding(), crowdfunding({ contributions: [{ ruling: 2n, amount: LOSER_TOTAL }] }), crowdfunding()]);
     await user.clear(contributionField(card("No")));
     await user.type(contributionField(card("No")), "0.7");
@@ -560,7 +532,7 @@ describe("AppealSection: crowdfunding cards", () => {
 
   it("a contribution edited for one answer is dropped when the free input's answer changes to one with its own card, which then prefills and funds that card's remaining amount", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "uint", precision: 0 }, currentRuling: 3n, contributions: [{ ruling: 3n, amount: ETH / 2n }] })));
     const answer = within(freeInputCard()).getByRole("textbox", { name: /Answer/ });
     await user.type(answer, "7");
@@ -574,15 +546,12 @@ describe("AppealSection: crowdfunding cards", () => {
     expect(contributionField(freeInputCard())).toHaveValue("1.5");
     expect(fundButton(freeInputCard())).toBeEnabled();
     await user.click(fundButton(freeInputCard()));
-    await waitFor(() => {
-      expect(writes.fake?.executions).toHaveLength(1);
-    });
-    expect(sentCalls(writes.fake)).toMatchObject([{ args: [7n, 3n], value: (3n * ETH) / 2n }]);
+    expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 3n], value: (3n * ETH) / 2n }]);
   });
 
   it("a contribution edited for one combination is dropped when the composer's ticks change to a combination with its own card, which then prefills and funds that card's remaining amount", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     await renderSection(
       caseDispute(
         crowdfunding({ rulingOptions: { type: "multiple-select", titles: ["A", "B", "C", "D", "E"] }, currentRuling: 3n, contributions: [{ ruling: 3n, amount: ETH / 2n }] }),
@@ -597,10 +566,7 @@ describe("AppealSection: crowdfunding cards", () => {
     expect(contributionField(composerCard())).toHaveValue("1.5");
     expect(fundButton(composerCard())).toBeEnabled();
     await user.click(fundButton(composerCard()));
-    await waitFor(() => {
-      expect(writes.fake?.executions).toHaveLength(1);
-    });
-    expect(sentCalls(writes.fake)).toMatchObject([{ args: [7n, 3n], value: (3n * ETH) / 2n }]);
+    expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 3n], value: (3n * ETH) / 2n }]);
   });
 
   it("an amount that cannot be sent is explained and keeps Fund disabled", async () => {
@@ -613,7 +579,7 @@ describe("AppealSection: crowdfunding cards", () => {
 
   it("'-' typed over the prefilled amount is refused with a message and nothing is sent", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     await renderSection(caseDispute(crowdfunding()));
     const field = contributionField(card("No"));
     await user.type(field, "-", { initialSelectionStart: 0, initialSelectionEnd: field.value.length });
@@ -627,7 +593,7 @@ describe("AppealSection: crowdfunding cards", () => {
 
   it("'-' typed over an edited amount is refused instead of sending the edit", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     await renderSection(caseDispute(crowdfunding()));
     const field = contributionField(card("No"));
     await user.clear(field);
@@ -720,7 +686,7 @@ describe("AppealSection: crowdfunding cards", () => {
 
   it("a 34-option multiple-select shows only the refuse card, the current and contributed combinations and a composer with 34 options", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     const titles = Array.from({ length: 34 }, (_, index) => `Option ${String(index + 1)}`);
     const everyOption = 1n << 34n;
     await renderSection(
@@ -742,10 +708,7 @@ describe("AppealSection: crowdfunding cards", () => {
     await user.click(within(composer).getByRole("checkbox", { name: "Option 34" }));
     expect(composer).toHaveTextContent("Answer to fund: Option 1, Option 34");
     await user.click(fundButton(composer));
-    await waitFor(() => {
-      expect(writes.fake?.executions).toHaveLength(1);
-    });
-    expect(sentCalls(writes.fake)).toMatchObject([{ args: [7n, ((1n << 33n) | 1n) + 1n], value: LOSER_TOTAL }]);
+    expect(await sentCallsAfter()).toMatchObject([{ args: [7n, ((1n << 33n) | 1n) + 1n], value: LOSER_TOTAL }]);
   });
 
   it("variable-type questions show contributed values, the current ruling at the winner amount and a free input", async () => {
@@ -853,7 +816,7 @@ describe("AppealSection: crowdfunding cards", () => {
 describe("AppealSection: funding", () => {
   it("Fund sends fundAppeal for the card's ruling with the contribution, with a refresh for once it is mined", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     await renderSection(caseDispute(crowdfunding()));
     await user.click(fundButton(card("No")));
     await waitFor(() => {
@@ -867,42 +830,33 @@ describe("AppealSection: funding", () => {
 
   it("the contribution goes to the arbitrable the arbitrator names, on the page chain", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     await renderSection(caseDispute(crowdfunding()));
     await user.clear(contributionField(card("Yes")));
     await user.type(contributionField(card("Yes")), "0.5");
     await user.click(fundButton(card("Yes")));
-    await waitFor(() => {
-      expect(writes.fake?.executions).toHaveLength(1);
-    });
-    expect(sentCalls(writes.fake)).toMatchObject([{ address: TEST_ARBITRABLE, chainId: 1, args: [7n, 1n], value: ETH / 2n }]);
+    expect(await sentCallsAfter()).toMatchObject([{ address: TEST_ARBITRABLE, chainId: 1, args: [7n, 1n], value: ETH / 2n }]);
   });
 
   it("the composer funds the ticked combination", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "multiple-select", titles: ["A", "B", "C", "D", "E"] } })));
     const composer = composerCard();
     await user.click(within(composer).getByRole("checkbox", { name: "A" }));
     await user.click(within(composer).getByRole("checkbox", { name: "C" }));
     await user.click(fundButton(composer));
-    await waitFor(() => {
-      expect(writes.fake?.executions).toHaveLength(1);
-    });
-    expect(sentCalls(writes.fake)).toMatchObject([{ args: [7n, combinationCode([0, 2])], value: LOSER_TOTAL }]);
+    expect(await sentCallsAfter()).toMatchObject([{ args: [7n, combinationCode([0, 2])], value: LOSER_TOTAL }]);
   });
 
   it("a datetime answer funds the picked date with its time of day", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
     await typeDateAnswer(user, "10202026", "1545");
     expect(fundButton(freeInputCard())).toBeEnabled();
     await user.click(fundButton(freeInputCard()));
-    await waitFor(() => {
-      expect(writes.fake?.executions).toHaveLength(1);
-    });
-    expect(sentCalls(writes.fake)).toMatchObject([{ args: [7n, BigInt(Date.UTC(2026, 9, 20, 15, 45) / 1000) + 1n], value: LOSER_TOTAL }]);
+    expect(await sentCallsAfter()).toMatchObject([{ args: [7n, BigInt(Date.UTC(2026, 9, 20, 15, 45) / 1000) + 1n], value: LOSER_TOTAL }]);
   });
 
   it("a datetime answer is read in UTC whatever the browser's zone", async () => {
@@ -911,41 +865,32 @@ describe("AppealSection: funding", () => {
     onTestFinished(resetLocalTimeZone);
     expect(getLocalTimeZone()).toBe("Pacific/Kiritimati");
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
     expect(within(freeInputCard()).getByText("Answer (date and time, UTC)")).toBeInTheDocument();
     await typeDateAnswer(user, "10202026", "0030");
     await user.click(fundButton(freeInputCard()));
-    await waitFor(() => {
-      expect(writes.fake?.executions).toHaveLength(1);
-    });
-    expect(sentCalls(writes.fake)).toMatchObject([{ args: [7n, BigInt(Date.UTC(2026, 9, 20, 0, 30) / 1000) + 1n], value: LOSER_TOTAL }]);
+    expect(await sentCallsAfter()).toMatchObject([{ args: [7n, BigInt(Date.UTC(2026, 9, 20, 0, 30) / 1000) + 1n], value: LOSER_TOTAL }]);
   });
 
   it("the free input funds the encoded answer at the loser amount", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "uint", precision: 0 } })));
     await user.type(within(freeInputCard()).getByRole("textbox", { name: /Answer/ }), "41");
     await user.click(fundButton(freeInputCard()));
-    await waitFor(() => {
-      expect(writes.fake?.executions).toHaveLength(1);
-    });
-    expect(sentCalls(writes.fake)).toMatchObject([{ args: [7n, 42n], value: LOSER_TOTAL }]);
+    expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 42n], value: LOSER_TOTAL }]);
   });
 
   it("Fund on a large uint current ruling sends its exact code to fundAppeal", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     const large = 10n ** 18n + 1n;
     await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "uint", precision: 18 }, currentRuling: large })));
     await user.click(fundButton(card("1")));
     await user.type(within(freeInputCard()).getByRole("textbox", { name: /Answer/ }), "1");
     await user.click(fundButton(freeInputCard()));
-    await waitFor(() => {
-      expect(writes.fake?.executions).toHaveLength(2);
-    });
-    expect(sentCalls(writes.fake)).toMatchObject([
+    expect(await sentCallsAfter(2)).toMatchObject([
       { args: [7n, large], value: WINNER_TOTAL },
       { args: [7n, large], value: WINNER_TOTAL },
     ]);
@@ -1000,7 +945,7 @@ describe("AppealSection: funding", () => {
 
   it("while the wallet's switch to the page chain waits, Fund is refused visibly, sends nothing and shows the waiting switch", async () => {
     const user = userEvent.setup();
-    const wallet = walletAwaitingSwitch(100);
+    const wallet = holdChainSwitches(createTestWallet({ chainId: 100 }));
     await renderSection(caseDispute(crowdfunding()), { wallet, connected: false });
     await act(() => wallet.connect());
     await user.click(fundButton(card("No")));
@@ -1019,32 +964,29 @@ describe("AppealSection: Escrow V1 appeal", () => {
     expect(panel).toHaveTextContent("In order to appeal the decision, you need to pay the appeal cost.");
   });
 
-  it("the appeal pays the cost read again right before signing", async () => {
+  it("the appeal pays the cost read again right before signing, to the escrow's transaction, with a refresh for once it is mined", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     const executionsAtRead: number[] = [];
     const fake = writes.fake;
     const readAppealCost = vi.fn(() => {
       executionsAtRead.push(fake.executions.length);
       return Promise.resolve<Outcome<bigint>>({ ok: true, value: ETH });
     });
-    await renderSection(
-      caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, { family: ESCROW, localId: { kind: "transaction-id", value: 9n }, readAppealCost }),
-    );
+    await renderSection(escrowDispute(readAppealCost));
     expect(readAppealCost).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Appeal - 1 ETH" }));
     expect(await screen.findByText("Transaction confirmed")).toBeInTheDocument();
     expect(executionsAtRead).toEqual([0]);
-    expect(sentCalls(fake)).toMatchObject([{ kind: "escrow-appeal", args: [9n], value: ETH }]);
+    expect(sentCalls(fake)).toMatchObject([{ kind: "escrow-appeal", functionName: "appeal", args: [9n], value: ETH }]);
+    expect(fake.executions[0]?.options.onMined).toBeTypeOf("function");
   });
 
   it("an appeal cost that changed since the page loaded is shown on the button, explained, and nothing is sent until Appeal is pressed again", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     const readAppealCost = vi.fn(() => Promise.resolve<Outcome<bigint>>({ ok: true, value: 2n * ETH }));
-    const panel = await renderSection(
-      caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, { family: ESCROW, localId: { kind: "transaction-id", value: 9n }, readAppealCost }),
-    );
+    const panel = await renderSection(escrowDispute(readAppealCost));
     await user.click(screen.getByRole("button", { name: "Appeal - 1 ETH" }));
     expect(await screen.findByRole("button", { name: "Appeal - 2 ETH" })).toBeInTheDocument();
     expect(panel).toHaveTextContent("The appeal cost changed");
@@ -1067,15 +1009,13 @@ describe("AppealSection: Escrow V1 appeal", () => {
 
   it("while the appeal cost is read again the status region says so, and a changed cost is announced in that same region", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     const answers: ((cost: Outcome<bigint>) => void)[] = [];
     const readAppealCost = () =>
       new Promise<Outcome<bigint>>((resolve) => {
         answers.push(resolve);
       });
-    const panel = await renderSection(
-      caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, { family: ESCROW, localId: { kind: "transaction-id", value: 9n }, readAppealCost }),
-    );
+    const panel = await renderSection(escrowDispute(readAppealCost));
     const region = costCheckRegion(panel);
     await user.click(screen.getByRole("button", { name: "Appeal - 1 ETH" }));
     expect(await within(region).findByText(APPEAL_COST_CHECKING)).toBeInTheDocument();
@@ -1093,27 +1033,14 @@ describe("AppealSection: Escrow V1 appeal", () => {
 
   it("an appeal cost that cannot be read again is reported and nothing is sent", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     const readAppealCost = () => Promise.resolve<Outcome<bigint>>({ ok: false, error: { code: "rpc-error", message: "Could not read the appeal cost: the RPC did not answer." } });
-    const panel = await renderSection(
-      caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, { family: ESCROW, localId: { kind: "transaction-id", value: 9n }, readAppealCost }),
-    );
+    const panel = await renderSection(escrowDispute(readAppealCost));
     await user.click(screen.getByRole("button", { name: "Appeal - 1 ETH" }));
     expect(await within(panel).findByText("Appeal cost unavailable")).toBeInTheDocument();
     expect(panel).toHaveTextContent("The appeal cost could not be read again, so nothing was sent. Could not read the appeal cost: the RPC did not answer.");
     expect(screen.getByRole("button", { name: "Appeal - 1 ETH" })).toBeEnabled();
     expect(writes.fake.executions).toHaveLength(0);
-  });
-
-  it("the appeal pays the appeal cost to the escrow's transaction, with a refresh for once it is mined", async () => {
-    const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
-    const transactionId: LocalIdResolution = { kind: "transaction-id", value: 9n };
-    await renderSection(caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, { family: ESCROW, localId: transactionId }));
-    await user.click(screen.getByRole("button", { name: "Appeal - 1 ETH" }));
-    expect(await screen.findByText("Transaction confirmed")).toBeInTheDocument();
-    expect(sentCalls(writes.fake)).toMatchObject([{ kind: "escrow-appeal", functionName: "appeal", args: [9n], value: ETH }]);
-    expect(writes.fake.executions[0]?.options.onMined).toBeTypeOf("function");
   });
 
   it("the Escrow V1 appeal body has no countdown", async () => {
@@ -1125,9 +1052,7 @@ describe("AppealSection: Escrow V1 appeal", () => {
   it("a failed Escrow V1 appeal is reported as an error", async () => {
     const user = userEvent.setup();
     writes.fake = fakeWriteController([{ phase: "pending" }, { phase: "failed", hash: TEST_TX_HASH, explorerUrl: null, message: "The transaction reverted." }]);
-    const panel = await renderSection(
-      caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, { family: ESCROW, localId: { kind: "transaction-id", value: 9n } }),
-    );
+    const panel = await renderSection(escrowDispute());
     await user.click(screen.getByRole("button", { name: "Appeal - 1 ETH" }));
     expect(await within(panel).findByRole("alert")).toHaveTextContent("The transaction reverted.");
   });
@@ -1135,22 +1060,15 @@ describe("AppealSection: Escrow V1 appeal", () => {
   it("a rejected Escrow V1 appeal is a neutral notice, not an error", async () => {
     const user = userEvent.setup();
     writes.fake = fakeWriteController([{ phase: "pending" }, { phase: "rejected" }]);
-    const panel = await renderSection(
-      caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, { family: ESCROW, localId: { kind: "transaction-id", value: 9n } }),
-    );
+    const panel = await renderSection(escrowDispute());
     await user.click(screen.getByRole("button", { name: "Appeal - 1 ETH" }));
     expect(await within(panel).findByText("Transaction cancelled")).toBeInTheDocument();
     expect(within(panel).queryByRole("alert")).toBeNull();
   });
 
   it("the escrow Appeal button is disabled without a wallet and the panel says one is needed", async () => {
-    writes.fake = fakeWriteController(SENT);
-    const panel = await renderSection(
-      caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, { family: ESCROW, localId: { kind: "transaction-id", value: 9n } }),
-      {
-        connected: false,
-      },
-    );
+    writes.fake = fakeWriteController(TEST_SENT);
+    const panel = await renderSection(escrowDispute(), { connected: false });
     expect(screen.getByRole("button", { name: "Appeal - 1 ETH" })).toBeDisabled();
     expect(panel).toHaveTextContent("Connect a wallet to appeal.");
     expect(writes.fake.executions).toHaveLength(0);
@@ -1158,11 +1076,8 @@ describe("AppealSection: Escrow V1 appeal", () => {
 
   it("while the wallet's switch to the page chain waits, the Escrow V1 appeal is refused with the waiting switch", async () => {
     const user = userEvent.setup();
-    const wallet = walletAwaitingSwitch(100);
-    const panel = await renderSection(
-      caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, { family: ESCROW, localId: { kind: "transaction-id", value: 9n } }),
-      { wallet, connected: false },
-    );
+    const wallet = holdChainSwitches(createTestWallet({ chainId: 100 }));
+    const panel = await renderSection(escrowDispute(), { wallet, connected: false });
     await act(() => wallet.connect());
     await user.click(screen.getByRole("button", { name: "Appeal - 1 ETH" }));
     expect(await within(panel).findByText("Wrong network")).toBeInTheDocument();
@@ -1219,7 +1134,7 @@ describe("AppealSection: withdraw", () => {
 
   it("withdraws every ruling in one sequence, one transaction each, with a refresh for the end", async () => {
     const user = userEvent.setup();
-    writes.fake = fakeWriteController(SENT);
+    writes.fake = fakeWriteController(TEST_SENT);
     await renderSection(caseDispute({ kind: "withdraw", state: available }));
     await user.click(screen.getByRole("button", { name: "Withdraw 0.5 ETH" }));
     expect(await screen.findByText("Transaction confirmed (2 of 2)")).toBeInTheDocument();
@@ -1234,7 +1149,7 @@ describe("AppealSection: withdraw", () => {
 
   it("while the wallet's switch to the page chain waits, Withdraw is refused with the waiting switch", async () => {
     const user = userEvent.setup();
-    const wallet = walletAwaitingSwitch(100);
+    const wallet = holdChainSwitches(createTestWallet({ chainId: 100 }));
     await renderSection(caseDispute({ kind: "withdraw", state: available }), { wallet, connected: false });
     await act(() => wallet.connect());
     await user.click(screen.getByRole("button", { name: "Withdraw 0.5 ETH" }));

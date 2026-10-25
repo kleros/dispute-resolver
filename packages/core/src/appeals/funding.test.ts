@@ -1,18 +1,17 @@
-import { encodeEventTopics, encodeAbiParameters, getAbiItem } from "viem";
+import { encodeEventTopics, encodeAbiParameters } from "viem";
 import { describe, expect, it } from "vitest";
-import { governorAbi, idrV2Abi } from "../abi";
+import { governorAbi } from "../abi";
 import type { LocalIdResolution } from "../disputes/types";
 import { REGISTRY, getOverride } from "../registry";
 import type { Address } from "../types";
 import { DISPUTE_1170, GOVERNOR_1621, UNSLASHED } from "./__fixtures__/recorded";
 import { readRoundFunding, roundStartBlock } from "./index";
+import { CONTRIBUTION_EVENT, RULING_FUNDED_EVENT } from "./context";
 import type { AppealContext } from "./types";
 import { FAMILY_SIGNATURES, answer, detectionFor, fakeNode, recordedDetection, reverting, rpcError, rpcLog, testBinding, type FakeNodeSpec } from "../test/appeals/testHelpers";
 
 const UNSLASHED_OVERRIDE = getOverride(REGISTRY, 1, UNSLASHED.arbitrable);
 const SYNTHETIC: Address = "0x00000000000000000000000000000000000000bb";
-const CONTRIBUTION = getAbiItem({ abi: idrV2Abi, name: "Contribution" });
-const RULING_FUNDED = getAbiItem({ abi: idrV2Abi, name: "RulingFunded" });
 
 async function unslashedContext(spec: FakeNodeSpec, disputeId: bigint, localId: bigint) {
   const { client, requests } = fakeNode(spec);
@@ -50,7 +49,7 @@ function contributionLog(input: {
   return rpcLog({
     address: SYNTHETIC,
     topics: encodeEventTopics({
-      abi: [CONTRIBUTION],
+      abi: [CONTRIBUTION_EVENT],
       eventName: "Contribution",
       args: { _localDisputeID: input.localId, _round: input.round, _contributor: input.contributor },
     }) as `0x${string}`[],
@@ -64,7 +63,7 @@ function rulingFundedLog(input: { readonly localId: bigint; readonly round: bigi
   return rpcLog({
     address: SYNTHETIC,
     topics: encodeEventTopics({
-      abi: [RULING_FUNDED],
+      abi: [RULING_FUNDED_EVENT],
       eventName: "RulingFunded",
       args: { _localDisputeID: input.localId, _round: input.round, _ruling: input.ruling },
     }) as `0x${string}`[],

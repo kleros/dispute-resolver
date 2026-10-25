@@ -1,5 +1,6 @@
 import { expect, type Page, type Route } from "@playwright/test";
-import { answerFromFixture, CORS_HEADERS, fulfillJson, jsonRpcCall, loadRpcFixture, type JsonRpcRequest } from "./rpcFixture";
+import { appOriginOf, CORS_HEADERS, fulfillJson, jsonRpcCall, type JsonRpcRequest } from "../support/network";
+import { answerFromFixture, loadRpcFixture } from "./rpcFixture";
 
 // One catch-all route serves every dependency the case page of mainnet dispute 1621 has outside the app: the
 // meta-evidence locator and the recorded MetaEvidence event name one path, the gateway serves a test meta-evidence file
@@ -15,6 +16,9 @@ export const DISPUTE_ID = "1621";
 export const CASE_PATH = `/1/cases/${DISPUTE_ID}`;
 export const RUNNER_PATH = "/__runner/index.html";
 export const RUNNER_FRAME = `iframe[src="${RUNNER_PATH}"]`;
+/** A blank page on the app's origin that frames the runner, served by `serveHarness`. */
+export const HARNESS_PATH = "/__runner-e2e/harness.html";
+const HARNESS_HTML = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Runner harness</title></head><body></body></html>';
 
 /**
  * The path the governor's MetaEvidence(0) event carries in fixtures/mainnet-1621.rpc.json. The event's URI wins over the
@@ -22,7 +26,7 @@ export const RUNNER_FRAME = `iframe[src="${RUNNER_PATH}"]`;
  */
 const META_EVIDENCE_PATH = "/ipfs/QmZ3Cmnip8bmFNruuTuCdxPymEjyK9VcQEyf2beDYcaHaK/metaEvidence.json";
 /** The mainnet governor script's CID (`registry/scripts.ts`), served here with the test script below. */
-export const SCRIPT_CID = "QmdpXXmNxmdmLqZCabRUC9bZ65c2BN54EuUTRi5SdtiHQ4";
+const SCRIPT_CID = "QmdpXXmNxmdmLqZCabRUC9bZ65c2BN54EuUTRi5SdtiHQ4";
 
 const TITLE_BEFORE_SCRIPT = "Title before the dynamic script";
 export const SCRIPT_TITLE = "Title set by the fixture script";
@@ -30,7 +34,7 @@ export const SCRIPT_OPTIONS = ["Fixture script option one", "Fixture script opti
 export const OPTIONS_BEFORE_SCRIPT = ["Option before the script A", "Option before the script B"] as const;
 
 /** How long the test script waits before resolving, so the runner frame is still open to be inspected. */
-export const SCRIPT_DELAY_MS = 2_000;
+const SCRIPT_DELAY_MS = 2_000;
 
 const META_EVIDENCE = {
   title: TITLE_BEFORE_SCRIPT,
@@ -77,7 +81,7 @@ function isLocator(url: URL): boolean {
 }
 
 /** HTML pages outside the app a test adds to the case page's routes, by URL. */
-export type ExtraPages = Readonly<Record<string, string>>;
+type ExtraPages = Readonly<Record<string, string>>;
 
 /** An evidence-display page the meta-evidence names and the gateway route serves, recognized by its path alone. */
 export interface DisplayPage {
@@ -88,7 +92,7 @@ export interface DisplayPage {
   readonly release?: Promise<void>;
 }
 
-export interface CasePageOptions {
+interface CasePageOptions {
   readonly display?: DisplayPage;
 }
 
@@ -103,60 +107,43 @@ interface Served {
 async function serve(route: Route, { appOrigin, traffic, pages, metaEvidence, display }: Served): Promise<void> {
   const request = route.request();
   const url = new URL(request.url());
-  if (url.origin === appOrigin) {
-    await route.continue();
-    return;
-  }
-  if (request.method() === "OPTIONS") {
-    await route.fulfill({ status: 204, headers: CORS_HEADERS });
-    return;
-  }
+  if (url.origin === appOrigin) return route.continue();
+  if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS_HEADERS });
   const call = jsonRpcCall(request);
-  if (call !== undefined) {
-    await answerRpc(route, call, traffic);
-    return;
-  }
+  if (call !== undefined) return answerRpc(route, call, traffic);
   if (request.method() === "GET" && isLocator(url)) {
     traffic.locator += 1;
-    await fulfillJson(route, { metaEvidenceUri: META_EVIDENCE_PATH });
-    return;
+    return fulfillJson(route, { metaEvidenceUri: META_EVIDENCE_PATH });
   }
   if (url.pathname === META_EVIDENCE_PATH) {
     traffic.metaEvidence += 1;
-    await fulfillJson(route, metaEvidence);
-    return;
+    return fulfillJson(route, metaEvidence);
   }
   if (url.pathname === `/ipfs/${SCRIPT_CID}`) {
     traffic.script += 1;
-    await route.fulfill({ headers: CORS_HEADERS, contentType: "application/javascript; charset=utf-8", body: SCRIPT_TEXT });
-    return;
+    return route.fulfill({ headers: CORS_HEADERS, contentType: "application/javascript; charset=utf-8", body: SCRIPT_TEXT });
   }
   // The frame's query carries the display parameters, so only the path names the page.
   if (display?.path === url.pathname) {
     traffic.display += 1;
     await display.release;
-    await route.fulfill({ headers: CORS_HEADERS, contentType: "text/html; charset=utf-8", body: display.html });
-    return;
+    return route.fulfill({ headers: CORS_HEADERS, contentType: "text/html; charset=utf-8", body: display.html });
   }
   if (url.pathname.startsWith("/ipfs/")) {
     // Court policies and any other file: not part of these tests, so the gateway has none of them.
     traffic.otherIpfs += 1;
-    await route.fulfill({ status: 404, headers: CORS_HEADERS, body: "" });
-    return;
+    return route.fulfill({ status: 404, headers: CORS_HEADERS, body: "" });
   }
   const page = pages[url.href];
-  if (page !== undefined) {
-    await route.fulfill({ contentType: "text/html; charset=utf-8", body: page });
-    return;
-  }
+  if (page !== undefined) return route.fulfill({ contentType: "text/html; charset=utf-8", body: page });
   traffic.aborted.set(url.host, (traffic.aborted.get(url.host) ?? 0) + 1);
-  await route.abort("blockedbyclient");
+  return route.abort("blockedbyclient");
 }
 
 export async function routeCasePage(page: Page, baseURL: string | undefined, pages: ExtraPages = {}, options: CasePageOptions = {}): Promise<Traffic> {
   const { display } = options;
   const served: Served = {
-    appOrigin: new URL(baseURL ?? "http://localhost").origin,
+    appOrigin: appOriginOf(baseURL),
     traffic: newTraffic(),
     pages,
     metaEvidence: display === undefined ? META_EVIDENCE : { ...META_EVIDENCE, evidenceDisplayInterfaceURI: display.path },
@@ -164,6 +151,10 @@ export async function routeCasePage(page: Page, baseURL: string | undefined, pag
   };
   await page.route("**/*", (route) => serve(route, served));
   return served.traffic;
+}
+
+export async function serveHarness(page: Page, url: string): Promise<void> {
+  await page.route(url, (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: HARNESS_HTML }));
 }
 
 /** Fails early, and says why, when the build lacks the configuration the page needs to reach the routed dependencies. */

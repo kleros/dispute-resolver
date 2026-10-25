@@ -1,12 +1,12 @@
 import { expect, test, type Browser, type BrowserType, type LaunchOptions, type Page } from "@playwright/test";
-import { answerFromFixture, CORS_HEADERS, jsonRpcCall, loadRpcFixture, type RpcFixture } from "./rpcFixture";
+import { appOriginOf, fakeNetwork } from "../support/network";
+import { HARNESS_PATH, RUNNER_PATH, serveHarness } from "./casePageRoutes";
+import { loadRpcFixture } from "./rpcFixture";
 
 // Run against `vite preview`, whose runner plugin sends the runner policy on /__runner/*. Guard tests strip that header,
 // as a header misconfiguration would, so they prove the bootstrap's own checks. Run with `yarn e2e:runner` (Chromium,
 // Firefox and WebKit).
 
-const RUNNER_URL = "/__runner/index.html";
-const SAME_ORIGIN_HARNESS = "/__runner-e2e/harness.html";
 const FOREIGN_HARNESS = "http://foreign-parent.test/harness.html";
 
 // A runner page served through a test route has no network address, so Chromium's local network access checks would
@@ -14,7 +14,6 @@ const FOREIGN_HARNESS = "http://foreign-parent.test/harness.html";
 // bootstrap ever running. Guard tests that strip the runner policy therefore run with those checks off (Firefox and
 // WebKit have none) and assert that the bootstrap loaded.
 const WITHOUT_LOCAL_NETWORK_CHECKS = "--disable-features=LocalNetworkAccessChecks";
-const HARNESS_HTML = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Runner harness</title></head><body></body></html>';
 const RUNNER_POLICY = "sandbox allow-scripts; frame-ancestors 'self'; script-src 'self' 'unsafe-eval'; object-src 'none'; base-uri 'none'";
 
 /** How long a guard test waits for a reply that must never come. */
@@ -118,12 +117,8 @@ async function runInRunner(page: Page, input: RunInput): Promise<RunOutput> {
       frame.contentWindow?.postMessage({ type: "dr-runner/run", version: 2, scriptText, params, guardSource: null, rpcRedirects: [] }, "*", [channel.port2]);
       return { reply: await reply, messages: [...messages], evaluatedSignal, ackLatencyMs };
     },
-    { scriptText: input.scriptText, params: input.params ?? PARAMS_1650, runnerUrl: input.runnerUrl ?? RUNNER_URL, sandbox: input.sandbox, waitMs: input.waitMs },
+    { scriptText: input.scriptText, params: input.params ?? PARAMS_1650, runnerUrl: input.runnerUrl ?? RUNNER_PATH, sandbox: input.sandbox, waitMs: input.waitMs },
   );
-}
-
-async function serveHarness(page: Page, url: string): Promise<void> {
-  await page.route(url, (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: HARNESS_HTML }));
 }
 
 function trackBootstrap(page: Page): () => { readonly served: boolean; readonly failed: boolean } {
@@ -138,9 +133,17 @@ function trackBootstrap(page: Page): () => { readonly served: boolean; readonly 
   return () => ({ served, failed });
 }
 
-async function expectLoadedButIdle(page: Page, bootstrap: () => { readonly served: boolean; readonly failed: boolean }): Promise<void> {
+/** Not even an acknowledgement: a refused request learns nothing. The bootstrap loaded, so its own checks refused it. */
+async function expectNothingEvaluated(
+  page: Page,
+  bootstrap: () => { readonly served: boolean; readonly failed: boolean },
+  { messages, reply, evaluatedSignal }: RunOutput,
+): Promise<void> {
+  expect(messages).toEqual([]);
+  expect(reply).toBeNull();
+  expect(evaluatedSignal).toBe(false);
   expect(bootstrap()).toEqual({ served: true, failed: false });
-  const runnerFrame = page.frames().find((frame) => frame.url().endsWith(RUNNER_URL));
+  const runnerFrame = page.frames().find((frame) => frame.url().endsWith(RUNNER_PATH));
   expect(runnerFrame).toBeDefined();
   expect(await runnerFrame?.evaluate(() => typeof Reflect.get(globalThis, "scriptParameters"))).toBe("undefined");
 }
@@ -152,7 +155,7 @@ async function launchWithoutLocalNetworkChecks(engine: BrowserType, launchOption
 
 /** Serves the runner without its policy header, as a misconfigured deploy would. */
 async function stripRunnerPolicy(page: Page): Promise<void> {
-  await page.route(`**${RUNNER_URL}`, async (route) => {
+  await page.route(`**${RUNNER_PATH}`, async (route) => {
     const response = await route.fetch();
     const headers = Object.fromEntries(Object.entries(response.headers()).filter(([name]) => name.toLowerCase() !== "content-security-policy"));
     await route.fulfill({ response, headers });
@@ -161,26 +164,17 @@ async function stripRunnerPolicy(page: Page): Promise<void> {
 
 test.describe("script runner page", () => {
   test("the runner is served with its enforced sandbox policy", async ({ request }) => {
-    const response = await request.get(RUNNER_URL);
+    const response = await request.get(RUNNER_PATH);
     expect(response.headers()["content-security-policy"]).toBe(RUNNER_POLICY);
     expect((await request.get("/__runner/bootstrap.js")).headers()["content-security-policy"]).toBe(RUNNER_POLICY);
   });
 
-  test("a sandboxed runner loads its classic bootstrap, runs the script with an opaque origin and replies through the port", async ({ page }) => {
-    await serveHarness(page, `**${SAME_ORIGIN_HARNESS}`);
-    await page.goto(SAME_ORIGIN_HARNESS);
+  test("a sandboxed runner loads its classic bootstrap, runs the script at an opaque origin, and acknowledges on the port before it replies", async ({ page }) => {
+    await serveHarness(page, `**${HARNESS_PATH}`);
+    await page.goto(HARNESS_PATH);
     await page.evaluate(() => {
       window.localStorage.setItem("dr-e2e", "app secret");
     });
-
-    const { reply } = await runInRunner(page, { scriptText: PROBE_SCRIPT, sandbox: true, waitMs: 15_000 });
-
-    expect(reply).toEqual(PROBE_RESULT);
-  });
-
-  test("the sandboxed runner acknowledges on the port before it replies", async ({ page }) => {
-    await serveHarness(page, `**${SAME_ORIGIN_HARNESS}`);
-    await page.goto(SAME_ORIGIN_HARNESS);
 
     const { messages, reply, ackLatencyMs } = await runInRunner(page, { scriptText: PROBE_SCRIPT, sandbox: true, waitMs: 15_000 });
 
@@ -193,16 +187,12 @@ test.describe("script runner page", () => {
   test("the runner loaded without the sandbox attribute or its header evaluates nothing", async ({ page }) => {
     const bootstrap = trackBootstrap(page);
     await stripRunnerPolicy(page);
-    await serveHarness(page, `**${SAME_ORIGIN_HARNESS}`);
-    await page.goto(SAME_ORIGIN_HARNESS);
+    await serveHarness(page, `**${HARNESS_PATH}`);
+    await page.goto(HARNESS_PATH);
 
-    const { messages, reply, evaluatedSignal } = await runInRunner(page, { scriptText: PROBE_SCRIPT, sandbox: false, waitMs: SILENCE_MS });
+    const run = await runInRunner(page, { scriptText: PROBE_SCRIPT, sandbox: false, waitMs: SILENCE_MS });
 
-    // Not even an acknowledgement: a refused request learns nothing.
-    expect(messages).toEqual([]);
-    expect(reply).toBeNull();
-    expect(evaluatedSignal).toBe(false);
-    await expectLoadedButIdle(page, bootstrap);
+    await expectNothingEvaluated(page, bootstrap, run);
   });
 
   test("the runner framed by a parent outside the app evaluates nothing", async ({ playwright, browserName, launchOptions, baseURL }) => {
@@ -214,18 +204,14 @@ test.describe("script runner page", () => {
       await serveHarness(page, FOREIGN_HARNESS);
       await page.goto(FOREIGN_HARNESS);
 
-      const { messages, reply, evaluatedSignal } = await runInRunner(page, {
+      const run = await runInRunner(page, {
         scriptText: PROBE_SCRIPT,
-        runnerUrl: `${baseURL ?? ""}${RUNNER_URL}`,
+        runnerUrl: `${baseURL ?? ""}${RUNNER_PATH}`,
         sandbox: true,
         waitMs: SILENCE_MS,
       });
 
-      // Not even an acknowledgement: a refused request learns nothing.
-      expect(messages).toEqual([]);
-      expect(reply).toBeNull();
-      expect(evaluatedSignal).toBe(false);
-      await expectLoadedButIdle(page, bootstrap);
+      await expectNothingEvaluated(page, bootstrap, run);
     } finally {
       await browser.close();
     }
@@ -233,7 +219,7 @@ test.describe("script runner page", () => {
 
   test("the runner opened as the top-level page evaluates nothing", async ({ page }) => {
     const bootstrap = trackBootstrap(page);
-    await page.goto(RUNNER_URL);
+    await page.goto(RUNNER_PATH);
     const evaluated = await page.evaluate(
       async ({ scriptText, params, waitMs }) => {
         // Every message on the port for the whole wait: a refused request gets none, not even an acknowledgement.
@@ -262,47 +248,16 @@ const RPC_FIXTURE_1650 = loadRpcFixture("mainnet-1650.rpc.json");
 /** Reality's reserved "Answered Too Soon" answer. */
 const ANSWERED_TOO_SOON = "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
 
-/** What the script's routes served, as counts and method names only. */
-interface ScriptTraffic {
-  rpcAnswered: number;
-  readonly rpcUnanswered: string[];
-  aborted: number;
-}
-
-async function routeScriptReads(page: Page, appOrigin: string, fixture: RpcFixture): Promise<ScriptTraffic> {
-  const traffic: ScriptTraffic = { rpcAnswered: 0, rpcUnanswered: [], aborted: 0 };
-  await page.route("**/*", async (route) => {
-    const request = route.request();
-    if (new URL(request.url()).origin === appOrigin) {
-      await route.continue();
-      return;
-    }
-    if (request.method() === "OPTIONS") {
-      await route.fulfill({ status: 204, headers: CORS_HEADERS });
-      return;
-    }
-    const call = jsonRpcCall(request);
-    if (call === undefined) {
-      traffic.aborted += 1;
-      await route.abort("blockedbyclient");
-      return;
-    }
-    if (await answerFromFixture(route, fixture, call)) traffic.rpcAnswered += 1;
-    else traffic.rpcUnanswered.push(call.method);
-  });
-  return traffic;
-}
-
 test.describe("script runner on a recorded dispute", () => {
-  test("QmQGMR… against mainnet dispute 1650 returns Harris, Trump and Answered Too Soon", async ({ page, request, baseURL }) => {
+  test("QmQGMR… against mainnet dispute 1650 returns Harris, Trump and Answered Too Soon", async ({ context, page, request, baseURL }) => {
     test.setTimeout(120_000);
     const scriptResponse = await request.get(QMQGMR_URL);
     expect(scriptResponse.ok()).toBe(true);
     const scriptText = await scriptResponse.text();
 
-    const traffic = await routeScriptReads(page, new URL(baseURL ?? "http://localhost").origin, RPC_FIXTURE_1650);
-    await serveHarness(page, `**${SAME_ORIGIN_HARNESS}`);
-    await page.goto(SAME_ORIGIN_HARNESS);
+    const traffic = await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), rpc: (call) => RPC_FIXTURE_1650.answer(call) });
+    await serveHarness(page, `**${HARNESS_PATH}`);
+    await page.goto(HARNESS_PATH);
     const { reply } = await runInRunner(page, { scriptText, sandbox: true, waitMs: 90_000 });
 
     expect(reply).toEqual({
@@ -310,9 +265,10 @@ test.describe("script runner on a recorded dispute", () => {
       value: { rulingOptions: { type: "single-select", titles: ["Harris", "Trump"], reserved: { [ANSWERED_TOO_SOON]: "Answered Too Soon" } } },
       jsonDuplicateKeys: false,
     });
-    expect(traffic.rpcAnswered, "JSON-RPC reads answered from the fixture").toBeGreaterThan(0);
+    expect(traffic.rpc.length, "JSON-RPC reads answered from the fixture").toBeGreaterThan(traffic.rpcUnanswered.length);
     expect(traffic.rpcUnanswered, "JSON-RPC reads missing from the fixture").toEqual([]);
     expect(traffic.aborted, "requests other than JSON-RPC reads").toBe(0);
+    expect(traffic.http, "gateway and locator requests").toEqual([]);
   });
 });
 

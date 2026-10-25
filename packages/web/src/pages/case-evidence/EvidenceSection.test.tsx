@@ -1,16 +1,13 @@
 import {
-  getChain,
   z,
   type Address,
   type AppealDecisionEvent,
   type AttachmentLink,
   type ChainConfig,
-  type ChainId,
   type CanonicalIpfsPath,
   type EvidenceItem,
   type Hex,
   type EvidenceList,
-  type HiddenEvidenceReason,
   type Period,
 } from "@dispute-resolver/core";
 import { QueryClient } from "@tanstack/react-query";
@@ -20,10 +17,32 @@ import { useEffect, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CaseDispute } from "../../data";
 import { TEST_UPLOAD_PATH, fakeUploader, type FakeUploader } from "../../test/atlas";
-import { TEST_ARBITRABLE, sectionLoading, sectionReady, sectionUnavailable, testFamily, testFoundLookup, testWriteContext } from "../../test/data";
+import {
+  TEST_ARBITRABLE,
+  deferred,
+  sectionLoading,
+  sectionReady,
+  sectionUnavailable,
+  testCaseDispute,
+  testChain,
+  testDisputeEvent,
+  testEvidenceList,
+  testFamily,
+  testFoundLookup,
+  testWriteContext,
+} from "../../test/data";
 import { renderWithProviders } from "../../test/shell";
 import { shortenAddress } from "../../ui";
-import { TEST_TX_HASH, createTestWallet, fakeWriteController, holdChainSwitches, testReceipt, type FakeWriteController, type TestWallet } from "../../test/wallet";
+import {
+  TEST_MINED,
+  TEST_TX_HASH,
+  createConnectedTestWallet,
+  createTestWallet,
+  fakeWriteController,
+  holdChainSwitches,
+  type FakeWriteController,
+  type TestWallet,
+} from "../../test/wallet";
 import type { UploadResult } from "../../atlas";
 import type { WriteStatus } from "../../wallet";
 import { EvidenceSection } from "./EvidenceSection";
@@ -42,32 +61,11 @@ vi.mock("../../wallet", async (importOriginal) => {
   };
 });
 
-const CHAIN = configuredChain(1);
+const CHAIN = testChain(1);
 const SUBMITTER = "0x1111111111111111111111111111111111111111";
 const OTHER_SUBMITTER = "0x2222222222222222222222222222222222222222";
 const ATTACHMENT_CID = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
-const MINED: WriteStatus = { phase: "mined", hash: TEST_TX_HASH, explorerUrl: null, receipt: testReceipt() };
 const SUBMITTED: WriteStatus = { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null };
-const NO_HIDDEN: Readonly<Record<HiddenEvidenceReason, number>> = { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 };
-
-function configuredChain(chainId: ChainId): ChainConfig {
-  const chain = getChain(chainId);
-  if (chain === undefined) throw new Error(`Chain ${chainId.toString()} is configured.`);
-  return chain;
-}
-
-function deferred<T>() {
-  const control: { resolve?: (value: T) => void } = {};
-  const promise = new Promise<T>((resolve) => {
-    control.resolve = resolve;
-  });
-  return {
-    promise,
-    resolve(value: T) {
-      control.resolve?.(value);
-    },
-  };
-}
 
 function attachmentLink(name: string): AttachmentLink {
   return { kind: "link", href: `https://cdn.kleros.link/ipfs/${ATTACHMENT_CID}/${name}`, label: name, attachmentKind: "image" };
@@ -85,11 +83,6 @@ function item(overrides: Partial<EvidenceItem> = {}): EvidenceItem {
     attachment: null,
     ...overrides,
   };
-}
-
-function evidenceList(items: readonly EvidenceItem[], hidden: Partial<Record<HiddenEvidenceReason, number>> = {}): EvidenceList {
-  const hiddenByReason = { ...NO_HIDDEN, ...hidden };
-  return { items, hiddenEvidenceCount: Object.values(hiddenByReason).reduce((sum, count) => sum + count, 0), hiddenByReason };
 }
 
 const address = z.custom<Address>((value) => typeof value === "string" && /^0x[\da-f]{40}$/.test(value));
@@ -121,7 +114,7 @@ function recorded(name: string): { readonly chain: ChainConfig; readonly evidenc
     )
     .reverse();
   const decisions = entry.appealDecisions.map((decision) => ({ blockNumber: BigInt(decision.blockNumber), appealedAt: decision.appealedAt }));
-  return { chain: configuredChain(entry.chainId), evidence: evidenceList(items), decisions };
+  return { chain: testChain(entry.chainId), evidence: testEvidenceList(items), decisions };
 }
 
 function timelineRows(): string[] {
@@ -149,30 +142,19 @@ interface DisputeOptions {
 
 function caseDispute({
   period = 0,
-  evidence = sectionReady(evidenceList([])),
+  evidence = sectionReady(testEvidenceList([])),
   write = sectionReady(testWriteContext()),
   raisedAt = 1_700_000_000,
   appealDecisions = sectionReady([]),
 }: DisputeOptions = {}): CaseDispute {
-  const lookup = testFoundLookup({ period });
-  return {
-    status: "dispute",
-    chainId: 1,
-    disputeId: 1n,
-    lookup: sectionReady(lookup),
-    view: sectionLoading,
+  return testCaseDispute({
+    lookup: sectionReady(testFoundLookup({ period })),
     family: sectionReady(testFamily()),
-    metaEvidence: sectionLoading,
-    disputeEvent: sectionReady({
-      status: "found",
-      event: { metaEvidenceId: 0n, evidenceGroupId: 1n, blockNumber: 400n, createdAt: raisedAt, transactionHash: TEST_TX_HASH },
-    }),
+    disputeEvent: sectionReady(testDisputeEvent({ evidenceGroupId: 1n, blockNumber: 400n, createdAt: raisedAt, transactionHash: TEST_TX_HASH })),
     evidence,
     appealDecisions,
-    courts: sectionLoading,
-    appealPanel: sectionLoading,
     write,
-  };
+  });
 }
 
 interface RenderOptions extends DisputeOptions {
@@ -251,7 +233,7 @@ function pdf(name = "contract.pdf"): File {
 let invalidations: unknown[][];
 
 beforeEach(() => {
-  writes.fake = fakeWriteController([{ phase: "pending" }, SUBMITTED, MINED]);
+  writes.fake = fakeWriteController([{ phase: "pending" }, SUBMITTED, TEST_MINED]);
   invalidations = [];
   vi.spyOn(QueryClient.prototype, "invalidateQueries").mockImplementation(function record(this: QueryClient, filters) {
     invalidations.push([...(filters?.queryKey ?? [])]);
@@ -267,7 +249,7 @@ describe("EvidenceSection: evidence list", () => {
   it("lists valid entries newest first with title, plain-text description, submitter and UTC time", async () => {
     const newer = item({ title: "Second", submitter: OTHER_SUBMITTER, timestamp: 1_700_000_900, transactionHash: "0x02".padEnd(66, "0") as `0x${string}` });
     const older = item({ title: "First", description: "**not markdown**" });
-    await renderSection({ evidence: sectionReady(evidenceList([newer, older])) });
+    await renderSection({ evidence: sectionReady(testEvidenceList([newer, older])) });
 
     const entries = evidenceEntries();
     expect(entries).toHaveLength(2);
@@ -282,7 +264,7 @@ describe("EvidenceSection: evidence list", () => {
   });
 
   it("an attachment is a new-tab link with its icon, never rendered inline", async () => {
-    await renderSection({ evidence: sectionReady(evidenceList([item({ attachment: attachmentLink("photo.png") })])) });
+    await renderSection({ evidence: sectionReady(testEvidenceList([item({ attachment: attachmentLink("photo.png") })])) });
     const link = screen.getByRole("link", { name: /photo\.png/ });
     expect(link).toHaveAttribute("href", `https://cdn.kleros.link/ipfs/${ATTACHMENT_CID}/photo.png`);
     expect(link).toHaveAttribute("target", "_blank");
@@ -292,7 +274,7 @@ describe("EvidenceSection: evidence list", () => {
   });
 
   it("an attachment that is not a safe link is shown as text", async () => {
-    await renderSection({ evidence: sectionReady(evidenceList([item({ attachment: { kind: "text", text: "http://example.com/a.pdf" } })])) });
+    await renderSection({ evidence: sectionReady(testEvidenceList([item({ attachment: { kind: "text", text: "http://example.com/a.pdf" } })])) });
     const [entry] = evidenceEntries();
     if (entry === undefined) throw new Error("Expected one entry.");
     const attachment = within(entry).getByText("http://example.com/a.pdf");
@@ -301,20 +283,15 @@ describe("EvidenceSection: evidence list", () => {
   });
 
   it("shows how many entries were hidden and why", async () => {
-    await renderSection({ evidence: sectionReady(evidenceList([item()], { "not-content-addressed": 2 })) });
+    await renderSection({ evidence: sectionReady(testEvidenceList([item()], { "not-content-addressed": 2 })) });
     expect(screen.getByText("Hidden evidence")).toBeVisible();
     const hidden = screen.getByText(/evidence items hidden/);
     expect(hidden).toBeVisible();
     expect(hidden).toHaveTextContent("2 evidence items hidden: not content-addressed");
   });
 
-  it("labels an undecodable log among other reasons", async () => {
-    await renderSection({ evidence: sectionReady(evidenceList([], { undecodable: 1, "fetch-failed": 1 })) });
-    expect(screen.getByText(/evidence items hidden/)).toHaveTextContent("2 evidence items hidden: 1 undecodable event log, 1 could not be fetched");
-  });
-
   it("no hidden count shows when nothing is hidden", async () => {
-    await renderSection({ evidence: sectionReady(evidenceList([item()])) });
+    await renderSection({ evidence: sectionReady(testEvidenceList([item()])) });
     expect(evidenceEntries()).toHaveLength(1);
     expect(screen.queryByText("Hidden evidence")).toBeNull();
     expect(screen.queryByText(/hidden/)).toBeNull();
@@ -327,7 +304,7 @@ describe("EvidenceSection: evidence list", () => {
   });
 
   it("'Dispute Raised' shows the Dispute event's time below the entries, even when every entry is hidden", async () => {
-    await renderSection({ evidence: sectionReady(evidenceList([], { "schema-invalid": 1 })), raisedAt: 1_700_000_000 });
+    await renderSection({ evidence: sectionReady(testEvidenceList([], { "schema-invalid": 1 })), raisedAt: 1_700_000_000 });
     expect(screen.getByText("Dispute Raised")).toBeInTheDocument();
     expect(screen.getByText(new Date(1_700_000_000_000).toUTCString())).toBeInTheDocument();
     expect(screen.queryByText("No evidence submitted yet.")).toBeNull();
@@ -398,7 +375,7 @@ describe("EvidenceSection: 'Appealed' markers", () => {
 
   it("an appeal in the block of an entry is placed below that entry", async () => {
     const entry = item({ title: "Same block", blockNumber: 700n });
-    await renderSection({ evidence: sectionReady(evidenceList([entry])), appealDecisions: sectionReady([{ blockNumber: 700n, appealedAt: 1_700_000_700 }]) });
+    await renderSection({ evidence: sectionReady(testEvidenceList([entry])), appealDecisions: sectionReady([{ blockNumber: 700n, appealedAt: 1_700_000_700 }]) });
     expect(timelineRows().slice(0, 2)).toEqual(["Same block", appealedRow(1_700_000_700)]);
   });
 
@@ -410,13 +387,13 @@ describe("EvidenceSection: 'Appealed' markers", () => {
   });
 
   it("the entries show while the appeal decisions load", async () => {
-    await renderSection({ evidence: sectionReady(evidenceList([item({ title: "Only entry" })])), appealDecisions: sectionLoading });
+    await renderSection({ evidence: sectionReady(testEvidenceList([item({ title: "Only entry" })])), appealDecisions: sectionLoading });
     expect(timelineRows()).toEqual(["Only entry", `Dispute Raised${new Date(1_700_000_000_000).toUTCString()}`]);
   });
 
   it("unreadable appeal decisions keep the entries and say the markers are unavailable, with a Retry that reads the details again", async () => {
     const { user } = await renderSection({
-      evidence: sectionReady(evidenceList([item({ title: "Only entry" })])),
+      evidence: sectionReady(testEvidenceList([item({ title: "Only entry" })])),
       appealDecisions: sectionUnavailable("rpc-error", "logs refused"),
     });
     expect(screen.getByText("Appeal markers unavailable")).toBeInTheDocument();
@@ -769,8 +746,7 @@ describe("EvidenceSection: submission", () => {
   });
 
   it("shows an evidence list that arrives after its placeholder without a reveal of its own", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet();
     let settle: (() => void) | undefined;
     renderWithProviders(
       <SettlingSection

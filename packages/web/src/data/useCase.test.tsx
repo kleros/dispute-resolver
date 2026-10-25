@@ -1,10 +1,22 @@
 import * as core from "@dispute-resolver/core";
-import type { Address, DisputeEventResult, EvidenceList, FamilyDetection, MetaEvidenceResult, Outcome, Period } from "@dispute-resolver/core";
+import type { Address, DisputeEventResult, FamilyDetection, MetaEvidenceResult, Outcome, Period } from "@dispute-resolver/core";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { QueryClient } from "@tanstack/react-query";
-import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { TEST_ARBITRABLE, TestDataProvider, createTestDeps, createTestQueryClient, testCourt, testDetails, testFamily, testFoundLookup, testOkMetaEvidence } from "../test/data";
+import {
+  TEST_ARBITRABLE,
+  caseDispute,
+  createTestDeps,
+  createTestQueryClient,
+  dataWrapper,
+  testCourt,
+  testDetails,
+  testDisputeEvent,
+  testEvidenceList,
+  testFamily,
+  testFoundLookup,
+  testOkMetaEvidence,
+} from "../test/data";
 import { queryKeys } from "./queryKeys";
 import type { CaseData, CaseDispute, CoreDeps } from "./types";
 import { useCase } from "./useCase";
@@ -12,15 +24,8 @@ import { useCase } from "./useCase";
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../test/data/mockCoreReads")).mockCoreReads(importOriginal));
 
 const ACCOUNT: Address = "0x1111111111111111111111111111111111111111";
-const EVIDENCE: EvidenceList = {
-  items: [],
-  hiddenEvidenceCount: 0,
-  hiddenByReason: { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 },
-};
-const FOUND_EVENT: Outcome<DisputeEventResult> = {
-  ok: true,
-  value: { status: "found", event: { metaEvidenceId: 0n, evidenceGroupId: 3n, blockNumber: 100n, createdAt: 1_700_000_000, transactionHash: "0x01" } },
-};
+const EVIDENCE = testEvidenceList();
+const FOUND_EVENT: Outcome<DisputeEventResult> = { ok: true, value: testDisputeEvent() };
 
 const UNKNOWN_SESSION = { code: "not-found", message: "The governor session is unknown: the dispute's Dispute event was not read." } as const;
 
@@ -65,28 +70,18 @@ function programReads(period: Period = 0): void {
 }
 
 function renderCase(disputeId: bigint | null, options: { readonly deps?: CoreDeps; readonly account?: Address; readonly client?: QueryClient } = {}) {
-  const deps = options.deps ?? createTestDeps();
-  const wrapper = ({ children }: { readonly children?: ReactNode }) => (
-    <TestDataProvider deps={deps} client={options.client}>
-      {children}
-    </TestDataProvider>
-  );
+  const wrapper = dataWrapper({ deps: options.deps ?? createTestDeps(), client: options.client });
   return renderHook(({ id }: { id: bigint | null }) => useCase(1, id, options.account), { wrapper, initialProps: { id: disputeId } });
-}
-
-function dispute(data: CaseData): CaseDispute {
-  if (data.status !== "dispute") throw new Error("expected a dispute");
-  return data;
 }
 
 async function settledCase(result: { readonly current: CaseData }): Promise<CaseDispute> {
   await waitFor(() => {
-    const current = dispute(result.current);
+    const current = caseDispute(result.current);
     expect(current.view.status).not.toBe("loading");
     expect(current.appealPanel.status).not.toBe("loading");
     expect(current.evidence.status).not.toBe("loading");
   });
-  return dispute(result.current);
+  return caseDispute(result.current);
 }
 
 beforeEach(() => {
@@ -141,9 +136,9 @@ describe("useCase", () => {
     vi.mocked(core.lookupDispute).mockResolvedValue({ status: "not-found" });
     const { result } = renderCase(99n);
     await waitFor(() => {
-      expect(dispute(result.current).view).toEqual({ status: "ready", value: { exists: false, reason: "not-found" } });
+      expect(caseDispute(result.current).view).toEqual({ status: "ready", value: { exists: false, reason: "not-found" } });
     });
-    const current = dispute(result.current);
+    const current = caseDispute(result.current);
     expect(current.family).toMatchObject({ status: "unavailable", error: { code: "not-found" } });
     expect(current.appealPanel.status).toBe("unavailable");
     expect(core.detectFamily).not.toHaveBeenCalled();
@@ -155,7 +150,7 @@ describe("useCase", () => {
     await settledCase(result);
     vi.mocked(core.lookupDispute).mockReturnValue(new Promise(() => undefined));
     rerender({ id: 2n });
-    const current = dispute(result.current);
+    const current = caseDispute(result.current);
     expect(current.disputeId).toBe(2n);
     for (const section of [current.lookup, current.view, current.family, current.metaEvidence, current.evidence, current.appealPanel, current.write]) {
       expect(section).toEqual({ status: "loading" });
@@ -296,7 +291,7 @@ describe("useCase", () => {
     vi.mocked(core.readDisputeEvent).mockResolvedValue(FOUND_EVENT);
     await act(() => client.invalidateQueries({ queryKey: queryKeys.disputeEvent(1, 1n, testFoundLookup().binding.arbitrated) }));
     await waitFor(() => {
-      expect(dispute(result.current).appealPanel).toEqual({ status: "ready", value: { kind: "withdraw", state: { status: "nothing" } } });
+      expect(caseDispute(result.current).appealPanel).toEqual({ status: "ready", value: { kind: "withdraw", state: { status: "nothing" } } });
     });
     expect(core.readWithdrawable).toHaveBeenLastCalledWith(expect.objectContaining({ family: governorFamily, evidenceGroupId: 3n }), {
       beneficiary: ACCOUNT,
@@ -320,7 +315,7 @@ describe("useCase", () => {
     vi.mocked(core.readDisputeEvent).mockResolvedValue(FOUND_EVENT);
     await act(() => client.invalidateQueries({ queryKey: queryKeys.disputeEvent(1, 1n, testFoundLookup().binding.arbitrated) }));
     await waitFor(() => {
-      expect(dispute(result.current).appealPanel).toMatchObject({ status: "ready", value: { kind: "crowdfunding" } });
+      expect(caseDispute(result.current).appealPanel).toMatchObject({ status: "ready", value: { kind: "crowdfunding" } });
     });
     expect(core.readRoundFunding).toHaveBeenLastCalledWith(expect.objectContaining({ family: governorFamily, evidenceGroupId: 3n }), 1n, 500n);
   });
@@ -349,9 +344,9 @@ describe("useCase", () => {
     vi.mocked(core.lookupDispute).mockResolvedValue({ status: "unavailable", error: { code: "no-rpc", message: "No RPC is configured for chain 1." } });
     const { result } = renderCase(1n, { deps: createTestDeps({ unconfiguredChains: [1] }) });
     await waitFor(() => {
-      expect(dispute(result.current).view).toMatchObject({ status: "ready", value: { exists: false, reason: "unavailable" } });
+      expect(caseDispute(result.current).view).toMatchObject({ status: "ready", value: { exists: false, reason: "unavailable" } });
     });
     expect(vi.mocked(core.lookupDispute).mock.calls[0]?.[0].client).toBeUndefined();
-    expect(dispute(result.current).family).toMatchObject({ status: "unavailable", error: { code: "no-rpc" } });
+    expect(caseDispute(result.current).family).toMatchObject({ status: "unavailable", error: { code: "no-rpc" } });
   });
 });

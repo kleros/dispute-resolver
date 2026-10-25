@@ -1,6 +1,5 @@
 import { parseDisputeId, type ChainConfig, type ChainId } from "@dispute-resolver/core";
 import { useQueryClient } from "@tanstack/react-query";
-import type { ReactNode } from "react";
 import { useParams } from "react-router";
 import { queryKeys, useCase, type CaseDispute } from "../../data";
 import { usePageChain } from "../../routing";
@@ -10,20 +9,6 @@ import { NoArbitratorMessage, NoDisputeMessage, NotFoundMessage, PendingSearch, 
 import { SearchBox } from "./SearchBox";
 import { useBoundaryRetries, type BoundaryRetries } from "./useBoundaryRetries";
 import { useDisputeSearch } from "./useDisputeSearch";
-
-interface CaseFrameProps {
-  readonly search: ReactNode;
-  readonly children: ReactNode;
-}
-
-function CaseFrame({ search, children }: CaseFrameProps) {
-  return (
-    <div className="mx-auto flex w-full max-w-[1080px] min-w-0 flex-col gap-6">
-      {search}
-      {children}
-    </div>
-  );
-}
 
 interface DisputeStateProps {
   readonly dispute: CaseDispute;
@@ -100,17 +85,14 @@ export function CasePage() {
   else if (parsedId === null) placeholder = { kind: "not-found", id: urlId };
   else if (!capabilities.hasArbitrator) placeholder = { kind: "no-arbitrator", id: parsedId.toString() };
 
-  if (placeholder !== null || data.status !== "dispute") {
-    const shown = placeholder ?? { kind: "no-id" };
-    return (
-      <CaseFrame search={searchBox}>
-        <PlaceholderState placeholder={shown} chainId={chainId} chainName={chain.name} />
-      </CaseFrame>
-    );
-  }
   return (
-    <CaseFrame search={searchBox}>
-      <DisputeState dispute={data} chain={chain} retries={retries} />
-    </CaseFrame>
+    <div className="mx-auto flex w-full max-w-[1080px] min-w-0 flex-col gap-6">
+      {searchBox}
+      {placeholder !== null || data.status !== "dispute" ? (
+        <PlaceholderState placeholder={placeholder ?? { kind: "no-id" }} chainId={chainId} chainName={chain.name} />
+      ) : (
+        <DisputeState dispute={data} chain={chain} retries={retries} />
+      )}
+    </div>
   );
 }

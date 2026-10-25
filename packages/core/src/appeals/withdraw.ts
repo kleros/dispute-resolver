@@ -1,9 +1,9 @@
 import { idrV1Abi, idrV2Abi } from "../abi";
 import { getLogsChunked, readFailure } from "../rpc";
+import { compareBigint } from "../bigint";
 import type { Address, Unavailable } from "../types";
 import { CONTRIBUTION_EVENT, checkContext, governorSession, idrLocalId } from "./context";
 import { governorReward, readGovernorContributions, readGovernorRound, readGovernorSession } from "./governor";
-import { unavailable } from "./outcome";
 import type { AppealContext, WithdrawItem, WithdrawState } from "./types";
 
 interface WithdrawRequest {
@@ -20,11 +20,6 @@ function settled(beneficiary: Address, items: readonly WithdrawItem[]): Withdraw
   const withdrawable = items.filter((item) => item.amount > 0n);
   if (withdrawable.length === 0) return { status: "nothing" };
   return { status: "available", beneficiary, total: withdrawable.reduce((sum, item) => sum + item.amount, 0n), items: withdrawable };
-}
-
-function ascending(a: bigint, b: bigint): number {
-  if (a === b) return 0;
-  return a < b ? -1 : 1;
 }
 
 /**
@@ -51,7 +46,7 @@ async function contributedRulings(context: AppealContext, localId: bigint, reque
     if (args.ruling === undefined) return null;
     rulings.add(args.ruling);
   }
-  return [...rulings].sort(ascending);
+  return [...rulings].sort(compareBigint);
 }
 
 /** `getTotalWithdrawableAmount` per contributed ruling: a single ruling on v2, a one-ruling array on v1. */
@@ -63,7 +58,7 @@ async function readResolverWithdrawable(context: AppealContext, dialect: "idr-v2
   try {
     signal?.throwIfAborted();
     const rulings = await contributedRulings(context, localId.value, request);
-    if (rulings === null) return unavailableState(unavailable("invalid-data", "A Contribution event of the arbitrable could not be decoded."));
+    if (rulings === null) return unavailableState({ code: "invalid-data", message: "A Contribution event of the arbitrable could not be decoded." });
     const address = binding.arbitrated;
     const items = await Promise.all(
       rulings.map(async (ruling): Promise<WithdrawItem> => {
@@ -93,7 +88,7 @@ async function readGovernorWithdrawable(context: AppealContext, request: Withdra
   try {
     signal?.throwIfAborted();
     const resolution = await readGovernorSession(client, binding.arbitrated, session.value);
-    if (resolution.disputeId !== binding.disputeId) return unavailableState(unavailable("invalid-data", "The governor session does not belong to this dispute."));
+    if (resolution.disputeId !== binding.disputeId) return unavailableState({ code: "invalid-data", message: "The governor session does not belong to this dispute." });
     if (!resolution.resolved) return { status: "nothing" };
     const perRound = await Promise.all(
       request.rounds.map(async (round): Promise<WithdrawItem[]> => {
@@ -129,10 +124,10 @@ export async function readWithdrawable(
   if (beneficiary === undefined) return { status: "no-account" };
   const checked = checkContext(context);
   if (!checked.ok) return unavailableState(checked.error);
-  if (rounds.length !== roundStartBlocks.length) return unavailableState(unavailable("invalid-data", "Every round needs its start block."));
+  if (rounds.length !== roundStartBlocks.length) return unavailableState({ code: "invalid-data", message: "Every round needs its start block." });
   const withdraw = context.family.capabilities.withdraw.kind;
   if (withdraw !== "idr-v2" && withdraw !== "idr-v1" && withdraw !== "governor") {
-    return unavailableState(unavailable("unsupported", "Withdrawals are not supported through the resolver for this arbitrable."));
+    return unavailableState({ code: "unsupported", message: "Withdrawals are not supported through the resolver for this arbitrable." });
   }
   if (rounds.length === 0) return { status: "nothing" };
   const request = { beneficiary, rounds, roundStartBlocks };

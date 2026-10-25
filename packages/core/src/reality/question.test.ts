@@ -6,8 +6,9 @@ import type { Hex } from "../types";
 import { DISPUTE_ID_TO_QUESTION_ID, LOG_NEW_QUESTION } from "./events";
 import { findLatestLogs } from "./findLatestLogs";
 import { LOOKUP_LIMITS } from "./constants";
+import { requireClient } from "./lookup";
 import { fetchRealityQuestion } from "./question";
-import { filterOf, mappingLog, nth, questionLog, readClientOf, singleBlockLogs, type FakeChain, type NodeCall } from "../test/reality/testHelpers";
+import { filterOf, mappingLog, nth, questionLog, singleBlockLogs, type FakeChain, type NodeCall } from "../test/reality/testHelpers";
 import {
   CROSS_BOUND,
   CROSS_ENTRY,
@@ -386,14 +387,14 @@ describe("findLatestLogs", () => {
 
   it("returns no logs for an empty range without requests", async () => {
     const world = createWorld();
-    expect(await findLatestLogs(readClientOf(world.clients, 1), { ...request, fromBlock: 10n, toBlock: 9n }, budget())).toEqual([]);
+    expect(await findLatestLogs(requireClient(world.clients, 1), { ...request, fromBlock: 10n, toBlock: 9n }, budget())).toEqual([]);
     expect(world.calls).toHaveLength(0);
   });
 
   it("returns the logs of the newest window that has any", async () => {
     const world = createWorld();
     world.chains[1].maxRange = 10_000n;
-    const logs = await findLatestLogs(readClientOf(world.clients, 1), request, budget());
+    const logs = await findLatestLogs(requireClient(world.clients, 1), request, budget());
     expect(logs).toHaveLength(1);
     expect(logs[0]?.args._questionID).toBe(Q_NEW_SINGLE);
   });
@@ -401,7 +402,7 @@ describe("findLatestLogs", () => {
   it("spends the budget on every request", async () => {
     const world = createWorld();
     world.chains[1].maxRange = 100n;
-    await expect(findLatestLogs(readClientOf(world.clients, 1), request, createRequestBudget({ maxRequests: 5, deadlineMs: 60_000 }))).rejects.toThrow(/budget of 5 requests/);
+    await expect(findLatestLogs(requireClient(world.clients, 1), request, createRequestBudget({ maxRequests: 5, deadlineMs: 60_000 }))).rejects.toThrow(/budget of 5 requests/);
     expect(world.calls).toHaveLength(5);
   });
 });

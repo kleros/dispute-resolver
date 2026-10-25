@@ -22,6 +22,10 @@ export const TEST_ROLE_LIMITS: Readonly<Record<UploadRole, RoleLimits>> = {
   policy: { maxSize: MIB, allowedMimeTypes: ["application/json"] },
 };
 
+export function testPdf(name = "brief.pdf"): File {
+  return new File(["%PDF-1.4"], name, { type: "application/pdf" });
+}
+
 /** An `AtlasUploader` whose functions are vitest mocks, so a test can drive and inspect them. */
 export interface FakeUploader extends AtlasUploader {
   readonly limits: Mock<AtlasUploader["limits"]>;

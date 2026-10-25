@@ -5,7 +5,7 @@ import { ACTION_LINK_CLASS } from "../ui";
 import acropolisUrl from "./acropolis.svg";
 import { paths } from "./paths";
 
-export interface NotFoundScreenProps {
+interface NotFoundScreenProps {
   /** The resolved chain: the screen also renders outside the chain layout (`//foo`), where no page chain exists. */
   readonly chainId: ChainId;
 }

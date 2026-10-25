@@ -1,9 +1,10 @@
 import { getAbiItem } from "viem";
 import { klerosLiquidAbi } from "../abi";
+import { compareBigint } from "../bigint";
 import { getChain, ongoingScanStart } from "../chains";
 import { describeError, getLogsChunked } from "../rpc";
 import type { Address, ReadClient } from "../types";
-import { NETWORK_DATA_UNAVAILABLE } from "./outcome";
+import { NETWORK_DATA_UNAVAILABLE } from "../outcome";
 import { readDisputeStruct, toArbitratorDispute } from "./struct";
 import type { ArbitratorDispute, Court, DisputeReadContext, OngoingDispute, OngoingList } from "./types";
 
@@ -20,7 +21,7 @@ async function openDisputeIds(client: ReadClient, arbitrator: Address, fromBlock
   ]);
   const executed = new Set(periods.filter((log) => log.args._period === EXECUTION_PERIOD).map((log) => log.args._disputeID));
   const open = new Set(created.map((log) => log.args._disputeID).filter((id): id is bigint => id !== undefined && !executed.has(id)));
-  return [...open].sort((a, b) => (a < b ? 1 : -1));
+  return [...open].sort((a, b) => compareBigint(b, a));
 }
 
 function toOngoing(dispute: ArbitratorDispute, courts: readonly Court[] | null): OngoingDispute {

@@ -1,27 +1,31 @@
 import * as core from "@dispute-resolver/core";
-import type { Address, EvidenceList, Outcome, DisputeEventResult } from "@dispute-resolver/core";
+import type { Address, Outcome, DisputeEventResult } from "@dispute-resolver/core";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { numberToHex } from "viem";
-import { TestDataProvider, createTestDeps, testCourt, testDetails, testFamily, testFoundLookup, testOkMetaEvidence, type RpcHandler } from "../test/data";
+import {
+  caseDispute,
+  createTestDeps,
+  dataWrapper,
+  testCourt,
+  testDetails,
+  testDisputeEvent,
+  testEvidenceList,
+  testFamily,
+  testFoundLookup,
+  testOkMetaEvidence,
+  type RpcHandler,
+} from "../test/data";
 import { useChainClockOffset } from "./chainTime";
-import type { CaseData, CaseDispute } from "./types";
+import type { CaseData } from "./types";
 import { useCase } from "./useCase";
 import { useCaseRefresh } from "./useCaseRefresh";
 
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../test/data/mockCoreReads")).mockCoreReads(importOriginal));
 
 const ACCOUNT: Address = "0x1111111111111111111111111111111111111111";
-const EVIDENCE: EvidenceList = {
-  items: [],
-  hiddenEvidenceCount: 0,
-  hiddenByReason: { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 },
-};
-const FOUND_EVENT: Outcome<DisputeEventResult> = {
-  ok: true,
-  value: { status: "found", event: { metaEvidenceId: 0n, evidenceGroupId: 3n, blockNumber: 100n, createdAt: 1_700_000_000, transactionHash: "0x01" } },
-};
+const EVIDENCE = testEvidenceList();
+const FOUND_EVENT: Outcome<DisputeEventResult> = { ok: true, value: testDisputeEvent() };
 
 function programReads(period: 3 | 4): void {
   vi.mocked(core.lookupDispute).mockResolvedValue(testFoundLookup({ period }));
@@ -51,19 +55,13 @@ const latestBlock = vi.fn<RpcHandler>(({ method }) => {
 
 function renderCaseWithRefresh() {
   const deps = createTestDeps({ rpc: latestBlock });
-  const wrapper = ({ children }: { readonly children?: ReactNode }) => <TestDataProvider deps={deps}>{children}</TestDataProvider>;
-  return renderHook(() => ({ data: useCase(1, 1n, ACCOUNT), refresh: useCaseRefresh(1, 1n), clockOffset: useChainClockOffset(1) }), { wrapper });
-}
-
-function dispute(data: CaseData): CaseDispute {
-  if (data.status !== "dispute") throw new Error("expected a dispute");
-  return data;
+  return renderHook(() => ({ data: useCase(1, 1n, ACCOUNT), refresh: useCaseRefresh(1, 1n), clockOffset: useChainClockOffset(1) }), { wrapper: dataWrapper({ deps }) });
 }
 
 async function settled(result: { readonly current: { readonly data: CaseData } }): Promise<void> {
   await waitFor(() => {
-    expect(dispute(result.current.data).appealPanel.status).toBe("ready");
-    expect(dispute(result.current.data).evidence.status).toBe("ready");
+    expect(caseDispute(result.current.data).appealPanel.status).toBe("ready");
+    expect(caseDispute(result.current.data).evidence.status).toBe("ready");
   });
 }
 
@@ -100,7 +98,7 @@ describe("useCaseRefresh", () => {
     expect(core.loadEvidence).toHaveBeenCalledTimes(2);
     expect(core.readRoundFunding).toHaveBeenLastCalledWith(expect.anything(), 0n, 100n);
     await waitFor(() => {
-      const panel = dispute(result.current.data).appealPanel;
+      const panel = caseDispute(result.current.data).appealPanel;
       if (panel.status !== "ready" || panel.value.kind !== "crowdfunding") throw new Error("expected crowdfunding cards");
       expect(panel.value.cards.find((card) => card.code === 1n)?.contributed).toBe(400n);
     });
@@ -127,13 +125,13 @@ describe("useCaseRefresh", () => {
     programReads(4);
     const { result } = renderCaseWithRefresh();
     await settled(result);
-    expect(dispute(result.current.data).appealPanel).toMatchObject({ status: "ready", value: { kind: "withdraw", state: { status: "available", total: 5n } } });
+    expect(caseDispute(result.current.data).appealPanel).toMatchObject({ status: "ready", value: { kind: "withdraw", state: { status: "available", total: 5n } } });
     vi.mocked(core.readWithdrawable).mockResolvedValue({ status: "nothing" });
 
     await act(() => result.current.refresh("withdraw"));
 
     await waitFor(() => {
-      expect(dispute(result.current.data).appealPanel).toEqual({ status: "ready", value: { kind: "withdraw", state: { status: "nothing" } } });
+      expect(caseDispute(result.current.data).appealPanel).toEqual({ status: "ready", value: { kind: "withdraw", state: { status: "nothing" } } });
     });
     expect(core.lookupDispute).toHaveBeenCalledTimes(1);
   });

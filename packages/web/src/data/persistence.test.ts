@@ -1,5 +1,5 @@
 import type { Court, MetaEvidenceResult, Outcome } from "@dispute-resolver/core";
-import { QueryClient, dehydrate } from "@tanstack/react-query";
+import { QueryClient, dehydrate, type QueryKey } from "@tanstack/react-query";
 import { persistQueryClientRestore, persistQueryClientSave } from "@tanstack/react-query-persist-client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMemoryStorage, testBinding, testCourt, testFamily, testFoundLookup, testOkMetaEvidence } from "../test/data";
@@ -134,43 +134,32 @@ describe("persisted query cache", () => {
     expect(storage.entries.has(PERSISTED_CACHE_KEY)).toBe(false);
   });
 
-  it("never writes an invalid meta-evidence result", () => {
+  it.each<[string, readonly (readonly [QueryKey, unknown])[], readonly QueryKey[]]>([
+    ["an invalid meta-evidence result", [[metaEvidenceKey, invalidResult]], []],
+    [
+      "a failed or missing meta-evidence",
+      [
+        [metaEvidenceKey, failedResult],
+        [queryKeys.metaEvidence(1, 6n, ARBITRABLE), { status: "missing" } satisfies MetaEvidenceResult],
+      ],
+      [],
+    ],
+    ["a failed court list", [[queryKeys.courts(1), { ok: false, error: { code: "rpc-error", message: "down" } } satisfies Outcome<readonly Court[]>]], []],
+    ["a lookup holding a binding", [[queryKeys.lookup(1, 1n), testFoundLookup()]], []],
+    ["family detections", [[queryKeys.family(1, ARBITRABLE), testFamily()]], []],
+    [
+      "the library's UserSettings and RoleRestrictions queries",
+      [
+        [["UserSettings"], { email: "user@example.com" }],
+        [["RoleRestrictions"], []],
+        [queryKeys.courts(1), courtsOk],
+      ],
+      [queryKeys.courts(1)],
+    ],
+  ])("never writes %s", (_name, entries, expected) => {
     const client = new QueryClient();
-    client.setQueryData(metaEvidenceKey, invalidResult);
-    expect(persistedKeys(client)).toEqual([]);
-  });
-
-  it("never writes a failed or missing meta-evidence", () => {
-    const client = new QueryClient();
-    client.setQueryData(metaEvidenceKey, failedResult);
-    client.setQueryData(queryKeys.metaEvidence(1, 6n, ARBITRABLE), { status: "missing" } satisfies MetaEvidenceResult);
-    expect(persistedKeys(client)).toEqual([]);
-  });
-
-  it("never writes a failed court list", () => {
-    const client = new QueryClient();
-    client.setQueryData(queryKeys.courts(1), { ok: false, error: { code: "rpc-error", message: "down" } } satisfies Outcome<readonly Court[]>);
-    expect(persistedKeys(client)).toEqual([]);
-  });
-
-  it("never writes a lookup holding a binding", () => {
-    const client = new QueryClient();
-    client.setQueryData(queryKeys.lookup(1, 1n), testFoundLookup());
-    expect(persistedKeys(client)).toEqual([]);
-  });
-
-  it("never writes family detections", () => {
-    const client = new QueryClient();
-    client.setQueryData(queryKeys.family(1, ARBITRABLE), testFamily());
-    expect(persistedKeys(client)).toEqual([]);
-  });
-
-  it("never writes the library's UserSettings and RoleRestrictions queries", () => {
-    const client = new QueryClient();
-    client.setQueryData(["UserSettings"], { email: "user@example.com" });
-    client.setQueryData(["RoleRestrictions"], []);
-    client.setQueryData(queryKeys.courts(1), courtsOk);
-    expect(persistedKeys(client)).toEqual([queryKeys.courts(1)]);
+    for (const [key, data] of entries) client.setQueryData(key, data);
+    expect(persistedKeys(client)).toEqual(expected);
   });
 
   it("writes only allowlisted entries to storage", async () => {

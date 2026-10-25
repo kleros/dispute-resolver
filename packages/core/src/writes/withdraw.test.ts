@@ -25,7 +25,7 @@ const V1_WITHDRAW = toFunctionSelector("withdrawFeesAndRewardsForAllRounds(uint2
 const GOVERNOR_WITHDRAW = toFunctionSelector("withdrawFeesAndRewards(address,uint256,uint256,uint256)");
 
 function family(signatures: keyof typeof FAMILY_SIGNATURES): FamilyDetection {
-  return detectionFor(1, ARBITRABLE, FAMILY_SIGNATURES[signatures]);
+  return detectionFor(ARBITRABLE, FAMILY_SIGNATURES[signatures]);
 }
 
 function recordedFamily(chainId: number, address: string): FamilyDetection {

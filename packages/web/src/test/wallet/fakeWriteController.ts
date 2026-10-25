@@ -8,11 +8,6 @@ function isOutcome(status: WriteStatus): status is WriteOutcome {
   return OUTCOME_PHASES.has(status.phase);
 }
 
-export interface FakeWriteOptions {
-  /** The status before any `execute`; default `idle`. */
-  readonly initial?: WriteStatus;
-}
-
 export interface FakeWriteController {
   /** A `useWrite` replacement, for `vi.mock` of the wallet index: `useWrite: () => fake.useWrite()`. */
   useWrite(): WriteController;
@@ -40,12 +35,11 @@ async function play(script: readonly WriteStatus[], options: WriteOptions, repor
  * and resolves with its last status, which must be an outcome. `onMined` runs before a `mined` status is shown, as in
  * the real hook.
  */
-export function fakeWriteController(script: readonly WriteStatus[], options: FakeWriteOptions = {}): FakeWriteController {
-  const { initial = { phase: "idle" } } = options;
+export function fakeWriteController(script: readonly WriteStatus[]): FakeWriteController {
   const executions: { builds: readonly WriteBuild[]; options: WriteOptions }[] = [];
 
   function useWrite(): WriteController {
-    const [status, setStatus] = useState<WriteStatus>(initial);
+    const [status, setStatus] = useState<WriteStatus>({ phase: "idle" });
     const execute = useCallback(async (build: WriteBuild, writeOptions: WriteOptions) => {
       executions.push({ builds: [build], options: writeOptions });
       return play(script, writeOptions, setStatus, true);
@@ -57,7 +51,7 @@ export function fakeWriteController(script: readonly WriteStatus[], options: Fak
   }
 
   function useWriteSequence(): WriteSequenceController {
-    const [status, setStatus] = useState<WriteSequenceStatus | null>(initial.phase === "idle" ? null : { index: 0, total: 1, current: initial });
+    const [status, setStatus] = useState<WriteSequenceStatus | null>(null);
     const execute = useCallback(async (builds: readonly WriteBuild[], writeOptions: WriteOptions) => {
       executions.push({ builds, options: writeOptions });
       let outcome: WriteOutcome = { phase: "refused", refusal: "withdraw-unsupported" };

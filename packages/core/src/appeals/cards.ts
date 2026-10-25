@@ -1,3 +1,4 @@
+import { compareBigint } from "../bigint";
 import type { BehaviorOverride } from "../registry/types";
 import { combinationTitle, decodeRulingCode, formatRuling, isVariableType, reservedCode } from "../rulings";
 import type { FallbackOutcomes, RulingOptions } from "../rulings/types";
@@ -65,7 +66,7 @@ function combinationCards(context: CardContext, titles: readonly string[]): Crow
     for (let code = 1n; code <= combinations; code += 1n) codes.push(code);
   } else {
     const shown = new Set([context.currentRuling, ...context.contributed.keys()]);
-    codes.push(...[...shown].filter((code) => code >= 1n && code <= combinations).sort((a, b) => (a < b ? -1 : 1)));
+    codes.push(...[...shown].filter((code) => code >= 1n && code <= combinations).sort(compareBigint));
   }
   return codes.map((code) => card(context, "combination", combinationTitle(code - 1n, titles), code));
 }
@@ -78,7 +79,7 @@ function variableCards(context: CardContext, options: RulingOptions, fallbackOut
   const { currentRuling } = context;
   const contributedValues = [...context.contributed.keys()]
     .filter((code) => code !== currentRuling && !taken.has(code))
-    .sort((a, b) => (a < b ? -1 : 1))
+    .sort(compareBigint)
     .map((code) => card(context, "contributed-value", decodeRulingCode(code, options, fallbackOutcomes), code));
   if (currentRuling === 0n || taken.has(currentRuling)) return contributedValues;
   return [...contributedValues, card(context, "current-ruling", formatRuling(currentRuling, options, fallbackOutcomes), currentRuling)];

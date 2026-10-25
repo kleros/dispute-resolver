@@ -1,6 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { GNOSIS_ARBITRATOR, isDisputesCall, MAINNET_ARBITRATOR, NEVER_CREATED_ON_GNOSIS, OUT_OF_RANGE_ON_MAINNET } from "../support/arbitrator";
-import { fakeNetwork, loadRecording, type HttpRequest } from "../support/network";
+import { appOriginOf, fakeNetwork, loadRecording, type HttpRequest, type Traffic } from "../support/network";
 
 // Mainnet's arbitrator reverts past its last dispute; Gnosis keeps disputes in a mapping, so an ID never created reads
 // as a zeroed struct. The build needs the chain-1 and Gnosis read RPCs and the meta-evidence API configured, as a deploy
@@ -13,17 +13,22 @@ function notFound(id: string): string {
   return `Dispute with ID ${id} does not exist on this network.`;
 }
 
+/** Dispute 1621 as recorded, and mainnet's node reverting `disputes(id)` for the dispute `id`, past its last one. */
+function fakeMainnet(context: BrowserContext, baseURL: string | undefined, id: string): Promise<Traffic> {
+  return fakeNetwork(context, {
+    appOrigin: appOriginOf(baseURL),
+    recordings: [RECORDING],
+    rpc: (call) => (isDisputesCall(call, MAINNET_ARBITRATOR, BigInt(id)) ? OUT_OF_RANGE_ON_MAINNET : undefined),
+  });
+}
+
 function locatorRequests(requests: readonly HttpRequest[], disputeId: string): number {
   return requests.filter((request) => request.kind === "locator" && request.disputeId === disputeId).length;
 }
 
 test("clears the shown dispute at once and shows the not-found state when searching a nonexistent ID", async ({ context, page, baseURL }) => {
   const missing = "99999999";
-  const traffic = await fakeNetwork(context, {
-    appOrigin: new URL(baseURL ?? "http://localhost").origin,
-    recordings: [RECORDING],
-    rpc: (call) => (isDisputesCall(call, MAINNET_ARBITRATOR, BigInt(missing)) ? OUT_OF_RANGE_ON_MAINNET : undefined),
-  });
+  const traffic = await fakeMainnet(context, baseURL, missing);
   await page.goto("/1/cases/1621");
   await expect(page.getByRole("heading", { name: CASE_TITLE, exact: true })).toBeVisible({ timeout: 15_000 });
 
@@ -46,11 +51,7 @@ test("clears the shown dispute at once and shows the not-found state when search
 
 test("Back after a typed search returns to the dispute the search left", async ({ context, page, baseURL }) => {
   const missing = "99999999";
-  await fakeNetwork(context, {
-    appOrigin: new URL(baseURL ?? "http://localhost").origin,
-    recordings: [RECORDING],
-    rpc: (call) => (isDisputesCall(call, MAINNET_ARBITRATOR, BigInt(missing)) ? OUT_OF_RANGE_ON_MAINNET : undefined),
-  });
+  await fakeMainnet(context, baseURL, missing);
   await page.goto("/1/cases/1621");
   const title = page.getByRole("heading", { name: CASE_TITLE, exact: true });
   await expect(title).toBeVisible({ timeout: 15_000 });
@@ -70,11 +71,7 @@ test("Back after a typed search returns to the dispute the search left", async (
 
 test("a digit typed and deleted before the debounce leaves history as it was, so one Back leaves the dispute", async ({ context, page, baseURL }) => {
   const typed = "16217";
-  const traffic = await fakeNetwork(context, {
-    appOrigin: new URL(baseURL ?? "http://localhost").origin,
-    recordings: [RECORDING],
-    rpc: (call) => (isDisputesCall(call, MAINNET_ARBITRATOR, BigInt(typed)) ? OUT_OF_RANGE_ON_MAINNET : undefined),
-  });
+  const traffic = await fakeMainnet(context, baseURL, typed);
   await page.goto("/1/cases");
   await page.goto("/1/cases/1621");
   const title = page.getByRole("heading", { name: CASE_TITLE, exact: true });
@@ -95,11 +92,7 @@ test("a digit typed and deleted before the debounce leaves history as it was, so
 
 test("an edit back to the dispute a settled lookup left keeps that lookup's entry, so Back returns to it", async ({ context, page, baseURL }) => {
   const typed = "16210";
-  await fakeNetwork(context, {
-    appOrigin: new URL(baseURL ?? "http://localhost").origin,
-    recordings: [RECORDING],
-    rpc: (call) => (isDisputesCall(call, MAINNET_ARBITRATOR, BigInt(typed)) ? OUT_OF_RANGE_ON_MAINNET : undefined),
-  });
+  await fakeMainnet(context, baseURL, typed);
   await page.goto("/1/cases/1621");
   const title = page.getByRole("heading", { name: CASE_TITLE, exact: true });
   await expect(title).toBeVisible({ timeout: 15_000 });
@@ -120,7 +113,7 @@ test("an edit back to the dispute a settled lookup left keeps that lookup's entr
 test("shows the not-found state for an unused Gnosis ID that reads as a zeroed struct", async ({ context, page, baseURL }) => {
   const unused = "5000000";
   const traffic = await fakeNetwork(context, {
-    appOrigin: new URL(baseURL ?? "http://localhost").origin,
+    appOrigin: appOriginOf(baseURL),
     rpc: (call) => (isDisputesCall(call, GNOSIS_ARBITRATOR, BigInt(unused)) ? NEVER_CREATED_ON_GNOSIS : undefined),
   });
   await page.goto("/100/cases");
@@ -151,7 +144,7 @@ for (const width of [375, 1280]) {
   test(`keeps the heading and every placeholder in place when the search's pause ends and the lookup starts, at ${String(width)} px`, async ({ context, page, baseURL }) => {
     const held = 4242n;
     const isHeldLookup = (call: Parameters<typeof isDisputesCall>[0]) => isDisputesCall(call, MAINNET_ARBITRATOR, held);
-    const traffic = await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, holdRpc: isHeldLookup });
+    const traffic = await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), holdRpc: isHeldLookup });
     await page.setViewportSize({ width, height: 900 });
     // The placeholders' entrance moves them for a moment; held still, only the layout is compared.
     await page.emulateMedia({ reducedMotion: "reduce" });

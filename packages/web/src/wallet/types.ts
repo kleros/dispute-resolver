@@ -51,12 +51,25 @@ export type WalletState =
       readonly chainId: number;
     };
 
+/** The refusal of a write without a connected wallet, as `WriteStatusNotice` renders it. */
+export interface NeedsWalletGuard {
+  readonly phase: "needs-wallet";
+  readonly pageChainId: ChainId;
+}
+
+/** The refusal of a write from a wallet on another chain than the page's, as `WriteStatusNotice` renders it. */
+export interface WrongChainGuard {
+  readonly phase: "wrong-chain";
+  readonly walletChainId: number;
+  readonly pageChainId: ChainId;
+}
+
 /** `pending` is "waiting for the wallet". */
 export type WriteStatus =
   | { readonly phase: "idle" }
   | { readonly phase: "refused"; readonly refusal: WriteRefusal }
-  | { readonly phase: "needs-wallet"; readonly pageChainId?: ChainId }
-  | { readonly phase: "wrong-chain"; readonly walletChainId: number; readonly pageChainId: ChainId }
+  | NeedsWalletGuard
+  | WrongChainGuard
   | { readonly phase: "pending" }
   | { readonly phase: "submitted"; readonly hash: Hex; readonly explorerUrl: string | null }
   | { readonly phase: "mined"; readonly hash: Hex; readonly explorerUrl: string | null; readonly receipt: WriteReceipt }

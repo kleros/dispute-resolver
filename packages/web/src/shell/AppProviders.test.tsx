@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { useConfig, WagmiContext } from "wagmi";
 import { buildAppConfig, type AppConfig } from "../env";
 import { TestDataProvider } from "../test/data";
+import { expectRenderErrors } from "../test/shell";
 import { createColorSchemeStore } from "../theme";
 import { AppProviders } from "./AppProviders";
 import { useColorScheme } from "./colorScheme";
@@ -71,11 +72,6 @@ vi.mock("./colorScheme", async (importOriginal) => {
   return { ...actual, ColorSchemeProvider: RecordedColorSchemeProvider };
 });
 
-/** jsdom reports each error React rethrows in development; the report is expected here. */
-function silenceErrorReport(event: ErrorEvent): void {
-  event.preventDefault();
-}
-
 interface ProviderProps {
   readonly config: AppConfig;
   readonly children?: ReactNode;
@@ -123,7 +119,6 @@ function renderApp(dataProvider: ConfiguredProvider, children: ReactNode) {
 }
 
 afterEach(() => {
-  window.removeEventListener("error", silenceErrorReport);
   order.length = 0;
   vi.restoreAllMocks();
 });
@@ -145,9 +140,7 @@ describe("AppProviders", () => {
   });
 
   it("the root boundary is outermost, so a failing provider keeps the minimal frame", () => {
-    // React logs every caught render error; the log is expected here.
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
-    window.addEventListener("error", silenceErrorReport);
+    expectRenderErrors();
     renderApp(BrokenData, <RouteProbe />);
     expect(screen.getByRole("heading", { level: 1, name: "Something went wrong" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
@@ -156,9 +149,7 @@ describe("AppProviders", () => {
 
 describe("useColorScheme", () => {
   it("useColorScheme outside the provider is a programming error", () => {
-    // React logs the thrown render error; the log is expected here.
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
-    window.addEventListener("error", silenceErrorReport);
+    expectRenderErrors();
     expect(() => renderHook(() => useColorScheme())).toThrow("useColorScheme must be used inside ColorSchemeProvider.");
   });
 });

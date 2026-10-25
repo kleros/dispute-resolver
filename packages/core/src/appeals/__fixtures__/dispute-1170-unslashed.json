@@ -1,6 +1,5 @@
 {
   "chainId": 1,
-  "pinnedBlock": 26189725,
   "readAtBlock": 26189725,
   "note": "Rounds: funding round vs (AppealDecision events strictly before the funding event in (blockNumber, logIndex) order) + 1",
   "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
@@ -34,11 +33,7 @@
       "data": "0x",
       "blockNumber": 14640476,
       "transactionHash": "0x963004446fadca90c8781256b8a6470707ee9ce4ad2780143aaf174e137344f1",
-      "logIndex": 165,
-      "decoded": {
-        "disputeID": "1170",
-        "arbitrable": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38"
-      }
+      "logIndex": 165
     },
     {
       "address": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
@@ -50,11 +45,7 @@
       "data": "0x",
       "blockNumber": 14694467,
       "transactionHash": "0x6aba2e65b3514dc9f207590b8ce324822630f9e9d66cb5b23f468954285bac6f",
-      "logIndex": 495,
-      "decoded": {
-        "disputeID": "1170",
-        "arbitrable": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38"
-      }
+      "logIndex": 495
     },
     {
       "address": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
@@ -66,11 +57,7 @@
       "data": "0x",
       "blockNumber": 14726733,
       "transactionHash": "0x5bfe0d63ac785093c60e5bf4ceb5ebef51966c9fb6f1a63362cc5b2fcf7f0d2e",
-      "logIndex": 147,
-      "decoded": {
-        "disputeID": "1170",
-        "arbitrable": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38"
-      }
+      "logIndex": 147
     },
     {
       "address": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
@@ -82,11 +69,7 @@
       "data": "0x",
       "blockNumber": 14795056,
       "transactionHash": "0x2811a2d019dd392f2d46d1530b47392e9b2499dcc6d1e08c569dd456b0c403bf",
-      "logIndex": 171,
-      "decoded": {
-        "disputeID": "1170",
-        "arbitrable": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38"
-      }
+      "logIndex": 171
     },
     {
       "address": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
@@ -98,11 +81,7 @@
       "data": "0x",
       "blockNumber": 14866053,
       "transactionHash": "0xe91c55769dea9494076750acd4c420bab1551ebe9e760d06ca8543754218f458",
-      "logIndex": 68,
-      "decoded": {
-        "disputeID": "1170",
-        "arbitrable": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38"
-      }
+      "logIndex": 68
     }
   ],
   "fundingEvents": [
@@ -125,10 +104,7 @@
         "contributor": "0xadbab4f38ff9dcd71886f43b148bcad4a3081fb9",
         "ruling": "1",
         "amountWei": "1008000000000000000"
-      },
-      "appealDecisionsBefore": 0,
-      "expectedRound": 1,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -147,10 +123,7 @@
         "localDisputeID": "0",
         "round": "1",
         "ruling": "1"
-      },
-      "appealDecisionsBefore": 0,
-      "expectedRound": 1,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -171,10 +144,7 @@
         "contributor": "0x1298324e97f39ee5cd34fad6c6bd93eb7527b443",
         "ruling": "2",
         "amountWei": "756000000000000000"
-      },
-      "appealDecisionsBefore": 0,
-      "expectedRound": 1,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -193,10 +163,7 @@
         "localDisputeID": "0",
         "round": "1",
         "ruling": "2"
-      },
-      "appealDecisionsBefore": 0,
-      "expectedRound": 1,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -217,10 +184,7 @@
         "contributor": "0xc764d75fe1c892ba39caaf02efd44ae606b52a0c",
         "ruling": "1",
         "amountWei": "612000000000000000"
-      },
-      "appealDecisionsBefore": 1,
-      "expectedRound": 2,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -241,10 +205,7 @@
         "contributor": "0x1298324e97f39ee5cd34fad6c6bd93eb7527b443",
         "ruling": "2",
         "amountWei": "2160000000000000000"
-      },
-      "appealDecisionsBefore": 1,
-      "expectedRound": 2,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -263,10 +224,7 @@
         "localDisputeID": "0",
         "round": "2",
         "ruling": "2"
-      },
-      "appealDecisionsBefore": 1,
-      "expectedRound": 2,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -287,10 +245,7 @@
         "contributor": "0xadbab4f38ff9dcd71886f43b148bcad4a3081fb9",
         "ruling": "1",
         "amountWei": "1008000000000000000"
-      },
-      "appealDecisionsBefore": 1,
-      "expectedRound": 2,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -309,10 +264,7 @@
         "localDisputeID": "0",
         "round": "2",
         "ruling": "1"
-      },
-      "appealDecisionsBefore": 1,
-      "expectedRound": 2,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -333,10 +285,7 @@
         "contributor": "0xadbab4f38ff9dcd71886f43b148bcad4a3081fb9",
         "ruling": "1",
         "amountWei": "3348000000000000000"
-      },
-      "appealDecisionsBefore": 2,
-      "expectedRound": 3,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -355,10 +304,7 @@
         "localDisputeID": "0",
         "round": "3",
         "ruling": "1"
-      },
-      "appealDecisionsBefore": 2,
-      "expectedRound": 3,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -379,10 +325,7 @@
         "contributor": "0x5e7b645d5bf86750cb1913122ba8a8545e2a9fd1",
         "ruling": "2",
         "amountWei": "4464000000000000000"
-      },
-      "appealDecisionsBefore": 2,
-      "expectedRound": 3,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -401,10 +344,7 @@
         "localDisputeID": "0",
         "round": "3",
         "ruling": "2"
-      },
-      "appealDecisionsBefore": 2,
-      "expectedRound": 3,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -425,10 +365,7 @@
         "contributor": "0x04a9edd12ed304efb5e5fe83109a65e8e84799c3",
         "ruling": "1",
         "amountWei": "3500000000000000000"
-      },
-      "appealDecisionsBefore": 3,
-      "expectedRound": 4,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -449,10 +386,7 @@
         "contributor": "0x04a9edd12ed304efb5e5fe83109a65e8e84799c3",
         "ruling": "1",
         "amountWei": "2415000000000000000"
-      },
-      "appealDecisionsBefore": 3,
-      "expectedRound": 4,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -473,10 +407,7 @@
         "contributor": "0xadbab4f38ff9dcd71886f43b148bcad4a3081fb9",
         "ruling": "1",
         "amountWei": "3157000000000000000"
-      },
-      "appealDecisionsBefore": 3,
-      "expectedRound": 4,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -495,10 +426,7 @@
         "localDisputeID": "0",
         "round": "4",
         "ruling": "1"
-      },
-      "appealDecisionsBefore": 3,
-      "expectedRound": 4,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -519,10 +447,7 @@
         "contributor": "0x2343e74a17a70503e1c62d808c8c2abfac926ace",
         "ruling": "2",
         "amountWei": "1000000000000000000"
-      },
-      "appealDecisionsBefore": 3,
-      "expectedRound": 4,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -543,10 +468,7 @@
         "contributor": "0x5e7b645d5bf86750cb1913122ba8a8545e2a9fd1",
         "ruling": "2",
         "amountWei": "5804000000000000000"
-      },
-      "appealDecisionsBefore": 3,
-      "expectedRound": 4,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -565,10 +487,7 @@
         "localDisputeID": "0",
         "round": "4",
         "ruling": "2"
-      },
-      "appealDecisionsBefore": 3,
-      "expectedRound": 4,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -589,10 +508,7 @@
         "contributor": "0xadbab4f38ff9dcd71886f43b148bcad4a3081fb9",
         "ruling": "1",
         "amountWei": "6350000000000000000"
-      },
-      "appealDecisionsBefore": 4,
-      "expectedRound": 5,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -611,10 +527,7 @@
         "localDisputeID": "0",
         "round": "5",
         "ruling": "1"
-      },
-      "appealDecisionsBefore": 4,
-      "expectedRound": 5,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -635,10 +548,7 @@
         "contributor": "0x5e7b645d5bf86750cb1913122ba8a8545e2a9fd1",
         "ruling": "2",
         "amountWei": "4762500000000000000"
-      },
-      "appealDecisionsBefore": 4,
-      "expectedRound": 5,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -657,10 +567,7 @@
         "localDisputeID": "0",
         "round": "5",
         "ruling": "2"
-      },
-      "appealDecisionsBefore": 4,
-      "expectedRound": 5,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -681,10 +588,7 @@
         "contributor": "0x7169e2c4f9fde15b06ce6c587d6be5d941aabfcc",
         "ruling": "2",
         "amountWei": "4781250000000000000"
-      },
-      "appealDecisionsBefore": 5,
-      "expectedRound": 6,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -705,10 +609,7 @@
         "contributor": "0xbeb084f2dc75e38eac9a5c093428a541fc74ff2c",
         "ruling": "2",
         "amountWei": "4781250000000000000"
-      },
-      "appealDecisionsBefore": 5,
-      "expectedRound": 6,
-      "roundMatches": true
+      }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -727,16 +628,7 @@
         "localDisputeID": "0",
         "round": "6",
         "ruling": "2"
-      },
-      "appealDecisionsBefore": 5,
-      "expectedRound": 6,
-      "roundMatches": true
+      }
     }
-  ],
-  "check": {
-    "everyFundingRoundEqualsAppealsBeforePlusOne": true,
-    "appealDecisionCount": 5,
-    "fundingEventCount": 27,
-    "numberOfRoundsEqualsAppealsPlus2": true
-  }
+  ]
 }

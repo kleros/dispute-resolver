@@ -2,31 +2,19 @@
  * Test-only fake node and fetcher for the disputes module. A fake node answers `eth_call` from recorded or synthetic
  * answers keyed by target and calldata, and `eth_getLogs`, `eth_getBlockByNumber` and `eth_blockNumber` from a log list.
  */
-import { createPublicClient, custom, encodeAbiParameters, encodeEventTopics, encodeFunctionData, encodeFunctionResult, numberToHex, pad } from "viem";
+import { createPublicClient, custom, encodeAbiParameters, encodeEventTopics, encodeFunctionData, encodeFunctionResult, numberToHex } from "viem";
 import type { Abi, ContractFunctionArgs, ContractFunctionName, ContractFunctionReturnType } from "viem";
 import { z } from "../../zod";
-import { EIP1967_IMPLEMENTATION_SLOT, klerosLiquidAbi } from "../../abi";
-import { detectFamily } from "../../families";
-import type { FamilyDetection } from "../../families/types";
-import bytecode1 from "../../families/__fixtures__/bytecode-1.json";
-import bytecode100 from "../../families/__fixtures__/bytecode-100.json";
-import type { Address, ChainId, FetchInit, FetchResponse, Fetcher, Hex, ReadClient } from "../../types";
+import { klerosLiquidAbi } from "../../abi";
+import type { Address, Hex, ReadClient } from "../../types";
 import mainnet from "../../disputes/__fixtures__/arbitrator-1.json";
 import gnosis from "../../disputes/__fixtures__/arbitrator-100.json";
 import sepolia from "../../disputes/__fixtures__/arbitrator-11155111.json";
+import { asLogsRequest, callKey, matchesFilter, rpcError, syntheticLog, type LogsRequest, type RpcLog } from "../rpc/testHelpers";
 
-/** A log as a JSON-RPC node returns it. */
-export interface RpcLog {
-  readonly address: Hex;
-  readonly topics: readonly Hex[];
-  readonly data: Hex;
-  readonly blockNumber: Hex;
-  readonly blockHash: Hex;
-  readonly transactionHash: Hex;
-  readonly transactionIndex: Hex;
-  readonly logIndex: Hex;
-  readonly removed: boolean;
-}
+export { recordedDetection } from "../families/testHelpers";
+export { fakeFetcher } from "../fetch/testHelpers";
+export { callKey, rpcError } from "../rpc/testHelpers";
 
 /** A JSON-RPC error as the node sent it. */
 export interface RpcErrorBody {
@@ -36,14 +24,6 @@ export interface RpcErrorBody {
 
 /** The answer to one `eth_call`: raw return data, or the node's error. */
 export type CallAnswer = { readonly result: Hex } | { readonly error: RpcErrorBody };
-
-/** The `eth_getLogs` filter the fake node received, with block numbers decoded. */
-export interface LogsRequest {
-  readonly address: string;
-  readonly topics: readonly (string | null)[];
-  readonly fromBlock: bigint;
-  readonly toBlock: bigint;
-}
 
 export interface FakeNode {
   readonly head: bigint;
@@ -65,13 +45,9 @@ export interface NodeRequests {
   readonly blocks: bigint[];
 }
 
-/** A transport-level JSON-RPC error: an `Error` with a numeric `code`, as viem's custom transport receives it. */
-export function rpcError(code: number, message: string): Error {
-  return Object.assign(new Error(message), { code });
-}
-
-export function callKey(to: string, data: Hex): string {
-  return `${to.toLowerCase()}:${data.toLowerCase()}`;
+/** The 4-byte selector, without `0x`, of the call filed under `key`. */
+export function selectorOf(key: string): string {
+  return key.split(":0x")[1]?.slice(0, 8) ?? "";
 }
 
 /** The key and the encoded answer of a synthetic call. */
@@ -101,17 +77,6 @@ export function failure<const TAbi extends Abi, TName extends ContractFunctionNa
   return [callKey(input.to, data), { error: input.error }];
 }
 
-function asLogsRequest(params: unknown): LogsRequest {
-  const [filter] = params as [{ address: string; topics?: (string | null)[]; fromBlock: Hex; toBlock: Hex }];
-  return { address: filter.address, topics: filter.topics ?? [], fromBlock: BigInt(filter.fromBlock), toBlock: BigInt(filter.toBlock) };
-}
-
-function matches(log: RpcLog, request: LogsRequest): boolean {
-  const block = BigInt(log.blockNumber);
-  const sameTopics = request.topics.every((topic, index) => topic === null || log.topics[index] === topic);
-  return log.address === request.address.toLowerCase() && sameTopics && block >= request.fromBlock && block <= request.toBlock;
-}
-
 /** A `ReadClient` over a fake node, viem retries off so every request reaches the node once. */
 export function fakeClient(node: FakeNode): { client: ReadClient; requests: NodeRequests } {
   const requests: NodeRequests = { methods: [], calls: [], logs: [], blocks: [] };
@@ -133,7 +98,7 @@ export function fakeClient(node: FakeNode): { client: ReadClient; requests: Node
       case "eth_getLogs": {
         const logsRequest = asLogsRequest(params);
         requests.logs.push(logsRequest);
-        return Promise.resolve((node.logs ?? []).filter((log) => matches(log, logsRequest)));
+        return Promise.resolve((node.logs ?? []).filter((log) => matchesFilter(log, logsRequest)));
       }
       case "eth_getBlockByNumber": {
         const [number] = params as [Hex];
@@ -148,74 +113,22 @@ export function fakeClient(node: FakeNode): { client: ReadClient; requests: Node
   return { client: createPublicClient({ transport: custom({ request }, { retryCount: 0 }) }), requests };
 }
 
-const LOG_DEFAULTS = { blockHash: `0x${"ab".repeat(32)}`, transactionIndex: "0x0", removed: false } as const;
-
-function syntheticTxHash(blockNumber: bigint, logIndex: number): Hex {
-  return numberToHex((blockNumber << 32n) + BigInt(logIndex), { size: 32 });
-}
-
 /** A synthetic KlerosLiquid `DisputeCreation(_disputeID, _arbitrable)` log. */
 export function disputeCreationLog(arbitrator: Address, disputeId: bigint, arbitrable: Address, blockNumber: bigint, logIndex = 0): RpcLog {
   const topics = encodeEventTopics({ abi: klerosLiquidAbi, eventName: "DisputeCreation", args: { _disputeID: disputeId, _arbitrable: arbitrable } });
-  return {
-    ...LOG_DEFAULTS,
-    address: arbitrator,
-    topics: topics as Hex[],
-    data: "0x",
-    blockNumber: numberToHex(blockNumber),
-    transactionHash: syntheticTxHash(blockNumber, logIndex),
-    logIndex: numberToHex(logIndex),
-  };
+  return syntheticLog(arbitrator, topics as Hex[], "0x", blockNumber, logIndex);
 }
 
 /** A synthetic KlerosLiquid `NewPeriod(_disputeID, _period)` log. */
 export function newPeriodLog(arbitrator: Address, disputeId: bigint, period: number, blockNumber: bigint, logIndex = 0): RpcLog {
   const topics = encodeEventTopics({ abi: klerosLiquidAbi, eventName: "NewPeriod", args: { _disputeID: disputeId } });
-  return {
-    ...LOG_DEFAULTS,
-    address: arbitrator,
-    topics: topics as Hex[],
-    data: encodeAbiParameters([{ type: "uint8" }], [period]),
-    blockNumber: numberToHex(blockNumber),
-    transactionHash: syntheticTxHash(blockNumber, logIndex),
-    logIndex: numberToHex(logIndex),
-  };
+  return syntheticLog(arbitrator, topics as Hex[], encodeAbiParameters([{ type: "uint8" }], [period]), blockNumber, logIndex);
 }
 
 /** A synthetic KlerosLiquid `AppealDecision(_disputeID, _arbitrable)` log. */
 export function appealDecisionLog(arbitrator: Address, disputeId: bigint, arbitrable: Address, blockNumber: bigint, logIndex = 0): RpcLog {
   const topics = encodeEventTopics({ abi: klerosLiquidAbi, eventName: "AppealDecision", args: { _disputeID: disputeId, _arbitrable: arbitrable } });
-  return {
-    ...LOG_DEFAULTS,
-    address: arbitrator,
-    topics: topics as Hex[],
-    data: "0x",
-    blockNumber: numberToHex(blockNumber),
-    transactionHash: syntheticTxHash(blockNumber, logIndex),
-    logIndex: numberToHex(logIndex),
-  };
-}
-
-/** A stub fetcher answering from a map of URL → body; a URL missing from the map answers 404, an `Error` rejects. */
-export function fakeFetcher(bodies: Readonly<Record<string, string | Error>>): { fetcher: Fetcher; urls: string[]; inits: (FetchInit | undefined)[] } {
-  const urls: string[] = [];
-  const inits: (FetchInit | undefined)[] = [];
-  const fetcher: Fetcher = (url, init) => {
-    urls.push(url);
-    inits.push(init);
-    const body = bodies[url];
-    if (body instanceof Error) return Promise.reject(body);
-    const ok = body !== undefined;
-    const text = body ?? "Not Found";
-    const response: FetchResponse = {
-      ok,
-      status: ok ? 200 : 404,
-      json: () => Promise.resolve().then((): unknown => JSON.parse(text)),
-      text: () => Promise.resolve(text),
-    };
-    return Promise.resolve(response);
-  };
-  return { fetcher, urls, inits };
+  return syntheticLog(arbitrator, topics as Hex[], "0x", blockNumber, logIndex);
 }
 
 const hexSchema = z
@@ -315,44 +228,4 @@ export function recordedNode(recording: Recording, overrides: Partial<FakeNode> 
 /** The recorded policy bodies as gateway URL → body, as a fetcher for `listCourts`. */
 export function recordedPolicyBodies(recording: Recording): Record<string, string> {
   return Object.fromEntries(Object.entries(recording.policies).map(([uri, body]) => [`${recording.gateway}${uri}`, body]));
-}
-
-const bytecodeSchema = z.object({
-  chainId: z.number(),
-  contracts: z.array(
-    z.object({
-      address: z.string().transform((value) => value.toLowerCase()),
-      code: hexSchema,
-      eip1967Implementation: z.object({ address: z.string().transform((value) => value.toLowerCase()), code: hexSchema }).optional(),
-    }),
-  ),
-});
-
-/** Code and EIP-1967 slot words of the bytecode recorded by `families` (`families/__fixtures__/bytecode-<chain>.json`). */
-function recordedCode(chainId: ChainId): { readonly code: ReadonlyMap<string, Hex>; readonly slots: ReadonlyMap<string, Hex> } {
-  const record = [bytecode1, bytecode100].map((raw) => bytecodeSchema.parse(raw)).find((candidate) => candidate.chainId === chainId);
-  const code = new Map<string, Hex>();
-  const slots = new Map<string, Hex>();
-  for (const contract of record?.contracts ?? []) {
-    code.set(contract.address, contract.code);
-    if (contract.eip1967Implementation !== undefined) {
-      code.set(contract.eip1967Implementation.address, contract.eip1967Implementation.code);
-      slots.set(contract.address, pad(contract.eip1967Implementation.address as Hex, { size: 32 }));
-    }
-  }
-  return { code, slots };
-}
-
-/** The family `detectFamily` gives an arbitrable from its recorded bytecode. */
-export function recordedDetection(chainId: ChainId, arbitrable: Address): Promise<FamilyDetection> {
-  const { code, slots } = recordedCode(chainId);
-  if (!code.has(arbitrable)) return Promise.reject(new Error(`no recorded bytecode for ${String(chainId)}:${arbitrable}`));
-  const request = ({ method, params }: { method: string; params?: unknown }): Promise<unknown> => {
-    const [address, slot] = params as [string, string];
-    if (method === "eth_getCode") return Promise.resolve(code.get(address.toLowerCase()) ?? "0x");
-    if (method === "eth_getStorageAt" && slot.toLowerCase() === EIP1967_IMPLEMENTATION_SLOT) return Promise.resolve(slots.get(address.toLowerCase()) ?? pad("0x", { size: 32 }));
-    return Promise.reject(rpcError(-32601, `unexpected method ${method}`));
-  };
-  const client = createPublicClient({ transport: custom({ request }, { retryCount: 0 }) });
-  return detectFamily({ client, chainId, arbitrable });
 }

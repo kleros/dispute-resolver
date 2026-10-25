@@ -18,7 +18,7 @@ const hex = z
   .regex(/^0x[\da-f]*$/i)
   .transform((value): Hex => value as Hex);
 const address = z.string().transform((value) => toRegistryAddress(value));
-const reply = z.union([z.object({ result: hex }), z.object({ error: z.object({ code: z.number(), message: z.string() }) })]);
+export const reply = z.union([z.object({ result: hex }), z.object({ error: z.object({ code: z.number(), message: z.string() }) })]);
 const log = z.object({ address: z.string(), topics: z.array(hex), data: hex, blockNumber: z.number(), logIndex: z.number(), transactionHash: hex });
 const recordedCall = z.object({ label: z.string(), to: address, data: hex, reply });
 
@@ -76,7 +76,6 @@ const unslashedSchema = z.object({
     z.object({
       disputeId: z.string(),
       localId: z.string(),
-      externalIDtoLocalID: z.object({ to: address, data: hex, reply }),
       disputeEvent: z.array(log).length(1),
       appealDecisions: z.array(log),
       contributions: z.array(log),
@@ -140,7 +139,7 @@ export interface RecordedGetters {
   readonly replies: Readonly<Record<string, CallReply>>;
 }
 
-/** The raw replies of every multiplier getter on six mainnet contracts, read at block 26,190,905. */
+/** The raw replies of every multiplier getter on four mainnet contracts, read at block 26,190,905. */
 export const MULTIPLIER_GETTERS: readonly RecordedGetters[] = recordedMultipliers.contracts.map((contract) => ({
   label: contract.label,
   address: contract.address,
@@ -150,7 +149,6 @@ export const MULTIPLIER_GETTERS: readonly RecordedGetters[] = recordedMultiplier
 const governorSchema = z.object({
   blockNumber: z.number(),
   disputeId: z.string(),
-  arbitrator: address,
   governor: address,
   session: z.string(),
   calls: z.array(recordedCall),
@@ -162,7 +160,6 @@ const recordedGovernor = governorSchema.parse(governor1621);
 /** poh.eth governor dispute 1621 (no appeal, executed, ruling 2), read at block 26,190,903. */
 export const GOVERNOR_1621 = {
   disputeId: BigInt(recordedGovernor.disputeId),
-  arbitrator: recordedGovernor.arbitrator,
   governor: recordedGovernor.governor,
   blockNumber: BigInt(recordedGovernor.blockNumber),
   /** The ERC-1497 Dispute event's evidence group: the last word of its data. */

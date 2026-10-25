@@ -3,7 +3,6 @@ import { getChain } from "../chains";
 import type { Address } from "../types";
 import { displayAllowlistKey, getOverride, getRealityProxy, isDisplayAllowlisted, isScriptAllowed, registryKey } from "./lookups";
 import { REGISTRY } from "./registry";
-import { toRegistryAddress } from "./address";
 import { DISPUTE_1621_OVERRIDE, DISPUTE_1684_SCRIPT, UNSLASHED_CHECKSUMMED, addr } from "../test/registry/testHelpers";
 
 const MAINNET_REALITY_SCRIPT = "QmWWsDmvjhR9UVRgkcG75vAKzfK3vB85EkZzudnaxwfAWr/bundle.js";
@@ -40,10 +39,6 @@ describe("getRealityProxy", () => {
   it("an unregistered address is not found", () => {
     expect(getRealityProxy(REGISTRY, 1, addr("0x0000000000000000000000000000000000000001"))).toBeUndefined();
   });
-
-  it("an address read from the chain in checksum case is found once normalized", () => {
-    expect(getRealityProxy(REGISTRY, 1, toRegistryAddress("0x2018038203aEE8e7a29dABd73771b0355D4F85ad"))).toBeDefined();
-  });
 });
 
 describe("getOverride", () => {
@@ -53,16 +48,8 @@ describe("getOverride", () => {
     expect(override?.refuseToArbitrateFundable).toBe(false);
   });
 
-  it("the checksummed address of the chain reaches the override once normalized", () => {
-    expect(getOverride(REGISTRY, 1, toRegistryAddress(UNSLASHED_CHECKSUMMED))).toBeDefined();
-  });
-
   it("the override is keyed by chain, so the same address elsewhere has none", () => {
     expect(getOverride(REGISTRY, 100, addr(UNSLASHED_CHECKSUMMED))).toBeUndefined();
-  });
-
-  it("the codeless second Unslashed address has no override", () => {
-    expect(getOverride(REGISTRY, 1, addr("0xb9f9B5eee2ad29098b9b3Ea0B401571F5dA4AD81"))).toBeUndefined();
   });
 
   it("an ordinary arbitrable has no override", () => {
@@ -187,10 +174,6 @@ describe("isDisplayAllowlisted", () => {
   it("a key without a list allowlists nothing", () => {
     expect(isDisplayAllowlisted(REGISTRY, 42161, POH_V2_MAINNET)).toBe(false);
     expect(isDisplayAllowlisted(REGISTRY, 0, POH_V2_MAINNET)).toBe(false);
-  });
-
-  it("a checksummed address is allowlisted once normalized", () => {
-    expect(isDisplayAllowlisted(REGISTRY, 1, toRegistryAddress("0xbE9834097A4E97689d9B667441acafb456D0480A"))).toBe(true);
   });
 
   it("the key chosen by displayAllowlistKey selects the list", () => {

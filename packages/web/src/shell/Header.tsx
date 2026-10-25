@@ -1,12 +1,12 @@
 import { useEffect, useId, useRef } from "react";
 import { Link, NavLink } from "react-router";
 import { paths, type ResolvedChain } from "../routing";
-import { ICON_SWAP_CLASS, ICON_SWAP_HIDDEN, ICON_SWAP_SHOWN, usePresence, type PresencePhase } from "../ui";
+import { ICON_SWAP_CLASS, ICON_SWAP_HIDDEN, ICON_SWAP_SHOWN, useOutsidePress, usePresence, type PresencePhase } from "../ui";
 import { WalletControl } from "../wallet";
 import { BrandLogo } from "./BrandLogo";
 import { ChainSwitcher } from "./ChainSwitcher";
 import { CloseIcon, MenuIcon } from "./icons";
-import { BAR_FOCUS, BAR_FOCUS_TOKEN, BAR_TEXT, CONTENT, GUTTER } from "./layout";
+import { BAR_FOCUS, BAR_SURFACE, CONTENT, GUTTER } from "./layout";
 import { ThemeToggle } from "./ThemeToggle";
 
 interface HeaderProps {
@@ -33,6 +33,12 @@ function panelClass(phase: PresencePhase): string {
   if (phase === "closed") return `hidden ${PANEL_CLASS}`;
   return `flex ${PANEL_CLASS} ${phase === "open" ? PANEL_OPEN_CLASS : PANEL_CLOSING_CLASS}`;
 }
+
+const NAV_LINKS = [
+  ["ongoing", "Ongoing Disputes"],
+  ["cases", "Case Lookup"],
+  ["create", "Create"],
+] as const;
 
 function navLinkClass({ isActive }: { readonly isActive: boolean }): string {
   return isActive ? `${NAV_LINK} font-semibold underline decoration-2 underline-offset-8` : `${NAV_LINK} opacity-85 hover:opacity-100`;
@@ -61,17 +67,13 @@ export function Header({ resolvedChain }: HeaderProps) {
       close();
       toggleRef.current?.focus();
     };
-    // The bar row holds the panel and the Menu button, whose own click toggles the panel.
-    const closeOnOutsidePress = (event: PointerEvent) => {
-      if (event.target instanceof Node && barRowRef.current?.contains(event.target) !== true) close();
-    };
     document.addEventListener("keydown", closeOnEscape);
-    document.addEventListener("pointerdown", closeOnOutsidePress);
     return () => {
       document.removeEventListener("keydown", closeOnEscape);
-      document.removeEventListener("pointerdown", closeOnOutsidePress);
     };
   }, [menuOpen, close]);
+  // The bar row holds the panel and the Menu button, whose own click toggles the panel.
+  useOutsidePress(menuOpen, barRowRef, close);
 
   return (
     <>
@@ -79,7 +81,7 @@ export function Header({ resolvedChain }: HeaderProps) {
       {phase === "closed" ? null : (
         <div aria-hidden="true" className={`fixed inset-0 z-30 bg-black/30 lg:hidden ${menuOpen ? "animate-t-overlay-in" : "pointer-events-none animate-t-overlay-out"}`} />
       )}
-      <header className={`sticky top-0 z-40 bg-klerosUIComponentsPrimaryPurple dark:bg-klerosUIComponentsLightBlue ${BAR_TEXT} ${BAR_FOCUS_TOKEN}`}>
+      <header className={`sticky top-0 z-40 ${BAR_SURFACE}`}>
         <div className={GUTTER}>
           <div ref={barRowRef} className={`${CONTENT} relative flex flex-wrap items-center gap-x-3 lg:h-16 lg:flex-nowrap lg:gap-8`}>
             <Link to={paths.chainRoot(chainId)} onClick={close} className={`order-1 inline-flex h-16 shrink-0 items-center ${BAR_FOCUS}`}>
@@ -105,21 +107,13 @@ export function Header({ resolvedChain }: HeaderProps) {
             <div key={mountKey} ref={panelRef} id={panelId} className={panelClass(phase)}>
               <nav aria-label="Main">
                 <ul className="flex flex-col xl:flex-row xl:items-center xl:gap-2">
-                  <li>
-                    <NavLink to={paths.ongoing(chainId)} onClick={close} className={navLinkClass}>
-                      Ongoing Disputes
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to={paths.cases(chainId)} onClick={close} className={navLinkClass}>
-                      Case Lookup
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to={paths.create(chainId)} onClick={close} className={navLinkClass}>
-                      Create
-                    </NavLink>
-                  </li>
+                  {NAV_LINKS.map(([page, label]) => (
+                    <li key={label}>
+                      <NavLink to={paths[page](chainId)} onClick={close} className={navLinkClass}>
+                        {label}
+                      </NavLink>
+                    </li>
+                  ))}
                 </ul>
               </nav>
             </div>

@@ -1,5 +1,6 @@
 import { DEFAULT_UINT_PRECISION } from "./precision";
-import { answerString, isUint256, toHexWord } from "./realityLib";
+import { isUint256 } from "../bigint";
+import { answerString, toHexWord } from "./realityLib";
 import type { FallbackOutcomes, RulingOptions } from "./types";
 
 export const REFUSED_RULING_TEXT = "invalid / refused to arbitrate / tied";

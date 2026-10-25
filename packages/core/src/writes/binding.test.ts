@@ -36,7 +36,7 @@ describe("write target binding", () => {
     for (const name of Object.keys(FAMILY_SIGNATURES) as (keyof typeof FAMILY_SIGNATURES)[]) {
       for (const chainId of [1, 100]) {
         const binding = testBinding({ chainId, disputeId: 5n, arbitrated: ARBITRATED });
-        for (const call of callsOf(everyBuild(binding, detectionFor(chainId, ARBITRATED, FAMILY_SIGNATURES[name])))) {
+        for (const call of callsOf(everyBuild(binding, detectionFor(ARBITRATED, FAMILY_SIGNATURES[name], chainId)))) {
           expect(call.address).toBe(ARBITRATED);
           expect(call.chainId).toBe(chainId);
         }
@@ -46,7 +46,7 @@ describe("write target binding", () => {
 
   it("a family detected for another address (one meta-evidence names) cannot redirect or re-dialect a write", () => {
     const binding = testBinding({ chainId: 1, disputeId: 5n, arbitrated: ARBITRATED });
-    const spoofed = detectionFor(1, SPOOFED, FAMILY_SIGNATURES["idr-v2"]);
+    const spoofed = detectionFor(SPOOFED, FAMILY_SIGNATURES["idr-v2"]);
     const builds = everyBuild(binding, spoofed);
     expect(callsOf(builds)).toEqual([]);
     expect(builds.every((build) => !build.ok && build.refusal === "family-mismatch")).toBe(true);
@@ -54,7 +54,7 @@ describe("write target binding", () => {
 
   it("a family detected on another chain cannot be used for the binding's dispute", () => {
     const binding = testBinding({ chainId: 1, disputeId: 5n, arbitrated: ARBITRATED });
-    const builds = everyBuild(binding, detectionFor(100, ARBITRATED, FAMILY_SIGNATURES["idr-v2"]));
+    const builds = everyBuild(binding, detectionFor(ARBITRATED, FAMILY_SIGNATURES["idr-v2"], 100));
     expect(builds.every((build) => !build.ok && build.refusal === "family-mismatch")).toBe(true);
   });
 
@@ -69,7 +69,7 @@ describe("write target binding", () => {
 
   it("unknown arbitrables are view-only, so no write is built for them", () => {
     const binding = testBinding({ chainId: 1, disputeId: 5n, arbitrated: ARBITRATED });
-    expect(callsOf(everyBuild(binding, detectionFor(1, ARBITRATED, FAMILY_SIGNATURES["view-only"])))).toEqual([]);
+    expect(callsOf(everyBuild(binding, detectionFor(ARBITRATED, FAMILY_SIGNATURES["view-only"])))).toEqual([]);
   });
 
   it("every call built for a recorded contract uses a selector its dispatcher carries", () => {

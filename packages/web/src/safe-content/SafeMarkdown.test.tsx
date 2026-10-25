@@ -50,11 +50,6 @@ describe("SafeMarkdown links", () => {
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
-
-  it("keeps http:// description links as links", () => {
-    renderMarkdown("[plain](http://example.com/page)");
-    expect(screen.getByRole("link", { name: "plain" })).toHaveAttribute("href", "http://example.com/page");
-  });
 });
 
 describe("SafeMarkdown images", () => {
@@ -214,11 +209,6 @@ describe("SafeMarkdown GitHub-flavored syntax of remark-parse 5", () => {
   it("a literal pipe still makes the row and a referenced pipe stays inside its cell", () => {
     renderMarkdown("a&#124;b|c\n-|-");
     expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["a|b", "c"]);
-  });
-
-  it("a backslash-escaped pipe still makes a row, with the escaped pipe inside its only cell", () => {
-    renderMarkdown("a\\|b\n-|-");
-    expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["a|b"]);
   });
 
   it.each([

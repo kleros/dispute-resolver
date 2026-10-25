@@ -2,7 +2,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { renderAtPath, renderInRouter } from "../test/routing";
-import { createTestWallet } from "../test/wallet";
+import { createConnectedTestWallet } from "../test/wallet";
 import { NotFoundScreen } from "./NotFoundScreen";
 
 function Unreachable() {
@@ -10,26 +10,18 @@ function Unreachable() {
 }
 
 describe("UnsupportedNetworkScreen", () => {
-  it("offers only Ethereum Mainnet and Gnosis, never a testnet or a chain without a court", () => {
-    renderAtPath(<Unreachable />, "/10/ongoing");
-    expect(screen.getByRole("heading", { level: 1, name: "Unsupported Network 10" })).toBeInTheDocument();
+  it.each([
+    [10, "an unconfigured chain"],
+    [690, "a chain no longer supported"],
+  ])("a URL on chain %i, %s, offers only Ethereum Mainnet and Gnosis, never a testnet or a chain without a court", (chainId) => {
+    renderAtPath(<Unreachable />, `/${String(chainId)}/ongoing`);
+    expect(screen.getByRole("heading", { level: 1, name: `Unsupported Network ${String(chainId)}` })).toBeInTheDocument();
     expect(screen.getByText("Please switch over one of the following networks.")).toBeInTheDocument();
     const list = screen.getByRole("list", { name: "Supported networks" });
     const labels = within(list)
       .getAllByRole("button")
       .map((button) => button.textContent);
     expect(labels).toEqual(["Ethereum Mainnet (1)", "Gnosis Network (100)"]);
-    expect(screen.queryByText("Unreachable page")).not.toBeInTheDocument();
-  });
-
-  it("a URL on chain 690, no longer supported, shows the unsupported-network state and does not offer 690", () => {
-    renderAtPath(<Unreachable />, "/690/ongoing");
-    expect(screen.getByRole("heading", { level: 1, name: "Unsupported Network 690" })).toBeInTheDocument();
-    const list = screen.getByRole("list", { name: "Supported networks" });
-    const labels = within(list)
-      .getAllByRole("button")
-      .map((button) => button.textContent);
-    expect(labels.filter((label) => label.includes("(690)") || label.includes("Redstone"))).toEqual([]);
     expect(screen.queryByText("Unreachable page")).not.toBeInTheDocument();
   });
 
@@ -49,8 +41,7 @@ describe("UnsupportedNetworkScreen", () => {
 
   it("a switch declined in the wallet is shown inline", async () => {
     const user = userEvent.setup();
-    const wallet = createTestWallet({ chainId: 10, switchChainError: true });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ chainId: 10, switchChainError: true });
     const view = renderAtPath(<Unreachable />, "/10/ongoing", { wallet });
     await user.click(screen.getByRole("button", { name: "Switch the wallet to Gnosis Network (100)" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("The switch to Gnosis Network was declined in the wallet.");
@@ -67,8 +58,7 @@ describe("UnsupportedNetworkScreen", () => {
 
   it("a successful switch moves the wallet and the app follows it to the chosen chain", async () => {
     const user = userEvent.setup();
-    const wallet = createTestWallet({ chainId: 10 });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ chainId: 10 });
     const view = renderAtPath(<p>Ongoing page</p>, "/10/ongoing", { wallet });
     await user.click(screen.getByRole("button", { name: "Switch the wallet to Gnosis Network (100)" }));
     expect(await screen.findByText("Ongoing page")).toBeInTheDocument();
@@ -77,8 +67,7 @@ describe("UnsupportedNetworkScreen", () => {
   });
 
   it("the chain being switched to shows progress and the others wait", async () => {
-    const wallet = createTestWallet({ chainId: 10 });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ chainId: 10 });
     renderAtPath(<Unreachable />, "/10/ongoing", { wallet });
     const target = screen.getByRole("button", { name: "Switch the wallet to Gnosis Network (100)" });
     act(() => {

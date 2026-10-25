@@ -1,17 +1,9 @@
 import type { WriteBuild } from "@dispute-resolver/core";
 import { useCallback, useMemo, useState } from "react";
 import type { WriteReceipt } from "../data";
-import { performWrite } from "./performWrite";
+import { performWrite, refreshAfter } from "./performWrite";
 import type { WriteOptions, WriteOutcome, WriteSequenceController, WriteSequenceStatus, WriteStatus } from "./types";
 import { useWriteEnvironment } from "./useWrite";
-
-async function refreshAfter(options: WriteOptions, receipt: WriteReceipt): Promise<void> {
-  try {
-    await options.onMined?.(receipt);
-  } catch {
-    // The withdrawals are mined; a failed refresh leaves the panel showing its own unavailable state.
-  }
-}
 
 /**
  * Withdrawals in sequence: one transaction per build, in order, each signed only after the previous receipt is mined;

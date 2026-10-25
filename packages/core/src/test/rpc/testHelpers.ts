@@ -1,4 +1,4 @@
-import { createPublicClient, custom } from "viem";
+import { createPublicClient, custom, numberToHex } from "viem";
 import { vi } from "vitest";
 import type { Hex, ReadClient } from "../../types";
 
@@ -26,6 +26,26 @@ export interface LogsRequest {
 /** What the fake node answers to one `eth_getLogs` request: logs, or an error to throw. */
 export type LogsAnswer = readonly RpcLog[] | Error;
 
+/** The key a fake node files an `eth_call` answer under: target and calldata, lowercase. */
+export function callKey(to: string, data: Hex): string {
+  return `${to}:${data}`.toLowerCase();
+}
+
+/** A synthetic log; its transaction hash is unique to its block and log index. */
+export function syntheticLog(address: Hex, topics: readonly Hex[], data: Hex, blockNumber: bigint, logIndex: number): RpcLog {
+  return {
+    address,
+    topics,
+    data,
+    blockNumber: numberToHex(blockNumber),
+    blockHash: `0x${"ab".repeat(32)}`,
+    transactionHash: numberToHex((blockNumber << 32n) + BigInt(logIndex), { size: 32 }),
+    transactionIndex: "0x0",
+    logIndex: numberToHex(logIndex),
+    removed: false,
+  };
+}
+
 /** A JSON-RPC error as a node reports it: an `Error` with a numeric `code`. */
 export function rpcError(code: number, message: string): Error {
   return Object.assign(new Error(message), { code });
@@ -36,9 +56,16 @@ export function rangeRefusal(): Error {
   return rpcError(-32005, "query returned more than 10000 results");
 }
 
-function asLogsRequest(params: unknown): LogsRequest {
+export function asLogsRequest(params: unknown): LogsRequest {
   const [filter] = params as [{ address: string; topics?: (string | null)[]; fromBlock: Hex; toBlock: Hex }];
   return { address: filter.address, topics: filter.topics ?? [], fromBlock: BigInt(filter.fromBlock), toBlock: BigInt(filter.toBlock) };
+}
+
+/** Whether `log` matches the filter as a node applies it: address, block range and every non-null topic. */
+export function matchesFilter(log: RpcLog, request: LogsRequest): boolean {
+  const block = BigInt(log.blockNumber);
+  const sameTopics = request.topics.every((topic, index) => topic === null || log.topics[index] === topic);
+  return log.address === request.address.toLowerCase() && sameTopics && block >= request.fromBlock && block <= request.toBlock;
 }
 
 /** The logs of `logs` that a node would return for `request`: same address, first topic and block range. */

@@ -3,7 +3,7 @@ import type { Outcome, Period } from "../types";
 import { computeAppealAmounts } from "./amounts";
 import { buildCrowdfundingCards } from "./cards";
 import { governorListIndex } from "./governor";
-import { fail } from "./outcome";
+import { fail } from "../outcome";
 import type { AppealAmounts, AppealPanel, AppealPanelInput, CrowdfundingCard, WithdrawState } from "./types";
 
 const HIDDEN: AppealPanel = { kind: "hidden" };

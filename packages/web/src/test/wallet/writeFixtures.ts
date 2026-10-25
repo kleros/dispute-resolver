@@ -1,6 +1,7 @@
 import type { ChainId, Hex, WriteBuild } from "@dispute-resolver/core";
 import { parseAbi } from "viem";
 import type { WriteReceipt } from "../../data";
+import type { WriteStatus } from "../../wallet";
 
 const FUND_APPEAL_ABI = parseAbi(["function fundAppeal(uint256 localId, uint256 ruling) payable"]);
 
@@ -27,6 +28,11 @@ export function testWriteBuild(chainId: ChainId = 1, ruling = 1n): WriteBuild {
 export function testReceipt(hash: Hex = TEST_TX_HASH, status: WriteReceipt["status"] = "success"): WriteReceipt {
   return { transactionHash: hash, status, blockNumber: 100n, logs: [] };
 }
+
+export const TEST_MINED: WriteStatus = { phase: "mined", hash: TEST_TX_HASH, explorerUrl: null, receipt: testReceipt() };
+
+/** A write that is signed, submitted and mined. */
+export const TEST_SENT: readonly WriteStatus[] = [{ phase: "pending" }, { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null }, TEST_MINED];
 
 /** The hash of the transaction that replaces `TEST_TX_HASH` in replacement tests. */
 export const TEST_REPLACEMENT_TX_HASH: Hex = "0x2222222222222222222222222222222222222222222222222222222222222222";

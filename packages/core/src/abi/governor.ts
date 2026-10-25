@@ -1,4 +1,5 @@
 import type { Abi } from "viem";
+import { uint256Getter } from "./entries";
 
 /**
  * The governor dialect, as the deployed governors' verified sources declare it: poh.eth, ubi-voting.eth and
@@ -59,39 +60,9 @@ export const governorAbi = [
       { name: "successfullyPaid", type: "uint256" },
     ],
   },
-  {
-    type: "function",
-    name: "getCurrentSessionNumber",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256" }],
-  },
-  {
-    type: "function",
-    name: "winnerMultiplier",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256" }],
-  },
-  {
-    type: "function",
-    name: "loserMultiplier",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256" }],
-  },
-  {
-    type: "function",
-    name: "sharedMultiplier",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256" }],
-  },
-  {
-    type: "function",
-    name: "MULTIPLIER_DIVISOR",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256" }],
-  },
+  uint256Getter("getCurrentSessionNumber"),
+  uint256Getter("winnerMultiplier"),
+  uint256Getter("loserMultiplier"),
+  uint256Getter("sharedMultiplier"),
+  uint256Getter("MULTIPLIER_DIVISOR"),
 ] as const satisfies Abi;

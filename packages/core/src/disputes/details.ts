@@ -5,7 +5,7 @@ import type { FamilyDetection } from "../families/types";
 import { describeError, getLogsChunked } from "../rpc";
 import type { Outcome, ReadClient } from "../types";
 import { resolveLocalId } from "./localId";
-import { fail, NETWORK_DATA_UNAVAILABLE, readOutcome, succeed } from "./outcome";
+import { NETWORK_DATA_UNAVAILABLE, fail, readOutcome, succeed } from "../outcome";
 import type { AppealDecisionEvent, AppealInfo, ArbitratedBinding, ArbitratorDispute, DisputeReadContext, DisputeReads, LocalIdResolution } from "./types";
 
 const APPEAL_DECISION_EVENT = getAbiItem({ abi: klerosLiquidAbi, name: "AppealDecision" });

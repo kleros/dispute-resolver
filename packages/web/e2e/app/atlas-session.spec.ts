@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { ATLAS_NONCE, fakeAtlas } from "../support/atlas";
 import { fakeNetwork } from "../support/network";
-import { changeWalletAccount, injectWallet, walletSignatures, type SignedMessage } from "../support/wallet";
+import { changeWalletAccount, expectWalletConnected, injectWallet, walletSignatures, type SignedMessage } from "../support/wallet";
 
 // The Atlas session in a real browser tab, on the built app with a wallet configured (playwright.config.ts) and Atlas
 // served by the spec. The Create page's primary document is the upload: the first file signs in and uploads in one
@@ -17,14 +17,9 @@ const FIELD_NAME = "Primary Document (Optional)";
 const TEN_MINUTES_MS = 10 * 60 * 1000;
 const SIGN_IN_SENTENCE = "Your wallet will ask you to sign in before the first upload.";
 
-/** Fails early, and says why, when the build connects no wallet (no WalletConnect project ID). */
-async function expectWalletConnected(page: Page, shortAddress: string): Promise<void> {
-  await expect(
-    page.getByRole("button", { name: `Account ${shortAddress}` }),
-    "the injected wallet never connected (the build needs REACT_APP_WALLETCONNECT_PROJECT_ID)",
-  ).toBeVisible({
-    timeout: 30_000,
-  });
+/** The header's account button of the account `shortAddress` names. */
+function accountButton(page: Page, shortAddress: string): Locator {
+  return page.getByRole("button", { name: `Account ${shortAddress}` });
 }
 
 /** The primary-document upload field. */
@@ -88,7 +83,7 @@ test("the field announces the sign-in until the first upload signs in, a reload 
   await fakeNetwork(context, { appOrigin: appUrl.origin, atlas: atlas.answer });
 
   await page.goto(CREATE_PATH);
-  await expectWalletConnected(page, "0x0000…00E2");
+  await expectWalletConnected(accountButton(page, "0x0000…00E2"));
   await expectFieldReady(documentField(page), { announcesSignIn: true });
   expect(await walletSignatures(page)).toEqual([]);
   expect(atlas.logins).toEqual([]);
@@ -103,7 +98,7 @@ test("the field announces the sign-in until the first upload signs in, a reload 
   expect(atlas.uploads).toEqual([firstSession?.token]);
 
   await page.reload();
-  await expectWalletConnected(page, "0x0000…00E2");
+  await expectWalletConnected(accountButton(page, "0x0000…00E2"));
   await expectFieldReady(documentField(page), { announcesSignIn: false });
   await uploadDocument(page, "second.pdf");
   expect(await walletSignatures(page), "the reloaded tab asked for a new signature").toEqual([]);
@@ -111,7 +106,7 @@ test("the field announces the sign-in until the first upload signs in, a reload 
   expect(atlas.uploads).toEqual([firstSession?.token, firstSession?.token]);
 
   await changeWalletAccount(page, SECOND_ACCOUNT);
-  await expectWalletConnected(page, "0x0000…00E3");
+  await expectWalletConnected(accountButton(page, "0x0000…00E3"));
   await uploadDocument(page, "third.pdf");
   expect(accountsOf(await walletSignatures(page))).toEqual([SECOND_ACCOUNT]);
   expect(atlas.logins.map(({ account }) => account.toLowerCase())).toEqual([FIRST_ACCOUNT, SECOND_ACCOUNT]);

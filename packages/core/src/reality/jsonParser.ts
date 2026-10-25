@@ -9,12 +9,12 @@ export class JsonSyntaxError extends Error {
 /** Where a template placeholder sits in the JSON structure. */
 export type PlaceholderContext = "key" | "string" | "value" | "array";
 
-export interface PlaceholderUse {
+interface PlaceholderUse {
   readonly index: number;
   readonly context: PlaceholderContext;
 }
 
-export interface ParsedJson {
+interface ParsedJson {
   readonly value: unknown;
   readonly hasDuplicateKeys: boolean;
   readonly placeholders: readonly PlaceholderUse[];

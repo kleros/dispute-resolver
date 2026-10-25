@@ -88,7 +88,3 @@ export function isLiveToken(token: string | null, nowSeconds: number): boolean {
   const expiry = tokenExpiry(token);
   return expiry !== null && expiry > nowSeconds;
 }
-
-export function nowInSeconds(): number {
-  return Date.now() / 1000;
-}

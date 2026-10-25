@@ -1,9 +1,9 @@
-import type { ChainId, DisputeLookup, Unavailable } from "@dispute-resolver/core";
+import type { ChainId, Unavailable } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { useAtlasUpload } from "../../atlas";
-import { queryKeys, useCaseRefresh, type CaseDispute, type CaseSectionProps, type CaseWriteContext, type SectionData } from "../../data";
+import { foundLookup, queryKeys, useCaseRefresh, type CaseDispute, type CaseSectionProps, type CaseWriteContext } from "../../data";
 import { SectionSkeleton, SectionUnavailable } from "../../ui";
 import { EvidenceTimeline } from "./EvidenceTimeline";
 import { SubmissionFeedbackNotice } from "./SubmissionFeedbackNotice";
@@ -72,10 +72,6 @@ function SubmitEvidence({ context, chainId, disputeId }: SubmitEvidenceProps) {
   );
 }
 
-function foundBinding(lookup: SectionData<DisputeLookup>) {
-  return lookup.status === "ready" && lookup.value.status === "found" ? lookup.value.binding : undefined;
-}
-
 /**
  * The dispute details are only exposed through the "appeal" refresh, which also reads the lookup, the evidence and the
  * funding again.
@@ -83,7 +79,7 @@ function foundBinding(lookup: SectionData<DisputeLookup>) {
 function useWriteContextRetry(dispute: CaseDispute): () => void {
   const client = useQueryClient();
   const refresh = useCaseRefresh(dispute.chainId, dispute.disputeId);
-  const binding = foundBinding(dispute.lookup);
+  const binding = foundLookup(dispute)?.binding;
   const { chainId } = dispute;
   return useCallback(() => {
     if (binding !== undefined) void client.invalidateQueries({ queryKey: queryKeys.family(chainId, binding.arbitrated) });
@@ -121,7 +117,7 @@ function SubmitControlView({ dispute }: { readonly dispute: CaseDispute }) {
 function useEvidenceRetry(dispute: CaseDispute): () => void {
   const client = useQueryClient();
   const refresh = useCaseRefresh(dispute.chainId, dispute.disputeId);
-  const binding = foundBinding(dispute.lookup);
+  const binding = foundLookup(dispute)?.binding;
   return useCallback(() => {
     if (binding !== undefined) void client.invalidateQueries({ queryKey: queryKeys.disputeEvent(binding.chainId, binding.disputeId, binding.arbitrated) });
     void refresh("evidence");

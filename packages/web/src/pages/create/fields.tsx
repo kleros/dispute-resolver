@@ -10,6 +10,15 @@ export function FieldSlot({ className, children }: { readonly className?: string
   );
 }
 
+/** A waiting label; `data-text` carries its text for the shimmer's sweep. */
+export function Shimmer({ text, className }: { readonly text: string; readonly className?: string }) {
+  return (
+    <span className={className === undefined ? "t-shimmer" : `t-shimmer ${className}`} data-text={text}>
+      {text}
+    </span>
+  );
+}
+
 export function errorProps(message: string | undefined): { readonly isInvalid?: true; readonly variant?: "error"; readonly message?: string } {
   return message === undefined ? {} : { isInvalid: true, variant: "error", message };
 }

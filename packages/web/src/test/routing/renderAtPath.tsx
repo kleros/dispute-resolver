@@ -69,15 +69,19 @@ export function renderInRouter(routes: ReactElement, path: string, options: Rend
   };
 }
 
+export interface RenderAtPathOptions extends RenderInRouterOptions {
+  /** The layout's frame; default `TestFrame`. */
+  readonly frame?: ComponentType<FrameProps>;
+}
+
 /**
  * Renders `ui` at `path` under the app's `/:chainId` layout: `usePageChain()`, `useResolvedChain()` and chain
- * following behave as in the app, and an unconfigured chain shows the unsupported-network screen. The frame is
- * `TestFrame`.
+ * following behave as in the app, and an unconfigured chain shows the unsupported-network screen.
  */
-export function renderAtPath(ui: ReactElement, path: string, options: RenderInRouterOptions = {}): RoutedRenderResult {
+export function renderAtPath(ui: ReactElement, path: string, options: RenderAtPathOptions = {}): RoutedRenderResult {
   return renderInRouter(
     <Routes>
-      <Route path=":chainId" element={<ChainLayout frame={TestFrame} />}>
+      <Route path=":chainId" element={<ChainLayout frame={options.frame ?? TestFrame} />}>
         <Route index element={ui} />
         <Route path="*" element={ui} />
       </Route>

@@ -2,7 +2,7 @@ import { zeroAddress } from "viem";
 import { klerosLiquidAbi } from "../abi";
 import { toRegistryAddress } from "../registry";
 import type { Address, Outcome, Period, ReadClient } from "../types";
-import { fail, succeed } from "./outcome";
+import { fail, succeed } from "../outcome";
 import type { ArbitratorDispute } from "./types";
 
 type DisputeTuple = readonly [bigint, `0x${string}`, bigint, number, bigint, bigint, bigint, boolean];

@@ -54,11 +54,12 @@ describe("resolveLocalId", () => {
     expect(requests.methods).toEqual([]);
   });
 
-  it("a revert of the local-ID read is unresolved / reverted (recorded externalIDtoLocalID(1674) on PoH v2)", async () => {
+  it("a revert of the local-ID read is unresolved / reverted, with no DisputeCreation re-resolution after it (recorded externalIDtoLocalID(1674) on PoH v2)", async () => {
     const binding = await bindingOf(MAINNET, 1, 1674n);
     const idrFamily = { ...(await recordedDetection(1, "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf")), arbitrable: binding.arbitrated };
-    const { client } = fakeClient(recordedNode(MAINNET));
+    const { client, requests } = fakeClient(recordedNode(MAINNET));
     expect(await resolveLocalId(client, binding, idrFamily)).toEqual({ kind: "unresolved", reason: "reverted" });
+    expect(requests.methods).toEqual(["eth_call"]);
   });
 
   it("a transport failure of the local-ID read is unresolved / rpc-error, never reverted", async () => {
@@ -66,13 +67,5 @@ describe("resolveLocalId", () => {
     const family = await recordedDetection(1, binding.arbitrated);
     const { client } = fakeClient(recordedNode(MAINNET, { failing: { eth_call: rpcError(-32000, "header not found") } }));
     expect(await resolveLocalId(client, binding, family)).toEqual({ kind: "unresolved", reason: "rpc-error" });
-  });
-
-  it("runs no DisputeCreation re-resolution after a failed local-ID read", async () => {
-    const binding = await bindingOf(MAINNET, 1, 1674n);
-    const idrFamily = { ...(await recordedDetection(1, "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf")), arbitrable: binding.arbitrated };
-    const { client, requests } = fakeClient(recordedNode(MAINNET));
-    await resolveLocalId(client, binding, idrFamily);
-    expect(requests.methods).toEqual(["eth_call"]);
   });
 });

@@ -9,7 +9,7 @@ const EVIDENCE = `/ipfs/${EVIDENCE_CID}/evidence.json`;
 const binding = testBinding({ chainId: 1, disputeId: 1454n, arbitrated: ARBITRABLE });
 
 function family(signatures: keyof typeof FAMILY_SIGNATURES): FamilyDetection {
-  return detectionFor(1, ARBITRABLE, FAMILY_SIGNATURES[signatures]);
+  return detectionFor(ARBITRABLE, FAMILY_SIGNATURES[signatures]);
 }
 
 describe("buildSubmitEvidenceCall", () => {

@@ -19,10 +19,6 @@ function connectSrc(policy: string): readonly string[] {
   return directive === undefined ? [] : directive.split(" ").slice(1);
 }
 
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 describe("headersPlugin", () => {
   let workDir: string | null = null;
 
@@ -73,8 +69,8 @@ describe("headersPlugin", () => {
 
   it("fails the build when an RPC endpoint is a plain http URL, naming the variable and never its value", async () => {
     vi.stubEnv("REACT_APP_WEB3_PROVIDER_URL", "http://mainnet.rpc.example/v3/KEY-PLAIN-0007");
-    const message = await runPlugin(HEADERS_TEXT).then(() => "the build succeeded", messageOf);
-    expect(message).toContain("REACT_APP_WEB3_PROVIDER_URL is a plain http or ws URL");
-    for (const part of ["KEY-", "rpc.example", "/v3/"]) expect(message).not.toContain(part);
+    const failure = runPlugin(HEADERS_TEXT);
+    await expect(failure).rejects.toThrow("REACT_APP_WEB3_PROVIDER_URL is a plain http or ws URL");
+    for (const part of ["KEY-", "rpc.example", "/v3/"]) await expect(failure).rejects.not.toThrow(part);
   });
 });

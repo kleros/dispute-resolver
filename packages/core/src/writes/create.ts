@@ -2,7 +2,7 @@ import { arbitrableProxyAbi } from "../abi";
 import type { ChainConfig } from "../chains/types";
 import type { Hex } from "../types";
 import { normalizeIpfsPath } from "../uri";
-import { isUint256 } from "../rulings";
+import { isUint256 } from "../bigint";
 import { built, refused } from "./build";
 import type { WriteBuild } from "./types";
 

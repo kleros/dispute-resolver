@@ -1,14 +1,13 @@
 import * as core from "@dispute-resolver/core";
-import type { Address, DisputeEventResult, EvidenceList, Outcome, RoundFunding } from "@dispute-resolver/core";
+import type { Address, DisputeEventResult, Outcome, RoundFunding } from "@dispute-resolver/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCase } from "../../data";
-import { createTestDeps, testCourt, testDetails, testFamily, testFoundLookup, testOkMetaEvidence } from "../../test/data";
+import { createTestDeps, testCourt, testDetails, testDisputeEvent, testEvidenceList, testFamily, testFoundLookup, testOkMetaEvidence } from "../../test/data";
 import { testPageChain } from "../../test/routing";
 import { renderWithProviders } from "../../test/shell";
-import { TEST_TX_HASH, createTestWallet, fakeWriteController, testReceipt, type FakeWriteController } from "../../test/wallet";
-import type { WriteStatus } from "../../wallet";
+import { TEST_SENT, createConnectedTestWallet, fakeWriteController, type FakeWriteController } from "../../test/wallet";
 import { AppealSection } from "./AppealSection";
 import { FEES_UNAVAILABLE_TITLE, WITHDRAW_NOTHING } from "./copy";
 
@@ -27,17 +26,8 @@ vi.mock("../../wallet", async (importOriginal) => {
 
 const ETH = 10n ** 18n;
 const ACCOUNT: Address = "0x1111111111111111111111111111111111111111";
-const EVIDENCE: EvidenceList = {
-  items: [],
-  hiddenEvidenceCount: 0,
-  hiddenByReason: { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 },
-};
-const FOUND_EVENT: Outcome<DisputeEventResult> = {
-  ok: true,
-  value: { status: "found", event: { metaEvidenceId: 0n, evidenceGroupId: 3n, blockNumber: 100n, createdAt: 1_700_000_000, transactionHash: "0x01" } },
-};
-const MINED: WriteStatus = { phase: "mined", hash: TEST_TX_HASH, explorerUrl: null, receipt: testReceipt() };
-const SENT: readonly WriteStatus[] = [{ phase: "pending" }, { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null }, MINED];
+const EVIDENCE = testEvidenceList();
+const FOUND_EVENT: Outcome<DisputeEventResult> = { ok: true, value: testDisputeEvent() };
 const NO_FUNDING: Outcome<RoundFunding> = { ok: true, value: { round: 0n, contributions: [], fundedRulings: [] } };
 const RPC_DOWN = { code: "rpc-error", message: "The RPC did not answer." } as const;
 const GOVERNOR = testFamily({
@@ -75,8 +65,7 @@ function CaseAppeal() {
 
 /** Renders the case's appeal section with a wallet connected on the page chain, as every write needs. */
 async function renderCase() {
-  const wallet = createTestWallet();
-  await wallet.connect();
+  const wallet = await createConnectedTestWallet();
   return renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps(), wallet });
 }
 
@@ -94,7 +83,7 @@ function findRulingsToFund(): Promise<HTMLElement> {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  writes.fake = fakeWriteController(SENT);
+  writes.fake = fakeWriteController(TEST_SENT);
 });
 
 describe("AppealSection refresh after a mined write", () => {

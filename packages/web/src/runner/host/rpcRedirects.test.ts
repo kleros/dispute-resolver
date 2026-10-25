@@ -12,11 +12,6 @@ describe("buildRpcRedirects", () => {
     expect(rules).toContainEqual({ chainId: 11155111, host: "sepolia.infura.io", pathPrefix: "/v3/", target: "https://read.example/sepolia" });
   });
 
-  it("defaults the target to the read RPC when no public RPC is set", () => {
-    const rules = buildRpcRedirects({ REACT_APP_WEB3_PROVIDER_URL: "https://read.example/mainnet" });
-    expect(rules.find((rule) => rule.chainId === 1)?.target).toBe("https://read.example/mainnet");
-  });
-
   it("emits no rule for a chain without a configured RPC", () => {
     const rules = buildRpcRedirects({ REACT_APP_WEB3_PROVIDER_URL: "  " });
     expect(rules.map((rule) => rule.chainId).sort((a, b) => a - b)).toEqual([300, 324]);

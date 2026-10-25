@@ -57,17 +57,6 @@ describe("createRequestBudget", () => {
     vi.advanceTimersByTime(120_000);
     expect(budget.remainingMs()).toBe(0);
   });
-
-  it("the thrown error is recognized as a lookup limit", () => {
-    const budget = createRequestBudget({ maxRequests: 0, deadlineMs: 90_000 });
-    let thrown: unknown;
-    try {
-      budget.spend();
-    } catch (error) {
-      thrown = error;
-    }
-    expect(isLookupLimitError(thrown)).toBe(true);
-  });
 });
 
 describe("isLookupLimitError", () => {

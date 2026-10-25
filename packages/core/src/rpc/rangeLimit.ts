@@ -1,22 +1,9 @@
 import { BaseError, HttpRequestError } from "viem";
-import { isLookupLimitError } from "./errors";
+import { causeChain, isLookupLimitError } from "./errors";
 
 const RATE_LIMIT_ERROR = /rate[\s-]?limit|too many requests|\b429\b|capacity|throughput|request count|compute units/i;
 const RANGE_LIMIT_ERROR = /range|limit|exceed|too many|too large|10[,_]?000|response size|size exceeded|more than|\b413\b|timeout|timed out/i;
 const RANGE_LIMIT_CODES: ReadonlySet<number> = new Set([-32005, -32602, -32600, -32614, 413]);
-
-/** How deep a chain of `cause`s is followed; viem wraps a provider error at most a few times. */
-const MAX_CAUSE_DEPTH = 8;
-
-function causeChain(error: unknown): unknown[] {
-  const chain: unknown[] = [];
-  let current = error;
-  while (current !== undefined && current !== null && chain.length < MAX_CAUSE_DEPTH) {
-    chain.push(current);
-    current = typeof current === "object" && "cause" in current ? current.cause : undefined;
-  }
-  return chain;
-}
 
 /**
  * Never a viem error's full message: it repeats the request body, whose topics and block numbers could match the range

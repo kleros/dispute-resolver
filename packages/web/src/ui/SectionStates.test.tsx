@@ -57,12 +57,6 @@ describe("SectionSkeleton", () => {
 });
 
 describe("EmptyState", () => {
-  it("shows the title and body", () => {
-    render(<EmptyState title="There are no open disputes." body="Check again later." />);
-    expect(screen.getByText("There are no open disputes.")).toBeInTheDocument();
-    expect(screen.getByText("Check again later.")).toBeInTheDocument();
-  });
-
   it("renders without a body", () => {
     const { container } = render(<EmptyState title="No evidence submitted yet." />);
     expect(container).toHaveTextContent(/^No evidence submitted yet\.$/);
@@ -85,13 +79,6 @@ describe("EmptyState", () => {
 });
 
 describe("PageMessage", () => {
-  it("shows a page heading, a body and an action", () => {
-    render(<PageMessage title="Search for a dispute" body="Enter a dispute ID to see its details." action={<button type="button">Go</button>} />);
-    expect(screen.getByRole("heading", { level: 1, name: "Search for a dispute" })).toBeInTheDocument();
-    expect(screen.getByText("Enter a dispute ID to see its details.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Go" })).toBeInTheDocument();
-  });
-
   it("asks the browser for pretty wrapping on the body", () => {
     render(<PageMessage title="Find a dispute" body="Enter a dispute ID above to see its summary, timeline, evidence and appeal." />);
     expect(screen.getByText(/^Enter a dispute ID above/)).toHaveClass("text-pretty");
@@ -112,7 +99,7 @@ describe("PageMessage", () => {
 
   it("raises the heading first and the body and action just after it, holding still under reduced motion", () => {
     render(<PageMessage title="Search for a dispute" body="Enter a dispute ID to see its details." action={<button type="button">Go</button>} />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveClass(FIRST_LINE, "motion-reduce:animate-none");
+    expect(screen.getByRole("heading", { level: 1, name: "Search for a dispute" })).toHaveClass(FIRST_LINE, "motion-reduce:animate-none");
     expect(screen.getByText("Enter a dispute ID to see its details.")).toHaveClass(NEXT_LINE, "motion-reduce:animate-none");
     expect(screen.getByRole("button", { name: "Go" }).parentElement).toHaveClass(NEXT_LINE, "motion-reduce:animate-none");
   });

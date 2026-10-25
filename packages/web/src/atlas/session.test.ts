@@ -3,7 +3,7 @@ import klerosAppPackage from "@kleros/kleros-app/package.json";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { atlasWrapper, installFakeAtlasServer, jwtSubject, sessionJwt, settle, testJwt } from "../test/atlas";
-import { TEST_WALLET_ACCOUNT, TEST_WALLET_SECOND_ACCOUNT, createTestWallet } from "../test/wallet";
+import { TEST_WALLET_ACCOUNT, TEST_WALLET_SECOND_ACCOUNT, createConnectedTestWallet } from "../test/wallet";
 import { useAtlasUpload } from "./context";
 import { LIBRARY_TOKEN_KEY, clearRejectedToken, isLiveToken, readStoredToken, tokenExpiry } from "./session";
 
@@ -122,8 +122,7 @@ describe("@kleros/kleros-app 3.1.0 session storage coupling", () => {
   it('stores the token JSON-encoded under sessionStorage "authToken" after sign-in', async () => {
     const token = sessionJwt(TEST_WALLET_ACCOUNT);
     installFakeAtlasServer({ issueToken: () => token });
-    const wallet = createTestWallet();
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet();
     const { result } = renderHook(() => useAtlasUpload(), { wrapper: atlasWrapper(wallet) });
     await waitFor(() => {
       expect(result.current.limits("evidence")).not.toBeNull();
@@ -140,8 +139,7 @@ describe("@kleros/kleros-app 3.1.0 session storage coupling", () => {
     const token = sessionJwt(TEST_WALLET_ACCOUNT);
     installFakeAtlasServer({ uploadResponse: () => new Response(JSON.stringify({ message: "Token revoked" }), { status: 401 }) });
     sessionStorage.setItem("authToken", JSON.stringify(token));
-    const wallet = createTestWallet();
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet();
     const { result } = renderHook(() => useAtlasProvider(), { wrapper: atlasWrapper(wallet) });
     await waitFor(() => {
       expect(result.current.isVerified).toBe(true);
@@ -161,8 +159,7 @@ describe("@kleros/kleros-app 3.1.0 session storage coupling", () => {
 
   it("signs in with an EIP-4361 message for this host, the server nonce and the wallet's chain, expiring in 10 minutes", async () => {
     const server = installFakeAtlasServer();
-    const wallet = createTestWallet({ chainId: 100 });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ chainId: 100 });
     const { result } = renderHook(() => useAtlasUpload(), { wrapper: atlasWrapper(wallet) });
     await waitFor(() => {
       expect(result.current.limits("evidence")).not.toBeNull();
@@ -194,8 +191,7 @@ describe("@kleros/kleros-app 3.1.0 session storage coupling", () => {
   it("treats a stored token as a verified session only for the account in its sub", async () => {
     installFakeAtlasServer();
     sessionStorage.setItem("authToken", JSON.stringify(sessionJwt(TEST_WALLET_SECOND_ACCOUNT)));
-    const wallet = createTestWallet();
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet();
     const { result } = renderHook(() => ({ uploader: useAtlasUpload(), library: useAtlasProvider() }), { wrapper: atlasWrapper(wallet) });
     await waitFor(() => {
       expect(result.current.library.roleRestrictions).toBeDefined();
@@ -216,8 +212,7 @@ describe("@kleros/kleros-app 3.1.0 session storage coupling", () => {
   it("treats a token stored that way before mount as the library's verified session", async () => {
     installFakeAtlasServer();
     sessionStorage.setItem("authToken", JSON.stringify(sessionJwt(TEST_WALLET_ACCOUNT)));
-    const wallet = createTestWallet();
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet();
     const { result } = renderHook(() => useAtlasUpload(), { wrapper: atlasWrapper(wallet) });
 
     await waitFor(() => {

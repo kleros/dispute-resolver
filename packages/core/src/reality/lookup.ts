@@ -32,7 +32,7 @@ interface BlockHeader {
   readonly timestamp: number;
 }
 
-export interface LookupRequest {
+interface LookupRequest {
   readonly entry: RealityProxyEntry;
   readonly arbitratorChainId: ChainId;
   readonly disputeId: bigint;
@@ -109,23 +109,16 @@ async function arbitrationCreatedFromHint(lookup: Lookup, disputeId: bigint) {
 /** The question ID of a dispute created after the known disputes snapshot, and the block of the event that maps it. */
 async function findQuestionId(lookup: Lookup, arbitratorChainId: ChainId, disputeId: bigint): Promise<{ readonly questionId: Hex; readonly mappingBlock: bigint }> {
   const { entry } = lookup;
+  const event = entry.kind === "single-chain" ? DISPUTE_ID_TO_QUESTION_ID : ARBITRATION_CREATED;
+  const hinted = entry.kind === "single-chain" ? undefined : await arbitrationCreatedFromHint(lookup, disputeId);
   const fromBlock = unknownDisputeFromBlock(arbitratorChainId, entry);
-
-  if (entry.kind === "single-chain") {
-    const toBlock = await headBlock(lookup.arbitrator);
-    const logs = await findLogs(lookup, lookup.arbitrator, { address: entry.proxy, event: DISPUTE_ID_TO_QUESTION_ID, args: { _disputeID: disputeId }, fromBlock, toBlock });
-    const log = requireSingleLog(logs, "DisputeIDToQuestionID");
-    return { questionId: requireHex(log.args._questionID, "DisputeIDToQuestionID"), mappingBlock: blockOf(log) };
-  }
-
-  const hinted = await arbitrationCreatedFromHint(lookup, disputeId);
-  const log = hinted ?? requireSingleLog(await scanArbitrationCreated(lookup, disputeId, fromBlock), "ArbitrationCreated");
-  return { questionId: requireHex(log.args._questionID, "ArbitrationCreated"), mappingBlock: blockOf(log) };
-}
-
-async function scanArbitrationCreated(lookup: Lookup, disputeId: bigint, fromBlock: bigint) {
-  const toBlock = await headBlock(lookup.arbitrator);
-  return findLogs(lookup, lookup.arbitrator, { address: lookup.entry.proxy, event: ARBITRATION_CREATED, args: { _disputeID: disputeId }, fromBlock, toBlock });
+  const log =
+    hinted ??
+    requireSingleLog(
+      await findLogs(lookup, lookup.arbitrator, { address: entry.proxy, event, args: { _disputeID: disputeId }, fromBlock, toBlock: await headBlock(lookup.arbitrator) }),
+      event.name,
+    );
+  return { questionId: requireHex(log.args._questionID, event.name), mappingBlock: blockOf(log) };
 }
 
 /**

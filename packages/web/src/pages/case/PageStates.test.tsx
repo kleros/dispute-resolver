@@ -1,35 +1,13 @@
-import { getChain, type ChainConfig } from "@dispute-resolver/core";
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { CaseDispute } from "../../data";
-import { TestDataProvider, sectionLoading } from "../../test/data";
+import { TestDataProvider, testCaseDispute, testChain } from "../../test/data";
 import { DisputeSections } from "./DisputeSections";
 import { PendingSearch } from "./PageStates";
 
-function mainnet(): ChainConfig {
-  const chain = getChain(1);
-  if (chain === undefined) throw new Error("mainnet is not configured");
-  return chain;
-}
-
-const MAINNET = mainnet();
+const MAINNET = testChain(1);
 
 /** Dispute 1621 on mainnet as `useCase` gives it the moment its lookup starts. */
-const LOOKING_UP: CaseDispute = {
-  status: "dispute",
-  chainId: 1,
-  disputeId: 1621n,
-  lookup: sectionLoading,
-  view: sectionLoading,
-  family: sectionLoading,
-  metaEvidence: sectionLoading,
-  disputeEvent: sectionLoading,
-  evidence: sectionLoading,
-  appealDecisions: sectionLoading,
-  courts: sectionLoading,
-  appealPanel: sectionLoading,
-  write: sectionLoading,
-};
+const LOOKING_UP = testCaseDispute({ disputeId: 1621n });
 
 const NO_RETRIES = { key: (scope: string) => scope, retry: () => undefined };
 

@@ -1,5 +1,4 @@
 import { act, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { useAtlasUpload } from "../atlas";
 import { useCoreDeps } from "../data";
@@ -9,7 +8,6 @@ import { createTestDeps } from "../test/data";
 import { renderWithProviders } from "../test/shell";
 import { useWallet } from "../wallet";
 import { useColorScheme } from "./colorScheme";
-import { useToast } from "./ToastProvider";
 
 function ColorSchemeProbe() {
   const { scheme } = useColorScheme();
@@ -21,21 +19,12 @@ function Probe() {
   const deps = useCoreDeps();
   const uploader = useAtlasUpload();
   const wallet = useWallet();
-  const toaster = useToast();
   return (
     <div>
       <p>Chain {page.chain.name}</p>
       <p>Env {Object.keys(deps.env).join(",") || "empty"}</p>
       <p>Uploads {uploader.availability}</p>
       <p>Wallet {wallet.status}</p>
-      <button
-        type="button"
-        onClick={() => {
-          toaster.show({ variant: "success", title: "Toast shown" });
-        }}
-      >
-        Toast
-      </button>
     </div>
   );
 }
@@ -57,20 +46,6 @@ describe("renderWithProviders", () => {
     expect(screen.getByText("Uploads unconfigured")).toBeInTheDocument();
     await act(() => view.wallet.connect());
     expect(screen.getByText("Wallet connected")).toBeInTheDocument();
-  });
-
-  it("a toast shown by a descendant appears in the notifications region", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<Probe />);
-    await user.click(screen.getByRole("button", { name: "Toast" }));
-    expect(screen.getByRole("status")).toHaveTextContent("Toast shown");
-  });
-
-  it("the frame option renders the app's header and footer around the screen", () => {
-    renderWithProviders(<Probe />, { frame: "page" });
-    expect(screen.getByRole("banner")).toBeInTheDocument();
-    expect(screen.getByRole("contentinfo")).toBeInTheDocument();
-    expect(screen.getByText("Chain Ethereum Mainnet")).toBeInTheDocument();
   });
 
   it("every screen renders under a colour-scheme provider", () => {

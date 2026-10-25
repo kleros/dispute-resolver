@@ -1,19 +1,12 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createTestDeps, type RpcHandler } from "../test/data";
+import { codeRpc, createTestDeps, type RpcHandler } from "../test/data";
 import { TEST_WALLET_ADDRESS, createTestWallet, walletWrapper } from "../test/wallet";
 import { SmartContractWalletWarning } from "./SmartContractWalletWarning";
 
 const KEY = `@kleros/dispute-resolver/alert/smart-contract-wallet-warning:${TEST_WALLET_ADDRESS}`;
 const WARNING = "You are using a smart contract wallet. This is not recommended.";
-
-function codeAnswer(code: string): RpcHandler {
-  return ({ method }) => {
-    if (method === "eth_getCode") return code;
-    throw new Error(`Unexpected ${method}.`);
-  };
-}
 
 async function renderWarning(rpc: RpcHandler, connected = true) {
   const wallet = createTestWallet();
@@ -34,13 +27,13 @@ afterEach(() => {
 
 describe("SmartContractWalletWarning", () => {
   it("warns when the connected account has contract code", async () => {
-    await renderWarning(codeAnswer("0x6080604052"));
+    await renderWarning(codeRpc("0x6080604052"));
     expect(await screen.findByText(WARNING)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Learn more" })).toHaveAttribute("href", "https://docs.kleros.io/welcome/faq#can-i-use-a-smart-contract-account-to-stake-in-the-court");
   });
 
   it("an EIP-7702 delegated account is not a smart-contract wallet", async () => {
-    const getCode = await renderWarning(codeAnswer("0xef01000000000000000000000000000000000000000001"));
+    const getCode = await renderWarning(codeRpc("0xef01000000000000000000000000000000000000000001"));
     await waitFor(() => {
       expect(getCode).toHaveBeenCalled();
     });
@@ -48,7 +41,7 @@ describe("SmartContractWalletWarning", () => {
   });
 
   it("an account without code is not warned", async () => {
-    const getCode = await renderWarning(codeAnswer("0x"));
+    const getCode = await renderWarning(codeRpc("0x"));
     await waitFor(() => {
       expect(getCode).toHaveBeenCalled();
     });
@@ -66,13 +59,13 @@ describe("SmartContractWalletWarning", () => {
   });
 
   it("nothing is read without a connected account", async () => {
-    const getCode = await renderWarning(codeAnswer("0x6080604052"), false);
+    const getCode = await renderWarning(codeRpc("0x6080604052"), false);
     expect(getCode).not.toHaveBeenCalled();
     expect(screen.queryByText(WARNING)).toBeNull();
   });
 
   it("dismissal hides the warning and is stored per address under the existing storage key", async () => {
-    await renderWarning(codeAnswer("0x6080604052"));
+    await renderWarning(codeRpc("0x6080604052"));
     await userEvent.click(await screen.findByRole("button", { name: "Dismiss the smart contract wallet warning" }));
     expect(screen.queryByText(WARNING)).toBeNull();
     expect(window.localStorage.getItem(KEY)).toBe("false");
@@ -80,7 +73,7 @@ describe("SmartContractWalletWarning", () => {
 
   it("a stored dismissal keeps the warning hidden", async () => {
     window.localStorage.setItem(KEY, "false");
-    const getCode = await renderWarning(codeAnswer("0x6080604052"));
+    const getCode = await renderWarning(codeRpc("0x6080604052"));
     await waitFor(() => {
       expect(getCode).toHaveBeenCalled();
     });
@@ -94,7 +87,7 @@ describe("SmartContractWalletWarning", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("blocked");
     });
-    await renderWarning(codeAnswer("0x6080604052"));
+    await renderWarning(codeRpc("0x6080604052"));
     await userEvent.click(await screen.findByRole("button", { name: "Dismiss the smart contract wallet warning" }));
     expect(screen.queryByText(WARNING)).toBeNull();
   });

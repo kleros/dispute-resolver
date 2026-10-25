@@ -1,5 +1,5 @@
 import type { CreateDisputeInput } from "@dispute-resolver/core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePageChain } from "../../routing";
 import { ExternalLink } from "../../safe-content";
 import { PageMessage, SectionBoundary } from "../../ui";
@@ -60,14 +60,13 @@ export function CreatePage() {
     navRef.current?.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "instant" : "smooth" });
   }, [stepChanges]);
 
-  const toSummary = useCallback((value: CreateDisputeInput) => {
-    setInput(value);
+  const changeStep = (next: CreateDisputeInput | null) => {
+    setInput(next);
     setStepChanges((count) => count + 1);
-  }, []);
-  const returnToForm = useCallback(() => {
-    setInput(null);
-    setStepChanges((count) => count + 1);
-  }, []);
+  };
+  const returnToForm = () => {
+    changeStep(null);
+  };
 
   return (
     <section className="mx-auto flex w-full max-w-[1080px] min-w-0 flex-col gap-6 py-6 lg:py-10">
@@ -80,7 +79,7 @@ export function CreatePage() {
           {input === null ? (
             <SectionBoundary key="form" section="Create form">
               <div data-create-step="form" className={stepClass(0, stepChanges)}>
-                <CreateForm chain={chain} form={form} onChange={setForm} headingRef={headingRef} onContinue={toSummary} />
+                <CreateForm chain={chain} form={form} onChange={setForm} headingRef={headingRef} onContinue={changeStep} />
               </div>
             </SectionBoundary>
           ) : (

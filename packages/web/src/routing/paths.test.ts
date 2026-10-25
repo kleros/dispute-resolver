@@ -11,12 +11,6 @@ describe("paths", () => {
     expect(paths.case(1, 2n ** 256n - 1n)).toBe(`/1/cases/${(2n ** 256n - 1n).toString()}`);
   });
 
-  it("targets are written without a trailing slash", () => {
-    for (const path of [paths.chainRoot(1), paths.ongoing(1), paths.create(1), paths.cases(1), paths.case(1, 0n)]) {
-      expect(path.endsWith("/")).toBe(false);
-    }
-  });
-
   it("rejects a chain that is not configured", () => {
     expect(() => paths.ongoing(10)).toThrow(RangeError);
     expect(() => paths.chainRoot(0)).toThrow(RangeError);

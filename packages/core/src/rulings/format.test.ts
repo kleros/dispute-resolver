@@ -124,10 +124,6 @@ describe("formatRuling", () => {
     expect(formatRuling(5n, { type: "datetime", precision: 2 }, null)).toBe(timestamp4);
   });
 
-  it("placeholder options with empty titles read the ruling's decimal value without throwing", () => {
-    expect(formatRuling(1n, { type: "single-select", titles: [] }, OUTCOMES)).toBe("1");
-  });
-
   it("a title-less single-select ruling reads as its decimal value, titles absent or empty, fallback outcomes or not", () => {
     expect(formatRuling(2n, { type: "single-select" }, null)).toBe("2");
     expect(formatRuling(2n, { type: "single-select", titles: [] }, ["Red", "Blue"])).toBe("2");

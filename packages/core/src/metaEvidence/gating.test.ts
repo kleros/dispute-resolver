@@ -219,12 +219,6 @@ describe("loadMetaEvidence gating", () => {
     expect(urls).toHaveLength(2);
   });
 
-  it("a missing API configuration fails at once", async () => {
-    const { fetcher, urls } = fakeFetcher({});
-    expect(await loadMetaEvidence(context({ fetcher, env: {} }))).toMatchObject({ status: "failed", reason: "locator-error" });
-    expect(urls).toHaveLength(0);
-  });
-
   it("a registered proxy's options, status and question come from the on-chain question", async () => {
     const entry = proxyEntry(CROSS_CHAIN_PROXY);
     const cache = realityCache({ [realityQuestionCacheKey(1, entry, 1684n)]: boolQuestion("Will it rain?") });

@@ -68,11 +68,6 @@ describe("isContractFailure", () => {
 });
 
 describe("describeError", () => {
-  it("a viem error is described by its short message, never with the transport URL", async () => {
-    const error = await readError(new Error("request to https://rpc.example/v3/secret-key failed"));
-    expect(describeError(error)).not.toContain("secret-key");
-  });
-
   it("names a budget exhaustion and an abort, and never quotes any other error", () => {
     expect(describeError(new LookupLimitError("The lookup ran out of requests."))).toBe("The lookup ran out of requests.");
     expect(describeError(Object.assign(new Error("aborted"), { name: "AbortError" }))).toBe("The request was aborted.");

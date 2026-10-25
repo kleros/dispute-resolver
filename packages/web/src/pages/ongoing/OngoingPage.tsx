@@ -1,4 +1,4 @@
-import type { ChainId, Court, OngoingDispute, OngoingList, Unavailable } from "@dispute-resolver/core";
+import { compareBigint, type ChainId, type Court, type OngoingDispute, type OngoingList, type Unavailable } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
@@ -19,20 +19,11 @@ const GRID_CLASS = "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3";
 /** A dispute with its struct, or a listed ID whose struct could not be read. */
 type Entry = { readonly kind: "dispute"; readonly dispute: OngoingDispute } | { readonly kind: "failed"; readonly id: bigint };
 
-function hasNoArbitrator(list: SectionData<OngoingList>): boolean {
-  return list.status === "ready" && list.value.status === "no-arbitrator";
-}
-
 /** Every listed dispute and failed ID in one descending order, so a failed ID keeps its place. */
 function entriesOf(list: Extract<OngoingList, { status: "ok" }>): Entry[] {
   const entries: Entry[] = [...list.disputes.map((dispute) => ({ kind: "dispute" as const, dispute })), ...list.failedIds.map((id) => ({ kind: "failed" as const, id }))];
   const idOf = (entry: Entry) => (entry.kind === "dispute" ? entry.dispute.id : entry.id);
-  return entries.sort((a, b) => {
-    const left = idOf(a);
-    const right = idOf(b);
-    if (left === right) return 0;
-    return left < right ? 1 : -1;
-  });
+  return entries.sort((a, b) => compareBigint(idOf(b), idOf(a)));
 }
 
 function NoArbitrator() {
@@ -176,7 +167,7 @@ function OngoingDisputes({ chainId, chainName }: { readonly chainId: ChainId; re
     );
   };
   const headingId = useId();
-  if (hasNoArbitrator(list)) return <NoArbitrator />;
+  if (list.status === "ready" && list.value.status === "no-arbitrator") return <NoArbitrator />;
   return (
     <section aria-labelledby={headingId} className="flex w-full min-w-0 flex-col gap-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

@@ -1,6 +1,6 @@
-import { createConfig, custom, injected, type Config } from "@wagmi/core";
+import { createConfig, injected, type Config } from "@wagmi/core";
 import { numberToHex, type Chain, type EIP1193Provider } from "viem";
-import { TEST_WALLET_ACCOUNT } from "./testWallet";
+import { TEST_WALLET_ACCOUNT, rejectingTransports } from "./testWallet";
 
 /** One `wallet_addEthereumChain` request, as the wallet received it. */
 export interface AddChainRequest {
@@ -96,9 +96,7 @@ export function createFakeInjectedWallet(options: FakeInjectedWalletOptions): Fa
     },
   };
 
-  const transports = Object.fromEntries(
-    chains.map((chain) => [chain.id, custom({ request: () => Promise.reject(new Error("Tests read through core's test deps, never through wagmi.")) })]),
-  );
+  const transports = rejectingTransports(chains);
   // The fake answers only the methods the switch flow sends; viem's provider type lists every RPC method.
   const connector = injected({ target: { id: "fakeInjectedWallet", name: "Fake injected wallet", provider: provider as unknown as EIP1193Provider } });
   const config = createConfig({ chains, transports, connectors: [connector], storage: null, multiInjectedProviderDiscovery: false, ssr: false });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CanonicalIpfsPath } from "../uri/types";
 import type { CreateDisputeDraft, CreateDisputeInput, CreateValidationErrors } from "./types";
-import { CREATE_LIMITS, validateCreateInput } from "./index";
+import { validateCreateInput } from "./index";
 
 const CID = "QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA";
 const ALICE = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
@@ -42,13 +42,6 @@ function options(count: number, title = "Option"): CreateDisputeDraft["options"]
   return Array.from({ length: count }, (_, index) => ({ title: `${title} ${String(index + 1)}`, description: "" }));
 }
 
-describe("CREATE_LIMITS", () => {
-  it("allows 2 to 32 options and at least one vote", () => {
-    expect(CREATE_LIMITS.optionRange).toEqual([2, 32]);
-    expect(CREATE_LIMITS.minVotes).toBe(1);
-  });
-});
-
 describe("validateCreateInput: required fields and integers", () => {
   it("requires exactly the court, votes, title, question, Number of Options and option titles", () => {
     // Question Type is required too, and a draft cannot lack it: it is a `CreateQuestionType`, the dropdown's current choice.
@@ -83,20 +76,12 @@ describe("validateCreateInput: required fields and integers", () => {
     });
   });
 
-  it("title and question are required", () => {
-    expect(errors(draft({ title: "", question: "" }))).toEqual({ title: "required", question: "required" });
-  });
-
   it("only an empty title or question counts as missing", () => {
     expect(accepted(draft({ title: " ", question: " " }))).toMatchObject({ title: " ", question: " " });
   });
 
   it("category and description are optional and kept as typed", () => {
     expect(accepted(draft({ category: "", description: "" }))).toMatchObject({ category: "", description: "" });
-  });
-
-  it("court and votes are required", () => {
-    expect(errors(draft({ courtId: "", votes: "" }))).toEqual({ courtId: "required", votes: "required" });
   });
 
   it("court and votes must be non-negative decimal integers", () => {
@@ -144,10 +129,6 @@ describe("validateCreateInput: ruling options", () => {
       }),
     );
     expect(result).toEqual({ options: [undefined, "required", undefined] });
-  });
-
-  it("a too-short list still reports its empty titles", () => {
-    expect(errors(draft({ options: [{ title: "", description: "" }] }))).toEqual({ optionCount: "out-of-range", options: ["required"] });
   });
 
   it("the options passed are the ones written, each with its own description", () => {

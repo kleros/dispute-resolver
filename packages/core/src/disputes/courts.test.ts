@@ -3,15 +3,11 @@ import { describe, expect, it } from "vitest";
 import { klerosLiquidAbi, policyRegistryAbi } from "../abi";
 import type { Env } from "../types";
 import { listCourts } from ".";
-import { answer, fakeClient, fakeFetcher, failure, GNOSIS, MAINNET, recordedNode, recordedPolicyBodies } from "../test/disputes/testHelpers";
+import { answer, fakeClient, fakeFetcher, failure, GNOSIS, MAINNET, recordedNode, recordedPolicyBodies, selectorOf } from "../test/disputes/testHelpers";
 
 const ENV: Env = {};
 const GET_SUBCOURT = toFunctionSelector("getSubcourt(uint96)").slice(2);
 const POLICIES = toFunctionSelector("policies(uint256)").slice(2);
-
-function selectorOf(key: string): string {
-  return key.split(":0x")[1]?.slice(0, 8) ?? "";
-}
 
 describe("listCourts", () => {
   it("enumerates mainnet's courts until getSubcourt reverts (-32003 InvalidFEOpcode at court 25), with policy names", async () => {

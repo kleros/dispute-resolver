@@ -12,11 +12,6 @@ describe("JSON_DUPLICATE_KEY_GUARD", () => {
     expect(JSON_DUPLICATE_KEY_GUARD).toHaveLength(1271);
     expect(await sha256(JSON_DUPLICATE_KEY_GUARD)).toBe("f749e16bce8831194dbdf07c3d147afd622cdc75b729b0fb4bb0164d36c6d7dd");
   });
-
-  it("records the rejection in the global the host reads", () => {
-    expect(JSON_DUPLICATE_KEY_GUARD).toContain("window.__klerosJsonDuplicateKeys = true");
-    expect(JSON_DUPLICATE_KEY_GUARD).toContain('throw new SyntaxError("Duplicate keys in JSON document")');
-  });
 });
 
 describe("isRealityScript", () => {

@@ -1,13 +1,13 @@
 import { describeError, getLogsChunked } from "../rpc";
+import { compareBigint } from "../bigint";
 import type { Outcome } from "../types";
 import { CONTRIBUTION_EVENT, RULING_FUNDED_EVENT, checkContext, governorSession, idrLocalId } from "./context";
 import { readGovernorRound } from "./governor";
-import { fail, failedRead, succeed } from "./outcome";
+import { fail, failedRead, succeed } from "../outcome";
 import type { AppealContext, RoundFunding, RulingAmount } from "./types";
 
 function byRuling(a: RulingAmount, b: RulingAmount): number {
-  if (a.ruling === b.ruling) return 0;
-  return a.ruling < b.ruling ? -1 : 1;
+  return compareBigint(a.ruling, b.ruling);
 }
 
 /**

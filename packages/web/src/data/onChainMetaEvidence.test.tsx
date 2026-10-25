@@ -1,9 +1,9 @@
 import * as core from "@dispute-resolver/core";
 import type { DisputeEventResult, MetaEvidenceEventResult, OnChainMetaEvidence, Outcome } from "@dispute-resolver/core";
 import { renderHook, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { TestDataProvider, createTestDeps, createTestQueryClient, testBinding, testOkMetaEvidence } from "../test/data";
+import { createTestDeps, createTestQueryClient, dataWrapper, deferred, testBinding, testOkMetaEvidence } from "../test/data";
+import { testPageChain } from "../test/routing";
 import { useDisputeEvent, useMetaEvidence } from "./disputeHooks";
 import { onChainMetaEvidenceReader } from "./onChainMetaEvidence";
 import { queryKeys } from "./queryKeys";
@@ -26,21 +26,6 @@ const FOUND_META: Outcome<MetaEvidenceEventResult> = {
   value: { status: "found", event: { uri: URI, blockNumber: 100n, logIndex: 3, transactionHash: TX, emissions: 1 } },
 };
 
-function mainnet() {
-  const chain = core.getChain(1);
-  if (chain === undefined) throw new Error("mainnet is not configured");
-  return chain;
-}
-
-/** A promise settled by the test. */
-function deferred<T>() {
-  let resolve: (value: T) => void = () => undefined;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-  return { promise, resolve };
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -58,10 +43,7 @@ describe("onChainMetaEvidenceReader", () => {
       return testOkMetaEvidence();
     });
     const deps = createTestDeps();
-    function Wrapper({ children }: { readonly children?: ReactNode }) {
-      return <TestDataProvider deps={deps}>{children}</TestDataProvider>;
-    }
-    const { result } = renderHook(() => ({ event: useDisputeEvent(1, BINDING), metaEvidence: useMetaEvidence(1, BINDING, "case") }), { wrapper: Wrapper });
+    const { result } = renderHook(() => ({ event: useDisputeEvent(1, BINDING), metaEvidence: useMetaEvidence(1, BINDING, "case") }), { wrapper: dataWrapper({ deps }) });
     await waitFor(() => {
       expect(result.current.metaEvidence.status).toBe("ready");
     });
@@ -73,7 +55,7 @@ describe("onChainMetaEvidenceReader", () => {
       client: deps.getReadClient(1),
       arbitrable: BINDING.arbitrated,
       metaEvidenceId: 84n,
-      fromBlock: core.evidenceScanStart(mainnet()),
+      fromBlock: core.evidenceScanStart(testPageChain(1).chain),
       signal: signals[0],
     });
   });

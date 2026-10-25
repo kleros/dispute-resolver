@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { fakeUploader, type FakeUploader } from "../../test/atlas";
 import { renderWithProviders } from "../../test/shell";
-import { createTestWallet, holdChainSwitches, type TestWallet } from "../../test/wallet";
+import { createConnectedTestWallet, createTestWallet, holdChainSwitches, type TestWallet } from "../../test/wallet";
 import type { WriteAccess } from "../../wallet";
 import { SubmitEvidenceModal } from "./SubmitEvidenceModal";
 
@@ -95,8 +95,7 @@ describe("SubmitEvidenceModal motion", () => {
   });
 
   it("raises an upload's outcome into view, and plays it again for a different outcome", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet();
     const notice = (title: string, body: string) => ({ kind: "notice", notice: { variant: "warning", title, body } }) as const;
     const props = { isOpen: true, draft: DRAFT, onDraftChange: vi.fn(), onClose: vi.fn(), onSubmit: vi.fn(), submitting: false, access: { status: "ready" } } as const;
     const { rerender } = renderWithProviders(<SubmitEvidenceModal {...props} feedback={notice("Evidence not uploaded", "First reason.")} />, { wallet });

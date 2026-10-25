@@ -14,36 +14,24 @@ export interface WithdrawPanelProps {
 }
 
 function WithdrawExplanation({ state }: { readonly state: WithdrawState }) {
-  switch (state.status) {
-    case "nothing":
-      return <p className={BODY_TEXT_CLASS}>{WITHDRAW_NOTHING}</p>;
-    case "no-account":
-      return (
-        <>
-          <p className={BODY_TEXT_CLASS}>{WITHDRAW_ELIGIBLE}</p>
-          <Notice variant="info" title="Wallet required" body={WITHDRAW_NO_ACCOUNT} />
-        </>
-      );
-    case "unavailable":
-      return (
-        <>
-          <p className={BODY_TEXT_CLASS}>{WITHDRAW_ELIGIBLE}</p>
-          <Notice variant="warning" title="Withdrawable amount unavailable" body={state.error.message} />
-        </>
-      );
-    case "available":
-      return (
-        <>
-          <p className={BODY_TEXT_CLASS}>{WITHDRAW_ELIGIBLE}</p>
-          {state.items.length > 1 ? (
-            <p className="text-sm">
-              Your rewards and refunds come from {state.items.length} contributions, so withdrawing them takes {state.items.length} transactions, one after the other. Confirm each
-              one in your wallet.
-            </p>
-          ) : null}
-        </>
-      );
+  if (state.status === "nothing") return <p className={BODY_TEXT_CLASS}>{WITHDRAW_NOTHING}</p>;
+  let note = null;
+  if (state.status === "no-account") note = <Notice variant="info" title="Wallet required" body={WITHDRAW_NO_ACCOUNT} />;
+  else if (state.status === "unavailable") note = <Notice variant="warning" title="Withdrawable amount unavailable" body={state.error.message} />;
+  else if (state.items.length > 1) {
+    note = (
+      <p className="text-sm">
+        Your rewards and refunds come from {state.items.length} contributions, so withdrawing them takes {state.items.length} transactions, one after the other. Confirm each one in
+        your wallet.
+      </p>
+    );
   }
+  return (
+    <>
+      <p className={BODY_TEXT_CLASS}>{WITHDRAW_ELIGIBLE}</p>
+      {note}
+    </>
+  );
 }
 
 /**

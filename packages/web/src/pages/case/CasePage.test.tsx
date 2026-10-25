@@ -15,8 +15,20 @@ import type {
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { Route, Routes, useNavigate, useNavigationType } from "react-router";
+import { HttpRequestError, InvalidInputRpcError, RpcRequestError } from "viem";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
-import { testCourt, testDetails, testFamily, testFoundLookup, testOkMetaEvidence, TEST_ARBITRABLE, TEST_META_EVIDENCE_URI } from "../../test/data";
+import {
+  TEST_ARBITRABLE,
+  TEST_META_EVIDENCE_URI,
+  deferred,
+  testCourt,
+  testDetails,
+  testDisputeEvent,
+  testEvidenceList,
+  testFamily,
+  testFoundLookup,
+  testOkMetaEvidence,
+} from "../../test/data";
 import { testMetaEvidence } from "../../test/safe-content";
 import { renderWithProviders } from "../../test/shell";
 import { installOfflineAppKitEnvironment } from "../../test/wallet";
@@ -49,15 +61,8 @@ vi.mock("../../safe-content", async (importOriginal) => {
 
 const actualCore = await vi.importActual<typeof core>("@dispute-resolver/core");
 
-const EVIDENCE: EvidenceList = {
-  items: [],
-  hiddenEvidenceCount: 0,
-  hiddenByReason: { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 },
-};
-const FOUND_EVENT: Outcome<DisputeEventResult> = {
-  ok: true,
-  value: { status: "found", event: { metaEvidenceId: 0n, evidenceGroupId: 3n, blockNumber: 100n, createdAt: 1_700_000_000, transactionHash: "0x01" } },
-};
+const EVIDENCE = testEvidenceList();
+const FOUND_EVENT: Outcome<DisputeEventResult> = { ok: true, value: testDisputeEvent() };
 const GOVERNOR: FamilyDetection = testFamily({
   family: "governor",
   writeFamily: "governor",
@@ -68,19 +73,6 @@ const VIEW_ONLY: FamilyDetection = testFamily({
   writeFamily: "view-only",
   capabilities: { localId: "none", evidence: { kind: "none" }, appeal: { kind: "none" }, withdraw: { kind: "none" } },
 });
-
-function deferred<T>() {
-  const control: { resolve?: (value: T) => void } = {};
-  const promise = new Promise<T>((resolve) => {
-    control.resolve = resolve;
-  });
-  return {
-    promise,
-    resolve(value: T) {
-      control.resolve?.(value);
-    },
-  };
-}
 
 /** Family detection that fails on the first load, its automatic retry included, and answers the next read when the test resolves it. */
 function failFamilyOnFirstLoad() {
@@ -354,7 +346,7 @@ function breakAppealCardsOnMalformedDetails() {
 }
 
 function evidenceRead(items: readonly EvidenceItem[]): Outcome<EvidenceList> {
-  return { ok: true, value: { ...EVIDENCE, items } };
+  return { ok: true, value: testEvidenceList(items) };
 }
 
 function evidenceItem(title: string): EvidenceItem {
@@ -993,16 +985,6 @@ describe("accordion", () => {
 });
 
 describe("search box", () => {
-  it("is the search landmark with no label line and no Court link", async () => {
-    renderCase("/100/cases/7");
-    const form = screen.getByRole("search", { name: "Search by dispute ID" });
-    expect(within(form).queryByRole("link")).not.toBeInTheDocument();
-    expect(form.textContent).toBe("");
-    await waitFor(() => {
-      expect(notFoundHeading("7")).toBeInTheDocument();
-    });
-  });
-
   it("names the dispute ID field without a visible label, beside the magnifier icon", async () => {
     renderCase("/1/cases/1");
     await settledDispute();
@@ -1023,10 +1005,11 @@ describe("search box", () => {
     expect(view.currentPath()).toBe("/1/cases/9007199254740993");
   });
 
-  it("a search's first change adds a history entry at once, later changes replace it, and only the load waits for the debounce", async () => {
+  it("a search clears the shown dispute at once; its first change adds a history entry, later changes replace it, and only the load waits for the debounce", async () => {
     programReads({ lookups: { "1": testFoundLookup(), "34": testFoundLookup({ disputeId: 34n }) } });
     const view = renderCase("/1/cases/1");
     await settledDispute();
+    expect(await screen.findByRole("heading", { level: 2, name: "Dispute 1 title" })).toBeInTheDocument();
     await search("3");
     expect(view.currentPath()).toBe("/1/cases/3");
     expect(screen.getByText("Navigation: PUSH")).toBeInTheDocument();
@@ -1035,6 +1018,8 @@ describe("search box", () => {
     expect(view.currentPath()).toBe("/1/cases/34");
     expect(screen.getByText("Navigation: REPLACE")).toBeInTheDocument();
     expectLoading();
+    expect(queryTitle()).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Dispute #1" })).not.toBeInTheDocument();
     expect(core.lookupDispute).not.toHaveBeenCalledWith(expect.anything(), 34n);
     // The second key restarted the debounce: the one the first key started is gone.
     expect(debounce.pending).toBe(1);
@@ -1043,25 +1028,6 @@ describe("search box", () => {
     expect(await screen.findByRole("heading", { level: 2, name: "Dispute 34 title" })).toBeInTheDocument();
     expect(core.lookupDispute).not.toHaveBeenCalledWith(expect.anything(), 3n);
     expect(searchField()).toHaveValue("34");
-  });
-
-  it("a search clears the shown dispute at once and loads the new ID after the debounce", async () => {
-    programReads({ lookups: { "1": testFoundLookup(), "2": testFoundLookup({ disputeId: 2n }) } });
-    const view = renderCase("/1/cases/1");
-    await settledDispute();
-    expect(await screen.findByRole("heading", { level: 2, name: "Dispute 1 title" })).toBeInTheDocument();
-
-    await search("2");
-    expect(view.currentPath()).toBe("/1/cases/2");
-    expectLoading();
-    expect(queryTitle()).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Dispute #1" })).not.toBeInTheDocument();
-    expect(core.lookupDispute).not.toHaveBeenCalledWith(expect.anything(), 2n);
-    expect(debounce.pending).toBe(1);
-
-    debounce.elapse();
-    expect(await screen.findByRole("heading", { level: 2, name: "Dispute 2 title" })).toBeInTheDocument();
-    expect(searchField()).toHaveValue("2");
   });
 
   it("searching a nonexistent ID while a dispute is shown shows the not-found state", async () => {
@@ -1280,5 +1246,41 @@ describe("network change", () => {
     expectLoading();
     expect(queryTitle()).not.toBeInTheDocument();
     expect(core.lookupDispute).toHaveBeenLastCalledWith(expect.objectContaining({ chainId: 100 }), 5n);
+  });
+});
+
+describe("a family read that fails with the read RPC's own error", () => {
+  const KEY = "abc123SECRETxyz";
+  const KEYED_RPC = `https://rpc.example/v2/${KEY}`;
+  const GET_CODE = { method: "eth_getCode", params: ["0x1111111111111111111111111111111111111111", "latest"] };
+
+  it.each([
+    ["an HTTP failure", new HttpRequestError({ body: GET_CODE, details: "Too Many Requests", status: 429, url: KEYED_RPC }), "HTTP request failed."],
+    [
+      "a node error",
+      new InvalidInputRpcError(new RpcRequestError({ body: GET_CODE, error: { code: -32000, message: "header not found" }, url: KEYED_RPC })),
+      "Missing or invalid parameters.",
+    ],
+  ])("%s shows its short message in the Evidence submission and Appeal sections, never the RPC's key", async (_, failure, shortMessage) => {
+    // Dispute 1 in the appeal period, where both the evidence submission and the appeal need the family.
+    programReads({ period: 3 });
+    vi.mocked(core.detectFamily).mockRejectedValue(failure);
+    renderCase("/1/cases/1");
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Evidence" }));
+    await waitFor(() => {
+      expect(within(accordionBody("Evidence")).getByText("Evidence submission unavailable")).toBeInTheDocument();
+    });
+    expect(accordionBody("Evidence")).toHaveTextContent(shortMessage);
+
+    await user.click(screen.getByRole("button", { name: "Appeal" }));
+    await waitFor(() => {
+      expect(within(accordionBody("Appeal")).getByText("Appeal unavailable")).toBeInTheDocument();
+    });
+    expect(accordionBody("Appeal")).toHaveTextContent(shortMessage);
+
+    expect(document.body.innerHTML.includes(KEY)).toBe(false);
+    expect(document.body.innerHTML.includes("rpc.example")).toBe(false);
   });
 });

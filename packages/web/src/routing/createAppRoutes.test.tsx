@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { useParams } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { APP_ROUTE_PATTERNS, TestFrame, renderInRouter } from "../test/routing";
-import { UNCONFIGURED_CHAIN_ID, createTestWallet, type TestWallet } from "../test/wallet";
+import { UNCONFIGURED_CHAIN_ID, createConnectedTestWallet, createTestWallet, type TestWallet } from "../test/wallet";
 import { createAppRoutes } from "./createAppRoutes";
 import { usePageChain } from "./pageChain";
 
@@ -39,12 +39,6 @@ function frame(container: HTMLElement) {
   };
 }
 
-async function connectedWallet(chainId: number): Promise<TestWallet> {
-  const wallet = createTestWallet({ chainId });
-  await wallet.connect();
-  return wallet;
-}
-
 describe("route table: redirects", () => {
   it("/ goes to the default chain's Ongoing page without a wallet", async () => {
     const view = renderApp("/");
@@ -53,13 +47,13 @@ describe("route table: redirects", () => {
   });
 
   it("/ goes to the connected wallet's chain when it is configured", async () => {
-    const view = renderApp("/", await connectedWallet(100));
+    const view = renderApp("/", await createConnectedTestWallet({ chainId: 100 }));
     expect(await screen.findByText("Ongoing page on 100")).toBeInTheDocument();
     expect(view.currentPath()).toBe("/100/ongoing");
   });
 
   it("/ goes to the default chain when the wallet is on an unconfigured chain", async () => {
-    const view = renderApp("/", await connectedWallet(UNCONFIGURED_CHAIN_ID));
+    const view = renderApp("/", await createConnectedTestWallet({ chainId: UNCONFIGURED_CHAIN_ID }));
     expect(await screen.findByText("Ongoing page on 1")).toBeInTheDocument();
     expect(view.currentPath()).toBe("/1/ongoing");
   });
@@ -77,6 +71,12 @@ describe("route table: redirects", () => {
     expect(view.currentPath()).toBe("/100/ongoing");
   });
 
+  it("/ waits for AppKit when a connection is stored, so a returning wallet lands on its own chain", () => {
+    const view = renderApp("/", createTestWallet({ pendingReconnect: true }));
+    expect(view.currentPath()).toBe("/");
+    expect(screen.queryByText(/Ongoing page/)).not.toBeInTheDocument();
+  });
+
   it.each(["/1", "/1/", "/1/disputes", "/1/disputes/"])("%s goes to /1/ongoing", async (path) => {
     const view = renderApp(path);
     expect(await screen.findByText("Ongoing page on 1")).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe("route table: redirects", () => {
   });
 
   it("/:chainId keeps the URL's chain, whatever the wallet's chain", async () => {
-    const view = renderApp("/137/disputes", await connectedWallet(100));
+    const view = renderApp("/137/disputes", await createConnectedTestWallet({ chainId: 100 }));
     await waitFor(() => {
       expect(view.currentPath()).toBe("/137/ongoing");
     });
@@ -109,7 +109,7 @@ describe("route table: redirects", () => {
   });
 
   it("a chain-less legacy path goes to the connected wallet's chain", async () => {
-    const view = renderApp("/cases/5", await connectedWallet(100));
+    const view = renderApp("/cases/5", await createConnectedTestWallet({ chainId: 100 }));
     expect(await screen.findByText("Case page on 100 for 5")).toBeInTheDocument();
     expect(view.currentPath()).toBe("/100/cases/5");
   });
@@ -185,23 +185,22 @@ describe("route table: 404 and unsupported network", () => {
     expect(screen.getByRole("link", { name: "View Ongoing Disputes" })).toHaveAttribute("href", "/100/ongoing");
   });
 
-  it.each(["//foo", "//1/ongoing"])("%s, whose first segment is empty, is the 404 screen inside the frame", (path) => {
-    const view = renderApp(path);
-    expect(screen.getByRole("heading", { name: "404" })).toBeInTheDocument();
-    expect(screen.getByText("Something went wrong in Athens!")).toBeInTheDocument();
-    expect(frame(view.container)).toEqual({ kind: "fallback", chain: "1", segment: null });
-  });
+  it.each(["//foo", "//1/ongoing"])(
+    "%s, whose first segment is empty, is the 404 screen inside the frame, linking to the default chain's Ongoing Disputes without a wallet",
+    (path) => {
+      const view = renderApp(path);
+      expect(screen.getByRole("heading", { name: "404" })).toBeInTheDocument();
+      expect(screen.getByText("Something went wrong in Athens!")).toBeInTheDocument();
+      expect(frame(view.container)).toEqual({ kind: "fallback", chain: "1", segment: null });
+      expect(screen.getByRole("link", { name: "View Ongoing Disputes" })).toHaveAttribute("href", "/1/ongoing");
+    },
+  );
 
   it("the 404 screen of a path with an empty first segment uses the connected wallet's configured chain for its frame and its link", async () => {
-    const view = renderApp("//foo", await connectedWallet(100));
+    const view = renderApp("//foo", await createConnectedTestWallet({ chainId: 100 }));
     expect(screen.getByRole("heading", { name: "404" })).toBeInTheDocument();
     expect(frame(view.container)).toEqual({ kind: "fallback", chain: "100", segment: null });
     expect(screen.getByRole("link", { name: "View Ongoing Disputes" })).toHaveAttribute("href", "/100/ongoing");
-  });
-
-  it("the 404 screen of a path with an empty first segment links to the default chain's Ongoing Disputes without a wallet", () => {
-    renderApp("//foo");
-    expect(screen.getByRole("link", { name: "View Ongoing Disputes" })).toHaveAttribute("href", "/1/ongoing");
   });
 
   it.each(["/10/ongoing", "/10/cases/5", "/index.html", "/foo/bar"])("the unconfigured chain of %s shows the unsupported-network screen", (path) => {
@@ -222,7 +221,7 @@ describe("route table: 404 and unsupported network", () => {
   });
 
   it("the unsupported-network screen's frame uses the connected wallet's configured chain", async () => {
-    const view = renderApp("/10/ongoing", await connectedWallet(100));
+    const view = renderApp("/10/ongoing", await createConnectedTestWallet({ chainId: 100 }));
     expect(frame(view.container)).toEqual({ kind: "fallback", chain: "100", segment: "10" });
   });
 

@@ -1,5 +1,6 @@
-import type { AbiEvent, GetLogsParameters, GetLogsReturnType } from "viem";
-import type { Address, ReadClient } from "../types";
+import type { AbiEvent, GetLogsReturnType } from "viem";
+import type { ReadClient } from "../types";
+import { getWindowLogs, uniqueLogs, type BlockWindow, type Logs, type LogsRequest } from "./logWindows";
 import { isRangeLimitError } from "./rangeLimit";
 
 interface LogScanLimits {
@@ -14,26 +15,6 @@ interface LogScanLimits {
 }
 
 const LIMITS: LogScanLimits = { windowSize: 10_000, minWindowSize: 100, windowShrinkFactor: 5, concurrency: 8 };
-
-interface BlockWindow {
-  readonly from: bigint;
-  readonly to: bigint;
-}
-
-interface ScanRequest<TEvent extends AbiEvent> {
-  readonly address: Address;
-  readonly event: TEvent;
-  readonly args?: GetLogsParameters<TEvent>["args"];
-  readonly fromBlock: bigint;
-  readonly toBlock: bigint;
-}
-
-interface ScanOptions {
-  readonly signal?: AbortSignal;
-}
-
-/** Explicit block numbers, so never pending. */
-type Logs<TEvent extends AbiEvent> = GetLogsReturnType<TEvent, undefined, undefined, bigint, bigint>;
 
 function shrink(windowSize: number, limits: LogScanLimits): number | undefined {
   if (windowSize <= limits.minWindowSize) return undefined;
@@ -57,17 +38,8 @@ function planWindows(from: bigint, to: bigint, windowSize: number, count: number
   return windows;
 }
 
-/** Some providers return the same log (transaction hash and log index) twice. */
 function normalizeLogs<TEvent extends AbiEvent>(logs: Logs<TEvent>): Logs<TEvent> {
-  const seen = new Set<string>();
-  const unique = logs.filter((log) => {
-    if (log.removed) return false;
-    const id = `${log.transactionHash.toLowerCase()}:${String(log.logIndex)}`;
-    if (seen.has(id)) return false;
-    seen.add(id);
-    return true;
-  });
-  return unique.sort((a, b) => {
+  return uniqueLogs(logs).sort((a, b) => {
     if (a.blockNumber !== b.blockNumber) return a.blockNumber < b.blockNumber ? -1 : 1;
     return a.logIndex - b.logIndex;
   });
@@ -122,24 +94,14 @@ async function scanRange<TEvent extends AbiEvent>(fetchWindows: FetchWindows<TEv
  */
 export async function getLogsChunked<const TEvent extends AbiEvent>(
   client: ReadClient,
-  request: ScanRequest<TEvent>,
-  options: ScanOptions = {},
+  request: LogsRequest<TEvent>,
+  options: { readonly signal?: AbortSignal } = {},
 ): Promise<GetLogsReturnType<TEvent>> {
   const { fromBlock, toBlock } = request;
   if (toBlock < fromBlock) return [];
   const fetchWindows: FetchWindows<TEvent> = (windows) => {
     options.signal?.throwIfAborted();
-    return Promise.allSettled(
-      windows.map((window) =>
-        client.getLogs<TEvent, undefined, undefined, bigint, bigint>({
-          address: request.address,
-          event: request.event,
-          args: request.args,
-          fromBlock: window.from,
-          toBlock: window.to,
-        } as GetLogsParameters<TEvent, undefined, undefined, bigint, bigint>),
-      ),
-    );
+    return Promise.allSettled(windows.map((window) => getWindowLogs(client, request, window)));
   };
 
   const logs = normalizeLogs(await scanRange(fetchWindows, { from: fromBlock, to: toBlock }, LIMITS));

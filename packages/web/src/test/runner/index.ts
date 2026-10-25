@@ -5,7 +5,6 @@ export {
   SAMPLE_REDIRECTS,
   collectUntilSettled,
   createFakeRunnerEnvironment,
-  flushMicrotasks,
   runRequest,
   type FakeRunnerEnvironment,
   type ScriptApi,

@@ -169,13 +169,6 @@ export function createFakeRunnerEnvironment(options: FakeRunnerEnvironmentOption
   };
 }
 
-/** Lets queued promise callbacks (the bootstrap's result posting) run. */
-export async function flushMicrotasks(): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
-}
-
 /** Every message `port` receives, in order, up to and including the first one that is not the acknowledgement. */
 export function collectUntilSettled(port: MessagePort): Promise<RunnerReplyMessage[]> {
   const messages: RunnerReplyMessage[] = [];

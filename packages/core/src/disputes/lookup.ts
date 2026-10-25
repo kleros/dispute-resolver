@@ -1,8 +1,8 @@
-import { maxUint256 } from "viem";
+import { isUint256 } from "../bigint";
 import { getChain } from "../chains";
 import { describeError, isContractFailure } from "../rpc";
 import type { Address, ChainId } from "../types";
-import { NETWORK_DATA_UNAVAILABLE } from "./outcome";
+import { NETWORK_DATA_UNAVAILABLE } from "../outcome";
 import { readDisputeStruct, toArbitratorDispute } from "./struct";
 import type { ArbitratedBinding, ArbitratorDispute, DisputeLookup, DisputeReadContext } from "./types";
 
@@ -20,7 +20,7 @@ export async function lookupDispute(context: DisputeReadContext, disputeId: bigi
   if (arbitrator === undefined) return { status: "no-arbitrator" };
   const { client, signal } = context;
   if (client === undefined) return { status: "unavailable", error: { code: "no-rpc", message: NETWORK_DATA_UNAVAILABLE } };
-  if (disputeId < 0n || disputeId > maxUint256) return { status: "not-found" };
+  if (!isUint256(disputeId)) return { status: "not-found" };
   let tuple;
   try {
     signal?.throwIfAborted();

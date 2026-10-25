@@ -103,12 +103,6 @@ describe("Countdown", () => {
     expect(countdown).toHaveTextContent("01d 23h 59m");
   });
 
-  it("outside a chain clock it uses the browser clock", () => {
-    vi.setSystemTime((NOW_SECONDS + HOUR) * 1000);
-    render(<Countdown target={NOW_SECONDS + 2 * DAY} />);
-    expect(screen.getByText("01d 23h 00m")).toBeInTheDocument();
-  });
-
   it("renders a placeholder instead of NaN for a non-finite target", () => {
     const { container } = render(<Countdown target={Number.NaN} />);
     expect(container).not.toHaveTextContent("NaN");

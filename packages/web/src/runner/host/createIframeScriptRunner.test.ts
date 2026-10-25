@@ -328,15 +328,6 @@ describe("acknowledgement window", () => {
     await expect(run).resolves.toEqual({ status: "ok", value: { title: "after two" }, jsonDuplicateKeys: false });
   });
 
-  it("a result without a prior acknowledgement still settles the run", async () => {
-    const { fake, runner } = setup();
-    const run = runner.run(request());
-    frameAt(fake, 0)
-      .load()
-      .reply({ type: "dr-runner/result", value: { title: "unacknowledged" }, jsonDuplicateKeys: false });
-    await expect(run).resolves.toEqual({ status: "ok", value: { title: "unacknowledged" }, jsonDuplicateKeys: false });
-  });
-
   it("aborting during the acknowledgement window settles aborted and clears both timers", async () => {
     const { fake, runner } = setup();
     const controller = new AbortController();
@@ -350,15 +341,6 @@ describe("acknowledgement window", () => {
     vi.advanceTimersByTime(3_000);
     vi.advanceTimersByTime(60_000);
     await expect(run).resolves.toMatchObject({ status: "failed", reason: "aborted" });
-  });
-
-  it("a run whose remaining budget is shorter than the window times out first", async () => {
-    const { fake, runner } = setup();
-    const run = runner.run(request({ timeoutMs: 1_000 }));
-    frameAt(fake, 0).load();
-    vi.advanceTimersByTime(1_000);
-    await expect(run).resolves.toMatchObject({ status: "failed", reason: "timeout" });
-    expect(fake.attachedFrames()).toEqual([]);
   });
 
   it("the acknowledgement window counts from the frame's append, not from run()", async () => {

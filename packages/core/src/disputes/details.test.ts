@@ -2,8 +2,8 @@ import { numberToHex, toFunctionSelector } from "viem";
 import { describe, expect, it } from "vitest";
 import { lookupDispute, readAppealDecisions, readDisputeDetails } from ".";
 import type { ArbitratedBinding, ArbitratorDispute } from "./types";
-import { appealDecisionLog, fakeClient, MAINNET, recordedDetection, recordedNode, rpcError } from "../test/disputes/testHelpers";
-import type { FakeNode } from "../test/disputes/testHelpers";
+import { appealDecisionLog, fakeClient, MAINNET, recordedDetection, recordedNode, rpcError, selectorOf } from "../test/disputes/testHelpers";
+import type { FakeNode, RpcErrorBody } from "../test/disputes/testHelpers";
 
 const GET_DISPUTE = toFunctionSelector("getDispute(uint256)").slice(2);
 const DISPUTES = toFunctionSelector("disputes(uint256)").slice(2);
@@ -20,8 +20,12 @@ function recordedTimestamp(blockNumber: bigint): number {
   return Number(BigInt(timestamp));
 }
 
-function selectorOf(key: string): string {
-  return key.split(":0x")[1]?.slice(0, 8) ?? "";
+/** The recorded mainnet node with every call of `selector` answered by `error`. */
+function failingCalls(selector: string, error: RpcErrorBody): FakeNode {
+  const node = recordedNode(MAINNET);
+  const calls = new Map(node.calls);
+  for (const key of calls.keys()) if (selectorOf(key) === selector) calls.set(key, { error });
+  return { ...node, calls };
 }
 
 async function found(disputeId: bigint, node: FakeNode = recordedNode(MAINNET)): Promise<{ dispute: ArbitratorDispute; binding: ArbitratedBinding }> {
@@ -93,10 +97,7 @@ describe("readDisputeDetails", () => {
   it("a failing getDispute leaves the other reads intact", async () => {
     const dispute = await found(328n);
     const family = await recordedDetection(1, dispute.binding.arbitrated);
-    const node = recordedNode(MAINNET);
-    const calls = new Map(node.calls);
-    for (const key of calls.keys()) if (selectorOf(key) === GET_DISPUTE) calls.set(key, { error: { code: -32000, message: "header not found" } });
-    const { client } = fakeClient({ ...node, calls });
+    const { client } = fakeClient(failingCalls(GET_DISPUTE, { code: -32000, message: "header not found" }));
     const reads = await readDisputeDetails({ chainId: 1, client }, dispute, family, null);
     expect(reads.votesLengths).toMatchObject({ ok: false, error: { code: "rpc-error" } });
     expect(reads.currentRuling).toEqual({ ok: true, value: 2n });
@@ -108,10 +109,7 @@ describe("readDisputeDetails", () => {
   it("a failing currentRuling read leaves the other reads intact and is never read as ruling 0", async () => {
     const dispute = await found(328n);
     const family = await recordedDetection(1, dispute.binding.arbitrated);
-    const node = recordedNode(MAINNET);
-    const calls = new Map(node.calls);
-    for (const key of calls.keys()) if (selectorOf(key) === CURRENT_RULING) calls.set(key, { error: { code: -32000, message: "header not found" } });
-    const { client } = fakeClient({ ...node, calls });
+    const { client } = fakeClient(failingCalls(CURRENT_RULING, { code: -32000, message: "header not found" }));
     const reads = await readDisputeDetails({ chainId: 1, client }, dispute, family, null);
     expect(reads.currentRuling).toMatchObject({ ok: false, error: { code: "rpc-error" } });
     expect(reads.currentRuling).not.toHaveProperty("value");
@@ -132,10 +130,7 @@ describe("readDisputeDetails", () => {
 
   it("a reverted read keeps its kind (reverted), not a fake value", async () => {
     const dispute = await found(1454n);
-    const node = recordedNode(MAINNET);
-    const calls = new Map(node.calls);
-    for (const key of calls.keys()) if (selectorOf(key) === APPEAL_COST) calls.set(key, { error: { code: 3, message: "execution reverted" } });
-    const { client } = fakeClient({ ...node, calls });
+    const { client } = fakeClient(failingCalls(APPEAL_COST, { code: 3, message: "execution reverted" }));
     const reads = await readDisputeDetails({ chainId: 1, client }, dispute, undefined, null);
     expect(reads.appealInfo).toMatchObject({ ok: false, error: { code: "reverted" } });
   });

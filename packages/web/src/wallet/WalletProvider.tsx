@@ -4,7 +4,7 @@ import { WalletSetupContext } from "./context";
 import { walletSetupStoreFor } from "./setup";
 import type { WalletProviderProps, WalletSetup } from "./types";
 
-export interface WalletSetupProviderProps {
+interface WalletSetupProviderProps {
   readonly setup: WalletSetup;
   /** `true` while AppKit is still loading: nothing reconnects yet. Default `false`. */
   readonly pending?: boolean;

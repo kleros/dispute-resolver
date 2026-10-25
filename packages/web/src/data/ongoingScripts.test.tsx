@@ -1,10 +1,9 @@
 import type { Address, OngoingDispute } from "@dispute-resolver/core";
 import { dehydrate, hashKey, type QueryClient } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { RUNNER_PATH, createIframeScriptRunner } from "../runner";
-import { TestDataProvider, createTestDeps, createTestQueryClient, type FetchStub } from "../test/data";
+import { createTestDeps, createTestQueryClient, dataWrapper, type FetchStub } from "../test/data";
 import { SAMPLE_REDIRECTS, createFakeRunnerDocument, type PostedRun } from "../test/runner";
 import { useOngoingTitle } from "./ongoingHooks";
 import { shouldPersistQuery } from "./persistence";
@@ -68,12 +67,7 @@ async function loadBothAnsweredInReverse(): Promise<{ readonly client: QueryClie
   const runner = createIframeScriptRunner({ document: fake.document, runnerUrl: RUNNER_PATH, maxConcurrent: 4, rpcRedirects: SAMPLE_REDIRECTS });
   const deps = createTestDeps({ env: { REACT_APP_METAEVIDENCE_URL: LOCATOR }, responses: responses(), runner });
   const client = createTestQueryClient();
-  const wrapper = ({ children }: { readonly children?: ReactNode }) => (
-    <TestDataProvider deps={deps} client={client}>
-      {children}
-    </TestDataProvider>
-  );
-  const rendered = renderHook(() => DISPUTES.map((dispute) => useOngoingTitle(1, dispute)), { wrapper });
+  const rendered = renderHook(() => DISPUTES.map((dispute) => useOngoingTitle(1, dispute)), { wrapper: dataWrapper({ deps, client }) });
   unmount = rendered.unmount;
 
   await waitFor(() => {

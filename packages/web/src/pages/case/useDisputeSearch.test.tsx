@@ -8,28 +8,54 @@ function RouterPath() {
   return <output>{useLocation().pathname}</output>;
 }
 
+const HISTORY_STEPS = [
+  ["Back", -1],
+  ["Forward", 1],
+] as const;
+
 function HistoryButtons() {
   const navigate = useNavigate();
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          void navigate(-1);
-        }}
-      >
-        Back
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          void navigate(1);
-        }}
-      >
-        Forward
-      </button>
-    </>
-  );
+  return HISTORY_STEPS.map(([label, delta]) => (
+    <button
+      key={label}
+      type="button"
+      onClick={() => {
+        void navigate(delta);
+      }}
+    >
+      {label}
+    </button>
+  ));
+}
+
+function searchControls(search: () => ReturnType<typeof useDisputeSearch>) {
+  const press = (name: string) => {
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name }));
+    });
+  };
+  return {
+    search,
+    routerPath: () => screen.getByRole("status").textContent,
+    type: (...texts: readonly string[]) => {
+      for (const text of texts) {
+        act(() => {
+          search().change(text);
+        });
+      }
+    },
+    enter: () => {
+      act(() => {
+        search().submit();
+      });
+    },
+    back: () => {
+      press("Back");
+    },
+    forward: () => {
+      press("Forward");
+    },
+  };
 }
 
 /**
@@ -48,24 +74,10 @@ function renderSearch(urlId: string, earlier: readonly string[] = []) {
     );
   }
   const view = renderHook(({ id }: { readonly id: string }) => useDisputeSearch(1, id), { initialProps: { id: urlId }, wrapper });
-  const search = () => view.result.current;
   return {
-    search,
-    routerPath: () => screen.getByRole("status").textContent,
-    type: (...texts: readonly string[]) => {
-      for (const text of texts) {
-        act(() => {
-          search().change(text);
-        });
-      }
-    },
+    ...searchControls(() => view.result.current),
     land: (id: string) => {
       view.rerender({ id });
-    },
-    back: () => {
-      act(() => {
-        fireEvent.click(screen.getByRole("button", { name: "Back" }));
-      });
     },
   };
 }
@@ -88,33 +100,7 @@ function renderSearchWithHistory(entries: readonly string[]) {
     );
   }
   const view = renderHook(useSearchOfTheUrl, { wrapper });
-  const search = () => view.result.current;
-  return {
-    search,
-    routerPath: () => screen.getByRole("status").textContent,
-    type: (...texts: readonly string[]) => {
-      for (const text of texts) {
-        act(() => {
-          search().change(text);
-        });
-      }
-    },
-    enter: () => {
-      act(() => {
-        search().submit();
-      });
-    },
-    back: () => {
-      act(() => {
-        fireEvent.click(screen.getByRole("button", { name: "Back" }));
-      });
-    },
-    forward: () => {
-      act(() => {
-        fireEvent.click(screen.getByRole("button", { name: "Forward" }));
-      });
-    },
-  };
+  return searchControls(() => view.result.current);
 }
 
 describe("useDisputeSearch", () => {

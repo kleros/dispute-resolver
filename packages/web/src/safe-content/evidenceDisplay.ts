@@ -1,5 +1,5 @@
-import { REGISTRY, displayAllowlistKey, getChain, isDisplayAllowlisted, resolveDisplayUrl, resolvePublicRpcUrl } from "@dispute-resolver/core";
-import type { ChainId, ChainIdField, Env } from "@dispute-resolver/core";
+import { REGISTRY, isDisplayAllowlisted, publicRpcUrl, resolveDisplayUrl } from "@dispute-resolver/core";
+import type { ChainId, ChainIdField } from "@dispute-resolver/core";
 import type { DisplayParams, EvidenceDisplayInput, EvidenceDisplayModel, SandboxToken } from "./types";
 
 const RELAXED_SANDBOX: readonly SandboxToken[] = ["allow-scripts", "allow-same-origin", "allow-popups", "allow-popups-to-escape-sandbox"];
@@ -7,14 +7,6 @@ const STRICT_SANDBOX: readonly SandboxToken[] = ["allow-scripts"];
 
 function chainIdOr(field: ChainIdField, pageChainId: ChainId): ChainId {
   return field.status === "valid" ? field.chainId : pageChainId;
-}
-
-/** The RPC URL a third-party frame may receive for a chain, or `null` when none is configured. */
-function publicRpcUrl(chainId: ChainId, env: Env): string | null {
-  const chain = getChain(chainId);
-  if (chain === undefined) return null;
-  const resolution = resolvePublicRpcUrl(chain, env);
-  return resolution.status === "configured" ? resolution.url : null;
 }
 
 function encodeParams(params: DisplayParams, encoding: EvidenceDisplayModel["encoding"]): string {
@@ -51,8 +43,7 @@ export function buildEvidenceDisplay(input: EvidenceDisplayInput): EvidenceDispl
   const src = `${uri}?${encodeParams(params, encoding)}`;
   const srcOrigin = new URL(uri).origin;
 
-  const arbitrableChainId = metaEvidence.arbitrableChainID.status === "valid" ? metaEvidence.arbitrableChainID.chainId : undefined;
-  const allowlisted = isDisplayAllowlisted(REGISTRY, displayAllowlistKey(arbitrableChainId, arbitratorChainId), input.arbitrable);
+  const allowlisted = isDisplayAllowlisted(REGISTRY, displayArbitrableChainId, input.arbitrable);
   const sandbox = allowlisted && srcOrigin !== input.appOrigin ? RELAXED_SANDBOX : STRICT_SANDBOX;
 
   return { src, srcOrigin, params, sandbox, encoding };

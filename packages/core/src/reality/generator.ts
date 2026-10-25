@@ -1,5 +1,6 @@
 import type { RealityProxyEntry } from "../registry/types";
 import { createRequestBudget, getLogsChunked } from "../rpc";
+import { compareBigint } from "../bigint";
 import type { ChainId, GetReadClient, Hex, ReadClient, RegistryKey } from "../types";
 import { ARBITRATION_CREATED, DISPUTE_ID_TO_QUESTION_ID, LOG_NEW_QUESTION } from "./events";
 import { findLatestLogs } from "./findLatestLogs";
@@ -158,9 +159,7 @@ function compareKeys(a: string, b: string): number {
   const [chainB = "", proxyB = "", disputeB = "0"] = b.split(":");
   if (chainA !== chainB) return Number(chainA) - Number(chainB);
   if (proxyA !== proxyB) return proxyA < proxyB ? -1 : 1;
-  const difference = BigInt(disputeA) - BigInt(disputeB);
-  if (difference === 0n) return 0;
-  return difference < 0n ? -1 : 1;
+  return compareBigint(BigInt(disputeA), BigInt(disputeB));
 }
 
 /**

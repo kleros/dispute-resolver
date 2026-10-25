@@ -9,8 +9,8 @@ import { FAMILY_SIGNATURES, answer, callKey, detectionFor, fakeNode, recordedDet
 
 const SYNTHETIC: Address = "0x00000000000000000000000000000000000000aa";
 
-function recordedGetters(label: string): RecordedGetters {
-  const contract = MULTIPLIER_GETTERS.find((candidate) => candidate.label === label);
+function byLabel<T extends RecordedGetters>(contracts: readonly T[], label: string): T {
+  const contract = contracts.find((candidate) => candidate.label === label);
   if (contract === undefined) throw new Error(`${label} is not recorded`);
   return contract;
 }
@@ -20,28 +20,24 @@ function recordedCalls(contract: RecordedGetters): [string, CallReply][] {
 }
 
 function gettersCalled(address: Address, calls: readonly string[]): string[] {
-  const signatures = [...Object.keys(recordedGetters("Unslashed (idr-v1)").replies), "sharedMultiplier()"];
+  const signatures = [...Object.keys(byLabel(MULTIPLIER_GETTERS, "Unslashed (idr-v1)").replies), "sharedMultiplier()"];
   const bySelector = new Map(signatures.map((getter) => [callKey(address, toFunctionSelector(getter)), getter]));
   return calls.map((key) => bySelector.get(key) ?? key);
 }
 
-async function readRecorded(chainId: number, label: string) {
-  const contract = recordedGetters(label);
+async function readFrom(contract: RecordedGetters, chainId: number, head: bigint, overrides: readonly [string, CallReply][] = []) {
   const family = await recordedDetection(chainId, contract.address);
-  const { client, requests } = fakeNode({ head: 26_190_905n, calls: recordedCalls(contract) });
+  const { client, requests } = fakeNode({ head, calls: [...recordedCalls(contract), ...overrides] });
   return { result: await readMultipliers(client, family), called: gettersCalled(contract.address, requests.calls), family };
 }
 
-async function readGovernor(governor: RecordedGovernor, overrides: readonly [string, CallReply][] = []) {
-  const family = await recordedDetection(governor.chainId, governor.address);
-  const { client, requests } = fakeNode({ head: governor.blockNumber, calls: [...recordedCalls(governor), ...overrides] });
-  return { result: await readMultipliers(client, family), called: gettersCalled(governor.address, requests.calls), family };
+/** A mainnet contract of `multipliers-1.json`, read at the recording's block. */
+function readRecorded(label: string) {
+  return readFrom(byLabel(MULTIPLIER_GETTERS, label), 1, 26_190_905n);
 }
 
-function recordedGovernor(label: string): RecordedGovernor {
-  const governor = GOVERNOR_MULTIPLIERS.find((candidate) => candidate.label === label);
-  if (governor === undefined) throw new Error(`${label} is not recorded`);
-  return governor;
+function readGovernor(governor: RecordedGovernor, overrides: readonly [string, CallReply][] = []) {
+  return readFrom(governor, governor.chainId, governor.blockNumber, overrides);
 }
 
 function replacing(governor: RecordedGovernor, signature: string, reply: CallReply): [string, CallReply] {
@@ -54,15 +50,15 @@ const getter = (functionName: (typeof multiplierGetterAbi)[number]["name"]) => (
 
 describe("readMultipliers", () => {
   it("reads getMultipliers() on IDisputeResolver v2 (mainnet ArbitrableProxy)", async () => {
-    const { result, called } = await readRecorded(1, "ArbitrableProxy (idr-v2)");
+    const { result, called } = await readRecorded("ArbitrableProxy (idr-v2)");
     expect(result).toEqual({ ok: true, value: { winnerStakeMultiplier: 10_000n, loserStakeMultiplier: 20_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n } });
     expect(called).toEqual(["getMultipliers()"]);
   });
 
   it("reads getMultipliers() on Unslashed and the older resolver proxy", async () => {
     const expected = { ok: true, value: { winnerStakeMultiplier: 5_000n, loserStakeMultiplier: 10_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n } };
-    expect((await readRecorded(1, "Unslashed (idr-v1)")).result).toEqual(expected);
-    expect((await readRecorded(1, "older resolver proxy (idr-legacy)")).result).toEqual(expected);
+    expect((await readRecorded("Unslashed (idr-v1)")).result).toEqual(expected);
+    expect((await readRecorded("older resolver proxy (idr-legacy)")).result).toEqual(expected);
   });
 
   it("reads winnerMultiplier, loserMultiplier, MULTIPLIER_DIVISOR and sharedMultiplier on every deployed governor at its recorded block, with the loser window KlerosGovernor fixes at half the appeal period", async () => {
@@ -92,30 +88,30 @@ describe("readMultipliers", () => {
   });
 
   it("a governor whose MULTIPLIER_DIVISOR does not answer uses KlerosGovernor's fixed 10000", async () => {
-    const governor = recordedGovernor("poh.eth governor");
+    const governor = byLabel(GOVERNOR_MULTIPLIERS, "poh.eth governor");
     const { result } = await readGovernor(governor, [replacing(governor, "MULTIPLIER_DIVISOR()", { result: "0x" })]);
     expect(result).toMatchObject({ ok: true, value: { denominator: 10_000n, loserAppealPeriodMultiplier: 5_000n } });
   });
 
   it("keeps a governor's other multipliers, without a shared one, when its contract fails sharedMultiplier()", async () => {
-    const governor = recordedGovernor("poh.eth governor");
+    const governor = byLabel(GOVERNOR_MULTIPLIERS, "poh.eth governor");
     const { result } = await readGovernor(governor, [replacing(governor, "sharedMultiplier()", { result: "0x" })]);
     expect(result).toEqual({ ok: true, value: { winnerStakeMultiplier: 10_000n, loserStakeMultiplier: 20_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n } });
   });
 
   it("reports a transport error on a governor's sharedMultiplier() as rpc-error, never as an absent getter", async () => {
-    const governor = recordedGovernor("poh.eth governor");
+    const governor = byLabel(GOVERNOR_MULTIPLIERS, "poh.eth governor");
     const { result } = await readGovernor(governor, [replacing(governor, "sharedMultiplier()", { error: { code: -32000, message: "header not found" } })]);
     expect(result).toMatchObject({ ok: false, error: { code: "rpc-error" } });
   });
 
   it("treats a getter answered with no data (a fallback function) as absent and tries the next name", async () => {
-    const { called } = await readGovernor(recordedGovernor("poh.eth governor"));
+    const { called } = await readGovernor(byLabel(GOVERNOR_MULTIPLIERS, "poh.eth governor"));
     expect(called).toEqual(expect.arrayContaining(["winnerStakeMultiplier()", "winnerMultiplier()", "denominator()", "MULTIPLIER_DIVISOR()"]));
   });
 
   it("Proof of Humanity v2, which has no denominator getter, has appeal amounts that cannot be calculated", async () => {
-    const { result } = await readRecorded(1, "Proof of Humanity v2 (view-only)");
+    const { result } = await readRecorded("Proof of Humanity v2 (view-only)");
     expect(result).toEqual({ ok: false, error: { code: "unsupported", message: UNSUPPORTED } });
   });
 

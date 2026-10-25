@@ -2,7 +2,7 @@ import { governorAbi, idrV2Abi, multiplierGetterAbi } from "../abi";
 import type { FamilyDetection } from "../families/types";
 import { describeError, isContractFailure } from "../rpc";
 import type { Address, Outcome, ReadClient } from "../types";
-import { fail, succeed } from "./outcome";
+import { fail, succeed } from "../outcome";
 import type { Multipliers } from "./types";
 
 type GetterName = (typeof multiplierGetterAbi)[number]["name"];

@@ -1,8 +1,6 @@
 import {
   REFUSED_RULING_TEXT,
   buildDisputeView,
-  getChain,
-  type ChainConfig,
   type Court,
   type DisputeReads,
   type MetaEvidenceResult,
@@ -14,7 +12,20 @@ import { act, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LG_MEDIA_QUERY, SectionBoundary } from "../../ui";
 import type { CaseDispute, SectionData } from "../../data";
-import { TestDataProvider, sectionLoading, sectionReady, sectionUnavailable, testCourt, testDetails, testFamily, testFoundLookup, testOkMetaEvidence } from "../../test/data";
+import {
+  TestDataProvider,
+  sectionLoading,
+  sectionReady,
+  sectionUnavailable,
+  testCaseDispute,
+  testChain,
+  testCourt,
+  testDetails,
+  testFamily,
+  testFoundLookup,
+  testOkMetaEvidence,
+} from "../../test/data";
+import { matchOnly } from "../../test/matchMedia";
 import { installOfflineAppKitEnvironment } from "../../test/wallet";
 import { FIVE_STEPS_MEDIA_QUERY } from "./DisputeTimeline";
 import { CaseOverview, DecisionAlert, DisputeTimeline, RealityNotice } from "./index";
@@ -23,13 +34,7 @@ const NOW = 1_700_000_000;
 const DAY = 86_400;
 const HOUR = 3_600;
 
-function mainnet(): ChainConfig {
-  const chain = getChain(1);
-  if (chain === undefined) throw new Error("mainnet is not configured");
-  return chain;
-}
-
-const MAINNET = mainnet();
+const MAINNET = testChain(1);
 
 interface CaseOptions {
   readonly period?: Period;
@@ -56,21 +61,13 @@ function caseDispute(options: CaseOptions = {}): CaseDispute {
     metaEvidence: metaEvidence.status === "ready" ? metaEvidence.value : null,
     fundedRulings: options.fundedRulings ?? null,
   });
-  return {
-    status: "dispute",
-    chainId: 1,
-    disputeId: 1n,
+  return testCaseDispute({
     lookup: sectionReady(lookup),
     view: options.view === "loading" ? sectionLoading : sectionReady(view),
     family: sectionReady(family),
     metaEvidence,
-    disputeEvent: sectionLoading,
-    evidence: sectionLoading,
-    appealDecisions: sectionLoading,
     courts: sectionReady([testCourt(options.court)]),
-    appealPanel: sectionLoading,
-    write: sectionLoading,
-  };
+  });
 }
 
 type Section = typeof CaseOverview;
@@ -119,19 +116,6 @@ function detail(label: string): HTMLElement {
 /** A `matchMedia` for a viewport every query matches, so the timeline lays out as from lg. */
 function matchEverything(query: string): MediaQueryList {
   return matchOnly([query])(query);
-}
-
-function matchOnly(matching: readonly string[]): (query: string) => MediaQueryList {
-  return (query) => ({
-    matches: matching.includes(query),
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    dispatchEvent: vi.fn(() => false),
-  });
 }
 
 function decisionAlert(name: "Jury decision" | "Winner"): HTMLElement {
@@ -369,11 +353,6 @@ describe("DisputeTimeline", () => {
     vi.stubGlobal("matchMedia", matchOnly([LG_MEDIA_QUERY, FIVE_STEPS_MEDIA_QUERY]));
     renderSection(DisputeTimeline, caseDispute({ period: 1, court: { hiddenVotes: true } }));
     expect(timelineList()).toHaveAccessibleName("Horizontal progress steps");
-    expect(steps()).toHaveLength(5);
-  });
-
-  it("lists five steps for a hidden-vote court", () => {
-    renderSection(DisputeTimeline, caseDispute({ period: 1, court: { hiddenVotes: true } }));
     expect(steps()).toHaveLength(5);
   });
 

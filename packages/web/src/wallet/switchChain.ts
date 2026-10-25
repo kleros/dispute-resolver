@@ -59,7 +59,7 @@ export async function switchWalletChain(config: Config, chainId: ChainId): Promi
   }
 }
 
-export type NetworkSwitchState =
+type NetworkSwitchState =
   { readonly status: "idle" } | { readonly status: "switching"; readonly chainId: ChainId } | { readonly status: "failed"; readonly chainId: ChainId; readonly message: string };
 
 export interface NetworkSwitch {

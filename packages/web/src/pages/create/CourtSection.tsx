@@ -4,8 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useId } from "react";
 import { queryKeys, useArbitrationCost, useCourts } from "../../data";
 import { Amount, FACT, LABEL, SectionUnavailable, useAfterLoading } from "../../ui";
-import { formExtraData, setCourt, setText, type CreateForm } from "./draft";
-import { FULL_WIDTH_FIELD, FULL_WIDTH_SELECT, FieldSlot, FormGroup, errorProps } from "./fields";
+import { formExtraData, setText, type CreateForm } from "./draft";
+import { FULL_WIDTH_FIELD, FULL_WIDTH_SELECT, FieldSlot, FormGroup, Shimmer, errorProps } from "./fields";
 import { fieldErrorMessage } from "./messages";
 
 export function courtLabel(court: Court): string {
@@ -85,11 +85,7 @@ function ArbitrationCost({ chain, form }: { readonly chain: ChainConfig; readonl
   if (extraData === undefined) {
     value = <span className="text-base text-klerosUIComponentsSecondaryText">Choose a court and a number of votes.</span>;
   } else if (cost.status === "loading") {
-    value = (
-      <span className="t-shimmer text-base" data-text="Calculating...">
-        Calculating...
-      </span>
-    );
+    value = <Shimmer text="Calculating..." className="text-base" />;
   } else if (cost.status === "unavailable") {
     surface = "border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground";
     value = <span className="text-sm text-klerosUIComponentsError">{cost.error.message}</span>;
@@ -125,7 +121,7 @@ export function CourtSection({ chain, form, errors, onChange }: SectionProps) {
             courtId={form.courtId}
             error={errors.courtId === undefined ? undefined : fieldErrorMessage("courtId", errors.courtId)}
             onSelect={(courtId) => {
-              onChange((current) => setCourt(current, courtId));
+              onChange((current) => setText(current, "courtId", courtId));
             }}
           />
         </FieldSlot>

@@ -4,18 +4,12 @@
  */
 import { createPublicClient, custom } from "viem";
 import type { Hex, ReadClient } from "../../types";
+import { callKey, rpcError } from "../rpc/testHelpers";
 
-/** A JSON-RPC error as the transport receives it: an `Error` with a numeric `code`. */
-export function rpcError(code: number, message: string): Error {
-  return Object.assign(new Error(message), { code });
-}
+export { callKey, rpcError } from "../rpc/testHelpers";
 
 /** The answer to one `eth_call`: raw return data, or the error the node or transport raised. */
 export type CallAnswer = { readonly result: Hex } | { readonly error: Error };
-
-export function callKey(to: string, data: Hex): string {
-  return `${to.toLowerCase()}:${data.toLowerCase()}`;
-}
 
 /** A `ReadClient` answering `eth_call` from `calls`; any other request, or an unknown call, is rejected. */
 export function fakeClient(calls: ReadonlyMap<string, CallAnswer>): { readonly client: ReadClient; readonly requested: string[] } {

@@ -40,6 +40,13 @@ export function TestDataProvider(props: TestDataProviderProps) {
   );
 }
 
+/** A `wrapper` for `render`/`renderHook`: `TestDataProvider` with these props around the children. */
+export function dataWrapper(props: Omit<TestDataProviderProps, "children"> = {}) {
+  return function DataWrapper({ children }: { readonly children?: ReactNode }) {
+    return <TestDataProvider {...props}>{children}</TestDataProvider>;
+  };
+}
+
 export function sectionReady<T>(value: T): SectionData<T> {
   return { status: "ready", value };
 }

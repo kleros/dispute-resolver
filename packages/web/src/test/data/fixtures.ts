@@ -1,19 +1,27 @@
-import type {
-  Address,
-  ArbitratedBinding,
-  ArbitratorDispute,
-  CanonicalIpfsPath,
-  ChainId,
-  Court,
-  DisputeLookup,
-  DisputeReads,
-  FamilyDetection,
-  MetaEvidence,
-  MetaEvidenceResult,
-  Period,
+import {
+  getChain,
+  type Address,
+  type ArbitratedBinding,
+  type ArbitratorDispute,
+  type CanonicalIpfsPath,
+  type ChainConfig,
+  type ChainId,
+  type Court,
+  type DisputeEvent,
+  type DisputeEventResult,
+  type DisputeLookup,
+  type DisputeReads,
+  type EvidenceList,
+  type FamilyDetection,
+  type HiddenEvidenceReason,
+  type MetaEvidence,
+  type MetaEvidenceResult,
+  type Period,
 } from "@dispute-resolver/core";
-import type { CaseWriteContext } from "../../data";
+import type { CaseData, CaseDispute, CaseWriteContext } from "../../data";
 import { testMetaEvidence } from "../safe-content";
+import type { RpcHandler } from "./createTestDeps";
+import { sectionLoading } from "./TestDataProvider";
 
 const TEST_ARBITRATOR: Address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
 export const TEST_ARBITRABLE: Address = "0xc5e9ddebb09cd64dfacab4011a0d5cedaf7c9bdb";
@@ -101,5 +109,64 @@ export function testWriteContext(overrides: Partial<CaseWriteContext> = {}): Cas
     localId: { kind: "local-id", value: 7n },
     readAppealCost: () => Promise.resolve({ ok: false, error: { code: "not-found", message: "This test reads no appeal cost." } }),
     ...overrides,
+  };
+}
+
+/** A found Dispute event, as `readDisputeEvent` reads it. */
+export function testDisputeEvent(overrides: Partial<DisputeEvent> = {}): Extract<DisputeEventResult, { status: "found" }> {
+  return { status: "found", event: { metaEvidenceId: 0n, evidenceGroupId: 3n, blockNumber: 100n, createdAt: 1_700_000_000, transactionHash: "0x01", ...overrides } };
+}
+
+/** An evidence list with `items`, hiding `hidden` items by reason. */
+export function testEvidenceList(items: EvidenceList["items"] = [], hidden: Partial<Record<HiddenEvidenceReason, number>> = {}): EvidenceList {
+  const hiddenByReason = { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0, ...hidden };
+  return { items, hiddenEvidenceCount: Object.values(hiddenByReason).reduce((sum, count) => sum + count, 0), hiddenByReason };
+}
+
+/** Dispute 1 on mainnet with every section loading. */
+export function testCaseDispute(overrides: Partial<CaseDispute> = {}): CaseDispute {
+  return {
+    status: "dispute",
+    chainId: 1,
+    disputeId: 1n,
+    lookup: sectionLoading,
+    view: sectionLoading,
+    family: sectionLoading,
+    metaEvidence: sectionLoading,
+    disputeEvent: sectionLoading,
+    evidence: sectionLoading,
+    appealDecisions: sectionLoading,
+    courts: sectionLoading,
+    appealPanel: sectionLoading,
+    write: sectionLoading,
+    ...overrides,
+  };
+}
+
+export function testChain(id: ChainId): ChainConfig {
+  const chain = getChain(id);
+  if (chain === undefined) throw new Error(`Chain ${String(id)} is not configured.`);
+  return chain;
+}
+
+export function caseDispute(data: CaseData): CaseDispute {
+  if (data.status !== "dispute") throw new Error("expected a dispute");
+  return data;
+}
+
+/** A promise settled by the test. */
+export function deferred<T>() {
+  let resolve: (value: T) => void = () => undefined;
+  const promise = new Promise<T>((settle) => {
+    resolve = settle;
+  });
+  return { promise, resolve };
+}
+
+/** An RPC that answers `eth_getCode` with `code` and nothing else. */
+export function codeRpc(code: string): RpcHandler {
+  return ({ method }) => {
+    if (method === "eth_getCode") return code;
+    throw new Error(`unexpected ${method}`);
   };
 }

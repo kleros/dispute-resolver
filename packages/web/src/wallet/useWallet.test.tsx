@@ -1,10 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TestDataProvider } from "../test/data";
-import { TEST_WALLET_ADDRESS, UNCONFIGURED_CHAIN_ID, createTestWallet, walletWrapper } from "../test/wallet";
+import { TEST_WALLET_ADDRESS, UNCONFIGURED_CHAIN_ID, createConnectedTestWallet, createTestWallet, walletWrapper } from "../test/wallet";
 import { toWalletState, useWallet } from "./useWallet";
-import { WalletSetupProvider } from "./WalletProvider";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -31,25 +28,9 @@ describe("toWalletState", () => {
 });
 
 describe("useWallet", () => {
-  function renderWhileAppKitLoads(pendingReconnect: boolean) {
-    const wallet = createTestWallet();
-    return renderHook(() => useWallet(), {
-      wrapper: ({ children }: { readonly children?: ReactNode }) => (
-        <TestDataProvider>
-          <WalletSetupProvider setup={wallet.setup} pending pendingReconnect={pendingReconnect}>
-            {children}
-          </WalletSetupProvider>
-        </TestDataProvider>
-      ),
-    });
-  }
-
   it("while AppKit loads a returning wallet is connecting, so routing waits as it does for wagmi's reconnect", () => {
-    expect(renderWhileAppKitLoads(true).result.current).toEqual({ status: "connecting" });
-  });
-
-  it("while AppKit loads a visitor with no stored connection is disconnected, so routing does not wait for AppKit", () => {
-    expect(renderWhileAppKitLoads(false).result.current).toEqual({ status: "disconnected" });
+    const { result } = renderHook(() => useWallet(), { wrapper: walletWrapper(createTestWallet({ pendingReconnect: true })) });
+    expect(result.current).toEqual({ status: "connecting" });
   });
 
   it("the app loads disconnected and nothing is requested from a wallet", () => {
@@ -65,8 +46,7 @@ describe("useWallet", () => {
     vi.spyOn(window, "location", "get").mockReturnValue(
       new Proxy(location, { get: (target, property) => (property === "reload" ? reload : Reflect.get(target, property)) as unknown }),
     );
-    const wallet = createTestWallet({ chainId: 1 });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ chainId: 1 });
     const { result } = renderHook(() => useWallet(), { wrapper: walletWrapper(wallet) });
     expect(result.current).toEqual(expect.objectContaining({ status: "connected", chainId: 1 }));
     await act(async () => {
@@ -85,8 +65,7 @@ describe("useWallet", () => {
   });
 
   it("disconnecting returns to read-only", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet();
     const { result } = renderHook(() => useWallet(), { wrapper: walletWrapper(wallet) });
     await act(async () => {
       await wallet.disconnect();

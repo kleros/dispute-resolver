@@ -2,8 +2,8 @@ import type { ChainConfig } from "@dispute-resolver/core";
 import { useCallback, useEffect, useId, useRef, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { Link, useLocation } from "react-router";
 import { SWITCHABLE_CHAINS, switchChainSegment, type ResolvedChain } from "../routing";
-import { useNetworkSwitch, useWallet } from "../wallet";
-import { BAR_PILL, ChevronIcon, DROPDOWN_CLOSING_CLASS, DROPDOWN_OPEN_CLASS, usePresence } from "../ui";
+import { useNetworkSwitch, useWalletChainId } from "../wallet";
+import { BAR_PILL, ChevronIcon, DROPDOWN_CLOSING_CLASS, DROPDOWN_OPEN_CLASS, useOutsidePress, usePresence } from "../ui";
 import { asSentence, NOT_SWITCHED_TITLE } from "./ChainNoticeToasts";
 import { CheckIcon } from "./icons";
 import { BAR_FOCUS } from "./layout";
@@ -45,16 +45,10 @@ function NetworkMenu({ id, rootRef, panelRef, closing, onClose, children }: Netw
     (items.find((item) => item.getAttribute("aria-current") === "page") ?? items.at(0))?.focus();
   }, []);
 
-  useEffect(() => {
-    if (closing) return undefined;
-    const closeOnOutsidePress = (event: PointerEvent) => {
-      if (event.target instanceof Node && rootRef.current?.contains(event.target) !== true) onClose(false);
-    };
-    document.addEventListener("pointerdown", closeOnOutsidePress);
-    return () => {
-      document.removeEventListener("pointerdown", closeOnOutsidePress);
-    };
-  }, [closing, rootRef, onClose]);
+  const closeKeepingFocus = useCallback(() => {
+    onClose(false);
+  }, [onClose]);
+  useOutsidePress(!closing, rootRef, closeKeepingFocus);
 
   const onKeyDown = (event: KeyboardEvent<HTMLUListElement>) => {
     const items = menuItems(listRef.current);
@@ -116,7 +110,7 @@ export function ChainSwitcher({ resolvedChain }: ChainSwitcherProps) {
   const isPageChain = resolvedChain.kind === "page";
   const unsupported = isUnsupportedNetwork(resolvedChain);
   const location = useLocation();
-  const wallet = useWallet();
+  const walletChainId = useWalletChainId();
   const network = useNetworkSwitch();
   const toaster = useToast();
   const { phase, mountKey, panelRef, open: openMenu, close: closeMenu } = usePresence<HTMLDivElement>();
@@ -125,7 +119,6 @@ export function ChainSwitcher({ resolvedChain }: ChainSwitcherProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const walletChainId = wallet.status === "connected" ? wallet.chainId : undefined;
   const switching = network.state.status === "switching";
 
   const close = useCallback(
@@ -144,17 +137,18 @@ export function ChainSwitcher({ resolvedChain }: ChainSwitcherProps) {
         {current ? <CheckIcon className="size-4 shrink-0 text-klerosUIComponentsPrimaryBlue" /> : null}
       </>
     );
-    const ariaCurrent = current ? "page" : undefined;
-    const ariaDisabled = switching ? true : undefined;
+    const itemProps = {
+      role: "menuitem",
+      tabIndex: -1,
+      "aria-current": current ? "page" : undefined,
+      "aria-disabled": switching ? true : undefined,
+      className: ITEM_CLASS,
+    } as const;
     if (walletChainId !== undefined && walletChainId !== target.id) {
       return (
         <button
           type="button"
-          role="menuitem"
-          tabIndex={-1}
-          aria-current={ariaCurrent}
-          aria-disabled={ariaDisabled}
-          className={ITEM_CLASS}
+          {...itemProps}
           onClick={() => {
             if (switching) return;
             close(true);
@@ -169,12 +163,8 @@ export function ChainSwitcher({ resolvedChain }: ChainSwitcherProps) {
     }
     return (
       <Link
-        role="menuitem"
-        tabIndex={-1}
-        aria-current={ariaCurrent}
-        aria-disabled={ariaDisabled}
+        {...itemProps}
         to={{ pathname: switchChainSegment(location.pathname, target.id), search: location.search, hash: location.hash }}
-        className={ITEM_CLASS}
         onClick={(event) => {
           if (switching) {
             event.preventDefault();

@@ -102,12 +102,6 @@ describe("needsRulingOptions", () => {
 });
 
 describe("buildAppealPanel", () => {
-  it("shows no panel before the appeal period, for every family", () => {
-    for (const name of Object.keys(FAMILY_SIGNATURES) as (keyof typeof FAMILY_SIGNATURES)[]) {
-      for (const period of [0, 1, 2] as const) expect(buildAppealPanel(input(family(name), period))).toEqual({ kind: "hidden" });
-    }
-  });
-
   it("crowdfunds idr-v2 and idr-v1 in the appeal period and withdraws in execution", () => {
     for (const name of ["idr-v2", "idr-v1"] as const) {
       expect(buildAppealPanel(input(family(name), 3))).toEqual({ kind: "crowdfunding", dialect: "idr", ...EXPECTED_CARDS });

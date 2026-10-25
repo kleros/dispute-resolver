@@ -36,7 +36,7 @@ function extensionOf(pathOrUrl: string): string {
   return dot > 0 ? name.slice(dot + 1).toLowerCase() : "";
 }
 
-function withoutTrailingSlashes(path: string): string {
+export function withoutTrailingSlashes(path: string): string {
   let end = path.length;
   while (end > 0 && path.charAt(end - 1) === "/") end -= 1;
   return path.slice(0, end);

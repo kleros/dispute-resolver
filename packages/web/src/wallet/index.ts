@@ -1,7 +1,8 @@
 export type * from "./types";
 export type { NetworkSwitch } from "./switchChain";
-export type { NeedsWalletGuard, WriteAccess, WrongChainGuard } from "./useWriteAccess";
+export type { WriteAccess } from "./useWriteAccess";
 export { chainName } from "./chains";
+export { ConnectButton } from "./ConnectButton";
 export { SmartContractWalletWarning } from "./SmartContractWalletWarning";
 export { WalletControl } from "./WalletControl";
 export { WalletProvider, WalletSetupProvider } from "./WalletProvider";
@@ -9,7 +10,7 @@ export { WriteStatusNotice } from "./WriteStatusNotice";
 export { isUserRejection } from "./errors";
 export { useConnectWallet } from "./useConnectWallet";
 export { switchingLabel, useNetworkSwitch } from "./switchChain";
-export { useWallet } from "./useWallet";
+export { useWallet, useWalletChainId } from "./useWallet";
 export { useWrite } from "./useWrite";
 export { useWriteAccess } from "./useWriteAccess";
 export { useWriteSequence } from "./useWriteSequence";

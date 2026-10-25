@@ -1,7 +1,6 @@
 import { getAddress, numberToHex, pad, parseAbiItem, toEventSelector } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import fixture from "../appeals/__fixtures__/dispute-1170-unslashed.json";
-import { getChain } from "../chains";
 import type { Address, Hex, ReadClient } from "../types";
 import { createReadClient, createRequestBudget, getLogsChunked, isLookupLimitError, isRangeLimitError } from "./index";
 import {
@@ -18,6 +17,7 @@ import {
   type Reply,
   type RpcLog,
 } from "../test/rpc/testHelpers";
+import { chainOf } from "../test/chains/testHelpers";
 import type { BudgetedReadClientOptions } from "./types";
 
 const BLOCK_HASH: Hex = `0x${"ab".repeat(32)}`;
@@ -61,10 +61,8 @@ let endpointCounter = 0;
 
 /** The production read client of mainnet over a fake endpoint at a URL of its own (viem keeps state per URL). */
 function mainnetReadClient(options?: BudgetedReadClientOptions): ReadClient {
-  const chain = getChain(1);
-  if (chain === undefined) throw new Error("mainnet is not in the chain table");
   endpointCounter += 1;
-  const resolution = createReadClient(chain, { REACT_APP_WEB3_PROVIDER_URL: `https://read.rpc.example/logs/${String(endpointCounter)}` }, options);
+  const resolution = createReadClient(chainOf(1), { REACT_APP_WEB3_PROVIDER_URL: `https://read.rpc.example/logs/${String(endpointCounter)}` }, options);
   if (resolution.status !== "ok") throw new Error("expected a configured client");
   return resolution.client;
 }

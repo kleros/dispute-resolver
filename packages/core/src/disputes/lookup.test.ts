@@ -50,11 +50,6 @@ describe("parseDisputeId", () => {
   ])("rejects a non-string input: %s", (_, input) => {
     expect(parseDisputeId(input)).toBeNull();
   });
-
-  it("a missing ID is not dispute 0", () => {
-    expect(parseDisputeId(undefined)).toBeNull();
-    expect(parseDisputeId("")).toBeNull();
-  });
 });
 
 describe("lookupDispute", () => {

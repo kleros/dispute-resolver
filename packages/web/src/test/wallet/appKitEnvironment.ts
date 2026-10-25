@@ -1,18 +1,5 @@
 import { vi } from "vitest";
-
-/** A `matchMedia` that matches nothing; jsdom has none and AppKit reads the color scheme through it. */
-function matchNothing(query: string): MediaQueryList {
-  return {
-    matches: false,
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    dispatchEvent: vi.fn(() => false),
-  };
-}
+import { matchOnly } from "../matchMedia";
 
 /** A WebSocket that fails at once, so the WalletConnect relay never connects. */
 class OfflineWebSocket extends EventTarget {
@@ -40,7 +27,7 @@ class InertResizeObserver {
  * project configuration, usage, origin checks) and WebSocket throws. Undo with `vi.unstubAllGlobals()`.
  */
 export function installOfflineAppKitEnvironment(): void {
-  vi.stubGlobal("matchMedia", matchNothing);
+  vi.stubGlobal("matchMedia", matchOnly([]));
   vi.stubGlobal(
     "fetch",
     vi.fn(() => Promise.reject(new Error("Unit tests have no network (fetch)."))),

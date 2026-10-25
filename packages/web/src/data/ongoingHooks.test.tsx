@@ -1,9 +1,8 @@
 import * as core from "@dispute-resolver/core";
 import type { Court, MetaEvidenceResult, OngoingDispute, Outcome } from "@dispute-resolver/core";
 import { renderHook, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TestDataProvider, createTestDeps, createTestQueryClient, testCourt, testOkMetaEvidence, TEST_ARBITRABLE } from "../test/data";
+import { TEST_ARBITRABLE, createTestDeps, createTestQueryClient, dataWrapper, testCourt, testOkMetaEvidence } from "../test/data";
 import { useCourts, useOngoing, useOngoingTitle } from "./ongoingHooks";
 import { COURT_POLICY_FETCH_TIMEOUT_MS } from "./constants";
 import { queryKeys } from "./queryKeys";
@@ -15,13 +14,7 @@ const COURTS: Outcome<readonly Court[]> = { ok: true, value: [testCourt()] };
 const COURT_CACHE_AGE_MS = 3 * 60 * 60 * 1_000;
 
 function wrapperWith(seed: readonly (readonly [readonly unknown[], unknown])[] = [], client = createTestQueryClient(), deps = createTestDeps()) {
-  return function Wrapper({ children }: { readonly children?: ReactNode }) {
-    return (
-      <TestDataProvider deps={deps} client={client} seed={seed}>
-        {children}
-      </TestDataProvider>
-    );
-  };
+  return dataWrapper({ deps, client, seed });
 }
 
 function renderTitle(result: MetaEvidenceResult) {
@@ -150,6 +143,7 @@ describe("Ongoing page data", () => {
       expect(result.current).toEqual({ status: "ready", value: { kind: "title", text: "Is the item compliant?" } });
     });
     expect(core.loadMetaEvidence).toHaveBeenCalledWith(expect.objectContaining({ disputeId: 42n, arbitrable: TEST_ARBITRABLE, budgetMs: core.ONGOING_BUDGET_MS }));
+    expect(vi.mocked(core.loadMetaEvidence).mock.calls[0]?.[0].onChain).toBeUndefined();
   });
 
   it("shows title unavailable for a dispute whose meta-evidence fails", async () => {

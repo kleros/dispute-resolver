@@ -1,8 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { encodeEventTopics, hexToBigInt, numberToHex, type Hex } from "viem";
-import { ARBITRATOR_ABI, MAINNET_ARBITRATOR, disputeStruct, isDisputesCall } from "../support/arbitrator";
-import { fakeNetwork, type HttpRequest, type JsonAnswer, type RpcCall, type RpcResult } from "../support/network";
-import { CORS_HEADERS } from "./rpcFixture";
+import { openDisputesRpc } from "../support/arbitrator";
+import { appOriginOf, CORS_HEADERS, fakeNetwork, type HttpRequest, type JsonAnswer } from "../support/network";
 
 // The chain is synthesized: mainnet's arbitrator lists two open disputes whose meta-evidence names the same allowlisted
 // script. The script answers for the first dispute well after the second, so both runs are open at once and settle in
@@ -23,45 +21,8 @@ var getMetaEvidence = function () {
   }, disputeId === "901" ? 3000 : 500);
 };`;
 
-function arbitrableOf(id: bigint): Hex {
-  return `0x${id.toString(16).padStart(40, "0")}`;
-}
-
 function metaEvidencePath(id: bigint): string {
   return `/ipfs/${META_EVIDENCE_CID}/dispute-${id.toString()}.json`;
-}
-
-function creationLog(id: bigint) {
-  const blockNumber = HEAD - 100n + (id % 100n);
-  return {
-    address: MAINNET_ARBITRATOR,
-    topics: encodeEventTopics({ abi: ARBITRATOR_ABI, eventName: "DisputeCreation", args: { _disputeID: id, _arbitrable: arbitrableOf(id) } }),
-    data: "0x",
-    blockNumber: numberToHex(blockNumber),
-    blockHash: `0x${blockNumber.toString(16).padStart(64, "0")}`,
-    transactionHash: `0x${id.toString(16).padStart(64, "0")}`,
-    transactionIndex: "0x0",
-    logIndex: "0x0",
-    removed: false,
-  };
-}
-
-const [DISPUTE_CREATION] = encodeEventTopics({ abi: ARBITRATOR_ABI, eventName: "DisputeCreation" });
-
-function logsAnswer(call: RpcCall): RpcResult {
-  const filter = call.params[0] as { fromBlock?: Hex; toBlock?: Hex; topics?: readonly (Hex | null)[] } | undefined;
-  if (filter?.topics?.[0] !== DISPUTE_CREATION || filter.fromBlock === undefined || filter.toBlock === undefined) return { result: [] };
-  const from = hexToBigInt(filter.fromBlock);
-  const to = hexToBigInt(filter.toBlock);
-  return { result: DISPUTE_IDS.map(creationLog).filter((log) => hexToBigInt(log.blockNumber) >= from && hexToBigInt(log.blockNumber) <= to) };
-}
-
-/** Everything else, the courts among them, is left unanswered so it fails fast. */
-function rpcAnswer(call: RpcCall): RpcResult | undefined {
-  if (call.method === "eth_blockNumber") return { result: numberToHex(HEAD) };
-  if (call.method === "eth_getLogs") return logsAnswer(call);
-  const id = DISPUTE_IDS.find((candidate) => isDisputesCall(call, MAINNET_ARBITRATOR, candidate));
-  return id === undefined ? undefined : disputeStruct({ arbitrated: arbitrableOf(id), period: 0, lastPeriodChange: BigInt(Math.floor(Date.now() / 1000)) });
 }
 
 function httpAnswer(request: HttpRequest): JsonAnswer | undefined {
@@ -83,7 +44,7 @@ function httpAnswer(request: HttpRequest): JsonAnswer | undefined {
 }
 
 test("the Ongoing list shows each scripted dispute's own title", async ({ context, page, baseURL }) => {
-  await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, rpc: rpcAnswer, http: httpAnswer });
+  await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), rpc: openDisputesRpc(DISPUTE_IDS, HEAD), http: httpAnswer });
   let scriptRequests = 0;
   // A page route is asked before the context's: the shared helper answers JSON only, and the script is text.
   await page.route(`**/ipfs/${SCRIPT_CID}`, async (route) => {

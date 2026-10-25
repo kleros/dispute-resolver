@@ -5,7 +5,7 @@ import { UserRejectedRequestError } from "viem";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WriteReceipt } from "../data";
 import { createTestDeps } from "../test/data";
-import { createTestWallet, testReceipt, testReplacementReceipt, testWriteBuild, walletWrapper, type TestWallet } from "../test/wallet";
+import { createConnectedTestWallet, testReceipt, testReplacementReceipt, testWriteBuild, walletWrapper } from "../test/wallet";
 import type { WriteOutcome } from "./types";
 import { useWriteSequence } from "./useWriteSequence";
 
@@ -24,8 +24,12 @@ function hashAt(index: number): Hex {
   return hash;
 }
 
-function renderSequence(wallet: TestWallet, waitForReceipt: (chainId: ChainId, hash: Hex) => Promise<WriteReceipt>) {
-  return renderHook(() => useWriteSequence(), { wrapper: walletWrapper(wallet, createTestDeps({ waitForReceipt })) });
+const minedReceipt = (_chainId: ChainId, hash: Hex): Promise<WriteReceipt> => Promise.resolve(testReceipt(hash));
+
+/** Connects a chain-1 wallet and renders the sequence over it. */
+async function renderSequence(waitForReceipt: (chainId: ChainId, hash: Hex) => Promise<WriteReceipt> = minedReceipt) {
+  const wallet = await createConnectedTestWallet();
+  return { ...renderHook(() => useWriteSequence(), { wrapper: walletWrapper(wallet, createTestDeps({ waitForReceipt })) }), wallet };
 }
 
 const BUILDS = [testWriteBuild(1, 1n), testWriteBuild(1, 2n), testWriteBuild(1, 3n)];
@@ -41,8 +45,6 @@ beforeEach(() => {
 
 describe("useWriteSequence", () => {
   it("withdraws in sequence, signing the next only after the previous receipt is mined", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
     const events: string[] = [];
     let signatures = 0;
     writeContractMock.mockImplementation((_config, parameters) => {
@@ -50,7 +52,7 @@ describe("useWriteSequence", () => {
       signatures += 1;
       return Promise.resolve(hashAt(signatures - 1));
     });
-    const { result } = renderSequence(wallet, (_chainId, hash) => {
+    const { result } = await renderSequence((_chainId, hash) => {
       events.push(`receipt ${hash.slice(-1)}`);
       return Promise.resolve(testReceipt(hash));
     });
@@ -64,10 +66,8 @@ describe("useWriteSequence", () => {
   });
 
   it("refreshes once, after the last mined receipt", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
     const onMined = vi.fn();
-    const { result } = renderSequence(wallet, (_chainId, hash) => Promise.resolve(testReceipt(hash)));
+    const { result } = await renderSequence();
     await act(async () => {
       await result.current.execute(BUILDS, { pageChainId: 1, onMined });
     });
@@ -76,11 +76,9 @@ describe("useWriteSequence", () => {
   });
 
   it("stops at the first rejected signature and still refreshes what was withdrawn", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
     writeContractMock.mockResolvedValueOnce(hashAt(0)).mockRejectedValueOnce(new UserRejectedRequestError(new Error("denied")));
     const onMined = vi.fn();
-    const { result } = renderSequence(wallet, (_chainId, hash) => Promise.resolve(testReceipt(hash)));
+    const { result } = await renderSequence();
     let outcome: WriteOutcome | undefined;
     await act(async () => {
       outcome = await result.current.execute(BUILDS, { pageChainId: 1, onMined });
@@ -93,10 +91,8 @@ describe("useWriteSequence", () => {
   });
 
   it("stops at the first failed transaction", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
     const onMined = vi.fn();
-    const { result } = renderSequence(wallet, (_chainId, hash) => Promise.resolve(testReceipt(hash, "reverted")));
+    const { result } = await renderSequence((_chainId, hash) => Promise.resolve(testReceipt(hash, "reverted")));
     await act(async () => {
       await result.current.execute(BUILDS, { pageChainId: 1, onMined });
     });
@@ -106,10 +102,8 @@ describe("useWriteSequence", () => {
   });
 
   it("stops after a cancelled withdrawal and does not sign the next one", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
     const onMined = vi.fn();
-    const { result } = renderSequence(wallet, (_chainId, hash) => Promise.resolve(hash === hashAt(1) ? testReplacementReceipt("cancelled") : testReceipt(hash)));
+    const { result } = await renderSequence((_chainId, hash) => Promise.resolve(hash === hashAt(1) ? testReplacementReceipt("cancelled") : testReceipt(hash)));
     let outcome: WriteOutcome | undefined;
     await act(async () => {
       outcome = await result.current.execute(BUILDS, { pageChainId: 1, onMined });
@@ -122,9 +116,7 @@ describe("useWriteSequence", () => {
   });
 
   it("checks the chain before every signature in the sequence", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
-    const { result } = renderSequence(wallet, async (_chainId, hash) => {
+    const { result, wallet } = await renderSequence(async (_chainId, hash) => {
       await wallet.changeChain(100);
       return testReceipt(hash);
     });
@@ -136,9 +128,7 @@ describe("useWriteSequence", () => {
   });
 
   it("a refused item refuses the sequence before anything is signed", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
-    const { result } = renderSequence(wallet, (_chainId, hash) => Promise.resolve(testReceipt(hash)));
+    const { result } = await renderSequence();
     await act(async () => {
       await result.current.execute([testWriteBuild(1), { ok: false, refusal: "withdraw-unsupported" }], { pageChainId: 1 });
     });
@@ -147,9 +137,7 @@ describe("useWriteSequence", () => {
   });
 
   it("a sequence whose first call targets another chain is refused before any signature", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
-    const { result } = renderSequence(wallet, (_chainId, hash) => Promise.resolve(testReceipt(hash)));
+    const { result } = await renderSequence();
     let outcome: WriteOutcome | undefined;
     await act(async () => {
       outcome = await result.current.execute([testWriteBuild(100, 1n), testWriteBuild(1, 2n)], { pageChainId: 1 });
@@ -160,9 +148,7 @@ describe("useWriteSequence", () => {
   });
 
   it("an empty list withdraws nothing", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
-    const { result } = renderSequence(wallet, (_chainId, hash) => Promise.resolve(testReceipt(hash)));
+    const { result } = await renderSequence();
     await act(async () => {
       await result.current.execute([], { pageChainId: 1 });
     });
@@ -171,9 +157,7 @@ describe("useWriteSequence", () => {
   });
 
   it("reset clears the status", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
-    const { result } = renderSequence(wallet, (_chainId, hash) => Promise.resolve(testReceipt(hash)));
+    const { result } = await renderSequence();
     await act(async () => {
       await result.current.execute(BUILDS.slice(0, 1), { pageChainId: 1 });
     });

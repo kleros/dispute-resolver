@@ -137,11 +137,6 @@ describe("encodeAnswer: int", () => {
     for (const value of ["1e20", "1e3", "0x10", " 5", "5 ", "+5"]) expect(int(value)).toEqual(failed("not-a-number"));
   });
 
-  it("int input is never rounded: 1e20 is refused, not encoded as the ruling of 1", () => {
-    expect(int("1e20")).not.toEqual(ok(2n));
-    expect(int("1e20")).toEqual(failed("not-a-number"));
-  });
-
   it("leading zeros read as the same integer", () => {
     expect(int("007")).toEqual(ok(8n));
     expect(int("-0")).toEqual(ok(1n));

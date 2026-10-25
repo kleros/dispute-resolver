@@ -1,5 +1,5 @@
 {
-  "description": "JSON-RPC answers the Reality renderer QmQGMR6MyC851poYVyBfGthzmCdvTuRFKp1UDB19p89Gcn/bundle.js read for mainnet dispute 1650 (Seer Reality proxy), keyed by method and params as the script sent them, recorded from the chain-1 read RPC on 2026-10-16 with every \"latest\" read pinned to the block below. Used by the C7 test of e2e/runner/runner.spec.ts (ADR 0004 gate check 2); the script itself is fetched from the IPFS gateway.",
+  "description": "JSON-RPC answers the Reality renderer QmQGMR6MyC851poYVyBfGthzmCdvTuRFKp1UDB19p89Gcn/bundle.js read for mainnet dispute 1650 (Seer Reality proxy), keyed by method and params as the script sent them, recorded from the chain-1 read RPC on 2026-10-16 with every \"latest\" read pinned to the block below. Used by the dispute 1650 test of e2e/runner/runner.spec.ts; the script itself is fetched from the IPFS gateway.",
   "chainId": 1,
   "disputeId": "1650",
   "readAtBlock": 26203553,

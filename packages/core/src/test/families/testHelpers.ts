@@ -1,12 +1,12 @@
 import { createPublicClient, custom, pad } from "viem";
 import { EIP1967_IMPLEMENTATION_SLOT } from "../../abi";
+import { detectFamily } from "../../families";
+import type { FamilyDetection } from "../../families/types";
 import type { Address, ChainId, Hex, ReadClient } from "../../types";
 import { RECORDED_CONTRACTS } from "../../families/__fixtures__/recorded";
+import { rpcError } from "../rpc/testHelpers";
 
-/** A JSON-RPC error as a node reports it: an `Error` with a numeric `code`. */
-export function rpcError(code: number, message: string): Error {
-  return Object.assign(new Error(message), { code });
-}
+export { rpcError } from "../rpc/testHelpers";
 
 /** One JSON-RPC request the fake node received. */
 export interface NodeCall {
@@ -79,4 +79,11 @@ export function recordedNode(chainId: ChainId): { code: Record<string, Hex>; imp
 /** The `eth_getCode` targets among `calls`, lowercase. */
 export function codeReads(calls: readonly NodeCall[]): string[] {
   return calls.filter((call) => call.method === "eth_getCode").map((call) => lowercaseParam(call.params, 0));
+}
+
+/** The detection `detectFamily` gives a recorded contract over a node holding its chain's recorded code. */
+export function recordedDetection(chainId: ChainId, address: string): Promise<FamilyDetection> {
+  const contract = RECORDED_CONTRACTS.find((candidate) => candidate.chainId === chainId && candidate.address === address.toLowerCase());
+  if (contract === undefined) return Promise.reject(new Error(`no recorded bytecode for ${String(chainId)}:${address.toLowerCase()}`));
+  return detectFamily({ client: fakeNodeClient(recordedNode(chainId)).client, chainId, arbitrable: contract.address });
 }

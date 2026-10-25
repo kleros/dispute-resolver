@@ -5,7 +5,7 @@ import type { FallbackOutcomes, RulingOptions } from "../rulings/types";
 import type { Outcome } from "../types";
 import { deriveCompatibility } from "./compatibility";
 import { deriveDecision } from "./decision";
-import { fail, succeed } from "./outcome";
+import { fail, succeed } from "../outcome";
 import { deriveTimeline } from "./timeline";
 import type { ArbitratorDispute, Compatibility, Court, Decision, DisputeLookup, DisputeReads, DisputeView, LocalIdResolution } from "./types";
 

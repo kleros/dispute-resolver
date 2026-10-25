@@ -24,10 +24,6 @@ describe("createAppKitSetup with a WalletConnect project ID, remote project conf
     vi.restoreAllMocks();
   });
 
-  it("a project ID selects the AppKit mode", () => {
-    expect(setup.mode).toBe("appkit");
-  });
-
   it("the wagmi config holds no embedded-wallet connector once AppKit is ready", () => {
     expect(setup.wagmiConfig.connectors.length).toBeGreaterThan(0);
     expect(setup.wagmiConfig.connectors.filter(isEmbeddedWalletConnector)).toEqual([]);

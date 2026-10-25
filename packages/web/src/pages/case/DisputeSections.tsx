@@ -1,7 +1,7 @@
 import { hasAppealPanel, type ChainConfig, type FamilyDetection, type Period } from "@dispute-resolver/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { queryKeys, useCaseRefresh, type CaseDispute, type SectionData } from "../../data";
+import { foundLookup, queryKeys, useCaseRefresh, type CaseDispute, type SectionData } from "../../data";
 import { SectionBoundary, SectionSkeleton, useRevealIn } from "../../ui";
 import { AppealSection } from "../case-appeal";
 import { EvidenceSection } from "../case-evidence";
@@ -9,7 +9,6 @@ import { CaseOverview, DecisionAlert, DisputeSummary, DisputeTimeline, MetaEvide
 import { CaseAccordion, type CaseAccordionItem } from "./CaseAccordion";
 import { CompatibilityBanner } from "./CompatibilityBanner";
 import { CASE_BAND } from "./PageStates";
-import { foundDispute } from "./pageState";
 import { QuestionPanel } from "./QuestionPanel";
 import type { BoundaryRetries } from "./useBoundaryRetries";
 
@@ -53,7 +52,7 @@ interface DisputeSectionsProps {
 export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProps) {
   const client = useQueryClient();
   const refresh = useCaseRefresh(dispute.chainId, dispute.disputeId);
-  const found = foundDispute(dispute);
+  const found = foundLookup(dispute);
   const disputeKey = `${dispute.chainId.toString()}:${dispute.disputeId.toString()}`;
   const props = { dispute, chain };
   const appealItem = useAppealItem(disputeKey, found?.dispute.period, dispute.family);
@@ -71,7 +70,7 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
       refresh("evidence"),
       found === undefined ? undefined : client.invalidateQueries({ queryKey: queryKeys.disputeEvent(dispute.chainId, dispute.disputeId, found.binding.arbitrated) }),
     ]);
-  const retryQuestion = () => {
+  const retryMetaEvidence = () => {
     void rereadMetaEvidence();
   };
 
@@ -100,7 +99,7 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
   const viewOnly = view.status === "ready" && view.value.exists && view.value.compatibility === "view-only";
 
   const items: CaseAccordionItem[] = [
-    { title: "Question", body: boundary("question", "Question", rereadMetaEvidence, <QuestionPanel {...props} onRetry={retryQuestion} />) },
+    { title: "Question", body: boundary("question", "Question", rereadMetaEvidence, <QuestionPanel {...props} onRetry={retryMetaEvidence} />) },
     { title: "Evidence", body: boundary("evidence", "Evidence", rereadEvidence, <EvidenceSection {...props} />) },
   ];
   if (appealItem === true) {
@@ -120,7 +119,7 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
       {boundary("script-details", "Script details notice", rereadMetaEvidence, <ScriptDetailsNotice {...props} />)}
       {viewOnly ? <CompatibilityBanner /> : null}
       {boundary("decision", "Decision", rereadAppeal, <DecisionAlert {...props} />)}
-      {boundary("summary", "Dispute summary", rereadMetaEvidence, <DisputeSummary {...props} displayRetry={displayRetry} />)}
+      {boundary("summary", "Dispute summary", rereadMetaEvidence, <DisputeSummary {...props} displayRetry={displayRetry} onRetry={retryMetaEvidence} />)}
       {boundary("reality", "Reality notice", rereadMetaEvidence, <RealityNotice {...props} />)}
       {appealItem === undefined ? (
         <SectionSkeleton variant="bars" lines={3} />

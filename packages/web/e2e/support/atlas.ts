@@ -18,15 +18,15 @@ const ROLES = [
 export const ATLAS_NONCE = "e2enonce12345678";
 
 /** The CID every upload returns. */
-export const UPLOADED_CID = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
+const UPLOADED_CID = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
 
 /** The session token Atlas's `login` issued, by the account it was issued to. */
-export interface IssuedToken {
+interface IssuedToken {
   readonly account: string;
   readonly token: string;
 }
 
-export interface FakeAtlas {
+interface FakeAtlas {
   /** The handler for `fakeNetwork`'s `atlas` option. */
   readonly answer: (request: AtlasRequest) => AtlasAnswer;
   /** Every token `login` issued, in order. */

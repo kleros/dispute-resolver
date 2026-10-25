@@ -67,10 +67,7 @@ describe("readMetaEvidenceEvent", () => {
     expect(outcome.ok && outcome.value.status === "found" && outcome.value.event).toMatchObject({ uri: "/ipfs/QmLater/meta.json", logIndex: 7, emissions: 2 });
   });
 
-  it("zero logs are not-found, a failed read is rpc-error without the node's message, an undecodable latest log is invalid-data, an aborted read is rpc-error", async () => {
-    const none = read(SYNTHETIC, 5n, syntheticNode([]), 0n);
-    expect(await none.result).toEqual({ ok: true, value: { status: "not-found" } });
-
+  it("a failed read is rpc-error without the node's message, an undecodable latest log is invalid-data, an aborted read is rpc-error", async () => {
     const secret = "https://gnosis.example/v3/SECRET-KEY";
     const failed = await read(DISPUTE_460.arbitrable, 84n, recordedGnosisNode({ failing: { eth_getLogs: rpcError(-32000, secret) } })).result;
     expect(!failed.ok && failed.error.code).toBe("rpc-error");

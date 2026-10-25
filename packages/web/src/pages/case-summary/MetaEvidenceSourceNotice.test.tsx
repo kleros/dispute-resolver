@@ -1,8 +1,8 @@
-import { getChain, type ChainConfig, type MetaEvidenceResult, type MetaEvidenceSource } from "@dispute-resolver/core";
+import type { MetaEvidenceResult, MetaEvidenceSource } from "@dispute-resolver/core";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { CaseDispute, SectionData } from "../../data";
-import { TestDataProvider, sectionLoading, sectionReady, sectionUnavailable, testOkMetaEvidence } from "../../test/data";
+import { TestDataProvider, sectionLoading, sectionReady, sectionUnavailable, testCaseDispute, testChain, testOkMetaEvidence } from "../../test/data";
 import { testMetaEvidence } from "../../test/safe-content";
 import { MetaEvidenceSourceNotice } from "./index";
 
@@ -13,31 +13,11 @@ const BODY_DIFFERENT_FILE =
 const BODY_UNVERIFIABLE = "This page shows the meta-evidence file the arbitrable contract recorded on-chain. Other interfaces may show different details for this dispute.";
 const LOCATOR_PATH = "/ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaEvidence.json";
 
-function gnosis(): ChainConfig {
-  const chain = getChain(100);
-  if (chain === undefined) throw new Error("Gnosis is not configured");
-  return chain;
-}
-
-const GNOSIS = gnosis();
+const GNOSIS = testChain(100);
 
 /** Gnosis dispute 460 with only its meta-evidence read, the one section this notice depends on. */
 function caseDispute(metaEvidence: SectionData<MetaEvidenceResult>): CaseDispute {
-  return {
-    status: "dispute",
-    chainId: 100,
-    disputeId: 460n,
-    lookup: sectionLoading,
-    view: sectionLoading,
-    family: sectionLoading,
-    metaEvidence,
-    disputeEvent: sectionLoading,
-    evidence: sectionLoading,
-    appealDecisions: sectionLoading,
-    courts: sectionLoading,
-    appealPanel: sectionLoading,
-    write: sectionLoading,
-  };
+  return testCaseDispute({ chainId: 100, disputeId: 460n, metaEvidence });
 }
 
 function withSource(source: MetaEvidenceSource): SectionData<MetaEvidenceResult> {

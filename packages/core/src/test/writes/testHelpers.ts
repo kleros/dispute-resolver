@@ -1,34 +1,13 @@
 import { decodeFunctionData, encodeFunctionData, getAddress } from "viem";
-import { SELECTORS } from "../../abi";
 import type { ProbeSignature } from "../../abi/types";
-import type { ArbitratedBinding, LocalIdResolution } from "../../disputes/types";
+import type { LocalIdResolution } from "../../disputes/types";
 import { classifySelectors, scanSelectors } from "../../families";
 import { RECORDED_CONTRACTS } from "../../families/__fixtures__/recorded";
 import type { FamilyDetection } from "../../families/types";
-import { toRegistryAddress } from "../../registry";
-import type { Address, ChainId, Hex, WriteCall } from "../../types";
+import type { Address, Hex, WriteCall } from "../../types";
 import type { WriteBuild } from "../../writes/types";
 
-/**
- * A binding as `disputes.lookupDispute` creates it. The brand is only reachable through `disputes`, which is not built
- * in these unit tests, so the test double casts once here.
- */
-export function testBinding(fields: { readonly chainId: ChainId; readonly disputeId: bigint; readonly arbitrated: string; readonly arbitrator?: string }): ArbitratedBinding {
-  const binding = {
-    chainId: fields.chainId,
-    disputeId: fields.disputeId,
-    arbitrator: toRegistryAddress(fields.arbitrator ?? "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"),
-    arbitrated: toRegistryAddress(fields.arbitrated),
-  };
-  return binding as unknown as ArbitratedBinding;
-}
-
-/** A detection of `arbitrable` whose code carries exactly the probe selectors of `signatures`, classified by `families`. */
-export function detectionFor(chainId: ChainId, arbitrable: string, signatures: readonly ProbeSignature[]): FamilyDetection {
-  const selectors = signatures.map((signature) => SELECTORS[signature]);
-  const { family, capabilities } = classifySelectors(new Set(selectors));
-  return { chainId, arbitrable: toRegistryAddress(arbitrable), family, writeFamily: family, capabilities, realityProxy: null, implementation: null };
-}
+export { detectionFor, testBinding } from "../appeals/testHelpers";
 
 /** Probe signatures of each family's typical code. */
 export const FAMILY_SIGNATURES = {

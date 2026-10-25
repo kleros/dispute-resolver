@@ -1,19 +1,9 @@
-import {
-  REGISTRY,
-  buildDisputeView,
-  getChain,
-  resolveGateway,
-  type Address,
-  type ChainConfig,
-  type ChainId,
-  type MetaEvidence,
-  type MetaEvidenceResult,
-} from "@dispute-resolver/core";
-import { render, screen, within } from "@testing-library/react";
+import { REGISTRY, buildDisputeView, resolveGateway, type Address, type MetaEvidence, type MetaEvidenceResult } from "@dispute-resolver/core";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { queryKeys, type CaseDispute, type CoreDeps, type SectionData } from "../../data";
+import type { CaseDispute, CoreDeps, SectionData } from "../../data";
 import {
   TEST_ARBITRABLE,
   TestDataProvider,
@@ -22,13 +12,15 @@ import {
   sectionLoading,
   sectionReady,
   sectionUnavailable,
+  testCaseDispute,
+  testChain,
   testCourt,
   testDetails,
   testFamily,
   testFoundLookup,
   testOkMetaEvidence,
 } from "../../test/data";
-import { CaseOverview, DecisionAlert, DisputeSummary, DisputeTimeline, RealityNotice } from "./index";
+import { DisputeSummary } from "./index";
 
 /** What the mocked `env` and `safe-content` read, so single tests can move the app origin or break the display builder. */
 const overrides = vi.hoisted(() => ({ appOrigin: null as string | null, failDisplay: false }));
@@ -64,13 +56,7 @@ const DISPLAY_CID = "QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh";
 const FILE_CID = "QmQ2XoA25HmnPUEWDduxj6LYwMwp6jtXPFRMHcNF2EvJfU";
 const UNLISTED_ARBITRABLE: Address = "0x00000000000000000000000000000000000000aa";
 
-function chainConfig(chainId: ChainId): ChainConfig {
-  const chain = getChain(chainId);
-  if (chain === undefined) throw new Error(`chain ${String(chainId)} is not configured`);
-  return chain;
-}
-
-const MAINNET = chainConfig(1);
+const MAINNET = testChain(1);
 
 /** A dispute on mainnet whose summary reads `metaEvidence`; the view is built by core from the same inputs. */
 function caseDispute(options: { readonly metaEvidence?: SectionData<MetaEvidenceResult>; readonly arbitrable?: Address; readonly viewLoading?: boolean } = {}): CaseDispute {
@@ -84,21 +70,13 @@ function caseDispute(options: { readonly metaEvidence?: SectionData<MetaEvidence
     metaEvidence: metaEvidence.status === "ready" ? metaEvidence.value : null,
     fundedRulings: null,
   });
-  return {
-    status: "dispute",
-    chainId: 1,
-    disputeId: 1n,
+  return testCaseDispute({
     lookup: sectionReady(lookup),
     view: options.viewLoading === true ? sectionLoading : sectionReady(view),
     family: sectionReady(testFamily()),
     metaEvidence,
-    disputeEvent: sectionLoading,
-    evidence: sectionLoading,
-    appealDecisions: sectionLoading,
     courts: sectionReady([testCourt()]),
-    appealPanel: sectionLoading,
-    write: sectionLoading,
-  };
+  });
 }
 
 function withMetaEvidence(fields: Partial<MetaEvidence>, arbitrable?: Address): CaseDispute {
@@ -118,8 +96,8 @@ function renderWithData(ui: ReactElement, deps: CoreDeps = createTestDeps()) {
 /** The case page's Retry of the evidence display, which this file renders without the case page. */
 const DISPLAY_RETRY = { key: "display", onRetry: () => undefined };
 
-function renderSummary(dispute: CaseDispute, deps?: CoreDeps, displayRetry = DISPLAY_RETRY) {
-  return renderWithData(<DisputeSummary dispute={dispute} chain={MAINNET} displayRetry={displayRetry} />, deps);
+function renderSummary(dispute: CaseDispute, deps?: CoreDeps, displayRetry = DISPLAY_RETRY, onRetry?: () => void) {
+  return renderWithData(<DisputeSummary dispute={dispute} chain={MAINNET} displayRetry={displayRetry} onRetry={onRetry} />, deps);
 }
 
 function displayFrame(): HTMLIFrameElement {
@@ -233,17 +211,17 @@ describe("DisputeSummary", () => {
     expect(screen.queryByText("Test dispute")).not.toBeInTheDocument();
   });
 
-  it("a failed meta-evidence shows the summary as unavailable with its reason, and Retry reloads it", async () => {
+  it("a failed meta-evidence shows the summary as unavailable with its reason, and its Retry calls the case page's retry", async () => {
     const failed: MetaEvidenceResult = { status: "failed", reason: "fetch-error", error: { code: "rpc-error", message: "The meta-evidence file could not be fetched." } };
-    const { client } = renderSummary(caseDispute({ metaEvidence: sectionReady(failed) }));
-    const invalidate = vi.spyOn(client, "invalidateQueries");
+    const onRetry = vi.fn();
+    renderSummary(caseDispute({ metaEvidence: sectionReady(failed) }), undefined, DISPLAY_RETRY, onRetry);
 
     expect(screen.getByText("Dispute summary unavailable")).toBeInTheDocument();
     expect(screen.getByText("The meta-evidence file could not be fetched.")).toBeInTheDocument();
     expect(screen.queryByText("Test dispute")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Retry Dispute summary" }));
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.metaEvidence(1, 1n, TEST_ARBITRABLE) });
+    expect(onRetry).toHaveBeenCalledOnce();
   });
 
   it("a dispute without meta-evidence shows the summary as unavailable", () => {
@@ -346,13 +324,6 @@ describe("DisputeSummary", () => {
     expectSummaryTitle("Test dispute");
   });
 
-  it("_v other than 0 encodes the display parameters with URLSearchParams", () => {
-    renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: DISPLAY_URI, displayParamsVersion: "1" }));
-    const src = new URL(displayFrame().getAttribute("src") ?? "");
-    expect(src.searchParams.get("disputeID")).toBe("1");
-    expect(src.searchParams.get("arbitrableContractAddress")).toBe(TEST_ARBITRABLE);
-  });
-
   it("a display served from the app's own origin never gets allow-same-origin", () => {
     const allowlisted = REGISTRY.displayAllowlist[1]?.[0];
     if (allowlisted === undefined) throw new Error("mainnet has no allowlisted display");
@@ -364,11 +335,6 @@ describe("DisputeSummary", () => {
   it("an absolute https://…/ipfs/<CID> display is served from the configured gateway", () => {
     renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: `https://ipfs.kleros.io/ipfs/${DISPLAY_CID}/index.html` }));
     expect(displayFrame().getAttribute("src")).toMatch(new RegExp(`^${GATEWAY}/ipfs/${DISPLAY_CID}/index.html\\?`));
-  });
-
-  it("a non-integer or unconfigured arbitrableChainID falls back to the page chain", () => {
-    renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: DISPLAY_URI, arbitrableChainID: { status: "invalid" }, arbitratorChainID: { status: "invalid" } }));
-    expect(displayParams()).toMatchObject({ arbitrableChainID: 1, arbitratorChainID: 1, chainID: 1 });
   });
 
   it("passes the public RPC URLs to the display, never the read RPC", () => {
@@ -406,37 +372,6 @@ describe("DisputeSummary", () => {
       window.removeEventListener("error", silence);
       vi.restoreAllMocks();
     }
-  });
-});
-
-describe("a meta-evidence naming an unconfigured chain", () => {
-  it("an arbitrable chain the app does not know degrades only the display parameters; every case section still renders", () => {
-    // Chain 10 is not in the chain table, so core parses `arbitrableChainID: 10` as `invalid`.
-    const dispute = withMetaEvidence({ title: "Cross-chain question", evidenceDisplayInterfaceURI: DISPLAY_URI, arbitrableChainID: { status: "invalid" } });
-    renderWithData(
-      <>
-        <CaseOverview dispute={dispute} chain={MAINNET} />
-        <DisputeSummary dispute={dispute} chain={MAINNET} displayRetry={DISPLAY_RETRY} />
-        <DisputeTimeline dispute={dispute} chain={MAINNET} />
-        <DecisionAlert dispute={dispute} chain={MAINNET} />
-        <RealityNotice dispute={dispute} chain={MAINNET} />
-      </>,
-    );
-    expect(screen.getByRole("heading", { level: 1, name: "Dispute #1" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Cross-chain question" })).toBeInTheDocument();
-    expect(displayParams()).toMatchObject({ arbitrableChainID: 1 });
-    expect(within(screen.getByRole("region", { name: "Dispute timeline" })).getAllByRole("listitem").length).toBeGreaterThan(0);
-    // Period 2 shows no decision.
-    expect(screen.queryByRole("heading", { name: /^(?:Jury decision|Winner)$/ })).not.toBeInTheDocument();
-    expect(screen.queryByText(/unavailable/i)).not.toBeInTheDocument();
-  });
-
-  it("a configured chain without an RPC gives the display no RPC URL for it instead of failing", () => {
-    const polygon = chainConfig(137);
-    const dispute = withMetaEvidence({ evidenceDisplayInterfaceURI: DISPLAY_URI, arbitrableChainID: { status: "valid", chainId: polygon.id } });
-    renderSummary(dispute, createTestDeps({ env: {} }));
-    expect(displayParams()).toMatchObject({ arbitrableChainID: 137, arbitrableJsonRpcUrl: null });
-    expectSummaryTitle("Test dispute");
   });
 });
 

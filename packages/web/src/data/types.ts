@@ -90,6 +90,8 @@ export interface CaseDispute {
   readonly write: SectionData<CaseWriteContext>;
 }
 
+export type FoundLookup = Extract<DisputeLookup, { status: "found" }>;
+
 /** `no-id`: the URL holds no dispute ID. */
 export type CaseData = { readonly status: "no-id"; readonly chainId: ChainId } | CaseDispute;
 

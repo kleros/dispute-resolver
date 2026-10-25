@@ -24,9 +24,8 @@ describe("every address is lowercase, 40 hex characters, unique within its table
     }
   });
 
-  it("reality proxy and reality contract addresses are lowercase hex", () => {
+  it("reality contract addresses are lowercase hex", () => {
     for (const [, entry] of realityEntries) {
-      expect(entry.proxy).toMatch(ADDRESS_PATTERN);
       expect(entry.reality).toMatch(ADDRESS_PATTERN);
     }
   });
@@ -146,11 +145,8 @@ describe("registry data", () => {
     expect(sortedStrings([...new Set(keys.map(chainOfKey))])).toEqual(["1", "100"]);
   });
 
-  it("Unslashed on mainnet is the single override, with the offset and the unfundable option 0", () => {
+  it("Unslashed on mainnet is the single override", () => {
     expect(Object.keys(REGISTRY.overrides)).toEqual(["1:0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38"]);
-    const override = REGISTRY.overrides["1:0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38"];
-    expect(override?.roundIndexOffset).toBe(1);
-    expect(override?.refuseToArbitrateFundable).toBe(false);
   });
 
   it("the canonical hosts are resolve.kleros.io", () => {

@@ -1,8 +1,8 @@
-import { getChain, type ChainConfig, type MetaEvidenceResult } from "@dispute-resolver/core";
+import type { MetaEvidenceResult } from "@dispute-resolver/core";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { CaseDispute, SectionData } from "../../data";
-import { sectionLoading, sectionReady, sectionUnavailable, testOkMetaEvidence } from "../../test/data";
+import { sectionLoading, sectionReady, sectionUnavailable, testCaseDispute, testChain, testOkMetaEvidence } from "../../test/data";
 import { testMetaEvidence } from "../../test/safe-content";
 import { ScriptDetailsNotice } from "./index";
 
@@ -10,33 +10,13 @@ const TITLE = "Details from the arbitrable's script are unavailable";
 const BODY =
   "This dispute's arbitrable adds details through a script, which could not be used. The page shows the details recorded in the dispute's meta-evidence, so some of them may be incomplete.";
 
-function mainnet(): ChainConfig {
-  const chain = getChain(1);
-  if (chain === undefined) throw new Error("Mainnet is not configured");
-  return chain;
-}
-
-const MAINNET = mainnet();
+const MAINNET = testChain(1);
 
 type ScriptOutcome = Extract<MetaEvidenceResult, { status: "ok" }>["script"];
 
 /** Mainnet dispute 1 with only its meta-evidence read, the one section this notice depends on. */
 function caseDispute(metaEvidence: SectionData<MetaEvidenceResult>): CaseDispute {
-  return {
-    status: "dispute",
-    chainId: 1,
-    disputeId: 1n,
-    lookup: sectionLoading,
-    view: sectionLoading,
-    family: sectionLoading,
-    metaEvidence,
-    disputeEvent: sectionLoading,
-    evidence: sectionLoading,
-    appealDecisions: sectionLoading,
-    courts: sectionLoading,
-    appealPanel: sectionLoading,
-    write: sectionLoading,
-  };
+  return testCaseDispute({ metaEvidence });
 }
 
 function withScript(script: ScriptOutcome): SectionData<MetaEvidenceResult> {

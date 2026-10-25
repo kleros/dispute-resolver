@@ -27,6 +27,7 @@ export {
   ICON_SWAP_SHOWN,
   readMotionMs,
   useAfterLoading,
+  useOutsidePress,
   usePresence,
   useRevealIn,
   type PresencePhase,

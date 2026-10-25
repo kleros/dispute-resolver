@@ -217,11 +217,6 @@ describe("buildCrowdfundingCards", () => {
     expect(hash.cards.find((card) => card.code === 255n)?.title).toBe(`0x${"0".repeat(62)}fe`);
   });
 
-  it("a uint current ruling above 2^53 keeps its exact code and is costed as the winner", () => {
-    const set = build({ rulingOptions: { type: "uint", precision: 18 }, currentRuling: LARGE_UINT_CODE });
-    expect(set.cards.find((card) => card.origin === "current-ruling")).toMatchObject({ code: LARGE_UINT_CODE, title: "1", isWinner: true, required: 2_000n, deadline: 500 });
-  });
-
   it("a contribution to a large current ruling's exact code counts on that card, and one to the code below it gets its own loser card", () => {
     const rulingOptions: RulingOptions = { type: "uint", precision: 18 };
     const below = LARGE_UINT_CODE - 1n;
@@ -232,7 +227,7 @@ describe("buildCrowdfundingCards", () => {
       ["current-ruling", LARGE_UINT_CODE, 500n],
     ]);
     expect(set.cards[1]).toMatchObject({ title: decodeRulingCode(below, rulingOptions, null), isWinner: false, required: 3_000n, remaining: 2_900n, deadline: 250 });
-    expect(set.cards[2]).toMatchObject({ isWinner: true, required: 2_000n, remaining: 1_500n, deadline: 500 });
+    expect(set.cards[2]).toMatchObject({ title: "1", isWinner: true, required: 2_000n, remaining: 1_500n, deadline: 500 });
   });
 
   it("Answered too soon as the current ruling makes its reserved card the winner at the winner amount and deadline, with no second card for it", () => {

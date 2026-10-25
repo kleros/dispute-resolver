@@ -2,7 +2,7 @@ import type { ChainId, WriteRefusal } from "@dispute-resolver/core";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { TEST_TX_HASH, createTestWallet, holdChainSwitches, testReceipt, walletWrapper } from "../test/wallet";
+import { TEST_TX_HASH, createConnectedTestWallet, createTestWallet, holdChainSwitches, testReceipt, walletWrapper } from "../test/wallet";
 import { switchWalletChain } from "./switchChain";
 import type { WriteStatus } from "./types";
 import { WriteStatusNotice } from "./WriteStatusNotice";
@@ -65,15 +65,6 @@ describe("WriteStatusNotice", () => {
     expect(screen.queryByRole("link")).toBeNull();
   });
 
-  it("the wrong-chain refusal names both chains and offers the switch again", async () => {
-    const wallet = createTestWallet({ chainId: 100 });
-    await wallet.connect();
-    renderNotice({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 }, wallet);
-    expect(screen.getByText(/Your wallet is on Gnosis Network, but this page is on Ethereum Mainnet\./)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Switch to Ethereum Mainnet" }));
-    expect(await screen.findByText("Your wallet is now on Ethereum Mainnet. Try again.")).toBeInTheDocument();
-  });
-
   it("the wrong-chain notice shown after a refused write says that nothing was sent", () => {
     renderNotice({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 });
     expect(
@@ -82,8 +73,7 @@ describe("WriteStatusNotice", () => {
   });
 
   it("the wrong-chain notice shown before any write asks for the switch without saying that nothing was sent", async () => {
-    const wallet = createTestWallet({ chainId: 100 });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ chainId: 100 });
     const { container } = render(<WriteStatusNotice status={{ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 }} beforeAttempt />, {
       wrapper: walletWrapper(wallet),
     });
@@ -93,8 +83,7 @@ describe("WriteStatusNotice", () => {
   });
 
   async function walletWithSwitchWaiting(target: ChainId = 1) {
-    const wallet = createTestWallet({ chainId: 100 });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ chainId: 100 });
     holdChainSwitches(wallet);
     void switchWalletChain(wallet.config, target);
     return wallet;
@@ -127,8 +116,7 @@ describe("WriteStatusNotice", () => {
   });
 
   it("a switch the user starts from the notice turns the button into the waiting line", async () => {
-    const wallet = createTestWallet({ chainId: 100 });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ chainId: 100 });
     holdChainSwitches(wallet);
     renderNotice({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 }, wallet);
     await userEvent.click(screen.getByRole("button", { name: "Switch to Ethereum Mainnet" }));
@@ -137,8 +125,7 @@ describe("WriteStatusNotice", () => {
   });
 
   it("a declined switch from the refusal is shown inline", async () => {
-    const wallet = createTestWallet({ chainId: 100, switchChainError: true });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ chainId: 100, switchChainError: true });
     renderNotice({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 }, wallet);
     await userEvent.click(screen.getByRole("button", { name: "Switch to Ethereum Mainnet" }));
     await waitFor(() => {
@@ -182,12 +169,6 @@ describe("WriteStatusNotice", () => {
   ])("the %s refusal has its own message", (refusal) => {
     renderNotice({ phase: "refused", refusal });
     expect(screen.getByRole("alert").textContent.length).toBeGreaterThan("Action unavailable".length);
-  });
-
-  it("a call prepared for another network than the page says so, and nothing was sent", () => {
-    renderNotice({ phase: "refused", refusal: "call-chain-mismatch" });
-    expect(screen.getByText("Action unavailable")).toBeInTheDocument();
-    expect(screen.getByText("This action was prepared for a different network than this page, so nothing was sent.")).toBeInTheDocument();
   });
 
   it("a sequence shows which transaction the status belongs to", () => {

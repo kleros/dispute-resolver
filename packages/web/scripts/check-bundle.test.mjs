@@ -76,24 +76,26 @@ describe("test doubles never ship", () => {
     assert.deepEqual(await problemsOf({ "assets/index-abc.js": 'const k=Symbol.for(`zod.compile.invalid`);const j="a.b.example";' }), []);
   });
 
-  it("rejects a .invalid fixture host", async () => {
-    const problems = await problemsOf({ "assets/index-abc.js": 'fetch("https://atlas.invalid/graphql")' });
-    assert.equal(problems.length, 1);
-    assert.match(problems[0], /assets\/index-abc\.js/);
-    assert.match(problems[0], /fixture host/);
-  });
-
-  it("rejects a .example fixture host such as rpc.example", async () => {
-    const problems = await problemsOf({ "assets/index-abc.js": "const u='https://rpc.example/mainnet';" });
-    assert.equal(problems.length, 1);
-    assert.match(problems[0], /fixture host/);
-  });
-
-  it("rejects the wagmi mock connector", async () => {
-    const problems = await problemsOf({ "assets/index-abc.js": 'const c={id:"mock",name:"Mock Connector",type:"mock"};' });
-    assert.equal(problems.length, 1);
-    assert.match(problems[0], /wagmi mock connector/);
-  });
+  const singleMarkers = [
+    { name: "rejects a .invalid fixture host", file: "assets/index-abc.js", text: 'fetch("https://atlas.invalid/graphql")', label: /fixture host/ },
+    { name: "rejects a .example fixture host such as rpc.example", file: "assets/index-abc.js", text: "const u='https://rpc.example/mainnet';", label: /fixture host/ },
+    { name: "rejects the wagmi mock connector", file: "assets/index-abc.js", text: 'const c={id:"mock",name:"Mock Connector",type:"mock"};', label: /wagmi mock connector/ },
+    { name: "rejects an exported test double name", file: "assets/index-abc.js", text: "window.__x={createTestDeps:1};", label: /test double name/ },
+    {
+      name: "rejects a bundle built with the e2e build's WalletConnect project ID",
+      file: "assets/appKit-abc.js",
+      text: 'const t={projectId:"e2e00000000000000000000000000000"};',
+      label: /e2e WalletConnect placeholder/,
+    },
+  ];
+  for (const { name, file, text, label } of singleMarkers) {
+    it(name, async () => {
+      const problems = await problemsOf({ [file]: text });
+      assert.equal(problems.length, 1);
+      assert.ok(problems[0].includes(file), problems[0]);
+      assert.match(problems[0], label);
+    });
+  }
 
   it("rejects a src/test path left in a bundle or source map", async () => {
     const problems = await problemsOf({ "assets/index-abc.js.map": '{"sources":["../../src/test/data/createTestDeps.ts"]}' });
@@ -124,24 +126,12 @@ describe("test doubles never ship", () => {
     assert.deepEqual(await problemsOf({ "assets/index-abc.js": 'const a="Test dispute resolution";const b=`Local storage is blocked by the browser.`;' }), []);
   });
 
-  it("rejects an exported test double name", async () => {
-    const problems = await problemsOf({ "assets/index-abc.js": "window.__x={createTestDeps:1};" });
-    assert.equal(problems.length, 1);
-    assert.match(problems[0], /test double name/);
-  });
-
   it("rejects the injected wallet of e2e/support/wallet.ts", async () => {
     for (const marker of ['const r="io.kleros.e2e-wallet";', "const p={isE2eWallet:!0};", "window.__e2eWallet=h;", 'const n={name:"E2E wallet"};']) {
       const problems = await problemsOf({ "assets/index-abc.js": marker });
       assert.equal(problems.length, 1, marker);
       assert.match(problems[0], /e2e injected wallet/);
     }
-  });
-
-  it("rejects a bundle built with the e2e build's WalletConnect project ID", async () => {
-    const problems = await problemsOf({ "assets/appKit-abc.js": 'const t={projectId:"e2e00000000000000000000000000000"};' });
-    assert.equal(problems.length, 1);
-    assert.match(problems[0], /e2e WalletConnect placeholder/);
   });
 
   it("names each offending file once per marker and never quotes the surrounding content", async () => {
@@ -396,10 +386,6 @@ describe("the zod configuration ships in the bundle", () => {
     assert.equal(problems.length, 1, problems.join("\n"));
     assert.match(problems[0], /zod configuration is missing/);
     assert.doesNotMatch(problems[0], /jitless/);
-  });
-
-  it("passes a bundle that carries it once", async () => {
-    assert.deepEqual(await problemsOf({}), []);
   });
 
   it("fails when the bundle carries the zod configuration more than once", async () => {

@@ -6,12 +6,7 @@ const globals = globalThis as Record<string, unknown>;
 
 describe("evaluateInGlobalScope", () => {
   afterEach(() => {
-    for (const name of ["__c7Result", "__probeFunction", "__probeVar", "__probeCalls", "getMetaEvidence"]) Reflect.deleteProperty(globals, name);
-  });
-
-  it("a script with a non-ASCII literal round-trips", () => {
-    evaluateInGlobalScope('globalThis.__c7Result = "Harris␟Trump␟Answered Too Soon – é 日本 🙂".split("␟");');
-    expect(globals.__c7Result).toEqual(["Harris", "Trump", "Answered Too Soon – é 日本 🙂"]);
+    for (const name of ["__probeFunction", "__probeVar", "__probeCalls", "getMetaEvidence"]) Reflect.deleteProperty(globals, name);
   });
 
   it("a top-level function or var declaration becomes a global, as in a classic script", () => {

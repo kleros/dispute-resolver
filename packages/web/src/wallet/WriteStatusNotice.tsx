@@ -3,9 +3,9 @@ import { Button } from "@kleros/ui-components-library";
 import { ExternalLink } from "../safe-content";
 import { Notice } from "../ui";
 import { chainName } from "./chains";
+import { ConnectButton } from "./ConnectButton";
 import { useNetworkSwitch, type NetworkSwitch } from "./switchChain";
 import type { WriteStatusNoticeProps } from "./types";
-import { useConnectWallet } from "./useConnectWallet";
 import { useWallet } from "./useWallet";
 import { writeMessage } from "./writeMessages";
 
@@ -39,19 +39,8 @@ function SwitchOffer({ pageChainId, network }: { readonly pageChainId: ChainId; 
 
 function ConnectOffer({ pageChainId }: { readonly pageChainId: ChainId | undefined }) {
   const wallet = useWallet();
-  const connect = useConnectWallet();
   if (wallet.status === "connected") return <p className="text-sm">Wallet connected. Try again.</p>;
-  if (!connect.available) return null;
-  return (
-    <Button
-      text="Connect"
-      small
-      className="self-start"
-      onPress={() => {
-        connect.open(pageChainId);
-      }}
-    />
-  );
+  return <ConnectButton chainId={pageChainId} />;
 }
 
 /** A rejected signature is a neutral notice, not an error. */

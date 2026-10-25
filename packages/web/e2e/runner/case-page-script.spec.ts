@@ -1,7 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
+import { appOriginOf } from "../support/network";
 import {
   CASE_PATH,
   DISPUTE_ID,
+  HARNESS_PATH,
   OPTIONS_BEFORE_SCRIPT,
   RUNNER_FRAME,
   RUNNER_PATH,
@@ -10,6 +12,7 @@ import {
   expectConfiguredBuild,
   expectEveryDependencyServed,
   routeCasePage,
+  serveHarness,
 } from "./casePageRoutes";
 import { caseSectionHeader, expectCaseSectionsSettled, openCaseSection } from "./caseSections";
 
@@ -84,9 +87,6 @@ parent.frames[0].postMessage(${JSON.stringify(FORGED_REQUEST)}, "*", [channel.po
 parent.postMessage("forged-request-sent", "*");
 </script></body></html>`;
 
-const HARNESS_PATH = "/__runner-e2e/harness.html";
-const HARNESS_HTML = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Runner harness</title></head><body></body></html>';
-
 function scriptTitle(page: Page) {
   return page.getByRole("heading", { name: SCRIPT_TITLE, exact: true });
 }
@@ -142,7 +142,7 @@ test.describe("case page dynamic script", () => {
   test("the app's runner frame is sandboxed without allow-same-origin, runs at an opaque origin and ignores a foreign window", async ({ page, baseURL }) => {
     test.setTimeout(RENDER_LIMIT_MS + 30_000);
     const traffic = await routeCasePage(page, baseURL, { [FORGER_URL]: FORGER_HTML });
-    const appOrigin = new URL(baseURL ?? "http://localhost").origin;
+    const appOrigin = appOriginOf(baseURL);
 
     await page.goto(CASE_PATH);
     // A foreign window joins the page before the runner frame exists and keeps posting run requests and results.
@@ -194,9 +194,9 @@ test.describe("case page dynamic script", () => {
   ] as const;
   for (const forgerCase of forgers) {
     test(`a run request from ${forgerCase.name} other than the parent is ignored, and the parent's own request still runs`, async ({ page, baseURL }) => {
-      const appOrigin = new URL(baseURL ?? "http://localhost").origin;
+      const appOrigin = appOriginOf(baseURL);
       const forgerUrl = forgerCase.forgerUrl(appOrigin);
-      await page.route(`**${HARNESS_PATH}`, (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: HARNESS_HTML }));
+      await serveHarness(page, `**${HARNESS_PATH}`);
       await page.route(forgerUrl, (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: FORGER_ONCE_HTML }));
       await page.goto(HARNESS_PATH);
 

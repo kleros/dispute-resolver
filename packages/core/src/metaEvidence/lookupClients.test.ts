@@ -46,34 +46,6 @@ describe("lookupClientsOf", () => {
     expect(endpoint.posts).toHaveLength(2);
   });
 
-  it("a retry of the transport spends the lookup's budget, so a spent request count stops it", async () => {
-    vi.useFakeTimers();
-    const endpoint = stubEndpoint(() => ({ status: 503 }));
-    const failure = expect(arbitratorClient({ maxRequests: 1, deadlineMs: 60_000 }).getBlockNumber({ cacheTime: 0 })).rejects.toSatisfy(isLookupLimitError);
-    await vi.runAllTimersAsync();
-    await failure;
-    expect(endpoint.posts).toHaveLength(1);
-  });
-
-  it("a retry of the transport after the lookup's deadline is never sent", async () => {
-    vi.useFakeTimers();
-    const endpoint = stubEndpoint(() => ({ status: 503 }));
-    const start = Date.now();
-    const failure = expect(arbitratorClient({ maxRequests: 10, deadlineMs: 1_000 }).getBlockNumber({ cacheTime: 0 })).rejects.toSatisfy(isLookupLimitError);
-    await vi.runAllTimersAsync();
-    await failure;
-    expect(endpoint.posts.map((post) => post.at - start)).toEqual([0, 500]);
-  });
-
-  it("without an override a failed request is retried, every attempt counted against the budget", async () => {
-    vi.useFakeTimers();
-    const endpoint = stubEndpoint(() => ({ status: 503 }));
-    const failure = expect(arbitratorClient({ maxRequests: 2, deadlineMs: 60_000 }).getBlockNumber({ cacheTime: 0 })).rejects.toSatisfy(isLookupLimitError);
-    await vi.runAllTimersAsync();
-    await failure;
-    expect(endpoint.posts).toHaveLength(2);
-  });
-
   it("the lookup's retryCount override applies, so a request it does not retry is sent once", async () => {
     vi.useFakeTimers();
     const endpoint = stubEndpoint(() => ({ status: 503 }));

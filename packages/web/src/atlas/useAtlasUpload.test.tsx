@@ -12,19 +12,17 @@ import {
   jwtSubject,
   sessionJwt,
   settle,
+  startInAct,
   testJwt,
+  testPdf,
   type FakeAtlasServer,
   type FakeAtlasServerOptions,
 } from "../test/atlas";
-import { TEST_WALLET_ACCOUNT, TEST_WALLET_SECOND_ACCOUNT, createTestWallet, type TestWallet } from "../test/wallet";
+import { expectRenderErrors } from "../test/shell";
+import { TEST_WALLET_ACCOUNT, TEST_WALLET_SECOND_ACCOUNT, createConnectedTestWallet, createTestWallet, type TestWallet } from "../test/wallet";
 import { useAtlasUpload } from "./context";
-import type { UploadResult } from "./types";
 
 const MIB = 1024 * 1024;
-
-function pdf(name = "brief.pdf"): File {
-  return new File(["%PDF-1.4"], name, { type: "application/pdf" });
-}
 
 interface Setup {
   readonly connected?: boolean;
@@ -80,16 +78,6 @@ function holdNextRequest(operation: keyof typeof GRAPHQL_OPERATIONS) {
   };
 }
 
-/** Starts an upload inside `act` and returns it without waiting. */
-function startUpload(start: () => Promise<UploadResult>): Promise<UploadResult> {
-  const started: { promise?: Promise<UploadResult> } = {};
-  act(() => {
-    started.promise = start();
-  });
-  if (started.promise === undefined) throw new Error("The upload did not start.");
-  return started.promise;
-}
-
 function signInAndUploadRequests(server: FakeAtlasServer): number {
   return server.count("nonce") + server.count("sign") + server.count("login") + server.count("upload");
 }
@@ -106,17 +94,8 @@ afterEach(() => {
 
 describe("useAtlasUpload outside AtlasGate", () => {
   it("throws outside AtlasGate", () => {
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
-    // React reports the render error to the window as well; jsdom would print it.
-    const silence = (event: ErrorEvent) => {
-      event.preventDefault();
-    };
-    window.addEventListener("error", silence);
-    try {
-      expect(() => renderHook(() => useAtlasUpload())).toThrow("useAtlasUpload must be used inside AtlasGate.");
-    } finally {
-      window.removeEventListener("error", silence);
-    }
+    expectRenderErrors();
+    expect(() => renderHook(() => useAtlasUpload())).toThrow("useAtlasUpload must be used inside AtlasGate.");
   });
 });
 
@@ -126,27 +105,21 @@ describe("AtlasGate", () => {
 
     expect(result.current.availability).toBe("unconfigured");
     expect(result.current.limits("evidence")).toBeNull();
-    const outcome = await settle(() => result.current.upload(pdf(), "evidence"));
+    const outcome = await settle(() => result.current.upload(testPdf(), "evidence"));
     expect(outcome).toMatchObject({ ok: false, error: "upload-failed", message: "An error occurred while uploading the file. Please try again." });
     const json = await settle(() => result.current.uploadJson("evidence.json", buildEvidenceDocument({ name: "n", description: "d", fileUri: null }), "policy"));
     expect(json).toMatchObject({ ok: false, error: "upload-failed", message: "An error occurred while uploading the file. Please try again." });
     expect(server.requests).toEqual([]);
   });
 
-  it("requests only the unauthenticated roles(CourtV1) query at load", async () => {
+  it("requests only the unauthenticated roles(CourtV1) query at load and asks for no signature before the first upload action", async () => {
     const { server, result } = await renderReady();
 
     expect(result.current.availability).toBe("ready");
-    expect(server.requests).toEqual(["roles"]);
-    expect(server.graphql).toEqual([{ kind: "roles", variables: { product: "CourtV1" }, authorization: null }]);
-  });
-
-  it("requests no signature before the user's first upload action", async () => {
-    const { server, result } = await renderReady();
-
     expect(result.current.isSignedIn).toBe(false);
     expect(result.current.phase).toBe("idle");
-    expect(server.count("nonce") + server.count("sign") + server.count("login")).toBe(0);
+    expect(server.requests).toEqual(["roles"]);
+    expect(server.graphql).toEqual([{ kind: "roles", variables: { product: "CourtV1" }, authorization: null }]);
   });
 });
 
@@ -155,7 +128,7 @@ describe("upload", () => {
     const token = sessionJwt(TEST_WALLET_ACCOUNT);
     const { server, result } = await renderReady({ server: { issueToken: () => token } });
 
-    const outcome = await settle(() => result.current.upload(pdf(), "evidence"));
+    const outcome = await settle(() => result.current.upload(testPdf(), "evidence"));
 
     expect(outcome).toEqual({ ok: true, path: TEST_UPLOAD_PATH });
     expect(server.requests.filter((kind) => kind !== "user")).toEqual(["roles", "nonce", "sign", "login", "upload"]);
@@ -168,9 +141,9 @@ describe("upload", () => {
 
   it("uploads again without a new signature while the session is signed in", async () => {
     const { server, result } = await renderReady();
-    await settle(() => result.current.upload(pdf(), "evidence"));
+    await settle(() => result.current.upload(testPdf(), "evidence"));
 
-    const second = await settle(() => result.current.upload(pdf("second.pdf"), "evidence"));
+    const second = await settle(() => result.current.upload(testPdf("second.pdf"), "evidence"));
 
     expect(second.ok).toBe(true);
     expect(server.count("sign")).toBe(1);
@@ -179,13 +152,12 @@ describe("upload", () => {
 
   it("makes the session unverified on an account switch, so the next upload signs in again from the new account", async () => {
     const server = installFakeAtlasServer();
-    const wallet = createTestWallet();
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet();
     const { result } = renderHook(() => ({ uploader: useAtlasUpload(), library: useAtlasProvider() }), { wrapper: atlasWrapper(wallet) });
     await waitFor(() => {
       expect(result.current.uploader.limits("evidence")).not.toBeNull();
     });
-    expect((await settle(() => result.current.uploader.upload(pdf(), "evidence"))).ok).toBe(true);
+    expect((await settle(() => result.current.uploader.upload(testPdf(), "evidence"))).ok).toBe(true);
     await waitFor(() => {
       expect(result.current.uploader.isSignedIn).toBe(true);
     });
@@ -198,7 +170,7 @@ describe("upload", () => {
       expect(result.current.library.isVerified).toBe(false);
     });
     expect(result.current.uploader.isSignedIn).toBe(false);
-    const outcome = await settle(() => result.current.uploader.upload(pdf("second.pdf"), "evidence"));
+    const outcome = await settle(() => result.current.uploader.upload(testPdf("second.pdf"), "evidence"));
 
     expect(outcome).toEqual({ ok: true, path: TEST_UPLOAD_PATH });
     expect(server.signatures.map(({ account }) => account.toLowerCase())).toEqual([TEST_WALLET_ACCOUNT.toLowerCase(), TEST_WALLET_SECOND_ACCOUNT.toLowerCase()]);
@@ -214,7 +186,7 @@ describe("upload", () => {
   it("uploads user files for CourtV1 under the evidence role", async () => {
     const { server, result } = await renderReady();
 
-    await settle(() => result.current.upload(pdf("brief.pdf"), "evidence"));
+    await settle(() => result.current.upload(testPdf("brief.pdf"), "evidence"));
 
     expect(server.uploads).toHaveLength(1);
     expect(server.uploads[0]).toMatchObject({ product: "CourtV1", role: "evidence", name: "brief.pdf" });
@@ -236,7 +208,7 @@ describe("upload", () => {
   it("signs and uploads nothing without a connected wallet", async () => {
     const { server, result } = await renderReady({ connected: false });
 
-    const outcome = await settle(() => result.current.upload(pdf(), "evidence"));
+    const outcome = await settle(() => result.current.upload(testPdf(), "evidence"));
 
     expect(outcome).toMatchObject({ ok: false, error: "no-wallet" });
     expect(server.requests).toEqual(["roles"]);
@@ -269,7 +241,7 @@ describe("upload", () => {
     const { server, result } = await renderUploader({ server: { roles: "fail" } });
 
     expect(result.current.limits("evidence")).toBeNull();
-    const outcome = await settle(() => result.current.upload(pdf(), "evidence"));
+    const outcome = await settle(() => result.current.upload(testPdf(), "evidence"));
 
     expect(outcome).toMatchObject({ ok: false, error: "limits-unavailable" });
     // The upload asks for the limits once more before refusing, and only once.
@@ -282,7 +254,7 @@ describe("upload", () => {
     const { server, result } = await renderUploader({ server: { roles: "fail-once" } });
 
     expect(result.current.limits("evidence")).toBeNull();
-    const outcome = await settle(() => result.current.upload(pdf(), "evidence"));
+    const outcome = await settle(() => result.current.upload(testPdf(), "evidence"));
 
     expect(outcome).toEqual({ ok: true, path: TEST_UPLOAD_PATH });
     expect(server.count("roles")).toBe(2);
@@ -305,7 +277,7 @@ describe("upload", () => {
   it("asks for no signature when the wallet disconnects while the role limits are being fetched", async () => {
     const { server, wallet, result } = await renderUploader({ server: { roles: "fail-once" } });
     const roles = holdNextRequest("roles");
-    const upload = startUpload(() => result.current.upload(pdf(), "evidence"));
+    const upload = startInAct(() => result.current.upload(testPdf(), "evidence"));
     await waitFor(() => {
       expect(roles.isHeld()).toBe(true);
     });
@@ -321,7 +293,7 @@ describe("upload", () => {
   it("asks for no signature when the wallet changes chain before the sign-in", async () => {
     const { server, wallet, result } = await renderUploader({ server: { roles: "fail-once" } });
     const roles = holdNextRequest("roles");
-    const upload = startUpload(() => result.current.upload(pdf(), "evidence"));
+    const upload = startInAct(() => result.current.upload(testPdf(), "evidence"));
     await waitFor(() => {
       expect(roles.isHeld()).toBe(true);
     });
@@ -337,7 +309,7 @@ describe("upload", () => {
   it("asks for no signature when the wallet changes chain while Atlas issues the sign-in nonce", async () => {
     const { server, wallet, result } = await renderReady();
     const nonce = holdNextRequest("nonce");
-    const upload = startUpload(() => result.current.upload(pdf(), "evidence"));
+    const upload = startInAct(() => result.current.upload(testPdf(), "evidence"));
     await waitFor(() => {
       expect(nonce.isHeld()).toBe(true);
     });
@@ -357,8 +329,7 @@ describe("upload", () => {
     sessionStorage.setItem("authToken", JSON.stringify(testJwt({ sub: TEST_WALLET_ACCOUNT })));
     const token = sessionJwt(TEST_WALLET_ACCOUNT);
     const server = installFakeAtlasServer({ issueToken: () => token });
-    const wallet = createTestWallet();
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet();
     const { result } = renderHook(() => ({ uploader: useAtlasUpload(), library: useAtlasProvider() }), { wrapper: atlasWrapper(wallet) });
     await waitFor(() => {
       expect(result.current.library.isVerified).toBe(true);
@@ -368,7 +339,7 @@ describe("upload", () => {
     });
     expect(result.current.uploader.isSignedIn).toBe(false);
 
-    const outcome = await settle(() => result.current.uploader.upload(pdf(), "evidence"));
+    const outcome = await settle(() => result.current.uploader.upload(testPdf(), "evidence"));
 
     expect(outcome.ok).toBe(true);
     expect(server.count("sign")).toBe(1);
@@ -379,7 +350,7 @@ describe("upload", () => {
     sessionStorage.setItem("authToken", JSON.stringify(sessionJwt(TEST_WALLET_ACCOUNT, -60)));
     const { server, result } = await renderReady();
 
-    const outcome = await settle(() => result.current.upload(pdf(), "evidence"));
+    const outcome = await settle(() => result.current.upload(testPdf(), "evidence"));
 
     expect(outcome.ok).toBe(true);
     expect(server.count("sign")).toBe(1);
@@ -388,7 +359,7 @@ describe("upload", () => {
   it("never passes a returned path that is not content-addressed to the caller", async () => {
     const { result } = await renderReady({ server: { uploadResponse: () => new Response("../../ipns/attacker.eth") } });
 
-    const outcome = await settle(() => result.current.upload(pdf(), "evidence"));
+    const outcome = await settle(() => result.current.upload(testPdf(), "evidence"));
 
     expect(outcome).toMatchObject({ ok: false, error: "not-content-addressed" });
   });
@@ -396,7 +367,7 @@ describe("upload", () => {
   it("reports a declined signature neutrally and uploads nothing", async () => {
     const { server, result } = await renderReady({ server: { signature: "reject" } });
 
-    const outcome = await settle(() => result.current.upload(pdf(), "evidence"));
+    const outcome = await settle(() => result.current.upload(testPdf(), "evidence"));
 
     expect(outcome).toMatchObject({ ok: false, error: "sign-in-rejected", message: "Signature declined. Nothing was uploaded." });
     expect(server.count("upload")).toBe(0);
@@ -407,7 +378,7 @@ describe("upload", () => {
   it("shows a failed sign-in and signs and uploads nothing", async () => {
     const { server, result } = await renderReady({ server: { nonce: "fail" } });
 
-    const outcome = await settle(() => result.current.upload(pdf(), "evidence"));
+    const outcome = await settle(() => result.current.upload(testPdf(), "evidence"));
 
     expect(outcome).toMatchObject({ ok: false, error: "sign-in-failed" });
     expect(outcome.ok ? "" : outcome.message).toContain("Nonce unavailable");
@@ -425,14 +396,14 @@ describe("upload", () => {
     };
     const { server, result } = await renderReady({ server: { uploadResponse } });
 
-    const first = await settle(() => result.current.upload(pdf(), "evidence"));
+    const first = await settle(() => result.current.upload(testPdf(), "evidence"));
     expect(first).toMatchObject({ ok: false, error: "upload-failed" });
     expect(first.ok ? "" : first.message).toContain("Token revoked");
     await waitFor(() => {
       expect(result.current.isSignedIn).toBe(false);
     });
 
-    const second = await settle(() => result.current.upload(pdf(), "evidence"));
+    const second = await settle(() => result.current.upload(testPdf(), "evidence"));
 
     expect(second).toEqual({ ok: true, path: TEST_UPLOAD_PATH });
     expect(server.count("sign")).toBe(2);
@@ -447,8 +418,7 @@ describe("upload", () => {
         : new Response(TEST_UPLOAD_CID);
     };
     const server = installFakeAtlasServer({ uploadResponse });
-    const wallet = createTestWallet();
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet();
     const renderTab = async () => {
       const hook = renderHook(() => ({ uploader: useAtlasUpload(), library: useAtlasProvider() }), { wrapper: atlasWrapper(wallet) });
       await waitFor(() => {
@@ -457,16 +427,16 @@ describe("upload", () => {
       return hook;
     };
     const firstTab = await renderTab();
-    expect((await settle(() => firstTab.result.current.uploader.upload(pdf(), "evidence"))).ok).toBe(true);
+    expect((await settle(() => firstTab.result.current.uploader.upload(testPdf(), "evidence"))).ok).toBe(true);
 
-    const rejected = await settle(() => firstTab.result.current.uploader.upload(pdf(), "evidence"));
+    const rejected = await settle(() => firstTab.result.current.uploader.upload(testPdf(), "evidence"));
     expect(rejected).toMatchObject({ ok: false, error: "upload-failed" });
     firstTab.unmount();
 
     const reloaded = await renderTab();
     expect(reloaded.result.current.library.isVerified).toBe(false);
     expect(reloaded.result.current.uploader.isSignedIn).toBe(false);
-    const outcome = await settle(() => reloaded.result.current.uploader.upload(pdf(), "evidence"));
+    const outcome = await settle(() => reloaded.result.current.uploader.upload(testPdf(), "evidence"));
 
     expect(outcome).toEqual({ ok: true, path: TEST_UPLOAD_PATH });
     expect(server.count("sign")).toBe(2);
@@ -482,13 +452,13 @@ describe("upload", () => {
         : new Response(TEST_UPLOAD_CID);
     };
     const { server, result } = await renderReady({ server: { uploadResponse } });
-    expect((await settle(() => result.current.upload(pdf(), "evidence"))).ok).toBe(true);
+    expect((await settle(() => result.current.upload(testPdf(), "evidence"))).ok).toBe(true);
 
-    const failed = await settle(() => result.current.upload(pdf(), "evidence"));
+    const failed = await settle(() => result.current.upload(testPdf(), "evidence"));
     expect(failed).toMatchObject({ ok: false, error: "upload-failed" });
     expect(result.current.isSignedIn).toBe(true);
 
-    const retried = await settle(() => result.current.upload(pdf(), "evidence"));
+    const retried = await settle(() => result.current.upload(testPdf(), "evidence"));
     expect(retried.ok).toBe(true);
     expect(server.count("sign")).toBe(1);
   });
@@ -503,8 +473,7 @@ describe("upload", () => {
           }, 50);
         }),
     });
-    const wallet = createTestWallet();
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet();
     const phases: string[] = [];
     const { result } = renderHook(
       () => {
@@ -518,7 +487,7 @@ describe("upload", () => {
       expect(result.current.limits("evidence")).not.toBeNull();
     });
 
-    await settle(() => result.current.upload(pdf(), "evidence"));
+    await settle(() => result.current.upload(testPdf(), "evidence"));
 
     expect(phases).toEqual(["idle", "signing-in", "uploading", "idle"]);
   });

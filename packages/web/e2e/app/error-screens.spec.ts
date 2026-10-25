@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { fakeNetwork } from "../support/network";
+import { appOriginOf, fakeNetwork } from "../support/network";
 import { injectWallet } from "../support/wallet";
 
 // The header's links are built from the resolved chain (the URL's chain when configured, else a connected wallet's
@@ -27,7 +27,7 @@ async function headerOn(page: Page, chainId: number): Promise<boolean> {
 }
 
 test("shows the unsupported-network screen for an unconfigured chain with header links on the default chain", async ({ context, page, baseURL }) => {
-  await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin });
+  await fakeNetwork(context, { appOrigin: appOriginOf(baseURL) });
 
   await page.goto("/424242/ongoing");
 
@@ -37,7 +37,7 @@ test("shows the unsupported-network screen for an unconfigured chain with header
 
 test("points the unsupported-network header links at a connected wallet's configured chain", async ({ context, page, baseURL }) => {
   await injectWallet(context, { account: "0x00000000000000000000000000000000000000e2", chainId: 100 });
-  await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin });
+  await fakeNetwork(context, { appOrigin: appOriginOf(baseURL) });
 
   await page.goto("/424242/ongoing");
 
@@ -46,7 +46,7 @@ test("points the unsupported-network header links at a connected wallet's config
 });
 
 test("shows the 404 screen for an unknown path under a configured chain with header links on the URL's chain", async ({ context, page, baseURL }) => {
-  await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin });
+  await fakeNetwork(context, { appOrigin: appOriginOf(baseURL) });
 
   await page.goto("/100/nowhere");
 

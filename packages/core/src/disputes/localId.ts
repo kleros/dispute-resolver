@@ -5,6 +5,14 @@ import type { ReadClient } from "../types";
 import type { ArbitratedBinding, LocalIdResolution } from "./types";
 
 /**
+ * Whether `family` was detected for the binding's arbitrable on the binding's chain. A detection of any other
+ * contract, such as one meta-evidence names, must not choose the dialect of a read or write of the arbitrated contract.
+ */
+export function describesBinding(binding: ArbitratedBinding, family: FamilyDetection): boolean {
+  return family.chainId === binding.chainId && family.arbitrable === binding.arbitrated;
+}
+
+/**
  * The call goes to the arbitrator's `arbitrated`, never to an address from meta-evidence. There is no `DisputeCreation`
  * re-resolution: KlerosLiquid records and emits the same arbitrable.
  */

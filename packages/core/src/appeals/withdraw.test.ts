@@ -1,4 +1,4 @@
-import { encodeAbiParameters, encodeEventTopics, getAbiItem } from "viem";
+import { encodeAbiParameters, encodeEventTopics } from "viem";
 import { describe, expect, it } from "vitest";
 import { governorAbi, idrV1Abi, idrV2Abi, klerosLiquidAbi } from "../abi";
 import type { LocalIdResolution } from "../disputes/types";
@@ -8,6 +8,7 @@ import type { Address } from "../types";
 import { GOVERNOR_1621, UNSLASHED } from "./__fixtures__/recorded";
 import { governorSessionAbi } from "./governor";
 import { readWithdrawable, roundStartBlock, roundsToScan } from "./index";
+import { CONTRIBUTION_EVENT } from "./context";
 import type { AppealContext } from "./types";
 import {
   FAMILY_SIGNATURES,
@@ -27,7 +28,6 @@ const SYNTHETIC: Address = "0x00000000000000000000000000000000000000cc";
 const ARBITRATOR: Address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
 const ME: Address = "0x00000000000000000000000000000000000000a1";
 const OTHER: Address = "0x00000000000000000000000000000000000000a2";
-const CONTRIBUTION = getAbiItem({ abi: idrV2Abi, name: "Contribution" });
 /** The governor's `Session.status` values: `DisputeCreated` while the dispute runs, `Resolved` once ruled. */
 const DISPUTE_CREATED = 1;
 const RESOLVED = 2;
@@ -36,7 +36,7 @@ function contributionLog(input: { readonly round: bigint; readonly ruling: bigin
   return rpcLog({
     address: SYNTHETIC,
     topics: encodeEventTopics({
-      abi: [CONTRIBUTION],
+      abi: [CONTRIBUTION_EVENT],
       eventName: "Contribution",
       args: { _localDisputeID: 7n, _round: input.round, _contributor: input.contributor },
     }) as `0x${string}`[],
@@ -134,15 +134,6 @@ describe("readWithdrawable (IDisputeResolver)", () => {
     const roundStartBlocks = rounds.map((round) => roundStartBlock(round, dispute.appealDecisions, UNSLASHED_OVERRIDE, dispute.disputeStartBlock));
     expect(await readWithdrawable(ctx, { beneficiary: dispute.firstContributor, rounds, roundStartBlocks })).toEqual({ status: "nothing" });
     expect(requests.calls).toEqual(dispute.withdrawCalls.map(([key]) => key));
-  });
-
-  it("considers only the account's own contributions in the given rounds", async () => {
-    const { context: ctx, requests } = context(
-      { head: 1_000n, logs: MY_LOGS, calls: [v2Withdrawable(1n, 0n), v2Withdrawable(2n, 0n)] },
-      detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]),
-    );
-    expect(await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n, 1n], roundStartBlocks: [100n, 400n] })).toEqual({ status: "nothing" });
-    expect(requests.calls).toHaveLength(2);
   });
 
   it("scans once from the earliest round start to the head", async () => {

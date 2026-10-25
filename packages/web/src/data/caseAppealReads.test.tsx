@@ -1,9 +1,8 @@
 import type { AppealDecisionEvent } from "@dispute-resolver/core";
 import { renderHook, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { encodeAbiParameters, encodeEventTopics, encodeFunctionResult, numberToHex, toFunctionSelector, type Hex } from "viem";
 import { describe, expect, it } from "vitest";
-import { TestDataProvider, createTestDeps, sectionReady, testFamily, testFoundLookup, type RpcHandler } from "../test/data";
+import { createTestDeps, dataWrapper, sectionReady, testFamily, testFoundLookup, type RpcHandler } from "../test/data";
 import { useAppealReads, type AppealPlan } from "./caseAppealReads";
 import type { CoreDeps } from "./types";
 
@@ -145,9 +144,7 @@ function appealPlan(deps: CoreDeps): AppealPlan {
 
 function renderAppealReads(deps: CoreDeps) {
   const plan = sectionReady(appealPlan(deps));
-  return renderHook(() => useAppealReads(plan, 3, undefined), {
-    wrapper: ({ children }: { readonly children?: ReactNode }) => <TestDataProvider deps={deps}>{children}</TestDataProvider>,
-  });
+  return renderHook(() => useAppealReads(plan, 3, undefined), { wrapper: dataWrapper({ deps }) });
 }
 
 const FOUND_FUNDING = { status: "ready", value: { round: 1n, contributions: [{ ruling: 2n, amount: AMOUNT }], fundedRulings: [] } };

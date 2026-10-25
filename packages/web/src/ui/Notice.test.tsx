@@ -6,12 +6,6 @@ import type { NoticeVariant } from "./types";
 const VARIANTS: readonly NoticeVariant[] = ["success", "warning", "error", "info"];
 
 describe("Notice", () => {
-  it.each(VARIANTS)("renders the %s variant without throwing", (variant) => {
-    render(<Notice variant={variant} title="Title" body="Body" />);
-    expect(screen.getByText("Title")).toBeInTheDocument();
-    expect(screen.getByText("Body")).toBeInTheDocument();
-  });
-
   it("renders the error variant as an alert", () => {
     render(<Notice variant="error" title="Funding failed" body="The transaction was rejected." />);
     expect(screen.getByRole("alert")).toHaveTextContent("Funding failed");

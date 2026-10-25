@@ -1,9 +1,8 @@
 import { parseAbiItem } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getChain } from "../chains";
-import type { ChainConfig } from "../chains/types";
 import type { ReadClient } from "../types";
 import { createReadClient, createReadClients, createRequestBudget, isLookupLimitError } from "./index";
+import { chainOf } from "../test/chains/testHelpers";
 import { rpcCalls, stubEndpoint } from "../test/rpc/testHelpers";
 import type { BudgetedReadClientOptions } from "./types";
 
@@ -16,12 +15,6 @@ let READ_URL = "";
 const PUBLIC_URL = "https://public.rpc.example/mainnet";
 const event = parseAbiItem("event Ruling(address indexed _arbitrator, uint256 indexed _disputeID, uint256 _ruling)");
 const address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
-
-function chainOf(id: number): ChainConfig {
-  const chain = getChain(id);
-  if (chain === undefined) throw new Error(`chain ${String(id)} is not in the table`);
-  return chain;
-}
 
 function readClient(env: Record<string, string>, options?: BudgetedReadClientOptions): ReadClient {
   const resolution = createReadClient(chainOf(1), env, options);

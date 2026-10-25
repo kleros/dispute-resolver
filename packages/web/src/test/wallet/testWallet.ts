@@ -1,6 +1,7 @@
 import { CHAINS, type Address } from "@dispute-resolver/core";
-import { connect, createConfig, disconnect, mock, type Config } from "@wagmi/core";
-import { custom, defineChain, getAddress, numberToHex, type Chain, type EIP1193RequestFn } from "viem";
+import { act } from "@testing-library/react";
+import { connect, createConfig, disconnect, mock, type Config, type Connector } from "@wagmi/core";
+import { UserRejectedRequestError, custom, defineChain, getAddress, numberToHex, type Chain, type EIP1193RequestFn } from "viem";
 import { vi, type Mock } from "vitest";
 import type { WalletMode, WalletModal, WalletSetup } from "../../wallet";
 
@@ -12,6 +13,10 @@ export const TEST_WALLET_SECOND_ACCOUNT = "0x00000000000000000000000000000000000
 
 /** The test wallet's account as the app reports it (`WalletState.address`, lowercased). */
 export const TEST_WALLET_ADDRESS: Address = "0x00000000000000000000000000000000000a11ce";
+
+/** Wagmi's persisted store with a current connection, as wagmi writes it under `wagmi.store` (wagmi 2.22, recorded from a connect). */
+export const CONNECTED_WAGMI_STORE =
+  '{"state":{"connections":{"__type":"Map","value":[["bcfb5cd94f3",{"accounts":["0x00000000000000000000000000000000000A11cE"],"chainId":1,"connector":{"id":"injected","name":"Injected","type":"injected","uid":"bcfb5cd94f3"}}]]},"chainId":1,"current":"bcfb5cd94f3"},"version":2}';
 
 /** A chain no configuration has (Optimism), for a wallet on an unsupported network. */
 export const UNCONFIGURED_CHAIN_ID = 10;
@@ -34,6 +39,10 @@ function testChains(first: number): readonly [Chain, ...Chain[]] {
   return [start, ...all.filter((chain) => chain !== start)];
 }
 
+export function rejectingTransports(chains: readonly Chain[]) {
+  return Object.fromEntries(chains.map((chain) => [chain.id, custom({ request: () => Promise.reject(new Error("Tests read through core's test deps, never through wagmi.")) })]));
+}
+
 export interface TestWalletOptions {
   /** `appkit` (default) gives a fake modal recording its calls; `unconfigured` has none. */
   readonly mode?: WalletMode;
@@ -43,6 +52,8 @@ export interface TestWalletOptions {
   readonly chainId?: number;
   /** The wallet rejects (`true`) or fails (an `Error`) every switch request. */
   readonly switchChainError?: boolean | Error;
+  /** `true`: the wallet layer renders as while AppKit loads with a connection wagmi stored. */
+  readonly pendingReconnect?: boolean;
 }
 
 /** The fake AppKit modal: every call is recorded and resolves at once. */
@@ -57,6 +68,7 @@ export interface TestWallet {
   readonly setup: WalletSetup;
   /** `null` in the `unconfigured` mode. */
   readonly modal: FakeWalletModal | null;
+  readonly pendingReconnect: boolean;
   /** Connects the wallet, as if the user approved the connection. */
   connect(): Promise<void>;
   disconnect(): Promise<void>;
@@ -81,11 +93,9 @@ function fakeModal(embeddedWallet: boolean): FakeWalletModal {
  * `fakeWriteController`, or mock `writeContract` of `@wagmi/core` in a hook test.
  */
 export function createTestWallet(options: TestWalletOptions = {}): TestWallet {
-  const { mode = "appkit", chainId = 1, switchChainError, embeddedWallet = false } = options;
+  const { mode = "appkit", chainId = 1, switchChainError, embeddedWallet = false, pendingReconnect = false } = options;
   const chains = testChains(chainId);
-  const transports = Object.fromEntries(
-    chains.map((chain) => [chain.id, custom({ request: () => Promise.reject(new Error("Tests read through core's test deps, never through wagmi.")) })]),
-  );
+  const transports = rejectingTransports(chains);
   const connector = mock({ accounts: [TEST_WALLET_ACCOUNT], features: switchChainError === undefined ? {} : { switchChainError } });
   const config = createConfig({ chains, transports, connectors: [connector], storage: null, multiInjectedProviderDiscovery: false, ssr: false });
   const modal = mode === "appkit" ? fakeModal(embeddedWallet) : null;
@@ -97,6 +107,7 @@ export function createTestWallet(options: TestWalletOptions = {}): TestWallet {
     config,
     setup,
     modal,
+    pendingReconnect,
     async connect() {
       await connect(config, { connector: created });
     },
@@ -113,9 +124,45 @@ export function createTestWallet(options: TestWalletOptions = {}): TestWallet {
   };
 }
 
-/** Leaves every chain switch the wallet is asked for pending, so a test can look at a control while it waits. */
-export function holdChainSwitches(wallet: TestWallet): void {
+/** A test wallet already connected, as if the user approved the connection. */
+export async function createConnectedTestWallet(options: TestWalletOptions = {}): Promise<TestWallet> {
+  const wallet = createTestWallet(options);
+  await wallet.connect();
+  return wallet;
+}
+
+export function walletConnector(wallet: { readonly config: Config }): Connector {
   const [connector] = wallet.config.connectors;
   if (connector === undefined) throw new Error("The test wallet has no connector.");
-  vi.spyOn(connector, "switchChain").mockReturnValue(new Promise<never>(() => undefined));
+  return connector;
+}
+
+/** Leaves every chain switch the wallet is asked for pending, so a test can look at a control while it waits. Returns the wallet. */
+export function holdChainSwitches<T extends TestWallet>(wallet: T): T {
+  vi.spyOn(walletConnector(wallet), "switchChain").mockReturnValue(new Promise<never>(() => undefined));
+  return wallet;
+}
+
+/** The wallet keeps the next switch request open until the test declines it, as a user who reads the prompt first. */
+export function declineNextSwitch(wallet: TestWallet): () => void {
+  let decline: (() => void) | undefined;
+  vi.spyOn(walletConnector(wallet), "switchChain").mockImplementationOnce(
+    () =>
+      new Promise((_resolve, reject) => {
+        decline = () => {
+          reject(new UserRejectedRequestError(new Error("Declined in the wallet.")));
+        };
+      }),
+  );
+  return () => {
+    if (decline === undefined) throw new Error("No switch request reached the wallet.");
+    decline();
+  };
+}
+
+/** Sets wagmi's own connection status, as wagmi does while it reconnects a wallet. */
+export function setWalletStatus(wallet: TestWallet, status: Config["state"]["status"]): void {
+  act(() => {
+    wallet.config.setState((state) => ({ ...state, status }));
+  });
 }

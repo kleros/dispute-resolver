@@ -7,7 +7,7 @@ import { useConfig } from "wagmi";
 import { isUserRejection, useWallet } from "../wallet";
 import { failure, reasonOf } from "./failures";
 import { LIBRARY_ROLES, refuseFile, roleLimits } from "./limits";
-import { browserSessionStorage, clearRejectedToken, isLiveToken, nowInSeconds, readStoredToken, tokenExpiry } from "./session";
+import { browserSessionStorage, clearRejectedToken, isLiveToken, readStoredToken, tokenExpiry } from "./session";
 import type { AtlasUploader, JsonUpload, UploadFailure, UploadPhase, UploadResult, UploadRole } from "./types";
 
 /** How long the wrapper waits, once `authoriseUser()` resolves, for a committed render that carries the new session. */
@@ -49,7 +49,7 @@ interface Session {
 }
 
 function isSessionLive(session: Session): boolean {
-  return session.atlas.isVerified && isLiveToken(session.token, nowInSeconds());
+  return session.atlas.isVerified && isLiveToken(session.token, Date.now() / 1000);
 }
 
 function readLibraryToken(): string | null {

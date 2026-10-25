@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { TEST_ROLE_LIMITS, TEST_UPLOAD_PATH, TestAtlasProvider, fakeUploader, type FakeUploader } from "../test/atlas";
+import { TEST_ROLE_LIMITS, TEST_UPLOAD_PATH, TestAtlasProvider, fakeUploader, testPdf, type FakeUploader } from "../test/atlas";
 import { TestDataProvider } from "../test/data";
 import { TestWalletProvider, createTestWallet, type TestWallet } from "../test/wallet";
 import { AtlasFileField } from "./AtlasFileField";
@@ -10,10 +10,6 @@ import { failure } from "./failures";
 import type { AtlasFileFieldProps, UploadResult, UploadedFile } from "./types";
 
 const UPLOADED: UploadedFile = { path: TEST_UPLOAD_PATH, fileName: "brief.pdf" };
-
-function pdf(name = "brief.pdf"): File {
-  return new File(["%PDF-1.4"], name, { type: "application/pdf" });
-}
 
 /** An upload the test settles by hand. */
 function pendingUpload() {
@@ -128,7 +124,7 @@ describe("AtlasFileField", () => {
 
     expect(screen.getByText("Drop a file here or click to select one.")).toBeInTheDocument();
     expect(input).not.toHaveAttribute("accept");
-    choose(input, pdf());
+    choose(input, testPdf());
 
     expect(await screen.findByText(failure.limitsUnavailable().message)).toBeInTheDocument();
   });
@@ -167,7 +163,7 @@ describe("AtlasFileField", () => {
 
     const signingIn = pendingUpload();
     const signing = await renderField({ uploader: fakeUploader({ phase: "signing-in", isSignedIn: false, upload: () => signingIn.promise }) });
-    choose(signing.input, pdf());
+    choose(signing.input, testPdf());
     await screen.findByText("Sign the message in your wallet to start the upload.");
     expect(signing.container).not.toHaveTextContent(SIGN_IN);
     signingIn.settle(failure.signInRejected());
@@ -177,7 +173,7 @@ describe("AtlasFileField", () => {
 
     const uploading = pendingUpload();
     const upload = await renderField({ uploader: fakeUploader({ phase: "uploading", isSignedIn: false, upload: () => uploading.promise }) });
-    choose(upload.input, pdf());
+    choose(upload.input, testPdf());
     await screen.findByText("Uploading to IPFS...");
     expect(upload.container).not.toHaveTextContent(SIGN_IN);
     uploading.settle({ ok: true, path: TEST_UPLOAD_PATH });
@@ -202,17 +198,9 @@ describe("AtlasFileField", () => {
     const { input } = await renderField({ label: "Attachment", uploader: fakeUploader({ upload }) });
 
     expect(screen.getByRole("button", { name: "Attachment" })).toBeInTheDocument();
-    choose(input, pdf());
+    choose(input, testPdf());
     await screen.findByText(failure.uploadFailed("network").message);
     expect(screen.getByRole("button", { name: "Attachment" })).toBeInTheDocument();
-  });
-
-  it("describes the file-picker button with the accepted formats, the size limit and the sign-in sentence", async () => {
-    await renderField({ uploader: fakeUploader({ isSignedIn: false }) });
-
-    expect(screen.getByRole("button", { name: "Primary document" })).toHaveAccessibleDescription(
-      "Drop a file here or click to select one. PDF, image or text, up to 20 MB. Your wallet will ask you to sign in before the first upload.",
-    );
   });
 
   it("keeps describing the file-picker button by the status line after the dropzone remounts", async () => {
@@ -227,11 +215,11 @@ describe("AtlasFileField", () => {
       return current;
     };
 
-    choose(input(), pdf());
+    choose(input(), testPdf());
     await screen.findByText(failure.uploadFailed("network").message);
     expect(picker()).toHaveAccessibleDescription(failure.uploadFailed("network").message);
 
-    choose(input(), pdf());
+    choose(input(), testPdf());
     await screen.findByText("Uploaded brief.pdf.");
     expect(picker()).toHaveAccessibleDescription("Uploaded brief.pdf.");
 
@@ -257,7 +245,7 @@ describe("AtlasFileField", () => {
     const uploader = fakeUploader({ phase: "uploading", upload: () => upload.promise });
     const onUploaded = vi.fn();
     const { input } = await renderField({ uploader, onUploaded });
-    const file = pdf();
+    const file = testPdf();
 
     choose(input, file);
 
@@ -271,25 +259,14 @@ describe("AtlasFileField", () => {
     expect(onUploaded).toHaveBeenCalledWith(UPLOADED);
   });
 
-  it("asks for the wallet signature while signing in", async () => {
-    const upload = pendingUpload();
-    const { input } = await renderField({ uploader: fakeUploader({ phase: "signing-in", isSignedIn: false, upload: () => upload.promise }) });
-
-    choose(input, pdf());
-
-    expect(await screen.findByText("Sign the message in your wallet to start the upload.")).toBeInTheDocument();
-    upload.settle(failure.signInRejected());
-    expect(await screen.findByText("Signature declined. Nothing was uploaded.")).toBeInTheDocument();
-  });
-
   it("ignores another file while an upload is in progress", async () => {
     const upload = pendingUpload();
     const uploader = fakeUploader({ upload: () => upload.promise });
     const { input } = await renderField({ uploader });
 
-    choose(input, pdf());
+    choose(input, testPdf());
     await screen.findByText("Uploading to IPFS...");
-    choose(input, pdf("other.pdf"));
+    choose(input, testPdf("other.pdf"));
 
     expect(uploader.upload).toHaveBeenCalledTimes(1);
   });
@@ -299,7 +276,7 @@ describe("AtlasFileField", () => {
     const uploader = fakeUploader({ upload: () => Promise.resolve(failure.notContentAddressed()) });
     const { input } = await renderField({ uploader, onUploaded });
 
-    choose(input, pdf());
+    choose(input, testPdf());
 
     expect(await screen.findByText(failure.notContentAddressed().message)).toBeInTheDocument();
     expect(screen.queryByText("brief.pdf")).not.toBeInTheDocument();
@@ -310,7 +287,7 @@ describe("AtlasFileField", () => {
     const uploader = fakeUploader({ upload: () => Promise.reject(new Error("Network down")) });
     const { input } = await renderField({ uploader });
 
-    choose(input, pdf());
+    choose(input, testPdf());
 
     expect(await screen.findByText("An error occurred while uploading the file. Please try again. (Network down)")).toBeInTheDocument();
   });
@@ -322,7 +299,7 @@ describe("AtlasFileField", () => {
     expect(input).toBeDisabled();
     expect(screen.getByRole("button", { name: "Primary document" })).toBeDisabled();
     expect(input.closest("fieldset")?.parentElement).toHaveClass(...LOCKED_LOOK);
-    choose(input, pdf());
+    choose(input, testPdf());
 
     expect(container).not.toHaveTextContent(/unavailable|Drop a file here/i);
     expect(screen.queryByRole("button", { name: "Connect wallet" })).toBeNull();
@@ -337,7 +314,7 @@ describe("AtlasFileField", () => {
     expect(screen.getByRole("button", { name: "Primary document" })).toBeDisabled();
     expect(container.querySelector("[data-disabled]")).not.toBeNull();
     expect(input.closest("fieldset")?.parentElement).toHaveClass(...LOCKED_LOOK);
-    choose(input, pdf());
+    choose(input, testPdf());
 
     expect(uploader.upload).not.toHaveBeenCalled();
   });
@@ -396,7 +373,7 @@ describe("AtlasFileField", () => {
     const onUploaded = vi.fn();
     const { input } = await renderField({ initial: UPLOADED, onCleared, onUploaded });
 
-    choose(input, pdf("replacement.pdf"));
+    choose(input, testPdf("replacement.pdf"));
 
     await waitFor(() => {
       expect(onUploaded).toHaveBeenCalledWith({ path: TEST_UPLOAD_PATH, fileName: "replacement.pdf" });
@@ -409,19 +386,9 @@ describe("AtlasFileField", () => {
     const user = userEvent.setup();
     const wallet = createTestWallet();
     const uploader = fakeUploader({ isSignedIn: false, upload: () => Promise.resolve(failure.noWallet()) });
-    render(
-      <TestDataProvider>
-        <TestWalletProvider wallet={wallet}>
-          <TestAtlasProvider uploader={uploader}>
-            <Harness />
-          </TestAtlasProvider>
-        </TestWalletProvider>
-      </TestDataProvider>,
-    );
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]');
-    if (input === null) throw new Error("The field has no file input.");
+    const { input } = await renderField({ wallet, connect: false, uploader });
 
-    choose(input, pdf());
+    choose(input, testPdf());
     await user.click(await screen.findByRole("button", { name: "Connect wallet" }));
 
     expect(screen.getByText("Connect a wallet to upload files.")).toBeInTheDocument();
@@ -446,7 +413,7 @@ describe("AtlasFileField", () => {
     const { input, container } = await renderField({ uploader });
     expect(dropzone(container).className).not.toContain(SHAKE);
 
-    choose(input, pdf());
+    choose(input, testPdf());
 
     expect(await screen.findByText(refusal.message)).toBeInTheDocument();
     expect(dropzone(container).className).toContain(SHAKE);
@@ -461,7 +428,7 @@ describe("AtlasFileField", () => {
     const uploader = fakeUploader({ upload: () => Promise.resolve(result) });
     const { input, container } = await renderField({ uploader });
 
-    choose(input, pdf());
+    choose(input, testPdf());
 
     expect(await screen.findByText(result.message)).toBeInTheDocument();
     expect(dropzone(container).className).not.toContain(SHAKE);

@@ -5,24 +5,9 @@ const ABC = ["A", "B", "C"];
 const NINE = ["o0", "o1", "o2", "o3", "o4", "o5", "o6", "o7", "o8"];
 
 describe("combinationTitle", () => {
-  it("combination 0 reads None", () => {
-    expect(combinationTitle(0n, ABC)).toBe("None");
-  });
-
-  it("a combination reads the titles of its set bits, lowest bit first, joined by a comma", () => {
-    expect(combinationTitle(1n, ABC)).toBe("A");
-    expect(combinationTitle(2n, ABC)).toBe("B");
-    expect(combinationTitle(5n, ABC)).toBe("A, C");
-    expect(combinationTitle(7n, ABC)).toBe("A, B, C");
-  });
-
-  it("every combination of three titles has a distinct title", () => {
+  it("a combination reads the titles of its set bits, lowest bit first, joined by a comma, and combination 0 reads None", () => {
     const titles = Array.from({ length: 8 }, (_, combination) => combinationTitle(BigInt(combination), ABC));
     expect(titles).toEqual(["None", "A", "B", "A, B", "C", "A, C", "B, C", "A, B, C"]);
-  });
-
-  it("a combination above four options reads the titles of its set bits", () => {
-    expect(combinationTitle(0b100010001n, NINE)).toBe("o0, o4, o8");
   });
 
   it("titles that contain spaces stay apart in a combination", () => {

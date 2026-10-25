@@ -1,30 +1,13 @@
-import type { ChainId, MetaEvidence, MetaEvidenceResult, Unavailable } from "@dispute-resolver/core";
+import type { ChainId, MetaEvidence } from "@dispute-resolver/core";
 import { useId } from "react";
-import type { CaseSectionProps, SectionData } from "../../data";
+import { metaEvidenceSection, type CaseSectionProps } from "../../data";
 import { courtCaseUrl, ExternalLink } from "../../safe-content";
 import { LABEL, SectionSkeleton, SectionUnavailable } from "../../ui";
 import { questionTypeLabel, votingOptions, type VotingOption } from "./questionOptions";
 
 const SECTION = "Question";
 
-const NO_META_EVIDENCE: Unavailable = {
-  code: "not-found",
-  message: "This dispute has no meta-evidence, so its question and voting options cannot be shown.",
-};
-
-function questionSource(metaEvidence: SectionData<MetaEvidenceResult>): SectionData<MetaEvidence> {
-  if (metaEvidence.status !== "ready") return metaEvidence;
-  const result = metaEvidence.value;
-  switch (result.status) {
-    case "ok":
-    case "invalid":
-      return { status: "ready", value: result.metaEvidence };
-    case "missing":
-      return { status: "unavailable", error: NO_META_EVIDENCE };
-    case "failed":
-      return { status: "unavailable", error: result.error };
-  }
-}
+const NO_META_EVIDENCE = "This dispute has no meta-evidence, so its question and voting options cannot be shown.";
 
 const VISIBLE_TEXT = /\S/;
 
@@ -101,9 +84,7 @@ function QuestionContent({ metaEvidence, disputeId, chainId }: QuestionContentPr
       {question === null && label === null ? null : (
         <div className="flex flex-col gap-1">
           {question === null ? null : (
-            <p className="whitespace-pre-line text-lg leading-7 font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere] text-pretty">
-              {question}
-            </p>
+            <p className="whitespace-pre-line text-lg leading-7 font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere] text-pretty">{question}</p>
           )}
           {label === null ? null : <p className={LABEL}>{label}</p>}
         </div>
@@ -118,7 +99,7 @@ interface QuestionPanelProps extends CaseSectionProps {
 }
 
 export function QuestionPanel({ dispute, chain, onRetry }: QuestionPanelProps) {
-  const source = questionSource(dispute.metaEvidence);
+  const source = metaEvidenceSection(dispute.metaEvidence, NO_META_EVIDENCE);
   switch (source.status) {
     case "loading":
       return <SectionSkeleton variant="text" lines={3} />;

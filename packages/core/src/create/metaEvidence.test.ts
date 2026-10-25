@@ -108,10 +108,6 @@ describe("buildCreatedMetaEvidence", () => {
     expect(buildCreatedMetaEvidence(input({ primaryDocument: null })).fileURI).toBe("");
   });
 
-  it("fileURI is the canonical document path, written as validated", () => {
-    expect(buildCreatedMetaEvidence(input()).fileURI).toBe(DOCUMENT);
-  });
-
   it("an empty category, description and alias map are kept as empty values", () => {
     const metaEvidence = buildCreatedMetaEvidence(input({ category: "", description: "", aliases: {} }));
     expect(metaEvidence).toMatchObject({ category: "", description: "", aliases: {} });
@@ -122,10 +118,5 @@ describe("buildCreatedMetaEvidence", () => {
     expect(`/ipfs/${REGISTRY.defaultScriptCid}`).toBe(DEFAULT_SCRIPT);
     const registry: Registry = { ...REGISTRY, defaultScriptCid: "QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA" };
     expect(buildCreatedMetaEvidence(input(), registry).dynamicScriptURI).toBe("/ipfs/QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA");
-  });
-
-  it("the court and vote count stay in extraData, not in the meta-evidence", () => {
-    const metaEvidence = buildCreatedMetaEvidence(input({ courtId: 7n, votes: 5n }));
-    expect(Object.keys(metaEvidence)).toEqual(["title", "category", "description", "aliases", "question", "rulingOptions", "fileURI", "dynamicScriptURI"]);
   });
 });

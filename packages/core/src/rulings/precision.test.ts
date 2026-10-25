@@ -16,6 +16,10 @@ describe("parsePrecision", () => {
     [2.7, 2],
     [-3, 0],
     [[5], 5],
+    ["0x12", 18],
+    ["0X12", 18],
+    [" 0x12 ", 18],
+    ["0x0", 0],
   ])("reads %j as reality-eth-lib does: %j", (value, expected) => {
     expect(parsePrecision(value)).toBe(expected);
   });
@@ -32,15 +36,6 @@ describe("parsePrecision", () => {
     const encoded = encodeAnswer({ type: "uint", value: "2.5" }, options);
     expect(encoded).toEqual({ ok: true, code: 26n });
     expect(formatRuling(26n, options, null)).toBe("2.5");
-  });
-
-  it.each([
-    ["0x12", 18],
-    ["0X12", 18],
-    [" 0x12 ", 18],
-    ["0x0", 0],
-  ])("reads hexadecimal %j as reality-eth-lib's parseInt does: %j", (value, expected) => {
-    expect(parsePrecision(value)).toBe(expected);
   });
 
   it("an answer encodes at a hexadecimal precision as reality-eth-lib encodes it", () => {

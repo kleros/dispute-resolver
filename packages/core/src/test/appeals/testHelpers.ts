@@ -5,17 +5,17 @@
  */
 import { createPublicClient, custom, encodeFunctionData, encodeFunctionResult, numberToHex, pad } from "viem";
 import type { Abi, ContractFunctionArgs, ContractFunctionName, ContractFunctionReturnType } from "viem";
-import { EIP1967_IMPLEMENTATION_SLOT, SELECTORS } from "../../abi";
+import { SELECTORS } from "../../abi";
 import type { ProbeSignature } from "../../abi/types";
 import type { ArbitratedBinding } from "../../disputes/types";
-import { classifySelectors, detectFamily } from "../../families";
-import { RECORDED_CONTRACTS } from "../../families/__fixtures__/recorded";
+import { classifySelectors } from "../../families";
 import type { FamilyDetection } from "../../families/types";
 import { toRegistryAddress } from "../../registry";
-import { rpcError, type RpcLog } from "../rpc/testHelpers";
+import { callKey, rpcError, type RpcLog } from "../rpc/testHelpers";
 import type { Address, ChainId, Hex, ReadClient } from "../../types";
 
-export { rpcError, type RpcLog } from "../rpc/testHelpers";
+export { recordedDetection } from "../families/testHelpers";
+export { callKey, rpcError, type RpcLog } from "../rpc/testHelpers";
 
 /** The answer to one `eth_call`: raw return data, or the node's JSON-RPC error. */
 export type CallReply = { readonly result: Hex } | { readonly error: { readonly code: number; readonly message: string } };
@@ -48,10 +48,6 @@ export interface NodeRequests {
   /** `callKey` of every `eth_call`. */
   readonly calls: string[];
   readonly logs: LogsFilter[];
-}
-
-export function callKey(to: string, data: Hex): string {
-  return `${to}:${data}`.toLowerCase();
 }
 
 interface CallInput<TAbi extends Abi, TName extends ContractFunctionName<TAbi, "view" | "pure">> {
@@ -188,28 +184,6 @@ export function detectionFor(arbitrable: string, signatures: readonly ProbeSigna
   const selectors = signatures.map((signature) => SELECTORS[signature]);
   const { family, capabilities } = classifySelectors(new Set(selectors));
   return { chainId, arbitrable: toRegistryAddress(arbitrable), family, writeFamily: family, capabilities, realityProxy: null, implementation: null };
-}
-
-/**
- * The detection `families.detectFamily` gives a recorded contract (`families/__fixtures__/bytecode-<chain>.json`): its
- * code, or its EIP-1967 implementation's, and the registry's Reality proxies.
- */
-export function recordedDetection(chainId: ChainId, address: string): Promise<FamilyDetection> {
-  const arbitrable = toRegistryAddress(address);
-  const contract = RECORDED_CONTRACTS.find((candidate) => candidate.chainId === chainId && candidate.address === arbitrable);
-  if (contract === undefined) return Promise.reject(new Error(`no recorded bytecode for ${String(chainId)}:${arbitrable}`));
-  const { implementation } = contract;
-  const code = new Map<string, Hex>([[contract.address, contract.code]]);
-  if (implementation !== null) code.set(implementation.address, implementation.code);
-  const request = ({ method, params }: { method: string; params?: unknown }): Promise<unknown> => {
-    const [target, slot] = params as [string, string];
-    if (method === "eth_getCode") return Promise.resolve(code.get(target.toLowerCase()) ?? "0x");
-    if (method === "eth_getStorageAt" && slot.toLowerCase() === EIP1967_IMPLEMENTATION_SLOT) {
-      return Promise.resolve(pad(target.toLowerCase() === arbitrable && implementation !== null ? implementation.address : "0x", { size: 32 }));
-    }
-    return Promise.reject(rpcError(-32601, `unexpected method ${method}`));
-  };
-  return detectFamily({ client: createPublicClient({ transport: custom({ request }, { retryCount: 0 }) }), chainId, arbitrable });
 }
 
 /** Probe signatures of each family's typical code. */

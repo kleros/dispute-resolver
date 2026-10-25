@@ -17,7 +17,7 @@ import { decodeAbiParameters, encodeEventTopics, numberToHex, type Hex } from "v
 import { z } from "zod";
 import { erc1497Abi } from "../src/abi";
 import type { ChainId } from "../src/types";
-import { failureMessage } from "./failureMessage";
+import { runScript } from "./failureMessage";
 import { loadRepositoryEnv, rawRpcFor, type RawRpc } from "./recordingRpc";
 
 const RECORDED_ON = "2026-10-20";
@@ -65,13 +65,9 @@ const block = z.looseObject({ timestamp: z.string() });
 const recordedCall = z.looseObject({ method: z.string(), params: z.array(z.unknown()) });
 const recording = z.looseObject({ description: z.string(), readAtBlock: z.number(), calls: z.array(recordedCall) });
 
-function hex(value: bigint): Hex {
-  return numberToHex(value);
-}
-
 /** One `eth_getLogs` filter, spelled as viem sends it. */
 function filterOf(address: string, topics: readonly (Hex | null)[], fromBlock: bigint, toBlock: bigint) {
-  return { address, topics, fromBlock: hex(fromBlock), toBlock: hex(toBlock) };
+  return { address, topics, fromBlock: numberToHex(fromBlock), toBlock: numberToHex(toBlock) };
 }
 
 function metaEvidenceTopics(metaEvidenceId: bigint): Hex[] {
@@ -240,9 +236,4 @@ async function main(): Promise<number> {
   return 0;
 }
 
-try {
-  process.exitCode = await main();
-} catch (error) {
-  console.error(failureMessage(error));
-  process.exitCode = 1;
-}
+await runScript(main);

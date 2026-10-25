@@ -8,7 +8,6 @@ import {
   type ChainId,
   type DisputeEvent,
   type DisputeEventResult,
-  type DisputeLookup,
   type DisputeReads,
   type FamilyDetection,
   type ReadClient,
@@ -18,10 +17,8 @@ import { assembleAppealPanel, assembleView, assembleWriteContext, lookupError, v
 import { useCoreDeps } from "./context";
 import { useDisputeDetails, useDisputeEvent, useDisputeLookup, useEvidence, useFamily, useMetaEvidence, type FoundDispute } from "./disputeHooks";
 import { useCourts } from "./ongoingHooks";
-import { LOADING, noRpcError, ready, unavailableFrom, valueOf } from "./sectionData";
-import type { CaseData, CaseDispute, SectionData } from "./types";
-
-type FoundLookup = Extract<DisputeLookup, { status: "found" }>;
+import { LOADING, fromOutcome, noRpcError, ready, unavailableFrom, valueOf } from "./sectionData";
+import type { CaseData, CaseDispute, FoundLookup, SectionData } from "./types";
 
 function foundEvent(event: SectionData<DisputeEventResult>): DisputeEvent | undefined {
   return event.status === "ready" && event.value.status === "found" ? event.value.event : undefined;
@@ -34,9 +31,7 @@ function settledEventBlock(event: SectionData<DisputeEventResult>): bigint | nul
 }
 
 function appealDecisionsOf(details: SectionData<DisputeReads>): SectionData<readonly AppealDecisionEvent[]> {
-  if (details.status !== "ready") return details;
-  const { appealDecisions } = details.value;
-  return appealDecisions.ok ? ready(appealDecisions.value) : unavailableFrom(appealDecisions.error);
+  return details.status === "ready" ? fromOutcome(details.value.appealDecisions) : details;
 }
 
 /**

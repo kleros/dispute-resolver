@@ -1,4 +1,4 @@
-import type { BrowserContext, Page } from "@playwright/test";
+import { expect, type BrowserContext, type Locator, type Page } from "@playwright/test";
 
 // An injected EIP-1193 wallet for the Playwright suites, installed with `addInitScript` before any app script. It
 // announces one account on one chain through EIP-6963 (the app's wagmi discovers it and reconnects it when a wallet is
@@ -16,6 +16,11 @@ export interface InjectedWalletOptions {
   readonly heldSwitches?: boolean;
   /** Whether the user signs the messages `personal_sign` asks for (default: refused with 4200, like any other method). */
   readonly signs?: boolean;
+}
+
+/** Fails early, and says why, when the build connects no wallet (no WalletConnect project ID): `account` never shows. */
+export async function expectWalletConnected(account: Locator): Promise<void> {
+  await expect(account, "the injected wallet never connected (the build needs REACT_APP_WALLETCONNECT_PROJECT_ID)").toBeVisible({ timeout: 30_000 });
 }
 
 /** One message the user signed: the account that signed it and the text it read. */

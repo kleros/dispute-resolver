@@ -2,7 +2,7 @@ import { z } from "../zod";
 import type { Outcome } from "../types";
 import { toAttachmentLink } from "../uri";
 import type { GatewayOrigin } from "../uri/types";
-import { fail, succeed } from "./outcome";
+import { fail, succeed } from "../outcome";
 import type { EvidenceItem } from "./types";
 
 type EvidenceDocumentFields = Pick<EvidenceItem, "title" | "description" | "attachment">;

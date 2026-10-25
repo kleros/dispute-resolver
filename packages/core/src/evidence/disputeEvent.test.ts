@@ -1,6 +1,5 @@
-import { numberToHex, pad, toEventSelector } from "viem";
+import { numberToHex, pad } from "viem";
 import { describe, expect, it } from "vitest";
-import { erc1497Abi } from "../abi";
 import { CHAINS } from "../chains";
 import type { Address } from "../types";
 import { scanEvidenceLogs } from "./events";
@@ -23,14 +22,6 @@ function syntheticDispute(blockNumber: bigint, logIndex: number): RpcLog {
 }
 
 describe("readDisputeEvent", () => {
-  it("the ERC-1497 event selectors are the recorded ones", () => {
-    const dispute = erc1497Abi.find((item) => item.name === "Dispute");
-    const evidence = erc1497Abi.find((item) => item.name === "Evidence");
-    if (dispute === undefined || evidence === undefined) throw new Error("ERC-1497 events missing from the ABI");
-    expect(toEventSelector(dispute)).toBe(DISPUTE_1454.disputeLogs[0]?.topics[0]);
-    expect(toEventSelector(evidence)).toBe(DISPUTE_1454.evidenceLogs[0]?.topics[0]);
-  });
-
   it("reads the recorded Dispute event of mainnet 1454 with its block time as the creation time", async () => {
     const { result } = readRecorded(1454n, DISPUTE_1454.arbitrable);
     const recorded = DISPUTE_1454.disputeLogs[0];

@@ -1,7 +1,9 @@
 /* eslint-disable sonarjs/no-clear-text-protocols -- these tests assert that plain http:// URLs are refused. */
 import { describe, expect, it } from "vitest";
 import { IMAGE_EXTENSIONS, TEXT_EXTENSIONS, VIDEO_EXTENSIONS } from "./extensions";
-import { attachmentKind, isSafeNavigationUrl, isSelfLink, lastPathSegment, resolveArbitrableAppLink, toAttachmentLink } from "./index";
+import { lastPathSegment } from "./attachment";
+import { attachmentKind, isSafeNavigationUrl, resolveArbitrableAppLink, toAttachmentLink } from "./index";
+import { isSelfLink } from "./links";
 import type { AttachmentKind, GatewayOrigin, SelfHosts } from "./types";
 import {
   AUTHORITY_LESS_HTTPS,

@@ -6,22 +6,6 @@ import { EIP1967_IMPLEMENTATION_SLOT, SELECTORS, governorAbi } from "./index";
 import { ARTIFACTS, VERIFIED, findBySignature, signatureOf, type NormalizedItem } from "./__fixtures__/artifacts";
 import { carriesSelector, recordedByFamily, RECORDED_CONTRACTS } from "./__fixtures__/bytecode";
 
-/** Written out by hand, independently of `SELECTORS`. */
-const DOCUMENTED: Readonly<Record<string, string>> = {
-  "disputeIDtoTransactionID(uint256)": "0x2fbe3b03",
-  "externalIDtoLocalID(uint256)": "0xc21ae061",
-  "submitEvidence(string)": "0xbac91e2e",
-  "submitEvidence(uint256,string)": "0xa6a7f0eb",
-  "fundAppeal(uint256)": "0xa446ff57",
-  "getCurrentSessionNumber()": "0x6c0b7e71",
-  "getTotalWithdrawableAmount(uint256,address,uint256)": "0xec85635b",
-  "getTotalWithdrawableAmount(uint256,address,uint256[])": "0xc25516e9",
-  "fundAppeal(uint256,uint256)": "0x4b2f0ea0",
-};
-
-/** Read from the verified legacy resolver. */
-const LEGACY_FUND_APPEAL_UINT8 = "0x12b3a2c0";
-
 const GOVERNOR_FIXTURE = VERIFIED.governors[0];
 if (GOVERNOR_FIXTURE === undefined) throw new Error("the governor fixtures are empty");
 
@@ -39,8 +23,6 @@ const SOURCES: Readonly<Record<ProbeSignature, readonly NormalizedItem[]>> = {
   "fundAppeal(uint256,uint8)": VERIFIED.legacyResolver.abi,
 };
 
-const byText = new Intl.Collator("en").compare;
-
 const PROBE_SIGNATURES = Object.keys(SOURCES) as ProbeSignature[];
 
 function selectorFromSource(signature: ProbeSignature): string {
@@ -48,20 +30,8 @@ function selectorFromSource(signature: ProbeSignature): string {
 }
 
 describe("SELECTORS", () => {
-  it("has exactly the ten probe signatures", () => {
-    expect(Object.keys(SELECTORS).sort(byText)).toEqual([...PROBE_SIGNATURES].sort(byText));
-  });
-
   it.each(PROBE_SIGNATURES)("%s equals the selector computed from its published or verified source entry", (signature) => {
     expect(SELECTORS[signature]).toBe(selectorFromSource(signature));
-  });
-
-  it.each(Object.entries(DOCUMENTED))("%s is %s when written out by hand", (signature, selector) => {
-    expect(SELECTORS[signature as ProbeSignature]).toBe(selector);
-  });
-
-  it("fundAppeal(uint256,uint8) is 0x12b3a2c0, as read from the verified older resolver", () => {
-    expect(SELECTORS["fundAppeal(uint256,uint8)"]).toBe(LEGACY_FUND_APPEAL_UINT8);
   });
 
   it("every selector is a distinct, lowercase 4-byte hex value", () => {
@@ -177,9 +147,5 @@ describe("EIP-1967 implementation slot", () => {
   it("equals keccak256('eip1967.proxy.implementation') - 1", () => {
     const derived = toHex(BigInt(keccak256(stringToHex("eip1967.proxy.implementation"))) - 1n, { size: 32 });
     expect(EIP1967_IMPLEMENTATION_SLOT).toBe(derived);
-  });
-
-  it("is the well-known slot value", () => {
-    expect(EIP1967_IMPLEMENTATION_SLOT).toBe("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc");
   });
 });

@@ -1,8 +1,8 @@
-import { checkChainMatch, explorerTxUrl, getChain, type ChainId, type ChainMatch, type Hex, type WriteBuild, type WriteCall } from "@dispute-resolver/core";
+import { checkChainMatch, explorerTxUrl, getChain, type ChainId, type Hex, type WriteBuild, type WriteCall } from "@dispute-resolver/core";
 import { getAccount, writeContract, type Config } from "@wagmi/core";
 import type { WriteReceipt } from "../data";
 import { errorMessage, isChainMismatch, isUserRejection } from "./errors";
-import type { WriteOptions, WriteOutcome, WriteStatus } from "./types";
+import type { NeedsWalletGuard, WriteOptions, WriteOutcome, WriteStatus, WrongChainGuard } from "./types";
 
 /** What one write needs besides the call: wagmi to sign, and the configured read RPC for the receipt. */
 export interface WriteEnvironment {
@@ -12,7 +12,9 @@ export interface WriteEnvironment {
 
 type Report = (status: WriteStatus) => void;
 
-function guardOutcome(match: ChainMatch, pageChainId: ChainId): WriteOutcome | null {
+/** `null` when the wallet can sign on the page chain; else the refusal to show. */
+export function chainGuard(walletChainId: number | undefined, pageChainId: ChainId): NeedsWalletGuard | WrongChainGuard | null {
+  const match = checkChainMatch(walletChainId, pageChainId);
   if (match.ok) return null;
   if (match.reason === "no-wallet") return { phase: "needs-wallet", pageChainId };
   return { phase: "wrong-chain", walletChainId: match.walletChainId, pageChainId: match.pageChainId };
@@ -50,7 +52,7 @@ async function sign(config: Config, call: WriteCall, pageChainId: ChainId): Prom
     if (isUserRejection(error)) return { outcome: { phase: "rejected" } };
     if (isChainMismatch(error)) {
       const walletChainId = await connectorChainId(config).catch(() => undefined);
-      const guard = guardOutcome(checkChainMatch(walletChainId, pageChainId), pageChainId);
+      const guard = chainGuard(walletChainId, pageChainId);
       if (guard !== null) return { outcome: guard };
     }
     return { outcome: { phase: "failed", hash: null, explorerUrl: null, message: errorMessage(error, call.chainId) } };
@@ -73,6 +75,14 @@ function replacementFailure(receipt: WriteReceipt, hash: Hex): string | null {
   return replacement.reason === "cancelled" ? CANCELLED_MESSAGE : REPLACED_MESSAGE;
 }
 
+export async function refreshAfter(options: WriteOptions, receipt: WriteReceipt): Promise<void> {
+  try {
+    await options.onMined?.(receipt);
+  } catch {
+    // The transactions are mined; a refresh that fails leaves its sections showing their own unavailable state.
+  }
+}
+
 /**
  * Waits for the receipt through the configured RPC; a revert or a lost receipt is a failure shown with the hash.
  * The receipt is that of the transaction actually mined: a repricing counts as the call under its new hash, and a
@@ -90,11 +100,7 @@ async function confirm(environment: WriteEnvironment, call: WriteCall, hash: Hex
   const replaced = replacementFailure(receipt, hash);
   if (replaced !== null) return { phase: "failed", hash: minedHash, explorerUrl: url, message: replaced };
   if (receipt.status !== "success") return { phase: "failed", hash: minedHash, explorerUrl: url, message: "The transaction reverted." };
-  try {
-    await options.onMined?.(receipt);
-  } catch {
-    // The transaction is mined; a refresh that fails leaves its sections showing their own unavailable state.
-  }
+  await refreshAfter(options, receipt);
   return { phase: "mined", hash: minedHash, explorerUrl: url, receipt };
 }
 
@@ -113,7 +119,7 @@ export async function performWrite(environment: WriteEnvironment, build: WriteBu
   if (build.call.chainId !== pageChainId) return settle({ phase: "refused", refusal: "call-chain-mismatch" });
   const { config } = environment;
 
-  const guard = guardOutcome(checkChainMatch(connectedChainId(config), pageChainId), pageChainId);
+  const guard = chainGuard(connectedChainId(config), pageChainId);
   if (guard !== null) return settle(guard);
 
   report({ phase: "pending" });
@@ -123,7 +129,7 @@ export async function performWrite(environment: WriteEnvironment, build: WriteBu
   } catch (error) {
     return settle({ phase: "failed", hash: null, explorerUrl: null, message: errorMessage(error) });
   }
-  const recheck = guardOutcome(checkChainMatch(currentChainId, pageChainId), pageChainId);
+  const recheck = chainGuard(currentChainId, pageChainId);
   if (recheck !== null) return settle(recheck);
 
   const signed = await sign(config, build.call, pageChainId);

@@ -1,4 +1,4 @@
-import { REGISTRY, resolveGateway } from "@dispute-resolver/core";
+import { REGISTRY, resolveGateway, withoutTrailingSlashes } from "@dispute-resolver/core";
 import type { Env } from "@dispute-resolver/core";
 import { ENV } from "./env";
 import type { AppConfig, AppLocation } from "./types";
@@ -7,12 +7,6 @@ import type { AppConfig, AppLocation } from "./types";
 function readWalletConnectProjectId(env: Env): string | null {
   const projectId = env.REACT_APP_WALLETCONNECT_PROJECT_ID?.trim() ?? "";
   return projectId === "" ? null : projectId;
-}
-
-function withoutTrailingSlashes(path: string): string {
-  let end = path.length;
-  while (end > 0 && path.charAt(end - 1) === "/") end -= 1;
-  return path.slice(0, end);
 }
 
 /**

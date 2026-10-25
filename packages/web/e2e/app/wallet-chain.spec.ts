@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
-import { fakeNetwork, loadRecording } from "../support/network";
-import { changeWalletChain, injectWallet, walletRequests } from "../support/wallet";
+import { appOriginOf, fakeNetwork, loadRecording } from "../support/network";
+import { changeWalletChain, expectWalletConnected, injectWallet, walletRequests } from "../support/wallet";
 
 // playwright.config.ts gives the e2e build a WalletConnect project ID; every wallet service is aborted, so the injected
 // wallet is the only one. With a wallet connected the wallet's chain is the truth: a page on another chain asks the
@@ -17,14 +17,8 @@ function caseTitle(page: Page) {
   return page.getByRole("heading", { name: CASE_TITLE, exact: true, includeHidden: true });
 }
 
-/** Fails early, and says why, when the build connects no wallet (no WalletConnect project ID). */
-async function expectWalletConnected(page: Page): Promise<void> {
-  await expect(
-    page.getByRole("button", { name: /^Account 0x0000…00E2$/i }),
-    "the injected wallet never connected (the build needs REACT_APP_WALLETCONNECT_PROJECT_ID)",
-  ).toBeVisible({
-    timeout: 30_000,
-  });
+function accountButton(page: Page) {
+  return page.getByRole("button", { name: /^Account 0x0000…00E2$/i });
 }
 
 function countOf(requests: readonly string[], method: string): number {
@@ -54,10 +48,10 @@ function countLoads(page: Page): () => number {
 
 test("refuses Fund visibly and sends nothing while the wallet's switch to the page chain waits", async ({ context, page, baseURL }) => {
   await injectWallet(context, { account: ACCOUNT, chainId: 100, heldSwitches: true });
-  const traffic = await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, recordings: [RECORDING] });
+  const traffic = await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), recordings: [RECORDING] });
 
   await page.goto(CASE_PATH);
-  await expectWalletConnected(page);
+  await expectWalletConnected(accountButton(page));
   // The one switch request at load is never answered: the page stays on the URL's chain meanwhile.
   await expect.poll(() => switchRequests(page)).toBe(1);
   await expect(caseTitle(page)).toBeVisible();
@@ -82,10 +76,10 @@ test("refuses Fund visibly and sends nothing while the wallet's switch to the pa
 
 test("when the wallet changes chain on its own, a case page opens the new chain's Ongoing Disputes without a reload and asks for no switch", async ({ context, page, baseURL }) => {
   await injectWallet(context, { account: ACCOUNT, chainId: 1 });
-  await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, recordings: [RECORDING] });
+  await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), recordings: [RECORDING] });
 
   await page.goto(`${CASE_PATH}?from=e2e`);
-  await expectWalletConnected(page);
+  await expectWalletConnected(accountButton(page));
   await expect(caseTitle(page)).toBeVisible();
   // A full page load would drop this marker.
   await page.evaluate(() => {
@@ -104,10 +98,10 @@ test("when the wallet changes chain on its own, a case page opens the new chain'
 
 test("a pasted case link on the other chain, declined in the wallet, opens the wallet chain's Ongoing Disputes with one toast", async ({ context, page, baseURL }) => {
   await injectWallet(context, { account: ACCOUNT, chainId: 100, declinedSwitches: 1 });
-  await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, recordings: [RECORDING] });
+  await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), recordings: [RECORDING] });
 
   await page.goto(CASE_PATH);
-  await expectWalletConnected(page);
+  await expectWalletConnected(accountButton(page));
 
   await expect(page).toHaveURL("/100/ongoing");
   const toast = notifications(page).getByRole("status");
@@ -122,10 +116,10 @@ test("a pasted case link on the other chain, declined in the wallet, opens the w
 
 test("a pasted case link on the other chain, accepted in the wallet, stays on the case", async ({ context, page, baseURL }) => {
   await injectWallet(context, { account: ACCOUNT, chainId: 100 });
-  const traffic = await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, recordings: [RECORDING] });
+  const traffic = await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), recordings: [RECORDING] });
 
   await page.goto(CASE_PATH);
-  await expectWalletConnected(page);
+  await expectWalletConnected(accountButton(page));
 
   await expect.poll(() => switchRequests(page)).toBe(1);
   await expect(caseTitle(page)).toBeVisible();
@@ -138,11 +132,11 @@ test("a pasted case link on the other chain, accepted in the wallet, stays on th
 
 test("a list page on the other chain, declined, moves to the same path on the wallet's chain keeping the search and hash", async ({ context, page, baseURL }) => {
   await injectWallet(context, { account: ACCOUNT, chainId: 100, declinedSwitches: 1 });
-  await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin });
+  await fakeNetwork(context, { appOrigin: appOriginOf(baseURL) });
   const loads = countLoads(page);
 
   await page.goto("/1/ongoing?from=e2e#list");
-  await expectWalletConnected(page);
+  await expectWalletConnected(accountButton(page));
 
   await expect(page).toHaveURL("/100/ongoing?from=e2e#list");
   const toast = notifications(page).getByRole("status");
@@ -164,10 +158,10 @@ for (const [from, to] of [
 ] as const) {
   test(`picking Gnosis Network from the header pill on ${from} asks the wallet once, and the app follows it to ${to} with no toast`, async ({ context, page, baseURL }) => {
     await injectWallet(context, { account: ACCOUNT, chainId: 1 });
-    await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, recordings: [RECORDING] });
+    await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), recordings: [RECORDING] });
 
     await page.goto(from);
-    await expectWalletConnected(page);
+    await expectWalletConnected(accountButton(page));
     await networkPill(page).click();
     await page.getByRole("menuitem", { name: "Gnosis Network" }).click();
 

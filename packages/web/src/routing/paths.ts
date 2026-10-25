@@ -1,5 +1,6 @@
 import { getChain, parseChainId, parseDisputeId, type ChainId } from "@dispute-resolver/core";
 import { matchRoutes, type RouteObject } from "react-router";
+import { maxUint256 } from "viem";
 import type { PathLocation, Paths } from "./types";
 
 export const CHAIN_PARAM = "chainId";
@@ -7,8 +8,6 @@ export const CHAIN_PARAM = "chainId";
 /** The case routes under `/:chainId`, as `createAppRoutes` declares them. */
 export const CASE_ROUTE = "cases/:id?";
 export const INTERACT_ROUTE = "interact/:id/*";
-
-const UINT256_MAX = 2n ** 256n - 1n;
 
 const ALL_DIGITS = /^\d+$/;
 
@@ -24,7 +23,7 @@ function chainSegment(chainId: ChainId): string {
 }
 
 function disputeSegment(disputeId: bigint): string {
-  if (typeof disputeId !== "bigint" || disputeId < 0n || disputeId > UINT256_MAX) throw new RangeError("A case path needs a dispute ID between 0 and 2^256 - 1.");
+  if (typeof disputeId !== "bigint" || disputeId < 0n || disputeId > maxUint256) throw new RangeError("A case path needs a dispute ID between 0 and 2^256 - 1.");
   return disputeId.toString();
 }
 
@@ -38,11 +37,11 @@ export const paths: Paths = Object.freeze({
 
 /** `chainId` is the wallet's chain, so it may be unconfigured: the result then shows the unsupported-network screen. */
 export function replaceChainSegment(pathname: string, chainId: number): string {
-  if (!isChainNumber(chainId)) throw new RangeError("A chain ID is a positive integer.");
+  const segment = walletChainSegment(chainId);
   const parts = pathname.split("/");
   const first = parts[1] ?? "";
-  if (ALL_DIGITS.test(first)) parts[1] = String(chainId);
-  else parts.splice(1, 0, String(chainId));
+  if (ALL_DIGITS.test(first)) parts[1] = segment;
+  else parts.splice(1, 0, segment);
   return parts.join("/");
 }
 

@@ -5,7 +5,7 @@ import type { KnownDisputeQuestion } from "../../reality/types";
 
 /** The fake world of the lookup tests: a single-chain proxy and two cross-chain proxies on chain 1, Reality.eth on chains 1 and 100. */
 export const SINGLE = "0x1111111111111111111111111111111111111111" as Address;
-export const CROSS = "0x2222222222222222222222222222222222222222" as Address;
+const CROSS = "0x2222222222222222222222222222222222222222" as Address;
 export const CROSS_WITH_BLOCK = "0x3333333333333333333333333333333333333333" as Address;
 export const REALITY_1 = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as Address;
 export const REALITY_100 = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as Address;
@@ -60,7 +60,7 @@ const BLOCK_TIMES = { 1: 12, 100: 5 };
  */
 export const CROSS_BOUND = (12n * 860_000n + 3600n + 4n) / 5n;
 
-export function fakeChains(): Record<1 | 100, FakeChain> {
+function fakeChains(): Record<1 | 100, FakeChain> {
   return {
     1: {
       latest: 900_000n,

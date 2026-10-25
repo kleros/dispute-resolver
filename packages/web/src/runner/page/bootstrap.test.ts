@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ACCEPTED, FAKE_APP_ORIGIN, SAMPLE_PARAMS, SAMPLE_REDIRECTS, createFakeRunnerEnvironment, flushMicrotasks, runRequest, type ScriptApi } from "../../test/runner";
+import { ACCEPTED, FAKE_APP_ORIGIN, SAMPLE_PARAMS, SAMPLE_REDIRECTS, createFakeRunnerEnvironment, runRequest, settleMacrotasks, type ScriptApi } from "../../test/runner";
 import type { RunnerMessageEvent } from "../types";
 import { bootstrapRunner } from "./bootstrap";
 
@@ -123,7 +123,7 @@ describe("bootstrapRunner acknowledgement", () => {
     fake.deliver(fake.fromParent(runRequest({ guardSource: "guard" })));
     expect(fake.evaluated).toEqual(["guard", "script"]);
     expect(seenAtFirstEvaluation).toEqual([[ACCEPTED]]);
-    await flushMicrotasks();
+    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { title: "after" }, jsonDuplicateKeys: false }]);
   });
 
@@ -166,7 +166,7 @@ describe("bootstrapRunner acknowledgement", () => {
     expect(fake.evaluated).toEqual([]);
 
     fake.deliver(fake.fromParent(runRequest()));
-    await flushMicrotasks();
+    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { title: "accepted" }, jsonDuplicateKeys: false }]);
   });
 });
@@ -198,34 +198,12 @@ describe("bootstrapRunner script-facing globals", () => {
     });
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
-    await flushMicrotasks();
+    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { seen: "1650" }, jsonDuplicateKeys: false }]);
   });
 });
 
 describe("bootstrapRunner run and reply", () => {
-  it("posts the resolved value through the transferred port", async () => {
-    const fake = createFakeRunnerEnvironment({ onEvaluate: resolvingScript({ rulingOptions: { titles: ["Yes", "No"] } }) });
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest()));
-    await flushMicrotasks();
-    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { rulingOptions: { titles: ["Yes", "No"] } }, jsonDuplicateKeys: false }]);
-  });
-
-  it("evaluates the duplicate-key guard before the script when the host sends one", () => {
-    const fake = createFakeRunnerEnvironment();
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest({ guardSource: "guard" })));
-    expect(fake.evaluated).toEqual(["guard", "script"]);
-  });
-
-  it("evaluates no guard when the host sends none", () => {
-    const fake = createFakeRunnerEnvironment();
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest({ guardSource: null })));
-    expect(fake.evaluated).toEqual(["script"]);
-  });
-
   it("reports the duplicate keys the guard recorded", async () => {
     const fake = createFakeRunnerEnvironment({
       onEvaluate: (source, api) => {
@@ -238,7 +216,7 @@ describe("bootstrapRunner run and reply", () => {
     });
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest({ guardSource: "guard" })));
-    await flushMicrotasks();
+    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: {}, jsonDuplicateKeys: true }]);
   });
 
@@ -250,7 +228,7 @@ describe("bootstrapRunner run and reply", () => {
     });
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
-    await flushMicrotasks();
+    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "Unexpected token" }]);
   });
 
@@ -264,7 +242,7 @@ describe("bootstrapRunner run and reply", () => {
     });
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
-    await flushMicrotasks();
+    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "boom" }]);
   });
 
@@ -272,7 +250,7 @@ describe("bootstrapRunner run and reply", () => {
     const fake = createFakeRunnerEnvironment();
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
-    await flushMicrotasks();
+    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "getMetaEvidence is not defined" }]);
   });
 
@@ -286,7 +264,7 @@ describe("bootstrapRunner run and reply", () => {
     });
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
-    await flushMicrotasks();
+    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "question not found" }]);
   });
 
@@ -300,7 +278,7 @@ describe("bootstrapRunner run and reply", () => {
     });
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
-    await flushMicrotasks();
+    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "The script reported a failure." }]);
   });
 
@@ -318,7 +296,7 @@ describe("bootstrapRunner run and reply", () => {
     });
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
-    await flushMicrotasks();
+    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { rulingOptions: { type: "single-select" } }, jsonDuplicateKeys: false }]);
   });
 
@@ -332,7 +310,7 @@ describe("bootstrapRunner run and reply", () => {
     });
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
-    await flushMicrotasks();
+    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { title: "adopted" }, jsonDuplicateKeys: false }]);
   });
 
@@ -346,7 +324,7 @@ describe("bootstrapRunner run and reply", () => {
     });
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
-    await flushMicrotasks();
+    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "rpc down" }]);
   });
 
@@ -354,7 +332,7 @@ describe("bootstrapRunner run and reply", () => {
     const fake = createFakeRunnerEnvironment({ onEvaluate: resolvingScript({ title: "x", render: () => "not cloneable" }) });
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
-    await flushMicrotasks();
+    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "The script's result cannot be copied out of the runner." }]);
   });
 
@@ -370,7 +348,7 @@ describe("bootstrapRunner run and reply", () => {
     });
     bootstrapRunner(fake.env);
     fake.deliver(fake.fromParent(runRequest()));
-    await flushMicrotasks();
+    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED]);
   });
 

@@ -3,7 +3,8 @@ import type { ArbitratedBinding, LocalIdResolution } from "../disputes/types";
 import type { FamilyDetection } from "../families/types";
 import type { CanonicalIpfsPath } from "../uri/types";
 import { normalizeIpfsPath } from "../uri";
-import { arbitrableLocalId, built, describesBinding, refused } from "./build";
+import { describesBinding } from "../disputes/localId";
+import { arbitrableLocalId, built, refused } from "./build";
 import type { WriteBuild } from "./types";
 
 /**

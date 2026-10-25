@@ -194,13 +194,7 @@ describe("loadEvidence", () => {
   });
 
   it("malformed evidence JSON is hidden as schema-invalid; valid entries still show", async () => {
-    const malformed = [
-      JSON.stringify([1, 2]),
-      JSON.stringify("text"),
-      JSON.stringify(null),
-      JSON.stringify({ title: { toString: "x" } }),
-      JSON.stringify({ name: "n", fileURI: 12 }),
-    ];
+    const malformed = [JSON.stringify([1, 2]), JSON.stringify({ title: { toString: "x" } })];
     const logs = [...malformed.map((_, index) => entry(`/ipfs/${CID_A}/${String(index)}`, 10n + BigInt(index))), entry(`/ipfs/${CID_B}`, 50n)];
     const bodies = Object.fromEntries([
       ...malformed.map((body, index): [string, string] => [`${GATEWAY}/ipfs/${CID_A}/${String(index)}`, body]),

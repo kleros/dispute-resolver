@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useWalletSetup } from "./context";
 import type { WalletModal } from "./types";
 
-export interface ConnectWallet {
+interface ConnectWallet {
   /** `false` without a WalletConnect project ID, or when AppKit registered an embedded wallet. */
   readonly available: boolean;
   /**

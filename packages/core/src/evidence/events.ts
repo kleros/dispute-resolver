@@ -4,7 +4,7 @@ import type { ChainConfig } from "../chains/types";
 import { toRegistryAddress } from "../registry";
 import { describeError, getLogsChunked } from "../rpc";
 import type { Address, Outcome, ReadClient } from "../types";
-import { fail, succeed } from "./outcome";
+import { fail, succeed } from "../outcome";
 import type { DisputeEventResult, EvidenceLog, MetaEvidenceEventResult } from "./types";
 
 const DISPUTE_EVENT = getAbiItem({ abi: erc1497Abi, name: "Dispute" });
@@ -19,7 +19,7 @@ interface ScanRequest {
   readonly signal?: AbortSignal;
 }
 
-export interface EvidenceScan {
+interface EvidenceScan {
   readonly logs: readonly EvidenceLog[];
   readonly undecodable: number;
 }
@@ -33,14 +33,7 @@ export function evidenceScanStart(chain: ChainConfig): bigint {
  * Zero or several logs are reported, not thrown. Never rejects: a failed read is `rpc-error`, a log whose data does not
  * decode is `invalid-data`.
  */
-export async function readDisputeEvent(request: {
-  readonly client: ReadClient;
-  readonly arbitrable: Address;
-  readonly arbitrator: Address;
-  readonly disputeId: bigint;
-  readonly fromBlock: bigint;
-  readonly signal?: AbortSignal;
-}): Promise<Outcome<DisputeEventResult>> {
+export async function readDisputeEvent(request: ScanRequest & { readonly disputeId: bigint }): Promise<Outcome<DisputeEventResult>> {
   const { client, signal } = request;
   try {
     signal?.throwIfAborted();
@@ -82,13 +75,7 @@ function isLater(log: { readonly blockNumber: bigint; readonly logIndex: number 
  * `emissions` counts them; a latest log whose `_evidence` does not decode is `invalid-data`, with no fallback to an older
  * emission. Never rejects: a failed or aborted read is `rpc-error`.
  */
-export async function readMetaEvidenceEvent(request: {
-  readonly client: ReadClient;
-  readonly arbitrable: Address;
-  readonly metaEvidenceId: bigint;
-  readonly fromBlock: bigint;
-  readonly signal?: AbortSignal;
-}): Promise<Outcome<MetaEvidenceEventResult>> {
+export async function readMetaEvidenceEvent(request: Omit<ScanRequest, "arbitrator"> & { readonly metaEvidenceId: bigint }): Promise<Outcome<MetaEvidenceEventResult>> {
   const { client, signal } = request;
   const scan = (fromBlock: bigint, toBlock: bigint) =>
     getLogsChunked(client, { address: request.arbitrable, event: META_EVIDENCE_EVENT, args: { _metaEvidenceID: request.metaEvidenceId }, fromBlock, toBlock }, { signal });

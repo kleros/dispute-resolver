@@ -1,6 +1,8 @@
 import { isAddress } from "viem";
 import { z } from "../zod";
 import { parseChainId } from "../chains";
+import { fail, succeed } from "../outcome";
+import { DECIMAL_STRING, QUESTION_ID } from "../reality/cache";
 import type { RealityStatus, SafePopulateReason } from "../reality/types";
 import { parsePrecision, toText, unshadowedReserved } from "../rulings";
 import type { FallbackOutcomes } from "../rulings/types";
@@ -28,9 +30,6 @@ const SAFE_POPULATE_REASONS: Readonly<Record<SafePopulateReason, true>> = {
   "type-mismatch": true,
 };
 
-const QUESTION_ID = /^0x[0-9a-fA-F]{64}$/;
-const DECIMAL = /^\d+$/;
-
 const rulingOptionsShape = z.object({
   type: z.string(),
   titles: z.array(z.string()).optional(),
@@ -50,7 +49,7 @@ const realityQuestionShape = z.object({
   reason: oneOf(SAFE_POPULATE_REASONS).optional(),
   divergent: z.boolean().optional(),
   questionId: z.custom<Hex>((value) => typeof value === "string" && QUESTION_ID.test(value)).optional(),
-  templateId: z.string().regex(DECIMAL).optional(),
+  templateId: z.string().regex(DECIMAL_STRING).optional(),
   title: z.string().optional(),
 });
 
@@ -219,8 +218,8 @@ const metaEvidenceSchema = z.custom<JsonObject>(isPlainObject).transform(coerceM
  */
 export function parseMetaEvidence(merged: unknown): Outcome<MetaEvidence> {
   const parsed = metaEvidenceSchema.safeParse(merged);
-  if (parsed.success) return { ok: true, value: parsed.data };
-  return { ok: false, error: { code: "invalid-data", message: "The meta-evidence is not a JSON object." } };
+  if (parsed.success) return succeed(parsed.data);
+  return fail("invalid-data", "The meta-evidence is not a JSON object.");
 }
 
 const PLACEHOLDER_TITLES: readonly string[] = Object.freeze([]);

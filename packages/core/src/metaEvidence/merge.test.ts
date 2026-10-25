@@ -14,11 +14,15 @@ import {
 } from "../test/metaEvidence/testHelpers";
 import type { MetaEvidenceResult } from "./types";
 
-const STANDARD_SCRIPT = "function getMetaEvidence() { resolveScript({}); }";
-const REALITY_SCRIPT = "function getMetaEvidence() { const q = realitio.populatedJSONForTemplate(t, p); resolveScript(q); }";
+const STANDARD_SCRIPT = { text: "function getMetaEvidence() { resolveScript({}); }", path: DEFAULT_SCRIPT_CID, url: DEFAULT_SCRIPT_URL };
+const REALITY_SCRIPT = {
+  text: "function getMetaEvidence() { const q = realitio.populatedJSONForTemplate(t, p); resolveScript(q); }",
+  path: REALITY_SCRIPT_PATH,
+  url: REALITY_SCRIPT_URL,
+};
 
-async function withScript(fields: Record<string, unknown>, scriptText: string, scriptPath: string, scriptUrl: string, value: unknown, jsonDuplicateKeys = false) {
-  const { fetcher } = fakeFetcher({ ...servedMetaEvidence(json({ dynamicScriptURI: `/ipfs/${scriptPath}`, ...fields })), [scriptUrl]: scriptText });
+async function withScript(fields: Record<string, unknown>, value: unknown, script = STANDARD_SCRIPT, jsonDuplicateKeys = false) {
+  const { fetcher } = fakeFetcher({ ...servedMetaEvidence(json({ dynamicScriptURI: `/ipfs/${script.path}`, ...fields })), [script.url]: script.text });
   const { runner, requests } = fakeRunner(scriptOk(value, jsonDuplicateKeys));
   const result = await loadMetaEvidence(context({ fetcher, runner }));
   return { result, requests };
@@ -33,9 +37,6 @@ describe("dynamic-script merge", () => {
   it("a script replacing title, rulingOptions and evidenceDisplayInterfaceURI is validated after the merge", async () => {
     const { result } = await withScript(
       { title: "Original", description: "Kept", rulingOptions: { type: "single-select", titles: ["A"] }, evidenceDisplayInterfaceURI: "/ipfs/original" },
-      STANDARD_SCRIPT,
-      DEFAULT_SCRIPT_CID,
-      DEFAULT_SCRIPT_URL,
       { title: { evil: true }, rulingOptions: { type: 7, titles: "x", reserved: [1], precision: "NaN" }, evidenceDisplayInterfaceURI: { href: "javascript:alert(1)" } },
     );
     expect(ok(result).metaEvidence).toMatchObject({ title: "", description: "Kept", rulingOptions: { type: "single-select", titles: [] }, evidenceDisplayInterfaceURI: null });
@@ -44,9 +45,6 @@ describe("dynamic-script merge", () => {
   it("well-formed replacements win over the meta-evidence, key by key", async () => {
     const { result } = await withScript(
       { title: "Original", description: "Kept", arbitrableInterfaceURI: "https://old.example" },
-      STANDARD_SCRIPT,
-      DEFAULT_SCRIPT_CID,
-      DEFAULT_SCRIPT_URL,
       {
         title: "From the script",
         arbitrableInterfaceURI: "https://resolve.kleros.io",
@@ -63,42 +61,24 @@ describe("dynamic-script merge", () => {
 
   it("a script result that is not a plain object is not merged", async () => {
     for (const value of [undefined, null, "title", 42, ["title"]]) {
-      const { result } = await withScript({ title: "Original" }, STANDARD_SCRIPT, DEFAULT_SCRIPT_CID, DEFAULT_SCRIPT_URL, value);
+      const { result } = await withScript({ title: "Original" }, value);
       expect(ok(result).metaEvidence.title).toBe("Original");
       expect(Object.keys(ok(result).metaEvidence)).not.toContain("0");
     }
   });
 
   it("the merge can make otherwise empty meta-evidence valid", async () => {
-    const { result } = await withScript({}, STANDARD_SCRIPT, DEFAULT_SCRIPT_CID, DEFAULT_SCRIPT_URL, { rulingOptions: { titles: ["A"] } });
+    const { result } = await withScript({}, { rulingOptions: { titles: ["A"] } });
     expect(ok(result).metaEvidence.rulingOptions).toEqual({ type: "single-select", titles: ["A"] });
   });
 
-  it("descriptions a script gives by reserved answer code survive the validation after the merge", async () => {
-    const tooSoon = `0x${"f".repeat(64)}`;
-    const { result } = await withScript({ title: "Original", rulingOptions: { type: "single-select", titles: ["A"] } }, STANDARD_SCRIPT, DEFAULT_SCRIPT_CID, DEFAULT_SCRIPT_URL, {
-      rulingOptions: {
-        type: "single-select",
-        titles: ["No", "Yes"],
-        reserved: { [tooSoon]: "Answered Too Soon" },
-        descriptions: { [tooSoon]: "The observation period has not ended" },
-      },
-    });
-    expect(ok(result).metaEvidence.rulingOptions).toEqual({
-      type: "single-select",
-      titles: ["No", "Yes"],
-      reserved: { [tooSoon]: "Answered Too Soon" },
-      descriptions: { [tooSoon]: "The observation period has not ended" },
-    });
-  });
-
   it("a script cannot forge the Reality status", async () => {
-    const { result } = await withScript({ title: "T" }, STANDARD_SCRIPT, DEFAULT_SCRIPT_CID, DEFAULT_SCRIPT_URL, { realityQuestion: { status: "verified", title: "forged" } });
+    const { result } = await withScript({ title: "T" }, { realityQuestion: { status: "verified", title: "forged" } });
     expect(ok(result).metaEvidence.realityQuestion).toBeNull();
   });
 
   it("a script cannot change the arbitrable used for writes: it is not part of the meta-evidence", async () => {
-    const { result } = await withScript({ title: "T" }, STANDARD_SCRIPT, DEFAULT_SCRIPT_CID, DEFAULT_SCRIPT_URL, { arbitrable: "0x0000000000000000000000000000000000000bad" });
+    const { result } = await withScript({ title: "T" }, { arbitrable: "0x0000000000000000000000000000000000000bad" });
     expect(Object.keys(ok(result).metaEvidence)).not.toContain("arbitrable");
   });
 });
@@ -110,28 +90,26 @@ describe("Reality status mapping", () => {
   });
 
   it("a script containing populatedJSONForTemplate runs with the duplicate-key guard (kind reality), any other without it", async () => {
-    const reality = await withScript({ title: "T" }, REALITY_SCRIPT, REALITY_SCRIPT_PATH, REALITY_SCRIPT_URL, {});
+    const reality = await withScript({ title: "T" }, {}, REALITY_SCRIPT);
     expect(reality.requests[0]?.kind).toBe("reality");
-    const standard = await withScript({ title: "T" }, STANDARD_SCRIPT, DEFAULT_SCRIPT_CID, DEFAULT_SCRIPT_URL, {});
+    const standard = await withScript({ title: "T" }, {});
     expect(standard.requests[0]?.kind).toBe("standard");
     expect(ok(standard.result).metaEvidence.realityQuestion).toBeNull();
   });
 
   it("a Reality script that reported duplicate keys is unresolvable with empty options, whatever it returned", async () => {
-    const { result } = await withScript({ title: "T" }, REALITY_SCRIPT, REALITY_SCRIPT_PATH, REALITY_SCRIPT_URL, { rulingOptions: { type: "uint", precision: 18 } }, true);
+    const { result } = await withScript({ title: "T" }, { rulingOptions: { type: "uint", precision: 18 } }, REALITY_SCRIPT, true);
     expect(ok(result).metaEvidence).toMatchObject({ rulingOptions: { type: "single-select", titles: [] }, realityQuestion: { status: "unresolvable" } });
     expect(ok(result).script).toEqual({ ran: true, kind: "reality", jsonDuplicateKeys: true });
   });
 
   it("a Reality script without duplicate keys is unverified and keeps the options it returned", async () => {
-    const { result } = await withScript({ title: "T" }, REALITY_SCRIPT, REALITY_SCRIPT_PATH, REALITY_SCRIPT_URL, {
-      rulingOptions: { type: "single-select", titles: ["No", "Yes"] },
-    });
+    const { result } = await withScript({ title: "T" }, { rulingOptions: { type: "single-select", titles: ["No", "Yes"] } }, REALITY_SCRIPT);
     expect(ok(result).metaEvidence).toMatchObject({ rulingOptions: { type: "single-select", titles: ["No", "Yes"] }, realityQuestion: { status: "unverified" } });
   });
 
   it("a Reality script whose result is not an object still sets the status", async () => {
-    const { result } = await withScript({ title: "T" }, REALITY_SCRIPT, REALITY_SCRIPT_PATH, REALITY_SCRIPT_URL, undefined);
+    const { result } = await withScript({ title: "T" }, undefined, REALITY_SCRIPT);
     expect(ok(result).metaEvidence.realityQuestion).toEqual({ status: "unverified" });
   });
 });

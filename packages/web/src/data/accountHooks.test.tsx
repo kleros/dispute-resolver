@@ -1,8 +1,7 @@
 import * as core from "@dispute-resolver/core";
 import { renderHook, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { TestDataProvider, createTestDeps, type RpcHandler, type TestDepsOptions } from "../test/data";
+import { codeRpc, createTestDeps, dataWrapper, type TestDepsOptions } from "../test/data";
 import { isContractCode, useArbitrationCost, useIsContractAccount } from "./accountHooks";
 
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../test/data/mockCoreReads")).mockCoreReads(importOriginal));
@@ -10,17 +9,7 @@ vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../te
 const ACCOUNT = "0x1111111111111111111111111111111111111111";
 
 function wrapperWith(options: TestDepsOptions) {
-  const deps = createTestDeps(options);
-  return function Wrapper({ children }: { readonly children?: ReactNode }) {
-    return <TestDataProvider deps={deps}>{children}</TestDataProvider>;
-  };
-}
-
-function codeRpc(code: string): RpcHandler {
-  return ({ method }) => {
-    if (method === "eth_getCode") return code;
-    throw new Error(`unexpected ${method}`);
-  };
+  return dataWrapper({ deps: createTestDeps(options) });
 }
 
 beforeEach(() => {

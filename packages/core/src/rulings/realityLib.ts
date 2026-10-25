@@ -1,5 +1,6 @@
 import { maxUint256 } from "viem";
 import { answerToBytes32, getAnswerString, padToBytes32 } from "@reality.eth/reality-eth-lib/formatters/question.js";
+import { isUint256 } from "../bigint";
 import { libDecimals } from "./precision";
 
 /** The most decimals answer encoding supports: reality-eth-lib encodes through ethers' FixedNumber, which caps them at 80. */
@@ -33,10 +34,6 @@ export function hasSupportedDecimals(decimals: number | undefined): boolean {
 /** Whether labelling this answer makes reality-eth-lib do decimal arithmetic beyond the display cap. */
 function exceedsDisplayDecimals(question: LibQuestion, answer: bigint): boolean {
   return DECIMAL_TYPES.has(question.type) && answer < ANSWERED_TOO_SOON && libDecimals(question.decimals) > MAX_DISPLAY_DECIMALS;
-}
-
-export function isUint256(value: bigint): boolean {
-  return value >= 0n && value <= maxUint256;
 }
 
 /** `0x` and the value as 64 lowercase hex digits. */

@@ -12,7 +12,7 @@ const binding = testBinding({ chainId: 1, disputeId: 505n, arbitrated: ARBITRABL
 const LOCAL_ID: LocalIdResolution = { kind: "local-id", value: 12n };
 
 function family(signatures: keyof typeof FAMILY_SIGNATURES): FamilyDetection {
-  return detectionFor(1, ARBITRABLE, FAMILY_SIGNATURES[signatures]);
+  return detectionFor(ARBITRABLE, FAMILY_SIGNATURES[signatures]);
 }
 
 describe("buildFundAppealCall", () => {
@@ -56,7 +56,7 @@ describe("buildFundAppealCall", () => {
   });
 
   it("an idr-legacy contract with no fundAppeal at all is refused", () => {
-    const detection = detectionFor(1, ARBITRABLE, ["externalIDtoLocalID(uint256)", "submitEvidence(uint256,string)"]);
+    const detection = detectionFor(ARBITRABLE, ["externalIDtoLocalID(uint256)", "submitEvidence(uint256,string)"]);
     expect(detection.writeFamily).toBe("idr-legacy");
     expect(buildFundAppealCall({ binding, family: detection, localId: LOCAL_ID, ruling: 1n, value: 1n })).toEqual({ ok: false, refusal: "appeal-unsupported" });
   });
@@ -69,7 +69,7 @@ describe("buildFundAppealCall", () => {
 
   it("a governor is funded through fundAppeal(listIndex) with listIndex = ruling − 1 (dispute 1621)", () => {
     const governorBinding = testBinding({ chainId: governor1621.chainId, disputeId: BigInt(governor1621.disputeId), arbitrated: governor1621.arbitrated });
-    const governor = detectionFor(governor1621.chainId, governor1621.governor, FAMILY_SIGNATURES.governor);
+    const governor = detectionFor(governor1621.governor, FAMILY_SIGNATURES.governor, governor1621.chainId);
     const titles = governor1621.submittedLists.map((list) => `List ${list}`);
     expect(titles).toEqual(governor1621.goldenOptions);
     for (const [index, title] of titles.entries()) {
@@ -85,7 +85,7 @@ describe("buildFundAppealCall", () => {
 
   it("the recorded winning ruling of 1621 funds the list the governor's source pays as winner", () => {
     const governorBinding = testBinding({ chainId: 1, disputeId: 1621n, arbitrated: governor1621.arbitrated });
-    const governor = detectionFor(1, governor1621.governor, FAMILY_SIGNATURES.governor);
+    const governor = detectionFor(governor1621.governor, FAMILY_SIGNATURES.governor);
     const ruling = BigInt(governor1621.currentRuling);
     const call = expectCall(buildFundAppealCall({ binding: governorBinding, family: governor, localId: { kind: "not-applicable" }, ruling, value: 1n }));
     const [listIndex] = decodedArgs(call);

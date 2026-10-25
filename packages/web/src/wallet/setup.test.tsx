@@ -6,7 +6,8 @@ import { TestDataProvider } from "../test/data";
 import { WalletSetupProvider } from "./WalletProvider";
 import { buildAppConfig } from "../env";
 import { configuredChains, toViemChain } from "./chains";
-import { createTestWallet } from "../test/wallet";
+import { CONNECTED_WAGMI_STORE, createTestWallet } from "../test/wallet";
+import { testPageChain } from "../test/routing";
 import type { AppKitWalletSetup } from "./types";
 import { createReadOnlySetup, createWalletSetupStore, hasPersistedConnection, walletSetupStoreFor, type CreateAppKitSetup, type ReadStoredItem } from "./setup";
 import { noRpcError } from "../data";
@@ -15,12 +16,6 @@ import { walletTransport } from "./transports";
 const LOCATION = { host: "localhost", origin: "http://localhost" };
 const SECRET_RPC = "https://mainnet.example.org/v3/secret-key";
 const KEY = "abc123SECRETxyz";
-
-function chain(id: number): ChainConfig {
-  const config = Object.values(CHAINS).find((candidate) => candidate.id === id);
-  if (config === undefined) throw new Error(`Chain ${String(id)} is not configured.`);
-  return config;
-}
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -84,9 +79,7 @@ function fakeAppKit() {
   return { setup, modal, create: vi.fn<CreateAppKitSetup>(() => setup) };
 }
 
-/** Wagmi's persisted store as wagmi writes it under `wagmi.store` (wagmi 2.22, recorded from a connect and a disconnect). */
-const CONNECTED_WAGMI_STORE =
-  '{"state":{"connections":{"__type":"Map","value":[["bcfb5cd94f3",{"accounts":["0x00000000000000000000000000000000000A11cE"],"chainId":1,"connector":{"id":"injected","name":"Injected","type":"injected","uid":"bcfb5cd94f3"}}]]},"chainId":1,"current":"bcfb5cd94f3"},"version":2}';
+/** Wagmi's persisted store as wagmi writes it under `wagmi.store` (wagmi 2.22, recorded from a disconnect). */
 const DISCONNECTED_WAGMI_STORE = '{"state":{"connections":{"__type":"Map","value":[]},"chainId":1,"current":null},"version":2}';
 
 /** A storage read that holds `stored` under `wagmi.store` and nothing else. */
@@ -233,7 +226,7 @@ describe("walletSetupStoreFor", () => {
 describe("walletTransport", () => {
   it("a chain with its RPC variable set uses that RPC", () => {
     const env: Env = { REACT_APP_WEB3_PROVIDER_URL: SECRET_RPC };
-    const transport = walletTransport(chain(1), env)({});
+    const transport = walletTransport(testPageChain(1).chain, env)({});
     expect(transport.config.type).toBe("http");
     expect(transport.value).toEqual(expect.objectContaining({ url: SECRET_RPC }));
   });
@@ -241,7 +234,7 @@ describe("walletTransport", () => {
   it("a chain without an RPC rejects every request instead of using a public default", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
-    const transport = walletTransport(chain(1), {})({});
+    const transport = walletTransport(testPageChain(1).chain, {})({});
     expect(transport.config.type).toBe("custom");
     await expect(transport.request({ method: "eth_blockNumber" })).rejects.toThrow(noRpcError(1).message);
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -264,7 +257,7 @@ describe("walletTransport", () => {
   });
 
   it("the error names the chain without mentioning configuration", async () => {
-    await expect(walletTransport(chain(100), {})({}).request({ method: "eth_blockNumber" })).rejects.toThrow("Reads on chain 100 are unavailable.");
+    await expect(walletTransport(testPageChain(100).chain, {})({}).request({ method: "eth_blockNumber" })).rejects.toThrow("Reads on chain 100 are unavailable.");
   });
 
   it("a read-only setup's chain without an RPC rejects every request the same way", async () => {
@@ -289,7 +282,7 @@ describe("toViemChain", () => {
   });
 
   it("a chain viem does not know is defined from the core table without any RPC URL", () => {
-    const unknown: ChainConfig = { ...chain(1), id: 999_999_001, name: "Test Chain", currency: "TST", explorerBaseUrl: "https://explorer.example.org" };
+    const unknown: ChainConfig = { ...testPageChain(1).chain, id: 999_999_001, name: "Test Chain", currency: "TST", explorerBaseUrl: "https://explorer.example.org" };
     const viemChain = toViemChain(unknown);
     expect(viemChain).toEqual(expect.objectContaining({ id: 999_999_001, name: "Test Chain", nativeCurrency: { name: "TST", symbol: "TST", decimals: 18 } }));
     expect(viemChain.rpcUrls.default.http).toEqual([]);
@@ -301,8 +294,8 @@ describe("toViemChain", () => {
       if (config.explorerBaseUrl === undefined) continue;
       expect(toViemChain(config).blockExplorers?.default.url, `chain ${String(config.id)}`).toBe(config.explorerBaseUrl);
     }
-    expect(toViemChain(chain(100)).blockExplorers?.default).toEqual({ name: "Gnosisscan", url: "https://gnosisscan.io" });
-    expect(toViemChain(chain(10200)).blockExplorers?.default).toEqual({ name: "Blockscout", url: "https://gnosis-chiado.blockscout.com" });
+    expect(toViemChain(testPageChain(100).chain).blockExplorers?.default).toEqual({ name: "Gnosisscan", url: "https://gnosisscan.io" });
+    expect(toViemChain(testPageChain(10200).chain).blockExplorers?.default).toEqual({ name: "Blockscout", url: "https://gnosis-chiado.blockscout.com" });
   });
 
   it("the configured chains start with chain 1", () => {

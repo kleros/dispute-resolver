@@ -61,11 +61,12 @@ export function createFetcher(fetchFunction: FetchFunction, maxBodyBytes: number
   };
 }
 
-function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
-  if (signal.aborted) return Promise.reject(signal.reason as Error);
+/** Rejects with `reason()` as soon as `signal` aborts, but leaves the work behind `promise` running. */
+export function untilAborted<T>(promise: Promise<T>, signal: AbortSignal, reason: () => Error = () => signal.reason as Error): Promise<T> {
+  if (signal.aborted) return Promise.reject(reason());
   return new Promise<T>((resolve, reject) => {
     const onAbort = (): void => {
-      reject(signal.reason as Error);
+      reject(reason());
     };
     signal.addEventListener("abort", onAbort, { once: true });
     promise.then(resolve, reject).finally(() => {

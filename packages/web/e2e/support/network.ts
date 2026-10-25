@@ -7,21 +7,24 @@ import { z } from "zod";
 // does.
 
 // The `*` of allow-headers never covers `Authorization`, which Atlas requests carry once signed in, so it is named too.
-const CORS_HEADERS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "*, authorization" };
+export const CORS_HEADERS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "*, authorization" };
 
 const RpcErrorSchema = z.object({ code: z.number(), message: z.string() });
+
+/** One recorded JSON-RPC call: its method and params, and the result or the node error it was answered with. */
+export const RecordedCallSchema = z.object({ method: z.string(), params: z.array(z.unknown()), result: z.unknown().optional(), error: RpcErrorSchema.optional() });
 
 const RecordingSchema = z.object({
   chainId: z.number(),
   disputeId: z.string(),
   readAtBlock: z.number(),
-  calls: z.array(z.object({ method: z.string(), params: z.array(z.unknown()), result: z.unknown().optional(), error: RpcErrorSchema.optional() })),
+  calls: z.array(RecordedCallSchema),
   locator: z.unknown(),
   files: z.array(z.object({ path: z.string(), status: z.number(), body: z.unknown() })),
 });
 
 /** What the case page of one dispute read, recorded once from the real services (fixture files under `e2e/app/fixtures`). */
-export type Recording = z.infer<typeof RecordingSchema>;
+type Recording = z.infer<typeof RecordingSchema>;
 
 export function loadRecording(url: URL): Recording {
   return RecordingSchema.parse(JSON.parse(readFileSync(url, "utf8")) as unknown);
@@ -33,6 +36,8 @@ const JsonRpcRequestSchema = z.object({
   method: z.string(),
   params: z.array(z.unknown()).optional(),
 });
+
+export type JsonRpcRequest = z.infer<typeof JsonRpcRequestSchema>;
 
 export interface RpcCall {
   readonly method: string;
@@ -65,7 +70,7 @@ export type AtlasRequest =
 /** An Atlas answer: a JSON body, or a text body (the upload's CID). */
 export type AtlasAnswer = JsonAnswer | { readonly text: string };
 
-export interface FakeNetworkOptions {
+interface FakeNetworkOptions {
   /** The app's origin: its own files are served by the app's server. */
   readonly appOrigin: string;
   /** The case pages whose recorded reads are answered. */
@@ -105,7 +110,7 @@ function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function callKey(method: string, params: readonly unknown[]): string {
+export function callKey(method: string, params: readonly unknown[]): string {
   return canonical([method, params]);
 }
 
@@ -121,15 +126,18 @@ function indexRecordings(recordings: readonly Recording[]) {
   return { calls, files, locators };
 }
 
-function jsonRpcCall(request: Request): z.infer<typeof JsonRpcRequestSchema> | undefined {
-  if (request.method() !== "POST") return undefined;
-  let body: unknown;
+/** The request's body as JSON, or `undefined` when it does not parse. */
+function postJson(request: Request): unknown {
   try {
-    body = JSON.parse(request.postData() ?? "");
+    return JSON.parse(request.postData() ?? "");
   } catch {
     return undefined;
   }
-  const parsed = JsonRpcRequestSchema.safeParse(body);
+}
+
+export function jsonRpcCall(request: Request): JsonRpcRequest | undefined {
+  if (request.method() !== "POST") return undefined;
+  const parsed = JsonRpcRequestSchema.safeParse(postJson(request));
   return parsed.success ? parsed.data : undefined;
 }
 
@@ -137,13 +145,7 @@ async function atlasRequestOf(request: Request, url: URL): Promise<AtlasRequest 
   if (request.method() !== "POST") return undefined;
   const authorization = await request.headerValue("authorization");
   if (url.pathname.endsWith("/ipfs/file") && (request.headers()["content-type"] ?? "").startsWith("multipart/form-data")) return { kind: "upload", authorization };
-  let body: unknown;
-  try {
-    body = JSON.parse(request.postData() ?? "");
-  } catch {
-    return undefined;
-  }
-  const parsed = GraphqlRequestSchema.safeParse(body);
+  const parsed = GraphqlRequestSchema.safeParse(postJson(request));
   return parsed.success ? { kind: "graphql", query: parsed.data.query, variables: parsed.data.variables ?? {}, authorization } : undefined;
 }
 
@@ -156,8 +158,19 @@ function httpRequestOf(url: URL): HttpRequest | undefined {
   return undefined;
 }
 
-async function fulfillJson(route: Route, body: unknown, status = 200): Promise<void> {
-  await route.fulfill({ status, headers: CORS_HEADERS, contentType: "application/json", body: JSON.stringify(body) });
+export async function fulfillJson(route: Route, body: unknown): Promise<void> {
+  await route.fulfill({ headers: CORS_HEADERS, contentType: "application/json", body: JSON.stringify(body) });
+}
+
+/** The case page reads the chain's latest block only for its clock, so any block stamped with the present serves. */
+export function latestBlockAnswer(call: RpcCall): RpcResult | undefined {
+  if (call.method !== "eth_getBlockByNumber" || call.params[0] !== "latest") return undefined;
+  return { result: { number: "0x1", timestamp: `0x${Math.floor(Date.now() / 1_000).toString(16)}`, hash: `0x${"cd".repeat(32)}`, transactions: [] } };
+}
+
+/** The app's origin, from the `baseURL` Playwright passes. */
+export function appOriginOf(baseURL: string | undefined): string {
+  return new URL(baseURL ?? "http://localhost").origin;
 }
 
 async function answerAtlas(route: Route, answer: AtlasAnswer): Promise<void> {
@@ -182,9 +195,7 @@ export async function fakeNetwork(context: BrowserContext, options: FakeNetworkO
       options.rpc?.(call) ??
       recorded.calls.get(callKey(call.method, call.params)) ??
       (call.method === "eth_blockNumber" && head !== undefined ? { result: `0x${head.toString(16)}` } : undefined) ??
-      (call.method === "eth_getBlockByNumber" && call.params[0] === "latest"
-        ? { result: { number: "0x1", timestamp: `0x${Math.floor(Date.now() / 1_000).toString(16)}`, hash: `0x${"cd".repeat(32)}`, transactions: [] } }
-        : undefined);
+      latestBlockAnswer(call);
     if (answer === undefined) {
       const selector = callData(call)?.slice(0, 10);
       traffic.rpcUnanswered.push(selector === undefined ? call.method : `${call.method} ${selector}`);

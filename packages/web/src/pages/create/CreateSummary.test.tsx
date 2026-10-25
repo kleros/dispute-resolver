@@ -136,8 +136,7 @@ describe("CreateSummary", () => {
   });
 
   it("shows no sign-in sentence while the wallet is on another chain than the page, since Create cannot ask for any signature", async () => {
-    const wallet = createTestWallet({ chainId: 100 });
-    holdChainSwitches(wallet);
+    const wallet = holdChainSwitches(createTestWallet({ chainId: 100 }));
     await renderSummary(fakeUploader({ isSignedIn: false }), { wallet });
 
     expect(screen.getByText("Wrong network")).toBeInTheDocument();

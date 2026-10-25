@@ -1,29 +1,12 @@
 import { createPublicClient, custom, encodeAbiParameters, encodeEventTopics, numberToHex } from "viem";
 import { erc1497Abi } from "../../abi";
-import type { Address, FetchInit, FetchResponse, Fetcher, Hex, ReadClient } from "../../types";
+import type { Address, Hex, ReadClient } from "../../types";
 import fixture from "../../evidence/__fixtures__/mainnet-1454-505.json";
 import gnosisFixture from "../../evidence/__fixtures__/gnosis-460-863-meta-evidence.json";
+import { asLogsRequest, matchesFilter, rpcError, syntheticLog, type LogsRequest, type RpcLog } from "../rpc/testHelpers";
 
-/** A log as a JSON-RPC node returns it. */
-export interface RpcLog {
-  readonly address: Hex;
-  readonly topics: readonly Hex[];
-  readonly data: Hex;
-  readonly blockNumber: Hex;
-  readonly blockHash: Hex;
-  readonly transactionHash: Hex;
-  readonly transactionIndex: Hex;
-  readonly logIndex: Hex;
-  readonly removed: boolean;
-}
-
-/** The `eth_getLogs` filter the fake node received, with block numbers decoded. */
-export interface LogsRequest {
-  readonly address: string;
-  readonly topics: readonly (string | null)[];
-  readonly fromBlock: bigint;
-  readonly toBlock: bigint;
-}
+export { fakeFetcher } from "../fetch/testHelpers";
+export { rpcError, type RpcLog } from "../rpc/testHelpers";
 
 /** What the fake node holds and how it fails. */
 export interface FakeNode {
@@ -43,23 +26,6 @@ export interface NodeRequests {
   readonly methods: string[];
 }
 
-/** A JSON-RPC error as a node reports it: an `Error` with a numeric `code`. */
-export function rpcError(code: number, message: string): Error {
-  return Object.assign(new Error(message), { code });
-}
-
-function asLogsRequest(params: unknown): LogsRequest {
-  const [filter] = params as [{ address: string; topics?: (string | null)[]; fromBlock: Hex; toBlock: Hex }];
-  return { address: filter.address, topics: filter.topics ?? [], fromBlock: BigInt(filter.fromBlock), toBlock: BigInt(filter.toBlock) };
-}
-
-/** Whether `log` matches the filter as a node applies it: address, block range and every non-null topic. */
-function matches(log: RpcLog, request: LogsRequest): boolean {
-  const block = BigInt(log.blockNumber);
-  const sameTopics = request.topics.every((topic, index) => topic === null || log.topics[index] === topic);
-  return log.address === request.address.toLowerCase() && sameTopics && block >= request.fromBlock && block <= request.toBlock;
-}
-
 /** A `ReadClient` over a fake node, with viem's retries off so every request reaches the node once. */
 export function fakeClient(node: FakeNode): { client: ReadClient; requests: NodeRequests } {
   const requests: NodeRequests = { logs: [], blocks: [], methods: [] };
@@ -73,7 +39,7 @@ export function fakeClient(node: FakeNode): { client: ReadClient; requests: Node
       requests.logs.push(logsRequest);
       const tooWide = node.maxLogRange !== undefined && logsRequest.toBlock - logsRequest.fromBlock + 1n > node.maxLogRange;
       if (tooWide) return Promise.reject(rpcError(-32005, "query returned more than 10000 results"));
-      return Promise.resolve(node.logs.filter((log) => matches(log, logsRequest)));
+      return Promise.resolve(node.logs.filter((log) => matchesFilter(log, logsRequest)));
     }
     if (method === "eth_getBlockByNumber") {
       const [number] = params as [Hex];
@@ -86,106 +52,39 @@ export function fakeClient(node: FakeNode): { client: ReadClient; requests: Node
   return { client: createPublicClient({ transport: custom({ request }, { retryCount: 0 }) }), requests };
 }
 
-/** A stub fetcher answering from a map of URL → body; a URL missing from the map answers 404. */
-export function fakeFetcher(bodies: Readonly<Record<string, string | Error>>): { fetcher: Fetcher; urls: string[]; inits: (FetchInit | undefined)[] } {
-  const urls: string[] = [];
-  const inits: (FetchInit | undefined)[] = [];
-  const fetcher: Fetcher = (url, init) => {
-    urls.push(url);
-    inits.push(init);
-    const body = bodies[url];
-    if (body instanceof Error) return Promise.reject(body);
-    return Promise.resolve(textResponse(body));
-  };
-  return { fetcher, urls, inits };
-}
-
-function textResponse(body: string | undefined): FetchResponse {
-  const ok = body !== undefined;
-  const text = body ?? "Not Found";
-  return {
-    ok,
-    status: ok ? 200 : 404,
-    json: () => Promise.resolve().then((): unknown => JSON.parse(text)),
-    text: () => Promise.resolve(text),
-  };
-}
-
-const LOG_DEFAULTS = {
-  blockHash: `0x${"ab".repeat(32)}`,
-  transactionIndex: "0x0",
-  removed: false,
-} as const;
-
-/** A synthetic `Evidence` log whose `_evidence` string is `uri`. */
-export function evidenceLog(input: {
+interface LogPlacement {
   readonly arbitrable: Address;
-  readonly arbitrator: Address;
-  readonly evidenceGroupId: bigint;
-  readonly party: Address;
-  readonly uri: string;
   readonly blockNumber: bigint;
   readonly logIndex: number;
-}): RpcLog {
+}
+
+/** A synthetic `Evidence` log whose `_evidence` string is `uri`. */
+export function evidenceLog(input: LogPlacement & { readonly arbitrator: Address; readonly evidenceGroupId: bigint; readonly party: Address; readonly uri: string }): RpcLog {
   const topics = encodeEventTopics({
     abi: erc1497Abi,
     eventName: "Evidence",
     args: { _arbitrator: input.arbitrator, _evidenceGroupID: input.evidenceGroupId, _party: input.party },
   });
-  return {
-    ...LOG_DEFAULTS,
-    address: input.arbitrable,
-    topics: topics as Hex[],
-    data: encodeAbiParameters([{ type: "string" }], [input.uri]),
-    blockNumber: numberToHex(input.blockNumber),
-    transactionHash: syntheticTxHash(input.blockNumber, input.logIndex),
-    logIndex: numberToHex(input.logIndex),
-  };
+  return syntheticLog(input.arbitrable, topics as Hex[], encodeAbiParameters([{ type: "string" }], [input.uri]), input.blockNumber, input.logIndex);
 }
 
-export function disputeLog(input: {
-  readonly arbitrable: Address;
-  readonly arbitrator: Address;
-  readonly disputeId: bigint;
-  readonly metaEvidenceId: bigint;
-  readonly evidenceGroupId: bigint;
-  readonly blockNumber: bigint;
-  readonly logIndex: number;
-}): RpcLog {
+export function disputeLog(
+  input: LogPlacement & { readonly arbitrator: Address; readonly disputeId: bigint; readonly metaEvidenceId: bigint; readonly evidenceGroupId: bigint },
+): RpcLog {
   const topics = encodeEventTopics({ abi: erc1497Abi, eventName: "Dispute", args: { _arbitrator: input.arbitrator, _disputeID: input.disputeId } });
-  return {
-    ...LOG_DEFAULTS,
-    address: input.arbitrable,
-    topics: topics as Hex[],
-    data: encodeAbiParameters([{ type: "uint256" }, { type: "uint256" }], [input.metaEvidenceId, input.evidenceGroupId]),
-    blockNumber: numberToHex(input.blockNumber),
-    transactionHash: syntheticTxHash(input.blockNumber, input.logIndex),
-    logIndex: numberToHex(input.logIndex),
-  };
+  return syntheticLog(
+    input.arbitrable,
+    topics as Hex[],
+    encodeAbiParameters([{ type: "uint256" }, { type: "uint256" }], [input.metaEvidenceId, input.evidenceGroupId]),
+    input.blockNumber,
+    input.logIndex,
+  );
 }
 
 /** A synthetic `MetaEvidence` log whose `_evidence` string is `uri`. */
-export function metaEvidenceLog(input: {
-  readonly arbitrable: Address;
-  readonly metaEvidenceId: bigint;
-  readonly uri: string;
-  readonly blockNumber: bigint;
-  readonly logIndex: number;
-}): RpcLog {
+export function metaEvidenceLog(input: LogPlacement & { readonly metaEvidenceId: bigint; readonly uri: string }): RpcLog {
   const topics = encodeEventTopics({ abi: erc1497Abi, eventName: "MetaEvidence", args: { _metaEvidenceID: input.metaEvidenceId } });
-  return {
-    ...LOG_DEFAULTS,
-    address: input.arbitrable,
-    topics: topics as Hex[],
-    data: encodeAbiParameters([{ type: "string" }], [input.uri]),
-    blockNumber: numberToHex(input.blockNumber),
-    transactionHash: syntheticTxHash(input.blockNumber, input.logIndex),
-    logIndex: numberToHex(input.logIndex),
-  };
-}
-
-function syntheticTxHash(blockNumber: bigint, logIndex: number): Hex {
-  return numberToHex((blockNumber << 32n) + BigInt(logIndex), { size: 32 });
+  return syntheticLog(input.arbitrable, topics as Hex[], encodeAbiParameters([{ type: "string" }], [input.uri]), input.blockNumber, input.logIndex);
 }
 
 /** The recorded mainnet disputes 1454 and 505, read at block 26,190,208 (`__fixtures__/mainnet-1454-505.json`). */
@@ -198,7 +97,6 @@ export const RECORDED = {
     disputeId: BigInt(dispute.disputeId),
     arbitrable: dispute.arbitrable as Address,
     evidenceGroupId: BigInt(dispute.evidenceGroupId),
-    metaEvidenceId: BigInt(dispute.metaEvidenceId),
     disputeLogs: dispute.disputeLogs as RpcLog[],
     evidenceLogs: dispute.evidenceLogs as RpcLog[],
     timestamps: stringEntries(dispute.blockTimestamps) as Record<string, Hex>,
@@ -211,20 +109,28 @@ function stringEntries(value: object): Record<string, string> {
   return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
 }
 
-export function recordedDispute(disputeId: bigint): (typeof RECORDED.disputes)[number] {
-  const dispute = RECORDED.disputes.find((candidate) => candidate.disputeId === disputeId);
-  if (dispute === undefined) throw new Error(`dispute ${String(disputeId)} is not recorded`);
+function findRecorded<T extends { readonly disputeId: bigint }>(disputes: readonly T[], disputeId: bigint, what: string): T {
+  const dispute = disputes.find((candidate) => candidate.disputeId === disputeId);
+  if (dispute === undefined) throw new Error(`${what} ${String(disputeId)} is not recorded`);
   return dispute;
+}
+
+function nodeOf<T extends { readonly timestamps: Record<string, Hex> }>(
+  head: bigint,
+  disputes: readonly T[],
+  logsOf: (dispute: T) => readonly RpcLog[],
+  overrides: Partial<FakeNode>,
+): FakeNode {
+  return { head, logs: disputes.flatMap(logsOf), timestamps: Object.assign({}, ...disputes.map((dispute) => dispute.timestamps)) as Record<string, Hex>, ...overrides };
+}
+
+export function recordedDispute(disputeId: bigint): (typeof RECORDED.disputes)[number] {
+  return findRecorded(RECORDED.disputes, disputeId, "dispute");
 }
 
 /** A fake node holding every recorded log and timestamp at the recorded head. */
 export function recordedNode(overrides: Partial<FakeNode> = {}): FakeNode {
-  return {
-    head: RECORDED.readAtBlock,
-    logs: RECORDED.disputes.flatMap((dispute) => [...dispute.disputeLogs, ...dispute.evidenceLogs]),
-    timestamps: Object.assign({}, ...RECORDED.disputes.map((dispute) => dispute.timestamps)) as Record<string, Hex>,
-    ...overrides,
-  };
+  return nodeOf(RECORDED.readAtBlock, RECORDED.disputes, (dispute) => [...dispute.disputeLogs, ...dispute.evidenceLogs], overrides);
 }
 
 /** The gateway bodies of every recorded evidence document. */
@@ -241,12 +147,10 @@ export function recordedBodies(): Record<string, string> {
  */
 export const RECORDED_GNOSIS = {
   readAtBlock: BigInt(gnosisFixture.readAtBlock),
-  arbitrator: gnosisFixture.arbitrator as Address,
   scanFromBlock: BigInt(gnosisFixture.scanFromBlock),
   disputes: gnosisFixture.disputes.map((dispute) => ({
     disputeId: BigInt(dispute.disputeId),
     arbitrable: dispute.arbitrable as Address,
-    metaEvidenceId: BigInt(dispute.metaEvidenceId),
     disputeLogs: dispute.disputeLogs as RpcLog[],
     metaEvidenceLogs: dispute.metaEvidenceLogs as RpcLog[],
     timestamps: stringEntries(dispute.blockTimestamps) as Record<string, Hex>,
@@ -254,17 +158,10 @@ export const RECORDED_GNOSIS = {
 };
 
 export function recordedGnosisDispute(disputeId: bigint): (typeof RECORDED_GNOSIS.disputes)[number] {
-  const dispute = RECORDED_GNOSIS.disputes.find((candidate) => candidate.disputeId === disputeId);
-  if (dispute === undefined) throw new Error(`Gnosis dispute ${String(disputeId)} is not recorded`);
-  return dispute;
+  return findRecorded(RECORDED_GNOSIS.disputes, disputeId, "Gnosis dispute");
 }
 
 /** A fake Gnosis node holding every recorded Dispute and MetaEvidence log and timestamp at the recorded head. */
 export function recordedGnosisNode(overrides: Partial<FakeNode> = {}): FakeNode {
-  return {
-    head: RECORDED_GNOSIS.readAtBlock,
-    logs: RECORDED_GNOSIS.disputes.flatMap((dispute) => [...dispute.disputeLogs, ...dispute.metaEvidenceLogs]),
-    timestamps: Object.assign({}, ...RECORDED_GNOSIS.disputes.map((dispute) => dispute.timestamps)) as Record<string, Hex>,
-    ...overrides,
-  };
+  return nodeOf(RECORDED_GNOSIS.readAtBlock, RECORDED_GNOSIS.disputes, (dispute) => [...dispute.disputeLogs, ...dispute.metaEvidenceLogs], overrides);
 }

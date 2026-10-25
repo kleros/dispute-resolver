@@ -18,11 +18,7 @@ const SEPOLIA_DEPLOY_BLOCK = 3635742;
 const MIRRORS_MAINNET = { maxLookback: MAINNET_LOOKBACK, arbitratorDeployedAtBlock: MAINNET_DEPLOY_BLOCK, policyRegistry: MAINNET_POLICY_REGISTRY } as const;
 const MIRRORS_SEPOLIA = { maxLookback: TESTNET_LOOKBACK, arbitratorDeployedAtBlock: SEPOLIA_DEPLOY_BLOCK, policyRegistry: SEPOLIA_POLICY_REGISTRY } as const;
 
-function publicRpcEnv(id: ChainId): string {
-  return `REACT_APP_PUBLIC_RPC_${String(id)}`;
-}
-
-const CONFIGS: readonly ChainConfig[] = [
+const CONFIGS: readonly Omit<ChainConfig, "publicRpcEnv">[] = [
   {
     id: 1,
     name: "Ethereum Mainnet",
@@ -32,7 +28,6 @@ const CONFIGS: readonly ChainConfig[] = [
     arbitrableProxy: "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf",
     ...MIRRORS_MAINNET,
     readRpcEnv: "REACT_APP_WEB3_PROVIDER_URL",
-    publicRpcEnv: publicRpcEnv(1),
     explorerBaseUrl: "https://etherscan.io",
   },
   {
@@ -46,7 +41,6 @@ const CONFIGS: readonly ChainConfig[] = [
     arbitratorDeployedAtBlock: 16895601,
     maxLookback: MAINNET_LOOKBACK,
     readRpcEnv: "REACT_APP_WEB3_XDAI_PROVIDER_URL",
-    publicRpcEnv: publicRpcEnv(100),
     explorerBaseUrl: "https://gnosisscan.io",
   },
   {
@@ -60,7 +54,6 @@ const CONFIGS: readonly ChainConfig[] = [
     arbitratorDeployedAtBlock: 1165867,
     maxLookback: TESTNET_LOOKBACK,
     readRpcEnv: "REACT_APP_WEB3_CHIADO_PROVIDER_URL",
-    publicRpcEnv: publicRpcEnv(10200),
     explorerBaseUrl: "https://gnosis-chiado.blockscout.com",
   },
   {
@@ -72,7 +65,6 @@ const CONFIGS: readonly ChainConfig[] = [
     arbitrableProxy: "0x009ca5a0b816156f91b29a93d7688c52480bab24",
     ...MIRRORS_SEPOLIA,
     readRpcEnv: "REACT_APP_WEB3_SEPOLIA_PROVIDER_URL",
-    publicRpcEnv: publicRpcEnv(11155111),
     explorerBaseUrl: "https://sepolia.etherscan.io",
   },
   {
@@ -82,7 +74,6 @@ const CONFIGS: readonly ChainConfig[] = [
     isTestnet: false,
     ...MIRRORS_MAINNET,
     readRpcEnv: "REACT_APP_UNICHAIN",
-    publicRpcEnv: publicRpcEnv(130),
     explorerBaseUrl: "https://uniscan.xyz",
   },
   {
@@ -92,7 +83,6 @@ const CONFIGS: readonly ChainConfig[] = [
     isTestnet: true,
     ...MIRRORS_SEPOLIA,
     readRpcEnv: "REACT_APP_UNICHAIN_SEPOLIA",
-    publicRpcEnv: publicRpcEnv(1301),
     explorerBaseUrl: "https://sepolia.uniscan.xyz",
   },
   {
@@ -103,7 +93,6 @@ const CONFIGS: readonly ChainConfig[] = [
     arbitratorDeployedAtBlock: MAINNET_DEPLOY_BLOCK,
     maxLookback: MAINNET_LOOKBACK,
     readRpcEnv: "REACT_APP_WEB3_POLYGON_PROVIDER_URL",
-    publicRpcEnv: publicRpcEnv(137),
     explorerBaseUrl: "https://polygonscan.com",
   },
   {
@@ -113,7 +102,6 @@ const CONFIGS: readonly ChainConfig[] = [
     isTestnet: true,
     ...MIRRORS_SEPOLIA,
     defaultRpcUrl: "https://sepolia.era.zksync.dev/",
-    publicRpcEnv: publicRpcEnv(300),
     explorerBaseUrl: "https://sepolia.explorer.zksync.io",
   },
   {
@@ -123,7 +111,6 @@ const CONFIGS: readonly ChainConfig[] = [
     isTestnet: false,
     ...MIRRORS_MAINNET,
     defaultRpcUrl: "https://mainnet.era.zksync.io",
-    publicRpcEnv: publicRpcEnv(324),
     explorerBaseUrl: "https://explorer.zksync.io",
   },
   {
@@ -133,7 +120,6 @@ const CONFIGS: readonly ChainConfig[] = [
     isTestnet: false,
     ...MIRRORS_MAINNET,
     readRpcEnv: "REACT_APP_ARBITRUM_ONE",
-    publicRpcEnv: publicRpcEnv(42161),
     explorerBaseUrl: "https://arbiscan.io",
   },
   {
@@ -143,7 +129,6 @@ const CONFIGS: readonly ChainConfig[] = [
     isTestnet: true,
     ...MIRRORS_SEPOLIA,
     readRpcEnv: "REACT_APP_ARBITRUM_SEPOLIA",
-    publicRpcEnv: publicRpcEnv(421614),
     explorerBaseUrl: "https://sepolia.arbiscan.io",
   },
   {
@@ -153,7 +138,6 @@ const CONFIGS: readonly ChainConfig[] = [
     isTestnet: true,
     ...MIRRORS_SEPOLIA,
     readRpcEnv: "REACT_APP_OPTIMISM_SEPOLIA",
-    publicRpcEnv: publicRpcEnv(11155420),
     explorerBaseUrl: "https://optimism-sepolia.blockscout.com",
   },
   {
@@ -163,7 +147,6 @@ const CONFIGS: readonly ChainConfig[] = [
     isTestnet: false,
     ...MIRRORS_MAINNET,
     readRpcEnv: "REACT_APP_BASE",
-    publicRpcEnv: publicRpcEnv(8453),
     explorerBaseUrl: "https://basescan.org",
   },
   {
@@ -173,13 +156,14 @@ const CONFIGS: readonly ChainConfig[] = [
     isTestnet: true,
     ...MIRRORS_SEPOLIA,
     readRpcEnv: "REACT_APP_BASE_SEPOLIA",
-    publicRpcEnv: publicRpcEnv(84532),
     explorerBaseUrl: "https://sepolia.basescan.org",
   },
 ];
 
 /** Frozen, so no caller can reconfigure a chain. */
-export const CHAINS: ChainTable = Object.freeze(Object.fromEntries(CONFIGS.map((chain) => [chain.id, Object.freeze(chain)])));
+export const CHAINS: ChainTable = Object.freeze(
+  Object.fromEntries(CONFIGS.map((chain) => [chain.id, Object.freeze({ ...chain, publicRpcEnv: `REACT_APP_PUBLIC_RPC_${String(chain.id)}` })])),
+);
 
 /** `undefined` for an unsupported chain; never throws. */
 export function getChain(chainId: ChainId): ChainConfig | undefined {

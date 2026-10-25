@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Locator, type Page } from "@playwright/test";
 import { fakeNetwork } from "../support/network";
-import { injectWallet, type InjectedWalletOptions } from "../support/wallet";
+import { expectWalletConnected, injectWallet, type InjectedWalletOptions } from "../support/wallet";
 
 // The header's geometry on the built app: the one-row bar from the lg breakpoint (900 px), the long testnet name in the
 // pill on phones, and the controls and the open account panel inside the narrowest phones. No chain read needs an answer:
@@ -70,10 +70,6 @@ async function expectNoSidewaysScroll(page: Page, width: number): Promise<void> 
   expect(scrollWidth, `the page scrolls sideways at ${String(width)} px`).toBeLessThanOrEqual(width);
 }
 
-async function expectWalletConnected(page: Page): Promise<void> {
-  await expect(accountButton(page), "the injected wallet never connected (the build needs REACT_APP_WALLETCONNECT_PROJECT_ID)").toBeVisible({ timeout: 30_000 });
-}
-
 /**
  * Resolves once the header has gone 750 ms without a change. While AppKit loads, the wallet control flips to Connecting
  * and back a few times, with or without a wallet, and a measurement taken during a flip sees the wider Connecting button.
@@ -109,7 +105,7 @@ async function openPage(browser: Browser, baseURL: string | undefined, path: str
   const page = await context.newPage();
   await page.goto(path);
   await expect(pill(page)).toBeVisible();
-  if (wallet !== undefined) await expectWalletConnected(page);
+  if (wallet !== undefined) await expectWalletConnected(accountButton(page));
   await waitForSettledHeader(page);
   return page;
 }

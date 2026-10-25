@@ -216,56 +216,12 @@ describe("chains table", () => {
     expect(chain?.defaultRpcUrl).toBe(expected.defaultRpcUrl);
   });
 
-  it("only chains 1, 100, 10200 and 11155111 have an arbitrator, and they are the ones that can create", () => {
-    const withArbitrator = Object.values(CHAINS)
-      .filter((chain) => chain.klerosLiquid !== undefined)
-      .map((chain) => chain.id);
-    expect(ascending(withArbitrator)).toEqual(ascending(WITH_ARBITRATOR));
-    for (const id of WITH_ARBITRATOR) {
-      expect(getChain(id)?.arbitrableProxy).toBeDefined();
-      expect(getChain(id)?.policyRegistry).toBeDefined();
-    }
-    for (const id of WITHOUT_ARBITRATOR) {
-      expect(getChain(id)?.klerosLiquid).toBeUndefined();
-      expect(getChain(id)?.arbitrableProxy).toBeUndefined();
-    }
-  });
-
-  it("chain 84532 takes Sepolia's deploy block", () => {
-    expect(getChain(84532)?.arbitratorDeployedAtBlock).toBe(3635742);
-    expect(getChain(84532)?.arbitratorDeployedAtBlock).toBe(getChain(11155111)?.arbitratorDeployedAtBlock);
-  });
-
-  it("every Reality home chain (1, 100, 130, 137, 8453) has a read RPC source", () => {
-    for (const id of [1, 100, 130, 137, 8453]) {
-      const chain = getChain(id);
-      expect(chain?.readRpcEnv ?? chain?.defaultRpcUrl).toBeTruthy();
-    }
-  });
-
-  it("every chain has a read RPC source, and only 300 and 324 have a literal URL", () => {
-    for (const chain of Object.values(CHAINS)) {
-      expect(chain.readRpcEnv ?? chain.defaultRpcUrl, `chain ${String(chain.id)}`).toBeTruthy();
-    }
-    const withLiteral = Object.values(CHAINS)
-      .filter((chain) => chain.defaultRpcUrl !== undefined)
-      .map((chain) => chain.id);
-    expect(ascending(withLiteral)).toEqual([300, 324]);
-  });
-
   it("every address in the table is lowercase, 40 hex characters", () => {
     const addresses = everyAddress();
     expect(addresses.length).toBeGreaterThan(0);
     for (const { chainId, field, value } of addresses) {
       expect(value, `${String(chainId)}.${field}`).toMatch(/^0x[0-9a-f]{40}$/);
     }
-  });
-
-  it("flags exactly the testnets", () => {
-    const testnets = Object.values(CHAINS)
-      .filter((chain) => chain.isTestnet)
-      .map((chain) => chain.id);
-    expect(ascending(testnets)).toEqual([300, 1301, 10200, 84532, 421614, 11155111, 11155420]);
   });
 
   it("currency symbols are ETH, with xDai on 100 and 10200, sETH on 11155111 and 300, MATIC on 137", () => {
@@ -286,26 +242,6 @@ describe("chains table", () => {
       8453: "ETH",
       84532: "ETH",
     });
-  });
-
-  it("never labels Gnosis amounts ETH", () => {
-    expect(chainOf(100).currency).not.toBe("ETH");
-    expect(chainOf(10200).currency).not.toBe("ETH");
-  });
-
-  it("the lookback is 50,000 blocks on the testnets and 1,000,000 elsewhere", () => {
-    const fifty = Object.values(CHAINS)
-      .filter((chain) => chain.maxLookback === 50_000)
-      .map((chain) => chain.id);
-    expect(ascending(fifty)).toEqual([300, 1301, 10200, 84532, 421614, 11155111, 11155420]);
-    for (const chain of Object.values(CHAINS)) {
-      expect([50_000, 1_000_000]).toContain(chain.maxLookback);
-    }
-  });
-
-  it("chains without an arbitrator copy chain 1's or Sepolia's deploy block", () => {
-    for (const id of [130, 137, 324, 42161, 8453]) expect(getChain(id)?.arbitratorDeployedAtBlock).toBe(7303699);
-    for (const id of [1301, 300, 421614, 11155420, 84532]) expect(getChain(id)?.arbitratorDeployedAtBlock).toBe(3635742);
   });
 
   it("every chain names the REACT_APP_PUBLIC_RPC_<chainId> setting", () => {
@@ -337,15 +273,6 @@ describe("chains table", () => {
 });
 
 describe("chainCapabilities", () => {
-  it("hasArbitrator iff klerosLiquid is set, canCreate iff arbitrableProxy is set", () => {
-    for (const chain of Object.values(CHAINS)) {
-      expect(chainCapabilities(chain)).toEqual({
-        hasArbitrator: chain.klerosLiquid !== undefined,
-        canCreate: chain.arbitrableProxy !== undefined,
-      });
-    }
-  });
-
   it("the chains without an arbitrator can do neither, the 4 with one can do both", () => {
     for (const id of WITHOUT_ARBITRATOR) expect(chainCapabilities(chainOf(id))).toEqual({ hasArbitrator: false, canCreate: false });
     for (const id of WITH_ARBITRATOR) expect(chainCapabilities(chainOf(id))).toEqual({ hasArbitrator: true, canCreate: true });

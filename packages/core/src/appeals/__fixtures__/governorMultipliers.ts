@@ -6,16 +6,11 @@ import { decodeFunctionResult } from "viem";
 import { z } from "../../zod";
 import { governorAbi } from "../../abi";
 import { toRegistryAddress } from "../../registry";
-import type { ChainId, Hex } from "../../types";
+import type { ChainId } from "../../types";
 import type { CallReply } from "../../test/appeals/testHelpers";
 import recording from "./governor-multipliers.json";
-import type { RecordedGetters } from "./recorded";
+import { reply, type RecordedGetters } from "./recorded";
 
-const hex = z
-  .string()
-  .regex(/^0x[\da-f]*$/i)
-  .transform((value): Hex => value as Hex);
-const reply = z.union([z.object({ result: hex }), z.object({ error: z.object({ code: z.number(), message: z.string() }) })]);
 const schema = z.object({
   chains: z.array(z.object({ chainId: z.number(), blockNumber: z.number() })),
   contracts: z.array(z.object({ label: z.string(), chainId: z.number(), address: z.string().transform((value) => toRegistryAddress(value)), calls: z.record(z.string(), reply) })),

@@ -12,6 +12,7 @@ import {
 } from "@dispute-resolver/core";
 import { queryOptions, skipToken, type QueryClient } from "@tanstack/react-query";
 import { STALE_TIME_MS } from "./constants";
+import { untilAborted } from "./fetcher";
 import { IDLE_KEY, queryKeys } from "./queryKeys";
 import { noRpcError } from "./sectionData";
 import type { CoreDeps } from "./types";
@@ -42,20 +43,6 @@ export function disputeEventQuery(deps: CoreDeps, chainId: ChainId, binding: Arb
   });
 }
 
-/** Rejects as soon as `signal` aborts, but leaves the work behind `promise` running. */
-function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
-  if (signal.aborted) return Promise.reject(new DOMException("The on-chain meta-evidence read was aborted.", "AbortError"));
-  return new Promise<T>((resolve, reject) => {
-    const onAbort = () => {
-      reject(new DOMException("The on-chain meta-evidence read was aborted.", "AbortError"));
-    };
-    signal.addEventListener("abort", onAbort, { once: true });
-    promise.then(resolve, reject).finally(() => {
-      signal.removeEventListener("abort", onAbort);
-    });
-  });
-}
-
 /**
  * The `MetaEvidence` event is read directly on every load (no query, no cache), so a re-emission between two loads is
  * seen. The shared Dispute-event query never receives the reader's signal: an abort stops the wait for it, never the
@@ -68,7 +55,8 @@ export function onChainMetaEvidenceReader(client: QueryClient, deps: CoreDeps, c
     const chain = getChain(chainId);
     if (readClient === undefined || chain === undefined) return { status: "unavailable", error: noRpcError(chainId) };
     const shared = disputeEventQuery(deps, chainId, binding);
-    const disputeEvent = await untilAborted(client.query({ ...shared, staleTime: (query) => (isFoundEvent(query.state.data) ? Number.POSITIVE_INFINITY : 0) }), signal);
+    const aborted = () => new DOMException("The on-chain meta-evidence read was aborted.", "AbortError");
+    const disputeEvent = await untilAborted(client.query({ ...shared, staleTime: (query) => (isFoundEvent(query.state.data) ? Number.POSITIVE_INFINITY : 0) }), signal, aborted);
     if (!disputeEvent.ok) return { status: "unavailable", error: disputeEvent.error };
     const found = disputeEvent.value;
     if (found.status === "not-found") return { status: "not-found", reason: "dispute-event-not-found" };

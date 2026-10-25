@@ -8,13 +8,11 @@ import { createQueryClient } from "./queryClient";
 
 /** Reading `window.localStorage` itself throws when storage is blocked or the context is sandboxed. */
 function browserStorage(): PersistStorage | undefined {
-  let storage: PersistStorage | undefined;
   try {
-    storage = window.localStorage;
+    return window.localStorage;
   } catch {
-    storage = undefined;
+    return undefined;
   }
-  return storage;
 }
 
 /** Mounting makes no network request. */

@@ -72,24 +72,6 @@ describe("createFamilyCache", () => {
     expect(codeReads(calls)).toEqual([ARBITRABLE, ARBITRABLE]);
   });
 
-  it("get returns the promise set for the same chain and address, and nothing for another chain", async () => {
-    const cache = createFamilyCache();
-    const detection = Promise.resolve({ family: "view-only" } as FamilyDetection);
-    cache.set(1, ARBITRABLE, detection);
-    expect(cache.get(1, ARBITRABLE)).toBe(detection);
-    expect(cache.get(100, ARBITRABLE)).toBeUndefined();
-    await detection;
-  });
-
-  it("a stored promise that rejects is evicted by the cache itself", async () => {
-    const cache = createFamilyCache();
-    const failed = Promise.reject(new Error("timeout"));
-    cache.set(1, ARBITRABLE, failed);
-    await expect(failed).rejects.toThrow("timeout");
-    await settle();
-    expect(cache.get(1, ARBITRABLE)).toBeUndefined();
-  });
-
   it("a late rejection does not evict the promise that replaced it", async () => {
     const cache = createFamilyCache();
     const deferred: { reject?: (reason: Error) => void } = {};

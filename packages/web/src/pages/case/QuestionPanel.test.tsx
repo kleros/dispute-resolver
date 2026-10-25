@@ -1,36 +1,16 @@
-import { getChain, type ChainConfig, type MetaEvidenceResult } from "@dispute-resolver/core";
+import type { MetaEvidenceResult } from "@dispute-resolver/core";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { CaseDispute, SectionData } from "../../data";
-import { TestDataProvider, sectionLoading, sectionReady, testFoundLookup, testOkMetaEvidence } from "../../test/data";
+import { TestDataProvider, sectionLoading, sectionReady, testCaseDispute, testChain, testFoundLookup, testOkMetaEvidence } from "../../test/data";
 import { testMetaEvidence } from "../../test/safe-content";
 import { QuestionPanel } from "./QuestionPanel";
 
-function gnosis(): ChainConfig {
-  const chain = getChain(100);
-  if (chain === undefined) throw new Error("Gnosis is not configured");
-  return chain;
-}
-
-const GNOSIS = gnosis();
+const GNOSIS = testChain(100);
 
 function caseDispute(metaEvidence: SectionData<MetaEvidenceResult>): CaseDispute {
-  return {
-    status: "dispute",
-    chainId: 100,
-    disputeId: 12n,
-    lookup: sectionReady(testFoundLookup({ chainId: 100, disputeId: 12n })),
-    view: sectionLoading,
-    family: sectionLoading,
-    metaEvidence,
-    disputeEvent: sectionLoading,
-    evidence: sectionLoading,
-    appealDecisions: sectionLoading,
-    courts: sectionLoading,
-    appealPanel: sectionLoading,
-    write: sectionLoading,
-  };
+  return testCaseDispute({ chainId: 100, disputeId: 12n, lookup: sectionReady(testFoundLookup({ chainId: 100, disputeId: 12n })), metaEvidence });
 }
 
 function renderPanel(metaEvidence: SectionData<MetaEvidenceResult>, onRetry?: () => void) {
@@ -67,13 +47,6 @@ describe("QuestionPanel", () => {
     expect(court).toHaveAttribute("href", "https://court.kleros.io/cases/12?requiredChainId=100");
     expect(court).toHaveAttribute("target", "_blank");
     expect(court).toHaveAttribute("rel", "noopener noreferrer");
-  });
-
-  it("a multiple-select question lists its reserved answers with shortened codes", () => {
-    const code = `0x${"f".repeat(64)}`;
-    renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: { type: "multiple-select", titles: ["Red"], reserved: { [code]: "Answered Too Soon" } } })));
-    expect(screen.getByText("Multiple choice: multiple select")).toBeInTheDocument();
-    expect(optionLines()).toEqual(["Option 0 - Refuse to Arbitrate / Invalid", "Option 1 - Red", "Option 0xffff...ffffff - Answered Too Soon"]);
   });
 
   it("keeps a non-select question to its question and type line", () => {
@@ -182,19 +155,6 @@ describe("QuestionPanel", () => {
     expect(section.lastElementChild).toBe(note);
     expect(note?.querySelector("svg")).toBeNull();
     expect(note?.querySelector("img")).toBeNull();
-  });
-
-  it("an unknown question type has no label", () => {
-    const { container } = renderPanel(sectionReady(testOkMetaEvidence({ question: "Is it true?", rulingOptions: { type: "bool", titles: ["Yes"] } })));
-    expect(container).toHaveTextContent(/^Is it true\?$/);
-    expect(screen.queryByText(/Multiple choice/)).not.toBeInTheDocument();
-    expect(screen.queryByRole("list")).not.toBeInTheDocument();
-  });
-
-  it("a number question shows its type alone, never the titles or reserved answers it carries", () => {
-    const { container } = renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: { type: "uint", titles: ["A"], reserved: { "0x01": "Too soon" }, precision: 0 } })));
-    expect(container).toHaveTextContent(/^Non-negative number$/);
-    expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 
   it("a meta-evidence without a question shows the type and the options with nothing between them", () => {

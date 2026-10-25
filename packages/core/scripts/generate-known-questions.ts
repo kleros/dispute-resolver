@@ -17,7 +17,7 @@ import { resolve } from "node:path";
 import { KNOWN_DISPUTE_QUESTIONS, REGISTRY_SNAPSHOT_BLOCKS, generateKnownQuestions, renderKnownQuestionsModule, type GeneratorMode } from "../src/reality";
 import { REGISTRY } from "../src/registry";
 import { createReadClients } from "../src/rpc";
-import { failureMessage } from "./failureMessage";
+import { runScript } from "./failureMessage";
 import { loadRepositoryEnv } from "./recordingRpc";
 
 const GENERATED_FILE = resolve(import.meta.dirname, "../src/reality/knownQuestions.generated.ts");
@@ -59,9 +59,4 @@ async function main(): Promise<number> {
   return 0;
 }
 
-try {
-  process.exitCode = await main();
-} catch (error) {
-  console.error(failureMessage(error));
-  process.exitCode = 1;
-}
+await runScript(main);

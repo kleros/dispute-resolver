@@ -3,7 +3,7 @@ import { Button } from "@kleros/ui-components-library";
 import { useLocation, useNavigate } from "react-router";
 import { SWITCHABLE_CHAINS, switchChainSegment } from "../../routing";
 import { Notice } from "../../ui";
-import { switchingLabel, useNetworkSwitch, useWallet } from "../../wallet";
+import { switchingLabel, useNetworkSwitch, useWalletChainId } from "../../wallet";
 
 // The library's button text never wraps (`whitespace-pre`); "View disputes on Ethereum Mainnet" must, at 320 px.
 const BUTTON_CLASS = "h-auto max-w-full [&_p]:whitespace-normal";
@@ -19,12 +19,11 @@ export function otherSwitchableChain(pageChainId: ChainId): ChainConfig | undefi
  * switch flow is not the header's, so a refusal is said here rather than under the pill.
  */
 export function OtherChainAction({ target }: { readonly target: ChainConfig }) {
-  const wallet = useWallet();
+  const walletChainId = useWalletChainId();
   const network = useNetworkSwitch();
   const location = useLocation();
   const navigate = useNavigate();
   const switching = network.state.status === "switching";
-  const walletChainId = wallet.status === "connected" ? wallet.chainId : undefined;
 
   const choose = () => {
     if (walletChainId !== undefined && walletChainId !== target.id) {

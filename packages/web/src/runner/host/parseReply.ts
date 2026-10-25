@@ -6,10 +6,6 @@ const MAX_SCRIPT_MESSAGE_LENGTH = 300;
 
 type FailureReason = Extract<ScriptResult, { status: "failed" }>["reason"];
 
-function okResult(value: unknown, jsonDuplicateKeys: boolean): ScriptResult {
-  return { status: "ok", value, jsonDuplicateKeys };
-}
-
 export function failedResult(reason: FailureReason, message: string): ScriptResult {
   return { status: "failed", reason, message };
 }
@@ -34,6 +30,6 @@ export function parsePortMessage(data: unknown): PortMessage {
   if (!parsed.success) return MALFORMED;
   const message = parsed.data;
   if (message.type === ACCEPTED_MESSAGE_TYPE) return { kind: "acknowledged" };
-  if (message.type === RESULT_MESSAGE_TYPE) return { kind: "settled", result: okResult(message.value, message.jsonDuplicateKeys) };
+  if (message.type === RESULT_MESSAGE_TYPE) return { kind: "settled", result: { status: "ok", value: message.value, jsonDuplicateKeys: message.jsonDuplicateKeys } };
   return { kind: "settled", result: failedResult("script-error", `The dynamic script failed: ${message.message.slice(0, MAX_SCRIPT_MESSAGE_LENGTH)}`) };
 }

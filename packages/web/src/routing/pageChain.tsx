@@ -1,7 +1,7 @@
 import { DEFAULT_CHAIN_ID, chainCapabilities, getChain, parseChainId, type ChainId } from "@dispute-resolver/core";
 import { createContext, useContext, useMemo } from "react";
 import { useParams } from "react-router";
-import { useWallet } from "../wallet";
+import { useWalletChainId } from "../wallet";
 import { CHAIN_PARAM } from "./paths";
 import type { PageChain, ResolvedChain } from "./types";
 
@@ -33,14 +33,9 @@ export function usePageChain(): PageChain {
   return page;
 }
 
-function useConnectedChainId(): number | undefined {
-  const wallet = useWallet();
-  return wallet.status === "connected" ? wallet.chainId : undefined;
-}
-
 /** Unlike `usePageChain`, works on every screen. */
 export function useResolvedChain(): ResolvedChain {
   const segment = useParams()[CHAIN_PARAM];
-  const walletChainId = useConnectedChainId();
+  const walletChainId = useWalletChainId();
   return useMemo(() => resolveChain(segment, walletChainId), [segment, walletChainId]);
 }

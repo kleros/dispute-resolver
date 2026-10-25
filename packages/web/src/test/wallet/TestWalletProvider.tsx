@@ -14,7 +14,7 @@ export interface TestWalletProviderProps {
  */
 export function TestWalletProvider({ wallet, children }: TestWalletProviderProps) {
   return (
-    <WalletSetupProvider setup={wallet.setup} pending>
+    <WalletSetupProvider setup={wallet.setup} pending pendingReconnect={wallet.pendingReconnect}>
       {children}
     </WalletSetupProvider>
   );

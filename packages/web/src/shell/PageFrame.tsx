@@ -1,12 +1,11 @@
 import { explorerAddressUrl } from "@dispute-resolver/core";
 import { useChainClockOffset } from "../data";
-import type { ResolvedChain } from "../routing";
+import type { FrameProps, ResolvedChain } from "../routing";
 import { ChainClockProvider } from "../ui";
 import { SmartContractWalletWarning, useWallet } from "../wallet";
 import { Footer, type FooterExplorerLink } from "./Footer";
 import { Header } from "./Header";
 import { CONTENT, GUTTER } from "./layout";
-import type { PageFrameProps } from "./types";
 import { isUnsupportedNetwork, UNSUPPORTED_NETWORK_LABEL } from "./unsupportedNetwork";
 import { ViewOnlyBanner } from "./ViewOnlyBanner";
 
@@ -18,7 +17,7 @@ function explorerLink(resolvedChain: ResolvedChain): FooterExplorerLink | null {
   return url === null ? null : { href: `${url}#code`, chainName: chain.name };
 }
 
-export function PageFrame({ resolvedChain, children }: PageFrameProps) {
+export function PageFrame({ resolvedChain, children }: FrameProps) {
   const wallet = useWallet();
   const connected = wallet.status === "connected";
   const { chain, chainId } = resolvedChain.page;

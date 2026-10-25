@@ -1,10 +1,10 @@
 import { klerosLiquidAbi, policyRegistryAbi } from "../abi";
 import { getChain } from "../chains";
-import { isContractFailure, readFailure } from "../rpc";
+import { isContractFailure } from "../rpc";
 import { policyFetchUrl, resolveGateway } from "../uri";
 import type { GatewayOrigin } from "../uri/types";
 import type { Address, Fetcher, Outcome, ReadClient } from "../types";
-import { fail, NETWORK_DATA_UNAVAILABLE, succeed } from "./outcome";
+import { NETWORK_DATA_UNAVAILABLE, fail, failedRead, succeed } from "../outcome";
 import type { Court, CourtsContext } from "./types";
 
 const COURTS_PER_ROUND = 8;
@@ -88,7 +88,7 @@ export async function listCourts(context: CourtsContext): Promise<Outcome<readon
   try {
     courts = await enumerateCourts(client, arbitrator, signal);
   } catch (error) {
-    return { ok: false, error: readFailure("the courts", error, context.chainId) };
+    return failedRead("the courts", error, context.chainId);
   }
   const policyContext = { client, fetcher: context.fetcher, gateway: resolveGateway(context.env), signal };
   const policies = await Promise.all(courts.map((court) => readPolicy(policyContext, chain?.policyRegistry, court.id)));

@@ -1,4 +1,15 @@
-import { decodeFunctionData, encodeAbiParameters, encodeFunctionData, encodeFunctionResult, parseAbi, toFunctionSelector, type Hex } from "viem";
+import {
+  decodeFunctionData,
+  encodeAbiParameters,
+  encodeEventTopics,
+  encodeFunctionData,
+  encodeFunctionResult,
+  hexToBigInt,
+  numberToHex,
+  parseAbi,
+  toFunctionSelector,
+  type Hex,
+} from "viem";
 import { callData, callTarget, type RpcAnswer, type RpcCall, type RpcResult } from "./network";
 
 // KlerosLiquid answers the specs build themselves, for disputes no recording holds. The addresses and the node messages
@@ -17,7 +28,7 @@ export const ARBITRATOR_ABI = parseAbi([
 ]);
 
 /** The fields of a `disputes(id)` struct a spec sets. */
-export interface DisputeStruct {
+interface DisputeStruct {
   readonly arbitrated: `0x${string}`;
   readonly period: number;
   readonly lastPeriodChange: bigint;
@@ -31,6 +42,65 @@ export function isDisputesCall(call: RpcCall, arbitrator: string, id: bigint): b
 export function disputeStruct({ arbitrated, period, lastPeriodChange }: DisputeStruct): RpcResult {
   const outputs = ARBITRATOR_ABI.find((item) => item.type === "function")?.outputs ?? [];
   return { result: encodeAbiParameters(outputs, [0n, arbitrated, 2n, period, lastPeriodChange, 3n, 0n, false]) };
+}
+
+export const [DISPUTE_CREATION_TOPIC] = encodeEventTopics({ abi: ARBITRATOR_ABI, eventName: "DisputeCreation" });
+
+interface CreationLog {
+  readonly arbitrator: string;
+  readonly id: bigint;
+  readonly arbitrable: Hex;
+  readonly blockNumber: bigint;
+  readonly transactionHash: Hex;
+}
+
+/** The raw `DisputeCreation` log of dispute `id`, as a node returns it from `eth_getLogs`. */
+export function creationLog({ arbitrator, id, arbitrable, blockNumber, transactionHash }: CreationLog) {
+  return {
+    address: arbitrator,
+    topics: encodeEventTopics({ abi: ARBITRATOR_ABI, eventName: "DisputeCreation", args: { _disputeID: id, _arbitrable: arbitrable } }),
+    data: "0x",
+    blockNumber: numberToHex(blockNumber),
+    blockHash: `0x${blockNumber.toString(16).padStart(64, "0")}`,
+    transactionHash,
+    transactionIndex: "0x0",
+    logIndex: "0x0",
+    removed: false,
+  };
+}
+
+/** The synthetic arbitrable of a dispute in `openDisputesRpc`: its ID, as an address. */
+function arbitrableOf(id: bigint): Hex {
+  return `0x${id.toString(16).padStart(40, "0")}`;
+}
+
+/**
+ * Mainnet's arbitrator at block `head` with `ids` open: each dispute's creation log in the last 100 blocks and its
+ * `disputes(id)` struct in its first period, changed now. No `NewPeriod` logs: none of the disputes reached execution.
+ * Everything else, the courts among them, is left unanswered so it fails fast.
+ */
+export function openDisputesRpc(ids: readonly bigint[], head: bigint): (call: RpcCall) => RpcResult | undefined {
+  const logs = ids.map((id) =>
+    creationLog({
+      arbitrator: MAINNET_ARBITRATOR,
+      id,
+      arbitrable: arbitrableOf(id),
+      blockNumber: head - 100n + (id % 100n),
+      transactionHash: `0x${id.toString(16).padStart(64, "0")}`,
+    }),
+  );
+  return (call) => {
+    if (call.method === "eth_blockNumber") return { result: numberToHex(head) };
+    if (call.method === "eth_getLogs") {
+      const filter = call.params[0] as { fromBlock?: Hex; toBlock?: Hex; topics?: readonly (Hex | null)[] } | undefined;
+      if (filter?.topics?.[0] !== DISPUTE_CREATION_TOPIC || filter.fromBlock === undefined || filter.toBlock === undefined) return { result: [] };
+      const from = hexToBigInt(filter.fromBlock);
+      const to = hexToBigInt(filter.toBlock);
+      return { result: logs.filter((log) => hexToBigInt(log.blockNumber) >= from && hexToBigInt(log.blockNumber) <= to) };
+    }
+    const id = ids.find((candidate) => isDisputesCall(call, MAINNET_ARBITRATOR, candidate));
+    return id === undefined ? undefined : disputeStruct({ arbitrated: arbitrableOf(id), period: 0, lastPeriodChange: BigInt(Math.floor(Date.now() / 1000)) });
+  };
 }
 
 /** Gnosis keeps disputes in a mapping: an ID that was never created reads as a zeroed struct. */
@@ -48,7 +118,7 @@ const CASE_DETAILS_ABI = parseAbi([
 const CASE_DETAILS_SELECTORS = new Set<string>(CASE_DETAILS_ABI.map((item) => toFunctionSelector(item)));
 
 /** How Gnosis's node answers `getSubcourt(id)` past the last court (recorded, packages/core/src/rpc/failures.ts). */
-export const PAST_THE_LAST_COURT_ON_GNOSIS: RpcAnswer = { error: { code: 3, message: "execution reverted" } };
+const PAST_THE_LAST_COURT_ON_GNOSIS: RpcAnswer = { error: { code: 3, message: "execution reverted" } };
 
 /**
  * The case page's court and dispute reads on `arbitrator` for dispute `disputeId`: a single court 0 with its periods,

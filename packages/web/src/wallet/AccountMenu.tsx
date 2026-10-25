@@ -3,7 +3,7 @@ import { Button } from "@kleros/ui-components-library";
 import type { Address, ChainConfig } from "@dispute-resolver/core";
 import { getAddress } from "viem";
 import { useDisconnect } from "wagmi";
-import { AddressText, BAR_PILL, ChevronIcon, DROPDOWN_CLOSING_CLASS, DROPDOWN_OPEN_CLASS, Identicon, shortenAddress, usePresence } from "../ui";
+import { AddressText, BAR_PILL, ChevronIcon, DROPDOWN_CLOSING_CLASS, DROPDOWN_OPEN_CLASS, Identicon, shortenAddress, useOutsidePress, usePresence } from "../ui";
 import { chainName } from "./chains";
 
 interface AccountMenuProps {
@@ -35,21 +35,20 @@ const PANEL_CLASS =
 function AccountPanel({ id, rootRef, panelRef, closing, onClose, address, walletChainId, chain }: AccountPanelProps) {
   const { disconnect } = useDisconnect();
 
+  const closeKeepingFocus = useCallback(() => {
+    onClose(false);
+  }, [onClose]);
+  useOutsidePress(!closing, rootRef, closeKeepingFocus);
   useEffect(() => {
     if (closing) return undefined;
-    const closeOnOutsidePointer = (event: PointerEvent) => {
-      if (event.target instanceof Node && rootRef.current?.contains(event.target) !== true) onClose(false);
-    };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose(true);
     };
-    document.addEventListener("pointerdown", closeOnOutsidePointer);
     document.addEventListener("keydown", closeOnEscape);
     return () => {
-      document.removeEventListener("pointerdown", closeOnOutsidePointer);
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [closing, rootRef, onClose]);
+  }, [closing, onClose]);
 
   return (
     <dialog ref={panelRef} id={id} open aria-label="Account" data-origin="top-right" className={`${PANEL_CLASS} ${closing ? DROPDOWN_CLOSING_CLASS : DROPDOWN_OPEN_CLASS}`}>

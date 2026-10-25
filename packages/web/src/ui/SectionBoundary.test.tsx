@@ -1,14 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { expectRenderErrors } from "../test/shell";
 import { SectionBoundary } from "./SectionBoundary";
 
 let shouldThrow = true;
-
-/** jsdom reports each error React rethrows in development; the report is expected here. */
-function silenceErrorReport(event: ErrorEvent): void {
-  event.preventDefault();
-}
 
 /** Stands in for a section that renders a non-string meta-evidence title, which React rejects. */
 function Title({ title }: { readonly title: unknown }) {
@@ -21,13 +17,10 @@ function Title({ title }: { readonly title: unknown }) {
 describe("SectionBoundary", () => {
   beforeEach(() => {
     shouldThrow = true;
-    // React logs every caught render error; the log is expected here.
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
-    window.addEventListener("error", silenceErrorReport);
+    expectRenderErrors();
   });
 
   afterEach(() => {
-    window.removeEventListener("error", silenceErrorReport);
     vi.restoreAllMocks();
   });
 
@@ -79,15 +72,5 @@ describe("SectionBoundary", () => {
     shouldThrow = false;
     await userEvent.setup().click(screen.getByRole("button", { name: "Retry Summary" }));
     expect(screen.getByRole("heading", { name: "Recovered title" })).toBeInTheDocument();
-  });
-
-  it("renders its children when nothing throws", () => {
-    shouldThrow = false;
-    render(
-      <SectionBoundary section="Summary">
-        <Title title="A title" />
-      </SectionBoundary>,
-    );
-    expect(screen.getByRole("heading", { name: "A title" })).toBeInTheDocument();
   });
 });

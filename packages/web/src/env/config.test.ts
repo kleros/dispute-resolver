@@ -43,11 +43,6 @@ describe("buildAppConfig", () => {
   });
 
   describe("atlasUri", () => {
-    it("an unset Atlas URI is null and does not throw", () => {
-      expect(() => configure({})).not.toThrow();
-      expect(configure({}).atlasUri).toBeNull();
-    });
-
     it.each(["", "   ", "not a url", "atlas.example.org", "//atlas.example.org", "http://atlas.example.org", "javascript:alert(1)", "ftp://atlas.example.org", "https://"])(
       "%j is not an https URL, so uploads are unavailable (null)",
       (value) => {

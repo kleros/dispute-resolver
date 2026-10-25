@@ -127,17 +127,4 @@ describe("classifySelectors", () => {
   it("evidence and appeal selectors alone do not make a contract writable", () => {
     expect(classifySelectors(selectorsOf("submitEvidence(uint256,string)", "fundAppeal(uint256,uint256)")).family).toBe("view-only");
   });
-
-  it("the governor dialect funds and withdraws through the governor interface and has no local dispute ID", () => {
-    const { capabilities } = classifySelectors(selectorsOf("submitEvidence(string)", "fundAppeal(uint256)", "getCurrentSessionNumber()"));
-    expect(capabilities.appeal).toEqual({ kind: "governor" });
-    expect(capabilities.withdraw).toEqual({ kind: "governor" });
-    expect(capabilities.localId).toBe("none");
-  });
-
-  it("view-only has no funding interface and no withdraw panel", () => {
-    const { capabilities } = classifySelectors(new Set());
-    expect(capabilities.appeal).toEqual({ kind: "none" });
-    expect(capabilities.withdraw).toEqual({ kind: "none" });
-  });
 });

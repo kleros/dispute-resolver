@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 import { AtlasGate } from "../../atlas";
 import { APP_CONFIG } from "../../env";
-import { TestDataProvider } from "../data";
-import { TestWalletProvider, type TestWallet } from "../wallet";
+import { walletWrapper, type TestWallet } from "../wallet";
 import { TEST_ATLAS_URI } from "./fakeAtlasServer";
 
 /**
@@ -11,13 +10,12 @@ import { TEST_ATLAS_URI } from "./fakeAtlasServer";
  */
 export function atlasWrapper(wallet: TestWallet, atlasUri: string | null = TEST_ATLAS_URI) {
   const config = { ...APP_CONFIG, atlasUri };
+  const Wallet = walletWrapper(wallet);
   return function AtlasWrapper({ children }: { readonly children?: ReactNode }) {
     return (
-      <TestDataProvider>
-        <TestWalletProvider wallet={wallet}>
-          <AtlasGate config={config}>{children}</AtlasGate>
-        </TestWalletProvider>
-      </TestDataProvider>
+      <Wallet>
+        <AtlasGate config={config}>{children}</AtlasGate>
+      </Wallet>
     );
   };
 }

@@ -1,4 +1,16 @@
 import type { Abi } from "viem";
+import { uint256Getter } from "./entries";
+
+const idrFundAppeal = {
+  type: "function",
+  name: "fundAppeal",
+  stateMutability: "payable",
+  inputs: [
+    { name: "_localDisputeID", type: "uint256" },
+    { name: "_ruling", type: "uint256" },
+  ],
+  outputs: [{ name: "fullyFunded", type: "bool" }],
+} as const;
 
 /** The ArbitrableProxy this app creates disputes through and submits evidence to (`@kleros/arbitrable-proxy-contracts`). */
 export const arbitrableProxyAbi = [
@@ -51,16 +63,7 @@ export const idrV2Abi = [
       { name: "denominator", type: "uint256" },
     ],
   },
-  {
-    type: "function",
-    name: "fundAppeal",
-    stateMutability: "payable",
-    inputs: [
-      { name: "_localDisputeID", type: "uint256" },
-      { name: "_ruling", type: "uint256" },
-    ],
-    outputs: [{ name: "fullyFunded", type: "bool" }],
-  },
+  idrFundAppeal,
   {
     type: "function",
     name: "getTotalWithdrawableAmount",
@@ -141,16 +144,7 @@ export const idrV1Abi = [
  * `(uint256,uint8)` is the older resolver proxy's (verified source of `0x135c5735…`, the party as a `uint8`).
  */
 export const idrLegacyFundAppealAbi = [
-  {
-    type: "function",
-    name: "fundAppeal",
-    stateMutability: "payable",
-    inputs: [
-      { name: "_localDisputeID", type: "uint256" },
-      { name: "_ruling", type: "uint256" },
-    ],
-    outputs: [{ name: "fullyFunded", type: "bool" }],
-  },
+  idrFundAppeal,
   {
     type: "function",
     name: "fundAppeal",
@@ -190,15 +184,6 @@ export const escrowV1Abi = [
     outputs: [],
   },
 ] as const satisfies Abi;
-
-const uint256Getter = <const TName extends string>(name: TName) =>
-  ({
-    type: "function",
-    name,
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256" }],
-  }) as const;
 
 /**
  * The single-value multiplier getters, tried field by field when `getMultipliers()` fails: the

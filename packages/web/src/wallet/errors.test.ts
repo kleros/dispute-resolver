@@ -74,4 +74,8 @@ describe("isUserRejection", () => {
       true,
     );
   });
+
+  it("an EIP-1193 4001 deep in the cause chain is a rejection too", () => {
+    expect(isUserRejection(new Error("Contract call failed.", { cause: Object.assign(new Error("denied"), { code: 4001 }) }))).toBe(true);
+  });
 });

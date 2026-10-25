@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createMemoryStorage } from "./test/data";
 import { STORAGE_KEY, SWITCHING_ATTRIBUTE, applyColorScheme, browserLocalStorage, createColorSchemeStore, type ColorSchemeMedia, type ColorSchemeStorage } from "./theme";
 
 /** A `(prefers-color-scheme: dark)` query whose answer the test changes, dispatching `change` like the browser does. */
@@ -18,17 +19,6 @@ function fakeMedia(matches: boolean) {
     },
   };
   return media;
-}
-
-function memoryStorage(initial: Record<string, string> = {}): ColorSchemeStorage & { readonly values: Map<string, string> } {
-  const values = new Map(Object.entries(initial));
-  return {
-    values,
-    getItem: (key) => values.get(key) ?? null,
-    setItem: (key, value) => {
-      values.set(key, value);
-    },
-  };
 }
 
 function throwingStorage(): ColorSchemeStorage {
@@ -60,7 +50,7 @@ describe("createColorSchemeStore", () => {
   it("pauses transitions while a flip applies and lifts the pause on the next frame, but not for the first paint", async () => {
     const root = document.createElement("html");
     const media = fakeMedia(false);
-    const store = createColorSchemeStore({ root, media, storage: memoryStorage({ [STORAGE_KEY]: "dark" }) });
+    const store = createColorSchemeStore({ root, media, storage: createMemoryStorage({ [STORAGE_KEY]: "dark" }) });
     expect(isDark(root)).toBe(true);
     expect(root).not.toHaveAttribute(SWITCHING_ATTRIBUTE);
 
@@ -85,7 +75,7 @@ describe("createColorSchemeStore", () => {
   it("uses the OS preference until a choice is stored and follows OS changes meanwhile", () => {
     const root = document.createElement("div");
     const media = fakeMedia(true);
-    const store = createColorSchemeStore({ root, media, storage: memoryStorage() });
+    const store = createColorSchemeStore({ root, media, storage: createMemoryStorage() });
     expect(isDark(root)).toBe(true);
     expect(store.getSnapshot()).toBe("dark");
     media.change(false);
@@ -96,7 +86,7 @@ describe("createColorSchemeStore", () => {
   it("a stored choice wins over the OS preference and OS changes no longer apply", () => {
     const root = document.createElement("div");
     const media = fakeMedia(false);
-    const store = createColorSchemeStore({ root, media, storage: memoryStorage({ [STORAGE_KEY]: "dark" }) });
+    const store = createColorSchemeStore({ root, media, storage: createMemoryStorage({ [STORAGE_KEY]: "dark" }) });
     expect(isDark(root)).toBe(true);
     media.change(true);
     media.change(false);
@@ -107,14 +97,14 @@ describe("createColorSchemeStore", () => {
   it("toggling flips the class, stores the choice and notifies subscribers", () => {
     const root = document.createElement("div");
     const media = fakeMedia(false);
-    const storage = memoryStorage();
+    const storage = createMemoryStorage();
     const store = createColorSchemeStore({ root, media, storage });
     const listener = vi.fn();
     const unsubscribe = store.subscribe(listener);
     store.toggle();
     expect(isDark(root)).toBe(true);
     expect(store.getSnapshot()).toBe("dark");
-    expect(storage.values.get(STORAGE_KEY)).toBe("dark");
+    expect(storage.entries.get(STORAGE_KEY)).toBe("dark");
     expect(listener).toHaveBeenCalledTimes(1);
     media.change(true);
     media.change(false);
@@ -122,7 +112,7 @@ describe("createColorSchemeStore", () => {
     unsubscribe();
     store.toggle();
     expect(isDark(root)).toBe(false);
-    expect(storage.values.get(STORAGE_KEY)).toBe("light");
+    expect(storage.entries.get(STORAGE_KEY)).toBe("light");
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
@@ -152,7 +142,7 @@ describe("createColorSchemeStore", () => {
   it("an unknown stored value counts as no choice", () => {
     const root = document.createElement("div");
     const media = fakeMedia(true);
-    createColorSchemeStore({ root, media, storage: memoryStorage({ [STORAGE_KEY]: "sepia" }) });
+    createColorSchemeStore({ root, media, storage: createMemoryStorage({ [STORAGE_KEY]: "sepia" }) });
     expect(isDark(root)).toBe(true);
     media.change(false);
     expect(isDark(root)).toBe(false);
@@ -163,7 +153,7 @@ describe("createColorSchemeStore", () => {
     createColorSchemeStore({ root: light, media: null, storage: null });
     expect(isDark(light)).toBe(false);
     const dark = document.createElement("div");
-    createColorSchemeStore({ root: dark, media: null, storage: memoryStorage({ [STORAGE_KEY]: "dark" }) });
+    createColorSchemeStore({ root: dark, media: null, storage: createMemoryStorage({ [STORAGE_KEY]: "dark" }) });
     expect(isDark(dark)).toBe(true);
   });
 });

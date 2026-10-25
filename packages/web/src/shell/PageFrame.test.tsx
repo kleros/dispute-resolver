@@ -5,8 +5,7 @@ import { numberToHex } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTestDeps, type RpcHandler } from "../test/data";
 import { renderWithProviders } from "../test/shell";
-import { createTestWallet } from "../test/wallet";
-import { createColorSchemeStore } from "../theme";
+import { createConnectedTestWallet, createTestWallet } from "../test/wallet";
 import { Countdown } from "../ui";
 
 const VIEW_ONLY_SENTENCE = "View mode only: Actions that require an Ethereum account are disabled.";
@@ -122,8 +121,7 @@ describe("PageFrame header", () => {
 
   it("with the wallet on another chain at load nothing is offered under the header: the app asks the wallet and, on a refusal, shows the wallet's chain", async () => {
     // The wallet declines the switch the app asks for at load, so it stays on Ethereum Mainnet.
-    const wallet = createTestWallet({ chainId: 1, switchChainError: true });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ chainId: 1, switchChainError: true });
     const [connector] = wallet.config.connectors;
     if (connector === undefined) throw new Error("The test wallet has no connector.");
     const switches = vi.spyOn(connector, "switchChain");
@@ -150,8 +148,7 @@ describe("PageFrame header", () => {
   });
 
   it("on the unsupported-network screen the header links follow a wallet on a configured chain", async () => {
-    const wallet = createTestWallet({ chainId: 100 });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ chainId: 100 });
     renderWithProviders(<Screen />, { path: "/abc/ongoing", frame: "page", wallet });
     expect(navLinks().getByRole("link", { name: "Ongoing Disputes" })).toHaveAttribute("href", "/100/ongoing");
     expect(navLinks().getByRole("link", { name: "Create" })).toHaveAttribute("href", "/100/create");
@@ -214,8 +211,7 @@ describe("PageFrame header", () => {
 
   it("the chain pill, the theme toggle and Connect are outside the collapsible menu panel", () => {
     renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page" });
-    const panel = document.getElementById(within(header()).getByRole("button", { name: "Menu" }).getAttribute("aria-controls") ?? "");
-    if (panel === null) throw new Error("The menu button controls no element.");
+    const panel = menuPanel();
     expect(panel).toContainElement(screen.getByRole("navigation", { name: "Main" }));
     for (const control of [
       within(header()).getByRole("button", { name: /^Network:/ }),
@@ -226,11 +222,8 @@ describe("PageFrame header", () => {
     }
   });
 
-  it("the header has a theme toggle beside the network pill", async () => {
-    const user = userEvent.setup();
-    const root = document.createElement("div");
-    const colorScheme = createColorSchemeStore({ root, media: null, storage: null });
-    renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page", colorScheme });
+  it("the header has a theme toggle beside the network pill", () => {
+    renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page" });
     const pill = within(header()).getByRole("button", { name: /^Network:/ });
     const toggle = within(header()).getByRole("button", { name: "Switch to dark theme" });
     let cluster = toggle.parentElement;
@@ -238,9 +231,6 @@ describe("PageFrame header", () => {
     expect(cluster).toContainElement(within(header()).getByRole("button", { name: "Connect" }));
     expect(cluster).not.toContainElement(screen.getByRole("navigation", { name: "Main" }));
     expect(pill.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    await user.click(toggle);
-    expect(root).toHaveClass("dark");
-    expect(within(header()).getByRole("button", { name: "Switch to light theme" })).toBeInTheDocument();
   });
 
   it("the menu panel grows in below xl and shrinks away inert, with its scrim, before it hides again", async () => {

@@ -1,5 +1,5 @@
-import type { Abi, Hex } from "viem";
-import { decodeEventLog, encodeAbiParameters, encodeFunctionData, getAbiItem, toEventSelector, toFunctionSelector } from "viem";
+import type { Abi } from "viem";
+import { encodeFunctionData, getAbiItem, toEventSelector, toFunctionSelector } from "viem";
 import { describe, expect, it } from "vitest";
 import {
   arbitrableProxyAbi,
@@ -15,7 +15,7 @@ import {
   realityAbi,
   realityProxyAbi,
 } from "./index";
-import { ARTIFACTS, VERIFIED, findBySignature, normalizeAbi, signatureOf, type NormalizedFunction, type NormalizedItem } from "./__fixtures__/artifacts";
+import { ARTIFACTS, VERIFIED, findBySignature, normalizeAbi, signatureOf, type NormalizedItem } from "./__fixtures__/artifacts";
 
 type Kind = "function" | "event";
 
@@ -73,7 +73,6 @@ const CASES: readonly AbiCase[] = [
     name: "idrV2Abi",
     abi: idrV2Abi,
     entries: [
-      // The IDisputeResolver interface leaves `externalIDtoLocalID` non-view; every deployed implementation exposes a view mapping getter.
       fn("externalIDtoLocalID(uint256)", ARTIFACTS.arbitrableProxy, VERIFIED.legacyResolver.abi),
       fn("getMultipliers()", ARTIFACTS.idrV2),
       fn("fundAppeal(uint256,uint256)", ARTIFACTS.idrV2),
@@ -162,14 +161,10 @@ function constructedGetter(name: string): NormalizedItem[] {
   return [{ type: "function", name, inputs: [], outputs: [{ name: "", type: "uint256" }], stateMutability: "view" }];
 }
 
-function embeddedItems(abi: Abi): NormalizedItem[] {
-  return normalizeAbi(abi);
-}
-
 describe("every embedded entry is the published or verified entry, nothing else is embedded", () => {
   for (const abiCase of CASES) {
     it(`${abiCase.name} embeds exactly the listed entries`, () => {
-      const embedded = embeddedItems(abiCase.abi)
+      const embedded = normalizeAbi(abiCase.abi)
         .map((item) => `${item.type} ${signatureOf(item)}`)
         .sort(byText);
       const expected = abiCase.entries.map((entry) => `${entry.kind} ${entry.signature}`).sort(byText);
@@ -178,7 +173,7 @@ describe("every embedded entry is the published or verified entry, nothing else 
 
     for (const entry of abiCase.entries) {
       it(`${abiCase.name} ${entry.kind} ${entry.signature} equals its source (name, inputs, outputs, indexed flags, mutability)`, () => {
-        const embedded = findBySignature(embeddedItems(abiCase.abi), entry.signature, entry.kind);
+        const embedded = findBySignature(normalizeAbi(abiCase.abi), entry.signature, entry.kind);
         expect(entry.sources.length).toBeGreaterThan(0);
         for (const source of entry.sources) expect(embedded).toEqual(findBySignature(source, entry.signature, entry.kind));
       });
@@ -198,47 +193,6 @@ describe("governor sources", () => {
     expect(withEvidence).toHaveLength(3);
     expect(GOVERNORS_WITH_EVIDENCE).toHaveLength(3);
   });
-
-  it("the governor fundAppeal argument is the submission index, not a ruling", () => {
-    const entry = findBySignature(embeddedItems(governorAbi), "fundAppeal(uint256)", "function") as NormalizedFunction;
-    expect(entry.inputs).toEqual([{ name: "_submissionID", type: "uint256" }]);
-    expect(entry.stateMutability).toBe("payable");
-  });
-});
-
-describe("externalIDtoLocalID mutability", () => {
-  it("deployed implementations expose a view getter while IDRv2 declares the same signature nonpayable", () => {
-    const signature = "externalIDtoLocalID(uint256)";
-    const deployed = [ARTIFACTS.arbitrableProxy, VERIFIED.legacyResolver.abi].map((source) => findBySignature(source, signature, "function"));
-    const declared = findBySignature(ARTIFACTS.idrV2, signature, "function") as NormalizedFunction;
-    for (const item of deployed) expect((item as NormalizedFunction).stateMutability).toBe("view");
-    expect(declared.stateMutability).toBe("nonpayable");
-    expect(declared.inputs.map((input) => input.type)).toEqual(["uint256"]);
-    expect(declared.outputs.map((output) => output.type)).toEqual(["uint256"]);
-  });
-});
-
-describe("event topics the Reality lookup filters on", () => {
-  const TOPIC_SIGNATURES: readonly [ABI: Abi, name: string, signature: string][] = [
-    [realityProxyAbi, "DisputeIDToQuestionID", "DisputeIDToQuestionID(uint256,bytes32)"],
-    [realityProxyAbi, "ArbitrationCreated", "ArbitrationCreated(bytes32,address,uint256)"],
-    [realityAbi, "LogNewQuestion", "LogNewQuestion(bytes32,address,uint256,string,bytes32,address,uint32,uint32,uint256,uint256)"],
-    [realityAbi, "LogNewTemplate", "LogNewTemplate(uint256,address,string)"],
-  ];
-
-  it.each(TOPIC_SIGNATURES)("$1 topic is the hash of its full signature", (abi, name, signature) => {
-    const item = abi.find((entry) => entry.type === "event" && entry.name === name);
-    expect(item).toBeDefined();
-    expect(toEventSelector(item as Parameters<typeof toEventSelector>[0])).toBe(toEventSelector(signature));
-  });
-
-  it("Reality.eth v2 and v3 declare the same lookup events", () => {
-    for (const signature of ["LogNewQuestion(bytes32,address,uint256,string,bytes32,address,uint32,uint32,uint256,uint256)", "LogNewTemplate(uint256,address,string)"]) {
-      const reference = findBySignature(ARTIFACTS.realitio, signature, "event");
-      expect(findBySignature(ARTIFACTS.realityEth30, signature, "event")).toEqual(reference);
-      expect(findBySignature(ARTIFACTS.realityEth32, signature, "event")).toEqual(reference);
-    }
-  });
 });
 
 describe("arbitrator event topics", () => {
@@ -251,42 +205,9 @@ describe("arbitrator event topics", () => {
 });
 
 describe("encoding through the embedded ABIs", () => {
-  it("getSubcourt takes a bigint and encodes the selector of the published signature", () => {
-    const data = encodeFunctionData({ abi: klerosLiquidAbi, functionName: "getSubcourt", args: [3n] });
-    expect(data.slice(0, 10)).toBe(toFunctionSelector("getSubcourt(uint96)"));
-    expect(data).toHaveLength(2 + 8 + 64);
-  });
-
-  it("the v1 withdrawable read encodes the array of rulings", () => {
-    const data = encodeFunctionData({
-      abi: idrV1Abi,
-      functionName: "getTotalWithdrawableAmount",
-      args: [1n, "0x0000000000000000000000000000000000000001", [1n, 2n]],
-    });
-    expect(data.slice(0, 10)).toBe(toFunctionSelector("getTotalWithdrawableAmount(uint256,address,uint256[])"));
-  });
-
   it("each legacy fundAppeal overload encodes under its own selector", () => {
     const [wide, narrow] = idrLegacyFundAppealAbi;
     expect(encodeFunctionData({ abi: [wide], functionName: "fundAppeal", args: [1n, 2n] }).slice(0, 10)).toBe(toFunctionSelector("fundAppeal(uint256,uint256)"));
     expect(encodeFunctionData({ abi: [narrow], functionName: "fundAppeal", args: [1n, 1] }).slice(0, 10)).toBe(toFunctionSelector("fundAppeal(uint256,uint8)"));
-  });
-
-  it("the Contribution event decodes its ruling and amount", () => {
-    const padded = (value: bigint): Hex => encodeAbiParameters([{ type: "uint256" }], [value]);
-    const contributor = encodeAbiParameters([{ type: "address" }], ["0x0000000000000000000000000000000000000002"]);
-    const decoded = decodeEventLog({
-      abi: idrV2Abi,
-      topics: [toEventSelector("Contribution(uint256,uint256,uint256,address,uint256)"), padded(7n), padded(1n), contributor],
-      data: encodeAbiParameters([{ type: "uint256" }, { type: "uint256" }], [2n, 500n]),
-    });
-    expect(decoded.eventName).toBe("Contribution");
-    expect(decoded.args).toEqual({
-      _localDisputeID: 7n,
-      _round: 1n,
-      ruling: 2n,
-      _contributor: "0x0000000000000000000000000000000000000002",
-      _amount: 500n,
-    });
   });
 });

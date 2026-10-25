@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { encodeEventTopics, hexToBigInt, numberToHex, type Hex } from "viem";
-import { ARBITRATOR_ABI, MAINNET_ARBITRATOR, disputeStruct, isDisputesCall } from "../support/arbitrator";
-import { fakeNetwork, type HttpRequest, type JsonAnswer, type RpcCall, type RpcResult } from "../support/network";
+import { openDisputesRpc } from "../support/arbitrator";
+import { appOriginOf, fakeNetwork, type HttpRequest, type JsonAnswer } from "../support/network";
 
 // The chain is synthesized: mainnet's arbitrator lists three open disputes; the meta-evidence API answers two of them at
 // once and never answers the third. The build needs the chain-1 read RPC and the meta-evidence API configured, as a
@@ -19,44 +18,6 @@ const ANSWERED = [
 const STALLED = 903n;
 const OPEN_IDS = [...ANSWERED.map(({ id }) => id), STALLED];
 
-function arbitrableOf(id: bigint): Hex {
-  return `0x${id.toString(16).padStart(40, "0")}`;
-}
-
-function creationLog(id: bigint) {
-  const blockNumber = HEAD - 100n + (id % 100n);
-  return {
-    address: MAINNET_ARBITRATOR,
-    topics: encodeEventTopics({ abi: ARBITRATOR_ABI, eventName: "DisputeCreation", args: { _disputeID: id, _arbitrable: arbitrableOf(id) } }),
-    data: "0x",
-    blockNumber: numberToHex(blockNumber),
-    blockHash: `0x${blockNumber.toString(16).padStart(64, "0")}`,
-    transactionHash: `0x${id.toString(16).padStart(64, "0")}`,
-    transactionIndex: "0x0",
-    logIndex: "0x0",
-    removed: false,
-  };
-}
-
-const [DISPUTE_CREATION] = encodeEventTopics({ abi: ARBITRATOR_ABI, eventName: "DisputeCreation" });
-
-/** No `NewPeriod` logs: none of the disputes reached execution. */
-function logsAnswer(call: RpcCall): RpcResult {
-  const filter = call.params[0] as { fromBlock?: Hex; toBlock?: Hex; topics?: readonly (Hex | null)[] } | undefined;
-  if (filter?.topics?.[0] !== DISPUTE_CREATION || filter.fromBlock === undefined || filter.toBlock === undefined) return { result: [] };
-  const from = hexToBigInt(filter.fromBlock);
-  const to = hexToBigInt(filter.toBlock);
-  return { result: OPEN_IDS.map(creationLog).filter((log) => hexToBigInt(log.blockNumber) >= from && hexToBigInt(log.blockNumber) <= to) };
-}
-
-/** Everything else, the courts among them, is left unanswered so it fails fast. */
-function rpcAnswer(call: RpcCall): RpcResult | undefined {
-  if (call.method === "eth_blockNumber") return { result: numberToHex(HEAD) };
-  if (call.method === "eth_getLogs") return logsAnswer(call);
-  const id = OPEN_IDS.find((candidate) => isDisputesCall(call, MAINNET_ARBITRATOR, candidate));
-  return id === undefined ? undefined : disputeStruct({ arbitrated: arbitrableOf(id), period: 0, lastPeriodChange: BigInt(Math.floor(Date.now() / 1000)) });
-}
-
 function isStalled(request: HttpRequest): boolean {
   return request.kind === "locator" && request.disputeId === STALLED.toString();
 }
@@ -72,7 +33,7 @@ function httpAnswer(request: HttpRequest): JsonAnswer | undefined {
 
 test("renders cards as each dispute resolves and settles a stalled title on 'title unavailable' well under a minute", async ({ context, page, baseURL }) => {
   test.setTimeout(SETTLE_LIMIT_MS + 30_000);
-  await fakeNetwork(context, { appOrigin: new URL(baseURL ?? "http://localhost").origin, rpc: rpcAnswer, http: httpAnswer, hold: isStalled });
+  await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), rpc: openDisputesRpc(OPEN_IDS, HEAD), http: httpAnswer, hold: isStalled });
   const card = (id: bigint) => page.getByRole("link").filter({ has: page.getByText(`#${id.toString()}`, { exact: true }) });
   const title = (id: bigint) => card(id).getByRole("heading", { level: 2 });
 

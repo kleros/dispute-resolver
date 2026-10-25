@@ -7,9 +7,10 @@ import { useArbitrationCost, useCoreDeps, useCourts } from "../../data";
 import { paths } from "../../routing";
 import { Attachment } from "../../safe-content";
 import { AddressText, Amount, EYEBROW, FACT, FACT_SMALL, LABEL, Notice } from "../../ui";
-import { WriteStatusNotice, useConnectWallet, type WriteAccess, type WriteStatus } from "../../wallet";
+import { ConnectButton, WriteStatusNotice, type WriteAccess, type WriteStatus } from "../../wallet";
 import { courtLabel } from "./CourtSection";
 import { questionTypeLabel } from "./draft";
+import { Shimmer } from "./fields";
 import { UPLOAD_FAILURE_TITLES } from "./messages";
 import { useCreateDispute, type CreateActionState } from "./useCreateDispute";
 
@@ -26,13 +27,7 @@ function Row({ term, valueClass, children }: { readonly term: string; readonly v
 
 function CourtName({ chain, courtId }: { readonly chain: ChainConfig; readonly courtId: bigint }) {
   const courts = useCourts(chain.id);
-  if (courts.status === "loading") {
-    return (
-      <span className="t-shimmer" data-text="Loading...">
-        Loading...
-      </span>
-    );
-  }
+  if (courts.status === "loading") return <Shimmer text="Loading..." />;
   const court = courts.status === "ready" ? courts.value.find((entry) => entry.id === courtId) : undefined;
   return <>{court === undefined ? `Court #${courtId.toString()}` : courtLabel(court)}</>;
 }
@@ -40,13 +35,7 @@ function CourtName({ chain, courtId }: { readonly chain: ChainConfig; readonly c
 function Cost({ chain, input }: { readonly chain: ChainConfig; readonly input: CreateDisputeInput }) {
   const cost = useArbitrationCost(chain.id, encodeExtraData(input.courtId, input.votes));
   if (cost.status === "ready") return <Amount wei={cost.value} chain={chain} className={FACT} />;
-  if (cost.status === "loading") {
-    return (
-      <span className="t-shimmer" data-text="Calculating...">
-        Calculating...
-      </span>
-    );
-  }
+  if (cost.status === "loading") return <Shimmer text="Calculating..." />;
   return <span className="text-klerosUIComponentsError">{cost.error.message}</span>;
 }
 
@@ -144,22 +133,12 @@ function ActionNotice({ state, writeStatus, chain }: { readonly state: CreateAct
 }
 
 function AccessNotice({ access, chain }: { readonly access: WriteAccess; readonly chain: ChainConfig }) {
-  const connect = useConnectWallet();
   if (access.status === "ready") return null;
   if (access.status === "wrong-chain") return <WriteStatusNotice status={access.guard} beforeAttempt />;
   return (
     <div className="flex flex-col gap-2">
       <Notice reveal variant="info" title="Wallet required" body="Connect a wallet to create a dispute." />
-      {connect.available ? (
-        <Button
-          text="Connect"
-          small
-          className="self-start"
-          onPress={() => {
-            connect.open(chain.id);
-          }}
-        />
-      ) : null}
+      <ConnectButton chainId={chain.id} />
     </div>
   );
 }

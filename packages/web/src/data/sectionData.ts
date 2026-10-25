@@ -1,6 +1,6 @@
-import { describeError, type ChainId, type Outcome, type Unavailable, type UnavailableCode } from "@dispute-resolver/core";
+import { describeError, type ChainId, type MetaEvidence, type MetaEvidenceResult, type Outcome, type Unavailable, type UnavailableCode } from "@dispute-resolver/core";
 import type { UseQueryResult } from "@tanstack/react-query";
-import type { SectionData } from "./types";
+import type { CaseDispute, FoundLookup, SectionData } from "./types";
 
 type LoadingSection = Extract<SectionData<never>, { readonly status: "loading" }>;
 type UnavailableSection = Extract<SectionData<never>, { readonly status: "unavailable" }>;
@@ -28,11 +28,26 @@ export function fromOutcome<T>(outcome: Outcome<T>): SectionData<T> {
   return outcome.ok ? ready(outcome.value) : unavailableFrom(outcome.error);
 }
 
+/** An `invalid` result still carries a placeholder meta-evidence, which is shown; `missing` is the caller's reason there is none. */
+export function metaEvidenceSection(metaEvidence: SectionData<MetaEvidenceResult>, missing: string): SectionData<MetaEvidence> {
+  if (metaEvidence.status !== "ready") return metaEvidence;
+  const result = metaEvidence.value;
+  switch (result.status) {
+    case "ok":
+    case "invalid":
+      return ready(result.metaEvidence);
+    case "missing":
+      return unavailable("not-found", missing);
+    case "failed":
+      return unavailableFrom(result.error);
+  }
+}
+
 /**
  * Hooks never throw to React: a rejected read becomes a section state. A viem error's full message carries the read
  * RPC's URL and with it the API key, so only its short message reaches the section.
  */
-export function rejectionError(error: unknown): Unavailable {
+function rejectionError(error: unknown): Unavailable {
   return { code: "rpc-error", message: describeError(error) };
 }
 
@@ -45,4 +60,10 @@ export function fromQuery<TData, TValue>(query: UseQueryResult<TData>, map: (dat
 
 export function valueOf<T>(section: SectionData<T>): T | undefined {
   return section.status === "ready" ? section.value : undefined;
+}
+
+/** The arbitrator's record of the dispute once the lookup found it; the header renders from it before `view` settles. */
+export function foundLookup(dispute: CaseDispute): FoundLookup | undefined {
+  const { lookup } = dispute;
+  return lookup.status === "ready" && lookup.value.status === "found" ? lookup.value : undefined;
 }

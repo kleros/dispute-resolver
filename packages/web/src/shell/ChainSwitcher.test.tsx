@@ -2,7 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "../test/shell";
-import { createTestWallet, holdChainSwitches, type TestWallet } from "../test/wallet";
+import { createConnectedTestWallet, createTestWallet, holdChainSwitches, type TestWallet } from "../test/wallet";
 
 function Screen() {
   return <p>Screen content</p>;
@@ -55,12 +55,6 @@ function toastsShown() {
 /** The chain dot at the start of the pill. */
 function dot(trigger: HTMLElement): Element | null {
   return trigger.querySelector("[aria-hidden=true]");
-}
-
-async function connected(chainId: number, switchChainError?: boolean | Error) {
-  const wallet = createTestWallet({ chainId, switchChainError });
-  await wallet.connect();
-  return wallet;
 }
 
 describe("ChainSwitcher", () => {
@@ -130,25 +124,9 @@ describe("ChainSwitcher", () => {
     });
   });
 
-  it("on the unsupported-network screen with the wallet on another chain, the page follows the wallet to the chosen chain's page", async () => {
-    const user = userEvent.setup();
-    const wallet = await connected(1);
-    const switches = spySwitches(wallet);
-    const view = renderWithProviders(<Screen />, { path: "/abc/ongoing", frame: "page", wallet });
-    await user.click(unsupportedPill());
-    await user.click(screen.getByRole("menuitem", { name: "Gnosis Network" }));
-    expect(switches).toHaveBeenCalledWith(expect.objectContaining({ chainId: 100 }));
-    await waitFor(() => {
-      expect(wallet.config.state.chainId).toBe(100);
-    });
-    await waitFor(() => {
-      expect(view.currentPath()).toBe("/100/ongoing");
-    });
-  });
-
   it("on the unsupported-network screen the page follows the wallet keeping the rest of the path, the search and the hash", async () => {
     const user = userEvent.setup();
-    const wallet = await connected(100);
+    const wallet = await createConnectedTestWallet({ chainId: 100 });
     const switches = spySwitches(wallet);
     const view = renderWithProviders(<Screen />, { path: "/abc/cases/5?x=1#y", frame: "page", wallet });
     await user.click(unsupportedPill());
@@ -164,7 +142,7 @@ describe("ChainSwitcher", () => {
 
   it("with a wallet connected, choosing a chain on a list page asks the wallet and the page follows it, keeping the search and hash", async () => {
     const user = userEvent.setup();
-    const wallet = await connected(1);
+    const wallet = await createConnectedTestWallet({ chainId: 1 });
     const switches = spySwitches(wallet);
     const view = renderWithProviders(<Screen />, { path: "/1/ongoing?period=4#list", frame: "page", wallet });
     await user.click(pill("Ethereum Mainnet"));
@@ -181,7 +159,7 @@ describe("ChainSwitcher", () => {
 
   it("on a case page, a chain the wallet switches to from the pill opens that chain's Ongoing Disputes", async () => {
     const user = userEvent.setup();
-    const wallet = await connected(1);
+    const wallet = await createConnectedTestWallet({ chainId: 1 });
     const view = renderWithProviders(<Screen />, { path: "/1/cases/5?tab=evidence#e", frame: "page", wallet });
     await user.click(pill("Ethereum Mainnet"));
     await user.click(screen.getByRole("menuitem", { name: "Gnosis Network" }));
@@ -194,7 +172,7 @@ describe("ChainSwitcher", () => {
 
   it("a switch declined from the pill changes nothing and shows no toast", async () => {
     const user = userEvent.setup();
-    const wallet = await connected(1, true);
+    const wallet = await createConnectedTestWallet({ chainId: 1, switchChainError: true });
     const switches = spySwitches(wallet);
     const view = renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet });
     await user.click(pill("Ethereum Mainnet"));
@@ -214,7 +192,7 @@ describe("ChainSwitcher", () => {
 
   it("a switch from the pill that fails shows an error toast with the reason and the page stays", async () => {
     const user = userEvent.setup();
-    const wallet = await connected(1, new Error("Unrecognized chain ID"));
+    const wallet = await createConnectedTestWallet({ chainId: 1, switchChainError: new Error("Unrecognized chain ID") });
     const view = renderWithProviders(<Screen />, { path: "/1/cases/5", frame: "page", wallet });
     await user.click(pill("Ethereum Mainnet"));
     await user.click(screen.getByRole("menuitem", { name: "Gnosis Network" }));
@@ -228,7 +206,7 @@ describe("ChainSwitcher", () => {
 
   it("while any switch request waits in the wallet, the pill's chains take no press", async () => {
     const user = userEvent.setup();
-    const wallet = await connected(1);
+    const wallet = await createConnectedTestWallet({ chainId: 1 });
     const switches = spySwitches(wallet);
     holdChainSwitches(wallet);
     const view = renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet });
@@ -246,7 +224,7 @@ describe("ChainSwitcher", () => {
 
   it("while a switch request waits, the pill's dot dims and the chains look disabled with no hover fill", async () => {
     const user = userEvent.setup();
-    const wallet = await connected(1);
+    const wallet = await createConnectedTestWallet({ chainId: 1 });
     holdChainSwitches(wallet);
     renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet });
     const trigger = pill("Ethereum Mainnet");
@@ -264,12 +242,12 @@ describe("ChainSwitcher", () => {
   });
 
   it("the pill's dot is green on the page chain and has no warning shade with a wallet connected", async () => {
-    const onPageChain = renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page", wallet: await connected(100) });
+    const onPageChain = renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page", wallet: await createConnectedTestWallet({ chainId: 100 }) });
     expect(dot(pill("Gnosis Network"))).toHaveClass("bg-(--dr-success-bar)");
     onPageChain.unmount();
 
     // While the wallet has not answered the switch asked for at load, it is still on another chain than the page.
-    const waiting = await connected(1);
+    const waiting = await createConnectedTestWallet({ chainId: 1 });
     holdChainSwitches(waiting);
     renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page", wallet: waiting });
     const trigger = pill("Gnosis Network");

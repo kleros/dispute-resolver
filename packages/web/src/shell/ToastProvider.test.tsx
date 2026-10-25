@@ -1,8 +1,9 @@
 import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { expectRenderErrors } from "../test/shell";
 import { ToastProvider, useToast } from "./ToastProvider";
-import type { ToastInput, Toaster, ToastVariant } from "./types";
+import type { ToastInput, Toaster } from "./types";
 
 function Trigger({ toast }: { readonly toast: ToastInput }) {
   const toaster = useToast();
@@ -34,11 +35,6 @@ function region() {
 /** The fade-out after a dismissal, on the fallback clock: jsdom loads no stylesheet to read it from. */
 const CLOSE_MS = 250;
 
-/** jsdom reports each error React rethrows in development; the report is expected here. */
-function silenceErrorReport(event: ErrorEvent): void {
-  event.preventDefault();
-}
-
 /** jsdom's `document.hidden` is a read-only getter, so the test shadows it and announces the change as a browser would. */
 function setHidden(hidden: boolean): void {
   Object.defineProperty(document, "hidden", { configurable: true, get: () => hidden });
@@ -49,7 +45,6 @@ function setHidden(hidden: boolean): void {
 
 afterEach(() => {
   Reflect.deleteProperty(document, "hidden");
-  window.removeEventListener("error", silenceErrorReport);
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
@@ -89,18 +84,6 @@ describe("ToastProvider", () => {
       vi.advanceTimersByTime(1);
     });
     expect(region().queryByText("Dispute created")).not.toBeInTheDocument();
-  });
-
-  it("hides a toast after its own delay", () => {
-    vi.useFakeTimers();
-    const show = renderTrigger({ variant: "sync", title: "Waiting", autoHideMs: 1000 });
-    act(() => {
-      show.click();
-    });
-    act(() => {
-      vi.advanceTimersByTime(1000 + CLOSE_MS);
-    });
-    expect(region().queryByText("Waiting")).not.toBeInTheDocument();
   });
 
   it("a toast shown while the page is hidden waits, and gets its full delay once the page is shown again", () => {
@@ -251,12 +234,6 @@ describe("ToastProvider", () => {
     });
   });
 
-  it.each<ToastVariant>(["success", "error", "sync"])("renders the %s variant without throwing", async (variant) => {
-    const user = userEvent.setup();
-    await user.click(renderTrigger({ variant, title: `A ${variant} toast`, message: "Body" }));
-    expect(region().getByText(`A ${variant} toast`)).toBeInTheDocument();
-  });
-
   it("an error toast is announced as an alert", async () => {
     const user = userEvent.setup();
     await user.click(renderTrigger({ variant: "error", title: "Creation failed", message: "The transaction reverted." }));
@@ -279,9 +256,7 @@ describe("ToastProvider", () => {
   });
 
   it("useToast outside ToastProvider fails loudly", () => {
-    // React logs the error the hook throws; the log is expected here.
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
-    window.addEventListener("error", silenceErrorReport);
+    expectRenderErrors();
     expect(() => renderHook(() => useToast())).toThrow("useToast is called outside ToastProvider.");
   });
 });

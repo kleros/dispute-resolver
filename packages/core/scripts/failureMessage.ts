@@ -52,3 +52,13 @@ export function failureMessage(error: unknown, env: Env = process.env): string {
   const text = error instanceof BaseError ? error.shortMessage : error.message;
   return printable(text, configuredRpcUrls(env));
 }
+
+/** Runs an operator script: its exit code is `main`'s, or 1 with the failure printed through `failureMessage`. */
+export async function runScript(main: () => Promise<number>): Promise<void> {
+  try {
+    process.exitCode = await main();
+  } catch (error) {
+    console.error(failureMessage(error));
+    process.exitCode = 1;
+  }
+}

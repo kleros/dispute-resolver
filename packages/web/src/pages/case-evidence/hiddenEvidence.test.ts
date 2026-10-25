@@ -1,22 +1,15 @@
 import type { EvidenceList, HiddenEvidenceReason } from "@dispute-resolver/core";
 import { describe, expect, it } from "vitest";
+import { testEvidenceList } from "../../test/data";
 import { HIDDEN_REASON_LABELS, hiddenEvidenceText } from "./hiddenEvidence";
 
-const NONE: Readonly<Record<HiddenEvidenceReason, number>> = { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 };
-
 function list(hidden: Partial<Record<HiddenEvidenceReason, number>>): EvidenceList {
-  const hiddenByReason = { ...NONE, ...hidden };
-  const hiddenEvidenceCount = Object.values(hiddenByReason).reduce((sum, count) => sum + count, 0);
-  return { items: [], hiddenEvidenceCount, hiddenByReason };
+  return testEvidenceList([], hidden);
 }
 
 describe("hiddenEvidenceText", () => {
   it("nothing hidden has no text", () => {
     expect(hiddenEvidenceText(list({}))).toBeNull();
-  });
-
-  it("a single reason follows the total without its own count", () => {
-    expect(hiddenEvidenceText(list({ "not-content-addressed": 2 }))).toBe("2 evidence items hidden: not content-addressed");
   });
 
   it("a single hidden item is singular", () => {
@@ -29,7 +22,7 @@ describe("hiddenEvidenceText", () => {
     );
   });
 
-  it.each(Object.keys(NONE) as HiddenEvidenceReason[])("labels the %s reason", (reason) => {
+  it.each(Object.keys(HIDDEN_REASON_LABELS) as HiddenEvidenceReason[])("labels the %s reason", (reason) => {
     expect(HIDDEN_REASON_LABELS[reason]).toMatch(/\S/);
     expect(hiddenEvidenceText(list({ [reason]: 3 }))).toBe(`3 evidence items hidden: ${HIDDEN_REASON_LABELS[reason]}`);
   });

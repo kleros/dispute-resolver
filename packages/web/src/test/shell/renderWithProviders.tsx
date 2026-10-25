@@ -1,13 +1,11 @@
 import type { ReactElement, ReactNode } from "react";
-import { Route, Routes } from "react-router";
 import type { AtlasUploader } from "../../atlas";
 import type { CoreDeps } from "../../data";
-import { ChainLayout } from "../../routing";
 import { ChainNoticeToasts, ColorSchemeProvider, PageFrame, ToastProvider } from "../../shell";
 import { createColorSchemeStore, type ColorSchemeStore } from "../../theme";
 import { TestAtlasProvider } from "../atlas";
 import { TestDataProvider } from "../data";
-import { renderAtPath, renderInRouter, type RoutedRenderResult } from "../routing";
+import { renderAtPath, type RoutedRenderResult } from "../routing";
 import { TestWalletProvider, createTestWallet, type TestWallet } from "../wallet";
 
 export interface RenderWithProvidersOptions {
@@ -52,18 +50,5 @@ export function renderWithProviders(ui: ReactElement, options: RenderWithProvide
       </TestDataProvider>
     );
   }
-  const result =
-    frame === "test"
-      ? renderAtPath(ui, path, { wrapper: Providers })
-      : renderInRouter(
-          <Routes>
-            <Route path=":chainId" element={<ChainLayout frame={PageFrame} />}>
-              <Route index element={ui} />
-              <Route path="*" element={ui} />
-            </Route>
-          </Routes>,
-          path,
-          { wrapper: Providers },
-        );
-  return { ...result, wallet };
+  return { ...renderAtPath(ui, path, { wrapper: Providers, frame: frame === "page" ? PageFrame : undefined }), wallet };
 }

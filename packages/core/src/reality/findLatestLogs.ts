@@ -1,19 +1,11 @@
-import type { AbiEvent, GetLogsParameters, GetLogsReturnType } from "viem";
+import type { AbiEvent, GetLogsReturnType } from "viem";
 import { isRangeLimitError } from "../rpc";
+import { getWindowLogs, uniqueLogs, type BlockWindow, type Logs, type LogsRequest } from "../rpc/logWindows";
 import type { RequestBudget } from "../rpc/types";
-import type { Address, ReadClient } from "../types";
+import type { ReadClient } from "../types";
 import { LOOKUP_LIMITS } from "./constants";
 
-/** The logs of one request over mined blocks (explicit block numbers, so never pending). */
-type Logs<TEvent extends AbiEvent> = GetLogsReturnType<TEvent, undefined, undefined, bigint, bigint>;
-
-export interface LogsRequest<TEvent extends AbiEvent> {
-  readonly address: Address;
-  readonly event: TEvent;
-  readonly args?: GetLogsParameters<TEvent>["args"];
-  readonly fromBlock: bigint;
-  readonly toBlock: bigint;
-}
+export type { LogsRequest } from "../rpc/logWindows";
 
 /**
  * The window size a provider has accepted so far, remembered for the next searches of one lookup so that they go straight
@@ -23,33 +15,9 @@ export interface WindowMemory {
   size: number | undefined;
 }
 
-interface BlockWindow {
-  readonly from: bigint;
-  readonly to: bigint;
-}
-
-/** Some providers return the same log twice. */
-function uniqueLogs<TEvent extends AbiEvent>(logs: Logs<TEvent>): Logs<TEvent> {
-  const seen = new Set<string>();
-  return logs.filter((log) => {
-    if (log.removed) return false;
-    const id = `${log.transactionHash.toLowerCase()}:${String(log.logIndex)}`;
-    if (seen.has(id)) return false;
-    seen.add(id);
-    return true;
-  });
-}
-
 async function fetchWindow<TEvent extends AbiEvent>(client: ReadClient, budget: RequestBudget, request: LogsRequest<TEvent>, window: BlockWindow): Promise<Logs<TEvent>> {
   budget.spend();
-  const logs = await client.getLogs<TEvent, undefined, undefined, bigint, bigint>({
-    address: request.address,
-    event: request.event,
-    args: request.args,
-    fromBlock: window.from,
-    toBlock: window.to,
-  } as GetLogsParameters<TEvent, undefined, undefined, bigint, bigint>);
-  return uniqueLogs<TEvent>(logs);
+  return uniqueLogs(await getWindowLogs(client, request, window));
 }
 
 function planWindows(low: bigint, high: bigint, windowSize: number): BlockWindow[] {
@@ -140,10 +108,6 @@ export async function findLatestLogsRemembering<TEvent extends AbiEvent>(
  * refusal falls back to a backwards scan in shrinking windows, and the scan stops at the newest window with logs. Other
  * errors are thrown, never split.
  */
-export function findLatestLogs<const TEvent extends AbiEvent>(
-  client: ReadClient,
-  request: { readonly address: Address; readonly event: TEvent; readonly args?: GetLogsParameters<TEvent>["args"]; readonly fromBlock: bigint; readonly toBlock: bigint },
-  budget: RequestBudget,
-): Promise<GetLogsReturnType<TEvent>> {
+export function findLatestLogs<const TEvent extends AbiEvent>(client: ReadClient, request: LogsRequest<TEvent>, budget: RequestBudget): Promise<GetLogsReturnType<TEvent>> {
   return findLatestLogsRemembering(client, request, budget, { size: undefined });
 }

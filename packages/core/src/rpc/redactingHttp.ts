@@ -1,8 +1,6 @@
 import { http, type EIP1193RequestOptions, type HttpTransportConfig, type Transport } from "viem";
+import { causeChain } from "./errors";
 import { urlPieces } from "./urlPieces";
-
-/** How deep a chain of `cause`s is followed; viem wraps a transport error at most a few times. */
-const MAX_CAUSE_DEPTH = 8;
 
 /** How deep an answer's values are followed; a node's error data nests a revert one level down at most. */
 const MAX_VALUE_DEPTH = 8;
@@ -20,7 +18,7 @@ const NOT_JSON = "The RPC's answer is not JSON.";
 /** Revert data, which viem decodes into the contract's error. */
 const HEX = /^0x[\da-f]*$/i;
 
-interface JsonRpcRequest {
+export interface JsonRpcRequest {
   readonly method: string;
   readonly params?: unknown;
 }
@@ -76,16 +74,6 @@ function urlRedactor(url: string): Redactor {
 
 interface Walk extends Redactor {
   readonly seen: WeakSet<object>;
-}
-
-function causeChain(error: unknown): object[] {
-  const links: object[] = [];
-  let link: unknown = error;
-  while (links.length < MAX_CAUSE_DEPTH && typeof link === "object" && link !== null) {
-    links.push(link);
-    link = Reflect.get(link, "cause");
-  }
-  return links;
 }
 
 function isJsonContainer(value: object): boolean {
@@ -145,7 +133,7 @@ function redactFields(link: Error, walk: Walk): void {
  * so a field that cannot be written can never replace the request's own error.
  */
 function redactError(error: unknown, redactor: Redactor): unknown {
-  const links = causeChain(error);
+  const links = causeChain(error).filter((link): link is object => typeof link === "object" && link !== null);
   // A parse error quotes the start of the answer, which can stop partway through a key no redaction can recognise, and
   // viem copies its message into the details and message of every error that wraps it.
   const parseMessages = links.filter((link): link is SyntaxError => link instanceof SyntaxError && link.message !== "").map((link) => link.message);
@@ -163,6 +151,18 @@ function redactError(error: unknown, redactor: Redactor): unknown {
   return error;
 }
 
+/** `transport` with every error its requests throw replaced by `map(error)`. */
+export function rethrowMapped<TTransport extends ReturnType<Transport>>(transport: TTransport, map: (error: unknown) => unknown): TTransport {
+  const request = async (call: JsonRpcRequest, options?: EIP1193RequestOptions): Promise<unknown> => {
+    try {
+      return await transport.request(call, options);
+    } catch (error) {
+      throw map(error);
+    }
+  };
+  return { ...transport, request: request as TTransport["request"] };
+}
+
 /**
  * viem's `http` transport whose errors name the RPC by its origin only. viem writes the full URL, and with it the API key
  * in its path or query, into the message, stack and `url` of every request error, and the RPC's answer into its details
@@ -170,15 +170,5 @@ function redactError(error: unknown, redactor: Redactor): unknown {
  */
 export function redactingHttp(url: string, config?: HttpTransportConfig): Transport {
   const redactor = urlRedactor(url);
-  return (parameters) => {
-    const transport = http(url, config)(parameters);
-    const request = async (call: JsonRpcRequest, options?: EIP1193RequestOptions): Promise<unknown> => {
-      try {
-        return await transport.request(call, options);
-      } catch (error) {
-        throw redactError(error, redactor);
-      }
-    };
-    return { ...transport, request: request as typeof transport.request };
-  };
+  return (parameters) => rethrowMapped(http(url, config)(parameters), (error) => redactError(error, redactor));
 }

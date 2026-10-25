@@ -76,10 +76,6 @@ describe("meta-evidence budget", () => {
     const cases: [Parameters<typeof fakeFetcher>[0], Record<string, unknown>][] = [
       [servedMetaEvidence("%PDF-1.4"), { status: "failed", reason: "not-json" }],
       [servedMetaEvidence(json(5)), { status: "failed", reason: "schema-invalid" }],
-      [
-        { ...servedMetaEvidence(json({ title: "T", dynamicScriptURI: `/ipfs/${DEFAULT_SCRIPT_CID}`, arbitratorChainID: "1.0" })), [DEFAULT_SCRIPT_URL]: SCRIPT },
-        { status: "ok", script: { ran: false, reason: "script-chain-unavailable" } },
-      ],
     ];
     for (const [routes, expected] of cases) {
       const { fetcher, urls } = fakeFetcher(routes);

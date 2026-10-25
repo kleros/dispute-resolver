@@ -1,8 +1,8 @@
 import type { Decision } from "@dispute-resolver/core";
 import { useId } from "react";
 import { FACT_LEAD, SectionSkeleton } from "../../ui";
-import type { CaseSectionProps } from "../../data";
-import { existingView, foundLookup, viewField } from "./caseState";
+import { foundLookup, type CaseSectionProps } from "../../data";
+import { existingView, viewField } from "./caseState";
 import { SectionContent } from "./SectionContent";
 import { TimelineBullet } from "./TimelineBullet";
 

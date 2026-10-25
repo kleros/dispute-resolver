@@ -3,7 +3,7 @@ export { CoreDepsProvider, useCoreDeps } from "./context";
 export { DataProvider } from "./DataProvider";
 export { createQueryClient } from "./queryClient";
 export { queryKeys } from "./queryKeys";
-export { noRpcError } from "./sectionData";
+export { foundLookup, fromOutcome, metaEvidenceSection, noRpcError } from "./sectionData";
 export { useCourts, useOngoing, useOngoingTitle } from "./ongoingHooks";
 export { useDisputeLookup, useFamily } from "./disputeHooks";
 export { useArbitrationCost, useIsContractAccount } from "./accountHooks";

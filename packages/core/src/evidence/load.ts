@@ -3,7 +3,7 @@ import type { Fetcher, Outcome, ReadClient, UnixSeconds } from "../types";
 import { gatewayUrl, normalizeIpfsPath } from "../uri";
 import type { CanonicalIpfsPath, GatewayOrigin } from "../uri/types";
 import { scanEvidenceLogs } from "./events";
-import { fail, succeed } from "./outcome";
+import { fail, succeed } from "../outcome";
 import { parseEvidenceDocument } from "./schema";
 import type { EvidenceContext, EvidenceItem, EvidenceList, EvidenceLog, HiddenEvidenceReason } from "./types";
 

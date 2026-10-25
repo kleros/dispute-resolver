@@ -2,13 +2,13 @@ import { Button, Modal, TextArea, TextField } from "@kleros/ui-components-librar
 import { useMemo, useState } from "react";
 import { AtlasFileField, AtlasUploaderProvider, useAtlasUpload, type AtlasUploader } from "../../atlas";
 import { Notice } from "../../ui";
-import { WriteStatusNotice, useConnectWallet, type NeedsWalletGuard, type WriteAccess } from "../../wallet";
+import { ConnectButton, WriteStatusNotice, type NeedsWalletGuard, type WriteAccess } from "../../wallet";
 import { SubmissionFeedbackNotice } from "./SubmissionFeedbackNotice";
 import type { EvidenceDraft, SubmissionFeedback } from "./useEvidenceSubmission";
 
 const NEEDS_WALLET = "Connect a wallet to submit evidence.";
 
-export interface SubmitEvidenceModalProps {
+interface SubmitEvidenceModalProps {
   readonly isOpen: boolean;
   readonly draft: EvidenceDraft;
   /** Merges a change into the draft; a patch, so an upload that finishes later keeps what was typed meanwhile. */
@@ -28,20 +28,10 @@ function isGuardRefusal(feedback: SubmissionFeedback | null): boolean {
 
 /** Shown when the wallet disconnects while the modal is open; what was typed stays. */
 function WalletNeeded({ guard }: { readonly guard: NeedsWalletGuard }) {
-  const connect = useConnectWallet();
   return (
     <div className="flex flex-col gap-2">
       <Notice variant="info" title="Wallet required" body={NEEDS_WALLET} />
-      {connect.available ? (
-        <Button
-          text="Connect"
-          small
-          className="self-start"
-          onPress={() => {
-            connect.open(guard.pageChainId);
-          }}
-        />
-      ) : null}
+      <ConnectButton chainId={guard.pageChainId} />
     </div>
   );
 }

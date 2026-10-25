@@ -18,21 +18,33 @@ function hookHandler(hook: unknown): Hook {
   return hook as Hook;
 }
 
-/** Sends one request through the middlewares a server hook installed and returns the headers set on the response. */
-function respond(middlewares: Connect.NextHandleFunction[], url: string): Record<string, string> {
+/**
+ * Sends one request through the middlewares a server hook installed: the headers set on the response, and the body it
+ * ended with (`undefined` when every middleware passed it on).
+ */
+function respond(middlewares: Connect.NextHandleFunction[], url: string): Promise<{ readonly headers: Record<string, string>; readonly body: unknown }> {
   const headers: Record<string, string> = {};
-  const response = {
-    setHeader(name: string, value: string) {
-      headers[name.toLowerCase()] = value;
-    },
-  };
-  const runFrom = (index: number): void => {
-    middlewares[index]?.({ url } as Connect.IncomingMessage, response as never, () => {
-      runFrom(index + 1);
-    });
-  };
-  runFrom(0);
-  return headers;
+  return new Promise((resolve) => {
+    const response = {
+      setHeader(name: string, value: string) {
+        headers[name.toLowerCase()] = value;
+      },
+      end(body: unknown) {
+        resolve({ headers, body });
+      },
+    };
+    const runFrom = (index: number): void => {
+      const middleware = middlewares[index];
+      if (middleware === undefined) {
+        resolve({ headers, body: undefined });
+        return;
+      }
+      middleware({ url } as Connect.IncomingMessage, response as never, () => {
+        runFrom(index + 1);
+      });
+    };
+    runFrom(0);
+  });
 }
 
 describe("runner bootstrap build", () => {
@@ -78,9 +90,9 @@ describe("runner policy on the preview server", () => {
     return middlewares;
   }
 
-  it("the runner's files carry its enforced sandbox policy", () => {
+  it("the runner's files carry its enforced sandbox policy", async () => {
     for (const url of ["/__runner/index.html", "/__runner/bootstrap.js", "/__runner/index.html?x=1"]) {
-      expect(respond(previewMiddlewares(), url)["content-security-policy"]).toBe(RUNNER_CONTENT_SECURITY_POLICY);
+      expect((await respond(previewMiddlewares(), url)).headers["content-security-policy"]).toBe(RUNNER_CONTENT_SECURITY_POLICY);
     }
     expect(RUNNER_CONTENT_SECURITY_POLICY).toContain("sandbox allow-scripts;");
     expect(RUNNER_CONTENT_SECURITY_POLICY).toContain("frame-ancestors 'self'");
@@ -94,9 +106,9 @@ describe("runner policy on the preview server", () => {
     expect(headerValues(runnerRules, "/__runner/index.html", "Content-Security-Policy")).toEqual([RUNNER_CONTENT_SECURITY_POLICY]);
   });
 
-  it("no app path gets the runner policy", () => {
+  it("no app path gets the runner policy", async () => {
     for (const url of ["/", "/1/cases/1650", "/__runner", "/assets/index.js"]) {
-      expect(respond(previewMiddlewares(), url)["content-security-policy"]).toBeUndefined();
+      expect((await respond(previewMiddlewares(), url)).headers["content-security-policy"]).toBeUndefined();
     }
   });
 });
@@ -111,26 +123,7 @@ describe("runner bootstrap on the dev server", () => {
     };
     hookHandler(runnerBootstrapPlugin().configureServer)(server);
 
-    const headers: Record<string, string> = {};
-    const body = await new Promise<unknown>((resolve, reject) => {
-      const response = {
-        setHeader(name: string, value: string) {
-          headers[name.toLowerCase()] = value;
-        },
-        end: resolve,
-      };
-      const runFrom = (index: number): void => {
-        const middleware = middlewares[index];
-        if (middleware === undefined) {
-          reject(new Error("No middleware answered /__runner/bootstrap.js."));
-          return;
-        }
-        middleware({ url: "/__runner/bootstrap.js" } as Connect.IncomingMessage, response as never, () => {
-          runFrom(index + 1);
-        });
-      };
-      runFrom(0);
-    });
+    const { headers, body } = await respond(middlewares, "/__runner/bootstrap.js");
 
     expect(body).toBe(await buildRunnerBootstrap(webRoot));
     expect(headers["content-type"]).toBe("text/javascript; charset=utf-8");

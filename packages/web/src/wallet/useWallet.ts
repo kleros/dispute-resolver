@@ -29,3 +29,9 @@ export function useWallet(): WalletState {
   const { status, address, chainId } = useAccount();
   return useMemo(() => toWalletState(pendingReconnect ? "connecting" : status, address, chainId), [pendingReconnect, status, address, chainId]);
 }
+
+/** The connected wallet's chain; `undefined` without a settled connection. */
+export function useWalletChainId(): number | undefined {
+  const wallet = useWallet();
+  return wallet.status === "connected" ? wallet.chainId : undefined;
+}

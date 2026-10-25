@@ -80,14 +80,30 @@ async function reopen(page: Page, traffic: Traffic): Promise<void> {
   await expectCaseSectionsSettled(page);
 }
 
-/** Opens the case page with the fixture display and waits until it has loaded and no section is loading. */
-async function openWithDisplay(page: Page, baseURL: string | undefined): Promise<Traffic> {
-  const traffic = await routeCasePage(page, baseURL, {}, { display: display() });
+/** Opens the case page with the fixture display and waits until the gateway has been asked for the display page. */
+async function requestDisplay(page: Page, baseURL: string | undefined, release?: Promise<void>): Promise<Traffic> {
+  const traffic = await routeCasePage(page, baseURL, {}, { display: display(release) });
   await page.goto(CASE_PATH);
   await expectConfiguredBuild(traffic);
   await expect.poll(() => traffic.display, { message: "the display page was never requested" }).toBeGreaterThan(0);
+  return traffic;
+}
+
+/** Opens the case page with the fixture display and waits until it has loaded and no section is loading. */
+async function openWithDisplay(page: Page, baseURL: string | undefined): Promise<Traffic> {
+  const traffic = await requestDisplay(page, baseURL);
   await expectCaseSectionsSettled(page);
   return traffic;
+}
+
+/** Opens the case page with the gateway holding the display page; returns what releases it. */
+async function openWithHeldDisplay(page: Page, baseURL: string | undefined): Promise<() => void> {
+  let release = (): void => undefined;
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await requestDisplay(page, baseURL, released);
+  return release;
 }
 
 /** The fixture display's frame; the test owns its page, so it may read it. */
@@ -212,14 +228,7 @@ test.describe("case page evidence display", () => {
   });
 
   test("the section skeleton holds the frame's place until the page loads, with no visible text and no way into the frame", async ({ page, baseURL }) => {
-    let release = (): void => undefined;
-    const released = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const traffic = await routeCasePage(page, baseURL, {}, { display: display(released) });
-    await page.goto(CASE_PATH);
-    await expectConfiguredBuild(traffic);
-    await expect.poll(() => traffic.display, { message: "the display page was never requested" }).toBeGreaterThan(0);
+    const release = await openWithHeldDisplay(page, baseURL);
 
     // The gateway holds the page, so the frame has not loaded yet.
     const region = await displayRegion(page);
@@ -309,14 +318,7 @@ test.describe("case page evidence display", () => {
     page,
     baseURL,
   }) => {
-    let release = (): void => undefined;
-    const released = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const traffic = await routeCasePage(page, baseURL, {}, { display: display(released) });
-    await page.goto(CASE_PATH);
-    await expectConfiguredBuild(traffic);
-    await expect.poll(() => traffic.display, { message: "the display page was never requested" }).toBeGreaterThan(0);
+    const release = await openWithHeldDisplay(page, baseURL);
 
     // The gateway holds the page, so the skeleton covers the frame's place.
     const region = await displayRegion(page);

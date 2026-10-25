@@ -1,46 +1,29 @@
 import { act, renderHook } from "@testing-library/react";
-import { connect, type Connector } from "@wagmi/core";
-import { UserRejectedRequestError } from "viem";
+import { connect } from "@wagmi/core";
 import { describe, expect, it, vi } from "vitest";
-import { createFakeInjectedWallet, createTestWallet, holdChainSwitches, walletWrapper, type FakeInjectedWalletOptions, type TestWallet } from "../test/wallet";
+import {
+  createConnectedTestWallet,
+  createFakeInjectedWallet,
+  createTestWallet,
+  declineNextSwitch,
+  holdChainSwitches,
+  walletConnector,
+  walletWrapper,
+  type FakeInjectedWalletOptions,
+} from "../test/wallet";
 import { configuredChains } from "./chains";
 import { switchWalletChain, useNetworkSwitch, type SwitchResult } from "./switchChain";
 
 /** A browser wallet that knows only mainnet, connected through wagmi's injected connector over the app's chains. */
 async function connectedWalletWithoutGnosis(addChain: FakeInjectedWalletOptions["addChain"]) {
   const wallet = createFakeInjectedWallet({ chains: configuredChains(), knownChains: [1], addChain });
-  const [connector] = wallet.config.connectors;
-  if (connector === undefined) throw new Error("The injected connector was not created.");
-  await connect(wallet.config, { connector });
+  await connect(wallet.config, { connector: walletConnector(wallet) });
   return wallet;
 }
 
 const GNOSIS_PUBLIC_RPC = configuredChains().find((chain) => chain.id === 100)?.rpcUrls.default.http[0];
 
 const PENDING: SwitchResult = { ok: false, reason: "pending", message: "A network switch is already waiting in your wallet." };
-
-function walletConnector(wallet: TestWallet): Connector {
-  const [connector] = wallet.config.connectors;
-  if (connector === undefined) throw new Error("The test wallet has no connector.");
-  return connector;
-}
-
-/** The wallet keeps the next switch request open until the test declines it, as a user who reads the prompt first. */
-function declineLater(wallet: TestWallet): () => void {
-  let decline: (() => void) | undefined;
-  vi.spyOn(walletConnector(wallet), "switchChain").mockImplementationOnce(
-    () =>
-      new Promise((_resolve, reject) => {
-        decline = () => {
-          reject(new UserRejectedRequestError(new Error("Declined in the wallet.")));
-        };
-      }),
-  );
-  return () => {
-    if (decline === undefined) throw new Error("No switch request reached the wallet.");
-    decline();
-  };
-}
 
 describe("switchWalletChain", () => {
   it("switching without a connected wallet is a visible failure, not a silent one", async () => {
@@ -49,14 +32,12 @@ describe("switchWalletChain", () => {
   });
 
   it("a switch declined in the wallet is reported", async () => {
-    const wallet = createTestWallet({ switchChainError: true });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ switchChainError: true });
     expect(await switchWalletChain(wallet.config, 100)).toEqual({ ok: false, reason: "rejected", message: "The switch to Gnosis Network was declined in the wallet." });
   });
 
   it("a failed switch is reported with the wallet's reason", async () => {
-    const wallet = createTestWallet({ switchChainError: new Error("Unrecognized chain ID") });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ switchChainError: new Error("Unrecognized chain ID") });
     const result = await switchWalletChain(wallet.config, 100);
     expect(result).toEqual(expect.objectContaining({ ok: false, reason: "failed" }));
     expect(result.ok ? "" : result.message).toMatch(/^Could not switch to Gnosis Network: /);
@@ -82,15 +63,13 @@ describe("switchWalletChain", () => {
   });
 
   it("a successful switch moves the wallet", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet();
     expect(await switchWalletChain(wallet.config, 100)).toEqual({ ok: true });
     expect(wallet.config.state.chainId).toBe(100);
   });
 
   it("a second switch request while one waits in the wallet sends nothing and says one is already waiting", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet();
     const switches = vi.spyOn(walletConnector(wallet), "switchChain");
     holdChainSwitches(wallet);
     void switchWalletChain(wallet.config, 100);
@@ -100,9 +79,8 @@ describe("switchWalletChain", () => {
   });
 
   it("once a request settles the next one reaches the wallet", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
-    const decline = declineLater(wallet);
+    const wallet = await createConnectedTestWallet();
+    const decline = declineNextSwitch(wallet);
     const first = switchWalletChain(wallet.config, 100);
     decline();
     expect(await first).toEqual({ ok: false, reason: "rejected", message: "The switch to Gnosis Network was declined in the wallet." });
@@ -124,9 +102,8 @@ describe("useNetworkSwitch", () => {
   });
 
   it("every switch control shows a request another one started as switching until it settles", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
-    const decline = declineLater(wallet);
+    const wallet = await createConnectedTestWallet();
+    const decline = declineNextSwitch(wallet);
     const { result } = renderHook(() => ({ header: useNetworkSwitch(), notice: useNetworkSwitch() }), { wrapper: walletWrapper(wallet) });
     let started: Promise<SwitchResult> | undefined;
     act(() => {
@@ -143,8 +120,7 @@ describe("useNetworkSwitch", () => {
   });
 
   it("while a request waits every switch control shows it, though the wallet never answers", async () => {
-    const wallet = createTestWallet();
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet();
     holdChainSwitches(wallet);
     const { result } = renderHook(() => ({ header: useNetworkSwitch(), notice: useNetworkSwitch() }), { wrapper: walletWrapper(wallet) });
     let second: SwitchResult | undefined;
@@ -158,15 +134,14 @@ describe("useNetworkSwitch", () => {
   });
 
   it("a request waiting elsewhere leaves this control's failure as it was", async () => {
-    const wallet = createTestWallet({ switchChainError: new Error("Unrecognized chain ID") });
-    await wallet.connect();
+    const wallet = await createConnectedTestWallet({ switchChainError: new Error("Unrecognized chain ID") });
     const { result } = renderHook(() => ({ header: useNetworkSwitch(), notice: useNetworkSwitch() }), { wrapper: walletWrapper(wallet) });
     await act(async () => {
       await result.current.notice.switchTo(100);
     });
     const failure = result.current.notice.state;
     expect(failure).toEqual(expect.objectContaining({ status: "failed", chainId: 100 }));
-    const decline = declineLater(wallet);
+    const decline = declineNextSwitch(wallet);
     let elsewhere: Promise<SwitchResult> | undefined;
     let again: SwitchResult | undefined;
     await act(async () => {

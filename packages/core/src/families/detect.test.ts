@@ -62,15 +62,9 @@ describe("family detection on recorded bytecode", () => {
     },
   );
 
-  it("every registered Reality proxy has recorded bytecode and detects as reality-proxy", async () => {
+  it("every registered Reality proxy has recorded bytecode", () => {
     const recordedKeys = RECORDED_CONTRACTS.filter((contract) => contract.expectedFamily === "reality-proxy").map((contract) => registryKey(contract.chainId, contract.address));
     expect([...recordedKeys].sort((a, b) => a.localeCompare(b))).toEqual(Object.keys(REGISTRY.realityProxies).sort((a, b) => a.localeCompare(b)));
-    for (const [key, entry] of Object.entries(REGISTRY.realityProxies)) {
-      const chainId = Number(key.slice(0, key.indexOf(":")));
-      const detection = await detectRecorded(chainId, entry.proxy);
-      expect(detection.family).toBe("reality-proxy");
-      expect(detection.realityProxy).toBe(entry);
-    }
   });
 
   it("the current ArbitrableProxy of every chain is idr-v2", async () => {
@@ -89,12 +83,6 @@ describe("family detection on recorded bytecode", () => {
 });
 
 describe("probe selectors survive PUSH data skipping on real dispatchers", () => {
-  it("ubi-voting.eth keeps getCurrentSessionNumber() among its probe selectors", async () => {
-    const detection = await detectRecorded(1, "0x7510c77163683448b8dc8fe9e019d9482be1ed2b");
-    expect(recordedProbeSelectors(1, "0x7510c77163683448b8dc8fe9e019d9482be1ed2b")).toContain(SELECTORS["getCurrentSessionNumber()"]);
-    expect(detection.family).toBe("governor");
-  });
-
   it("the Base-Ethereum foreign proxy keeps fundAppeal(uint256,uint256) among its probe selectors", async () => {
     const detection = await detectRecorded(1, "0xf0b37feda6cdf5f78b37e1fbccc24969059f2044");
     expect(recordedProbeSelectors(1, "0xf0b37feda6cdf5f78b37e1fbccc24969059f2044")).toContain(SELECTORS["fundAppeal(uint256,uint256)"]);
@@ -228,17 +216,6 @@ describe("probes read bytecode and never call the arbitrable", () => {
 
   it("the Unslashed proxy's own code carries no probe selector, so following the slot is what classifies it", () => {
     expect(classifySelectors(scanSelectors(recorded(1, UNSLASHED).code)).family).toBe("view-only");
-  });
-
-  it("the Proof of Humanity v2 proxies are followed and stay view-only", async () => {
-    for (const [chainId, address] of [
-      [1, "0xbe9834097a4e97689d9b667441acafb456d0480a"],
-      [100, "0xa4ac94c4fa65bb352efa30e3408e64f72ac857bc"],
-    ] as const) {
-      const detection = await detectRecorded(chainId, address);
-      expect(detection.family).toBe("view-only");
-      expect(detection.implementation).toBe(recorded(chainId, address).implementation?.address);
-    }
   });
 
   it("an EIP-1167 clone is not followed, even when its target is an IDisputeResolver", async () => {

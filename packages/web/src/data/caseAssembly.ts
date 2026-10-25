@@ -20,7 +20,7 @@ import {
   type Unavailable,
   type WithdrawState,
 } from "@dispute-resolver/core";
-import { LOADING, ready, unavailableFrom } from "./sectionData";
+import { LOADING, metaEvidenceSection, ready } from "./sectionData";
 import type { CaseWriteContext, SectionData } from "./types";
 
 /** `null`: not read for this period and family. */
@@ -96,19 +96,6 @@ function mapOutcome<T, U>(outcome: Outcome<T>, map: (value: T) => U): Outcome<U>
 /** Meta-evidence without `rulingOptions` gets the generic card set (fallback outcomes or Yes/No). */
 const NO_RULING_OPTIONS: RulingOptions = { type: "single-select" };
 
-/** An `invalid` result still carries a placeholder meta-evidence, whose ruling options are usable. */
-function usableMetaEvidence(metaEvidence: MetaEvidenceResult): SectionData<MetaEvidence> {
-  switch (metaEvidence.status) {
-    case "ok":
-    case "invalid":
-      return ready(metaEvidence.metaEvidence);
-    case "missing":
-      return unavailableFrom({ code: "not-found", message: "This dispute has no meta-evidence, so its ruling options are unknown." });
-    case "failed":
-      return unavailableFrom(metaEvidence.error);
-  }
-}
-
 function withdrawState(section: SectionData<WithdrawState> | null): WithdrawState | null | undefined {
   if (section === null) return null;
   if (section.status === "loading") return undefined;
@@ -122,9 +109,7 @@ const WITHOUT_OPTIONS: PanelOptions = { rulingOptions: NO_RULING_OPTIONS, fallba
 /** Only the crowdfunding cards wait for and depend on the meta-evidence; every other panel is built without it. */
 function panelOptions(reads: FoundCaseReads, family: FamilyDetection): SectionData<PanelOptions> {
   if (!needsRulingOptions(reads.lookup.dispute.period, family)) return ready(WITHOUT_OPTIONS);
-  const { metaEvidence } = reads;
-  if (metaEvidence.status !== "ready") return metaEvidence;
-  return usableMetaEvidence(metaEvidence.value);
+  return metaEvidenceSection(reads.metaEvidence, "This dispute has no meta-evidence, so its ruling options are unknown.");
 }
 
 export function assembleAppealPanel(reads: FoundCaseReads): SectionData<AppealPanel> {

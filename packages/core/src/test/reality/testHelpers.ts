@@ -48,7 +48,7 @@ export interface NodeCall {
   readonly params: unknown;
 }
 
-export interface FakeLogsFilter {
+interface FakeLogsFilter {
   readonly address: string;
   readonly topics: readonly (string | null)[];
   readonly fromBlock: Hex;
@@ -59,13 +59,6 @@ export interface FakeLogsFilter {
 export function filterOf(call: NodeCall): FakeLogsFilter {
   const [filter] = call.params as [FakeLogsFilter];
   return filter;
-}
-
-/** The read client of a chain the test knows is configured. */
-export function readClientOf(clients: GetReadClient, chainId: number): ReadClient {
-  const client = clients(chainId);
-  if (client === undefined) throw new Error(`no read client for chain ${String(chainId)}`);
-  return client;
 }
 
 /** The item at `index`; a test fails loudly when there is none. */
