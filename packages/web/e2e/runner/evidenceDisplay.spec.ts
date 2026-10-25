@@ -180,6 +180,9 @@ async function windowRing(window: Locator) {
 
 const INSET_RING = { style: "solid", width: "2px", offset: "-2px", colorIsDisplayFocus: true };
 
+/** The light theme's 1 px edge on the window at rest, which no focus ring has replaced. */
+const LIGHT_EDGE = { style: "solid", width: "1px", offset: "-1px", colorIsDisplayFocus: false };
+
 test.describe("case page evidence display", () => {
   test("the whole frame is shown by default, and the row hides it completely and shows it again without reloading it", async ({ page, baseURL }) => {
     const traffic = await openWithDisplay(page, baseURL);
@@ -272,15 +275,17 @@ test.describe("case page evidence display", () => {
   test("a pointer click inside the frame draws no ring", async ({ page, baseURL, browserName }) => {
     await openWithDisplay(page, baseURL);
     const window = displayWindow(page);
+    const resting = await windowRing(window);
+    expect(resting, "the light window's resting edge").toEqual(LIGHT_EDGE);
 
     await page.frameLocator(FRAME).locator("#above").click();
     await expect.poll(() => focusIsOnTheFrame(page), { message: "the click puts focus inside the frame" }).toBe(true);
     const ring = await windowRing(window);
     test.info().annotations.push({
       type: "pointer click inside the frame",
-      description: `${browserName}: the window's outline style is ${ring.style} after a click on a link of the frame`,
+      description: `${browserName}: the window's outline is ${ring.width} ${ring.style} after a click on a link of the frame`,
     });
-    expect.soft(ring.style, "the window's outline after a pointer click inside the frame").toBe("none");
+    expect.soft(ring, "the window's outline after a pointer click inside the frame").toEqual(resting);
     expect(await height(window)).toBeCloseTo(FULL_PX, 0);
   });
 
@@ -300,23 +305,52 @@ test.describe("case page evidence display", () => {
     expect(await frame.evaluate(() => Number(Reflect.get(globalThis, "receivedMessages"))), "messages the display page received").toBe(0);
   });
 
-  test("the row's fill eases on the hover clock and the frame fades on the reveal clock, and reduced motion removes both and the fold", async ({ page, baseURL }) => {
-    await openWithDisplay(page, baseURL);
+  test("the row's fill eases on the hover clock, the skeleton fades on the reveal clock while the frame never fades, and reduced motion removes every fade and the fold", async ({
+    page,
+    baseURL,
+  }) => {
+    let release = (): void => undefined;
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const traffic = await routeCasePage(page, baseURL, {}, { display: display(released) });
+    await page.goto(CASE_PATH);
+    await expectConfiguredBuild(traffic);
+    await expect.poll(() => traffic.display, { message: "the display page was never requested" }).toBeGreaterThan(0);
+
+    // The gateway holds the page, so the skeleton covers the frame's place.
     const region = await displayRegion(page);
     const holder = frameElement(page).locator("..");
+    const cover = displayWindow(page).locator(":scope > [aria-hidden='true']");
+    await expect(cover.locator(".animate-loading").first()).toBeVisible();
     const motion = (locator: Locator) =>
       locator.evaluate((element) => {
         const style = getComputedStyle(element);
         return { property: style.transitionProperty, duration: style.transitionDuration, easing: style.transitionTimingFunction };
       });
+    const frameFade = (locator: Locator) =>
+      locator.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return { opacity: style.opacity, duration: style.transitionDuration };
+      });
+    const NO_FADE = { opacity: "1", duration: "0s" };
     expect(await motion(row(page))).toEqual({ property: "background-color", duration: "0.15s", easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
-    expect(await motion(holder)).toEqual({ property: "opacity", duration: "0.25s", easing: "ease-in-out" });
+    expect(await motion(cover)).toEqual({ property: "opacity", duration: "0.4s", easing: "ease-in-out" });
+    expect(await frameFade(holder), "the frame's holder before the page loads").toEqual(NO_FADE);
     expect((await motion(region)).property).toBe("grid-template-rows, opacity");
 
     await page.emulateMedia({ reducedMotion: "reduce" });
     expect((await motion(row(page))).property).toBe("none");
-    expect((await motion(holder)).property).toBe("none");
+    expect((await motion(cover)).property).toBe("none");
     expect((await motion(region)).property).toBe("none");
+
+    release();
+    await expect(cover).toHaveCount(0);
+    await expect(frameElement(page)).toBeVisible();
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    expect(await frameFade(holder), "the frame's holder once the page has loaded").toEqual(NO_FADE);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expectCaseSectionsSettled(page);
     await row(page).click();
     await expect(region).toBeHidden();
     await row(page).click();

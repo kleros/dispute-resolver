@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -10,8 +12,28 @@ const OWNER = "Shown by the arbitrable application";
 /** `--acc-collapse`, which jsdom cannot read, so the display falls back to the same value. */
 const FOLD_MS = 250;
 /** `--display-reveal`, which jsdom cannot read, so the skeleton's removal falls back to the same value. */
-const REVEAL_MS = 250;
+const REVEAL_MS = 400;
 const UNFOLD = "animate-[t-acc-unfold_var(--acc-expand)_var(--acc-ease)_backwards]";
+/** How long the page may take to load before the skeleton shows and the status says it is loading. */
+const COVER_DELAY_MS = 200;
+const COVER_FADE = ["transition-opacity", "duration-(--display-reveal)", "ease-(--reveal-ease)", "motion-reduce:transition-none"];
+
+function stylesheet(): string {
+  return readFileSync(resolve(import.meta.dirname, "../../index.css"), "utf8");
+}
+
+/** The declarations of the first block whose prelude is exactly `prelude`, braces matched. */
+function cssBlock(css: string, prelude: string): string {
+  const start = css.indexOf(`${prelude} {`);
+  if (start === -1) throw new Error(`the stylesheet has no ${prelude} block`);
+  let depth = 0;
+  for (let index = css.indexOf("{", start); index < css.length; index += 1) {
+    if (css[index] === "{") depth += 1;
+    if (css[index] === "}") depth -= 1;
+    if (depth === 0) return css.slice(css.indexOf("{", start) + 1, index);
+  }
+  throw new Error(`the ${prelude} block is never closed`);
+}
 
 function advance(ms: number): void {
   act(() => {
@@ -148,6 +170,39 @@ describe("EvidenceDisplay", () => {
     // The library button's own transition tweens its press scale only; merged away, it would leave the fill snapping on.
     expect(row()).not.toHaveClass("transition-transform");
     expect(row()).not.toHaveClass("transition-[background]");
+  });
+
+  it("draws the row's keyboard focus ring inside its plate, clear of the hairline above and the display below", () => {
+    renderDisplay();
+    expect(row()).toHaveClass("dr-display-row");
+    const css = stylesheet();
+    expect(cssBlock(css, `:where([role="option"], .dr-display-row)`).replaceAll(/\s+/g, "")).toBe("outline-offset:-2px;");
+    expect(cssBlock(css, ".dr-display-row:is(:focus-visible, [data-focus-visible])").replaceAll(/\s+/g, "")).toBe("outline-offset:-2px;");
+  });
+
+  it("keeps the row's hover plate 4 px clear of the hairline, with the row 48 px tall in all", () => {
+    const { container } = renderDisplay();
+    expect(blockRoot(container)).toHaveClass("pt-1");
+    expect(row()).toHaveClass("h-11", "-mx-2");
+    expect(row()).not.toHaveClass("h-12");
+  });
+
+  it("pulls the card's foot padding in while the display is hidden, on the fold's clocks, and snaps under reduced motion", () => {
+    vi.useFakeTimers();
+    const { container } = renderDisplay();
+    const root = blockRoot(container);
+    expect(root).toHaveClass("transition-[margin]", "ease-(--acc-ease)", "motion-reduce:transition-none", "duration-(--acc-expand)");
+    expect(root).not.toHaveClass("-mb-3");
+
+    fireEvent.click(row());
+    expect(root).toHaveClass("-mb-3", "duration-(--acc-collapse)");
+    expect(root).not.toHaveClass("duration-(--acc-expand)");
+    advance(FOLD_MS);
+    expect(root).toHaveClass("-mb-3");
+
+    fireEvent.click(row());
+    expect(root).not.toHaveClass("-mb-3");
+    expect(root).toHaveClass("duration-(--acc-expand)");
   });
 
   it("hides the display completely on the row and shows the same frame again on the next press", async () => {
@@ -287,19 +342,65 @@ describe("EvidenceDisplay", () => {
     }
   });
 
-  it("carries the reveal classes on the frame's holder and the skeleton: an opacity transition on the display's reveal clock with the reduced-motion guard, the holder hidden until load", () => {
+  it("holds the skeleton back for 200 ms on a timer rather than an animation delay, so whatever the motion preference, then fades it in by opacity alone", () => {
+    vi.useFakeTimers();
+    renderDisplay();
+    expect(skeletonCover()).toHaveClass("opacity-0", ...COVER_FADE);
+    expect(skeletonCover()).not.toHaveClass("opacity-100");
+    expect([...(skeletonCover()?.classList ?? [])].filter((name) => /^(?:motion-reduce:)?animate-/.test(name))).toEqual([]);
+
+    advance(COVER_DELAY_MS - 1);
+    expect(skeletonCover()).toHaveClass("opacity-0");
+    expect(skeletonCover()).not.toHaveClass("opacity-100");
+
+    advance(1);
+    expect(skeletonCover()).toHaveClass("opacity-100", ...COVER_FADE);
+    expect(skeletonCover()).not.toHaveClass("opacity-0");
+    expect(skeletonCover()).not.toHaveClass("pointer-events-none");
+  });
+
+  it("switches a skeleton still fading in to its fade-out on the same opacity transition when the page loads", () => {
+    vi.useFakeTimers();
+    renderDisplay();
+    advance(COVER_DELAY_MS + 100);
+    fireEvent.load(frame());
+    expect(skeletonCover()).toHaveClass("opacity-0", "pointer-events-none", ...COVER_FADE);
+    expect(skeletonCover()).not.toHaveClass("opacity-100");
+  });
+
+  it("never shows the skeleton when the page loads within 200 ms", () => {
+    vi.useFakeTimers();
+    renderDisplay();
+    advance(COVER_DELAY_MS / 2);
+    fireEvent.load(frame());
+    advance(COVER_DELAY_MS);
+    expect(skeletonCover()).toHaveClass("opacity-0", "pointer-events-none");
+    expect(skeletonCover()).not.toHaveClass("opacity-100");
+  });
+
+  it("shows the frame at its load event with no fade of its own, the skeleton alone fading out over it", () => {
     renderDisplay();
     const holder = frame().parentElement;
-    const reveal = ["transition-opacity", "duration-(--display-reveal)", "ease-(--reveal-ease)", "motion-reduce:transition-none"];
-    expect(holder).toHaveClass(...reveal, "invisible", "opacity-0");
-    expect(skeletonCover()).toHaveClass(...reveal);
-    expect(skeletonCover()).not.toHaveClass("opacity-0");
+    expect(holder).toHaveClass("invisible");
+    expect(holder?.classList).toHaveLength(1);
 
     fireEvent.load(frame());
-    expect(holder).toHaveClass(...reveal);
-    expect(holder).not.toHaveClass("invisible");
-    expect(holder).not.toHaveClass("opacity-0");
-    expect(skeletonCover()).toHaveClass(...reveal, "opacity-0");
+    expect(holder?.classList).toHaveLength(0);
+    expect(skeletonCover()).toHaveClass(...COVER_FADE, "opacity-0", "pointer-events-none");
+    expect(skeletonCover()).not.toHaveClass("opacity-100");
+  });
+
+  it("times the skeleton's fade-out on a 400 ms display clock of its own, leaving the shared reveal and fold clocks alone", () => {
+    const css = stylesheet();
+    expect(css).toMatch(/--display-reveal:\s*400ms;/);
+    expect(css).toMatch(/--reveal-dur:\s*400ms;/);
+    expect(css).toMatch(/--acc-collapse:\s*250ms;/);
+  });
+
+  it("outlines the display window with the Stroke in light only, giving way to the focus ring", () => {
+    const css = stylesheet();
+    expect(cssBlock(css, ":where(:root:not(.dark)) .dr-display-window").replaceAll(/\s+/g, "")).toBe("outline:1pxsolidvar(--klerosUIComponentsStroke);outline-offset:-1px;");
+    expect(cssBlock(css, ".dr-display-window[data-frame-focus]").replaceAll(/\s+/g, "")).toBe("outline:2pxsolidvar(--dr-display-focus);outline-offset:-2px;");
   });
 
   it("keeps the paper under the frame from the first paint, with the skeleton's bars toned for the paper and inset from its edges", () => {
@@ -309,7 +410,7 @@ describe("EvidenceDisplay", () => {
     expect(frame()).toHaveClass("bg-(--dr-display-paper)");
   });
 
-  it("fades the skeleton out while the frame fades in, out of the pointer's way, and drops it once the reveal has run", () => {
+  it("lets the pointer through the fading skeleton and drops it once its fade has run", () => {
     vi.useFakeTimers();
     renderDisplay();
     fireEvent.load(frame());
@@ -365,10 +466,11 @@ describe("EvidenceDisplay", () => {
     expect(displayWindow()).not.toContainElement(status);
     expect(displayWindow()).toHaveAttribute("aria-busy", "true");
 
-    act(() => {
-      vi.advanceTimersByTime(100);
-    });
+    advance(COVER_DELAY_MS - 50);
+    expect(status).toBeEmptyDOMElement();
+    advance(50);
     expect(status).toHaveTextContent(/^Loading…$/);
+    expect(skeletonCover()).toHaveClass("opacity-100");
     expect(status.textContent).not.toContain(frame().getAttribute("src") ?? "");
 
     act(() => {

@@ -411,8 +411,8 @@
     --reveal-dur: 400ms;
     --reveal-blur: 2px;
     --reveal-ease: ease-in-out;
-    /* The evidence display's cross-fade, capped at the contract's 250 ms; EvidenceDisplay reads it to drop the skeleton. */
-    --display-reveal: 250ms;
+    /* The evidence display's skeleton fade, in and out; EvidenceDisplay reads it to drop the skeleton. */
+    --display-reveal: 400ms;
 
     --shimmer-dur: 2000ms;
     --shimmer-base: var(--klerosUIComponentsSecondaryText);
@@ -533,7 +533,7 @@
     outline-offset: 2px;
   }
 
-  :where([role="option"]) {
+  :where([role="option"], .dr-display-row) {
     outline-offset: -2px;
   }
 
@@ -620,7 +620,7 @@
 /*
  * Focus: one ring shape everywhere. The header and footer set --dr-focus to --dr-focus-bar. A react-aria
  * `[data-focus-visible]` container (the DropZone, the Select trigger) is matched too; a listbox option keeps its ring
- * inside the list.
+ * inside the list, and the evidence display's row inside its plate, clear of the hairline above and the window below.
  */
 :where(a, button, input, textarea, select, summary, iframe, [role="button"], [tabindex]):focus-visible,
 [data-focus-visible] {
@@ -631,6 +631,19 @@
 
 [role="option"][data-focus-visible] {
   outline-offset: -2px;
+}
+
+.dr-display-row:is(:focus-visible, [data-focus-visible]) {
+  outline-offset: -2px;
+}
+
+/*
+ * In light the paper is the card's white, so a 1 px Stroke edge marks where the display window ends; dark's sheet has an
+ * edge of its own. The :where keeps this rule below the focus ring's, which replaces it.
+ */
+:where(:root:not(.dark)) .dr-display-window {
+  outline: 1px solid var(--klerosUIComponentsStroke);
+  outline-offset: -1px;
 }
 
 /*

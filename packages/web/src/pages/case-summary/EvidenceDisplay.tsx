@@ -15,23 +15,27 @@ interface EvidenceDisplayProps {
 }
 
 /**
- * A live region announces only what changes after it is in the tree, so it mounts empty and is filled this much later:
- * the delay react-aria's own announcer leaves between creating its region and writing into it.
+ * How long the page may take to load before the skeleton shows and the status says it is loading, so a page that loads
+ * at once gets neither signal. A timer rather than an animation delay, so the hold stays under reduced motion and a load
+ * during the fade-in fades the skeleton out from where it is. A live region announces only what changes after it is in
+ * the tree, so it mounts empty; this is longer than the gap react-aria's own announcer leaves before writing into it.
  */
-const STATUS_DELAY_MS = 100;
+const COVER_DELAY_MS = 200;
 
 /** Twelve lines and the 16 px above and below them fill the frame's 360 px. */
 const SKELETON_LINES = 12;
 
 /**
  * The library button as a full-width row: its icon slot comes before its text, so the row is reversed to put the title
- * first. The negative margins let the hover plate pass the hairline while the title stays flush with the text above.
- * The button's own transition tweens its press scale only, and the row has none, so the hover fill eases on the app's
- * hover clock like the section headers below (`ease-smooth-out`, not the arbitrary ease: the button's `ease-ease` stays
- * in the class list and outranks that one).
+ * first. The negative margins widen the hover plate past the text column while the title stays flush with the text
+ * above; the plate is 44 px under the wrapper's 4 px top padding, so it stands clear of the hairline and the row keeps
+ * 48 px. The button's own transition tweens its press scale only, and the row has none, so the hover fill eases on the
+ * app's hover clock like the section headers below (`ease-smooth-out`, not the arbitrary ease: the button's `ease-ease`
+ * stays in the class list and outranks that one). `dr-display-row` draws its focus ring inside the plate: the window
+ * under the row would paint over a ring drawn outside it.
  */
 const ROW_CLASS =
-  "-mx-2 h-12 w-[calc(100%+1rem)] flex-row-reverse justify-between gap-2 bg-transparent px-2 py-0 hover:bg-klerosUIComponentsMediumBlue pressed:scale-100 transition-[background-color] duration-150 ease-smooth-out motion-reduce:transition-none [&_.button-text]:text-klerosUIComponentsPrimaryText";
+  "dr-display-row -mx-2 h-11 w-[calc(100%+1rem)] flex-row-reverse justify-between gap-2 bg-transparent px-2 py-0 hover:bg-klerosUIComponentsMediumBlue pressed:scale-100 transition-[background-color] duration-150 ease-smooth-out motion-reduce:transition-none [&_.button-text]:text-klerosUIComponentsPrimaryText";
 
 /**
  * `unfolded` is the open state reached by showing a hidden region, the only one that plays the unfold keyframe: never the
@@ -53,20 +57,23 @@ const FOLD_CLASS =
 const UNFOLD_CLASS = "animate-[t-acc-unfold_var(--acc-expand)_var(--acc-ease)_backwards] motion-reduce:animate-none";
 
 /**
- * Visible as soon as the page loads, so it can be focused at once while it fades in over the paper. A transition, not a
- * keyframe, so showing the region again does not replay it.
+ * The block's hairline, with 4 px under it before the row. While the display is hidden it pulls the card's bottom padding
+ * in by the room under the row's label, so the label sits about as far above the card's foot as any other last item.
  */
-const FRAME_REVEAL_CLASS = "transition-opacity duration-(--display-reveal) ease-(--reveal-ease) motion-reduce:transition-none";
+const BLOCK_CLASS = "border-t border-klerosUIComponentsStroke pt-1 transition-[margin] ease-(--acc-ease) motion-reduce:transition-none";
 
-/** Used when `--display-reveal` cannot be read; the skeleton leaves the tree once the reveal it fades out under has run. */
-const REVEAL_FALLBACK_MS = 250;
+/** Used when `--display-reveal` cannot be read; the skeleton leaves the tree once its fade-out has run. */
+const REVEAL_FALLBACK_MS = 400;
 
 /**
  * The skeleton over the frame's place, on the paper, so its bars take the paper's tone rather than the card's. Inset on
- * every side like a page's own content, so its bars never touch the sheet's edge. It fades out on the frame's reveal and
- * lets the pointer through from then on, so the first click reaches the page.
+ * every side like a page's own content, so its bars never touch the sheet's edge. It fades in and out by opacity alone, so
+ * the region stays free of blur. Only the skeleton fades: the frame is
+ * visible under it from the load event, so the page's content is never dimmed, and the pointer passes through from then
+ * on, so the first click reaches the page.
  */
-const COVER_CLASS = `absolute inset-0 p-4 [&_.animate-loading]:bg-(--dr-display-skeleton) ${FRAME_REVEAL_CLASS}`;
+const COVER_CLASS =
+  "absolute inset-0 p-4 [&_.animate-loading]:bg-(--dr-display-skeleton) transition-opacity duration-(--display-reveal) ease-(--reveal-ease) motion-reduce:transition-none";
 
 /**
  * Whether keyboard focus is inside the region's frame. An iframe never matches :focus while its page holds focus and
@@ -107,8 +114,8 @@ function useKeyboardFocusInside(regionRef: RefObject<HTMLElement | null>): boole
  * Shown, the whole 360 px frame; the row folds it away completely, like the case page's sections. A folding region is
  * inert, so Tab never enters it, and is hidden once the fold ends. A hidden display stays mounted, so showing it again
  * neither requests the page again nor loses its scroll position. The paper is under the frame from the first paint;
- * until the page loads, the section skeleton covers the frame's place on it and the frame keeps its size unseen, so it
- * can be neither focused nor clicked.
+ * until the page loads the frame keeps its size unseen, so it can be neither focused nor clicked, and a load that takes
+ * longer than a moment shows the section skeleton over its place.
  */
 export function EvidenceDisplay({ metaEvidence, chainId, found }: EvidenceDisplayProps) {
   const { env, gateway } = useCoreDeps();
@@ -151,10 +158,12 @@ export function EvidenceDisplay({ metaEvidence, chainId, found }: EvidenceDispla
     };
   }, [fold]);
   const [status, setStatus] = useState("");
+  const [coverIn, setCoverIn] = useState(false);
   useEffect(() => {
     const id = window.setTimeout(() => {
       setStatus("Loading…");
-    }, STATUS_DELAY_MS);
+      setCoverIn(true);
+    }, COVER_DELAY_MS);
     return () => {
       window.clearTimeout(id);
     };
@@ -171,6 +180,7 @@ export function EvidenceDisplay({ metaEvidence, chainId, found }: EvidenceDispla
     appOrigin: APP_CONFIG.appOrigin,
   });
   if (model === null) return null;
+  const coverOpacity = coverIn ? "opacity-100" : "opacity-0";
   const toggle = () => {
     if (!shown) {
       setFold(fold === "closed" ? "unfolded" : "open");
@@ -186,7 +196,7 @@ export function EvidenceDisplay({ metaEvidence, chainId, found }: EvidenceDispla
     setFold("closing");
   };
   return (
-    <div className="border-t border-klerosUIComponentsStroke">
+    <div className={shown ? `${BLOCK_CLASS} duration-(--acc-expand)` : `${BLOCK_CLASS} -mb-3 duration-(--acc-collapse)`}>
       <Button
         id={rowId}
         text="Evidence display"
@@ -224,7 +234,7 @@ export function EvidenceDisplay({ metaEvidence, chainId, found }: EvidenceDispla
             aria-busy={loaded ? undefined : true}
             className="dr-display-window relative overflow-clip rounded-base bg-(--dr-display-paper)"
           >
-            <div className={loaded ? FRAME_REVEAL_CLASS : `${FRAME_REVEAL_CLASS} invisible opacity-0`}>
+            <div className={loaded ? undefined : "invisible"}>
               <EvidenceDisplayFrame
                 model={model}
                 onLoad={() => {
@@ -234,7 +244,7 @@ export function EvidenceDisplay({ metaEvidence, chainId, found }: EvidenceDispla
             </div>
             {/* The skeleton's own status would mount already filled, so it goes unannounced; the output above speaks instead. */}
             {covered ? (
-              <div aria-hidden="true" className={loaded ? `${COVER_CLASS} pointer-events-none opacity-0` : COVER_CLASS}>
+              <div aria-hidden="true" className={loaded ? `${COVER_CLASS} pointer-events-none opacity-0` : `${COVER_CLASS} ${coverOpacity}`}>
                 <SectionSkeleton variant="text" lines={SKELETON_LINES} />
               </div>
             ) : null}
