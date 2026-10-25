@@ -18,7 +18,7 @@ const NAV_LINK = `block px-3 py-2 whitespace-nowrap text-base transition-opacity
 // Below lg a full-bleed drawer under the two-row bar; from lg to xl a card under the Menu button; from xl the inline nav.
 const PANEL_CLASS = [
   "order-4 flex-col xl:order-2 xl:flex xl:flex-1 xl:flex-row xl:items-center",
-  "max-xl:absolute max-xl:top-full max-xl:border-klerosUIComponentsStroke max-xl:bg-klerosUIComponentsPrimaryPurple max-xl:shadow-(--dr-elevation) dark:max-xl:bg-klerosUIComponentsLightBlue",
+  "max-xl:absolute max-xl:top-full max-xl:border-klerosUIComponentsStroke max-xl:bg-klerosUIComponentsPrimaryPurple max-xl:shadow-default dark:max-xl:bg-klerosUIComponentsLightBlue",
   "max-lg:inset-x-[-1rem] max-lg:border-b max-lg:px-4 max-lg:pt-2 max-lg:pb-6",
   "lg:max-xl:right-0 lg:max-xl:w-64 lg:max-xl:rounded-base lg:max-xl:border lg:max-xl:p-2",
   // The panel grows from the Menu button's corner as a card, from the bar's middle as the full-width drawer.

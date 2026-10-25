@@ -30,7 +30,7 @@ const TRIGGER_CLASS = `${BAR_PILL} gap-2 py-0 [&>.button-text]:text-current [&>.
 const CHEVRON_CLASS = "order-last size-4 shrink-0 transition-transform ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none";
 // The header points --dr-focus at the bar's ring colour, which would vanish on the white panel.
 const PANEL_CLASS =
-  "absolute right-0 left-auto z-50 mt-2 flex w-72 max-w-[calc(100vw-2rem)] origin-top-right flex-col gap-4 rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground p-4 text-klerosUIComponentsPrimaryText shadow-(--dr-elevation) [--dr-focus:var(--klerosUIComponentsPrimaryBlue)]";
+  "absolute right-0 left-auto z-50 mt-2 flex w-72 max-w-[calc(100vw-2rem)] origin-top-right flex-col gap-4 rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground p-4 text-klerosUIComponentsPrimaryText shadow-default [--dr-focus:var(--klerosUIComponentsPrimaryBlue)]";
 
 function AccountPanel({ id, rootRef, panelRef, closing, onClose, address, walletChainId, chain }: AccountPanelProps) {
   const { disconnect } = useDisconnect();

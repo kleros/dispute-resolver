@@ -330,6 +330,13 @@ describe("ChainSwitcher", () => {
     expect(pill("Gnosis Network")).toHaveFocus();
   });
 
+  it("the menu floats on a Stroke border and the library's shadow token, like the library's dropdowns", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page" });
+    await user.click(pill("Gnosis Network"));
+    expect(menuPanel()).toHaveClass("border-klerosUIComponentsStroke", "shadow-default");
+  });
+
   it("the menu grows from the corner it hangs from and fades out, inert, before it unmounts", async () => {
     const user = userEvent.setup();
     renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page" });

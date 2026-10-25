@@ -27,15 +27,16 @@ const SKELETON_LINES = 12;
 
 /**
  * The library button as a full-width row: its icon slot comes before its text, so the row is reversed to put the title
- * first. The negative margins widen the hover plate past the text column while the title stays flush with the text
- * above; the plate is 44 px under the wrapper's 4 px top padding, so it stands clear of the hairline above and, with
- * the window's 4 px margin, of the display below. The button's own transition tweens its press scale only, and the row
- * has none, so the hover fill eases on the app's hover clock like the section headers below (`ease-smooth-out`, not the
- * arbitrary ease: the button's `ease-ease` stays in the class list and outranks that one). `dr-display-row` draws its
- * focus ring on the plate's edge, inside those two 4 px gaps, where neither the hairline nor the window covers it.
+ * first. The hover plate is exactly as wide as the hairline above and the display window below, and its own 8 px padding
+ * sets the title in from the text above. The plate is 44 px under the wrapper's 4 px top padding, so it stands clear of
+ * the hairline above and, with the window's 4 px margin, of the display below. The button's own transition tweens its
+ * press scale only, and the row has none, so the hover fill eases on the app's hover clock like the section headers below
+ * (`ease-smooth-out`, not the arbitrary ease: the button's `ease-ease` stays in the class list and outranks that one).
+ * `dr-display-row` draws its focus ring inside the plate, so it neither leaves the column nor reaches the hairline or the
+ * window.
  */
 const ROW_CLASS =
-  "dr-display-row -mx-2 h-11 w-[calc(100%+1rem)] flex-row-reverse justify-between gap-2 bg-transparent px-2 py-0 hover:bg-klerosUIComponentsMediumBlue pressed:scale-100 transition-[background-color] duration-150 ease-smooth-out motion-reduce:transition-none [&_.button-text]:text-klerosUIComponentsPrimaryText";
+  "dr-display-row h-11 w-full flex-row-reverse justify-between gap-2 bg-transparent px-2 py-0 hover:bg-klerosUIComponentsMediumBlue pressed:scale-100 transition-[background-color] duration-150 ease-smooth-out motion-reduce:transition-none [&_.button-text]:text-klerosUIComponentsPrimaryText";
 
 /**
  * `unfolded` is the open state reached by showing a hidden region, the only one that plays the unfold keyframe: never the

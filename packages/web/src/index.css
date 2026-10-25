@@ -125,8 +125,8 @@
  * The library's hover and transition utilities: the library ships them only in its style.css, which is never imported,
  * so they are redeclared here. Hover fills use the library tokens; hover-out is the same transition as hover-in. The transition's property list is a deliberate
  * superset: the library `Card` carries `hover-short-transition`, so whichever of it and the Ongoing card's
- * `transition-[border-color,box-shadow] duration-200` wins the utilities sort, the card still transitions its border
- * and shadow within the 150 to 250 ms band.
+ * `transition-[border-color] duration-200` wins the utilities sort, the card still transitions its border within the
+ * 150 to 250 ms band.
  */
 @layer utilities {
   .hover-medium-blue:hover {
@@ -340,9 +340,6 @@
      * - --dr-record-edge: the band's 1 px edge and its inner rule (non-text). Light: PrimaryPurple mixed 20 % into Stroke
      *   (about #c7b7db), 1.67:1 on the band and 1.84:1 on the page, where Stroke alone is 1.12:1 on TintPurple. Dark:
      *   Stroke, 2.10:1 on the band.
-     * - --dr-elevation: the hover of an Ongoing card, the open mobile menu panel and the account menu panel; an offset
-     *   with a soft blur tinted from the palette (light PrimaryPurple at 14 %, dark the library's HoveredShadow). A
-     *   shadow, not text or a control edge, so no contrast ratio applies.
      * - --dr-success-bar: the header chain dot on the purple bar. Any colour at or above 4.5:1 on white is at most 2.36:1
      *   on the light bar, so the bar takes the dark theme's shade in both themes. Light #65dc7f: 6.13:1 on PrimaryPurple
      *   #4d00b4. Dark: the library's Success.
@@ -367,7 +364,6 @@
     --dr-focus-bar: #7bcbff;
     --dr-record-surface: var(--klerosUIComponentsTintPurple);
     --dr-record-edge: color-mix(in srgb, var(--klerosUIComponentsPrimaryPurple) 20%, var(--klerosUIComponentsStroke));
-    --dr-elevation: 0 8px 24px color-mix(in srgb, var(--klerosUIComponentsPrimaryPurple) 14%, transparent);
 
     /*
      * Motion variables, one block per transition. The shimmer colours point at the library tokens, which the dark class
@@ -485,7 +481,6 @@
     --dr-focus-bar: #a5dbff;
     --dr-record-surface: var(--klerosUIComponentsMediumPurple);
     --dr-record-edge: var(--klerosUIComponentsStroke);
-    --dr-elevation: 0 8px 24px var(--klerosUIComponentsHoveredShadow);
   }
 
   body {
@@ -538,7 +533,7 @@
   }
 
   :where(.dr-display-row) {
-    outline-offset: 0;
+    outline-offset: -2px;
   }
 
   /*
@@ -638,7 +633,7 @@
 }
 
 .dr-display-row:is(:focus-visible, [data-focus-visible]) {
-  outline-offset: 0;
+  outline-offset: -2px;
 }
 
 /*

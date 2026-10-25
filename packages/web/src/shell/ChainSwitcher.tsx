@@ -14,7 +14,7 @@ const TRIGGER_CLASS = `group inline-flex max-w-full min-w-0 items-center gap-2 a
 // The header points --dr-focus at the bar's ring colour, which would vanish on the white panel. The panel grows from the
 // corner it is anchored to: its left edge below lg, its right edge from lg.
 const PANEL_CLASS =
-  "absolute left-0 z-50 mt-2 flex w-64 max-w-[calc(100vw-2rem)] origin-top-left flex-col rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground py-2 text-klerosUIComponentsPrimaryText shadow-(--dr-elevation) [--dr-focus:var(--klerosUIComponentsPrimaryBlue)] lg:left-auto lg:right-0 lg:origin-top-right";
+  "absolute left-0 z-50 mt-2 flex w-64 max-w-[calc(100vw-2rem)] origin-top-left flex-col rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground py-2 text-klerosUIComponentsPrimaryText shadow-default [--dr-focus:var(--klerosUIComponentsPrimaryBlue)] lg:left-auto lg:right-0 lg:origin-top-right";
 const ITEM_CLASS =
   "flex h-10 w-full items-center gap-3 px-4 text-left text-sm text-klerosUIComponentsPrimaryText no-underline outline-offset-[-2px] hover:bg-klerosUIComponentsMediumBlue aria-[current=page]:font-semibold aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent";
 

@@ -335,7 +335,16 @@ describe("Ongoing page", () => {
     renderOngoing();
     await settledList();
     const surface = card("12").firstElementChild;
-    expect(surface).toHaveClass("transition-[border-color,box-shadow]", "duration-200", "ease-[cubic-bezier(0.22,1,0.36,1)]", "motion-reduce:transition-none");
+    expect(surface).toHaveClass("transition-[border-color]", "duration-200", "ease-[cubic-bezier(0.22,1,0.36,1)]", "motion-reduce:transition-none");
+  });
+
+  it("on hover the card shows only its blue edge, staying flat like the library's cards", async () => {
+    vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(12n, 2)]));
+    renderOngoing();
+    await settledList();
+    const surface = card("12").firstElementChild;
+    expect(surface).toHaveClass("group-hover:border-klerosUIComponentsPrimaryBlue");
+    expect([...(surface?.classList ?? [])].filter((name) => name.includes("hover:shadow"))).toEqual([]);
   });
 
   it("on hover the card's arrow moves forward while its arms spread about the arrow's tip", async () => {

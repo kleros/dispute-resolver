@@ -172,20 +172,28 @@ describe("EvidenceDisplay", () => {
     expect(row()).not.toHaveClass("transition-[background]");
   });
 
-  it("draws the row's keyboard focus ring around its plate, in the gaps that keep it clear of the hairline above and the display below", () => {
+  it("draws the row's keyboard focus ring inside its plate, so it stays within the column and clear of the hairline above and the display below", () => {
     renderDisplay();
     expect(row()).toHaveClass("dr-display-row");
     const css = stylesheet();
-    expect(cssBlock(css, ":where(.dr-display-row)").replaceAll(/\s+/g, "")).toBe("outline-offset:0;");
-    expect(cssBlock(css, ".dr-display-row:is(:focus-visible, [data-focus-visible])").replaceAll(/\s+/g, "")).toBe("outline-offset:0;");
+    expect(cssBlock(css, ":where(.dr-display-row)").replaceAll(/\s+/g, "")).toBe("outline-offset:-2px;");
+    expect(cssBlock(css, ".dr-display-row:is(:focus-visible, [data-focus-visible])").replaceAll(/\s+/g, "")).toBe("outline-offset:-2px;");
   });
 
   it("keeps the row's hover plate 4 px clear of the hairline above and of the display below", () => {
     const { container } = renderDisplay();
     expect(blockRoot(container)).toHaveClass("pt-1");
-    expect(row()).toHaveClass("h-11", "-mx-2");
+    expect(row()).toHaveClass("h-11");
     expect(row()).not.toHaveClass("h-12");
     expect(displayWindow()).toHaveClass("mt-1");
+  });
+
+  it("makes the row's hover plate exactly as wide as the column, with the title 8 px in from its edge", () => {
+    renderDisplay();
+    const classes = row().className.split(/\s+/);
+    expect(classes.filter((name) => /^-m[trblxyse]?-/.test(name))).toEqual([]);
+    expect(row()).toHaveClass("w-full", "px-2");
+    expect(row()).not.toHaveClass("w-[calc(100%+1rem)]");
   });
 
   it("pulls the card's foot padding in while the display is hidden, on the fold's clocks, and snaps under reduced motion", () => {
