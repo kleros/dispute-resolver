@@ -68,6 +68,55 @@ test("Back after a typed search returns to the dispute the search left", async (
   await expect(field).toHaveValue("1621");
 });
 
+test("a digit typed and deleted before the debounce leaves history as it was, so one Back leaves the dispute", async ({ context, page, baseURL }) => {
+  const typed = "16217";
+  const traffic = await fakeNetwork(context, {
+    appOrigin: new URL(baseURL ?? "http://localhost").origin,
+    recordings: [RECORDING],
+    rpc: (call) => (isDisputesCall(call, MAINNET_ARBITRATOR, BigInt(typed)) ? OUT_OF_RANGE_ON_MAINNET : undefined),
+  });
+  await page.goto("/1/cases");
+  await page.goto("/1/cases/1621");
+  const title = page.getByRole("heading", { name: CASE_TITLE, exact: true });
+  await expect(title).toBeVisible({ timeout: 15_000 });
+
+  const field = page.getByRole("searchbox", { name: "Dispute ID" });
+  await field.press("End");
+  await field.press("7");
+  await expect(page).toHaveURL(`/1/cases/${typed}`);
+  await field.press("Backspace");
+  await expect(page).toHaveURL("/1/cases/1621");
+  await expect(title).toBeVisible();
+
+  await page.goBack();
+  await expect(page).toHaveURL("/1/cases");
+  expect(traffic.rpc.some((call) => isDisputesCall(call, MAINNET_ARBITRATOR, BigInt(typed)))).toBe(false);
+});
+
+test("an edit back to the dispute a settled lookup left keeps that lookup's entry, so Back returns to it", async ({ context, page, baseURL }) => {
+  const typed = "16210";
+  await fakeNetwork(context, {
+    appOrigin: new URL(baseURL ?? "http://localhost").origin,
+    recordings: [RECORDING],
+    rpc: (call) => (isDisputesCall(call, MAINNET_ARBITRATOR, BigInt(typed)) ? OUT_OF_RANGE_ON_MAINNET : undefined),
+  });
+  await page.goto("/1/cases/1621");
+  const title = page.getByRole("heading", { name: CASE_TITLE, exact: true });
+  await expect(title).toBeVisible({ timeout: 15_000 });
+
+  const field = page.getByRole("searchbox", { name: "Dispute ID" });
+  await field.press("End");
+  await field.press("0");
+  await expect(page.getByText(notFound(typed))).toBeVisible();
+  await field.press("Backspace");
+  await expect(page).toHaveURL("/1/cases/1621");
+  await expect(title).toBeVisible();
+
+  await page.goBack();
+  await expect(page).toHaveURL(`/1/cases/${typed}`);
+  await expect(page.getByText(notFound(typed))).toBeVisible();
+});
+
 test("shows the not-found state for an unused Gnosis ID that reads as a zeroed struct", async ({ context, page, baseURL }) => {
   const unused = "5000000";
   const traffic = await fakeNetwork(context, {

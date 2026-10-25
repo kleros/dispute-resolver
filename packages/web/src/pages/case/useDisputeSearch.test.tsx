@@ -1,34 +1,11 @@
 import { act, fireEvent, renderHook, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
-import { MemoryRouter, Route, Routes, useLocation, useNavigate, useParams } from "react-router";
+import { StrictMode, type ReactNode } from "react";
+import { BrowserRouter, MemoryRouter, Route, Routes, useLocation, useNavigate, useParams } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SEARCH_DEBOUNCE_MS, useDisputeSearch } from "./useDisputeSearch";
 
 function RouterPath() {
   return <output>{useLocation().pathname}</output>;
-}
-
-/**
- * The URL ID is the hook's argument here, not the router's, so a test chooses when a navigation lands: the router
- * commits it in a transition, after the field has already changed.
- */
-function renderSearch(urlId: string) {
-  function wrapper({ children }: { readonly children: ReactNode }) {
-    return (
-      <MemoryRouter initialEntries={[`/1/cases/${urlId}`]}>
-        {children}
-        <RouterPath />
-      </MemoryRouter>
-    );
-  }
-  const view = renderHook(({ id }: { readonly id: string }) => useDisputeSearch(1, id), { initialProps: { id: urlId }, wrapper });
-  return {
-    search: () => view.result.current,
-    routerPath: () => screen.getByRole("status").textContent,
-    land: (id: string) => {
-      view.rerender({ id });
-    },
-  };
 }
 
 function HistoryButtons() {
@@ -53,6 +30,44 @@ function HistoryButtons() {
       </button>
     </>
   );
+}
+
+/**
+ * The URL ID is the hook's argument here, not the router's, so a test chooses when a navigation lands: the router
+ * commits it in a transition, after the field has already changed.
+ */
+function renderSearch(urlId: string, earlier: readonly string[] = []) {
+  const entries = [...earlier.map((id) => `/1/cases/${id}`), `/1/cases/${urlId}`];
+  function wrapper({ children }: { readonly children: ReactNode }) {
+    return (
+      <MemoryRouter initialEntries={entries} initialIndex={entries.length - 1}>
+        {children}
+        <RouterPath />
+        <HistoryButtons />
+      </MemoryRouter>
+    );
+  }
+  const view = renderHook(({ id }: { readonly id: string }) => useDisputeSearch(1, id), { initialProps: { id: urlId }, wrapper });
+  const search = () => view.result.current;
+  return {
+    search,
+    routerPath: () => screen.getByRole("status").textContent,
+    type: (...texts: readonly string[]) => {
+      for (const text of texts) {
+        act(() => {
+          search().change(text);
+        });
+      }
+    },
+    land: (id: string) => {
+      view.rerender({ id });
+    },
+    back: () => {
+      act(() => {
+        fireEvent.click(screen.getByRole("button", { name: "Back" }));
+      });
+    },
+  };
 }
 
 function useSearchOfTheUrl() {
@@ -220,6 +235,101 @@ describe("useDisputeSearch", () => {
     expect(routerPath()).toBe("/1/cases/1000");
   });
 
+  it("typing a digit and deleting it before the debounce leaves history as it was, so Back leaves the dispute", () => {
+    const { search, routerPath, type, back } = renderSearchWithHistory(["/1/cases/7", "/1/cases/1650"]);
+    type("16507", "1650");
+    expect(routerPath()).toBe("/1/cases/1650");
+    expect(search().shownId).toBe(1650n);
+
+    back();
+    expect(routerPath()).toBe("/1/cases/7");
+  });
+
+  it("a burst of edits that ends on the dispute it started from, through the empty field, leaves history as it was", () => {
+    const { search, routerPath, type, back } = renderSearchWithHistory(["/1/cases/7", "/1/cases/1650"]);
+    type("16507", "", "1650");
+    expect(routerPath()).toBe("/1/cases/1650");
+    expect(search().shownId).toBe(1650n);
+
+    back();
+    expect(routerPath()).toBe("/1/cases/7");
+  });
+
+  it("an edit back to the dispute a settled lookup left is a new lookup with its own entry", () => {
+    vi.useFakeTimers();
+    const { routerPath, type, back } = renderSearchWithHistory(["/1/cases/7", "/1/cases/100"]);
+    type("1000");
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+    });
+    type("100");
+    expect(routerPath()).toBe("/1/cases/100");
+
+    back();
+    expect(routerPath()).toBe("/1/cases/1000");
+    back();
+    expect(routerPath()).toBe("/1/cases/100");
+    back();
+    expect(routerPath()).toBe("/1/cases/7");
+  });
+
+  it("an edit back to the dispute a lookup left after Enter is a new lookup with its own entry", () => {
+    const { routerPath, type, enter, back } = renderSearchWithHistory(["/1/cases/7", "/1/cases/100"]);
+    type("1000");
+    enter();
+    type("100");
+
+    back();
+    expect(routerPath()).toBe("/1/cases/1000");
+    back();
+    expect(routerPath()).toBe("/1/cases/100");
+  });
+
+  it("a search that only cleared the field goes back over nothing when the ID is typed again", () => {
+    const { search, routerPath, type, back } = renderSearchWithHistory(["/1/cases/7", "/1/cases/1650"]);
+    type("", "1650");
+    expect(routerPath()).toBe("/1/cases/1650");
+    expect(search().pending).toBeNull();
+
+    back();
+    expect(routerPath()).toBe("/1/cases/7");
+  });
+
+  it("while history goes back to the dispute the search started from, that dispute stays shown and the typed ID never loads", () => {
+    const { search, routerPath, land } = renderSearch("1650");
+    act(() => {
+      search().change("16507");
+    });
+    land("16507");
+    act(() => {
+      search().change("1650");
+    });
+    expect(routerPath()).toBe("/1/cases/1650");
+    expect(search().pending).not.toBeNull();
+    expect(search().shownId).toBe(1650n);
+
+    land("1650");
+    expect(search().pending).toBeNull();
+    expect(search().shownId).toBe(1650n);
+  });
+
+  it("an edit back to the starting dispute before the typed ID's navigation lands waits for both navigations, never loading the typed ID", () => {
+    const { search, land } = renderSearch("1650");
+    act(() => {
+      search().change("16507");
+    });
+    act(() => {
+      search().change("1650");
+    });
+    land("16507");
+    expect(search().pending).not.toBeNull();
+    expect(search().shownId).toBe(1650n);
+
+    land("1650");
+    expect(search().pending).toBeNull();
+    expect(search().shownId).toBe(1650n);
+  });
+
   it("a clear made before the last search's navigation lands still leaves the field empty", () => {
     const { search, routerPath, land } = renderSearch("1650");
     act(() => {
@@ -234,15 +344,159 @@ describe("useDisputeSearch", () => {
     expect(search().shownId).toBeNull();
   });
 
-  it("typing back to the shown ID before the last search's navigation lands sends the URL back to it", () => {
-    const { search, routerPath } = renderSearch("1650");
-    act(() => {
-      search().change("16507");
-    });
-    act(() => {
-      search().change("1650");
-    });
+  it("typing back to the shown ID before the last search's navigation lands sends the URL back to it once that navigation lands", () => {
+    const { search, routerPath, type, land } = renderSearch("1650");
+    type("16507", "1650");
+    expect(search().shownId).toBe(1650n);
+
+    land("16507");
     expect(routerPath()).toBe("/1/cases/1650");
     expect(search().shownId).toBe(1650n);
+  });
+
+  it("an ID typed after the edit back but before the typed ID's navigation lands replaces that entry, never going back", () => {
+    const { routerPath, type, land, back } = renderSearch("1650", ["7"]);
+    type("16507", "1650", "16508");
+    expect(routerPath()).toBe("/1/cases/16508");
+    land("16508");
+    expect(routerPath()).toBe("/1/cases/16508");
+
+    back();
+    expect(routerPath()).toBe("/1/cases/1650");
+    back();
+    expect(routerPath()).toBe("/1/cases/7");
+  });
+
+  it("while history goes back to the starting dispute, the debounce passing loads nothing", () => {
+    vi.useFakeTimers();
+    const { search, type, land } = renderSearch("1650");
+    type("16507");
+    land("16507");
+    type("1650");
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+    });
+    expect(search().pending).not.toBeNull();
+    expect(search().shownId).toBe(1650n);
+
+    land("1650");
+    expect(search().pending).toBeNull();
+    expect(search().shownId).toBe(1650n);
+  });
+
+  it("an ID typed while history goes back waits for the return, then gets the only entry above the starting dispute", () => {
+    vi.useFakeTimers();
+    const { search, routerPath, type, land, back } = renderSearch("1650", ["7"]);
+    type("16507");
+    land("16507");
+    type("1650", "16508");
+    expect(routerPath()).toBe("/1/cases/1650");
+    expect(search().pending).toBe("16508");
+
+    land("1650");
+    expect(routerPath()).toBe("/1/cases/16508");
+    land("16508");
+    expect(search().pending).not.toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+    });
+    expect(search().pending).toBeNull();
+    expect(search().shownId).toBe(16508n);
+
+    back();
+    expect(routerPath()).toBe("/1/cases/1650");
+    back();
+    expect(routerPath()).toBe("/1/cases/7");
+  });
+
+  it("retyping the ID history is going back over gives it a fresh entry once the return lands", () => {
+    const { routerPath, type, land, back } = renderSearch("1650", ["7"]);
+    type("16507");
+    land("16507");
+    type("1650", "16507");
+    expect(routerPath()).toBe("/1/cases/1650");
+
+    land("1650");
+    expect(routerPath()).toBe("/1/cases/16507");
+    back();
+    expect(routerPath()).toBe("/1/cases/1650");
+    back();
+    expect(routerPath()).toBe("/1/cases/7");
+  });
+
+  it("a clear while history goes back leaves the field empty on the starting dispute, and the next ID gets one entry", () => {
+    const { search, routerPath, type, land, back } = renderSearch("1650", ["7"]);
+    type("16507");
+    land("16507");
+    type("1650", "");
+    land("1650");
+    expect(routerPath()).toBe("/1/cases/1650");
+    expect(search().pending).toBe("");
+
+    type("16508");
+    expect(routerPath()).toBe("/1/cases/16508");
+    back();
+    expect(routerPath()).toBe("/1/cases/1650");
+    back();
+    expect(routerPath()).toBe("/1/cases/7");
+  });
+
+  it("typing the starting ID again while another ID waits for the return ends the search with history as it was", () => {
+    const { search, routerPath, type, land, back } = renderSearch("1650", ["7"]);
+    type("16507");
+    land("16507");
+    type("1650", "16508", "1650");
+    land("1650");
+    expect(routerPath()).toBe("/1/cases/1650");
+    expect(search().pending).toBeNull();
+    expect(search().shownId).toBe(1650n);
+
+    back();
+    expect(routerPath()).toBe("/1/cases/7");
+  });
+
+  it("in the browser, an ID typed before Back over the cancelled entry completes gets the only entry above the starting dispute", async () => {
+    const passTask = async () => {
+      await act(async () => {
+        await new Promise((resolve) => {
+          setTimeout(resolve, 20);
+        });
+      });
+    };
+    globalThis.history.pushState(null, "", "/1/cases/7");
+    globalThis.history.pushState(null, "", "/1/cases/1650");
+    function wrapper({ children }: { readonly children: ReactNode }) {
+      return (
+        <StrictMode>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/:chainId/cases/:id?" element={children} />
+            </Routes>
+          </BrowserRouter>
+        </StrictMode>
+      );
+    }
+    const view = renderHook(useSearchOfTheUrl, { wrapper });
+    const edit = (text: string) => {
+      act(() => {
+        view.result.current.change(text);
+      });
+    };
+    edit("16507");
+    edit("1650");
+    edit("16508");
+    await passTask();
+    expect(globalThis.location.pathname).toBe("/1/cases/16508");
+    act(() => {
+      view.result.current.submit();
+    });
+    expect(view.result.current.shownId).toBe(16508n);
+
+    globalThis.history.back();
+    await passTask();
+    expect(globalThis.location.pathname).toBe("/1/cases/1650");
+    globalThis.history.back();
+    await passTask();
+    expect(globalThis.location.pathname).toBe("/1/cases/7");
   });
 });
