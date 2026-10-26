@@ -184,12 +184,19 @@ describe("CaseOverview", () => {
 describe("DisputeTimeline", () => {
   const COUNTDOWN = /^\d{2}d \d{2}h \d{2}m$/;
 
+  /** The countdown: the current step's duration, which upcoming steps show in the same format. */
+  function countdown(list: HTMLElement): HTMLElement {
+    const current = list.querySelector<HTMLElement>('li[aria-current="step"]');
+    if (current === null) throw new Error("No current step.");
+    return within(current).getByText(COUNTDOWN);
+  }
+
   it("counts the current step down, marks past steps concluded and gives upcoming steps their duration", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 2, lastPeriodChange: NOW - HOUR, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }));
     expect(columns()).toEqual([
       { name: "Evidence", state: "concluded", text: expect.stringContaining("Concluded") as string },
       { name: "Voting", state: "current", text: expect.stringContaining("Ends in 01d 23h 00m") as string },
-      { name: "Appeal", state: "upcoming", text: expect.stringContaining("01d 00h 00m") as string },
+      { name: "Appeal", state: "upcoming", text: "Appeal01d 00h 00m" },
       { name: "Execution", state: "upcoming", text: "Execution" },
     ]);
     expect(steps()[1]).toHaveAttribute("aria-current", "step");
@@ -211,31 +218,35 @@ describe("DisputeTimeline", () => {
     act(() => {
       vi.advanceTimersByTime(30 * 1000);
     });
-    const before = within(list).getByText(COUNTDOWN);
+    const before = countdown(list);
     expect(before).toHaveTextContent("00d 23h 59m");
     act(() => {
       vi.advanceTimersByTime(30 * 1000);
     });
-    expect(within(list).getByText(COUNTDOWN)).toBe(before);
+    expect(countdown(list)).toBe(before);
     act(() => {
       vi.advanceTimersByTime(30 * 1000);
     });
     expect(before).not.toBeInTheDocument();
-    expect(within(list).getByText(COUNTDOWN)).toHaveTextContent("00d 23h 58m");
+    expect(countdown(list)).toHaveTextContent("00d 23h 58m");
   });
 
   it.each([
     ["vertical", false],
     ["horizontal", true],
-  ] as const)("eases the steps' colours over the shared tab timing and snaps them under reduced motion (%s)", (_orientation, horizontal) => {
+  ] as const)("eases the steps' colours and the current halo over the shared tab timing and snaps them under reduced motion (%s)", (_orientation, horizontal) => {
     if (horizontal) {
       installOfflineAppKitEnvironment();
       vi.stubGlobal("matchMedia", matchEverything);
     }
     renderSection(DisputeTimeline, caseDispute({ period: 2 }));
     const list = timelineList();
+    expect(list).toHaveClass("[&_[aria-hidden]>*]:transition-[color,background-color,border-color,fill,box-shadow]");
+    for (const target of ["[&_[aria-hidden]_span]", "[&_h2]"]) {
+      expect(list).toHaveClass(`${target}:transition-colors`);
+    }
     for (const target of ["[&_[aria-hidden]>*]", "[&_[aria-hidden]_span]", "[&_h2]"]) {
-      expect(list).toHaveClass(`${target}:transition-colors`, `${target}:duration-(--tabs-dur)`, `${target}:ease-(--tabs-ease)`, `${target}:motion-reduce:transition-none`);
+      expect(list).toHaveClass(`${target}:duration-(--tabs-dur)`, `${target}:ease-(--tabs-ease)`, `${target}:motion-reduce:transition-none`);
     }
     expect(list.className).not.toContain("duration-200");
     if (horizontal) {
@@ -289,17 +300,18 @@ describe("DisputeTimeline", () => {
 
   it("renders the current countdown once", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 2, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }));
-    expect(within(timeline()).getAllByText(COUNTDOWN)).toHaveLength(1);
+    expect(within(timeline()).getAllByRole("list")).toHaveLength(1);
     expect(within(timeline()).getAllByText(/^Ends in/)).toHaveLength(1);
+    expect(countdown(timelineList())).toHaveTextContent("01d 23h 00m");
   });
 
   it("shows every step's state as visible text", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 2, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }));
     const list = timelineList();
     expect(within(list).getByText("Concluded")).toBeInTheDocument();
-    expect(within(list).getByText("Lasts 01d 00h 00m")).toBeInTheDocument();
+    expect(within(list).getByText("01d 00h 00m")).toBeInTheDocument();
     expect(within(list).getByText("Ends in")).toBeInTheDocument();
-    expect(within(list).getByText(COUNTDOWN)).toBeInTheDocument();
+    expect(countdown(list)).toBeVisible();
     expect(list.querySelectorAll('[class*="sr-only"]')).toHaveLength(0);
   });
 
@@ -315,7 +327,6 @@ describe("DisputeTimeline", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 2 }));
     const list = timelineList();
     expect(list).toHaveAccessibleName("Vertical progress steps");
-    expect(list).toHaveClass("[&_[aria-hidden]>*+*]:min-h-6", "[&_div>li>div:last-child]:pb-4");
     expect(list).not.toHaveClass("w-full");
   });
 
@@ -329,7 +340,7 @@ describe("DisputeTimeline", () => {
     expect(list).toHaveClass("w-full");
     expect(list.className).not.toContain("min-h-6");
     expect(list.className).not.toContain("pb-4");
-    expect(within(list).getAllByText(COUNTDOWN)).toHaveLength(1);
+    expect(within(list).getAllByText(/^Ends in/)).toHaveLength(1);
   });
 
   it("keeps five steps vertical until the wide query matches", () => {
@@ -354,6 +365,162 @@ describe("DisputeTimeline", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 1, court: { hiddenVotes: true } }));
     expect(timelineList()).toHaveAccessibleName("Horizontal progress steps");
     expect(steps()).toHaveLength(5);
+  });
+
+  it("gives an upcoming period its duration alone, with no word before it", () => {
+    renderSection(DisputeTimeline, caseDispute({ period: 0, court: { timesPerPeriod: [BigInt(DAY), 0n, 2n * BigInt(DAY) + 6n * BigInt(HOUR), BigInt(DAY)] } }));
+    expect(columns().map(({ name, text }) => [name, text])).toEqual([
+      ["Evidence", "EvidenceEnds in 00d 23h 00m"],
+      ["Voting", "Voting02d 06h 00m"],
+      ["Appeal", "Appeal01d 00h 00m"],
+      ["Execution", "Execution"],
+    ]);
+    expect(within(timelineList()).queryByText(/Lasts/)).not.toBeInTheDocument();
+  });
+
+  it("reads Unknown after Ends in when the current deadline is not a finite time", () => {
+    const dispute = caseDispute({ period: 2 });
+    const view = dispute.view.status === "ready" && dispute.view.value.exists ? dispute.view.value : undefined;
+    if (view?.timeline.ok !== true) throw new Error("The test dispute has no timeline.");
+    const withEndlessDeadline = view.timeline.value.columns.map((column) => (column.state === "current" ? { ...column, deadline: Number.POSITIVE_INFINITY } : column));
+    renderSection(DisputeTimeline, { ...dispute, view: sectionReady({ ...view, timeline: { ok: true, value: { columns: withEndlessDeadline } } }) });
+    expect(columns()[1]).toEqual({ name: "Voting", state: "current", text: "VotingEnds in Unknown" });
+  });
+
+  it.each([
+    ["vertical", false],
+    ["horizontal", true],
+  ] as const)("sets the countdown on the line of Ends in at 16 px semibold in tabular figures (%s)", (_orientation, horizontal) => {
+    if (horizontal) {
+      installOfflineAppKitEnvironment();
+      vi.stubGlobal("matchMedia", matchEverything);
+    }
+    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
+    const list = timelineList();
+    const countdown = "[&_li[aria-current]_small+small]";
+    expect(list).toHaveClass(`${countdown}:text-base`, `${countdown}:font-semibold`, `${countdown}:text-klerosUIComponentsPrimaryText`, `${countdown}:tabular-nums`);
+    expect(list.className).not.toContain("text-xl");
+    // As block boxes, the library's flex columns let "Ends in" and the countdown run inline on one line.
+    expect(list).toHaveClass(horizontal ? "[&>li>div:last-child]:block" : "[&_li>div:last-child>div]:block");
+    const [endsIn, value] = Array.from(within(list).getByRole("listitem", { name: "Voting" }).querySelectorAll("small"));
+    expect(endsIn?.textContent).toBe("Ends in ");
+    expect(endsIn?.nextElementSibling).toBe(value);
+  });
+
+  it("from lg centres each name and state under its bullet on a rail inset from the band's edges", () => {
+    installOfflineAppKitEnvironment();
+    vi.stubGlobal("matchMedia", matchEverything);
+    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
+    const label = "[&>li>div:last-child]";
+    expect(timelineList()).toHaveClass(
+      "px-18",
+      "pb-14",
+      `${label}:absolute`,
+      `${label}:top-8`,
+      `${label}:left-0`,
+      `${label}:ml-0`,
+      `${label}:w-max`,
+      `${label}:translate-x-[calc(-50%+12px)]`,
+    );
+  });
+
+  it("from lg runs each connector from bullet to bullet, 2 px PrimaryBlue after a concluded step and 1 px in the band's edge after the others", () => {
+    installOfflineAppKitEnvironment();
+    vi.stubGlobal("matchMedia", matchEverything);
+    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
+    const done = "[&>li:not([aria-current]):not([aria-disabled])]";
+    const connector = "[&>li:not(:last-child)]";
+    expect(timelineList()).toHaveClass(
+      `${connector}:after:mx-2`,
+      `${connector}:after:my-[11px]`,
+      `${connector}:after:border-b`,
+      `${done}:after:border-b-klerosUIComponentsPrimaryBlue`,
+      "[&>li[aria-current]]:after:border-t-(--dr-record-edge)",
+      "[&>li[aria-current]]:after:border-b-transparent",
+      "[&>li[aria-disabled]]:after:border-t-(--dr-record-edge)",
+      "[&>li[aria-disabled]]:after:border-b-transparent",
+    );
+  });
+
+  it.each([
+    ["vertical", false],
+    ["horizontal", true],
+  ] as const)("changes only colours between a concluded, the current and an upcoming step's connector, so its thickness eases with its colour (%s)", (_orientation, horizontal) => {
+    if (horizontal) {
+      installOfflineAppKitEnvironment();
+      vi.stubGlobal("matchMedia", matchEverything);
+    }
+    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
+    const byState = timelineList()
+      .className.split(/\s+/)
+      .filter((token) => /aria-(current|disabled)/.test(token));
+    expect(byState.filter((token) => /:(after:)?(border-[tblr](-\d+)?|m[xytblr]?-[^:]+)$/.test(token))).toEqual([]);
+  });
+
+  it("below lg lays one row per period, the name on the left and the state on the right of it, with no plate behind the current row", () => {
+    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
+    const list = timelineList();
+    const text = "[&_li>div:last-child]";
+    expect(list).toHaveClass(
+      "max-w-md",
+      "[&_li]:w-full",
+      `${text}:flex`,
+      `${text}:grow`,
+      `${text}:items-baseline`,
+      `${text}:justify-between`,
+      `${text}:gap-x-3`,
+      "[&_li>div:last-child>div]:ml-auto",
+    );
+    expect(list.className).not.toMatch(/MediumBlue|:bg-/);
+    expect(list).toHaveClass("[&_li[aria-current]_h2]:text-base");
+  });
+
+  it("below lg draws the connector 2 px PrimaryBlue after a concluded step and 1 px in the band's edge after the others", () => {
+    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
+    const line = "[aria-hidden]>*+*";
+    expect(timelineList()).toHaveClass(
+      `[&_${line}]:min-h-4`,
+      `[&_${line}]:border-r`,
+      `[&_li:not([aria-current]):not([aria-disabled])_${line}]:border-r-klerosUIComponentsPrimaryBlue`,
+      `[&_li[aria-current]_${line}]:border-l-(--dr-record-edge)`,
+      `[&_li[aria-current]_${line}]:border-r-transparent`,
+      `[&_li[aria-disabled]_${line}]:border-l-(--dr-record-edge)`,
+      `[&_li[aria-disabled]_${line}]:border-r-transparent`,
+    );
+  });
+
+  it.each([
+    ["vertical", false],
+    ["horizontal", true],
+  ] as const)("rings the current bullet with a soft PrimaryBlue halo (%s)", (_orientation, horizontal) => {
+    if (horizontal) {
+      installOfflineAppKitEnvironment();
+      vi.stubGlobal("matchMedia", matchEverything);
+    }
+    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
+    expect(timelineList()).toHaveClass(
+      "[&_li[aria-current]_[aria-hidden]>div:first-child]:shadow-[0_0_0_4px_color-mix(in_srgb,var(--klerosUIComponentsPrimaryBlue)_22%,transparent)]",
+    );
+  });
+
+  it("keeps the execution step the current numbered step with no state line in the row from lg", () => {
+    installOfflineAppKitEnvironment();
+    vi.stubGlobal("matchMedia", matchEverything);
+    renderSection(DisputeTimeline, caseDispute({ period: 4 }));
+    const execution = within(timelineList()).getByRole("listitem", { name: "Execution" });
+    expect(timelineList()).toHaveAccessibleName("Horizontal progress steps");
+    expect(execution).toHaveAttribute("aria-current", "step");
+    expect(execution.querySelector("small")).toBeNull();
+    expect(execution.querySelector("[aria-hidden] > div:first-child > span")).toHaveTextContent("4");
+    expect(within(timelineList()).queryByText(/final/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps four steps in the list until the lg query matches, whatever the five-step query says", () => {
+    installOfflineAppKitEnvironment();
+    vi.stubGlobal("matchMedia", matchOnly([FIVE_STEPS_MEDIA_QUERY]));
+    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
+    expect(timelineList()).toHaveAccessibleName("Vertical progress steps");
+    expect(steps()).toHaveLength(4);
   });
 
   it("names the timeline from outside the library list", () => {
