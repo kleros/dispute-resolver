@@ -247,11 +247,11 @@ export function CreateSummary({ chain, input, documentName, headingRef, onReturn
       </div>
       <div className="flex flex-col gap-2">
         {showSignInHint ? (
-          <p id={hintId} className="m-0 text-sm text-klerosUIComponentsSecondaryText lg:text-right">
+          <p id={hintId} className="m-0 text-sm text-klerosUIComponentsSecondaryText lg:text-center">
             Your wallet will first ask you to sign in, to upload the dispute data, and then to confirm the transaction.
           </p>
         ) : null}
-        <div className="grid grid-cols-2 gap-3 lg:flex lg:justify-end">
+        <div className="grid grid-cols-2 gap-3 lg:flex lg:justify-center">
           <Button text="Return" variant="secondary" isDisabled={action.isBusy} onPress={onReturn} className="w-full lg:w-auto" />
           <Button
             text={primary.text}

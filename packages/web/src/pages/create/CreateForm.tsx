@@ -81,7 +81,7 @@ export function CreateForm({ chain, form, resets, onChange, headingRef, onContin
       <PartiesSection {...sectionProps} />
       <DocumentSection key={resets} {...sectionProps} />
       {attempted && !validation.ok ? <Notice reveal variant="error" title="Some fields need attention" body="Correct the highlighted fields to continue." /> : null}
-      <div className="grid grid-cols-2 gap-3 lg:flex lg:justify-end">
+      <div className="grid grid-cols-2 gap-3 lg:flex lg:justify-center">
         <Button
           text="Clear form"
           variant="secondary"

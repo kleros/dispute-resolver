@@ -84,11 +84,13 @@ describe("WalletControl", () => {
     expect(panel).toHaveTextContent("0x0000…11cE");
   });
 
-  it("Disconnect returns the app to read-only", async () => {
+  it("Disconnect sits centred in the account panel and returns the app to read-only", async () => {
     const wallet = await createConnectedTestWallet();
     render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(wallet) });
     await userEvent.click(screen.getByRole("button", { name: /^Account / }));
-    await userEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+    const disconnect = screen.getByRole("button", { name: "Disconnect" });
+    expect(disconnect).toHaveClass("self-center");
+    await userEvent.click(disconnect);
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Connect" })).toBeInTheDocument();
     });

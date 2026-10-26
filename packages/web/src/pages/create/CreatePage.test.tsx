@@ -1074,20 +1074,20 @@ describe("CreatePage", () => {
     expect(screen.queryByText("Remove")).toBeNull();
   });
 
-  it("the form and summary actions are equal-width pairs below lg and the primary button keeps one width from lg", async () => {
+  it("the form and summary actions are equal-width pairs below lg, a centred pair from lg, and the primary button keeps one width from lg", async () => {
     const { user } = await renderCreate();
     const continueButton = screen.getByRole("button", { name: "Continue" });
     const clear = screen.getByRole("button", { name: "Clear form" });
     for (const button of [clear, continueButton]) expect(button).toHaveClass("w-full", "lg:w-auto");
     expect(continueButton.parentElement).toBe(clear.parentElement);
-    expect(continueButton.parentElement).toHaveClass("grid", "grid-cols-2", "lg:flex", "lg:justify-end");
+    expect(continueButton.parentElement).toHaveClass("grid", "grid-cols-2", "lg:flex", "lg:justify-center");
     await fillToSummary(user);
     const create = screen.getByRole("button", { name: "Create dispute" });
     const back = screen.getByRole("button", { name: "Return" });
     for (const button of [create, back]) expect(button).toHaveClass("w-full", "lg:w-auto");
     expect(create).toHaveClass("lg:min-w-48");
     expect(create.parentElement).toBe(back.parentElement);
-    expect(create.parentElement).toHaveClass("grid", "grid-cols-2", "lg:flex", "lg:justify-end");
+    expect(create.parentElement).toHaveClass("grid", "grid-cols-2", "lg:flex", "lg:justify-center");
   });
 
   it("a chain without a read RPC reports the cost as unavailable with the neutral sentence", async () => {

@@ -258,15 +258,17 @@ describe("ChainSwitcher", () => {
     expect(dot(trigger)?.className).not.toMatch(/warning/);
   });
 
-  it("the pill is the same width on every chain, with the name filling it between the dot and the chevron and truncating when long", () => {
+  it("the pill is the same width on every chain, with the dot, the name and the chevron centred as one group and the name truncating when long", () => {
     for (const [path, name] of [
       ["/1/ongoing", "Ethereum Mainnet"],
       ["/100/ongoing", "Gnosis Network"],
     ] as const) {
       const view = renderWithProviders(<Screen />, { path, frame: "page" });
       const trigger = pill(name);
-      expect(trigger).toHaveClass("w-56", "max-w-full", "min-w-0");
-      expect(within(trigger).getByText(name)).toHaveClass("min-w-0", "flex-1", "truncate", "text-left");
+      expect(trigger).toHaveClass("w-56", "max-w-full", "min-w-0", "justify-center");
+      const label = within(trigger).getByText(name);
+      expect(label).toHaveClass("min-w-0", "truncate");
+      expect(label).not.toHaveClass("flex-1");
       view.unmount();
     }
     renderWithProviders(<Screen />, { path: "/999/ongoing", frame: "page" });

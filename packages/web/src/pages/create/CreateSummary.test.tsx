@@ -101,10 +101,10 @@ afterEach(() => {
 });
 
 describe("CreateSummary", () => {
-  it("says near Create that creating asks for a sign-in first and then for the transaction, while not signed in", async () => {
+  it("says near Create, centred over the actions from lg, that creating asks for a sign-in first and then for the transaction, while not signed in", async () => {
     await renderSummary(fakeUploader({ isSignedIn: false }));
 
-    expect(screen.getByText(HINT)).toBeInTheDocument();
+    expect(screen.getByText(HINT)).toHaveClass("lg:text-center");
     expect(createButton()).toBeEnabled();
     expect(createButton()).toHaveAccessibleDescription(HINT);
   });

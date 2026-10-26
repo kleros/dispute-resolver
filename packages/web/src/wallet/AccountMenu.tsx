@@ -63,7 +63,7 @@ function AccountPanel({ id, rootRef, panelRef, closing, onClose, address, wallet
         text="Disconnect"
         variant="secondary"
         small
-        className="self-start"
+        className="self-center"
         onPress={() => {
           onClose(false);
           disconnect();

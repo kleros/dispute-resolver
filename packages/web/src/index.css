@@ -328,8 +328,7 @@
 
     /*
      * App tokens.
-     * - --dr-control-border: edges of inputs, textareas and select triggers, and the page scrollbar's thumb (cards keep
-     *   Stroke). Light #8a8a8a:
+     * - --dr-control-border: edges of inputs, textareas and select triggers (cards keep Stroke). Light #8a8a8a:
      *   3.24:1 on MediumBlue, 3.33:1 on LightBackground, 3.45:1 on white. Dark #8a7bd0: 3.78:1 on MediumBlue #2e206c,
      *   4.92:1 on WhiteBackground #220050.
      * - --dr-focus: the focus ring, PrimaryBlue (light 4.97:1 on white; dark #6cc5ff 7.19:1 on WhiteBackground).
@@ -355,6 +354,10 @@
      * - --dr-display-skeleton: the loading bars on that paper. Light: the Stroke, 1.26:1 on white. Dark: a purple-grey
      *   matched to that ratio on the sheet (#dbd5e3, 1.27:1 on #f4f0fa), where the light Stroke would be 1.12:1 and all
      *   but vanish and the dark Stroke would be heavy. A placeholder, not text, so no text ratio applies.
+     * - --dr-scroll-thumb, -hover, -active: the page scrollbar's thumb at rest, hovered and dragged, at least 3:1 on
+     *   LightBackground in each state. Light: VioletPurple 7.59:1, SecondaryPurple 5.46:1, PrimaryPurple 10.26:1, where
+     *   LavenderPurple would be 2.91:1. Dark: SecondaryPurple 5.38:1, LavenderPurple 6.23:1, Tint 10.92:1, where
+     *   VioletPurple would be 2.39:1.
      */
     --dr-display-paper: var(--klerosUIComponentsWhiteBackground);
     --dr-display-focus: #0072c6;
@@ -365,6 +368,9 @@
     --dr-focus-bar: #7bcbff;
     --dr-record-surface: var(--klerosUIComponentsTintPurple);
     --dr-record-edge: color-mix(in srgb, var(--klerosUIComponentsPrimaryPurple) 20%, var(--klerosUIComponentsStroke));
+    --dr-scroll-thumb: var(--klerosUIComponentsVioletPurple);
+    --dr-scroll-thumb-hover: var(--klerosUIComponentsSecondaryPurple);
+    --dr-scroll-thumb-active: var(--klerosUIComponentsPrimaryPurple);
 
     /*
      * Motion variables, one block per transition. The shimmer colours point at the library tokens, which the dark class
@@ -482,6 +488,9 @@
     --dr-focus-bar: #a5dbff;
     --dr-record-surface: var(--klerosUIComponentsMediumPurple);
     --dr-record-edge: var(--klerosUIComponentsStroke);
+    --dr-scroll-thumb: var(--klerosUIComponentsSecondaryPurple);
+    --dr-scroll-thumb-hover: var(--klerosUIComponentsLavenderPurple);
+    --dr-scroll-thumb-active: var(--klerosUIComponentsTint);
   }
 
   body {
@@ -494,6 +503,7 @@
   /*
    * Browser surfaces: selection, scrollbar, caret and tabular numerals follow the palette. The scrollbar track is the page
    * colour, never transparent, so nothing the browser paints under it shows through and it follows the app theme, not the OS.
+   * The page scrollbar copies Kleros Court v2's: a 6 px rounded thumb in a 10 px lane, no visible track.
    */
   ::selection {
     background: color-mix(in srgb, var(--klerosUIComponentsPrimaryBlue) 24%, transparent);
@@ -507,12 +517,49 @@
    * scroll does not shift the header and footer by that width.
    */
   html {
-    scrollbar-color: var(--dr-control-border) var(--klerosUIComponentsLightBackground);
     scrollbar-gutter: stable;
     scroll-padding-top: calc(7.5rem + 8px);
 
     @variant lg {
       scroll-padding-top: calc(4rem + 8px);
+    }
+  }
+
+  /*
+   * Chromium ignores every ::-webkit-scrollbar rule once scrollbar-width or scrollbar-color is set, and its standard
+   * scrollbar draws a square thumb, so the standard properties go only to engines without the pseudo-elements (Firefox).
+   */
+  @supports selector(::-webkit-scrollbar) {
+    html::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    html::-webkit-scrollbar-track,
+    html::-webkit-scrollbar-corner {
+      background-color: var(--klerosUIComponentsLightBackground);
+    }
+
+    html::-webkit-scrollbar-thumb {
+      border: 2px solid transparent;
+      border-radius: 10px;
+      background-color: var(--dr-scroll-thumb);
+      background-clip: padding-box;
+    }
+
+    html::-webkit-scrollbar-thumb:hover {
+      background-color: var(--dr-scroll-thumb-hover);
+    }
+
+    html::-webkit-scrollbar-thumb:active {
+      background-color: var(--dr-scroll-thumb-active);
+    }
+  }
+
+  @supports not selector(::-webkit-scrollbar) {
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: var(--dr-scroll-thumb) var(--klerosUIComponentsLightBackground);
     }
   }
 
