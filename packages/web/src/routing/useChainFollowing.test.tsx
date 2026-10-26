@@ -3,6 +3,7 @@ import { StrictMode, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { UserRejectedRequestError } from "viem";
 import { describe, expect, it, vi } from "vitest";
+import { TestDataProvider, deferred } from "../test/data";
 import { renderAtPath } from "../test/routing";
 import { renderWithProviders } from "../test/shell";
 import {
@@ -17,11 +18,15 @@ import {
   walletWrapper,
   type TestWallet,
 } from "../test/wallet";
-import { useNetworkSwitch } from "../wallet";
+import { WalletSetupProvider, useNetworkSwitch, useWallet } from "../wallet";
 import { usePageChain } from "./pageChain";
 
 function PageProbe() {
   return <p>Page on {usePageChain().chainId}</p>;
+}
+
+function WalletStatusProbe() {
+  return <p>Wallet {useWallet().status}</p>;
 }
 
 /** A page with in-app links to other chains, the history buttons and another switch control, as the app's pages have. */
@@ -280,6 +285,45 @@ describe("useChainFollowing: a wallet on another chain than the page's", () => {
     await settle();
     expect(switches).toHaveBeenCalledTimes(1);
     expect(view.currentPath()).toBe("/100/ongoing");
+  });
+
+  it("an authorized wallet found by wagmi's mount-time probe on another chain stays disconnected while probed, then is asked for the page chain once", async () => {
+    const wallet = createTestWallet({ chainId: 100 });
+    const switches = spyOnSwitches(wallet);
+    const authorization = deferred<boolean>();
+    vi.spyOn(walletConnector(wallet), "isAuthorized").mockReturnValue(authorization.promise);
+    function ProbingProviders({ children }: { readonly children?: ReactNode }) {
+      return (
+        <TestDataProvider>
+          <WalletSetupProvider setup={wallet.setup}>{children}</WalletSetupProvider>
+        </TestDataProvider>
+      );
+    }
+    const view = renderAtPath(
+      <>
+        <PageProbe />
+        <WalletStatusProbe />
+      </>,
+      "/1/ongoing",
+      { wrapper: ProbingProviders },
+    );
+    await waitFor(() => {
+      expect(walletConnector(wallet).isAuthorized).toHaveBeenCalled();
+    });
+    expect(wallet.config.state.status).toBe("connecting");
+    expect(screen.getByText("Wallet disconnected")).toBeInTheDocument();
+    expect(screen.getByText("Page on 1")).toBeInTheDocument();
+    await act(async () => {
+      authorization.resolve(true);
+      await authorization.promise;
+    });
+    await waitFor(() => {
+      expect(wallet.config.state.chainId).toBe(1);
+    });
+    expect(screen.getByText("Wallet connected")).toBeInTheDocument();
+    await settle();
+    expect(switches).toHaveBeenCalledTimes(1);
+    expect(view.currentPath()).toBe("/1/ongoing");
   });
 
   it("the user's first connect on another chain asks for the page chain once and never navigates", async () => {

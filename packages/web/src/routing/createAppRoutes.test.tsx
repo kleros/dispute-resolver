@@ -71,6 +71,14 @@ describe("route table: redirects", () => {
     expect(view.currentPath()).toBe("/100/ongoing");
   });
 
+  it("/ does not wait while wagmi probes the wallets of a visitor who never connected", async () => {
+    const wallet = createTestWallet({ chainId: 100 });
+    wallet.config.setState((state) => ({ ...state, status: "connecting" }));
+    const view = renderApp("/", wallet);
+    expect(await screen.findByText("Ongoing page on 1")).toBeInTheDocument();
+    expect(view.currentPath()).toBe("/1/ongoing");
+  });
+
   it("/ waits for AppKit when a connection is stored, so a returning wallet lands on its own chain", () => {
     const view = renderApp("/", createTestWallet({ pendingReconnect: true }));
     expect(view.currentPath()).toBe("/");

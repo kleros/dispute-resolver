@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TEST_WALLET_ADDRESS, UNCONFIGURED_CHAIN_ID, createConnectedTestWallet, createTestWallet, walletWrapper } from "../test/wallet";
+import { TEST_WALLET_ADDRESS, UNCONFIGURED_CHAIN_ID, createConnectedTestWallet, createTestWallet, setWalletStatus, walletWrapper } from "../test/wallet";
 import { toWalletState, useWallet } from "./useWallet";
 
 afterEach(() => {
@@ -10,6 +10,10 @@ afterEach(() => {
 describe("toWalletState", () => {
   it("a reconnecting wallet is still connecting, so routing waits for the reconnect to settle", () => {
     expect(toWalletState("reconnecting", "0x00000000000000000000000000000000000A11cE", 1)).toEqual({ status: "connecting" });
+  });
+
+  it("wagmi's connecting without a remembered connection reads as disconnected, so a visitor who never connected is not kept waiting", () => {
+    expect(toWalletState("connecting", undefined, undefined)).toEqual({ status: "disconnected" });
   });
 
   it("a connected address is lowercased", () => {
@@ -31,6 +35,13 @@ describe("useWallet", () => {
   it("while AppKit loads a returning wallet is connecting, so routing waits as it does for wagmi's reconnect", () => {
     const { result } = renderHook(() => useWallet(), { wrapper: walletWrapper(createTestWallet({ pendingReconnect: true })) });
     expect(result.current).toEqual({ status: "connecting" });
+  });
+
+  it("while wagmi probes the wallets of a visitor who never connected, the wallet reads as disconnected", () => {
+    const wallet = createTestWallet();
+    setWalletStatus(wallet, "connecting");
+    const { result } = renderHook(() => useWallet(), { wrapper: walletWrapper(wallet) });
+    expect(result.current).toEqual({ status: "disconnected" });
   });
 
   it("the app loads disconnected and nothing is requested from a wallet", () => {

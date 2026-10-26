@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { testPageChain } from "../test/routing";
-import { createConnectedTestWallet, createTestWallet, walletWrapper } from "../test/wallet";
+import { createConnectedTestWallet, createTestWallet, setWalletStatus, walletWrapper } from "../test/wallet";
 import { WalletControl } from "./WalletControl";
 
 /** A closed panel first animates out, inert; jsdom runs no animation, so the test ends it before checking the unmount. */
@@ -155,6 +155,16 @@ describe("WalletControl", () => {
     const button = screen.getByRole("button", { name: "Connecting" });
     expect(button).toHaveAttribute("aria-label", "Connecting");
     expect(button).toBeDisabled();
+  });
+
+  it("Connect stays enabled while wagmi probes the wallets of a visitor who never connected", async () => {
+    const wallet = createTestWallet();
+    setWalletStatus(wallet, "connecting");
+    render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(wallet) });
+    const button = screen.getByRole("button", { name: "Connect" });
+    expect(button).toBeEnabled();
+    await userEvent.click(button);
+    expect(wallet.modal?.openConnect).toHaveBeenCalledWith(1);
   });
 
   it("the Connect button takes its name from its visible text", () => {

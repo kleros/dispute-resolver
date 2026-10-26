@@ -7,14 +7,16 @@ import type { WalletState } from "./types";
 type AccountStatus = ReturnType<typeof useAccount>["status"];
 
 /**
- * Wagmi's account as the app's `WalletState`. Only a settled connection is `connected`: while wagmi reconnects a
- * returning wallet the state is `connecting`, so routing can wait for the reconnect to settle.
+ * Wagmi's account as the app's `WalletState`. Only restoring a remembered connection is `connecting`, so routing waits
+ * for it to settle. Wagmi reports `connecting` both for its mount-time probe of every connector when nothing is stored
+ * (slow with browser extensions) and for a connection the user starts in the modal: neither is a remembered connection,
+ * so the wallet stays `disconnected` until it connects.
  */
 export function toWalletState(status: AccountStatus, address: string | undefined, chainId: number | undefined): WalletState {
   if (status === "connected" && address !== undefined && chainId !== undefined) {
     return { status: "connected", address: toRegistryAddress(address), chainId };
   }
-  if (status === "connecting" || status === "reconnecting") return { status: "connecting" };
+  if (status === "reconnecting") return { status: "connecting" };
   return { status: "disconnected" };
 }
 
@@ -27,7 +29,7 @@ export function toWalletState(status: AccountStatus, address: string | undefined
 export function useWallet(): WalletState {
   const pendingReconnect = useWalletSetupPendingReconnect();
   const { status, address, chainId } = useAccount();
-  return useMemo(() => toWalletState(pendingReconnect ? "connecting" : status, address, chainId), [pendingReconnect, status, address, chainId]);
+  return useMemo(() => toWalletState(pendingReconnect ? "reconnecting" : status, address, chainId), [pendingReconnect, status, address, chainId]);
 }
 
 /** The connected wallet's chain; `undefined` without a settled connection. */

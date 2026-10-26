@@ -43,6 +43,7 @@ export interface WalletProviderProps {
 
 export type WalletState =
   | { readonly status: "disconnected" }
+  /** Only while a remembered connection is restored; a connection the user starts stays `disconnected` until it settles. */
   | { readonly status: "connecting" }
   | {
       readonly status: "connected";
