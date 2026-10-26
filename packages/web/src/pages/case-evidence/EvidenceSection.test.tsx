@@ -263,6 +263,13 @@ describe("EvidenceSection: evidence list", () => {
     expect(within(second).getByText(shortenAddress(SUBMITTER))).toBeInTheDocument();
   });
 
+  it("an entry's description runs the full width of its entry, like its title, with taller lines", async () => {
+    await renderSection({ evidence: sectionReady(testEvidenceList([item({ description: "A long account of the delivery." })])) });
+    const description = screen.getByText("A long account of the delivery.");
+    expect(description).toHaveClass("leading-7");
+    expect(description.className).not.toMatch(/(^|\s)max-w-/);
+  });
+
   it("an attachment is a new-tab link with its icon, never rendered inline", async () => {
     await renderSection({ evidence: sectionReady(testEvidenceList([item({ attachment: attachmentLink("photo.png") })])) });
     const link = screen.getByRole("link", { name: /photo\.png/ });

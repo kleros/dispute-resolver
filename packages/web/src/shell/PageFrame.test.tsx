@@ -326,6 +326,20 @@ describe("PageFrame footer", () => {
     expect(within(footer()).getByText("Gnosis Network")).toBeInTheDocument();
   });
 
+  it("is a centred column below the header's lg breakpoint and one row that never wraps from lg, where only the chain name may shrink", () => {
+    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
+    const row = footer().firstElementChild;
+    expect(row).toHaveClass("flex-col", "items-center", "lg:flex-row", "lg:flex-nowrap", "lg:justify-between");
+    const classNames = Array.from(footer().querySelectorAll("[class]"), (element) => element.getAttribute("class") ?? "");
+    expect(classNames.filter((name) => /(^|\s)sm:/.test(name))).toEqual([]);
+    const chainName = within(footer()).getByText("Ethereum Mainnet");
+    expect(chainName).toHaveClass("min-w-0", "truncate");
+    expect(chainName.parentElement).toHaveClass("min-w-0", "flex-col", "items-center", "lg:flex-row");
+    const channels = within(footer()).getByRole("list", { name: "Kleros channels" });
+    expect(channels).toHaveClass("flex-wrap", "lg:flex-nowrap");
+    expect(channels.parentElement).toHaveClass("shrink-0", "flex-col", "items-center", "lg:flex-row");
+  });
+
   it("shows Unsupported Network on the unsupported-network screen, without an explorer link", () => {
     renderWithProviders(<Screen />, { path: "/999/ongoing", frame: "page" });
     expect(within(footer()).getByText("Unsupported Network")).toBeInTheDocument();

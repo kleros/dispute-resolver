@@ -17,6 +17,7 @@ import { noRpcError, useCoreDeps } from "../../data";
 import { paths, usePageChain } from "../../routing";
 import { useToast } from "../../shell";
 import { useWrite, useWriteAccess, type NeedsWalletGuard, type WriteAccess, type WriteStatus, type WrongChainGuard } from "../../wallet";
+import { clearCreateDraft } from "./draftStorage";
 
 /** The page opens the new dispute this long after the success toast. */
 const NAVIGATION_DELAY_MS = 2000;
@@ -131,6 +132,7 @@ export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction
       return;
     }
     toast.show({ variant: "success", title: "Transaction Confirmed", message: `You have successfully created dispute ${disputeId.toString()}!` });
+    clearCreateDraft(chainId);
     setState({ kind: "created", disputeId });
   }, [write, access, chainId, uploader, input, deps, chain, toast]);
 

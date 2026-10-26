@@ -34,7 +34,7 @@ function AnswerEntry({ option }: { readonly option: VotingOption }) {
         )}
       </p>
       {describedOnScreen ? (
-        <p className="max-w-[72ch] whitespace-pre-line text-sm leading-5 text-pretty">
+        <p className="whitespace-pre-line text-sm leading-6 text-pretty">
           <span className="sr-only">{": "}</span>
           {description}
         </p>
@@ -80,7 +80,7 @@ function QuestionContent({ metaEvidence, disputeId, chainId }: QuestionContentPr
   const label = rulingOptions === null ? null : questionTypeLabel(rulingOptions.type);
   const options = rulingOptions === null ? null : votingOptions(rulingOptions);
   return (
-    <div className="flex min-w-0 max-w-[72ch] flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6">
       {question === null && label === null ? null : (
         <div className="flex flex-col gap-1">
           {question === null ? null : (

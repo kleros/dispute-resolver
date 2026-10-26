@@ -79,6 +79,7 @@ interface Rendered {
   readonly uploader: FakeUploader;
   readonly wallet: TestWallet;
   readonly currentPath: () => string;
+  readonly unmount: () => void;
 }
 
 interface RenderCreateOptions {
@@ -99,7 +100,7 @@ async function renderCreate(options: RenderCreateOptions = {}): Promise<Rendered
       await wallet.connect();
     });
   }
-  return { user, uploader, wallet, currentPath: result.currentPath };
+  return { user, uploader, wallet, currentPath: result.currentPath, unmount: result.unmount };
 }
 
 /** The page over the real `AtlasGate` and `@kleros/kleros-app` provider, with Atlas and the wallet's signing RPC faked. */
@@ -192,7 +193,7 @@ async function fillOptions(user: UserEvent, titles: readonly string[]) {
 
 async function toSummary(user: UserEvent) {
   await user.click(screen.getByRole("button", { name: "Continue" }));
-  await screen.findByRole("button", { name: "Create" });
+  await screen.findByRole("button", { name: "Return" });
 }
 
 /** Fills the required fields with a Yes / No question and continues to the summary. */
@@ -225,6 +226,7 @@ function createCall(controller: FakeWriteController): core.WriteCall {
 const scrollIntoView = vi.fn<(options?: ScrollIntoViewOptions) => void>();
 
 beforeEach(() => {
+  window.localStorage.clear();
   Element.prototype.scrollIntoView = scrollIntoView;
   // jsdom has no ResizeObserver, which the library's Steps and popovers use; this double stubs it with the rest of the browser surface.
   installOfflineAppKitEnvironment();
@@ -234,6 +236,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  window.localStorage.clear();
   Reflect.deleteProperty(Element.prototype, "scrollIntoView");
   scrollIntoView.mockReset();
   writes.controller = null;
@@ -346,7 +349,7 @@ describe("CreatePage", () => {
     await setNumber(user, "Number of Options", "2");
     expect(screen.queryByRole("textbox", { name: "Ruling Option 3" })).toBeNull();
     await toSummary(user);
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create dispute" }));
     await screen.findByText("Dispute 42 created");
     expect(uploadedMetaEvidence(uploader).rulingOptions.titles).toEqual(["A", "B"]);
   });
@@ -376,6 +379,132 @@ describe("CreatePage", () => {
     expect(screen.getByRole("textbox", { name: "Number of Votes" })).toHaveValue("5");
     expect(select("Court")).toHaveTextContent("Blockchain");
     await costShown(costOf(core.encodeExtraData(1n, 5n)), SEPOLIA_CHAIN);
+  });
+
+  describe("draft kept across reloads", () => {
+    const DRAFT_KEY = `dr-create-draft:${String(SEPOLIA)}`;
+
+    it("typed values survive a remount of the page", async () => {
+      const first = await renderCreate();
+      await courtsLoaded();
+      await setNumber(first.user, "Number of Votes", "5");
+      await typeInto(first.user, "Description (Optional)", "Deposit of the flat");
+      await fillRequired(first.user);
+      await fillOptions(first.user, ["Yes", "No"]);
+      await first.user.upload(documentInput(), new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
+      await screen.findByText("Uploaded rules.pdf.");
+      first.unmount();
+
+      await renderCreate();
+      expect(screen.getByRole("textbox", { name: "Title" })).toHaveValue("Who keeps the deposit?");
+      expect(screen.getByRole("textbox", { name: "Description (Optional)" })).toHaveValue("Deposit of the flat");
+      expect(screen.getByRole("textbox", { name: "Question" })).toHaveValue("Which party is right?");
+      expect(screen.getByRole("textbox", { name: "Ruling Option 2" })).toHaveValue("No");
+      expect(screen.getByRole("textbox", { name: "Number of Votes" })).toHaveValue("5");
+      expect(screen.getByText("Uploaded rules.pdf.")).toBeInTheDocument();
+      expect(screen.queryByText("Some fields need attention")).toBeNull();
+      expect(window.localStorage.getItem(DRAFT_KEY)).not.toContain("%PDF");
+    });
+
+    it("a reload on the summary step returns to the form with its values", async () => {
+      const first = await renderCreate();
+      await fillToSummary(first.user);
+      first.unmount();
+
+      await renderCreate();
+      expect(screen.getByRole("listitem", { name: "Form" })).toHaveAttribute("aria-current", "step");
+      expect(screen.queryByRole("button", { name: "Return" })).toBeNull();
+      expect(screen.getByRole("textbox", { name: "Title" })).toHaveValue("Who keeps the deposit?");
+      expect(screen.getByRole("textbox", { name: "Ruling Option 1" })).toHaveValue("Yes");
+    });
+
+    it("the stored draft is cleared once the dispute is created", async () => {
+      const { user } = await renderCreate();
+      await fillToSummary(user);
+      expect(window.localStorage.getItem(DRAFT_KEY)).not.toBeNull();
+      await user.click(screen.getByRole("button", { name: "Create dispute" }));
+      expect(await screen.findByText("You have successfully created dispute 42!")).toBeInTheDocument();
+      expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+    });
+
+    it("Clear form empties every field, forgets the stored draft and is disabled while the form is empty", async () => {
+      const { user } = await renderCreate();
+      await courtsLoaded();
+      const clear = screen.getByRole("button", { name: "Clear form" });
+      expect(clear).toBeDisabled();
+      await chooseOption(user, "Court", "Blockchain");
+      await setNumber(user, "Number of Votes", "5");
+      await typeInto(user, "Title", "Who keeps the deposit?");
+      await typeInto(user, "Description (Optional)", "Deposit of the flat");
+      await typeInto(user, "Ruling Option 1", "Yes");
+      await typeInto(user, "Alias 1 (Optional)", "Alice");
+      await user.click(screen.getByRole("button", { name: "Add party" }));
+      await user.upload(documentInput(), new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
+      await screen.findByText("Uploaded rules.pdf.");
+      await user.click(screen.getByRole("button", { name: "Continue" }));
+      expect(screen.getByText("Some fields need attention")).toBeInTheDocument();
+      expect(window.localStorage.getItem(DRAFT_KEY)).not.toBeNull();
+      expect(clear).toBeEnabled();
+
+      await user.click(clear);
+      expect(select("Court")).toHaveTextContent("General Court");
+      expect(screen.getByRole("textbox", { name: "Number of Votes" })).toHaveValue("3");
+      for (const label of ["Title", "Description (Optional)", "Question", "Ruling Option 1", "Ruling Option 2", "Alias 1 (Optional)", "Address 1 (Optional)"]) {
+        expect(screen.getByRole("textbox", { name: label })).toHaveValue("");
+      }
+      expect(screen.queryByRole("textbox", { name: "Alias 2 (Optional)" })).toBeNull();
+      expect(screen.queryByText("Uploaded rules.pdf.")).toBeNull();
+      expect(screen.getByText(/^Drop a file here or click to select one\./)).toBeInTheDocument();
+      expect(screen.queryByText("Some fields need attention")).toBeNull();
+      expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+      expect(clear).toBeDisabled();
+      expect(screen.getByRole("heading", { name: "Create a custom dispute" })).toHaveFocus();
+    });
+
+    it("an upload that finishes after Clear form does not bring its document back into the empty form", async () => {
+      const upload: { finish?: (result: UploadResult) => void } = {};
+      const uploader = fakeUploader({
+        upload: () =>
+          new Promise<UploadResult>((resolve) => {
+            upload.finish = resolve;
+          }),
+      });
+      const { user } = await renderCreate({ uploader });
+      await typeInto(user, "Title", "Who keeps the deposit?");
+      await user.upload(documentInput(), new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
+      expect(await screen.findByText("Uploading to IPFS...")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Clear form" }));
+      expect(screen.queryByText("Uploading to IPFS...")).toBeNull();
+      expect(documentInput()).toBeEnabled();
+      await act(async () => {
+        upload.finish?.({ ok: true, path: TEST_UPLOAD_PATH });
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      expect(screen.queryByText("Uploaded rules.pdf.")).toBeNull();
+      expect(screen.queryByText("rules.pdf")).toBeNull();
+      expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+      expect(screen.getByRole("button", { name: "Clear form" })).toBeDisabled();
+    });
+
+    it("Clear form removes an upload failure and a refused document's message", async () => {
+      const results: UploadResult[] = [
+        { ok: false, error: "upload-failed", message: "An error occurred while uploading the file. Please try again. (Network down)" },
+        { ok: true, path: "/ipfs/not-a-cid/rules.pdf" },
+      ];
+      const uploader = fakeUploader({ upload: () => Promise.resolve(results.shift() ?? { ok: true, path: TEST_UPLOAD_PATH }) });
+      const { user } = await renderCreate({ uploader });
+      for (const message of [/^An error occurred while uploading the file\./, /did not come back as a content-addressed IPFS path/]) {
+        await typeInto(user, "Title", "Who keeps the deposit?");
+        await user.upload(documentInput(), new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
+        expect(await screen.findByText(message)).toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Clear form" }));
+        expect(screen.queryByText(message)).toBeNull();
+        expect(screen.getByText(/^Drop a file here or click to select one\./)).toBeInTheDocument();
+      }
+    });
   });
 
   describe("changing step", () => {
@@ -511,7 +640,7 @@ describe("CreatePage", () => {
       await user.click(screen.getByRole("button", { name: "Continue" }));
       expect(revealing("Some fields need attention")).toBe(true);
       await fillToSummary(user);
-      await user.click(screen.getByRole("button", { name: "Create" }));
+      await user.click(screen.getByRole("button", { name: "Create dispute" }));
       await screen.findByText("Dispute 42 created");
       expect(revealing("Dispute 42 created")).toBe(true);
     });
@@ -535,7 +664,7 @@ describe("CreatePage", () => {
       expect(core.listCourts).toHaveBeenLastCalledWith(expect.objectContaining({ chainId: GNOSIS }));
     });
     expect(screen.getByRole("listitem", { name: "Form" })).toHaveAttribute("aria-current", "step");
-    expect(screen.queryByRole("button", { name: "Create" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Create dispute" })).toBeNull();
     expect(screen.getByRole("textbox", { name: "Title" })).toHaveValue("");
     expect(screen.getByRole("textbox", { name: "Question" })).toHaveValue("");
     expect(screen.getByRole("textbox", { name: "Ruling Option 1" })).toHaveValue("");
@@ -630,7 +759,7 @@ describe("CreatePage", () => {
     await typeInto(user, "Address 1 (Optional)", "0x2222222222222222222222222222222222222222");
     await toSummary(user);
     expect(screen.getByText("Party 1")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create dispute" }));
     await screen.findByText("Dispute 42 created");
     expect(uploadedMetaEvidence(uploader).aliases).toEqual({ "0x2222222222222222222222222222222222222222": "Bob", "0x1111111111111111111111111111111111111111": "Alice" });
   });
@@ -644,7 +773,7 @@ describe("CreatePage", () => {
     await toSummary(user);
     expect(screen.queryByText(/not a valid address/)).toBeNull();
     expect(screen.getByText("Party 1")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create dispute" }));
     await screen.findByText("Dispute 42 created");
     expect(uploadedMetaEvidence(uploader).aliases).toEqual({ "0xfb6916095ca1df60bb79ce92ce3ea74c37c5d359": "Upper" });
   });
@@ -678,7 +807,7 @@ describe("CreatePage", () => {
     await fillToSummary(user);
     expect(uploader.upload).not.toHaveBeenCalled();
     expect(uploader.uploadJson).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Create dispute" })).toBeEnabled();
   });
 
   it("a primary document path that is not content-addressed is refused before it enters the draft", async () => {
@@ -695,7 +824,7 @@ describe("CreatePage", () => {
     expect(documentInput()).toBeDisabled();
     expect(document.body).not.toHaveTextContent(/uploads? (are )?unavailable/i);
     await fillToSummary(user);
-    const create = screen.getByRole("button", { name: "Create" });
+    const create = screen.getByRole("button", { name: "Create dispute" });
     expect(create).toBeDisabled();
     expect(screen.getByRole("button", { name: "Return" })).toBeEnabled();
     await user.click(create);
@@ -714,7 +843,7 @@ describe("CreatePage", () => {
     await typeInto(user, "Ruling Option 1 Description (Optional)", "The red one");
     await toSummary(user);
     expect(screen.getByRole("link", { name: /rules\.pdf|QmYw/ })).toHaveAttribute("href", expect.stringContaining(TEST_UPLOAD_PATH) as string);
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create dispute" }));
     await screen.findByText("Dispute 42 created");
 
     expect(uploader.upload).toHaveBeenCalledWith(expect.any(File), "evidence");
@@ -748,7 +877,7 @@ describe("CreatePage", () => {
     await fillRequired(user);
     await toSummary(user);
     expect(screen.getByText(label)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create dispute" }));
     await screen.findByText("Dispute 42 created");
     expect(uploadedMetaEvidence(uploader).rulingOptions).toEqual({ type, titles: [], descriptions: [] });
     expect(createCall(writes.controller ?? fakeWriteController([])).args[2]).toBe(0n);
@@ -757,12 +886,12 @@ describe("CreatePage", () => {
   it("single select with two options creates, shows the toast and opens the dispute after 2 seconds", async () => {
     const { user, uploader, currentPath } = await renderCreate();
     await fillToSummary(user);
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create dispute" }));
     expect(await screen.findByText("You have successfully created dispute 42!")).toBeInTheDocument();
     expect(uploadedMetaEvidence(uploader).rulingOptions).toEqual({ type: "single-select", titles: ["Yes", "No"], descriptions: [] });
     expect(createCall(writes.controller ?? fakeWriteController([])).args[2]).toBe(2n);
     expect(currentPath()).toBe(CREATE_PATH);
-    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create dispute" })).toBeDisabled();
     await waitFor(
       () => {
         expect(currentPath()).toBe(`/${String(SEPOLIA)}/cases/42`);
@@ -775,14 +904,14 @@ describe("CreatePage", () => {
     writes.controller = fakeWriteController(minedWith(null));
     const { user, uploader, currentPath } = await renderCreate();
     await fillToSummary(user);
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create dispute" }));
     expect(await screen.findByText("Dispute ID not found")).toBeInTheDocument();
     expect(screen.queryByText(/successfully created dispute/)).toBeNull();
-    expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Create dispute" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Return" })).toBeEnabled();
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(currentPath()).toBe(CREATE_PATH);
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create dispute" }));
     await waitFor(() => {
       expect(writes.controller?.executions).toHaveLength(2);
     });
@@ -793,13 +922,13 @@ describe("CreatePage", () => {
     writes.controller = fakeWriteController([{ phase: "pending" }, { phase: "rejected" }]);
     const { user, uploader } = await renderCreate();
     await fillToSummary(user);
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create dispute" }));
     expect(await screen.findByText("Transaction cancelled")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Create dispute" })).toBeEnabled();
     });
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create dispute" }));
     await waitFor(() => {
       expect(writes.controller?.executions).toHaveLength(2);
     });
@@ -814,10 +943,10 @@ describe("CreatePage", () => {
     ]);
     const { user } = await renderCreate();
     await fillToSummary(user);
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create dispute" }));
     expect(await screen.findByText("Transaction failed")).toBeInTheDocument();
     expect(screen.getByText("execution reverted")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Create dispute" })).toBeEnabled();
   });
 
   it.each([
@@ -827,19 +956,19 @@ describe("CreatePage", () => {
     const failed: UploadResult = { ok: false, error, message: "Atlas said no." };
     const { user } = await renderCreate({ uploader: fakeUploader({ uploadJson: () => Promise.resolve(failed) }) });
     await fillToSummary(user);
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create dispute" }));
     expect(await screen.findByText(title)).toBeInTheDocument();
     expect(screen.getByText("Atlas said no. Nothing was sent.")).toBeInTheDocument();
     expect(screen.queryByRole("alert") !== null).toBe(variant === "error");
     expect(writes.controller?.executions).toHaveLength(0);
-    expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Create dispute" })).toBeEnabled();
   });
 
   it("a failed cost read is shown and nothing is sent", async () => {
     const { user } = await renderCreate();
     await fillToSummary(user);
     vi.mocked(core.readArbitrationCost).mockResolvedValue({ ok: false, error: { code: "reverted", message: "The arbitration cost could not be read." } });
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create dispute" }));
     expect(await screen.findByText("Arbitration cost unavailable")).toBeInTheDocument();
     expect(writes.controller?.executions).toHaveLength(0);
   });
@@ -848,7 +977,7 @@ describe("CreatePage", () => {
     const wallet = holdChainSwitches(createTestWallet({ chainId: 1 }));
     const { user, uploader } = await renderCreate({ wallet });
     await fillToSummary(user);
-    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create dispute" })).toBeDisabled();
     expect(screen.getByText("Wrong network")).toBeInTheDocument();
     expect(screen.getByText("A switch to Ethereum Testnet Sepolia is waiting in your wallet.")).toBeInTheDocument();
     expect(screen.getByText(/^Your wallet is on .+, but this page is on Ethereum Testnet Sepolia\.$/)).toBeInTheDocument();
@@ -878,7 +1007,7 @@ describe("CreatePage", () => {
       await wallet.connect();
     });
     await fillToSummary(user);
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create dispute" }));
     expect(await screen.findByText("Publishing the dispute data")).toBeInTheDocument();
 
     await user.click(screen.getByRole("link", { name: "Gnosis disputes" }));
@@ -892,27 +1021,29 @@ describe("CreatePage", () => {
     expect(writes.controller?.executions).toHaveLength(0);
   });
 
-  it("without a wallet, Create is disabled and the summary says to connect one", async () => {
+  it("without a wallet the primary button is Connect and opens the wallet modal on the page chain, with no second Connect button", async () => {
     const { user, uploader, wallet } = await renderCreate({ connect: false });
     await fillToSummary(user);
-    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
-    expect(screen.getByText("Connect a wallet to create a dispute.")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Connect" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Create dispute" })).toBeNull();
+    expect(screen.queryByText("Connect a wallet to create a dispute.")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Connect" }));
     expect(wallet.modal?.openConnect).toHaveBeenCalledWith(SEPOLIA);
     expect(uploader.uploadJson).not.toHaveBeenCalled();
     expect(screen.queryByText(/configured|deployment/i)).toBeNull();
   });
 
-  it("connecting a wallet on the page chain enables Create and the document field", async () => {
-    const { user, wallet } = await renderCreate({ connect: false });
+  it("connecting a wallet on the page chain turns Connect into Create dispute and enables the document field", async () => {
+    const { user, wallet, uploader } = await renderCreate({ connect: false });
     expect(documentInput()).toBeDisabled();
     await fillToSummary(user);
-    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+    const primary = screen.getByRole("button", { name: "Connect" });
     await act(async () => {
       await wallet.connect();
     });
-    expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
-    expect(screen.queryByText("Connect a wallet to create a dispute.")).toBeNull();
+    expect(screen.getByRole("button", { name: "Create dispute" })).toBe(primary);
+    expect(primary).toBeEnabled();
+    expect(uploader.uploadJson).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Return" }));
     expect(documentInput()).toBeEnabled();
   });
@@ -943,13 +1074,18 @@ describe("CreatePage", () => {
     expect(screen.queryByText("Remove")).toBeNull();
   });
 
-  it("the Continue button spans the row on phones and the summary actions are equal width below lg", async () => {
+  it("the form and summary actions are equal-width pairs below lg and the primary button keeps one width from lg", async () => {
     const { user } = await renderCreate();
-    expect(screen.getByRole("button", { name: "Continue" })).toHaveClass("w-full", "sm:w-auto", "sm:self-end");
+    const continueButton = screen.getByRole("button", { name: "Continue" });
+    const clear = screen.getByRole("button", { name: "Clear form" });
+    for (const button of [clear, continueButton]) expect(button).toHaveClass("w-full", "lg:w-auto");
+    expect(continueButton.parentElement).toBe(clear.parentElement);
+    expect(continueButton.parentElement).toHaveClass("grid", "grid-cols-2", "lg:flex", "lg:justify-end");
     await fillToSummary(user);
-    const create = screen.getByRole("button", { name: "Create" });
+    const create = screen.getByRole("button", { name: "Create dispute" });
     const back = screen.getByRole("button", { name: "Return" });
     for (const button of [create, back]) expect(button).toHaveClass("w-full", "lg:w-auto");
+    expect(create).toHaveClass("lg:min-w-48");
     expect(create.parentElement).toBe(back.parentElement);
     expect(create.parentElement).toHaveClass("grid", "grid-cols-2", "lg:flex", "lg:justify-end");
   });
@@ -960,7 +1096,7 @@ describe("CreatePage", () => {
     await waitFor(() => {
       expect(summaryValue("Arbitration Cost")).toHaveTextContent(/^Reads on chain 11155111 are unavailable\.$/);
     });
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create dispute" }));
     expect(await screen.findByText("Reads on chain 11155111 are unavailable. Nothing was sent.")).toBeInTheDocument();
     expect(writes.controller?.executions).toHaveLength(0);
   });

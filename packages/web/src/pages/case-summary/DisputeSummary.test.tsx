@@ -145,6 +145,13 @@ describe("DisputeSummary", () => {
     expect(screen.getByRole("link", { name: "policy.pdf" })).toBeInTheDocument();
   });
 
+  it("the description runs the full width of the card, like the title above it, with its paragraphs set at the long-line height", () => {
+    renderSummary(withMetaEvidence({ description: "A description long enough to wrap." }));
+    const markdownRoot = screen.getByText("A description long enough to wrap.").parentElement;
+    expect(markdownRoot?.className).not.toMatch(/(^|\s)max-w-/);
+    expect(markdownRoot).toHaveClass("[&_p]:leading-7");
+  });
+
   it("the attachment links to the gateway URL of fileURI, not to the meta-evidence file", () => {
     renderSummary(withMetaEvidence({ fileURI: `/ipfs/${FILE_CID}/policy.pdf` }));
     const link = screen.getByRole("link", { name: "policy.pdf" });

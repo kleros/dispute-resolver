@@ -71,8 +71,9 @@ interface RenderOptions extends HarnessProps {
 const LOCKED_LOOK = [
   "[&_[data-disabled]]:border-klerosUIComponentsStroke",
   "[&_[data-disabled]]:bg-klerosUIComponentsLightGrey",
-  "[&_[data-disabled]]:hover:bg-klerosUIComponentsLightGrey",
-  "[&_[data-disabled]]:cursor-not-allowed",
+  "[&_[data-disabled]]:pointer-events-none",
+  "[&:has([data-disabled])]:cursor-not-allowed",
+  "[&_[data-disabled]~*]:cursor-auto",
   "[&_[data-disabled]_svg]:fill-klerosUIComponentsSecondaryText",
 ];
 
@@ -317,6 +318,22 @@ describe("AtlasFileField", () => {
     choose(input, testPdf());
 
     expect(uploader.upload).not.toHaveBeenCalled();
+  });
+
+  it("a locked zone is styled to let the pointer through to the field around it, which is styled with the not-allowed cursor", async () => {
+    const { input, container } = await renderField({ isDisabled: true, connect: false });
+
+    expect(container.querySelector("[data-disabled]")).not.toBeNull();
+    expect(input.closest("fieldset")?.parentElement).toHaveClass("[&_[data-disabled]]:pointer-events-none", "[&:has([data-disabled])]:cursor-not-allowed");
+  });
+
+  it("the whole message line under a locked zone is styled with the normal cursor, not only its text", async () => {
+    const { input, container } = await renderField({ isDisabled: true, connect: false });
+
+    const zone = container.querySelector("[data-disabled]");
+    expect(zone?.nextElementSibling).toContainElement(screen.getByText("Connect a wallet to upload files."));
+    expect(input.closest("fieldset")?.parentElement).toHaveClass("[&_[data-disabled]~*]:cursor-auto");
+    expect(input.closest("fieldset")?.parentElement).not.toHaveClass("[&_small]:cursor-auto");
   });
 
   it("says that uploading needs a wallet while locked without one", async () => {

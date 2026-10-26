@@ -36,19 +36,19 @@ const ICON_LINK = `inline-flex size-10 items-center justify-center opacity-90 tr
 export function Footer({ chainLabel, explorer }: FooterProps) {
   return (
     <footer className={`${BAR_SURFACE} ${GUTTER}`}>
-      <div className={`${CONTENT} flex flex-col items-center gap-4 py-6 text-sm sm:flex-row sm:flex-wrap sm:justify-between`}>
-        <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-8">
+      <div className={`${CONTENT} flex flex-col items-center gap-4 py-6 text-sm lg:flex-row lg:flex-nowrap lg:justify-between`}>
+        <div className="flex min-w-0 flex-col items-center gap-3 lg:flex-row lg:gap-6">
           <ExternalLink href="https://kleros.io" className={`inline-flex ${BAR_FOCUS}`}>
             <img src={securedByKlerosUrl} alt="Secured by Kleros" width={130} height={24} className="h-6 w-auto" />
           </ExternalLink>
-          {chainLabel === null ? null : <span className="font-semibold">{chainLabel}</span>}
+          {chainLabel === null ? null : <span className="min-w-0 truncate font-semibold">{chainLabel}</span>}
         </div>
-        <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-6">
+        <div className="flex shrink-0 flex-col items-center gap-3 lg:flex-row lg:gap-6">
           <ExternalLink href="https://t.me/kleros" className={`-my-2 inline-flex items-center gap-2 py-2 font-semibold hover:underline ${BAR_FOCUS}`}>
             I need help
             <HelpIcon className="size-4" />
           </ExternalLink>
-          <ul aria-label="Kleros channels" className="flex flex-wrap items-center justify-center gap-0">
+          <ul aria-label="Kleros channels" className="flex flex-wrap items-center justify-center gap-0 lg:flex-nowrap">
             {explorer === null ? null : (
               <li>
                 <ExternalLink href={explorer.href} className={ICON_LINK}>

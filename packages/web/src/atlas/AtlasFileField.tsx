@@ -36,10 +36,11 @@ function isRefusal(failed: UploadFailure | null): boolean {
 
 /**
  * The library marks only its dropzone `data-disabled` and keeps the enabled blue edge, fill and icon on it, so a locked
- * field would still look like it takes a file.
+ * field would still look like it takes a file. Its hover fill is `!important` in `@layer components`, which no utility
+ * can outrank, so the locked zone takes no pointer events and the field around it carries the cursor.
  */
 const LOCKED_LOOK =
-  "[&_[data-disabled]]:border-klerosUIComponentsStroke [&_[data-disabled]]:bg-klerosUIComponentsLightGrey [&_[data-disabled]]:hover:bg-klerosUIComponentsLightGrey [&_[data-disabled]]:cursor-not-allowed [&_[data-disabled]_svg]:fill-klerosUIComponentsSecondaryText";
+  "[&_[data-disabled]]:border-klerosUIComponentsStroke [&_[data-disabled]]:bg-klerosUIComponentsLightGrey [&_[data-disabled]]:pointer-events-none [&:has([data-disabled])]:cursor-not-allowed [&_[data-disabled]~*]:cursor-auto [&_[data-disabled]_svg]:fill-klerosUIComponentsSecondaryText";
 
 /**
  * The one message line under the dropzone: the wallet it needs or why else it is locked, progress, the outcome, or what

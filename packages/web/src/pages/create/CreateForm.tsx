@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type FormEvent, type Ref } from "re
 import { EYEBROW, Notice, PAGE_TITLE } from "../../ui";
 import { CourtSection, type SectionProps } from "./CourtSection";
 import { toDraft, type CreateForm as Form } from "./draft";
+import { isInitialForm } from "./draftStorage";
 import { DocumentSection, PartiesSection } from "./PartiesSection";
 import { DisputeSection, QuestionSection } from "./QuestionSection";
 
@@ -27,13 +28,17 @@ function shake(slot: HTMLElement): void {
 export interface CreateFormProps {
   readonly chain: ChainConfig;
   readonly form: Form;
+  /** How often the form was cleared: the upload field starts afresh each time, dropping its upload, failure and message. */
+  readonly resets: number;
   readonly onChange: SectionProps["onChange"];
   readonly headingRef?: Ref<HTMLHeadingElement>;
   readonly onContinue: (input: CreateDisputeInput) => void;
+  /** Empties the form; the page also moves the focus to the form heading. */
+  readonly onReset: () => void;
 }
 
 /** Errors appear after the first Continue and follow the input from then on. */
-export function CreateForm({ chain, form, onChange, headingRef, onContinue }: CreateFormProps) {
+export function CreateForm({ chain, form, resets, onChange, headingRef, onContinue, onReset }: CreateFormProps) {
   const [attempted, setAttempted] = useState(false);
   const [focusRequest, setFocusRequest] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
@@ -74,9 +79,21 @@ export function CreateForm({ chain, form, onChange, headingRef, onContinue }: Cr
       <DisputeSection {...sectionProps} />
       <QuestionSection {...sectionProps} />
       <PartiesSection {...sectionProps} />
-      <DocumentSection {...sectionProps} />
+      <DocumentSection key={resets} {...sectionProps} />
       {attempted && !validation.ok ? <Notice reveal variant="error" title="Some fields need attention" body="Correct the highlighted fields to continue." /> : null}
-      <Button type="submit" text="Continue" className="w-full sm:w-auto sm:self-end" />
+      <div className="grid grid-cols-2 gap-3 lg:flex lg:justify-end">
+        <Button
+          text="Clear form"
+          variant="secondary"
+          isDisabled={isInitialForm(form)}
+          onPress={() => {
+            setAttempted(false);
+            onReset();
+          }}
+          className="w-full lg:w-auto"
+        />
+        <Button type="submit" text="Continue" className="w-full lg:w-auto" />
+      </div>
     </form>
   );
 }

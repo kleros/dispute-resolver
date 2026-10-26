@@ -7,7 +7,7 @@ import { useArbitrationCost, useCoreDeps, useCourts } from "../../data";
 import { paths } from "../../routing";
 import { Attachment } from "../../safe-content";
 import { AddressText, Amount, EYEBROW, FACT, FACT_SMALL, LABEL, Notice } from "../../ui";
-import { ConnectButton, WriteStatusNotice, type WriteAccess, type WriteStatus } from "../../wallet";
+import { useConnectWallet, useWallet, WriteStatusNotice, type WriteAccess, type WriteStatus } from "../../wallet";
 import { courtLabel } from "./CourtSection";
 import { questionTypeLabel } from "./draft";
 import { Shimmer } from "./fields";
@@ -132,15 +132,42 @@ function ActionNotice({ state, writeStatus, chain }: { readonly state: CreateAct
   }
 }
 
-function AccessNotice({ access, chain }: { readonly access: WriteAccess; readonly chain: ChainConfig }) {
-  if (access.status === "ready") return null;
-  if (access.status === "wrong-chain") return <WriteStatusNotice status={access.guard} beforeAttempt />;
-  return (
-    <div className="flex flex-col gap-2">
-      <Notice reveal variant="info" title="Wallet required" body="Connect a wallet to create a dispute." />
-      <ConnectButton chainId={chain.id} />
-    </div>
-  );
+/** Without a wallet the primary button itself says what is needed. */
+function AccessNotice({ access }: { readonly access: WriteAccess }) {
+  return access.status === "wrong-chain" ? <WriteStatusNotice status={access.guard} beforeAttempt /> : null;
+}
+
+interface PrimaryAction {
+  readonly text: string;
+  readonly isLoading?: boolean;
+  readonly isDisabled: boolean;
+  /** The library Button hides its text while loading, which would leave the button without a name. */
+  readonly ariaLabel?: string;
+  readonly onPress?: () => void;
+}
+
+const CREATE_DISPUTE = "Create dispute";
+
+interface PrimaryState {
+  readonly uploadsLocked: boolean;
+  readonly access: WriteAccess;
+  readonly walletConnecting: boolean;
+  readonly canConnect: boolean;
+  readonly creating: boolean;
+  readonly isBusy: boolean;
+  readonly connect: () => void;
+  readonly create: () => void;
+}
+
+/** Connecting never creates the dispute: once connected the button reads Create dispute and waits for its own press. */
+function primaryAction({ uploadsLocked, access, walletConnecting, canConnect, creating, isBusy, connect, create }: PrimaryState): PrimaryAction {
+  if (uploadsLocked) return { text: CREATE_DISPUTE, isDisabled: true };
+  if (access.status === "needs-wallet") {
+    if (walletConnecting) return { text: "Connecting", isLoading: true, isDisabled: true, ariaLabel: "Connecting" };
+    return canConnect ? { text: "Connect", isDisabled: false, onPress: connect } : { text: "Connect", isDisabled: true };
+  }
+  if (access.status === "wrong-chain") return { text: CREATE_DISPUTE, isDisabled: true };
+  return { text: CREATE_DISPUTE, isLoading: creating, isDisabled: isBusy, ariaLabel: creating ? "Creating the dispute" : undefined, onPress: create };
 }
 
 export interface CreateSummaryProps {
@@ -153,17 +180,34 @@ export interface CreateSummaryProps {
 }
 
 /**
- * Create stays disabled until a wallet is connected on the page chain, and always without an upload service. It signs in
- * to Atlas when needed instead of requiring a separate sign-in.
+ * One primary button: Connect while no wallet is connected, then Create dispute, which stays disabled until the wallet
+ * is on the page chain, and always without an upload service. Create signs in to Atlas when needed instead of requiring
+ * a separate sign-in.
  */
 export function CreateSummary({ chain, input, documentName, headingRef, onReturn }: CreateSummaryProps) {
   const action = useCreateDispute(input);
+  const wallet = useWallet();
+  const connect = useConnectWallet();
   const uploader = useAtlasUpload();
   const titleId = useId();
   const hintId = useId();
   // Hidden while busy: the publishing notice asks for the signature itself.
   const showSignInHint = action.access.status === "ready" && uploader.availability === "ready" && !uploader.isSignedIn && !action.isBusy;
   const creating = action.isBusy && action.state.kind !== "created";
+  const primary = primaryAction({
+    uploadsLocked: uploader.availability === "unconfigured",
+    access: action.access,
+    walletConnecting: wallet.status === "connecting",
+    canConnect: connect.available,
+    creating,
+    isBusy: action.isBusy,
+    connect: () => {
+      connect.open(chain.id);
+    },
+    create: () => {
+      void action.create();
+    },
+  });
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-6">
       {/* One sheet: the record band as its cover, then the rows. No overflow-hidden, so Copiable tooltips escape it. */}
@@ -173,9 +217,7 @@ export function CreateSummary({ chain, input, documentName, headingRef, onReturn
           <h1 ref={headingRef} id={titleId} tabIndex={-1} className="text-2xl font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">
             {input.title}
           </h1>
-          {input.description === "" ? null : (
-            <p className="mt-2 max-w-[72ch] whitespace-pre-line text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">{input.description}</p>
-          )}
+          {input.description === "" ? null : <p className="mt-2 leading-7 whitespace-pre-line text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">{input.description}</p>}
         </header>
         <dl className="m-0 flex flex-col px-4 lg:px-8">
           <Row term="Court" valueClass={FACT_SMALL}>
@@ -199,7 +241,7 @@ export function CreateSummary({ chain, input, documentName, headingRef, onReturn
         </dl>
       </div>
       <div aria-live="polite">
-        {action.state.kind === "idle" ? <AccessNotice access={action.access} chain={chain} /> : null}
+        {action.state.kind === "idle" ? <AccessNotice access={action.access} /> : null}
         {/* Keyed by the step of the action, so each new notice mounts and plays its reveal. */}
         <ActionNotice key={action.state.kind} state={action.state} writeStatus={action.writeStatus} chain={chain} />
       </div>
@@ -212,16 +254,13 @@ export function CreateSummary({ chain, input, documentName, headingRef, onReturn
         <div className="grid grid-cols-2 gap-3 lg:flex lg:justify-end">
           <Button text="Return" variant="secondary" isDisabled={action.isBusy} onPress={onReturn} className="w-full lg:w-auto" />
           <Button
-            text="Create"
-            isLoading={creating}
-            // The library hides the button text while loading, which would leave the button without a name.
-            aria-label={creating ? "Creating the dispute" : undefined}
-            isDisabled={action.isBusy || action.access.status !== "ready" || uploader.availability === "unconfigured"}
+            text={primary.text}
+            isLoading={primary.isLoading ?? false}
+            aria-label={primary.ariaLabel}
+            isDisabled={primary.isDisabled}
             aria-describedby={showSignInHint ? hintId : undefined}
-            onPress={() => {
-              void action.create();
-            }}
-            className="w-full lg:w-auto"
+            onPress={primary.onPress}
+            className="w-full lg:w-auto lg:min-w-48"
           />
         </div>
       </div>

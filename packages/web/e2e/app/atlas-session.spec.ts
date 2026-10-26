@@ -5,7 +5,8 @@ import { changeWalletAccount, expectWalletConnected, injectWallet, walletSignatu
 
 // The Atlas session in a real browser tab, on the built app with a wallet configured (playwright.config.ts) and Atlas
 // served by the spec. The Create page's primary document is the upload: the first file signs in and uploads in one
-// action; a reload of the same tab keeps the session once the wallet reconnects, so the next file uploads without a
+// action; a reload of the same tab keeps the session once the wallet reconnects (and restores the uploaded document
+// from the form's stored draft, which the spec removes to see the empty field), so the next file uploads without a
 // signature; an account switch in the wallet leaves the session unverified, so the next file asks the new account to
 // sign. The build needs `REACT_APP_ATLAS_URI` configured, as a deploy has; its host is never named, since every request
 // leaving the app's origin is routed by shape.
@@ -99,7 +100,10 @@ test("the field announces the sign-in until the first upload signs in, a reload 
 
   await page.reload();
   await expectWalletConnected(accountButton(page, "0x0000…00E2"));
-  await expectFieldReady(documentField(page), { announcesSignIn: false });
+  const reloadedField = documentField(page);
+  await expect(reloadedField.getByText("Uploaded brief.pdf.", { exact: true }), "the reload restored the stored draft's document").toBeVisible();
+  await reloadedField.getByRole("button", { name: "Remove file", exact: true }).click();
+  await expectFieldReady(reloadedField, { announcesSignIn: false });
   await uploadDocument(page, "second.pdf");
   expect(await walletSignatures(page), "the reloaded tab asked for a new signature").toEqual([]);
   expect(atlas.logins).toHaveLength(1);

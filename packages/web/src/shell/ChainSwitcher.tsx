@@ -10,7 +10,7 @@ import { BAR_FOCUS } from "./layout";
 import { useToast } from "./ToastProvider";
 import { isUnsupportedNetwork, UNSUPPORTED_NETWORK_LABEL } from "./unsupportedNetwork";
 
-const TRIGGER_CLASS = `group inline-flex max-w-full min-w-0 items-center gap-2 aria-busy:cursor-progress ${BAR_PILL} ${BAR_FOCUS}`;
+const TRIGGER_CLASS = `group inline-flex w-56 max-w-full min-w-0 items-center gap-2 aria-busy:cursor-progress ${BAR_PILL} ${BAR_FOCUS}`;
 // The header points --dr-focus at the bar's ring colour, which would vanish on the white panel. The panel grows from the
 // corner it is anchored to: its left edge below lg, its right edge from lg.
 const PANEL_CLASS =
@@ -103,7 +103,8 @@ interface ChainSwitcherProps {
  * follows the wallet once it does (a case page to that chain's Ongoing Disputes); a refusal changes nothing, since the
  * app already shows the wallet's chain, and any other failure is a toast. While any switch request waits, the chains take
  * no press. A long chain name truncates inside the pill; its accessible name always carries the full name. On the
- * unsupported-network screen the pill names no chain, since the page is on none.
+ * unsupported-network screen the pill names no chain, since the page is on none. The pill is one width on every chain so
+ * the controls after it never move; on a narrow phone row `max-w-full` lets it shrink and the name truncates.
  */
 export function ChainSwitcher({ resolvedChain }: ChainSwitcherProps) {
   const { chain } = resolvedChain.page;
@@ -203,7 +204,7 @@ export function ChainSwitcher({ resolvedChain }: ChainSwitcherProps) {
         }}
       >
         <span aria-hidden="true" className={`size-2 shrink-0 rounded-full group-aria-busy:opacity-40 ${dotTone(isPageChain)}`} />
-        <span className="truncate">{unsupported ? UNSUPPORTED_NETWORK_LABEL : chain.name}</span>
+        <span className="min-w-0 flex-1 truncate text-left">{unsupported ? UNSUPPORTED_NETWORK_LABEL : chain.name}</span>
         <ChevronIcon
           className={`size-4 shrink-0 transition-transform ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${open ? "-scale-y-100 duration-250" : "duration-150"}`}
         />

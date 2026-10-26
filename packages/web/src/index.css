@@ -122,11 +122,11 @@
 }
 
 /*
- * The library's hover and transition utilities: the library ships them only in its style.css, which is never imported,
- * so they are redeclared here. Hover fills use the library tokens; hover-out is the same transition as hover-in. The transition's property list is a deliberate
- * superset: the library `Card` carries `hover-short-transition`, so whichever of it and the Ongoing card's
- * `transition-[border-color] duration-200` wins the utilities sort, the card still transitions its border within the
- * 150 to 250 ms band.
+ * The library's hover and transition utilities. Its stylesheet loads through its package entry and carries these hover
+ * fills as `!important` in `@layer components`; the redeclarations keep them on the library tokens should it not load.
+ * Hover-out is the same transition as hover-in. The transition's property list is a deliberate superset: the library
+ * `Card` carries `hover-short-transition`, so whichever of it and the Ongoing card's `transition-[background-color]
+ * duration-200` wins the utilities sort, the card still transitions its fill within the 150 to 250 ms band.
  */
 @layer utilities {
   .hover-medium-blue:hover {
@@ -328,7 +328,8 @@
 
     /*
      * App tokens.
-     * - --dr-control-border: edges of inputs, textareas and select triggers only (cards keep Stroke). Light #8a8a8a:
+     * - --dr-control-border: edges of inputs, textareas and select triggers, and the page scrollbar's thumb (cards keep
+     *   Stroke). Light #8a8a8a:
      *   3.24:1 on MediumBlue, 3.33:1 on LightBackground, 3.45:1 on white. Dark #8a7bd0: 3.78:1 on MediumBlue #2e206c,
      *   4.92:1 on WhiteBackground #220050.
      * - --dr-focus: the focus ring, PrimaryBlue (light 4.97:1 on white; dark #6cc5ff 7.19:1 on WhiteBackground).
@@ -490,7 +491,10 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Browser surfaces: selection, scrollbar, caret and tabular numerals follow the palette. */
+  /*
+   * Browser surfaces: selection, scrollbar, caret and tabular numerals follow the palette. The scrollbar track is the page
+   * colour, never transparent, so nothing the browser paints under it shows through and it follows the app theme, not the OS.
+   */
   ::selection {
     background: color-mix(in srgb, var(--klerosUIComponentsPrimaryBlue) 24%, transparent);
     color: inherit;
@@ -499,10 +503,12 @@
   /*
    * The sticky header is two rows on phones (the 4rem brand row, then the network and wallet row with its padding) and
    * one 4rem row from lg, which the library's theme sets at 56.25rem; focusing or scrolling to an element leaves it and
-   * its 2 px ring (offset 2 px) below the bar.
+   * its 2 px ring (offset 2 px) below the bar. The scrollbar's width is reserved on every page, so a page long enough to
+   * scroll does not shift the header and footer by that width.
    */
   html {
-    scrollbar-color: var(--klerosUIComponentsStroke) transparent;
+    scrollbar-color: var(--dr-control-border) var(--klerosUIComponentsLightBackground);
+    scrollbar-gutter: stable;
     scroll-padding-top: calc(7.5rem + 8px);
 
     @variant lg {

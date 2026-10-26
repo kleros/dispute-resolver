@@ -258,6 +258,21 @@ describe("ChainSwitcher", () => {
     expect(dot(trigger)?.className).not.toMatch(/warning/);
   });
 
+  it("the pill is the same width on every chain, with the name filling it between the dot and the chevron and truncating when long", () => {
+    for (const [path, name] of [
+      ["/1/ongoing", "Ethereum Mainnet"],
+      ["/100/ongoing", "Gnosis Network"],
+    ] as const) {
+      const view = renderWithProviders(<Screen />, { path, frame: "page" });
+      const trigger = pill(name);
+      expect(trigger).toHaveClass("w-56", "max-w-full", "min-w-0");
+      expect(within(trigger).getByText(name)).toHaveClass("min-w-0", "flex-1", "truncate", "text-left");
+      view.unmount();
+    }
+    renderWithProviders(<Screen />, { path: "/999/ongoing", frame: "page" });
+    expect(unsupportedPill()).toHaveClass("w-56", "max-w-full");
+  });
+
   it("on a testnet page the pill's accessible name carries the full chain name", () => {
     renderWithProviders(<Screen />, { path: "/11155111/ongoing", frame: "page" });
     const trigger = within(screen.getByRole("banner")).getByRole("button", { name: "Network: Ethereum Testnet Sepolia. Change network" });

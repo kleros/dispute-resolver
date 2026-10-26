@@ -55,7 +55,7 @@ function SummaryCard({ metaEvidence, chain, found, displayRetry, reveal }: Summa
               {metaEvidence.title === "" ? <span className="text-klerosUIComponentsSecondaryText">Untitled dispute</span> : metaEvidence.title}
             </h2>
           </header>
-          <SafeMarkdown source={metaEvidence.description} className={["max-w-[72ch]", reveal].filter(Boolean).join(" ")} />
+          <SafeMarkdown source={metaEvidence.description} className={["[&_p]:leading-7", reveal].filter(Boolean).join(" ")} />
           {/* Without aliases the parties render nothing, and the empty wrapper must not add a gap. */}
           <div className={["empty:hidden", reveal].filter(Boolean).join(" ")}>
             <Parties aliases={metaEvidence.aliases} chain={chain} />

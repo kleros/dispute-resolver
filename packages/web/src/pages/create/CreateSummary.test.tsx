@@ -1,5 +1,5 @@
 import * as core from "@dispute-resolver/core";
-import { act, screen } from "@testing-library/react";
+import { act, cleanup, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useCallback, useMemo, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -84,7 +84,7 @@ function walletAwaitingController(): FakeWriteController {
 }
 
 function createButton(): HTMLElement {
-  return screen.getByRole("button", { name: "Create" });
+  return screen.getByRole("button", { name: "Create dispute" });
 }
 
 beforeEach(() => {
@@ -129,10 +129,8 @@ describe("CreateSummary", () => {
   it("shows no sign-in sentence without a wallet, since Create cannot ask for any signature", async () => {
     await renderSummary(fakeUploader({ isSignedIn: false }), { connect: false });
 
-    expect(screen.getByText("Connect a wallet to create a dispute.")).toBeInTheDocument();
-    expect(createButton()).toBeDisabled();
     expect(screen.queryByText(HINT)).not.toBeInTheDocument();
-    expect(createButton()).not.toHaveAccessibleDescription(HINT);
+    expect(screen.getByRole("button", { name: "Connect" })).not.toHaveAccessibleDescription(HINT);
   });
 
   it("shows no sign-in sentence while the wallet is on another chain than the page, since Create cannot ask for any signature", async () => {
@@ -170,7 +168,7 @@ describe("CreateSummary", () => {
 
     expect(await screen.findByText("Publishing the dispute data")).toBeInTheDocument();
     const button = screen.getByRole("button", { name: "Creating the dispute" });
-    expect(button).toHaveTextContent("Create");
+    expect(button).toHaveTextContent("Create dispute");
   });
 
   it("names the Create button as creating the dispute while the wallet asks to confirm the transaction", async () => {
@@ -181,6 +179,84 @@ describe("CreateSummary", () => {
 
     expect(await screen.findByText("Waiting for your wallet")).toBeInTheDocument();
     const button = screen.getByRole("button", { name: "Creating the dispute" });
-    expect(button).toHaveTextContent("Create");
+    expect(button).toHaveTextContent("Create dispute");
+  });
+  describe("the primary button", () => {
+    it("without a wallet the primary button reads Connect and opens the wallet modal on the page chain", async () => {
+      const wallet = createTestWallet({ chainId: 1 });
+      const uploader = fakeUploader();
+      const { user } = await renderSummary(uploader, { wallet, connect: false });
+
+      const primary = screen.getByRole("button", { name: "Connect" });
+      expect(primary).toBeEnabled();
+      expect(screen.queryByRole("button", { name: "Create dispute" })).toBeNull();
+      expect(screen.queryByText("Wallet required")).toBeNull();
+      await user.click(primary);
+
+      expect(wallet.modal?.openConnect).toHaveBeenCalledWith(1);
+      expect(uploader.uploadJson).not.toHaveBeenCalled();
+    });
+
+    it("while the wallet connects the primary button reads Connecting and takes no press", async () => {
+      const wallet = createTestWallet({ chainId: 1, pendingReconnect: true });
+      const { user } = await renderSummary(fakeUploader(), { wallet, connect: false });
+
+      const primary = screen.getByRole("button", { name: "Connecting" });
+      expect(primary).toBeDisabled();
+      await user.click(primary);
+
+      expect(wallet.modal?.openConnect).not.toHaveBeenCalled();
+    });
+
+    it("once a wallet is connected on the page chain the same button reads Create dispute", async () => {
+      const wallet = createTestWallet({ chainId: 1 });
+      await renderSummary(fakeUploader(), { wallet, connect: false });
+      const primary = screen.getByRole("button", { name: "Connect" });
+
+      await act(async () => {
+        await wallet.connect();
+      });
+
+      expect(createButton()).toBe(primary);
+      expect(primary).toBeEnabled();
+      expect(screen.queryByRole("button", { name: "Connect" })).toBeNull();
+    });
+
+    it("without any connector the primary button is a disabled Connect with no text about why", async () => {
+      const wallet = createTestWallet({ chainId: 1, mode: "unconfigured" });
+      const { user } = await renderSummary(fakeUploader(), { wallet, connect: false });
+
+      const primary = screen.getByRole("button", { name: "Connect" });
+      expect(primary).toBeDisabled();
+      expect(primary).not.toHaveAccessibleDescription();
+      await user.click(primary);
+      expect(document.body).not.toHaveTextContent(/configured|deployment|unavailable|Connect a wallet/i);
+    });
+
+    it("without an upload service the primary button is a disabled Create dispute whatever the wallet state", async () => {
+      const disconnected = await renderSummary(fakeUploader({ availability: "unconfigured" }), { connect: false });
+      expect(createButton()).toBeDisabled();
+      expect(screen.queryByRole("button", { name: "Connect" })).toBeNull();
+      await disconnected.user.click(createButton());
+      expect(document.body).not.toHaveTextContent(/uploads? (are )?unavailable/i);
+      cleanup();
+
+      await renderSummary(fakeUploader({ availability: "unconfigured" }));
+      expect(createButton()).toBeDisabled();
+      cleanup();
+
+      await renderSummary(fakeUploader({ availability: "unconfigured" }), { wallet: createTestWallet({ chainId: 1, pendingReconnect: true }), connect: false });
+      expect(createButton()).toBeDisabled();
+    });
+
+    it("on another chain the primary button is a disabled Create dispute and the notice still offers the switch", async () => {
+      const wallet = holdChainSwitches(createTestWallet({ chainId: 100 }));
+      await renderSummary(fakeUploader(), { wallet });
+
+      expect(createButton()).toBeDisabled();
+      expect(screen.getByText("Wrong network")).toBeInTheDocument();
+      expect(screen.getByText(/^A switch to .+ is waiting in your wallet\.$/)).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Connect" })).toBeNull();
+    });
   });
 });

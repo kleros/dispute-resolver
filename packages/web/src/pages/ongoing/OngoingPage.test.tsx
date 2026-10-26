@@ -329,21 +329,24 @@ describe("Ongoing page", () => {
     expect(mark).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("on hover the card's edge eases on a 200 ms clock and holds still under reduced motion", async () => {
+  it("the card's fill is styled to ease on a 200 ms clock and to hold still under reduced motion", async () => {
     vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(12n, 2)]));
     renderOngoing();
     await settledList();
     const surface = card("12").firstElementChild;
-    expect(surface).toHaveClass("transition-[border-color]", "duration-200", "ease-[cubic-bezier(0.22,1,0.36,1)]", "motion-reduce:transition-none");
+    expect(surface).toHaveClass("transition-[background-color]", "duration-200", "ease-[cubic-bezier(0.22,1,0.36,1)]", "motion-reduce:transition-none");
   });
 
-  it("on hover the card shows only its blue edge, staying flat like the library's cards", async () => {
-    vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(12n, 2)]));
+  it("the card is styled to fill with the library's light blue on hover, with no hover style on its edge or depth", async () => {
+    vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(12n, 2)], [11n]));
     renderOngoing();
     await settledList();
-    const surface = card("12").firstElementChild;
-    expect(surface).toHaveClass("group-hover:border-klerosUIComponentsPrimaryBlue");
-    expect([...(surface?.classList ?? [])].filter((name) => name.includes("hover:shadow"))).toEqual([]);
+    const failed = screen.getByRole("link", { name: /Dispute 11: details unavailable/ });
+    for (const link of [card("12"), failed]) {
+      const surface = link.firstElementChild;
+      expect(surface).toHaveClass("group-hover:bg-klerosUIComponentsMediumBlue");
+      expect([...(surface?.classList ?? [])].filter((name) => /hover:(border|shadow)/.test(name))).toEqual([]);
+    }
   });
 
   it("on hover the card's arrow moves forward while its arms spread about the arrow's tip", async () => {

@@ -56,7 +56,7 @@ function EvidenceEntry({ item, chain }: { readonly item: EvidenceItem; readonly 
       <span aria-hidden="true" className={`${DOT_CLASS} top-1.5 bg-klerosUIComponentsPrimaryBlue`} />
       <article className="flex min-w-0 flex-col gap-2">
         <h3 className="font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">{item.title}</h3>
-        <p className="max-w-[72ch] whitespace-pre-line text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">{item.description}</p>
+        <p className="leading-7 whitespace-pre-line text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]">{item.description}</p>
         <footer className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 text-sm text-klerosUIComponentsSecondaryText">
           <span className="inline-flex min-w-0 flex-wrap items-center gap-2">
             <Identicon address={item.submitter} />

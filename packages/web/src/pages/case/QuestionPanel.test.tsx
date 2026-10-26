@@ -84,7 +84,7 @@ describe("QuestionPanel", () => {
     const longQuestion = screen.getByText(long);
     expect(longQuestion).toHaveClass("font-semibold", "text-lg", "text-klerosUIComponentsPrimaryText");
     expect(longQuestion).not.toHaveClass("font-normal");
-    expect(longQuestion.parentElement?.parentElement).toHaveClass("max-w-[72ch]");
+    expect(longQuestion.parentElement?.parentElement?.className).not.toMatch(/(^|\s)max-w-/);
     unmount();
 
     renderPanel(sectionReady(testOkMetaEvidence({ question: "Who wins?", rulingOptions: { type: "uint", precision: 0 } })));
@@ -118,7 +118,8 @@ describe("QuestionPanel", () => {
     const noParagraphs = paragraphs(no);
     expect(noParagraphs).toHaveLength(2);
     const description = noParagraphs[1];
-    expect(description).toHaveClass("text-sm", "leading-5", "max-w-[72ch]", "whitespace-pre-line");
+    expect(description).toHaveClass("text-sm", "leading-6", "whitespace-pre-line");
+    expect(description?.className).not.toMatch(/(^|\s)max-w-/);
     expect(description?.firstElementChild).toHaveClass("sr-only");
     expect(description?.firstElementChild?.textContent).toBe(": ");
     expect(description?.textContent).toBe(": Pay the seller");

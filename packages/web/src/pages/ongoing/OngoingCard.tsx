@@ -8,7 +8,7 @@ import { Countdown, FACT_SMALL, LABEL, PeriodBadge, useRevealIn } from "../../ui
 
 /** The library `Card` is a fixed 328×200 box; the grid sizes the cards instead. */
 const CARD_CLASS =
-  "flex h-full w-full flex-col overflow-hidden p-0 transition-[border-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none group-hover:border-klerosUIComponentsPrimaryBlue";
+  "flex h-full w-full flex-col overflow-hidden p-0 transition-[background-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none group-hover:bg-klerosUIComponentsMediumBlue";
 /** The focus ring sits on this link, outside the card's `overflow-hidden`, so it is never clipped. */
 const LINK_CLASS = "group t-learn block h-full rounded-[18px] text-klerosUIComponentsPrimaryText no-underline";
 const TITLE_CLASS = "line-clamp-2 min-h-14 text-lg leading-7 font-semibold text-klerosUIComponentsPrimaryText [overflow-wrap:anywhere]";

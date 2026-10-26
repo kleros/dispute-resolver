@@ -7,6 +7,7 @@ import { CreateForm } from "./CreateForm";
 import { CreateSteps } from "./CreateSteps";
 import { CreateSummary } from "./CreateSummary";
 import { initialForm, type CreateForm as Form } from "./draft";
+import { restoreCreateDraft, storeCreateDraft } from "./draftStorage";
 
 const FEATURE_REQUEST_URL = "https://github.com/kleros/dispute-resolver/issues";
 
@@ -39,17 +40,24 @@ function CreateUnavailable() {
 }
 
 /**
- * The form's values live here, so Return restores them. The routing layout remounts the page on a chain change, which
- * returns to the form with the values cleared.
+ * The form's values live here, so Return restores them, and are kept per chain in local storage, so a reload restores
+ * them too (on the form step). The routing layout remounts the page on a chain change, which returns to the form with
+ * that chain's values.
  */
 export function CreatePage() {
   const { chain, capabilities } = usePageChain();
-  const [form, setForm] = useState<Form>(initialForm);
+  const [form, setForm] = useState<Form>(() => restoreCreateDraft(chain.id) ?? initialForm());
+  const [resets, setResets] = useState(0);
+  const latestReset = useRef(0);
   const [input, setInput] = useState<CreateDisputeInput | null>(null);
   // Counts step changes rather than following the step, so neither the first render nor a remount takes the focus.
   const [stepChanges, setStepChanges] = useState(0);
   const navRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    storeCreateDraft(chain.id, form);
+  }, [chain.id, form]);
 
   // The button that changed the step unmounts with it, so without this the focus falls to the body and the page keeps
   // the scroll offset of the step it left, which on a phone opens the summary near its Create button. "nearest" scrolls
@@ -67,6 +75,17 @@ export function CreatePage() {
   const returnToForm = () => {
     changeStep(null);
   };
+  const resetForm = () => {
+    latestReset.current += 1;
+    setResets(latestReset.current);
+    setForm(initialForm());
+    headingRef.current?.focus();
+  };
+  // An upload still running when the form is cleared reports to the form it started in; its document must not land in
+  // the cleared one.
+  const changeForm = (update: (current: Form) => Form) => {
+    if (resets === latestReset.current) setForm(update);
+  };
 
   return (
     <section className="mx-auto flex w-full max-w-[1080px] min-w-0 flex-col gap-6 py-6 lg:py-10">
@@ -79,7 +98,7 @@ export function CreatePage() {
           {input === null ? (
             <SectionBoundary key="form" section="Create form">
               <div data-create-step="form" className={stepClass(0, stepChanges)}>
-                <CreateForm chain={chain} form={form} onChange={setForm} headingRef={headingRef} onContinue={changeStep} />
+                <CreateForm chain={chain} form={form} resets={resets} onChange={changeForm} headingRef={headingRef} onContinue={changeStep} onReset={resetForm} />
               </div>
             </SectionBoundary>
           ) : (

@@ -61,7 +61,7 @@ export function initialForm(): CreateForm {
   };
 }
 
-function resizeOptions(options: readonly CreateOptionDraft[], count: number): readonly CreateOptionDraft[] {
+export function resizeOptions(options: readonly CreateOptionDraft[], count: number): readonly CreateOptionDraft[] {
   return Array.from({ length: count }, (_, index) => options[index] ?? EMPTY_OPTION);
 }
 
@@ -97,7 +97,7 @@ export function setParty(form: CreateForm, key: number, field: "alias" | "addres
   return { ...form, parties: form.parties.map((party) => (party.key === key ? { ...party, [field]: value } : party)) };
 }
 
-export function canonicalDocument(file: UploadedFile): UploadedFile | null {
+export function canonicalDocument(file: { readonly path: string; readonly fileName: string }): UploadedFile | null {
   const path = normalizeIpfsPath(file.path);
   return path === null ? null : { path, fileName: file.fileName };
 }
