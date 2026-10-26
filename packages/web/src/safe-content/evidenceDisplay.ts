@@ -1,11 +1,11 @@
 import { REGISTRY, isDisplayAllowlisted, publicRpcUrl, resolveDisplayUrl } from "@dispute-resolver/core";
-import type { ChainId, ChainIdField } from "@dispute-resolver/core";
+import type { ChainIdField } from "@dispute-resolver/core";
 import type { DisplayParams, EvidenceDisplayInput, EvidenceDisplayModel, SandboxToken } from "./types";
 
 const RELAXED_SANDBOX: readonly SandboxToken[] = ["allow-scripts", "allow-same-origin", "allow-popups", "allow-popups-to-escape-sandbox"];
 const STRICT_SANDBOX: readonly SandboxToken[] = ["allow-scripts"];
 
-function chainIdOr(field: ChainIdField, pageChainId: ChainId): ChainId {
+function chainIdOr(field: ChainIdField, pageChainId: number): number {
   return field.status === "valid" ? field.chainId : pageChainId;
 }
 

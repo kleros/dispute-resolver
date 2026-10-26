@@ -3,7 +3,6 @@ import type {
   AppealPanel,
   ArbitratedBinding,
   ChainConfig,
-  ChainId,
   Court,
   DisputeEventResult,
   DisputeLookup,
@@ -50,7 +49,7 @@ export interface CoreDeps {
   readonly realityCache: RealityQuestionCache;
   readonly gateway: GatewayOrigin;
   readonly registry: Registry;
-  waitForReceipt(chainId: ChainId, hash: Hex): Promise<WriteReceipt>;
+  waitForReceipt(chainId: number, hash: Hex): Promise<WriteReceipt>;
 }
 
 export type MetaEvidenceBudget = "case" | "ongoing";
@@ -75,7 +74,7 @@ export interface CaseWriteContext {
 /** Every field degrades on its own. */
 export interface CaseDispute {
   readonly status: "dispute";
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly disputeId: bigint;
   readonly lookup: SectionData<DisputeLookup>;
   readonly view: SectionData<DisputeView>;
@@ -93,7 +92,7 @@ export interface CaseDispute {
 export type FoundLookup = Extract<DisputeLookup, { status: "found" }>;
 
 /** `no-id`: the URL holds no dispute ID. */
-export type CaseData = { readonly status: "no-id"; readonly chainId: ChainId } | CaseDispute;
+export type CaseData = { readonly status: "no-id"; readonly chainId: number } | CaseDispute;
 
 export interface CaseSectionProps {
   readonly dispute: CaseDispute;

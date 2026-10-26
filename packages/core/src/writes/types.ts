@@ -1,4 +1,4 @@
-import type { ChainId, WriteCall } from "../types";
+import type { WriteCall } from "../types";
 
 /** Why a write cannot be built. The UI shows it; nothing is sent. */
 export type WriteRefusal =
@@ -15,6 +15,6 @@ export type WriteRefusal =
 export type WriteBuild = { readonly ok: true; readonly call: WriteCall } | { readonly ok: false; readonly refusal: WriteRefusal };
 
 export type ChainMatch =
-  | { readonly ok: true; readonly chainId: ChainId }
+  | { readonly ok: true; readonly chainId: number }
   | { readonly ok: false; readonly reason: "no-wallet" }
-  | { readonly ok: false; readonly reason: "wrong-chain"; readonly walletChainId: number; readonly pageChainId: ChainId };
+  | { readonly ok: false; readonly reason: "wrong-chain"; readonly walletChainId: number; readonly pageChainId: number };

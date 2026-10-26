@@ -1,11 +1,10 @@
-import type { UnixSeconds } from "@dispute-resolver/core";
 import { useId } from "react";
 import { Countdown, FACT, LABEL } from "../../ui";
 
 export interface FundingProgressProps {
   /** Above 100 when a side was over-funded; the bar shows it as full. */
   readonly percent: number;
-  readonly deadline: UnixSeconds;
+  readonly deadline: number;
 }
 
 /** The track is the element itself in Firefox and its `-webkit-progress-bar` elsewhere; the fill is the progress value. */

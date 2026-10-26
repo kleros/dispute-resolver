@@ -1,4 +1,3 @@
-import type { ChainId } from "@dispute-resolver/core";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { numberToHex } from "viem";
@@ -34,11 +33,11 @@ function latestBlockRpc() {
   return blockRpc(() => numberToHex(Math.floor((Date.now() - SKEW_MS) / 1_000)));
 }
 
-function blockReads(rpc: ReturnType<typeof latestBlockRpc>, chainId: ChainId): number {
+function blockReads(rpc: ReturnType<typeof latestBlockRpc>, chainId: number): number {
   return rpc.mock.calls.filter(([request]) => request.chainId === chainId && request.method === "eth_getBlockByNumber").length;
 }
 
-function ChainCountdown({ chainId }: { readonly chainId: ChainId | null }) {
+function ChainCountdown({ chainId }: { readonly chainId: number | null }) {
   return (
     <ChainClockProvider offsetMs={useChainClockOffset(chainId)}>
       <Countdown target={CHAIN_SECONDS + 2 * DAY} />
@@ -46,7 +45,7 @@ function ChainCountdown({ chainId }: { readonly chainId: ChainId | null }) {
   );
 }
 
-function Offset({ chainId }: { readonly chainId: ChainId }) {
+function Offset({ chainId }: { readonly chainId: number }) {
   return <output aria-label={`Chain ${String(chainId)}`}>{useChainClockOffset(chainId)}</output>;
 }
 

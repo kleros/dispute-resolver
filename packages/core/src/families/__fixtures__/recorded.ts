@@ -8,7 +8,7 @@ import { z } from "../../zod";
 import { SELECTORS } from "../../abi";
 import type { ProbeSignature } from "../../abi";
 import { toRegistryAddress } from "../../registry";
-import type { Address, ChainId, Hex } from "../../types";
+import type { Address, Hex } from "../../types";
 import type { Family } from "../types";
 import bytecode1 from "./bytecode-1.json";
 import bytecode100 from "./bytecode-100.json";
@@ -49,7 +49,7 @@ function inSelectorOrder(signatures: readonly ProbeSignature[]): Hex[] {
 }
 
 export interface RecordedContract {
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly blockNumber: number;
   readonly address: Address;
   readonly label: string;
@@ -75,7 +75,7 @@ export const RECORDED_CONTRACTS: readonly RecordedContract[] = [bytecode1, bytec
 });
 
 /** The recorded contract at `address` on `chainId`; throws when it was not recorded, so a typo fails the test loudly. */
-export function recorded(chainId: ChainId, address: string): RecordedContract {
+export function recorded(chainId: number, address: string): RecordedContract {
   const wanted = toRegistryAddress(address);
   const contract = RECORDED_CONTRACTS.find((candidate) => candidate.chainId === chainId && candidate.address === wanted);
   if (contract === undefined) throw new Error(`no recorded bytecode for ${String(chainId)}:${wanted}`);

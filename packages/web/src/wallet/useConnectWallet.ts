@@ -1,4 +1,3 @@
-import type { ChainId } from "@dispute-resolver/core";
 import { useCallback, useEffect, useState } from "react";
 import { useWalletSetup } from "./context";
 import type { WalletModal } from "./types";
@@ -10,7 +9,7 @@ interface ConnectWallet {
    * Opens AppKit's Connect view on `chainId` (the page chain), so a WalletConnect session starts there. Closing the
    * modal or rejecting the wallet's prompt leaves the app read-only, with no error.
    */
-  readonly open: (chainId?: ChainId) => void;
+  readonly open: (chainId?: number) => void;
 }
 
 /** What each modal's check found, so a control mounted later renders the answer at once instead of after a tick. */
@@ -41,7 +40,7 @@ export function useConnectWallet(): ConnectWallet {
   const modal = setup.mode === "appkit" ? setup.modal : null;
   const misconfigured = useEmbeddedWallet(modal);
   const open = useCallback(
-    (chainId?: ChainId) => {
+    (chainId?: number) => {
       // A modal that fails or refuses to open leaves the app read-only, which is the outcome of declining.
       modal?.openConnect(chainId).catch(() => undefined);
     },

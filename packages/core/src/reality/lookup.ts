@@ -3,7 +3,7 @@ import { realityAbi, realityProxyAbi } from "../abi";
 import type { RealityProxyEntry } from "../registry/types";
 import { createRequestBudget, isLookupLimitError } from "../rpc";
 import type { RequestBudget } from "../rpc/types";
-import type { ChainId, GetReadClient, Hex, ReadClient } from "../types";
+import type { GetReadClient, Hex, ReadClient } from "../types";
 import { LOOKUP_LIMITS } from "./constants";
 import { ARBITRATION_CREATED, DISPUTE_ID_TO_QUESTION_ID, LOG_NEW_QUESTION, LOG_NEW_TEMPLATE } from "./events";
 import { findLatestLogsRemembering, type LogsRequest, type WindowMemory } from "./findLatestLogs";
@@ -34,7 +34,7 @@ interface BlockHeader {
 
 interface LookupRequest {
   readonly entry: RealityProxyEntry;
-  readonly arbitratorChainId: ChainId;
+  readonly arbitratorChainId: number;
   readonly disputeId: bigint;
   readonly clients: LookupReadClients;
   readonly known: KnownDisputeQuestion | undefined;
@@ -62,7 +62,7 @@ function lookupBudget(deadlineMs: number | undefined, signal: AbortSignal | unde
   };
 }
 
-export function requireClient(clients: GetReadClient, chainId: ChainId): ReadClient {
+export function requireClient(clients: GetReadClient, chainId: number): ReadClient {
   const client = clients(chainId);
   if (client === undefined) throw new Error(`reads on chain ${String(chainId)} are unavailable`);
   return client;
@@ -84,7 +84,7 @@ async function blockHeader(client: ReadClient, blockNumber: bigint): Promise<Blo
 }
 
 /** Search window of the disputeID -> questionID event of a dispute missing from the known disputes map. */
-function unknownDisputeFromBlock(arbitratorChainId: ChainId, entry: RealityProxyEntry): bigint {
+function unknownDisputeFromBlock(arbitratorChainId: number, entry: RealityProxyEntry): bigint {
   return BigInt(Math.max(entry.proxyDeployBlock, (REGISTRY_SNAPSHOT_BLOCKS[arbitratorChainId] ?? 0) + 1));
 }
 
@@ -107,7 +107,7 @@ async function arbitrationCreatedFromHint(lookup: Lookup, disputeId: bigint) {
 }
 
 /** The question ID of a dispute created after the known disputes snapshot, and the block of the event that maps it. */
-async function findQuestionId(lookup: Lookup, arbitratorChainId: ChainId, disputeId: bigint): Promise<{ readonly questionId: Hex; readonly mappingBlock: bigint }> {
+async function findQuestionId(lookup: Lookup, arbitratorChainId: number, disputeId: bigint): Promise<{ readonly questionId: Hex; readonly mappingBlock: bigint }> {
   const { entry } = lookup;
   const event = entry.kind === "single-chain" ? DISPUTE_ID_TO_QUESTION_ID : ARBITRATION_CREATED;
   const hinted = entry.kind === "single-chain" ? undefined : await arbitrationCreatedFromHint(lookup, disputeId);
@@ -178,7 +178,7 @@ async function lookupKnown(lookup: Lookup, known: KnownDisputeQuestion): Promise
 }
 
 /** A dispute created after the snapshot: its question ID is searched on the proxy, then its question and template. */
-async function lookupUnknown(lookup: Lookup, arbitratorChainId: ChainId, disputeId: bigint): Promise<RealityQuestion> {
+async function lookupUnknown(lookup: Lookup, arbitratorChainId: number, disputeId: bigint): Promise<RealityQuestion> {
   const { questionId, mappingBlock } = await findQuestionId(lookup, arbitratorChainId, disputeId);
   const upperBound = lookup.entry.kind === "single-chain" ? mappingBlock : await crossChainQuestionBlockUpperBound(lookup, mappingBlock);
   const question = await readQuestionLog(lookup, questionId, BigInt(lookup.entry.realityDeployBlock), upperBound);

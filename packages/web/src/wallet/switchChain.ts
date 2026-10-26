@@ -1,4 +1,3 @@
-import type { ChainId } from "@dispute-resolver/core";
 import { getAccount, switchChain, type Config } from "@wagmi/core";
 import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { useConfig } from "wagmi";
@@ -10,7 +9,7 @@ export type SwitchResult = { readonly ok: true } | { readonly ok: false; readonl
 const PENDING_MESSAGE = "A network switch is already waiting in your wallet.";
 
 interface InFlightSwitch {
-  readonly chainId: ChainId;
+  readonly chainId: number;
 }
 
 interface InFlightStore {
@@ -40,7 +39,7 @@ function setInFlight(store: InFlightStore, value: InFlightSwitch | null): void {
  * One request at a time: a wallet shows one prompt, and a second request while it waits would be refused by the wallet
  * or stacked behind the first, so it is answered `pending` here and never sent.
  */
-export async function switchWalletChain(config: Config, chainId: ChainId): Promise<SwitchResult> {
+export async function switchWalletChain(config: Config, chainId: number): Promise<SwitchResult> {
   const name = chainName(chainId);
   if (getAccount(config).status !== "connected") {
     return { ok: false, reason: "no-wallet", message: `Connect a wallet to switch to ${name}.` };
@@ -60,13 +59,13 @@ export async function switchWalletChain(config: Config, chainId: ChainId): Promi
 }
 
 type NetworkSwitchState =
-  { readonly status: "idle" } | { readonly status: "switching"; readonly chainId: ChainId } | { readonly status: "failed"; readonly chainId: ChainId; readonly message: string };
+  { readonly status: "idle" } | { readonly status: "switching"; readonly chainId: number } | { readonly status: "failed"; readonly chainId: number; readonly message: string };
 
 export interface NetworkSwitch {
   /** `switching` while any request of the app waits in the wallet, whichever control started it. */
   readonly state: NetworkSwitchState;
   /** Resolves with the outcome; a failure also stays in `state` for an inline message, and `pending` changes nothing. */
-  readonly switchTo: (chainId: ChainId) => Promise<SwitchResult>;
+  readonly switchTo: (chainId: number) => Promise<SwitchResult>;
 }
 
 const IDLE: NetworkSwitchState = { status: "idle" };
@@ -94,7 +93,7 @@ export function useNetworkSwitch(): NetworkSwitch {
   const inFlight = useSyncExternalStore(subscribe, () => store.current);
   const [settled, setSettled] = useState<NetworkSwitchState>(IDLE);
   const switchTo = useCallback(
-    async (chainId: ChainId) => {
+    async (chainId: number) => {
       const result = await switchWalletChain(config, chainId);
       if (result.ok) setSettled(IDLE);
       else if (result.reason !== "pending") setSettled({ status: "failed", chainId, message: result.message });

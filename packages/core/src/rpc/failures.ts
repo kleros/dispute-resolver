@@ -1,7 +1,7 @@
 import { BaseError, ContractFunctionExecutionError, ContractFunctionRevertedError, ContractFunctionZeroDataError, ExecutionRevertedError } from "viem";
 import { CHAINS } from "../chains";
 import { REGISTRY, registryKey } from "../registry";
-import type { Address, ChainId, Unavailable } from "../types";
+import type { Address, Unavailable } from "../types";
 import { isLookupLimitError } from "./errors";
 
 /**
@@ -44,7 +44,7 @@ let knownContracts: ReadonlySet<string> | undefined;
  * arbitrable proxy, and every arbitrable the registry lists (Reality proxies, overrides, display allowlist). Built on
  * first use, since the tables load after this module.
  */
-function isKnownContract(chainId: ChainId, address: string): boolean {
+function isKnownContract(chainId: number, address: string): boolean {
   knownContracts ??= new Set<string>([
     ...Object.values(CHAINS).flatMap((chain) =>
       [chain.klerosLiquid, chain.arbitrableProxy].flatMap((contract) => (contract === undefined ? [] : [registryKey(chain.id, contract)])),
@@ -77,7 +77,7 @@ function quotesContractText(error: BaseError): boolean {
  * registry arbitrable) on `chainId`, the chain the call was made on, and is otherwise one fixed sentence, also when
  * `chainId` is not given. Any other error is named, never quoted.
  */
-export function describeError(error: unknown, chainId?: ChainId): string {
+export function describeError(error: unknown, chainId?: number): string {
   if (error instanceof BaseError) {
     if (!quotesContractText(error)) return error.shortMessage;
     const address = calledContract(error);
@@ -89,6 +89,6 @@ export function describeError(error: unknown, chainId?: ChainId): string {
 }
 
 /** `chainId` is the chain the failed read was made on, as `describeError` takes it. */
-export function readFailure(what: string, error: unknown, chainId?: ChainId): Unavailable {
+export function readFailure(what: string, error: unknown, chainId?: number): Unavailable {
   return { code: isContractFailure(error) ? "reverted" : "rpc-error", message: `Could not read ${what}: ${describeError(error, chainId)}` };
 }

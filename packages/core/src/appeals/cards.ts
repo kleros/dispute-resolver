@@ -2,7 +2,7 @@ import { compareBigint } from "../bigint";
 import type { BehaviorOverride } from "../registry/types";
 import { combinationTitle, decodeRulingCode, formatRuling, isVariableType, reservedCode } from "../rulings";
 import type { FallbackOutcomes, RulingOptions } from "../rulings/types";
-import type { UnixSeconds } from "../types";
+
 import { fundedPercent, isWinningCode } from "./amounts";
 import type { AppealAmounts, CardOrigin, CrowdfundingCard, CrowdfundingSet, RoundFunding } from "./types";
 
@@ -131,7 +131,7 @@ export interface EnteredAnswerFunding {
   readonly contributed: bigint;
   readonly remaining: bigint;
   readonly fundedPercent: number;
-  readonly deadline: UnixSeconds;
+  readonly deadline: number;
 }
 
 /**
@@ -140,7 +140,7 @@ export interface EnteredAnswerFunding {
  */
 export function enteredAnswerFunding(
   cards: readonly CrowdfundingCard[],
-  entered: { readonly required: bigint; readonly deadline: UnixSeconds },
+  entered: { readonly required: bigint; readonly deadline: number },
   code: bigint | null,
 ): EnteredAnswerFunding {
   const matched = code === null ? undefined : cards.find((candidate) => candidate.code === code);

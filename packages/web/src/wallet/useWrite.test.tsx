@@ -1,4 +1,4 @@
-import type { ChainId, Hex } from "@dispute-resolver/core";
+import type { Hex } from "@dispute-resolver/core";
 import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { writeContract } from "@wagmi/core";
@@ -27,7 +27,7 @@ vi.mock("@wagmi/core", async (importOriginal) => ({ ...(await importOriginal<typ
 
 const writeContractMock = vi.mocked(writeContract);
 
-function renderWrite(wallet: TestWallet, waitForReceipt: (chainId: ChainId, hash: Hex) => Promise<WriteReceipt> = () => Promise.resolve(testReceipt())) {
+function renderWrite(wallet: TestWallet, waitForReceipt: (chainId: number, hash: Hex) => Promise<WriteReceipt> = () => Promise.resolve(testReceipt())) {
   const deps = createTestDeps({ waitForReceipt });
   const statuses: WriteStatus[] = [];
   const view = renderHook(
@@ -42,7 +42,7 @@ function renderWrite(wallet: TestWallet, waitForReceipt: (chainId: ChainId, hash
 }
 
 /** Connects a chain-1 wallet and executes a chain-1 build on page chain 1. */
-async function writeOnMainnet(waitForReceipt?: (chainId: ChainId, hash: Hex) => Promise<WriteReceipt>, onMined?: WriteOptions["onMined"]) {
+async function writeOnMainnet(waitForReceipt?: (chainId: number, hash: Hex) => Promise<WriteReceipt>, onMined?: WriteOptions["onMined"]) {
   const { result } = renderWrite(await createConnectedTestWallet(), waitForReceipt);
   await act(async () => {
     await result.current.execute(testWriteBuild(1), { pageChainId: 1, onMined });
@@ -291,7 +291,7 @@ describe("useWrite outcomes", () => {
 
   it("the receipt is read through the data layer's configured RPC, on the call's chain", async () => {
     const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const waitForReceipt = vi.fn<(chainId: ChainId, hash: Hex) => Promise<WriteReceipt>>(() => Promise.resolve(testReceipt()));
+    const waitForReceipt = vi.fn<(chainId: number, hash: Hex) => Promise<WriteReceipt>>(() => Promise.resolve(testReceipt()));
     const { result } = renderWrite(wallet, waitForReceipt);
     await act(async () => {
       await result.current.execute(testWriteBuild(100), { pageChainId: 100 });

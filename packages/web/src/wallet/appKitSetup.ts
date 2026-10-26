@@ -1,6 +1,6 @@
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { createAppKit, type AppKit, type Features, type ThemeVariables } from "@reown/appkit";
-import { CHAINS, DEFAULT_CHAIN_ID, type ChainId } from "@dispute-resolver/core";
+import { CHAINS, DEFAULT_CHAIN_ID } from "@dispute-resolver/core";
 import type { Chain } from "viem";
 import type { AppConfig } from "../env";
 import { configuredChains } from "./chains";
@@ -53,7 +53,7 @@ function appKitModal(appKit: AppKit, networks: readonly Chain[]): WalletModal {
     return appKit.getConnectors().some(isEmbeddedWalletConnector);
   };
   return {
-    async openConnect(chainId: ChainId | undefined) {
+    async openConnect(chainId: number | undefined) {
       // Checked here, not only by the Connect control, so no caller and no click before AppKit is ready can open the
       // Connect view with its embedded-wallet entry.
       if (await hasEmbeddedWallet()) throw new Error(EMBEDDED_WALLET_REFUSAL);

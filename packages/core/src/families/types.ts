@@ -1,4 +1,4 @@
-import type { Address, ChainId } from "../types";
+import type { Address } from "../types";
 import type { RealityProxyEntry } from "../registry/types";
 
 export type Family = "reality-proxy" | "escrow-v1" | "governor" | "idr-v2" | "idr-v1" | "idr-legacy" | "view-only";
@@ -36,7 +36,7 @@ export interface Capabilities {
 }
 
 export interface FamilyDetection {
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly arbitrable: Address;
   readonly family: Family;
   /** Equals `family` except for a registered Reality proxy, where it is the family its write paths use. */
@@ -48,6 +48,6 @@ export interface FamilyDetection {
 }
 
 export interface FamilyCache {
-  get(chainId: ChainId, address: Address): Promise<FamilyDetection> | undefined;
-  set(chainId: ChainId, address: Address, detection: Promise<FamilyDetection>): void;
+  get(chainId: number, address: Address): Promise<FamilyDetection> | undefined;
+  set(chainId: number, address: Address, detection: Promise<FamilyDetection>): void;
 }

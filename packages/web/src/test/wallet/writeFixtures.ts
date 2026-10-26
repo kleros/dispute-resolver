@@ -1,4 +1,4 @@
-import type { ChainId, Hex, WriteBuild } from "@dispute-resolver/core";
+import type { Hex, WriteBuild } from "@dispute-resolver/core";
 import { parseAbi } from "viem";
 import type { WriteReceipt } from "../../data";
 import type { WriteStatus } from "../../wallet";
@@ -9,7 +9,7 @@ const FUND_APPEAL_ABI = parseAbi(["function fundAppeal(uint256 localId, uint256 
 export const TEST_TX_HASH: Hex = "0x1111111111111111111111111111111111111111111111111111111111111111";
 
 /** A built `fundAppeal` call on `chainId` (core's builders produce the same shape). */
-export function testWriteBuild(chainId: ChainId = 1, ruling = 1n): WriteBuild {
+export function testWriteBuild(chainId = 1, ruling = 1n): WriteBuild {
   return {
     ok: true,
     call: {

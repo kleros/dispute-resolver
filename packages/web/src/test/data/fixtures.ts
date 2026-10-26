@@ -5,7 +5,6 @@ import {
   type ArbitratorDispute,
   type CanonicalIpfsPath,
   type ChainConfig,
-  type ChainId,
   type Court,
   type DisputeEvent,
   type DisputeEventResult,
@@ -42,7 +41,7 @@ function testDispute(overrides: Partial<ArbitratorDispute> = {}): ArbitratorDisp
 
 /** A `found` lookup of dispute `disputeId` on `chainId` in `period`. */
 export function testFoundLookup(
-  options: { readonly chainId?: ChainId; readonly disputeId?: bigint; readonly period?: Period; readonly arbitrable?: Address } = {},
+  options: { readonly chainId?: number; readonly disputeId?: bigint; readonly period?: Period; readonly arbitrable?: Address } = {},
 ): Extract<DisputeLookup, { status: "found" }> {
   const { chainId = 1, disputeId = 1n, period = 0, arbitrable = TEST_ARBITRABLE } = options;
   return {
@@ -143,7 +142,7 @@ export function testCaseDispute(overrides: Partial<CaseDispute> = {}): CaseDispu
   };
 }
 
-export function testChain(id: ChainId): ChainConfig {
+export function testChain(id: number): ChainConfig {
   const chain = getChain(id);
   if (chain === undefined) throw new Error(`Chain ${String(id)} is not configured.`);
   return chain;

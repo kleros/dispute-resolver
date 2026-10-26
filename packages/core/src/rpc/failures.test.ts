@@ -1,12 +1,12 @@
 import { createPublicClient, custom, encodeErrorResult } from "viem";
 import { describe, expect, it } from "vitest";
 import { klerosLiquidAbi } from "../abi";
-import type { Address, ChainId } from "../types";
+import type { Address } from "../types";
 import { LookupLimitError, describeError, isContractFailure, readFailure } from "./index";
 import { rpcError } from "../test/rpc/testHelpers";
 
-const MAINNET: ChainId = 1;
-const GNOSIS: ChainId = 100;
+const MAINNET = 1;
+const GNOSIS = 100;
 /** Mainnet KlerosLiquid, the chain table's arbitrator. */
 const ARBITRATOR: Address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
 /** The mainnet arbitrable proxy the chain table configures for the Create page. */

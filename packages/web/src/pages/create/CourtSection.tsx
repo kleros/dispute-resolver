@@ -1,4 +1,4 @@
-import { CREATE_LIMITS, type ChainConfig, type ChainId, type Court, type CreateValidationErrors } from "@dispute-resolver/core";
+import { CREATE_LIMITS, type ChainConfig, type Court, type CreateValidationErrors } from "@dispute-resolver/core";
 import { DropdownSelect, NumberField, TextField } from "@kleros/ui-components-library";
 import { useQueryClient } from "@tanstack/react-query";
 import { useId } from "react";
@@ -30,7 +30,7 @@ function CourtSelect({
   error,
   onSelect,
 }: {
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly courtId: string;
   readonly error: string | undefined;
   readonly onSelect: (courtId: string) => void;

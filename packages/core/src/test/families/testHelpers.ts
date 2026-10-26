@@ -2,7 +2,7 @@ import { createPublicClient, custom, pad } from "viem";
 import { EIP1967_IMPLEMENTATION_SLOT } from "../../abi";
 import { detectFamily } from "../../families";
 import type { FamilyDetection } from "../../families/types";
-import type { Address, ChainId, Hex, ReadClient } from "../../types";
+import type { Address, Hex, ReadClient } from "../../types";
 import { RECORDED_CONTRACTS } from "../../families/__fixtures__/recorded";
 import { rpcError } from "../rpc/testHelpers";
 
@@ -63,7 +63,7 @@ export function fakeNodeClient(node: FakeNode): { readonly client: ReadClient; r
 }
 
 /** A fake node holding the recorded code of every fixture contract of `chainId`, implementations included. */
-export function recordedNode(chainId: ChainId): { code: Record<string, Hex>; implementationSlot: Record<string, Hex> } {
+export function recordedNode(chainId: number): { code: Record<string, Hex>; implementationSlot: Record<string, Hex> } {
   const code: Record<string, Hex> = {};
   const implementationSlot: Record<string, Hex> = {};
   for (const contract of RECORDED_CONTRACTS.filter((candidate) => candidate.chainId === chainId)) {
@@ -82,7 +82,7 @@ export function codeReads(calls: readonly NodeCall[]): string[] {
 }
 
 /** The detection `detectFamily` gives a recorded contract over a node holding its chain's recorded code. */
-export function recordedDetection(chainId: ChainId, address: string): Promise<FamilyDetection> {
+export function recordedDetection(chainId: number, address: string): Promise<FamilyDetection> {
   const contract = RECORDED_CONTRACTS.find((candidate) => candidate.chainId === chainId && candidate.address === address.toLowerCase());
   if (contract === undefined) return Promise.reject(new Error(`no recorded bytecode for ${String(chainId)}:${address.toLowerCase()}`));
   return detectFamily({ client: fakeNodeClient(recordedNode(chainId)).client, chainId, arbitrable: contract.address });

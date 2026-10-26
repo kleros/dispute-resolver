@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Address, AttachmentLink, ChainId, Env, GatewayOrigin, MetaEvidence } from "@dispute-resolver/core";
+import type { Address, AttachmentLink, Env, GatewayOrigin, MetaEvidence } from "@dispute-resolver/core";
 
 export interface ExternalLinkProps {
   readonly href: string;
@@ -19,7 +19,7 @@ export interface AttachmentProps {
 export interface EvidenceDisplayInput {
   readonly metaEvidence: MetaEvidence;
   /** The page chain (the arbitrator's chain). */
-  readonly arbitratorChainId: ChainId;
+  readonly arbitratorChainId: number;
   readonly disputeId: bigint;
   /** From the arbitrator binding, never from meta-evidence. */
   readonly arbitrable: Address;
@@ -33,12 +33,12 @@ export interface EvidenceDisplayInput {
 /** The query an evidence display receives; an RPC URL is `null` when none is configured. */
 export interface DisplayParams {
   readonly disputeID: string;
-  readonly chainID: ChainId;
+  readonly chainID: number;
   readonly arbitratorContractAddress: Address;
   readonly arbitratorJsonRpcUrl: string | null;
-  readonly arbitratorChainID: ChainId;
+  readonly arbitratorChainID: number;
   readonly arbitrableContractAddress: Address;
-  readonly arbitrableChainID: ChainId;
+  readonly arbitrableChainID: number;
   readonly arbitrableJsonRpcUrl: string | null;
   readonly jsonRpcUrl: string | null;
 }

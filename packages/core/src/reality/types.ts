@@ -1,5 +1,5 @@
 import type { ReadClientOptions, RequestBudget } from "../rpc/types";
-import type { Address, ChainId, GetReadClient, Hex } from "../types";
+import type { Address, GetReadClient, Hex } from "../types";
 import type { RulingOptions } from "../rulings/types";
 
 export interface RealityQuestion {
@@ -10,7 +10,7 @@ export interface RealityQuestion {
   /** Parameters separated by U+241F. */
   readonly questionText: string;
   readonly reality: Address;
-  readonly realityChainId: ChainId;
+  readonly realityChainId: number;
 }
 
 /** Keyed by `"<arbitrator chain>:<lowercase proxy>:<dispute ID>"`. */

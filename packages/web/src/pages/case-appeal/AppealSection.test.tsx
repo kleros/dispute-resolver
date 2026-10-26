@@ -8,7 +8,6 @@ import {
   type AppealPanel,
   type AppealPanelInput,
   type ChainConfig,
-  type ChainId,
   type FamilyDetection,
   type LocalIdResolution,
   type Multipliers,
@@ -99,7 +98,7 @@ const ESCROW = testFamily({
   capabilities: { localId: "disputeIDtoTransactionID", evidence: { kind: "local-id" }, appeal: { kind: "escrow-pay-cost" }, withdraw: { kind: "none" } },
 });
 
-function chainConfig(chainId: ChainId): ChainConfig {
+function chainConfig(chainId: number): ChainConfig {
   const chain = getChain(chainId);
   if (chain === undefined) throw new Error(`Chain ${String(chainId)} is not configured.`);
   return chain;
@@ -133,7 +132,7 @@ function crowdfunding(options: PanelOptions = {}): AppealPanel {
 }
 
 interface DisputeOptions {
-  readonly chainId?: ChainId;
+  readonly chainId?: number;
   readonly family?: FamilyDetection;
   readonly localId?: LocalIdResolution;
   readonly write?: SectionData<CaseWriteContext>;

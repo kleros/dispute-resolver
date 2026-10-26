@@ -4,7 +4,6 @@ import {
   readDisputeEvent,
   readMetaEvidenceEvent,
   type ArbitratedBinding,
-  type ChainId,
   type DisputeEventResult,
   type OnChainMetaEvidence,
   type OnChainMetaEvidenceReader,
@@ -22,7 +21,7 @@ function isFoundEvent(data: Outcome<DisputeEventResult> | undefined): boolean {
 }
 
 /** Shared by `useDisputeEvent` and the case page's on-chain meta-evidence reader, so the page reads the event once. */
-export function disputeEventQuery(deps: CoreDeps, chainId: ChainId, binding: ArbitratedBinding | undefined) {
+export function disputeEventQuery(deps: CoreDeps, chainId: number, binding: ArbitratedBinding | undefined) {
   const client = deps.getReadClient(chainId);
   const chain = getChain(chainId);
   return queryOptions<Outcome<DisputeEventResult>>({
@@ -49,7 +48,7 @@ export function disputeEventQuery(deps: CoreDeps, chainId: ChainId, binding: Arb
  * query, which `useDisputeEvent` also observes; a Dispute event that was not found or failed is read again by a new
  * load. The `MetaEvidence` read carries the reader's signal and is cancelled with the load.
  */
-export function onChainMetaEvidenceReader(client: QueryClient, deps: CoreDeps, chainId: ChainId, binding: ArbitratedBinding): OnChainMetaEvidenceReader {
+export function onChainMetaEvidenceReader(client: QueryClient, deps: CoreDeps, chainId: number, binding: ArbitratedBinding): OnChainMetaEvidenceReader {
   return async (signal): Promise<OnChainMetaEvidence> => {
     const readClient = deps.getReadClient(chainId);
     const chain = getChain(chainId);

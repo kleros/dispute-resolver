@@ -1,4 +1,4 @@
-import type { ChainId, Court, OngoingDispute } from "@dispute-resolver/core";
+import type { Court, OngoingDispute } from "@dispute-resolver/core";
 import { Card } from "@kleros/ui-components-library";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
@@ -107,7 +107,7 @@ function HourglassIcon() {
   );
 }
 
-function CardShell({ chainId, disputeId, children }: { readonly chainId: ChainId; readonly disputeId: bigint; readonly children: ReactNode }) {
+function CardShell({ chainId, disputeId, children }: { readonly chainId: number; readonly disputeId: bigint; readonly children: ReactNode }) {
   return (
     <Link to={paths.case(chainId, disputeId)} className={LINK_CLASS}>
       <Card round className={CARD_CLASS}>
@@ -118,7 +118,7 @@ function CardShell({ chainId, disputeId, children }: { readonly chainId: ChainId
 }
 
 export interface OngoingCardProps {
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly dispute: OngoingDispute;
   readonly title: SectionData<OngoingTitle>;
   readonly courts: SectionData<readonly Court[]>;
@@ -160,7 +160,7 @@ export function OngoingCard({ chainId, dispute, title, courts }: OngoingCardProp
  * A listed dispute whose `disputes(id)` read failed: its ID with "details unavailable" instead of dropping it. Its period
  * is unknown, so it shows only under "Ongoing". It ends on the same foot strip as its neighbours, holding only the arrow.
  */
-export function FailedDisputeCard({ chainId, disputeId }: { readonly chainId: ChainId; readonly disputeId: bigint }) {
+export function FailedDisputeCard({ chainId, disputeId }: { readonly chainId: number; readonly disputeId: bigint }) {
   return (
     <CardShell chainId={chainId} disputeId={disputeId}>
       <div className={HEAD_CLASS}>

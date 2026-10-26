@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { Config } from "wagmi";
-import type { Address, ChainConfig, ChainId, Hex, WriteBuild, WriteRefusal } from "@dispute-resolver/core";
+import type { Address, ChainConfig, Hex, WriteBuild, WriteRefusal } from "@dispute-resolver/core";
 import type { WriteReceipt } from "../data";
 import type { AppConfig } from "../env";
 
@@ -9,7 +9,7 @@ export type WalletMode = "appkit" | "unconfigured";
 
 export interface WalletModal {
   /** Makes `chainId` the modal's active network, so a WalletConnect session starts on it, then opens the Connect view. */
-  openConnect(chainId: ChainId | undefined): Promise<void>;
+  openConnect(chainId: number | undefined): Promise<void>;
   /** Resolves once AppKit has finished initializing (connectors synced, remote project settings applied). */
   ready(): Promise<void>;
   /**
@@ -54,14 +54,14 @@ export type WalletState =
 /** The refusal of a write without a connected wallet, as `WriteStatusNotice` renders it. */
 export interface NeedsWalletGuard {
   readonly phase: "needs-wallet";
-  readonly pageChainId: ChainId;
+  readonly pageChainId: number;
 }
 
 /** The refusal of a write from a wallet on another chain than the page's, as `WriteStatusNotice` renders it. */
 export interface WrongChainGuard {
   readonly phase: "wrong-chain";
   readonly walletChainId: number;
-  readonly pageChainId: ChainId;
+  readonly pageChainId: number;
 }
 
 /** `pending` is "waiting for the wallet". */
@@ -81,7 +81,7 @@ export type WriteOutcome = Extract<WriteStatus, { readonly phase: "refused" | "n
 
 export interface WriteOptions {
   /** The chain of the page the action is on; the wallet must be on it. */
-  readonly pageChainId: ChainId;
+  readonly pageChainId: number;
   /** Runs after the receipt is mined, before the status becomes `mined`. */
   readonly onMined?: (receipt: WriteReceipt) => Promise<void> | void;
 }
@@ -112,7 +112,7 @@ export interface WalletControlProps {
 
 export interface SmartContractWalletWarningProps {
   /** The chain whose code is read for the connected account: the resolved chain of the header. */
-  readonly chainId: ChainId;
+  readonly chainId: number;
 }
 
 export interface WriteStatusNoticeProps {

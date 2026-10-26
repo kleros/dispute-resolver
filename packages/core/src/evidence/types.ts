@@ -1,4 +1,4 @@
-import type { Address, Fetcher, Hex, ReadClient, UnixSeconds } from "../types";
+import type { Address, Fetcher, Hex, ReadClient } from "../types";
 import type { AttachmentLink, CanonicalIpfsPath, GatewayOrigin } from "../uri/types";
 
 export interface DisputeEvent {
@@ -6,7 +6,7 @@ export interface DisputeEvent {
   readonly evidenceGroupId: bigint;
   readonly blockNumber: bigint;
   /** Block timestamp: the "Dispute Raised" time of the evidence panel. */
-  readonly createdAt: UnixSeconds;
+  readonly createdAt: number;
   readonly transactionHash: Hex;
 }
 
@@ -42,7 +42,7 @@ export interface EvidenceItem {
   /** Plain text, never markdown. */
   readonly description: string;
   readonly submitter: Address;
-  readonly timestamp: UnixSeconds;
+  readonly timestamp: number;
   readonly blockNumber: bigint;
   readonly transactionHash: Hex;
   readonly uri: CanonicalIpfsPath;

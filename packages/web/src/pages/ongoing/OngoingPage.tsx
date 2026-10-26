@@ -1,4 +1,4 @@
-import { compareBigint, type ChainId, type Court, type OngoingDispute, type OngoingList, type Unavailable } from "@dispute-resolver/core";
+import { compareBigint, type Court, type OngoingDispute, type OngoingList, type Unavailable } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
@@ -35,7 +35,7 @@ function NoArbitrator() {
 }
 
 interface DisputeItemProps {
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly dispute: OngoingDispute;
   readonly courts: SectionData<readonly Court[]>;
   readonly visible: boolean;
@@ -68,7 +68,7 @@ function DisputeItem({ chainId, dispute, courts, visible }: DisputeItemProps) {
 }
 
 interface DisputeGridProps {
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly list: Extract<OngoingList, { status: "ok" }>;
   readonly courts: SectionData<readonly Court[]>;
   readonly filter: PeriodFilter;
@@ -97,7 +97,7 @@ function DisputeGrid({ chainId, list, courts, filter, reveal }: DisputeGridProps
   );
 }
 
-function FailedNotice({ chainId, error }: { readonly chainId: ChainId; readonly error: Unavailable }) {
+function FailedNotice({ chainId, error }: { readonly chainId: number; readonly error: Unavailable }) {
   const queryClient = useQueryClient();
   // The list's key depends on whether the courts loaded; resetting both variants refetches whichever is on screen.
   const tryAgain = () => {
@@ -113,7 +113,7 @@ function FailedNotice({ chainId, error }: { readonly chainId: ChainId; readonly 
   );
 }
 
-function NoOpenDisputes({ chainId, chainName }: { readonly chainId: ChainId; readonly chainName: string }) {
+function NoOpenDisputes({ chainId, chainName }: { readonly chainId: number; readonly chainName: string }) {
   const other = otherSwitchableChain(chainId);
   return (
     <EmptyState
@@ -126,7 +126,7 @@ function NoOpenDisputes({ chainId, chainName }: { readonly chainId: ChainId; rea
 }
 
 interface ListBodyProps {
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly chainName: string;
   readonly list: SectionData<OngoingList>;
   readonly courts: SectionData<readonly Court[]>;
@@ -150,7 +150,7 @@ function ListBody({ chainId, chainName, list, courts, filter }: ListBodyProps) {
 }
 
 /** The list renders as soon as it resolves, each title loading on its own. */
-function OngoingDisputes({ chainId, chainName }: { readonly chainId: ChainId; readonly chainName: string }) {
+function OngoingDisputes({ chainId, chainName }: { readonly chainId: number; readonly chainName: string }) {
   const { list, courts } = useOngoing(chainId);
   // The filter lives in the address so Back from a case returns to it; changing it replaces the entry instead of adding one.
   const [searchParams, setSearchParams] = useSearchParams();

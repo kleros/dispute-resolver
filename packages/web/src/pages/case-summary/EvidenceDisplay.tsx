@@ -1,4 +1,4 @@
-import type { ChainId, MetaEvidence } from "@dispute-resolver/core";
+import type { MetaEvidence } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { APP_CONFIG } from "../../env";
@@ -9,7 +9,7 @@ import { ExpandIndicator, LABEL, readMotionMs, SectionSkeleton } from "../../ui"
 interface EvidenceDisplayProps {
   readonly metaEvidence: MetaEvidence;
   /** The page chain, the arbitrator's chain. */
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly found: FoundLookup;
 }
 

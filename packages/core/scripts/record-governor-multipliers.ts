@@ -15,7 +15,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { toFunctionSelector } from "viem";
 import { z } from "zod";
-import type { ChainId } from "../src/types";
+
 import { runScript } from "./failureMessage";
 import { finalizedBlock, loadRepositoryEnv, rawRpcFor, type RecordedReply } from "./recordingRpc";
 
@@ -71,7 +71,7 @@ function readRecorded(): Recording | undefined {
 }
 
 /** The block each chain is read at: the recorded one, unless re-pinning or no file exists. */
-async function pinnedBlocks(chainIds: readonly ChainId[], previous: Recording | undefined, mode: Mode): Promise<Map<ChainId, bigint>> {
+async function pinnedBlocks(chainIds: readonly number[], previous: Recording | undefined, mode: Mode): Promise<Map<number, bigint>> {
   const entries = await Promise.all(
     chainIds.map(async (chainId) => {
       const recorded = previous?.chains.find((chain) => chain.chainId === chainId);

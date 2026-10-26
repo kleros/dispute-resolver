@@ -16,13 +16,13 @@ import { resolve } from "node:path";
 import { decodeAbiParameters, encodeEventTopics, numberToHex, type Hex } from "viem";
 import { z } from "zod";
 import { erc1497Abi } from "../src/abi";
-import type { ChainId } from "../src/types";
+
 import { runScript } from "./failureMessage";
 import { loadRepositoryEnv, rawRpcFor, type RawRpc } from "./recordingRpc";
 
 const RECORDED_ON = "2026-10-20";
-const GNOSIS: ChainId = 100;
-const MAINNET: ChainId = 1;
+const GNOSIS = 100;
+const MAINNET = 1;
 /** The Gnosis head the recorded facts were verified at. */
 const GNOSIS_HEAD = 48_850_832n;
 /** `CHAINS[100].klerosLiquid` and its deployment block (`arbitratorDeployedAtBlock`). */

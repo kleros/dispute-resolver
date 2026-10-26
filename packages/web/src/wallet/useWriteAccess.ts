@@ -1,4 +1,3 @@
-import type { ChainId } from "@dispute-resolver/core";
 import { useMemo } from "react";
 import { chainGuard } from "./performWrite";
 import type { NeedsWalletGuard, WrongChainGuard } from "./types";
@@ -12,7 +11,7 @@ export type WriteAccess =
  * The chain guard every write surface reads before it offers its action: a wallet still connecting counts as no wallet,
  * since nothing can be signed until it settles. The page chain is a parameter because `wallet` does not depend on routing.
  */
-export function useWriteAccess(pageChainId: ChainId): WriteAccess {
+export function useWriteAccess(pageChainId: number): WriteAccess {
   const walletChainId = useWalletChainId();
   return useMemo<WriteAccess>(() => {
     const guard = chainGuard(walletChainId, pageChainId);

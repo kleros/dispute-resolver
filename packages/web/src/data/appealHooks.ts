@@ -4,7 +4,6 @@ import {
   readWithdrawable,
   type Address,
   type AppealContext,
-  type ChainId,
   type FamilyDetection,
   type Multipliers,
   type RoundFunding,
@@ -17,7 +16,7 @@ import { IDLE_KEY, queryKeys } from "./queryKeys";
 import { LOADING, fromOutcome, fromQuery, noRpcError, ready, unavailableFrom } from "./sectionData";
 import type { SectionData } from "./types";
 
-export function useMultipliers(chainId: ChainId, family: FamilyDetection | undefined): SectionData<Multipliers> {
+export function useMultipliers(chainId: number, family: FamilyDetection | undefined): SectionData<Multipliers> {
   const deps = useCoreDeps();
   const client = deps.getReadClient(chainId);
   const query = useQuery({

@@ -8,7 +8,6 @@ import {
   type Address,
   type ArbitratedBinding,
   type ArbitratorDispute,
-  type ChainId,
   type DisputeEventResult,
   type DisputeLookup,
   type DisputeReads,
@@ -27,7 +26,7 @@ import { LOADING, fromOutcome, fromQuery, noRpcError, ready, unavailable, unavai
 import type { MetaEvidenceBudget, SectionData } from "./types";
 
 /** A `null` ID reads nothing. Never persisted: the binding must come from the chain, never from storage. */
-export function useDisputeLookup(chainId: ChainId, disputeId: bigint | null): SectionData<DisputeLookup> {
+export function useDisputeLookup(chainId: number, disputeId: bigint | null): SectionData<DisputeLookup> {
   const deps = useCoreDeps();
   const query = useQuery({
     queryKey: disputeId === null ? IDLE_KEY : queryKeys.lookup(chainId, disputeId),
@@ -37,7 +36,7 @@ export function useDisputeLookup(chainId: ChainId, disputeId: bigint | null): Se
   return disputeId === null ? LOADING : fromQuery(query, ready);
 }
 
-export function useFamily(chainId: ChainId, arbitrable: Address | undefined): SectionData<FamilyDetection> {
+export function useFamily(chainId: number, arbitrable: Address | undefined): SectionData<FamilyDetection> {
   const deps = useCoreDeps();
   const client = deps.getReadClient(chainId);
   const query = useQuery({
@@ -57,7 +56,7 @@ export function useFamily(chainId: ChainId, arbitrable: Address | undefined): Se
  * the Ongoing cards are served from the stored results. The case page passes the on-chain reader, whose `MetaEvidence`
  * event URI wins over the locator's when it is found.
  */
-export function useMetaEvidence(chainId: ChainId, binding: ArbitratedBinding | undefined, budget: MetaEvidenceBudget): SectionData<MetaEvidenceResult> {
+export function useMetaEvidence(chainId: number, binding: ArbitratedBinding | undefined, budget: MetaEvidenceBudget): SectionData<MetaEvidenceResult> {
   const deps = useCoreDeps();
   const client = useQueryClient();
   const target = binding === undefined ? undefined : { disputeId: binding.disputeId, arbitrable: binding.arbitrated };
@@ -74,7 +73,7 @@ export function useMetaEvidence(chainId: ChainId, binding: ArbitratedBinding | u
   return fromQuery(query, ready);
 }
 
-export function useDisputeEvent(chainId: ChainId, binding: ArbitratedBinding | undefined): SectionData<DisputeEventResult> {
+export function useDisputeEvent(chainId: number, binding: ArbitratedBinding | undefined): SectionData<DisputeEventResult> {
   const deps = useCoreDeps();
   const query = useQuery(disputeEventQuery(deps, chainId, binding));
   if (binding === undefined) return LOADING;
@@ -89,7 +88,7 @@ function missingEventMessage(event: Exclude<DisputeEventResult, { status: "found
     : "The dispute's Dispute event was not found, so its evidence group is unknown.";
 }
 
-export function useEvidence(chainId: ChainId, binding: ArbitratedBinding | undefined, disputeEvent: SectionData<DisputeEventResult>): SectionData<EvidenceList> {
+export function useEvidence(chainId: number, binding: ArbitratedBinding | undefined, disputeEvent: SectionData<DisputeEventResult>): SectionData<EvidenceList> {
   const deps = useCoreDeps();
   const client = deps.getReadClient(chainId);
   const chain = getChain(chainId);
@@ -130,7 +129,7 @@ export interface FoundDispute {
  * Dispute-event block (`null` when there is none).
  */
 export function useDisputeDetails(
-  chainId: ChainId,
+  chainId: number,
   found: FoundDispute | undefined,
   family: FamilyDetection | undefined,
   disputeEventBlock: bigint | null,

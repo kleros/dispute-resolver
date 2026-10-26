@@ -1,9 +1,9 @@
-import type { ChainConfig, ChainId } from "@dispute-resolver/core";
+import type { ChainConfig } from "@dispute-resolver/core";
 import { useMemo } from "react";
 import { useCaseRefresh, type CaseDispute, type CaseWriteContext, type RefreshScope } from "../../data";
 
 export interface AppealActions {
-  readonly pageChainId: ChainId;
+  readonly pageChainId: number;
   /** `null` while it loads or when it failed. */
   readonly context: CaseWriteContext | null;
   refresh(scope: RefreshScope): Promise<void>;

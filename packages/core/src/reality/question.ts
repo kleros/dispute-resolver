@@ -1,5 +1,5 @@
 import type { RealityProxyEntry } from "../registry/types";
-import type { ChainId } from "../types";
+
 import { readCachedQuestion, realityQuestionCacheKey, writeCachedQuestion } from "./cache";
 import { KNOWN_DISPUTE_QUESTIONS } from "./knownQuestions.generated";
 import { lookupRealityQuestion } from "./lookup";
@@ -13,7 +13,7 @@ interface SharedLookup {
 
 const inFlightLookups = new Map<string, SharedLookup>();
 
-function knownDisputeKey(arbitratorChainId: ChainId, entry: RealityProxyEntry, disputeId: bigint): string {
+function knownDisputeKey(arbitratorChainId: number, entry: RealityProxyEntry, disputeId: bigint): string {
   return `${String(arbitratorChainId)}:${entry.proxy}:${String(disputeId)}`;
 }
 
@@ -58,7 +58,7 @@ function waitForLookup(key: string, shared: SharedLookup, signal: AbortSignal | 
  */
 export async function fetchRealityQuestion(request: {
   readonly entry: RealityProxyEntry;
-  readonly arbitratorChainId: ChainId;
+  readonly arbitratorChainId: number;
   readonly disputeId: bigint;
   readonly clients: LookupReadClients;
   readonly cache?: RealityQuestionCache;

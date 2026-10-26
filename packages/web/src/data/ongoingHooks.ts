@@ -1,4 +1,4 @@
-import { listCourts, listOngoingDisputes, type ChainId, type Court, type MetaEvidenceResult, type OngoingDispute, type OngoingList } from "@dispute-resolver/core";
+import { listCourts, listOngoingDisputes, type Court, type MetaEvidenceResult, type OngoingDispute, type OngoingList } from "@dispute-resolver/core";
 import { useQuery } from "@tanstack/react-query";
 import { COURT_POLICY_FETCH_TIMEOUT_MS, PERSISTED_QUERY_GC_TIME_MS, STALE_TIME_MS } from "./constants";
 import { useCoreDeps } from "./context";
@@ -8,7 +8,7 @@ import { queryKeys } from "./queryKeys";
 import { fromOutcome, fromQuery, ready, unavailableFrom } from "./sectionData";
 import type { OngoingData, OngoingTitle, SectionData } from "./types";
 
-export function useCourts(chainId: ChainId): SectionData<readonly Court[]> {
+export function useCourts(chainId: number): SectionData<readonly Court[]> {
   const deps = useCoreDeps();
   const query = useQuery({
     queryKey: queryKeys.courts(chainId),
@@ -25,7 +25,7 @@ function fromOngoingList(list: OngoingList): SectionData<OngoingList> {
 }
 
 /** Starts once the courts have settled, with or without them, so a cold load scans once instead of twice. */
-function useOngoingList(chainId: ChainId): SectionData<OngoingList> {
+function useOngoingList(chainId: number): SectionData<OngoingList> {
   const deps = useCoreDeps();
   const courts = useCourts(chainId);
   const courtList = courts.status === "ready" ? courts.value : null;
@@ -51,12 +51,12 @@ function ongoingTitle(result: MetaEvidenceResult): SectionData<OngoingTitle> {
   }
 }
 
-export function useOngoingTitle(chainId: ChainId, dispute: OngoingDispute): SectionData<OngoingTitle> {
+export function useOngoingTitle(chainId: number, dispute: OngoingDispute): SectionData<OngoingTitle> {
   const deps = useCoreDeps();
   const query = useQuery(metaEvidenceQuery(deps, chainId, { disputeId: dispute.id, arbitrable: dispute.arbitrated }, "ongoing"));
   return fromQuery(query, ongoingTitle);
 }
 
-export function useOngoing(chainId: ChainId): OngoingData {
+export function useOngoing(chainId: number): OngoingData {
   return { list: useOngoingList(chainId), courts: useCourts(chainId) };
 }

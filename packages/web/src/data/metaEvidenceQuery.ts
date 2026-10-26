@@ -4,7 +4,6 @@ import {
   loadMetaEvidence,
   metaEvidenceCachePolicy,
   type Address,
-  type ChainId,
   type MetaEvidenceResult,
   type OnChainMetaEvidenceReader,
 } from "@dispute-resolver/core";
@@ -38,7 +37,7 @@ export function metaEvidenceStaleTime(result: MetaEvidenceResult | undefined): n
  * while the case page's observer overrides the stale time to 0 (`useMetaEvidence`). The Ongoing cards pass no `onChain`
  * reader, so they make no per-dispute log read.
  */
-export function metaEvidenceQuery(deps: CoreDeps, chainId: ChainId, target: MetaEvidenceTarget | undefined, budget: MetaEvidenceBudget, onChain?: OnChainMetaEvidenceReader) {
+export function metaEvidenceQuery(deps: CoreDeps, chainId: number, target: MetaEvidenceTarget | undefined, budget: MetaEvidenceBudget, onChain?: OnChainMetaEvidenceReader) {
   return queryOptions<MetaEvidenceResult>({
     queryKey: target === undefined ? IDLE_KEY : queryKeys.metaEvidence(chainId, target.disputeId, target.arbitrable),
     queryFn:

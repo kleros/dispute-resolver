@@ -1,4 +1,4 @@
-import type { ChainConfig, ChainId } from "@dispute-resolver/core";
+import type { ChainConfig } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { useLocation, useNavigate } from "react-router";
 import { SWITCHABLE_CHAINS, switchChainSegment } from "../../routing";
@@ -9,7 +9,7 @@ import { switchingLabel, useNetworkSwitch, useWalletChainId } from "../../wallet
 const BUTTON_CLASS = "h-auto max-w-full [&_p]:whitespace-normal";
 
 /** The header pill's other production chain; a testnet page, reached by URL alone, is offered Ethereum Mainnet. */
-export function otherSwitchableChain(pageChainId: ChainId): ChainConfig | undefined {
+export function otherSwitchableChain(pageChainId: number): ChainConfig | undefined {
   return SWITCHABLE_CHAINS.find((chain) => chain.id !== pageChainId);
 }
 

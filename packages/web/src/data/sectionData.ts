@@ -1,4 +1,4 @@
-import { describeError, type ChainId, type MetaEvidence, type MetaEvidenceResult, type Outcome, type Unavailable, type UnavailableCode } from "@dispute-resolver/core";
+import { describeError, type MetaEvidence, type MetaEvidenceResult, type Outcome, type Unavailable, type UnavailableCode } from "@dispute-resolver/core";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { CaseDispute, FoundLookup, SectionData } from "./types";
 
@@ -20,7 +20,7 @@ export function unavailableFrom(error: Unavailable): UnavailableSection {
 }
 
 /** A chain without a read RPC is a section state, never an exception; the code keeps the cause diagnosable. */
-export function noRpcError(chainId: ChainId): Unavailable {
+export function noRpcError(chainId: number): Unavailable {
   return { code: "no-rpc", message: `Reads on chain ${String(chainId)} are unavailable.` };
 }
 

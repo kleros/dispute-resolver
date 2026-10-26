@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SELECTORS } from "../abi";
 import { getRealityProxy, REGISTRY, registryKey, toRegistryAddress } from "../registry";
 import type { Registry } from "../registry/types";
-import type { ChainId, Hex } from "../types";
+import type { Hex } from "../types";
 import { RECORDED_CONTRACTS, recorded } from "./__fixtures__/recorded";
 import { classifySelectors, createFamilyCache, detectFamily, scanSelectors } from "./index";
 import { codeReads, fakeNodeClient, recordedNode, rpcError, slotWord, type FakeNode } from "../test/families/testHelpers";
@@ -21,13 +21,13 @@ const VIEW_ONLY_REALITY_PROXY = "0x594ec762b59978c97c82bc36ab493ed8b1f1f368";
 const LOCKLER_REALITY_PROXY = "0x1c2811550551d84030cd1b608e6fe3fd6fd5fc0d";
 const UNLISTED = toRegistryAddress("0x1111111111111111111111111111111111111111");
 
-function detectOn(chainId: ChainId, address: string, node: FakeNode = recordedNode(chainId), registry?: Registry) {
+function detectOn(chainId: number, address: string, node: FakeNode = recordedNode(chainId), registry?: Registry) {
   const { client, calls } = fakeNodeClient(node);
   const detection = detectFamily({ client, chainId, arbitrable: toRegistryAddress(address), ...(registry === undefined ? {} : { registry }) });
   return { detection, calls };
 }
 
-function detectRecorded(chainId: ChainId, address: string): Promise<FamilyDetection> {
+function detectRecorded(chainId: number, address: string): Promise<FamilyDetection> {
   return detectOn(chainId, address).detection;
 }
 
@@ -37,7 +37,7 @@ function probeSelectorsOf(code: Hex): Hex[] {
   return Object.values(SELECTORS).filter((selector) => scanned.has(selector));
 }
 
-function recordedProbeSelectors(chainId: ChainId, address: string): Hex[] {
+function recordedProbeSelectors(chainId: number, address: string): Hex[] {
   const contract = recorded(chainId, address);
   return probeSelectorsOf(contract.implementation?.code ?? contract.code);
 }

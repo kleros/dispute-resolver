@@ -12,7 +12,7 @@ import { classifySelectors } from "../../families";
 import type { FamilyDetection } from "../../families/types";
 import { toRegistryAddress } from "../../registry";
 import { callKey, rpcError, type RpcLog } from "../rpc/testHelpers";
-import type { Address, ChainId, Hex, ReadClient } from "../../types";
+import type { Address, Hex, ReadClient } from "../../types";
 
 export { recordedDetection } from "../families/testHelpers";
 export { callKey, rpcError, type RpcLog } from "../rpc/testHelpers";
@@ -169,7 +169,7 @@ export function rpcLog(input: {
  * A binding as `disputes.lookupDispute` creates it. The brand is only reachable through `disputes`, whose node reads
  * are not part of these unit tests, so the test double casts once here.
  */
-export function testBinding(fields: { readonly chainId?: ChainId; readonly disputeId: bigint; readonly arbitrated: string; readonly arbitrator?: string }): ArbitratedBinding {
+export function testBinding(fields: { readonly chainId?: number; readonly disputeId: bigint; readonly arbitrated: string; readonly arbitrator?: string }): ArbitratedBinding {
   const binding = {
     chainId: fields.chainId ?? 1,
     disputeId: fields.disputeId,
@@ -180,7 +180,7 @@ export function testBinding(fields: { readonly chainId?: ChainId; readonly dispu
 }
 
 /** A detection of `arbitrable` whose code carries exactly the probe selectors of `signatures`, classified by `families`. */
-export function detectionFor(arbitrable: string, signatures: readonly ProbeSignature[], chainId: ChainId = 1): FamilyDetection {
+export function detectionFor(arbitrable: string, signatures: readonly ProbeSignature[], chainId = 1): FamilyDetection {
   const selectors = signatures.map((signature) => SELECTORS[signature]);
   const { family, capabilities } = classifySelectors(new Set(selectors));
   return { chainId, arbitrable: toRegistryAddress(arbitrable), family, writeFamily: family, capabilities, realityProxy: null, implementation: null };

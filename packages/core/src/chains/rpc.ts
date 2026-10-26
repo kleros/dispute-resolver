@@ -1,5 +1,5 @@
 import { z } from "../zod";
-import type { ChainId, Env } from "../types";
+import type { Env } from "../types";
 import { getChain } from "./table";
 import type { ChainConfig, RpcUrlResolution } from "./types";
 
@@ -29,7 +29,7 @@ export function resolvePublicRpcUrl(chain: ChainConfig, env: Env): RpcUrlResolut
   return url === undefined ? resolveReadRpcUrl(chain, env) : { status: "configured", url };
 }
 
-export function publicRpcUrl(chainId: ChainId, env: Env): string | null {
+export function publicRpcUrl(chainId: number, env: Env): string | null {
   const chain = getChain(chainId);
   if (chain === undefined) return null;
   const resolution = resolvePublicRpcUrl(chain, env);

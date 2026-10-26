@@ -1,4 +1,4 @@
-import { parseChainId, type ChainId } from "@dispute-resolver/core";
+import { parseChainId } from "@dispute-resolver/core";
 import { useCallback, useEffect, useRef } from "react";
 import { useLocation, useNavigate, useParams, type Location } from "react-router";
 import { useNetworkSwitch, useWallet, type NetworkSwitch } from "../wallet";
@@ -13,7 +13,7 @@ type SwitchFailure = Extract<SwitchOutcome, { readonly ok: false }>;
 interface Latest {
   readonly connecting: boolean;
   readonly walletChainId: number | undefined;
-  readonly pageChainId: ChainId | undefined;
+  readonly pageChainId: number | undefined;
   readonly location: Location;
 }
 
@@ -93,7 +93,7 @@ export function useChainFollowing(): void {
   );
 
   const fallBack = useCallback(
-    (from: Location, walletChain: number, pageChain: ChainId, result: SwitchFailure) => {
+    (from: Location, walletChain: number, pageChain: number, result: SwitchFailure) => {
       moveToWalletChain(from, walletChain);
       notify({
         outcome: result.reason === "rejected" ? "declined" : "failed",

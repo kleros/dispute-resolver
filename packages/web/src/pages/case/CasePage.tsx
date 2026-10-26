@@ -1,4 +1,4 @@
-import { parseDisputeId, type ChainConfig, type ChainId } from "@dispute-resolver/core";
+import { parseDisputeId, type ChainConfig } from "@dispute-resolver/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { queryKeys, useCase, type CaseDispute } from "../../data";
@@ -45,7 +45,7 @@ type Placeholder =
 
 interface PlaceholderStateProps {
   readonly placeholder: Placeholder;
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly chainName: string;
 }
 

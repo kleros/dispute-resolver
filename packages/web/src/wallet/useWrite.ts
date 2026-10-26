@@ -1,4 +1,4 @@
-import type { ChainId, Hex, WriteBuild } from "@dispute-resolver/core";
+import type { Hex, WriteBuild } from "@dispute-resolver/core";
 import { useCallback, useMemo, useState } from "react";
 import { useConfig } from "wagmi";
 import { useCoreDeps } from "../data";
@@ -10,7 +10,7 @@ const IDLE: WriteStatus = { phase: "idle" };
 export function useWriteEnvironment(): WriteEnvironment {
   const config = useConfig();
   const deps = useCoreDeps();
-  return useMemo(() => ({ config, waitForReceipt: (chainId: ChainId, hash: Hex) => deps.waitForReceipt(chainId, hash) }), [config, deps]);
+  return useMemo(() => ({ config, waitForReceipt: (chainId: number, hash: Hex) => deps.waitForReceipt(chainId, hash) }), [config, deps]);
 }
 
 /**

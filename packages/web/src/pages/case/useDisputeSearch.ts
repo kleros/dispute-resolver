@@ -1,4 +1,4 @@
-import { parseDisputeId, type ChainId } from "@dispute-resolver/core";
+import { parseDisputeId } from "@dispute-resolver/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { paths } from "../../routing";
@@ -80,7 +80,7 @@ function reconcile(search: Search, urlId: string | undefined): Search | null {
  * change is a new search with its own entry. An empty field shows no dispute and leaves the URL as it is. A change of
  * the URL the search did not make (back, a header link) ends the pending search.
  */
-export function useDisputeSearch(chainId: ChainId, urlId: string | undefined): DisputeSearch {
+export function useDisputeSearch(chainId: number, urlId: string | undefined): DisputeSearch {
   const navigate = useNavigate();
   const [search, setSearch] = useState<Search | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);

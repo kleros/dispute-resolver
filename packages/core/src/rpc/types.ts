@@ -1,4 +1,4 @@
-import type { ChainId, ReadClient } from "../types";
+import type { ReadClient } from "../types";
 
 export interface ReadClientOptions {
   /** Per JSON-RPC request; default 20,000 ms. */
@@ -15,7 +15,7 @@ export interface BudgetedReadClientOptions extends ReadClientOptions {
   readonly budget?: RequestBudget;
 }
 
-export type ReadClientResolution = { readonly status: "ok"; readonly client: ReadClient } | { readonly status: "unconfigured"; readonly chainId: ChainId };
+export type ReadClientResolution = { readonly status: "ok"; readonly client: ReadClient } | { readonly status: "unconfigured"; readonly chainId: number };
 
 /** One per logical lookup (a Reality question, a meta-evidence load), passed down to every read it makes. */
 export interface RequestBudget {

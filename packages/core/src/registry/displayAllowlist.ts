@@ -1,11 +1,11 @@
-import type { Address, ChainId } from "../types";
+import type { Address } from "../types";
 
 /**
  * Keyed by the validated meta-evidence `arbitrableChainID`, else the arbitrator chain. It feeds the evidence-display
  * iframe flags and marks the arbitrables whose own failure text `describeError` may show; it plays no role in sandboxing
  * scripts or detecting families.
  */
-export const DISPLAY_ALLOWLIST: Readonly<Record<ChainId, readonly Address[]>> = {
+export const DISPLAY_ALLOWLIST: Readonly<Record<number, readonly Address[]>> = {
   1: [
     "0x126697b552b83f08c7ebebae8d13eae2871e4e1e",
     "0x250aa88c8f54f5e70b94214380342f0d53e42f6c",

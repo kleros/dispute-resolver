@@ -1,4 +1,4 @@
-import type { Address, ChainId, Env, Fetcher, ScriptKind, ScriptRunner, Unavailable } from "../types";
+import type { Address, Env, Fetcher, ScriptKind, ScriptRunner, Unavailable } from "../types";
 import type { RealityQuestionCache, RealityQuestionInfo } from "../reality/types";
 import type { Registry } from "../registry/types";
 import type { FallbackOutcomes, RulingOptions } from "../rulings/types";
@@ -9,7 +9,7 @@ import type { CanonicalIpfsPath } from "../uri/types";
  * means present but not an integer naming a configured chain: the display allowlist key falls back to the arbitrator
  * chain, while a script is not run.
  */
-export type ChainIdField = { readonly status: "absent" } | { readonly status: "valid"; readonly chainId: ChainId } | { readonly status: "invalid" };
+export type ChainIdField = { readonly status: "absent" } | { readonly status: "valid"; readonly chainId: number } | { readonly status: "invalid" };
 
 /**
  * Meta-evidence after the dynamic-script merge and validation: every rendered field is a string or a validated
@@ -123,7 +123,7 @@ export interface RealityNotice {
 
 /** All I/O is injected. */
 export interface MetaEvidenceContext {
-  readonly arbitratorChainId: ChainId;
+  readonly arbitratorChainId: number;
   readonly disputeId: bigint;
   /** From the arbitrator (`disputes(id).arbitrated`), never from meta-evidence. */
   readonly arbitrable: Address;

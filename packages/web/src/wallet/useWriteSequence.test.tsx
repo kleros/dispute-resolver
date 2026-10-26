@@ -1,4 +1,4 @@
-import type { ChainId, Hex } from "@dispute-resolver/core";
+import type { Hex } from "@dispute-resolver/core";
 import { act, renderHook } from "@testing-library/react";
 import { writeContract } from "@wagmi/core";
 import { UserRejectedRequestError } from "viem";
@@ -24,10 +24,10 @@ function hashAt(index: number): Hex {
   return hash;
 }
 
-const minedReceipt = (_chainId: ChainId, hash: Hex): Promise<WriteReceipt> => Promise.resolve(testReceipt(hash));
+const minedReceipt = (_chainId: number, hash: Hex): Promise<WriteReceipt> => Promise.resolve(testReceipt(hash));
 
 /** Connects a chain-1 wallet and renders the sequence over it. */
-async function renderSequence(waitForReceipt: (chainId: ChainId, hash: Hex) => Promise<WriteReceipt> = minedReceipt) {
+async function renderSequence(waitForReceipt: (chainId: number, hash: Hex) => Promise<WriteReceipt> = minedReceipt) {
   const wallet = await createConnectedTestWallet();
   return { ...renderHook(() => useWriteSequence(), { wrapper: walletWrapper(wallet, createTestDeps({ waitForReceipt })) }), wallet };
 }

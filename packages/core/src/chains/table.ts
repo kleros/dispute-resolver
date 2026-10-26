@@ -1,8 +1,8 @@
-import type { Address, ChainId } from "../types";
+import type { Address } from "../types";
 import type { ChainCapabilities, ChainConfig, ChainTable } from "./types";
 
 /** The target of chain-less redirects. */
-export const DEFAULT_CHAIN_ID: ChainId = 1;
+export const DEFAULT_CHAIN_ID = 1;
 
 const MAINNET_LOOKBACK = 1_000_000;
 /** Testnet RPCs cap `eth_getLogs` ranges. */
@@ -166,7 +166,7 @@ export const CHAINS: ChainTable = Object.freeze(
 );
 
 /** `undefined` for an unsupported chain; never throws. */
-export function getChain(chainId: ChainId): ChainConfig | undefined {
+export function getChain(chainId: number): ChainConfig | undefined {
   return Object.hasOwn(CHAINS, chainId) ? CHAINS[chainId] : undefined;
 }
 

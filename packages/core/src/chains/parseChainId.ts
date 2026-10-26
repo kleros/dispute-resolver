@@ -1,4 +1,3 @@
-import type { ChainId } from "../types";
 import { getChain } from "./table";
 
 const DECIMAL_NO_LEADING_ZERO = /^[1-9]\d*$/;
@@ -8,7 +7,7 @@ const DECIMAL_NO_LEADING_ZERO = /^[1-9]\d*$/;
  * or a string of ASCII digits without sign, whitespace or leading zero, and returns the ID only when the chain table
  * has it. Never throws.
  */
-export function parseChainId(input: unknown): ChainId | undefined {
+export function parseChainId(input: unknown): number | undefined {
   let candidate: number;
   if (typeof input === "number") {
     candidate = input;

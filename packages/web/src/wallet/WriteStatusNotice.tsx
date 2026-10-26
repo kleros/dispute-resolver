@@ -1,4 +1,3 @@
-import type { ChainId } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { ExternalLink } from "../safe-content";
 import { Notice } from "../ui";
@@ -9,7 +8,7 @@ import type { WriteStatusNoticeProps } from "./types";
 import { useWallet } from "./useWallet";
 import { writeMessage } from "./writeMessages";
 
-function SwitchOffer({ pageChainId, network }: { readonly pageChainId: ChainId; readonly network: NetworkSwitch }) {
+function SwitchOffer({ pageChainId, network }: { readonly pageChainId: number; readonly network: NetworkSwitch }) {
   const wallet = useWallet();
   if (wallet.status === "connected" && wallet.chainId === pageChainId) {
     return <p className="text-sm">Your wallet is now on {chainName(pageChainId)}. Try again.</p>;
@@ -37,7 +36,7 @@ function SwitchOffer({ pageChainId, network }: { readonly pageChainId: ChainId; 
   );
 }
 
-function ConnectOffer({ pageChainId }: { readonly pageChainId: ChainId | undefined }) {
+function ConnectOffer({ pageChainId }: { readonly pageChainId: number | undefined }) {
   const wallet = useWallet();
   if (wallet.status === "connected") return <p className="text-sm">Wallet connected. Try again.</p>;
   return <ConnectButton chainId={pageChainId} />;

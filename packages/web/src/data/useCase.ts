@@ -5,7 +5,6 @@ import {
   type Address,
   type AppealDecisionEvent,
   type BehaviorOverride,
-  type ChainId,
   type DisputeEvent,
   type DisputeEventResult,
   type DisputeReads,
@@ -65,7 +64,7 @@ function appealPlan(
  * Each section gets its own `SectionData`, so a failing read degrades one section. A new ID or chain starts from a
  * fresh lookup, and nothing of the previous dispute is shown. `account` is the connected wallet, for the withdraw panel.
  */
-export function useCase(chainId: ChainId, disputeId: bigint | null, account?: Address): CaseData {
+export function useCase(chainId: number, disputeId: bigint | null, account?: Address): CaseData {
   const deps = useCoreDeps();
   const lookup = useDisputeLookup(chainId, disputeId);
   const found = lookup.status === "ready" && lookup.value.status === "found" ? lookup.value : undefined;

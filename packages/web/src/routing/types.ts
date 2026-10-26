@@ -1,8 +1,8 @@
 import type { ComponentType, ReactNode } from "react";
-import type { ChainCapabilities, ChainConfig, ChainId } from "@dispute-resolver/core";
+import type { ChainCapabilities, ChainConfig } from "@dispute-resolver/core";
 
 export interface PageChain {
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly chain: ChainConfig;
   readonly capabilities: ChainCapabilities;
 }
@@ -20,11 +20,11 @@ export interface PathLocation {
 
 /** Validated chain IDs and numeric dispute IDs only. */
 export interface Paths {
-  chainRoot(chainId: ChainId): string;
-  ongoing(chainId: ChainId): string;
-  create(chainId: ChainId): string;
-  cases(chainId: ChainId): string;
-  case(chainId: ChainId, disputeId: bigint): string;
+  chainRoot(chainId: number): string;
+  ongoing(chainId: number): string;
+  create(chainId: number): string;
+  cases(chainId: number): string;
+  case(chainId: number, disputeId: bigint): string;
 }
 
 /** A switch to the page chain that the wallet declined or that failed, after which the app moved to the wallet's chain. */
@@ -33,7 +33,7 @@ export interface ChainNotice {
   /** The chain the app moved to; it may be unconfigured. */
   readonly walletChainId: number;
   /** The chain of the page the app left. */
-  readonly pageChainId: ChainId;
+  readonly pageChainId: number;
   /** The dispute of the case page the app left; `null` on any other page or when its ID does not parse. */
   readonly disputeId: bigint | null;
   /** The switch result's message. */

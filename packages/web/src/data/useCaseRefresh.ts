@@ -1,4 +1,3 @@
-import type { ChainId } from "@dispute-resolver/core";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { disputeKeyPrefix, queryKeys } from "./queryKeys";
@@ -21,7 +20,7 @@ const REFRESHED: Readonly<Record<RefreshScope, readonly RefreshedKind[]>> = {
  * For the write flow's `onMined`: call it only once the receipt is mined, never on submission. Resolves when the
  * refreshed sections have been read again.
  */
-export function useCaseRefresh(chainId: ChainId, disputeId: bigint): (scope: RefreshScope) => Promise<void> {
+export function useCaseRefresh(chainId: number, disputeId: bigint): (scope: RefreshScope) => Promise<void> {
   const client = useQueryClient();
   return useCallback(
     async (scope: RefreshScope) => {

@@ -1,10 +1,9 @@
-import type { ChainId } from "@dispute-resolver/core";
 import { Link } from "react-router";
 import { ACTION_LINK_CLASS, PageMessage } from "../ui";
 import { paths } from "./paths";
 
 interface DisputeNotFoundScreenProps {
-  readonly chainId: ChainId;
+  readonly chainId: number;
   /** The raw `:id` segment, shown as text and never used to build a URL. */
   readonly id: string;
 }

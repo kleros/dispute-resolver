@@ -1,4 +1,4 @@
-import type { Address, Outcome, Period, ReadClient, Unavailable, UnixSeconds } from "../types";
+import type { Address, Outcome, Period, ReadClient, Unavailable } from "../types";
 import type { AppealInfo, ArbitratedBinding, LocalIdResolution } from "../disputes/types";
 import type { FamilyDetection } from "../families/types";
 import type { BehaviorOverride } from "../registry/types";
@@ -18,7 +18,7 @@ export interface Multipliers {
 
 export interface SideRequirement {
   readonly total: bigint;
-  readonly deadline: UnixSeconds;
+  readonly deadline: number;
 }
 
 export interface AppealAmounts {
@@ -74,7 +74,7 @@ export interface CrowdfundingCard {
   readonly remaining: bigint;
   /** `contributed × 10000 / required / 100`, two decimals, 0 when `required` is 0. */
   readonly fundedPercent: number;
-  readonly deadline: UnixSeconds;
+  readonly deadline: number;
 }
 
 /** The free-input card of variable-type questions; funded at the loser amount and deadline. */
@@ -82,14 +82,14 @@ export interface FreeInputCard {
   readonly type: VariableQuestionType;
   readonly precision: number | undefined;
   readonly required: bigint;
-  readonly deadline: UnixSeconds;
+  readonly deadline: number;
 }
 
 /** Multiple-select above four options: the user ticks options and funds the resulting combination at the loser amount. */
 export interface MultipleSelectComposer {
   readonly titles: readonly string[];
   readonly required: bigint;
-  readonly deadline: UnixSeconds;
+  readonly deadline: number;
 }
 
 /** One withdrawable entry; the action withdraws them in sequence, one transaction each. */
@@ -106,7 +106,7 @@ export type WithdrawState =
 export type AppealPanel =
   | { readonly kind: "hidden" }
   | { readonly kind: "handled-by-arbitrable" }
-  | { readonly kind: "escrow-appeal"; readonly appealCost: bigint; readonly deadline: UnixSeconds }
+  | { readonly kind: "escrow-appeal"; readonly appealCost: bigint; readonly deadline: number }
   | { readonly kind: "escrow-ended" }
   | {
       readonly kind: "crowdfunding";

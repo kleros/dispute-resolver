@@ -1,6 +1,6 @@
 import { z } from "../zod";
 import type { RealityProxyEntry } from "../registry/types";
-import type { ChainId } from "../types";
+
 import type { KnownDisputeQuestion, RealityQuestion, RealityQuestionCache } from "./types";
 
 const CACHE_PREFIX = "@@kleros/court/reality-question/v1";
@@ -9,7 +9,7 @@ export const QUESTION_ID = /^0x[0-9a-fA-F]{64}$/;
 export const DECIMAL_STRING = /^\d+$/;
 
 /** Keep this format: entries already stored in users' browsers are read back under it. */
-export function realityQuestionCacheKey(arbitratorChainId: ChainId, entry: RealityProxyEntry, disputeId: bigint): string {
+export function realityQuestionCacheKey(arbitratorChainId: number, entry: RealityProxyEntry, disputeId: bigint): string {
   return `${CACHE_PREFIX}/${String(arbitratorChainId)}/${entry.proxy}/${String(disputeId)}`;
 }
 

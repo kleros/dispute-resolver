@@ -1,13 +1,13 @@
 import { isUint256 } from "../bigint";
 import { getChain } from "../chains";
 import { describeError, isContractFailure } from "../rpc";
-import type { Address, ChainId } from "../types";
+import type { Address } from "../types";
 import { NETWORK_DATA_UNAVAILABLE } from "../outcome";
 import { readDisputeStruct, toArbitratorDispute } from "./struct";
 import type { ArbitratedBinding, ArbitratorDispute, DisputeLookup, DisputeReadContext } from "./types";
 
 /** The brand cannot be named outside its type declaration, so the object is asserted to the branded type here and nowhere else. */
-function bindDispute(chainId: ChainId, arbitrator: Address, dispute: ArbitratorDispute): ArbitratedBinding {
+function bindDispute(chainId: number, arbitrator: Address, dispute: ArbitratorDispute): ArbitratedBinding {
   return { chainId, disputeId: dispute.id, arbitrator, arbitrated: dispute.arbitrated } as ArbitratedBinding;
 }
 

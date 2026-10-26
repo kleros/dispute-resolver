@@ -1,4 +1,4 @@
-import type { ChainId, MetaEvidence } from "@dispute-resolver/core";
+import type { MetaEvidence } from "@dispute-resolver/core";
 import { useId } from "react";
 import { metaEvidenceSection, type CaseSectionProps } from "../../data";
 import { courtCaseUrl, ExternalLink } from "../../safe-content";
@@ -46,7 +46,7 @@ function AnswerEntry({ option }: { readonly option: VotingOption }) {
 interface VotingOptionsListProps {
   readonly options: readonly VotingOption[];
   readonly disputeId: bigint;
-  readonly chainId: ChainId;
+  readonly chainId: number;
 }
 
 /** The list's empty list-style-type replaces the preflight's `none`, for which WebKit drops the list semantics. */
@@ -72,7 +72,7 @@ function VotingOptionsList({ options, disputeId, chainId }: VotingOptionsListPro
 interface QuestionContentProps {
   readonly metaEvidence: MetaEvidence;
   readonly disputeId: bigint;
-  readonly chainId: ChainId;
+  readonly chainId: number;
 }
 
 function QuestionContent({ metaEvidence, disputeId, chainId }: QuestionContentProps) {

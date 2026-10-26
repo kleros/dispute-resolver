@@ -1,4 +1,4 @@
-import type { Period, UnixSeconds } from "../types";
+import type { Period } from "../types";
 import type { Court, Timeline, TimelineColumn, TimelineColumnName } from "./types";
 
 const COLUMNS: readonly { readonly name: TimelineColumnName; readonly period: Period }[] = [
@@ -13,7 +13,7 @@ function periodDuration(court: Court, period: Period): bigint | null {
   return period === 4 ? null : court.timesPerPeriod[period];
 }
 
-function column(name: TimelineColumnName, period: Period, current: Period, lastPeriodChange: UnixSeconds, court: Court): TimelineColumn {
+function column(name: TimelineColumnName, period: Period, current: Period, lastPeriodChange: number, court: Court): TimelineColumn {
   if (period < current) return { name, state: "concluded" };
   const duration = periodDuration(court, period);
   if (period === current) return { name, state: "current", deadline: duration === null ? null : lastPeriodChange + Number(duration) };
@@ -21,7 +21,7 @@ function column(name: TimelineColumnName, period: Period, current: Period, lastP
 }
 
 /** Commit appears for hidden-vote courts, and for a dispute currently in commit whatever its court says now. */
-export function deriveTimeline(input: { readonly period: Period; readonly lastPeriodChange: UnixSeconds; readonly court: Court }): Timeline {
+export function deriveTimeline(input: { readonly period: Period; readonly lastPeriodChange: number; readonly court: Court }): Timeline {
   const { period, lastPeriodChange, court } = input;
   const passesCommit = court.hiddenVotes || period === 1;
   return {

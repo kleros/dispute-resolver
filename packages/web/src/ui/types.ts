@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Address, ChainConfig, Period, Unavailable, UnixSeconds } from "@dispute-resolver/core";
+import type { Address, ChainConfig, Period, Unavailable } from "@dispute-resolver/core";
 
 export type NoticeVariant = "success" | "warning" | "error" | "info";
 
@@ -59,7 +59,7 @@ export interface PageMessageProps {
 
 /** Time left until `target` as `DDd HHh MMm`, on one shared 30 s clock. */
 export interface CountdownProps {
-  readonly target: UnixSeconds;
+  readonly target: number;
   readonly className?: string;
 }
 

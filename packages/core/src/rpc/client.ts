@@ -1,7 +1,7 @@
 import { createPublicClient, custom, type Transport } from "viem";
 import { getChain, resolveReadRpcUrl } from "../chains";
 import type { ChainConfig } from "../chains/types";
-import type { ChainId, Env, GetReadClient, ReadClient } from "../types";
+import type { Env, GetReadClient, ReadClient } from "../types";
 import { causeChain, isLookupLimitError } from "./errors";
 import { isRangeLimitError } from "./rangeLimit";
 import { redactingHttp, rethrowMapped, type JsonRpcRequest } from "./redactingHttp";
@@ -80,7 +80,7 @@ export function createReadClient(chain: ChainConfig, env: Env, options?: Budgete
 
 /** One client per chain, built on first use. A budget in `options` is spent by every client, so shared callers pass none. */
 export function createReadClients(env: Env, options?: BudgetedReadClientOptions): GetReadClient {
-  const clients = new Map<ChainId, ReadClient | undefined>();
+  const clients = new Map<number, ReadClient | undefined>();
   return (chainId) => {
     if (clients.has(chainId)) return clients.get(chainId);
     const chain = getChain(chainId);

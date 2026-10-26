@@ -1,4 +1,4 @@
-import type { ChainId, ReadClient } from "@dispute-resolver/core";
+import type { ReadClient } from "@dispute-resolver/core";
 import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { CHAIN_CLOCK_CHECK_MS, CLOCK_STEP_TOLERANCE_MS, STALE_TIME_MS } from "./constants";
@@ -40,7 +40,7 @@ function browserClockChangedSince(sample: ChainTime): boolean {
  * time. A change of the browser clock outdates the offset: it is dropped and read again at once, the browser clock
  * standing in until a read succeeds, that one or a later refresh.
  */
-export function useChainClockOffset(chainId: ChainId | null): number {
+export function useChainClockOffset(chainId: number | null): number {
   const deps = useCoreDeps();
   const queryClient = useQueryClient();
   const client = chainId === null ? undefined : deps.getReadClient(chainId);

@@ -1,4 +1,3 @@
-import type { ChainId } from "@dispute-resolver/core";
 import { useId } from "react";
 import { Link } from "react-router";
 import { ACTION_LINK_CLASS } from "../ui";
@@ -7,7 +6,7 @@ import { paths } from "./paths";
 
 interface NotFoundScreenProps {
   /** The resolved chain: the screen also renders outside the chain layout (`//foo`), where no page chain exists. */
-  readonly chainId: ChainId;
+  readonly chainId: number;
 }
 
 /** The 404 screen: the Acropolis illustration, "404", "Page not found" and a link to the chain's Ongoing Disputes. */

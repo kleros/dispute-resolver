@@ -1,4 +1,4 @@
-import { buildEvidenceDocument, buildSubmitEvidenceCall, normalizeIpfsPath, type ChainId } from "@dispute-resolver/core";
+import { buildEvidenceDocument, buildSubmitEvidenceCall, normalizeIpfsPath } from "@dispute-resolver/core";
 import { useCallback, useRef, useState } from "react";
 import { useAtlasUpload, type UploadFailure, type UploadedFile } from "../../atlas";
 import type { NoticeVariant } from "../../ui";
@@ -57,7 +57,7 @@ function errorText(error: unknown): string {
  * The chain guard runs first, so nothing is uploaded or signed for a wallet on another chain. `submitEvidence` is built
  * on the arbitrated contract read from the arbitrator, never from meta-evidence.
  */
-export function useEvidenceSubmission(context: CaseWriteContext, pageChainId: ChainId, disputeId: bigint): EvidenceSubmission {
+export function useEvidenceSubmission(context: CaseWriteContext, pageChainId: number, disputeId: bigint): EvidenceSubmission {
   const write = useWrite();
   const access = useWriteAccess(pageChainId);
   const uploader = useAtlasUpload();

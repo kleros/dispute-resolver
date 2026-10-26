@@ -1,4 +1,3 @@
-import type { ChainId } from "../types";
 import type { CidPath } from "../uri/types";
 
 /**
@@ -75,7 +74,7 @@ const SEPOLIA: readonly CidPath[] = [
 ];
 
 /** Keyed by arbitrator chain. A chain without a list rejects every script. */
-export const DYNAMIC_SCRIPT_ALLOWLIST: Readonly<Record<ChainId, readonly CidPath[]>> = {
+export const DYNAMIC_SCRIPT_ALLOWLIST: Readonly<Record<number, readonly CidPath[]>> = {
   1: MAINNET,
   100: GNOSIS,
   11155111: SEPOLIA,

@@ -1,16 +1,16 @@
-import { DEFAULT_CHAIN_ID, chainCapabilities, getChain, parseChainId, type ChainId } from "@dispute-resolver/core";
+import { DEFAULT_CHAIN_ID, chainCapabilities, getChain, parseChainId } from "@dispute-resolver/core";
 import { createContext, useContext, useMemo } from "react";
 import { useParams } from "react-router";
 import { useWalletChainId } from "../wallet";
 import { CHAIN_PARAM } from "./paths";
 import type { PageChain, ResolvedChain } from "./types";
 
-function toPageChain(chainId: ChainId): PageChain | undefined {
+function toPageChain(chainId: number): PageChain | undefined {
   const chain = getChain(chainId);
   return chain === undefined ? undefined : { chainId: chain.id, chain, capabilities: chainCapabilities(chain) };
 }
 
-function requirePageChain(chainId: ChainId): PageChain {
+function requirePageChain(chainId: number): PageChain {
   const page = toPageChain(chainId);
   if (page === undefined) throw new Error(`Chain ${String(chainId)} is not configured.`);
   return page;

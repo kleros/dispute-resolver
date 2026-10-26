@@ -1,4 +1,4 @@
-import type { ChainId, WriteRefusal } from "@dispute-resolver/core";
+import type { WriteRefusal } from "@dispute-resolver/core";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -82,7 +82,7 @@ describe("WriteStatusNotice", () => {
     expect(screen.getByRole("button", { name: "Switch to Ethereum Mainnet" })).toBeInTheDocument();
   });
 
-  async function walletWithSwitchWaiting(target: ChainId = 1) {
+  async function walletWithSwitchWaiting(target = 1) {
     const wallet = await createConnectedTestWallet({ chainId: 100 });
     holdChainSwitches(wallet);
     void switchWalletChain(wallet.config, target);

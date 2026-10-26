@@ -1,4 +1,4 @@
-import type { ChainId, Unavailable } from "@dispute-resolver/core";
+import type { Unavailable } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { Link } from "react-router";
 import { paths } from "../../routing";
@@ -10,7 +10,7 @@ function notFoundTitle(id: string): string {
   return `Dispute with ID ${id} does not exist on this network.`;
 }
 
-function OngoingLink({ chainId }: { readonly chainId: ChainId }) {
+function OngoingLink({ chainId }: { readonly chainId: number }) {
   return (
     <Link to={paths.ongoing(chainId)} className={ACTION_LINK_CLASS}>
       View Ongoing Disputes
@@ -22,12 +22,12 @@ export function NoDisputeMessage() {
   return <PageMessage compact title="Find a dispute" body="Enter a dispute ID above to see its summary, timeline, evidence and appeal." />;
 }
 
-export function NotFoundMessage({ chainId, id }: { readonly chainId: ChainId; readonly id: string }) {
+export function NotFoundMessage({ chainId, id }: { readonly chainId: number; readonly id: string }) {
   return <PageMessage compact title={notFoundTitle(id)} action={<OngoingLink chainId={chainId} />} />;
 }
 
 interface NoArbitratorMessageProps {
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly chainName: string;
   readonly id: string;
 }

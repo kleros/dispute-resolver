@@ -1,8 +1,8 @@
-import { publicRpcUrl, type ChainId, type Env } from "@dispute-resolver/core";
+import { publicRpcUrl, type Env } from "@dispute-resolver/core";
 import type { RpcRedirectRule } from "../types";
 import { isHttpsUrl } from "./httpsUrl";
 
-const INFURA_NETWORKS: readonly (readonly [network: string, chainId: ChainId])[] = [
+const INFURA_NETWORKS: readonly (readonly [network: string, chainId: number])[] = [
   ["mainnet", 1],
   ["sepolia", 11155111],
   ["polygon-mainnet", 137],

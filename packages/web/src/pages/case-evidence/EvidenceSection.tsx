@@ -1,4 +1,4 @@
-import type { ChainId, Unavailable } from "@dispute-resolver/core";
+import type { Unavailable } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
@@ -18,7 +18,7 @@ const BUTTON_CLASS = "h-auto max-w-full self-start [&_p]:whitespace-normal";
 
 interface SubmitEvidenceProps {
   readonly context: CaseWriteContext;
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly disputeId: bigint;
 }
 

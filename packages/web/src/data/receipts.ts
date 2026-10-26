@@ -1,4 +1,4 @@
-import { getChain, redactingHttp, resolveReadRpcUrl, type ChainId, type Env, type Hex } from "@dispute-resolver/core";
+import { getChain, redactingHttp, resolveReadRpcUrl, type Env, type Hex } from "@dispute-resolver/core";
 import { createPublicClient, type PublicClient } from "viem";
 import { noRpcError } from "./sectionData";
 import type { WriteReceipt } from "./types";
@@ -9,10 +9,10 @@ type ReceiptClient = Pick<PublicClient, "waitForTransactionReceipt">;
  * Receipts are polled through the configured read RPC of the chain, never through wagmi, whose transports AppKit wraps
  * in a fallback to Reown's RPC. A chain without a configured RPC rejects, and the write flow reports it.
  */
-export function createReceiptWaiter(env: Env): (chainId: ChainId, hash: Hex) => Promise<WriteReceipt> {
-  const clients = new Map<ChainId, ReceiptClient>();
+export function createReceiptWaiter(env: Env): (chainId: number, hash: Hex) => Promise<WriteReceipt> {
+  const clients = new Map<number, ReceiptClient>();
 
-  const clientFor = (chainId: ChainId): ReceiptClient => {
+  const clientFor = (chainId: number): ReceiptClient => {
     const existing = clients.get(chainId);
     if (existing !== undefined) return existing;
     const chain = getChain(chainId);

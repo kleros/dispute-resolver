@@ -1,4 +1,4 @@
-import { DEFAULT_CHAIN_ID, parseChainId, parseDisputeId, type ChainId } from "@dispute-resolver/core";
+import { DEFAULT_CHAIN_ID, parseChainId, parseDisputeId } from "@dispute-resolver/core";
 import { useContext } from "react";
 import { Navigate, useLocation, useParams } from "react-router";
 import { useWallet } from "../wallet";
@@ -10,7 +10,7 @@ import { paths, replaceChainSegment } from "./paths";
  * `null` while wagmi is still reconnecting a returning wallet, so that user lands on their wallet's chain instead of
  * being moved there afterwards.
  */
-function useDefaultChain(): ChainId | null {
+function useDefaultChain(): number | null {
   const wallet = useWallet();
   if (wallet.status === "connecting") return null;
   if (wallet.status === "connected") return parseChainId(wallet.chainId) ?? DEFAULT_CHAIN_ID;

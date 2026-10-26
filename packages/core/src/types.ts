@@ -6,9 +6,6 @@
  */
 import type { Abi, ContractFunctionArgs, ContractFunctionName, PublicClient } from "viem";
 
-/** An EVM chain ID. Only integers that name a configured chain are accepted from untrusted input (`chains`). */
-export type ChainId = number;
-
 /** An EVM address, always lowercase inside core. */
 export type Address = `0x${Lowercase<string>}`;
 
@@ -16,10 +13,7 @@ export type Address = `0x${Lowercase<string>}`;
 export type Hex = `0x${string}`;
 
 /** `"<arbitrator chain ID>:<lowercase arbitrable>"`, the key of every registry table. */
-export type RegistryKey = `${ChainId}:${Address}`;
-
-/** Unix time in seconds. */
-export type UnixSeconds = number;
+export type RegistryKey = `${number}:${Address}`;
 
 /**
  * The deployment environment, passed in by the caller. Core never reads `process.env` or `import.meta.env`.
@@ -36,7 +30,7 @@ export type Env = Readonly<Record<string, string | undefined>>;
 export type ReadClient = Pick<PublicClient, "readContract" | "getLogs" | "getCode" | "getStorageAt" | "getBlockNumber" | "getBlock" | "request">;
 
 /** Returns the read client of a chain, or `undefined` when the chain has no RPC configured. */
-export type GetReadClient = (chainId: ChainId) => ReadClient | undefined;
+export type GetReadClient = (chainId: number) => ReadClient | undefined;
 
 /** Options core passes to an injected fetch. */
 export interface FetchInit {
@@ -62,8 +56,8 @@ export type Fetcher = (url: string, init?: FetchInit) => Promise<FetchResponse>;
 export interface ScriptParameters {
   readonly disputeID: string;
   readonly arbitrableContractAddress: Address;
-  readonly arbitratorChainID: ChainId;
-  readonly arbitrableChainID: ChainId;
+  readonly arbitratorChainID: number;
+  readonly arbitrableChainID: number;
   readonly arbitratorJsonRpcUrl: string | null;
   readonly arbitrableJsonRpcUrl: string | null;
 }
@@ -126,7 +120,7 @@ type WriteFunctionName<TAbi extends Abi> = ContractFunctionName<TAbi, "payable" 
  */
 export interface WriteCall<TAbi extends Abi = Abi, TFunctionName extends WriteFunctionName<TAbi> = WriteFunctionName<TAbi>> {
   readonly kind: WriteKind;
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly address: Address;
   readonly abi: TAbi;
   readonly functionName: TFunctionName;

@@ -1,7 +1,7 @@
-import type { Address, ChainId } from "../types";
+import type { Address } from "../types";
 
 export interface ChainConfig {
-  readonly id: ChainId;
+  readonly id: number;
   readonly name: string;
   readonly currency: string;
   readonly isTestnet: boolean;
@@ -20,10 +20,10 @@ export interface ChainConfig {
   readonly explorerBaseUrl?: string;
 }
 
-export type ChainTable = Readonly<Record<ChainId, ChainConfig>>;
+export type ChainTable = Readonly<Record<number, ChainConfig>>;
 
 /** An unset variable means "no RPC configured", never a fallback to another source. */
-export type RpcUrlResolution = { readonly status: "configured"; readonly url: string } | { readonly status: "unconfigured"; readonly chainId: ChainId };
+export type RpcUrlResolution = { readonly status: "configured"; readonly url: string } | { readonly status: "unconfigured"; readonly chainId: number };
 
 export interface ChainCapabilities {
   readonly hasArbitrator: boolean;

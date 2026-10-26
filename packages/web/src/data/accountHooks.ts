@@ -1,4 +1,4 @@
-import { getChain, readArbitrationCost, type Address, type ChainId, type Hex } from "@dispute-resolver/core";
+import { getChain, readArbitrationCost, type Address, type Hex } from "@dispute-resolver/core";
 import { skipToken, useQuery } from "@tanstack/react-query";
 import { STALE_TIME_MS } from "./constants";
 import { useCoreDeps } from "./context";
@@ -6,7 +6,7 @@ import { IDLE_KEY, queryKeys } from "./queryKeys";
 import { LOADING, fromOutcome, fromQuery, noRpcError, ready, unavailable, unavailableFrom } from "./sectionData";
 import type { SectionData } from "./types";
 
-export function useArbitrationCost(chainId: ChainId, extraData: Hex | undefined): SectionData<bigint> {
+export function useArbitrationCost(chainId: number, extraData: Hex | undefined): SectionData<bigint> {
   const deps = useCoreDeps();
   const chain = getChain(chainId);
   const client = deps.getReadClient(chainId);
@@ -29,7 +29,7 @@ export function isContractCode(code: Hex | undefined): boolean {
 }
 
 /** Without an account, an RPC or a successful read the answer is `false`, so a failed read hides the warning. */
-export function useIsContractAccount(chainId: ChainId, account: Address | undefined): SectionData<boolean> {
+export function useIsContractAccount(chainId: number, account: Address | undefined): SectionData<boolean> {
   const deps = useCoreDeps();
   const client = deps.getReadClient(chainId);
   const query = useQuery({

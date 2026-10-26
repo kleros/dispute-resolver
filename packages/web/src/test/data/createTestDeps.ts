@@ -2,7 +2,6 @@ import {
   REGISTRY,
   createFamilyCache,
   resolveGateway,
-  type ChainId,
   type FetchResponse,
   type Fetcher,
   type RealityQuestion,
@@ -16,7 +15,7 @@ import type { CoreDeps } from "../../data";
 
 /** One JSON-RPC request a test client received, with the chain it was sent to. */
 export interface RpcRequest {
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly method: string;
   readonly params: unknown;
 }
@@ -31,7 +30,7 @@ export interface TestDepsOptions extends Partial<CoreDeps> {
   /** JSON-RPC answers of every chain's read client; without it every RPC request fails. */
   readonly rpc?: RpcHandler;
   /** Chains whose read client is missing, as with an unset RPC variable. */
-  readonly unconfiguredChains?: readonly ChainId[];
+  readonly unconfiguredChains?: readonly number[];
   /** HTTP answers by exact URL for the stub fetcher; any other URL answers 404. */
   readonly responses?: Readonly<Record<string, FetchStub>>;
   /** The fake script runner's answer; without it every run fails with `runner-error`. */
@@ -67,8 +66,8 @@ const failedRun: ScriptResult = { status: "failed", reason: "runner-error", mess
  */
 export function createTestDeps(options: TestDepsOptions = {}): CoreDeps {
   const { rpc, unconfiguredChains = [], responses = {}, runScript, ...overrides } = options;
-  const clients = new Map<ChainId, ReadClient>();
-  const getReadClient = (chainId: ChainId): ReadClient | undefined => {
+  const clients = new Map<number, ReadClient>();
+  const getReadClient = (chainId: number): ReadClient | undefined => {
     if (unconfiguredChains.includes(chainId)) return undefined;
     const existing = clients.get(chainId);
     if (existing !== undefined) return existing;

@@ -5,7 +5,7 @@ import type { RealityQuestionInfo } from "../reality/types";
 import { REGISTRY, getRealityProxy, isScriptAllowed } from "../registry";
 import type { RealityProxyEntry, Registry } from "../registry/types";
 import { describeError, isLookupLimitError } from "../rpc";
-import type { ChainId, Env, ScriptKind, ScriptParameters, UnavailableCode } from "../types";
+import type { Env, ScriptKind, ScriptParameters, UnavailableCode } from "../types";
 import { gatewayUrl, normalizeIpfsPath, resolveGateway } from "../uri";
 import type { CanonicalIpfsPath, GatewayOrigin } from "../uri/types";
 import { type Deadline, Interrupted, pause, startDeadline, untilAborted } from "./deadline";
@@ -112,7 +112,7 @@ interface Merged {
 
 type Step<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly result: MetaEvidenceResult };
 
-export function metaEvidenceLocatorUrl(env: Env, chainId: ChainId, disputeId: bigint): string | null {
+export function metaEvidenceLocatorUrl(env: Env, chainId: number, disputeId: bigint): string | null {
   const base = env.REACT_APP_METAEVIDENCE_URL?.trim() ?? "";
   return base === "" ? null : `${base}?chainId=${String(chainId)}&disputeId=${disputeId.toString()}`;
 }

@@ -1,4 +1,4 @@
-import { getChain, parseChainId, parseDisputeId, type ChainId } from "@dispute-resolver/core";
+import { getChain, parseChainId, parseDisputeId } from "@dispute-resolver/core";
 import { matchRoutes, type RouteObject } from "react-router";
 import { maxUint256 } from "viem";
 import type { PathLocation, Paths } from "./types";
@@ -17,7 +17,7 @@ export function isChainNumber(chainId: number): boolean {
 }
 
 /** Anything but a configured chain is a programming error, never a URL. */
-function chainSegment(chainId: ChainId): string {
+function chainSegment(chainId: number): string {
   if (!isChainNumber(chainId) || getChain(chainId) === undefined) throw new RangeError("A path needs a configured chain ID.");
   return String(chainId);
 }
@@ -28,11 +28,11 @@ function disputeSegment(disputeId: bigint): string {
 }
 
 export const paths: Paths = Object.freeze({
-  chainRoot: (chainId: ChainId) => `/${chainSegment(chainId)}`,
-  ongoing: (chainId: ChainId) => `/${chainSegment(chainId)}/ongoing`,
-  create: (chainId: ChainId) => `/${chainSegment(chainId)}/create`,
-  cases: (chainId: ChainId) => `/${chainSegment(chainId)}/cases`,
-  case: (chainId: ChainId, disputeId: bigint) => `/${chainSegment(chainId)}/cases/${disputeSegment(disputeId)}`,
+  chainRoot: (chainId: number) => `/${chainSegment(chainId)}`,
+  ongoing: (chainId: number) => `/${chainSegment(chainId)}/ongoing`,
+  create: (chainId: number) => `/${chainSegment(chainId)}/create`,
+  cases: (chainId: number) => `/${chainSegment(chainId)}/cases`,
+  case: (chainId: number, disputeId: bigint) => `/${chainSegment(chainId)}/cases/${disputeSegment(disputeId)}`,
 });
 
 /** `chainId` is the wallet's chain, so it may be unconfigured: the result then shows the unsupported-network screen. */
@@ -55,7 +55,7 @@ function withChainSegment(pathname: string, segment: string): string {
   return parts.join("/");
 }
 
-export function switchChainSegment(pathname: string, chainId: ChainId): string {
+export function switchChainSegment(pathname: string, chainId: number): string {
   return withChainSegment(pathname, chainSegment(chainId));
 }
 

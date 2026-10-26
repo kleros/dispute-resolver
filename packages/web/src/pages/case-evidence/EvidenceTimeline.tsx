@@ -1,4 +1,4 @@
-import { compareBigint, type AppealDecisionEvent, type ChainConfig, type EvidenceItem, type EvidenceList, type UnixSeconds } from "@dispute-resolver/core";
+import { compareBigint, type AppealDecisionEvent, type ChainConfig, type EvidenceItem, type EvidenceList } from "@dispute-resolver/core";
 import { Attachment } from "../../safe-content";
 import { AddressText, EmptyState, Identicon, Notice } from "../../ui";
 import { hiddenEvidenceText } from "./hiddenEvidence";
@@ -6,7 +6,7 @@ import { hiddenEvidenceText } from "./hiddenEvidence";
 interface EvidenceTimelineProps {
   readonly list: EvidenceList;
   /** The Dispute event's time ("Dispute Raised"), `null` when unknown. */
-  readonly raisedAt: UnixSeconds | null;
+  readonly raisedAt: number | null;
   /** Each shown as an "Appealed" marker; empty while they load or when they failed. */
   readonly appealDecisions: readonly AppealDecisionEvent[];
   readonly chain: ChainConfig;
@@ -30,13 +30,13 @@ function timelineEntries(items: readonly EvidenceItem[], decisions: readonly App
 
 const DOT_CLASS = "absolute -left-[5.5px] size-2.5 rounded-full ring-4 ring-klerosUIComponentsWhiteBackground";
 
-function Timestamp({ value }: { readonly value: UnixSeconds }) {
+function Timestamp({ value }: { readonly value: number }) {
   const date = new Date(value * 1000);
   if (Number.isNaN(date.getTime())) return <span>Unknown time</span>;
   return <time dateTime={date.toISOString()}>{date.toUTCString()}</time>;
 }
 
-function TimelineEvent({ label, time }: { readonly label: string; readonly time: UnixSeconds | null }) {
+function TimelineEvent({ label, time }: { readonly label: string; readonly time: number | null }) {
   return (
     <li className="relative pl-6">
       <span aria-hidden="true" className={`${DOT_CLASS} top-1.5 bg-klerosUIComponentsSecondaryPurple`} />

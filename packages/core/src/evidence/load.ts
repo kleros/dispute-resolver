@@ -1,5 +1,5 @@
 import { describeError } from "../rpc";
-import type { Fetcher, Outcome, ReadClient, UnixSeconds } from "../types";
+import type { Fetcher, Outcome, ReadClient } from "../types";
 import { gatewayUrl, normalizeIpfsPath } from "../uri";
 import type { CanonicalIpfsPath, GatewayOrigin } from "../uri/types";
 import { scanEvidenceLogs } from "./events";
@@ -93,13 +93,13 @@ async function fetchDocument(fetcher: Fetcher, url: string, gateway: GatewayOrig
 }
 
 /** Rejects when a block cannot be read. */
-async function blockTimestamps(client: ReadClient, blockNumbers: readonly bigint[]): Promise<ReadonlyMap<bigint, UnixSeconds>> {
+async function blockTimestamps(client: ReadClient, blockNumbers: readonly bigint[]): Promise<ReadonlyMap<bigint, number>> {
   const distinct = [...new Set(blockNumbers)];
   const entries = await mapBounded(distinct, async (blockNumber) => [blockNumber, Number((await client.getBlock({ blockNumber })).timestamp)] as const);
   return new Map(entries);
 }
 
-function timestampOf(timestamps: ReadonlyMap<bigint, UnixSeconds>, blockNumber: bigint): UnixSeconds {
+function timestampOf(timestamps: ReadonlyMap<bigint, number>, blockNumber: bigint): number {
   const timestamp = timestamps.get(blockNumber);
   if (timestamp === undefined) throw new Error(`No timestamp for block ${String(blockNumber)}.`);
   return timestamp;

@@ -1,9 +1,9 @@
 import { publicRpcUrl } from "../chains";
 import { fail, succeed } from "../outcome";
-import type { Address, ChainId, Env, Outcome, ScriptParameters } from "../types";
+import type { Address, Env, Outcome, ScriptParameters } from "../types";
 import type { ChainIdField, MetaEvidence } from "./types";
 
-function parameterChain(field: ChainIdField, arbitratorChainId: ChainId): ChainId | undefined {
+function parameterChain(field: ChainIdField, arbitratorChainId: number): number | undefined {
   switch (field.status) {
     case "absent":
       return arbitratorChainId;
@@ -20,7 +20,7 @@ function parameterChain(field: ChainIdField, arbitratorChainId: ChainId): ChainI
  */
 export function buildScriptParameters(input: {
   readonly metaEvidence: MetaEvidence;
-  readonly arbitratorChainId: ChainId;
+  readonly arbitratorChainId: number;
   readonly disputeId: bigint;
   readonly arbitrable: Address;
   readonly env: Env;

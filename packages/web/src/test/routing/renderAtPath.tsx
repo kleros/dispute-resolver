@@ -1,4 +1,4 @@
-import { chainCapabilities, getChain, type ChainId } from "@dispute-resolver/core";
+import { chainCapabilities, getChain } from "@dispute-resolver/core";
 import { render, type RenderResult } from "@testing-library/react";
 import { useEffect, type ComponentType, type ReactElement, type ReactNode } from "react";
 import { MemoryRouter, Route, Routes, useLocation, type Location } from "react-router";
@@ -6,7 +6,7 @@ import { ChainLayout, type FrameProps, type PageChain } from "../../routing";
 import { createTestWallet, walletWrapper, type TestWallet } from "../wallet";
 
 /** The page chain of a configured chain, as `usePageChain()` returns it under `/:chainId`. */
-export function testPageChain(chainId: ChainId): PageChain {
+export function testPageChain(chainId: number): PageChain {
   const chain = getChain(chainId);
   if (chain === undefined) throw new Error(`testPageChain: chain ${String(chainId)} is not configured.`);
   return { chainId: chain.id, chain, capabilities: chainCapabilities(chain) };

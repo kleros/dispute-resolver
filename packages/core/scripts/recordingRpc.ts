@@ -7,7 +7,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { getChain, resolveReadRpcUrl } from "../src/chains";
 import { isExecutionFailureMessage } from "../src/rpc/failures";
-import type { ChainId, Hex } from "../src/types";
+import type { Hex } from "../src/types";
 import { printable } from "./failureMessage";
 
 const ENV_FILE = resolve(import.meta.dirname, "../../../.env");
@@ -42,7 +42,7 @@ export interface RawRpc {
 }
 
 /** A client of the read RPC of `chainId`. Throws, naming the chain only, when it has none configured. */
-export function rawRpcFor(chainId: ChainId): RawRpc {
+export function rawRpcFor(chainId: number): RawRpc {
   const chain = getChain(chainId);
   if (chain === undefined) throw new Error(`Chain ${String(chainId)} is not in the chain table.`);
   const resolution = resolveReadRpcUrl(chain, process.env);

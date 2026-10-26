@@ -1,11 +1,11 @@
-import type { ChainId, ScriptParameters } from "@dispute-resolver/core";
+import type { ScriptParameters } from "@dispute-resolver/core";
 
 /**
  * An https request to `host` whose path starts with `pathPrefix` goes to `target`, the chain's public RPC. The host
  * builds the rules; the page knows no provider.
  */
 export interface RpcRedirectRule {
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly host: string;
   readonly pathPrefix: string;
   readonly target: string;

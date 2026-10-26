@@ -1,4 +1,4 @@
-import { checkChainMatch, explorerTxUrl, getChain, type ChainId, type Hex, type WriteBuild, type WriteCall } from "@dispute-resolver/core";
+import { checkChainMatch, explorerTxUrl, getChain, type Hex, type WriteBuild, type WriteCall } from "@dispute-resolver/core";
 import { getAccount, writeContract, type Config } from "@wagmi/core";
 import type { WriteReceipt } from "../data";
 import { errorMessage, isChainMismatch, isUserRejection } from "./errors";
@@ -7,13 +7,13 @@ import type { NeedsWalletGuard, WriteOptions, WriteOutcome, WriteStatus, WrongCh
 /** What one write needs besides the call: wagmi to sign, and the configured read RPC for the receipt. */
 export interface WriteEnvironment {
   readonly config: Config;
-  waitForReceipt(chainId: ChainId, hash: Hex): Promise<WriteReceipt>;
+  waitForReceipt(chainId: number, hash: Hex): Promise<WriteReceipt>;
 }
 
 type Report = (status: WriteStatus) => void;
 
 /** `null` when the wallet can sign on the page chain; else the refusal to show. */
-export function chainGuard(walletChainId: number | undefined, pageChainId: ChainId): NeedsWalletGuard | WrongChainGuard | null {
+export function chainGuard(walletChainId: number | undefined, pageChainId: number): NeedsWalletGuard | WrongChainGuard | null {
   const match = checkChainMatch(walletChainId, pageChainId);
   if (match.ok) return null;
   if (match.reason === "no-wallet") return { phase: "needs-wallet", pageChainId };
@@ -31,13 +31,13 @@ function connectorChainId(config: Config): Promise<number | undefined> {
   return status === "connected" ? connector.getChainId() : Promise.resolve(undefined);
 }
 
-function explorerUrl(chainId: ChainId, hash: Hex): string | null {
+function explorerUrl(chainId: number, hash: Hex): string | null {
   const chain = getChain(chainId);
   return chain === undefined ? null : explorerTxUrl(chain, hash);
 }
 
 /** Signs one call. A chain change between the guard and the signature is caught by wagmi's `chainId` check. */
-async function sign(config: Config, call: WriteCall, pageChainId: ChainId): Promise<{ readonly hash: Hex } | { readonly outcome: WriteOutcome }> {
+async function sign(config: Config, call: WriteCall, pageChainId: number): Promise<{ readonly hash: Hex } | { readonly outcome: WriteOutcome }> {
   try {
     const hash = await writeContract(config, {
       address: call.address,

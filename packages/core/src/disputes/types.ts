@@ -1,4 +1,4 @@
-import type { Address, ChainId, Env, Fetcher, Outcome, Period, ReadClient, Unavailable, UnixSeconds } from "../types";
+import type { Address, Env, Fetcher, Outcome, Period, ReadClient, Unavailable } from "../types";
 import type { FamilyDetection } from "../families/types";
 import type { RealityNotice } from "../metaEvidence/types";
 
@@ -10,7 +10,7 @@ declare const arbitratorBinding: unique symbol;
  */
 export interface ArbitratedBinding {
   readonly [arbitratorBinding]: true;
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly disputeId: bigint;
   readonly arbitrator: Address;
   readonly arbitrated: Address;
@@ -22,7 +22,7 @@ export interface ArbitratorDispute {
   readonly arbitrated: Address;
   readonly numberOfChoices: bigint;
   readonly period: Period;
-  readonly lastPeriodChange: UnixSeconds;
+  readonly lastPeriodChange: number;
   readonly ruled: boolean;
 }
 
@@ -35,7 +35,7 @@ export type DisputeLookup =
 
 export interface AppealDecisionEvent {
   readonly blockNumber: bigint;
-  readonly appealedAt: UnixSeconds;
+  readonly appealedAt: number;
 }
 
 export type LocalIdResolution =
@@ -46,8 +46,8 @@ export type LocalIdResolution =
 
 export interface AppealInfo {
   readonly appealCost: bigint;
-  readonly appealPeriodStart: UnixSeconds;
-  readonly appealPeriodEnd: UnixSeconds;
+  readonly appealPeriodStart: number;
+  readonly appealPeriodEnd: number;
 }
 
 export interface DisputeReads {
@@ -75,7 +75,7 @@ export type TimelineColumnName = "evidence" | "commit" | "vote" | "appeal" | "ex
 
 export type TimelineColumn =
   | { readonly name: TimelineColumnName; readonly state: "concluded" }
-  | { readonly name: TimelineColumnName; readonly state: "current"; readonly deadline: UnixSeconds | null }
+  | { readonly name: TimelineColumnName; readonly state: "current"; readonly deadline: number | null }
   | { readonly name: TimelineColumnName; readonly state: "upcoming"; readonly durationSeconds: bigint | null };
 
 export interface Timeline {
@@ -94,13 +94,13 @@ export type DisputeView =
   | { readonly exists: false; readonly reason: "unavailable"; readonly error: Unavailable }
   | {
       readonly exists: true;
-      readonly chainId: ChainId;
+      readonly chainId: number;
       readonly disputeId: bigint;
       readonly arbitrable: Address;
       readonly family: Outcome<FamilyDetection>;
       readonly compatibility: Compatibility;
       readonly period: Period;
-      readonly lastPeriodChange: UnixSeconds;
+      readonly lastPeriodChange: number;
       readonly timeline: Outcome<Timeline>;
       readonly decision: Outcome<Decision>;
       readonly numberOfVotes: Outcome<number>;
@@ -113,9 +113,9 @@ export interface OngoingDispute {
   readonly arbitrated: Address;
   readonly period: Period;
   readonly subcourtId: bigint;
-  readonly lastPeriodChange: UnixSeconds;
+  readonly lastPeriodChange: number;
   /** `lastPeriodChange + timesPerPeriod[period]`, or null when the court is unknown or the period is 4. */
-  readonly countdownTarget: UnixSeconds | null;
+  readonly countdownTarget: number | null;
 }
 
 export type OngoingList =
@@ -124,7 +124,7 @@ export type OngoingList =
   | { readonly status: "failed"; readonly error: Unavailable };
 
 export interface DisputeReadContext {
-  readonly chainId: ChainId;
+  readonly chainId: number;
   /** `undefined` when the chain has no RPC configured. */
   readonly client: ReadClient | undefined;
   readonly signal?: AbortSignal;

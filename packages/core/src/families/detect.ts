@@ -1,7 +1,7 @@
 import { isAddress, isHex } from "viem";
 import { getRealityProxy, REGISTRY, toRegistryAddress } from "../registry";
 import type { Registry } from "../registry/types";
-import type { Address, ChainId, Hex, ReadClient } from "../types";
+import type { Address, Hex, ReadClient } from "../types";
 import { classifyRealityProxySelectors, classifySelectors } from "./classify";
 import { isEip1167Clone, readEip1967Implementation } from "./proxies";
 import { scanSelectors } from "./scanSelectors";
@@ -25,7 +25,7 @@ async function readDispatcher(client: ReadClient, address: Address): Promise<{ r
   return { code: await readCode(client, implementation), implementation };
 }
 
-async function probe(client: ReadClient, chainId: ChainId, arbitrable: Address, registry: Registry): Promise<FamilyDetection> {
+async function probe(client: ReadClient, chainId: number, arbitrable: Address, registry: Registry): Promise<FamilyDetection> {
   const realityProxy = getRealityProxy(registry, chainId, arbitrable) ?? null;
   const { code, implementation } = await readDispatcher(client, arbitrable);
   const scanned = scanSelectors(code);
@@ -47,7 +47,7 @@ async function probe(client: ReadClient, chainId: ChainId, arbitrable: Address, 
  */
 export function detectFamily(request: {
   readonly client: ReadClient;
-  readonly chainId: ChainId;
+  readonly chainId: number;
   readonly arbitrable: Address;
   readonly registry?: Registry;
   readonly cache?: FamilyCache;

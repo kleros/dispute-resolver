@@ -6,7 +6,7 @@ import { decodeFunctionResult } from "viem";
 import { z } from "../../zod";
 import { governorAbi } from "../../abi";
 import { toRegistryAddress } from "../../registry";
-import type { ChainId } from "../../types";
+
 import type { CallReply } from "../../test/appeals/testHelpers";
 import recording from "./governor-multipliers.json";
 import { reply, type RecordedGetters } from "./recorded";
@@ -19,7 +19,7 @@ const schema = z.object({
 const parsed = schema.parse(recording);
 
 export interface RecordedGovernor extends RecordedGetters {
-  readonly chainId: ChainId;
+  readonly chainId: number;
   /** The block of its chain every reply was read at. */
   readonly blockNumber: bigint;
 }

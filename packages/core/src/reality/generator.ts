@@ -1,7 +1,7 @@
 import type { RealityProxyEntry } from "../registry/types";
 import { createRequestBudget, getLogsChunked } from "../rpc";
 import { compareBigint } from "../bigint";
-import type { ChainId, GetReadClient, Hex, ReadClient, RegistryKey } from "../types";
+import type { GetReadClient, Hex, ReadClient, RegistryKey } from "../types";
 import { ARBITRATION_CREATED, DISPUTE_ID_TO_QUESTION_ID, LOG_NEW_QUESTION } from "./events";
 import { findLatestLogs } from "./findLatestLogs";
 import { blockOf, requireHex, requireSingleLog } from "./logs";
@@ -10,7 +10,7 @@ import type { KnownDisputeQuestion } from "./types";
 
 export interface KnownQuestionsData {
   /** Arbitrator chain ID → last block covered by `questions`. */
-  readonly snapshotBlocks: Readonly<Record<ChainId, number>>;
+  readonly snapshotBlocks: Readonly<Record<number, number>>;
   /** Keyed by `"<arbitrator chain>:<lowercase proxy>:<dispute ID>"`. */
   readonly questions: Readonly<Record<string, KnownDisputeQuestion>>;
 }
@@ -84,7 +84,7 @@ async function verifyQuestion(key: string, entry: RealityProxyEntry, client: Rea
   return question;
 }
 
-function chainOfKey(key: string): ChainId {
+function chainOfKey(key: string): number {
   return Number(key.slice(0, key.indexOf(":")));
 }
 
@@ -98,7 +98,7 @@ async function generateProxy(
   request: GeneratorRequest,
   key: RegistryKey,
   entry: RealityProxyEntry,
-  snapshotBlocks: Readonly<Record<ChainId, number>>,
+  snapshotBlocks: Readonly<Record<number, number>>,
 ): Promise<Record<string, KnownDisputeQuestion>> {
   const chainId = chainOfKey(key);
   const snapshotBlock = snapshotBlocks[chainId];
@@ -140,7 +140,7 @@ export async function generateKnownQuestions(request: GeneratorRequest): Promise
   const entries = Object.entries(request.proxies) as [RegistryKey, RealityProxyEntry][];
   const chainIds = [...new Set(entries.map(([key]) => chainOfKey(key)))];
 
-  const snapshotBlocks: Record<ChainId, number> =
+  const snapshotBlocks: Record<number, number> =
     request.mode === "check"
       ? { ...request.previous.snapshotBlocks }
       : Object.fromEntries(await Promise.all(chainIds.map(async (chainId) => [chainId, await finalizedBlock(requireClient(request.clients, chainId))] as const)));
@@ -188,11 +188,11 @@ export function renderKnownQuestionsModule(data: KnownQuestionsData): string {
 // The map is complete up to REGISTRY_SNAPSHOT_BLOCKS[arbitratorChainId] (a finalized block at generation time):
 // disputes missing from it are only searched after that block. Regenerate this file whenever a proxy is added to
 // the registry.
-import type { ChainId } from "../types";
+
 import type { KnownDisputeQuestion } from "./types";
 
 /** Arbitrator chain ID => last block covered by KNOWN_DISPUTE_QUESTIONS. */
-export const REGISTRY_SNAPSHOT_BLOCKS: Readonly<Record<ChainId, number>> = { ${blocks} };
+export const REGISTRY_SNAPSHOT_BLOCKS: Readonly<Record<number, number>> = { ${blocks} };
 
 export const KNOWN_DISPUTE_QUESTIONS: Readonly<Record<string, KnownDisputeQuestion>> = {
 ${entries.join("\n")}
