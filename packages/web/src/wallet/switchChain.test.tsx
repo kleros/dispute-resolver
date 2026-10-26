@@ -21,7 +21,7 @@ async function connectedWalletWithoutGnosis(addChain: FakeInjectedWalletOptions[
   return wallet;
 }
 
-const GNOSIS_PUBLIC_RPC = configuredChains().find((chain) => chain.id === 100)?.rpcUrls.default.http[0];
+const GNOSIS_WALLET_RPC = configuredChains().find((chain) => chain.id === 100)?.rpcUrls.default.http[0];
 
 const PENDING: SwitchResult = { ok: false, reason: "pending", message: "A network switch is already waiting in your wallet." };
 
@@ -48,7 +48,7 @@ describe("switchWalletChain", () => {
 
     expect(await switchWalletChain(wallet.config, 100)).toEqual({ ok: true });
 
-    expect(wallet.addChainRequests).toEqual([{ chainId: "0x64", chainName: "Gnosis Network", rpcUrls: [GNOSIS_PUBLIC_RPC] }]);
+    expect(wallet.addChainRequests).toEqual([{ chainId: "0x64", chainName: "Gnosis Network", rpcUrls: [GNOSIS_WALLET_RPC] }]);
     expect(wallet.chainId()).toBe(100);
     expect(wallet.config.state.chainId).toBe(100);
   });

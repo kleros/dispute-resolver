@@ -1,5 +1,5 @@
 import { CHAINS, getChain, type ChainConfig } from "@dispute-resolver/core";
-import { defineChain, type Chain } from "viem";
+import type { Chain } from "viem";
 import {
   arbitrum,
   arbitrumSepolia,
@@ -40,27 +40,17 @@ const VIEM_CHAINS: readonly Chain[] = [
 ];
 
 /**
- * The viem chain of a configured chain, named as the app names it, with the core table's explorer for a chain viem
- * knows too, so AppKit links to the same explorer as the app. A chain viem does not know is defined from the core
- * table with no RPC URL, so nothing can read through it.
+ * The viem chain of a configured chain, named as the app names it, with the core table's explorer, so AppKit links
+ * to the same explorer as the app.
  */
 export function toViemChain(config: ChainConfig): Chain {
   const known = VIEM_CHAINS.find((chain) => chain.id === config.id);
-  if (known !== undefined) {
-    return {
-      ...known,
-      name: config.name,
-      ...(config.explorerBaseUrl === undefined ? {} : { blockExplorers: { default: { name: known.blockExplorers?.default.name ?? config.name, url: config.explorerBaseUrl } } }),
-    };
-  }
-  return defineChain({
-    id: config.id,
+  if (known === undefined) throw new Error(`Chain ${String(config.id)} has no viem definition.`);
+  return {
+    ...known,
     name: config.name,
-    nativeCurrency: { name: config.currency, symbol: config.currency, decimals: 18 },
-    rpcUrls: { default: { http: [] } },
-    ...(config.explorerBaseUrl === undefined ? {} : { blockExplorers: { default: { name: config.name, url: config.explorerBaseUrl } } }),
-    testnet: config.isTestnet,
-  });
+    blockExplorers: { default: { name: known.blockExplorers?.default.name ?? config.name, url: config.explorerBaseUrl } },
+  };
 }
 
 /** The configured chains in ascending ID order, as a non-empty tuple for wagmi and AppKit. */

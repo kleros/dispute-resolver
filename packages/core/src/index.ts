@@ -3,18 +3,7 @@
  * values per module; ABIs, selector scans and other internals stay unexported.
  */
 export type * from "./types";
-export {
-  CHAINS,
-  DEFAULT_CHAIN_ID,
-  chainCapabilities,
-  explorerAddressUrl,
-  explorerTxUrl,
-  getChain,
-  parseChainId,
-  publicRpcUrl,
-  resolvePublicRpcUrl,
-  resolveReadRpcUrl,
-} from "./chains";
+export { CHAINS, DEFAULT_CHAIN_ID, chainCapabilities, explorerAddressUrl, explorerTxUrl, getChain, parseChainId, readRpcUrl, resolveReadRpcUrl } from "./chains";
 export {
   attachmentKind,
   isSafeNavigationUrl,

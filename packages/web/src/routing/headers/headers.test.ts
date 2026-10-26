@@ -112,7 +112,6 @@ describe("the report-only policy", () => {
       expect.arrayContaining([
         "https://mainnet.infura.io",
         "https://gnosis.example-rpc.io:8545",
-        "https://public.example-rpc.io",
         "wss://sepolia.example-rpc.io",
         "https://atlas.example.org",
         "https://metaevidence.example.org",
@@ -141,14 +140,13 @@ describe("the report-only policy", () => {
 
   it.each([
     ["REACT_APP_WEB3_PROVIDER_URL", "http://mainnet.rpc.example/v3/KEY-PLAIN-0007"],
-    ["REACT_APP_PUBLIC_RPC_1", "http://public.rpc.example:8545/eth/KEY-PLAIN-0008"],
     ["REACT_APP_WEB3_SEPOLIA_PROVIDER_URL", "ws://sepolia.rpc.example/ws/KEY-PLAIN-0009"],
     ["REACT_APP_ATLAS_URI", "http://atlas.host.example/graphql"],
   ])("fails the build when %s is a plain http or ws URL, naming the variable and never its value", (name, value) => {
     const message = failureOf({ ...KEYED_ENV, [name]: value });
     expect(message).toContain(name);
     expect(message).toContain("plain http or ws URL");
-    for (const part of ["KEY-", "rpc.example", "host.example", "8545", "/v3/", "/eth/", "/ws/", "/graphql"]) expect(message).not.toContain(part);
+    for (const part of ["KEY-", "rpc.example", "host.example", "/v3/", "/ws/", "/graphql"]) expect(message).not.toContain(part);
   });
 
   it("refuses a headers file without the placeholder, and a policy that is not one header value", () => {

@@ -12,7 +12,6 @@ import type { BudgetedReadClientOptions } from "./types";
  */
 let urlCounter = 0;
 let READ_URL = "";
-const PUBLIC_URL = "https://public.rpc.example/mainnet";
 const event = parseAbiItem("event Ruling(address indexed _arbitrator, uint256 indexed _disputeID, uint256 _ruling)");
 const address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
 
@@ -42,13 +41,6 @@ describe("createReadClient", () => {
     expect(endpoint.posts.map((post) => post.url)).toEqual([READ_URL]);
   });
 
-  it("never reads through the public RPC given to third-party frames", async () => {
-    const endpoint = stubEndpoint(() => ({ result: "0x10" }));
-    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL, REACT_APP_PUBLIC_RPC_1: PUBLIC_URL });
-    await client.getBlockNumber();
-    expect(endpoint.posts.map((post) => post.url)).toEqual([READ_URL]);
-  });
-
   it("uses the literal read RPC of zkSync when its variable is unset", async () => {
     const zkSync = chainOf(324);
     const resolution = createReadClient(zkSync, {});
@@ -58,9 +50,8 @@ describe("createReadClient", () => {
     expect(endpoint.posts.map((post) => new URL(post.url).origin)).toEqual([zkSync.defaultRpcUrl]);
   });
 
-  it("a chain whose read variable is unset is unconfigured, with no wallet or public fallback", () => {
+  it("a chain whose read variable is unset is unconfigured, with no wallet fallback", () => {
     expect(createReadClient(chainOf(1), {})).toEqual({ status: "unconfigured", chainId: 1 });
-    expect(createReadClient(chainOf(1), { REACT_APP_PUBLIC_RPC_1: PUBLIC_URL })).toEqual({ status: "unconfigured", chainId: 1 });
     expect(createReadClient(chainOf(100), { REACT_APP_WEB3_XDAI_PROVIDER_URL: "  " })).toEqual({ status: "unconfigured", chainId: 100 });
   });
 

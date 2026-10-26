@@ -1,6 +1,6 @@
 /**
- * The RPC pre-flight: for every chain of `CHAINS` it resolves the read RPC and the public
- * RPC from the environment with core's own resolvers and checks each endpoint:
+ * The RPC pre-flight: for every chain of `CHAINS` it resolves the read RPC from the environment with core's own
+ * resolver and checks the endpoint:
  *
  *   - `eth_getLogs` over a range of at least 10,000 blocks ending at the head it just read either succeeds or is
  *     refused as a range cap. A capped endpoint is then asked for the smallest window of the chunked scans of `rpc`
@@ -13,7 +13,7 @@
  * No request follows a redirect: a browser refuses a redirected CORS preflight, so a redirect fails the endpoint.
  *
  * Usage (run through tsx by the package script `rpc:preflight`): the repository's `.env` is read when present, the
- * environment winning. Output is one line per endpoint with the chain ID, the head and range checked and the results.
+ * environment winning. Output is one line per chain with the chain ID, the head and range checked and the results.
  * Endpoint URLs carry API keys, so they and anything derived from them never reach the output.
  *
  * Exit code 0 when no endpoint failed (capped endpoints are reported, not failures); 1 when any endpoint failed, a chain
@@ -21,8 +21,8 @@
  */
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CHAINS, resolvePublicRpcUrl, resolveReadRpcUrl } from "../src/chains";
-import type { ChainTable } from "../src/chains";
+import { CHAINS, resolveReadRpcUrl } from "../src/chains";
+import type { ChainConfig, ChainTable } from "../src/chains";
 import { LOOKUP_LIMITS } from "../src/reality/constants";
 import { isRangeLimitError } from "../src/rpc";
 import type { Env } from "../src/types";
@@ -55,16 +55,9 @@ interface EndpointReport {
   readonly cors: CorsResult;
 }
 
-type Role = "read" | "public";
-
-interface EndpointEntry {
-  readonly roles: readonly Role[];
-  readonly outcome: EndpointReport | "unconfigured";
-}
-
 interface ChainReport {
   readonly chainId: number;
-  readonly endpoints: readonly EndpointEntry[];
+  readonly outcome: EndpointReport | "unconfigured";
 }
 
 interface CheckSettings {
@@ -262,43 +255,25 @@ interface PreflightOptions extends CheckSettings {
   readonly chains?: ChainTable;
 }
 
-async function checkChain(chainId: number, chains: ChainTable, options: PreflightOptions): Promise<ChainReport> {
-  const chain = chains[chainId];
-  if (chain === undefined) return { chainId, endpoints: [] };
+async function checkChain(chain: ChainConfig, options: PreflightOptions): Promise<ChainReport> {
   const read = resolveReadRpcUrl(chain, options.env);
-  const published = resolvePublicRpcUrl(chain, options.env);
-  const targets: { roles: Role[]; url: string | undefined }[] = [];
-  if (read.status === "unconfigured") targets.push({ roles: ["read"], url: undefined });
-  else if (published.status === "configured" && published.url !== read.url) targets.push({ roles: ["read"], url: read.url });
-  else targets.push({ roles: ["read", "public"], url: read.url });
-  if (published.status === "configured" && (read.status === "unconfigured" || published.url !== read.url)) targets.push({ roles: ["public"], url: published.url });
-  const endpoints: EndpointEntry[] = [];
-  for (const { roles, url } of targets) {
-    endpoints.push({ roles, outcome: url === undefined ? "unconfigured" : await checkEndpoint(url, options.fetchFn, options) });
-  }
-  return { chainId, endpoints };
+  return { chainId: chain.id, outcome: read.status === "unconfigured" ? "unconfigured" : await checkEndpoint(read.url, options.fetchFn, options) };
 }
 
-/** Runs the pre-flight over every chain of the table; the chains run side by side, the endpoints of a chain in turn. */
+/** Runs the pre-flight over every chain of the table, side by side. */
 export function runPreflight(options: PreflightOptions): Promise<ChainReport[]> {
-  const chains = options.chains ?? CHAINS;
-  return Promise.all(Object.values(chains).map((chain) => checkChain(chain.id, chains, options)));
+  return Promise.all(Object.values(options.chains ?? CHAINS).map((chain) => checkChain(chain, options)));
 }
 
-function entryFailed(entry: EndpointEntry): boolean {
-  return entry.outcome === "unconfigured" || entry.outcome.logs.status === "failed" || entry.outcome.cors.status === "failed";
-}
-
-export function isFailure(report: ChainReport): boolean {
-  return report.endpoints.some(entryFailed);
+export function isFailure({ outcome }: ChainReport): boolean {
+  return outcome === "unconfigured" || outcome.logs.status === "failed" || outcome.cors.status === "failed";
 }
 
 export function summarize(reports: readonly ChainReport[]): { failed: number; capped: number; endpoints: number } {
-  const entries = reports.flatMap((report) => report.endpoints);
   return {
-    failed: entries.filter(entryFailed).length,
-    capped: entries.filter((entry) => entry.outcome !== "unconfigured" && entry.outcome.logs.status === "capped").length,
-    endpoints: entries.length,
+    failed: reports.filter(isFailure).length,
+    capped: reports.filter(({ outcome }) => outcome !== "unconfigured" && outcome.logs.status === "capped").length,
+    endpoints: reports.length,
   };
 }
 
@@ -309,16 +284,14 @@ function describeLogs(logs: LogsResult): string {
   return `eth_getLogs${range} FAILED (${logs.reason})`;
 }
 
-/** The lines that report a chain: one per endpoint, with the chain ID and results only. */
-export function formatChainReport(report: ChainReport): string[] {
-  return report.endpoints.map((entry) => {
-    const label = `chain ${String(report.chainId)} ${entry.roles.join("+")}:`;
-    if (entry.outcome === "unconfigured") return `${label} FAILED, no ${entry.roles.join("+")} RPC is configured`;
-    const { head, logs, cors } = entry.outcome;
-    const origin = cors.status === "ok" ? "ok" : `FAILED (${cors.reason})`;
-    const headPart = head === undefined ? "" : `head ${String(head)}; `;
-    return `${label} ${headPart}${describeLogs(logs)}; Origin null ${origin}`;
-  });
+/** The line that reports a chain, with the chain ID and results only. */
+export function formatChainReport({ chainId, outcome }: ChainReport): string {
+  if (outcome === "unconfigured") return `chain ${String(chainId)} read: FAILED, no read RPC is configured`;
+  const label = `chain ${String(chainId)} read:`;
+  const { head, logs, cors } = outcome;
+  const origin = cors.status === "ok" ? "ok" : `FAILED (${cors.reason})`;
+  const headPart = head === undefined ? "" : `head ${String(head)}; `;
+  return `${label} ${headPart}${describeLogs(logs)}; Origin null ${origin}`;
 }
 
 async function main(): Promise<number> {
@@ -328,7 +301,7 @@ async function main(): Promise<number> {
   }
   loadRepositoryEnv();
   const reports = await runPreflight({ env: process.env, fetchFn: fetch });
-  for (const line of reports.flatMap(formatChainReport)) console.info(line);
+  for (const line of reports.map(formatChainReport)) console.info(line);
   const { failed, capped, endpoints } = summarize(reports);
   if (failed > 0) {
     console.error(`RPC pre-flight failed: ${String(failed)} of ${String(endpoints)} endpoints (${String(capped)} capped).`);

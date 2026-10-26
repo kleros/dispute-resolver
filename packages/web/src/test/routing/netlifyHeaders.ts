@@ -70,7 +70,6 @@ export function policies(rules: readonly HeaderRule[], path: string, name: strin
 export const KEYED_ENV = {
   REACT_APP_WEB3_PROVIDER_URL: "https://mainnet.infura.io/v3/KEY-MAINNET-0001",
   REACT_APP_WEB3_XDAI_PROVIDER_URL: "https://gnosis.example-rpc.io:8545/rpc/KEY-GNOSIS-0002?token=KEY-QUERY-0003#KEY-HASH-0004",
-  REACT_APP_PUBLIC_RPC_1: "https://public.example-rpc.io/eth/KEY-PUBLIC-0005",
   REACT_APP_WEB3_SEPOLIA_PROVIDER_URL: "wss://sepolia.example-rpc.io/ws/KEY-WSS-0006",
   REACT_APP_ATLAS_URI: "https://atlas.example.org/graphql",
   REACT_APP_METAEVIDENCE_URL: "https://metaevidence.example.org/api/meta-evidence",

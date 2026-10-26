@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CHAINS, resolvePublicRpcUrl, resolveReadRpcUrl } from "./index";
+import { CHAINS, readRpcUrl, resolveReadRpcUrl } from "./index";
 import { ascending, chainOf } from "../test/chains/testHelpers";
 import type { ChainConfig } from "./types";
 
@@ -8,7 +8,7 @@ const zkSyncSepolia = chainOf(300);
 const zkSyncMainnet = chainOf(324);
 
 /** A chain with neither an env name nor a literal URL, which no table entry is. */
-const bare: ChainConfig = { id: 999, name: "Bare", currency: "ETH", isTestnet: true, maxLookback: 1 };
+const bare: ChainConfig = { id: 999, name: "Bare", currency: "ETH", maxLookback: 1, explorerBaseUrl: "https://explorer.example" };
 
 describe("resolveReadRpcUrl", () => {
   it("reads the URL from the chain's env variable", () => {
@@ -19,7 +19,7 @@ describe("resolveReadRpcUrl", () => {
     expect(resolveReadRpcUrl(mainnet, { REACT_APP_WEB3_PROVIDER_URL: "  https://rpc.example/mainnet \n" })).toEqual({ status: "configured", url: "https://rpc.example/mainnet" });
   });
 
-  it("treats an unset variable as unconfigured, with no wallet or public fallback", () => {
+  it("treats an unset variable as unconfigured, with no wallet fallback", () => {
     expect(resolveReadRpcUrl(mainnet, {})).toEqual({ status: "unconfigured", chainId: 1 });
     expect(resolveReadRpcUrl(mainnet, { REACT_APP_WEB3_PROVIDER_URL: undefined })).toEqual({ status: "unconfigured", chainId: 1 });
   });
@@ -27,10 +27,6 @@ describe("resolveReadRpcUrl", () => {
   it("treats an empty or whitespace-only variable as unconfigured", () => {
     expect(resolveReadRpcUrl(mainnet, { REACT_APP_WEB3_PROVIDER_URL: "" })).toEqual({ status: "unconfigured", chainId: 1 });
     expect(resolveReadRpcUrl(mainnet, { REACT_APP_WEB3_PROVIDER_URL: "   \t" })).toEqual({ status: "unconfigured", chainId: 1 });
-  });
-
-  it("never lets the public RPC setting stand in for a missing read RPC", () => {
-    expect(resolveReadRpcUrl(mainnet, { REACT_APP_PUBLIC_RPC_1: "https://public.example" })).toEqual({ status: "unconfigured", chainId: 1 });
   });
 
   it("ignores another chain's variable", () => {
@@ -73,45 +69,18 @@ describe("resolveReadRpcUrl", () => {
   });
 });
 
-describe("resolvePublicRpcUrl", () => {
-  it("defaults to the read RPC when no public setting is set", () => {
-    expect(resolvePublicRpcUrl(mainnet, { REACT_APP_WEB3_PROVIDER_URL: "https://rpc.example/mainnet" })).toEqual({ status: "configured", url: "https://rpc.example/mainnet" });
+describe("readRpcUrl", () => {
+  it("is the chain's configured read RPC", () => {
+    expect(readRpcUrl(1, { REACT_APP_WEB3_PROVIDER_URL: " https://rpc.example/mainnet " })).toBe("https://rpc.example/mainnet");
+    expect(readRpcUrl(324, {})).toBe("https://mainnet.era.zksync.io");
   });
 
-  it("prefers the public setting over the read RPC", () => {
-    const env = { REACT_APP_WEB3_PROVIDER_URL: "https://rpc.example/mainnet?key=secret", REACT_APP_PUBLIC_RPC_1: "https://public.example/mainnet" };
-    expect(resolvePublicRpcUrl(mainnet, env)).toEqual({ status: "configured", url: "https://public.example/mainnet" });
+  it("is null for an unconfigured chain", () => {
+    expect(readRpcUrl(1, {})).toBeNull();
+    expect(readRpcUrl(1, { REACT_APP_WEB3_PROVIDER_URL: "  " })).toBeNull();
   });
 
-  it("trims the public setting, and falls back to the read RPC", () => {
-    expect(resolvePublicRpcUrl(mainnet, { REACT_APP_PUBLIC_RPC_1: " https://public.example " })).toEqual({ status: "configured", url: "https://public.example" });
-    expect(resolvePublicRpcUrl(mainnet, { REACT_APP_WEB3_PROVIDER_URL: "https://rpc.example/mainnet", REACT_APP_PUBLIC_RPC_1: "  " })).toEqual({
-      status: "configured",
-      url: "https://rpc.example/mainnet",
-    });
-  });
-
-  it("uses the public setting on a chain whose read RPC is unset", () => {
-    expect(resolvePublicRpcUrl(mainnet, { REACT_APP_PUBLIC_RPC_1: "https://public.example" })).toEqual({ status: "configured", url: "https://public.example" });
-  });
-
-  it("defaults zkSync chains to their literal URLs and lets the public setting override them", () => {
-    expect(resolvePublicRpcUrl(zkSyncMainnet, {})).toEqual({ status: "configured", url: "https://mainnet.era.zksync.io" });
-    expect(resolvePublicRpcUrl(zkSyncMainnet, { REACT_APP_PUBLIC_RPC_324: "https://public.example/zk" })).toEqual({ status: "configured", url: "https://public.example/zk" });
-  });
-
-  it("ignores another chain's public setting", () => {
-    expect(resolvePublicRpcUrl(mainnet, { REACT_APP_PUBLIC_RPC_100: "https://public.example/gnosis" })).toEqual({ status: "unconfigured", chainId: 1 });
-  });
-
-  it("is unconfigured with neither setting", () => {
-    expect(resolvePublicRpcUrl(mainnet, {})).toEqual({ status: "unconfigured", chainId: 1 });
-  });
-
-  it("never throws for any chain, and falls through to unconfigured for a chain with no source", () => {
-    for (const chain of [...Object.values(CHAINS), bare]) {
-      expect(() => resolvePublicRpcUrl(chain, {})).not.toThrow();
-    }
-    expect(resolvePublicRpcUrl(bare, {})).toEqual({ status: "unconfigured", chainId: 999 });
+  it("is null for a chain the app does not support", () => {
+    expect(readRpcUrl(10, { REACT_APP_WEB3_PROVIDER_URL: "https://rpc.example/mainnet" })).toBeNull();
   });
 });

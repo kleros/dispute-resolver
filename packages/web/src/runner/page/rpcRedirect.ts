@@ -34,7 +34,7 @@ function requestUrl(input: RequestInfo | URL): string {
 }
 
 /**
- * A script that hardcodes a known provider, whatever key it carries, reaches the chain's public RPC instead. Nothing
+ * A script that hardcodes a known provider, whatever key it carries, reaches the chain's read RPC instead. Nothing
  * is patched when the host sent no rules.
  */
 export function installRpcRedirect(network: NetworkHooks, rules: readonly RpcRedirectRule[]): void {

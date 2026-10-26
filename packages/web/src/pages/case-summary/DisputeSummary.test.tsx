@@ -337,18 +337,16 @@ describe("DisputeSummary", () => {
     expect(displayFrame().getAttribute("src")).toMatch(new RegExp(`^${GATEWAY}/ipfs/${DISPLAY_CID}/index.html\\?`));
   });
 
-  it("passes the public RPC URLs to the display, never the read RPC", () => {
-    const publicEnv = MAINNET.publicRpcEnv;
+  it("passes the chain's read RPC URL to the display", () => {
     const readEnv = MAINNET.readRpcEnv;
-    if (publicEnv === undefined || readEnv === undefined) throw new Error("mainnet names no RPC variables");
-    const deps = createTestDeps({ env: { [publicEnv]: "https://public-rpc.example.org", [readEnv]: "https://read-rpc.example.org/secret-key" } });
+    if (readEnv === undefined) throw new Error("mainnet names no read RPC variable");
+    const deps = createTestDeps({ env: { [readEnv]: "https://read-rpc.example.org/key" } });
     renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: DISPLAY_URI }), deps);
     expect(displayParams()).toMatchObject({
-      jsonRpcUrl: "https://public-rpc.example.org",
-      arbitratorJsonRpcUrl: "https://public-rpc.example.org",
-      arbitrableJsonRpcUrl: "https://public-rpc.example.org",
+      jsonRpcUrl: "https://read-rpc.example.org/key",
+      arbitratorJsonRpcUrl: "https://read-rpc.example.org/key",
+      arbitrableJsonRpcUrl: "https://read-rpc.example.org/key",
     });
-    expect(displayFrame().getAttribute("src")).not.toContain("secret-key");
   });
 
   it("a display that cannot be built degrades the evidence display only, and its Retry calls the case page's display retry", async () => {

@@ -1,4 +1,4 @@
-import { CHAINS, resolveGateway, resolvePublicRpcUrl, resolveReadRpcUrl, type Env } from "@dispute-resolver/core";
+import { CHAINS, resolveGateway, resolveReadRpcUrl, type Env } from "@dispute-resolver/core";
 
 /** What `public/_headers` carries in place of the report-only policy until the build replaces it. */
 export const APP_CSP_PLACEHOLDER = "__APP_CSP__";
@@ -32,8 +32,6 @@ function configuredEndpoints(env: Env): Endpoint[] {
   for (const chain of Object.values(CHAINS)) {
     const read = resolveReadRpcUrl(chain, env);
     if (read.status === "configured") endpoints.push({ name: chain.readRpcEnv ?? `the read RPC of chain ${String(chain.id)}`, url: read.url });
-    const published = resolvePublicRpcUrl(chain, env);
-    if (published.status === "configured") endpoints.push({ name: chain.publicRpcEnv ?? `the public RPC of chain ${String(chain.id)}`, url: published.url });
   }
   for (const name of ["REACT_APP_ATLAS_URI", "REACT_APP_METAEVIDENCE_URL"]) {
     const url = env[name]?.trim() ?? "";

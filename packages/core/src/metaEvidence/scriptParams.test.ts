@@ -8,7 +8,6 @@ import {
   ENV,
   GNOSIS_RPC,
   HANG,
-  MAINNET_PUBLIC_RPC,
   MAINNET_RPC,
   META_URL,
   type Route,
@@ -72,13 +71,13 @@ describe("buildScriptParameters", () => {
     expect(build({ arbitratorChainID: "10" }).ok).toBe(false);
   });
 
-  it("the RPC URLs are the public setting of each chain, defaulting to its read RPC", () => {
-    const env: Env = { ...ENV, REACT_APP_WEB3_PROVIDER_URL: MAINNET_RPC, REACT_APP_PUBLIC_RPC_1: MAINNET_PUBLIC_RPC, REACT_APP_WEB3_XDAI_PROVIDER_URL: GNOSIS_RPC };
+  it("the RPC URLs are the read RPC of each chain", () => {
+    const env: Env = { ...ENV, REACT_APP_WEB3_PROVIDER_URL: MAINNET_RPC, REACT_APP_WEB3_XDAI_PROVIDER_URL: GNOSIS_RPC };
     const outcome = build({ arbitrableChainID: 100 }, env);
-    expect(outcome.ok && [outcome.value.arbitratorJsonRpcUrl, outcome.value.arbitrableJsonRpcUrl]).toEqual([MAINNET_PUBLIC_RPC, GNOSIS_RPC]);
+    expect(outcome.ok && [outcome.value.arbitratorJsonRpcUrl, outcome.value.arbitrableJsonRpcUrl]).toEqual([MAINNET_RPC, GNOSIS_RPC]);
   });
 
-  it("a configured chain without any RPC setting gets null, never a wallet or public default", () => {
+  it("a configured chain without any RPC setting gets null, never a wallet default", () => {
     const outcome = build({ arbitrableChainID: 137 }, { ...ENV, REACT_APP_WEB3_PROVIDER_URL: MAINNET_RPC });
     expect(outcome.ok && [outcome.value.arbitratorJsonRpcUrl, outcome.value.arbitrableJsonRpcUrl]).toEqual([MAINNET_RPC, null]);
   });
@@ -171,8 +170,8 @@ describe("loadMetaEvidence script parameters", () => {
     }
   });
 
-  it("the runner receives validated parameters with the public RPC and the arbitrator's arbitrable", async () => {
-    const env: Env = { ...ENV, REACT_APP_WEB3_PROVIDER_URL: MAINNET_RPC, REACT_APP_PUBLIC_RPC_1: MAINNET_PUBLIC_RPC };
+  it("the runner receives validated parameters with the read RPC and the arbitrator's arbitrable", async () => {
+    const env: Env = { ...ENV, REACT_APP_WEB3_PROVIDER_URL: MAINNET_RPC };
     const { fetcher } = fakeFetcher({
       ...servedMetaEvidence(scriptJson({ arbitrableChainID: "1", arbitrableContractAddress: "0x0000000000000000000000000000000000000bad" })),
       [DEFAULT_SCRIPT_URL]: "function getMetaEvidence() {}",
@@ -184,8 +183,8 @@ describe("loadMetaEvidence script parameters", () => {
       arbitrableContractAddress: ARBITRABLE,
       arbitratorChainID: 1,
       arbitrableChainID: 1,
-      arbitratorJsonRpcUrl: MAINNET_PUBLIC_RPC,
-      arbitrableJsonRpcUrl: MAINNET_PUBLIC_RPC,
+      arbitratorJsonRpcUrl: MAINNET_RPC,
+      arbitrableJsonRpcUrl: MAINNET_RPC,
     });
   });
 });

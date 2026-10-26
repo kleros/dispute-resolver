@@ -14,7 +14,6 @@ const ALLOWLISTED_ON_100: Address = "0x2a2bab2c2d4eb5007b0389720b287d4d19dc4001"
 const NOT_ALLOWLISTED: Address = "0x00000000000000000000000000000000000000aa";
 const ENV: Env = {
   REACT_APP_WEB3_PROVIDER_URL: "https://mainnet.read.example/secret-key",
-  REACT_APP_PUBLIC_RPC_1: "https://mainnet.public.example",
   REACT_APP_WEB3_XDAI_PROVIDER_URL: "https://gnosis.read.example/secret-key",
 };
 const RELAXED = ["allow-scripts", "allow-same-origin", "allow-popups", "allow-popups-to-escape-sandbox"];
@@ -74,21 +73,16 @@ describe("buildEvidenceDisplay parameters", () => {
       disputeID: "1255",
       chainID: 1,
       arbitratorContractAddress: KLEROS_LIQUID_MAINNET,
-      arbitratorJsonRpcUrl: "https://mainnet.public.example",
+      arbitratorJsonRpcUrl: "https://mainnet.read.example/secret-key",
       arbitratorChainID: 1,
       arbitrableContractAddress: NOT_ALLOWLISTED,
       arbitrableChainID: 1,
-      arbitrableJsonRpcUrl: "https://mainnet.public.example",
-      jsonRpcUrl: "https://mainnet.public.example",
+      arbitrableJsonRpcUrl: "https://mainnet.read.example/secret-key",
+      jsonRpcUrl: "https://mainnet.read.example/secret-key",
     });
   });
 
-  it("gives frames the public RPC setting and never the read RPC when the public one is set", () => {
-    const model = buildEvidenceDisplay(input());
-    expect(model?.src).not.toContain("secret-key");
-  });
-
-  it("falls back to the read RPC when the chain has no public setting", () => {
+  it("gives frames the read RPC of the chain each URL is for", () => {
     const model = buildEvidenceDisplay(
       input({ metaEvidence: testMetaEvidence({ evidenceDisplayInterfaceURI: `/ipfs/${CID}`, arbitrableChainID: { status: "valid", chainId: 100 } }) }),
     );
@@ -113,7 +107,7 @@ describe("buildEvidenceDisplay parameters", () => {
     expect(model?.params.arbitratorChainID).toBe(100);
     expect(model?.params.arbitrableChainID).toBe(100);
     expect(model?.params.arbitratorJsonRpcUrl).toBe("https://gnosis.read.example/secret-key");
-    expect(model?.params.jsonRpcUrl).toBe("https://mainnet.public.example");
+    expect(model?.params.jsonRpcUrl).toBe("https://mainnet.read.example/secret-key");
   });
 
   it("falls back to the page chain for an invalid chain ID field", () => {

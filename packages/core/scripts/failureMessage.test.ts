@@ -58,13 +58,8 @@ describe("failureMessage", () => {
     expect(text).toContain("eth_call on chain 1: invalid key");
   });
 
-  it("removes the key of a configured public RPC too", () => {
-    const env = { REACT_APP_PUBLIC_RPC_100: KEYED_URL };
-    expectNoUrlOrKey(failureMessage(new Error(`rejected ${KEY}`), env));
-  });
-
   it("leaves no part of a key behind when another configured piece is a prefix of it", () => {
-    const env = { REACT_APP_WEB3_PROVIDER_URL: "https://short.example/v2/abc123SECR", REACT_APP_PUBLIC_RPC_1: KEYED_URL };
+    const env = { REACT_APP_WEB3_PROVIDER_URL: "https://short.example/v2/abc123SECR", REACT_APP_WEB3_XDAI_PROVIDER_URL: KEYED_URL };
     const text = failureMessage(new Error(`rejected ${KEY}`), env);
     expect(text).toBe("rejected <redacted>");
   });

@@ -4,7 +4,6 @@ export interface ChainConfig {
   readonly id: number;
   readonly name: string;
   readonly currency: string;
-  readonly isTestnet: boolean;
   readonly klerosLiquid?: Address;
   readonly arbitrableProxy?: Address;
   readonly policyRegistry?: Address;
@@ -14,10 +13,8 @@ export interface ChainConfig {
   readonly readRpcEnv?: string;
   /** Literal read RPC URL used when `readRpcEnv` is absent or unset. */
   readonly defaultRpcUrl?: string;
-  /** Env variable holding the RPC URL given to third-party frames and scripts. */
-  readonly publicRpcEnv?: string;
   /** Explorer origin without a trailing slash. */
-  readonly explorerBaseUrl?: string;
+  readonly explorerBaseUrl: string;
 }
 
 export type ChainTable = Readonly<Record<number, ChainConfig>>;

@@ -133,7 +133,7 @@ describe("eth_getLogs over at least 10,000 blocks", () => {
     const { fetchFn } = fakeNode({ logs, logsCap: 1000, postAllowOrigin: "*" });
     const report = await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     expect(report.logs.status).toBe("capped");
-    expect(isFailure({ chainId: 1, endpoints: [{ roles: ["read"], outcome: report }] })).toBe(false);
+    expect(isFailure({ chainId: 1, outcome: report })).toBe(false);
   });
 
   it("asks a capped endpoint for exactly the smallest window of the chunked scans, ending at the head", async () => {
@@ -168,7 +168,7 @@ describe("eth_getLogs over at least 10,000 blocks", () => {
     const report = await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     expect(report.logs).toMatchObject({ status: "failed", fromBlock: HEAD - MIN_WINDOW_BLOCKS + 1, toBlock: HEAD });
     expect(report.logs.status === "failed" ? report.logs.reason : "").toMatch(/100-block window of the chunked scans failed too/);
-    expect(isFailure({ chainId: 1, endpoints: [{ roles: ["read"], outcome: report }] })).toBe(true);
+    expect(isFailure({ chainId: 1, outcome: report })).toBe(true);
   });
 
   it.each([
@@ -184,7 +184,7 @@ describe("eth_getLogs over at least 10,000 blocks", () => {
     const { fetchFn } = fakeNode({ logs, logsCap: 1000 });
     const report = await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
     expect(report.logs.status).toBe("failed");
-    expect(isFailure({ chainId: 1, endpoints: [{ roles: ["read"], outcome: report }] })).toBe(true);
+    expect(isFailure({ chainId: 1, outcome: report })).toBe(true);
   });
 
   it("reports HTTP 429 as rate limiting even when its JSON-RPC body carries a range-cap code", async () => {
@@ -283,7 +283,7 @@ describe("no URL or key in any output", () => {
     const message = `invalid key in ${URL_WITH_KEY}`;
     const { fetchFn } = fakeNode({ logs: { error: { code: -32000, message } } });
     const report = await checkEndpoint(URL_WITH_KEY, fetchFn, SETTINGS);
-    const line = formatChainReport({ chainId: 1, endpoints: [{ roles: ["read"], outcome: report }] }).join("\n");
+    const line = formatChainReport({ chainId: 1, outcome: report });
     expect(report.logs.status).toBe("failed");
     expect(line).not.toMatch(/secretvalue123|0123456789abcdef|example-provider|https?:/);
     expect(line).toContain("-32000");
@@ -305,11 +305,11 @@ describe("no URL or key in any output", () => {
   });
 });
 
-describe("every chain, read and public RPC", () => {
+describe("every chain's read RPC", () => {
   /** Every chain's read variable set to a distinct host, as an operator's .env would. */
-  function fullEnv(extra: Env = {}): Env {
+  function fullEnv(): Env {
     const entries = Object.values(CHAINS).flatMap((chain) => (chain.readRpcEnv === undefined ? [] : [[chain.readRpcEnv, `https://read-${String(chain.id)}.invalid/key`] as const]));
-    return { ...Object.fromEntries(entries), ...extra };
+    return Object.fromEntries(entries);
   }
 
   const routes = (hosts: Record<string, NodeOptions>): FetchLike => {
@@ -330,38 +330,26 @@ describe("every chain, read and public RPC", () => {
     expect(reports.map((report) => report.chainId)).toEqual(Object.values(CHAINS).map((chain) => chain.id));
   });
 
-  it("resolves with the read and public resolvers, so an identical URL is checked once for both roles", async () => {
-    const reports = await runPreflight({ env: fullEnv(), fetchFn: routes({}) });
-    const mainnet = reports.find((report) => report.chainId === 1);
-    expect(mainnet?.endpoints.map((endpoint) => endpoint.roles)).toEqual([["read", "public"]]);
+  it("checks each chain's read RPC with core's read resolver", async () => {
+    const reports = await runPreflight({ env: fullEnv(), fetchFn: routes({ "read-1.invalid": { preflight: { status: 403 } } }) });
+    expect(reports.find((report) => report.chainId === 1)?.outcome).toMatchObject({ cors: { status: "failed", reason: "preflight: HTTP 403" } });
+    expect(reports.filter(isFailure).map((report) => report.chainId)).toEqual([1]);
   });
 
-  it("checks a distinct public RPC separately from the read RPC", async () => {
-    const env = fullEnv({ REACT_APP_PUBLIC_RPC_1: "https://public-1.invalid/key" });
-    const reports = await runPreflight({ env, fetchFn: routes({ "public-1.invalid": { preflight: { status: 403 } } }) });
-    const mainnet = reports.find((report) => report.chainId === 1);
-    expect(mainnet?.endpoints.map((endpoint) => endpoint.roles)).toEqual([["read"], ["public"]]);
-    expect(isFailure(mainnet ?? { chainId: 1, endpoints: [] })).toBe(true);
-    expect(isFailure(reports.find((report) => report.chainId === 100) ?? { chainId: 100, endpoints: [] })).toBe(false);
-  });
-
-  it("a chain with no read RPC fails, and its public setting does not stand in for it", async () => {
-    const env = { ...fullEnv({ REACT_APP_PUBLIC_RPC_100: "https://public-100.invalid/key" }), REACT_APP_WEB3_XDAI_PROVIDER_URL: undefined };
+  it("a chain with no read RPC fails", async () => {
+    const env = { ...fullEnv(), REACT_APP_WEB3_XDAI_PROVIDER_URL: undefined };
     const reports = await runPreflight({ env, fetchFn: routes({}) });
     const gnosis = reports.find((report) => report.chainId === 100);
-    expect(gnosis?.endpoints.map((endpoint) => [endpoint.roles, endpoint.outcome === "unconfigured"])).toEqual([
-      [["read"], true],
-      [["public"], false],
-    ]);
-    expect(isFailure(gnosis ?? { chainId: 100, endpoints: [] })).toBe(true);
-    expect(formatChainReport(gnosis ?? { chainId: 100, endpoints: [] })[0]).toBe("chain 100 read: FAILED, no read RPC is configured");
+    expect(gnosis?.outcome).toBe("unconfigured");
+    expect(isFailure(gnosis ?? { chainId: 100, outcome: "unconfigured" })).toBe(true);
+    expect(formatChainReport(gnosis ?? { chainId: 100, outcome: "unconfigured" })).toBe("chain 100 read: FAILED, no read RPC is configured");
   });
 
   it("formats a chain without any URL", async () => {
     const reports = await runPreflight({ env: fullEnv(), fetchFn: routes({ "read-1.invalid": { logs: { error: { code: -32005, message: "limit exceeded" } }, logsCap: 1000 } }) });
-    const lines = reports.flatMap(formatChainReport);
+    const lines = reports.map(formatChainReport);
     expect(lines.join("\n")).not.toMatch(/invalid|https?:/);
-    expect(lines[0]).toMatch(/^chain 1 read\+public: head \d+; eth_getLogs \d+-\d+ capped/);
+    expect(lines[0]).toMatch(/^chain 1 read: head \d+; eth_getLogs \d+-\d+ capped/);
   });
 
   it("summarizes failures and capped endpoints for the exit code", async () => {

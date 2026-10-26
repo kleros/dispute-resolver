@@ -163,7 +163,7 @@ test.describe("case page dynamic script", () => {
     const runner = await (await runnerElement.elementHandle()).contentFrame();
     if (runner === null) throw new Error("The runner iframe has no frame.");
     // The script resolves after SCRIPT_DELAY_MS, so the frame is open while its accepted run is inspected. Booleans only:
-    // the run's parameters carry the public RPC URL.
+    // the run's parameters carry the read RPC URL.
     await runner.waitForFunction(() => typeof Reflect.get(globalThis, "resolveScript") === "function", undefined, { polling: 50, timeout: RENDER_LIMIT_MS });
     const inside = await runner.evaluate((origin) => {
       let storageBlocked = false;

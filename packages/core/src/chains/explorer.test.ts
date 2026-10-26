@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { Address, Hex } from "../types";
 import { CHAINS, explorerAddressUrl, explorerTxUrl } from "./index";
 import { ascending, chainOf } from "../test/chains/testHelpers";
-import type { ChainConfig } from "./types";
 
 const ADDRESS: Address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
 const HASH: Hex = "0x4f3a1b9c2d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8";
@@ -48,23 +47,13 @@ describe("explorer links", () => {
 
   it("every configured chain has an explorer", () => {
     expect(ascending(Object.keys(EXPLORERS).map(Number))).toEqual(ascending(Object.keys(CHAINS).map(Number)));
-    for (const chain of Object.values(CHAINS)) {
-      expect(explorerAddressUrl(chain, ADDRESS), `chain ${String(chain.id)}`).not.toBeNull();
-    }
   });
 
   it("every explorer origin is https with no path, query or trailing slash", () => {
     for (const chain of Object.values(CHAINS)) {
       const base = chain.explorerBaseUrl;
-      expect(base).toBeDefined();
-      expect(new URL(base ?? "").origin, `chain ${String(chain.id)}`).toBe(base);
-      expect(base?.startsWith("https://")).toBe(true);
+      expect(new URL(base).origin, `chain ${String(chain.id)}`).toBe(base);
+      expect(base.startsWith("https://")).toBe(true);
     }
-  });
-
-  it("a chain without an explorer yields null links", () => {
-    const bare: ChainConfig = { id: 999, name: "Bare", currency: "ETH", isTestnet: true, maxLookback: 1 };
-    expect(explorerAddressUrl(bare, ADDRESS)).toBeNull();
-    expect(explorerTxUrl(bare, HASH)).toBeNull();
   });
 });

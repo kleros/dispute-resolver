@@ -73,7 +73,6 @@ Vite reads the `.env` file at the repository root and the process environment (t
 | `REACT_APP_OPTIMISM_SEPOLIA`          | Read RPC of Optimism Sepolia (11155420).                                                                                                                                                                                                              |
 | `REACT_APP_BASE`                      | Read RPC of Base (8453).                                                                                                                                                                                                                              |
 | `REACT_APP_BASE_SEPOLIA`              | Read RPC of Base Sepolia (84532).                                                                                                                                                                                                                     |
-| `REACT_APP_PUBLIC_RPC_<chainId>`      | Optional, one per chain (for example `REACT_APP_PUBLIC_RPC_1`): the only RPC URL given to dynamic scripts and evidence-display frames; falls back to the chain's read RPC.                                                                            |
 
 zkSync Era (324) and zkSync Era Sepolia (300) have no read RPC variable; they use their public endpoints. Reads always go through the chain's read RPC; the wallet only signs. The chain table that declares these names is `packages/core/src/chains/table.ts`.
 
@@ -97,7 +96,7 @@ Set the environment variables above in the Netlify site settings.
 - **Script runner, cross-engine**: `yarn workspace @dispute-resolver/web e2e:runner` runs `packages/web/e2e/runner` in Chromium, Firefox and WebKit against the built app.
 - **Other browser tests**: `yarn workspace @dispute-resolver/web e2e` runs every spec in Chromium: the runner, the app's flows on a routed network with an injected wallet (`e2e/app`) and the deploy's response headers (`e2e/deploy`, which runs only when `DR_E2E_DEPLOY_URL` names a deploy's origin).
   Playwright builds the app and serves it with `vite preview` itself. Browsers are installed on demand: `yarn workspace @dispute-resolver/web playwright install chromium` (add `firefox webkit` for the runner suite).
-- **RPC pre-flight**: `yarn rpc:preflight` checks every configured read and public RPC endpoint against live chains (the `eth_getLogs` range and the opaque-origin CORS the script runner needs). It reads `.env` and prints only results, never the URLs. It is run on demand, not in CI.
+- **RPC pre-flight**: `yarn rpc:preflight` checks every configured read RPC endpoint against live chains (the `eth_getLogs` range and the opaque-origin CORS the script runner needs). It reads `.env` and prints only results, never the URLs. It is run on demand, not in CI.
 - **Reality.eth known-question map**: `yarn workspace @dispute-resolver/core reality:known-questions:check` compares the committed map with the chain data (see [REALITY_OPS.md](REALITY_OPS.md)).
 
 CI (`.github/workflows/ci.yml`) runs typecheck, lint, test, build and the bundle check on pull requests and pushes to the branches it lists, plus a dependency audit; CodeQL scans the code. SonarCloud analyzes every pull request.

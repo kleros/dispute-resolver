@@ -9,7 +9,7 @@ import { readEnv } from "./env";
 const CONFIG_NAMES = ["REACT_APP_WALLETCONNECT_PROJECT_ID", "REACT_APP_ATLAS_URI", "REACT_APP_IPFS_GATEWAY", "REACT_APP_METAEVIDENCE_URL"];
 
 function readNames(): string[] {
-  const chainNames = Object.values(CHAINS).flatMap((chain) => [chain.readRpcEnv, chain.publicRpcEnv]);
+  const chainNames = Object.values(CHAINS).map((chain) => chain.readRpcEnv);
   return [...chainNames.filter((name) => name !== undefined), ...CONFIG_NAMES];
 }
 
@@ -65,22 +65,14 @@ describe("readEnv", () => {
   it("an empty source yields an empty environment", () => {
     expect(readEnv({})).toEqual({});
   });
-
-  it("per-chain public RPC variables pass through untouched", () => {
-    const env = readEnv({ REACT_APP_PUBLIC_RPC_1: "https://public.example.org", REACT_APP_PUBLIC_RPC_100: "" });
-    expect(env.REACT_APP_PUBLIC_RPC_1).toBe("https://public.example.org");
-    expect(env.REACT_APP_PUBLIC_RPC_100).toBe("");
-  });
 });
 
 // The real .env is loaded in tests too: assertions name variables, never print their values.
 describe("ENV", () => {
   it("carries the variables the app reads from import.meta.env, frozen", async () => {
     vi.stubEnv("REACT_APP_WALLETCONNECT_PROJECT_ID", "stubbed-project-id");
-    vi.stubEnv("REACT_APP_PUBLIC_RPC_1", "https://public.example.org");
     const { ENV } = await import("./env");
     expect(ENV.REACT_APP_WALLETCONNECT_PROJECT_ID).toBe("stubbed-project-id");
-    expect(ENV.REACT_APP_PUBLIC_RPC_1).toBe("https://public.example.org");
     expect(Object.keys(ENV).filter((key) => !key.startsWith("REACT_APP_"))).toEqual([]);
     expect(Object.isFrozen(ENV)).toBe(true);
   });

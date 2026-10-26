@@ -1,4 +1,4 @@
-import { REGISTRY, isDisplayAllowlisted, publicRpcUrl, resolveDisplayUrl } from "@dispute-resolver/core";
+import { REGISTRY, isDisplayAllowlisted, readRpcUrl, resolveDisplayUrl } from "@dispute-resolver/core";
 import type { ChainIdField } from "@dispute-resolver/core";
 import type { DisplayParams, EvidenceDisplayInput, EvidenceDisplayModel, SandboxToken } from "./types";
 
@@ -31,12 +31,12 @@ export function buildEvidenceDisplay(input: EvidenceDisplayInput): EvidenceDispl
     disputeID: input.disputeId.toString(),
     chainID: arbitratorChainId,
     arbitratorContractAddress: input.arbitrator,
-    arbitratorJsonRpcUrl: publicRpcUrl(displayArbitratorChainId, env),
+    arbitratorJsonRpcUrl: readRpcUrl(displayArbitratorChainId, env),
     arbitratorChainID: displayArbitratorChainId,
     arbitrableContractAddress: input.arbitrable,
     arbitrableChainID: displayArbitrableChainId,
-    arbitrableJsonRpcUrl: publicRpcUrl(displayArbitrableChainId, env),
-    jsonRpcUrl: publicRpcUrl(arbitratorChainId, env),
+    arbitrableJsonRpcUrl: readRpcUrl(displayArbitrableChainId, env),
+    jsonRpcUrl: readRpcUrl(arbitratorChainId, env),
   };
   const version = metaEvidence.displayParamsVersion;
   const encoding = version === null || version === "0" ? "json" : "search-params";

@@ -332,20 +332,14 @@ describe("PageFrame footer", () => {
     expect(within(footer()).queryByRole("link", { name: /explorer/ })).not.toBeInTheDocument();
   });
 
-  it.each(Object.values(CHAINS).filter((chain) => chain.explorerBaseUrl !== undefined && chain.arbitrableProxy !== undefined))(
-    "links the ArbitrableProxy on the explorer of $name",
-    (chain) => {
-      renderWithProviders(<Screen />, { path: `/${String(chain.id)}/ongoing`, frame: "page" });
-      const link = within(footer()).getByRole("link", { name: `ArbitrableProxy contract on the ${chain.name} explorer` });
-      expectExternal(link, `${chain.explorerBaseUrl ?? ""}/address/${chain.arbitrableProxy ?? ""}#code`);
-    },
-  );
+  it.each(Object.values(CHAINS).filter((chain) => chain.arbitrableProxy !== undefined))("links the ArbitrableProxy on the explorer of $name", (chain) => {
+    renderWithProviders(<Screen />, { path: `/${String(chain.id)}/ongoing`, frame: "page" });
+    const link = within(footer()).getByRole("link", { name: `ArbitrableProxy contract on the ${chain.name} explorer` });
+    expectExternal(link, `${chain.explorerBaseUrl}/address/${chain.arbitrableProxy ?? ""}#code`);
+  });
 
-  it.each(Object.values(CHAINS).filter((chain) => chain.explorerBaseUrl === undefined || chain.arbitrableProxy === undefined))(
-    "shows no explorer link on $name, which has no ArbitrableProxy",
-    (chain) => {
-      renderWithProviders(<Screen />, { path: `/${String(chain.id)}/ongoing`, frame: "page" });
-      expect(within(footer()).queryByRole("link", { name: /explorer/ })).not.toBeInTheDocument();
-    },
-  );
+  it.each(Object.values(CHAINS).filter((chain) => chain.arbitrableProxy === undefined))("shows no explorer link on $name, which has no ArbitrableProxy", (chain) => {
+    renderWithProviders(<Screen />, { path: `/${String(chain.id)}/ongoing`, frame: "page" });
+    expect(within(footer()).queryByRole("link", { name: /explorer/ })).not.toBeInTheDocument();
+  });
 });

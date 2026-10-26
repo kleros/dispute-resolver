@@ -1,4 +1,4 @@
-import { CHAINS, type ChainConfig, type Env } from "@dispute-resolver/core";
+import { CHAINS, type Env } from "@dispute-resolver/core";
 import { getBalance } from "@wagmi/core";
 import { render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -281,17 +281,8 @@ describe("toViemChain", () => {
     }
   });
 
-  it("a chain viem does not know is defined from the core table without any RPC URL", () => {
-    const unknown: ChainConfig = { ...testPageChain(1).chain, id: 999_999_001, name: "Test Chain", currency: "TST", explorerBaseUrl: "https://explorer.example.org" };
-    const viemChain = toViemChain(unknown);
-    expect(viemChain).toEqual(expect.objectContaining({ id: 999_999_001, name: "Test Chain", nativeCurrency: { name: "TST", symbol: "TST", decimals: 18 } }));
-    expect(viemChain.rpcUrls.default.http).toEqual([]);
-    expect(viemChain.blockExplorers?.default.url).toBe("https://explorer.example.org");
-  });
-
   it("AppKit's explorer of every configured chain is the core table's, Gnosis on gnosisscan.io and Chiado on gnosis-chiado.blockscout.com", () => {
     for (const config of Object.values(CHAINS)) {
-      if (config.explorerBaseUrl === undefined) continue;
       expect(toViemChain(config).blockExplorers?.default.url, `chain ${String(config.id)}`).toBe(config.explorerBaseUrl);
     }
     expect(toViemChain(testPageChain(100).chain).blockExplorers?.default).toEqual({ name: "Gnosisscan", url: "https://gnosisscan.io" });

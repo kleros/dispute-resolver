@@ -29,8 +29,8 @@ const TOOLTIP_PROPS = {
 };
 
 /**
- * A shortened address (full address on hover), or the whole address with `full`, with the library `Copiable` and, when the
- * chain has an explorer, a link to the address on it.
+ * A shortened address (full address on hover), or the whole address with `full`, with the library `Copiable` and a link
+ * to the address on the chain's explorer.
  */
 export function AddressText({ address, chain, className, full = false }: AddressTextProps) {
   const checksummed = displayAddress(address);
@@ -56,18 +56,13 @@ export function AddressText({ address, chain, className, full = false }: Address
       {shortenAddress(checksummed)}
     </span>
   );
-  const explorer = explorerAddressUrl(chain, address);
   return (
     <span ref={copyRef} className={className === undefined ? `inline-flex ${COPY_CLASS}` : `inline-flex ${COPY_CLASS} ${className}`}>
       <Copiable copiableContent={checksummed} info={COPY_LABEL} tooltipProps={TOOLTIP_PROPS} className={full ? "min-w-0" : undefined}>
-        {explorer === null ? (
-          text
-        ) : (
-          <ExternalLink href={explorer} className={LINK_CLASS}>
-            {text}
-            <span className="sr-only">{`, view on ${chain.name} explorer`}</span>
-          </ExternalLink>
-        )}
+        <ExternalLink href={explorerAddressUrl(chain, address)} className={LINK_CLASS}>
+          {text}
+          <span className="sr-only">{`, view on ${chain.name} explorer`}</span>
+        </ExternalLink>
       </Copiable>
     </span>
   );

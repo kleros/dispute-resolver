@@ -1,4 +1,4 @@
-import { publicRpcUrl } from "../chains";
+import { readRpcUrl } from "../chains";
 import { fail, succeed } from "../outcome";
 import type { Address, Env, Outcome, ScriptParameters } from "../types";
 import type { ChainIdField, MetaEvidence } from "./types";
@@ -36,7 +36,7 @@ export function buildScriptParameters(input: {
     arbitrableContractAddress: input.arbitrable,
     arbitratorChainID,
     arbitrableChainID,
-    arbitratorJsonRpcUrl: publicRpcUrl(arbitratorChainID, env),
-    arbitrableJsonRpcUrl: publicRpcUrl(arbitrableChainID, env),
+    arbitratorJsonRpcUrl: readRpcUrl(arbitratorChainID, env),
+    arbitrableJsonRpcUrl: readRpcUrl(arbitrableChainID, env),
   });
 }

@@ -13,8 +13,7 @@ function explorerLink(resolvedChain: ResolvedChain): FooterExplorerLink | null {
   if (isUnsupportedNetwork(resolvedChain)) return null;
   const { chain } = resolvedChain.page;
   const proxy = chain.arbitrableProxy;
-  const url = proxy === undefined ? null : explorerAddressUrl(chain, proxy);
-  return url === null ? null : { href: `${url}#code`, chainName: chain.name };
+  return proxy === undefined ? null : { href: `${explorerAddressUrl(chain, proxy)}#code`, chainName: chain.name };
 }
 
 export function PageFrame({ resolvedChain, children }: FrameProps) {

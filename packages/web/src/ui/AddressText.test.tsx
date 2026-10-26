@@ -1,16 +1,16 @@
-import type { Address, ChainConfig } from "@dispute-resolver/core";
+import type { Address } from "@dispute-resolver/core";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { AddressText } from "./AddressText";
 import { shortenAddress } from "./address";
+import { testChain } from "../test/data";
 
 const ADDRESS: Address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
 const CHECKSUMMED = "0x988b3A538b618C7A603e1c11Ab82Cd16dbE28069";
 
-const MAINNET: ChainConfig = { id: 1, name: "Ethereum Mainnet", currency: "ETH", isTestnet: false, maxLookback: 1_000_000, explorerBaseUrl: "https://etherscan.io" };
-const GNOSIS: ChainConfig = { id: 100, name: "Gnosis Chain", currency: "xDai", isTestnet: false, maxLookback: 1_000_000, explorerBaseUrl: "https://gnosisscan.io" };
-const NO_EXPLORER: ChainConfig = { id: 1301, name: "Unichain Sepolia", currency: "ETH", isTestnet: true, maxLookback: 50_000 };
+const MAINNET = testChain(1);
+const GNOSIS = testChain(100);
 
 describe("shortenAddress", () => {
   it("keeps the first six and last four characters", () => {
@@ -33,12 +33,6 @@ describe("AddressText", () => {
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
     expect(link).toHaveAccessibleName(`0x988b…8069, view on ${chain.name} explorer`);
-  });
-
-  it("shows text without a link when the chain has no explorer", () => {
-    render(<AddressText address={ADDRESS} chain={NO_EXPLORER} />);
-    expect(screen.queryByRole("link")).toBeNull();
-    expect(screen.getByText("0x988b…8069")).toBeInTheDocument();
   });
 
   it("shows the full checksummed address on hover", () => {
@@ -90,7 +84,7 @@ describe("AddressText", () => {
 
   it("renders a malformed address as given without throwing", () => {
     const malformed = "0xnot-an-address" as Address;
-    render(<AddressText address={malformed} chain={NO_EXPLORER} />);
+    render(<AddressText address={malformed} chain={MAINNET} />);
     expect(screen.getByText("0xnot-…ress")).toBeInTheDocument();
   });
 });

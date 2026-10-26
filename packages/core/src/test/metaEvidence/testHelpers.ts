@@ -37,7 +37,6 @@ export const SINGLE_CHAIN_PROXY = "0x126697b552b83f08c7ebebae8d13eae2871e4e1e" s
 export const FIXTURE = fixture;
 
 export const MAINNET_RPC = "https://read.rpc.test/mainnet";
-export const MAINNET_PUBLIC_RPC = "https://public.rpc.test/mainnet";
 export const GNOSIS_RPC = "https://read.rpc.test/gnosis";
 
 export function locatorUrl(chainId: number, disputeId: bigint): string {

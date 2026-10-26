@@ -2,13 +2,12 @@ import { describe, expect, it } from "vitest";
 import { buildRpcRedirects } from "./rpcRedirects";
 
 describe("buildRpcRedirects", () => {
-  it("redirects every key on a chain's Infura host to that chain's public RPC", () => {
+  it("redirects every key on a chain's Infura host to that chain's read RPC", () => {
     const rules = buildRpcRedirects({
       REACT_APP_WEB3_PROVIDER_URL: "https://read.example/mainnet",
-      REACT_APP_PUBLIC_RPC_1: "https://public.example/mainnet",
       REACT_APP_WEB3_SEPOLIA_PROVIDER_URL: "https://read.example/sepolia",
     });
-    expect(rules).toContainEqual({ chainId: 1, host: "mainnet.infura.io", pathPrefix: "/v3/", target: "https://public.example/mainnet" });
+    expect(rules).toContainEqual({ chainId: 1, host: "mainnet.infura.io", pathPrefix: "/v3/", target: "https://read.example/mainnet" });
     expect(rules).toContainEqual({ chainId: 11155111, host: "sepolia.infura.io", pathPrefix: "/v3/", target: "https://read.example/sepolia" });
   });
 

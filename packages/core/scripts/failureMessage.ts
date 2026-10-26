@@ -3,7 +3,7 @@
  * RPC URL ever reaches the output.
  */
 import { BaseError } from "viem";
-import { CHAINS, resolvePublicRpcUrl, resolveReadRpcUrl } from "../src/chains";
+import { CHAINS, resolveReadRpcUrl } from "../src/chains";
 import { urlPieces } from "../src/rpc/urlPieces";
 import type { Env } from "../src/types";
 
@@ -34,9 +34,8 @@ export function redact(text: string, urls: readonly string[]): string {
 function configuredRpcUrls(env: Env): string[] {
   const urls = new Set<string>();
   for (const chain of Object.values(CHAINS)) {
-    for (const resolution of [resolveReadRpcUrl(chain, env), resolvePublicRpcUrl(chain, env)]) {
-      if (resolution.status === "configured") urls.add(resolution.url);
-    }
+    const resolution = resolveReadRpcUrl(chain, env);
+    if (resolution.status === "configured") urls.add(resolution.url);
   }
   return [...urls];
 }

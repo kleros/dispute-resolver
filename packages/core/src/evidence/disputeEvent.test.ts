@@ -5,6 +5,7 @@ import type { Address } from "../types";
 import { scanEvidenceLogs } from "./events";
 import { evidenceScanStart, readDisputeEvent } from "./index";
 import { disputeLog, evidenceLog, fakeClient, recordedDispute, recordedNode, RECORDED, rpcError, type RpcLog } from "../test/evidence/testHelpers";
+import { chainOf } from "../test/chains/testHelpers";
 
 const ARBITRATOR = RECORDED.arbitrator;
 const DISPUTE_1454 = recordedDispute(1454n);
@@ -137,7 +138,7 @@ describe("Evidence and Dispute-event scan start", () => {
   });
 
   it("a chain without a deployment block scans from block 0", () => {
-    expect(evidenceScanStart({ id: 999, name: "Bare", currency: "ETH", isTestnet: true, maxLookback: 50_000 })).toBe(0n);
+    expect(evidenceScanStart({ ...chainOf(1), arbitratorDeployedAtBlock: undefined })).toBe(0n);
   });
 
   it("the Dispute and Evidence scans run from the scan start to the head, never from head − lookback", async () => {

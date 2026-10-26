@@ -24,7 +24,7 @@ interface EvidenceScan {
   readonly undecodable: number;
 }
 
-/** The arbitrator deployment block on every chain, testnets included: a scan from `head − lookback` misses older disputes. */
+/** The arbitrator deployment block on every arbitrator chain, testnets included: a scan from `head − lookback` misses older disputes. */
 export function evidenceScanStart(chain: ChainConfig): bigint {
   return BigInt(chain.arbitratorDeployedAtBlock ?? 0);
 }

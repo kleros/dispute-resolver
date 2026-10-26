@@ -1,12 +1,12 @@
-import type { ChainConfig } from "@dispute-resolver/core";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Amount } from "./Amount";
 import { formatAmount } from "./amount";
+import { testChain } from "../test/data";
 
-const MAINNET: ChainConfig = { id: 1, name: "Ethereum Mainnet", currency: "ETH", isTestnet: false, maxLookback: 1_000_000 };
-const GNOSIS: ChainConfig = { id: 100, name: "Gnosis Chain", currency: "xDai", isTestnet: false, maxLookback: 1_000_000 };
-const SEPOLIA: ChainConfig = { id: 11155111, name: "Sepolia", currency: "sETH", isTestnet: true, maxLookback: 50_000 };
+const MAINNET = testChain(1);
+const GNOSIS = testChain(100);
+const SEPOLIA = testChain(11155111);
 
 describe("formatAmount", () => {
   it.each([
