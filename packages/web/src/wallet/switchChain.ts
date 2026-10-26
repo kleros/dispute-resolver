@@ -1,8 +1,9 @@
-import { getAccount, switchChain, type Config } from "@wagmi/core";
+import { switchChain, type Config } from "@wagmi/core";
 import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { useConfig } from "wagmi";
 import { chainName } from "./chains";
 import { errorMessage, isUserRejection } from "./errors";
+import { currentWalletState } from "./useWallet";
 
 export type SwitchResult = { readonly ok: true } | { readonly ok: false; readonly reason: "no-wallet" | "rejected" | "failed" | "pending"; readonly message: string };
 
@@ -41,7 +42,7 @@ function setInFlight(store: InFlightStore, value: InFlightSwitch | null): void {
  */
 export async function switchWalletChain(config: Config, chainId: number): Promise<SwitchResult> {
   const name = chainName(chainId);
-  if (getAccount(config).status !== "connected") {
+  if (currentWalletState(config).status !== "connected") {
     return { ok: false, reason: "no-wallet", message: `Connect a wallet to switch to ${name}.` };
   }
   const store = inFlightStore(config);

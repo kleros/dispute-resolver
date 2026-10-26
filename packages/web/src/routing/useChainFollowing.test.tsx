@@ -13,6 +13,7 @@ import {
   createTestWallet,
   declineNextSwitch,
   holdChainSwitches,
+  holdWalletRestore,
   setWalletStatus,
   walletConnector,
   walletWrapper,
@@ -585,7 +586,7 @@ describe("useChainFollowing: the URL moves to another chain while a wallet is co
     expect(toastsShown()).toEqual([]);
   });
 
-  it("a refusal that comes while the wallet reconnects moves the app to the wallet's chain once it is back, with one toast", async () => {
+  it("a refusal that comes before wagmi has restored the reconnecting wallet moves the app to the wallet's chain once it is back, with one toast", async () => {
     const wallet = await createConnectedTestWallet({ chainId: 100 });
     const switches = spyOnSwitches(wallet);
     const decline = declineNextSwitch(wallet);
@@ -593,10 +594,10 @@ describe("useChainFollowing: the URL moves to another chain while a wallet is co
     await waitFor(() => {
       expect(switches).toHaveBeenCalledTimes(1);
     });
-    setWalletStatus(wallet, "reconnecting");
+    const restore = holdWalletRestore(wallet);
     await declineNow(decline);
     await settle();
-    setWalletStatus(wallet, "connected");
+    restore();
     await waitFor(() => {
       expect(view.currentPath()).toBe("/100/ongoing");
     });
@@ -606,7 +607,7 @@ describe("useChainFollowing: the URL moves to another chain while a wallet is co
     expect(notifications().getByRole("status")).toHaveTextContent("Dispute 5 is on Ethereum Mainnet");
   });
 
-  it("a refusal that comes while the wallet reconnects, after which the wallet is back on the page chain, moves nothing and shows no toast", async () => {
+  it("a refusal that comes before wagmi has restored the reconnecting wallet, which is back on the page chain, moves nothing and shows no toast", async () => {
     const wallet = await createConnectedTestWallet({ chainId: 100 });
     const switches = spyOnSwitches(wallet);
     const decline = declineNextSwitch(wallet);
@@ -614,12 +615,12 @@ describe("useChainFollowing: the URL moves to another chain while a wallet is co
     await waitFor(() => {
       expect(switches).toHaveBeenCalledTimes(1);
     });
-    setWalletStatus(wallet, "reconnecting");
+    const restore = holdWalletRestore(wallet);
     await declineNow(decline);
     await act(async () => {
       await wallet.changeChain(1);
     });
-    setWalletStatus(wallet, "connected");
+    restore();
     await settle();
     expect(view.currentPath()).toBe("/1/cases/5");
     expect(screen.getByText("Page on 1")).toBeInTheDocument();

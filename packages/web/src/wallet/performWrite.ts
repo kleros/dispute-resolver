@@ -3,6 +3,7 @@ import { getAccount, writeContract, type Config } from "@wagmi/core";
 import type { WriteReceipt } from "../data";
 import { errorMessage, isChainMismatch, isUserRejection } from "./errors";
 import type { NeedsWalletGuard, WriteOptions, WriteOutcome, WriteStatus, WrongChainGuard } from "./types";
+import { currentWalletState, toWalletState } from "./useWallet";
 
 /** What one write needs besides the call: wagmi to sign, and the configured read RPC for the receipt. */
 export interface WriteEnvironment {
@@ -21,14 +22,15 @@ export function chainGuard(walletChainId: number | undefined, pageChainId: numbe
 }
 
 function connectedChainId(config: Config): number | undefined {
-  const account = getAccount(config);
-  return account.status === "connected" ? account.chainId : undefined;
+  const wallet = currentWalletState(config);
+  return wallet.status === "connected" ? wallet.chainId : undefined;
 }
 
 /** The connector's own current chain, read immediately before signing; `undefined` without a connection. */
 function connectorChainId(config: Config): Promise<number | undefined> {
-  const { connector, status } = getAccount(config);
-  return status === "connected" ? connector.getChainId() : Promise.resolve(undefined);
+  const account = getAccount(config);
+  if (toWalletState(account).status !== "connected" || account.connector === undefined) return Promise.resolve(undefined);
+  return account.connector.getChainId();
 }
 
 function explorerUrl(chainId: number, hash: Hex): string | null {

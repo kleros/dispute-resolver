@@ -10,11 +10,14 @@ export {
   TEST_WALLET_SECOND_ACCOUNT,
   UNCONFIGURED_CHAIN_ID,
   createConnectedTestWallet,
+  createReturningTestWallet,
   createTestWallet,
   declineNextSwitch,
   holdChainSwitches,
+  holdWalletRestore,
   setWalletStatus,
   walletConnector,
+  type ReturningTestWallet,
   type TestWallet,
 } from "./testWallet";
 export { TEST_MINED, TEST_REPLACEMENT_TX_HASH, TEST_SENT, TEST_TX_HASH, testReceipt, testReplacementReceipt, testWriteBuild } from "./writeFixtures";

@@ -1,10 +1,10 @@
 import { normalizeIpfsPath } from "@dispute-resolver/core";
 import { AuthorizationError, useAtlasProvider, type IAtlasProvider } from "@kleros/kleros-app";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { getAccount, type Config } from "@wagmi/core";
+import type { Config } from "@wagmi/core";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useConfig } from "wagmi";
-import { isUserRejection, useWallet } from "../wallet";
+import { currentWalletState, isUserRejection, useWallet } from "../wallet";
 import { failure, reasonOf } from "./failures";
 import { LIBRARY_ROLES, refuseFile, roleLimits } from "./limits";
 import { browserSessionStorage, clearRejectedToken, isLiveToken, readStoredToken, tokenExpiry } from "./session";
@@ -80,8 +80,8 @@ function walletChange(started: WalletSnapshot, now: WalletSnapshot): UploadFailu
 
 /** wagmi's current account, not the last committed render's: a `chainChanged` event updates it before React renders. */
 function liveWallet(config: Config): WalletSnapshot {
-  const account = getAccount(config);
-  return account.status === "connected" ? { connected: true, chainId: account.chainId } : { connected: false, chainId: null };
+  const wallet = currentWalletState(config);
+  return wallet.status === "connected" ? { connected: true, chainId: wallet.chainId } : { connected: false, chainId: null };
 }
 
 /**

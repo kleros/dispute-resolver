@@ -1,9 +1,11 @@
 import { CHAINS, type Address } from "@dispute-resolver/core";
 import { act } from "@testing-library/react";
-import { connect, createConfig, disconnect, mock, type Config, type Connector } from "@wagmi/core";
+import { connect, createConfig, createStorage, disconnect, mock, type Config, type Connector } from "@wagmi/core";
 import { UserRejectedRequestError, custom, defineChain, getAddress, numberToHex, type Chain, type EIP1193RequestFn } from "viem";
 import { vi, type Mock } from "vitest";
 import type { WalletMode, WalletModal, WalletSetup } from "../../wallet";
+import { createMemoryStorage, deferred } from "../data";
+import { TEST_TX_HASH } from "./writeFixtures";
 
 /** The account of the test wallet (checksummed, as wallets report it). */
 export const TEST_WALLET_ACCOUNT = "0x00000000000000000000000000000000000A11cE";
@@ -157,6 +159,129 @@ export function declineNextSwitch(wallet: TestWallet): () => void {
   return () => {
     if (decline === undefined) throw new Error("No switch request reached the wallet.");
     decline();
+  };
+}
+
+export interface ReturningTestWalletOptions {
+  /** Whether wagmi's storage holds the connection of the previous visit (`CONNECTED_WAGMI_STORE`, on chain 1); default `true`. */
+  readonly stored?: boolean;
+}
+
+/**
+ * A visitor's browser at load, for wagmi's real reconnect: two installed wallets, as wagmi's mock connector. The first is
+ * the one the visitor connected before, authorized for the site and now on chain 100; wagmi tries it first. The second
+ * is never authorized. Wagmi's check of each waits until the test releases it, as a browser wallet can take seconds to
+ * answer. Render it with `WalletSetupProvider` (not pending, so wagmi reconnects at mount) inside `TestDataProvider`, and
+ * release both checks before the test ends: wagmi starts no other reconnect while one waits.
+ */
+export interface ReturningTestWallet {
+  readonly config: Config;
+  readonly setup: WalletSetup;
+  /** The wallet the visitor connected before. */
+  readonly remembered: Connector;
+  /** Every transaction the remembered wallet was asked to send; each is answered with `TEST_TX_HASH`. */
+  readonly sent: readonly unknown[];
+  /** Wagmi learns the remembered wallet is authorized, and restores its connection. */
+  authorizeRemembered(): Promise<void>;
+  /** Wagmi learns the other wallet is not authorized, which ends its reconnect. */
+  endProbe(): Promise<void>;
+}
+
+type ProviderRequest = (args: { readonly method: string; readonly params?: unknown }) => Promise<unknown>;
+
+/**
+ * The mock connector forwards every method it does not answer itself to its chain's RPC URL: here the wallet answers
+ * `eth_accounts` and signs `eth_sendTransaction` itself, and refuses whatever else would leave the test.
+ */
+function offlineProvider(provider: { readonly request: ProviderRequest }, sent: unknown[]): { readonly request: ProviderRequest } {
+  const local = new Set(["eth_chainId", "eth_requestAccounts", "wallet_switchEthereumChain"]);
+  return {
+    ...provider,
+    request: (args) => {
+      if (args.method === "eth_accounts") return Promise.resolve([TEST_WALLET_ACCOUNT]);
+      if (args.method === "eth_sendTransaction") {
+        sent.push(args.params);
+        return Promise.resolve(TEST_TX_HASH);
+      }
+      if (local.has(args.method)) return provider.request(args);
+      return Promise.reject(new Error(`The returning test wallet does not answer ${args.method}.`));
+    },
+  };
+}
+
+function keepOffline(connector: Connector, sent: unknown[]): void {
+  const getProvider = connector.getProvider.bind(connector);
+  vi.spyOn(connector, "getProvider").mockImplementation(async (parameters) => offlineProvider((await getProvider(parameters)) as { readonly request: ProviderRequest }, sent));
+}
+
+/** Resolves once wagmi, which reads its storage on its own when the config is created, holds the stored connection. */
+async function storedConnectionRead(config: Config): Promise<void> {
+  await vi.waitFor(() => {
+    if (config.state.current === null) throw new Error("Wagmi has not read the stored connection yet.");
+  });
+}
+
+export async function createReturningTestWallet(options: ReturningTestWalletOptions = {}): Promise<ReturningTestWallet> {
+  const { stored = true } = options;
+  const chains = testChains(100);
+  const storage = createStorage({ storage: createMemoryStorage(stored ? { "wagmi.store": CONNECTED_WAGMI_STORE } : {}) });
+  const config = createConfig({
+    chains,
+    transports: rejectingTransports(chains),
+    connectors: [mock({ accounts: [TEST_WALLET_ACCOUNT] }), mock({ accounts: [TEST_WALLET_SECOND_ACCOUNT] })],
+    storage,
+    multiInjectedProviderDiscovery: false,
+    ssr: false,
+  });
+  if (stored) await storedConnectionRead(config);
+  const [remembered, other] = config.connectors;
+  if (remembered === undefined || other === undefined) throw new Error("The mock connectors were not created.");
+  const sent: unknown[] = [];
+  keepOffline(remembered, sent);
+  keepOffline(other, sent);
+  const authorization = deferred<boolean>();
+  const probe = deferred<boolean>();
+  vi.spyOn(remembered, "isAuthorized").mockReturnValueOnce(authorization.promise).mockResolvedValue(true);
+  vi.spyOn(other, "isAuthorized").mockReturnValueOnce(probe.promise).mockResolvedValue(false);
+  const release = async (check: { readonly promise: Promise<boolean>; resolve(value: boolean): void }, value: boolean) => {
+    await act(async () => {
+      check.resolve(value);
+      await check.promise;
+    });
+  };
+  return {
+    config,
+    setup: { mode: "appkit", wagmiConfig: config, modal: fakeModal(false) },
+    remembered,
+    sent,
+    authorizeRemembered: () => release(authorization, true),
+    endProbe: () => release(probe, false),
+  };
+}
+
+/**
+ * Puts wagmi in the state of a reconnect that has only read the connection from storage: status `reconnecting`, and the
+ * current connection's connector the method-less `{ id, name, type, uid }` wagmi persists, so the app reads `connecting`.
+ * Returns the restore: the real connector comes back and wagmi is `connected`.
+ */
+export function holdWalletRestore(wallet: TestWallet): () => void {
+  const { current } = wallet.config.state;
+  const connection = current === null ? undefined : wallet.config.state.connections.get(current);
+  if (current === null || connection === undefined) throw new Error("The test wallet has no connection to restore.");
+  const { id, name, type, uid } = connection.connector;
+  // Wagmi types every connection's connector as a full `Connector`, though the one it reads from storage is this stub.
+  const stored = { ...connection, connector: { id, name, type, uid } as Connector };
+  act(() => {
+    wallet.config.setState((state) => ({ ...state, status: "reconnecting", connections: new Map(state.connections).set(current, stored) }));
+  });
+  return () => {
+    act(() => {
+      wallet.config.setState((state) => {
+        const now = state.connections.get(current);
+        const connections = new Map(state.connections).set(current, { ...(now ?? stored), connector: connection.connector });
+        return { ...state, status: "connected", connections };
+      });
+    });
   };
 }
 

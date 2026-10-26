@@ -10,7 +10,7 @@ export { WriteStatusNotice } from "./WriteStatusNotice";
 export { isUserRejection } from "./errors";
 export { useConnectWallet } from "./useConnectWallet";
 export { switchingLabel, useNetworkSwitch } from "./switchChain";
-export { useWallet, useWalletChainId } from "./useWallet";
+export { currentWalletState, useWallet, useWalletChainId } from "./useWallet";
 export { useWrite } from "./useWrite";
 export { useWriteAccess } from "./useWriteAccess";
 export { useWriteSequence } from "./useWriteSequence";

@@ -16,6 +16,8 @@ export interface InjectedWalletOptions {
   readonly heldSwitches?: boolean;
   /** Whether the user signs the messages `personal_sign` asks for (default: refused with 4200, like any other method). */
   readonly signs?: boolean;
+  /** Wagmi's storage holds this wallet's connection from an earlier visit, as after a reload (default false). */
+  readonly stored?: boolean;
 }
 
 /** Fails early, and says why, when the build connects no wallet (no WalletConnect project ID): `account` never shows. */
@@ -140,9 +142,60 @@ function installWallet(options: InjectedWalletOptions & { readonly rdns: string;
   announce();
   try {
     window.localStorage.setItem("wagmi.recentConnectorId", JSON.stringify(options.rdns));
+    if (options.stored === true) {
+      // Wagmi persists a connection's connector as `{ id, name, type, uid }`; the uid of an earlier page is never a
+      // connector of this one.
+      const uid = "e2e-earlier-visit";
+      const connection = { accounts: [options.account], chainId: options.chainId, connector: { id: options.rdns, name: info.name, type: "injected", uid } };
+      const state = { connections: { __type: "Map", value: [[uid, connection]] }, chainId: options.chainId, current: uid };
+      window.localStorage.setItem("wagmi.store", JSON.stringify({ state, version: 2 }));
+    }
   } catch {
     // Storage may be blocked; wagmi then still finds the authorized wallet when it reconnects every connector.
   }
+}
+
+/** The EIP-6963 identity of the wallet that never answers. */
+const UNRESPONSIVE_RDNS = "io.kleros.e2e-unresponsive-wallet";
+
+/** The page-side record of the methods the page asked the unresponsive wallet for. */
+const UNRESPONSIVE_HANDLE = "__e2eUnresponsiveWallet";
+
+/** Runs in the page before any app script. */
+function installUnresponsiveWallet(options: { readonly rdns: string; readonly handle: string }): void {
+  const requests: string[] = [];
+  const provider = {
+    request({ method }: { readonly method: string }): Promise<unknown> {
+      requests.push(method);
+      return new Promise(() => undefined);
+    },
+    on: () => provider,
+    removeListener: () => provider,
+    removeAllListeners: () => provider,
+  };
+  Object.defineProperty(window, options.handle, { value: requests });
+  const info = {
+    uuid: "6e6f6e65-0000-4000-8000-653265303032",
+    name: "E2E unresponsive wallet",
+    icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E",
+    rdns: options.rdns,
+  };
+  const announce = () => window.dispatchEvent(new CustomEvent("eip6963:announceProvider", { detail: Object.freeze({ info, provider }) }));
+  window.addEventListener("eip6963:requestProvider", announce);
+  announce();
+}
+
+/**
+ * A second installed wallet that never answers a request, as a browser wallet that takes many seconds to wake up: wagmi's
+ * reconnect checks every installed wallet and waits on this one.
+ */
+export async function injectUnresponsiveWallet(context: BrowserContext): Promise<void> {
+  await context.addInitScript(installUnresponsiveWallet, { rdns: UNRESPONSIVE_RDNS, handle: UNRESPONSIVE_HANDLE });
+}
+
+/** The methods the page asked the unresponsive wallet for, in order. */
+export function unresponsiveWalletRequests(page: Page): Promise<string[]> {
+  return page.evaluate((handle) => [...(Reflect.get(window, handle) as string[])], UNRESPONSIVE_HANDLE);
 }
 
 export async function injectWallet(context: BrowserContext, options: InjectedWalletOptions): Promise<void> {
