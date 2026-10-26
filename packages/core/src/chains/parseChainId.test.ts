@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CHAINS, parseChainId } from "./index";
+import { CHAINS, parseChainId, parseChainNumber } from "./index";
 
 const CONFIGURED = Object.keys(CHAINS).map(Number);
 
@@ -72,6 +72,43 @@ describe("parseChainId", () => {
     const inputs: unknown[] = [undefined, null, "", "1", 1, NaN, {}, [], Symbol("x"), 1n, "9".repeat(100_000)];
     for (const input of inputs) {
       expect(() => parseChainId(input)).not.toThrow();
+    }
+  });
+});
+
+describe("parseChainNumber", () => {
+  it("keeps a positive integer whether or not the chain table has it", () => {
+    for (const id of [...CONFIGURED, 10, 690, 5, 80001]) {
+      expect(parseChainNumber(id)).toBe(id);
+      expect(parseChainNumber(String(id))).toBe(id);
+    }
+  });
+
+  it("rejects what parseChainId rejects before looking at the chain table", () => {
+    const rejected: unknown[] = [
+      0,
+      "0",
+      -1,
+      "-1",
+      1.5,
+      "1.0",
+      "01",
+      " 1",
+      "0x1",
+      "1e0",
+      2 ** 53,
+      "9007199254740993",
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      "",
+      null,
+      true,
+      1n,
+      {},
+      [1],
+    ];
+    for (const input of rejected) {
+      expect(parseChainNumber(input), String(input)).toBeUndefined();
     }
   });
 });

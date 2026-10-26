@@ -29,7 +29,6 @@ import {
   testFoundLookup,
   testOkMetaEvidence,
 } from "../../test/data";
-import { testMetaEvidence } from "../../test/safe-content";
 import { renderWithProviders } from "../../test/shell";
 import { installOfflineAppKitEnvironment } from "../../test/wallet";
 import { CasePage } from "./index";
@@ -1174,14 +1173,17 @@ describe("section degradation", () => {
     expect(result.scriptRuns()).toBe(0);
   });
 
-  it("an evidence display for chain 10 falls back to the arbitrator chain and the page renders", async () => {
-    const metaEvidence = testMetaEvidence({ arbitrableChainID: { status: "invalid" }, evidenceDisplayInterfaceURI: "https://display.example/index.html" });
-    programReads({ metaEvidence: { "1": { ...testOkMetaEvidence(), metaEvidence } } });
+  it("an evidence display for unconfigured chain 10 is told chain 10 with no RPC for it, and the page renders", async () => {
+    const parsed = actualCore.parseMetaEvidence({ title: "Test dispute", arbitrableChainID: 10, evidenceDisplayInterfaceURI: "https://display.example/index.html" });
+    if (!parsed.ok) throw new Error("the meta-evidence must parse");
+    programReads({ metaEvidence: { "1": { ...testOkMetaEvidence(), metaEvidence: parsed.value } } });
     renderCase("/1/cases/1");
     await settledDispute();
     const frame = await screen.findByTitle("Evidence display");
     const query = decodeURIComponent(new URL(frame.getAttribute("src") ?? "").search.slice(1));
-    expect(JSON.parse(query)).toMatchObject({ arbitrableChainID: 1, arbitratorChainID: 1, chainID: 1 });
+    const params = JSON.parse(query) as Record<string, unknown>;
+    expect(params).toMatchObject({ arbitrableChainID: 10, arbitrableJsonRpcUrl: null, arbitratorChainID: 1, chainID: 1 });
+    expect(params.arbitratorJsonRpcUrl).toBe(params.jsonRpcUrl);
     expect(screen.getByRole("heading", { level: 2, name: "Test dispute" })).toBeInTheDocument();
     expect(timelineColumns().length).toBeGreaterThan(0);
   });

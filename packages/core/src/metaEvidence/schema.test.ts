@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { INVALID_META_EVIDENCE, parseMetaEvidence } from "./index";
+import { getChain } from "../chains";
 import type { MetaEvidence } from "./types";
 
 const ADDRESS = "0x799cb978dea5d6ca00ccb1794d3c3d4c89e40cd1";
@@ -287,8 +288,25 @@ describe("parseMetaEvidence", () => {
     for (const falsy of [0, "", null, false]) expect(field(falsy)).toEqual({ status: "absent" });
     expect(field(100)).toEqual({ status: "valid", chainId: 100 });
     expect(field("100")).toEqual({ status: "valid", chainId: 100 });
-    for (const bad of ["1</script><script>alert(1)</script>", "1.0", "01", " 1", 1.5, 10, "10", {}, true]) expect(field(bad)).toEqual({ status: "invalid" });
+    for (const bad of ["1</script><script>alert(1)</script>", "1.0", "01", " 1", 1.5, {}, true]) expect(field(bad)).toEqual({ status: "invalid" });
     expect(parsed({ title: "T", arbitratorChainID: "1" }).arbitratorChainID).toEqual({ status: "valid", chainId: 1 });
+  });
+
+  it("a positive integer chain ID the chain table lacks keeps its number as unsupported", () => {
+    const field = (value: unknown) => parsed({ title: "T", arbitrableChainID: value }).arbitrableChainID;
+    for (const chainId of [10, 690, 5, 80001]) {
+      expect(getChain(chainId)).toBeUndefined();
+      expect(field(chainId)).toEqual({ status: "unsupported", chainId });
+      expect(field(String(chainId))).toEqual({ status: "unsupported", chainId });
+    }
+    expect(parsed({ title: "T", arbitratorChainID: "10" }).arbitratorChainID).toEqual({ status: "unsupported", chainId: 10 });
+  });
+
+  it("a chain ID that is not a safe positive integer stays invalid", () => {
+    const field = (value: unknown) => parsed({ title: "T", arbitrableChainID: value }).arbitrableChainID;
+    for (const bad of [-1, "-1", -10, 10.5, "10.5", "1e1", "0x0a", 2 ** 53, "9007199254740993", Number.MAX_VALUE, Infinity, "abc"]) {
+      expect(field(bad), String(bad)).toEqual({ status: "invalid" });
+    }
   });
 
   it("`_v` absent is null, a string is kept, and any other present value selects URLSearchParams", () => {

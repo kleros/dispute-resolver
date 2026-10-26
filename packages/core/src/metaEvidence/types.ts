@@ -5,11 +5,16 @@ import type { FallbackOutcomes, RulingOptions } from "../rulings/types";
 import type { CanonicalIpfsPath } from "../uri/types";
 
 /**
- * A chain ID field read from untrusted meta-evidence. `absent` covers a missing key and every falsy value. `invalid`
- * means present but not an integer naming a configured chain: the display allowlist key falls back to the arbitrator
- * chain, while a script is not run.
+ * A chain ID field read from untrusted meta-evidence. `absent` covers a missing key and every falsy value. `valid` names
+ * a configured chain. `unsupported` is a safe positive integer the chain table lacks (Optimism's 10): the evidence
+ * display is told that number, with no RPC for it. `invalid` is any other present value: the evidence display falls
+ * back to the arbitrator chain. A script is run for neither.
  */
-export type ChainIdField = { readonly status: "absent" } | { readonly status: "valid"; readonly chainId: number } | { readonly status: "invalid" };
+export type ChainIdField =
+  | { readonly status: "absent" }
+  | { readonly status: "valid"; readonly chainId: number }
+  | { readonly status: "unsupported"; readonly chainId: number }
+  | { readonly status: "invalid" };
 
 /**
  * Meta-evidence after the dynamic-script merge and validation: every rendered field is a string or a validated

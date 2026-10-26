@@ -1,6 +1,6 @@
 import { isAddress } from "viem";
 import { z } from "../zod";
-import { parseChainId } from "../chains";
+import { getChain, parseChainId, parseChainNumber } from "../chains";
 import { fail, succeed } from "../outcome";
 import { DECIMAL_STRING, QUESTION_ID } from "../reality/cache";
 import type { RealityStatus, SafePopulateReason } from "../reality/types";
@@ -41,6 +41,7 @@ const rulingOptionsShape = z.object({
 const chainIdFieldShape = z.discriminatedUnion("status", [
   z.object({ status: z.literal("absent") }),
   z.object({ status: z.literal("valid"), chainId: z.number().refine((chainId) => parseChainId(chainId) === chainId) }),
+  z.object({ status: z.literal("unsupported"), chainId: z.number().refine((chainId) => parseChainNumber(chainId) === chainId && getChain(chainId) === undefined) }),
   z.object({ status: z.literal("invalid") }),
 ]);
 
@@ -144,8 +145,9 @@ function stringOrNull(value: unknown): string | null {
 
 function chainIdField(value: unknown): ChainIdField {
   if (!value) return { status: "absent" };
-  const chainId = parseChainId(value);
-  return chainId === undefined ? { status: "invalid" } : { status: "valid", chainId };
+  const chainId = parseChainNumber(value);
+  if (chainId === undefined) return { status: "invalid" };
+  return getChain(chainId) === undefined ? { status: "unsupported", chainId } : { status: "valid", chainId };
 }
 
 /** A present non-string `_v` becomes `""`: like the value itself, it is not `"0"`, so it selects `URLSearchParams`. */

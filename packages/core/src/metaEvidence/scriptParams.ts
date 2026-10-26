@@ -9,6 +9,7 @@ function parameterChain(field: ChainIdField, arbitratorChainId: number): number 
       return arbitratorChainId;
     case "valid":
       return field.chainId;
+    case "unsupported":
     case "invalid":
       return undefined;
   }

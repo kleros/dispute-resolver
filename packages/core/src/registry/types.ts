@@ -37,7 +37,7 @@ export interface Registry {
   readonly overrides: Readonly<Record<RegistryKey, BehaviorOverride>>;
   /** Arbitrator chain → canonical CID paths, matched exactly after normalization. */
   readonly dynamicScriptAllowlist: Readonly<Record<number, readonly CidPath[]>>;
-  /** Looked up by the validated meta-evidence `arbitrableChainID`, else the arbitrator chain. Evidence-display iframe flags only. */
+  /** Looked up by the meta-evidence's `displayChainId` of `arbitrableChainID`. Evidence-display iframe flags only. */
   readonly displayAllowlist: Readonly<Record<number, readonly Address[]>>;
   /** Written into meta-evidence by the Create page. */
   readonly defaultScriptCid: string;

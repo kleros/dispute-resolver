@@ -118,11 +118,20 @@ describe("persisted query cache", () => {
     expect(restored.getQueryCache().getAll()).toHaveLength(0);
   });
 
+  it("restores a meta-evidence naming an unconfigured chain with its number, and drops what the previous version stored without it", async () => {
+    const unsupported = testOkMetaEvidence({ arbitrableChainID: { status: "unsupported", chainId: 10 } });
+    const current = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: unsupported }]));
+    expect(current.getQueryData(metaEvidenceKey)).toEqual(unsupported);
+    const numberLost = testOkMetaEvidence({ arbitrableChainID: { status: "invalid" } });
+    const previous = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: numberLost }], "dr-cache-6"));
+    expect(previous.getQueryCache().getAll()).toHaveLength(0);
+  });
+
   it("drops meta-evidence entries persisted without a source, under the previous version or the current one", async () => {
-    expect(CACHE_VERSION).toBe("dr-cache-6");
+    expect(CACHE_VERSION).toBe("dr-cache-7");
     const { source, ...withoutSource } = testOkMetaEvidence();
     expect(source).toEqual({ kind: "locator", event: "not-read" });
-    const previousVersion = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: withoutSource }], "dr-cache-5"));
+    const previousVersion = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: withoutSource }], "dr-cache-6"));
     expect(previousVersion.getQueryCache().getAll()).toHaveLength(0);
     const currentVersion = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: withoutSource }]));
     expect(currentVersion.getQueryData(metaEvidenceKey)).toBeUndefined();

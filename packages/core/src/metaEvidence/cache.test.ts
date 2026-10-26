@@ -109,6 +109,7 @@ describe("parseCachedMetaEvidenceResult", () => {
     });
     const result = await loadMetaEvidence(context({ fetcher }));
     expect(result).toMatchObject({ status: "ok", script: { ran: false, reason: "script-chain-unavailable" } });
+    expect(result.status === "ok" && result.metaEvidence.arbitrableChainID).toEqual({ status: "unsupported", chainId: 10 });
     expect(metaEvidenceCachePolicy(result)).toBe("persist");
     expect(parseCachedMetaEvidenceResult(persisted(result))).toEqual(result);
   });
@@ -161,6 +162,13 @@ describe("parseCachedMetaEvidenceResult", () => {
       { ...good, metaEvidence: { ...good.metaEvidence, rulingOptions: "x" } },
       { ...good, metaEvidence: { ...good.metaEvidence, aliases: { "not-an-address": "Bob" } } },
       { ...good, metaEvidence: { ...good.metaEvidence, arbitrableChainID: { status: "valid", chainId: 10 } } },
+      { ...good, metaEvidence: { ...good.metaEvidence, arbitrableChainID: { status: "unsupported", chainId: 1 } } },
+      { ...good, metaEvidence: { ...good.metaEvidence, arbitrableChainID: { status: "unsupported", chainId: 0 } } },
+      { ...good, metaEvidence: { ...good.metaEvidence, arbitrableChainID: { status: "unsupported", chainId: -10 } } },
+      { ...good, metaEvidence: { ...good.metaEvidence, arbitrableChainID: { status: "unsupported", chainId: 10.5 } } },
+      { ...good, metaEvidence: { ...good.metaEvidence, arbitrableChainID: { status: "unsupported", chainId: 2 ** 53 } } },
+      { ...good, metaEvidence: { ...good.metaEvidence, arbitrableChainID: { status: "unsupported", chainId: "10" } } },
+      { ...good, metaEvidence: { ...good.metaEvidence, arbitrableChainID: { status: "unsupported" } } },
       { ...good, metaEvidence: { ...good.metaEvidence, arbitratorChainID: "1" } },
       { ...good, metaEvidence: { ...good.metaEvidence, realityQuestion: { status: "trusted" } } },
       { ...good, metaEvidence: { ...good.metaEvidence, fallbackOutcomes: [{ a: 1 }] } },

@@ -1,9 +1,9 @@
 import type { Address } from "../types";
 
 /**
- * Keyed by the validated meta-evidence `arbitrableChainID`, else the arbitrator chain. It feeds the evidence-display
- * iframe flags and marks the arbitrables whose own failure text `describeError` may show; it plays no role in sandboxing
- * scripts or detecting families.
+ * Keyed by the meta-evidence's `displayChainId` of `arbitrableChainID`; every key is a configured chain. It feeds the
+ * evidence-display iframe flags and marks the arbitrables whose own failure text `describeError` may show; it plays no
+ * role in sandboxing scripts or detecting families.
  */
 export const DISPLAY_ALLOWLIST: Readonly<Record<number, readonly Address[]>> = {
   1: [

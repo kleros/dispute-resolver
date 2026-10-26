@@ -71,6 +71,16 @@ describe("buildScriptParameters", () => {
     expect(build({ arbitratorChainID: "10" }).ok).toBe(false);
   });
 
+  it("a chain the table lacks stops the script with the reason that its network's details are unavailable", () => {
+    expect(metaEvidence({ arbitrableChainID: 690 }).arbitrableChainID).toEqual({ status: "unsupported", chainId: 690 });
+    for (const fields of [{ arbitrableChainID: 690 }, { arbitratorChainID: "80001" }]) {
+      expect(build(fields)).toEqual({
+        ok: false,
+        error: { code: "no-rpc", message: "The meta-evidence names a network whose details are unavailable, so its dynamic script did not run." },
+      });
+    }
+  });
+
   it("the RPC URLs are the read RPC of each chain", () => {
     const env: Env = { ...ENV, REACT_APP_WEB3_PROVIDER_URL: MAINNET_RPC, REACT_APP_WEB3_XDAI_PROVIDER_URL: GNOSIS_RPC };
     const outcome = build({ arbitrableChainID: 100 }, env);

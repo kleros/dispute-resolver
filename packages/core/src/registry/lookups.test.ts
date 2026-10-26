@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getChain } from "../chains";
-import type { Address } from "../types";
-import { displayAllowlistKey, getOverride, getRealityProxy, isDisplayAllowlisted, isScriptAllowed, registryKey } from "./lookups";
+import { getOverride, getRealityProxy, isDisplayAllowlisted, isScriptAllowed, registryKey } from "./lookups";
 import { REGISTRY } from "./registry";
 import { DISPUTE_1621_OVERRIDE, DISPUTE_1684_SCRIPT, UNSLASHED_CHECKSUMMED, addr } from "../test/registry/testHelpers";
 
@@ -129,33 +127,6 @@ describe("isScriptAllowed", () => {
   });
 });
 
-describe("displayAllowlistKey", () => {
-  it("uses the meta-evidence arbitrableChainID when it names a configured chain", () => {
-    expect(displayAllowlistKey(100, 1)).toBe(100);
-    expect(displayAllowlistKey("100", 1)).toBe(100);
-    expect(displayAllowlistKey(137, 1)).toBe(137);
-  });
-
-  it("a non-integer arbitrableChainID falls back to the arbitrator chain", () => {
-    for (const value of [1.5, "1.0", "1</script>", "abc", "01", " 1", NaN, Infinity, "-1", -1, 0]) {
-      expect(displayAllowlistKey(value, 100), String(value)).toBe(100);
-    }
-  });
-
-  it("an unconfigured arbitrableChainID falls back to the arbitrator chain", () => {
-    expect(getChain(10)).toBeUndefined();
-    expect(displayAllowlistKey(10, 1)).toBe(1);
-    expect(displayAllowlistKey("10", 1)).toBe(1);
-    expect(displayAllowlistKey(999999999, 100)).toBe(100);
-  });
-
-  it("a missing or hostile arbitrableChainID falls back to the arbitrator chain", () => {
-    for (const value of [undefined, null, {}, [], [1], true, 10n, { toString: () => "100" }]) {
-      expect(displayAllowlistKey(value, 1)).toBe(1);
-    }
-  });
-});
-
 describe("isDisplayAllowlisted", () => {
   it("a member of the list under the key is allowlisted", () => {
     expect(isDisplayAllowlisted(REGISTRY, 1, POH_V2_MAINNET)).toBe(true);
@@ -174,13 +145,6 @@ describe("isDisplayAllowlisted", () => {
   it("a key without a list allowlists nothing", () => {
     expect(isDisplayAllowlisted(REGISTRY, 42161, POH_V2_MAINNET)).toBe(false);
     expect(isDisplayAllowlisted(REGISTRY, 0, POH_V2_MAINNET)).toBe(false);
-  });
-
-  it("the key chosen by displayAllowlistKey selects the list", () => {
-    const keyed = (arbitrableChainId: unknown, arbitrator: number, address: Address): boolean =>
-      isDisplayAllowlisted(REGISTRY, displayAllowlistKey(arbitrableChainId, arbitrator), address);
-    expect(keyed(1, 100, POH_V2_MAINNET)).toBe(true);
-    expect(keyed("1</script>", 100, POH_V2_MAINNET)).toBe(false);
-    expect(keyed(undefined, 1, POH_V2_MAINNET)).toBe(true);
+    expect(isDisplayAllowlisted(REGISTRY, 10, POH_V2_MAINNET)).toBe(false);
   });
 });

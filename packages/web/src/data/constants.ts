@@ -2,7 +2,7 @@
  * Bump whenever a content-addressing rule, a core schema or a persisted shape changes: a restored cache whose version
  * differs is discarded whole, so no entry keeps an outdated reading.
  */
-export const CACHE_VERSION = "dr-cache-6";
+export const CACHE_VERSION = "dr-cache-7";
 
 export const PERSISTED_CACHE_KEY = "dr-query-cache";
 

@@ -1,4 +1,3 @@
-import { parseChainId } from "../chains";
 import type { Address, RegistryKey } from "../types";
 import { normalizeIpfsPath, toCidPath } from "../uri";
 import type { BehaviorOverride, Registry, RealityProxyEntry } from "./types";
@@ -27,12 +26,7 @@ export function isScriptAllowed(registry: Registry, arbitratorChainId: number, s
   return registry.dynamicScriptAllowlist[arbitratorChainId]?.includes(toCidPath(path)) ?? false;
 }
 
-/** The meta-evidence `arbitrableChainID` when it is an integer naming a configured chain, else the arbitrator chain. */
-export function displayAllowlistKey(metaEvidenceArbitrableChainId: unknown, arbitratorChainId: number): number {
-  return parseChainId(metaEvidenceArbitrableChainId) ?? arbitratorChainId;
-}
-
-/** Display flags only: no role in scripts or families. */
+/** Display flags only: no role in scripts or families. The key is the meta-evidence's `displayChainId`. */
 export function isDisplayAllowlisted(registry: Registry, key: number, arbitrable: Address): boolean {
   return registry.displayAllowlist[key]?.includes(arbitrable) ?? false;
 }

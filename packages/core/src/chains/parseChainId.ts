@@ -3,11 +3,10 @@ import { getChain } from "./table";
 const DECIMAL_NO_LEADING_ZERO = /^[1-9]\d*$/;
 
 /**
- * The single parser for untrusted chain IDs (the URL segment, meta-evidence chain IDs). Accepts a safe-integer number
- * or a string of ASCII digits without sign, whitespace or leading zero, and returns the ID only when the chain table
- * has it. Never throws.
+ * The lexical half of `parseChainId`: a safe positive integer, or a string of ASCII digits without sign, whitespace or
+ * leading zero, whether or not the chain table has it. Never throws.
  */
-export function parseChainId(input: unknown): number | undefined {
+export function parseChainNumber(input: unknown): number | undefined {
   let candidate: number;
   if (typeof input === "number") {
     candidate = input;
@@ -16,6 +15,14 @@ export function parseChainId(input: unknown): number | undefined {
   } else {
     return undefined;
   }
-  if (!Number.isSafeInteger(candidate)) return undefined;
-  return getChain(candidate)?.id;
+  return Number.isSafeInteger(candidate) && candidate > 0 ? candidate : undefined;
+}
+
+/**
+ * The single parser for untrusted chain IDs (the URL segment, meta-evidence chain IDs): `parseChainNumber`, kept only
+ * when the chain table has it. Never throws.
+ */
+export function parseChainId(input: unknown): number | undefined {
+  const candidate = parseChainNumber(input);
+  return candidate === undefined ? undefined : getChain(candidate)?.id;
 }

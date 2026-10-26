@@ -1,13 +1,8 @@
-import { REGISTRY, isDisplayAllowlisted, readRpcUrl, resolveDisplayUrl } from "@dispute-resolver/core";
-import type { ChainIdField } from "@dispute-resolver/core";
+import { REGISTRY, displayChainId, isDisplayAllowlisted, readRpcUrl, resolveDisplayUrl } from "@dispute-resolver/core";
 import type { DisplayParams, EvidenceDisplayInput, EvidenceDisplayModel, SandboxToken } from "./types";
 
 const RELAXED_SANDBOX: readonly SandboxToken[] = ["allow-scripts", "allow-same-origin", "allow-popups", "allow-popups-to-escape-sandbox"];
 const STRICT_SANDBOX: readonly SandboxToken[] = ["allow-scripts"];
-
-function chainIdOr(field: ChainIdField, pageChainId: number): number {
-  return field.status === "valid" ? field.chainId : pageChainId;
-}
 
 function encodeParams(params: DisplayParams, encoding: EvidenceDisplayModel["encoding"]): string {
   if (encoding === "json") return encodeURIComponent(JSON.stringify(params));
@@ -24,8 +19,8 @@ export function buildEvidenceDisplay(input: EvidenceDisplayInput): EvidenceDispl
   const uri = resolveDisplayUrl(metaEvidence.evidenceDisplayInterfaceURI, input.gateway);
   if (uri === null) return null;
 
-  const displayArbitratorChainId = chainIdOr(metaEvidence.arbitratorChainID, arbitratorChainId);
-  const displayArbitrableChainId = chainIdOr(metaEvidence.arbitrableChainID, arbitratorChainId);
+  const displayArbitratorChainId = displayChainId(metaEvidence.arbitratorChainID, arbitratorChainId);
+  const displayArbitrableChainId = displayChainId(metaEvidence.arbitrableChainID, arbitratorChainId);
   // Existing displays parse this JSON query, so the key order is part of its format.
   const params: DisplayParams = {
     disputeID: input.disputeId.toString(),
