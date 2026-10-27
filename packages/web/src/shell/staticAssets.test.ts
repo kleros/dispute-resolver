@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, join, resolve } from "node:path";
 import type { ImgHTMLAttributes, ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 import { BrandLogo } from "./BrandLogo";
@@ -61,6 +62,18 @@ describe("index.html and the global stylesheet", () => {
 
   it("the stylesheet uses Open Sans as the sans-serif family", () => {
     expect(read("src/index.css")).toMatch(/--font-sans:\s*"Open Sans"/);
+  });
+
+  it("no stylesheet the app loads turns on smooth scrolling, so reduced motion needs no scroll guard", () => {
+    const libraryAssets = dirname(createRequire(import.meta.url).resolve("@kleros/ui-components-library/style.css"));
+    const libraryStylesheets = readdirSync(libraryAssets).filter((name) => name.endsWith(".css"));
+    expect(libraryStylesheets).toContain("scrollbar.css");
+    for (const css of [read("src/index.css"), ...libraryStylesheets.map((name) => readFileSync(join(libraryAssets, name), "utf8"))]) {
+      expect(css).not.toMatch(/scroll-behavior\s*:\s*smooth/);
+    }
+    const sources = readdirSync(join(WEB_ROOT, "src"), { recursive: true, encoding: "utf8" }).filter((name) => /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name));
+    expect(sources.length).toBeGreaterThan(0);
+    for (const name of sources) expect(read(join("src", name)), name).not.toMatch(/\bscroll-smooth\b/);
   });
 });
 

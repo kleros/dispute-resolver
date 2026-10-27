@@ -217,6 +217,11 @@ test.describe("where the scrollbar takes layout space", () => {
       expect(await thumbFill(page)).toBe(rest);
       expect(await page.locator(MASK).evaluate((mask) => getComputedStyle(mask).backgroundColor), "the mask hides the page colour").toBe(TRANSPARENT);
       expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(pageColor);
+      const cardFill = await card(page, LAST_ID)
+        .locator(".bg-klerosUIComponentsWhiteBackground")
+        .first()
+        .evaluate((surface) => getComputedStyle(surface).backgroundColor);
+      expect(cardFill, "a library card inside the page lost its WhiteBackground to the mask").toBe(await tokenColor(page, "--klerosUIComponentsWhiteBackground"));
       expect((await thumbBox(page)).y, "at the top of the page the thumb starts over the header").toBeLessThan(await bottomOf(page.getByRole("banner")));
       const ring = await page.locator(THUMB).evaluate((thumb) => getComputedStyle(thumb, "::before").boxShadow);
       expect(ring, "no ring of the page colour sets the thumb off the header and footer").toContain(pageColor);
@@ -402,6 +407,17 @@ test.describe("where the scrollbar takes layout space", () => {
     await trigger.click();
     const listbox = page.getByRole("listbox");
     await expect(listbox).toBeVisible();
+    const ownScrollbar = await listbox.evaluate((list) => {
+      const root = list.closest("[data-simplebar]");
+      const mask = root?.querySelector(":scope > .simplebar-wrapper > .simplebar-mask");
+      const thumb = root?.querySelector(":scope > .simplebar-track.simplebar-vertical > .simplebar-scrollbar");
+      if (!mask || !thumb) throw new Error("The dropdown has no scrollbar of its own.");
+      return { mask: getComputedStyle(mask).backgroundColor, thumb: getComputedStyle(thumb, "::before").backgroundColor };
+    });
+    expect(ownScrollbar, "the dropdown's own scrollbar took the page scroller's colours").toEqual({
+      mask: await tokenColor(page, "--klerosUIComponentsWhiteBackground"),
+      thumb: await tokenColor(page, "--klerosUIComponentsPrimaryBlue"),
+    });
     const [triggerBox, listBox] = await Promise.all([trigger.boundingBox(), listbox.boundingBox()]);
     if (triggerBox === null || listBox === null) throw new Error("The dropdown or its trigger has no box.");
     expect(Math.abs(listBox.y - (triggerBox.y + triggerBox.height)), "the list opens away from its trigger").toBeLessThanOrEqual(16);
@@ -566,6 +582,44 @@ test.describe("where the scrollbar takes layout space", () => {
     expect(await thumbFill(page)).not.toBe(light);
   });
 
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`in ${colorScheme}, while a theme flip applies, nothing but the toggle's icons has a transition, a library dropdown on the scrolled page included`, async ({
+      page,
+      baseURL,
+    }) => {
+      await page.emulateMedia({ colorScheme });
+      await openLongList(page, baseURL);
+      await page.mouse.move(WIDTH / 2, HEIGHT / 2);
+      await page.mouse.wheel(0, 60);
+      await expect.poll(() => scrollTop(page)).toBeGreaterThan(0);
+      await page.locator("button[aria-haspopup='listbox']").first().click();
+      await expect(page.getByRole("listbox")).toBeVisible();
+      const transitions = await page.evaluate((attribute) => {
+        const root = document.documentElement;
+        root.setAttribute(attribute, "");
+        const moving: string[] = [];
+        const icons: string[] = [];
+        for (const element of root.querySelectorAll("*")) {
+          const own = getComputedStyle(element).transitionProperty;
+          if (element.matches("[data-icon-swap] > *")) icons.push(own);
+          else if (own !== "none") moving.push(`${element.tagName} ${own}`);
+          for (const pseudo of ["::before", "::after"]) {
+            const pseudoOwn = getComputedStyle(element, pseudo).transitionProperty;
+            if (pseudoOwn !== "none") moving.push(`${element.tagName}${pseudo} ${pseudoOwn}`);
+          }
+        }
+        root.removeAttribute(attribute);
+        return { moving, icons };
+      }, "data-theme-switching");
+      expect(transitions.moving, "a transition runs during the flip").toEqual([]);
+      expect(transitions.icons.length).toBeGreaterThan(0);
+      expect(
+        transitions.icons.filter((property) => property === "none"),
+        "the toggle's icon swap is paused too",
+      ).toEqual([]);
+    });
+  }
+
   test("printed, the page flows past the viewport as the document did and no scrollbar shows", async ({ page, baseURL }) => {
     await openLongList(page, baseURL);
     await page.emulateMedia({ media: "print" });
@@ -585,6 +639,14 @@ test.describe("where the scrollbar takes layout space", () => {
     expect(printed.footer, "the footer is cut off").toBeGreaterThan(printed.last);
     expect(printed.document, "the document ends at the viewport").toBeGreaterThanOrEqual(printed.footer - 1);
     expect(printed.track).toBe("none");
+  });
+
+  test("printed to PDF, the long list runs over several pages", async ({ page, baseURL, browserName }) => {
+    // Firefox and WebKit are covered by the print emulation test above.
+    test.skip(browserName !== "chromium", "Only Chromium prints to PDF.");
+    await openLongList(page, baseURL);
+    const pdf = (await page.pdf()).toString("latin1");
+    expect([...pdf.matchAll(/\/Type\s*\/Page\b/g)].length).toBeGreaterThan(1);
   });
 
   for (const width of [375, 768, 1280]) {

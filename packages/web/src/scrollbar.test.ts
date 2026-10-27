@@ -62,10 +62,11 @@ function contrast(a: string, b: string): number {
   return ((lighter ?? 0) + 0.05) / ((darker ?? 0) + 0.05);
 }
 
+/** The library's thumb utility paints with this variable, and each state's rule redefines it. */
 function thumbColour(selector: string): string {
-  const value = declarations(block(APP_CSS, selector)).get("background-color");
-  if (value === undefined) throw new Error(`${selector} sets no background-color`);
-  return value.replace("!important", "").trim();
+  const value = declarations(block(APP_CSS, selector)).get("--color-klerosUIComponentsPrimaryBlue");
+  if (value === undefined) throw new Error(`${selector} sets no thumb colour`);
+  return value;
 }
 
 /** The thumb half of Firefox's `scrollbar-color`, which takes one colour for every state, where the document scrolls. */

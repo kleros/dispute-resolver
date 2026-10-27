@@ -17,7 +17,7 @@ export interface PageScrollState {
 }
 
 /** The page's scroll offset and extent, from the page scroller when the app mounted one, else from the document. */
-export async function pageScroll(page: Page): Promise<PageScrollState> {
+export function pageScroll(page: Page): Promise<PageScrollState> {
   return page.evaluate((selector) => {
     const element = document.querySelector(selector) ?? document.scrollingElement ?? document.documentElement;
     return {

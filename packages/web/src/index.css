@@ -297,29 +297,35 @@
   }
 
   /*
-   * The page scroller (shell/PageScroller.tsx), the library's ScrollbarContainer. Its thumb is PrimaryBlue and its mask
-   * WhiteBackground through `!important` utilities of 0,2,1 and 0,2,0, so these are `!important` too, one class more.
+   * The page scroller (shell/PageScroller.tsx), the library's ScrollbarContainer. Its `!important` thumb and mask
+   * utilities paint with the theme's --color-klerosUIComponentsPrimaryBlue and --color-klerosUIComponentsWhiteBackground,
+   * so these rules redefine those variables where the utilities read them instead of outranking the utilities.
    * The thumb takes the page scrollbar's tokens at rest, under the pointer (SimpleBar's simplebar-hover: its track takes
    * no pointer events, so :hover never matches) and while dragged (simplebar-dragging on the root, the most specific).
    * Over the purple header and footer no thumb token reaches 3:1 in light (the dragged one is the bar's own colour), so
    * the thumb keeps a 1 px ring of the page colour, unseen on the page, inside SimpleBar's 2 px inset.
-   * The mask lets the page's own background show. Child combinators keep every rule off a SimpleBar inside the page.
+   * The mask lets the page's own background show; it wraps the whole page, so its offset restores WhiteBackground for
+   * everything inside. Child combinators keep every rule off a SimpleBar inside the page.
    */
   .dr-page-scroller > .simplebar-track .simplebar-scrollbar::before {
-    background-color: var(--dr-scroll-thumb) !important;
+    --color-klerosUIComponentsPrimaryBlue: var(--dr-scroll-thumb);
     box-shadow: 0 0 0 1px var(--klerosUIComponentsLightBackground);
   }
 
   .dr-page-scroller > .simplebar-track .simplebar-scrollbar.simplebar-hover::before {
-    background-color: var(--dr-scroll-thumb-hover) !important;
+    --color-klerosUIComponentsPrimaryBlue: var(--dr-scroll-thumb-hover);
   }
 
   .dr-page-scroller.simplebar-dragging > .simplebar-track.simplebar-vertical .simplebar-scrollbar::before {
-    background-color: var(--dr-scroll-thumb-active) !important;
+    --color-klerosUIComponentsPrimaryBlue: var(--dr-scroll-thumb-active);
   }
 
   .dr-page-scroller > .simplebar-wrapper > .simplebar-mask {
-    background-color: transparent !important;
+    --color-klerosUIComponentsWhiteBackground: transparent;
+  }
+
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset {
+    --color-klerosUIComponentsWhiteBackground: var(--klerosUIComponentsWhiteBackground);
   }
 }
 
@@ -650,18 +656,7 @@
       animation-duration: 1ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 1ms !important;
-      scroll-behavior: auto !important;
     }
-  }
-
-  /*
-   * A theme flip is instant: theme.ts sets the attribute for the one style change, so colour transitions of the app and
-   * the library do not tween while the rest of the page snaps. The toggle's own icon swap still runs.
-   */
-  :root[data-theme-switching] :where(*:not([data-icon-swap] > *)),
-  :root[data-theme-switching] ::before,
-  :root[data-theme-switching] ::after {
-    transition: none !important;
   }
 }
 
@@ -669,6 +664,16 @@
  * The unlayered rules. Unlayered styles beat every layer, utilities included, so these are the only places
  * a component's own classes are overridden.
  */
+
+/*
+ * A theme flip is instant: theme.ts sets the attribute for the one style change, so colour transitions of the app and
+ * the library do not tween while the rest of the page snaps. The toggle's own icon swap still runs.
+ */
+:root[data-theme-switching] :where(*:not([data-icon-swap] > *)),
+:root[data-theme-switching] ::before,
+:root[data-theme-switching] ::after {
+  transition: none;
+}
 
 /*
  * Focus: one ring shape everywhere. The header and footer set --dr-focus to --dr-focus-bar. A react-aria
@@ -737,7 +742,8 @@
 
 /*
  * Printed, the page flows as the document did; inside the page scroller only the part in view would print. SimpleBar sets
- * the content wrapper's height and overflow inline, hence the !important.
+ * the content wrapper's overflow inline, hence the !important; its inline height of 100% resolves to auto against the
+ * static offset's auto height.
  */
 @media print {
   :root[data-page-scroll="container"],
@@ -758,7 +764,6 @@
   }
 
   .dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper {
-    height: auto !important;
     max-height: none;
     overflow: visible !important;
   }

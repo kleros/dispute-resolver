@@ -15,12 +15,16 @@ const APPKIT_ENTRY = createRequire(import.meta.url).resolve("@reown/appkit");
 const APPKIT_CLIENT = readFileSync(join(dirname(APPKIT_ENTRY), "../src/client/appkit.js"), "utf8");
 const APPKIT_MODAL = readFileSync(join(dirname(createRequire(APPKIT_ENTRY).resolve("@reown/appkit-scaffold-ui/w3m-modal")), "../src/modal/w3m-modal/index.js"), "utf8");
 const LIBRARY_CSS = readFileSync(LIBRARY_STYLESHEET, "utf8");
+const LIBRARY_THEME = readFileSync(createRequire(import.meta.url).resolve("@kleros/ui-components-library/theme.css"), "utf8");
 const SIMPLEBAR_CSS = readFileSync(join(dirname(LIBRARY_STYLESHEET), "scrollbar.css"), "utf8");
+const SIMPLEBAR_JS = readFileSync(join(dirname(LIBRARY_STYLESHEET), "../scrollbar.js"), "utf8");
 const APP_CSS = readFileSync(resolve(import.meta.dirname, "../index.css"), "utf8").replaceAll(/\/\*[\s\S]*?\*\//g, "");
 
 const THUMB_CLASS = "[&_.simplebar-scrollbar]:before:!bg-klerosUIComponentsPrimaryBlue";
 const VISIBLE_CLASS = "[&_.simplebar-visible]:before:!opacity-100";
 const MASK_CLASS = "[&_.simplebar-mask]:!bg-klerosUIComponentsWhiteBackground";
+const THUMB_VARIABLE = "--color-klerosUIComponentsPrimaryBlue";
+const MASK_VARIABLE = "--color-klerosUIComponentsWhiteBackground";
 
 type Specificity = readonly [number, number, number];
 
@@ -132,6 +136,31 @@ function appRule(selector: string): Rule {
   return rule;
 }
 
+/** The value a rule body gives a property, `!important` included, or undefined when it does not declare it. */
+function declared(body: string, property: string): string | undefined {
+  for (const declaration of body.split(";")) {
+    const colon = declaration.indexOf(":");
+    if (colon > 0 && declaration.slice(0, colon).trim() === property) return declaration.slice(colon + 1).trim();
+  }
+  return undefined;
+}
+
+/** The rule of index.css for `selector` that declares `property`. */
+function appRuleDeclaring(selector: string, property: string): Rule {
+  const rule = rules(APP_CSS).find((candidate) => candidate.selector === selector && declared(candidate.body, property) !== undefined);
+  if (rule === undefined) throw new Error(`index.css declares no ${property} for ${selector}`);
+  return rule;
+}
+
+function escapeRegExp(text: string): string {
+  return text.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** `var(--name)`, with any spacing inside the parentheses. */
+function varOf(name: string): RegExp {
+  return new RegExp(String.raw`var\(\s*${escapeRegExp(name)}\s*\)`);
+}
+
 function renderContainer() {
   const scroller = createRef<HTMLDivElement>();
   const { container } = render(
@@ -193,44 +222,85 @@ describe("the library's ScrollbarContainer, as the page scroller uses it", () =>
     }
   });
 
+  it("holds nothing in its mask but the offset, so what the offset restores reaches the whole page", () => {
+    const { root } = renderContainer();
+    const mask = root.querySelector(":scope > .simplebar-wrapper > .simplebar-mask");
+    expect([...(mask?.children ?? [])].map((child) => child.className)).toEqual(["simplebar-offset"]);
+  });
+
   it("sets its content wrapper's overflow inline, which only an !important rule outranks", () => {
     const { scroller } = renderContainer();
     expect(scroller.current?.style.overflowY).not.toBe("");
   });
+
+  it("sets its content wrapper's height inline only as auto or 100%, which the static offset of a printed page resolves to the content's height", () => {
+    const { scroller } = renderContainer();
+    expect(["auto", "100%"]).toContain(scroller.current?.style.height);
+    const writes = [...SIMPLEBAR_JS.matchAll(/contentWrapperEl\.style\.height\s*=\s*([^,;]+)/g)].map((match) => match[1]?.trim());
+    expect(writes.length).toBeGreaterThan(0);
+    for (const value of writes) expect(value).toMatch(/^\w+ \? "auto" : "100%"$/);
+    expect(SIMPLEBAR_JS).not.toMatch(/contentWrapperEl\.style\.(?:cssText|setProperty)|contentWrapperEl\.setAttribute\(\s*"style"/);
+  });
 });
 
 describe("the page scroller's overrides of the library", () => {
-  const THUMB_SPECIFICITY = [0, 2, 1] as const;
-  const overrides = [
-    { what: "the thumb at rest", library: THUMB_CLASS, theirs: THUMB_SPECIFICITY, app: ".dr-page-scroller > .simplebar-track .simplebar-scrollbar::before" },
-    {
-      what: "the thumb under the pointer",
-      library: THUMB_CLASS,
-      theirs: THUMB_SPECIFICITY,
-      app: ".dr-page-scroller > .simplebar-track .simplebar-scrollbar.simplebar-hover::before",
-    },
-    {
-      what: "the dragged thumb",
-      library: THUMB_CLASS,
-      theirs: THUMB_SPECIFICITY,
-      app: ".dr-page-scroller.simplebar-dragging > .simplebar-track.simplebar-vertical .simplebar-scrollbar::before",
-    },
-    { what: "the mask", library: MASK_CLASS, theirs: [0, 2, 0], app: ".dr-page-scroller > .simplebar-wrapper > .simplebar-mask" },
+  const painted = [
+    { what: "thumb", library: THUMB_CLASS, variable: THUMB_VARIABLE, token: "--klerosUIComponentsPrimaryBlue" },
+    { what: "mask", library: MASK_CLASS, variable: MASK_VARIABLE, token: "--klerosUIComponentsWhiteBackground" },
   ] as const;
-  const property = "background-color";
 
-  for (const { what, library, theirs: librarySpecificity, app } of overrides) {
-    it(`${what} wins over the library's !important utility: also !important, in the same utilities layer, one class more specific`, () => {
+  for (const { what, library, variable } of painted) {
+    it(`the library's ${what} utility paints with the theme's ${variable}`, () => {
       const theirs = libraryRule(library);
-      const ours = appRule(app);
-      expect(specificity(theirs.selector)).toEqual(librarySpecificity);
       expect(theirs.context).toEqual(["@layer utilities"]);
-      expect(theirs.body).toMatch(new RegExp(`${property}:[^;]*!important`));
-      expect(ours.context).toEqual(["@layer utilities"]);
-      expect(ours.body).toMatch(new RegExp(`${property}:[^;]*!important`));
-      expect(outranks(specificity(ours.selector), specificity(theirs.selector)), `${ours.selector} against ${theirs.selector}`).toBe(true);
+      expect(declared(theirs.body, "background-color")).toMatch(new RegExp(String.raw`^${varOf(variable).source}\s*!important$`));
     });
   }
+
+  for (const { variable, token } of painted) {
+    it(`the theme declares ${variable} as the ${token} token on the root, inherited and never registered, so a rule can redefine it for one element`, () => {
+      const themeBlock = /@theme(\s+\w+)?\s*\{/.exec(LIBRARY_THEME);
+      expect(themeBlock?.[1], "the theme inlines its colours into the utilities").toBeUndefined();
+      expect(LIBRARY_THEME).toMatch(new RegExp(String.raw`${escapeRegExp(variable)}\s*:\s*${varOf(token).source}\s*;`));
+      const declaring = rules(LIBRARY_CSS).filter((rule) => declared(rule.body, variable) !== undefined);
+      expect(declaring.map((rule) => [rule.selector, rule.context])).toEqual([
+        [":root", ["@layer theme"]],
+        [":host", ["@layer theme"]],
+      ]);
+      expect(declared(declaring[0]?.body ?? "", variable)).toMatch(new RegExp(String.raw`^${varOf(token).source}$`));
+      for (const css of [LIBRARY_THEME, LIBRARY_CSS, APP_CSS]) expect(css).not.toMatch(new RegExp(String.raw`@property\s+${escapeRegExp(variable)}\b`));
+    });
+  }
+
+  const thumbStates = [
+    { what: "the thumb at rest", app: ".dr-page-scroller > .simplebar-track .simplebar-scrollbar::before", token: "--dr-scroll-thumb" },
+    { what: "the thumb under the pointer", app: ".dr-page-scroller > .simplebar-track .simplebar-scrollbar.simplebar-hover::before", token: "--dr-scroll-thumb-hover" },
+    {
+      what: "the dragged thumb",
+      app: ".dr-page-scroller.simplebar-dragging > .simplebar-track.simplebar-vertical .simplebar-scrollbar::before",
+      token: "--dr-scroll-thumb-active",
+    },
+  ] as const;
+
+  for (const { what, app, token } of thumbStates) {
+    it(`${what} sets ${THUMB_VARIABLE} to ${token} without !important, in the utilities layer`, () => {
+      const ours = appRuleDeclaring(app, THUMB_VARIABLE);
+      expect(ours.context).toEqual(["@layer utilities"]);
+      expect(declared(ours.body, THUMB_VARIABLE)).toBe(`var(${token})`);
+      expect(ours.body).not.toContain("!important");
+    });
+  }
+
+  it(`the mask sets ${MASK_VARIABLE} to transparent, and its offset restores the library token for the page inside`, () => {
+    const mask = appRuleDeclaring(".dr-page-scroller > .simplebar-wrapper > .simplebar-mask", MASK_VARIABLE);
+    const offset = appRuleDeclaring(".dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset", MASK_VARIABLE);
+    for (const rule of [mask, offset]) {
+      expect(rule.context).toEqual(["@layer utilities"]);
+      expect(rule.body).not.toContain("!important");
+    }
+    expect(declared(mask.body, MASK_VARIABLE)).toBe("transparent");
+    expect(declared(offset.body, MASK_VARIABLE)).toBe("var(--klerosUIComponentsWhiteBackground)");
+  });
 
   it("the drag colour wins over the hover colour while both classes are set", () => {
     const hover = appRule(".dr-page-scroller > .simplebar-track .simplebar-scrollbar.simplebar-hover::before");
