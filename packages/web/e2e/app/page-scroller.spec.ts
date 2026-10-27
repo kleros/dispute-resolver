@@ -6,12 +6,12 @@ import { forceClassicWebKitScrollbars, PAGE_SCROLLER, pageScroll, scrollPageTo }
 import { printToPdf, settleForPrint, type PrintedPage } from "../support/print";
 import { expectWalletConnected, injectWallet } from "../support/wallet";
 
-// The page scroller on the built app, where the browser's scrollbar takes layout space: the projects give Chromium and
-// Firefox classic scrollbars and WebKit a scrollbar rule that lays one out (playwright.config.ts), so the app's probe moves
-// the page into the library's ScrollbarContainer. Every behaviour of a scrolling document the app relies on is checked
-// against it; the last two groups check that a phone, and a desktop whose scrollbars overlay the page, keep the document
-// scrolling with nothing reserved. The Ongoing list needs the build's chain-1 read RPC, and the evidence modal its Atlas
-// URI, as a deploy has.
+// The page scroller on the built app, which every desktop gets: the first group runs where the browser's scrollbar takes
+// layout space (the projects give Chromium and Firefox classic scrollbars and WebKit a scrollbar rule that lays one out,
+// playwright.config.ts) and checks every behaviour of a scrolling document the app relies on against it. The last two
+// groups check that a phone keeps the document scrolling with nothing reserved, and that a desktop whose scrollbars overlay
+// the page, as a Mac's do, gets the page scroller with the browser's own scrollbar hidden. The Ongoing list needs the
+// build's chain-1 read RPC, and the evidence modal its Atlas URI, as a deploy has.
 
 const WIDTH = 1280;
 const HEIGHT = 800;
@@ -56,10 +56,7 @@ function card(page: Page, id: bigint): Locator {
 }
 
 async function expectPageScroller(page: Page): Promise<void> {
-  await expect(
-    page.locator("html"),
-    "the scrollbars of this browser overlay the page, so the app kept the document scrolling: run the spec in a project with classic scrollbars",
-  ).toHaveAttribute("data-page-scroll", "container");
+  await expect(page.locator("html"), "the app kept the document scrolling, as on a phone: run the spec in a desktop project").toHaveAttribute("data-page-scroll", "container");
 }
 
 /** Every open dispute's meta-evidence names one file, so each card settles on its title at once. */
@@ -265,6 +262,72 @@ async function frames(page: Page, count = 12): Promise<void> {
   }, count);
 }
 
+/**
+ * The thumb's colour at rest, under the pointer and while dragged, over the page's own background, on the long list. It
+ * draws no ring and is never the colour of the header it starts over, so it stays in sight there.
+ */
+async function expectThumbColours(page: Page): Promise<void> {
+  const rest = await tokenColor(page, "--dr-scroll-thumb");
+  const hover = await tokenColor(page, "--dr-scroll-thumb-hover");
+  const active = await tokenColor(page, "--dr-scroll-thumb-active");
+  const pageColor = await tokenColor(page, "--klerosUIComponentsLightBackground");
+  const barColor = await page.getByRole("banner").evaluate((header) => getComputedStyle(header).backgroundColor);
+  expect(new Set([rest, hover, active]).size).toBe(3);
+  expect([rest, hover, active], "a thumb state takes the header's colour and vanishes over it").not.toContain(barColor);
+  expect(await thumbFill(page)).toBe(rest);
+  expect(await page.locator(MASK).evaluate((mask) => getComputedStyle(mask).backgroundColor), "the mask hides the page colour").toBe(TRANSPARENT);
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(pageColor);
+  const cardFill = await card(page, LAST_ID)
+    .locator(".bg-klerosUIComponentsWhiteBackground")
+    .first()
+    .evaluate((surface) => getComputedStyle(surface).backgroundColor);
+  expect(cardFill, "a library card inside the page lost its WhiteBackground to the mask").toBe(await tokenColor(page, "--klerosUIComponentsWhiteBackground"));
+  expect((await thumbBox(page)).y, "at the top of the page the thumb starts over the header").toBeLessThan(await bottomOf(page.getByRole("banner")));
+  const ring = () => page.locator(THUMB).evaluate((thumb) => getComputedStyle(thumb, "::before").boxShadow);
+  expect(await ring(), "a ring sets the thumb off the page at rest").toBe("none");
+
+  const box = await thumbBox(page);
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await pointAt(page, x, y, "thumb");
+  await expect.poll(() => thumbFill(page)).toBe(hover);
+  expect(await ring(), "a ring sets the hovered thumb off the page").toBe("none");
+  await page.mouse.down();
+  await expect.poll(() => thumbFill(page)).toBe(active);
+  await page.mouse.move(x, y + 40, { steps: 4 });
+  await expect.poll(() => thumbFill(page)).toBe(active);
+  expect(await ring(), "a ring sets the dragged thumb off the page").toBe("none");
+  await page.mouse.up();
+  await page.mouse.move(WIDTH / 2, HEIGHT / 2, { steps: 4 });
+  await expect.poll(() => thumbFill(page)).toBe(rest);
+}
+
+/** Brings a card deep in the long list into view as find in page does, and expects it just below the sticky header. */
+async function expectDeepCardBelowHeader(page: Page): Promise<void> {
+  const headerBottom = await bottomOf(page.getByRole("banner"));
+  await card(page, MIDDLE_ID).evaluate((element) => {
+    element.scrollIntoView();
+  });
+  await expect.poll(() => scrollTop(page)).toBeGreaterThan(0);
+  const top = await card(page, MIDDLE_ID).evaluate((element) => element.getBoundingClientRect().top);
+  expect(top).toBeGreaterThanOrEqual(headerBottom);
+  expect(top).toBeLessThanOrEqual(headerBottom + 16);
+}
+
+/** Scrolls the long list, opens a case from it, and expects Back to bring the list back to where it was. */
+async function expectBackReturnsToOffset(page: Page): Promise<void> {
+  await scrollPageTo(page, 1500);
+  const target = card(page, MIDDLE_ID);
+  await target.scrollIntoViewIfNeeded();
+  const before = await settledScrollTop(page);
+  await target.click();
+  await expect(page).toHaveURL(/\/1\/cases\/915$/);
+  await expect.poll(() => scrollTop(page)).toBe(0);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/1\/ongoing$/);
+  await expect.poll(async () => Math.abs((await scrollTop(page)) - before)).toBeLessThanOrEqual(2);
+}
+
 test.describe("where the scrollbar takes layout space", () => {
   test.beforeEach(async ({ context, browserName }) => {
     if (browserName === "webkit") await forceClassicWebKitScrollbars(context);
@@ -323,42 +386,13 @@ test.describe("where the scrollbar takes layout space", () => {
   });
 
   for (const colorScheme of ["light", "dark"] as const) {
-    test(`in ${colorScheme} the thumb is --dr-scroll-thumb at rest, -hover under the pointer and -active while dragged, over the page's own background, ringed in the page colour where it crosses the header`, async ({
+    test(`in ${colorScheme} the thumb is --dr-scroll-thumb at rest, -hover under the pointer and -active while dragged, over the page's own background, with no ring, and never the colour of the header it crosses`, async ({
       page,
       baseURL,
     }) => {
       await page.emulateMedia({ colorScheme });
       await openLongList(page, baseURL);
-      const rest = await tokenColor(page, "--dr-scroll-thumb");
-      const hover = await tokenColor(page, "--dr-scroll-thumb-hover");
-      const active = await tokenColor(page, "--dr-scroll-thumb-active");
-      const pageColor = await tokenColor(page, "--klerosUIComponentsLightBackground");
-      expect(new Set([rest, hover, active]).size).toBe(3);
-      expect(await thumbFill(page)).toBe(rest);
-      expect(await page.locator(MASK).evaluate((mask) => getComputedStyle(mask).backgroundColor), "the mask hides the page colour").toBe(TRANSPARENT);
-      expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(pageColor);
-      const cardFill = await card(page, LAST_ID)
-        .locator(".bg-klerosUIComponentsWhiteBackground")
-        .first()
-        .evaluate((surface) => getComputedStyle(surface).backgroundColor);
-      expect(cardFill, "a library card inside the page lost its WhiteBackground to the mask").toBe(await tokenColor(page, "--klerosUIComponentsWhiteBackground"));
-      expect((await thumbBox(page)).y, "at the top of the page the thumb starts over the header").toBeLessThan(await bottomOf(page.getByRole("banner")));
-      const ring = await page.locator(THUMB).evaluate((thumb) => getComputedStyle(thumb, "::before").boxShadow);
-      expect(ring, "no ring of the page colour sets the thumb off the header and footer").toContain(pageColor);
-      expect(ring).toContain("1px");
-
-      const box = await thumbBox(page);
-      const x = box.x + box.width / 2;
-      const y = box.y + box.height / 2;
-      await pointAt(page, x, y, "thumb");
-      await expect.poll(() => thumbFill(page)).toBe(hover);
-      await page.mouse.down();
-      await expect.poll(() => thumbFill(page)).toBe(active);
-      await page.mouse.move(x, y + 40, { steps: 4 });
-      await expect.poll(() => thumbFill(page)).toBe(active);
-      await page.mouse.up();
-      await page.mouse.move(WIDTH / 2, HEIGHT / 2, { steps: 4 });
-      await expect.poll(() => thumbFill(page)).toBe(rest);
+      await expectThumbColours(page);
     });
   }
 
@@ -480,14 +514,7 @@ test.describe("where the scrollbar takes layout space", () => {
 
   test("scrolling deep content into view, as find in page does, brings it just below the sticky header", async ({ page, baseURL }) => {
     await openLongList(page, baseURL);
-    const headerBottom = await bottomOf(page.getByRole("banner"));
-    await card(page, MIDDLE_ID).evaluate((element) => {
-      element.scrollIntoView();
-    });
-    await expect.poll(() => scrollTop(page)).toBeGreaterThan(0);
-    const top = await card(page, MIDDLE_ID).evaluate((element) => element.getBoundingClientRect().top);
-    expect(top).toBeGreaterThanOrEqual(headerBottom);
-    expect(top).toBeLessThanOrEqual(headerBottom + 16);
+    await expectDeepCardBelowHeader(page);
   });
 
   test("the wheel, a drag of the thumb and a press on the track scroll the page, and the press opens nothing beneath it", async ({ page, baseURL }) => {
@@ -668,16 +695,7 @@ test.describe("where the scrollbar takes layout space", () => {
 
   test("Back returns the list to where it was scrolled, and a case opened from it starts at its top, as when the document scrolled", async ({ page, baseURL }) => {
     await openLongList(page, baseURL);
-    await scrollPageTo(page, 1500);
-    const target = card(page, MIDDLE_ID);
-    await target.scrollIntoViewIfNeeded();
-    const before = await settledScrollTop(page);
-    await target.click();
-    await expect(page).toHaveURL(/\/1\/cases\/915$/);
-    await expect.poll(() => scrollTop(page)).toBe(0);
-    await page.goBack();
-    await expect(page).toHaveURL(/\/1\/ongoing$/);
-    await expect.poll(async () => Math.abs((await scrollTop(page)) - before)).toBeLessThanOrEqual(2);
+    await expectBackReturnsToOffset(page);
   });
 
   test("a window resize keeps the thumb in step with the page, with no sideways scroll", async ({ page, baseURL }) => {
@@ -866,7 +884,7 @@ test.describe("where the scrollbar takes layout space", () => {
 test.describe("where scrollbars overlay the page, as on a phone", () => {
   const phone = devices["Pixel 7"];
   test.use({ viewport: phone.viewport, userAgent: phone.userAgent, deviceScaleFactor: phone.deviceScaleFactor, isMobile: true, hasTouch: true });
-  // Firefox emulates no phone; WebKit's overlay scrollbars are checked on a desktop below.
+  // Firefox emulates no phone, and WebKit's overlay scrollbars are checked on a desktop below.
   test.skip(({ browserName }) => browserName !== "chromium", "Only Chromium emulates a phone's overlay scrollbars here.");
 
   test("the document keeps scrolling the page and no page scroller is mounted", async ({ page, baseURL }) => {
@@ -907,22 +925,79 @@ test.describe("where scrollbars overlay the page on a desktop, as on a Mac by de
   // WebKit on Linux overlays its scrollbars as macOS does; the other projects lay classic ones out.
   test.skip(({ browserName }) => browserName !== "webkit", "Only WebKit overlays a desktop's scrollbars here.");
 
-  test("the document scrolls a long page under the browser's own floating scrollbar: no page scroller, no lane and nothing reserved", async ({ page, baseURL }) => {
-    await fakeNetwork(page.context(), { appOrigin: appOriginOf(baseURL), rpc: openDisputesRpc(IDS, HEAD), http: metaEvidence });
-    await page.goto("/1/ongoing");
-    await expect(card(page, LAST_ID)).toBeVisible({ timeout: 20_000 });
-    await expect(page.locator("html")).not.toHaveAttribute("data-page-scroll");
-    await expect(page.locator(".dr-page-scroller")).toHaveCount(0);
-    const root = await page.evaluate(() => ({
-      viewport: window.innerWidth,
-      documentWidth: document.documentElement.clientWidth,
-      headerRight: document.querySelector("header")?.getBoundingClientRect().right,
-      gutter: getComputedStyle(document.documentElement).scrollbarGutter,
-    }));
-    expect(root).toEqual({ viewport: WIDTH, documentWidth: WIDTH, headerRight: WIDTH, gutter: "auto" });
-    await page.evaluate(() => {
-      window.scrollTo({ top: 600, behavior: "instant" });
+  test("the page scroller holds the app and floats its 6 px thumb over it, the browser's own scrollbar hidden, no lane, and the wheel scrolls it while the document holds still", async ({
+    page,
+    baseURL,
+  }) => {
+    await openLongList(page, baseURL);
+    const layout = await page.evaluate(
+      ([scrollerSelector, trackSelector]) => {
+        const scroller = document.querySelector(scrollerSelector);
+        const track = document.querySelector(trackSelector);
+        const thumb = track?.querySelector(".simplebar-scrollbar");
+        const header = document.querySelector("header");
+        if (!scroller || !track || !thumb || !header) throw new Error("The page scroller or the header is missing.");
+        const bar = getComputedStyle(thumb, "::before");
+        return {
+          viewport: window.innerWidth,
+          documentWidth: document.documentElement.clientWidth,
+          scrollerWidth: scroller.clientWidth,
+          headerRight: header.getBoundingClientRect().right,
+          rootOverflow: getComputedStyle(document.documentElement).overflowY,
+          nativeScrollbar: getComputedStyle(scroller).scrollbarWidth,
+          thumbShown: getComputedStyle(thumb).display !== "none" && getComputedStyle(track).visibility === "visible",
+          thumbOpacity: bar.opacity,
+          thumbWidth: Number.parseFloat(bar.width),
+          thumbInset: Number.parseFloat(bar.right),
+        };
+      },
+      [PAGE_SCROLLER, TRACK] as const,
+    );
+    expect(layout).toEqual({
+      viewport: WIDTH,
+      documentWidth: WIDTH,
+      scrollerWidth: WIDTH,
+      headerRight: WIDTH,
+      rootOverflow: "hidden",
+      nativeScrollbar: "none",
+      thumbShown: true,
+      thumbOpacity: "1",
+      thumbWidth: 6,
+      thumbInset: 2,
     });
-    expect(await page.evaluate(() => window.scrollY)).toBe(600);
+
+    await page.mouse.move(WIDTH / 2, HEIGHT / 2);
+    await page.mouse.wheel(0, 600);
+    await expect.poll(() => scrollTop(page)).toBeGreaterThan(0);
+    expect(await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY, root: document.documentElement.scrollTop }))).toEqual({ x: 0, y: 0, root: 0 });
+  });
+
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`in ${colorScheme} the thumb takes the page scrollbar's colours at rest, under the pointer and while dragged`, async ({ page, baseURL }) => {
+      await page.emulateMedia({ colorScheme });
+      await openLongList(page, baseURL);
+      await expectThumbColours(page);
+    });
+  }
+
+  test("right after load, with nothing focused, PageDown and End scroll the page down and Home returns it to the top", async ({ page, baseURL }) => {
+    await openLongList(page, baseURL);
+    expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+    await page.keyboard.press("PageDown");
+    await expect.poll(() => scrollTop(page)).toBeGreaterThan(300);
+    await page.keyboard.press("End");
+    await expect.poll(async () => (await pageScroll(page)).maxTop - (await scrollTop(page))).toBeLessThanOrEqual(1);
+    await page.keyboard.press("Home");
+    await expect.poll(() => scrollTop(page)).toBe(0);
+  });
+
+  test("scrolling deep content into view, as find in page does, brings it just below the sticky header", async ({ page, baseURL }) => {
+    await openLongList(page, baseURL);
+    await expectDeepCardBelowHeader(page);
+  });
+
+  test("Back returns the list to where it was scrolled, and a case opened from it starts at its top", async ({ page, baseURL }) => {
+    await openLongList(page, baseURL);
+    await expectBackReturnsToOffset(page);
   });
 });

@@ -1,8 +1,7 @@
 /**
- * What scrolls the page. `document`: the browser's own scrolling, where scrollbars overlay the page (phones, tablets,
- * macOS by default), which keeps a phone's address bar collapsing and pull-to-refresh. `container`: the library's
- * ScrollbarContainer around the app (PageScroller), where the browser's scrollbar takes layout space (classic scrollbars:
- * Windows and Linux desktops, macOS set to always show them), so a thin thumb floats over the page instead of a lane.
+ * What scrolls the page. `container`: the library's ScrollbarContainer around the app (PageScroller), on every desktop, so
+ * a thin thumb floats over the page in the app's colours instead of a lane or the system's own thumb. `document`: the
+ * browser's own scrolling, on phones and tablets, which keeps the address bar collapsing and pull-to-refresh.
  */
 export type PageScroll = "document" | "container";
 
@@ -10,18 +9,32 @@ export type PageScroll = "document" | "container";
 export const PAGE_SCROLL_ATTRIBUTE = "data-page-scroll";
 
 /**
- * Decided once, before the first render: a scrolling probe whose scrollbar takes width means classic scrollbars. The
- * probe is styled through the CSSOM, which the page's style policy allows, and never by the app's stylesheet, so it
- * measures the browser's own scrollbar.
+ * A mouse or a trackpad leads: a desktop or a laptop, whatever its scrollbars and however narrow its window. A phone or a
+ * tablet leads with a finger.
  */
-export function choosePageScroll(root: HTMLElement): PageScroll {
-  const { body } = root.ownerDocument;
-  const probe = root.ownerDocument.createElement("div");
+const DESKTOP_POINTER = "(hover: hover) and (pointer: fine)";
+
+function pointsLikeADesktop(): boolean {
+  return typeof window.matchMedia === "function" && window.matchMedia(DESKTOP_POINTER).matches;
+}
+
+/**
+ * Classic scrollbars, which would keep a lane where a finger leads, as on a Windows tablet. The probe is styled through
+ * the CSSOM, which the page's style policy allows, and never by the app's stylesheet, so it measures the browser's own
+ * scrollbar.
+ */
+function scrollbarTakesWidth(ownerDocument: Document): boolean {
+  const probe = ownerDocument.createElement("div");
   Object.assign(probe.style, { position: "absolute", top: "-9999px", width: "100px", height: "100px", overflow: "scroll", visibility: "hidden" });
-  body.append(probe);
+  ownerDocument.body.append(probe);
   const scrollbarWidth = probe.offsetWidth - probe.clientWidth;
   probe.remove();
-  if (scrollbarWidth <= 0) return "document";
+  return scrollbarWidth > 0;
+}
+
+/** Decided once, before the first render, so the app never remounts into the other scroller. */
+export function choosePageScroll(root: HTMLElement): PageScroll {
+  if (!pointsLikeADesktop() && !scrollbarTakesWidth(root.ownerDocument)) return "document";
   root.setAttribute(PAGE_SCROLL_ATTRIBUTE, "container");
   return "container";
 }

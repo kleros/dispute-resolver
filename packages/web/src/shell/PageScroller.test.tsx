@@ -73,7 +73,7 @@ describe("PageScroller where the document scrolls the page", () => {
   });
 });
 
-describe("PageScroller where the scrollbar takes layout space", () => {
+describe("PageScroller where the page scroller scrolls the page", () => {
   it("renders the page inside the library's ScrollbarContainer, as tall as the viewport, its thumb always shown", () => {
     renderPage("container");
     const root = scrollerRoot();

@@ -302,14 +302,13 @@
    * so these rules redefine those variables where the utilities read them instead of outranking the utilities.
    * The thumb takes the page scrollbar's tokens at rest, under the pointer (SimpleBar's simplebar-hover: its track takes
    * no pointer events, so :hover never matches) and while dragged (simplebar-dragging on the root, the most specific).
-   * Over the purple header and footer no thumb token reaches 3:1 in light (the dragged one is the bar's own colour), so
-   * the thumb keeps a 1 px ring of the page colour, unseen on the page, inside SimpleBar's 2 px inset.
+   * It draws no ring: over the purple header and footer it shows by its own colour alone, never the bars' own, which in
+   * light keeps less than 3:1 there at rest and hovered.
    * The mask lets the page's own background show; it wraps the whole page, so its offset restores WhiteBackground for
    * everything inside. Child combinators keep every rule off a SimpleBar inside the page.
    */
   .dr-page-scroller > .simplebar-track .simplebar-scrollbar::before {
     --color-klerosUIComponentsPrimaryBlue: var(--dr-scroll-thumb);
-    box-shadow: 0 0 0 1px var(--klerosUIComponentsLightBackground);
   }
 
   .dr-page-scroller > .simplebar-track .simplebar-scrollbar.simplebar-hover::before {
@@ -386,10 +385,11 @@
      * - --dr-display-skeleton: the loading bars on that paper. Light: the Stroke, 1.26:1 on white. Dark: a purple-grey
      *   matched to that ratio on the sheet (#dbd5e3, 1.27:1 on #f4f0fa), where the light Stroke would be 1.12:1 and all
      *   but vanish and the dark Stroke would be heavy. A placeholder, not text, so no text ratio applies.
-     * - --dr-scroll-thumb, -hover, -active: the page scrollbar's thumb at rest, hovered and dragged, at least 3:1 on
-     *   LightBackground in each state. Light: VioletPurple 7.59:1, SecondaryPurple 5.46:1, PrimaryPurple 10.26:1, where
-     *   LavenderPurple would be 2.91:1. Dark: SecondaryPurple 5.38:1, LavenderPurple 6.23:1, Tint 10.92:1, where
-     *   VioletPurple would be 2.39:1.
+     * - --dr-scroll-thumb, -hover, -active: the page scrollbar's thumb at rest, hovered and dragged, lighter at each
+     *   step, with at least 3:1 on LightBackground in each state. Light: VioletPurple 7.59:1, SecondaryPurple 5.46:1, Tint 3.25:1. LavenderPurple
+     *   would be 2.91:1, so the dragged thumb takes Tint, a shade darker than it yet lighter than SecondaryPurple, and
+     *   not PrimaryPurple, the bars' own colour. Dark: VioletPurple would be 2.39:1, so each state moves one token lighter
+     *   and the three stay distinct: SecondaryPurple 5.38:1, LavenderPurple 6.23:1, Tint 10.92:1.
      */
     --dr-display-paper: var(--klerosUIComponentsWhiteBackground);
     --dr-display-focus: #0072c6;
@@ -402,7 +402,7 @@
     --dr-record-edge: color-mix(in srgb, var(--klerosUIComponentsPrimaryPurple) 20%, var(--klerosUIComponentsStroke));
     --dr-scroll-thumb: var(--klerosUIComponentsVioletPurple);
     --dr-scroll-thumb-hover: var(--klerosUIComponentsSecondaryPurple);
-    --dr-scroll-thumb-active: var(--klerosUIComponentsPrimaryPurple);
+    --dr-scroll-thumb-active: var(--klerosUIComponentsTint);
 
     /*
      * Motion variables, one block per transition. The shimmer colours point at the library tokens, which the dark class
@@ -559,8 +559,8 @@
   }
 
   /*
-   * The document scrolls the page only where the browser's scrollbar floats over it, and that scrollbar stays the
-   * browser's own: a ::-webkit-scrollbar rule would turn it into a classic lane in Chromium and Safari on a Mac. Firefox's
+   * The document scrolls the page only on phones and tablets, where the browser's scrollbar floats over it, and that
+   * scrollbar stays the browser's own: a ::-webkit-scrollbar rule would turn it into a classic lane in Chromium. Firefox's
    * stays floating under scrollbar-width and scrollbar-color, so it alone takes the page scroller's colour.
    */
   @supports not selector(::-webkit-scrollbar) {

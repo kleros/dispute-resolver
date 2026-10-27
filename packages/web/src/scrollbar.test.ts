@@ -84,15 +84,6 @@ const THUMB = {
   "while dragged": ".dr-page-scroller.simplebar-dragging > .simplebar-track.simplebar-vertical .simplebar-scrollbar::before",
 } as const;
 
-/** The colour of the 1 px ring the thumb draws round itself, which every state keeps from the rule at rest. */
-function ringColour(): string {
-  const value = declarations(block(APP_CSS, THUMB["at rest"])).get("box-shadow");
-  if (value === undefined) throw new Error("the thumb draws no ring");
-  const ring = /^(?:0(?:px)? ){3}1px (var\(--[\w-]+\))$/.exec(value.trim());
-  if (!ring) throw new Error(`the thumb's box-shadow is not a 1 px ring: ${value}`);
-  return ring[1] ?? "";
-}
-
 /** The classes the header and footer bands are painted with (shell/layout.ts), read as text: shell is imported through its index only. */
 const BAR_SURFACE = /export const BAR_SURFACE = `([^`]*)`/.exec(readFileSync(resolve(import.meta.dirname, "shell/layout.ts"), "utf8"))?.[1] ?? "";
 
@@ -105,14 +96,18 @@ function barSurface(theme: Theme): string {
 }
 
 describe("page scrollbar", () => {
-  it("the app styles no ::-webkit-scrollbar and reserves no gutter, so where scrollbars overlay the page the browser's own floats over it", () => {
+  it("the app styles no ::-webkit-scrollbar and reserves no gutter, so where the document scrolls, on phones and tablets, the browser's own scrollbar floats over the page", () => {
     expect(APP_CSS).not.toMatch(/::-webkit-scrollbar[\w-]*(?::[\w-]+)*\s*[,{]/);
     expect(APP_CSS).not.toMatch(/scrollbar-gutter\s*:/);
   });
 
-  it("the hovered and dragged thumb keep the ring the thumb draws at rest", () => {
-    for (const state of ["on hover", "while dragged"] as const) {
-      expect(declarations(block(APP_CSS, THUMB[state])).has("box-shadow"), state).toBe(false);
+  it("the page scroller's thumb draws no ring round itself in any state", () => {
+    for (const state of STATES) {
+      const rule = declarations(block(APP_CSS, THUMB[state]));
+      expect(
+        [...rule.keys()].filter((name) => /^(box-shadow|outline|border)/.test(name)),
+        state,
+      ).toEqual([]);
     }
   });
 
@@ -125,15 +120,15 @@ describe("page scrollbar", () => {
         expect(contrast(colour(thumbColour(THUMB[state]), theme), page)).toBeGreaterThanOrEqual(3);
       });
 
-      it(`over the ${theme} header and footer the thumb, or the ring round it, keeps at least 3:1 ${state}`, () => {
-        const thumb = colour(thumbColour(THUMB[state]), theme);
-        const ring = colour(ringColour(), theme);
-        expect(Math.max(contrast(thumb, bar), contrast(ring, bar))).toBeGreaterThanOrEqual(3);
+      it(`over the ${theme} header and footer the thumb ${state} is not the bars' own colour, so it never vanishes over them`, () => {
+        expect(colour(thumbColour(THUMB[state]), theme)).not.toBe(bar);
       });
     }
 
-    it(`the ring round the ${theme} thumb is the page's own colour, so it shows only where the thumb crosses the header and footer`, () => {
-      expect(colour(ringColour(), theme)).toBe(page);
+    it(`the ${theme} thumb grows lighter from rest to hover to dragged`, () => {
+      const [rest = 0, hover = 0, dragged = 0] = STATES.map((state) => luminance(colour(thumbColour(THUMB[state]), theme)));
+      expect(hover, "hovered is no lighter than at rest").toBeGreaterThan(rest);
+      expect(dragged, "dragged is no lighter than hovered").toBeGreaterThan(hover);
     });
 
     it(`Firefox, where the document scrolls, draws the ${theme} thumb in the page scroller's colour at rest`, () => {

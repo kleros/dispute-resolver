@@ -1,8 +1,8 @@
 import type { BrowserContext, Page } from "@playwright/test";
 
-// Where the browser's scrollbar takes layout space, the app scrolls the page in its page scroller (shell/PageScroller.tsx):
-// SimpleBar's content wrapper inside the library's ScrollbarContainer. Where scrollbars overlay the page, the document
-// scrolls it, as before. These helpers read whichever element scrolls the page, so a spec states what the visitor sees.
+// On a desktop the app scrolls the page in its page scroller (shell/PageScroller.tsx): SimpleBar's content wrapper inside
+// the library's ScrollbarContainer. On a phone or a tablet the document scrolls it. These helpers read whichever element
+// scrolls the page, so a spec states what the visitor sees.
 
 /** The page scroller's scrolling element. */
 export const PAGE_SCROLLER = ".dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper";
@@ -44,7 +44,7 @@ export async function scrollPageTo(page: Page, top: number): Promise<void> {
 /**
  * WebKit on Linux overlays its scrollbars and Playwright gives it no switch to classic ones, so its scroller project gives
  * every scrollbar a 15 px width before the app starts, as a page's own `::-webkit-scrollbar` rule makes WebKit lay out a
- * classic one. The app's probe then measures a scrollbar that takes layout space, as on a desktop that always shows them.
+ * classic one: the page scroller then hides a scrollbar that takes layout space, as on a Mac set to always show them.
  */
 export async function forceClassicWebKitScrollbars(context: BrowserContext): Promise<void> {
   await context.addInitScript(() => {
