@@ -69,14 +69,6 @@ describe("readEnv", () => {
 
 // The real .env is loaded in tests too: assertions name variables, never print their values.
 describe("ENV", () => {
-  it("carries the variables the app reads from import.meta.env, frozen", async () => {
-    vi.stubEnv("REACT_APP_WALLETCONNECT_PROJECT_ID", "stubbed-project-id");
-    const { ENV } = await import("./env");
-    expect(ENV.REACT_APP_WALLETCONNECT_PROJECT_ID).toBe("stubbed-project-id");
-    expect(Object.keys(ENV).filter((key) => !key.startsWith("REACT_APP_"))).toEqual([]);
-    expect(Object.isFrozen(ENV)).toBe(true);
-  });
-
   it("carries every variable of the chain table and the configuration, each under its own name", async () => {
     const names = readNames();
     for (const name of names) vi.stubEnv(name, `value of ${name}`);

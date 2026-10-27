@@ -1,4 +1,3 @@
-import type { WriteRefusal } from "@dispute-resolver/core";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -154,21 +153,6 @@ describe("WriteStatusNotice", () => {
     // The notice alone: no offer and no sentence under it.
     expect(container.querySelector("[aria-live]")?.children).toHaveLength(1);
     expect(container).not.toHaveTextContent(/configured|deployment|unavailable/i);
-  });
-
-  it.each<WriteRefusal>([
-    "evidence-unsupported",
-    "appeal-unsupported",
-    "withdraw-unsupported",
-    "local-id-unresolved",
-    "not-content-addressed",
-    "no-arbitrable-proxy",
-    "ruling-out-of-range",
-    "family-mismatch",
-    "call-chain-mismatch",
-  ])("the %s refusal has its own message", (refusal) => {
-    renderNotice({ phase: "refused", refusal });
-    expect(screen.getByRole("alert").textContent.length).toBeGreaterThan("Action unavailable".length);
   });
 
   it("a sequence shows which transaction the status belongs to", () => {

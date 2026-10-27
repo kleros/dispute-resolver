@@ -103,9 +103,6 @@ export function openDisputesRpc(ids: readonly bigint[], head: bigint): (call: Rp
   };
 }
 
-/** Gnosis keeps disputes in a mapping: an ID that was never created reads as a zeroed struct. */
-export const NEVER_CREATED_ON_GNOSIS: RpcResult = { result: `0x${"0".repeat(64 * 8)}` };
-
 /** How mainnet's node answers `disputes(id)` past the last dispute (recorded, packages/core/src/rpc/failures.ts). */
 export const OUT_OF_RANGE_ON_MAINNET: RpcAnswer = { error: { code: -32003, message: "EVM error: InvalidFEOpcode" } };
 

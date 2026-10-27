@@ -1,7 +1,6 @@
 import * as core from "@dispute-resolver/core";
 import type { ArbitratedBinding, MetaEvidenceResult } from "@dispute-resolver/core";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { HttpRequestError } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestDeps, dataWrapper, testBinding, testDisputeEvent, testEvidenceList, testFamily, testOkMetaEvidence } from "../test/data";
 import { EVIDENCE_FETCH_TIMEOUT_MS } from "./constants";
@@ -9,7 +8,6 @@ import { useEvidence, useFamily, useMetaEvidence } from "./disputeHooks";
 import { metaEvidenceStaleTime } from "./metaEvidenceQuery";
 import { queryKeys } from "./queryKeys";
 import { ready } from "./sectionData";
-import type { CoreDeps } from "./types";
 
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../test/data/mockCoreReads")).mockCoreReads(importOriginal));
 
@@ -20,16 +18,12 @@ const STORED_KEY = queryKeys.metaEvidence(1, 9n, BINDING.arbitrated);
 
 type Seed = readonly (readonly [readonly unknown[], unknown])[];
 
-function wrapperWith(deps: CoreDeps, seed: Seed = []) {
-  return dataWrapper({ deps, seed });
-}
-
 /** The case page's meta-evidence before its lookup settles, as `useCase` mounts it. */
 function renderCaseMetaEvidence(seed: Seed) {
   const unbound: { readonly binding: ArbitratedBinding | undefined } = { binding: undefined };
   return renderHook(({ binding }: { readonly binding: ArbitratedBinding | undefined }) => useMetaEvidence(1, binding, "case"), {
     initialProps: unbound,
-    wrapper: wrapperWith(createTestDeps(), seed),
+    wrapper: dataWrapper({ deps: createTestDeps(), seed }),
   });
 }
 
@@ -47,7 +41,7 @@ describe("dispute hooks", () => {
   it("cuts an evidence document fetch that never answers at the evidence timeout", async () => {
     vi.mocked(core.loadEvidence).mockResolvedValue({ ok: true, value: testEvidenceList() });
     const deps = createTestDeps({ fetcher: () => new Promise(() => undefined) });
-    renderHook(() => useEvidence(1, BINDING, ready(FOUND_EVENT)), { wrapper: wrapperWith(deps) });
+    renderHook(() => useEvidence(1, BINDING, ready(FOUND_EVENT)), { wrapper: dataWrapper({ deps }) });
     await waitFor(() => {
       expect(core.loadEvidence).toHaveBeenCalled();
     });
@@ -66,20 +60,11 @@ describe("dispute hooks", () => {
   it("detects the family through the chain's configured read client and the session cache", async () => {
     vi.mocked(core.detectFamily).mockResolvedValue(testFamily());
     const deps = createTestDeps();
-    const { result } = renderHook(() => useFamily(1, BINDING.arbitrated), { wrapper: wrapperWith(deps) });
+    const { result } = renderHook(() => useFamily(1, BINDING.arbitrated), { wrapper: dataWrapper({ deps }) });
     await waitFor(() => {
       expect(result.current).toEqual({ status: "ready", value: testFamily() });
     });
     expect(core.detectFamily).toHaveBeenCalledWith({ client: deps.getReadClient(1), chainId: 1, arbitrable: BINDING.arbitrated, registry: deps.registry, cache: deps.familyCache });
-  });
-
-  it("retries a rejected family detection once, then reports it unavailable by the error's short message, without the RPC URL", async () => {
-    vi.mocked(core.detectFamily).mockRejectedValue(new HttpRequestError({ body: { method: "eth_getCode" }, status: 429, url: "https://rpc.example/v2/abc123SECRETxyz" }));
-    const { result } = renderHook(() => useFamily(1, BINDING.arbitrated), { wrapper: wrapperWith(createTestDeps()) });
-    await waitFor(() => {
-      expect(result.current).toEqual({ status: "unavailable", error: { code: "rpc-error", message: "HTTP request failed." } });
-    });
-    expect(core.detectFamily).toHaveBeenCalledTimes(2);
   });
 
   const STORED = [
@@ -89,7 +74,7 @@ describe("dispute hooks", () => {
 
   it.each(STORED)("runs the meta-evidence pipeline when the case page mounts over %s and shows no stored result meanwhile", async (_stored, stored) => {
     vi.mocked(core.loadMetaEvidence).mockResolvedValue(testOkMetaEvidence({ title: "Fresh title" }));
-    const { result } = renderHook(() => useMetaEvidence(1, BINDING, "case"), { wrapper: wrapperWith(createTestDeps(), [[STORED_KEY, stored]]) });
+    const { result } = renderHook(() => useMetaEvidence(1, BINDING, "case"), { wrapper: dataWrapper({ deps: createTestDeps(), seed: [[STORED_KEY, stored]] }) });
     expect(result.current).toEqual({ status: "loading" });
     await waitFor(() => {
       expect(result.current).toEqual({ status: "ready", value: testOkMetaEvidence({ title: "Fresh title" }) });

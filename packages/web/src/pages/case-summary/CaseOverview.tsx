@@ -80,7 +80,7 @@ export function CaseOverview({ dispute, chain }: CaseSectionProps) {
       <OverviewLayout
         headingId={headingId}
         disputeId={dispute.disputeId}
-        period={found === undefined ? <PeriodPlaceholder /> : <PeriodBadge variant="pill" size="lg" period={found.dispute.period} className={pillReveal} />}
+        period={found === undefined ? <PeriodPlaceholder /> : <PeriodBadge size="lg" period={found.dispute.period} className={pillReveal} />}
         network={chain.name}
         court={
           <ViewDetail view={view} pick={(value) => value.court}>

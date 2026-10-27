@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import courtPolicies from "./__fixtures__/court-policies.json";
 import { reserveThroughGateway } from "./gateway";
 import { gatewayUrl, normalizeIpfsPath, policyFetchUrl, resolveGateway } from "./index";
 import type { CanonicalIpfsPath, GatewayOrigin } from "./types";
+import { GNOSIS, MAINNET } from "../test/disputes/testHelpers";
 import { AUTHORITY_LESS_HTTPS, CIDV1, DEFAULT_GATEWAY, GNOSIS_416_PATH, T2CR_DISPLAY_CID } from "../test/uri/testHelpers";
 
 const GATEWAY: GatewayOrigin = DEFAULT_GATEWAY;
@@ -156,10 +156,10 @@ describe("policyFetchUrl", () => {
   });
 
   it("every court policy URI recorded on chains 1 and 100 resolves through the gateway", () => {
-    expect(courtPolicies.chains.map((chain) => chain.chainId)).toEqual([1, 100]);
-    for (const chain of courtPolicies.chains) {
-      expect(chain.policies.length).toBeGreaterThan(0);
-      for (const uri of chain.policies) expect(policyFetchUrl(uri, GATEWAY), `${String(chain.chainId)} ${uri}`).toBe(`${DEFAULT_GATEWAY}${uri}`);
+    for (const recording of [MAINNET, GNOSIS]) {
+      const policies = Object.keys(recording.policies);
+      expect(policies.length, `court policies recorded on chain ${String(recording.chainId)}`).toBeGreaterThan(0);
+      for (const uri of policies) expect(policyFetchUrl(uri, GATEWAY), `${String(recording.chainId)} ${uri}`).toBe(`${DEFAULT_GATEWAY}${uri}`);
     }
   });
 

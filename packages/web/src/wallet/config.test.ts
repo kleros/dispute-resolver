@@ -6,7 +6,7 @@ import { APPKIT_FEATURES, createAppKitSetup, isEmbeddedWalletConnector } from ".
 import type { AppKitWalletSetup } from "./types";
 
 // AppKit's controllers are module singletons, so the runs with the Reown dashboard enabling social login
-// (config.remoteSocial.test.tsx) and disabling it (config.remoteSocialDisabled.test.ts) live in their own files: vitest
+// (config.remoteSocial.test.ts) and disabling it (config.remoteSocialDisabled.test.ts) live in their own files: vitest
 // isolates files, not tests.
 
 describe("createAppKitSetup with a WalletConnect project ID, remote project configuration unreachable", () => {
@@ -16,7 +16,7 @@ describe("createAppKitSetup with a WalletConnect project ID, remote project conf
     installOfflineAppKitEnvironment();
     vi.spyOn(ApiController, "fetchProjectConfig").mockRejectedValue(new Error("Unit tests have no network (project config)."));
     setup = createAppKitSetup(buildAppConfig({ REACT_APP_WALLETCONNECT_PROJECT_ID: "c8-test-project" }, { host: "localhost", origin: "http://localhost" }), "c8-test-project");
-    await setup.modal.ready();
+    await setup.modal.hasEmbeddedWallet();
   });
 
   afterAll(() => {

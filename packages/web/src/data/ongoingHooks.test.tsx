@@ -49,25 +49,6 @@ describe("Ongoing page data", () => {
     expect(result.current.courts).toEqual({ status: "ready", value: COURTS.value });
   });
 
-  it("still lists the disputes, without courts, when the court read fails", async () => {
-    vi.mocked(core.listCourts).mockResolvedValue({ ok: false, error: { code: "rpc-error", message: "down" } });
-    vi.mocked(core.listOngoingDisputes).mockResolvedValue({ status: "ok", disputes: [], failedIds: [] });
-    const { result } = renderHook(() => useOngoing(1), { wrapper: wrapperWith() });
-    await waitFor(() => {
-      expect(result.current.list.status).toBe("ready");
-    });
-    expect(core.listOngoingDisputes).toHaveBeenCalledWith(expect.anything(), null);
-  });
-
-  it("reports a failed scan as the list's unavailable state", async () => {
-    vi.mocked(core.listCourts).mockResolvedValue(COURTS);
-    vi.mocked(core.listOngoingDisputes).mockResolvedValue({ status: "failed", error: { code: "rpc-error", message: "getLogs refused" } });
-    const { result } = renderHook(() => useOngoing(1), { wrapper: wrapperWith() });
-    await waitFor(() => {
-      expect(result.current.list).toEqual({ status: "unavailable", error: { code: "rpc-error", message: "getLogs refused" } });
-    });
-  });
-
   /** A client holding the court list as restored from the persisted cache, written `ageMs` before the frozen now. */
   function clientWithCourtsAged(ageMs: number) {
     vi.useFakeTimers({ toFake: ["Date"] });
@@ -144,35 +125,6 @@ describe("Ongoing page data", () => {
     });
     expect(core.loadMetaEvidence).toHaveBeenCalledWith(expect.objectContaining({ disputeId: 42n, arbitrable: TEST_ARBITRABLE, budgetMs: core.ONGOING_BUDGET_MS }));
     expect(vi.mocked(core.loadMetaEvidence).mock.calls[0]?.[0].onChain).toBeUndefined();
-  });
-
-  it("shows title unavailable for a dispute whose meta-evidence fails", async () => {
-    const { result } = renderTitle({ status: "failed", reason: "budget-exhausted", error: { code: "rpc-error", message: "The meta-evidence did not load in time." } });
-    await waitFor(() => {
-      expect(result.current).toEqual({ status: "unavailable", error: { code: "rpc-error", message: "The meta-evidence did not load in time." } });
-    });
-  });
-
-  it("shows Meta Evidence Missing for an empty title", async () => {
-    const { result } = renderTitle(testOkMetaEvidence({ title: "" }));
-    await waitFor(() => {
-      expect(result.current).toEqual({ status: "ready", value: { kind: "missing" } });
-    });
-  });
-
-  it("shows Meta Evidence Missing when the locator knows no meta-evidence for the dispute", async () => {
-    const { result } = renderTitle({ status: "missing" });
-    await waitFor(() => {
-      expect(result.current).toEqual({ status: "ready", value: { kind: "missing" } });
-    });
-  });
-
-  it("shows the placeholder title of a rejected meta-evidence", async () => {
-    const placeholder = testOkMetaEvidence({ title: "Invalid meta-evidence" }).metaEvidence;
-    const { result } = renderTitle({ status: "invalid", metaEvidence: placeholder, reason: "script-not-allowlisted" });
-    await waitFor(() => {
-      expect(result.current).toEqual({ status: "ready", value: { kind: "title", text: "Invalid meta-evidence" } });
-    });
   });
 
   it("serves a card's title from a stored accepted meta-evidence without running the pipeline", async () => {

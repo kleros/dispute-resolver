@@ -1,5 +1,5 @@
 {
-  "provenance": "Raw JSON-RPC replies through the mainnet read RPC with the head at readAtBlock, recorded 2026-10-14, for the Unslashed proxy (idr-v1, override roundIndexOffset 1): eth_call externalIDtoLocalID(disputeId) and getTotalWithdrawableAmount(localId, firstContributor, [ruling]) at readAtBlock for every ruling the first contributor funded; eth_getLogs from block 12588964 to readAtBlock of the ERC-1497 Dispute(arbitrator, disputeId) event, KlerosLiquid AppealDecision(disputeId), and Contribution(localId) and RulingFunded(localId) over every round. Disputes 1678 (no appeal; the 0.273 ETH contribution and the funded ruling sit in round 1) and 1226 (one appeal; rulings 1 and 2 both funded in round 1, the first more than 10,000 blocks after the Dispute event).",
+  "provenance": "Raw JSON-RPC replies through the mainnet read RPC with the head at readAtBlock, recorded 2026-10-14, for the Unslashed proxy (idr-v1, override roundIndexOffset 1): eth_call getTotalWithdrawableAmount(localId, firstContributor, [ruling]) at readAtBlock for every ruling the first contributor funded; eth_getLogs from block 12588964 to readAtBlock of the ERC-1497 Dispute(arbitrator, disputeId) event, KlerosLiquid AppealDecision(disputeId), and Contribution(localId) and RulingFunded(localId) over every round. Disputes 1678 (no appeal; the 0.273 ETH contribution and the funded ruling sit in round 1) and 1226 (one appeal; rulings 1 and 2 both funded in round 1, the first more than 10,000 blocks after the Dispute event).",
   "chainId": 1,
   "readAtBlock": 26190918,
   "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
@@ -8,25 +8,9 @@
     {
       "disputeId": "1678",
       "localId": "116",
-      "externalIDtoLocalID": {
-        "to": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
-        "data": "0xc21ae061000000000000000000000000000000000000000000000000000000000000068e",
-        "reply": {
-          "result": "0x0000000000000000000000000000000000000000000000000000000000000074"
-        }
-      },
       "disputeEvent": [
         {
-          "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
-          "topics": [
-            "0x74baab670a4015ab2f1b467c5252a96141a2573f2908e58a92081e80d3cfde3d",
-            "0x000000000000000000000000988b3a538b618c7a603e1c11ab82cd16dbe28069",
-            "0x000000000000000000000000000000000000000000000000000000000000068e"
-          ],
-          "data": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000074",
-          "blockNumber": 26038374,
-          "logIndex": 252,
-          "transactionHash": "0x827d81d89cb5f5ec02d06bebc437857a3b0672295603cc1e28ea10ee0b147f66"
+          "blockNumber": 26038374
         }
       ],
       "appealDecisions": [],
@@ -75,39 +59,14 @@
     {
       "disputeId": "1226",
       "localId": "95",
-      "externalIDtoLocalID": {
-        "to": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
-        "data": "0xc21ae06100000000000000000000000000000000000000000000000000000000000004ca",
-        "reply": {
-          "result": "0x000000000000000000000000000000000000000000000000000000000000005f"
-        }
-      },
       "disputeEvent": [
         {
-          "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
-          "topics": [
-            "0x74baab670a4015ab2f1b467c5252a96141a2573f2908e58a92081e80d3cfde3d",
-            "0x000000000000000000000000988b3a538b618c7a603e1c11ab82cd16dbe28069",
-            "0x00000000000000000000000000000000000000000000000000000000000004ca"
-          ],
-          "data": "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005f",
-          "blockNumber": 14947472,
-          "logIndex": 50,
-          "transactionHash": "0xb456b95aa87077b3457cf3e08fc50f8ec276688134b0d442fc06e8f864b2c8c6"
+          "blockNumber": 14947472
         }
       ],
       "appealDecisions": [
         {
-          "address": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
-          "topics": [
-            "0x9c9b64db9e130f48381bf697abf638e73117dbfbfd7a4484f2da3ba188f4187d",
-            "0x00000000000000000000000000000000000000000000000000000000000004ca",
-            "0x000000000000000000000000e0e1bc8c6cd1b81993e2fcfb80832d814886ea38"
-          ],
-          "data": "0x",
-          "blockNumber": 15007566,
-          "logIndex": 165,
-          "transactionHash": "0x1b80b15e6c878a2243bb3f9da292cc98b9bb89b713590beb72de715ea53e355e"
+          "blockNumber": 15007566
         }
       ],
       "contributions": [

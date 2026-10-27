@@ -188,22 +188,6 @@ describe("AtlasFileField", () => {
     expect(container).not.toHaveTextContent(/sign in|Drop a file here/i);
   });
 
-  it("is a group named by its label", async () => {
-    await renderField({ label: "Attachment" });
-
-    expect(screen.getByRole("group", { name: "Attachment" })).toBeInTheDocument();
-  });
-
-  it("names the visible file-picker button by the field's label, also after a remount", async () => {
-    const upload = vi.fn(() => Promise.resolve(failure.uploadFailed("network")));
-    const { input } = await renderField({ label: "Attachment", uploader: fakeUploader({ upload }) });
-
-    expect(screen.getByRole("button", { name: "Attachment" })).toBeInTheDocument();
-    choose(input, testPdf());
-    await screen.findByText(failure.uploadFailed("network").message);
-    expect(screen.getByRole("button", { name: "Attachment" })).toBeInTheDocument();
-  });
-
   it("keeps describing the file-picker button by the status line after the dropzone remounts", async () => {
     const user = userEvent.setup();
     const results: UploadResult[] = [failure.uploadFailed("network"), { ok: true, path: TEST_UPLOAD_PATH }];
@@ -313,27 +297,14 @@ describe("AtlasFileField", () => {
 
     expect(input).toBeDisabled();
     expect(screen.getByRole("button", { name: "Primary document" })).toBeDisabled();
-    expect(container.querySelector("[data-disabled]")).not.toBeNull();
+    const zone = container.querySelector("[data-disabled]");
+    expect(zone).not.toBeNull();
+    expect(zone?.nextElementSibling).toContainElement(screen.getByText(/Drop a file here/));
     expect(input.closest("fieldset")?.parentElement).toHaveClass(...LOCKED_LOOK);
+    expect(input.closest("fieldset")?.parentElement).not.toHaveClass("[&_small]:cursor-auto");
     choose(input, testPdf());
 
     expect(uploader.upload).not.toHaveBeenCalled();
-  });
-
-  it("a locked zone is styled to let the pointer through to the field around it, which is styled with the not-allowed cursor", async () => {
-    const { input, container } = await renderField({ isDisabled: true, connect: false });
-
-    expect(container.querySelector("[data-disabled]")).not.toBeNull();
-    expect(input.closest("fieldset")?.parentElement).toHaveClass("[&_[data-disabled]]:pointer-events-none", "[&:has([data-disabled])]:cursor-not-allowed");
-  });
-
-  it("the whole message line under a locked zone is styled with the normal cursor, not only its text", async () => {
-    const { input, container } = await renderField({ isDisabled: true, connect: false });
-
-    const zone = container.querySelector("[data-disabled]");
-    expect(zone?.nextElementSibling).toContainElement(screen.getByText("Connect a wallet to upload files."));
-    expect(input.closest("fieldset")?.parentElement).toHaveClass("[&_[data-disabled]~*]:cursor-auto");
-    expect(input.closest("fieldset")?.parentElement).not.toHaveClass("[&_small]:cursor-auto");
   });
 
   it("says that uploading needs a wallet while locked without one", async () => {

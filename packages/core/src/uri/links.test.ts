@@ -1,9 +1,7 @@
 /* eslint-disable sonarjs/no-clear-text-protocols -- these tests assert that plain http:// URLs are refused. */
 import { describe, expect, it } from "vitest";
 import { IMAGE_EXTENSIONS, TEXT_EXTENSIONS, VIDEO_EXTENSIONS } from "./extensions";
-import { lastPathSegment } from "./attachment";
 import { attachmentKind, isSafeNavigationUrl, resolveArbitrableAppLink, toAttachmentLink } from "./index";
-import { isSelfLink } from "./links";
 import type { AttachmentKind, GatewayOrigin, SelfHosts } from "./types";
 import {
   AUTHORITY_LESS_HTTPS,
@@ -74,7 +72,7 @@ describe("toAttachmentLink", () => {
     expect(toAttachmentLink(MAINNET_1657_ATTACHMENT_PATH, GATEWAY)).toEqual({
       kind: "link",
       href: `${DEFAULT_GATEWAY}/ipfs/QmRXgRaKkcKKfXjTFozwoWLosFHmtcEaeuj1cL1G8xKHJd/${encodedName}`,
-      label: lastPathSegment(MAINNET_1657_ATTACHMENT_PATH),
+      label: MAINNET_1657_ATTACHMENT_PATH.slice(MAINNET_1657_ATTACHMENT_PATH.lastIndexOf("/") + 1),
       attachmentKind: "other",
     });
   });
@@ -86,6 +84,8 @@ describe("toAttachmentLink", () => {
       label: "report.txt",
       attachmentKind: "text",
     });
+    expect(toAttachmentLink("https://example.org/report.pdf?x=1", GATEWAY)).toMatchObject({ href: "https://example.org/report.pdf?x=1", label: "report.pdf?x=1" });
+    expect(toAttachmentLink("https://example.org/files/", GATEWAY)).toMatchObject({ href: "https://example.org/files/", label: "" });
   });
 
   it("re-serves an https attachment on a dead gateway host from the configured gateway", () => {
@@ -140,48 +140,6 @@ describe("toAttachmentLink", () => {
   });
 });
 
-describe("isSelfLink", () => {
-  it("a URL on the app's host or a canonical host is a self-link", () => {
-    expect(isSelfLink("https://resolve.kleros.io/", HOSTS)).toBe(true);
-    expect(isSelfLink("https://resolve.kleros.io/1/cases/5", HOSTS)).toBe(true);
-    expect(isSelfLink("https://RESOLVE.Kleros.io:443/", HOSTS)).toBe(true);
-    expect(isSelfLink(`https://${PREVIEW_HOST}/1/ongoing`, HOSTS)).toBe(true);
-    expect(isSelfLink("https://resolve.kleros.io/", { appHost: "Resolve.Kleros.IO", canonicalHosts: [] })).toBe(true);
-  });
-
-  it("compares host names without the port, so a dev server's host matches its own links", () => {
-    const local: SelfHosts = { appHost: "localhost:5173", canonicalHosts: ["resolve.kleros.io"] };
-    expect(isSelfLink("http://localhost:5173/1/cases/5", local)).toBe(true);
-    expect(isSelfLink("https://localhost/", local)).toBe(true);
-  });
-
-  it("hosts match exactly, never by substring", () => {
-    const urls = [
-      "https://resolve.kleros.io.evil.example/",
-      "https://evil.example/?next=resolve.kleros.io",
-      "https://evil.example/resolve.kleros.io",
-      "https://notresolve.kleros.io/",
-      "https://kleros.io/",
-      "https://resolve.kleros.io@evil.example/",
-    ];
-    for (const url of urls) expect(isSelfLink(url, HOSTS), url).toBe(false);
-  });
-
-  it("a self-link spelled with a trailing-dot host is hidden", () => {
-    expect(isSelfLink("https://resolve.kleros.io./1/cases/5", HOSTS)).toBe(true);
-    expect(isSelfLink(`https://${PREVIEW_HOST}./1/ongoing`, HOSTS)).toBe(true);
-    expect(isSelfLink("https://resolve.kleros.io/", { appHost: "resolve.kleros.io.", canonicalHosts: [] })).toBe(true);
-    expect(resolveArbitrableAppLink("https://resolve.kleros.io./1/cases/5", HOSTS)).toBeNull();
-    expect(isSelfLink("https://resolve.kleros.io.evil.example./", HOSTS)).toBe(false);
-  });
-
-  it("an unparseable URL is not a self-link", () => {
-    expect(isSelfLink("resolve.kleros.io", HOSTS)).toBe(false);
-    expect(isSelfLink("", HOSTS)).toBe(false);
-    expect(isSelfLink("https://resolve.kleros.io/", { appHost: "", canonicalHosts: ["", "not a host"] })).toBe(false);
-  });
-});
-
 describe("resolveArbitrableAppLink", () => {
   it("links an https arbitrable application", () => {
     expect(resolveArbitrableAppLink("https://curate.kleros.io/tcr/100/0xabc", HOSTS)).toBe("https://curate.kleros.io/tcr/100/0xabc");
@@ -194,12 +152,38 @@ describe("resolveArbitrableAppLink", () => {
     expect(resolveArbitrableAppLink(`https://${PREVIEW_HOST}/100/cases/3`, HOSTS)).toBeNull();
   });
 
-  it("keeps a link that only mentions resolve.kleros.io outside its host", () => {
-    expect(resolveArbitrableAppLink("https://example.org/?from=resolve.kleros.io", HOSTS)).toBe("https://example.org/?from=resolve.kleros.io");
+  it("hides a self-link whatever the case, default port or trailing dot of its host or the app's, and whatever the dev server's port", () => {
+    const selfLinks: [string, SelfHosts][] = [
+      ["https://RESOLVE.Kleros.io:443/", HOSTS],
+      ["https://resolve.kleros.io./1/cases/5", HOSTS],
+      [`https://${PREVIEW_HOST}./1/ongoing`, HOSTS],
+      ["https://resolve.kleros.io/", { appHost: "Resolve.Kleros.IO", canonicalHosts: [] }],
+      ["https://resolve.kleros.io/", { appHost: "resolve.kleros.io.", canonicalHosts: [] }],
+      ["https://localhost/", { appHost: "localhost:5173", canonicalHosts: ["resolve.kleros.io"] }],
+    ];
+    for (const [url, hosts] of selfLinks) expect(resolveArbitrableAppLink(url, hosts), url).toBeNull();
+  });
+
+  it("keeps a link that only mentions resolve.kleros.io outside its host, matching hosts exactly and never by substring", () => {
+    const urls = [
+      "https://example.org/?from=resolve.kleros.io",
+      "https://resolve.kleros.io.evil.example/",
+      "https://resolve.kleros.io.evil.example./",
+      "https://evil.example/?next=resolve.kleros.io",
+      "https://evil.example/resolve.kleros.io",
+      "https://notresolve.kleros.io/",
+      "https://kleros.io/",
+      "https://resolve.kleros.io@evil.example/",
+    ];
+    for (const url of urls) expect(resolveArbitrableAppLink(url, HOSTS), url).toBe(url);
+  });
+
+  it("hides nothing when neither the app's host nor a canonical host is usable", () => {
+    expect(resolveArbitrableAppLink("https://resolve.kleros.io/", { appHost: "", canonicalHosts: ["", "not a host"] })).toBe("https://resolve.kleros.io/");
   });
 
   it("gives no link for a value that is not an https URL", () => {
-    for (const input of ["http://curate.kleros.io", "//curate.kleros.io", ...DANGEROUS_SCHEMES, "", undefined, null, 42]) {
+    for (const input of ["http://curate.kleros.io", "//curate.kleros.io", "resolve.kleros.io", ...DANGEROUS_SCHEMES, "", undefined, null, 42]) {
       expect(resolveArbitrableAppLink(input, HOSTS), String(input)).toBeNull();
     }
   });
@@ -252,14 +236,5 @@ describe("attachmentKind", () => {
     expect(attachmentKind("https://example.org/dir.png/")).toBe("image");
     expect(attachmentKind("/files/.png")).toBe("other");
     expect(attachmentKind("/files/photo.")).toBe("other");
-  });
-});
-
-describe("lastPathSegment", () => {
-  it("is the text after the last slash", () => {
-    expect(lastPathSegment(`/ipfs/${CID}/report.pdf`)).toBe("report.pdf");
-    expect(lastPathSegment(CID)).toBe(CID);
-    expect(lastPathSegment("https://example.org/files/")).toBe("");
-    expect(lastPathSegment("https://example.org/report.pdf?x=1")).toBe("report.pdf?x=1");
   });
 });

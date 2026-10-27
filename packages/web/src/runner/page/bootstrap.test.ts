@@ -3,19 +3,47 @@ import { ACCEPTED, FAKE_APP_ORIGIN, SAMPLE_PARAMS, SAMPLE_REDIRECTS, createFakeR
 import type { RunnerMessageEvent } from "../types";
 import { bootstrapRunner } from "./bootstrap";
 
-/** A fake script whose `getMetaEvidence` resolves with `value`. */
-function resolvingScript(value: unknown) {
-  return (source: string, api: ScriptApi) => {
+type OnEvaluate = (source: string, api: ScriptApi) => void;
+
+/** A fake script that defines `getMetaEvidence` to run `body`. */
+function entryPoint(body: (api: ScriptApi) => void): OnEvaluate {
+  return (source, api) => {
     if (source === "script")
       api.globals.getMetaEvidence = () => {
-        api.resolveScript(value);
+        body(api);
       };
   };
 }
 
+/** A fake script whose `getMetaEvidence` resolves with `value`. */
+function resolvingScript(value: unknown): OnEvaluate {
+  return entryPoint((api) => {
+    api.resolveScript(value);
+  });
+}
+
+/** A fake script whose `getMetaEvidence` rejects with `reason`. */
+function rejectingScript(reason: unknown): OnEvaluate {
+  return entryPoint((api) => {
+    api.rejectScript(reason);
+  });
+}
+
+/** Delivers `request` from the parent to a fresh runner and returns the fake once every reply is posted. */
+async function repliesTo(onEvaluate?: OnEvaluate, request = runRequest()) {
+  const fake = createFakeRunnerEnvironment({ onEvaluate });
+  bootstrapRunner(fake.env);
+  fake.deliver(fake.fromParent(request));
+  await settleMacrotasks();
+  return fake;
+}
+
 describe("bootstrapRunner guards", () => {
-  it('evaluates nothing unless self.origin is "null"', () => {
-    const fake = createFakeRunnerEnvironment({ selfOrigin: FAKE_APP_ORIGIN });
+  it.each([
+    ['self.origin is not "null"', { selfOrigin: FAKE_APP_ORIGIN }],
+    ["a top-level window", { isTopLevel: true }],
+  ])("evaluates nothing in %s", (_label, options) => {
+    const fake = createFakeRunnerEnvironment(options);
     bootstrapRunner(fake.env);
     expect(fake.listenerCount()).toBe(0);
     fake.deliver(fake.fromParent(runRequest()));
@@ -23,30 +51,17 @@ describe("bootstrapRunner guards", () => {
     expect(fake.replies).toEqual([]);
   });
 
-  it("refuses to run in a top-level window", () => {
-    const fake = createFakeRunnerEnvironment({ isTopLevel: true });
-    bootstrapRunner(fake.env);
-    expect(fake.listenerCount()).toBe(0);
-    fake.deliver(fake.fromParent(runRequest()));
-    expect(fake.evaluated).toEqual([]);
-    expect(fake.replies).toEqual([]);
-  });
-
-  it("ignores a message whose source is not window.parent", () => {
+  it.each<[string, (event: RunnerMessageEvent) => RunnerMessageEvent]>([
+    ["a message from a source other than window.parent", (event) => ({ ...event, source: {} })],
+    ["a message with a null source", (event) => ({ ...event, source: null })],
+    ["a message from another origin", (event) => ({ ...event, origin: "https://attacker.example" })],
+    ['a message from the "null" origin', (event) => ({ ...event, origin: "null" })],
+    ["a request with no port", (event) => ({ ...event, ports: [] })],
+    ["a request with two ports", (event) => ({ ...event, ports: [...event.ports, ...event.ports] })],
+  ])("ignores %s", (_label, modify) => {
     const fake = createFakeRunnerEnvironment();
     bootstrapRunner(fake.env);
-    fake.deliver({ ...fake.fromParent(runRequest()), source: {} });
-    fake.deliver({ ...fake.fromParent(runRequest()), source: null });
-    expect(fake.evaluated).toEqual([]);
-    expect(fake.replies).toEqual([]);
-    expect(fake.listenerCount()).toBe(1);
-  });
-
-  it("ignores a message whose origin is not location.origin", () => {
-    const fake = createFakeRunnerEnvironment();
-    bootstrapRunner(fake.env);
-    fake.deliver({ ...fake.fromParent(runRequest()), origin: "https://attacker.example" });
-    fake.deliver({ ...fake.fromParent(runRequest()), origin: "null" });
+    fake.deliver(modify(fake.fromParent(runRequest())));
     expect(fake.evaluated).toEqual([]);
     expect(fake.replies).toEqual([]);
     expect(fake.listenerCount()).toBe(1);
@@ -58,17 +73,6 @@ describe("bootstrapRunner guards", () => {
     fake.deliver({ ...fake.fromParent(runRequest()), origin: "null" });
     expect(fake.evaluated).toEqual([]);
     expect(fake.replies).toEqual([]);
-  });
-
-  it("ignores a request that does not carry exactly one port", () => {
-    const fake = createFakeRunnerEnvironment();
-    bootstrapRunner(fake.env);
-    const event = fake.fromParent(runRequest());
-    fake.deliver({ ...event, ports: [] });
-    fake.deliver({ ...event, ports: [...event.ports, ...event.ports] });
-    expect(fake.evaluated).toEqual([]);
-    expect(fake.replies).toEqual([]);
-    expect(fake.listenerCount()).toBe(1);
   });
 
   it("ignores a message that is not a well-formed run request, then accepts one that is", () => {
@@ -133,42 +137,6 @@ describe("bootstrapRunner acknowledgement", () => {
     fake.deliver(fake.fromParent(runRequest()));
     expect(fake.replies[0]).toStrictEqual({ type: "dr-runner/accepted" });
   });
-
-  it("a refused request gets no acknowledgement, so no window learns whether a runner is alive", async () => {
-    for (const options of [{ selfOrigin: FAKE_APP_ORIGIN }, { isTopLevel: true }, { locationOrigin: "null" }]) {
-      const refusing = createFakeRunnerEnvironment(options);
-      bootstrapRunner(refusing.env);
-      refusing.deliver({ ...refusing.fromParent(runRequest()), origin: "null" });
-      refusing.deliver(refusing.fromParent(runRequest()));
-      expect(refusing.replies).toEqual([]);
-    }
-
-    const fake = createFakeRunnerEnvironment({ onEvaluate: resolvingScript({ title: "accepted" }) });
-    bootstrapRunner(fake.env);
-    const event = fake.fromParent(runRequest());
-    const refused: RunnerMessageEvent[] = [
-      { ...event, source: {} },
-      { ...event, source: null },
-      { ...event, origin: "https://attacker.example" },
-      { ...event, origin: "null" },
-      { ...event, ports: [] },
-      { ...event, ports: [...event.ports, ...event.ports] },
-      fake.fromParent(null),
-      fake.fromParent({ ...runRequest(), type: "dr-runner/result" }),
-      fake.fromParent({ ...runRequest(), version: 1 }),
-      fake.fromParent({ ...runRequest(), version: 3 }),
-      fake.fromParent({ ...runRequest(), scriptText: 42 }),
-      fake.fromParent({ ...runRequest(), params: { ...SAMPLE_PARAMS, disputeID: 1650 } }),
-      fake.fromParent({ ...runRequest(), rpcRedirects: "mainnet.infura.io" }),
-    ];
-    for (const refusedEvent of refused) fake.deliver(refusedEvent);
-    expect(fake.replies).toEqual([]);
-    expect(fake.evaluated).toEqual([]);
-
-    fake.deliver(fake.fromParent(runRequest()));
-    await settleMacrotasks();
-    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { title: "accepted" }, jsonDuplicateKeys: false }]);
-  });
 });
 
 describe("bootstrapRunner script-facing globals", () => {
@@ -188,167 +156,87 @@ describe("bootstrapRunner script-facing globals", () => {
   });
 
   it("defines the globals before evaluating the script, which reads them at top level", async () => {
-    const fake = createFakeRunnerEnvironment({
-      onEvaluate: (_source, api) => {
-        const params = api.globals.scriptParameters as { disputeID: string };
-        api.globals.getMetaEvidence = () => {
-          api.resolveScript({ seen: params.disputeID });
-        };
-      },
+    const fake = await repliesTo((_source, api) => {
+      const params = api.globals.scriptParameters as { disputeID: string };
+      api.globals.getMetaEvidence = () => {
+        api.resolveScript({ seen: params.disputeID });
+      };
     });
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest()));
-    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { seen: "1650" }, jsonDuplicateKeys: false }]);
   });
 });
 
 describe("bootstrapRunner run and reply", () => {
   it("reports the duplicate keys the guard recorded", async () => {
-    const fake = createFakeRunnerEnvironment({
-      onEvaluate: (source, api) => {
-        if (source === "guard") return;
-        api.globals.getMetaEvidence = () => {
-          api.globals.__klerosJsonDuplicateKeys = true;
-          api.resolveScript({});
-        };
-      },
+    const script = entryPoint((api) => {
+      api.globals.__klerosJsonDuplicateKeys = true;
+      api.resolveScript({});
     });
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest({ guardSource: "guard" })));
-    await settleMacrotasks();
+    const fake = await repliesTo(script, runRequest({ guardSource: "guard" }));
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: {}, jsonDuplicateKeys: true }]);
   });
 
-  it("reports a synchronous script failure after the acknowledgement", async () => {
-    const fake = createFakeRunnerEnvironment({
-      onEvaluate: () => {
+  it.each<[string, OnEvaluate | undefined, string]>([
+    [
+      "reports a synchronous script failure after the acknowledgement",
+      () => {
         throw new SyntaxError("Unexpected token");
       },
-    });
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest()));
-    await settleMacrotasks();
-    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "Unexpected token" }]);
-  });
-
-  it("posts an error when getMetaEvidence throws synchronously", async () => {
-    const fake = createFakeRunnerEnvironment({
-      onEvaluate: (_source, api) => {
-        api.globals.getMetaEvidence = () => {
-          throw new Error("boom");
-        };
-      },
-    });
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest()));
-    await settleMacrotasks();
-    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "boom" }]);
-  });
-
-  it("posts an error for a script without getMetaEvidence", async () => {
-    const fake = createFakeRunnerEnvironment();
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest()));
-    await settleMacrotasks();
-    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "getMetaEvidence is not defined" }]);
-  });
-
-  it("posts an error when the script calls rejectScript", async () => {
-    const fake = createFakeRunnerEnvironment({
-      onEvaluate: (_source, api) => {
-        api.globals.getMetaEvidence = () => {
-          api.rejectScript(new Error("question not found"));
-        };
-      },
-    });
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest()));
-    await settleMacrotasks();
-    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "question not found" }]);
-  });
-
-  it("still posts an error for a rejection reason that is not an Error", async () => {
-    const fake = createFakeRunnerEnvironment({
-      onEvaluate: (_source, api) => {
-        api.globals.getMetaEvidence = () => {
-          api.rejectScript({ code: 42 });
-        };
-      },
-    });
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest()));
-    await settleMacrotasks();
-    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "The script reported a failure." }]);
+      "Unexpected token",
+    ],
+    [
+      "posts an error when getMetaEvidence throws synchronously",
+      entryPoint(() => {
+        throw new Error("boom");
+      }),
+      "boom",
+    ],
+    ["posts an error for a script without getMetaEvidence", undefined, "getMetaEvidence is not defined"],
+    ["posts an error when the script calls rejectScript", rejectingScript(new Error("question not found")), "question not found"],
+    ["still posts an error for a rejection reason that is not an Error", rejectingScript({ code: 42 }), "The script reported a failure."],
+    [
+      "posts an error when a promise given to resolveScript rejects",
+      entryPoint((api) => {
+        api.resolveScript(Promise.reject(new Error("rpc down")));
+      }),
+      "rpc down",
+    ],
+    [
+      "posts an error instead of a value that cannot be structured-cloned",
+      resolvingScript({ title: "x", render: () => "not cloneable" }),
+      "The script's result cannot be copied out of the runner.",
+    ],
+  ])("%s", async (_label, onEvaluate, message) => {
+    const fake = await repliesTo(onEvaluate);
+    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message }]);
   });
 
   it("posts only the first resolve or reject after the acknowledgement", async () => {
-    const fake = createFakeRunnerEnvironment({
-      onEvaluate: (_source, api) => {
-        api.globals.getMetaEvidence = () => {
-          // The pinned Reality renderers resolve in a switch without breaks, so later cases call resolveScript again.
-          api.resolveScript({ rulingOptions: { type: "single-select" } });
-          api.resolveScript({ rulingOptions: { type: "uint" } });
-          api.rejectScript(new Error("late"));
-          throw new Error("later still");
-        };
-      },
-    });
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest()));
-    await settleMacrotasks();
+    const fake = await repliesTo(
+      entryPoint((api) => {
+        // The pinned Reality renderers resolve in a switch without breaks, so later cases call resolveScript again.
+        api.resolveScript({ rulingOptions: { type: "single-select" } });
+        api.resolveScript({ rulingOptions: { type: "uint" } });
+        api.rejectScript(new Error("late"));
+        throw new Error("later still");
+      }),
+    );
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { rulingOptions: { type: "single-select" } }, jsonDuplicateKeys: false }]);
   });
 
   it("resolveScript adopts a promise", async () => {
-    const fake = createFakeRunnerEnvironment({
-      onEvaluate: (_source, api) => {
-        api.globals.getMetaEvidence = () => {
-          api.resolveScript(Promise.resolve({ title: "adopted" }));
-        };
-      },
-    });
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest()));
-    await settleMacrotasks();
+    const fake = await repliesTo(resolvingScript(Promise.resolve({ title: "adopted" })));
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { title: "adopted" }, jsonDuplicateKeys: false }]);
   });
 
-  it("posts an error when a promise given to resolveScript rejects", async () => {
-    const fake = createFakeRunnerEnvironment({
-      onEvaluate: (_source, api) => {
-        api.globals.getMetaEvidence = () => {
-          api.resolveScript(Promise.reject(new Error("rpc down")));
-        };
-      },
-    });
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest()));
-    await settleMacrotasks();
-    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "rpc down" }]);
-  });
-
-  it("posts an error instead of a value that cannot be structured-cloned", async () => {
-    const fake = createFakeRunnerEnvironment({ onEvaluate: resolvingScript({ title: "x", render: () => "not cloneable" }) });
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest()));
-    await settleMacrotasks();
-    expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/error", message: "The script's result cannot be copied out of the runner." }]);
-  });
-
   it("does not report asynchronous errors after the acknowledgement, leaving the host's timeout to settle the run", async () => {
-    const fake = createFakeRunnerEnvironment({
-      onEvaluate: (_source, api) => {
-        api.globals.getMetaEvidence = () => {
-          const later = Promise.reject(new Error("thrown later"));
-          later.catch(() => undefined);
-          return later;
-        };
-      },
+    const fake = await repliesTo((_source, api) => {
+      api.globals.getMetaEvidence = () => {
+        const later = Promise.reject(new Error("thrown later"));
+        later.catch(() => undefined);
+        return later;
+      };
     });
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest()));
-    await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED]);
   });
 

@@ -30,36 +30,17 @@ afterEach(() => {
 });
 
 describe("choosePageScroll", () => {
-  it("keeps the document scrolling on a touch device whose scrollbars overlay the page, and leaves the root unmarked", () => {
-    pointerIsTouch();
-    scrollbarsTake(0);
+  it.each([
+    ["keeps the document scrolling on a touch device whose scrollbars overlay the page, and leaves the root unmarked", pointerIsTouch, 0, "document"],
+    ["moves the page into the page scroller on a desktop whose scrollbars overlay the page, as a Mac's do by default", pointerHoversFinely, 0, "container"],
+    ["moves the page into the page scroller where the scrollbar takes layout space, and marks the root for the stylesheet", pointerHoversFinely, 15, "container"],
+    ["moves the page into the page scroller where the scrollbar takes layout space even when a finger leads, as on a touch laptop", pointerIsTouch, 15, "container"],
+  ] as const)("%s", (_name, pointer, width, expected) => {
+    pointer();
+    scrollbarsTake(width);
     const root = freshRoot();
-    expect(choosePageScroll(root)).toBe("document");
-    expect(root.hasAttribute("data-page-scroll")).toBe(false);
-  });
-
-  it("moves the page into the page scroller on a desktop whose scrollbars overlay the page, as a Mac's do by default", () => {
-    pointerHoversFinely();
-    scrollbarsTake(0);
-    const root = freshRoot();
-    expect(choosePageScroll(root)).toBe("container");
-    expect(root.getAttribute("data-page-scroll")).toBe("container");
-  });
-
-  it("moves the page into the page scroller where the scrollbar takes layout space, and marks the root for the stylesheet", () => {
-    pointerHoversFinely();
-    scrollbarsTake(15);
-    const root = freshRoot();
-    expect(choosePageScroll(root)).toBe("container");
-    expect(root.getAttribute("data-page-scroll")).toBe("container");
-  });
-
-  it("moves the page into the page scroller where the scrollbar takes layout space even when a finger leads, as on a touch laptop", () => {
-    pointerIsTouch();
-    scrollbarsTake(15);
-    const root = freshRoot();
-    expect(choosePageScroll(root)).toBe("container");
-    expect(root.getAttribute("data-page-scroll")).toBe("container");
+    expect(choosePageScroll(root)).toBe(expected);
+    expect(root.getAttribute("data-page-scroll")).toBe(expected === "container" ? "container" : null);
   });
 
   it("lets the scrollbar decide where the browser cannot answer media queries", () => {

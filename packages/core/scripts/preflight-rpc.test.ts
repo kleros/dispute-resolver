@@ -172,26 +172,20 @@ describe("eth_getLogs over at least 10,000 blocks", () => {
   });
 
   it.each([
-    ["an unrelated JSON-RPC error", { error: { code: -32000, message: "header not found" } }],
-    ["HTTP 429", { status: 429, body: "Too Many Requests" }],
+    ["an unrelated JSON-RPC error", { error: { code: -32000, message: "header not found" } }, "JSON-RPC error -32000: header not found"],
+    ["HTTP 429", { status: 429, body: "Too Many Requests" }, "HTTP 429 (rate limited)"],
     [
-      "HTTP 429 with Infura's JSON-RPC -32005 rate-limit body",
+      "HTTP 429 with Infura's JSON-RPC -32005 rate-limit body, reported as rate limiting rather than a range cap",
       { status: 429, body: JSON.stringify({ jsonrpc: "2.0", id: 1, error: { code: -32005, message: "project ID request rate exceeded" } }) },
+      "HTTP 429 (rate limited): JSON-RPC error -32005: project ID request rate exceeded",
     ],
-    ["HTTP 500", { status: 500, body: "" }],
-    ["a body that is not JSON", { status: 200, body: "<html>" }],
-  ] as const)("fails on %s", async (_name, logs) => {
+    ["HTTP 500", { status: 500, body: "" }, "HTTP 500"],
+    ["a body that is not JSON", { status: 200, body: "<html>" }, "the answer is not JSON-RPC"],
+  ] as const)("fails on %s", async (_name, logs, reason) => {
     const { fetchFn } = fakeNode({ logs, logsCap: 1000 });
     const report = await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
-    expect(report.logs.status).toBe("failed");
+    expect(report.logs).toMatchObject({ status: "failed", reason });
     expect(isFailure({ chainId: 1, outcome: report })).toBe(true);
-  });
-
-  it("reports HTTP 429 as rate limiting even when its JSON-RPC body carries a range-cap code", async () => {
-    const body = JSON.stringify({ jsonrpc: "2.0", id: 1, error: { code: -32005, message: "project ID request rate exceeded" } });
-    const { fetchFn } = fakeNode({ logs: { status: 429, body }, logsCap: 1000 });
-    const report = await checkEndpoint("https://rpc.example/k", fetchFn, SETTINGS);
-    expect(report.logs).toMatchObject({ status: "failed", reason: "HTTP 429 (rate limited): JSON-RPC error -32005: project ID request rate exceeded" });
   });
 
   it("fails, without asking for logs, when the head cannot be read", async () => {

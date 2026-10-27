@@ -12,18 +12,19 @@ export const CORS_HEADERS = { "access-control-allow-origin": "*", "access-contro
 const RpcErrorSchema = z.object({ code: z.number(), message: z.string() });
 
 /** One recorded JSON-RPC call: its method and params, and the result or the node error it was answered with. */
-export const RecordedCallSchema = z.object({ method: z.string(), params: z.array(z.unknown()), result: z.unknown().optional(), error: RpcErrorSchema.optional() });
+const RecordedCallSchema = z.object({ method: z.string(), params: z.array(z.unknown()), result: z.unknown().optional(), error: RpcErrorSchema.optional() });
 
 const RecordingSchema = z.object({
   chainId: z.number(),
   disputeId: z.string(),
   readAtBlock: z.number(),
   calls: z.array(RecordedCallSchema),
-  locator: z.unknown(),
-  files: z.array(z.object({ path: z.string(), status: z.number(), body: z.unknown() })),
+  /** The meta-evidence locator's answer; a recording of a script's reads has none. */
+  locator: z.unknown().optional(),
+  files: z.array(z.object({ path: z.string(), status: z.number(), body: z.unknown() })).default([]),
 });
 
-/** What the case page of one dispute read, recorded once from the real services (fixture files under `e2e/app/fixtures`). */
+/** What the case page or a script of one dispute read, recorded once from the real services (the `fixtures` folders of e2e). */
 type Recording = z.infer<typeof RecordingSchema>;
 
 export function loadRecording(url: URL): Recording {
@@ -36,8 +37,6 @@ const JsonRpcRequestSchema = z.object({
   method: z.string(),
   params: z.array(z.unknown()).optional(),
 });
-
-export type JsonRpcRequest = z.infer<typeof JsonRpcRequestSchema>;
 
 export interface RpcCall {
   readonly method: string;
@@ -110,7 +109,7 @@ function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 
-export function callKey(method: string, params: readonly unknown[]): string {
+function callKey(method: string, params: readonly unknown[]): string {
   return canonical([method, params]);
 }
 
@@ -121,7 +120,7 @@ function indexRecordings(recordings: readonly Recording[]) {
   for (const recording of recordings) {
     for (const call of recording.calls) calls.set(callKey(call.method, call.params), call.error === undefined ? { result: call.result } : { error: call.error });
     for (const file of recording.files) files.set(file.path, file.status === 200 ? { json: file.body } : { status: file.status });
-    locators.set(`${recording.chainId.toString()}:${recording.disputeId}`, { json: recording.locator });
+    if (recording.locator !== undefined) locators.set(`${recording.chainId.toString()}:${recording.disputeId}`, { json: recording.locator });
   }
   return { calls, files, locators };
 }
@@ -135,7 +134,7 @@ function postJson(request: Request): unknown {
   }
 }
 
-export function jsonRpcCall(request: Request): JsonRpcRequest | undefined {
+function jsonRpcCall(request: Request): z.infer<typeof JsonRpcRequestSchema> | undefined {
   if (request.method() !== "POST") return undefined;
   const parsed = JsonRpcRequestSchema.safeParse(postJson(request));
   return parsed.success ? parsed.data : undefined;
@@ -158,12 +157,12 @@ function httpRequestOf(url: URL): HttpRequest | undefined {
   return undefined;
 }
 
-export async function fulfillJson(route: Route, body: unknown): Promise<void> {
+async function fulfillJson(route: Route, body: unknown): Promise<void> {
   await route.fulfill({ headers: CORS_HEADERS, contentType: "application/json", body: JSON.stringify(body) });
 }
 
 /** The case page reads the chain's latest block only for its clock, so any block stamped with the present serves. */
-export function latestBlockAnswer(call: RpcCall): RpcResult | undefined {
+function latestBlockAnswer(call: RpcCall): RpcResult | undefined {
   if (call.method !== "eth_getBlockByNumber" || call.params[0] !== "latest") return undefined;
   return { result: { number: "0x1", timestamp: `0x${Math.floor(Date.now() / 1_000).toString(16)}`, hash: `0x${"cd".repeat(32)}`, transactions: [] } };
 }

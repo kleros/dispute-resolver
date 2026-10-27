@@ -82,6 +82,15 @@ function signInAndUploadRequests(server: FakeAtlasServer): number {
   return server.count("nonce") + server.count("sign") + server.count("login") + server.count("upload");
 }
 
+/** An upload answer that fails the `failingIndex`th upload (from 1) with `status` and Atlas's JSON `message`. */
+function failingUpload(failingIndex: number, status: number, message: string) {
+  let uploads = 0;
+  return () => {
+    uploads += 1;
+    return uploads === failingIndex ? new Response(JSON.stringify({ message }), { status, headers: { "content-type": "application/json" } }) : new Response(TEST_UPLOAD_CID);
+  };
+}
+
 beforeEach(() => {
   sessionStorage.clear();
 });
@@ -133,21 +142,11 @@ describe("upload", () => {
     expect(outcome).toEqual({ ok: true, path: TEST_UPLOAD_PATH });
     expect(server.requests.filter((kind) => kind !== "user")).toEqual(["roles", "nonce", "sign", "login", "upload"]);
     expect(server.uploads[0]?.authorization).toBe(`Bearer ${token}`);
+    expect(server.uploads[0]).toMatchObject({ product: "CourtV1", role: "evidence", name: "brief.pdf" });
     await waitFor(() => {
       expect(result.current.isSignedIn).toBe(true);
     });
     expect(result.current.phase).toBe("idle");
-  });
-
-  it("uploads again without a new signature while the session is signed in", async () => {
-    const { server, result } = await renderReady();
-    await settle(() => result.current.upload(testPdf(), "evidence"));
-
-    const second = await settle(() => result.current.upload(testPdf("second.pdf"), "evidence"));
-
-    expect(second.ok).toBe(true);
-    expect(server.count("sign")).toBe(1);
-    expect(server.count("upload")).toBe(2);
   });
 
   it("makes the session unverified on an account switch, so the next upload signs in again from the new account", async () => {
@@ -181,15 +180,6 @@ describe("upload", () => {
     await waitFor(() => {
       expect(result.current.uploader.isSignedIn).toBe(true);
     });
-  });
-
-  it("uploads user files for CourtV1 under the evidence role", async () => {
-    const { server, result } = await renderReady();
-
-    await settle(() => result.current.upload(testPdf("brief.pdf"), "evidence"));
-
-    expect(server.uploads).toHaveLength(1);
-    expect(server.uploads[0]).toMatchObject({ product: "CourtV1", role: "evidence", name: "brief.pdf" });
   });
 
   it("sends the uploadJson document as an application/json file under the policy role", async () => {
@@ -274,7 +264,10 @@ describe("upload", () => {
     expect(server.count("sign")).toBe(0);
   });
 
-  it("asks for no signature when the wallet disconnects while the role limits are being fetched", async () => {
+  it.each([
+    ["disconnects", (wallet: TestWallet) => wallet.disconnect(), { ok: false, error: "no-wallet" }],
+    ["changes chain", (wallet: TestWallet) => wallet.changeChain(100), { ok: false, error: "upload-failed", message: expect.stringContaining("chain") as unknown }],
+  ])("asks for no signature when the wallet %s while the role limits are being fetched", async (_label, change, expected) => {
     const { server, wallet, result } = await renderUploader({ server: { roles: "fail-once" } });
     const roles = holdNextRequest("roles");
     const upload = startInAct(() => result.current.upload(testPdf(), "evidence"));
@@ -282,27 +275,11 @@ describe("upload", () => {
       expect(roles.isHeld()).toBe(true);
     });
 
-    await act(() => wallet.disconnect());
+    await act(() => change(wallet));
     roles.release();
     const outcome = await settle(() => upload);
 
-    expect(outcome).toMatchObject({ ok: false, error: "no-wallet" });
-    expect(signInAndUploadRequests(server)).toBe(0);
-  });
-
-  it("asks for no signature when the wallet changes chain before the sign-in", async () => {
-    const { server, wallet, result } = await renderUploader({ server: { roles: "fail-once" } });
-    const roles = holdNextRequest("roles");
-    const upload = startInAct(() => result.current.upload(testPdf(), "evidence"));
-    await waitFor(() => {
-      expect(roles.isHeld()).toBe(true);
-    });
-
-    await act(() => wallet.changeChain(100));
-    roles.release();
-    const outcome = await settle(() => upload);
-
-    expect(outcome).toMatchObject({ ok: false, error: "upload-failed", message: expect.stringContaining("chain") as unknown });
+    expect(outcome).toMatchObject(expected);
     expect(signInAndUploadRequests(server)).toBe(0);
   });
 
@@ -346,16 +323,6 @@ describe("upload", () => {
     expect(server.uploads[0]?.authorization).toBe(`Bearer ${token}`);
   });
 
-  it("signs in again when the stored token has expired", async () => {
-    sessionStorage.setItem("authToken", JSON.stringify(sessionJwt(TEST_WALLET_ACCOUNT, -60)));
-    const { server, result } = await renderReady();
-
-    const outcome = await settle(() => result.current.upload(testPdf(), "evidence"));
-
-    expect(outcome.ok).toBe(true);
-    expect(server.count("sign")).toBe(1);
-  });
-
   it("never passes a returned path that is not content-addressed to the caller", async () => {
     const { result } = await renderReady({ server: { uploadResponse: () => new Response("../../ipns/attacker.eth") } });
 
@@ -387,14 +354,7 @@ describe("upload", () => {
   });
 
   it("shows the server's upload error, and signs in again on the next upload after an authorization failure", async () => {
-    let uploads = 0;
-    const uploadResponse = () => {
-      uploads += 1;
-      return uploads === 1
-        ? new Response(JSON.stringify({ message: "Token revoked" }), { status: 401, headers: { "content-type": "application/json" } })
-        : new Response(TEST_UPLOAD_CID);
-    };
-    const { server, result } = await renderReady({ server: { uploadResponse } });
+    const { server, result } = await renderReady({ server: { uploadResponse: failingUpload(1, 401, "Token revoked") } });
 
     const first = await settle(() => result.current.upload(testPdf(), "evidence"));
     expect(first).toMatchObject({ ok: false, error: "upload-failed" });
@@ -410,14 +370,7 @@ describe("upload", () => {
   });
 
   it("ends the session for the tab on an authorization failure, so a reload signs in again", async () => {
-    let uploads = 0;
-    const uploadResponse = () => {
-      uploads += 1;
-      return uploads === 2
-        ? new Response(JSON.stringify({ message: "Token revoked" }), { status: 401, headers: { "content-type": "application/json" } })
-        : new Response(TEST_UPLOAD_CID);
-    };
-    const server = installFakeAtlasServer({ uploadResponse });
+    const server = installFakeAtlasServer({ uploadResponse: failingUpload(2, 401, "Token revoked") });
     const wallet = await createConnectedTestWallet();
     const renderTab = async () => {
       const hook = renderHook(() => ({ uploader: useAtlasUpload(), library: useAtlasProvider() }), { wrapper: atlasWrapper(wallet) });
@@ -444,14 +397,7 @@ describe("upload", () => {
   });
 
   it("keeps the session after an upload failure that is not an authorization failure", async () => {
-    let uploads = 0;
-    const uploadResponse = () => {
-      uploads += 1;
-      return uploads === 2
-        ? new Response(JSON.stringify({ message: "Storage unavailable" }), { status: 500, headers: { "content-type": "application/json" } })
-        : new Response(TEST_UPLOAD_CID);
-    };
-    const { server, result } = await renderReady({ server: { uploadResponse } });
+    const { server, result } = await renderReady({ server: { uploadResponse: failingUpload(2, 500, "Storage unavailable") } });
     expect((await settle(() => result.current.upload(testPdf(), "evidence"))).ok).toBe(true);
 
     const failed = await settle(() => result.current.upload(testPdf(), "evidence"));

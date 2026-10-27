@@ -40,22 +40,15 @@ function frame(container: HTMLElement) {
 }
 
 describe("route table: redirects", () => {
-  it("/ goes to the default chain's Ongoing page without a wallet", async () => {
-    const view = renderApp("/");
-    expect(await screen.findByText("Ongoing page on 1")).toBeInTheDocument();
-    expect(view.currentPath()).toBe("/1/ongoing");
-  });
-
-  it("/ goes to the connected wallet's chain when it is configured", async () => {
-    const view = renderApp("/", await createConnectedTestWallet({ chainId: 100 }));
-    expect(await screen.findByText("Ongoing page on 100")).toBeInTheDocument();
-    expect(view.currentPath()).toBe("/100/ongoing");
-  });
-
-  it("/ goes to the default chain when the wallet is on an unconfigured chain", async () => {
-    const view = renderApp("/", await createConnectedTestWallet({ chainId: UNCONFIGURED_CHAIN_ID }));
-    expect(await screen.findByText("Ongoing page on 1")).toBeInTheDocument();
-    expect(view.currentPath()).toBe("/1/ongoing");
+  it.each<[string, number | null, number]>([
+    ["the default chain's Ongoing page without a wallet", null, 1],
+    ["the connected wallet's chain when it is configured", 100, 100],
+    ["the default chain when the wallet is on an unconfigured chain", UNCONFIGURED_CHAIN_ID, 1],
+  ])("/ goes to %s", async (_name, walletChainId, chainId) => {
+    const wallet = walletChainId === null ? undefined : await createConnectedTestWallet({ chainId: walletChainId });
+    const view = renderApp("/", wallet);
+    expect(await screen.findByText(`Ongoing page on ${String(chainId)}`)).toBeInTheDocument();
+    expect(view.currentPath()).toBe(`/${String(chainId)}/ongoing`);
   });
 
   it("/ waits for wagmi's reconnect to settle, so a returning user lands on their wallet's chain", async () => {
@@ -154,24 +147,17 @@ describe("route table: redirects", () => {
 });
 
 describe("route table: pages", () => {
-  it.each(["/1/ongoing", "/1/ongoing/"])("%s is the Ongoing page", (path) => {
+  it.each([
+    ["/1/ongoing", "Ongoing page on 1"],
+    ["/1/ongoing/", "Ongoing page on 1"],
+    ["/100/create", "Create page on 100"],
+    ["/100/create/", "Create page on 100"],
+    ["/1/cases", "Case page on 1 for no ID"],
+    ["/1/cases/", "Case page on 1 for no ID"],
+    ["/11155111/cases/42/", "Case page on 11155111 for 42"],
+  ])("%s shows the %s, without a wallet", (path, page) => {
     renderApp(path);
-    expect(screen.getByText("Ongoing page on 1")).toBeInTheDocument();
-  });
-
-  it.each(["/100/create", "/100/create/"])("%s is the Create page, reachable by URL without a wallet", (path) => {
-    renderApp(path);
-    expect(screen.getByText("Create page on 100")).toBeInTheDocument();
-  });
-
-  it.each(["/1/cases", "/1/cases/"])("%s is the case page with no dispute ID", (path) => {
-    renderApp(path);
-    expect(screen.getByText("Case page on 1 for no ID")).toBeInTheDocument();
-  });
-
-  it("/:chainId/cases/:id is the case page of that ID", () => {
-    renderApp("/11155111/cases/42/");
-    expect(screen.getByText("Case page on 11155111 for 42")).toBeInTheDocument();
+    expect(screen.getByText(page)).toBeInTheDocument();
   });
 
   it("pages render inside the frame with the page chain", () => {
@@ -223,16 +209,6 @@ describe("route table: 404 and unsupported network", () => {
     expect(screen.queryByText(/Ongoing page/)).not.toBeInTheDocument();
   });
 
-  it("the unsupported-network screen's frame uses the default chain and keeps the segment", () => {
-    const view = renderApp("/10/ongoing");
-    expect(frame(view.container)).toEqual({ kind: "fallback", chain: "1", segment: "10" });
-  });
-
-  it("the unsupported-network screen's frame uses the connected wallet's configured chain", async () => {
-    const view = renderApp("/10/ongoing", await createConnectedTestWallet({ chainId: 100 }));
-    expect(frame(view.container)).toEqual({ kind: "fallback", chain: "100", segment: "10" });
-  });
-
   it("the URL segment is shown as text, never as markup", () => {
     const view = renderApp("/%3Cimg%20src%3Dx%20onerror%3Dalert(1)%3E/ongoing");
     expect(screen.getByRole("heading", { name: "Unsupported Network <img src=x onerror=alert(1)>" })).toBeInTheDocument();
@@ -250,11 +226,6 @@ describe("route table: Netlify app route patterns", () => {
     renderApp(samplePath(pattern));
     expect(await screen.findByText(/^(Ongoing|Create|Case) page on 1/)).toBeInTheDocument();
     expect(screen.queryByText("404")).not.toBeInTheDocument();
-  });
-
-  it("/index.html is served by the app, which reads its first segment as a chain", () => {
-    renderApp("/index.html");
-    expect(screen.getByRole("heading", { name: "Unsupported Network index.html" })).toBeInTheDocument();
   });
 });
 

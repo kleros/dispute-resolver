@@ -249,4 +249,11 @@ describe("createReadClients", () => {
     await clients(100)?.getBlockNumber();
     expect(endpoint.posts.map((post) => post.url)).toEqual(["https://read.rpc.example/gnosis"]);
   });
+
+  it("passes its options to each chain's client: retryCount 0 makes a single attempt", async () => {
+    const endpoint = stubEndpoint(() => ({ status: 503 }));
+    const client = createReadClients({ REACT_APP_WEB3_PROVIDER_URL: READ_URL }, { retryCount: 0 })(1);
+    await expect(client?.getBlockNumber()).rejects.toThrow(/HTTP request failed/);
+    expect(endpoint.posts).toHaveLength(1);
+  });
 });

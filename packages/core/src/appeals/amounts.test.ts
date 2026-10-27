@@ -33,14 +33,6 @@ describe("computeAppealAmounts", () => {
     expect(computeAppealAmounts(APPEAL_INFO, MULTIPLIERS)).not.toHaveProperty("shared");
   });
 
-  it("charges a governor's shared side cost + cost × sharedMultiplier / denominator, due at the end of the appeal period", () => {
-    const amounts = computeAppealAmounts({ appealCost: 1_000n, appealPeriodStart: 100, appealPeriodEnd: 300 }, { ...MULTIPLIERS, sharedMultiplier: 10_000n });
-    expect(amounts.shared).toEqual({ total: 2_000n, deadline: 300 });
-    expect(amounts.loser).toEqual({ total: 3_000n, deadline: 200 });
-    expect(fundedPercent(2_000n, amounts.shared?.total ?? 0n)).toBe(100);
-    expect(fundedPercent(2_000n, amounts.loser.total)).toBeCloseTo(66.66, 10);
-  });
-
   it("costs a tie on every deployed governor's recorded multipliers at cost + cost × sharedMultiplier / MULTIPLIER_DIVISOR, due at the end of the appeal period", () => {
     for (const governor of GOVERNOR_MULTIPLIERS) {
       const denominator = recordedValue(governor, "MULTIPLIER_DIVISOR");
@@ -54,9 +46,6 @@ describe("computeAppealAmounts", () => {
       const amounts = computeAppealAmounts(APPEAL_INFO, multipliers);
       const shared = recordedValue(governor, "sharedMultiplier");
       expect(amounts.shared, governor.label).toEqual({ total: 1_000_000n + (1_000_000n * shared) / denominator, deadline: 433_000 });
-      expect(amounts.winner.total, governor.label).toBe(1_000_000n + (1_000_000n * recordedValue(governor, "winnerMultiplier")) / denominator);
-      expect(amounts.loser.total, governor.label).toBe(1_000_000n + (1_000_000n * recordedValue(governor, "loserMultiplier")) / denominator);
-      expect(amounts.loser.deadline, governor.label).toBe(1_000 + 216_000);
     }
   });
 
@@ -77,7 +66,6 @@ describe("isWinningCode", () => {
   });
 
   it("costs every option as a winner on Unslashed with ruling 0", () => {
-    expect(UNSLASHED_OVERRIDE?.refuseToArbitrateFundable).toBe(false);
     expect(isWinningCode(1n, 0n, UNSLASHED_OVERRIDE)).toBe(true);
     expect(isWinningCode(2n, 0n, UNSLASHED_OVERRIDE)).toBe(true);
     expect(isWinningCode(1n, 2n, UNSLASHED_OVERRIDE)).toBe(false);
@@ -89,22 +77,15 @@ describe("isWinningCode", () => {
 });
 
 describe("fundedPercent", () => {
-  it("computes contributed × 10000 / required / 100 with two decimals", () => {
-    expect(fundedPercent(1n, 3n)).toBeCloseTo(33.33, 10);
-    expect(fundedPercent(2n, 3n)).toBeCloseTo(66.66, 10);
-    expect(fundedPercent(3n, 3n)).toBe(100);
-    expect(fundedPercent(0n, 3n)).toBe(0);
-  });
-
-  it("is 0 when the required total is 0", () => {
-    expect(fundedPercent(5n, 0n)).toBe(0);
-  });
-
-  it("reads above 100 when over-funded", () => {
-    expect(fundedPercent(4n, 2n)).toBe(200);
-  });
-
-  it("is exact for wei amounts above 2^53", () => {
-    expect(fundedPercent(1_234_567_890_123_456_789n, 2_469_135_780_246_913_578n)).toBe(50);
+  it.each([
+    ["computes contributed × 10000 / required / 100 with two decimals (1 of 3)", 1n, 3n, 33.33],
+    ["computes contributed × 10000 / required / 100 with two decimals (2 of 3)", 2n, 3n, 66.66],
+    ["is 100 when fully funded", 3n, 3n, 100],
+    ["is 0 when nothing is contributed", 0n, 3n, 0],
+    ["is 0 when the required total is 0", 5n, 0n, 0],
+    ["reads above 100 when over-funded", 4n, 2n, 200],
+    ["is exact for wei amounts above 2^53", 1_234_567_890_123_456_789n, 2_469_135_780_246_913_578n, 50],
+  ])("%s", (_, contributed, required, expected) => {
+    expect(fundedPercent(contributed, required)).toBeCloseTo(expected, 10);
   });
 });

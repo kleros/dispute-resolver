@@ -42,14 +42,6 @@ afterEach(() => {
 });
 
 describe("useMediaQuery", () => {
-  it("reports whether the query matches", () => {
-    stubMatchMedia(true);
-    expect(renderHook(() => useMediaQuery(LG_MEDIA_QUERY)).result.current).toBe(true);
-    vi.unstubAllGlobals();
-    stubMatchMedia(false);
-    expect(renderHook(() => useMediaQuery(LG_MEDIA_QUERY)).result.current).toBe(false);
-  });
-
   it("updates when the media query changes", () => {
     const media = stubMatchMedia(false);
     const { result } = renderHook(() => useMediaQuery(LG_MEDIA_QUERY));

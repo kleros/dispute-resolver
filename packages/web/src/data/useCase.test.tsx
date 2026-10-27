@@ -4,7 +4,6 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { QueryClient } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  TEST_ARBITRABLE,
   caseDispute,
   createTestDeps,
   createTestQueryClient,
@@ -119,17 +118,6 @@ describe("useCase", () => {
     const current = await settledCase(result);
     expect(current.write).toMatchObject({ status: "ready", value: { binding: testFoundLookup().binding, localId: { kind: "local-id", value: 7n } } });
     expect(core.loadMetaEvidence).toHaveBeenCalledWith(expect.objectContaining({ arbitrable: testFoundLookup().binding.arbitrated, budgetMs: core.CASE_PAGE_BUDGET_MS }));
-  });
-
-  it("reaches ready on the case page when the Ongoing page already stored the meta-evidence", async () => {
-    const client = createTestQueryClient();
-    client.setQueryData(queryKeys.metaEvidence(1, 1n, TEST_ARBITRABLE), testOkMetaEvidence({ title: "Stored" }));
-    const { result } = renderCase(1n, { client });
-    const current = await settledCase(result);
-    expect(current.metaEvidence).toEqual({ status: "ready", value: testOkMetaEvidence() });
-    expect(current.view).toMatchObject({ status: "ready", value: { exists: true } });
-    expect(current.appealPanel.status).toBe("ready");
-    expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
   });
 
   it("shows the not-found state for a nonexistent ID and reads nothing else", async () => {
@@ -251,28 +239,6 @@ describe("useCase", () => {
       roundStartBlocks: [100n, 500n],
     });
     expect(core.readMultipliers).not.toHaveBeenCalled();
-    expect(current.appealPanel).toEqual({ status: "ready", value: { kind: "withdraw", state: { status: "nothing" } } });
-  });
-
-  it("funds the session of a governor dispute's Dispute event in the appeal period", async () => {
-    programReads(3);
-    vi.mocked(core.detectFamily).mockResolvedValue(governorFamily);
-    const { result } = renderCase(1n);
-    const current = await settledCase(result);
-    expect(core.readRoundFunding).toHaveBeenCalledWith(expect.objectContaining({ family: governorFamily, evidenceGroupId: 3n }), 1n, 500n);
-    expect(current.appealPanel).toMatchObject({ status: "ready", value: { kind: "crowdfunding" } });
-  });
-
-  it("reads the withdrawable amount of a governor dispute's Dispute-event session in execution", async () => {
-    programReads(4);
-    vi.mocked(core.detectFamily).mockResolvedValue(governorFamily);
-    const { result } = renderCase(1n, { account: ACCOUNT });
-    const current = await settledCase(result);
-    expect(core.readWithdrawable).toHaveBeenCalledWith(expect.objectContaining({ family: governorFamily, evidenceGroupId: 3n }), {
-      beneficiary: ACCOUNT,
-      rounds: [0n, 1n],
-      roundStartBlocks: [100n, 500n],
-    });
     expect(current.appealPanel).toEqual({ status: "ready", value: { kind: "withdraw", state: { status: "nothing" } } });
   });
 

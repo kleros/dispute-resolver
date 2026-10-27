@@ -21,8 +21,6 @@ interface Lookup {
   /** The arbitrator chain client that makes one attempt per request, for the `arbitrationCreatedBlock` hint. */
   readonly hintReader: ReadClient;
   readonly reality: ReadClient;
-  /** Already spent by the clients for every attempt they send, so the searches must not spend it again. */
-  readonly counted: RequestBudget;
   readonly signal: AbortSignal | undefined;
   readonly windows: Map<ReadClient, WindowMemory>;
 }
@@ -71,7 +69,7 @@ export function requireClient(clients: GetReadClient, chainId: number): ReadClie
 async function findLogs<const TEvent extends AbiEvent>(lookup: Lookup, client: ReadClient, request: LogsRequest<TEvent>): Promise<GetLogsReturnType<TEvent>> {
   const memory = lookup.windows.get(client) ?? { size: undefined };
   lookup.windows.set(client, memory);
-  return findLatestLogsRemembering(client, request, lookup.counted, memory);
+  return findLatestLogsRemembering(client, request, memory);
 }
 
 function headBlock(client: ReadClient): Promise<bigint> {
@@ -209,7 +207,6 @@ export async function lookupRealityQuestion(request: LookupRequest): Promise<Rea
   const arbitrator = requireClient(clients, arbitratorChainId);
   const reality = entry.realityChainId === arbitratorChainId ? arbitrator : requireClient(clients, entry.realityChainId);
   const hintReader = requireClient(request.clients(budget, { retryCount: 0 }), arbitratorChainId);
-  const counted: RequestBudget = { spend: () => undefined, remainingMs: () => budget.remainingMs() };
-  const lookup: Lookup = { entry, arbitrator, hintReader, reality, counted, signal: request.signal, windows: new Map() };
+  const lookup: Lookup = { entry, arbitrator, hintReader, reality, signal: request.signal, windows: new Map() };
   return request.known === undefined ? lookupUnknown(lookup, arbitratorChainId, request.disputeId) : lookupKnown(lookup, request.known);
 }

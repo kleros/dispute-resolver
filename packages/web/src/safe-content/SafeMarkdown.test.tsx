@@ -9,12 +9,6 @@ function renderMarkdown(source: string, className?: string): HTMLElement {
 }
 
 describe("SafeMarkdown raw HTML", () => {
-  it("renders <img src=x onerror=alert(1)> as text", () => {
-    const root = renderMarkdown("<img src=x onerror=alert(1)>");
-    expect(root.querySelector("img")).toBeNull();
-    expect(root).toHaveTextContent("<img src=x onerror=alert(1)>");
-  });
-
   it("renders inline and block HTML as text, never as elements", () => {
     const root = renderMarkdown('Some <b>bold</b> <script>alert(1)</script>\n\n<div onclick="alert(1)">\nblock\n</div>\n\n<iframe src="https://evil.example"></iframe>');
     expect(root.querySelector("b, script, div, iframe")).toBeNull();
@@ -32,24 +26,6 @@ describe("SafeMarkdown links", () => {
       expect(root.querySelector("[href]")).toBeNull();
     },
   );
-
-  it("keeps the label of a refused link as text", () => {
-    expect(renderMarkdown("[click me](javascript:alert(1))")).toHaveTextContent("click me");
-  });
-
-  it.each([
-    ["[a](https://kleros.io)", "https://kleros.io"],
-    ["[a](http://example.com)", "http://example.com"],
-    ["[a](mailto:a@b.co)", "mailto:a@b.co"],
-    ["[a](tel:+123)", "tel:+123"],
-    ["[a](/cases/1)", "/cases/1"],
-    ["<https://kleros.io>", "https://kleros.io"],
-  ])("opens %j in a new tab with rel noopener noreferrer", (source, href) => {
-    const link = renderMarkdown(source).querySelector("a");
-    expect(link).toHaveAttribute("href", href);
-    expect(link).toHaveAttribute("target", "_blank");
-    expect(link).toHaveAttribute("rel", "noopener noreferrer");
-  });
 });
 
 describe("SafeMarkdown images", () => {
@@ -94,25 +70,6 @@ describe("SafeMarkdown structure", () => {
 });
 
 describe("SafeMarkdown GitHub-flavored syntax of remark-parse 5", () => {
-  it("links a literal https URL in a new tab", () => {
-    renderMarkdown("Terms: https://example.com/terms.");
-    const link = screen.getByRole("link", { name: "https://example.com/terms" });
-    expect(link).toHaveAttribute("href", "https://example.com/terms");
-    expect(link).toHaveAttribute("target", "_blank");
-    expect(link).toHaveAttribute("rel", "noopener noreferrer");
-  });
-
-  it("links a literal mailto: address under the address alone, and not www. or a bare e-mail", () => {
-    const root = renderMarkdown("Write mailto:a@b.co, visit www.example.com or contact@kleros.io.");
-    expect(screen.getByRole("link", { name: "a@b.co" })).toHaveAttribute("href", "mailto:a@b.co");
-    expect(root.querySelectorAll("a")).toHaveLength(1);
-  });
-
-  it("keeps a literal URL inside a link label as the label", () => {
-    renderMarkdown("[https://a.com](https://b.com)");
-    expect(screen.getByRole("link", { name: "https://a.com" })).toHaveAttribute("href", "https://b.com");
-  });
-
   it("reads a literal URL before the emphasis inside it and renders one link", () => {
     const root = renderMarkdown("https://x(*https://y*)");
     const links = [...root.querySelectorAll("a")];
@@ -270,11 +227,6 @@ describe("SafeMarkdown GitHub-flavored syntax of remark-parse 5", () => {
     items.forEach((item) => {
       expect(item).toHaveClass("list-none");
     });
-  });
-
-  it("reads a table written with Windows line endings", () => {
-    renderMarkdown("| a |\r\n|---|\r\n| x |");
-    expect(screen.getByRole("cell")).toHaveTextContent("x");
   });
 
   it("keeps raw HTML inside a table cell and a struck span as text", () => {

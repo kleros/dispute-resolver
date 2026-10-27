@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { lookupDispute, resolveLocalId } from ".";
-import type { ArbitratedBinding } from "./types";
+import type { ArbitratedBinding, LocalIdResolution } from "./types";
 import { fakeClient, GNOSIS, MAINNET, recordedDetection, recordedNode, rpcError } from "../test/disputes/testHelpers";
 import type { Recording } from "../test/disputes/testHelpers";
 
@@ -12,37 +12,18 @@ async function bindingOf(recording: Recording, chainId: number, disputeId: bigin
 }
 
 describe("resolveLocalId", () => {
-  it("an idr-v2 arbitrable resolves externalIDtoLocalID (mainnet 1454 → local 0)", async () => {
-    const binding = await bindingOf(MAINNET, 1, 1454n);
-    const family = await recordedDetection(1, binding.arbitrated);
-    const { client, requests } = fakeClient(recordedNode(MAINNET));
-    expect(await resolveLocalId(client, binding, family)).toEqual({ kind: "local-id", value: 0n });
+  it.each<[string, Recording, number, bigint, LocalIdResolution]>([
+    ["an idr-v2 arbitrable resolves externalIDtoLocalID (mainnet 1454 → local 0)", MAINNET, 1, 1454n, { kind: "local-id", value: 0n }],
+    ["the idr-legacy proxy resolves externalIDtoLocalID (mainnet 328 → local 51)", MAINNET, 1, 328n, { kind: "local-id", value: 51n }],
+    ["an idr-v1 arbitrable resolves externalIDtoLocalID (Gnosis 0 → local 0)", GNOSIS, 100, 0n, { kind: "local-id", value: 0n }],
+    ["an Escrow V1 arbitrable resolves disputeIDtoTransactionID (mainnet 878 → transaction 16)", MAINNET, 1, 878n, { kind: "transaction-id", value: 16n }],
+  ])("%s, in one call to the arbitrator's arbitrated contract", async (_, recording, chainId, disputeId, expected) => {
+    const binding = await bindingOf(recording, chainId, disputeId);
+    const family = await recordedDetection(chainId, binding.arbitrated);
+    const { client, requests } = fakeClient(recordedNode(recording));
+    expect(await resolveLocalId(client, binding, family)).toEqual(expected);
     expect(requests.calls).toHaveLength(1);
     expect(requests.calls[0]?.startsWith(binding.arbitrated)).toBe(true);
-  });
-
-  it("the idr-legacy proxy resolves externalIDtoLocalID (mainnet 328 → local 51)", async () => {
-    const binding = await bindingOf(MAINNET, 1, 328n);
-    const family = await recordedDetection(1, binding.arbitrated);
-    expect(family.family).toBe("idr-legacy");
-    const { client } = fakeClient(recordedNode(MAINNET));
-    expect(await resolveLocalId(client, binding, family)).toEqual({ kind: "local-id", value: 51n });
-  });
-
-  it("an idr-v1 arbitrable resolves externalIDtoLocalID (Gnosis 0 → local 0)", async () => {
-    const binding = await bindingOf(GNOSIS, 100, 0n);
-    const family = await recordedDetection(100, binding.arbitrated);
-    expect(family.family).toBe("idr-v1");
-    const { client } = fakeClient(recordedNode(GNOSIS));
-    expect(await resolveLocalId(client, binding, family)).toEqual({ kind: "local-id", value: 0n });
-  });
-
-  it("an Escrow V1 arbitrable resolves disputeIDtoTransactionID (mainnet 878 → transaction 16)", async () => {
-    const binding = await bindingOf(MAINNET, 1, 878n);
-    const family = await recordedDetection(1, binding.arbitrated);
-    expect(family.family).toBe("escrow-v1");
-    const { client } = fakeClient(recordedNode(MAINNET));
-    expect(await resolveLocalId(client, binding, family)).toEqual({ kind: "transaction-id", value: 16n });
   });
 
   it("a family without a local ID is not-applicable and reads nothing (Proof of Humanity v2, mainnet 1674)", async () => {

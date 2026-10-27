@@ -43,6 +43,18 @@ function setHidden(hidden: boolean): void {
   });
 }
 
+function showNow(button: HTMLElement): void {
+  act(() => {
+    button.click();
+  });
+}
+
+function advance(ms: number): void {
+  act(() => {
+    vi.advanceTimersByTime(ms);
+  });
+}
+
 afterEach(() => {
   Reflect.deleteProperty(document, "hidden");
   vi.useRealTimers();
@@ -64,121 +76,70 @@ describe("ToastProvider", () => {
 
   it("starts fading a toast out after 5000 ms by default and removes it once the fade has run", () => {
     vi.useFakeTimers();
-    const show = renderTrigger({ variant: "success", title: "Dispute created" });
-    act(() => {
-      show.click();
-    });
-    act(() => {
-      vi.advanceTimersByTime(4999);
-    });
+    showNow(renderTrigger({ variant: "success", title: "Dispute created" }));
+    advance(4999);
     expect(region().getByRole("status")).toHaveClass("is-open");
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
+    advance(1);
     expect(region().getByRole("status")).not.toHaveClass("is-open");
-    act(() => {
-      vi.advanceTimersByTime(CLOSE_MS - 1);
-    });
+    advance(CLOSE_MS - 1);
     expect(region().getByText("Dispute created")).toBeInTheDocument();
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
+    advance(1);
     expect(region().queryByText("Dispute created")).not.toBeInTheDocument();
   });
 
   it("a toast shown while the page is hidden waits, and gets its full delay once the page is shown again", () => {
     vi.useFakeTimers();
     setHidden(true);
-    const show = renderTrigger({ variant: "sync", title: "Wallet stayed", autoHideMs: 1000 });
-    act(() => {
-      show.click();
-    });
-    act(() => {
-      vi.advanceTimersByTime(60_000);
-    });
+    showNow(renderTrigger({ variant: "sync", title: "Wallet stayed", autoHideMs: 1000 }));
+    advance(60_000);
     expect(region().getByRole("status")).toHaveClass("is-open");
     setHidden(false);
-    act(() => {
-      vi.advanceTimersByTime(999);
-    });
+    advance(999);
     expect(region().getByRole("status")).toHaveClass("is-open");
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
+    advance(1);
     expect(region().getByRole("status")).not.toHaveClass("is-open");
   });
 
-  it("a toast hidden partway through its delay starts the full delay again when the page is shown", () => {
+  it.each([
+    {
+      name: "the pointer is over it",
+      pause: (toast: HTMLElement) => fireEvent.pointerEnter(toast),
+      resume: (toast: HTMLElement) => fireEvent.pointerLeave(toast),
+    },
+    {
+      name: "its close button has focus",
+      pause: () => {
+        act(() => {
+          region().getByRole("button", { name: "Dismiss notification" }).focus();
+        });
+      },
+      resume: () => {
+        act(() => {
+          screen.getByRole("button", { name: "Show" }).focus();
+        });
+      },
+    },
+    {
+      name: "the page is hidden",
+      pause: () => {
+        setHidden(true);
+      },
+      resume: () => {
+        setHidden(false);
+      },
+    },
+  ])("a toast stays while $name and gets its full delay once that ends", ({ pause, resume }) => {
     vi.useFakeTimers();
-    const show = renderTrigger({ variant: "sync", title: "Wallet stayed", autoHideMs: 1000 });
-    act(() => {
-      show.click();
-    });
-    act(() => {
-      vi.advanceTimersByTime(900);
-    });
-    setHidden(true);
-    act(() => {
-      vi.advanceTimersByTime(5000);
-    });
-    setHidden(false);
-    act(() => {
-      vi.advanceTimersByTime(999);
-    });
-    expect(region().getByRole("status")).toHaveClass("is-open");
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
-    expect(region().getByRole("status")).not.toHaveClass("is-open");
-  });
-
-  it("a toast stays while the pointer is over it and gets its full delay once the pointer leaves", () => {
-    vi.useFakeTimers();
-    const show = renderTrigger({ variant: "error", title: "Not switched", message: "Body", autoHideMs: 1000 });
-    act(() => {
-      show.click();
-    });
+    showNow(renderTrigger({ variant: "error", title: "Not switched", message: "Body", autoHideMs: 1000 }));
     const toast = region().getByRole("alert");
-    fireEvent.pointerEnter(toast);
-    act(() => {
-      vi.advanceTimersByTime(5000);
-    });
+    advance(900);
+    pause(toast);
+    advance(5000);
     expect(toast).toHaveClass("is-open");
-    fireEvent.pointerLeave(toast);
-    act(() => {
-      vi.advanceTimersByTime(999);
-    });
+    resume(toast);
+    advance(999);
     expect(toast).toHaveClass("is-open");
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
-    expect(toast).not.toHaveClass("is-open");
-  });
-
-  it("a toast stays while its close button has focus and gets its full delay once focus leaves it", () => {
-    vi.useFakeTimers();
-    const show = renderTrigger({ variant: "error", title: "Not switched", message: "Body", autoHideMs: 1000 });
-    act(() => {
-      show.click();
-    });
-    const toast = region().getByRole("alert");
-    act(() => {
-      region().getByRole("button", { name: "Dismiss notification" }).focus();
-    });
-    act(() => {
-      vi.advanceTimersByTime(5000);
-    });
-    expect(toast).toHaveClass("is-open");
-    act(() => {
-      show.focus();
-    });
-    act(() => {
-      vi.advanceTimersByTime(999);
-    });
-    expect(toast).toHaveClass("is-open");
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
+    advance(1);
     expect(toast).not.toHaveClass("is-open");
   });
 

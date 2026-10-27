@@ -1,5 +1,4 @@
 import { decodeFunctionData, encodeFunctionData, getAddress } from "viem";
-import type { ProbeSignature } from "../../abi/types";
 import type { LocalIdResolution } from "../../disputes/types";
 import { classifySelectors, scanSelectors } from "../../families";
 import { RECORDED_CONTRACTS } from "../../families/__fixtures__/recorded";
@@ -7,19 +6,7 @@ import type { FamilyDetection } from "../../families/types";
 import type { Address, Hex, WriteCall } from "../../types";
 import type { WriteBuild } from "../../writes/types";
 
-export { detectionFor, testBinding } from "../appeals/testHelpers";
-
-/** Probe signatures of each family's typical code. */
-export const FAMILY_SIGNATURES = {
-  "idr-v2": ["externalIDtoLocalID(uint256)", "submitEvidence(uint256,string)", "fundAppeal(uint256,uint256)", "getTotalWithdrawableAmount(uint256,address,uint256)"],
-  "idr-v1": ["externalIDtoLocalID(uint256)", "submitEvidence(uint256,string)", "fundAppeal(uint256,uint256)", "getTotalWithdrawableAmount(uint256,address,uint256[])"],
-  "idr-legacy-uint8": ["externalIDtoLocalID(uint256)", "submitEvidence(uint256,string)", "fundAppeal(uint256,uint8)"],
-  "idr-legacy-uint256": ["externalIDtoLocalID(uint256)", "submitEvidence(uint256,string)", "fundAppeal(uint256,uint256)"],
-  "escrow-v1": ["disputeIDtoTransactionID(uint256)", "submitEvidence(uint256,string)"],
-  governor: ["submitEvidence(string)", "fundAppeal(uint256)", "getCurrentSessionNumber()"],
-  "governor-no-evidence": ["fundAppeal(uint256)", "getCurrentSessionNumber()"],
-  "view-only": [],
-} as const satisfies Readonly<Record<string, readonly ProbeSignature[]>>;
+export { detectionFor, FAMILY_SIGNATURES, testBinding } from "../appeals/testHelpers";
 
 /** One recorded contract with its dispatcher's selectors and the detection `families` gives its code. */
 export interface RecordedDetection {

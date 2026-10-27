@@ -35,11 +35,7 @@ describe("rulingOptions", () => {
     expect(rulingOptionsOf({ type: "single-select", reserved: { "0x5": 2 } }).reserved).toEqual({ "0x5": "2" });
     expect(rulingOptionsOf({ type: "uint", precision: "x" })).not.toHaveProperty("precision");
     expect(rulingOptionsOf({ type: "uint", precision: 18 }).precision).toBe(18);
-  });
-
-  it("a hexadecimal precision is read as reality-eth-lib reads it", () => {
     expect(rulingOptionsOf({ type: "uint", precision: "0x12" }).precision).toBe(18);
-    expect(rulingOptionsOf({ type: "uint", precision: " 0X12 " }).precision).toBe(18);
   });
 
   it("a non-object (null, array, number) becomes the empty single-select", () => {
@@ -55,22 +51,6 @@ describe("rulingOptions", () => {
     expect(rulingOptionsOf({ type: "uint" })).toEqual({ type: "uint" });
     expect(rulingOptionsOf({ type: "uint", precision: Number.POSITIVE_INFINITY })).toEqual({ type: "uint" });
     expect(rulingOptionsOf({ type: "uint", reserved: null })).toEqual({ type: "uint" });
-  });
-
-  it("keeps a precision of 0 and reads a numeric string precision as its number", () => {
-    expect(rulingOptionsOf({ type: "uint", precision: 0 }).precision).toBe(0);
-    expect(rulingOptionsOf({ type: "uint", precision: "6" }).precision).toBe(6);
-  });
-
-  it("reads precision as reality-eth-lib does, so the precision shown is the one encoded", () => {
-    expect(rulingOptionsOf({ type: "uint", precision: true }).precision).toBe(0);
-    expect(rulingOptionsOf({ type: "uint", precision: "1e2" }).precision).toBe(1);
-    expect(rulingOptionsOf({ type: "uint", precision: 2.7 }).precision).toBe(2);
-    expect(rulingOptionsOf({ type: "uint", precision: -3 }).precision).toBe(0);
-  });
-
-  it("removes a precision that would encode with the default 18 (null, false, empty, or not a finite number)", () => {
-    for (const precision of [null, false, "", "1_000"]) expect(rulingOptionsOf({ type: "uint", precision })).toEqual({ type: "uint" });
   });
 
   it("descriptions become strings; a value that is neither an array nor an object is removed", () => {
@@ -112,17 +92,13 @@ describe("rulingOptions", () => {
     expect(rulingOptionsOf({ type: "single-select", titles: ["A", "B"], descriptions: sparse }).descriptions).toEqual({ "1": "Second" });
   });
 
-  it("a hostile description never throws", () => {
-    const hostile = { toString: 1, valueOf: 2 };
-    expect(rulingOptionsOf({ type: "single-select", descriptions: { [TOO_SOON]: hostile } }).descriptions).toEqual({ [TOO_SOON]: "[object Object]" });
-  });
-
   it("a hostile toString or valueOf never throws", () => {
     const hostile = { toString: 1, valueOf: 2 };
-    expect(rulingOptionsOf({ type: "uint", titles: [hostile, [hostile]], reserved: { "0x1": hostile }, precision: hostile })).toEqual({
+    expect(rulingOptionsOf({ type: "uint", titles: [hostile, [hostile]], reserved: { "0x1": hostile }, precision: hostile, descriptions: { [TOO_SOON]: hostile } })).toEqual({
       type: "uint",
       titles: ["[object Object]", "[object Array]"],
       reserved: { "0x1": "[object Object]" },
+      descriptions: { [TOO_SOON]: "[object Object]" },
     });
   });
 

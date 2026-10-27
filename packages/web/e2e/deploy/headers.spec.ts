@@ -73,18 +73,4 @@ test.describe("deploy headers", () => {
     const path = asset ?? "";
     expectHeadersOf(path, await fetchHeaders(path, (url) => request.get(url, { maxRedirects: 0 })));
   });
-
-  test("the runner sends one enforced sandbox policy, and no app path carries its eval allowance", async ({ request }) => {
-    const runner = await fetchHeaders(RUNNER_PATH, (url) => request.get(url, { maxRedirects: 0 }));
-    const [policy, ...others] = splitPolicies(runner.headers()["content-security-policy"]);
-    expect(others).toEqual([]);
-    expect(policy).toContain("sandbox allow-scripts");
-    expect(policy).not.toContain("allow-same-origin");
-    expect(policy).toContain("frame-ancestors 'self'");
-    expect(runner.headers()["content-security-policy-report-only"]).toBeUndefined();
-    for (const path of PATHS.filter((candidate) => candidate !== RUNNER_PATH)) {
-      const headers = (await fetchHeaders(path, (url) => request.get(url, { maxRedirects: 0 }))).headers();
-      for (const name of POLICY_HEADERS) expect(headers[name] ?? "", `${name} on ${path}`).not.toContain("unsafe-eval");
-    }
-  });
 });

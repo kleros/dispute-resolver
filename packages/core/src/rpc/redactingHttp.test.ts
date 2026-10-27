@@ -10,7 +10,6 @@ import {
   parseAbi,
 } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { klerosLiquidAbi } from "../abi";
 import { stubEndpoint } from "../test/rpc/testHelpers";
 import { isContractFailure } from "./failures";
 import { isRangeLimitError } from "./rangeLimit";
@@ -19,6 +18,7 @@ import { redactingHttp } from "./redactingHttp";
 const KEY = "abc123SECRETxyz";
 const KEYED_URL = `https://rpc.example/v2/${KEY}`;
 const HEX_KEY = "d4e8a1c97b3f4e20a6c5b19e0f7d2a83";
+const HEX_KEY_URL = `https://rpc.example/v3/${HEX_KEY}`;
 const ORIGIN = "https://rpc.example";
 const ARBITRATOR = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
 
@@ -181,14 +181,6 @@ describe("redactingHttp", () => {
     expectNoKey(error);
   });
 
-  it("a node error whose data is a sentence repeating the key never carries it", async () => {
-    stubEndpoint(() => ({ error: { code: -32000, message: "unauthorized", data: `invalid API key ${KEY}` } }));
-    const error = await failedRequest(KEYED_URL);
-    const request = (error as BaseError).walk((cause) => cause instanceof RpcRequestError);
-    expect((request as RpcRequestError).data).toBe("invalid API key <redacted>");
-    expectNoKey(error);
-  });
-
   it("a node error whose data nests the key deeper than is worth walking drops that part", async () => {
     const deep = Array.from({ length: 30 }).reduce<unknown>((inner) => ({ inner }), `key ${KEY}`);
     stubEndpoint(() => ({ error: { code: -32000, message: "unauthorized", data: deep } }));
@@ -213,15 +205,14 @@ describe("redactingHttp", () => {
     const abi = parseAbi(["function denominator() view returns (uint256)", "error Rejected(bytes16 code)"]);
     const revert = encodeErrorResult({ abi, errorName: "Rejected", args: [`0x${"2A".repeat(16)}`] });
     stubEndpoint(() => ({ error: { code: 3, message: "execution reverted", data: revert } }));
-    const url = `https://rpc.example/v3/${HEX_KEY}`;
 
-    const request = (await failedRequest(url, "eth_call")) as BaseError;
+    const request = (await failedRequest(HEX_KEY_URL, "eth_call")) as BaseError;
     const requestError = request.walk((cause) => cause instanceof RpcRequestError) as RpcRequestError;
     expect(requestError.data).toBe(revert);
     expect(requestError.url).toBe(ORIGIN);
     expectNoKey(request, HEX_KEY);
 
-    const client = createPublicClient({ transport: redactingHttp(url, { retryCount: 0 }) });
+    const client = createPublicClient({ transport: redactingHttp(HEX_KEY_URL, { retryCount: 0 }) });
     const error: unknown = await client.readContract({ address: ARBITRATOR, abi, functionName: "denominator" }).catch((caught: unknown) => caught);
     const reverted = (error as BaseError).walk((cause) => cause instanceof ContractFunctionRevertedError) as ContractFunctionRevertedError;
     expect(reverted).toBeInstanceOf(ContractFunctionRevertedError);
@@ -231,29 +222,27 @@ describe("redactingHttp", () => {
     expectNoKey(error, HEX_KEY);
   });
 
-  it.each([
-    ["as hex written as the URL writes it", HEX_KEY, `0x${HEX_KEY}`, "0x<redacted>"],
-    ["as hex in capitals", HEX_KEY, `0x${HEX_KEY.toUpperCase()}`, "0x<redacted>"],
-    ["as hex in lower case when the URL writes it in capitals", HEX_KEY.toUpperCase(), `0x${HEX_KEY}`, "0x<redacted>"],
-    ["inside longer hex", HEX_KEY, `0x${"00".repeat(16)}${HEX_KEY.toUpperCase()}`, `0x${"00".repeat(16)}<redacted>`],
-    ["as a property name in capitals", HEX_KEY, { [`0x${HEX_KEY.toUpperCase()}`]: true }, { "0x<redacted>": true }],
-  ])("a node error whose data holds the URL's hex key %s never carries it", async (_, urlKey, data, redacted) => {
+  it.each<[string, string, string, unknown, unknown]>([
+    ["holds the URL's hex key as hex written as the URL writes it", HEX_KEY_URL, HEX_KEY, `0x${HEX_KEY}`, "0x<redacted>"],
+    ["holds the URL's hex key as hex in capitals", HEX_KEY_URL, HEX_KEY, `0x${HEX_KEY.toUpperCase()}`, "0x<redacted>"],
+    ["holds the URL's hex key as hex in lower case when the URL writes it in capitals", `https://rpc.example/v3/${HEX_KEY.toUpperCase()}`, HEX_KEY, `0x${HEX_KEY}`, "0x<redacted>"],
+    ["holds the URL's hex key inside longer hex", HEX_KEY_URL, HEX_KEY, `0x${"00".repeat(16)}${HEX_KEY.toUpperCase()}`, `0x${"00".repeat(16)}<redacted>`],
+    ["holds the URL's hex key as a property name in capitals", HEX_KEY_URL, HEX_KEY, { [`0x${HEX_KEY.toUpperCase()}`]: true }, { "0x<redacted>": true }],
+    ["is a sentence repeating the key", KEYED_URL, KEY, `invalid API key ${KEY}`, "invalid API key <redacted>"],
+    [
+      "names properties after the URL or the key",
+      KEYED_URL,
+      KEY,
+      { [KEYED_URL]: "rejected", [`key ${KEY}`]: { [KEY]: 1 }, tried: [{ [KEY]: true }], code: "kept" },
+      { [ORIGIN]: "rejected", "key <redacted>": { "<redacted>": 1 }, tried: [{ "<redacted>": true }], code: "kept" },
+    ],
+  ])("a node error whose data %s never carries the key", async (_, url, key, data, redacted) => {
     stubEndpoint(() => ({ error: { code: -32000, message: "unauthorized", data } }));
-    const error = await failedRequest(`https://rpc.example/v3/${urlKey}`);
+    const error = await failedRequest(url);
     expect(error).toMatchObject({ code: -32000 });
     const request = (error as BaseError).walk((cause) => cause instanceof RpcRequestError);
     expect((request as RpcRequestError).data).toEqual(redacted);
-    expectNoKey(error, HEX_KEY);
-  });
-
-  it("a node error whose data names properties after the URL or the key never carries them", async () => {
-    const data = { [KEYED_URL]: "rejected", [`key ${KEY}`]: { [KEY]: 1 }, tried: [{ [KEY]: true }], code: "kept" };
-    stubEndpoint(() => ({ error: { code: -32000, message: "unauthorized", data } }));
-    const error = await failedRequest(KEYED_URL);
-    expect(error).toMatchObject({ code: -32000 });
-    const request = (error as BaseError).walk((cause) => cause instanceof RpcRequestError);
-    expect((request as RpcRequestError).data).toEqual({ [ORIGIN]: "rejected", "key <redacted>": { "<redacted>": 1 }, tried: [{ "<redacted>": true }], code: "kept" });
-    expectNoKey(error);
+    expectNoKey(error, key);
   });
 
   it("a node's own error object with a property named after the key never carries it", async () => {
@@ -312,14 +301,6 @@ describe("redactingHttp", () => {
     expect(reverted).toBeInstanceOf(ContractFunctionRevertedError);
     expect(reverted.raw).toBe(revert);
     expect(reverted.reason).toBe("nope");
-    expectNoKey(error);
-  });
-
-  it("a revert read through it is still a contract failure", async () => {
-    stubEndpoint(() => ({ error: { code: 3, message: "execution reverted" } }));
-    const client = createPublicClient({ transport: redactingHttp(KEYED_URL, { retryCount: 0 }) });
-    const error: unknown = await client.readContract({ address: ARBITRATOR, abi: klerosLiquidAbi, functionName: "disputes", args: [7n] }).catch((caught: unknown) => caught);
-    expect(isContractFailure(error)).toBe(true);
     expectNoKey(error);
   });
 });

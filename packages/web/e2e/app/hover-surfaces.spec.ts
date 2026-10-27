@@ -1,21 +1,10 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { openDisputesRpc } from "../support/arbitrator";
 import { appOriginOf, fakeNetwork } from "../support/network";
+import { tokenColor } from "../support/theme";
 
 // What the pointer does to the locked upload zone and to an Ongoing card, read from the built stylesheet's cascade. The
 // Ongoing case needs the build's chain-1 read RPC, as a deploy has.
-
-/** The computed colour a token resolves to in the current theme. */
-async function tokenColor(page: Page, token: string): Promise<string> {
-  return page.evaluate((name) => {
-    const probe = document.createElement("div");
-    probe.style.backgroundColor = `var(${name})`;
-    document.body.append(probe);
-    const color = getComputedStyle(probe).backgroundColor;
-    probe.remove();
-    return color;
-  }, token);
-}
 
 async function style(locator: Locator, property: "backgroundColor" | "borderTopColor" | "transitionProperty" | "transitionDuration"): Promise<string> {
   return locator.evaluate((element, name) => getComputedStyle(element)[name], property);

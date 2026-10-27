@@ -4,6 +4,7 @@ import { fakeAtlas } from "../support/atlas";
 import { appOriginOf, fakeNetwork, loadRecording, type HttpRequest, type JsonAnswer } from "../support/network";
 import { forceClassicWebKitScrollbars, PAGE_SCROLLER, pageScroll, scrollPageTo } from "../support/pageScroll";
 import { printToPdf, settleForPrint, type PrintedPage } from "../support/print";
+import { tokenColor } from "../support/theme";
 import { expectWalletConnected, injectWallet } from "../support/wallet";
 
 // The page scroller on the built app, which every desktop gets: the first group runs where the browser's scrollbar takes
@@ -83,18 +84,6 @@ async function openLongList(page: Page, baseURL: string | undefined): Promise<vo
 
 async function scrollTop(page: Page): Promise<number> {
   return (await pageScroll(page)).top;
-}
-
-/** The computed colour a token resolves to in the current theme. */
-async function tokenColor(page: Page, token: string): Promise<string> {
-  return page.evaluate((name) => {
-    const probe = document.createElement("div");
-    probe.style.backgroundColor = `var(${name})`;
-    document.body.append(probe);
-    const color = getComputedStyle(probe).backgroundColor;
-    probe.remove();
-    return color;
-  }, token);
 }
 
 async function thumbFill(page: Page): Promise<string> {
@@ -328,6 +317,58 @@ async function expectBackReturnsToOffset(page: Page): Promise<void> {
   await expect.poll(async () => Math.abs((await scrollTop(page)) - before)).toBeLessThanOrEqual(2);
 }
 
+/** The page scroller, its track and thumb, and the frame's bands, measured on the long list. */
+async function scrollerLayout(page: Page) {
+  return page.evaluate(
+    ([scrollerSelector, trackSelector]) => {
+      const scroller = document.querySelector(scrollerSelector);
+      const track = document.querySelector(trackSelector);
+      const thumb = track?.querySelector(".simplebar-scrollbar");
+      const header = document.querySelector("header");
+      const footer = document.querySelector("footer:not(main *)");
+      if (!scroller || !track || !thumb || !header || !footer) throw new Error("The page scroller or the frame is missing.");
+      const bar = getComputedStyle(thumb, "::before");
+      const trackBox = track.getBoundingClientRect();
+      return {
+        viewport: window.innerWidth,
+        documentWidth: document.documentElement.clientWidth,
+        scrollerWidth: scroller.clientWidth,
+        headerRight: header.getBoundingClientRect().right,
+        footerRight: footer.getBoundingClientRect().right,
+        rootOverflow: getComputedStyle(document.documentElement).overflowY,
+        nativeScrollbar: getComputedStyle(scroller).scrollbarWidth,
+        trackRight: trackBox.right,
+        trackWidth: trackBox.width,
+        trackFill: getComputedStyle(track).backgroundColor,
+        thumbShown: getComputedStyle(thumb).display !== "none" && getComputedStyle(track).visibility === "visible",
+        thumbOpacity: bar.opacity,
+        thumbWidth: Number.parseFloat(bar.width),
+        thumbInset: Number.parseFloat(bar.right),
+        thumbRadius: Number.parseFloat(bar.borderTopLeftRadius),
+      };
+    },
+    [PAGE_SCROLLER, TRACK] as const,
+  );
+}
+
+/** A wheel over the page scrolls the page scroller while the document holds still. */
+async function expectWheelScrollsScrollerOnly(page: Page): Promise<void> {
+  await page.mouse.move(WIDTH / 2, HEIGHT / 2);
+  await page.mouse.wheel(0, 600);
+  await expect.poll(() => scrollTop(page)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY, root: document.documentElement.scrollTop }))).toEqual({ x: 0, y: 0, root: 0 });
+}
+
+/** Scrolls the page to 1200 px and opens the wallet modal over it; returns the offset the page settles at. */
+async function openWalletModalScrolled(page: Page): Promise<number> {
+  await scrollPageTo(page, 1200);
+  await page.getByRole("banner").getByRole("button", { name: "Connect", exact: true }).click();
+  await expect(page.locator("w3m-modal").getByText("Connect Wallet")).toBeVisible({ timeout: 15_000 });
+  const opened = await settledScrollTop(page);
+  expect(opened).toBeGreaterThan(0);
+  return opened;
+}
+
 test.describe("where the scrollbar takes layout space", () => {
   test.beforeEach(async ({ context, browserName }) => {
     if (browserName === "webkit") await forceClassicWebKitScrollbars(context);
@@ -338,34 +379,7 @@ test.describe("where the scrollbar takes layout space", () => {
     baseURL,
   }) => {
     await openLongList(page, baseURL);
-    const layout = await page.evaluate(
-      ([scrollerSelector, trackSelector]) => {
-        const scroller = document.querySelector(scrollerSelector);
-        const track = document.querySelector(trackSelector);
-        const thumb = track?.querySelector(".simplebar-scrollbar");
-        const header = document.querySelector("header");
-        const footer = document.querySelector("footer:not(main *)");
-        if (!scroller || !track || !thumb || !header || !footer) throw new Error("The page scroller or the frame is missing.");
-        const bar = getComputedStyle(thumb, "::before");
-        const trackBox = track.getBoundingClientRect();
-        return {
-          viewport: window.innerWidth,
-          documentWidth: document.documentElement.clientWidth,
-          scrollerWidth: scroller.clientWidth,
-          headerRight: header.getBoundingClientRect().right,
-          footerRight: footer.getBoundingClientRect().right,
-          trackRight: trackBox.right,
-          trackWidth: trackBox.width,
-          trackFill: getComputedStyle(track).backgroundColor,
-          thumbShown: getComputedStyle(thumb).display !== "none" && getComputedStyle(track).visibility === "visible",
-          thumbOpacity: bar.opacity,
-          thumbWidth: Number.parseFloat(bar.width),
-          thumbInset: Number.parseFloat(bar.right),
-          thumbRadius: Number.parseFloat(bar.borderTopLeftRadius),
-        };
-      },
-      [PAGE_SCROLLER, TRACK] as const,
-    );
+    const layout = await scrollerLayout(page);
     expect(layout.documentWidth, "the document keeps a lane").toBe(layout.viewport);
     expect(layout.scrollerWidth, "the page scroller keeps a lane").toBe(layout.viewport);
     expect(layout.headerRight, "the header band stops short of the edge").toBe(layout.viewport);
@@ -379,10 +393,7 @@ test.describe("where the scrollbar takes layout space", () => {
     expect(layout.thumbInset).toBe(2);
     expect(layout.thumbRadius).toBeGreaterThanOrEqual(3);
 
-    await page.mouse.move(WIDTH / 2, HEIGHT / 2);
-    await page.mouse.wheel(0, 600);
-    await expect.poll(() => scrollTop(page)).toBeGreaterThan(0);
-    expect(await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY, root: document.documentElement.scrollTop }))).toEqual({ x: 0, y: 0, root: 0 });
+    await expectWheelScrollsScrollerOnly(page);
   });
 
   for (const colorScheme of ["light", "dark"] as const) {
@@ -606,37 +617,27 @@ test.describe("where the scrollbar takes layout space", () => {
   // The press on Connect focuses it in the sticky bar, which scrolls a scrolled page as it did when the document scrolled.
   test("the wallet modal opens over the scrolled page and the page holds still under it", async ({ page, baseURL }) => {
     await openLongList(page, baseURL);
-    await scrollPageTo(page, 1200);
-    await page.getByRole("banner").getByRole("button", { name: "Connect", exact: true }).click();
-    const modal = page.locator("w3m-modal");
-    await expect(modal.getByText("Connect Wallet")).toBeVisible({ timeout: 15_000 });
-    const opened = await settledScrollTop(page);
-    expect(opened).toBeGreaterThan(0);
+    const opened = await openWalletModalScrolled(page);
     await page.mouse.move(40, HEIGHT / 2);
     await page.mouse.wheel(0, 400);
     await frames(page);
     expect(await scrollTop(page), "the page scrolled under the wallet modal").toBe(opened);
     await page.keyboard.press("Escape");
-    await expect(modal.getByText("Connect Wallet")).toBeHidden();
+    await expect(page.locator("w3m-modal").getByText("Connect Wallet")).toBeHidden();
     expect(await settledScrollTop(page)).toBe(opened);
   });
 
   // AppKit leaves the focus on Connect when its modal opens, and locks only the body, as it would a scrolling document.
   test("the scroll keys pressed before the wallet modal is touched leave the page where it is, and scroll it again once the modal closes", async ({ page, baseURL }) => {
     await openLongList(page, baseURL);
-    await scrollPageTo(page, 1200);
-    await page.getByRole("banner").getByRole("button", { name: "Connect", exact: true }).click();
-    const modal = page.locator("w3m-modal");
-    await expect(modal.getByText("Connect Wallet")).toBeVisible({ timeout: 15_000 });
-    const opened = await settledScrollTop(page);
-    expect(opened).toBeGreaterThan(0);
+    const opened = await openWalletModalScrolled(page);
     for (const key of ["PageDown", "ArrowDown", "End"]) {
       await page.keyboard.press(key);
       await frames(page);
       expect(await scrollTop(page), `${key} scrolled the page under the wallet modal`).toBe(opened);
     }
     await page.keyboard.press("Escape");
-    await expect(modal.getByText("Connect Wallet")).toBeHidden();
+    await expect(page.locator("w3m-modal").getByText("Connect Wallet")).toBeHidden();
     await page.keyboard.press("PageDown");
     await expect.poll(() => scrollTop(page)).toBeGreaterThan(opened);
   });
@@ -786,11 +787,7 @@ test.describe("where the scrollbar takes layout space", () => {
 
   test("printed while the wallet modal is open, the page stays where it was scrolled", async ({ page, baseURL, browserName }) => {
     await openLongList(page, baseURL);
-    await scrollPageTo(page, 1200);
-    await page.getByRole("banner").getByRole("button", { name: "Connect", exact: true }).click();
-    await expect(page.locator("w3m-modal").getByText("Connect Wallet")).toBeVisible({ timeout: 15_000 });
-    const opened = await settledScrollTop(page);
-    expect(opened).toBeGreaterThan(0);
+    const opened = await openWalletModalScrolled(page);
     // Only Chromium prints to PDF; Firefox and WebKit lay the page out for print under emulation.
     if (browserName === "chromium") {
       await page.pdf();
@@ -930,29 +927,8 @@ test.describe("where scrollbars overlay the page on a desktop, as on a Mac by de
     baseURL,
   }) => {
     await openLongList(page, baseURL);
-    const layout = await page.evaluate(
-      ([scrollerSelector, trackSelector]) => {
-        const scroller = document.querySelector(scrollerSelector);
-        const track = document.querySelector(trackSelector);
-        const thumb = track?.querySelector(".simplebar-scrollbar");
-        const header = document.querySelector("header");
-        if (!scroller || !track || !thumb || !header) throw new Error("The page scroller or the header is missing.");
-        const bar = getComputedStyle(thumb, "::before");
-        return {
-          viewport: window.innerWidth,
-          documentWidth: document.documentElement.clientWidth,
-          scrollerWidth: scroller.clientWidth,
-          headerRight: header.getBoundingClientRect().right,
-          rootOverflow: getComputedStyle(document.documentElement).overflowY,
-          nativeScrollbar: getComputedStyle(scroller).scrollbarWidth,
-          thumbShown: getComputedStyle(thumb).display !== "none" && getComputedStyle(track).visibility === "visible",
-          thumbOpacity: bar.opacity,
-          thumbWidth: Number.parseFloat(bar.width),
-          thumbInset: Number.parseFloat(bar.right),
-        };
-      },
-      [PAGE_SCROLLER, TRACK] as const,
-    );
+    const { viewport, documentWidth, scrollerWidth, headerRight, rootOverflow, nativeScrollbar, thumbShown, thumbOpacity, thumbWidth, thumbInset } = await scrollerLayout(page);
+    const layout = { viewport, documentWidth, scrollerWidth, headerRight, rootOverflow, nativeScrollbar, thumbShown, thumbOpacity, thumbWidth, thumbInset };
     expect(layout).toEqual({
       viewport: WIDTH,
       documentWidth: WIDTH,
@@ -966,10 +942,7 @@ test.describe("where scrollbars overlay the page on a desktop, as on a Mac by de
       thumbInset: 2,
     });
 
-    await page.mouse.move(WIDTH / 2, HEIGHT / 2);
-    await page.mouse.wheel(0, 600);
-    await expect.poll(() => scrollTop(page)).toBeGreaterThan(0);
-    expect(await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY, root: document.documentElement.scrollTop }))).toEqual({ x: 0, y: 0, root: 0 });
+    await expectWheelScrollsScrollerOnly(page);
   });
 
   for (const colorScheme of ["light", "dark"] as const) {

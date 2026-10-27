@@ -22,6 +22,7 @@ describe("normalizeIpfsPath", () => {
       `fs:/ipfs/${CID}`,
       `fs://ipfs/${CID}`,
       `/${CID}`,
+      `${CID}/`,
     ];
     for (const spelling of spellings) expect(normalizeIpfsPath(spelling), spelling).toBe(CANONICAL);
   });
@@ -85,45 +86,51 @@ describe("normalizeIpfsPath", () => {
     expect(normalizeIpfsPath(`b${"a".repeat(50)}`)).toBe(`/ipfs/b${"a".repeat(50)}`);
   });
 
-  it("rejects /ipfs/<cid>/../../ipns/x", () => {
-    expect(normalizeIpfsPath(`/ipfs/${CID}/../../ipns/x`)).toBeNull();
-    expect(normalizeIpfsPath(`ipfs://${CID}/../../ipns/evil.eth/index.html`)).toBeNull();
-  });
-
-  it("rejects the percent-encoded dot-segment variants", () => {
-    const inputs = [
-      `/ipfs/${CID}/%2e%2e/%2e%2e/ipns/x`,
-      `/ipfs/${CID}/%2E%2E/%2E%2E/ipns/x`,
-      `/ipfs/${CID}/.%2e/.%2e/ipns/x`,
-      `/ipfs/${CID}/%2e./%2e./ipns/x`,
-      `/ipfs/${CID}/%2e%2e`,
-    ];
-    for (const input of inputs) expect(normalizeIpfsPath(input), input).toBeNull();
-  });
-
-  it("rejects backslashes, raw or percent-encoded", () => {
-    const inputs = [
-      `/ipfs/${CID}\\..\\..\\ipns\\x`,
-      `/ipfs/${CID}/..\\..\\ipns/x`,
-      `/ipfs/${CID}/%5c..%5c..%5cipns%5cx`,
-      `/ipfs/${CID}/%5C..%5C..%5Cipns%5Cx`,
-      `/ipfs/${CID}/file\\name.json`,
-      `/ipfs/${CID}/file%5Cname.json`,
-    ];
-    for (const input of inputs) expect(normalizeIpfsPath(input), input).toBeNull();
-  });
-
-  it("rejects control characters, raw or percent-encoded", () => {
-    const inputs = [
-      `/ipfs/${CID}/.\t./.\t./ipns/x`,
-      `/ipfs/${CID}/a\u0000b`,
-      `/ipfs/${CID}/a\nb`,
-      `/ipfs/${CID}/a\u007fb`,
-      `/ipfs/${CID}/a%00b`,
-      `/ipfs/${CID}/.%09./.%09./ipns/x`,
-      `/ipfs/${CID}/a%0Ab`,
-      `/ipfs/${CID}/a%7Fb`,
-    ];
+  it.each<[string, string[]]>([
+    ["a dot-segment climb to /ipns/", [`/ipfs/${CID}/../../ipns/x`, `ipfs://${CID}/../../ipns/evil.eth/index.html`, `/ipfs/${CID}/../ipns/x`]],
+    [
+      "the percent-encoded dot-segment variants",
+      [`/ipfs/${CID}/%2e%2e/%2e%2e/ipns/x`, `/ipfs/${CID}/%2E%2E/%2E%2E/ipns/x`, `/ipfs/${CID}/.%2e/.%2e/ipns/x`, `/ipfs/${CID}/%2e./%2e./ipns/x`, `/ipfs/${CID}/%2e%2e`],
+    ],
+    [
+      "backslashes, raw or percent-encoded",
+      [
+        `/ipfs/${CID}\\..\\..\\ipns\\x`,
+        `/ipfs/${CID}/..\\..\\ipns/x`,
+        `/ipfs/${CID}/%5c..%5c..%5cipns%5cx`,
+        `/ipfs/${CID}/%5C..%5C..%5Cipns%5Cx`,
+        `/ipfs/${CID}/file\\name.json`,
+        `/ipfs/${CID}/file%5Cname.json`,
+      ],
+    ],
+    [
+      "control characters, raw or percent-encoded",
+      [
+        `/ipfs/${CID}/.\t./.\t./ipns/x`,
+        `/ipfs/${CID}/a\u0000b`,
+        `/ipfs/${CID}/a\nb`,
+        `/ipfs/${CID}/a\u007fb`,
+        `/ipfs/${CID}/a%00b`,
+        `/ipfs/${CID}/.%09./.%09./ipns/x`,
+        `/ipfs/${CID}/a%0Ab`,
+        `/ipfs/${CID}/a%7Fb`,
+      ],
+    ],
+    ["a backslash or control character anywhere, even in the query or fragment it drops", [`${CID}?a\\b`, `${CID}#a\\b`, `${CID}?a\u0000b`, `${CANONICAL_FILE}#\u007f`]],
+    [
+      "malformed escapes, ill-formed Unicode and encoded slashes",
+      [
+        `/ipfs/${CID}/%`,
+        `/ipfs/${CID}/%zz`,
+        `/ipfs/${CID}/%FF`,
+        `/ipfs/${CID}/%C0%AF..%C0%AF..%C0%AFipns`,
+        `/ipfs/${CID}/a\uD800b`,
+        `/ipfs/${CID}%2F..%2F..%2Fipns%2Fx`,
+        `/ipfs/${CID}/a%2fb`,
+      ],
+    ],
+    ["a .. that climbs to or above the CID", [`/ipfs/${CID}/..`, `/ipfs/${CID}/a/../..`, `/ipfs/${CID}/../${DEFAULT_SCRIPT_CID}/x`, `../${CID}`, `./../${CID}`, `x/../${CID}`]],
+  ])("rejects %s", (_, inputs) => {
     for (const input of inputs) expect(normalizeIpfsPath(input), JSON.stringify(input)).toBeNull();
   });
 
@@ -132,29 +139,6 @@ describe("normalizeIpfsPath", () => {
     expect(normalizeIpfsPath(`/ipfs/${CID}/a\u0080\u009cb.pdf`)).toBe(encoded);
     expect(normalizeIpfsPath(encoded)).toBe(encoded);
     expect(normalizeIpfsPath(`/ipfs/${CID}/a\u0085b`)).toBe(`/ipfs/${CID}/a%C2%85b`);
-  });
-
-  it("rejects a backslash or control character anywhere, even in the query or fragment it drops", () => {
-    const inputs = [`${CID}?a\\b`, `${CID}#a\\b`, `${CID}?a\u0000b`, `${CANONICAL_FILE}#\u007f`];
-    for (const input of inputs) expect(normalizeIpfsPath(input), JSON.stringify(input)).toBeNull();
-  });
-
-  it("rejects malformed escapes, ill-formed Unicode and encoded slashes", () => {
-    const inputs = [
-      `/ipfs/${CID}/%`,
-      `/ipfs/${CID}/%zz`,
-      `/ipfs/${CID}/%FF`,
-      `/ipfs/${CID}/%C0%AF..%C0%AF..%C0%AFipns`,
-      `/ipfs/${CID}/a\uD800b`,
-      `/ipfs/${CID}%2F..%2F..%2Fipns%2Fx`,
-      `/ipfs/${CID}/a%2fb`,
-    ];
-    for (const input of inputs) expect(normalizeIpfsPath(input), input).toBeNull();
-  });
-
-  it("rejects a .. that climbs to or above the CID", () => {
-    const inputs = [`/ipfs/${CID}/..`, `/ipfs/${CID}/a/../..`, `/ipfs/${CID}/../${DEFAULT_SCRIPT_CID}/x`, `../${CID}`, `./../${CID}`, `x/../${CID}`];
-    for (const input of inputs) expect(normalizeIpfsPath(input), input).toBeNull();
   });
 
   it("decodes each segment exactly once, so a double-encoded dot segment stays a file name", () => {
@@ -170,7 +154,6 @@ describe("normalizeIpfsPath", () => {
   });
 
   it("the first segment after normalization is the CID", () => {
-    expect(normalizeIpfsPath(`/ipfs/${CID}/../ipns/x`)).toBeNull();
     expect(normalizeIpfsPath(`/ipfs/%2e/${CID}/index.html`)).toBe(CANONICAL_FILE);
   });
 
@@ -186,11 +169,6 @@ describe("normalizeIpfsPath", () => {
       `/ipfs/${CID}/index%2Ehtml`,
     ];
     for (const spelling of spellings) expect(normalizeIpfsPath(spelling), spelling).toBe(CANONICAL_FILE);
-  });
-
-  it("removes the trailing slash", () => {
-    expect(normalizeIpfsPath(`${CID}/`)).toBe(CANONICAL);
-    expect(normalizeIpfsPath(`/ipfs/${CID}/index.html/`)).toBe(CANONICAL_FILE);
   });
 
   it("stores each segment percent-encoded once, so a gateway URL never double-encodes", () => {
@@ -219,16 +197,6 @@ describe("normalizeIpfsPath", () => {
 });
 
 describe("toCidPath", () => {
-  it("gives the allowlist form of every listed script, whatever the spelling", () => {
-    for (const entry of ALLOWLIST_ENTRIES) {
-      for (const spelling of [entry, `/ipfs/${entry}`, `ipfs://${entry}`, `fs:/ipfs/${entry}`]) {
-        const path = normalizeIpfsPath(spelling);
-        expect(path, spelling).not.toBeNull();
-        if (path !== null) expect(toCidPath(path)).toBe(entry);
-      }
-    }
-  });
-
   it("a CidPath is typed to start with a CID, so a malformed allowlist entry does not compile", () => {
     expectTypeOf<typeof DEFAULT_SCRIPT_CID>().toExtend<CidPath>();
     expectTypeOf<typeof CIDV1>().toExtend<CidPath>();

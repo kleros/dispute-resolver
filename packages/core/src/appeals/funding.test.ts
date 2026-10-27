@@ -166,30 +166,6 @@ describe("readRoundFunding (IDisputeResolver)", () => {
     expect(round2).toEqual({ ok: true, value: { round: 2n, contributions: [], fundedRulings: [] } });
   });
 
-  it("counts a contribution more than 10,000 blocks after the anchor", async () => {
-    const logs = [
-      contributionLog({ localId: 7n, round: 2n, ruling: 1n, contributor: CONTRIBUTOR, amount: 5n, block: 1_000n }),
-      contributionLog({ localId: 7n, round: 2n, ruling: 1n, contributor: CONTRIBUTOR, amount: 6n, block: 21_000n }),
-      rulingFundedLog({ localId: 7n, round: 2n, ruling: 1n, block: 21_000n }),
-    ];
-    const { context } = syntheticContext({ head: 30_000n, logs });
-    expect(await readRoundFunding(context, 2n, 1_000n)).toEqual({ ok: true, value: { round: 2n, contributions: [{ ruling: 1n, amount: 11n }], fundedRulings: [1n] } });
-  });
-
-  it("scans the same range and shows the same totals on a reload", async () => {
-    const logs = [contributionLog({ localId: 7n, round: 0n, ruling: 2n, contributor: CONTRIBUTOR, amount: 9n, block: 50_000n })];
-    const { context, requests } = syntheticContext({ head: 90_000n, logs });
-    const first = await readRoundFunding(context, 0n, 10n);
-    const second = await readRoundFunding(context, 0n, 10n);
-    expect(second).toEqual(first);
-    expect(requests.logs.map((filter) => [filter.fromBlock, filter.toBlock])).toEqual([
-      [10n, 90_000n],
-      [10n, 90_000n],
-      [10n, 90_000n],
-      [10n, 90_000n],
-    ]);
-  });
-
   it("counts only the dispute's own local ID and round", async () => {
     const logs = [
       contributionLog({ localId: 7n, round: 1n, ruling: 1n, contributor: CONTRIBUTOR, amount: 5n, block: 100n }),

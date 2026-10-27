@@ -124,6 +124,7 @@ describe("formatRuling", () => {
     expect(formatRuling(5n, { type: "datetime", precision: 2 }, null)).toBe(timestamp4);
   });
 
+  // The poh.eth governor's meta-evidence has `rulingOptions: {}` whenever its dynamic script does not run.
   it("a title-less single-select ruling reads as its decimal value, titles absent or empty, fallback outcomes or not", () => {
     expect(formatRuling(2n, { type: "single-select" }, null)).toBe("2");
     expect(formatRuling(2n, { type: "single-select", titles: [] }, ["Red", "Blue"])).toBe("2");

@@ -87,9 +87,7 @@ export interface IdenticonProps {
 
 export interface PeriodBadgeProps {
   readonly period: Period;
-  /** `dot`: a coloured dot and the period's name (default); `pill`: the same inside the status stamp. */
-  readonly variant?: "dot" | "pill";
-  /** The pill's size (default `sm`); ignored by the `dot` variant. */
+  /** The stamp's size (default `sm`). */
   readonly size?: "sm" | "lg";
   readonly className?: string;
 }

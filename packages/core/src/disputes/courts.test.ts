@@ -108,22 +108,16 @@ describe("listCourts", () => {
     expect(courts.value[5]?.name).toBe("Marketing Services");
   });
 
-  it("a transport failure of a getSubcourt read fails the list rather than truncating it", async () => {
-    const node = recordedNode(MAINNET, {
-      extraCalls: [failure({ to: MAINNET.arbitrator, abi: klerosLiquidAbi, functionName: "getSubcourt", args: [12n], error: { code: -32000, message: "header not found" } })],
-    });
-    const { client } = fakeClient(node);
+  it.each([
+    [
+      "a getSubcourt read fails the list rather than truncating it",
+      failure({ to: MAINNET.arbitrator, abi: klerosLiquidAbi, functionName: "getSubcourt", args: [12n], error: { code: -32000, message: "header not found" } }),
+    ],
+    ["courts(i) fails the list", failure({ to: MAINNET.arbitrator, abi: klerosLiquidAbi, functionName: "courts", args: [3n], error: { code: -32603, message: "Internal error" } })],
+  ])("a transport failure of %s", async (_, failingCall) => {
+    const { client } = fakeClient(recordedNode(MAINNET, { extraCalls: [failingCall] }));
     const { fetcher } = fakeFetcher(recordedPolicyBodies(MAINNET));
     expect(await listCourts({ chainId: 1, client, fetcher, env: ENV })).toMatchObject({ ok: false, error: { code: "rpc-error" } });
-  });
-
-  it("a transport failure of courts(i) fails the list", async () => {
-    const node = recordedNode(MAINNET, {
-      extraCalls: [failure({ to: MAINNET.arbitrator, abi: klerosLiquidAbi, functionName: "courts", args: [3n], error: { code: -32603, message: "Internal error" } })],
-    });
-    const { client } = fakeClient(node);
-    const { fetcher } = fakeFetcher(recordedPolicyBodies(MAINNET));
-    expect(await listCourts({ chainId: 1, client, fetcher, env: ENV })).toMatchObject({ ok: false });
   });
 
   it("a chain without an arbitrator has no courts to list", async () => {

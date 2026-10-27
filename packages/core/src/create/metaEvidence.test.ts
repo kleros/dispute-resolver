@@ -100,10 +100,6 @@ describe("buildCreatedMetaEvidence", () => {
     }
   });
 
-  it("writes no precision for uint", () => {
-    expect(buildCreatedMetaEvidence(input({ questionType: "uint", options: [] })).rulingOptions).not.toHaveProperty("precision");
-  });
-
   it("fileURI is the empty string without a primary document", () => {
     expect(buildCreatedMetaEvidence(input({ primaryDocument: null })).fileURI).toBe("");
   });

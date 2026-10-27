@@ -14,6 +14,7 @@ import {
 } from "viem";
 import { realityAbi, realityProxyAbi } from "../../abi";
 import { isLookupLimitError, isRangeLimitError } from "../../rpc";
+import { causeChain } from "../../rpc/errors";
 import type { ReadClientOptions, RequestBudget } from "../../rpc/types";
 import { ARBITRATION_CREATED, DISPUTE_ID_TO_QUESTION_ID, LOG_NEW_QUESTION, LOG_NEW_TEMPLATE } from "../../reality/events";
 import { rpcError, type RpcLog } from "../rpc/testHelpers";
@@ -156,12 +157,7 @@ function sleep(ms: number): Promise<void> {
 
 /** The `LookupLimitError` that `error` wraps, as the read clients of `rpc` unwrap it from viem's wrapper. */
 function unwrapLookupLimit(error: unknown): unknown {
-  let current = error;
-  for (let depth = 0; depth < 8 && typeof current === "object" && current !== null; depth += 1) {
-    if (isLookupLimitError(current)) return current;
-    current = "cause" in current ? current.cause : undefined;
-  }
-  return error;
+  return causeChain(error).find(isLookupLimitError) ?? error;
 }
 
 /**

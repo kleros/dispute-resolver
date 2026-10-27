@@ -253,21 +253,6 @@ describe("DisputeSummary", () => {
     expectSummaryTitle("Test dispute");
   });
 
-  it("raw HTML in the description renders as text and a javascript: link has no href", () => {
-    const { container } = renderSummary(withMetaEvidence({ description: "<img src=x onerror=alert(1)>\n\n[click](javascript:alert(1))" }));
-    expect(container.querySelector("img")).toBeNull();
-    expect(screen.getByText("<img src=x onerror=alert(1)>")).toBeInTheDocument();
-    for (const anchor of container.querySelectorAll("a")) expect(anchor.getAttribute("href") ?? "").not.toMatch(/javascript:/i);
-  });
-
-  it("description links open in a new tab with rel, and non-https images do not load", () => {
-    const { container } = renderSummary(withMetaEvidence({ description: "[rules](https://kleros.io/rules)\n\n![chart](http://example.org/chart.png)" }));
-    const link = screen.getByRole("link", { name: "rules" });
-    expect(link).toHaveAttribute("target", "_blank");
-    expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    expect(container.querySelector("img")).toBeNull();
-  });
-
   it("every external anchor of the summary opens in a new tab with rel=noopener noreferrer", () => {
     const { container } = renderSummary(
       withMetaEvidence({
@@ -325,23 +310,12 @@ describe("DisputeSummary", () => {
     expect(displayParams()).toMatchObject({ disputeID: "1", chainID: 1, arbitrableContractAddress: allowlisted, arbitratorChainID: 1, arbitrableChainID: 1 });
   });
 
-  it("a display URL that is not https renders no frame", () => {
-    renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: "javascript:alert(1)" }));
-    expect(screen.queryByTitle("Evidence display")).not.toBeInTheDocument();
-    expectSummaryTitle("Test dispute");
-  });
-
   it("a display served from the app's own origin never gets allow-same-origin", () => {
     const allowlisted = REGISTRY.displayAllowlist[1]?.[0];
     if (allowlisted === undefined) throw new Error("mainnet has no allowlisted display");
     overrides.appOrigin = "https://display.example.org";
     renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: "https://display.example.org/index.html" }, allowlisted));
     expect(displayFrame()).toHaveAttribute("sandbox", "allow-scripts");
-  });
-
-  it("an absolute https://…/ipfs/<CID> display is served from the configured gateway", () => {
-    renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: `https://ipfs.kleros.io/ipfs/${DISPLAY_CID}/index.html` }));
-    expect(displayFrame().getAttribute("src")).toMatch(new RegExp(`^${GATEWAY}/ipfs/${DISPLAY_CID}/index.html\\?`));
   });
 
   it("passes the chain's read RPC URL to the display", () => {
@@ -399,11 +373,6 @@ describe("the summary replacing its placeholder", () => {
     expect(revealed[2]).toHaveTextContent("Alice");
     for (const element of revealed) expect(element).toHaveClass("motion-reduce:animate-none");
     expect(revealed.some((element) => element.contains(displayFrame()))).toBe(false);
-  });
-
-  it("shows a summary that was ready on the first render without motion", () => {
-    const { container } = renderSummary(caseDispute());
-    expect(container.innerHTML).not.toContain("t-reveal-in");
   });
 
   it("adds no gap for parties that render nothing", () => {

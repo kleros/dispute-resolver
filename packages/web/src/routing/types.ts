@@ -18,15 +18,6 @@ export interface PathLocation {
   readonly hash: string;
 }
 
-/** Validated chain IDs and numeric dispute IDs only. */
-export interface Paths {
-  chainRoot(chainId: number): string;
-  ongoing(chainId: number): string;
-  create(chainId: number): string;
-  cases(chainId: number): string;
-  case(chainId: number, disputeId: bigint): string;
-}
-
 /** A switch to the page chain that the wallet declined or that failed, after which the app moved to the wallet's chain. */
 export interface ChainNotice {
   readonly outcome: "declined" | "failed";
@@ -53,10 +44,6 @@ export interface FrameProps {
 
 /** Shell's `PageFrame`, injected so routing stays below shell. */
 export type FrameComponent = ComponentType<FrameProps>;
-
-export interface ChainLayoutProps {
-  readonly frame: FrameComponent;
-}
 
 export interface AppRouteComponents {
   readonly PageFrame: FrameComponent;

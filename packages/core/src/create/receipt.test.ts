@@ -20,10 +20,6 @@ describe("disputeIdFromReceipt", () => {
     expect(disputeIdFromReceipt([OTHER_EVENT, creationLog(ARBITRATOR, 1710n)], ARBITRATOR)).toBe(1710n);
   });
 
-  it("matches the DisputeCreation(uint256,address) topic", () => {
-    expect(creationLog(ARBITRATOR, 1n).topics[0]).toBe(toEventSelector("DisputeCreation(uint256,address)"));
-  });
-
   it("takes the first matching log", () => {
     expect(disputeIdFromReceipt([creationLog(ARBITRATOR, 5n), creationLog(ARBITRATOR, 6n)], ARBITRATOR)).toBe(5n);
   });

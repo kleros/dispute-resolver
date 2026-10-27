@@ -24,7 +24,7 @@ export function useArbitrationCost(chainId: number, extraData: Hex | undefined):
 /** EIP-7702 delegated EOAs carry this code prefix and are not smart-contract wallets. */
 const EIP7702_DELEGATION_PREFIX = "0xef0100";
 
-export function isContractCode(code: Hex | undefined): boolean {
+function isContractCode(code: Hex | undefined): boolean {
   return code !== undefined && code !== "0x" && !code.toLowerCase().startsWith(EIP7702_DELEGATION_PREFIX);
 }
 

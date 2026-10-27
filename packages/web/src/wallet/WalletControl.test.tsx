@@ -16,10 +16,12 @@ function expectAccountPanelClosed() {
 }
 
 describe("WalletControl", () => {
-  it("Connect opens AppKit's Connect view on the page chain", async () => {
+  it("Connect, named by its visible text, opens AppKit's Connect view on the page chain", async () => {
     const wallet = createTestWallet();
     render(<WalletControl chain={testPageChain(100).chain} />, { wrapper: walletWrapper(wallet) });
-    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+    const button = screen.getByRole("button", { name: "Connect" });
+    expect(button).not.toHaveAttribute("aria-label");
+    await userEvent.click(button);
     expect(wallet.modal?.openConnect).toHaveBeenCalledWith(100);
   });
 
@@ -61,9 +63,12 @@ describe("WalletControl", () => {
     render(<WalletControl chain={testPageChain(100).chain} />, { wrapper: walletWrapper(wallet) });
     const trigger = screen.getByRole("button", { name: "Account 0x0000…11cE" });
     expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
     await userEvent.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     const menu = screen.getByRole("dialog", { name: "Account" });
+    expect(trigger).toHaveAttribute("aria-controls", menu.id);
+    expect(menu).toHaveTextContent("0x0000…11cE");
     expect(menu).toHaveTextContent("Wallet network: Gnosis Network");
     expect(screen.getByRole("button", { name: "Copy address" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /view on Gnosis Network explorer/ })).toHaveAttribute(
@@ -71,17 +76,6 @@ describe("WalletControl", () => {
       "https://gnosisscan.io/address/0x00000000000000000000000000000000000a11ce",
     );
     expect(wallet.modal?.openConnect).not.toHaveBeenCalled();
-  });
-
-  it("the account trigger is announced as the button that opens the account panel it controls", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100 });
-    render(<WalletControl chain={testPageChain(100).chain} />, { wrapper: walletWrapper(wallet) });
-    const trigger = screen.getByRole("button", { name: "Account 0x0000…11cE" });
-    expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
-    await userEvent.click(trigger);
-    const panel = screen.getByRole("dialog", { name: "Account" });
-    expect(trigger).toHaveAttribute("aria-controls", panel.id);
-    expect(panel).toHaveTextContent("0x0000…11cE");
   });
 
   it("Disconnect sits centred in the account panel and returns the app to read-only", async () => {
@@ -107,23 +101,7 @@ describe("WalletControl", () => {
     expect(trigger).toHaveFocus();
   });
 
-  it("the account panel grows from its top-right corner and shrinks away, ignoring presses, before it unmounts", async () => {
-    const wallet = await createConnectedTestWallet();
-    render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(wallet) });
-    const trigger = screen.getByRole("button", { name: /^Account / });
-    await userEvent.click(trigger);
-    const panel = screen.getByRole("dialog", { name: "Account" });
-    expect(panel).toHaveAttribute("data-origin", "top-right");
-    expect(panel).toHaveClass("origin-top-right", "animate-scale-in");
-    expect(panel).not.toHaveAttribute("inert");
-    await userEvent.click(trigger);
-    expect(panel).toHaveClass("animate-scale-out", "opacity-0", "pointer-events-none");
-    expect(panel).not.toHaveClass("animate-scale-in");
-    expect(panel).toHaveAttribute("inert");
-    expectAccountPanelClosed();
-  });
-
-  it("the account chevron flips over the open clock and back over the close clock, and holds still under reduced motion", async () => {
+  it("the account panel and its chevron animate open and closed and the panel draws the surface's focus ring", async () => {
     const wallet = await createConnectedTestWallet();
     render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(wallet) });
     const trigger = screen.getByRole("button", { name: /^Account / });
@@ -136,6 +114,16 @@ describe("WalletControl", () => {
     expect(chevron()).not.toHaveClass("-scale-y-100");
     await userEvent.click(trigger);
     expect(chevron()).toHaveClass("-scale-y-100", "duration-250");
+    const panel = screen.getByRole("dialog", { name: "Account" });
+    expect(panel).toHaveAttribute("data-origin", "top-right");
+    expect(panel).toHaveClass("origin-top-right", "animate-scale-in");
+    expect(panel).toHaveClass("[--dr-focus:var(--klerosUIComponentsPrimaryBlue)]");
+    expect(panel).not.toHaveAttribute("inert");
+    await userEvent.click(trigger);
+    expect(panel).toHaveClass("animate-scale-out", "opacity-0", "pointer-events-none");
+    expect(panel).not.toHaveClass("animate-scale-in");
+    expect(panel).toHaveAttribute("inert");
+    expectAccountPanelClosed();
   });
 
   it("a press outside closes the account menu", async () => {
@@ -167,19 +155,6 @@ describe("WalletControl", () => {
     expect(button).toBeEnabled();
     await userEvent.click(button);
     expect(wallet.modal?.openConnect).toHaveBeenCalledWith(1);
-  });
-
-  it("the Connect button takes its name from its visible text", () => {
-    const wallet = createTestWallet();
-    render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(wallet) });
-    expect(screen.getByRole("button", { name: "Connect" })).not.toHaveAttribute("aria-label");
-  });
-
-  it("the account panel draws the surface's focus ring, not the bar's", async () => {
-    const wallet = await createConnectedTestWallet();
-    render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(wallet) });
-    await userEvent.click(screen.getByRole("button", { name: /^Account / }));
-    expect(screen.getByRole("dialog", { name: "Account" })).toHaveClass("[--dr-focus:var(--klerosUIComponentsPrimaryBlue)]");
   });
 
   it("the control follows a wallet that connects after render", async () => {

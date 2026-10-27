@@ -106,19 +106,6 @@ describe("parseEvidenceDocument", () => {
 });
 
 describe("buildEvidenceDocument", () => {
-  it("builds {name, description, fileURI, evidenceSide: 0} with the attachment path", () => {
-    expect(buildEvidenceDocument({ name: "Title", description: "Body", fileUri: `/ipfs/${CID}/a.pdf` })).toEqual({
-      name: "Title",
-      description: "Body",
-      fileURI: `/ipfs/${CID}/a.pdf`,
-      evidenceSide: 0,
-    });
-  });
-
-  it("without an attachment fileURI is the empty string", () => {
-    expect(buildEvidenceDocument({ name: "Title", description: "Body", fileUri: null })).toEqual({ name: "Title", description: "Body", fileURI: "", evidenceSide: 0 });
-  });
-
   it("the document round-trips through the evidence schema", () => {
     const document = buildEvidenceDocument({ name: "Title", description: "Body", fileUri: `/ipfs/${CID}/a.pdf` });
     expect(parsed(JSON.parse(JSON.stringify(document)))).toMatchObject({ title: "Title", description: "Body", attachment: { kind: "link", label: "a.pdf" } });

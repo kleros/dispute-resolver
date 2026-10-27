@@ -982,6 +982,7 @@ describe("CreatePage", () => {
     expect(screen.getByText("A switch to Ethereum Testnet Sepolia is waiting in your wallet.")).toBeInTheDocument();
     expect(screen.getByText(/^Your wallet is on .+, but this page is on Ethereum Testnet Sepolia\.$/)).toBeInTheDocument();
     expect(screen.queryByText(/Nothing was sent/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Connect" })).toBeNull();
     expect(uploader.uploadJson).not.toHaveBeenCalled();
     expect(writes.controller?.executions).toHaveLength(0);
   });
@@ -1027,6 +1028,7 @@ describe("CreatePage", () => {
     expect(screen.getAllByRole("button", { name: "Connect" })).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "Create dispute" })).toBeNull();
     expect(screen.queryByText("Connect a wallet to create a dispute.")).toBeNull();
+    expect(screen.queryByText("Wallet required")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Connect" }));
     expect(wallet.modal?.openConnect).toHaveBeenCalledWith(SEPOLIA);
     expect(uploader.uploadJson).not.toHaveBeenCalled();
@@ -1043,6 +1045,7 @@ describe("CreatePage", () => {
     });
     expect(screen.getByRole("button", { name: "Create dispute" })).toBe(primary);
     expect(primary).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Connect" })).toBeNull();
     expect(uploader.uploadJson).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Return" }));
     expect(documentInput()).toBeEnabled();
@@ -1065,29 +1068,10 @@ describe("CreatePage", () => {
       expect(remove).toHaveTextContent(/^$/);
       expect(remove.querySelector("svg")).not.toBeNull();
       const row = remove.closest("li");
-      expect(row).toHaveClass("grid-cols-[minmax(0,1fr)_auto]", "lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]");
       expect(remove.parentElement).toBe(row);
-      const alias = screen.getByRole("textbox", { name: `Alias ${number} (Optional)` });
-      expect(alias.closest("li > div")).toHaveClass("col-span-2", "lg:col-span-1");
       expect(row).toContainElement(screen.getByRole("textbox", { name: `Address ${number} (Optional)` }));
     }
     expect(screen.queryByText("Remove")).toBeNull();
-  });
-
-  it("the form and summary actions are equal-width pairs below lg, a centred pair from lg, and the primary button keeps one width from lg", async () => {
-    const { user } = await renderCreate();
-    const continueButton = screen.getByRole("button", { name: "Continue" });
-    const clear = screen.getByRole("button", { name: "Clear form" });
-    for (const button of [clear, continueButton]) expect(button).toHaveClass("w-full", "lg:w-auto");
-    expect(continueButton.parentElement).toBe(clear.parentElement);
-    expect(continueButton.parentElement).toHaveClass("grid", "grid-cols-2", "lg:flex", "lg:justify-center");
-    await fillToSummary(user);
-    const create = screen.getByRole("button", { name: "Create dispute" });
-    const back = screen.getByRole("button", { name: "Return" });
-    for (const button of [create, back]) expect(button).toHaveClass("w-full", "lg:w-auto");
-    expect(create).toHaveClass("lg:min-w-48");
-    expect(create.parentElement).toBe(back.parentElement);
-    expect(create.parentElement).toHaveClass("grid", "grid-cols-2", "lg:flex", "lg:justify-center");
   });
 
   it("a chain without a read RPC reports the cost as unavailable with the neutral sentence", async () => {

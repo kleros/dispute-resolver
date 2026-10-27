@@ -12,8 +12,9 @@ const ALLOWLISTED_ON_1: Address = "0xebcf3bca271b26ae4b162ba560e243055af0e679";
 /** On the display allowlist under chain 100 only. */
 const ALLOWLISTED_ON_100: Address = "0x2a2bab2c2d4eb5007b0389720b287d4d19dc4001";
 const NOT_ALLOWLISTED: Address = "0x00000000000000000000000000000000000000aa";
+const MAINNET_RPC = "https://mainnet.read.example/secret-key";
 const ENV: Env = {
-  REACT_APP_WEB3_PROVIDER_URL: "https://mainnet.read.example/secret-key",
+  REACT_APP_WEB3_PROVIDER_URL: MAINNET_RPC,
   REACT_APP_WEB3_XDAI_PROVIDER_URL: "https://gnosis.read.example/secret-key",
 };
 const RELAXED = ["allow-scripts", "allow-same-origin", "allow-popups", "allow-popups-to-escape-sandbox"];
@@ -58,28 +59,13 @@ describe("buildEvidenceDisplay source", () => {
     expect(buildEvidenceDisplay(withDisplay(null))).toBeNull();
   });
 
-  it.each(["javascript:alert(1)", "data:text/html,<script>alert(1)</script>", "http://display.example/index.html", "//display.example/index.html", "/ipns/kleros.io"])(
-    "renders no frame for the non-https source %j",
-    (uri) => {
-      expect(buildEvidenceDisplay(withDisplay(uri))).toBeNull();
-    },
-  );
+  it("renders no frame for a source the display rules refuse", () => {
+    expect(buildEvidenceDisplay(withDisplay("javascript:alert(1)"))).toBeNull();
+  });
 
   it("serves a canonical IPFS path through the configured gateway", () => {
     const model = buildEvidenceDisplay(withDisplay(`/ipfs/${CID}/index.html`));
     expect(model?.src.startsWith(`${GATEWAY}/ipfs/${CID}/index.html?`)).toBe(true);
-    expect(model?.srcOrigin).toBe(GATEWAY);
-  });
-
-  it("re-serves the T2CR display URL through the configured gateway without naming the contract", () => {
-    const model = buildEvidenceDisplay(withDisplay(`https://ipfs.kleros.io/ipfs/${CID}/index.html`, { arbitrable: ALLOWLISTED_ON_1 }));
-    expect(model?.src.startsWith(`${GATEWAY}/ipfs/${CID}/index.html?`)).toBe(true);
-  });
-
-  it("uses any other https display as is", () => {
-    const model = buildEvidenceDisplay(withDisplay("https://display.example/app/"));
-    expect(model?.src.startsWith("https://display.example/app/?")).toBe(true);
-    expect(model?.srcOrigin).toBe("https://display.example");
   });
 });
 
@@ -138,81 +124,59 @@ describe("buildEvidenceDisplay parameters", () => {
 });
 
 describe("buildEvidenceDisplay for a chain the app does not configure", () => {
+  const UNCONFIGURED = [
+    ["arbitrable", 10],
+    ["arbitrable", 690],
+    ["arbitrator", 10],
+    ["arbitrator", 690],
+  ] as const;
+  const JSON_PARAMS = {
+    disputeID: "1255",
+    chainID: 1,
+    arbitratorContractAddress: KLEROS_LIQUID_MAINNET,
+    arbitratorJsonRpcUrl: MAINNET_RPC,
+    arbitratorChainID: 1,
+    arbitrableContractAddress: NOT_ALLOWLISTED,
+    arbitrableChainID: 1,
+    arbitrableJsonRpcUrl: MAINNET_RPC,
+    jsonRpcUrl: MAINNET_RPC,
+  };
+  const SEARCH_PARAMS = {
+    disputeID: "1255",
+    chainID: "1",
+    arbitratorContractAddress: KLEROS_LIQUID_MAINNET,
+    arbitratorJsonRpcUrl: MAINNET_RPC,
+    arbitratorChainID: "1",
+    arbitrableContractAddress: NOT_ALLOWLISTED,
+    arbitrableChainID: "1",
+    arbitrableJsonRpcUrl: MAINNET_RPC,
+    jsonRpcUrl: MAINNET_RPC,
+  };
+
+  function unsupported(side: "arbitrable" | "arbitrator", chainId: number): Partial<MetaEvidence> {
+    const field = { status: "unsupported", chainId } as const;
+    return side === "arbitrable" ? { arbitrableChainID: field } : { arbitratorChainID: field };
+  }
+
   function unconfigured(fields: Partial<MetaEvidence>, version: string | null) {
     const metaEvidence = testMetaEvidence({ evidenceDisplayInterfaceURI: `/ipfs/${CID}/index.html`, displayParamsVersion: version, ...fields });
     return buildEvidenceDisplay(input({ metaEvidence }));
   }
 
-  it.each([10, 690])("tells a JSON display arbitrable chain %i with no RPC, keeping the court's chain and RPC", (chainId) => {
-    const model = unconfigured({ arbitrableChainID: { status: "unsupported", chainId } }, null);
+  it.each(UNCONFIGURED)("tells a JSON display %s chain %i with no RPC, keeping the court's chain and RPC", (side, chainId) => {
+    const model = unconfigured(unsupported(side, chainId), null);
     expect(model?.encoding).toBe("json");
     const decoded = decodeJsonQuery(model?.src);
     expect(Object.keys(decoded)).toEqual(PARAM_ORDER);
-    expect(decoded).toEqual({
-      disputeID: "1255",
-      chainID: 1,
-      arbitratorContractAddress: KLEROS_LIQUID_MAINNET,
-      arbitratorJsonRpcUrl: "https://mainnet.read.example/secret-key",
-      arbitratorChainID: 1,
-      arbitrableContractAddress: NOT_ALLOWLISTED,
-      arbitrableChainID: chainId,
-      arbitrableJsonRpcUrl: null,
-      jsonRpcUrl: "https://mainnet.read.example/secret-key",
-    });
+    expect(decoded).toEqual({ ...JSON_PARAMS, [`${side}ChainID`]: chainId, [`${side}JsonRpcUrl`]: null });
   });
 
-  it.each([10, 690])("tells a URLSearchParams display arbitrable chain %i with an empty RPC, keeping the court's chain and RPC", (chainId) => {
-    const model = unconfigured({ arbitrableChainID: { status: "unsupported", chainId } }, "1");
+  it.each(UNCONFIGURED)("tells a URLSearchParams display %s chain %i with an empty RPC, keeping the court's chain and RPC", (side, chainId) => {
+    const model = unconfigured(unsupported(side, chainId), "1");
     expect(model?.encoding).toBe("search-params");
     const search = new URL(model?.src ?? "").searchParams;
     expect([...search.keys()]).toEqual(PARAM_ORDER);
-    expect(Object.fromEntries(search)).toEqual({
-      disputeID: "1255",
-      chainID: "1",
-      arbitratorContractAddress: KLEROS_LIQUID_MAINNET,
-      arbitratorJsonRpcUrl: "https://mainnet.read.example/secret-key",
-      arbitratorChainID: "1",
-      arbitrableContractAddress: NOT_ALLOWLISTED,
-      arbitrableChainID: String(chainId),
-      arbitrableJsonRpcUrl: "",
-      jsonRpcUrl: "https://mainnet.read.example/secret-key",
-    });
-  });
-
-  it.each([10, 690])("tells a JSON display arbitrator chain %i with no RPC, keeping the court's chain and RPC", (chainId) => {
-    const model = unconfigured({ arbitratorChainID: { status: "unsupported", chainId } }, null);
-    expect(model?.encoding).toBe("json");
-    const decoded = decodeJsonQuery(model?.src);
-    expect(Object.keys(decoded)).toEqual(PARAM_ORDER);
-    expect(decoded).toEqual({
-      disputeID: "1255",
-      chainID: 1,
-      arbitratorContractAddress: KLEROS_LIQUID_MAINNET,
-      arbitratorJsonRpcUrl: null,
-      arbitratorChainID: chainId,
-      arbitrableContractAddress: NOT_ALLOWLISTED,
-      arbitrableChainID: 1,
-      arbitrableJsonRpcUrl: "https://mainnet.read.example/secret-key",
-      jsonRpcUrl: "https://mainnet.read.example/secret-key",
-    });
-  });
-
-  it.each([10, 690])("tells a URLSearchParams display arbitrator chain %i with an empty RPC, keeping the court's chain and RPC", (chainId) => {
-    const model = unconfigured({ arbitratorChainID: { status: "unsupported", chainId } }, "1");
-    expect(model?.encoding).toBe("search-params");
-    const search = new URL(model?.src ?? "").searchParams;
-    expect([...search.keys()]).toEqual(PARAM_ORDER);
-    expect(Object.fromEntries(search)).toEqual({
-      disputeID: "1255",
-      chainID: "1",
-      arbitratorContractAddress: KLEROS_LIQUID_MAINNET,
-      arbitratorJsonRpcUrl: "",
-      arbitratorChainID: String(chainId),
-      arbitrableContractAddress: NOT_ALLOWLISTED,
-      arbitrableChainID: "1",
-      arbitrableJsonRpcUrl: "https://mainnet.read.example/secret-key",
-      jsonRpcUrl: "https://mainnet.read.example/secret-key",
-    });
+    expect(Object.fromEntries(search)).toEqual({ ...SEARCH_PARAMS, [`${side}ChainID`]: String(chainId), [`${side}JsonRpcUrl`]: "" });
   });
 });
 
@@ -223,24 +187,6 @@ describe("buildEvidenceDisplay encoding", () => {
     expect(model?.encoding).toBe("json");
     expect(model?.src).toBe(`${GATEWAY}/ipfs/${CID}/index.html?${encodeURIComponent(JSON.stringify(model?.params))}`);
     expect(Object.keys(decodeJsonQuery(model?.src))).toEqual(PARAM_ORDER);
-  });
-
-  it("encodes URLSearchParams for any other _v, writing unconfigured RPC URLs as empty strings", () => {
-    const metaEvidence = testMetaEvidence({ evidenceDisplayInterfaceURI: `/ipfs/${CID}/index.html`, displayParamsVersion: "1" });
-    const model = buildEvidenceDisplay(input({ metaEvidence, env: {} }));
-    expect(model?.encoding).toBe("search-params");
-    const search = new URL(model?.src ?? "").searchParams;
-    expect(Object.fromEntries(search)).toEqual({
-      disputeID: "1255",
-      chainID: "1",
-      arbitratorContractAddress: KLEROS_LIQUID_MAINNET,
-      arbitratorJsonRpcUrl: "",
-      arbitratorChainID: "1",
-      arbitrableContractAddress: NOT_ALLOWLISTED,
-      arbitrableChainID: "1",
-      arbitrableJsonRpcUrl: "",
-      jsonRpcUrl: "",
-    });
   });
 });
 

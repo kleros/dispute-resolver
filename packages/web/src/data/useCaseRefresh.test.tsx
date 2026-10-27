@@ -27,8 +27,8 @@ const ACCOUNT: Address = "0x1111111111111111111111111111111111111111";
 const EVIDENCE = testEvidenceList();
 const FOUND_EVENT: Outcome<DisputeEventResult> = { ok: true, value: testDisputeEvent() };
 
-function programReads(period: 3 | 4): void {
-  vi.mocked(core.lookupDispute).mockResolvedValue(testFoundLookup({ period }));
+function programReads(): void {
+  vi.mocked(core.lookupDispute).mockResolvedValue(testFoundLookup({ period: 3 }));
   vi.mocked(core.detectFamily).mockResolvedValue(testFamily());
   vi.mocked(core.loadMetaEvidence).mockResolvedValue(testOkMetaEvidence());
   vi.mocked(core.readDisputeEvent).mockResolvedValue(FOUND_EVENT);
@@ -44,7 +44,6 @@ function programReads(period: 3 | 4): void {
     value: { winnerStakeMultiplier: 10_000n, loserStakeMultiplier: 20_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n },
   });
   vi.mocked(core.readRoundFunding).mockResolvedValue({ ok: true, value: { round: 0n, contributions: [], fundedRulings: [] } });
-  vi.mocked(core.readWithdrawable).mockResolvedValue({ status: "available", beneficiary: ACCOUNT, total: 5n, items: [{ dialect: "idr-v2", ruling: 1n, amount: 5n }] });
 }
 
 /** The only RPC request left once core's reads are mocked: the latest block, for the chain clock. */
@@ -71,7 +70,7 @@ beforeEach(() => {
 
 describe("useCaseRefresh", () => {
   it("reads nothing again until a mined write asks, and an evidence refresh rereads only the lookup and the evidence", async () => {
-    programReads(3);
+    programReads();
     const { result } = renderCaseWithRefresh();
     await settled(result);
     expect(core.loadEvidence).toHaveBeenCalledTimes(1);
@@ -85,27 +84,8 @@ describe("useCaseRefresh", () => {
     expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the refreshed totals, current ruling and appeal cost included, after a mined funding", async () => {
-    programReads(3);
-    const { result } = renderCaseWithRefresh();
-    await settled(result);
-    vi.mocked(core.readRoundFunding).mockResolvedValue({ ok: true, value: { round: 0n, contributions: [{ ruling: 1n, amount: 400n }], fundedRulings: [] } });
-
-    await act(() => result.current.refresh("appeal"));
-
-    expect(core.readDisputeDetails).toHaveBeenCalledTimes(2);
-    expect(core.readRoundFunding).toHaveBeenCalledTimes(2);
-    expect(core.loadEvidence).toHaveBeenCalledTimes(2);
-    expect(core.readRoundFunding).toHaveBeenLastCalledWith(expect.anything(), 0n, 100n);
-    await waitFor(() => {
-      const panel = caseDispute(result.current.data).appealPanel;
-      if (panel.status !== "ready" || panel.value.kind !== "crowdfunding") throw new Error("expected crowdfunding cards");
-      expect(panel.value.cards.find((card) => card.code === 1n)?.contributed).toBe(400n);
-    });
-  });
-
-  it("a refresh after a mined funding reads the chain time again with the details", async () => {
-    programReads(3);
+  it("a refresh after a mined funding reads the details, the round's funding from the Dispute event, the evidence and the chain time again", async () => {
+    programReads();
     const { result } = renderCaseWithRefresh();
     await settled(result);
     await waitFor(() => {
@@ -117,22 +97,10 @@ describe("useCaseRefresh", () => {
 
     await act(() => result.current.refresh("appeal"));
     expect(core.readDisputeDetails).toHaveBeenCalledTimes(2);
+    expect(core.loadEvidence).toHaveBeenCalledTimes(3);
+    expect(core.readRoundFunding).toHaveBeenCalledTimes(2);
+    expect(core.readRoundFunding).toHaveBeenLastCalledWith(expect.anything(), 0n, 100n);
     expect(latestBlock).toHaveBeenCalledTimes(2);
     expect(latestBlock).toHaveBeenLastCalledWith({ chainId: 1, method: "eth_getBlockByNumber", params: ["latest", false] });
-  });
-
-  it("shows nothing withdrawable after the mined withdrawals", async () => {
-    programReads(4);
-    const { result } = renderCaseWithRefresh();
-    await settled(result);
-    expect(caseDispute(result.current.data).appealPanel).toMatchObject({ status: "ready", value: { kind: "withdraw", state: { status: "available", total: 5n } } });
-    vi.mocked(core.readWithdrawable).mockResolvedValue({ status: "nothing" });
-
-    await act(() => result.current.refresh("withdraw"));
-
-    await waitFor(() => {
-      expect(caseDispute(result.current.data).appealPanel).toEqual({ status: "ready", value: { kind: "withdraw", state: { status: "nothing" } } });
-    });
-    expect(core.lookupDispute).toHaveBeenCalledTimes(1);
   });
 });

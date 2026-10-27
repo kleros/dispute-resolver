@@ -1,7 +1,6 @@
 import type { AbiEvent, GetLogsReturnType } from "viem";
 import { isRangeLimitError } from "../rpc";
 import { getWindowLogs, uniqueLogs, type BlockWindow, type Logs, type LogsRequest } from "../rpc/logWindows";
-import type { RequestBudget } from "../rpc/types";
 import type { ReadClient } from "../types";
 import { LOOKUP_LIMITS } from "./constants";
 
@@ -15,8 +14,7 @@ export interface WindowMemory {
   size: number | undefined;
 }
 
-async function fetchWindow<TEvent extends AbiEvent>(client: ReadClient, budget: RequestBudget, request: LogsRequest<TEvent>, window: BlockWindow): Promise<Logs<TEvent>> {
-  budget.spend();
+async function fetchWindow<TEvent extends AbiEvent>(client: ReadClient, request: LogsRequest<TEvent>, window: BlockWindow): Promise<Logs<TEvent>> {
   return uniqueLogs(await getWindowLogs(client, request, window));
 }
 
@@ -83,12 +81,11 @@ async function scanBackwards<TEvent extends AbiEvent>(
 export async function findLatestLogsRemembering<TEvent extends AbiEvent>(
   client: ReadClient,
   request: LogsRequest<TEvent>,
-  budget: RequestBudget,
   memory: WindowMemory,
 ): Promise<GetLogsReturnType<TEvent>> {
   const { fromBlock, toBlock } = request;
   if (toBlock < fromBlock) return [];
-  const fetchLogs = (window: BlockWindow) => fetchWindow(client, budget, request, window);
+  const fetchLogs = (window: BlockWindow) => fetchWindow(client, request, window);
 
   const windowSize = memory.size ?? LOOKUP_LIMITS.windowSize;
   if (memory.size === undefined || toBlock - fromBlock + 1n <= BigInt(windowSize)) {
@@ -108,6 +105,6 @@ export async function findLatestLogsRemembering<TEvent extends AbiEvent>(
  * refusal falls back to a backwards scan in shrinking windows, and the scan stops at the newest window with logs. Other
  * errors are thrown, never split.
  */
-export function findLatestLogs<const TEvent extends AbiEvent>(client: ReadClient, request: LogsRequest<TEvent>, budget: RequestBudget): Promise<GetLogsReturnType<TEvent>> {
-  return findLatestLogsRemembering(client, request, budget, { size: undefined });
+export function findLatestLogs<const TEvent extends AbiEvent>(client: ReadClient, request: LogsRequest<TEvent>): Promise<GetLogsReturnType<TEvent>> {
+  return findLatestLogsRemembering(client, request, { size: undefined });
 }

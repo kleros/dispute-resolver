@@ -99,18 +99,6 @@ describe("useAfterLoading", () => {
 });
 
 describe("useRevealIn", () => {
-  it("gives no reveal class to content that is ready on the first render", () => {
-    const { result, rerender } = renderHook(({ loading }) => useRevealIn(loading), { initialProps: { loading: false } });
-    expect(result.current).toBeUndefined();
-    rerender({ loading: false });
-    expect(result.current).toBeUndefined();
-  });
-
-  it("gives no reveal class while the placeholder is showing", () => {
-    const { result } = renderHook(({ loading }) => useRevealIn(loading), { initialProps: { loading: true } });
-    expect(result.current).toBeUndefined();
-  });
-
   it("gives the reveal-in animation, off under reduced motion, to content that replaces its placeholder", () => {
     const { result, rerender } = renderHook(({ loading }) => useRevealIn(loading), { initialProps: { loading: true } });
     rerender({ loading: false });

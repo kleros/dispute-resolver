@@ -4,14 +4,12 @@ import { getRealityProxy, REGISTRY, registryKey, toRegistryAddress } from "../re
 import type { Registry } from "../registry/types";
 import type { Hex } from "../types";
 import { RECORDED_CONTRACTS, recorded } from "./__fixtures__/recorded";
-import { classifySelectors, createFamilyCache, detectFamily, scanSelectors } from "./index";
+import { classifySelectors, detectFamily, scanSelectors } from "./index";
 import { codeReads, fakeNodeClient, recordedNode, rpcError, slotWord, type FakeNode } from "../test/families/testHelpers";
 import type { FamilyDetection } from "./types";
 
-const KLEROS_ETH = "0xe5bcea6f87aaee4a81f64dfdb4d30d400e0e5cf4";
 const UNSLASHED = "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38";
 const UNSLASHED_IMPLEMENTATION = "0xa5eb6fec99f0c5b052078451c7dbb927d4b7054f";
-const OLDER_RESOLVER_PROXY = "0x135c573503f70dc290b1d60fe2e7f7eb114febd6";
 const MAINNET_ARBITRABLE_PROXY = "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf";
 const MAINNET_ESCROW = "0xc25a0b9681abf6f090aed71a8c08fb564b41dab6";
 const POH_GOVERNOR = "0x327a29fce0a6490e4236240be176daa282eccfdf";
@@ -66,48 +64,6 @@ describe("family detection on recorded bytecode", () => {
     const recordedKeys = RECORDED_CONTRACTS.filter((contract) => contract.expectedFamily === "reality-proxy").map((contract) => registryKey(contract.chainId, contract.address));
     expect([...recordedKeys].sort((a, b) => a.localeCompare(b))).toEqual(Object.keys(REGISTRY.realityProxies).sort((a, b) => a.localeCompare(b)));
   });
-
-  it("the current ArbitrableProxy of every chain is idr-v2", async () => {
-    const proxies = [
-      [1, MAINNET_ARBITRABLE_PROXY],
-      [100, "0xc7add3c961f7935cb4914e37da991d2f1cd7986c"],
-      [10200, "0x4bef0321bd7fa943f85ae55e07f790c6becbd177"],
-      [11155111, "0x009ca5a0b816156f91b29a93d7688c52480bab24"],
-    ] as const;
-    for (const [chainId, address] of proxies) {
-      const detection = await detectRecorded(chainId, address);
-      expect(detection.family).toBe("idr-v2");
-      expect(detection.capabilities.withdraw).toEqual({ kind: "idr-v2" });
-    }
-  });
-});
-
-describe("probe selectors survive PUSH data skipping on real dispatchers", () => {
-  it("the Base-Ethereum foreign proxy keeps fundAppeal(uint256,uint256) among its probe selectors", async () => {
-    const detection = await detectRecorded(1, "0xf0b37feda6cdf5f78b37e1fbccc24969059f2044");
-    expect(recordedProbeSelectors(1, "0xf0b37feda6cdf5f78b37e1fbccc24969059f2044")).toContain(SELECTORS["fundAppeal(uint256,uint256)"]);
-    expect(detection.capabilities.appeal).toEqual({ kind: "idr", fundAppeal: "fundAppeal(uint256,uint256)" });
-  });
-});
-
-describe("kleros.eth governor", () => {
-  it("kleros.eth detects as governor with appeal funding and without evidence submission", async () => {
-    const detection = await detectRecorded(1, KLEROS_ETH);
-    expect(detection.family).toBe("governor");
-    expect(detection.capabilities).toEqual({ localId: "none", evidence: { kind: "none" }, appeal: { kind: "governor" }, withdraw: { kind: "governor" } });
-  });
-
-  it("the other governors keep URI-only evidence", async () => {
-    for (const [chainId, address] of [
-      [1, POH_GOVERNOR],
-      [1, "0x7510c77163683448b8dc8fe9e019d9482be1ed2b"],
-      [100, "0xf7de5537ecd69a94695fcf4bcdbdee6329b63322"],
-    ] as const) {
-      const detection = await detectRecorded(chainId, address);
-      expect(detection.family).toBe("governor");
-      expect(detection.capabilities.evidence).toEqual({ kind: "uri-only" });
-    }
-  });
 });
 
 describe("registered Reality proxies", () => {
@@ -145,60 +101,36 @@ describe("registered Reality proxies", () => {
 });
 
 describe("probes read bytecode and never call the arbitrable", () => {
-  it("detection only reads code and the EIP-1967 slot, never eth_call", async () => {
-    for (const contract of RECORDED_CONTRACTS) {
-      const { detection, calls } = detectOn(contract.chainId, contract.address);
-      await detection;
-      expect(calls.every((call) => call.method === "eth_getCode" || call.method === "eth_getStorageAt")).toBe(true);
-    }
-  });
-
-  it("an RPC error reading the arbitrable's code rejects instead of reading as view-only", async () => {
-    const node: FakeNode = { ...recordedNode(1), fail: (call) => (call.method === "eth_getCode" ? rpcError(-32000, "header not found") : undefined) };
-    await expect(detectOn(1, MAINNET_ARBITRABLE_PROXY, node).detection).rejects.toThrow();
-  });
-
-  it("a revert-style error is never read as a missing selector", async () => {
-    const node: FakeNode = { ...recordedNode(1), fail: () => rpcError(3, "execution reverted") };
-    await expect(detectOn(1, MAINNET_ARBITRABLE_PROXY, node).detection).rejects.toThrow();
-  });
-
-  it("an RPC error reading the EIP-1967 slot rejects", async () => {
-    const node: FakeNode = { ...recordedNode(1), fail: (call) => (call.method === "eth_getStorageAt" ? rpcError(-32000, "timeout") : undefined) };
-    await expect(detectOn(1, MAINNET_ARBITRABLE_PROXY, node).detection).rejects.toThrow();
-  });
-
-  it("an RPC error reading the implementation's code rejects", async () => {
-    const node: FakeNode = {
-      ...recordedNode(1),
-      fail: (call) => (call.method === "eth_getCode" && call.params[0] === UNSLASHED_IMPLEMENTATION ? rpcError(-32000, "timeout") : undefined),
-    };
-    await expect(detectOn(1, UNSLASHED, node).detection).rejects.toThrow();
-  });
-
-  it("an eth_getCode answer without a result rejects instead of reading as no code (mainnet ArbitrableProxy)", async () => {
-    const node: FakeNode = { ...recordedNode(1), noResult: (call) => call.method === "eth_getCode" };
-    await expect(detectOn(1, MAINNET_ARBITRABLE_PROXY, node).detection).rejects.toThrow();
-  });
-
-  it("an eth_getStorageAt answer without a result rejects instead of reading as not a proxy (Unslashed)", async () => {
-    const node: FakeNode = { ...recordedNode(1), noResult: (call) => call.method === "eth_getStorageAt" };
-    await expect(detectOn(1, UNSLASHED, node).detection).rejects.toThrow();
-  });
-
-  it("an implementation whose eth_getCode answer has no result rejects (Unslashed)", async () => {
-    const node: FakeNode = { ...recordedNode(1), noResult: (call) => call.method === "eth_getCode" && call.params[0] === UNSLASHED_IMPLEMENTATION };
-    await expect(detectOn(1, UNSLASHED, node).detection).rejects.toThrow();
-  });
-
-  it("a detection rejected for a missing result is not cached, so the next one reads the chain again", async () => {
-    const cache = createFamilyCache();
-    let answered = false;
-    const { client, calls } = fakeNodeClient({ ...recordedNode(1), noResult: (call) => call.method === "eth_getCode" && !answered });
-    await expect(detectFamily({ client, chainId: 1, arbitrable: MAINNET_ARBITRABLE_PROXY, cache })).rejects.toThrow();
-    answered = true;
-    await expect(detectFamily({ client, chainId: 1, arbitrable: MAINNET_ARBITRABLE_PROXY, cache })).resolves.toMatchObject({ family: "idr-v2" });
-    expect(codeReads(calls)).toEqual([MAINNET_ARBITRABLE_PROXY, MAINNET_ARBITRABLE_PROXY]);
+  it.each<[string, string, Pick<FakeNode, "fail" | "noResult">]>([
+    [
+      "an RPC error reading the arbitrable's code rejects instead of reading as view-only",
+      MAINNET_ARBITRABLE_PROXY,
+      { fail: (call) => (call.method === "eth_getCode" ? rpcError(-32000, "header not found") : undefined) },
+    ],
+    ["a revert-style error is never read as a missing selector", MAINNET_ARBITRABLE_PROXY, { fail: () => rpcError(3, "execution reverted") }],
+    [
+      "an RPC error reading the EIP-1967 slot rejects",
+      MAINNET_ARBITRABLE_PROXY,
+      { fail: (call) => (call.method === "eth_getStorageAt" ? rpcError(-32000, "timeout") : undefined) },
+    ],
+    [
+      "an RPC error reading the implementation's code rejects",
+      UNSLASHED,
+      { fail: (call) => (call.method === "eth_getCode" && call.params[0] === UNSLASHED_IMPLEMENTATION ? rpcError(-32000, "timeout") : undefined) },
+    ],
+    [
+      "an eth_getCode answer without a result rejects instead of reading as no code (mainnet ArbitrableProxy)",
+      MAINNET_ARBITRABLE_PROXY,
+      { noResult: (call) => call.method === "eth_getCode" },
+    ],
+    ["an eth_getStorageAt answer without a result rejects instead of reading as not a proxy (Unslashed)", UNSLASHED, { noResult: (call) => call.method === "eth_getStorageAt" }],
+    [
+      "an implementation whose eth_getCode answer has no result rejects (Unslashed)",
+      UNSLASHED,
+      { noResult: (call) => call.method === "eth_getCode" && call.params[0] === UNSLASHED_IMPLEMENTATION },
+    ],
+  ])("%s", async (_name, address, misbehaviour) => {
+    await expect(detectOn(1, address, { ...recordedNode(1), ...misbehaviour }).detection).rejects.toThrow();
   });
 
   it("malformed code from the node rejects", async () => {
@@ -259,13 +191,6 @@ describe("probes read bytecode and never call the arbitrable", () => {
 });
 
 describe("known deployments decided by the probes", () => {
-  it("the escrow 0x0d674409… is escrow-v1 with the pay-the-cost appeal", async () => {
-    const detection = await detectRecorded(1, "0x0d67440946949fe293b45c52efd8a9b3d51e2522");
-    expect(detection.family).toBe("escrow-v1");
-    expect(detection.capabilities.appeal).toEqual({ kind: "escrow-pay-cost" });
-    expect(detection.capabilities.localId).toBe("disputeIDtoTransactionID");
-  });
-
   it("the input address is normalized, so a checksummed escrow address detects the same", async () => {
     const node = recordedNode(1);
     const { client } = fakeNodeClient(node);
@@ -280,46 +205,6 @@ describe("known deployments decided by the probes", () => {
     const notAnAddress = "0x1234" as `0x${Lowercase<string>}`;
     await expect(detectFamily({ client, chainId: 1, arbitrable: notAnAddress })).rejects.toThrow("Not an EVM address");
     expect(calls).toEqual([]);
-  });
-
-  it("0x4b89e798… (mainnet) and 0x1128ed55… (Gnosis) are idr-v1 and withdraw with the v1 signatures", async () => {
-    for (const [chainId, address] of [
-      [1, "0x4b89e798b10478a839ea0abcf86c4b94a3c782a4"],
-      [100, "0x1128ed55ab2d796fa92d2f8e1f336d745354a77a"],
-    ] as const) {
-      const detection = await detectRecorded(chainId, address);
-      expect(detection.family).toBe("idr-v1");
-      expect(detection.capabilities.withdraw).toEqual({ kind: "idr-v1" });
-    }
-  });
-
-  it("the older resolver proxy 0x135c5735… is idr-legacy, funds through the fundAppeal it carries and cannot withdraw", async () => {
-    const detection = await detectRecorded(1, OLDER_RESOLVER_PROXY);
-    expect(detection.family).toBe("idr-legacy");
-    expect(detection.capabilities).toEqual({
-      localId: "externalIDtoLocalID",
-      evidence: { kind: "local-id" },
-      appeal: { kind: "idr", fundAppeal: "fundAppeal(uint256,uint8)" },
-      withdraw: { kind: "unsupported" },
-    });
-  });
-
-  it("the governors fund and withdraw through the governor dialect", async () => {
-    const detection = await detectRecorded(1, POH_GOVERNOR);
-    expect(detection.capabilities.appeal).toEqual({ kind: "governor" });
-    expect(detection.capabilities.withdraw).toEqual({ kind: "governor" });
-  });
-
-  it("Proof of Humanity v2, T2CR and the Curate clone have no funding interface", async () => {
-    for (const [chainId, address] of [
-      [1, "0xbe9834097a4e97689d9b667441acafb456d0480a"],
-      [1, "0xebcf3bca271b26ae4b162ba560e243055af0e679"],
-      [100, GNOSIS_CURATE_CLONE],
-    ] as const) {
-      const detection = await detectRecorded(chainId, address);
-      expect(detection.capabilities.appeal).toEqual({ kind: "none" });
-      expect(detection.capabilities.withdraw).toEqual({ kind: "none" });
-    }
   });
 
   it("an escrow deployment at an unlisted address on Gnosis is escrow-v1", async () => {

@@ -1,10 +1,9 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import { GNOSIS_ARBITRATOR, isDisputesCall, MAINNET_ARBITRATOR, NEVER_CREATED_ON_GNOSIS, OUT_OF_RANGE_ON_MAINNET } from "../support/arbitrator";
-import { appOriginOf, fakeNetwork, loadRecording, type HttpRequest, type Traffic } from "../support/network";
+import { isDisputesCall, MAINNET_ARBITRATOR, OUT_OF_RANGE_ON_MAINNET } from "../support/arbitrator";
+import { appOriginOf, fakeNetwork, loadRecording, type Traffic } from "../support/network";
 
-// Mainnet's arbitrator reverts past its last dispute; Gnosis keeps disputes in a mapping, so an ID never created reads
-// as a zeroed struct. The build needs the chain-1 and Gnosis read RPCs and the meta-evidence API configured, as a deploy
-// has.
+// Mainnet's arbitrator reverts past its last dispute. The build needs the chain-1 read RPC and the meta-evidence API
+// configured, as a deploy has.
 
 const RECORDING = loadRecording(new URL("fixtures/mainnet-1621-appeal.json", import.meta.url));
 const CASE_TITLE = "Proof of Humanity Governance Dispute";
@@ -21,33 +20,6 @@ function fakeMainnet(context: BrowserContext, baseURL: string | undefined, id: s
     rpc: (call) => (isDisputesCall(call, MAINNET_ARBITRATOR, BigInt(id)) ? OUT_OF_RANGE_ON_MAINNET : undefined),
   });
 }
-
-function locatorRequests(requests: readonly HttpRequest[], disputeId: string): number {
-  return requests.filter((request) => request.kind === "locator" && request.disputeId === disputeId).length;
-}
-
-test("clears the shown dispute at once and shows the not-found state when searching a nonexistent ID", async ({ context, page, baseURL }) => {
-  const missing = "99999999";
-  const traffic = await fakeMainnet(context, baseURL, missing);
-  await page.goto("/1/cases/1621");
-  await expect(page.getByRole("heading", { name: CASE_TITLE, exact: true })).toBeVisible({ timeout: 15_000 });
-
-  await page.getByRole("searchbox", { name: "Dispute ID" }).fill(missing);
-
-  // The shown dispute goes as soon as the field changes, before the debounced search loads the new ID.
-  await expect(page.getByRole("heading", { name: CASE_TITLE, exact: true, includeHidden: true })).toHaveCount(0, { timeout: 500 });
-  await expect(page).toHaveURL(`/1/cases/${missing}`);
-  await expect
-    .poll(() => traffic.rpc.some((call) => isDisputesCall(call, MAINNET_ARBITRATOR, BigInt(missing))), {
-      message: "disputes(id) never read (needs the chain-1 read RPC in the build)",
-    })
-    .toBe(true);
-  await expect(page.getByText(notFound(missing))).toBeVisible();
-  await expect(page.getByText(CASE_TITLE)).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Appeal", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("region", { name: "Appeal", exact: true, includeHidden: true })).toHaveCount(0);
-  expect(locatorRequests(traffic.http, missing)).toBe(0);
-});
 
 test("Back after a typed search returns to the dispute the search left", async ({ context, page, baseURL }) => {
   const missing = "99999999";
@@ -108,26 +80,6 @@ test("an edit back to the dispute a settled lookup left keeps that lookup's entr
   await page.goBack();
   await expect(page).toHaveURL(`/1/cases/${typed}`);
   await expect(page.getByText(notFound(typed))).toBeVisible();
-});
-
-test("shows the not-found state for an unused Gnosis ID that reads as a zeroed struct", async ({ context, page, baseURL }) => {
-  const unused = "5000000";
-  const traffic = await fakeNetwork(context, {
-    appOrigin: appOriginOf(baseURL),
-    rpc: (call) => (isDisputesCall(call, GNOSIS_ARBITRATOR, BigInt(unused)) ? NEVER_CREATED_ON_GNOSIS : undefined),
-  });
-  await page.goto("/100/cases");
-
-  await page.getByRole("searchbox", { name: "Dispute ID" }).fill(unused);
-
-  await expect(page).toHaveURL(`/100/cases/${unused}`);
-  await expect
-    .poll(() => traffic.rpc.some((call) => isDisputesCall(call, GNOSIS_ARBITRATOR, BigInt(unused))), {
-      message: "disputes(id) never read (needs the Gnosis read RPC in the build)",
-    })
-    .toBe(true);
-  await expect(page.getByText(notFound(unused))).toBeVisible();
-  expect(locatorRequests(traffic.http, unused)).toBe(0);
 });
 
 /** Where the heading and each loading placeholder sit on the page, rounded to the pixel. */

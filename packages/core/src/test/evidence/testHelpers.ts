@@ -1,55 +1,18 @@
-import { createPublicClient, custom, encodeAbiParameters, encodeEventTopics, numberToHex } from "viem";
+import { encodeAbiParameters, encodeEventTopics } from "viem";
 import { erc1497Abi } from "../../abi";
 import type { Address, Hex, ReadClient } from "../../types";
 import fixture from "../../evidence/__fixtures__/mainnet-1454-505.json";
 import gnosisFixture from "../../evidence/__fixtures__/gnosis-460-863-meta-evidence.json";
-import { asLogsRequest, matchesFilter, rpcError, syntheticLog, type LogsRequest, type RpcLog } from "../rpc/testHelpers";
+import { fakeNode, rpcLog, type FakeNodeSpec, type NodeRequests, type RpcLog } from "../rpc/testHelpers";
 
 export { fakeFetcher } from "../fetch/testHelpers";
 export { rpcError, type RpcLog } from "../rpc/testHelpers";
 
-/** What the fake node holds and how it fails. */
-export interface FakeNode {
-  readonly head: bigint;
-  readonly logs: readonly RpcLog[];
-  /** Block number (hex) → timestamp (hex). A block missing here is answered with `null` (block not found). */
-  readonly timestamps: Readonly<Record<string, Hex>>;
-  /** Thrown for every request of this JSON-RPC method. */
-  readonly failing?: Readonly<Record<string, Error>>;
-  /** `eth_getLogs` ranges wider than this many blocks are refused like Infura's result cap. */
-  readonly maxLogRange?: bigint;
-}
+/** The shared fake node, its `eth_getLogs` cap named `maxLogRange`. */
+export type FakeNode = Omit<FakeNodeSpec, "maxRange"> & { readonly maxLogRange?: bigint };
 
-export interface NodeRequests {
-  readonly logs: LogsRequest[];
-  readonly blocks: bigint[];
-  readonly methods: string[];
-}
-
-/** A `ReadClient` over a fake node, with viem's retries off so every request reaches the node once. */
-export function fakeClient(node: FakeNode): { client: ReadClient; requests: NodeRequests } {
-  const requests: NodeRequests = { logs: [], blocks: [], methods: [] };
-  const request = ({ method, params }: { method: string; params?: unknown }): Promise<unknown> => {
-    requests.methods.push(method);
-    const failure = node.failing?.[method];
-    if (failure !== undefined) return Promise.reject(failure);
-    if (method === "eth_blockNumber") return Promise.resolve(numberToHex(node.head));
-    if (method === "eth_getLogs") {
-      const logsRequest = asLogsRequest(params);
-      requests.logs.push(logsRequest);
-      const tooWide = node.maxLogRange !== undefined && logsRequest.toBlock - logsRequest.fromBlock + 1n > node.maxLogRange;
-      if (tooWide) return Promise.reject(rpcError(-32005, "query returned more than 10000 results"));
-      return Promise.resolve(node.logs.filter((log) => matchesFilter(log, logsRequest)));
-    }
-    if (method === "eth_getBlockByNumber") {
-      const [number] = params as [Hex];
-      requests.blocks.push(BigInt(number));
-      const timestamp = node.timestamps[number];
-      return Promise.resolve(timestamp === undefined ? null : { number, timestamp, hash: `0x${"cd".repeat(32)}` });
-    }
-    return Promise.reject(rpcError(-32601, `unexpected method ${method}`));
-  };
-  return { client: createPublicClient({ transport: custom({ request }, { retryCount: 0 }) }), requests };
+export function fakeClient({ maxLogRange, ...node }: FakeNode): { readonly client: ReadClient; readonly requests: NodeRequests } {
+  return fakeNode(maxLogRange === undefined ? node : { ...node, maxRange: maxLogRange });
 }
 
 interface LogPlacement {
@@ -65,26 +28,38 @@ export function evidenceLog(input: LogPlacement & { readonly arbitrator: Address
     eventName: "Evidence",
     args: { _arbitrator: input.arbitrator, _evidenceGroupID: input.evidenceGroupId, _party: input.party },
   });
-  return syntheticLog(input.arbitrable, topics as Hex[], encodeAbiParameters([{ type: "string" }], [input.uri]), input.blockNumber, input.logIndex);
+  return rpcLog({
+    address: input.arbitrable,
+    topics: topics as Hex[],
+    data: encodeAbiParameters([{ type: "string" }], [input.uri]),
+    blockNumber: input.blockNumber,
+    logIndex: input.logIndex,
+  });
 }
 
 export function disputeLog(
   input: LogPlacement & { readonly arbitrator: Address; readonly disputeId: bigint; readonly metaEvidenceId: bigint; readonly evidenceGroupId: bigint },
 ): RpcLog {
   const topics = encodeEventTopics({ abi: erc1497Abi, eventName: "Dispute", args: { _arbitrator: input.arbitrator, _disputeID: input.disputeId } });
-  return syntheticLog(
-    input.arbitrable,
-    topics as Hex[],
-    encodeAbiParameters([{ type: "uint256" }, { type: "uint256" }], [input.metaEvidenceId, input.evidenceGroupId]),
-    input.blockNumber,
-    input.logIndex,
-  );
+  return rpcLog({
+    address: input.arbitrable,
+    topics: topics as Hex[],
+    data: encodeAbiParameters([{ type: "uint256" }, { type: "uint256" }], [input.metaEvidenceId, input.evidenceGroupId]),
+    blockNumber: input.blockNumber,
+    logIndex: input.logIndex,
+  });
 }
 
 /** A synthetic `MetaEvidence` log whose `_evidence` string is `uri`. */
 export function metaEvidenceLog(input: LogPlacement & { readonly metaEvidenceId: bigint; readonly uri: string }): RpcLog {
   const topics = encodeEventTopics({ abi: erc1497Abi, eventName: "MetaEvidence", args: { _metaEvidenceID: input.metaEvidenceId } });
-  return syntheticLog(input.arbitrable, topics as Hex[], encodeAbiParameters([{ type: "string" }], [input.uri]), input.blockNumber, input.logIndex);
+  return rpcLog({
+    address: input.arbitrable,
+    topics: topics as Hex[],
+    data: encodeAbiParameters([{ type: "string" }], [input.uri]),
+    blockNumber: input.blockNumber,
+    logIndex: input.logIndex,
+  });
 }
 
 /** The recorded mainnet disputes 1454 and 505, read at block 26,190,208 (`__fixtures__/mainnet-1454-505.json`). */
@@ -142,7 +117,7 @@ export function recordedBodies(): Record<string, string> {
 }
 
 /**
- * The recorded Gnosis disputes 460, 431 and 863, read at block 48,850,832
+ * The recorded Gnosis disputes 460 and 863, read at block 48,850,832
  * (`__fixtures__/gnosis-460-863-meta-evidence.json`): each one's Dispute log and every MetaEvidence log of its ID.
  */
 export const RECORDED_GNOSIS = {

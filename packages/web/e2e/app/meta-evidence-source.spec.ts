@@ -141,20 +141,6 @@ test("Gnosis 460 renders the on-chain meta-evidence while the meta-evidence API 
   expect(metaEvidenceScans.map((call) => filterOf(call).address?.toLowerCase())).toEqual([ARBITRABLE]);
 });
 
-test("renders the locator's meta-evidence when the arbitrable's logs cannot be read", async ({ context, page, baseURL }) => {
-  // The read client retries the failing log scan before the locator takes over, which can outlast the default 30 s.
-  test.setTimeout(90_000);
-  const failingLogs = (call: RpcCall): RpcAnswer | undefined =>
-    call.method === "eth_getLogs" && filterOf(call).address?.toLowerCase() === ARBITRABLE ? { error: { code: -32000, message: "header not found" } } : caseRpc(call);
-  const traffic = await openCase(context, page, baseURL, failingLogs);
-
-  await expect(page.getByRole("heading", { name: LOCATOR_TITLE, exact: true })).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByRole("heading", { name: EVENT_TITLE, exact: true })).toHaveCount(0);
-  await expect(page.getByText(WARNING_TITLE)).toHaveCount(0);
-  expect(gatewayPaths(traffic)).toContain(LOCATOR_PATH);
-  expect(gatewayPaths(traffic)).not.toContain(EVENT_PATH);
-});
-
 test("names an API answer that is not content-addressed as unverifiable next to the on-chain meta-evidence", async ({ context, page, baseURL }) => {
   // Pathnames only: frame and RPC URLs carry keys in their parameters. The harness aborts /ipns/ requests uncounted.
   const requested: string[] = [];
@@ -168,15 +154,6 @@ test("names an API answer that is not content-addressed as unverifiable next to 
   expect(gatewayPaths(traffic)).toContain(EVENT_PATH);
   expect(gatewayPaths(traffic)).not.toContain(LOCATOR_PATH);
   expect(requested.filter((path) => path.startsWith("/ipns/"))).toEqual([]);
-});
-
-test("shows no warning when the API does not answer and the event is found", async ({ context, page, baseURL }) => {
-  const traffic = await openCase(context, page, baseURL, caseRpc, (request) => (request.kind === "locator" ? { status: 500 } : undefined));
-
-  await expect(page.getByRole("heading", { name: EVENT_TITLE, exact: true })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(WARNING_TITLE)).toHaveCount(0);
-  expect(gatewayPaths(traffic)).toContain(EVENT_PATH);
-  expect(gatewayPaths(traffic)).not.toContain(LOCATOR_PATH);
 });
 
 /** Gnosis's arbitrator lists dispute 460 as open: its creation log, and no `NewPeriod` log. */

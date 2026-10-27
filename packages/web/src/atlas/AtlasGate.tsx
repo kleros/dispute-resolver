@@ -2,9 +2,22 @@ import { AtlasProvider, IpfsProduct, SignupProduct } from "@kleros/kleros-app";
 import { useMemo, type ReactNode } from "react";
 import { useConfig } from "wagmi";
 import { AtlasUploaderProvider } from "./context";
-import type { AtlasGateProps } from "./types";
-import { UNCONFIGURED_UPLOADER } from "./unconfigured";
+import { failure } from "./failures";
+import type { AtlasGateProps, AtlasUploader } from "./types";
 import { useLibraryUploader } from "./useLibraryUploader";
+
+/**
+ * Without `REACT_APP_ATLAS_URI` nothing is requested. Every caller locks its upload control on `availability`, so the
+ * uploads below are never reached from the UI; if one is, it fails like any other upload.
+ */
+const UNCONFIGURED_UPLOADER: AtlasUploader = Object.freeze({
+  availability: "unconfigured",
+  phase: "idle",
+  isSignedIn: false,
+  limits: () => null,
+  upload: () => Promise.resolve(failure.uploadFailed(null)),
+  uploadJson: () => Promise.resolve(failure.uploadFailed(null)),
+});
 
 function LibraryUploaderProvider({ children }: { readonly children?: ReactNode }) {
   const uploader = useLibraryUploader();

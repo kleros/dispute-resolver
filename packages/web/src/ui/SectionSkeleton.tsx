@@ -23,9 +23,7 @@ const LINE_WIDTHS = ["w-full", "w-11/12", "w-4/5", "w-full", "w-5/6"] as const;
 const MAX_ITEMS = 24;
 
 function itemCount(lines: number | undefined, fallback: number): number {
-  if (lines === undefined || !Number.isFinite(lines)) {
-    return fallback;
-  }
+  if (lines === undefined || !Number.isFinite(lines)) return fallback;
   return Math.min(MAX_ITEMS, Math.max(1, Math.floor(lines)));
 }
 
@@ -34,9 +32,7 @@ function keys(prefix: string, count: number): string[] {
 }
 
 function lineWidth(position: number, count: number): string {
-  if (count > 1 && position === count - 1) {
-    return "w-1/2";
-  }
+  if (count > 1 && position === count - 1) return "w-1/2";
   return LINE_WIDTHS[position % LINE_WIDTHS.length] ?? "w-full";
 }
 

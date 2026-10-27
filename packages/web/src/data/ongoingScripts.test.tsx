@@ -83,20 +83,13 @@ async function loadBothAnsweredInReverse(): Promise<{ readonly client: QueryClie
 }
 
 describe("scripted disputes on the Ongoing list", () => {
-  it("two scripted disputes loading together each show their own title when the scripts answer in reverse order", async () => {
-    const { titles } = await loadBothAnsweredInReverse();
+  it("two scripted disputes loading together each show and persist their own title when the scripts answer in reverse order", async () => {
+    const { client, titles } = await loadBothAnsweredInReverse();
     await waitFor(() => {
       expect(titles()).toEqual([
         { status: "ready", value: { kind: "title", text: "Title of 901" } },
         { status: "ready", value: { kind: "title", text: "Title of 902" } },
       ]);
-    });
-  });
-
-  it("each scripted dispute's persisted entry holds its own title", async () => {
-    const { client, titles } = await loadBothAnsweredInReverse();
-    await waitFor(() => {
-      expect(titles().map((title) => title.status)).toEqual(["ready", "ready"]);
     });
 
     const persisted = dehydrate(client, { shouldDehydrateQuery: shouldPersistQuery }).queries;

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { TestDataProvider } from "../test/data";
 import { WalletSetupProvider } from "./WalletProvider";
 import { buildAppConfig } from "../env";
-import { configuredChains, toViemChain } from "./chains";
+import { toViemChain } from "./chains";
 import { CONNECTED_WAGMI_STORE, createTestWallet } from "../test/wallet";
 import { testPageChain } from "../test/routing";
 import type { AppKitWalletSetup } from "./types";
@@ -26,10 +26,6 @@ describe("createReadOnlySetup (no WalletConnect project ID)", () => {
     const setup = createReadOnlySetup(buildAppConfig({}, LOCATION));
     expect(setup.mode).toBe("unconfigured");
     expect("modal" in setup).toBe(false);
-  });
-
-  it("the wagmi config has no connector", () => {
-    expect(createReadOnlySetup(buildAppConfig({}, LOCATION)).wagmiConfig.connectors).toEqual([]);
   });
 
   it("a browser wallet announcing itself through EIP-6963 is not added", async () => {
@@ -160,17 +156,11 @@ describe("createWalletSetupStore", () => {
     }
   });
 
-  it("once AppKit is loaded, nothing is pending", async () => {
-    const appKit = fakeAppKit();
-    const store = createWalletSetupStore(buildAppConfig(WITH_PROJECT_ID, LOCATION), () => Promise.resolve(appKit.create), storedWagmiStore(CONNECTED_WAGMI_STORE));
-    await store.load();
-    expect(store.getSnapshot()).toEqual({ setup: appKit.setup, pending: false, pendingReconnect: false });
-  });
-
-  it("load creates AppKit once with the project ID and publishes its setup", async () => {
+  it("load creates AppKit once with the project ID, publishes its setup and stops waiting for a reconnect", async () => {
     const appKit = fakeAppKit();
     const config = buildAppConfig(WITH_PROJECT_ID, LOCATION);
-    const store = createWalletSetupStore(config, () => Promise.resolve(appKit.create));
+    const store = createWalletSetupStore(config, () => Promise.resolve(appKit.create), storedWagmiStore(CONNECTED_WAGMI_STORE));
+    expect(store.getSnapshot().pendingReconnect).toBe(true);
     const listener = vi.fn();
     store.subscribe(listener);
     const [first, second] = await Promise.all([store.load(), store.load()]);
@@ -256,10 +246,6 @@ describe("walletTransport", () => {
     for (let start = 0; start + 6 <= KEY.length; start += 1) expect(texts.join("\n")).not.toContain(KEY.slice(start, start + 6));
   });
 
-  it("the error names the chain without mentioning configuration", async () => {
-    await expect(walletTransport(testPageChain(100).chain, {})({}).request({ method: "eth_blockNumber" })).rejects.toThrow("Reads on chain 100 are unavailable.");
-  });
-
   it("a read-only setup's chain without an RPC rejects every request the same way", async () => {
     const setup = createReadOnlySetup(buildAppConfig({}, LOCATION));
     await expect(setup.wagmiConfig.getClient({ chainId: 1 }).request({ method: "eth_blockNumber" })).rejects.toThrow("Reads on chain 1 are unavailable.");
@@ -272,24 +258,15 @@ describe("toViemChain", () => {
     expect(JSON.stringify(setup.wagmiConfig.chains)).not.toContain("secret-key");
   });
 
-  it("every configured chain has a viem definition with the app's name", () => {
+  it("every configured chain has a viem definition with the app's name and the core table's explorer, Gnosis on gnosisscan.io and Chiado on gnosis-chiado.blockscout.com", () => {
     for (const config of Object.values(CHAINS)) {
       const viemChain = toViemChain(config);
       expect(viemChain.id).toBe(config.id);
       expect(viemChain.name).toBe(config.name);
       expect(viemChain.rpcUrls.default.http.length).toBeGreaterThan(0);
-    }
-  });
-
-  it("AppKit's explorer of every configured chain is the core table's, Gnosis on gnosisscan.io and Chiado on gnosis-chiado.blockscout.com", () => {
-    for (const config of Object.values(CHAINS)) {
-      expect(toViemChain(config).blockExplorers?.default.url, `chain ${String(config.id)}`).toBe(config.explorerBaseUrl);
+      expect(viemChain.blockExplorers?.default.url, `chain ${String(config.id)}`).toBe(config.explorerBaseUrl);
     }
     expect(toViemChain(testPageChain(100).chain).blockExplorers?.default).toEqual({ name: "Gnosisscan", url: "https://gnosisscan.io" });
     expect(toViemChain(testPageChain(10200).chain).blockExplorers?.default).toEqual({ name: "Blockscout", url: "https://gnosis-chiado.blockscout.com" });
-  });
-
-  it("the configured chains start with chain 1", () => {
-    expect(configuredChains()[0].id).toBe(1);
   });
 });

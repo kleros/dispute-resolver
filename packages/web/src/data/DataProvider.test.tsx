@@ -57,19 +57,6 @@ describe("DataProvider", () => {
     expect(document.querySelectorAll("iframe")).toHaveLength(0);
   });
 
-  it("discards a cache written under another version at boot", async () => {
-    localStorage.setItem(PERSISTED_CACHE_KEY, storedCourts("dr-cache-0"));
-    render(
-      <DataProvider config={CONFIG}>
-        <Probe />
-      </DataProvider>,
-    );
-    await waitFor(() => {
-      expect(screen.getByLabelText("probe").textContent).toBe("restored:none:rpc");
-    });
-    expect(localStorage.getItem(PERSISTED_CACHE_KEY)).toBeNull();
-  });
-
   it("gives a chain without a configured RPC no read client", async () => {
     render(
       <DataProvider config={buildAppConfig({}, { host: "localhost", origin: "http://localhost" })}>

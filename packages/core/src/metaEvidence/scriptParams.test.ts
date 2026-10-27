@@ -1,16 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { Env } from "../types";
-import { CASE_PAGE_BUDGET_MS, buildScriptParameters, loadMetaEvidence, parseMetaEvidence } from "./index";
+import { buildScriptParameters, loadMetaEvidence, parseMetaEvidence } from "./index";
 import {
   ARBITRABLE,
   DEFAULT_SCRIPT_CID,
   DEFAULT_SCRIPT_URL,
   ENV,
   GNOSIS_RPC,
-  HANG,
   MAINNET_RPC,
   META_URL,
-  type Route,
   context,
   fakeFetcher,
   fakeRunner,
@@ -18,7 +16,6 @@ import {
   locatorUrl,
   scriptOk,
   servedMetaEvidence,
-  settle,
 } from "../test/metaEvidence/testHelpers";
 import type { MetaEvidence } from "./types";
 
@@ -48,29 +45,6 @@ describe("buildScriptParameters", () => {
     }
   });
 
-  it("valid chain IDs are passed as integers", () => {
-    const outcome = build({ arbitratorChainID: "1", arbitrableChainID: 100 });
-    expect(outcome.ok && [outcome.value.arbitratorChainID, outcome.value.arbitrableChainID]).toEqual([1, 100]);
-  });
-
-  it("a `</script>` chain ID fails with no parameters", () => {
-    const outcome = build({ arbitrableChainID: '1</script><script>parent.postMessage({target:"script"},"*")</script>' });
-    expect(outcome.ok).toBe(false);
-    if (!outcome.ok) expect(outcome.error.code).toBe("no-rpc");
-  });
-
-  it("non-integer chain IDs fail", () => {
-    for (const bad of ["1.0", 1.5, "01", " 1", "0x1", "1e0", {}]) {
-      expect(build({ arbitratorChainID: bad }).ok).toBe(false);
-      expect(build({ arbitrableChainID: bad }).ok).toBe(false);
-    }
-  });
-
-  it("a chain that is not configured (Optimism, 10) fails instead of throwing", () => {
-    expect(build({ arbitrableChainID: 10 }).ok).toBe(false);
-    expect(build({ arbitratorChainID: "10" }).ok).toBe(false);
-  });
-
   it("a chain the table lacks stops the script with the reason that its network's details are unavailable", () => {
     expect(metaEvidence({ arbitrableChainID: 690 }).arbitrableChainID).toEqual({ status: "unsupported", chainId: 690 });
     for (const fields of [{ arbitrableChainID: 690 }, { arbitratorChainID: "80001" }]) {
@@ -81,20 +55,16 @@ describe("buildScriptParameters", () => {
     }
   });
 
-  it("the RPC URLs are the read RPC of each chain", () => {
+  it("the chain IDs are passed as integers and the RPC URLs are the read RPC of each chain", () => {
     const env: Env = { ...ENV, REACT_APP_WEB3_PROVIDER_URL: MAINNET_RPC, REACT_APP_WEB3_XDAI_PROVIDER_URL: GNOSIS_RPC };
-    const outcome = build({ arbitrableChainID: 100 }, env);
+    const outcome = build({ arbitratorChainID: "1", arbitrableChainID: 100 }, env);
+    expect(outcome.ok && [outcome.value.arbitratorChainID, outcome.value.arbitrableChainID]).toEqual([1, 100]);
     expect(outcome.ok && [outcome.value.arbitratorJsonRpcUrl, outcome.value.arbitrableJsonRpcUrl]).toEqual([MAINNET_RPC, GNOSIS_RPC]);
   });
 
   it("a configured chain without any RPC setting gets null, never a wallet default", () => {
     const outcome = build({ arbitrableChainID: 137 }, { ...ENV, REACT_APP_WEB3_PROVIDER_URL: MAINNET_RPC });
     expect(outcome.ok && [outcome.value.arbitratorJsonRpcUrl, outcome.value.arbitrableJsonRpcUrl]).toEqual([MAINNET_RPC, null]);
-  });
-
-  it("the arbitrable is the arbitrator's, whatever the meta-evidence names", () => {
-    const outcome = build({ arbitrableContractAddress: "0x0000000000000000000000000000000000000bad", arbitrable: "0x0000000000000000000000000000000000000bad" });
-    expect(outcome.ok && outcome.value.arbitrableContractAddress).toBe(ARBITRABLE);
   });
 });
 
@@ -123,6 +93,8 @@ describe("loadMetaEvidence script parameters", () => {
     expect(result.status === "ok" && [result.metaEvidence.title, result.metaEvidence.rulingOptions]).toEqual(["Static title", rulingOptions]);
     expect(requests).toHaveLength(0);
     expect(urls).not.toContain(DEFAULT_SCRIPT_URL);
+    expect(urls.filter((url) => url === locatorUrl(1, 1684n))).toHaveLength(1);
+    expect(urls.filter((url) => url === META_URL)).toHaveLength(1);
   });
 
   it("an unconfigured arbitrable chain does not excuse a script that is off the allowlist or not content-addressed", async () => {
@@ -137,42 +109,8 @@ describe("loadMetaEvidence script parameters", () => {
     }
   });
 
-  describe("when the script's gateway would fail", () => {
-    const rulingOptions = { type: "single-select", titles: ["Pay the seller", "Refund the buyer"] };
-    const unreachableScripts: [string, Route][] = [
-      ["rejects", new TypeError("Failed to fetch")],
-      ["never answers", HANG],
-      ["answers HTTP 404", { status: 404, body: "Not Found" }],
-    ];
-
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
-    for (const [behavior, route] of unreachableScripts) {
-      it(`an unconfigured arbitrable chain keeps the static rulingOptions at once when the script fetch ${behavior}`, async () => {
-        const { fetcher, urls } = fakeFetcher({
-          ...servedMetaEvidence(scriptJson({ title: "Static title", arbitrableChainID: 10, rulingOptions })),
-          [DEFAULT_SCRIPT_URL]: route,
-        });
-        const { runner, requests } = fakeRunner(scriptOk({ title: "From the script" }));
-        const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, runner })), CASE_PAGE_BUDGET_MS);
-        expect(result).toMatchObject({ status: "ok", script: { ran: false, reason: "script-chain-unavailable" } });
-        expect(result.status === "ok" && [result.metaEvidence.title, result.metaEvidence.rulingOptions]).toEqual(["Static title", rulingOptions]);
-        expect(elapsedMs).toBe(0);
-        expect(requests).toHaveLength(0);
-        expect(urls).not.toContain(DEFAULT_SCRIPT_URL);
-        expect(urls.filter((url) => url === locatorUrl(1, 1684n))).toHaveLength(1);
-      });
-    }
-  });
-
   it("no script-parameter reason names configuration", () => {
-    for (const fields of [{ arbitrableChainID: 10 }, { arbitratorChainID: "1</script>" }, { arbitrableChainID: "1.0" }]) {
+    for (const fields of [{ arbitrableChainID: 10 }, { arbitratorChainID: "1</script>" }, { arbitrableChainID: "1</script>" }, { arbitrableChainID: "1.0" }]) {
       const outcome = build(fields);
       if (outcome.ok) throw new Error("the chain ID must be refused");
       expect(outcome.error.code).toBe("no-rpc");

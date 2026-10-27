@@ -20,24 +20,20 @@ describe("tokenExpiry and isLiveToken", () => {
     expect(isLiveToken(token, NOW)).toBe(true);
   });
 
-  it("treats a token without exp as expired", () => {
-    expect(isLiveToken(testJwt({ sub: TEST_WALLET_ACCOUNT }), NOW)).toBe(false);
-    expect(isLiveToken(testJwt({ sub: TEST_WALLET_ACCOUNT, exp: String(NOW + 60) }), NOW)).toBe(false);
-  });
-
-  it("counts an expired token as signed out", () => {
-    expect(isLiveToken(testJwt({ sub: TEST_WALLET_ACCOUNT, exp: NOW }), NOW)).toBe(false);
-    expect(isLiveToken(testJwt({ sub: TEST_WALLET_ACCOUNT, exp: NOW - 1 }), NOW)).toBe(false);
-  });
-
-  it("counts an undecodable token as signed out", () => {
-    expect(isLiveToken(null, NOW)).toBe(false);
-    expect(isLiveToken("not-a-jwt", NOW)).toBe(false);
-    expect(isLiveToken("a.b", NOW)).toBe(false);
-    expect(isLiveToken("a.%%%.c", NOW)).toBe(false);
-    expect(isLiveToken(`a.${btoa("not json")}.c`, NOW)).toBe(false);
-    expect(isLiveToken(`a.${btoa("ÿþ")}.c`, NOW)).toBe(false);
-    expect(isLiveToken(testJwt({ exp: NOW + 60 }), NOW)).toBe(false);
+  it.each<[string, string | null]>([
+    ["a token without exp", testJwt({ sub: TEST_WALLET_ACCOUNT })],
+    ["a token whose exp is a string", testJwt({ sub: TEST_WALLET_ACCOUNT, exp: String(NOW + 60) })],
+    ["a token that expires now", testJwt({ sub: TEST_WALLET_ACCOUNT, exp: NOW })],
+    ["an expired token", testJwt({ sub: TEST_WALLET_ACCOUNT, exp: NOW - 1 })],
+    ["no token", null],
+    ["a string that is not a JWT", "not-a-jwt"],
+    ["a token with two parts", "a.b"],
+    ["a token whose payload is not base64", "a.%%%.c"],
+    ["a token whose payload is padded base64, not base64url", `a.${btoa("not json")}.c`],
+    ["a token whose payload holds characters outside base64url", `a.${btoa("ÿþ")}.c`],
+    ["a token without a subject", testJwt({ exp: NOW + 60 })],
+  ])("%s is not a live token", (_name, token) => {
+    expect(isLiveToken(token, NOW)).toBe(false);
   });
 });
 
@@ -207,16 +203,5 @@ describe("@kleros/kleros-app 3.1.0 session storage coupling", () => {
       expect(result.current.library.isVerified).toBe(true);
     });
     expect(result.current.uploader.isSignedIn).toBe(true);
-  });
-
-  it("treats a token stored that way before mount as the library's verified session", async () => {
-    installFakeAtlasServer();
-    sessionStorage.setItem("authToken", JSON.stringify(sessionJwt(TEST_WALLET_ACCOUNT)));
-    const wallet = await createConnectedTestWallet();
-    const { result } = renderHook(() => useAtlasUpload(), { wrapper: atlasWrapper(wallet) });
-
-    await waitFor(() => {
-      expect(result.current.isSignedIn).toBe(true);
-    });
   });
 });

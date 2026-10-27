@@ -3,16 +3,7 @@
   "chainId": 1,
   "readAtBlock": 26190900,
   "disputeId": "1170",
-  "disputeCreation": {
-    "blockNumber": 14578743,
-    "logIndex": 103,
-    "transactionHash": "0xc3cacf325b6a3051dc374a6c66c382810e8b73ded10c7c7586d22d6fe5443ec1"
-  },
   "disputeEvent": {
-    "blockNumber": 14578743,
-    "logIndex": 105,
-    "transactionHash": "0xc3cacf325b6a3051dc374a6c66c382810e8b73ded10c7c7586d22d6fe5443ec1",
-    "metaEvidenceID": "0",
-    "evidenceGroupID": "0"
+    "blockNumber": 14578743
   }
 }

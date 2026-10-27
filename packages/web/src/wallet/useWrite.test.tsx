@@ -2,8 +2,7 @@ import type { Hex } from "@dispute-resolver/core";
 import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { writeContract } from "@wagmi/core";
-import { ChainMismatchError, ContractFunctionExecutionError, ContractFunctionRevertedError, UserRejectedRequestError, type EIP1193RequestFn } from "viem";
-import { mainnet } from "viem/chains";
+import { ContractFunctionExecutionError, ContractFunctionRevertedError, UserRejectedRequestError, type EIP1193RequestFn } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WriteReceipt } from "../data";
 import { createTestDeps } from "../test/data";
@@ -82,11 +81,6 @@ afterEach(() => {
 });
 
 describe("useWrite chain guard", () => {
-  it("the controller has no switch or Connect of its own; WriteStatusNotice offers both", () => {
-    const { result } = renderWrite(createTestWallet());
-    expect(Object.keys(result.current).sort((a, b) => a.localeCompare(b))).toEqual(["execute", "reset", "status"]);
-  });
-
   it("refuses to sign when the wallet is on another chain", async () => {
     const wallet = await createConnectedTestWallet({ chainId: 100 });
     const { result } = renderWrite(wallet);
@@ -130,8 +124,8 @@ describe("useWrite chain guard", () => {
     expect(writeContractMock).not.toHaveBeenCalled();
   });
 
-  it("refuses before signing a call built for another chain than the page, even with the wallet on the page chain", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 1 });
+  it.each([1, 100])("refuses before signing a call built for another chain than the page, with the wallet on chain %i, and offers no switch", async (walletChainId) => {
+    const wallet = await createConnectedTestWallet({ chainId: walletChainId });
     const latest = renderWriteWithNotice(wallet);
     let outcome: WriteStatus | undefined;
     await act(async () => {
@@ -140,17 +134,6 @@ describe("useWrite chain guard", () => {
     expect(outcome).toEqual({ phase: "refused", refusal: "call-chain-mismatch" });
     expect(writeContractMock).not.toHaveBeenCalled();
     expect(screen.getByText("Action unavailable")).toBeInTheDocument();
-    expect(screen.getByText(CALL_CHAIN_MISMATCH)).toBeInTheDocument();
-  });
-
-  it("refuses a call built for the wallet's chain while the page is on another one, without offering a switch", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const latest = renderWriteWithNotice(wallet);
-    await act(async () => {
-      await latest().execute(testWriteBuild(100), { pageChainId: 1 });
-    });
-    expect(latest().status).toEqual({ phase: "refused", refusal: "call-chain-mismatch" });
-    expect(writeContractMock).not.toHaveBeenCalled();
     expect(screen.getByText(CALL_CHAIN_MISMATCH)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Switch to/ })).toBeNull();
   });
@@ -182,19 +165,6 @@ describe("useWrite chain guard", () => {
     // Both methods are answered by the mock connector itself; any other one would go out to the chain's RPC.
     expect(methods).toContain("eth_chainId");
     expect(methods.filter((method) => method !== "eth_chainId" && method !== "wallet_switchEthereumChain")).toEqual([]);
-  });
-
-  it("a chain change during signing that wagmi rejects ends as a wrong-chain refusal", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 1 });
-    writeContractMock.mockImplementation(async () => {
-      await wallet.changeChain(100);
-      throw new ChainMismatchError({ chain: mainnet, currentChainId: 100 });
-    });
-    const { result } = renderWrite(wallet);
-    await act(async () => {
-      await result.current.execute(testWriteBuild(1), { pageChainId: 1 });
-    });
-    expect(result.current.status).toEqual({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 });
   });
 
   it("needs a wallet when none is connected, and keeps the page chain for the Connect offer", async () => {

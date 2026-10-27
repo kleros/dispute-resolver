@@ -69,18 +69,14 @@ describe("readDisputeDetails", () => {
     expect(requests.logs[0]?.address).toBe(MAINNET.arbitrator);
   });
 
-  it("starts the AppealDecision scan at the Dispute event's block when known", async () => {
+  it.each([
+    ["the Dispute event's block when known", DISPUTE_1454_EVENT_BLOCK, DISPUTE_1454_EVENT_BLOCK],
+    ["the arbitrator's deployment block without the Dispute event", null, MAINNET_DEPLOY_BLOCK],
+  ])("starts the AppealDecision scan at %s", async (_, eventBlock, expectedFrom) => {
     const dispute = await found(1454n);
     const { client, requests } = fakeClient(recordedNode(MAINNET));
-    await readDisputeDetails({ chainId: 1, client }, dispute, undefined, DISPUTE_1454_EVENT_BLOCK);
-    expect(requests.logs[0]).toMatchObject({ fromBlock: DISPUTE_1454_EVENT_BLOCK, toBlock: MAINNET.readAtBlock });
-  });
-
-  it("without the Dispute event the AppealDecision scan starts at the arbitrator's deployment block", async () => {
-    const dispute = await found(1454n);
-    const { client, requests } = fakeClient(recordedNode(MAINNET));
-    await readDisputeDetails({ chainId: 1, client }, dispute, undefined, null);
-    expect(requests.logs[0]?.fromBlock).toBe(MAINNET_DEPLOY_BLOCK);
+    await readDisputeDetails({ chainId: 1, client }, dispute, undefined, eventBlock);
+    expect(requests.logs[0]).toMatchObject({ fromBlock: expectedFrom, toBlock: MAINNET.readAtBlock });
   });
 
   it("reads appealCost and appealPeriod only in periods 3 and 4", async () => {
@@ -94,26 +90,17 @@ describe("readDisputeDetails", () => {
     expect(selectors).not.toContain(APPEAL_PERIOD);
   });
 
-  it("a failing getDispute leaves the other reads intact", async () => {
+  it.each([
+    ["a failing getDispute leaves the other reads intact", GET_DISPUTE, "votesLengths", "currentRuling", 2n],
+    ["a failing currentRuling read leaves the other reads intact and is never read as ruling 0", CURRENT_RULING, "currentRuling", "votesLengths", [3n, 7n, 15n, 31n]],
+  ] as const)("%s", async (_, selector, failedField, intactField, intactValue) => {
     const dispute = await found(328n);
     const family = await recordedDetection(1, dispute.binding.arbitrated);
-    const { client } = fakeClient(failingCalls(GET_DISPUTE, { code: -32000, message: "header not found" }));
+    const { client } = fakeClient(failingCalls(selector, { code: -32000, message: "header not found" }));
     const reads = await readDisputeDetails({ chainId: 1, client }, dispute, family, null);
-    expect(reads.votesLengths).toMatchObject({ ok: false, error: { code: "rpc-error" } });
-    expect(reads.currentRuling).toEqual({ ok: true, value: 2n });
-    expect(reads.localId).toEqual({ kind: "local-id", value: 51n });
-    expect(reads.appealDecisions.ok).toBe(true);
-    expect(reads.appealInfo?.ok).toBe(true);
-  });
-
-  it("a failing currentRuling read leaves the other reads intact and is never read as ruling 0", async () => {
-    const dispute = await found(328n);
-    const family = await recordedDetection(1, dispute.binding.arbitrated);
-    const { client } = fakeClient(failingCalls(CURRENT_RULING, { code: -32000, message: "header not found" }));
-    const reads = await readDisputeDetails({ chainId: 1, client }, dispute, family, null);
-    expect(reads.currentRuling).toMatchObject({ ok: false, error: { code: "rpc-error" } });
-    expect(reads.currentRuling).not.toHaveProperty("value");
-    expect(reads.votesLengths).toEqual({ ok: true, value: [3n, 7n, 15n, 31n] });
+    expect(reads[failedField]).toMatchObject({ ok: false, error: { code: "rpc-error" } });
+    expect(reads[failedField]).not.toHaveProperty("value");
+    expect(reads[intactField]).toEqual({ ok: true, value: intactValue });
     expect(reads.localId).toEqual({ kind: "local-id", value: 51n });
     expect(reads.appealDecisions.ok).toBe(true);
     expect(reads.appealInfo?.ok).toBe(true);
@@ -146,13 +133,9 @@ describe("readDisputeDetails", () => {
   it("without a read RPC every read is unavailable with no-rpc", async () => {
     const dispute = await found(1454n);
     const reads = await readDisputeDetails({ chainId: 1, client: undefined }, dispute, undefined, null);
-    expect(reads.votesLengths).toMatchObject({ ok: false, error: { code: "no-rpc" } });
-    expect(reads.currentRuling).toMatchObject({ ok: false, error: { code: "no-rpc" } });
-    expect(reads.appealDecisions).toMatchObject({ ok: false, error: { code: "no-rpc" } });
-    expect(reads.appealInfo).toMatchObject({ ok: false, error: { code: "no-rpc" } });
     expect(reads.localId).toEqual({ kind: "unresolved", reason: "rpc-error" });
     for (const outcome of [reads.votesLengths, reads.currentRuling, reads.appealDecisions, reads.appealInfo]) {
-      expect(outcome).toMatchObject({ ok: false, error: { message: "This network's data is unavailable." } });
+      expect(outcome).toMatchObject({ ok: false, error: { code: "no-rpc", message: "This network's data is unavailable." } });
       if (outcome?.ok === false) expect(outcome.error.message).not.toMatch(/configur|RPC|REACT_APP/i);
     }
   });

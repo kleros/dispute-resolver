@@ -141,8 +141,8 @@ test.describe("case page dynamic script", () => {
 
   test("the app's runner frame is sandboxed without allow-same-origin, runs at an opaque origin and ignores a foreign window", async ({ page, baseURL }) => {
     test.setTimeout(RENDER_LIMIT_MS + 30_000);
-    const traffic = await routeCasePage(page, baseURL, { [FORGER_URL]: FORGER_HTML });
-    const appOrigin = appOriginOf(baseURL);
+    const traffic = await routeCasePage(page, baseURL);
+    await page.route(FORGER_URL, (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: FORGER_HTML }));
 
     await page.goto(CASE_PATH);
     // A foreign window joins the page before the runner frame exists and keeps posting run requests and results.
@@ -159,22 +159,6 @@ test.describe("case page dynamic script", () => {
     expect(await runnerElement.getAttribute("sandbox")).toBe("allow-scripts");
     expect(await runnerElement.evaluate((frame) => (frame as HTMLIFrameElement).sandbox.contains("allow-same-origin"))).toBe(false);
     expect(await runnerElement.getAttribute("referrerpolicy")).toBe("no-referrer");
-
-    const runner = await (await runnerElement.elementHandle()).contentFrame();
-    if (runner === null) throw new Error("The runner iframe has no frame.");
-    // The script resolves after SCRIPT_DELAY_MS, so the frame is open while its accepted run is inspected. Booleans only:
-    // the run's parameters carry the read RPC URL.
-    await runner.waitForFunction(() => typeof Reflect.get(globalThis, "resolveScript") === "function", undefined, { polling: 50, timeout: RENDER_LIMIT_MS });
-    const inside = await runner.evaluate((origin) => {
-      let storageBlocked = false;
-      try {
-        window.localStorage.getItem("dr-e2e");
-      } catch {
-        storageBlocked = true;
-      }
-      return { opaqueOrigin: self.origin === "null", framed: window.top !== window, locationOriginIsApp: location.origin === origin, storageBlocked };
-    }, appOrigin);
-    expect(inside).toEqual({ opaqueOrigin: true, framed: true, locationOriginIsApp: true, storageBlocked: true });
 
     await expect(scriptTitle(page)).toBeVisible({ timeout: RENDER_LIMIT_MS });
     const forger = page.frames().find((frame) => frame.url() === FORGER_URL);

@@ -126,13 +126,25 @@ export const ARTIFACTS = {
   realityEth32: normalizeAbi(realityEth32Abi),
 } as const;
 
+/** A recorded ABI, or `sameAs` naming the record of the same list, by label or address, whose identical ABI is kept once. */
+const recordedAbi = z.union([z.array(z.unknown()), z.object({ sameAs: z.string() })]);
+
 const verifiedSchema = z.object({
-  governors: z.array(z.object({ label: z.string(), chainId: z.number(), address: z.string(), abi: z.array(z.unknown()) })),
+  governors: z.array(z.object({ label: z.string(), chainId: z.number(), address: z.string(), abi: recordedAbi })),
   legacyResolver: z.object({ chainId: z.number(), address: z.string(), abi: z.array(z.unknown()) }),
-  crossChainRealityProxies: z.array(z.object({ chainId: z.number(), address: z.string(), abi: z.array(z.unknown()) })),
+  crossChainRealityProxies: z.array(z.object({ chainId: z.number(), address: z.string(), abi: recordedAbi })),
 });
 
 const parsedVerified = verifiedSchema.parse(verified);
+
+type RecordedAbi = z.infer<typeof recordedAbi>;
+
+function abiOf(abi: RecordedAbi, records: readonly { readonly label?: string; readonly address: string; readonly abi: RecordedAbi }[]): unknown[] {
+  if (Array.isArray(abi)) return abi;
+  const source = records.find((record) => record.label === abi.sameAs || record.address === abi.sameAs)?.abi;
+  if (!Array.isArray(source)) throw new Error(`No recorded ABI for sameAs ${abi.sameAs}`);
+  return source;
+}
 
 export interface VerifiedContract {
   readonly label: string;
@@ -143,7 +155,7 @@ export interface VerifiedContract {
 
 /** Sourcify-verified ABIs recorded in `verified-abis.json` (the deployed governors, the legacy resolver, cross-chain proxies). */
 export const VERIFIED = {
-  governors: parsedVerified.governors.map((governor): VerifiedContract => ({ ...governor, abi: normalizeAbi(governor.abi) })),
+  governors: parsedVerified.governors.map((governor): VerifiedContract => ({ ...governor, abi: normalizeAbi(abiOf(governor.abi, parsedVerified.governors)) })),
   legacyResolver: {
     ...parsedVerified.legacyResolver,
     label: "older resolver proxy",
@@ -152,7 +164,7 @@ export const VERIFIED = {
   crossChainRealityProxies: parsedVerified.crossChainRealityProxies.map((proxy): VerifiedContract => ({
     ...proxy,
     label: "cross-chain Reality proxy",
-    abi: normalizeAbi(proxy.abi),
+    abi: normalizeAbi(abiOf(proxy.abi, parsedVerified.crossChainRealityProxies)),
   })),
 } as const;
 

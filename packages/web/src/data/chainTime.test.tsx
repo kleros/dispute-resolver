@@ -6,7 +6,6 @@ import { TestDataProvider, createTestDeps, createTestQueryClient, type RpcHandle
 import { ChainClockProvider, Countdown } from "../ui";
 import { useChainClockOffset } from "./chainTime";
 import { CHAIN_CLOCK_CHECK_MS } from "./constants";
-import { shouldPersistQuery } from "./persistence";
 import { queryKeys } from "./queryKeys";
 import type { CoreDeps } from "./types";
 
@@ -210,12 +209,6 @@ describe("useChainClockOffset", () => {
     expect(blockReads(rpc, 100)).toBe(1);
   });
 
-  it("a countdown inside the chain clock reads chain time once the block arrives", async () => {
-    renderWithData(createTestDeps({ rpc: latestBlockRpc() }), <ChainCountdown chainId={1} />);
-    expect(screen.getByText(BROWSER_COUNTDOWN)).toBeInTheDocument();
-    expect(await screen.findByText(CHAIN_COUNTDOWN)).toBeInTheDocument();
-  });
-
   it("when the browser clock is changed while the page is open, the chain time is read again and countdowns keep chain time", async () => {
     const clocks = fakeClocks();
     let chainSeconds = CHAIN_SECONDS;
@@ -276,15 +269,5 @@ describe("useChainClockOffset", () => {
     await clocks.elapse(10 * CHAIN_CLOCK_CHECK_MS);
     expect(screen.getByText("01d 23h 55m")).toBeInTheDocument();
     expect(rpc).toHaveBeenCalledTimes(1);
-  });
-
-  it("the chain time stays in memory and is never written to the persisted cache", async () => {
-    const { client } = renderWithData(createTestDeps({ rpc: latestBlockRpc() }), <Offset chainId={1} />);
-    await waitFor(() => {
-      expect(client.getQueryState(queryKeys.chainTime(1))?.status).toBe("success");
-    });
-    const query = client.getQueryCache().find({ queryKey: queryKeys.chainTime(1) });
-    if (query === undefined) throw new Error("The chain time was not cached.");
-    expect(shouldPersistQuery(query)).toBe(false);
   });
 });

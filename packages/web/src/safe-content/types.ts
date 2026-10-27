@@ -47,7 +47,6 @@ export type SandboxToken = "allow-scripts" | "allow-same-origin" | "allow-popups
 
 export interface EvidenceDisplayModel {
   readonly src: string;
-  readonly srcOrigin: string;
   readonly params: DisplayParams;
   readonly sandbox: readonly SandboxToken[];
   /** `_v` absent or "0" → JSON in the query; anything else → `URLSearchParams`. */

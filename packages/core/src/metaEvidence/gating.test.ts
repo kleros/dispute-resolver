@@ -161,14 +161,8 @@ describe("loadMetaEvidence gating", () => {
     expect(result).toMatchObject({ status: "ok", script: { ran: false, reason: "script-fetch-failed" }, metaEvidence: { title: "T", realityQuestion: null } });
   });
 
-  it("the script's parameters are checked before it is fetched: a bad chain ID skips the script without asking the gateway", async () => {
-    const { fetcher, urls } = fakeFetcher({ ...servedMetaEvidence(json({ title: "T", dynamicScriptURI: `/ipfs/${DEFAULT_SCRIPT_CID}`, arbitrableChainID: "1</script>" })) });
-    expect(await loadMetaEvidence(context({ fetcher }))).toMatchObject({ status: "ok", script: { ran: false, reason: "script-chain-unavailable" } });
-    expect(urls).not.toContain(DEFAULT_SCRIPT_URL);
-  });
-
   it("without a dynamic script the meta-evidence is accepted as fetched", async () => {
-    const { fetcher } = fakeFetcher(servedMetaEvidence(PLAIN));
+    const { fetcher, urls } = fakeFetcher(servedMetaEvidence(PLAIN));
     const result = await loadMetaEvidence(context({ fetcher }));
     expect(result).toEqual({
       status: "ok",
@@ -178,6 +172,7 @@ describe("loadMetaEvidence gating", () => {
       script: { ran: false, reason: "no-script" },
       metaEvidence: expect.objectContaining({ title: "Plain dispute", rulingOptions: { type: "single-select", titles: ["A", "B"] } }) as unknown,
     });
+    expect(urls).toEqual([locatorUrl(1, 1684n), META_URL]);
   });
 
   it("an empty dynamicScriptURI is no script", async () => {
@@ -211,12 +206,6 @@ describe("loadMetaEvidence gating", () => {
     const dispute = FIXTURE.gnosis140;
     const { fetcher } = fakeFetcher(servedMetaEvidence(dispute.body, { chainId: 100, disputeId: 140n }));
     expect(await loadMetaEvidence(context({ fetcher, arbitratorChainId: 100, disputeId: 140n }))).toMatchObject({ status: "failed", reason: "not-json" });
-  });
-
-  it("a meta-evidence file that is JSON but not an object is failed / schema-invalid, without a retry", async () => {
-    const { fetcher, urls } = fakeFetcher(servedMetaEvidence(json(["title"])));
-    expect(await loadMetaEvidence(context({ fetcher }))).toMatchObject({ status: "failed", reason: "schema-invalid" });
-    expect(urls).toHaveLength(2);
   });
 
   it("a registered proxy's options, status and question come from the on-chain question", async () => {

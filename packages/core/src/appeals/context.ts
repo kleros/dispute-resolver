@@ -29,11 +29,7 @@ export function idrLocalId(localId: LocalIdResolution): Outcome<bigint> {
   }
 }
 
-/**
- * The governor session of the dispute: the evidence group of its ERC-1497 `Dispute` event, which the governor emits as
- * `sessions.length − 1` when it creates the dispute. The governor's current session is not used: it moves on once the
- * ruling is executed.
- */
+/** The governor session is the evidence group of the dispute's ERC-1497 `Dispute` event: `sessions.length − 1` at creation. */
 export function governorSession(context: AppealContext): Outcome<bigint> {
   if (context.evidenceGroupId === undefined) return fail("not-found", "The governor session is unknown: the dispute's Dispute event was not read.");
   return succeed(context.evidenceGroupId);

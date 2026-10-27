@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+import { BAR_SURFACE } from "./layout";
 
 // What the page scroller (PageScroller.tsx and its rules in index.css) relies on inside the library's ScrollbarContainer,
 // SimpleBar 5 bundled in @kleros/ui-components-library 3.10.0, and in Reown AppKit 1.8's wallet modal. A release of
@@ -161,6 +162,17 @@ function varOf(name: string): RegExp {
   return new RegExp(String.raw`var\(\s*${escapeRegExp(name)}\s*\)`);
 }
 
+/** The page scroller's thumb at rest, hovered and dragged, in the order it grows lighter. */
+const thumbStates = [
+  { what: "the thumb at rest", app: ".dr-page-scroller > .simplebar-track .simplebar-scrollbar::before", token: "--dr-scroll-thumb" },
+  { what: "the thumb under the pointer", app: ".dr-page-scroller > .simplebar-track .simplebar-scrollbar.simplebar-hover::before", token: "--dr-scroll-thumb-hover" },
+  {
+    what: "the dragged thumb",
+    app: ".dr-page-scroller.simplebar-dragging > .simplebar-track.simplebar-vertical .simplebar-scrollbar::before",
+    token: "--dr-scroll-thumb-active",
+  },
+] as const;
+
 function renderContainer() {
   const scroller = createRef<HTMLDivElement>();
   const { container } = render(
@@ -180,25 +192,11 @@ describe("the library's ScrollbarContainer, as the page scroller uses it", () =>
     expect([...root.classList].sort((a, b) => a.localeCompare(b))).toEqual(["dr-page-scroller", MASK_CLASS, THUMB_CLASS, VISIBLE_CLASS].sort((a, b) => a.localeCompare(b)));
   });
 
-  it("scrolls in its content wrapper, the element its scrollableNodeProps ref receives, which holds the content", () => {
-    const { root, scroller } = renderContainer();
-    const wrapper = root.querySelector(":scope > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper");
-    expect(wrapper).not.toBeNull();
-    expect(scroller.current).toBe(wrapper);
-    expect(wrapper?.querySelector(":scope > .simplebar-content > p")).toHaveTextContent("Page content");
-  });
-
   it("makes its content wrapper a focusable region named scrollable content, which the page scroller takes back", () => {
     const { scroller } = renderContainer();
     expect(scroller.current).toHaveAttribute("tabindex", "0");
     expect(scroller.current).toHaveAttribute("role", "region");
     expect(scroller.current).toHaveAttribute("aria-label", "scrollable content");
-  });
-
-  it("with autoHide off, marks its vertical thumb visible from the start, inside a track that is its own child", () => {
-    const { root } = renderContainer();
-    expect(root.querySelector(":scope > .simplebar-track.simplebar-vertical > .simplebar-scrollbar")).toHaveClass("simplebar-visible");
-    expect(root.querySelector(":scope > .simplebar-track.simplebar-horizontal > .simplebar-scrollbar")).toHaveClass("simplebar-visible");
   });
 
   it("every selector the app's stylesheet writes for the page scroller finds its element, the hover, drag and wallet modal states set as SimpleBar and AppKit set them", () => {
@@ -262,16 +260,6 @@ describe("the page scroller's overrides of the library", () => {
       for (const css of [LIBRARY_THEME, LIBRARY_CSS, APP_CSS]) expect(css).not.toMatch(new RegExp(String.raw`@property\s+${escapeRegExp(variable)}\b`));
     });
   }
-
-  const thumbStates = [
-    { what: "the thumb at rest", app: ".dr-page-scroller > .simplebar-track .simplebar-scrollbar::before", token: "--dr-scroll-thumb" },
-    { what: "the thumb under the pointer", app: ".dr-page-scroller > .simplebar-track .simplebar-scrollbar.simplebar-hover::before", token: "--dr-scroll-thumb-hover" },
-    {
-      what: "the dragged thumb",
-      app: ".dr-page-scroller.simplebar-dragging > .simplebar-track.simplebar-vertical .simplebar-scrollbar::before",
-      token: "--dr-scroll-thumb-active",
-    },
-  ] as const;
 
   for (const { what, app, token } of thumbStates) {
     it(`${what} sets ${THUMB_VARIABLE} to ${token} without !important, in the utilities layer`, () => {
@@ -359,4 +347,104 @@ describe("Reown AppKit's wallet modal, as the page scroller follows it", () => {
     const rule = appRule(WALLET_MODAL_LOCK);
     expect(rule.body).toMatch(/overflow:\s*hidden\s*!important/);
   });
+});
+
+type Theme = "light" | "dark";
+
+/** The bodies of every rule of `css` for exactly `selector`, joined. */
+function bodyFor(css: string, selector: string): string {
+  return rules(css)
+    .filter((rule) => rule.selector === selector)
+    .map((rule) => rule.body)
+    .join(";");
+}
+
+/** Custom properties in cascade order: the app's dark rule beats the library's, and both beat either `:root` rule. */
+function tokens(theme: Theme): readonly string[] {
+  const light = [bodyFor(APP_CSS, ":root"), bodyFor(LIBRARY_THEME, ":root")];
+  return theme === "dark" ? [bodyFor(APP_CSS, ":root.dark"), bodyFor(LIBRARY_THEME, ":root.dark"), ...light] : light;
+}
+
+function colour(value: string, theme: Theme): string {
+  const reference = /^var\((--[\w-]+)\)$/.exec(value.trim());
+  if (!reference) return value.trim();
+  const name = reference[1] ?? "";
+  const found = tokens(theme)
+    .map((body) => declared(body, name))
+    .find((declaration) => declaration !== undefined);
+  if (found === undefined) throw new Error(`${name} is not defined in the ${theme} theme`);
+  return colour(found, theme);
+}
+
+function luminance(hex: string): number {
+  const match = /^#([\da-f]{6})$/i.exec(hex);
+  if (!match) throw new Error(`${hex} is not a six-digit hex colour`);
+  const [r = 0, g = 0, b = 0] = [0, 2, 4]
+    .map((offset) => Number.parseInt((match[1] ?? "").slice(offset, offset + 2), 16) / 255)
+    .map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(a: string, b: string): number {
+  const [darker, lighter] = [luminance(a), luminance(b)].sort((x, y) => x - y);
+  return ((lighter ?? 0) + 0.05) / ((darker ?? 0) + 0.05);
+}
+
+/** The library's thumb utility paints with this variable, and each state's rule redefines it. */
+function thumbColour(selector: string): string {
+  return declared(appRuleDeclaring(selector, THUMB_VARIABLE).body, THUMB_VARIABLE) ?? "";
+}
+
+/** The thumb half of Firefox's `scrollbar-color`, which takes one colour for every state, where the document scrolls. */
+function standardThumbColour(): string {
+  const rule = rules(APP_CSS).find(
+    (candidate) => candidate.context.includes("@supports not selector(::-webkit-scrollbar)") && candidate.selector === ':root:not([data-page-scroll="container"])',
+  );
+  const value = declared(rule?.body ?? "", "scrollbar-color");
+  if (value === undefined) throw new Error("the standard scrollbar branch sets no scrollbar-color");
+  return /^(var\([^)]+\)|#[\da-f]+)/i.exec(value)?.[1] ?? value;
+}
+
+/** The header and footer bands' background in a theme. */
+function barSurface(theme: Theme): string {
+  const pattern = theme === "dark" ? /(?:^|\s)dark:bg-(klerosUIComponents\w+)/ : /(?:^|\s)bg-(klerosUIComponents\w+)/;
+  const name = pattern.exec(BAR_SURFACE)?.[1];
+  if (name === undefined) throw new Error(`the bars set no ${theme} background token`);
+  return `var(--${name})`;
+}
+
+describe("page scrollbar", () => {
+  it("the app styles no ::-webkit-scrollbar and reserves no gutter, so where the document scrolls, on phones and tablets, the browser's own scrollbar floats over the page", () => {
+    expect(APP_CSS).not.toMatch(/::-webkit-scrollbar[\w-]*(?::[\w-]+)*\s*[,{]/);
+    expect(APP_CSS).not.toMatch(/scrollbar-gutter\s*:/);
+  });
+
+  it("the page scroller's thumb draws no ring round itself in any state", () => {
+    for (const { what, app } of thumbStates) expect(bodyFor(APP_CSS, app), what).not.toMatch(/(?:^|[;{}])\s*(?:box-shadow|outline|border)[\w-]*\s*:/);
+  });
+
+  for (const theme of ["light", "dark"] as const) {
+    const page = colour("var(--klerosUIComponentsLightBackground)", theme);
+    const bar = colour(barSurface(theme), theme);
+
+    for (const { what, app } of thumbStates) {
+      it(`${what} keeps at least 3:1 against the ${theme} page`, () => {
+        expect(contrast(colour(thumbColour(app), theme), page)).toBeGreaterThanOrEqual(3);
+      });
+
+      it(`over the ${theme} header and footer ${what} is not the bars' own colour, so it never vanishes over them`, () => {
+        expect(colour(thumbColour(app), theme)).not.toBe(bar);
+      });
+    }
+
+    it(`the ${theme} thumb grows lighter from rest to hover to dragged`, () => {
+      const [rest = 0, hover = 0, dragged = 0] = thumbStates.map(({ app }) => luminance(colour(thumbColour(app), theme)));
+      expect(hover, "hovered is no lighter than at rest").toBeGreaterThan(rest);
+      expect(dragged, "dragged is no lighter than hovered").toBeGreaterThan(hover);
+    });
+
+    it(`Firefox, where the document scrolls, draws the ${theme} thumb in the page scroller's colour at rest`, () => {
+      expect(colour(standardThumbColour(), theme)).toBe(colour(thumbColour(thumbStates[0].app), theme));
+    });
+  }
 });

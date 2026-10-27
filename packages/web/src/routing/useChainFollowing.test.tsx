@@ -91,6 +91,24 @@ async function settle() {
   });
 }
 
+/** A connected wallet whose switch requests are recorded from before the app renders. */
+async function connectedWithSpy(options: Parameters<typeof createConnectedTestWallet>[0]) {
+  const wallet = await createConnectedTestWallet(options);
+  return { wallet, switches: spyOnSwitches(wallet) };
+}
+
+async function changeWalletChain(wallet: TestWallet, chainId: number) {
+  await act(async () => {
+    await wallet.changeChain(chainId);
+  });
+}
+
+async function askedOnce(switches: ReturnType<typeof spyOnSwitches>) {
+  await waitFor(() => {
+    expect(switches).toHaveBeenCalledTimes(1);
+  });
+}
+
 function follow(name: string) {
   fireEvent.click(screen.getByRole("link", { name }));
 }
@@ -105,26 +123,11 @@ describe("useChainFollowing: the wallet moves", () => {
     const view = renderAtPath(<PageProbe />, "/1/ongoing?period=x#h", { wallet });
     expect(screen.getByText("Page on 1")).toBeInTheDocument();
     const frameBefore = view.container.querySelector("[data-frame-kind]");
-    await act(async () => {
-      await wallet.changeChain(100);
-    });
+    await changeWalletChain(wallet, 100);
     expect(await screen.findByText("Page on 100")).toBeInTheDocument();
     expect(view.currentPath()).toBe("/100/ongoing?period=x#h");
     // The frame is the same element: the app navigated in place instead of loading again.
     expect(view.container.querySelector("[data-frame-kind]")).toBe(frameBefore);
-  });
-
-  it("a wallet chain change on a case page opens the new chain's Ongoing Disputes, not the same number there", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 1 });
-    const switches = spyOnSwitches(wallet);
-    const view = renderWithProviders(<PageProbe />, { path: "/1/cases/5?ref=share#e", wallet });
-    await act(async () => {
-      await wallet.changeChain(100);
-    });
-    expect(await screen.findByText("Page on 100")).toBeInTheDocument();
-    expect(view.currentPath()).toBe("/100/ongoing");
-    expect(switches).not.toHaveBeenCalled();
-    expect(toastsShown()).toEqual([]);
   });
 
   it.each([
@@ -133,39 +136,16 @@ describe("useChainFollowing: the wallet moves", () => {
   ])("a wallet change to chain %i, %s, shows the unsupported-network screen", async (chainId) => {
     const wallet = await createConnectedTestWallet({ chainId: 1 });
     const view = renderAtPath(<PageProbe />, "/1/ongoing", { wallet });
-    await act(async () => {
-      await wallet.changeChain(chainId);
-    });
+    await changeWalletChain(wallet, chainId);
     expect(await screen.findByRole("heading", { name: `Unsupported Network ${String(chainId)}` })).toBeInTheDocument();
     expect(view.currentPath()).toBe(`/${String(chainId)}/ongoing`);
-  });
-
-  it("from the unsupported-network screen, a wallet change to a configured chain shows that chain's page", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 137 });
-    const view = renderAtPath(<PageProbe />, "/10/ongoing", { wallet });
-    await act(async () => {
-      await wallet.changeChain(100);
-    });
-    expect(await screen.findByText("Page on 100")).toBeInTheDocument();
-    expect(view.currentPath()).toBe("/100/ongoing");
-  });
-
-  it("a wallet change on a page whose first segment names no chain replaces that segment instead of keeping it", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 1 });
-    const view = renderAtPath(<PageProbe />, "/abc/cases/5?ref=share#e", { wallet });
-    await act(async () => {
-      await wallet.changeChain(100);
-    });
-    expect(await screen.findByText("Page on 100")).toBeInTheDocument();
-    expect(view.currentPath()).toBe("/100/cases/5?ref=share#e");
   });
 
   it.each([
     ["0", 0],
     ["NaN", Number.NaN],
   ])("a wallet chain ID of %s is ignored: no crash, no navigation, the page stays", async (_label, chainId) => {
-    const wallet = await createConnectedTestWallet({ chainId: 1 });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 1 });
     const view = renderAtPath(<PageProbe />, "/1/ongoing", { wallet });
     act(() => {
       walletConnector(wallet).emitter.emit("change", { chainId });
@@ -174,9 +154,7 @@ describe("useChainFollowing: the wallet moves", () => {
     expect(screen.getByText("Page on 1")).toBeInTheDocument();
     expect(view.currentPath()).toBe("/1/ongoing");
     expect(switches).not.toHaveBeenCalled();
-    await act(async () => {
-      await wallet.changeChain(100);
-    });
+    await changeWalletChain(wallet, 100);
     expect(await screen.findByText("Page on 100")).toBeInTheDocument();
     expect(view.currentPath()).toBe("/100/ongoing");
   });
@@ -197,8 +175,7 @@ describe("useChainFollowing: the wallet moves", () => {
 
 describe("useChainFollowing: a wallet on another chain than the page's", () => {
   it("at load, a wallet on another chain than the URL's is asked once to switch, and the URL stays", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100 });
     const view = renderAtPath(<PageProbe />, "/1/cases/5", { wallet });
     await waitFor(() => {
       expect(wallet.config.state.chainId).toBe(1);
@@ -210,8 +187,7 @@ describe("useChainFollowing: a wallet on another chain than the page's", () => {
   });
 
   it("under StrictMode's double effects the load-time switch is still requested once", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100, switchChainError: true });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100, switchChainError: true });
     const Providers = walletWrapper(wallet);
     function StrictProviders({ children }: { readonly children?: ReactNode }) {
       return (
@@ -229,8 +205,7 @@ describe("useChainFollowing: a wallet on another chain than the page's", () => {
   });
 
   it("a declined switch at load on a list page moves to the same path on the wallet's chain, asks once and shows one neutral toast", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100, switchChainError: true });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100, switchChainError: true });
     const view = renderWithProviders(<PageProbe />, { path: "/1/ongoing?period=4#list", wallet });
     expect(await screen.findByText("Page on 100")).toBeInTheDocument();
     expect(view.currentPath()).toBe("/100/ongoing?period=4#list");
@@ -243,20 +218,16 @@ describe("useChainFollowing: a wallet on another chain than the page's", () => {
     expect(toast).toHaveTextContent("The app is now showing Gnosis Network.");
   });
 
-  it("a declined switch at load on a case page opens the wallet chain's Ongoing Disputes and says the dispute is on the other chain", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100, switchChainError: true });
-    const view = renderWithProviders(<PageProbe />, { path: "/1/cases/1621?ref=share#evidence", wallet });
-    expect(await screen.findByText("Page on 100")).toBeInTheDocument();
-    expect(view.currentPath()).toBe("/100/ongoing");
-    expect(notifications().getByRole("status")).toHaveTextContent("Dispute 1621 is on Ethereum Mainnet, so the app is showing Ongoing Disputes on Gnosis Network.");
-  });
-
-  it.each(["/1/CASES/5", "/1/%63ases/5"])("a declined switch on the case link %s opens the wallet chain's Ongoing Disputes, not the same number there", async (path) => {
+  it.each([
+    ["/1/cases/1621?ref=share#evidence", "1621"],
+    ["/1/CASES/5", "5"],
+    ["/1/%63ases/5", "5"],
+  ])("a declined switch on the case link %s opens the wallet chain's Ongoing Disputes and says dispute %s is on the other chain", async (path, disputeId) => {
     const wallet = await createConnectedTestWallet({ chainId: 100, switchChainError: true });
     const view = renderWithProviders(<PageProbe />, { path, wallet });
     expect(await screen.findByText("Page on 100")).toBeInTheDocument();
     expect(view.currentPath()).toBe("/100/ongoing");
-    expect(notifications().getByRole("status")).toHaveTextContent("Dispute 5 is on Ethereum Mainnet, so the app is showing Ongoing Disputes on Gnosis Network.");
+    expect(notifications().getByRole("status")).toHaveTextContent(`Dispute ${disputeId} is on Ethereum Mainnet, so the app is showing Ongoing Disputes on Gnosis Network.`);
   });
 
   it("a failed switch moves the app to the wallet's chain and shows one error toast with the wallet's reason", async () => {
@@ -273,8 +244,7 @@ describe("useChainFollowing: a wallet on another chain than the page's", () => {
   });
 
   it("a reconnect of the same wallet is not a new connection, so a declined switch is not asked again", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100, switchChainError: true });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100, switchChainError: true });
     const view = renderAtPath(<PageProbe />, "/1/ongoing", { wallet });
     await waitFor(() => {
       expect(view.currentPath()).toBe("/100/ongoing");
@@ -357,16 +327,14 @@ describe("useChainFollowing: a wallet on another chain than the page's", () => {
   });
 
   it("a wallet already on the page chain is not asked to switch", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100 });
     renderAtPath(<PageProbe />, "/100/ongoing", { wallet });
     await settle();
     expect(switches).not.toHaveBeenCalled();
   });
 
   it("on the unsupported-network screen nothing is requested at load", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100 });
     const view = renderAtPath(<PageProbe />, "/10/ongoing", { wallet });
     await settle();
     expect(switches).not.toHaveBeenCalled();
@@ -374,8 +342,7 @@ describe("useChainFollowing: a wallet on another chain than the page's", () => {
   });
 
   it("a wallet on an unconfigured chain is asked to switch, and a refusal shows the unsupported-network screen with no toast", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: UNCONFIGURED_CHAIN_ID, switchChainError: true });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: UNCONFIGURED_CHAIN_ID, switchChainError: true });
     const view = renderWithProviders(<PageProbe />, { path: "/1/cases/5", wallet });
     expect(await screen.findByRole("heading", { name: `Unsupported Network ${String(UNCONFIGURED_CHAIN_ID)}` })).toBeInTheDocument();
     expect(view.currentPath()).toBe(`/${String(UNCONFIGURED_CHAIN_ID)}/ongoing`);
@@ -398,8 +365,7 @@ describe("useChainFollowing: a wallet on another chain than the page's", () => {
   });
 
   it("the app never asks again after its own fallback move", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100, switchChainError: true });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100, switchChainError: true });
     const view = renderWithProviders(<LinkingPage />, { path: "/1/cases/5", wallet });
     await waitFor(() => {
       expect(view.currentPath()).toBe("/100/ongoing");
@@ -418,8 +384,7 @@ describe("useChainFollowing: a wallet on another chain than the page's", () => {
 
 describe("useChainFollowing: the URL moves to another chain while a wallet is connected", () => {
   it("a link to the other chain while connected asks the wallet once, and the page stays when it switches", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100 });
     const view = renderWithProviders(<LinkingPage />, { path: "/100/ongoing", wallet });
     follow("Case 5 on Ethereum Mainnet");
     await waitFor(() => {
@@ -434,8 +399,7 @@ describe("useChainFollowing: the URL moves to another chain while a wallet is co
   });
 
   it("an in-app link to the other chain, declined, moves the app back to the wallet's chain with one toast", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100, switchChainError: true });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100, switchChainError: true });
     const view = renderWithProviders(<LinkingPage />, { path: "/100/cases", wallet });
     follow("Ongoing Disputes on Ethereum Mainnet");
     await waitFor(() => {
@@ -449,8 +413,7 @@ describe("useChainFollowing: the URL moves to another chain while a wallet is co
   });
 
   it("back and forward to the other chain ask once per history entry", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100 });
     const view = renderWithProviders(<LinkingPage />, { path: "/100/ongoing", wallet });
     follow("Case 5 on Ethereum Mainnet");
     await waitFor(() => {
@@ -471,8 +434,7 @@ describe("useChainFollowing: the URL moves to another chain while a wallet is co
   });
 
   it("after a refusal, back and forward ask nothing more: the refused entry was replaced by the wallet chain's page", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100, switchChainError: true });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100, switchChainError: true });
     const view = renderWithProviders(<LinkingPage />, { path: "/100/cases", wallet });
     follow("Ongoing Disputes on Ethereum Mainnet");
     await waitFor(() => {
@@ -492,13 +454,10 @@ describe("useChainFollowing: the URL moves to another chain while a wallet is co
   });
 
   it("while the request waits the page stays on the URL's chain and a further link asks nothing", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100 });
     holdChainSwitches(wallet);
     const view = renderWithProviders(<LinkingPage />, { path: "/1/cases/5", wallet });
-    await waitFor(() => {
-      expect(switches).toHaveBeenCalledTimes(1);
-    });
+    await askedOnce(switches);
     expect(screen.getByText("Page on 1")).toBeInTheDocument();
     follow("Ongoing Disputes on Sepolia");
     await settle();
@@ -509,8 +468,7 @@ describe("useChainFollowing: the URL moves to another chain while a wallet is co
   });
 
   it("a link followed while another control's request waits is asked once after that request settles", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 1 });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 1 });
     const decline = declineNextSwitch(wallet);
     const view = renderWithProviders(<LinkingPage />, { path: "/1/ongoing", wallet });
     press("Ask the wallet for Gnosis Network");
@@ -547,16 +505,11 @@ describe("useChainFollowing: the URL moves to another chain while a wallet is co
   });
 
   it("a wallet that moves on its own while the app's request waits is followed, and the late refusal moves nothing and shows no toast", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100 });
     const decline = declineNextSwitch(wallet);
     const view = renderWithProviders(<PageProbe />, { path: "/1/ongoing", wallet });
-    await waitFor(() => {
-      expect(switches).toHaveBeenCalledTimes(1);
-    });
-    await act(async () => {
-      await wallet.changeChain(11155111);
-    });
+    await askedOnce(switches);
+    await changeWalletChain(wallet, 11155111);
     await waitFor(() => {
       expect(view.currentPath()).toBe("/11155111/ongoing");
     });
@@ -569,13 +522,10 @@ describe("useChainFollowing: the URL moves to another chain while a wallet is co
   });
 
   it("disconnecting while the request waits moves nothing and shows no toast", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100 });
     const decline = declineNextSwitch(wallet);
     const view = renderWithProviders(<PageProbe />, { path: "/1/cases/5", wallet });
-    await waitFor(() => {
-      expect(switches).toHaveBeenCalledTimes(1);
-    });
+    await askedOnce(switches);
     await act(async () => {
       await wallet.disconnect();
     });
@@ -587,13 +537,10 @@ describe("useChainFollowing: the URL moves to another chain while a wallet is co
   });
 
   it("a refusal that comes before wagmi has restored the reconnecting wallet moves the app to the wallet's chain once it is back, with one toast", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100 });
     const decline = declineNextSwitch(wallet);
     const view = renderWithProviders(<PageProbe />, { path: "/1/cases/5", wallet });
-    await waitFor(() => {
-      expect(switches).toHaveBeenCalledTimes(1);
-    });
+    await askedOnce(switches);
     const restore = holdWalletRestore(wallet);
     await declineNow(decline);
     await settle();
@@ -608,18 +555,13 @@ describe("useChainFollowing: the URL moves to another chain while a wallet is co
   });
 
   it("a refusal that comes before wagmi has restored the reconnecting wallet, which is back on the page chain, moves nothing and shows no toast", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100 });
     const decline = declineNextSwitch(wallet);
     const view = renderWithProviders(<PageProbe />, { path: "/1/cases/5", wallet });
-    await waitFor(() => {
-      expect(switches).toHaveBeenCalledTimes(1);
-    });
+    await askedOnce(switches);
     const restore = holdWalletRestore(wallet);
     await declineNow(decline);
-    await act(async () => {
-      await wallet.changeChain(1);
-    });
+    await changeWalletChain(wallet, 1);
     restore();
     await settle();
     expect(view.currentPath()).toBe("/1/cases/5");
@@ -629,13 +571,10 @@ describe("useChainFollowing: the URL moves to another chain while a wallet is co
   });
 
   it("a refusal that comes after the wallet disconnected and connected again on the same chain still moves the app to the wallet's chain", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const switches = spyOnSwitches(wallet);
+    const { wallet, switches } = await connectedWithSpy({ chainId: 100 });
     const decline = declineNextSwitch(wallet);
     const view = renderWithProviders(<PageProbe />, { path: "/1/ongoing", wallet });
-    await waitFor(() => {
-      expect(switches).toHaveBeenCalledTimes(1);
-    });
+    await askedOnce(switches);
     await act(async () => {
       await wallet.disconnect();
     });

@@ -31,7 +31,7 @@ const BLOCKERS: readonly Blocker[] = [
   { name: "a content blocker cancelling the runner's bootstrap", pattern: "**/__runner/bootstrap.js", block: (route) => route.abort("blockedbyclient") },
 ];
 
-/** Must be registered after the case page's catch-all route, so it wins. */
+/** A page route, so it wins over the case page's network route. */
 async function blockRunner(page: Page, blocker: Blocker): Promise<() => number> {
   let requests = 0;
   await page.route(blocker.pattern, (route) => {

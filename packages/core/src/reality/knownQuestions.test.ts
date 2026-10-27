@@ -8,13 +8,10 @@ import { KNOWN_DISPUTE_QUESTIONS, REGISTRY_SNAPSHOT_BLOCKS } from "./knownQuesti
 const entries = Object.entries(KNOWN_DISPUTE_QUESTIONS);
 
 describe("the known-questions map", () => {
-  it("snapshots mainnet and Gnosis at or after blocks 26162181 and 48685374", () => {
+  it("snapshots mainnet and Gnosis past blocks 26162181 and 48685374", () => {
     expect(Object.keys(REGISTRY_SNAPSHOT_BLOCKS)).toEqual(["1", "100"]);
     expect(REGISTRY_SNAPSHOT_BLOCKS[1]).toBeGreaterThanOrEqual(26_162_181);
     expect(REGISTRY_SNAPSHOT_BLOCKS[100]).toBeGreaterThanOrEqual(48_685_374);
-  });
-
-  it("has been regenerated past blocks 26162181 and 48685374", () => {
     expect(REGISTRY_SNAPSHOT_BLOCKS).not.toEqual({ 1: 26_162_181, 100: 48_685_374 });
   });
 

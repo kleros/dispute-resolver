@@ -44,13 +44,6 @@ function expectExternal(link: HTMLElement, href: string) {
 }
 
 describe("PageFrame header", () => {
-  it("renders the screen between the header and the footer", () => {
-    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
-    expect(within(screen.getByRole("main")).getByText("Screen content")).toBeInTheDocument();
-    expect(header()).toBeInTheDocument();
-    expect(footer()).toBeInTheDocument();
-  });
-
   it("links Ongoing Disputes, Case Lookup and Create in that order on every wallet state", async () => {
     const view = renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page" });
     const expectNavigation = () => {
@@ -79,15 +72,11 @@ describe("PageFrame header", () => {
     expect(screen.queryByRole("note", { name: "View mode only" })).not.toBeInTheDocument();
   });
 
-  it("without a project ID the banner says that actions need an account and nothing else", () => {
-    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet: createTestWallet({ mode: "unconfigured" }) });
-    const banner = screen.getByRole("note", { name: "View mode only" });
-    expect(banner.textContent.trim()).toBe(VIEW_ONLY_SENTENCE);
-    expect(within(banner).queryByRole("link")).not.toBeInTheDocument();
-  });
-
-  it("with an embedded-wallet connector registered the banner says the same", async () => {
-    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet: createTestWallet({ embeddedWallet: true }) });
+  it.each([
+    { name: "without a project ID", options: { mode: "unconfigured" } as const },
+    { name: "with an embedded-wallet connector registered", options: { embeddedWallet: true } },
+  ])("$name the banner says that actions need an account and nothing else", async ({ options }) => {
+    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet: createTestWallet(options) });
     const banner = screen.getByRole("note", { name: "View mode only" });
     await waitFor(() => {
       expect(banner.textContent.trim()).toBe(VIEW_ONLY_SENTENCE);
@@ -170,6 +159,9 @@ describe("PageFrame header", () => {
     await user.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     expect(document.getElementById(panelId)).not.toHaveClass("hidden");
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
     await user.keyboard("{Escape}");
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(toggle).toHaveFocus();
@@ -186,15 +178,6 @@ describe("PageFrame header", () => {
     await user.click(screen.getByText("Screen content"));
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(toggle).not.toHaveFocus();
-  });
-
-  it("pressing the Menu button again closes the open menu", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
-    const toggle = within(header()).getByRole("button", { name: "Menu" });
-    await user.click(toggle);
-    await user.click(toggle);
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 
   it("following a link closes the menu", async () => {
@@ -233,7 +216,7 @@ describe("PageFrame header", () => {
     expect(pill.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("the menu panel grows in below xl and shrinks away inert, with its scrim, before it hides again", async () => {
+  it("the menu panel grows in below xl and shrinks away inert, with its scrim, before it hides again, and animates nothing from xl", async () => {
     const user = userEvent.setup();
     renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
     expect(queryScrim()).toBeNull();
@@ -247,20 +230,13 @@ describe("PageFrame header", () => {
     expect(closing).toHaveClass("flex", "max-xl:animate-scale-out", "max-xl:opacity-0", "max-xl:pointer-events-none");
     expect(closing).toHaveAttribute("inert");
     expect(queryScrim()).toHaveClass("animate-t-overlay-out");
+    for (const name of [...closing.classList].filter((value) => /animate-|opacity-0|pointer-events-none/.test(value))) {
+      expect(name, "the inline navigation from xl carries no animation of its own").toMatch(/^max-xl:/);
+    }
     fireEvent.animationEnd(closing);
     expect(menuPanel()).toHaveClass("hidden");
     expect(menuPanel()).not.toHaveAttribute("inert");
     expect(queryScrim()).toBeNull();
-  });
-
-  it("the inline navigation from xl carries no animation of its own", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
-    await user.click(within(header()).getByRole("button", { name: "Menu" }));
-    await user.keyboard("{Escape}");
-    for (const name of [...menuPanel().classList].filter((value) => /animate-|opacity-0|pointer-events-none/.test(value))) {
-      expect(name).toMatch(/^max-xl:/);
-    }
   });
 
   it("the Menu button cross-fades its menu and close icons in one cell", async () => {

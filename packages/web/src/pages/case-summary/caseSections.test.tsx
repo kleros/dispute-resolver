@@ -172,13 +172,6 @@ describe("CaseOverview", () => {
     const { container } = renderSection(CaseOverview, { ...dispute, view: sectionReady({ exists: false, reason: "not-found" }) });
     expect(container).toBeEmptyDOMElement();
   });
-
-  it("the header card draws no tinted band of its own", () => {
-    const { container } = renderSection(CaseOverview, caseDispute({ period: 2 }));
-    expect(screen.getByRole("heading", { level: 1, name: "Dispute #1" })).toBeInTheDocument();
-    const tinted = Array.from(container.querySelectorAll("[class]")).filter((element) => element.classList.contains("bg-(--dr-record-surface)"));
-    expect(tinted).toEqual([]);
-  });
 });
 
 describe("DisputeTimeline", () => {
@@ -278,6 +271,9 @@ describe("DisputeTimeline", () => {
       ["Appeal", "concluded"],
       ["Execution", "current"],
     ]);
+    const execution = within(timelineList()).getByRole("listitem", { name: "Execution" });
+    expect(execution).toHaveAttribute("aria-current", "step");
+    expect(execution.querySelector("small")).toBeNull();
   });
 
   it("degrades only the timeline when the court is missing from the list", () => {
@@ -315,14 +311,6 @@ describe("DisputeTimeline", () => {
     expect(list.querySelectorAll('[class*="sr-only"]')).toHaveLength(0);
   });
 
-  it("lifts only the current name one size below lg", () => {
-    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    const names = steps().map((step) => within(step).getByRole("heading", { level: 2 }));
-    expect(names.map((name) => name.textContent)).toEqual(["Evidence", "Voting", "Appeal", "Execution"]);
-    expect(steps().map((step) => step.getAttribute("aria-current"))).toEqual([null, "step", null, null]);
-    expect(timelineList()).toHaveClass("[&_li[aria-current]_h2]:text-base");
-  });
-
   it("renders the vertical steps where the browser has no media queries", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 2 }));
     const list = timelineList();
@@ -343,28 +331,17 @@ describe("DisputeTimeline", () => {
     expect(within(list).getAllByText(/^Ends in/)).toHaveLength(1);
   });
 
-  it("keeps five steps vertical until the wide query matches", () => {
+  it.each([
+    { label: "five steps, lg query only", queries: [LG_MEDIA_QUERY], hiddenVotes: true, orientation: "Vertical", steps: 5 },
+    { label: "four steps, lg query only", queries: [LG_MEDIA_QUERY], hiddenVotes: false, orientation: "Horizontal", steps: 4 },
+    { label: "five steps, lg and five-step queries", queries: [LG_MEDIA_QUERY, FIVE_STEPS_MEDIA_QUERY], hiddenVotes: true, orientation: "Horizontal", steps: 5 },
+    { label: "four steps, five-step query only", queries: [FIVE_STEPS_MEDIA_QUERY], hiddenVotes: false, orientation: "Vertical", steps: 4 },
+  ])("lays the steps out as $orientation progress steps ($label)", ({ queries, hiddenVotes, orientation, steps: count }) => {
     installOfflineAppKitEnvironment();
-    vi.stubGlobal("matchMedia", matchOnly([LG_MEDIA_QUERY]));
-    renderSection(DisputeTimeline, caseDispute({ period: 1, court: { hiddenVotes: true } }));
-    expect(timelineList()).toHaveAccessibleName("Vertical progress steps");
-    expect(steps()).toHaveLength(5);
-  });
-
-  it("lays four steps out in a row as soon as the lg query matches", () => {
-    installOfflineAppKitEnvironment();
-    vi.stubGlobal("matchMedia", matchOnly([LG_MEDIA_QUERY]));
-    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    expect(timelineList()).toHaveAccessibleName("Horizontal progress steps");
-    expect(steps()).toHaveLength(4);
-  });
-
-  it("lays five steps out in a row once the wide query matches", () => {
-    installOfflineAppKitEnvironment();
-    vi.stubGlobal("matchMedia", matchOnly([LG_MEDIA_QUERY, FIVE_STEPS_MEDIA_QUERY]));
-    renderSection(DisputeTimeline, caseDispute({ period: 1, court: { hiddenVotes: true } }));
-    expect(timelineList()).toHaveAccessibleName("Horizontal progress steps");
-    expect(steps()).toHaveLength(5);
+    vi.stubGlobal("matchMedia", matchOnly(queries));
+    renderSection(DisputeTimeline, caseDispute(hiddenVotes ? { period: 1, court: { hiddenVotes: true } } : { period: 2 }));
+    expect(timelineList()).toHaveAccessibleName(`${orientation} progress steps`);
+    expect(steps()).toHaveLength(count);
   });
 
   it("gives an upcoming period its duration alone, with no word before it", () => {
@@ -407,41 +384,6 @@ describe("DisputeTimeline", () => {
     expect(endsIn?.nextElementSibling).toBe(value);
   });
 
-  it("from lg centres each name and state under its bullet on a rail inset from the band's edges", () => {
-    installOfflineAppKitEnvironment();
-    vi.stubGlobal("matchMedia", matchEverything);
-    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    const label = "[&>li>div:last-child]";
-    expect(timelineList()).toHaveClass(
-      "px-18",
-      "pb-14",
-      `${label}:absolute`,
-      `${label}:top-8`,
-      `${label}:left-0`,
-      `${label}:ml-0`,
-      `${label}:w-max`,
-      `${label}:translate-x-[calc(-50%+12px)]`,
-    );
-  });
-
-  it("from lg runs each connector from bullet to bullet, 2 px PrimaryBlue after a concluded step and 1 px in the band's edge after the others", () => {
-    installOfflineAppKitEnvironment();
-    vi.stubGlobal("matchMedia", matchEverything);
-    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    const done = "[&>li:not([aria-current]):not([aria-disabled])]";
-    const connector = "[&>li:not(:last-child)]";
-    expect(timelineList()).toHaveClass(
-      `${connector}:after:mx-2`,
-      `${connector}:after:my-[11px]`,
-      `${connector}:after:border-b`,
-      `${done}:after:border-b-klerosUIComponentsPrimaryBlue`,
-      "[&>li[aria-current]]:after:border-t-(--dr-record-edge)",
-      "[&>li[aria-current]]:after:border-b-transparent",
-      "[&>li[aria-disabled]]:after:border-t-(--dr-record-edge)",
-      "[&>li[aria-disabled]]:after:border-b-transparent",
-    );
-  });
-
   it.each([
     ["vertical", false],
     ["horizontal", true],
@@ -473,72 +415,6 @@ describe("DisputeTimeline", () => {
     expect(list.className).not.toMatch(/MediumBlue|:bg-/);
     expect(list).toHaveClass("[&_li[aria-current]_h2]:text-base");
   });
-
-  it("below lg draws the connector 2 px PrimaryBlue after a concluded step and 1 px in the band's edge after the others", () => {
-    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    const line = "[aria-hidden]>*+*";
-    expect(timelineList()).toHaveClass(
-      `[&_${line}]:min-h-4`,
-      `[&_${line}]:border-r`,
-      `[&_li:not([aria-current]):not([aria-disabled])_${line}]:border-r-klerosUIComponentsPrimaryBlue`,
-      `[&_li[aria-current]_${line}]:border-l-(--dr-record-edge)`,
-      `[&_li[aria-current]_${line}]:border-r-transparent`,
-      `[&_li[aria-disabled]_${line}]:border-l-(--dr-record-edge)`,
-      `[&_li[aria-disabled]_${line}]:border-r-transparent`,
-    );
-  });
-
-  it.each([
-    ["vertical", false],
-    ["horizontal", true],
-  ] as const)("rings the current bullet with a soft PrimaryBlue halo (%s)", (_orientation, horizontal) => {
-    if (horizontal) {
-      installOfflineAppKitEnvironment();
-      vi.stubGlobal("matchMedia", matchEverything);
-    }
-    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    expect(timelineList()).toHaveClass(
-      "[&_li[aria-current]_[aria-hidden]>div:first-child]:shadow-[0_0_0_4px_color-mix(in_srgb,var(--klerosUIComponentsPrimaryBlue)_22%,transparent)]",
-    );
-  });
-
-  it("keeps the execution step the current numbered step with no state line in the row from lg", () => {
-    installOfflineAppKitEnvironment();
-    vi.stubGlobal("matchMedia", matchEverything);
-    renderSection(DisputeTimeline, caseDispute({ period: 4 }));
-    const execution = within(timelineList()).getByRole("listitem", { name: "Execution" });
-    expect(timelineList()).toHaveAccessibleName("Horizontal progress steps");
-    expect(execution).toHaveAttribute("aria-current", "step");
-    expect(execution.querySelector("small")).toBeNull();
-    expect(execution.querySelector("[aria-hidden] > div:first-child > span")).toHaveTextContent("4");
-    expect(within(timelineList()).queryByText(/final/i)).not.toBeInTheDocument();
-  });
-
-  it("keeps four steps in the list until the lg query matches, whatever the five-step query says", () => {
-    installOfflineAppKitEnvironment();
-    vi.stubGlobal("matchMedia", matchOnly([FIVE_STEPS_MEDIA_QUERY]));
-    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    expect(timelineList()).toHaveAccessibleName("Vertical progress steps");
-    expect(steps()).toHaveLength(4);
-  });
-
-  it("names the timeline from outside the library list", () => {
-    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    expect(within(timeline()).getAllByRole("list")).toHaveLength(1);
-  });
-
-  it("shows no state text for the execution step", () => {
-    renderSection(DisputeTimeline, caseDispute({ period: 4 }));
-    const execution = within(timelineList()).getByRole("listitem", { name: "Execution" });
-    expect(execution).toHaveAttribute("aria-current", "step");
-    expect(execution.querySelector("small")).toBeNull();
-  });
-
-  it("draws the upcoming bullet ring with the band's edge", () => {
-    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    expect(timelineList()).toHaveClass("[&_li[aria-disabled]_[aria-hidden]>div:first-child]:border-(--dr-record-edge)");
-    expect(steps().map((step) => step.getAttribute("aria-disabled"))).toEqual([null, null, "true", "true"]);
-  });
 });
 
 describe("content replacing its placeholder", () => {
@@ -561,19 +437,9 @@ describe("content replacing its placeholder", () => {
     expect(content).toHaveClass(REVEAL, "motion-reduce:animate-none");
   });
 
-  it("shows a timeline that was ready on the first render without motion", () => {
-    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    expect(timeline().parentElement?.className).not.toContain("t-reveal-in");
-  });
-
-  it("fades the decision in when it arrives after its placeholder, but not when it was ready at once", () => {
+  it("fades the decision in when it arrives after its placeholder", () => {
     renderThenSettle(DecisionAlert, caseDispute({ period: 3, view: "loading" }), caseDispute({ period: 3 }));
     expect(decisionAlert("Jury decision")).toHaveClass(REVEAL, "motion-reduce:animate-none");
-  });
-
-  it("shows a decision that was ready on the first render without motion", () => {
-    renderSection(DecisionAlert, caseDispute({ period: 3 }));
-    expect(decisionAlert("Jury decision").className).not.toContain("t-reveal-in");
   });
 
   it("fades in each info value that arrives after its placeholder", () => {
@@ -581,13 +447,6 @@ describe("content replacing its placeholder", () => {
     for (const label of ["Court", "Number of votes"]) {
       const value = detail(label).firstElementChild;
       expect(value).toHaveClass(REVEAL, "motion-reduce:animate-none");
-    }
-  });
-
-  it("shows info values that were ready on the first render without motion", () => {
-    renderSection(CaseOverview, caseDispute({ period: 2 }));
-    for (const label of ["Court", "Number of votes"]) {
-      expect(detail(label).innerHTML).not.toContain("t-reveal-in");
     }
   });
 

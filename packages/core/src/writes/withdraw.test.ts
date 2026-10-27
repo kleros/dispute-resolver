@@ -40,21 +40,16 @@ const v2Items: readonly WithdrawItem[] = [
 ];
 
 describe("buildWithdrawCalls", () => {
-  it("one withdrawal per contributed ruling, in the order of the items", () => {
-    const builds = buildWithdrawCalls({ binding, family: family("idr-v2"), localId: LOCAL_ID, beneficiary: BENEFICIARY, items: v2Items });
-    expect(builds).toHaveLength(2);
-    const calls = builds.map(expectCall);
+  it("idr-v2 withdraws each contributed ruling in the order of the items, through withdrawFeesAndRewardsForAllRounds(localID, beneficiary, ruling) with no value", () => {
+    const calls = buildWithdrawCalls({ binding, family: family("idr-v2"), localId: LOCAL_ID, beneficiary: BENEFICIARY, items: v2Items }).map(expectCall);
     expect(calls.map(decodedArgs)).toEqual([
       [4n, DECODED_BENEFICIARY, 1n],
       [4n, DECODED_BENEFICIARY, 2n],
     ]);
-  });
-
-  it("idr-v2 withdraws through withdrawFeesAndRewardsForAllRounds(localID, beneficiary, ruling) with no value", () => {
-    const [build] = buildWithdrawCalls({ binding, family: family("idr-v2"), localId: LOCAL_ID, beneficiary: BENEFICIARY, items: v2Items.slice(0, 1) });
-    const call = expectCall(build ?? { ok: false, refusal: "withdraw-unsupported" });
-    expect(call).toMatchObject({ kind: "withdraw", chainId: 1, address: ARBITRABLE, functionName: "withdrawFeesAndRewardsForAllRounds", value: 0n });
-    expect(selectorOf(call)).toBe(V2_WITHDRAW);
+    for (const call of calls) {
+      expect(call).toMatchObject({ kind: "withdraw", chainId: 1, address: ARBITRABLE, functionName: "withdrawFeesAndRewardsForAllRounds", value: 0n });
+      expect(selectorOf(call)).toBe(V2_WITHDRAW);
+    }
   });
 
   it("idr-v1 withdraws each ruling through the array signature, one ruling per transaction (Unslashed, mainnet 0x4b89…, Gnosis 0x1128…)", () => {

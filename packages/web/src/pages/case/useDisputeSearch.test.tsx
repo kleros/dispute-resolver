@@ -221,62 +221,39 @@ describe("useDisputeSearch", () => {
     expect(routerPath()).toBe("/1/cases/1000");
   });
 
-  it("typing a digit and deleting it before the debounce leaves history as it was, so Back leaves the dispute", () => {
+  it.each([
+    { label: "a digit typed and deleted", edits: ["16507", "1650"] },
+    { label: "a digit typed, the field cleared and the ID typed again", edits: ["16507", "", "1650"] },
+    { label: "the field cleared and the ID typed again", edits: ["", "1650"] },
+  ])("edits that end on the starting dispute leave history as it was, so Back leaves it ($label)", ({ edits }) => {
     const { search, routerPath, type, back } = renderSearchWithHistory(["/1/cases/7", "/1/cases/1650"]);
-    type("16507", "1650");
-    expect(routerPath()).toBe("/1/cases/1650");
-    expect(search().shownId).toBe(1650n);
-
-    back();
-    expect(routerPath()).toBe("/1/cases/7");
-  });
-
-  it("a burst of edits that ends on the dispute it started from, through the empty field, leaves history as it was", () => {
-    const { search, routerPath, type, back } = renderSearchWithHistory(["/1/cases/7", "/1/cases/1650"]);
-    type("16507", "", "1650");
-    expect(routerPath()).toBe("/1/cases/1650");
-    expect(search().shownId).toBe(1650n);
-
-    back();
-    expect(routerPath()).toBe("/1/cases/7");
-  });
-
-  it("an edit back to the dispute a settled lookup left is a new lookup with its own entry", () => {
-    vi.useFakeTimers();
-    const { routerPath, type, back } = renderSearchWithHistory(["/1/cases/7", "/1/cases/100"]);
-    type("1000");
-    act(() => {
-      vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
-    });
-    type("100");
-    expect(routerPath()).toBe("/1/cases/100");
-
-    back();
-    expect(routerPath()).toBe("/1/cases/1000");
-    back();
-    expect(routerPath()).toBe("/1/cases/100");
-    back();
-    expect(routerPath()).toBe("/1/cases/7");
-  });
-
-  it("an edit back to the dispute a lookup left after Enter is a new lookup with its own entry", () => {
-    const { routerPath, type, enter, back } = renderSearchWithHistory(["/1/cases/7", "/1/cases/100"]);
-    type("1000");
-    enter();
-    type("100");
-
-    back();
-    expect(routerPath()).toBe("/1/cases/1000");
-    back();
-    expect(routerPath()).toBe("/1/cases/100");
-  });
-
-  it("a search that only cleared the field goes back over nothing when the ID is typed again", () => {
-    const { search, routerPath, type, back } = renderSearchWithHistory(["/1/cases/7", "/1/cases/1650"]);
-    type("", "1650");
+    type(...edits);
     expect(routerPath()).toBe("/1/cases/1650");
     expect(search().pending).toBeNull();
+    expect(search().shownId).toBe(1650n);
 
+    back();
+    expect(routerPath()).toBe("/1/cases/7");
+  });
+
+  it.each(["the debounce", "Enter"])("an edit back to the dispute a lookup left once %s settled it is a new lookup with its own entry", (settledBy) => {
+    vi.useFakeTimers();
+    const { routerPath, type, enter, back } = renderSearchWithHistory(["/1/cases/7", "/1/cases/100"]);
+    type("1000");
+    if (settledBy === "Enter") {
+      enter();
+    } else {
+      act(() => {
+        vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+      });
+    }
+    type("100");
+    expect(routerPath()).toBe("/1/cases/100");
+
+    back();
+    expect(routerPath()).toBe("/1/cases/1000");
+    back();
+    expect(routerPath()).toBe("/1/cases/100");
     back();
     expect(routerPath()).toBe("/1/cases/7");
   });

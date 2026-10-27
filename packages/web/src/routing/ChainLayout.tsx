@@ -1,12 +1,12 @@
 import { Outlet, useParams } from "react-router";
 import { PageChainContext, useResolvedChain } from "./pageChain";
 import { CHAIN_PARAM } from "./paths";
-import type { ChainLayoutProps } from "./types";
+import type { FrameComponent } from "./types";
 import { UnsupportedNetworkScreen } from "./UnsupportedNetworkScreen";
 import { useChainFollowing } from "./useChainFollowing";
 
 /** The outlet is keyed by the chain, so nothing a page holds for one chain survives a move to another. */
-export function ChainLayout({ frame: Frame }: ChainLayoutProps) {
+export function ChainLayout({ frame: Frame }: { readonly frame: FrameComponent }) {
   useChainFollowing();
   const segment = useParams()[CHAIN_PARAM] ?? "";
   const resolvedChain = useResolvedChain();

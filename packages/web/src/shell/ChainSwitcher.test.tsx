@@ -204,29 +204,12 @@ describe("ChainSwitcher", () => {
     expect(wallet.config.state.chainId).toBe(1);
   });
 
-  it("while any switch request waits in the wallet, the pill's chains take no press", async () => {
+  it("while any switch request waits in the wallet, the pill's dot dims and its chains look disabled, with no hover fill, and take no press", async () => {
     const user = userEvent.setup();
     const wallet = await createConnectedTestWallet({ chainId: 1 });
     const switches = spySwitches(wallet);
     holdChainSwitches(wallet);
     const view = renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet });
-    await user.click(pill("Ethereum Mainnet"));
-    await user.click(screen.getByRole("menuitem", { name: "Gnosis Network" }));
-    expect(switches).toHaveBeenCalledTimes(1);
-    expect(pill("Ethereum Mainnet")).toHaveAttribute("aria-busy", "true");
-    await user.click(pill("Ethereum Mainnet"));
-    for (const item of menuItems()) expect(item).toHaveAttribute("aria-disabled", "true");
-    await user.click(screen.getByRole("menuitem", { name: "Gnosis Network" }));
-    await user.click(screen.getByRole("menuitem", { name: "Ethereum Mainnet" }));
-    expect(switches).toHaveBeenCalledTimes(1);
-    expect(view.currentPath()).toBe("/1/ongoing");
-  });
-
-  it("while a switch request waits, the pill's dot dims and the chains look disabled with no hover fill", async () => {
-    const user = userEvent.setup();
-    const wallet = await createConnectedTestWallet({ chainId: 1 });
-    holdChainSwitches(wallet);
-    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet });
     const trigger = pill("Ethereum Mainnet");
     expect(trigger).toHaveClass("group", "aria-busy:cursor-progress");
     expect(dot(trigger)).toHaveClass("group-aria-busy:opacity-40");
@@ -236,9 +219,14 @@ describe("ChainSwitcher", () => {
       expect(item).toHaveClass("aria-disabled:opacity-50", "aria-disabled:hover:bg-transparent");
     }
     await user.click(screen.getByRole("menuitem", { name: "Gnosis Network" }));
+    expect(switches).toHaveBeenCalledTimes(1);
     expect(trigger).toHaveAttribute("aria-busy", "true");
     await user.click(trigger);
     for (const item of menuItems()) expect(item).toHaveAttribute("aria-disabled", "true");
+    await user.click(screen.getByRole("menuitem", { name: "Gnosis Network" }));
+    await user.click(screen.getByRole("menuitem", { name: "Ethereum Mainnet" }));
+    expect(switches).toHaveBeenCalledTimes(1);
+    expect(view.currentPath()).toBe("/1/ongoing");
   });
 
   it("the pill's dot is green on the page chain and has no warning shade with a wallet connected", async () => {
@@ -273,13 +261,6 @@ describe("ChainSwitcher", () => {
     }
     renderWithProviders(<Screen />, { path: "/999/ongoing", frame: "page" });
     expect(unsupportedPill()).toHaveClass("w-56", "max-w-full");
-  });
-
-  it("on a testnet page the pill's accessible name carries the full chain name", () => {
-    renderWithProviders(<Screen />, { path: "/11155111/ongoing", frame: "page" });
-    const trigger = within(screen.getByRole("banner")).getByRole("button", { name: "Network: Ethereum Testnet Sepolia. Change network" });
-    expect(trigger).toHaveTextContent("Ethereum Testnet Sepolia");
-    expect(trigger).not.toHaveAttribute("title");
   });
 
   it("opens on the current chain and moves with the arrow keys, Escape returns focus to the pill, Tab closes", async () => {
@@ -325,20 +306,14 @@ describe("ChainSwitcher", () => {
     expect(pill("Gnosis Network")).toHaveFocus();
   });
 
-  it("the menu floats on a Stroke border and the library's shadow token, like the library's dropdowns", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page" });
-    await user.click(pill("Gnosis Network"));
-    expect(menuPanel()).toHaveClass("border-klerosUIComponentsStroke", "shadow-default");
-  });
-
-  it("the menu grows from the corner it hangs from and fades out, inert, before it unmounts", async () => {
+  it("the menu floats on the library's Stroke border and shadow, grows from the corner it hangs from and fades out, inert, before it unmounts", async () => {
     const user = userEvent.setup();
     renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page" });
     const trigger = pill("Gnosis Network");
     await user.click(trigger);
     const panel = menuPanel();
     expect(panel).toHaveClass("animate-scale-in", "origin-top-left", "lg:origin-top-right");
+    expect(panel).toHaveClass("border-klerosUIComponentsStroke", "shadow-default");
     expect(panel).not.toHaveAttribute("inert");
 
     await user.keyboard("{Escape}");

@@ -128,14 +128,6 @@ describe("parseCachedMetaEvidenceResult", () => {
     expect(parseCachedMetaEvidenceResult(persisted(result))).toEqual(result);
   });
 
-  it("a persisted entry whose descriptions are not strings is ignored", async () => {
-    const good = persisted(await okResult()) as Record<string, unknown> & { metaEvidence: Record<string, unknown> };
-    for (const descriptions of [{ "0": 1 }, [1], "x"]) {
-      const rulingOptions = { type: "single-select", titles: ["A"], descriptions };
-      expect(parseCachedMetaEvidenceResult({ ...good, metaEvidence: { ...good.metaEvidence, rulingOptions } })).toBeNull();
-    }
-  });
-
   it("a rejection, a failure or a missing entry is never served from storage", () => {
     expect(parseCachedMetaEvidenceResult(persisted({ status: "invalid", metaEvidence: INVALID_META_EVIDENCE, reason: "script-not-allowlisted" }))).toBeNull();
     expect(parseCachedMetaEvidenceResult({ status: "failed", reason: "not-json", error: { code: "invalid-data", message: "x" } })).toBeNull();
@@ -160,6 +152,9 @@ describe("parseCachedMetaEvidenceResult", () => {
       { ...good, metaEvidence: { ...good.metaEvidence, title: 42 } },
       { ...good, metaEvidence: { ...good.metaEvidence, rulingOptions: { type: "single-select", titles: [1, 2] } } },
       { ...good, metaEvidence: { ...good.metaEvidence, rulingOptions: "x" } },
+      { ...good, metaEvidence: { ...good.metaEvidence, rulingOptions: { type: "single-select", titles: ["A"], descriptions: { "0": 1 } } } },
+      { ...good, metaEvidence: { ...good.metaEvidence, rulingOptions: { type: "single-select", titles: ["A"], descriptions: [1] } } },
+      { ...good, metaEvidence: { ...good.metaEvidence, rulingOptions: { type: "single-select", titles: ["A"], descriptions: "x" } } },
       { ...good, metaEvidence: { ...good.metaEvidence, aliases: { "not-an-address": "Bob" } } },
       { ...good, metaEvidence: { ...good.metaEvidence, arbitrableChainID: { status: "valid", chainId: 10 } } },
       { ...good, metaEvidence: { ...good.metaEvidence, arbitrableChainID: { status: "unsupported", chainId: 1 } } },

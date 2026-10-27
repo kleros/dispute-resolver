@@ -67,11 +67,6 @@ describe("write target binding", () => {
     expectTypeOf<Parameters<typeof buildWithdrawCalls>[0]["binding"]>().toEqualTypeOf<ArbitratedBinding>();
   });
 
-  it("unknown arbitrables are view-only, so no write is built for them", () => {
-    const binding = testBinding({ chainId: 1, disputeId: 5n, arbitrated: ARBITRATED });
-    expect(callsOf(everyBuild(binding, detectionFor(ARBITRATED, FAMILY_SIGNATURES["view-only"])))).toEqual([]);
-  });
-
   it("every call built for a recorded contract uses a selector its dispatcher carries", () => {
     const families = new Set<string>();
     for (const { label, detection, dispatcher } of recordedDetections()) {

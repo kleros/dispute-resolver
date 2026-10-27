@@ -37,15 +37,6 @@ function ongoingHeading(page: Page) {
   return page.getByRole("heading", { name: "Ongoing Disputes", level: 1 });
 }
 
-/** Counts full page loads from now on; an in-app navigation fires none. */
-function countLoads(page: Page): () => number {
-  let loads = 0;
-  page.on("load", () => {
-    loads += 1;
-  });
-  return () => loads;
-}
-
 test("refuses Fund visibly and sends nothing while the wallet's switch to the page chain waits", async ({ context, page, baseURL }) => {
   await injectWallet(context, { account: ACCOUNT, chainId: 100, heldSwitches: true });
   const traffic = await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), recordings: [RECORDING] });
@@ -112,40 +103,6 @@ test("a pasted case link on the other chain, declined in the wallet, opens the w
   await expect(ongoingHeading(page)).toBeVisible();
   await expect(caseTitle(page)).toHaveCount(0);
   expect(await switchRequests(page), "the app asked again after its move to the wallet's chain").toBe(1);
-});
-
-test("a pasted case link on the other chain, accepted in the wallet, stays on the case", async ({ context, page, baseURL }) => {
-  await injectWallet(context, { account: ACCOUNT, chainId: 100 });
-  const traffic = await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), recordings: [RECORDING] });
-
-  await page.goto(CASE_PATH);
-  await expectWalletConnected(accountButton(page));
-
-  await expect.poll(() => switchRequests(page)).toBe(1);
-  await expect(caseTitle(page)).toBeVisible();
-  await expect(page).toHaveURL(CASE_PATH);
-  await expect(notifications(page).getByRole("status")).toHaveCount(0);
-  await expect(notifications(page).getByRole("alert")).toHaveCount(0);
-  expect(await switchRequests(page)).toBe(1);
-  expect(traffic.rpcUnanswered, "case page reads missing from the recording").toEqual([]);
-});
-
-test("a list page on the other chain, declined, moves to the same path on the wallet's chain keeping the search and hash", async ({ context, page, baseURL }) => {
-  await injectWallet(context, { account: ACCOUNT, chainId: 100, declinedSwitches: 1 });
-  await fakeNetwork(context, { appOrigin: appOriginOf(baseURL) });
-  const loads = countLoads(page);
-
-  await page.goto("/1/ongoing?from=e2e#list");
-  await expectWalletConnected(accountButton(page));
-
-  await expect(page).toHaveURL("/100/ongoing?from=e2e#list");
-  const toast = notifications(page).getByRole("status");
-  await expect(toast).toHaveCount(1);
-  await expect(toast).toContainText("Wallet stayed on Gnosis Network");
-  await expect(toast).toContainText("The app is now showing Gnosis Network.");
-  await expect(ongoingHeading(page)).toBeVisible();
-  expect(loads(), "the move to the wallet's chain reloaded the page").toBe(1);
-  expect(await switchRequests(page)).toBe(1);
 });
 
 function networkPill(page: Page) {

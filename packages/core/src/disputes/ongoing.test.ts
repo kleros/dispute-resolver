@@ -69,7 +69,7 @@ describe("listOngoingDisputes", () => {
     for (const request of requests.logs) expect(request).toMatchObject({ address: ARBITRATOR, fromBlock: LOOKBACK_START, toBlock: HEAD });
   });
 
-  it("each card carries the dispute struct and a countdown target from the court's timesPerPeriod", async () => {
+  it("each card carries the dispute struct and a countdown target from the court's timesPerPeriod, null instead of crashing when the court is missing from the list", async () => {
     const { client } = fakeClient(node());
     const list = await listOngoingDisputes({ chainId: 11155111, client }, COURTS);
     if (list.status !== "ok") throw new Error(list.status);
@@ -82,12 +82,6 @@ describe("listOngoingDisputes", () => {
       countdownTarget: 3400,
     });
     expect(list.disputes.find((dispute) => dispute.id === 11n)?.countdownTarget).toBe(2020);
-  });
-
-  it("a court missing from the list leaves the countdown null instead of crashing", async () => {
-    const { client } = fakeClient(node());
-    const list = await listOngoingDisputes({ chainId: 11155111, client }, COURTS);
-    if (list.status !== "ok") throw new Error(list.status);
     expect(list.disputes.find((dispute) => dispute.id === 13n)?.countdownTarget).toBeNull();
   });
 

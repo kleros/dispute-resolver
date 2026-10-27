@@ -1,5 +1,5 @@
 import type { RealityProxyEntry } from "../registry/types";
-import { createRequestBudget, getLogsChunked } from "../rpc";
+import { getLogsChunked } from "../rpc";
 import { compareBigint } from "../bigint";
 import type { GetReadClient, Hex, ReadClient, RegistryKey } from "../types";
 import { ARBITRATION_CREATED, DISPUTE_ID_TO_QUESTION_ID, LOG_NEW_QUESTION } from "./events";
@@ -38,9 +38,6 @@ interface DisputeMapping {
   readonly mappingBlock: bigint;
 }
 
-/** The generator runs unattended for minutes: its requests are bounded only by the clients' own timeouts. */
-const UNLIMITED = createRequestBudget({ maxRequests: Number.POSITIVE_INFINITY, deadlineMs: Number.POSITIVE_INFINITY });
-
 async function finalizedBlock(client: ReadClient): Promise<number> {
   return Number((await client.getBlock({ blockTag: "finalized", includeTransactions: false })).number);
 }
@@ -67,7 +64,7 @@ function questionFromLog(
 }
 
 function questionLogs(entry: RealityProxyEntry, client: ReadClient, questionId: Hex, fromBlock: bigint, toBlock: bigint) {
-  return findLatestLogs(client, { address: entry.reality, event: LOG_NEW_QUESTION, args: { question_id: questionId }, fromBlock, toBlock }, UNLIMITED);
+  return findLatestLogs(client, { address: entry.reality, event: LOG_NEW_QUESTION, args: { question_id: questionId }, fromBlock, toBlock });
 }
 
 async function questionIn(key: string, entry: RealityProxyEntry, client: ReadClient, questionId: Hex, fromBlock: bigint, toBlock: bigint): Promise<KnownDisputeQuestion> {

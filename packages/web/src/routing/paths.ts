@@ -1,7 +1,7 @@
 import { getChain, parseChainId, parseDisputeId } from "@dispute-resolver/core";
 import { matchRoutes, type RouteObject } from "react-router";
 import { maxUint256 } from "viem";
-import type { PathLocation, Paths } from "./types";
+import type { PathLocation } from "./types";
 
 export const CHAIN_PARAM = "chainId";
 
@@ -27,7 +27,8 @@ function disputeSegment(disputeId: bigint): string {
   return disputeId.toString();
 }
 
-export const paths: Paths = Object.freeze({
+/** Validated chain IDs and numeric dispute IDs only. */
+export const paths = Object.freeze({
   chainRoot: (chainId: number) => `/${chainSegment(chainId)}`,
   ongoing: (chainId: number) => `/${chainSegment(chainId)}/ongoing`,
   create: (chainId: number) => `/${chainSegment(chainId)}/create`,

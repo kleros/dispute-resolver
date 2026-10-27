@@ -2,18 +2,11 @@ import { describe, expect, it } from "vitest";
 import { encodeExtraData } from "./index";
 
 describe("encodeExtraData", () => {
-  it("is 0x, then the court ID and the vote count as 64 hex digits each", () => {
-    expect(encodeExtraData(1n, 3n)).toBe(`0x${"0".repeat(63)}1${"0".repeat(63)}3`);
-  });
-
-  it("encodes court 0 with 3 votes, the form's initial selection", () => {
-    expect(encodeExtraData(0n, 3n)).toBe(`0x${"0".repeat(64)}${"0".repeat(63)}3`);
-  });
-
-  it("writes lowercase hex digits, 64 bytes in all", () => {
-    const extraData = encodeExtraData(26n, 511n);
-    expect(extraData).toBe(`0x${"0".repeat(62)}1a${"0".repeat(61)}1ff`);
-    expect(extraData).toHaveLength(2 + 128);
+  it.each([
+    [1n, 3n, `0x${"0".repeat(63)}1${"0".repeat(63)}3`],
+    [26n, 511n, `0x${"0".repeat(62)}1a${"0".repeat(61)}1ff`],
+  ])("is 0x, then the court ID %s and the vote count %s as 64 lowercase hex digits each", (court, votes, expected) => {
+    expect(encodeExtraData(court, votes)).toBe(expected);
   });
 
   it("encodes the full uint256 range exactly, beyond the safe-integer range", () => {

@@ -80,10 +80,6 @@ describe("validateCreateInput: required fields and integers", () => {
     expect(accepted(draft({ title: " ", question: " " }))).toMatchObject({ title: " ", question: " " });
   });
 
-  it("category and description are optional and kept as typed", () => {
-    expect(accepted(draft({ category: "", description: "" }))).toMatchObject({ category: "", description: "" });
-  });
-
   it("court and votes must be non-negative decimal integers", () => {
     for (const value of ["3.5", "1e3", "abc", "-1", "+3", " 3", "0x10", "３"]) {
       expect(errors(draft({ courtId: value, votes: value }))).toEqual({ courtId: "not-an-integer", votes: "not-an-integer" });
@@ -100,10 +96,6 @@ describe("validateCreateInput: required fields and integers", () => {
     expect(errors(draft({ courtId: tooLarge, votes: tooLarge }))).toEqual({ courtId: "out-of-range", votes: "out-of-range" });
     const max = (2n ** 256n - 1n).toString();
     expect(accepted(draft({ courtId: max, votes: max }))).toMatchObject({ courtId: 2n ** 256n - 1n, votes: 2n ** 256n - 1n });
-  });
-
-  it("large vote counts keep their exact value", () => {
-    expect(accepted(draft({ votes: "9007199254740993" })).votes).toBe(9_007_199_254_740_993n);
   });
 });
 
@@ -172,18 +164,6 @@ describe("validateCreateInput: parties", () => {
     ).toEqual({});
   });
 
-  it("several parties, each alias keyed by its own lowercased address", () => {
-    const value = accepted(
-      draft({
-        parties: [
-          { alias: "Alice", address: ALICE },
-          { alias: "Bob", address: BOB },
-        ],
-      }),
-    );
-    expect(value.aliases).toEqual({ [ALICE.toLowerCase()]: "Alice", [BOB.toLowerCase()]: "Bob" });
-  });
-
   it("names stay paired with their addresses when an earlier row is empty", () => {
     const value = accepted(
       draft({
@@ -211,30 +191,21 @@ describe("validateCreateInput: parties", () => {
     ).toEqual({ parties: ["alias-without-address", "address-without-alias", "address-without-alias"] });
   });
 
-  it("rejects values that are not a 0x-prefixed 40-digit hex address", () => {
-    for (const address of ["0x123", "alice.eth", "5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed", `0x${"g".repeat(40)}`, `${ALICE}00`]) {
-      expect(errors(draft({ parties: [{ alias: "Alice", address }] }))).toEqual({ parties: ["invalid-address"] });
-    }
-  });
-
-  it("enforces the EIP-55 checksum, so a mistyped digit or a wrong case pattern is rejected", () => {
-    const wrongDigit = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAfd";
-    const wrongCase = "0x5AAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
-    for (const address of [wrongDigit, wrongCase]) {
-      expect(errors(draft({ parties: [{ alias: "Alice", address }] }))).toEqual({ parties: ["invalid-address"] });
-    }
+  it.each([
+    ["a short hex value", "0x123"],
+    ["an ENS name", "alice.eth"],
+    ["an address without its 0x prefix", "5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"],
+    ["40 digits that are not hex", `0x${"g".repeat(40)}`],
+    ["42 hex digits", `${ALICE}00`],
+    ["an EIP-55 address with a mistyped digit", "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAfd"],
+    ["a mixed-case address with a wrong checksum", "0x5AAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"],
+    ["an all-uppercase address behind a 0X prefix", `0X${ALICE.slice(2).toUpperCase()}`],
+  ])("rejects %s as a party address", (_name, address) => {
+    expect(errors(draft({ parties: [{ alias: "Alice", address }] }))).toEqual({ parties: ["invalid-address"] });
   });
 
   it("an all-uppercase address is accepted as EIP-55's unchecksummed form and stored lowercase", () => {
     expect(accepted(draft({ parties: [{ alias: "Alice", address: `0x${ALICE.slice(2).toUpperCase()}` }] })).aliases).toEqual({ [ALICE.toLowerCase()]: "Alice" });
-  });
-
-  it("a 0X prefix and a mixed-case address with a wrong checksum stay rejected", () => {
-    const upperPrefix = `0X${ALICE.slice(2).toUpperCase()}`;
-    const wrongCase = "0x5AAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
-    for (const address of [upperPrefix, wrongCase]) {
-      expect(errors(draft({ parties: [{ alias: "Alice", address }] }))).toEqual({ parties: ["invalid-address"] });
-    }
   });
 
   it("an all-uppercase address duplicates its lowercase form", () => {

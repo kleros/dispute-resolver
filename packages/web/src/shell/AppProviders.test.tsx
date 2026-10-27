@@ -131,9 +131,10 @@ afterEach(() => {
 });
 
 describe("AppProviders", () => {
-  it("composes data, wallet, atlas, router, toasts, chain notices and the colour scheme in that order around the routes", () => {
+  it("composes data, wallet, atlas, router, toasts, chain notices and the colour scheme in that order around the routes, with no page scroller where the document scrolls", () => {
     renderApp(DataProbe, <RouteProbe />);
     expect(screen.getByText("Routes at /")).toBeInTheDocument();
+    expect(document.querySelector(".dr-page-scroller")).toBeNull();
     expect(order.slice(0, 8)).toEqual([
       "data query:false wagmi:false router:false",
       "wallet query:true wagmi:false router:false",
@@ -151,12 +152,6 @@ describe("AppProviders", () => {
     renderApp(BrokenData, <RouteProbe />);
     expect(screen.getByRole("heading", { level: 1, name: "Something went wrong" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
-  });
-
-  it("where the document scrolls the page, nothing wraps the app", () => {
-    renderApp(DataProbe, <RouteProbe />);
-    expect(screen.getByText("Routes at /")).toBeInTheDocument();
-    expect(document.querySelector(".dr-page-scroller")).toBeNull();
   });
 
   it("where the page scroller scrolls the page, the routes render inside it", () => {

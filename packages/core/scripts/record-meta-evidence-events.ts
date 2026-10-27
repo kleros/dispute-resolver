@@ -1,9 +1,9 @@
 /**
  * Recorder of the on-chain meta-evidence fixtures: the raw `Dispute` and `MetaEvidence` logs of Gnosis disputes
- * 460, 431 and 863 read at one pinned block (`src/evidence/__fixtures__/gnosis-460-863-meta-evidence.json`), the 460
+ * 460 and 863 read at one pinned block (`src/evidence/__fixtures__/gnosis-460-863-meta-evidence.json`), the 460
  * Playwright recording (`packages/web/e2e/app/fixtures/gnosis-460-meta-evidence.json`), and the `MetaEvidence(0)`
- * `eth_getLogs` answer of the mainnet 1621 governor added to the two mainnet 1621 recordings of packages/web/e2e, at
- * each recording's own block, with the exact filter the case page sends.
+ * `eth_getLogs` answer of the mainnet 1621 governor added to the mainnet 1621 recording of packages/web/e2e, at the
+ * recording's own block, with the exact filter the case page sends.
  *
  * Usage (from the repository root):
  *   yarn workspace @dispute-resolver/core tsx scripts/record-meta-evidence-events.ts
@@ -34,14 +34,13 @@ const GATEWAY = "https://cdn.kleros.link";
 
 const GNOSIS_DISPUTES = [
   { disputeId: 460n, arbitrable: "0xc7add3c961f7935cb4914e37da991d2f1cd7986c" },
-  { disputeId: 431n, arbitrable: "0xc7add3c961f7935cb4914e37da991d2f1cd7986c" },
   { disputeId: 863n, arbitrable: "0x25fa9432832efdd48deec6d4cf1cd3f139678a5b" },
 ] as const;
 
-/** The 1621 governor and the two recordings of its case page. */
+/** The 1621 governor and the recording of its case page. */
 const MAINNET_1621_ARBITRABLE = "0x327a29fce0a6490e4236240be176daa282eccfdf";
 const WEB_E2E = resolve(import.meta.dirname, "../../web/e2e");
-const MAINNET_1621_RECORDINGS = [resolve(WEB_E2E, "runner/fixtures/mainnet-1621.rpc.json"), resolve(WEB_E2E, "app/fixtures/mainnet-1621-appeal.json")];
+const MAINNET_1621_RECORDING = resolve(WEB_E2E, "app/fixtures/mainnet-1621-appeal.json");
 
 const CORE_FIXTURE = resolve(import.meta.dirname, "../src/evidence/__fixtures__/gnosis-460-863-meta-evidence.json");
 const E2E_460_FIXTURE = resolve(WEB_E2E, "app/fixtures/gnosis-460-meta-evidence.json");
@@ -232,7 +231,7 @@ async function main(): Promise<number> {
   if (dispute460 === undefined) throw new Error("Gnosis 460 was not recorded.");
   await record460E2e(dispute460);
   const mainnet = rawRpcFor(MAINNET);
-  for (const file of MAINNET_1621_RECORDINGS) await recordMainnet1621(file, mainnet);
+  await recordMainnet1621(MAINNET_1621_RECORDING, mainnet);
   return 0;
 }
 

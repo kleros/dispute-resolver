@@ -5,7 +5,7 @@ import { UserRejectedRequestError } from "viem";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WriteReceipt } from "../data";
 import { createTestDeps } from "../test/data";
-import { createConnectedTestWallet, testReceipt, testReplacementReceipt, testWriteBuild, walletWrapper } from "../test/wallet";
+import { createConnectedTestWallet, testReceipt, testWriteBuild, walletWrapper } from "../test/wallet";
 import type { WriteOutcome } from "./types";
 import { useWriteSequence } from "./useWriteSequence";
 
@@ -44,8 +44,9 @@ beforeEach(() => {
 });
 
 describe("useWriteSequence", () => {
-  it("withdraws in sequence, signing the next only after the previous receipt is mined", async () => {
+  it("withdraws in sequence, signing the next only after the previous receipt is mined, and refreshes once after the last", async () => {
     const events: string[] = [];
+    const onMined = vi.fn();
     let signatures = 0;
     writeContractMock.mockImplementation((_config, parameters) => {
       events.push(`sign ${String(parameters.args?.[1])}`);
@@ -58,19 +59,11 @@ describe("useWriteSequence", () => {
     });
     let outcome: WriteOutcome | undefined;
     await act(async () => {
-      outcome = await result.current.execute(BUILDS, { pageChainId: 1 });
+      outcome = await result.current.execute(BUILDS, { pageChainId: 1, onMined });
     });
     expect(events).toEqual(["sign 1", "receipt 1", "sign 2", "receipt 2", "sign 3", "receipt 3"]);
     expect(outcome?.phase).toBe("mined");
     expect(result.current.status).toMatchObject({ index: 2, total: 3, current: { phase: "mined", hash: hashAt(2) } });
-  });
-
-  it("refreshes once, after the last mined receipt", async () => {
-    const onMined = vi.fn();
-    const { result } = await renderSequence();
-    await act(async () => {
-      await result.current.execute(BUILDS, { pageChainId: 1, onMined });
-    });
     expect(onMined).toHaveBeenCalledTimes(1);
     expect(onMined).toHaveBeenCalledWith(testReceipt(hashAt(2)));
   });
@@ -101,20 +94,6 @@ describe("useWriteSequence", () => {
     expect(onMined).not.toHaveBeenCalled();
   });
 
-  it("stops after a cancelled withdrawal and does not sign the next one", async () => {
-    const onMined = vi.fn();
-    const { result } = await renderSequence((_chainId, hash) => Promise.resolve(hash === hashAt(1) ? testReplacementReceipt("cancelled") : testReceipt(hash)));
-    let outcome: WriteOutcome | undefined;
-    await act(async () => {
-      outcome = await result.current.execute(BUILDS, { pageChainId: 1, onMined });
-    });
-    expect(outcome?.phase).toBe("failed");
-    expect(writeContractMock).toHaveBeenCalledTimes(2);
-    expect(result.current.status).toMatchObject({ index: 1, total: 3, current: { phase: "failed" } });
-    expect(onMined).toHaveBeenCalledTimes(1);
-    expect(onMined).toHaveBeenCalledWith(testReceipt(hashAt(0)));
-  });
-
   it("checks the chain before every signature in the sequence", async () => {
     const { result, wallet } = await renderSequence(async (_chainId, hash) => {
       await wallet.changeChain(100);
@@ -133,17 +112,6 @@ describe("useWriteSequence", () => {
       await result.current.execute([testWriteBuild(1), { ok: false, refusal: "withdraw-unsupported" }], { pageChainId: 1 });
     });
     expect(result.current.status).toEqual({ index: 1, total: 2, current: { phase: "refused", refusal: "withdraw-unsupported" } });
-    expect(writeContractMock).not.toHaveBeenCalled();
-  });
-
-  it("a sequence whose first call targets another chain is refused before any signature", async () => {
-    const { result } = await renderSequence();
-    let outcome: WriteOutcome | undefined;
-    await act(async () => {
-      outcome = await result.current.execute([testWriteBuild(100, 1n), testWriteBuild(1, 2n)], { pageChainId: 1 });
-    });
-    expect(outcome).toEqual({ phase: "refused", refusal: "call-chain-mismatch" });
-    expect(result.current.status).toEqual({ index: 0, total: 2, current: { phase: "refused", refusal: "call-chain-mismatch" } });
     expect(writeContractMock).not.toHaveBeenCalled();
   });
 

@@ -42,21 +42,19 @@ describe("readArbitrationCost", () => {
     expect(requested).toHaveLength(0);
   });
 
-  it("a revert (an unknown court) is a `reverted` outcome, never a thrown error", async () => {
-    const mainnet = chainOf(1);
-    const { client } = fakeClient(costCall(mainnet.klerosLiquid ?? "", EXTRA_DATA, { error: rpcError(3, "execution reverted") }));
-    const outcome = await readArbitrationCost(client, mainnet, EXTRA_DATA);
-    expect(outcome.ok).toBe(false);
-    expect(!outcome.ok && outcome.error.code).toBe("reverted");
-  });
-
-  it("a transport failure is an `rpc-error` outcome whose message never carries the RPC URL", async () => {
-    const sepolia = chainOf(11155111);
-    const url = "https://rpc.example/v3/secret-key";
-    const { client } = fakeClient(costCall(sepolia.klerosLiquid ?? "", EXTRA_DATA, { error: new Error(`request to ${url} failed: socket hang up`) }));
-    const outcome = await readArbitrationCost(client, sepolia, EXTRA_DATA);
-    expect(outcome.ok).toBe(false);
-    expect(!outcome.ok && outcome.error.code).toBe("rpc-error");
+  it.each<[string, number, CallAnswer, string]>([
+    ["a revert (an unknown court) is a `reverted` outcome, never a thrown error", 1, { error: rpcError(3, "execution reverted") }, "reverted"],
+    [
+      "a transport failure is an `rpc-error` outcome whose message never carries the RPC URL",
+      11155111,
+      { error: new Error("request to https://rpc.example/v3/secret-key failed: socket hang up") },
+      "rpc-error",
+    ],
+  ])("%s", async (_name, chainId, answer, code) => {
+    const chain = chainOf(chainId);
+    const { client } = fakeClient(costCall(chain.klerosLiquid ?? "", EXTRA_DATA, answer));
+    const outcome = await readArbitrationCost(client, chain, EXTRA_DATA);
+    expect(outcome).toMatchObject({ ok: false, error: { code } });
     expect(!outcome.ok && outcome.error.message).not.toContain("secret-key");
   });
 });

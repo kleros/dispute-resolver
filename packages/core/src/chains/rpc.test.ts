@@ -19,18 +19,16 @@ describe("resolveReadRpcUrl", () => {
     expect(resolveReadRpcUrl(mainnet, { REACT_APP_WEB3_PROVIDER_URL: "  https://rpc.example/mainnet \n" })).toEqual({ status: "configured", url: "https://rpc.example/mainnet" });
   });
 
-  it("treats an unset variable as unconfigured, with no wallet fallback", () => {
-    expect(resolveReadRpcUrl(mainnet, {})).toEqual({ status: "unconfigured", chainId: 1 });
-    expect(resolveReadRpcUrl(mainnet, { REACT_APP_WEB3_PROVIDER_URL: undefined })).toEqual({ status: "unconfigured", chainId: 1 });
-  });
-
-  it("treats an empty or whitespace-only variable as unconfigured", () => {
-    expect(resolveReadRpcUrl(mainnet, { REACT_APP_WEB3_PROVIDER_URL: "" })).toEqual({ status: "unconfigured", chainId: 1 });
-    expect(resolveReadRpcUrl(mainnet, { REACT_APP_WEB3_PROVIDER_URL: "   \t" })).toEqual({ status: "unconfigured", chainId: 1 });
-  });
-
-  it("ignores another chain's variable", () => {
-    expect(resolveReadRpcUrl(mainnet, { REACT_APP_WEB3_XDAI_PROVIDER_URL: "https://rpc.example/gnosis" })).toEqual({ status: "unconfigured", chainId: 1 });
+  it.each([
+    ["an unset variable", {}],
+    ["a variable set to undefined", { REACT_APP_WEB3_PROVIDER_URL: undefined }],
+    ["an empty variable", { REACT_APP_WEB3_PROVIDER_URL: "" }],
+    ["a whitespace-only variable", { REACT_APP_WEB3_PROVIDER_URL: "   \t" }],
+    ["only another chain's variable", { REACT_APP_WEB3_XDAI_PROVIDER_URL: "https://rpc.example/gnosis" }],
+    ["an env value that is not a string", { REACT_APP_WEB3_PROVIDER_URL: 42 } as unknown as Record<string, string>],
+    ["a variable inherited from the env object's prototype", Object.create({ REACT_APP_WEB3_PROVIDER_URL: "https://inherited.example" }) as Record<string, string>],
+  ])("treats %s as unconfigured, with no wallet fallback", (_name, env) => {
+    expect(resolveReadRpcUrl(mainnet, env)).toEqual({ status: "unconfigured", chainId: 1 });
   });
 
   it("resolves zkSync Sepolia and zkSync Era to their literal URLs with an empty env", () => {
@@ -49,16 +47,6 @@ describe("resolveReadRpcUrl", () => {
       expect(() => resolveReadRpcUrl(chain, {})).not.toThrow();
     }
     expect(resolveReadRpcUrl(bare, {})).toEqual({ status: "unconfigured", chainId: 999 });
-  });
-
-  it("ignores an env value that is not a string", () => {
-    const env = { REACT_APP_WEB3_PROVIDER_URL: 42 } as unknown as Record<string, string>;
-    expect(resolveReadRpcUrl(mainnet, env)).toEqual({ status: "unconfigured", chainId: 1 });
-  });
-
-  it("ignores variables inherited from the env object's prototype", () => {
-    const env = Object.create({ REACT_APP_WEB3_PROVIDER_URL: "https://inherited.example" }) as Record<string, string>;
-    expect(resolveReadRpcUrl(mainnet, env)).toEqual({ status: "unconfigured", chainId: 1 });
   });
 
   it("leaves every chain unconfigured on an empty env except 300 and 324", () => {

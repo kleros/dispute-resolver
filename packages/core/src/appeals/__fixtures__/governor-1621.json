@@ -1,5 +1,5 @@
 {
-  "provenance": "Raw JSON-RPC replies through the mainnet read RPC, recorded 2026-10-14: eth_call at blockNumber for the poh.eth governor (getRoundInfo of session 18 rounds 0 and 1, getCurrentSessionNumber, sessions(18): ruling 2, disputeID 1621, status 2 Resolved) and KlerosLiquid (currentRuling, disputes) of dispute 1621; eth_getLogs of the governor's ERC-1497 Dispute(arbitrator, 1621) event over blocks 18783515 to 18783715. The event's evidence group is 18, the same session that packages/core/src/writes/__fixtures__/governor-1621.json found by scanning sessions(i); getCurrentSessionNumber is 24 because the governor opened new sessions after the ruling was executed.",
+  "provenance": "Raw JSON-RPC replies through the mainnet read RPC, recorded 2026-10-14: eth_call at blockNumber for the poh.eth governor (getRoundInfo of session 18 rounds 0 and 1, sessions(18): ruling 2, disputeID 1621, status 2 Resolved); eth_getLogs of the governor's ERC-1497 Dispute(arbitrator, 1621) event over blocks 18783515 to 18783715. The event's evidence group is 18, the same session that packages/core/src/writes/__fixtures__/governor-1621.json found by scanning sessions(i); the governor's current session was 24 at blockNumber, because it opened new sessions after the ruling was executed, so the Dispute event's group is used.",
   "chainId": 1,
   "blockNumber": 26190903,
   "disputeId": "1621",
@@ -28,30 +28,6 @@
       }
     },
     {
-      "label": "getCurrentSessionNumber()",
-      "to": "0x327a29fce0a6490e4236240be176daa282eccfdf",
-      "data": "0x6c0b7e71",
-      "reply": {
-        "result": "0x0000000000000000000000000000000000000000000000000000000000000018"
-      }
-    },
-    {
-      "label": "currentRuling(1621)",
-      "to": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
-      "data": "0x1c3db16d0000000000000000000000000000000000000000000000000000000000000655",
-      "reply": {
-        "result": "0x0000000000000000000000000000000000000000000000000000000000000002"
-      }
-    },
-    {
-      "label": "disputes(1621)",
-      "to": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
-      "data": "0x564a565d0000000000000000000000000000000000000000000000000000000000000655",
-      "reply": {
-        "result": "0x0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000327a29fce0a6490e4236240be176daa282eccfdf00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000006588146f000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
-      }
-    },
-    {
       "label": "sessions(18)",
       "to": "0x327a29fce0a6490e4236240be176daa282eccfdf",
       "data": "0x83c4b7a30000000000000000000000000000000000000000000000000000000000000012",
@@ -62,20 +38,8 @@
   ],
   "disputeLogs": [
     {
-      "address": "0x327a29fce0a6490e4236240be176daa282eccfdf",
-      "topics": [
-        "0x74baab670a4015ab2f1b467c5252a96141a2573f2908e58a92081e80d3cfde3d",
-        "0x000000000000000000000000988b3a538b618c7a603e1c11ab82cd16dbe28069",
-        "0x0000000000000000000000000000000000000000000000000000000000000655"
-      ],
       "data": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000012",
-      "blockHash": "0xb879adc20cfc0eecaad29ab04889e254d1632e69cfd5a37ff286c58427d31550",
-      "blockNumber": "0x11e9d7f",
-      "blockTimestamp": "0x657ad093",
-      "transactionHash": "0xb42b874efbce3c624f96e0b9da257a32c028a39a5f3cc251426b09d6f0765a55",
-      "transactionIndex": "0x7a",
-      "logIndex": "0xa1",
-      "removed": false
+      "blockNumber": "0x11e9d7f"
     }
   ]
 }

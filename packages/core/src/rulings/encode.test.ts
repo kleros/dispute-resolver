@@ -16,7 +16,9 @@ function ok(code: bigint): AnswerEncoding {
   return { ok: true, code };
 }
 
-function failed(error: Extract<AnswerEncoding, { ok: false }>["error"]): AnswerEncoding {
+type EncodingError = Extract<AnswerEncoding, { ok: false }>["error"];
+
+function failed(error: EncodingError): AnswerEncoding {
   return { ok: false, error };
 }
 
@@ -57,23 +59,16 @@ describe("encodeAnswer: uint", () => {
     expect(uint("4243172404", UINT_0)).toEqual(ok(4243172405n));
   });
 
-  it("a uint answer encodes to what the ruling formatter reads back", () => {
-    const encoded = uint("12.34", UINT_2);
-    expect(encoded.ok && formatRuling(encoded.code, UINT_2, null)).toBe("12.34");
-  });
-
-  it("a uint answer without a precision reads back as typed", () => {
-    for (const value of ["1", "0.5", "12.34"]) {
-      const encoded = uint(value);
-      expect(encoded.ok && formatRuling(encoded.code, UINT, null)).toBe(value);
-    }
-  });
-
-  it("a uint answer at precision 0 reads back as typed", () => {
-    for (const value of ["5", "4243172404"]) {
-      const encoded = uint(value, UINT_0);
-      expect(encoded.ok && formatRuling(encoded.code, UINT_0, null)).toBe(value);
-    }
+  it.each<[RulingOptions, string]>([
+    [UINT_2, "12.34"],
+    [UINT, "1"],
+    [UINT, "0.5"],
+    [UINT, "12.34"],
+    [UINT_0, "5"],
+    [UINT_0, "4243172404"],
+  ])("a uint answer with options %j encodes %s to what the ruling formatter reads back", (options, value) => {
+    const encoded = uint(value, options);
+    expect(encoded.ok && formatRuling(encoded.code, options, null)).toBe(value);
   });
 
   it("more fractional digits than the precision allows is out of range", () => {
@@ -188,23 +183,34 @@ describe("encodeAnswer: datetime", () => {
 });
 
 describe("encodeAnswer: hash", () => {
-  it("a hash answer is encoded as its value + 1", () => {
-    const value = `0x${"ab".repeat(32)}`;
-    expect(hash(value)).toEqual(ok(BigInt(value) + 1n));
-    expect(hash("0xABC")).toEqual(ok(0xabcn + 1n));
-    expect(hash("0x0")).toEqual(ok(1n));
+  it.each<[string, bigint]>([
+    [`0x${"ab".repeat(32)}`, BigInt(`0x${"ab".repeat(32)}`) + 1n],
+    ["0xABC", 0xabcn + 1n],
+    ["0x0", 1n],
+    ["1234", 1235n],
+    ["0o17", 16n],
+    ["0b11", 4n],
+    [" 0x10 ", 17n],
+    ["   ", 1n],
+    [`0x${"0".repeat(70)}1`, 2n],
+  ])("a hash answer is BigInt(value) + 1, so every BigInt form is accepted: %j encodes to %s", (value, code) => {
+    expect(hash(value)).toEqual(ok(code));
   });
 
-  it("a hash answer that BigInt cannot read returns an error code", () => {
-    expect(hash("")).toEqual(failed("empty"));
-    expect(hash("abc")).toEqual(failed("not-hex"));
-    expect(hash("0x")).toEqual(failed("not-hex"));
-    expect(hash("0xzz")).toEqual(failed("not-hex"));
-  });
-
-  it("a hash answer whose code does not fit in uint256 is out of range", () => {
-    expect(hash(`0x${"1".repeat(65)}`)).toEqual(failed("out-of-range"));
-    expect(hash(`0x${"f".repeat(64)}`)).toEqual(failed("out-of-range"));
+  it.each<[string, EncodingError]>([
+    ["", "empty"],
+    ["abc", "not-hex"],
+    ["0x", "not-hex"],
+    ["0xzz", "not-hex"],
+    ["-0x5", "not-hex"],
+    ["1.5", "not-hex"],
+    [`0x${"1".repeat(65)}`, "out-of-range"],
+    [`0x${"f".repeat(64)}`, "out-of-range"],
+    ["-5", "out-of-range"],
+    [MAX_UINT256.toString(), "out-of-range"],
+    [(MAX_UINT256 + 1n).toString(), "out-of-range"],
+  ])("a hash answer %j that BigInt cannot read or that falls outside uint256 is refused as %s", (value, error) => {
+    expect(hash(value)).toEqual(failed(error));
   });
 });
 
@@ -252,22 +258,5 @@ describe("encodeAnswer: edge cases", () => {
     expect(uint(".00", UINT_0)).toEqual(ok(1n));
     expect(uint(".", UINT_2)).toEqual(failed("not-a-number"));
     expect(uint("-.", UINT_2)).toEqual(failed("not-a-number"));
-  });
-
-  it("a hash answer is BigInt(value) + 1, so every BigInt form is accepted", () => {
-    expect(hash("1234")).toEqual(ok(1235n));
-    expect(hash("0o17")).toEqual(ok(16n));
-    expect(hash("0b11")).toEqual(ok(4n));
-    expect(hash(" 0x10 ")).toEqual(ok(17n));
-    expect(hash("   ")).toEqual(ok(1n));
-    expect(hash(`0x${"0".repeat(70)}1`)).toEqual(ok(2n));
-  });
-
-  it("a hash answer outside uint256 or in a form BigInt rejects returns an error code", () => {
-    expect(hash("-5")).toEqual(failed("out-of-range"));
-    expect(hash(MAX_UINT256.toString())).toEqual(failed("out-of-range"));
-    expect(hash((MAX_UINT256 + 1n).toString())).toEqual(failed("out-of-range"));
-    expect(hash("-0x5")).toEqual(failed("not-hex"));
-    expect(hash("1.5")).toEqual(failed("not-hex"));
   });
 });

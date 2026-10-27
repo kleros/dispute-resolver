@@ -133,7 +133,7 @@ export function OngoingCard({ chainId, dispute, title, courts }: OngoingCardProp
   return (
     <CardShell chainId={chainId} disputeId={dispute.id}>
       <div className={HEAD_CLASS}>
-        <PeriodBadge variant="pill" size="sm" period={dispute.period} />
+        <PeriodBadge size="sm" period={dispute.period} />
         <span className="text-sm text-klerosUIComponentsSecondaryText tabular-nums">
           #<span className="font-semibold text-klerosUIComponentsPrimaryText">{dispute.id.toString()}</span>
         </span>

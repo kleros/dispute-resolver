@@ -42,7 +42,7 @@ const dispute1170Schema = z.object({
   readAtBlock: z.number(),
   arbitrable: address,
   localDisputeID: z.string(),
-  appealDecisions: z.array(log),
+  appealDecisions: z.array(z.object({ blockNumber: z.number(), logIndex: z.number() })),
   fundingEvents: z.array(log.extend({ type: z.enum(["Contribution", "RulingFunded"]) })),
 });
 const dispute1170EventSchema = z.object({ readAtBlock: z.number(), disputeEvent: z.object({ blockNumber: z.number() }) });
@@ -76,8 +76,8 @@ const unslashedSchema = z.object({
     z.object({
       disputeId: z.string(),
       localId: z.string(),
-      disputeEvent: z.array(log).length(1),
-      appealDecisions: z.array(log),
+      disputeEvent: z.array(z.object({ blockNumber: z.number() })).length(1),
+      appealDecisions: z.array(z.object({ blockNumber: z.number() })),
       contributions: z.array(log),
       rulingFunded: z.array(log),
       firstContributor: address,
@@ -152,7 +152,7 @@ const governorSchema = z.object({
   governor: address,
   session: z.string(),
   calls: z.array(recordedCall),
-  disputeLogs: z.array(z.object({ topics: z.array(hex), data: hex, blockNumber: hex })).length(1),
+  disputeLogs: z.array(z.object({ data: hex, blockNumber: hex })).length(1),
 });
 
 const recordedGovernor = governorSchema.parse(governor1621);

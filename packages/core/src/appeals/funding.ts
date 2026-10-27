@@ -4,11 +4,7 @@ import type { Outcome } from "../types";
 import { CONTRIBUTION_EVENT, RULING_FUNDED_EVENT, checkContext, governorSession, idrLocalId } from "./context";
 import { readGovernorRound } from "./governor";
 import { fail, failedRead, succeed } from "../outcome";
-import type { AppealContext, RoundFunding, RulingAmount } from "./types";
-
-function byRuling(a: RulingAmount, b: RulingAmount): number {
-  return compareBigint(a.ruling, b.ruling);
-}
+import type { AppealContext, RoundFunding } from "./types";
 
 /**
  * `Contribution(localId, round)` amounts summed per ruling and the `RulingFunded(localId, round)` rulings in event order,
@@ -37,7 +33,7 @@ async function readResolverFunding(context: AppealContext, round: bigint, fromBl
       if (args._ruling === undefined) return fail("invalid-data", "A RulingFunded event of the arbitrable could not be decoded.");
       fundedRulings.push(args._ruling);
     }
-    const contributions = [...totals].map(([ruling, amount]) => ({ ruling, amount })).sort(byRuling);
+    const contributions = [...totals].map(([ruling, amount]) => ({ ruling, amount })).sort((a, b) => compareBigint(a.ruling, b.ruling));
     return succeed({ round, contributions, fundedRulings });
   } catch (error) {
     return fail("rpc-error", `Could not read the appeal funding: ${describeError(error)}`);

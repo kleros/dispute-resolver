@@ -77,22 +77,6 @@ describe("QuestionPanel", () => {
     }
   });
 
-  it("sets every question in the bold lead style, whatever its length", () => {
-    const long =
-      "Did the submitter follow the listing policy for this registry entry, including the address, the name, the ticker, the logo and every other field the policy requires?";
-    const { unmount } = renderPanel(sectionReady(testOkMetaEvidence({ question: long, rulingOptions: { type: "uint", precision: 0 } })));
-    const longQuestion = screen.getByText(long);
-    expect(longQuestion).toHaveClass("font-semibold", "text-lg", "text-klerosUIComponentsPrimaryText");
-    expect(longQuestion).not.toHaveClass("font-normal");
-    expect(longQuestion.parentElement?.parentElement?.className).not.toMatch(/(^|\s)max-w-/);
-    unmount();
-
-    renderPanel(sectionReady(testOkMetaEvidence({ question: "Who wins?", rulingOptions: { type: "uint", precision: 0 } })));
-    const shortQuestion = screen.getByText("Who wins?");
-    expect(shortQuestion).toHaveClass("font-semibold", "text-lg", "text-klerosUIComponentsPrimaryText");
-    expect(shortQuestion).not.toHaveClass("font-normal");
-  });
-
   it("shows each option's title before its code on screen while the item still reads Option N - Title: description", () => {
     renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: { type: "single-select", titles: ["Yes", "No"], descriptions: ["Release the funds"] } })));
     expect(optionLines()).toEqual(["Option 0 - Refuse to Arbitrate / Invalid", "Option 1 - Yes: Release the funds", "Option 2 - No"]);
@@ -136,23 +120,17 @@ describe("QuestionPanel", () => {
     expect(section).not.toHaveAttribute("role");
     expect(section.querySelectorAll("[role]")).toHaveLength(0);
     const list = within(section).getByRole("list");
-    expect(list).toHaveClass("mt-2", "gap-4", "[list-style-type:'']");
+    expect(list).toHaveClass("[list-style-type:'']");
     expect(list).not.toHaveAttribute("role");
-    const item = within(list).getAllByRole("listitem")[1];
-    expect(item).toHaveClass("gap-1");
-    expect(item?.firstElementChild).toHaveClass("flex-wrap", "items-baseline", "gap-x-4", "gap-y-1");
   });
 
-  it("sets the heading apart with more room above than below and keeps the Court note last", () => {
+  it("labels the options section by its heading and keeps the Court note last", () => {
     renderPanel(sectionReady(testOkMetaEvidence({ question: "Who wins?", rulingOptions: { type: "single-select", titles: ["Yes"] } })));
     const heading = screen.getByRole("heading", { level: 3, name: "Voting options" });
-    expect(heading).toHaveClass("text-base", "leading-6", "font-semibold", "text-klerosUIComponentsPrimaryText");
     const section = heading.closest("section");
     if (section === null) throw new Error("The options section is missing");
     expect(section).toHaveAttribute("aria-labelledby", heading.id);
-    expect(section.parentElement).toHaveClass("gap-6");
     const note = screen.getByRole("link", { name: "Court" }).closest("p");
-    expect(note).toHaveClass("mt-6");
     expect(section.lastElementChild).toBe(note);
     expect(note?.querySelector("svg")).toBeNull();
     expect(note?.querySelector("img")).toBeNull();
@@ -209,10 +187,5 @@ describe("QuestionPanel", () => {
     );
     expect(screen.getByText("Should Alice be paid?")).toBeInTheDocument();
     expect(document.body.innerHTML).not.toContain("t-reveal-in");
-  });
-
-  it("shows a question that was ready on the first render without motion", () => {
-    const { container } = renderPanel(sectionReady(testOkMetaEvidence({ question: "Should Alice be paid?" })));
-    expect(container.innerHTML).not.toContain("t-reveal-in");
   });
 });

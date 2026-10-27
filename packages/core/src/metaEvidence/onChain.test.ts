@@ -68,14 +68,6 @@ describe("meta-evidence from the chain", () => {
     expect(result.status === "ok" && result.source).toEqual({ kind: "event", locator: "agrees", locatorPath: `${CANONICAL_META}/metaEvidence.json` });
   });
 
-  it("without an on-chain reader the locator decides, with no extra fetch", async () => {
-    const { fetcher, urls } = fakeFetcher(servedMetaEvidence(PLAIN));
-    const result = await loadMetaEvidence(context({ fetcher }));
-    expect(result).toMatchObject({ status: "ok", uri: CANONICAL_META, metaEvidence: { title: "Plain dispute" } });
-    expect(result.status === "ok" && result.source).toEqual({ kind: "locator", event: "not-read" });
-    expect(urls).toEqual([LOCATOR_1684, META_URL]);
-  });
-
   it("an event that is not found, ambiguous or unavailable leaves the locator in charge and records why", async () => {
     const answers: [OnChainMetaEvidence, string][] = [
       [{ status: "not-found", reason: "dispute-event-not-found" }, "dispute-event-not-found"],
@@ -170,15 +162,6 @@ describe("meta-evidence from the chain", () => {
     expect(await loadMetaEvidence(context({ env: {}, fetcher: notFound.fetcher, onChain: reader }))).toEqual(unconfigured);
     expect(notFound.urls).toEqual([]);
     expect(signals).toHaveLength(1);
-  });
-
-  it("without a meta-evidence source the reason names no configuration", async () => {
-    const { reader } = fakeOnChain({ status: "not-found", reason: "dispute-event-not-found" });
-    for (const onChain of [undefined, reader]) {
-      const result = await loadMetaEvidence(context({ env: {}, fetcher: fakeFetcher({}).fetcher, ...(onChain === undefined ? {} : { onChain }) }));
-      if (result.status !== "failed") throw new Error(`expected a failure, got ${result.status}`);
-      expect(result.error.message).not.toMatch(/configur|REACT_APP|env|deploy|API/i);
-    }
   });
 });
 

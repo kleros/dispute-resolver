@@ -46,46 +46,6 @@
       }
     },
     {
-      "disputeId": "431",
-      "arbitrable": "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
-      "metaEvidenceId": "79",
-      "disputeLogs": [
-        {
-          "address": "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
-          "topics": [
-            "0x74baab670a4015ab2f1b467c5252a96141a2573f2908e58a92081e80d3cfde3d",
-            "0x0000000000000000000000009c1da9a04925bdfdedf0f6421bc7eea8305f9002",
-            "0x00000000000000000000000000000000000000000000000000000000000001af"
-          ],
-          "data": "0x000000000000000000000000000000000000000000000000000000000000004f000000000000000000000000000000000000000000000000000000000000004f",
-          "blockNumber": "0x232dbc5",
-          "transactionHash": "0x6df889dbcc348ef821ab0c76a6e375b0050f443c46f2084ac36350f9c5ab6792",
-          "transactionIndex": "0xa",
-          "blockHash": "0xa13053d19d79798baa8ce47fa4e2970d1ae24493372c1dbafa1f4db400e8e648",
-          "logIndex": "0x1f",
-          "blockTimestamp": "0x672b9591",
-          "removed": false
-        }
-      ],
-      "metaEvidenceLogs": [
-        {
-          "address": "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
-          "topics": ["0x61606860eb6c87306811e2695215385101daab53bd6ab4e9f9049aead9363c7d", "0x000000000000000000000000000000000000000000000000000000000000004f"],
-          "data": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000462f697066732f516d58354a69375a5353456747796a4743737859634b7477537953315531394a4b79436e4133534e5878447144542f6d65746145766964656e63652e6a736f6e0000000000000000000000000000000000000000000000000000",
-          "blockNumber": "0x232dbc5",
-          "transactionHash": "0x6df889dbcc348ef821ab0c76a6e375b0050f443c46f2084ac36350f9c5ab6792",
-          "transactionIndex": "0xa",
-          "blockHash": "0xa13053d19d79798baa8ce47fa4e2970d1ae24493372c1dbafa1f4db400e8e648",
-          "logIndex": "0x1e",
-          "blockTimestamp": "0x672b9591",
-          "removed": false
-        }
-      ],
-      "blockTimestamps": {
-        "0x232dbc5": "0x672b9591"
-      }
-    },
-    {
       "disputeId": "863",
       "arbitrable": "0x25fa9432832efdd48deec6d4cf1cd3f139678a5b",
       "metaEvidenceId": "0",

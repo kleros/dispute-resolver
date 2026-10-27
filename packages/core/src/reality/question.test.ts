@@ -1,7 +1,6 @@
 import { numberToHex, toEventSelector } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { rpcError } from "../test/rpc/testHelpers";
-import { createRequestBudget } from "../rpc";
 import type { Hex } from "../types";
 import { DISPUTE_ID_TO_QUESTION_ID, LOG_NEW_QUESTION } from "./events";
 import { findLatestLogs } from "./findLatestLogs";
@@ -45,22 +44,11 @@ function countCalls(calls: readonly NodeCall[], predicate: (call: NodeCall) => b
   return calls.filter(predicate).length;
 }
 
-/** Fails the first `failures` attempts of every distinct request of `chain`, like a flaky node. */
-function failFirstAttempts(chain: FakeChain, failures: number): void {
-  const attempts = new Map<string, number>();
-  chain.onRequest = (method, params) => {
-    const key = JSON.stringify([method, params]);
-    const attempted = attempts.get(key) ?? 0;
-    attempts.set(key, attempted + 1);
-    return attempted < failures ? rpcError(-32000, "header not found") : undefined;
-  };
-}
-
 /**
- * Moves the clock `ms` forward when `chain` receives its first `method` request, which then fails with `failure` when
- * there is one. Only once, so a request still in flight when the test ends cannot move the clock of a later test.
+ * Moves the clock `ms` forward when `chain` receives its first `method` request. Only once, so a request still in
+ * flight when the test ends cannot move the clock of a later test.
  */
-function advanceClockAtFirst(chain: FakeChain, method: string, ms: number, failure?: Error): void {
+function advanceClockAtFirst(chain: FakeChain, method: string, ms: number): void {
   vi.useFakeTimers({ toFake: ["Date"] });
   let advanced = false;
   chain.onRequest = (requested) => {
@@ -69,7 +57,7 @@ function advanceClockAtFirst(chain: FakeChain, method: string, ms: number, failu
       advanced = true;
       vi.setSystemTime(Date.now() + ms);
     }
-    return due ? failure : undefined;
+    return undefined;
   };
 }
 
@@ -176,16 +164,6 @@ describe("fetchRealityQuestion", () => {
     for (const call of logCalls) expect(filterOf(call)).toMatchObject({ fromBlock: hex(500_001) });
   });
 
-  it("does not mistake rate limiting for a range limit", async () => {
-    const world = createWorld();
-    let limited = 2;
-    world.chains[1].onRequest = (method) => (method === "eth_getLogs" && limited-- > 0 ? rpcError(-32005, "rate limit exceeded") : undefined);
-    const question = await lookup(world, SINGLE_ENTRY, 9n);
-    expect(question.questionId).toBe(Q_NEW_SINGLE);
-    // 2 rate-limited + mapping + question (both over their whole range) + template.
-    expect(getLogsCalls(world.calls)).toHaveLength(5);
-  });
-
   it("throws once the request budget is exhausted", async () => {
     const world = createWorld();
     world.chains[1].maxRange = 100n;
@@ -214,33 +192,6 @@ describe("fetchRealityQuestion", () => {
     const world = createWorld();
     advanceClockAtFirst(world.chains[1], "eth_blockNumber", 1001);
     await expect(fetchRealityQuestion({ entry: SINGLE_ENTRY, arbitratorChainId: 1, disputeId: 9n, clients: world.lookupClients, deadlineMs: 1000 })).rejects.toThrow(/deadline/);
-  });
-
-  it("counts the retries of a request against the request budget", async () => {
-    const limits = { ...LOOKUP_LIMITS };
-    Object.assign(LOOKUP_LIMITS, { requestBudget: 3 });
-    try {
-      const world = createWorld();
-      failFirstAttempts(world.chains[1], 2);
-      await expect(lookup(world)).rejects.toThrow(/budget of 3 requests/);
-      expect(world.calls.length).toBeLessThanOrEqual(3);
-    } finally {
-      Object.assign(LOOKUP_LIMITS, limits);
-    }
-  });
-
-  it("succeeds within the budget when requests need retries, sending every attempt", async () => {
-    const world = createWorld();
-    failFirstAttempts(world.chains[1], 2);
-    expect((await lookup(world)).questionId).toBe(Q_KNOWN_SINGLE);
-    expect(world.calls).toHaveLength(9);
-  });
-
-  it("stops retrying once the deadline has passed", async () => {
-    const world = createWorld();
-    advanceClockAtFirst(world.chains[1], "eth_getLogs", LOOKUP_LIMITS.deadlineMs + 1, rpcError(-32000, "internal server error"));
-    await expect(lookup(world)).rejects.toThrow(/deadline/);
-    expect(getLogsCalls(world.calls).length).toBeLessThanOrEqual(2);
   });
 
   it("searches the question of an unknown cross-chain dispute back from the arbitration creation time", async () => {
@@ -275,19 +226,13 @@ describe("fetchRealityQuestion", () => {
     expect(filterOf(nth(mapping, 0))).toMatchObject({ address: CROSS_WITH_BLOCK, fromBlock: hex(870_000), toBlock: hex(870_000) });
   });
 
-  it("falls back to the scan when arbitrationCreatedBlock fails", async () => {
+  it("falls back to the scan when arbitrationCreatedBlock fails, after reading it once without retries", async () => {
     const world = createWorld();
     world.chains[1].onRequest = (method) => (method === "eth_call" ? rpcError(-32000, "header not found") : undefined);
     const question = await lookup(world, CROSS_WITH_BLOCK_ENTRY, 11n);
     expect(question.questionId).toBe(Q_NEW_CROSS);
-    expect(filterOf(nth(getLogsCalls(world.calls, 1), 0))).toMatchObject({ fromBlock: hex(500_001) });
-  });
-
-  it("reads arbitrationCreatedBlock once, without retries", async () => {
-    const world = createWorld();
-    world.chains[1].onRequest = (method) => (method === "eth_call" ? rpcError(-32000, "header not found") : undefined);
-    await lookup(world, CROSS_WITH_BLOCK_ENTRY, 11n);
     expect(countCalls(world.calls, (call) => call.chainId === 1 && call.method === "eth_call")).toBe(1);
+    expect(filterOf(nth(getLogsCalls(world.calls, 1), 0))).toMatchObject({ fromBlock: hex(500_001) });
   });
 
   it("falls back to the scan when the arbitrationCreatedBlock getLogs fails", async () => {
@@ -382,27 +327,11 @@ describe("fetchRealityQuestion", () => {
 });
 
 describe("findLatestLogs", () => {
-  const budget = () => createRequestBudget({ maxRequests: 100, deadlineMs: 60_000 });
   const request = { address: SINGLE, event: DISPUTE_ID_TO_QUESTION_ID, args: { _disputeID: 9n }, fromBlock: 500_001n, toBlock: 900_000n } as const;
 
   it("returns no logs for an empty range without requests", async () => {
     const world = createWorld();
-    expect(await findLatestLogs(requireClient(world.clients, 1), { ...request, fromBlock: 10n, toBlock: 9n }, budget())).toEqual([]);
+    expect(await findLatestLogs(requireClient(world.clients, 1), { ...request, fromBlock: 10n, toBlock: 9n })).toEqual([]);
     expect(world.calls).toHaveLength(0);
-  });
-
-  it("returns the logs of the newest window that has any", async () => {
-    const world = createWorld();
-    world.chains[1].maxRange = 10_000n;
-    const logs = await findLatestLogs(requireClient(world.clients, 1), request, budget());
-    expect(logs).toHaveLength(1);
-    expect(logs[0]?.args._questionID).toBe(Q_NEW_SINGLE);
-  });
-
-  it("spends the budget on every request", async () => {
-    const world = createWorld();
-    world.chains[1].maxRange = 100n;
-    await expect(findLatestLogs(requireClient(world.clients, 1), request, createRequestBudget({ maxRequests: 5, deadlineMs: 60_000 }))).rejects.toThrow(/budget of 5 requests/);
-    expect(world.calls).toHaveLength(5);
   });
 });

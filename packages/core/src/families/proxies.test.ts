@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { EIP1967_IMPLEMENTATION_SLOT } from "../abi";
 import { toRegistryAddress } from "../registry";
 import type { Hex } from "../types";
-import { recorded } from "./__fixtures__/recorded";
 import { isEip1167Clone, readEip1967Implementation } from "./proxies";
 import { fakeNodeClient, rpcError, slotWord } from "../test/families/testHelpers";
 
@@ -12,11 +11,6 @@ const CLONE_PREFIX = "363d3d373d3d3d363d73";
 const CLONE_SUFFIX = "5af43d82803e903d91602b57fd5bf3";
 
 describe("isEip1167Clone", () => {
-  it("recognizes the recorded EIP-1167 clones (Gnosis Curate 1022 and Gnosis 863's arbitrable)", () => {
-    expect(isEip1167Clone(recorded(100, "0x957a53a994860be4750810131d9c876b2f52d6e1").code)).toBe(true);
-    expect(isEip1167Clone(recorded(100, "0x25fa9432832efdd48deec6d4cf1cd3f139678a5b").code)).toBe(true);
-  });
-
   it("matches the pattern case-insensitively", () => {
     expect(isEip1167Clone(`0x${CLONE_PREFIX.toUpperCase()}${"AB".repeat(20)}${CLONE_SUFFIX.toUpperCase()}`)).toBe(true);
   });
@@ -27,11 +21,6 @@ describe("isEip1167Clone", () => {
     expect(isEip1167Clone(`0x00${CLONE_PREFIX}${target}${CLONE_SUFFIX}`)).toBe(false);
     expect(isEip1167Clone(`0x${CLONE_PREFIX}${"ab".repeat(19)}${CLONE_SUFFIX}`)).toBe(false);
     expect(isEip1167Clone("0x")).toBe(false);
-  });
-
-  it("an EIP-1967 proxy and an ordinary contract are not clones", () => {
-    expect(isEip1167Clone(recorded(1, PROXY).code)).toBe(false);
-    expect(isEip1167Clone(recorded(1, "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf").code)).toBe(false);
   });
 });
 

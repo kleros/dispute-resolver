@@ -1,4 +1,4 @@
-import { CHAINS, toRegistryAddress } from "@dispute-resolver/core";
+import { CHAINS } from "@dispute-resolver/core";
 import { renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { decodeFunctionData, encodeFunctionResult, parseAbi } from "viem";
@@ -30,10 +30,6 @@ function Wrapper({ children }: { readonly children?: ReactNode }) {
 }
 
 describe("workspace wiring", () => {
-  it("resolves @dispute-resolver/core from source", () => {
-    expect(toRegistryAddress("0x988b3A538b618C7A603e1c11Ab82Cd16dbE28069")).toBe("0x988b3a538b618c7a603e1c11ab82cd16dbe28069");
-  });
-
   it("the data hooks drive core through the test deps' custom-transport client", async () => {
     const { result } = renderHook(
       () => {

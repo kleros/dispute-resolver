@@ -4,83 +4,33 @@
   "note": "Rounds: funding round vs (AppealDecision events strictly before the funding event in (blockNumber, logIndex) order) + 1",
   "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
   "arbitrable": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
-  "arbitrableFromArbitrator": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
-  "externalDisputeID": 1170,
   "localDisputeID": "0",
-  "getNumberOfRounds": {
-    "value": "7",
-    "error": null,
-    "readAtBlock": 26189725
-  },
   "scan": {
-    "arbitratorFromBlock": 7303699,
     "unslashedFromBlock": 12588964,
     "toBlock": 26189725
   },
   "topics": {
-    "appeal": "0x9c9b64db9e130f48381bf697abf638e73117dbfbfd7a4484f2da3ba188f4187d",
-    "contrib": "0xcae597f39a3ad75c2e10d46b031f023c5c2babcd58ca0491b122acda3968d4c0",
-    "funded": "0x39493c1b78d9a13bcc9e1d532fc7faed3889248d93affa811416ce3c6bcb1a68"
+    "contrib": "0xcae597f39a3ad75c2e10d46b031f023c5c2babcd58ca0491b122acda3968d4c0"
   },
   "appealDecisions": [
     {
-      "address": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
-      "topics": [
-        "0x9c9b64db9e130f48381bf697abf638e73117dbfbfd7a4484f2da3ba188f4187d",
-        "0x0000000000000000000000000000000000000000000000000000000000000492",
-        "0x000000000000000000000000e0e1bc8c6cd1b81993e2fcfb80832d814886ea38"
-      ],
-      "data": "0x",
       "blockNumber": 14640476,
-      "transactionHash": "0x963004446fadca90c8781256b8a6470707ee9ce4ad2780143aaf174e137344f1",
       "logIndex": 165
     },
     {
-      "address": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
-      "topics": [
-        "0x9c9b64db9e130f48381bf697abf638e73117dbfbfd7a4484f2da3ba188f4187d",
-        "0x0000000000000000000000000000000000000000000000000000000000000492",
-        "0x000000000000000000000000e0e1bc8c6cd1b81993e2fcfb80832d814886ea38"
-      ],
-      "data": "0x",
       "blockNumber": 14694467,
-      "transactionHash": "0x6aba2e65b3514dc9f207590b8ce324822630f9e9d66cb5b23f468954285bac6f",
       "logIndex": 495
     },
     {
-      "address": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
-      "topics": [
-        "0x9c9b64db9e130f48381bf697abf638e73117dbfbfd7a4484f2da3ba188f4187d",
-        "0x0000000000000000000000000000000000000000000000000000000000000492",
-        "0x000000000000000000000000e0e1bc8c6cd1b81993e2fcfb80832d814886ea38"
-      ],
-      "data": "0x",
       "blockNumber": 14726733,
-      "transactionHash": "0x5bfe0d63ac785093c60e5bf4ceb5ebef51966c9fb6f1a63362cc5b2fcf7f0d2e",
       "logIndex": 147
     },
     {
-      "address": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
-      "topics": [
-        "0x9c9b64db9e130f48381bf697abf638e73117dbfbfd7a4484f2da3ba188f4187d",
-        "0x0000000000000000000000000000000000000000000000000000000000000492",
-        "0x000000000000000000000000e0e1bc8c6cd1b81993e2fcfb80832d814886ea38"
-      ],
-      "data": "0x",
       "blockNumber": 14795056,
-      "transactionHash": "0x2811a2d019dd392f2d46d1530b47392e9b2499dcc6d1e08c569dd456b0c403bf",
       "logIndex": 171
     },
     {
-      "address": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
-      "topics": [
-        "0x9c9b64db9e130f48381bf697abf638e73117dbfbfd7a4484f2da3ba188f4187d",
-        "0x0000000000000000000000000000000000000000000000000000000000000492",
-        "0x000000000000000000000000e0e1bc8c6cd1b81993e2fcfb80832d814886ea38"
-      ],
-      "data": "0x",
       "blockNumber": 14866053,
-      "transactionHash": "0xe91c55769dea9494076750acd4c420bab1551ebe9e760d06ca8543754218f458",
       "logIndex": 68
     }
   ],
@@ -98,13 +48,7 @@
       "transactionHash": "0x06ee6ddbac864c07ac516171917a0756f0f2ebeed3dbb6021c2a547df1a814f0",
       "logIndex": 179,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "1",
-        "contributor": "0xadbab4f38ff9dcd71886f43b148bcad4a3081fb9",
-        "ruling": "1",
-        "amountWei": "1008000000000000000"
-      }
+      "decoded": { "round": "1" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -118,12 +62,7 @@
       "blockNumber": 14634725,
       "transactionHash": "0x06ee6ddbac864c07ac516171917a0756f0f2ebeed3dbb6021c2a547df1a814f0",
       "logIndex": 180,
-      "type": "RulingFunded",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "1",
-        "ruling": "1"
-      }
+      "type": "RulingFunded"
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -138,13 +77,7 @@
       "transactionHash": "0x963004446fadca90c8781256b8a6470707ee9ce4ad2780143aaf174e137344f1",
       "logIndex": 163,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "1",
-        "contributor": "0x1298324e97f39ee5cd34fad6c6bd93eb7527b443",
-        "ruling": "2",
-        "amountWei": "756000000000000000"
-      }
+      "decoded": { "round": "1" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -158,12 +91,7 @@
       "blockNumber": 14640476,
       "transactionHash": "0x963004446fadca90c8781256b8a6470707ee9ce4ad2780143aaf174e137344f1",
       "logIndex": 164,
-      "type": "RulingFunded",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "1",
-        "ruling": "2"
-      }
+      "type": "RulingFunded"
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -178,13 +106,7 @@
       "transactionHash": "0xf5892ef9c954b831c5ec006e5f978462f60c8760e6161f9591e2f8e3be0223e9",
       "logIndex": 195,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "2",
-        "contributor": "0xc764d75fe1c892ba39caaf02efd44ae606b52a0c",
-        "ruling": "1",
-        "amountWei": "612000000000000000"
-      }
+      "decoded": { "round": "2" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -199,13 +121,7 @@
       "transactionHash": "0x3eb1920086b5cd98cdb08ab873cf3c645fb06703ad96ddcf3da444458c916e71",
       "logIndex": 162,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "2",
-        "contributor": "0x1298324e97f39ee5cd34fad6c6bd93eb7527b443",
-        "ruling": "2",
-        "amountWei": "2160000000000000000"
-      }
+      "decoded": { "round": "2" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -219,12 +135,7 @@
       "blockNumber": 14694009,
       "transactionHash": "0x3eb1920086b5cd98cdb08ab873cf3c645fb06703ad96ddcf3da444458c916e71",
       "logIndex": 163,
-      "type": "RulingFunded",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "2",
-        "ruling": "2"
-      }
+      "type": "RulingFunded"
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -239,13 +150,7 @@
       "transactionHash": "0x6aba2e65b3514dc9f207590b8ce324822630f9e9d66cb5b23f468954285bac6f",
       "logIndex": 493,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "2",
-        "contributor": "0xadbab4f38ff9dcd71886f43b148bcad4a3081fb9",
-        "ruling": "1",
-        "amountWei": "1008000000000000000"
-      }
+      "decoded": { "round": "2" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -259,12 +164,7 @@
       "blockNumber": 14694467,
       "transactionHash": "0x6aba2e65b3514dc9f207590b8ce324822630f9e9d66cb5b23f468954285bac6f",
       "logIndex": 494,
-      "type": "RulingFunded",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "2",
-        "ruling": "1"
-      }
+      "type": "RulingFunded"
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -279,13 +179,7 @@
       "transactionHash": "0x8bba91a0577e8512acc77dfd57588309d12267799f3967cf695292007c5fa19e",
       "logIndex": 466,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "3",
-        "contributor": "0xadbab4f38ff9dcd71886f43b148bcad4a3081fb9",
-        "ruling": "1",
-        "amountWei": "3348000000000000000"
-      }
+      "decoded": { "round": "3" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -299,12 +193,7 @@
       "blockNumber": 14717407,
       "transactionHash": "0x8bba91a0577e8512acc77dfd57588309d12267799f3967cf695292007c5fa19e",
       "logIndex": 467,
-      "type": "RulingFunded",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "3",
-        "ruling": "1"
-      }
+      "type": "RulingFunded"
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -319,13 +208,7 @@
       "transactionHash": "0x5bfe0d63ac785093c60e5bf4ceb5ebef51966c9fb6f1a63362cc5b2fcf7f0d2e",
       "logIndex": 145,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "3",
-        "contributor": "0x5e7b645d5bf86750cb1913122ba8a8545e2a9fd1",
-        "ruling": "2",
-        "amountWei": "4464000000000000000"
-      }
+      "decoded": { "round": "3" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -339,12 +222,7 @@
       "blockNumber": 14726733,
       "transactionHash": "0x5bfe0d63ac785093c60e5bf4ceb5ebef51966c9fb6f1a63362cc5b2fcf7f0d2e",
       "logIndex": 146,
-      "type": "RulingFunded",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "3",
-        "ruling": "2"
-      }
+      "type": "RulingFunded"
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -359,13 +237,7 @@
       "transactionHash": "0xd99d22daa7cb8849cbd8f1da8f2fe6e606f4811f085621ab2a065ff2bafebbe3",
       "logIndex": 53,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "4",
-        "contributor": "0x04a9edd12ed304efb5e5fe83109a65e8e84799c3",
-        "ruling": "1",
-        "amountWei": "3500000000000000000"
-      }
+      "decoded": { "round": "4" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -380,13 +252,7 @@
       "transactionHash": "0x80c8758e15a45db62af8584a49e1e25b218db19112f6c8e25edcd852e92597f2",
       "logIndex": 346,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "4",
-        "contributor": "0x04a9edd12ed304efb5e5fe83109a65e8e84799c3",
-        "ruling": "1",
-        "amountWei": "2415000000000000000"
-      }
+      "decoded": { "round": "4" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -401,13 +267,7 @@
       "transactionHash": "0x9f9d6550692c90ee966325f34288496fc067f6320d571b6ade96788b31f9a6b2",
       "logIndex": 188,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "4",
-        "contributor": "0xadbab4f38ff9dcd71886f43b148bcad4a3081fb9",
-        "ruling": "1",
-        "amountWei": "3157000000000000000"
-      }
+      "decoded": { "round": "4" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -421,12 +281,7 @@
       "blockNumber": 14778479,
       "transactionHash": "0x9f9d6550692c90ee966325f34288496fc067f6320d571b6ade96788b31f9a6b2",
       "logIndex": 189,
-      "type": "RulingFunded",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "4",
-        "ruling": "1"
-      }
+      "type": "RulingFunded"
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -441,13 +296,7 @@
       "transactionHash": "0x245cbb040c52a3478088050f89cf3112882b10e003ae75cf92b615c17cb4a815",
       "logIndex": 371,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "4",
-        "contributor": "0x2343e74a17a70503e1c62d808c8c2abfac926ace",
-        "ruling": "2",
-        "amountWei": "1000000000000000000"
-      }
+      "decoded": { "round": "4" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -462,13 +311,7 @@
       "transactionHash": "0x2811a2d019dd392f2d46d1530b47392e9b2499dcc6d1e08c569dd456b0c403bf",
       "logIndex": 169,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "4",
-        "contributor": "0x5e7b645d5bf86750cb1913122ba8a8545e2a9fd1",
-        "ruling": "2",
-        "amountWei": "5804000000000000000"
-      }
+      "decoded": { "round": "4" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -482,12 +325,7 @@
       "blockNumber": 14795056,
       "transactionHash": "0x2811a2d019dd392f2d46d1530b47392e9b2499dcc6d1e08c569dd456b0c403bf",
       "logIndex": 170,
-      "type": "RulingFunded",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "4",
-        "ruling": "2"
-      }
+      "type": "RulingFunded"
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -502,13 +340,7 @@
       "transactionHash": "0x72f2f1dd1449b8e0ae80508e4acc1ad0b54a9f97a5dbc9248de5b1af9488c55c",
       "logIndex": 45,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "5",
-        "contributor": "0xadbab4f38ff9dcd71886f43b148bcad4a3081fb9",
-        "ruling": "1",
-        "amountWei": "6350000000000000000"
-      }
+      "decoded": { "round": "5" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -522,12 +354,7 @@
       "blockNumber": 14843044,
       "transactionHash": "0x72f2f1dd1449b8e0ae80508e4acc1ad0b54a9f97a5dbc9248de5b1af9488c55c",
       "logIndex": 46,
-      "type": "RulingFunded",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "5",
-        "ruling": "1"
-      }
+      "type": "RulingFunded"
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -542,13 +369,7 @@
       "transactionHash": "0xe91c55769dea9494076750acd4c420bab1551ebe9e760d06ca8543754218f458",
       "logIndex": 66,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "5",
-        "contributor": "0x5e7b645d5bf86750cb1913122ba8a8545e2a9fd1",
-        "ruling": "2",
-        "amountWei": "4762500000000000000"
-      }
+      "decoded": { "round": "5" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -562,12 +383,7 @@
       "blockNumber": 14866053,
       "transactionHash": "0xe91c55769dea9494076750acd4c420bab1551ebe9e760d06ca8543754218f458",
       "logIndex": 67,
-      "type": "RulingFunded",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "5",
-        "ruling": "2"
-      }
+      "type": "RulingFunded"
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -582,13 +398,7 @@
       "transactionHash": "0x650ef1e03fbb87fbf8181195e02ed6f33b202448a07d3cf6e7b9e0450a6ea2f8",
       "logIndex": 11,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "6",
-        "contributor": "0x7169e2c4f9fde15b06ce6c587d6be5d941aabfcc",
-        "ruling": "2",
-        "amountWei": "4781250000000000000"
-      }
+      "decoded": { "round": "6" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -603,13 +413,7 @@
       "transactionHash": "0xdaf4473bf821b14acf1d50d049b40a27a2a987217f591a3acf9569108adf1f9c",
       "logIndex": 21,
       "type": "Contribution",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "6",
-        "contributor": "0xbeb084f2dc75e38eac9a5c093428a541fc74ff2c",
-        "ruling": "2",
-        "amountWei": "4781250000000000000"
-      }
+      "decoded": { "round": "6" }
     },
     {
       "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
@@ -623,12 +427,7 @@
       "blockNumber": 14927829,
       "transactionHash": "0xdaf4473bf821b14acf1d50d049b40a27a2a987217f591a3acf9569108adf1f9c",
       "logIndex": 22,
-      "type": "RulingFunded",
-      "decoded": {
-        "localDisputeID": "0",
-        "round": "6",
-        "ruling": "2"
-      }
+      "type": "RulingFunded"
     }
   ]
 }

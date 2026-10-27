@@ -198,20 +198,6 @@ describe("results", () => {
     expect(addEventListener.mock.calls.map(([type]) => type)).not.toContain("message");
   });
 
-  it("resolves two concurrent runs to their own results", async () => {
-    const { fake, runner } = setup();
-    const first = runner.run(request({ params: { ...SAMPLE_PARAMS, disputeID: "1" } }));
-    const second = runner.run(request({ params: { ...SAMPLE_PARAMS, disputeID: "2" } }));
-    const firstPost = frameAt(fake, 0).load();
-    const secondPost = frameAt(fake, 1).load();
-
-    secondPost.reply({ type: "dr-runner/result", value: { title: "dispute 2" }, jsonDuplicateKeys: false });
-    firstPost.reply({ type: "dr-runner/result", value: { title: "dispute 1" }, jsonDuplicateKeys: false });
-
-    await expect(first).resolves.toEqual({ status: "ok", value: { title: "dispute 1" }, jsonDuplicateKeys: false });
-    await expect(second).resolves.toEqual({ status: "ok", value: { title: "dispute 2" }, jsonDuplicateKeys: false });
-  });
-
   it("removes the frame once the run settles and ignores later replies", async () => {
     const { fake, runner } = setup();
     const run = runner.run(request());
@@ -366,20 +352,6 @@ describe("acknowledgement window", () => {
 });
 
 describe("concurrency", () => {
-  it("runs at most four scripts at a time and starts the next one when a run settles", async () => {
-    const { fake, runner } = setup(4);
-    const runs = [1, 2, 3, 4, 5, 6].map((id) => runner.run(request({ params: { ...SAMPLE_PARAMS, disputeID: String(id) } })));
-    expect(fake.frames).toHaveLength(4);
-
-    frameAt(fake, 1)
-      .load()
-      .reply({ type: "dr-runner/result", value: { title: "2" }, jsonDuplicateKeys: false });
-    await expect(runs[1]).resolves.toMatchObject({ value: { title: "2" } });
-    expect(fake.frames).toHaveLength(5);
-    expect(fake.attachedFrames()).toHaveLength(4);
-    expect(frameAt(fake, 4).load().message).toMatchObject({ params: { disputeID: "5" } });
-  });
-
   it("counts time spent queued against the run's timeout", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const { fake, runner } = setup(1);

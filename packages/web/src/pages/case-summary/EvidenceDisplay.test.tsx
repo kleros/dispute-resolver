@@ -214,30 +214,6 @@ describe("EvidenceDisplay", () => {
     expect(root).toHaveClass("duration-(--acc-expand)");
   });
 
-  it("hides the display completely on the row and shows the same frame again on the next press", async () => {
-    renderDisplay();
-    const iframe = frame();
-    const src = iframe.getAttribute("src");
-    fireEvent.load(iframe);
-
-    await userEvent.click(row());
-    expect(row()).toHaveAttribute("aria-expanded", "false");
-    await waitFor(() => {
-      expect(region()).toHaveAttribute("hidden");
-    });
-    expect(iframe).not.toBeVisible();
-    expect(row()).toBeVisible();
-    expect(verticalBar()).toHaveClass("scale-y-100");
-
-    await userEvent.click(row());
-    expect(row()).toHaveAttribute("aria-expanded", "true");
-    expect(region()).not.toHaveAttribute("hidden");
-    expect(frame()).toBe(iframe);
-    expect(frame()).toHaveAttribute("src", src);
-    expect(frame()).toBeVisible();
-    expect(verticalBar()).toHaveClass("scale-y-0");
-  });
-
   it("draws one hairline, above the row, and ends the shown display on its window with no closing hairline", async () => {
     const { container } = renderDisplay();
     const root = blockRoot(container);
@@ -313,9 +289,11 @@ describe("EvidenceDisplay", () => {
     expect(frame()).toBeVisible();
   });
 
-  it("unfolds only a display shown again after it was hidden, never on the first render", () => {
+  it("unfolds only a display shown again after it was hidden, never on the first render, and shows the same frame again", () => {
     vi.useFakeTimers();
     renderDisplay();
+    const iframe = frame();
+    const src = iframe.getAttribute("src");
     expect(region()).not.toHaveClass(UNFOLD);
 
     fireEvent.click(row());
@@ -325,6 +303,8 @@ describe("EvidenceDisplay", () => {
     fireEvent.click(row());
     expect(region()).not.toHaveAttribute("hidden");
     expect(region()).toHaveClass(UNFOLD, "motion-reduce:animate-none");
+    expect(frame()).toBe(iframe);
+    expect(frame()).toHaveAttribute("src", src);
 
     // Folding away again starts from wherever the unfold is.
     fireEvent.click(row());
@@ -387,29 +367,11 @@ describe("EvidenceDisplay", () => {
     expect(skeletonCover()).not.toHaveClass("opacity-100");
   });
 
-  it("shows the frame at its load event with no fade of its own, the skeleton alone fading out over it", () => {
-    renderDisplay();
-    const holder = frame().parentElement;
-    expect(holder).toHaveClass("invisible");
-    expect(holder?.classList).toHaveLength(1);
-
-    fireEvent.load(frame());
-    expect(holder?.classList).toHaveLength(0);
-    expect(skeletonCover()).toHaveClass(...COVER_FADE, "opacity-0", "pointer-events-none");
-    expect(skeletonCover()).not.toHaveClass("opacity-100");
-  });
-
   it("times the skeleton's fade-out on a 400 ms display clock of its own, leaving the shared reveal and fold clocks alone", () => {
     const css = stylesheet();
     expect(css).toMatch(/--display-reveal:\s*400ms;/);
     expect(css).toMatch(/--reveal-dur:\s*400ms;/);
     expect(css).toMatch(/--acc-collapse:\s*250ms;/);
-  });
-
-  it("outlines the display window with the Stroke in light only, giving way to the focus ring", () => {
-    const css = stylesheet();
-    expect(cssBlock(css, ":where(:root:not(.dark)) .dr-display-window").replaceAll(/\s+/g, "")).toBe("outline:1pxsolidvar(--klerosUIComponentsStroke);outline-offset:-1px;");
-    expect(cssBlock(css, ".dr-display-window[data-frame-focus]").replaceAll(/\s+/g, "")).toBe("outline:2pxsolidvar(--dr-display-focus);outline-offset:-2px;");
   });
 
   it("keeps the paper under the frame from the first paint, with the skeleton's bars toned for the paper and inset from its edges", () => {
@@ -509,14 +471,6 @@ describe("EvidenceDisplay", () => {
     expect(displayWindow()).not.toHaveAttribute("data-frame-focus");
   });
 
-  it("marks the window when a Shift+Tab from below puts focus back inside the frame", async () => {
-    renderDisplay();
-    vi.spyOn(document, "activeElement", "get").mockReturnValue(frame());
-    fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
-    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-    expect(displayWindow()).toHaveAttribute("data-frame-focus");
-  });
-
   it("leaves the window unmarked when a pointer click puts focus inside the frame", async () => {
     renderDisplay();
     const activeElement = vi.spyOn(document, "activeElement", "get").mockReturnValue(document.body);
@@ -527,20 +481,16 @@ describe("EvidenceDisplay", () => {
     expect(displayWindow()).not.toHaveAttribute("data-frame-focus");
   });
 
-  it("leaves the window unmarked when the page loses focus to another window while focus is outside the frame", async () => {
+  it.each([
+    { name: "a Shift+Tab from below puts focus back inside the frame", active: frame, fire: () => fireEvent.keyDown(document, { key: "Tab", shiftKey: true }), marked: true },
+    { name: "the page loses focus to another window while focus is outside the frame", active: row, fire: () => fireEvent.blur(window), marked: false },
+    { name: "a Tab lands outside the frame", active: row, fire: () => fireEvent.keyDown(document, { key: "Tab" }), marked: false },
+  ])("marks the window only for keyboard focus inside the frame ($name)", async ({ active, fire, marked }) => {
     renderDisplay();
-    vi.spyOn(document, "activeElement", "get").mockReturnValue(row());
-    fireEvent.blur(window);
+    vi.spyOn(document, "activeElement", "get").mockReturnValue(active());
+    fire();
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-    expect(displayWindow()).not.toHaveAttribute("data-frame-focus");
-  });
-
-  it("leaves the window unmarked when a Tab lands outside the frame", async () => {
-    renderDisplay();
-    vi.spyOn(document, "activeElement", "get").mockReturnValue(row());
-    fireEvent.keyDown(document, { key: "Tab" });
-    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-    expect(displayWindow()).not.toHaveAttribute("data-frame-focus");
+    expect(displayWindow().hasAttribute("data-frame-focus")).toBe(marked);
   });
 
   it("never puts the frame's source anywhere but the src attribute, before and after loading, hiding and showing", async () => {

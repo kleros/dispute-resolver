@@ -4,7 +4,7 @@ import { computeAppealAmounts } from "./amounts";
 import { buildCrowdfundingCards } from "./cards";
 import { governorListIndex } from "./governor";
 import { fail } from "../outcome";
-import type { AppealAmounts, AppealPanel, AppealPanelInput, CrowdfundingCard, WithdrawState } from "./types";
+import type { AppealAmounts, AppealPanel, AppealPanelInput, WithdrawState } from "./types";
 
 const HIDDEN: AppealPanel = { kind: "hidden" };
 
@@ -18,14 +18,6 @@ function escrowAppeal(input: AppealPanelInput): AppealPanel {
   const appealInfo = required(input.appealInfo, "The appeal cost");
   if (!appealInfo.ok) return { kind: "fees-unavailable", error: appealInfo.error };
   return { kind: "escrow-appeal", appealCost: appealInfo.value.appealCost, deadline: appealInfo.value.appealPeriodEnd };
-}
-
-/**
- * A governor's `fundAppeal(listIndex)` funds list `ruling − 1`, so a card whose ruling names no list (ruling 0, "refuse
- * to arbitrate") could never be funded and is not offered.
- */
-function fundsGovernorList(card: CrowdfundingCard): boolean {
-  return governorListIndex(card.code) !== null;
 }
 
 /**
@@ -58,7 +50,8 @@ function crowdfunding(input: AppealPanelInput, dialect: "idr" | "governor"): App
     funding: funding.value,
     override: input.override,
   });
-  const cards = dialect === "governor" ? set.cards.filter(fundsGovernorList) : set.cards;
+  // A governor's `fundAppeal(listIndex)` funds list `ruling − 1`: ruling 0 names no list, so it could never be funded.
+  const cards = dialect === "governor" ? set.cards.filter((card) => governorListIndex(card.code) !== null) : set.cards;
   return { kind: "crowdfunding", dialect, ...set, cards };
 }
 

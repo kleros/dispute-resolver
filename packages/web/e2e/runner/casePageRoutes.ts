@@ -1,13 +1,12 @@
 import { expect, type Page, type Route } from "@playwright/test";
-import { appOriginOf, CORS_HEADERS, fulfillJson, jsonRpcCall, type JsonRpcRequest } from "../support/network";
-import { answerFromFixture, loadRpcFixture } from "./rpcFixture";
+import { appOriginOf, callData, CORS_HEADERS, fakeNetwork, loadRecording } from "../support/network";
 
-// One catch-all route serves every dependency the case page of mainnet dispute 1621 has outside the app: the
-// meta-evidence locator and the recorded MetaEvidence event name one path, the gateway serves a test meta-evidence file
-// under it and a test script under an allowlisted CID (the allowlist compares paths, not bytes), and the chain-1 JSON-RPC
-// reads are answered from fixtures/mainnet-1621.rpc.json. Requests are recognized by their shape, never by host, so the
-// build's configured URLs (which carry API keys) appear nowhere here and are never printed. Anything else is aborted. The
-// build must have the meta-evidence API and the chain-1 read RPC configured, as a deploy does.
+// The case page of mainnet dispute 1621 on support/network.ts's fake network: the chain-1 JSON-RPC reads and the
+// meta-evidence locator are answered from e2e/app's recording of it, whose locator and recorded MetaEvidence event name
+// one path; the gateway serves a test meta-evidence file under it, a test script under an allowlisted CID (the allowlist
+// compares paths, not bytes) and no other file. Requests are recognized by their shape, never by host, so the build's
+// configured URLs (which carry API keys) appear nowhere here and are never printed. Anything else is aborted. The build
+// must have the meta-evidence API and the chain-1 read RPC configured, as a deploy does.
 //
 // Nothing is imported from @dispute-resolver/core at runtime: its module graph loads jsdom, which Playwright's loader
 // cannot load under every Node version the engines field allows, and one load error stops every spec of the run.
@@ -21,8 +20,8 @@ export const HARNESS_PATH = "/__runner-e2e/harness.html";
 const HARNESS_HTML = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Runner harness</title></head><body></body></html>';
 
 /**
- * The path the governor's MetaEvidence(0) event carries in fixtures/mainnet-1621.rpc.json. The event's URI wins over the
- * locator's, so the locator names the same path and no mismatch warning shows.
+ * The path the governor's MetaEvidence(0) event carries in the recording. The event's URI wins over the locator's, so
+ * the recording's locator names the same path and no mismatch warning shows.
  */
 const META_EVIDENCE_PATH = "/ipfs/QmZ3Cmnip8bmFNruuTuCdxPymEjyK9VcQEyf2beDYcaHaK/metaEvidence.json";
 /** The mainnet governor script's CID (`registry/scripts.ts`), served here with the test script below. */
@@ -51,37 +50,23 @@ var getMetaEvidence = function () {
   }, ${String(SCRIPT_DELAY_MS)});
 };`;
 
-const RPC_FIXTURE = loadRpcFixture("mainnet-1621.rpc.json");
+const RECORDING = loadRecording(new URL("../app/fixtures/mainnet-1621-appeal.json", import.meta.url));
+/** `disputes(1621)` on the arbitrator. */
+const DISPUTES_CALL = "0x564a565d0000000000000000000000000000000000000000000000000000000000000655";
+/** Its answer on chain: the dispute executed (period 4) and ruled. */
+const EXECUTED_DISPUTE =
+  "0x0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000327a29fce0a6490e4236240be176daa282eccfdf00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000006588146f000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001";
 
 /** What the routes served, as counts and method names only. */
 export interface Traffic {
-  locator: number;
-  metaEvidence: number;
-  script: number;
-  rpcAnswered: number;
-  readonly rpcUnanswered: string[];
+  readonly locator: number;
+  readonly metaEvidence: number;
+  readonly script: number;
+  readonly rpcAnswered: number;
+  readonly rpcUnanswered: readonly string[];
   /** Requests for the display page a spec named. */
-  display: number;
-  otherIpfs: number;
-  readonly aborted: Map<string, number>;
+  readonly display: number;
 }
-
-function newTraffic(): Traffic {
-  return { locator: 0, metaEvidence: 0, script: 0, rpcAnswered: 0, rpcUnanswered: [], display: 0, otherIpfs: 0, aborted: new Map() };
-}
-
-async function answerRpc(route: Route, call: JsonRpcRequest, traffic: Traffic): Promise<void> {
-  if (await answerFromFixture(route, RPC_FIXTURE, call)) traffic.rpcAnswered += 1;
-  else traffic.rpcUnanswered.push(call.method);
-}
-
-/** Recognized by its query, whatever host the build names. */
-function isLocator(url: URL): boolean {
-  return url.searchParams.get("chainId") === "1" && url.searchParams.get("disputeId") === DISPUTE_ID;
-}
-
-/** HTML pages outside the app a test adds to the case page's routes, by URL. */
-type ExtraPages = Readonly<Record<string, string>>;
 
 /** An evidence-display page the meta-evidence names and the gateway route serves, recognized by its path alone. */
 export interface DisplayPage {
@@ -96,61 +81,60 @@ interface CasePageOptions {
   readonly display?: DisplayPage;
 }
 
-interface Served {
-  readonly appOrigin: string;
-  readonly traffic: Traffic;
-  readonly pages: ExtraPages;
-  readonly metaEvidence: object;
-  readonly display: DisplayPage | undefined;
+/**
+ * Answers the GETs for `path` on any host; every other method, a CORS preflight included, falls through to the network's
+ * route. A page route wins over the context's, so the gateway's own answer for the path is never reached.
+ */
+async function serveGet(page: Page, path: string, serve: (route: Route) => Promise<void>): Promise<void> {
+  await page.route(
+    (url) => url.pathname === path,
+    (route) => (route.request().method() === "GET" ? serve(route) : route.fallback()),
+  );
 }
 
-async function serve(route: Route, { appOrigin, traffic, pages, metaEvidence, display }: Served): Promise<void> {
-  const request = route.request();
-  const url = new URL(request.url());
-  if (url.origin === appOrigin) return route.continue();
-  if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS_HEADERS });
-  const call = jsonRpcCall(request);
-  if (call !== undefined) return answerRpc(route, call, traffic);
-  if (request.method() === "GET" && isLocator(url)) {
-    traffic.locator += 1;
-    return fulfillJson(route, { metaEvidenceUri: META_EVIDENCE_PATH });
-  }
-  if (url.pathname === META_EVIDENCE_PATH) {
-    traffic.metaEvidence += 1;
-    return fulfillJson(route, metaEvidence);
-  }
-  if (url.pathname === `/ipfs/${SCRIPT_CID}`) {
-    traffic.script += 1;
-    return route.fulfill({ headers: CORS_HEADERS, contentType: "application/javascript; charset=utf-8", body: SCRIPT_TEXT });
-  }
-  // The frame's query carries the display parameters, so only the path names the page.
-  if (display?.path === url.pathname) {
-    traffic.display += 1;
-    await display.release;
-    return route.fulfill({ headers: CORS_HEADERS, contentType: "text/html; charset=utf-8", body: display.html });
-  }
-  if (url.pathname.startsWith("/ipfs/")) {
-    // Court policies and any other file: not part of these tests, so the gateway has none of them.
-    traffic.otherIpfs += 1;
-    return route.fulfill({ status: 404, headers: CORS_HEADERS, body: "" });
-  }
-  const page = pages[url.href];
-  if (page !== undefined) return route.fulfill({ contentType: "text/html; charset=utf-8", body: page });
-  traffic.aborted.set(url.host, (traffic.aborted.get(url.host) ?? 0) + 1);
-  return route.abort("blockedbyclient");
-}
-
-export async function routeCasePage(page: Page, baseURL: string | undefined, pages: ExtraPages = {}, options: CasePageOptions = {}): Promise<Traffic> {
-  const { display } = options;
-  const served: Served = {
+export async function routeCasePage(page: Page, baseURL: string | undefined, { display }: CasePageOptions = {}): Promise<Traffic> {
+  const metaEvidence = display === undefined ? META_EVIDENCE : { ...META_EVIDENCE, evidenceDisplayInterfaceURI: display.path };
+  const network = await fakeNetwork(page.context(), {
     appOrigin: appOriginOf(baseURL),
-    traffic: newTraffic(),
-    pages,
-    metaEvidence: display === undefined ? META_EVIDENCE : { ...META_EVIDENCE, evidenceDisplayInterfaceURI: display.path },
-    display,
+    recordings: [RECORDING],
+    // The recording answers the dispute in the appeal period for e2e/app's Fund cards; these specs need it executed.
+    rpc: (call) => (callData(call) === DISPUTES_CALL ? { result: EXECUTED_DISPUTE } : undefined),
+    http: (request) => {
+      if (request.kind !== "gateway") return undefined;
+      return request.path === META_EVIDENCE_PATH ? { json: metaEvidence } : { status: 404 };
+    },
+  });
+  const served = { script: 0, display: 0 };
+  await serveGet(page, `/ipfs/${SCRIPT_CID}`, async (route) => {
+    served.script += 1;
+    await route.fulfill({ headers: CORS_HEADERS, contentType: "application/javascript; charset=utf-8", body: SCRIPT_TEXT });
+  });
+  // The frame's query carries the display parameters, so only the path names the page.
+  if (display !== undefined) {
+    await serveGet(page, display.path, async (route) => {
+      served.display += 1;
+      await display.release;
+      await route.fulfill({ headers: CORS_HEADERS, contentType: "text/html; charset=utf-8", body: display.html });
+    });
+  }
+  return {
+    get locator() {
+      return network.http.filter((request) => request.kind === "locator" && request.disputeId === DISPUTE_ID).length;
+    },
+    get metaEvidence() {
+      return network.http.filter((request) => request.kind === "gateway" && request.path === META_EVIDENCE_PATH).length;
+    },
+    get script() {
+      return served.script;
+    },
+    get rpcAnswered() {
+      return network.rpc.length - network.rpcUnanswered.length;
+    },
+    rpcUnanswered: network.rpcUnanswered,
+    get display() {
+      return served.display;
+    },
   };
-  await page.route("**/*", (route) => serve(route, served));
-  return served.traffic;
 }
 
 export async function serveHarness(page: Page, url: string): Promise<void> {

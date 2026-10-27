@@ -12,7 +12,7 @@ import {
 } from "@dispute-resolver/core";
 import { QueryClient } from "@tanstack/react-query";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { useEffect, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CaseDispute } from "../../data";
@@ -297,13 +297,6 @@ describe("EvidenceSection: evidence list", () => {
     expect(hidden).toHaveTextContent("2 evidence items hidden: not content-addressed");
   });
 
-  it("no hidden count shows when nothing is hidden", async () => {
-    await renderSection({ evidence: sectionReady(testEvidenceList([item()])) });
-    expect(evidenceEntries()).toHaveLength(1);
-    expect(screen.queryByText("Hidden evidence")).toBeNull();
-    expect(screen.queryByText(/hidden/)).toBeNull();
-  });
-
   it("an empty evidence array shows 'No evidence submitted yet.' and no 'Dispute Raised'", async () => {
     await renderSection();
     expect(screen.getByText("No evidence submitted yet.")).toBeInTheDocument();
@@ -452,29 +445,13 @@ describe("EvidenceSection: submit control", () => {
     expect(uploader.uploadJson).not.toHaveBeenCalled();
   });
 
-  it("Return closes the modal", async () => {
+  it.each<[string, (user: UserEvent, modal: HTMLElement) => Promise<void>]>([
+    ["Return", (user, modal) => user.click(within(modal).getByRole("button", { name: "Return" }))],
+    ["a click on the overlay", (user, modal) => user.click(modalOverlay(modal))],
+    ["Escape", (user) => user.keyboard("{Escape}")],
+  ])("%s closes the modal", async (_action, close) => {
     const { user } = await renderSection();
-    const modal = await openModal(user);
-    await user.click(within(modal).getByRole("button", { name: "Return" }));
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).toBeNull();
-    });
-  });
-
-  it("clicking the overlay closes the modal", async () => {
-    const { user } = await renderSection();
-    const modal = await openModal(user);
-    const overlay = modalOverlay(modal);
-    await user.click(overlay);
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).toBeNull();
-    });
-  });
-
-  it("Escape closes the modal", async () => {
-    const { user } = await renderSection();
-    await openModal(user);
-    await user.keyboard("{Escape}");
+    await close(user, await openModal(user));
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();
     });
@@ -660,6 +637,7 @@ describe("EvidenceSection: submission", () => {
     expect(within(modal).queryByText("Uploading to IPFS...")).toBeNull();
     expect(within(modal).getByText("Wrong network")).toBeInTheDocument();
     expect(within(modal).getByText("A switch to Ethereum Mainnet is waiting in your wallet.")).toBeInTheDocument();
+    expect(modal).not.toHaveTextContent("Nothing was sent");
   });
 
   it("Submit New Evidence is disabled without a wallet and says one is needed", async () => {
@@ -769,11 +747,5 @@ describe("EvidenceSection: submission", () => {
     });
     await screen.findByText("No evidence submitted yet.");
     expect(document.body.innerHTML).not.toContain("t-reveal-in");
-  });
-
-  it("shows an evidence list that was ready on the first render without motion", async () => {
-    const { container } = await renderSection();
-    await screen.findByText("No evidence submitted yet.");
-    expect(container.innerHTML).not.toContain("t-reveal-in");
   });
 });

@@ -10,15 +10,10 @@ interface DurationParts {
 
 /** Whole days, hours and minutes of a duration; a negative, NaN or infinite duration counts as zero. */
 function durationParts(seconds: number | bigint): DurationParts {
-  let total: bigint;
-  if (typeof seconds === "bigint") {
-    total = seconds;
-  } else {
-    total = Number.isFinite(seconds) ? BigInt(Math.floor(seconds)) : 0n;
-  }
-  if (total < 0n) {
-    total = 0n;
-  }
+  let total = 0n;
+  if (typeof seconds === "bigint") total = seconds;
+  else if (Number.isFinite(seconds)) total = BigInt(Math.floor(seconds));
+  if (total < 0n) total = 0n;
   return {
     days: total / SECONDS_PER_DAY,
     hours: (total % SECONDS_PER_DAY) / SECONDS_PER_HOUR,

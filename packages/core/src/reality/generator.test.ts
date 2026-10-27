@@ -176,9 +176,4 @@ describe("renderKnownQuestionsModule", () => {
     const keys = [...source.matchAll(/^ {2}"([^"]+)": \{$/gm)].map((match) => match[1]);
     expect(keys).toEqual([`1:${SINGLE}:9`, `1:${SINGLE}:10`, `1:${CROSS_ENTRY.proxy}:2`, `100:${SINGLE}:1`]);
   });
-
-  it("writes one expanded object per dispute in the layout prettier keeps", () => {
-    const source = renderKnownQuestionsModule({ snapshotBlocks: { 1: 5 }, questions: { [`1:${SINGLE}:9`]: question(3) } });
-    expect(source).toContain(`  "1:${SINGLE}:9": {\n    questionId: "${Q_NEW_CROSS}",\n    questionBlock: 3,\n    templateId: 0,\n  },\n};\n`);
-  });
 });

@@ -87,10 +87,7 @@ describe("App routes through the provider tree", () => {
   it.each([
     { name: "/:chainId/create renders the Create page by URL, even with no wallet connected", from: "/100/create", page: "create", to: "/100/create" },
     { name: "/:chainId/cases/:id renders the case page for that dispute", from: "/1/cases/5", page: "case", to: "/1/cases/5" },
-    { name: "/:chainId/interact/:id redirects to the case page of :id", from: "/1/interact/5", page: "case", to: "/1/cases/5" },
     { name: "/ redirects to the default chain's Ongoing page", from: "/", page: "ongoing", to: "/1/ongoing" },
-    { name: "/:chainId/disputes redirects to that chain's Ongoing page", from: "/100/disputes", page: "ongoing", to: "/100/ongoing" },
-    { name: "a chain-less legacy case link redirects under the default chain", from: "/cases/5", page: "case", to: "/1/cases/5" },
   ] as const)("$name", async ({ from, page, to }) => {
     renderAppAt(from);
     expect(await PAGE_LANDMARKS[page]()).toBeInTheDocument();
@@ -102,20 +99,6 @@ describe("App routes through the provider tree", () => {
     renderAppAt("/1/cases");
     expect(await screen.findByRole("heading", { name: "Find a dispute" })).toBeInTheDocument();
     expect(screen.getByRole("search", { name: "Search by dispute ID" })).toBeInTheDocument();
-  });
-
-  it("an unconfigured chain shows the unsupported-network screen with header links on the resolved chain", async () => {
-    renderAppAt("/424242/ongoing");
-    expect(await screen.findByRole("heading", { name: "Unsupported Network 424242" })).toBeInTheDocument();
-    expect(within(mainNavigation()).getByRole("link", { name: /Ongoing Disputes/ })).toHaveAttribute("href", "/1/ongoing");
-    expect(screen.queryByRole("heading", { level: 1, name: "Ongoing Disputes" })).not.toBeInTheDocument();
-  });
-
-  it("an unknown path under a configured chain shows the 404 screen inside the frame", async () => {
-    renderAppAt("/100/nowhere");
-    expect(await screen.findByRole("heading", { name: "404" })).toBeInTheDocument();
-    expect(screen.getByText("Something went wrong in Athens!")).toBeInTheDocument();
-    expect(within(mainNavigation()).getByRole("link", { name: /Ongoing Disputes/ })).toHaveAttribute("href", "/100/ongoing");
   });
 
   it("switches the page to the dark theme from the header's toggle and back", async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadMetaEvidence, realityFromScript } from "./index";
+import { loadMetaEvidence } from "./index";
 import {
   DEFAULT_SCRIPT_CID,
   DEFAULT_SCRIPT_URL,
@@ -84,11 +84,6 @@ describe("dynamic-script merge", () => {
 });
 
 describe("Reality status mapping", () => {
-  it("realityFromScript maps duplicate keys to unresolvable with empty options, otherwise unverified", () => {
-    expect(realityFromScript(true)).toEqual({ realityQuestion: { status: "unresolvable" }, rulingOptions: { type: "single-select", titles: [] } });
-    expect(realityFromScript(false)).toEqual({ realityQuestion: { status: "unverified" } });
-  });
-
   it("a script containing populatedJSONForTemplate runs with the duplicate-key guard (kind reality), any other without it", async () => {
     const reality = await withScript({ title: "T" }, {}, REALITY_SCRIPT);
     expect(reality.requests[0]?.kind).toBe("reality");

@@ -4,14 +4,12 @@ import { deriveRealityRulingOptions, fetchRealityQuestion, isRealityScript } fro
 import type { RealityQuestionInfo } from "../reality/types";
 import { REGISTRY, getRealityProxy, isScriptAllowed } from "../registry";
 import type { RealityProxyEntry, Registry } from "../registry/types";
-import { describeError, isLookupLimitError } from "../rpc";
+import { createReadClients, describeError, isLookupLimitError } from "../rpc";
 import type { Env, ScriptKind, ScriptParameters, UnavailableCode } from "../types";
 import { gatewayUrl, normalizeIpfsPath, resolveGateway } from "../uri";
 import type { CanonicalIpfsPath, GatewayOrigin } from "../uri/types";
 import { type Deadline, Interrupted, pause, startDeadline, untilAborted } from "./deadline";
 import { type JsonObject, isPlainObject, own } from "./json";
-import { lookupClientsOf } from "./lookupClients";
-import { realityFromScript } from "./reality";
 import { INVALID_META_EVIDENCE, coerceMetaEvidence, isValidMetaEvidence, parseMetaEvidence } from "./schema";
 import { buildScriptParameters } from "./scriptParams";
 import type {
@@ -342,8 +340,10 @@ async function runScript(load: Load, prepared: JsonObject, scriptText: string, p
   const json = isPlainObject(result.value) ? { ...prepared, ...result.value } : prepared;
   const script: ScriptOutcome = { ran: true, kind, jsonDuplicateKeys: result.jsonDuplicateKeys };
   if (kind === "standard") return merged(json, script);
-  const reality = realityFromScript(result.jsonDuplicateKeys);
-  return merged(reality.rulingOptions === undefined ? json : { ...json, rulingOptions: reality.rulingOptions }, script, reality.realityQuestion);
+  // An unregistered Reality.eth renderer whose question JSON had duplicate keys cannot be trusted: its options are
+  // replaced by an empty single-select. Any other is unverified and keeps the options it returned.
+  if (result.jsonDuplicateKeys) return merged({ ...json, rulingOptions: { type: "single-select", titles: [] } }, script, { status: "unresolvable" });
+  return merged(json, script, { status: "unverified" });
 }
 
 /**
@@ -358,7 +358,7 @@ async function applyRealityProxy(load: Load, entry: RealityProxyEntry, prepared:
       entry,
       arbitratorChainId: context.arbitratorChainId,
       disputeId: context.disputeId,
-      clients: lookupClientsOf(context.env),
+      clients: (budget, options) => createReadClients(context.env, { ...options, budget }),
       cache: context.realityCache,
       deadlineMs: deadline.remainingMs(),
       signal,

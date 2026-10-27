@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { fakeUploader, type FakeUploader } from "../../test/atlas";
 import { renderWithProviders } from "../../test/shell";
-import { createConnectedTestWallet, createTestWallet, holdChainSwitches, type TestWallet } from "../../test/wallet";
+import { createConnectedTestWallet, createTestWallet, type TestWallet } from "../../test/wallet";
 import type { WriteAccess } from "../../wallet";
 import { SubmitEvidenceModal } from "./SubmitEvidenceModal";
 
@@ -26,17 +26,6 @@ function attachPdf() {
 }
 
 describe("SubmitEvidenceModal", () => {
-  it("while the wallet's switch to the page chain waits, the attachment field is locked and the waiting switch is shown without claiming that nothing was sent", async () => {
-    const wallet = createTestWallet({ chainId: 100 });
-    holdChainSwitches(wallet);
-    const { uploader, modal } = await renderModal({ status: "wrong-chain", guard: { phase: "wrong-chain", walletChainId: 100, pageChainId: 1 } }, wallet, true);
-    attachPdf();
-    expect(uploader.upload).not.toHaveBeenCalled();
-    expect(within(modal).getByText("Wrong network")).toBeInTheDocument();
-    expect(within(modal).getByText("A switch to Ethereum Mainnet is waiting in your wallet.")).toBeInTheDocument();
-    expect(modal).not.toHaveTextContent("Nothing was sent");
-  });
-
   it("locks the attachment field and Submit when told no wallet is connected", async () => {
     const wallet = createTestWallet();
     const { uploader, onSubmit, modal } = await renderModal({ status: "needs-wallet", guard: { phase: "needs-wallet", pageChainId: 1 } }, wallet, false);

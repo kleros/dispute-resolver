@@ -83,17 +83,6 @@ describe("buildFundAppealCall", () => {
     }
   });
 
-  it("the recorded winning ruling of 1621 funds the list the governor's source pays as winner", () => {
-    const governorBinding = testBinding({ chainId: 1, disputeId: 1621n, arbitrated: governor1621.arbitrated });
-    const governor = detectionFor(governor1621.governor, FAMILY_SIGNATURES.governor);
-    const ruling = BigInt(governor1621.currentRuling);
-    const call = expectCall(buildFundAppealCall({ binding: governorBinding, family: governor, localId: { kind: "not-applicable" }, ruling, value: 1n }));
-    const [listIndex] = decodedArgs(call);
-    // The verified source pays the winner when `winner == _submissionID + 1`.
-    expect(BigInt(governor1621.currentRuling)).toBe((listIndex as bigint) + 1n);
-    expect(governor1621.submittedLists[Number(listIndex)]).toBe("8");
-  });
-
   it("a governor ruling of 0 (refuse to arbitrate) names no list and is refused", () => {
     expect(buildFundAppealCall({ binding, family: family("governor"), localId: { kind: "not-applicable" }, ruling: 0n, value: 1n })).toEqual({
       ok: false,

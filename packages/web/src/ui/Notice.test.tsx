@@ -1,21 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Notice } from "./Notice";
-import type { NoticeVariant } from "./types";
-
-const VARIANTS: readonly NoticeVariant[] = ["success", "warning", "error", "info"];
 
 describe("Notice", () => {
   it("renders the error variant as an alert", () => {
     render(<Notice variant="error" title="Funding failed" body="The transaction was rejected." />);
     expect(screen.getByRole("alert")).toHaveTextContent("Funding failed");
     expect(screen.getByRole("alert")).toHaveTextContent("The transaction was rejected.");
-  });
-
-  it("has no danger variant", () => {
-    // @ts-expect-error -- the variant set has no `danger`.
-    const variant: NoticeVariant = "danger";
-    expect(VARIANTS).not.toContain(variant);
   });
 
   it("shows the capitalized variant for an empty title", () => {

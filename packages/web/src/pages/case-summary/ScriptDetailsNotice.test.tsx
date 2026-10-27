@@ -35,13 +35,8 @@ function expectOneNeutralNotice(container: HTMLElement): void {
 }
 
 describe("ScriptDetailsNotice", () => {
-  it("shows one neutral notice when the script was skipped for its chain", () => {
-    const { container } = renderNotice(withScript({ ran: false, reason: "script-chain-unavailable" }));
-    expectOneNeutralNotice(container);
-  });
-
-  it("shows it for a script that could not be fetched", () => {
-    const { container } = renderNotice(withScript({ ran: false, reason: "script-fetch-failed" }));
+  it.each(["script-chain-unavailable", "script-fetch-failed"] as const)("shows one neutral notice when the script was skipped (%s)", (reason) => {
+    const { container } = renderNotice(withScript({ ran: false, reason }));
     expectOneNeutralNotice(container);
   });
 

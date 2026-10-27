@@ -31,7 +31,7 @@ export interface ColorSchemeStore {
  * The Kleros UI components library defines its light and dark colour tokens on `:root` and `:root.dark`,
  * so the colour scheme is a `dark` class on the root element.
  */
-export function applyColorScheme(root: HTMLElement, prefersDark: boolean): void {
+function applyColorScheme(root: HTMLElement, prefersDark: boolean): void {
   root.classList.toggle("dark", prefersDark);
 }
 
@@ -81,15 +81,11 @@ function writeStoredScheme(storage: ColorSchemeStorage | null, scheme: ColorSche
   }
 }
 
-function resolveColorScheme(stored: ColorScheme | null, systemDark: boolean): ColorScheme {
-  return stored ?? (systemDark ? "dark" : "light");
-}
-
 export function createColorSchemeStore({ root, media, storage }: ColorSchemeStoreOptions): ColorSchemeStore {
   const listeners = new Set<() => void>();
   // Kept in memory as well, so a choice made while storage refuses writes still silences the OS listener.
   let chosen = readStoredScheme(storage);
-  let scheme = resolveColorScheme(chosen, media?.matches ?? false);
+  let scheme: ColorScheme = chosen ?? (media?.matches ? "dark" : "light");
 
   function apply(next: ColorScheme): void {
     scheme = next;

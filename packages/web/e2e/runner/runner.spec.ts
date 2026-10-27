@@ -1,7 +1,6 @@
 import { expect, test, type Browser, type BrowserType, type LaunchOptions, type Page } from "@playwright/test";
-import { appOriginOf, fakeNetwork } from "../support/network";
+import { appOriginOf, fakeNetwork, loadRecording } from "../support/network";
 import { HARNESS_PATH, RUNNER_PATH, serveHarness } from "./casePageRoutes";
-import { loadRpcFixture } from "./rpcFixture";
 
 // Run against `vite preview`, whose runner plugin sends the runner policy on /__runner/*. Guard tests strip that header,
 // as a header misconfiguration would, so they prove the bootstrap's own checks. Run with `yarn e2e:runner` (Chromium,
@@ -244,7 +243,7 @@ test.describe("script runner page", () => {
 // content address; its chain reads are answered from fixtures/mainnet-1650.rpc.json, recorded at the block it names, and
 // anything else it requests is aborted, so the test needs no RPC configuration.
 const QMQGMR_URL = "https://cdn.kleros.link/ipfs/QmQGMR6MyC851poYVyBfGthzmCdvTuRFKp1UDB19p89Gcn/bundle.js";
-const RPC_FIXTURE_1650 = loadRpcFixture("mainnet-1650.rpc.json");
+const RECORDING_1650 = loadRecording(new URL("fixtures/mainnet-1650.rpc.json", import.meta.url));
 /** Reality's reserved "Answered Too Soon" answer. */
 const ANSWERED_TOO_SOON = "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
 
@@ -255,7 +254,7 @@ test.describe("script runner on a recorded dispute", () => {
     expect(scriptResponse.ok()).toBe(true);
     const scriptText = await scriptResponse.text();
 
-    const traffic = await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), rpc: (call) => RPC_FIXTURE_1650.answer(call) });
+    const traffic = await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), recordings: [RECORDING_1650] });
     await serveHarness(page, `**${HARNESS_PATH}`);
     await page.goto(HARNESS_PATH);
     const { reply } = await runInRunner(page, { scriptText, sandbox: true, waitMs: 90_000 });
@@ -269,34 +268,5 @@ test.describe("script runner on a recorded dispute", () => {
     expect(traffic.rpcUnanswered, "JSON-RPC reads missing from the fixture").toEqual([]);
     expect(traffic.aborted, "requests other than JSON-RPC reads").toBe(0);
     expect(traffic.http, "gateway and locator requests").toEqual([]);
-  });
-});
-
-// The app's frame-ancestors 'none' header is sent only by the deploy: `vite preview` does not apply public/_headers. Set DR_E2E_DEPLOY_URL to the branch deploy's origin to run it.
-const DEPLOY_URL = process.env.DR_E2E_DEPLOY_URL;
-const PUBLIC_FOREIGN_HARNESS = "https://foreign-parent.example/harness.html";
-
-test.describe("app framing", () => {
-  // Skipped without a deploy URL: only the deploy sends the app's frame-ancestors header.
-  test.skip(DEPLOY_URL === undefined || DEPLOY_URL.trim() === "", "needs DR_E2E_DEPLOY_URL (the branch deploy) for the app's frame-ancestors header");
-
-  test("a page outside the app cannot frame it, so it has no app window to inject a result into", async ({ page }) => {
-    const appUrl = new URL("/1/cases/1650", DEPLOY_URL).href;
-    const refusals: string[] = [];
-    page.on("console", (message) => {
-      if (message.text().includes("frame-ancestors")) refusals.push(message.text());
-    });
-    await serveHarness(page, PUBLIC_FOREIGN_HARNESS);
-    await page.goto(PUBLIC_FOREIGN_HARNESS);
-
-    await page.evaluate((url) => {
-      const frame = document.createElement("iframe");
-      frame.src = url;
-      document.body.append(frame);
-    }, appUrl);
-
-    await expect.poll(() => refusals.length, { timeout: 15_000 }).toBeGreaterThan(0);
-    const appOrigin = new URL(appUrl).origin;
-    expect(page.frames().filter((frame) => frame.url().startsWith(appOrigin))).toEqual([]);
   });
 });

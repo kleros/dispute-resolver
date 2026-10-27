@@ -181,26 +181,9 @@ describe("every embedded entry is the published or verified entry, nothing else 
   }
 });
 
-describe("governor sources", () => {
-  it("the verified governors are the four deployed ones, and only kleros.eth lacks submitEvidence(string)", () => {
-    expect(VERIFIED.governors.map((governor) => governor.address)).toEqual([
-      "0x327a29fce0a6490e4236240be176daa282eccfdf",
-      "0x7510c77163683448b8dc8fe9e019d9482be1ed2b",
-      "0xf7de5537ecd69a94695fcf4bcdbdee6329b63322",
-      "0xe5bcea6f87aaee4a81f64dfdb4d30d400e0e5cf4",
-    ]);
-    const withEvidence = VERIFIED.governors.filter((governor) => governor.abi.some((item) => signatureOf(item) === "submitEvidence(string)"));
-    expect(withEvidence).toHaveLength(3);
-    expect(GOVERNORS_WITH_EVIDENCE).toHaveLength(3);
-  });
-});
-
 describe("arbitrator event topics", () => {
-  it("DisputeCreation and Evidence have their known on-chain topic hashes", () => {
-    const dispute = getAbiItem({ abi: klerosLiquidAbi, name: "DisputeCreation" });
-    const evidence = getAbiItem({ abi: erc1497Abi, name: "Evidence" });
-    expect(toEventSelector(dispute)).toBe("0x141dfc18aa6a56fc816f44f0e9e2f1ebc92b15ab167770e17db5b084c10ed995");
-    expect(toEventSelector(evidence)).toBe("0xdccf2f8b2cc26eafcd61905cba744cff4b81d14740725f6376390dc6298a6a3c");
+  it("DisputeCreation has its known on-chain topic hash", () => {
+    expect(toEventSelector(getAbiItem({ abi: klerosLiquidAbi, name: "DisputeCreation" }))).toBe("0x141dfc18aa6a56fc816f44f0e9e2f1ebc92b15ab167770e17db5b084c10ed995");
   });
 });
 

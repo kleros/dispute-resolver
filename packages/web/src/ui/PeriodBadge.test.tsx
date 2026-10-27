@@ -17,31 +17,18 @@ describe("PeriodBadge", () => {
     expect(dot).toHaveClass(dotClass);
   });
 
-  it("renders a neutral badge for an out-of-range period", () => {
-    render(<PeriodBadge period={7 as Period} />);
-    expect(screen.getByText("Unknown period")).toBeInTheDocument();
+  it("draws the stamp ring and fill around the dot", () => {
+    render(<PeriodBadge period={3} />);
+    expect(screen.getByText("Appeal")).toHaveClass("rounded-full", "border", "border-klerosUIComponentsStroke", "bg-klerosUIComponentsWhiteBackground", "h-7", "text-sm");
   });
 
-  it("the pill variant draws the stamp ring and fill around the same dot", () => {
-    const { container } = render(<PeriodBadge period={3} variant="pill" />);
-    const pill = screen.getByText("Appeal");
-    expect(pill).toHaveClass("rounded-full", "border", "border-klerosUIComponentsStroke", "bg-klerosUIComponentsWhiteBackground", "h-7", "text-sm");
-    expect(container.querySelector("[aria-hidden='true']")).toHaveClass("bg-klerosUIComponentsWarning");
-  });
-
-  it("the large pill takes the large stamp size", () => {
-    render(<PeriodBadge period={0} variant="pill" size="lg" />);
+  it("the large badge takes the large stamp size", () => {
+    render(<PeriodBadge period={0} size="lg" />);
     expect(screen.getByText("Evidence")).toHaveClass("h-9", "px-4", "text-base");
   });
 
-  it.each([0, 1, 2, 3, 4] as const)("period %i has the same label text in both variants", (period) => {
-    const dot = render(<PeriodBadge period={period} />).container.textContent;
-    const pill = render(<PeriodBadge period={period} variant="pill" />).container.textContent;
-    expect(pill).toBe(dot);
-  });
-
-  it("renders a neutral pill for an out-of-range period", () => {
-    const { container } = render(<PeriodBadge period={7 as Period} variant="pill" />);
+  it("renders a neutral stamp for an out-of-range period", () => {
+    const { container } = render(<PeriodBadge period={7 as Period} />);
     expect(screen.getByText("Unknown period")).toHaveClass("rounded-full", "border-klerosUIComponentsStroke");
     expect(container.querySelector("[aria-hidden='true']")).toHaveClass("bg-klerosUIComponentsSecondaryText");
   });

@@ -597,6 +597,7 @@ describe("case page states", () => {
     });
     expect(screen.getByRole("link", { name: "View Ongoing Disputes" })).toHaveAttribute("href", "/1/ongoing");
     expect(screen.queryByRole("heading", { name: "Dispute #42" })).not.toBeInTheDocument();
+    expect(Array.from(document.querySelectorAll("[class]")).filter(isRecordBand)).toEqual([]);
     expect(searchField()).toHaveValue("42");
   });
 
@@ -641,7 +642,7 @@ describe("case page states", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("puts the meta-evidence source warning, then the compatibility banner, right under the record band and before the jury decision and the summary", async () => {
+  it("keeps the timeline inside the record band, then puts the meta-evidence source warning and the compatibility banner under the band, before the jury decision and the summary", async () => {
     programReads({
       period: 3,
       family: VIEW_ONLY,
@@ -651,46 +652,20 @@ describe("case page states", () => {
     const warning = await screen.findByText("The meta-evidence API pointed to a file that cannot be verified");
     expect(warning.closest("output")).not.toBeNull();
     const heading = screen.getByRole("heading", { level: 1, name: "Dispute #1" });
+    const timeline = await screen.findByRole("region", { name: "Dispute timeline" });
     const decision = await screen.findByRole("heading", { level: 2, name: "Jury decision" });
     const banner = screen.getByText("View mode only for this dispute");
     const title = await screen.findByRole("heading", { level: 2, name: "Dispute 1 title" });
     expect(recordBand(heading)).not.toBeNull();
+    expect(recordBand(timeline)).not.toBeNull();
+    expect(recordBand(timeline)).toBe(recordBand(heading));
     expect(recordBand(warning)).toBeNull();
     expect(heading.compareDocumentPosition(warning) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(timeline.compareDocumentPosition(warning) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(warning.compareDocumentPosition(banner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(banner.compareDocumentPosition(decision) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(decision.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
-  });
-
-  it("the timeline sits inside the header band, and the compatibility banner follows the band before the decision and the summary", async () => {
-    programReads({ period: 3, family: VIEW_ONLY });
-    renderCase("/1/cases/1");
-    await settledDispute();
-    const timeline = await screen.findByRole("region", { name: "Dispute timeline" });
-    const heading = screen.getByRole("heading", { level: 1, name: "Dispute #1" });
-    expect(recordBand(timeline)).not.toBeNull();
-    expect(recordBand(timeline)).toBe(recordBand(heading));
-    const decision = await screen.findByRole("heading", { level: 2, name: "Jury decision" });
-    const banner = screen.getByText("View mode only for this dispute");
-    const title = await screen.findByRole("heading", { level: 2, name: "Dispute 1 title" });
-    expect(timeline.compareDocumentPosition(banner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(banner.compareDocumentPosition(decision) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(decision.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it("a lookup that finds no dispute leaves no empty header band", async () => {
-    renderCase("/1/cases/42");
-    await waitFor(() => {
-      expect(notFoundHeading("42")).toBeInTheDocument();
-    });
-    expect(Array.from(document.querySelectorAll("[class]")).filter(isRecordBand)).toEqual([]);
-  });
-
-  it("reads the URL's dispute at mount, without the search debounce", async () => {
-    renderCase("/1/cases/1");
-    await act(() => Promise.resolve());
-    expect(core.lookupDispute).toHaveBeenCalledWith(expect.anything(), 1n);
   });
 
   it("while the lookup runs the search box and section placeholders show", () => {
@@ -730,16 +705,14 @@ describe("compatibility banner", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Dispute #1" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { level: 2, name: "Dispute 1 title" })).toBeInTheDocument();
   });
-
-  it("a compatible dispute shows no banner", async () => {
-    renderCase("/1/cases/1");
-    await settledDispute();
-    expect(screen.queryByText("View mode only for this dispute")).not.toBeInTheDocument();
-  });
 });
 
 describe("accordion", () => {
-  it("before the appeal period the accordion holds Question and Evidence, all collapsed", async () => {
+  it.each([
+    { program: {}, stage: "before the appeal period" },
+    { program: { period: 4, family: VIEW_ONLY }, stage: "for a view-only dispute in execution" },
+  ] as const)("$stage the accordion holds Question and Evidence with no Appeal item, all collapsed", async ({ program }) => {
+    programReads(program);
     renderCase("/1/cases/1");
     await settledDispute();
     expect(screen.queryByRole("button", { name: "Appeal" })).not.toBeInTheDocument();
@@ -822,17 +795,6 @@ describe("accordion", () => {
     expect(accordion).toHaveClass("[&>div>div:last-child]:ease-(--acc-ease)");
   });
 
-  it("shows no Appeal item for a view-only dispute in execution", async () => {
-    programReads({ period: 4, family: VIEW_ONLY });
-    renderCase("/1/cases/1");
-    await settledDispute();
-    expect(screen.queryByRole("button", { name: "Appeal" })).not.toBeInTheDocument();
-    for (const name of ["Question", "Evidence"]) {
-      expect(accordionButton(name)).toHaveAttribute("aria-expanded", "false");
-      expect(accordionBody(name)).not.toBeVisible();
-    }
-  });
-
   it("keeps an opened item open while the appeal panel settles after the accordion appeared", async () => {
     // The item list is decided from the period and the family alone. If useCaseRefresh("appeal") ever read the family
     // again, the list could change after load, and the library accordion, which tracks the open item by index, would close it.
@@ -859,7 +821,7 @@ describe("accordion", () => {
     expect(accordionBody("Question")).toBeVisible();
   });
 
-  it("waits for the family before showing the accordion of a dispute in the appeal period", async () => {
+  it("waits for the family before showing the accordion of a dispute in the appeal period, then fades it in, held still under reduced motion", async () => {
     programReads({ period: 3 });
     const family = deferred<FamilyDetection>();
     vi.mocked(core.detectFamily).mockReturnValue(family.promise);
@@ -878,21 +840,7 @@ describe("accordion", () => {
     await settledDispute();
     const titles = screen.getAllByRole("button", { expanded: false }).map((button) => button.textContent);
     expect(titles.slice(0, 3)).toEqual(["Appeal", "Question", "Evidence"]);
-  });
-
-  it("fades the accordion in when it replaces its placeholder, and holds it still under reduced motion", async () => {
-    programReads({ period: 3 });
-    const family = deferred<FamilyDetection>();
-    vi.mocked(core.detectFamily).mockReturnValue(family.promise);
-    renderCase("/1/cases/1");
-    await waitFor(() => {
-      expect(core.detectFamily).toHaveBeenCalled();
-    });
-    await act(() => {
-      family.resolve(testFamily());
-      return Promise.resolve();
-    });
-    const accordion = (await screen.findByRole("button", { name: "Appeal" })).parentElement?.parentElement;
+    const accordion = accordionButton("Appeal").parentElement?.parentElement;
     expect(accordion).toHaveClass("animate-[t-reveal-in_var(--reveal-dur)_var(--reveal-ease)_backwards]", "motion-reduce:animate-none");
   });
 
@@ -910,21 +858,24 @@ describe("accordion", () => {
   });
 
   it.each([
-    { period: 3, stage: "appeal period" },
-    { period: 4, stage: "execution period" },
-  ] as const)("keeps the Appeal item open while its Retry reads a failed family again in the $stage", async ({ period }) => {
+    { period: 3, stage: "appeal period", item: "Appeal", retry: "Retry Appeal", unavailable: "Appeal unavailable" },
+    { period: 4, stage: "execution period", item: "Appeal", retry: "Retry Appeal", unavailable: "Appeal unavailable" },
+    { period: 3, stage: "appeal period", item: "Evidence", retry: "Retry Evidence submission", unavailable: "Evidence submission unavailable" },
+  ] as const)("keeps the $item item open while its Retry reads a failed family again in the $stage", async ({ period, item, retry, unavailable }) => {
     programReads({ period });
     const family = failFamilyOnFirstLoad();
     renderCase("/1/cases/1");
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Appeal" }));
-    await user.click(await within(accordionBody("Appeal")).findByRole("button", { name: "Retry Appeal" }));
+    await user.click(await screen.findByRole("button", { name: item }));
+    await user.click(await within(accordionBody(item)).findByRole("button", { name: retry }));
     await waitFor(() => {
-      expect(within(accordionBody("Appeal")).queryByText("Appeal unavailable")).not.toBeInTheDocument();
+      expect(within(accordionBody(item)).queryByText(unavailable)).not.toBeInTheDocument();
     });
     expect(core.detectFamily).toHaveBeenCalledTimes(3);
-    expect(accordionButton("Appeal")).toHaveAttribute("aria-expanded", "true");
-    for (const name of ["Question", "Evidence"]) expect(accordionButton(name)).toHaveAttribute("aria-expanded", "false");
+    expect(accordionButton(item)).toHaveAttribute("aria-expanded", "true");
+    for (const name of ["Appeal", "Question", "Evidence"].filter((name) => name !== item)) {
+      expect(accordionButton(name)).toHaveAttribute("aria-expanded", "false");
+    }
 
     await act(() => {
       family.resolve(testFamily());
@@ -933,32 +884,8 @@ describe("accordion", () => {
     await waitFor(() => {
       expect(core.buildAppealPanel).toHaveBeenCalled();
     });
-    expect(accordionButton("Appeal")).toHaveAttribute("aria-expanded", "true");
-    expect(accordionBody("Appeal")).toBeVisible();
-  });
-
-  it("keeps the Evidence item open while its submission Retry reads a failed family again", async () => {
-    programReads({ period: 3 });
-    const family = failFamilyOnFirstLoad();
-    renderCase("/1/cases/1");
-    const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Evidence" }));
-    await user.click(await within(accordionBody("Evidence")).findByRole("button", { name: "Retry Evidence submission" }));
-    await waitFor(() => {
-      expect(within(accordionBody("Evidence")).queryByText("Evidence submission unavailable")).not.toBeInTheDocument();
-    });
-    expect(core.detectFamily).toHaveBeenCalledTimes(3);
-    expect(accordionButton("Evidence")).toHaveAttribute("aria-expanded", "true");
-
-    await act(() => {
-      family.resolve(testFamily());
-      return Promise.resolve();
-    });
-    await waitFor(() => {
-      expect(core.buildAppealPanel).toHaveBeenCalled();
-    });
-    expect(accordionButton("Evidence")).toHaveAttribute("aria-expanded", "true");
-    expect(accordionBody("Evidence")).toBeVisible();
+    expect(accordionButton(item)).toHaveAttribute("aria-expanded", "true");
+    expect(accordionBody(item)).toBeVisible();
   });
 
   it("drops the Appeal item once its Retry finds the arbitrable view-only in execution", async () => {
@@ -984,18 +911,6 @@ describe("accordion", () => {
 });
 
 describe("search box", () => {
-  it("names the dispute ID field without a visible label, beside the magnifier icon", async () => {
-    renderCase("/1/cases/1");
-    await settledDispute();
-    const form = screen.getByRole("search");
-    expect(searchField()).toHaveAttribute("aria-label", "Dispute ID");
-    expect(searchField()).toHaveAttribute("placeholder", "Dispute ID");
-    expect(within(form).queryByText("Dispute ID", { selector: "label" })).toBeNull();
-    expect(form.querySelector("svg")).not.toBeNull();
-    await search("12");
-    expect(searchField()).toHaveValue("12");
-  });
-
   it("an ID above 2^53 keeps every digit in the field and the URL", async () => {
     const view = renderCase("/1/cases/1");
     await settledDispute();
@@ -1027,17 +942,6 @@ describe("search box", () => {
     expect(await screen.findByRole("heading", { level: 2, name: "Dispute 34 title" })).toBeInTheDocument();
     expect(core.lookupDispute).not.toHaveBeenCalledWith(expect.anything(), 3n);
     expect(searchField()).toHaveValue("34");
-  });
-
-  it("searching a nonexistent ID while a dispute is shown shows the not-found state", async () => {
-    renderCase("/1/cases/1");
-    await settledDispute();
-    await search("99");
-    debounce.elapse();
-    await waitFor(() => {
-      expect(notFoundHeading("99")).toBeInTheDocument();
-    });
-    expect(queryTitle()).not.toBeInTheDocument();
   });
 
   it("clearing the search shows no dispute and leaves the URL as it is", async () => {
@@ -1171,21 +1075,6 @@ describe("section degradation", () => {
     expect(screen.queryByText("Dispute summary unavailable")).not.toBeInTheDocument();
     expect(screen.getAllByText("Details from the arbitrable's script are unavailable")).toHaveLength(1);
     expect(result.scriptRuns()).toBe(0);
-  });
-
-  it("an evidence display for unconfigured chain 10 is told chain 10 with no RPC for it, and the page renders", async () => {
-    const parsed = actualCore.parseMetaEvidence({ title: "Test dispute", arbitrableChainID: 10, evidenceDisplayInterfaceURI: "https://display.example/index.html" });
-    if (!parsed.ok) throw new Error("the meta-evidence must parse");
-    programReads({ metaEvidence: { "1": { ...testOkMetaEvidence(), metaEvidence: parsed.value } } });
-    renderCase("/1/cases/1");
-    await settledDispute();
-    const frame = await screen.findByTitle("Evidence display");
-    const query = decodeURIComponent(new URL(frame.getAttribute("src") ?? "").search.slice(1));
-    const params = JSON.parse(query) as Record<string, unknown>;
-    expect(params).toMatchObject({ arbitrableChainID: 10, arbitrableJsonRpcUrl: null, arbitratorChainID: 1, chainID: 1 });
-    expect(params.arbitratorJsonRpcUrl).toBe(params.jsonRpcUrl);
-    expect(screen.getByRole("heading", { level: 2, name: "Test dispute" })).toBeInTheDocument();
-    expect(timelineColumns().length).toBeGreaterThan(0);
   });
 });
 

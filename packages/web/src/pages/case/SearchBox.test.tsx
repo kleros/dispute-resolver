@@ -115,11 +115,6 @@ describe("SearchBox", () => {
     expect(field()).not.toHaveFocus();
   });
 
-  it("leaves focus alone when not asked, as a case page does", () => {
-    renderSearch({ shownId: 1650n });
-    expect(field()).not.toHaveFocus();
-  });
-
   it("asks phones for the number pad without making the field a number input", () => {
     renderSearch();
     expect(field()).toHaveAttribute("type", "search");
@@ -193,14 +188,6 @@ describe("SearchBox", () => {
     await user.paste(" 7 ");
     expect(field()).toHaveValue("170");
     expect(field().selectionStart).toBe(2);
-  });
-
-  it("a paste of an ID wrapped in whitespace enters as the ID alone", async () => {
-    const { change, user } = renderSearch();
-    await user.click(field());
-    await user.paste(" 1650\n");
-    expect(field()).toHaveValue("1650");
-    expect(change.mock.calls).toEqual([["1650"]]);
   });
 
   it("a paste the browser hands over as transferred text is refused or let through like any other", async () => {

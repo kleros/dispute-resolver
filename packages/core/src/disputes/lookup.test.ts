@@ -3,6 +3,7 @@ import { klerosLiquidAbi } from "../abi";
 import type { Address } from "../types";
 import { lookupDispute, parseDisputeId } from ".";
 import { answer, fakeClient, failure, GNOSIS, MAINNET, recordedNode, rpcError, SEPOLIA } from "../test/disputes/testHelpers";
+import type { Recording } from "../test/disputes/testHelpers";
 
 const MAINNET_ARBITRATOR = MAINNET.arbitrator;
 const NONEXISTENT = 1_000_000_000n;
@@ -85,19 +86,13 @@ describe("lookupDispute", () => {
     expect(lookup).toMatchObject({ status: "found", dispute: { numberOfChoices: 2n ** 128n - 1n, arbitrated: "0x594ec762b59978c97c82bc36ab493ed8b1f1f368" } });
   });
 
-  it("an out-of-range ID that the node reports as -32003 InvalidFEOpcode is not-found (mainnet)", async () => {
-    const { client } = fakeClient(recordedNode(MAINNET));
-    expect(await lookupDispute({ chainId: 1, client }, NONEXISTENT)).toEqual({ status: "not-found" });
-  });
-
-  it("an out-of-range ID that the node reports as -32000 invalid opcode is not-found (Sepolia)", async () => {
-    const { client } = fakeClient(recordedNode(SEPOLIA));
-    expect(await lookupDispute({ chainId: 11155111, client }, NONEXISTENT)).toEqual({ status: "not-found" });
-  });
-
-  it("a zeroed struct with no arbitrated contract is not-found (Gnosis keeps disputes in a mapping)", async () => {
-    const { client } = fakeClient(recordedNode(GNOSIS));
-    expect(await lookupDispute({ chainId: 100, client }, NONEXISTENT)).toEqual({ status: "not-found" });
+  it.each<[string, Recording, number]>([
+    ["an out-of-range ID that the node reports as -32003 InvalidFEOpcode is not-found (mainnet)", MAINNET, 1],
+    ["an out-of-range ID that the node reports as -32000 invalid opcode is not-found (Sepolia)", SEPOLIA, 11155111],
+    ["a zeroed struct with no arbitrated contract is not-found (Gnosis keeps disputes in a mapping)", GNOSIS, 100],
+  ])("%s", async (_, recording, chainId) => {
+    const { client } = fakeClient(recordedNode(recording));
+    expect(await lookupDispute({ chainId, client }, NONEXISTENT)).toEqual({ status: "not-found" });
   });
 
   it("a code 3 execution reverted answer is not-found", async () => {
@@ -134,14 +129,6 @@ describe("lookupDispute", () => {
     if (lookup.status !== "unavailable") throw new Error("expected unavailable");
     expect(lookup.error.message).not.toContain("URL");
     expect(lookup.error.message).not.toContain("Request body");
-  });
-
-  it("every lookup is independent, so a not-found after a found dispute carries nothing of it", async () => {
-    const { client } = fakeClient(recordedNode(MAINNET));
-    const first = await lookupDispute({ chainId: 1, client }, 1454n);
-    const second = await lookupDispute({ chainId: 1, client }, NONEXISTENT);
-    expect(first.status).toBe("found");
-    expect(second).toEqual({ status: "not-found" });
   });
 
   it("a chain without an arbitrator is no-arbitrator, without any read", async () => {

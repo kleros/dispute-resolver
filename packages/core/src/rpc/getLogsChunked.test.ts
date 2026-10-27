@@ -7,7 +7,7 @@ import {
   cappedNode,
   fakeLogsClient,
   logsRange,
-  matchingLogs,
+  matchesFilter,
   rangeRefusal,
   rpcCalls,
   rpcError,
@@ -68,7 +68,6 @@ function mainnetReadClient(options?: BudgetedReadClientOptions): ReadClient {
 }
 
 const RANGE_REFUSAL: Reply = { error: { code: -32005, message: "query returned more than 10000 results" } };
-const HEADER_NOT_FOUND: Reply = { error: { code: -32000, message: "header not found" } };
 
 function cappedReply(call: JsonRpcCall): Reply {
   const { fromBlock, toBlock } = logsRange(call);
@@ -79,38 +78,6 @@ describe("getLogsChunked over the production read transport", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.useRealTimers();
-  });
-
-  it("a budgeted scan sends no more JSON-RPC calls than the budget, retries included", async () => {
-    vi.useFakeTimers();
-    const endpoint = stubEndpoint((call) => (logsRange(call).fromBlock === 0n && logsRange(call).toBlock === 79_999n ? RANGE_REFUSAL : HEADER_NOT_FOUND));
-    const budget = createRequestBudget({ maxRequests: 9, deadlineMs: 90_000 });
-    const client = mainnetReadClient({ budget });
-    const failure = expect(getLogsChunked(client, { ...scan, fromBlock: 0n, toBlock: 79_999n })).rejects.toSatisfy(isLookupLimitError);
-    await vi.runAllTimersAsync();
-    await failure;
-    expect(rpcCalls(endpoint)).toHaveLength(9);
-  });
-
-  it("a scan charges the budget of its read client once per attempt", async () => {
-    const endpoint = stubEndpoint(cappedReply);
-    const budget = createRequestBudget({ maxRequests: 3, deadlineMs: 90_000 });
-    const client = mainnetReadClient({ budget });
-    await expect(getLogsChunked(client, { ...scan, fromBlock: 0n, toBlock: 19_999n })).resolves.toEqual([]);
-    expect(rpcCalls(endpoint)).toHaveLength(3);
-  });
-
-  it("no retry of a window starts after the deadline", async () => {
-    vi.useFakeTimers();
-    const endpoint = stubEndpoint((call) => (logsRange(call).toBlock - logsRange(call).fromBlock + 1n > 10_000n ? RANGE_REFUSAL : HEADER_NOT_FOUND));
-    const budget = createRequestBudget({ maxRequests: 1_500, deadlineMs: 1_000 });
-    const client = mainnetReadClient({ budget });
-    const start = Date.now();
-    const failure = expect(getLogsChunked(client, { ...scan, fromBlock: 0n, toBlock: 19_999n })).rejects.toSatisfy(isLookupLimitError);
-    await vi.runAllTimersAsync();
-    await failure;
-    expect(endpoint.posts.every((post) => post.at - start <= 1_000)).toBe(true);
-    expect(rpcCalls(endpoint)).toHaveLength(5);
   });
 
   it("every request spends the shared budget, the whole-range attempt included", async () => {
@@ -250,7 +217,9 @@ describe("getLogsChunked", () => {
   });
 
   it("drops removed logs, deduplicates by (transactionHash, logIndex) and sorts by block and log index", async () => {
-    const wanted = matchingLogs(DISPUTE_1170_LOGS, { address: arbitrable, topics: [DISPUTE_1170.contributionTopic], fromBlock: scan.fromBlock, toBlock: scan.toBlock });
+    const wanted = DISPUTE_1170_LOGS.filter((log) =>
+      matchesFilter(log, { address: arbitrable, topics: [DISPUTE_1170.contributionTopic], fromBlock: scan.fromBlock, toBlock: scan.toBlock }),
+    );
     const [first, second] = wanted;
     if (first === undefined || second === undefined) throw new Error("fixture has fewer than two contributions");
     const duplicate: RpcLog = { ...first, transactionHash: first.transactionHash.toUpperCase().replace("0X", "0x") as RpcLog["transactionHash"] };
@@ -265,7 +234,7 @@ describe("getLogsChunked", () => {
     const { client } = fakeLogsClient(async (request) => {
       const answer = await node(request);
       if (answer instanceof Error) return answer;
-      return [...answer, ...matchingLogs(DISPUTE_1170_LOGS, { ...request, fromBlock: 0n, toBlock: 1n << 40n })];
+      return [...answer, ...DISPUTE_1170_LOGS.filter((log) => matchesFilter(log, { ...request, fromBlock: 0n, toBlock: 1n << 40n }))];
     });
     const logs = await getLogsChunked(client, { ...scan, fromBlock: 14_600_000n, toBlock: 14_950_000n });
     expect(positions(logs)).toEqual(expectedContributions);
@@ -275,7 +244,7 @@ describe("getLogsChunked", () => {
     const { client, requests } = fakeLogsClient(cappedNode(DISPUTE_1170_LOGS, 1n << 40n));
     const logs = await getLogsChunked(client, { ...scan, args: { _localDisputeID: 0n, _round: 6n } });
     expect(requests[0]?.topics).toEqual([DISPUTE_1170.contributionTopic, pad("0x0"), pad("0x6"), null]);
-    const roundSix = DISPUTE_1170.contributions.filter((event) => event.decoded.round === "6");
+    const roundSix = DISPUTE_1170.contributions.filter((event) => event.decoded?.round === "6");
     expect(roundSix.length).toBeGreaterThan(0);
     expect(positions(logs)).toEqual(roundSix.map((event) => [BigInt(event.blockNumber), event.logIndex]));
   });

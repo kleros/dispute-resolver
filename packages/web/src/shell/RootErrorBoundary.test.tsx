@@ -8,6 +8,14 @@ function Broken(): never {
   throw new Error("render failed");
 }
 
+function renderBroken(): void {
+  render(
+    <RootErrorBoundary>
+      <Broken />
+    </RootErrorBoundary>,
+  );
+}
+
 const reload = vi.fn();
 const originalLocation = window.location;
 
@@ -24,11 +32,7 @@ afterEach(() => {
 
 describe("RootErrorBoundary", () => {
   it("a render error keeps a minimal frame instead of a blank page, whose footer names no chain and links no explorer", () => {
-    render(
-      <RootErrorBoundary>
-        <Broken />
-      </RootErrorBoundary>,
-    );
+    renderBroken();
     expect(within(screen.getByRole("banner")).getByRole("img", { name: "Kleros Dispute Resolver" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Something went wrong" })).toBeInTheDocument();
     const footer = within(screen.getByRole("contentinfo"));
@@ -38,21 +42,13 @@ describe("RootErrorBoundary", () => {
   });
 
   it("does not show the error's text, which may come from untrusted data", () => {
-    render(
-      <RootErrorBoundary>
-        <Broken />
-      </RootErrorBoundary>,
-    );
+    renderBroken();
     expect(screen.queryByText(/render failed/)).not.toBeInTheDocument();
   });
 
   it("the reload button reloads the page", async () => {
     const user = userEvent.setup();
-    render(
-      <RootErrorBoundary>
-        <Broken />
-      </RootErrorBoundary>,
-    );
+    renderBroken();
     await user.click(screen.getByRole("button", { name: "Reload" }));
     expect(reload).toHaveBeenCalledTimes(1);
   });

@@ -76,6 +76,7 @@ describe("meta-evidence budget", () => {
     const cases: [Parameters<typeof fakeFetcher>[0], Record<string, unknown>][] = [
       [servedMetaEvidence("%PDF-1.4"), { status: "failed", reason: "not-json" }],
       [servedMetaEvidence(json(5)), { status: "failed", reason: "schema-invalid" }],
+      [servedMetaEvidence(json(["title"])), { status: "failed", reason: "schema-invalid" }],
     ];
     for (const [routes, expected] of cases) {
       const { fetcher, urls } = fakeFetcher(routes);
@@ -106,13 +107,6 @@ describe("meta-evidence budget", () => {
     expect(result).toMatchObject({ status: "ok", metaEvidence: { title: "T" }, script: { ran: false, reason: "script-fetch-failed" } });
     expect(requests).toHaveLength(0);
     expect(elapsedMs).toBe(0);
-  });
-
-  it("rejections are not retried", async () => {
-    const { fetcher, urls } = fakeFetcher({ [locatorUrl(1, 1684n)]: json({ metaEvidenceUri: "https://example.org/meta.json" }) });
-    const { result } = await settle(loadMetaEvidence(context({ fetcher })), 1);
-    expect(result).toMatchObject({ status: "invalid" });
-    expect(urls).toHaveLength(1);
   });
 
   it("the script timeout is the budget that remains, after the time spent on earlier attempts", async () => {

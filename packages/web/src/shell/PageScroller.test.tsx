@@ -180,28 +180,19 @@ describe("PageScroller where the page scroller scrolls the page", () => {
     expectOutOfTabOrder(pageScroller());
   });
 
-  it("Tab from the page scroller leaves from a passing stop at the page's start, as from a page with nothing focused", () => {
+  it.each([
+    { name: "Tab", shiftKey: false, edge: "start", child: "firstElementChild", next: "Brand" },
+    { name: "Shift+Tab", shiftKey: true, edge: "end", child: "lastElementChild", next: "Action" },
+  ] as const)("$name from the page scroller leaves from a passing stop at the page's $edge, as from a page with nothing focused", ({ shiftKey, child, next }) => {
     renderPage("container");
     press(document.body, "PageDown");
     const scroller = pageScroller();
-    press(scroller, "Tab");
-    const stop = scroller.firstElementChild;
+    press(scroller, "Tab", { shiftKey });
+    const stop = scroller[child];
     expect(stop?.tagName).toBe("SPAN");
     expect(stop).toHaveFocus();
     expect(stop).toHaveAttribute("tabindex", "-1");
-    screen.getByRole("button", { name: "Brand" }).focus();
-    expect(scroller.querySelector(":scope > span")).toBeNull();
-  });
-
-  it("Shift+Tab from the page scroller leaves from a passing stop at the page's end, as from a page with nothing focused", () => {
-    renderPage("container");
-    press(document.body, "PageDown");
-    const scroller = pageScroller();
-    press(scroller, "Tab", { shiftKey: true });
-    const stop = scroller.lastElementChild;
-    expect(stop?.tagName).toBe("SPAN");
-    expect(stop).toHaveFocus();
-    screen.getByRole("button", { name: "Action" }).focus();
+    screen.getByRole("button", { name: next }).focus();
     expect(scroller.querySelector(":scope > span")).toBeNull();
   });
 

@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SELECTORS } from "../abi";
 import type { Hex } from "../types";
-import { recorded } from "./__fixtures__/recorded";
 import { scanSelectors } from "./index";
 
 describe("scanSelectors", () => {
@@ -35,12 +33,5 @@ describe("scanSelectors", () => {
 
   it("selectors are lowercase whatever the input case", () => {
     expect([...scanSelectors("0x63AABBCCDD")]).toEqual(["0xaabbccdd"]);
-  });
-
-  it("reads the probe selectors from a recorded dispatcher (current mainnet ArbitrableProxy)", () => {
-    const selectors = scanSelectors(recorded(1, "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf").code);
-    expect(selectors.has(SELECTORS["getTotalWithdrawableAmount(uint256,address,uint256)"])).toBe(true);
-    expect(selectors.has(SELECTORS["externalIDtoLocalID(uint256)"])).toBe(true);
-    expect(selectors.has(SELECTORS["getTotalWithdrawableAmount(uint256,address,uint256[])"])).toBe(false);
   });
 });

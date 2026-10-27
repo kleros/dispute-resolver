@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SELECTORS } from "../abi";
+import type { LocalIdResolution } from "../disputes/types";
 import type { FamilyDetection } from "../families/types";
 import { buildSubmitEvidenceCall } from "./index";
 import { decodedArgs, detectionFor, EVIDENCE_CID, expectCall, FAMILY_SIGNATURES, selectorOf, testBinding } from "../test/writes/testHelpers";
@@ -38,35 +39,24 @@ describe("buildSubmitEvidenceCall", () => {
     expect(decodedArgs(call)).toEqual([EVIDENCE]);
   });
 
-  it("the kleros.eth governor has no evidence function, so submission is refused", () => {
-    expect(buildSubmitEvidenceCall({ binding, family: family("governor-no-evidence"), localId: { kind: "not-applicable" }, evidenceUri: EVIDENCE })).toEqual({
+  it.each<[string, keyof typeof FAMILY_SIGNATURES]>([
+    ["the kleros.eth governor has no evidence function, so submission is refused", "governor-no-evidence"],
+    ["a view-only arbitrable refuses evidence as a value, without throwing", "view-only"],
+  ])("%s", (_name, signatures) => {
+    expect(buildSubmitEvidenceCall({ binding, family: family(signatures), localId: { kind: "not-applicable" }, evidenceUri: EVIDENCE })).toEqual({
       ok: false,
       refusal: "evidence-unsupported",
     });
   });
 
-  it("a view-only arbitrable refuses evidence as a value, without throwing", () => {
-    expect(buildSubmitEvidenceCall({ binding, family: family("view-only"), localId: { kind: "not-applicable" }, evidenceUri: EVIDENCE })).toEqual({
-      ok: false,
-      refusal: "evidence-unsupported",
-    });
-  });
-
-  it("without a resolved local dispute ID the call cannot be encoded and is refused", () => {
-    for (const localId of [{ kind: "unresolved", reason: "reverted" }, { kind: "unresolved", reason: "rpc-error" }, { kind: "not-applicable" }] as const) {
-      expect(buildSubmitEvidenceCall({ binding, family: family("idr-v2"), localId, evidenceUri: EVIDENCE })).toEqual({ ok: false, refusal: "local-id-unresolved" });
-    }
-  });
-
-  it("a local ID of the other dialect is not used (a transaction ID is not an IDisputeResolver local ID)", () => {
-    expect(buildSubmitEvidenceCall({ binding, family: family("idr-v2"), localId: { kind: "transaction-id", value: 1n }, evidenceUri: EVIDENCE })).toEqual({
-      ok: false,
-      refusal: "local-id-unresolved",
-    });
-    expect(buildSubmitEvidenceCall({ binding, family: family("escrow-v1"), localId: { kind: "local-id", value: 1n }, evidenceUri: EVIDENCE })).toEqual({
-      ok: false,
-      refusal: "local-id-unresolved",
-    });
+  it.each<[string, keyof typeof FAMILY_SIGNATURES, LocalIdResolution]>([
+    ["without a resolved local dispute ID (its read reverted) the call cannot be encoded and is refused", "idr-v2", { kind: "unresolved", reason: "reverted" }],
+    ["without a resolved local dispute ID (its read failed) the call cannot be encoded and is refused", "idr-v2", { kind: "unresolved", reason: "rpc-error" }],
+    ["without a local dispute ID at all the call cannot be encoded and is refused", "idr-v2", { kind: "not-applicable" }],
+    ["a transaction ID is not used as an IDisputeResolver local ID", "idr-v2", { kind: "transaction-id", value: 1n }],
+    ["an IDisputeResolver local ID is not used as an Escrow V1 transaction ID", "escrow-v1", { kind: "local-id", value: 1n }],
+  ])("%s", (_name, signatures, localId) => {
+    expect(buildSubmitEvidenceCall({ binding, family: family(signatures), localId, evidenceUri: EVIDENCE })).toEqual({ ok: false, refusal: "local-id-unresolved" });
   });
 
   it("an evidence upload result that is not content-addressed never goes on-chain", () => {

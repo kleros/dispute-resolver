@@ -2,7 +2,7 @@ import * as core from "@dispute-resolver/core";
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { codeRpc, createTestDeps, dataWrapper, type TestDepsOptions } from "../test/data";
-import { isContractCode, useArbitrationCost, useIsContractAccount } from "./accountHooks";
+import { useArbitrationCost, useIsContractAccount } from "./accountHooks";
 
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../test/data/mockCoreReads")).mockCoreReads(importOriginal));
 
@@ -26,17 +26,15 @@ describe("useIsContractAccount", () => {
     expect(rpc).toHaveBeenCalledWith(expect.objectContaining({ chainId: 100, method: "eth_getCode" }));
   });
 
-  it("does not treat an EIP-7702 delegated EOA as a smart-contract wallet", async () => {
-    const { result } = renderHook(() => useIsContractAccount(1, ACCOUNT), { wrapper: wrapperWith({ rpc: codeRpc("0xEF01001111111111111111111111111111111111111111") }) });
+  it.each([
+    ["0x6080604052", true],
+    ["0xEF01001111111111111111111111111111111111111111", false],
+    ["0x", false],
+    ["0x00", true],
+  ] as const)("an account with code %s is a smart-contract wallet: %s", async (code, isContract) => {
+    const { result } = renderHook(() => useIsContractAccount(1, ACCOUNT), { wrapper: wrapperWith({ rpc: codeRpc(code) }) });
     await waitFor(() => {
-      expect(result.current).toEqual({ status: "ready", value: false });
-    });
-  });
-
-  it("does not treat an account without code as a smart-contract wallet", async () => {
-    const { result } = renderHook(() => useIsContractAccount(1, ACCOUNT), { wrapper: wrapperWith({ rpc: codeRpc("0x") }) });
-    await waitFor(() => {
-      expect(result.current).toEqual({ status: "ready", value: false });
+      expect(result.current).toEqual({ status: "ready", value: isContract });
     });
   });
 
@@ -54,13 +52,6 @@ describe("useIsContractAccount", () => {
     expect(noAccount.result.current).toEqual({ status: "ready", value: false });
     expect(noRpc.result.current).toEqual({ status: "ready", value: false });
     expect(rpc).not.toHaveBeenCalled();
-  });
-
-  it("isContractCode is true only for non-empty code that is not an EIP-7702 delegation", () => {
-    expect(isContractCode(undefined)).toBe(false);
-    expect(isContractCode("0x")).toBe(false);
-    expect(isContractCode("0xef0100aa")).toBe(false);
-    expect(isContractCode("0x00")).toBe(true);
   });
 });
 

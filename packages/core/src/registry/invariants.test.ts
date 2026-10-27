@@ -13,20 +13,15 @@ function duplicates(values: readonly string[]): string[] {
 describe("every address is lowercase, 40 hex characters, unique within its table", () => {
   const realityEntries = Object.entries(REGISTRY.realityProxies);
 
-  it("registry keys are '<chain>:<lowercase address>' and the entry's proxy is the key's address", () => {
+  it("registry keys are '<chain>:<lowercase address>', the entry's proxy is the key's address and its reality contract is lowercase hex", () => {
     for (const [key, entry] of realityEntries) {
       expect(chainOfKey(key)).toMatch(/^[1-9]\d*$/);
       expect(addressOfKey(key)).toMatch(ADDRESS_PATTERN);
       expect(entry.proxy).toBe(addressOfKey(key));
+      expect(entry.reality).toMatch(ADDRESS_PATTERN);
     }
     for (const key of Object.keys(REGISTRY.overrides)) {
       expect(addressOfKey(key)).toMatch(ADDRESS_PATTERN);
-    }
-  });
-
-  it("reality contract addresses are lowercase hex", () => {
-    for (const [, entry] of realityEntries) {
-      expect(entry.reality).toMatch(ADDRESS_PATTERN);
     }
   });
 
@@ -48,14 +43,8 @@ describe("every address is lowercase, 40 hex characters, unique within its table
 });
 
 describe("every entry is justified", () => {
-  it("every Reality proxy has a non-empty justification", () => {
-    for (const [key, entry] of Object.entries(REGISTRY.realityProxies)) {
-      expect(entry.justification.trim().length, key).toBeGreaterThan(0);
-    }
-  });
-
-  it("every behavior override has a non-empty justification", () => {
-    for (const [key, entry] of Object.entries(REGISTRY.overrides)) {
+  it("every Reality proxy and every behavior override has a non-empty justification", () => {
+    for (const [key, entry] of [...Object.entries(REGISTRY.realityProxies), ...Object.entries(REGISTRY.overrides)]) {
       expect(entry.justification.trim().length, key).toBeGreaterThan(0);
     }
   });
@@ -151,10 +140,5 @@ describe("registry data", () => {
 
   it("the canonical hosts are resolve.kleros.io", () => {
     expect(REGISTRY.canonicalHosts).toEqual(["resolve.kleros.io"]);
-  });
-
-  it("kleros.eth is not a Reality proxy or an override", () => {
-    expect(REGISTRY.realityProxies).not.toHaveProperty(["1:0xe5bcea6f87aaee4a81f64dfdb4d30d400e0e5cf4"]);
-    expect(REGISTRY.overrides).not.toHaveProperty(["1:0xe5bcea6f87aaee4a81f64dfdb4d30d400e0e5cf4"]);
   });
 });

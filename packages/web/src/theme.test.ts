@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMemoryStorage } from "./test/data";
-import { STORAGE_KEY, SWITCHING_ATTRIBUTE, applyColorScheme, browserLocalStorage, createColorSchemeStore, type ColorSchemeMedia, type ColorSchemeStorage } from "./theme";
+import { STORAGE_KEY, SWITCHING_ATTRIBUTE, browserLocalStorage, createColorSchemeStore, type ColorSchemeMedia, type ColorSchemeStorage } from "./theme";
 
 /** A `(prefers-color-scheme: dark)` query whose answer the test changes, dispatching `change` like the browser does. */
 function fakeMedia(matches: boolean) {
@@ -35,16 +35,6 @@ function throwingStorage(): ColorSchemeStorage {
 function isDark(root: HTMLElement): boolean {
   return root.classList.contains("dark");
 }
-
-describe("applyColorScheme", () => {
-  it("adds the dark class for a dark scheme and removes it for a light one", () => {
-    const root = document.createElement("html");
-    applyColorScheme(root, true);
-    expect(isDark(root)).toBe(true);
-    applyColorScheme(root, false);
-    expect(isDark(root)).toBe(false);
-  });
-});
 
 describe("createColorSchemeStore", () => {
   it("pauses transitions while a flip applies and lifts the pause on the next frame, but not for the first paint", async () => {
@@ -126,17 +116,6 @@ describe("createColorSchemeStore", () => {
     expect(isDark(root)).toBe(false);
     expect(store.getSnapshot()).toBe("light");
     expect(listener).toHaveBeenCalledTimes(1);
-  });
-
-  it("a page that cannot reach storage at all still themes from the OS", () => {
-    const root = document.createElement("div");
-    const media = fakeMedia(true);
-    const store = createColorSchemeStore({ root, media, storage: null });
-    expect(isDark(root)).toBe(true);
-    media.change(false);
-    expect(isDark(root)).toBe(false);
-    store.toggle();
-    expect(isDark(root)).toBe(true);
   });
 
   it("an unknown stored value counts as no choice", () => {

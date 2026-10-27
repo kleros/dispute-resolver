@@ -10,7 +10,7 @@ function rpcRequestError(code: number, message: string, params: unknown = []): R
 }
 
 describe("isRangeLimitError on provider error shapes", () => {
-  it.each([
+  it.each<[unknown, boolean]>([
     [{ code: -32005, message: "query returned more than 10000 results" }, true],
     [{ code: -32602, message: "Log response size exceeded." }, true],
     [{ message: "Returned error: block range is too wide" }, true],
@@ -20,6 +20,14 @@ describe("isRangeLimitError on provider error shapes", () => {
     [{ code: -32005, message: "daily request count exceeded, request rate limited" }, false],
     [{ code: 429, message: "Too Many Requests" }, false],
     [{ code: -32000, message: "header not found" }, false],
+    [{ code: -32600, message: "invalid request" }, true],
+    [{ code: -32614, message: "eth_getLogs failed" }, true],
+    [{ code: 413, message: "payload" }, true],
+    [{ code: "-32005", message: "error" }, true],
+    ["block range too large", true],
+    ["execution reverted", false],
+    [undefined, false],
+    [null, false],
   ])("classifies %j as a range limit: %s", (error, expected) => {
     expect(isRangeLimitError(error)).toBe(expected);
   });
@@ -27,29 +35,19 @@ describe("isRangeLimitError on provider error shapes", () => {
   it("a LookupLimitError is never a range error, despite its wording", () => {
     expect(isRangeLimitError(new LookupLimitError("Request budget of 1500 requests exceeded."))).toBe(false);
   });
-
-  it("counts the other range codes as range errors without range wording", () => {
-    expect(isRangeLimitError({ code: -32600, message: "invalid request" })).toBe(true);
-    expect(isRangeLimitError({ code: -32614, message: "eth_getLogs failed" })).toBe(true);
-    expect(isRangeLimitError({ code: 413, message: "payload" })).toBe(true);
-    expect(isRangeLimitError({ code: "-32005", message: "error" })).toBe(true);
-  });
-
-  it("plain strings and empty values are classified by wording", () => {
-    expect(isRangeLimitError("block range too large")).toBe(true);
-    expect(isRangeLimitError("execution reverted")).toBe(false);
-    expect(isRangeLimitError(undefined)).toBe(false);
-    expect(isRangeLimitError(null)).toBe(false);
-  });
 });
 
 describe("isRangeLimitError on viem errors", () => {
-  it("a -32005 range refusal mapped by viem is a range error", () => {
-    expect(isRangeLimitError(new LimitExceededRpcError(rpcRequestError(-32005, "query returned more than 10000 results")))).toBe(true);
-  });
-
-  it("a -32005 rate limit mapped by viem is not a range error", () => {
-    expect(isRangeLimitError(new LimitExceededRpcError(rpcRequestError(-32005, "daily request count exceeded, request rate limited")))).toBe(false);
+  it.each<[string, Error, boolean]>([
+    ["a -32005 range refusal mapped by viem is a range error", new LimitExceededRpcError(rpcRequestError(-32005, "query returned more than 10000 results")), true],
+    ["a -32005 rate limit mapped by viem is not a range error", new LimitExceededRpcError(rpcRequestError(-32005, "daily request count exceeded, request rate limited")), false],
+    ["a request timeout is a range error (too heavy to answer in time)", new TimeoutError({ body: { method: "eth_getLogs" }, url: URL }), true],
+    ["HTTP 413 is a range error", new HttpRequestError({ status: 413, details: "Payload Too Large", url: URL }), true],
+    ["HTTP 429 is not a range error", new HttpRequestError({ status: 429, details: "Too Many Requests", url: URL }), false],
+    ["a server error without range wording is not a range error", new HttpRequestError({ status: 500, details: "Internal Server Error", url: URL }), false],
+    ["a LookupLimitError wrapped as a cause is never a range error", new Error("wrapped", { cause: new LookupLimitError("Request budget of 1500 requests exceeded.") }), false],
+  ])("%s", (_name, error, expected) => {
+    expect(isRangeLimitError(error)).toBe(expected);
   });
 
   it("the request body is not read, so a topic containing 10000 does not look like a range error", () => {
@@ -57,22 +55,5 @@ describe("isRangeLimitError on viem errors", () => {
     const error = new InvalidInputRpcError(rpcRequestError(-32000, "header not found", params));
     expect(error.message).toContain("10000");
     expect(isRangeLimitError(error)).toBe(false);
-  });
-
-  it("a request timeout is a range error (too heavy to answer in time)", () => {
-    expect(isRangeLimitError(new TimeoutError({ body: { method: "eth_getLogs" }, url: URL }))).toBe(true);
-  });
-
-  it("HTTP 413 is a range error and HTTP 429 is not", () => {
-    expect(isRangeLimitError(new HttpRequestError({ status: 413, details: "Payload Too Large", url: URL }))).toBe(true);
-    expect(isRangeLimitError(new HttpRequestError({ status: 429, details: "Too Many Requests", url: URL }))).toBe(false);
-  });
-
-  it("a server error without range wording is not a range error", () => {
-    expect(isRangeLimitError(new HttpRequestError({ status: 500, details: "Internal Server Error", url: URL }))).toBe(false);
-  });
-
-  it("a LookupLimitError wrapped as a cause is never a range error", () => {
-    expect(isRangeLimitError(new Error("wrapped", { cause: new LookupLimitError("Request budget of 1500 requests exceeded.") }))).toBe(false);
   });
 });

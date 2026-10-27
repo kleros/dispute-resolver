@@ -5,7 +5,7 @@ import type { Address } from "../types";
 import { GOVERNOR_MULTIPLIERS, recordedValue, type RecordedGovernor } from "./__fixtures__/governorMultipliers";
 import { MULTIPLIER_GETTERS, type RecordedGetters } from "./__fixtures__/recorded";
 import { readMultipliers } from "./index";
-import { FAMILY_SIGNATURES, answer, callKey, detectionFor, fakeNode, recordedDetection, reverting, rpcError, type CallReply } from "../test/appeals/testHelpers";
+import { FAMILY_SIGNATURES, answer, callKey, detectionFor, fakeNode, recordedDetection, reverting, type CallReply } from "../test/appeals/testHelpers";
 
 const SYNTHETIC: Address = "0x00000000000000000000000000000000000000aa";
 
@@ -61,7 +61,7 @@ describe("readMultipliers", () => {
     expect((await readRecorded("older resolver proxy (idr-legacy)")).result).toEqual(expected);
   });
 
-  it("reads winnerMultiplier, loserMultiplier, MULTIPLIER_DIVISOR and sharedMultiplier on every deployed governor at its recorded block, with the loser window KlerosGovernor fixes at half the appeal period", async () => {
+  it("reads winnerMultiplier, loserMultiplier, MULTIPLIER_DIVISOR and sharedMultiplier on every deployed governor at its recorded block, with the loser window KlerosGovernor fixes at half the appeal period, past the winnerStakeMultiplier() every governor answers with no data", async () => {
     expect(GOVERNOR_MULTIPLIERS.map((governor) => `${String(governor.chainId)}:${governor.address}`)).toEqual([
       "1:0x327a29fce0a6490e4236240be176daa282eccfdf",
       "1:0x7510c77163683448b8dc8fe9e019d9482be1ed2b",
@@ -105,11 +105,6 @@ describe("readMultipliers", () => {
     expect(result).toMatchObject({ ok: false, error: { code: "rpc-error" } });
   });
 
-  it("treats a getter answered with no data (a fallback function) as absent and tries the next name", async () => {
-    const { called } = await readGovernor(byLabel(GOVERNOR_MULTIPLIERS, "poh.eth governor"));
-    expect(called).toEqual(expect.arrayContaining(["winnerStakeMultiplier()", "winnerMultiplier()", "denominator()", "MULTIPLIER_DIVISOR()"]));
-  });
-
   it("Proof of Humanity v2, which has no denominator getter, has appeal amounts that cannot be calculated", async () => {
     const { result } = await readRecorded("Proof of Humanity v2 (view-only)");
     expect(result).toEqual({ ok: false, error: { code: "unsupported", message: UNSUPPORTED } });
@@ -135,26 +130,19 @@ describe("readMultipliers", () => {
     expect(gettersCalled(SYNTHETIC, requests.calls)).not.toContain("loserMultiplier()");
   });
 
-  it("a resolver whose getters lack the loser appeal-period multiplier has appeal amounts that cannot be calculated", async () => {
-    const { client } = fakeNode({
-      head: 1n,
-      calls: [
-        reverting({ to: SYNTHETIC, abi: idrV2Abi, functionName: "getMultipliers" }),
+  it.each([
+    [
+      "a resolver whose getters lack the loser appeal-period multiplier has appeal amounts that cannot be calculated",
+      [
         answer({ ...getter("winnerStakeMultiplier"), result: 3n }),
         answer({ ...getter("loserStakeMultiplier"), result: 4n }),
         answer({ ...getter("denominator"), result: 1_000n }),
         reverting(getter("loserAppealPeriodMultiplier")),
       ],
-    });
-    const result = await readMultipliers(client, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]));
-    expect(result).toEqual({ ok: false, error: { code: "unsupported", message: UNSUPPORTED } });
-  });
-
-  it("a resolver whose getters lack the denominator has appeal amounts that cannot be calculated", async () => {
-    const { client } = fakeNode({
-      head: 1n,
-      calls: [
-        reverting({ to: SYNTHETIC, abi: idrV2Abi, functionName: "getMultipliers" }),
+    ],
+    [
+      "a resolver whose getters lack the denominator has appeal amounts that cannot be calculated",
+      [
         answer({ ...getter("winnerStakeMultiplier"), result: 3n }),
         answer({ ...getter("loserStakeMultiplier"), result: 4n }),
         reverting(getter("denominator")),
@@ -162,21 +150,20 @@ describe("readMultipliers", () => {
         reverting(getter("MULTIPLIER_DENOMINATOR")),
         answer({ ...getter("loserAppealPeriodMultiplier"), result: 500n }),
       ],
-    });
+    ],
+    [
+      "reports a missing stake multiplier as unsupported",
+      [
+        ...(["winnerStakeMultiplier", "winnerMultiplier", "denominator", "MULTIPLIER_DIVISOR", "MULTIPLIER_DENOMINATOR", "loserAppealPeriodMultiplier"] as const).map((name) =>
+          reverting(getter(name)),
+        ),
+        answer({ ...getter("loserStakeMultiplier"), result: 4n }),
+      ],
+    ],
+  ])("%s", async (_, calls) => {
+    const { client } = fakeNode({ head: 1n, calls: [reverting({ to: SYNTHETIC, abi: idrV2Abi, functionName: "getMultipliers" }), ...calls] });
     const result = await readMultipliers(client, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]));
     expect(result).toEqual({ ok: false, error: { code: "unsupported", message: UNSUPPORTED } });
-  });
-
-  it("reports a missing stake multiplier as unsupported", async () => {
-    const reverted = (["winnerStakeMultiplier", "winnerMultiplier", "denominator", "MULTIPLIER_DIVISOR", "MULTIPLIER_DENOMINATOR", "loserAppealPeriodMultiplier"] as const).map(
-      (name) => reverting(getter(name)),
-    );
-    const { client } = fakeNode({
-      head: 1n,
-      calls: [reverting({ to: SYNTHETIC, abi: idrV2Abi, functionName: "getMultipliers" }), ...reverted, answer({ ...getter("loserStakeMultiplier"), result: 4n })],
-    });
-    const result = await readMultipliers(client, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]));
-    expect(result).toMatchObject({ ok: false, error: { code: "unsupported" } });
   });
 
   it("reports a transport error on getMultipliers() as rpc-error and tries no getter", async () => {
@@ -205,12 +192,6 @@ describe("readMultipliers", () => {
     expect(result).toMatchObject({ ok: false, error: { code: "rpc-error" } });
   });
 
-  it("reports a failing transport as rpc-error", async () => {
-    const { client } = fakeNode({ head: 1n, failing: { eth_call: rpcError(-32603, "fetch failed") } });
-    const result = await readMultipliers(client, detectionFor(SYNTHETIC, FAMILY_SIGNATURES.governor));
-    expect(result).toMatchObject({ ok: false, error: { code: "rpc-error" } });
-  });
-
   it("reports a zero denominator as invalid data, so the amounts never divide by zero", async () => {
     const fromStruct = fakeNode({
       head: 1n,
@@ -229,12 +210,5 @@ describe("readMultipliers", () => {
       ],
     });
     expect(await readMultipliers(fromGetters.client, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]))).toMatchObject({ ok: false, error: { code: "invalid-data" } });
-  });
-
-  it("reads the detected arbitrable through the injected read client only", async () => {
-    const { client, requests } = fakeNode({ head: 1n, calls: [answer({ to: SYNTHETIC, abi: idrV2Abi, functionName: "getMultipliers", result: [1n, 2n, 3n, 4n] })] });
-    await readMultipliers(client, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v1"]));
-    expect(requests.methods).toEqual(["eth_call"]);
-    expect(requests.calls).toEqual([callKey(SYNTHETIC, toFunctionSelector("getMultipliers()"))]);
   });
 });

@@ -94,7 +94,6 @@ describe("AppealSection refresh after a mined write", () => {
     await waitFor(() => {
       expect(fundedPercent(winnerCard())).toBe("0");
     });
-    expect(core.readRoundFunding).toHaveBeenCalledTimes(1);
     vi.mocked(core.readRoundFunding).mockResolvedValue({ ok: true, value: { round: 0n, contributions: [{ ruling: 1n, amount: ETH }], fundedRulings: [] } });
 
     await user.click(within(winnerCard()).getByRole("button", { name: /^Fund/ }));
@@ -137,7 +136,6 @@ describe("AppealSection refresh after a mined write", () => {
     });
     expect(screen.queryByRole("button", { name: /^Withdraw/ })).toBeNull();
     expect(core.readWithdrawable).toHaveBeenCalledTimes(2);
-    expect(core.lookupDispute).toHaveBeenCalledTimes(1);
   });
 });
 

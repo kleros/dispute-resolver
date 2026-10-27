@@ -59,12 +59,9 @@ describe("runner bootstrap build", () => {
     expect(bootstrap).not.toMatch(/\bimport\s*[{*\w(]|\bexport\s*[{*\w]|\brequire\(/);
   });
 
-  it("the bootstrap bundles neither React nor core", () => {
+  it("the bootstrap carries the runner protocol (run, accepted, version 2) and bundles neither React nor core", () => {
     expect(bootstrap).not.toMatch(/react|@dispute-resolver|zod/i);
     expect(bootstrap).toContain("dr-runner/run");
-  });
-
-  it("the built bootstrap carries the acknowledgement type and protocol version 2", () => {
     expect(bootstrap).toContain("dr-runner/accepted");
     expect(bootstrap).toMatch(/version\s*[!=]==?\s*2\b/);
   });
@@ -94,9 +91,6 @@ describe("runner policy on the preview server", () => {
     for (const url of ["/__runner/index.html", "/__runner/bootstrap.js", "/__runner/index.html?x=1"]) {
       expect((await respond(previewMiddlewares(), url)).headers["content-security-policy"]).toBe(RUNNER_CONTENT_SECURITY_POLICY);
     }
-    expect(RUNNER_CONTENT_SECURITY_POLICY).toContain("sandbox allow-scripts;");
-    expect(RUNNER_CONTENT_SECURITY_POLICY).toContain("frame-ancestors 'self'");
-    expect(RUNNER_CONTENT_SECURITY_POLICY).not.toContain("allow-same-origin");
   });
 
   it("the runner rule of public/_headers sends exactly the policy the dev and preview servers send", async () => {

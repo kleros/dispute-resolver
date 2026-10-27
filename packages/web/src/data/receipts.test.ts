@@ -9,31 +9,9 @@ const DISPUTE_CREATION = "0x141dfc18aa6a56fc816f44f0e9e2f1ebc92b15ab167770e17db5
 
 const RECEIPT = {
   transactionHash: HASH,
-  transactionIndex: "0x0",
-  blockHash: "0x" + "ab".repeat(32),
   blockNumber: "0x10",
-  from: SENDER,
-  to: ARBITRATOR,
-  cumulativeGasUsed: "0x5208",
-  gasUsed: "0x5208",
-  effectiveGasPrice: "0x1",
-  contractAddress: null,
-  logs: [
-    {
-      address: ARBITRATOR,
-      topics: [DISPUTE_CREATION, "0x" + "0".repeat(63) + "5"],
-      data: "0x",
-      blockNumber: "0x10",
-      blockHash: "0x" + "ab".repeat(32),
-      transactionHash: HASH,
-      transactionIndex: "0x0",
-      logIndex: "0x0",
-      removed: false,
-    },
-  ],
-  logsBloom: "0x" + "0".repeat(512),
+  logs: [{ address: ARBITRATOR, topics: [DISPUTE_CREATION, "0x" + "0".repeat(63) + "5"], data: "0x" }],
   status: "0x1",
-  type: "0x2",
 };
 
 interface JsonRpcCall {
@@ -63,25 +41,9 @@ function stubRpc(answers: Readonly<Record<string, unknown>> | RpcAnswer): JsonRp
 const REPLACEMENT_HASH = "0x9d0a3c1b5e2f4a6d8c7b0e1f2a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d";
 const CALLDATA = "0xd98493f60000000000000000000000000000000000000000000000000000000000000005";
 
-/** An RPC transaction object as `eth_getTransactionByHash` and `eth_getBlockByNumber` return it. */
+/** An RPC transaction object with only the fields viem's replacement check compares. */
 function rpcTransaction(fields: { hash: string; to: string; value: string; input: string; blockNumber: string | null }) {
-  return {
-    ...fields,
-    from: SENDER,
-    nonce: "0x7",
-    gas: "0x5208",
-    maxFeePerGas: "0x2",
-    maxPriorityFeePerGas: "0x1",
-    type: "0x2",
-    chainId: "0x1",
-    accessList: [],
-    blockHash: fields.blockNumber === null ? null : "0x" + "ab".repeat(32),
-    transactionIndex: fields.blockNumber === null ? null : "0x0",
-    v: "0x0",
-    yParity: "0x0",
-    r: "0x" + "1".repeat(64),
-    s: "0x" + "2".repeat(64),
-  };
+  return { ...fields, from: SENDER, nonce: "0x7" };
 }
 
 /**
@@ -91,29 +53,7 @@ function rpcTransaction(fields: { hash: string; to: string; value: string; input
 function replacedOnChain(replacement: { to: string; value: string; input: string }): RpcAnswer {
   const awaited = rpcTransaction({ hash: HASH, to: ARBITRATOR, value: "0x64", input: CALLDATA, blockNumber: null });
   const mined = rpcTransaction({ hash: REPLACEMENT_HASH, ...replacement, blockNumber: "0x10" });
-  const block = {
-    number: "0x10",
-    hash: "0x" + "ab".repeat(32),
-    parentHash: "0x" + "cd".repeat(32),
-    timestamp: "0x6553f100",
-    nonce: "0x0000000000000000",
-    difficulty: "0x0",
-    totalDifficulty: null,
-    gasLimit: "0x1c9c380",
-    gasUsed: "0x5208",
-    baseFeePerGas: "0x1",
-    miner: "0x" + "0".repeat(40),
-    extraData: "0x",
-    logsBloom: "0x" + "0".repeat(512),
-    mixHash: "0x" + "0".repeat(64),
-    receiptsRoot: "0x" + "0".repeat(64),
-    stateRoot: "0x" + "0".repeat(64),
-    transactionsRoot: "0x" + "0".repeat(64),
-    sha3Uncles: "0x" + "0".repeat(64),
-    size: "0x100",
-    uncles: [],
-    transactions: [mined],
-  };
+  const block = { number: "0x10", hash: "0x" + "ab".repeat(32), transactions: [mined] };
   const minedReceipt = { ...RECEIPT, transactionHash: REPLACEMENT_HASH, logs: [] };
   // Keyed by method, then by the first parameter where the answer depends on it.
   const answers = new Map<string, unknown>([
@@ -138,7 +78,7 @@ describe("createReceiptWaiter", () => {
 
     const receipt = await waitForReceipt(1, HASH);
 
-    expect(receipt).toEqual({
+    expect(receipt).toStrictEqual({
       transactionHash: HASH,
       status: "success",
       blockNumber: 16n,
@@ -154,34 +94,16 @@ describe("createReceiptWaiter", () => {
     expect(receipt.status).toBe("reverted");
   });
 
-  describe("a transaction replaced in the wallet is reported with viem's reason and the awaited hash", () => {
-    it("repriced: the same call at another gas price (a wallet's Speed up)", async () => {
-      stubRpc(replacedOnChain({ to: ARBITRATOR, value: "0x64", input: CALLDATA }));
-      const receipt = await createReceiptWaiter({ REACT_APP_WEB3_PROVIDER_URL: READ_RPC })(1, HASH);
-      expect(receipt.transactionHash).toBe(REPLACEMENT_HASH);
-      expect(receipt.status).toBe("success");
-      expect(receipt.replacement).toEqual({ reason: "repriced" });
-    });
-
-    it("cancelled: a zero-value transaction to the sender itself (a wallet's Cancel)", async () => {
-      stubRpc(replacedOnChain({ to: SENDER, value: "0x0", input: "0x" }));
-      const receipt = await createReceiptWaiter({ REACT_APP_WEB3_PROVIDER_URL: READ_RPC })(1, HASH);
-      expect(receipt.transactionHash).toBe(REPLACEMENT_HASH);
-      expect(receipt.replacement).toEqual({ reason: "cancelled" });
-    });
-
-    it("replaced: a different call with the same nonce", async () => {
-      stubRpc(replacedOnChain({ to: ARBITRATOR, value: "0x0", input: CALLDATA }));
-      const receipt = await createReceiptWaiter({ REACT_APP_WEB3_PROVIDER_URL: READ_RPC })(1, HASH);
-      expect(receipt.transactionHash).toBe(REPLACEMENT_HASH);
-      expect(receipt.replacement).toEqual({ reason: "replaced" });
-    });
-  });
-
-  it("a receipt of the awaited hash carries no replacement", async () => {
-    stubRpc({ eth_blockNumber: "0x10", eth_getTransactionReceipt: RECEIPT, eth_chainId: "0x1" });
+  it.each([
+    ["repriced", "the same call at another gas price (a wallet's Speed up)", { to: ARBITRATOR, value: "0x64", input: CALLDATA }],
+    ["cancelled", "a zero-value transaction to the sender itself (a wallet's Cancel)", { to: SENDER, value: "0x0", input: "0x" }],
+    ["replaced", "a different call with the same nonce", { to: ARBITRATOR, value: "0x0", input: CALLDATA }],
+  ] as const)("a transaction replaced in the wallet is reported with viem's reason and the awaited hash: %s, %s", async (reason, _description, replacement) => {
+    stubRpc(replacedOnChain(replacement));
     const receipt = await createReceiptWaiter({ REACT_APP_WEB3_PROVIDER_URL: READ_RPC })(1, HASH);
-    expect(receipt).not.toHaveProperty("replacement");
+    expect(receipt.transactionHash).toBe(REPLACEMENT_HASH);
+    expect(receipt.status).toBe("success");
+    expect(receipt.replacement).toEqual({ reason });
   });
 
   it("a chain without a read RPC rejects the receipt instead of falling back", async () => {

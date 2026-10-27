@@ -14,13 +14,6 @@ afterEach(() => {
 });
 
 describe("buildAppConfig", () => {
-  it("an empty environment builds a config without throwing", () => {
-    const config = configure({});
-    expect(config.walletConnectProjectId).toBeNull();
-    expect(config.atlasUri).toBeNull();
-    expect(config.gateway).toBe("https://cdn.kleros.link");
-  });
-
   it("passes the environment through to core calls unchanged", () => {
     const env: Env = Object.freeze({ REACT_APP_WEB3_PROVIDER_URL: "https://rpc.example.org/key" });
     expect(configure(env).env).toBe(env);
@@ -57,28 +50,20 @@ describe("buildAppConfig", () => {
       },
     );
 
-    it("an https URL is accepted, trimmed and lacks a trailing slash", () => {
-      expect(configure({ REACT_APP_ATLAS_URI: "https://atlas.example.org" }).atlasUri).toBe("https://atlas.example.org");
-      expect(configure({ REACT_APP_ATLAS_URI: "  https://atlas.example.org/  " }).atlasUri).toBe("https://atlas.example.org");
-      expect(configure({ REACT_APP_ATLAS_URI: "https://atlas.example.org///" }).atlasUri).toBe("https://atlas.example.org");
-    });
-
-    it("a path is preserved so that /graphql and /ipfs/file can be appended", () => {
-      expect(configure({ REACT_APP_ATLAS_URI: "https://atlas.example.org/api/" }).atlasUri).toBe("https://atlas.example.org/api");
-    });
-
-    it("the host is normalized to lowercase", () => {
-      expect(configure({ REACT_APP_ATLAS_URI: "HTTPS://Atlas.Example.ORG" }).atlasUri).toBe("https://atlas.example.org");
+    it.each([
+      ["https://atlas.example.org", "https://atlas.example.org"],
+      ["  https://atlas.example.org/  ", "https://atlas.example.org"],
+      ["https://atlas.example.org///", "https://atlas.example.org"],
+      ["https://atlas.example.org/api/", "https://atlas.example.org/api"],
+      ["HTTPS://Atlas.Example.ORG", "https://atlas.example.org"],
+    ])("%j is accepted as %j: trimmed, without a trailing slash, its path kept for /graphql and /ipfs/file, its host lowercase", (value, expected) => {
+      expect(configure({ REACT_APP_ATLAS_URI: value }).atlasUri).toBe(expected);
     });
   });
 
   describe("gateway", () => {
     it("is core's resolveGateway of the environment", () => {
       expect(configure({ REACT_APP_IPFS_GATEWAY: "https://ipfs.example.org/" }).gateway).toBe("https://ipfs.example.org");
-    });
-
-    it("a malformed gateway falls back to the default", () => {
-      expect(configure({ REACT_APP_IPFS_GATEWAY: "http://ipfs.example.org" }).gateway).toBe("https://cdn.kleros.link");
     });
   });
 

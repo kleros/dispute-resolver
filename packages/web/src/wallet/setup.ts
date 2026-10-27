@@ -70,7 +70,6 @@ export function createReadOnlySetup(config: AppConfig): WalletSetup {
 function deferredModal(load: () => Promise<AppKitWalletSetup>): WalletModal {
   return {
     openConnect: async (chainId) => (await load()).modal.openConnect(chainId),
-    ready: async () => (await load()).modal.ready(),
     hasEmbeddedWallet: async () => (await load()).modal.hasEmbeddedWallet(),
   };
 }

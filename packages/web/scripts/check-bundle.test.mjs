@@ -77,10 +77,21 @@ describe("test doubles never ship", () => {
   });
 
   const singleMarkers = [
-    { name: "rejects a .invalid fixture host", file: "assets/index-abc.js", text: 'fetch("https://atlas.invalid/graphql")', label: /fixture host/ },
-    { name: "rejects a .example fixture host such as rpc.example", file: "assets/index-abc.js", text: "const u='https://rpc.example/mainnet';", label: /fixture host/ },
-    { name: "rejects the wagmi mock connector", file: "assets/index-abc.js", text: 'const c={id:"mock",name:"Mock Connector",type:"mock"};', label: /wagmi mock connector/ },
-    { name: "rejects an exported test double name", file: "assets/index-abc.js", text: "window.__x={createTestDeps:1};", label: /test double name/ },
+    { name: "rejects a .invalid fixture host", text: 'fetch("https://atlas.invalid/graphql")', label: /fixture host/ },
+    { name: "rejects a .example fixture host such as rpc.example", text: "const u='https://rpc.example/mainnet';", label: /fixture host/ },
+    { name: "rejects the wagmi mock connector", text: 'const c={id:"mock",name:"Mock Connector",type:"mock"};', label: /wagmi mock connector/ },
+    { name: "rejects an exported test double name", text: "window.__x={createTestDeps:1};", label: /test double name/ },
+    { name: "rejects the test wallet address in any case", text: 'const a="0x00000000000000000000000000000000000A11CE";', label: /test wallet address/ },
+    { name: "rejects a test transaction hash", text: `const h="0x${"1".repeat(64)}";`, label: /test transaction hash/ },
+    { name: "rejects a test double's message", text: "throw Error(`This test runs no dynamic script.`);", label: /test double text/ },
+    { name: "rejects a fixture CID", text: 'const c="QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";', label: /test fixture identifier/ },
+    { name: "rejects a string literal that is exactly a test double's literal, in backticks", text: "const t=`Test dispute`;", label: /test double literal/ },
+    { name: "rejects a string literal that is exactly a test double's literal, in double quotes", text: 'const t="storage is blocked";', label: /test double literal/ },
+    { name: "rejects a string literal that is exactly a test double's literal, in single quotes", text: "const t='storage is full';", label: /test double literal/ },
+    { name: "rejects the e2e injected wallet's provider id", text: 'const r="io.kleros.e2e-wallet";', label: /e2e injected wallet/ },
+    { name: "rejects the e2e injected wallet's provider flag", text: "const p={isE2eWallet:!0};", label: /e2e injected wallet/ },
+    { name: "rejects the e2e injected wallet's global", text: "window.__e2eWallet=h;", label: /e2e injected wallet/ },
+    { name: "rejects the e2e injected wallet's name", text: 'const n={name:"E2E wallet"};', label: /e2e injected wallet/ },
     {
       name: "rejects a bundle built with the e2e build's WalletConnect project ID",
       file: "assets/appKit-abc.js",
@@ -88,7 +99,7 @@ describe("test doubles never ship", () => {
       label: /e2e WalletConnect placeholder/,
     },
   ];
-  for (const { name, file, text, label } of singleMarkers) {
+  for (const { name, file = "assets/index-abc.js", text, label } of singleMarkers) {
     it(name, async () => {
       const problems = await problemsOf({ [file]: text });
       assert.equal(problems.length, 1);
@@ -102,36 +113,8 @@ describe("test doubles never ship", () => {
     assert.ok(problems.some((problem) => /test directory path/.test(problem)));
   });
 
-  it("rejects the test wallet address and transaction hashes in any case", async () => {
-    const problems = await problemsOf({
-      "assets/index-abc.js": 'const a="0x00000000000000000000000000000000000A11CE";const h="0x' + "1".repeat(64) + '";',
-    });
-    assert.equal(problems.length, 2);
-  });
-
-  it("rejects a test double's message and fixture identifier", async () => {
-    const problems = await problemsOf({ "assets/index-abc.js": 'throw Error(`This test runs no dynamic script.`);const c="QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";' });
-    assert.equal(problems.length, 2, problems.join("\n"));
-  });
-
-  it("rejects a string literal that is exactly a test double's literal, in any quotes", async () => {
-    for (const literal of ["`Test dispute`", '"storage is blocked"', "'storage is full'"]) {
-      const problems = await problemsOf({ "assets/index-abc.js": `const t=${literal};` });
-      assert.equal(problems.length, 1, literal);
-      assert.match(problems[0], /test double literal/);
-    }
-  });
-
   it("does not mistake app text that only contains a test double's literal for it", async () => {
     assert.deepEqual(await problemsOf({ "assets/index-abc.js": 'const a="Test dispute resolution";const b=`Local storage is blocked by the browser.`;' }), []);
-  });
-
-  it("rejects the injected wallet of e2e/support/wallet.ts", async () => {
-    for (const marker of ['const r="io.kleros.e2e-wallet";', "const p={isE2eWallet:!0};", "window.__e2eWallet=h;", 'const n={name:"E2E wallet"};']) {
-      const problems = await problemsOf({ "assets/index-abc.js": marker });
-      assert.equal(problems.length, 1, marker);
-      assert.match(problems[0], /e2e injected wallet/);
-    }
   });
 
   it("names each offending file once per marker and never quotes the surrounding content", async () => {
@@ -255,8 +238,6 @@ describe("no external script or stylesheet", () => {
       'rel="stylesheet" crossorigin href="/assets/index-abc.css"',
       'href="https://cdn.org/a.css" REL="alternate stylesheet"',
     ),
-    "an uppercase stylesheet relation": INDEX_HTML.replace('rel="stylesheet" crossorigin href="/assets/index-abc.css"', 'rel="STYLESHEET" href="https://cdn.org/x.css"'),
-    "a mixed-case stylesheet relation": INDEX_HTML.replace('rel="stylesheet" crossorigin href="/assets/index-abc.css"', 'rel="StyleSheet" href="https://cdn.org/x.css"'),
     "a mixed-case stylesheet relation among other tokens": INDEX_HTML.replace(
       'rel="stylesheet" crossorigin href="/assets/index-abc.css"',
       'rel="preload\tAlternate STYLESHEET" href="https://cdn.org/x.css"',
@@ -381,19 +362,17 @@ describe("the deploy files exist", () => {
 });
 
 describe("the zod configuration ships in the bundle", () => {
-  it("fails when the bundle lacks the zod configuration marker", async () => {
-    const problems = await problemsOf({ "assets/core-abc.js": "Z.config({});" });
-    assert.equal(problems.length, 1, problems.join("\n"));
-    assert.match(problems[0], /zod configuration is missing/);
-    assert.doesNotMatch(problems[0], /jitless/);
-  });
-
-  it("fails when the bundle carries the zod configuration more than once", async () => {
-    const problems = await problemsOf({ "assets/other-abc.js": "Y.config({jitless:!0});" });
-    assert.equal(problems.length, 1, problems.join("\n"));
-    assert.match(problems[0], /zod configuration appears 2 times/);
-    assert.doesNotMatch(problems[0], /jitless/);
-  });
+  for (const [name, overrides, message] of [
+    ["fails when the bundle lacks the zod configuration marker", { "assets/core-abc.js": "Z.config({});" }, /zod configuration is missing/],
+    ["fails when the bundle carries the zod configuration more than once", { "assets/other-abc.js": "Y.config({jitless:!0});" }, /zod configuration appears 2 times/],
+  ]) {
+    it(name, async () => {
+      const problems = await problemsOf(overrides);
+      assert.equal(problems.length, 1, problems.join("\n"));
+      assert.match(problems[0], message);
+      assert.doesNotMatch(problems[0], /jitless/);
+    });
+  }
 
   it("counts the marker only in the scripts under assets", async () => {
     const problems = await problemsOf({ "assets/core-abc.js": "Z.config({});", "assets/core-abc.js.map": '{"x":"jitless:!0"}', "__runner/bootstrap.js": "({jitless:!0});" });

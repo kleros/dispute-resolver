@@ -16,13 +16,8 @@ describe("ExternalLink", () => {
     expect(screen.getByRole("link", { name: "Kleros" })).toHaveAttribute("href", "https://kleros.io/a");
   });
 
-  it("shows an http:// value as text, never as a link", () => {
-    render(<ExternalLink href="http://example.com/file.pdf">file.pdf</ExternalLink>);
-    expect(screen.queryByRole("link")).toBeNull();
-    expect(screen.getByText("file.pdf").tagName).toBe("SPAN");
-  });
-
-  it.each(["javascript:alert(1)", "data:text/html,<b>x</b>", "//evil.example/x", "https:/evil.example", "/relative", ""])("shows %j as text, never as a link", (href) => {
+  const unsafeHrefs = ["http://example.com/file.pdf", "javascript:alert(1)", "data:text/html,<b>x</b>", "//evil.example/x", "https:/evil.example", "/relative", ""];
+  it.each(unsafeHrefs)("shows %j as text, never as a link", (href) => {
     const { container } = render(<ExternalLink href={href}>label</ExternalLink>);
     expect(container.querySelector("a")).toBeNull();
     expect(container).toHaveTextContent("label");

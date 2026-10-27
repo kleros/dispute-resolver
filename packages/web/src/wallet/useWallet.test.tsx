@@ -1,7 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TEST_WALLET_ADDRESS, UNCONFIGURED_CHAIN_ID, createConnectedTestWallet, createTestWallet, setWalletStatus, walletWrapper } from "../test/wallet";
-import { toWalletState, useWallet } from "./useWallet";
+import type { WalletState } from "./types";
+import { toWalletState, useWallet, type WagmiAccount } from "./useWallet";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -16,44 +17,35 @@ const RESTORED_CONNECTOR = { ...STORED_CONNECTOR, getChainId: () => Promise.reso
 const ACCOUNT = "0x00000000000000000000000000000000000A11cE";
 
 describe("toWalletState", () => {
-  it("a connection wagmi has only read from storage is still connecting, so routing waits for the reconnect to settle", () => {
-    expect(toWalletState({ status: "reconnecting", address: ACCOUNT, chainId: 1, connector: STORED_CONNECTOR })).toEqual({ status: "connecting" });
-  });
-
-  it("a connection wagmi has restored is connected while wagmi still checks the other wallets", () => {
-    expect(toWalletState({ status: "reconnecting", address: ACCOUNT, chainId: 1, connector: RESTORED_CONNECTOR })).toEqual({
-      status: "connected",
-      address: TEST_WALLET_ADDRESS,
-      chainId: 1,
-    });
-  });
-
-  it("a wallet wagmi's mount-time check restores is connected, though nothing was stored", () => {
-    expect(toWalletState({ status: "connecting", address: ACCOUNT, chainId: 1, connector: RESTORED_CONNECTOR })).toEqual(
-      expect.objectContaining({ status: "connected", chainId: 1 }),
-    );
-  });
-
-  it("wagmi reconnecting with no connection yet is connecting", () => {
-    expect(toWalletState({ status: "reconnecting", address: undefined, chainId: undefined, connector: undefined })).toEqual({ status: "connecting" });
-  });
-
-  it("wagmi's connecting without a remembered connection reads as disconnected, so a visitor who never connected is not kept waiting", () => {
-    expect(toWalletState({ status: "connecting", address: undefined, chainId: undefined, connector: undefined })).toEqual({ status: "disconnected" });
-  });
-
-  it("a connected address is lowercased", () => {
-    expect(toWalletState({ status: "connected", address: ACCOUNT, chainId: 100, connector: RESTORED_CONNECTOR })).toEqual({
-      status: "connected",
-      address: TEST_WALLET_ADDRESS,
-      chainId: 100,
-    });
-  });
-
-  it("a wallet on a chain outside the configured ones is still connected, on that chain", () => {
-    expect(toWalletState({ status: "connected", address: ACCOUNT, chainId: UNCONFIGURED_CHAIN_ID, connector: RESTORED_CONNECTOR })).toEqual(
-      expect.objectContaining({ status: "connected", chainId: UNCONFIGURED_CHAIN_ID }),
-    );
+  it.each<[string, WagmiAccount, WalletState]>([
+    [
+      "a connection wagmi has only read from storage is still connecting, so routing waits for the reconnect to settle",
+      { status: "reconnecting", address: ACCOUNT, chainId: 1, connector: STORED_CONNECTOR },
+      { status: "connecting" },
+    ],
+    [
+      "a connection wagmi has restored is connected, with its address lowercased, while wagmi still checks the other wallets",
+      { status: "reconnecting", address: ACCOUNT, chainId: 1, connector: RESTORED_CONNECTOR },
+      { status: "connected", address: TEST_WALLET_ADDRESS, chainId: 1 },
+    ],
+    [
+      "a wallet wagmi's mount-time check restores is connected, though nothing was stored",
+      { status: "connecting", address: ACCOUNT, chainId: 1, connector: RESTORED_CONNECTOR },
+      { status: "connected", address: TEST_WALLET_ADDRESS, chainId: 1 },
+    ],
+    ["wagmi reconnecting with no connection yet is connecting", { status: "reconnecting", address: undefined, chainId: undefined, connector: undefined }, { status: "connecting" }],
+    [
+      "wagmi's connecting without a remembered connection reads as disconnected, so a visitor who never connected is not kept waiting",
+      { status: "connecting", address: undefined, chainId: undefined, connector: undefined },
+      { status: "disconnected" },
+    ],
+    [
+      "a wallet on a chain outside the configured ones is still connected, on that chain",
+      { status: "connected", address: ACCOUNT, chainId: UNCONFIGURED_CHAIN_ID, connector: RESTORED_CONNECTOR },
+      { status: "connected", address: TEST_WALLET_ADDRESS, chainId: UNCONFIGURED_CHAIN_ID },
+    ],
+  ])("%s", (_name, account, expected) => {
+    expect(toWalletState(account)).toEqual(expected);
   });
 });
 

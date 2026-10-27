@@ -12,36 +12,31 @@ function expectNoUrlOrKey(text: string): void {
 }
 
 describe("failureMessage", () => {
-  it("reports a viem HTTP error by its short message, without the keyed URL viem puts in its full message", () => {
-    const error = new HttpRequestError({ url: KEYED_URL, status: 401, body: BODY, details: `unauthorized: ${KEYED_URL}` });
+  it.each<[string, Error, string]>([
+    [
+      "reports a viem HTTP error by its short message, without the keyed URL viem puts in its full message",
+      new HttpRequestError({ url: KEYED_URL, status: 401, body: BODY, details: `unauthorized: ${KEYED_URL}` }),
+      "HTTP request failed.",
+    ],
+    ["reports a viem timeout by its short message, without the keyed URL", new TimeoutError({ url: KEYED_URL, body: BODY }), "The request took too long to respond."],
+    [
+      "reports a failed contract read by its cause's short message, without the keyed URL viem repeats from it",
+      new ContractFunctionExecutionError(new HttpRequestError({ url: KEYED_URL, status: 503, body: BODY }), {
+        abi: parseAbi(["function denominator() view returns (uint256)"]),
+        functionName: "denominator",
+      }),
+      "HTTP request failed.",
+    ],
+    [
+      "reports a viem JSON-RPC error without the node's message or the keyed URL",
+      new RpcRequestError({ url: KEYED_URL, body: BODY, error: { code: -32_000, message: `invalid key ${KEY}` } }),
+      "RPC Request failed.",
+    ],
+  ])("%s", (_name, error, expected) => {
     expect(error.message).toContain(KEY);
     const text = failureMessage(error, {});
     expectNoUrlOrKey(text);
-    expect(text).toBe("HTTP request failed.");
-  });
-
-  it("reports a viem timeout by its short message, without the keyed URL", () => {
-    const error = new TimeoutError({ url: KEYED_URL, body: BODY });
-    expect(error.message).toContain(KEY);
-    const text = failureMessage(error, {});
-    expectNoUrlOrKey(text);
-    expect(text).toBe("The request took too long to respond.");
-  });
-
-  it("reports a failed contract read by its cause's short message, without the keyed URL viem repeats from it", () => {
-    const cause = new HttpRequestError({ url: KEYED_URL, status: 503, body: BODY });
-    const error = new ContractFunctionExecutionError(cause, { abi: parseAbi(["function denominator() view returns (uint256)"]), functionName: "denominator" });
-    expect(error.message).toContain(KEY);
-    const text = failureMessage(error, {});
-    expectNoUrlOrKey(text);
-    expect(text).toBe("HTTP request failed.");
-  });
-
-  it("reports a viem JSON-RPC error without the node's message or the keyed URL", () => {
-    const error = new RpcRequestError({ url: KEYED_URL, body: BODY, error: { code: -32_000, message: `invalid key ${KEY}` } });
-    const text = failureMessage(error, {});
-    expectNoUrlOrKey(text);
-    expect(text).toBe("RPC Request failed.");
+    expect(text).toBe(expected);
   });
 
   it("removes the URL and key of a viem message that another error copied into its own", () => {

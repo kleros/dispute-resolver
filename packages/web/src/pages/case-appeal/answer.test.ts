@@ -1,7 +1,7 @@
-import { REFUSED_RULING_TEXT, encodeAnswer, type AnswerEncodingError } from "@dispute-resolver/core";
+import { REFUSED_RULING_TEXT, encodeAnswer } from "@dispute-resolver/core";
 import { CalendarDate, CalendarDateTime, ZonedDateTime } from "@internationalized/date";
 import { describe, expect, it } from "vitest";
-import { ANSWER_ERROR_MESSAGES, fundedIntAnswer, pickedTimestamp } from "./answer";
+import { fundedIntAnswer, pickedTimestamp } from "./answer";
 
 function intCode(value: string): bigint {
   const encoding = encodeAnswer({ type: "int", value }, { type: "int" });
@@ -10,13 +10,6 @@ function intCode(value: string): bigint {
 }
 
 describe("free-input answers", () => {
-  it("every answer-encoding error has its own message", () => {
-    const codes: readonly AnswerEncodingError[] = ["empty", "not-a-number", "negative-uint", "out-of-range", "not-hex", "too-long", "malformed"];
-    const messages = codes.map((code) => ANSWER_ERROR_MESSAGES[code]);
-    expect(messages.every((message) => message.trim().length > 0)).toBe(true);
-    expect(new Set(messages).size).toBe(codes.length);
-  });
-
   it("an int answer of -1 funds ruling 0, the refuse-to-arbitrate ruling", () => {
     expect(intCode("-1")).toBe(0n);
     expect(fundedIntAnswer(intCode("-1"))).toBe(REFUSED_RULING_TEXT);

@@ -32,26 +32,20 @@ describe("SmartContractWalletWarning", () => {
     expect(screen.getByRole("link", { name: "Learn more" })).toHaveAttribute("href", "https://docs.kleros.io/welcome/faq#can-i-use-a-smart-contract-account-to-stake-in-the-court");
   });
 
-  it("an EIP-7702 delegated account is not a smart-contract wallet", async () => {
-    const getCode = await renderWarning(codeRpc("0xef01000000000000000000000000000000000000000001"));
-    await waitFor(() => {
-      expect(getCode).toHaveBeenCalled();
-    });
-    expect(screen.queryByText(WARNING)).toBeNull();
-  });
-
-  it("an account without code is not warned", async () => {
-    const getCode = await renderWarning(codeRpc("0x"));
-    await waitFor(() => {
-      expect(getCode).toHaveBeenCalled();
-    });
-    expect(screen.queryByText(WARNING)).toBeNull();
-  });
-
-  it("a getCode error hides the warning", async () => {
-    const getCode = await renderWarning(() => {
-      throw new Error("RPC down");
-    });
+  it.each<[string, RpcHandler, boolean]>([
+    ["an EIP-7702 delegated account, which is not a smart-contract wallet,", codeRpc("0xef01000000000000000000000000000000000000000001"), false],
+    ["an account without code", codeRpc("0x"), false],
+    [
+      "a getCode error",
+      () => {
+        throw new Error("RPC down");
+      },
+      false,
+    ],
+    ["a contract account whose warning was dismissed on an earlier visit", codeRpc("0x6080604052"), true],
+  ])("%s shows no warning", async (_name, rpc, dismissedBefore) => {
+    if (dismissedBefore) window.localStorage.setItem(KEY, "false");
+    const getCode = await renderWarning(rpc);
     await waitFor(() => {
       expect(getCode).toHaveBeenCalled();
     });
@@ -69,15 +63,6 @@ describe("SmartContractWalletWarning", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Dismiss the smart contract wallet warning" }));
     expect(screen.queryByText(WARNING)).toBeNull();
     expect(window.localStorage.getItem(KEY)).toBe("false");
-  });
-
-  it("a stored dismissal keeps the warning hidden", async () => {
-    window.localStorage.setItem(KEY, "false");
-    const getCode = await renderWarning(codeRpc("0x6080604052"));
-    await waitFor(() => {
-      expect(getCode).toHaveBeenCalled();
-    });
-    expect(screen.queryByText(WARNING)).toBeNull();
   });
 
   it("unreadable storage shows the warning and a failing write still dismisses it for the page", async () => {

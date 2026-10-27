@@ -41,5 +41,5 @@ export function buildEvidenceDisplay(input: EvidenceDisplayInput): EvidenceDispl
   const allowlisted = isDisplayAllowlisted(REGISTRY, displayArbitrableChainId, input.arbitrable);
   const sandbox = allowlisted && srcOrigin !== input.appOrigin ? RELAXED_SANDBOX : STRICT_SANDBOX;
 
-  return { src, srcOrigin, params, sandbox, encoding };
+  return { src, params, sandbox, encoding };
 }

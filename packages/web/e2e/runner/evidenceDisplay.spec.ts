@@ -82,7 +82,7 @@ async function reopen(page: Page, traffic: Traffic): Promise<void> {
 
 /** Opens the case page with the fixture display and waits until the gateway has been asked for the display page. */
 async function requestDisplay(page: Page, baseURL: string | undefined, release?: Promise<void>): Promise<Traffic> {
-  const traffic = await routeCasePage(page, baseURL, {}, { display: display(release) });
+  const traffic = await routeCasePage(page, baseURL, { display: display(release) });
   await page.goto(CASE_PATH);
   await expectConfiguredBuild(traffic);
   await expect.poll(() => traffic.display, { message: "the display page was never requested" }).toBeGreaterThan(0);

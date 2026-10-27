@@ -16,7 +16,7 @@ export function toAttachmentLink(uri: unknown, gateway: GatewayOrigin): Attachme
   return { kind: "link", href, label: lastPathSegment(value), attachmentKind: attachmentKind(value) };
 }
 
-export function lastPathSegment(uri: string): string {
+function lastPathSegment(uri: string): string {
   return uri.slice(uri.lastIndexOf("/") + 1);
 }
 

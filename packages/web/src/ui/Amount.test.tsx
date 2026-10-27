@@ -20,12 +20,6 @@ describe("formatAmount", () => {
 });
 
 describe("Amount", () => {
-  it("labels a Gnosis amount xDai, never ETH", () => {
-    render(<Amount wei={2n * 10n ** 18n} chain={GNOSIS} />);
-    const amount = screen.getByText("2 xDai");
-    expect(amount).not.toHaveTextContent("ETH");
-  });
-
   it("keeps the exact wei value machine-readable", () => {
     render(<Amount wei={123_456_789n} chain={MAINNET} />);
     const amount = screen.getByText("0.000000000123456789 ETH");

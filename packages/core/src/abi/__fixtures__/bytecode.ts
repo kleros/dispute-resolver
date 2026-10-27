@@ -13,7 +13,7 @@ export interface RecordedContract {
   readonly dispatcherCode: string;
 }
 
-export const RECORDED_CONTRACTS: readonly RecordedContract[] = RECORDED.map((contract) => ({
+const RECORDED_CONTRACTS: readonly RecordedContract[] = RECORDED.map((contract) => ({
   address: contract.address,
   expectedFamily: contract.expectedFamily,
   dispatcherCode: contract.implementation?.code ?? contract.code,

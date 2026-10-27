@@ -2,5 +2,5 @@ export { CASE_PAGE_BUDGET_MS, LOCATOR_COMPARE_GRACE_MS, ONGOING_BUDGET_MS, ON_CH
 export { INVALID_META_EVIDENCE, parseMetaEvidence } from "./schema";
 export { displayChainId } from "./displayChain";
 export { buildScriptParameters } from "./scriptParams";
-export { realityFromScript, realityNotice } from "./reality";
+export { realityNotice } from "./reality";
 export { metaEvidenceCachePolicy, parseCachedMetaEvidenceResult } from "./cache";

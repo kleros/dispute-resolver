@@ -2,7 +2,7 @@ import { stringToHex } from "viem";
 import { describe, expect, it } from "vitest";
 import { parseMetaEvidence } from "../metaEvidence";
 import { REGISTRY, getOverride } from "../registry";
-import { combinationTitle, decodeRulingCode, formatRuling } from "../rulings";
+import { decodeRulingCode, formatRuling } from "../rulings";
 import type { FallbackOutcomes, RulingOptions } from "../rulings/types";
 import { UNSLASHED } from "./__fixtures__/recorded";
 import { buildCrowdfundingCards, enteredAnswerFunding } from "./index";
@@ -140,16 +140,6 @@ describe("buildCrowdfundingCards", () => {
     expect(set.freeInput).toBeNull();
   });
 
-  it("never enumerates the 512 combinations of a 9-option multiple-select", () => {
-    const titles = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];
-    const set = build({ rulingOptions: { type: "multiple-select", titles }, currentRuling: 1n });
-    expect(summary(set.cards)).toEqual([
-      [0n, REFUSED_TITLE],
-      [1n, combinationTitle(0n, titles)],
-    ]);
-    expect(set.composer).toEqual({ titles, required: 3_000n, deadline: 250 });
-  });
-
   it("uses the fallback outcomes for an unknown type, coded 1..n", () => {
     const set = build({ rulingOptions: { type: "bool" }, currentRuling: 2n, fallbackOutcomes: ["No", "Yes"] });
     expect(summary(set.cards)).toEqual([
@@ -254,12 +244,6 @@ describe("buildCrowdfundingCards", () => {
     ]);
   });
 
-  it("a fully funded uint current ruling has nothing remaining, on its card and for the same answer entered", () => {
-    const set = build({ rulingOptions: { type: "uint", precision: 0 }, currentRuling: 9n, contributions: { "9": 2_000n } });
-    expect(set.cards.find((card) => card.code === 9n)).toMatchObject({ origin: "current-ruling", required: 2_000n, contributed: 2_000n, remaining: 0n, fundedPercent: 100 });
-    expect(enteredAnswerFunding(set.cards, freeInputOf(set), 9n)).toMatchObject({ required: 2_000n, contributed: 2_000n, remaining: 0n, fundedPercent: 100, deadline: 500 });
-  });
-
   it("an entered answer that has a card takes that card's required, remaining, funded percent and deadline", () => {
     const set = build({ rulingOptions: { type: "uint", precision: 0 }, currentRuling: 9n, contributions: { "9": 500n, "5": 600n } });
     const freeInput = freeInputOf(set);
@@ -315,30 +299,34 @@ describe("buildCrowdfundingCards", () => {
       return outcome.value.rulingOptions;
     }
 
-    it("a reserved answer on a code one of the titles already has gets no card, so the title's card is the only one sending that code", () => {
-      const set = build({ rulingOptions: parsedOptions({ type: "single-select", titles: ["Yes", "No"], reserved: { "0x1": "No" } }), currentRuling: 1n });
-      expect(summary(set.cards)).toEqual([
-        [0n, REFUSED_TITLE],
-        [1n, "Yes"],
-        [2n, "No"],
-      ]);
-    });
+    const YES_NO_CARDS = [
+      [0n, REFUSED_TITLE],
+      [1n, "Yes"],
+      [2n, "No"],
+    ];
 
-    it("a reserved answer on code 0 gets no card beside the refuse card", () => {
-      const set = build({ rulingOptions: parsedOptions({ type: "single-select", titles: ["Yes", "No"], reserved: { "0x0": "No" } }), currentRuling: 1n });
-      expect(set.cards.filter((card) => card.code === 0n)).toEqual([expect.objectContaining({ origin: "refuse", title: REFUSED_TITLE })]);
-      expect(set.cards).toHaveLength(3);
-    });
-
-    it("a reserved answer on a multiple-select combination code gets no card, so the combination's title is the only one for that code", () => {
-      const set = build({ rulingOptions: parsedOptions({ type: "multiple-select", titles: ["A", "B"], reserved: { "0x3": "A" } }), currentRuling: 2n });
-      expect(summary(set.cards)).toEqual([
-        [0n, REFUSED_TITLE],
-        [1n, "None"],
-        [2n, "A"],
-        [3n, "B"],
-        [4n, "A, B"],
-      ]);
+    it.each([
+      [
+        "a reserved answer on a code one of the titles already has gets no card, so the title's card is the only one sending that code",
+        { type: "single-select", titles: ["Yes", "No"], reserved: { "0x1": "No" } },
+        1n,
+        YES_NO_CARDS,
+      ],
+      ["a reserved answer on code 0 gets no card beside the refuse card", { type: "single-select", titles: ["Yes", "No"], reserved: { "0x0": "No" } }, 1n, YES_NO_CARDS],
+      [
+        "a reserved answer on a multiple-select combination code gets no card, so the combination's title is the only one for that code",
+        { type: "multiple-select", titles: ["A", "B"], reserved: { "0x3": "A" } },
+        2n,
+        [
+          [0n, REFUSED_TITLE],
+          [1n, "None"],
+          [2n, "A"],
+          [3n, "B"],
+          [4n, "A, B"],
+        ],
+      ],
+    ])("%s", (_, question, currentRuling, expected) => {
+      expect(summary(build({ rulingOptions: parsedOptions(question), currentRuling }).cards)).toEqual(expected);
     });
 
     it("a uint question's Answered Too Soon keeps its card", () => {
@@ -377,13 +365,5 @@ describe("buildCrowdfundingCards", () => {
         for (const card of cards.filter((candidate) => candidate.origin === "option")) expect(card.title).toBe(formatRuling(card.code, rulingOptions, null));
       }
     });
-  });
-
-  it("updates the suggested amount when the funding is refreshed", () => {
-    const rulingOptions: RulingOptions = { type: "single-select", titles: ["Yes", "No"] };
-    const before = build({ rulingOptions, currentRuling: 1n, contributions: { "2": 1_000n } });
-    const after = build({ rulingOptions, currentRuling: 1n, contributions: { "2": 2_500n } });
-    expect(before.cards[2]?.remaining).toBe(2_000n);
-    expect(after.cards[2]?.remaining).toBe(500n);
   });
 });

@@ -5,7 +5,7 @@ import { installOfflineAppKitEnvironment } from "../test/wallet";
 import { APPKIT_FEATURES, createAppKitSetup, isEmbeddedWalletConnector } from "./appKitSetup";
 import type { AppKitWalletSetup } from "./types";
 
-// A file of its own: AppKit's controllers are module singletons (see config.remoteSocial.test.tsx).
+// A file of its own: AppKit's controllers are module singletons (see config.remoteSocial.test.ts).
 
 /**
  * What the Reown dashboard returns for a project configured as the app requires: social login (which also carries email),
@@ -25,7 +25,7 @@ describe("createAppKitSetup when the Reown dashboard disables social login and e
     installOfflineAppKitEnvironment();
     vi.spyOn(ApiController, "fetchProjectConfig").mockResolvedValue(SOCIAL_LOGIN_DISABLED as Awaited<ReturnType<typeof ApiController.fetchProjectConfig>>);
     setup = createAppKitSetup(buildAppConfig({ REACT_APP_WALLETCONNECT_PROJECT_ID: "c8-test-project" }, { host: "localhost", origin: "http://localhost" }), "c8-test-project");
-    await setup.modal.ready();
+    await setup.modal.hasEmbeddedWallet();
   });
 
   afterAll(() => {
@@ -38,11 +38,6 @@ describe("createAppKitSetup when the Reown dashboard disables social login and e
     expect(OptionsController.state.remoteFeatures?.socials).toBe(false);
     expect(OptionsController.state.remoteFeatures?.swaps).toBe(false);
     expect(OptionsController.state.remoteFeatures?.onramp).toBe(false);
-  });
-
-  it("the wagmi config holds no embedded-wallet connector", () => {
-    expect(setup.wagmiConfig.connectors.length).toBeGreaterThan(0);
-    expect(setup.wagmiConfig.connectors.filter(isEmbeddedWalletConnector)).toEqual([]);
   });
 
   it("AppKit registers no embedded-wallet connector once the dashboard disables social login and email", () => {

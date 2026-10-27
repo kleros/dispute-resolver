@@ -3,7 +3,7 @@ import { SELECTORS } from "../abi";
 import type { ProbeSignature } from "../abi/types";
 import type { Hex } from "../types";
 import { classifySelectors } from "./index";
-import type { Capabilities } from "./types";
+import type { Capabilities, Family } from "./types";
 
 function selectorsOf(...signatures: ProbeSignature[]): ReadonlySet<Hex> {
   return new Set(signatures.map((signature) => SELECTORS[signature]));
@@ -36,25 +36,12 @@ describe("classifySelectors", () => {
     expect(result).toEqual({ family: "escrow-v1", capabilities: ESCROW_CAPABILITIES });
   });
 
-  it("disputeIDtoTransactionID next to externalIDtoLocalID is idr-legacy, not escrow-v1", () => {
-    expect(classifySelectors(selectorsOf("disputeIDtoTransactionID(uint256)", "externalIDtoLocalID(uint256)")).family).toBe("idr-legacy");
-  });
-
-  it("escrow-v1 takes precedence over the governor rules", () => {
-    const result = classifySelectors(selectorsOf("disputeIDtoTransactionID(uint256)", "submitEvidence(string)", "fundAppeal(uint256)", "getCurrentSessionNumber()"));
-    expect(result.family).toBe("escrow-v1");
-  });
-
   it("submitEvidence(string) without submitEvidence(uint256,string) is a governor with URI-only evidence", () => {
     const result = classifySelectors(selectorsOf("submitEvidence(string)"));
     expect(result).toEqual({
       family: "governor",
       capabilities: { localId: "none", evidence: { kind: "uri-only" }, appeal: { kind: "governor" }, withdraw: { kind: "governor" } },
     });
-  });
-
-  it("submitEvidence(string) next to submitEvidence(uint256,string) is not a governor", () => {
-    expect(classifySelectors(selectorsOf("submitEvidence(string)", "submitEvidence(uint256,string)")).family).toBe("view-only");
   });
 
   it("fundAppeal(uint256) with getCurrentSessionNumber() is a governor, without evidence when submitEvidence(string) is absent", () => {
@@ -65,29 +52,15 @@ describe("classifySelectors", () => {
     });
   });
 
-  it("the governor appeal rule needs both fundAppeal(uint256) and getCurrentSessionNumber()", () => {
-    expect(classifySelectors(selectorsOf("fundAppeal(uint256)")).family).toBe("view-only");
-    expect(classifySelectors(selectorsOf("getCurrentSessionNumber()")).family).toBe("view-only");
-  });
-
   it("a governor carrying both evidence functions keeps URI-only evidence", () => {
     const result = classifySelectors(selectorsOf("fundAppeal(uint256)", "getCurrentSessionNumber()", "submitEvidence(string)", "submitEvidence(uint256,string)"));
     expect(result.family).toBe("governor");
     expect(result.capabilities.evidence).toEqual({ kind: "uri-only" });
   });
 
-  it("the governor rules take precedence over the IDisputeResolver rules", () => {
-    expect(classifySelectors(selectorsOf("submitEvidence(string)", "getTotalWithdrawableAmount(uint256,address,uint256)")).family).toBe("governor");
-  });
-
   it("the v2 withdraw selector is idr-v2", () => {
     const result = classifySelectors(selectorsOf("getTotalWithdrawableAmount(uint256,address,uint256)", "externalIDtoLocalID(uint256)", "fundAppeal(uint256,uint256)"));
     expect(result).toEqual({ family: "idr-v2", capabilities: IDR_V2_CAPABILITIES });
-  });
-
-  it("idr-v2 wins over idr-v1 when both withdraw selectors are present", () => {
-    const result = classifySelectors(selectorsOf("getTotalWithdrawableAmount(uint256,address,uint256)", "getTotalWithdrawableAmount(uint256,address,uint256[])"));
-    expect(result.family).toBe("idr-v2");
   });
 
   it("the v1 withdraw selector is idr-v1 with the v1 withdraw dialect", () => {
@@ -124,7 +97,24 @@ describe("classifySelectors", () => {
     expect(classifySelectors(new Set<Hex>(["0xdeadbeef", "0xffffffff"]))).toEqual({ family: "view-only", capabilities: VIEW_ONLY_CAPABILITIES });
   });
 
-  it("evidence and appeal selectors alone do not make a contract writable", () => {
-    expect(classifySelectors(selectorsOf("submitEvidence(uint256,string)", "fundAppeal(uint256,uint256)")).family).toBe("view-only");
+  it.each<[string, ProbeSignature[], Family]>([
+    ["disputeIDtoTransactionID next to externalIDtoLocalID is idr-legacy, not escrow-v1", ["disputeIDtoTransactionID(uint256)", "externalIDtoLocalID(uint256)"], "idr-legacy"],
+    [
+      "escrow-v1 takes precedence over the governor rules",
+      ["disputeIDtoTransactionID(uint256)", "submitEvidence(string)", "fundAppeal(uint256)", "getCurrentSessionNumber()"],
+      "escrow-v1",
+    ],
+    ["submitEvidence(string) next to submitEvidence(uint256,string) is not a governor", ["submitEvidence(string)", "submitEvidence(uint256,string)"], "view-only"],
+    ["the governor appeal rule needs getCurrentSessionNumber() next to fundAppeal(uint256)", ["fundAppeal(uint256)"], "view-only"],
+    ["the governor appeal rule needs fundAppeal(uint256) next to getCurrentSessionNumber()", ["getCurrentSessionNumber()"], "view-only"],
+    ["the governor rules take precedence over the IDisputeResolver rules", ["submitEvidence(string)", "getTotalWithdrawableAmount(uint256,address,uint256)"], "governor"],
+    [
+      "idr-v2 wins over idr-v1 when both withdraw selectors are present",
+      ["getTotalWithdrawableAmount(uint256,address,uint256)", "getTotalWithdrawableAmount(uint256,address,uint256[])"],
+      "idr-v2",
+    ],
+    ["evidence and appeal selectors alone do not make a contract writable", ["submitEvidence(uint256,string)", "fundAppeal(uint256,uint256)"], "view-only"],
+  ])("%s", (_name, signatures, family) => {
+    expect(classifySelectors(selectorsOf(...signatures)).family).toBe(family);
   });
 });

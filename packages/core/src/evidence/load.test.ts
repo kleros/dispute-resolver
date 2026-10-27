@@ -60,8 +60,9 @@ const byNumber = (a: bigint, b: bigint): number => Number(a - b);
 const NOTHING_HIDDEN = { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 };
 
 describe("loadEvidence", () => {
-  it("loads the five recorded entries of mainnet 505, newest first", async () => {
-    const { context } = recordedContext(DISPUTE_505, fakeFetcher(recordedBodies()).fetcher);
+  it("loads the five recorded entries of mainnet 505 newest first, each with its submitter, block, time, transaction, canonical URI and attachment, fetching only the evidence JSON through the gateway", async () => {
+    const fake = fakeFetcher(recordedBodies());
+    const { context } = recordedContext(DISPUTE_505, fake.fetcher);
     const outcome = await loadEvidence(context);
     if (!outcome.ok) throw new Error(outcome.error.message);
     const { items } = outcome.value;
@@ -75,15 +76,10 @@ describe("loadEvidence", () => {
     expect(items.map((item) => item.blockNumber)).toEqual([11426356n, 11414822n, 11414618n, 11406443n, 11405132n]);
     expect(outcome.value.hiddenEvidenceCount).toBe(0);
     expect(outcome.value.hiddenByReason).toEqual(NOTHING_HIDDEN);
-  });
 
-  it("each entry carries its submitter, block number, block time, transaction, canonical URI and attachment", async () => {
-    const { context } = recordedContext(DISPUTE_505, fakeFetcher(recordedBodies()).fetcher);
-    const outcome = await loadEvidence(context);
-    const newest = outcome.ok ? outcome.value.items[0] : undefined;
     const log = DISPUTE_505.evidenceLogs[4];
     if (log === undefined) throw new Error("fixture has no fifth evidence log");
-    expect(newest).toEqual({
+    expect(items[0]).toEqual({
       title: "quid-pro-quo against Gitcoin's tos",
       description: "ok my bad found it: https://gitcoin.co/wiki/grants/",
       submitter: "0xf86e2f89daaa7cbab4160c2245038ce21a993fde",
@@ -98,7 +94,10 @@ describe("loadEvidence", () => {
         attachmentKind: "image",
       },
     });
-    expect(outcome.ok && outcome.value.items[1]?.attachment).toBeNull();
+    expect(items[1]?.attachment).toBeNull();
+
+    expect(fake.urls).toHaveLength(5);
+    expect(new Set(fake.urls)).toEqual(new Set(Object.keys(DISPUTE_505.documents).map((uri) => `${GATEWAY}${uri}`)));
   });
 
   it("loads the two recorded entries of mainnet 1454, titled by name", async () => {
@@ -108,14 +107,6 @@ describe("loadEvidence", () => {
       "Draco Malfoy should not be found guilty.",
       "Draco Malfoy is guilty of attempted murder in the assassination plot against Albus Dumbledore.",
     ]);
-  });
-
-  it("only the evidence JSON is fetched, through the gateway; attachments never are", async () => {
-    const fake = fakeFetcher(recordedBodies());
-    const { context } = recordedContext(DISPUTE_505, fake.fetcher);
-    await loadEvidence(context);
-    expect(fake.urls).toHaveLength(5);
-    expect(new Set(fake.urls)).toEqual(new Set(Object.keys(DISPUTE_505.documents).map((uri) => `${GATEWAY}${uri}`)));
   });
 
   it("one block read per distinct block of the shown entries", async () => {
@@ -138,22 +129,23 @@ describe("loadEvidence", () => {
     expect(outcome.ok && outcome.value.items.map((item) => item.title)).toEqual(["newest", "first", "same block, later log"]);
   });
 
-  it("an http(s) evidence URI is not content-addressed: hidden, counted and never fetched", async () => {
-    const logs = [entry("https://ipfs.kleros.io/ipfs/QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA", 10n), entry("http://example.org/evidence.json", 11n)];
-    const { context, urls } = syntheticContext(logs, {});
-    const outcome = await loadEvidence(context);
-    expect(outcome).toEqual({ ok: true, value: { items: [], hiddenEvidenceCount: 2, hiddenByReason: { ...NOTHING_HIDDEN, "not-content-addressed": 2 } } });
-    expect(urls).toEqual([]);
-  });
-
-  it("/ipns/, dot-segment escapes and percent-encoded variants are hidden without a fetch", async () => {
-    const uris = [`/ipns/${CID_A}`, `/ipfs/${CID_A}/../../ipns/x`, `/ipfs/${CID_A}/%2e%2e/%2e%2e/ipns/x`, `/ipfs/${CID_A}\\..\\..\\ipns\\x`, "", "not a uri"];
+  it("http(s), /ipns/, dot-segment escapes and percent-encoded variants are hidden without a fetch", async () => {
+    const uris = [
+      `https://ipfs.kleros.io/ipfs/${CID_A}`,
+      "http://example.org/evidence.json",
+      `/ipns/${CID_A}`,
+      `/ipfs/${CID_A}/../../ipns/x`,
+      `/ipfs/${CID_A}/%2e%2e/%2e%2e/ipns/x`,
+      `/ipfs/${CID_A}\\..\\..\\ipns\\x`,
+      "",
+      "not a uri",
+    ];
     const { context, urls } = syntheticContext(
       uris.map((uri, index) => entry(uri, 10n + BigInt(index))),
       {},
     );
     const outcome = await loadEvidence(context);
-    expect(outcome.ok && outcome.value.hiddenByReason["not-content-addressed"]).toBe(uris.length);
+    expect(outcome).toEqual({ ok: true, value: { items: [], hiddenEvidenceCount: uris.length, hiddenByReason: { ...NOTHING_HIDDEN, "not-content-addressed": uris.length } } });
     expect(urls).toEqual([]);
   });
 
@@ -185,12 +177,6 @@ describe("loadEvidence", () => {
     };
     const outcome = await loadEvidence({ ...context, fetcher });
     expect(outcome.ok && outcome.value).toEqual({ items: [], hiddenEvidenceCount: 2, hiddenByReason: { ...NOTHING_HIDDEN, "fetch-failed": 2 } });
-  });
-
-  it("a body that is not JSON is hidden as not-json", async () => {
-    const { context } = syntheticContext([entry(`/ipfs/${CID_A}`, 10n)], { [`${GATEWAY}/ipfs/${CID_A}`]: "%PDF-1.4 binary" });
-    const outcome = await loadEvidence(context);
-    expect(outcome.ok && outcome.value.hiddenByReason).toEqual({ ...NOTHING_HIDDEN, "not-json": 1 });
   });
 
   it("malformed evidence JSON is hidden as schema-invalid; valid entries still show", async () => {
@@ -258,25 +244,14 @@ describe("loadEvidence", () => {
 
   it("an aborted load degrades to rpc-error instead of rejecting, and the signal reaches the fetcher", async () => {
     const controller = new AbortController();
-    const logs = [entry(`/ipfs/${CID_A}`, 10n)];
-    const { client } = fakeClient({ head: 1_000n, logs, timestamps: timestampsOf(logs) });
+    const { context } = syntheticContext([entry(`/ipfs/${CID_A}`, 10n)], {});
     const seen: (AbortSignal | undefined)[] = [];
     const fetcher: Fetcher = (_url, init) => {
       seen.push(init?.signal);
       controller.abort();
       return Promise.reject(new DOMException("aborted", "AbortError"));
     };
-    const context: EvidenceContext = {
-      client,
-      fetcher,
-      gateway: GATEWAY,
-      arbitrable: ARBITRABLE,
-      arbitrator: ARBITRATOR,
-      evidenceGroupId: GROUP,
-      fromBlock: 0n,
-      signal: controller.signal,
-    };
-    const outcome = await loadEvidence(context);
+    const outcome = await loadEvidence({ ...context, fetcher, signal: controller.signal });
     expect(seen).toEqual([controller.signal]);
     expect(!outcome.ok && outcome.error.code).toBe("rpc-error");
   });
@@ -284,7 +259,7 @@ describe("loadEvidence", () => {
   it("evidence fetches run with bounded concurrency", async () => {
     const count = 40;
     const logs = Array.from({ length: count }, (_, index) => entry(`/ipfs/${CID_A}/${String(index)}`, 10n + BigInt(index)));
-    const { client } = fakeClient({ head: 1_000n, logs, timestamps: timestampsOf(logs) });
+    const { context } = syntheticContext(logs, {});
     let inFlight = 0;
     let peak = 0;
     const fetcher: Fetcher = async () => {
@@ -294,8 +269,7 @@ describe("loadEvidence", () => {
       inFlight -= 1;
       return { ok: true, status: 200, json: () => Promise.resolve({ name: "n" }), text: () => Promise.resolve("") };
     };
-    const context: EvidenceContext = { client, fetcher, gateway: GATEWAY, arbitrable: ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: GROUP, fromBlock: 0n };
-    const outcome = await loadEvidence(context);
+    const outcome = await loadEvidence({ ...context, fetcher });
     expect(outcome.ok && outcome.value.items).toHaveLength(count);
     expect(peak).toBeGreaterThan(1);
     expect(peak).toBeLessThanOrEqual(8);

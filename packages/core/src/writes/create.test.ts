@@ -17,16 +17,14 @@ describe("buildCreateDisputeCall", () => {
     expect(decodedArgs(call)).toEqual([EXTRA_DATA, META_EVIDENCE, 3n]);
   });
 
-  it("zero ruling options (uint and datetime, the contract maximum) are sent as 0", () => {
-    const call = expectCall(buildCreateDisputeCall({ chain: chainOf(11155111), extraData: EXTRA_DATA, metaEvidenceUri: META_EVIDENCE, numberOfRulingOptions: 0n, cost: 1n }));
-    expect(call.chainId).toBe(11155111);
-    expect(call.address).toBe(chainOf(11155111).arbitrableProxy);
-    expect(decodedArgs(call)[2]).toBe(0n);
-  });
-
-  it("2^n ruling options of a 32-option multiple-select fit the uint256 argument", () => {
-    const call = expectCall(buildCreateDisputeCall({ chain: chainOf(1), extraData: EXTRA_DATA, metaEvidenceUri: META_EVIDENCE, numberOfRulingOptions: 2n ** 32n, cost: 1n }));
-    expect(decodedArgs(call)[2]).toBe(2n ** 32n);
+  it.each<[string, number, bigint]>([
+    ["zero ruling options (uint and datetime, the contract maximum) are sent as 0", 11155111, 0n],
+    ["2^n ruling options of a 32-option multiple-select fit the uint256 argument", 1, 2n ** 32n],
+  ])("%s", (_name, chainId, numberOfRulingOptions) => {
+    const chain = chainOf(chainId);
+    const call = expectCall(buildCreateDisputeCall({ chain, extraData: EXTRA_DATA, metaEvidenceUri: META_EVIDENCE, numberOfRulingOptions, cost: 1n }));
+    expect(call).toMatchObject({ chainId, address: chain.arbitrableProxy });
+    expect(decodedArgs(call)[2]).toBe(numberOfRulingOptions);
   });
 
   it("a chain without an ArbitrableProxy cannot create disputes", () => {
