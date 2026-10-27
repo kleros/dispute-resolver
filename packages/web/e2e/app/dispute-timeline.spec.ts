@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { decodeFunctionData, encodeFunctionResult, parseAbi, toFunctionSelector, type Hex } from "viem";
 import { MAINNET_ARBITRATOR, OUT_OF_RANGE_ON_MAINNET, caseDetailsAnswers, disputeStruct, isDisputesCall } from "../support/arbitrator";
 import { appOriginOf, callData, callTarget, fakeNetwork, type HttpAnswer, type RpcAnswer, type RpcCall } from "../support/network";
+import { PAGE_SCROLLER } from "../support/pageScroll";
 
 // The case page's period timeline measured in the browser: a row of bullets with every name and state centred under its
 // bullet from lg (900 px) for four periods and from 1080 px for five, a list of rows below. The spec builds every chain
@@ -42,8 +43,6 @@ const MIN_LABEL_GAP = 16;
 /** Sub-pixel rounding of centred text and borders. */
 const TOLERANCE = 1;
 const CONNECTOR_GAP = 8;
-/** The widest the list gets: wider, a state on a tablet or a narrow desktop window sits too far from its name to read as its value. */
-const LIST_MAX_WIDTH = 448;
 /** The narrowest phone the app lays out for. */
 const NARROWEST = 320;
 
@@ -268,7 +267,7 @@ function listConnector(raw: RawStep): Connector | null {
 
 /** Every measure the assertions read, taken in one pass so no re-render lands between two of them. */
 async function measure(page: Page): Promise<Geometry> {
-  const raw = await timelineList(page).evaluate((list) => {
+  const raw = await timelineList(page).evaluate((list, scrollerSelector) => {
     const rectOf = (box: DOMRect): Rect => ({ left: box.left, right: box.right, top: box.top, bottom: box.bottom });
     const contentsOf = (node: Node): Range => {
       const range = document.createRange();
@@ -331,17 +330,18 @@ async function measure(page: Page): Promise<Geometry> {
       };
     });
     const currentBullet = list.querySelector("li[aria-current] [aria-hidden] > :first-child");
+    const pageScroller = document.querySelector(scrollerSelector) ?? document.documentElement;
     return {
       horizontal: list.getAttribute("aria-label") === "Horizontal progress steps",
       list: rectOf(list.getBoundingClientRect()),
       band: rectOf(wrapper.getBoundingClientRect()),
       blue: currentBullet === null ? "" : getComputedStyle(currentBullet).backgroundColor,
       edge: getComputedStyle(wrapper).borderTopColor,
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: pageScroller.scrollWidth,
+      clientWidth: pageScroller.clientWidth,
       steps,
     };
-  });
+  }, PAGE_SCROLLER);
   const connectorOf = raw.horizontal ? rowConnector : listConnector;
   return { ...raw, steps: raw.steps.map((step) => ({ ...step, state: stateOf(step), connector: connectorOf(step) })) };
 }
@@ -464,7 +464,8 @@ function expectListRow(geometry: Geometry, step: Step, at: string): void {
 
 function expectList(geometry: Geometry, where: string): void {
   const { steps } = geometry;
-  expect.soft(geometry.list.right - geometry.list.left, `${where}: the list stays narrow enough to keep each state near its name`).toBeLessThanOrEqual(LIST_MAX_WIDTH + TOLERANCE);
+  expect.soft(Math.abs(geometry.list.left - geometry.band.left), `${where}: the list starts at the band's edge`).toBeLessThanOrEqual(TOLERANCE);
+  expect.soft(Math.abs(geometry.list.right - geometry.band.right), `${where}: the list spans the band's width`).toBeLessThanOrEqual(TOLERANCE);
   steps.forEach((step, index) => {
     const at = `${where}, ${step.name}`;
     expectListRow(geometry, step, at);

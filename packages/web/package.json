@@ -13,6 +13,7 @@
     "check:bundle": "node scripts/check-bundle.mjs",
     "e2e": "playwright test --project=chromium",
     "e2e:runner": "playwright test e2e/runner --project=chromium --project=runner-firefox --project=runner-webkit",
+    "e2e:scroller": "xvfb-run -a playwright test --project=scroller-firefox --project=scroller-webkit --workers=1",
     "format": "prettier --write . --ignore-path ../../.prettierignore"
   },
   "dependencies": {

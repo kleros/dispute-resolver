@@ -462,7 +462,6 @@ describe("DisputeTimeline", () => {
     const list = timelineList();
     const text = "[&_li>div:last-child]";
     expect(list).toHaveClass(
-      "max-w-md",
       "[&_li]:w-full",
       `${text}:flex`,
       `${text}:grow`,

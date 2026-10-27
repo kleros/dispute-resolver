@@ -49,11 +49,10 @@ const ROW_CONNECTORS =
 /**
  * One row per period: the library fits each step to its text (`w-fit`) and stacks its states (`flex-col`). Full width with
  * its text as a baseline row, the name sits left and the state right, inline; a state too long for the row wraps under
- * the name, still on the right. The list stops at 28rem: wider, on a tablet, a state sits too far from its name to read as
- * its value.
+ * the name, still on the right.
  */
 const LIST_ROWS =
-  "max-w-md [&_li]:w-full [&_li>div:last-child]:flex [&_li>div:last-child]:grow [&_li>div:last-child]:flex-wrap [&_li>div:last-child]:items-baseline [&_li>div:last-child]:justify-between [&_li>div:last-child]:gap-x-3 [&_li>div:last-child>div]:ml-auto [&_li>div:last-child>div]:block [&_li[aria-current]_h2]:text-base [&_li[aria-current]_h2]:leading-5";
+  "[&_li]:w-full [&_li>div:last-child]:flex [&_li>div:last-child]:grow [&_li>div:last-child]:flex-wrap [&_li>div:last-child]:items-baseline [&_li>div:last-child]:justify-between [&_li>div:last-child]:gap-x-3 [&_li>div:last-child>div]:ml-auto [&_li>div:last-child>div]:block [&_li[aria-current]_h2]:text-base [&_li[aria-current]_h2]:leading-5";
 
 /** Two 1 px borders as in the row, the second transparent until its step is done. */
 const LIST_CONNECTORS =

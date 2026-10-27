@@ -19,10 +19,24 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [
-    { name: "chromium", testDir: "./e2e", use: { ...devices["Desktop Chrome"] } },
+    // Playwright hides headless Chromium's scrollbars, which the app takes for overlay ones; without the switch Chromium
+    // lays out classic scrollbars, as on Windows and Linux desktops, so every spec runs on the page scroller those
+    // visitors get (shell/PageScroller.tsx).
+    { name: "chromium", testDir: "./e2e", use: { ...devices["Desktop Chrome"], launchOptions: { ignoreDefaultArgs: ["--hide-scrollbars"] } } },
     // The runner checks also run in the other engines users run; the `chromium` project covers Chromium.
     { name: "runner-firefox", testDir: "./e2e/runner", use: { ...devices["Desktop Firefox"] } },
     { name: "runner-webkit", testDir: "./e2e/runner", use: { ...devices["Desktop Safari"] } },
+    // The page scroller in the other engines. Headless Firefox hides every scrollbar, so this project runs it headed, with
+    // GTK's classic scrollbars, on the virtual display `yarn e2e:scroller` starts, one window at a time: a window another
+    // covers stops drawing frames. WebKit on Linux overlays its scrollbars, as macOS does: the spec checks that path there,
+    // and gives the scroller checks a scrollbar rule that lays a classic one out.
+    {
+      name: "scroller-firefox",
+      testDir: "./e2e/app",
+      testMatch: "page-scroller.spec.ts",
+      use: { ...devices["Desktop Firefox"], headless: false, launchOptions: { firefoxUserPrefs: { "widget.gtk.overlay-scrollbars.enabled": false } } },
+    },
+    { name: "scroller-webkit", testDir: "./e2e/app", testMatch: "page-scroller.spec.ts", use: { ...devices["Desktop Safari"] } },
   ],
   webServer: {
     command: `yarn build && yarn preview --port ${port} --strictPort`,

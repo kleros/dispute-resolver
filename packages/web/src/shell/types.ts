@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 import type { AppConfig } from "../env";
 import type { ColorSchemeStore } from "../theme";
+import type { PageScroll } from "./pageScroll";
 
 export type ToastVariant = "success" | "error" | "sync";
 
@@ -25,5 +26,7 @@ export interface AppProvidersProps {
   readonly atlasGate: ConfiguredProvider;
   /** Created by `main.tsx` before the first render, so the first paint is already themed. */
   readonly colorScheme: ColorSchemeStore;
+  /** Chosen by `main.tsx` before the first render and never again, so the app never remounts into another scroller. */
+  readonly pageScroll: PageScroll;
   readonly children?: ReactNode;
 }

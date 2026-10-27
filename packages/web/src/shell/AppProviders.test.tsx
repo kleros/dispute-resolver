@@ -10,6 +10,7 @@ import { expectRenderErrors } from "../test/shell";
 import { createColorSchemeStore } from "../theme";
 import { AppProviders } from "./AppProviders";
 import { useColorScheme } from "./colorScheme";
+import type { PageScroll } from "./pageScroll";
 import { useToast } from "./ToastProvider";
 import type { ConfiguredProvider } from "./types";
 
@@ -105,17 +106,23 @@ function RouteProbe() {
   return <p>Routes at {location.pathname}</p>;
 }
 
-function renderApp(dataProvider: ConfiguredProvider, children: ReactNode) {
+function renderApp(dataProvider: ConfiguredProvider, children: ReactNode, pageScroll: PageScroll = "document") {
   return render(
     <AppProviders
       config={CONFIG}
       dataProvider={dataProvider}
       atlasGate={AtlasProbe}
       colorScheme={createColorSchemeStore({ root: document.createElement("div"), media: null, storage: null })}
+      pageScroll={pageScroll}
     >
       {children}
     </AppProviders>,
   );
+}
+
+/** The content of the page scroller, the library's ScrollbarContainer. */
+function pageScrollerContent(): Element | null {
+  return document.querySelector(".dr-page-scroller .simplebar-content-wrapper > .simplebar-content");
 }
 
 afterEach(() => {
@@ -144,6 +151,23 @@ describe("AppProviders", () => {
     renderApp(BrokenData, <RouteProbe />);
     expect(screen.getByRole("heading", { level: 1, name: "Something went wrong" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
+  });
+
+  it("where the document scrolls the page, nothing wraps the app", () => {
+    renderApp(DataProbe, <RouteProbe />);
+    expect(screen.getByText("Routes at /")).toBeInTheDocument();
+    expect(document.querySelector(".dr-page-scroller")).toBeNull();
+  });
+
+  it("where the page scroller scrolls the page, the routes render inside it", () => {
+    renderApp(DataProbe, <RouteProbe />, "container");
+    expect(pageScrollerContent()).toContainElement(screen.getByText("Routes at /"));
+  });
+
+  it("where the page scroller scrolls the page, the minimal frame of a failure renders inside it too", () => {
+    expectRenderErrors();
+    renderApp(BrokenData, <RouteProbe />, "container");
+    expect(pageScrollerContent()).toContainElement(screen.getByRole("heading", { level: 1, name: "Something went wrong" }));
   });
 });
 

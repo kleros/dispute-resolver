@@ -295,6 +295,32 @@
     font-size: 0.875rem;
     line-height: 1.25rem;
   }
+
+  /*
+   * The page scroller (shell/PageScroller.tsx), the library's ScrollbarContainer. Its thumb is PrimaryBlue and its mask
+   * WhiteBackground through `!important` utilities of 0,2,1 and 0,2,0, so these are `!important` too, one class more.
+   * The thumb takes the page scrollbar's tokens at rest, under the pointer (SimpleBar's simplebar-hover: its track takes
+   * no pointer events, so :hover never matches) and while dragged (simplebar-dragging on the root, the most specific).
+   * Over the purple header and footer no thumb token reaches 3:1 in light (the dragged one is the bar's own colour), so
+   * the thumb keeps a 1 px ring of the page colour, unseen on the page, inside SimpleBar's 2 px inset.
+   * The mask lets the page's own background show. Child combinators keep every rule off a SimpleBar inside the page.
+   */
+  .dr-page-scroller > .simplebar-track .simplebar-scrollbar::before {
+    background-color: var(--dr-scroll-thumb) !important;
+    box-shadow: 0 0 0 1px var(--klerosUIComponentsLightBackground);
+  }
+
+  .dr-page-scroller > .simplebar-track .simplebar-scrollbar.simplebar-hover::before {
+    background-color: var(--dr-scroll-thumb-hover) !important;
+  }
+
+  .dr-page-scroller.simplebar-dragging > .simplebar-track.simplebar-vertical .simplebar-scrollbar::before {
+    background-color: var(--dr-scroll-thumb-active) !important;
+  }
+
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-mask {
+    background-color: transparent !important;
+  }
 }
 
 @layer base {
@@ -500,11 +526,7 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /*
-   * Browser surfaces: selection, scrollbar, caret and tabular numerals follow the palette. The scrollbar track is the page
-   * colour, never transparent, so nothing the browser paints under it shows through and it follows the app theme, not the OS.
-   * The page scrollbar copies Kleros Court v2's: a 6 px rounded thumb in a 10 px lane, no visible track.
-   */
+  /* Browser surfaces: selection, scrollbar, caret and tabular numerals follow the palette. */
   ::selection {
     background: color-mix(in srgb, var(--klerosUIComponentsPrimaryBlue) 24%, transparent);
     color: inherit;
@@ -513,11 +535,11 @@
   /*
    * The sticky header is two rows on phones (the 4rem brand row, then the network and wallet row with its padding) and
    * one 4rem row from lg, which the library's theme sets at 56.25rem; focusing or scrolling to an element leaves it and
-   * its 2 px ring (offset 2 px) below the bar. The scrollbar's width is reserved on every page, so a page long enough to
-   * scroll does not shift the header and footer by that width.
+   * its 2 px ring (offset 2 px) below the bar, in whichever element scrolls the page: the root, or the page scroller's
+   * content wrapper (shell/PageScroller.tsx).
    */
-  html {
-    scrollbar-gutter: stable;
+  html,
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper {
     scroll-padding-top: calc(7.5rem + 8px);
 
     @variant lg {
@@ -525,39 +547,18 @@
     }
   }
 
-  /*
-   * Chromium ignores every ::-webkit-scrollbar rule once scrollbar-width or scrollbar-color is set, and its standard
-   * scrollbar draws a square thumb, so the standard properties go only to engines without the pseudo-elements (Firefox).
-   */
-  @supports selector(::-webkit-scrollbar) {
-    html::-webkit-scrollbar {
-      width: 10px;
-      height: 10px;
-    }
-
-    html::-webkit-scrollbar-track,
-    html::-webkit-scrollbar-corner {
-      background-color: var(--klerosUIComponentsLightBackground);
-    }
-
-    html::-webkit-scrollbar-thumb {
-      border: 2px solid transparent;
-      border-radius: 10px;
-      background-color: var(--dr-scroll-thumb);
-      background-clip: padding-box;
-    }
-
-    html::-webkit-scrollbar-thumb:hover {
-      background-color: var(--dr-scroll-thumb-hover);
-    }
-
-    html::-webkit-scrollbar-thumb:active {
-      background-color: var(--dr-scroll-thumb-active);
-    }
+  /* The page scroller scrolls the page (shell/pageScroll.ts marks the root), so the document never does, nor keeps a lane. */
+  :root[data-page-scroll="container"] {
+    overflow: hidden;
   }
 
+  /*
+   * The document scrolls the page only where the browser's scrollbar floats over it, and that scrollbar stays the
+   * browser's own: a ::-webkit-scrollbar rule would turn it into a classic lane in Chromium and Safari on a Mac. Firefox's
+   * stays floating under scrollbar-width and scrollbar-color, so it alone takes the page scroller's colour.
+   */
   @supports not selector(::-webkit-scrollbar) {
-    html {
+    :root:not([data-page-scroll="container"]) {
       scrollbar-width: thin;
       scrollbar-color: var(--dr-scroll-thumb) var(--klerosUIComponentsLightBackground);
     }
@@ -710,6 +711,63 @@
 
 .dr-display-frame:focus {
   outline: none;
+}
+
+/*
+ * The page scroller's track is 10 px, not SimpleBar's 11 (its unlayered 0,2,0 rule), so the thumb's 2 px insets leave Court
+ * v2's 6 px. The scroller holds the focus only to take the keys while nothing else has it, and draws no ring, as the body
+ * did.
+ */
+.dr-page-scroller > .simplebar-track.simplebar-vertical {
+  width: 10px;
+}
+
+.dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper:focus-visible {
+  outline: none;
+}
+
+/*
+ * The wallet modal (Reown AppKit) locks scrolling on the body, which stopped a scrolling document and not the page scroller:
+ * the focus stays on Connect, inside it, so the keys would scroll the page under the modal. SimpleBar sets the overflow
+ * inline, hence the !important; a hidden overflow keeps the offset.
+ */
+:root:has(> body > w3m-modal.open) .dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper {
+  overflow: hidden !important;
+}
+
+/*
+ * Printed, the page flows as the document did; inside the page scroller only the part in view would print. SimpleBar sets
+ * the content wrapper's height and overflow inline, hence the !important.
+ */
+@media print {
+  :root[data-page-scroll="container"],
+  .dr-page-scroller > .simplebar-wrapper,
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-mask {
+    overflow: visible;
+  }
+
+  .dr-page-scroller,
+  .dr-page-scroller > .simplebar-wrapper {
+    height: auto;
+    max-height: none;
+  }
+
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-mask,
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset {
+    position: static;
+  }
+
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper {
+    height: auto !important;
+    max-height: none;
+    overflow: visible !important;
+  }
+
+  .dr-page-scroller > .simplebar-track,
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-placeholder,
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-height-auto-observer-wrapper {
+    display: none;
+  }
 }
 
 /*

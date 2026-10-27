@@ -39,7 +39,7 @@ function renderAppAt(path: string) {
   const root = document.createElement("div");
   const colorScheme = createColorSchemeStore({ root, media: null, storage: null });
   window.history.replaceState(null, "", path);
-  return { ...render(<App colorScheme={colorScheme} />), root };
+  return { ...render(<App colorScheme={colorScheme} pageScroll="document" />), root };
 }
 
 /** What each page shows first, whatever its data: the Ongoing heading, the Create steps, the case page's search. */

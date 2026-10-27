@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Locator, type Page } from "@playwright/test";
 import { fakeNetwork } from "../support/network";
+import { pageScroll } from "../support/pageScroll";
 import { expectWalletConnected, injectWallet, type InjectedWalletOptions } from "../support/wallet";
 
 // The header's geometry on the built app: the one-row bar from the lg breakpoint (900 px), the long testnet name in the
@@ -66,8 +67,9 @@ async function expectFullPillName(page: Page, name: string): Promise<void> {
 }
 
 async function expectNoSidewaysScroll(page: Page, width: number): Promise<void> {
-  const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-  expect(scrollWidth, `the page scrolls sideways at ${String(width)} px`).toBeLessThanOrEqual(width);
+  const { scrollWidth } = await pageScroll(page);
+  const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(Math.max(scrollWidth, documentWidth), `the page scrolls sideways at ${String(width)} px`).toBeLessThanOrEqual(width);
 }
 
 /**
