@@ -17,7 +17,6 @@ const APPKIT_MODAL = readFileSync(join(dirname(createRequire(APPKIT_ENTRY).resol
 const LIBRARY_CSS = readFileSync(LIBRARY_STYLESHEET, "utf8");
 const LIBRARY_THEME = readFileSync(createRequire(import.meta.url).resolve("@kleros/ui-components-library/theme.css"), "utf8");
 const SIMPLEBAR_CSS = readFileSync(join(dirname(LIBRARY_STYLESHEET), "scrollbar.css"), "utf8");
-const SIMPLEBAR_JS = readFileSync(join(dirname(LIBRARY_STYLESHEET), "../scrollbar.js"), "utf8");
 const APP_CSS = readFileSync(resolve(import.meta.dirname, "../index.css"), "utf8").replaceAll(/\/\*[\s\S]*?\*\//g, "");
 
 const THUMB_CLASS = "[&_.simplebar-scrollbar]:before:!bg-klerosUIComponentsPrimaryBlue";
@@ -25,6 +24,7 @@ const VISIBLE_CLASS = "[&_.simplebar-visible]:before:!opacity-100";
 const MASK_CLASS = "[&_.simplebar-mask]:!bg-klerosUIComponentsWhiteBackground";
 const THUMB_VARIABLE = "--color-klerosUIComponentsPrimaryBlue";
 const MASK_VARIABLE = "--color-klerosUIComponentsWhiteBackground";
+const CONTENT_WRAPPER = ".dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper";
 
 type Specificity = readonly [number, number, number];
 
@@ -232,15 +232,6 @@ describe("the library's ScrollbarContainer, as the page scroller uses it", () =>
     const { scroller } = renderContainer();
     expect(scroller.current?.style.overflowY).not.toBe("");
   });
-
-  it("sets its content wrapper's height inline only as auto or 100%, which the static offset of a printed page resolves to the content's height", () => {
-    const { scroller } = renderContainer();
-    expect(["auto", "100%"]).toContain(scroller.current?.style.height);
-    const writes = [...SIMPLEBAR_JS.matchAll(/contentWrapperEl\.style\.height\s*=\s*([^,;]+)/g)].map((match) => match[1]?.trim());
-    expect(writes.length).toBeGreaterThan(0);
-    for (const value of writes) expect(value).toMatch(/^\w+ \? "auto" : "100%"$/);
-    expect(SIMPLEBAR_JS).not.toMatch(/contentWrapperEl\.style\.(?:cssText|setProperty)|contentWrapperEl\.setAttribute\(\s*"style"/);
-  });
 });
 
 describe("the page scroller's overrides of the library", () => {
@@ -318,6 +309,13 @@ describe("the page scroller's overrides of the library", () => {
     expect(outranks(specificity(ours.selector), specificity(theirs?.selector ?? ""))).toBe(true);
   });
 
+  it("printed, the content wrapper lays out as its content alone, so no overflow applies to it, SimpleBar's inline one or the wallet modal's lock, and no print rule needs !important", () => {
+    const printed = rules(APP_CSS).filter((rule) => rule.context.includes("@media print"));
+    const wrapper = printed.find((rule) => rule.selector === CONTENT_WRAPPER && declared(rule.body, "display") !== undefined);
+    expect(declared(wrapper?.body ?? "", "display")).toBe("contents");
+    expect(printed.filter((rule) => rule.body.includes("!important")).map((rule) => rule.selector)).toEqual([]);
+  });
+
   it("SimpleBar insets the thumb 2 px inside the track on each side and rounds it, which leaves a 6 px pill in the 10 px track", () => {
     const sides = rules(SIMPLEBAR_CSS).find((rule) => rule.selector === ".simplebar-scrollbar:before");
     const ends = rules(SIMPLEBAR_CSS).find((rule) => rule.selector === ".simplebar-track.simplebar-vertical .simplebar-scrollbar:before");
@@ -337,7 +335,7 @@ function modalMethod(name: string): string {
   return APPKIT_MODAL.slice(start, end);
 }
 
-const WALLET_MODAL_LOCK = ":root:has(> body > w3m-modal.open) .dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper";
+const WALLET_MODAL_LOCK = `:root:has(> body > w3m-modal.open) ${CONTENT_WRAPPER}`;
 
 describe("Reown AppKit's wallet modal, as the page scroller follows it", () => {
   it("is a w3m-modal element AppKit puts at the end of the body", () => {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode, type ReactNode } from "react";
 import { Link, MemoryRouter, Route, Routes, useNavigate } from "react-router";
@@ -245,6 +245,29 @@ function trackScrollTop(scroller: HTMLElement): { set: (top: number) => void } {
     },
   };
 }
+
+describe("PageScroller through a print", () => {
+  for (const scroll of ["container", "document"] as const) {
+    it(`where the ${scroll === "container" ? "page scroller" : "document"} scrolls the page, puts the page back where it was once the print ends, wherever the print's layout left it`, async () => {
+      const { unmount } = renderPage(scroll);
+      const scrolling = scroll === "container" ? pageScroller() : document.documentElement;
+      const offset = trackScrollTop(scrolling);
+      try {
+        offset.set(606);
+        fireEvent(window, new Event("beforeprint"));
+        offset.set(494);
+        fireEvent(window, new Event("afterprint"));
+        await waitFor(() => {
+          expect(scrolling.scrollTop).toBe(606);
+        });
+      } finally {
+        unmount();
+        Reflect.deleteProperty(scrolling, "scrollTop");
+        Reflect.deleteProperty(scrolling, "scrollTo");
+      }
+    });
+  }
+});
 
 function HistoryButtons() {
   const navigate = useNavigate();

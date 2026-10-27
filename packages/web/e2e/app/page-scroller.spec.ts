@@ -1,8 +1,9 @@
-import { devices, expect, test, type Locator, type Page } from "@playwright/test";
+import { devices, expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { openDisputesRpc } from "../support/arbitrator";
 import { fakeAtlas } from "../support/atlas";
 import { appOriginOf, fakeNetwork, loadRecording, type HttpRequest, type JsonAnswer } from "../support/network";
 import { forceClassicWebKitScrollbars, PAGE_SCROLLER, pageScroll, scrollPageTo } from "../support/pageScroll";
+import { printToPdf, settleForPrint, type PrintedPage } from "../support/print";
 import { expectWalletConnected, injectWallet } from "../support/wallet";
 
 // The page scroller on the built app, where the browser's scrollbar takes layout space: the projects give Chromium and
@@ -27,6 +28,8 @@ const THUMB = `${TRACK} .simplebar-scrollbar`;
 const HORIZONTAL_THUMB = ".dr-page-scroller > .simplebar-track.simplebar-horizontal .simplebar-scrollbar";
 const MASK = ".dr-page-scroller > .simplebar-wrapper > .simplebar-mask";
 const TRANSPARENT = "rgba(0, 0, 0, 0)";
+/** Where the header's brand link leads on chain 1; no other link of the page leads there. */
+const BRAND_PATH = "/1";
 
 /** A stored Create draft that passes validation, so Continue moves to the summary. */
 const CREATE_DRAFT = {
@@ -68,11 +71,16 @@ function metaEvidence(request: HttpRequest): JsonAnswer | undefined {
 }
 
 /** The Ongoing list of thirty open disputes, long enough to scroll several pages, once every card has its final height. */
-async function openLongList(page: Page, baseURL: string | undefined): Promise<void> {
+async function loadLongList(page: Page, baseURL: string | undefined): Promise<void> {
   await fakeNetwork(page.context(), { appOrigin: appOriginOf(baseURL), rpc: openDisputesRpc(IDS, HEAD), http: metaEvidence });
   await page.goto("/1/ongoing");
   await expect(card(page, LAST_ID), "the list never rendered (needs the chain-1 read RPC in the build)").toBeVisible({ timeout: 20_000 });
   await expect(page.locator("main h2[aria-busy='true']")).toHaveCount(0, { timeout: 30_000 });
+}
+
+/** The long list, scrolled in the page scroller. */
+async function openLongList(page: Page, baseURL: string | undefined): Promise<void> {
+  await loadLongList(page, baseURL);
   await expectPageScroller(page);
 }
 
@@ -134,6 +142,118 @@ async function settledScrollTop(page: Page): Promise<number> {
     }
     return last;
   }, PAGE_SCROLLER);
+}
+
+interface Span {
+  readonly top: number;
+  readonly bottom: number;
+}
+
+async function frameLayout(page: Page) {
+  return page.evaluate((track) => {
+    const span = (selector: string): Span => {
+      const element = document.querySelector(selector);
+      if (element === null) throw new Error(`The page has no ${selector}.`);
+      const box = element.getBoundingClientRect();
+      return { top: box.top + window.scrollY, bottom: box.bottom + window.scrollY };
+    };
+    const shown = (selector: string) => {
+      const element = document.querySelector(selector);
+      return element === null ? "none" : getComputedStyle(element).display;
+    };
+    return {
+      header: span("header:not(main *)"),
+      main: span("main"),
+      footer: span("footer:not(main *)"),
+      lastCard: span("main a[href$='/900']"),
+      document: document.documentElement.scrollHeight,
+      track: shown(track),
+      notifications: shown("section[aria-label='Notifications']"),
+    };
+  }, TRACK);
+}
+
+function expectFrameInOrder(layout: { readonly header: Span; readonly main: Span; readonly footer: Span }): void {
+  expect(Math.abs(layout.header.top), "the header is not at the top of the printed page").toBeLessThanOrEqual(1);
+  expect(layout.header.bottom, "the header runs over the content").toBeLessThanOrEqual(layout.main.top);
+  expect(layout.main.bottom, "the content runs over the footer").toBeLessThanOrEqual(layout.footer.top);
+}
+
+function printedLayout(pages: readonly PrintedPage[]): string[] {
+  return pages.flatMap((printed, index) =>
+    printed.links.map((link) => `page ${String(index + 1)}: ${link.href} at ${String(Math.round(link.left))}, ${String(Math.round(link.top))}-${String(Math.round(link.bottom))}`),
+  );
+}
+
+function expectHeaderHeadsFirstPage(pages: readonly PrintedPage[]): void {
+  const brands = pages.map((printed) => printed.links.filter((link) => link.href === BRAND_PATH).length);
+  expect(brands, "the header's brand link is not printed once, on the first page").toEqual(pages.map((_, index) => (index === 0 ? 1 : 0)));
+  const links = pages[0]?.links ?? [];
+  const brand = links.find((link) => link.href === BRAND_PATH);
+  if (brand === undefined) throw new Error("The first page has no brand link.");
+  expect(brand.top, "a blank band heads the first page").toBeLessThanOrEqual(1);
+  expect(
+    links.filter((link) => link !== brand && link.top < brand.bottom).map((link) => link.href),
+    "links printed over the header",
+  ).toEqual([]);
+}
+
+async function expectPrintedAsFromTheTop(page: Page, offset: number): Promise<void> {
+  await settleForPrint(page);
+  await scrollPageTo(page, 0);
+  const fromTop = await printToPdf(page);
+  expectHeaderHeadsFirstPage(fromTop);
+  await scrollPageTo(page, offset);
+  expect(await scrollTop(page)).toBe(offset);
+  const scrolled = await printToPdf(page);
+  await expect.poll(() => scrollTop(page), { message: "printing moved the page" }).toBe(offset);
+  expectHeaderHeadsFirstPage(scrolled);
+  expect(printedLayout(scrolled), "the scrolled page prints otherwise than from the top").toEqual(printedLayout(fromTop));
+}
+
+/** Below the lg breakpoint the header's navigation is a drawer, with a scrim over the page. */
+const NARROW = 800;
+
+type HeaderMenu = readonly [name: string, find: (header: Locator) => readonly [button: Locator, panel: Locator]];
+
+const HEADER_MENUS: readonly HeaderMenu[] = [
+  ["the menu drawer", (header) => [header.getByRole("button", { name: "Menu", exact: true }), header.getByRole("navigation", { name: "Main" })]],
+  ["the network menu", (header) => [header.getByRole("button", { name: /^Network: / }), header.getByRole("menu", { name: "Network" })]],
+  ["the account menu", (header) => [header.getByRole("button", { name: /^Account 0x/ }), header.getByRole("dialog", { name: "Account" })]],
+];
+
+/** The long list where the header's navigation is a drawer, with a wallet connected so the account menu opens. */
+async function openNarrowList(context: BrowserContext, page: Page, baseURL: string | undefined): Promise<Locator> {
+  await injectWallet(context, { account: ACCOUNT, chainId: 1 });
+  await page.setViewportSize({ width: NARROW, height: HEIGHT });
+  await openLongList(page, baseURL);
+  const header = page.getByRole("banner");
+  await expectWalletConnected(header.getByRole("button", { name: /^Account 0x/ }));
+  return header;
+}
+
+async function openHeaderMenu(header: Locator, [, find]: HeaderMenu): Promise<Locator> {
+  const [button, panel] = find(header);
+  await button.click();
+  await expect(panel).toBeVisible();
+  return panel;
+}
+
+/** Whatever lies over the main content where it starts, at three points across its width. */
+async function overTheContent(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const main = document.querySelector("main");
+    if (main === null) throw new Error("The page has no main.");
+    const box = main.getBoundingClientRect();
+    // Just inside the content, where every header menu hangs over it.
+    const y = Math.round(box.top + 24);
+    return [0.1, 0.5, 0.9].flatMap((share) => {
+      const x = Math.round(box.left + box.width * share);
+      const hit = document.elementFromPoint(x, y);
+      if (hit !== null && main.contains(hit)) return [];
+      return [`${hit === null ? "nothing" : hit.outerHTML.slice(0, 120)} at ${String(x)}, ${String(y)}`];
+    });
+  });
 }
 
 /** Resolves once the page has drawn `count` more frames, by which time a wheel it received has started any scroll. */
@@ -341,6 +461,8 @@ test.describe("where the scrollbar takes layout space", () => {
     let scrolled = false;
     for (let step = 0; step < 40; step += 1) {
       await page.keyboard.press("Tab");
+      // WebKit scrolls the focused element into view in a later task than the key's, which can run after the press resolves.
+      const offset = await settledScrollTop(page);
       const focused = await page.evaluate(() => {
         const element = document.activeElement;
         if (element === null || element === document.body || element.closest("header") !== null) return null;
@@ -351,7 +473,7 @@ test.describe("where the scrollbar takes layout space", () => {
       expect(focused.top, `${focused.label} sits under the header`).toBeGreaterThanOrEqual(headerBottom - 1);
       expect(focused.top, `${focused.label} sits below the fold`).toBeLessThan(HEIGHT);
       if (browserName !== "firefox") expect(focused.bottom, `${focused.label} runs below the fold`).toBeLessThanOrEqual(HEIGHT + 1);
-      if ((await scrollTop(page)) > 0) scrolled = true;
+      if (offset > 0) scrolled = true;
     }
     expect(scrolled, "no Tab moved into content below the fold").toBe(true);
   });
@@ -498,7 +620,12 @@ test.describe("where the scrollbar takes layout space", () => {
     await page.goto("/1/cases/1621");
     await expectPageScroller(page);
     await expectWalletConnected(page.getByRole("banner").getByRole("button", { name: /^Account 0x/ }));
-    await page.getByRole("button", { name: "Evidence", exact: true }).click();
+    const evidence = page.getByRole("button", { name: "Evidence", exact: true });
+    await expect(evidence).toBeVisible({ timeout: 30_000 });
+    // The case's sections reflow as they load, and a press that lands while they move can miss the button.
+    await expect(page.locator("main [aria-busy='true']")).toHaveCount(0, { timeout: 30_000 });
+    await evidence.click();
+    await expect(evidence).toHaveAttribute("aria-expanded", "true");
     const submit = page.getByRole("button", { name: "Submit New Evidence" });
     await expect(submit, "evidence cannot be submitted (the build needs REACT_APP_ATLAS_URI)").toBeEnabled({ timeout: 30_000 });
     await submit.scrollIntoViewIfNeeded();
@@ -620,33 +747,108 @@ test.describe("where the scrollbar takes layout space", () => {
     });
   }
 
-  test("printed, the page flows past the viewport as the document did and no scrollbar shows", async ({ page, baseURL }) => {
+  test("printed while scrolled, the page flows past the viewport as the document did from its top: header, content and footer in order, no scrollbar and no notifications, and the screen keeps its offset", async ({
+    page,
+    baseURL,
+  }) => {
     await openLongList(page, baseURL);
+    await scrollPageTo(page, 1200);
+    expect(await scrollTop(page)).toBe(1200);
     await page.emulateMedia({ media: "print" });
-    const printed = await page.evaluate((track) => {
-      const footer = document.querySelector("footer:not(main *)");
-      const last = document.querySelector("main a[href$='/900']");
-      if (footer === null || last === null) throw new Error("The footer or the last card is missing.");
-      const bar = document.querySelector(track);
-      return {
-        footer: footer.getBoundingClientRect().bottom,
-        last: last.getBoundingClientRect().bottom,
-        document: document.documentElement.scrollHeight,
-        track: bar === null ? "none" : getComputedStyle(bar).display,
-      };
-    }, TRACK);
-    expect(printed.last, "the last card is cut off").toBeGreaterThan(HEIGHT);
-    expect(printed.footer, "the footer is cut off").toBeGreaterThan(printed.last);
-    expect(printed.document, "the document ends at the viewport").toBeGreaterThanOrEqual(printed.footer - 1);
+    const printed = await frameLayout(page);
+    expectFrameInOrder(printed);
+    expect(printed.lastCard.bottom, "the last card is cut off").toBeGreaterThan(HEIGHT);
+    expect(printed.footer.bottom, "the footer is cut off").toBeGreaterThan(printed.lastCard.bottom);
+    expect(printed.document, "the document ends at the viewport").toBeGreaterThanOrEqual(printed.footer.bottom - 1);
     expect(printed.track).toBe("none");
+    expect(printed.notifications, "a toast would print over the page").toBe("none");
+    await page.emulateMedia({ media: null });
+    await expect.poll(() => scrollTop(page)).toBe(1200);
   });
 
-  test("printed to PDF, the long list runs over several pages", async ({ page, baseURL, browserName }) => {
-    // Firefox and WebKit are covered by the print emulation test above.
-    test.skip(browserName !== "chromium", "Only Chromium prints to PDF.");
+  test("printed while the wallet modal is open, the page stays where it was scrolled", async ({ page, baseURL, browserName }) => {
     await openLongList(page, baseURL);
-    const pdf = (await page.pdf()).toString("latin1");
-    expect([...pdf.matchAll(/\/Type\s*\/Page\b/g)].length).toBeGreaterThan(1);
+    await scrollPageTo(page, 1200);
+    await page.getByRole("banner").getByRole("button", { name: "Connect", exact: true }).click();
+    await expect(page.locator("w3m-modal").getByText("Connect Wallet")).toBeVisible({ timeout: 15_000 });
+    const opened = await settledScrollTop(page);
+    expect(opened).toBeGreaterThan(0);
+    // Only Chromium prints to PDF; Firefox and WebKit lay the page out for print under emulation.
+    if (browserName === "chromium") {
+      await page.pdf();
+    } else {
+      await page.emulateMedia({ media: "print" });
+      await pageScroll(page);
+      await page.emulateMedia({ media: null });
+    }
+    await expect.poll(() => scrollTop(page)).toBe(opened);
+  });
+
+  for (const menu of HEADER_MENUS) {
+    test(`printed with ${menu[0]} open, nothing prints over the page, and the menu stays open on screen`, async ({ context, page, baseURL }) => {
+      const panel = await openHeaderMenu(await openNarrowList(context, page, baseURL), menu);
+      await page.emulateMedia({ media: "print" });
+      expect(await overTheContent(page), `${menu[0]} prints over the page`).toEqual([]);
+      await page.emulateMedia({ media: null });
+      await expect(panel).toBeVisible();
+      expect(await overTheContent(page), `${menu[0]} no longer hangs over the page on screen`).not.toEqual([]);
+    });
+  }
+
+  test.describe("printed to PDF", () => {
+    // Only Chromium prints to PDF; the print emulation tests cover Firefox and WebKit.
+    test.skip(({ browserName }) => browserName !== "chromium", "Only Chromium prints to PDF.");
+
+    test("the long list runs over several pages", async ({ page, baseURL }) => {
+      await openLongList(page, baseURL);
+      expect((await printToPdf(page)).length).toBeGreaterThan(1);
+    });
+
+    test("scrolled down the long list, it prints as from the top: the header heads the first page and the cards follow it", async ({ page, baseURL }) => {
+      await openLongList(page, baseURL);
+      await expectPrintedAsFromTheTop(page, 1200);
+    });
+
+    test("from the middle of a case page with its evidence open, in the dark theme, it prints as from the top", async ({ page, baseURL }) => {
+      await page.emulateMedia({ colorScheme: "dark" });
+      await fakeNetwork(page.context(), { appOrigin: appOriginOf(baseURL), recordings: [CASE_RECORDING] });
+      await page.goto("/1/cases/1621");
+      await expectPageScroller(page);
+      const evidence = page.getByRole("button", { name: "Evidence", exact: true });
+      await expect(evidence).toBeVisible({ timeout: 30_000 });
+      // A press while the case's sections still reflow can miss the button.
+      await settleForPrint(page);
+      await evidence.click();
+      await expect(evidence).toHaveAttribute("aria-expanded", "true");
+      await settleForPrint(page);
+      const { maxTop } = await pageScroll(page);
+      expect(maxTop, "the case page is too short to scroll").toBeGreaterThan(0);
+      await expectPrintedAsFromTheTop(page, Math.round(maxTop / 2));
+    });
+
+    test("from the middle of the Create page, it prints as from the top", async ({ page, baseURL }) => {
+      await fakeNetwork(page.context(), { appOrigin: appOriginOf(baseURL) });
+      await page.goto("/1/create");
+      await expectPageScroller(page);
+      // No chain read is answered, so the page has its final height once the cost read has failed.
+      await expect(page.getByRole("status", { name: "Arbitration Cost" })).toContainText("Could not read the arbitration cost", { timeout: 30_000 });
+      await settleForPrint(page);
+      const { maxTop } = await pageScroll(page);
+      expect(maxTop, "the Create page is too short to scroll").toBeGreaterThan(0);
+      await expectPrintedAsFromTheTop(page, Math.round(maxTop / 2));
+    });
+
+    for (const menu of HEADER_MENUS) {
+      test(`with ${menu[0]} open, it prints as with every menu closed`, async ({ context, page, baseURL }) => {
+        const header = await openNarrowList(context, page, baseURL);
+        await settleForPrint(page);
+        const closed = printedLayout(await printToPdf(page));
+        const panel = await openHeaderMenu(header, menu);
+        await settleForPrint(page);
+        expect(printedLayout(await printToPdf(page)), `${menu[0]} prints over the page`).toEqual(closed);
+        await expect(panel).toBeVisible();
+      });
+    }
   });
 
   for (const width of [375, 768, 1280]) {
@@ -682,6 +884,22 @@ test.describe("where scrollbars overlay the page, as on a phone", () => {
       window.scrollTo({ top: 600, behavior: "instant" });
     });
     expect(await page.evaluate(() => window.scrollY)).toBe(600);
+  });
+
+  test("printed while scrolled, the header heads the page and the content and footer follow it, as from the top, and the screen keeps its offset", async ({ page, baseURL }) => {
+    await loadLongList(page, baseURL);
+    await scrollPageTo(page, 1200);
+    expect(await scrollTop(page)).toBe(1200);
+    await page.emulateMedia({ media: "print" });
+    expectFrameInOrder(await frameLayout(page));
+    await page.emulateMedia({ media: null });
+    await expect.poll(() => scrollTop(page)).toBe(1200);
+  });
+
+  test("printed to PDF while scrolled, the list prints as from the top: the header heads the first page and the cards follow it", async ({ page, baseURL }) => {
+    await loadLongList(page, baseURL);
+    await expect(page.locator("html")).not.toHaveAttribute("data-page-scroll");
+    await expectPrintedAsFromTheTop(page, 1200);
   });
 });
 

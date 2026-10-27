@@ -741,9 +741,9 @@
 }
 
 /*
- * Printed, the page flows as the document did; inside the page scroller only the part in view would print. SimpleBar sets
- * the content wrapper's overflow inline, hence the !important; its inline height of 100% resolves to auto against the
- * static offset's auto height.
+ * Printed, the page flows as the document did; inside the page scroller only the part in view would print. The content
+ * wrapper prints as its content alone: no overflow applies to it, SimpleBar's inline one or the wallet modal's lock, and
+ * it keeps its scroll offset for the screen.
  */
 @media print {
   :root[data-page-scroll="container"],
@@ -764,8 +764,7 @@
   }
 
   .dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper {
-    max-height: none;
-    overflow: visible !important;
+    display: contents;
   }
 
   .dr-page-scroller > .simplebar-track,

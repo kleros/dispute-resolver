@@ -130,7 +130,10 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
   );
 }
 
-/** The region stays mounted, so a screen reader announces every toast added to it. */
+/**
+ * The region stays mounted, so a screen reader announces every toast added to it. It never prints: fixed, a toast would
+ * repeat on every page, over the content.
+ */
 export function ToastProvider({ children }: { readonly children?: ReactNode }) {
   const [toasts, setToasts] = useState<readonly ActiveToast[]>([]);
   const nextId = useRef(0);
@@ -153,7 +156,11 @@ export function ToastProvider({ children }: { readonly children?: ReactNode }) {
   return (
     <ToastContext.Provider value={toaster}>
       {children}
-      <section aria-label="Notifications" aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex flex-col items-end gap-3 sm:left-auto sm:w-[422px]">
+      <section
+        aria-label="Notifications"
+        aria-live="polite"
+        className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex flex-col items-end gap-3 sm:left-auto sm:w-[422px] print:hidden"
+      >
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onRemove={remove} />
         ))}

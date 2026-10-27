@@ -77,13 +77,49 @@ function routeKeysToScroller(scroller: HTMLElement): () => void {
   };
 }
 
+/**
+ * A print lays the page out at the paper's width, where content that follows a width query in script (the case timeline)
+ * renders for the paper, then back once the print ends. The browser anchors the scroll to the change back only, so the
+ * page would come back away from where it was: the offset from before the print is put back on the first frame after it.
+ */
+function keepOffsetThroughPrint(scrolling: Element): () => void {
+  const view = scrolling.ownerDocument.defaultView;
+  if (view === null) return () => undefined;
+  let offset: number | null = null;
+  let frame: number | null = null;
+  const remember = () => {
+    offset ??= scrolling.scrollTop;
+  };
+  const restore = () => {
+    if (frame !== null) view.cancelAnimationFrame(frame);
+    frame = view.requestAnimationFrame(() => {
+      frame = null;
+      if (offset !== null) scrolling.scrollTo({ top: offset, behavior: "instant" });
+      offset = null;
+    });
+  };
+  view.addEventListener("beforeprint", remember);
+  view.addEventListener("afterprint", restore);
+  return () => {
+    view.removeEventListener("beforeprint", remember);
+    view.removeEventListener("afterprint", restore);
+    if (frame !== null) view.cancelAnimationFrame(frame);
+  };
+}
+
 function ContainerScroller({ children }: { readonly children?: ReactNode }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   // SimpleBar, a child, sets its attributes in its own effect, which runs before this one.
   useEffect(() => {
     const scroller = scrollerRef.current;
-    return scroller === null ? undefined : routeKeysToScroller(scroller);
+    if (scroller === null) return undefined;
+    const stopRouting = routeKeysToScroller(scroller);
+    const stopKeeping = keepOffsetThroughPrint(scroller);
+    return () => {
+      stopRouting();
+      stopKeeping();
+    };
   }, []);
 
   return (
@@ -100,9 +136,17 @@ interface PageScrollerProps {
   readonly children?: ReactNode;
 }
 
-/** Holds the whole app where `scroll` is `container`: the header, the page and the footer scroll inside it, full height. */
+function DocumentScroller({ children }: { readonly children?: ReactNode }) {
+  useEffect(() => keepOffsetThroughPrint(document.scrollingElement ?? document.documentElement), []);
+  return <>{children}</>;
+}
+
+/**
+ * Holds the whole app where `scroll` is `container`: the header, the page and the footer scroll inside it, full height.
+ * Either way the page keeps its offset through a print.
+ */
 export function PageScroller({ scroll, children }: PageScrollerProps) {
-  return scroll === "container" ? <ContainerScroller>{children}</ContainerScroller> : <>{children}</>;
+  return scroll === "container" ? <ContainerScroller>{children}</ContainerScroller> : <DocumentScroller>{children}</DocumentScroller>;
 }
 
 /**
