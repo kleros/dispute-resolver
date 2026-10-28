@@ -1,4 +1,5 @@
 import {
+  cardFundingState,
   encodeAnswer,
   enteredAnswerFunding,
   type AnswerInput,
@@ -9,7 +10,7 @@ import {
 } from "@dispute-resolver/core";
 import { Card } from "@kleros/ui-components-library";
 import { useId, useState } from "react";
-import { Amount, FACT_LEAD, formatAmount } from "../../ui";
+import { Amount, FACT_LEAD, formatAmount, useNowSeconds } from "../../ui";
 import { AnswerField } from "./AnswerField";
 import { ANSWER_ERROR_MESSAGES, fundedIntAnswer } from "./answer";
 import { matchedCardLine, newAnswerLine } from "./copy";
@@ -25,6 +26,8 @@ export interface FreeInputCardProps {
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
   readonly isFundDisabled: boolean;
+  /** Whether the registry verified the contract's rules, which words the card's deadline. */
+  readonly verified: boolean;
 }
 
 const NOTE_CLASS = "text-sm [overflow-wrap:anywhere]";
@@ -50,20 +53,26 @@ export function MatchedCardNote({ funding, kind, chain }: { readonly funding: En
 }
 
 export interface EnteredAnswerFooterProps {
-  readonly funding: Pick<EnteredAnswerFunding, "fundedPercent" | "deadline" | "remaining" | "required">;
+  readonly funding: Pick<EnteredAnswerFunding, "fundedPercent" | "deadline" | "remaining" | "required" | "fullyFunded">;
   /** What is funded, for the accessible names of the contribution field and Fund: the matched card's title when there is one. */
   readonly subject: string;
   readonly code: bigint | null;
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
   readonly isFundDisabled: boolean;
+  readonly verified: boolean;
 }
 
-/** A card's funding and Fund, for fixed and entered cards alike: nothing remaining disables the field and Fund. */
-export function EnteredAnswerFooter({ funding, subject, code, actions, chain, isFundDisabled }: EnteredAnswerFooterProps) {
+/**
+ * A card's funding and Fund, for fixed and entered cards alike, in the state the chain's time and the contract's funded
+ * rulings give it: nothing remaining, a closed deadline or a fully funded ruling disables the field and Fund.
+ */
+export function EnteredAnswerFooter({ funding, subject, code, actions, chain, isFundDisabled, verified }: EnteredAnswerFooterProps) {
+  const state = cardFundingState(funding, useNowSeconds());
+  const statusId = useId();
   return (
     <>
-      <FundingProgress percent={funding.fundedPercent} deadline={funding.deadline} />
+      <FundingProgress percent={funding.fundedPercent} deadline={funding.deadline} state={state} verified={verified} statusId={statusId} />
       <p className="flex flex-col gap-1 text-sm text-klerosUIComponentsSecondaryText">
         <span>{"Remaining "}</span>
         <span className="flex flex-wrap items-baseline gap-x-2">
@@ -72,13 +81,23 @@ export function EnteredAnswerFooter({ funding, subject, code, actions, chain, is
           <Amount wei={funding.required} chain={chain} />
         </span>
       </p>
-      <FundAction subject={subject} code={code} suggested={funding.remaining} actions={actions} chain={chain} isDisabled={isFundDisabled} />
+      <FundAction
+        subject={subject}
+        code={code}
+        suggested={funding.remaining}
+        deadline={funding.deadline}
+        state={state}
+        describedBy={state === "open" ? undefined : statusId}
+        actions={actions}
+        chain={chain}
+        isDisabled={isFundDisabled}
+      />
     </>
   );
 }
 
 /** An int answer shows which answer it funds, since -1 and -2 land on reserved rulings. */
-export function FreeInputCard({ freeInput, cards, actions, chain, isFundDisabled }: FreeInputCardProps) {
+export function FreeInputCard({ freeInput, cards, actions, chain, isFundDisabled, verified }: FreeInputCardProps) {
   const titleId = useId();
   const [answer, setAnswer] = useState<AnswerInput | null>(null);
   const encoding = answer === null ? null : encodeAnswer(answer, { type: freeInput.type, precision: freeInput.precision });
@@ -103,7 +122,15 @@ export function FreeInputCard({ freeInput, cards, actions, chain, isFundDisabled
         ) : null}
         <MatchedCardNote funding={funding} kind="answer" chain={chain} />
         <div className={CARD_FOOTER_CLASS}>
-          <EnteredAnswerFooter funding={funding} subject={funding.card?.title ?? "the new answer"} code={code} actions={actions} chain={chain} isFundDisabled={isFundDisabled} />
+          <EnteredAnswerFooter
+            funding={funding}
+            subject={funding.card?.title ?? "the new answer"}
+            code={code}
+            actions={actions}
+            chain={chain}
+            isFundDisabled={isFundDisabled}
+            verified={verified}
+          />
         </div>
       </Card>
     </li>

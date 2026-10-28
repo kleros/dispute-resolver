@@ -41,8 +41,8 @@ let knownContracts: ReadonlySet<string> | undefined;
 
 /**
  * The contracts whose own failure text may be shown, each on its own chain only: the chain table's arbitrator and
- * arbitrable proxy, and every arbitrable the registry lists (Reality proxies, overrides, display allowlist). Built on
- * first use, since the tables load after this module.
+ * arbitrable proxy, and every arbitrable the registry lists (Reality proxies, overrides, verified arbitrables, display
+ * allowlist). Built on first use, since the tables load after this module.
  */
 function isKnownContract(chainId: number, address: string): boolean {
   knownContracts ??= new Set<string>([
@@ -51,6 +51,7 @@ function isKnownContract(chainId: number, address: string): boolean {
     ),
     ...Object.keys(REGISTRY.realityProxies),
     ...Object.keys(REGISTRY.overrides),
+    ...Object.keys(REGISTRY.verifiedArbitrables),
     ...Object.entries(REGISTRY.displayAllowlist).flatMap(([chainKey, addresses]) => addresses.map((contract) => registryKey(Number(chainKey), contract))),
   ]);
   // The cast is sound: viem recorded a `0x`-prefixed address, and lowercasing it yields the lowercase form.
@@ -71,21 +72,70 @@ function quotesContractText(error: BaseError): boolean {
   return isContractFailure(error) || error.walk((cause) => cause instanceof ContractFunctionRevertedError) !== null;
 }
 
+const CONTRACT_TEXT_MAX = 200;
+
+/** Controls, and the invisible marks that hide text or reverse its direction. */
+function isControlOrMark(codePoint: number): boolean {
+  return (
+    codePoint <= 0x1f ||
+    (codePoint >= 0x7f && codePoint <= 0x9f) ||
+    codePoint === 0x061c ||
+    (codePoint >= 0x200b && codePoint <= 0x200f) ||
+    (codePoint >= 0x2028 && codePoint <= 0x202e) ||
+    (codePoint >= 0x2060 && codePoint <= 0x2069) ||
+    codePoint === 0xfeff
+  );
+}
+
+/**
+ * A contract's own text as one plain line of at most 200 characters. Even a known contract's text is someone else's: it
+ * must not reorder or hide the page's own words around it, nor run on.
+ */
+function plainContractText(text: string): string {
+  const line = Array.from(text, (character) => (isControlOrMark(character.codePointAt(0) ?? 0) ? " " : character))
+    .join("")
+    .replaceAll(/\s+/g, " ")
+    .trim();
+  const characters = Array.from(line);
+  if (characters.length <= CONTRACT_TEXT_MAX) return line;
+  const kept = characters.slice(0, CONTRACT_TEXT_MAX - 1).join("");
+  return `${kept.trimEnd()}…`;
+}
+
+function onKnownContract(error: BaseError, chainId: number | undefined): boolean {
+  const address = calledContract(error);
+  return chainId !== undefined && address !== null && isKnownContract(chainId, address);
+}
+
 /**
  * A viem error's full `message` can carry the transport URL, and with it the RPC key, so only its `shortMessage` is
  * shown. The contract's own text is shown only for a known contract (the chain's arbitrator or arbitrable proxy, a
- * registry arbitrable) on `chainId`, the chain the call was made on, and is otherwise one fixed sentence, also when
- * `chainId` is not given. Any other error is named, never quoted.
+ * registry arbitrable) on `chainId`, the chain the call was made on, as plain text, and is otherwise one fixed sentence,
+ * also when `chainId` is not given. Any other error is named, never quoted.
  */
 export function describeError(error: unknown, chainId?: number): string {
   if (error instanceof BaseError) {
     if (!quotesContractText(error)) return error.shortMessage;
-    const address = calledContract(error);
-    return chainId !== undefined && address !== null && isKnownContract(chainId, address) ? error.shortMessage : CONTRACT_REJECTED;
+    return onKnownContract(error, chainId) ? plainContractText(error.shortMessage) : CONTRACT_REJECTED;
   }
   if (isLookupLimitError(error)) return error.message;
   if (error instanceof Error && error.name === "AbortError") return "The request was aborted.";
   return "The request failed.";
+}
+
+/** The wording a node puts before a revert reason it reports in its message. */
+const NODE_REVERT_WORDING = /^execution reverted:?/i;
+
+/**
+ * The reason a known contract on `chainId` gave for rejecting a call, as viem decoded it, without the node's wording and
+ * as plain text; `null` for any other contract, a contract that gave no reason, or a failure that was not a revert.
+ */
+export function rejectionReason(error: unknown, chainId: number): string | null {
+  if (!(error instanceof BaseError) || !onKnownContract(error, chainId)) return null;
+  const revert = error.walk((cause) => cause instanceof ContractFunctionRevertedError);
+  if (!(revert instanceof ContractFunctionRevertedError) || revert.reason === undefined) return null;
+  const reason = plainContractText(revert.reason.trim().replace(NODE_REVERT_WORDING, ""));
+  return reason === "" ? null : reason;
 }
 
 /** `chainId` is the chain the failed read was made on, as `describeError` takes it. */

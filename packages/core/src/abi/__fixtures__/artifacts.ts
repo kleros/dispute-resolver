@@ -9,6 +9,7 @@ import realityEth30Abi from "@reality.eth/contracts/abi/solc-0.8.6/RealityETH-3.
 import realityEth32Abi from "@reality.eth/contracts/abi/solc-0.8.6/RealityETH-3.2.abi.json";
 import arbitrableProxy from "@kleros/arbitrable-proxy-contracts/build/contracts/ArbitrableProxy.json";
 import iEvidence from "@kleros/arbitrable-proxy-contracts/build/contracts/IEvidence.json";
+import iArbitrable from "@kleros/kleros-interaction/build/contracts/IArbitrable.json";
 import klerosGovernor from "@kleros/kleros/build/contracts/KlerosGovernor.json";
 import klerosLiquid from "@kleros/kleros/build/contracts/KlerosLiquid.json";
 import policyRegistry from "@kleros/kleros/build/contracts/PolicyRegistry.json";
@@ -116,6 +117,7 @@ export const ARTIFACTS = {
   policyRegistry: fromArtifact(policyRegistry),
   arbitrableProxy: fromArtifact(arbitrableProxy),
   iEvidence: fromArtifact(iEvidence),
+  iArbitrable: fromArtifact(iArbitrable),
   idrV1: fromArtifact(idrV1),
   idrV2: fromArtifact(idrV2),
   escrowV1: fromArtifact(multipleArbitrableTokenTransaction),

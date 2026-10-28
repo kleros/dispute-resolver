@@ -1,4 +1,5 @@
-import type { ScriptRunRequest } from "@dispute-resolver/core";
+import type { ScriptRunRequest, WriteCall } from "@dispute-resolver/core";
+import { parseAbi } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildAppConfig } from "../env";
 import { SAMPLE_PARAMS, createFakeRunnerDocument, type FakeRunnerDocument, type FakeRunnerFrame } from "../test/runner";
@@ -29,6 +30,22 @@ afterEach(() => {
 });
 
 describe("createCoreDeps", () => {
+  it("never passes the check of a write on a chain without a read RPC, and makes no request for it", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    const deps = createCoreDeps(CONFIG, { document, fetch, storage: undefined });
+    const call: WriteCall = {
+      kind: "fund-appeal",
+      chainId: 100,
+      address: "0x00000000000000000000000000000000000000aa",
+      abi: parseAbi(["function fundAppeal(uint256 localId, uint256 ruling) payable"]),
+      functionName: "fundAppeal",
+      args: [7n, 1n],
+      value: 1n,
+    };
+    await expect(deps.simulate(call, "0x00000000000000000000000000000000000000a1")).resolves.toMatchObject({ status: "unavailable", error: { code: "no-rpc" } });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("keeps at most four script frames at a time and starts a queued run when one settles", async () => {
     const fake = createFakeRunnerDocument();
     const deps = createCoreDeps(CONFIG, { document: fake.document, fetch: vi.fn<typeof fetch>(), storage: undefined });

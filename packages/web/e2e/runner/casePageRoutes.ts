@@ -1,4 +1,5 @@
 import { expect, type Page, type Route } from "@playwright/test";
+import { RULING_TOPIC, logFilterFor } from "../support/arbitrator";
 import { appOriginOf, callData, CORS_HEADERS, fakeNetwork, loadRecording } from "../support/network";
 
 // The case page of mainnet dispute 1621 on support/network.ts's fake network: the chain-1 JSON-RPC reads and the
@@ -97,8 +98,12 @@ export async function routeCasePage(page: Page, baseURL: string | undefined, { d
   const network = await fakeNetwork(page.context(), {
     appOrigin: appOriginOf(baseURL),
     recordings: [RECORDING],
-    // The recording answers the dispute in the appeal period for e2e/app's Fund cards; these specs need it executed.
-    rpc: (call) => (callData(call) === DISPUTES_CALL ? { result: EXECUTED_DISPUTE } : undefined),
+    // The recording answers the dispute in the appeal period for e2e/app's Fund cards; these specs need it executed, and
+    // the executed dispute's decision scans the governor for its Ruling event, which the recording does not hold.
+    rpc: (call) => {
+      if (callData(call) === DISPUTES_CALL) return { result: EXECUTED_DISPUTE };
+      return logFilterFor(call, RULING_TOPIC) === undefined ? undefined : { result: [] };
+    },
     http: (request) => {
       if (request.kind !== "gateway") return undefined;
       return request.path === META_EVIDENCE_PATH ? { json: metaEvidence } : { status: 404 };

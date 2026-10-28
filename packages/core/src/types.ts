@@ -24,10 +24,14 @@ export type Env = Readonly<Record<string, string | undefined>>;
 /**
  * The subset of a viem `PublicClient` core reads through. Built only from the configured per-chain read RPC (`rpc`),
  * never from a wallet. `request` is the raw JSON-RPC call, for reads whose viem action would hide a missing
- * result (`getCode` maps both `"0x"` and no result to `undefined`). Tests build one with
+ * result (`getCode` maps both `"0x"` and no result to `undefined`). `simulateContract` and `getBalance` serve the check
+ * before a write, never a signature. Tests build one with
  * `createPublicClient({ transport: custom({ request }) })`.
  */
-export type ReadClient = Pick<PublicClient, "readContract" | "getLogs" | "getCode" | "getStorageAt" | "getBlockNumber" | "getBlock" | "request">;
+export type ReadClient = Pick<
+  PublicClient,
+  "readContract" | "getLogs" | "getCode" | "getStorageAt" | "getBlockNumber" | "getBlock" | "getBalance" | "simulateContract" | "request"
+>;
 
 /** Returns the read client of a chain, or `undefined` when the chain has no RPC configured. */
 export type GetReadClient = (chainId: number) => ReadClient | undefined;

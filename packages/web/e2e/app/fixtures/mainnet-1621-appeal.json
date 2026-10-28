@@ -1,9 +1,12 @@
 {
-  "description": "Mainnet dispute 1621 (poh.eth KlerosGovernor) as its case page reads it, with the appeal section open and the harness account 0x\u2026e2 connected, recorded from the chain-1 read RPC, the meta-evidence API and the IPFS gateway on 2026-10-16 with eth_blockNumber pinned to readAtBlock. One answer is rewritten: disputes(1621) reports the appeal period (period 3, not ruled), so the governor's crowdfunding cards and their Fund buttons render. Block bodies keep only their number, hash and timestamp, with no transactions; court policies are not kept, so courts show by ID; the governor's dynamic script is not kept (the gateway answers 404). The meta-evidence locator's answer is `locator`; the gateway's files are `files`, by path. Used by e2e/app and e2e/runner; requests are matched by shape, never by host. The governor's MetaEvidence(0) eth_getLogs answer was added on 2026-10-20, read from the chain-1 read RPC at readAtBlock by packages/core/scripts/record-meta-evidence-events.ts.",
+  "description": "Mainnet dispute 1621 (poh.eth KlerosGovernor) as its case page reads it, with the appeal section open and the harness account 0x\u2026e2 connected, recorded from the chain-1 read RPC, the meta-evidence API and the IPFS gateway on 2026-10-16 with eth_blockNumber pinned to readAtBlock. Two answers are rewritten: disputes(1621) reports the appeal period (period 3, not ruled), and appealPeriod(1621) a window open until 2100, so the governor's crowdfunding cards and their Fund buttons render open. Block bodies keep only their number, hash and timestamp, with no transactions; court policies are not kept, so courts show by ID; the governor's dynamic script is not kept (the gateway answers 404). The meta-evidence locator's answer is `locator`; the gateway's files are `files`, by path. Used by e2e/app and e2e/runner; requests are matched by shape, never by host. The governor's MetaEvidence(0) eth_getLogs answer was added on 2026-10-20, read from the chain-1 read RPC at readAtBlock by packages/core/scripts/record-meta-evidence-events.ts.",
   "chainId": 1,
   "disputeId": "1621",
   "readAtBlock": 26203012,
-  "rewritten": ["eth_call disputes(1621): period 3, ruled false"],
+  "rewritten": [
+    "eth_call disputes(1621): period 3, ruled false",
+    "eth_call appealPeriod(1621): from the dispute's lastPeriodChange to 2100-01-01, so the cards' funding is still open"
+  ],
   "calls": [
     {
       "method": "eth_blockNumber",
@@ -974,7 +977,7 @@
         },
         "latest"
       ],
-      "result": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      "result": "0x000000000000000000000000000000000000000000000000000000006588146f00000000000000000000000000000000000000000000000000000000f4865700"
     },
     {
       "method": "eth_call",

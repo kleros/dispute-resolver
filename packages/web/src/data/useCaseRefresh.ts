@@ -7,12 +7,12 @@ type RefreshedKind = Parameters<typeof disputeKeyPrefix>[0];
 
 /**
  * `appeal` refreshes `details` too, for the values core reads together with the dispute (`currentRuling`, `appealCost`,
- * `appealPeriod`, `RulingFunded`), and the chain time its deadlines count down from; the current round's funding is
- * rescanned over the same range as the first load.
+ * `appealPeriod`, `RulingFunded`), the executed ruling the decision shows, and the chain time its deadlines count down
+ * from; the current round's funding is rescanned over the same range as the first load.
  */
 const REFRESHED: Readonly<Record<RefreshScope, readonly RefreshedKind[]>> = {
   evidence: ["lookup", "evidence"],
-  appeal: ["lookup", "details", "evidence", "funding"],
+  appeal: ["lookup", "details", "evidence", "funding", "executedRuling"],
   withdraw: ["withdrawable"],
 };
 

@@ -1,4 +1,4 @@
-import { escrowV1Abi, governorAbi, idrLegacyFundAppealAbi, idrV2Abi } from "../abi";
+import { escrowV1Abi, governorAbi, idrV2Abi } from "../abi";
 import type { ArbitratedBinding, LocalIdResolution } from "../disputes/types";
 import type { FamilyDetection } from "../families/types";
 import { isUint256 } from "../bigint";
@@ -6,17 +6,11 @@ import { describesBinding } from "../disputes/localId";
 import { arbitrableLocalId, built, refused } from "./build";
 import type { WriteBuild } from "./types";
 
-/** The older resolver proxy's `fundAppeal(uint256,uint8)` alone, so the encoder cannot pick the other overload. */
-const [, legacyUint8FundAppeal] = idrLegacyFundAppealAbi;
-const fundAppealUint8Abi = [legacyUint8FundAppeal] as const;
-
-const UINT8_MAX = 255n;
-
 /**
- * IDisputeResolver `fundAppeal(localID, ruling)` through the selector the family carries (the older resolver proxy's
- * takes a `uint8`), or the governor's `fundAppeal(listIndex)`. The governor's verified source maps a ruling to
- * `listIndex = ruling − 1`; ruling 0, "refuse to arbitrate", names no list. Escrow V1 appeals through
- * `buildEscrowAppealCall` instead.
+ * IDisputeResolver `fundAppeal(localID, ruling)`, or the governor's `fundAppeal(listIndex)`. The governor's verified
+ * source maps a ruling to `listIndex = ruling − 1`; ruling 0, "refuse to arbitrate", names no list. Refused from the
+ * card's deadline on (`nowSeconds` is the chain's time), since the contracts accept a contribution only strictly
+ * before it. Escrow V1 appeals through `buildEscrowAppealCall` instead.
  */
 export function buildFundAppealCall(input: {
   readonly binding: ArbitratedBinding;
@@ -24,11 +18,16 @@ export function buildFundAppealCall(input: {
   readonly localId: LocalIdResolution;
   readonly ruling: bigint;
   readonly value: bigint;
+  /** The funded card's deadline. */
+  readonly deadline: number;
+  readonly nowSeconds: number;
 }): WriteBuild {
   const { binding, family, ruling, value } = input;
   if (!describesBinding(binding, family)) return refused("family-mismatch");
   const target = { kind: "fund-appeal", chainId: binding.chainId, address: binding.arbitrated, value } as const;
   const appeal = family.capabilities.appeal;
+  if (appeal.kind !== "governor" && appeal.kind !== "idr") return refused("appeal-unsupported");
+  if (input.nowSeconds >= input.deadline) return refused("funding-closed");
   switch (appeal.kind) {
     case "governor": {
       const listIndex = ruling - 1n;
@@ -38,16 +37,9 @@ export function buildFundAppealCall(input: {
     case "idr": {
       const localId = arbitrableLocalId(family, input.localId);
       if (localId === undefined) return refused("local-id-unresolved");
-      if (appeal.fundAppeal === "fundAppeal(uint256,uint8)") {
-        if (ruling < 0n || ruling > UINT8_MAX) return refused("ruling-out-of-range");
-        return built({ ...target, abi: fundAppealUint8Abi, functionName: "fundAppeal", args: [localId, Number(ruling)] });
-      }
       if (!isUint256(ruling)) return refused("ruling-out-of-range");
       return built({ ...target, abi: idrV2Abi, functionName: "fundAppeal", args: [localId, ruling] });
     }
-    case "escrow-pay-cost":
-    case "none":
-      return refused("appeal-unsupported");
   }
 }
 

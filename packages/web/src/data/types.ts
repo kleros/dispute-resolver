@@ -1,9 +1,11 @@
 import type {
+  Address,
   AppealDecisionEvent,
   AppealPanel,
   ArbitratedBinding,
   ChainConfig,
   Court,
+  Decision,
   DisputeEventResult,
   DisputeLookup,
   DisputeView,
@@ -22,7 +24,9 @@ import type {
   RealityQuestionCache,
   Registry,
   ScriptRunner,
+  SimulationResult,
   Unavailable,
+  WriteCall,
 } from "@dispute-resolver/core";
 
 export type SectionData<T> = { readonly status: "loading" } | { readonly status: "ready"; readonly value: T } | { readonly status: "unavailable"; readonly error: Unavailable };
@@ -50,6 +54,8 @@ export interface CoreDeps {
   readonly gateway: GatewayOrigin;
   readonly registry: Registry;
   waitForReceipt(chainId: number, hash: Hex): Promise<WriteReceipt>;
+  /** Checks a write against its contract through the call chain's read RPC, as `from` would send it; never the wallet's transport. */
+  simulate(call: WriteCall, from: Address): Promise<SimulationResult>;
 }
 
 export type MetaEvidenceBudget = "case" | "ongoing";
@@ -86,6 +92,8 @@ export interface CaseDispute {
   readonly appealDecisions: SectionData<readonly AppealDecisionEvent[]>;
   readonly courts: SectionData<readonly Court[]>;
   readonly appealPanel: SectionData<AppealPanel>;
+  /** The jury's decision and, in execution, the winner; it degrades on its own, never the header or the timeline. */
+  readonly decision: SectionData<Decision>;
   readonly write: SectionData<CaseWriteContext>;
 }
 

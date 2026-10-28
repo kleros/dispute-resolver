@@ -1,4 +1,5 @@
 import {
+  describeAppealRules,
   evidenceScanStart,
   getChain,
   getOverride,
@@ -11,10 +12,10 @@ import {
   type FamilyDetection,
   type ReadClient,
 } from "@dispute-resolver/core";
-import { useAppealReads, type AppealPlan } from "./caseAppealReads";
-import { assembleAppealPanel, assembleView, assembleWriteContext, lookupError, viewWithoutDispute, type FoundCaseReads } from "./caseAssembly";
+import { executedRulingFrom, useAppealReads, type AppealPlan } from "./caseAppealReads";
+import { assembleAppealPanel, assembleDecision, assembleView, assembleWriteContext, lookupError, viewWithoutDispute, type FoundCaseReads } from "./caseAssembly";
 import { useCoreDeps } from "./context";
-import { useDisputeDetails, useDisputeEvent, useDisputeLookup, useEvidence, useFamily, useMetaEvidence, type FoundDispute } from "./disputeHooks";
+import { useDisputeDetails, useDisputeEvent, useDisputeLookup, useEvidence, useExecutedRuling, useFamily, useMetaEvidence, type FoundDispute } from "./disputeHooks";
 import { useCourts } from "./ongoingHooks";
 import { LOADING, fromOutcome, noRpcError, ready, unavailableFrom, valueOf } from "./sectionData";
 import type { CaseData, CaseDispute, FoundLookup, SectionData } from "./types";
@@ -60,6 +61,19 @@ function appealPlan(
   });
 }
 
+/** Where the executed-ruling scan starts, once the details and the Dispute event have settled; `undefined` before. */
+function executedRulingStart(
+  chainId: number,
+  details: SectionData<DisputeReads>,
+  disputeEvent: SectionData<DisputeEventResult>,
+  override: BehaviorOverride | undefined,
+): bigint | undefined {
+  const chain = getChain(chainId);
+  if (chain === undefined || details.status === "loading" || disputeEvent.status === "loading") return undefined;
+  const disputeStartBlock = foundEvent(disputeEvent)?.blockNumber ?? evidenceScanStart(chain);
+  return executedRulingFrom(appealDecisionsOf(details), override, disputeStartBlock);
+}
+
 /**
  * Each section gets its own `SectionData`, so a failing read degrades one section. A new ID or chain starts from a
  * fresh lookup, and nothing of the previous dispute is shown. `account` is the connected wallet, for the withdraw panel.
@@ -84,6 +98,8 @@ export function useCase(chainId: number, disputeId: bigint | null, account?: Add
   const readClient = deps.getReadClient(chainId);
   const plan = appealPlan(found, family, details, disputeEvent, readClient, override);
   const appeal = useAppealReads(plan, found?.dispute.period ?? 0, account);
+  const executed = useExecutedRuling(chainId, found, executedRulingStart(chainId, details, disputeEvent, override));
+  const rules = family.status === "ready" ? describeAppealRules(deps.registry, family.value) : null;
 
   if (disputeId === null) return { status: "no-id", chainId };
 
@@ -94,7 +110,7 @@ export function useCase(chainId: number, disputeId: bigint | null, account?: Add
     return { ...base, ...everySection(unavailableFrom(error)), view: ready(viewWithoutDispute(lookup.value, error)) };
   }
 
-  const reads: FoundCaseReads = { lookup: lookup.value, family, metaEvidence, courts, details, appeal, override, readClient };
+  const reads: FoundCaseReads = { lookup: lookup.value, family, rules, metaEvidence, courts, details, appeal, executed, override, readClient };
   return {
     ...base,
     view: assembleView(reads),
@@ -104,11 +120,22 @@ export function useCase(chainId: number, disputeId: bigint | null, account?: Add
     evidence,
     appealDecisions: appealDecisionsOf(details),
     appealPanel: assembleAppealPanel(reads),
+    decision: assembleDecision(reads),
     write: assembleWriteContext(reads),
   };
 }
 
 function everySection(state: Exclude<SectionData<unknown>, { status: "ready" }>): Omit<CaseDispute, "status" | "chainId" | "disputeId" | "lookup" | "courts"> {
   const section = state.status === "loading" ? LOADING : unavailableFrom(state.error);
-  return { view: section, family: section, metaEvidence: section, disputeEvent: section, evidence: section, appealDecisions: section, appealPanel: section, write: section };
+  return {
+    view: section,
+    family: section,
+    metaEvidence: section,
+    disputeEvent: section,
+    evidence: section,
+    appealDecisions: section,
+    appealPanel: section,
+    decision: section,
+    write: section,
+  };
 }

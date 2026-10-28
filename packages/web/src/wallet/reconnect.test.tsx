@@ -82,11 +82,10 @@ describe("a returning wallet while wagmi reconnects", () => {
     const wallet = await returningWallet();
     await restoredWhileProbing(wallet);
     const reports: WriteStatus[] = [];
-    const outcome = await performWrite({ config: wallet.config, waitForReceipt: () => Promise.resolve(testReceipt()) }, testWriteBuild(100), { pageChainId: 100 }, (status) =>
-      reports.push(status),
-    );
+    const environment = { config: wallet.config, waitForReceipt: () => Promise.resolve(testReceipt()), simulate: () => Promise.resolve({ status: "ok" } as const) };
+    const outcome = await performWrite(environment, testWriteBuild(100), { pageChainId: 100 }, (status) => reports.push(status));
     expect(outcome).toEqual(expect.objectContaining({ phase: "mined", hash: TEST_TX_HASH }));
-    expect(reports.map((status) => status.phase)).toEqual(["pending", "submitted", "mined"]);
+    expect(reports.map((status) => status.phase)).toEqual(["checking", "pending", "submitted", "mined"]);
     expect(wallet.sent).toHaveLength(1);
     expect(wallet.config.state.status).toBe("reconnecting");
   });

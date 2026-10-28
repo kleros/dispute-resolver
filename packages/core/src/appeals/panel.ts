@@ -1,10 +1,10 @@
 import type { FamilyDetection } from "../families/types";
 import type { Outcome, Period } from "../types";
-import { computeAppealAmounts } from "./amounts";
+import { computeAppealAmounts, windowPercent } from "./amounts";
 import { buildCrowdfundingCards } from "./cards";
 import { governorListIndex } from "./governor";
 import { fail } from "../outcome";
-import type { AppealAmounts, AppealPanel, AppealPanelInput, WithdrawState } from "./types";
+import type { AppealAmounts, AppealPanel, AppealPanelInput, FundingTerms, Multipliers, WithdrawState } from "./types";
 
 const HIDDEN: AppealPanel = { kind: "hidden" };
 
@@ -17,7 +17,7 @@ function required<T>(read: Outcome<T> | null, what: string): Outcome<T> {
 function escrowAppeal(input: AppealPanelInput): AppealPanel {
   const appealInfo = required(input.appealInfo, "The appeal cost");
   if (!appealInfo.ok) return { kind: "fees-unavailable", error: appealInfo.error };
-  return { kind: "escrow-appeal", appealCost: appealInfo.value.appealCost, deadline: appealInfo.value.appealPeriodEnd };
+  return { kind: "escrow-appeal", appealCost: appealInfo.value.appealCost, deadline: appealInfo.value.appealPeriodEnd, verified: input.rules.verified };
 }
 
 /**
@@ -29,9 +29,17 @@ function cardAmounts(amounts: AppealAmounts, dialect: "idr" | "governor", curren
   return { ...amounts, winner: amounts.shared, loser: amounts.shared };
 }
 
+const NO_SHARED_MULTIPLIER = "The governor's shared multiplier could not be read, so the deposits for a tied ruling are unknown.";
+
+function fundingTerms(input: AppealPanelInput, tie: FundingTerms["tie"], amounts: AppealAmounts, appealPeriodEnd: number, multipliers: Multipliers): FundingTerms {
+  const { verified, settlement, refundsWithoutAppeal, noun } = input.rules;
+  return { verified, settlement, refundsWithoutAppeal, noun, tie, appealPeriodEnd, loserDeadline: amounts.loser.deadline, loserWindowPercent: windowPercent(multipliers) };
+}
+
 /**
  * The crowdfunding cards when the appeal cost and period, the multipliers, the round's funding and the current ruling
- * are all known; otherwise the "appeal fees could not be calculated" notice with the first missing read.
+ * are all known; otherwise the "appeal fees could not be calculated" notice with the first missing read. A governor tie
+ * without its shared multiplier is that notice too: KlerosGovernor never costs a tie as a winner and a loser.
  */
 function crowdfunding(input: AppealPanelInput, dialect: "idr" | "governor"): AppealPanel {
   const appealInfo = required(input.appealInfo, "The appeal cost and period");
@@ -42,17 +50,21 @@ function crowdfunding(input: AppealPanelInput, dialect: "idr" | "governor"): App
   if (!funding.ok) return { kind: "fees-unavailable", error: funding.error };
   const { currentRuling } = input;
   if (!currentRuling.ok) return { kind: "fees-unavailable", error: currentRuling.error };
+  const amounts = computeAppealAmounts(appealInfo.value, multipliers.value);
+  const tie = currentRuling.value === 0n ? input.rules.tie : null;
+  if (dialect === "governor" && tie !== null && amounts.shared === undefined) return { kind: "fees-unavailable", error: { code: "unsupported", message: NO_SHARED_MULTIPLIER } };
   const set = buildCrowdfundingCards({
     rulingOptions: input.rulingOptions,
     fallbackOutcomes: input.fallbackOutcomes,
     currentRuling: currentRuling.value,
-    amounts: cardAmounts(computeAppealAmounts(appealInfo.value, multipliers.value), dialect, currentRuling.value),
+    amounts: cardAmounts(amounts, dialect, currentRuling.value),
     funding: funding.value,
     override: input.override,
+    tie,
   });
   // A governor's `fundAppeal(listIndex)` funds list `ruling − 1`: ruling 0 names no list, so it could never be funded.
   const cards = dialect === "governor" ? set.cards.filter((card) => governorListIndex(card.code) !== null) : set.cards;
-  return { kind: "crowdfunding", dialect, ...set, cards };
+  return { kind: "crowdfunding", dialect, ...set, cards, terms: fundingTerms(input, tie, amounts, appealInfo.value.appealPeriodEnd, multipliers.value) };
 }
 
 /** The execution-period withdraw panel; a state that was not read is unavailable, never empty. */
@@ -78,40 +90,55 @@ export function hasAppealPanel(period: Period, family: Pick<FamilyDetection, "wr
 export function needsRulingOptions(period: Period, family: Pick<FamilyDetection, "writeFamily">): boolean {
   if (period !== 3) return false;
   switch (family.writeFamily) {
-    case "idr-legacy":
     case "idr-v1":
     case "idr-v2":
     case "governor":
       return true;
+    case "idr-legacy":
     case "escrow-v1":
     case "view-only":
       return false;
   }
 }
 
+/** The appeal-period panel, by the route the appeal rules give. */
+function appealPeriodPanel(input: AppealPanelInput): AppealPanel {
+  switch (input.rules.route) {
+    case "none":
+      return { kind: "not-appealable" };
+    case "unsupported":
+      return { kind: "funding-unsupported" };
+    case "escrow":
+      return escrowAppeal(input);
+    case "arbitrable":
+      return { kind: "handled-by-arbitrable" };
+    case "crowdfunding":
+      return crowdfunding(input, input.family.writeFamily === "governor" ? "governor" : "idr");
+  }
+}
+
 /**
- * The appeal panel of a dispute, keyed by the family the write paths use (`writeFamily`), so a registered Reality proxy
- * is treated as the resolver family its bytecode matches and one that matches none gets the note. No panel before the
- * appeal period. In the appeal period: Escrow V1 pays the appeal cost; the resolver families and governors crowdfund;
- * view-only arbitrables show that appeals happen in the arbitrable application. In execution: Escrow V1 shows the
- * appeal period ended, idr-legacy that withdrawals are unsupported, idr-v1, idr-v2 and governors the withdraw panel,
- * view-only nothing.
+ * The appeal panel of a dispute. No panel before the appeal period. In the appeal period, by the route of the appeal
+ * rules: Escrow V1 pays the appeal cost; the resolver families, registered Reality proxies and governors crowdfund; an
+ * arbitrable without an appeal function says it cannot be appealed, one whose funding is not supported says so, and
+ * view-only arbitrables show that appeals happen in the arbitrable application. In execution, by the write family:
+ * Escrow V1 shows the appeal period ended, idr-legacy that withdrawals are unsupported, idr-v1, idr-v2 and governors the
+ * withdraw panel, view-only nothing.
  */
 export function buildAppealPanel(input: AppealPanelInput): AppealPanel {
   const { period } = input;
   if (!hasAppealPanel(period, input.family)) return HIDDEN;
-  const inAppeal = period === 3;
+  if (period === 3) return appealPeriodPanel(input);
   switch (input.family.writeFamily) {
     case "escrow-v1":
-      return inAppeal ? escrowAppeal(input) : { kind: "escrow-ended" };
+      return { kind: "escrow-ended" };
     case "view-only":
-      return { kind: "handled-by-arbitrable" };
+      return HIDDEN;
     case "idr-legacy":
-      return inAppeal ? crowdfunding(input, "idr") : { kind: "withdraw-unsupported" };
+      return { kind: "withdraw-unsupported" };
     case "idr-v2":
     case "idr-v1":
-      return inAppeal ? crowdfunding(input, "idr") : withdraw(input);
     case "governor":
-      return inAppeal ? crowdfunding(input, "governor") : withdraw(input);
+      return withdraw(input);
   }
 }

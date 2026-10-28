@@ -55,6 +55,8 @@ export const STALE_TIME_MS = {
   funding: 30 * SECOND_MS,
   withdrawable: 30 * SECOND_MS,
   arbitrationCost: MINUTE_MS,
+  /** An arbitrable can still report its executed ruling, or report a different one. */
+  executedRulingReport: 10 * MINUTE_MS,
 } as const;
 
 /** How often the chain clock's sample is checked against a change of the browser clock. */

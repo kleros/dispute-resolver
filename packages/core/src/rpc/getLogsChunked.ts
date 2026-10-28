@@ -1,5 +1,6 @@
 import type { AbiEvent, GetLogsReturnType } from "viem";
 import type { ReadClient } from "../types";
+import { TooManyLogsError } from "./errors";
 import { getWindowLogs, uniqueLogs, type BlockWindow, type Logs, type LogsRequest } from "./logWindows";
 import { isRangeLimitError } from "./rangeLimit";
 
@@ -47,6 +48,11 @@ function normalizeLogs<TEvent extends AbiEvent>(logs: Logs<TEvent>): Logs<TEvent
 
 type FetchWindows<TEvent extends AbiEvent> = (windows: readonly BlockWindow[]) => Promise<PromiseSettledResult<Logs<TEvent>>[]>;
 
+/** Throws once the logs gathered so far, each counted once, exceed `maxLogs`. */
+function checkCap<TEvent extends AbiEvent>(logs: Logs<TEvent>, maxLogs: number | undefined): void {
+  if (maxLogs !== undefined && uniqueLogs(logs).length > maxLogs) throw new TooManyLogsError(maxLogs);
+}
+
 /**
  * The logs of the windows before the first refused one are kept; that window and the later ones are fetched again with a
  * smaller window. A refusal at the smallest window, or any other error, is rethrown.
@@ -56,6 +62,7 @@ async function scanWindows<TEvent extends AbiEvent>(
   range: BlockWindow,
   initialSize: number,
   limits: LogScanLimits,
+  maxLogs: number | undefined,
 ): Promise<Logs<TEvent>[number][]> {
   const collected: Logs<TEvent>[number][] = [];
   let windowSize = initialSize;
@@ -75,27 +82,38 @@ async function scanWindows<TEvent extends AbiEvent>(
       collected.push(...result.value);
       cursor = window.to + 1n;
     }
+    checkCap(collected, maxLogs);
   }
   return collected;
 }
 
-async function scanRange<TEvent extends AbiEvent>(fetchWindows: FetchWindows<TEvent>, range: BlockWindow, limits: LogScanLimits): Promise<Logs<TEvent>> {
+async function scanRange<TEvent extends AbiEvent>(
+  fetchWindows: FetchWindows<TEvent>,
+  range: BlockWindow,
+  limits: LogScanLimits,
+  maxLogs: number | undefined,
+): Promise<Logs<TEvent>> {
   const [whole] = await fetchWindows([range]);
-  if (whole?.status === "fulfilled") return whole.value;
+  if (whole?.status === "fulfilled") {
+    checkCap(whole.value, maxLogs);
+    return whole.value;
+  }
   const refusal: unknown = whole?.reason;
   const initialSize = isRangeLimitError(refusal) ? firstWindowSize(range.to - range.from + 1n, limits) : undefined;
   if (initialSize === undefined) throw refusal;
-  return scanWindows(fetchWindows, range, initialSize, limits);
+  return scanWindows(fetchWindows, range, initialSize, limits, maxLogs);
 }
 
 /**
  * The whole range is tried in one request first; only a range or size refusal splits it into windows. Other errors are
- * rethrown, never split. A lookup with a request budget passes a client built with it (`createReadClient`).
+ * rethrown, never split. A lookup with a request budget passes a client built with it (`createReadClient`). With
+ * `maxLogs`, the scan throws a `TooManyLogsError` as soon as more logs than that have matched, before fetching further
+ * windows; it bounds the work a contract emitting many logs can cause, not the size of one answer.
  */
 export async function getLogsChunked<const TEvent extends AbiEvent>(
   client: ReadClient,
   request: LogsRequest<TEvent>,
-  options: { readonly signal?: AbortSignal } = {},
+  options: { readonly signal?: AbortSignal; readonly maxLogs?: number } = {},
 ): Promise<GetLogsReturnType<TEvent>> {
   const { fromBlock, toBlock } = request;
   if (toBlock < fromBlock) return [];
@@ -104,7 +122,7 @@ export async function getLogsChunked<const TEvent extends AbiEvent>(
     return Promise.allSettled(windows.map((window) => getWindowLogs(client, request, window)));
   };
 
-  const logs = normalizeLogs(await scanRange(fetchWindows, { from: fromBlock, to: toBlock }, LIMITS));
+  const logs = normalizeLogs(await scanRange(fetchWindows, { from: fromBlock, to: toBlock }, LIMITS, options.maxLogs));
   // The scan's logs are typed for explicit block numbers; the public type spells the same never-pending logs through
   // viem's defaults, which TypeScript cannot unify while `TEvent` is generic.
   return logs as GetLogsReturnType<TEvent>;

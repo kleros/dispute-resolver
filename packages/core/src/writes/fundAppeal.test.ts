@@ -10,6 +10,8 @@ import { decodedArgs, detectionFor, expectCall, FAMILY_SIGNATURES, selectorOf, t
 const ARBITRABLE = "0x135c573503f70dc290b1d60fe2e7f7eb114febd6";
 const binding = testBinding({ chainId: 1, disputeId: 505n, arbitrated: ARBITRABLE });
 const LOCAL_ID: LocalIdResolution = { kind: "local-id", value: 12n };
+/** A card whose funding is still open: its deadline is a second away. */
+const OPEN = { deadline: 1_000, nowSeconds: 999 } as const;
 
 function family(signatures: keyof typeof FAMILY_SIGNATURES): FamilyDetection {
   return detectionFor(ARBITRABLE, FAMILY_SIGNATURES[signatures]);
@@ -17,53 +19,46 @@ function family(signatures: keyof typeof FAMILY_SIGNATURES): FamilyDetection {
 
 describe("buildFundAppealCall", () => {
   it("an IDisputeResolver arbitrable gets fundAppeal(localID, code) paying the contribution", () => {
-    const call = expectCall(buildFundAppealCall({ binding, family: family("idr-v2"), localId: LOCAL_ID, ruling: 2n, value: 10n ** 17n }));
+    const call = expectCall(buildFundAppealCall({ ...OPEN, binding, family: family("idr-v2"), localId: LOCAL_ID, ruling: 2n, value: 10n ** 17n }));
     expect(call).toMatchObject({ kind: "fund-appeal", chainId: 1, address: ARBITRABLE, functionName: "fundAppeal", value: 10n ** 17n });
     expect(selectorOf(call)).toBe(SELECTORS["fundAppeal(uint256,uint256)"]);
     expect(decodedArgs(call)).toEqual([12n, 2n]);
   });
 
   it("a ruling code anywhere in uint256 is sent unchanged (string and hash answers)", () => {
-    const call = expectCall(buildFundAppealCall({ binding, family: family("idr-v1"), localId: LOCAL_ID, ruling: maxUint256, value: 1n }));
+    const call = expectCall(buildFundAppealCall({ ...OPEN, binding, family: family("idr-v1"), localId: LOCAL_ID, ruling: maxUint256, value: 1n }));
     expect(decodedArgs(call)).toEqual([12n, maxUint256]);
   });
 
   it("a ruling code outside uint256 cannot be encoded and is refused", () => {
     for (const ruling of [-1n, maxUint256 + 1n]) {
-      expect(buildFundAppealCall({ binding, family: family("idr-v2"), localId: LOCAL_ID, ruling, value: 1n })).toEqual({ ok: false, refusal: "ruling-out-of-range" });
+      expect(buildFundAppealCall({ ...OPEN, binding, family: family("idr-v2"), localId: LOCAL_ID, ruling, value: 1n })).toEqual({ ok: false, refusal: "ruling-out-of-range" });
     }
   });
 
-  it("idr-legacy funds through the uint8 fundAppeal the older resolver proxy carries", () => {
-    const call = expectCall(buildFundAppealCall({ binding, family: family("idr-legacy-uint8"), localId: LOCAL_ID, ruling: 2n, value: 5n }));
-    expect(call).toMatchObject({ kind: "fund-appeal", address: ARBITRABLE, functionName: "fundAppeal", value: 5n });
-    expect(selectorOf(call)).toBe(SELECTORS["fundAppeal(uint256,uint8)"]);
-    expect(decodedArgs(call)).toEqual([12n, 2]);
-  });
-
-  it("the uint8 variant range-checks the ruling (0 to 255)", () => {
-    expect(decodedArgs(expectCall(buildFundAppealCall({ binding, family: family("idr-legacy-uint8"), localId: LOCAL_ID, ruling: 255n, value: 1n })))).toEqual([12n, 255]);
-    expect(decodedArgs(expectCall(buildFundAppealCall({ binding, family: family("idr-legacy-uint8"), localId: LOCAL_ID, ruling: 0n, value: 1n })))).toEqual([12n, 0]);
-    for (const ruling of [256n, -1n, maxUint256]) {
-      expect(buildFundAppealCall({ binding, family: family("idr-legacy-uint8"), localId: LOCAL_ID, ruling, value: 1n })).toEqual({ ok: false, refusal: "ruling-out-of-range" });
+  it("refuses appeal funding on idr-legacy, whichever fundAppeal it carries", () => {
+    for (const name of ["idr-legacy-uint8", "idr-legacy-uint256"] as const) {
+      expect(family(name).writeFamily).toBe("idr-legacy");
+      expect(buildFundAppealCall({ ...OPEN, binding, family: family(name), localId: LOCAL_ID, ruling: 1n, value: 1n })).toEqual({ ok: false, refusal: "appeal-unsupported" });
     }
   });
 
-  it("an idr-legacy contract carrying the IDisputeResolver fundAppeal uses that one", () => {
-    const call = expectCall(buildFundAppealCall({ binding, family: family("idr-legacy-uint256"), localId: LOCAL_ID, ruling: 300n, value: 1n }));
-    expect(selectorOf(call)).toBe(SELECTORS["fundAppeal(uint256,uint256)"]);
-    expect(decodedArgs(call)).toEqual([12n, 300n]);
-  });
-
-  it("an idr-legacy contract with no fundAppeal at all is refused", () => {
-    const detection = detectionFor(ARBITRABLE, ["externalIDtoLocalID(uint256)", "submitEvidence(uint256,string)"]);
-    expect(detection.writeFamily).toBe("idr-legacy");
-    expect(buildFundAppealCall({ binding, family: detection, localId: LOCAL_ID, ruling: 1n, value: 1n })).toEqual({ ok: false, refusal: "appeal-unsupported" });
+  it("refuses a contribution at or after the card's deadline, as the contracts check strictly", () => {
+    for (const nowSeconds of [1_000, 1_001]) {
+      expect(buildFundAppealCall({ binding, family: family("idr-v2"), localId: LOCAL_ID, ruling: 2n, value: 1n, deadline: 1_000, nowSeconds })).toEqual({
+        ok: false,
+        refusal: "funding-closed",
+      });
+    }
+    expect(buildFundAppealCall({ binding, family: family("governor"), localId: { kind: "not-applicable" }, ruling: 1n, value: 1n, deadline: 1_000, nowSeconds: 1_000 })).toEqual({
+      ok: false,
+      refusal: "funding-closed",
+    });
   });
 
   it("an IDisputeResolver arbitrable without a resolved local ID is refused", () => {
     for (const localId of [{ kind: "unresolved", reason: "reverted" }, { kind: "not-applicable" }, { kind: "transaction-id", value: 1n }] as const) {
-      expect(buildFundAppealCall({ binding, family: family("idr-v2"), localId, ruling: 1n, value: 1n })).toEqual({ ok: false, refusal: "local-id-unresolved" });
+      expect(buildFundAppealCall({ ...OPEN, binding, family: family("idr-v2"), localId, ruling: 1n, value: 1n })).toEqual({ ok: false, refusal: "local-id-unresolved" });
     }
   });
 
@@ -74,7 +69,7 @@ describe("buildFundAppealCall", () => {
     expect(titles).toEqual(governor1621.goldenOptions);
     for (const [index, title] of titles.entries()) {
       const ruling = BigInt(index + 1);
-      const call = expectCall(buildFundAppealCall({ binding: governorBinding, family: governor, localId: { kind: "not-applicable" }, ruling, value: 3n }));
+      const call = expectCall(buildFundAppealCall({ ...OPEN, binding: governorBinding, family: governor, localId: { kind: "not-applicable" }, ruling, value: 3n }));
       expect(call).toMatchObject({ kind: "fund-appeal", chainId: 1, address: governor1621.governor, functionName: "fundAppeal", value: 3n });
       expect(selectorOf(call)).toBe(SELECTORS["fundAppeal(uint256)"]);
       const [listIndex] = decodedArgs(call);
@@ -84,27 +79,27 @@ describe("buildFundAppealCall", () => {
   });
 
   it("a governor ruling of 0 (refuse to arbitrate) names no list and is refused", () => {
-    expect(buildFundAppealCall({ binding, family: family("governor"), localId: { kind: "not-applicable" }, ruling: 0n, value: 1n })).toEqual({
+    expect(buildFundAppealCall({ ...OPEN, binding, family: family("governor"), localId: { kind: "not-applicable" }, ruling: 0n, value: 1n })).toEqual({
       ok: false,
       refusal: "ruling-out-of-range",
     });
-    expect(buildFundAppealCall({ binding, family: family("governor"), localId: { kind: "not-applicable" }, ruling: maxUint256 + 2n, value: 1n })).toEqual({
+    expect(buildFundAppealCall({ ...OPEN, binding, family: family("governor"), localId: { kind: "not-applicable" }, ruling: maxUint256 + 2n, value: 1n })).toEqual({
       ok: false,
       refusal: "ruling-out-of-range",
     });
   });
 
   it("the kleros.eth governor funds through the governor dialect even without evidence support", () => {
-    const call = expectCall(buildFundAppealCall({ binding, family: family("governor-no-evidence"), localId: { kind: "not-applicable" }, ruling: 1n, value: 1n }));
+    const call = expectCall(buildFundAppealCall({ ...OPEN, binding, family: family("governor-no-evidence"), localId: { kind: "not-applicable" }, ruling: 1n, value: 1n }));
     expect(decodedArgs(call)).toEqual([0n]);
   });
 
   it("families with no funding interface are refused (view-only, escrow pays the cost instead)", () => {
-    expect(buildFundAppealCall({ binding, family: family("view-only"), localId: { kind: "not-applicable" }, ruling: 1n, value: 1n })).toEqual({
+    expect(buildFundAppealCall({ ...OPEN, binding, family: family("view-only"), localId: { kind: "not-applicable" }, ruling: 1n, value: 1n })).toEqual({
       ok: false,
       refusal: "appeal-unsupported",
     });
-    expect(buildFundAppealCall({ binding, family: family("escrow-v1"), localId: { kind: "transaction-id", value: 1n }, ruling: 1n, value: 1n })).toEqual({
+    expect(buildFundAppealCall({ ...OPEN, binding, family: family("escrow-v1"), localId: { kind: "transaction-id", value: 1n }, ruling: 1n, value: 1n })).toEqual({
       ok: false,
       refusal: "appeal-unsupported",
     });

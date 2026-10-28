@@ -1,6 +1,6 @@
 import { compareBigint, type AppealDecisionEvent, type ChainConfig, type EvidenceItem, type EvidenceList } from "@dispute-resolver/core";
 import { Attachment } from "../../safe-content";
-import { AddressText, EmptyState, Identicon, Notice } from "../../ui";
+import { AddressText, EmptyState, Identicon, Notice, Timestamp } from "../../ui";
 import { hiddenEvidenceText } from "./hiddenEvidence";
 
 interface EvidenceTimelineProps {
@@ -29,12 +29,6 @@ function timelineEntries(items: readonly EvidenceItem[], decisions: readonly App
 }
 
 const DOT_CLASS = "absolute -left-[5.5px] size-2.5 rounded-full ring-4 ring-klerosUIComponentsWhiteBackground";
-
-function Timestamp({ value }: { readonly value: number }) {
-  const date = new Date(value * 1000);
-  if (Number.isNaN(date.getTime())) return <span>Unknown time</span>;
-  return <time dateTime={date.toISOString()}>{date.toUTCString()}</time>;
-}
 
 function TimelineEvent({ label, time }: { readonly label: string; readonly time: number | null }) {
   return (

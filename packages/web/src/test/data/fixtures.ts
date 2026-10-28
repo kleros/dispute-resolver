@@ -41,12 +41,12 @@ function testDispute(overrides: Partial<ArbitratorDispute> = {}): ArbitratorDisp
 
 /** A `found` lookup of dispute `disputeId` on `chainId` in `period`. */
 export function testFoundLookup(
-  options: { readonly chainId?: number; readonly disputeId?: bigint; readonly period?: Period; readonly arbitrable?: Address } = {},
+  options: { readonly chainId?: number; readonly disputeId?: bigint; readonly period?: Period; readonly arbitrable?: Address; readonly ruled?: boolean } = {},
 ): Extract<DisputeLookup, { status: "found" }> {
-  const { chainId = 1, disputeId = 1n, period = 0, arbitrable = TEST_ARBITRABLE } = options;
+  const { chainId = 1, disputeId = 1n, period = 0, arbitrable = TEST_ARBITRABLE, ruled = false } = options;
   return {
     status: "found",
-    dispute: testDispute({ id: disputeId, period, arbitrated: arbitrable }),
+    dispute: testDispute({ id: disputeId, period, arbitrated: arbitrable, ruled }),
     binding: testBinding({ chainId, disputeId, arbitrated: arbitrable }),
   };
 }
@@ -65,7 +65,7 @@ export function testFamily(overrides: Partial<FamilyDetection> = {}): FamilyDete
     capabilities: {
       localId: "externalIDtoLocalID",
       evidence: { kind: "local-id" },
-      appeal: { kind: "idr", fundAppeal: "fundAppeal(uint256,uint256)" },
+      appeal: { kind: "idr" },
       withdraw: { kind: "idr-v2" },
     },
     realityProxy: null,
@@ -93,6 +93,7 @@ export function testDetails(lookup: Extract<DisputeLookup, { status: "found" }>,
     binding: lookup.binding,
     votesLengths: { ok: true, value: [3n] },
     currentRuling: { ok: true, value: 1n },
+    lastRoundVotes: null,
     appealDecisions: { ok: true, value: [] },
     appealInfo: null,
     localId: { kind: "local-id", value: 7n },
@@ -137,6 +138,7 @@ export function testCaseDispute(overrides: Partial<CaseDispute> = {}): CaseDispu
     appealDecisions: sectionLoading,
     courts: sectionLoading,
     appealPanel: sectionLoading,
+    decision: sectionLoading,
     write: sectionLoading,
     ...overrides,
   };

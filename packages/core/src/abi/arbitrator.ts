@@ -41,6 +41,20 @@ export const klerosLiquidAbi = [
   },
   {
     type: "function",
+    name: "getVoteCounter",
+    stateMutability: "view",
+    inputs: [
+      { name: "_disputeID", type: "uint256" },
+      { name: "_appeal", type: "uint256" },
+    ],
+    outputs: [
+      { name: "winningChoice", type: "uint256" },
+      { name: "counts", type: "uint256[]" },
+      { name: "tied", type: "bool" },
+    ],
+  },
+  {
+    type: "function",
     name: "appealPeriod",
     stateMutability: "view",
     inputs: [{ name: "_disputeID", type: "uint256" }],
@@ -161,6 +175,23 @@ export const erc1497Abi = [
       { name: "_disputeID", type: "uint256", indexed: true },
       { name: "_metaEvidenceID", type: "uint256", indexed: false },
       { name: "_evidenceGroupID", type: "uint256", indexed: false },
+    ],
+  },
+] as const satisfies Abi;
+
+/**
+ * ERC-792 `IArbitrable` (`@kleros/kleros-interaction`): the event an arbitrable emits with the ruling it executed, which
+ * can differ from the arbitrator's when its own rules replace it.
+ */
+export const erc792Abi = [
+  {
+    type: "event",
+    name: "Ruling",
+    anonymous: false,
+    inputs: [
+      { name: "_arbitrator", type: "address", indexed: true },
+      { name: "_disputeID", type: "uint256", indexed: true },
+      { name: "_ruling", type: "uint256", indexed: false },
     ],
   },
 ] as const satisfies Abi;

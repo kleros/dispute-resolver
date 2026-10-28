@@ -16,7 +16,7 @@ import {
   testFoundLookup,
   testOkMetaEvidence,
 } from "../test/data";
-import { queryKeys } from "./queryKeys";
+import { disputeKeyPrefix, queryKeys } from "./queryKeys";
 import type { CaseData, CaseDispute, CoreDeps } from "./types";
 import { useCase } from "./useCase";
 
@@ -40,9 +40,9 @@ const governorFamily: FamilyDetection = testFamily({
   capabilities: { localId: "none", evidence: { kind: "none" }, appeal: { kind: "governor" }, withdraw: { kind: "governor" } },
 });
 
-/** Programs every read of dispute 1 on chain 1 in `period` to succeed. */
-function programReads(period: Period = 0): void {
-  const lookup = testFoundLookup({ period });
+/** Programs every read of dispute 1 on chain 1 in `period` to succeed; `ruled` says whether the arbitrator executed the ruling. */
+function programReads(period: Period = 0, ruled = false): void {
+  const lookup = testFoundLookup({ period, ruled });
   vi.mocked(core.lookupDispute).mockResolvedValue(lookup);
   vi.mocked(core.detectFamily).mockResolvedValue(testFamily());
   vi.mocked(core.loadMetaEvidence).mockResolvedValue(testOkMetaEvidence());
@@ -66,6 +66,7 @@ function programReads(period: Period = 0): void {
   });
   vi.mocked(core.readRoundFunding).mockImplementation((_context, round) => Promise.resolve({ ok: true, value: { round, contributions: [], fundedRulings: [] } }));
   vi.mocked(core.readWithdrawable).mockResolvedValue({ status: "nothing" });
+  vi.mocked(core.readExecutedRuling).mockResolvedValue({ status: "executed", ruling: 2n });
 }
 
 function renderCase(disputeId: bigint | null, options: { readonly deps?: CoreDeps; readonly account?: Address; readonly client?: QueryClient } = {}) {
@@ -77,6 +78,7 @@ async function settledCase(result: { readonly current: CaseData }): Promise<Case
   await waitFor(() => {
     const current = caseDispute(result.current);
     expect(current.view.status).not.toBe("loading");
+    expect(current.decision.status).not.toBe("loading");
     expect(current.appealPanel.status).not.toBe("loading");
     expect(current.evidence.status).not.toBe("loading");
   });
@@ -102,6 +104,7 @@ describe("useCase", () => {
     expect(current.family).toEqual({ status: "ready", value: testFamily() });
     expect(current.evidence).toEqual({ status: "ready", value: EVIDENCE });
     expect(current.appealPanel).toEqual({ status: "ready", value: { kind: "hidden" } });
+    expect(current.decision).toEqual({ status: "ready", value: { kind: "none" } });
     expect(current.write.status).toBe("ready");
     expect(core.loadEvidence).toHaveBeenCalledWith(expect.objectContaining({ evidenceGroupId: 3n, arbitrable: testFoundLookup().binding.arbitrated }));
     expect(core.readDisputeDetails).toHaveBeenCalledWith(
@@ -140,7 +143,7 @@ describe("useCase", () => {
     rerender({ id: 2n });
     const current = caseDispute(result.current);
     expect(current.disputeId).toBe(2n);
-    for (const section of [current.lookup, current.view, current.family, current.metaEvidence, current.evidence, current.appealPanel, current.write]) {
+    for (const section of [current.lookup, current.view, current.family, current.metaEvidence, current.evidence, current.appealPanel, current.decision, current.write]) {
       expect(section).toEqual({ status: "loading" });
     }
   });
@@ -295,8 +298,76 @@ describe("useCase", () => {
     const current = await settledCase(result);
     expect(core.readRoundFunding).not.toHaveBeenCalled();
     expect(core.readWithdrawable).not.toHaveBeenCalled();
-    expect(current.view).toMatchObject({ status: "ready", value: { decision: { ok: false, error: { message: "logs refused" } } } });
+    expect(current.appealPanel).toMatchObject({ status: "ready", value: { kind: "withdraw", state: { status: "unavailable", error: { message: "logs refused" } } } });
+    expect(current.decision).toMatchObject({ status: "ready", value: { kind: "jury-ruling", execution: "pending" } });
     expect(current.appealDecisions).toMatchObject({ status: "unavailable", error: { code: "rpc-error", message: "logs refused" } });
+  });
+
+  it("the executed ruling is read only in execution once the arbitrator executed it, from the last round's start", async () => {
+    programReads(4, true);
+    const { result } = renderCase(1n);
+    const current = await settledCase(result);
+    expect(core.readExecutedRuling).toHaveBeenCalledTimes(1);
+    const [context, input] = vi.mocked(core.readExecutedRuling).mock.calls[0] ?? [];
+    expect(context).toMatchObject({ chainId: 1 });
+    expect(input).toEqual({ binding: testFoundLookup().binding, dispute: testFoundLookup({ period: 4, ruled: true }).dispute, fromBlock: 500n });
+    expect(current.decision).toMatchObject({ status: "ready", value: { kind: "winner", winner: { ruling: 2n }, execution: "executed" } });
+  });
+
+  it("scans for the executed ruling from the dispute's start when the appeal decisions failed", async () => {
+    programReads(4, true);
+    vi.mocked(core.readDisputeDetails).mockImplementation((_context, found) =>
+      Promise.resolve(testDetails({ status: "found", ...found }, { appealDecisions: { ok: false, error: { code: "rpc-error", message: "logs refused" } } })),
+    );
+    const { result } = renderCase(1n);
+    await settledCase(result);
+    expect(vi.mocked(core.readExecutedRuling).mock.calls[0]?.[1]).toMatchObject({ fromBlock: 100n });
+  });
+
+  it.each([
+    ["in the appeal period", 3, true],
+    ["in execution before the arbitrator executed the ruling", 4, false],
+  ] as const)("reads no executed ruling %s", async (_case, period, ruled) => {
+    programReads(period, ruled);
+    const { result } = renderCase(1n);
+    const current = await settledCase(result);
+    expect(core.readExecutedRuling).not.toHaveBeenCalled();
+    expect(current.decision.status).toBe("ready");
+  });
+
+  it("the decision is read again on the appeal refresh, and the executed ruling with it", async () => {
+    programReads(4, true);
+    const client = createTestQueryClient();
+    const { result } = renderCase(1n, { client });
+    await settledCase(result);
+    vi.mocked(core.readExecutedRuling).mockResolvedValue({ status: "executed", ruling: 1n });
+    await act(() => client.invalidateQueries({ queryKey: disputeKeyPrefix("executedRuling", 1, 1n) }));
+    await waitFor(() => {
+      expect(caseDispute(result.current).decision).toMatchObject({ status: "ready", value: { kind: "winner", wonBy: "reported", winner: { ruling: 1n } } });
+    });
+  });
+
+  it.each([
+    ["an executed ruling, which a later report can still contradict", { status: "executed", ruling: 2n }, 2],
+    ["reports that disagree, which no later report can resolve", { status: "inconsistent" }, 1],
+  ] as const)("reads the arbitrable's report again ten minutes later only for %s", async (_case, report, reads) => {
+    programReads(4, true);
+    vi.mocked(core.readExecutedRuling).mockResolvedValue(report);
+    const client = createTestQueryClient();
+    const first = renderCase(1n, { client });
+    await settledCase(first.result);
+    first.unmount();
+    const later = Date.now() + 11 * 60_000;
+    const clock = vi.spyOn(Date, "now").mockReturnValue(later);
+    try {
+      const second = renderCase(1n, { client });
+      await settledCase(second.result);
+      await waitFor(() => {
+        expect(core.readExecutedRuling).toHaveBeenCalledTimes(reads);
+      });
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it("passes the AppealDecision events of the details to the evidence section", async () => {

@@ -17,7 +17,7 @@ export {
 export { REFUSED_RULING_TEXT, asQuestionType, combinationCode, combinationTitle, encodeAnswer, formatRuling } from "./rulings";
 export { REGISTRY, getOverride, isDisplayAllowlisted, toRegistryAddress } from "./registry";
 export { createReadClients, describeError, redactingHttp } from "./rpc";
-export { createFamilyCache, detectFamily } from "./families";
+export { createFamilyCache, describeAppealRules, detectFamily } from "./families";
 export { JSON_DUPLICATE_KEY_GUARD } from "./reality";
 export {
   CASE_PAGE_BUDGET_MS,
@@ -30,9 +30,21 @@ export {
   realityNotice,
 } from "./metaEvidence";
 export { buildEvidenceDocument, evidenceScanStart, loadEvidence, readDisputeEvent, readMetaEvidenceEvent } from "./evidence";
-export { buildDisputeView, deriveCompatibility, listCourts, listOngoingDisputes, lookupDispute, parseDisputeId, readDisputeDetails } from "./disputes";
+export {
+  buildDecision,
+  buildDisputeView,
+  deriveCompatibility,
+  listCourts,
+  listOngoingDisputes,
+  lookupDispute,
+  parseDisputeId,
+  readDisputeDetails,
+  readExecutedRuling,
+  zeroRulingReason,
+} from "./disputes";
 export {
   buildAppealPanel,
+  cardFundingState,
   enteredAnswerFunding,
   fundingRound,
   hasAppealPanel,
@@ -45,7 +57,16 @@ export {
   type EnteredAnswerFunding,
 } from "./appeals";
 export { CREATE_LIMITS, buildCreatedMetaEvidence, disputeIdFromReceipt, encodeExtraData, numberOfRulingOptions, readArbitrationCost, validateCreateInput } from "./create";
-export { buildCreateDisputeCall, buildEscrowAppealCall, buildFundAppealCall, buildSubmitEvidenceCall, buildWithdrawCalls, checkChainMatch, readAppealCost } from "./writes";
+export {
+  buildCreateDisputeCall,
+  buildEscrowAppealCall,
+  buildFundAppealCall,
+  buildSubmitEvidenceCall,
+  buildWithdrawCalls,
+  checkChainMatch,
+  readAppealCost,
+  simulateWrite,
+} from "./writes";
 export { compareBigint } from "./bigint";
 export { BodyTooLargeError } from "./fetch";
 export { z } from "./zod";

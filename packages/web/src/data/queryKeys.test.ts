@@ -23,6 +23,7 @@ const everyKey = [
   queryKeys.cost(1, "0x00"),
   queryKeys.accountCode(1, ARBITRABLE),
   queryKeys.chainTime(100),
+  queryKeys.executedRuling(1, 5n, 1_000n),
   IDLE_KEY,
 ];
 

@@ -1,7 +1,7 @@
 import type { Address, Outcome, Period, ReadClient, Unavailable } from "../types";
 import type { AppealInfo, ArbitratedBinding, LocalIdResolution } from "../disputes/types";
-import type { FamilyDetection } from "../families/types";
-import type { BehaviorOverride } from "../registry/types";
+import type { AppealRules, FamilyDetection, RulingNoun, TieDialect } from "../families/types";
+import type { BehaviorOverride, Settlement } from "../registry/types";
 import type { FallbackOutcomes, RulingOptions, VariableQuestionType } from "../rulings/types";
 
 /** Appeal multipliers, all in the arbitrable's own basis. */
@@ -18,6 +18,7 @@ export interface Multipliers {
 
 export interface SideRequirement {
   readonly total: bigint;
+  /** Funding closes at this second: the contracts accept a contribution only strictly before it. */
   readonly deadline: number;
 }
 
@@ -62,6 +63,15 @@ export interface AppealContext {
 
 export type CardOrigin = "refuse" | "reserved" | "option" | "combination" | "contributed-value" | "current-ruling";
 
+/**
+ * The terms a card is funded on: the current ruling's, the other rulings', or one deposit until the period ends shared
+ * by every ruling (a governor tie, or a tie where every option is costed as a winner).
+ */
+export type CardSide = "winner" | "loser" | "shared";
+
+/** Whether a card can still be funded, from the chain's time: fully funded first, then closed from its deadline on. */
+export type CardFundingState = "open" | "funded" | "closed";
+
 export interface CrowdfundingCard {
   readonly origin: CardOrigin;
   readonly title: string;
@@ -69,27 +79,47 @@ export interface CrowdfundingCard {
   readonly code: bigint;
   /** "Latest jury decision". */
   readonly isWinner: boolean;
+  readonly side: CardSide;
   readonly required: bigint;
   readonly contributed: bigint;
   readonly remaining: bigint;
-  /** `contributed × 10000 / required / 100`, two decimals, 0 when `required` is 0. */
+  /** `contributed × 10000 / required / 100`, two decimals, 0 when `required` is 0; at least 100 once fully funded. */
   readonly fundedPercent: number;
   readonly deadline: number;
+  /** The contract reported this ruling fully funded in the round, whatever today's appeal cost would require. */
+  readonly fullyFunded: boolean;
 }
 
-/** The free-input card of variable-type questions; funded at the loser amount and deadline. */
+/** The free-input card of variable-type questions; a new answer is funded on the loser terms, or the shared ones in a tie. */
 export interface FreeInputCard {
   readonly type: VariableQuestionType;
   readonly precision: number | undefined;
+  readonly side: CardSide;
   readonly required: bigint;
   readonly deadline: number;
 }
 
-/** Multiple-select above four options: the user ticks options and funds the resulting combination at the loser amount. */
+/** Multiple-select above four options: the user ticks options and funds the resulting combination, as a free input. */
 export interface MultipleSelectComposer {
   readonly titles: readonly string[];
+  readonly side: CardSide;
   readonly required: bigint;
   readonly deadline: number;
+}
+
+/** What the crowdfunding panel states beside its cards. */
+export interface FundingTerms {
+  readonly verified: boolean;
+  readonly settlement: Settlement;
+  readonly refundsWithoutAppeal: boolean;
+  readonly noun: RulingNoun;
+  /** How the sides are set while the current ruling is 0; `null` otherwise. */
+  readonly tie: TieDialect | null;
+  readonly appealPeriodEnd: number;
+  /** When funding closes for rulings other than the current one, never after the appeal period end. */
+  readonly loserDeadline: number;
+  /** That window as a percentage of the appeal period, from the live multipliers, two decimals, at most 100. */
+  readonly loserWindowPercent: number;
 }
 
 /** One withdrawable entry; the action withdraws them in sequence, one transaction each. */
@@ -106,7 +136,10 @@ export type WithdrawState =
 export type AppealPanel =
   | { readonly kind: "hidden" }
   | { readonly kind: "handled-by-arbitrable" }
-  | { readonly kind: "escrow-appeal"; readonly appealCost: bigint; readonly deadline: number }
+  | { readonly kind: "not-appealable" } // the arbitrable has no way to appeal
+  | { readonly kind: "funding-unsupported" } // the arbitrable's funding dialect is not supported here
+  /** `verified`: the registry read the escrow's code, which checks no time, so it takes an appeal until the court moves the dispute to execution. */
+  | { readonly kind: "escrow-appeal"; readonly appealCost: bigint; readonly deadline: number; readonly verified: boolean }
   | { readonly kind: "escrow-ended" }
   | {
       readonly kind: "crowdfunding";
@@ -114,6 +147,7 @@ export type AppealPanel =
       readonly cards: readonly CrowdfundingCard[];
       readonly freeInput: FreeInputCard | null;
       readonly composer: MultipleSelectComposer | null;
+      readonly terms: FundingTerms;
     }
   | { readonly kind: "fees-unavailable"; readonly error: Unavailable }
   | { readonly kind: "withdraw"; readonly state: WithdrawState }
@@ -123,6 +157,8 @@ export type AppealPanel =
 export interface AppealPanelInput {
   readonly family: FamilyDetection;
   readonly period: Period;
+  /** `describeAppealRules` of the same family. */
+  readonly rules: AppealRules;
   readonly override: BehaviorOverride | undefined;
   readonly rulingOptions: RulingOptions;
   readonly fallbackOutcomes: FallbackOutcomes;

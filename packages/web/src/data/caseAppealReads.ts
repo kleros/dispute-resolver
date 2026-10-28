@@ -46,6 +46,15 @@ function roundPlan(period: Period, decisions: readonly AppealDecisionEvent[], ov
   };
 }
 
+/**
+ * Where the scan for the arbitrable's executed ruling starts: the funding round's start, as for its funding, or where
+ * round 0 starts when the appeal decisions were not read. It never waits on the family.
+ */
+export function executedRulingFrom(decisions: SectionData<readonly AppealDecisionEvent[]>, override: BehaviorOverride | undefined, disputeStartBlock: bigint): bigint {
+  if (decisions.status !== "ready") return disputeStartBlock;
+  return roundStartBlock(fundingRound(decisions.value.length, override), decisions.value, override, disputeStartBlock);
+}
+
 function failedReads(period: Period, state: Extract<SectionData<AppealPlan>, { status: "unavailable" }>): AppealReads {
   const failed = unavailableFrom(state.error);
   return { multipliers: period === 3 ? failed : null, funding: period >= 3 ? failed : null, withdraw: period === 4 ? failed : null };

@@ -12,8 +12,10 @@ import type { Address, Hex } from "../../types";
 import type { Family } from "../types";
 import bytecode1 from "./bytecode-1.json";
 import bytecode100 from "./bytecode-100.json";
+import bytecode100Verified from "./bytecode-100-verified.json";
 import bytecode10200 from "./bytecode-10200.json";
 import bytecode11155111 from "./bytecode-11155111.json";
+import bytecode11155111Verified from "./bytecode-11155111-verified.json";
 
 const FAMILIES = ["reality-proxy", "escrow-v1", "governor", "idr-v2", "idr-v1", "idr-legacy", "view-only"] as const satisfies readonly Family[];
 
@@ -60,19 +62,21 @@ export interface RecordedContract {
   readonly implementation: { readonly address: Address; readonly code: Hex } | null;
 }
 
-export const RECORDED_CONTRACTS: readonly RecordedContract[] = [bytecode1, bytecode100, bytecode10200, bytecode11155111].flatMap((raw) => {
-  const record = recordSchema.parse(raw);
-  return record.contracts.map((contract): RecordedContract => ({
-    chainId: record.chainId,
-    blockNumber: record.blockNumber,
-    address: contract.address,
-    label: contract.label,
-    expectedFamily: contract.expectedFamily,
-    expectedSelectors: inSelectorOrder(contract.expectedSelectors),
-    code: contract.code,
-    implementation: contract.eip1967Implementation ?? null,
-  }));
-});
+export const RECORDED_CONTRACTS: readonly RecordedContract[] = [bytecode1, bytecode100, bytecode100Verified, bytecode10200, bytecode11155111, bytecode11155111Verified].flatMap(
+  (raw) => {
+    const record = recordSchema.parse(raw);
+    return record.contracts.map((contract): RecordedContract => ({
+      chainId: record.chainId,
+      blockNumber: record.blockNumber,
+      address: contract.address,
+      label: contract.label,
+      expectedFamily: contract.expectedFamily,
+      expectedSelectors: inSelectorOrder(contract.expectedSelectors),
+      code: contract.code,
+      implementation: contract.eip1967Implementation ?? null,
+    }));
+  },
+);
 
 /** The recorded contract at `address` on `chainId`; throws when it was not recorded, so a typo fails the test loudly. */
 export function recorded(chainId: number, address: string): RecordedContract {

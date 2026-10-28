@@ -1,14 +1,31 @@
-import { checkChainMatch, explorerTxUrl, getChain, type Hex, type WriteBuild, type WriteCall } from "@dispute-resolver/core";
-import { getAccount, writeContract, type Config } from "@wagmi/core";
+import {
+  checkChainMatch,
+  explorerTxUrl,
+  getChain,
+  toRegistryAddress,
+  type Address,
+  type Hex,
+  type SimulationResult,
+  type WriteBuild,
+  type WriteCall,
+} from "@dispute-resolver/core";
+import { getAccount, writeContract, type Config, type Connector } from "@wagmi/core";
 import type { WriteReceipt } from "../data";
 import { errorMessage, isChainMismatch, isUserRejection } from "./errors";
 import type { NeedsWalletGuard, WriteOptions, WriteOutcome, WriteStatus, WrongChainGuard } from "./types";
 import { currentWalletState, toWalletState } from "./useWallet";
 
-/** What one write needs besides the call: wagmi to sign, and the configured read RPC for the receipt. */
+/** What one write needs besides the call: wagmi to sign, and the configured read RPC for the check and the receipt. */
 export interface WriteEnvironment {
   readonly config: Config;
   waitForReceipt(chainId: number, hash: Hex): Promise<WriteReceipt>;
+  simulate(call: WriteCall, from: Address): Promise<SimulationResult>;
+}
+
+/** The account the call is checked for and signed from, as wagmi reports it, with its connector. */
+interface Signer {
+  readonly address: `0x${string}`;
+  readonly connector: Connector;
 }
 
 type Report = (status: WriteStatus) => void;
@@ -33,13 +50,56 @@ function connectorChainId(config: Config): Promise<number | undefined> {
   return account.connector.getChainId();
 }
 
+function currentSigner(config: Config): Signer | undefined {
+  const account = getAccount(config);
+  if (toWalletState(account).status !== "connected" || account.address === undefined || account.connector === undefined) return undefined;
+  return { address: account.address, connector: account.connector };
+}
+
+function sameSigner(current: Signer | undefined, checked: Signer): boolean {
+  return current?.connector.uid === checked.connector.uid && current.address.toLowerCase() === checked.address.toLowerCase();
+}
+
+const ACCOUNT_CHANGED = "Your wallet's account changed while the transaction was checked. Try again.";
+
+/** What a check that did not pass ends the write with; nothing is sent after any of them. */
+function checkOutcome(result: Exclude<SimulationResult, { readonly status: "ok" }>): WriteOutcome {
+  switch (result.status) {
+    case "reverted":
+      return { phase: "refused-by-contract", reason: result.reason };
+    case "insufficient-funds":
+      return { phase: "insufficient-funds" };
+    case "unavailable":
+      return { phase: "check-failed", message: result.error.message };
+  }
+}
+
+/**
+ * Checks the call against the contract through the read RPC, as `signer` would send it. Only a passing check lets the
+ * write go on, and only if the wallet still holds that account afterwards; a check that throws blocks the write too.
+ */
+async function check(environment: WriteEnvironment, call: WriteCall, signer: Signer): Promise<WriteOutcome | null> {
+  let result: SimulationResult;
+  try {
+    result = await environment.simulate(call, toRegistryAddress(signer.address));
+  } catch (error) {
+    return { phase: "check-failed", message: errorMessage(error, call.chainId) };
+  }
+  if (result.status !== "ok") return checkOutcome(result);
+  return sameSigner(currentSigner(environment.config), signer) ? null : { phase: "check-failed", message: ACCOUNT_CHANGED };
+}
+
 function explorerUrl(chainId: number, hash: Hex): string | null {
   const chain = getChain(chainId);
   return chain === undefined ? null : explorerTxUrl(chain, hash);
 }
 
-/** Signs one call. A chain change between the guard and the signature is caught by wagmi's `chainId` check. */
-async function sign(config: Config, call: WriteCall, pageChainId: number): Promise<{ readonly hash: Hex } | { readonly outcome: WriteOutcome }> {
+/**
+ * Signs one call from the checked account. A chain change between the guard and the signature is caught by wagmi's
+ * `chainId` check, and an account change by its check that the connection still holds `account`. The connector is not
+ * passed: wagmi would then compare the connector's fresh chain with itself instead of with the connection's.
+ */
+async function sign(config: Config, call: WriteCall, pageChainId: number, signer: Signer): Promise<{ readonly hash: Hex } | { readonly outcome: WriteOutcome }> {
   try {
     const hash = await writeContract(config, {
       address: call.address,
@@ -48,6 +108,7 @@ async function sign(config: Config, call: WriteCall, pageChainId: number): Promi
       args: call.args,
       value: call.value,
       chainId: call.chainId,
+      account: signer.address,
     });
     return { hash };
   } catch (error) {
@@ -108,8 +169,9 @@ async function confirm(environment: WriteEnvironment, call: WriteCall, hash: Hex
 
 /**
  * The call must target the page chain, whatever the wallet state. The wallet must be on the page chain too, checked
- * from wagmi's state and again on the connector right before signing. A user rejection is not an error. Every status
- * goes to `report`; the final one is also returned. Never throws.
+ * from wagmi's state and again on the connector right before signing. Between the two, the call is checked against the
+ * contract from the connected account, and nothing reaches the wallet unless the check passes. A user rejection is not
+ * an error. Every status goes to `report`; the final one is also returned. Never throws.
  */
 export async function performWrite(environment: WriteEnvironment, build: WriteBuild, options: WriteOptions, report: Report): Promise<WriteOutcome> {
   const settle = (outcome: WriteOutcome): WriteOutcome => {
@@ -123,6 +185,12 @@ export async function performWrite(environment: WriteEnvironment, build: WriteBu
 
   const guard = chainGuard(connectedChainId(config), pageChainId);
   if (guard !== null) return settle(guard);
+  const signer = currentSigner(config);
+  if (signer === undefined) return settle({ phase: "needs-wallet", pageChainId });
+
+  report({ phase: "checking" });
+  const stopped = await check(environment, build.call, signer);
+  if (stopped !== null) return settle(stopped);
 
   report({ phase: "pending" });
   let currentChainId: number | undefined;
@@ -134,7 +202,7 @@ export async function performWrite(environment: WriteEnvironment, build: WriteBu
   const recheck = chainGuard(currentChainId, pageChainId);
   if (recheck !== null) return settle(recheck);
 
-  const signed = await sign(config, build.call, pageChainId);
+  const signed = await sign(config, build.call, pageChainId, signer);
   if ("outcome" in signed) return settle(signed.outcome);
 
   report({ phase: "submitted", hash: signed.hash, explorerUrl: explorerUrl(build.call.chainId, signed.hash) });

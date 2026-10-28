@@ -1,10 +1,11 @@
 import { compareBigint } from "../bigint";
+import type { TieDialect } from "../families/types";
 import type { BehaviorOverride } from "../registry/types";
 import { combinationTitle, decodeRulingCode, formatRuling, isVariableType, reservedCode } from "../rulings";
 import type { FallbackOutcomes, RulingOptions } from "../rulings/types";
 
 import { fundedPercent, isWinningCode } from "./amounts";
-import type { AppealAmounts, CardOrigin, CrowdfundingCard, CrowdfundingSet, RoundFunding } from "./types";
+import type { AppealAmounts, CardFundingState, CardOrigin, CardSide, CrowdfundingCard, CrowdfundingSet, RoundFunding } from "./types";
 
 const REFUSE_CARD_TITLE = "Invalid / Refused to Arbitrate / Tied";
 
@@ -20,26 +21,41 @@ interface CardContext {
   readonly override: BehaviorOverride | undefined;
   /** Total contributed per ruling code in the funding round. */
   readonly contributed: ReadonlyMap<bigint, bigint>;
+  /** The rulings the contract reported fully funded in the round. */
+  readonly funded: ReadonlySet<bigint>;
+  /** Every ruling shares one side: a governor tie, or a tie where every option is a winner. */
+  readonly shared: boolean;
 }
+
+const FULLY_FUNDED_PERCENT = 100;
 
 /**
  * One fixed card. Costing and deadline follow `isWinningCode`, but the "Latest jury decision" mark is the current ruling
- * only, so Unslashed's ruling 0 marks no option although every option is costed as a winner.
+ * only, so Unslashed's ruling 0 marks no option although every option is costed as a winner. A ruling the contract
+ * reported fully funded stays so even if today's appeal cost would ask for more.
  */
 function card(context: CardContext, origin: CardOrigin, title: string, code: bigint): CrowdfundingCard {
-  const side = isWinningCode(code, context.currentRuling, context.override) ? context.amounts.winner : context.amounts.loser;
+  const winning = isWinningCode(code, context.currentRuling, context.override);
+  const terms = winning ? context.amounts.winner : context.amounts.loser;
+  let side: CardSide = winning ? "winner" : "loser";
+  if (context.shared) side = "shared";
   const contributed = context.contributed.get(code) ?? 0n;
-  const remaining = side.total > contributed ? side.total - contributed : 0n;
+  const fullyFunded = context.funded.has(code);
+  const percent = fundedPercent(contributed, terms.total);
+  let remaining = terms.total > contributed ? terms.total - contributed : 0n;
+  if (fullyFunded) remaining = 0n;
   return {
     origin,
     title,
     code,
     isWinner: code === context.currentRuling,
-    required: side.total,
+    side,
+    required: terms.total,
     contributed,
     remaining,
-    fundedPercent: fundedPercent(contributed, side.total),
-    deadline: side.deadline,
+    fundedPercent: fullyFunded ? Math.max(percent, FULLY_FUNDED_PERCENT) : percent,
+    deadline: terms.deadline,
+    fullyFunded,
   };
 }
 
@@ -96,7 +112,8 @@ function questionCards(context: CardContext, options: RulingOptions, fallbackOut
 /**
  * The crowdfunding cards of the funding round: the refuse card unless option 0 is not fundable (Unslashed), the
  * reserved answers, then the cards of the question type. Variable types add a free input and multiple-select above four
- * options a composer, both at the loser amount and deadline.
+ * options a composer, both for a new answer: at the loser amount and deadline, or the shared ones in a tie that costs
+ * every ruling alike.
  */
 export function buildCrowdfundingCards(input: {
   readonly rulingOptions: RulingOptions;
@@ -105,33 +122,45 @@ export function buildCrowdfundingCards(input: {
   readonly amounts: AppealAmounts;
   readonly funding: RoundFunding;
   readonly override: BehaviorOverride | undefined;
+  /** How the sides are set while the current ruling is 0; `null` otherwise. */
+  readonly tie: TieDialect | null;
 }): CrowdfundingSet {
   const { rulingOptions, fallbackOutcomes, amounts } = input;
   const contributed = new Map<bigint, bigint>();
   for (const { ruling, amount } of input.funding.contributions) contributed.set(ruling, (contributed.get(ruling) ?? 0n) + amount);
-  const context: CardContext = { currentRuling: input.currentRuling, amounts, override: input.override, contributed };
+  const shared = input.tie === "shared-full-period" || input.tie === "all-winner";
+  const context: CardContext = { currentRuling: input.currentRuling, amounts, override: input.override, contributed, funded: new Set(input.funding.fundedRulings), shared };
   const refuse = input.override?.refuseToArbitrateFundable === false ? [] : [card(context, "refuse", REFUSE_CARD_TITLE, 0n)];
   const fixed = [...refuse, ...reservedCards(context, rulingOptions.reserved)];
   const taken = new Set(fixed.map((fixedCard) => fixedCard.code));
   const cards = [...fixed, ...questionCards(context, rulingOptions, fallbackOutcomes, taken)];
   const { type, titles, precision } = rulingOptions;
-  const loser = { required: amounts.loser.total, deadline: amounts.loser.deadline };
+  const newAnswer = shared ? amounts.winner : amounts.loser;
+  const entered = { side: shared ? ("shared" as const) : ("loser" as const), required: newAnswer.total, deadline: newAnswer.deadline };
   return {
     cards,
-    freeInput: isVariableType(type) ? { type, precision, ...loser } : null,
-    composer: type === "multiple-select" && titles !== undefined && titles.length > MAX_ENUMERATED_OPTIONS ? { titles, ...loser } : null,
+    freeInput: isVariableType(type) ? { type, precision, ...entered } : null,
+    composer: type === "multiple-select" && titles !== undefined && titles.length > MAX_ENUMERATED_OPTIONS ? { titles, ...entered } : null,
   };
+}
+
+/** Fully funded wins over the deadline; otherwise closed from the deadline second on, as the contracts compare strictly. */
+export function cardFundingState(card: { readonly deadline: number; readonly fullyFunded: boolean }, nowSeconds: number): CardFundingState {
+  if (card.fullyFunded) return "funded";
+  return nowSeconds >= card.deadline ? "closed" : "open";
 }
 
 /** The funding shown for an answer the user enters on the free input or the composer. */
 export interface EnteredAnswerFunding {
   /** The card that already funds the entered answer's code, or `null` for a new answer. */
   readonly card: CrowdfundingCard | null;
+  readonly side: CardSide;
   readonly required: bigint;
   readonly contributed: bigint;
   readonly remaining: bigint;
   readonly fundedPercent: number;
   readonly deadline: number;
+  readonly fullyFunded: boolean;
 }
 
 /**
@@ -140,11 +169,22 @@ export interface EnteredAnswerFunding {
  */
 export function enteredAnswerFunding(
   cards: readonly CrowdfundingCard[],
-  entered: { readonly required: bigint; readonly deadline: number },
+  entered: { readonly side: CardSide; readonly required: bigint; readonly deadline: number },
   code: bigint | null,
 ): EnteredAnswerFunding {
   const matched = code === null ? undefined : cards.find((candidate) => candidate.code === code);
-  if (matched === undefined) return { card: null, required: entered.required, contributed: 0n, remaining: entered.required, fundedPercent: 0, deadline: entered.deadline };
-  const { required, contributed, remaining, deadline } = matched;
-  return { card: matched, required, contributed, remaining, fundedPercent: matched.fundedPercent, deadline };
+  if (matched === undefined) {
+    return {
+      card: null,
+      side: entered.side,
+      required: entered.required,
+      contributed: 0n,
+      remaining: entered.required,
+      fundedPercent: 0,
+      deadline: entered.deadline,
+      fullyFunded: false,
+    };
+  }
+  const { side, required, contributed, remaining, deadline, fullyFunded } = matched;
+  return { card: matched, side, required, contributed, remaining, fundedPercent: matched.fundedPercent, deadline, fullyFunded };
 }

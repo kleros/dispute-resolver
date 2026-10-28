@@ -1,5 +1,5 @@
 import { BaseError, HttpRequestError } from "viem";
-import { causeChain, isLookupLimitError } from "./errors";
+import { causeChain, isLookupLimitError, isTooManyLogsError } from "./errors";
 
 const RATE_LIMIT_ERROR = /rate[\s-]?limit|too many requests|\b429\b|capacity|throughput|request count|compute units/i;
 const RANGE_LIMIT_ERROR = /range|limit|exceed|too many|too large|10[,_]?000|response size|size exceeded|more than|\b413\b|timeout|timed out/i;
@@ -29,11 +29,11 @@ function numericCode(error: unknown): number | undefined {
  * Whether `eth_getLogs` failed because the range or the result is too large for the provider, as opposed to a transient
  * or unrelated failure. Rate limiting reuses some of the same wording and codes, so it is excluded first.
  * Timeouts count as range limits: retrying a request too heavy to answer in time would only burn the deadline. A
- * `LookupLimitError` is never a range limit.
+ * `LookupLimitError` or a `TooManyLogsError` is never a range limit: both are the caller's own limits.
  */
 export function isRangeLimitError(error: unknown): boolean {
   const chain = causeChain(error);
-  if (chain.some(isLookupLimitError)) return false;
+  if (chain.some((link) => isLookupLimitError(link) || isTooManyLogsError(link))) return false;
   const text = chain.map(wording).join("\n");
   if (RATE_LIMIT_ERROR.test(text)) return false;
   if (chain.some((link) => RANGE_LIMIT_CODES.has(numericCode(link) ?? 0))) return true;

@@ -11,9 +11,11 @@ export interface FundingCardProps {
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
   readonly isFundDisabled: boolean;
+  /** Whether the registry verified the contract's rules, which words the card's deadline. */
+  readonly verified: boolean;
 }
 
-export function FundingCard({ card, actions, chain, isFundDisabled }: FundingCardProps) {
+export function FundingCard({ card, actions, chain, isFundDisabled, verified }: FundingCardProps) {
   const titleId = useId();
   return (
     <li className={CARD_ITEM_CLASS} aria-labelledby={titleId}>
@@ -25,7 +27,7 @@ export function FundingCard({ card, actions, chain, isFundDisabled }: FundingCar
           {card.isWinner ? <span className={CHIP_STATUS}>Latest jury decision</span> : null}
         </div>
         <div className={CARD_FOOTER_CLASS}>
-          <EnteredAnswerFooter funding={card} subject={card.title} code={card.code} actions={actions} chain={chain} isFundDisabled={isFundDisabled} />
+          <EnteredAnswerFooter funding={card} subject={card.title} code={card.code} actions={actions} chain={chain} isFundDisabled={isFundDisabled} verified={verified} />
         </div>
       </Card>
     </li>

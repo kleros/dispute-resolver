@@ -1,9 +1,10 @@
 /** Test-only recordings, synthetic logs and fetcher for the disputes module, with the shared fake node it reads through. */
 import { encodeAbiParameters, encodeEventTopics } from "viem";
 import { z } from "../../zod";
-import { klerosLiquidAbi } from "../../abi";
+import { erc792Abi, klerosLiquidAbi } from "../../abi";
 import type { Address, Hex } from "../../types";
 import mainnet from "../../disputes/__fixtures__/arbitrator-1.json";
+import executedRulings from "../../disputes/__fixtures__/executed-rulings.json";
 import gnosis from "../../disputes/__fixtures__/arbitrator-100.json";
 import sepolia from "../../disputes/__fixtures__/arbitrator-11155111.json";
 import { callKey, rpcLog, type CallReply, type FakeNodeSpec, type RpcLog } from "../rpc/testHelpers";
@@ -43,6 +44,12 @@ export function newPeriodLog(arbitrator: Address, disputeId: bigint, period: num
 export function appealDecisionLog(arbitrator: Address, disputeId: bigint, arbitrable: Address, blockNumber: bigint, logIndex = 0): RpcLog {
   const topics = encodeEventTopics({ abi: klerosLiquidAbi, eventName: "AppealDecision", args: { _disputeID: disputeId, _arbitrable: arbitrable } });
   return rpcLog({ address: arbitrator, topics: topics as Hex[], data: "0x", blockNumber, logIndex });
+}
+
+/** A synthetic ERC-792 `Ruling(_arbitrator, _disputeID, _ruling)` log emitted by `arbitrable`. */
+export function rulingLog(arbitrable: Address, arbitrator: Address, disputeId: bigint, ruling: bigint, blockNumber: bigint, logIndex = 0): RpcLog {
+  const topics = encodeEventTopics({ abi: erc792Abi, eventName: "Ruling", args: { _arbitrator: arbitrator, _disputeID: disputeId } });
+  return rpcLog({ address: arbitrable, topics: topics as Hex[], data: encodeAbiParameters([{ type: "uint256" }], [ruling]), blockNumber, logIndex });
 }
 
 const hexSchema = z
@@ -126,6 +133,50 @@ export const MAINNET = toRecording(mainnet);
 export const GNOSIS = toRecording(gnosis);
 /** Sepolia, read at block 11,913,201. */
 export const SEPOLIA = toRecording(sepolia);
+
+const executionSchema = z.object({
+  chains: z.array(
+    z.object({
+      chainId: z.number(),
+      readAtBlock: z.number(),
+      arbitrator: addressSchema,
+      calls: z.array(z.object({ to: addressSchema, data: hexSchema, result: hexSchema })),
+      logs: z.array(logSchema),
+    }),
+  ),
+});
+
+/** One chain of `__fixtures__/executed-rulings.json`: arbitrator answers and the logs of each recorded dispute. */
+export interface ExecutionRecording {
+  readonly chainId: number;
+  readonly readAtBlock: bigint;
+  readonly arbitrator: Address;
+  readonly calls: ReadonlyMap<string, CallReply>;
+  readonly logs: readonly RpcLog[];
+}
+
+function toExecutionRecordings(raw: unknown): ExecutionRecording[] {
+  return executionSchema.parse(raw).chains.map((chain) => ({
+    chainId: chain.chainId,
+    readAtBlock: BigInt(chain.readAtBlock),
+    arbitrator: chain.arbitrator,
+    calls: new Map(chain.calls.map((call): [string, CallReply] => [callKey(call.to, call.data), { result: call.result }])),
+    logs: chain.logs,
+  }));
+}
+
+const [executionMainnet, executionGnosis] = toExecutionRecordings(executedRulings);
+if (executionMainnet === undefined || executionGnosis === undefined) throw new Error("executed-rulings.json must hold mainnet then Gnosis");
+
+/** Mainnet executed rulings and vote counters, read at block 26,293,231. */
+export const EXECUTION_MAINNET: ExecutionRecording = executionMainnet;
+/** Gnosis executed rulings and vote counters, read at block 48,991,089. */
+export const EXECUTION_GNOSIS: ExecutionRecording = executionGnosis;
+
+/** A fake node replaying an execution recording; `logs` replaces the recorded logs when given. */
+export function executionNode(recording: ExecutionRecording, overrides: Partial<FakeNodeSpec> = {}): FakeNodeSpec {
+  return { head: recording.readAtBlock, calls: recording.calls, logs: recording.logs, ...overrides };
+}
 
 /** A fake node replaying a recording, with optional extra or replaced call answers. */
 export function recordedNode(recording: Recording, overrides: Partial<FakeNodeSpec> & { readonly extraCalls?: readonly [string, CallReply][] } = {}): FakeNodeSpec {

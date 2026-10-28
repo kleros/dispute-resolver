@@ -1,7 +1,7 @@
 import { buildEscrowAppealCall, type ChainConfig } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { useState } from "react";
-import { Notice, formatAmount } from "../../ui";
+import { LABEL, Notice, Timestamp, formatAmount, useNowSeconds } from "../../ui";
 import { WriteStatusNotice, useWrite, useWriteAccess } from "../../wallet";
 import {
   APPEAL_COST_CHANGED_TITLE,
@@ -9,7 +9,11 @@ import {
   APPEAL_COST_UNREAD_TITLE,
   APPEAL_HEADING,
   APPEAL_NEEDS_WALLET,
+  ESCROW_CONTRACT_DECIDES,
+  ESCROW_ENDED_AT,
+  ESCROW_ENDS,
   ESCROW_EXPLANATION,
+  ESCROW_STILL_ACCEPTED,
   appealCostChangedBody,
   appealCostUnreadBody,
 } from "./copy";
@@ -18,6 +22,10 @@ import type { AppealActions } from "./useAppealActions";
 
 export interface EscrowAppealPanelProps {
   readonly appealCost: bigint;
+  /** The end of the appeal period. A verified escrow checks no time itself, so the court takes its appeal until execution. */
+  readonly deadline: number;
+  /** Whether the registry read the escrow's code; any other escrow may refuse an appeal past the end. */
+  readonly verified: boolean;
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
 }
@@ -42,12 +50,25 @@ function CostCheckContent({ check, shownCost, chain }: { readonly check: CostChe
   }
 }
 
+/** The end is soft: the Appeal button stays, and the pre-flight check reports a period the court has closed or a contract's refusal. */
+function AppealPeriodEnd({ deadline, verified }: { readonly deadline: number; readonly verified: boolean }) {
+  const ended = useNowSeconds() >= deadline;
+  const afterEnd = verified ? ESCROW_STILL_ACCEPTED : ESCROW_CONTRACT_DECIDES;
+  return (
+    <p className={`${LABEL} [overflow-wrap:anywhere]`}>
+      {ended ? ESCROW_ENDED_AT : ESCROW_ENDS}
+      <Timestamp value={deadline} className="whitespace-nowrap" />
+      {ended ? `. ${afterEnd}` : "."}
+    </p>
+  );
+}
+
 /**
  * Escrow V1 pays the arbitrator's whole appeal cost, which can change after the page read it. Each press reads it
  * again and sends it only when it equals the amount on the button; a different cost goes on the button for the next
  * press instead.
  */
-export function EscrowAppealPanel({ appealCost, actions, chain }: EscrowAppealPanelProps) {
+export function EscrowAppealPanel({ appealCost, deadline, verified, actions, chain }: EscrowAppealPanelProps) {
   const write = useWrite();
   const needsWallet = useWriteAccess(actions.pageChainId).status === "needs-wallet";
   const { context } = actions;
@@ -61,7 +82,7 @@ export function EscrowAppealPanel({ appealCost, actions, chain }: EscrowAppealPa
     setCheck(IDLE);
   }
   const shownCost = readCost ?? appealCost;
-  const busy = check.phase === "checking" || write.status.phase === "pending" || write.status.phase === "submitted";
+  const busy = check.phase === "checking" || write.status.phase === "checking" || write.status.phase === "pending" || write.status.phase === "submitted";
 
   const appeal = async () => {
     if (context === null) return;
@@ -87,6 +108,7 @@ export function EscrowAppealPanel({ appealCost, actions, chain }: EscrowAppealPa
       <div className="flex flex-col gap-2">
         <h3>{APPEAL_HEADING}</h3>
         <p className={BODY_TEXT_CLASS}>{ESCROW_EXPLANATION}</p>
+        <AppealPeriodEnd deadline={deadline} verified={verified} />
       </div>
       <Button
         text={`Appeal - ${formatAmount(shownCost, chain)}`}

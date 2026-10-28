@@ -1,5 +1,5 @@
 import type { Address } from "../types";
-import type { RealityProxyEntry } from "../registry/types";
+import type { RealityProxyEntry, Settlement } from "../registry/types";
 
 export type Family = "reality-proxy" | "escrow-v1" | "governor" | "idr-v2" | "idr-v1" | "idr-legacy" | "view-only";
 
@@ -15,7 +15,7 @@ export type EvidenceCapability =
   | { readonly kind: "none" }; // view-only, kleros.eth governor
 
 export type AppealCapability =
-  | { readonly kind: "idr"; readonly fundAppeal: "fundAppeal(uint256,uint256)" | "fundAppeal(uint256,uint8)" }
+  | { readonly kind: "idr" } // fundAppeal(uint256 localId, uint256 ruling)
   | { readonly kind: "governor" } // fundAppeal(uint256 listIndex)
   | { readonly kind: "escrow-pay-cost" } // appeal(uint256 transactionID) paying the arbitrator's appeal cost
   | { readonly kind: "none" };
@@ -45,6 +45,36 @@ export interface FamilyDetection {
   readonly realityProxy: RealityProxyEntry | null;
   /** The EIP-1967 implementation whose code was scanned, or `null` when the arbitrable's own code was scanned. */
   readonly implementation: Address | null;
+}
+
+/**
+ * How a dispute is appealed: by crowdfunding here, by paying the cost here (Escrow V1), in the arbitrable's own
+ * application, not through the Dispute Resolver (a funding dialect it does not support), or not at all.
+ */
+export type AppealRoute = "crowdfunding" | "escrow" | "arbitrable" | "unsupported" | "none";
+
+/**
+ * How the crowdfunded sides are set when the current ruling is 0: Refuse to Arbitrate is the winning option, every
+ * list shares one deposit until the period ends (governors), or every option is costed and timed as a winner.
+ */
+export type TieDialect = "refuse-is-winner" | "shared-full-period" | "all-winner";
+
+/** What a ruling is called on this arbitrable. */
+export type RulingNoun = "option" | "answer" | "list";
+
+/**
+ * The appeal rules of an arbitrable as far as the Dispute Resolver can vouch for them. `verified` is true only when the
+ * registry read the contract's code; `settlement` is `unknown` otherwise.
+ */
+export interface AppealRules {
+  readonly route: AppealRoute;
+  readonly verified: boolean;
+  readonly settlement: Settlement;
+  /** Whether the registry read that a round ending without an appeal returns every contribution in full. */
+  readonly refundsWithoutAppeal: boolean;
+  /** Route `crowdfunding` only. */
+  readonly tie: TieDialect | null;
+  readonly noun: RulingNoun;
 }
 
 export interface FamilyCache {

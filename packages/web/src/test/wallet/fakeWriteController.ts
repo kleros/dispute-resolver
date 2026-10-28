@@ -2,7 +2,17 @@ import type { WriteBuild } from "@dispute-resolver/core";
 import { useCallback, useMemo, useState } from "react";
 import type { WriteController, WriteOptions, WriteOutcome, WriteSequenceController, WriteSequenceStatus, WriteStatus } from "../../wallet";
 
-const OUTCOME_PHASES: ReadonlySet<WriteStatus["phase"]> = new Set(["refused", "needs-wallet", "wrong-chain", "mined", "failed", "rejected"]);
+const OUTCOME_PHASES: ReadonlySet<WriteStatus["phase"]> = new Set([
+  "refused",
+  "needs-wallet",
+  "wrong-chain",
+  "refused-by-contract",
+  "insufficient-funds",
+  "check-failed",
+  "mined",
+  "failed",
+  "rejected",
+]);
 
 function isOutcome(status: WriteStatus): status is WriteOutcome {
   return OUTCOME_PHASES.has(status.phase);

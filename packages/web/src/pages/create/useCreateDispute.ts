@@ -44,7 +44,7 @@ interface CreateDisputeAction {
   create(): Promise<void>;
 }
 
-const UNSETTLED_WRITE_PHASES: ReadonlySet<WriteStatus["phase"]> = new Set(["idle", "pending", "submitted", "mined"]);
+const UNSETTLED_WRITE_PHASES: ReadonlySet<WriteStatus["phase"]> = new Set(["idle", "checking", "pending", "submitted", "mined"]);
 
 function isBusy(state: CreateActionState, writeStatus: WriteStatus): boolean {
   switch (state.kind) {

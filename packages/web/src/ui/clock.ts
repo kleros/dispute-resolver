@@ -1,4 +1,4 @@
-import { createContext, createElement, useContext, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, createElement, useCallback, useContext, useSyncExternalStore, type ReactNode } from "react";
 
 /** One clock for every countdown on the page: a single interval, running only while something listens. */
 const TICK_MS = 30_000;
@@ -45,4 +45,13 @@ export function ChainClockProvider({ offsetMs, children }: { readonly offsetMs: 
 /** The page chain's current Unix time in seconds (the browser's outside a chain clock), refreshed every 30 s by the shared clock. */
 export function useNowSeconds(): number {
   return Math.floor((useSyncExternalStore(subscribe, getSnapshot) + useContext(ChainClockContext)) / 1000);
+}
+
+/**
+ * Reads the page chain's current Unix time in seconds at the moment it is called, not at the shared clock's last tick:
+ * an action checks a deadline with it when it is pressed.
+ */
+export function useChainNow(): () => number {
+  const offsetMs = useContext(ChainClockContext);
+  return useCallback(() => Math.floor((Date.now() + offsetMs) / 1000), [offsetMs]);
 }

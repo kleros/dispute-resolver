@@ -68,7 +68,6 @@ function caseDispute(options: { readonly metaEvidence?: SectionData<MetaEvidence
     family: { ok: true, value: testFamily() },
     courts: { ok: true, value: [testCourt()] },
     metaEvidence: metaEvidence.status === "ready" ? metaEvidence.value : null,
-    fundedRulings: null,
   });
   return testCaseDispute({
     lookup: sectionReady(lookup),

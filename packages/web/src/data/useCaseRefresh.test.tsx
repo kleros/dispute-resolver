@@ -44,6 +44,7 @@ function programReads(): void {
     value: { winnerStakeMultiplier: 10_000n, loserStakeMultiplier: 20_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n },
   });
   vi.mocked(core.readRoundFunding).mockResolvedValue({ ok: true, value: { round: 0n, contributions: [], fundedRulings: [] } });
+  vi.mocked(core.readExecutedRuling).mockResolvedValue({ status: "executed", ruling: 1n });
 }
 
 /** The only RPC request left once core's reads are mocked: the latest block, for the chain clock. */
@@ -82,6 +83,19 @@ describe("useCaseRefresh", () => {
     expect(core.readDisputeDetails).toHaveBeenCalledTimes(1);
     expect(core.readRoundFunding).toHaveBeenCalledTimes(1);
     expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
+  });
+
+  it("an appeal refresh reads the executed ruling of an executed dispute again", async () => {
+    programReads();
+    vi.mocked(core.lookupDispute).mockResolvedValue(testFoundLookup({ period: 4, ruled: true }));
+    vi.mocked(core.readWithdrawable).mockResolvedValue({ status: "nothing" });
+    const { result } = renderCaseWithRefresh();
+    await settled(result);
+    await waitFor(() => {
+      expect(core.readExecutedRuling).toHaveBeenCalledTimes(1);
+    });
+    await act(() => result.current.refresh("appeal"));
+    expect(core.readExecutedRuling).toHaveBeenCalledTimes(2);
   });
 
   it("a refresh after a mined funding reads the details, the round's funding from the Dispute event, the evidence and the chain time again", async () => {

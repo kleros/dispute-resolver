@@ -1,14 +1,15 @@
-import type { Hex } from "@dispute-resolver/core";
+import type { Address, Hex, SimulationResult, WriteCall } from "@dispute-resolver/core";
 import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { writeContract } from "@wagmi/core";
 import { ContractFunctionExecutionError, ContractFunctionRevertedError, UserRejectedRequestError, type EIP1193RequestFn } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { WriteReceipt } from "../data";
+import type { CoreDeps, WriteReceipt } from "../data";
 import { createTestDeps } from "../test/data";
 import {
   TEST_REPLACEMENT_TX_HASH,
   TEST_TX_HASH,
+  TEST_WALLET_ACCOUNT,
   createConnectedTestWallet,
   createTestWallet,
   testReceipt,
@@ -18,6 +19,7 @@ import {
   walletWrapper,
   type TestWallet,
 } from "../test/wallet";
+import { performWrite } from "./performWrite";
 import type { WriteController, WriteOptions, WriteStatus } from "./types";
 import { useWrite } from "./useWrite";
 import { WriteStatusNotice } from "./WriteStatusNotice";
@@ -26,8 +28,12 @@ vi.mock("@wagmi/core", async (importOriginal) => ({ ...(await importOriginal<typ
 
 const writeContractMock = vi.mocked(writeContract);
 
-function renderWrite(wallet: TestWallet, waitForReceipt: (chainId: number, hash: Hex) => Promise<WriteReceipt> = () => Promise.resolve(testReceipt())) {
-  const deps = createTestDeps({ waitForReceipt });
+function renderWrite(
+  wallet: TestWallet,
+  waitForReceipt: (chainId: number, hash: Hex) => Promise<WriteReceipt> = () => Promise.resolve(testReceipt()),
+  simulate?: CoreDeps["simulate"],
+) {
+  const deps = createTestDeps({ waitForReceipt, ...(simulate === undefined ? {} : { simulate }) });
   const statuses: WriteStatus[] = [];
   const view = renderHook(
     () => {
@@ -49,6 +55,11 @@ async function writeOnMainnet(waitForReceipt?: (chainId: number, hash: Hex) => P
   return result;
 }
 
+/** A pre-flight check that answers `result` and records what it was asked to check. */
+function checkAnswering(result: SimulationResult) {
+  return vi.fn<(call: WriteCall, from: Address) => Promise<SimulationResult>>(() => Promise.resolve(result));
+}
+
 /** A screen in miniature: one `useWrite` with its `WriteStatusNotice` beside it. */
 function WriteWithNotice({ onRender }: { readonly onRender: (write: WriteController) => void }) {
   const write = useWrite();
@@ -57,10 +68,10 @@ function WriteWithNotice({ onRender }: { readonly onRender: (write: WriteControl
 }
 
 /** Renders `WriteWithNotice` and returns the latest controller. */
-function renderWriteWithNotice(wallet: TestWallet): () => WriteController {
+function renderWriteWithNotice(wallet: TestWallet, simulate?: CoreDeps["simulate"]): () => WriteController {
   const writes: WriteController[] = [];
   render(<WriteWithNotice onRender={(write) => writes.push(write)} />, {
-    wrapper: walletWrapper(wallet, createTestDeps({ waitForReceipt: () => Promise.resolve(testReceipt()) })),
+    wrapper: walletWrapper(wallet, createTestDeps({ waitForReceipt: () => Promise.resolve(testReceipt()), ...(simulate === undefined ? {} : { simulate }) })),
   });
   return () => {
     const write = writes.at(-1);
@@ -178,6 +189,131 @@ describe("useWrite chain guard", () => {
   });
 });
 
+describe("useWrite pre-flight check", () => {
+  it("checks the transaction from the connected account before the wallet opens, then signs from that account", async () => {
+    const order: string[] = [];
+    const simulate = vi.fn<CoreDeps["simulate"]>(() => {
+      order.push("check");
+      return Promise.resolve({ status: "ok" });
+    });
+    writeContractMock.mockImplementation(() => {
+      order.push("sign");
+      return Promise.resolve(TEST_TX_HASH);
+    });
+    const wallet = await createConnectedTestWallet();
+    const { result, statuses } = renderWrite(wallet, undefined, simulate);
+    await act(async () => {
+      await result.current.execute(testWriteBuild(1), { pageChainId: 1 });
+    });
+    expect(order).toEqual(["check", "sign"]);
+    const build = testWriteBuild(1);
+    if (!build.ok) throw new Error("The test build was refused.");
+    expect(simulate).toHaveBeenCalledWith(build.call, TEST_WALLET_ACCOUNT.toLowerCase());
+    expect(writeContractMock).toHaveBeenCalledWith(wallet.config, expect.objectContaining({ account: TEST_WALLET_ACCOUNT }));
+    expect(statuses.at(-1)?.phase).toBe("mined");
+  });
+
+  it("reports checking, then waiting for the wallet, submitted and mined, in that order", async () => {
+    const wallet = await createConnectedTestWallet();
+    const reports: WriteStatus[] = [];
+    const environment = { config: wallet.config, waitForReceipt: () => Promise.resolve(testReceipt()), simulate: () => Promise.resolve<SimulationResult>({ status: "ok" }) };
+    await performWrite(environment, testWriteBuild(1), { pageChainId: 1 }, (status) => reports.push(status));
+    expect(reports.map((status) => status.phase)).toEqual(["checking", "pending", "submitted", "mined"]);
+  });
+
+  it("a contract rejection sends nothing and quotes the contract's answer as the contract's", async () => {
+    const latest = renderWriteWithNotice(await createConnectedTestWallet(), checkAnswering({ status: "reverted", reason: "Appeal period is over." }));
+    await act(async () => {
+      await latest().execute(testWriteBuild(1), { pageChainId: 1 });
+    });
+    expect(latest().status).toEqual({ phase: "refused-by-contract", reason: "Appeal period is over." });
+    expect(await screen.findByRole("alert")).toHaveTextContent("The contract would reject this transactionNothing was sent. The contract's answer: “Appeal period is over.”");
+    expect(writeContractMock).not.toHaveBeenCalled();
+  });
+
+  it("a rejection without a reason the page may show sends nothing and quotes nothing", async () => {
+    const latest = renderWriteWithNotice(await createConnectedTestWallet(), checkAnswering({ status: "reverted", reason: null }));
+    await act(async () => {
+      await latest().execute(testWriteBuild(1), { pageChainId: 1 });
+    });
+    expect(latest().status).toEqual({ phase: "refused-by-contract", reason: null });
+    const notice = await screen.findByRole("alert");
+    expect(notice).toHaveTextContent("The contract would reject this transactionNothing was sent.");
+    expect(notice).not.toHaveTextContent("answer");
+    expect(writeContractMock).not.toHaveBeenCalled();
+  });
+
+  it("a balance too low sends nothing", async () => {
+    const latest = renderWriteWithNotice(await createConnectedTestWallet(), checkAnswering({ status: "insufficient-funds" }));
+    await act(async () => {
+      await latest().execute(testWriteBuild(1), { pageChainId: 1 });
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Balance too lowYour wallet's balance does not cover this transaction. Nothing was sent.");
+    expect(writeContractMock).not.toHaveBeenCalled();
+  });
+
+  it("a check that could not be made sends nothing and says why", async () => {
+    const latest = renderWriteWithNotice(
+      await createConnectedTestWallet(),
+      checkAnswering({ status: "unavailable", error: { code: "rpc-error", message: "This network's data is unavailable." } }),
+    );
+    await act(async () => {
+      await latest().execute(testWriteBuild(1), { pageChainId: 1 });
+    });
+    expect(latest().status).toEqual({ phase: "check-failed", message: "This network's data is unavailable." });
+    expect(screen.getByText("Transaction not checked")).toBeInTheDocument();
+    expect(screen.getByText("The transaction could not be checked against the contract, so nothing was sent. This network's data is unavailable.")).toBeInTheDocument();
+    expect(writeContractMock).not.toHaveBeenCalled();
+  });
+
+  it("says it is checking while the check runs", async () => {
+    let answer: ((result: SimulationResult) => void) | undefined;
+    const simulate = vi.fn<CoreDeps["simulate"]>(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        }),
+    );
+    const latest = renderWriteWithNotice(await createConnectedTestWallet(), simulate);
+    let pending: Promise<unknown> = Promise.resolve();
+    act(() => {
+      pending = latest().execute(testWriteBuild(1), { pageChainId: 1 });
+    });
+    expect(await screen.findByText("Checking the transaction")).toBeInTheDocument();
+    expect(screen.getByText("Checking with the contract that it accepts this transaction before your wallet opens.")).toBeInTheDocument();
+    expect(writeContractMock).not.toHaveBeenCalled();
+    await act(async () => {
+      answer?.({ status: "ok" });
+      await pending;
+    });
+    expect(writeContractMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("a wallet that switches account during the check sends nothing", async () => {
+    const wallet = await createConnectedTestWallet();
+    const simulate = vi.fn<CoreDeps["simulate"]>(() => {
+      wallet.changeAccount("0x00000000000000000000000000000000000B0b00");
+      return Promise.resolve({ status: "ok" });
+    });
+    const { result } = renderWrite(wallet, undefined, simulate);
+    await act(async () => {
+      await result.current.execute(testWriteBuild(1), { pageChainId: 1 });
+    });
+    expect(result.current.status).toEqual({ phase: "check-failed", message: "Your wallet's account changed while the transaction was checked. Try again." });
+    expect(writeContractMock).not.toHaveBeenCalled();
+  });
+
+  it("checks nothing for a wallet on another chain", async () => {
+    const simulate = checkAnswering({ status: "ok" });
+    const { result } = renderWrite(await createConnectedTestWallet({ chainId: 100 }), undefined, simulate);
+    await act(async () => {
+      await result.current.execute(testWriteBuild(1), { pageChainId: 1 });
+    });
+    expect(result.current.status.phase).toBe("wrong-chain");
+    expect(simulate).not.toHaveBeenCalled();
+  });
+});
+
 describe("useWrite outcomes", () => {
   it("a refused build sends nothing and shows the refusal", async () => {
     const wallet = await createConnectedTestWallet();
@@ -189,7 +325,7 @@ describe("useWrite outcomes", () => {
     expect(writeContractMock).not.toHaveBeenCalled();
   });
 
-  it("pending, then submitted with the explorer link, then mined after onMined ran", async () => {
+  it("checking, then submitted with the explorer link, then mined after onMined ran", async () => {
     const wallet = await createConnectedTestWallet();
     let releaseReceipt: ((receipt: WriteReceipt) => void) | undefined;
     const receiptPromise = new Promise<WriteReceipt>((resolve) => {
@@ -214,7 +350,7 @@ describe("useWrite outcomes", () => {
     });
     expect(order).toEqual(["onMined while submitted"]);
     expect(result.current.status).toEqual({ phase: "mined", hash: TEST_TX_HASH, explorerUrl: `https://etherscan.io/tx/${TEST_TX_HASH}`, receipt: testReceipt() });
-    expect(statuses.map((status) => status.phase)).toEqual(expect.arrayContaining(["idle", "pending", "submitted", "mined"]));
+    expect(statuses.map((status) => status.phase)).toEqual(expect.arrayContaining(["idle", "checking", "submitted", "mined"]));
   });
 
   it("a rejected signature is not an error", async () => {

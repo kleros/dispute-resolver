@@ -5,6 +5,7 @@ import {
   loadEvidence,
   lookupDispute,
   readDisputeDetails,
+  readExecutedRuling,
   type Address,
   type ArbitratedBinding,
   type ArbitratorDispute,
@@ -12,10 +13,11 @@ import {
   type DisputeLookup,
   type DisputeReads,
   type EvidenceList,
+  type ExecutedRuling,
   type FamilyDetection,
   type MetaEvidenceResult,
 } from "@dispute-resolver/core";
-import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
+import { skipToken, useQuery, useQueryClient, type Query } from "@tanstack/react-query";
 import { EVIDENCE_FETCH_TIMEOUT_MS, STALE_TIME_MS } from "./constants";
 import { useCoreDeps } from "./context";
 import { withTimeout } from "./fetcher";
@@ -141,4 +143,46 @@ export function useDisputeDetails(
     staleTime: STALE_TIME_MS.details,
   });
   return found === undefined ? LOADING : fromQuery(query, ready);
+}
+
+/**
+ * Reports already inconsistent or out of range are kept: more events can never turn them into a winner. One executed
+ * ruling is not, since the arbitrable can still emit a different one, and a report not made yet may still come.
+ */
+function executedRulingStaleTime(query: Query<ExecutedRuling>): number {
+  switch (query.state.data?.status) {
+    case "inconsistent":
+    case "out-of-range":
+      return Number.POSITIVE_INFINITY;
+    case "executed":
+    case "none-reported":
+      return STALE_TIME_MS.executedRulingReport;
+    default:
+      return STALE_TIME_MS.details;
+  }
+}
+
+const NOT_EXECUTED: SectionData<ExecutedRuling> = ready({ status: "not-executed" });
+
+/**
+ * The ruling the arbitrable reports it executed, scanned from `fromBlock` (`undefined` until it is known). `null` outside
+ * execution; `not-executed`, with no read, until the arbitrator has executed the ruling. It only ever feeds the decision
+ * text, never a write, a panel or an address.
+ */
+export function useExecutedRuling(chainId: number, found: FoundDispute | undefined, fromBlock: bigint | undefined): SectionData<ExecutedRuling> | null {
+  const deps = useCoreDeps();
+  const client = deps.getReadClient(chainId);
+  const dispute = found?.dispute;
+  const enabled = found !== undefined && dispute?.period === 4 && dispute.ruled && client !== undefined && fromBlock !== undefined;
+  const query = useQuery({
+    queryKey: enabled ? queryKeys.executedRuling(chainId, found.binding.disputeId, fromBlock) : IDLE_KEY,
+    queryFn: enabled ? ({ signal }) => readExecutedRuling({ chainId, client, signal }, { binding: found.binding, dispute: found.dispute, fromBlock }) : skipToken,
+    staleTime: executedRulingStaleTime,
+  });
+  if (dispute === undefined) return LOADING;
+  if (dispute.period !== 4) return null;
+  if (!dispute.ruled) return NOT_EXECUTED;
+  if (client === undefined) return ready({ status: "unread", error: noRpcError(chainId) });
+  if (fromBlock === undefined) return LOADING;
+  return fromQuery(query, ready);
 }

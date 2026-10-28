@@ -1,20 +1,26 @@
 import type { Decision } from "@dispute-resolver/core";
+import { Button } from "@kleros/ui-components-library";
 import { useId } from "react";
 import { FACT_LEAD, SectionSkeleton } from "../../ui";
-import { foundLookup, type CaseSectionProps } from "../../data";
-import { existingView, viewField } from "./caseState";
+import { foundLookup, useCaseRefresh, type CaseSectionProps } from "../../data";
+import { existingView } from "./caseState";
+import { decisionLines, executionUnread } from "./decisionCopy";
 import { SectionContent } from "./SectionContent";
 import { TimelineBullet } from "./TimelineBullet";
 
 type ShownDecision = Exclude<Decision, { kind: "none" }>;
 
-function explanation(decision: ShownDecision): string {
-  if (decision.kind === "winner") return decision.wonBy === "default" ? "Won by default" : "Won by jury decision";
-  const appeal = "This decision can be appealed within the appeal period.";
-  return decision.appealHint ? `${appeal} Go to the arbitrable application to appeal this ruling.` : appeal;
+function shownRuling(decision: ShownDecision): string {
+  return decision.kind === "winner" ? decision.winner.rulingText : decision.jury.rulingText;
 }
 
-function DecisionPanel({ decision, className }: { readonly decision: Decision; readonly className: string | undefined }) {
+interface DecisionPanelProps {
+  readonly decision: Decision;
+  readonly className: string | undefined;
+  readonly onRetry: () => void;
+}
+
+function DecisionPanel({ decision, className, onRetry }: DecisionPanelProps) {
   const headingId = useId();
   if (decision.kind === "none") return null;
   return (
@@ -28,29 +34,46 @@ function DecisionPanel({ decision, className }: { readonly decision: Decision; r
         .join(" ")}
     >
       <span aria-hidden="true" className="row-span-2 mt-0.5">
-        <TimelineBullet state={decision.kind === "winner" ? "concluded" : "current"} />
+        <TimelineBullet state={decision.kind === "jury-decision" ? "current" : "concluded"} />
       </span>
       <h2 id={headingId} className="text-base font-semibold text-klerosUIComponentsPrimaryText">
         {decision.kind === "winner" ? "Winner" : "Jury decision"}
       </h2>
-      <p className={`${FACT_LEAD} [overflow-wrap:anywhere] empty:hidden`}>{decision.rulingText}</p>
-      <p className="col-start-2 text-sm text-klerosUIComponentsSecondaryText">{explanation(decision)}</p>
+      <p className={`${FACT_LEAD} [overflow-wrap:anywhere] empty:hidden`}>{shownRuling(decision)}</p>
+      {decisionLines(decision).map((line) => (
+        <p key={line} className="col-start-2 text-sm [overflow-wrap:anywhere] text-klerosUIComponentsSecondaryText">
+          {line}
+        </p>
+      ))}
+      {executionUnread(decision) ? (
+        <Button
+          text="Retry"
+          aria-label="Retry reading the executed ruling"
+          variant="secondary"
+          small
+          className="col-start-2 mt-2 self-start justify-self-start"
+          onPress={onRetry}
+        />
+      ) : null}
     </section>
   );
 }
 
 /**
- * The text waits for the settled view so it never flips from fallback text to the meta-evidence's options; a failed read
- * degrades this section only.
+ * The text waits for the settled decision so it never flips from fallback text to the meta-evidence's options; a failed
+ * read degrades this section only.
  */
 export function DecisionAlert({ dispute }: CaseSectionProps) {
-  const view = existingView(dispute);
-  if (view === null) return null;
+  const refresh = useCaseRefresh(dispute.chainId, dispute.disputeId);
+  if (existingView(dispute) === null) return null;
   const period = foundLookup(dispute)?.dispute.period;
   const decided = period === 3 || period === 4;
+  const retry = () => {
+    void refresh("appeal");
+  };
   return (
-    <SectionContent data={viewField(view, (value) => value.decision)} section="Decision" loading={decided ? <SectionSkeleton variant="card" lines={1} /> : null}>
-      {(decision, reveal) => <DecisionPanel decision={decision} className={reveal} />}
+    <SectionContent data={dispute.decision} section="Decision" loading={decided ? <SectionSkeleton variant="card" lines={1} /> : null} onRetry={retry}>
+      {(decision, reveal) => <DecisionPanel decision={decision} className={reveal} onRetry={retry} />}
     </SectionContent>
   );
 }

@@ -1,14 +1,18 @@
 import {
   buildAppealPanel,
+  buildDecision,
   buildDisputeView,
   needsRulingOptions,
   readAppealCost,
   type AppealPanel,
+  type AppealRules,
   type BehaviorOverride,
   type Court,
+  type Decision,
   type DisputeLookup,
   type DisputeReads,
   type DisputeView,
+  type ExecutedRuling,
   type FamilyDetection,
   type MetaEvidence,
   type MetaEvidenceResult,
@@ -20,7 +24,7 @@ import {
   type Unavailable,
   type WithdrawState,
 } from "@dispute-resolver/core";
-import { LOADING, metaEvidenceSection, ready } from "./sectionData";
+import { LOADING, fromOutcome, metaEvidenceSection, ready } from "./sectionData";
 import type { CaseWriteContext, SectionData } from "./types";
 
 /** `null`: not read for this period and family. */
@@ -33,10 +37,14 @@ export interface AppealReads {
 export interface FoundCaseReads {
   readonly lookup: Extract<DisputeLookup, { status: "found" }>;
   readonly family: SectionData<FamilyDetection>;
+  /** `describeAppealRules` of the family once it is detected; `null` before, or when detection failed. */
+  readonly rules: AppealRules | null;
   readonly metaEvidence: SectionData<MetaEvidenceResult>;
   readonly courts: SectionData<readonly Court[]>;
   readonly details: SectionData<DisputeReads>;
   readonly appeal: AppealReads;
+  /** `null` outside execution. */
+  readonly executed: SectionData<ExecutedRuling> | null;
   readonly override: BehaviorOverride | undefined;
   /** The page chain's read client; `undefined` without one. */
   readonly readClient: ReadClient | undefined;
@@ -55,7 +63,7 @@ export function lookupError(lookup: Exclude<DisputeLookup, { status: "found" }>,
 
 export function viewWithoutDispute(lookup: Exclude<DisputeLookup, { status: "found" }>, error: Unavailable): DisputeView {
   const notRead: Outcome<never> = { ok: false, error };
-  return buildDisputeView({ lookup, reads: null, family: notRead, courts: notRead, metaEvidence: null, fundedRulings: null });
+  return buildDisputeView({ lookup, reads: null, family: notRead, courts: notRead, metaEvidence: null });
 }
 
 function toOutcome<T>(section: Exclude<SectionData<T>, { status: "loading" }>): Outcome<T> {
@@ -72,11 +80,10 @@ function optionalOutcome<T>(section: SectionData<T> | null): Outcome<T> | null |
   return settled(section) ? toOutcome(section) : undefined;
 }
 
-/** Waits for every read it shows, so the decision text never flickers from a fallback to the meta-evidence's options. */
+/** Waits for every read it shows; the arbitrable's log scans feed the decision, so the header never waits on them. */
 export function assembleView(reads: FoundCaseReads): SectionData<DisputeView> {
   const { family, courts, metaEvidence, details } = reads;
-  const funding = optionalOutcome(reads.appeal.funding);
-  if (!settled(family) || !settled(courts) || !settled(metaEvidence) || !settled(details) || funding === undefined) return LOADING;
+  if (!settled(family) || !settled(courts) || !settled(metaEvidence) || !settled(details)) return LOADING;
   return ready(
     buildDisputeView({
       lookup: reads.lookup,
@@ -84,7 +91,41 @@ export function assembleView(reads: FoundCaseReads): SectionData<DisputeView> {
       family: toOutcome(family),
       courts: toOutcome(courts),
       metaEvidence: metaEvidence.status === "ready" ? metaEvidence.value : null,
+    }),
+  );
+}
+
+/** A scan that failed is the arbitrable's report left unread; `undefined` while it runs. */
+function executedRuling(section: SectionData<ExecutedRuling> | null): ExecutedRuling | null | undefined {
+  if (section === null) return null;
+  if (section.status === "loading") return undefined;
+  return section.status === "ready" ? section.value : { status: "unread", error: section.error };
+}
+
+/**
+ * The decision section. It waits for the family (whose rules word it) and the meta-evidence (whose options name the
+ * rulings), so its text never flickers from a fallback; in execution also for the executed ruling, and for the round's
+ * funding only when that report is missing, since the funding then predicts the winner on a verified contract.
+ */
+export function assembleDecision(reads: FoundCaseReads): SectionData<Decision> {
+  const { dispute } = reads.lookup;
+  if (dispute.period < 3) return ready({ kind: "none" });
+  const { details, family, metaEvidence } = reads;
+  if (!settled(details) || !settled(family) || !settled(metaEvidence)) return LOADING;
+  if (details.status === "unavailable") return details;
+  const executed = executedRuling(reads.executed);
+  if (executed === undefined) return LOADING;
+  const needsFunding = dispute.period === 4 && executed?.status !== "executed";
+  const funding = needsFunding ? optionalOutcome(reads.appeal.funding) : null;
+  if (funding === undefined) return LOADING;
+  return fromOutcome(
+    buildDecision({
+      dispute,
+      reads: details.value,
+      rules: reads.rules,
+      executed,
       fundedRulings: funding === null ? null : mapOutcome(funding, (value) => value.fundedRulings),
+      metaEvidence: metaEvidence.status === "ready" ? metaEvidence.value : null,
     }),
   );
 }
@@ -113,9 +154,10 @@ function panelOptions(reads: FoundCaseReads, family: FamilyDetection): SectionDa
 }
 
 export function assembleAppealPanel(reads: FoundCaseReads): SectionData<AppealPanel> {
-  const { family, details, appeal } = reads;
+  const { family, details, appeal, rules } = reads;
   if (family.status !== "ready") return family;
   if (details.status !== "ready") return details;
+  if (rules === null) return LOADING;
   const options = panelOptions(reads, family.value);
   if (options.status !== "ready") return options;
   const multipliers = optionalOutcome(appeal.multipliers);
@@ -127,6 +169,7 @@ export function assembleAppealPanel(reads: FoundCaseReads): SectionData<AppealPa
     buildAppealPanel({
       family: family.value,
       period: reads.lookup.dispute.period,
+      rules,
       override: reads.override,
       rulingOptions: rulingOptions ?? NO_RULING_OPTIONS,
       fallbackOutcomes,

@@ -1,4 +1,4 @@
-import { REGISTRY, createFamilyCache, createReadClients } from "@dispute-resolver/core";
+import { REGISTRY, createFamilyCache, createReadClients, simulateWrite } from "@dispute-resolver/core";
 import type { AppConfig } from "../env";
 import { RUNNER_PATH, buildRpcRedirects, createIframeScriptRunner } from "../runner";
 import { createFetcher } from "./fetcher";
@@ -18,9 +18,10 @@ interface CoreDepsEnvironment {
 
 /** Creates no network request. */
 export function createCoreDeps(config: AppConfig, environment: CoreDepsEnvironment): CoreDeps {
+  const getReadClient = createReadClients(config.env);
   return {
     env: config.env,
-    getReadClient: createReadClients(config.env),
+    getReadClient,
     fetcher: createFetcher((url, init) => environment.fetch(url, init)),
     runner: createIframeScriptRunner({
       document: environment.document,
@@ -33,5 +34,6 @@ export function createCoreDeps(config: AppConfig, environment: CoreDepsEnvironme
     gateway: config.gateway,
     registry: REGISTRY,
     waitForReceipt: createReceiptWaiter(config.env),
+    simulate: (call, from) => simulateWrite(getReadClient(call.chainId), call, from),
   };
 }

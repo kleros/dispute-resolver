@@ -40,6 +40,7 @@ vi.mock("@dispute-resolver/core", async (importOriginal) => {
     ...mocked,
     realityNotice: vi.fn(mocked.realityNotice),
     buildDisputeView: vi.fn(mocked.buildDisputeView),
+    buildDecision: vi.fn(mocked.buildDecision),
     buildAppealPanel: vi.fn(mocked.buildAppealPanel),
   };
 });
@@ -335,6 +336,15 @@ function breakViewOnMalformedDetails(patch: Partial<ExistingView>) {
   });
 }
 
+/** The decision core builds, its ruling text unrenderable when it is built from a malformed details read. */
+function breakDecisionOnMalformedDetails() {
+  vi.mocked(core.buildDecision).mockImplementation((input) => {
+    const decision = actualCore.buildDecision(input);
+    if (!decision.ok || decision.value.kind !== "jury-decision" || !isMalformed(input.reads?.currentRuling)) return decision;
+    return { ok: true, value: { ...decision.value, jury: { ...decision.value.jury, rulingText: UNRENDERABLE } } };
+  });
+}
+
 /** The appeal panel core builds, its card titles unrenderable when it is built from a malformed details read. */
 function breakAppealCardsOnMalformedDetails() {
   vi.mocked(core.buildAppealPanel).mockImplementation((input) => {
@@ -424,9 +434,7 @@ const RETRY_CASES: readonly RetryCase[] = [
     section: "Decision",
     breaks: "throws",
     period: 3,
-    ...answers(detailsReads, detailsRead(3, MALFORMED_RULING), detailsRead(3, 1n), () => {
-      breakViewOnMalformedDetails({ decision: { ok: true, value: { kind: "jury-decision", ruling: 1n, rulingText: UNRENDERABLE, appealHint: false } } });
-    }),
+    ...answers(detailsReads, detailsRead(3, MALFORMED_RULING), detailsRead(3, 1n), breakDecisionOnMalformedDetails),
     content: () => screen.findByRole("heading", { level: 2, name: "Jury decision" }),
   },
   {

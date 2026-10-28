@@ -2,7 +2,7 @@ import { getAddress, numberToHex, pad, parseAbiItem, toEventSelector } from "vie
 import { afterEach, describe, expect, it, vi } from "vitest";
 import fixture from "../appeals/__fixtures__/dispute-1170-unslashed.json";
 import type { Address, Hex, ReadClient } from "../types";
-import { createReadClient, createRequestBudget, getLogsChunked, isLookupLimitError, isRangeLimitError } from "./index";
+import { createReadClient, createRequestBudget, getLogsChunked, isLookupLimitError, isRangeLimitError, isTooManyLogsError } from "./index";
 import {
   cappedNode,
   fakeLogsClient,
@@ -263,5 +263,43 @@ describe("getLogsChunked", () => {
     });
     await expect(getLogsChunked(slow, { ...scan, fromBlock: 14_600_000n, toBlock: 14_950_000n }, { signal: controller.signal })).rejects.toThrow(/left the page/);
     expect(slowRequests).toHaveLength(1);
+  });
+});
+
+describe("getLogsChunked with a log cap", () => {
+  it("returns every log when they fit under the cap", async () => {
+    const { client } = fakeLogsClient(cappedNode(DISPUTE_1170_LOGS, 1n << 40n));
+    const logs = await getLogsChunked(client, scan, { maxLogs: expectedContributions.length });
+    expect(positions(logs)).toEqual(expectedContributions);
+  });
+
+  it("refuses a whole-range answer over the cap without another request", async () => {
+    const { client, requests } = fakeLogsClient(cappedNode(DISPUTE_1170_LOGS, 1n << 40n));
+    await expect(getLogsChunked(client, scan, { maxLogs: 2 })).rejects.toSatisfy(isTooManyLogsError);
+    expect(requests).toHaveLength(1);
+  });
+
+  it("stops a windowed scan once more logs than the cap matched, before the remaining windows", async () => {
+    const { client, requests } = fakeLogsClient(cappedNode(DISPUTE_1170_LOGS, 10_000n));
+    const failure = getLogsChunked(client, { ...scan, fromBlock: 14_600_000n, toBlock: 14_950_000n }, { maxLogs: 1 });
+    await expect(failure).rejects.toSatisfy(isTooManyLogsError);
+    expect(requests.length).toBeLessThan(1 + 36);
+  });
+
+  it("counts a log the provider returns twice once", async () => {
+    const [first] = DISPUTE_1170_LOGS.filter((log) =>
+      matchesFilter(log, { address: arbitrable, topics: [DISPUTE_1170.contributionTopic], fromBlock: scan.fromBlock, toBlock: scan.toBlock }),
+    );
+    if (first === undefined) throw new Error("fixture has no contribution");
+    const { client } = fakeLogsClient(() => Promise.resolve([first, first]));
+    expect(await getLogsChunked(client, scan, { maxLogs: 1 })).toHaveLength(1);
+  });
+
+  it("the cap error is never a range or budget error, so nothing splits or retries it", async () => {
+    const { client } = fakeLogsClient(cappedNode(DISPUTE_1170_LOGS, 1n << 40n));
+    const error: unknown = await getLogsChunked(client, scan, { maxLogs: 0 }).catch((caught: unknown) => caught);
+    expect(isTooManyLogsError(error)).toBe(true);
+    expect(isRangeLimitError(error)).toBe(false);
+    expect(isLookupLimitError(error)).toBe(false);
   });
 });

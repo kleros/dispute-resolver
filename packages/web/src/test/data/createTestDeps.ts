@@ -61,8 +61,9 @@ const failedRun: ScriptResult = { status: "failed", reason: "runner-error", mess
 
 /**
  * A `CoreDeps` for tests: read clients over a viem custom transport answering from `rpc`, a stub fetcher answering
- * from `responses`, a fake script runner, in-memory caches, and receipts that never arrive unless `waitForReceipt` is
- * given. Any `CoreDeps` field can be replaced directly.
+ * from `responses`, a fake script runner, in-memory caches, receipts that never arrive unless `waitForReceipt` is
+ * given, and a pre-flight check that passes every write unless `simulate` is given. Any `CoreDeps` field can be
+ * replaced directly.
  */
 export function createTestDeps(options: TestDepsOptions = {}): CoreDeps {
   const { rpc, unconfiguredChains = [], responses = {}, runScript, ...overrides } = options;
@@ -96,6 +97,7 @@ export function createTestDeps(options: TestDepsOptions = {}): CoreDeps {
     gateway: resolveGateway({}),
     registry: REGISTRY,
     waitForReceipt: () => new Promise(() => undefined),
+    simulate: () => Promise.resolve({ status: "ok" }),
     ...overrides,
   };
 }

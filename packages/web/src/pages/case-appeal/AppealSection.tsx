@@ -6,8 +6,12 @@ import {
   ESCROW_ENDED,
   FEES_UNAVAILABLE_BODY,
   FEES_UNAVAILABLE_TITLE,
+  FUNDING_UNSUPPORTED_BODY,
+  FUNDING_UNSUPPORTED_TITLE,
   HANDLED_BY_ARBITRABLE_BODY,
   HANDLED_BY_ARBITRABLE_TITLE,
+  NOT_APPEALABLE_BODY,
+  NOT_APPEALABLE_TITLE,
   WITHDRAW_HEADING,
   WITHDRAW_UNSUPPORTED,
 } from "./copy";
@@ -44,8 +48,12 @@ function PanelBody({ panel, actions, chain, onRetry }: PanelBodyProps) {
       return null;
     case "handled-by-arbitrable":
       return <Notice variant="info" title={HANDLED_BY_ARBITRABLE_TITLE} body={HANDLED_BY_ARBITRABLE_BODY} />;
+    case "not-appealable":
+      return <Notice variant="info" title={NOT_APPEALABLE_TITLE} body={NOT_APPEALABLE_BODY} />;
+    case "funding-unsupported":
+      return <Notice variant="info" title={FUNDING_UNSUPPORTED_TITLE} body={FUNDING_UNSUPPORTED_BODY} />;
     case "escrow-appeal":
-      return <EscrowAppealPanel appealCost={panel.appealCost} actions={actions} chain={chain} />;
+      return <EscrowAppealPanel appealCost={panel.appealCost} deadline={panel.deadline} verified={panel.verified} actions={actions} chain={chain} />;
     case "escrow-ended":
       return <h3>{ESCROW_ENDED}</h3>;
     case "crowdfunding":

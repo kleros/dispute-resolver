@@ -3,7 +3,7 @@ import type { AppealInfo } from "../disputes/types";
 import { REGISTRY, getOverride } from "../registry";
 import { GOVERNOR_MULTIPLIERS, recordedValue } from "./__fixtures__/governorMultipliers";
 import { DISPUTE_1170 } from "./__fixtures__/recorded";
-import { computeAppealAmounts, fundedPercent, isWinningCode } from "./index";
+import { computeAppealAmounts, fundedPercent, isWinningCode, windowPercent } from "./index";
 import type { Multipliers } from "./types";
 
 const UNSLASHED_OVERRIDE = getOverride(REGISTRY, 1, DISPUTE_1170.arbitrable);
@@ -49,6 +49,13 @@ describe("computeAppealAmounts", () => {
     }
   });
 
+  it("the losing side's deadline never passes the appeal period end", () => {
+    const longWindow: Multipliers = { ...MULTIPLIERS, loserAppealPeriodMultiplier: 20_000n };
+    expect(computeAppealAmounts(APPEAL_INFO, longWindow).loser.deadline).toBe(APPEAL_INFO.appealPeriodEnd);
+    const wholeWindow: Multipliers = { ...MULTIPLIERS, loserAppealPeriodMultiplier: 10_000n };
+    expect(computeAppealAmounts(APPEAL_INFO, wholeWindow).loser.deadline).toBe(APPEAL_INFO.appealPeriodEnd);
+  });
+
   it("keeps wei amounts above 2^53 exact", () => {
     const cost = 2_250_000_000_000_000_000n;
     const amounts = computeAppealAmounts({ appealCost: cost, appealPeriodStart: 0, appealPeriodEnd: 100 }, MULTIPLIERS);
@@ -73,6 +80,17 @@ describe("isWinningCode", () => {
 
   it("keeps the standard rule for an override without the refuse flag", () => {
     expect(isWinningCode(1n, 0n, { justification: "offset only", roundIndexOffset: 1 })).toBe(false);
+  });
+});
+
+describe("windowPercent", () => {
+  it.each([
+    ["half the appeal period", 5_000n, 10_000n, 50],
+    ["a third, truncated to two decimals", 3_333n, 10_000n, 33.33],
+    ["a governor's fixed half on its own divisor", 500n, 1_000n, 50],
+    ["at most the whole period, however long the multiplier", 20_000n, 10_000n, 100],
+  ])("states the losing side's window as a percentage of the appeal period: %s", (_, loserAppealPeriodMultiplier, denominator, expected) => {
+    expect(windowPercent({ ...MULTIPLIERS, loserAppealPeriodMultiplier, denominator })).toBe(expected);
   });
 });
 

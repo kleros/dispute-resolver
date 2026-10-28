@@ -17,7 +17,8 @@ export { SectionUnavailable } from "./SectionUnavailable";
 export { shortenAddress } from "./address";
 export { formatAmount } from "./amount";
 export { formatDuration } from "./duration";
-export { ChainClockProvider, useNowSeconds } from "./clock";
+export { ChainClockProvider, useChainNow, useNowSeconds } from "./clock";
+export { Timestamp, utcText } from "./Timestamp";
 export { LG_MEDIA_QUERY, useMediaQuery, XL_MEDIA_QUERY } from "./useMediaQuery";
 export { useOutsidePress } from "./outsidePress";
 export {

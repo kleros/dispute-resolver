@@ -14,6 +14,7 @@ const REFUSALS: Readonly<Record<WriteRefusal, string>> = {
   "ruling-out-of-range": "This ruling cannot be encoded for this contract, so nothing was sent.",
   "family-mismatch": "The contract details do not match this dispute, so nothing was sent.",
   "call-chain-mismatch": "This action was prepared for a different network than this page, so nothing was sent.",
+  "funding-closed": "Funding for this ruling has closed, so nothing was sent.",
 };
 
 interface WriteMessage {
@@ -41,6 +42,18 @@ export function writeMessage(status: Exclude<WriteStatus, { readonly phase: "idl
       const body = switching ? mismatch : `${mismatch} Switch your wallet to ${chainName(status.pageChainId)} to continue.`;
       return { variant: "warning", title: "Wrong network", body: beforeAttempt ? body : `${body} Nothing was sent.` };
     }
+    case "checking":
+      return { variant: "info", title: "Checking the transaction", body: "Checking with the contract that it accepts this transaction before your wallet opens." };
+    case "refused-by-contract":
+      return {
+        variant: "error",
+        title: "The contract would reject this transaction",
+        body: status.reason === null ? "Nothing was sent." : `Nothing was sent. The contract's answer: “${status.reason}”`,
+      };
+    case "insufficient-funds":
+      return { variant: "error", title: "Balance too low", body: "Your wallet's balance does not cover this transaction. Nothing was sent." };
+    case "check-failed":
+      return { variant: "warning", title: "Transaction not checked", body: `The transaction could not be checked against the contract, so nothing was sent. ${status.message}` };
     case "pending":
       return { variant: "info", title: "Waiting for your wallet", body: "Confirm the transaction in your wallet." };
     case "submitted":

@@ -21,7 +21,7 @@ function everyBuild(binding: ArbitratedBinding, family: FamilyDetection): readon
   const localId = localIdFor(family, 1n);
   return [
     buildSubmitEvidenceCall({ binding, family, localId, evidenceUri: EVIDENCE }),
-    buildFundAppealCall({ binding, family, localId, ruling: 1n, value: 1n }),
+    buildFundAppealCall({ binding, family, localId, ruling: 1n, value: 1n, deadline: 1, nowSeconds: 0 }),
     buildEscrowAppealCall({ binding, family, localId, appealCost: 1n }),
     ...buildWithdrawCalls({ binding, family, localId, beneficiary: BENEFICIARY, items: WITHDRAW_ITEMS }),
   ];

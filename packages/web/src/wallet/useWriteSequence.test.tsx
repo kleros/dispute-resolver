@@ -1,9 +1,9 @@
-import type { Hex } from "@dispute-resolver/core";
+import type { Hex, SimulationResult } from "@dispute-resolver/core";
 import { act, renderHook } from "@testing-library/react";
 import { writeContract } from "@wagmi/core";
 import { UserRejectedRequestError } from "viem";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { WriteReceipt } from "../data";
+import type { CoreDeps, WriteReceipt } from "../data";
 import { createTestDeps } from "../test/data";
 import { createConnectedTestWallet, testReceipt, testWriteBuild, walletWrapper } from "../test/wallet";
 import type { WriteOutcome } from "./types";
@@ -27,9 +27,10 @@ function hashAt(index: number): Hex {
 const minedReceipt = (_chainId: number, hash: Hex): Promise<WriteReceipt> => Promise.resolve(testReceipt(hash));
 
 /** Connects a chain-1 wallet and renders the sequence over it. */
-async function renderSequence(waitForReceipt: (chainId: number, hash: Hex) => Promise<WriteReceipt> = minedReceipt) {
+async function renderSequence(waitForReceipt: (chainId: number, hash: Hex) => Promise<WriteReceipt> = minedReceipt, simulate?: CoreDeps["simulate"]) {
   const wallet = await createConnectedTestWallet();
-  return { ...renderHook(() => useWriteSequence(), { wrapper: walletWrapper(wallet, createTestDeps({ waitForReceipt })) }), wallet };
+  const deps = createTestDeps({ waitForReceipt, ...(simulate === undefined ? {} : { simulate }) });
+  return { ...renderHook(() => useWriteSequence(), { wrapper: walletWrapper(wallet, deps) }), wallet };
 }
 
 const BUILDS = [testWriteBuild(1, 1n), testWriteBuild(1, 2n), testWriteBuild(1, 3n)];
@@ -44,6 +45,29 @@ beforeEach(() => {
 });
 
 describe("useWriteSequence", () => {
+  it("checks each withdrawal against the contract after the previous one is mined, and stops at the first the contract would reject", async () => {
+    const events: string[] = [];
+    writeContractMock.mockImplementation((_config, parameters) => {
+      events.push(`sign ${String(parameters.args?.[1])}`);
+      return Promise.resolve(hashAt(events.filter((event) => event.startsWith("sign")).length - 1));
+    });
+    const simulate = vi.fn<CoreDeps["simulate"]>((call) => {
+      events.push(`check ${String(call.args[1])}`);
+      const result: SimulationResult = call.args[1] === 2n ? { status: "reverted", reason: null } : { status: "ok" };
+      return Promise.resolve(result);
+    });
+    const onMined = vi.fn();
+    const { result } = await renderSequence(minedReceipt, simulate);
+    let outcome: WriteOutcome | undefined;
+    await act(async () => {
+      outcome = await result.current.execute(BUILDS, { pageChainId: 1, onMined });
+    });
+    expect(events).toEqual(["check 1", "sign 1", "check 2"]);
+    expect(outcome).toEqual({ phase: "refused-by-contract", reason: null });
+    expect(result.current.status).toMatchObject({ index: 1, total: 3, current: { phase: "refused-by-contract" } });
+    expect(onMined).toHaveBeenCalledTimes(1);
+  });
+
   it("withdraws in sequence, signing the next only after the previous receipt is mined, and refreshes once after the last", async () => {
     const events: string[] = [];
     const onMined = vi.fn();

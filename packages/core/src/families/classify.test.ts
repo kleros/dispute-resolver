@@ -19,7 +19,7 @@ const ESCROW_CAPABILITIES: Capabilities = {
 const IDR_V2_CAPABILITIES: Capabilities = {
   localId: "externalIDtoLocalID",
   evidence: { kind: "local-id" },
-  appeal: { kind: "idr", fundAppeal: "fundAppeal(uint256,uint256)" },
+  appeal: { kind: "idr" },
   withdraw: { kind: "idr-v2" },
 };
 
@@ -36,8 +36,12 @@ describe("classifySelectors", () => {
     expect(result).toEqual({ family: "escrow-v1", capabilities: ESCROW_CAPABILITIES });
   });
 
-  it("submitEvidence(string) without submitEvidence(uint256,string) is a governor with URI-only evidence", () => {
-    const result = classifySelectors(selectorsOf("submitEvidence(string)"));
+  it("a contract with submitEvidence(string) but no governor funding functions is not a governor", () => {
+    expect(classifySelectors(selectorsOf("submitEvidence(string)"))).toEqual({ family: "view-only", capabilities: VIEW_ONLY_CAPABILITIES });
+  });
+
+  it("a governor's funding functions with submitEvidence(string) make a governor with URI-only evidence", () => {
+    const result = classifySelectors(selectorsOf("submitEvidence(string)", "fundAppeal(uint256)", "getCurrentSessionNumber()"));
     expect(result).toEqual({
       family: "governor",
       capabilities: { localId: "none", evidence: { kind: "uri-only" }, appeal: { kind: "governor" }, withdraw: { kind: "governor" } },
@@ -68,28 +72,24 @@ describe("classifySelectors", () => {
     expect(result).toEqual({ family: "idr-v1", capabilities: { ...IDR_V2_CAPABILITIES, withdraw: { kind: "idr-v1" } } });
   });
 
-  it("externalIDtoLocalID without either withdraw selector is idr-legacy, withdrawals unsupported", () => {
+  it("externalIDtoLocalID without either withdraw selector is idr-legacy: evidence, no appeal funding, withdrawals unsupported", () => {
     const result = classifySelectors(selectorsOf("externalIDtoLocalID(uint256)", "fundAppeal(uint256,uint256)"));
     expect(result).toEqual({
       family: "idr-legacy",
-      capabilities: { ...IDR_V2_CAPABILITIES, withdraw: { kind: "unsupported" } },
+      capabilities: { ...IDR_V2_CAPABILITIES, appeal: { kind: "none" }, withdraw: { kind: "unsupported" } },
     });
   });
 
-  it("idr-legacy funds appeals through fundAppeal(uint256,uint8) when that is the selector it carries", () => {
-    const result = classifySelectors(selectorsOf("externalIDtoLocalID(uint256)", "fundAppeal(uint256,uint8)"));
-    expect(result.capabilities.appeal).toEqual({ kind: "idr", fundAppeal: "fundAppeal(uint256,uint8)" });
-  });
-
-  it("idr-legacy carrying both fundAppeal selectors uses the IDisputeResolver one, fundAppeal(uint256,uint256)", () => {
-    const result = classifySelectors(selectorsOf("externalIDtoLocalID(uint256)", "fundAppeal(uint256,uint8)", "fundAppeal(uint256,uint256)"));
-    expect(result.capabilities.appeal).toEqual({ kind: "idr", fundAppeal: "fundAppeal(uint256,uint256)" });
-  });
-
-  it("idr-legacy without any fundAppeal selector has no appeal funding", () => {
-    const result = classifySelectors(selectorsOf("externalIDtoLocalID(uint256)"));
-    expect(result.family).toBe("idr-legacy");
-    expect(result.capabilities.appeal).toEqual({ kind: "none" });
+  it("idr-legacy contracts get no appeal funding, whichever fundAppeal they carry", () => {
+    for (const signatures of [
+      ["externalIDtoLocalID(uint256)", "fundAppeal(uint256,uint8)"],
+      ["externalIDtoLocalID(uint256)", "fundAppeal(uint256,uint8)", "fundAppeal(uint256,uint256)"],
+      ["externalIDtoLocalID(uint256)"],
+    ] as const) {
+      const result = classifySelectors(selectorsOf(...signatures));
+      expect(result.family).toBe("idr-legacy");
+      expect(result.capabilities.appeal).toEqual({ kind: "none" });
+    }
   });
 
   it("no probe selector is view-only", () => {
@@ -107,7 +107,16 @@ describe("classifySelectors", () => {
     ["submitEvidence(string) next to submitEvidence(uint256,string) is not a governor", ["submitEvidence(string)", "submitEvidence(uint256,string)"], "view-only"],
     ["the governor appeal rule needs getCurrentSessionNumber() next to fundAppeal(uint256)", ["fundAppeal(uint256)"], "view-only"],
     ["the governor appeal rule needs fundAppeal(uint256) next to getCurrentSessionNumber()", ["getCurrentSessionNumber()"], "view-only"],
-    ["the governor rules take precedence over the IDisputeResolver rules", ["submitEvidence(string)", "getTotalWithdrawableAmount(uint256,address,uint256)"], "governor"],
+    [
+      "the governor rule takes precedence over the IDisputeResolver rules",
+      ["fundAppeal(uint256)", "getCurrentSessionNumber()", "getTotalWithdrawableAmount(uint256,address,uint256)"],
+      "governor",
+    ],
+    [
+      "submitEvidence(string) next to an IDisputeResolver withdraw selector is that IDisputeResolver family",
+      ["submitEvidence(string)", "getTotalWithdrawableAmount(uint256,address,uint256)"],
+      "idr-v2",
+    ],
     [
       "idr-v2 wins over idr-v1 when both withdraw selectors are present",
       ["getTotalWithdrawableAmount(uint256,address,uint256)", "getTotalWithdrawableAmount(uint256,address,uint256[])"],

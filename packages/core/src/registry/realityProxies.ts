@@ -77,8 +77,9 @@ export const REALITY_PROXIES: Readonly<Record<RegistryKey, RealityProxyEntry>> =
     answeredTooSoon: false,
     localizedLang: null,
     questionOverride: null,
+    appealable: false,
     justification:
-      "RealitioArbitratorProxy (RealitioERC20, hardcoded): single-chain Reality.eth proxy. No bytecode probe identifies it, and its question lives in the Reality.eth contract on the arbitrator chain.",
+      "RealitioArbitratorProxy (RealitioERC20, hardcoded): single-chain Reality.eth proxy. No bytecode probe identifies it, and its question lives in the Reality.eth contract on the arbitrator chain. Its code has no appeal function (recorded bytecode, block 26189718) and KlerosLiquid takes an appeal only from the arbitrable, so its disputes cannot be appealed.",
   },
   // Lockler (dynamic script QmQGMR6MyC851poYVyBfGthzmCdvTuRFKp1UDB19p89Gcn)
   "1:0x1c2811550551d84030cd1b608e6fe3fd6fd5fc0d": {
@@ -195,8 +196,9 @@ export const REALITY_PROXIES: Readonly<Record<RegistryKey, RealityProxyEntry>> =
     answeredTooSoon: false,
     localizedLang: null,
     questionOverride: null,
+    appealable: false,
     justification:
-      "RealitioArbitratorProxy (Reality 2.0; MetaEvidence URI truncated/404, no script): single-chain Reality.eth proxy. No bytecode probe identifies it, and its question lives in the Reality.eth contract on the arbitrator chain.",
+      "RealitioArbitratorProxy (Reality 2.0; MetaEvidence URI truncated/404, no script): single-chain Reality.eth proxy. No bytecode probe identifies it, and its question lives in the Reality.eth contract on the arbitrator chain. Its code has no appeal function (recorded bytecode, block 26189718) and KlerosLiquid takes an appeal only from the arbitrable, so its disputes cannot be appealed.",
   },
   // Gnosis-Ethereum foreign proxy whose MetaEvidence points at the single-chain B script (script cannot work) (dynamic script QmWWsDmvjhR9UVRgkcG75vAKzfK3vB85EkZzudnaxwfAWr)
   "1:0x6341ec8f3f23689bd6ea3cf82fe34c3a0481c30a": {
@@ -240,8 +242,9 @@ export const REALITY_PROXIES: Readonly<Record<RegistryKey, RealityProxyEntry>> =
     answeredTooSoon: false,
     localizedLang: null,
     questionOverride: null,
+    appealable: false,
     justification:
-      "RealitioArbitratorProxy (RealitioERC20, hardcoded): single-chain Reality.eth proxy. No bytecode probe identifies it, and its question lives in the Reality.eth contract on the arbitrator chain.",
+      "RealitioArbitratorProxy (RealitioERC20, hardcoded): single-chain Reality.eth proxy. No bytecode probe identifies it, and its question lives in the Reality.eth contract on the arbitrator chain. Its code has no appeal function (recorded bytecode, block 26189718) and KlerosLiquid takes an appeal only from the arbitrable, so its disputes cannot be appealed.",
   },
   // Ethereum main (deprecated) (dynamic script QmWWsDmvjhR9UVRgkcG75vAKzfK3vB85EkZzudnaxwfAWr)
   "1:0x728cba71a3723caab33ea416cb46e2cc9215a596": {
@@ -314,8 +317,9 @@ export const REALITY_PROXIES: Readonly<Record<RegistryKey, RealityProxyEntry>> =
     answeredTooSoon: false,
     localizedLang: null,
     questionOverride: null,
+    appealable: false,
     justification:
-      "WeTrust (RealitioERC20, hardcoded): single-chain Reality.eth proxy. No bytecode probe identifies it, and its question lives in the Reality.eth contract on the arbitrator chain.",
+      "WeTrust (RealitioERC20, hardcoded): single-chain Reality.eth proxy. No bytecode probe identifies it, and its question lives in the Reality.eth contract on the arbitrator chain. Its code has no appeal function (recorded bytecode, block 26189718) and KlerosLiquid takes an appeal only from the arbitrable, so its disputes cannot be appealed.",
   },
   // Ethereum main (old, Reality 2.0) (dynamic script QmNhs2mo7t8pydn7gg6ycrtT4mhfvhARLEoyMYgs9SDkH2)
   "1:0xd47f72a2d1d0e91b0ec5e5f5d02b2dc26d00a14d": {
@@ -329,8 +333,9 @@ export const REALITY_PROXIES: Readonly<Record<RegistryKey, RealityProxyEntry>> =
     answeredTooSoon: false,
     localizedLang: null,
     questionOverride: null,
+    appealable: false,
     justification:
-      "Ethereum main (old, Reality 2.0): single-chain Reality.eth proxy. No bytecode probe identifies it, and its question lives in the Reality.eth contract on the arbitrator chain.",
+      "Ethereum main (old, Reality 2.0): single-chain Reality.eth proxy. No bytecode probe identifies it, and its question lives in the Reality.eth contract on the arbitrator chain. Its code has no appeal function (recorded bytecode, block 26189718) and KlerosLiquid takes an appeal only from the arbitrable, so its disputes cannot be appealed.",
   },
   // Polygon-Ethereum SUKU Foreign Proxy (dynamic script QmaZ3KtWQD7k7BSSabp94YVWLNz8NVJfABhNYFuSjMjsAQ)
   "1:0xd6bf90e1daaa5cdec82235d2db1b93a9d50c6046": {
@@ -359,8 +364,9 @@ export const REALITY_PROXIES: Readonly<Record<RegistryKey, RealityProxyEntry>> =
     answeredTooSoon: false,
     localizedLang: null,
     questionOverride: null,
+    appealable: false,
     justification:
-      "RealitioArbitratorProxy (Reality 2.0, hardcoded): single-chain Reality.eth proxy. No bytecode probe identifies it, and its question lives in the Reality.eth contract on the arbitrator chain.",
+      "RealitioArbitratorProxy (Reality 2.0, hardcoded): single-chain Reality.eth proxy. No bytecode probe identifies it, and its question lives in the Reality.eth contract on the arbitrator chain. Its code has no appeal function (recorded bytecode, block 26189718) and KlerosLiquid takes an appeal only from the arbitrable, so its disputes cannot be appealed.",
   },
   // Gnosis-Ethereum Omen AI with appeals Foreign Proxy (dynamic script QmYSZCxJ7Pf1mcnZ8JgdrietQUmzhAXdiVQccCevsphPEx)
   "1:0xef2ae6961ec7f2105bc2693bc32fa7b7386b2f59": {

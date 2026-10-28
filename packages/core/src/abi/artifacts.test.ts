@@ -1,9 +1,10 @@
 import type { Abi } from "viem";
-import { encodeFunctionData, getAbiItem, toEventSelector, toFunctionSelector } from "viem";
+import { getAbiItem, toEventSelector } from "viem";
 import { describe, expect, it } from "vitest";
 import {
   arbitrableProxyAbi,
   erc1497Abi,
+  erc792Abi,
   escrowV1Abi,
   governorAbi,
   idrLegacyFundAppealAbi,
@@ -50,6 +51,7 @@ const CASES: readonly AbiCase[] = [
       fn("disputes(uint256)", ARTIFACTS.klerosLiquid),
       fn("getDispute(uint256)", ARTIFACTS.klerosLiquid),
       fn("currentRuling(uint256)", ARTIFACTS.klerosLiquid),
+      fn("getVoteCounter(uint256,uint256)", ARTIFACTS.klerosLiquid),
       fn("appealPeriod(uint256)", ARTIFACTS.klerosLiquid),
       fn("appealCost(uint256,bytes)", ARTIFACTS.klerosLiquid),
       fn("arbitrationCost(bytes)", ARTIFACTS.klerosLiquid),
@@ -154,6 +156,7 @@ const CASES: readonly AbiCase[] = [
       ev("Dispute(address,uint256,uint256,uint256)", ARTIFACTS.iEvidence),
     ],
   },
+  { name: "erc792Abi", abi: erc792Abi, entries: [ev("Ruling(address,uint256,uint256)", ARTIFACTS.iArbitrable)] },
 ];
 
 /** No published artifact declares `denominator` or `MULTIPLIER_DENOMINATOR`, so their entries are built by hand. */
@@ -181,16 +184,12 @@ describe("every embedded entry is the published or verified entry, nothing else 
   }
 });
 
-describe("arbitrator event topics", () => {
+describe("event topics", () => {
   it("DisputeCreation has its known on-chain topic hash", () => {
     expect(toEventSelector(getAbiItem({ abi: klerosLiquidAbi, name: "DisputeCreation" }))).toBe("0x141dfc18aa6a56fc816f44f0e9e2f1ebc92b15ab167770e17db5b084c10ed995");
   });
-});
 
-describe("encoding through the embedded ABIs", () => {
-  it("each legacy fundAppeal overload encodes under its own selector", () => {
-    const [wide, narrow] = idrLegacyFundAppealAbi;
-    expect(encodeFunctionData({ abi: [wide], functionName: "fundAppeal", args: [1n, 2n] }).slice(0, 10)).toBe(toFunctionSelector("fundAppeal(uint256,uint256)"));
-    expect(encodeFunctionData({ abi: [narrow], functionName: "fundAppeal", args: [1n, 1] }).slice(0, 10)).toBe(toFunctionSelector("fundAppeal(uint256,uint8)"));
+  it("the arbitrable's Ruling event has the topic hash every executed dispute carries", () => {
+    expect(toEventSelector(getAbiItem({ abi: erc792Abi, name: "Ruling" }))).toBe("0x394027a5fa6e098a1191094d1719d6929b9abc535fcc0c8f448d6a4e75622276");
   });
 });
