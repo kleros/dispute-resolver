@@ -18,7 +18,8 @@ export { shortenAddress } from "./address";
 export { formatAmount } from "./amount";
 export { formatDuration } from "./duration";
 export { ChainClockProvider, useNowSeconds } from "./clock";
-export { LG_MEDIA_QUERY, useMediaQuery } from "./useMediaQuery";
+export { LG_MEDIA_QUERY, useMediaQuery, XL_MEDIA_QUERY } from "./useMediaQuery";
+export { useOutsidePress } from "./outsidePress";
 export {
   DROPDOWN_CLOSING_CLASS,
   DROPDOWN_OPEN_CLASS,
@@ -27,7 +28,6 @@ export {
   ICON_SWAP_SHOWN,
   readMotionMs,
   useAfterLoading,
-  useOutsidePress,
   usePresence,
   useRevealIn,
   type PresencePhase,

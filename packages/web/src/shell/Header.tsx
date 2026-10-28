@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef } from "react";
 import { Link, NavLink } from "react-router";
 import { paths, type ResolvedChain } from "../routing";
-import { ICON_SWAP_CLASS, ICON_SWAP_HIDDEN, ICON_SWAP_SHOWN, useOutsidePress, usePresence, type PresencePhase } from "../ui";
+import { ICON_SWAP_CLASS, ICON_SWAP_HIDDEN, ICON_SWAP_SHOWN, useMediaQuery, useOutsidePress, usePresence, XL_MEDIA_QUERY, type PresencePhase } from "../ui";
 import { WalletControl } from "../wallet";
 import { BrandLogo } from "./BrandLogo";
 import { ChainSwitcher } from "./ChainSwitcher";
@@ -49,7 +49,9 @@ function navLinkClass({ isActive }: { readonly isActive: boolean }): string {
  * wallet control.
  * Below `xl` only the navigation collapses into a menu panel: from `lg` it is a card under the Menu button at the end of
  * the one-row bar; below `lg` the controls take a second row, so changing chain or connecting never needs the menu, and
- * a scrim dims the page under the drawer. A press outside the bar closes the panel.
+ * a scrim dims the page under the drawer. A press outside the bar only closes the panel.
+ * It stacks under the library's modal overlay (z-20): where the document scrolls, as on phones, a higher bar would stay
+ * pressable over an open modal and hide the modal's top.
  * Every link is built from the resolved chain, so error screens never link to `/undefined`.
  * Printed it is relative: Chromium prints a sticky box moved down by the scroll offset it had on screen.
  */
@@ -60,6 +62,7 @@ export function Header({ resolvedChain }: HeaderProps) {
   const panelId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
   const barRowRef = useRef<HTMLDivElement>(null);
+  const inlineNav = useMediaQuery(XL_MEDIA_QUERY);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
@@ -73,19 +76,20 @@ export function Header({ resolvedChain }: HeaderProps) {
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [menuOpen, close]);
-  // The bar row holds the panel and the Menu button, whose own click toggles the panel.
-  useOutsidePress(menuOpen, barRowRef, close);
+  // The bar row holds the panel and the Menu button, whose own click toggles the panel. From xl the panel is the inline
+  // navigation, which a menu left open on a narrower window must not turn into a layer that swallows a press.
+  useOutsidePress(menuOpen && !inlineNav, barRowRef, close);
 
   return (
     <>
-      {/* Under the header's z-40 so the bar stays clear; a press on it is an outside press. It leaves with the panel. */}
+      {/* Over the page and under the header, so the bar stays clear; a press on it is an outside press. It leaves with the panel. */}
       {phase === "closed" ? null : (
         <div
           aria-hidden="true"
-          className={`fixed inset-0 z-30 bg-black/30 lg:hidden print:hidden ${menuOpen ? "animate-t-overlay-in" : "pointer-events-none animate-t-overlay-out"}`}
+          className={`fixed inset-0 z-5 bg-black/30 lg:hidden print:hidden ${menuOpen ? "animate-t-overlay-in" : "pointer-events-none animate-t-overlay-out"}`}
         />
       )}
-      <header className={`sticky top-0 z-40 print:relative ${BAR_SURFACE}`}>
+      <header className={`sticky top-0 z-10 print:relative ${BAR_SURFACE}`}>
         <div className={GUTTER}>
           <div ref={barRowRef} className={`${CONTENT} relative flex flex-wrap items-center gap-x-3 lg:h-16 lg:flex-nowrap lg:gap-8`}>
             <Link to={paths.chainRoot(chainId)} onClick={close} className={`order-1 inline-flex h-16 shrink-0 items-center ${BAR_FOCUS}`}>

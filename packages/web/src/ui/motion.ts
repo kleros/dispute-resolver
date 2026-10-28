@@ -58,20 +58,6 @@ export function usePresence<T extends HTMLElement>(): Presence<T> {
   return { phase, mountKey, panelRef, open, close };
 }
 
-/** While `active`, a pointer press outside `insideRef` calls `onOutside`, which must be stable to keep the listener. */
-export function useOutsidePress(active: boolean, insideRef: RefObject<HTMLElement | null>, onOutside: () => void): void {
-  useEffect(() => {
-    if (!active) return undefined;
-    const onPointerDown = (event: PointerEvent) => {
-      if (event.target instanceof Node && insideRef.current?.contains(event.target) !== true) onOutside();
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-    };
-  }, [active, insideRef, onOutside]);
-}
-
 /**
  * A motion variable of the root element in milliseconds, or `fallback` when it is unset. The build minifies `250ms` to
  * `.25s`, so both units are read.

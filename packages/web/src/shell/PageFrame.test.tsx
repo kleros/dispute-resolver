@@ -5,13 +5,22 @@ import { numberToHex } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTestDeps, type RpcHandler } from "../test/data";
 import { renderWithProviders } from "../test/shell";
+import { matchOnly } from "../test/matchMedia";
 import { createConnectedTestWallet, createTestWallet } from "../test/wallet";
-import { Countdown } from "../ui";
+import { Countdown, XL_MEDIA_QUERY } from "../ui";
 
 const VIEW_ONLY_SENTENCE = "View mode only: Actions that require an Ethereum account are disabled.";
 
 function Screen() {
   return <p>Screen content</p>;
+}
+
+function PageAction({ onPress }: { readonly onPress: () => void }) {
+  return (
+    <button type="button" onClick={onPress}>
+      Page action
+    </button>
+  );
 }
 
 function header() {
@@ -44,6 +53,10 @@ function expectExternal(link: HTMLElement, href: string) {
 }
 
 describe("PageFrame header", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("links Ongoing Disputes, Case Lookup and Create in that order on every wallet state", async () => {
     const view = renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page" });
     const expectNavigation = () => {
@@ -178,6 +191,29 @@ describe("PageFrame header", () => {
     await user.click(screen.getByText("Screen content"));
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(toggle).not.toHaveFocus();
+  });
+
+  it("a press on the page while the menu is open only closes the menu, and the next press acts", async () => {
+    const onPageAction = vi.fn();
+    const user = userEvent.setup();
+    renderWithProviders(<PageAction onPress={onPageAction} />, { path: "/1/ongoing", frame: "page" });
+    const toggle = within(header()).getByRole("button", { name: "Menu" });
+    await user.click(toggle);
+    await user.click(screen.getByRole("button", { name: "Page action" }));
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(onPageAction).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Page action" }));
+    expect(onPageAction).toHaveBeenCalledTimes(1);
+  });
+
+  it("from xl, where the navigation is inline, a menu left open on a narrower window keeps no press from the page", async () => {
+    vi.stubGlobal("matchMedia", matchOnly([XL_MEDIA_QUERY]));
+    const onPageAction = vi.fn();
+    const user = userEvent.setup();
+    renderWithProviders(<PageAction onPress={onPageAction} />, { path: "/1/ongoing", frame: "page" });
+    await user.click(within(header()).getByRole("button", { name: "Menu" }));
+    await user.click(screen.getByRole("button", { name: "Page action" }));
+    expect(onPageAction).toHaveBeenCalledTimes(1);
   });
 
   it("following a link closes the menu", async () => {

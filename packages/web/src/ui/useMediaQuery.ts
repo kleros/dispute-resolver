@@ -6,6 +6,9 @@ import { useMemo, useSyncExternalStore } from "react";
  */
 export const LG_MEDIA_QUERY = "(min-width: 56.25rem)";
 
+/** Tailwind's default `--breakpoint-xl`, which the library keeps: the edge where the `xl:` classes switch. */
+export const XL_MEDIA_QUERY = "(min-width: 80rem)";
+
 interface MediaStore {
   readonly subscribe: (onChange: () => void) => () => void;
   readonly getSnapshot: () => boolean;
