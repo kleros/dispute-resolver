@@ -6,7 +6,6 @@ import sonarjs from "eslint-plugin-sonarjs";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
-// Untrusted content (meta-evidence, evidence, scripts) must never reach a raw-HTML sink.
 const restrictedSyntax = [
   {
     selector: "AssignmentExpression[left.property.name=/^(innerHTML|outerHTML)$/]",
@@ -89,7 +88,6 @@ const importMetaEnvSyntax = {
   message: "import.meta.env is read only in packages/web/src/env/env.ts. Import ENV or APP_CONFIG from env/.",
 };
 
-// Anchors with an href and iframes are rendered only by safe-content/, which applies the https-only and sandbox rules.
 const anchorSyntax = {
   selector: "JSXOpeningElement[name.name='a']:has(JSXAttribute[name.name='href'])",
   message: "A JSX <a href> is allowed only under packages/web/src/safe-content/. Use ExternalLink, or react-router's Link for in-app navigation.",
@@ -127,14 +125,13 @@ const webSyntax = ({ env = true, links = true, addresses = true } = {}) => [
   ...(addresses ? addressSyntax : []),
 ];
 
-// The library's FileViewer renders attachments inline, which would execute untrusted documents in the app's origin.
+// Rendered inline, an attachment would execute untrusted documents in the app's origin.
 const fileViewerPath = {
   name: "@kleros/ui-components-library",
   importNames: ["FileViewer"],
   message: "FileViewer is banned: attachments are never rendered inline. Use Attachment from safe-content.",
 };
 
-// Reads go through core and the data layer, never through wagmi's read hooks: the wallet's transport is not a read path.
 const wagmiReadHooksPath = {
   name: "wagmi",
   importNames: ["usePublicClient", "useReadContract", "useReadContracts", "useBalance", "useBlockNumber", "useClient"],
@@ -148,7 +145,6 @@ const deepImportPattern = {
   message: "Import another directory through its index (../<dir>), not through its files.",
 };
 
-// Nothing outside tests and src/test/ imports from src/test/, so no test double can reach the production bundle.
 const testImportPattern = {
   regex: String.raw`^(?:\.{1,2}/)+test(?:/.*)?$`,
   message: "src/test/ is for tests only. A production file must not import it.",
@@ -232,7 +228,6 @@ export default defineConfig([
       "no-restricted-imports": ["error", { patterns: [...coreBannedImports, ...coreTestOnlyImports] }],
     },
   },
-  // The test code of core may import its helpers and fixtures; the rest of the core list still applies.
   { files: coreTestFiles, rules: { "no-restricted-imports": ["error", { patterns: coreBannedImports }] } },
   // zod.ts is the one module of core that imports zod itself; the operator scripts run in Node, where no policy applies.
   {
@@ -240,7 +235,7 @@ export default defineConfig([
     ignores: coreTestFiles,
     rules: { "no-restricted-imports": ["error", { patterns: [...coreBannedImportsExceptZod, ...coreTestOnlyImports] }] },
   },
-  // A later block replaces the rule wholesale, so each block carries the full list minus its own exceptions.
+  // A later block replaces a rule wholesale, so each block below carries the full list minus its own exceptions.
   { files: [`${webSrc}/**/*.{ts,tsx}`], rules: { "no-restricted-syntax": webSyntax() } },
   { files: webTestFiles, rules: { "no-restricted-syntax": webSyntax({ addresses: false }) } },
   {
@@ -254,8 +249,6 @@ export default defineConfig([
   },
   { files: [`${webSrc}/safe-content/**/*.test.{ts,tsx}`], rules: { "no-restricted-syntax": webSyntax({ links: false, addresses: false }) } },
 
-  // A later block replaces an earlier one wholesale, so each exception directory gets the full list minus its own entry,
-  // in a production variant and a test variant.
   { files: [`${webSrc}/**/*.{ts,tsx}`], rules: { "no-restricted-imports": webImports() } },
   { files: webTestFiles, rules: { "no-restricted-imports": webImports({ testImports: false }) } },
   ...[
@@ -268,10 +261,8 @@ export default defineConfig([
   ]),
 
   {
-    // `type ChainId = number` and `type UnixSeconds = number` are named aliases of a primitive that tell a chain ID or a
-    // time in seconds apart from the other numbers at every use. A branded type would make every number literal
-    // unassignable, so the redundant-alias rule is off for the file that declares them, and only there. The matching
-    // SonarCloud rule (S6564) needs the same exemption on this file in the project's quality settings.
+    // Primitive aliases such as `ChainId` name what a number means; a branded type would make every literal unassignable.
+    // SonarCloud's matching rule (S6564) needs the same exemption on this file in the project's quality settings.
     files: ["packages/core/src/types.ts"],
     rules: { "sonarjs/redundant-type-aliases": "off" },
   },
