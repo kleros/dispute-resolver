@@ -72,17 +72,11 @@ describe("generateKnownQuestions", () => {
     expect(data.questions).toEqual(EXPECTED_QUESTIONS);
 
     expect(filterOf(nth(mappingScans(calls, SINGLE), 0))).toMatchObject({ fromBlock: numberToHex(500_001), toBlock: numberToHex(800_000) });
-    expect(
-      filterOf(
-        nth(
-          calls.filter((call) => call.method === "eth_getLogs" && filterOf(call).address === CROSS_ENTRY.proxy),
-          0,
-        ),
-      ),
-    ).toMatchObject({
-      fromBlock: numberToHex(1000),
-      toBlock: numberToHex(800_000),
-    });
+    const crossScan = nth(
+      calls.filter((call) => call.method === "eth_getLogs" && filterOf(call).address === CROSS_ENTRY.proxy),
+      0,
+    );
+    expect(filterOf(crossScan)).toMatchObject({ fromBlock: numberToHex(1000), toBlock: numberToHex(800_000) });
     expect(calls.some((call) => call.method === "eth_getLogs" && filterOf(call).fromBlock === numberToHex(1990) && filterOf(call).toBlock === numberToHex(1990))).toBe(true);
   });
 
@@ -123,16 +117,13 @@ describe("generateKnownQuestions", () => {
     await expect(run({ previous }).result).rejects.toThrow(`1:${SINGLE}: template of ${Q_KNOWN_SINGLE} changed`);
   });
 
-  it("rejects a known dispute that the scan finds again", async () => {
+  it.each([
+    ["a known dispute that the scan finds again", mappingLog(SINGLE, 600_000, 1, Q_KNOWN_SINGLE), `1:${SINGLE}: dispute 1 mapped twice`],
+    ["a dispute the proxy mapped twice", mappingLog(SINGLE, 760_000, 2, Q_NEWEST), `1:${SINGLE}: dispute 2 mapped twice`],
+  ])("rejects %s", async (_case, log, message) => {
     const nodes = chains();
-    nodes[1].logs.push(mappingLog(SINGLE, 600_000, 1, Q_KNOWN_SINGLE));
-    await expect(run({}, nodes).result).rejects.toThrow(`1:${SINGLE}: dispute 1 mapped twice`);
-  });
-
-  it("rejects a dispute the proxy mapped twice", async () => {
-    const nodes = chains();
-    nodes[1].logs.push(mappingLog(SINGLE, 760_000, 2, Q_NEWEST));
-    await expect(run({}, nodes).result).rejects.toThrow(`1:${SINGLE}: dispute 2 mapped twice`);
+    nodes[1].logs.push(log);
+    await expect(run({}, nodes).result).rejects.toThrow(message);
   });
 
   it("rejects a question that is not found exactly once", async () => {

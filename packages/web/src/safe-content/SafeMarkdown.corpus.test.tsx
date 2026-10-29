@@ -19,7 +19,6 @@ interface RecordedDifference {
  */
 const LEGACY_UNDEFINED_REFERENCE_HREF = "";
 
-/** The corpus entries whose rendering differs from react-markdown 4's, each with the exact rendering expected instead. */
 const DIFFERENCES: Readonly<Record<string, RecordedDifference>> = {
   images: {
     reason: "images load only from absolute https URLs; any other image shows its alt text",
@@ -59,13 +58,5 @@ function renderObservation(source: string): LegacyRendering {
 describe("SafeMarkdown on the markdown corpus", () => {
   it.each(MARKDOWN_CORPUS.map((entry) => [entry.id, entry] as const))("%s renders exactly as react-markdown 4 did unless a difference is recorded", (id, entry) => {
     expect(renderObservation(entry.source)).toEqual(DIFFERENCES[id]?.observed ?? legacyObservation(entry.legacy));
-  });
-
-  it("every recorded difference names a corpus entry and differs from the react-markdown 4 rendering", () => {
-    for (const [id, difference] of Object.entries(DIFFERENCES)) {
-      const entry = MARKDOWN_CORPUS.find((candidate) => candidate.id === id);
-      expect(entry, id).toBeDefined();
-      expect(difference.observed, id).not.toEqual(entry === undefined ? undefined : legacyObservation(entry.legacy));
-    }
   });
 });

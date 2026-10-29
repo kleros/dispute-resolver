@@ -1,4 +1,3 @@
-/** Function signatures whose 4-byte selectors the family probes look for. */
 export type ProbeSignature =
   | "disputeIDtoTransactionID(uint256)"
   | "externalIDtoLocalID(uint256)"

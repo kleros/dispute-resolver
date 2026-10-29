@@ -35,7 +35,6 @@ export interface WriteReceipt {
   readonly transactionHash: Hex;
   readonly status: "success" | "reverted";
   readonly blockNumber: bigint;
-  /** Enough for `disputeIdFromReceipt`. */
   readonly logs: readonly { readonly address: string; readonly topics: readonly Hex[] }[];
   /**
    * Set when the awaited transaction was replaced and this is the receipt of the replacement, with viem's
@@ -60,7 +59,6 @@ export interface CoreDeps {
 
 export type MetaEvidenceBudget = "case" | "ongoing";
 
-/** A failed load is the hook's `unavailable` state, not a variant of this type. */
 export type OngoingTitle = { readonly kind: "title"; readonly text: string } | { readonly kind: "missing" };
 
 export interface OngoingData {
@@ -73,11 +71,9 @@ export interface CaseWriteContext {
   readonly binding: ArbitratedBinding;
   readonly family: FamilyDetection;
   readonly localId: LocalIdResolution;
-  /** Re-reads the arbitrator's appeal cost for a write about to be built. */
   readAppealCost(): Promise<Outcome<bigint>>;
 }
 
-/** Every field degrades on its own. */
 export interface CaseDispute {
   readonly status: "dispute";
   readonly chainId: number;
@@ -88,7 +84,6 @@ export interface CaseDispute {
   readonly metaEvidence: SectionData<MetaEvidenceResult>;
   readonly disputeEvent: SectionData<DisputeEventResult>;
   readonly evidence: SectionData<EvidenceList>;
-  /** Oldest first: the "Appealed" markers of the evidence timeline. */
   readonly appealDecisions: SectionData<readonly AppealDecisionEvent[]>;
   readonly courts: SectionData<readonly Court[]>;
   readonly appealPanel: SectionData<AppealPanel>;
@@ -99,7 +94,6 @@ export interface CaseDispute {
 
 export type FoundLookup = Extract<DisputeLookup, { status: "found" }>;
 
-/** `no-id`: the URL holds no dispute ID. */
 export type CaseData = { readonly status: "no-id"; readonly chainId: number } | CaseDispute;
 
 export interface CaseSectionProps {

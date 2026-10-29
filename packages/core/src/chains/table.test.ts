@@ -9,6 +9,7 @@ interface Expected {
   readonly id: number;
   readonly name: string;
   readonly currency: string;
+  readonly explorerBaseUrl: string;
   readonly klerosLiquid?: string;
   readonly arbitrableProxy?: string;
   readonly policyRegistry?: string;
@@ -23,6 +24,7 @@ const EXPECTED: readonly Expected[] = [
     id: 1,
     name: "Ethereum Mainnet",
     currency: "ETH",
+    explorerBaseUrl: "https://etherscan.io",
     klerosLiquid: MAINNET_LIQUID,
     arbitrableProxy: "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf",
     policyRegistry: "0xcf1f07713d5193fae5c1653c9f61953d048bece4",
@@ -34,6 +36,7 @@ const EXPECTED: readonly Expected[] = [
     id: 100,
     name: "Gnosis Network",
     currency: "xDai",
+    explorerBaseUrl: "https://gnosisscan.io",
     klerosLiquid: "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
     arbitrableProxy: "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
     policyRegistry: "0x9d494768936b6bdaabc46733b8d53a937a6c6d7e",
@@ -45,6 +48,7 @@ const EXPECTED: readonly Expected[] = [
     id: 10200,
     name: "Gnosis Testnet Chiado",
     currency: "xDai",
+    explorerBaseUrl: "https://gnosis-chiado.blockscout.com",
     klerosLiquid: "0xd8798dfae8194d6b4cd6e2da6187ae4209d06f27",
     arbitrableProxy: "0x4bef0321bd7fa943f85ae55e07f790c6becbd177",
     policyRegistry: "0x53fc70fe1ec3a60f8939a62abcc61bf1a57938d7",
@@ -56,6 +60,7 @@ const EXPECTED: readonly Expected[] = [
     id: 11155111,
     name: "Ethereum Testnet Sepolia",
     currency: "sETH",
+    explorerBaseUrl: "https://sepolia.etherscan.io",
     klerosLiquid: "0x90992fb4e15ce0c59aeffb376460fda4ee19c879",
     arbitrableProxy: "0x009ca5a0b816156f91b29a93d7688c52480bab24",
     policyRegistry: "0x88fb25d399310c07d35cb9091b8346d8b1893aa5",
@@ -67,6 +72,7 @@ const EXPECTED: readonly Expected[] = [
     id: 130,
     name: "Unichain Mainnet",
     currency: "ETH",
+    explorerBaseUrl: "https://uniscan.xyz",
     maxLookback: 1_000_000,
     readRpcEnv: "REACT_APP_UNICHAIN",
   },
@@ -74,6 +80,7 @@ const EXPECTED: readonly Expected[] = [
     id: 1301,
     name: "Unichain Testnet",
     currency: "ETH",
+    explorerBaseUrl: "https://sepolia.uniscan.xyz",
     maxLookback: 50_000,
     readRpcEnv: "REACT_APP_UNICHAIN_SEPOLIA",
   },
@@ -81,6 +88,7 @@ const EXPECTED: readonly Expected[] = [
     id: 137,
     name: "Polygon Mainnet",
     currency: "MATIC",
+    explorerBaseUrl: "https://polygonscan.com",
     maxLookback: 1_000_000,
     readRpcEnv: "REACT_APP_WEB3_POLYGON_PROVIDER_URL",
   },
@@ -88,6 +96,7 @@ const EXPECTED: readonly Expected[] = [
     id: 300,
     name: "zkSync Era Testnet Sepolia",
     currency: "sETH",
+    explorerBaseUrl: "https://sepolia.explorer.zksync.io",
     maxLookback: 50_000,
     defaultRpcUrl: "https://sepolia.era.zksync.dev/",
   },
@@ -95,6 +104,7 @@ const EXPECTED: readonly Expected[] = [
     id: 324,
     name: "zkSync Era Mainnet",
     currency: "ETH",
+    explorerBaseUrl: "https://explorer.zksync.io",
     maxLookback: 1_000_000,
     defaultRpcUrl: "https://mainnet.era.zksync.io",
   },
@@ -102,6 +112,7 @@ const EXPECTED: readonly Expected[] = [
     id: 42161,
     name: "Arbitrum One",
     currency: "ETH",
+    explorerBaseUrl: "https://arbiscan.io",
     maxLookback: 1_000_000,
     readRpcEnv: "REACT_APP_ARBITRUM_ONE",
   },
@@ -109,6 +120,7 @@ const EXPECTED: readonly Expected[] = [
     id: 421614,
     name: "Arbitrum Testnet Sepolia",
     currency: "ETH",
+    explorerBaseUrl: "https://sepolia.arbiscan.io",
     maxLookback: 50_000,
     readRpcEnv: "REACT_APP_ARBITRUM_SEPOLIA",
   },
@@ -116,6 +128,7 @@ const EXPECTED: readonly Expected[] = [
     id: 11155420,
     name: "Optimism Testnet Sepolia",
     currency: "ETH",
+    explorerBaseUrl: "https://optimism-sepolia.blockscout.com",
     maxLookback: 50_000,
     readRpcEnv: "REACT_APP_OPTIMISM_SEPOLIA",
   },
@@ -123,6 +136,7 @@ const EXPECTED: readonly Expected[] = [
     id: 8453,
     name: "Base Mainnet",
     currency: "ETH",
+    explorerBaseUrl: "https://basescan.org",
     maxLookback: 1_000_000,
     readRpcEnv: "REACT_APP_BASE",
   },
@@ -130,6 +144,7 @@ const EXPECTED: readonly Expected[] = [
     id: 84532,
     name: "Base Sepolia",
     currency: "ETH",
+    explorerBaseUrl: "https://sepolia.basescan.org",
     maxLookback: 50_000,
     readRpcEnv: "REACT_APP_BASE_SEPOLIA",
   },
@@ -166,7 +181,13 @@ describe("chains table", () => {
 
   it.each(EXPECTED)("chain $id has the expected config field by field", (expected) => {
     const chain = getChain(expected.id);
-    expect(chain).toMatchObject({ id: expected.id, name: expected.name, maxLookback: expected.maxLookback });
+    expect(chain).toMatchObject({
+      id: expected.id,
+      name: expected.name,
+      currency: expected.currency,
+      explorerBaseUrl: expected.explorerBaseUrl,
+      maxLookback: expected.maxLookback,
+    });
     expect(chain?.arbitratorDeployedAtBlock).toBe(expected.arbitratorDeployedAtBlock);
     expect(chain?.klerosLiquid).toBe(expected.klerosLiquid);
     expect(chain?.arbitrableProxy).toBe(expected.arbitrableProxy);
@@ -181,26 +202,6 @@ describe("chains table", () => {
     for (const { chainId, field, value } of addresses) {
       expect(value, `${String(chainId)}.${field}`).toMatch(/^0x[0-9a-f]{40}$/);
     }
-  });
-
-  it("currency symbols are ETH, with xDai on 100 and 10200, sETH on 11155111 and 300, MATIC on 137", () => {
-    const symbols = Object.fromEntries(Object.values(CHAINS).map((chain) => [chain.id, chain.currency]));
-    expect(symbols).toEqual({
-      1: "ETH",
-      100: "xDai",
-      10200: "xDai",
-      11155111: "sETH",
-      130: "ETH",
-      1301: "ETH",
-      137: "MATIC",
-      300: "sETH",
-      324: "ETH",
-      42161: "ETH",
-      421614: "ETH",
-      11155420: "ETH",
-      8453: "ETH",
-      84532: "ETH",
-    });
   });
 
   it("the default chain is mainnet", () => {

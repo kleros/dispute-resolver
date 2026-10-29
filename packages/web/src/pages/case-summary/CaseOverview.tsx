@@ -56,7 +56,6 @@ function OverviewLayout({ headingId, disputeId, period, network, court, votes }:
   );
 }
 
-/** The overview of the ID still waiting for the search's pause, laid out as the lookup will show it. */
 export function PendingOverview({ disputeId, chainName }: { readonly disputeId: bigint | null; readonly chainName: string }) {
   return (
     <section>

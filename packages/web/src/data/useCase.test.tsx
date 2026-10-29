@@ -2,6 +2,7 @@ import * as core from "@dispute-resolver/core";
 import type { Address, DisputeEventResult, FamilyDetection, MetaEvidenceResult, Outcome, Period } from "@dispute-resolver/core";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { QueryClient } from "@tanstack/react-query";
+import { numberToHex } from "viem";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   caseDispute,
@@ -15,10 +16,13 @@ import {
   testFamily,
   testFoundLookup,
   testOkMetaEvidence,
+  type RpcHandler,
 } from "../test/data";
-import { disputeKeyPrefix, queryKeys } from "./queryKeys";
+import { useChainClockOffset } from "./chainTime";
+import { queryKeys } from "./queryKeys";
 import type { CaseData, CaseDispute, CoreDeps } from "./types";
 import { useCase } from "./useCase";
+import { useCaseRefresh } from "./useCaseRefresh";
 
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../test/data/mockCoreReads")).mockCoreReads(importOriginal));
 
@@ -26,6 +30,7 @@ const ACCOUNT: Address = "0x1111111111111111111111111111111111111111";
 const EVIDENCE = testEvidenceList();
 const FOUND_EVENT: Outcome<DisputeEventResult> = { ok: true, value: testDisputeEvent() };
 
+const APPEAL_INFO = { ok: true, value: { appealCost: 1_000n, appealPeriodStart: 1_700_000_000, appealPeriodEnd: 4_000_000_000 } } as const;
 const UNKNOWN_SESSION = { code: "not-found", message: "The governor session is unknown: the dispute's Dispute event was not read." } as const;
 
 const escrowFamily: FamilyDetection = testFamily({
@@ -46,7 +51,6 @@ const governorFamily: FamilyDetection = testFamily({
   capabilities: { localId: "none", evidence: { kind: "none" }, appeal: { kind: "governor" }, withdraw: { kind: "governor" } },
 });
 
-/** Programs every read of dispute 1 on chain 1 in `period` to succeed; `ruled` says whether the arbitrator executed the ruling. */
 function programReads(period: Period = 0, ruled = false): void {
   const lookup = testFoundLookup({ period, ruled });
   vi.mocked(core.lookupDispute).mockResolvedValue(lookup);
@@ -61,7 +65,7 @@ function programReads(period: Period = 0, ruled = false): void {
         { status: "found", ...found },
         {
           appealDecisions: { ok: true, value: period >= 3 ? [{ blockNumber: 500n, appealedAt: 1_700_000_100 }] : [] },
-          appealInfo: period >= 3 ? { ok: true, value: { appealCost: 1_000n, appealPeriodStart: 1_700_000_000, appealPeriodEnd: 4_000_000_000 } } : null,
+          appealInfo: period >= 3 ? APPEAL_INFO : null,
         },
       ),
     ),
@@ -209,6 +213,7 @@ describe("useCase", () => {
     expect(core.readWithdrawable).not.toHaveBeenCalled();
     expect(current.appealPanel).toMatchObject({ status: "ready", value: { kind: "crowdfunding" } });
     expect(current.write.status).toBe("ready");
+    expect(current.appealDecisions).toEqual({ status: "ready", value: [{ blockNumber: 500n, appealedAt: 1_700_000_100 }] });
   });
 
   it("the write context re-reads the appeal cost from the arbitrator on the page chain's read client", async () => {
@@ -341,18 +346,6 @@ describe("useCase", () => {
     expect(current.decision.status).toBe("ready");
   });
 
-  it("the decision is read again on the appeal refresh, and the executed ruling with it", async () => {
-    programReads(4, true);
-    const client = createTestQueryClient();
-    const { result } = renderCase(1n, { client });
-    await settledCase(result);
-    vi.mocked(core.readExecutedRuling).mockResolvedValue({ status: "executed", ruling: 1n });
-    await act(() => client.invalidateQueries({ queryKey: disputeKeyPrefix("executedRuling", 1, 1n) }));
-    await waitFor(() => {
-      expect(caseDispute(result.current).decision).toMatchObject({ status: "ready", value: { kind: "winner", wonBy: "jury", winner: { ruling: 1n } } });
-    });
-  });
-
   it("a view-only arbitrable that applied another ruling than the court's won by default when its own funding record shows that ruling alone fully funded", async () => {
     programReads(4, true);
     vi.mocked(core.detectFamily).mockResolvedValue(viewOnlyFamily);
@@ -399,13 +392,6 @@ describe("useCase", () => {
     }
   });
 
-  it("passes the AppealDecision events of the details to the evidence section", async () => {
-    programReads(4);
-    const { result } = renderCase(1n);
-    const current = await settledCase(result);
-    expect(current.appealDecisions).toEqual({ status: "ready", value: [{ blockNumber: 500n, appealedAt: 1_700_000_100 }] });
-  });
-
   it("degrades an unconfigured chain to no-rpc without a read", async () => {
     vi.mocked(core.lookupDispute).mockResolvedValue({ status: "unavailable", error: { code: "no-rpc", message: "No RPC is configured for chain 1." } });
     const { result } = renderCase(1n, { deps: createTestDeps({ unconfiguredChains: [1] }) });
@@ -414,5 +400,76 @@ describe("useCase", () => {
     });
     expect(vi.mocked(core.lookupDispute).mock.calls[0]?.[0].client).toBeUndefined();
     expect(caseDispute(result.current).family).toMatchObject({ status: "unavailable", error: { code: "no-rpc" } });
+  });
+});
+
+describe("useCaseRefresh", () => {
+  /** The only RPC request left once core's reads are mocked: the latest block, for the chain clock. */
+  const latestBlock = vi.fn<RpcHandler>(({ method }) => {
+    if (method !== "eth_getBlockByNumber") throw new Error(`unexpected ${method}`);
+    return { number: "0x10", timestamp: numberToHex(1_700_000_000), hash: `0x${"cd".repeat(32)}`, transactions: [] };
+  });
+
+  function renderCaseWithRefresh() {
+    const deps = createTestDeps({ rpc: latestBlock });
+    return renderHook(() => ({ data: useCase(1, 1n, ACCOUNT), refresh: useCaseRefresh(1, 1n), clockOffset: useChainClockOffset(1) }), { wrapper: dataWrapper({ deps }) });
+  }
+
+  function settledData(result: { readonly current: { readonly data: CaseData } }): Promise<CaseDispute> {
+    return settledCase({
+      get current() {
+        return result.current.data;
+      },
+    });
+  }
+
+  it("reads nothing again until a mined write asks, and an evidence refresh rereads only the lookup and the evidence", async () => {
+    programReads(3);
+    const { result } = renderCaseWithRefresh();
+    await settledData(result);
+    expect(core.loadEvidence).toHaveBeenCalledTimes(1);
+
+    await act(() => result.current.refresh("evidence"));
+
+    expect(core.lookupDispute).toHaveBeenCalledTimes(2);
+    expect(core.loadEvidence).toHaveBeenCalledTimes(2);
+    expect(core.readDisputeDetails).toHaveBeenCalledTimes(1);
+    expect(core.readRoundFunding).toHaveBeenCalledTimes(1);
+    expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
+  });
+
+  it("an appeal refresh reads the executed ruling of an executed dispute again, and the arbitrable's own funding record the decision depends on", async () => {
+    programReads(4, true);
+    vi.mocked(core.detectFamily).mockResolvedValue(viewOnlyFamily);
+    vi.mocked(core.readProductFunding).mockResolvedValue({ ok: true, value: [2n] });
+    const { result } = renderCaseWithRefresh();
+    await settledData(result);
+    await waitFor(() => {
+      expect(core.readProductFunding).toHaveBeenCalledTimes(1);
+    });
+    await act(() => result.current.refresh("appeal"));
+    expect(core.readExecutedRuling).toHaveBeenCalledTimes(2);
+    expect(core.readProductFunding).toHaveBeenCalledTimes(2);
+  });
+
+  it("a refresh after a mined funding reads the details, the round's funding from the Dispute event, the evidence and the chain time again", async () => {
+    programReads(3);
+    vi.mocked(core.readDisputeDetails).mockImplementation((_context, found) => Promise.resolve(testDetails({ status: "found", ...found }, { appealInfo: APPEAL_INFO })));
+    const { result } = renderCaseWithRefresh();
+    await settledData(result);
+    await waitFor(() => {
+      expect(latestBlock).toHaveBeenCalledTimes(1);
+    });
+
+    await act(() => result.current.refresh("evidence"));
+    expect(latestBlock).toHaveBeenCalledTimes(1);
+
+    await act(() => result.current.refresh("appeal"));
+    expect(core.readDisputeDetails).toHaveBeenCalledTimes(2);
+    expect(core.loadEvidence).toHaveBeenCalledTimes(3);
+    expect(core.readRoundFunding).toHaveBeenCalledTimes(2);
+    expect(core.readRoundFunding).toHaveBeenLastCalledWith(expect.anything(), 0n, 100n);
+    expect(latestBlock).toHaveBeenCalledTimes(2);
+    expect(latestBlock).toHaveBeenLastCalledWith({ chainId: 1, method: "eth_getBlockByNumber", params: ["latest", false] });
   });
 });

@@ -37,13 +37,9 @@ function numberOf(value: unknown): number {
 }
 
 /**
- * An untrusted `precision` (meta-evidence) or `decimals` (Reality.eth question) as the precision a `RulingOptions`
- * carries, so the precision shown and the precision encoded are one value:
- * - absent when `Number(value)` is not finite;
- * - absent for a falsy value other than the number 0 (`null`, `false`, `""`), which `precision || 18` would encode with
- *   the default while the display shows 0 decimals;
- * - otherwise reality-eth-lib's reading, `parseInt(String(value))` with its radix inference, 0 when not positive: `true`
- *   is 0, `"1e2"` is 1, `"6"` is 6, `2.7` is 2, `"0x12"` is 18.
+ * An untrusted precision as a `RulingOptions` carries it, so the precision shown and the precision encoded are one
+ * value. A falsy value other than 0 (`null`, `false`, `""`) is absent: `precision || 18` would encode it with the
+ * default while the display shows 0 decimals.
  */
 export function parsePrecision(value: unknown): number | undefined {
   if (value === undefined || !Number.isFinite(numberOf(value))) return undefined;

@@ -87,21 +87,14 @@ describe("createReadClient", () => {
     expect(rpcCalls(endpoint)).toHaveLength(1);
   });
 
-  it("an eth_getLogs failure that is not a range limit is retried", async () => {
+  it.each([
+    ["an eth_getLogs failure that is not a range limit", -32000, "header not found"],
+    ["a rate-limited eth_getLogs", -32005, "daily request count exceeded, request rate limited"],
+  ])("%s is retried, not treated as a range limit", async (_case, code, message) => {
     vi.useFakeTimers();
-    const endpoint = stubEndpoint(() => ({ error: { code: -32000, message: "header not found" } }));
+    const endpoint = stubEndpoint(() => ({ error: { code, message } }));
     const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
-    const failure = expect(getLogs(client)).rejects.toThrow(/header not found/);
-    await vi.runAllTimersAsync();
-    await failure;
-    expect(rpcCalls(endpoint)).toHaveLength(3);
-  });
-
-  it("a rate-limited eth_getLogs is retried, not treated as a range limit", async () => {
-    vi.useFakeTimers();
-    const endpoint = stubEndpoint(() => ({ error: { code: -32005, message: "daily request count exceeded, request rate limited" } }));
-    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
-    const failure = expect(getLogs(client)).rejects.toThrow(/rate limited/);
+    const failure = expect(getLogs(client)).rejects.toThrow(message);
     await vi.runAllTimersAsync();
     await failure;
     expect(rpcCalls(endpoint)).toHaveLength(3);

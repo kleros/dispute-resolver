@@ -1,6 +1,5 @@
 import type { Abi } from "viem";
 
-/** KlerosLiquid (`@kleros/kleros`). */
 export const klerosLiquidAbi = [
   {
     type: "function",
@@ -130,7 +129,6 @@ export const policyRegistryAbi = [
   },
 ] as const satisfies Abi;
 
-/** ERC-1497 `IEvidence` (`@kleros/arbitrable-proxy-contracts`). */
 export const erc1497Abi = [
   {
     type: "event",

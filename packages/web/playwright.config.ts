@@ -23,7 +23,6 @@ export default defineConfig({
     // Windows and Linux desktops, so every spec runs on the page scroller as those visitors get it, its lane hidden
     // (shell/PageScroller.tsx).
     { name: "chromium", testDir: "./e2e", use: { ...devices["Desktop Chrome"], launchOptions: { ignoreDefaultArgs: ["--hide-scrollbars"] } } },
-    // The runner checks also run in the other engines users run; the `chromium` project covers Chromium.
     { name: "runner-firefox", testDir: "./e2e/runner", use: { ...devices["Desktop Firefox"] } },
     { name: "runner-webkit", testDir: "./e2e/runner", use: { ...devices["Desktop Safari"] } },
     // The page scroller in the other engines. Headless Firefox hides every scrollbar, so this project runs it headed, with

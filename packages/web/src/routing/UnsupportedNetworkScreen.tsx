@@ -3,7 +3,11 @@ import { useId } from "react";
 import { Notice } from "../ui";
 import { useNetworkSwitch } from "../wallet";
 import { SWITCHABLE_CHAINS } from "./switchableChains";
-import type { UnsupportedNetworkScreenProps } from "./types";
+
+interface UnsupportedNetworkScreenProps {
+  /** Decoded by the router; shown as text only. */
+  readonly segment: string;
+}
 
 /**
  * Each entry asks the wallet to switch and the app follows the wallet. The entries never navigate: a user without a

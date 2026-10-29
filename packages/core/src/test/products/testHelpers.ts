@@ -1,4 +1,3 @@
-/** Test-only replay of the recorded product funding reads (`products/__fixtures__/funding.json`). */
 import { encodeFunctionData, encodeFunctionResult, numberToHex, pad, parseAbi, zeroAddress } from "viem";
 import type { Abi, AbiFunction } from "viem";
 import recorded from "../../products/__fixtures__/funding.json";
@@ -79,7 +78,6 @@ const fixtureSchema = z.object({
   chains: z.array(z.object({ chainId: z.number(), readAtBlock: z.number(), arbitrator: address, cases: z.array(caseSchema) })),
 });
 
-/** One recorded call: the output fields a reader reads, a revert, or a raw answer. */
 export type RecordedCall = z.infer<typeof callSchema>;
 
 export interface ProductCase {
@@ -152,8 +150,7 @@ function reply(kind: ProductKind, call: RecordedCall): CallReply {
   return { result: call.raw ?? encoded(kind, call).result };
 }
 
-/** The case with the last recorded call of `fn` replaced by `change`'s. */
-export function editCall(kase: ProductCase, kind: ProductKind, fn: string, change: (call: RecordedCall) => RecordedCall): ProductCase {
+function editCall(kase: ProductCase, kind: ProductKind, fn: string, change: (call: RecordedCall) => RecordedCall): ProductCase {
   const calls = kase.calls[kind] ?? [];
   const index = calls.map((call) => call.fn).lastIndexOf(fn);
   if (index < 0) throw new Error(`${kase.label} has no ${kind} ${fn}`);
@@ -191,21 +188,19 @@ export function editWord(kase: ProductCase, index: number, change: (word: bigint
   return { ...kase, storage };
 }
 
-/** A fake node answering the case's recorded calls and storage words; anything else fails as a transport error. */
-export function productNode(kase: ProductCase, overrides: Partial<FakeNodeSpec> = {}): FakeNodeSpec {
-  const calls = Object.entries(kase.calls).flatMap(([kind, list]) =>
-    list.map((call): [string, CallReply] => [callKey(kase.arbitrable, encoded(kind as ProductKind, call).data), reply(kind as ProductKind, call)]),
-  );
-  const storage = new Map(kase.storage.map(({ slot, word }) => [storageKey(kase.arbitrable, slot), word]));
-  return { head: 1n, calls, storage, ...overrides };
-}
-
-/** The read client, binding and a view-only detection of the case's dispute. */
+/**
+ * The read client, binding and a view-only detection of the case's dispute. The node answers the case's recorded calls
+ * and storage words; anything else fails as a transport error.
+ */
 export function productRead(
   kase: ProductCase,
   overrides: Partial<FakeNodeSpec> = {},
 ): { readonly client: ReadClient; readonly requests: NodeRequests; readonly binding: ArbitratedBinding; readonly family: FamilyDetection } {
-  const { client, requests } = fakeNode(productNode(kase, overrides));
+  const calls = Object.entries(kase.calls).flatMap(([kind, list]) =>
+    list.map((call): [string, CallReply] => [callKey(kase.arbitrable, encoded(kind as ProductKind, call).data), reply(kind as ProductKind, call)]),
+  );
+  const storage = new Map(kase.storage.map(({ slot, word }) => [storageKey(kase.arbitrable, slot), word]));
+  const { client, requests } = fakeNode({ head: 1n, calls, storage, ...overrides });
   const binding = testBinding({ chainId: kase.chainId, disputeId: kase.disputeId, arbitrated: kase.arbitrable, arbitrator: kase.arbitrator });
   return { client, requests, binding, family: detectionFor(kase.arbitrable, FAMILY_SIGNATURES["view-only"], kase.chainId) };
 }

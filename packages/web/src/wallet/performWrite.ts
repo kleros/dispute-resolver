@@ -38,11 +38,6 @@ export function chainGuard(walletChainId: number | undefined, pageChainId: numbe
   return { phase: "wrong-chain", walletChainId: match.walletChainId, pageChainId: match.pageChainId };
 }
 
-function connectedChainId(config: Config): number | undefined {
-  const wallet = currentWalletState(config);
-  return wallet.status === "connected" ? wallet.chainId : undefined;
-}
-
 /** The connector's own current chain, read immediately before signing; `undefined` without a connection. */
 function connectorChainId(config: Config): Promise<number | undefined> {
   const account = getAccount(config);
@@ -166,7 +161,8 @@ export async function performWrite(environment: WriteEnvironment, build: WriteBu
   if (build.call.chainId !== pageChainId) return settle({ phase: "refused", refusal: "call-chain-mismatch" });
   const { config } = environment;
 
-  const guard = chainGuard(connectedChainId(config), pageChainId);
+  const wallet = currentWalletState(config);
+  const guard = chainGuard(wallet.status === "connected" ? wallet.chainId : undefined, pageChainId);
   if (guard !== null) return settle(guard);
   const signer = currentSigner(config);
   if (signer === undefined) return settle({ phase: "needs-wallet", pageChainId });

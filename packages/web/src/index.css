@@ -122,22 +122,10 @@
 }
 
 /*
- * The library's hover and transition utilities. Its stylesheet loads through its package entry and carries these hover
- * fills as `!important` in `@layer components`; the redeclarations keep them on the library tokens should it not load.
- * Hover-out is the same transition as hover-in. The transition's property list is a deliberate superset: the library
- * `Card` carries `hover-short-transition`, so whichever of it and the Ongoing card's `transition-[background-color]
- * duration-200` wins the utilities sort, the card still transitions its fill within the 150 to 250 ms band.
+ * The transition's property list is a deliberate superset: the library `Card` carries `hover-short-transition`, so
+ * whichever of it and the Ongoing card's `transition-[background-color] duration-200` wins the utilities sort, the card
+ * still transitions its fill within the 150 to 250 ms band.
  */
-@layer utilities {
-  .hover-medium-blue:hover {
-    background-color: var(--klerosUIComponentsMediumBlue);
-  }
-
-  .hover-white-background:hover {
-    background-color: var(--klerosUIComponentsWhiteBackground);
-  }
-}
-
 @utility hover-short-transition {
   transition-property: background-color, border-color, color, box-shadow;
   transition-duration: 150ms;
@@ -333,22 +321,17 @@
     color-scheme: light;
 
     /*
-     * Light-only token corrections. The library's light values fail WCAG AA as text and fills (#009aff is
-     * 2.97:1 on white, #999999 is 2.85:1), so they are overridden here; `:root.dark` outranks `:root`, so dark keeps the
-     * library's values, which pass every measured text check (its Stroke is corrected in the dark block below).
-     * - PrimaryBlue #0072c6: 4.97:1 on white, 4.67:1 on MediumBlue #f0f9ff, 4.80:1 on LightBackground #fafbfc; white on it
-     *   4.97:1. The brand hue #009aff survives in the logo and in dark mode (#6cc5ff).
-     * - SecondaryBlue #005fa8: the library primary-button hover; white on it 6.56:1 (the library's #7bcbff gave 1.78:1).
-     * - SecondaryText #6b6b6b: 5.33:1 on white, 5.00:1 on MediumBlue, 5.14:1 on LightBackground, 5.11:1 on LightGrey.
-     * - Warning #a85400: 5.34:1 on white, 5.15:1 on LightBackground, 5.01:1 on MediumBlue, 4.75:1 on TintPurple (the
-     *   library's #ff9900 is 2.14:1 on white).
-     * - Error #c8102e: 5.88:1 on white, 5.68:1 on LightBackground, 5.52:1 on MediumBlue, 5.24:1 on TintPurple (the
-     *   library's #f60c36 is 4.18:1 on white).
-     * - Success #007a1f: 5.52:1 on white, 5.33:1 on LightBackground, 5.18:1 on MediumBlue, 4.91:1 on TintPurple (the
-     *   library's #00c42b is 2.35:1 on white).
-     * The three clear every alert title, field message and inline error; their non-text uses (period dots, alert edges
-     * and icons, identicon fills, invalid-field borders) only darken. Dark keeps the library's values (Warning 11.29:1,
-     * Error 5.90:1, Success 10.22:1 on WhiteBackground #220050).
+     * Light-only token corrections: the library's light values fail WCAG AA as text and fills. `:root.dark` outranks
+     * `:root`, so dark keeps the library's values, which pass every measured text check (its Stroke is corrected below).
+     * Worst case per token, then the library value it replaces:
+     * - PrimaryBlue #0072c6: 4.67:1 on MediumBlue (#009aff, 2.97:1 on white; the brand hue stays in the logo and dark).
+     * - SecondaryBlue #005fa8, the primary-button hover: white on it 6.56:1 (#7bcbff, 1.78:1).
+     * - SecondaryText #6b6b6b: 5.00:1 on MediumBlue (#999999, 2.85:1 on white).
+     * - Warning #a85400: 4.75:1 on TintPurple (#ff9900, 2.14:1 on white).
+     * - Error #c8102e: 5.24:1 on TintPurple (#f60c36, 4.18:1 on white).
+     * - Success #007a1f: 4.91:1 on TintPurple (#00c42b, 2.35:1 on white).
+     * Warning, Error and Success clear every alert title, field message and inline error; their non-text uses (period
+     * dots, alert edges and icons, identicon fills, invalid-field borders) only darken.
      */
     --klerosUIComponentsPrimaryBlue: #0072c6;
     --klerosUIComponentsSecondaryBlue: #005fa8;
@@ -358,38 +341,28 @@
     --klerosUIComponentsSuccess: #007a1f;
 
     /*
-     * App tokens.
-     * - --dr-control-border: edges of inputs, textareas and select triggers (cards keep Stroke). Light #8a8a8a:
-     *   3.24:1 on MediumBlue, 3.33:1 on LightBackground, 3.45:1 on white. Dark #8a7bd0: 3.78:1 on MediumBlue #2e206c,
-     *   4.92:1 on WhiteBackground #220050.
+     * App tokens, each with its worst case.
+     * - --dr-control-border: input, textarea and select-trigger edges (cards keep Stroke). Light #8a8a8a 3.24:1 and dark
+     *   #8a7bd0 3.78:1, both on MediumBlue.
      * - --dr-focus: the focus ring, PrimaryBlue (light 4.97:1 on white; dark #6cc5ff 7.19:1 on WhiteBackground).
-     * - --dr-focus-bar: the ring on the purple bars, which the header and footer assign to --dr-focus. Light #7bcbff:
-     *   5.99:1 on PrimaryPurple #4d00b4. Dark #a5dbff: 10.47:1 on the dark bar surface LightBlue #2a1260.
-     * - --dr-record-surface: the record band of the dispute header and the Create summary cover. Light TintPurple
-     *   #f4f0fa: PrimaryText 11.25:1, SecondaryText 4.74:1; PrimaryBlue is 4.43:1 on it, so no link sits on the band.
-     *   Dark MediumPurple #390f6c: PrimaryText 12.26:1, SecondaryText 8.88:1.
-     * - --dr-record-edge: the band's 1 px edge and its inner rule (non-text). Light: PrimaryPurple mixed 20 % into Stroke
-     *   (about #c7b7db), 1.67:1 on the band and 1.84:1 on the page, where Stroke alone is 1.12:1 on TintPurple. Dark:
-     *   Stroke, 2.10:1 on the band.
-     * - --dr-success-bar: the header chain dot on the purple bar. Any colour at or above 4.5:1 on white is at most 2.36:1
-     *   on the light bar, so the bar takes the dark theme's shade in both themes. Light #65dc7f: 6.13:1 on PrimaryPurple
-     *   #4d00b4. Dark: the library's Success.
-     * - --dr-display-paper: the evidence display's sheet, the card's white in light and an off-white sheet (the light
-     *   TintPurple #f4f0fa) in dark. The frame's colour scheme is light in both themes, keeping third-party pages in their
-     *   own light rendering. A page that paints no background with boundary-grey text (#767676, 4.54:1 on white) reads
-     *   4.04:1 on the sheet. No off-white keeps 4.5:1 for that grey (it would need a background lighter than white), so
-     *   the choice is white or not, and pure white in dark is what the sheet replaces; third-party content is outside the
-     *   app's conformance claim.
-     * - --dr-display-focus: the ring inside the evidence display, on that paper in both themes: #0072c6 is 4.97:1 on white
-     *   and about 4.7:1 on #f4f0fa, where the dark --dr-focus #6cc5ff would be 1.90:1.
-     * - --dr-display-skeleton: the loading bars on that paper. Light: the Stroke, 1.26:1 on white. Dark: a purple-grey
-     *   matched to that ratio on the sheet (#dbd5e3, 1.27:1 on #f4f0fa), where the light Stroke would be 1.12:1 and all
-     *   but vanish and the dark Stroke would be heavy. A placeholder, not text, so no text ratio applies.
-     * - --dr-scroll-thumb, -hover, -active: the page scrollbar's thumb at rest, hovered and dragged, lighter at each
-     *   step, with at least 3:1 on LightBackground in each state. Light: VioletPurple 7.59:1, SecondaryPurple 5.46:1, Tint 3.25:1. LavenderPurple
-     *   would be 2.91:1, so the dragged thumb takes Tint, a shade darker than it yet lighter than SecondaryPurple, and
-     *   not PrimaryPurple, the bars' own colour. Dark: VioletPurple would be 2.39:1, so each state moves one token lighter
-     *   and the three stay distinct: SecondaryPurple 5.38:1, LavenderPurple 6.23:1, Tint 10.92:1.
+     * - --dr-focus-bar: the ring on the purple bars, which the header and footer assign to --dr-focus. Light #7bcbff
+     *   5.99:1 on PrimaryPurple; dark #a5dbff 10.47:1 on LightBlue.
+     * - --dr-record-surface: the record band of the dispute header and the Create summary cover. Light TintPurple:
+     *   SecondaryText 4.74:1, and PrimaryBlue only 4.43:1, so no link sits on the band. Dark MediumPurple: SecondaryText
+     *   8.88:1.
+     * - --dr-record-edge: the band's edge and inner rule (non-text). Light: PrimaryPurple mixed 20 % into Stroke, 1.67:1 on
+     *   the band, where Stroke alone is 1.12:1. Dark: Stroke, 2.10:1.
+     * - --dr-success-bar: the header chain dot. A colour at 4.5:1 on white is at most 2.36:1 on the light bar, so both
+     *   themes take the dark shade: light #65dc7f 6.13:1 on PrimaryPurple; dark the library's Success.
+     * - --dr-display-paper: the evidence display's sheet, white in light and TintPurple in dark; the frame stays light. No
+     *   off-white keeps boundary grey #767676 at 4.5:1 (4.04:1 here), so it is white or not, and pure white is what dark
+     *   replaces; third-party content is outside the app's conformance claim.
+     * - --dr-display-focus: the ring on that paper in both themes, about 4.7:1 on #f4f0fa (dark --dr-focus: 1.90:1).
+     * - --dr-display-skeleton: loading bars on that paper (non-text). Light Stroke 1.26:1 on white; dark #dbd5e3 matched
+     *   to it, 1.27:1 on #f4f0fa.
+     * - --dr-scroll-thumb, -hover, -active: the thumb at rest, hovered and dragged, lighter at each step and at least 3:1
+     *   on LightBackground. Light VioletPurple, SecondaryPurple, Tint 3.25:1 (LavenderPurple 2.91:1; PrimaryPurple is the
+     *   bars' colour). Dark VioletPurple would be 2.39:1, so each moves one token lighter: SecondaryPurple 5.38:1 first.
      */
     --dr-display-paper: var(--klerosUIComponentsWhiteBackground);
     --dr-display-focus: #0072c6;
@@ -504,11 +477,8 @@
     color-scheme: dark;
 
     /*
-     * Dark token correction. Stroke #5a5490: the library's dark Stroke #392c74 mixed 25 % toward
-     * the dark SecondaryText #becce5 in sRGB, written as a literal because the token cannot reference itself. Role: every
-     * 1 px edge in dark (cards, dividers, bars, rails, rings; the library's own edges and Stroke fills follow). Non-text:
-     * 2.62:1 on WhiteBackground #220050, 2.78:1 on LightBackground #1b003f, 2.02:1 on MediumBlue #2e206c, 2.10:1 on
-     * MediumPurple #390f6c; the library's value is 1.51:1 on WhiteBackground and drew no edge. Light is untouched.
+     * Stroke #5a5490, every 1 px edge in dark: the library's #392c74 (1.51:1 on WhiteBackground, no visible edge) mixed
+     * 25 % toward dark SecondaryText, a literal since the token cannot reference itself. Worst 2.02:1 on MediumBlue.
      */
     --klerosUIComponentsStroke: #5a5490;
 
@@ -532,7 +502,6 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Browser surfaces: selection, scrollbar, caret and tabular numerals follow the palette. */
   ::selection {
     background: color-mix(in srgb, var(--klerosUIComponentsPrimaryBlue) 24%, transparent);
     color: inherit;
@@ -660,10 +629,7 @@
   }
 }
 
-/*
- * The unlayered rules. Unlayered styles beat every layer, utilities included, so these are the only places
- * a component's own classes are overridden.
- */
+/* Unlayered rules beat every layer, so these are the only places a component's own classes are overridden. */
 
 /*
  * A theme flip is instant: theme.ts sets the attribute for the one style change, so colour transitions of the app and
@@ -719,9 +685,8 @@
 }
 
 /*
- * The page scroller's track is 10 px, not SimpleBar's 11 (its unlayered 0,2,0 rule), so the thumb's 2 px insets leave Court
- * v2's 6 px. The scroller holds the focus only to take the keys while nothing else has it, and draws no ring, as the body
- * did.
+ * The track is 10 px, not SimpleBar's 11 (its unlayered 0,2,0 rule), so the thumb's 2 px insets leave 6 px. The scroller
+ * holds the focus only to take the keys while nothing else has it, and draws no ring, as the body did.
  */
 .dr-page-scroller > .simplebar-track.simplebar-vertical {
   width: 10px;

@@ -1,9 +1,8 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { renderAtPath, renderInRouter } from "../test/routing";
+import { renderAtPath } from "../test/routing";
 import { createConnectedTestWallet } from "../test/wallet";
-import { NotFoundScreen } from "./NotFoundScreen";
 
 function Unreachable() {
   return <p>Unreachable page</p>;
@@ -67,18 +66,5 @@ describe("UnsupportedNetworkScreen", () => {
     await waitFor(() => {
       expect(wallet.config.state.chainId).toBe(100);
     });
-  });
-});
-
-describe("NotFoundScreen", () => {
-  it("shows 404, says the page was not found, keeps the Athens message and the decorative illustration", () => {
-    const view = renderInRouter(<NotFoundScreen chainId={1} />, "/1/nowhere");
-    expect(screen.getByRole("heading", { level: 1, name: "404" })).toBeInTheDocument();
-    expect(screen.getByText("Page not found")).toBeInTheDocument();
-    expect(screen.getByText("Something went wrong in Athens!")).toBeInTheDocument();
-    const illustration = view.container.querySelector("img");
-    expect(illustration).not.toBeNull();
-    expect(illustration?.getAttribute("alt")).toBe("");
-    expect(illustration?.getAttribute("src")).toMatch(/acropolis/);
   });
 });

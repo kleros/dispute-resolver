@@ -1,13 +1,9 @@
 import { devices, expect, test, type Browser, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { openDisputesRpc } from "../support/arbitrator";
 import { fakeAtlas } from "../support/atlas";
+import { accountButton, accountPanel, disputeCard, menuButton, navLink, networkMenu, pill } from "../support/header";
 import { appOriginOf, fakeNetwork, loadRecording } from "../support/network";
 import { expectWalletConnected, injectWallet } from "../support/wallet";
-
-// A press outside an open menu, drawer, panel or modal only closes it: nothing under it acts, on a phone's touch screen
-// as with a desktop mouse, and the next press acts as usual. Mainnet's arbitrator lists one synthesized open dispute, so
-// the Ongoing page has a card link under the phone drawer's scrim. The build needs the chain-1 read RPC configured, and
-// the evidence modal its Atlas URI, as a deploy has.
 
 const ACCOUNT = "0x00000000000000000000000000000000000000e2";
 const DISPUTE = 901n;
@@ -33,41 +29,9 @@ async function openOngoing(browser: Browser, baseURL: string | undefined, option
   const page = await context.newPage();
   await page.goto("/1/ongoing");
   await expect(pill(page)).toBeVisible();
-  await expect(disputeCard(page)).toBeVisible({ timeout: 15_000 });
+  await expect(disputeCard(page, DISPUTE)).toBeVisible({ timeout: 15_000 });
   if (options.wallet === true) await expectWalletConnected(accountButton(page));
   return page;
-}
-
-function header(page: Page) {
-  return page.getByRole("banner");
-}
-
-function pill(page: Page) {
-  return header(page).getByRole("button", { name: /^Network: / });
-}
-
-function networkMenu(page: Page) {
-  return header(page).getByRole("menu", { name: "Network" });
-}
-
-function accountButton(page: Page) {
-  return header(page).getByRole("button", { name: /^Account 0x/ });
-}
-
-function accountPanel(page: Page) {
-  return header(page).getByRole("dialog", { name: "Account" });
-}
-
-function menuButton(page: Page) {
-  return header(page).getByRole("button", { name: "Menu", exact: true });
-}
-
-function navLink(page: Page, name: string) {
-  return page.getByRole("navigation", { name: "Main" }).getByRole("link", { name, exact: true });
-}
-
-function disputeCard(page: Page) {
-  return page.getByRole("link").filter({ has: page.getByText(`#${DISPUTE.toString()}`, { exact: true }) });
 }
 
 function periodFilter(page: Page) {
@@ -93,47 +57,34 @@ async function openDrawer(page: Page): Promise<void> {
 }
 
 test.describe("on a phone", () => {
-  test("a tap on a drawer link while the network menu is open only closes the menu, and the next tap follows the link", async ({ browser, baseURL }) => {
-    const page = await openOngoing(browser, baseURL, { phone: true });
-    await openDrawer(page);
-    await pill(page).tap();
-    await expect(networkMenu(page)).toBeVisible();
+  for (const row of [
+    { menu: "network", wallet: false, opener: pill, panel: networkMenu, link: "Case Lookup", end: "end", url: /\/1\/cases$/ },
+    { menu: "account", wallet: true, opener: accountButton, panel: accountPanel, link: "Create", end: "start", url: /\/1\/create$/ },
+  ] as const) {
+    test(`a tap on a drawer link while the ${row.menu} menu is open only closes the menu, and the next tap follows the link`, async ({ browser, baseURL }) => {
+      const page = await openOngoing(browser, baseURL, { phone: true, wallet: row.wallet });
+      await openDrawer(page);
+      await row.opener(page).tap();
+      await expect(row.panel(page)).toBeVisible();
 
-    const link = navLink(page, "Case Lookup");
-    await link.tap({ position: await nearEnd(link, "end") });
-    await expect(networkMenu(page)).toBeHidden();
-    await settle(page);
-    await expect(page).toHaveURL(ONGOING);
-    await expect(menuButton(page)).toHaveAttribute("aria-expanded", "true");
+      const link = navLink(page, row.link);
+      await link.tap({ position: await nearEnd(link, row.end) });
+      await expect(row.panel(page)).toBeHidden();
+      await settle(page);
+      await expect(page).toHaveURL(ONGOING);
+      await expect(menuButton(page)).toHaveAttribute("aria-expanded", "true");
 
-    await link.tap({ position: await nearEnd(link, "end") });
-    await expect(page).toHaveURL(/\/1\/cases$/);
-    await page.context().close();
-  });
-
-  test("a tap on a drawer link while the account menu is open only closes the menu, and the next tap follows the link", async ({ browser, baseURL }) => {
-    const page = await openOngoing(browser, baseURL, { phone: true, wallet: true });
-    await openDrawer(page);
-    await accountButton(page).tap();
-    await expect(accountPanel(page)).toBeVisible();
-
-    const link = navLink(page, "Create");
-    await link.tap({ position: await nearEnd(link, "start") });
-    await expect(accountPanel(page)).toBeHidden();
-    await settle(page);
-    await expect(page).toHaveURL(ONGOING);
-    await expect(menuButton(page)).toHaveAttribute("aria-expanded", "true");
-
-    await link.tap({ position: await nearEnd(link, "start") });
-    await expect(page).toHaveURL(/\/1\/create$/);
-    await page.context().close();
-  });
+      await link.tap({ position: await nearEnd(link, row.end) });
+      await expect(page).toHaveURL(row.url);
+      await page.context().close();
+    });
+  }
 
   test("a tap on the drawer's scrim over a dispute card only closes the drawer, and the next tap opens the dispute", async ({ browser, baseURL }) => {
     const page = await openOngoing(browser, baseURL, { phone: true });
     await openDrawer(page);
     const drawer = await page.locator(`[id="${(await menuButton(page).getAttribute("aria-controls")) ?? ""}"]`).boundingBox();
-    const card = await disputeCard(page).boundingBox();
+    const card = await disputeCard(page, DISPUTE).boundingBox();
     if (drawer === null || card === null) throw new Error("The drawer or the dispute card has no box on the page.");
     const x = card.x + card.width / 2;
     const y = Math.max(card.y, drawer.y + drawer.height) + 16;
@@ -146,7 +97,7 @@ test.describe("on a phone", () => {
     await settle(page);
     await expect(page).toHaveURL(ONGOING);
 
-    await disputeCard(page).tap();
+    await disputeCard(page, DISPUTE).tap();
     await expect(page).toHaveURL(new RegExp(`/1/cases/${DISPUTE.toString()}$`));
     await page.context().close();
   });
@@ -257,12 +208,12 @@ test.describe("with a mouse", () => {
     await menuButton(page).click();
     await expect(navLink(page, "Case Lookup")).toBeVisible();
 
-    await disputeCard(page).click();
+    await disputeCard(page, DISPUTE).click();
     await expect(menuButton(page)).toHaveAttribute("aria-expanded", "false");
     await settle(page);
     await expect(page).toHaveURL(ONGOING);
 
-    await disputeCard(page).click();
+    await disputeCard(page, DISPUTE).click();
     await expect(page).toHaveURL(new RegExp(`/1/cases/${DISPUTE.toString()}$`));
     await page.context().close();
   });

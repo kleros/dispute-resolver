@@ -3,7 +3,6 @@ import { chainGuard } from "./performWrite";
 import type { NeedsWalletGuard, WrongChainGuard } from "./types";
 import { useWalletChainId } from "./useWallet";
 
-/** Whether a write on the page chain can be signed now, and the refusal to show when it cannot. */
 export type WriteAccess =
   { readonly status: "ready" } | { readonly status: "needs-wallet"; readonly guard: NeedsWalletGuard } | { readonly status: "wrong-chain"; readonly guard: WrongChainGuard };
 

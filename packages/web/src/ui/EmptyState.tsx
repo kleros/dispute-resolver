@@ -1,7 +1,6 @@
 import { STAGGER_FIRST, STAGGER_NEXT } from "./motion";
 import type { EmptyStateProps } from "./types";
 
-/** A section with nothing to show, such as "There are no open disputes." or no evidence yet, with an optional next step. */
 export function EmptyState({ title, body, icon, action }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center gap-1 rounded-base border border-dashed border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground px-6 py-10 text-center [overflow-wrap:anywhere]">

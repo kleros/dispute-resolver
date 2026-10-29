@@ -26,7 +26,6 @@ interface MarkdownPoint {
   readonly offset?: number;
 }
 
-/** The parts of an mdast node this plugin reads or writes. */
 interface MarkdownNode {
   type: string;
   value?: string;
@@ -39,16 +38,12 @@ interface MarkdownNode {
 
 type TableAlign = "left" | "right" | "center" | null;
 
-/** Where a character of a text value came from: written as itself, as a backslash escape or as a character reference. */
 type CharacterSource = "literal" | "backslash" | "reference";
 
 interface Context {
   readonly source: string;
-  /** Per text node, where each character came from: itself, a backslash escape or a character reference. */
   readonly escaped: WeakMap<MarkdownNode, readonly CharacterSource[]>;
-  /** Per inline node, the summary of its source. */
   readonly summaries: WeakMap<MarkdownNode, Readonly<SourceSummary>>;
-  /** The nodes whose content is still to be read, each with the way to read it (`readInline`). */
   readonly unread: Unread[];
 }
 
@@ -60,7 +55,6 @@ interface Unread {
 const WHITESPACE = /\s/;
 const ASCII_PUNCTUATION = /[!-/:-@[-`{-~]/;
 const CHARACTER_REFERENCE = /^&(?:#\d{1,7}|#[Xx][\dA-Fa-f]{1,6}|[A-Za-z][\dA-Za-z]{1,31});/;
-/** The pipe's code point, and the named character references that decode to it. */
 const PIPE_CODE = 0x7c;
 const PIPE_REFERENCE_NAMES = new Set(["vert", "verbar", "VerticalLine"]);
 const TASK_MARKER = /^\[([\t xX])\][\t ]/;
@@ -77,7 +71,6 @@ const LINE_PREFIX = new Set([" ", "\t", ">"]);
  */
 const NODE_CHARACTER = "\uFFFC";
 
-/** A character written as a backslash escape or a character reference, which is never syntax. */
 function isEscaped(source: CharacterSource | undefined): boolean {
   return source === "backslash" || source === "reference";
 }
@@ -91,8 +84,6 @@ function rawSource(node: MarkdownNode, context: Context): string | undefined {
   const end = node.position?.end.offset;
   return start === undefined || end === undefined ? undefined : context.source.slice(start, end);
 }
-
-// --- Escaped characters ---------------------------------------------------------------------------------------------
 
 /** Where the source continues after a line ending of a text value: past trailing blanks and the next line's prefix. */
 function skipLineEnding(source: string, from: number, next: string): number | undefined {
@@ -116,10 +107,9 @@ function referenceLength(value: string, at: number, source: string, resume: numb
 }
 
 interface AlignedCharacters {
-  /** How many characters of the value this step covers, and where they came from. */
+  /** How many characters of the value this step covers: 2 when a character reference decodes to two. */
   readonly count: number;
   readonly source: CharacterSource;
-  /** Where the source continues. */
   readonly next: number;
 }
 
@@ -161,12 +151,10 @@ function isPipeReference(reference: string): boolean {
 }
 
 interface SourceStep {
-  /** Where the pipe this step writes came from; `undefined` when it writes no pipe. */
   readonly pipe: CharacterSource | undefined;
   readonly next: number;
 }
 
-/** Reads one character of a text's source as written: a backslash escape, a character reference or itself. */
 function readSourceCharacter(raw: string, at: number): SourceStep {
   const character = raw.charAt(at);
   if (character === "\\" && ASCII_PUNCTUATION.test(raw.charAt(at + 1))) {
@@ -177,7 +165,6 @@ function readSourceCharacter(raw: string, at: number): SourceStep {
   return { pipe: character === "|" ? "literal" : undefined, next: at + 1 };
 }
 
-/** Where each pipe of a text's source came from, in the order they are written. */
 function pipeSources(raw: string): CharacterSource[] {
   const pipes: CharacterSource[] = [];
   let at = 0;
@@ -231,12 +218,9 @@ function textNode(value: string, escaped: readonly CharacterSource[], context: C
   return node;
 }
 
-/** The characters `from` to `to` of a text node, as a new text node. */
 function sliceText(node: MarkdownNode, from: number, to: number, context: Context): MarkdownNode {
   return textNode((node.value ?? "").slice(from, to), escapesOf(node, context).slice(from, to), context);
 }
-
-// --- Source summaries -----------------------------------------------------------------------------------------------
 
 /**
  * What the inline syntax reads in an inline node's markdown source, kept so that the source is not read again: a run
@@ -260,12 +244,7 @@ interface SourceSummary {
   lowest: number;
   first: string;
   last: string;
-  /** Whether every character is whitespace. */
   blank: boolean;
-}
-
-function emptySummary(): SourceSummary {
-  return { breaks: false, hasAt: false, opens: false, closes: 0, unclosed: 0, depth: 0, lowest: 0, first: "", last: "", blank: true };
 }
 
 function bracketStep(character: string): number {
@@ -273,7 +252,6 @@ function bracketStep(character: string): number {
   return character === ")" || character === "]" ? -1 : 0;
 }
 
-/** Adds the characters `from` to `to` of `text` to a summary. */
 function addCharacters(summary: SourceSummary, text: string, from: number, to: number): void {
   let escaping = false;
   for (let index = from; index < to; index++) {
@@ -291,7 +269,6 @@ function addCharacters(summary: SourceSummary, text: string, from: number, to: n
   }
 }
 
-/** Counts a bracket of the source that no backslash precedes. */
 function addBracket(summary: SourceSummary, character: string): void {
   if (character === "[") {
     summary.opens = true;
@@ -303,7 +280,6 @@ function addBracket(summary: SourceSummary, character: string): void {
   }
 }
 
-/** Adds the summary of the source that follows. */
 function addSummary(summary: SourceSummary, next: Readonly<SourceSummary>): void {
   summary.breaks ||= next.breaks;
   summary.hasAt ||= next.hasAt;
@@ -333,7 +309,7 @@ function childSpan(child: MarkdownNode, cursor: number, end: number): readonly [
 function summaryOf(node: MarkdownNode, context: Context): Readonly<SourceSummary> {
   const known = context.summaries.get(node);
   if (known !== undefined) return known;
-  const summary = emptySummary();
+  const summary: SourceSummary = { breaks: false, hasAt: false, opens: false, closes: 0, unclosed: 0, depth: 0, lowest: 0, first: "", last: "", blank: true };
   const start = node.position?.start.offset;
   const end = node.position?.end.offset;
   if (start === undefined || end === undefined || start >= end) {
@@ -353,13 +329,10 @@ function summaryOf(node: MarkdownNode, context: Context): Readonly<SourceSummary
   return summary;
 }
 
-/** A node's markdown source; `NODE_CHARACTER` when it is unknown. */
 function nodeSource(node: MarkdownNode, context: Context): string {
   const raw = rawSource(node, context);
   return raw === undefined || raw === "" ? NODE_CHARACTER : raw;
 }
-
-// --- Inline runs ----------------------------------------------------------------------------------------------------
 
 type SegmentKind = "text" | "inline" | "stop";
 
@@ -368,7 +341,6 @@ interface Segment {
   readonly start: number;
   readonly end: number;
   readonly kind: SegmentKind;
-  /** For a node other than text, which the run holds as one `NODE_CHARACTER`: the summary of its source. */
   readonly summary?: Readonly<SourceSummary>;
 }
 
@@ -376,7 +348,6 @@ interface Segment {
 interface RunCharacters {
   readonly text: string;
   readonly segments: readonly Segment[];
-  /** Per character, the index of its segment. */
   readonly segmentOf: readonly number[];
   /** Per character, whether it is a literal character of a text node, which alone can be syntax. */
   readonly literal: readonly boolean[];
@@ -435,28 +406,23 @@ function segmentAt(run: RunCharacters, index: number): Segment | undefined {
   return position === undefined ? undefined : run.segments[position];
 }
 
-/** The summary that the character at `index` stands for; `undefined` for a character of a text node. */
 function summaryAt(run: RunCharacters, index: number): Readonly<SourceSummary> | undefined {
   return segmentAt(run, index)?.summary;
 }
 
-/** Whether the source at `index` starts with whitespace. */
 function startsBlank(run: RunCharacters, index: number): boolean {
   return isWhitespace(summaryAt(run, index)?.first ?? run.text.charAt(index));
 }
 
-/** Whether the source at `index` ends with whitespace. */
 function endsBlank(run: RunCharacters, index: number): boolean {
   return isWhitespace(summaryAt(run, index)?.last ?? run.text.charAt(index));
 }
 
-/** Whether the source at `index` is whitespace only. */
 function isBlankAt(run: RunCharacters, index: number): boolean {
   const summary = summaryAt(run, index);
   return summary === undefined ? isWhitespace(run.text.charAt(index)) : summary.blank;
 }
 
-/** Whether a literal URL ends at a character: whitespace, `<`, or a node that holds either or that it never enters. */
 function breaksUrl(segment: Segment | undefined, character: string): boolean {
   if (segment?.summary === undefined) return isWhitespace(character) || character === "<";
   return segment.kind === "stop" || segment.summary.breaks;
@@ -542,7 +508,6 @@ function pairBrackets(run: RunCharacters) {
   return { bracketClose, nextOpen: nextOpens(run) };
 }
 
-/** Per character of a run, the index of the next `[` in the source (`opensAt`). */
 function nextOpens(run: RunCharacters): number[] {
   const nextOpen: number[] = new Array<number>(run.text.length + 1).fill(run.text.length);
   for (let index = run.text.length - 1; index >= 0; index--) {
@@ -551,7 +516,6 @@ function nextOpens(run: RunCharacters): number[] {
   return nextOpen;
 }
 
-/** Whether the source at `index` holds a `[`: a literal one, or one in the source of a node other than text. */
 function opensAt(run: RunCharacters, index: number): boolean {
   const summary = summaryAt(run, index);
   return summary === undefined ? run.literal[index] === true && run.text.charAt(index) === "[" : summary.opens;
@@ -565,7 +529,6 @@ function isTildes(text: string, literal: readonly boolean[], index: number): boo
   return text.startsWith("~~", index) && literal[index] === true && literal[index + 1] === true;
 }
 
-/** The segments that overlap `from` to `to`. */
 function segmentsIn(run: RunCharacters, from: number, to: number): Segment[] {
   const found: Segment[] = [];
   for (let position = run.segmentOf[from] ?? run.segments.length; position < run.segments.length; position++) {
@@ -585,7 +548,6 @@ function nodesIn(run: Run, from: number, to: number, context: Context): Markdown
   });
 }
 
-/** The characters `from` to `to` of a run as markdown: text as it reads, any other node as its source. */
 function sourceText(run: Run, from: number, to: number, context: Context): string {
   return segmentsIn(run, from, to)
     .map((segment) => (segment.kind === "text" ? run.text.slice(Math.max(from, segment.start), Math.min(to, segment.end)) : nodeSource(segment.node, context)))
@@ -651,7 +613,6 @@ function matchUrl(run: Run, index: number, runStart: boolean, context: Context, 
   return { nodes: [node], end };
 }
 
-/** The first index in an ascending list that is at least `minimum`. */
 function firstFrom(sorted: readonly number[], minimum: number): number | undefined {
   let low = 0;
   let high = sorted.length;
@@ -755,7 +716,6 @@ function relabelMailAutolink(link: MarkdownNode, context: Context): void {
   link.children = [sliceText(label, MAILTO.length, url.length, context)];
 }
 
-/** Source shown as it is written, which is never syntax. */
 function sourceNode(from: number, to: number, context: Context): MarkdownNode {
   const value = context.source.slice(from, to);
   return textNode(value, new Array<CharacterSource>(value.length).fill("backslash"), context);
@@ -805,15 +765,11 @@ function readInline(block: MarkdownNode, context: Context): void {
   }
 }
 
-// --- Tables ---------------------------------------------------------------------------------------------------------
-
 interface Line {
   readonly nodes: MarkdownNode[];
-  /** The hard break that ended the line, if any. */
   readonly ending?: MarkdownNode;
 }
 
-/** A text node cut at its line endings: the pieces of each line, empty pieces left out. */
 function textLines(node: MarkdownNode, context: Context): MarkdownNode[][] {
   const value = node.value ?? "";
   const lines: MarkdownNode[][] = [];
@@ -852,7 +808,6 @@ function splitLines(children: readonly MarkdownNode[], context: Context): Line[]
   return lines;
 }
 
-/** A text node's value with each character decoded from a character reference as `NODE_CHARACTER`. */
 function withoutReferences(node: MarkdownNode, context: Context): string {
   const value = node.value ?? "";
   const sources = escapesOf(node, context);
@@ -862,22 +817,18 @@ function withoutReferences(node: MarkdownNode, context: Context): string {
   return text;
 }
 
-/** A line as remark-parse 5's row test read it: references are not their characters, other nodes are their source. */
-function rowText(line: Line, context: Context): string {
-  return line.nodes.map((node) => (node.type === "text" ? withoutReferences(node, context) : (rawSource(node, context) ?? NODE_CHARACTER))).join("");
-}
-
 /**
  * remark-parse 5 took a line as a table row when its source has a pipe after its first character, so a pipe written as
- * a character reference makes no row and one written as a backslash escape does.
+ * a character reference makes no row and one written as a backslash escape does. The line is read as that test read
+ * it: references are not their characters, other nodes are their source.
  */
 function isRow(line: Line, context: Context): boolean {
-  return rowText(line, context).includes("|", 1);
+  const text = line.nodes.map((node) => (node.type === "text" ? withoutReferences(node, context) : (rawSource(node, context) ?? NODE_CHARACTER))).join("");
+  return text.includes("|", 1);
 }
 
 /** An alignment row being read. It is changed in place, so a row of any width is read in linear time. */
 interface AlignmentRow {
-  /** The alignments of the columns closed so far. */
   readonly align: TableAlign[];
   /** The column being read; `false` before its first dash or colon. */
   alignment: TableAlign | false;
@@ -895,7 +846,6 @@ function closeColumn(row: AlignmentRow): boolean {
   return true;
 }
 
-/** Reads one character of remark-parse 5's alignment row; `false` when the row is not one. */
 function readAlignment(row: AlignmentRow, character: string): boolean {
   if (character === "|") return closeColumn(row);
   if (character === "-") {
@@ -982,13 +932,11 @@ function joinLines(lines: readonly Line[], context: Context): MarkdownNode[] {
   });
 }
 
-/** A table cell; its column's alignment, if any, renders as the cell's own `text-align`. */
 function tableCell(children: MarkdownNode[], align: TableAlign): MarkdownNode {
   if (align === null) return { type: "tableCell", children };
   return { type: "tableCell", children, data: { hProperties: { align } } };
 }
 
-/** A paragraph that starts with a table, as the table and the paragraph of the lines after it. */
 function splitTable(paragraph: MarkdownNode, context: Context): MarkdownNode[] {
   const lines = splitLines(paragraph.children ?? [], context);
   const [header, delimiter] = lines ?? [];
@@ -1007,8 +955,6 @@ function splitTable(paragraph: MarkdownNode, context: Context): MarkdownNode[] {
   const rest = lines.slice(end);
   return rest.length === 0 ? [table] : [table, { type: "paragraph", children: joinLines(rest, context) }];
 }
-
-// --- Blocks ---------------------------------------------------------------------------------------------------------
 
 /** remark-parse 5's task item: `[ ]`, `[x]` or `[X]` and a blank at the start of a list item. */
 function markTask(item: MarkdownNode, context: Context): void {

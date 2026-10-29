@@ -7,16 +7,14 @@ const CARD = "flex flex-col gap-3 rounded-[18px] border border-klerosUIComponent
  * chip, the countdown band. At lg it is 232 px tall like the loaded card, so no row jumps when the list resolves.
  */
 const GRID_CARD = "flex h-full flex-col gap-4 overflow-hidden rounded-[18px] border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground p-4 lg:p-6";
-/** The period pill; its own string, so no radius conflicts with BLOCK's. */
+/** The pill and the chip are not built on BLOCK, so no radius conflicts with BLOCK's. */
 const PILL_BLOCK = "h-7 w-24 animate-loading rounded-full bg-klerosUIComponentsStroke";
-/** The court chip; its own string, like the pill. */
 const CHIP_BLOCK = "h-7 w-28 animate-loading rounded-full bg-klerosUIComponentsStroke";
 /**
  * The countdown band, flush with the card's edges and as tall as the loaded one: 52 px below sm, where its countdown is
  * 1.25rem, 56 px from sm. No radius of its own; the card clips it.
  */
 const GRID_BAND = "mt-auto -mx-4 -mb-4 h-13 animate-loading bg-klerosUIComponentsStroke sm:h-14 lg:-mx-6 lg:-mb-6";
-/** A collapsed library accordion item: a 49 px bar, spaced like the library's items. */
 const BAR = "my-2 h-[49px] w-full rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground";
 /** Line widths cycle so the placeholder reads as text; the last line is always shorter. */
 const LINE_WIDTHS = ["w-full", "w-11/12", "w-4/5", "w-full", "w-5/6"] as const;

@@ -1,8 +1,6 @@
 import path from "node:path";
 import { build, type Connect, type Plugin } from "vite";
 
-// Lives outside src/, so it never enters the app's module graph.
-
 /** Relative to the web package root. */
 const BOOTSTRAP_ENTRY = "src/runner/page/main.ts";
 

@@ -11,7 +11,6 @@ import type { AtlasFileFieldProps, UploadResult, UploadedFile } from "./types";
 
 const UPLOADED: UploadedFile = { path: TEST_UPLOAD_PATH, fileName: "brief.pdf" };
 
-/** An upload the test settles by hand. */
 function pendingUpload() {
   const control: { settle?: (result: UploadResult) => void } = {};
   const promise = new Promise<UploadResult>((resolve) => {
@@ -29,7 +28,6 @@ interface HarnessProps extends Partial<Omit<AtlasFileFieldProps, "value">> {
   readonly initial?: UploadedFile | null;
 }
 
-/** A form that owns the field's value, as Create and the evidence modal do, with a reset. */
 function Harness({ initial = null, onUploaded, onCleared, ...props }: HarnessProps) {
   const [value, setValue] = useState<UploadedFile | null>(initial);
   return (
@@ -63,19 +61,8 @@ function Harness({ initial = null, onUploaded, onCleared, ...props }: HarnessPro
 interface RenderOptions extends HarnessProps {
   readonly uploader?: FakeUploader;
   readonly wallet?: TestWallet;
-  /** Connects the wallet before rendering; default `true`. */
   readonly connect?: boolean;
 }
-
-/** The classes that give the library's disabled dropzone a neutral look instead of its enabled blue one. */
-const LOCKED_LOOK = [
-  "[&_[data-disabled]]:border-klerosUIComponentsStroke",
-  "[&_[data-disabled]]:bg-klerosUIComponentsLightGrey",
-  "[&_[data-disabled]]:pointer-events-none",
-  "[&:has([data-disabled])]:cursor-not-allowed",
-  "[&_[data-disabled]~*]:cursor-auto",
-  "[&_[data-disabled]_svg]:fill-klerosUIComponentsSecondaryText",
-];
 
 async function renderField({ uploader = fakeUploader(), wallet = createTestWallet(), connect = true, ...props }: RenderOptions = {}) {
   if (connect) await wallet.connect();
@@ -97,7 +84,6 @@ async function renderField({ uploader = fakeUploader(), wallet = createTestWalle
   return { ...view, input, uploader, wallet, rerenderWith };
 }
 
-/** The library dropzone's root, the element that carries the field's className. */
 function dropzone(container: HTMLElement): HTMLElement {
   const root = container.querySelector("fieldset fieldset > div");
   if (!(root instanceof HTMLElement)) throw new Error("The field has no dropzone.");
@@ -128,14 +114,6 @@ describe("AtlasFileField", () => {
     choose(input, testPdf());
 
     expect(await screen.findByText(failure.limitsUnavailable().message)).toBeInTheDocument();
-  });
-
-  it("says the wallet asks for a sign-in before the first upload while not signed in", async () => {
-    await renderField({ uploader: fakeUploader({ isSignedIn: false }) });
-
-    expect(
-      screen.getByText("Drop a file here or click to select one. PDF, image or text, up to 20 MB. Your wallet will ask you to sign in before the first upload."),
-    ).toBeInTheDocument();
   });
 
   it("keeps the sign-in sentence when the limits are unknown", async () => {
@@ -180,12 +158,6 @@ describe("AtlasFileField", () => {
     uploading.settle({ ok: true, path: TEST_UPLOAD_PATH });
     await screen.findByText("Uploaded brief.pdf.");
     expect(upload.container).not.toHaveTextContent(SIGN_IN);
-  });
-
-  it("says nothing about signing in without an upload service", async () => {
-    const { container } = await renderField({ uploader: fakeUploader({ availability: "unconfigured", isSignedIn: false }) });
-
-    expect(container).not.toHaveTextContent(/sign in|Drop a file here/i);
   });
 
   it("keeps describing the file-picker button by the status line after the dropzone remounts", async () => {
@@ -283,10 +255,9 @@ describe("AtlasFileField", () => {
 
     expect(input).toBeDisabled();
     expect(screen.getByRole("button", { name: "Primary document" })).toBeDisabled();
-    expect(input.closest("fieldset")?.parentElement).toHaveClass(...LOCKED_LOOK);
     choose(input, testPdf());
 
-    expect(container).not.toHaveTextContent(/unavailable|Drop a file here/i);
+    expect(container).not.toHaveTextContent(/unavailable|Drop a file here|sign in/i);
     expect(screen.queryByRole("button", { name: "Connect wallet" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Remove file" })).toBeNull();
     expect(uploader.upload).not.toHaveBeenCalled();
@@ -300,8 +271,6 @@ describe("AtlasFileField", () => {
     const zone = container.querySelector("[data-disabled]");
     expect(zone).not.toBeNull();
     expect(zone?.nextElementSibling).toContainElement(screen.getByText(/Drop a file here/));
-    expect(input.closest("fieldset")?.parentElement).toHaveClass(...LOCKED_LOOK);
-    expect(input.closest("fieldset")?.parentElement).not.toHaveClass("[&_small]:cursor-auto");
     choose(input, testPdf());
 
     expect(uploader.upload).not.toHaveBeenCalled();

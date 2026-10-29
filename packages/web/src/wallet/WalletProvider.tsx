@@ -6,9 +6,7 @@ import type { WalletProviderProps, WalletSetup } from "./types";
 
 interface WalletSetupProviderProps {
   readonly setup: WalletSetup;
-  /** `true` while AppKit is still loading: nothing reconnects yet. Default `false`. */
   readonly pending?: boolean;
-  /** `true` when, while `pending`, a stored connection waits for AppKit: the wallet reads as `connecting`. Default `false`. */
   readonly pendingReconnect?: boolean;
   readonly children?: ReactNode;
 }

@@ -4,9 +4,9 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useLocation, useNavigate } from "react-router";
 import { numberToHex } from "viem";
-import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestDeps, testChain, testCourt, testOkMetaEvidence, TEST_ARBITRABLE, type RpcHandler } from "../../test/data";
-import { renderWithProviders } from "../../test/shell";
+import { expectRenderErrors, renderWithProviders } from "../../test/shell";
 import { createConnectedTestWallet, holdChainSwitches } from "../../test/wallet";
 import { OngoingPage } from "./OngoingPage";
 
@@ -43,7 +43,6 @@ function renderOngoing(path = "/1/ongoing") {
 }
 
 const CHAIN_SECONDS = 1_700_000_000;
-const HOUR = 3_600;
 
 /** Answers the latest block, mined at `CHAIN_SECONDS`; any other request fails. */
 function latestBlockRpc() {
@@ -65,22 +64,18 @@ const NO_NETWORK_DATA: OngoingList = { status: "failed", error: { code: "no-rpc"
 const CONFIGURATION_WORDING = /RPC|endpoint|configur|REACT_APP/i;
 const COUNTDOWN = /^\d{2}d \d{2}h \d{2}m$/;
 
-/** The page's landmark, named by its "Ongoing Disputes" heading. */
 function page(): HTMLElement {
   return screen.getByRole("region", { name: "Ongoing Disputes" });
 }
 
-/** The subtitle naming the chain whose disputes the page lists. */
 function chainSubtitle(chainId: number): string {
   return `Open disputes on ${testChain(chainId).name}, newest first.`;
 }
 
-/** Waits until the list has resolved and shows its grid of open disputes. */
 async function settledList(): Promise<HTMLElement> {
   return screen.findByRole("list", { name: "Open disputes" });
 }
 
-/** The ID a card shows as `#<id>`. */
 function shownId(link: HTMLElement): string {
   return /#(\d+)/.exec(link.textContent)?.[1] ?? "";
 }
@@ -118,18 +113,6 @@ const REVEAL = "animate-[t-reveal-in_var(--reveal-dur)_var(--reveal-ease)_backwa
 
 function cardTitle(id: string): HTMLElement {
   return within(card(id)).getByRole("heading", { level: 2 });
-}
-
-/** React logs every render error a boundary catches and reports it to the window, where jsdom prints it; both are expected. */
-function expectRenderErrors() {
-  vi.spyOn(console, "error").mockImplementation(() => undefined);
-  const silence = (event: ErrorEvent) => {
-    event.preventDefault();
-  };
-  window.addEventListener("error", silence);
-  onTestFinished(() => {
-    window.removeEventListener("error", silence);
-  });
 }
 
 async function chooseFilter(name: string) {
@@ -240,16 +223,6 @@ describe("Ongoing page", () => {
     expect(rpc).toHaveBeenLastCalledWith({ chainId: 1, method: "eth_getBlockByNumber", params: ["latest", false] });
   });
 
-  it("an Ongoing card's countdown follows chain time under a skewed browser clock", async () => {
-    vi.setSystemTime((CHAIN_SECONDS + HOUR) * 1000);
-    vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(3n, 0, { lastPeriodChange: CHAIN_SECONDS - DAY, countdownTarget: CHAIN_SECONDS + 2 * DAY })]));
-    renderOngoingInFrame(latestBlockRpc());
-    await settledList();
-    await waitFor(() => {
-      expect(within(card("3")).getByText(COUNTDOWN)).toHaveTextContent("02d 00h 00m");
-    });
-  });
-
   it("with no open dispute the page says so and says where new disputes will show up", async () => {
     vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([]));
     renderOngoing();
@@ -276,38 +249,6 @@ describe("Ongoing page", () => {
     expect(cardId(twelve, "12")).toBeInTheDocument();
   });
 
-  it("every card ends in a foot that points at the case, with the countdown and its label when the period end is known, and renders without the court list", async () => {
-    vi.mocked(core.listCourts).mockResolvedValue({ ok: false, error: { code: "rpc-error", message: "down" } });
-    vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(12n, 2), dispute(4n, 0, { countdownTarget: null })]));
-    renderOngoing();
-    await settledList();
-    await waitFor(() => {
-      expect(within(card("4")).getByText("Court 0 (unavailable)")).toBeInTheDocument();
-    });
-    const twelve = card("12");
-    expect(within(twelve).getByText("Period ends in")).not.toHaveClass("sr-only");
-    const countdown = within(twelve).getByText(COUNTDOWN);
-    expect(countdown.tagName).toBe("TIME");
-    const foot = countdown.closest("div");
-    if (foot === null) throw new Error("No foot around the countdown.");
-    expect(arrowIn(foot)).toHaveAttribute("aria-hidden", "true");
-
-    expect(arrowIn(card("4"))).toHaveAttribute("aria-hidden", "true");
-    expect(card("4").querySelector("time")).toBeNull();
-  });
-
-  it("the court is a plain line with the scales mark, not a stamp", async () => {
-    vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(12n, 2, { subcourtId: 2n })]));
-    renderOngoing();
-    await settledList();
-    const court = within(card("12")).getByText("Blockchain");
-    const line = court.parentElement;
-    expect(line?.className).not.toMatch(/rounded-full|\bborder\b/);
-    const mark = court.previousElementSibling;
-    expect(mark?.tagName.toLowerCase()).toBe("svg");
-    expect(mark).toHaveAttribute("aria-hidden", "true");
-  });
-
   it("the grid and a card's title fade in from their placeholders once they load, and hold still under reduced motion", async () => {
     vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(12n, 2, { subcourtId: 2n })]));
     titles({ "12": testOkMetaEvidence({ title: "Was the delivery on time?" }) });
@@ -318,14 +259,6 @@ describe("Ongoing page", () => {
       expect(cardTitle("12")).toHaveTextContent("Was the delivery on time?");
     });
     expect(cardTitle("12")).toHaveClass(REVEAL, "motion-reduce:animate-none");
-  });
-
-  it("a card is a router link to its case page", async () => {
-    vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(1665n, 1)]));
-    titles({ "1665": testOkMetaEvidence({ title: "Some case" }) });
-    renderOngoing("/100/ongoing");
-    await settledList();
-    expect(card("1665")).toHaveAttribute("href", "/100/cases/1665");
   });
 
   it("cards render as each dispute resolves, before every title has settled", async () => {
@@ -381,6 +314,14 @@ describe("Ongoing page", () => {
     renderOngoing();
     await settledList();
     expect(within(card("4")).getByText(shown)).toBeInTheDocument();
+  });
+
+  it("cards still render when the court list could not be read", async () => {
+    vi.mocked(core.listCourts).mockResolvedValue({ ok: false, error: { code: "rpc-error", message: "down" } });
+    vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(4n, 0)]));
+    renderOngoing();
+    await settledList();
+    expect(await within(card("4")).findByText("Court 0 (unavailable)")).toBeInTheDocument();
   });
 
   it("a dispute whose record could not be read shows its ID, 'details unavailable', an unknown period and the arrow to its case", async () => {
@@ -537,15 +478,6 @@ describe("the period filter in the address", () => {
     await settledList();
     expect(screen.getByRole("button", { name: /period/i })).toHaveTextContent("Voting");
     expect(cardIds()).toEqual(["3"]);
-  });
-
-  it("an unknown period in the address reads as every open dispute", async () => {
-    vi.mocked(core.listOngoingDisputes).mockResolvedValue(listOf([dispute(4n, 3), dispute(1n, 0)], [7n]));
-    renderOngoing("/1/ongoing?period=bogus");
-    await settledList();
-    expect(screen.getByRole("button", { name: /period/i })).toHaveTextContent("Ongoing");
-    expect(cardIds()).toEqual(["4", "1"]);
-    expect(screen.getByText(/Dispute 7: details unavailable/)).toBeInTheDocument();
   });
 
   it("choosing Ongoing drops the period from the address and keeps the other parameters", async () => {

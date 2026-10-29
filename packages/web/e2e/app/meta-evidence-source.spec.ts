@@ -2,26 +2,26 @@ import { readFileSync } from "node:fs";
 import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { encodeEventTopics, hexToBigInt, parseAbi, type Hex } from "viem";
 import { z } from "zod";
-import { DISPUTE_CREATION_TOPIC, GNOSIS_ARBITRATOR, caseDetailsAnswers, creationLog, disputeStruct, isDisputesCall } from "../support/arbitrator";
+import { DISPUTE_CREATION_TOPIC, GNOSIS_ARBITRATOR, caseDetailsAnswers, creationLog, disputeStruct, isDisputesCall, logFilterFor } from "../support/arbitrator";
+import { disputeCard } from "../support/header";
 import { appOriginOf, fakeNetwork, loadRecording, type HttpAnswer, type HttpRequest, type RpcAnswer, type RpcCall, type Traffic } from "../support/network";
 
-// Gnosis dispute 460: its arbitrable recorded "DAI token compliance Review" in its MetaEvidence(84) event while the
-// meta-evidence API answered another arbitrable's file (the Lemon case) on 2026-10-20. Its raw Dispute and MetaEvidence
-// logs, both files and the API's answer are recorded in fixtures/gnosis-460-meta-evidence.json; the spec builds the
-// arbitrator's answers itself. The build needs the Gnosis read RPC and the meta-evidence API configured, as a deploy has.
+// Gnosis dispute 460's arbitrable recorded "DAI token compliance Review" in its MetaEvidence(84) event while the
+// meta-evidence API answered another arbitrable's file on 2026-10-20 (fixtures/gnosis-460-meta-evidence.json).
 
 const FIXTURE_URL = new URL("fixtures/gnosis-460-meta-evidence.json", import.meta.url);
+const CORE_FIXTURE_URL = new URL("../../../core/src/evidence/__fixtures__/gnosis-460-863-meta-evidence.json", import.meta.url);
 const RECORDING = loadRecording(FIXTURE_URL);
 
 const LogSchema = z.object({ address: z.string(), topics: z.array(z.string()), blockNumber: z.string() }).loose();
-const LogsSchema = z.object({
-  arbitrable: z.string(),
-  logs: z.object({ dispute: z.array(LogSchema), metaEvidence: z.array(LogSchema) }),
-  blockTimestamps: z.record(z.string(), z.string()),
-});
-const RECORDED = LogsSchema.parse(JSON.parse(readFileSync(FIXTURE_URL, "utf8")) as unknown);
+const RECORDED = z.object({ arbitrable: z.string(), blockTimestamps: z.record(z.string(), z.string()) }).parse(JSON.parse(readFileSync(FIXTURE_URL, "utf8")) as unknown);
+const CORE_DISPUTES = z
+  .object({ disputes: z.array(z.object({ disputeId: z.string(), disputeLogs: z.array(LogSchema), metaEvidenceLogs: z.array(LogSchema) }).loose()) })
+  .parse(JSON.parse(readFileSync(CORE_FIXTURE_URL, "utf8")) as unknown).disputes;
+const DISPUTE_460 = CORE_DISPUTES.find((dispute) => dispute.disputeId === "460");
+if (DISPUTE_460 === undefined) throw new Error("The core recording holds no Gnosis dispute 460.");
 const ARBITRABLE = RECORDED.arbitrable as Hex;
-const LOGS = [...RECORDED.logs.dispute, ...RECORDED.logs.metaEvidence];
+const LOGS = [...DISPUTE_460.disputeLogs, ...DISPUTE_460.metaEvidenceLogs];
 
 const CASE_PATH = "/100/cases/460";
 const EVENT_TITLE = "DAI token compliance Review";
@@ -156,22 +156,19 @@ test("names an API answer that is not content-addressed as unverifiable next to 
   expect(requested.filter((path) => path.startsWith("/ipns/"))).toEqual([]);
 });
 
-/** Gnosis's arbitrator lists dispute 460 as open: its creation log, and no `NewPeriod` log. */
 function ongoingRpc(call: RpcCall): RpcAnswer | undefined {
   if (isDisputesCall(call, GNOSIS_ARBITRATOR, 460n)) return disputeStruct({ arbitrated: ARBITRABLE, period: 0, lastPeriodChange: BigInt(Math.floor(Date.now() / 1000)) });
   if (call.method !== "eth_getLogs") return undefined;
-  const filter = filterOf(call);
-  if (filter.address?.toLowerCase() !== GNOSIS_ARBITRATOR || filter.topics?.[0] !== DISPUTE_CREATION_TOPIC) return { result: [] };
+  const filter = logFilterFor(call, DISPUTE_CREATION_TOPIC);
+  if (filter?.address !== GNOSIS_ARBITRATOR) return { result: [] };
   const blockNumber = BigInt(RECORDING.readAtBlock) - 10n;
   const creation = creationLog({ arbitrator: GNOSIS_ARBITRATOR, id: 460n, arbitrable: ARBITRABLE, blockNumber, transactionHash: `0x${"46".repeat(32)}` });
-  const from = filter.fromBlock === undefined ? 0n : hexToBigInt(filter.fromBlock);
-  const to = filter.toBlock === undefined ? blockNumber : hexToBigInt(filter.toBlock);
-  return { result: blockNumber >= from && blockNumber <= to ? [creation] : [] };
+  return { result: blockNumber >= filter.fromBlock && blockNumber <= filter.toBlock ? [creation] : [] };
 }
 
 test("reads no logs of the arbitrables on the Ongoing page", async ({ context, page, baseURL }) => {
   const traffic = await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), recordings: [RECORDING], rpc: ongoingRpc });
-  const card = page.getByRole("link").filter({ has: page.getByText("#460", { exact: true }) });
+  const card = disputeCard(page, 460n);
 
   await page.goto("/100/ongoing");
 

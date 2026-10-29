@@ -2,10 +2,8 @@ import { Roles } from "@kleros/kleros-app";
 import { z } from "@dispute-resolver/core";
 import type { RoleLimits, UploadRole } from "./types";
 
-/** User files go under `evidence`, generated JSON under `policy`. */
 export const LIBRARY_ROLES: Readonly<Record<UploadRole, Roles>> = { evidence: Roles.Evidence, policy: Roles.Policy };
 
-/** One entry of the server's `roles(CourtV1)` answer, untrusted until it parses. */
 const roleSchema = z.object({
   name: z.string(),
   restriction: z.object({ maxSize: z.number().nonnegative(), allowedMimeTypes: z.array(z.string()) }),
@@ -16,7 +14,6 @@ function libraryRole(name: string): Roles | undefined {
   return Object.hasOwn(Roles, name) ? Roles[name as keyof typeof Roles] : undefined;
 }
 
-/** The server's restrictions for `role`, or `null` when they are unknown or malformed. */
 export function roleLimits(roles: unknown, role: UploadRole): RoleLimits | null {
   if (!Array.isArray(roles)) return null;
   for (const entry of roles) {
@@ -47,7 +44,6 @@ function trimmed(value: number): string {
   return String(Math.round(value * 100) / 100);
 }
 
-/** A byte count for people: `20 MB`, `1.5 MB`, `512 KB`. */
 export function formatSize(bytes: number): string {
   if (bytes >= MIB) return `${trimmed(bytes / MIB)} MB`;
   if (bytes >= KIB) return `${trimmed(bytes / KIB)} KB`;

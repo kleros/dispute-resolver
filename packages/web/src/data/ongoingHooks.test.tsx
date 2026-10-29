@@ -1,5 +1,6 @@
 import * as core from "@dispute-resolver/core";
 import type { Court, MetaEvidenceResult, OngoingDispute, Outcome } from "@dispute-resolver/core";
+import type { QueryKey } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TEST_ARBITRABLE, createTestDeps, createTestQueryClient, dataWrapper, testCourt, testOkMetaEvidence } from "../test/data";
@@ -49,7 +50,6 @@ describe("Ongoing page data", () => {
     expect(result.current.courts).toEqual({ status: "ready", value: COURTS.value });
   });
 
-  /** A client holding the court list as restored from the persisted cache, written `ageMs` before the frozen now. */
   function clientWithCourtsAged(ageMs: number) {
     vi.useFakeTimers({ toFake: ["Date"] });
     const client = createTestQueryClient();
@@ -75,28 +75,20 @@ describe("Ongoing page data", () => {
     });
   });
 
-  it("keeps a court list nobody observes any more in memory until it is persisted", async () => {
+  it.each<[string, () => { readonly status: string }, QueryKey, unknown]>([
+    ["a court list", () => useCourts(1), queryKeys.courts(1), COURTS],
+    ["a card's meta-evidence", () => useOngoingTitle(1, DISPUTE), queryKeys.metaEvidence(1, 42n, TEST_ARBITRABLE), testOkMetaEvidence()],
+  ])("keeps %s nobody observes any more in memory until it is persisted", async (_name, hook, key, expected) => {
     vi.mocked(core.listCourts).mockResolvedValue(COURTS);
-    const client = createTestQueryClient();
-    const { result, unmount } = renderHook(() => useCourts(1), { wrapper: wrapperWith([], client) });
-    await waitFor(() => {
-      expect(result.current.status).toBe("ready");
-    });
-    unmount();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(client.getQueryData(queryKeys.courts(1))).toEqual(COURTS);
-  });
-
-  it("keeps a card's meta-evidence nobody observes any more in memory until it is persisted", async () => {
     vi.mocked(core.loadMetaEvidence).mockResolvedValue(testOkMetaEvidence());
     const client = createTestQueryClient();
-    const { result, unmount } = renderHook(() => useOngoingTitle(1, DISPUTE), { wrapper: wrapperWith([], client) });
+    const { result, unmount } = renderHook(hook, { wrapper: wrapperWith([], client) });
     await waitFor(() => {
       expect(result.current.status).toBe("ready");
     });
     unmount();
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(client.getQueryData(queryKeys.metaEvidence(1, 42n, TEST_ARBITRABLE))).toEqual(testOkMetaEvidence());
+    expect(client.getQueryData(key)).toEqual(expected);
   });
 
   it("bounds the courts' policy fetches, so a stalled gateway cannot hold the list back", async () => {
@@ -127,19 +119,21 @@ describe("Ongoing page data", () => {
     expect(vi.mocked(core.loadMetaEvidence).mock.calls[0]?.[0].onChain).toBeUndefined();
   });
 
-  it("serves a card's title from a stored accepted meta-evidence without running the pipeline", async () => {
-    const wrapper = wrapperWith([[queryKeys.metaEvidence(1, 42n, TEST_ARBITRABLE), testOkMetaEvidence({ title: "Stored title" })]]);
+  it.each<[string, MetaEvidenceResult, object]>([
+    [
+      "serves a card's title from a stored accepted meta-evidence",
+      testOkMetaEvidence({ title: "Stored title" }),
+      { status: "ready", value: { kind: "title", text: "Stored title" } },
+    ],
+    [
+      "keeps a failed title briefly instead of reloading it on every mount",
+      { status: "failed", reason: "fetch-error", error: { code: "rpc-error", message: "gateway down" } },
+      { status: "unavailable" },
+    ],
+  ])("%s, without running the pipeline", async (_name, stored, expected) => {
+    const wrapper = wrapperWith([[queryKeys.metaEvidence(1, 42n, TEST_ARBITRABLE), stored]]);
     const { result } = renderHook(() => useOngoingTitle(1, DISPUTE), { wrapper });
-    expect(result.current).toEqual({ status: "ready", value: { kind: "title", text: "Stored title" } });
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(core.loadMetaEvidence).not.toHaveBeenCalled();
-  });
-
-  it("keeps a failed title briefly instead of reloading it on every mount", async () => {
-    const failed: MetaEvidenceResult = { status: "failed", reason: "fetch-error", error: { code: "rpc-error", message: "gateway down" } };
-    const wrapper = wrapperWith([[queryKeys.metaEvidence(1, 42n, TEST_ARBITRABLE), failed]]);
-    const { result } = renderHook(() => useOngoingTitle(1, DISPUTE), { wrapper });
-    expect(result.current.status).toBe("unavailable");
+    expect(result.current).toMatchObject(expected);
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(core.loadMetaEvidence).not.toHaveBeenCalled();
   });

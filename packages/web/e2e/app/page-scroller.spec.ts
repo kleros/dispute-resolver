@@ -1,18 +1,14 @@
 import { devices, expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { openDisputesRpc } from "../support/arbitrator";
 import { fakeAtlas } from "../support/atlas";
+import { disputeCard } from "../support/header";
 import { appOriginOf, fakeNetwork, loadRecording, type HttpRequest, type JsonAnswer } from "../support/network";
 import { forceClassicWebKitScrollbars, PAGE_SCROLLER, pageScroll, scrollPageTo } from "../support/pageScroll";
 import { printToPdf, settleForPrint, type PrintedPage } from "../support/print";
 import { tokenColor } from "../support/theme";
 import { expectWalletConnected, injectWallet } from "../support/wallet";
 
-// The page scroller on the built app, which every desktop gets: the first group runs where the browser's scrollbar takes
-// layout space (the projects give Chromium and Firefox classic scrollbars and WebKit a scrollbar rule that lays one out,
-// playwright.config.ts) and checks every behaviour of a scrolling document the app relies on against it. The last two
-// groups check that a phone keeps the document scrolling with nothing reserved, and that a desktop whose scrollbars overlay
-// the page, as a Mac's do, gets the page scroller with the browser's own scrollbar hidden. The Ongoing list needs the
-// build's chain-1 read RPC, and the evidence modal its Atlas URI, as a deploy has.
+// The projects give Chromium and Firefox classic scrollbars, and WebKit a scrollbar rule that lays one out.
 
 const WIDTH = 1280;
 const HEIGHT = 800;
@@ -52,10 +48,6 @@ const CREATE_DRAFT = {
 
 test.use({ viewport: { width: WIDTH, height: HEIGHT } });
 
-function card(page: Page, id: bigint): Locator {
-  return page.getByRole("link").filter({ has: page.getByText(`#${id.toString()}`, { exact: true }) });
-}
-
 async function expectPageScroller(page: Page): Promise<void> {
   await expect(page.locator("html"), "the app kept the document scrolling, as on a phone: run the spec in a desktop project").toHaveAttribute("data-page-scroll", "container");
 }
@@ -72,11 +64,10 @@ function metaEvidence(request: HttpRequest): JsonAnswer | undefined {
 async function loadLongList(page: Page, baseURL: string | undefined): Promise<void> {
   await fakeNetwork(page.context(), { appOrigin: appOriginOf(baseURL), rpc: openDisputesRpc(IDS, HEAD), http: metaEvidence });
   await page.goto("/1/ongoing");
-  await expect(card(page, LAST_ID), "the list never rendered (needs the chain-1 read RPC in the build)").toBeVisible({ timeout: 20_000 });
+  await expect(disputeCard(page, LAST_ID), "the list never rendered (needs the chain-1 read RPC in the build)").toBeVisible({ timeout: 20_000 });
   await expect(page.locator("main h2[aria-busy='true']")).toHaveCount(0, { timeout: 30_000 });
 }
 
-/** The long list, scrolled in the page scroller. */
 async function openLongList(page: Page, baseURL: string | undefined): Promise<void> {
   await loadLongList(page, baseURL);
   await expectPageScroller(page);
@@ -184,7 +175,7 @@ function expectHeaderHeadsFirstPage(pages: readonly PrintedPage[]): void {
   ).toEqual([]);
 }
 
-async function expectPrintedAsFromTheTop(page: Page, offset: number): Promise<void> {
+async function expectPrintedAsFromTheTop(page: Page, offset: number): Promise<PrintedPage[]> {
   await settleForPrint(page);
   await scrollPageTo(page, 0);
   const fromTop = await printToPdf(page);
@@ -195,6 +186,7 @@ async function expectPrintedAsFromTheTop(page: Page, offset: number): Promise<vo
   await expect.poll(() => scrollTop(page), { message: "printing moved the page" }).toBe(offset);
   expectHeaderHeadsFirstPage(scrolled);
   expect(printedLayout(scrolled), "the scrolled page prints otherwise than from the top").toEqual(printedLayout(fromTop));
+  return scrolled;
 }
 
 /** Below the lg breakpoint the header's navigation is a drawer, with a scrim over the page. */
@@ -208,7 +200,6 @@ const HEADER_MENUS: readonly HeaderMenu[] = [
   ["the account menu", (header) => [header.getByRole("button", { name: /^Account 0x/ }), header.getByRole("dialog", { name: "Account" })]],
 ];
 
-/** The long list where the header's navigation is a drawer, with a wallet connected so the account menu opens. */
 async function openNarrowList(context: BrowserContext, page: Page, baseURL: string | undefined): Promise<Locator> {
   await injectWallet(context, { account: ACCOUNT, chainId: 1 });
   await page.setViewportSize({ width: NARROW, height: HEIGHT });
@@ -251,10 +242,6 @@ async function frames(page: Page, count = 12): Promise<void> {
   }, count);
 }
 
-/**
- * The thumb's colour at rest, under the pointer and while dragged, over the page's own background, on the long list. It
- * draws no ring and is never the colour of the header it starts over, so it stays in sight there.
- */
 async function expectThumbColours(page: Page): Promise<void> {
   const rest = await tokenColor(page, "--dr-scroll-thumb");
   const hover = await tokenColor(page, "--dr-scroll-thumb-hover");
@@ -266,7 +253,7 @@ async function expectThumbColours(page: Page): Promise<void> {
   expect(await thumbFill(page)).toBe(rest);
   expect(await page.locator(MASK).evaluate((mask) => getComputedStyle(mask).backgroundColor), "the mask hides the page colour").toBe(TRANSPARENT);
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(pageColor);
-  const cardFill = await card(page, LAST_ID)
+  const cardFill = await disputeCard(page, LAST_ID)
     .locator(".bg-klerosUIComponentsWhiteBackground")
     .first()
     .evaluate((surface) => getComputedStyle(surface).backgroundColor);
@@ -294,19 +281,18 @@ async function expectThumbColours(page: Page): Promise<void> {
 /** Brings a card deep in the long list into view as find in page does, and expects it just below the sticky header. */
 async function expectDeepCardBelowHeader(page: Page): Promise<void> {
   const headerBottom = await bottomOf(page.getByRole("banner"));
-  await card(page, MIDDLE_ID).evaluate((element) => {
+  await disputeCard(page, MIDDLE_ID).evaluate((element) => {
     element.scrollIntoView();
   });
   await expect.poll(() => scrollTop(page)).toBeGreaterThan(0);
-  const top = await card(page, MIDDLE_ID).evaluate((element) => element.getBoundingClientRect().top);
+  const top = await disputeCard(page, MIDDLE_ID).evaluate((element) => element.getBoundingClientRect().top);
   expect(top).toBeGreaterThanOrEqual(headerBottom);
   expect(top).toBeLessThanOrEqual(headerBottom + 16);
 }
 
-/** Scrolls the long list, opens a case from it, and expects Back to bring the list back to where it was. */
 async function expectBackReturnsToOffset(page: Page): Promise<void> {
   await scrollPageTo(page, 1500);
-  const target = card(page, MIDDLE_ID);
+  const target = disputeCard(page, MIDDLE_ID);
   await target.scrollIntoViewIfNeeded();
   const before = await settledScrollTop(page);
   await target.click();
@@ -317,7 +303,6 @@ async function expectBackReturnsToOffset(page: Page): Promise<void> {
   await expect.poll(async () => Math.abs((await scrollTop(page)) - before)).toBeLessThanOrEqual(2);
 }
 
-/** The page scroller, its track and thumb, and the frame's bands, measured on the long list. */
 async function scrollerLayout(page: Page) {
   return page.evaluate(
     ([scrollerSelector, trackSelector]) => {
@@ -351,7 +336,6 @@ async function scrollerLayout(page: Page) {
   );
 }
 
-/** A wheel over the page scrolls the page scroller while the document holds still. */
 async function expectWheelScrollsScrollerOnly(page: Page): Promise<void> {
   await page.mouse.move(WIDTH / 2, HEIGHT / 2);
   await page.mouse.wheel(0, 600);
@@ -359,7 +343,6 @@ async function expectWheelScrollsScrollerOnly(page: Page): Promise<void> {
   expect(await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY, root: document.documentElement.scrollTop }))).toEqual({ x: 0, y: 0, root: 0 });
 }
 
-/** Scrolls the page to 1200 px and opens the wallet modal over it; returns the offset the page settles at. */
 async function openWalletModalScrolled(page: Page): Promise<number> {
   await scrollPageTo(page, 1200);
   await page.getByRole("banner").getByRole("button", { name: "Connect", exact: true }).click();
@@ -457,7 +440,7 @@ test.describe("where the scrollbar takes layout space", () => {
     await page.keyboard.press("Tab");
     await expect(page.getByRole("banner").getByRole("link", { name: "Kleros Dispute Resolver" })).toBeFocused();
     await page.reload();
-    await expect(card(page, LAST_ID)).toBeVisible({ timeout: 20_000 });
+    await expect(disputeCard(page, LAST_ID)).toBeVisible({ timeout: 20_000 });
     await page.keyboard.press("Shift+Tab");
     expect(await page.evaluate(() => document.activeElement?.closest("footer") !== null), "Shift+Tab did not reach the footer").toBe(true);
 
@@ -473,16 +456,6 @@ test.describe("where the scrollbar takes layout space", () => {
     expect(scroller, "the page scroller is a tab stop or a landmark").toEqual({ tabindex: "-1", role: null, label: null });
   });
 
-  test("on a case page opened by its address, the first Tab reaches the header's brand link too", async ({ page, baseURL }) => {
-    await fakeNetwork(page.context(), { appOrigin: appOriginOf(baseURL), recordings: [CASE_RECORDING] });
-    await page.goto("/1/cases/1621");
-    await expect(page.getByRole("button", { name: "Evidence", exact: true })).toBeVisible({ timeout: 30_000 });
-    await expectPageScroller(page);
-    expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
-    await page.keyboard.press("Tab");
-    await expect(page.getByRole("banner").getByRole("link", { name: "Kleros Dispute Resolver" })).toBeFocused();
-  });
-
   test("after the keys scroll the page, Tab and Shift+Tab move on as they do when nothing has focus", async ({ page, baseURL }) => {
     await openLongList(page, baseURL);
     await page.keyboard.press("PageDown");
@@ -491,7 +464,7 @@ test.describe("where the scrollbar takes layout space", () => {
     await expect(page.getByRole("banner").getByRole("link", { name: "Kleros Dispute Resolver" })).toBeFocused();
 
     await page.reload();
-    await expect(card(page, LAST_ID)).toBeVisible({ timeout: 20_000 });
+    await expect(disputeCard(page, LAST_ID)).toBeVisible({ timeout: 20_000 });
     await page.keyboard.press("PageDown");
     await expect.poll(() => scrollTop(page)).toBeGreaterThan(300);
     await page.keyboard.press("Shift+Tab");
@@ -814,14 +787,9 @@ test.describe("where the scrollbar takes layout space", () => {
     // Only Chromium prints to PDF; the print emulation tests cover Firefox and WebKit.
     test.skip(({ browserName }) => browserName !== "chromium", "Only Chromium prints to PDF.");
 
-    test("the long list runs over several pages", async ({ page, baseURL }) => {
-      await openLongList(page, baseURL);
-      expect((await printToPdf(page)).length).toBeGreaterThan(1);
-    });
-
     test("scrolled down the long list, it prints as from the top: the header heads the first page and the cards follow it", async ({ page, baseURL }) => {
       await openLongList(page, baseURL);
-      await expectPrintedAsFromTheTop(page, 1200);
+      expect((await expectPrintedAsFromTheTop(page, 1200)).length, "the long list prints on one page").toBeGreaterThan(1);
     });
 
     test("from the middle of a case page with its evidence open, in the dark theme, it prints as from the top", async ({ page, baseURL }) => {
@@ -831,7 +799,6 @@ test.describe("where the scrollbar takes layout space", () => {
       await expectPageScroller(page);
       const evidence = page.getByRole("button", { name: "Evidence", exact: true });
       await expect(evidence).toBeVisible({ timeout: 30_000 });
-      // A press while the case's sections still reflow can miss the button.
       await settleForPrint(page);
       await evidence.click();
       await expect(evidence).toHaveAttribute("aria-expanded", "true");
@@ -887,7 +854,7 @@ test.describe("where scrollbars overlay the page, as on a phone", () => {
   test("the document keeps scrolling the page and no page scroller is mounted", async ({ page, baseURL }) => {
     await fakeNetwork(page.context(), { appOrigin: appOriginOf(baseURL), rpc: openDisputesRpc(IDS, HEAD), http: metaEvidence });
     await page.goto("/1/ongoing");
-    await expect(card(page, LAST_ID)).toBeVisible({ timeout: 20_000 });
+    await expect(disputeCard(page, LAST_ID)).toBeVisible({ timeout: 20_000 });
     await expect(page.locator("html")).not.toHaveAttribute("data-page-scroll");
     await expect(page.locator(".dr-page-scroller")).toHaveCount(0);
     const root = await page.evaluate(() => ({

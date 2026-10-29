@@ -14,18 +14,12 @@ export function resolveGateway(env: Env): GatewayOrigin {
   return isGatewayOrigin(origin) ? origin : DEFAULT_GATEWAY;
 }
 
-/**
- * The gateway URL of a canonical path. The path's segments are already percent-encoded once by `normalizeIpfsPath`, so
- * they are joined as they are; encoding them again would turn `%20` into `%2520`.
- */
+/** The path's segments are already percent-encoded once: never re-encode them (`%20` would become `%2520`). */
 export function gatewayUrl(path: CanonicalIpfsPath, gateway: GatewayOrigin): string {
   return `${gateway}${path}`;
 }
 
-/**
- * An `http:` or `https:` scheme followed by `//`, the explicit authority. Without it a browser resolves the reference
- * against the current page, so an authority-less `https:/host/ipfs/<CID>` is never re-served.
- */
+/** Without the explicit `//` authority, an authority-less `https:/host/ipfs/<CID>` resolves against the current page and is never re-served. */
 const EXPLICIT_HTTP_OR_HTTPS_AUTHORITY = /^https?:\/\//i;
 
 /**

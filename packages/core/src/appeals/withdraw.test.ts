@@ -72,32 +72,37 @@ describe("readWithdrawable (IDisputeResolver)", () => {
     expect(requests.methods).toEqual([]);
   });
 
-  it("sums every ruling the account contributed to across the rounds on idr-v2, one item per non-zero ruling", async () => {
+  it.each([
+    [
+      "sums every ruling the account contributed to across the rounds on idr-v2, one item per non-zero ruling",
+      "idr-v2",
+      v2Withdrawable,
+      [40n, 0n],
+      { status: "available", beneficiary: ME, total: 40n, items: [{ dialect: "idr-v2", ruling: 1n, amount: 40n }] },
+    ],
+    [
+      "reads getTotalWithdrawableAmount on idr-v1 with a one-ruling array",
+      "idr-v1",
+      v1Withdrawable,
+      [5n, 6n],
+      {
+        status: "available",
+        beneficiary: ME,
+        total: 11n,
+        items: [
+          { dialect: "idr-v1", ruling: 1n, amount: 5n },
+          { dialect: "idr-v1", ruling: 2n, amount: 6n },
+        ],
+      },
+    ],
+  ] as const)("%s", async (_, dialect, withdrawable, [first, second], expected) => {
     const { context: ctx, requests } = context(
-      { head: 1_000n, logs: MY_LOGS, calls: [v2Withdrawable(1n, 40n), v2Withdrawable(2n, 0n)] },
-      detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]),
+      { head: 1_000n, logs: MY_LOGS, calls: [withdrawable(1n, first), withdrawable(2n, second)] },
+      detectionFor(SYNTHETIC, FAMILY_SIGNATURES[dialect]),
     );
     const state = await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n, 1n], roundStartBlocks: [100n, 400n] });
-    expect(state).toEqual({ status: "available", beneficiary: ME, total: 40n, items: [{ dialect: "idr-v2", ruling: 1n, amount: 40n }] });
-    expect(requests.calls).toEqual([v2Withdrawable(1n, 0n)[0], v2Withdrawable(2n, 0n)[0]]);
-  });
-
-  it("reads getTotalWithdrawableAmount on idr-v1 with a one-ruling array", async () => {
-    const { context: ctx, requests } = context(
-      { head: 1_000n, logs: MY_LOGS, calls: [v1Withdrawable(1n, 5n), v1Withdrawable(2n, 6n)] },
-      detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v1"]),
-    );
-    const state = await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n, 1n], roundStartBlocks: [100n, 400n] });
-    expect(state).toEqual({
-      status: "available",
-      beneficiary: ME,
-      total: 11n,
-      items: [
-        { dialect: "idr-v1", ruling: 1n, amount: 5n },
-        { dialect: "idr-v1", ruling: 2n, amount: 6n },
-      ],
-    });
-    expect(requests.calls).toEqual([v1Withdrawable(1n, 0n)[0], v1Withdrawable(2n, 0n)[0]]);
+    expect(state).toEqual(expected);
+    expect(requests.calls).toEqual([withdrawable(1n, 0n)[0], withdrawable(2n, 0n)[0]]);
   });
 
   it("reads the round-1 contribution of dispute 1678's first contributor through the v1 signature (already withdrawn: nothing)", async () => {
@@ -173,29 +178,22 @@ describe("readWithdrawable (IDisputeResolver)", () => {
 describe("readWithdrawable (governor dialect)", () => {
   const GOVERNOR = GOVERNOR_1621.governor;
   const governorFamily = () => recordedDetection(1, GOVERNOR);
-  /** `sessions(5)`: the session's settled ruling and status (1 DisputeCreated, 2 Resolved), for dispute 99 unless given. */
   const sessionState = (ruling: bigint, status: number, disputeId = 99n): [string, CallReply] =>
     answer({ to: GOVERNOR, abi: governorSessionAbi, functionName: "sessions", args: [5n], result: [ruling, disputeId, 0n, status, 0n] });
   type RoundInfo = readonly [readonly bigint[], readonly boolean[], bigint, bigint];
   const roundInfo = (session: bigint, round: bigint, result: RoundInfo) => answer({ to: GOVERNOR, abi: governorAbi, functionName: "getRoundInfo", args: [session, round], result });
   const contributions = (session: bigint, round: bigint, result: readonly bigint[]) =>
     answer({ to: GOVERNOR, abi: governorAbi, functionName: "getContributions", args: [session, round, ME], result });
+  const governorContext = async (calls: readonly [string, CallReply][]) => context({ head: 1_000n, calls }, await governorFamily(), { evidenceGroupId: 5n });
 
   it("shares the round's fee rewards among the winner's contributors, refunds an unfunded side and itemizes per (round, list)", async () => {
-    const { context: ctx } = context(
-      {
-        head: 1_000n,
-        calls: [
-          sessionState(2n, RESOLVED),
-          roundInfo(5n, 0n, [[3_000n, 2_000n], [true, true], 4_000n, 5_000n]),
-          contributions(5n, 0n, [300n, 1_000n]),
-          roundInfo(5n, 1n, [[500n, 0n], [false, false], 0n, 0n]),
-          contributions(5n, 1n, [200n, 0n]),
-        ],
-      },
-      await governorFamily(),
-      { evidenceGroupId: 5n },
-    );
+    const { context: ctx } = await governorContext([
+      sessionState(2n, RESOLVED),
+      roundInfo(5n, 0n, [[3_000n, 2_000n], [true, true], 4_000n, 5_000n]),
+      contributions(5n, 0n, [300n, 1_000n]),
+      roundInfo(5n, 1n, [[500n, 0n], [false, false], 0n, 0n]),
+      contributions(5n, 1n, [200n, 0n]),
+    ]);
     expect(await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n, 1n], roundStartBlocks: [0n, 0n] })).toEqual({
       status: "available",
       beneficiary: ME,
@@ -226,11 +224,7 @@ describe("readWithdrawable (governor dialect)", () => {
     ],
     ["gives nothing to a losing side that was fully paid", 1n, [[2_000n, 3_000n], [true, true], 4_000n, 5_000n], [0n, 3_000n], { status: "nothing" }],
   ])("%s", async (_, ruling, roundZero, myContributions, expected) => {
-    const { context: ctx } = context(
-      { head: 1_000n, calls: [sessionState(ruling, RESOLVED), roundInfo(5n, 0n, roundZero), contributions(5n, 0n, myContributions)] },
-      await governorFamily(),
-      { evidenceGroupId: 5n },
-    );
+    const { context: ctx } = await governorContext([sessionState(ruling, RESOLVED), roundInfo(5n, 0n, roundZero), contributions(5n, 0n, myContributions)]);
     expect(await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n], roundStartBlocks: [0n] })).toEqual(expected);
   });
 
@@ -251,27 +245,20 @@ describe("readWithdrawable (governor dialect)", () => {
   });
 
   it("has nothing withdrawable before the ruling is executed and the governor session resolved", async () => {
-    const { context: ctx, requests } = context({ head: 1_000n, calls: [sessionState(0n, DISPUTE_CREATED)] }, await governorFamily(), { evidenceGroupId: 5n });
+    const { context: ctx, requests } = await governorContext([sessionState(0n, DISPUTE_CREATED)]);
     expect(await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n], roundStartBlocks: [0n] })).toEqual({ status: "nothing" });
     expect(requests.calls).toEqual([sessionState(0n, DISPUTE_CREATED)[0]]);
   });
 
   it("rewards under the governor's settled ruling, not the jury's, when only one list funded the final round", async () => {
-    const { context: ctx } = context(
-      {
-        head: 1_000n,
-        // The jury's currentRuling was 2 while the session settled on 1.
-        calls: [
-          sessionState(1n, RESOLVED),
-          roundInfo(5n, 0n, [[3_000n, 2_000n], [true, true], 4_000n, 5_000n]),
-          contributions(5n, 0n, [1_500n, 0n]),
-          roundInfo(5n, 1n, [[2_500n, 0n], [true, false], 2_500n, 2_500n]),
-          contributions(5n, 1n, [0n, 0n]),
-        ],
-      },
-      await governorFamily(),
-      { evidenceGroupId: 5n },
-    );
+    // The jury's currentRuling was 2 while the session settled on 1.
+    const { context: ctx } = await governorContext([
+      sessionState(1n, RESOLVED),
+      roundInfo(5n, 0n, [[3_000n, 2_000n], [true, true], 4_000n, 5_000n]),
+      contributions(5n, 0n, [1_500n, 0n]),
+      roundInfo(5n, 1n, [[2_500n, 0n], [true, false], 2_500n, 2_500n]),
+      contributions(5n, 1n, [0n, 0n]),
+    ]);
     expect(await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n, 1n], roundStartBlocks: [0n, 0n] })).toEqual({
       status: "available",
       beneficiary: ME,
@@ -281,11 +268,11 @@ describe("readWithdrawable (governor dialect)", () => {
   });
 
   it("treats a session that belongs to another dispute as invalid data, never a reward", async () => {
-    const { context: ctx } = context(
-      { head: 1_000n, calls: [sessionState(1n, RESOLVED, 98n), roundInfo(5n, 0n, [[3_000n, 2_000n], [true, true], 4_000n, 5_000n]), contributions(5n, 0n, [1_500n, 0n])] },
-      await governorFamily(),
-      { evidenceGroupId: 5n },
-    );
+    const { context: ctx } = await governorContext([
+      sessionState(1n, RESOLVED, 98n),
+      roundInfo(5n, 0n, [[3_000n, 2_000n], [true, true], 4_000n, 5_000n]),
+      contributions(5n, 0n, [1_500n, 0n]),
+    ]);
     expect(await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n], roundStartBlocks: [0n] })).toMatchObject({ status: "unavailable", error: { code: "invalid-data" } });
   });
 

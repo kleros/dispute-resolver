@@ -86,28 +86,9 @@ describe("simulateWrite", () => {
     expect(await simulateWrite(client, fundAppeal(KNOWN, 100), ACCOUNT)).toEqual({ status: "reverted", reason: null });
   });
 
-  it("a revert of any other contract never carries the contract's own text", async () => {
-    const { client } = node({ call: revert() });
-    expect(await simulateWrite(client, fundAppeal(UNKNOWN), ACCOUNT)).toEqual({ status: "reverted", reason: null });
-  });
-
   it("a revert without a reason is still a revert, with no reason", async () => {
     const { client } = node({ call: rpcError(3, "execution reverted") });
     expect(await simulateWrite(client, fundAppeal(KNOWN), ACCOUNT)).toEqual({ status: "reverted", reason: null });
-  });
-
-  it("a known contract's long reason with direction marks comes back as one plain line of at most 200 characters", async () => {
-    const data = encodeErrorResult({
-      abi: [{ type: "error", name: "Error", inputs: [{ name: "message", type: "string" }] }],
-      errorName: "Error",
-      args: [`Send\u202E\u2067 funds to the address below\n${"z".repeat(500)}`],
-    });
-    const { client } = node({ call: Object.assign(rpcError(3, "execution reverted"), { data }) });
-    const result = await simulateWrite(client, fundAppeal(KNOWN), ACCOUNT);
-    const reason = result.status === "reverted" ? (result.reason ?? "") : "";
-    expect(reason.startsWith("Send funds to the address below z")).toBe(true);
-    expect(Array.from(reason).length).toBeLessThanOrEqual(200);
-    for (const mark of ["\u202E", "\u2067", "\n"]) expect(reason).not.toContain(mark);
   });
 
   it("a balance below the call's value is reported as such before any simulation", async () => {

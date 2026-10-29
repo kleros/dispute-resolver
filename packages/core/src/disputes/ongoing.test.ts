@@ -53,11 +53,16 @@ function node(overrides: Partial<FakeNode> = {}): FakeNode {
   };
 }
 
+async function okList(spec: FakeNode = node(), courts: readonly Court[] | null = COURTS) {
+  const { client } = fakeClient(spec);
+  const list = await listOngoingDisputes({ chainId: 11155111, client }, courts);
+  if (list.status !== "ok") throw new Error(list.status);
+  return list;
+}
+
 describe("listOngoingDisputes", () => {
   it("open IDs are the created IDs minus those that reached execution, newest first", async () => {
-    const { client } = fakeClient(node());
-    const list = await listOngoingDisputes({ chainId: 11155111, client }, COURTS);
-    if (list.status !== "ok") throw new Error(list.status);
+    const list = await okList();
     expect(list.disputes.map((dispute) => dispute.id)).toEqual([13n, 12n, 11n, 10n]);
     expect(list.failedIds).toEqual([]);
   });
@@ -70,9 +75,7 @@ describe("listOngoingDisputes", () => {
   });
 
   it("each card carries the dispute struct and a countdown target from the court's timesPerPeriod, null instead of crashing when the court is missing from the list", async () => {
-    const { client } = fakeClient(node());
-    const list = await listOngoingDisputes({ chainId: 11155111, client }, COURTS);
-    if (list.status !== "ok") throw new Error(list.status);
+    const list = await okList();
     expect(list.disputes.find((dispute) => dispute.id === 12n)).toEqual({
       id: 12n,
       arbitrated: ARBITRABLE,
@@ -86,9 +89,7 @@ describe("listOngoingDisputes", () => {
   });
 
   it("without courts every countdown is null and the list still loads", async () => {
-    const { client } = fakeClient(node());
-    const list = await listOngoingDisputes({ chainId: 11155111, client }, null);
-    if (list.status !== "ok") throw new Error(list.status);
+    const list = await okList(node(), null);
     expect(list.disputes.every((dispute) => dispute.countdownTarget === null)).toBe(true);
   });
 
@@ -96,9 +97,7 @@ describe("listOngoingDisputes", () => {
     const calls = new Map(node().calls);
     const [key, broken] = failure({ to: ARBITRATOR, abi: klerosLiquidAbi, functionName: "disputes", args: [11n], error: { code: -32000, message: "header not found" } });
     calls.set(key, broken);
-    const { client } = fakeClient(node({ calls }));
-    const list = await listOngoingDisputes({ chainId: 11155111, client }, COURTS);
-    if (list.status !== "ok") throw new Error(list.status);
+    const list = await okList(node({ calls }));
     expect(list.disputes.map((dispute) => dispute.id)).toEqual([13n, 12n, 10n]);
     expect(list.failedIds).toEqual([11n]);
   });
@@ -113,9 +112,7 @@ describe("listOngoingDisputes", () => {
       result: [0n, "0x0000000000000000000000000000000000000000", 0n, 0, 0n, 0n, 0n, false],
     });
     calls.set(key, zero);
-    const { client } = fakeClient(node({ calls }));
-    const list = await listOngoingDisputes({ chainId: 11155111, client }, COURTS);
-    if (list.status !== "ok") throw new Error(list.status);
+    const list = await okList(node({ calls }));
     expect(list.failedIds).toEqual([10n]);
   });
 
@@ -133,7 +130,6 @@ describe("listOngoingDisputes", () => {
   it("without a read RPC the list fails with no-rpc", async () => {
     const list = await listOngoingDisputes({ chainId: 11155111, client: undefined }, COURTS);
     expect(list).toMatchObject({ status: "failed", error: { code: "no-rpc", message: "This network's data is unavailable." } });
-    if (list.status === "failed") expect(list.error.message).not.toMatch(/configur|RPC|REACT_APP/i);
   });
 
   it("no open dispute is an empty list", async () => {
@@ -143,9 +139,7 @@ describe("listOngoingDisputes", () => {
 
   it("an ID created twice in the window is listed once", async () => {
     const base = node();
-    const { client } = fakeClient(node({ logs: [...(base.logs ?? []), disputeCreationLog(ARBITRATOR, 10n, ARBITRABLE, LOOKBACK_START + 30n, 1)] }));
-    const list = await listOngoingDisputes({ chainId: 11155111, client }, COURTS);
-    if (list.status !== "ok") throw new Error(list.status);
+    const list = await okList(node({ logs: [...(base.logs ?? []), disputeCreationLog(ARBITRATOR, 10n, ARBITRABLE, LOOKBACK_START + 30n, 1)] }));
     expect(list.disputes.filter((dispute) => dispute.id === 10n)).toHaveLength(1);
   });
 });

@@ -8,10 +8,8 @@ function canonical(path: string): CanonicalIpfsPath {
   return normalized;
 }
 
-/** The CID the fakes answer an upload with. */
 export const TEST_UPLOAD_CID = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
 
-/** The canonical path of `TEST_UPLOAD_CID`, as a successful upload returns it. */
 export const TEST_UPLOAD_PATH: CanonicalIpfsPath = canonical(`/ipfs/${TEST_UPLOAD_CID}`);
 
 const MIB = 1024 * 1024;
@@ -26,7 +24,6 @@ export function testPdf(name = "brief.pdf"): File {
   return new File(["%PDF-1.4"], name, { type: "application/pdf" });
 }
 
-/** An `AtlasUploader` whose functions are vitest mocks, so a test can drive and inspect them. */
 export interface FakeUploader extends AtlasUploader {
   readonly limits: Mock<AtlasUploader["limits"]>;
   readonly upload: Mock<AtlasUploader["upload"]>;

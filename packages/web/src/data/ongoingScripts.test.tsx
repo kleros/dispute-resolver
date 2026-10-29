@@ -61,7 +61,6 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-/** Renders both titles in one provider, waits until both runner frames exist, then answers the later frame first. */
 async function loadBothAnsweredInReverse(): Promise<{ readonly client: QueryClient; readonly titles: () => readonly SectionData<OngoingTitle>[] }> {
   const fake = createFakeRunnerDocument();
   const runner = createIframeScriptRunner({ document: fake.document, runnerUrl: RUNNER_PATH, maxConcurrent: 4, rpcRedirects: SAMPLE_REDIRECTS });

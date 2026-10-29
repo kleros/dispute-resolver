@@ -1,11 +1,10 @@
 import { expect, test, type Browser, type Locator, type Page } from "@playwright/test";
+import { accountButton, accountPanel, connectButton, header, menuButton, navLink, pill, themeToggle } from "../support/header";
 import { fakeNetwork } from "../support/network";
-import { pageScroll } from "../support/pageScroll";
+import { expectNoSidewaysScroll } from "../support/pageScroll";
 import { expectWalletConnected, injectWallet, type InjectedWalletOptions } from "../support/wallet";
 
-// The header's geometry on the built app: the one-row bar from the lg breakpoint (900 px), the long testnet name in the
-// pill on phones, and the controls and the open account panel inside the narrowest phones. No chain read needs an answer:
-// only the frame is measured. The Sepolia case needs the build's Sepolia read RPC, as a deploy has.
+// No chain read needs an answer: only the frame is measured.
 
 const ACCOUNT = "0x00000000000000000000000000000000000000e2";
 const HEIGHT = 800;
@@ -28,48 +27,17 @@ function overlaps(a: Box, b: Box): boolean {
   return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 }
 
-function header(page: Page) {
-  return page.getByRole("banner");
-}
-
 /** The bar's row: the element that holds the brand, the Menu button, the menu panel and the controls. */
 function barRow(page: Page) {
   return header(page).getByRole("link", { name: "Kleros Dispute Resolver" }).locator("..");
 }
 
-function pill(page: Page) {
-  return header(page).getByRole("button", { name: /^Network: / });
-}
-
-function themeToggle(page: Page) {
-  return header(page).getByRole("button", { name: /^Switch to (dark|light) theme$/ });
-}
-
-function connectButton(page: Page) {
-  return header(page).getByRole("button", { name: "Connect", exact: true });
-}
-
-function accountButton(page: Page) {
-  return header(page).getByRole("button", { name: /^Account 0x/ });
-}
-
-function accountPanel(page: Page) {
-  return header(page).getByRole("dialog", { name: "Account" });
-}
-
-/** The pill names the chain in full: its label is not cut short by the truncation the pill applies to long names. */
 async function expectFullPillName(page: Page, name: string): Promise<void> {
   await expect(pill(page)).toHaveAccessibleName(`Network: ${name}. Change network`);
   const label = pill(page).getByText(name, { exact: true });
   await expect(label).toBeVisible();
   const cut = await label.evaluate((element) => element.scrollWidth > element.clientWidth);
   expect(cut, `the pill cuts "${name}" short`).toBe(false);
-}
-
-async function expectNoSidewaysScroll(page: Page, width: number): Promise<void> {
-  const { scrollWidth } = await pageScroll(page);
-  const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-  expect(Math.max(scrollWidth, documentWidth), `the page scrolls sideways at ${String(width)} px`).toBeLessThanOrEqual(width);
 }
 
 /**
@@ -98,7 +66,6 @@ async function waitForSettledHeader(page: Page): Promise<void> {
   );
 }
 
-/** A fresh context with the app's network faked and, when given, the injected wallet; the page is left on `path`. */
 async function openPage(browser: Browser, baseURL: string | undefined, path: string, wallet?: InjectedWalletOptions): Promise<Page> {
   const appUrl = new URL(baseURL ?? "http://localhost");
   const context = await browser.newContext({ baseURL: appUrl.origin, viewport: { width: 1440, height: HEIGHT } });
@@ -112,7 +79,6 @@ async function openPage(browser: Browser, baseURL: string | undefined, path: str
   return page;
 }
 
-/** The bar's parts on screen: the brand, the controls, and either the inline nav links or the Menu button. */
 async function visibleBarParts(page: Page, walletControl: Locator): Promise<[string, Locator][]> {
   const parts: [string, Locator][] = [
     ["the brand", header(page).getByRole("link", { name: "Kleros Dispute Resolver" })],
@@ -120,10 +86,10 @@ async function visibleBarParts(page: Page, walletControl: Locator): Promise<[str
     ["the theme toggle", themeToggle(page)],
     ["the wallet control", walletControl],
   ];
-  const menu = header(page).getByRole("button", { name: "Menu", exact: true });
+  const menu = menuButton(page);
   if (await menu.isVisible()) parts.push(["the Menu button", menu]);
   for (const name of ["Ongoing Disputes", "Case Lookup", "Create"]) {
-    const link = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name, exact: true });
+    const link = navLink(page, name);
     if (await link.isVisible()) parts.push([`the ${name} link`, link]);
   }
   return parts;

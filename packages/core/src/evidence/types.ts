@@ -5,16 +5,14 @@ export interface DisputeEvent {
   readonly metaEvidenceId: bigint;
   readonly evidenceGroupId: bigint;
   readonly blockNumber: bigint;
-  /** Block timestamp: the "Dispute Raised" time of the evidence panel. */
+  /** Block timestamp. */
   readonly createdAt: number;
   readonly transactionHash: Hex;
 }
 
-/** Exactly one `Dispute` log is required; zero or several are reported, not thrown. */
 export type DisputeEventResult =
   { readonly status: "found"; readonly event: DisputeEvent } | { readonly status: "not-found" } | { readonly status: "ambiguous"; readonly count: number };
 
-/** The latest emission of the `MetaEvidence` event for one meta-evidence ID. */
 export interface MetaEvidenceEvent {
   /** The raw, untrusted `_evidence` string; content addressing is checked by the meta-evidence pipeline. */
   readonly uri: string;
@@ -25,7 +23,6 @@ export interface MetaEvidenceEvent {
   readonly emissions: number;
 }
 
-/** Several emissions of one ID are not ambiguous: the latest by block and log index wins. */
 export type MetaEvidenceEventResult = { readonly status: "found"; readonly event: MetaEvidenceEvent } | { readonly status: "not-found" };
 
 export interface EvidenceLog {
@@ -37,7 +34,6 @@ export interface EvidenceLog {
 }
 
 export interface EvidenceItem {
-  /** `title`, or `name` when `title` is empty. */
   readonly title: string;
   /** Plain text, never markdown. */
   readonly description: string;

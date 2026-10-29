@@ -38,16 +38,8 @@ describe("buildScriptParameters", () => {
     });
   });
 
-  it("falsy chain IDs fall back to the arbitrator chain", () => {
-    for (const falsy of [0, "", null, false]) {
-      const outcome = build({ arbitratorChainID: falsy, arbitrableChainID: falsy });
-      expect(outcome.ok && outcome.value.arbitrableChainID).toBe(1);
-    }
-  });
-
-  it("a chain the table lacks stops the script with the reason that its network's details are unavailable", () => {
-    expect(metaEvidence({ arbitrableChainID: 690 }).arbitrableChainID).toEqual({ status: "unsupported", chainId: 690 });
-    for (const fields of [{ arbitrableChainID: 690 }, { arbitratorChainID: "80001" }]) {
+  it("a chain the table lacks or an invalid chain ID stops the script with a reason that names no configuration, only that the network's details are unavailable", () => {
+    for (const fields of [{ arbitrableChainID: 690 }, { arbitratorChainID: "80001" }, { arbitratorChainID: "1</script>" }, { arbitrableChainID: "1.0" }]) {
       expect(build(fields)).toEqual({
         ok: false,
         error: { code: "no-rpc", message: "The meta-evidence names a network whose details are unavailable, so its dynamic script did not run." },
@@ -106,15 +98,6 @@ describe("loadMetaEvidence script parameters", () => {
     for (const [dynamicScriptURI, reason] of refusals) {
       const { fetcher } = fakeFetcher(servedMetaEvidence(json({ title: "T", arbitrableChainID: 10, dynamicScriptURI })));
       expect(await loadMetaEvidence(context({ fetcher }))).toMatchObject({ status: "invalid", reason });
-    }
-  });
-
-  it("no script-parameter reason names configuration", () => {
-    for (const fields of [{ arbitrableChainID: 10 }, { arbitratorChainID: "1</script>" }, { arbitrableChainID: "1</script>" }, { arbitrableChainID: "1.0" }]) {
-      const outcome = build(fields);
-      if (outcome.ok) throw new Error("the chain ID must be refused");
-      expect(outcome.error.code).toBe("no-rpc");
-      expect(outcome.error.message).not.toMatch(/configur|RPC|REACT_APP|env/i);
     }
   });
 

@@ -90,7 +90,6 @@ export type WriteOutcome = Extract<
 >;
 
 export interface WriteOptions {
-  /** The chain of the page the action is on; the wallet must be on it. */
   readonly pageChainId: number;
   /** Runs after the receipt is mined, before the status becomes `mined`. */
   readonly onMined?: (receipt: WriteReceipt) => Promise<void> | void;
@@ -116,18 +115,15 @@ export interface WriteSequenceController {
 }
 
 export interface WalletControlProps {
-  /** The header's resolved chain: Connect starts on it and the account menu links to its explorer. */
   readonly chain: ChainConfig;
 }
 
 export interface SmartContractWalletWarningProps {
-  /** The chain whose code is read for the connected account: the resolved chain of the header. */
   readonly chainId: number;
 }
 
 export interface WriteStatusNoticeProps {
   readonly status: WriteStatus;
-  /** For a sequence: which transaction the status belongs to, shown as "n of total". */
   readonly progress?: Pick<WriteSequenceStatus, "index" | "total">;
   /** The notice says why an action is locked before anything was tried, rather than reporting a refused write. */
   readonly beforeAttempt?: boolean;

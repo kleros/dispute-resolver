@@ -1,4 +1,3 @@
-/** Test-only bindings and detections for the appeals module, with the shared fake node it reads through. */
 import { SELECTORS } from "../../abi";
 import type { ProbeSignature } from "../../abi/types";
 import type { ArbitratedBinding } from "../../disputes/types";
@@ -23,14 +22,12 @@ export function testBinding(fields: { readonly chainId?: number; readonly disput
   return binding as unknown as ArbitratedBinding;
 }
 
-/** A detection of `arbitrable` whose code carries exactly the probe selectors of `signatures`, classified by `families`. */
 export function detectionFor(arbitrable: string, signatures: readonly ProbeSignature[], chainId = 1): FamilyDetection {
   const selectors = signatures.map((signature) => SELECTORS[signature]);
   const { family, capabilities } = classifySelectors(new Set(selectors));
   return { chainId, arbitrable: toRegistryAddress(arbitrable), family, writeFamily: family, capabilities, realityProxy: null, implementation: null };
 }
 
-/** Probe signatures of each family's typical code. */
 export const FAMILY_SIGNATURES = {
   "idr-v2": ["externalIDtoLocalID(uint256)", "submitEvidence(uint256,string)", "fundAppeal(uint256,uint256)", "getTotalWithdrawableAmount(uint256,address,uint256)"],
   "idr-v1": ["externalIDtoLocalID(uint256)", "submitEvidence(uint256,string)", "fundAppeal(uint256,uint256)", "getTotalWithdrawableAmount(uint256,address,uint256[])"],

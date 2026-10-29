@@ -1,11 +1,8 @@
-/** What the host posted to a runner frame on its `load` event. */
 export interface PostedRun {
   readonly message: unknown;
   readonly targetOrigin: unknown;
   readonly ports: readonly MessagePort[];
-  /** Answers on the transferred port, as the runner page does. */
   reply(data: unknown): void;
-  /** Posts the runner page's acknowledgement on the transferred port. */
   acknowledge(): void;
 }
 
@@ -14,18 +11,13 @@ export interface FakeRunnerFrame {
   readonly element: HTMLIFrameElement;
   /** Every attribute the host set, in order, observed as DOM mutations, so a test can check `sandbox` precedes `src`. */
   attributeOrder(): string[];
-  /** Records posts to the frame's window from now on and returns them. */
   watchPosts(): PostedRun[];
-  /** Fires the frame's `load` event and returns the single post the host made in response. */
   load(): PostedRun;
 }
 
 export interface FakeRunnerDocument {
-  /** Pass as `IframeRunnerOptions.document`. */
   readonly document: Document;
-  /** Every iframe the host created, in creation order. */
   readonly frames: FakeRunnerFrame[];
-  /** The frames currently attached to the document. */
   attachedFrames(): FakeRunnerFrame[];
 }
 
@@ -109,7 +101,6 @@ export function createFakeRunnerDocument(): FakeRunnerDocument {
   };
 }
 
-/** Lets the host's port and timer callbacks run. */
 export async function settleMacrotasks(): Promise<void> {
   for (let turn = 0; turn < 5; turn += 1) {
     await new Promise((resolve) => {

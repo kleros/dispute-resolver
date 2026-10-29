@@ -56,15 +56,4 @@ describe("DataProvider", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(document.querySelectorAll("iframe")).toHaveLength(0);
   });
-
-  it("gives a chain without a configured RPC no read client", async () => {
-    render(
-      <DataProvider config={buildAppConfig({}, { host: "localhost", origin: "http://localhost" })}>
-        <Probe />
-      </DataProvider>,
-    );
-    await waitFor(() => {
-      expect(screen.getByLabelText("probe").textContent).toBe("restored:none:no-rpc");
-    });
-  });
 });

@@ -43,10 +43,7 @@ export function useRoundFunding(context: AppealContext | undefined, round: bigin
   return enabled ? fromQuery(query, fromOutcome) : LOADING;
 }
 
-/**
- * The last round's fully funded rulings from the arbitrable's own record, for a family whose funding the Dispute
- * Resolver does not read itself; `null` for any other family, or while the decision does not depend on them.
- */
+/** `null` for a family whose funding the Dispute Resolver reads itself, or while the decision does not depend on it. */
 export function useProductFunding(
   chainId: number,
   binding: ArbitratedBinding | undefined,

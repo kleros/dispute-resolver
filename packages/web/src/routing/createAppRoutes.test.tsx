@@ -169,8 +169,10 @@ describe("route table: pages", () => {
 describe("route table: 404 and unsupported network", () => {
   it.each(["/1/unknown", "/1/ongoing/extra", "/1/cases/5/extra", "/1/interact", "/1/create/x"])("%s is the 404 screen inside the frame", (path) => {
     const view = renderApp(path);
-    expect(screen.getByRole("heading", { name: "404" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "404" })).toBeInTheDocument();
+    expect(screen.getByText("Page not found")).toBeInTheDocument();
     expect(screen.getByText("Something went wrong in Athens!")).toBeInTheDocument();
+    expect(view.container.querySelector("img[alt='']")?.getAttribute("src")).toMatch(/acropolis/);
     expect(frame(view.container)).toEqual({ kind: "page", chain: "1", segment: null });
   });
 

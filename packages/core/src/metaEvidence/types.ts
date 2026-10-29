@@ -16,12 +16,7 @@ export type ChainIdField =
   | { readonly status: "unsupported"; readonly chainId: number }
   | { readonly status: "invalid" };
 
-/**
- * Meta-evidence after the dynamic-script merge and validation: every rendered field is a string or a validated
- * structure.
- */
 export interface MetaEvidence {
-  /** "" when the merged JSON has no usable `title`. */
   readonly title: string;
   readonly description: string;
   readonly question: string | null;
@@ -31,7 +26,6 @@ export interface MetaEvidence {
    * options, and the fallbacks for ruling text and appeal cards.
    */
   readonly rulingOptions: RulingOptions | null;
-  /** First non-empty of `dispute.template.outcomes`, `template.outcomes`, `outcomes`, `question.outcomes`. */
   readonly fallbackOutcomes: FallbackOutcomes;
   /** Raw untrusted references; turned into links only through `uri`. */
   readonly fileURI: string | null;
@@ -53,14 +47,7 @@ export interface MetaEvidence {
 export type MetaEvidenceRejection = "uri-not-content-addressed" | "script-uri-not-content-addressed" | "script-not-allowlisted";
 
 /** Why loading failed. Cached briefly in memory only, never persisted. */
-export type MetaEvidenceFailure =
-  | "locator-error" // the meta-evidence API failed or answered garbage
-  | "fetch-error" // the gateway fetch failed
-  | "not-json" // the file is not JSON (mainnet 560 is a PDF, Gnosis 140 is unparseable)
-  | "schema-invalid" // the merged JSON is not a plain object
-  | "script-failed" // timeout/script error retried; runner error final
-  | "reality-lookup-failed" // the on-chain Reality lookup failed
-  | "budget-exhausted"; // the overall budget ran out
+export type MetaEvidenceFailure = "locator-error" | "fetch-error" | "not-json" | "schema-invalid" | "script-failed" | "reality-lookup-failed" | "budget-exhausted";
 
 /**
  * What happened to the dynamic script of an accepted meta-evidence. `script-chain-unavailable`: a chain ID the script
@@ -106,7 +93,6 @@ export type MetaEvidenceResult =
       readonly status: "ok";
       readonly metaEvidence: MetaEvidence;
       readonly uri: CanonicalIpfsPath;
-      /** Gateway URL of the meta-evidence JSON that was read. */
       readonly fileUrl: string;
       readonly script: ScriptOutcome;
       readonly source: MetaEvidenceSource;
@@ -115,18 +101,15 @@ export type MetaEvidenceResult =
   | { readonly status: "missing" } // the locator, in charge, returned no `metaEvidenceUri`
   | { readonly status: "failed"; readonly reason: MetaEvidenceFailure; readonly error: Unavailable };
 
-/** Only `ok` is persisted; rejections are never cached. */
 export type MetaEvidenceCachePolicy = "persist" | "memory-brief" | "never";
 
 export type RealityNoticeKind = "none" | "unresolvable" | "unverified" | "divergent" | "malformed";
 
 export interface RealityNotice {
   readonly kind: RealityNoticeKind;
-  /** "Question recorded on-chain: {title}" when set. */
   readonly title: string | null;
 }
 
-/** All I/O is injected. */
 export interface MetaEvidenceContext {
   readonly arbitratorChainId: number;
   readonly disputeId: bigint;
@@ -138,7 +121,6 @@ export interface MetaEvidenceContext {
   readonly runner: ScriptRunner;
   readonly realityCache?: RealityQuestionCache;
   readonly registry?: Registry;
-  /** Total budget for locator, fetch, script and Reality lookup together: `CASE_PAGE_BUDGET_MS` or `ONGOING_BUDGET_MS`. */
   readonly budgetMs: number;
   /** The on-chain meta-evidence URI: when it is found it wins over the locator's. Absent, the locator decides. */
   readonly onChain?: OnChainMetaEvidenceReader;

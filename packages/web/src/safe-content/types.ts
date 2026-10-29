@@ -18,12 +18,10 @@ export interface AttachmentProps {
 
 export interface EvidenceDisplayInput {
   readonly metaEvidence: MetaEvidence;
-  /** The page chain (the arbitrator's chain). */
   readonly arbitratorChainId: number;
   readonly disputeId: bigint;
   /** From the arbitrator binding, never from meta-evidence. */
   readonly arbitrable: Address;
-  /** `klerosLiquid` of the page chain. */
   readonly arbitrator: Address;
   readonly env: Env;
   readonly gateway: GatewayOrigin;
@@ -53,7 +51,6 @@ export interface EvidenceDisplayModel {
   readonly encoding: "json" | "search-params";
 }
 
-/** Callers render nothing when `buildEvidenceDisplay` returns `null`. */
 export interface EvidenceDisplayFrameProps {
   readonly model: EvidenceDisplayModel;
   /** Called with nothing when the page loads, so no caller can reach the event, the frame or its source. */

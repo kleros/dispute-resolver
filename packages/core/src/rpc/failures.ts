@@ -13,8 +13,7 @@ const EXECUTION_FAILURE = /execution reverted|\breverted?\b|invalid opcode|Inval
 
 const CONTRACT_REJECTED = "The contract rejected the call.";
 
-/** Whether a node's error message reports a failure of the contract's own execution. */
-export function isExecutionFailureMessage(message: string): boolean {
+function isExecutionFailureMessage(message: string): boolean {
   return EXECUTION_FAILURE.test(message);
 }
 
@@ -122,7 +121,6 @@ export function describeError(error: unknown, chainId?: number): string {
   return "The request failed.";
 }
 
-/** The wording a node puts before a revert reason it reports in its message. */
 const NODE_REVERT_WORDING = /^execution reverted:?/i;
 
 /**
@@ -137,7 +135,6 @@ export function rejectionReason(error: unknown, chainId: number): string | null 
   return reason === "" ? null : reason;
 }
 
-/** `chainId` is the chain the failed read was made on, as `describeError` takes it. */
 export function readFailure(what: string, error: unknown, chainId?: number): Unavailable {
   return { code: isContractFailure(error) ? "reverted" : "rpc-error", message: `Could not read ${what}: ${describeError(error, chainId)}` };
 }

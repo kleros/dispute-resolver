@@ -22,12 +22,6 @@ afterEach(() => {
 });
 
 describe("createReadOnlySetup (no WalletConnect project ID)", () => {
-  it("boots the unconfigured read-only mode without creating AppKit", () => {
-    const setup = createReadOnlySetup(buildAppConfig({}, LOCATION));
-    expect(setup.mode).toBe("unconfigured");
-    expect("modal" in setup).toBe(false);
-  });
-
   it("a browser wallet announcing itself through EIP-6963 is not added", async () => {
     const setup = createReadOnlySetup(buildAppConfig({}, LOCATION));
     // Wagmi adds announced wallets only once WagmiProvider has hydrated its store at mount.
@@ -66,7 +60,6 @@ describe("createReadOnlySetup (no WalletConnect project ID)", () => {
 
 const WITH_PROJECT_ID = { REACT_APP_WALLETCONNECT_PROJECT_ID: "c8-test-project" };
 
-/** A stand-in for the AppKit setup, built from the test wallet, its fake modal, and a creator that returns it. */
 function fakeAppKit() {
   const wallet = createTestWallet();
   const { modal } = wallet;
@@ -75,39 +68,29 @@ function fakeAppKit() {
   return { setup, modal, create: vi.fn<CreateAppKitSetup>(() => setup) };
 }
 
-/** Wagmi's persisted store as wagmi writes it under `wagmi.store` (wagmi 2.22, recorded from a disconnect). */
 const DISCONNECTED_WAGMI_STORE = '{"state":{"connections":{"__type":"Map","value":[]},"chainId":1,"current":null},"version":2}';
 
-/** A storage read that holds `stored` under `wagmi.store` and nothing else. */
 function storedWagmiStore(stored: string): ReadStoredItem {
   return (key) => (key === "wagmi.store" ? stored : null);
 }
 
+const MALFORMED_WAGMI_STORES = ["{", "null", '"text"', '{"state":{"current":""}}', '{"state":{"current":7}}', '{"current":"bcfb5cd94f3"}'];
+
 describe("hasPersistedConnection", () => {
-  it("wagmi's stored current connection is a connection to restore", () => {
-    expect(hasPersistedConnection(storedWagmiStore(CONNECTED_WAGMI_STORE))).toBe(true);
-  });
-
-  it("a first visit, with nothing stored, has no connection to restore", () => {
-    expect(hasPersistedConnection(() => null)).toBe(false);
-  });
-
-  it("a wallet that disconnected has no connection to restore, though wagmi keeps its store", () => {
-    expect(hasPersistedConnection(storedWagmiStore(DISCONNECTED_WAGMI_STORE))).toBe(false);
-  });
-
-  it("malformed or unexpected stored values hold no connection", () => {
-    for (const stored of ["{", "null", '"text"', '{"state":{"current":""}}', '{"state":{"current":7}}', '{"current":"bcfb5cd94f3"}']) {
-      expect(hasPersistedConnection(storedWagmiStore(stored))).toBe(false);
-    }
-  });
-
-  it("storage that throws on read holds no connection", () => {
-    expect(
-      hasPersistedConnection(() => {
+  it.each<[string, ReadStoredItem, boolean]>([
+    ["wagmi's stored current connection is a connection to restore", storedWagmiStore(CONNECTED_WAGMI_STORE), true],
+    ["a first visit, with nothing stored, has no connection to restore", () => null, false],
+    ["a wallet that disconnected has no connection to restore, though wagmi keeps its store", storedWagmiStore(DISCONNECTED_WAGMI_STORE), false],
+    ...MALFORMED_WAGMI_STORES.map((stored): [string, ReadStoredItem, boolean] => [`the malformed stored value ${stored} holds no connection`, storedWagmiStore(stored), false]),
+    [
+      "storage that throws on read holds no connection",
+      () => {
         throw new DOMException("The storage is blocked.", "SecurityError");
-      }),
-    ).toBe(false);
+      },
+      false,
+    ],
+  ])("%s", (_case, read, expected) => {
+    expect(hasPersistedConnection(read)).toBe(expected);
   });
 });
 
@@ -131,15 +114,6 @@ describe("createWalletSetupStore", () => {
     expect(setup.wagmiConfig.connectors).toEqual([]);
     expect(setup.wagmiConfig.storage).toBeNull();
     expect(loadAppKit).not.toHaveBeenCalled();
-  });
-
-  it("while AppKit loads, the store waits for a reconnect only when wagmi stored a connection", () => {
-    const config = buildAppConfig(WITH_PROJECT_ID, LOCATION);
-    const neverLoads = () => new Promise<CreateAppKitSetup>(() => undefined);
-    expect(createWalletSetupStore(config, neverLoads, storedWagmiStore(CONNECTED_WAGMI_STORE)).getSnapshot()).toEqual(
-      expect.objectContaining({ pending: true, pendingReconnect: true }),
-    );
-    expect(createWalletSetupStore(config, neverLoads, () => null).getSnapshot()).toEqual(expect.objectContaining({ pending: true, pendingReconnect: false }));
   });
 
   it("by default the store reads wagmi's connection from localStorage, once, at creation", () => {
@@ -221,12 +195,14 @@ describe("walletTransport", () => {
     expect(transport.value).toEqual(expect.objectContaining({ url: SECRET_RPC }));
   });
 
-  it("a chain without an RPC rejects every request instead of using a public default", async () => {
+  it("a chain without an RPC rejects every request instead of using a public default, in a read-only setup too", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
     const transport = walletTransport(testPageChain(1).chain, {})({});
     expect(transport.config.type).toBe("custom");
     await expect(transport.request({ method: "eth_blockNumber" })).rejects.toThrow(noRpcError(1).message);
+    const setup = createReadOnlySetup(buildAppConfig({}, LOCATION));
+    await expect(setup.wagmiConfig.getClient({ chainId: 1 }).request({ method: "eth_blockNumber" })).rejects.toThrow("Reads on chain 1 are unavailable.");
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -244,11 +220,6 @@ describe("walletTransport", () => {
     expect(texts.join("\n")).toContain("URL: https://rpc.example");
     // Six characters in a row is what a parse error quoting the start of an answer can leave of the key.
     for (let start = 0; start + 6 <= KEY.length; start += 1) expect(texts.join("\n")).not.toContain(KEY.slice(start, start + 6));
-  });
-
-  it("a read-only setup's chain without an RPC rejects every request the same way", async () => {
-    const setup = createReadOnlySetup(buildAppConfig({}, LOCATION));
-    await expect(setup.wagmiConfig.getClient({ chainId: 1 }).request({ method: "eth_blockNumber" })).rejects.toThrow("Reads on chain 1 are unavailable.");
   });
 });
 

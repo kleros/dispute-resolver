@@ -16,9 +16,6 @@ import {
 } from "./casePageRoutes";
 import { caseSectionHeader, expectCaseSectionsSettled, openCaseSection } from "./caseSections";
 
-// Runs against the built app under `vite preview` with the network-free routes of casePageRoutes.ts. Run with
-// `yarn e2e:runner`, which covers every engine of the runner projects in playwright.config.ts.
-
 /** Mirrors `CASE_PAGE_BUDGET_MS` in packages/core/src/metaEvidence/load.ts. */
 const CASE_PAGE_BUDGET_MS = 120_000;
 const RENDER_LIMIT_MS = CASE_PAGE_BUDGET_MS / 4;
@@ -54,7 +51,6 @@ const FORGED_REQUEST = {
   rpcRedirects: [],
 };
 
-/** A result message in the runner's shape, posted to the app outside any run's port. */
 const FORGED_RESULT = { type: "dr-runner/result", value: { title: FORGED_TITLE }, jsonDuplicateKeys: false };
 
 /**
@@ -92,7 +88,10 @@ function scriptTitle(page: Page) {
 }
 
 test.describe("case page dynamic script", () => {
-  test("renders an allowlisted script's title and ruling options well within the budget", async ({ page, baseURL }) => {
+  test("renders an allowlisted script's title and ruling options well within the budget, and once no case section is loading the accordion stays in place", async ({
+    page,
+    baseURL,
+  }) => {
     test.setTimeout(RENDER_LIMIT_MS + 30_000);
     const traffic = await routeCasePage(page, baseURL);
 
@@ -103,9 +102,16 @@ test.describe("case page dynamic script", () => {
     const renderedMs = Date.now() - started;
     test.info().annotations.push({ type: "script-rendered-ms", description: String(renderedMs) });
 
+    await expectCaseSectionsSettled(page);
+    const header = caseSectionHeader(page, "Question");
+    const settled = await header.boundingBox();
+    expect(settled, "the Question header's box").not.toBeNull();
+    await expect(page.getByRole("region", { name: "Dispute timeline", exact: true }).getByRole("list")).toBeVisible();
     // Dispute 1621's recorded ruling is 2, so the decision names the script's second option.
     await expect(page.getByRole("region", { name: /^(Jury decision|Winner)$/ }).getByText(SCRIPT_OPTIONS[1], { exact: true })).toBeVisible();
-    // The Question panel lists the script's options, not the meta-evidence file's.
+    await expect(page.locator(RUNNER_FRAME)).toHaveCount(0);
+    expect(await header.boundingBox()).toEqual(settled);
+
     const question = await openCaseSection(page, "Question");
     await expect(question.getByText("Multiple choice: single select", { exact: true })).toBeVisible();
     await expect(question.getByRole("region", { name: "Voting options", exact: true }).getByRole("listitem")).toHaveText([
@@ -114,29 +120,8 @@ test.describe("case page dynamic script", () => {
       `Option 2 - ${SCRIPT_OPTIONS[1]}`,
     ]);
     for (const option of OPTIONS_BEFORE_SCRIPT) await expect(question.getByText(option)).toHaveCount(0);
-    // The run settled: the host removed its frame.
-    await expect(page.locator(RUNNER_FRAME)).toHaveCount(0);
     expect(renderedMs).toBeLessThan(RENDER_LIMIT_MS);
     expectEveryDependencyServed(traffic);
-  });
-
-  test("once no case section is loading, the accordion stays in place, so a click on its header is not lost", async ({ page, baseURL }) => {
-    test.setTimeout(RENDER_LIMIT_MS + 30_000);
-    const traffic = await routeCasePage(page, baseURL);
-    await page.goto(CASE_PATH);
-    await expectConfiguredBuild(traffic);
-    await expect(scriptTitle(page)).toBeVisible({ timeout: RENDER_LIMIT_MS });
-
-    // Where openCaseSection clicks. The script's title is not that point: the timeline and the decision render after it.
-    await expectCaseSectionsSettled(page);
-    const header = caseSectionHeader(page, "Question");
-    const settled = await header.boundingBox();
-    expect(settled, "the Question header's box").not.toBeNull();
-    // The sections that render last on this dispute, and the end of the run: the header has not moved.
-    await expect(page.getByRole("region", { name: "Dispute timeline", exact: true }).getByRole("list")).toBeVisible();
-    await expect(page.getByRole("region", { name: "Winner", exact: true }).getByText(SCRIPT_OPTIONS[1], { exact: true })).toBeVisible();
-    await expect(page.locator(RUNNER_FRAME)).toHaveCount(0);
-    expect(await header.boundingBox()).toEqual(settled);
   });
 
   test("the app's runner frame is sandboxed without allow-same-origin, runs at an opaque origin and ignores a foreign window", async ({ page, baseURL }) => {
@@ -207,7 +192,6 @@ test.describe("case page dynamic script", () => {
           await forgedSent;
           await new Promise((resolve) => setTimeout(resolve, 300));
 
-          // Every message on the port until the result (the acknowledgement comes first) or the wait ends.
           const channel = new MessageChannel();
           const messages: unknown[] = [];
           const answer = new Promise<unknown>((resolve) => {
@@ -234,7 +218,6 @@ test.describe("case page dynamic script", () => {
       );
 
       expect(reply).toEqual({ type: "dr-runner/result", value: { from: "parent" }, jsonDuplicateKeys: false });
-      // The parent's own request is acknowledged; the sibling's got no acknowledgement.
       expect(messages).toEqual([{ type: "dr-runner/accepted" }, reply]);
       const forger = page.frames().find((frame) => frame.url() === forgerUrl);
       expect(forger).toBeDefined();

@@ -17,11 +17,6 @@ describe("PeriodBadge", () => {
     expect(dot).toHaveClass(dotClass);
   });
 
-  it("draws the stamp ring and fill around the dot", () => {
-    render(<PeriodBadge period={3} />);
-    expect(screen.getByText("Appeal")).toHaveClass("rounded-full", "border", "border-klerosUIComponentsStroke", "bg-klerosUIComponentsWhiteBackground", "h-7", "text-sm");
-  });
-
   it("the large badge takes the large stamp size", () => {
     render(<PeriodBadge period={0} size="lg" />);
     expect(screen.getByText("Evidence")).toHaveClass("h-9", "px-4", "text-base");

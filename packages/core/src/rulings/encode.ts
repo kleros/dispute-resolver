@@ -7,7 +7,6 @@ import type { AnswerEncoding, AnswerEncodingError, AnswerInput, RulingOptions } 
 /** reality-eth-lib's int range, `±(2²⁵⁶ − 1) / 2`. */
 const MAX_INT = maxUint256 / 2n;
 
-/** A string answer is one bytes32 word. */
 const MAX_STRING_BYTES = 32;
 
 /** A decimal as ethers' FixedNumber reads it: digits with an optional point, and at least one digit ("1.", ".5"). */

@@ -2,10 +2,7 @@ import type { Abi } from "viem";
 import { governorAbi } from "../abi";
 import type { Address, ReadClient } from "../types";
 
-/**
- * `sessions(uint256)`, the public getter of the governor's `Session` struct (its arrays and mapping omitted). A test pins
- * it to the `@kleros/kleros` artifact and to the verified ABIs of the deployed governors, which share this layout.
- */
+/** `sessions(uint256)`, the public getter of the governor's `Session` struct (its arrays and mapping omitted). */
 export const governorSessionAbi = [
   {
     type: "function",
@@ -41,7 +38,6 @@ export async function readGovernorSession(client: ReadClient, governor: Address,
   return { ruling, disputeId, resolved: status === SESSION_RESOLVED };
 }
 
-/** `getRoundInfo(session, round)`: per list index, the fees paid and whether the side is fully paid. */
 export interface GovernorRound {
   readonly paidFees: readonly bigint[];
   readonly hasPaid: readonly boolean[];
@@ -60,7 +56,7 @@ export async function readGovernorRound(client: ReadClient, governor: Address, s
   return { paidFees, hasPaid, feeRewards, successfullyPaid };
 }
 
-/** `getContributions(session, round, contributor)`: what the contributor still has in each list index. */
+/** A list index reads zero once its contribution is withdrawn. */
 export function readGovernorContributions(client: ReadClient, governor: Address, session: bigint, round: bigint, contributor: Address): Promise<readonly bigint[]> {
   return client.readContract({ address: governor, abi: governorAbi, functionName: "getContributions", args: [session, round, contributor] });
 }

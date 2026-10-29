@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ProbeSignature } from "./types";
 import { EIP1967_IMPLEMENTATION_SLOT, SELECTORS, governorAbi } from "./index";
 import { ARTIFACTS, VERIFIED, findBySignature, signatureOf, type NormalizedItem } from "./__fixtures__/artifacts";
-import { carriesSelector, recordedByFamily } from "./__fixtures__/bytecode";
+import { RECORDED_CONTRACTS } from "../families/__fixtures__/recorded";
 
 const GOVERNOR_FIXTURE = VERIFIED.governors[0];
 if (GOVERNOR_FIXTURE === undefined) throw new Error("the governor fixtures are empty");
@@ -38,11 +38,7 @@ describe("SELECTORS", () => {
 const GOVERNOR_DIALECT = (["withdrawFeesAndRewards", "getContributions", "getRoundInfo"] as const).map((name) => toFunctionSelector(getAbiItem({ abi: governorAbi, name })));
 
 describe("governor selectors against the recorded bytecode", () => {
-  const GOVERNORS = recordedByFamily("governor");
-
-  it("the recorded fixtures cover every family the selectors discriminate", () => {
-    for (const family of ["escrow-v1", "governor", "idr-v2", "idr-v1", "idr-legacy"]) expect(recordedByFamily(family).length, family).toBeGreaterThan(0);
-  });
+  const GOVERNORS = RECORDED_CONTRACTS.filter((contract) => contract.expectedFamily === "governor");
 
   it("every recorded governor carries the verified dialect and sharedMultiplier(), whose published selector is 0xce1d8ab2", () => {
     const sharedMultiplier = toFunctionSelector(getAbiItem({ abi: governorAbi, name: "sharedMultiplier" }));
@@ -52,7 +48,9 @@ describe("governor selectors against the recorded bytecode", () => {
       expect.arrayContaining(["0x327a29fce0a6490e4236240be176daa282eccfdf", "0x7510c77163683448b8dc8fe9e019d9482be1ed2b", "0xe5bcea6f87aaee4a81f64dfdb4d30d400e0e5cf4"]),
     );
     for (const contract of GOVERNORS) {
-      for (const selector of [...GOVERNOR_DIALECT, sharedMultiplier]) expect(carriesSelector(contract, selector), `${contract.address} ${selector}`).toBe(true);
+      // Solc dispatches a function with `PUSH4 <selector>` (0x63), read in the implementation's code behind a proxy.
+      const dispatcherCode = (contract.implementation?.code ?? contract.code).toLowerCase();
+      for (const selector of [...GOVERNOR_DIALECT, sharedMultiplier]) expect(dispatcherCode.includes(`63${selector.slice(2)}`), `${contract.address} ${selector}`).toBe(true);
     }
   });
 });

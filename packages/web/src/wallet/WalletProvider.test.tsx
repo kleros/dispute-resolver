@@ -20,7 +20,6 @@ afterEach(() => {
   window.localStorage.removeItem(WALLET_STORE_KEY);
 });
 
-/** Renders `WalletProvider` with a project ID and returns every wallet state its child saw, in order. */
 function renderWalletProvider(): WalletState[] {
   const seen: WalletState[] = [];
   function Probe() {

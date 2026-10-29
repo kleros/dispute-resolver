@@ -5,7 +5,6 @@ export function displayAddress(address: string): string {
   return isAddress(address, { strict: false }) ? getAddress(address) : address;
 }
 
-/** `0x1234…abcd`: the first six and last four characters of an address. */
 export function shortenAddress(address: string): string {
   return address.length <= 12 ? address : `${address.slice(0, 6)}…${address.slice(-4)}`;
 }

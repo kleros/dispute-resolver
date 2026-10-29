@@ -1,13 +1,8 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-// Each section of the case page renders as soon as its own data allows, so the page keeps moving after the
-// meta-evidence settles: on dispute 1621 the timeline and the decision replace their placeholders about half a second
-// after the script's title, and the accordion moves down 84 px. Playwright checks the hit target on the pointer's first
-// event only, and the library's button presses only when the pointer is released over it, so a shift between the press
-// and the release lands the release, and the click, on another element: the panel stays closed. A click is therefore
-// sent only once no section is loading.
+// The sections keep moving the accordion as they load. Playwright checks the hit target on the pointer's first event
+// only and the library's button presses on release, so a shift in between loses the click: click once none is loading.
 
-/** Every loading placeholder has `role="status"`. */
 export async function expectCaseSectionsSettled(page: Page): Promise<void> {
   await expect(page.getByRole("main").getByRole("status"), "case sections still loading").toHaveCount(0);
 }

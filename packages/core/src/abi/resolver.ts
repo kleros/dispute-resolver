@@ -38,8 +38,6 @@ export const arbitrableProxyAbi = [
 ] as const satisfies Abi;
 
 /**
- * IDisputeResolver v2 (the `idr-v2` family).
- *
  * `externalIDtoLocalID` is `view` here, as every deployed implementation exposes it (a public mapping); the interface
  * declares it without `view`, which only matters to Solidity callers. That lets `readContract` reach it.
  */
@@ -139,7 +137,6 @@ export const idrV1Abi = [
   },
 ] as const satisfies Abi;
 
-/** Escrow V1, `MultipleArbitrableTokenTransaction` (`@kleros/kleros-interaction`). */
 export const escrowV1Abi = [
   {
     type: "function",
@@ -167,11 +164,7 @@ export const escrowV1Abi = [
   },
 ] as const satisfies Abi;
 
-/**
- * The single-value multiplier getters, tried field by field when `getMultipliers()` fails: the
- * ArbitrableProxy names, the governor names (`winnerMultiplier`, `loserMultiplier`, `MULTIPLIER_DIVISOR`) and the two
- * denominator spellings some arbitrables use.
- */
+/** Tried field by field when `getMultipliers()` fails: arbitrables spell each multiplier differently. */
 export const multiplierGetterAbi = [
   uint256Getter("winnerStakeMultiplier"),
   uint256Getter("winnerMultiplier"),

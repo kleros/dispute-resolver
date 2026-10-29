@@ -2,7 +2,6 @@ import { createConfig, injected, type Config } from "@wagmi/core";
 import { numberToHex, type Chain, type EIP1193Provider } from "viem";
 import { TEST_WALLET_ACCOUNT, rejectingTransports } from "./testWallet";
 
-/** One `wallet_addEthereumChain` request, as the wallet received it. */
 export interface AddChainRequest {
   readonly chainId: string;
   readonly chainName: string;
@@ -19,10 +18,8 @@ export interface FakeInjectedWalletOptions {
 }
 
 export interface FakeInjectedWallet {
-  /** A wagmi config over `chains` whose only connector is wagmi's `injected` over this wallet. */
   readonly config: Config;
   readonly addChainRequests: readonly AddChainRequest[];
-  /** The chain the wallet is on. */
   chainId(): number;
 }
 

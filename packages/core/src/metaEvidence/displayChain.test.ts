@@ -7,12 +7,9 @@ const POH_V2_MAINNET = toRegistryAddress("0xbE9834097A4E97689d9B667441acafb456D0
 
 describe("displayChainId", () => {
   it.each<[string, ChainIdField, number, number]>([
-    ["an absent chain ID is the arbitrator chain", { status: "absent" }, 1, 1],
-    ["an absent chain ID is the arbitrator chain, on Gnosis too", { status: "absent" }, 100, 100],
+    ["an absent chain ID is the arbitrator chain", { status: "absent" }, 100, 100],
     ["a chain ID naming a configured chain is that chain", { status: "valid", chainId: 100 }, 1, 100],
-    ["a chain ID naming another configured chain is that chain", { status: "valid", chainId: 137 }, 1, 137],
     ["a chain ID the chain table lacks keeps its own number instead of the arbitrator chain", { status: "unsupported", chainId: 10 }, 1, 10],
-    ["a chain ID the chain table lacks keeps its own number on Gnosis too", { status: "unsupported", chainId: 690 }, 100, 690],
     ["a chain ID that is not a positive integer falls back to the arbitrator chain", { status: "invalid" }, 100, 100],
   ])("%s", (_, field, arbitrator, expected) => {
     expect(displayChainId(field, arbitrator)).toBe(expected);

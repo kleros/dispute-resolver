@@ -20,7 +20,6 @@ export interface PrintedPage {
   readonly links: readonly PrintedLink[];
 }
 
-/** Every indirect object of the PDF by number, its text running to its own `endobj`. */
 function pdfObjects(pdf: string): Map<number, string> {
   const xrefAt = /^startxref\s+(\d+)/.exec(pdf.slice(pdf.lastIndexOf("startxref")));
   const table = xrefAt === null ? null : /^xref\s+(\d+)\s+(\d+)\s/.exec(pdf.slice(Number(xrefAt[1])));
@@ -44,7 +43,6 @@ function tokensOf(text: string | undefined): string[] {
   return (text ?? "").trim().split(/\s+/);
 }
 
-/** The object numbers of the references `n 0 R` in `text`. */
 function referencesIn(text: string | undefined): number[] {
   const tokens = tokensOf(text);
   return tokens.flatMap((token, index) => (tokens[index + 2] === "R" ? [Number(token)] : []));
@@ -60,7 +58,6 @@ function objectOf(objects: ReadonlyMap<number, string>, number: number | undefin
   return text;
 }
 
-/** The leaves of the page tree under `node`, in reading order. */
 function pageObjects(objects: ReadonlyMap<number, string>, node: string): string[] {
   if (!/\/Type\s*\/Pages\b/.test(node)) return [node];
   return referencesIn(arrayOf(node, "Kids")).flatMap((kid) => pageObjects(objects, objectOf(objects, kid)));
@@ -80,7 +77,7 @@ function linkOf(annotation: string, height: number, appOrigin: string): PrintedL
 }
 
 /** The pages of a Chromium PDF, each with its height and its links in the order Chromium wrote them. */
-export function printedPagesOf(pdf: Buffer, appOrigin: string): PrintedPage[] {
+function printedPagesOf(pdf: Buffer, appOrigin: string): PrintedPage[] {
   const text = pdf.toString("latin1");
   const objects = pdfObjects(text);
   const root = /\/Root\s+(\d+)\s+\d+\s+R\b/.exec(text.slice(text.lastIndexOf("trailer")))?.[1];
@@ -96,7 +93,6 @@ export function printedPagesOf(pdf: Buffer, appOrigin: string): PrintedPage[] {
   });
 }
 
-/** Prints the page to PDF, as Chromium prints it on Letter paper, and reads its pages back. */
 export async function printToPdf(page: Page): Promise<PrintedPage[]> {
   const pages = printedPagesOf(await page.pdf(), new URL(page.url()).origin);
   expect(pages.length, "the PDF has no pages").toBeGreaterThan(0);

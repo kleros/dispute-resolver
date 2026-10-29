@@ -13,10 +13,6 @@ const metaEvidenceKey = queryKeys.metaEvidence(1, 5n, ARBITRABLE);
 const invalidResult: MetaEvidenceResult = { status: "invalid", metaEvidence: testOkMetaEvidence().metaEvidence, reason: "uri-not-content-addressed" };
 const failedResult: MetaEvidenceResult = { status: "failed", reason: "fetch-error", error: { code: "rpc-error", message: "gateway down" } };
 
-function persistedKeys(client: QueryClient): unknown[] {
-  return dehydrate(client, { shouldDehydrateQuery: shouldPersistQuery }).queries.map((query) => query.queryKey);
-}
-
 async function persistAndRestore(source: QueryClient): Promise<QueryClient> {
   const storage = createMemoryStorage();
   vi.useFakeTimers();
@@ -28,7 +24,6 @@ async function persistAndRestore(source: QueryClient): Promise<QueryClient> {
   return target;
 }
 
-/** A persisted blob as it sits in localStorage, built by hand so a test can corrupt one entry. */
 function blob(queries: readonly { readonly queryKey: unknown; readonly data: unknown }[], buster = CACHE_VERSION): string {
   return JSON.stringify({
     buster,
@@ -44,7 +39,6 @@ function blob(queries: readonly { readonly queryKey: unknown; readonly data: unk
   });
 }
 
-/** Saves the client through the app's persist options and returns the query keys of the blob written to storage. */
 async function writtenKeys(client: QueryClient, storage = createMemoryStorage()): Promise<unknown[]> {
   vi.useFakeTimers();
   await persistQueryClientSave({ queryClient: client, ...createPersistOptions(storage) });
@@ -125,23 +119,10 @@ describe("persisted query cache", () => {
     expect(storage.entries.has(PERSISTED_CACHE_KEY)).toBe(false);
   });
 
-  it("restores a meta-evidence naming an unconfigured chain with its number, and drops what the previous version stored without it", async () => {
+  it("restores a meta-evidence naming an unconfigured chain with its number", async () => {
     const unsupported = testOkMetaEvidence({ arbitrableChainID: { status: "unsupported", chainId: 10 } });
-    const current = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: unsupported }]));
-    expect(current.getQueryData(metaEvidenceKey)).toEqual(unsupported);
-    const numberLost = testOkMetaEvidence({ arbitrableChainID: { status: "invalid" } });
-    const previous = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: numberLost }], "dr-cache-6"));
-    expect(previous.getQueryCache().getAll()).toHaveLength(0);
-  });
-
-  it("drops meta-evidence entries persisted without a source, under the previous version or the current one", async () => {
-    expect(CACHE_VERSION).toBe("dr-cache-7");
-    const { source, ...withoutSource } = testOkMetaEvidence();
-    expect(source).toEqual({ kind: "locator", event: "not-read" });
-    const previousVersion = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: withoutSource }], "dr-cache-6"));
-    expect(previousVersion.getQueryCache().getAll()).toHaveLength(0);
-    const currentVersion = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: withoutSource }]));
-    expect(currentVersion.getQueryData(metaEvidenceKey)).toBeUndefined();
+    const restored = await restoreBlob(blob([{ queryKey: metaEvidenceKey, data: unsupported }]));
+    expect(restored.getQueryData(metaEvidenceKey)).toEqual(unsupported);
   });
 
   it.each<[string, readonly (readonly [QueryKey, unknown])[], readonly QueryKey[]]>([
@@ -157,6 +138,9 @@ describe("persisted query cache", () => {
     ["a failed court list", [[queryKeys.courts(1), { ok: false, error: { code: "rpc-error", message: "down" } } satisfies Outcome<readonly Court[]>]], []],
     ["a lookup holding a binding", [[queryKeys.lookup(1, 1n), testFoundLookup()]], []],
     ["family detections", [[queryKeys.family(1, ARBITRABLE), testFamily()]], []],
+    ["withdrawable amounts", [[queryKeys.withdrawable(1, 5n, ARBITRABLE, [0n], undefined), { status: "nothing" }]], []],
+    ["an account's code", [[queryKeys.accountCode(1, ARBITRABLE), true]], []],
+    ["the chain time", [[queryKeys.chainTime(1), { blockTimestamp: 1_700_000_000, observedAtMs: 1_700_000_000_000, observedAtMonotonicMs: 1_000 }]], []],
     [
       "the library's UserSettings and RoleRestrictions queries",
       [
@@ -166,23 +150,10 @@ describe("persisted query cache", () => {
       ],
       [queryKeys.courts(1)],
     ],
-  ])("never writes %s", (_name, entries, expected) => {
+  ])("never writes %s to storage", async (_name, entries, expected) => {
     const client = new QueryClient();
     for (const [key, data] of entries) client.setQueryData(key, data);
-    expect(persistedKeys(client)).toEqual(expected);
-  });
-
-  it("writes only allowlisted entries to storage", async () => {
-    const client = new QueryClient();
-    client.setQueryData(["UserSettings"], { email: "user@example.com" });
-    client.setQueryData(metaEvidenceKey, invalidResult);
-    client.setQueryData(queryKeys.lookup(1, 1n), testFoundLookup());
-    client.setQueryData(queryKeys.family(1, ARBITRABLE), testFamily());
-    client.setQueryData(queryKeys.withdrawable(1, 5n, ARBITRABLE, [0n], undefined), { status: "nothing" });
-    client.setQueryData(queryKeys.accountCode(1, ARBITRABLE), true);
-    client.setQueryData(queryKeys.chainTime(1), { blockTimestamp: 1_700_000_000, observedAtMs: 1_700_000_000_000, observedAtMonotonicMs: 1_000 });
-    client.setQueryData(queryKeys.courts(1), courtsOk);
-    expect(await writtenKeys(client)).toEqual([queryKeys.courts(1)]);
+    expect(await writtenKeys(client)).toEqual(expected);
   });
 
   it("keeps a restored entry for the whole maxAge without an observer", async () => {
@@ -213,6 +184,7 @@ describe("persisted query cache", () => {
     ["court list with a number where a bigint belongs", queryKeys.courts(1), { ok: true, value: [{ ...testCourt(), id: 0 }] }],
     ["lookup entry, whose key is outside the allowlist", queryKeys.lookup(1, 1n), { status: "found" }],
     ["UserSettings entry, whose key is outside the allowlist", ["UserSettings"], {}],
+    ["meta-evidence entry persisted without a source", metaEvidenceKey, { ...testOkMetaEvidence(), source: undefined }],
   ])("ignores a restored %s", async (_name, queryKey, data) => {
     const restored = await restoreBlob(blob([{ queryKey, data }]));
     expect(restored.getQueryCache().getAll()).toHaveLength(0);
@@ -260,7 +232,6 @@ describe("persisted query cache", () => {
   });
 });
 
-/** A value as it sits in the persisted blob: bigints tagged as `{"$bigint":"<decimal>"}`. */
 function asStored(value: unknown): unknown {
   return JSON.parse(JSON.stringify(value, (_key, item: unknown) => (typeof item === "bigint" ? { $bigint: item.toString() } : item)));
 }

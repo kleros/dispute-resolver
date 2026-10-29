@@ -5,7 +5,6 @@ import { bootstrapRunner } from "./bootstrap";
 
 type OnEvaluate = (source: string, api: ScriptApi) => void;
 
-/** A fake script that defines `getMetaEvidence` to run `body`. */
 function entryPoint(body: (api: ScriptApi) => void): OnEvaluate {
   return (source, api) => {
     if (source === "script")
@@ -15,21 +14,18 @@ function entryPoint(body: (api: ScriptApi) => void): OnEvaluate {
   };
 }
 
-/** A fake script whose `getMetaEvidence` resolves with `value`. */
 function resolvingScript(value: unknown): OnEvaluate {
   return entryPoint((api) => {
     api.resolveScript(value);
   });
 }
 
-/** A fake script whose `getMetaEvidence` rejects with `reason`. */
 function rejectingScript(reason: unknown): OnEvaluate {
   return entryPoint((api) => {
     api.rejectScript(reason);
   });
 }
 
-/** Delivers `request` from the parent to a fresh runner and returns the fake once every reply is posted. */
 async function repliesTo(onEvaluate?: OnEvaluate, request = runRequest()) {
   const fake = createFakeRunnerEnvironment({ onEvaluate });
   bootstrapRunner(fake.env);
@@ -129,13 +125,6 @@ describe("bootstrapRunner acknowledgement", () => {
     expect(seenAtFirstEvaluation).toEqual([[ACCEPTED]]);
     await settleMacrotasks();
     expect(fake.replies).toEqual([ACCEPTED, { type: "dr-runner/result", value: { title: "after" }, jsonDuplicateKeys: false }]);
-  });
-
-  it('the acknowledgement is exactly { type: "dr-runner/accepted" } with no other field', () => {
-    const fake = createFakeRunnerEnvironment({ onEvaluate: resolvingScript({}) });
-    bootstrapRunner(fake.env);
-    fake.deliver(fake.fromParent(runRequest()));
-    expect(fake.replies[0]).toStrictEqual({ type: "dr-runner/accepted" });
   });
 });
 

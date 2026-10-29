@@ -8,10 +8,6 @@ function noticeKind(info: RealityQuestionInfo): RealityNoticeKind {
   return info.status === "malformed" ? "malformed" : "none";
 }
 
-/**
- * A single notice, the first match in a fixed priority order: `unresolvable`, `unverified`, `divergent === true`,
- * `malformed`.
- */
 export function realityNotice(info: RealityQuestionInfo | null): RealityNotice {
   if (info === null) return { kind: "none", title: null };
   return { kind: noticeKind(info), title: info.title ?? null };

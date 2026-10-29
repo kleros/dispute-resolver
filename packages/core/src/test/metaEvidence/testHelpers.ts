@@ -7,15 +7,12 @@ import { HANG, type Route } from "../fetch/testHelpers";
 
 export { HANG, fakeFetcher, type Route } from "../fetch/testHelpers";
 
-/** The default gateway (`resolveGateway` without `REACT_APP_IPFS_GATEWAY`). */
 export const GATEWAY = "https://cdn.kleros.link";
 
-/** A stand-in for the meta-evidence API (`REACT_APP_METAEVIDENCE_URL`). */
 export const LOCATOR = "https://metaevidence.test/get-dispute-metaevidence";
 
 export const ENV: Env = { REACT_APP_METAEVIDENCE_URL: LOCATOR };
 
-/** The meta-evidence of mainnet dispute 1684, a real content-addressed URI. */
 export const META_CID = fixture.mainnet1684.metaEvidenceUri.replace("ipfs://", "");
 export const META_URL = `${GATEWAY}/ipfs/${META_CID}`;
 
@@ -47,7 +44,6 @@ export function json(value: unknown): string {
   return JSON.stringify(value);
 }
 
-/** The locator and gateway routes of one meta-evidence file. */
 export function servedMetaEvidence(
   body: Route | readonly Route[],
   options: { readonly chainId?: number; readonly disputeId?: bigint; readonly uri?: string } = {},
@@ -87,19 +83,16 @@ export function fakeOnChain(answer: OnChainMetaEvidence | Error | typeof HANG): 
   return { reader, signals };
 }
 
-/** The on-chain answer of an arbitrable whose MetaEvidence event carries `uri`. */
 export function eventFound(uri: string): OnChainMetaEvidence {
   return { status: "found", uri };
 }
 
-/** A runner that fails the test if it is ever called. */
 export const UNUSED_RUNNER: ScriptRunner = {
   run() {
     throw new Error("the script runner must not be called");
   },
 };
 
-/** A runner reply carrying `value`. */
 export function scriptOk(value: unknown, jsonDuplicateKeys = false): ScriptResult {
   return { status: "ok", value, jsonDuplicateKeys };
 }
@@ -118,7 +111,6 @@ export function context(overrides: Partial<MetaEvidenceContext> = {}): MetaEvide
   };
 }
 
-/** A Reality.eth question cache holding `question` under `key`, recording reads. */
 export function realityCache(entries: Readonly<Record<string, RealityQuestion>>): RealityQuestionCache & { readonly reads: string[] } {
   const reads: string[] = [];
   return {

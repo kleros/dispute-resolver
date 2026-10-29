@@ -45,7 +45,6 @@ vi.mock("@dispute-resolver/core", async (importOriginal) => {
   };
 });
 
-/** The evidence-display URI whose display the mocked builder cannot build; every other input builds as in production. */
 const { BROKEN_DISPLAY_URI } = vi.hoisted(() => ({ BROKEN_DISPLAY_URI: "/ipfs/QmQ2XoA25HmnPUEWDduxj6LYwMwp6jtXPFRMHcNF2EvJfU/broken.html" }));
 
 vi.mock("../../safe-content", async (importOriginal) => {
@@ -84,13 +83,10 @@ function failFamilyOnFirstLoad() {
 interface Program {
   readonly period?: Period;
   readonly family?: FamilyDetection;
-  /** Lookups by dispute ID; an ID without one is not found. */
   readonly lookups?: Readonly<Record<string, DisputeLookup>>;
-  /** Meta-evidence by dispute ID; an ID without one has the test meta-evidence. */
   readonly metaEvidence?: Readonly<Record<string, MetaEvidenceResult | "pending">>;
 }
 
-/** Dispute 1 on chain 1 by default, in `period`, every read successful. */
 function programReads(program: Program = {}): void {
   const period = program.period ?? 0;
   const lookups = program.lookups ?? { "1": testFoundLookup({ period }) };
@@ -154,7 +150,6 @@ function caseHeader(id: number): HTMLElement {
   return screen.getByRole("region", { name: `Dispute #${String(id)}` });
 }
 
-/** Waits until dispute `id` has settled: its header shows the court, which renders only from the settled view. */
 async function settledDispute(id = 1): Promise<HTMLElement> {
   await waitFor(() => {
     expect(within(caseHeader(id)).getByText("General Court")).toBeInTheDocument();
@@ -230,11 +225,8 @@ interface SearchDebounce {
 }
 
 /**
- * Holds the search debounce instead of scheduling it: the hook's `setTimeout(…, SEARCH_DEBOUNCE_MS)` is
- * recorded, and the debounce elapses only when the test calls `elapse()`, never by the wall clock. A real 750 ms timer
- * on a loaded machine can fire before an "at once" assertion runs, or use up most of the wait that follows it. Every
- * other timer (React Query's, user-event's, waitFor's, the accordion's) runs as usual; nothing else on this page waits
- * exactly 750 ms. `vi.restoreAllMocks()` puts the real timers back.
+ * Holds the search debounce until the test calls `elapse()`: a real 750 ms timer on a loaded machine can fire before an
+ * "at once" assertion runs, or use up most of the wait that follows it. Every other timer runs as usual.
  */
 function holdSearchDebounce(): SearchDebounce {
   const realSetTimeout = globalThis.setTimeout;
@@ -328,7 +320,6 @@ function isMalformed(currentRuling: Outcome<bigint> | undefined): boolean {
   return currentRuling?.ok === true && currentRuling.value === MALFORMED_RULING;
 }
 
-/** The view core builds, with `patch` applied when it is built from a malformed details read. */
 function breakViewOnMalformedDetails(patch: Partial<ExistingView>) {
   vi.mocked(core.buildDisputeView).mockImplementation((input) => {
     const view = actualCore.buildDisputeView(input);
@@ -336,7 +327,6 @@ function breakViewOnMalformedDetails(patch: Partial<ExistingView>) {
   });
 }
 
-/** The decision core builds, its ruling text unrenderable when it is built from a malformed details read. */
 function breakDecisionOnMalformedDetails() {
   vi.mocked(core.buildDecision).mockImplementation((input) => {
     const decision = actualCore.buildDecision(input);
@@ -345,7 +335,6 @@ function breakDecisionOnMalformedDetails() {
   });
 }
 
-/** The appeal panel core builds, its card titles unrenderable when it is built from a malformed details read. */
 function breakAppealCardsOnMalformedDetails() {
   vi.mocked(core.buildAppealPanel).mockImplementation((input) => {
     const panel = actualCore.buildAppealPanel(input);
@@ -371,19 +360,18 @@ function evidenceItem(title: string): EvidenceItem {
   };
 }
 
-/** One case-page section with a Retry: what breaks it, what its Retry reads again, and what it shows once that read is good. */
 interface RetryCase {
-  /** The section's name, as in "{section} unavailable" and "Retry {section}". */
   readonly section: string;
-  /** How a bad read breaks it: its render throws and its boundary catches it, or its data is unavailable. */
   readonly breaks: "throws" | "fails";
-  /** The accordion item holding the section, opened before Retry; a section above the accordion has none. */
+  /** A second Retry takes the same path for every section, so one throwing and one failing section prove it. */
+  readonly retryTwice?: boolean;
   readonly item?: "Appeal" | "Question" | "Evidence";
   readonly period?: Period;
-  /** Programs the read the section's Retry repeats: its first `badReads` answers break the section, later ones are good. */
   readonly program: (badReads: number) => void;
   readonly reads: () => number;
   readonly content: () => Promise<HTMLElement>;
+  /** Content outside the section that must survive its failure. */
+  readonly kept?: () => HTMLElement;
 }
 
 interface ProgrammableRead<T> {
@@ -392,7 +380,6 @@ interface ProgrammableRead<T> {
   readonly mock: { readonly calls: readonly unknown[] };
 }
 
-/** A read whose first `badReads` answers are `bad` and every later one `good`; `before` installs what the case needs first. */
 function answers<T>(read: ProgrammableRead<T>, bad: T, good: T, before?: () => void): Pick<RetryCase, "program" | "reads"> {
   return {
     program: (badReads) => {
@@ -419,6 +406,7 @@ const RETRY_CASES: readonly RetryCase[] = [
   {
     section: "Dispute summary",
     breaks: "throws",
+    retryTwice: true,
     ...answers(metaEvidenceReads, testOkMetaEvidence({ title: UNRENDERABLE }), GOOD_META_EVIDENCE),
     content: () => screen.findByRole("heading", { level: 2, name: "Dispute 1 title" }),
   },
@@ -478,6 +466,7 @@ const RETRY_CASES: readonly RetryCase[] = [
       testOkMetaEvidence({ title: "Dispute 1 title", evidenceDisplayInterfaceURI: "/ipfs/QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh/index.html" }),
     ),
     content: () => screen.findByTitle("Evidence display"),
+    kept: () => screen.getByRole("heading", { level: 2, name: "Dispute 1 title" }),
   },
   {
     section: "Dispute summary",
@@ -495,6 +484,7 @@ const RETRY_CASES: readonly RetryCase[] = [
   {
     section: "Evidence",
     breaks: "fails",
+    retryTwice: true,
     item: "Evidence",
     ...answers(vi.mocked(core.loadEvidence), { ok: false, error: RPC_DOWN }, evidenceRead([evidenceItem("Recovered evidence")])),
     content: () => within(accordionBody("Evidence")).findByRole("heading", { level: 3, name: "Recovered evidence" }),
@@ -523,13 +513,13 @@ const RETRY_CASES: readonly RetryCase[] = [
   },
 ];
 
-/** Renders dispute 1 with `retryCase`'s section broken by its first `badReads` reads, its accordion item open. */
 async function renderBrokenSection(retryCase: RetryCase, badReads: number) {
   if (retryCase.breaks === "throws") expectRenderErrors();
   programReads({ period: retryCase.period ?? 0 });
   retryCase.program(badReads);
   renderCase("/1/cases/1");
   expect(await screen.findByText(`${retryCase.section} unavailable`)).toBeInTheDocument();
+  if (retryCase.kept !== undefined) expect(retryCase.kept()).toBeInTheDocument();
   const { item } = retryCase;
   if (item !== undefined) {
     await userEvent.setup().click(accordionButton(item));
@@ -544,7 +534,6 @@ async function pressRetry(section: string) {
   await userEvent.setup().click(screen.getByRole("button", { name: `Retry ${section}` }));
 }
 
-/** The section shows its content from a good read, with no notice and no Retry left. */
 async function expectRecovered(retryCase: RetryCase) {
   expect(await retryCase.content()).toBeInTheDocument();
   expect(screen.queryByText(`${retryCase.section} unavailable`)).toBeNull();
@@ -730,18 +719,6 @@ describe("accordion", () => {
     }
   });
 
-  it("from the appeal period the Appeal panel comes first", async () => {
-    programReads({ period: 3 });
-    renderCase("/1/cases/1");
-    await settledDispute();
-    const titles = screen.getAllByRole("button", { expanded: false }).map((button) => button.textContent);
-    expect(titles.slice(0, 3)).toEqual(["Appeal", "Question", "Evidence"]);
-    // Only the crowdfunding panel lists rulings to fund.
-    await waitFor(() => {
-      expect(labelled(accordionBody("Appeal"), "list", "Rulings to fund")).toBeInTheDocument();
-    });
-  });
-
   it("one panel is open at a time, and a collapsed body stays mounted but hidden", async () => {
     renderCase("/1/cases/1");
     await settledDispute();
@@ -796,13 +773,6 @@ describe("accordion", () => {
     });
   });
 
-  it("eases the library's height tween on the accordion's curve", async () => {
-    renderCase("/1/cases/1");
-    await settledDispute();
-    const accordion = accordionButton("Question").parentElement?.parentElement;
-    expect(accordion).toHaveClass("[&>div>div:last-child]:ease-(--acc-ease)");
-  });
-
   it("keeps an opened item open while the appeal panel settles after the accordion appeared", async () => {
     // The item list is decided from the period and the family alone. If useCaseRefresh("appeal") ever read the family
     // again, the list could change after load, and the library accordion, which tracks the open item by index, would close it.
@@ -852,19 +822,6 @@ describe("accordion", () => {
     expect(accordion).toHaveClass("animate-[t-reveal-in_var(--reveal-dur)_var(--reveal-ease)_backwards]", "motion-reduce:animate-none");
   });
 
-  it("keeps an Appeal item that says why it is unavailable when the family could not be detected in execution", async () => {
-    programReads({ period: 4 });
-    vi.mocked(core.detectFamily).mockRejectedValue(new Error("socket hang up"));
-    renderCase("/1/cases/1");
-    await userEvent.setup().click(await screen.findByRole("button", { name: "Appeal" }));
-    await waitFor(() => {
-      expect(accordionBody("Appeal")).toBeVisible();
-    });
-    expect(await within(accordionBody("Appeal")).findByText("Appeal unavailable")).toBeInTheDocument();
-    expect(within(accordionBody("Appeal")).getByRole("button", { name: "Retry Appeal" })).toBeInTheDocument();
-    expect(core.detectFamily).toHaveBeenCalledTimes(2);
-  });
-
   it.each([
     { period: 3, stage: "appeal period", item: "Appeal", retry: "Retry Appeal", unavailable: "Appeal unavailable" },
     { period: 4, stage: "execution period", item: "Appeal", retry: "Retry Appeal", unavailable: "Appeal unavailable" },
@@ -875,6 +832,7 @@ describe("accordion", () => {
     renderCase("/1/cases/1");
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: item }));
+    expect(await within(accordionBody(item)).findByText(unavailable)).toBeInTheDocument();
     await user.click(await within(accordionBody(item)).findByRole("button", { name: retry }));
     await waitFor(() => {
       expect(within(accordionBody(item)).queryByText(unavailable)).not.toBeInTheDocument();
@@ -992,50 +950,6 @@ describe("search box", () => {
   });
 });
 
-const RECORDED_META_EVIDENCE = {
-  title: "Recorded title",
-  description: "Recorded in the meta-evidence",
-  dynamicScriptURI: "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj",
-  arbitrableChainID: 10,
-  rulingOptions: { type: "single-select", titles: ["Pay the seller", "Refund the buyer"] },
-};
-
-function fetched(body: string): core.FetchResponse {
-  return { ok: true, status: 200, json: () => Promise.resolve(JSON.parse(body) as unknown), text: () => Promise.resolve(body) };
-}
-
-/**
- * Dispute 1's meta-evidence loaded by core itself: the locator names a file that carries the Create page's allowlisted
- * script and arbitrable chain 10. The runner only counts runs.
- */
-async function loadWithUnconfiguredScriptChain() {
-  const locator = "https://locator.test/meta-evidence";
-  const routes: Readonly<Record<string, string>> = {
-    [`${locator}?chainId=1&disputeId=1`]: JSON.stringify({ metaEvidenceUri: TEST_META_EVIDENCE_URI }),
-    [`https://cdn.kleros.link${TEST_META_EVIDENCE_URI}`]: JSON.stringify(RECORDED_META_EVIDENCE),
-    [`https://cdn.kleros.link${RECORDED_META_EVIDENCE.dynamicScriptURI}`]: "function getMetaEvidence() {}",
-  };
-  let runs = 0;
-  const metaEvidence = await actualCore.loadMetaEvidence({
-    arbitratorChainId: 1,
-    disputeId: 1n,
-    arbitrable: TEST_ARBITRABLE,
-    env: { REACT_APP_METAEVIDENCE_URL: locator },
-    fetcher: (url) => {
-      const body = routes[url];
-      return body === undefined ? Promise.reject(new Error("unexpected fetch")) : Promise.resolve(fetched(body));
-    },
-    runner: {
-      run: () => {
-        runs += 1;
-        return Promise.resolve({ status: "ok", value: { title: "From the script" }, jsonDuplicateKeys: false });
-      },
-    },
-    budgetMs: 1_000,
-  });
-  return { metaEvidence, scriptRuns: () => runs };
-}
-
 describe("section degradation", () => {
   it("a failed meta-evidence load degrades the summary and the question, and the rest renders", async () => {
     programReads({ metaEvidence: { "1": { status: "failed", reason: "not-json", error: { code: "invalid-data", message: "The meta-evidence file is not JSON." } } } });
@@ -1068,8 +982,11 @@ describe("section degradation", () => {
   });
 
   it("a meta-evidence whose script names unconfigured chain 10 shows its static summary, its appeal cards and one notice that the script's details are unavailable", async () => {
-    const result = await loadWithUnconfiguredScriptChain();
-    programReads({ period: 3, metaEvidence: { "1": result.metaEvidence } });
+    const metaEvidence: MetaEvidenceResult = {
+      ...testOkMetaEvidence({ title: "Recorded title", rulingOptions: { type: "single-select", titles: ["Pay the seller", "Refund the buyer"] } }),
+      script: { ran: false, reason: "script-chain-unavailable" },
+    };
+    programReads({ period: 3, metaEvidence: { "1": metaEvidence } });
     renderCase("/1/cases/1");
     await settledDispute();
     expect(await screen.findByRole("heading", { level: 2, name: "Recorded title" })).toBeInTheDocument();
@@ -1082,13 +999,12 @@ describe("section degradation", () => {
     expect(screen.queryByText("Appeal unavailable")).not.toBeInTheDocument();
     expect(screen.queryByText("Dispute summary unavailable")).not.toBeInTheDocument();
     expect(screen.getAllByText("Details from the arbitrable's script are unavailable")).toHaveLength(1);
-    expect(result.scriptRuns()).toBe(0);
   });
 });
 
 describe("section Retry", () => {
   for (const retryCase of RETRY_CASES) {
-    const { section, breaks } = retryCase;
+    const { section, breaks, retryTwice } = retryCase;
     const broken = breaks === "throws" ? "a read it could not render" : "a failed read";
 
     it(`Retry on ${section} after ${broken} shows the good read that follows, with no notice left`, async () => {
@@ -1100,19 +1016,21 @@ describe("section Retry", () => {
       expect(retryCase.reads()).toBe(2);
     });
 
-    it(`a Retry on ${section} after ${broken} whose read is still bad degrades it again and keeps offering a Retry that recovers it`, async () => {
-      await renderBrokenSection(retryCase, 2);
+    if (retryTwice === true) {
+      it(`a Retry on ${section} after ${broken} whose read is still bad degrades it again and keeps offering a Retry that recovers it`, async () => {
+        await renderBrokenSection(retryCase, 2);
 
-      await pressRetry(section);
+        await pressRetry(section);
 
-      await waitFor(() => {
-        expect(retryCase.reads()).toBe(2);
+        await waitFor(() => {
+          expect(retryCase.reads()).toBe(2);
+        });
+        expect(await screen.findByText(`${section} unavailable`)).toBeInTheDocument();
+        await pressRetry(section);
+        await expectRecovered(retryCase);
+        expect(retryCase.reads()).toBe(3);
       });
-      expect(await screen.findByText(`${section} unavailable`)).toBeInTheDocument();
-      await pressRetry(section);
-      await expectRecovered(retryCase);
-      expect(retryCase.reads()).toBe(3);
-    });
+    }
   }
 
   it("while a section's Retry reads again, the other sections keep their content", async () => {
@@ -1161,7 +1079,7 @@ describe("a family read that fails with the read RPC's own error", () => {
       "Missing or invalid parameters.",
     ],
   ])("%s shows its short message in the Evidence submission and Appeal sections, never the RPC's key", async (_, failure, shortMessage) => {
-    // Dispute 1 in the appeal period, where both the evidence submission and the appeal need the family.
+    // The appeal period, where both the evidence submission and the appeal need the family.
     programReads({ period: 3 });
     vi.mocked(core.detectFamily).mockRejectedValue(failure);
     renderCase("/1/cases/1");

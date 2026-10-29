@@ -43,7 +43,7 @@ describe("onChainMetaEvidenceReader", () => {
       return testOkMetaEvidence();
     });
     const deps = createTestDeps();
-    const { result } = renderHook(() => ({ event: useDisputeEvent(1, BINDING), metaEvidence: useMetaEvidence(1, BINDING, "case") }), { wrapper: dataWrapper({ deps }) });
+    const { result } = renderHook(() => ({ event: useDisputeEvent(1, BINDING), metaEvidence: useMetaEvidence(1, BINDING) }), { wrapper: dataWrapper({ deps }) });
     await waitFor(() => {
       expect(result.current.metaEvidence.status).toBe("ready");
     });

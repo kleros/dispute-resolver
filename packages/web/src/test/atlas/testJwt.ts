@@ -13,7 +13,6 @@ export function sessionJwt(sub: string, secondsFromNow = 3600): string {
   return testJwt({ sub, exp: Math.floor(Date.now() / 1000) + secondsFromNow });
 }
 
-/** The `sub` claim of a token sent as `Bearer <token>`, or `null` when there is none. */
 export function jwtSubject(authorization: string | null | undefined): string | null {
   const payload = authorization?.replace(/^Bearer /, "").split(".")[1];
   if (payload === undefined) return null;

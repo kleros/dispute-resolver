@@ -1,11 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
-import { CASE_PATH, DISPUTE_ID, RUNNER_FRAME, expectConfiguredBuild, routeCasePage } from "./casePageRoutes";
+import { CASE_PATH, DISPUTE_ID, RUNNER_FRAME, expectConfiguredBuild, expectEveryDependencyServed, routeCasePage } from "./casePageRoutes";
 import { openCaseSection } from "./caseSections";
-
-// An environment that keeps the runner from starting (a content blocker cancelling the runner page or its bootstrap, or
-// a captive portal serving other HTML in its place) must fail the run within the acknowledgement window, so the
-// meta-evidence sections are unavailable within seconds instead of after the 120-second budget. Run with
-// `yarn e2e:runner`, which covers every engine of the runner projects in playwright.config.ts.
 
 /** How soon the sections must be unavailable: the 5 s window, one attempt's reads and rendering, far below 120 s. */
 const DEGRADED_WITHIN_MS = 15_000;
@@ -65,13 +60,10 @@ test.describe("blocked script runner", () => {
       expect(traffic.locator, "meta-evidence locator requests").toBe(1);
       await expect(page.locator(RUNNER_FRAME)).toHaveCount(0);
 
-      // Everything that does not come from the meta-evidence still renders.
       await expect(page.getByRole("heading", { level: 1, name: `Dispute #${DISPUTE_ID}` })).toBeVisible();
       await expect(page.getByText("Timeline unavailable", { exact: true })).toHaveCount(0);
       await expect(page.getByText("Evidence submission unavailable", { exact: true })).toHaveCount(0);
-      expect(traffic.metaEvidence, "meta-evidence file requests").toBeGreaterThan(0);
-      expect(traffic.script, "dynamic script requests").toBeGreaterThan(0);
-      expect(traffic.rpcUnanswered, "JSON-RPC reads missing from the fixtures").toEqual([]);
+      expectEveryDependencyServed(traffic);
     });
   }
 });

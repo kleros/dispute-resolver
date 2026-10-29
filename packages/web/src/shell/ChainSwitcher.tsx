@@ -18,11 +18,6 @@ const PANEL_CLASS =
 const ITEM_CLASS =
   "flex h-10 w-full items-center gap-3 px-4 text-left text-sm text-klerosUIComponentsPrimaryText no-underline outline-offset-[-2px] hover:bg-klerosUIComponentsMediumBlue aria-[current=page]:font-semibold aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent";
 
-/** On the bar: green on the page chain, neutral on a fallback chain. */
-function dotTone(isPageChain: boolean): string {
-  return isPageChain ? "bg-(--dr-success-bar)" : "bg-current/50";
-}
-
 function menuItems(list: HTMLUListElement | null): HTMLElement[] {
   return Array.from(list?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? []);
 }
@@ -98,13 +93,8 @@ interface ChainSwitcherProps {
 }
 
 /**
- * The header's network pill. Without a wallet, or when the wallet is already on the chosen chain, a choice moves the page
- * to that chain and keeps the rest of the URL. With a wallet on another chain, the wallet is asked to switch and the app
- * follows the wallet once it does (a case page to that chain's Ongoing Disputes); a refusal changes nothing, since the
- * app already shows the wallet's chain, and any other failure is a toast. While any switch request waits, the chains take
- * no press. A long chain name truncates inside the pill; its accessible name always carries the full name. On the
- * unsupported-network screen the pill names no chain, since the page is on none. The pill is one width on every chain so
- * the controls after it never move; on a narrow phone row `max-w-full` lets it shrink and the name truncates.
+ * A wallet's refusal to switch shows no toast: the app already shows the wallet's chain. The pill is one width on every
+ * chain so the controls after it never move; on a narrow phone row `max-w-full` lets it shrink and the name truncates.
  */
 export function ChainSwitcher({ resolvedChain }: ChainSwitcherProps) {
   const { chain } = resolvedChain.page;
@@ -203,7 +193,7 @@ export function ChainSwitcher({ resolvedChain }: ChainSwitcherProps) {
           openMenu();
         }}
       >
-        <span aria-hidden="true" className={`size-2 shrink-0 rounded-full group-aria-busy:opacity-40 ${dotTone(isPageChain)}`} />
+        <span aria-hidden="true" className={`size-2 shrink-0 rounded-full group-aria-busy:opacity-40 ${isPageChain ? "bg-(--dr-success-bar)" : "bg-current/50"}`} />
         <span className="min-w-0 truncate">{unsupported ? UNSUPPORTED_NETWORK_LABEL : chain.name}</span>
         <ChevronIcon
           className={`size-4 shrink-0 transition-transform ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${open ? "-scale-y-100 duration-250" : "duration-150"}`}

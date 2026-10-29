@@ -1,12 +1,11 @@
 /**
- * What scrolls the page. `container`: the library's ScrollbarContainer around the app (PageScroller), on every desktop, so
- * a thin thumb floats over the page in the app's colours instead of a lane or the system's own thumb. `document`: the
- * browser's own scrolling, on phones and tablets, which keeps the address bar collapsing and pull-to-refresh.
+ * `container`: PageScroller's thin floating thumb, on every desktop. `document`: the browser's own scrolling, on phones and
+ * tablets, which keeps the address bar collapsing and pull-to-refresh.
  */
 export type PageScroll = "document" | "container";
 
 /** On the root while the page scroller scrolls the page; index.css stops the document scrolling under it. */
-export const PAGE_SCROLL_ATTRIBUTE = "data-page-scroll";
+const PAGE_SCROLL_ATTRIBUTE = "data-page-scroll";
 
 /**
  * A mouse or a trackpad leads: a desktop or a laptop, whatever its scrollbars and however narrow its window. A phone or a

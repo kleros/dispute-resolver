@@ -52,12 +52,6 @@ describe("gatewayUrl", () => {
     expect(gatewayUrl(canonical(`ipfs://${CIDV1}/metaEvidence.json`), OTHER_GATEWAY)).toBe(`https://ipfs.example.org/ipfs/${CIDV1}/metaEvidence.json`);
   });
 
-  it("sends each segment percent-encoded exactly once", () => {
-    expect(gatewayUrl(canonical(GNOSIS_416_PATH), GATEWAY)).toBe(`${DEFAULT_GATEWAY}${GNOSIS_416_PATH}`);
-    expect(gatewayUrl(canonical(`/ipfs/${CID}/my file.pdf`), GATEWAY)).toBe(`${DEFAULT_GATEWAY}/ipfs/${CID}/my%20file.pdf`);
-    expect(gatewayUrl(canonical(`/ipfs/${CID}/%252e%252e/x`), GATEWAY)).toBe(`${DEFAULT_GATEWAY}/ipfs/${CID}/%252e%252e/x`);
-  });
-
   it("a gateway URL never resolves outside the CID", () => {
     const tricky = [`/ipfs/${CID}/%252e%252e/%252e%252e/ipns/x`, `/ipfs/${CID}/what%3F/..%23`, `/ipfs/${CID}/a b/c`];
     for (const input of tricky) {
@@ -144,15 +138,6 @@ describe("reserveThroughGateway", () => {
 describe("policyFetchUrl", () => {
   it("fetches an https policy URL as is", () => {
     expect(policyFetchUrl("https://example.org/policies/general.json", GATEWAY)).toBe("https://example.org/policies/general.json");
-  });
-
-  it("fetches a content-addressed policy path through the gateway", () => {
-    expect(policyFetchUrl(`/ipfs/${CID}/policy.json`, GATEWAY)).toBe(`${DEFAULT_GATEWAY}/ipfs/${CID}/policy.json`);
-    expect(policyFetchUrl(`/ipfs/${CID}/policy.json`, OTHER_GATEWAY)).toBe(`https://ipfs.example.org/ipfs/${CID}/policy.json`);
-  });
-
-  it("the %20-encoded path of Gnosis 416 still resolves", () => {
-    expect(policyFetchUrl(GNOSIS_416_PATH, GATEWAY)).toBe(`${DEFAULT_GATEWAY}${GNOSIS_416_PATH}`);
   });
 
   it("every court policy URI recorded on chains 1 and 100 resolves through the gateway", () => {

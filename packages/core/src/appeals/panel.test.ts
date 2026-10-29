@@ -54,7 +54,6 @@ const EXPECTED_CARDS = buildCrowdfundingCards({
   tie: null,
 });
 
-/** A governor funds list `ruling − 1`, so it has the same cards without the ruling-0 refuse card. */
 const EXPECTED_GOVERNOR_CARDS = { ...EXPECTED_CARDS, cards: EXPECTED_CARDS.cards.filter((card) => card.code !== 0n) };
 
 describe("hasAppealPanel", () => {
@@ -210,38 +209,27 @@ describe("buildAppealPanel", () => {
     expect(buildAppealPanel(input(family("view-only"), 4))).toEqual({ kind: "hidden" });
   });
 
-  it("crowdfunds only with the appeal info, multipliers, funding and current ruling, otherwise shows the first error", () => {
-    const failed = (code: "rpc-error" | "unsupported" | "reverted" | "not-found", message: string) => ({ ok: false as const, error: { code, message } });
-    const idr = family("idr-v2");
-    expect(buildAppealPanel(input(idr, 3, { multipliers: failed("unsupported", "no multipliers") }))).toEqual({
-      kind: "fees-unavailable",
-      error: { code: "unsupported", message: "no multipliers" },
-    });
-    expect(buildAppealPanel(input(idr, 3, { funding: failed("rpc-error", "scan failed") }))).toEqual({
-      kind: "fees-unavailable",
-      error: { code: "rpc-error", message: "scan failed" },
-    });
-    expect(buildAppealPanel(input(idr, 3, { currentRuling: failed("reverted", "no ruling") }))).toEqual({
-      kind: "fees-unavailable",
-      error: { code: "reverted", message: "no ruling" },
-    });
-    expect(
-      buildAppealPanel(
-        input(idr, 3, {
-          appealInfo: failed("rpc-error", "first"),
-          multipliers: failed("unsupported", "second"),
-          funding: failed("rpc-error", "third"),
-          currentRuling: failed("reverted", "fourth"),
-        }),
-      ),
-    ).toEqual({ kind: "fees-unavailable", error: { code: "rpc-error", message: "first" } });
-  });
+  const failed = (code: "rpc-error" | "unsupported" | "reverted", message: string) => ({ ok: false as const, error: { code, message } });
 
-  it("shows the fees as unavailable, never as zero, for a read not made in the appeal period", () => {
-    for (const missing of ["appealInfo", "multipliers", "funding"] as const) {
-      const panel = buildAppealPanel(input(family("idr-v2"), 3, { [missing]: null }));
-      expect(panel).toMatchObject({ kind: "fees-unavailable", error: { code: "not-found" } });
-    }
+  it.each<[string, Partial<AppealPanelInput>, { readonly code: string; readonly message: string }]>([
+    ["a failed multipliers read", { multipliers: failed("unsupported", "no multipliers") }, { code: "unsupported", message: "no multipliers" }],
+    ["a failed funding read", { funding: failed("rpc-error", "scan failed") }, { code: "rpc-error", message: "scan failed" }],
+    ["a failed current ruling read", { currentRuling: failed("reverted", "no ruling") }, { code: "reverted", message: "no ruling" }],
+    [
+      "every read failed, the first in order",
+      {
+        appealInfo: failed("rpc-error", "first"),
+        multipliers: failed("unsupported", "second"),
+        funding: failed("rpc-error", "third"),
+        currentRuling: failed("reverted", "fourth"),
+      },
+      { code: "rpc-error", message: "first" },
+    ],
+    ["an appeal info read not made", { appealInfo: null }, { code: "not-found", message: "The appeal cost and period was not read." }],
+    ["a multipliers read not made", { multipliers: null }, { code: "not-found", message: "The appeal multipliers was not read." }],
+    ["a funding read not made", { funding: null }, { code: "not-found", message: "The appeal funding was not read." }],
+  ])("shows the fees as unavailable, never as zero, with the error of %s", (_, overrides, error) => {
+    expect(buildAppealPanel(input(family("idr-v2"), 3, overrides))).toEqual({ kind: "fees-unavailable", error });
   });
 
   it("reports an execution-period withdraw state that was not read as unavailable", () => {
@@ -255,13 +243,14 @@ describe("buildAppealPanel", () => {
     }
   });
 
-  it("carries the multiple-select composer inside the crowdfunding panel", () => {
-    const panel = buildAppealPanel(input(family("idr-v2"), 3, { rulingOptions: { type: "multiple-select", titles: ["A", "B", "C", "D", "E"] } }));
-    expect(panel).toMatchObject({ kind: "crowdfunding", composer: { titles: ["A", "B", "C", "D", "E"], required: 3_000n, deadline: 200 } });
-  });
-
-  it("carries the variable-type free input inside the crowdfunding panel", () => {
-    const panel = buildAppealPanel(input(family("idr-v2"), 3, { rulingOptions: { type: "uint" } }));
-    expect(panel).toMatchObject({ kind: "crowdfunding", freeInput: { type: "uint", required: 3_000n, deadline: 200 } });
+  it.each<[string, AppealPanelInput["rulingOptions"], object]>([
+    [
+      "the multiple-select composer",
+      { type: "multiple-select", titles: ["A", "B", "C", "D", "E"] },
+      { composer: { titles: ["A", "B", "C", "D", "E"], required: 3_000n, deadline: 200 } },
+    ],
+    ["the variable-type free input", { type: "uint" }, { freeInput: { type: "uint", required: 3_000n, deadline: 200 } }],
+  ])("carries %s inside the crowdfunding panel", (_, rulingOptions, expected) => {
+    expect(buildAppealPanel(input(family("idr-v2"), 3, { rulingOptions }))).toMatchObject({ kind: "crowdfunding", ...expected });
   });
 });

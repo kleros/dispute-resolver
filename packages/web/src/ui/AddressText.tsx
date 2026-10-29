@@ -28,10 +28,7 @@ const TOOLTIP_PROPS = {
     "origin-bottom entering:animate-[t-tooltip-in_var(--tt-in-dur)_var(--tt-in-ease)_var(--tt-delay)_backwards]! exiting:animate-[t-tooltip-out_var(--tt-out-dur)_var(--tt-out-ease)_forwards]!",
 };
 
-/**
- * A shortened address (full address on hover), or the whole address with `full`, with the library `Copiable` and a link
- * to the address on the chain's explorer.
- */
+/** Shortened, with the full address on hover, unless `full`. */
 export function AddressText({ address, chain, className, full = false }: AddressTextProps) {
   const checksummed = displayAddress(address);
   const copyRef = useRef<HTMLSpanElement>(null);

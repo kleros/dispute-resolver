@@ -53,7 +53,6 @@ function policyName(policy: unknown): string | null {
   return typeof name === "string" ? name : null;
 }
 
-/** Any failure leaves the policy fields `null` for this court only. */
 async function readPolicy(
   context: { readonly client: ReadClient; readonly fetcher: Fetcher; readonly gateway: GatewayOrigin; readonly signal: AbortSignal | undefined },
   policyRegistry: Address | undefined,
@@ -91,6 +90,6 @@ export async function listCourts(context: CourtsContext): Promise<Outcome<readon
     return failedRead("the courts", error, context.chainId);
   }
   const policyContext = { client, fetcher: context.fetcher, gateway: resolveGateway(context.env), signal };
-  const policies = await Promise.all(courts.map((court) => readPolicy(policyContext, chain?.policyRegistry, court.id)));
-  return succeed(courts.map((court, index) => ({ ...court, policyUri: policies[index]?.policyUri ?? null, name: policies[index]?.name ?? null })));
+  const listed = await Promise.all(courts.map(async (court) => ({ ...court, ...(await readPolicy(policyContext, chain?.policyRegistry, court.id)) })));
+  return succeed(listed);
 }

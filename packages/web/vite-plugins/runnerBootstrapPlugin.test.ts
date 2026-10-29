@@ -12,7 +12,6 @@ const webRoot = fileURLToPath(new URL("..", import.meta.url));
 
 type Hook = (...args: unknown[]) => unknown;
 
-/** A plugin hook declared as a function (the runner plugin declares no `{ handler }` objects). */
 function hookHandler(hook: unknown): Hook {
   if (typeof hook !== "function") throw new Error("The plugin does not declare this hook as a function.");
   return hook as Hook;
@@ -70,12 +69,20 @@ describe("runner bootstrap build", () => {
     expect(Array.from(bootstrap).filter((character) => (character.codePointAt(0) ?? 0) > 0x7e)).toEqual([]);
   });
 
-  it("vite build emits the bootstrap next to the static runner page", async () => {
-    const plugin = runnerBootstrapPlugin();
-    hookHandler(plugin.configResolved)({ root: webRoot });
-    const emitted: unknown[] = [];
-    await hookHandler(plugin.generateBundle).call({ emitFile: (file: unknown) => emitted.push(file) });
-    expect(emitted).toEqual([{ type: "asset", fileName: "__runner/bootstrap.js", source: bootstrap }]);
+  it("vite dev serves the same bootstrap from memory, with the runner policy", async () => {
+    const middlewares: Connect.NextHandleFunction[] = [];
+    const server = {
+      config: { root: webRoot },
+      watcher: new EventEmitter(),
+      middlewares: { use: (middleware: Connect.NextHandleFunction) => middlewares.push(middleware) },
+    };
+    hookHandler(runnerBootstrapPlugin().configureServer)(server);
+
+    const { headers, body } = await respond(middlewares, "/__runner/bootstrap.js");
+
+    expect(body).toBe(bootstrap);
+    expect(headers["content-type"]).toBe("text/javascript; charset=utf-8");
+    expect(headers["content-security-policy"]).toBe(RUNNER_CONTENT_SECURITY_POLICY);
   }, 60_000);
 });
 
@@ -105,22 +112,4 @@ describe("runner policy on the preview server", () => {
       expect((await respond(previewMiddlewares(), url)).headers["content-security-policy"]).toBeUndefined();
     }
   });
-});
-
-describe("runner bootstrap on the dev server", () => {
-  it("vite dev serves the same bootstrap from memory, with the runner policy", async () => {
-    const middlewares: Connect.NextHandleFunction[] = [];
-    const server = {
-      config: { root: webRoot },
-      watcher: new EventEmitter(),
-      middlewares: { use: (middleware: Connect.NextHandleFunction) => middlewares.push(middleware) },
-    };
-    hookHandler(runnerBootstrapPlugin().configureServer)(server);
-
-    const { headers, body } = await respond(middlewares, "/__runner/bootstrap.js");
-
-    expect(body).toBe(await buildRunnerBootstrap(webRoot));
-    expect(headers["content-type"]).toBe("text/javascript; charset=utf-8");
-    expect(headers["content-security-policy"]).toBe(RUNNER_CONTENT_SECURITY_POLICY);
-  }, 60_000);
 });

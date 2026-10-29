@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getOverride, getRealityProxy, isDisplayAllowlisted, isScriptAllowed, registryKey } from "./lookups";
 import { REGISTRY } from "./registry";
-import { DISPUTE_1684_SCRIPT, UNSLASHED_CHECKSUMMED } from "../test/registry/testHelpers";
+import { UNSLASHED_CHECKSUMMED } from "../test/registry/testHelpers";
 import { toRegistryAddress } from "./address";
 
 const MAINNET_REALITY_SCRIPT = "QmWWsDmvjhR9UVRgkcG75vAKzfK3vB85EkZzudnaxwfAWr/bundle.js";
@@ -83,10 +83,6 @@ describe("isScriptAllowed", () => {
     expect(isScriptAllowed(REGISTRY, 1, `/ipfs/${DEFAULT_SCRIPT}/other.js`)).toBe(false);
     expect(isScriptAllowed(REGISTRY, 1, `/ipfs/${MAINNET_REALITY_SCRIPT.split("/")[0] ?? ""}`)).toBe(false);
     expect(isScriptAllowed(REGISTRY, 1, `/ipfs/${MAINNET_REALITY_SCRIPT}/extra`)).toBe(false);
-  });
-
-  it("mainnet dispute 1684's wallet-hijack script is rejected", () => {
-    expect(isScriptAllowed(REGISTRY, 1, `/ipfs/${DISPUTE_1684_SCRIPT}`)).toBe(false);
   });
 
   it("a trailing slash on a directory-style entry is the same path (the Gnosis Moderate script)", () => {

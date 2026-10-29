@@ -1,9 +1,6 @@
 import type { SVGProps } from "react";
 
-/**
- * The footer's, header's and network pill's icons, drawn inline so the app takes no icon dependency. They are decorative:
- * the link or button around each one carries the accessible name. Every icon paints with `currentColor`.
- */
+/** Drawn inline so the app takes no icon dependency; decorative, the surrounding link or button carries the name. */
 type IconProps = Readonly<Omit<SVGProps<SVGSVGElement>, "viewBox" | "children">>;
 
 function Icon({ viewBox, children, className, ...props }: IconProps & Readonly<{ viewBox: string; children: SVGProps<SVGSVGElement>["children"] }>) {
@@ -82,7 +79,6 @@ export function HelpIcon(props: IconProps) {
   );
 }
 
-/** A generic block-explorer mark (a magnifier over a block), used for every chain's explorer. */
 export function ExplorerIcon(props: IconProps) {
   return (
     <Icon viewBox="0 0 24 24" {...props}>

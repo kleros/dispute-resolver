@@ -34,7 +34,6 @@ function foundEvent(event: SectionData<DisputeEventResult>): DisputeEvent | unde
   return event.status === "ready" && event.value.status === "found" ? event.value.event : undefined;
 }
 
-/** `null` without a found event, `undefined` while loading. */
 function settledEventBlock(event: SectionData<DisputeEventResult>): bigint | null | undefined {
   if (event.status === "loading") return undefined;
   return foundEvent(event)?.blockNumber ?? null;
@@ -71,7 +70,6 @@ function appealPlan(
   });
 }
 
-/** Where the executed-ruling scan starts, once the details and the Dispute event have settled; `undefined` before. */
 function executedRulingStart(
   chainId: number,
   details: SectionData<DisputeReads>,
@@ -95,7 +93,7 @@ export function useCase(chainId: number, disputeId: bigint | null, account?: Add
   const binding = found?.binding;
 
   const family = useFamily(chainId, binding?.arbitrated);
-  const metaEvidence = useMetaEvidence(chainId, binding, "case");
+  const metaEvidence = useMetaEvidence(chainId, binding);
   const disputeEvent = useDisputeEvent(chainId, binding);
   const courts = useCourts(chainId);
   const evidence = useEvidence(chainId, binding, disputeEvent);

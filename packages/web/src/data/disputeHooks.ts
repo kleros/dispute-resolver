@@ -25,7 +25,7 @@ import { metaEvidenceQuery } from "./metaEvidenceQuery";
 import { disputeEventQuery, onChainMetaEvidenceReader } from "./onChainMetaEvidence";
 import { IDLE_KEY, queryKeys } from "./queryKeys";
 import { LOADING, fromOutcome, fromQuery, noRpcError, ready, unavailable, unavailableFrom } from "./sectionData";
-import type { MetaEvidenceBudget, SectionData } from "./types";
+import type { SectionData } from "./types";
 
 /** A `null` ID reads nothing. Never persisted: the binding must come from the chain, never from storage. */
 export function useDisputeLookup(chainId: number, disputeId: bigint | null): SectionData<DisputeLookup> {
@@ -58,20 +58,19 @@ export function useFamily(chainId: number, arbitrable: Address | undefined): Sec
  * the Ongoing cards are served from the stored results. The case page passes the on-chain reader, whose `MetaEvidence`
  * event URI wins over the locator's when it is found.
  */
-export function useMetaEvidence(chainId: number, binding: ArbitratedBinding | undefined, budget: MetaEvidenceBudget): SectionData<MetaEvidenceResult> {
+export function useMetaEvidence(chainId: number, binding: ArbitratedBinding | undefined): SectionData<MetaEvidenceResult> {
   const deps = useCoreDeps();
   const client = useQueryClient();
   const target = binding === undefined ? undefined : { disputeId: binding.disputeId, arbitrable: binding.arbitrated };
-  const uncached = budget === "case";
-  const onChain = uncached && binding !== undefined ? onChainMetaEvidenceReader(client, deps, chainId, binding) : undefined;
+  const onChain = binding === undefined ? undefined : onChainMetaEvidenceReader(client, deps, chainId, binding);
   const query = useQuery({
-    ...metaEvidenceQuery(deps, chainId, target, budget, onChain),
-    refetchOnMount: uncached ? "always" : true,
+    ...metaEvidenceQuery(deps, chainId, target, "case", onChain),
+    refetchOnMount: "always",
     // A key switch fetches only a stale query, so the stored result must count as stale for this observer. A refetch
     // trigger that consults staleness (focus, reconnect, an interval) would re-run the 120 s pipeline: keep them off.
-    ...(uncached ? { staleTime: 0 } : {}),
+    staleTime: 0,
   });
-  if (binding === undefined || (uncached && !query.isFetchedAfterMount)) return LOADING;
+  if (binding === undefined || !query.isFetchedAfterMount) return LOADING;
   return fromQuery(query, ready);
 }
 
@@ -83,7 +82,6 @@ export function useDisputeEvent(chainId: number, binding: ArbitratedBinding | un
   return fromQuery(query, fromOutcome);
 }
 
-/** Without its `Dispute` event the evidence group is unknown: the section says so instead of showing an empty list. */
 function missingEventMessage(event: Exclude<DisputeEventResult, { status: "found" }>): string {
   return event.status === "ambiguous"
     ? `The dispute's Dispute event was found ${event.count.toString()} times, so its evidence group is unknown.`
@@ -126,10 +124,6 @@ export interface FoundDispute {
   readonly binding: ArbitratedBinding;
 }
 
-/**
- * `found` is `undefined` until the caller has settled the family (`undefined` when detection failed) and the
- * Dispute-event block (`null` when there is none).
- */
 export function useDisputeDetails(
   chainId: number,
   found: FoundDispute | undefined,

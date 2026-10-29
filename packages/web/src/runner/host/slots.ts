@@ -3,9 +3,7 @@ export interface Slot {
   cancel(): void;
 }
 
-/** At most `limit` runs at a time, started in the order they asked. */
 interface SlotQueue {
-  /** Calls `start` now when a slot is free, otherwise when one frees up. */
   acquire(start: () => void): Slot;
 }
 

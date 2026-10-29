@@ -7,6 +7,9 @@ import type { WriteStatus } from "./types";
 import { WriteStatusNotice } from "./WriteStatusNotice";
 
 const EXPLORER = `https://etherscan.io/tx/${TEST_TX_HASH}`;
+const MISMATCH = "Your wallet is on Gnosis Network, but this page is on Ethereum Mainnet.";
+const ASK_SWITCH = "Switch your wallet to Ethereum Mainnet to continue.";
+const WAITING_MAINNET = "A switch to Ethereum Mainnet is waiting in your wallet.";
 
 function renderNotice(status: WriteStatus, wallet = createTestWallet()) {
   return render(<WriteStatusNotice status={status} />, { wrapper: walletWrapper(wallet) });
@@ -64,54 +67,33 @@ describe("WriteStatusNotice", () => {
     expect(screen.queryByRole("link")).toBeNull();
   });
 
-  it("the wrong-chain notice shown after a refused write says that nothing was sent", () => {
-    renderNotice({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 });
-    expect(
-      screen.getByText("Your wallet is on Gnosis Network, but this page is on Ethereum Mainnet. Switch your wallet to Ethereum Mainnet to continue. Nothing was sent."),
-    ).toBeInTheDocument();
-  });
-
-  it("the wrong-chain notice shown before any write asks for the switch without saying that nothing was sent", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const { container } = render(<WriteStatusNotice status={{ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 }} beforeAttempt />, {
-      wrapper: walletWrapper(wallet),
-    });
-    expect(screen.getByText("Your wallet is on Gnosis Network, but this page is on Ethereum Mainnet. Switch your wallet to Ethereum Mainnet to continue.")).toBeInTheDocument();
-    expect(container).not.toHaveTextContent("Nothing was sent");
-    expect(screen.getByRole("button", { name: "Switch to Ethereum Mainnet" })).toBeInTheDocument();
-  });
-
-  async function walletWithSwitchWaiting(target = 1) {
+  async function walletWithSwitchWaiting(target: number) {
     const wallet = await createConnectedTestWallet({ chainId: 100 });
     holdChainSwitches(wallet);
     void switchWalletChain(wallet.config, target);
     return wallet;
   }
 
-  it("while a switch waits in the wallet, the switch button gives way to a line saying so and the notice no longer asks for the switch", async () => {
-    const wallet = await walletWithSwitchWaiting();
-    const { container } = renderNotice({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 }, wallet);
-    expect(screen.getByText("A switch to Ethereum Mainnet is waiting in your wallet.")).toBeInTheDocument();
-    expect(screen.getByText("Your wallet is on Gnosis Network, but this page is on Ethereum Mainnet. Nothing was sent.")).toBeInTheDocument();
-    expect(container).not.toHaveTextContent("Switch your wallet");
-    expect(screen.queryByRole("button")).toBeNull();
-  });
-
-  it("while a switch waits in the wallet before any write, the notice does not say that nothing was sent", async () => {
-    const wallet = await walletWithSwitchWaiting();
-    const { container } = render(<WriteStatusNotice status={{ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 }} beforeAttempt />, {
+  it.each<[string, boolean, number | null, string, string | null]>([
+    ["after a refused write asks for the switch and says that nothing was sent", false, null, `${MISMATCH} ${ASK_SWITCH} Nothing was sent.`, null],
+    ["before any write asks for the switch without saying that nothing was sent", true, null, `${MISMATCH} ${ASK_SWITCH}`, null],
+    ["while a switch waits gives way to a line saying so and no longer asks for the switch", false, 1, `${MISMATCH} Nothing was sent.`, WAITING_MAINNET],
+    ["while a switch waits before any write does not say that nothing was sent", true, 1, MISMATCH, WAITING_MAINNET],
+    ["names the chain of the waiting request", false, 11155111, `${MISMATCH} Nothing was sent.`, "A switch to Ethereum Testnet Sepolia is waiting in your wallet."],
+  ])("the wrong-chain notice %s", async (_case, beforeAttempt, waitingTarget, body, waitingLine) => {
+    const wallet = waitingTarget === null ? await createConnectedTestWallet({ chainId: 100 }) : await walletWithSwitchWaiting(waitingTarget);
+    const { container } = render(<WriteStatusNotice status={{ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 }} beforeAttempt={beforeAttempt} />, {
       wrapper: walletWrapper(wallet),
     });
-    expect(screen.getByText("Your wallet is on Gnosis Network, but this page is on Ethereum Mainnet.")).toBeInTheDocument();
-    expect(screen.getByText("A switch to Ethereum Mainnet is waiting in your wallet.")).toBeInTheDocument();
-    expect(container).not.toHaveTextContent("Nothing was sent");
-  });
-
-  it("the waiting line names the chain of the request that waits in the wallet", async () => {
-    const wallet = await walletWithSwitchWaiting(11155111);
-    renderNotice({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 }, wallet);
-    expect(screen.getByText("A switch to Ethereum Testnet Sepolia is waiting in your wallet.")).toBeInTheDocument();
-    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.getByText(body)).toBeInTheDocument();
+    if (beforeAttempt) expect(container).not.toHaveTextContent("Nothing was sent");
+    if (waitingLine === null) {
+      expect(screen.getByRole("button", { name: "Switch to Ethereum Mainnet" })).toBeInTheDocument();
+    } else {
+      expect(screen.getByText(waitingLine)).toBeInTheDocument();
+      expect(container).not.toHaveTextContent("Switch your wallet");
+      expect(screen.queryByRole("button")).toBeNull();
+    }
   });
 
   it("a switch the user starts from the notice turns the button into the waiting line", async () => {
@@ -150,7 +132,6 @@ describe("WriteStatusNotice", () => {
       expect(screen.queryByRole("button")).toBeNull();
     });
     expect(screen.getByText("Connect a wallet to continue.")).toBeInTheDocument();
-    // The notice alone: no offer and no sentence under it.
     expect(container.querySelector("[aria-live]")?.children).toHaveLength(1);
     expect(container).not.toHaveTextContent(/configured|deployment|unavailable/i);
   });

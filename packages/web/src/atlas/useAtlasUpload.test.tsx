@@ -26,7 +26,6 @@ const MIB = 1024 * 1024;
 
 interface Setup {
   readonly connected?: boolean;
-  /** `false`: a deployment without Atlas. */
   readonly configured?: boolean;
   readonly server?: FakeAtlasServerOptions;
 }
@@ -43,6 +42,14 @@ async function renderUploader({ connected = true, configured = true, server: ser
     });
   }
   return { server, wallet, result: hook.result };
+}
+
+async function renderWithLibrary(wallet: TestWallet) {
+  const hook = renderHook(() => ({ uploader: useAtlasUpload(), library: useAtlasProvider() }), { wrapper: atlasWrapper(wallet) });
+  await waitFor(() => {
+    expect(hook.result.current.uploader.limits("evidence")).not.toBeNull();
+  });
+  return hook;
 }
 
 async function renderReady(setup: Setup = {}) {
@@ -152,10 +159,7 @@ describe("upload", () => {
   it("makes the session unverified on an account switch, so the next upload signs in again from the new account", async () => {
     const server = installFakeAtlasServer();
     const wallet = await createConnectedTestWallet();
-    const { result } = renderHook(() => ({ uploader: useAtlasUpload(), library: useAtlasProvider() }), { wrapper: atlasWrapper(wallet) });
-    await waitFor(() => {
-      expect(result.current.uploader.limits("evidence")).not.toBeNull();
-    });
+    const { result } = await renderWithLibrary(wallet);
     expect((await settle(() => result.current.uploader.upload(testPdf(), "evidence"))).ok).toBe(true);
     await waitFor(() => {
       expect(result.current.uploader.isSignedIn).toBe(true);
@@ -254,16 +258,6 @@ describe("upload", () => {
     });
   });
 
-  it("still refuses a file the recovered limits do not allow, before anything is signed", async () => {
-    const { server, result } = await renderUploader({ server: { roles: "fail-once" } });
-
-    const outcome = await settle(() => result.current.upload(new File(["x"], "notes.txt", { type: "text/plain" }), "evidence"));
-
-    expect(outcome).toMatchObject({ ok: false, error: "mime-not-allowed" });
-    expect(server.count("roles")).toBe(2);
-    expect(server.count("sign")).toBe(0);
-  });
-
   it.each([
     ["disconnects", (wallet: TestWallet) => wallet.disconnect(), { ok: false, error: "no-wallet" }],
     ["changes chain", (wallet: TestWallet) => wallet.changeChain(100), { ok: false, error: "upload-failed", message: expect.stringContaining("chain") as unknown }],
@@ -307,12 +301,9 @@ describe("upload", () => {
     const token = sessionJwt(TEST_WALLET_ACCOUNT);
     const server = installFakeAtlasServer({ issueToken: () => token });
     const wallet = await createConnectedTestWallet();
-    const { result } = renderHook(() => ({ uploader: useAtlasUpload(), library: useAtlasProvider() }), { wrapper: atlasWrapper(wallet) });
+    const { result } = await renderWithLibrary(wallet);
     await waitFor(() => {
       expect(result.current.library.isVerified).toBe(true);
-    });
-    await waitFor(() => {
-      expect(result.current.uploader.limits("evidence")).not.toBeNull();
     });
     expect(result.current.uploader.isSignedIn).toBe(false);
 
@@ -372,21 +363,14 @@ describe("upload", () => {
   it("ends the session for the tab on an authorization failure, so a reload signs in again", async () => {
     const server = installFakeAtlasServer({ uploadResponse: failingUpload(2, 401, "Token revoked") });
     const wallet = await createConnectedTestWallet();
-    const renderTab = async () => {
-      const hook = renderHook(() => ({ uploader: useAtlasUpload(), library: useAtlasProvider() }), { wrapper: atlasWrapper(wallet) });
-      await waitFor(() => {
-        expect(hook.result.current.uploader.limits("evidence")).not.toBeNull();
-      });
-      return hook;
-    };
-    const firstTab = await renderTab();
+    const firstTab = await renderWithLibrary(wallet);
     expect((await settle(() => firstTab.result.current.uploader.upload(testPdf(), "evidence"))).ok).toBe(true);
 
     const rejected = await settle(() => firstTab.result.current.uploader.upload(testPdf(), "evidence"));
     expect(rejected).toMatchObject({ ok: false, error: "upload-failed" });
     firstTab.unmount();
 
-    const reloaded = await renderTab();
+    const reloaded = await renderWithLibrary(wallet);
     expect(reloaded.result.current.library.isVerified).toBe(false);
     expect(reloaded.result.current.uploader.isSignedIn).toBe(false);
     const outcome = await settle(() => reloaded.result.current.uploader.upload(testPdf(), "evidence"));

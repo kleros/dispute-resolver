@@ -13,12 +13,10 @@ const CHAIN_SECONDS = 1_700_000_000;
 const HOUR = 3_600;
 const DAY = 86_400;
 const SKEW_MS = HOUR * 1_000;
-/** A target two days after chain time, as the browser clock an hour ahead reads it. */
 const BROWSER_COUNTDOWN = "01d 23h 00m";
 const CHAIN_COUNTDOWN = "02d 00h 00m";
 const MINUTE_MS = 60_000;
 
-/** Answers the latest block with the timestamp field given at each read, leaving the field out when it is undefined. */
 function blockRpc(timestamp: () => string | undefined) {
   return vi.fn<RpcHandler>(({ method }) => {
     if (method !== "eth_getBlockByNumber") throw new Error(`unexpected ${method}`);
@@ -27,7 +25,6 @@ function blockRpc(timestamp: () => string | undefined) {
   });
 }
 
-/** Answers the latest block with a chain clock one hour behind the (mocked) browser clock; any other request fails. */
 function latestBlockRpc() {
   return blockRpc(() => numberToHex(Math.floor((Date.now() - SKEW_MS) / 1_000)));
 }
@@ -209,19 +206,31 @@ describe("useChainClockOffset", () => {
     expect(blockReads(rpc, 100)).toBe(1);
   });
 
-  it("when the browser clock is changed while the page is open, the chain time is read again and countdowns keep chain time", async () => {
+  it.each([
+    [
+      "is set from an hour fast to ten minutes slow, where the old offset would read an hour and ten minutes behind the chain",
+      -(HOUR * 1_000 + 10 * MINUTE_MS),
+      CHAIN_CLOCK_CHECK_MS / 1_000,
+      "01d 23h 59m",
+    ],
+    ["jumps eight hours on waking from a sleep that stopped the monotonic clock", 8 * HOUR * 1_000, 8 * HOUR + CHAIN_CLOCK_CHECK_MS / 1_000, "01d 15h 59m"],
+  ])("when the browser clock %s, the chain time is read again and countdowns keep chain time", async (_label, stepMs, chainAdvanceSeconds, countdown) => {
     const clocks = fakeClocks();
     let chainSeconds = CHAIN_SECONDS;
     const rpc = blockRpc(() => numberToHex(chainSeconds));
-    renderWithData(createTestDeps({ rpc }), <ChainCountdown chainId={1} />);
+    const { client } = renderWithData(createTestDeps({ rpc }), <ChainCountdown chainId={1} />);
     expect(await screen.findByText(CHAIN_COUNTDOWN)).toBeInTheDocument();
 
-    // From an hour fast to ten minutes slow: the old offset would now read an hour and ten minutes behind the chain.
-    clocks.stepBrowserClock(-(HOUR * 1_000 + 10 * MINUTE_MS));
-    chainSeconds += CHAIN_CLOCK_CHECK_MS / 1_000;
+    clocks.stepBrowserClock(stepMs);
+    chainSeconds += chainAdvanceSeconds;
     await clocks.elapse(CHAIN_CLOCK_CHECK_MS);
-    expect(await screen.findByText("01d 23h 59m")).toBeInTheDocument();
-    expect(rpc).toHaveBeenCalledTimes(2);
+    await waitFor(() => {
+      expect(rpc).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(client.getQueryState(queryKeys.chainTime(1))).toMatchObject({ status: "success", dataUpdateCount: 1 });
+    });
+    expect(await screen.findByText(countdown)).toBeInTheDocument();
   });
 
   it("after the browser clock is changed, a failed read of the chain time leaves countdowns on the browser clock, not the outdated offset", async () => {
@@ -239,25 +248,6 @@ describe("useChainClockOffset", () => {
     await clocks.elapse(CHAIN_CLOCK_CHECK_MS);
     expect(await screen.findByText("01d 23h 59m")).toBeInTheDocument();
     expect(rpc.mock.calls.length).toBeGreaterThan(1);
-  });
-
-  it("waking from a sleep that stopped the monotonic clock reads the chain time again", async () => {
-    const clocks = fakeClocks();
-    let chainSeconds = CHAIN_SECONDS;
-    const rpc = blockRpc(() => numberToHex(chainSeconds));
-    const { client } = renderWithData(createTestDeps({ rpc }), <ChainCountdown chainId={1} />);
-    expect(await screen.findByText(CHAIN_COUNTDOWN)).toBeInTheDocument();
-
-    clocks.stepBrowserClock(8 * HOUR * 1_000);
-    chainSeconds += 8 * HOUR + CHAIN_CLOCK_CHECK_MS / 1_000;
-    await clocks.elapse(CHAIN_CLOCK_CHECK_MS);
-    await waitFor(() => {
-      expect(rpc).toHaveBeenCalledTimes(2);
-    });
-    await waitFor(() => {
-      expect(client.getQueryState(queryKeys.chainTime(1))).toMatchObject({ status: "success", dataUpdateCount: 1 });
-    });
-    expect(screen.getByText("01d 15h 59m")).toBeInTheDocument();
   });
 
   it("a browser clock that keeps pace with the monotonic clock never makes the chain time be read again", async () => {

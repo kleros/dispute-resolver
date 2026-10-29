@@ -26,7 +26,6 @@ function option(key: string, code: string, title: string, description: string | 
   return { key, label: `Option ${code} - ${title}`, code: `Option ${code}`, title, description };
 }
 
-/** `null` for a type the app does not know, which shows no label. */
 export function questionTypeLabel(type: string): string | null {
   const known = asQuestionType(type);
   return known === null ? null : QUESTION_TYPE_LABELS[known];

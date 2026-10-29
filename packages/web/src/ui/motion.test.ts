@@ -75,26 +75,19 @@ describe("usePresence", () => {
 });
 
 describe("useAfterLoading", () => {
-  it("stays false for content that is ready on the first render", () => {
-    const { result, rerender } = renderHook(({ loading }) => useAfterLoading(loading), { initialProps: { loading: false } });
-    expect(result.current).toBe(false);
-    rerender({ loading: false });
-    expect(result.current).toBe(false);
-  });
-
-  it("turns true once the loading this mount rendered has ended", () => {
-    const { result, rerender } = renderHook(({ loading }) => useAfterLoading(loading), { initialProps: { loading: true } });
-    expect(result.current).toBe(false);
-    rerender({ loading: false });
-    expect(result.current).toBe(true);
-  });
-
-  it("turns true when loading starts after the first render and then ends", () => {
-    const { result, rerender } = renderHook(({ loading }) => useAfterLoading(loading), { initialProps: { loading: false } });
-    rerender({ loading: true });
-    expect(result.current).toBe(false);
-    rerender({ loading: false });
-    expect(result.current).toBe(true);
+  it.each([
+    { name: "stays false for content that is ready on the first render", initial: false, later: [false], expected: false },
+    { name: "turns true once the loading this mount rendered has ended", initial: true, later: [false], expected: true },
+    { name: "turns true when loading starts after the first render and then ends", initial: false, later: [true, false], expected: true },
+  ])("$name", ({ initial, later, expected }) => {
+    const { result, rerender } = renderHook(({ loading }) => useAfterLoading(loading), { initialProps: { loading: initial } });
+    const seen = [result.current];
+    for (const loading of later) {
+      rerender({ loading });
+      seen.push(result.current);
+    }
+    expect(seen.slice(0, -1)).not.toContain(true);
+    expect(seen.at(-1)).toBe(expected);
   });
 });
 
@@ -111,13 +104,11 @@ describe("readMotionMs", () => {
     document.documentElement.style.removeProperty("--test-dur");
   });
 
-  it("reads a duration in milliseconds", () => {
-    document.documentElement.style.setProperty("--test-dur", "250ms");
-    expect(readMotionMs("--test-dur", 1)).toBe(250);
-  });
-
-  it("reads the minified seconds form the build writes", () => {
-    document.documentElement.style.setProperty("--test-dur", ".25s");
+  it.each([
+    { name: "a duration in milliseconds", value: "250ms" },
+    { name: "the minified seconds form the build writes", value: ".25s" },
+  ])("reads $name", ({ value }) => {
+    document.documentElement.style.setProperty("--test-dur", value);
     expect(readMotionMs("--test-dur", 1)).toBe(250);
   });
 

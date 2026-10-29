@@ -5,7 +5,6 @@ import { hiddenEvidenceText } from "./hiddenEvidence";
 
 interface EvidenceTimelineProps {
   readonly list: EvidenceList;
-  /** The Dispute event's time ("Dispute Raised"), `null` when unknown. */
   readonly raisedAt: number | null;
   /** Each shown as an "Appealed" marker; empty while they load or when they failed. */
   readonly appealDecisions: readonly AppealDecisionEvent[];

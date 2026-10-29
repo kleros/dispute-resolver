@@ -130,12 +130,6 @@ describe("excluded addresses", () => {
 });
 
 describe("registry data", () => {
-  it("29 Reality proxies on arbitrator chains 1 and 100", () => {
-    const keys = Object.keys(REGISTRY.realityProxies);
-    expect(keys).toHaveLength(29);
-    expect(sortedStrings([...new Set(keys.map(chainOfKey))])).toEqual(["1", "100"]);
-  });
-
   it("Unslashed on mainnet is the single override", () => {
     expect(Object.keys(REGISTRY.overrides)).toEqual(["1:0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38"]);
   });

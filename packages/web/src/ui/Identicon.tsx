@@ -3,7 +3,7 @@ import type { IdenticonProps } from "./types";
 
 const DEFAULT_SIZE = 24;
 
-/** A decorative identicon derived from the address bytes; the address shown next to it is its accessible name. */
+/** Decorative: the address shown next to it is its accessible name. */
 export function Identicon({ address, size = DEFAULT_SIZE, className }: IdenticonProps) {
   const { cells, fill } = identiconPattern(address);
   const filled = cells.flatMap((row, y) => row.flatMap((on, x) => (on ? [{ x, y, key: `${String(x)}-${String(y)}` }] : [])));

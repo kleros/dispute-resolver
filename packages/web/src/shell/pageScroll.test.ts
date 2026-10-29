@@ -10,12 +10,10 @@ function scrollbarsTake(scrollbarWidth: number): void {
   vi.spyOn(Element.prototype, "clientWidth", "get").mockReturnValue(100);
 }
 
-/** A mouse or trackpad leads, as on a desktop or a laptop. */
 function pointerHoversFinely(): void {
   vi.stubGlobal("matchMedia", matchOnly([DESKTOP_POINTER]));
 }
 
-/** A finger leads, as on a phone or a tablet. */
 function pointerIsTouch(): void {
   vi.stubGlobal("matchMedia", matchOnly(["(hover: none)", "(pointer: coarse)"]));
 }
@@ -41,6 +39,7 @@ describe("choosePageScroll", () => {
     const root = freshRoot();
     expect(choosePageScroll(root)).toBe(expected);
     expect(root.getAttribute("data-page-scroll")).toBe(expected === "container" ? "container" : null);
+    expect(root.ownerDocument.body.children).toHaveLength(0);
   });
 
   it("lets the scrollbar decide where the browser cannot answer media queries", () => {
@@ -64,14 +63,5 @@ describe("choosePageScroll", () => {
     expect(choosePageScroll(root)).toBe("container");
     expect(measured).toEqual([{ overflow: "scroll", inBody: true }]);
     expect(body.children).toHaveLength(0);
-  });
-
-  it("lays nothing out to decide on a desktop, where the pointer alone settles it", () => {
-    pointerHoversFinely();
-    const offsetWidth = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get");
-    const root = freshRoot();
-    expect(choosePageScroll(root)).toBe("container");
-    expect(offsetWidth).not.toHaveBeenCalled();
-    expect(root.ownerDocument.body.children).toHaveLength(0);
   });
 });

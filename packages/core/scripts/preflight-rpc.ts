@@ -27,7 +27,7 @@ import { LOOKUP_LIMITS } from "../src/reality/constants";
 import { isRangeLimitError } from "../src/rpc";
 import type { Env } from "../src/types";
 import { redact, runScript } from "./failureMessage";
-import { loadRepositoryEnv } from "./recordingRpc";
+import { loadRepositoryEnv } from "./repositoryEnv";
 
 /** The range the pre-flight asks `eth_getLogs` for first: the scan window of the chunked reads. */
 const LOG_RANGE_BLOCKS = 10_000;
@@ -39,7 +39,6 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 const SILENT_ADDRESS = "0x0000000000000000000000000000000000000000";
 const MAX_DETAIL_LENGTH = 160;
 
-/** `fetch`, or a double of it in tests. */
 export type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
 
 type LogsResult =
@@ -69,7 +68,6 @@ interface JsonRpcReply {
   readonly error?: { readonly code?: unknown; readonly message?: unknown };
 }
 
-/** The outcome of one JSON-RPC call: its reply, or the reason it produced none. */
 type CallOutcome =
   | { readonly kind: "reply"; readonly reply: JsonRpcReply; readonly response: Response }
   | { readonly kind: "http"; readonly status: number }
@@ -133,7 +131,6 @@ function hex(value: number): string {
   return `0x${value.toString(16)}`;
 }
 
-/** The text of a JSON-RPC error, safe to print. */
 function describeRpcError(error: NonNullable<JsonRpcReply["error"]>, url: string): string {
   const code = typeof error.code === "number" ? String(error.code) : "unknown code";
   const message = typeof error.message === "string" ? truncate(redact(error.message, [url])) : "no message";
@@ -152,7 +149,6 @@ async function readHead(url: string, fetchFn: FetchLike, timeoutMs: number): Pro
   return Number.isSafeInteger(head) ? { head } : { reason: "block number unavailable: the result is not a block number" };
 }
 
-/** What one `eth_getLogs` answer says about the range it asked for. */
 type LogsAnswer = { readonly kind: "ok"; readonly count: number } | { readonly kind: "capped"; readonly detail: string } | { readonly kind: "failed"; readonly reason: string };
 
 function describeHttpStatus(status: number): string {
@@ -260,7 +256,6 @@ async function checkChain(chain: ChainConfig, options: PreflightOptions): Promis
   return { chainId: chain.id, outcome: read.status === "unconfigured" ? "unconfigured" : await checkEndpoint(read.url, options.fetchFn, options) };
 }
 
-/** Runs the pre-flight over every chain of the table, side by side. */
 export function runPreflight(options: PreflightOptions): Promise<ChainReport[]> {
   return Promise.all(Object.values(options.chains ?? CHAINS).map((chain) => checkChain(chain, options)));
 }
@@ -284,7 +279,6 @@ function describeLogs(logs: LogsResult): string {
   return `eth_getLogs${range} FAILED (${logs.reason})`;
 }
 
-/** The line that reports a chain, with the chain ID and results only. */
 export function formatChainReport({ chainId, outcome }: ChainReport): string {
   if (outcome === "unconfigured") return `chain ${String(chainId)} read: FAILED, no read RPC is configured`;
   const label = `chain ${String(chainId)} read:`;

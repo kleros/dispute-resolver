@@ -2,15 +2,6 @@ import { describe, expect, it } from "vitest";
 import { buildRpcRedirects } from "./rpcRedirects";
 
 describe("buildRpcRedirects", () => {
-  it("redirects every key on a chain's Infura host to that chain's read RPC", () => {
-    const rules = buildRpcRedirects({
-      REACT_APP_WEB3_PROVIDER_URL: "https://read.example/mainnet",
-      REACT_APP_WEB3_SEPOLIA_PROVIDER_URL: "https://read.example/sepolia",
-    });
-    expect(rules).toContainEqual({ chainId: 1, host: "mainnet.infura.io", pathPrefix: "/v3/", target: "https://read.example/mainnet" });
-    expect(rules).toContainEqual({ chainId: 11155111, host: "sepolia.infura.io", pathPrefix: "/v3/", target: "https://read.example/sepolia" });
-  });
-
   it("emits no rule for a chain without a configured RPC", () => {
     const rules = buildRpcRedirects({ REACT_APP_WEB3_PROVIDER_URL: "  " });
     expect(rules.map((rule) => rule.chainId).sort((a, b) => a - b)).toEqual([300, 324]);
@@ -46,6 +37,7 @@ describe("buildRpcRedirects", () => {
       "zksync-sepolia.infura.io": 300,
     });
     expect(rules.every((rule) => rule.pathPrefix === "/v3/")).toBe(true);
+    expect(rules.find((rule) => rule.chainId === 1)?.target).toBe("https://rpc.example/1");
     expect(rules.find((rule) => rule.chainId === 324)?.target).toBe("https://mainnet.era.zksync.io");
   });
 

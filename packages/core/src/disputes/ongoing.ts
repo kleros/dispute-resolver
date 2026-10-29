@@ -12,7 +12,6 @@ const DISPUTE_CREATION_EVENT = getAbiItem({ abi: klerosLiquidAbi, name: "Dispute
 const NEW_PERIOD_EVENT = getAbiItem({ abi: klerosLiquidAbi, name: "NewPeriod" });
 const EXECUTION_PERIOD = 4;
 
-/** Every distinct `DisputeCreation` ID minus those with a `NewPeriod` to execution, newest first. */
 async function openDisputeIds(client: ReadClient, arbitrator: Address, fromBlock: bigint, head: bigint, signal: AbortSignal | undefined): Promise<bigint[]> {
   const range = { address: arbitrator, fromBlock, toBlock: head };
   const [created, periods] = await Promise.all([

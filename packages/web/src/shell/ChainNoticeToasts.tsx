@@ -18,9 +18,8 @@ export function asSentence(text: string): string {
 }
 
 /**
- * The toast for a notice, or `null` for a declined switch away from an unconfigured wallet chain: the app then shows the
- * unsupported-network screen, which says it all. Chain names come from the configuration and the dispute ID is parsed, so
- * no URL text reaches the toast.
+ * `null` for a declined switch away from an unconfigured wallet chain: the unsupported-network screen says it all. Chain
+ * names come from the configuration and the dispute ID is parsed, so no URL text reaches the toast.
  */
 export function chainNoticeToast(notice: ChainNotice): ToastInput | null {
   const walletChain = getChain(notice.walletChainId);
@@ -35,10 +34,6 @@ export function chainNoticeToast(notice: ChainNotice): ToastInput | null {
   return { variant: "error", title: NOT_SWITCHED_TITLE, message: `${asSentence(notice.reason)} ${shown}`, autoHideMs: ERROR_NOTICE_MS };
 }
 
-/**
- * Shows routing's chain notices as toasts. The library's push message has no neutral variant; `sync` is the neutral
- * one, announced as a status, and a failure is an error, announced as an alert.
- */
 export function ChainNoticeToasts({ children }: { readonly children?: ReactNode }) {
   const toaster = useToast();
   const onNotice = useCallback(

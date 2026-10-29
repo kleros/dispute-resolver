@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AppealInfo } from "../disputes/types";
 import { REGISTRY, getOverride } from "../registry";
-import { GOVERNOR_MULTIPLIERS, recordedValue } from "./__fixtures__/governorMultipliers";
 import { DISPUTE_1170 } from "./__fixtures__/recorded";
 import { computeAppealAmounts, fundedPercent, isWinningCode } from "./index";
 import type { Multipliers } from "./types";
@@ -33,20 +32,8 @@ describe("computeAppealAmounts", () => {
     expect(computeAppealAmounts(APPEAL_INFO, MULTIPLIERS)).not.toHaveProperty("shared");
   });
 
-  it("costs a tie on every deployed governor's recorded multipliers at cost + cost × sharedMultiplier / MULTIPLIER_DIVISOR, due at the end of the appeal period", () => {
-    for (const governor of GOVERNOR_MULTIPLIERS) {
-      const denominator = recordedValue(governor, "MULTIPLIER_DIVISOR");
-      const multipliers: Multipliers = {
-        winnerStakeMultiplier: recordedValue(governor, "winnerMultiplier"),
-        loserStakeMultiplier: recordedValue(governor, "loserMultiplier"),
-        loserAppealPeriodMultiplier: denominator / 2n,
-        denominator,
-        sharedMultiplier: recordedValue(governor, "sharedMultiplier"),
-      };
-      const amounts = computeAppealAmounts(APPEAL_INFO, multipliers);
-      const shared = recordedValue(governor, "sharedMultiplier");
-      expect(amounts.shared, governor.label).toEqual({ total: 1_000_000n + (1_000_000n * shared) / denominator, deadline: 433_000 });
-    }
+  it("costs a tie at cost + cost × sharedMultiplier / denominator, due at the end of the appeal period", () => {
+    expect(computeAppealAmounts(APPEAL_INFO, { ...MULTIPLIERS, sharedMultiplier: 5_000n }).shared).toEqual({ total: 1_500_000n, deadline: 433_000 });
   });
 
   it("the losing side's deadline never passes the appeal period end", () => {

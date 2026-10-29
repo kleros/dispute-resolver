@@ -30,7 +30,6 @@ interface Redactor {
 }
 
 interface UrlParts {
-  /** What every spelling of the URL is replaced with. */
   readonly origin: string;
   readonly spellings: readonly string[];
   readonly pieces: readonly string[];
@@ -151,7 +150,6 @@ function redactError(error: unknown, redactor: Redactor): unknown {
   return error;
 }
 
-/** `transport` with every error its requests throw replaced by `map(error)`. */
 export function rethrowMapped<TTransport extends ReturnType<Transport>>(transport: TTransport, map: (error: unknown) => unknown): TTransport {
   const request = async (call: JsonRpcRequest, options?: EIP1193RequestOptions): Promise<unknown> => {
     try {

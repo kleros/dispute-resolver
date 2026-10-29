@@ -1,7 +1,6 @@
 import type { MetaEvidenceResult } from "@dispute-resolver/core";
 import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { CaseDispute, SectionData } from "../../data";
 import { TestDataProvider, sectionLoading, sectionReady, testCaseDispute, testChain, testFoundLookup, testOkMetaEvidence } from "../../test/data";
 import { testMetaEvidence } from "../../test/safe-content";
@@ -13,10 +12,10 @@ function caseDispute(metaEvidence: SectionData<MetaEvidenceResult>): CaseDispute
   return testCaseDispute({ chainId: 100, disputeId: 12n, lookup: sectionReady(testFoundLookup({ chainId: 100, disputeId: 12n })), metaEvidence });
 }
 
-function renderPanel(metaEvidence: SectionData<MetaEvidenceResult>, onRetry?: () => void) {
+function renderPanel(metaEvidence: SectionData<MetaEvidenceResult>) {
   return render(
     <TestDataProvider>
-      <QuestionPanel dispute={caseDispute(metaEvidence)} chain={GNOSIS} onRetry={onRetry} />
+      <QuestionPanel dispute={caseDispute(metaEvidence)} chain={GNOSIS} />
     </TestDataProvider>,
   );
 }
@@ -37,10 +36,23 @@ describe("QuestionPanel", () => {
   });
 
   it("a select question lists its options, view only, with the note that jurors vote on Court", () => {
-    renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: { type: "single-select", titles: ["Yes", "No"], descriptions: ["Release the funds"] } })));
-    expect(screen.getByText("Multiple choice: single select")).toBeInTheDocument();
+    renderPanel(sectionReady(testOkMetaEvidence({ question: "Who wins?", rulingOptions: { type: "single-select", titles: ["Yes", "No"], descriptions: ["Release the funds"] } })));
+    const question = screen.getByText("Who wins?");
+    const type = screen.getByText("Multiple choice: single select");
+    expect(question.compareDocumentPosition(type) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(type.parentElement).toBe(question.parentElement);
     expect(screen.getByRole("heading", { level: 3, name: "Voting options" })).toBeInTheDocument();
     expect(optionLines()).toEqual(["Option 0 - Invalid / Refused to Arbitrate / Tied", "Option 1 - Yes: Release the funds", "Option 2 - No"]);
+    const item = within(screen.getByRole("list")).getAllByRole("listitem")[1];
+    if (item === undefined) throw new Error("The second option is missing");
+    const code = within(item).getByText("Option 1");
+    const title = within(item).getByText("Yes");
+    expect(code.tagName).toBe("SPAN");
+    expect(code).toHaveClass("order-last", "tabular-nums", "text-klerosUIComponentsSecondaryText");
+    expect(title.tagName).toBe("SPAN");
+    expect(title).toHaveClass("font-semibold", "text-base");
+    expect(code.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(code.querySelector(".sr-only")?.textContent).toBe(" - ");
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(screen.getByText(/Note that you can only view the voting options\. Selected jurors can vote using/)).toBeInTheDocument();
     const court = screen.getByRole("link", { name: "Court" });
@@ -58,38 +70,6 @@ describe("QuestionPanel", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     expect(screen.queryByText(/Note that you can only view the voting options/)).not.toBeInTheDocument();
     expect(container.textContent).toBe("When?Date");
-  });
-
-  it("puts the question type under the question as a caption for every type", () => {
-    const cases = [
-      { rulingOptions: { type: "uint", precision: 0 }, label: "Non-negative number" },
-      { rulingOptions: { type: "single-select", titles: ["Yes"] }, label: "Multiple choice: single select" },
-    ];
-    for (const { rulingOptions, label } of cases) {
-      const { container, unmount } = renderPanel(sectionReady(testOkMetaEvidence({ question: "Who wins?", rulingOptions })));
-      const question = screen.getByText("Who wins?");
-      const type = screen.getByText(label);
-      expect(question.compareDocumentPosition(type) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      expect(type.parentElement).toBe(question.parentElement);
-      expect(question.parentElement).toHaveClass("gap-1");
-      if (rulingOptions.type === "uint") expect(container.textContent).toBe("Who wins?Non-negative number");
-      unmount();
-    }
-  });
-
-  it("shows each option's title before its code on screen while the item still reads Option N - Title: description", () => {
-    renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: { type: "single-select", titles: ["Yes", "No"], descriptions: ["Release the funds"] } })));
-    expect(optionLines()).toEqual(["Option 0 - Invalid / Refused to Arbitrate / Tied", "Option 1 - Yes: Release the funds", "Option 2 - No"]);
-    const item = within(screen.getByRole("list")).getAllByRole("listitem")[1];
-    if (item === undefined) throw new Error("The second option is missing");
-    const code = within(item).getByText("Option 1");
-    const title = within(item).getByText("Yes");
-    expect(code.tagName).toBe("SPAN");
-    expect(code).toHaveClass("order-last", "tabular-nums", "text-klerosUIComponentsSecondaryText");
-    expect(title.tagName).toBe("SPAN");
-    expect(title).toHaveClass("font-semibold", "text-base");
-    expect(code.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(code.querySelector(".sr-only")?.textContent).toBe(" - ");
   });
 
   it("renders no description line for an empty description and keeps the colon in the item's text", () => {
@@ -153,15 +133,6 @@ describe("QuestionPanel", () => {
     const placeholder = testMetaEvidence({ title: "Invalid or tampered meta-evidence", rulingOptions: { type: "single-select", titles: ["Yes", "No"] } });
     renderPanel(sectionReady({ status: "invalid", metaEvidence: placeholder, reason: "uri-not-content-addressed" }));
     expect(optionLines()).toHaveLength(3);
-  });
-
-  it("a failed meta-evidence load degrades the panel with its reason and a Retry", async () => {
-    const onRetry = vi.fn();
-    renderPanel(sectionReady({ status: "failed", reason: "fetch-error", error: { code: "rpc-error", message: "The gateway did not answer." } }), onRetry);
-    expect(screen.getByText("Question unavailable")).toBeInTheDocument();
-    expect(screen.getByText("The gateway did not answer.")).toBeInTheDocument();
-    await userEvent.setup().click(screen.getByRole("button", { name: "Retry Question" }));
-    expect(onRetry).toHaveBeenCalledOnce();
   });
 
   it("a dispute without meta-evidence says so instead of showing an empty panel", () => {

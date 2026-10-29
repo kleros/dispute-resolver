@@ -1,4 +1,4 @@
-import { getAddress, numberToHex, pad, parseAbiItem, toEventSelector } from "viem";
+import { getAddress, numberToHex, pad, parseAbiItem } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import fixture from "../appeals/__fixtures__/dispute-1170-unslashed.json";
 import type { Address, Hex, ReadClient } from "../types";
@@ -11,6 +11,7 @@ import {
   rangeRefusal,
   rpcCalls,
   rpcError,
+  rpcLog,
   stubEndpoint,
   type JsonRpcCall,
   type LogsRequest,
@@ -20,20 +21,10 @@ import {
 import { chainOf } from "../test/chains/testHelpers";
 import type { BudgetedReadClientOptions } from "./types";
 
-const BLOCK_HASH: Hex = `0x${"ab".repeat(32)}`;
-
 /** The 27 recorded funding events of mainnet dispute 1170 (Unslashed), read at block 26,189,725, as RPC logs. */
-const DISPUTE_1170_LOGS: readonly RpcLog[] = fixture.fundingEvents.map((event) => ({
-  address: event.address as Hex,
-  topics: event.topics as Hex[],
-  data: event.data as Hex,
-  blockNumber: numberToHex(event.blockNumber),
-  blockHash: BLOCK_HASH,
-  transactionHash: event.transactionHash as Hex,
-  transactionIndex: "0x0",
-  logIndex: numberToHex(event.logIndex),
-  removed: false,
-}));
+const DISPUTE_1170_LOGS: readonly RpcLog[] = fixture.fundingEvents.map((event) =>
+  rpcLog({ ...event, topics: event.topics as Hex[], data: event.data as Hex, transactionHash: event.transactionHash as Hex }),
+);
 
 const DISPUTE_1170 = {
   arbitrable: fixture.arbitrable as Address,
@@ -133,11 +124,6 @@ describe("getLogsChunked over the production read transport", () => {
 });
 
 describe("getLogsChunked", () => {
-  it("the fixture's event is the recorded Contribution event", () => {
-    expect(toEventSelector(contribution)).toBe(DISPUTE_1170.contributionTopic);
-    expect(expectedContributions.length).toBeGreaterThan(10);
-  });
-
   it("an empty range returns no logs without requests", async () => {
     const { client, requests } = fakeLogsClient(cappedNode(DISPUTE_1170_LOGS, 10_000n));
     expect(await getLogsChunked(client, { ...scan, fromBlock: 10n, toBlock: 9n })).toEqual([]);

@@ -5,19 +5,14 @@ import { CoreDepsProvider, createQueryClient, type CoreDeps, type SectionData } 
 import { createTestDeps } from "./createTestDeps";
 
 export interface TestDataProviderProps {
-  /** Defaults to `createTestDeps()`. */
   readonly deps?: CoreDeps;
-  /** A client the test keeps a handle on; defaults to a fresh one. */
   readonly client?: QueryClient;
   /** Query data written before the first render, keyed with `queryKeys`, so a screen renders without any read. */
   readonly seed?: readonly (readonly [QueryKey, unknown])[];
   readonly children?: ReactNode;
 }
 
-/**
- * A fresh QueryClient with the app's defaults (no retries, no focus refetch) and no persister. The one retry
- * `useFamily` asks for happens without delay.
- */
+/** The app's query defaults without a persister; the one retry `useFamily` asks for happens without delay. */
 export function createTestQueryClient(): QueryClient {
   const client = createQueryClient();
   client.setDefaultOptions({ queries: { ...client.getDefaultOptions().queries, retryDelay: 0 } });
@@ -40,7 +35,6 @@ export function TestDataProvider(props: TestDataProviderProps) {
   );
 }
 
-/** A `wrapper` for `render`/`renderHook`: `TestDataProvider` with these props around the children. */
 export function dataWrapper(props: Omit<TestDataProviderProps, "children"> = {}) {
   return function DataWrapper({ children }: { readonly children?: ReactNode }) {
     return <TestDataProvider {...props}>{children}</TestDataProvider>;

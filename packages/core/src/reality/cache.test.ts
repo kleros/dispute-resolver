@@ -122,21 +122,15 @@ describe("fetchRealityQuestion cache", () => {
     expect(store.has(KEY_7)).toBe(false);
   });
 
-  it("looks the question up when storage throws", async () => {
-    const world = createWorld();
-    const denied = (): never => {
-      throw new Error("denied");
-    };
-    const question = await lookup(world, { get: denied, set: denied, remove: denied });
-    expect(question.questionId).toBe(Q_KNOWN_SINGLE);
-  });
+  const denied = (): never => {
+    throw new Error("denied");
+  };
 
-  it("looks the question up when an invalid entry cannot be removed", async () => {
-    const world = createWorld();
-    const denied = (): never => {
-      throw new Error("denied");
-    };
-    const question = await lookup(world, { get: () => "{", set: denied, remove: denied });
+  it.each<[string, RealityQuestionCache]>([
+    ["storage throws", { get: denied, set: denied, remove: denied }],
+    ["an invalid entry cannot be removed", { get: () => "{", set: denied, remove: denied }],
+  ])("looks the question up when %s", async (_case, cache) => {
+    const question = await lookup(createWorld(), cache);
     expect(question.questionId).toBe(Q_KNOWN_SINGLE);
   });
 });

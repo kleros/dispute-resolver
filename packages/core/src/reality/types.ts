@@ -4,10 +4,8 @@ import type { RulingOptions } from "../rulings/types";
 
 export interface RealityQuestion {
   readonly questionId: Hex;
-  /** Decimal string. */
   readonly templateId: string;
   readonly templateText: string;
-  /** Parameters separated by U+241F. */
   readonly questionText: string;
   readonly reality: Address;
   readonly realityChainId: number;

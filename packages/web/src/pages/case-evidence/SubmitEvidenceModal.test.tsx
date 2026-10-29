@@ -26,21 +26,6 @@ function attachPdf() {
 }
 
 describe("SubmitEvidenceModal", () => {
-  it("locks the attachment field and Submit when told no wallet is connected", async () => {
-    const wallet = createTestWallet();
-    const { uploader, onSubmit, modal } = await renderModal({ status: "needs-wallet", guard: { phase: "needs-wallet", pageChainId: 1 } }, wallet, false);
-    attachPdf();
-    expect(uploader.upload).not.toHaveBeenCalled();
-    const submit = within(modal).getByRole("button", { name: "Submit" });
-    expect(submit).toBeDisabled();
-    await userEvent.click(submit);
-    expect(onSubmit).not.toHaveBeenCalled();
-    expect(within(modal).getByText("Connect a wallet to submit evidence.")).toBeInTheDocument();
-    expect(within(modal).getByLabelText("Evidence Title")).toBeEnabled();
-    await userEvent.click(within(modal).getByRole("button", { name: "Connect" }));
-    expect(wallet.modal?.openConnect).toHaveBeenCalledWith(1);
-  });
-
   it("without Atlas the modal locks the attachment field and Submit and shows no notice", async () => {
     const { uploader, onSubmit, modal } = await renderModal({ status: "ready" }, createTestWallet(), true, fakeUploader({ availability: "unconfigured", limits: () => null }));
     expect(within(modal).getByRole("button", { name: "Attachment (optional)" })).toBeDisabled();

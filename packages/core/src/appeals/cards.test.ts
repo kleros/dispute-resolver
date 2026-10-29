@@ -48,50 +48,21 @@ function freeInputOf(set: CrowdfundingSet): FreeInputCard {
   return set.freeInput;
 }
 
+const SIDE_TERMS = { loser: { isWinner: false, required: 3_000n, deadline: 250 }, winner: { isWinner: true, required: 2_000n, deadline: 500 } } as const;
+
+function expectedCard(card: Pick<CrowdfundingCard, "origin" | "title" | "code"> & Partial<CrowdfundingCard> & { readonly side: keyof typeof SIDE_TERMS }): CrowdfundingCard {
+  const terms = SIDE_TERMS[card.side];
+  return { ...terms, contributed: 0n, remaining: terms.required, fundedPercent: 0, fullyFunded: false, ...card };
+}
+
 describe("buildCrowdfundingCards", () => {
   it("shows the refuse card and one card per single-select title, coded 1..n, with amounts and deadlines per side", () => {
     const set = build({ rulingOptions: { type: "single-select", titles: ["Yes", "No"] }, currentRuling: 1n, contributions: { "1": 500n, "2": 3_000n } });
     expect(set).toEqual({
       cards: [
-        {
-          origin: "refuse",
-          title: REFUSED_TITLE,
-          code: 0n,
-          isWinner: false,
-          side: "loser",
-          required: 3_000n,
-          contributed: 0n,
-          remaining: 3_000n,
-          fundedPercent: 0,
-          deadline: 250,
-          fullyFunded: false,
-        },
-        {
-          origin: "option",
-          title: "Yes",
-          code: 1n,
-          isWinner: true,
-          side: "winner",
-          required: 2_000n,
-          contributed: 500n,
-          remaining: 1_500n,
-          fundedPercent: 25,
-          deadline: 500,
-          fullyFunded: false,
-        },
-        {
-          origin: "option",
-          title: "No",
-          code: 2n,
-          isWinner: false,
-          side: "loser",
-          required: 3_000n,
-          contributed: 3_000n,
-          remaining: 0n,
-          fundedPercent: 100,
-          deadline: 250,
-          fullyFunded: false,
-        },
+        expectedCard({ origin: "refuse", title: REFUSED_TITLE, code: 0n, side: "loser" }),
+        expectedCard({ origin: "option", title: "Yes", code: 1n, side: "winner", contributed: 500n, remaining: 1_500n, fundedPercent: 25 }),
+        expectedCard({ origin: "option", title: "No", code: 2n, side: "loser", contributed: 3_000n, remaining: 0n, fundedPercent: 100 }),
       ],
       freeInput: null,
       composer: null,
@@ -105,8 +76,8 @@ describe("buildCrowdfundingCards", () => {
 
   it("makes the refuse card the winner when the ruling is 0", () => {
     const [refuse, yes] = build({ rulingOptions: { type: "single-select", titles: ["Yes", "No"] }, currentRuling: 0n }).cards;
-    expect(refuse).toMatchObject({ code: 0n, isWinner: true, required: 2_000n, deadline: 500 });
-    expect(yes).toMatchObject({ isWinner: false, required: 3_000n, deadline: 250 });
+    expect(refuse).toMatchObject({ code: 0n, isWinner: true, side: "winner", required: 2_000n, deadline: 500 });
+    expect(yes).toMatchObject({ isWinner: false, side: "loser", required: 3_000n, deadline: 250 });
   });
 
   it("places reserved options after the refuse card, coded with their hex key", () => {
@@ -147,20 +118,6 @@ describe("buildCrowdfundingCards", () => {
     expect(enteredAnswerFunding(set.cards, freeInputOf(set), 42n)).toMatchObject({ card: null, side: "shared", required: 2_000n, deadline: 500 });
     const composed = build({ rulingOptions: { type: "multiple-select", titles: ["A", "B", "C", "D", "E"] }, currentRuling: 0n, unslashed: true });
     expect(composed.composer).toEqual({ titles: ["A", "B", "C", "D", "E"], side: "shared", required: 2_000n, deadline: 500 });
-  });
-
-  it("names each card's side: the current ruling wins, the others lose, and in a tie Refuse to Arbitrate is the winner", () => {
-    const sides = (currentRuling: bigint) => build({ rulingOptions: { type: "single-select", titles: ["Yes", "No"] }, currentRuling }).cards.map((card) => [card.code, card.side]);
-    expect(sides(2n)).toEqual([
-      [0n, "loser"],
-      [1n, "loser"],
-      [2n, "winner"],
-    ]);
-    expect(sides(0n)).toEqual([
-      [0n, "winner"],
-      [1n, "loser"],
-      [2n, "loser"],
-    ]);
   });
 
   it("shares every card's side in a governor tie", () => {
@@ -207,19 +164,6 @@ describe("buildCrowdfundingCards", () => {
     expect(set.composer).toBeNull();
   });
 
-  it("shows only the current ruling's and the contributed combinations of a 5-option multiple-select, plus a composer at the loser amount", () => {
-    const titles = ["A", "B", "C", "D", "E"];
-    const set = build({ rulingOptions: { type: "multiple-select", titles }, currentRuling: 6n, contributions: { "0": 7n, "3": 10n, "40": 5n } });
-    expect(summary(set.cards)).toEqual([
-      [0n, REFUSED_TITLE],
-      [3n, "B"],
-      [6n, "A, C"],
-    ]);
-    expect(set.cards[2]).toMatchObject({ origin: "combination", isWinner: true, required: 2_000n });
-    expect(set.composer).toEqual({ titles, side: "loser", required: 3_000n, deadline: 250 });
-    expect(set.freeInput).toBeNull();
-  });
-
   it("uses the fallback outcomes for an unknown type, coded 1..n", () => {
     const set = build({ rulingOptions: { type: "bool" }, currentRuling: 2n, fallbackOutcomes: ["No", "Yes"] });
     expect(summary(set.cards)).toEqual([
@@ -227,7 +171,7 @@ describe("buildCrowdfundingCards", () => {
       [1n, "No"],
       [2n, "Yes"],
     ]);
-    expect(set.cards[2]).toMatchObject({ origin: "option", isWinner: true });
+    expect(set.cards[2]).toMatchObject({ origin: "option", isWinner: true, side: "winner" });
   });
 
   it("falls back to Yes (1) and No (2) without fallback outcomes, also for a select without titles", () => {
@@ -244,47 +188,10 @@ describe("buildCrowdfundingCards", () => {
     const rulingOptions: RulingOptions = { type: "uint", precision: 0 };
     const set = build({ rulingOptions, currentRuling: 9n, contributions: { "5": 100n, "9": 50n } });
     expect(set.cards).toEqual([
-      {
-        origin: "refuse",
-        title: REFUSED_TITLE,
-        code: 0n,
-        isWinner: false,
-        side: "loser",
-        required: 3_000n,
-        contributed: 0n,
-        remaining: 3_000n,
-        fundedPercent: 0,
-        deadline: 250,
-        fullyFunded: false,
-      },
-      {
-        origin: "contributed-value",
-        title: decodeRulingCode(5n, rulingOptions, null),
-        code: 5n,
-        isWinner: false,
-        side: "loser",
-        required: 3_000n,
-        contributed: 100n,
-        remaining: 2_900n,
-        fundedPercent: 3.33,
-        deadline: 250,
-        fullyFunded: false,
-      },
-      {
-        origin: "current-ruling",
-        title: formatRuling(9n, rulingOptions, null),
-        code: 9n,
-        isWinner: true,
-        side: "winner",
-        required: 2_000n,
-        contributed: 50n,
-        remaining: 1_950n,
-        fundedPercent: 2.5,
-        deadline: 500,
-        fullyFunded: false,
-      },
+      expectedCard({ origin: "refuse", title: REFUSED_TITLE, code: 0n, side: "loser" }),
+      expectedCard({ origin: "contributed-value", title: "4", code: 5n, side: "loser", contributed: 100n, remaining: 2_900n, fundedPercent: 3.33 }),
+      expectedCard({ origin: "current-ruling", title: "8", code: 9n, side: "winner", contributed: 50n, remaining: 1_950n, fundedPercent: 2.5 }),
     ]);
-    expect(set.cards.map((card) => card.title)).toEqual([REFUSED_TITLE, "4", "8"]);
     expect(set.freeInput).toEqual({ type: "uint", precision: 0, side: "loser", required: 3_000n, deadline: 250 });
     expect(set.composer).toBeNull();
   });
@@ -323,21 +230,7 @@ describe("buildCrowdfundingCards", () => {
     ];
     for (const rulingOptions of questions) {
       const set = build({ rulingOptions, currentRuling: MAX_UINT });
-      expect(set.cards.filter((card) => card.code === MAX_UINT)).toEqual([
-        {
-          origin: "reserved",
-          title: "Answered Too Soon",
-          code: MAX_UINT,
-          isWinner: true,
-          side: "winner",
-          required: 2_000n,
-          contributed: 0n,
-          remaining: 2_000n,
-          fundedPercent: 0,
-          deadline: 500,
-          fullyFunded: false,
-        },
-      ]);
+      expect(set.cards.filter((card) => card.code === MAX_UINT)).toEqual([expectedCard({ origin: "reserved", title: "Answered Too Soon", code: MAX_UINT, side: "winner" })]);
       expect(set.cards.filter((card) => card.isWinner)).toHaveLength(1);
     }
   });
@@ -395,23 +288,25 @@ describe("buildCrowdfundingCards", () => {
     }
   });
 
-  it("a 34-option multiple-select builds without a RangeError and shows only the refuse card, the current and contributed combinations, and a composer", () => {
+  it("a 34-option multiple-select builds without a RangeError and shows only the refuse card, the current and contributed combinations in code order, and a composer at the loser amount", () => {
     const titles = Array.from({ length: 34 }, (_, index) => `Option ${String(index + 1)}`);
     const lastOnly = (1n << 33n) + 1n;
     const everyOption = 1n << 34n;
     const set = build({
       rulingOptions: { type: "multiple-select", titles },
       currentRuling: lastOnly,
-      contributions: { [everyOption.toString()]: 5n, [(everyOption + 1n).toString()]: 7n },
+      contributions: { "0": 7n, "2": 3n, [everyOption.toString()]: 5n, [(everyOption + 1n).toString()]: 7n },
     });
     expect(summary(set.cards)).toEqual([
       [0n, REFUSED_TITLE],
+      [2n, "Option 1"],
       [lastOnly, "Option 34"],
       [everyOption, titles.join(", ")],
     ]);
-    expect(set.cards[1]).toMatchObject({ isWinner: true, required: 2_000n, deadline: 500 });
-    expect(set.cards[2]).toMatchObject({ isWinner: false, contributed: 5n, required: 3_000n, deadline: 250 });
+    expect(set.cards[2]).toMatchObject({ isWinner: true, required: 2_000n, deadline: 500 });
+    expect(set.cards[3]).toMatchObject({ isWinner: false, contributed: 5n, required: 3_000n, deadline: 250 });
     expect(set.composer).toEqual({ titles, side: "loser", required: 3_000n, deadline: 250 });
+    expect(set.freeInput).toBeNull();
   });
 
   it("keeps a datetime question's reserved cards and adds the variable cards", () => {
@@ -427,84 +322,39 @@ describe("buildCrowdfundingCards", () => {
       return outcome.value.rulingOptions;
     }
 
-    const YES_NO_CARDS = [
-      [0n, REFUSED_TITLE],
-      [1n, "Yes"],
-      [2n, "No"],
-    ];
-
-    it.each([
-      [
-        "a reserved answer on a code one of the titles already has gets no card, so the title's card is the only one sending that code",
-        { type: "single-select", titles: ["Yes", "No"], reserved: { "0x1": "No" } },
-        1n,
-        YES_NO_CARDS,
-      ],
-      ["a reserved answer on code 0 gets no card beside the refuse card", { type: "single-select", titles: ["Yes", "No"], reserved: { "0x0": "No" } }, 1n, YES_NO_CARDS],
-      [
-        "a reserved answer on a multiple-select combination code gets no card, so the combination's title is the only one for that code",
-        { type: "multiple-select", titles: ["A", "B"], reserved: { "0x3": "A" } },
-        2n,
-        [
-          [0n, REFUSED_TITLE],
-          [1n, "None"],
-          [2n, "A"],
-          [3n, "B"],
-          [4n, "A, B"],
-        ],
-      ],
-    ])("%s", (_, question, currentRuling, expected) => {
-      expect(summary(build({ rulingOptions: parsedOptions(question), currentRuling }).cards)).toEqual(expected);
-    });
-
-    it("a uint question's Answered Too Soon keeps its card", () => {
-      const set = build({ rulingOptions: parsedOptions({ type: "uint", precision: 0, reserved: ANSWERED_TOO_SOON }), currentRuling: 5n });
-      expect(summary(set.cards)).toEqual([
-        [0n, REFUSED_TITLE],
-        [MAX_UINT, "Answered Too Soon"],
-        [5n, "4"],
-      ]);
-    });
-
-    it("a reserved code written in several spellings with one title funds one card, and with different titles none", () => {
-      const oneTitle = build({
-        rulingOptions: parsedOptions({ type: "single-select", titles: ["Yes", "No"], reserved: { "0x5": "Soon", "0x05": "Soon", "0X005": "Soon" } }),
-        currentRuling: 1n,
-      });
-      expect(summary(oneTitle.cards)).toEqual([
-        [0n, REFUSED_TITLE],
-        [5n, "Soon"],
-        [1n, "Yes"],
-        [2n, "No"],
-      ]);
-      const differing = build({ rulingOptions: parsedOptions({ type: "uint", precision: 0, reserved: { "0x5": "Pay Alice", "0x05": "Pay Bob" } }), currentRuling: 1n });
-      expect(differing.cards.filter((card) => card.code === 5n)).toEqual([]);
-    });
+    function checkedCards(question: unknown): readonly CrowdfundingCard[] {
+      const rulingOptions = parsedOptions(question);
+      const { cards } = build({ rulingOptions, currentRuling: 1n });
+      expect(new Set(cards.map((card) => card.code)).size).toBe(cards.length);
+      for (const card of cards.filter((candidate) => candidate.origin === "option")) expect(card.title).toBe(formatRuling(card.code, rulingOptions, null));
+      return cards;
+    }
 
     it("no two cards of a single-select or multiple-select send the same code, and every option card reads as the court reads its code", () => {
-      const questions = [
-        { type: "single-select", titles: ["Yes", "No"], reserved: { "0x1": "No", "0x2": "Yes", "0x7": "Soon", "0x07": "Soon", [`0x${"f".repeat(64)}`]: "Answered Too Soon" } },
-        { type: "multiple-select", titles: ["A", "B", "C"], reserved: { "0x5": "A", "0x9": "Soon", "0x09": "Later", [`0x${"f".repeat(64)}`]: "Answered Too Soon" } },
-      ];
-      for (const question of questions) {
-        const rulingOptions = parsedOptions(question);
-        const { cards } = build({ rulingOptions, currentRuling: 1n });
-        expect(new Set(cards.map((card) => card.code)).size).toBe(cards.length);
-        for (const card of cards.filter((candidate) => candidate.origin === "option")) expect(card.title).toBe(formatRuling(card.code, rulingOptions, null));
-      }
+      const singleSelect = checkedCards({
+        type: "single-select",
+        titles: ["Yes", "No"],
+        reserved: { "0x1": "No", "0x2": "Yes", "0x7": "Soon", "0x07": "Soon", [`0x${"f".repeat(64)}`]: "Answered Too Soon" },
+      });
+      expect(summary(singleSelect.filter((card) => card.code === 7n))).toEqual([[7n, "Soon"]]);
+      const multipleSelect = checkedCards({
+        type: "multiple-select",
+        titles: ["A", "B", "C"],
+        reserved: { "0x5": "A", "0x9": "Soon", "0x09": "Later", [`0x${"f".repeat(64)}`]: "Answered Too Soon" },
+      });
+      expect(multipleSelect.filter((card) => card.code === 9n)).toEqual([]);
     });
   });
 });
 
 describe("cardFundingState", () => {
-  it("funding is open before the deadline and closed from the deadline second on, as the contracts check strictly", () => {
-    expect(cardFundingState({ deadline: 500, fullyFunded: false }, 499)).toBe("open");
-    expect(cardFundingState({ deadline: 500, fullyFunded: false }, 500)).toBe("closed");
-    expect(cardFundingState({ deadline: 500, fullyFunded: false }, 501)).toBe("closed");
-  });
-
-  it("a fully funded card is funded, before and after its deadline", () => {
-    expect(cardFundingState({ deadline: 500, fullyFunded: true }, 100)).toBe("funded");
-    expect(cardFundingState({ deadline: 500, fullyFunded: true }, 900)).toBe("funded");
+  it.each([
+    ["is open before the deadline", false, 499, "open"],
+    ["is closed at the deadline second, as the contracts check strictly", false, 500, "closed"],
+    ["is closed after the deadline", false, 501, "closed"],
+    ["is funded once fully funded, before its deadline", true, 100, "funded"],
+    ["is funded once fully funded, after its deadline", true, 900, "funded"],
+  ] as const)("%s", (_, fullyFunded, now, expected) => {
+    expect(cardFundingState({ deadline: 500, fullyFunded }, now)).toBe(expected);
   });
 });

@@ -4,7 +4,6 @@ import { useCaseRefresh, type CaseDispute, type CaseWriteContext, type RefreshSc
 
 export interface AppealActions {
   readonly pageChainId: number;
-  /** `null` while it loads or when it failed. */
   readonly context: CaseWriteContext | null;
   refresh(scope: RefreshScope): Promise<void>;
 }

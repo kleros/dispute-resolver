@@ -25,7 +25,6 @@ function text(source: string, from: number, to: number): TreeNode {
   return { type: "text", value: source.slice(from, to), position: span(from, to) };
 }
 
-/** A one-paragraph document as CommonMark reads it: each `` `a` `` a code span, the source between them text. */
 function documentOf(source: string): TreeNode {
   const children: TreeNode[] = [];
   let from = 0;

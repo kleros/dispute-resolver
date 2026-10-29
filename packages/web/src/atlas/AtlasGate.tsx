@@ -6,10 +6,6 @@ import { failure } from "./failures";
 import type { AtlasGateProps, AtlasUploader } from "./types";
 import { useLibraryUploader } from "./useLibraryUploader";
 
-/**
- * Without `REACT_APP_ATLAS_URI` nothing is requested. Every caller locks its upload control on `availability`, so the
- * uploads below are never reached from the UI; if one is, it fails like any other upload.
- */
 const UNCONFIGURED_UPLOADER: AtlasUploader = Object.freeze({
   availability: "unconfigured",
   phase: "idle",
@@ -26,8 +22,8 @@ function LibraryUploaderProvider({ children }: { readonly children?: ReactNode }
 
 /**
  * With `REACT_APP_ATLAS_URI` set it mounts the library's `AtlasProvider` for `CourtV1`, whose only request at load is the
- * unauthenticated `roles(CourtV1)` query; without it nothing is requested and the uploader reports itself unconfigured,
- * so every upload control stays disabled.
+ * unauthenticated `roles(CourtV1)` query. Without it nothing is requested; every caller locks its upload control on
+ * `availability`, so the unconfigured uploader's upload is never reached from the UI; if it is, it fails like any other.
  */
 export function AtlasGate({ config, children }: AtlasGateProps) {
   const wagmiConfig = useConfig();

@@ -22,12 +22,6 @@ function rulingOptionsOf(value: unknown): NonNullable<MetaEvidence["rulingOption
 }
 
 describe("rulingOptions", () => {
-  it("defaults missing or invalid ruling options", () => {
-    expect(rulingOptionsOf(undefined)).toEqual({ type: "single-select", titles: [] });
-    expect(rulingOptionsOf("x")).toEqual({ type: "single-select", titles: [] });
-    expect(rulingOptionsOf({ titles: ["a"] })).toEqual({ type: "single-select", titles: ["a"] });
-  });
-
   it("coerces titles, reserved answers and precision", () => {
     expect(rulingOptionsOf({ type: "single-select", titles: "a,b" }).titles).toEqual([]);
     expect(rulingOptionsOf({ type: "single-select", titles: [1, { a: 1 }] }).titles).toEqual(["1", "[object Object]"]);
@@ -42,7 +36,8 @@ describe("rulingOptions", () => {
     for (const value of [null, [], ["a"], 5, true]) expect(rulingOptionsOf(value)).toEqual({ type: "single-select", titles: [] });
   });
 
-  it("a non-string type becomes single-select and an unknown type string is kept verbatim", () => {
+  it("a missing or non-string type becomes single-select and an unknown type string is kept verbatim", () => {
+    expect(rulingOptionsOf({ titles: ["a"] })).toEqual({ type: "single-select", titles: ["a"] });
     expect(rulingOptionsOf({ type: 3, titles: ["a"] }).type).toBe("single-select");
     expect(rulingOptionsOf({ type: "ranked-choice" }).type).toBe("ranked-choice");
   });
@@ -258,8 +253,9 @@ describe("parseMetaEvidence", () => {
     expect(parsed({ title: "T" }).aliases).toEqual({});
   });
 
+  const field = (value: unknown) => parsed({ title: "T", arbitrableChainID: value }).arbitrableChainID;
+
   it("chain IDs become a validated field; falsy values are absent", () => {
-    const field = (value: unknown) => parsed({ title: "T", arbitrableChainID: value }).arbitrableChainID;
     expect(field(undefined)).toEqual({ status: "absent" });
     for (const falsy of [0, "", null, false]) expect(field(falsy)).toEqual({ status: "absent" });
     expect(field(100)).toEqual({ status: "valid", chainId: 100 });
@@ -269,7 +265,6 @@ describe("parseMetaEvidence", () => {
   });
 
   it("a positive integer chain ID the chain table lacks keeps its number as unsupported", () => {
-    const field = (value: unknown) => parsed({ title: "T", arbitrableChainID: value }).arbitrableChainID;
     for (const chainId of [10, 690, 5, 80001]) {
       expect(getChain(chainId)).toBeUndefined();
       expect(field(chainId)).toEqual({ status: "unsupported", chainId });
@@ -279,7 +274,6 @@ describe("parseMetaEvidence", () => {
   });
 
   it("a chain ID that is not a safe positive integer stays invalid", () => {
-    const field = (value: unknown) => parsed({ title: "T", arbitrableChainID: value }).arbitrableChainID;
     for (const bad of [-1, "-1", -10, 10.5, "10.5", "1e1", "0x0a", 2 ** 53, "9007199254740993", Number.MAX_VALUE, Infinity, "abc"]) {
       expect(field(bad), String(bad)).toEqual({ status: "invalid" });
     }

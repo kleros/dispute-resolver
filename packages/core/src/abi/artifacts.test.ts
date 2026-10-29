@@ -101,7 +101,6 @@ const CASES: readonly AbiCase[] = [
       fn("withdrawFeesAndRewards(address,uint256,uint256,uint256)", ARTIFACTS.klerosGovernor, ...GOVERNOR_ABIS),
       fn("getContributions(uint256,uint256,address)", ARTIFACTS.klerosGovernor, ...GOVERNOR_ABIS),
       fn("getRoundInfo(uint256,uint256)", ARTIFACTS.klerosGovernor, ...GOVERNOR_ABIS),
-      fn("getCurrentSessionNumber()", ARTIFACTS.klerosGovernor, ...GOVERNOR_ABIS),
       fn("winnerMultiplier()", ARTIFACTS.klerosGovernor, ...GOVERNOR_ABIS),
       fn("loserMultiplier()", ARTIFACTS.klerosGovernor, ...GOVERNOR_ABIS),
       fn("MULTIPLIER_DIVISOR()", ARTIFACTS.klerosGovernor, ...GOVERNOR_ABIS),

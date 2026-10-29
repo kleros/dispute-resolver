@@ -13,7 +13,6 @@ const IDENTICON_FILLS = [
 type IdenticonFill = (typeof IDENTICON_FILLS)[number];
 
 interface IdenticonPattern {
-  /** Five rows of five cells, each row mirrored around its middle cell. */
   readonly cells: readonly (readonly boolean[])[];
   readonly fill: IdenticonFill;
 }
@@ -29,11 +28,7 @@ function seedBytes(address: string): Uint8Array {
   return new TextEncoder().encode(value);
 }
 
-/**
- * The 5×5 symmetric grid of an address (replaces Blockies): one byte per cell of the left three columns, mirrored to
- * the right, and the fill chosen by the remaining bytes. Any string is accepted; the same address in any case gives the
- * same pattern.
- */
+/** Any string is accepted; the same address in any case gives the same pattern. */
 export function identiconPattern(address: string): IdenticonPattern {
   const bytes = seedBytes(address);
   const byteAt = (position: number): number => (bytes.length === 0 ? 0 : (bytes[position % bytes.length] ?? 0));

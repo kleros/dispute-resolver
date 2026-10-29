@@ -13,17 +13,15 @@ import {
 import { createPublicClient, custom } from "viem";
 import type { CoreDeps } from "../../data";
 
-/** One JSON-RPC request a test client received, with the chain it was sent to. */
 export interface RpcRequest {
   readonly chainId: number;
   readonly method: string;
   readonly params: unknown;
 }
 
-/** Answers a JSON-RPC request from fixtures; a thrown error or a rejection is the transport failing. */
+/** A thrown error or a rejection is the transport failing. */
 export type RpcHandler = (request: RpcRequest) => unknown;
 
-/** A stubbed HTTP answer: a JSON body, a text body, or a status without a body. */
 export type FetchStub = { readonly json: unknown } | { readonly text: string } | { readonly status: number };
 
 export interface TestDepsOptions extends Partial<CoreDeps> {
@@ -59,12 +57,6 @@ function createMemoryRealityCache(): RealityQuestionCache {
 
 const failedRun: ScriptResult = { status: "failed", reason: "runner-error", message: "This test runs no dynamic script." };
 
-/**
- * A `CoreDeps` for tests: read clients over a viem custom transport answering from `rpc`, a stub fetcher answering
- * from `responses`, a fake script runner, in-memory caches, receipts that never arrive unless `waitForReceipt` is
- * given, and a pre-flight check that passes every write unless `simulate` is given. Any `CoreDeps` field can be
- * replaced directly.
- */
 export function createTestDeps(options: TestDepsOptions = {}): CoreDeps {
   const { rpc, unconfiguredChains = [], responses = {}, runScript, ...overrides } = options;
   const clients = new Map<number, ReadClient>();

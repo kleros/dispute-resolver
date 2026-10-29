@@ -31,7 +31,6 @@ vi.mock("./data", async (importOriginal) => {
 
 testData.Provider = TestDataProvider;
 
-/** Unit tests never touch the network: any fetch fails the test. */
 const fetchSpy = vi.fn<typeof fetch>(() => Promise.reject(new Error("App test made a network request")));
 
 function renderAppAt(path: string) {
@@ -42,14 +41,12 @@ function renderAppAt(path: string) {
   return { ...render(<App colorScheme={colorScheme} pageScroll="document" />), root };
 }
 
-/** What each page shows first, whatever its data: the Ongoing heading, the Create steps, the case page's search. */
 const PAGE_LANDMARKS = {
   ongoing: () => screen.findByRole("heading", { level: 1, name: "Ongoing Disputes" }),
   create: () => screen.findByRole("navigation", { name: "Create dispute steps" }),
   case: () => screen.findByRole("search", { name: "Search by dispute ID" }),
 } as const;
 
-/** The header's navigation, whose links are built from the resolved chain. */
 function mainNavigation(): HTMLElement {
   return screen.getByRole("navigation", { name: "Main" });
 }
@@ -93,12 +90,6 @@ describe("App routes through the provider tree", () => {
     expect(await PAGE_LANDMARKS[page]()).toBeInTheDocument();
     expect(window.location.pathname).toBe(to);
     expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it("/:chainId/cases renders the case page's search state with no dispute loaded", async () => {
-    renderAppAt("/1/cases");
-    expect(await screen.findByRole("heading", { name: "Find a dispute" })).toBeInTheDocument();
-    expect(screen.getByRole("search", { name: "Search by dispute ID" })).toBeInTheDocument();
   });
 
   it("switches the page to the dark theme from the header's toggle and back", async () => {

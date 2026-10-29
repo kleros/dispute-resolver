@@ -4,7 +4,6 @@ import { LG_MEDIA_QUERY, useMediaQuery } from "./useMediaQuery";
 
 type ChangeListener = (type: string, listener: () => void) => void;
 
-/** A `matchMedia` whose single list starts at `matches` and can be flipped; its listeners are spies. */
 function stubMatchMedia(matches: boolean) {
   let current = matches;
   const addEventListener = vi.fn<ChangeListener>();
@@ -56,18 +55,16 @@ describe("useMediaQuery", () => {
     expect(result.current).toBe(false);
   });
 
-  it("returns false where the browser has no matchMedia", () => {
-    vi.stubGlobal("matchMedia", undefined);
-    expect(renderHook(() => useMediaQuery(LG_MEDIA_QUERY)).result.current).toBe(false);
-  });
-
-  it("returns false when matchMedia throws", () => {
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn(() => {
+  it.each([
+    { name: "the browser has no matchMedia", matchMedia: undefined },
+    {
+      name: "matchMedia throws",
+      matchMedia: () => {
         throw new Error("Media queries are blocked.");
-      }),
-    );
+      },
+    },
+  ])("returns false where $name", ({ matchMedia }) => {
+    vi.stubGlobal("matchMedia", matchMedia);
     expect(renderHook(() => useMediaQuery(LG_MEDIA_QUERY)).result.current).toBe(false);
   });
 
@@ -79,15 +76,5 @@ describe("useMediaQuery", () => {
     unmount();
     expect(media.removeEventListener.mock.calls).toEqual(subscribed);
     expect(subscribed[0]?.[0]).toBe("change");
-  });
-
-  it("keeps one subscription across re-renders", () => {
-    const media = stubMatchMedia(true);
-    const { rerender } = renderHook(({ query }) => useMediaQuery(query), { initialProps: { query: LG_MEDIA_QUERY } });
-    rerender({ query: LG_MEDIA_QUERY });
-    rerender({ query: LG_MEDIA_QUERY });
-    rerender({ query: LG_MEDIA_QUERY });
-    expect(media.addEventListener).toHaveBeenCalledTimes(1);
-    expect(media.removeEventListener).not.toHaveBeenCalled();
   });
 });

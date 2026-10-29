@@ -7,7 +7,6 @@ export const RUNNER_PATH = "/__runner/index.html";
 export const RUN_MESSAGE_TYPE = "dr-runner/run";
 export const RESULT_MESSAGE_TYPE = "dr-runner/result";
 export const ERROR_MESSAGE_TYPE = "dr-runner/error";
-/** Posted on the run's port as soon as the page accepts a request, before anything else. */
 export const ACCEPTED_MESSAGE_TYPE = "dr-runner/accepted";
 /** A host that does not expect the acknowledgement cannot read this version's first message. */
 export const PROTOCOL_VERSION = 2;

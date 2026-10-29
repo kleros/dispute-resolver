@@ -19,7 +19,6 @@ interface ColorSchemeStoreOptions {
   readonly storage: ColorSchemeStorage | null;
 }
 
-/** The page's colour scheme, readable from React through `useSyncExternalStore`. */
 export interface ColorSchemeStore {
   readonly getSnapshot: () => ColorScheme;
   readonly subscribe: (listener: () => void) => () => void;

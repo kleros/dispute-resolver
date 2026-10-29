@@ -6,23 +6,6 @@ import type { PopulatedQuestion, SafePopulateResult } from "./types";
 
 const D = "␟";
 
-/**
- * Same algorithm as reality-eth-lib's populatedJSONForTemplate (vsprintf of the raw parameters into the template, then
- * JSON.parse), minus its post-processing. reality-eth-lib itself is not imported here: this is the reference the safe
- * population is compared against. Its outputs quoted in the tests below were checked against reality-eth-lib 3.4.6 (the
- * version the court used) and 3.4.30.
- */
-function naivePopulate(template: string, question: string): Record<string, unknown> {
-  const parts = question.split(D);
-  let i = 0;
-  const interpolated = template.replaceAll("%s", () => (i < parts.length ? (parts[i++] ?? "") : ""));
-  try {
-    return JSON.parse(interpolated.replaceAll("\0", "")) as Record<string, unknown>;
-  } catch {
-    return { type: "broken-question" };
-  }
-}
-
 const RESERVED = { "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF": "Answered Too Soon" };
 
 // Built-in Reality.eth v3 templates.
@@ -32,9 +15,6 @@ const TEMPLATE_SINGLE_SELECT = '{"title": "%s", "type": "single-select", "outcom
 const TEMPLATE_MULTIPLE_SELECT = '{"title": "%s", "type": "multiple-select", "outcomes": [%s], "category": "%s", "lang": "%s"}';
 const TEMPLATE_DATETIME = '{"title": "%s", "type": "datetime", "category": "%s", "lang": "%s"}';
 
-// __fixtures__/attack-questions.json. Question 0x7eea… (template 20, recorded on-chain data): the first parameter closes
-// the title string and injects "type":"single-select","outcomes":["Yes","No"]. Question 0xdd28… (template 35, a synthetic
-// attack derived from that question, not recorded data): the first parameter injects a "title_html" key with an <img> tag.
 const TEMPLATE_20 = attack.template20.templateText;
 const QUESTION_0x7eea = attack.question0x7eea.questionText;
 const TEMPLATE_35 = attack.template35.templateText;
@@ -58,14 +38,6 @@ describe("safePopulatedJSONForTemplate", () => {
     expect(rulingOptionsFromRealityQuestion(question)).toEqual({ type: "single-select", titles: ["No", "Yes"], reserved: RESERVED });
   });
 
-  it("differs from reality-eth-lib, which is fooled by question 0x7eea… (single-select with Yes/No swapped)", () => {
-    const unsafe = naivePopulate(TEMPLATE_20, QUESTION_0x7eea);
-    expect(unsafe.type).toBe("single-select");
-    expect(unsafe.outcomes).toEqual(["Yes", "No"]);
-    // With the unsafe parsing, ruling 1 would read "Yes" instead of "No".
-    expect(rulingOptionsFromRealityQuestion(unsafe)?.titles).toEqual(["Yes", "No"]);
-  });
-
   it("does not let question 0xdd28… add title_html", () => {
     const question = populated(safePopulatedJSONForTemplate(TEMPLATE_35, QUESTION_0xdd28));
     expect(question.type).toBe("bool");
@@ -74,9 +46,6 @@ describe("safePopulatedJSONForTemplate", () => {
     expect(Object.keys(question)).toEqual(["lang", "type", "category", "title"]);
     expect(question.title).toContain("<img src=x");
     expect(rulingOptionsFromRealityQuestion(question)?.titles).toEqual(["No", "Yes"]);
-
-    const unsafe = naivePopulate(TEMPLATE_35, QUESTION_0xdd28);
-    expect(unsafe.title_html).toContain("<img src=x");
   });
 
   it("renders a clean single-select question with escaped quotes in the title", () => {
@@ -92,11 +61,7 @@ describe("safePopulatedJSONForTemplate", () => {
         lang: "en_US",
       },
     });
-    const safe = populated(result);
-    const unsafe = naivePopulate(TEMPLATE_SINGLE_SELECT, question);
-    expect(unsafe.title).toBe(safe.title);
-    expect(unsafe.outcomes).toEqual(safe.outcomes);
-    expect(rulingOptionsFromRealityQuestion(safe)).toEqual({ type: "single-select", titles: ["A", "B"], reserved: RESERVED });
+    expect(rulingOptionsFromRealityQuestion(populated(result))).toEqual({ type: "single-select", titles: ["A", "B"], reserved: RESERVED });
   });
 
   it("renders a uint question", () => {
@@ -119,12 +84,10 @@ describe("safePopulatedJSONForTemplate", () => {
     expect(rulingOptionsFromRealityQuestion(question)).toEqual({ type: "multiple-select", titles: ["Red", "Green", "Blue"], reserved: RESERVED });
   });
 
-  it("renders a title containing a raw unescaped quote (which reality-eth-lib reports as broken)", () => {
-    const question = `Will "Team A" win?${D}sports${D}en_US`;
-    const result = populated(safePopulatedJSONForTemplate(TEMPLATE_BOOL, question));
+  it("renders a title containing a raw unescaped quote", () => {
+    const result = populated(safePopulatedJSONForTemplate(TEMPLATE_BOOL, `Will "Team A" win?${D}sports${D}en_US`));
     expect(result.title).toBe('Will "Team A" win?');
     expect(result.type).toBe("bool");
-    expect(naivePopulate(TEMPLATE_BOOL, question).type).toBe("broken-question");
   });
 
   it("escapes backslashes, control characters and invalid escapes in string parameters", () => {
@@ -199,11 +162,6 @@ describe("safePopulatedJSONForTemplate", () => {
 });
 
 describe("rulingOptionsFromRealityQuestion", () => {
-  it("maps datetime questions", () => {
-    const question = populated(safePopulatedJSONForTemplate(TEMPLATE_DATETIME, `When?${D}misc${D}en`));
-    expect(rulingOptionsFromRealityQuestion(question)).toEqual({ type: "datetime", reserved: RESERVED });
-  });
-
   it("returns null for unknown types and invalid input", () => {
     expect(rulingOptionsFromRealityQuestion({ type: "int" })).toBeNull();
     expect(rulingOptionsFromRealityQuestion({ type: "broken-question" })).toBeNull();

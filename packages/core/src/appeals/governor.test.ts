@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { z } from "../zod";
-import { ARTIFACTS, findBySignature, normalizeAbi } from "../abi/__fixtures__/artifacts";
+import { ARTIFACTS, abiOf, findBySignature, normalizeAbi, recordedAbi } from "../abi/__fixtures__/artifacts";
 import verifiedSessions from "./__fixtures__/governor-sessions-abi.json";
 import { governorSessionAbi } from "./governor";
 
 const SIGNATURE = "sessions(uint256)";
 
 const VERIFIED_GOVERNORS = z
-  .object({ governors: z.array(z.object({ label: z.string(), chainId: z.number(), address: z.string(), abi: z.array(z.unknown()) })) })
+  .object({ governors: z.array(z.object({ label: z.string(), chainId: z.number(), address: z.string(), abi: recordedAbi })) })
   .parse(verifiedSessions).governors;
 
 describe("governor session getter", () => {
@@ -20,6 +20,8 @@ describe("governor session getter", () => {
       "100:0xf7de5537ecd69a94695fcf4bcdbdee6329b63322",
       "1:0xe5bcea6f87aaee4a81f64dfdb4d30d400e0e5cf4",
     ]);
-    for (const governor of VERIFIED_GOVERNORS) expect(embedded).toEqual(findBySignature(normalizeAbi(governor.abi), SIGNATURE, "function"));
+    for (const governor of VERIFIED_GOVERNORS) {
+      expect(embedded).toEqual(findBySignature(normalizeAbi(abiOf(governor.abi, VERIFIED_GOVERNORS)), SIGNATURE, "function"));
+    }
   });
 });

@@ -1,16 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { decodeFunctionData, encodeFunctionResult, parseAbi, toFunctionSelector, type Hex } from "viem";
-import { MAINNET_ARBITRATOR, OUT_OF_RANGE_ON_MAINNET, caseDetailsAnswers, disputeStruct, isDisputesCall } from "../support/arbitrator";
+import { encodeFunctionResult, parseAbi, toFunctionSelector, type Hex } from "viem";
+import { GENERAL_COURT, MAINNET_ARBITRATOR, caseDetailsAnswers, disputeStruct, isDisputesCall, type Court } from "../support/arbitrator";
 import { appOriginOf, callData, callTarget, fakeNetwork, type HttpAnswer, type RpcAnswer, type RpcCall } from "../support/network";
 import { PAGE_SCROLLER } from "../support/pageScroll";
+import { switchScheme } from "../support/theme";
 
-// The case page's period timeline measured in the browser: a row of bullets with every name and state centred under its
-// bullet from lg (900 px) for four periods and from 1080 px for five, a list of rows below. The spec builds every chain
-// answer itself: the dispute's period and lastPeriodChange, its court's periods and whether it hides votes, and empty
-// answers for the rest, so the meta-evidence and the family settle at once as absent; everything else is aborted. The
-// build needs the chain-1 read RPC configured, as a deploy has; requests are recognized by their shape, never by host.
-// "Unknown" after "Ends in" never comes from the chain (a uint256 period always gives a finite deadline), so only the
-// unit tests cover it.
+// "Unknown" after "Ends in" never comes from the chain (a uint256 period gives a finite deadline), so only the unit tests
+// cover it.
 
 const DISPUTE_ID = 4242n;
 const CASE_PATH = `/1/cases/${DISPUTE_ID.toString()}`;
@@ -20,14 +16,8 @@ const DAY = 86_400n;
 const HOUR = 3_600n;
 const MINUTE = 60n;
 
-const COURT_ABI = parseAbi([
-  "function getSubcourt(uint96 _subcourtID) view returns (uint256[] children, uint256[4] timesPerPeriod)",
-  "function courts(uint256) view returns (uint96 parent, bool hiddenVotes, uint256 minStake, uint256 alpha, uint256 feeForJuror, uint256 jurorsForCourtJump)",
-]);
-const COURT_SELECTORS = new Set<string>(COURT_ABI.map((item) => toFunctionSelector(item)));
 const POLICY_ABI = parseAbi(["function policies(uint256) view returns (string)"]);
 const POLICIES_SELECTOR = toFunctionSelector(POLICY_ABI[0]);
-/** `CHAINS[1].policyRegistry`. */
 const MAINNET_POLICY_REGISTRY = "0xcf1f07713d5193fae5c1653c9f61953d048bece4";
 
 const LG = 900;
@@ -46,21 +36,12 @@ const CONNECTOR_GAP = 8;
 /** The narrowest phone the app lays out for. */
 const NARROWEST = 320;
 
-interface Court {
-  readonly hiddenVotes: boolean;
-  /** Seconds of evidence, commit, vote and appeal. */
-  readonly timesPerPeriod: readonly [bigint, bigint, bigint, bigint];
-}
-
 interface Scenario {
   readonly period: number;
   readonly court: Court;
   /** How long ago the current period began. */
   readonly elapsed: bigint;
 }
-
-/** A court with a General Court's periods. */
-const PLAIN_COURT: Court = { hiddenVotes: false, timesPerPeriod: [280_800n, 437_400n, 437_400n, 291_600n] };
 
 /** Three-digit day counts in every state, the widest the countdown and the durations get. */
 const LONG_COURT: Court = { hiddenVotes: false, timesPerPeriod: [150n * DAY, 0n, 123n * DAY + 4n * HOUR + 5n * MINUTE, 456n * DAY + 7n * HOUR + 8n * MINUTE] };
@@ -73,33 +54,17 @@ const LONG_HIDDEN_COURT: Court = {
 const EMPTY_CHAIN: Readonly<Record<string, RpcAnswer>> = { eth_blockNumber: { result: "0x1312d00" }, eth_getLogs: { result: [] }, eth_getCode: { result: "0x" } };
 const NO_META_EVIDENCE: HttpAnswer = { json: {} };
 
-/**
- * A single court 0 with `court`'s periods and no policy, so it shows by its ID; the court list ends where reading past the
- * last court fails, as on mainnet.
- */
-function courtAnswers(court: Court): (call: RpcCall) => RpcAnswer | undefined {
-  return (call) => {
-    const data = callData(call);
-    if (callTarget(call) === MAINNET_POLICY_REGISTRY && data?.startsWith(POLICIES_SELECTOR) === true) {
-      return { result: encodeFunctionResult({ abi: POLICY_ABI, functionName: "policies", result: "" }) };
-    }
-    if (callTarget(call) !== MAINNET_ARBITRATOR || data === undefined || !COURT_SELECTORS.has(data.slice(0, 10))) return undefined;
-    const decoded = decodeFunctionData({ abi: COURT_ABI, data: data as Hex });
-    if (decoded.args[0] !== 0n) return OUT_OF_RANGE_ON_MAINNET;
-    if (decoded.functionName === "getSubcourt") {
-      return { result: encodeFunctionResult({ abi: COURT_ABI, functionName: "getSubcourt", result: [[], [...court.timesPerPeriod]] }) };
-    }
-    return { result: encodeFunctionResult({ abi: COURT_ABI, functionName: "courts", result: [0n, court.hiddenVotes, 1_000n, 5_000n, 10n ** 18n, 511n] }) };
-  };
+function noPolicy(call: RpcCall): RpcAnswer | undefined {
+  if (callTarget(call) !== MAINNET_POLICY_REGISTRY || callData(call)?.startsWith(POLICIES_SELECTOR) !== true) return undefined;
+  return { result: encodeFunctionResult({ abi: POLICY_ABI, functionName: "policies", result: "" }) };
 }
 
 async function openCase(page: Page, baseURL: string | undefined, scenario: Scenario): Promise<void> {
   const lastPeriodChange = BigInt(Math.floor(Date.now() / 1_000)) - scenario.elapsed;
-  const court = courtAnswers(scenario.court);
-  const details = caseDetailsAnswers(MAINNET_ARBITRATOR, DISPUTE_ID);
+  const details = caseDetailsAnswers(MAINNET_ARBITRATOR, DISPUTE_ID, { court: scenario.court });
   const rpc = (call: RpcCall): RpcAnswer | undefined => {
     if (isDisputesCall(call, MAINNET_ARBITRATOR, DISPUTE_ID)) return disputeStruct({ arbitrated: ARBITRABLE, period: scenario.period, lastPeriodChange });
-    return court(call) ?? details(call) ?? EMPTY_CHAIN[call.method];
+    return noPolicy(call) ?? details(call) ?? EMPTY_CHAIN[call.method];
   };
   await fakeNetwork(page.context(), { appOrigin: appOriginOf(baseURL), rpc, http: (request) => (request.kind === "locator" ? NO_META_EVIDENCE : undefined) });
   // Colours are compared once settled: the steps ease between colours over the tab timing otherwise.
@@ -115,14 +80,6 @@ function timeline(page: Page) {
 
 function timelineList(page: Page) {
   return timeline(page).getByRole("list");
-}
-
-type ColorScheme = "light" | "dark";
-
-async function switchScheme(page: Page, colorScheme: ColorScheme): Promise<void> {
-  await page.emulateMedia({ colorScheme });
-  if (colorScheme === "dark") await expect(page.locator("html")).toHaveClass(/\bdark\b/);
-  else await expect(page.locator("html")).not.toHaveClass(/\bdark\b/);
 }
 
 /** The page lays out again a frame after a resize, so the list is measured once its box holds still for three frames. */
@@ -158,7 +115,6 @@ interface Rect {
 
 type StepState = "concluded" | "current" | "upcoming";
 
-/** One border of a connector, as computed. */
 interface Edge {
   readonly width: string;
   readonly color: string;
@@ -195,12 +151,10 @@ interface RawStep {
 }
 
 interface Connector {
-  /** Where it begins and ends along the steps. */
   readonly start: number;
   readonly end: number;
   /** Where the row's `::after` box ends with its right margin: the next step's left edge when the connector fills its step. */
   readonly reach: number;
-  /** Its middle across the steps. */
   readonly middle: number;
   readonly thickness: number;
   readonly color: string;
@@ -364,7 +318,6 @@ function stateText(step: Step): Rect | null {
   return union(step.states.map((state) => state.rect));
 }
 
-/** The text a step shows: its name and its state line together. */
 function textExtent(step: Step): Rect {
   return union([step.nameText, ...step.states.map((state) => state.rect)]) ?? step.nameText;
 }
@@ -378,10 +331,6 @@ function expectOneStateLine(step: Step, where: string): void {
   expect.soft(Math.abs(countdown.rect.bottom - endsIn.rect.bottom), `${where}: the countdown shares the line of Ends in`).toBeLessThanOrEqual(1.5);
 }
 
-/**
- * The connector from `step` to `next`, 8 px clear of both bullets and through their middle: 2 px PrimaryBlue after a
- * concluded step, 1 px in the band's edge after the others. The last step has none.
- */
 function expectConnector(geometry: Geometry, step: Step, next: Step | undefined, at: string): void {
   const { connector } = step;
   if (next === undefined) {
@@ -402,7 +351,6 @@ function expectConnector(geometry: Geometry, step: Step, next: Step | undefined,
   expect.soft(connector.color, `${at}: the connector's colour`).toBe(style.color);
 }
 
-/** The halo on the current bullet only, the upcoming rings in the band's edge, and no sideways scroll. */
 function expectBullets(geometry: Geometry, where: string): void {
   for (const step of geometry.steps) {
     const at = `${where}, ${step.name}`;
@@ -416,7 +364,6 @@ function expectBullets(geometry: Geometry, where: string): void {
   expect.soft(geometry.scrollWidth, `${where}: the page does not scroll sideways`).toBeLessThanOrEqual(geometry.clientWidth);
 }
 
-/** A row step: its name and state centred under its bullet, at most two lines, held by the list. */
 function expectRowLabel(geometry: Geometry, step: Step, at: string): void {
   const bulletMiddle = middle(step.bullet);
   const state = stateText(step);
@@ -450,7 +397,6 @@ function expectRow(geometry: Geometry, where: string): void {
   expectBullets(geometry, where);
 }
 
-/** A list step: one row, no plate, the name after the bullet and the state right-aligned on the name's baseline. */
 function expectListRow(geometry: Geometry, step: Step, at: string): void {
   expect.soft(step.background, `${at}: no plate behind the row`).toBe("rgba(0, 0, 0, 0) rgba(0, 0, 0, 0)");
   expect.soft(step.nameText.left, `${at}: the name follows the bullet`).toBeGreaterThan(step.bullet.right);
@@ -475,7 +421,6 @@ function expectList(geometry: Geometry, where: string): void {
   expectBullets(geometry, where);
 }
 
-/** Whichever line the state takes on the narrowest phone, it stays whole, right-aligned inside the list and clear of the name. */
 function expectNarrowestList(geometry: Geometry, where: string): void {
   const { steps } = geometry;
   steps.forEach((step, index) => {
@@ -493,7 +438,6 @@ function expectNarrowestList(geometry: Geometry, where: string): void {
   expectBullets(geometry, where);
 }
 
-/** Every width and theme of one dispute: the row at and above `rowFrom`, the list below it. */
 async function expectEveryWidth(page: Page, widths: readonly number[], rowFrom: number): Promise<void> {
   for (const colorScheme of ["light", "dark"] as const) {
     await switchScheme(page, colorScheme);
@@ -514,7 +458,7 @@ async function expectEveryWidth(page: Page, widths: readonly number[], rowFrom: 
 
 test.describe("the dispute timeline's geometry", () => {
   test("four periods in voting: a centred row from 900 px, a list of rows below", async ({ page, baseURL }) => {
-    await openCase(page, baseURL, { period: 2, court: PLAIN_COURT, elapsed: HOUR });
+    await openCase(page, baseURL, { period: 2, court: GENERAL_COURT, elapsed: HOUR });
     await expect(timelineList(page).getByRole("listitem")).toHaveText(["EvidenceConcluded", /^2VotingEnds in 05d 00h [23]\dm$/, "3Appeal03d 09h 00m", "4Execution"]);
     await expectEveryWidth(page, FOUR_WIDTHS, LG);
   });
@@ -540,7 +484,7 @@ test.describe("the dispute timeline's geometry", () => {
   });
 
   test("execution: the current numbered step with no state line, every connector before it done", async ({ page, baseURL }) => {
-    await openCase(page, baseURL, { period: 4, court: PLAIN_COURT, elapsed: HOUR });
+    await openCase(page, baseURL, { period: 4, court: GENERAL_COURT, elapsed: HOUR });
     const execution = timelineList(page).getByRole("listitem", { name: "Execution" });
     await expect(execution).toHaveAttribute("aria-current", "step");
     await expect(execution).toHaveText("4Execution");
@@ -564,7 +508,7 @@ test.describe("the dispute timeline's geometry", () => {
   }
 
   test("the halo eases in with the steps' colours, and holds still under reduced motion", async ({ page, baseURL }) => {
-    await openCase(page, baseURL, { period: 2, court: PLAIN_COURT, elapsed: HOUR });
+    await openCase(page, baseURL, { period: 2, court: GENERAL_COURT, elapsed: HOUR });
     const bullet = timelineList(page).locator("li[aria-current] [aria-hidden] > :first-child");
     const transition = () => bullet.evaluate((element) => ({ property: getComputedStyle(element).transitionProperty, duration: getComputedStyle(element).transitionDuration }));
     for (const width of [375, 1280]) {

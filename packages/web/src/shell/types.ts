@@ -3,13 +3,10 @@ import type { AppConfig } from "../env";
 import type { ColorSchemeStore } from "../theme";
 import type { PageScroll } from "./pageScroll";
 
-export type ToastVariant = "success" | "error" | "sync";
-
 export interface ToastInput {
-  readonly variant: ToastVariant;
+  readonly variant: "success" | "error" | "sync";
   readonly title: string;
   readonly message?: string;
-  /** Default 5000 ms. */
   readonly autoHideMs?: number;
 }
 

@@ -10,7 +10,6 @@ export const LIBRARY_TOKEN_KEY = "authToken";
 /** The claims the wrapper relies on. A token without a numeric `exp` fails here and counts as signed out. */
 const claimsSchema = z.object({ exp: z.number(), sub: z.string() });
 
-/** The tab's sessionStorage, or `null` where the browser refuses access to it. */
 export function browserSessionStorage(): Pick<Storage, "getItem" | "removeItem"> | null {
   try {
     return window.sessionStorage;
@@ -19,7 +18,6 @@ export function browserSessionStorage(): Pick<Storage, "getItem" | "removeItem">
   }
 }
 
-/** The token the library stored, or `null` when there is none or it is not a JSON-encoded string. */
 export function readStoredToken(storage: Pick<Storage, "getItem"> | null): string | null {
   if (storage === null) return null;
   let raw: string | null;
@@ -66,7 +64,6 @@ function decodeBase64Url(segment: string): string | null {
   }
 }
 
-/** The token's `exp` claim in Unix seconds; `null` when the token is not a decodable JWT with a numeric `exp` and a `sub`. */
 export function tokenExpiry(token: string): number | null {
   const segments = token.split(".");
   if (segments.length !== 3) return null;
@@ -82,7 +79,6 @@ export function tokenExpiry(token: string): number | null {
   return parsed.success ? parsed.data.exp : null;
 }
 
-/** A token counts only when it carries an `exp` in the future; one without `exp`, undecodable, or expired does not. */
 export function isLiveToken(token: string | null, nowSeconds: number): boolean {
   if (token === null) return false;
   const expiry = tokenExpiry(token);

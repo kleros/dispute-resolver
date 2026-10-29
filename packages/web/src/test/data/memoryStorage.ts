@@ -1,4 +1,3 @@
-/** A Map-backed `Storage` subset for the persister and the Reality cache, with a switch that makes every call throw. */
 export interface MemoryStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;

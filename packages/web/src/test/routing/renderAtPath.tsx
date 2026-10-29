@@ -1,14 +1,13 @@
-import { chainCapabilities, getChain } from "@dispute-resolver/core";
+import { chainCapabilities } from "@dispute-resolver/core";
 import { render, type RenderResult } from "@testing-library/react";
 import { useEffect, type ComponentType, type ReactElement, type ReactNode } from "react";
 import { MemoryRouter, Route, Routes, useLocation, type Location } from "react-router";
 import { ChainLayout, type FrameProps, type PageChain } from "../../routing";
+import { testChain } from "../data";
 import { createTestWallet, walletWrapper, type TestWallet } from "../wallet";
 
-/** The page chain of a configured chain, as `usePageChain()` returns it under `/:chainId`. */
 export function testPageChain(chainId: number): PageChain {
-  const chain = getChain(chainId);
-  if (chain === undefined) throw new Error(`testPageChain: chain ${String(chainId)} is not configured.`);
+  const chain = testChain(chainId);
   return { chainId: chain.id, chain, capabilities: chainCapabilities(chain) };
 }
 
@@ -28,7 +27,6 @@ export function TestFrame({ resolvedChain, children }: FrameProps) {
   );
 }
 
-/** Reports the router's location after every navigation. */
 function LocationProbe({ onLocation }: { readonly onLocation: (location: Location) => void }) {
   const location = useLocation();
   useEffect(() => {
@@ -38,18 +36,14 @@ function LocationProbe({ onLocation }: { readonly onLocation: (location: Locatio
 }
 
 export interface RenderInRouterOptions {
-  /** The wallet behind the default wrapper; defaults to a disconnected `createTestWallet()`. */
   readonly wallet?: TestWallet;
-  /** Providers around the router; replaces the default `walletWrapper(wallet)` (shell's `renderWithProviders` passes its own). */
   readonly wrapper?: ComponentType<{ readonly children?: ReactNode }>;
 }
 
 export interface RoutedRenderResult extends RenderResult {
-  /** The router's current location: `pathname + search + hash`. */
   readonly currentPath: () => string;
 }
 
-/** Renders `routes` in a `MemoryRouter` that starts at `path`, keeping the router's location readable. */
 export function renderInRouter(routes: ReactElement, path: string, options: RenderInRouterOptions = {}): RoutedRenderResult {
   const seen: { location: Location | null } = { location: null };
   const record = (location: Location) => {
@@ -70,14 +64,10 @@ export function renderInRouter(routes: ReactElement, path: string, options: Rend
 }
 
 export interface RenderAtPathOptions extends RenderInRouterOptions {
-  /** The layout's frame; default `TestFrame`. */
   readonly frame?: ComponentType<FrameProps>;
 }
 
-/**
- * Renders `ui` at `path` under the app's `/:chainId` layout: `usePageChain()`, `useResolvedChain()` and chain
- * following behave as in the app, and an unconfigured chain shows the unsupported-network screen.
- */
+/** Renders `ui` at `path` under the app's `/:chainId` layout; an unconfigured chain shows the unsupported-network screen. */
 export function renderAtPath(ui: ReactElement, path: string, options: RenderAtPathOptions = {}): RoutedRenderResult {
   return renderInRouter(
     <Routes>

@@ -6,7 +6,7 @@ const globals = globalThis as Record<string, unknown>;
 
 describe("evaluateInGlobalScope", () => {
   afterEach(() => {
-    for (const name of ["__probeFunction", "__probeVar", "__probeCalls", "getMetaEvidence"]) Reflect.deleteProperty(globals, name);
+    for (const name of ["__probeFunction", "__probeVar"]) Reflect.deleteProperty(globals, name);
   });
 
   it("a top-level function or var declaration becomes a global, as in a classic script", () => {
@@ -27,19 +27,17 @@ describe("runScriptInGlobalScope", () => {
     for (const name of ["__probeCalls", "getMetaEvidence"]) Reflect.deleteProperty(globals, name);
   });
 
-  it("calls a getMetaEvidence declared with const, as the default script declares it", () => {
-    runScriptInGlobalScope('globalThis.__probeCalls = [];\nconst getMetaEvidence = () => {\n  globalThis.__probeCalls.push("const");\n};\n');
-    expect(globals.__probeCalls).toEqual(["const"]);
-  });
-
-  it("calls a getMetaEvidence declared with var, as the bundled scripts declare it", () => {
-    runScriptInGlobalScope('globalThis.__probeCalls = []; var getMetaEvidence = function () { globalThis.__probeCalls.push("var"); }');
-    expect(globals.__probeCalls).toEqual(["var"]);
-  });
-
-  it("calls the entry point of a strict-mode script ending in a line comment", () => {
-    runScriptInGlobalScope('"use strict"; globalThis.__probeCalls = []; function getMetaEvidence() { globalThis.__probeCalls.push("strict"); } //# sourceMappingURL=x.map');
-    expect(globals.__probeCalls).toEqual(["strict"]);
+  it.each<[string, string, string[]]>([
+    ["const, as the default script declares it", 'globalThis.__probeCalls = [];\nconst getMetaEvidence = () => {\n  globalThis.__probeCalls.push("const");\n};\n', ["const"]],
+    ["var, as the bundled scripts declare it", 'globalThis.__probeCalls = []; var getMetaEvidence = function () { globalThis.__probeCalls.push("var"); }', ["var"]],
+    [
+      "a strict-mode function ending in a line comment",
+      '"use strict"; globalThis.__probeCalls = []; function getMetaEvidence() { globalThis.__probeCalls.push("strict"); } //# sourceMappingURL=x.map',
+      ["strict"],
+    ],
+  ])("calls a getMetaEvidence declared with %s", (_declaration, script, expected) => {
+    runScriptInGlobalScope(script);
+    expect(globals.__probeCalls).toEqual(expected);
   });
 
   it("a script without getMetaEvidence throws synchronously", () => {

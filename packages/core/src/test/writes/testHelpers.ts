@@ -8,7 +8,6 @@ import type { WriteBuild } from "../../writes/types";
 
 export { detectionFor, FAMILY_SIGNATURES, testBinding } from "../appeals/testHelpers";
 
-/** One recorded contract with its dispatcher's selectors and the detection `families` gives its code. */
 export interface RecordedDetection {
   readonly label: string;
   readonly blockNumber: number;
@@ -47,23 +46,19 @@ export function localIdFor(detection: FamilyDetection, value: bigint): LocalIdRe
   }
 }
 
-/** The call of a build that must succeed; fails the test with the refusal otherwise. */
 export function expectCall(build: WriteBuild): WriteCall {
   if (!build.ok) throw new Error(`expected a call, got refusal ${build.refusal}`);
   return build.call;
 }
 
-/** The calldata the wallet would sign for `call`. */
 export function calldata(call: WriteCall): Hex {
   return encodeFunctionData({ abi: call.abi, functionName: call.functionName, args: call.args });
 }
 
-/** The 4-byte selector of the calldata of `call`. */
 export function selectorOf(call: WriteCall): Hex {
   return calldata(call).slice(0, 10) as Hex;
 }
 
-/** The arguments the calldata of `call` decodes to, through the call's own ABI. */
 export function decodedArgs(call: WriteCall): readonly unknown[] {
   return decodeFunctionData({ abi: call.abi, data: calldata(call) }).args ?? [];
 }

@@ -11,7 +11,6 @@ export const CORS_HEADERS = { "access-control-allow-origin": "*", "access-contro
 
 const RpcErrorSchema = z.object({ code: z.number(), message: z.string() });
 
-/** One recorded JSON-RPC call: its method and params, and the result or the node error it was answered with. */
 const RecordedCallSchema = z.object({ method: z.string(), params: z.array(z.unknown()), result: z.unknown().optional(), error: RpcErrorSchema.optional() });
 
 const RecordingSchema = z.object({
@@ -24,7 +23,6 @@ const RecordingSchema = z.object({
   files: z.array(z.object({ path: z.string(), status: z.number(), body: z.unknown() })).default([]),
 });
 
-/** What the case page or a script of one dispute read, recorded once from the real services (the `fixtures` folders of e2e). */
 type Recording = z.infer<typeof RecordingSchema>;
 
 export function loadRecording(url: URL): Recording {
@@ -53,26 +51,19 @@ export interface JsonAnswer {
   readonly json: unknown;
 }
 
-/** A gateway or locator answer: a JSON body, or a status with no body. */
 export type HttpAnswer = JsonAnswer | { readonly status: number };
 
 const GraphqlRequestSchema = z.object({ query: z.string(), variables: z.record(z.string(), z.unknown()).optional() });
 
-/**
- * A request to Atlas, recognized by its shape: a GraphQL POST (a JSON body with a `query`), or the multipart upload POST
- * to `…/ipfs/file`. `authorization` is the `Authorization` header the page sent, if any.
- */
+/** Recognized by its shape: a GraphQL POST (a JSON body with a `query`), or the multipart upload POST to `…/ipfs/file`. */
 export type AtlasRequest =
   | { readonly kind: "graphql"; readonly query: string; readonly variables: Readonly<Record<string, unknown>>; readonly authorization: string | null }
   | { readonly kind: "upload"; readonly authorization: string | null };
 
-/** An Atlas answer: a JSON body, or a text body (the upload's CID). */
 export type AtlasAnswer = JsonAnswer | { readonly text: string };
 
 interface FakeNetworkOptions {
-  /** The app's origin: its own files are served by the app's server. */
   readonly appOrigin: string;
-  /** The case pages whose recorded reads are answered. */
   readonly recordings?: readonly Recording[];
   /** The spec's own JSON-RPC answers, asked before the recordings; `undefined` leaves a call to them. */
   readonly rpc?: (call: RpcCall) => RpcAnswer | undefined;
@@ -125,7 +116,6 @@ function indexRecordings(recordings: readonly Recording[]) {
   return { calls, files, locators };
 }
 
-/** The request's body as JSON, or `undefined` when it does not parse. */
 function postJson(request: Request): unknown {
   try {
     return JSON.parse(request.postData() ?? "");
@@ -167,7 +157,6 @@ function latestBlockAnswer(call: RpcCall): RpcResult | undefined {
   return { result: { number: "0x1", timestamp: `0x${Math.floor(Date.now() / 1_000).toString(16)}`, hash: `0x${"cd".repeat(32)}`, transactions: [] } };
 }
 
-/** The app's origin, from the `baseURL` Playwright passes. */
 export function appOriginOf(baseURL: string | undefined): string {
   return new URL(baseURL ?? "http://localhost").origin;
 }
@@ -233,7 +222,6 @@ export async function fakeNetwork(context: BrowserContext, options: FakeNetworkO
   return traffic;
 }
 
-/** The `data` of an `eth_call`, lowercase, or `undefined` for another method. */
 export function callData(call: RpcCall): string | undefined {
   if (call.method !== "eth_call") return undefined;
   const transaction = call.params[0] as { data?: unknown; input?: unknown } | undefined;
@@ -241,7 +229,6 @@ export function callData(call: RpcCall): string | undefined {
   return typeof data === "string" ? data.toLowerCase() : undefined;
 }
 
-/** The `to` of an `eth_call`, lowercase, or `undefined` for another method. */
 export function callTarget(call: RpcCall): string | undefined {
   if (call.method !== "eth_call") return undefined;
   const to = (call.params[0] as { to?: unknown } | undefined)?.to;

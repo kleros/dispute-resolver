@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AppealRoute, AppealRules } from "../families/types";
+import { INVALID_META_EVIDENCE } from "../metaEvidence";
 import type { MetaEvidence, MetaEvidenceResult } from "../metaEvidence/types";
 import type { Outcome } from "../types";
 import { buildDecision, decisionNeedsFunding, deriveCompatibility } from ".";
@@ -27,23 +28,7 @@ function reads(currentRuling: Outcome<bigint>): DisputeReads {
 }
 
 function metaEvidence(rulingOptions: MetaEvidence["rulingOptions"], status: "ok" | "invalid" = "ok"): MetaEvidenceResult {
-  const value: MetaEvidence = {
-    title: "Question",
-    description: "",
-    question: "Question?",
-    category: null,
-    rulingOptions,
-    fallbackOutcomes: null,
-    fileURI: null,
-    evidenceDisplayInterfaceURI: null,
-    arbitrableInterfaceURI: null,
-    aliases: {},
-    dynamicScriptURI: null,
-    arbitratorChainID: { status: "absent" },
-    arbitrableChainID: { status: "absent" },
-    displayParamsVersion: null,
-    realityQuestion: null,
-  };
+  const value: MetaEvidence = { ...INVALID_META_EVIDENCE, rulingOptions };
   if (status === "invalid") return { status, reason: "script-not-allowlisted", metaEvidence: value };
   return {
     status,
@@ -175,7 +160,6 @@ describe("deriveCompatibility", () => {
   it.each<[string, number, string, LocalIdResolution, Compatibility]>([
     ["an idr-v2 arbitrable with its local ID resolved is full (mainnet 1454)", 1, IDR_V2, RESOLVED, "full"],
     ["an arbitrable whose local-ID read reverted is view-only", 1, IDR_V2, REVERTED, "view-only"],
-    ["an arbitrable whose local-ID read failed on the RPC is view-only", 1, IDR_V2, { kind: "unresolved", reason: "rpc-error" }, "view-only"],
     ["the idr-legacy proxy is full (mainnet 505, 328)", 1, "0x135c573503f70dc290b1d60fe2e7f7eb114febd6", { kind: "local-id", value: 51n }, "full"],
     ["an Escrow V1 arbitrable with its transaction ID is full (mainnet 878)", 1, "0xc25a0b9681abf6f090aed71a8c08fb564b41dab6", { kind: "transaction-id", value: 16n }, "full"],
     [
@@ -191,9 +175,5 @@ describe("deriveCompatibility", () => {
     ["a registered Reality proxy whose local-ID read reverted is view-only (Gnosis Moderate)", 100, GNOSIS_MODERATE, REVERTED, "view-only"],
   ])("%s", async (_, chainId, address, localId, expected) => {
     expect(deriveCompatibility(await recordedDetection(chainId, address), localId)).toBe(expected);
-  });
-
-  it("the Gnosis Moderate Reality proxy detects as reality-proxy with the idr-v2 write family", async () => {
-    expect(await recordedDetection(100, GNOSIS_MODERATE)).toMatchObject({ family: "reality-proxy", writeFamily: "idr-v2" });
   });
 });

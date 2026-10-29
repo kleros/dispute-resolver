@@ -21,7 +21,6 @@ interface JsonRpcCall {
 
 type RpcAnswer = (method: string, params: readonly unknown[]) => unknown;
 
-/** A global fetch answering JSON-RPC through `answer` (`null` when it has none), recording which URL each method went to. */
 function stubRpc(answers: Readonly<Record<string, unknown>> | RpcAnswer): JsonRpcCall[] {
   const answer: RpcAnswer = typeof answers === "function" ? answers : (method) => answers[method];
   const calls: JsonRpcCall[] = [];
@@ -41,7 +40,6 @@ function stubRpc(answers: Readonly<Record<string, unknown>> | RpcAnswer): JsonRp
 const REPLACEMENT_HASH = "0x9d0a3c1b5e2f4a6d8c7b0e1f2a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d";
 const CALLDATA = "0xd98493f60000000000000000000000000000000000000000000000000000000000000005";
 
-/** An RPC transaction object with only the fields viem's replacement check compares. */
 function rpcTransaction(fields: { hash: string; to: string; value: string; input: string; blockNumber: string | null }) {
   return { ...fields, from: SENDER, nonce: "0x7" };
 }

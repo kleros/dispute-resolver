@@ -5,11 +5,7 @@ import type { RefreshScope } from "./types";
 
 type RefreshedKind = Parameters<typeof disputeKeyPrefix>[0];
 
-/**
- * `appeal` refreshes `details` too, for the values core reads together with the dispute (`currentRuling`, `appealCost`,
- * `appealPeriod`, `RulingFunded`), the executed ruling and the arbitrable's own funding record the decision shows, and the chain time its deadlines count down
- * from; the current round's funding is rescanned over the same range as the first load.
- */
+/** `appeal` refreshes what the panel and the decision derive from, and the chain time their deadlines count down from. */
 const REFRESHED: Readonly<Record<RefreshScope, readonly RefreshedKind[]>> = {
   evidence: ["lookup", "evidence"],
   appeal: ["lookup", "details", "evidence", "funding", "executedRuling", "productFunding"],

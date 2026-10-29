@@ -3,7 +3,6 @@ import { BaseError } from "viem";
 import { limitsChoice } from "./limits";
 import type { RoleLimits, UploadError, UploadFailure } from "./types";
 
-/** A short reason for an error from the library or the wallet; a viem error is worded by core. */
 export function reasonOf(error: unknown): string | null {
   if (error instanceof BaseError) return describeError(error);
   if (error instanceof Error && /\S/.test(error.message)) return error.message;

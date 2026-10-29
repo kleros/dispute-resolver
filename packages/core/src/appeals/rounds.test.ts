@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { REGISTRY, getOverride } from "../registry";
 import type { BehaviorOverride } from "../registry/types";
-import { DISPUTE_1170, UNSLASHED } from "./__fixtures__/recorded";
+import { DISPUTE_1170 } from "./__fixtures__/recorded";
 import { fundingRound, roundStartBlock, roundsToScan } from "./index";
 
 const UNSLASHED_OVERRIDE: BehaviorOverride | undefined = getOverride(REGISTRY, 1, DISPUTE_1170.arbitrable);
@@ -18,9 +18,6 @@ describe("fundingRound", () => {
     expect(fundingRound(0, UNSLASHED_OVERRIDE)).toBe(1n);
     expect(fundingRound(5, undefined)).toBe(5n);
     expect(fundingRound(0, undefined)).toBe(0n);
-  });
-
-  it("leaves the round unshifted for an override without an offset", () => {
     expect(fundingRound(3, { justification: "test override without offset" })).toBe(3n);
   });
 
@@ -50,12 +47,6 @@ describe("roundsToScan", () => {
   it("scans standard rounds 0 to appealCount in execution", () => {
     expect(roundsToScan(4, 2, undefined)).toEqual([0n, 1n, 2n]);
     expect(roundsToScan(4, 0, undefined)).toEqual([0n]);
-  });
-
-  it("scans round 1 for mainnet dispute 1678 (no appeal), where its contribution sits, not round 0", () => {
-    const { appealDecisions } = UNSLASHED.dispute1678;
-    expect(appealDecisions).toHaveLength(0);
-    expect(roundsToScan(4, appealDecisions.length, UNSLASHED_OVERRIDE)).toEqual([1n]);
   });
 
   it("scans nothing before the appeal period", () => {

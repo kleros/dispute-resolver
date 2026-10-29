@@ -40,16 +40,13 @@ function openFrame(container: HTMLElement, document: Document, runnerUrl: string
     port = channel.port1;
     port.onmessage = (event: MessageEvent<unknown>) => {
       const message = parsePortMessage(event.data);
-      // The acknowledgement only ends the window; a result or error settles the run whether or not one preceded it.
       if (message.kind === "acknowledged") clearTimeout(acknowledgementTimer);
       else settle(message.result);
     };
     port.onmessageerror = () => {
       settle(MALFORMED_REPLY);
     };
-    // The target origin is "*" on purpose: it is the only one an opaque-origin document accepts. The reply can only
-    // come back through the transferred port.
-    // eslint-disable-next-line sonarjs/post-message -- an opaque-origin frame accepts no other target origin.
+    // eslint-disable-next-line sonarjs/post-message -- an opaque-origin frame accepts no other target origin, and the reply can only come back through the transferred port.
     target.postMessage(message, "*", [channel.port2]);
   };
 
@@ -72,11 +69,7 @@ function openFrame(container: HTMLElement, document: Document, runnerUrl: string
   };
 }
 
-/**
- * Core's `ScriptRunner` over sandboxed runner frames. Each run validates its parameters, waits for one of
- * `maxConcurrent` slots, runs in its own frame and port and settles exactly once, on its reply, its timeout (counted
- * from the call, so time spent queued counts) or its abort, removing its frame. The promise never rejects.
- */
+/** A run's timeout counts from the call, so time spent queued counts against it. The promise never rejects. */
 export function createIframeScriptRunner(options: IframeRunnerOptions): ScriptRunner {
   const queue = createSlotQueue(options.maxConcurrent);
   const container = createFrameContainer(options.document);

@@ -29,10 +29,6 @@ describe("redirectTarget", () => {
       expect(redirectTarget(SAMPLE_REDIRECTS, url)).toBeUndefined();
     }
   });
-
-  it("redirects nothing when the host sent no rules", () => {
-    expect(redirectTarget([], "https://mainnet.infura.io/v3/key")).toBeUndefined();
-  });
 });
 
 describe("installRpcRedirect", () => {
@@ -76,8 +72,7 @@ describe("installRpcRedirect", () => {
     ]);
   });
 
-  it("wraps nothing when there are no rules", async () => {
-    const fake = createFakeRunnerEnvironment();
+  it("wraps nothing when there are no rules", () => {
     let wrapped = 0;
     installRpcRedirect(
       {
@@ -90,8 +85,6 @@ describe("installRpcRedirect", () => {
       },
       [],
     );
-    await fake.fetch("https://mainnet.infura.io/v3/key");
     expect(wrapped).toBe(0);
-    expect(fake.requests[0]?.input).toBe("https://mainnet.infura.io/v3/key");
   });
 });

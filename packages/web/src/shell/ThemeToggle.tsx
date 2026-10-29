@@ -40,11 +40,7 @@ function MoonIcon({ className }: IconProps) {
   );
 }
 
-/**
- * Flips the page between the light and dark themes; the icon and the name show what a click will switch to. Both icons
- * stay mounted in one grid cell and cross-fade; `data-icon-swap` exempts them from the pause index.css puts on every other
- * transition during the flip.
- */
+/** `data-icon-swap` exempts the icons from the pause index.css puts on every other transition during the flip. */
 export function ThemeToggle() {
   const { scheme, toggle } = useColorScheme();
   const isDark = scheme === "dark";

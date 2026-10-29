@@ -13,7 +13,6 @@ import type { AtlasUploader, JsonUpload, UploadFailure, UploadPhase, UploadResul
 /** How long the wrapper waits, once `authoriseUser()` resolves, for a committed render that carries the new session. */
 const SIGN_IN_SETTLE_MS = 10_000;
 
-/** How long an upload waits for the library's `roles(CourtV1)` query to be fetched again when the limits are unknown. */
 const LIMITS_REFETCH_MS = 10_000;
 
 /**
@@ -71,7 +70,6 @@ interface WalletSnapshot {
   readonly chainId: number | null;
 }
 
-/** Why the wallet no longer matches the one the upload started with, or `null` when it still does. */
 function walletChange(started: WalletSnapshot, now: WalletSnapshot): UploadFailure | null {
   if (!now.connected) return failure.noWallet();
   if (now.chainId !== started.chainId) return failure.uploadFailed("the wallet changed chain");

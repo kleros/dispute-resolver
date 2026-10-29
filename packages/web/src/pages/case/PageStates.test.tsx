@@ -11,12 +11,11 @@ const LOOKING_UP = testCaseDispute({ disputeId: 1621n });
 
 const NO_RETRIES = { key: (scope: string) => scope, retry: () => undefined };
 
-/** An empty `display: contents` element makes no box, so it takes no place in the layout. */
 function makesNoBox(node: Node): boolean {
   return node instanceof Element && node.classList.contains("contents") && node.childNodes.length === 0;
 }
 
-/** The elements' tags, classes and roles and the text, without IDs or ARIA references, so two renders can be compared. */
+/** Without IDs or ARIA references, so two renders can be compared. */
 function shape(node: Node): unknown {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent;
   if (!(node instanceof Element)) return null;

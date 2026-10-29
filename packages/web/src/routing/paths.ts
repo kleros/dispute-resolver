@@ -36,7 +36,6 @@ export const paths = Object.freeze({
   case: (chainId: number, disputeId: bigint) => `/${chainSegment(chainId)}/cases/${disputeSegment(disputeId)}`,
 });
 
-/** `chainId` is the wallet's chain, so it may be unconfigured: the result then shows the unsupported-network screen. */
 export function replaceChainSegment(pathname: string, chainId: number): string {
   const segment = walletChainSegment(chainId);
   const parts = pathname.split("/");

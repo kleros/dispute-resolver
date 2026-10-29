@@ -9,7 +9,6 @@ export interface Justified {
 export interface RealityProxyEntry extends Justified {
   readonly proxy: Address;
   readonly kind: "single-chain" | "cross-chain";
-  /** Reality.eth contract holding the question. */
   readonly reality: Address;
   /** Home chain of the question; must have an RPC configured. */
   readonly realityChainId: number;

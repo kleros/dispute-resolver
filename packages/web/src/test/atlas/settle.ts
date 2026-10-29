@@ -1,7 +1,6 @@
 import { act, waitFor } from "@testing-library/react";
 import { expect } from "vitest";
 
-/** Starts an upload inside `act` and returns it without waiting. */
 export function startInAct<T>(start: () => Promise<T>): Promise<T> {
   const started: { promise?: Promise<T> } = {};
   act(() => {

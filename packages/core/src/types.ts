@@ -9,7 +9,6 @@ import type { Abi, ContractFunctionArgs, ContractFunctionName, PublicClient } fr
 /** An EVM address, always lowercase inside core. */
 export type Address = `0x${Lowercase<string>}`;
 
-/** Hex data: bytecode, calldata, selectors, storage words, transaction hashes. */
 export type Hex = `0x${string}`;
 
 /** `"<arbitrator chain ID>:<lowercase arbitrable>"`, the key of every registry table. */
@@ -33,10 +32,8 @@ export type ReadClient = Pick<
   "readContract" | "getLogs" | "getCode" | "getStorageAt" | "getBlockNumber" | "getBlock" | "getBalance" | "simulateContract" | "request"
 >;
 
-/** Returns the read client of a chain, or `undefined` when the chain has no RPC configured. */
 export type GetReadClient = (chainId: number) => ReadClient | undefined;
 
-/** Options core passes to an injected fetch. */
 export interface FetchInit {
   readonly signal?: AbortSignal;
   readonly headers?: Readonly<Record<string, string>>;
@@ -69,7 +66,6 @@ export interface ScriptParameters {
 /** `reality` runs the script with the duplicate-key JSON guard installed; `standard` runs it without. */
 export type ScriptKind = "reality" | "standard";
 
-/** One dynamic-script run, handed to the sandboxed script runner. */
 export interface ScriptRunRequest {
   readonly scriptText: string;
   readonly params: ScriptParameters;
@@ -113,7 +109,6 @@ export interface Unavailable {
 /** A value or the reason it is unavailable. Every independently degradable read returns one. */
 export type Outcome<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: Unavailable };
 
-/** What a write call does, so the UI can label pending, success and failure states. */
 export type WriteKind = "create-dispute" | "submit-evidence" | "fund-appeal" | "escrow-appeal" | "withdraw";
 
 type WriteFunctionName<TAbi extends Abi> = ContractFunctionName<TAbi, "payable" | "nonpayable">;
@@ -132,7 +127,6 @@ export interface WriteCall<TAbi extends Abi = Abi, TFunctionName extends WriteFu
   readonly value: bigint;
 }
 
-// Module-owned types, re-exported so `index.ts` can expose every public type from one place.
 export type * from "./chains/types";
 export type * from "./abi/types";
 export type * from "./uri/types";

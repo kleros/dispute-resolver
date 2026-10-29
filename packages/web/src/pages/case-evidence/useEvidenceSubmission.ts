@@ -15,7 +15,6 @@ export interface EvidenceDraft {
 
 type ActiveWriteStatus = Exclude<WriteStatus, { readonly phase: "idle" }>;
 
-/** A refusal of the chain guard, as the write status `WriteStatusNotice` renders with its Connect and Switch offers. */
 type GuardStatus = NeedsWalletGuard | WrongChainGuard;
 
 /** A failure outside the write flow: the evidence JSON upload, or an unexpected error. */

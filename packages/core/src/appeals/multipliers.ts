@@ -42,7 +42,6 @@ async function firstAnswer(client: ReadClient, address: Address, names: readonly
   return null;
 }
 
-/** `getMultipliers()`, or `null` when the contract fails it. A transport failure is rethrown. */
 async function readStruct(client: ReadClient, address: Address): Promise<Multipliers | null> {
   try {
     const [winnerStakeMultiplier, loserStakeMultiplier, loserAppealPeriodMultiplier, denominator] = await client.readContract({
@@ -83,7 +82,6 @@ async function readSingleGetters(client: ReadClient, address: Address, fallback?
   });
 }
 
-/** A governor's `sharedMultiplier()`, or `undefined` when the contract fails it. A transport failure is rethrown. */
 async function readSharedMultiplier(client: ReadClient, address: Address): Promise<bigint | undefined> {
   try {
     return await client.readContract({ address, abi: governorAbi, functionName: "sharedMultiplier" });
@@ -99,12 +97,9 @@ async function readGovernorMultipliers(client: ReadClient, address: Address): Pr
 }
 
 /**
- * The arbitrable's appeal multipliers: `getMultipliers()`, and when the contract fails it, each field through the first
- * single getter that answers; any field no getter answers is `unsupported`. Only a failure of the contract means "try the
- * next getter"; a transport failure is `rpc-error`. Governors have no `getMultipliers()` and go straight to the getters,
- * take a missing denominator and loser appeal-period multiplier from what KlerosGovernor fixes, and also read
- * `sharedMultiplier()`, which they charge every list when the current ruling is 0. A zero denominator is
- * `invalid-data`, so the amounts never divide by zero. Never rejects.
+ * Governors have no `getMultipliers()`: they take a missing denominator and loser appeal-period multiplier from what
+ * KlerosGovernor fixes, and also read `sharedMultiplier()`. A zero denominator is `invalid-data`, so the amounts never
+ * divide by zero. Never rejects.
  */
 export async function readMultipliers(client: ReadClient, family: FamilyDetection): Promise<Outcome<Multipliers>> {
   const address = family.arbitrable;

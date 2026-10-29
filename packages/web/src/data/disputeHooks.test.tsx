@@ -18,10 +18,9 @@ const STORED_KEY = queryKeys.metaEvidence(1, 9n, BINDING.arbitrated);
 
 type Seed = readonly (readonly [readonly unknown[], unknown])[];
 
-/** The case page's meta-evidence before its lookup settles, as `useCase` mounts it. */
 function renderCaseMetaEvidence(seed: Seed) {
   const unbound: { readonly binding: ArbitratedBinding | undefined } = { binding: undefined };
-  return renderHook(({ binding }: { readonly binding: ArbitratedBinding | undefined }) => useMetaEvidence(1, binding, "case"), {
+  return renderHook(({ binding }: { readonly binding: ArbitratedBinding | undefined }) => useMetaEvidence(1, binding), {
     initialProps: unbound,
     wrapper: dataWrapper({ deps: createTestDeps(), seed }),
   });
@@ -74,7 +73,7 @@ describe("dispute hooks", () => {
 
   it.each(STORED)("runs the meta-evidence pipeline when the case page mounts over %s and shows no stored result meanwhile", async (_stored, stored) => {
     vi.mocked(core.loadMetaEvidence).mockResolvedValue(testOkMetaEvidence({ title: "Fresh title" }));
-    const { result } = renderHook(() => useMetaEvidence(1, BINDING, "case"), { wrapper: dataWrapper({ deps: createTestDeps(), seed: [[STORED_KEY, stored]] }) });
+    const { result } = renderHook(() => useMetaEvidence(1, BINDING), { wrapper: dataWrapper({ deps: createTestDeps(), seed: [[STORED_KEY, stored]] }) });
     expect(result.current).toEqual({ status: "loading" });
     await waitFor(() => {
       expect(result.current).toEqual({ status: "ready", value: testOkMetaEvidence({ title: "Fresh title" }) });

@@ -6,16 +6,10 @@ import { configuredChains } from "./chains";
 import { walletTransports } from "./transports";
 import type { AppKitWalletSetup, WalletModal, WalletSetup, WalletSetupState } from "./types";
 
-/** `createAppKitSetup`, which lives in its own chunk. */
 export type CreateAppKitSetup = typeof createAppKitSetup;
 
 type LoadAppKit = () => Promise<CreateAppKitSetup>;
 
-/**
- * The wallet setup over time, read through `useSyncExternalStore`. Without a WalletConnect project ID it is the
- * read-only setup from the start; with one it starts as a stand-in and becomes the AppKit setup once `load` has fetched
- * AppKit's chunk and created AppKit.
- */
 interface WalletSetupStore {
   readonly getSnapshot: () => WalletSetupState;
   readonly subscribe: (listener: () => void) => () => void;
@@ -55,7 +49,6 @@ export function hasPersistedConnection(read: ReadStoredItem): boolean {
   }
 }
 
-/** A wagmi config with no connector and no EIP-6963 discovery over the configured chains and their read RPCs. */
 function connectorlessConfig(config: AppConfig, persistent: boolean): Config {
   const chains = configuredChains();
   const transports = walletTransports(Object.values(CHAINS), config.env);
@@ -83,11 +76,9 @@ function staticStore(state: WalletSetupState): WalletSetupStore {
 }
 
 /**
- * The store of `config`'s wallet setup. With a project ID, until AppKit is created the setup is a stand-in in the
- * `appkit` mode: a wagmi config with no connector and no storage, so nothing it does touches the persisted connection
- * the AppKit config reconnects from, and a modal that loads AppKit before opening. The state is `pending` until the
- * first load settles; a failed load leaves the stand-in, not pending, so the app is read-only and Connect retries.
- * `pendingReconnect` is read once, through `readStoredItem`, when the store is created.
+ * With a project ID, the setup is a stand-in until AppKit is created: a wagmi config with no connector and no storage, so
+ * nothing it does touches the persisted connection the AppKit config reconnects from. A failed load leaves the stand-in,
+ * not pending, so the app is read-only and Connect retries.
  */
 export function createWalletSetupStore(config: AppConfig, loadCreator: LoadAppKit = loadAppKit, readStoredItem: ReadStoredItem = readLocalStorage): WalletSetupStore {
   const projectId = config.walletConnectProjectId;

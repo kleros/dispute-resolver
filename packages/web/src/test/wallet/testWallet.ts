@@ -7,20 +7,16 @@ import type { WalletMode, WalletModal, WalletSetup } from "../../wallet";
 import { createMemoryStorage, deferred } from "../data";
 import { TEST_TX_HASH } from "./writeFixtures";
 
-/** The account of the test wallet (checksummed, as wallets report it). */
 export const TEST_WALLET_ACCOUNT = "0x00000000000000000000000000000000000A11cE";
 
-/** A second account of the test wallet (checksummed), for a user who switches account inside the wallet. */
 export const TEST_WALLET_SECOND_ACCOUNT = "0x0000000000000000000000000000000000000B0b";
 
 /** The test wallet's account as the app reports it (`WalletState.address`, lowercased). */
 export const TEST_WALLET_ADDRESS: Address = "0x00000000000000000000000000000000000a11ce";
 
-/** Wagmi's persisted store with a current connection, as wagmi writes it under `wagmi.store` (wagmi 2.22, recorded from a connect). */
 export const CONNECTED_WAGMI_STORE =
   '{"state":{"connections":{"__type":"Map","value":[["bcfb5cd94f3",{"accounts":["0x00000000000000000000000000000000000A11cE"],"chainId":1,"connector":{"id":"injected","name":"Injected","type":"injected","uid":"bcfb5cd94f3"}}]]},"chainId":1,"current":"bcfb5cd94f3"},"version":2}';
 
-/** A chain no configuration has (Optimism), for a wallet on an unsupported network. */
 export const UNCONFIGURED_CHAIN_ID = 10;
 
 /**
@@ -50,7 +46,6 @@ export interface TestWalletOptions {
   readonly mode?: WalletMode;
   /** `true`: the fake modal reports an embedded-wallet connector once ready, as AppKit does when the Reown dashboard is misconfigured. */
   readonly embeddedWallet?: boolean;
-  /** The wallet's chain once connected; default 1. */
   readonly chainId?: number;
   /** The wallet rejects (`true`) or fails (an `Error`) every switch request. */
   readonly switchChainError?: boolean | Error;
@@ -58,7 +53,6 @@ export interface TestWalletOptions {
   readonly pendingReconnect?: boolean;
 }
 
-/** The fake AppKit modal: every call is recorded and resolves at once. */
 export interface FakeWalletModal extends WalletModal {
   readonly openConnect: Mock<WalletModal["openConnect"]>;
   readonly hasEmbeddedWallet: Mock<WalletModal["hasEmbeddedWallet"]>;
@@ -70,7 +64,6 @@ export interface TestWallet {
   /** `null` in the `unconfigured` mode. */
   readonly modal: FakeWalletModal | null;
   readonly pendingReconnect: boolean;
-  /** Connects the wallet, as if the user approved the connection. */
   connect(): Promise<void>;
   disconnect(): Promise<void>;
   /** The user changes the network inside the wallet (a `chainChanged` event), not through the app. */
@@ -87,10 +80,8 @@ function fakeModal(embeddedWallet: boolean): FakeWalletModal {
 }
 
 /**
- * A wallet for component and hook tests: a wagmi config whose only connector is wagmi's `mock` connector, no storage,
- * no EIP-6963 discovery, and transports that reject. Render it with `TestWalletProvider` inside `TestDataProvider`
- * (wagmi needs the QueryClient). Signing through it fails (its RPC is unreachable); drive write states with
- * `fakeWriteController`, or mock `writeContract` of `@wagmi/core` in a hook test.
+ * Signing through it fails (its RPC is unreachable); drive write states with `fakeWriteController`, or mock
+ * `writeContract` of `@wagmi/core` in a hook test.
  */
 export function createTestWallet(options: TestWalletOptions = {}): TestWallet {
   const { mode = "appkit", chainId = 1, switchChainError, embeddedWallet = false, pendingReconnect = false } = options;
@@ -124,7 +115,6 @@ export function createTestWallet(options: TestWalletOptions = {}): TestWallet {
   };
 }
 
-/** A test wallet already connected, as if the user approved the connection. */
 export async function createConnectedTestWallet(options: TestWalletOptions = {}): Promise<TestWallet> {
   const wallet = createTestWallet(options);
   await wallet.connect();
@@ -161,21 +151,18 @@ export function declineNextSwitch(wallet: TestWallet): () => void {
 }
 
 export interface ReturningTestWalletOptions {
-  /** Whether wagmi's storage holds the connection of the previous visit (`CONNECTED_WAGMI_STORE`, on chain 1); default `true`. */
+  /** Whether wagmi's storage holds `CONNECTED_WAGMI_STORE` (chain 1); default `true`. */
   readonly stored?: boolean;
 }
 
 /**
- * A visitor's browser at load, for wagmi's real reconnect: two installed wallets, as wagmi's mock connector. The first is
- * the one the visitor connected before, authorized for the site and now on chain 100; wagmi tries it first. The second
- * is never authorized. Wagmi's check of each waits until the test releases it, as a browser wallet can take seconds to
- * answer. Render it with `WalletSetupProvider` (not pending, so wagmi reconnects at mount) inside `TestDataProvider`, and
- * release both checks before the test ends: wagmi starts no other reconnect while one waits.
+ * Two installed wallets for wagmi's real reconnect: `remembered` (authorized, now on chain 100) and one never authorized.
+ * Wagmi's check of each waits until the test releases it; release both before the test ends, since wagmi starts no
+ * other reconnect while one waits. Render with `WalletSetupProvider` not pending, inside `TestDataProvider`, so wagmi reconnects at mount.
  */
 export interface ReturningTestWallet {
   readonly config: Config;
   readonly setup: WalletSetup;
-  /** The wallet the visitor connected before. */
   readonly remembered: Connector;
   /** Every transaction the remembered wallet was asked to send; each is answered with `TEST_TX_HASH`. */
   readonly sent: readonly unknown[];
@@ -283,7 +270,6 @@ export function holdWalletRestore(wallet: TestWallet): () => void {
   };
 }
 
-/** Sets wagmi's own connection status, as wagmi does while it reconnects a wallet. */
 export function setWalletStatus(wallet: TestWallet, status: Config["state"]["status"]): void {
   act(() => {
     wallet.config.setState((state) => ({ ...state, status }));

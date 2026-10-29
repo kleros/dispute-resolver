@@ -1,7 +1,6 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
-/** The computed colour a token resolves to in the current theme. */
-export async function tokenColor(page: Page, token: string): Promise<string> {
+export function tokenColor(page: Page, token: string): Promise<string> {
   return page.evaluate((name) => {
     const probe = document.createElement("div");
     probe.style.backgroundColor = `var(${name})`;
@@ -10,4 +9,10 @@ export async function tokenColor(page: Page, token: string): Promise<string> {
     probe.remove();
     return color;
   }, token);
+}
+
+export async function switchScheme(page: Page, colorScheme: "light" | "dark"): Promise<void> {
+  await page.emulateMedia({ colorScheme });
+  if (colorScheme === "dark") await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+  else await expect(page.locator("html")).not.toHaveClass(/\bdark\b/);
 }

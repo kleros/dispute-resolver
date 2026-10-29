@@ -20,7 +20,6 @@ export function isWarningShown(address: Address): boolean {
   }
 }
 
-/** Stores the dismissal for `address`; a storage failure only means the warning returns next time. */
 export function dismissWarning(address: Address): void {
   try {
     window.localStorage.setItem(storageKey(address), "false");

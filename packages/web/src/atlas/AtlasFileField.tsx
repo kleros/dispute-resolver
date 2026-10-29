@@ -13,7 +13,6 @@ interface StatusLine {
 
 interface FieldState {
   readonly unavailable: boolean;
-  /** Why the field is locked, while it is: the wallet it needs or the form's reason. */
   readonly lockedReason: string | null;
   readonly pending: File | null;
   readonly phase: UploadPhase;
@@ -42,10 +41,6 @@ function isRefusal(failed: UploadFailure | null): boolean {
 const LOCKED_LOOK =
   "[&_[data-disabled]]:border-klerosUIComponentsStroke [&_[data-disabled]]:bg-klerosUIComponentsLightGrey [&_[data-disabled]]:pointer-events-none [&:has([data-disabled])]:cursor-not-allowed [&_[data-disabled]~*]:cursor-auto [&_[data-disabled]_svg]:fill-klerosUIComponentsSecondaryText";
 
-/**
- * The one message line under the dropzone: the wallet it needs or why else it is locked, progress, the outcome, or what
- * it accepts. A field without an upload service has no line at all: it is only locked.
- */
 function statusLine({ unavailable, lockedReason, pending, phase, failed, value, limits, signInHint }: FieldState): StatusLine {
   if (unavailable) return {};
   if (lockedReason !== null && pending === null && failed === null && value === null) return { msg: lockedReason, variant: "info" };
@@ -63,10 +58,7 @@ function whyLocked(walletConnected: boolean, formReason: string | undefined): st
   return formReason ?? null;
 }
 
-/**
- * The upload dropzone of Create and of the evidence modal. Choosing a file signs in when needed and uploads it in one
- * action. `value` is controlled so a form can reset it. The file itself is never rendered: it is untrusted content.
- */
+/** The file itself is never rendered: it is untrusted content. */
 export function AtlasFileField({ role, value, onUploaded, onCleared, label = "File", isDisabled = false, lockedReason }: AtlasFileFieldProps) {
   const uploader = useAtlasUpload();
   const wallet = useWallet();

@@ -22,10 +22,6 @@ function ExternalIcon() {
   );
 }
 
-/**
- * Held by the case page: `onRetry` re-reads the meta-evidence, and the new `key` remounts the display's boundary on the
- * new read.
- */
 interface DisplayRetry {
   readonly key: string;
   readonly onRetry: () => void;

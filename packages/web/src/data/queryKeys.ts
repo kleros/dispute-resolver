@@ -27,7 +27,6 @@ export const queryKeys = {
   /** `session`: the evidence group of the Dispute event, a governor's session; `undefined` while it is unknown. */
   funding: (chainId: number, disputeId: bigint, round: bigint, fromBlock: bigint, session: bigint | undefined) =>
     ["dr", "funding", chainId, disputeId.toString(), round.toString(), fromBlock.toString(), sessionPart(session)] as const,
-  /** `session`: as for `funding`. */
   withdrawable: (chainId: number, disputeId: bigint, account: Address | undefined, rounds: readonly bigint[], session: bigint | undefined) =>
     ["dr", "withdrawable", chainId, disputeId.toString(), account ?? "none", rounds.join(","), sessionPart(session)] as const,
   cost: (chainId: number, extraData: Hex) => ["dr", "cost", chainId, extraData] as const,
@@ -37,7 +36,6 @@ export const queryKeys = {
   productFunding: (chainId: number, disputeId: bigint) => ["dr", "productFunding", chainId, disputeId.toString()] as const,
 } as const;
 
-/** Prefixes for invalidating every key of one dispute and kind, whatever the rest of the key. */
 export const disputeKeyPrefix = (kind: "lookup" | "evidence" | "details" | "funding" | "withdrawable" | "executedRuling" | "productFunding", chainId: number, disputeId: bigint) =>
   ["dr", kind, chainId, disputeId.toString()] as const;
 

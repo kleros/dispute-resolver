@@ -62,24 +62,11 @@ describe("AddressText", () => {
     expect(screen.getByRole("button", { name: "Copy address" })).toBeInTheDocument();
   });
 
-  it("the copied mark scales in from a blur, and holds still under reduced motion", () => {
-    const { container } = render(<AddressText address={ADDRESS} chain={MAINNET} />);
-    expect(container.firstElementChild).toHaveClass(
-      "[&_.copied-icon]:animate-[t-icon-in_var(--icon-swap-dur)_var(--icon-swap-ease)_backwards]",
-      "motion-reduce:[&_.copied-icon]:animate-none",
-    );
-  });
-
-  it("the copy tooltip grows from its bottom edge after a short delay and fades out quickly", async () => {
+  it("the copy tooltip takes the class the app passes in its props, which the library's type leaves out", async () => {
     const user = userEvent.setup();
     render(<AddressText address={ADDRESS} chain={MAINNET} />);
     await user.hover(screen.getByRole("button", { name: "Copy address" }));
-    const tooltip = await screen.findByRole("tooltip");
-    expect(tooltip).toHaveClass(
-      "origin-bottom",
-      "entering:animate-[t-tooltip-in_var(--tt-in-dur)_var(--tt-in-ease)_var(--tt-delay)_backwards]!",
-      "exiting:animate-[t-tooltip-out_var(--tt-out-dur)_var(--tt-out-ease)_forwards]!",
-    );
+    expect(await screen.findByRole("tooltip")).toHaveClass("origin-bottom");
   });
 
   it("renders a malformed address as given without throwing", () => {

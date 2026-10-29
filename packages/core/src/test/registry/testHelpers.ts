@@ -13,7 +13,6 @@ export const REMOVED_UNSLASHED_ADDRESS = "0xb9f9b5eee2ad29098b9b3ea0b401571f5da4
 /** Unslashed on mainnet, checksummed as the chain reports it. */
 export const UNSLASHED_CHECKSUMMED = "0xe0e1bc8C6cd1B81993e2Fcfb80832d814886eA38";
 
-/** A sorted copy, so tests compare sets without depending on declaration order. */
 export function sortedStrings(values: readonly string[]): string[] {
   return [...values].sort((a, b) => a.localeCompare(b));
 }

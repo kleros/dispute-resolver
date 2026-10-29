@@ -1,7 +1,3 @@
-/**
- * Test-only typed view of `governor-multipliers.json`: the raw replies of every multiplier getter of the four deployed
- * governors, each chain read at its own pinned block. Parsed with Zod so a malformed recording fails loudly.
- */
 import { decodeFunctionResult } from "viem";
 import { z } from "../../zod";
 import { governorAbi } from "../../abi";

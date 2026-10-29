@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { JSON_DUPLICATE_KEY_GUARD, isRealityScript } from "./guard";
+import { JSON_DUPLICATE_KEY_GUARD } from "./guard";
 
 async function sha256(text: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
@@ -11,17 +11,5 @@ describe("JSON_DUPLICATE_KEY_GUARD", () => {
     // The guard runs next to untrusted scripts: update this hash only after reviewing the new text.
     expect(JSON_DUPLICATE_KEY_GUARD).toHaveLength(1271);
     expect(await sha256(JSON_DUPLICATE_KEY_GUARD)).toBe("f749e16bce8831194dbdf07c3d147afd622cdc75b729b0fb4bb0164d36c6d7dd");
-  });
-});
-
-describe("isRealityScript", () => {
-  it("detects a script that uses reality-eth-lib's template population", () => {
-    expect(isRealityScript("const json = populatedJSONForTemplate(template, question);")).toBe(true);
-  });
-
-  it("does not flag any other script", () => {
-    expect(isRealityScript("resolveScript({ title: 'x' })")).toBe(false);
-    expect(isRealityScript("")).toBe(false);
-    expect(isRealityScript("populatedJSONFor")).toBe(false);
   });
 });

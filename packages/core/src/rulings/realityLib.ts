@@ -36,7 +36,6 @@ function exceedsDisplayDecimals(question: LibQuestion, answer: bigint): boolean 
   return DECIMAL_TYPES.has(question.type) && answer < ANSWERED_TOO_SOON && libDecimals(question.decimals) > MAX_DISPLAY_DECIMALS;
 }
 
-/** `0x` and the value as 64 lowercase hex digits. */
 export function toHexWord(value: bigint): string {
   return `0x${value.toString(16).padStart(64, "0")}`;
 }

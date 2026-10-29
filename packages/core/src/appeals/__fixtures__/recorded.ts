@@ -1,7 +1,3 @@
-/**
- * Test-only typed view of the appeals fixtures, each read at the block its file names. Parsed with Zod so a malformed
- * recording fails loudly instead of feeding the tests undefined values.
- */
 import { z } from "../../zod";
 import type { AppealDecisionEvent } from "../../disputes/types";
 import { toRegistryAddress } from "../../registry";
@@ -139,7 +135,7 @@ export interface RecordedGetters {
   readonly replies: Readonly<Record<string, CallReply>>;
 }
 
-/** The raw replies of every multiplier getter on four mainnet contracts, read at block 26,190,905. */
+/** The raw replies of the multiplier getters the reads reach on four mainnet contracts, read at block 26,190,905. */
 export const MULTIPLIER_GETTERS: readonly RecordedGetters[] = recordedMultipliers.contracts.map((contract) => ({
   label: contract.label,
   address: contract.address,
@@ -150,7 +146,6 @@ const governorSchema = z.object({
   blockNumber: z.number(),
   disputeId: z.string(),
   governor: address,
-  session: z.string(),
   calls: z.array(recordedCall),
   disputeLogs: z.array(z.object({ data: hex, blockNumber: hex })).length(1),
 });

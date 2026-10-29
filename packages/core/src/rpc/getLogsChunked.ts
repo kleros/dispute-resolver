@@ -5,13 +5,9 @@ import { getWindowLogs, uniqueLogs, type BlockWindow, type Logs, type LogsReques
 import { isRangeLimitError } from "./rangeLimit";
 
 interface LogScanLimits {
-  /** First window size when the whole range is refused. */
   readonly windowSize: number;
-  /** Smallest window before giving up. */
   readonly minWindowSize: number;
-  /** Divisor applied to the window after a refusal. */
   readonly windowShrinkFactor: number;
-  /** Windows fetched in parallel. */
   readonly concurrency: number;
 }
 
@@ -48,7 +44,6 @@ function normalizeLogs<TEvent extends AbiEvent>(logs: Logs<TEvent>): Logs<TEvent
 
 type FetchWindows<TEvent extends AbiEvent> = (windows: readonly BlockWindow[]) => Promise<PromiseSettledResult<Logs<TEvent>>[]>;
 
-/** Throws once the logs gathered so far, each counted once, exceed `maxLogs`. */
 function checkCap<TEvent extends AbiEvent>(logs: Logs<TEvent>, maxLogs: number | undefined): void {
   if (maxLogs !== undefined && uniqueLogs(logs).length > maxLogs) throw new TooManyLogsError(maxLogs);
 }

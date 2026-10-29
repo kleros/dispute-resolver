@@ -65,8 +65,32 @@ describe("parseCachedMetaEvidenceResult", () => {
     expect(parseCachedMetaEvidenceResult(persisted(result))).toEqual(result);
   });
 
-  it("an accepted result without ruling options or Reality status reads back equal", async () => {
-    const { fetcher } = fakeFetcher(servedMetaEvidence(json({ description: "Only a description" })));
+  const tooSoon = `0x${"f".repeat(64)}`;
+  it.each([
+    ["without ruling options or Reality status", servedMetaEvidence(json({ description: "Only a description" }))],
+    [
+      "whose script could not be given its chain",
+      {
+        ...servedMetaEvidence(json({ title: "Static title", dynamicScriptURI: `/ipfs/${DEFAULT_SCRIPT_CID}`, arbitrableChainID: 10 })),
+        [DEFAULT_SCRIPT_URL]: "function getMetaEvidence() {}",
+      },
+    ],
+    [
+      "with descriptions by reserved answer code",
+      servedMetaEvidence(
+        json({
+          title: "Reserved answers",
+          rulingOptions: {
+            type: "single-select",
+            titles: ["No", "Yes"],
+            reserved: { [tooSoon]: "Answered Too Soon" },
+            descriptions: { "0": "Not paid", [tooSoon]: "The observation period has not ended" },
+          },
+        }),
+      ),
+    ],
+  ])("an accepted result %s reads back equal", async (_case, routes) => {
+    const { fetcher } = fakeFetcher(routes);
     const result = await loadMetaEvidence(context({ fetcher }));
     expect(result.status).toBe("ok");
     expect(parseCachedMetaEvidenceResult(persisted(result))).toEqual(result);
@@ -100,32 +124,6 @@ describe("parseCachedMetaEvidenceResult", () => {
       null,
     ];
     for (const variant of malformed) expect(parseCachedMetaEvidenceResult({ ...good, source: variant })).toBeNull();
-  });
-
-  it("an accepted result whose script could not be given its chain is persisted and read back", async () => {
-    const { fetcher } = fakeFetcher({
-      ...servedMetaEvidence(json({ title: "Static title", dynamicScriptURI: `/ipfs/${DEFAULT_SCRIPT_CID}`, arbitrableChainID: 10 })),
-      [DEFAULT_SCRIPT_URL]: "function getMetaEvidence() {}",
-    });
-    const result = await loadMetaEvidence(context({ fetcher }));
-    expect(result).toMatchObject({ status: "ok", script: { ran: false, reason: "script-chain-unavailable" } });
-    expect(result.status === "ok" && result.metaEvidence.arbitrableChainID).toEqual({ status: "unsupported", chainId: 10 });
-    expect(metaEvidenceCachePolicy(result)).toBe("persist");
-    expect(parseCachedMetaEvidenceResult(persisted(result))).toEqual(result);
-  });
-
-  it("an accepted result with descriptions by reserved answer code reads back equal", async () => {
-    const tooSoon = `0x${"f".repeat(64)}`;
-    const rulingOptions = {
-      type: "single-select",
-      titles: ["No", "Yes"],
-      reserved: { [tooSoon]: "Answered Too Soon" },
-      descriptions: { "0": "Not paid", [tooSoon]: "The observation period has not ended" },
-    };
-    const { fetcher } = fakeFetcher(servedMetaEvidence(json({ title: "Reserved answers", rulingOptions })));
-    const result = await loadMetaEvidence(context({ fetcher }));
-    expect(result.status === "ok" && result.metaEvidence.rulingOptions).toEqual(rulingOptions);
-    expect(parseCachedMetaEvidenceResult(persisted(result))).toEqual(result);
   });
 
   it("a rejection, a failure or a missing entry is never served from storage", () => {

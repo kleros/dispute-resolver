@@ -13,7 +13,6 @@ const TEMPLATE_UINT_DECIMALS = '{"title": "%s", "type": "uint", "decimals": %s}'
 const TEMPLATE_20 = attack.template20.templateText;
 const QUESTION_0x7eea = attack.question0x7eea.questionText;
 
-/** The registry fields the derivation reads, as `REALITY_PROXIES` sets them for a Reality.eth v3 arbitrable. */
 const ENTRY = { answeredTooSoon: true, localizedLang: null, questionOverride: null } as const;
 
 function onChain(templateText: string, questionText: string, templateId = "1"): RealityQuestion {
@@ -66,18 +65,13 @@ describe("deriveRealityRulingOptions", () => {
     expect(realityQuestion.status).toBe("malformed");
   });
 
-  it("offers no options when a select question's outcomes cannot be trusted", () => {
-    const { rulingOptions, realityQuestion } = deriveRealityRulingOptions(onChain(TEMPLATE_SINGLE_SELECT, ["Who?", '"A"],"type":"bool","z":["', "misc", "en_US"].join(D)), ENTRY);
-    expect(rulingOptions).toEqual({ type: "single-select", titles: [] });
-    expect(realityQuestion).toMatchObject({ status: "unresolvable", reason: "invalid-outcomes" });
-  });
-
-  it("neither flags an unresolvable question divergent nor overrides its question", () => {
+  it("offers no options when a select question's outcomes cannot be trusted, and neither flags it divergent nor overrides its question", () => {
     const result = deriveRealityRulingOptions(onChain(TEMPLATE_SINGLE_SELECT, ["Who?", '"A"],"type":"bool","z":["', "misc", "en_US"].join(D)), {
       ...ENTRY,
       questionOverride: "title",
     });
-    expect(result.realityQuestion.divergent).toBe(false);
+    expect(result.rulingOptions).toEqual({ type: "single-select", titles: [] });
+    expect(result.realityQuestion).toMatchObject({ status: "unresolvable", reason: "invalid-outcomes", divergent: false });
     expect(result).not.toHaveProperty("question");
   });
 

@@ -3,22 +3,19 @@ import { createContext, useContext, useEffect, useLayoutEffect, useRef, type Rea
 import { NavigationType, useLocation, useNavigationType } from "react-router";
 import type { PageScroll } from "./pageScroll";
 
-/** The page scroller's root; index.css styles the library's thumb, track and mask under it. */
 const PAGE_SCROLLER_CLASS = "dr-page-scroller";
 
-/** The keys a browser scrolls a page with when nothing has focus. */
 const SCROLL_KEYS = new Set([" ", "PageDown", "PageUp", "End", "Home", "ArrowDown", "ArrowUp"]);
 
 const ScrollerContext = createContext<RefObject<HTMLDivElement | null> | null>(null);
 
 /**
- * A browser scrolls with the keys the element that has focus, else the one last pressed, else the document, which no
- * longer scrolls here: right after load, or once the pressed element has left the page, the keys would scroll nothing. The
- * scroller then takes the focus for the key. It keeps a focus stop out of the tab order, so Firefox does not make it a
- * tab stop of its own as it does a scrolling element, and lifts it while a press lasts, so a press moves the focus as it
- * does with nothing focused instead of landing on the scroller (Chromium would then Tab from the top). Tab and Shift+Tab
- * from the scroller leave from a passing stop at the page's start or end: from the scroller itself Shift+Tab finds nothing
- * before it. SimpleBar makes the scroller a tab stop and a region named "scrollable content", which the page never had.
+ * The document no longer scrolls, so right after load, or once the pressed element has left the page, the scroll keys
+ * would scroll nothing: the scroller then takes the focus for the key. Its focus stop stays out of the tab order, or
+ * Firefox makes it a tab stop, and is lifted while a press lasts, or the press lands on the scroller and Chromium Tabs
+ * from the top. Tab and Shift+Tab from the scroller leave from a passing stop at the page's start or end, because from the
+ * scroller itself Shift+Tab finds nothing before it. SimpleBar's tab stop and "scrollable content" region go: the page
+ * never had them.
  */
 function routeKeysToScroller(scroller: HTMLElement): () => void {
   const { ownerDocument } = scroller;
@@ -141,18 +138,14 @@ function DocumentScroller({ children }: { readonly children?: ReactNode }) {
   return <>{children}</>;
 }
 
-/**
- * Holds the whole app where `scroll` is `container`: the header, the page and the footer scroll inside it, full height.
- * Either way the page keeps its offset through a print.
- */
+/** Where `scroll` is `container`, the header, the page and the footer all scroll inside it. */
 export function PageScroller({ scroll, children }: PageScrollerProps) {
   return scroll === "container" ? <ContainerScroller>{children}</ContainerScroller> : <DocumentScroller>{children}</DocumentScroller>;
 }
 
 /**
- * Back and Forward return a page to where it was scrolled, which a browser does for a scrolling document but never for an
- * element inside it. A new page keeps the offset the browser leaves it, as a scrolling document does. Inside the router,
- * under PageScroller; where the document scrolls, it does nothing.
+ * A browser restores the offset on Back and Forward for a scrolling document, never for an element inside it. Sits inside
+ * the router, under PageScroller.
  */
 export function ScrollMemory() {
   const scrollerRef = useContext(ScrollerContext);

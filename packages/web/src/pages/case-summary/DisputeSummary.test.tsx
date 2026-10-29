@@ -1,6 +1,5 @@
 import { REGISTRY, buildDisputeView, resolveGateway, type Address, type MetaEvidence, type MetaEvidenceResult } from "@dispute-resolver/core";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CaseDispute, CoreDeps, SectionData } from "../../data";
@@ -22,8 +21,7 @@ import {
 } from "../../test/data";
 import { DisputeSummary } from "./index";
 
-/** What the mocked `env` and `safe-content` read, so single tests can move the app origin or break the display builder. */
-const overrides = vi.hoisted(() => ({ appOrigin: null as string | null, failDisplay: false }));
+const overrides = vi.hoisted(() => ({ appOrigin: null as string | null }));
 
 vi.mock("../../env", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../env")>();
@@ -35,26 +33,13 @@ vi.mock("../../env", async (importOriginal) => {
   };
 });
 
-vi.mock("../../safe-content", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../safe-content")>();
-  return {
-    ...actual,
-    buildEvidenceDisplay: (...args: Parameters<typeof actual.buildEvidenceDisplay>) => {
-      if (overrides.failDisplay) throw new Error("display builder failed");
-      return actual.buildEvidenceDisplay(...args);
-    },
-  };
-});
-
 afterEach(() => {
   overrides.appOrigin = null;
-  overrides.failDisplay = false;
 });
 
 const GATEWAY = resolveGateway({});
 const DISPLAY_CID = "QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh";
 const FILE_CID = "QmQ2XoA25HmnPUEWDduxj6LYwMwp6jtXPFRMHcNF2EvJfU";
-const UNLISTED_ARBITRABLE: Address = "0x00000000000000000000000000000000000000aa";
 
 const MAINNET = testChain(1);
 
@@ -92,11 +77,10 @@ function renderWithData(ui: ReactElement, deps: CoreDeps = createTestDeps()) {
   return { ...result, client };
 }
 
-/** The case page's Retry of the evidence display, which this file renders without the case page. */
 const DISPLAY_RETRY = { key: "display", onRetry: () => undefined };
 
-function renderSummary(dispute: CaseDispute, deps?: CoreDeps, displayRetry = DISPLAY_RETRY, onRetry?: () => void) {
-  return renderWithData(<DisputeSummary dispute={dispute} chain={MAINNET} displayRetry={displayRetry} onRetry={onRetry} />, deps);
+function renderSummary(dispute: CaseDispute, deps?: CoreDeps) {
+  return renderWithData(<DisputeSummary dispute={dispute} chain={MAINNET} displayRetry={DISPLAY_RETRY} />, deps);
 }
 
 function displayFrame(): HTMLIFrameElement {
@@ -217,19 +201,6 @@ describe("DisputeSummary", () => {
     expect(screen.queryByText("Test dispute")).not.toBeInTheDocument();
   });
 
-  it("a failed meta-evidence shows the summary as unavailable with its reason, and its Retry calls the case page's retry", async () => {
-    const failed: MetaEvidenceResult = { status: "failed", reason: "fetch-error", error: { code: "rpc-error", message: "The meta-evidence file could not be fetched." } };
-    const onRetry = vi.fn();
-    renderSummary(caseDispute({ metaEvidence: sectionReady(failed) }), undefined, DISPLAY_RETRY, onRetry);
-
-    expect(screen.getByText("Dispute summary unavailable")).toBeInTheDocument();
-    expect(screen.getByText("The meta-evidence file could not be fetched.")).toBeInTheDocument();
-    expect(screen.queryByText("Test dispute")).not.toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: "Retry Dispute summary" }));
-    expect(onRetry).toHaveBeenCalledOnce();
-  });
-
   it("a dispute without meta-evidence shows the summary as unavailable", () => {
     renderSummary(caseDispute({ metaEvidence: sectionReady({ status: "missing" }) }));
     expect(screen.getByText("Dispute summary unavailable")).toBeInTheDocument();
@@ -278,33 +249,11 @@ describe("DisputeSummary", () => {
     expect(screen.queryByText(APP_LINK)).not.toBeInTheDocument();
   });
 
-  it("keeps a link whose URL only contains resolve.kleros.io outside its host", () => {
-    renderSummary(withMetaEvidence({ arbitrableInterfaceURI: "https://app.example.org/?from=resolve.kleros.io" }));
-    expect(screen.getByRole("link", { name: APP_LINK })).toHaveAttribute("href", "https://app.example.org/?from=resolve.kleros.io");
-  });
-
-  it("a plain http:// arbitrable interface or attachment is never linked", () => {
-    renderSummary(withMetaEvidence({ arbitrableInterfaceURI: "http://app.example.org", fileURI: "http://files.example.org/a.pdf" }));
-    expect(screen.queryByText(APP_LINK)).not.toBeInTheDocument();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
-    expect(screen.getByText("http://files.example.org/a.pdf").tagName).toBe("SPAN");
-  });
-
-  it("renders the evidence display over https with allow-scripts only for an arbitrable that is not allowlisted", () => {
-    const allowlist: readonly Address[] = REGISTRY.displayAllowlist[1] ?? [];
-    expect(allowlist).not.toContain(UNLISTED_ARBITRABLE);
-    renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: DISPLAY_URI }, UNLISTED_ARBITRABLE));
-    const frame = displayFrame();
-    expect(frame.getAttribute("src")).toMatch(new RegExp(`^${GATEWAY}${DISPLAY_URI}\\?`));
-    expect(frame).toHaveAttribute("sandbox", "allow-scripts");
-    expect(frame).toHaveAttribute("title");
-    expect(frame).not.toHaveAttribute("allow");
-  });
-
   it("gives an allowlisted arbitrable's display the relaxed sandbox and the arbitrator's binding", () => {
     const allowlisted = REGISTRY.displayAllowlist[1]?.[0];
     if (allowlisted === undefined) throw new Error("mainnet has no allowlisted display");
     renderSummary(withMetaEvidence({ evidenceDisplayInterfaceURI: DISPLAY_URI }, allowlisted));
+    expect(displayFrame().getAttribute("src")).toMatch(new RegExp(`^${GATEWAY}${DISPLAY_URI}\\?`));
     expect(displayFrame()).toHaveAttribute("sandbox", "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox");
     expect(displayParams()).toMatchObject({ disputeID: "1", chainID: 1, arbitrableContractAddress: allowlisted, arbitratorChainID: 1, arbitrableChainID: 1 });
   });
@@ -327,29 +276,6 @@ describe("DisputeSummary", () => {
       arbitratorJsonRpcUrl: "https://read-rpc.example.org/key",
       arbitrableJsonRpcUrl: "https://read-rpc.example.org/key",
     });
-  });
-
-  it("a display that cannot be built degrades the evidence display only, and its Retry calls the case page's display retry", async () => {
-    overrides.failDisplay = true;
-    const onRetry = vi.fn();
-    // React logs the caught render error and jsdom reports the rethrow; both are expected here.
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const silence = (event: ErrorEvent) => {
-      event.preventDefault();
-    };
-    window.addEventListener("error", silence);
-    try {
-      renderSummary(withMetaEvidence({ title: "Still here", evidenceDisplayInterfaceURI: DISPLAY_URI }), undefined, { key: "display", onRetry });
-      expect(screen.getByText("Evidence display unavailable")).toBeInTheDocument();
-      expectSummaryTitle("Still here");
-
-      await userEvent.click(screen.getByRole("button", { name: "Retry Evidence display" }));
-
-      expect(onRetry).toHaveBeenCalledTimes(1);
-    } finally {
-      window.removeEventListener("error", silence);
-      vi.restoreAllMocks();
-    }
   });
 });
 

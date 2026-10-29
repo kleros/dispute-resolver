@@ -15,7 +15,6 @@ const LOCATOR_PATH = "/ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaE
 
 const GNOSIS = testChain(100);
 
-/** Gnosis dispute 460 with only its meta-evidence read, the one section this notice depends on. */
 function caseDispute(metaEvidence: SectionData<MetaEvidenceResult>): CaseDispute {
   return testCaseDispute({ chainId: 100, disputeId: 460n, metaEvidence });
 }

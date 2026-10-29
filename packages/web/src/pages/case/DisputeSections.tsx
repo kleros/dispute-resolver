@@ -41,7 +41,6 @@ function useAppealItem(disputeKey: string, period: Period | undefined, family: S
 interface DisputeSectionsProps {
   readonly dispute: CaseDispute;
   readonly chain: ChainConfig;
-  /** The boundaries' Retry, from the component that reads the case. */
   readonly retries: BoundaryRetries;
 }
 
@@ -74,7 +73,6 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
     void rereadMetaEvidence();
   };
 
-  /** One section behind its boundary; `name` keys it, `reread` is what its Retry reads again. */
   const boundary = (name: string, section: string, reread: () => Promise<unknown>, children: ReactNode) => {
     const scope = `${name}:${disputeKey}`;
     const retry = () => {

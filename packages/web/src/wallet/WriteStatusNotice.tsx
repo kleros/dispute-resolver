@@ -42,7 +42,6 @@ function ConnectOffer({ pageChainId }: { readonly pageChainId: number | undefine
   return <ConnectButton chainId={pageChainId} />;
 }
 
-/** A rejected signature is a neutral notice, not an error. */
 export function WriteStatusNotice({ status, progress, beforeAttempt = false, className }: WriteStatusNoticeProps) {
   const network = useNetworkSwitch();
   if (status.phase === "idle") return null;

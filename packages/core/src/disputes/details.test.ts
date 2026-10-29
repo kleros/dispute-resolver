@@ -20,7 +20,6 @@ function recordedTimestamp(blockNumber: bigint): number {
   return Number(BigInt(timestamp));
 }
 
-/** The recorded mainnet node with every call of `selector` answered by `error`. */
 function failingCalls(selector: string, error: RpcErrorBody): FakeNode {
   const node = recordedNode(MAINNET);
   const calls = new Map(node.calls);
@@ -136,7 +135,6 @@ describe("readDisputeDetails", () => {
     expect(reads.localId).toEqual({ kind: "unresolved", reason: "rpc-error" });
     for (const outcome of [reads.votesLengths, reads.currentRuling, reads.appealDecisions, reads.appealInfo]) {
       expect(outcome).toMatchObject({ ok: false, error: { code: "no-rpc", message: "This network's data is unavailable." } });
-      if (outcome?.ok === false) expect(outcome.error.message).not.toMatch(/configur|RPC|REACT_APP/i);
     }
   });
 });

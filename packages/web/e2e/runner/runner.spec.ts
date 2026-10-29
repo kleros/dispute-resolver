@@ -2,9 +2,7 @@ import { expect, test, type Browser, type BrowserType, type LaunchOptions, type 
 import { appOriginOf, fakeNetwork, loadRecording } from "../support/network";
 import { HARNESS_PATH, RUNNER_PATH, serveHarness } from "./casePageRoutes";
 
-// Run against `vite preview`, whose runner plugin sends the runner policy on /__runner/*. Guard tests strip that header,
-// as a header misconfiguration would, so they prove the bootstrap's own checks. Run with `yarn e2e:runner` (Chromium,
-// Firefox and WebKit).
+// vite preview's runner plugin sends the runner policy on /__runner/*; guard tests strip it, as a misconfigured deploy would, so they prove the bootstrap's own checks.
 
 const FOREIGN_HARNESS = "http://foreign-parent.test/harness.html";
 
@@ -45,7 +43,6 @@ var getMetaEvidence = function () {
   });
 };`;
 
-/** What the probe resolves with in a correctly sandboxed runner. */
 const PROBE_RESULT = {
   type: "dr-runner/result",
   value: {
@@ -152,7 +149,6 @@ async function launchWithoutLocalNetworkChecks(engine: BrowserType, launchOption
   return engine.launch({ ...launchOptions, args: [...(launchOptions.args ?? []), WITHOUT_LOCAL_NETWORK_CHECKS] });
 }
 
-/** Serves the runner without its policy header, as a misconfigured deploy would. */
 async function stripRunnerPolicy(page: Page): Promise<void> {
   await page.route(`**${RUNNER_PATH}`, async (route) => {
     const response = await route.fetch();

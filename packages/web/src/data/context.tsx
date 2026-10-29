@@ -3,7 +3,6 @@ import type { CoreDeps } from "./types";
 
 const CoreDepsContext = createContext<CoreDeps | null>(null);
 
-/** Provides the `CoreDeps` every data hook reads. `DataProvider` renders it; tests render it with test deps. */
 export function CoreDepsProvider({ deps, children }: { readonly deps: CoreDeps; readonly children?: ReactNode }) {
   return <CoreDepsContext.Provider value={deps}>{children}</CoreDepsContext.Provider>;
 }

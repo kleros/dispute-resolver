@@ -36,7 +36,6 @@ function reconnectingWrapper(wallet: ReturningTestWallet) {
   };
 }
 
-/** The returning wallet, rendered, once wagmi has restored its connection while it still waits on the other wallet. */
 async function restoredWhileProbing(wallet: ReturningTestWallet) {
   const view = renderHook(() => useWallet(), { wrapper: reconnectingWrapper(wallet) });
   await wallet.authorizeRemembered();

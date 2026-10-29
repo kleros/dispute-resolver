@@ -9,13 +9,9 @@ const COLUMNS: readonly { readonly name: TimelineColumnName; readonly period: Pe
   { name: "execution", period: 4 },
 ];
 
-function periodDuration(court: Court, period: Period): bigint | null {
-  return period === 4 ? null : court.timesPerPeriod[period];
-}
-
 function column(name: TimelineColumnName, period: Period, current: Period, lastPeriodChange: number, court: Court): TimelineColumn {
   if (period < current) return { name, state: "concluded" };
-  const duration = periodDuration(court, period);
+  const duration = period === 4 ? null : court.timesPerPeriod[period];
   if (period === current) return { name, state: "current", deadline: duration === null ? null : lastPeriodChange + Number(duration) };
   return { name, state: "upcoming", durationSeconds: duration };
 }

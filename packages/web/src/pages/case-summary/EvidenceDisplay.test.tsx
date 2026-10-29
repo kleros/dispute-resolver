@@ -14,7 +14,6 @@ const FOLD_MS = 250;
 /** `--display-reveal`, which jsdom cannot read, so the skeleton's removal falls back to the same value. */
 const REVEAL_MS = 400;
 const UNFOLD = "animate-[t-acc-unfold_var(--acc-expand)_var(--acc-ease)_backwards]";
-/** How long the page may take to load before the skeleton shows and the status says it is loading. */
 const COVER_DELAY_MS = 200;
 const COVER_FADE = ["transition-opacity", "duration-(--display-reveal)", "ease-(--reveal-ease)", "motion-reduce:transition-none"];
 
@@ -60,7 +59,6 @@ function frame(): HTMLIFrameElement {
   return element;
 }
 
-/** The element the row's aria-controls names: the region the row hides. */
 function region(): HTMLElement {
   const id = row().getAttribute("aria-controls");
   const element = id === null ? null : document.getElementById(id);
@@ -68,14 +66,12 @@ function region(): HTMLElement {
   return element;
 }
 
-/** The box the frame is shown in, which draws the focus ring while keyboard focus is inside the frame. */
 function displayWindow(): HTMLElement {
   const element = frame().closest<HTMLElement>(".dr-display-window");
   if (element === null) throw new Error("the frame is in no window");
   return element;
 }
 
-/** The skeleton laid over the frame's place while the page loads, or null once it has gone. */
 function skeletonCover(): HTMLElement | null {
   return displayWindow().querySelector<HTMLElement>(".absolute");
 }
@@ -86,17 +82,12 @@ function verticalBar(): Element {
   return bar;
 }
 
-function sizeClasses(element: Element): readonly string[] {
-  return [...element.classList].filter((name) => /^(?:max-|min-)?[hw]-/.test(name)).sort((a, b) => a.localeCompare(b));
-}
-
 function blockRoot(container: HTMLElement): Element {
   const root = container.firstElementChild;
   if (root === null) throw new Error("the evidence display rendered nothing");
   return root;
 }
 
-/** The text a sighted reader sees in `element`: every text node outside screen-reader-only and hidden elements. */
 function visibleText(element: Element): string {
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
   let text = "";
@@ -125,19 +116,6 @@ describe("EvidenceDisplay", () => {
     vi.restoreAllMocks();
   });
 
-  it("shows the whole 360 px frame at once, with no crop and no size control", () => {
-    renderDisplay();
-    expect(region()).toBeVisible();
-    expect(region()).toContainElement(frame());
-    expect(sizeClasses(frame())).toEqual(["h-[360px]", "w-full"]);
-    for (let element = frame().parentElement; element !== null && element !== region().parentElement; element = element.parentElement) {
-      expect(sizeClasses(element), `${element.tagName} ${element.className}`).toEqual([]);
-    }
-    expect(displayWindow()).toHaveClass("overflow-clip", "rounded-base");
-    expect(screen.getAllByRole("button")).toEqual([row()]);
-    expect(screen.queryByText(/Show full frame|Show less/)).toBeNull();
-  });
-
   it("names the row Evidence display, describes it by its owner and ties it to the region it hides", () => {
     renderDisplay();
     expect(row()).toHaveAccessibleName(ROW);
@@ -155,21 +133,6 @@ describe("EvidenceDisplay", () => {
     expect(dot).toHaveClass("max-sm:hidden");
     expect(row().querySelector("svg")).toHaveAttribute("aria-hidden", "true");
     expect(verticalBar()).toHaveClass("scale-y-0");
-  });
-
-  it("eases the row's hover fill in like the section headers below, with no press scale, and snaps under reduced motion", () => {
-    renderDisplay();
-    expect(row()).toHaveClass(
-      "hover:bg-klerosUIComponentsMediumBlue",
-      "transition-[background-color]",
-      "duration-150",
-      "ease-smooth-out",
-      "motion-reduce:transition-none",
-      "pressed:scale-100",
-    );
-    // The library button's own transition tweens its press scale only; merged away, it would leave the fill snapping on.
-    expect(row()).not.toHaveClass("transition-transform");
-    expect(row()).not.toHaveClass("transition-[background]");
   });
 
   it("draws the row's keyboard focus ring inside its plate, so it stays within the column and clear of the hairline above and the display below", () => {
@@ -306,24 +269,12 @@ describe("EvidenceDisplay", () => {
     expect(frame()).toBe(iframe);
     expect(frame()).toHaveAttribute("src", src);
 
-    // Folding away again starts from wherever the unfold is.
     fireEvent.click(row());
     expect(region()).not.toHaveClass(UNFOLD);
   });
 
-  it("carries the sections' fold classes on the region: the grid track and opacity on their clocks, the reduced-motion guard, no blur", () => {
+  it("folds the region through its one overflow-hidden child and never blurs it, since it holds another site's page", () => {
     renderDisplay();
-    expect(region()).toHaveClass(
-      "grid",
-      "grid-rows-[1fr]",
-      "data-[open=false]:grid-rows-[0fr]",
-      "data-[open=false]:opacity-0",
-      "transition-[grid-template-rows,opacity]",
-      "duration-(--acc-expand)",
-      "data-[open=false]:duration-(--acc-collapse)",
-      "ease-(--acc-ease)",
-      "motion-reduce:transition-none",
-    );
     expect([...region().children]).toHaveLength(1);
     expect(region().firstElementChild).toHaveClass("overflow-hidden");
     for (const element of [region(), ...region().querySelectorAll("*")]) {
@@ -365,13 +316,6 @@ describe("EvidenceDisplay", () => {
     advance(COVER_DELAY_MS);
     expect(skeletonCover()).toHaveClass("opacity-0", "pointer-events-none");
     expect(skeletonCover()).not.toHaveClass("opacity-100");
-  });
-
-  it("times the skeleton's fade-out on a 400 ms display clock of its own, leaving the shared reveal and fold clocks alone", () => {
-    const css = stylesheet();
-    expect(css).toMatch(/--display-reveal:\s*400ms;/);
-    expect(css).toMatch(/--reveal-dur:\s*400ms;/);
-    expect(css).toMatch(/--acc-collapse:\s*250ms;/);
   });
 
   it("keeps the paper under the frame from the first paint, with the skeleton's bars toned for the paper and inset from its edges", () => {

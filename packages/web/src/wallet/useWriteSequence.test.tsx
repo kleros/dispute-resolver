@@ -26,7 +26,6 @@ function hashAt(index: number): Hex {
 
 const minedReceipt = (_chainId: number, hash: Hex): Promise<WriteReceipt> => Promise.resolve(testReceipt(hash));
 
-/** Connects a chain-1 wallet and renders the sequence over it. */
 async function renderSequence(waitForReceipt: (chainId: number, hash: Hex) => Promise<WriteReceipt> = minedReceipt, simulate?: CoreDeps["simulate"]) {
   const wallet = await createConnectedTestWallet();
   const deps = createTestDeps({ waitForReceipt, ...(simulate === undefined ? {} : { simulate }) });

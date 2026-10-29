@@ -14,9 +14,7 @@ const LOCALIZED_LABELS = {
 } as const;
 
 interface RulingOptionsFlags {
-  /** Whether to offer the reserved "Answered Too Soon" answer (Reality.eth v3 only); default true. */
   readonly answeredTooSoon?: boolean;
-  /** The language whose labels are translated when the question uses it (Kleros Moderate's script translates to Spanish). */
   readonly localizedLang?: "es" | null;
 }
 

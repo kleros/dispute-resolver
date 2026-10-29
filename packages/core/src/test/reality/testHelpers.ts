@@ -21,7 +21,6 @@ import { rpcError, type RpcLog } from "../rpc/testHelpers";
 import type { GetReadClient, Hex, ReadClient } from "../../types";
 import type { LookupReadClients } from "../../reality/types";
 
-/** A fake chain: the logs and contract state a node answers from, and its limits. */
 export interface FakeChain {
   /** The head block; the `finalized` block when `finalized` is absent. */
   latest: bigint;
@@ -34,9 +33,7 @@ export interface FakeChain {
   /** The proxy whose `arbitrationCreatedBlock(id)` answers from `createdBlocks`; every other contract reverts. */
   hintProxy?: string;
   createdBlocks: Record<string, bigint>;
-  /** Seconds between blocks, for block timestamps. */
   blockTimeS: number;
-  /** The node returns every log twice. */
   duplicateLogs?: boolean;
   /** Runs first for every request: an `Error` fails it, a defined value answers it. */
   onRequest?: (method: string, params: unknown) => unknown;
@@ -56,20 +53,17 @@ interface FakeLogsFilter {
   readonly toBlock: Hex;
 }
 
-/** The `eth_getLogs` filter of a call. */
 export function filterOf(call: NodeCall): FakeLogsFilter {
   const [filter] = call.params as [FakeLogsFilter];
   return filter;
 }
 
-/** The item at `index`; a test fails loudly when there is none. */
 export function nth<T>(items: readonly T[], index: number): T {
   const item = items[index];
   if (item === undefined) throw new Error(`expected an item at index ${String(index)}, got ${String(items.length)} items`);
   return item;
 }
 
-/** Whether a request is an `eth_getLogs` over a single block. */
 export function singleBlockLogs(method: string, params: unknown): boolean {
   if (method !== "eth_getLogs") return false;
   const [filter] = params as [FakeLogsFilter];
@@ -251,7 +245,6 @@ export function eventLog(event: AbiEvent, address: string, blockNumber: number, 
 
 const ZERO_ADDRESS = `0x${"00".repeat(20)}`;
 
-/** A `LogNewQuestion` of a Reality.eth contract. */
 export function questionLog(reality: string, block: number, questionId: Hex, templateId: number, text: string): RpcLog {
   return eventLog(LOG_NEW_QUESTION, reality, block, { question_id: questionId, user: ZERO_ADDRESS, content_hash: pad("0x0") }, [
     BigInt(templateId),
@@ -264,17 +257,14 @@ export function questionLog(reality: string, block: number, questionId: Hex, tem
   ]);
 }
 
-/** A `LogNewTemplate` of a Reality.eth contract. */
 export function templateLog(reality: string, block: number, templateId: number, text: string): RpcLog {
   return eventLog(LOG_NEW_TEMPLATE, reality, block, { template_id: BigInt(templateId), user: ZERO_ADDRESS }, [text]);
 }
 
-/** A `DisputeIDToQuestionID` of a single-chain proxy. */
 export function mappingLog(proxy: string, block: number, disputeId: number, questionId: Hex): RpcLog {
   return eventLog(DISPUTE_ID_TO_QUESTION_ID, proxy, block, { _disputeID: BigInt(disputeId) }, [questionId]);
 }
 
-/** An `ArbitrationCreated` of a cross-chain foreign proxy. */
 export function createdLog(proxy: string, block: number, disputeId: number, questionId: Hex): RpcLog {
   return eventLog(ARBITRATION_CREATED, proxy, block, { _questionID: questionId, _requester: ZERO_ADDRESS, _disputeID: BigInt(disputeId) }, []);
 }

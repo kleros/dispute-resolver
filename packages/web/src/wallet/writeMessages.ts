@@ -3,7 +3,6 @@ import { chainName } from "./chains";
 import type { WriteStatus } from "./types";
 import type { NoticeVariant } from "../ui";
 
-/** Why a write was refused, in the user's terms. */
 const REFUSALS: Readonly<Record<WriteRefusal, string>> = {
   "evidence-unsupported": "This arbitrable contract does not accept evidence through the Dispute Resolver.",
   "appeal-unsupported": "This arbitrable contract does not accept appeal funding through the Dispute Resolver.",

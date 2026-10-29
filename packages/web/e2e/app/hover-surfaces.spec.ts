@@ -1,10 +1,8 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { openDisputesRpc } from "../support/arbitrator";
+import { disputeCard } from "../support/header";
 import { appOriginOf, fakeNetwork } from "../support/network";
 import { tokenColor } from "../support/theme";
-
-// What the pointer does to the locked upload zone and to an Ongoing card, read from the built stylesheet's cascade. The
-// Ongoing case needs the build's chain-1 read RPC, as a deploy has.
 
 async function style(locator: Locator, property: "backgroundColor" | "borderTopColor" | "transitionProperty" | "transitionDuration"): Promise<string> {
   return locator.evaluate((element, name) => getComputedStyle(element)[name], property);
@@ -48,7 +46,7 @@ test("without a wallet the locked upload zone keeps its grey fill under the poin
 
 test.describe("an Ongoing card under the pointer", () => {
   const ID = 901n;
-  const card = (page: Page) => page.getByRole("link").filter({ has: page.getByText(`#${ID.toString()}`, { exact: true }) });
+  const card = (page: Page) => disputeCard(page, ID);
   const surface = (page: Page) => card(page).locator(":scope > *").first();
 
   test.beforeEach(async ({ context, baseURL }) => {

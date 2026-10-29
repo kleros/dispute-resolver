@@ -10,5 +10,4 @@ export const COMPOSER_CARD_CLASS = "grid h-auto w-full min-w-0 gap-y-4 p-4 lg:gr
 export const CARD_ITEM_CLASS = "flex min-w-0";
 /** The funding part of a card, pushed to the bottom so cards of one row line up whatever their title's length. */
 export const CARD_FOOTER_CLASS = "mt-auto flex flex-col gap-4";
-/** Body text of the panel; secondary text is kept for labels. */
 export const BODY_TEXT_CLASS = "text-klerosUIComponentsPrimaryText";

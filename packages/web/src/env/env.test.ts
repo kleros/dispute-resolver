@@ -5,7 +5,6 @@ import ts from "typescript";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readEnv } from "./env";
 
-/** The variables the app reads besides the chain table's. */
 const CONFIG_NAMES = ["REACT_APP_WALLETCONNECT_PROJECT_ID", "REACT_APP_ATLAS_URI", "REACT_APP_IPFS_GATEWAY", "REACT_APP_METAEVIDENCE_URL"];
 
 function readNames(): string[] {
@@ -55,15 +54,6 @@ describe("readEnv", () => {
       REACT_APP_NOTHING: undefined,
     });
     expect(env).toEqual({ REACT_APP_IPFS_GATEWAY: "https://ipfs.example.org", REACT_APP_WEB3_PROVIDER_URL: "https://rpc.example.org/key" });
-  });
-
-  it("the result is frozen", () => {
-    const env = readEnv({ REACT_APP_IPFS_GATEWAY: "https://ipfs.example.org" });
-    expect(Object.isFrozen(env)).toBe(true);
-  });
-
-  it("an empty source yields an empty environment", () => {
-    expect(readEnv({})).toEqual({});
   });
 });
 

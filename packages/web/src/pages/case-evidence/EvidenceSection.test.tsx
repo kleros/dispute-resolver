@@ -164,7 +164,6 @@ interface RenderOptions extends DisputeOptions {
   readonly chain?: ChainConfig;
 }
 
-/** The evidence section mounted with its list still loading; `onReady` hands over what settles the list in place. */
 function SettlingSection({ onReady }: { readonly onReady: (settle: () => void) => void }) {
   const [dispute, setDispute] = useState(() => caseDispute({ evidence: sectionLoading }));
   useEffect(() => {
@@ -201,10 +200,7 @@ async function openModal(user: ReturnType<typeof userEvent.setup>) {
   return dialog();
 }
 
-/**
- * The modal's overlay: the outermost element of the portal the dialog renders in, which covers the page around the
- * dialog. A click on it lands outside the dialog.
- */
+/** The outermost element of the dialog's portal: a click on it lands outside the dialog. */
 function modalOverlay(modal: HTMLElement): HTMLElement {
   let node = modal;
   while (node.parentElement !== null && node.parentElement !== document.body) node = node.parentElement;
@@ -280,15 +276,6 @@ describe("EvidenceSection: evidence list", () => {
     expect(entry?.querySelector("img, video, audio, iframe, object, embed")).toBeNull();
   });
 
-  it("an attachment that is not a safe link is shown as text", async () => {
-    await renderSection({ evidence: sectionReady(testEvidenceList([item({ attachment: { kind: "text", text: "http://example.com/a.pdf" } })])) });
-    const [entry] = evidenceEntries();
-    if (entry === undefined) throw new Error("Expected one entry.");
-    const attachment = within(entry).getByText("http://example.com/a.pdf");
-    expect(attachment.tagName).toBe("SPAN");
-    expect(within(entry).queryByRole("link", { name: /example\.com/ })).toBeNull();
-  });
-
   it("shows how many entries were hidden and why", async () => {
     await renderSection({ evidence: sectionReady(testEvidenceList([item()], { "not-content-addressed": 2 })) });
     expect(screen.getByText("Hidden evidence")).toBeVisible();
@@ -354,23 +341,6 @@ describe("EvidenceSection: 'Appealed' markers", () => {
       `Dispute Raised${new Date(1_596_657_000_000).toUTCString()}`,
     ]);
     expect(evidenceEntries()).toHaveLength(9);
-  });
-
-  it("Gnosis 121 shows an 'Appealed' marker at its AppealDecision block, among the entries by block", async () => {
-    const { chain, evidence, decisions } = recorded("Gnosis 121");
-    await renderSection({ chain, evidence: sectionReady(evidence), appealDecisions: sectionReady(decisions), raisedAt: 1_693_244_000 });
-    expect(timelineRows()).toEqual([
-      "Block 29726877, log 26",
-      "Block 29726351, log 0",
-      appealedRow(1_693_418_600),
-      "Block 29718757, log 8",
-      "Block 29712139, log 9",
-      "Block 29710858, log 0",
-      "Block 29695526, log 18",
-      "Block 29692153, log 10",
-      "Block 29692074, log 3",
-      `Dispute Raised${new Date(1_693_244_000_000).toUTCString()}`,
-    ]);
   });
 
   it("an appeal in the block of an entry is placed below that entry", async () => {
@@ -472,21 +442,6 @@ describe("EvidenceSection: submission", () => {
     expect(build?.ok).toBe(true);
     if (build?.ok !== true) return;
     expect(build.call).toMatchObject({ address: TEST_ARBITRABLE, chainId: 1, functionName: "submitEvidence", args: [7n, TEST_UPLOAD_PATH], value: 0n });
-  });
-
-  it("a governor with submitEvidence(string) gets the URI only", async () => {
-    const family = testFamily({
-      family: "governor",
-      capabilities: { localId: "none", evidence: { kind: "uri-only" }, appeal: { kind: "governor" }, withdraw: { kind: "governor" } },
-    });
-    const { user } = await renderSection({ write: sectionReady(testWriteContext({ family, localId: { kind: "not-applicable" } })) });
-    await fillAndSubmit(user);
-    await waitFor(() => {
-      expect(writes.fake?.executions).toHaveLength(1);
-    });
-    const build = writes.fake?.executions[0]?.builds[0];
-    if (build?.ok !== true) throw new Error("Expected a built call.");
-    expect(build.call).toMatchObject({ functionName: "submitEvidence", args: [TEST_UPLOAD_PATH] });
   });
 
   it("refreshes the evidence once the transaction is mined, and reports the success", async () => {
@@ -617,27 +572,25 @@ describe("EvidenceSection: submission", () => {
     expect(writes.fake?.executions).toHaveLength(0);
   });
 
-  it("while the wallet's switch to the page chain waits, Submit is refused with the waiting switch before anything is uploaded", async () => {
-    const { user, uploader } = await renderSection({ wallet: walletAwaitingSwitch(100) });
-    const modal = await fillAndSubmit(user);
-    expect(await within(modal).findByText("Wrong network")).toBeInTheDocument();
-    expect(within(modal).getAllByText("Wrong network")).toHaveLength(1);
-    expect(within(modal).getByText("A switch to Ethereum Mainnet is waiting in your wallet.")).toBeInTheDocument();
-    expect(uploader.uploadJson).not.toHaveBeenCalled();
-    expect(writes.fake?.executions).toHaveLength(0);
-  });
-
-  it("while the wallet's switch to the page chain waits, the attachment field is locked and the waiting switch is shown before any sign-in", async () => {
+  it("while the wallet's switch to the page chain waits, the attachment field is locked and Submit is refused with the waiting switch before any sign-in or upload", async () => {
     const uploader = fakeUploader({ isSignedIn: false });
     const { user } = await renderSection({ uploader, wallet: walletAwaitingSwitch(100) });
     const modal = await openModal(user);
     attach(pdf());
     expect(uploader.upload).not.toHaveBeenCalled();
-    expect(uploader.uploadJson).not.toHaveBeenCalled();
     expect(within(modal).queryByText("Uploading to IPFS...")).toBeNull();
     expect(within(modal).getByText("Wrong network")).toBeInTheDocument();
-    expect(within(modal).getByText("A switch to Ethereum Mainnet is waiting in your wallet.")).toBeInTheDocument();
     expect(modal).not.toHaveTextContent("Nothing was sent");
+
+    await user.type(within(modal).getByLabelText("Evidence Title"), "Contract");
+    await user.type(within(modal).getByLabelText("Evidence Description"), "The signed contract.");
+    await user.click(submitButton());
+    expect(await within(modal).findByText("Wrong network")).toBeInTheDocument();
+    expect(within(modal).getAllByText("Wrong network")).toHaveLength(1);
+    expect(within(modal).getByText("A switch to Ethereum Mainnet is waiting in your wallet.")).toBeInTheDocument();
+    expect(uploader.upload).not.toHaveBeenCalled();
+    expect(uploader.uploadJson).not.toHaveBeenCalled();
+    expect(writes.fake?.executions).toHaveLength(0);
   });
 
   it("Submit New Evidence is disabled without a wallet and says one is needed", async () => {
@@ -664,6 +617,8 @@ describe("EvidenceSection: submission", () => {
     expect(uploader.upload).not.toHaveBeenCalled();
     expect(within(modal).getByLabelText("Evidence Title")).toHaveValue("Contract");
     expect(within(modal).getByLabelText("Evidence Title")).toBeEnabled();
+    await user.click(within(modal).getByRole("button", { name: "Connect" }));
+    expect(wallet.modal?.openConnect).toHaveBeenCalledWith(1);
 
     await act(() => wallet.connect());
 

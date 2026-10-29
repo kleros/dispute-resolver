@@ -1,7 +1,6 @@
 import { getChain } from "../../chains/table";
 import type { ChainConfig } from "../../chains/types";
 
-/** The configuration of a chain the test knows is in the table; fails the test loudly when it is not. */
 export function chainOf(id: number): ChainConfig {
   const chain = getChain(id);
   if (chain === undefined) throw new Error(`chain ${String(id)} is not in the table`);

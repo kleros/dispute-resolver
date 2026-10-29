@@ -59,7 +59,6 @@ export function buildDecision(input: {
   readonly reads: DisputeReads | null;
   /** `null` when the family is unknown. */
   readonly rules: AppealRules | null;
-  /** Execution period: `readExecutedRuling`'s result. */
   readonly executed: ExecutedRuling | null;
   /** The last round's fully funded rulings; `null` when they are not read. */
   readonly fundedRulings: Outcome<readonly bigint[]> | null;

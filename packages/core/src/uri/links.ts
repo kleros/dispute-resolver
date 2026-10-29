@@ -1,17 +1,12 @@
 import { parseAbsoluteUrl } from "./syntax";
 import type { SelfHosts } from "./types";
 
-/**
- * An `https:` scheme followed by `//`, the explicit authority. Without it a parser given no base reads what follows as the
- * host, but a browser resolves the same `href` (or `fetch` argument) on an https page against that page, so the two
- * disagree on where it leads.
- */
 const EXPLICIT_HTTPS_AUTHORITY = /^https:\/\//i;
 
 /**
- * True only for an absolute `https:` URL that spells its authority, so the host every check reads is the host a browser
- * goes to from any page. Protocol-relative, `http:`, `javascript:`, `data:` and authority-less `https:/host` references
- * fail.
+ * True only for an absolute `https:` URL that spells its `//` authority: without it a parser given no base reads what follows
+ * as the host, but a browser on an https page resolves the same `href` (or `fetch` argument) against that page, so the two
+ * disagree on where it leads. Protocol-relative, `http:`, `javascript:`, `data:` and authority-less `https:/host` references fail.
  */
 export function isSafeNavigationUrl(url: unknown): boolean {
   if (typeof url !== "string") return false;

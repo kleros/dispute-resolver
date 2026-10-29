@@ -13,10 +13,6 @@ const COLUMN_LABELS: Readonly<Record<TimelineColumnName, string>> = {
   execution: "Execution",
 };
 
-/**
- * When a period ends while the page is open, the bullets, the current bullet's halo, their numbers and the titles ease
- * between the current and the other steps' colours.
- */
 const STEP_COLOUR_MOTION =
   "[&_[aria-hidden]>*]:transition-[color,background-color,border-color,fill,box-shadow] [&_[aria-hidden]>*]:duration-(--tabs-dur) [&_[aria-hidden]>*]:ease-(--tabs-ease) [&_[aria-hidden]>*]:motion-reduce:transition-none [&_[aria-hidden]_span]:transition-colors [&_[aria-hidden]_span]:duration-(--tabs-dur) [&_[aria-hidden]_span]:ease-(--tabs-ease) [&_[aria-hidden]_span]:motion-reduce:transition-none [&_h2]:transition-colors [&_h2]:duration-(--tabs-dur) [&_h2]:ease-(--tabs-ease) [&_h2]:motion-reduce:transition-none";
 
@@ -47,14 +43,12 @@ const ROW_CONNECTORS =
   "[&>li:not(:last-child)]:after:mx-2 [&>li:not(:last-child)]:after:my-[11px] [&>li:not(:last-child)]:after:border-b [&>li:not([aria-current]):not([aria-disabled])]:after:border-b-klerosUIComponentsPrimaryBlue [&>li[aria-current]]:after:border-t-(--dr-record-edge) [&>li[aria-current]]:after:border-b-transparent [&>li[aria-disabled]]:after:border-t-(--dr-record-edge) [&>li[aria-disabled]]:after:border-b-transparent [&_li]:after:transition-colors [&_li]:after:duration-(--tabs-dur) [&_li]:after:ease-(--tabs-ease) [&_li]:after:motion-reduce:transition-none";
 
 /**
- * One row per period: the library fits each step to its text (`w-fit`) and stacks its states (`flex-col`). Full width with
- * its text as a baseline row, the name sits left and the state right, inline; a state too long for the row wraps under
- * the name, still on the right.
+ * The library fits each step to its text (`w-fit`) and stacks its states (`flex-col`); these make one full-width baseline
+ * row per period, the name left and the state right.
  */
 const LIST_ROWS =
   "[&_li]:w-full [&_li>div:last-child]:flex [&_li>div:last-child]:grow [&_li>div:last-child]:flex-wrap [&_li>div:last-child]:items-baseline [&_li>div:last-child]:justify-between [&_li>div:last-child]:gap-x-3 [&_li>div:last-child>div]:ml-auto [&_li>div:last-child>div]:block [&_li[aria-current]_h2]:text-base [&_li[aria-current]_h2]:leading-5";
 
-/** Two 1 px borders as in the row, the second transparent until its step is done. */
 const LIST_CONNECTORS =
   "[&_[aria-hidden]>*+*]:min-h-4 [&_[aria-hidden]>*+*]:border-r [&_li:not([aria-current]):not([aria-disabled])_[aria-hidden]>*+*]:border-r-klerosUIComponentsPrimaryBlue [&_li[aria-current]_[aria-hidden]>*+*]:border-l-(--dr-record-edge) [&_li[aria-current]_[aria-hidden]>*+*]:border-r-transparent [&_li[aria-disabled]_[aria-hidden]>*+*]:border-l-(--dr-record-edge) [&_li[aria-disabled]_[aria-hidden]>*+*]:border-r-transparent";
 
@@ -103,10 +97,7 @@ function TimelineSteps({ columns }: { readonly columns: readonly TimelineColumn[
   );
 }
 
-/**
- * Every period the dispute passes through, the current one counting down on the shared clock. It needs the dispute's court,
- * so a court that failed to load degrades this section only.
- */
+/** It needs the dispute's court, so a court that failed to load degrades this section only. */
 export function DisputeTimeline({ dispute }: CaseSectionProps) {
   const view = existingView(dispute);
   if (view === null) return null;

@@ -19,7 +19,6 @@ import { useToast } from "../../shell";
 import { useWrite, useWriteAccess, type NeedsWalletGuard, type WriteAccess, type WriteStatus, type WrongChainGuard } from "../../wallet";
 import { clearCreateDraft } from "./draftStorage";
 
-/** The page opens the new dispute this long after the success toast. */
 const NAVIGATION_DELAY_MS = 2000;
 
 const META_EVIDENCE_FILE_NAME = "metaEvidence.json";

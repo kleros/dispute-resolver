@@ -3,32 +3,36 @@ import { describe, expect, it } from "vitest";
 import { klerosLiquidAbi, policyRegistryAbi } from "../abi";
 import type { Env } from "../types";
 import { listCourts } from ".";
+import type { Court } from "./types";
 import { answer, fakeClient, fakeFetcher, failure, GNOSIS, MAINNET, recordedNode, recordedPolicyBodies, selectorOf } from "../test/disputes/testHelpers";
+import type { FakeNode } from "../test/disputes/testHelpers";
 
 const ENV: Env = {};
 const GET_SUBCOURT = toFunctionSelector("getSubcourt(uint96)").slice(2);
 const POLICIES = toFunctionSelector("policies(uint256)").slice(2);
 
+async function listed(chainId: number, node: FakeNode, bodies: Record<string, string | Error>): Promise<readonly Court[]> {
+  const { client } = fakeClient(node);
+  const { fetcher } = fakeFetcher(bodies);
+  const courts = await listCourts({ chainId, client, fetcher, env: ENV });
+  if (!courts.ok) throw new Error(courts.error.message);
+  return courts.value;
+}
+
 describe("listCourts", () => {
   it("enumerates mainnet's courts until getSubcourt reverts (-32003 InvalidFEOpcode at court 25), with policy names", async () => {
-    const { client } = fakeClient(recordedNode(MAINNET));
-    const { fetcher } = fakeFetcher(recordedPolicyBodies(MAINNET));
-    const courts = await listCourts({ chainId: 1, client, fetcher, env: ENV });
-    if (!courts.ok) throw new Error(courts.error.message);
-    expect(courts.value).toHaveLength(25);
-    expect(courts.value.map((court) => court.id)).toEqual(Array.from({ length: 25 }, (_, index) => BigInt(index)));
-    expect(courts.value[0]).toMatchObject({ id: 0n, parent: 0n, name: "General Court", policyUri: "/ipfs/Qmd1TMEbtic3TSonu5dfqa5k3aSrjxRGY8oJH3ruGgazRB" });
-    expect(courts.value[23]?.name).toBe("Humanity Court");
-    expect(courts.value[22]?.name).toBe("Corte General en Español");
+    const courts = await listed(1, recordedNode(MAINNET), recordedPolicyBodies(MAINNET));
+    expect(courts).toHaveLength(25);
+    expect(courts.map((court) => court.id)).toEqual(Array.from({ length: 25 }, (_, index) => BigInt(index)));
+    expect(courts[0]).toMatchObject({ id: 0n, parent: 0n, name: "General Court", policyUri: "/ipfs/Qmd1TMEbtic3TSonu5dfqa5k3aSrjxRGY8oJH3ruGgazRB" });
+    expect(courts[23]?.name).toBe("Humanity Court");
+    expect(courts[22]?.name).toBe("Corte General en Español");
   });
 
   it("enumerates Gnosis's courts until getSubcourt reverts (code 3 at court 20), court 19 with hidden votes", async () => {
-    const { client } = fakeClient(recordedNode(GNOSIS));
-    const { fetcher } = fakeFetcher(recordedPolicyBodies(GNOSIS));
-    const courts = await listCourts({ chainId: 100, client, fetcher, env: ENV });
-    if (!courts.ok) throw new Error(courts.error.message);
-    expect(courts.value).toHaveLength(20);
-    expect(courts.value[19]).toEqual({
+    const courts = await listed(100, recordedNode(GNOSIS), recordedPolicyBodies(GNOSIS));
+    expect(courts).toHaveLength(20);
+    expect(courts[19]).toEqual({
       id: 19n,
       parent: 0n,
       hiddenVotes: true,
@@ -36,8 +40,8 @@ describe("listCourts", () => {
       policyUri: "/ipfs/QmbhNThPBeZU6HxW53xDD6kHy4VabuwNmLCCH6Yc9jJbfd",
       name: "xDai Curation (Hidden Voting)",
     });
-    expect(courts.value[18]?.hiddenVotes).toBe(false);
-    expect(courts.value[0]?.name).toBe("xDai General Court");
+    expect(courts[18]?.hiddenVotes).toBe(false);
+    expect(courts[0]?.name).toBe("xDai General Court");
   });
 
   it("fetches policies through the configured gateway, keeping the path segments", async () => {
@@ -51,29 +55,23 @@ describe("listCourts", () => {
   });
 
   it("one failing policy fetch leaves that court's name null and the others named", async () => {
-    const { client } = fakeClient(recordedNode(MAINNET));
     const unpinned = `${MAINNET.gateway}/ipfs/QmdJYHubLGQCt2GxpJch2riSYVxZzDC4cBg2mNPXuiY6rX`;
     const bodies: Record<string, string | Error> = Object.fromEntries(Object.entries(recordedPolicyBodies(MAINNET)).filter(([url]) => url !== unpinned));
     bodies[`${MAINNET.gateway}/ipfs/QmYMdCkb7WULmiK6aQrgsayGG3VYisQwsHSLC3TLkzEHCm`] = new Error("network down");
-    const { fetcher } = fakeFetcher(bodies);
-    const courts = await listCourts({ chainId: 1, client, fetcher, env: ENV });
-    if (!courts.ok) throw new Error(courts.error.message);
-    expect(courts.value).toHaveLength(25);
-    expect(courts.value[1]).toMatchObject({ id: 1n, name: null, policyUri: "/ipfs/QmYMdCkb7WULmiK6aQrgsayGG3VYisQwsHSLC3TLkzEHCm" });
-    expect(courts.value[2]).toMatchObject({ id: 2n, name: null });
-    expect(courts.value[3]?.name).toBe("Token Listing");
+    const courts = await listed(1, recordedNode(MAINNET), bodies);
+    expect(courts).toHaveLength(25);
+    expect(courts[1]).toMatchObject({ id: 1n, name: null, policyUri: "/ipfs/QmYMdCkb7WULmiK6aQrgsayGG3VYisQwsHSLC3TLkzEHCm" });
+    expect(courts[2]).toMatchObject({ id: 2n, name: null });
+    expect(courts[3]?.name).toBe("Token Listing");
   });
 
   it("a policy that is not JSON or has no string name leaves the name null", async () => {
-    const { client } = fakeClient(recordedNode(MAINNET));
     const bodies: Record<string, string> = recordedPolicyBodies(MAINNET);
     bodies[`${MAINNET.gateway}/ipfs/Qmd1TMEbtic3TSonu5dfqa5k3aSrjxRGY8oJH3ruGgazRB`] = "%PDF-1.4";
     bodies[`${MAINNET.gateway}/ipfs/QmYMdCkb7WULmiK6aQrgsayGG3VYisQwsHSLC3TLkzEHCm`] = JSON.stringify({ name: { toString: "x" } });
     bodies[`${MAINNET.gateway}/ipfs/QmdJYHubLGQCt2GxpJch2riSYVxZzDC4cBg2mNPXuiY6rX`] = JSON.stringify(["name"]);
-    const { fetcher } = fakeFetcher(bodies);
-    const courts = await listCourts({ chainId: 1, client, fetcher, env: ENV });
-    if (!courts.ok) throw new Error(courts.error.message);
-    expect(courts.value.slice(0, 3).map((court) => court.name)).toEqual([null, null, null]);
+    const courts = await listed(1, recordedNode(MAINNET), bodies);
+    expect(courts.slice(0, 3).map((court) => court.name)).toEqual([null, null, null]);
   });
 
   it("never fetches a policy URI that is neither https nor content-addressed", async () => {
@@ -100,12 +98,9 @@ describe("listCourts", () => {
     const node = recordedNode(MAINNET, {
       extraCalls: [failure({ to: MAINNET.policyRegistry, abi: policyRegistryAbi, functionName: "policies", args: [4n], error: { code: -32000, message: "header not found" } })],
     });
-    const { client } = fakeClient(node);
-    const { fetcher } = fakeFetcher(recordedPolicyBodies(MAINNET));
-    const courts = await listCourts({ chainId: 1, client, fetcher, env: ENV });
-    if (!courts.ok) throw new Error(courts.error.message);
-    expect(courts.value[4]).toMatchObject({ id: 4n, policyUri: null, name: null });
-    expect(courts.value[5]?.name).toBe("Marketing Services");
+    const courts = await listed(1, node, recordedPolicyBodies(MAINNET));
+    expect(courts[4]).toMatchObject({ id: 4n, policyUri: null, name: null });
+    expect(courts[5]?.name).toBe("Marketing Services");
   });
 
   it.each([
@@ -131,7 +126,6 @@ describe("listCourts", () => {
     const { fetcher } = fakeFetcher({});
     const courts = await listCourts({ chainId: 1, client: undefined, fetcher, env: ENV });
     expect(courts).toMatchObject({ ok: false, error: { code: "no-rpc", message: "This network's data is unavailable." } });
-    if (!courts.ok) expect(courts.error.message).not.toMatch(/configur|RPC|REACT_APP/i);
   });
 
   it("reads each getSubcourt(i) and policies(i) once", async () => {

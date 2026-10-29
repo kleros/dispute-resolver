@@ -4,7 +4,6 @@ import type { SectionData } from "../../data";
 
 interface SectionContentProps<T> {
   readonly data: SectionData<T>;
-  /** Shown as "{section} unavailable" when the data failed. */
   readonly section: string;
   readonly loading: ReactNode;
   readonly onRetry?: () => void;

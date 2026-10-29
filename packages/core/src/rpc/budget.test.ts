@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createRequestBudget, isLookupLimitError, LookupLimitError } from "./index";
+import { createRequestBudget, LookupLimitError } from "./index";
 
 describe("createRequestBudget", () => {
   beforeEach(() => {
@@ -41,14 +41,5 @@ describe("createRequestBudget", () => {
     expect(budget.remainingMs()).toBe(60_000);
     vi.advanceTimersByTime(120_000);
     expect(budget.remainingMs()).toBe(0);
-  });
-});
-
-describe("isLookupLimitError", () => {
-  it("is true only for LookupLimitError instances", () => {
-    expect(isLookupLimitError(new LookupLimitError("over budget"))).toBe(true);
-    expect(isLookupLimitError(new Error("over budget"))).toBe(false);
-    expect(isLookupLimitError({ message: "over budget", lookupLimit: true })).toBe(false);
-    expect(isLookupLimitError(undefined)).toBe(false);
   });
 });

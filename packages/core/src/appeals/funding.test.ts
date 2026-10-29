@@ -37,24 +37,16 @@ function syntheticContext(spec: FakeNodeSpec, localId: LocalIdResolution = { kin
   return { context, requests };
 }
 
-function contributionLog(input: {
-  readonly localId: bigint;
-  readonly round: bigint;
-  readonly ruling: bigint;
-  readonly contributor: Address;
-  readonly amount: bigint;
-  readonly block: bigint;
-  readonly logIndex?: number;
-}) {
+function contributionLog(input: { readonly localId: bigint; readonly round: bigint; readonly ruling: bigint; readonly amount: bigint; readonly logIndex?: number }) {
   return rpcLog({
     address: SYNTHETIC,
     topics: encodeEventTopics({
       abi: [CONTRIBUTION_EVENT],
       eventName: "Contribution",
-      args: { _localDisputeID: input.localId, _round: input.round, _contributor: input.contributor },
+      args: { _localDisputeID: input.localId, _round: input.round, _contributor: "0x00000000000000000000000000000000000000c1" },
     }) as `0x${string}`[],
     data: encodeAbiParameters([{ type: "uint256" }, { type: "uint256" }], [input.ruling, input.amount]),
-    blockNumber: input.block,
+    blockNumber: 100n,
     logIndex: input.logIndex ?? 0,
   });
 }
@@ -73,51 +65,18 @@ function rulingFundedLog(input: { readonly localId: bigint; readonly round: bigi
   });
 }
 
-const CONTRIBUTOR: Address = "0x00000000000000000000000000000000000000c1";
+function expectedRound(round: bigint, amounts: Readonly<Record<string, bigint>>, fundedRulings: readonly bigint[]) {
+  return { round, contributions: Object.entries(amounts).map(([ruling, amount]) => ({ ruling: BigInt(ruling), amount })), fundedRulings };
+}
 
 describe("readRoundFunding (IDisputeResolver)", () => {
   const rounds1170 = [
-    {
-      round: 1n,
-      contributions: [
-        { ruling: 1n, amount: 1_008_000_000_000_000_000n },
-        { ruling: 2n, amount: 756_000_000_000_000_000n },
-      ],
-      fundedRulings: [1n, 2n],
-    },
-    {
-      round: 2n,
-      contributions: [
-        { ruling: 1n, amount: 1_620_000_000_000_000_000n },
-        { ruling: 2n, amount: 2_160_000_000_000_000_000n },
-      ],
-      fundedRulings: [2n, 1n],
-    },
-    {
-      round: 3n,
-      contributions: [
-        { ruling: 1n, amount: 3_348_000_000_000_000_000n },
-        { ruling: 2n, amount: 4_464_000_000_000_000_000n },
-      ],
-      fundedRulings: [1n, 2n],
-    },
-    {
-      round: 4n,
-      contributions: [
-        { ruling: 1n, amount: 9_072_000_000_000_000_000n },
-        { ruling: 2n, amount: 6_804_000_000_000_000_000n },
-      ],
-      fundedRulings: [1n, 2n],
-    },
-    {
-      round: 5n,
-      contributions: [
-        { ruling: 1n, amount: 6_350_000_000_000_000_000n },
-        { ruling: 2n, amount: 4_762_500_000_000_000_000n },
-      ],
-      fundedRulings: [1n, 2n],
-    },
-    { round: 6n, contributions: [{ ruling: 2n, amount: 9_562_500_000_000_000_000n }], fundedRulings: [2n] },
+    expectedRound(1n, { 1: 1_008_000_000_000_000_000n, 2: 756_000_000_000_000_000n }, [1n, 2n]),
+    expectedRound(2n, { 1: 1_620_000_000_000_000_000n, 2: 2_160_000_000_000_000_000n }, [2n, 1n]),
+    expectedRound(3n, { 1: 3_348_000_000_000_000_000n, 2: 4_464_000_000_000_000_000n }, [1n, 2n]),
+    expectedRound(4n, { 1: 9_072_000_000_000_000_000n, 2: 6_804_000_000_000_000_000n }, [1n, 2n]),
+    expectedRound(5n, { 1: 6_350_000_000_000_000_000n, 2: 4_762_500_000_000_000_000n }, [1n, 2n]),
+    expectedRound(6n, { 2: 9_562_500_000_000_000_000n }, [2n]),
   ];
 
   it("sums the recorded Contribution events of every round of dispute 1170 per ruling and lists its RulingFunded rulings", async () => {
@@ -168,9 +127,9 @@ describe("readRoundFunding (IDisputeResolver)", () => {
 
   it("counts only the dispute's own local ID and round", async () => {
     const logs = [
-      contributionLog({ localId: 7n, round: 1n, ruling: 1n, contributor: CONTRIBUTOR, amount: 5n, block: 100n }),
-      contributionLog({ localId: 8n, round: 1n, ruling: 1n, contributor: CONTRIBUTOR, amount: 50n, block: 100n, logIndex: 2 }),
-      contributionLog({ localId: 7n, round: 2n, ruling: 1n, contributor: CONTRIBUTOR, amount: 500n, block: 100n, logIndex: 3 }),
+      contributionLog({ localId: 7n, round: 1n, ruling: 1n, amount: 5n }),
+      contributionLog({ localId: 8n, round: 1n, ruling: 1n, amount: 50n, logIndex: 2 }),
+      contributionLog({ localId: 7n, round: 2n, ruling: 1n, amount: 500n, logIndex: 3 }),
       rulingFundedLog({ localId: 7n, round: 2n, ruling: 1n, block: 100n, logIndex: 4 }),
     ];
     const { context } = syntheticContext({ head: 200n, logs });

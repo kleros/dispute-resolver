@@ -5,6 +5,7 @@ import type { LocalIdResolution } from "../disputes/types";
 import type { FamilyDetection } from "../families/types";
 import governor1621 from "./__fixtures__/governor-1621.json";
 import { buildWithdrawCalls } from "./index";
+import type { WriteRefusal } from "./types";
 import {
   BENEFICIARY,
   DECODED_BENEFICIARY,
@@ -93,23 +94,16 @@ describe("buildWithdrawCalls", () => {
     expect(calls[0]).toMatchObject({ kind: "withdraw", chainId: 1, address: governor1621.governor, functionName: "withdrawFeesAndRewards", value: 0n });
   });
 
-  it("idr-legacy cannot withdraw through the resolver, so every item is refused", () => {
-    expect(buildWithdrawCalls({ binding, family: family("idr-legacy-uint8"), localId: LOCAL_ID, beneficiary: BENEFICIARY, items: v2Items })).toEqual([
-      { ok: false, refusal: "withdraw-unsupported" },
-      { ok: false, refusal: "withdraw-unsupported" },
+  it.each<[string, keyof typeof FAMILY_SIGNATURES, LocalIdResolution, WriteRefusal]>([
+    ["idr-legacy cannot withdraw through the resolver, so every item is refused", "idr-legacy-uint8", LOCAL_ID, "withdraw-unsupported"],
+    ["an escrow arbitrable has no withdrawal", "escrow-v1", { kind: "transaction-id", value: 1n }, "withdraw-unsupported"],
+    ["a view-only arbitrable has no withdrawal", "view-only", { kind: "not-applicable" }, "withdraw-unsupported"],
+    ["an IDisputeResolver withdrawal without a resolved local ID is refused", "idr-v2", { kind: "unresolved", reason: "reverted" }, "local-id-unresolved"],
+  ])("%s", (_name, name, localId, refusal) => {
+    expect(buildWithdrawCalls({ binding, family: family(name), localId, beneficiary: BENEFICIARY, items: v2Items })).toEqual([
+      { ok: false, refusal },
+      { ok: false, refusal },
     ]);
-  });
-
-  it("escrow and view-only arbitrables have no withdrawal", () => {
-    for (const [name, localId] of [
-      ["escrow-v1", { kind: "transaction-id", value: 1n }],
-      ["view-only", { kind: "not-applicable" }],
-    ] as const) {
-      expect(buildWithdrawCalls({ binding, family: family(name), localId, beneficiary: BENEFICIARY, items: v2Items })).toEqual([
-        { ok: false, refusal: "withdraw-unsupported" },
-        { ok: false, refusal: "withdraw-unsupported" },
-      ]);
-    }
   });
 
   it("an item of another dialect than the family's is refused, never sent with the wrong signature", () => {
@@ -129,13 +123,6 @@ describe("buildWithdrawCalls", () => {
       { ok: false, refusal: "withdraw-unsupported" },
     ]);
     expect(selectorOf(expectCall(builds[2] ?? { ok: false, refusal: "withdraw-unsupported" }))).toBe(V1_WITHDRAW);
-  });
-
-  it("an IDisputeResolver withdrawal without a resolved local ID is refused", () => {
-    expect(buildWithdrawCalls({ binding, family: family("idr-v2"), localId: { kind: "unresolved", reason: "reverted" }, beneficiary: BENEFICIARY, items: v2Items })).toEqual([
-      { ok: false, refusal: "local-id-unresolved" },
-      { ok: false, refusal: "local-id-unresolved" },
-    ]);
   });
 
   it("nothing to withdraw builds no call", () => {

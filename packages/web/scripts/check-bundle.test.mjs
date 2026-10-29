@@ -64,17 +64,16 @@ describe("test doubles never ship", () => {
     assert.deepEqual(await problemsOf({}), []);
   });
 
-  it("does not mistake a CSS class named invalid for a fixture host", async () => {
-    assert.deepEqual(await problemsOf({ "assets/index-abc.css": ".invalid{color:red}.a .invalid\\:b{x:y}" }), []);
-  });
-
-  it("does not mistake a property access named invalid for a fixture host", async () => {
-    assert.deepEqual(await problemsOf({ "assets/index-abc.js": "e.invalid=!0;t.example=1;" }), []);
-  });
-
-  it("does not mistake a dotted library symbol name such as zod.compile.invalid for a fixture host", async () => {
-    assert.deepEqual(await problemsOf({ "assets/index-abc.js": 'const k=Symbol.for(`zod.compile.invalid`);const j="a.b.example";' }), []);
-  });
+  for (const [name, text, file = "assets/index-abc.js"] of [
+    ["does not mistake a CSS class named invalid for a fixture host", ".invalid{color:red}.a .invalid\\:b{x:y}", "assets/index-abc.css"],
+    ["does not mistake a property access named invalid for a fixture host", "e.invalid=!0;t.example=1;"],
+    ["does not mistake a dotted library symbol name such as zod.compile.invalid for a fixture host", 'const k=Symbol.for(`zod.compile.invalid`);const j="a.b.example";'],
+    ["does not mistake app text that only contains a test double's literal for it", 'const a="Test dispute resolution";const b=`Local storage is blocked by the browser.`;'],
+  ]) {
+    it(name, async () => {
+      assert.deepEqual(await problemsOf({ [file]: text }), []);
+    });
+  }
 
   const singleMarkers = [
     { name: "rejects a .invalid fixture host", text: 'fetch("https://atlas.invalid/graphql")', label: /fixture host/ },
@@ -111,10 +110,6 @@ describe("test doubles never ship", () => {
   it("rejects a src/test path left in a bundle or source map", async () => {
     const problems = await problemsOf({ "assets/index-abc.js.map": '{"sources":["../../src/test/data/createTestDeps.ts"]}' });
     assert.ok(problems.some((problem) => /test directory path/.test(problem)));
-  });
-
-  it("does not mistake app text that only contains a test double's literal for it", async () => {
-    assert.deepEqual(await problemsOf({ "assets/index-abc.js": 'const a="Test dispute resolution";const b=`Local storage is blocked by the browser.`;' }), []);
   });
 
   it("names each offending file once per marker and never quotes the surrounding content", async () => {
@@ -173,7 +168,6 @@ describe("a minified production build that imports a test double fails the check
     return (Array.isArray(result) ? result : [result]).flatMap((entry) => entry.output);
   }
 
-  /** The names a module exports at run time, read from an unminified build of the module alone. */
   async function runtimeExports(file) {
     const result = await build({
       ...BASE_CONFIG,
@@ -206,7 +200,6 @@ describe("a minified production build that imports a test double fails the check
     for (const name of UNMARKED_MODULES) assert.ok(TEST_MODULES.includes(name), `${name} is no longer under src/test`);
   });
 
-  /** The test-double findings, other than identifier markers, of a dist holding a minified build that imports `name`. */
   async function survivingFindings(name) {
     const outputs = await leakedBuild(path.join(TEST_DIRECTORY, name));
     const files = Object.fromEntries(outputs.map((text, index) => [`assets/leaked-${String(index)}.js`, text]));
@@ -228,42 +221,36 @@ describe("a minified production build that imports a test double fails the check
 });
 
 describe("no external script or stylesheet", () => {
-  for (const [name, html] of Object.entries({
-    "an https script": INDEX_HTML.replace("/assets/index-abc.js", "https://cdn.example.org/lib.js"),
-    "a protocol-relative script": INDEX_HTML.replace("/assets/index-abc.js", "//cdn.org/lib.js"),
-    "an http stylesheet": INDEX_HTML.replace("/assets/index-abc.css", clearTextUrl("https://cdn.org/lib.css")),
-    "an uppercase tag with single quotes": INDEX_HTML.replace('<script type="module" crossorigin src="/assets/index-abc.js">', "<SCRIPT SRC='https://cdn.org/lib.js'>"),
-    "an unquoted attribute": INDEX_HTML.replace('src="/assets/index-abc.js"', "src=https://cdn.org/lib.js"),
-    "a stylesheet with several rel tokens": INDEX_HTML.replace(
-      'rel="stylesheet" crossorigin href="/assets/index-abc.css"',
-      'href="https://cdn.org/a.css" REL="alternate stylesheet"',
-    ),
-    "a mixed-case stylesheet relation among other tokens": INDEX_HTML.replace(
-      'rel="stylesheet" crossorigin href="/assets/index-abc.css"',
-      'rel="preload\tAlternate STYLESHEET" href="https://cdn.org/x.css"',
-    ),
-    "a script that a malformed noscript hides only when scripting is disabled": INDEX_HTML.replace(
-      "<body>",
-      '<body><noscript><style></noscript><script src="https://cdn.org/x.js"></script>',
-    ),
-    "a stylesheet inside noscript, which loads when scripting is disabled": INDEX_HTML.replace(
-      "</head>",
-      '<noscript><link rel="stylesheet" href="https://cdn.org/x.css"></noscript></head>',
-    ),
-  })) {
-    it(`rejects ${name} in index.html`, async () => {
-      const problems = await problemsOf({ "index.html": html });
+  for (const [name, html, file = "index.html"] of [
+    ["an https script", INDEX_HTML.replace("/assets/index-abc.js", "https://cdn.example.org/lib.js")],
+    ["a protocol-relative script", INDEX_HTML.replace("/assets/index-abc.js", "//cdn.org/lib.js")],
+    ["an http stylesheet", INDEX_HTML.replace("/assets/index-abc.css", clearTextUrl("https://cdn.org/lib.css"))],
+    ["an uppercase tag with single quotes", INDEX_HTML.replace('<script type="module" crossorigin src="/assets/index-abc.js">', "<SCRIPT SRC='https://cdn.org/lib.js'>")],
+    ["an unquoted attribute", INDEX_HTML.replace('src="/assets/index-abc.js"', "src=https://cdn.org/lib.js")],
+    [
+      "a stylesheet with several rel tokens",
+      INDEX_HTML.replace('rel="stylesheet" crossorigin href="/assets/index-abc.css"', 'href="https://cdn.org/a.css" REL="alternate stylesheet"'),
+    ],
+    [
+      "a mixed-case stylesheet relation among other tokens",
+      INDEX_HTML.replace('rel="stylesheet" crossorigin href="/assets/index-abc.css"', 'rel="preload\tAlternate STYLESHEET" href="https://cdn.org/x.css"'),
+    ],
+    [
+      "a script that a malformed noscript hides only when scripting is disabled",
+      INDEX_HTML.replace("<body>", '<body><noscript><style></noscript><script src="https://cdn.org/x.js"></script>'),
+    ],
+    [
+      "a stylesheet inside noscript, which loads when scripting is disabled",
+      INDEX_HTML.replace("</head>", '<noscript><link rel="stylesheet" href="https://cdn.org/x.css"></noscript></head>'),
+    ],
+    ["an external script", RUNNER_HTML.replace("/__runner/bootstrap.js", "https://cdn.org/x.js"), "__runner/index.html"],
+  ]) {
+    it(`rejects ${name} in ${file}`, async () => {
+      const problems = await problemsOf({ [file]: html });
       assert.equal(problems.length, 1, problems.join("\n"));
-      assert.match(problems[0], /index\.html/);
-      assert.match(problems[0], /external/);
+      assert.ok(problems[0].startsWith(`dist/${file} loads an external`), problems[0]);
     });
   }
-
-  it("rejects an external script in the runner page", async () => {
-    const problems = await problemsOf({ "__runner/index.html": RUNNER_HTML.replace("/__runner/bootstrap.js", "https://cdn.org/x.js") });
-    assert.equal(problems.length, 1);
-    assert.match(problems[0], /__runner\/index\.html/);
-  });
 
   it("accepts same-origin scripts, stylesheets, icons and external links that are not stylesheets", async () => {
     const html = INDEX_HTML.replace("</head>", '<link rel="icon" href="https://cdn.org/i.ico"><link rel="canonical" href="https://resolve.kleros.io/"></head>');
@@ -312,25 +299,21 @@ describe("no external script or stylesheet", () => {
 
 describe("the built pages carry no inline script", () => {
   const INLINE_SCRIPT = "<script>globalThis.injected=true;</script >";
+  const inHead = (markup) => INDEX_HTML.replace("</head>", `${markup}</head>`);
 
-  for (const [name, markup] of Object.entries({
-    "an inline script whose end tag has whitespace before the >": INLINE_SCRIPT,
-    "an inline script in an uppercase tag": "<SCRIPT TYPE=module>globalThis.injected=true;</SCRIPT>",
-    "an inline script next to an external source": '<script src="/assets/a.js">globalThis.injected=true;</script>',
-  })) {
-    it(`rejects ${name} in index.html without quoting it`, async () => {
-      const problems = await problemsOf({ "index.html": INDEX_HTML.replace("</head>", `${markup}</head>`) });
+  for (const [name, html, file = "index.html"] of [
+    ["an inline script whose end tag has whitespace before the >", inHead(INLINE_SCRIPT)],
+    ["an inline script in an uppercase tag", inHead("<SCRIPT TYPE=module>globalThis.injected=true;</SCRIPT>")],
+    ["an inline script next to an external source", inHead('<script src="/assets/a.js">globalThis.injected=true;</script>')],
+    ["an inline script", RUNNER_HTML.replace("</body>", `${INLINE_SCRIPT}</body>`), "__runner/index.html"],
+  ]) {
+    it(`rejects ${name} in ${file} without quoting it`, async () => {
+      const problems = await problemsOf({ [file]: html });
       assert.equal(problems.length, 1, problems.join("\n"));
-      assert.match(problems[0], /dist\/index\.html contains an inline script \(A20\)/);
+      assert.ok(problems[0].startsWith(`dist/${file} contains an inline script (A20)`), problems[0]);
       assert.doesNotMatch(problems[0], /injected/);
     });
   }
-
-  it("rejects an inline script in the runner page", async () => {
-    const problems = await problemsOf({ "__runner/index.html": RUNNER_HTML.replace("</body>", `${INLINE_SCRIPT}</body>`) });
-    assert.equal(problems.length, 1, problems.join("\n"));
-    assert.match(problems[0], /__runner\/index\.html contains an inline script/);
-  });
 
   it("accepts script elements that hold only whitespace, and script text inside a comment", async () => {
     const html = INDEX_HTML.replace("</head>", '<script src="/assets/b.js">\n  </script><!-- <script>globalThis.injected=true;</script> --></head>');

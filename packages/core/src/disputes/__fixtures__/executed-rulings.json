@@ -1,5 +1,5 @@
 {
-  "description": "KlerosLiquid disputes() (eth_call answers at readAtBlock), the DisputeCreation and AppealDecision logs of each dispute, and the ERC-792 Ruling logs its arbitrable emitted for it from the dispute's creation to readAtBlock. Mainnet 1495 and 1530 (Proof of Humanity v1, court ruling 0, executed 2), 1678 (Unslashed, court ruling 0, executed 2), 1347 (Reality foreign proxy with 2^256-1 choices, executed 2^256-1), 150 (RealitioArbitratorProxy 0.4.24, executed 0), 108 and 1684 (in execution with ruled false and no Ruling log); Gnosis 939 (Light Curate EIP-1167 clone, court ruling 0 after one appeal, executed 2).",
+  "description": "KlerosLiquid disputes() (eth_call answers at readAtBlock), the log that starts each dispute's last round (its last AppealDecision when appealed, else its DisputeCreation), and the ERC-792 Ruling logs its arbitrable emitted for it up to readAtBlock. Mainnet 1495 and 1530 (Proof of Humanity v1, court ruling 0, executed 2), 1678 (Unslashed, court ruling 0, executed 2), 1347 (Reality foreign proxy with 2^256-1 choices, executed 2^256-1), 150 (RealitioArbitratorProxy 0.4.24, executed 0), 108 and 1684 (in execution with ruled false and no Ruling log); Gnosis 939 (Light Curate EIP-1167 clone, court ruling 0 after one appeal, executed 2; its last round starts at its AppealDecision).",
   "chains": [
     {
       "chainId": 1,
@@ -245,21 +245,6 @@
         }
       ],
       "logs": [
-        {
-          "address": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
-          "topics": [
-            "0x141dfc18aa6a56fc816f44f0e9e2f1ebc92b15ab167770e17db5b084c10ed995",
-            "0x00000000000000000000000000000000000000000000000000000000000003ab",
-            "0x00000000000000000000000066260c69d03837016d88c9877e61e08ef74c59f2"
-          ],
-          "data": "0x",
-          "blockNumber": "0x2d7af70",
-          "blockHash": "0x628f7e7748bb4bc0bc4abc3455de0777a50ad43b13ccd4831eb3f7e0d09974af",
-          "transactionHash": "0x5bbebf61a716087604391bb0e757dbf8660e5680951315df9250e3ca9f44c5bf",
-          "transactionIndex": "0x6",
-          "logIndex": "0xb",
-          "removed": false
-        },
         {
           "address": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
           "topics": [

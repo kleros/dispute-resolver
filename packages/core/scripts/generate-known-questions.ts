@@ -18,12 +18,11 @@ import { KNOWN_DISPUTE_QUESTIONS, REGISTRY_SNAPSHOT_BLOCKS, generateKnownQuestio
 import { REGISTRY } from "../src/registry";
 import { createReadClients } from "../src/rpc";
 import { runScript } from "./failureMessage";
-import { loadRepositoryEnv } from "./recordingRpc";
+import { loadRepositoryEnv } from "./repositoryEnv";
 
 const GENERATED_FILE = resolve(import.meta.dirname, "../src/reality/knownQuestions.generated.ts");
 const FLAGS: Readonly<Record<string, GeneratorMode>> = { "--full": "full", "--check": "check" };
 
-/** The mode named by the arguments: none is `incremental`, else exactly one of `--full` and `--check`. */
 function modeOf(args: readonly string[]): GeneratorMode {
   const [flag, ...rest] = args;
   if (flag === undefined) return "incremental";

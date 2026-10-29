@@ -1,8 +1,6 @@
 {
-  "chainId": 1,
   "readAtBlock": 26189725,
   "note": "Rounds: funding round vs (AppealDecision events strictly before the funding event in (blockNumber, logIndex) order) + 1",
-  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
   "arbitrable": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
   "localDisputeID": "0",
   "scan": {

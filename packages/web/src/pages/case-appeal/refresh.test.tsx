@@ -57,13 +57,11 @@ function programReads(period: 3 | 4): void {
   vi.mocked(core.readWithdrawable).mockResolvedValue({ status: "available", beneficiary: ACCOUNT, total: ETH, items: [{ dialect: "idr-v2", ruling: 1n, amount: ETH }] });
 }
 
-/** The case page's data feeding the section, as `pages/case` composes them. */
 function CaseAppeal() {
   const data = useCase(1, 1n, ACCOUNT);
   return data.status === "dispute" ? <AppealSection dispute={data} chain={testPageChain(1).chain} /> : null;
 }
 
-/** Renders the case's appeal section with a wallet connected on the page chain, as every write needs. */
 async function renderCase() {
   const wallet = await createConnectedTestWallet();
   return renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps(), wallet });

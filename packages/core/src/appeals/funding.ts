@@ -59,11 +59,7 @@ async function readGovernorFunding(context: AppealContext, round: bigint): Promi
   }
 }
 
-/**
- * The funding of one round: for the IDisputeResolver families the `Contribution` and `RulingFunded` events of the
- * round, which need a resolved local ID; for governors the round of the dispute's session. Never rejects: a failed read
- * is a failed `Outcome`, never an empty funding.
- */
+/** Never rejects: a failed read is a failed `Outcome`, never an empty funding. */
 export function readRoundFunding(context: AppealContext, round: bigint, fromBlock: bigint): Promise<Outcome<RoundFunding>> {
   const checked = checkContext(context);
   if (!checked.ok) return Promise.resolve(checked);

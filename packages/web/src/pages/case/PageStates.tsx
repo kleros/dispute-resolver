@@ -54,16 +54,13 @@ export function UnavailableMessage({ disputeId, error, onRetry }: UnavailableMes
   );
 }
 
-/** The record band: the overview over the timeline. */
 export const CASE_BAND = `${RECORD_BAND} flex min-w-0 flex-col gap-6 p-4 lg:px-8 lg:py-6`;
 
 interface PendingSearchProps {
-  /** The typed ID, already in the URL, or `null` when the text is no ID. */
   readonly disputeId: bigint | null;
   readonly chainName: string;
 }
 
-/** The page the lookup shows while it loads (the record band, the summary card, the section bars), so the page keeps still when the lookup starts. */
 export function PendingSearch({ disputeId, chainName }: PendingSearchProps) {
   return (
     <div className="flex flex-col gap-6">

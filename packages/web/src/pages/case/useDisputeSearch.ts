@@ -6,10 +6,8 @@ import { paths } from "../../routing";
 export const SEARCH_DEBOUNCE_MS = 750;
 
 export interface DisputeSearch {
-  /** The typed text still waiting for the debounce, or `null` when the page shows the URL's dispute. */
   readonly pending: string | null;
   readonly shownId: bigint | null;
-  /** Text that is neither empty nor a dispute ID is ignored. */
   change(text: string): void;
   submit(): void;
 }

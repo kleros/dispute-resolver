@@ -17,7 +17,6 @@ const portMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(ERROR_MESSAGE_TYPE), message: z.string() }),
 ]);
 
-/** The page's acknowledgement settles nothing; only a result or an error settles the run. */
 type PortMessage = { readonly kind: "acknowledged" } | { readonly kind: "settled"; readonly result: ScriptResult };
 
 export const MALFORMED_REPLY = failedResult("runner-error", "The script runner sent a malformed reply.");

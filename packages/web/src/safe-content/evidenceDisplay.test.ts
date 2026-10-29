@@ -7,9 +7,7 @@ import type { EvidenceDisplayInput } from "./types";
 const GATEWAY: GatewayOrigin = "https://cdn.kleros.link";
 const CID = "QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh";
 const KLEROS_LIQUID_MAINNET: Address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
-/** On the display allowlist under chain 1 (T2CR). */
 const ALLOWLISTED_ON_1: Address = "0xebcf3bca271b26ae4b162ba560e243055af0e679";
-/** On the display allowlist under chain 100 only. */
 const ALLOWLISTED_ON_100: Address = "0x2a2bab2c2d4eb5007b0389720b287d4d19dc4001";
 const NOT_ALLOWLISTED: Address = "0x00000000000000000000000000000000000000aa";
 const MAINNET_RPC = "https://mainnet.read.example/secret-key";
@@ -33,63 +31,41 @@ function input(overrides: Partial<EvidenceDisplayInput> = {}): EvidenceDisplayIn
   };
 }
 
-const PARAM_ORDER = [
-  "disputeID",
-  "chainID",
-  "arbitratorContractAddress",
-  "arbitratorJsonRpcUrl",
-  "arbitratorChainID",
-  "arbitrableContractAddress",
-  "arbitrableChainID",
-  "arbitrableJsonRpcUrl",
-  "jsonRpcUrl",
-];
+const JSON_PARAMS = {
+  disputeID: "1255",
+  chainID: 1,
+  arbitratorContractAddress: KLEROS_LIQUID_MAINNET,
+  arbitratorJsonRpcUrl: MAINNET_RPC,
+  arbitratorChainID: 1,
+  arbitrableContractAddress: NOT_ALLOWLISTED,
+  arbitrableChainID: 1,
+  arbitrableJsonRpcUrl: MAINNET_RPC,
+  jsonRpcUrl: MAINNET_RPC,
+};
+const PARAM_ORDER = Object.keys(JSON_PARAMS);
+const SEARCH_PARAMS = Object.fromEntries(Object.entries(JSON_PARAMS).map(([key, value]) => [key, String(value)]));
 
 function decodeJsonQuery(src: string | undefined): Record<string, unknown> {
   const query = src?.slice(src.indexOf("?") + 1) ?? "";
   return JSON.parse(decodeURIComponent(query)) as Record<string, unknown>;
 }
 
-function withDisplay(uri: string | null, overrides: Partial<EvidenceDisplayInput> = {}): EvidenceDisplayInput {
-  return input({ metaEvidence: testMetaEvidence({ evidenceDisplayInterfaceURI: uri }), ...overrides });
+function withMeta(fields: Partial<MetaEvidence>, overrides: Partial<EvidenceDisplayInput> = {}): EvidenceDisplayInput {
+  return input({ metaEvidence: testMetaEvidence({ evidenceDisplayInterfaceURI: `/ipfs/${CID}`, ...fields }), ...overrides });
 }
 
 describe("buildEvidenceDisplay source", () => {
-  it("renders no frame without an evidenceDisplayInterfaceURI", () => {
-    expect(buildEvidenceDisplay(withDisplay(null))).toBeNull();
-  });
-
-  it("renders no frame for a source the display rules refuse", () => {
-    expect(buildEvidenceDisplay(withDisplay("javascript:alert(1)"))).toBeNull();
-  });
-
-  it("serves a canonical IPFS path through the configured gateway", () => {
-    const model = buildEvidenceDisplay(withDisplay(`/ipfs/${CID}/index.html`));
-    expect(model?.src.startsWith(`${GATEWAY}/ipfs/${CID}/index.html?`)).toBe(true);
+  it.each<[string, string | null]>([
+    ["without an evidenceDisplayInterfaceURI", null],
+    ["for a source the display rules refuse", "javascript:alert(1)"],
+  ])("renders no frame %s", (_label, uri) => {
+    expect(buildEvidenceDisplay(withMeta({ evidenceDisplayInterfaceURI: uri }))).toBeNull();
   });
 });
 
 describe("buildEvidenceDisplay parameters", () => {
   it("passes the dispute, the page chain, the arbitrator and the arbitrable from the binding", () => {
-    const model = buildEvidenceDisplay(input());
-    expect(model?.params).toEqual({
-      disputeID: "1255",
-      chainID: 1,
-      arbitratorContractAddress: KLEROS_LIQUID_MAINNET,
-      arbitratorJsonRpcUrl: "https://mainnet.read.example/secret-key",
-      arbitratorChainID: 1,
-      arbitrableContractAddress: NOT_ALLOWLISTED,
-      arbitrableChainID: 1,
-      arbitrableJsonRpcUrl: "https://mainnet.read.example/secret-key",
-      jsonRpcUrl: "https://mainnet.read.example/secret-key",
-    });
-  });
-
-  it("gives frames the read RPC of the chain each URL is for", () => {
-    const model = buildEvidenceDisplay(
-      input({ metaEvidence: testMetaEvidence({ evidenceDisplayInterfaceURI: `/ipfs/${CID}`, arbitrableChainID: { status: "valid", chainId: 100 } }) }),
-    );
-    expect(model?.params.arbitrableJsonRpcUrl).toBe("https://gnosis.read.example/secret-key");
+    expect(buildEvidenceDisplay(input())?.params).toEqual(JSON_PARAMS);
   });
 
   it("writes null for a chain with no RPC configured", () => {
@@ -100,22 +76,17 @@ describe("buildEvidenceDisplay parameters", () => {
   });
 
   it("takes the chain IDs from valid meta-evidence fields", () => {
-    const metaEvidence = testMetaEvidence({
-      evidenceDisplayInterfaceURI: `/ipfs/${CID}`,
-      arbitratorChainID: { status: "valid", chainId: 100 },
-      arbitrableChainID: { status: "valid", chainId: 100 },
-    });
-    const model = buildEvidenceDisplay(input({ metaEvidence }));
+    const model = buildEvidenceDisplay(withMeta({ arbitratorChainID: { status: "valid", chainId: 100 }, arbitrableChainID: { status: "valid", chainId: 100 } }));
     expect(model?.params.chainID).toBe(1);
     expect(model?.params.arbitratorChainID).toBe(100);
     expect(model?.params.arbitrableChainID).toBe(100);
     expect(model?.params.arbitratorJsonRpcUrl).toBe("https://gnosis.read.example/secret-key");
+    expect(model?.params.arbitrableJsonRpcUrl).toBe("https://gnosis.read.example/secret-key");
     expect(model?.params.jsonRpcUrl).toBe("https://mainnet.read.example/secret-key");
   });
 
   it("falls back to the page chain for an invalid chain ID field", () => {
-    const metaEvidence = testMetaEvidence({ evidenceDisplayInterfaceURI: `/ipfs/${CID}`, arbitratorChainID: { status: "invalid" }, arbitrableChainID: { status: "invalid" } });
-    const model = buildEvidenceDisplay(input({ metaEvidence }));
+    const model = buildEvidenceDisplay(withMeta({ arbitratorChainID: { status: "invalid" }, arbitrableChainID: { status: "invalid" } }));
     expect(model?.params.arbitratorChainID).toBe(1);
     expect(model?.params.arbitrableChainID).toBe(1);
     expect(model?.params.arbitratorJsonRpcUrl).toBe("https://mainnet.read.example/secret-key");
@@ -130,28 +101,6 @@ describe("buildEvidenceDisplay for a chain the app does not configure", () => {
     ["arbitrator", 10],
     ["arbitrator", 690],
   ] as const;
-  const JSON_PARAMS = {
-    disputeID: "1255",
-    chainID: 1,
-    arbitratorContractAddress: KLEROS_LIQUID_MAINNET,
-    arbitratorJsonRpcUrl: MAINNET_RPC,
-    arbitratorChainID: 1,
-    arbitrableContractAddress: NOT_ALLOWLISTED,
-    arbitrableChainID: 1,
-    arbitrableJsonRpcUrl: MAINNET_RPC,
-    jsonRpcUrl: MAINNET_RPC,
-  };
-  const SEARCH_PARAMS = {
-    disputeID: "1255",
-    chainID: "1",
-    arbitratorContractAddress: KLEROS_LIQUID_MAINNET,
-    arbitratorJsonRpcUrl: MAINNET_RPC,
-    arbitratorChainID: "1",
-    arbitrableContractAddress: NOT_ALLOWLISTED,
-    arbitrableChainID: "1",
-    arbitrableJsonRpcUrl: MAINNET_RPC,
-    jsonRpcUrl: MAINNET_RPC,
-  };
 
   function unsupported(side: "arbitrable" | "arbitrator", chainId: number): Partial<MetaEvidence> {
     const field = { status: "unsupported", chainId } as const;
@@ -200,24 +149,23 @@ describe("buildEvidenceDisplay sandbox", () => {
   });
 
   it("keys the allowlist on a valid meta-evidence arbitrableChainID", () => {
-    const metaEvidence = testMetaEvidence({ evidenceDisplayInterfaceURI: `/ipfs/${CID}`, arbitrableChainID: { status: "valid", chainId: 100 } });
-    expect(buildEvidenceDisplay(input({ metaEvidence, arbitrable: ALLOWLISTED_ON_100 }))?.sandbox).toEqual(RELAXED);
+    expect(buildEvidenceDisplay(withMeta({ arbitrableChainID: { status: "valid", chainId: 100 } }, { arbitrable: ALLOWLISTED_ON_100 }))?.sandbox).toEqual(RELAXED);
   });
 
   it("falls back to the arbitrator chain for an arbitrableChainID that is not a positive integer", () => {
-    const metaEvidence = testMetaEvidence({ evidenceDisplayInterfaceURI: `/ipfs/${CID}`, arbitrableChainID: { status: "invalid" } });
-    expect(buildEvidenceDisplay(input({ metaEvidence, arbitrable: ALLOWLISTED_ON_100 }))?.sandbox).toEqual(["allow-scripts"]);
-    expect(buildEvidenceDisplay(input({ metaEvidence, arbitrable: ALLOWLISTED_ON_1 }))?.sandbox).toEqual(RELAXED);
+    const fields: Partial<MetaEvidence> = { arbitrableChainID: { status: "invalid" } };
+    expect(buildEvidenceDisplay(withMeta(fields, { arbitrable: ALLOWLISTED_ON_100 }))?.sandbox).toEqual(["allow-scripts"]);
+    expect(buildEvidenceDisplay(withMeta(fields, { arbitrable: ALLOWLISTED_ON_1 }))?.sandbox).toEqual(RELAXED);
   });
 
   it.each([10, 690])("gives allow-scripts only for unconfigured arbitrable chain %i, even to an arbitrable allowlisted on the arbitrator chain", (chainId) => {
-    const metaEvidence = testMetaEvidence({ evidenceDisplayInterfaceURI: `/ipfs/${CID}`, arbitrableChainID: { status: "unsupported", chainId } });
-    expect(buildEvidenceDisplay(input({ metaEvidence, arbitrable: ALLOWLISTED_ON_1 }))?.sandbox).toEqual(["allow-scripts"]);
-    expect(buildEvidenceDisplay(input({ metaEvidence, arbitrable: ALLOWLISTED_ON_100, arbitratorChainId: 100 }))?.sandbox).toEqual(["allow-scripts"]);
+    const fields: Partial<MetaEvidence> = { arbitrableChainID: { status: "unsupported", chainId } };
+    expect(buildEvidenceDisplay(withMeta(fields, { arbitrable: ALLOWLISTED_ON_1 }))?.sandbox).toEqual(["allow-scripts"]);
+    expect(buildEvidenceDisplay(withMeta(fields, { arbitrable: ALLOWLISTED_ON_100, arbitratorChainId: 100 }))?.sandbox).toEqual(["allow-scripts"]);
   });
 
   it("never gives allow-same-origin to a display on the app's own origin", () => {
-    const model = buildEvidenceDisplay(withDisplay("https://resolve.kleros.io/display/index.html", { arbitrable: ALLOWLISTED_ON_1 }));
+    const model = buildEvidenceDisplay(withMeta({ evidenceDisplayInterfaceURI: "https://resolve.kleros.io/display/index.html" }, { arbitrable: ALLOWLISTED_ON_1 }));
     expect(model?.sandbox).toEqual(["allow-scripts"]);
   });
 

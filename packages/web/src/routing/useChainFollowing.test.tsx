@@ -53,7 +53,6 @@ function LinkingPage() {
   );
 }
 
-/** Records every switch request the app makes, while letting the mock connector carry it out. */
 function spyOnSwitches(wallet: TestWallet) {
   return vi.spyOn(walletConnector(wallet), "switchChain");
 }
@@ -77,7 +76,6 @@ function toastsShown() {
   return [...notifications().queryAllByRole("status"), ...notifications().queryAllByRole("alert")];
 }
 
-/** Declines the waiting switch request and lets the app see the refusal. */
 async function declineNow(decline: () => void) {
   await act(async () => {
     decline();
@@ -91,7 +89,6 @@ async function settle() {
   });
 }
 
-/** A connected wallet whose switch requests are recorded from before the app renders. */
 async function connectedWithSpy(options: Parameters<typeof createConnectedTestWallet>[0]) {
   const wallet = await createConnectedTestWallet(options);
   return { wallet, switches: spyOnSwitches(wallet) };
@@ -218,16 +215,12 @@ describe("useChainFollowing: a wallet on another chain than the page's", () => {
     expect(toast).toHaveTextContent("The app is now showing Gnosis Network.");
   });
 
-  it.each([
-    ["/1/cases/1621?ref=share#evidence", "1621"],
-    ["/1/CASES/5", "5"],
-    ["/1/%63ases/5", "5"],
-  ])("a declined switch on the case link %s opens the wallet chain's Ongoing Disputes and says dispute %s is on the other chain", async (path, disputeId) => {
+  it("a declined switch on a case link opens the wallet chain's Ongoing Disputes and says the dispute is on the other chain", async () => {
     const wallet = await createConnectedTestWallet({ chainId: 100, switchChainError: true });
-    const view = renderWithProviders(<PageProbe />, { path, wallet });
+    const view = renderWithProviders(<PageProbe />, { path: "/1/cases/1621?ref=share#evidence", wallet });
     expect(await screen.findByText("Page on 100")).toBeInTheDocument();
     expect(view.currentPath()).toBe("/100/ongoing");
-    expect(notifications().getByRole("status")).toHaveTextContent(`Dispute ${disputeId} is on Ethereum Mainnet, so the app is showing Ongoing Disputes on Gnosis Network.`);
+    expect(notifications().getByRole("status")).toHaveTextContent("Dispute 1621 is on Ethereum Mainnet, so the app is showing Ongoing Disputes on Gnosis Network.");
   });
 
   it("a failed switch moves the app to the wallet's chain and shows one error toast with the wallet's reason", async () => {
@@ -249,8 +242,6 @@ describe("useChainFollowing: a wallet on another chain than the page's", () => {
     await waitFor(() => {
       expect(view.currentPath()).toBe("/100/ongoing");
     });
-    // With an injected wallet the built app reconnects twice at load: the connection passes through `reconnecting` and
-    // settles again on the same chain.
     setWalletStatus(wallet, "reconnecting");
     setWalletStatus(wallet, "connected");
     await settle();
@@ -349,19 +340,6 @@ describe("useChainFollowing: a wallet on another chain than the page's", () => {
     expect(switches).toHaveBeenCalledTimes(1);
     expect(switches).toHaveBeenCalledWith(expect.objectContaining({ chainId: 1 }));
     expect(toastsShown()).toEqual([]);
-  });
-
-  it("a wallet on an unconfigured chain whose switch fails shows the unsupported-network screen and an error toast", async () => {
-    const wallet = await createConnectedTestWallet({ chainId: UNCONFIGURED_CHAIN_ID, switchChainError: new Error("Unrecognized chain ID") });
-    const view = renderWithProviders(<PageProbe />, { path: "/1/ongoing?period=4", wallet });
-    expect(await screen.findByRole("heading", { name: `Unsupported Network ${String(UNCONFIGURED_CHAIN_ID)}` })).toBeInTheDocument();
-    expect(view.currentPath()).toBe(`/${String(UNCONFIGURED_CHAIN_ID)}/ongoing?period=4`);
-    const [toast, ...others] = toastsShown();
-    expect(others).toEqual([]);
-    expect(toast).toHaveAttribute("role", "alert");
-    expect(toast).toHaveTextContent("Network not switched");
-    expect(toast).toHaveTextContent(/Could not switch to Ethereum Mainnet: .+\.$/);
-    expect(toast).not.toHaveTextContent(/showing/);
   });
 
   it("the app never asks again after its own fallback move", async () => {

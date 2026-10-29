@@ -1,6 +1,5 @@
 import { parseEther } from "viem";
 
-/** A contribution in wei, or why the typed amount cannot be sent. */
 type Contribution = { readonly ok: true; readonly wei: bigint } | { readonly ok: false; readonly message: string };
 
 const PLAIN_DECIMAL = /^\d+(?:\.(\d+))?$/;

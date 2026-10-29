@@ -7,7 +7,6 @@ import type { FallbackOutcomes, RulingOptions } from "../rulings/types";
 import { fundedPercent, isWinningCode } from "./amounts";
 import type { AppealAmounts, CardFundingState, CardOrigin, CardSide, CrowdfundingCard, CrowdfundingSet, RoundFunding } from "./types";
 
-/** The cards of a question without usable options. */
 const DEFAULT_OUTCOMES = ["Yes", "No"] as const;
 
 /** Above this many options, multiple-select cards are no longer enumerated: 2ⁿ cards would flood the panel. */
@@ -17,9 +16,7 @@ interface CardContext {
   readonly currentRuling: bigint;
   readonly amounts: AppealAmounts;
   readonly override: BehaviorOverride | undefined;
-  /** Total contributed per ruling code in the funding round. */
   readonly contributed: ReadonlyMap<bigint, bigint>;
-  /** The rulings the contract reported fully funded in the round. */
   readonly funded: ReadonlySet<bigint>;
   /** Every ruling shares one side: a governor tie, or a tie where every option is a winner. */
   readonly shared: boolean;
@@ -57,7 +54,6 @@ function card(context: CardContext, origin: CardOrigin, title: string, code: big
   };
 }
 
-/** One card per reserved answer, coded with its hex key. */
 function reservedCards(context: CardContext, reserved: RulingOptions["reserved"]): CrowdfundingCard[] {
   return Object.entries(reserved ?? {}).flatMap(([key, title]) => {
     const code = reservedCode(key);
@@ -108,10 +104,9 @@ function questionCards(context: CardContext, options: RulingOptions, fallbackOut
 }
 
 /**
- * The crowdfunding cards of the funding round: the refuse card unless option 0 is not fundable (Unslashed), the
- * reserved answers, then the cards of the question type. Variable types add a free input and multiple-select above four
- * options a composer, both for a new answer: at the loser amount and deadline, or the shared ones in a tie that costs
- * every ruling alike.
+ * The refuse card unless option 0 is not fundable (Unslashed), the reserved answers, then the question type's cards. A
+ * new answer on the free input or composer takes the loser terms, or the shared ones in a tie that costs every ruling
+ * alike.
  */
 export function buildCrowdfundingCards(input: {
   readonly rulingOptions: RulingOptions;
@@ -120,7 +115,6 @@ export function buildCrowdfundingCards(input: {
   readonly amounts: AppealAmounts;
   readonly funding: RoundFunding;
   readonly override: BehaviorOverride | undefined;
-  /** How the sides are set while the current ruling is 0; `null` otherwise. */
   readonly tie: TieDialect | null;
 }): CrowdfundingSet {
   const { rulingOptions, fallbackOutcomes, amounts } = input;
@@ -148,7 +142,6 @@ export function cardFundingState(card: { readonly deadline: number; readonly ful
   return nowSeconds >= card.deadline ? "closed" : "open";
 }
 
-/** The funding shown for an answer the user enters on the free input or the composer. */
 export interface EnteredAnswerFunding {
   /** The card that already funds the entered answer's code, or `null` for a new answer. */
   readonly card: CrowdfundingCard | null;

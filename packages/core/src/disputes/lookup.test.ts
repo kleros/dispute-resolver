@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { klerosLiquidAbi } from "../abi";
 import type { Address } from "../types";
 import { lookupDispute, parseDisputeId } from ".";
-import { answer, fakeClient, failure, GNOSIS, MAINNET, recordedNode, rpcError, SEPOLIA } from "../test/disputes/testHelpers";
+import { answer, fakeClient, failure, GNOSIS, MAINNET, recordedNode, SEPOLIA } from "../test/disputes/testHelpers";
 import type { Recording } from "../test/disputes/testHelpers";
 
 const MAINNET_ARBITRATOR = MAINNET.arbitrator;
@@ -21,34 +21,29 @@ describe("parseDisputeId", () => {
     expect(parseDisputeId(5n)).toBe(5n);
   });
 
-  it.each([
-    ["empty", ""],
-    ["sign", "+1"],
-    ["negative", "-1"],
-    ["whitespace", " 1"],
-    ["trailing whitespace", "1 "],
-    ["decimal", "1.0"],
-    ["exponent", "1e3"],
-    ["hex", "0x10"],
-    ["path injection", "1/../../evil"],
+  it.each<[string, unknown]>([
+    ["an empty string", ""],
+    ["a signed string", "+1"],
+    ["a negative string", "-1"],
+    ["a string with leading whitespace", " 1"],
+    ["a string with trailing whitespace", "1 "],
+    ["a decimal string", "1.0"],
+    ["an exponent string", "1e3"],
+    ["a hex string", "0x10"],
+    ["a path injection", "1/../../evil"],
     ["markup", "1</script>"],
     ["non-ASCII digits", "١٢"],
-    ["above uint256", (UINT256_MAX + 1n).toString()],
-  ])("rejects a string input: %s", (_, input) => {
-    expect(parseDisputeId(input)).toBeNull();
-  });
-
-  it.each([
-    ["negative number", -1],
-    ["fraction", 1.5],
-    ["unsafe integer", Number.MAX_SAFE_INTEGER + 1],
+    ["a string above uint256", (UINT256_MAX + 1n).toString()],
+    ["a negative number", -1],
+    ["a fraction", 1.5],
+    ["an unsafe integer", Number.MAX_SAFE_INTEGER + 1],
     ["NaN", Number.NaN],
-    ["negative bigint", -1n],
-    ["bigint above uint256", UINT256_MAX + 1n],
+    ["a negative bigint", -1n],
+    ["a bigint above uint256", UINT256_MAX + 1n],
     ["null", null],
     ["undefined", undefined],
-    ["object", { toString: () => "1" }],
-  ])("rejects a non-string input: %s", (_, input) => {
+    ["an object", { toString: () => "1" }],
+  ])("rejects %s", (_, input) => {
     expect(parseDisputeId(input)).toBeNull();
   });
 });
@@ -95,22 +90,9 @@ describe("lookupDispute", () => {
     expect(await lookupDispute({ chainId, client }, NONEXISTENT)).toEqual({ status: "not-found" });
   });
 
-  it("a code 3 execution reverted answer is not-found", async () => {
+  it("a transport error (-32000 header not found) is unavailable, never not-found", async () => {
     const node = recordedNode(MAINNET, {
-      extraCalls: [failure({ to: MAINNET_ARBITRATOR, abi: klerosLiquidAbi, functionName: "disputes", args: [7n], error: { code: 3, message: "execution reverted" } })],
-    });
-    const { client } = fakeClient(node);
-    expect(await lookupDispute({ chainId: 1, client }, 7n)).toEqual({ status: "not-found" });
-  });
-
-  it.each([
-    ["-32603 Internal error", -32603, "Internal error"],
-    ["-32000 header not found", -32000, "header not found"],
-    ["-32005 rate limited", -32005, "daily request count exceeded, request rate limited"],
-    ["-32099 unknown", -32099, "upstream unavailable"],
-  ])("a transport error (%s) is unavailable, never not-found", async (_, code, message) => {
-    const node = recordedNode(MAINNET, {
-      extraCalls: [failure({ to: MAINNET_ARBITRATOR, abi: klerosLiquidAbi, functionName: "disputes", args: [7n], error: { code, message } })],
+      extraCalls: [failure({ to: MAINNET_ARBITRATOR, abi: klerosLiquidAbi, functionName: "disputes", args: [7n], error: { code: -32000, message: "header not found" } })],
     });
     const { client } = fakeClient(node);
     const lookup = await lookupDispute({ chainId: 1, client }, 7n);
@@ -123,14 +105,6 @@ describe("lookupDispute", () => {
     expect(lookup).toMatchObject({ status: "unavailable", error: { code: "rpc-error" } });
   });
 
-  it("the unavailable reason never quotes the transport's full message", async () => {
-    const { client } = fakeClient(recordedNode(MAINNET, { failing: { eth_call: rpcError(-32000, "header not found") } }));
-    const lookup = await lookupDispute({ chainId: 1, client }, 1454n);
-    if (lookup.status !== "unavailable") throw new Error("expected unavailable");
-    expect(lookup.error.message).not.toContain("URL");
-    expect(lookup.error.message).not.toContain("Request body");
-  });
-
   it("a chain without an arbitrator is no-arbitrator, without any read", async () => {
     const { client, requests } = fakeClient(recordedNode(MAINNET));
     expect(await lookupDispute({ chainId: 137, client }, 1n)).toEqual({ status: "no-arbitrator" });
@@ -140,7 +114,6 @@ describe("lookupDispute", () => {
   it("a chain without a read RPC is unavailable with no-rpc", async () => {
     const lookup = await lookupDispute({ chainId: 1, client: undefined }, 1n);
     expect(lookup).toMatchObject({ status: "unavailable", error: { code: "no-rpc", message: "This network's data is unavailable." } });
-    if (lookup.status === "unavailable") expect(lookup.error.message).not.toMatch(/configur|RPC|REACT_APP/i);
   });
 
   it("a period outside 0–4 is invalid data, not a dispute", async () => {

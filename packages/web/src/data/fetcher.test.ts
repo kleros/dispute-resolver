@@ -7,7 +7,6 @@ const CAP_BYTES = 10;
 const URL = "https://cdn.kleros.link/ipfs/QmPolicy/policy.json";
 const never = <T>(): Promise<T> => new Promise<T>(() => undefined);
 
-/** A 200 answer whose body arrives in `chunks`, counting how many the reader asked for and whether the body was cancelled. */
 function streamed(chunks: readonly string[], headers: HeadersInit = {}) {
   const encoder = new TextEncoder();
   let index = 0;
@@ -42,7 +41,6 @@ function answer(body: () => Promise<unknown>): FetchResponse {
   return { ok: true, status: 200, json: body, text: () => body().then(String) };
 }
 
-/** Whether the promise has settled after the fake clock moved by `ms`, and how. */
 async function stateAfter(promise: Promise<unknown>, ms: number): Promise<string> {
   const outcome = promise.then(
     () => "answered",
@@ -57,14 +55,14 @@ afterEach(() => {
 });
 
 describe("createFetcher", () => {
-  it("never sends credentials and forwards only core's signal and headers", async () => {
+  const signal = new AbortController().signal;
+  it.each([
+    ["with core's signal and headers", { signal, headers: { accept: "application/json" } }, { credentials: "omit", signal, headers: { accept: "application/json" } }],
+    ["on a call without options", undefined, { credentials: "omit", signal: null, headers: {} }],
+  ])("never sends credentials and forwards only core's signal and headers, %s", async (_label, init, forwarded) => {
     const fetchFunction = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() => Promise.resolve(new Response('{"name":"n"}', { status: 200 })));
-    const controller = new AbortController();
-    const fetcher = createFetcher(fetchFunction);
-
-    const response = await fetcher("https://cdn.kleros.link/ipfs/Qm", { signal: controller.signal, headers: { accept: "application/json" } });
-
-    expect(fetchFunction).toHaveBeenCalledWith("https://cdn.kleros.link/ipfs/Qm", { credentials: "omit", signal: controller.signal, headers: { accept: "application/json" } });
+    const response = await createFetcher(fetchFunction)(URL, init);
+    expect(fetchFunction).toHaveBeenCalledWith(URL, forwarded);
     expect(response).toMatchObject({ ok: true, status: 200 });
     await expect(response.json()).resolves.toEqual({ name: "n" });
   });
@@ -98,12 +96,6 @@ describe("createFetcher", () => {
   it("a body that is not JSON rejects json() with a SyntaxError", async () => {
     const answer = await createFetcher(() => Promise.resolve(new Response("%PDF-1.4", { status: 200 })))(URL);
     await expect(rejectionName(answer.json())).resolves.toBe("SyntaxError");
-  });
-
-  it("omits credentials on a call without options", async () => {
-    const fetchFunction = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() => Promise.resolve(new Response(null, { status: 404 })));
-    await createFetcher(fetchFunction)("https://example.com/");
-    expect(fetchFunction.mock.calls[0]?.[1]).toEqual({ credentials: "omit", signal: null, headers: {} });
   });
 });
 

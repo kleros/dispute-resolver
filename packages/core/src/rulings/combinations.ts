@@ -1,10 +1,8 @@
-/** The title of a multiple-select combination: "None" for 0, else its set bits' titles, lowest bit first. */
 export function combinationTitle(combination: bigint, titles: readonly string[]): string {
   if (combination === 0n) return "None";
   return titles.filter((_, index) => ((combination >> BigInt(index)) & 1n) === 1n).join(", ");
 }
 
-/** The ruling code of the combination of the selected option indexes: the bitmask + 1. */
 export function combinationCode(selectedIndexes: readonly number[]): bigint {
   let mask = 0n;
   for (const index of selectedIndexes) {

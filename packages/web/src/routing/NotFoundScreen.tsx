@@ -9,7 +9,6 @@ interface NotFoundScreenProps {
   readonly chainId: number;
 }
 
-/** The 404 screen: the Acropolis illustration, "404", "Page not found" and a link to the chain's Ongoing Disputes. */
 export function NotFoundScreen({ chainId }: NotFoundScreenProps) {
   const headingId = useId();
   return (

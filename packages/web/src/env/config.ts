@@ -3,7 +3,6 @@ import type { Env } from "@dispute-resolver/core";
 import { ENV } from "./env";
 import type { AppConfig, AppLocation } from "./types";
 
-/** `REACT_APP_WALLETCONNECT_PROJECT_ID`, trimmed; empty or unset is `null` and boots the read-only wallet mode. */
 function readWalletConnectProjectId(env: Env): string | null {
   const projectId = env.REACT_APP_WALLETCONNECT_PROJECT_ID?.trim() ?? "";
   return projectId === "" ? null : projectId;
@@ -27,10 +26,7 @@ function readAtlasUri(env: Env): string | null {
   return `${url.origin}${withoutTrailingSlashes(url.pathname)}`;
 }
 
-/**
- * Derives the app configuration from an environment and the page location. Pure and total: a missing or malformed
- * variable yields a `null` field, never an exception, so the app always boots.
- */
+/** Pure and total: a missing or malformed variable yields a `null` field, never an exception, so the app always boots. */
 export function buildAppConfig(env: Env, location: AppLocation): AppConfig {
   return Object.freeze({
     env,
@@ -42,5 +38,4 @@ export function buildAppConfig(env: Env, location: AppLocation): AppConfig {
   });
 }
 
-/** Computed once at module load from the real environment and `window.location`. */
 export const APP_CONFIG: AppConfig = buildAppConfig(ENV, window.location);

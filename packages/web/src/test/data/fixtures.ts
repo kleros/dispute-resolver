@@ -26,10 +26,7 @@ const TEST_ARBITRATOR: Address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
 export const TEST_ARBITRABLE: Address = "0xc5e9ddebb09cd64dfacab4011a0d5cedaf7c9bdb";
 export const TEST_META_EVIDENCE_URI: CanonicalIpfsPath = "/ipfs/QmQ2XoA25HmnPUEWDduxj6LYwMwp6jtXPFRMHcNF2EvJfU/metaEvidence.json";
 
-/**
- * A binding as `lookupDispute` returns it. Only core constructs `ArbitratedBinding` in the app; a test builds one
- * through this cast to stand in for a lookup it does not run.
- */
+/** Only core constructs `ArbitratedBinding`; a test casts one to stand in for a lookup it does not run. */
 export function testBinding(overrides: Partial<Omit<ArbitratedBinding, symbol>> = {}): ArbitratedBinding {
   const binding = { chainId: 1, disputeId: 1n, arbitrator: TEST_ARBITRATOR, arbitrated: TEST_ARBITRABLE, ...overrides };
   return binding as unknown as ArbitratedBinding;
@@ -39,7 +36,6 @@ function testDispute(overrides: Partial<ArbitratorDispute> = {}): ArbitratorDisp
   return { id: 1n, subcourtId: 0n, arbitrated: TEST_ARBITRABLE, numberOfChoices: 2n, period: 0, lastPeriodChange: 1_700_000_000, ruled: false, ...overrides };
 }
 
-/** A `found` lookup of dispute `disputeId` on `chainId` in `period`. */
 export function testFoundLookup(
   options: { readonly chainId?: number; readonly disputeId?: bigint; readonly period?: Period; readonly arbitrable?: Address; readonly ruled?: boolean } = {},
 ): Extract<DisputeLookup, { status: "found" }> {
@@ -74,7 +70,6 @@ export function testFamily(overrides: Partial<FamilyDetection> = {}): FamilyDete
   };
 }
 
-/** An accepted meta-evidence result as `loadMetaEvidence` returns it. */
 export function testOkMetaEvidence(overrides: Partial<MetaEvidence> = {}): Extract<MetaEvidenceResult, { status: "ok" }> {
   return {
     status: "ok",
@@ -86,7 +81,6 @@ export function testOkMetaEvidence(overrides: Partial<MetaEvidence> = {}): Extra
   };
 }
 
-/** The details of a found dispute with every read successful. */
 export function testDetails(lookup: Extract<DisputeLookup, { status: "found" }>, overrides: Partial<DisputeReads> = {}): DisputeReads {
   return {
     dispute: lookup.dispute,
@@ -111,18 +105,15 @@ export function testWriteContext(overrides: Partial<CaseWriteContext> = {}): Cas
   };
 }
 
-/** A found Dispute event, as `readDisputeEvent` reads it. */
 export function testDisputeEvent(overrides: Partial<DisputeEvent> = {}): Extract<DisputeEventResult, { status: "found" }> {
   return { status: "found", event: { metaEvidenceId: 0n, evidenceGroupId: 3n, blockNumber: 100n, createdAt: 1_700_000_000, transactionHash: "0x01", ...overrides } };
 }
 
-/** An evidence list with `items`, hiding `hidden` items by reason. */
 export function testEvidenceList(items: EvidenceList["items"] = [], hidden: Partial<Record<HiddenEvidenceReason, number>> = {}): EvidenceList {
   const hiddenByReason = { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0, ...hidden };
   return { items, hiddenEvidenceCount: Object.values(hiddenByReason).reduce((sum, count) => sum + count, 0), hiddenByReason };
 }
 
-/** Dispute 1 on mainnet with every section loading. */
 export function testCaseDispute(overrides: Partial<CaseDispute> = {}): CaseDispute {
   return {
     status: "dispute",
@@ -154,7 +145,6 @@ export function caseDispute(data: CaseData): CaseDispute {
   return data;
 }
 
-/** A promise settled by the test. */
 export function deferred<T>() {
   let resolve: (value: T) => void = () => undefined;
   const promise = new Promise<T>((settle) => {
@@ -163,7 +153,6 @@ export function deferred<T>() {
   return { promise, resolve };
 }
 
-/** An RPC that answers `eth_getCode` with `code` and nothing else. */
 export function codeRpc(code: string): RpcHandler {
   return ({ method }) => {
     if (method === "eth_getCode") return code;

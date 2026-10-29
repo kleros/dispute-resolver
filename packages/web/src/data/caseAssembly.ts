@@ -50,7 +50,6 @@ export interface FoundCaseReads {
   /** `useProductFunding`; `null` when the round's funding is the Dispute Resolver's own read, or not needed. */
   readonly productFunding: SectionData<readonly bigint[]> | null;
   readonly override: BehaviorOverride | undefined;
-  /** The page chain's read client; `undefined` without one. */
   readonly readClient: ReadClient | undefined;
 }
 

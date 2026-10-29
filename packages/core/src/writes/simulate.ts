@@ -1,5 +1,6 @@
 import { BaseError, InsufficientFundsError, type Abi } from "viem";
-import { NETWORK_DATA_UNAVAILABLE, callFailure, rejectionReason } from "../outcome";
+import { NETWORK_DATA_UNAVAILABLE, callFailure } from "../outcome";
+import { rejectionReason } from "../rpc";
 import type { Address, ReadClient, WriteCall } from "../types";
 import type { SimulationResult } from "./types";
 

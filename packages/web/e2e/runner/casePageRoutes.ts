@@ -2,21 +2,14 @@ import { expect, type Page, type Route } from "@playwright/test";
 import { RULING_TOPIC, logFilterFor } from "../support/arbitrator";
 import { appOriginOf, callData, CORS_HEADERS, fakeNetwork, loadRecording } from "../support/network";
 
-// The case page of mainnet dispute 1621 on support/network.ts's fake network: the chain-1 JSON-RPC reads and the
-// meta-evidence locator are answered from e2e/app's recording of it, whose locator and recorded MetaEvidence event name
-// one path; the gateway serves a test meta-evidence file under it, a test script under an allowlisted CID (the allowlist
-// compares paths, not bytes) and no other file. Requests are recognized by their shape, never by host, so the build's
-// configured URLs (which carry API keys) appear nowhere here and are never printed. Anything else is aborted. The build
-// must have the meta-evidence API and the chain-1 read RPC configured, as a deploy does.
-//
-// Nothing is imported from @dispute-resolver/core at runtime: its module graph loads jsdom, which Playwright's loader
-// cannot load under every Node version the engines field allows, and one load error stops every spec of the run.
+// The gateway serves a test script under an allowlisted CID: the allowlist compares paths, not bytes. Requests are
+// recognized by their shape, so the build's configured URLs (which carry API keys) are never named or printed.
+// Nothing from core at runtime: its module graph loads jsdom (see support/arbitrator.ts).
 
 export const DISPUTE_ID = "1621";
 export const CASE_PATH = `/1/cases/${DISPUTE_ID}`;
 export const RUNNER_PATH = "/__runner/index.html";
 export const RUNNER_FRAME = `iframe[src="${RUNNER_PATH}"]`;
-/** A blank page on the app's origin that frames the runner, served by `serveHarness`. */
 export const HARNESS_PATH = "/__runner-e2e/harness.html";
 const HARNESS_HTML = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Runner harness</title></head><body></body></html>';
 
@@ -58,14 +51,12 @@ const DISPUTES_CALL = "0x564a565d00000000000000000000000000000000000000000000000
 const EXECUTED_DISPUTE =
   "0x0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000327a29fce0a6490e4236240be176daa282eccfdf00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000006588146f000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001";
 
-/** What the routes served, as counts and method names only. */
 export interface Traffic {
   readonly locator: number;
   readonly metaEvidence: number;
   readonly script: number;
   readonly rpcAnswered: number;
   readonly rpcUnanswered: readonly string[];
-  /** Requests for the display page a spec named. */
   readonly display: number;
 }
 
@@ -146,7 +137,6 @@ export async function serveHarness(page: Page, url: string): Promise<void> {
   await page.route(url, (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: HARNESS_HTML }));
 }
 
-/** Fails early, and says why, when the build lacks the configuration the page needs to reach the routed dependencies. */
 export async function expectConfiguredBuild(traffic: Traffic): Promise<void> {
   await expect
     .poll(() => traffic.locator, { message: "meta-evidence locator never requested (needs REACT_APP_METAEVIDENCE_URL in the build)", timeout: 15_000 })
@@ -163,7 +153,6 @@ export async function expectConfiguredBuild(traffic: Traffic): Promise<void> {
     .toBeGreaterThan(0);
 }
 
-/** Fails with the routed dependency the page never asked for, so a build without the needed configuration says why. */
 export function expectEveryDependencyServed(traffic: Traffic): void {
   expect(traffic.locator, "meta-evidence locator requests (needs REACT_APP_METAEVIDENCE_URL in the build)").toBeGreaterThan(0);
   expect(traffic.metaEvidence, "meta-evidence file requests").toBeGreaterThan(0);

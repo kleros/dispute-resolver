@@ -37,7 +37,6 @@ interface MenuProps {
   readonly onItem?: () => void;
 }
 
-/** A menu button and its panel; the panel holds an item and whatever else the test puts in it. */
 function Menu({ name, children, onItem }: MenuProps) {
   const [open, setOpen] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);

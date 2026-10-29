@@ -1,48 +1,33 @@
 {
   "provenance": "Real disputes the meta-evidence gates are pinned against (04 golden cases). Meta-evidence files live on IPFS and carry no block number, so each entry names its source and the date it was read instead.",
   "mainnet1684": {
-    "chainId": 1,
-    "disputeId": "1684",
-    "arbitrable": "0x799cb978dea5d6ca00ccb1794d3c3d4c89e40cd1",
     "metaEvidenceUri": "ipfs://QmRMfJm6rLVrNYMqcdZtn2Krfuqszq2gqc7GmSV31ZbkG4",
     "dynamicScriptCid": "QmVkffjdrtLVsRxybdB2xSidamnUrvck3FVxmKxJz6eD7f",
     "source": "metaEvidenceUri read through the Kleros agent toolkit on 2026-10-14 (dispute created at block 26,124,608); the script CID is the wallet-hijack script excluded from the allowlist on 2026-10-05 (registry/scripts.ts provenance)."
   },
   "gnosis863": {
-    "chainId": 100,
-    "disputeId": "863",
     "arbitrable": "0x25fa9432832efdd48deec6d4cf1cd3f139678a5b",
-    "metaEvidenceUri": "https://cdn.kleros.link/ipfs/QmSynthetic863GatewayUrLxxxxxxxxxxxxxxxxxxxxxx/metaEvidence.json",
-    "source": "The arbitrable re-emitted MetaEvidence 0 with an absolute https://cdn.kleros.link/ipfs/... URL (golden case Gnosis 863). The CID here is a synthetic placeholder of the same shape; only the absolute gateway form matters to the gate. recordedEventUris are the two MetaEvidence(0) emissions of the arbitrable, oldest first (blocks 47,021,786 and 47,029,860), read from the Gnosis read RPC on 2026-10-20 at block 48,850,832 (evidence/__fixtures__/gnosis-460-863-meta-evidence.json).",
+    "source": "The arbitrable re-emitted MetaEvidence 0 with an absolute https://cdn.kleros.link/ipfs/... URL (golden case Gnosis 863). recordedEventUris are the two MetaEvidence(0) emissions of the arbitrable, oldest first (blocks 47,021,786 and 47,029,860), read from the Gnosis read RPC on 2026-10-20 at block 48,850,832 (evidence/__fixtures__/gnosis-460-863-meta-evidence.json).",
     "recordedEventUris": [
       "ipfs://bafkreigi53smvtvoi2s5zh3wd5ztu7pzl4lao5v4y7xihd3bjrpwtuyk2a",
       "https://cdn.kleros.link/ipfs/bafkreigi53smvtvoi2s5zh3wd5ztu7pzl4lao5v4y7xihd3bjrpwtuyk2a"
     ]
   },
   "mainnet1621": {
-    "chainId": 1,
-    "disputeId": "1621",
     "arbitrable": "0x327a29fce0a6490e4236240be176daa282eccfdf",
     "dynamicScriptURI": "/ipfs/QmdpXXmNxmdmLqZCabRUC9bZ65c2BN54EuUTRi5SdtiHQ4",
     "removedOverrideCid": "Qmf1k727vP7qZv21MDB8vwL6tfVEKPCUQAiw8CTfHStkjf",
     "source": "poh.eth governor; script QmdpXX... per golden case 1621; removedOverrideCid is the override script that is no longer applied."
   },
   "mainnet560": {
-    "chainId": 1,
-    "disputeId": "560",
     "body": "%PDF-1.4\n%âãÏÓ\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
     "source": "Golden case 560: the meta-evidence file is a PDF, not JSON. The body is the start of a PDF file, enough for the JSON parse to fail."
   },
   "gnosis140": {
-    "chainId": 100,
-    "disputeId": "140",
-    "arbitrable": "0x62b286a93d6f720a654745a3451f71cf71481b81",
     "body": "{\"title\": \"Unparseable meta-evidence\", \"description\": \"cut short",
     "source": "Golden case Gnosis 140: unparseable meta-evidence JSON. The body is a truncated JSON document of the same kind."
   },
   "gnosis460": {
-    "chainId": 100,
-    "disputeId": "460",
     "arbitrable": "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
     "eventMetaEvidenceUri": "/ipfs/QmbtSnH8BB3cgDLwtY6aT7fggnzhyEMVHExqsiVPjBxmcz/metaEvidence.json",
     "locatorMetaEvidenceUri": "/ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaEvidence.json",

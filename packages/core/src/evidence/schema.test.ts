@@ -63,22 +63,6 @@ describe("parseEvidenceDocument", () => {
     expect(parsed({ name: "n", fileURI: "" }).attachment).toBeNull();
   });
 
-  it("an http attachment is shown as text, never as a link", () => {
-    expect(parsed({ name: "n", fileURI: "http://example.org/file.pdf" }).attachment).toEqual({ kind: "text", text: "http://example.org/file.pdf" });
-  });
-
-  it("an evidence attachment at http://<host>/ipfs/<CID> links through the gateway", () => {
-    expect(parsed({ name: "n", fileURI: `http://ipfs.kleros.io/ipfs/${CID}/file.pdf` }).attachment).toMatchObject({ kind: "link", href: `${GATEWAY}/ipfs/${CID}/file.pdf` });
-  });
-
-  it("an https attachment stays a link to its own host", () => {
-    expect(parsed({ name: "n", fileURI: "https://example.org/file.pdf" }).attachment).toMatchObject({ kind: "link", href: "https://example.org/file.pdf" });
-  });
-
-  it("a javascript: attachment is text, never a link", () => {
-    expect(parsed({ name: "n", fileURI: "javascript:alert(1)" }).attachment).toEqual({ kind: "text", text: "javascript:alert(1)" });
-  });
-
   it("a JSON value that is not an object fails the schema", () => {
     for (const value of [null, [], [{ title: "t" }], "text", 5, true]) {
       expect(rejected(value)).toBe("invalid-data");

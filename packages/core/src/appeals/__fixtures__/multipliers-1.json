@@ -1,5 +1,5 @@
 {
-  "provenance": "Raw JSON-RPC replies of eth_call with each multiplier getter selector and no arguments, sent to the mainnet read RPC at blockNumber, recorded 2026-10-14.",
+  "provenance": "Raw JSON-RPC replies of eth_call, with no arguments, to the multiplier getters the reads reach, sent to the mainnet read RPC at blockNumber, recorded 2026-10-14.",
   "chainId": 1,
   "blockNumber": 26190905,
   "contracts": [
@@ -9,48 +9,6 @@
       "calls": {
         "getMultipliers()": {
           "result": "0x0000000000000000000000000000000000000000000000000000000000001388000000000000000000000000000000000000000000000000000000000000271000000000000000000000000000000000000000000000000000000000000013880000000000000000000000000000000000000000000000000000000000002710"
-        },
-        "winnerStakeMultiplier()": {
-          "result": "0x0000000000000000000000000000000000000000000000000000000000001388"
-        },
-        "winnerMultiplier()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
-        },
-        "loserStakeMultiplier()": {
-          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
-        },
-        "loserMultiplier()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
-        },
-        "denominator()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
-        },
-        "MULTIPLIER_DIVISOR()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
-        },
-        "MULTIPLIER_DENOMINATOR()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
-        },
-        "loserAppealPeriodMultiplier()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
         }
       }
     },
@@ -60,45 +18,6 @@
       "calls": {
         "getMultipliers()": {
           "result": "0x00000000000000000000000000000000000000000000000000000000000027100000000000000000000000000000000000000000000000000000000000004e2000000000000000000000000000000000000000000000000000000000000013880000000000000000000000000000000000000000000000000000000000002710"
-        },
-        "winnerStakeMultiplier()": {
-          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
-        },
-        "winnerMultiplier()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
-        },
-        "loserStakeMultiplier()": {
-          "result": "0x0000000000000000000000000000000000000000000000000000000000004e20"
-        },
-        "loserMultiplier()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
-        },
-        "denominator()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
-        },
-        "MULTIPLIER_DIVISOR()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
-        },
-        "MULTIPLIER_DENOMINATOR()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
-        },
-        "loserAppealPeriodMultiplier()": {
-          "result": "0x0000000000000000000000000000000000000000000000000000000000001388"
         }
       }
     },
@@ -108,45 +27,6 @@
       "calls": {
         "getMultipliers()": {
           "result": "0x0000000000000000000000000000000000000000000000000000000000001388000000000000000000000000000000000000000000000000000000000000271000000000000000000000000000000000000000000000000000000000000013880000000000000000000000000000000000000000000000000000000000002710"
-        },
-        "winnerStakeMultiplier()": {
-          "result": "0x0000000000000000000000000000000000000000000000000000000000001388"
-        },
-        "winnerMultiplier()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
-        },
-        "loserStakeMultiplier()": {
-          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
-        },
-        "loserMultiplier()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
-        },
-        "denominator()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
-        },
-        "MULTIPLIER_DIVISOR()": {
-          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
-        },
-        "MULTIPLIER_DENOMINATOR()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
-        },
-        "loserAppealPeriodMultiplier()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
         }
       }
     },
@@ -163,20 +43,8 @@
         "winnerStakeMultiplier()": {
           "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
         },
-        "winnerMultiplier()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
-        },
         "loserStakeMultiplier()": {
           "result": "0x0000000000000000000000000000000000000000000000000000000000004e20"
-        },
-        "loserMultiplier()": {
-          "error": {
-            "code": 3,
-            "message": "execution reverted"
-          }
         },
         "denominator()": {
           "error": {

@@ -2,7 +2,6 @@ import type { Address, RegistryKey } from "../types";
 import { normalizeIpfsPath, toCidPath } from "../uri";
 import type { BehaviorOverride, Registry, RealityProxyEntry } from "./types";
 
-/** `"<arbitrator chain ID>:<lowercase arbitrable>"`, the key of every registry table. */
 export function registryKey(chainId: number, address: Address): RegistryKey {
   // The cast is sound: a number's decimal string is a `${number}`.
   return `${chainId.toString() as `${number}`}:${address}`;

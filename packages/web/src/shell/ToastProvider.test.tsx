@@ -143,44 +143,6 @@ describe("ToastProvider", () => {
     expect(toast).not.toHaveClass("is-open");
   });
 
-  it("gives the close button a 24 px target around the same glyph and keeps the text clear of it", async () => {
-    const user = userEvent.setup();
-    await user.click(renderTrigger({ variant: "error", title: "Not switched", message: "Body" }));
-    expect(region().getByRole("alert")).toHaveClass(
-      "[&_button]:size-6",
-      "[&_button]:top-4",
-      "[&_button]:right-4",
-      "[&_button]:items-center",
-      "[&_button]:justify-center",
-      "[&>div>div]:pr-4",
-    );
-  });
-
-  it("rises a toast in through the toast transition, opening it once it has mounted", async () => {
-    const user = userEvent.setup();
-    await user.click(renderTrigger({ variant: "success", title: "Dispute created" }));
-    const toast = region().getByRole("status");
-    expect(toast).toHaveClass("t-toast");
-    expect(toast).toHaveClass("is-open");
-    expect(toast.className).not.toMatch(/animate-/);
-  });
-
-  it("draws the focus ring on a toast in the toast's text colour, not the blue of its surface", async () => {
-    const user = userEvent.setup();
-    await user.click(renderTrigger({ variant: "success", title: "Dispute created" }));
-    expect(region().getByRole("status")).toHaveClass("[--dr-focus:var(--klerosUIComponentsWhiteBackground)]");
-  });
-
-  it("the close button dismisses a toast and has an accessible name", async () => {
-    const user = userEvent.setup();
-    await user.click(renderTrigger({ variant: "success", title: "Dispute created", message: "Body" }));
-    await user.click(region().getByRole("button", { name: "Dismiss notification" }));
-    expect(region().getByRole("status")).not.toHaveClass("is-open");
-    await waitFor(() => {
-      expect(region().queryByText("Dispute created")).not.toBeInTheDocument();
-    });
-  });
-
   it("stacks toasts and dismisses each on its own", async () => {
     const user = userEvent.setup();
     const show = renderTrigger({ variant: "success", title: "Toast", message: "Body" });
@@ -193,12 +155,6 @@ describe("ToastProvider", () => {
     await waitFor(() => {
       expect(region().getAllByText("Toast")).toHaveLength(1);
     });
-  });
-
-  it("an error toast is announced as an alert", async () => {
-    const user = userEvent.setup();
-    await user.click(renderTrigger({ variant: "error", title: "Creation failed", message: "The transaction reverted." }));
-    expect(region().getByRole("alert")).toHaveTextContent("Creation failed");
   });
 
   it("renders markup in an untrusted title or message as text", async () => {

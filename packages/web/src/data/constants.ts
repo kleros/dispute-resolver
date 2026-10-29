@@ -59,7 +59,6 @@ export const STALE_TIME_MS = {
   executedRulingReport: 10 * MINUTE_MS,
 } as const;
 
-/** How often the chain clock's sample is checked against a change of the browser clock. */
 export const CHAIN_CLOCK_CHECK_MS = 30 * SECOND_MS;
 
 /** Smaller changes are within the error a sample already carries: the latest block is up to a block interval old, in whole seconds. */

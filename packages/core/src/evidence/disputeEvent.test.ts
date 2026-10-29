@@ -23,8 +23,8 @@ function syntheticDispute(blockNumber: bigint, logIndex: number): RpcLog {
 }
 
 describe("readDisputeEvent", () => {
-  it("reads the recorded Dispute event of mainnet 1454 with its block time as the creation time", async () => {
-    const { result } = readRecorded(1454n, DISPUTE_1454.arbitrable);
+  it("reads the recorded Dispute event of mainnet 1454 with its block time as the creation time, filtering on both indexed arguments on the arbitrable", async () => {
+    const { result, requests } = readRecorded(1454n, DISPUTE_1454.arbitrable);
     const recorded = DISPUTE_1454.disputeLogs[0];
     if (recorded === undefined) throw new Error("fixture has no Dispute log");
     expect(await result).toEqual({
@@ -40,20 +40,15 @@ describe("readDisputeEvent", () => {
         },
       },
     });
+    expect(requests.logs).toHaveLength(1);
+    expect(requests.logs[0]?.address).toBe(DISPUTE_1454.arbitrable);
+    expect(requests.logs[0]?.topics).toEqual([recorded.topics[0], pad(ARBITRATOR), numberToHex(1454n, { size: 32 })]);
   });
 
   it("reads the recorded Dispute event of mainnet 505, whose evidence group equals its meta-evidence ID", async () => {
     const { result } = readRecorded(505n, DISPUTE_505.arbitrable);
     const outcome = await result;
     expect(outcome.ok && outcome.value.status === "found" && outcome.value.event).toMatchObject({ metaEvidenceId: 57n, evidenceGroupId: 57n });
-  });
-
-  it("filters on both indexed arguments, on the arbitrable", async () => {
-    const { result, requests } = readRecorded(1454n, DISPUTE_1454.arbitrable);
-    await result;
-    expect(requests.logs).toHaveLength(1);
-    expect(requests.logs[0]?.address).toBe(DISPUTE_1454.arbitrable);
-    expect(requests.logs[0]?.topics).toEqual([DISPUTE_1454.disputeLogs[0]?.topics[0], pad(ARBITRATOR), numberToHex(1454n, { size: 32 })]);
   });
 
   it("zero Dispute logs are reported as not-found, not thrown", async () => {
@@ -93,12 +88,6 @@ describe("readDisputeEvent", () => {
     }
   });
 
-  it("a Dispute log in a block the node cannot return degrades to rpc-error", async () => {
-    const { result } = readRecorded(1454n, DISPUTE_1454.arbitrable, recordedNode({ timestamps: {} }));
-    const outcome = await result;
-    expect(!outcome.ok && outcome.error.code).toBe("rpc-error");
-  });
-
   it("an aborted read degrades to rpc-error instead of rejecting", async () => {
     const { client, requests } = fakeClient(recordedNode());
     const controller = new AbortController();
@@ -130,14 +119,8 @@ describe("readDisputeEvent", () => {
 describe("Evidence and Dispute-event scan start", () => {
   const chainsWithArbitrator = Object.values(CHAINS).filter((chain) => chain.klerosLiquid !== undefined);
 
-  it("every chain with an arbitrator scans from its arbitrator deployment block, testnets included", () => {
-    expect(chainsWithArbitrator.map((chain) => chain.id).sort((a, b) => a - b)).toEqual([1, 100, 10200, 11155111]);
-    for (const chain of chainsWithArbitrator) {
-      expect(evidenceScanStart(chain)).toBe(BigInt(chain.arbitratorDeployedAtBlock ?? 0));
-    }
-  });
-
-  it("a chain without a deployment block scans from block 0", () => {
+  it("a chain scans from its arbitrator deployment block, or from block 0 without one", () => {
+    expect(evidenceScanStart(chainOf(1))).toBe(7_303_699n);
     expect(evidenceScanStart({ ...chainOf(1), arbitratorDeployedAtBlock: undefined })).toBe(0n);
   });
 

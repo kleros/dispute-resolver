@@ -58,17 +58,13 @@ describe("createFamilyCache", () => {
     expect(codeReads(calls)).toEqual([ARBITRABLE, ARBITRABLE]);
   });
 
-  it("each cache is its own in-memory session store", async () => {
+  it.each([
+    ["each cache is its own in-memory session store", () => ({ cache: createFamilyCache() })],
+    ["without a cache every call probes", () => ({})],
+  ])("%s", async (_name, cacheOption) => {
     const { client, calls } = fakeNodeClient(recordedNode(1));
-    await detectFamily({ client, chainId: 1, arbitrable: ARBITRABLE, cache: createFamilyCache() });
-    await detectFamily({ client, chainId: 1, arbitrable: ARBITRABLE, cache: createFamilyCache() });
-    expect(codeReads(calls)).toEqual([ARBITRABLE, ARBITRABLE]);
-  });
-
-  it("without a cache every call probes", async () => {
-    const { client, calls } = fakeNodeClient(recordedNode(1));
-    await detectFamily({ client, chainId: 1, arbitrable: ARBITRABLE });
-    await detectFamily({ client, chainId: 1, arbitrable: ARBITRABLE });
+    await detectFamily({ client, chainId: 1, arbitrable: ARBITRABLE, ...cacheOption() });
+    await detectFamily({ client, chainId: 1, arbitrable: ARBITRABLE, ...cacheOption() });
     expect(codeReads(calls)).toEqual([ARBITRABLE, ARBITRABLE]);
   });
 

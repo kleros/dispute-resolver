@@ -7,10 +7,6 @@ import { useWallet } from "./useWallet";
 // On a phone the chain pill beside it takes the free width, so the button gives up some of its padding.
 const CONNECT_CLASS = "shrink-0 max-sm:px-4";
 
-/**
- * Without a WalletConnect project ID, or once AppKit turns out to hold an embedded-wallet connector, Connect is disabled
- * and the app stays read-only.
- */
 export function WalletControl({ chain }: WalletControlProps) {
   const wallet = useWallet();
   const connect = useConnectWallet();

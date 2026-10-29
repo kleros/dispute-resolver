@@ -3,13 +3,7 @@ import { ATLAS_NONCE, fakeAtlas } from "../support/atlas";
 import { fakeNetwork } from "../support/network";
 import { changeWalletAccount, expectWalletConnected, injectWallet, walletSignatures, type SignedMessage } from "../support/wallet";
 
-// The Atlas session in a real browser tab, on the built app with a wallet configured (playwright.config.ts) and Atlas
-// served by the spec. The Create page's primary document is the upload: the first file signs in and uploads in one
-// action; a reload of the same tab keeps the session once the wallet reconnects (and restores the uploaded document
-// from the form's stored draft, which the spec removes to see the empty field), so the next file uploads without a
-// signature; an account switch in the wallet leaves the session unverified, so the next file asks the new account to
-// sign. The build needs `REACT_APP_ATLAS_URI` configured, as a deploy has; its host is never named, since every request
-// leaving the app's origin is routed by shape.
+// A reload restores the uploaded document from the form's stored draft, so the spec removes it to see the empty field.
 
 const FIRST_ACCOUNT = "0x00000000000000000000000000000000000000e2";
 const SECOND_ACCOUNT = "0x00000000000000000000000000000000000000e3";
@@ -18,12 +12,10 @@ const FIELD_NAME = "Primary Document (Optional)";
 const TEN_MINUTES_MS = 10 * 60 * 1000;
 const SIGN_IN_SENTENCE = "Your wallet will ask you to sign in before the first upload.";
 
-/** The header's account button of the account `shortAddress` names. */
 function accountButton(page: Page, shortAddress: string): Locator {
   return page.getByRole("button", { name: `Account ${shortAddress}` });
 }
 
-/** The primary-document upload field. */
 function documentField(page: Page): Locator {
   return page.getByRole("group", { name: FIELD_NAME, exact: true });
 }
@@ -40,7 +32,6 @@ async function expectFieldReady(field: Locator, { announcesSignIn }: { announces
   else await expect(signInSentence).toHaveCount(0);
 }
 
-/** Chooses `name` in the field's file picker, as the user does, and waits for the upload to be reported. */
 async function uploadDocument(page: Page, name: string): Promise<void> {
   const field = documentField(page);
   const chooser = page.waitForEvent("filechooser");
@@ -58,7 +49,6 @@ function siweField(message: string, name: string): string | undefined {
     ?.slice(prefix.length);
 }
 
-/** An EIP-4361 message for the app's host and the page's chain, with Atlas's nonce and a 10-minute expiry. */
 function expectSiweMessage(message: string, host: string): void {
   const [preamble] = message.split("\n");
   expect(preamble, "the domain is the app's host").toBe(`${host} wants you to sign in with your Ethereum account:`);

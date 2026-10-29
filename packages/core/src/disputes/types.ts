@@ -26,7 +26,6 @@ export interface ArbitratorDispute {
   readonly ruled: boolean;
 }
 
-/** A revert of `disputes(id)` is `not-found`; a transport error is `unavailable`, not "does not exist". */
 export type DisputeLookup =
   | { readonly status: "found"; readonly dispute: ArbitratorDispute; readonly binding: ArbitratedBinding }
   | { readonly status: "not-found" }
@@ -39,9 +38,9 @@ export interface AppealDecisionEvent {
 }
 
 export type LocalIdResolution =
-  | { readonly kind: "local-id"; readonly value: bigint } // externalIDtoLocalID (idr-*)
-  | { readonly kind: "transaction-id"; readonly value: bigint } // disputeIDtoTransactionID (escrow-v1)
-  | { readonly kind: "not-applicable" } // governor, view-only
+  | { readonly kind: "local-id"; readonly value: bigint }
+  | { readonly kind: "transaction-id"; readonly value: bigint }
+  | { readonly kind: "not-applicable" }
   | { readonly kind: "unresolved"; readonly reason: "reverted" | "rpc-error" };
 
 export interface AppealInfo {
@@ -82,10 +81,6 @@ export interface Timeline {
   readonly columns: readonly TimelineColumn[];
 }
 
-/**
- * What the arbitrable reports it executed, from its ERC-792 `Ruling` events for the dispute. It is the arbitrable's
- * own claim: read only once the arbitrator says the ruling was executed, and only from the arbitrable the arbitrator names.
- */
 export type ExecutedRuling =
   | { readonly status: "executed"; readonly ruling: bigint }
   | { readonly status: "not-executed" } // not in execution, or the arbitrator has not executed the ruling; nothing read

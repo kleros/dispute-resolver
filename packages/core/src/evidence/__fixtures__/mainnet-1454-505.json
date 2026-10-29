@@ -1,5 +1,4 @@
 {
-  "chainId": 1,
   "readAtBlock": 26190208,
   "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
   "scanFromBlock": 7303699,
@@ -9,7 +8,6 @@
       "disputeId": "1454",
       "arbitrable": "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf",
       "evidenceGroupId": "0",
-      "metaEvidenceId": "0",
       "disputeLogs": [
         {
           "address": "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf",
@@ -27,55 +25,16 @@
           "removed": false
         }
       ],
-      "evidenceLogs": [
-        {
-          "address": "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf",
-          "topics": [
-            "0xdccf2f8b2cc26eafcd61905cba744cff4b81d14740725f6376390dc6298a6a3c",
-            "0x000000000000000000000000988b3a538b618c7a603e1c11ab82cd16dbe28069",
-            "0x0000000000000000000000000000000000000000000000000000000000000000",
-            "0x000000000000000000000000f9eaab27b00b9bbc8fbfa6c58dc2653bef4b461a"
-          ],
-          "data": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000422f697066732f516d5159384635456a7274477676543373774146355932556279544e41356d6e42674c5137596d71426e647858772f65766964656e63652e6a736f6e000000000000000000000000000000000000000000000000000000000000",
-          "blockNumber": "0xf9fef0",
-          "blockHash": "0x53fdcf67ea17e7244268176388258cf8f754352aedaa934b9a288c808b9261a3",
-          "transactionHash": "0x5e5cc590d1f06ce42143fdd89231ebaa9d5c036d37ce22408eecd9e41d784ba8",
-          "transactionIndex": "0x32",
-          "logIndex": "0xb6",
-          "removed": false
-        },
-        {
-          "address": "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf",
-          "topics": [
-            "0xdccf2f8b2cc26eafcd61905cba744cff4b81d14740725f6376390dc6298a6a3c",
-            "0x000000000000000000000000988b3a538b618c7a603e1c11ab82cd16dbe28069",
-            "0x0000000000000000000000000000000000000000000000000000000000000000",
-            "0x000000000000000000000000f313d85c7fef79118fcd70498c71bf94e75fc2f6"
-          ],
-          "data": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000422f697066732f516d50347a6a7558314c574a4a414a55513447706235437566656b564d6962734242424d735a674d37314146506d2f65766964656e63652e6a736f6e000000000000000000000000000000000000000000000000000000000000",
-          "blockNumber": "0xf9fefc",
-          "blockHash": "0xc2519e6696d12751bc447d32037b7ea5bc6046b6f2038521b0563406af677c56",
-          "transactionHash": "0x792a8e3988d7ec753882acd00ea3d3cd3c3e6825b1933720db1ca9b9613a6bcd",
-          "transactionIndex": "0x1b",
-          "logIndex": "0x7a",
-          "removed": false
-        }
-      ],
+      "evidenceLogs": [],
       "blockTimestamps": {
-        "0xf9ad5a": "0x63badb47",
-        "0xf9fef0": "0x63beb2e7",
-        "0xf9fefc": "0x63beb377"
+        "0xf9ad5a": "0x63badb47"
       },
-      "documents": {
-        "/ipfs/QmQY8F5EjrtGvvT3swAF5Y2UbyTNA5mnBgLQ7YmqBndxXw/evidence.json": "{\"name\":\"Draco Malfoy is guilty of attempted murder in the assassination plot against Albus Dumbledore.\",\"description\":\"In the given background, it is stated that Draco Malfoy is entrusted with the task of assassinating Dumbledore by Lord Voldemort. Also it is stated that Malfoy ultimately decides to go through with the assassination attempt, leading to a confrontation between Dumbledore and Malfoy.\\nIt indicates that Malfoy had the intention and actively moving towards to commit the murder. And As per the legal definition of attempted murder is when a person has intent to kill and takes a direct step towards committing the murder. Therefore, based on the information provided, it can be concluded that Draco Malfoy is guilty of attempted murder in the assassination plot against Albus Dumbledore.\",\"evidenceSide\":0}",
-        "/ipfs/QmP4zjuX1LWJJAJUQ4Gpb5CufekVMibsBBBMsZgM71AFPm/evidence.json": "{\"name\":\"Draco Malfoy should not be found guilty.\",\"description\":\"Draco Malfoy did not have the intent to commit murder, but rather was forced or coerced into participating in the assassination plot against Albus Dumbledore. It could be argued that Malfoy was under duress or fear of harm to himself or his loved ones if he did not comply with Voldemort's orders, and therefore, his actions should be considered involuntary. Additionally, it could be argued that the background provides little information on the specific details of the confrontation between Dumbledore and Malfoy and it is not clear if Malfoy was able to express his reluctance or if he was still under duress. In this view, it could be argued that Draco Malfoy should not be found guilty of attempted murder as his actions were not fully voluntary and he may not have had the intent to kill.\",\"evidenceSide\":0}"
-      }
+      "documents": {}
     },
     {
       "disputeId": "505",
       "arbitrable": "0x135c573503f70dc290b1d60fe2e7f7eb114febd6",
       "evidenceGroupId": "57",
-      "metaEvidenceId": "57",
       "disputeLogs": [
         {
           "address": "0x135c573503f70dc290b1d60fe2e7f7eb114febd6",

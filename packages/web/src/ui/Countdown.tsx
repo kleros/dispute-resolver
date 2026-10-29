@@ -4,7 +4,6 @@ import type { CountdownProps } from "./types";
 
 const COUNTDOWN_CLASS = "whitespace-nowrap tabular-nums";
 
-/** Shows zeros once `target` has passed; whether to show a countdown at all is the caller's decision. */
 export function Countdown({ target, className }: CountdownProps) {
   const now = useNowSeconds();
   const classes = className === undefined ? COUNTDOWN_CLASS : `${COUNTDOWN_CLASS} ${className}`;

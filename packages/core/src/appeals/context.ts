@@ -9,7 +9,6 @@ import type { AppealContext } from "./types";
 /** `Contribution(_localDisputeID indexed, _round indexed, ruling, _contributor indexed, _amount)`, shared by v1 and v2. */
 export const CONTRIBUTION_EVENT = getAbiItem({ abi: idrV2Abi, name: "Contribution" });
 
-/** `RulingFunded(_localDisputeID indexed, _round indexed, _ruling indexed)`. */
 export const RULING_FUNDED_EVENT = getAbiItem({ abi: idrV2Abi, name: "RulingFunded" });
 
 export function checkContext(context: AppealContext): Outcome<AppealContext> {

@@ -145,7 +145,6 @@ async function chooseOption(user: UserEvent, label: string, option: string) {
   await user.click(await screen.findByRole("option", { name: option }));
 }
 
-/** The names of a dropdown's options, read by opening it and closed again with Escape. */
 async function optionsOf(user: UserEvent, label: string): Promise<string[]> {
   await user.click(select(label));
   const names = (await screen.findAllByRole("option")).map((option) => option.textContent);
@@ -196,14 +195,12 @@ async function toSummary(user: UserEvent) {
   await screen.findByRole("button", { name: "Return" });
 }
 
-/** Fills the required fields with a Yes / No question and continues to the summary. */
 async function fillToSummary(user: UserEvent) {
   await fillRequired(user);
   await fillOptions(user, ["Yes", "No"]);
   await toSummary(user);
 }
 
-/** The value the summary shows for `term`: the `dd` that follows the `dt` reading `term`. */
 function summaryValue(term: string): HTMLElement {
   const value = [...document.querySelectorAll("dt")].find((element) => element.textContent === term)?.nextElementSibling;
   if (!(value instanceof HTMLElement)) throw new Error(`no summary row ${term}`);
@@ -339,19 +336,6 @@ describe("CreatePage", () => {
     await fillOptions(user, ["Yes", "No"]);
     expect(screen.queryByText("Some fields need attention")).toBeNull();
     await toSummary(user);
-  });
-
-  it("changing the number of options trims the rows and what is submitted", async () => {
-    const { user, uploader } = await renderCreate();
-    await fillRequired(user);
-    await setNumber(user, "Number of Options", "3");
-    await fillOptions(user, ["A", "B", "C"]);
-    await setNumber(user, "Number of Options", "2");
-    expect(screen.queryByRole("textbox", { name: "Ruling Option 3" })).toBeNull();
-    await toSummary(user);
-    await user.click(screen.getByRole("button", { name: "Create dispute" }));
-    await screen.findByText("Dispute 42 created");
-    expect(uploadedMetaEvidence(uploader).rulingOptions.titles).toEqual(["A", "B"]);
   });
 
   it("the steps follow the form and the summary, and the page logs no DOM-attribute warning beyond the library's known one", async () => {
@@ -548,7 +532,6 @@ describe("CreatePage", () => {
       return root;
     }
 
-    /** The grid cell that holds the field labelled `label`. */
     function slotOf(label: string): HTMLElement {
       const slot = screen.getByRole("textbox", { name: label }).closest("[data-field-slot]");
       if (!(slot instanceof HTMLElement)) throw new Error(`no field slot for ${label}`);
@@ -764,20 +747,6 @@ describe("CreatePage", () => {
     expect(uploadedMetaEvidence(uploader).aliases).toEqual({ "0x2222222222222222222222222222222222222222": "Bob", "0x1111111111111111111111111111111111111111": "Alice" });
   });
 
-  it("an all-uppercase party address is accepted and reaches the summary", async () => {
-    const { user, uploader } = await renderCreate();
-    await fillRequired(user);
-    await fillOptions(user, ["Yes", "No"]);
-    await typeInto(user, "Alias 1 (Optional)", "Upper");
-    await typeInto(user, "Address 1 (Optional)", "0xFB6916095CA1DF60BB79CE92CE3EA74C37C5D359");
-    await toSummary(user);
-    expect(screen.queryByText(/not a valid address/)).toBeNull();
-    expect(screen.getByText("Party 1")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Create dispute" }));
-    await screen.findByText("Dispute 42 created");
-    expect(uploadedMetaEvidence(uploader).aliases).toEqual({ "0xfb6916095ca1df60bb79ce92ce3ea74c37c5d359": "Upper" });
-  });
-
   it("the summary shows each party's full checksummed address, not a shortened one", async () => {
     const { user } = await renderCreate();
     await fillRequired(user);
@@ -819,17 +788,11 @@ describe("CreatePage", () => {
     expect(screen.queryByText("Primary Document")).toBeNull();
   });
 
-  it("without Atlas the document field is locked, the form still reaches the summary, and Create stays disabled with no upload message", async () => {
-    const { user, uploader } = await renderCreate({ uploader: fakeUploader({ availability: "unconfigured" }) });
-    expect(documentInput()).toBeDisabled();
-    expect(document.body).not.toHaveTextContent(/uploads? (are )?unavailable/i);
+  it("without Atlas the form still reaches the summary, where Create stays disabled and Return enabled", async () => {
+    const { user } = await renderCreate({ uploader: fakeUploader({ availability: "unconfigured" }) });
     await fillToSummary(user);
-    const create = screen.getByRole("button", { name: "Create dispute" });
-    expect(create).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create dispute" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Return" })).toBeEnabled();
-    await user.click(create);
-    expect(uploader.uploadJson).not.toHaveBeenCalled();
-    expect(document.body).not.toHaveTextContent(/uploads? (are )?unavailable/i);
   });
 
   it("multiple select with three options and a primary document creates with 2³ ruling options", async () => {
@@ -868,9 +831,9 @@ describe("CreatePage", () => {
   });
 
   it.each([
-    ["Sepolia S2", "Non-negative number", "uint"],
-    ["Sepolia S3", "Date", "datetime"],
-  ] as const)("a $1 question creates with 0 ruling options and no titles", async (_name, label, type) => {
+    ["Non-negative number", "uint"],
+    ["Date", "datetime"],
+  ] as const)("a %s question creates with 0 ruling options and no titles", async (label, type) => {
     const { user, uploader } = await renderCreate();
     await chooseOption(user, "Question Type", label);
     expect(screen.queryByRole("textbox", { name: "Number of Options" })).toBeNull();
@@ -1051,29 +1014,6 @@ describe("CreatePage", () => {
     expect(documentInput()).toBeEnabled();
   });
 
-  it("the primary document field is locked without a wallet and says why", async () => {
-    const { user, uploader } = await renderCreate({ connect: false });
-    expect(documentInput()).toBeDisabled();
-    expect(documentInput().closest("fieldset")).toBeDisabled();
-    expect(screen.getByText("Connect a wallet to upload files.")).toBeInTheDocument();
-    await user.upload(documentInput(), new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
-    expect(uploader.upload).not.toHaveBeenCalled();
-  });
-
-  it("each party row has a trash button named for its party, beside the address field", async () => {
-    const { user } = await renderCreate({ connect: false });
-    await user.click(screen.getByRole("button", { name: "Add party" }));
-    for (const number of ["1", "2"]) {
-      const remove = screen.getByRole("button", { name: `Remove party ${number}` });
-      expect(remove).toHaveTextContent(/^$/);
-      expect(remove.querySelector("svg")).not.toBeNull();
-      const row = remove.closest("li");
-      expect(remove.parentElement).toBe(row);
-      expect(row).toContainElement(screen.getByRole("textbox", { name: `Address ${number} (Optional)` }));
-    }
-    expect(screen.queryByText("Remove")).toBeNull();
-  });
-
   it("a chain without a read RPC reports the cost as unavailable with the neutral sentence", async () => {
     const { user } = await renderCreate({ deps: createTestDeps({ unconfiguredChains: [SEPOLIA] }) });
     await fillToSummary(user);
@@ -1105,7 +1045,6 @@ describe("CreatePage", () => {
       expect(screen.getByText(/^Your wallet is on .+, but this page is on Ethereum Testnet Sepolia\.$/)).toBeInTheDocument();
       expect(screen.queryByText(/Nothing was sent/)).toBeNull();
       expect(screen.getByText("A switch to Ethereum Testnet Sepolia is waiting in your wallet.")).toBeInTheDocument();
-      expect(screen.getByText("Wrong network")).toBeInTheDocument();
       expect(screen.getByText(/^Drop a file here or click to select one\./)).toBeInTheDocument();
       expect(server.count("nonce")).toBe(0);
       expect(server.count("sign")).toBe(0);

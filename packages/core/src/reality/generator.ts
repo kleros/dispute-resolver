@@ -9,9 +9,7 @@ import { requireClient } from "./lookup";
 import type { KnownDisputeQuestion } from "./types";
 
 export interface KnownQuestionsData {
-  /** Arbitrator chain ID → last block covered by `questions`. */
   readonly snapshotBlocks: Readonly<Record<number, number>>;
-  /** Keyed by `"<arbitrator chain>:<lowercase proxy>:<dispute ID>"`. */
   readonly questions: Readonly<Record<string, KnownDisputeQuestion>>;
 }
 
@@ -28,7 +26,6 @@ export interface GeneratorRequest {
   readonly proxies: Readonly<Record<RegistryKey, RealityProxyEntry>>;
   readonly previous: KnownQuestionsData;
   readonly mode: GeneratorMode;
-  /** Built from the registry chains' configured RPCs. */
   readonly clients: GetReadClient;
   readonly onProgress?: (line: string) => void;
 }

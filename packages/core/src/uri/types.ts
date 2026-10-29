@@ -1,10 +1,4 @@
-/**
- * A content-addressed IPFS path in canonical form: `/ipfs/<CID>` optionally followed by `/<segment>...`, produced only by
- * `normalizeIpfsPath` after percent-decoding and dot-segment resolution. The CID is a CIDv0 (`Qm` + 44 base58
- * characters) or a base32 CIDv1 (`b` + at least 50 of `[a-z2-7]`). Each segment is stored percent-encoded once
- * (`encodeURIComponent` of the decoded segment), so the path is a fixed point of `normalizeIpfsPath`, `gatewayUrl`
- * appends it as is, and it can be written or concatenated without re-encoding.
- */
+/** Produced only by `normalizeIpfsPath`; segments are percent-encoded once, so `gatewayUrl` appends it as is. */
 export type CanonicalIpfsPath = `/ipfs/${string}`;
 
 /**

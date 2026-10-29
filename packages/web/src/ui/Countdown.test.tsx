@@ -19,13 +19,10 @@ describe("formatDuration", () => {
     [-5 * MINUTE, "00d 00h 00m"],
     [Number.NaN, "00d 00h 00m"],
     [Number.POSITIVE_INFINITY, "00d 00h 00m"],
+    [5n * BigInt(DAY) + 12n * BigInt(HOUR), "05d 12h 00m"],
+    [-1n, "00d 00h 00m"],
   ])("formats %s seconds as %s", (seconds, expected) => {
     expect(formatDuration(seconds)).toBe(expected);
-  });
-
-  it("formats a bigint duration and clamps a negative one to zero", () => {
-    expect(formatDuration(5n * BigInt(DAY) + 12n * BigInt(HOUR))).toBe("05d 12h 00m");
-    expect(formatDuration(-1n)).toBe("00d 00h 00m");
   });
 });
 

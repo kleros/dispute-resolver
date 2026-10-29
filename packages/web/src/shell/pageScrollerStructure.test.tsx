@@ -7,9 +7,8 @@ import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { BAR_SURFACE } from "./layout";
 
-// What the page scroller (PageScroller.tsx and its rules in index.css) relies on inside the library's ScrollbarContainer,
-// SimpleBar 5 bundled in @kleros/ui-components-library 3.10.0, and in Reown AppKit 1.8's wallet modal. A release of
-// either that changes any of it fails here first.
+// What the page scroller (PageScroller.tsx and its rules in index.css) relies on inside the library's ScrollbarContainer
+// (its bundled SimpleBar) and in Reown AppKit's wallet modal. A release of either that changes any of it fails here first.
 
 const LIBRARY_STYLESHEET = createRequire(import.meta.url).resolve("@kleros/ui-components-library/style.css");
 const APPKIT_ENTRY = createRequire(import.meta.url).resolve("@reown/appkit");
@@ -66,7 +65,6 @@ function rules(css: string): Rule[] {
 
 const NAME_CHAR = /[\w-]/;
 
-/** The end of the CSS name that starts at `start`, escaped characters included. */
 function nameEnd(selector: string, start: number): number {
   let end = start;
   while (end < selector.length) {
@@ -78,7 +76,6 @@ function nameEnd(selector: string, start: number): number {
   return end;
 }
 
-/** What one simple selector at `index` adds to the specificity, and where the next one starts. */
 function simpleSelector(selector: string, index: number): { readonly next: number; readonly adds: 0 | 1 | 2 | null } {
   const char = selector.charAt(index);
   if (char === "#") return { next: nameEnd(selector, index + 1), adds: 0 };
@@ -95,7 +92,7 @@ function simpleSelector(selector: string, index: number): { readonly next: numbe
   return { next: index + 1, adds: null };
 }
 
-/** The specificity of a selector without :is, :where or :not: ids, then classes, attributes and pseudo-classes, then types and pseudo-elements. */
+/** Handles no :is, :where or :not. */
 function specificity(selector: string): Specificity {
   const counts = [0, 0, 0];
   let index = 0;
@@ -118,12 +115,10 @@ function escaped(char: string): string {
   return `\\${char}`;
 }
 
-/** The selector Tailwind writes for a utility class: the class escaped as CSS requires. */
 function classSelector(className: string): string {
   return `.${className.replaceAll(/[[\]&.:!]/g, escaped)}`;
 }
 
-/** The library's own rule for one of its default classes, as its stylesheet ships it. */
 function libraryRule(className: string): Rule {
   const prefix = `${classSelector(className)} `;
   const rule = rules(LIBRARY_CSS).find((candidate) => candidate.selector.startsWith(prefix));
@@ -137,7 +132,6 @@ function appRule(selector: string): Rule {
   return rule;
 }
 
-/** The value a rule body gives a property, `!important` included, or undefined when it does not declare it. */
 function declared(body: string, property: string): string | undefined {
   for (const declaration of body.split(";")) {
     const colon = declaration.indexOf(":");
@@ -146,7 +140,6 @@ function declared(body: string, property: string): string | undefined {
   return undefined;
 }
 
-/** The rule of index.css for `selector` that declares `property`. */
 function appRuleDeclaring(selector: string, property: string): Rule {
   const rule = rules(APP_CSS).find((candidate) => candidate.selector === selector && declared(candidate.body, property) !== undefined);
   if (rule === undefined) throw new Error(`index.css declares no ${property} for ${selector}`);
@@ -157,12 +150,11 @@ function escapeRegExp(text: string): string {
   return text.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** `var(--name)`, with any spacing inside the parentheses. */
 function varOf(name: string): RegExp {
   return new RegExp(String.raw`var\(\s*${escapeRegExp(name)}\s*\)`);
 }
 
-/** The page scroller's thumb at rest, hovered and dragged, in the order it grows lighter. */
+/** In the order the thumb grows lighter. */
 const thumbStates = [
   { what: "the thumb at rest", app: ".dr-page-scroller > .simplebar-track .simplebar-scrollbar::before", token: "--dr-scroll-thumb" },
   { what: "the thumb under the pointer", app: ".dr-page-scroller > .simplebar-track .simplebar-scrollbar.simplebar-hover::before", token: "--dr-scroll-thumb-hover" },
@@ -315,7 +307,6 @@ describe("the page scroller's overrides of the library", () => {
   });
 });
 
-/** The source of one method of AppKit's modal element, up to the next method. */
 function modalMethod(name: string): string {
   const start = APPKIT_MODAL.indexOf(`    ${name}() {`);
   if (start < 0) throw new Error(`AppKit's modal has no ${name} method`);
@@ -351,7 +342,6 @@ describe("Reown AppKit's wallet modal, as the page scroller follows it", () => {
 
 type Theme = "light" | "dark";
 
-/** The bodies of every rule of `css` for exactly `selector`, joined. */
 function bodyFor(css: string, selector: string): string {
   return rules(css)
     .filter((rule) => rule.selector === selector)

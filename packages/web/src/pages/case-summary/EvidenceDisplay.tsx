@@ -25,14 +25,9 @@ const COVER_DELAY_MS = 200;
 const SKELETON_LINES = 12;
 
 /**
- * The library button as a full-width row: its icon slot comes before its text, so the row is reversed to put the title
- * first. The hover plate is exactly as wide as the hairline above and the display window below, and its own 8 px padding
- * sets the title in from the text above. The plate is 44 px under the wrapper's 4 px top padding, so it stands clear of
- * the hairline above and, with the window's 4 px margin, of the display below. The button's own transition tweens its
- * press scale only, and the row has none, so the hover fill eases on the app's hover clock like the section headers below
- * (`ease-smooth-out`, not the arbitrary ease: the button's `ease-ease` stays in the class list and outranks that one).
- * `dr-display-row` draws its focus ring inside the plate, so it neither leaves the column nor reaches the hairline or the
- * window.
+ * The library button's icon slot comes before its text, so the row is reversed to put the title first. `ease-smooth-out`,
+ * not the arbitrary ease: the button's `ease-ease` stays in the class list and outranks that one. `dr-display-row` draws
+ * its focus ring inside the plate, so it neither leaves the column nor reaches the hairline or the window.
  */
 const ROW_CLASS =
   "dr-display-row h-11 w-full flex-row-reverse justify-between gap-2 bg-transparent px-2 py-0 hover:bg-klerosUIComponentsMediumBlue pressed:scale-100 transition-[background-color] duration-150 ease-smooth-out motion-reduce:transition-none [&_.button-text]:text-klerosUIComponentsPrimaryText";
@@ -66,11 +61,8 @@ const BLOCK_CLASS = "border-t border-klerosUIComponentsStroke pt-1 transition-[m
 const REVEAL_FALLBACK_MS = 400;
 
 /**
- * The skeleton over the frame's place, on the paper, so its bars take the paper's tone rather than the card's. Inset on
- * every side like a page's own content, so its bars never touch the sheet's edge. It fades in and out by opacity alone, so
- * the region stays free of blur. Only the skeleton fades: the frame is
- * visible under it from the load event, so the page's content is never dimmed, and the pointer passes through from then
- * on, so the first click reaches the page.
+ * Only the skeleton fades, by opacity alone so the region stays free of blur: the frame is visible under it from the load
+ * event, so the page's content is never dimmed, and the pointer passes through from then on.
  */
 const COVER_CLASS =
   "absolute inset-0 p-4 [&_.animate-loading]:bg-(--dr-display-skeleton) transition-opacity duration-(--display-reveal) ease-(--reveal-ease) motion-reduce:transition-none";
@@ -108,14 +100,9 @@ function useKeyboardFocusInside(regionRef: RefObject<HTMLElement | null>): boole
 }
 
 /**
- * The meta-evidence's evidence-display iframe, or nothing when it names no https display. The arbitrable and the
- * arbitrator come from the arbitrator's binding, never from meta-evidence.
- *
- * Shown, the whole 360 px frame; the row folds it away completely, like the case page's sections. A folding region is
- * inert, so Tab never enters it, and is hidden once the fold ends. A hidden display stays mounted, so showing it again
- * neither requests the page again nor loses its scroll position. The paper is under the frame from the first paint;
- * until the page loads the frame keeps its size unseen, so it can be neither focused nor clicked, and a load that takes
- * longer than a moment shows the section skeleton over its place.
+ * The arbitrable and the arbitrator come from the arbitrator's binding, never from meta-evidence. A hidden display stays
+ * mounted, so showing it again neither requests the page again nor loses its scroll position. Until the page loads the
+ * frame keeps its size unseen, so it can be neither focused nor clicked.
  */
 export function EvidenceDisplay({ metaEvidence, chainId, found }: EvidenceDisplayProps) {
   const { env, gateway } = useCoreDeps();

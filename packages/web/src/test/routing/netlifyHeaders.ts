@@ -1,4 +1,3 @@
-/** One rule of a Netlify `_headers` file: a path pattern and the headers it adds. */
 export interface HeaderRule {
   readonly pattern: string;
   readonly headers: readonly (readonly [name: string, value: string])[];
@@ -63,10 +62,7 @@ export function policies(rules: readonly HeaderRule[], path: string, name: strin
     .filter((policy) => policy !== "");
 }
 
-/**
- * A build environment whose RPC URLs carry keys in their path, query and fragment, as a deploy's do: the tests of the
- * policy that the build writes into the headers file check that nothing past an origin reaches it.
- */
+/** RPC URLs with keys in their path, query and fragment, as a deploy's carry. */
 export const KEYED_ENV = {
   REACT_APP_WEB3_PROVIDER_URL: "https://mainnet.infura.io/v3/KEY-MAINNET-0001",
   REACT_APP_WEB3_XDAI_PROVIDER_URL: "https://gnosis.example-rpc.io:8545/rpc/KEY-GNOSIS-0002?token=KEY-QUERY-0003#KEY-HASH-0004",

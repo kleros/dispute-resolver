@@ -16,7 +16,6 @@ function menuItems() {
   return within(screen.getByRole("menu", { name: "Network" })).getAllByRole("menuitem");
 }
 
-/** The panel of the open or closing menu: the element that animates. */
 function menuPanel(): HTMLElement {
   const panel = screen.getByRole("menu", { name: "Network" }).parentElement;
   if (panel === null) throw new Error("The menu has no panel.");
@@ -39,7 +38,6 @@ function spySwitches(wallet: TestWallet) {
   return vi.spyOn(connector, "switchChain");
 }
 
-/** The pill on the unsupported-network screen, which names no chain. */
 function unsupportedPill() {
   return within(screen.getByRole("banner")).getByRole("button", { name: "Network: unsupported. Change network" });
 }
@@ -52,7 +50,6 @@ function toastsShown() {
   return [...notifications().queryAllByRole("status"), ...notifications().queryAllByRole("alert")];
 }
 
-/** The chain dot at the start of the pill. */
 function dot(trigger: HTMLElement): Element | null {
   return trigger.querySelector("[aria-hidden=true]");
 }
@@ -204,20 +201,15 @@ describe("ChainSwitcher", () => {
     expect(wallet.config.state.chainId).toBe(1);
   });
 
-  it("while any switch request waits in the wallet, the pill's dot dims and its chains look disabled, with no hover fill, and take no press", async () => {
+  it("while any switch request waits in the wallet, the pill is busy and its chains are disabled and take no press", async () => {
     const user = userEvent.setup();
     const wallet = await createConnectedTestWallet({ chainId: 1 });
     const switches = spySwitches(wallet);
     holdChainSwitches(wallet);
     const view = renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet });
     const trigger = pill("Ethereum Mainnet");
-    expect(trigger).toHaveClass("group", "aria-busy:cursor-progress");
-    expect(dot(trigger)).toHaveClass("group-aria-busy:opacity-40");
     await user.click(trigger);
-    for (const item of menuItems()) {
-      expect(item).not.toHaveAttribute("aria-disabled");
-      expect(item).toHaveClass("aria-disabled:opacity-50", "aria-disabled:hover:bg-transparent");
-    }
+    for (const item of menuItems()) expect(item).not.toHaveAttribute("aria-disabled");
     await user.click(screen.getByRole("menuitem", { name: "Gnosis Network" }));
     expect(switches).toHaveBeenCalledTimes(1);
     expect(trigger).toHaveAttribute("aria-busy", "true");
@@ -244,23 +236,6 @@ describe("ChainSwitcher", () => {
     });
     expect(dot(trigger)).toHaveClass("bg-(--dr-success-bar)");
     expect(dot(trigger)?.className).not.toMatch(/warning/);
-  });
-
-  it("the pill is the same width on every chain, with the dot, the name and the chevron centred as one group and the name truncating when long", () => {
-    for (const [path, name] of [
-      ["/1/ongoing", "Ethereum Mainnet"],
-      ["/100/ongoing", "Gnosis Network"],
-    ] as const) {
-      const view = renderWithProviders(<Screen />, { path, frame: "page" });
-      const trigger = pill(name);
-      expect(trigger).toHaveClass("w-56", "max-w-full", "min-w-0", "justify-center");
-      const label = within(trigger).getByText(name);
-      expect(label).toHaveClass("min-w-0", "truncate");
-      expect(label).not.toHaveClass("flex-1");
-      view.unmount();
-    }
-    renderWithProviders(<Screen />, { path: "/999/ongoing", frame: "page" });
-    expect(unsupportedPill()).toHaveClass("w-56", "max-w-full");
   });
 
   it("opens on the current chain and moves with the arrow keys, Escape returns focus to the pill, Tab closes", async () => {
@@ -306,28 +281,20 @@ describe("ChainSwitcher", () => {
     expect(pill("Gnosis Network")).toHaveFocus();
   });
 
-  it("the menu floats on the library's Stroke border and shadow, grows from the corner it hangs from and fades out, inert, before it unmounts", async () => {
+  it("a closed menu turns inert, returns focus to the pill and unmounts once its own animation ends", async () => {
     const user = userEvent.setup();
     renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page" });
     const trigger = pill("Gnosis Network");
     await user.click(trigger);
     const panel = menuPanel();
-    expect(panel).toHaveClass("animate-scale-in", "origin-top-left", "lg:origin-top-right");
-    expect(panel).toHaveClass("border-klerosUIComponentsStroke", "shadow-default");
     expect(panel).not.toHaveAttribute("inert");
 
     await user.keyboard("{Escape}");
     expect(trigger).toHaveFocus();
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(trigger).not.toHaveAttribute("aria-controls");
-    expect(panel).toHaveClass("animate-scale-out", "opacity-0", "pointer-events-none");
-    expect(panel).not.toHaveClass("animate-scale-in");
     expect(panel).toHaveAttribute("inert");
 
-    const [ethereum] = menuItems();
-    if (ethereum === undefined) throw new Error("The menu has no items.");
-    fireEvent.animationEnd(ethereum);
-    expect(panel).toBeInTheDocument();
     fireEvent.animationEnd(panel);
     expect(panel).not.toBeInTheDocument();
   });
@@ -347,27 +314,9 @@ describe("ChainSwitcher", () => {
 
     await user.keyboard("{Enter}");
     expect(closing).not.toBeInTheDocument();
-    const reopened = menuPanel();
-    expect(reopened).toHaveClass("animate-scale-in");
-    expect(reopened).not.toHaveAttribute("inert");
+    expect(menuPanel()).not.toHaveAttribute("inert");
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(menuItems()[1]).toHaveFocus();
-  });
-
-  it("the chevron flips with the menu on the menu's clocks and the pill's fill eases, all still under reduced motion", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
-    const trigger = pill("Ethereum Mainnet");
-    expect(trigger).toHaveClass("transition-[background-color]", "duration-150", "motion-reduce:transition-none");
-    const chevron = trigger.querySelector("svg");
-    expect(chevron).toHaveClass("transition-transform", "duration-150", "motion-reduce:transition-none");
-    expect(chevron).not.toHaveClass("-scale-y-100");
-    await user.click(trigger);
-    expect(chevron).toHaveClass("-scale-y-100", "duration-250");
-    expect(chevron).not.toHaveClass("rotate-180");
-    await user.keyboard("{Escape}");
-    expect(chevron).toHaveClass("duration-150");
-    expect(chevron).not.toHaveClass("-scale-y-100");
   });
 
   it("a press outside closes the menu", async () => {

@@ -4,8 +4,7 @@ import { ESLint, Linter } from "eslint";
 import tseslint from "typescript-eslint";
 import { describe, expect, it } from "vitest";
 
-// The root eslint configuration keeps UI code from inspecting contract addresses in every production file under
-// packages/web/src, and leaves test files free to hold the fixture addresses they need.
+// Production files under packages/web/src may not inspect contract addresses; test files may hold fixture addresses.
 
 const REPOSITORY_ROOT = resolve(import.meta.dirname, "../../..");
 const RULES = ["no-restricted-syntax", "no-restricted-imports"] as const;

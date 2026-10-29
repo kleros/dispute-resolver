@@ -32,9 +32,8 @@ function cardAmounts(amounts: AppealAmounts, dialect: "idr" | "governor", curren
 const NO_SHARED_MULTIPLIER = "The governor's shared multiplier could not be read, so the deposits for a tied ruling are unknown.";
 
 /**
- * The crowdfunding cards when the appeal cost and period, the multipliers, the round's funding and the current ruling
- * are all known; otherwise the "appeal fees could not be calculated" notice with the first missing read. A governor tie
- * without its shared multiplier is that notice too: KlerosGovernor never costs a tie as a winner and a loser.
+ * A governor tie without its shared multiplier leaves the fees unavailable: KlerosGovernor never costs a tie as a winner
+ * and a loser.
  */
 function crowdfunding(input: AppealPanelInput, dialect: "idr" | "governor"): AppealPanel {
   const appealInfo = required(input.appealInfo, "The appeal cost and period");
@@ -97,7 +96,6 @@ export function needsRulingOptions(period: Period, family: Pick<FamilyDetection,
   }
 }
 
-/** The appeal-period panel, by the route the appeal rules give. */
 function appealPeriodPanel(input: AppealPanelInput): AppealPanel {
   switch (input.rules.route) {
     case "none":

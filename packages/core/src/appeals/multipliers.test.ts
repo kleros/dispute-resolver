@@ -20,7 +20,7 @@ function recordedCalls(contract: RecordedGetters): [string, CallReply][] {
 }
 
 function gettersCalled(address: Address, calls: readonly string[]): string[] {
-  const signatures = [...Object.keys(byLabel(MULTIPLIER_GETTERS, "Unslashed (idr-v1)").replies), "sharedMultiplier()"];
+  const signatures = ["getMultipliers()", ...multiplierGetterAbi.map(({ name }) => `${name}()`), "sharedMultiplier()"];
   const bySelector = new Map(signatures.map((getter) => [callKey(address, toFunctionSelector(getter)), getter]));
   return calls.map((key) => bySelector.get(key) ?? key);
 }
@@ -48,17 +48,22 @@ const UNSUPPORTED = "This arbitrable does not expose all of its appeal multiplie
 
 const getter = (functionName: (typeof multiplierGetterAbi)[number]["name"]) => ({ to: SYNTHETIC, abi: multiplierGetterAbi, functionName });
 
-describe("readMultipliers", () => {
-  it("reads getMultipliers() on IDisputeResolver v2 (mainnet ArbitrableProxy)", async () => {
-    const { result, called } = await readRecorded("ArbitrableProxy (idr-v2)");
-    expect(result).toEqual({ ok: true, value: { winnerStakeMultiplier: 10_000n, loserStakeMultiplier: 20_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n } });
-    expect(called).toEqual(["getMultipliers()"]);
-  });
+const getMultipliers = { to: SYNTHETIC, abi: idrV2Abi, functionName: "getMultipliers" } as const;
 
-  it("reads getMultipliers() on Unslashed and the older resolver proxy", async () => {
-    const expected = { ok: true, value: { winnerStakeMultiplier: 5_000n, loserStakeMultiplier: 10_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n } };
-    expect((await readRecorded("Unslashed (idr-v1)")).result).toEqual(expected);
-    expect((await readRecorded("older resolver proxy (idr-legacy)")).result).toEqual(expected);
+async function readSynthetic(calls: readonly [string, CallReply][]) {
+  const { client, requests } = fakeNode({ head: 1n, calls });
+  return { result: await readMultipliers(client, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"])), requests };
+}
+
+describe("readMultipliers", () => {
+  it.each([
+    ["ArbitrableProxy (idr-v2)", { winnerStakeMultiplier: 10_000n, loserStakeMultiplier: 20_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n }],
+    ["Unslashed (idr-v1)", { winnerStakeMultiplier: 5_000n, loserStakeMultiplier: 10_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n }],
+    ["older resolver proxy (idr-legacy)", { winnerStakeMultiplier: 5_000n, loserStakeMultiplier: 10_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n }],
+  ])("reads getMultipliers() alone on the mainnet %s", async (label, value) => {
+    const { result, called } = await readRecorded(label);
+    expect(result).toEqual({ ok: true, value });
+    expect(called).toEqual(["getMultipliers()"]);
   });
 
   it("reads winnerMultiplier, loserMultiplier, MULTIPLIER_DIVISOR and sharedMultiplier on every deployed governor at its recorded block, with the loser window KlerosGovernor fixes at half the appeal period, past the winnerStakeMultiplier() every governor answers with no data", async () => {
@@ -111,21 +116,17 @@ describe("readMultipliers", () => {
   });
 
   it("takes each field from the first getter that answers, in order", async () => {
-    const { client, requests } = fakeNode({
-      head: 1n,
-      calls: [
-        reverting({ to: SYNTHETIC, abi: idrV2Abi, functionName: "getMultipliers" }),
-        reverting(getter("winnerStakeMultiplier")),
-        answer({ ...getter("winnerMultiplier"), result: 7n }),
-        answer({ ...getter("loserStakeMultiplier"), result: 9n }),
-        answer({ ...getter("loserMultiplier"), result: 99n }),
-        reverting(getter("denominator")),
-        reverting(getter("MULTIPLIER_DIVISOR")),
-        answer({ ...getter("MULTIPLIER_DENOMINATOR"), result: 1_000n }),
-        answer({ ...getter("loserAppealPeriodMultiplier"), result: 300n }),
-      ],
-    });
-    const result = await readMultipliers(client, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]));
+    const { result, requests } = await readSynthetic([
+      reverting(getMultipliers),
+      reverting(getter("winnerStakeMultiplier")),
+      answer({ ...getter("winnerMultiplier"), result: 7n }),
+      answer({ ...getter("loserStakeMultiplier"), result: 9n }),
+      answer({ ...getter("loserMultiplier"), result: 99n }),
+      reverting(getter("denominator")),
+      reverting(getter("MULTIPLIER_DIVISOR")),
+      answer({ ...getter("MULTIPLIER_DENOMINATOR"), result: 1_000n }),
+      answer({ ...getter("loserAppealPeriodMultiplier"), result: 300n }),
+    ]);
     expect(result).toEqual({ ok: true, value: { winnerStakeMultiplier: 7n, loserStakeMultiplier: 9n, loserAppealPeriodMultiplier: 300n, denominator: 1_000n } });
     expect(gettersCalled(SYNTHETIC, requests.calls)).not.toContain("loserMultiplier()");
   });
@@ -161,54 +162,39 @@ describe("readMultipliers", () => {
       ],
     ],
   ])("%s", async (_, calls) => {
-    const { client } = fakeNode({ head: 1n, calls: [reverting({ to: SYNTHETIC, abi: idrV2Abi, functionName: "getMultipliers" }), ...calls] });
-    const result = await readMultipliers(client, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]));
+    const { result } = await readSynthetic([reverting(getMultipliers), ...calls]);
     expect(result).toEqual({ ok: false, error: { code: "unsupported", message: UNSUPPORTED } });
   });
 
   it("reports a transport error on getMultipliers() as rpc-error and tries no getter", async () => {
-    const { client, requests } = fakeNode({
-      head: 1n,
-      calls: [reverting({ to: SYNTHETIC, abi: idrV2Abi, functionName: "getMultipliers", error: { code: -32000, message: "header not found" } })],
-    });
-    const result = await readMultipliers(client, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]));
+    const { result, requests } = await readSynthetic([reverting({ ...getMultipliers, error: { code: -32000, message: "header not found" } })]);
     expect(result).toMatchObject({ ok: false, error: { code: "rpc-error" } });
     expect(requests.calls).toHaveLength(1);
   });
 
   it("reports a transport error on a single getter as rpc-error, never as an absent getter", async () => {
-    const { client } = fakeNode({
-      head: 1n,
-      calls: [
-        reverting({ to: SYNTHETIC, abi: idrV2Abi, functionName: "getMultipliers" }),
-        reverting({ ...getter("winnerStakeMultiplier"), error: { code: -32000, message: "header not found" } }),
-        answer({ ...getter("winnerMultiplier"), result: 7n }),
-        answer({ ...getter("loserStakeMultiplier"), result: 9n }),
-        answer({ ...getter("denominator"), result: 10_000n }),
-        answer({ ...getter("loserAppealPeriodMultiplier"), result: 5_000n }),
-      ],
-    });
-    const result = await readMultipliers(client, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]));
+    const { result } = await readSynthetic([
+      reverting(getMultipliers),
+      reverting({ ...getter("winnerStakeMultiplier"), error: { code: -32000, message: "header not found" } }),
+      answer({ ...getter("winnerMultiplier"), result: 7n }),
+      answer({ ...getter("loserStakeMultiplier"), result: 9n }),
+      answer({ ...getter("denominator"), result: 10_000n }),
+      answer({ ...getter("loserAppealPeriodMultiplier"), result: 5_000n }),
+    ]);
     expect(result).toMatchObject({ ok: false, error: { code: "rpc-error" } });
   });
 
   it("reports a zero denominator as invalid data, so the amounts never divide by zero", async () => {
-    const fromStruct = fakeNode({
-      head: 1n,
-      calls: [answer({ to: SYNTHETIC, abi: idrV2Abi, functionName: "getMultipliers", result: [10_000n, 20_000n, 5_000n, 0n] })],
-    });
-    expect(await readMultipliers(fromStruct.client, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]))).toMatchObject({ ok: false, error: { code: "invalid-data" } });
+    const fromStruct = await readSynthetic([answer({ ...getMultipliers, result: [10_000n, 20_000n, 5_000n, 0n] })]);
+    expect(fromStruct.result).toMatchObject({ ok: false, error: { code: "invalid-data" } });
 
-    const fromGetters = fakeNode({
-      head: 1n,
-      calls: [
-        reverting({ to: SYNTHETIC, abi: idrV2Abi, functionName: "getMultipliers" }),
-        answer({ ...getter("winnerStakeMultiplier"), result: 1n }),
-        answer({ ...getter("loserStakeMultiplier"), result: 2n }),
-        answer({ ...getter("denominator"), result: 0n }),
-        answer({ ...getter("loserAppealPeriodMultiplier"), result: 0n }),
-      ],
-    });
-    expect(await readMultipliers(fromGetters.client, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]))).toMatchObject({ ok: false, error: { code: "invalid-data" } });
+    const fromGetters = await readSynthetic([
+      reverting(getMultipliers),
+      answer({ ...getter("winnerStakeMultiplier"), result: 1n }),
+      answer({ ...getter("loserStakeMultiplier"), result: 2n }),
+      answer({ ...getter("denominator"), result: 0n }),
+      answer({ ...getter("loserAppealPeriodMultiplier"), result: 0n }),
+    ]);
+    expect(fromGetters.result).toMatchObject({ ok: false, error: { code: "invalid-data" } });
   });
 });

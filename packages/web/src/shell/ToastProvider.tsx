@@ -117,8 +117,7 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
   }, []);
 
   // The library's close button is an 8 px square; it grows to 24 px about the same centre, and the text column keeps clear of it.
-  // The close button sits on the toast's PrimaryBlue surface, where the global PrimaryBlue ring would not show; the
-  // surface's WhiteBackground text colour holds 4.97:1 on it in light and 9.35:1 in dark.
+  // The global PrimaryBlue focus ring would not show on the toast's PrimaryBlue surface, so it takes the toast's text colour.
   return (
     <output
       ref={itemRef}

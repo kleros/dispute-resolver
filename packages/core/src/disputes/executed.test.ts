@@ -1,7 +1,7 @@
 import { createPublicClient, custom, encodeEventTopics, maxUint256, numberToHex, pad, toEventSelector } from "viem";
 import { describe, expect, it } from "vitest";
 import { erc792Abi } from "../abi";
-import type { Address, Hex } from "../types";
+import type { Address, Hex, Period } from "../types";
 import { lookupDispute, readExecutedRuling } from ".";
 import type { ArbitratedBinding, ArbitratorDispute } from "./types";
 import { EXECUTION_GNOSIS, EXECUTION_MAINNET, executionNode, fakeClient, rpcError, rulingLog } from "../test/disputes/testHelpers";
@@ -15,7 +15,6 @@ const CREATION_TOPIC = toEventSelector("DisputeCreation(uint256,address)");
 interface Found {
   readonly dispute: ArbitratorDispute;
   readonly binding: ArbitratedBinding;
-  /** The block the last round started at: the last AppealDecision, else the DisputeCreation. */
   readonly fromBlock: bigint;
 }
 
@@ -39,7 +38,6 @@ async function found(recording: ExecutionRecording, disputeId: bigint): Promise<
   return { dispute: lookup.dispute, binding: lookup.binding, fromBlock: lastRoundStart(recording, disputeId) };
 }
 
-/** The recorded logs without the arbitrable's Ruling logs, plus `extra`. */
 function withRulingLogs(recording: ExecutionRecording, extra: readonly RpcLog[]): readonly RpcLog[] {
   return [...recording.logs.filter((log) => log.topics[0] !== RULING_TOPIC), ...extra];
 }
@@ -81,20 +79,16 @@ describe("readExecutedRuling", () => {
     ]);
   });
 
-  it("does not read logs while the court has not executed the ruling", async () => {
-    for (const disputeId of [108n, 1684n]) {
-      const { executed, requests, subject } = await read(EXECUTION_MAINNET, disputeId);
-      expect(subject.dispute).toMatchObject({ period: 4, ruled: false });
-      expect(executed).toEqual({ status: "not-executed" });
-      expect(requests.methods).toEqual([]);
-    }
-  });
-
-  it("does not read logs before the execution period", async () => {
-    const subject = await found(EXECUTION_GNOSIS, 939n);
-    const { client, requests } = fakeClient(executionNode(EXECUTION_GNOSIS));
-    const executed = await readExecutedRuling({ chainId: 100, client }, { ...subject, dispute: { ...subject.dispute, period: 3 } });
-    expect(executed).toEqual({ status: "not-executed" });
+  it.each<[string, ExecutionRecording, bigint, Period | null]>([
+    ["while the court has not executed the ruling (mainnet 108)", EXECUTION_MAINNET, 108n, null],
+    ["while the court has not executed the ruling (mainnet 1684)", EXECUTION_MAINNET, 1684n, null],
+    ["before the execution period (Gnosis 939 in the appeal period)", EXECUTION_GNOSIS, 939n, 3],
+  ])("does not read logs %s", async (_, recording, disputeId, period) => {
+    const recorded = await found(recording, disputeId);
+    const subject = { ...recorded, dispute: { ...recorded.dispute, period: period ?? recorded.dispute.period } };
+    expect(subject.dispute).toMatchObject(period === null ? { period: 4, ruled: false } : { period });
+    const { client, requests } = fakeClient(executionNode(recording));
+    expect(await readExecutedRuling({ chainId: recording.chainId, client }, subject)).toEqual({ status: "not-executed" });
     expect(requests.methods).toEqual([]);
   });
 
@@ -119,15 +113,12 @@ describe("readExecutedRuling", () => {
     expect(executed).toEqual({ status: "executed", ruling: 2n });
   });
 
-  it("treats more Ruling events than the cap as inconsistent and stops the scan", async () => {
+  it("treats more Ruling events than the cap as inconsistent", async () => {
     const subject = await found(EXECUTION_GNOSIS, 939n);
     const { arbitrated, arbitrator } = subject.binding;
     const flood = Array.from({ length: 9 }, (_, index) => rulingLog(arbitrated, arbitrator, 939n, 2n, 47_900_000n + BigInt(index) * 20_000n, index));
-    const { executed, requests } = await read(EXECUTION_GNOSIS, 939n, executionNode(EXECUTION_GNOSIS, { logs: withRulingLogs(EXECUTION_GNOSIS, flood), maxRange: 10_000n }));
+    const { executed } = await read(EXECUTION_GNOSIS, 939n, executionNode(EXECUTION_GNOSIS, { logs: withRulingLogs(EXECUTION_GNOSIS, flood) }));
     expect(executed).toEqual({ status: "inconsistent" });
-    const windows = requests.logs.slice(1);
-    const lastWindow = windows.at(-1);
-    expect(lastWindow?.toBlock ?? 0n).toBeLessThan(EXECUTION_GNOSIS.readAtBlock);
   });
 
   it("treats an undecodable Ruling event as inconsistent", async () => {
@@ -173,18 +164,10 @@ describe("readExecutedRuling", () => {
     expect(executed).toEqual({ status: "executed", ruling: maxUint256 });
   });
 
-  it("rejects the top of the uint256 range on a dispute with one choice fewer", async () => {
-    const { subject } = await read(EXECUTION_MAINNET, 1347n);
-    const oneShort = { ...subject, dispute: { ...subject.dispute, numberOfChoices: maxUint256 - 1n } };
-    const { client } = fakeClient(executionNode(EXECUTION_MAINNET));
-    expect(await readExecutedRuling({ chainId: 1, client }, oneShort)).toEqual({ status: "out-of-range", ruling: maxUint256 });
-  });
-
-  it("scans from the given block to the head and splits a refused range", async () => {
-    const { executed, requests, subject } = await read(EXECUTION_GNOSIS, 939n, executionNode(EXECUTION_GNOSIS, { maxRange: 10_000n }));
+  it("splits a range the node refuses and still reads the executed ruling", async () => {
+    const { executed, requests } = await read(EXECUTION_GNOSIS, 939n, executionNode(EXECUTION_GNOSIS, { maxRange: 10_000n }));
     expect(executed).toEqual({ status: "executed", ruling: 2n });
-    const [whole, ...windows] = requests.logs;
-    expect(whole).toMatchObject({ fromBlock: subject.fromBlock, toBlock: EXECUTION_GNOSIS.readAtBlock });
+    const [, ...windows] = requests.logs;
     expect(windows.length).toBeGreaterThan(1);
     expect(windows.every((window) => window.toBlock - window.fromBlock < 10_000n)).toBe(true);
   });

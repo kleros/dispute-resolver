@@ -9,7 +9,7 @@ export interface FooterExplorerLink {
   readonly chainName: string;
 }
 
-export interface FooterProps {
+interface FooterProps {
   /** The resolved chain's name, "Unsupported Network" on that screen, or `null` when no chain is known (root failure). */
   readonly chainLabel: string | null;
   readonly explorer: FooterExplorerLink | null;

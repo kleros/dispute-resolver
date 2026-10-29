@@ -12,7 +12,6 @@ const MAX_CONCURRENT_SCRIPTS = 4;
 interface CoreDepsEnvironment {
   readonly document: Document;
   readonly fetch: typeof fetch;
-  /** `window.localStorage`, or `undefined` when the browser refuses it. */
   readonly storage: PersistStorage | undefined;
 }
 

@@ -28,6 +28,7 @@ describe("formatRuling", () => {
     expect(formatRuling(0n, SELECT_YES_NO, null)).toBe(REFUSED_RULING_TEXT);
     expect(formatRuling(0n, { type: "hash" }, null)).toBe(REFUSED_RULING_TEXT);
     expect(formatRuling(0n, null, OUTCOMES)).toBe(REFUSED_RULING_TEXT);
+    expect(formatRuling(0n, { type: "single-select" }, null)).toBe(REFUSED_RULING_TEXT);
   });
 
   it("a single-select ruling reads its title (ruling − 1 into the titles)", () => {
@@ -110,8 +111,10 @@ describe("formatRuling", () => {
     expect(formatRuling(2n ** 300n, { type: "uint" }, null)).toBe((2n ** 300n).toString());
   });
 
-  it("a uint ruling with more decimals than the display cap reads the decimal value", () => {
+  it("a uint ruling keeps reality-eth-lib's result up to the display cap of 1000 decimals and reads the decimal value beyond it", () => {
     expect(formatRuling(5n, { type: "uint", precision: 80 }, null)).toBe(`0.${"0".repeat(79)}4`);
+    expect(formatRuling(5n, { type: "uint", precision: 81 }, null)).toBe(`0.${"0".repeat(80)}4`);
+    expect(formatRuling(5n, { type: "uint", precision: 1000 }, null)).toBe(`0.${"0".repeat(999)}4`);
     expect(formatRuling(5n, { type: "uint", precision: 1001 }, null)).toBe("5");
     expect(formatRuling(5n, { type: "uint", precision: 1e9 }, null)).toBe("5");
   });
@@ -139,12 +142,6 @@ describe("formatRuling", () => {
   it("the library's empty label for the invalid answer on a title-less select reads as the decimal", () => {
     expect(formatRuling(MAX_UINT256 - 1n, { type: "single-select" }, null)).toBe((MAX_UINT256 - 1n).toString());
     expect(formatRuling(MAX_UINT256 - 1n, { type: "single-select", titles: ["A"] }, null)).toBe((MAX_UINT256 - 1n).toString());
-  });
-
-  it("an empty title, a multiple-select without titles and ruling 0 keep their text", () => {
-    expect(formatRuling(1n, { type: "single-select", titles: [""] }, null)).toBe("");
-    expect(formatRuling(1n, { type: "multiple-select" }, null)).toBe("");
-    expect(formatRuling(0n, { type: "single-select" }, null)).toBe(REFUSED_RULING_TEXT);
   });
 });
 
@@ -182,14 +179,10 @@ describe("extreme precisions, empty labels and byte-order marks", () => {
     expect(formatRuling(MAX_UINT256, { type: "datetime", precision: 1e9 }, null)).toBe("Answered too soon");
   });
 
-  it("uint rulings keep reality-eth-lib's result for safe precisions beyond 80 decimals", () => {
-    expect(formatRuling(5n, { type: "uint", precision: 81 }, null)).toBe(`0.${"0".repeat(80)}4`);
-    expect(formatRuling(5n, { type: "uint", precision: 1000 }, null)).toBe(`0.${"0".repeat(999)}4`);
-  });
-
   it("an empty reality-eth-lib label is the ruling text, not a formatter failure", () => {
     expect(formatRuling(1n, { type: "multiple-select", titles: ["A", "B"] }, null)).toBe("");
     expect(formatRuling(1n, { type: "single-select", titles: [""] }, null)).toBe("");
+    expect(formatRuling(1n, { type: "multiple-select" }, null)).toBe("");
     expect(formatRuling(5n, { type: "string" }, null)).toBe("");
     expect(formatRuling(5n, { type: "not-a-reality-type" }, null)).toBe("");
   });

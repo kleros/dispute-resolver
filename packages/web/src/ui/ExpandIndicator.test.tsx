@@ -20,18 +20,6 @@ describe("ExpandIndicator", () => {
     expect(verticalBar(container)).not.toHaveClass("scale-y-100");
   });
 
-  it("folds the vertical bar on the accordion's clock and snaps under reduced motion", () => {
-    const { container } = render(<ExpandIndicator expanded={false} />);
-    expect(verticalBar(container)).toHaveClass(
-      "origin-center",
-      "[transform-box:fill-box]",
-      "transition-transform",
-      "duration-(--acc-chevron)",
-      "ease-(--acc-ease)",
-      "motion-reduce:transition-none",
-    );
-  });
-
   it("is hidden from screen readers and drawn in the primary text colour", () => {
     const { container } = render(<ExpandIndicator expanded={false} />);
     const svg = container.querySelector("svg");

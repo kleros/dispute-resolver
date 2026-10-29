@@ -1,22 +1,19 @@
-import type { BrowserContext, Page } from "@playwright/test";
+import { expect, type BrowserContext, type Page } from "@playwright/test";
 
 // On a desktop the app scrolls the page in its page scroller (shell/PageScroller.tsx): SimpleBar's content wrapper inside
 // the library's ScrollbarContainer. On a phone or a tablet the document scrolls it. These helpers read whichever element
 // scrolls the page, so a spec states what the visitor sees.
 
-/** The page scroller's scrolling element. */
 export const PAGE_SCROLLER = ".dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper";
 
 export interface PageScrollState {
   readonly top: number;
-  /** The largest `top` the page reaches. */
   readonly maxTop: number;
   readonly scrollWidth: number;
   readonly clientWidth: number;
   readonly clientHeight: number;
 }
 
-/** The page's scroll offset and extent, from the page scroller when the app mounted one, else from the document. */
 export function pageScroll(page: Page): Promise<PageScrollState> {
   return page.evaluate((selector) => {
     const element = document.querySelector(selector) ?? document.scrollingElement ?? document.documentElement;
@@ -30,7 +27,6 @@ export function pageScroll(page: Page): Promise<PageScrollState> {
   }, PAGE_SCROLLER);
 }
 
-/** Sets the page's scroll offset at once, on whichever element scrolls it. */
 export async function scrollPageTo(page: Page, top: number): Promise<void> {
   await page.evaluate(
     ([selector, offset]) => {
@@ -39,6 +35,12 @@ export async function scrollPageTo(page: Page, top: number): Promise<void> {
     },
     [PAGE_SCROLLER, top] as const,
   );
+}
+
+export async function expectNoSidewaysScroll(page: Page, width: number): Promise<void> {
+  const { scrollWidth, clientWidth } = await pageScroll(page);
+  const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(Math.max(scrollWidth - clientWidth, documentWidth - width), `the page scrolls sideways at ${String(width)} px`).toBeLessThanOrEqual(0);
 }
 
 /**
@@ -52,19 +54,14 @@ export async function forceClassicWebKitScrollbars(context: BrowserContext): Pro
     style.textContent = "::-webkit-scrollbar { width: 15px; height: 15px; }";
     // An init script can run before the document has its root element.
     const root = (): HTMLElement | null => document.documentElement;
-    const attach = (element: HTMLElement) => {
-      element.append(style);
-    };
-    const present = root();
-    if (present !== null) {
-      attach(present);
-      return;
-    }
-    const observer = new MutationObserver(() => {
+    const attach = (): boolean => {
       const element = root();
-      if (element === null) return;
-      observer.disconnect();
-      attach(element);
+      element?.append(style);
+      return element !== null;
+    };
+    if (attach()) return;
+    const observer = new MutationObserver(() => {
+      if (attach()) observer.disconnect();
     });
     observer.observe(document, { childList: true });
   });

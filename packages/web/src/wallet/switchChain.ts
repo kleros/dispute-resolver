@@ -9,12 +9,8 @@ export type SwitchResult = { readonly ok: true } | { readonly ok: false; readonl
 
 const PENDING_MESSAGE = "A network switch is already waiting in your wallet.";
 
-interface InFlightSwitch {
-  readonly chainId: number;
-}
-
 interface InFlightStore {
-  current: InFlightSwitch | null;
+  current: { readonly chainId: number } | null;
   readonly listeners: Set<() => void>;
 }
 
@@ -29,7 +25,7 @@ function inFlightStore(config: Config): InFlightStore {
   return created;
 }
 
-function setInFlight(store: InFlightStore, value: InFlightSwitch | null): void {
+function setInFlight(store: InFlightStore, value: InFlightStore["current"]): void {
   store.current = value;
   for (const listener of store.listeners) listener();
 }

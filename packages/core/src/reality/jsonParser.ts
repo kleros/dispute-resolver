@@ -1,4 +1,3 @@
-/** A syntax error of the strict JSON parser. */
 export class JsonSyntaxError extends Error {
   constructor(message: string) {
     super(message);
@@ -254,7 +253,6 @@ class JsonScanner {
   }
 }
 
-/** Parses `text`; throws `JsonSyntaxError` for anything `JSON.parse` would reject. */
 export function parseJson(text: string, sentinels: Sentinels | null = null): ParsedJson {
   return new JsonScanner(text, sentinels).parse();
 }

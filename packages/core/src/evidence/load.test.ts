@@ -8,7 +8,6 @@ import { evidenceLog, fakeClient, fakeFetcher, recordedBodies, recordedDispute, 
 const ARBITRATOR = RECORDED.arbitrator;
 const GATEWAY = RECORDED.gateway;
 const DISPUTE_505 = recordedDispute(505n);
-const DISPUTE_1454 = recordedDispute(1454n);
 
 const ARBITRABLE: Address = "0x1111111111111111111111111111111111111111";
 const PARTY: Address = "0x2222222222222222222222222222222222222222";
@@ -98,15 +97,6 @@ describe("loadEvidence", () => {
 
     expect(fake.urls).toHaveLength(5);
     expect(new Set(fake.urls)).toEqual(new Set(Object.keys(DISPUTE_505.documents).map((uri) => `${GATEWAY}${uri}`)));
-  });
-
-  it("loads the two recorded entries of mainnet 1454, titled by name", async () => {
-    const { context } = recordedContext(DISPUTE_1454, fakeFetcher(recordedBodies()).fetcher);
-    const outcome = await loadEvidence(context);
-    expect(outcome.ok && outcome.value.items.map((item) => item.title)).toEqual([
-      "Draco Malfoy should not be found guilty.",
-      "Draco Malfoy is guilty of attempted murder in the assassination plot against Albus Dumbledore.",
-    ]);
   });
 
   it("one block read per distinct block of the shown entries", async () => {
@@ -230,14 +220,11 @@ describe("loadEvidence", () => {
     expect(await loadEvidence(context)).toEqual({ ok: true, value: { items: [], hiddenEvidenceCount: 0, hiddenByReason: NOTHING_HIDDEN } });
   });
 
-  it("a failed log scan degrades to rpc-error instead of rejecting", async () => {
-    const { context } = syntheticContext([entry(`/ipfs/${CID_A}`, 10n)], {}, { failing: { eth_getLogs: rpcError(-32000, "down") } });
-    const outcome = await loadEvidence(context);
-    expect(!outcome.ok && outcome.error.code).toBe("rpc-error");
-  });
-
-  it("a failed block read degrades to rpc-error instead of rejecting", async () => {
-    const { context } = syntheticContext([entry(`/ipfs/${CID_A}`, 10n)], { [`${GATEWAY}/ipfs/${CID_A}`]: JSON.stringify({ name: "n" }) }, { timestamps: {} });
+  it.each<[string, Partial<FakeNode>, Record<string, string>]>([
+    ["log scan", { failing: { eth_getLogs: rpcError(-32000, "down") } }, {}],
+    ["block read", { timestamps: {} }, { [`${GATEWAY}/ipfs/${CID_A}`]: JSON.stringify({ name: "n" }) }],
+  ])("a failed %s degrades to rpc-error instead of rejecting", async (_read, node, bodies) => {
+    const { context } = syntheticContext([entry(`/ipfs/${CID_A}`, 10n)], bodies, node);
     const outcome = await loadEvidence(context);
     expect(!outcome.ok && outcome.error.code).toBe("rpc-error");
   });

@@ -28,20 +28,11 @@ async function redirectedRequest(target: string, request: Request): Promise<Requ
   });
 }
 
-/** The URL a fetch input names, stringified as fetch itself does for anything that is not a Request. */
-function requestUrl(input: RequestInfo | URL): string {
-  return input instanceof Request ? input.url : String(input);
-}
-
-/**
- * A script that hardcodes a known provider, whatever key it carries, reaches the chain's read RPC instead. Nothing
- * is patched when the host sent no rules.
- */
 export function installRpcRedirect(network: NetworkHooks, rules: readonly RpcRedirectRule[]): void {
   if (rules.length === 0) return;
 
   network.wrapFetch((original: FetchFunction): FetchFunction => (input, init) => {
-    const target = redirectTarget(rules, requestUrl(input));
+    const target = redirectTarget(rules, input instanceof Request ? input.url : String(input));
     if (target === undefined) return original(input, init);
     if (input instanceof Request) return redirectedRequest(target, input).then((request) => original(request, init));
     return original(target, init);

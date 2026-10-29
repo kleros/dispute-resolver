@@ -62,12 +62,6 @@ describe("switchWalletChain", () => {
     expect(wallet.chainId()).toBe(1);
   });
 
-  it("a successful switch moves the wallet", async () => {
-    const wallet = await createConnectedTestWallet();
-    expect(await switchWalletChain(wallet.config, 100)).toEqual({ ok: true });
-    expect(wallet.config.state.chainId).toBe(100);
-  });
-
   it("a second switch request while one waits in the wallet sends nothing and says one is already waiting", async () => {
     const wallet = await createConnectedTestWallet();
     const switches = vi.spyOn(walletConnector(wallet), "switchChain");

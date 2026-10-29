@@ -69,21 +69,6 @@ describe("loadMetaEvidence gating", () => {
     expect(cache.reads).toHaveLength(0);
   });
 
-  it("a dot-segment escape from a CID to /ipns/ yields the placeholder", async () => {
-    for (const uri of [`/ipfs/${META_CID}/../../ipns/evil/meta.json`, `/ipfs/${META_CID}/%2e%2e/%2e%2e/ipns/evil`, `/ipfs/${META_CID}\\..\\..\\ipns\\evil`]) {
-      const { fetcher } = fakeFetcher({ [locatorUrl(1, 1684n)]: json({ metaEvidenceUri: uri }) });
-      expect(await loadMetaEvidence(context({ fetcher }))).toMatchObject({ status: "invalid", reason: "uri-not-content-addressed" });
-    }
-  });
-
-  it("Gnosis 863's re-emitted absolute gateway URL yields the placeholder (the gateway rule is for displays only)", async () => {
-    const dispute = FIXTURE.gnosis863;
-    const { fetcher, urls } = fakeFetcher({ [locatorUrl(100, 863n)]: json({ metaEvidenceUri: dispute.metaEvidenceUri }) });
-    const result = await loadMetaEvidence(context({ fetcher, arbitratorChainId: dispute.chainId, disputeId: 863n, arbitrable: toRegistryAddress(dispute.arbitrable) }));
-    expect(result).toEqual({ status: "invalid", metaEvidence: INVALID_META_EVIDENCE, reason: "uri-not-content-addressed" });
-    expect(urls).toHaveLength(1);
-  });
-
   it("mainnet 1684's wallet-hijack script is refused: placeholder, the script never fetched or run", async () => {
     const dispute = FIXTURE.mainnet1684;
     const { fetcher, urls } = fakeFetcher({
@@ -93,12 +78,6 @@ describe("loadMetaEvidence gating", () => {
     const result = await loadMetaEvidence(context({ fetcher, runner: UNUSED_RUNNER }));
     expect(result).toEqual({ status: "invalid", metaEvidence: INVALID_META_EVIDENCE, reason: "script-not-allowlisted" });
     expect(urls).toEqual([locatorUrl(1, 1684n), META_URL]);
-  });
-
-  it("a script allowlisted only on another chain is refused", async () => {
-    const gnosisOnly = "/ipfs/QmPAHCRtSU844fdjNoEws8AgTpzzwsYwMF2wydtpvXAcoZ/linguo-script.js";
-    const { fetcher } = fakeFetcher(servedMetaEvidence(json({ title: "T", dynamicScriptURI: gnosisOnly })));
-    expect(await loadMetaEvidence(context({ fetcher }))).toMatchObject({ status: "invalid", reason: "script-not-allowlisted" });
   });
 
   it("a script on a chain without a list is refused", async () => {

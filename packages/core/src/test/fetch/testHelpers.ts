@@ -3,7 +3,6 @@ import type { FetchInit, FetchResponse, Fetcher } from "../../types";
 /** A request or script run that never settles, even when its signal aborts (an implementation that ignores the signal). */
 export const HANG: unique symbol = Symbol("hang");
 
-/** How the fake network answers one request: a 200 body, a rejection, an HTTP status with a body, or `HANG`. */
 export type Route = string | Error | { readonly status: number; readonly body: string } | typeof HANG;
 
 function response(status: number, body: string): FetchResponse {

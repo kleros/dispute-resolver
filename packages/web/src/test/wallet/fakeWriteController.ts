@@ -23,11 +23,10 @@ export interface FakeWriteController {
   useWrite(): WriteController;
   /** A `useWriteSequence` replacement: plays the script once per build and stops at the first outcome other than `mined`. */
   useWriteSequence(): WriteSequenceController;
-  /** Every `execute` call, in order, with the builds it received. */
   readonly executions: { readonly builds: readonly WriteBuild[]; readonly options: WriteOptions }[];
 }
 
-/** Plays `script`, one status per microtask, so each intermediate status renders. Returns the last status. */
+/** One status per microtask, so each intermediate status renders. */
 async function play(script: readonly WriteStatus[], options: WriteOptions, report: (status: WriteStatus) => void, notifyMined: boolean): Promise<WriteOutcome> {
   let last: WriteStatus = { phase: "idle" };
   for (const status of script) {

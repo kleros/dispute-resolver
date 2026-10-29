@@ -2,7 +2,7 @@ import { maxUint256, toFunctionSelector } from "viem";
 import { describe, expect, it } from "vitest";
 import { SELECTORS } from "../abi";
 import type { LocalIdResolution } from "../disputes/types";
-import type { FamilyDetection } from "../families/types";
+import type { FamilyDetection, ProbedFamily } from "../families/types";
 import governor1621 from "./__fixtures__/governor-1621.json";
 import { buildEscrowAppealCall, buildFundAppealCall } from "./index";
 import { decodedArgs, detectionFor, expectCall, FAMILY_SIGNATURES, selectorOf, testBinding } from "../test/writes/testHelpers";
@@ -33,13 +33,6 @@ describe("buildFundAppealCall", () => {
   it("a ruling code outside uint256 cannot be encoded and is refused", () => {
     for (const ruling of [-1n, maxUint256 + 1n]) {
       expect(buildFundAppealCall({ ...OPEN, binding, family: family("idr-v2"), localId: LOCAL_ID, ruling, value: 1n })).toEqual({ ok: false, refusal: "ruling-out-of-range" });
-    }
-  });
-
-  it("refuses appeal funding on idr-legacy, whichever fundAppeal it carries", () => {
-    for (const name of ["idr-legacy-uint8", "idr-legacy-uint256"] as const) {
-      expect(family(name).writeFamily).toBe("idr-legacy");
-      expect(buildFundAppealCall({ ...OPEN, binding, family: family(name), localId: LOCAL_ID, ruling: 1n, value: 1n })).toEqual({ ok: false, refusal: "appeal-unsupported" });
     }
   });
 
@@ -94,15 +87,14 @@ describe("buildFundAppealCall", () => {
     expect(decodedArgs(call)).toEqual([0n]);
   });
 
-  it("families with no funding interface are refused (view-only, escrow pays the cost instead)", () => {
-    expect(buildFundAppealCall({ ...OPEN, binding, family: family("view-only"), localId: { kind: "not-applicable" }, ruling: 1n, value: 1n })).toEqual({
-      ok: false,
-      refusal: "appeal-unsupported",
-    });
-    expect(buildFundAppealCall({ ...OPEN, binding, family: family("escrow-v1"), localId: { kind: "transaction-id", value: 1n }, ruling: 1n, value: 1n })).toEqual({
-      ok: false,
-      refusal: "appeal-unsupported",
-    });
+  it.each<[string, keyof typeof FAMILY_SIGNATURES, ProbedFamily, LocalIdResolution]>([
+    ["idr-legacy with fundAppeal(uint256,uint8) is refused appeal funding", "idr-legacy-uint8", "idr-legacy", LOCAL_ID],
+    ["idr-legacy with fundAppeal(uint256,uint256) is refused appeal funding", "idr-legacy-uint256", "idr-legacy", LOCAL_ID],
+    ["a view-only arbitrable has no funding interface and is refused", "view-only", "view-only", { kind: "not-applicable" }],
+    ["an escrow arbitrable is refused appeal funding, as it pays the cost instead", "escrow-v1", "escrow-v1", { kind: "transaction-id", value: 1n }],
+  ])("%s", (_name, name, writeFamily, localId) => {
+    expect(family(name).writeFamily).toBe(writeFamily);
+    expect(buildFundAppealCall({ ...OPEN, binding, family: family(name), localId, ruling: 1n, value: 1n })).toEqual({ ok: false, refusal: "appeal-unsupported" });
   });
 });
 

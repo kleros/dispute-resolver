@@ -16,7 +16,6 @@ function indexDocument(): Document {
   return new DOMParser().parseFromString(read("index.html"), "text/html");
 }
 
-/** An absolute URL with a scheme, or a protocol-relative one. */
 function isExternal(url: string): boolean {
   return /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(url.trim());
 }

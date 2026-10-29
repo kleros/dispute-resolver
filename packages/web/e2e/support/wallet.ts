@@ -25,7 +25,6 @@ export async function expectWalletConnected(account: Locator): Promise<void> {
   await expect(account, "the injected wallet never connected (the build needs REACT_APP_WALLETCONNECT_PROJECT_ID)").toBeVisible({ timeout: 30_000 });
 }
 
-/** One message the user signed: the account that signed it and the text it read. */
 export interface SignedMessage {
   readonly account: string;
   readonly message: string;
@@ -34,17 +33,12 @@ export interface SignedMessage {
 /** The EIP-6963 identity of the injected wallet; wagmi keys its injected connector by `rdns`. */
 const WALLET_RDNS = "io.kleros.e2e-wallet";
 
-/** The page-side handle the spec drives through `page.evaluate`. */
 const HANDLE = "__e2eWallet";
 
 interface WalletHandle {
-  /** Every method the page asked for, in order. */
   readonly requests: string[];
-  /** Every message signed, in order. */
   readonly signed: SignedMessage[];
-  /** Moves the wallet to `chainId` and tells the page, as a chain change made in the wallet does. */
   changeChain(chainId: number): void;
-  /** Makes `account` the wallet's account and tells the page, as an account switch made in the wallet does. */
   changeAccount(account: string): void;
 }
 
@@ -155,10 +149,8 @@ function installWallet(options: InjectedWalletOptions & { readonly rdns: string;
   }
 }
 
-/** The EIP-6963 identity of the wallet that never answers. */
 const UNRESPONSIVE_RDNS = "io.kleros.e2e-unresponsive-wallet";
 
-/** The page-side record of the methods the page asked the unresponsive wallet for. */
 const UNRESPONSIVE_HANDLE = "__e2eUnresponsiveWallet";
 
 /** Runs in the page before any app script. */
@@ -193,7 +185,6 @@ export async function injectUnresponsiveWallet(context: BrowserContext): Promise
   await context.addInitScript(installUnresponsiveWallet, { rdns: UNRESPONSIVE_RDNS, handle: UNRESPONSIVE_HANDLE });
 }
 
-/** The methods the page asked the unresponsive wallet for, in order. */
 export function unresponsiveWalletRequests(page: Page): Promise<string[]> {
   return page.evaluate((handle) => [...(Reflect.get(window, handle) as string[])], UNRESPONSIVE_HANDLE);
 }
@@ -202,7 +193,6 @@ export async function injectWallet(context: BrowserContext, options: InjectedWal
   await context.addInitScript(installWallet, { ...options, rdns: WALLET_RDNS, handle: HANDLE });
 }
 
-/** Moves the page's wallet to `chainId`, as the user does in the wallet. */
 export async function changeWalletChain(page: Page, chainId: number): Promise<void> {
   await page.evaluate(
     ({ handle, next }) => {
@@ -212,7 +202,6 @@ export async function changeWalletChain(page: Page, chainId: number): Promise<vo
   );
 }
 
-/** Makes `account` the page's wallet account, as the user does in the wallet. */
 export async function changeWalletAccount(page: Page, account: string): Promise<void> {
   await page.evaluate(
     ({ handle, next }) => {
@@ -222,12 +211,11 @@ export async function changeWalletAccount(page: Page, account: string): Promise<
   );
 }
 
-/** The messages the user signed in the page's current document, in order. */
+/** Per document: a reload empties the list. */
 export function walletSignatures(page: Page): Promise<SignedMessage[]> {
   return page.evaluate((handle) => [...(Reflect.get(window, handle) as WalletHandle).signed], HANDLE);
 }
 
-/** The methods the page asked the wallet for, in order. */
 export function walletRequests(page: Page): Promise<string[]> {
   return page.evaluate((handle) => [...(Reflect.get(window, handle) as WalletHandle).requests], HANDLE);
 }

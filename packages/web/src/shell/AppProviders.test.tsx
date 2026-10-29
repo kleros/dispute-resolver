@@ -1,6 +1,6 @@
 import { render, renderHook, screen } from "@testing-library/react";
 import { QueryClientContext, useQueryClient } from "@tanstack/react-query";
-import { useContext, type ReactNode } from "react";
+import { useContext, type ComponentType, type ReactNode } from "react";
 import { useInRouterContext, useLocation } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useConfig, WagmiContext } from "wagmi";
@@ -14,13 +14,11 @@ import type { PageScroll } from "./pageScroll";
 import { useToast } from "./ToastProvider";
 import type { ConfiguredProvider } from "./types";
 
-/** No WalletConnect project ID and no Atlas URI: the read-only `unconfigured` wallet mode, nothing reaches a network. */
+/** No WalletConnect project ID and no Atlas URI: the `unconfigured` wallet mode, so nothing reaches a network. */
 const CONFIG: AppConfig = buildAppConfig({}, { host: "localhost:5173", origin: "http://localhost:5173" });
 
-/** Each layer of the tree, in render order, with the contexts already provided above it. */
 const order: string[] = [];
 
-/** Records a layer with the QueryClient, wagmi config and router it can see from where it sits in the tree. */
 function useRecordLayer(name: string): void {
   const query = useContext(QueryClientContext) !== undefined;
   const wagmi = useContext(WagmiContext) !== undefined;
@@ -28,49 +26,36 @@ function useRecordLayer(name: string): void {
   order.push(`${name} query:${String(query)} wagmi:${String(wagmi)} router:${String(router)}`);
 }
 
+function recorded<P extends object>(name: string, Component: ComponentType<P>) {
+  return function Recorded(props: P) {
+    useRecordLayer(name);
+    return <Component {...props} />;
+  };
+}
+
 vi.mock("../wallet", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../wallet")>();
-  function RecordedWalletProvider(props: Readonly<Parameters<typeof actual.WalletProvider>[0]>) {
-    useRecordLayer("wallet");
-    return <actual.WalletProvider {...props} />;
-  }
-  return { ...actual, WalletProvider: RecordedWalletProvider };
+  return { ...actual, WalletProvider: recorded("wallet", actual.WalletProvider) };
 });
 
 vi.mock("react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-router")>();
-  function RecordedBrowserRouter(props: Readonly<Parameters<typeof actual.BrowserRouter>[0]>) {
-    useRecordLayer("router");
-    return <actual.BrowserRouter {...props} />;
-  }
-  return { ...actual, BrowserRouter: RecordedBrowserRouter };
+  return { ...actual, BrowserRouter: recorded("router", actual.BrowserRouter) };
 });
 
 vi.mock("./ToastProvider", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./ToastProvider")>();
-  function RecordedToastProvider(props: Readonly<Parameters<typeof actual.ToastProvider>[0]>) {
-    useRecordLayer("toasts");
-    return <actual.ToastProvider {...props} />;
-  }
-  return { ...actual, ToastProvider: RecordedToastProvider };
+  return { ...actual, ToastProvider: recorded("toasts", actual.ToastProvider) };
 });
 
 vi.mock("./ChainNoticeToasts", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./ChainNoticeToasts")>();
-  function RecordedChainNoticeToasts(props: Readonly<Parameters<typeof actual.ChainNoticeToasts>[0]>) {
-    useRecordLayer("chain notices");
-    return <actual.ChainNoticeToasts {...props} />;
-  }
-  return { ...actual, ChainNoticeToasts: RecordedChainNoticeToasts };
+  return { ...actual, ChainNoticeToasts: recorded("chain notices", actual.ChainNoticeToasts) };
 });
 
 vi.mock("./colorScheme", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./colorScheme")>();
-  function RecordedColorSchemeProvider(props: Readonly<Parameters<typeof actual.ColorSchemeProvider>[0]>) {
-    useRecordLayer("colour scheme");
-    return <actual.ColorSchemeProvider {...props} />;
-  }
-  return { ...actual, ColorSchemeProvider: RecordedColorSchemeProvider };
+  return { ...actual, ColorSchemeProvider: recorded("colour scheme", actual.ColorSchemeProvider) };
 });
 
 interface ProviderProps {
@@ -84,7 +69,6 @@ function DataProbe({ config, children }: ProviderProps) {
   return <TestDataProvider>{children}</TestDataProvider>;
 }
 
-/** The Atlas gate sits below the QueryClient and the wagmi config it needs. */
 function AtlasProbe({ config, children }: ProviderProps) {
   expect(config).toBe(CONFIG);
   useRecordLayer("atlas");
@@ -95,7 +79,6 @@ function BrokenData(): never {
   throw new Error("data layer failed");
 }
 
-/** Routing, toasts, the colour scheme, wagmi and the QueryClient are all reachable from the routes. */
 function RouteProbe() {
   const location = useLocation();
   useToast();
@@ -120,7 +103,6 @@ function renderApp(dataProvider: ConfiguredProvider, children: ReactNode, pageSc
   );
 }
 
-/** The content of the page scroller, the library's ScrollbarContainer. */
 function pageScrollerContent(): Element | null {
   return document.querySelector(".dr-page-scroller .simplebar-content-wrapper > .simplebar-content");
 }
@@ -147,22 +129,20 @@ describe("AppProviders", () => {
     ]);
   });
 
-  it("the root boundary is outermost, so a failing provider keeps the minimal frame", () => {
+  it.each<{ pageScroll: PageScroll; inScroller: boolean }>([
+    { pageScroll: "document", inScroller: false },
+    { pageScroll: "container", inScroller: true },
+  ])("the root boundary is outermost: a failing provider keeps the minimal frame, in the page scroller where there is one ($pageScroll)", ({ pageScroll, inScroller }) => {
     expectRenderErrors();
-    renderApp(BrokenData, <RouteProbe />);
-    expect(screen.getByRole("heading", { level: 1, name: "Something went wrong" })).toBeInTheDocument();
+    renderApp(BrokenData, <RouteProbe />, pageScroll);
+    const heading = screen.getByRole("heading", { level: 1, name: "Something went wrong" });
     expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
+    expect(pageScrollerContent()?.contains(heading) ?? false).toBe(inScroller);
   });
 
   it("where the page scroller scrolls the page, the routes render inside it", () => {
     renderApp(DataProbe, <RouteProbe />, "container");
     expect(pageScrollerContent()).toContainElement(screen.getByText("Routes at /"));
-  });
-
-  it("where the page scroller scrolls the page, the minimal frame of a failure renders inside it too", () => {
-    expectRenderErrors();
-    renderApp(BrokenData, <RouteProbe />, "container");
-    expect(pageScrollerContent()).toContainElement(screen.getByRole("heading", { level: 1, name: "Something went wrong" }));
   });
 });
 

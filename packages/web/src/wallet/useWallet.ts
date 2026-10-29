@@ -45,12 +45,6 @@ export function currentWalletState(config: Config): WalletState {
   return toWalletState(getAccount(config));
 }
 
-/**
- * The connected wallet, if any. Its chain follows the wallet's `chainChanged` events without a reload. While
- * AppKit loads, a wallet whose connection wagmi stored is `connecting`: it reconnects only once AppKit's config exists,
- * and routing waits for that as it waits for wagmi's reconnect. Without a stored connection the wallet is
- * `disconnected` from the first render, so routing never waits for AppKit.
- */
 export function useWallet(): WalletState {
   const pendingReconnect = useWalletSetupPendingReconnect();
   const { status, address, chainId, connector } = useAccount();
@@ -60,7 +54,6 @@ export function useWallet(): WalletState {
   );
 }
 
-/** The connected wallet's chain; `undefined` without a connection. */
 export function useWalletChainId(): number | undefined {
   const wallet = useWallet();
   return wallet.status === "connected" ? wallet.chainId : undefined;

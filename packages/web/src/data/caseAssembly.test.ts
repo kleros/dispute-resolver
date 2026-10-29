@@ -55,7 +55,6 @@ interface ReadsOptions {
   readonly productFunding?: SectionData<readonly bigint[]> | null;
 }
 
-/** What `useExecutedRuling` gives a dispute the arbitrator has not executed: nothing outside execution. */
 function notExecuted(period: Period): SectionData<ExecutedRuling> | null {
   return period === 4 ? sectionReady({ status: "not-executed" }) : null;
 }
@@ -163,30 +162,32 @@ describe("case assembly", () => {
     expect(decision).toMatchObject({ status: "ready", value: { kind: "jury-decision", note: "appealable-in-arbitrable" } });
   });
 
-  it("an Escrow V1 dispute in the appeal period offers its appeal even without meta-evidence", () => {
-    expect(assembleAppealPanel(readsWith(ESCROW_V1, 3, sectionReady(MISSING)))).toEqual(ESCROW_APPEAL);
-  });
-
-  it("an Escrow V1 dispute in the appeal period does not wait for its meta-evidence", () => {
-    expect(assembleAppealPanel(readsWith(ESCROW_V1, 3, sectionLoading))).toEqual(ESCROW_APPEAL);
-  });
-
-  it("an IDisputeResolver v1 dispute in execution offers its withdrawal even when its meta-evidence failed to load", () => {
-    expect(assembleAppealPanel(readsWith(IDR_V1, 4, sectionReady(FAILED)))).toEqual({ status: "ready", value: { kind: "withdraw", state: WITHDRAW } });
-  });
-
-  it("an arbitrable that handles its own appeals says so even when its meta-evidence failed to load", () => {
-    expect(assembleAppealPanel(readsWith(VIEW_ONLY, 3, sectionReady(FAILED)))).toEqual({ status: "ready", value: { kind: "handled-by-arbitrable" } });
-  });
-
-  it("an IDisputeResolver v1 dispute in the appeal period without meta-evidence has no appeal cards, because its ruling options are unknown", () => {
-    expect(assembleAppealPanel(readsWith(IDR_V1, 3, sectionReady(MISSING)))).toEqual({
-      status: "unavailable",
-      error: { code: "not-found", message: "This dispute has no meta-evidence, so its ruling options are unknown." },
-    });
-  });
-
-  it("an IDisputeResolver v1 dispute in the appeal period waits for its meta-evidence before showing appeal cards", () => {
-    expect(assembleAppealPanel(readsWith(IDR_V1, 3, sectionLoading))).toEqual({ status: "loading" });
+  it.each<[string, FamilyDetection, Period, FoundCaseReads["metaEvidence"], unknown]>([
+    ["an Escrow V1 dispute in the appeal period offers its appeal even without meta-evidence", ESCROW_V1, 3, sectionReady(MISSING), ESCROW_APPEAL],
+    ["an Escrow V1 dispute in the appeal period does not wait for its meta-evidence", ESCROW_V1, 3, sectionLoading, ESCROW_APPEAL],
+    [
+      "an IDisputeResolver v1 dispute in execution offers its withdrawal even when its meta-evidence failed to load",
+      IDR_V1,
+      4,
+      sectionReady(FAILED),
+      { status: "ready", value: { kind: "withdraw", state: WITHDRAW } },
+    ],
+    [
+      "an arbitrable that handles its own appeals says so even when its meta-evidence failed to load",
+      VIEW_ONLY,
+      3,
+      sectionReady(FAILED),
+      { status: "ready", value: { kind: "handled-by-arbitrable" } },
+    ],
+    [
+      "an IDisputeResolver v1 dispute in the appeal period without meta-evidence has no appeal cards, because its ruling options are unknown",
+      IDR_V1,
+      3,
+      sectionReady(MISSING),
+      { status: "unavailable", error: { code: "not-found", message: "This dispute has no meta-evidence, so its ruling options are unknown." } },
+    ],
+    ["an IDisputeResolver v1 dispute in the appeal period waits for its meta-evidence before showing appeal cards", IDR_V1, 3, sectionLoading, { status: "loading" }],
+  ])("%s", (_name, family, period, metaEvidence, expected) => {
+    expect(assembleAppealPanel(readsWith(family, period, metaEvidence))).toEqual(expected);
   });
 });

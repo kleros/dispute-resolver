@@ -8,7 +8,6 @@ import { rpcError } from "../rpc/testHelpers";
 
 export { rpcError } from "../rpc/testHelpers";
 
-/** One JSON-RPC request the fake node received. */
 export interface NodeCall {
   readonly method: string;
   readonly params: readonly unknown[];
@@ -27,7 +26,6 @@ export interface FakeNode {
 
 const ZERO_WORD: Hex = pad("0x", { size: 32 });
 
-/** The EIP-1967 slot word of a proxy pointing at `implementation`. */
 export function slotWord(implementation: Address): Hex {
   return pad(implementation, { size: 32 });
 }
@@ -62,7 +60,6 @@ export function fakeNodeClient(node: FakeNode): { readonly client: ReadClient; r
   return { client: createPublicClient({ transport: custom({ request }, { retryCount: 0 }) }), calls };
 }
 
-/** A fake node holding the recorded code of every fixture contract of `chainId`, implementations included. */
 export function recordedNode(chainId: number): { code: Record<string, Hex>; implementationSlot: Record<string, Hex> } {
   const code: Record<string, Hex> = {};
   const implementationSlot: Record<string, Hex> = {};
@@ -76,12 +73,10 @@ export function recordedNode(chainId: number): { code: Record<string, Hex>; impl
   return { code, implementationSlot };
 }
 
-/** The `eth_getCode` targets among `calls`, lowercase. */
 export function codeReads(calls: readonly NodeCall[]): string[] {
   return calls.filter((call) => call.method === "eth_getCode").map((call) => lowercaseParam(call.params, 0));
 }
 
-/** The detection `detectFamily` gives a recorded contract over a node holding its chain's recorded code. */
 export function recordedDetection(chainId: number, address: string): Promise<FamilyDetection> {
   const contract = RECORDED_CONTRACTS.find((candidate) => candidate.chainId === chainId && candidate.address === address.toLowerCase());
   if (contract === undefined) return Promise.reject(new Error(`no recorded bytecode for ${String(chainId)}:${address.toLowerCase()}`));

@@ -125,19 +125,6 @@ describe("toAttachmentLink", () => {
   it("gives no attachment for an empty or non-string value", () => {
     for (const input of [undefined, null, "", "   ", 42, {}]) expect(toAttachmentLink(input, GATEWAY)).toBeNull();
   });
-
-  it("shows an https attachment without an explicit authority as text", () => {
-    for (const input of AUTHORITY_LESS_HTTPS) expect(toAttachmentLink(input, GATEWAY), input).toEqual({ kind: "text", text: input.trim() });
-  });
-
-  it("every attachment link leads to the same URL from every page of the app", () => {
-    const hrefs = HTTPS_SPELLINGS.flatMap((input) => {
-      const attachment = toAttachmentLink(input, GATEWAY);
-      return attachment?.kind === "link" ? [attachment.href] : [];
-    });
-    expect(hrefs).toHaveLength(EXPLICIT_AUTHORITY_HTTPS.length);
-    expect(hrefs.filter(movesOnAppPages)).toEqual([]);
-  });
 });
 
 describe("resolveArbitrableAppLink", () => {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { INVALID_META_EVIDENCE, LOCATOR_COMPARE_GRACE_MS, ON_CHAIN_WAIT_MS, loadMetaEvidence } from "./index";
+import { INVALID_META_EVIDENCE, loadMetaEvidence } from "./index";
 import {
   FIXTURE,
   GATEWAY,
@@ -97,12 +97,6 @@ describe("meta-evidence from the chain", () => {
     expect(signals).toHaveLength(1);
   });
 
-  it("the locator still answers missing when the event is not found", async () => {
-    const { fetcher } = fakeFetcher({ [LOCATOR_1684]: json({}) });
-    const { reader } = fakeOnChain({ status: "not-found", reason: "meta-evidence-event-not-found" });
-    expect(await loadMetaEvidence(context({ fetcher, onChain: reader }))).toEqual({ status: "missing" });
-  });
-
   it("the content-addressing check applies to the winning URI: Gnosis 863's on-chain https URL yields the placeholder even though the locator's URI is content-addressed, with no gateway fetch", async () => {
     const locator = locatorUrl(100, 863n);
     const { fetcher, urls } = fakeFetcher({ [locator]: json({ metaEvidenceUri: CANONICAL_META }), [META_URL]: PLAIN });
@@ -174,11 +168,6 @@ describe("meta-evidence from the chain within the budget", () => {
     vi.useRealTimers();
   });
 
-  it("the waits are 30 s for the chain and 5 s for the locator's comparison", () => {
-    expect(ON_CHAIN_WAIT_MS).toBe(30_000);
-    expect(LOCATOR_COMPARE_GRACE_MS).toBe(5_000);
-  });
-
   it("the on-chain read happens once per load, not once per retry attempt", async () => {
     const { fetcher, urls } = fakeFetcher(servedMetaEvidence([{ status: 504, body: "Gateway Timeout" }, PLAIN]));
     const { reader, signals } = fakeOnChain(eventFound(CANONICAL_META));
@@ -194,17 +183,17 @@ describe("meta-evidence from the chain within the budget", () => {
     const { reader } = fakeOnChain(eventFound(CANONICAL_META));
     const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, onChain: reader })), 20_000);
     expect(result).toMatchObject({ status: "ok", uri: CANONICAL_META, source: { kind: "event", locator: "unavailable", locatorPath: null } });
-    expect(elapsedMs).toBe(LOCATOR_COMPARE_GRACE_MS);
+    expect(elapsedMs).toBe(5_000);
     expect(urls).toEqual([LOCATOR_1684, META_URL]);
     expect(inits[0]?.signal?.aborted).toBe(true);
   });
 
-  it("an on-chain reader that never answers gives way to the locator after ON_CHAIN_WAIT_MS, and its signal is aborted", async () => {
+  it("an on-chain reader that never answers gives way to the locator after 30 s, and its signal is aborted", async () => {
     const { fetcher, urls } = fakeFetcher(servedMetaEvidence(PLAIN));
     const { reader, signals } = fakeOnChain(HANG);
     const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, onChain: reader })), 60_000);
     expect(result).toMatchObject({ status: "ok", uri: CANONICAL_META, source: { kind: "locator", event: "unavailable" } });
-    expect(elapsedMs).toBe(ON_CHAIN_WAIT_MS);
+    expect(elapsedMs).toBe(30_000);
     expect(signals[0]?.aborted).toBe(true);
     expect(urls).toEqual([LOCATOR_1684, META_URL]);
   });

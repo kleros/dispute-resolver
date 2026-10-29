@@ -41,17 +41,14 @@ export const CROSS_ENTRY: RealityProxyEntry = {
 
 export const CROSS_WITH_BLOCK_ENTRY: RealityProxyEntry = { ...CROSS_ENTRY, proxy: CROSS_WITH_BLOCK, hasArbitrationCreatedBlock: true };
 
-/** The known-questions map the lookup tests run against, with a snapshot at block 500,000 of chain 1. */
 export const MOCK_REGISTRY_SNAPSHOT_BLOCKS: Record<number, number> = { 1: 500_000 };
 export const MOCK_KNOWN_DISPUTE_QUESTIONS: Record<string, KnownDisputeQuestion> = {
   [`1:${SINGLE}:7`]: { questionId: Q_KNOWN_SINGLE, questionBlock: 400_000, templateId: 2 },
   [`1:${CROSS}:8`]: { questionId: Q_KNOWN_CROSS, questionBlock: 700_000, templateId: 3 },
 };
 
-/** The cache key of dispute 7 of the single-chain proxy. */
 export const KEY_7 = `@@kleros/court/reality-question/v1/1/${SINGLE}/7`;
 
-/** Chain 1 has 12 s blocks, chain 100 has 5 s blocks. */
 const BLOCK_TIMES = { 1: 12, 100: 5 };
 
 /**
@@ -93,7 +90,6 @@ function fakeChains(): Record<1 | 100, FakeChain> {
   };
 }
 
-/** A fresh world: the fake chains and the clients reading them. */
 export function createWorld() {
   const chains = fakeChains();
   return { chains, ...fakeNetwork(chains) };

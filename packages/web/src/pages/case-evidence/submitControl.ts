@@ -2,10 +2,10 @@ import { deriveCompatibility, type Unavailable } from "@dispute-resolver/core";
 import type { CaseDispute, CaseWriteContext } from "../../data";
 
 type SubmitControl =
-  | { readonly kind: "hidden" } // no dispute, or the execution period
+  | { readonly kind: "hidden" }
   | { readonly kind: "loading" }
-  | { readonly kind: "unavailable"; readonly error: Unavailable } // the family or the details read failed
-  | { readonly kind: "view-only" } // an incompatible arbitrable
+  | { readonly kind: "unavailable"; readonly error: Unavailable }
+  | { readonly kind: "view-only" }
   | { readonly kind: "available"; readonly context: CaseWriteContext };
 
 /**

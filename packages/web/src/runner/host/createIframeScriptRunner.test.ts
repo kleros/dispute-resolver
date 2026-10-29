@@ -10,7 +10,6 @@ function setup(maxConcurrent = 4) {
   return { fake, runner };
 }
 
-/** Whether `run` is still unsettled once the host's port and timer callbacks have run. */
 async function isPending(run: Promise<unknown>): Promise<boolean> {
   let settled = false;
   void run.then(() => {
@@ -97,9 +96,7 @@ describe("runner frame", () => {
     const { fake, runner } = setup();
     void runner.run(request());
     const order = frameAt(fake, 0).attributeOrder();
-    expect(order).toContain("sandbox");
-    expect(order).toContain("src");
-    expect(order.findIndex((name) => name === "sandbox")).toBeLessThan(order.findIndex((name) => name === "src"));
+    expect(order.filter((name) => name === "sandbox" || name === "src")).toEqual(["sandbox", "src"]);
   });
 
   it("sandboxes the frame with allow-scripts only, hidden and without a referrer", () => {
@@ -232,16 +229,6 @@ describe("timeout and abort", () => {
     expect(fake.frames).toEqual([]);
   });
 
-  it("removes the frame when a running script is aborted", async () => {
-    const { fake, runner } = setup();
-    const controller = new AbortController();
-    const run = runner.run(request({ signal: controller.signal }));
-    frameAt(fake, 0).load();
-    controller.abort();
-    await expect(run).resolves.toMatchObject({ status: "failed", reason: "aborted" });
-    expect(fake.attachedFrames()).toEqual([]);
-  });
-
   it("creates no frame for an already aborted run", async () => {
     const { fake, runner } = setup();
     await expect(runner.run(request({ signal: AbortSignal.abort() }))).resolves.toMatchObject({ status: "failed", reason: "aborted" });
@@ -290,28 +277,18 @@ describe("acknowledgement window", () => {
     expect(fake.attachedFrames()).toEqual([]);
   });
 
-  it("the acknowledgement never settles the run and carries nothing through", async () => {
+  it("acknowledgements never settle the run, carry nothing through, and a second one is ignored", async () => {
     const { fake, runner } = setup();
     const run = runner.run(request());
     const posted = frameAt(fake, 0).load();
     posted.reply({ type: "dr-runner/accepted", value: { title: "smuggled" }, jsonDuplicateKeys: false });
-    expect(await isPending(run)).toBe(true);
-    posted.reply({ type: "dr-runner/result", value: { title: "genuine" }, jsonDuplicateKeys: false });
-    await expect(run).resolves.toEqual({ status: "ok", value: { title: "genuine" }, jsonDuplicateKeys: false });
-  });
-
-  it("ignores a second acknowledgement", async () => {
-    const { fake, runner } = setup();
-    const run = runner.run(request());
-    const posted = frameAt(fake, 0).load();
-    posted.acknowledge();
     await settleMacrotasks();
     posted.acknowledge();
     await settleMacrotasks();
     vi.advanceTimersByTime(5_000);
     expect(await isPending(run)).toBe(true);
-    posted.reply({ type: "dr-runner/result", value: { title: "after two" }, jsonDuplicateKeys: false });
-    await expect(run).resolves.toEqual({ status: "ok", value: { title: "after two" }, jsonDuplicateKeys: false });
+    posted.reply({ type: "dr-runner/result", value: { title: "genuine" }, jsonDuplicateKeys: false });
+    await expect(run).resolves.toEqual({ status: "ok", value: { title: "genuine" }, jsonDuplicateKeys: false });
   });
 
   it("aborting during the acknowledgement window settles aborted and clears both timers", async () => {

@@ -9,7 +9,6 @@ function UnavailableValue({ error }: { readonly error: Unavailable }) {
   return <span className="text-sm font-normal text-klerosUIComponentsSecondaryText [overflow-wrap:anywhere]">{`Unavailable: ${error.message}`}</span>;
 }
 
-/** A detail's value while its read is pending. */
 export function DetailPlaceholder() {
   return (
     <div className="w-32 max-w-full">

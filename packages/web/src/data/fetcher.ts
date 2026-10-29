@@ -3,13 +3,11 @@ import { FETCH_BODY_MAX_BYTES } from "./constants";
 
 type FetchFunction = (input: string, init?: RequestInit) => Promise<Response>;
 
-/** The declared body length, 0 when the answer declares none. */
 function declaredLength(response: Response): number {
   const length = Number(response.headers.get("content-length"));
   return Number.isFinite(length) && length > 0 ? length : 0;
 }
 
-/** Reads the body while it stays within `maxBytes`; past them the read stops and rejects. */
 async function readBounded(response: Response, maxBytes: number): Promise<Uint8Array> {
   if (response.body === null) return new Uint8Array();
   const reader = response.body.getReader();

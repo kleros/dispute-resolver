@@ -1,7 +1,6 @@
 import { Button } from "@kleros/ui-components-library";
 import { useConnectWallet } from "./useConnectWallet";
 
-/** Opens the Connect view on `chainId`; renders nothing where no wallet can be connected. */
 export function ConnectButton({ chainId }: { readonly chainId: number | undefined }) {
   const connect = useConnectWallet();
   if (!connect.available) return null;

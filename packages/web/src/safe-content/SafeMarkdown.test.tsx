@@ -8,6 +8,12 @@ function renderMarkdown(source: string, className?: string): HTMLElement {
   return root;
 }
 
+function timedRender(source: string): { root: HTMLElement; elapsed: number } {
+  const started = performance.now();
+  const root = renderMarkdown(source);
+  return { root, elapsed: performance.now() - started };
+}
+
 describe("SafeMarkdown raw HTML", () => {
   it("renders inline and block HTML as text, never as elements", () => {
     const root = renderMarkdown('Some <b>bold</b> <script>alert(1)</script>\n\n<div onclick="alert(1)">\nblock\n</div>\n\n<iframe src="https://evil.example"></iframe>');
@@ -142,15 +148,10 @@ describe("SafeMarkdown GitHub-flavored syntax of remark-parse 5", () => {
     expect(root.querySelector("p")).toHaveTextContent(text);
   });
 
-  it.each([["a&#124;b\n-|-"], ["a&#x7C;b\n-|-"]])("a header row whose only pipe is a character reference (%j) is text", (source) => {
+  it.each([["a&#124;b\n-|-"], ["a&#x7C;b\n-|-"], ["a&vert;b\n-|-"], ["a&verbar;b\n-|-"]])("a header row whose only pipe is a character reference (%j) is text", (source) => {
     const root = renderMarkdown(source);
     expect(root.querySelector("table")).toBeNull();
     expect(root.querySelector("p")?.textContent).toBe("a|b\n-|-");
-  });
-
-  it("a named reference to a pipe makes no row", () => {
-    expect(renderMarkdown("a&vert;b\n-|-").querySelector("table")).toBeNull();
-    expect(renderMarkdown("a&verbar;b\n-|-").querySelector("table")).toBeNull();
   });
 
   it("a body row whose only pipe is a character reference ends the table", () => {
@@ -187,10 +188,13 @@ describe("SafeMarkdown GitHub-flavored syntax of remark-parse 5", () => {
     expect(screen.getAllByRole("cell").map((cell) => cell.style.textAlign)).toEqual(["left", "right", ""]);
   });
 
-  it("a pipe written as a character reference makes no row when its text cannot be aligned with its source", () => {
-    const root = renderMarkdown("a&#124;b &fjlig;j *c*\n-|-");
+  it.each([
+    ["a&#124;b &fjlig;j *c*\n-|-", "a|b fjj c\n-|-"],
+    ["|a&#124;b &fjlig;j *c*\n-|-", "|a|b fjj c\n-|-"],
+  ])("a pipe written as a character reference makes no row when its text cannot be aligned with its source, whatever pipe precedes it (%j)", (source, text) => {
+    const root = renderMarkdown(source);
     expect(root.querySelector("table")).toBeNull();
-    expect(root.querySelector("p")?.textContent).toBe("a|b fjj c\n-|-");
+    expect(root.querySelector("p")?.textContent).toBe(text);
   });
 
   it.each([["a|b &fjlig;j *c*\n-|-"], ["a\\|b &fjlig;j *c*\n-|-"], ["&#124;a|b &fjlig;j *c*\n-|-"], ["a\\&#124;b|c &fjlig;j *c*\n-|-"], ["a&Vert;b|c &fjlig;j *c*\n-|-"]])(
@@ -199,12 +203,6 @@ describe("SafeMarkdown GitHub-flavored syntax of remark-parse 5", () => {
       expect(renderMarkdown(source).querySelector("table")).not.toBeNull();
     },
   );
-
-  it("an unaligned text's pipes keep their order, so a literal pipe first and a referenced one after make no row", () => {
-    const root = renderMarkdown("|a&#124;b &fjlig;j *c*\n-|-");
-    expect(root.querySelector("table")).toBeNull();
-    expect(root.querySelector("p")?.textContent).toBe("|a|b fjj c\n-|-");
-  });
 
   it("a body line cut from an unaligned text ends the table when its only pipe is a character reference", () => {
     const root = renderMarkdown("a|b\n-|-\nc|d *x*\ne|f\ng&#124;h &fjlig;j");
@@ -316,19 +314,11 @@ describe("SafeMarkdown GitHub-flavored syntax of remark-parse 5", () => {
   });
 
   it("many unclosed brackets render as text in linear time", () => {
-    const source = "[".repeat(50_000) + "x" + "]".repeat(10);
-    const started = performance.now();
-    const root = renderMarkdown(source);
-    expect(performance.now() - started).toBeLessThan(5_000);
+    const { root, elapsed } = timedRender("[".repeat(50_000) + "x" + "]".repeat(10));
+    expect(elapsed).toBeLessThan(5_000);
     expect(root.textContent).toContain("[".repeat(100));
   });
 });
-
-function timedRender(source: string): { root: HTMLElement; elapsed: number } {
-  const started = performance.now();
-  const root = renderMarkdown(source);
-  return { root, elapsed: performance.now() - started };
-}
 
 describe("SafeMarkdown on hostile descriptions", () => {
   it("reads a 40,000-column alignment row in linear time", () => {

@@ -25,7 +25,6 @@ function pad(value: bigint): string {
   return value.toString().padStart(2, "0");
 }
 
-/** Rounds down to the minute. */
 export function formatDuration(seconds: number | bigint): string {
   const { days, hours, minutes } = durationParts(seconds);
   return `${pad(days)}d ${pad(hours)}h ${pad(minutes)}m`;

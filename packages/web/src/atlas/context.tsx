@@ -3,12 +3,7 @@ import type { AtlasUploader } from "./types";
 
 const AtlasUploaderContext = createContext<AtlasUploader | null>(null);
 
-export interface AtlasUploaderProviderProps {
-  readonly uploader: AtlasUploader;
-  readonly children?: ReactNode;
-}
-
-export function AtlasUploaderProvider({ uploader, children }: AtlasUploaderProviderProps) {
+export function AtlasUploaderProvider({ uploader, children }: { readonly uploader: AtlasUploader; readonly children?: ReactNode }) {
   return <AtlasUploaderContext.Provider value={uploader}>{children}</AtlasUploaderContext.Provider>;
 }
 

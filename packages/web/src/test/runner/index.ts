@@ -3,7 +3,6 @@ export {
   FAKE_APP_ORIGIN,
   SAMPLE_PARAMS,
   SAMPLE_REDIRECTS,
-  collectUntilSettled,
   createFakeRunnerEnvironment,
   runRequest,
   type FakeRunnerEnvironment,

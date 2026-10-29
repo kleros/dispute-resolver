@@ -45,14 +45,8 @@ function navLinkClass({ isActive }: { readonly isActive: boolean }): string {
 }
 
 /**
- * The sticky header bar. From `xl` it is the brand and the navigation, then the network pill, the theme toggle and the
- * wallet control.
- * Below `xl` only the navigation collapses into a menu panel: from `lg` it is a card under the Menu button at the end of
- * the one-row bar; below `lg` the controls take a second row, so changing chain or connecting never needs the menu, and
- * a scrim dims the page under the drawer. A press outside the bar only closes the panel.
- * It stacks under the library's modal overlay (z-20): where the document scrolls, as on phones, a higher bar would stay
- * pressable over an open modal and hide the modal's top.
- * Every link is built from the resolved chain, so error screens never link to `/undefined`.
+ * Stacks under the library's modal overlay (z-20): where the document scrolls, a higher bar would stay pressable over an
+ * open modal and hide its top. Every link is built from the resolved chain, so error screens never link to `/undefined`.
  * Printed it is relative: Chromium prints a sticky box moved down by the scroll offset it had on screen.
  */
 export function Header({ resolvedChain }: HeaderProps) {

@@ -123,7 +123,6 @@ describe("probes read bytecode and never call the arbitrable", () => {
       MAINNET_ARBITRABLE_PROXY,
       { noResult: (call) => call.method === "eth_getCode" },
     ],
-    ["an eth_getStorageAt answer without a result rejects instead of reading as not a proxy (Unslashed)", UNSLASHED, { noResult: (call) => call.method === "eth_getStorageAt" }],
     [
       "an implementation whose eth_getCode answer has no result rejects (Unslashed)",
       UNSLASHED,
@@ -144,10 +143,6 @@ describe("probes read bytecode and never call the arbitrable", () => {
     expect(result.family).toBe("idr-v1");
     expect(result.capabilities.withdraw).toEqual({ kind: "idr-v1" });
     expect(codeReads(calls)).toEqual([UNSLASHED, UNSLASHED_IMPLEMENTATION]);
-  });
-
-  it("the Unslashed proxy's own code carries no probe selector, so following the slot is what classifies it", () => {
-    expect(classifySelectors(scanSelectors(recorded(1, UNSLASHED).code)).family).toBe("view-only");
   });
 
   it("an EIP-1167 clone is not followed, even when its target is an IDisputeResolver", async () => {

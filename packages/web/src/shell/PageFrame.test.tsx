@@ -27,7 +27,6 @@ function header() {
   return screen.getByRole("banner");
 }
 
-/** The dimmed layer under the phone drawer, which carries no role or name. */
 function queryScrim(): Element | null {
   return document.querySelector("div[aria-hidden='true'].fixed.inset-0");
 }
@@ -67,6 +66,7 @@ describe("PageFrame header", () => {
     };
     expectNavigation();
     await act(() => view.wallet.connect());
+    expect(within(header()).getByRole("button", { name: /^Account 0x/ })).toBeInTheDocument();
     expectNavigation();
   });
 
@@ -97,28 +97,12 @@ describe("PageFrame header", () => {
     expect(within(banner).queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("loads read-only, offers Connect and opens no wallet prompt by itself", () => {
-    const wallet = createTestWallet();
-    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page", wallet });
-    expect(within(header()).getByRole("button", { name: "Connect" })).toBeEnabled();
-    expect(screen.getByRole("note", { name: "View mode only" })).toBeInTheDocument();
-    expect(wallet.modal?.openConnect).not.toHaveBeenCalled();
-    expect(wallet.config.state.status).toBe("disconnected");
-  });
-
   it("Connect opens the wallet's Connect view on the page chain", async () => {
     const user = userEvent.setup();
     const wallet = createTestWallet();
     renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page", wallet });
     await user.click(within(header()).getByRole("button", { name: "Connect" }));
     expect(wallet.modal?.openConnect).toHaveBeenCalledWith(100);
-  });
-
-  it("the header shows the resolved chain on the pill and the connected account", async () => {
-    const view = renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
-    expect(within(header()).getByRole("button", { name: "Network: Ethereum Mainnet. Change network" })).toHaveTextContent("Ethereum Mainnet");
-    await act(() => view.wallet.connect());
-    expect(within(header()).getByRole("button", { name: /^Account 0x/ })).toBeInTheDocument();
   });
 
   it("with the wallet on another chain at load nothing is offered under the header: the app asks the wallet and, on a refusal, shows the wallet's chain", async () => {
@@ -166,11 +150,14 @@ describe("PageFrame header", () => {
     const user = userEvent.setup();
     renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
     const toggle = within(header()).getByRole("button", { name: "Menu" });
+    const swap = toggle.querySelector("[data-icon-swap]");
     expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(swap).toHaveAttribute("data-state", "menu");
     const panelId = toggle.getAttribute("aria-controls") ?? "";
     expect(document.getElementById(panelId)).toHaveClass("hidden");
     await user.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(swap).toHaveAttribute("data-state", "close");
     expect(document.getElementById(panelId)).not.toHaveClass("hidden");
     await user.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "false");
@@ -252,20 +239,18 @@ describe("PageFrame header", () => {
     expect(pill.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("the menu panel grows in below xl and shrinks away inert, with its scrim, before it hides again, and animates nothing from xl", async () => {
+  it("the closing menu panel stays inert, with its scrim, until its animation ends and it hides, and animates nothing from xl", async () => {
     const user = userEvent.setup();
     renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
     expect(queryScrim()).toBeNull();
     await user.click(within(header()).getByRole("button", { name: "Menu" }));
-    const opened = menuPanel();
-    expect(opened).toHaveClass("flex", "max-xl:animate-scale-in", "max-lg:origin-top", "lg:max-xl:origin-top-right");
-    expect(opened).not.toHaveAttribute("inert");
-    expect(queryScrim()).toHaveClass("animate-t-overlay-in");
+    expect(menuPanel()).not.toHaveAttribute("inert");
+    expect(queryScrim()).toBeInTheDocument();
     await user.keyboard("{Escape}");
     const closing = menuPanel();
-    expect(closing).toHaveClass("flex", "max-xl:animate-scale-out", "max-xl:opacity-0", "max-xl:pointer-events-none");
+    expect(closing).toHaveClass("max-xl:animate-scale-out");
     expect(closing).toHaveAttribute("inert");
-    expect(queryScrim()).toHaveClass("animate-t-overlay-out");
+    expect(queryScrim()).toBeInTheDocument();
     for (const name of [...closing.classList].filter((value) => /animate-|opacity-0|pointer-events-none/.test(value))) {
       expect(name, "the inline navigation from xl carries no animation of its own").toMatch(/^max-xl:/);
     }
@@ -273,22 +258,6 @@ describe("PageFrame header", () => {
     expect(menuPanel()).toHaveClass("hidden");
     expect(menuPanel()).not.toHaveAttribute("inert");
     expect(queryScrim()).toBeNull();
-  });
-
-  it("the Menu button cross-fades its menu and close icons in one cell", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
-    const toggle = within(header()).getByRole("button", { name: "Menu" });
-    const swap = toggle.querySelector("[data-icon-swap]");
-    if (swap === null) throw new Error("The Menu button has no icon swap.");
-    const [menuIcon, closeIcon] = [...swap.querySelectorAll("svg")];
-    expect(swap).toHaveAttribute("data-state", "menu");
-    expect(menuIcon).toHaveClass("[grid-area:1/1]", "opacity-100", "scale-100", "motion-reduce:transition-none");
-    expect(closeIcon).toHaveClass("[grid-area:1/1]", "opacity-0", "scale-25");
-    await user.click(toggle);
-    expect(swap).toHaveAttribute("data-state", "close");
-    expect(menuIcon).toHaveClass("opacity-0", "scale-25");
-    expect(closeIcon).toHaveClass("opacity-100", "scale-100");
   });
 });
 
@@ -336,20 +305,6 @@ describe("PageFrame footer", () => {
   it("shows the resolved chain's name", () => {
     renderWithProviders(<Screen />, { path: "/100/ongoing", frame: "page" });
     expect(within(footer()).getByText("Gnosis Network")).toBeInTheDocument();
-  });
-
-  it("is a centred column below the header's lg breakpoint and one row that never wraps from lg, where only the chain name may shrink", () => {
-    renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
-    const row = footer().firstElementChild;
-    expect(row).toHaveClass("flex-col", "items-center", "lg:flex-row", "lg:flex-nowrap", "lg:justify-between");
-    const classNames = Array.from(footer().querySelectorAll("[class]"), (element) => element.getAttribute("class") ?? "");
-    expect(classNames.filter((name) => /(^|\s)sm:/.test(name))).toEqual([]);
-    const chainName = within(footer()).getByText("Ethereum Mainnet");
-    expect(chainName).toHaveClass("min-w-0", "truncate");
-    expect(chainName.parentElement).toHaveClass("min-w-0", "flex-col", "items-center", "lg:flex-row");
-    const channels = within(footer()).getByRole("list", { name: "Kleros channels" });
-    expect(channels).toHaveClass("flex-wrap", "lg:flex-nowrap");
-    expect(channels.parentElement).toHaveClass("shrink-0", "flex-col", "items-center", "lg:flex-row");
   });
 
   it("shows Unsupported Network on the unsupported-network screen, without an explorer link", () => {

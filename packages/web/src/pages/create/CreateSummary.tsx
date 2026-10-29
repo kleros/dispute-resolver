@@ -173,7 +173,6 @@ function primaryAction({ uploadsLocked, access, walletConnecting, canConnect, cr
 export interface CreateSummaryProps {
   readonly chain: ChainConfig;
   readonly input: CreateDisputeInput;
-  /** The name of the uploaded primary document as the user picked it. */
   readonly documentName?: string;
   readonly headingRef?: Ref<HTMLHeadingElement>;
   readonly onReturn: () => void;

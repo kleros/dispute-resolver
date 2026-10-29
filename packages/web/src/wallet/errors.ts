@@ -19,7 +19,7 @@ function causes(error: unknown): unknown[] {
   return [...seen];
 }
 
-/** The user declined in the wallet: viem's `UserRejectedRequestError` or EIP-1193 code 4001 anywhere in the chain. */
+/** viem's `UserRejectedRequestError` or EIP-1193 code 4001 anywhere in the chain. */
 export function isUserRejection(error: unknown): boolean {
   return causes(error).some((cause) => cause instanceof UserRejectedRequestError || hasCode(cause, USER_REJECTED_CODE));
 }

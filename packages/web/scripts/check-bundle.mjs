@@ -1,15 +1,8 @@
 /**
- * The production bundle check: run after `yarn build`, it fails when the built site in `packages/web/dist` carries a
- * test double, loads a script or stylesheet from another origin, carries an inline script in a page, lacks a file the
- * deploy depends on, or lacks core's zod configuration.
- *
- *   node packages/web/scripts/check-bundle.mjs [distDirectory]
- *
- * The directory defaults to packages/web/dist. One given on the command line is resolved against the working directory
- * and must lie inside the repository, symbolic links followed; anything else is refused before a file is read.
- *
- * Exit code 0 when the bundle is clean; 1 with one line per problem otherwise. Findings name a file and a kind of
- * marker, never the matching text. Operator tooling: it is not part of the application and never ships.
+ * Usage, after `yarn build`: node packages/web/scripts/check-bundle.mjs [distDirectory]
+ * The directory defaults to packages/web/dist; an argument is resolved against the cwd and must lie inside the repository,
+ * symbolic links followed, else it is refused before any file is read. Exit code 0 when the bundle is clean, 1 with one
+ * line per problem otherwise. Findings name a file and a kind of marker, never the matching text.
  */
 import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
@@ -18,7 +11,6 @@ import { parse } from "parse5";
 
 const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
 
-/** The repository root: a directory given on the command line must lie inside it. */
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
 const REQUIRED_FILES = ["index.html", "_headers", "__runner/index.html", "__runner/bootstrap.js"];
@@ -30,7 +22,6 @@ const REQUIRED_FILES = ["index.html", "_headers", "__runner/index.html", "__runn
  */
 const ZOD_CONFIGURATION_MARKER = "jitless:!0";
 
-/** Extensions of files that hold no text worth scanning. */
 const BINARY_EXTENSIONS = new Set([".woff", ".woff2", ".ttf", ".otf", ".eot", ".ico", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".wasm", ".mp4", ".webm", ".pdf"]);
 
 /** The directories of `packages/web/src/test/`; a test keeps this list equal to the directory. */
@@ -47,11 +38,7 @@ function literally(texts) {
   return new RegExp(texts.map((text) => text.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)).join("|"));
 }
 
-/**
- * Texts the test doubles of `src/test/` carry as string literals, which a minified build keeps: their error messages,
- * the fake runner's answer, the fixture meta-evidence title and the markdown corpus. The bundle check test builds every
- * module of `src/test/` minified and proves each one leaves at least one marker that survives minification.
- */
+/** String literals of the doubles in `src/test/`, which minification keeps; the check's test proves every module leaves one. */
 const TEST_DOUBLE_TEXTS = [
   "This test runs no dynamic script.",
   "Unexpected RPC request ",
@@ -72,11 +59,7 @@ const TEST_DOUBLE_LITERALS = ["Test dispute", "storage is blocked", "storage is 
 /** The fixture CIDs of `src/test/` and the signature of its session tokens ("test-signature" in base64url). */
 const TEST_FIXTURE_IDENTIFIERS = ["QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG", "QmQ2XoA25HmnPUEWDduxj6LYwMwp6jtXPFRMHcNF2EvJfU", "dGVzdC1zaWduYXR1cmU"];
 
-/**
- * What a test double leaves in a bundle. Minified code loses identifiers but keeps strings, so most markers are strings
- * the doubles and their fixtures contain; the double names and test paths catch a build that keeps
- * identifiers or ships a source map.
- */
+/** Mostly strings, which minification keeps; the names and test paths catch a build that keeps identifiers or a source map. */
 export const TEST_DOUBLE_MARKERS = [
   { label: "test directory path", pattern: new RegExp(String.raw`src\/test\/|\/test\/(?:${TEST_DIRECTORIES.join("|")})\/`) },
   { label: "fixture host", pattern: new RegExp(String.raw`${HOST_PREFIX}\.(?:invalid|example)(?![\w-]|\.[a-z0-9])`, "i") },
@@ -101,20 +84,16 @@ export const TEST_DOUBLE_MARKERS = [
   },
 ];
 
-/** Whether a URL leaves the page's origin: it names a scheme or is protocol-relative. */
 function isExternal(url) {
   return /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(url.trim());
 }
 
-/** The ASCII whitespace that separates the tokens of a `rel` attribute. */
 const HTML_WHITESPACE = /[\t\n\f\r ]+/;
 
-/** The value of an element's attribute as the parser kept it (the first of duplicates, name lowercased), or undefined. */
 function attribute(element, name) {
   return element.attrs.find((candidate) => candidate.name === name)?.value;
 }
 
-/** Whether a `rel` value names the stylesheet relation; its tokens match ASCII case-insensitively, as a browser matches them. */
 function isStylesheetRelation(rel) {
   return rel.split(HTML_WHITESPACE).some((token) => token.toLowerCase() === "stylesheet");
 }
@@ -157,11 +136,8 @@ function findingsOf(document) {
 }
 
 /**
- * The external scripts and stylesheets an HTML document loads and the inline scripts it carries, as short descriptions
- * without the URL or the script. The document is parsed as a browser parses it, so comments, tag case, quoting and
- * malformed markup end where the browser ends them. It is parsed twice, with scripting enabled and disabled, because
- * the two read `<noscript>` differently and a resource either reading finds is one some browser loads. Parsing loads
- * nothing: parse5 is a parser only and neither fetches a resource nor runs a script.
+ * Parsed twice, with scripting enabled and disabled: the two read `<noscript>` differently, and a resource either reading
+ * finds is one some browser loads.
  */
 function htmlFindings(html) {
   return new Set([true, false].flatMap((scriptingEnabled) => findingsOf(parse(html, { scriptingEnabled }))));
@@ -216,10 +192,6 @@ function textFileProblems(name, text) {
   return problems;
 }
 
-/**
- * Checks a built site. Resolves to `{ problems, scanned }`: the problems as sentences (empty when the bundle is
- * clean) and the number of text files scanned.
- */
 export async function checkBundle(distDirectory = DEFAULT_DIST) {
   if (!(await isDirectory(distDirectory))) return { problems: [`dist/ does not exist. Run yarn build first.`], scanned: 0 };
   const problems = await requiredFileProblems(distDirectory);
@@ -239,10 +211,6 @@ function isInsideRepository(location, root) {
   return location === root || location.startsWith(root + path.sep);
 }
 
-/**
- * The dist directory a command-line argument names: `{ ok: true, directory }` when it resolves inside the repository,
- * symbolic links included, else `{ ok: false, problem }`. No argument means packages/web/dist.
- */
 export async function distDirectoryFrom(argument, root = REPOSITORY_ROOT) {
   if (argument === undefined) return { ok: true, directory: DEFAULT_DIST };
   const refusal = { ok: false, problem: "The dist directory must lie inside the repository; the argument names a path outside it." };

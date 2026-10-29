@@ -24,7 +24,7 @@ function settled(beneficiary: Address, items: readonly WithdrawItem[]): Withdraw
 
 /**
  * The rulings the beneficiary contributed to in `rounds`, from its own `Contribution` logs, scanned once from the
- * earliest round start to the head. `null` when a log cannot be decoded.
+ * earliest round start to the head.
  */
 async function contributedRulings(context: AppealContext, localId: bigint, request: WithdrawRequest): Promise<readonly bigint[] | null> {
   const { client, binding, signal } = context;
@@ -112,9 +112,8 @@ async function readGovernorWithdrawable(context: AppealContext, request: Withdra
 }
 
 /**
- * What the beneficiary can withdraw across `rounds`, each starting at the block of the same index in
- * `roundStartBlocks`. idr-legacy, Escrow V1 and view-only arbitrables have no withdraw read (`unsupported`). Never
- * rejects: a failed read is `unavailable`, never zero.
+ * Each of `rounds` starts at the block of the same index in `roundStartBlocks`. Never rejects: a failed read is
+ * `unavailable`, never zero.
  */
 export async function readWithdrawable(
   context: AppealContext,

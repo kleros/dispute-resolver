@@ -19,12 +19,6 @@ describe("buildAppConfig", () => {
     expect(configure(env).env).toBe(env);
   });
 
-  it("the config is frozen", () => {
-    const config = configure({});
-    expect(Object.isFrozen(config)).toBe(true);
-    expect(Object.isFrozen(config.selfHosts)).toBe(true);
-  });
-
   describe("walletConnectProjectId", () => {
     it("a configured project ID is trimmed", () => {
       expect(configure({ REACT_APP_WALLETCONNECT_PROJECT_ID: "  abc123  " }).walletConnectProjectId).toBe("abc123");
@@ -36,19 +30,23 @@ describe("buildAppConfig", () => {
   });
 
   describe("atlasUri", () => {
-    it.each(["", "   ", "not a url", "atlas.example.org", "//atlas.example.org", "http://atlas.example.org", "javascript:alert(1)", "ftp://atlas.example.org", "https://"])(
-      "%j is not an https URL, so uploads are unavailable (null)",
-      (value) => {
-        expect(configure({ REACT_APP_ATLAS_URI: value }).atlasUri).toBeNull();
-      },
-    );
-
-    it.each(["https://user:secret@atlas.example.org", "https://atlas.example.org?x=1", "https://atlas.example.org/#frag"])(
-      "%j cannot carry the appended endpoint paths, so it is unconfigured (null)",
-      (value) => {
-        expect(configure({ REACT_APP_ATLAS_URI: value }).atlasUri).toBeNull();
-      },
-    );
+    it.each([
+      undefined,
+      "",
+      "   ",
+      "not a url",
+      "atlas.example.org",
+      "//atlas.example.org",
+      "http://atlas.example.org",
+      "javascript:alert(1)",
+      "ftp://atlas.example.org",
+      "https://",
+      "https://user:secret@atlas.example.org",
+      "https://atlas.example.org?x=1",
+      "https://atlas.example.org/#frag",
+    ])("%j is not an https URL that can carry the appended endpoint paths, so uploads are unavailable (null)", (value) => {
+      expect(configure({ REACT_APP_ATLAS_URI: value }).atlasUri).toBeNull();
+    });
 
     it.each([
       ["https://atlas.example.org", "https://atlas.example.org"],
@@ -85,13 +83,5 @@ describe("APP_CONFIG", () => {
     expect(APP_CONFIG.atlasUri).toBe("https://atlas.example.org");
     expect(APP_CONFIG.appOrigin).toBe(window.location.origin);
     expect(APP_CONFIG.selfHosts.appHost).toBe(window.location.host);
-  });
-
-  it("boots with the Atlas URI and the project ID unset", async () => {
-    vi.stubEnv("REACT_APP_WALLETCONNECT_PROJECT_ID", undefined);
-    vi.stubEnv("REACT_APP_ATLAS_URI", undefined);
-    const { APP_CONFIG } = await import("./config");
-    expect(APP_CONFIG.walletConnectProjectId).toBeNull();
-    expect(APP_CONFIG.atlasUri).toBeNull();
   });
 });

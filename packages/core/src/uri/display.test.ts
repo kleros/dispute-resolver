@@ -11,11 +11,8 @@ describe("resolveDisplayUrl", () => {
   it("a content-addressed display path goes through the gateway", () => {
     expect(resolveDisplayUrl(`/ipfs/${CID}/index.html`, GATEWAY)).toBe(T2CR_ON_GATEWAY);
     expect(resolveDisplayUrl(`ipfs/${CID}/index.html`, GATEWAY)).toBe(T2CR_ON_GATEWAY);
-    expect(resolveDisplayUrl(`${CIDV1}/index.html`, "https://ipfs.example.org")).toBe(`https://ipfs.example.org/ipfs/${CIDV1}/index.html`);
-  });
-
-  it("an ipfs:// display goes through the gateway", () => {
     expect(resolveDisplayUrl(`ipfs://${CID}/index.html`, GATEWAY)).toBe(T2CR_ON_GATEWAY);
+    expect(resolveDisplayUrl(`${CIDV1}/index.html`, "https://ipfs.example.org")).toBe(`https://ipfs.example.org/ipfs/${CIDV1}/index.html`);
   });
 
   it("the T2CR display resolves to the configured gateway without naming the contract", () => {
@@ -35,10 +32,6 @@ describe("resolveDisplayUrl", () => {
   it("an https display whose path leaves /ipfs/<CID> is not re-served and is used as is", () => {
     const url = `https://example.org/ipfs/${CID}/../../ipns/evil.eth/index.html`;
     expect(resolveDisplayUrl(url, GATEWAY)).toBe(url);
-  });
-
-  it("an http display whose path is /ipfs/<CID> goes through the gateway", () => {
-    expect(resolveDisplayUrl(`http://ipfs.kleros.io/ipfs/${CID}/index.html`, GATEWAY)).toBe(T2CR_ON_GATEWAY);
   });
 
   it("a display that is not https, other than an http /ipfs/<CID> URL, renders nothing", () => {

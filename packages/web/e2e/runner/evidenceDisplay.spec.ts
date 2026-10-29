@@ -45,7 +45,6 @@ function displayWindow(page: Page): Locator {
   return page.locator(".dr-display-window");
 }
 
-/** The element the row's aria-controls names: the region the row hides. */
 async function displayRegion(page: Page): Promise<Locator> {
   const id = await row(page).getAttribute("aria-controls");
   expect(id, "the row names the region it controls").toBeTruthy();
@@ -72,7 +71,6 @@ async function visibleText(region: Locator): Promise<string> {
   });
 }
 
-/** Reloads the case page and waits until the display has loaded again and no section is loading. */
 async function reopen(page: Page, traffic: Traffic): Promise<void> {
   const requested = traffic.display;
   await page.reload();
@@ -80,7 +78,6 @@ async function reopen(page: Page, traffic: Traffic): Promise<void> {
   await expectCaseSectionsSettled(page);
 }
 
-/** Opens the case page with the fixture display and waits until the gateway has been asked for the display page. */
 async function requestDisplay(page: Page, baseURL: string | undefined, release?: Promise<void>): Promise<Traffic> {
   const traffic = await routeCasePage(page, baseURL, { display: display(release) });
   await page.goto(CASE_PATH);
@@ -89,14 +86,12 @@ async function requestDisplay(page: Page, baseURL: string | undefined, release?:
   return traffic;
 }
 
-/** Opens the case page with the fixture display and waits until it has loaded and no section is loading. */
 async function openWithDisplay(page: Page, baseURL: string | undefined): Promise<Traffic> {
   const traffic = await requestDisplay(page, baseURL);
   await expectCaseSectionsSettled(page);
   return traffic;
 }
 
-/** Opens the case page with the gateway holding the display page; returns what releases it. */
 async function openWithHeldDisplay(page: Page, baseURL: string | undefined): Promise<() => void> {
   let release = (): void => undefined;
   const released = new Promise<void>((resolve) => {
@@ -113,12 +108,10 @@ async function fixtureFrame(page: Page): Promise<Frame> {
   return frame;
 }
 
-/** Whether the focused element of the main document is the evidence-display iframe. */
 async function focusIsOnTheFrame(page: Page): Promise<boolean> {
   return page.evaluate((selector) => document.activeElement === document.querySelector(selector), FRAME);
 }
 
-/** Tabs from the element before the row onto the row. */
 async function tabToTheRow(page: Page): Promise<void> {
   await row(page).focus();
   await page.keyboard.press("Shift+Tab");
@@ -127,7 +120,6 @@ async function tabToTheRow(page: Page): Promise<void> {
   await expect(row(page)).toBeFocused();
 }
 
-/** Tabs from the focused row into the frame, until its first link has focus. */
 async function tabFromTheRowIntoTheFrame(page: Page): Promise<void> {
   await page.keyboard.press("Tab");
   expect(await focusIsOnTheFrame(page), "the Tab after the row enters the frame").toBe(true);
@@ -230,7 +222,6 @@ test.describe("case page evidence display", () => {
   test("the section skeleton holds the frame's place until the page loads, with no visible text and no way into the frame", async ({ page, baseURL }) => {
     const release = await openWithHeldDisplay(page, baseURL);
 
-    // The gateway holds the page, so the frame has not loaded yet.
     const region = await displayRegion(page);
     const skeleton = displayWindow(page).locator(".animate-loading");
     const status = region.getByRole("status");
@@ -320,7 +311,6 @@ test.describe("case page evidence display", () => {
   }) => {
     const release = await openWithHeldDisplay(page, baseURL);
 
-    // The gateway holds the page, so the skeleton covers the frame's place.
     const region = await displayRegion(page);
     const holder = frameElement(page).locator("..");
     const cover = displayWindow(page).locator(":scope > [aria-hidden='true']");

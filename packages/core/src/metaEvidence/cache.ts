@@ -1,6 +1,6 @@
 import { z } from "../zod";
 import type { ScriptKind } from "../types";
-import { normalizeIpfsPath } from "../uri";
+import { normalizeIpfsPath, parseAbsoluteUrl } from "../uri";
 import type { CanonicalIpfsPath } from "../uri/types";
 import { metaEvidenceShape, oneOf } from "./schema";
 import type { LocatorComparison, MetaEvidenceCachePolicy, MetaEvidenceResult, MetaEvidenceSource, ScriptOutcome } from "./types";
@@ -32,12 +32,8 @@ const scriptOutcomeShape = z.discriminatedUnion("ran", [
 const canonicalPath = z.custom<CanonicalIpfsPath>((value) => typeof value === "string" && normalizeIpfsPath(value) === value);
 
 function isGatewayFileUrl(fileUrl: string, uri: string): boolean {
-  try {
-    const url = new URL(fileUrl);
-    return url.protocol === "https:" && `${url.origin}${uri}` === fileUrl;
-  } catch {
-    return false;
-  }
+  const url = parseAbsoluteUrl(fileUrl);
+  return url?.protocol === "https:" && `${url.origin}${uri}` === fileUrl;
 }
 
 /** An entry persisted without a source fails this shape and is fetched again. */

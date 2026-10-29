@@ -10,8 +10,8 @@ const BODY_UNVERIFIABLE = "This page shows the meta-evidence file the arbitrable
 /**
  * The file the meta-evidence API answered is untrusted and is never shown, printed or linked. The polite status region
  * is always mounted, empty and boxless, so the warning is announced as an addition to it. The copy names no field of
- * this page: a dynamic script or a Reality proxy may set the title or the question after the source is chosen. The Ongoing Disputes list reads the API first, so it may
- * show the other file's title.
+ * this page: a dynamic script or a Reality proxy may set the title or the question after the source is chosen. The
+ * Ongoing Disputes list reads the API first, so it may show the other file's title.
  */
 export function MetaEvidenceSourceNotice({ dispute }: CaseSectionProps) {
   const { metaEvidence } = dispute;

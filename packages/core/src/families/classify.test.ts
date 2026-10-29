@@ -36,10 +36,6 @@ describe("classifySelectors", () => {
     expect(result).toEqual({ family: "escrow-v1", capabilities: ESCROW_CAPABILITIES });
   });
 
-  it("a contract with submitEvidence(string) but no governor funding functions is not a governor", () => {
-    expect(classifySelectors(selectorsOf("submitEvidence(string)"))).toEqual({ family: "view-only", capabilities: VIEW_ONLY_CAPABILITIES });
-  });
-
   it("a governor's funding functions with submitEvidence(string) make a governor with URI-only evidence", () => {
     const result = classifySelectors(selectorsOf("submitEvidence(string)", "fundAppeal(uint256)", "getCurrentSessionNumber()"));
     expect(result).toEqual({
@@ -104,6 +100,7 @@ describe("classifySelectors", () => {
       ["disputeIDtoTransactionID(uint256)", "submitEvidence(string)", "fundAppeal(uint256)", "getCurrentSessionNumber()"],
       "escrow-v1",
     ],
+    ["a contract with submitEvidence(string) but no governor funding functions is not a governor", ["submitEvidence(string)"], "view-only"],
     ["submitEvidence(string) next to submitEvidence(uint256,string) is not a governor", ["submitEvidence(string)", "submitEvidence(uint256,string)"], "view-only"],
     ["the governor appeal rule needs getCurrentSessionNumber() next to fundAppeal(uint256)", ["fundAppeal(uint256)"], "view-only"],
     ["the governor appeal rule needs fundAppeal(uint256) next to getCurrentSessionNumber()", ["getCurrentSessionNumber()"], "view-only"],

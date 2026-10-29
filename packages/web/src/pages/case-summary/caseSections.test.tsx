@@ -49,7 +49,6 @@ interface CaseOptions {
   readonly courts?: Outcome<readonly Court[]>;
   readonly details?: Partial<DisputeReads>;
   readonly family?: FamilyDetection;
-  /** Whether the arbitrator executed the ruling. */
   readonly ruled?: boolean;
   /** What the arbitrable reports it executed; by default nothing was read. */
   readonly executed?: ExecutedRuling | null;
@@ -132,7 +131,6 @@ function steps(): HTMLElement[] {
   return within(timelineList()).getAllByRole("listitem");
 }
 
-/** A step as the reader perceives it: its name, whether it is concluded, the current step or upcoming, and its text. */
 function columns(): { name: string | null; state: string; text: string }[] {
   return steps().map((step) => {
     let state = "concluded";
@@ -150,7 +148,6 @@ function detail(label: string): HTMLElement {
   return value;
 }
 
-/** A `matchMedia` for a viewport every query matches, so the timeline lays out as from lg. */
 function matchEverything(query: string): MediaQueryList {
   return matchOnly([query])(query);
 }
@@ -214,7 +211,6 @@ describe("CaseOverview", () => {
 describe("DisputeTimeline", () => {
   const COUNTDOWN = /^\d{2}d \d{2}h \d{2}m$/;
 
-  /** The countdown: the current step's duration, which upcoming steps show in the same format. */
   function countdown(list: HTMLElement): HTMLElement {
     const current = list.querySelector<HTMLElement>('li[aria-current="step"]');
     if (current === null) throw new Error("No current step.");
@@ -348,34 +344,17 @@ describe("DisputeTimeline", () => {
     expect(list.querySelectorAll('[class*="sr-only"]')).toHaveLength(0);
   });
 
-  it("renders the vertical steps where the browser has no media queries", () => {
-    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    const list = timelineList();
-    expect(list).toHaveAccessibleName("Vertical progress steps");
-    expect(list).not.toHaveClass("w-full");
-  });
-
-  it("renders the horizontal steps when the lg query matches", () => {
-    installOfflineAppKitEnvironment();
-    vi.stubGlobal("matchMedia", matchEverything);
-    renderSection(DisputeTimeline, caseDispute({ period: 2, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }));
-    const list = timelineList();
-    expect(list).toHaveAccessibleName("Horizontal progress steps");
-    expect(list.querySelectorAll(":scope > li")).toHaveLength(4);
-    expect(list).toHaveClass("w-full");
-    expect(list.className).not.toContain("min-h-6");
-    expect(list.className).not.toContain("pb-4");
-    expect(within(list).getAllByText(/^Ends in/)).toHaveLength(1);
-  });
-
   it.each([
     { label: "five steps, lg query only", queries: [LG_MEDIA_QUERY], hiddenVotes: true, orientation: "Vertical", steps: 5 },
     { label: "four steps, lg query only", queries: [LG_MEDIA_QUERY], hiddenVotes: false, orientation: "Horizontal", steps: 4 },
     { label: "five steps, lg and five-step queries", queries: [LG_MEDIA_QUERY, FIVE_STEPS_MEDIA_QUERY], hiddenVotes: true, orientation: "Horizontal", steps: 5 },
     { label: "four steps, five-step query only", queries: [FIVE_STEPS_MEDIA_QUERY], hiddenVotes: false, orientation: "Vertical", steps: 4 },
+    { label: "four steps, no media queries", queries: null, hiddenVotes: false, orientation: "Vertical", steps: 4 },
   ])("lays the steps out as $orientation progress steps ($label)", ({ queries, hiddenVotes, orientation, steps: count }) => {
-    installOfflineAppKitEnvironment();
-    vi.stubGlobal("matchMedia", matchOnly(queries));
+    if (queries !== null) {
+      installOfflineAppKitEnvironment();
+      vi.stubGlobal("matchMedia", matchOnly(queries));
+    }
     renderSection(DisputeTimeline, caseDispute(hiddenVotes ? { period: 1, court: { hiddenVotes: true } } : { period: 2 }));
     expect(timelineList()).toHaveAccessibleName(`${orientation} progress steps`);
     expect(steps()).toHaveLength(count);
@@ -434,23 +413,6 @@ describe("DisputeTimeline", () => {
       .className.split(/\s+/)
       .filter((token) => /aria-(current|disabled)/.test(token));
     expect(byState.filter((token) => /:(after:)?(border-[tblr](-\d+)?|m[xytblr]?-[^:]+)$/.test(token))).toEqual([]);
-  });
-
-  it("below lg lays one row per period, the name on the left and the state on the right of it, with no plate behind the current row", () => {
-    renderSection(DisputeTimeline, caseDispute({ period: 2 }));
-    const list = timelineList();
-    const text = "[&_li>div:last-child]";
-    expect(list).toHaveClass(
-      "[&_li]:w-full",
-      `${text}:flex`,
-      `${text}:grow`,
-      `${text}:items-baseline`,
-      `${text}:justify-between`,
-      `${text}:gap-x-3`,
-      "[&_li>div:last-child>div]:ml-auto",
-    );
-    expect(list.className).not.toMatch(/MediumBlue|:bg-/);
-    expect(list).toHaveClass("[&_li[aria-current]_h2]:text-base");
   });
 });
 

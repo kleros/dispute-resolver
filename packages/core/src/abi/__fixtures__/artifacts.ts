@@ -129,7 +129,7 @@ export const ARTIFACTS = {
 } as const;
 
 /** A recorded ABI, or `sameAs` naming the record of the same list, by label or address, whose identical ABI is kept once. */
-const recordedAbi = z.union([z.array(z.unknown()), z.object({ sameAs: z.string() })]);
+export const recordedAbi = z.union([z.array(z.unknown()), z.object({ sameAs: z.string() })]);
 
 const verifiedSchema = z.object({
   governors: z.array(z.object({ label: z.string(), chainId: z.number(), address: z.string(), abi: recordedAbi })),
@@ -141,7 +141,7 @@ const parsedVerified = verifiedSchema.parse(verified);
 
 type RecordedAbi = z.infer<typeof recordedAbi>;
 
-function abiOf(abi: RecordedAbi, records: readonly { readonly label?: string; readonly address: string; readonly abi: RecordedAbi }[]): unknown[] {
+export function abiOf(abi: RecordedAbi, records: readonly { readonly label?: string; readonly address: string; readonly abi: RecordedAbi }[]): unknown[] {
   if (Array.isArray(abi)) return abi;
   const source = records.find((record) => record.label === abi.sameAs || record.address === abi.sameAs)?.abi;
   if (!Array.isArray(source)) throw new Error(`No recorded ABI for sameAs ${abi.sameAs}`);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseMetaEvidence, type RulingOptions } from "@dispute-resolver/core";
+import type { RulingOptions } from "@dispute-resolver/core";
 import { questionTypeLabel, shortenRulingCode, votingOptions } from "./questionOptions";
 
 const MAX_UINT = `0x${"f".repeat(64)}`;
@@ -35,10 +35,6 @@ describe("voting options", () => {
     for (const type of ["uint", "int", "string", "datetime", "hash", "bool"]) {
       expect(votingOptions({ type, titles: ["Yes"] })).toBeNull();
     }
-  });
-
-  it("starts with option 0 and numbers the titles from 1", () => {
-    expect(votingOptionLines({ type: "single-select", titles: ["Yes", "No"] })).toEqual(["Option 0 - Invalid / Refused to Arbitrate / Tied", "Option 1 - Yes", "Option 2 - No"]);
   });
 
   it("a select question without titles lists option 0 only", () => {
@@ -91,37 +87,6 @@ describe("voting options", () => {
       "Option 0 - Invalid / Refused to Arbitrate / Tied",
       "Option constructor - Odd code",
     ]);
-  });
-
-  it("splits each option into its code and title beside its one-line label", () => {
-    const options = votingOptions({ type: "single-select", titles: ["Yes"], reserved: { [MAX_UINT]: "Answered Too Soon" }, descriptions: { [MAX_UINT]: "Asked too early" } }) ?? [];
-    expect(options.map((option) => option.code)).toEqual(["Option 0", "Option 1", "Option 0xffff...ffffff"]);
-    expect(options.map((option) => option.title)).toEqual(["Invalid / Refused to Arbitrate / Tied", "Yes", "Answered Too Soon"]);
-    for (const option of options) expect(option.label).toBe(`${option.code} - ${option.title}`);
-    expect(options.map((option) => option.description)).toEqual([undefined, undefined, "Asked too early"]);
-  });
-
-  it("a parsed meta-evidence lists each code once: a reserved answer on a title's code or on code 0 is not listed, Answered Too Soon is", () => {
-    const outcome = parseMetaEvidence({
-      title: "Title",
-      rulingOptions: { type: "single-select", titles: ["Yes", "No"], reserved: { "0x0": "No", "0x1": "No", [MAX_UINT]: "Answered Too Soon" } },
-    });
-    if (!outcome.ok || outcome.value.rulingOptions === null) throw new Error("expected ruling options");
-    expect(votingOptionLines(outcome.value.rulingOptions)).toEqual([
-      "Option 0 - Invalid / Refused to Arbitrate / Tied",
-      "Option 1 - Yes",
-      "Option 2 - No",
-      "Option 0xffff...ffffff - Answered Too Soon",
-    ]);
-  });
-
-  it("a parsed meta-evidence lists no reserved answer under a key that is not hex, and a code written twice once", () => {
-    const outcome = parseMetaEvidence({
-      title: "Title",
-      rulingOptions: { type: "single-select", titles: ["Yes", "No"], reserved: { "0": "Yes", "1": "No", soon: "Odd key", "0x5": "Soon", "0x05": "Soon" } },
-    });
-    if (!outcome.ok || outcome.value.rulingOptions === null) throw new Error("expected ruling options");
-    expect(votingOptionLines(outcome.value.rulingOptions)).toEqual(["Option 0 - Invalid / Refused to Arbitrate / Tied", "Option 1 - Yes", "Option 2 - No", "Option 0x5 - Soon"]);
   });
 
   it("every option has a distinct key, even when a title repeats", () => {

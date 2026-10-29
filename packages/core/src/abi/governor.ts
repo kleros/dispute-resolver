@@ -60,7 +60,6 @@ export const governorAbi = [
       { name: "successfullyPaid", type: "uint256" },
     ],
   },
-  uint256Getter("getCurrentSessionNumber"),
   uint256Getter("winnerMultiplier"),
   uint256Getter("loserMultiplier"),
   uint256Getter("sharedMultiplier"),

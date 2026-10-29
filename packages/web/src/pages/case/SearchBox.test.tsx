@@ -39,7 +39,6 @@ function renderSearch({ pending = null, shownId = null, autoFocus = false }: Sta
   return { change, submit, unmount, user: userEvent.setup() };
 }
 
-/** A `matchMedia` that answers every query with `matches`, as a phone does for a coarse pointer. */
 function stubPointer(matches: boolean): void {
   vi.stubGlobal(
     "matchMedia",
@@ -133,10 +132,13 @@ describe("SearchBox", () => {
     expect(root).not.toHaveClass("w-69.5");
   });
 
-  it("shows the URL's dispute ID, or the text still being typed as it was typed", () => {
+  it("shows the URL's dispute ID with every digit, even above 2^53, or the text still being typed as it was typed", () => {
     const { unmount } = renderSearch({ shownId: 1650n });
     expect(field()).toHaveValue("1650");
     unmount();
+    const big = renderSearch({ shownId: 2n ** 53n + 1n });
+    expect(field()).toHaveValue("9007199254740993");
+    big.unmount();
     renderSearch({ pending: "0016", shownId: 16n });
     expect(field()).toHaveValue("0016");
   });
@@ -198,48 +200,28 @@ describe("SearchBox", () => {
     expect(pasteAsTransfer("3")).toBe(true);
   });
 
-  it("a pasted case link is refused whole rather than read as the chain ID glued to the dispute ID", async () => {
-    const { change, user } = renderSearch({ shownId: 1621n });
-    await user.click(field());
-    field().setSelectionRange(1, 3);
-    await user.paste("https://resolve.kleros.io/1/cases/1650");
-    expect(field()).toHaveValue("1621");
-    expect(field().selectionStart).toBe(1);
-    expect(field().selectionEnd).toBe(3);
-    expect(change).not.toHaveBeenCalled();
-    expectNoMessage();
-  });
+  it.each(["#1650", "1,650", "16 50", "ID: 16-50", "x7", "abc", "#", "https://resolve.kleros.io/1/cases/1650", "9".repeat(78)])(
+    "a paste of %j is refused and leaves the field, its caret and its selection as they were",
+    async (pasted) => {
+      const { change, user } = renderSearch({ shownId: 1621n });
+      await user.click(field());
+      field().setSelectionRange(2, 2);
+      await user.paste(pasted);
+      expect(field()).toHaveValue("1621");
+      expect(field().selectionStart).toBe(2);
+      expect(field().selectionEnd).toBe(2);
+      expect(change).not.toHaveBeenCalled();
 
-  it.each(["#1650", "1,650", "16 50", "ID: 16-50", "x7", "abc", "#"])("a paste of %j is refused and leaves the field, its caret and its selection as they were", async (pasted) => {
-    const { change, user } = renderSearch({ shownId: 1621n });
-    await user.click(field());
-    field().setSelectionRange(2, 2);
-    await user.paste(pasted);
-    expect(field()).toHaveValue("1621");
-    expect(field().selectionStart).toBe(2);
-    expect(field().selectionEnd).toBe(2);
-    expect(change).not.toHaveBeenCalled();
+      field().setSelectionRange(1, 3);
+      await user.paste(pasted);
+      expect(field()).toHaveValue("1621");
+      expect(field().selectionStart).toBe(1);
+      expect(field().selectionEnd).toBe(3);
+      expect(change).not.toHaveBeenCalled();
+    },
+  );
 
-    field().setSelectionRange(1, 3);
-    await user.paste(pasted);
-    expect(field()).toHaveValue("1621");
-    expect(field().selectionStart).toBe(1);
-    expect(field().selectionEnd).toBe(3);
-    expect(change).not.toHaveBeenCalled();
-  });
-
-  it("text that reaches the field without an insertion it could refuse, as a composing keyboard's can, enters only when it is an ID", () => {
-    const { change } = renderSearch({ shownId: 1621n });
-    fireEvent.change(field(), { target: { value: "1/cases/1621" } });
-    expect(field()).toHaveValue("1621");
-    expect(change).not.toHaveBeenCalled();
-
-    fireEvent.change(field(), { target: { value: "16217" } });
-    expect(field()).toHaveValue("16217");
-    expect(change.mock.calls).toEqual([["16217"]]);
-  });
-
-  it.each(["16 50", "16\t50", "1 621", "1621 ", " 1621", "\t"])(
+  it.each(["16 50", "16\t50", "1 621", "1621 ", " 1621", "\t", "1/cases/1621"])(
     "text %j that reaches the field without an insertion it could refuse is refused, never read as the ID without its whitespace",
     (text) => {
       const { change } = renderSearch({ shownId: 1621n });
@@ -306,23 +288,6 @@ describe("SearchBox", () => {
     expect(change).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses a 78-digit number above the largest dispute ID and keeps the caret where it was", async () => {
-    const { user } = renderSearch({ shownId: 1650n });
-    await user.click(field());
-    field().setSelectionRange(2, 2);
-    await user.paste("9".repeat(78));
-    expect(field()).toHaveValue("1650");
-    expect(field().selectionStart).toBe(2);
-    expect(field().selectionEnd).toBe(2);
-
-    field().setSelectionRange(1, 3);
-    await user.paste("9".repeat(78));
-    expect(field()).toHaveValue("1650");
-    expect(field().selectionStart).toBe(1);
-    expect(field().selectionEnd).toBe(3);
-    expectNoMessage();
-  });
-
   it("never shows a message, whatever is typed or pasted", async () => {
     const { user } = renderSearch();
     await user.type(field(), "12");
@@ -352,10 +317,5 @@ describe("SearchBox", () => {
     await user.type(field(), "{Escape}");
     expect(change.mock.calls).toEqual([[""]]);
     expect(field()).toHaveValue("");
-  });
-
-  it("shows every digit of a URL ID above 2^53", () => {
-    renderSearch({ shownId: 2n ** 53n + 1n });
-    expect(field()).toHaveValue("9007199254740993");
   });
 });

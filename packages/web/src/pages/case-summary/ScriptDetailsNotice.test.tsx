@@ -14,7 +14,6 @@ const MAINNET = testChain(1);
 
 type ScriptOutcome = Extract<MetaEvidenceResult, { status: "ok" }>["script"];
 
-/** Mainnet dispute 1 with only its meta-evidence read, the one section this notice depends on. */
 function caseDispute(metaEvidence: SectionData<MetaEvidenceResult>): CaseDispute {
   return testCaseDispute({ metaEvidence });
 }

@@ -8,7 +8,6 @@ import { fakeNode, rpcLog, type FakeNodeSpec, type NodeRequests, type RpcLog } f
 export { fakeFetcher } from "../fetch/testHelpers";
 export { rpcError, type RpcLog } from "../rpc/testHelpers";
 
-/** The shared fake node, its `eth_getLogs` cap named `maxLogRange`. */
 export type FakeNode = Omit<FakeNodeSpec, "maxRange"> & { readonly maxLogRange?: bigint };
 
 export function fakeClient({ maxLogRange, ...node }: FakeNode): { readonly client: ReadClient; readonly requests: NodeRequests } {
@@ -21,7 +20,6 @@ interface LogPlacement {
   readonly logIndex: number;
 }
 
-/** A synthetic `Evidence` log whose `_evidence` string is `uri`. */
 export function evidenceLog(input: LogPlacement & { readonly arbitrator: Address; readonly evidenceGroupId: bigint; readonly party: Address; readonly uri: string }): RpcLog {
   const topics = encodeEventTopics({
     abi: erc1497Abi,
@@ -50,7 +48,6 @@ export function disputeLog(
   });
 }
 
-/** A synthetic `MetaEvidence` log whose `_evidence` string is `uri`. */
 export function metaEvidenceLog(input: LogPlacement & { readonly metaEvidenceId: bigint; readonly uri: string }): RpcLog {
   const topics = encodeEventTopics({ abi: erc1497Abi, eventName: "MetaEvidence", args: { _metaEvidenceID: input.metaEvidenceId } });
   return rpcLog({
@@ -62,7 +59,6 @@ export function metaEvidenceLog(input: LogPlacement & { readonly metaEvidenceId:
   });
 }
 
-/** The recorded mainnet disputes 1454 and 505, read at block 26,190,208 (`__fixtures__/mainnet-1454-505.json`). */
 export const RECORDED = {
   readAtBlock: BigInt(fixture.readAtBlock),
   arbitrator: fixture.arbitrator as Address,
@@ -103,12 +99,10 @@ export function recordedDispute(disputeId: bigint): (typeof RECORDED.disputes)[n
   return findRecorded(RECORDED.disputes, disputeId, "dispute");
 }
 
-/** A fake node holding every recorded log and timestamp at the recorded head. */
 export function recordedNode(overrides: Partial<FakeNode> = {}): FakeNode {
   return nodeOf(RECORDED.readAtBlock, RECORDED.disputes, (dispute) => [...dispute.disputeLogs, ...dispute.evidenceLogs], overrides);
 }
 
-/** The gateway bodies of every recorded evidence document. */
 export function recordedBodies(): Record<string, string> {
   return Object.assign(
     {},
@@ -116,10 +110,6 @@ export function recordedBodies(): Record<string, string> {
   ) as Record<string, string>;
 }
 
-/**
- * The recorded Gnosis disputes 460 and 863, read at block 48,850,832
- * (`__fixtures__/gnosis-460-863-meta-evidence.json`): each one's Dispute log and every MetaEvidence log of its ID.
- */
 export const RECORDED_GNOSIS = {
   readAtBlock: BigInt(gnosisFixture.readAtBlock),
   scanFromBlock: BigInt(gnosisFixture.scanFromBlock),
@@ -136,7 +126,6 @@ export function recordedGnosisDispute(disputeId: bigint): (typeof RECORDED_GNOSI
   return findRecorded(RECORDED_GNOSIS.disputes, disputeId, "Gnosis dispute");
 }
 
-/** A fake Gnosis node holding every recorded Dispute and MetaEvidence log and timestamp at the recorded head. */
 export function recordedGnosisNode(overrides: Partial<FakeNode> = {}): FakeNode {
   return nodeOf(RECORDED_GNOSIS.readAtBlock, RECORDED_GNOSIS.disputes, (dispute) => [...dispute.disputeLogs, ...dispute.metaEvidenceLogs], overrides);
 }

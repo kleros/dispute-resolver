@@ -54,7 +54,6 @@ function press(target: Element, key: string, modifiers: { readonly shiftKey?: bo
   fireEvent.keyDown(target, { key, ...modifiers });
 }
 
-/** The page scroller can take the focus but sits out of the tab order. */
 function expectOutOfTabOrder(scroller: HTMLElement) {
   expect(scroller).toHaveAttribute("tabindex", "-1");
 }

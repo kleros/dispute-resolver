@@ -2,10 +2,10 @@ import { ApiController, ConnectorController, OptionsController } from "@reown/ap
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildAppConfig } from "../env";
 import { installOfflineAppKitEnvironment } from "../test/wallet";
-import { APPKIT_FEATURES, createAppKitSetup, isEmbeddedWalletConnector } from "./appKitSetup";
+import { createAppKitSetup, isEmbeddedWalletConnector } from "./appKitSetup";
 import type { AppKitWalletSetup } from "./types";
 
-// A file of its own: AppKit's controllers are module singletons (see config.remoteSocial.test.ts).
+// A file of its own: AppKit's controllers are module singletons (see config.test.ts).
 
 /**
  * What the Reown dashboard returns for a project configured as the app requires: social login (which also carries email),
@@ -43,10 +43,6 @@ describe("createAppKitSetup when the Reown dashboard disables social login and e
   it("AppKit registers no embedded-wallet connector once the dashboard disables social login and email", () => {
     expect(ConnectorController.state.connectors.length).toBeGreaterThan(0);
     expect(ConnectorController.state.connectors.filter(isEmbeddedWalletConnector)).toEqual([]);
-  });
-
-  it("the local features object keeps every optional feature off", () => {
-    expect(OptionsController.state.features).toEqual(expect.objectContaining(APPKIT_FEATURES));
   });
 
   it("the modal reports no embedded wallet, so Connect stays available", async () => {

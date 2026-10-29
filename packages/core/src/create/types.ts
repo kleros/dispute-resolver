@@ -63,7 +63,6 @@ export interface CreateValidationErrors {
   readonly optionCount?: CreateFieldErrorCode;
   /** Indexed like `options`; `undefined` entries are valid. */
   readonly options?: readonly (CreateFieldErrorCode | undefined)[];
-  /** Indexed like `parties`. */
   readonly parties?: readonly (CreateFieldErrorCode | undefined)[];
   readonly primaryDocument?: CreateFieldErrorCode;
 }

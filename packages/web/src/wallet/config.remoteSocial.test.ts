@@ -5,8 +5,7 @@ import { installOfflineAppKitEnvironment } from "../test/wallet";
 import { APPKIT_FEATURES, EMBEDDED_WALLET_REFUSAL, createAppKitSetup, isEmbeddedWalletConnector } from "./appKitSetup";
 import type { AppKitWalletSetup } from "./types";
 
-// AppKit's controllers are module singletons, so each remote configuration runs in its own file: the fetch failing
-// (config.test.ts), the dashboard enabling social login (this file) and disabling it (config.remoteSocialDisabled.test.ts).
+// A file of its own: AppKit's controllers are module singletons (see config.test.ts).
 
 /** What the Reown dashboard returns for a project with social login and email enabled. */
 const SOCIAL_LOGIN_ENABLED = [{ id: "social_login", isEnabled: true, config: ["email", "google", "x", "github"] }];

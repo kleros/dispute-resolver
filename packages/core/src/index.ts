@@ -1,7 +1,4 @@
-/**
- * Public entry of `@dispute-resolver/core`. `web` imports core only from here. Every public type, plus one export of
- * values per module; ABIs, selector scans and other internals stay unexported.
- */
+/** `web` imports core only from here: ABIs, selector scans and other internals stay unexported. */
 export type * from "./types";
 export { CHAINS, DEFAULT_CHAIN_ID, chainCapabilities, explorerAddressUrl, explorerTxUrl, getChain, parseChainId, readRpcUrl, resolveReadRpcUrl } from "./chains";
 export {

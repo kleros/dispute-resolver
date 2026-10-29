@@ -28,7 +28,6 @@ export interface RecordedUpload {
   readonly authorization: string | null;
 }
 
-/** A sign-in signature the wallet was asked for: the signing account and the message, as `personal_sign` sent them. */
 export interface RecordedSignature {
   readonly account: string;
   readonly message: string;
@@ -52,12 +51,10 @@ export interface FakeAtlasServerOptions {
   readonly issueToken?: () => string;
   /** `"reject"`: the wallet declines the sign-in signature (EIP-1193 code 4001). */
   readonly signature?: "sign" | "reject";
-  /** The `/ipfs/file` answer; defaults to the text `TEST_UPLOAD_CID`. */
   readonly uploadResponse?: () => Response | Promise<Response>;
 }
 
 export interface FakeAtlasServer {
-  /** Every request, in order. */
   readonly requests: readonly AtlasRequestKind[];
   readonly uploads: readonly RecordedUpload[];
   readonly graphql: readonly RecordedGraphqlRequest[];

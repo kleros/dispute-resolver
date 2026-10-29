@@ -4,7 +4,6 @@ import type { AppealRules, FamilyDetection, RulingNoun, TieDialect } from "../fa
 import type { BehaviorOverride } from "../registry/types";
 import type { FallbackOutcomes, RulingOptions, VariableQuestionType } from "../rulings/types";
 
-/** Appeal multipliers, all in the arbitrable's own basis. */
 export interface Multipliers {
   readonly winnerStakeMultiplier: bigint;
   readonly loserStakeMultiplier: bigint;
@@ -40,7 +39,6 @@ export interface RulingAmount {
  */
 export interface RoundFunding {
   readonly round: bigint;
-  /** Total contributed per ruling, all contributors. */
   readonly contributions: readonly RulingAmount[];
   /** Rulings with a `RulingFunded` event in this round; "won by default" uses its length. */
   readonly fundedRulings: readonly bigint[];
@@ -75,15 +73,13 @@ export type CardFundingState = "open" | "funded" | "closed";
 export interface CrowdfundingCard {
   readonly origin: CardOrigin;
   readonly title: string;
-  /** The ruling code sent to `fundAppeal`. */
   readonly code: bigint;
-  /** "Latest jury decision". */
   readonly isWinner: boolean;
   readonly side: CardSide;
   readonly required: bigint;
   readonly contributed: bigint;
   readonly remaining: bigint;
-  /** `contributed × 10000 / required / 100`, two decimals, 0 when `required` is 0; at least 100 once fully funded. */
+  /** At least 100 once fully funded. */
   readonly fundedPercent: number;
   readonly deadline: number;
   /** The contract reported this ruling fully funded in the round, whatever today's appeal cost would require. */
@@ -107,7 +103,6 @@ export interface MultipleSelectComposer {
   readonly deadline: number;
 }
 
-/** What the crowdfunding panel states beside its cards. */
 export interface FundingTerms {
   readonly noun: RulingNoun;
   /** How the sides are set while the current ruling is 0; `null` otherwise. */
@@ -131,23 +126,15 @@ export type WithdrawState =
 export type AppealPanel =
   | { readonly kind: "hidden" }
   | { readonly kind: "handled-by-arbitrable" }
-  | { readonly kind: "not-appealable" } // the arbitrable has no way to appeal
-  | { readonly kind: "funding-unsupported" } // the arbitrable's funding dialect is not supported here
+  | { readonly kind: "not-appealable" }
+  | { readonly kind: "funding-unsupported" }
   | { readonly kind: "escrow-appeal"; readonly appealCost: bigint; readonly deadline: number }
   | { readonly kind: "escrow-ended" }
-  | {
-      readonly kind: "crowdfunding";
-      readonly dialect: "idr" | "governor";
-      readonly cards: readonly CrowdfundingCard[];
-      readonly freeInput: FreeInputCard | null;
-      readonly composer: MultipleSelectComposer | null;
-      readonly terms: FundingTerms;
-    }
+  | ({ readonly kind: "crowdfunding"; readonly dialect: "idr" | "governor"; readonly terms: FundingTerms } & CrowdfundingSet)
   | { readonly kind: "fees-unavailable"; readonly error: Unavailable }
   | { readonly kind: "withdraw"; readonly state: WithdrawState }
   | { readonly kind: "withdraw-unsupported" };
 
-/** Everything `buildAppealPanel` needs; every read is already done. `null` means "not read in this period". */
 export interface AppealPanelInput {
   readonly family: FamilyDetection;
   readonly period: Period;
@@ -159,9 +146,7 @@ export interface AppealPanelInput {
   readonly currentRuling: Outcome<bigint>;
   readonly appealInfo: Outcome<AppealInfo> | null;
   readonly multipliers: Outcome<Multipliers> | null;
-  /** The current funding round. */
   readonly funding: Outcome<RoundFunding> | null;
-  /** Execution period only. */
   readonly withdraw: WithdrawState | null;
 }
 

@@ -1,41 +1,16 @@
 {
-  "description": "KlerosLiquid and PolicyRegistry eth_call answers (raw result or raw JSON-RPC error), AppealDecision logs and their block timestamps, and the court policy JSON bodies from the gateway, recorded for the disputes module tests.",
+  "description": "KlerosLiquid and PolicyRegistry eth_call answers (raw result or raw JSON-RPC error) and the court policy JSON bodies from the gateway, recorded for the disputes module tests.",
   "chainId": 100,
   "readAtBlock": 48752200,
   "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
   "policyRegistry": "0x9d494768936b6bdaabc46733b8d53a937a6c6d7e",
   "gateway": "https://cdn.kleros.link",
-  "appealScanFromBlock": 16895601,
   "calls": [
     {
       "label": "disputes(0)",
       "to": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
       "data": "0x564a565d0000000000000000000000000000000000000000000000000000000000000000",
       "result": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000001128ed55ab2d796fa92d2f8e1f336d745354a77a000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000060f64478000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001"
-    },
-    {
-      "label": "getDispute(0)",
-      "to": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
-      "data": "0xe3a96cbd0000000000000000000000000000000000000000000000000000000000000000",
-      "result": "0x00000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000140000000000000000000000000000000000000000000000000000000000000018000000000000000000000000000000000000000000000000000000000000001c0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000e18398e7601900000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000270801d946c940000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000"
-    },
-    {
-      "label": "currentRuling(0)",
-      "to": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
-      "data": "0x1c3db16d0000000000000000000000000000000000000000000000000000000000000000",
-      "result": "0x0000000000000000000000000000000000000000000000000000000000000005"
-    },
-    {
-      "label": "appealPeriod(0)",
-      "to": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
-      "data": "0xafe15cfb0000000000000000000000000000000000000000000000000000000000000000",
-      "result": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-    },
-    {
-      "label": "appealCost(0,0x)",
-      "to": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
-      "data": "0xf23f16e6000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000",
-      "result": "0x0000000000000000000000000000000000000000000000048dbbf2f2ecd00000"
     },
     {
       "label": "disputes(1000000000)",
@@ -417,37 +392,10 @@
         "code": 3,
         "message": "execution reverted"
       }
-    },
-    {
-      "label": "courts(20)",
-      "to": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
-      "data": "0x1f5a0dd20000000000000000000000000000000000000000000000000000000000000014",
-      "error": {
-        "code": 3,
-        "message": "execution reverted"
-      }
     }
   ],
-  "logs": [
-    {
-      "address": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
-      "topics": [
-        "0x9c9b64db9e130f48381bf697abf638e73117dbfbfd7a4484f2da3ba188f4187d",
-        "0x0000000000000000000000000000000000000000000000000000000000000079",
-        "0x000000000000000000000000e04f5791d671d5c4e08ab49b39807087b591ea3e"
-      ],
-      "data": "0x",
-      "blockNumber": "0x1c59474",
-      "blockHash": "0xf1e9e94fae2b5ac688ed5c044acc4acd31d23a1f6d8944bf3849c7c243b9b2d1",
-      "transactionHash": "0xdb3c04f5200a731f24da5a29f52f5927eacc1ccf9d279edd7b51497f22727526",
-      "transactionIndex": "0x0",
-      "logIndex": "0x2",
-      "removed": false
-    }
-  ],
-  "timestamps": {
-    "0x1c59474": "0x64ef8468"
-  },
+  "logs": [],
+  "timestamps": {},
   "policies": {
     "/ipfs/QmTsPLwhozEqjWnYKsnamZiJW47LFT7LzkQhKw5ygQxqyH/xDai-General-Court-Policy.json": "{\r\n\t\"name\": \"xDai General Court\",\r\n\t\"description\": \"**Court Purpose**\\n\\nThe General court exists as the top court in the hierarchy. All appeals made in subcourts will make their way to the General Court.\",\r\n\t\"summary\": \"**Guidelines:**\\n All policies of a court also apply to all of its child subcourts.\\n Jurors should cast their vote with a suitable verification.\\n Jurors should not rule in favor of a side who have engaged in immoral activities (example: rule reject on “revenge porn” images even if they would otherwise fit into the category).\\n “Refuse to arbitrate” should be used for disputes where both sides of the dispute have engaged in activities which are immoral (ex: refuse to rule on an assassination market dispute).\\n Immoral activities include: Murder, slavery, rape, violence, theft and perjury.\\n Rulings should be made based on the “state of the world” at the time a dispute was created. (Ex: in a dispute concerning membership of a smart contract on a curated list of “bug free” contracts, jurors should not take into account changes made to the contract after the dispute is raised.) In particular, jurors should base their rulings on court policies and arbitrable application primary documents as they exist at the time of the creation of the dispute, disregarding later modifications.\\n To ensure fairness to jurors who vote at different times within a voting period, jurors should disregard any evidence that is both 1) submitted after the end of the evidence period of the initial round of a dispute AND 2) cannot be reasonably considered to have been readily, publicly available to jurors. Jurors may, however, consider arguments that are submitted later that are based upon existing evidence and/or information which a juror considering the case during the evidence period of the initial round could reasonably have been expected to find themselves. (Ex: a party submits a new photo of a damaged product in an insurance case after the evidence period; this photo should not be considered by jurors. Ex: in a dispute over whether a token satisfies the criteria of a curated list of ERC20 tokens, an argument that reminds jurors of a definitional element of the ERC20 standard is submitted; this is publicly available and can be considered by jurors. Ex: in a dispute over whether a token satisfies a decentralization criterion for an exchange listing, an argument that invokes the distribution of tokens over different Ethereum addresses, as publicly available from sites such as Etherscan, can be considered by jurors.)\\n When considering an appeal of a case that has originated in a lower court, jurors should consider whether 1) evaluating the case requires specialized skills which jurors in the appellate court cannot be expected to have (ex: evaluating the quality of an English to Korean translation when knowledge of Korean is not a requirement of the appellate court) and 2) whether there is evidence that an attack was performed against this case in the lower court (ex: bribes, p+epsilon attacks, 51% attacks, etc). If there is no evidence of an attack AND appellate court jurors cannot be reasonably expected to have the required skills to independently evaluate the case, jurors should vote to uphold the lower court ruling. Evidence related to the presence of attacks on Kleros should be considered by jurors even if it would otherwise violate the above points on evidence admissibility.\\n Jurors should attempt to interpret disputes according to the “spirit of the dispute” unless the arbitrable contract or the policies of the subcourt state otherwise.\\n Jurors should interpret disputes without assuming the existence of gods, spirits or other supernatural beings unless the arbitrable contract or the policies of the subcourt state otherwise.\"\r\n}",
     "/ipfs/QmWQDgtUWALrnCgakAAoFWdX1P7iDGmr5imZLZzyYtPqcE/xDai-Curation-Court-Policy.json": "{\n   \"name\":\"xDai Curation\",\n   \"description\":\"**Court purpose** \\n\\n In this court, jurors will solve micro-tasks related to curation or content moderation, such as for social media, when requirements for inclusion are relatively straightforward. Higher effort cases, requiring application of more nuanced rules should be placed in other courts but might arrive in this court upon appeal.\",\n   \"summary\":\"\",\n   \"requiredSkills\":\"No particular skills are required.\"\n}",

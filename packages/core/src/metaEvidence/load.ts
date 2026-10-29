@@ -23,22 +23,18 @@ import type {
   ScriptOutcome,
 } from "./types";
 
-/** The case page's budget, which the dynamic script's run shares. */
 export const CASE_PAGE_BUDGET_MS = 120_000;
 
 export const ONGOING_BUDGET_MS = 40_000;
 
-/** The longest a load waits for the on-chain meta-evidence URI before the locator decides. */
-export const ON_CHAIN_WAIT_MS = 30_000;
+const ON_CHAIN_WAIT_MS = 30_000;
 
-/** The longest a found event waits for the locator's answer, which is read for comparison only. */
-export const LOCATOR_COMPARE_GRACE_MS = 5_000;
+const LOCATOR_COMPARE_GRACE_MS = 5_000;
 
 const RETRY_DELAY_MS = 5_000;
 
 const NO_SOURCE_MESSAGE = "The dispute details are unavailable.";
 
-/** A reader that rejected, or did not answer within `ON_CHAIN_WAIT_MS` or the load's budget. */
 const ON_CHAIN_UNAVAILABLE: OnChainMetaEvidence = Object.freeze({
   status: "unavailable",
   error: Object.freeze({ code: "rpc-error", message: "The arbitrable's MetaEvidence event could not be read." }),
@@ -77,16 +73,13 @@ class TransientFailure extends Error {
 
 interface Load {
   readonly context: MetaEvidenceContext;
-  /** `null` when the meta-evidence API is not configured (only possible with an on-chain reader). */
   readonly locatorUrl: string | null;
   readonly gateway: GatewayOrigin;
   readonly registry: Registry;
   readonly deadline: Deadline;
   /** The on-chain answer, read once per load and shared by every attempt; `null` without a reader. Never rejects. */
   readonly onChain: Promise<OnChainMetaEvidence> | null;
-  /** The current attempt's locator request: aborted once it is no longer awaited, and when the load ends. */
   locatorRequest: AbortController | null;
-  /** The step in progress, which names the failure when that step is interrupted or throws. */
   stage: TransientReason;
 }
 
@@ -101,7 +94,6 @@ interface Chosen {
   readonly source: MetaEvidenceSource;
 }
 
-/** The meta-evidence after the script or the Reality derivation, before validation. */
 interface Merged {
   readonly json: unknown;
   readonly script: ScriptOutcome;
@@ -396,7 +388,6 @@ async function runAttempt(load: Load): Promise<MetaEvidenceResult> {
   return result.ok ? accept(result.value, uri, fileUrl, source) : result.result;
 }
 
-/** A safe detail of an unexpected error, as `describeError` words it; `null` for an error it would only name. */
 function errorDetail(error: unknown): string | null {
   return error instanceof BaseError || isLookupLimitError(error) ? describeError(error) : null;
 }

@@ -11,7 +11,6 @@ export interface PageChain {
 export type ResolvedChain =
   { readonly kind: "page"; readonly page: PageChain } | { readonly kind: "fallback"; readonly page: PageChain; readonly unsupportedSegment: string | null };
 
-/** The parts of an in-app location that a move to another chain keeps or drops. */
 export interface PathLocation {
   readonly pathname: string;
   readonly search: string;
@@ -27,22 +26,14 @@ export interface ChainNotice {
   readonly pageChainId: number;
   /** The dispute of the case page the app left; `null` on any other page or when its ID does not parse. */
   readonly disputeId: bigint | null;
-  /** The switch result's message. */
   readonly reason: string;
 }
 
-export interface ChainNoticeProviderProps {
-  readonly onNotice: (notice: ChainNotice) => void;
-  readonly children?: ReactNode;
-}
-
-/** The props of shell's `PageFrame`; defined here because routing never imports shell. */
 export interface FrameProps {
   readonly resolvedChain: ResolvedChain;
   readonly children: ReactNode;
 }
 
-/** Shell's `PageFrame`, injected so routing stays below shell. */
 export type FrameComponent = ComponentType<FrameProps>;
 
 export interface AppRouteComponents {
@@ -51,9 +42,4 @@ export interface AppRouteComponents {
   readonly CreatePage: ComponentType;
   /** Serves `/:chainId/cases` with no ID too; it parses `:id` itself. */
   readonly CasePage: ComponentType;
-}
-
-export interface UnsupportedNetworkScreenProps {
-  /** Decoded by the router; shown as text only. */
-  readonly segment: string;
 }

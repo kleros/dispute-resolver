@@ -7,9 +7,7 @@ import { TIMELINE_H, TIMELINE_V } from "./DisputeTimeline";
 /** What one selector of a class string must find inside the list. */
 interface Expectation {
   readonly count: number;
-  /** The text of every match, in order. */
   readonly texts?: readonly string[];
-  /** Holds for every match. */
   readonly every?: (match: Element) => boolean;
 }
 
@@ -20,7 +18,6 @@ const ITEMS = [
   { title: "Execution" },
 ];
 
-/** The index of the bracket closing the one that opens `token`. */
 function closingBracket(token: string): number {
   let depth = 0;
   for (let index = 0; index < token.length; index += 1) {
@@ -88,12 +85,10 @@ function outsideLastStep(element: Element): boolean {
   return last?.contains(element) !== true;
 }
 
-/** The step's text block: its name first, then its states. */
 function isTextBlock(element: Element): boolean {
   return element.firstElementChild?.tagName.toLowerCase() === "h2" && !element.hasAttribute("aria-hidden");
 }
 
-/** A numbered bullet: the 24 px circle the library draws for the current and the upcoming steps. */
 function isNumberedBullet(element: Element): boolean {
   return element.tagName.toLowerCase() === "div" && element.querySelector(":scope > span") !== null;
 }

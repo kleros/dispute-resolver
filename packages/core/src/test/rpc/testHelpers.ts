@@ -3,7 +3,6 @@ import type { Abi, ContractFunctionArgs, ContractFunctionName, ContractFunctionR
 import { vi } from "vitest";
 import type { Address, Hex, ReadClient } from "../../types";
 
-/** A log as a JSON-RPC node returns it. */
 export interface RpcLog {
   readonly address: Hex;
   readonly topics: readonly Hex[];
@@ -16,7 +15,6 @@ export interface RpcLog {
   readonly removed: boolean;
 }
 
-/** One topic position of an `eth_getLogs` filter: any value, one value, or any of several. */
 export type TopicFilter = string | readonly string[] | null;
 
 /** The `eth_getLogs` filter the fake node received, with block numbers decoded. */
@@ -27,10 +25,8 @@ export interface LogsRequest {
   readonly toBlock: bigint;
 }
 
-/** What the fake node answers to one `eth_getLogs` request: logs, or an error to throw. */
 export type LogsAnswer = readonly RpcLog[] | Error;
 
-/** The key a fake node files an `eth_call` answer under: target and calldata, lowercase. */
 export function callKey(to: string, data: Hex): string {
   return `${to}:${data}`.toLowerCase();
 }
@@ -58,12 +54,10 @@ export function rpcLog(input: {
   };
 }
 
-/** A JSON-RPC error as a node reports it: an `Error` with a numeric `code`. */
 export function rpcError(code: number, message: string): Error {
   return Object.assign(new Error(message), { code });
 }
 
-/** The node's answer when the range is wider than `maxRange` blocks, like Infura's 10,000-result cap. */
 export function rangeRefusal(): Error {
   return rpcError(-32005, "query returned more than 10000 results");
 }
@@ -80,7 +74,6 @@ function topicMatches(filter: TopicFilter | undefined, topic: Hex | undefined): 
   return wanted.some((value) => value.toLowerCase() === topic.toLowerCase());
 }
 
-/** Whether `log` matches the filter as a node applies it: address, block range and every topic (an array topic matches any of its values). */
 export function matchesFilter(log: RpcLog, request: LogsRequest): boolean {
   const block = BigInt(log.blockNumber);
   return (
@@ -91,7 +84,6 @@ export function matchesFilter(log: RpcLog, request: LogsRequest): boolean {
   );
 }
 
-/** A node holding `logs` that refuses any `eth_getLogs` range wider than `maxRange` blocks. */
 export function cappedNode(logs: readonly RpcLog[], maxRange: bigint): (request: LogsRequest) => Promise<LogsAnswer> {
   return (request) => Promise.resolve(request.toBlock - request.fromBlock + 1n > maxRange ? rangeRefusal() : logs.filter((log) => matchesFilter(log, request)));
 }
@@ -113,7 +105,6 @@ export function fakeLogsClient(answer: (request: LogsRequest) => Promise<LogsAns
   return { client: createPublicClient({ transport: custom({ request }, { retryCount: 0 }) }), requests };
 }
 
-/** A JSON-RPC error as the node sent it. */
 export interface RpcErrorBody {
   readonly code: number;
   readonly message: string;
@@ -137,15 +128,12 @@ export interface FakeNodeSpec {
   readonly storage?: ReadonlyMap<string, Hex>;
 }
 
-/** The key a fake node files a storage word under: the contract, lowercase, and the slot as a number. */
 export function storageKey(address: string, slot: Hex): string {
   return `${address.toLowerCase()}:${BigInt(slot).toString()}`;
 }
 
-/** Every request the fake node received. */
 export interface NodeRequests {
   readonly methods: string[];
-  /** `callKey` of every `eth_call`. */
   readonly calls: string[];
   readonly logs: LogsRequest[];
   readonly blocks: bigint[];
@@ -162,7 +150,6 @@ function calldata(input: { readonly abi: Abi; readonly functionName: string; rea
   return encodeFunctionData(input as Parameters<typeof encodeFunctionData>[0]);
 }
 
-/** The key and encoded answer of a synthetic call. */
 export function answer<const TAbi extends Abi, TName extends ContractFunctionName<TAbi, "view" | "pure">>(
   input: CallInput<TAbi, TName> & { readonly result: ContractFunctionReturnType<TAbi, "view" | "pure", TName> },
 ): [string, CallReply] {
@@ -231,7 +218,6 @@ export function fakeNode(spec: FakeNodeSpec): { readonly client: ReadClient; rea
   return { client: createPublicClient({ transport: custom({ request }, { retryCount: 0 }) }), requests };
 }
 
-/** One JSON-RPC call as the fake endpoint receives it. */
 export interface JsonRpcCall {
   readonly id: number;
   readonly method: string;
@@ -246,16 +232,13 @@ export type Reply =
   { readonly result: unknown } | { readonly error: { readonly code: number; readonly message: string; readonly data?: unknown } } | { readonly status: number } | "hang";
 
 export interface FakeEndpoint {
-  /** Each HTTP request: its URL, the JSON-RPC calls in its body and when it was sent. */
   readonly posts: { readonly url: string; readonly calls: readonly JsonRpcCall[]; readonly at: number }[];
 }
 
-/** The JSON-RPC calls sent to a fake endpoint, across every HTTP request. */
 export function rpcCalls(endpoint: FakeEndpoint): JsonRpcCall[] {
   return endpoint.posts.flatMap((post) => post.calls);
 }
 
-/** The block range of an `eth_getLogs` call sent to a fake endpoint. */
 export function logsRange(call: JsonRpcCall): { readonly fromBlock: bigint; readonly toBlock: bigint } {
   const [filter] = call.params as [{ fromBlock: Hex; toBlock: Hex }];
   return { fromBlock: BigInt(filter.fromBlock), toBlock: BigInt(filter.toBlock) };

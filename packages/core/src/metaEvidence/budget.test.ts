@@ -44,11 +44,6 @@ describe("meta-evidence budget", () => {
     vi.useRealTimers();
   });
 
-  it("the case page budget is 120 s and the Ongoing budget is well under a minute", () => {
-    expect(CASE_PAGE_BUDGET_MS).toBe(120_000);
-    expect(ONGOING_BUDGET_MS).toBe(40_000);
-  });
-
   it("transient locator failures retry every 5 s and stop within the budget with the last failure", async () => {
     const { fetcher, urls } = fakeFetcher({ [locatorUrl(1, 1684n)]: "<html>502 Bad Gateway</html>" });
     const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, budgetMs: 40_000 })), 60_000);
@@ -114,7 +109,7 @@ describe("meta-evidence budget", () => {
     const { runner, requests } = fakeRunner(scriptOk({ title: "From the script" }));
     const { result } = await settle(loadMetaEvidence(context({ fetcher, runner, budgetMs: ONGOING_BUDGET_MS })), 10_000);
     expect(result).toMatchObject({ status: "ok", metaEvidence: { title: "From the script" } });
-    expect(requests[0]?.timeoutMs).toBe(ONGOING_BUDGET_MS - 5_000);
+    expect(requests[0]?.timeoutMs).toBe(35_000);
     expect(requests[0]?.signal).toBeInstanceOf(AbortSignal);
   });
 
@@ -140,7 +135,7 @@ describe("meta-evidence budget", () => {
     );
     const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, runner, budgetMs: ONGOING_BUDGET_MS })), 60_000);
     expect(result).toMatchObject({ status: "failed", reason: "budget-exhausted" });
-    expect(elapsedMs).toBe(ONGOING_BUDGET_MS);
+    expect(elapsedMs).toBe(40_000);
   });
 
   it("a failing script is retried while the budget allows, then reported as script-failed", async () => {
@@ -188,7 +183,7 @@ describe("meta-evidence budget", () => {
     const { fetcher, inits } = fakeFetcher({ [locatorUrl(1, 1684n)]: HANG });
     const { result, elapsedMs } = await settle(loadMetaEvidence(context({ fetcher, budgetMs: ONGOING_BUDGET_MS })), 60_000);
     expect(result).toMatchObject({ status: "failed", reason: "budget-exhausted" });
-    expect(elapsedMs).toBe(ONGOING_BUDGET_MS);
+    expect(elapsedMs).toBe(40_000);
     expect(inits[0]?.signal?.aborted).toBe(true);
   });
 

@@ -1,12 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import { pill } from "../support/header";
 import { appOriginOf, fakeNetwork, loadRecording } from "../support/network";
+import { expectNoSidewaysScroll } from "../support/pageScroll";
 import { changeWalletChain, expectWalletConnected, injectWallet, walletRequests } from "../support/wallet";
 
 // playwright.config.ts gives the e2e build a WalletConnect project ID; every wallet service is aborted, so the injected
-// wallet is the only one. With a wallet connected the wallet's chain is the truth: a page on another chain asks the
-// wallet once to switch, and a refusal moves the app to the wallet's chain. Mainnet dispute 1621 is recorded in the
-// appeal period, so its crowdfunding cards offer Fund. The build needs the chain-1 and Gnosis read RPCs and the
-// meta-evidence API configured, as a deploy has.
+// wallet is the only one. Dispute 1621 is recorded in the appeal period, so its cards offer Fund.
 
 const RECORDING = loadRecording(new URL("fixtures/mainnet-1621-appeal.json", import.meta.url));
 const ACCOUNT = "0x00000000000000000000000000000000000000e2";
@@ -63,6 +62,8 @@ test("refuses Fund visibly and sends nothing while the wallet's switch to the pa
   expect(countOf(requests, "wallet_switchEthereumChain"), "the refusal asked for another switch").toBe(1);
   await expect(page).toHaveURL(CASE_PATH);
   expect(traffic.rpcUnanswered, "case page reads missing from the recording").toEqual([]);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await expectNoSidewaysScroll(page, 375);
 });
 
 test("when the wallet changes chain on its own, a case page opens the new chain's Ongoing Disputes without a reload and asks for no switch", async ({ context, page, baseURL }) => {
@@ -83,7 +84,6 @@ test("when the wallet changes chain on its own, a case page opens the new chain'
   await expect(ongoingHeading(page)).toBeVisible();
   await expect(caseTitle(page)).toHaveCount(0);
   expect(await page.evaluate(() => Reflect.get(window, "__e2eSameDocument") === true), "the page was reloaded").toBe(true);
-  // The wallet moved on its own: the app follows it and asks for no switch back.
   expect(await switchRequests(page)).toBe(0);
 });
 
@@ -105,10 +105,6 @@ test("a pasted case link on the other chain, declined in the wallet, opens the w
   expect(await switchRequests(page), "the app asked again after its move to the wallet's chain").toBe(1);
 });
 
-function networkPill(page: Page) {
-  return page.getByRole("banner").getByRole("button", { name: /^Network: / });
-}
-
 for (const [from, to] of [
   ["/1/ongoing?from=e2e#list", "/100/ongoing?from=e2e#list"],
   [CASE_PATH, "/100/ongoing"],
@@ -119,12 +115,12 @@ for (const [from, to] of [
 
     await page.goto(from);
     await expectWalletConnected(accountButton(page));
-    await networkPill(page).click();
+    await pill(page).click();
     await page.getByRole("menuitem", { name: "Gnosis Network" }).click();
 
     await expect(page).toHaveURL(to);
     await expect(ongoingHeading(page)).toBeVisible();
-    await expect(networkPill(page)).toHaveAccessibleName("Network: Gnosis Network. Change network");
+    await expect(pill(page)).toHaveAccessibleName("Network: Gnosis Network. Change network");
     // The app asking the wallet back to the chain it just left would be a second request.
     expect(await switchRequests(page), "the app asked the wallet again after it followed the pill's switch").toBe(1);
     await expect(page).toHaveURL(to);

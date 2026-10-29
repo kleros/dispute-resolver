@@ -38,7 +38,6 @@ interface Recorded {
 
 const ALLOW_ALL: Record<string, string> = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type", "access-control-allow-methods": "POST" };
 
-/** A permanent redirect to another URL. */
 function moved(): Response {
   return new Response(null, { status: 301, headers: { location: "https://elsewhere.example/k/" } });
 }
@@ -49,25 +48,21 @@ interface RpcBody {
   readonly id: number;
 }
 
-/** Whether a request follows redirects, as `fetch` does unless told `manual` or `error`. */
 function followsRedirects(init: RequestInit): boolean {
   return init.redirect !== "manual" && init.redirect !== "error";
 }
 
-/** The answer to the CORS preflight. */
 function preflightAnswer(options: NodeOptions, init: RequestInit): Response {
   const { status = 204, headers = ALLOW_ALL, redirect = false } = options.preflight ?? {};
   if (!redirect) return new Response(null, { status, headers });
   return followsRedirects(init) ? new Response(null, { status: 204, headers: ALLOW_ALL }) : moved();
 }
 
-/** The number of blocks an `eth_getLogs` call asks for. */
 function logsSpan(body: RpcBody): number {
   const [filter] = body.params as [{ fromBlock: string; toBlock: string }];
   return Number(BigInt(filter.toBlock)) - Number(BigInt(filter.fromBlock)) + 1;
 }
 
-/** The answer to a JSON-RPC `POST`. */
 function rpcAnswer(options: NodeOptions, body: RpcBody): Response {
   const headers: Record<string, string> = options.postAllowOrigin === undefined ? {} : { "access-control-allow-origin": options.postAllowOrigin };
   const reply = (payload: unknown, status = 200) => new Response(typeof payload === "string" ? payload : JSON.stringify(payload), { status, headers });
@@ -78,7 +73,6 @@ function rpcAnswer(options: NodeOptions, body: RpcBody): Response {
   return reply(logs.body ?? "", logs.status);
 }
 
-/** A fake JSON-RPC node behind a `FetchLike`, recording what it was asked. */
 function fakeNode(options: NodeOptions = {}): { fetchFn: FetchLike; requests: Recorded[] } {
   const requests: Recorded[] = [];
   const fetchFn: FetchLike = (_url, init) => {
@@ -300,7 +294,6 @@ describe("no URL or key in any output", () => {
 });
 
 describe("every chain's read RPC", () => {
-  /** Every chain's read variable set to a distinct host, as an operator's .env would. */
   function fullEnv(): Env {
     const entries = Object.values(CHAINS).flatMap((chain) => (chain.readRpcEnv === undefined ? [] : [[chain.readRpcEnv, `https://read-${String(chain.id)}.invalid/key`] as const]));
     return Object.fromEntries(entries);

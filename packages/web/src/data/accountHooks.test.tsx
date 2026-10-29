@@ -17,25 +17,18 @@ beforeEach(() => {
 });
 
 describe("useIsContractAccount", () => {
-  it("treats an account with code as a smart-contract wallet, read through the page chain's read client", async () => {
-    const rpc = vi.fn(codeRpc("0x6080604052"));
-    const { result } = renderHook(() => useIsContractAccount(100, ACCOUNT), { wrapper: wrapperWith({ rpc }) });
-    await waitFor(() => {
-      expect(result.current).toEqual({ status: "ready", value: true });
-    });
-    expect(rpc).toHaveBeenCalledWith(expect.objectContaining({ chainId: 100, method: "eth_getCode" }));
-  });
-
   it.each([
     ["0x6080604052", true],
     ["0xEF01001111111111111111111111111111111111111111", false],
     ["0x", false],
     ["0x00", true],
-  ] as const)("an account with code %s is a smart-contract wallet: %s", async (code, isContract) => {
-    const { result } = renderHook(() => useIsContractAccount(1, ACCOUNT), { wrapper: wrapperWith({ rpc: codeRpc(code) }) });
+  ] as const)("an account with code %s, read through the page chain's read client, is a smart-contract wallet: %s", async (code, isContract) => {
+    const rpc = vi.fn(codeRpc(code));
+    const { result } = renderHook(() => useIsContractAccount(100, ACCOUNT), { wrapper: wrapperWith({ rpc }) });
     await waitFor(() => {
       expect(result.current).toEqual({ status: "ready", value: isContract });
     });
+    expect(rpc).toHaveBeenCalledWith(expect.objectContaining({ chainId: 100, method: "eth_getCode" }));
   });
 
   it("hides the warning when the code read fails", async () => {

@@ -38,7 +38,6 @@ function describeFailure(reason: unknown): string {
   return UNDESCRIBED_FAILURE;
 }
 
-/** Posts one reply; a value the port cannot structured-clone becomes an error reply. */
 function post(port: ReplyPort, message: RunnerReplyMessage): void {
   try {
     port.postMessage(message);
@@ -52,10 +51,7 @@ interface Reporter {
   reject(reason: unknown): void;
 }
 
-/**
- * The first resolve or reject wins, as with a promise, and a promise given to `resolve` is adopted. The duplicate-key
- * flag is read when the value is posted.
- */
+/** The duplicate-key flag is read when the value is posted. */
 function createReporter(globals: object, port: ReplyPort): Reporter {
   let settled = false;
   const postError = (reason: unknown): void => {
@@ -104,8 +100,8 @@ function run(env: RunnerEnvironment, { request, port }: AcceptedRun): void {
 }
 
 /**
- * Accepts one run request from the parent and acknowledges it on the request's port. A refused request gets nothing,
- * so no window learns whether a runner is alive. Results leave only through the request's port.
+ * A refused request gets nothing, so no window learns whether a runner is alive. Results leave only through the
+ * request's port.
  */
 export function bootstrapRunner(env: RunnerEnvironment): void {
   if (!isSandboxedFrame(env)) return;
