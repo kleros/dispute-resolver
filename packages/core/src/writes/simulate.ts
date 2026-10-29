@@ -18,7 +18,8 @@ function namesInsufficientFunds(error: unknown): boolean {
 /**
  * Checks `call` against the contract through the read RPC, as `from` would send it, before the wallet opens. The
  * balance is read first when the call carries value, because nodes word a short balance differently and some only as an
- * EVM failure. Never rejects; anything but `ok` means nothing is sent.
+ * EVM failure. Never rejects. A rejection or a short balance means nothing is sent; a check that could not run stops
+ * nothing, since the wallet checks the call again.
  */
 export async function simulateWrite(client: ReadClient | undefined, call: WriteCall, from: Address): Promise<SimulationResult> {
   if (client === undefined) return { status: "unavailable", error: { code: "no-rpc", message: NETWORK_DATA_UNAVAILABLE } };

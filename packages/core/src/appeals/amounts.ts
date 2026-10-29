@@ -35,13 +35,6 @@ export function isWinningCode(code: bigint, currentRuling: bigint, override: Beh
   return code === currentRuling || (currentRuling === 0n && override?.refuseToArbitrateFundable === false);
 }
 
-/** The losing side's window as a percentage of the appeal period, two decimals truncated, at most 100. */
-export function windowPercent(multipliers: Multipliers): number {
-  const { loserAppealPeriodMultiplier, denominator } = multipliers;
-  const scaled = (loserAppealPeriodMultiplier * PERCENT_SCALE) / denominator;
-  return Number(scaled < PERCENT_SCALE ? scaled : PERCENT_SCALE) / PERCENT_DIVISOR;
-}
-
 /** A percentage with two decimals, truncated rather than rounded; 0 when nothing is required. */
 export function fundedPercent(contributed: bigint, required: bigint): number {
   if (required === 0n) return 0;

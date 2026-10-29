@@ -21,8 +21,8 @@ export type ChainMatch =
   | { readonly ok: false; readonly reason: "wrong-chain"; readonly walletChainId: number; readonly pageChainId: number };
 
 /**
- * The check of a write against the contract, made through the read RPC before the wallet opens. Only `ok` lets the
- * write go on; it never authorizes it, since the state can change before the transaction is mined.
+ * The check of a write against the contract, made through the read RPC before the wallet opens. `reverted` and
+ * `insufficient-funds` stop the write; `ok` never authorizes it, since the state can change before it is mined.
  */
 export type SimulationResult =
   | { readonly status: "ok" }

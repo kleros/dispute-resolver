@@ -109,7 +109,7 @@ test.describe("case page dynamic script", () => {
     const question = await openCaseSection(page, "Question");
     await expect(question.getByText("Multiple choice: single select", { exact: true })).toBeVisible();
     await expect(question.getByRole("region", { name: "Voting options", exact: true }).getByRole("listitem")).toHaveText([
-      "Option 0 - Refuse to Arbitrate / Invalid",
+      "Option 0 - Invalid / Refused to Arbitrate / Tied",
       `Option 1 - ${SCRIPT_OPTIONS[0]}`,
       `Option 2 - ${SCRIPT_OPTIONS[1]}`,
     ]);

@@ -8,7 +8,7 @@ const OUTCOME_PHASES: ReadonlySet<WriteStatus["phase"]> = new Set([
   "wrong-chain",
   "refused-by-contract",
   "insufficient-funds",
-  "check-failed",
+  "account-changed",
   "mined",
   "failed",
   "rejected",

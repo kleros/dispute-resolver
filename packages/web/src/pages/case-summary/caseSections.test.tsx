@@ -13,16 +13,13 @@ import {
   type Outcome,
   type Period,
   type RealityQuestionInfo,
-  type VoteCounter,
 } from "@dispute-resolver/core";
 import { act, render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LG_MEDIA_QUERY, SectionBoundary } from "../../ui";
 import { fromOutcome, type CaseDispute, type SectionData } from "../../data";
 import {
   TestDataProvider,
-  createTestQueryClient,
   sectionLoading,
   sectionReady,
   sectionUnavailable,
@@ -95,8 +92,6 @@ function caseDispute(options: CaseOptions = {}): CaseDispute {
   });
 }
 
-/** Mainnet's ArbitrableProxy v2, whose source the registry verified: the only fully funded option wins. */
-const VERIFIED_PROXY = testFamily({ arbitrable: "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf" });
 const VIEW_ONLY = testFamily({
   family: "view-only",
   writeFamily: "view-only",
@@ -111,12 +106,6 @@ const NOT_APPEALABLE = testFamily({
   capabilities: { localId: "none", evidence: { kind: "none" }, appeal: { kind: "none" }, withdraw: { kind: "none" } },
   realityProxy: REGISTRY.realityProxies[`1:${OLD_REALITY_PROXY}`] ?? null,
 });
-
-/** The last round's vote counter of a ruling of 0. */
-function zeroRuling(counter: VoteCounter): Partial<DisputeReads> {
-  return { currentRuling: { ok: true, value: 0n }, lastRoundVotes: { ok: true, value: counter } };
-}
-const TIED_VOTE: VoteCounter = { winningChoice: 2n, counts: [0n, 3n, 3n], tied: true };
 
 type Section = typeof CaseOverview;
 
@@ -511,106 +500,79 @@ describe("DecisionAlert", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("in the appeal period shows the jury decision and that it can be appealed", () => {
-    renderSection(DecisionAlert, caseDispute({ period: 3, details: { currentRuling: { ok: true, value: 1n } } }));
-    expect(screen.getByRole("heading", { name: "Jury decision" })).toBeInTheDocument();
-    expect(within(decisionAlert("Jury decision")).getByText("Yes")).toBeInTheDocument();
-    expect(screen.getByText(/can be appealed by funding it below/)).toBeInTheDocument();
-    expect(screen.queryByText(/arbitrable application/)).not.toBeInTheDocument();
-  });
-
-  it("on a verified contract says the only fully funded option wins, whatever the jury ruled", () => {
-    renderSection(DecisionAlert, caseDispute({ period: 3, family: VERIFIED_PROXY }));
-    expect(decisionAlert("Jury decision")).toHaveTextContent(
-      "This ruling can still change. If only one option is fully funded before its funding closes, that option wins, whatever the jury ruled. If two options are fully funded, the case goes to new jurors.",
-    );
-  });
-
-  it("on a contract whose rules are not verified says what happens to a sole funded option depends on the contract", () => {
-    renderSection(DecisionAlert, caseDispute({ period: 3 }));
-    expect(decisionAlert("Jury decision")).toHaveTextContent("The Dispute Resolver has not verified this contract's rules");
-    expect(decisionAlert("Jury decision")).not.toHaveTextContent("wins, whatever the jury ruled");
-  });
-
-  it("a view-only dispute points to the arbitrable application, without promising an appeal the contract may not have", () => {
-    renderSection(DecisionAlert, caseDispute({ period: 3, family: VIEW_ONLY }));
-    expect(decisionAlert("Jury decision")).toHaveTextContent(
-      "Whether and how this decision can be appealed depends on the arbitrable contract. If it can, it is done in the arbitrable application.",
-    );
-  });
-
-  it("a Reality proxy without an appeal function says the ruling cannot be appealed", () => {
-    renderSection(DecisionAlert, caseDispute({ period: 3, family: NOT_APPEALABLE }));
-    expect(decisionAlert("Jury decision")).toHaveTextContent("This arbitrable contract has no appeal: the ruling becomes final when the appeal period ends.");
-    expect(decisionAlert("Jury decision")).not.toHaveTextContent(/arbitrable application|can be appealed/);
+  const APPEALABLE = "This decision can be appealed within the appeal period.";
+  const yes = { ok: true, value: 1n } as const;
+  const funded = (...rulings: bigint[]): Outcome<readonly bigint[]> => ({ ok: true, value: rulings });
+  it.each([
+    ["in the appeal period", { period: 3, family: testFamily() }, "Jury decision", "Yes", APPEALABLE],
+    [
+      "in the appeal period of an arbitrable that appeals in its own application",
+      { period: 3, family: VIEW_ONLY },
+      "Jury decision",
+      "Yes",
+      `${APPEALABLE} Go to the arbitrable application to appeal this ruling.`,
+    ],
+    ["in the appeal period of an arbitrable without an appeal", { period: 3, family: NOT_APPEALABLE }, "Jury decision", "Yes", "This dispute cannot be appealed."],
+    ["before the arbitrator executed the ruling", { period: 4, fundedRulings: funded(2n) }, "Jury decision", "Yes", "The ruling has not been executed yet."],
+    ["when the arbitrable applied the court's ruling", { period: 4, ruled: true, executed: { status: "executed", ruling: 1n } }, "Winner", "Yes", "Won by jury decision."],
+    [
+      "when the arbitrable applied the only ruling fully funded for the appeal",
+      { period: 4, ruled: true, details: { currentRuling: { ok: true, value: 0n } }, executed: { status: "executed", ruling: 2n }, fundedRulings: funded(2n) },
+      "Winner",
+      "No",
+      `Won by default: “No” was the only option fully funded for the appeal. The court ruled “${REFUSED_RULING_TEXT}”.`,
+    ],
+    [
+      "when the arbitrable applied another ruling than the court's without that proof",
+      { period: 4, ruled: true, executed: { status: "executed", ruling: 2n }, fundedRulings: funded(1n, 2n) },
+      "Winner",
+      "No",
+      "The court ruled “Yes”. The arbitrable contract applied “No”.",
+    ],
+    [
+      "when the arbitrable reported no ruling and only another ruling was fully funded",
+      { period: 4, ruled: true, executed: { status: "none-reported" }, fundedRulings: funded(2n) },
+      "Winner",
+      "No",
+      "Won by default: “No” was the only option fully funded for the appeal. The court ruled “Yes”.",
+    ],
+    [
+      "when the arbitrable's report and the funding could not be read",
+      {
+        period: 4,
+        ruled: true,
+        executed: { status: "unread", error: { code: "rpc-error", message: "logs refused" } },
+        fundedRulings: { ok: false, error: { code: "not-found", message: "No proof." } },
+      },
+      "Winner",
+      "Yes",
+      "Won by jury decision.",
+    ],
+    [
+      "when the arbitrable reported a ruling that is not an option",
+      { period: 4, ruled: true, executed: { status: "out-of-range", ruling: 5n } },
+      "Jury decision",
+      "Yes",
+      "The arbitrable contract reported a ruling that is not one of this dispute's options.",
+    ],
+    [
+      "when the arbitrable reported several rulings",
+      { period: 4, ruled: true, executed: { status: "inconsistent" } },
+      "Jury decision",
+      "Yes",
+      "The arbitrable contract reported conflicting rulings.",
+    ],
+  ] as const)("%s, the decision shows its title, the ruling and one line, with nothing to press", (_case, options: CaseOptions, title, ruling, line) => {
+    renderSection(DecisionAlert, caseDispute({ family: VIEW_ONLY, details: { currentRuling: yes }, ...options }));
+    const alert = decisionAlert(title);
+    expect(within(alert).getByText(ruling, { exact: true })).toBeInTheDocument();
+    expect(alert.textContent).toBe(`${title}${ruling}${line}`);
+    expect(within(alert).queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("ruling 0 reads as refused to arbitrate", () => {
     renderSection(DecisionAlert, caseDispute({ period: 3, details: { currentRuling: { ok: true, value: 0n } } }));
     expect(within(decisionAlert("Jury decision")).getByText(REFUSED_RULING_TEXT)).toBeInTheDocument();
-  });
-
-  it.each([
-    ["a tied vote", TIED_VOTE, "The jurors' vote was tied, so the court's ruling is Refuse to Arbitrate."],
-    ["a round without votes", { winningChoice: 0n, counts: [0n, 0n, 0n], tied: true }, "No juror voted in this round, so the court's ruling is Refuse to Arbitrate."],
-    ["a majority to refuse", { winningChoice: 0n, counts: [3n, 0n, 0n], tied: false }, "The jurors voted to refuse to arbitrate."],
-  ] as const)("a ruling of 0 after %s says why", (_case, counter, line) => {
-    renderSection(DecisionAlert, caseDispute({ period: 3, details: zeroRuling(counter) }));
-    expect(decisionAlert("Jury decision")).toHaveTextContent(line);
-  });
-
-  it("a ruling of 0 whose vote counter was not read names every cause without calling it a tie", () => {
-    renderSection(DecisionAlert, caseDispute({ period: 3, details: { currentRuling: { ok: true, value: 0n } } }));
-    expect(decisionAlert("Jury decision")).toHaveTextContent("The jury refused to arbitrate or reached no majority: a tied vote, or no votes, also gives this ruling.");
-    expect(decisionAlert("Jury decision")).not.toHaveTextContent("vote was tied");
-  });
-
-  it("after a tied vote, a ruling the arbitrable reports executing is the winner, attributed to the contract", () => {
-    renderSection(DecisionAlert, caseDispute({ period: 4, ruled: true, family: VIEW_ONLY, details: zeroRuling(TIED_VOTE), executed: { status: "executed", ruling: 2n } }));
-    const alert = decisionAlert("Winner");
-    expect(within(alert).getByText("No")).toBeInTheDocument();
-    expect(alert).toHaveTextContent(`The arbitrable contract reports that it executed this ruling. The jury ruled “${REFUSED_RULING_TEXT}”.`);
-    expect(alert).toHaveTextContent("The jurors' vote was tied, so the court's ruling was Refuse to Arbitrate.");
-    expect(alert).not.toHaveTextContent(/Won by/);
-  });
-
-  it("on a verified contract the only fully funded option the arbitrable executed won by default", () => {
-    renderSection(DecisionAlert, caseDispute({ period: 4, ruled: true, family: VERIFIED_PROXY, executed: { status: "executed", ruling: 2n } }));
-    const alert = decisionAlert("Winner");
-    expect(within(alert).getByText("No")).toBeInTheDocument();
-    expect(alert).toHaveTextContent("Won by default: it was the only option fully funded for an appeal, so it replaced the jury's ruling, “Yes”.");
-  });
-
-  it("the jury's own ruling, when it is the only one funded, won by jury decision, not by default", () => {
-    renderSection(DecisionAlert, caseDispute({ period: 4, family: VERIFIED_PROXY, fundedRulings: { ok: true, value: [1n] } }));
-    const alert = decisionAlert("Winner");
-    expect(within(alert).getByText("Yes")).toBeInTheDocument();
-    expect(alert).toHaveTextContent("Won by jury decision. The ruling has not been executed yet.");
-    expect(alert).not.toHaveTextContent("Won by default");
-  });
-
-  it("before execution, a contract whose rules are not verified shows the jury's ruling and no winner", () => {
-    renderSection(DecisionAlert, caseDispute({ period: 4, fundedRulings: { ok: true, value: [2n] } }));
-    expect(screen.queryByRole("region", { name: "Winner" })).not.toBeInTheDocument();
-    const alert = decisionAlert("Jury decision");
-    expect(within(alert).getByText("Yes")).toBeInTheDocument();
-    expect(alert).toHaveTextContent("The ruling has not been executed yet. When it is, the arbitrable contract's own rules decide the outcome.");
-  });
-
-  it("an executed ruling that could not be read offers a retry, which reads the dispute's appeal data again", async () => {
-    const client = createTestQueryClient();
-    const invalidate = vi.spyOn(client, "invalidateQueries");
-    const user = userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTime(ms) });
-    const unread: ExecutedRuling = { status: "unread", error: { code: "rpc-error", message: "Could not read the executed ruling." } };
-    render(
-      <TestDataProvider client={client}>
-        <DecisionAlert dispute={caseDispute({ period: 4, ruled: true, family: VIEW_ONLY, executed: unread })} chain={MAINNET} />
-      </TestDataProvider>,
-    );
-    const alert = decisionAlert("Jury decision");
-    expect(alert).toHaveTextContent("The ruling the arbitrable contract executed could not be read.");
-    await user.click(within(alert).getByRole("button", { name: "Retry reading the executed ruling" }));
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["dr", "executedRuling", 1, "1"] });
   });
 
   it("the decision alert names a title-less single-select ruling by its number", () => {

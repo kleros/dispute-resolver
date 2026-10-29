@@ -3,7 +3,7 @@ import { isUint256 } from "../bigint";
 import { answerString, toHexWord } from "./realityLib";
 import type { FallbackOutcomes, RulingOptions } from "./types";
 
-export const REFUSED_RULING_TEXT = "invalid / refused to arbitrate / tied";
+export const REFUSED_RULING_TEXT = "Invalid / Refused to Arbitrate / Tied";
 
 function fallbackOutcome(ruling: bigint, fallback: FallbackOutcomes): string | undefined {
   if (fallback === null || ruling > BigInt(fallback.length)) return undefined;

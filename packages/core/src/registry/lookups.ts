@@ -1,6 +1,6 @@
 import type { Address, RegistryKey } from "../types";
 import { normalizeIpfsPath, toCidPath } from "../uri";
-import type { BehaviorOverride, Registry, RealityProxyEntry, VerifiedArbitrable } from "./types";
+import type { BehaviorOverride, Registry, RealityProxyEntry } from "./types";
 
 /** `"<arbitrator chain ID>:<lowercase arbitrable>"`, the key of every registry table. */
 export function registryKey(chainId: number, address: Address): RegistryKey {
@@ -14,10 +14,6 @@ export function getRealityProxy(registry: Registry, chainId: number, arbitrable:
 
 export function getOverride(registry: Registry, chainId: number, arbitrable: Address): BehaviorOverride | undefined {
   return registry.overrides[registryKey(chainId, arbitrable)];
-}
-
-export function getVerifiedArbitrable(registry: Registry, chainId: number, arbitrable: Address): VerifiedArbitrable | undefined {
-  return registry.verifiedArbitrables[registryKey(chainId, arbitrable)];
 }
 
 /**

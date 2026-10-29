@@ -1,26 +1,19 @@
 import type { Decision } from "@dispute-resolver/core";
-import { Button } from "@kleros/ui-components-library";
 import { useId } from "react";
 import { FACT_LEAD, SectionSkeleton } from "../../ui";
 import { foundLookup, useCaseRefresh, type CaseSectionProps } from "../../data";
 import { existingView } from "./caseState";
-import { decisionLines, executionUnread } from "./decisionCopy";
+import { decisionLine } from "./decisionCopy";
 import { SectionContent } from "./SectionContent";
 import { TimelineBullet } from "./TimelineBullet";
 
 type ShownDecision = Exclude<Decision, { kind: "none" }>;
 
 function shownRuling(decision: ShownDecision): string {
-  return decision.kind === "winner" ? decision.winner.rulingText : decision.jury.rulingText;
+  return decision.kind === "winner" ? decision.winner.rulingText : decision.court.rulingText;
 }
 
-interface DecisionPanelProps {
-  readonly decision: Decision;
-  readonly className: string | undefined;
-  readonly onRetry: () => void;
-}
-
-function DecisionPanel({ decision, className, onRetry }: DecisionPanelProps) {
+function DecisionPanel({ decision, className }: { readonly decision: Decision; readonly className: string | undefined }) {
   const headingId = useId();
   if (decision.kind === "none") return null;
   return (
@@ -40,21 +33,7 @@ function DecisionPanel({ decision, className, onRetry }: DecisionPanelProps) {
         {decision.kind === "winner" ? "Winner" : "Jury decision"}
       </h2>
       <p className={`${FACT_LEAD} [overflow-wrap:anywhere] empty:hidden`}>{shownRuling(decision)}</p>
-      {decisionLines(decision).map((line) => (
-        <p key={line} className="col-start-2 text-sm [overflow-wrap:anywhere] text-klerosUIComponentsSecondaryText">
-          {line}
-        </p>
-      ))}
-      {executionUnread(decision) ? (
-        <Button
-          text="Retry"
-          aria-label="Retry reading the executed ruling"
-          variant="secondary"
-          small
-          className="col-start-2 mt-2 self-start justify-self-start"
-          onPress={onRetry}
-        />
-      ) : null}
+      <p className="col-start-2 text-sm [overflow-wrap:anywhere] text-klerosUIComponentsSecondaryText">{decisionLine(decision)}</p>
     </section>
   );
 }
@@ -73,7 +52,7 @@ export function DecisionAlert({ dispute }: CaseSectionProps) {
   };
   return (
     <SectionContent data={dispute.decision} section="Decision" loading={decided ? <SectionSkeleton variant="card" lines={1} /> : null} onRetry={retry}>
-      {(decision, reveal) => <DecisionPanel decision={decision} className={reveal} onRetry={retry} />}
+      {(decision, reveal) => <DecisionPanel decision={decision} className={reveal} />}
     </SectionContent>
   );
 }

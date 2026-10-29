@@ -6,8 +6,7 @@ import { describeError, getLogsChunked } from "../rpc";
 import type { Outcome, ReadClient } from "../types";
 import { resolveLocalId } from "./localId";
 import { NETWORK_DATA_UNAVAILABLE, fail, readOutcome, succeed } from "../outcome";
-import type { AppealDecisionEvent, AppealInfo, ArbitratedBinding, ArbitratorDispute, DisputeReadContext, DisputeReads, LocalIdResolution, VoteCounter } from "./types";
-import { readVoteCounter, readsVoteCounter } from "./voteCounter";
+import type { AppealDecisionEvent, AppealInfo, ArbitratedBinding, ArbitratorDispute, DisputeReadContext, DisputeReads, LocalIdResolution } from "./types";
 
 const APPEAL_DECISION_EVENT = getAbiItem({ abi: klerosLiquidAbi, name: "AppealDecision" });
 
@@ -75,26 +74,9 @@ function readsWithoutClient(found: { readonly dispute: ArbitratorDispute; readon
     votesLengths: noRpc,
     currentRuling: noRpc,
     appealDecisions: noRpc,
-    lastRoundVotes: readsVoteCounter(found.dispute) ? noRpc : null,
     appealInfo: hasAppealInfo(found.dispute) ? noRpc : null,
     localId: { kind: "unresolved", reason: "rpc-error" },
   };
-}
-
-/** Read after the round count and the current ruling, and only when the ruling is 0; a failed input skips it. */
-async function lastRoundVotes(
-  client: ReadClient,
-  found: { readonly dispute: ArbitratorDispute; readonly binding: ArbitratedBinding },
-  inputs: Promise<readonly [Outcome<readonly bigint[]>, Outcome<bigint>]>,
-  signal: AbortSignal | undefined,
-): Promise<Outcome<VoteCounter> | null> {
-  if (!readsVoteCounter(found.dispute)) return null;
-  const [votesLengths, currentRuling] = await inputs;
-  if (!currentRuling.ok || currentRuling.value !== 0n) return null;
-  if (!votesLengths.ok) return votesLengths;
-  const rounds = votesLengths.value.length;
-  if (rounds === 0) return fail("invalid-data", "The dispute has no round.");
-  return readVoteCounter(client, found.binding, found.dispute, BigInt(rounds - 1), signal);
 }
 
 /** Each read degrades on its own instead of failing the whole dispute. */
@@ -110,7 +92,7 @@ export async function readDisputeDetails(
   const { arbitrator, disputeId, chainId } = binding;
   const fromBlock = disputeEventBlock ?? BigInt(getChain(chainId)?.arbitratorDeployedAtBlock ?? 0);
   const unresolved: LocalIdResolution = { kind: "unresolved", reason: "rpc-error" };
-  const rulingInputs = Promise.all([
+  const [votesLengths, currentRuling, appealDecisions, localId, appealInfo] = await Promise.all([
     readOutcome(
       "the vote counts",
       chainId,
@@ -121,13 +103,9 @@ export async function readDisputeDetails(
       signal,
     ),
     readOutcome("the current ruling", chainId, () => client.readContract({ address: arbitrator, abi: klerosLiquidAbi, functionName: "currentRuling", args: [disputeId] }), signal),
-  ] as const);
-  const [[votesLengths, currentRuling], counter, appealDecisions, localId, appealInfo] = await Promise.all([
-    rulingInputs,
-    lastRoundVotes(client, found, rulingInputs, signal),
     readAppealDecisions(context, binding, fromBlock),
     family === undefined ? unresolved : resolveLocalId(client, binding, family),
     hasAppealInfo(found.dispute) ? readAppealInfo(client, binding, signal) : null,
   ]);
-  return { ...found, votesLengths, currentRuling, lastRoundVotes: counter, appealDecisions, appealInfo, localId };
+  return { ...found, votesLengths, currentRuling, appealDecisions, appealInfo, localId };
 }

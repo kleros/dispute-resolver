@@ -26,8 +26,6 @@ export interface FreeInputCardProps {
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
   readonly isFundDisabled: boolean;
-  /** Whether the registry verified the contract's rules, which words the card's deadline. */
-  readonly verified: boolean;
 }
 
 const NOTE_CLASS = "text-sm [overflow-wrap:anywhere]";
@@ -60,19 +58,18 @@ export interface EnteredAnswerFooterProps {
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
   readonly isFundDisabled: boolean;
-  readonly verified: boolean;
 }
 
 /**
  * A card's funding and Fund, for fixed and entered cards alike, in the state the chain's time and the contract's funded
  * rulings give it: nothing remaining, a closed deadline or a fully funded ruling disables the field and Fund.
  */
-export function EnteredAnswerFooter({ funding, subject, code, actions, chain, isFundDisabled, verified }: EnteredAnswerFooterProps) {
+export function EnteredAnswerFooter({ funding, subject, code, actions, chain, isFundDisabled }: EnteredAnswerFooterProps) {
   const state = cardFundingState(funding, useNowSeconds());
   const statusId = useId();
   return (
     <>
-      <FundingProgress percent={funding.fundedPercent} deadline={funding.deadline} state={state} verified={verified} statusId={statusId} />
+      <FundingProgress percent={funding.fundedPercent} deadline={funding.deadline} state={state} statusId={statusId} />
       <p className="flex flex-col gap-1 text-sm text-klerosUIComponentsSecondaryText">
         <span>{"Remaining "}</span>
         <span className="flex flex-wrap items-baseline gap-x-2">
@@ -97,7 +94,7 @@ export function EnteredAnswerFooter({ funding, subject, code, actions, chain, is
 }
 
 /** An int answer shows which answer it funds, since -1 and -2 land on reserved rulings. */
-export function FreeInputCard({ freeInput, cards, actions, chain, isFundDisabled, verified }: FreeInputCardProps) {
+export function FreeInputCard({ freeInput, cards, actions, chain, isFundDisabled }: FreeInputCardProps) {
   const titleId = useId();
   const [answer, setAnswer] = useState<AnswerInput | null>(null);
   const encoding = answer === null ? null : encodeAnswer(answer, { type: freeInput.type, precision: freeInput.precision });
@@ -122,15 +119,7 @@ export function FreeInputCard({ freeInput, cards, actions, chain, isFundDisabled
         ) : null}
         <MatchedCardNote funding={funding} kind="answer" chain={chain} />
         <div className={CARD_FOOTER_CLASS}>
-          <EnteredAnswerFooter
-            funding={funding}
-            subject={funding.card?.title ?? "the new answer"}
-            code={code}
-            actions={actions}
-            chain={chain}
-            isFundDisabled={isFundDisabled}
-            verified={verified}
-          />
+          <EnteredAnswerFooter funding={funding} subject={funding.card?.title ?? "the new answer"} code={code} actions={actions} chain={chain} isFundDisabled={isFundDisabled} />
         </div>
       </Card>
     </li>

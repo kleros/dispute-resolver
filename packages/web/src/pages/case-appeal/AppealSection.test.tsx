@@ -7,7 +7,6 @@ import {
   type AppealInfo,
   type AppealPanel,
   type AppealPanelInput,
-  type AppealRules,
   type BehaviorOverride,
   type FamilyDetection,
   type LocalIdResolution,
@@ -43,6 +42,7 @@ import { AppealSection } from "./AppealSection";
 import { ANSWER_ERROR_MESSAGES } from "./answer";
 import {
   APPEAL_COST_CHECKING,
+  CROWDFUNDING_EXPLANATION,
   ESCROW_ENDED,
   ESCROW_EXPLANATION,
   FEES_UNAVAILABLE_TITLE,
@@ -52,7 +52,8 @@ import {
   HANDLED_BY_ARBITRABLE_TITLE,
   NOT_APPEALABLE_BODY,
   NOT_APPEALABLE_TITLE,
-  UNVERIFIED_TITLE,
+  REWARDS_BODY,
+  WITHDRAW_ELIGIBLE,
   WITHDRAW_NOTHING,
   WITHDRAW_UNSUPPORTED,
   matchedCardLine,
@@ -100,20 +101,12 @@ function utc(seconds: number): string {
 }
 
 const LOSER_DEADLINE = APPEAL_START + (APPEAL_END - APPEAL_START) / 2;
-/** Mainnet's ArbitrableProxy v2, whose source the registry verified: the only fully funded option wins. */
-const VERIFIED = testFamily({ arbitrable: "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf" });
-/** Yubiai on Gnosis, whose source the registry verified: the jury's ruling stands when only one option is funded. */
-const JURY_STANDS = testFamily({ chainId: 100, arbitrable: "0xaeecfa44639b61d2e0a9534d918789d94a24a9de" });
-/** The poh.eth KlerosGovernor, verified. */
 const GOVERNOR = testFamily({
-  arbitrable: "0x327a29fce0a6490e4236240be176daa282eccfdf",
   family: "governor",
   writeFamily: "governor",
   capabilities: { localId: "none", evidence: { kind: "uri-only" }, appeal: { kind: "governor" }, withdraw: { kind: "governor" } },
 });
-const UNVERIFIED_BODY =
-  "The Dispute Resolver has not verified this contract's appeal rules: the amounts and deadlines below are the ones the Dispute Resolver applies, which the contract may not follow. Nothing is sent if the contract would reject your contribution.";
-/** Unslashed on mainnet: its deadlines come from the registry's override, and the registry never verified its rules. */
+/** Unslashed on mainnet, whose ruling 0 cannot be funded. */
 const UNSLASHED = testFamily({ arbitrable: "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38" });
 const UNSLASHED_OVERRIDE: BehaviorOverride = { justification: "test", refuseToArbitrateFundable: false, roundIndexOffset: 1 };
 
@@ -125,8 +118,6 @@ const ESCROW = testFamily({
 
 interface PanelOptions {
   readonly family?: FamilyDetection;
-  /** By default `describeAppealRules` of the family. */
-  readonly rules?: AppealRules;
   readonly override?: BehaviorOverride;
   readonly rulingOptions?: RulingOptions;
   readonly currentRuling?: bigint;
@@ -144,7 +135,7 @@ function crowdfunding(options: PanelOptions = {}): AppealPanel {
   const input: AppealPanelInput = {
     family,
     period: 3,
-    rules: options.rules ?? describeAppealRules(REGISTRY, family),
+    rules: describeAppealRules(REGISTRY, family),
     override: options.override,
     rulingOptions: options.rulingOptions ?? YES_NO,
     fallbackOutcomes: null,
@@ -202,12 +193,9 @@ interface WalletOptions {
   readonly connected?: boolean;
 }
 
-/** An Escrow V1 appeal of 1 ETH on transaction 9, by default on an escrow whose code the registry verified. */
-function escrowDispute(readAppealCost?: CaseWriteContext["readAppealCost"], verified = true): CaseDispute {
-  return caseDispute(
-    { kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END, verified },
-    { family: ESCROW, localId: { kind: "transaction-id", value: 9n }, readAppealCost },
-  );
+/** An Escrow V1 appeal of 1 ETH on transaction 9. */
+function escrowDispute(readAppealCost?: CaseWriteContext["readAppealCost"]): CaseDispute {
+  return caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, { family: ESCROW, localId: { kind: "transaction-id", value: 9n }, readAppealCost });
 }
 
 /** Renders the section and returns what it renders into. */
@@ -355,9 +343,9 @@ describe("AppealSection: panel kinds", () => {
     ["handled-by-arbitrable", { kind: "handled-by-arbitrable" }, [HANDLED_BY_ARBITRABLE_TITLE, HANDLED_BY_ARBITRABLE_BODY], false],
     ["not-appealable", { kind: "not-appealable" }, [NOT_APPEALABLE_TITLE, NOT_APPEALABLE_BODY], false],
     ["funding-unsupported", { kind: "funding-unsupported" }, [FUNDING_UNSUPPORTED_TITLE, FUNDING_UNSUPPORTED_BODY], false],
-    ["escrow-appeal", { kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END, verified: true }, [ESCROW_EXPLANATION], true],
+    ["escrow-appeal", { kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, [ESCROW_EXPLANATION], true],
     ["escrow-ended", { kind: "escrow-ended" }, [ESCROW_ENDED], false],
-    ["crowdfunding", crowdfunding(), [UNVERIFIED_TITLE], true],
+    ["crowdfunding", crowdfunding(), [CROWDFUNDING_EXPLANATION, REWARDS_BODY], true],
     ["fees-unavailable", { kind: "fees-unavailable", error: { code: "unsupported", message: "The appeal multipliers could not be read." } }, [FEES_UNAVAILABLE_TITLE], false],
     ["withdraw", { kind: "withdraw", state: { status: "nothing" } }, [WITHDRAW_NOTHING], false],
     ["withdraw-unsupported", { kind: "withdraw-unsupported" }, ["Withdrawals unavailable here", WITHDRAW_UNSUPPORTED], false],
@@ -371,18 +359,6 @@ describe("AppealSection: panel kinds", () => {
     }
     expect(within(panel).queryAllByRole("button").length > 0).toBe(hasButton);
     if (!hasButton) expect(panel).not.toHaveTextContent(/\d ETH/);
-  });
-
-  it("a view-only arbitrable's notice promises no appeal the contract may not have", async () => {
-    const panel = await renderSection(caseDispute({ kind: "handled-by-arbitrable" }));
-    expect(panel).toHaveTextContent(
-      "This arbitrable contract does not take appeal funding through the Dispute Resolver. Whether and how this decision can be appealed depends on the arbitrable contract. If it can, it is done in the arbitrable application.",
-    );
-  });
-
-  it("a contract whose funding is not supported says where an appeal can still be funded", async () => {
-    const panel = await renderSection(caseDispute({ kind: "funding-unsupported" }));
-    expect(panel).toHaveTextContent("If this dispute can be appealed, it is funded through the arbitrable's own application or interface.");
   });
 
   it("the hidden panel renders nothing to read", async () => {
@@ -415,8 +391,8 @@ describe("AppealSection: panel kinds", () => {
   });
 
   it("the appeal-period text never carries the withdraw sentence", async () => {
-    const panel = await renderSection(caseDispute(crowdfunding({ family: VERIFIED })));
-    expect(panel).toHaveTextContent(/fully fund the deposit of the option you support/);
+    const panel = await renderSection(caseDispute(crowdfunding()));
+    expect(panel).toHaveTextContent(/fully fund the crowdfunding deposit/);
     expect(panel).not.toHaveTextContent(/You don't have any amount to withdraw/);
     expect(panel).toHaveTextContent(/Rewards only apply if both sides are funded/);
   });
@@ -428,129 +404,65 @@ describe("AppealSection: panel kinds", () => {
   });
 });
 
-describe("AppealSection: appeal rules", () => {
-  it("on a verified contract says the only fully funded option wins, why the deadlines differ, and when each card's funding closes", async () => {
+describe("AppealSection: funding times", () => {
+  const AT_END = { ...MULTIPLIERS, loserAppealPeriodMultiplier: 10_000n };
+  it.each([
+    ["before either deadline", APPEAL_START, {}, `Funding for the current ruling (“Yes”) closes ${utc(APPEAL_END)}. Funding for every other option closes ${utc(LOSER_DEADLINE)}.`],
+    [
+      "once the other options' deadline passed",
+      LOSER_DEADLINE,
+      {},
+      `Funding for the current ruling (“Yes”) closes ${utc(APPEAL_END)}. Funding for every other option closed ${utc(LOSER_DEADLINE)}.`,
+    ],
+    [
+      "once both deadlines passed",
+      APPEAL_END,
+      {},
+      `Funding for the current ruling (“Yes”) closed ${utc(APPEAL_END)}. Funding for every other option closed ${utc(LOSER_DEADLINE)}.`,
+    ],
+    [
+      "in a tie where ruling 0 is the current ruling",
+      APPEAL_START,
+      { currentRuling: 0n },
+      `Funding for the current ruling (“${REFUSE}”) closes ${utc(APPEAL_END)}. Funding for every other option closes ${utc(LOSER_DEADLINE)}.`,
+    ],
+    [
+      "for a current ruling that is not one of the options",
+      APPEAL_START,
+      { currentRuling: 3n },
+      `Funding for the current ruling closes ${utc(APPEAL_END)}. Funding for every other option closes ${utc(LOSER_DEADLINE)}.`,
+    ],
+    ["when the other options' deadline is the appeal period's end", APPEAL_START, { multipliers: AT_END }, `Funding for every option closes ${utc(APPEAL_END)}.`],
+    [
+      "in a governor tie, where every list shares one deposit",
+      APPEAL_START,
+      { family: GOVERNOR, currentRuling: 0n, multipliers: { ...MULTIPLIERS, sharedMultiplier: 10_000n } },
+      `Funding for every list closes ${utc(APPEAL_END)}.`,
+    ],
+    [
+      "in a tie where ruling 0 cannot be funded",
+      APPEAL_END,
+      { family: UNSLASHED, override: UNSLASHED_OVERRIDE, currentRuling: 0n },
+      `Funding for every option closed ${utc(APPEAL_END)}.`,
+    ],
+  ] as const)("one line above the cards says when funding closes %s", async (_case, now, options: PanelOptions, line) => {
+    freezeClockAtAppealStart(now);
+    await renderSection(caseDispute(crowdfunding(options), { family: options.family }));
+    const shown = screen.getByText(line);
+    expect(shown.tagName).toBe("P");
+    expect(screen.getByRole("list", { name: "Rulings to fund" })).not.toContainElement(shown);
+  });
+
+  it("an open card counts down and says when its funding closes", async () => {
     freezeClockAtAppealStart();
-    const panel = await renderSection(caseDispute(crowdfunding({ family: VERIFIED })));
-    expect(panel).toHaveTextContent(
-      "To appeal, fully fund the deposit of the option you support. When two options are fully funded, the case goes to new jurors. If only one option is fully funded when funding closes, it wins, even against the jury's ruling.",
-    );
-    expect(panel).toHaveTextContent("The current ruling can be funded until the appeal period ends. Other options can be funded during the first 50% of the appeal period.");
-    expect(card("Yes")).toHaveTextContent(`Funding closes ${utc(APPEAL_END)}`);
-    expect(card("No")).toHaveTextContent(`Funding closes ${utc(LOSER_DEADLINE)}`);
-    expect(within(card("No")).getByText(utc(LOSER_DEADLINE))).toHaveAttribute("datetime", new Date(LOSER_DEADLINE * 1000).toISOString());
-    expect(panel).not.toHaveTextContent(UNVERIFIED_TITLE);
-    expect(panel).not.toHaveTextContent("Deadline used here");
-    expect(within(card("No")).getByText(utc(LOSER_DEADLINE))).toHaveClass("whitespace-nowrap");
-  });
-
-  it("states the losing side's window from the live multipliers, never a fixed half", async () => {
-    await renderSection(caseDispute(crowdfunding({ family: VERIFIED, multipliers: { ...MULTIPLIERS, loserAppealPeriodMultiplier: 2_500n } })));
-    expect(screen.getByText(/Other options can be funded during the first 25% of the appeal period/)).toBeInTheDocument();
-  });
-
-  it("on a contract whose rules are not verified warns, shows the deadlines used here as its own, and states no rule of the contract's", async () => {
-    const panel = await renderSection(caseDispute(crowdfunding()));
-    expect(panel).toHaveTextContent("To appeal, fund the deposit of the option you support.");
-    expect(panel).toHaveTextContent(`${UNVERIFIED_TITLE}${UNVERIFIED_BODY}`);
-    expect(card("Yes")).toHaveTextContent(`Deadline used here ${utc(APPEAL_END)}`);
-    expect(card("No")).toHaveTextContent(`Deadline used here ${utc(LOSER_DEADLINE)}`);
-    expect(panel).not.toHaveTextContent(/Funding closes|Rewards|wins, even against|first 50%|[Ss]tandard/);
-  });
-
-  it("on Unslashed, whose deadlines come from the registry's override, never calls a deadline standard", async () => {
-    freezeClockAtAppealStart();
-    const panel = await renderSection(caseDispute(crowdfunding({ family: UNSLASHED, override: UNSLASHED_OVERRIDE, currentRuling: 0n })));
-    expect(cardTitles()).toEqual(["Yes", "No"]);
-    for (const title of ["Yes", "No"]) expect(card(title)).toHaveTextContent(`Deadline used here ${utc(APPEAL_END)}`);
-    expect(panel).toHaveTextContent(`${UNVERIFIED_TITLE}${UNVERIFIED_BODY}`);
-    expect(panel).not.toHaveTextContent(/[Ss]tandard|Refuse to Arbitrate cannot be funded/);
-  });
-
-  it("a card past its deadline on a contract whose rules are not verified says the Dispute Resolver stopped funding, never that the contract closed it", async () => {
-    freezeClockAtAppealStart(LOSER_DEADLINE);
     await renderSection(caseDispute(crowdfunding()));
-    expect(card("No")).toHaveTextContent(`FundingClosed hereDispute Resolver stopped funding at ${utc(LOSER_DEADLINE)}`);
-    expect(card("No")).not.toHaveTextContent(/Closed at|Time left to fund/);
-    expect(contributionField(card("No"))).toBeDisabled();
-    expect(fundButton(card("No"))).toBeDisabled();
-    expect(fundButton(card("No"))).toHaveAccessibleDescription(`Dispute Resolver stopped funding at ${utc(LOSER_DEADLINE)}`);
-  });
-
-  it("promises a refund without an appeal only where the contract's withdraw code was read", async () => {
-    const refund = "If no appeal takes place, your contribution is refunded.";
-    const verified = await renderSection(caseDispute(crowdfunding({ family: VERIFIED })));
-    expect(verified).toHaveTextContent(`Rewards only apply if both sides are funded and the option you fund wins. ${refund}`);
-    verified.remove();
-    const realityRules: AppealRules = {
-      route: "crowdfunding",
-      verified: true,
-      settlement: "sole-funded-wins",
-      refundsWithoutAppeal: false,
-      tie: "refuse-is-winner",
-      noun: "answer",
-    };
-    const reality = await renderSection(caseDispute(crowdfunding({ rules: realityRules })));
-    expect(reality).toHaveTextContent("Rewards only apply if both sides are funded and the answer you fund wins.");
-    expect(reality).not.toHaveTextContent(refund);
-  });
-
-  it("on a verified contract where the only fully funded option wins, names the one fully funded so far", async () => {
-    const panel = await renderSection(caseDispute(crowdfunding({ family: VERIFIED, contributions: [{ ruling: 2n, amount: LOSER_TOTAL }], fundedRulings: [2n] })));
-    expect(panel).toHaveTextContent("“No” is the only fully funded option so far. It wins unless another option is fully funded before its funding closes.");
-  });
-
-  it.each([
-    ["no option is fully funded", { family: VERIFIED }],
-    ["the contract's rules are not verified", { fundedRulings: [2n] }],
-    ["the jury's ruling stands on the contract", { family: JURY_STANDS, fundedRulings: [2n] }],
-  ] as const)("names no sole fully funded option when %s", async (_case, options: PanelOptions) => {
-    const panel = await renderSection(caseDispute(crowdfunding(options), { chainId: options.family?.chainId ?? 1, family: options.family }));
-    expect(panel).not.toHaveTextContent("only fully funded option so far");
-  });
-
-  it("on a verified contract where the jury's ruling stands says so, and that a sole funder of another option is not refunded", async () => {
-    const panel = await renderSection(caseDispute(crowdfunding({ family: JURY_STANDS }), { chainId: 100, family: JURY_STANDS }));
-    expect(panel).toHaveTextContent("If only one option is fully funded when funding closes, there is no appeal and the jury's ruling stands.");
-    expect(panel).toHaveTextContent(
-      "Rewards only apply if both sides are funded and the option you fund wins. On this contract, if only one option is fully funded and it is not the jury's ruling, contributions to it are not returned.",
-    );
-  });
-
-  it.each([
-    [
-      "Refuse to Arbitrate is the winning option",
-      { family: VERIFIED },
-      `Refuse to Arbitrate is the current rulingRefuse to Arbitrate counts as the winning option: its funding closes at ${utc(APPEAL_END)}. Funding for every other option closes at ${utc(LOSER_DEADLINE)}.`,
-    ],
-    [
-      "every governor list shares one deposit",
-      { family: GOVERNOR, multipliers: { ...MULTIPLIERS, sharedMultiplier: 10_000n } },
-      `No list won this roundEvery list can be funded with the same deposit; funding closes at ${utc(APPEAL_END)} for all of them. If only one list is fully funded, it wins.`,
-    ],
-    [
-      "Refuse to Arbitrate cannot be funded",
-      {
-        override: UNSLASHED_OVERRIDE,
-        rules: { route: "crowdfunding", verified: true, settlement: "sole-funded-wins", refundsWithoutAppeal: false, tie: "all-winner", noun: "option" },
-      },
-      `Refuse to Arbitrate cannot be fundedRefuse to Arbitrate cannot be funded on this contract. Every option can be funded with the same deposit; funding closes at ${utc(APPEAL_END)} for all of them.`,
-    ],
-  ] as const)("a tie on a verified contract explains its funding when %s, under a title that agrees with it", async (_case, options: PanelOptions, notice) => {
-    const panel = await renderSection(caseDispute(crowdfunding({ ...options, currentRuling: 0n })));
-    expect(panel).toHaveTextContent(notice);
-    expect(panel).not.toHaveTextContent("The current ruling can be funded until the appeal period ends.");
-  });
-
-  it("a tie on a contract whose rules are not verified gets no tie explanation", async () => {
-    const panel = await renderSection(caseDispute(crowdfunding({ currentRuling: 0n })));
-    expect(panel).not.toHaveTextContent("Refuse to Arbitrate is the current ruling");
-    expect(panel).toHaveTextContent(UNVERIFIED_TITLE);
+    expect(card("No")).toHaveTextContent(`Time left to fund${LOSER_TIME_LEFT}Funding closes ${utc(LOSER_DEADLINE)}`);
+    expect(within(card("No")).getByText(utc(LOSER_DEADLINE))).toHaveAttribute("datetime", new Date(LOSER_DEADLINE * 1000).toISOString());
   });
 
   it("a card past its deadline shows funding closed and when, and disables its contribution and Fund", async () => {
     freezeClockAtAppealStart(LOSER_DEADLINE);
-    await renderSection(caseDispute(crowdfunding({ family: VERIFIED })));
+    await renderSection(caseDispute(crowdfunding()));
     expect(card("No")).toHaveTextContent(`FundingClosedClosed at ${utc(LOSER_DEADLINE)}`);
     expect(card("No")).not.toHaveTextContent("Time left to fund");
     expect(contributionField(card("No"))).toBeDisabled();
@@ -563,7 +475,7 @@ describe("AppealSection: appeal rules", () => {
   });
 
   it("a ruling the contract reports fully funded shows it, whatever today's total, and disables Fund", async () => {
-    await renderSection(caseDispute(crowdfunding({ family: VERIFIED, contributions: [{ ruling: 2n, amount: ETH }], fundedRulings: [2n] })));
+    await renderSection(caseDispute(crowdfunding({ contributions: [{ ruling: 2n, amount: ETH }], fundedRulings: [2n] })));
     expect(card("No")).toHaveTextContent("FundingFully funded");
     expect(card("No")).toHaveTextContent("Remaining 0 ETH of 3 ETH");
     expect(card("No")).not.toHaveTextContent(/Time left to fund|Funding closes/);
@@ -575,7 +487,7 @@ describe("AppealSection: appeal rules", () => {
   it("a press after the card's deadline sends nothing and says funding closed", async () => {
     freezeClockAtAppealStart(LOSER_DEADLINE - 1);
     const user = userEvent.setup();
-    await renderSection(caseDispute(crowdfunding({ family: VERIFIED })));
+    await renderSection(caseDispute(crowdfunding()));
     expect(fundButton(card("No"))).toBeEnabled();
     vi.setSystemTime(LOSER_DEADLINE * 1000);
     await user.click(fundButton(card("No")));
@@ -1003,7 +915,7 @@ describe("AppealSection: funding", () => {
 describe("AppealSection: Escrow V1 appeal", () => {
   it("the appeal button names the appeal cost in the chain's currency", async () => {
     const panel = await renderSection(
-      caseDispute({ kind: "escrow-appeal", appealCost: ETH / 4n, deadline: APPEAL_END, verified: false }, { chainId: 100, family: testFamily({ ...ESCROW, chainId: 100 }) }),
+      caseDispute({ kind: "escrow-appeal", appealCost: ETH / 4n, deadline: APPEAL_END }, { chainId: 100, family: testFamily({ ...ESCROW, chainId: 100 }) }),
     );
     expect(screen.getByRole("button", { name: `Appeal - 0.25 ${testChain(100).currency}` })).toBeInTheDocument();
     expect(panel).toHaveTextContent("In order to appeal the decision, you need to pay the appeal cost.");
@@ -1077,24 +989,16 @@ describe("AppealSection: Escrow V1 appeal", () => {
 
   it("the Escrow V1 appeal body says when the appeal period ends, without a countdown", async () => {
     freezeClockAtAppealStart();
-    const panel = await renderSection(caseDispute({ kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END, verified: false }, { family: ESCROW }));
+    const panel = await renderSection(escrowDispute());
     expect(panel).not.toHaveTextContent("Time left");
-    expect(panel).toHaveTextContent(`The appeal period ends ${utc(APPEAL_END)}.`);
+    expect(screen.getByText(/^The appeal period ends/).textContent).toBe(`The appeal period ends ${utc(APPEAL_END)}.`);
     expect(within(panel).getByText(utc(APPEAL_END))).toHaveAttribute("datetime", new Date(APPEAL_END * 1000).toISOString());
   });
 
-  it("after the appeal period's end a verified Escrow V1 appeal says the court still takes it until execution, and stays available", async () => {
+  it("after the appeal period's end the Escrow V1 appeal says it ended, with no rule of its own, and stays available", async () => {
     freezeClockAtAppealStart(APPEAL_END);
-    const panel = await renderSection(escrowDispute());
-    expect(panel).toHaveTextContent(`The appeal period ended ${utc(APPEAL_END)}. Until the dispute moves to execution, an appeal is still accepted.`);
-    expect(screen.getByRole("button", { name: "Appeal - 1 ETH" })).toBeEnabled();
-  });
-
-  it("after the appeal period's end an escrow whose rules are not verified leaves it to the contract, and stays available", async () => {
-    freezeClockAtAppealStart(APPEAL_END);
-    const panel = await renderSection(escrowDispute(undefined, false));
-    expect(panel).toHaveTextContent(`The appeal period ended ${utc(APPEAL_END)}. The contract decides whether it still accepts an appeal.`);
-    expect(panel).not.toHaveTextContent("an appeal is still accepted");
+    await renderSection(escrowDispute());
+    expect(screen.getByText(/^The appeal period ended/).textContent).toBe(`The appeal period ended ${utc(APPEAL_END)}.`);
     expect(screen.getByRole("button", { name: "Appeal - 1 ETH" })).toBeEnabled();
   });
 
@@ -1139,10 +1043,7 @@ describe("AppealSection: withdraw", () => {
   it("shows the sum across rulings on the Withdraw button, in the chain's currency", async () => {
     const panel = await renderSection(caseDispute({ kind: "withdraw", state: available }, { chainId: 100 }));
     expect(screen.getByRole("button", { name: `Withdraw ${formatEther(ETH / 2n)} ${testChain(100).currency}` })).toBeInTheDocument();
-    expect(panel).toHaveTextContent(
-      "What a contribution earns or gets back is set by the arbitrable contract's own rules. Any amount it owes you for this dispute can be withdrawn here.",
-    );
-    expect(panel).not.toHaveTextContent(/is refunded|eligible for some reward/);
+    expect(panel).toHaveTextContent(WITHDRAW_ELIGIBLE);
     expect(panel).toHaveTextContent(/2 transactions/);
   });
 

@@ -76,7 +76,7 @@ export type WriteStatus =
   /** `reason`: a known contract's own reason as plain text; `null` for any other contract, or when it gave none. */
   | { readonly phase: "refused-by-contract"; readonly reason: string | null }
   | { readonly phase: "insufficient-funds" }
-  | { readonly phase: "check-failed"; readonly message: string }
+  | { readonly phase: "account-changed" }
   | { readonly phase: "pending" }
   | { readonly phase: "submitted"; readonly hash: Hex; readonly explorerUrl: string | null }
   | { readonly phase: "mined"; readonly hash: Hex; readonly explorerUrl: string | null; readonly receipt: WriteReceipt }
@@ -86,7 +86,7 @@ export type WriteStatus =
 /** How a write ended. Nothing is signed for `refused`, `needs-wallet`, `wrong-chain` and the three ends of the check. */
 export type WriteOutcome = Extract<
   WriteStatus,
-  { readonly phase: "refused" | "needs-wallet" | "wrong-chain" | "refused-by-contract" | "insufficient-funds" | "check-failed" | "mined" | "failed" | "rejected" }
+  { readonly phase: "refused" | "needs-wallet" | "wrong-chain" | "refused-by-contract" | "insufficient-funds" | "account-changed" | "mined" | "failed" | "rejected" }
 >;
 
 export interface WriteOptions {

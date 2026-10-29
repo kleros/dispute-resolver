@@ -15,8 +15,6 @@ const CONFIGURED_PROXY: Address = "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf";
 const REGISTERED_ARBITRABLE: Address = "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38";
 /** A Gnosis Reality.eth proxy listed in the registry. */
 const REGISTERED_PROXY: Address = "0x2a2bab2c2d4eb5007b0389720b287d4d19dc4001";
-/** The poh.eth governor (mainnet), listed only among the registry's verified arbitrables. */
-const VERIFIED_ARBITRABLE: Address = "0x327a29fce0a6490e4236240be176daa282eccfdf";
 /** Proof of Humanity v2 (mainnet), listed only in the registry's display allowlist. */
 const DISPLAY_ALLOWLISTED: Address = "0xbe9834097a4e97689d9b667441acafb456d0480a";
 const UNKNOWN_CONTRACT: Address = "0x1111111111111111111111111111111111111111";
@@ -104,11 +102,6 @@ describe("describeError", () => {
     expect(described).toContain("Refund denied to you x");
   });
 
-  it("a verified arbitrable's revert keeps its own reason on its own chain only", async () => {
-    expect(describeError(await readError(revertWithData(REASON), VERIFIED_ARBITRABLE), MAINNET)).toContain(REASON);
-    expect(describeError(await readError(revertWithData(REASON), VERIFIED_ARBITRABLE), GNOSIS)).toBe(FIXED_SENTENCE);
-  });
-
   it("a known contract's address called on another chain is described by the fixed sentence", async () => {
     for (const [address, chainId] of [
       [ARBITRATOR, GNOSIS],
@@ -164,7 +157,7 @@ describe("rejectionReason", () => {
   it("is a known contract's own reason, without the node's wording, whether given as return data or as the node's message", async () => {
     expect(rejectionReason(await readError(revertWithData(REASON), ARBITRATOR), MAINNET)).toBe(REASON);
     expect(rejectionReason(await readError(rpcError(3, `execution reverted: ${REASON}`), ARBITRATOR), MAINNET)).toBe(REASON);
-    expect(rejectionReason(await readError(revertWithData(REASON), VERIFIED_ARBITRABLE), MAINNET)).toBe(REASON);
+    expect(rejectionReason(await readError(revertWithData(REASON), REGISTERED_ARBITRABLE), MAINNET)).toBe(REASON);
   });
 
   it("is a long reason with direction marks as one plain line of at most 200 characters", async () => {
@@ -176,7 +169,7 @@ describe("rejectionReason", () => {
 
   it("is never another contract's text, nor a known contract's on another chain", async () => {
     expect(rejectionReason(await readError(revertWithData(REASON), UNKNOWN_CONTRACT), MAINNET)).toBeNull();
-    expect(rejectionReason(await readError(revertWithData(REASON), VERIFIED_ARBITRABLE), GNOSIS)).toBeNull();
+    expect(rejectionReason(await readError(revertWithData(REASON), REGISTERED_ARBITRABLE), GNOSIS)).toBeNull();
   });
 
   it("is nothing when the contract gave no reason, or when the call failed in transport", async () => {

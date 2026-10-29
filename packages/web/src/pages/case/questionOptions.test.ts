@@ -38,16 +38,16 @@ describe("voting options", () => {
   });
 
   it("starts with option 0 and numbers the titles from 1", () => {
-    expect(votingOptionLines({ type: "single-select", titles: ["Yes", "No"] })).toEqual(["Option 0 - Refuse to Arbitrate / Invalid", "Option 1 - Yes", "Option 2 - No"]);
+    expect(votingOptionLines({ type: "single-select", titles: ["Yes", "No"] })).toEqual(["Option 0 - Invalid / Refused to Arbitrate / Tied", "Option 1 - Yes", "Option 2 - No"]);
   });
 
   it("a select question without titles lists option 0 only", () => {
-    expect(votingOptionLines({ type: "single-select" })).toEqual(["Option 0 - Refuse to Arbitrate / Invalid"]);
+    expect(votingOptionLines({ type: "single-select" })).toEqual(["Option 0 - Invalid / Refused to Arbitrate / Tied"]);
   });
 
   it("a positional description follows its title only when it is defined", () => {
     expect(votingOptionLines({ type: "single-select", titles: ["Yes", "No", "Maybe"], descriptions: ["Pay the seller", ""] })).toEqual([
-      "Option 0 - Refuse to Arbitrate / Invalid",
+      "Option 0 - Invalid / Refused to Arbitrate / Tied",
       "Option 1 - Yes: Pay the seller",
       "Option 2 - No:",
       "Option 3 - Maybe",
@@ -56,7 +56,7 @@ describe("voting options", () => {
 
   it("descriptions keyed by position as a record are found by position", () => {
     expect(votingOptionLines({ type: "single-select", titles: ["Yes", "No"], descriptions: { "1": "Refund the buyer" } })).toEqual([
-      "Option 0 - Refuse to Arbitrate / Invalid",
+      "Option 0 - Invalid / Refused to Arbitrate / Tied",
       "Option 1 - Yes",
       "Option 2 - No: Refund the buyer",
     ]);
@@ -64,7 +64,7 @@ describe("voting options", () => {
 
   it("reserved options follow the titles, with codes longer than 12 characters shortened", () => {
     expect(votingOptionLines({ type: "single-select", titles: ["Yes"], reserved: { [MAX_UINT]: "Answered Too Soon", "0x01": "Short code" } })).toEqual([
-      "Option 0 - Refuse to Arbitrate / Invalid",
+      "Option 0 - Invalid / Refused to Arbitrate / Tied",
       "Option 1 - Yes",
       "Option 0xffff...ffffff - Answered Too Soon",
       "Option 0x01 - Short code",
@@ -73,14 +73,14 @@ describe("voting options", () => {
 
   it("a reserved option takes its description by code", () => {
     expect(votingOptionLines({ type: "single-select", titles: [], reserved: { [MAX_UINT]: "Answered Too Soon" }, descriptions: { [MAX_UINT]: "Asked too early" } })).toEqual([
-      "Option 0 - Refuse to Arbitrate / Invalid",
+      "Option 0 - Invalid / Refused to Arbitrate / Tied",
       "Option 0xffff...ffffff - Answered Too Soon: Asked too early",
     ]);
   });
 
   it("a positional description list never describes a hex reserved code", () => {
     expect(votingOptionLines({ type: "single-select", titles: ["Yes"], reserved: { "0x01": "Short code" }, descriptions: ["First"] })).toEqual([
-      "Option 0 - Refuse to Arbitrate / Invalid",
+      "Option 0 - Invalid / Refused to Arbitrate / Tied",
       "Option 1 - Yes: First",
       "Option 0x01 - Short code",
     ]);
@@ -88,7 +88,7 @@ describe("voting options", () => {
 
   it("a description record never reaches inherited properties", () => {
     expect(votingOptionLines({ type: "single-select", titles: [], reserved: { constructor: "Odd code" }, descriptions: {} })).toEqual([
-      "Option 0 - Refuse to Arbitrate / Invalid",
+      "Option 0 - Invalid / Refused to Arbitrate / Tied",
       "Option constructor - Odd code",
     ]);
   });
@@ -96,7 +96,7 @@ describe("voting options", () => {
   it("splits each option into its code and title beside its one-line label", () => {
     const options = votingOptions({ type: "single-select", titles: ["Yes"], reserved: { [MAX_UINT]: "Answered Too Soon" }, descriptions: { [MAX_UINT]: "Asked too early" } }) ?? [];
     expect(options.map((option) => option.code)).toEqual(["Option 0", "Option 1", "Option 0xffff...ffffff"]);
-    expect(options.map((option) => option.title)).toEqual(["Refuse to Arbitrate / Invalid", "Yes", "Answered Too Soon"]);
+    expect(options.map((option) => option.title)).toEqual(["Invalid / Refused to Arbitrate / Tied", "Yes", "Answered Too Soon"]);
     for (const option of options) expect(option.label).toBe(`${option.code} - ${option.title}`);
     expect(options.map((option) => option.description)).toEqual([undefined, undefined, "Asked too early"]);
   });
@@ -108,7 +108,7 @@ describe("voting options", () => {
     });
     if (!outcome.ok || outcome.value.rulingOptions === null) throw new Error("expected ruling options");
     expect(votingOptionLines(outcome.value.rulingOptions)).toEqual([
-      "Option 0 - Refuse to Arbitrate / Invalid",
+      "Option 0 - Invalid / Refused to Arbitrate / Tied",
       "Option 1 - Yes",
       "Option 2 - No",
       "Option 0xffff...ffffff - Answered Too Soon",
@@ -121,7 +121,7 @@ describe("voting options", () => {
       rulingOptions: { type: "single-select", titles: ["Yes", "No"], reserved: { "0": "Yes", "1": "No", soon: "Odd key", "0x5": "Soon", "0x05": "Soon" } },
     });
     if (!outcome.ok || outcome.value.rulingOptions === null) throw new Error("expected ruling options");
-    expect(votingOptionLines(outcome.value.rulingOptions)).toEqual(["Option 0 - Refuse to Arbitrate / Invalid", "Option 1 - Yes", "Option 2 - No", "Option 0x5 - Soon"]);
+    expect(votingOptionLines(outcome.value.rulingOptions)).toEqual(["Option 0 - Invalid / Refused to Arbitrate / Tied", "Option 1 - Yes", "Option 2 - No", "Option 0x5 - Soon"]);
   });
 
   it("every option has a distinct key, even when a title repeats", () => {

@@ -1,13 +1,11 @@
 import { compareBigint } from "../bigint";
 import type { TieDialect } from "../families/types";
 import type { BehaviorOverride } from "../registry/types";
-import { combinationTitle, decodeRulingCode, formatRuling, isVariableType, reservedCode } from "../rulings";
+import { REFUSED_RULING_TEXT, combinationTitle, decodeRulingCode, formatRuling, isVariableType, reservedCode } from "../rulings";
 import type { FallbackOutcomes, RulingOptions } from "../rulings/types";
 
 import { fundedPercent, isWinningCode } from "./amounts";
 import type { AppealAmounts, CardFundingState, CardOrigin, CardSide, CrowdfundingCard, CrowdfundingSet, RoundFunding } from "./types";
-
-const REFUSE_CARD_TITLE = "Invalid / Refused to Arbitrate / Tied";
 
 /** The cards of a question without usable options. */
 const DEFAULT_OUTCOMES = ["Yes", "No"] as const;
@@ -130,7 +128,7 @@ export function buildCrowdfundingCards(input: {
   for (const { ruling, amount } of input.funding.contributions) contributed.set(ruling, (contributed.get(ruling) ?? 0n) + amount);
   const shared = input.tie === "shared-full-period" || input.tie === "all-winner";
   const context: CardContext = { currentRuling: input.currentRuling, amounts, override: input.override, contributed, funded: new Set(input.funding.fundedRulings), shared };
-  const refuse = input.override?.refuseToArbitrateFundable === false ? [] : [card(context, "refuse", REFUSE_CARD_TITLE, 0n)];
+  const refuse = input.override?.refuseToArbitrateFundable === false ? [] : [card(context, "refuse", REFUSED_RULING_TEXT, 0n)];
   const fixed = [...refuse, ...reservedCards(context, rulingOptions.reserved)];
   const taken = new Set(fixed.map((fixedCard) => fixedCard.code));
   const cards = [...fixed, ...questionCards(context, rulingOptions, fallbackOutcomes, taken)];

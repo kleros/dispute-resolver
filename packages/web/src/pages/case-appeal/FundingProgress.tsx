@@ -1,15 +1,13 @@
 import type { CardFundingState } from "@dispute-resolver/core";
 import { useId } from "react";
 import { Countdown, FACT, LABEL, Timestamp } from "../../ui";
-import { DEADLINE_USED_HERE, FUNDING_CLOSED, FUNDING_CLOSED_AT, FUNDING_CLOSED_HERE, FUNDING_CLOSES, FUNDING_STOPPED_HERE_AT } from "./copy";
+import { FUNDING_CLOSED, FUNDING_CLOSED_AT, FUNDING_CLOSES } from "./copy";
 
 export interface FundingProgressProps {
   /** Above 100 when a side was over-funded; the bar shows it as full. */
   readonly percent: number;
   readonly deadline: number;
   readonly state: CardFundingState;
-  /** Whether the registry verified the contract's rules; otherwise the deadline is only the one the Dispute Resolver applies. */
-  readonly verified: boolean;
   /** The id of the text that says why a closed or fully funded card takes no contribution, for the field and Fund to point at. */
   readonly statusId: string;
 }
@@ -25,8 +23,7 @@ const DATE_LINE_CLASS = `${LABEL} [overflow-wrap:anywhere]`;
 /** Short enough to fit a card's width whole, so its time zone never sits alone on a line. */
 const DATE_CLASS = "whitespace-nowrap";
 
-/** On a contract whose rules were not verified, "closed" is said of the Dispute Resolver only, never of the contract. */
-function FundingState({ deadline, state, verified, statusId }: Omit<FundingProgressProps, "percent">) {
+function FundingState({ deadline, state, statusId }: Omit<FundingProgressProps, "percent">) {
   switch (state) {
     case "open":
       return (
@@ -36,7 +33,7 @@ function FundingState({ deadline, state, verified, statusId }: Omit<FundingProgr
             <Countdown target={deadline} className={FACT} />
           </p>
           <p className={DATE_LINE_CLASS}>
-            {verified ? FUNDING_CLOSES : DEADLINE_USED_HERE}
+            {FUNDING_CLOSES}
             <Timestamp value={deadline} className={DATE_CLASS} />
           </p>
         </div>
@@ -46,10 +43,10 @@ function FundingState({ deadline, state, verified, statusId }: Omit<FundingProgr
         <div className="flex flex-col gap-1">
           <p className={ROW_CLASS}>
             <span className={LABEL}>Funding</span>
-            <span className={FACT}>{verified ? FUNDING_CLOSED : FUNDING_CLOSED_HERE}</span>
+            <span className={FACT}>{FUNDING_CLOSED}</span>
           </p>
           <p id={statusId} className={DATE_LINE_CLASS}>
-            {verified ? FUNDING_CLOSED_AT : FUNDING_STOPPED_HERE_AT}
+            {FUNDING_CLOSED_AT}
             <Timestamp value={deadline} className={DATE_CLASS} />
           </p>
         </div>
@@ -66,7 +63,7 @@ function FundingState({ deadline, state, verified, statusId }: Omit<FundingProgr
   }
 }
 
-export function FundingProgress({ percent, deadline, state, verified, statusId }: FundingProgressProps) {
+export function FundingProgress({ percent, deadline, state, statusId }: FundingProgressProps) {
   const labelId = useId();
   const label = `${percent.toFixed(2)}% Funded`;
   const clamped = Math.min(Math.max(percent, 0), 100);
@@ -78,7 +75,7 @@ export function FundingProgress({ percent, deadline, state, verified, statusId }
         </span>
         <progress value={clamped} max={100} aria-labelledby={labelId} aria-valuenow={clamped} aria-valuetext={label} className={BAR_CLASS} />
       </div>
-      <FundingState deadline={deadline} state={state} verified={verified} statusId={statusId} />
+      <FundingState deadline={deadline} state={state} statusId={statusId} />
     </div>
   );
 }

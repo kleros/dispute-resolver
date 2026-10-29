@@ -53,7 +53,7 @@ function PanelBody({ panel, actions, chain, onRetry }: PanelBodyProps) {
     case "funding-unsupported":
       return <Notice variant="info" title={FUNDING_UNSUPPORTED_TITLE} body={FUNDING_UNSUPPORTED_BODY} />;
     case "escrow-appeal":
-      return <EscrowAppealPanel appealCost={panel.appealCost} deadline={panel.deadline} verified={panel.verified} actions={actions} chain={chain} />;
+      return <EscrowAppealPanel appealCost={panel.appealCost} deadline={panel.deadline} actions={actions} chain={chain} />;
     case "escrow-ended":
       return <h3>{ESCROW_ENDED}</h3>;
     case "crowdfunding":

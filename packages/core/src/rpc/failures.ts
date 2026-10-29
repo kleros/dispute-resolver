@@ -41,8 +41,8 @@ let knownContracts: ReadonlySet<string> | undefined;
 
 /**
  * The contracts whose own failure text may be shown, each on its own chain only: the chain table's arbitrator and
- * arbitrable proxy, and every arbitrable the registry lists (Reality proxies, overrides, verified arbitrables, display
- * allowlist). Built on first use, since the tables load after this module.
+ * arbitrable proxy, and every arbitrable the registry lists (Reality proxies, overrides, display allowlist). Built on
+ * first use, since the tables load after this module.
  */
 function isKnownContract(chainId: number, address: string): boolean {
   knownContracts ??= new Set<string>([
@@ -51,7 +51,6 @@ function isKnownContract(chainId: number, address: string): boolean {
     ),
     ...Object.keys(REGISTRY.realityProxies),
     ...Object.keys(REGISTRY.overrides),
-    ...Object.keys(REGISTRY.verifiedArbitrables),
     ...Object.entries(REGISTRY.displayAllowlist).flatMap(([chainKey, addresses]) => addresses.map((contract) => registryKey(Number(chainKey), contract))),
   ]);
   // The cast is sound: viem recorded a `0x`-prefixed address, and lowercasing it yields the lowercase form.

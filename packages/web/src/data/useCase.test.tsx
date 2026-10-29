@@ -34,6 +34,12 @@ const escrowFamily: FamilyDetection = testFamily({
   capabilities: { localId: "disputeIDtoTransactionID", evidence: { kind: "local-id" }, appeal: { kind: "escrow-pay-cost" }, withdraw: { kind: "none" } },
 });
 
+const viewOnlyFamily: FamilyDetection = testFamily({
+  family: "view-only",
+  writeFamily: "view-only",
+  capabilities: { localId: "none", evidence: { kind: "none" }, appeal: { kind: "none" }, withdraw: { kind: "none" } },
+});
+
 const governorFamily: FamilyDetection = testFamily({
   family: "governor",
   writeFamily: "governor",
@@ -299,7 +305,7 @@ describe("useCase", () => {
     expect(core.readRoundFunding).not.toHaveBeenCalled();
     expect(core.readWithdrawable).not.toHaveBeenCalled();
     expect(current.appealPanel).toMatchObject({ status: "ready", value: { kind: "withdraw", state: { status: "unavailable", error: { message: "logs refused" } } } });
-    expect(current.decision).toMatchObject({ status: "ready", value: { kind: "jury-ruling", execution: "pending" } });
+    expect(current.decision).toMatchObject({ status: "ready", value: { kind: "jury-decision", note: "not-executed" } });
     expect(current.appealDecisions).toMatchObject({ status: "unavailable", error: { code: "rpc-error", message: "logs refused" } });
   });
 
@@ -311,7 +317,7 @@ describe("useCase", () => {
     const [context, input] = vi.mocked(core.readExecutedRuling).mock.calls[0] ?? [];
     expect(context).toMatchObject({ chainId: 1 });
     expect(input).toEqual({ binding: testFoundLookup().binding, dispute: testFoundLookup({ period: 4, ruled: true }).dispute, fromBlock: 500n });
-    expect(current.decision).toMatchObject({ status: "ready", value: { kind: "winner", winner: { ruling: 2n }, execution: "executed" } });
+    expect(current.decision).toMatchObject({ status: "ready", value: { kind: "winner", winner: { ruling: 2n }, wonBy: "applied" } });
   });
 
   it("scans for the executed ruling from the dispute's start when the appeal decisions failed", async () => {
@@ -343,8 +349,31 @@ describe("useCase", () => {
     vi.mocked(core.readExecutedRuling).mockResolvedValue({ status: "executed", ruling: 1n });
     await act(() => client.invalidateQueries({ queryKey: disputeKeyPrefix("executedRuling", 1, 1n) }));
     await waitFor(() => {
-      expect(caseDispute(result.current).decision).toMatchObject({ status: "ready", value: { kind: "winner", wonBy: "reported", winner: { ruling: 1n } } });
+      expect(caseDispute(result.current).decision).toMatchObject({ status: "ready", value: { kind: "winner", wonBy: "jury", winner: { ruling: 1n } } });
     });
+  });
+
+  it("a view-only arbitrable that applied another ruling than the court's won by default when its own funding record shows that ruling alone fully funded", async () => {
+    programReads(4, true);
+    vi.mocked(core.detectFamily).mockResolvedValue(viewOnlyFamily);
+    vi.mocked(core.readProductFunding).mockResolvedValue({ ok: true, value: [2n] });
+    const { result } = renderCase(1n);
+    const current = await settledCase(result);
+    expect(vi.mocked(core.readProductFunding).mock.calls).toEqual([[expect.anything(), testFoundLookup().binding, viewOnlyFamily, expect.any(AbortSignal)]]);
+    expect(current.decision).toMatchObject({ status: "ready", value: { kind: "winner", winner: { ruling: 2n }, wonBy: "default" } });
+  });
+
+  it.each([
+    ["the arbitrable applied the court's ruling", viewOnlyFamily, 1n],
+    ["the Dispute Resolver reads the family's funding itself", testFamily(), 2n],
+  ] as const)("reads no arbitrable's own funding record when %s", async (_case, family, executed) => {
+    programReads(4, true);
+    vi.mocked(core.detectFamily).mockResolvedValue(family);
+    vi.mocked(core.readExecutedRuling).mockResolvedValue({ status: "executed", ruling: executed });
+    const { result } = renderCase(1n);
+    const current = await settledCase(result);
+    expect(core.readProductFunding).not.toHaveBeenCalled();
+    expect(current.decision).toMatchObject({ status: "ready", value: { kind: "winner", winner: { ruling: executed } } });
   });
 
   it.each([

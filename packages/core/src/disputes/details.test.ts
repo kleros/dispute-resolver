@@ -1,21 +1,8 @@
-import { encodeFunctionData, encodeFunctionResult, numberToHex, toFunctionSelector } from "viem";
+import { numberToHex, toFunctionSelector } from "viem";
 import { describe, expect, it } from "vitest";
 import { lookupDispute, readAppealDecisions, readDisputeDetails } from ".";
 import type { ArbitratedBinding, ArbitratorDispute } from "./types";
-import { klerosLiquidAbi } from "../abi";
-import {
-  appealDecisionLog,
-  callKey,
-  EXECUTION_GNOSIS,
-  EXECUTION_MAINNET,
-  executionNode,
-  fakeClient,
-  MAINNET,
-  recordedDetection,
-  recordedNode,
-  rpcError,
-  selectorOf,
-} from "../test/disputes/testHelpers";
+import { appealDecisionLog, fakeClient, MAINNET, recordedDetection, recordedNode, rpcError, selectorOf } from "../test/disputes/testHelpers";
 import type { FakeNode, RpcErrorBody } from "../test/disputes/testHelpers";
 
 const GET_DISPUTE = toFunctionSelector("getDispute(uint256)").slice(2);
@@ -23,7 +10,6 @@ const DISPUTES = toFunctionSelector("disputes(uint256)").slice(2);
 const APPEAL_COST = toFunctionSelector("appealCost(uint256,bytes)").slice(2);
 const APPEAL_PERIOD = toFunctionSelector("appealPeriod(uint256)").slice(2);
 const CURRENT_RULING = toFunctionSelector("currentRuling(uint256)").slice(2);
-const GET_VOTE_COUNTER = toFunctionSelector("getVoteCounter(uint256,uint256)").slice(2);
 const MAINNET_DEPLOY_BLOCK = 7303699n;
 /** Block of the recorded ERC-1497 Dispute event of mainnet 1454 (`evidence/__fixtures__/mainnet-1454-505.json`). */
 const DISPUTE_1454_EVENT_BLOCK = 0xf9ad5an;
@@ -152,78 +138,6 @@ describe("readDisputeDetails", () => {
       expect(outcome).toMatchObject({ ok: false, error: { code: "no-rpc", message: "This network's data is unavailable." } });
       if (outcome?.ok === false) expect(outcome.error.message).not.toMatch(/configur|RPC|REACT_APP/i);
     }
-  });
-});
-
-describe("the last round's vote counter", () => {
-  async function details(recording: typeof EXECUTION_MAINNET, disputeId: bigint, node = executionNode(recording)) {
-    const { client: lookupClient } = fakeClient(executionNode(recording));
-    const lookup = await lookupDispute({ chainId: recording.chainId, client: lookupClient }, disputeId);
-    if (lookup.status !== "found") throw new Error(`dispute ${String(disputeId)} not found`);
-    const { client, requests } = fakeClient(node);
-    const reads = await readDisputeDetails({ chainId: recording.chainId, client }, lookup, undefined, null);
-    return { reads, lookup, counterCalls: requests.calls.map(selectorOf).filter((selector) => selector === GET_VOTE_COUNTER) };
-  }
-
-  it("reads the last round's vote counter only when the court's ruling is 0", async () => {
-    const tied = await details(EXECUTION_MAINNET, 1495n);
-    expect(tied.reads.lastRoundVotes).toEqual({ ok: true, value: { winningChoice: 2n, counts: [1n, 1n, 1n], tied: true } });
-    expect(tied.counterCalls).toHaveLength(1);
-
-    const ruled = await details(EXECUTION_MAINNET, 1347n);
-    expect(ruled.reads.currentRuling).toEqual({ ok: true, value: 1n });
-    expect(ruled.reads.lastRoundVotes).toBeNull();
-    expect(ruled.counterCalls).toEqual([]);
-  });
-
-  it("reads the counter of the last round of an appealed dispute", async () => {
-    const { reads } = await details(EXECUTION_GNOSIS, 939n);
-    expect(reads.votesLengths).toEqual({ ok: true, value: [3n, 7n] });
-    expect(reads.lastRoundVotes).toEqual({ ok: true, value: { winningChoice: 1n, counts: [0n, 3n, 3n], tied: true } });
-  });
-
-  it("does not read the vote counter of a dispute with too many choices", async () => {
-    const { reads, lookup, counterCalls } = await details(EXECUTION_MAINNET, 150n);
-    expect(lookup.dispute.numberOfChoices).toBeGreaterThan(256n);
-    expect(reads.currentRuling).toEqual({ ok: true, value: 0n });
-    expect(reads.lastRoundVotes).toBeNull();
-    expect(counterCalls).toEqual([]);
-  });
-
-  it("does not read the vote counter before the appeal period", async () => {
-    const { client: lookupClient } = fakeClient(executionNode(EXECUTION_MAINNET));
-    const lookup = await lookupDispute({ chainId: 1, client: lookupClient }, 1495n);
-    if (lookup.status !== "found") throw new Error("found expected");
-    const { client, requests } = fakeClient(executionNode(EXECUTION_MAINNET));
-    const reads = await readDisputeDetails({ chainId: 1, client }, { ...lookup, dispute: { ...lookup.dispute, period: 2 } }, undefined, null);
-    expect(reads.lastRoundVotes).toBeNull();
-    expect(requests.calls.map(selectorOf)).not.toContain(GET_VOTE_COUNTER);
-  });
-
-  it("a vote counter of the wrong length is invalid data", async () => {
-    const key = callKey(EXECUTION_MAINNET.arbitrator, encodeFunctionData({ abi: klerosLiquidAbi, functionName: "getVoteCounter", args: [1495n, 0n] }));
-    expect(EXECUTION_MAINNET.calls.has(key)).toBe(true);
-    const short = encodeFunctionResult({ abi: klerosLiquidAbi, functionName: "getVoteCounter", result: [2n, [1n, 1n], true] });
-    const calls = new Map(EXECUTION_MAINNET.calls);
-    calls.set(key, { result: short });
-    const { reads } = await details(EXECUTION_MAINNET, 1495n, executionNode(EXECUTION_MAINNET, { calls }));
-    expect(reads.lastRoundVotes).toMatchObject({ ok: false, error: { code: "invalid-data" } });
-  });
-
-  it("a failed vote counter read degrades only the counter", async () => {
-    const calls = new Map([...EXECUTION_MAINNET.calls].filter(([key]) => selectorOf(key) !== GET_VOTE_COUNTER));
-    const { reads } = await details(EXECUTION_MAINNET, 1495n, executionNode(EXECUTION_MAINNET, { calls }));
-    expect(reads.lastRoundVotes).toMatchObject({ ok: false, error: { code: "rpc-error" } });
-    expect(reads.currentRuling).toEqual({ ok: true, value: 0n });
-  });
-
-  it("without a read RPC the counter is unavailable where it would be read, and not read elsewhere", async () => {
-    const { client } = fakeClient(executionNode(EXECUTION_MAINNET));
-    const lookup = await lookupDispute({ chainId: 1, client }, 1495n);
-    if (lookup.status !== "found") throw new Error("found expected");
-    expect((await readDisputeDetails({ chainId: 1, client: undefined }, lookup, undefined, null)).lastRoundVotes).toMatchObject({ ok: false, error: { code: "no-rpc" } });
-    const inVote = { ...lookup, dispute: { ...lookup.dispute, period: 2 as const } };
-    expect((await readDisputeDetails({ chainId: 1, client: undefined }, inVote, undefined, null)).lastRoundVotes).toBeNull();
   });
 });
 

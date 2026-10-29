@@ -341,7 +341,7 @@ function breakDecisionOnMalformedDetails() {
   vi.mocked(core.buildDecision).mockImplementation((input) => {
     const decision = actualCore.buildDecision(input);
     if (!decision.ok || decision.value.kind !== "jury-decision" || !isMalformed(input.reads?.currentRuling)) return decision;
-    return { ok: true, value: { ...decision.value, jury: { ...decision.value.jury, rulingText: UNRENDERABLE } } };
+    return { ok: true, value: { ...decision.value, court: { ...decision.value.court, rulingText: UNRENDERABLE } } };
   });
 }
 

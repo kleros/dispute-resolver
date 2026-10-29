@@ -41,20 +41,6 @@ export const klerosLiquidAbi = [
   },
   {
     type: "function",
-    name: "getVoteCounter",
-    stateMutability: "view",
-    inputs: [
-      { name: "_disputeID", type: "uint256" },
-      { name: "_appeal", type: "uint256" },
-    ],
-    outputs: [
-      { name: "winningChoice", type: "uint256" },
-      { name: "counts", type: "uint256[]" },
-      { name: "tied", type: "bool" },
-    ],
-  },
-  {
-    type: "function",
     name: "appealPeriod",
     stateMutability: "view",
     inputs: [{ name: "_disputeID", type: "uint256" }],

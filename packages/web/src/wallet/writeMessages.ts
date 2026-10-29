@@ -52,8 +52,8 @@ export function writeMessage(status: Exclude<WriteStatus, { readonly phase: "idl
       };
     case "insufficient-funds":
       return { variant: "error", title: "Balance too low", body: "Your wallet's balance does not cover this transaction. Nothing was sent." };
-    case "check-failed":
-      return { variant: "warning", title: "Transaction not checked", body: `The transaction could not be checked against the contract, so nothing was sent. ${status.message}` };
+    case "account-changed":
+      return { variant: "warning", title: "Transaction not sent", body: "Your wallet's account changed while the transaction was checked. Nothing was sent. Try again." };
     case "pending":
       return { variant: "info", title: "Waiting for your wallet", body: "Confirm the transaction in your wallet." };
     case "submitted":

@@ -1,7 +1,7 @@
 import type { Address, Outcome, Period, ReadClient, Unavailable } from "../types";
 import type { AppealInfo, ArbitratedBinding, LocalIdResolution } from "../disputes/types";
 import type { AppealRules, FamilyDetection, RulingNoun, TieDialect } from "../families/types";
-import type { BehaviorOverride, Settlement } from "../registry/types";
+import type { BehaviorOverride } from "../registry/types";
 import type { FallbackOutcomes, RulingOptions, VariableQuestionType } from "../rulings/types";
 
 /** Appeal multipliers, all in the arbitrable's own basis. */
@@ -109,17 +109,12 @@ export interface MultipleSelectComposer {
 
 /** What the crowdfunding panel states beside its cards. */
 export interface FundingTerms {
-  readonly verified: boolean;
-  readonly settlement: Settlement;
-  readonly refundsWithoutAppeal: boolean;
   readonly noun: RulingNoun;
   /** How the sides are set while the current ruling is 0; `null` otherwise. */
   readonly tie: TieDialect | null;
   readonly appealPeriodEnd: number;
   /** When funding closes for rulings other than the current one, never after the appeal period end. */
   readonly loserDeadline: number;
-  /** That window as a percentage of the appeal period, from the live multipliers, two decimals, at most 100. */
-  readonly loserWindowPercent: number;
 }
 
 /** One withdrawable entry; the action withdraws them in sequence, one transaction each. */
@@ -138,8 +133,7 @@ export type AppealPanel =
   | { readonly kind: "handled-by-arbitrable" }
   | { readonly kind: "not-appealable" } // the arbitrable has no way to appeal
   | { readonly kind: "funding-unsupported" } // the arbitrable's funding dialect is not supported here
-  /** `verified`: the registry read the escrow's code, which checks no time, so it takes an appeal until the court moves the dispute to execution. */
-  | { readonly kind: "escrow-appeal"; readonly appealCost: bigint; readonly deadline: number; readonly verified: boolean }
+  | { readonly kind: "escrow-appeal"; readonly appealCost: bigint; readonly deadline: number }
   | { readonly kind: "escrow-ended" }
   | {
       readonly kind: "crowdfunding";

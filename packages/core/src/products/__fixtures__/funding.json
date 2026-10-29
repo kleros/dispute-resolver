@@ -1,0 +1,656 @@
+{
+  "description": "Product funding reads for the product readers, at readAtBlock of each chain: the eth_call answers (only the output fields the readers read; every other output is zero) and the eth_getStorageAt words they read. Executed disputes are frozen, so these hold at any later block except counts of later requests. Mainnet: Proof of Humanity v1 1495 (court 0, executed 2), 616 (the disputed request below a newer one), 554 (last round unfunded); Proof of Humanity v2 1660; T2CR token list 38 (an undisputed newer request); Generalized TCR 344 on 0x7884 (two requests above the disputed one); BinaryArbitrableProxy 0.6.4 193 and 328 (four rounds); ArbitrableProxy v2 1454 (passes the binary proxy's first calls, crowdfundingStatus reverts); unverified proxy 0xc7e4 165 (no arbitrator()). Gnosis: Light Curate clone 939, Proof of Humanity v2 402 (last round unfunded), 553 asked of the 939 clone (unknown item). Sepolia: Proof of Humanity v2 280 (request 23), 42 on 0x29de (another storage layout).",
+  "chains": [
+    {
+      "chainId": 1,
+      "readAtBlock": 26297600,
+      "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
+      "cases": [
+        {
+          "label": "poh-v1 1495",
+          "arbitrable": "0xc5e9ddebb09cd64dfacab4011a0d5cedaf7c9bdb",
+          "disputeId": "1495",
+          "calls": {
+            "poh-v1": [
+              {
+                "fn": "arbitratorDisputeIDToDisputeData",
+                "args": ["0x988b3a538b618c7a603e1c11ab82cd16dbe28069", "1495"],
+                "values": {
+                  "challengeID": "0",
+                  "submissionID": "0xf1545ee1b145726d2a608f3e908f82bb23e9d620"
+                }
+              },
+              {
+                "fn": "getSubmissionInfo",
+                "args": ["0xf1545ee1b145726d2a608f3e908f82bb23e9d620"],
+                "values": {
+                  "numberOfRequests": "1"
+                }
+              },
+              {
+                "fn": "getChallengeInfo",
+                "args": ["0xf1545ee1b145726d2a608f3e908f82bb23e9d620", "0", "0"],
+                "values": {
+                  "lastRoundID": "1",
+                  "disputeID": "1495"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0xf1545ee1b145726d2a608f3e908f82bb23e9d620", "0"],
+                "values": {
+                  "lastChallengeID": "1",
+                  "arbitratorDataID": "1"
+                }
+              },
+              {
+                "fn": "arbitratorDataList",
+                "args": ["1"],
+                "values": {
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              },
+              {
+                "fn": "getRoundInfo",
+                "args": ["0xf1545ee1b145726d2a608f3e908f82bb23e9d620", "0", "0", "1"],
+                "values": {
+                  "sideFunded": "2"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "label": "poh-v1 616",
+          "arbitrable": "0xc5e9ddebb09cd64dfacab4011a0d5cedaf7c9bdb",
+          "disputeId": "616",
+          "calls": {
+            "poh-v1": [
+              {
+                "fn": "arbitratorDisputeIDToDisputeData",
+                "args": ["0x988b3a538b618c7a603e1c11ab82cd16dbe28069", "616"],
+                "values": {
+                  "challengeID": "0",
+                  "submissionID": "0x1ecd635c3c10afc674d6c38b48999509f308fa10"
+                }
+              },
+              {
+                "fn": "getSubmissionInfo",
+                "args": ["0x1ecd635c3c10afc674d6c38b48999509f308fa10"],
+                "values": {
+                  "numberOfRequests": "2"
+                }
+              },
+              {
+                "fn": "getChallengeInfo",
+                "args": ["0x1ecd635c3c10afc674d6c38b48999509f308fa10", "1", "0"],
+                "values": {
+                  "lastRoundID": "0",
+                  "disputeID": "0"
+                }
+              },
+              {
+                "fn": "getChallengeInfo",
+                "args": ["0x1ecd635c3c10afc674d6c38b48999509f308fa10", "0", "0"],
+                "values": {
+                  "lastRoundID": "1",
+                  "disputeID": "616"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0x1ecd635c3c10afc674d6c38b48999509f308fa10", "0"],
+                "values": {
+                  "lastChallengeID": "1",
+                  "arbitratorDataID": "1"
+                }
+              },
+              {
+                "fn": "arbitratorDataList",
+                "args": ["1"],
+                "values": {
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              },
+              {
+                "fn": "getRoundInfo",
+                "args": ["0x1ecd635c3c10afc674d6c38b48999509f308fa10", "0", "0", "1"],
+                "values": {
+                  "sideFunded": "2"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "label": "poh-v1 554",
+          "arbitrable": "0xc5e9ddebb09cd64dfacab4011a0d5cedaf7c9bdb",
+          "disputeId": "554",
+          "calls": {
+            "poh-v1": [
+              {
+                "fn": "arbitratorDisputeIDToDisputeData",
+                "args": ["0x988b3a538b618c7a603e1c11ab82cd16dbe28069", "554"],
+                "values": {
+                  "challengeID": "0",
+                  "submissionID": "0x00de4b13153673bcae2616b67bf822500d325fc3"
+                }
+              },
+              {
+                "fn": "getSubmissionInfo",
+                "args": ["0x00de4b13153673bcae2616b67bf822500d325fc3"],
+                "values": {
+                  "numberOfRequests": "1"
+                }
+              },
+              {
+                "fn": "getChallengeInfo",
+                "args": ["0x00de4b13153673bcae2616b67bf822500d325fc3", "0", "0"],
+                "values": {
+                  "lastRoundID": "3",
+                  "disputeID": "554"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0x00de4b13153673bcae2616b67bf822500d325fc3", "0"],
+                "values": {
+                  "lastChallengeID": "1",
+                  "arbitratorDataID": "1"
+                }
+              },
+              {
+                "fn": "arbitratorDataList",
+                "args": ["1"],
+                "values": {
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              },
+              {
+                "fn": "getRoundInfo",
+                "args": ["0x00de4b13153673bcae2616b67bf822500d325fc3", "0", "0", "3"],
+                "values": {
+                  "sideFunded": "0"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "label": "poh-v2 1660",
+          "arbitrable": "0xbe9834097a4e97689d9b667441acafb456d0480a",
+          "disputeId": "1660",
+          "calls": {
+            "poh-v2": [
+              {
+                "fn": "disputeIdToData",
+                "args": ["0x988b3a538b618c7a603e1c11ab82cd16dbe28069", "1660"],
+                "values": {
+                  "requestId": "0",
+                  "challengeId": "0",
+                  "humanityId": "0xaf91f3570f5c25c0899225aae251a5eaef286ee2"
+                }
+              },
+              {
+                "fn": "arbitratorDataHistory",
+                "args": ["2"],
+                "values": {
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              }
+            ]
+          },
+          "storage": [
+            {
+              "slot": "0x75c9854b2d4b1df2b3c2916e2a4c278b7ff4d64e2092534a558b01e24a314986",
+              "word": "0x0000000000000000000000000000000000000000000000000000000000000001"
+            },
+            {
+              "slot": "0x4ec4773793325ae802c4fe1302d47049027947063669c0db53211dfa5f89baf6",
+              "word": "0xaf91f3570f5c25c0899225aae251a5eaef286ee2000000010001000201010300"
+            },
+            {
+              "slot": "0xb354ec9e5fdb623e9b170e09a7187a3c4a794b0a28905ae93de5ea8260a6c542",
+              "word": "0x0000000000000000004518cd6f9cd1085d0cc1eed7c8b3bcd98afafcd9020001"
+            },
+            {
+              "slot": "0xb354ec9e5fdb623e9b170e09a7187a3c4a794b0a28905ae93de5ea8260a6c543",
+              "word": "0x000000000000000000000000000000000000000000000000000000000000067c"
+            },
+            {
+              "slot": "0x6cf90e70ff109762fd9f48a379131bfd54b880e1f3b01106ecb3adf036c934f3",
+              "word": "0x0000000000000000000000000000000000000000000000000000000000000002"
+            }
+          ]
+        },
+        {
+          "label": "atl 38",
+          "arbitrable": "0xebcf3bca271b26ae4b162ba560e243055af0e679",
+          "disputeId": "38",
+          "calls": {
+            "atl": [
+              {
+                "fn": "arbitratorDisputeIDToTokenID",
+                "args": ["0x988b3a538b618c7a603e1c11ab82cd16dbe28069", "38"],
+                "values": {
+                  "key": "0xebb1c4e63b1d7833240688bd1ba6449c4c25a84025183d6743a831761431e829"
+                }
+              },
+              {
+                "fn": "getTokenInfo",
+                "args": ["0xebb1c4e63b1d7833240688bd1ba6449c4c25a84025183d6743a831761431e829"],
+                "values": {
+                  "numberOfRequests": "2"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0xebb1c4e63b1d7833240688bd1ba6449c4c25a84025183d6743a831761431e829", "1"],
+                "values": {
+                  "disputed": false,
+                  "disputeID": "0",
+                  "numberOfRounds": "1",
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0xebb1c4e63b1d7833240688bd1ba6449c4c25a84025183d6743a831761431e829", "0"],
+                "values": {
+                  "disputed": true,
+                  "disputeID": "38",
+                  "numberOfRounds": "2",
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              },
+              {
+                "fn": "getRoundInfo",
+                "args": ["0xebb1c4e63b1d7833240688bd1ba6449c4c25a84025183d6743a831761431e829", "0", "1"],
+                "values": {
+                  "hasPaid": [false, false, true]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "label": "gtcr 344",
+          "arbitrable": "0x7884a7adf697e18357087fe8f994669042af4ae9",
+          "disputeId": "344",
+          "calls": {
+            "gtcr": [
+              {
+                "fn": "arbitratorDisputeIDToItem",
+                "args": ["0x988b3a538b618c7a603e1c11ab82cd16dbe28069", "344"],
+                "values": {
+                  "key": "0xe002c7e1080513e23b26d74ab1c35226fa64af885b51ad19d42ea00b3420a6ab"
+                }
+              },
+              {
+                "fn": "getItemInfo",
+                "args": ["0xe002c7e1080513e23b26d74ab1c35226fa64af885b51ad19d42ea00b3420a6ab"],
+                "values": {
+                  "numberOfRequests": "3"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0xe002c7e1080513e23b26d74ab1c35226fa64af885b51ad19d42ea00b3420a6ab", "2"],
+                "values": {
+                  "disputed": true,
+                  "disputeID": "399",
+                  "numberOfRounds": "2",
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0xe002c7e1080513e23b26d74ab1c35226fa64af885b51ad19d42ea00b3420a6ab", "1"],
+                "values": {
+                  "disputed": false,
+                  "disputeID": "0",
+                  "numberOfRounds": "1",
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0xe002c7e1080513e23b26d74ab1c35226fa64af885b51ad19d42ea00b3420a6ab", "0"],
+                "values": {
+                  "disputed": true,
+                  "disputeID": "344",
+                  "numberOfRounds": "3",
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              },
+              {
+                "fn": "getRoundInfo",
+                "args": ["0xe002c7e1080513e23b26d74ab1c35226fa64af885b51ad19d42ea00b3420a6ab", "0", "2"],
+                "values": {
+                  "hasPaid": [false, true, false]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "label": "bap 193",
+          "arbitrable": "0x135c573503f70dc290b1d60fe2e7f7eb114febd6",
+          "disputeId": "193",
+          "calls": {
+            "bap": [
+              {
+                "fn": "arbitrator",
+                "args": [],
+                "values": {
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              },
+              {
+                "fn": "externalIDtoLocalID",
+                "args": ["193"],
+                "values": {
+                  "localId": "18"
+                }
+              },
+              {
+                "fn": "disputes",
+                "args": ["18"],
+                "values": {
+                  "isRuled": true,
+                  "ruling": "1",
+                  "disputeIDOnArbitratorSide": "193"
+                }
+              },
+              {
+                "fn": "crowdfundingStatus",
+                "args": ["18", "0x0000000000000000000000000000000000000000"],
+                "values": {
+                  "hasPaid": [false, true, false]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "label": "bap 328",
+          "arbitrable": "0x135c573503f70dc290b1d60fe2e7f7eb114febd6",
+          "disputeId": "328",
+          "calls": {
+            "bap": [
+              {
+                "fn": "arbitrator",
+                "args": [],
+                "values": {
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              },
+              {
+                "fn": "externalIDtoLocalID",
+                "args": ["328"],
+                "values": {
+                  "localId": "51"
+                }
+              },
+              {
+                "fn": "disputes",
+                "args": ["51"],
+                "values": {
+                  "isRuled": true,
+                  "ruling": "2",
+                  "disputeIDOnArbitratorSide": "328"
+                }
+              },
+              {
+                "fn": "crowdfundingStatus",
+                "args": ["51", "0x0000000000000000000000000000000000000000"],
+                "values": {
+                  "hasPaid": [false, false, false]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "label": "bap 1454",
+          "arbitrable": "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf",
+          "disputeId": "1454",
+          "calls": {
+            "bap": [
+              {
+                "fn": "arbitrator",
+                "args": [],
+                "values": {
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              },
+              {
+                "fn": "externalIDtoLocalID",
+                "args": ["1454"],
+                "values": {
+                  "localId": "0"
+                }
+              },
+              {
+                "fn": "disputes",
+                "args": ["0"],
+                "values": {
+                  "isRuled": true,
+                  "ruling": "0",
+                  "disputeIDOnArbitratorSide": "1454"
+                }
+              },
+              {
+                "fn": "crowdfundingStatus",
+                "args": ["0", "0x0000000000000000000000000000000000000000"],
+                "revert": true
+              }
+            ]
+          }
+        },
+        {
+          "label": "bap 165",
+          "arbitrable": "0xc7e49251807780dfbbca72778890b80bd946590b",
+          "disputeId": "165",
+          "calls": {
+            "bap": [
+              {
+                "fn": "arbitrator",
+                "args": [],
+                "revert": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "chainId": 100,
+      "readAtBlock": 49001500,
+      "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
+      "cases": [
+        {
+          "label": "light 939",
+          "arbitrable": "0x66260c69d03837016d88c9877e61e08ef74c59f2",
+          "disputeId": "939",
+          "calls": {
+            "light": [
+              {
+                "fn": "arbitratorDisputeIDToItemID",
+                "args": ["0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002", "939"],
+                "values": {
+                  "key": "0xd4ddab270792dca04fdf7470f9ba30fac3553b898ad474bf3160feff17149d1a"
+                }
+              },
+              {
+                "fn": "getItemInfo",
+                "args": ["0xd4ddab270792dca04fdf7470f9ba30fac3553b898ad474bf3160feff17149d1a"],
+                "values": {
+                  "numberOfRequests": "1"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0xd4ddab270792dca04fdf7470f9ba30fac3553b898ad474bf3160feff17149d1a", "0"],
+                "values": {
+                  "disputed": true,
+                  "disputeID": "939",
+                  "numberOfRounds": "3",
+                  "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002"
+                }
+              },
+              {
+                "fn": "getRoundInfo",
+                "args": ["0xd4ddab270792dca04fdf7470f9ba30fac3553b898ad474bf3160feff17149d1a", "0", "2"],
+                "values": {
+                  "hasPaid": [false, false, true]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "label": "poh-v2 402",
+          "arbitrable": "0xa4ac94c4fa65bb352efa30e3408e64f72ac857bc",
+          "disputeId": "402",
+          "calls": {
+            "poh-v2": [
+              {
+                "fn": "disputeIdToData",
+                "args": ["0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002", "402"],
+                "values": {
+                  "requestId": "0",
+                  "challengeId": "0",
+                  "humanityId": "0xfd1af514b8b2bf00d1999497668bff26ccdf4c8a"
+                }
+              },
+              {
+                "fn": "arbitratorDataHistory",
+                "args": ["0"],
+                "values": {
+                  "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002"
+                }
+              }
+            ]
+          },
+          "storage": [
+            {
+              "slot": "0xe7a48202d1f9fd67fe5dc49543bc67a3d9ad5ee70040b53bb675313c14b8e554",
+              "word": "0x0000000000000000000000000000000000000000000000000000000000000004"
+            },
+            {
+              "slot": "0xe570d20a1cead4928f9ef704964ed359d4abd34b0e25cb9df1649aa2ddd7fb47",
+              "word": "0xfd1af514b8b2bf00d1999497668bff26ccdf4c8a000000010001000001010300"
+            },
+            {
+              "slot": "0x08106cea36ac9fdb0f13e17351df5a5e3806144ffecfbc1a1dd9e7e0e90b9305",
+              "word": "0x000000000000000000c8747abc6a88bbd20939d83e36295b4defb3989c020001"
+            },
+            {
+              "slot": "0x08106cea36ac9fdb0f13e17351df5a5e3806144ffecfbc1a1dd9e7e0e90b9306",
+              "word": "0x0000000000000000000000000000000000000000000000000000000000000192"
+            },
+            {
+              "slot": "0x5aa102a3df19884369ef2a68a62c188062a1427f2137525b8012a76055f884af",
+              "word": "0x0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          ]
+        },
+        {
+          "label": "light 553",
+          "arbitrable": "0x66260c69d03837016d88c9877e61e08ef74c59f2",
+          "disputeId": "553",
+          "calls": {
+            "light": [
+              {
+                "fn": "arbitratorDisputeIDToItemID",
+                "args": ["0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002", "553"],
+                "values": {
+                  "key": "0x0000000000000000000000000000000000000000000000000000000000000000"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "chainId": 11155111,
+      "readAtBlock": 12018700,
+      "arbitrator": "0x90992fb4e15ce0c59aeffb376460fda4ee19c879",
+      "cases": [
+        {
+          "label": "poh-v2 280",
+          "arbitrable": "0x44297c64e651e07e83215997d89aee297a0afeba",
+          "disputeId": "280",
+          "calls": {
+            "poh-v2": [
+              {
+                "fn": "disputeIdToData",
+                "args": ["0x90992fb4e15ce0c59aeffb376460fda4ee19c879", "280"],
+                "values": {
+                  "requestId": "23",
+                  "challengeId": "0",
+                  "humanityId": "0xcaf9ade1fddf1b31d490a4629ada638d104e9543"
+                }
+              },
+              {
+                "fn": "arbitratorDataHistory",
+                "args": ["3"],
+                "values": {
+                  "arbitrator": "0x90992fb4e15ce0c59aeffb376460fda4ee19c879"
+                }
+              }
+            ]
+          },
+          "storage": [
+            {
+              "slot": "0xeb226a33ea3194cba93b9de6ff66e5c5b179e57eb92363d2a024c99c5f060cde",
+              "word": "0x0000000000000000000000000000000000000000000000000000000000000020"
+            },
+            {
+              "slot": "0x37d1f6c0d11e1cfd0db5fb9731fddeb202d1498e36f6f7a29bd1a6f16e9b4425",
+              "word": "0xad1af42edecdec52f5ad369ea7643dc82498aad8000000010001000302000300"
+            },
+            {
+              "slot": "0x4ac57aafdf21cb4ae9967878574e42f3c4d8b56c6169bdc5e0ea710a9c140e5a",
+              "word": "0x000000000000000000795b9b71db08deda866579adfee38b8928c91ad5010001"
+            },
+            {
+              "slot": "0x4ac57aafdf21cb4ae9967878574e42f3c4d8b56c6169bdc5e0ea710a9c140e5b",
+              "word": "0x0000000000000000000000000000000000000000000000000000000000000118"
+            },
+            {
+              "slot": "0x5686e5e1f217127464120b34ccaa65b08cc63231344892bcd257863bb6bd63e8",
+              "word": "0x0000000000000000000000000000000000000000000000000000000000000001"
+            }
+          ]
+        },
+        {
+          "label": "poh-v2 42",
+          "arbitrable": "0x29deff3dbef6f79ef20d3fe4f9cfa0547accec0d",
+          "disputeId": "42",
+          "calls": {
+            "poh-v2": [
+              {
+                "fn": "disputeIdToData",
+                "args": ["0x90992fb4e15ce0c59aeffb376460fda4ee19c879", "42"],
+                "values": {
+                  "requestId": "1",
+                  "challengeId": "0",
+                  "humanityId": "0xc27519cb10d7d921d7e50926577ce0807e8e6438"
+                }
+              }
+            ]
+          },
+          "storage": [
+            {
+              "slot": "0x4f91e2924562b82a31e830b115bd508e7535ec0d717eee675cf1d08dc6a26de6",
+              "word": "0x0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -139,24 +139,6 @@ export const idrV1Abi = [
   },
 ] as const satisfies Abi;
 
-/**
- * The two `fundAppeal` overloads of the `idr-legacy` family. `(uint256,uint256)` is the IDisputeResolver one;
- * `(uint256,uint8)` is the older resolver proxy's (verified source of `0x135c5735…`, the party as a `uint8`).
- */
-export const idrLegacyFundAppealAbi = [
-  idrFundAppeal,
-  {
-    type: "function",
-    name: "fundAppeal",
-    stateMutability: "payable",
-    inputs: [
-      { name: "_localDisputeID", type: "uint256" },
-      { name: "_side", type: "uint8" },
-    ],
-    outputs: [],
-  },
-] as const satisfies Abi;
-
 /** Escrow V1, `MultipleArbitrableTokenTransaction` (`@kleros/kleros-interaction`). */
 export const escrowV1Abi = [
   {

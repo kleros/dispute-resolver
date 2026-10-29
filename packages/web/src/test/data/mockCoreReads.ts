@@ -25,6 +25,7 @@ export async function mockCoreReads(importOriginal: () => Promise<unknown>): Pro
     loadEvidence: vi.fn(),
     readDisputeDetails: vi.fn(),
     readExecutedRuling: vi.fn(),
+    readProductFunding: vi.fn(),
     readMultipliers: vi.fn(),
     readRoundFunding: vi.fn(),
     readWithdrawable: vi.fn(),

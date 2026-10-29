@@ -8,8 +8,6 @@ import { rpcError } from "../test/rpc/testHelpers";
 const ACCOUNT: Address = "0x00000000000000000000000000000000000000a1";
 /** The mainnet ArbitrableProxy: the chain table's own, so its failure text may be shown. */
 const KNOWN: Address = "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf";
-/** The poh.eth governor: known only as a verified arbitrable. */
-const VERIFIED: Address = "0x327a29fce0a6490e4236240be176daa282eccfdf";
 const UNKNOWN: Address = "0x00000000000000000000000000000000000000dd";
 
 function fundAppeal(address: Address, chainId = 1, value = 5n): WriteCall {
@@ -83,11 +81,9 @@ describe("simulateWrite", () => {
     expect(await simulateWrite(client, fundAppeal(KNOWN), ACCOUNT)).toEqual({ status: "reverted", reason: "Appeal period is over." });
   });
 
-  it("a revert of a verified arbitrable carries the contract's reason on its own chain", async () => {
+  it("the chain's own contract's address called on another chain never carries the contract's own text", async () => {
     const { client } = node({ call: revert() });
-    expect(await simulateWrite(client, fundAppeal(VERIFIED, 1), ACCOUNT)).toEqual({ status: "reverted", reason: "Appeal period is over." });
-    const elsewhere = await simulateWrite(node({ call: revert() }).client, fundAppeal(VERIFIED, 100), ACCOUNT);
-    expect(elsewhere).toEqual({ status: "reverted", reason: null });
+    expect(await simulateWrite(client, fundAppeal(KNOWN, 100), ACCOUNT)).toEqual({ status: "reverted", reason: null });
   });
 
   it("a revert of any other contract never carries the contract's own text", async () => {

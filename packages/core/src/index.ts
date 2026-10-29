@@ -33,6 +33,7 @@ export { buildEvidenceDocument, evidenceScanStart, loadEvidence, readDisputeEven
 export {
   buildDecision,
   buildDisputeView,
+  decisionNeedsFunding,
   deriveCompatibility,
   listCourts,
   listOngoingDisputes,
@@ -40,7 +41,6 @@ export {
   parseDisputeId,
   readDisputeDetails,
   readExecutedRuling,
-  zeroRulingReason,
 } from "./disputes";
 export {
   buildAppealPanel,
@@ -56,6 +56,7 @@ export {
   roundsToScan,
   type EnteredAnswerFunding,
 } from "./appeals";
+export { readProductFunding, readsProductFunding } from "./products";
 export { CREATE_LIMITS, buildCreatedMetaEvidence, disputeIdFromReceipt, encodeExtraData, numberOfRulingOptions, readArbitrationCost, validateCreateInput } from "./create";
 export {
   buildCreateDisputeCall,

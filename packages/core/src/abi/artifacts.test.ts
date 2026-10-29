@@ -7,7 +7,6 @@ import {
   erc792Abi,
   escrowV1Abi,
   governorAbi,
-  idrLegacyFundAppealAbi,
   idrV1Abi,
   idrV2Abi,
   klerosLiquidAbi,
@@ -51,7 +50,6 @@ const CASES: readonly AbiCase[] = [
       fn("disputes(uint256)", ARTIFACTS.klerosLiquid),
       fn("getDispute(uint256)", ARTIFACTS.klerosLiquid),
       fn("currentRuling(uint256)", ARTIFACTS.klerosLiquid),
-      fn("getVoteCounter(uint256,uint256)", ARTIFACTS.klerosLiquid),
       fn("appealPeriod(uint256)", ARTIFACTS.klerosLiquid),
       fn("appealCost(uint256,bytes)", ARTIFACTS.klerosLiquid),
       fn("arbitrationCost(bytes)", ARTIFACTS.klerosLiquid),
@@ -88,11 +86,6 @@ const CASES: readonly AbiCase[] = [
     name: "idrV1Abi",
     abi: idrV1Abi,
     entries: [fn("getTotalWithdrawableAmount(uint256,address,uint256[])", ARTIFACTS.idrV1), fn("withdrawFeesAndRewardsForAllRounds(uint256,address,uint256[])", ARTIFACTS.idrV1)],
-  },
-  {
-    name: "idrLegacyFundAppealAbi",
-    abi: idrLegacyFundAppealAbi,
-    entries: [fn("fundAppeal(uint256,uint256)", ARTIFACTS.idrV2, ARTIFACTS.idrV1, ARTIFACTS.arbitrableProxy), fn("fundAppeal(uint256,uint8)", VERIFIED.legacyResolver.abi)],
   },
   {
     name: "escrowV1Abi",

@@ -85,17 +85,26 @@ describe("useCaseRefresh", () => {
     expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
   });
 
-  it("an appeal refresh reads the executed ruling of an executed dispute again", async () => {
+  it("an appeal refresh reads the executed ruling of an executed dispute again, and the arbitrable's own funding record the decision depends on", async () => {
     programReads();
     vi.mocked(core.lookupDispute).mockResolvedValue(testFoundLookup({ period: 4, ruled: true }));
-    vi.mocked(core.readWithdrawable).mockResolvedValue({ status: "nothing" });
+    vi.mocked(core.detectFamily).mockResolvedValue(
+      testFamily({
+        family: "view-only",
+        writeFamily: "view-only",
+        capabilities: { localId: "none", evidence: { kind: "none" }, appeal: { kind: "none" }, withdraw: { kind: "none" } },
+      }),
+    );
+    vi.mocked(core.readExecutedRuling).mockResolvedValue({ status: "executed", ruling: 2n });
+    vi.mocked(core.readProductFunding).mockResolvedValue({ ok: true, value: [2n] });
     const { result } = renderCaseWithRefresh();
     await settled(result);
     await waitFor(() => {
-      expect(core.readExecutedRuling).toHaveBeenCalledTimes(1);
+      expect(core.readProductFunding).toHaveBeenCalledTimes(1);
     });
     await act(() => result.current.refresh("appeal"));
     expect(core.readExecutedRuling).toHaveBeenCalledTimes(2);
+    expect(core.readProductFunding).toHaveBeenCalledTimes(2);
   });
 
   it("a refresh after a mined funding reads the details, the round's funding from the Dispute event, the evidence and the chain time again", async () => {

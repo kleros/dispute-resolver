@@ -34,10 +34,11 @@ export const queryKeys = {
   accountCode: (chainId: number, account: Address) => ["dr", "accountCode", chainId, account] as const,
   chainTime: (chainId: number) => ["dr", "chainTime", chainId] as const,
   executedRuling: (chainId: number, disputeId: bigint, fromBlock: bigint) => ["dr", "executedRuling", chainId, disputeId.toString(), fromBlock.toString()] as const,
+  productFunding: (chainId: number, disputeId: bigint) => ["dr", "productFunding", chainId, disputeId.toString()] as const,
 } as const;
 
 /** Prefixes for invalidating every key of one dispute and kind, whatever the rest of the key. */
-export const disputeKeyPrefix = (kind: "lookup" | "evidence" | "details" | "funding" | "withdrawable" | "executedRuling", chainId: number, disputeId: bigint) =>
+export const disputeKeyPrefix = (kind: "lookup" | "evidence" | "details" | "funding" | "withdrawable" | "executedRuling" | "productFunding", chainId: number, disputeId: bigint) =>
   ["dr", kind, chainId, disputeId.toString()] as const;
 
 /**

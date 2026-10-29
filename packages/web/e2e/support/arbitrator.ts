@@ -34,18 +34,16 @@ interface DisputeStruct {
   readonly lastPeriodChange: bigint;
   /** Whether the arbitrator executed the ruling (default false). */
   readonly ruled?: boolean;
-  /** Default 2. */
-  readonly numberOfChoices?: bigint;
 }
 
 export function isDisputesCall(call: RpcCall, arbitrator: string, id: bigint): boolean {
   return callTarget(call) === arbitrator && callData(call) === encodeFunctionData({ abi: ARBITRATOR_ABI, functionName: "disputes", args: [id] });
 }
 
-/** The `disputes(id)` answer of a dispute in court 0, with two options unless the spec gives another count. */
-export function disputeStruct({ arbitrated, period, lastPeriodChange, ruled = false, numberOfChoices = 2n }: DisputeStruct): RpcResult {
+/** The `disputes(id)` answer of a dispute in court 0 with two options. */
+export function disputeStruct({ arbitrated, period, lastPeriodChange, ruled = false }: DisputeStruct): RpcResult {
   const outputs = ARBITRATOR_ABI.find((item) => item.type === "function")?.outputs ?? [];
-  return { result: encodeAbiParameters(outputs, [0n, arbitrated, numberOfChoices, period, lastPeriodChange, 3n, 0n, ruled]) };
+  return { result: encodeAbiParameters(outputs, [0n, arbitrated, 2n, period, lastPeriodChange, 3n, 0n, ruled]) };
 }
 
 const ARBITRABLE_ABI = parseAbi(["event Ruling(address indexed _arbitrator, uint256 indexed _disputeID, uint256 _ruling)"]);
@@ -151,7 +149,6 @@ const CASE_DETAILS_ABI = parseAbi([
   "function courts(uint256) view returns (uint96 parent, bool hiddenVotes, uint256 minStake, uint256 alpha, uint256 feeForJuror, uint256 jurorsForCourtJump)",
   "function getDispute(uint256 _disputeID) view returns (uint256[] votesLengths, uint256[] tokensAtStakePerJuror, uint256[] totalFeesForJurors, uint256[] votesInEachRound, uint256[] repartitionsInEachRound, uint256[] penaltiesInEachRound)",
   "function currentRuling(uint256 _disputeID) view returns (uint256 ruling)",
-  "function getVoteCounter(uint256 _disputeID, uint256 _appeal) view returns (uint256 winningChoice, uint256[] counts, bool tied)",
   "function appealPeriod(uint256 _disputeID) view returns (uint256 start, uint256 end)",
   "function appealCost(uint256 _disputeID, bytes _extraData) view returns (uint256 cost)",
 ]);
@@ -160,26 +157,16 @@ const CASE_DETAILS_SELECTORS = new Set<string>(CASE_DETAILS_ABI.map((item) => to
 /** How Gnosis's node answers `getSubcourt(id)` past the last court (recorded, packages/core/src/rpc/failures.ts). */
 const PAST_THE_LAST_COURT_ON_GNOSIS: RpcAnswer = { error: { code: 3, message: "execution reverted" } };
 
-/** The last round's vote counter: the counts per choice, 0 first. */
-export interface VoteCounter {
-  readonly winningChoice: bigint;
-  readonly counts: readonly bigint[];
-  readonly tied: boolean;
-}
-
 interface CaseDetails {
   /** The current ruling (default 1). */
   readonly ruling?: bigint;
-  /** The first round's vote counter; unanswered without one. */
-  readonly voteCounter?: VoteCounter;
   /** The appeal period's start and end, and its cost; unanswered without them. */
   readonly appeal?: { readonly start: bigint; readonly end: bigint; readonly cost: bigint };
 }
 
 /**
  * The case page's court and dispute reads on `arbitrator` for dispute `disputeId`: a single court 0 with its periods,
- * three votes in the first round, and ruling 1 unless `details` gives another, with the vote counter and the appeal
- * period it gives. Its policy stays unanswered, so the court shows by its ID.
+ * three votes in the first round, and ruling 1 unless `details` gives another, with the appeal period it gives. Its policy stays unanswered, so the court shows by its ID.
  */
 type CaseDetailsCall = ReturnType<typeof decodeFunctionData<typeof CASE_DETAILS_ABI>>;
 
@@ -198,15 +185,12 @@ function courtAnswer(decoded: CaseDetailsCall): RpcAnswer | undefined {
 }
 
 /** The reads of the dispute itself, already checked to be about it. */
-function disputeAnswer(decoded: CaseDetailsCall, { ruling = 1n, voteCounter, appeal }: CaseDetails): RpcAnswer | undefined {
+function disputeAnswer(decoded: CaseDetailsCall, { ruling = 1n, appeal }: CaseDetails): RpcAnswer | undefined {
   switch (decoded.functionName) {
     case "getDispute":
       return { result: encodeFunctionResult({ abi: CASE_DETAILS_ABI, functionName: "getDispute", result: [[3n], [0n], [0n], [0n], [0n], [0n]] }) };
     case "currentRuling":
       return { result: encodeFunctionResult({ abi: CASE_DETAILS_ABI, functionName: "currentRuling", result: ruling }) };
-    case "getVoteCounter":
-      if (decoded.args[1] !== 0n || voteCounter === undefined) return undefined;
-      return { result: encodeFunctionResult({ abi: CASE_DETAILS_ABI, functionName: "getVoteCounter", result: [voteCounter.winningChoice, voteCounter.counts, voteCounter.tied] }) };
     case "appealPeriod":
       return appeal === undefined ? undefined : { result: encodeFunctionResult({ abi: CASE_DETAILS_ABI, functionName: "appealPeriod", result: [appeal.start, appeal.end] }) };
     case "appealCost":

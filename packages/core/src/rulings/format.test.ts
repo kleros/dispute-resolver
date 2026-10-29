@@ -24,7 +24,7 @@ function goldenDispute(chainId: number, disputeId: string): GoldenDispute {
 
 describe("formatRuling", () => {
   it("ruling 0 reads the refused text, whatever the options", () => {
-    expect(REFUSED_RULING_TEXT).toBe("invalid / refused to arbitrate / tied");
+    expect(REFUSED_RULING_TEXT).toBe("Invalid / Refused to Arbitrate / Tied");
     expect(formatRuling(0n, SELECT_YES_NO, null)).toBe(REFUSED_RULING_TEXT);
     expect(formatRuling(0n, { type: "hash" }, null)).toBe(REFUSED_RULING_TEXT);
     expect(formatRuling(0n, null, OUTCOMES)).toBe(REFUSED_RULING_TEXT);

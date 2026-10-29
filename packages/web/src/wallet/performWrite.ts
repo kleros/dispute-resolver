@@ -60,33 +60,16 @@ function sameSigner(current: Signer | undefined, checked: Signer): boolean {
   return current?.connector.uid === checked.connector.uid && current.address.toLowerCase() === checked.address.toLowerCase();
 }
 
-const ACCOUNT_CHANGED = "Your wallet's account changed while the transaction was checked. Try again.";
-
-/** What a check that did not pass ends the write with; nothing is sent after any of them. */
-function checkOutcome(result: Exclude<SimulationResult, { readonly status: "ok" }>): WriteOutcome {
-  switch (result.status) {
-    case "reverted":
-      return { phase: "refused-by-contract", reason: result.reason };
-    case "insufficient-funds":
-      return { phase: "insufficient-funds" };
-    case "unavailable":
-      return { phase: "check-failed", message: result.error.message };
-  }
-}
-
 /**
- * Checks the call against the contract through the read RPC, as `signer` would send it. Only a passing check lets the
- * write go on, and only if the wallet still holds that account afterwards; a check that throws blocks the write too.
+ * Checks the call against the contract through the read RPC, as `signer` would send it. A revert or a balance too low
+ * stops the write, and so does a wallet that no longer holds that account afterwards; a check that could not be made
+ * leaves the decision to the wallet.
  */
 async function check(environment: WriteEnvironment, call: WriteCall, signer: Signer): Promise<WriteOutcome | null> {
-  let result: SimulationResult;
-  try {
-    result = await environment.simulate(call, toRegistryAddress(signer.address));
-  } catch (error) {
-    return { phase: "check-failed", message: errorMessage(error, call.chainId) };
-  }
-  if (result.status !== "ok") return checkOutcome(result);
-  return sameSigner(currentSigner(environment.config), signer) ? null : { phase: "check-failed", message: ACCOUNT_CHANGED };
+  const result = await environment.simulate(call, toRegistryAddress(signer.address)).catch(() => null);
+  if (result?.status === "reverted") return { phase: "refused-by-contract", reason: result.reason };
+  if (result?.status === "insufficient-funds") return { phase: "insufficient-funds" };
+  return sameSigner(currentSigner(environment.config), signer) ? null : { phase: "account-changed" };
 }
 
 function explorerUrl(chainId: number, hash: Hex): string | null {
@@ -170,7 +153,7 @@ async function confirm(environment: WriteEnvironment, call: WriteCall, hash: Hex
 /**
  * The call must target the page chain, whatever the wallet state. The wallet must be on the page chain too, checked
  * from wagmi's state and again on the connector right before signing. Between the two, the call is checked against the
- * contract from the connected account, and nothing reaches the wallet unless the check passes. A user rejection is not
+ * contract from the connected account, and nothing reaches the wallet once the check stops it. A user rejection is not
  * an error. Every status goes to `report`; the final one is also returned. Never throws.
  */
 export async function performWrite(environment: WriteEnvironment, build: WriteBuild, options: WriteOptions, report: Report): Promise<WriteOutcome> {

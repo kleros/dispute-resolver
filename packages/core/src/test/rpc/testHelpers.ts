@@ -133,6 +133,13 @@ export interface FakeNodeSpec {
   readonly maxRange?: bigint;
   /** Thrown for every request of this JSON-RPC method, as the transport would. */
   readonly failing?: Readonly<Partial<Record<string, Error>>>;
+  /** `eth_getStorageAt` words keyed by `storageKey`; any other slot reads as zero, as on a node. */
+  readonly storage?: ReadonlyMap<string, Hex>;
+}
+
+/** The key a fake node files a storage word under: the contract, lowercase, and the slot as a number. */
+export function storageKey(address: string, slot: Hex): string {
+  return `${address.toLowerCase()}:${BigInt(slot).toString()}`;
 }
 
 /** Every request the fake node received. */
@@ -196,6 +203,10 @@ export function fakeNode(spec: FakeNodeSpec): { readonly client: ReadClient; rea
         requests.logs.push(logsRequest);
         if (spec.maxRange !== undefined && logsRequest.toBlock - logsRequest.fromBlock + 1n > spec.maxRange) throw rangeRefusal();
         return (spec.logs ?? []).filter((log) => matchesFilter(log, logsRequest));
+      }
+      case "eth_getStorageAt": {
+        const [address, slot] = params as [string, Hex];
+        return spec.storage?.get(storageKey(address, slot)) ?? pad("0x", { size: 32 });
       }
       case "eth_getBlockByNumber": {
         const [number] = params as [Hex];

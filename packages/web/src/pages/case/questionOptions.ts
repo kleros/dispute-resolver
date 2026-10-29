@@ -1,4 +1,4 @@
-import { asQuestionType, type QuestionType, type RulingOptions } from "@dispute-resolver/core";
+import { REFUSED_RULING_TEXT, asQuestionType, type QuestionType, type RulingOptions } from "@dispute-resolver/core";
 
 const QUESTION_TYPE_LABELS: Readonly<Record<QuestionType, string>> = {
   "single-select": "Multiple choice: single select",
@@ -52,7 +52,7 @@ function isPositional(descriptions: NonNullable<RulingOptions["descriptions"]>):
 export function votingOptions(options: RulingOptions): readonly VotingOption[] | null {
   const type = asQuestionType(options.type);
   if (type !== "single-select" && type !== "multiple-select") return null;
-  const refused = option("refused", "0", "Refuse to Arbitrate / Invalid", undefined);
+  const refused = option("refused", "0", REFUSED_RULING_TEXT, undefined);
   const titled = (options.titles ?? []).map((title, index) => option(`title-${String(index + 1)}`, String(index + 1), title, descriptionAt(options.descriptions, String(index))));
   const reserved = Object.entries(options.reserved ?? {}).map(([code, title]) =>
     option(`reserved-${code}`, shortenRulingCode(code), title, descriptionAt(options.descriptions, code)),

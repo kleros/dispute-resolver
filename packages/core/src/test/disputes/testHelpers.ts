@@ -168,9 +168,9 @@ function toExecutionRecordings(raw: unknown): ExecutionRecording[] {
 const [executionMainnet, executionGnosis] = toExecutionRecordings(executedRulings);
 if (executionMainnet === undefined || executionGnosis === undefined) throw new Error("executed-rulings.json must hold mainnet then Gnosis");
 
-/** Mainnet executed rulings and vote counters, read at block 26,293,231. */
+/** Mainnet executed rulings, read at block 26,293,231. */
 export const EXECUTION_MAINNET: ExecutionRecording = executionMainnet;
-/** Gnosis executed rulings and vote counters, read at block 48,991,089. */
+/** Gnosis executed rulings, read at block 48,991,089. */
 export const EXECUTION_GNOSIS: ExecutionRecording = executionGnosis;
 
 /** A fake node replaying an execution recording; `logs` replaces the recorded logs when given. */

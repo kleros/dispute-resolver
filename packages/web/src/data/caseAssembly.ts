@@ -2,10 +2,12 @@ import {
   buildAppealPanel,
   buildDecision,
   buildDisputeView,
+  decisionNeedsFunding,
   needsRulingOptions,
   readAppealCost,
   type AppealPanel,
   type AppealRules,
+  type ArbitratorDispute,
   type BehaviorOverride,
   type Court,
   type Decision,
@@ -45,6 +47,8 @@ export interface FoundCaseReads {
   readonly appeal: AppealReads;
   /** `null` outside execution. */
   readonly executed: SectionData<ExecutedRuling> | null;
+  /** `useProductFunding`; `null` when the round's funding is the Dispute Resolver's own read, or not needed. */
+  readonly productFunding: SectionData<readonly bigint[]> | null;
   readonly override: BehaviorOverride | undefined;
   /** The page chain's read client; `undefined` without one. */
   readonly readClient: ReadClient | undefined;
@@ -102,10 +106,25 @@ function executedRuling(section: SectionData<ExecutedRuling> | null): ExecutedRu
   return section.status === "ready" ? section.value : { status: "unread", error: section.error };
 }
 
+/** Whether the execution-period decision depends on the last round's funding, once the reads it rests on have settled. */
+export function decisionWaitsForFunding(dispute: ArbitratorDispute, details: SectionData<DisputeReads>, executedSection: SectionData<ExecutedRuling> | null): boolean {
+  const executed = executedRuling(executedSection);
+  if (details.status !== "ready" || executed === null || executed === undefined) return false;
+  const court = details.value.currentRuling;
+  return court.ok && decisionNeedsFunding(dispute, executed, court.value);
+}
+
+/** The last round's fully funded rulings: the arbitrable's own record when it is read, else the round's funding. */
+function fundedRulings(reads: FoundCaseReads): Outcome<readonly bigint[]> | null | undefined {
+  if (reads.productFunding !== null) return optionalOutcome(reads.productFunding);
+  const funding = optionalOutcome(reads.appeal.funding);
+  return funding === null || funding === undefined ? funding : mapOutcome(funding, (value) => value.fundedRulings);
+}
+
 /**
  * The decision section. It waits for the family (whose rules word it) and the meta-evidence (whose options name the
- * rulings), so its text never flickers from a fallback; in execution also for the executed ruling, and for the round's
- * funding only when that report is missing, since the funding then predicts the winner on a verified contract.
+ * rulings), so its text never flickers from a fallback; in execution also for the executed ruling, and for the last
+ * round's funding only when the outcome depends on it.
  */
 export function assembleDecision(reads: FoundCaseReads): SectionData<Decision> {
   const { dispute } = reads.lookup;
@@ -115,8 +134,7 @@ export function assembleDecision(reads: FoundCaseReads): SectionData<Decision> {
   if (details.status === "unavailable") return details;
   const executed = executedRuling(reads.executed);
   if (executed === undefined) return LOADING;
-  const needsFunding = dispute.period === 4 && executed?.status !== "executed";
-  const funding = needsFunding ? optionalOutcome(reads.appeal.funding) : null;
+  const funding = decisionWaitsForFunding(dispute, details, reads.executed) ? fundedRulings(reads) : null;
   if (funding === undefined) return LOADING;
   return fromOutcome(
     buildDecision({
@@ -124,7 +142,7 @@ export function assembleDecision(reads: FoundCaseReads): SectionData<Decision> {
       reads: details.value,
       rules: reads.rules,
       executed,
-      fundedRulings: funding === null ? null : mapOutcome(funding, (value) => value.fundedRulings),
+      fundedRulings: funding,
       metaEvidence: metaEvidence.status === "ready" ? metaEvidence.value : null,
     }),
   );

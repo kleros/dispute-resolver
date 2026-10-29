@@ -40,7 +40,7 @@ describe("QuestionPanel", () => {
     renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: { type: "single-select", titles: ["Yes", "No"], descriptions: ["Release the funds"] } })));
     expect(screen.getByText("Multiple choice: single select")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 3, name: "Voting options" })).toBeInTheDocument();
-    expect(optionLines()).toEqual(["Option 0 - Refuse to Arbitrate / Invalid", "Option 1 - Yes: Release the funds", "Option 2 - No"]);
+    expect(optionLines()).toEqual(["Option 0 - Invalid / Refused to Arbitrate / Tied", "Option 1 - Yes: Release the funds", "Option 2 - No"]);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(screen.getByText(/Note that you can only view the voting options\. Selected jurors can vote using/)).toBeInTheDocument();
     const court = screen.getByRole("link", { name: "Court" });
@@ -79,7 +79,7 @@ describe("QuestionPanel", () => {
 
   it("shows each option's title before its code on screen while the item still reads Option N - Title: description", () => {
     renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: { type: "single-select", titles: ["Yes", "No"], descriptions: ["Release the funds"] } })));
-    expect(optionLines()).toEqual(["Option 0 - Refuse to Arbitrate / Invalid", "Option 1 - Yes: Release the funds", "Option 2 - No"]);
+    expect(optionLines()).toEqual(["Option 0 - Invalid / Refused to Arbitrate / Tied", "Option 1 - Yes: Release the funds", "Option 2 - No"]);
     const item = within(screen.getByRole("list")).getAllByRole("listitem")[1];
     if (item === undefined) throw new Error("The second option is missing");
     const code = within(item).getByText("Option 1");

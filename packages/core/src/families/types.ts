@@ -1,5 +1,5 @@
 import type { Address } from "../types";
-import type { RealityProxyEntry, Settlement } from "../registry/types";
+import type { RealityProxyEntry } from "../registry/types";
 
 export type Family = "reality-proxy" | "escrow-v1" | "governor" | "idr-v2" | "idr-v1" | "idr-legacy" | "view-only";
 
@@ -62,16 +62,9 @@ export type TieDialect = "refuse-is-winner" | "shared-full-period" | "all-winner
 /** What a ruling is called on this arbitrable. */
 export type RulingNoun = "option" | "answer" | "list";
 
-/**
- * The appeal rules of an arbitrable as far as the Dispute Resolver can vouch for them. `verified` is true only when the
- * registry read the contract's code; `settlement` is `unknown` otherwise.
- */
+/** How a dispute of an arbitrable is appealed, what its sides are in a tie, and what a ruling is called on it. */
 export interface AppealRules {
   readonly route: AppealRoute;
-  readonly verified: boolean;
-  readonly settlement: Settlement;
-  /** Whether the registry read that a round ending without an appeal returns every contribution in full. */
-  readonly refundsWithoutAppeal: boolean;
   /** Route `crowdfunding` only. */
   readonly tie: TieDialect | null;
   readonly noun: RulingNoun;

@@ -1,10 +1,10 @@
 import type { FamilyDetection } from "../families/types";
 import type { Outcome, Period } from "../types";
-import { computeAppealAmounts, windowPercent } from "./amounts";
+import { computeAppealAmounts } from "./amounts";
 import { buildCrowdfundingCards } from "./cards";
 import { governorListIndex } from "./governor";
 import { fail } from "../outcome";
-import type { AppealAmounts, AppealPanel, AppealPanelInput, FundingTerms, Multipliers, WithdrawState } from "./types";
+import type { AppealAmounts, AppealPanel, AppealPanelInput, WithdrawState } from "./types";
 
 const HIDDEN: AppealPanel = { kind: "hidden" };
 
@@ -17,7 +17,7 @@ function required<T>(read: Outcome<T> | null, what: string): Outcome<T> {
 function escrowAppeal(input: AppealPanelInput): AppealPanel {
   const appealInfo = required(input.appealInfo, "The appeal cost");
   if (!appealInfo.ok) return { kind: "fees-unavailable", error: appealInfo.error };
-  return { kind: "escrow-appeal", appealCost: appealInfo.value.appealCost, deadline: appealInfo.value.appealPeriodEnd, verified: input.rules.verified };
+  return { kind: "escrow-appeal", appealCost: appealInfo.value.appealCost, deadline: appealInfo.value.appealPeriodEnd };
 }
 
 /**
@@ -30,11 +30,6 @@ function cardAmounts(amounts: AppealAmounts, dialect: "idr" | "governor", curren
 }
 
 const NO_SHARED_MULTIPLIER = "The governor's shared multiplier could not be read, so the deposits for a tied ruling are unknown.";
-
-function fundingTerms(input: AppealPanelInput, tie: FundingTerms["tie"], amounts: AppealAmounts, appealPeriodEnd: number, multipliers: Multipliers): FundingTerms {
-  const { verified, settlement, refundsWithoutAppeal, noun } = input.rules;
-  return { verified, settlement, refundsWithoutAppeal, noun, tie, appealPeriodEnd, loserDeadline: amounts.loser.deadline, loserWindowPercent: windowPercent(multipliers) };
-}
 
 /**
  * The crowdfunding cards when the appeal cost and period, the multipliers, the round's funding and the current ruling
@@ -64,7 +59,8 @@ function crowdfunding(input: AppealPanelInput, dialect: "idr" | "governor"): App
   });
   // A governor's `fundAppeal(listIndex)` funds list `ruling − 1`: ruling 0 names no list, so it could never be funded.
   const cards = dialect === "governor" ? set.cards.filter((card) => governorListIndex(card.code) !== null) : set.cards;
-  return { kind: "crowdfunding", dialect, ...set, cards, terms: fundingTerms(input, tie, amounts, appealInfo.value.appealPeriodEnd, multipliers.value) };
+  const terms = { noun: input.rules.noun, tie, appealPeriodEnd: appealInfo.value.appealPeriodEnd, loserDeadline: amounts.loser.deadline };
+  return { kind: "crowdfunding", dialect, ...set, cards, terms };
 }
 
 /** The execution-period withdraw panel; a state that was not read is unavailable, never empty. */

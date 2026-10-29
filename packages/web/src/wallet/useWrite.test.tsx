@@ -252,18 +252,19 @@ describe("useWrite pre-flight check", () => {
     expect(writeContractMock).not.toHaveBeenCalled();
   });
 
-  it("a check that could not be made sends nothing and says why", async () => {
-    const latest = renderWriteWithNotice(
-      await createConnectedTestWallet(),
-      checkAnswering({ status: "unavailable", error: { code: "rpc-error", message: "This network's data is unavailable." } }),
-    );
+  it.each([
+    [
+      "answers that it could not check",
+      () => Promise.resolve<SimulationResult>({ status: "unavailable", error: { code: "rpc-error", message: "This network's data is unavailable." } }),
+    ],
+    ["throws", () => Promise.reject(new Error("socket hang up"))],
+  ] as const)("a check that %s still opens the wallet", async (_case, simulate: CoreDeps["simulate"]) => {
+    const { result } = renderWrite(await createConnectedTestWallet(), undefined, vi.fn(simulate));
     await act(async () => {
-      await latest().execute(testWriteBuild(1), { pageChainId: 1 });
+      await result.current.execute(testWriteBuild(1), { pageChainId: 1 });
     });
-    expect(latest().status).toEqual({ phase: "check-failed", message: "This network's data is unavailable." });
-    expect(screen.getByText("Transaction not checked")).toBeInTheDocument();
-    expect(screen.getByText("The transaction could not be checked against the contract, so nothing was sent. This network's data is unavailable.")).toBeInTheDocument();
-    expect(writeContractMock).not.toHaveBeenCalled();
+    expect(writeContractMock).toHaveBeenCalledTimes(1);
+    expect(result.current.status.phase).toBe("mined");
   });
 
   it("says it is checking while the check runs", async () => {
@@ -289,17 +290,22 @@ describe("useWrite pre-flight check", () => {
     expect(writeContractMock).toHaveBeenCalledTimes(1);
   });
 
-  it("a wallet that switches account during the check sends nothing", async () => {
+  it.each([
+    ["passed", { status: "ok" }],
+    ["could not be made", { status: "unavailable", error: { code: "rpc-error", message: "This network's data is unavailable." } }],
+  ] as const)("a wallet that switches account during a check that %s sends nothing and says why", async (_case, answer: SimulationResult) => {
     const wallet = await createConnectedTestWallet();
     const simulate = vi.fn<CoreDeps["simulate"]>(() => {
       wallet.changeAccount("0x00000000000000000000000000000000000B0b00");
-      return Promise.resolve({ status: "ok" });
+      return Promise.resolve(answer);
     });
-    const { result } = renderWrite(wallet, undefined, simulate);
+    const latest = renderWriteWithNotice(wallet, simulate);
     await act(async () => {
-      await result.current.execute(testWriteBuild(1), { pageChainId: 1 });
+      await latest().execute(testWriteBuild(1), { pageChainId: 1 });
     });
-    expect(result.current.status).toEqual({ phase: "check-failed", message: "Your wallet's account changed while the transaction was checked. Try again." });
+    expect(latest().status).toEqual({ phase: "account-changed" });
+    expect(await screen.findByText("Transaction not sent")).toBeInTheDocument();
+    expect(screen.getByText("Your wallet's account changed while the transaction was checked. Nothing was sent. Try again.")).toBeInTheDocument();
     expect(writeContractMock).not.toHaveBeenCalled();
   });
 

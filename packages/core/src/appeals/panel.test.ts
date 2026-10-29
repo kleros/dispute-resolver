@@ -138,14 +138,8 @@ describe("buildAppealPanel", () => {
       kind: "escrow-appeal",
       appealCost: 1_000n,
       deadline: 300,
-      verified: false,
     });
     expect(buildAppealPanel(input(family("escrow-v1"), 4, { withdraw: null }))).toEqual({ kind: "escrow-ended" });
-  });
-
-  it("says whether an escrow's rules were verified, since only verified code takes an appeal past the period's end", async () => {
-    const escrow = await recordedDetection(1, "0xe2dd8cce2c33a04215074adb4b5820b765d8ed9d");
-    expect(buildAppealPanel(input(escrow, 3, { multipliers: null, funding: null }))).toMatchObject({ kind: "escrow-appeal", verified: true });
   });
 
   it("shows the fees as unavailable for Escrow V1 without the appeal cost", () => {
@@ -201,20 +195,14 @@ describe("buildAppealPanel", () => {
     expect(buildAppealPanel(input(governor, 3, { currentRuling: ok(1n) })).kind).toBe("crowdfunding");
   });
 
-  it("terms say whether the contract is verified, and carry the tie only when the current ruling is 0", async () => {
+  it("terms give the noun, the appeal period end, the other rulings' deadline from the live multipliers, and the tie only when the current ruling is 0", async () => {
     const terms = (panel: ReturnType<typeof buildAppealPanel>) => (panel.kind === "crowdfunding" ? panel.terms : null);
-    expect(terms(buildAppealPanel(input(family("idr-v2"), 3)))).toMatchObject({ verified: false, settlement: "unknown", refundsWithoutAppeal: false, noun: "option", tie: null });
-    const proxy = await recordedDetection(1, "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf");
-    expect(terms(buildAppealPanel(input(proxy, 3)))).toMatchObject({ verified: true, settlement: "sole-funded-wins", refundsWithoutAppeal: true, tie: null });
-    expect(terms(buildAppealPanel(input(proxy, 3, { currentRuling: ok(0n) })))).toMatchObject({ verified: true, tie: "refuse-is-winner" });
+    const quarter = { multipliers: ok({ ...MULTIPLIERS, loserAppealPeriodMultiplier: 2_500n }) };
+    expect(terms(buildAppealPanel(input(family("idr-v2"), 3, quarter)))).toEqual({ noun: "option", tie: null, appealPeriodEnd: 300, loserDeadline: 150 });
+    expect(terms(buildAppealPanel(input(family("idr-v2"), 3, { currentRuling: ok(0n) })))).toMatchObject({ tie: "refuse-is-winner" });
     const governor = await recordedDetection(1, "0x327a29fce0a6490e4236240be176daa282eccfdf");
     const governorTie = buildAppealPanel(input(governor, 3, { currentRuling: ok(0n), multipliers: ok({ ...MULTIPLIERS, sharedMultiplier: 10_000n }) }));
     expect(terms(governorTie)).toMatchObject({ noun: "list", tie: "shared-full-period" });
-  });
-
-  it("terms state the appeal period end, the losing side's deadline and its window from the live multipliers", () => {
-    const panel = buildAppealPanel(input(family("idr-v2"), 3, { multipliers: ok({ ...MULTIPLIERS, loserAppealPeriodMultiplier: 2_500n }) }));
-    expect(panel).toMatchObject({ kind: "crowdfunding", terms: { appealPeriodEnd: 300, loserDeadline: 150, loserWindowPercent: 25 } });
   });
 
   it("shows view-only disputes the arbitrable-application note in the appeal period and no panel in execution", () => {

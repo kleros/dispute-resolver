@@ -1,39 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { describeAppealRules } from "../families";
-import type { AppealRules } from "../families/types";
+import type { AppealRoute, AppealRules } from "../families/types";
 import type { MetaEvidence, MetaEvidenceResult } from "../metaEvidence/types";
-import { REGISTRY } from "../registry";
 import type { Outcome } from "../types";
-import { buildDecision, deriveCompatibility, lookupDispute, readDisputeDetails } from ".";
-import type { ArbitratorDispute, Compatibility, DisputeReads, ExecutedRuling, LocalIdResolution } from "./types";
-import { EXECUTION_GNOSIS, EXECUTION_MAINNET, executionNode, fakeClient, recordedDetection } from "../test/disputes/testHelpers";
-import type { ExecutionRecording } from "../test/disputes/testHelpers";
+import { buildDecision, decisionNeedsFunding, deriveCompatibility } from ".";
+import type { ArbitratorDispute, Compatibility, Decision, DisputeReads, ExecutedRuling, LocalIdResolution } from "./types";
+import { recordedDetection } from "../test/disputes/testHelpers";
+import { testBinding } from "../test/appeals/testHelpers";
 
 const RESOLVED: LocalIdResolution = { kind: "local-id", value: 0n };
-const REFUSED = "invalid / refused to arbitrate / tied";
+const ARBITRABLE = "0x00000000000000000000000000000000000000dd";
+const DISPUTE: ArbitratorDispute = { id: 7n, subcourtId: 0n, arbitrated: ARBITRABLE, numberOfChoices: 2n, period: 4, lastPeriodChange: 0, ruled: true };
+const RULES: AppealRules = { route: "arbitrable", tie: null, noun: "option" };
+const ok = <T>(value: T): Outcome<T> => ({ ok: true, value });
+const NOT_READ: Outcome<never> = { ok: false, error: { code: "rpc-error", message: "Could not read: down" } };
 
-/** What the Dispute Resolver knows of a contract matched by nothing but its view-only bytecode. */
-const VIEW_ONLY: AppealRules = { route: "arbitrable", verified: false, settlement: "unknown", refundsWithoutAppeal: false, tie: null, noun: "option" };
-/** Selector-matched crowdfunding the registry has not verified. */
-const UNVERIFIED_CROWDFUNDING: AppealRules = {
-  route: "crowdfunding",
-  verified: false,
-  settlement: "unknown",
-  refundsWithoutAppeal: false,
-  tie: "refuse-is-winner",
-  noun: "option",
-};
-
-async function verifiedRules(chainId: number, address: string): Promise<AppealRules> {
-  const rules = describeAppealRules(REGISTRY, await recordedDetection(chainId, address));
-  expect(rules.verified).toBe(true);
-  return rules;
+function reads(currentRuling: Outcome<bigint>): DisputeReads {
+  return {
+    dispute: DISPUTE,
+    binding: testBinding({ disputeId: DISPUTE.id, arbitrated: ARBITRABLE }),
+    votesLengths: ok([3n]),
+    currentRuling,
+    appealDecisions: ok([]),
+    appealInfo: null,
+    localId: { kind: "not-applicable" },
+  };
 }
 
-const PROXY_RULES = () => verifiedRules(1, "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf");
-
-function metaEvidenceValue(rulingOptions: MetaEvidence["rulingOptions"]): MetaEvidence {
-  return {
+function metaEvidence(rulingOptions: MetaEvidence["rulingOptions"], status: "ok" | "invalid" = "ok"): MetaEvidenceResult {
+  const value: MetaEvidence = {
     title: "Question",
     description: "",
     question: "Question?",
@@ -50,295 +44,122 @@ function metaEvidenceValue(rulingOptions: MetaEvidence["rulingOptions"]): MetaEv
     displayParamsVersion: null,
     realityQuestion: null,
   };
-}
-
-function okResult(metaEvidence: MetaEvidence): MetaEvidenceResult {
+  if (status === "invalid") return { status, reason: "script-not-allowlisted", metaEvidence: value };
   return {
-    status: "ok",
-    metaEvidence,
+    status,
+    metaEvidence: value,
     uri: "/ipfs/QmZZHwJEYi6YFrhSvbDYXuBDT9vC9eCdK7gLaRwP1bYBDP",
-    fileUrl: "https://cdn.kleros.link/ipfs/QmZZHwJEYi6YFrhSvbDYXuBDT9vC9eCdK7gLaRwP1bYBDP",
+    fileUrl: "",
     script: { ran: false, reason: "no-script" },
     source: { kind: "locator", event: "not-read" },
   };
 }
 
-function metaEvidence(titles: readonly string[]): MetaEvidenceResult {
-  return okResult(metaEvidenceValue({ type: "single-select", titles }));
+const YES_NO = metaEvidence({ type: "single-select", titles: ["Yes", "No"] });
+const TEXT = ["Invalid / Refused to Arbitrate / Tied", "Yes", "No"];
+const fact = (ruling: bigint) => ({ ruling, rulingText: TEXT[Number(ruling)] ?? ruling.toString() });
+
+function decide(input: {
+  readonly court?: bigint;
+  readonly period?: ArbitratorDispute["period"];
+  readonly ruled?: boolean;
+  readonly rules?: AppealRules | null;
+  readonly executed?: ExecutedRuling | null;
+  readonly funded?: Outcome<readonly bigint[]> | null;
+  readonly metaEvidence?: MetaEvidenceResult | null;
+}): Outcome<Decision> {
+  const dispute = { ...DISPUTE, period: input.period ?? 4, ruled: input.ruled ?? true };
+  return buildDecision({
+    dispute,
+    reads: { ...reads(ok(input.court ?? 1n)), dispute },
+    rules: input.rules === undefined ? RULES : input.rules,
+    executed: input.executed === undefined ? null : input.executed,
+    fundedRulings: input.funded ?? null,
+    metaEvidence: input.metaEvidence === undefined ? YES_NO : input.metaEvidence,
+  });
 }
 
-interface Recorded {
-  readonly dispute: ArbitratorDispute;
-  readonly reads: DisputeReads;
-}
+const applied = (ruling: bigint): ExecutedRuling => ({ status: "executed", ruling });
+const NONE_REPORTED: ExecutedRuling = { status: "none-reported" };
+const UNREAD: ExecutedRuling = { status: "unread", error: { code: "rpc-error", message: "Could not read the executed ruling: down" } };
+const funded = (...rulings: bigint[]) => ok(rulings);
+const jury = (court: bigint, note: string) => ({ kind: "jury-decision", court: fact(court), note });
+const winner = (ruling: bigint, court: bigint, wonBy: string) => ({ kind: "winner", winner: fact(ruling), court: fact(court), wonBy, noun: "option" });
 
-async function recordedReads(recording: ExecutionRecording, disputeId: bigint): Promise<Recorded> {
-  const { client } = fakeClient(executionNode(recording));
-  const lookup = await lookupDispute({ chainId: recording.chainId, client }, disputeId);
-  if (lookup.status !== "found") throw new Error(`dispute ${String(disputeId)} not found`);
-  const reads = await readDisputeDetails({ chainId: recording.chainId, client }, lookup, undefined, null);
-  return { dispute: lookup.dispute, reads };
-}
-
-/** A recorded dispute moved to another state: period, `ruled` and the current ruling. */
-async function withState(
-  recording: ExecutionRecording,
-  disputeId: bigint,
-  state: { readonly period?: 3 | 4; readonly ruled?: boolean; readonly ruling?: bigint },
-): Promise<Recorded> {
-  const recorded = await recordedReads(recording, disputeId);
-  const dispute: ArbitratorDispute = { ...recorded.dispute, period: state.period ?? recorded.dispute.period, ruled: state.ruled ?? recorded.dispute.ruled };
-  const currentRuling: Outcome<bigint> = state.ruling === undefined ? recorded.reads.currentRuling : { ok: true, value: state.ruling };
-  return { dispute, reads: { ...recorded.reads, dispute, currentRuling } };
-}
-
-const executed = (ruling: bigint): ExecutedRuling => ({ status: "executed", ruling });
-const UNREAD: ExecutedRuling = { status: "unread", error: { code: "rpc-error", message: "Could not read the executed ruling: HTTP request failed." } };
-const funded = (...rulings: bigint[]): Outcome<readonly bigint[]> => ({ ok: true, value: rulings });
-const NOT_FUNDED_READ: Outcome<never> = { ok: false, error: { code: "rpc-error", message: "Could not read the appeal funding." } };
-
-describe("buildDecision before execution", () => {
-  it("has no decision before the appeal period, even without the detail reads", async () => {
-    const { dispute } = await recordedReads(EXECUTION_MAINNET, 1495n);
-    for (const period of [0, 1, 2] as const) {
-      expect(buildDecision({ dispute: { ...dispute, period }, reads: null, rules: null, executed: null, fundedRulings: null, metaEvidence: null })).toEqual({
-        ok: true,
-        value: { kind: "none" },
-      });
-    }
+describe("buildDecision", () => {
+  it.each([0, 1, 2] as const)("has no decision in period %i, even without the detail reads", (period) => {
+    expect(buildDecision({ dispute: { ...DISPUTE, period }, reads: null, rules: null, executed: null, fundedRulings: null, metaEvidence: null })).toEqual(ok({ kind: "none" }));
   });
 
-  it("in the appeal period the jury decision is the current ruling, with the contract's appeal route and rules", async () => {
-    const { dispute, reads } = await withState(EXECUTION_MAINNET, 1347n, { period: 3, ruled: false, ruling: 2n });
-    const rules = await PROXY_RULES();
-    expect(buildDecision({ dispute, reads, rules, executed: null, fundedRulings: null, metaEvidence: metaEvidence(["Yes", "No"]) })).toEqual({
-      ok: true,
-      value: {
-        kind: "jury-decision",
-        jury: { ruling: 2n, rulingText: "No", zeroReason: null },
-        route: "crowdfunding",
-        verified: true,
-        settlement: "sole-funded-wins",
-        noun: "option",
-      },
-    });
+  it.each<[string, AppealRoute | null, string]>([
+    ["crowdfunded here", "crowdfunding", "appealable"],
+    ["paid here (escrow)", "escrow", "appealable"],
+    ["a funding dialect the Dispute Resolver does not support", "unsupported", "appealable"],
+    ["appealed in the arbitrable application", "arbitrable", "appealable-in-arbitrable"],
+    ["an unknown family", null, "appealable-in-arbitrable"],
+    ["an arbitrable without an appeal function", "none", "not-appealable"],
+  ])("in the appeal period shows the court's ruling and how it is appealed: %s", (_, route, note) => {
+    const rules = route === null ? null : { ...RULES, route };
+    expect(decide({ period: 3, ruled: false, court: 2n, rules })).toEqual(ok(jury(2n, note)));
   });
 
-  it.each([
-    ["a tied vote", EXECUTION_MAINNET, 1495n, "tie"],
-    ["a round nobody voted in", EXECUTION_MAINNET, 108n, "no-votes"],
-    ["a majority for refusing", EXECUTION_MAINNET, 1684n, "refused"],
-    ["a tied appeal round", EXECUTION_GNOSIS, 939n, "tie"],
-  ] as const)("gives the reason for a ruling of 0 in the appeal period: %s", async (_, recording, disputeId, reason) => {
-    const { dispute, reads } = await withState(recording, disputeId, { period: 3, ruled: false });
-    const decision = buildDecision({ dispute, reads, rules: VIEW_ONLY, executed: null, fundedRulings: null, metaEvidence: null });
-    expect(decision).toMatchObject({ ok: true, value: { kind: "jury-decision", jury: { ruling: 0n, rulingText: REFUSED, zeroReason: reason } } });
+  it.each<[string, { readonly ruled?: boolean; readonly court?: bigint; readonly executed?: ExecutedRuling | null; readonly funded?: Outcome<readonly bigint[]> }, object]>([
+    ["not executed yet, whatever was funded", { ruled: false, executed: { status: "not-executed" }, funded: funded(2n) }, jury(1n, "not-executed")],
+    ["applied the court's ruling", { executed: applied(1n), funded: funded(2n) }, winner(1n, 1n, "jury")],
+    ["applied the only fully funded option", { court: 0n, executed: applied(2n), funded: funded(2n) }, winner(2n, 0n, "default")],
+    ["applied the only fully funded option, reported funded twice", { executed: applied(2n), funded: funded(2n, 2n) }, winner(2n, 1n, "default")],
+    ["applied another ruling with nothing funded", { executed: applied(2n), funded: funded() }, winner(2n, 1n, "applied")],
+    ["applied another ruling while the court's was the one funded", { executed: applied(2n), funded: funded(1n) }, winner(2n, 1n, "applied")],
+    ["applied another ruling with two options funded", { executed: applied(2n), funded: funded(1n, 2n) }, winner(2n, 1n, "applied")],
+    ["applied another ruling whose funding was not read", { executed: applied(2n), funded: NOT_READ }, winner(2n, 1n, "applied")],
+    ["applied another ruling, no funding asked for", { executed: applied(2n) }, winner(2n, 1n, "applied")],
+    ["reported nothing while another option was the only one funded", { executed: NONE_REPORTED, funded: funded(2n) }, winner(2n, 1n, "default")],
+    ["could not be read while another option was the only one funded", { executed: UNREAD, funded: funded(2n) }, winner(2n, 1n, "default")],
+    ["has no executed-ruling read while another option was the only one funded", { executed: null, funded: funded(2n) }, winner(2n, 1n, "default")],
+    ["reported nothing while the court's ruling was the one funded", { executed: NONE_REPORTED, funded: funded(1n) }, winner(1n, 1n, "jury")],
+    ["reported nothing with nothing funded", { executed: NONE_REPORTED, funded: funded() }, winner(1n, 1n, "jury")],
+    ["could not be read, nor its funding", { executed: UNREAD, funded: NOT_READ }, winner(1n, 1n, "jury")],
+    ["could not be read while a ruling outside the options was funded", { executed: UNREAD, funded: funded(3n) }, winner(1n, 1n, "jury")],
+    ["reported a ruling that is not an option", { executed: { status: "out-of-range", ruling: 7n }, funded: funded(2n) }, jury(1n, "out-of-range")],
+    ["reported conflicting rulings", { executed: { status: "inconsistent" }, funded: funded(2n) }, jury(1n, "inconsistent")],
+  ])("in execution, when the arbitrable %s", (_, input, expected) => {
+    expect(decide(input)).toEqual(ok(expected));
   });
 
-  it("gives no reason for a ruling of 0 when the vote counter could not be read", async () => {
-    const { dispute, reads } = await withState(EXECUTION_MAINNET, 1495n, { period: 3, ruled: false });
-    const unread: DisputeReads = { ...reads, lastRoundVotes: { ok: false, error: { code: "rpc-error", message: "down" } } };
-    expect(buildDecision({ dispute, reads: unread, rules: VIEW_ONLY, executed: null, fundedRulings: null, metaEvidence: null })).toMatchObject({
-      ok: true,
-      value: { jury: { ruling: 0n, zeroReason: null } },
-    });
+  it("names the court's ruling 0 Invalid / Refused to Arbitrate / Tied, and takes the noun from the appeal rules", () => {
+    const answer = decide({ court: 0n, executed: applied(2n), funded: funded(2n), rules: { ...RULES, noun: "answer" } });
+    expect(answer).toMatchObject(ok({ court: { ruling: 0n, rulingText: "Invalid / Refused to Arbitrate / Tied" }, noun: "answer" }));
+    expect(decide({ executed: applied(2n), funded: funded(2n), rules: null })).toMatchObject(ok({ noun: "option" }));
   });
 
-  it("an unknown family still has a jury decision, with no appeal route and no verified rules", async () => {
-    const { dispute, reads } = await withState(EXECUTION_MAINNET, 1347n, { period: 3, ruled: false, ruling: 1n });
-    expect(buildDecision({ dispute, reads, rules: null, executed: null, fundedRulings: null, metaEvidence: null })).toEqual({
-      ok: true,
-      value: { kind: "jury-decision", jury: { ruling: 1n, rulingText: "1", zeroReason: null }, route: null, verified: false, settlement: "unknown", noun: "option" },
-    });
+  it("names a ruling with the dispute's options, the placeholder of an invalid meta-evidence, or its decimal value", () => {
+    const text = (metaEvidenceResult: MetaEvidenceResult | null) => {
+      const decision = decide({ executed: applied(3n), metaEvidence: metaEvidenceResult });
+      return decision.ok && decision.value.kind === "winner" ? decision.value.winner.rulingText : null;
+    };
+    expect(text(metaEvidence({ type: "multiple-select", titles: ["A", "B", "C"] }))).toBe("B");
+    expect(text(metaEvidence({ type: "single-select", titles: ["Yes", "No", "Maybe"] }, "invalid"))).toBe("Maybe");
+    expect(text(null)).toBe("3");
   });
 
-  it("a failed current ruling degrades the decision only, never reading as ruling 0", async () => {
-    const { dispute, reads } = await withState(EXECUTION_MAINNET, 1495n, { period: 3 });
-    const failed: Outcome<never> = { ok: false, error: { code: "rpc-error", message: "Could not read the current ruling: header not found." } };
-    expect(buildDecision({ dispute, reads: { ...reads, currentRuling: failed }, rules: VIEW_ONLY, executed: null, fundedRulings: null, metaEvidence: null })).toEqual(failed);
-  });
-
-  it("details that were not read degrade the decision", async () => {
-    const { dispute } = await withState(EXECUTION_MAINNET, 1495n, { period: 3 });
-    expect(buildDecision({ dispute, reads: null, rules: VIEW_ONLY, executed: null, fundedRulings: null, metaEvidence: null }).ok).toBe(false);
+  it("degrades without the detail reads or the court's ruling, never reading a failure as ruling 0", () => {
+    expect(buildDecision({ dispute: DISPUTE, reads: null, rules: RULES, executed: null, fundedRulings: null, metaEvidence: null }).ok).toBe(false);
+    expect(buildDecision({ dispute: DISPUTE, reads: reads(NOT_READ), rules: RULES, executed: applied(2n), fundedRulings: null, metaEvidence: null })).toEqual(NOT_READ);
   });
 });
 
-describe("buildDecision in execution", () => {
-  it("names the executed ruling the winner by default on a verified contract that let the only funded option win", async () => {
-    const { dispute, reads } = await recordedReads(EXECUTION_MAINNET, 199n);
-    const rules = await verifiedRules(1, "0x135c573503f70dc290b1d60fe2e7f7eb114febd6");
-    expect(buildDecision({ dispute, reads, rules, executed: executed(1n), fundedRulings: null, metaEvidence: metaEvidence(["Yes", "No"]) })).toEqual({
-      ok: true,
-      value: {
-        kind: "winner",
-        winner: { ruling: 1n, rulingText: "Yes" },
-        jury: { ruling: 0n, rulingText: REFUSED, zeroReason: "refused" },
-        wonBy: "default",
-        verified: true,
-        execution: "executed",
-        note: null,
-        noun: "option",
-      },
-    });
-  });
-
-  it("attributes a different executed ruling to the arbitrable contract when its rules are not verified", async () => {
-    const { dispute, reads } = await recordedReads(EXECUTION_GNOSIS, 939n);
-    expect(buildDecision({ dispute, reads, rules: VIEW_ONLY, executed: executed(2n), fundedRulings: null, metaEvidence: metaEvidence(["Register", "Reject"]) })).toEqual({
-      ok: true,
-      value: {
-        kind: "winner",
-        winner: { ruling: 2n, rulingText: "Reject" },
-        jury: { ruling: 0n, rulingText: REFUSED, zeroReason: "tie" },
-        wonBy: "reported",
-        verified: false,
-        execution: "executed",
-        note: null,
-        noun: "option",
-      },
-    });
-  });
-
-  it("says won by jury decision when the executed ruling is the jury's own", async () => {
-    const { dispute, reads } = await recordedReads(EXECUTION_MAINNET, 150n);
-    const rules = await verifiedRules(1, "0x594ec762b59978c97c82bc36ab493ed8b1f1f368");
-    expect(buildDecision({ dispute, reads, rules, executed: executed(0n), fundedRulings: null, metaEvidence: null })).toMatchObject({
-      ok: true,
-      value: { kind: "winner", winner: { ruling: 0n }, wonBy: "jury", verified: true, execution: "executed", note: null, noun: "answer" },
-    });
-  });
-
-  it("attributes an unverified contract's report of the jury's own ruling to the contract, never to the jury", async () => {
-    const { dispute, reads } = await withState(EXECUTION_MAINNET, 1347n, { ruling: 2n });
-    expect(buildDecision({ dispute, reads, rules: VIEW_ONLY, executed: executed(2n), fundedRulings: null, metaEvidence: null })).toMatchObject({
-      ok: true,
-      value: { kind: "winner", winner: { ruling: 2n }, wonBy: "reported", verified: false, execution: "executed" },
-    });
-    const crowdfunding = buildDecision({ dispute, reads, rules: UNVERIFIED_CROWDFUNDING, executed: executed(2n), fundedRulings: funded(), metaEvidence: null });
-    expect(crowdfunding).toMatchObject({ ok: true, value: { kind: "winner", wonBy: "reported", verified: false } });
-  });
-
-  it("an unverified contract that reported the jury's ruling of 0 before the court ruled is still only reporting it", async () => {
-    const { dispute, reads } = await recordedReads(EXECUTION_GNOSIS, 939n);
-    expect(buildDecision({ dispute, reads, rules: VIEW_ONLY, executed: executed(0n), fundedRulings: null, metaEvidence: metaEvidence(["Register", "Reject"]) })).toMatchObject({
-      ok: true,
-      value: { kind: "winner", winner: { ruling: 0n }, jury: { ruling: 0n, zeroReason: "tie" }, wonBy: "reported", verified: false },
-    });
-  });
-
-  it("attributes an unexpected ruling to the contract even when its rules are verified and the jury's ruling should stand", async () => {
-    const { dispute, reads } = await withState(EXECUTION_MAINNET, 1347n, { ruling: 1n });
-    const rules = await verifiedRules(100, "0xaeecfa44639b61d2e0a9534d918789d94a24a9de");
-    expect(buildDecision({ dispute, reads, rules, executed: executed(2n), fundedRulings: funded(), metaEvidence: null })).toMatchObject({
-      ok: true,
-      value: { kind: "winner", winner: { ruling: 2n }, jury: { ruling: 1n }, wonBy: "reported", verified: true },
-    });
-  });
-
-  it("says won by jury decision when the only funded option is the jury's own ruling", async () => {
-    const rules = await PROXY_RULES();
-    const pending = await withState(EXECUTION_MAINNET, 1347n, { ruled: false, ruling: 2n });
-    expect(buildDecision({ ...pending, rules, executed: { status: "not-executed" }, fundedRulings: funded(2n), metaEvidence: null })).toMatchObject({
-      ok: true,
-      value: { kind: "winner", winner: { ruling: 2n }, wonBy: "jury", execution: "pending" },
-    });
-    const done = await withState(EXECUTION_MAINNET, 1347n, { ruling: 2n });
-    expect(buildDecision({ ...done, rules, executed: { status: "none-reported" }, fundedRulings: funded(2n), metaEvidence: null })).toMatchObject({
-      ok: true,
-      value: { kind: "winner", winner: { ruling: 2n }, wonBy: "jury", execution: "unconfirmed", note: "none-reported" },
-    });
-  });
-
-  it("predicts the default winner before execution on a verified contract", async () => {
-    const { dispute, reads } = await withState(EXECUTION_MAINNET, 1347n, { ruled: false, ruling: 1n });
-    expect(buildDecision({ dispute, reads, rules: await PROXY_RULES(), executed: { status: "not-executed" }, fundedRulings: funded(2n), metaEvidence: null })).toMatchObject({
-      ok: true,
-      value: { kind: "winner", winner: { ruling: 2n }, jury: { ruling: 1n }, wonBy: "default", verified: true, execution: "pending", note: null },
-    });
-  });
-
-  it("predicts the jury's ruling before execution where the jury's ruling stands or there is no appeal", async () => {
-    const { dispute, reads } = await withState(EXECUTION_MAINNET, 1347n, { ruled: false, ruling: 1n });
-    const yubiai = await verifiedRules(100, "0xaeecfa44639b61d2e0a9534d918789d94a24a9de");
-    const oldReality = await verifiedRules(1, "0x594ec762b59978c97c82bc36ab493ed8b1f1f368");
-    for (const rules of [yubiai, oldReality]) {
-      expect(buildDecision({ dispute, reads, rules, executed: { status: "not-executed" }, fundedRulings: null, metaEvidence: null })).toMatchObject({
-        ok: true,
-        value: { kind: "winner", winner: { ruling: 1n }, wonBy: "jury", execution: "pending" },
-      });
-    }
-  });
-
-  it("shows the jury ruling as not executed yet where the contract's rules are not verified", async () => {
-    for (const [disputeId, reason] of [
-      [108n, "no-votes"],
-      [1684n, "refused"],
-    ] as const) {
-      const { dispute, reads } = await recordedReads(EXECUTION_MAINNET, disputeId);
-      expect(buildDecision({ dispute, reads, rules: VIEW_ONLY, executed: { status: "not-executed" }, fundedRulings: null, metaEvidence: null })).toEqual({
-        ok: true,
-        value: { kind: "jury-ruling", jury: { ruling: 0n, rulingText: REFUSED, zeroReason: reason }, execution: "pending", noun: "option" },
-      });
-    }
-  });
-
-  it("falls back to the funding with a note when the executed ruling cannot be read", async () => {
-    const { dispute, reads } = await withState(EXECUTION_MAINNET, 1347n, { ruling: 1n });
-    expect(buildDecision({ dispute, reads, rules: await PROXY_RULES(), executed: UNREAD, fundedRulings: funded(2n), metaEvidence: null })).toMatchObject({
-      ok: true,
-      value: { kind: "winner", winner: { ruling: 2n }, wonBy: "default", execution: "unconfirmed", note: "unread" },
-    });
-  });
-
-  it.each([
-    ["reported nothing", { status: "none-reported" }, "none-reported"],
-    ["reported different rulings", { status: "inconsistent" }, "inconsistent"],
-    ["reported a ruling that is not an option", { status: "out-of-range", ruling: 7n }, "out-of-range"],
-    ["could not be read", UNREAD, "unread"],
-  ] as const)("degrades to the jury ruling when an unverified contract %s", async (_, outcome, note) => {
-    const { dispute, reads } = await recordedReads(EXECUTION_GNOSIS, 939n);
-    expect(buildDecision({ dispute, reads, rules: UNVERIFIED_CROWDFUNDING, executed: outcome, fundedRulings: funded(2n), metaEvidence: null })).toEqual({
-      ok: true,
-      value: { kind: "jury-ruling", jury: { ruling: 0n, rulingText: REFUSED, zeroReason: "tie" }, execution: note, noun: "option" },
-    });
-  });
-
-  it("degrades to the jury ruling on a verified contract when neither the executed ruling nor the funding could be read", async () => {
-    const { dispute, reads } = await withState(EXECUTION_MAINNET, 1347n, { ruling: 1n });
-    expect(buildDecision({ dispute, reads, rules: await PROXY_RULES(), executed: UNREAD, fundedRulings: NOT_FUNDED_READ, metaEvidence: null })).toMatchObject({
-      ok: true,
-      value: { kind: "jury-ruling", jury: { ruling: 1n }, execution: "unread" },
-    });
-  });
-
-  it("an executed ruling that was not read in execution degrades the decision instead of guessing", async () => {
-    const { dispute, reads } = await recordedReads(EXECUTION_GNOSIS, 939n);
-    expect(buildDecision({ dispute, reads, rules: VIEW_ONLY, executed: null, fundedRulings: null, metaEvidence: null }).ok).toBe(false);
-  });
-
-  it("names a ruling with the dispute's options, or its decimal value without them", async () => {
-    const { dispute, reads } = await recordedReads(EXECUTION_GNOSIS, 939n);
-    const named = buildDecision({ dispute, reads, rules: VIEW_ONLY, executed: executed(2n), fundedRulings: null, metaEvidence: metaEvidence(["Register", "Reject"]) });
-    const bare = buildDecision({ dispute, reads, rules: VIEW_ONLY, executed: executed(2n), fundedRulings: null, metaEvidence: null });
-    expect(named).toMatchObject({ value: { winner: { rulingText: "Reject" } } });
-    expect(bare).toMatchObject({ value: { winner: { rulingText: "2" } } });
-  });
-
-  it("names a multiple-select ruling by its combination, and takes the options of an invalid meta-evidence's placeholder", async () => {
-    const { dispute, reads } = await recordedReads(EXECUTION_GNOSIS, 939n);
-    const combinations = okResult(metaEvidenceValue({ type: "multiple-select", titles: ["A", "B", "C"] }));
-    expect(buildDecision({ dispute, reads, rules: VIEW_ONLY, executed: executed(3n), fundedRulings: null, metaEvidence: combinations })).toMatchObject({
-      value: { winner: { rulingText: "B" } },
-    });
-    const placeholder: MetaEvidenceResult = {
-      status: "invalid",
-      reason: "script-not-allowlisted",
-      metaEvidence: metaEvidenceValue({ type: "single-select", titles: ["Yes", "No"] }),
-    };
-    expect(buildDecision({ dispute, reads, rules: VIEW_ONLY, executed: executed(2n), fundedRulings: null, metaEvidence: placeholder })).toMatchObject({
-      value: { winner: { rulingText: "No" } },
-    });
+describe("decisionNeedsFunding", () => {
+  it.each<[string, Partial<ArbitratorDispute>, ExecutedRuling, boolean]>([
+    ["the arbitrable applied another ruling than the court's", {}, applied(2n), true],
+    ["the arbitrable reported nothing", {}, NONE_REPORTED, true],
+    ["the arbitrable's report could not be read", {}, UNREAD, true],
+    ["the arbitrable applied the court's ruling", {}, applied(1n), false],
+    ["the arbitrable reported a ruling that is not an option", {}, { status: "out-of-range", ruling: 7n }, false],
+    ["the arbitrable reported conflicting rulings", {}, { status: "inconsistent" }, false],
+    ["the ruling has not been executed", { ruled: false }, { status: "not-executed" }, false],
+    ["the dispute is in the appeal period", { period: 3 }, NONE_REPORTED, false],
+  ])("in execution with a court ruling of 1, when %s", (_, dispute, executed, expected) => {
+    expect(decisionNeedsFunding({ ...DISPUTE, ...dispute }, executed, 1n)).toBe(expected);
   });
 });
 

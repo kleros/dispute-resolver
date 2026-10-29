@@ -1,78 +1,29 @@
-import type { FundingTerms, RulingNoun, TieDialect } from "@dispute-resolver/core";
+import type { FundingTerms } from "@dispute-resolver/core";
 import { utcText } from "../../ui";
 
 export const APPEAL_HEADING = "Appeal the decision";
 
-const PLURAL: Readonly<Record<RulingNoun, string>> = { option: "options", answer: "answers", list: "lists" };
+export const CROWDFUNDING_EXPLANATION =
+  "In order to appeal the decision, you need to fully fund the crowdfunding deposit. The dispute will be sent to the jurors when the full deposit is reached. Note that if the previous round loser funds its side, the previous round winner should also fully fund its side in order not to lose the case.";
 
-/** How to appeal, and what a lone fully funded ruling does on this contract when the registry verified its code. */
-export function crowdfundingExplanation({ verified, settlement, noun }: Pick<FundingTerms, "verified" | "settlement" | "noun">): string {
-  const fund = `To appeal, fully fund the deposit of the ${noun} you support. When two ${PLURAL[noun]} are fully funded, the case goes to new jurors.`;
-  if (verified && settlement === "sole-funded-wins") return `${fund} If only one ${noun} is fully funded when funding closes, it wins, even against the jury's ruling.`;
-  if (verified && settlement === "jury-stands") return `${fund} If only one ${noun} is fully funded when funding closes, there is no appeal and the jury's ruling stands.`;
-  return `To appeal, fund the deposit of the ${noun} you support.`;
-}
-
-/** Why the cards close at different times, from the live multipliers; once above the cards rather than on each one. */
-export function fundingBasis({ noun, loserWindowPercent, loserDeadline, appealPeriodEnd }: FundingTerms): string {
-  if (loserDeadline >= appealPeriodEnd) return `Every ${noun} can be funded until the appeal period ends.`;
-  return `The current ruling can be funded until the appeal period ends. Other ${PLURAL[noun]} can be funded during the first ${String(loserWindowPercent)}% of the appeal period.`;
-}
-
-/** One fully funded ruling so far, on a contract where a lone fully funded ruling wins; no time is named, since each card has its own. */
-export function soleFundedLine(title: string, noun: RulingNoun): string {
-  return `“${title}” is the only fully funded ${noun} so far. It wins unless another ${noun} is fully funded before its funding closes.`;
-}
-
-export const UNVERIFIED_TITLE = "Appeal rules not verified";
-export const UNVERIFIED_BODY =
-  "The Dispute Resolver has not verified this contract's appeal rules: the amounts and deadlines below are the ones the Dispute Resolver applies, which the contract may not follow. Nothing is sent if the contract would reject your contribution.";
-
-const TIE_TITLES: Readonly<Record<TieDialect, string>> = {
-  "refuse-is-winner": "Refuse to Arbitrate is the current ruling",
-  "shared-full-period": "No list won this round",
-  "all-winner": "Refuse to Arbitrate cannot be funded",
-};
-
-export function tieTitle(tie: TieDialect): string {
-  return TIE_TITLES[tie];
-}
-
-export function tieBody(tie: TieDialect, { noun, appealPeriodEnd, loserDeadline }: FundingTerms): string {
-  const end = utcText(appealPeriodEnd);
-  switch (tie) {
-    case "refuse-is-winner":
-      return `Refuse to Arbitrate counts as the winning ${noun}: its funding closes at ${end}. Funding for every other ${noun} closes at ${utcText(loserDeadline)}.`;
-    case "shared-full-period":
-      return `Every list can be funded with the same deposit; funding closes at ${end} for all of them. If only one list is fully funded, it wins.`;
-    case "all-winner":
-      return `Refuse to Arbitrate cannot be funded on this contract. Every ${noun} can be funded with the same deposit; funding closes at ${end} for all of them.`;
-  }
+/** Once above the cards: each sentence turns to the past on its own time. `currentTitle` is `undefined` when no card is the current ruling. */
+export function fundingTimesLine({ noun, tie, appealPeriodEnd, loserDeadline }: FundingTerms, currentTitle: string | undefined, nowSeconds: number): string {
+  const closes = (at: number) => `${nowSeconds >= at ? "closed" : "closes"} ${utcText(at)}`;
+  if (tie === "shared-full-period" || tie === "all-winner" || loserDeadline >= appealPeriodEnd) return `Funding for every ${noun} ${closes(appealPeriodEnd)}.`;
+  const current = currentTitle === undefined ? "the current ruling" : `the current ruling (“${currentTitle}”)`;
+  return `Funding for ${current} ${closes(appealPeriodEnd)}. Funding for every other ${noun} ${closes(loserDeadline)}.`;
 }
 
 export const REWARDS_TITLE = "Rewards";
-/** `null` for a contract whose rules were not verified: how it pays rewards is unknown. A refund is promised only where its withdraw code was read. */
-export function rewardsBody({ verified, settlement, refundsWithoutAppeal, noun }: Pick<FundingTerms, "verified" | "settlement" | "refundsWithoutAppeal" | "noun">): string | null {
-  const both = `Rewards only apply if both sides are funded and the ${noun} you fund wins.`;
-  if (!verified) return null;
-  if (settlement === "sole-funded-wins") return refundsWithoutAppeal ? `${both} If no appeal takes place, your contribution is refunded.` : both;
-  if (settlement === "jury-stands") return `${both} On this contract, if only one ${noun} is fully funded and it is not the jury's ruling, contributions to it are not returned.`;
-  return null;
-}
+export const REWARDS_BODY = "Rewards only apply if both sides are funded and the option you fund wins. If no appeal takes place, your contribution is refunded.";
 
-/** A verified contract's deadline is its own; any other contract's is only the one the Dispute Resolver stops funding at. */
 export const FUNDING_CLOSES = "Funding closes ";
-export const DEADLINE_USED_HERE = "Deadline used here ";
 export const FUNDING_CLOSED = "Closed";
 export const FUNDING_CLOSED_AT = "Closed at ";
-export const FUNDING_CLOSED_HERE = "Closed here";
-export const FUNDING_STOPPED_HERE_AT = "Dispute Resolver stopped funding at ";
 
 export const ESCROW_EXPLANATION = "In order to appeal the decision, you need to pay the appeal cost.";
 export const ESCROW_ENDS = "The appeal period ends ";
 export const ESCROW_ENDED_AT = "The appeal period ended ";
-export const ESCROW_STILL_ACCEPTED = "Until the dispute moves to execution, an appeal is still accepted.";
-export const ESCROW_CONTRACT_DECIDES = "The contract decides whether it still accepts an appeal.";
 
 export const FUND_NEEDS_WALLET = "Connect a wallet to fund an appeal.";
 export const APPEAL_NEEDS_WALLET = "Connect a wallet to appeal.";
@@ -90,11 +41,11 @@ export const FUNDING_UNSUPPORTED_BODY =
 
 export const HANDLED_BY_ARBITRABLE_TITLE = "Appeals happen in the arbitrable application";
 export const HANDLED_BY_ARBITRABLE_BODY =
-  "This arbitrable contract does not take appeal funding through the Dispute Resolver. Whether and how this decision can be appealed depends on the arbitrable contract. If it can, it is done in the arbitrable application.";
+  "This arbitrable contract does not take appeal funding through the Dispute Resolver. Appeals for this dispute are handled in the arbitrable application.";
 
 export const WITHDRAW_HEADING = "Withdraw crowdfunding rewards and refunds";
 export const WITHDRAW_ELIGIBLE =
-  "What a contribution earns or gets back is set by the arbitrable contract's own rules. Any amount it owes you for this dispute can be withdrawn here.";
+  "If you have contributed to a ruling option and in the end that ruling option was the winner you are eligible for some reward. Also, if you have contributed but appeal did not happen your contribution is refunded.";
 export const WITHDRAW_NOTHING =
   "You don't have any amount to withdraw. Reason might be that you did not contribute, the ruling option you have contributed did not win, you already withdrew or the ruling is not executed yet by the arbitrator.";
 export const WITHDRAW_NO_ACCOUNT = "Connect a wallet to see whether you have rewards or refunds to withdraw on this dispute.";

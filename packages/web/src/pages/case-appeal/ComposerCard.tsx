@@ -12,15 +12,13 @@ export interface ComposerCardProps {
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
   readonly isFundDisabled: boolean;
-  /** Whether the registry verified the contract's rules, which words the card's deadline. */
-  readonly verified: boolean;
 }
 
 /**
  * Above four options the combinations are not enumerated as cards, so the user ticks the options of the answer and
  * funds that combination (bitmask + 1). Ticking nothing funds "None", which is a combination too.
  */
-export function ComposerCard({ composer, cards, actions, chain, isFundDisabled, verified }: ComposerCardProps) {
+export function ComposerCard({ composer, cards, actions, chain, isFundDisabled }: ComposerCardProps) {
   const titleId = useId();
   const [selected, setSelected] = useState<ReadonlySet<number>>(() => new Set());
   const code = combinationCode([...selected].sort((a, b) => a - b));
@@ -73,7 +71,6 @@ export function ComposerCard({ composer, cards, actions, chain, isFundDisabled, 
             actions={actions}
             chain={chain}
             isFundDisabled={isFundDisabled}
-            verified={verified}
           />
         </div>
       </Card>

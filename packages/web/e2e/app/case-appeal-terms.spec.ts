@@ -5,8 +5,8 @@ import { appOriginOf, callData, callTarget, fakeNetwork, type HttpAnswer, type H
 import { pageScroll } from "../support/pageScroll";
 import { expectWalletConnected, injectWallet } from "../support/wallet";
 
-// The appeal section of disputes in the appeal period whose arbitrables no registry entry vouches for, and of a
-// registered Reality proxy without an appeal function. The spec builds every chain answer itself: the arbitrable's code
+// The appeal section of disputes in the appeal period whose arbitrables no registry entry names, and of a registered
+// Reality proxy without an appeal function. The spec builds every chain answer itself: the arbitrable's code
 // carries only the selectors that classify it (packages/core/src/abi/selectors.ts), the arbitrator gives the appeal
 // period, and the meta-evidence API names a file the gateway serves. Everything else is empty or aborted. The build
 // needs the chain-1 read RPC and the meta-evidence API configured, as a deploy has; requests are recognized by their
@@ -114,7 +114,7 @@ async function expectNoSidewaysScroll(page: Page, width: number): Promise<void> 
   expect(Math.max(scrollWidth - clientWidth, documentWidth - width), `the page scrolls sideways at ${String(width)} px`).toBeLessThanOrEqual(0);
 }
 
-test("an IDisputeResolver contract no entry vouches for warns that its rules are not verified, gives the deadlines the Dispute Resolver applies, and stops funding a card past its deadline", async ({
+test("an IDisputeResolver contract's appeal says once when funding closes for the current ruling and for every other option, and stops funding a card past its deadline", async ({
   context,
   page,
   baseURL,
@@ -126,27 +126,24 @@ test("an IDisputeResolver contract no entry vouches for warns that its rules are
   const panel = await openAppeal(page, baseURL, scenario, now);
   await expectWalletConnected(page.getByRole("button", { name: /^Account 0x0000…00E2$/i }));
 
-  await expect(panel.getByText("Appeal rules not verified", { exact: true })).toBeVisible();
-  await expect(panel).toContainText("the amounts and deadlines below are the ones the Dispute Resolver applies, which the contract may not follow.");
-  await expect(panel).not.toContainText(/[Ss]tandard/);
-  await expect(panel).toContainText("To appeal, fund the deposit of the option you support.");
-  await expect(panel).not.toContainText("Rewards");
+  const loserDeadline = now - 2n * DAY + (3n * DAY) / 2n;
+  await expect(panel).toContainText(`Funding for the current ruling (“Yes”) closes ${utc(now + DAY)}. Funding for every other option closed ${utc(loserDeadline)}.`);
+  await expect(panel).toContainText("Rewards only apply if both sides are funded and the option you fund wins.");
 
   const yes = panel.getByRole("listitem", { name: "Yes" });
   await expect(yes).toContainText("Latest jury decision");
-  await expect(yes).toContainText(`Deadline used here ${utc(now + DAY)}`);
+  await expect(yes).toContainText(`Funding closes ${utc(now + DAY)}`);
   await expect(yes.getByRole("button", { name: "Fund Yes" })).toBeEnabled();
 
   const no = panel.getByRole("listitem", { name: "No" });
-  const loserDeadline = now - 2n * DAY + (3n * DAY) / 2n;
-  await expect(no).toContainText(`Dispute Resolver stopped funding at ${utc(loserDeadline)}`);
-  await expect(no.getByText("Closed here", { exact: true })).toBeVisible();
-  await expect(no).not.toContainText(/Time left to fund|Closed at/);
+  await expect(no.getByText("Closed", { exact: true })).toBeVisible();
+  await expect(no).toContainText(`Closed at ${utc(loserDeadline)}`);
+  await expect(no).not.toContainText("Time left to fund");
   await expect(no.getByRole("button", { name: "Fund No" })).toBeDisabled();
-  await expect(no.getByRole("button", { name: "Fund No" })).toHaveAccessibleDescription(`Dispute Resolver stopped funding at ${utc(loserDeadline)}`);
+  await expect(no.getByRole("button", { name: "Fund No" })).toHaveAccessibleDescription(`Closed at ${utc(loserDeadline)}`);
   await expect(no.getByRole("spinbutton", { name: /Contribution/ })).toBeDisabled();
 
-  await expect(page.getByRole("region", { name: "Jury decision", exact: true })).toContainText("The Dispute Resolver has not verified this contract's rules");
+  await expect(page.getByRole("region", { name: "Jury decision", exact: true })).toContainText("This decision can be appealed within the appeal period.");
   await expectNoSidewaysScroll(page, 375);
 });
 
@@ -168,7 +165,5 @@ test("a registered Reality proxy without an appeal function says the dispute can
   await expect(panel).toContainText("This arbitrable contract has no way to appeal, so the jury's ruling becomes final when the appeal period ends.");
   await expect(panel).not.toContainText("Appeals happen in the arbitrable application");
   await expect(panel.getByRole("button")).toHaveCount(0);
-  await expect(page.getByRole("region", { name: "Jury decision", exact: true })).toContainText(
-    "This arbitrable contract has no appeal: the ruling becomes final when the appeal period ends.",
-  );
+  await expect(page.getByRole("region", { name: "Jury decision", exact: true })).toContainText("This dispute cannot be appealed.");
 });

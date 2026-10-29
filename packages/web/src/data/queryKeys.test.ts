@@ -24,6 +24,7 @@ const everyKey = [
   queryKeys.accountCode(1, ARBITRABLE),
   queryKeys.chainTime(100),
   queryKeys.executedRuling(1, 5n, 1_000n),
+  queryKeys.productFunding(1, 5n),
   IDLE_KEY,
 ];
 

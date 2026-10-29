@@ -1,7 +1,6 @@
 import type { Address, Env, Fetcher, Outcome, Period, ReadClient, Unavailable } from "../types";
-import type { AppealRoute, FamilyDetection, RulingNoun } from "../families/types";
+import type { FamilyDetection, RulingNoun } from "../families/types";
 import type { RealityNotice } from "../metaEvidence/types";
-import type { Settlement } from "../registry/types";
 
 declare const arbitratorBinding: unique symbol;
 
@@ -51,26 +50,11 @@ export interface AppealInfo {
   readonly appealPeriodEnd: number;
 }
 
-/** `getVoteCounter(id, round)` of KlerosLiquid: the counts per choice, 0 included, of one round. */
-export interface VoteCounter {
-  readonly winningChoice: bigint;
-  readonly counts: readonly bigint[];
-  readonly tied: boolean;
-}
-
-/** Why the court's ruling is 0: a tie at the top, a round nobody voted in, or a majority for refusing. */
-export type ZeroRulingReason = "tie" | "no-votes" | "refused";
-
 export interface DisputeReads {
   readonly dispute: ArbitratorDispute;
   readonly binding: ArbitratedBinding;
   readonly votesLengths: Outcome<readonly bigint[]>;
   readonly currentRuling: Outcome<bigint>;
-  /**
-   * The last round's vote counter, read in the appeal and execution periods when the current ruling is 0 and the
-   * dispute has at most 256 choices. `null` when it is not read.
-   */
-  readonly lastRoundVotes: Outcome<VoteCounter> | null;
   readonly appealDecisions: Outcome<readonly AppealDecisionEvent[]>;
   /** Present only when the period is 3 or 4. */
   readonly appealInfo: Outcome<AppealInfo> | null;
@@ -115,44 +99,21 @@ export interface RulingFact {
   readonly rulingText: string;
 }
 
-/** The court's ruling. `zeroReason` is set only for a ruling of 0 whose last round's vote counter was read. */
-export interface JuryRuling extends RulingFact {
-  readonly zeroReason: ZeroRulingReason | null;
-}
-
-/** Why the executed ruling could not be taken from the arbitrable's report. */
-export type ExecutionNote = Exclude<ExecutedRuling["status"], "executed" | "not-executed">;
+/**
+ * Why the decision shows only the court's ruling. In the appeal period: it can be appealed, in the arbitrable's own
+ * application, or not at all. In execution: the arbitrator has not executed it, or the arbitrable reported a ruling that
+ * is not an option of the dispute, or several.
+ */
+export type JuryDecisionNote = "appealable" | "appealable-in-arbitrable" | "not-appealable" | "not-executed" | "out-of-range" | "inconsistent";
 
 /**
- * The decision section. In the appeal period, the jury's ruling and how it can be appealed. In execution, a winner when
- * one can be named: `wonBy` is `jury` or `default` only on a contract whose rules were verified (`default` where they let
- * the only fully funded ruling win), and `reported` whenever the executed ruling is the arbitrable's own unverified
- * claim, even one equal to the jury's; `verified` says whether the contract's rules were read. Otherwise the jury's
- * ruling, with why no winner is named.
+ * The decision section. `winner` once the ruling was executed: the court's ruling (`jury`), the only ruling fully funded
+ * for the appeal (`default`), or another ruling the arbitrable applied (`applied`).
  */
 export type Decision =
   | { readonly kind: "none" }
-  | {
-      readonly kind: "jury-decision";
-      readonly jury: JuryRuling;
-      /** `null` when the family is unknown. */
-      readonly route: AppealRoute | null;
-      readonly verified: boolean;
-      readonly settlement: Settlement;
-      readonly noun: RulingNoun;
-    }
-  | {
-      readonly kind: "winner";
-      readonly winner: RulingFact;
-      readonly jury: JuryRuling;
-      readonly wonBy: "jury" | "default" | "reported";
-      readonly verified: boolean;
-      /** `pending`: the arbitrator has not executed the ruling; `unconfirmed`: it has, but the arbitrable's report is missing. */
-      readonly execution: "executed" | "pending" | "unconfirmed";
-      readonly note: ExecutionNote | null;
-      readonly noun: RulingNoun;
-    }
-  | { readonly kind: "jury-ruling"; readonly jury: JuryRuling; readonly execution: "pending" | ExecutionNote; readonly noun: RulingNoun };
+  | { readonly kind: "jury-decision"; readonly court: RulingFact; readonly note: JuryDecisionNote }
+  | { readonly kind: "winner"; readonly winner: RulingFact; readonly court: RulingFact; readonly wonBy: "jury" | "default" | "applied"; readonly noun: RulingNoun };
 
 export type Compatibility = "full" | "view-only";
 

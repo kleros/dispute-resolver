@@ -12,8 +12,18 @@ import {
   type FamilyDetection,
   type ReadClient,
 } from "@dispute-resolver/core";
+import { useProductFunding } from "./appealHooks";
 import { executedRulingFrom, useAppealReads, type AppealPlan } from "./caseAppealReads";
-import { assembleAppealPanel, assembleDecision, assembleView, assembleWriteContext, lookupError, viewWithoutDispute, type FoundCaseReads } from "./caseAssembly";
+import {
+  assembleAppealPanel,
+  assembleDecision,
+  assembleView,
+  assembleWriteContext,
+  decisionWaitsForFunding,
+  lookupError,
+  viewWithoutDispute,
+  type FoundCaseReads,
+} from "./caseAssembly";
 import { useCoreDeps } from "./context";
 import { useDisputeDetails, useDisputeEvent, useDisputeLookup, useEvidence, useExecutedRuling, useFamily, useMetaEvidence, type FoundDispute } from "./disputeHooks";
 import { useCourts } from "./ongoingHooks";
@@ -100,6 +110,8 @@ export function useCase(chainId: number, disputeId: bigint | null, account?: Add
   const appeal = useAppealReads(plan, found?.dispute.period ?? 0, account);
   const executed = useExecutedRuling(chainId, found, executedRulingStart(chainId, details, disputeEvent, override));
   const rules = family.status === "ready" ? describeAppealRules(deps.registry, family.value) : null;
+  const fundingNeeded = found !== undefined && decisionWaitsForFunding(found.dispute, details, executed);
+  const productFunding = useProductFunding(chainId, binding, valueOf(family), fundingNeeded);
 
   if (disputeId === null) return { status: "no-id", chainId };
 
@@ -110,7 +122,7 @@ export function useCase(chainId: number, disputeId: bigint | null, account?: Add
     return { ...base, ...everySection(unavailableFrom(error)), view: ready(viewWithoutDispute(lookup.value, error)) };
   }
 
-  const reads: FoundCaseReads = { lookup: lookup.value, family, rules, metaEvidence, courts, details, appeal, executed, override, readClient };
+  const reads: FoundCaseReads = { lookup: lookup.value, family, rules, metaEvidence, courts, details, appeal, executed, productFunding, override, readClient };
   return {
     ...base,
     view: assembleView(reads),
