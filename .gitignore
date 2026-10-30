@@ -27,3 +27,7 @@ yarn-error.log*
 
 
 /.idea
+
+# mutation testing
+.stryker-tmp
+packages/core/reports

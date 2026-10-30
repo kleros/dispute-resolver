@@ -128,7 +128,7 @@ describe("readWithdrawable (IDisputeResolver)", () => {
       { head: 1_000n, logs: MY_LOGS, calls: [v2Withdrawable(1n, 1n), v2Withdrawable(2n, 1n)] },
       detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]),
     );
-    await readWithdrawable(ctx, { beneficiary: ME, rounds: [1n, 0n], roundStartBlocks: [400n, 100n] });
+    await readWithdrawable(ctx, { beneficiary: ME, rounds: [1n, 0n, 3n], roundStartBlocks: [400n, 100n, 900n] });
     expect(requests.logs).toHaveLength(1);
     expect(requests.logs[0]).toMatchObject({ fromBlock: 100n, toBlock: 1_000n });
   });
@@ -153,6 +153,21 @@ describe("readWithdrawable (IDisputeResolver)", () => {
       status: "unavailable",
       error: { code: "rpc-error" },
     });
+    const undecodable = context(
+      { head: 1_000n, logs: [{ ...contributionLog({ round: 0n, ruling: 1n, contributor: ME, block: 100n }), data: "0x" }] },
+      detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]),
+    );
+    expect(await readWithdrawable(undecodable.context, { beneficiary: ME, rounds: [0n], roundStartBlocks: [0n] })).toMatchObject({
+      status: "unavailable",
+      error: { code: "invalid-data" },
+    });
+  });
+
+  it("refuses a detection of another contract than the binding's arbitrable", async () => {
+    const { context: ctx, requests } = context({ head: 1_000n }, detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]));
+    const foreign = { ...ctx, family: detectionFor("0x00000000000000000000000000000000000000ee", FAMILY_SIGNATURES["idr-v2"]) };
+    expect(await readWithdrawable(foreign, { beneficiary: ME, rounds: [0n], roundStartBlocks: [0n] })).toMatchObject({ status: "unavailable", error: { code: "invalid-data" } });
+    expect(requests.methods).toEqual([]);
   });
 
   it("reports an unresolved local ID as unavailable", async () => {
@@ -248,6 +263,13 @@ describe("readWithdrawable (governor dialect)", () => {
     const { context: ctx, requests } = await governorContext([sessionState(0n, DISPUTE_CREATED)]);
     expect(await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n], roundStartBlocks: [0n] })).toEqual({ status: "nothing" });
     expect(requests.calls).toEqual([sessionState(0n, DISPUTE_CREATED)[0]]);
+  });
+
+  it("reports a failed governor read as unavailable, never zero", async () => {
+    const { context: ctx } = await governorContext([
+      reverting({ to: GOVERNOR, abi: governorSessionAbi, functionName: "sessions", args: [5n], error: { code: -32000, message: "header not found" } }),
+    ]);
+    expect(await readWithdrawable(ctx, { beneficiary: ME, rounds: [0n], roundStartBlocks: [0n] })).toMatchObject({ status: "unavailable", error: { code: "rpc-error" } });
   });
 
   it("rewards under the governor's settled ruling, not the jury's, when only one list funded the final round", async () => {

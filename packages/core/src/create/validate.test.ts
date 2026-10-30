@@ -200,6 +200,8 @@ describe("validateCreateInput: parties", () => {
     ["an EIP-55 address with a mistyped digit", "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAfd"],
     ["a mixed-case address with a wrong checksum", "0x5AAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"],
     ["an all-uppercase address behind a 0X prefix", `0X${ALICE.slice(2).toUpperCase()}`],
+    ["an all-uppercase address with a 41st digit", `0x${ALICE.slice(2).toUpperCase()}0`],
+    ["an all-uppercase address behind a stray character", `x0x${ALICE.slice(2).toUpperCase()}`],
   ])("rejects %s as a party address", (_name, address) => {
     expect(errors(draft({ parties: [{ alias: "Alice", address }] }))).toEqual({ parties: ["invalid-address"] });
   });

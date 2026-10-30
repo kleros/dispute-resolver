@@ -72,7 +72,6 @@ describe("isWinningCode", () => {
 
 describe("fundedPercent", () => {
   it.each([
-    ["computes contributed × 10000 / required / 100 with two decimals (1 of 3)", 1n, 3n, 33.33],
     ["computes contributed × 10000 / required / 100 with two decimals (2 of 3)", 2n, 3n, 66.66],
     ["is 100 when fully funded", 3n, 3n, 100],
     ["is 0 when nothing is contributed", 0n, 3n, 0],

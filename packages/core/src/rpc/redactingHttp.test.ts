@@ -127,6 +127,13 @@ describe("redactingHttp", () => {
     expectNoKey(error);
   });
 
+  it("a configured URL that does not parse is named the configured RPC, without its key", async () => {
+    stubEndpoint(() => ({ status: 500 }));
+    const error = await failedRequest(`https//rpc.example/v2/${KEY}`);
+    expect(error).toMatchObject({ url: "the configured RPC" });
+    expect((error as BaseError).message).not.toContain(KEY);
+  });
+
   it("a URL with credentials is redacted in the spelling viem prints, without them", async () => {
     stubEndpoint(() => ({ status: 500 }));
     const error = await failedRequest(`https://user:pass@rpc.example/v2/${KEY}`);
@@ -226,9 +233,11 @@ describe("redactingHttp", () => {
     ["holds the URL's hex key as hex written as the URL writes it", HEX_KEY_URL, HEX_KEY, `0x${HEX_KEY}`, "0x<redacted>"],
     ["holds the URL's hex key as hex in capitals", HEX_KEY_URL, HEX_KEY, `0x${HEX_KEY.toUpperCase()}`, "0x<redacted>"],
     ["holds the URL's hex key as hex in lower case when the URL writes it in capitals", `https://rpc.example/v3/${HEX_KEY.toUpperCase()}`, HEX_KEY, `0x${HEX_KEY}`, "0x<redacted>"],
+    ["holds the URL's hex key as hex when the URL has another long piece", `https://rpc.example/mainnet/${HEX_KEY}`, HEX_KEY, `0x${HEX_KEY}`, "0x<redacted>"],
     ["holds the URL's hex key inside longer hex", HEX_KEY_URL, HEX_KEY, `0x${"00".repeat(16)}${HEX_KEY.toUpperCase()}`, `0x${"00".repeat(16)}<redacted>`],
     ["holds the URL's hex key as a property name in capitals", HEX_KEY_URL, HEX_KEY, { [`0x${HEX_KEY.toUpperCase()}`]: true }, { "0x<redacted>": true }],
     ["is a sentence repeating the key", KEYED_URL, KEY, `invalid API key ${KEY}`, "invalid API key <redacted>"],
+    ["is null", KEYED_URL, KEY, null, null],
     [
       "names properties after the URL or the key",
       KEYED_URL,

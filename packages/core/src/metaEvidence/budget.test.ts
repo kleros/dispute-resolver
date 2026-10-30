@@ -13,6 +13,7 @@ import {
   SINGLE_CHAIN_PROXY,
   context,
   fakeFetcher,
+  fakeOnChain,
   fakeRunner,
   json,
   locatorUrl,
@@ -72,6 +73,7 @@ describe("meta-evidence budget", () => {
       [servedMetaEvidence("%PDF-1.4"), { status: "failed", reason: "not-json" }],
       [servedMetaEvidence(json(5)), { status: "failed", reason: "schema-invalid" }],
       [servedMetaEvidence(json(["title"])), { status: "failed", reason: "schema-invalid" }],
+      [servedMetaEvidence(json(null)), { status: "failed", reason: "schema-invalid" }],
     ];
     for (const [routes, expected] of cases) {
       const { fetcher, urls } = fakeFetcher(routes);
@@ -102,6 +104,12 @@ describe("meta-evidence budget", () => {
     expect(result).toMatchObject({ status: "ok", metaEvidence: { title: "T" }, script: { ran: false, reason: "script-fetch-failed" } });
     expect(requests).toHaveLength(0);
     expect(elapsedMs).toBe(0);
+  });
+
+  it("a dynamic script fetch that throws fails as fetch-error instead of leaving the meta-evidence without a merge", async () => {
+    const { fetcher } = fakeFetcher({ ...servedMetaEvidence(SCRIPT_JSON), [DEFAULT_SCRIPT_URL]: new TypeError("Failed to fetch") });
+    const { result } = await settle(loadMetaEvidence(context({ fetcher, budgetMs: 5_000 })), 0);
+    expect(result).toMatchObject({ status: "failed", reason: "fetch-error", error: { code: "rpc-error" } });
   });
 
   it("the script timeout is the budget that remains, after the time spent on earlier attempts", async () => {
@@ -142,7 +150,7 @@ describe("meta-evidence budget", () => {
     const { fetcher } = fakeFetcher({ ...servedMetaEvidence(SCRIPT_JSON), [DEFAULT_SCRIPT_URL]: SCRIPT });
     const { runner, requests } = fakeRunner({ status: "failed", reason: "script-error", message: "x is not defined" });
     const { result } = await settle(loadMetaEvidence(context({ fetcher, runner, budgetMs: 12_000 })), 20_000);
-    expect(result).toMatchObject({ status: "failed", reason: "script-failed" });
+    expect(result).toEqual({ status: "failed", reason: "script-failed", error: { code: "rpc-error", message: "The dynamic script failed (script-error)." } });
     expect(requests).toHaveLength(3);
   });
 
@@ -192,7 +200,7 @@ describe("meta-evidence budget", () => {
     const { result } = await settle(loadMetaEvidence(context({ fetcher, arbitrable: CROSS_CHAIN_PROXY, disputeId: 999_001n, budgetMs: 12_000 })), 20_000);
     expect(result).toMatchObject({ status: "failed", reason: "reality-lookup-failed" });
     expect(urls.filter((url) => url === locatorUrl(1, 999_001n))).toHaveLength(3);
-    expect(result.status === "failed" && result.error.message).toContain("Reality.eth question");
+    expect(result.status === "failed" && result.error.message).toBe("The Reality.eth question could not be read.");
   });
 
   it("a Reality lookup through the read RPC stops its transport retries at the lookup's deadline", async () => {
@@ -220,9 +228,11 @@ describe("meta-evidence budget", () => {
 
   it("an already aborted signal makes no request", async () => {
     const { fetcher, urls } = fakeFetcher({});
-    const { result } = await settle(loadMetaEvidence(context({ fetcher, signal: AbortSignal.abort() })), 0);
+    const { reader, signals } = fakeOnChain(HANG);
+    const { result } = await settle(loadMetaEvidence(context({ fetcher, onChain: reader, signal: AbortSignal.abort() })), 0);
     expect(result).toMatchObject({ status: "failed" });
     expect(urls).toHaveLength(0);
+    expect(signals).toHaveLength(0);
   });
 
   it("an abort during the wait before a retry ends the load with the last failure", async () => {

@@ -98,6 +98,12 @@ describe("readMultipliers", () => {
     expect(result).toMatchObject({ ok: true, value: { denominator: 10_000n, loserAppealPeriodMultiplier: 5_000n } });
   });
 
+  it.each(["winnerMultiplier()", "loserMultiplier()"])("a governor that does not answer %s has appeal amounts that cannot be calculated", async (signature) => {
+    const governor = byLabel(GOVERNOR_MULTIPLIERS, "poh.eth governor");
+    const { result } = await readGovernor(governor, [replacing(governor, signature, { result: "0x" })]);
+    expect(result).toEqual({ ok: false, error: { code: "unsupported", message: UNSUPPORTED } });
+  });
+
   it("keeps a governor's other multipliers, without a shared one, when its contract fails sharedMultiplier()", async () => {
     const governor = byLabel(GOVERNOR_MULTIPLIERS, "poh.eth governor");
     const { result } = await readGovernor(governor, [replacing(governor, "sharedMultiplier()", { result: "0x" })]);

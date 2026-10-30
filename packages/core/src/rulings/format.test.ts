@@ -108,7 +108,7 @@ describe("formatRuling", () => {
 
   it("a formatter failure reads the decimal value and never throws", () => {
     expect(formatRuling(3n, SELECT_YES_NO, null)).toBe("3");
-    expect(formatRuling(2n ** 300n, { type: "uint" }, null)).toBe((2n ** 300n).toString());
+    expect(formatRuling(2n ** 256n, { type: "uint" }, null)).toBe((2n ** 256n).toString());
   });
 
   it("a uint ruling keeps reality-eth-lib's result up to the display cap of 1000 decimals and reads the decimal value beyond it", () => {
@@ -116,6 +116,7 @@ describe("formatRuling", () => {
     expect(formatRuling(5n, { type: "uint", precision: 81 }, null)).toBe(`0.${"0".repeat(80)}4`);
     expect(formatRuling(5n, { type: "uint", precision: 1000 }, null)).toBe(`0.${"0".repeat(999)}4`);
     expect(formatRuling(5n, { type: "uint", precision: 1001 }, null)).toBe("5");
+    expect(formatRuling(MAX_UINT256, { type: "uint", precision: 1001 }, null)).toBe("Answered too soon");
     expect(formatRuling(5n, { type: "uint", precision: 1e9 }, null)).toBe("5");
   });
 

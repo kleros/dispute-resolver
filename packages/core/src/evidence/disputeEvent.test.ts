@@ -1,9 +1,9 @@
 import { numberToHex, pad } from "viem";
 import { describe, expect, it } from "vitest";
 import { CHAINS } from "../chains";
-import type { Address } from "../types";
+import type { Address, ReadClient } from "../types";
 import { scanEvidenceLogs } from "./events";
-import { evidenceScanStart, readDisputeEvent } from "./index";
+import { evidenceScanStart, readDisputeEvent, readMetaEvidenceEvent } from "./index";
 import { disputeLog, fakeClient, recordedDispute, recordedNode, RECORDED, rpcError, type RpcLog } from "../test/evidence/testHelpers";
 import { chainOf } from "../test/chains/testHelpers";
 
@@ -113,6 +113,27 @@ describe("readDisputeEvent", () => {
     const outcome = await readDisputeEvent({ client, arbitrable: DISPUTE_1454.arbitrable, arbitrator: ARBITRATOR, disputeId: 1454n, fromBlock });
     expect(outcome.ok && outcome.value.status).toBe("found");
     expect(requests.logs.length).toBeGreaterThan(1);
+  });
+});
+
+describe("event scans", () => {
+  const scan = { arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, fromBlock: RECORDED.scanFromBlock };
+  it.each([
+    ["readDisputeEvent", (client: ReadClient, signal: AbortSignal) => readDisputeEvent({ ...scan, client, disputeId: 7n, signal })],
+    ["readMetaEvidenceEvent", (client: ReadClient, signal: AbortSignal) => readMetaEvidenceEvent({ ...scan, client, metaEvidenceId: 3n, signal })],
+    ["scanEvidenceLogs", (client: ReadClient, signal: AbortSignal) => scanEvidenceLogs({ ...scan, client, evidenceGroupId: 9n, signal })],
+  ])("%s sends no log request when aborted after the head read", async (_reader, read) => {
+    const controller = new AbortController();
+    const { client, requests } = fakeClient(recordedNode());
+    const abortingClient: ReadClient = {
+      ...client,
+      getBlockNumber: async () => {
+        controller.abort();
+        return client.getBlockNumber();
+      },
+    };
+    await read(abortingClient, controller.signal).catch(() => undefined);
+    expect(requests.logs).toHaveLength(0);
   });
 });
 

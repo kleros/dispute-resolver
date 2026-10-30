@@ -66,12 +66,15 @@ describe("createReadClient", () => {
     expect(endpoint.posts.map((post) => post.at - start)).toEqual([0, 500, 2_500]);
   });
 
-  it("a request that succeeds on retry resolves", async () => {
+  it.each([
+    ["a node error", { error: { code: -32000, message: "header not found" } }],
+    ["a timeout", "hang"],
+  ] as const)("a request that fails once with %s resolves on retry", async (_, firstReply) => {
     vi.useFakeTimers();
     let attempts = 0;
     stubEndpoint(() => {
       attempts += 1;
-      return attempts === 1 ? { error: { code: -32000, message: "header not found" } } : { result: "0x2a" };
+      return attempts === 1 ? firstReply : { result: "0x2a" };
     });
     const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
     const blockNumber = client.getBlockNumber();

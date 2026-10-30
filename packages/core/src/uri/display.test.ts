@@ -35,7 +35,14 @@ describe("resolveDisplayUrl", () => {
   });
 
   it("a display that is not https, other than an http /ipfs/<CID> URL, renders nothing", () => {
-    const inputs = ["http://example.org/display/index.html", "//example.org/display/index.html", "javascript:alert(1)", "data:text/html,<p>x</p>", ""];
+    const inputs = [
+      "http://example.org/display/index.html",
+      "//example.org/display/index.html",
+      "javascript:alert(1)",
+      "data:text/html,<p>x</p>",
+      "",
+      `https://exa mple.com/ipfs/${CID}/index.html`,
+    ];
     for (const input of inputs) expect(resolveDisplayUrl(input, GATEWAY), input).toBeNull();
   });
 

@@ -61,6 +61,7 @@ describe("parseEvidenceDocument", () => {
 
   it("without fileURI or evidence there is no attachment", () => {
     expect(parsed({ name: "n", fileURI: "" }).attachment).toBeNull();
+    for (const evidence of [false, 0]) expect(parsed({ name: "n", evidence }).attachment).toBeNull();
   });
 
   it("a JSON value that is not an object fails the schema", () => {

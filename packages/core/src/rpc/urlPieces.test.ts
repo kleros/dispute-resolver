@@ -16,8 +16,9 @@ describe("urlPieces", () => {
     expect(urlPieces("https://rpc.example/v2/key%2Bwith%3Dsigns")).toEqual(expect.arrayContaining(["key%2Bwith%3Dsigns", "key+with=signs"]));
   });
 
-  it("keeps a query value that holds an equals sign whole", () => {
+  it("keeps a query value whole, one that holds an equals sign or one written without a name", () => {
     expect(urlPieces("https://rpc.example/?token=abc123==")).toContain("abc123==");
+    expect(urlPieces("https://rpc.example/?abc123SECRET")).toContain("abc123SECRET");
   });
 
   it("a URL that does not parse is its own piece", () => {

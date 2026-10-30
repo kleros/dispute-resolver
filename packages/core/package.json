@@ -14,7 +14,8 @@
     "format": "prettier --write . --ignore-path ../../.prettierignore",
     "reality:known-questions": "tsx scripts/generate-known-questions.ts",
     "reality:known-questions:check": "tsx scripts/generate-known-questions.ts --check",
-    "rpc:preflight": "tsx scripts/preflight-rpc.ts"
+    "rpc:preflight": "tsx scripts/preflight-rpc.ts",
+    "mutation": "stryker run"
   },
   "dependencies": {
     "@reality.eth/reality-eth-lib": "3.4.34",
@@ -26,6 +27,8 @@
     "@kleros/kleros": "0.1.5",
     "@kleros/kleros-interaction": "0.9.3",
     "@reality.eth/contracts": "3.2.31",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/vitest-runner": "^10.1.1",
     "IDRv1": "npm:@kleros/dispute-resolver-interface-contract@1.0.2",
     "IDRv2": "npm:@kleros/dispute-resolver-interface-contract@8.0.0",
     "eslint": "^9.39.5",

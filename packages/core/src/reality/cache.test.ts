@@ -56,6 +56,14 @@ describe("isValidCachedQuestion", () => {
   it("accepts a question matching the entry", () => {
     expect(isValidCachedQuestion(VALID, SINGLE_ENTRY, undefined)).toBe(true);
     expect(isValidCachedQuestion(VALID, SINGLE_ENTRY, KNOWN_SINGLE)).toBe(true);
+    expect(isValidCachedQuestion({ ...VALID, templateId: "20" }, SINGLE_ENTRY, undefined)).toBe(true);
+  });
+
+  it.each([
+    ["after", `${Q_KNOWN_SINGLE}00`],
+    ["before", `x${Q_KNOWN_SINGLE}`],
+  ])("rejects a question ID with characters %s it when no question is known", (_where, questionId) => {
+    expect(isValidCachedQuestion({ ...VALID, questionId }, SINGLE_ENTRY, undefined)).toBe(false);
   });
 
   it("compares the known question ID case-insensitively", () => {

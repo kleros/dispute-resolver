@@ -158,14 +158,15 @@ describe("buildCrowdfundingCards", () => {
     expect(set.composer).toBeNull();
   });
 
-  it("still shows every combination and no composer for a 4-option multiple-select", () => {
+  it("still shows every combination and no composer for a 4-option multiple-select, and never offers the composer for a single-select", () => {
     const set = build({ rulingOptions: { type: "multiple-select", titles: ["A", "B", "C", "D"] }, currentRuling: 1n });
     expect(set.cards).toHaveLength(1 + 16);
     expect(set.composer).toBeNull();
+    expect(build({ rulingOptions: { type: "single-select", titles: ["A", "B", "C", "D", "E"] }, currentRuling: 1n }).composer).toBeNull();
   });
 
-  it("uses the fallback outcomes for an unknown type, coded 1..n", () => {
-    const set = build({ rulingOptions: { type: "bool" }, currentRuling: 2n, fallbackOutcomes: ["No", "Yes"] });
+  it("uses the fallback outcomes for an unknown type, coded 1..n, even when it carries titles", () => {
+    const set = build({ rulingOptions: { type: "bool", titles: ["A", "B"] }, currentRuling: 2n, fallbackOutcomes: ["No", "Yes"] });
     expect(summary(set.cards)).toEqual([
       [0n, REFUSED_TITLE],
       [1n, "No"],
@@ -175,12 +176,14 @@ describe("buildCrowdfundingCards", () => {
   });
 
   it("falls back to Yes (1) and No (2) without fallback outcomes, also for a select without titles", () => {
-    for (const rulingOptions of [{ type: "bool" }, { type: "single-select" }, { type: "multiple-select" }]) {
-      expect(summary(build({ rulingOptions, currentRuling: 1n, fallbackOutcomes: [] }).cards)).toEqual([
-        [0n, REFUSED_TITLE],
-        [1n, "Yes"],
-        [2n, "No"],
-      ]);
+    for (const fallbackOutcomes of [null, []]) {
+      for (const rulingOptions of [{ type: "bool" }, { type: "single-select" }, { type: "multiple-select" }]) {
+        expect(summary(build({ rulingOptions, currentRuling: 1n, fallbackOutcomes }).cards)).toEqual([
+          [0n, REFUSED_TITLE],
+          [1n, "Yes"],
+          [2n, "No"],
+        ]);
+      }
     }
   });
 
@@ -295,16 +298,17 @@ describe("buildCrowdfundingCards", () => {
     const set = build({
       rulingOptions: { type: "multiple-select", titles },
       currentRuling: lastOnly,
-      contributions: { "0": 7n, "2": 3n, [everyOption.toString()]: 5n, [(everyOption + 1n).toString()]: 7n },
+      contributions: { "0": 7n, "1": 1n, "2": 3n, [everyOption.toString()]: 5n, [(everyOption + 1n).toString()]: 7n },
     });
     expect(summary(set.cards)).toEqual([
       [0n, REFUSED_TITLE],
+      [1n, "None"],
       [2n, "Option 1"],
       [lastOnly, "Option 34"],
       [everyOption, titles.join(", ")],
     ]);
-    expect(set.cards[2]).toMatchObject({ isWinner: true, required: 2_000n, deadline: 500 });
-    expect(set.cards[3]).toMatchObject({ isWinner: false, contributed: 5n, required: 3_000n, deadline: 250 });
+    expect(set.cards[3]).toMatchObject({ isWinner: true, required: 2_000n, deadline: 500 });
+    expect(set.cards[4]).toMatchObject({ isWinner: false, contributed: 5n, required: 3_000n, deadline: 250 });
     expect(set.composer).toEqual({ titles, side: "loser", required: 3_000n, deadline: 250 });
     expect(set.freeInput).toBeNull();
   });

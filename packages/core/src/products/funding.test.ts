@@ -35,6 +35,12 @@ function binaryProxyAt(local: bigint): ProductCase {
   return editArg(editArg(moved, "bap", "disputes", 0, String(local)), "bap", "crowdfundingStatus", 0, String(local));
 }
 
+/** The Light Curate dispute with its item ID replaced by `key`, every call naming it answered as recorded. */
+function lightItem(key: Hex): ProductCase {
+  const moved = editValues(LIGHT, "light", "arbitratorDisputeIDToItemID", { key });
+  return ["getItemInfo", "getRequestInfo", "getRoundInfo"].reduce((kase, fn) => editArg(kase, "light", fn, 0, key), moved);
+}
+
 /** `count` requests of the 1495 submission, the newest `count - 1` of them challenged in other disputes. */
 function pohRequests(count: number): ProductCase {
   const submission = POH_V1.calls["poh-v1"]?.[1]?.args[0] ?? "";
@@ -107,6 +113,8 @@ describe("readProductFunding", () => {
     ["Proof of Humanity v2: no proof for a challenge without a challenger", editWord(POH_V2, CHALLENGE, setBits(24n, 160n, 0n)), null],
     ["Proof of Humanity v2: no proof from the challenge deposit round", editWord(POH_V2, CHALLENGE, setBits(0n, 16n, 0n)), null],
     ["Proof of Humanity v2: no proof for a funded side that is not a party", editWord(POH_V2, ROUND, () => 3n), null],
+    ["Curate: a removal request (status 3) still proves its funding", editValues(LIGHT, "light", "getItemInfo", { status: "3" }), [2n]],
+    ["Curate: an item ID whose top byte is zero still proves its funding", lightItem(`0x${"0".repeat(63)}1`), [2n]],
     ["Curate: nothing funded in the last round", editValues(LIGHT, "light", "getRoundInfo", { hasPaid: [false, false, false] }), []],
     ["Curate: no proof when Refuse to Arbitrate is marked paid", editValues(LIGHT, "light", "getRoundInfo", { hasPaid: [true, false, true] }), null],
     ["Curate: no proof when both sides are marked paid in the last round", editValues(LIGHT, "light", "getRoundInfo", { hasPaid: [false, true, true] }), null],

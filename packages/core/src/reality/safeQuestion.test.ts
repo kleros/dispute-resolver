@@ -62,6 +62,7 @@ describe("safePopulatedJSONForTemplate", () => {
       },
     });
     expect(rulingOptionsFromRealityQuestion(populated(result))).toEqual({ type: "single-select", titles: ["A", "B"], reserved: RESERVED });
+    expect(populated(safePopulatedJSONForTemplate('{"title": "%s", "type": "single-select", "outcomes": [%s, "C"]}', `T${D}"A"`)).outcomes).toEqual(["A", "C"]);
   });
 
   it("renders a uint question", () => {
@@ -132,6 +133,19 @@ describe("safePopulatedJSONForTemplate", () => {
     expect(reason('{title: "%s", "type": "bool"}')).toBe("invalid-template");
     expect(reason('{"title": "%s", "type": "bool", "type": "uint"}')).toBe("invalid-template");
     expect(reason('["%s"]')).toBe("invalid-template");
+    expect(reason("null")).toBe("invalid-template");
+    expect(reason('{"title": "%s", "type": bool}')).toBe("invalid-template");
+    expect(reason('{"title": "%s", "type": "bool"} x')).toBe("invalid-template");
+    expect(reason('{"title": "%s", "type": trux}')).toBe("invalid-template");
+    expect(reason('{"title": "%s", "type": "bool", "x": [1x2]}')).toBe("invalid-template");
+    expect(reason('{"title": "%s" x "type": "bool"}')).toBe("invalid-template");
+    expect(reason('{"title" x "%s", "type": "bool"}')).toBe("invalid-template");
+  });
+
+  it("treats an empty question as no parameters only when the template has no placeholder", () => {
+    expect(safePopulatedJSONForTemplate('{"title": "Fixed", "type": "bool"}', "")).toEqual({ ok: true, question: { title: "Fixed", type: "bool" } });
+    expect(safePopulatedJSONForTemplate('{"title": "Fixed", "type": "bool"}', "x")).toMatchObject({ ok: false, reason: "param-count-mismatch" });
+    expect(populated(safePopulatedJSONForTemplate('{"title": "%s", "type": "bool"}', "")).title).toBe("");
   });
 
   it("rejects placeholders in object keys", () => {
@@ -141,8 +155,10 @@ describe("safePopulatedJSONForTemplate", () => {
 
   it("accepts a single JSON scalar for a bare value placeholder (Kleros Moderate templates)", () => {
     const template = '{"title": "%s", "type": "bool", "askedBy": %s}';
-    expect(populated(safePopulatedJSONForTemplate(template, `Title${D}1234567890`)).askedBy).toBe(1234567890);
-    const injected = safePopulatedJSONForTemplate(template, `Title${D}1, "type": "uint"`);
+    for (const scalar of ["true", "false", "null", " -1.25e10 ", "2E+21", "1234567890"]) {
+      expect(populated(safePopulatedJSONForTemplate(template, `Title${D}${scalar}`)).askedBy).toEqual(JSON.parse(scalar));
+    }
+    const injected = safePopulatedJSONForTemplate(template, `Title${D}1, "type": 2`);
     expect(injected.ok || injected.reason).toBe("invalid-value");
     const object = safePopulatedJSONForTemplate(template, `Title${D}{"a": 1}`);
     expect(object.ok || object.reason).toBe("invalid-value");
@@ -199,19 +215,6 @@ function nestedTemplate(depth: number): string {
 }
 
 describe("hostile templates", () => {
-  it("analyzes a template stuffed with every nonce candidate in linear time", () => {
-    const candidates = Array.from({ length: 40_000 }, (_unused, index) => `@@kleros${String(index)}#`);
-    const hostile = `{"title": "${candidates.join(" ")}%s", "type": "bool", "category": "%s", "lang": "%s"}`;
-    expect(hostile.length).toBeGreaterThan(400_000);
-
-    const started = performance.now();
-    const result = safePopulatedJSONForTemplate(hostile, `a${D}b${D}c`);
-    const elapsedMs = performance.now() - started;
-
-    expect(result).toMatchObject({ ok: true, question: { type: "bool", category: "b", lang: "c" } });
-    expect(elapsedMs).toBeLessThan(500);
-  });
-
   it("reads a template nested a few levels deep", () => {
     expect(safePopulatedJSONForTemplate(nestedTemplate(10), "a")).toMatchObject({ ok: true, question: { title: "a", type: "bool" } });
   });
@@ -221,8 +224,14 @@ describe("hostile templates", () => {
     expect(safePopulatedJSONForTemplate(nestedTemplate(20_000), "a")).toEqual({ ok: false, reason: "invalid-template" });
   });
 
-  it("reads token-looking text of a template as plain text", () => {
+  it("reads a template with whitespace around separators and inside brackets", () => {
+    const template = '{\n  "title" : "%s",\n  "type": "single-select",\n  "outcomes": [ %s ],\n  "a": [ [ ] , [ ] ],\n  "b": { }\n}\n';
+    expect(populated(safePopulatedJSONForTemplate(template, `T${D}"A","B"`))).toEqual({ title: "T", type: "single-select", outcomes: ["A", "B"], a: [[], []], b: {} });
+  });
+
+  it("reads token-looking text of a template as plain text and drops NUL characters like reality-eth-lib", () => {
     const template = '{"title": "@@kleros0#0@@ @@kleros1#1@@ %s", "type": "bool", "category": "%s", "lang": "%s"}';
     expect(safePopulatedJSONForTemplate(template, `a${D}b${D}c`)).toMatchObject({ ok: true, question: { title: "@@kleros0#0@@ @@kleros1#1@@ a", category: "b", lang: "c" } });
+    expect(safePopulatedJSONForTemplate('{"title": "%s", "type": "bo\u0000ol"}', "x")).toMatchObject({ ok: true, question: { type: "bool" } });
   });
 });

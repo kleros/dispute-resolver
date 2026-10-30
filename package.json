@@ -15,7 +15,8 @@
     "build": "yarn workspaces foreach --all --topological --include '@dispute-resolver/*' run build",
     "check:bundle": "yarn workspace @dispute-resolver/web check:bundle",
     "rpc:preflight": "yarn workspace @dispute-resolver/core rpc:preflight",
-    "format": "yarn workspaces foreach --all --parallel --include '@dispute-resolver/*' run format && prettier --write eslint.config.mjs tsconfig.base.json package.json"
+    "format": "yarn workspaces foreach --all --parallel --include '@dispute-resolver/*' run format && prettier --write eslint.config.mjs tsconfig.base.json package.json",
+    "mutation": "yarn workspace @dispute-resolver/core mutation"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

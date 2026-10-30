@@ -43,7 +43,7 @@ describe("deriveRealityRulingOptions", () => {
     expect(deriveRealityRulingOptions(question, { ...ENTRY, answeredTooSoon: false }).rulingOptions).toEqual({ type: "single-select", titles: ["No", "Yes"] });
   });
 
-  it("localizes the labels like the Kleros Moderate script", () => {
+  it("localizes the labels of questions in the entry's language like the Kleros Moderate script", () => {
     const question = onChain(TEMPLATE_BOOL, ["¿Sí?", "misc", "es"].join(D));
     expect(deriveRealityRulingOptions(question, { ...ENTRY, localizedLang: "es" }).rulingOptions).toEqual({
       type: "single-select",
@@ -51,6 +51,8 @@ describe("deriveRealityRulingOptions", () => {
       reserved: { "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF": "Respondió demasiado pronto" },
     });
     expect(deriveRealityRulingOptions(question, { ...ENTRY, localizedLang: "es" }).realityQuestion.divergent).toBe(false);
+    const english = onChain(TEMPLATE_BOOL, ["Yes?", "misc", "en_US"].join(D));
+    expect(deriveRealityRulingOptions(english, { ...ENTRY, localizedLang: "es" }).rulingOptions).toEqual({ type: "single-select", titles: ["No", "Yes"], reserved: RESERVED });
   });
 
   it("uses the best-effort question when a select question misses parameters", () => {
@@ -83,6 +85,8 @@ describe("deriveRealityRulingOptions", () => {
       "Only details.",
     );
     expect(deriveRealityRulingOptions(question, { ...ENTRY, questionOverride: "title" }).question).toBe("Is it?");
+    expect(deriveRealityRulingOptions(onChain('{"title": "%s", "type": "bool"}', "Is it?"), { ...ENTRY, questionOverride: "title-description" }).question).toBe("Is it?");
+    expect(deriveRealityRulingOptions(onChain('{"title": %s, "type": "bool"}', "5"), { ...ENTRY, questionOverride: "title" })).not.toHaveProperty("question");
   });
 
   it("titles outcomes that String() cannot convert as the meta-evidence sanitizer does", () => {
@@ -90,10 +94,13 @@ describe("deriveRealityRulingOptions", () => {
     expect(rulingOptionsFromRealityQuestion(question, { answeredTooSoon: false })).toEqual({ type: "single-select", titles: ["[object Object]", "B", "3"] });
   });
 
-  it("reports a hostile unsafe rendering as divergent and keeps the safely derived options", () => {
-    const hostileLang = 'en", "type": "single-select", "outcomes": [{"toString": 1}], "z": "';
-    const { rulingOptions, realityQuestion } = deriveRealityRulingOptions(onChain(TEMPLATE_BOOL, ["Yes?", "misc", hostileLang].join(D)), ENTRY);
-    expect(rulingOptions).toEqual({ type: "single-select", titles: ["No", "Yes"], reserved: RESERVED });
+  it.each([
+    ["outcomes", TEMPLATE_BOOL, ["Yes?", "misc", 'en", "type": "single-select", "outcomes": [{"toString": 1}], "z": "'], { type: "single-select", titles: ["No", "Yes"] }],
+    ["question type", TEMPLATE_SINGLE_SELECT, ["Who?", '"A","B"', "misc", 'en", "type": "multiple-select", "z": "'], { type: "single-select", titles: ["A", "B"] }],
+    ["uint precision", '{"title": "%s", "type": "uint", "decimals": 18, "lang": "%s"}', ["How many?", 'en", "decimals": 0, "z": "'], { type: "uint", precision: 18 }],
+  ])("reports a hostile unsafe rendering that changes the %s as divergent and keeps the safely derived options", (_change, template, params, safe) => {
+    const { rulingOptions, realityQuestion } = deriveRealityRulingOptions(onChain(template, params.join(D)), ENTRY);
+    expect(rulingOptions).toEqual({ ...safe, reserved: RESERVED });
     expect(realityQuestion).toMatchObject({ status: "verified", divergent: true });
   });
 

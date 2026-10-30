@@ -172,6 +172,13 @@ describe("getLogsChunked", () => {
     expect(requests[9]?.fromBlock).toBe(fromBlock);
   });
 
+  it("a scan whose windows end one block before the head still fetches the head block", async () => {
+    const toBlock = 14_634_725n;
+    const { client } = fakeLogsClient(cappedNode(DISPUTE_1170_LOGS, 10_000n));
+    const logs = await getLogsChunked(client, { ...scan, fromBlock: toBlock - 80_000n, toBlock });
+    expect(positions(logs)).toEqual(expectedContributions.filter(([block]) => (block ?? 0n) <= toBlock));
+  });
+
   it("shrinks a range no larger than the first window before splitting it", async () => {
     const { client, requests } = fakeLogsClient(cappedNode(DISPUTE_1170_LOGS, 1_000n));
     await getLogsChunked(client, { ...scan, fromBlock: 14_634_000n, toBlock: 14_638_999n });
@@ -198,8 +205,9 @@ describe("getLogsChunked", () => {
 
   it("an error that is not a range limit in a window is rethrown", async () => {
     const node = cappedNode(DISPUTE_1170_LOGS, 10_000n);
-    const { client } = fakeLogsClient((request) => (request.fromBlock === 14_620_000n ? Promise.resolve(rpcError(-32000, "header not found")) : node(request)));
+    const { client, requests } = fakeLogsClient((request) => (request.fromBlock === 14_620_000n ? Promise.resolve(rpcError(-32000, "header not found")) : node(request)));
     await expect(getLogsChunked(client, { ...scan, fromBlock: 14_600_000n, toBlock: 14_950_000n })).rejects.toThrow(/header not found/);
+    expect(requests.filter((request) => request.fromBlock === 14_620_000n)).toHaveLength(1);
   });
 
   it("drops removed logs, deduplicates by (transactionHash, logIndex) and sorts by block and log index", async () => {
@@ -210,9 +218,11 @@ describe("getLogsChunked", () => {
     if (first === undefined || second === undefined) throw new Error("fixture has fewer than two contributions");
     const duplicate: RpcLog = { ...first, transactionHash: first.transactionHash.toUpperCase().replace("0X", "0x") as RpcLog["transactionHash"] };
     const removed: RpcLog = { ...second, logIndex: numberToHex(999), removed: true };
-    const { client } = fakeLogsClient(() => Promise.resolve([...wanted].reverse().concat(duplicate, removed)));
+    const sameBlockLater: RpcLog = { ...first, logIndex: numberToHex(Number(first.logIndex) + 1) };
+    const { client } = fakeLogsClient(() => Promise.resolve([sameBlockLater, ...[...wanted].reverse(), duplicate, removed]));
     const logs = await getLogsChunked(client, scan);
-    expect(positions(logs)).toEqual(expectedContributions);
+    const [firstPosition, ...rest] = expectedContributions;
+    expect(positions(logs)).toEqual([firstPosition, [BigInt(first.blockNumber), Number(sameBlockLater.logIndex)], ...rest]);
   });
 
   it("logs are deduplicated across windows", async () => {

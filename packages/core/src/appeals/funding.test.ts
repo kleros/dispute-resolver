@@ -141,6 +141,11 @@ describe("readRoundFunding (IDisputeResolver)", () => {
     expect(await readRoundFunding(context, 1n, 0n)).toMatchObject({ ok: false, error: { code: "rpc-error" } });
   });
 
+  it("reports a Contribution event that does not decode as invalid data", async () => {
+    const { context } = syntheticContext({ head: 200n, logs: [{ ...contributionLog({ localId: 7n, round: 1n, ruling: 1n, amount: 5n }), data: "0x" }] });
+    expect(await readRoundFunding(context, 1n, 0n)).toMatchObject({ ok: false, error: { code: "invalid-data" } });
+  });
+
   it("needs a resolved local ID for an IDisputeResolver family", async () => {
     const reverted = syntheticContext({ head: 1n }, { kind: "unresolved", reason: "reverted" });
     expect(await readRoundFunding(reverted.context, 0n, 0n)).toMatchObject({ ok: false, error: { code: "reverted" } });

@@ -31,7 +31,21 @@ describe("isSafeNavigationUrl", () => {
   });
 
   it("rejects protocol-relative, http and dangerous schemes", () => {
-    const inputs = ["//kleros.io/path", "http://kleros.io", "ftp://kleros.io", ...DANGEROUS_SCHEMES, " javascript:alert(1)", "/relative/path", "kleros.io", "", "   "];
+    const inputs = [
+      "//kleros.io/path",
+      "http://kleros.io",
+      "ftp://kleros.io",
+      ...DANGEROUS_SCHEMES,
+      " javascript:alert(1)",
+      "javascript:alert('https://x')",
+      "http://evil.example/?u=https://x",
+      "https://",
+      "https://a b.example",
+      "/relative/path",
+      "kleros.io",
+      "",
+      "   ",
+    ];
     for (const input of inputs) expect(isSafeNavigationUrl(input), input).toBe(false);
   });
 

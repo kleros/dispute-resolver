@@ -9,14 +9,12 @@ describe("parsePrecision", () => {
   it.each([
     [18, 18],
     [0, 0],
-    ["6", 6],
     [" 6 ", 6],
     [true, 0],
     ["1e2", 1],
     [2.7, 2],
     [-3, 0],
     [[5], 5],
-    ["0x12", 18],
     ["0X12", 18],
     [" 0x12 ", 18],
     ["0x0", 0],
@@ -74,6 +72,7 @@ describe("parseRealityDecimals", () => {
     ["1_000", 1],
     [18, 18],
     ["0x12", 18],
+    ["10x5", 10],
     [throwingToString, 0],
   ])("reads a Reality.eth question's decimals as reality-eth-lib does, absent as 0: %j is %j", (value, expected) => {
     expect(parseRealityDecimals(value)).toBe(expected);

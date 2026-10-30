@@ -21,10 +21,10 @@ const UNKNOWN_CONTRACT: Address = "0x1111111111111111111111111111111111111111";
 const REASON = "funds frozen until the audit ends";
 const FIXED_SENTENCE = "The contract rejected the call.";
 
-/** A revert carrying `Error(string)` return data, as a node reports it with code 3. */
-function revertWithData(reason: string): Error {
+/** A revert carrying `Error(string)` return data, as a node reports it, with code 3 unless given. */
+function revertWithData(reason: string, code = 3, message = "execution reverted"): Error {
   const data = encodeErrorResult({ abi: [{ type: "error", name: "Error", inputs: [{ type: "string", name: "message" }] }], errorName: "Error", args: [reason] });
-  return Object.assign(rpcError(3, "execution reverted"), { data });
+  return Object.assign(rpcError(code, message), { data });
 }
 
 async function readError(answer: Error | `0x${string}`, address: Address = ARBITRATOR): Promise<unknown> {
@@ -52,6 +52,11 @@ describe("isContractFailure", () => {
 
   it("no return data from a fallback function is a contract failure", async () => {
     expect(isContractFailure(await readError("0x"))).toBe(true);
+  });
+
+  it("revert data under the internal-error code is a contract failure, and empty revert data there is not", async () => {
+    expect(isContractFailure(await readError(revertWithData(REASON, -32603, "Internal error")))).toBe(true);
+    expect(isContractFailure(await readError(Object.assign(rpcError(-32603, "Internal error"), { data: "0x" })))).toBe(false);
   });
 
   it.each([
@@ -94,12 +99,13 @@ describe("describeError", () => {
   });
 
   it("a known contract's own text is shown as one plain line: controls, direction and invisible marks become spaces, and it is cut at 200 characters", async () => {
-    const hostile = `Refund\u202Edenied\u2066 to\u200B you\n\u0007${"x".repeat(400)}`;
+    const marks = ["\u0007", "\u001F", "\u007F", "\u009F", "\u061C", "\u200F", "\u2060", "\u2069"];
+    const hostile = `Refund\u202Edenied\u2066 to\u200B you\nCafé — 5 €${marks.join("")}${"x".repeat(400)}`;
     const described = describeError(await readError(revertWithData(hostile), ARBITRATOR), MAINNET);
     expect(Array.from(described)).toHaveLength(200);
     expect(described).toMatch(/…$/);
-    for (const mark of ["\u202E", "\u2066", "\u200B", "\n", "\u0007"]) expect(described).not.toContain(mark);
-    expect(described).toContain("Refund denied to you x");
+    for (const mark of ["\u202E", "\u2066", "\u200B", "\n", ...marks]) expect(described).not.toContain(mark);
+    expect(described).toContain("Refund denied to you Café — 5 € x");
   });
 
   it("a known contract's address called on another chain is described by the fixed sentence", async () => {
@@ -174,6 +180,7 @@ describe("rejectionReason", () => {
 
   it("is nothing when the contract gave no reason, or when the call failed in transport", async () => {
     expect(rejectionReason(await readError(rpcError(3, "execution reverted"), ARBITRATOR), MAINNET)).toBeNull();
+    expect(rejectionReason(await readError(Object.assign(rpcError(3, "execution reverted"), { data: "0xdeadbeef" }), ARBITRATOR), MAINNET)).toBeNull();
     expect(rejectionReason(await readError(rpcError(-32000, "header not found"), ARBITRATOR), MAINNET)).toBeNull();
     expect(rejectionReason(new Error(REASON), MAINNET)).toBeNull();
   });

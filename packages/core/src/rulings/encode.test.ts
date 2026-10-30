@@ -57,6 +57,7 @@ describe("encodeAnswer: uint", () => {
   it("precision 0 is respected, not replaced by 18", () => {
     expect(uint("5", UINT_0)).toEqual(ok(6n));
     expect(uint("4243172404", UINT_0)).toEqual(ok(4243172405n));
+    expect(uint("100", UINT_0)).toEqual(ok(101n));
   });
 
   it.each<[RulingOptions, string]>([
@@ -233,6 +234,7 @@ describe("encodeAnswer: robustness", () => {
   it("a hostile precision falls back to reality-eth-lib's reading of the decimals", () => {
     expect(uint("5", { type: "uint", precision: -4 })).toEqual(ok(6n));
     expect(uint("5", { type: "uint", precision: 2.7 })).toEqual(ok(501n));
+    expect(uint("0", { type: "uint", precision: 80 })).toEqual(ok(1n));
     expect(uint("5", { type: "uint", precision: 81 })).toEqual(failed("out-of-range"));
   });
 });

@@ -61,7 +61,7 @@ describe("readEip1967Implementation", () => {
   });
 
   it("a malformed word rejects", async () => {
-    for (const word of ["0xzz", `0x${"11".repeat(33)}`] as const) {
+    for (const word of ["0xzz", `0x${"11".repeat(33)}`, `zz${slotWord(IMPLEMENTATION)}`] as Hex[]) {
       const { client } = fakeNodeClient({ code: {}, implementationSlot: { [PROXY]: word } });
       await expect(readEip1967Implementation(client, PROXY)).rejects.toThrow();
     }

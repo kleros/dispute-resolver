@@ -134,6 +134,7 @@ describe("probes read bytecode and never call the arbitrable", () => {
 
   it("malformed code from the node rejects", async () => {
     await expect(detectOn(1, UNLISTED, { code: { [UNLISTED]: "0x63zz" } }).detection).rejects.toThrow();
+    await expect(detectOn(1, UNLISTED, { code: { [UNLISTED]: "0x123" } }).detection).rejects.toThrow();
   });
 
   it("follows the EIP-1967 slot: the Unslashed proxy is scanned through its implementation and detects as idr-v1", async () => {

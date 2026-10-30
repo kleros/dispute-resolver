@@ -141,6 +141,7 @@ describe("reserved answers on codes the question itself uses", () => {
   it("a select with an empty title list claims no option code, a multiple-select with one only the empty combination", () => {
     expect(reservedOf({ type: "single-select", titles: [], reserved: { "0x1": "Kept" } })).toEqual({ "0x1": "Kept" });
     expect(reservedOf({ type: "multiple-select", titles: [], reserved: { "0x1": "x", "0x2": "Kept" } })).toEqual({ "0x2": "Kept" });
+    expect(reservedOf({ type: "multiple-select", reserved: { "0x2": "x", "0x3": "Kept" } })).toEqual({ "0x3": "Kept" });
   });
 
   it("a uint, int, string, datetime or hash question keeps every reserved answer but code 0", () => {
@@ -247,8 +248,12 @@ describe("parseMetaEvidence", () => {
   });
 
   it("aliases keep entries whose key is an address and whose value is a string, keys as written", () => {
-    const metaEvidence = parsed({ title: "T", aliases: { [CHECKSUMMED]: "Alice", [ADDRESS.replace("0x7", "0x8")]: 7, "not-an-address": "Bob", "0x1234": "Carol" } });
-    expect(metaEvidence.aliases).toEqual({ [CHECKSUMMED]: "Alice" });
+    const badChecksum = CHECKSUMMED.replace("0x799CB", "0x799cB");
+    const metaEvidence = parsed({
+      title: "T",
+      aliases: { [CHECKSUMMED]: "Alice", [badChecksum]: "Dave", [ADDRESS.replace("0x7", "0x8")]: 7, "not-an-address": "Bob", "0x1234": "Carol" },
+    });
+    expect(metaEvidence.aliases).toEqual({ [CHECKSUMMED]: "Alice", [badChecksum]: "Dave" });
     expect(parsed({ title: "T", aliases: ["Alice"] }).aliases).toEqual({});
     expect(parsed({ title: "T" }).aliases).toEqual({});
   });

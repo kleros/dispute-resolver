@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { klerosLiquidAbi } from "../abi";
 import type { Address } from "../types";
 import { listOngoingDisputes } from ".";
@@ -119,6 +119,17 @@ describe("listOngoingDisputes", () => {
   it("a failing log scan fails the list", async () => {
     const { client } = fakeClient(node({ failing: { eth_getLogs: rpcError(-32000, "header not found") } }));
     expect(await listOngoingDisputes({ chainId: 11155111, client }, COURTS)).toMatchObject({ status: "failed", error: { code: "rpc-error" } });
+  });
+
+  it("an abort while the head is read fails the list before any log request", async () => {
+    const controller = new AbortController();
+    const { client, requests } = fakeClient(node());
+    vi.spyOn(client, "getBlockNumber").mockImplementation(() => {
+      controller.abort();
+      return Promise.resolve(HEAD);
+    });
+    expect(await listOngoingDisputes({ chainId: 11155111, client, signal: controller.signal }, COURTS)).toMatchObject({ status: "failed" });
+    expect(requests.logs).toEqual([]);
   });
 
   it("a chain without an arbitrator is no-arbitrator, without any read", async () => {

@@ -31,14 +31,16 @@ interface Node {
 
 interface Sent {
   readonly methods: string[];
+  readonly balanceOf: unknown[];
   readonly calls: { readonly from?: string; readonly to?: string; readonly data?: string; readonly value?: string }[];
 }
 
 function node(spec: Node): { readonly client: ReadClient; readonly sent: Sent } {
-  const sent: Sent = { methods: [], calls: [] };
+  const sent: Sent = { methods: [], balanceOf: [], calls: [] };
   const request = ({ method, params }: { method: string; params?: unknown }): Promise<unknown> => {
     sent.methods.push(method);
     if (method === "eth_getBalance") {
+      sent.balanceOf.push((params as unknown[])[0]);
       const balance = spec.balance ?? 10n ** 18n;
       return balance instanceof Error ? Promise.reject(balance) : Promise.resolve(numberToHex(balance));
     }
@@ -67,6 +69,7 @@ describe("simulateWrite", () => {
   it("simulates from the connected account with the call's value through the read client", async () => {
     const { client, sent } = node({});
     await simulateWrite(client, fundAppeal(KNOWN, 1, 7n), ACCOUNT);
+    expect(sent.balanceOf).toEqual([ACCOUNT]);
     expect(sent.calls).toHaveLength(1);
     expect(sent.calls[0]).toMatchObject({
       from: ACCOUNT,

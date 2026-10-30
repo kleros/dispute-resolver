@@ -110,6 +110,15 @@ describe("parseCachedMetaEvidenceResult", () => {
     }
   });
 
+  it("an accepted result whose script ran, or whose Reality question is unresolvable, reads back equal", async () => {
+    const base = await okResult();
+    const variants: (typeof base)[] = [
+      { ...base, script: { ran: true, kind: "standard", jsonDuplicateKeys: false } },
+      { ...base, metaEvidence: { ...base.metaEvidence, realityQuestion: { status: "unresolvable", reason: "invalid-template" } } },
+    ];
+    for (const result of variants) expect(parseCachedMetaEvidenceResult(persisted(result))).toEqual(result);
+  });
+
   it("a persisted entry without a source is ignored", async () => {
     const good = persisted(await okResult()) as Record<string, unknown>;
     const { source, ...withoutSource } = good;

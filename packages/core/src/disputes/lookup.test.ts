@@ -10,13 +10,16 @@ const NONEXISTENT = 1_000_000_000n;
 const UINT256_MAX = 2n ** 256n - 1n;
 
 describe("parseDisputeId", () => {
-  it("accepts ASCII digits, including dispute 0", () => {
+  it("accepts ASCII digits, including dispute 0 and leading zeros", () => {
     expect(parseDisputeId("0")).toBe(0n);
     expect(parseDisputeId("1454")).toBe(1454n);
     expect(parseDisputeId(UINT256_MAX.toString())).toBe(UINT256_MAX);
+    expect(parseDisputeId("007")).toBe(7n);
+    expect(parseDisputeId("00" + UINT256_MAX.toString())).toBe(UINT256_MAX);
   });
 
   it("accepts non-negative safe integers and in-range bigints", () => {
+    expect(parseDisputeId(0)).toBe(0n);
     expect(parseDisputeId(121)).toBe(121n);
     expect(parseDisputeId(5n)).toBe(5n);
   });

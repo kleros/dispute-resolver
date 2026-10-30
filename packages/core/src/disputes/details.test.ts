@@ -1,5 +1,5 @@
 import { numberToHex, toFunctionSelector } from "viem";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { lookupDispute, readAppealDecisions, readDisputeDetails } from ".";
 import type { ArbitratedBinding, ArbitratorDispute } from "./types";
 import { appealDecisionLog, fakeClient, MAINNET, recordedDetection, recordedNode, rpcError, selectorOf } from "../test/disputes/testHelpers";
@@ -78,15 +78,18 @@ describe("readDisputeDetails", () => {
     expect(requests.logs[0]).toMatchObject({ fromBlock: expectedFrom, toBlock: MAINNET.readAtBlock });
   });
 
-  it("reads appealCost and appealPeriod only in periods 3 and 4", async () => {
+  it.each([
+    [2, false],
+    [3, true],
+    [4, true],
+  ] as const)("reads appealCost and appealPeriod only in periods 3 and 4 (period %i)", async (period, readsAppealInfo) => {
     const executed = await found(1454n);
-    const inVote = { ...executed, dispute: { ...executed.dispute, period: 2 as const } };
     const { client, requests } = fakeClient(recordedNode(MAINNET));
-    const reads = await readDisputeDetails({ chainId: 1, client }, inVote, undefined, null);
-    expect(reads.appealInfo).toBeNull();
+    const reads = await readDisputeDetails({ chainId: 1, client }, { ...executed, dispute: { ...executed.dispute, period } }, undefined, null);
+    expect(reads.appealInfo).toEqual(readsAppealInfo ? expect.objectContaining({ ok: true }) : null);
     const selectors = requests.calls.map(selectorOf);
-    expect(selectors).not.toContain(APPEAL_COST);
-    expect(selectors).not.toContain(APPEAL_PERIOD);
+    expect(selectors.includes(APPEAL_COST)).toBe(readsAppealInfo);
+    expect(selectors.includes(APPEAL_PERIOD)).toBe(readsAppealInfo);
   });
 
   it.each([
@@ -182,6 +185,19 @@ describe("readAppealDecisions", () => {
     const controller = new AbortController();
     controller.abort();
     const { client, requests } = fakeClient(recordedNode(MAINNET));
+    const decisions = await readAppealDecisions({ chainId: 1, client, signal: controller.signal }, dispute.binding, 0n);
+    expect(decisions).toMatchObject({ ok: false, error: { code: "rpc-error" } });
+    expect(requests.logs).toEqual([]);
+  });
+
+  it("an abort while the head is read stops the scan before any log request", async () => {
+    const dispute = await found(1454n);
+    const controller = new AbortController();
+    const { client, requests } = fakeClient(recordedNode(MAINNET));
+    vi.spyOn(client, "getBlockNumber").mockImplementation(() => {
+      controller.abort();
+      return Promise.resolve(MAINNET.readAtBlock);
+    });
     const decisions = await readAppealDecisions({ chainId: 1, client, signal: controller.signal }, dispute.binding, 0n);
     expect(decisions).toMatchObject({ ok: false, error: { code: "rpc-error" } });
     expect(requests.logs).toEqual([]);

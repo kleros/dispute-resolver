@@ -174,7 +174,17 @@ const webImports = ({ reown = true, markdown = true, app = true, testImports = t
 ];
 
 export default defineConfig([
-  globalIgnores([".yarn/**", "**/node_modules/**", "**/dist/**", "**/coverage/**", "**/test-results/**", "**/playwright-report/**", "**/.vite/**"]),
+  globalIgnores([
+    ".yarn/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/test-results/**",
+    "**/playwright-report/**",
+    "**/.vite/**",
+    "**/.stryker-tmp/**",
+    "packages/core/reports/**",
+  ]),
 
   js.configs.recommended,
 

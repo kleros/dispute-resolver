@@ -126,10 +126,19 @@ describe("buildDisputeView", () => {
     expect(view.timeline).toEqual(NOT_READ);
   });
 
-  it("details not read degrade the vote count, never the view", async () => {
+  it("details not read degrade the vote count and make a family that needs a local ID view-only, never the view", async () => {
     const { lookup, courts } = await load(MAINNET, 1, 1454n);
-    const view = existing(buildDisputeView({ lookup, reads: null, family: NOT_READ, courts, metaEvidence: null }));
+    const family = await recordedDetection(1, "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf");
+    const view = existing(buildDisputeView({ lookup, reads: null, family: { ok: true, value: family }, courts, metaEvidence: null }));
     expect(view.numberOfVotes.ok).toBe(false);
+    expect(view.timeline.ok).toBe(true);
+    expect(view.compatibility).toBe("view-only");
+  });
+
+  it("a failed vote count read degrades the vote count only", async () => {
+    const { lookup, reads, courts } = await load(MAINNET, 1, 1454n);
+    const view = existing(buildDisputeView({ lookup, reads: { ...reads, votesLengths: NOT_READ }, family: NOT_READ, courts, metaEvidence: null }));
+    expect(view.numberOfVotes).toEqual(NOT_READ);
     expect(view.timeline.ok).toBe(true);
   });
 

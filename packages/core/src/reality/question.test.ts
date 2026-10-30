@@ -7,7 +7,7 @@ import { findLatestLogs } from "./findLatestLogs";
 import { LOOKUP_LIMITS } from "./constants";
 import { requireClient } from "./lookup";
 import { fetchRealityQuestion } from "./question";
-import { filterOf, mappingLog, nth, questionLog, singleBlockLogs, type FakeChain, type NodeCall } from "../test/reality/testHelpers";
+import { filterOf, mappingLog, nth, questionLog, singleBlockLogs, templateLog, type FakeChain, type NodeCall } from "../test/reality/testHelpers";
 import {
   CROSS_BOUND,
   CROSS_ENTRY,
@@ -75,6 +75,8 @@ afterEach(() => {
 describe("fetchRealityQuestion", () => {
   it("looks up a known single-chain dispute with single-block requests only", async () => {
     const world = createWorld();
+    // Reality.eth creates its default templates in its deploy transaction, so they share one block.
+    world.chains[1].logs.push(templateLog(REALITY_1, 100, 5, "template 5 on 1"));
     const question = await lookup(world);
     expect(question).toEqual({
       questionId: Q_KNOWN_SINGLE,
@@ -255,8 +257,12 @@ describe("fetchRealityQuestion", () => {
     await expect(lookup(world, SINGLE_ENTRY, 9n)).rejects.toThrow("Expected exactly one DisputeIDToQuestionID log, found 2.");
   });
 
-  it("rejects an unknown dispute without mapping log", async () => {
+  it.each([
+    ["an uncapped", BigInt(Number.MAX_SAFE_INTEGER)],
+    ["a range-capped", 10_000n],
+  ])("rejects an unknown dispute without mapping log on %s provider", async (_provider, maxRange) => {
     const world = createWorld();
+    world.chains[1].maxRange = maxRange;
     await expect(lookup(world, SINGLE_ENTRY, 12n)).rejects.toThrow("found 0");
   });
 
@@ -305,6 +311,16 @@ describe("fetchRealityQuestion", () => {
     expect((await shared).questionId).toBe(Q_KNOWN_SINGLE);
   });
 
+  it("starts a new lookup for a caller arriving right after the only waiting caller aborted", async () => {
+    const world = createWorld();
+    const controller = new AbortController();
+    const aborted = fetchRealityQuestion({ entry: SINGLE_ENTRY, arbitratorChainId: 1, disputeId: 7n, clients: world.lookupClients, signal: controller.signal });
+    controller.abort(new Error("navigated away"));
+    const next = lookup(world);
+    await expect(aborted).rejects.toThrow("navigated away");
+    expect((await next).questionId).toBe(Q_KNOWN_SINGLE);
+  });
+
   it("stops the lookup before its next request once every caller aborts", async () => {
     const world = createWorld();
     const controller = new AbortController();
@@ -333,5 +349,17 @@ describe("findLatestLogs", () => {
     const world = createWorld();
     expect(await findLatestLogs(requireClient(world.clients, 1), { ...request, fromBlock: 10n, toBlock: 9n })).toEqual([]);
     expect(world.calls).toHaveLength(0);
+  });
+
+  it("scans down to a last window of one block without leaving the range", async () => {
+    const world = createWorld();
+    world.chains[1].maxRange = 10_000n;
+    // 80,001 blocks: 8 full windows, then block 850,000 alone, which holds the mapping log.
+    expect(await findLatestLogs(requireClient(world.clients, 1), { ...request, fromBlock: 850_000n, toBlock: 930_000n })).toHaveLength(1);
+    for (const call of getLogsCalls(world.calls)) {
+      const { fromBlock, toBlock } = filterOf(call);
+      expect(BigInt(fromBlock)).toBeGreaterThanOrEqual(850_000n);
+      expect(BigInt(fromBlock)).toBeLessThanOrEqual(BigInt(toBlock));
+    }
   });
 });

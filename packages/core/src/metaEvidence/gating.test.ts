@@ -94,13 +94,13 @@ describe("loadMetaEvidence gating", () => {
 
   it("a registered Reality proxy never runs its script, even one that is not content-addressed or not allowlisted", async () => {
     for (const uri of ["/ipns/kleros.eth/script.js", `/ipfs/${FIXTURE.mainnet1684.dynamicScriptCid}`, `/ipfs/${DEFAULT_SCRIPT_CID}`]) {
-      const { fetcher, urls } = fakeFetcher(servedMetaEvidence(json({ title: "Q", dynamicScriptURI: uri })));
+      const { fetcher, urls } = fakeFetcher(servedMetaEvidence(json({ title: "Q", question: "From the JSON", dynamicScriptURI: uri })));
       const entry = proxyEntry(SINGLE_CHAIN_PROXY);
       const cache = realityCache({
         [realityQuestionCacheKey(1, entry, 1684n)]: { ...boolQuestion("Will it rain?"), reality: entry.reality, realityChainId: entry.realityChainId },
       });
       const result = await loadMetaEvidence(context({ fetcher, runner: UNUSED_RUNNER, arbitrable: SINGLE_CHAIN_PROXY, realityCache: cache }));
-      expect(result).toMatchObject({ status: "ok", script: { ran: false, reason: "registered-reality-proxy" } });
+      expect(result).toMatchObject({ status: "ok", script: { ran: false, reason: "registered-reality-proxy" }, metaEvidence: { question: "From the JSON" } });
       expect(urls).toEqual([locatorUrl(1, 1684n), META_URL]);
     }
   });
@@ -173,6 +173,9 @@ describe("loadMetaEvidence gating", () => {
     const { fetcher } = fakeFetcher(servedMetaEvidence(json({ title: "T", rulingOptions: { type: "", titles: ["A"] } })));
     const result = await loadMetaEvidence(context({ fetcher }));
     expect(result.status === "ok" && result.metaEvidence.rulingOptions).toEqual({ type: "single-select", titles: ["A"] });
+    const typed = fakeFetcher(servedMetaEvidence(json({ title: "T", rulingOptions: { type: "multiple-select", titles: ["A", "B"] } })));
+    const kept = await loadMetaEvidence(context({ fetcher: typed.fetcher }));
+    expect(kept.status === "ok" && kept.metaEvidence.rulingOptions?.type).toBe("multiple-select");
   });
 
   it("mainnet 560's PDF is failed / not-json, without a retry", async () => {

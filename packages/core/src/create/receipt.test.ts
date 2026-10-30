@@ -33,6 +33,10 @@ describe("disputeIdFromReceipt", () => {
     expect(disputeIdFromReceipt([creationLog(PROXY, 666n)], ARBITRATOR)).toBeNull();
   });
 
+  it("skips the arbitrator's logs that are not DisputeCreation", () => {
+    expect(disputeIdFromReceipt([{ address: ARBITRATOR, topics: [] }, { ...OTHER_EVENT, address: ARBITRATOR }, creationLog(ARBITRATOR, 12n)], ARBITRATOR)).toBe(12n);
+  });
+
   it("gives null when there is no DisputeCreation log", () => {
     expect(disputeIdFromReceipt([], ARBITRATOR)).toBeNull();
     expect(disputeIdFromReceipt([OTHER_EVENT], ARBITRATOR)).toBeNull();
