@@ -1,0 +1,255 @@
+import { parseAbiItem } from "viem";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReadClient } from "../types";
+import { createReadClient, createReadClients, createRequestBudget, isLookupLimitError } from "./index";
+import { chainOf } from "../test/chains/testHelpers";
+import { rpcCalls, stubEndpoint } from "../test/rpc/testHelpers";
+import type { BudgetedReadClientOptions } from "./types";
+
+/**
+ * viem keeps one batch queue per URL at module level, so each test reads through its own URL: a request left pending
+ * under fake timers can then never hold up the next test.
+ */
+let urlCounter = 0;
+let READ_URL = "";
+const event = parseAbiItem("event Ruling(address indexed _arbitrator, uint256 indexed _disputeID, uint256 _ruling)");
+const address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
+
+function readClient(env: Record<string, string>, options?: BudgetedReadClientOptions): ReadClient {
+  const resolution = createReadClient(chainOf(1), env, options);
+  if (resolution.status !== "ok") throw new Error("expected a configured client");
+  return resolution.client;
+}
+
+const getLogs = (client: ReadClient) => client.getLogs({ address, event, fromBlock: 1n, toBlock: 2n });
+
+beforeEach(() => {
+  urlCounter += 1;
+  READ_URL = `https://read.rpc.example/${String(urlCounter)}`;
+});
+
+describe("createReadClient", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it("reads through the chain's configured read RPC", async () => {
+    const endpoint = stubEndpoint(() => ({ result: "0x10" }));
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
+    expect(await client.getBlockNumber()).toBe(16n);
+    expect(endpoint.posts.map((post) => post.url)).toEqual([READ_URL]);
+  });
+
+  it("uses the literal read RPC of zkSync when its variable is unset", async () => {
+    const zkSync = chainOf(324);
+    const resolution = createReadClient(zkSync, {});
+    expect(resolution.status).toBe("ok");
+    const endpoint = stubEndpoint(() => ({ result: "0x1" }));
+    if (resolution.status === "ok") await resolution.client.getBlockNumber();
+    expect(endpoint.posts.map((post) => new URL(post.url).origin)).toEqual([zkSync.defaultRpcUrl]);
+  });
+
+  it("a chain whose read variable is unset is unconfigured, with no wallet fallback", () => {
+    expect(createReadClient(chainOf(1), {})).toEqual({ status: "unconfigured", chainId: 1 });
+    expect(createReadClient(chainOf(100), { REACT_APP_WEB3_XDAI_PROVIDER_URL: "  " })).toEqual({ status: "unconfigured", chainId: 100 });
+  });
+
+  it("retries a failed request twice, after 500 ms and 2 s", async () => {
+    vi.useFakeTimers();
+    const endpoint = stubEndpoint(() => ({ status: 503 }));
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
+    const start = Date.now();
+    const failure = expect(client.getBlockNumber()).rejects.toThrow(/HTTP request failed/);
+    await vi.runAllTimersAsync();
+    await failure;
+    expect(endpoint.posts.map((post) => post.at - start)).toEqual([0, 500, 2_500]);
+  });
+
+  it.each([
+    ["a node error", { error: { code: -32000, message: "header not found" } }],
+    ["a timeout", "hang"],
+  ] as const)("a request that fails once with %s resolves on retry", async (_, firstReply) => {
+    vi.useFakeTimers();
+    let attempts = 0;
+    stubEndpoint(() => {
+      attempts += 1;
+      return attempts === 1 ? firstReply : { result: "0x2a" };
+    });
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
+    const blockNumber = client.getBlockNumber();
+    await vi.runAllTimersAsync();
+    expect(await blockNumber).toBe(42n);
+    expect(attempts).toBe(2);
+  });
+
+  it("an eth_getLogs range refusal is returned at once, never retried", async () => {
+    const endpoint = stubEndpoint(() => ({ error: { code: -32005, message: "query returned more than 10000 results" } }));
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
+    await expect(getLogs(client)).rejects.toThrow(/more than 10000 results/);
+    expect(rpcCalls(endpoint)).toHaveLength(1);
+  });
+
+  it.each([
+    ["an eth_getLogs failure that is not a range limit", -32000, "header not found"],
+    ["a rate-limited eth_getLogs", -32005, "daily request count exceeded, request rate limited"],
+  ])("%s is retried, not treated as a range limit", async (_case, code, message) => {
+    vi.useFakeTimers();
+    const endpoint = stubEndpoint(() => ({ error: { code, message } }));
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
+    const failure = expect(getLogs(client)).rejects.toThrow(message);
+    await vi.runAllTimersAsync();
+    await failure;
+    expect(rpcCalls(endpoint)).toHaveLength(3);
+  });
+
+  it("retryCount 0 makes a single attempt", async () => {
+    const endpoint = stubEndpoint(() => ({ status: 503 }));
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL }, { retryCount: 0 });
+    await expect(client.getBlockNumber()).rejects.toThrow(/HTTP request failed/);
+    expect(endpoint.posts).toHaveLength(1);
+  });
+
+  it.each([
+    ["an HTTP failure", { status: 401 }],
+    ["a node error", { error: { code: -32000, message: "header not found" } }],
+    ["a node error that repeats the key", { error: { code: -32000, message: "key abc123SECRETxyz over quota" } }],
+  ] as const)("%s names the read RPC by its origin, never with its key", async (_, reply) => {
+    stubEndpoint(() => reply);
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: "https://rpc.example/v2/abc123SECRETxyz" }, { retryCount: 0 });
+    const error: unknown = await client.getCode({ address }).catch((caught: unknown) => caught);
+    const texts: string[] = [];
+    for (let link: unknown = error; link instanceof Error; link = link.cause) texts.push(link.message, link.stack ?? "");
+    expect(texts.join("\n")).toContain("URL: https://rpc.example");
+    expect(texts.join("\n")).not.toContain("abc123SECRETxyz");
+  });
+
+  it("each request times out after 20 s by default", async () => {
+    vi.useFakeTimers();
+    stubEndpoint(() => "hang");
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL }, { retryCount: 0 });
+    let settled = false;
+    const failure = client.getBlockNumber().finally(() => {
+      settled = true;
+    });
+    const assertion = expect(failure).rejects.toThrow(/took too long/);
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await assertion;
+  });
+
+  it("an eth_getLogs timeout counts as a range limit and is not retried", async () => {
+    const endpoint = stubEndpoint(() => "hang");
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL }, { timeoutMs: 20 });
+    await expect(getLogs(client)).rejects.toThrow(/took too long/);
+    expect(endpoint.posts).toHaveLength(1);
+  });
+
+  it("sends each request in its own HTTP request", async () => {
+    const endpoint = stubEndpoint(() => ({ result: "0x1" }));
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
+    await Promise.all([client.getBlockNumber({ cacheTime: 0 }), client.getCode({ address })]);
+    expect(endpoint.posts.map((post) => post.calls.map((call) => call.method))).toEqual([["eth_blockNumber"], ["eth_getCode"]]);
+  });
+
+  it("a slow request does not hold up or time out a concurrent one", async () => {
+    vi.useFakeTimers();
+    stubEndpoint((call) => (call.method === "eth_blockNumber" ? "hang" : { result: "0x1" }));
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL }, { retryCount: 0 });
+    const slow = expect(client.getBlockNumber({ cacheTime: 0 })).rejects.toThrow(/took too long/);
+    const fast = client.getCode({ address });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(await fast).toBe("0x1");
+    await vi.advanceTimersByTimeAsync(20_000);
+    await slow;
+  });
+
+  it("every attempt spends the lookup's budget, retries included", async () => {
+    vi.useFakeTimers();
+    const endpoint = stubEndpoint(() => ({ status: 503 }));
+    const budget = createRequestBudget({ maxRequests: 2, deadlineMs: 90_000 });
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL }, { budget });
+    const failure = expect(client.getBlockNumber()).rejects.toSatisfy(isLookupLimitError);
+    await vi.runAllTimersAsync();
+    await failure;
+    expect(endpoint.posts).toHaveLength(2);
+  });
+
+  it("every method spends the budget, not only eth_getLogs", async () => {
+    const endpoint = stubEndpoint(() => ({ result: "0x1" }));
+    const budget = createRequestBudget({ maxRequests: 2, deadlineMs: 90_000 });
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL }, { budget });
+    await client.getBlockNumber({ cacheTime: 0 });
+    await client.getCode({ address });
+    await expect(client.getBlockNumber({ cacheTime: 0 })).rejects.toSatisfy(isLookupLimitError);
+    expect(endpoint.posts).toHaveLength(2);
+  });
+
+  it("no retry starts after the lookup's deadline", async () => {
+    vi.useFakeTimers();
+    const endpoint = stubEndpoint(() => ({ status: 503 }));
+    const budget = createRequestBudget({ maxRequests: 1_500, deadlineMs: 1_000 });
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL }, { budget });
+    const start = Date.now();
+    const failure = expect(client.getBlockNumber()).rejects.toSatisfy(isLookupLimitError);
+    await vi.runAllTimersAsync();
+    await failure;
+    expect(endpoint.posts.map((post) => post.at - start)).toEqual([0, 500]);
+  });
+
+  it("an exhausted budget fails at once, without waiting for a retry", async () => {
+    vi.useFakeTimers();
+    const endpoint = stubEndpoint(() => ({ result: "0x1" }));
+    const budget = createRequestBudget({ maxRequests: 0, deadlineMs: 90_000 });
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL }, { budget });
+    await expect(client.getBlockNumber()).rejects.toSatisfy(isLookupLimitError);
+    expect(endpoint.posts).toHaveLength(0);
+  });
+});
+
+describe("createReadClients", () => {
+  beforeEach(() => {
+    stubEndpoint(() => ({ result: "0x1" }));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns one memoized client per configured chain", () => {
+    const clients = createReadClients({ REACT_APP_WEB3_PROVIDER_URL: READ_URL, REACT_APP_WEB3_XDAI_PROVIDER_URL: "https://read.rpc.example/gnosis" });
+    const mainnet = clients(1);
+    expect(mainnet).toBeDefined();
+    expect(clients(1)).toBe(mainnet);
+    expect(clients(100)).toBeDefined();
+    expect(clients(100)).not.toBe(mainnet);
+  });
+
+  it("returns undefined for a configured chain without a read RPC", () => {
+    const clients = createReadClients({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
+    expect(clients(100)).toBeUndefined();
+    expect(clients(324)).toBeDefined();
+  });
+
+  it("returns undefined for a chain that is not configured, without throwing", () => {
+    const clients = createReadClients({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
+    expect(clients(10)).toBeUndefined();
+    expect(clients(5)).toBeUndefined();
+    expect(clients(Number.NaN)).toBeUndefined();
+  });
+
+  it("each chain's client reads through that chain's own read RPC", async () => {
+    const endpoint = stubEndpoint(() => ({ result: "0x1" }));
+    const clients = createReadClients({ REACT_APP_WEB3_PROVIDER_URL: READ_URL, REACT_APP_WEB3_XDAI_PROVIDER_URL: "https://read.rpc.example/gnosis" });
+    await clients(100)?.getBlockNumber();
+    expect(endpoint.posts.map((post) => post.url)).toEqual(["https://read.rpc.example/gnosis"]);
+  });
+
+  it("passes its options to each chain's client: retryCount 0 makes a single attempt", async () => {
+    const endpoint = stubEndpoint(() => ({ status: 503 }));
+    const client = createReadClients({ REACT_APP_WEB3_PROVIDER_URL: READ_URL }, { retryCount: 0 })(1);
+    await expect(client?.getBlockNumber()).rejects.toThrow(/HTTP request failed/);
+    expect(endpoint.posts).toHaveLength(1);
+  });
+});

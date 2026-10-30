@@ -1,0 +1,50 @@
+import { useCallback, useEffect, useState } from "react";
+import { useWalletSetup } from "./context";
+import type { WalletModal } from "./types";
+
+interface ConnectWallet {
+  /** `false` without a WalletConnect project ID, or when AppKit registered an embedded wallet. */
+  readonly available: boolean;
+  /**
+   * Opens AppKit's Connect view on `chainId` (the page chain), so a WalletConnect session starts there. Closing the
+   * modal or rejecting the wallet's prompt leaves the app read-only, with no error.
+   */
+  readonly open: (chainId?: number) => void;
+}
+
+/** What each modal's check found, so a control mounted later renders the answer at once instead of after a tick. */
+const embeddedWalletChecks = new WeakMap<WalletModal, boolean>();
+
+/** `true` once AppKit is ready with an embedded-wallet connector registered; `false` before that is known. */
+function useEmbeddedWallet(modal: WalletModal | null): boolean {
+  const [embedded, setEmbedded] = useState(() => modal !== null && embeddedWalletChecks.get(modal) === true);
+  useEffect(() => {
+    if (modal === null) return undefined;
+    let active = true;
+    modal.hasEmbeddedWallet().then(
+      (found) => {
+        embeddedWalletChecks.set(modal, found);
+        if (active) setEmbedded(found);
+      },
+      () => undefined,
+    );
+    return () => {
+      active = false;
+    };
+  }, [modal]);
+  return modal !== null && embedded;
+}
+
+export function useConnectWallet(): ConnectWallet {
+  const setup = useWalletSetup();
+  const modal = setup.mode === "appkit" ? setup.modal : null;
+  const misconfigured = useEmbeddedWallet(modal);
+  const open = useCallback(
+    (chainId?: number) => {
+      // A modal that fails or refuses to open leaves the app read-only, which is the outcome of declining.
+      modal?.openConnect(chainId).catch(() => undefined);
+    },
+    [modal],
+  );
+  return { available: modal !== null && !misconfigured, open };
+}

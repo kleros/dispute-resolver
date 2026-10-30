@@ -1,0 +1,12 @@
+{
+  // The code that runs in the build: the Vite configuration and its plugins, with Node's types and no DOM.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": ["node"],
+    // The Vite configuration and its plugins import each other with extensions, as Vite's native config loader needs.
+    "allowImportingTsExtensions": true
+  },
+  "include": ["vite.config.ts", "vite-plugins"],
+  "exclude": ["vite-plugins/**/*.test.ts"]
+}

@@ -1,0 +1,48 @@
+import type { AttachmentKind } from "@dispute-resolver/core";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { Attachment } from "./Attachment";
+
+const HREF = "https://cdn.kleros.link/ipfs/QmYs17mAJTaQwYeXNTb6n4idoQXmRcAjREeUdjJShNSeKh/photo.png";
+
+describe("Attachment", () => {
+  it("links an attachment in a new tab with rel noopener noreferrer and its label", () => {
+    render(<Attachment attachment={{ kind: "link", href: HREF, label: "photo.png", attachmentKind: "image" }} />);
+    const link = screen.getByRole("link", { name: "photo.png" });
+    expect(link).toHaveAttribute("href", HREF);
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it.each<AttachmentKind>(["image", "video", "text", "other"])("never renders a %s attachment inline", (attachmentKind) => {
+    const { container } = render(<Attachment attachment={{ kind: "link", href: HREF, label: "file", attachmentKind }} />);
+    expect(container.querySelector("img, video, audio, iframe, object, embed")).toBeNull();
+  });
+
+  it("chooses the icon from the attachment kind", () => {
+    const icons = (["image", "video", "text", "other"] as const).map((attachmentKind) => {
+      const { container, unmount } = render(<Attachment attachment={{ kind: "link", href: HREF, label: "file", attachmentKind }} />);
+      const icon = container.querySelector("svg");
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+      const markup = icon?.outerHTML;
+      unmount();
+      return markup;
+    });
+    expect(new Set(icons).size).toBe(4);
+  });
+
+  it("shows a text attachment as plain text", () => {
+    render(<Attachment attachment={{ kind: "text", text: "http://example.com/file.pdf" }} />);
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByText("http://example.com/file.pdf")).toBeInTheDocument();
+  });
+
+  it("names a link whose URI has no last segment", () => {
+    render(<Attachment attachment={{ kind: "link", href: "https://example.com/", label: "", attachmentKind: "other" }} />);
+    expect(screen.getByRole("link", { name: "Attachment" })).toHaveAttribute("href", "https://example.com/");
+  });
+
+  it("renders nothing without an attachment", () => {
+    const { container } = render(<Attachment attachment={null} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+});

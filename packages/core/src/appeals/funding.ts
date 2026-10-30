@@ -1,0 +1,75 @@
+import { describeError, getLogsChunked } from "../rpc";
+import { compareBigint } from "../bigint";
+import type { Outcome } from "../types";
+import { CONTRIBUTION_EVENT, RULING_FUNDED_EVENT, checkContext, governorSession, idrLocalId } from "./context";
+import { readGovernorRound } from "./governor";
+import { fail, failedRead, succeed } from "../outcome";
+import type { AppealContext, RoundFunding } from "./types";
+
+/**
+ * `Contribution(localId, round)` amounts summed per ruling and the `RulingFunded(localId, round)` rulings in event order,
+ * scanned from `fromBlock` to the head: the same range on every reload, however long after the round's start a
+ * contribution came.
+ */
+async function readResolverFunding(context: AppealContext, round: bigint, fromBlock: bigint): Promise<Outcome<RoundFunding>> {
+  const localId = idrLocalId(context.localId);
+  if (!localId.ok) return localId;
+  const { client, binding, signal } = context;
+  try {
+    signal?.throwIfAborted();
+    const head = await client.getBlockNumber();
+    const scan = { address: binding.arbitrated, args: { _localDisputeID: localId.value, _round: round }, fromBlock, toBlock: head };
+    const [contributionLogs, fundedLogs] = await Promise.all([
+      getLogsChunked(client, { ...scan, event: CONTRIBUTION_EVENT }, { signal }),
+      getLogsChunked(client, { ...scan, event: RULING_FUNDED_EVENT }, { signal }),
+    ]);
+    const totals = new Map<bigint, bigint>();
+    for (const { args } of contributionLogs) {
+      if (args.ruling === undefined || args._amount === undefined) return fail("invalid-data", "A Contribution event of the arbitrable could not be decoded.");
+      totals.set(args.ruling, (totals.get(args.ruling) ?? 0n) + args._amount);
+    }
+    const fundedRulings: bigint[] = [];
+    for (const { args } of fundedLogs) {
+      if (args._ruling === undefined) return fail("invalid-data", "A RulingFunded event of the arbitrable could not be decoded.");
+      fundedRulings.push(args._ruling);
+    }
+    const contributions = [...totals].map(([ruling, amount]) => ({ ruling, amount })).sort((a, b) => compareBigint(a.ruling, b.ruling));
+    return succeed({ round, contributions, fundedRulings });
+  } catch (error) {
+    return fail("rpc-error", `Could not read the appeal funding: ${describeError(error)}`);
+  }
+}
+
+/**
+ * The governor dialect: `getRoundInfo(session, round)`, list index i being ruling i + 1. The fees paid per list are the
+ * contributions and the fully paid lists the funded rulings.
+ */
+async function readGovernorFunding(context: AppealContext, round: bigint): Promise<Outcome<RoundFunding>> {
+  const session = governorSession(context);
+  if (!session.ok) return session;
+  const { client, binding, signal } = context;
+  try {
+    signal?.throwIfAborted();
+    const info = await readGovernorRound(client, binding.arbitrated, session.value, round);
+    const contributions = info.paidFees.flatMap((amount, index) => (amount > 0n ? [{ ruling: BigInt(index + 1), amount }] : []));
+    const fundedRulings = info.hasPaid.flatMap((paid, index) => (paid ? [BigInt(index + 1)] : []));
+    return succeed({ round, contributions, fundedRulings });
+  } catch (error) {
+    return failedRead("the governor's appeal round", error, binding.chainId);
+  }
+}
+
+/** Never rejects: a failed read is a failed `Outcome`, never an empty funding. */
+export function readRoundFunding(context: AppealContext, round: bigint, fromBlock: bigint): Promise<Outcome<RoundFunding>> {
+  const checked = checkContext(context);
+  if (!checked.ok) return Promise.resolve(checked);
+  switch (context.family.capabilities.appeal.kind) {
+    case "idr":
+      return readResolverFunding(context, round, fromBlock);
+    case "governor":
+      return readGovernorFunding(context, round);
+    case "escrow-pay-cost":
+    case "none":
+      return Promise.resolve(fail("unsupported", "This arbitrable has no crowdfunded appeal funding to read."));
+  }
+}

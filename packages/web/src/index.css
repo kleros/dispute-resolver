@@ -1,0 +1,914 @@
+@import "tailwindcss";
+@import "@kleros/ui-components-library/theme.css";
+
+/*
+ * Open Sans, self-hosted (no font CDN; the CSP allows font-src 'self' only): the woff2 files of @fontsource/open-sans for weights 400,
+ * 600 and 700, latin and latin-ext subsets (ranges from the package's own stylesheets). The faces are declared here
+ * because Tailwind inlines an imported stylesheet without rebasing its relative URLs; Vite resolves the package paths
+ * and bundles the files under /assets.
+ */
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("@fontsource/open-sans/files/open-sans-latin-400-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("@fontsource/open-sans/files/open-sans-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url("@fontsource/open-sans/files/open-sans-latin-600-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url("@fontsource/open-sans/files/open-sans-latin-ext-600-normal.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("@fontsource/open-sans/files/open-sans-latin-700-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("@fontsource/open-sans/files/open-sans-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@plugin "tailwindcss-react-aria-components";
+@source "../../../node_modules/@kleros/ui-components-library";
+
+/* The library switches its colour tokens on a `dark` class on <html> (see theme.ts); utilities follow the same switch. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Open Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  /*
+   * The app's hover ease as a named utility, for a library control whose own `ease-ease` tailwind-merge does not know
+   * and so keeps: Tailwind orders two utilities of the same properties by name, and `ease-smooth-out` comes after it.
+   */
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /*
+   * These redefine the library's own variables, which its components read through `entering:animate-scale-in`,
+   * `exiting:animate-scale-out`, `animate-fade-in` and `animate-fade-out`; the app's menus use the same two.
+   * - A popover grows from its trigger on the `scale` property with opacity, instead of the library's unroll from
+   *   scaleY(0). The library's close never runs: 3.10.0 still names a `slideOut` keyframe that does not exist. The out
+   *   keyframe states both ends because the exiting popover carries a static `scale-y-0`, and only a running animation on
+   *   `scale` holds it visible until react-aria unmounts it.
+   * - The tooltip and the number-field arrow column fade over 150 ms instead of the library's 300 ms.
+   */
+  --animate-scale-in: dr-dropdown-in var(--dropdown-open-dur) var(--dropdown-ease);
+  --animate-scale-out: dr-dropdown-out var(--dropdown-close-dur) var(--dropdown-ease);
+  --animate-fade-in: fadeIn 150ms ease-out;
+  --animate-fade-out: fadeOut 150ms ease-out;
+  --animate-t-overlay-in: fadeIn var(--modal-open-dur) var(--modal-ease);
+  --animate-t-overlay-out: fadeOut var(--modal-close-dur) var(--modal-ease) forwards;
+
+  @keyframes dr-dropdown-in {
+    from {
+      opacity: 0;
+      scale: var(--dropdown-pre-scale);
+    }
+  }
+
+  @keyframes dr-dropdown-out {
+    from {
+      opacity: 1;
+      scale: 1;
+    }
+    to {
+      opacity: 0;
+      scale: var(--dropdown-closing-scale);
+    }
+  }
+}
+
+/*
+ * The transition's property list is a deliberate superset: the library `Card` carries `hover-short-transition`, so
+ * whichever of it and the Ongoing card's `transition-[background-color] duration-200` wins the utilities sort, the card
+ * still transitions its fill within the 150 to 250 ms band.
+ */
+@utility hover-short-transition {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@utility hover-long-transition {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Backwards fill, not forwards: the resting state is the element's own style once the check has landed. */
+@utility animate-t-success-check {
+  animation:
+    t-check-fade var(--check-opacity-dur) var(--check-ease-opacity) backwards,
+    t-check-rotate var(--check-rotate-dur) var(--check-ease-rotate) backwards,
+    t-check-blur var(--check-blur-dur) var(--check-ease-out) backwards,
+    t-check-bob var(--check-bob-dur) var(--check-ease-bob) backwards;
+}
+
+/*
+ * Shared transitions. The toast, shimmer and learn-more blocks each carry their own reduced-motion guard; the toast's
+ * closing runs on a timer, so dropping its transition never strands a toast.
+ */
+@layer components {
+  [data-shaking] {
+    animation: t-input-shake calc(var(--shake-dur-a) * 2 + var(--shake-dur-b) * 2) linear;
+  }
+
+  .t-toast {
+    opacity: 0;
+    transform: translateY(var(--toast-distance)) scale(var(--toast-scale));
+    filter: blur(var(--toast-blur));
+    will-change: transform, opacity, filter;
+    transition:
+      opacity var(--toast-close) var(--toast-ease),
+      transform var(--toast-close) var(--toast-ease),
+      filter var(--toast-close) var(--toast-ease);
+  }
+  .t-toast.is-open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+    transition:
+      opacity var(--toast-open) var(--toast-ease),
+      transform var(--toast-open) var(--toast-ease),
+      filter var(--toast-open) var(--toast-ease);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .t-toast,
+    .t-toast.is-open {
+      transition: none;
+    }
+  }
+
+  .t-shimmer {
+    position: relative;
+    display: inline-block;
+    color: var(--shimmer-base);
+  }
+  .t-shimmer::before {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(90deg, transparent 0%, transparent 40%, var(--shimmer-highlight) 50%, transparent 60%, transparent 100%);
+    background-size: var(--shimmer-band) 100%;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: t-shimmer var(--shimmer-dur) var(--shimmer-ease) infinite;
+  }
+  @keyframes t-shimmer {
+    0% {
+      background-position: 100% 0;
+    }
+    100% {
+      background-position: 0% 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .t-shimmer::before {
+      animation: none;
+    }
+  }
+
+  .t-learn-chevron {
+    display: inline-flex;
+    transform: translateX(0);
+    transition: transform var(--learn-out) var(--learn-ease);
+  }
+  .t-learn-arm {
+    transform-box: view-box;
+    transform-origin: 10px 8px;
+    vector-effect: non-scaling-stroke;
+    transition: transform var(--learn-out) var(--learn-ease);
+  }
+  .t-learn:hover .t-learn-chevron {
+    transform: translateX(var(--learn-shift));
+    transition-duration: var(--learn-in);
+  }
+  .t-learn:hover .t-learn-arm {
+    transition-duration: var(--learn-in);
+  }
+  .t-learn:hover .t-learn-arm-top {
+    transform: rotate(var(--learn-spread));
+  }
+  .t-learn:hover .t-learn-arm-bot {
+    transform: rotate(calc(var(--learn-spread) * -1));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .t-learn-chevron,
+    .t-learn-arm {
+      transition: none;
+    }
+  }
+}
+
+/*
+ * Library-internal corrections. Each selector is more specific than the library utility it corrects (0,1,0), so it
+ * wins inside the utilities layer without adding an unlayered rule.
+ * - The select trigger's chevron draws --dr-control-border (3.45:1 light, 4.92:1 dark) instead of Stroke; the
+ *   trigger's period dot is a div with an inline background and is not matched.
+ * - The select popover is as wide as its trigger (react-aria's --trigger-width; the library fixes it at 14.875rem),
+ *   bounded by the viewport because it is portaled.
+ * - Field descriptions and error messages, and the dropzone's line, start-align like the rest of the form; the
+ *   dropzone's line is the small step.
+ */
+@layer utilities {
+  button[aria-haspopup="listbox"]:not(:disabled) svg.fill-klerosUIComponentsStroke {
+    fill: var(--dr-control-border);
+  }
+
+  [data-trigger="Select"] > div {
+    width: var(--trigger-width, 14.875rem);
+    max-width: calc(100vw - 2rem);
+  }
+
+  [data-trigger="Select"] [role="listbox"] {
+    width: 100%;
+  }
+
+  span[slot="description"] {
+    text-align: start;
+  }
+
+  #dropzone-label {
+    text-align: start;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  /*
+   * The page scroller (shell/PageScroller.tsx), the library's ScrollbarContainer. Its `!important` thumb and mask
+   * utilities paint with the theme's --color-klerosUIComponentsPrimaryBlue and --color-klerosUIComponentsWhiteBackground,
+   * so these rules redefine those variables where the utilities read them instead of outranking the utilities.
+   * The thumb takes the page scrollbar's tokens at rest, under the pointer (SimpleBar's simplebar-hover: its track takes
+   * no pointer events, so :hover never matches) and while dragged (simplebar-dragging on the root, the most specific).
+   * It draws no ring: over the purple header and footer it shows by its own colour alone, never the bars' own, which in
+   * light keeps less than 3:1 there at rest and hovered.
+   * The mask lets the page's own background show; it wraps the whole page, so its offset restores WhiteBackground for
+   * everything inside. Child combinators keep every rule off a SimpleBar inside the page.
+   */
+  .dr-page-scroller > .simplebar-track .simplebar-scrollbar::before {
+    --color-klerosUIComponentsPrimaryBlue: var(--dr-scroll-thumb);
+  }
+
+  .dr-page-scroller > .simplebar-track .simplebar-scrollbar.simplebar-hover::before {
+    --color-klerosUIComponentsPrimaryBlue: var(--dr-scroll-thumb-hover);
+  }
+
+  .dr-page-scroller.simplebar-dragging > .simplebar-track.simplebar-vertical .simplebar-scrollbar::before {
+    --color-klerosUIComponentsPrimaryBlue: var(--dr-scroll-thumb-active);
+  }
+
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-mask {
+    --color-klerosUIComponentsWhiteBackground: transparent;
+  }
+
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset {
+    --color-klerosUIComponentsWhiteBackground: var(--klerosUIComponentsWhiteBackground);
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+
+    /*
+     * Light-only token corrections: the library's light values fail WCAG AA as text and fills. `:root.dark` outranks
+     * `:root`, so dark keeps the library's values, which pass every measured text check (its Stroke is corrected below).
+     * Worst case per token, then the library value it replaces:
+     * - PrimaryBlue #0072c6: 4.67:1 on MediumBlue (#009aff, 2.97:1 on white; the brand hue stays in the logo and dark).
+     * - SecondaryBlue #005fa8, the primary-button hover: white on it 6.56:1 (#7bcbff, 1.78:1).
+     * - SecondaryText #6b6b6b: 5.00:1 on MediumBlue (#999999, 2.85:1 on white).
+     * - Warning #a85400: 4.75:1 on TintPurple (#ff9900, 2.14:1 on white).
+     * - Error #c8102e: 5.24:1 on TintPurple (#f60c36, 4.18:1 on white).
+     * - Success #007a1f: 4.91:1 on TintPurple (#00c42b, 2.35:1 on white).
+     * Warning, Error and Success clear every alert title, field message and inline error; their non-text uses (period
+     * dots, alert edges and icons, identicon fills, invalid-field borders) only darken.
+     */
+    --klerosUIComponentsPrimaryBlue: #0072c6;
+    --klerosUIComponentsSecondaryBlue: #005fa8;
+    --klerosUIComponentsSecondaryText: #6b6b6b;
+    --klerosUIComponentsWarning: #a85400;
+    --klerosUIComponentsError: #c8102e;
+    --klerosUIComponentsSuccess: #007a1f;
+
+    /*
+     * App tokens, each with its worst case.
+     * - --dr-control-border: input, textarea and select-trigger edges (cards keep Stroke). Light #8a8a8a 3.24:1 and dark
+     *   #8a7bd0 3.78:1, both on MediumBlue.
+     * - --dr-focus: the focus ring, PrimaryBlue (light 4.97:1 on white; dark #6cc5ff 7.19:1 on WhiteBackground).
+     * - --dr-focus-bar: the ring on the purple bars, which the header and footer assign to --dr-focus. Light #7bcbff
+     *   5.99:1 on PrimaryPurple; dark #a5dbff 10.47:1 on LightBlue.
+     * - --dr-record-surface: the record band of the dispute header and the Create summary cover. Light TintPurple:
+     *   SecondaryText 4.74:1, and PrimaryBlue only 4.43:1, so no link sits on the band. Dark MediumPurple: SecondaryText
+     *   8.88:1.
+     * - --dr-record-edge: the band's edge and inner rule (non-text). Light: PrimaryPurple mixed 20 % into Stroke, 1.67:1 on
+     *   the band, where Stroke alone is 1.12:1. Dark: Stroke, 2.10:1.
+     * - --dr-success-bar: the header chain dot. A colour at 4.5:1 on white is at most 2.36:1 on the light bar, so both
+     *   themes take the dark shade: light #65dc7f 6.13:1 on PrimaryPurple; dark the library's Success.
+     * - --dr-display-paper: the evidence display's sheet, white in light and TintPurple in dark; the frame stays light. No
+     *   off-white keeps boundary grey #767676 at 4.5:1 (4.04:1 here), so it is white or not, and pure white is what dark
+     *   replaces; third-party content is outside the app's conformance claim.
+     * - --dr-display-focus: the ring on that paper in both themes, about 4.7:1 on #f4f0fa (dark --dr-focus: 1.90:1).
+     * - --dr-display-skeleton: loading bars on that paper (non-text). Light Stroke 1.26:1 on white; dark #dbd5e3 matched
+     *   to it, 1.27:1 on #f4f0fa.
+     * - --dr-scroll-thumb, -hover, -active: the thumb at rest, hovered and dragged, lighter at each step and at least 3:1
+     *   on LightBackground. Light VioletPurple, SecondaryPurple, Tint 3.25:1 (LavenderPurple 2.91:1; PrimaryPurple is the
+     *   bars' colour). Dark VioletPurple would be 2.39:1, so each moves one token lighter: SecondaryPurple 5.38:1 first.
+     */
+    --dr-display-paper: var(--klerosUIComponentsWhiteBackground);
+    --dr-display-focus: #0072c6;
+    --dr-display-skeleton: var(--klerosUIComponentsStroke);
+    --dr-success-bar: #65dc7f;
+    --dr-control-border: #8a8a8a;
+    --dr-focus: var(--klerosUIComponentsPrimaryBlue);
+    --dr-focus-bar: #7bcbff;
+    --dr-record-surface: var(--klerosUIComponentsTintPurple);
+    --dr-record-edge: color-mix(in srgb, var(--klerosUIComponentsPrimaryPurple) 20%, var(--klerosUIComponentsStroke));
+    --dr-scroll-thumb: var(--klerosUIComponentsVioletPurple);
+    --dr-scroll-thumb-hover: var(--klerosUIComponentsSecondaryPurple);
+    --dr-scroll-thumb-active: var(--klerosUIComponentsTint);
+
+    /*
+     * Motion variables, one block per transition. The shimmer colours point at the library tokens, which the dark class
+     * redefines on this same element, so both themes follow without a dark block here.
+     */
+    --dropdown-open-dur: 250ms;
+    --dropdown-close-dur: 150ms;
+    --dropdown-pre-scale: 0.97;
+    --dropdown-closing-scale: 0.99;
+    --dropdown-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    --modal-open-dur: 250ms;
+    --modal-close-dur: 150ms;
+    --modal-scale: 0.96;
+    --modal-scale-close: 0.96;
+    --modal-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    --icon-swap-dur: 250ms;
+    --icon-swap-blur: 2px;
+    --icon-swap-start-scale: 0.25;
+    --icon-swap-ease: ease-in-out;
+
+    --check-opacity-dur: 500ms;
+    --check-rotate-dur: 500ms;
+    --check-rotate-from: 80deg;
+    --check-bob-dur: 500ms;
+    --check-y-amount: 40px;
+    --check-blur-dur: 500ms;
+    --check-blur-from: 10px;
+    --check-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --check-ease-opacity: cubic-bezier(0.22, 1, 0.36, 1);
+    --check-ease-rotate: cubic-bezier(0.22, 1, 0.36, 1);
+    --check-ease-bob: cubic-bezier(0.34, 1.35, 0.64, 1);
+
+    --shake-distance: 6px;
+    --shake-overshoot: 4px;
+    --shake-dur-a: 80ms;
+    --shake-dur-b: 60ms;
+    --shake-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    --reveal-dur: 400ms;
+    --reveal-blur: 2px;
+    --reveal-ease: ease-in-out;
+    /* The evidence display's skeleton fade, in and out; EvidenceDisplay reads it to drop the skeleton. */
+    --display-reveal: 400ms;
+
+    --shimmer-dur: 2000ms;
+    --shimmer-base: var(--klerosUIComponentsSecondaryText);
+    --shimmer-highlight: var(--klerosUIComponentsPrimaryText);
+    --shimmer-band: 400%;
+    --shimmer-ease: linear;
+
+    --tt-in-dur: 150ms;
+    --tt-out-dur: 50ms;
+    --tt-scale: 0.98;
+    --tt-delay: 80ms;
+    --tt-in-ease: ease-out;
+    --tt-out-ease: ease-out;
+
+    --stagger-dur: 500ms;
+    --stagger-distance: 12px;
+    --stagger-stagger: 40ms;
+    --stagger-blur: 3px;
+    --stagger-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    --acc-expand: 250ms;
+    --acc-collapse: 250ms;
+    --acc-chevron: 250ms;
+    --acc-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    --toast-open: 350ms;
+    --toast-close: 250ms;
+    --toast-distance: 16px;
+    --toast-blur: 2px;
+    --toast-scale: 0.97;
+    --toast-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    --learn-shift: 2px;
+    --learn-spread: 8deg;
+    --learn-in: 350ms;
+    --learn-out: 350ms;
+    --learn-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    --page-slide-dur: 250ms;
+    --page-slide-distance: 8px;
+    --page-blur: 3px;
+    --page-slide-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    --text-swap-dur: 150ms;
+    --text-swap-translate-y: 4px;
+    --text-swap-blur: 2px;
+    --text-swap-ease: ease-in-out;
+
+    --tabs-dur: 250ms;
+    --tabs-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  :root.dark {
+    color-scheme: dark;
+
+    /*
+     * Stroke #5a5490, every 1 px edge in dark: the library's #392c74 (1.51:1 on WhiteBackground, no visible edge) mixed
+     * 25 % toward dark SecondaryText, a literal since the token cannot reference itself. Worst 2.02:1 on MediumBlue.
+     */
+    --klerosUIComponentsStroke: #5a5490;
+
+    --dr-display-paper: #f4f0fa;
+    --dr-display-focus: #0072c6;
+    --dr-display-skeleton: #dbd5e3;
+    --dr-success-bar: var(--klerosUIComponentsSuccess);
+    --dr-control-border: #8a7bd0;
+    --dr-focus-bar: #a5dbff;
+    --dr-record-surface: var(--klerosUIComponentsMediumPurple);
+    --dr-record-edge: var(--klerosUIComponentsStroke);
+    --dr-scroll-thumb: var(--klerosUIComponentsSecondaryPurple);
+    --dr-scroll-thumb-hover: var(--klerosUIComponentsLavenderPurple);
+    --dr-scroll-thumb-active: var(--klerosUIComponentsTint);
+  }
+
+  body {
+    background-color: var(--klerosUIComponentsLightBackground);
+    color: var(--klerosUIComponentsPrimaryText);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--klerosUIComponentsPrimaryBlue) 24%, transparent);
+    color: inherit;
+  }
+
+  /*
+   * The sticky header is two rows on phones (the 4rem brand row, then the network and wallet row with its padding) and
+   * one 4rem row from lg, which the library's theme sets at 56.25rem; focusing or scrolling to an element leaves it and
+   * its 2 px ring (offset 2 px) below the bar, in whichever element scrolls the page: the root, or the page scroller's
+   * content wrapper (shell/PageScroller.tsx).
+   */
+  html,
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper {
+    scroll-padding-top: calc(7.5rem + 8px);
+
+    @variant lg {
+      scroll-padding-top: calc(4rem + 8px);
+    }
+  }
+
+  /* The page scroller scrolls the page (shell/pageScroll.ts marks the root), so the document never does, nor keeps a lane. */
+  :root[data-page-scroll="container"] {
+    overflow: hidden;
+  }
+
+  /*
+   * The document scrolls the page only on phones and tablets, where the browser's scrollbar floats over it, and that
+   * scrollbar stays the browser's own: a ::-webkit-scrollbar rule would turn it into a classic lane in Chromium. Firefox's
+   * stays floating under scrollbar-width and scrollbar-color, so it alone takes the page scroller's colour.
+   */
+  @supports not selector(::-webkit-scrollbar) {
+    :root:not([data-page-scroll="container"]) {
+      scrollbar-width: thin;
+      scrollbar-color: var(--dr-scroll-thumb) var(--klerosUIComponentsLightBackground);
+    }
+  }
+
+  :where(input, textarea) {
+    caret-color: var(--klerosUIComponentsPrimaryBlue);
+  }
+
+  :where(time, data) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * The focus ring's rest state: library controls transition `all`, so without a rest width, colour
+   * and offset the ring would grow from a 3px currentColor outline for 250ms; only the discrete outline-style flips now.
+   */
+  :where(a, button, input, textarea, select, summary, iframe, [role="button"], [tabindex], [data-rac]) {
+    outline-width: 2px;
+    outline-color: var(--dr-focus);
+    outline-offset: 2px;
+  }
+
+  :where([role="option"]) {
+    outline-offset: -2px;
+  }
+
+  :where(.dr-display-row) {
+    outline-offset: -2px;
+  }
+
+  /*
+   * The base type scale, in rem. Every utility, the library's included, still beats these rules because
+   * @layer utilities outranks @layer base, so library text keeps its own size. The selectors are plain element
+   * selectors rather than :where(): Tailwind's preflight, in this same layer, resets h1-h6 to `inherit` and <small> to
+   * 80% at specificity 0,0,1, which a zero-specificity :where() rule loses to; at equal specificity the later rule here
+   * wins. They do not skip elements with a `klerosUIComponents` class: that guard would also match every app element
+   * carrying a token colour utility. Links are coloured inside <main> only, so the header, footer and banner anchors keep
+   * their bar colour.
+   */
+  h1 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 600;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+  }
+
+  h3 {
+    font-size: 1rem;
+    line-height: 1.5rem;
+    font-weight: 600;
+  }
+
+  p {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  small {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  label {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--klerosUIComponentsSecondaryText);
+  }
+
+  :where(main) a {
+    color: var(--klerosUIComponentsPrimaryBlue);
+  }
+
+  /*
+   * Reduced motion: one guard for the app and the library. Durations go near zero rather than `animation: none` so
+   * react-aria and the app's menus still receive animationend and unmount the select popover, the tooltip, the modal and
+   * the menu panels; with one iteration the skeleton rests at opacity 1 and a busy button's logo at scale 1. A layered
+   * !important outranks every layer and every unlayered rule, so the guard adds no unlayered rule of its own.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+    }
+  }
+}
+
+/* Unlayered rules beat every layer, so these are the only places a component's own classes are overridden. */
+
+/*
+ * A theme flip is instant: theme.ts sets the attribute for the one style change, so colour transitions of the app and
+ * the library do not tween while the rest of the page snaps. The toggle's own icon swap still runs.
+ */
+:root[data-theme-switching] :where(*:not([data-icon-swap] > *)),
+:root[data-theme-switching] ::before,
+:root[data-theme-switching] ::after {
+  transition: none;
+}
+
+/*
+ * Focus: one ring shape everywhere. The header and footer set --dr-focus to --dr-focus-bar. A react-aria
+ * `[data-focus-visible]` container (the DropZone, the Select trigger) is matched too; a listbox option keeps its ring
+ * inside the list, and the evidence display's row inside its plate, clear of the hairline above and the window below.
+ */
+:where(a, button, input, textarea, select, summary, iframe, [role="button"], [tabindex]):focus-visible,
+[data-focus-visible] {
+  outline: 2px solid var(--dr-focus);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+[role="option"][data-focus-visible] {
+  outline-offset: -2px;
+}
+
+.dr-display-row:is(:focus-visible, [data-focus-visible]) {
+  outline-offset: -2px;
+}
+
+/*
+ * In light the paper is the card's white, so a 1 px Stroke edge marks where the display window ends; dark's sheet has an
+ * edge of its own. The :where keeps this rule below the focus ring's, which replaces it.
+ */
+:where(:root:not(.dark)) .dr-display-window {
+  outline: 1px solid var(--klerosUIComponentsStroke);
+  outline-offset: -1px;
+}
+
+/*
+ * The evidence display's ring is drawn inset on its window, on the frame's paper, so it holds 3:1 on the paper in both
+ * themes. An iframe never matches :focus or :focus-visible while its page holds focus, so EvidenceDisplay marks the
+ * window itself while keyboard focus is inside the frame. The frame draws no ring of its own, so no engine ever shows two.
+ */
+.dr-display-window[data-frame-focus] {
+  outline: 2px solid var(--dr-display-focus);
+  outline-offset: -2px;
+}
+
+.dr-display-frame:focus {
+  outline: none;
+}
+
+/*
+ * The track is 10 px, not SimpleBar's 11 (its unlayered 0,2,0 rule), so the thumb's 2 px insets leave 6 px. The scroller
+ * holds the focus only to take the keys while nothing else has it, and draws no ring, as the body did.
+ */
+.dr-page-scroller > .simplebar-track.simplebar-vertical {
+  width: 10px;
+}
+
+.dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper:focus-visible {
+  outline: none;
+}
+
+/*
+ * The wallet modal (Reown AppKit) locks scrolling on the body, which stopped a scrolling document and not the page scroller:
+ * the focus stays on Connect, inside it, so the keys would scroll the page under the modal. SimpleBar sets the overflow
+ * inline, hence the !important; a hidden overflow keeps the offset.
+ */
+:root:has(> body > w3m-modal.open) .dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper {
+  overflow: hidden !important;
+}
+
+/*
+ * Printed, the page flows as the document did; inside the page scroller only the part in view would print. The content
+ * wrapper prints as its content alone: no overflow applies to it, SimpleBar's inline one or the wallet modal's lock, and
+ * it keeps its scroll offset for the screen.
+ */
+@media print {
+  :root[data-page-scroll="container"],
+  .dr-page-scroller > .simplebar-wrapper,
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-mask {
+    overflow: visible;
+  }
+
+  .dr-page-scroller,
+  .dr-page-scroller > .simplebar-wrapper {
+    height: auto;
+    max-height: none;
+  }
+
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-mask,
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset {
+    position: static;
+  }
+
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper {
+    display: contents;
+  }
+
+  .dr-page-scroller > .simplebar-track,
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-placeholder,
+  .dr-page-scroller > .simplebar-wrapper > .simplebar-height-auto-observer-wrapper {
+    display: none;
+  }
+}
+
+/*
+ * Control edges: inputs, textareas and select triggers at rest draw --dr-control-border (3:1 or more on
+ * every surface) instead of Stroke. The library's variant classes (Error, focus) replace the Stroke class through
+ * tailwind-merge, and the states are excluded here, so an invalid or focused field keeps the library border.
+ */
+:where(input, textarea, button[aria-haspopup="listbox"]).border-klerosUIComponentsStroke:not(:focus, :invalid, [aria-invalid="true"], [data-invalid], :disabled) {
+  border-color: var(--dr-control-border);
+}
+
+/*
+ * Disabled buttons: a grey fill with a Stroke ring and a SecondaryText label (5.11:1 on LightGrey). A button
+ * inside a disabled fieldset is part of a control that draws its own disabled look, so it gets no plate of its own.
+ */
+button:where(:disabled, [data-disabled]):not(:where(fieldset:disabled *)) {
+  background-color: var(--klerosUIComponentsLightGrey);
+  box-shadow: inset 0 0 0 1px var(--klerosUIComponentsStroke);
+}
+
+button:where(:disabled, [data-disabled]) .button-text {
+  color: var(--klerosUIComponentsSecondaryText);
+}
+
+/*
+ * Motion keyframes, outside @theme so each is emitted whether or not a utility names it yet. Every mount keyframe states
+ * only its start, so an animation with backwards fill ends on the element's own resting style.
+ */
+@keyframes t-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(var(--modal-scale));
+  }
+}
+
+@keyframes t-modal-out {
+  to {
+    opacity: 0;
+    transform: scale(var(--modal-scale-close));
+  }
+}
+
+@keyframes t-tooltip-in {
+  from {
+    opacity: 0;
+    scale: var(--tt-scale);
+  }
+}
+
+@keyframes t-tooltip-out {
+  to {
+    opacity: 0;
+    scale: var(--tt-scale);
+  }
+}
+
+@keyframes t-check-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes t-check-rotate {
+  from {
+    transform: rotate(var(--check-rotate-from));
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes t-check-blur {
+  from {
+    filter: blur(var(--check-blur-from));
+  }
+  to {
+    filter: blur(0);
+  }
+}
+
+@keyframes t-check-bob {
+  from {
+    translate: 0 var(--check-y-amount);
+  }
+  to {
+    translate: 0 0;
+  }
+}
+
+/* Each leg has its own easing; the stops are the cumulative 80, 60, 80 and 60 ms legs as fractions of 280 ms. */
+@keyframes t-input-shake {
+  0% {
+    transform: translateX(0);
+    animation-timing-function: var(--shake-ease);
+  }
+  28.57% {
+    transform: translateX(var(--shake-distance));
+    animation-timing-function: var(--shake-ease);
+  }
+  57.14% {
+    transform: translateX(calc(var(--shake-distance) * -1));
+    animation-timing-function: var(--shake-ease);
+  }
+  78.57% {
+    transform: translateX(var(--shake-overshoot));
+    animation-timing-function: var(--shake-ease);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes t-reveal-in {
+  from {
+    opacity: 0;
+    filter: blur(var(--reveal-blur));
+  }
+}
+
+@keyframes t-stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--stagger-distance));
+    filter: blur(var(--stagger-blur));
+  }
+}
+
+@keyframes t-acc-in {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+}
+
+@keyframes t-acc-unfold {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+@keyframes t-icon-in {
+  from {
+    opacity: 0;
+    filter: blur(var(--icon-swap-blur));
+    transform: scale(var(--icon-swap-start-scale));
+  }
+}
+
+@keyframes t-text-swap-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--text-swap-translate-y));
+    filter: blur(var(--text-swap-blur));
+  }
+}
+
+@keyframes t-page-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--page-slide-distance) * -1));
+    filter: blur(var(--page-blur));
+  }
+}
+
+@keyframes t-page-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(var(--page-slide-distance));
+    filter: blur(var(--page-blur));
+  }
+}

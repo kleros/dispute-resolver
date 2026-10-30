@@ -1,0 +1,52 @@
+{
+  "description": "Gnosis dispute 460 (ArbitrableProxy, local meta-evidence ID 84) as read on 2026-10-20 with the Gnosis head at readAtBlock: the block timestamp of its Dispute and MetaEvidence(84) logs, the two meta-evidence files read from https://cdn.kleros.link the same day (the chain's /ipfs/QmbtSnH8BB3cgDLwtY6aT7fggnzhyEMVHExqsiVPjBxmcz/metaEvidence.json and the API's /ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaEvidence.json), and the meta-evidence API's answer of that day (locator). The default script both files name is answered 404, so the files render without it. The spec answers eth_getLogs by topic from those two logs, recorded at the same block in packages/core/src/evidence/__fixtures__/gnosis-460-863-meta-evidence.json, and builds every other read itself.",
+  "chainId": 100,
+  "disputeId": "460",
+  "readAtBlock": 48850832,
+  "arbitrable": "0xc7add3c961f7935cb4914e37da991d2f1cd7986c",
+  "blockTimestamps": {
+    "0x2650cdc": "0x682dee85"
+  },
+  "calls": [],
+  "locator": {
+    "metaEvidenceUri": "/ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaEvidence.json"
+  },
+  "files": [
+    {
+      "path": "/ipfs/QmbtSnH8BB3cgDLwtY6aT7fggnzhyEMVHExqsiVPjBxmcz/metaEvidence.json",
+      "status": 200,
+      "body": {
+        "title": "DAI token compliance Review ",
+        "category": "",
+        "description": "",
+        "aliases": {},
+        "question": "Does the DAI stablecoin meet all the requirements for inclusion in the Token Registry?",
+        "rulingOptions": {
+          "type": "single-select",
+          "titles": ["Yes, Accept DAI", "No, Reject DAI"],
+          "descriptions": []
+        },
+        "fileURI": "",
+        "dynamicScriptURI": "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj"
+      }
+    },
+    {
+      "path": "/ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaEvidence.json",
+      "status": 200,
+      "body": {
+        "title": "¿Debería la empresa pagar la compensación exigida por el usuario?",
+        "category": "",
+        "description": "",
+        "aliases": {},
+        "question": "¿Debería la empresa pagar la compensación exigida por el usuario?",
+        "rulingOptions": {
+          "type": "single-select",
+          "titles": ["Si", "No."],
+          "descriptions": ["Compensar al usuario.", "No compensar al usuario."]
+        },
+        "fileURI": "/ipfs/QmWuXCDoL6Vks4WtPu9y18wqmrq2JMNmL6JZUStunQjQmc/PoliÌtica de InterpretacioÌn de Disputas Lemon.pdf",
+        "dynamicScriptURI": "/ipfs/QmZZHwVaXWtvChdFPG4UeXStKaC9aHamwQkNTEAfRmT2Fj"
+      }
+    }
+  ]
+}
