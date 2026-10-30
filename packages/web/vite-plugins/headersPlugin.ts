@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadEnv, runnerImport, type Plugin } from "vite";
-import type * as AppCsp from "../src/routing/headers/appCsp";
+import type * as AppCsp from "../src/routing/headers/appCsp.ts";
 
 const HEADERS_FILE = "_headers";
 

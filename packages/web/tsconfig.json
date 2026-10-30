@@ -5,7 +5,9 @@
   "compilerOptions": {
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "types": ["vite/client", "node"]
+    "types": ["vite/client", "node"],
+    // The Vite configuration and its plugins import each other with extensions, as Vite's native config loader needs.
+    "allowImportingTsExtensions": true
   },
   "include": ["src", "e2e", "vite-plugins", "vite.config.ts", "vitest.config.ts", "playwright.config.ts"]
 }

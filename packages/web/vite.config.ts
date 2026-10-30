@@ -1,8 +1,8 @@
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import { headersPlugin } from "./vite-plugins/headersPlugin";
-import { runnerBootstrapPlugin } from "./vite-plugins/runnerBootstrapPlugin";
+import { headersPlugin } from "./vite-plugins/headersPlugin.ts";
+import { runnerBootstrapPlugin } from "./vite-plugins/runnerBootstrapPlugin.ts";
 
 // The repository root holds .env; only variables starting with REACT_APP_ reach the client bundle.
 const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
