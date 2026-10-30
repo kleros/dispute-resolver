@@ -76,11 +76,11 @@ describe("PageFrame header", () => {
     expect(navLinks().getByRole("link", { name: "Ongoing Disputes" })).not.toHaveAttribute("aria-current");
   });
 
-  it("shows the view-only banner with the Metamask link only while no wallet is connected", async () => {
+  it("shows the view-only banner, asking for a wallet without naming one, only while no wallet is connected", async () => {
     const view = renderWithProviders(<Screen />, { path: "/1/ongoing", frame: "page" });
     const banner = screen.getByRole("note", { name: "View mode only" });
-    expect(banner).toHaveTextContent("View mode only: Actions that require an Ethereum account are disabled. To use them, connect a wallet such as Metamask.");
-    expectExternal(within(banner).getByRole("link", { name: "Metamask" }), "https://metamask.io");
+    expect(banner.textContent.trim()).toBe(`${VIEW_ONLY_SENTENCE} To use them, connect a wallet.`);
+    expect(within(banner).queryByRole("link")).not.toBeInTheDocument();
     await act(() => view.wallet.connect());
     expect(screen.queryByRole("note", { name: "View mode only" })).not.toBeInTheDocument();
   });
