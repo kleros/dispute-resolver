@@ -204,7 +204,7 @@ describe("a minified production build that imports a test double fails the check
     const outputs = await leakedBuild(path.join(TEST_DIRECTORY, name));
     const files = Object.fromEntries(outputs.map((text, index) => [`assets/leaked-${String(index)}.js`, text]));
     const problems = await problemsOf(files);
-    return problems.filter((problem) => /\(C9\)\.$/.test(problem) && ![...IDENTIFIER_MARKERS].some((label) => problem.includes(`a ${label} (C9)`)));
+    return problems.filter((problem) => problem.includes(" contains a ") && ![...IDENTIFIER_MARKERS].some((label) => problem.includes(`a ${label}.`)));
   }
 
   for (const name of TEST_MODULES.filter((module) => !UNMARKED_MODULES.has(module))) {
@@ -310,7 +310,7 @@ describe("the built pages carry no inline script", () => {
     it(`rejects ${name} in ${file} without quoting it`, async () => {
       const problems = await problemsOf({ [file]: html });
       assert.equal(problems.length, 1, problems.join("\n"));
-      assert.ok(problems[0].startsWith(`dist/${file} contains an inline script (A20)`), problems[0]);
+      assert.ok(problems[0].startsWith(`dist/${file} contains an inline script`), problems[0]);
       assert.doesNotMatch(problems[0], /injected/);
     });
   }

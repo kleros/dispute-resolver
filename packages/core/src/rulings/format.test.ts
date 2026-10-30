@@ -1,6 +1,6 @@
 import { getAnswerString, padToBytes32 } from "@reality.eth/reality-eth-lib/formatters/question.js";
 import { describe, expect, it } from "vitest";
-import golden from "./__fixtures__/golden-rulings.json";
+import recorded from "./__fixtures__/recorded-rulings.json";
 import { REFUSED_RULING_TEXT, decodeRulingCode, encodeAnswer, formatRuling } from "./index";
 import type { RulingOptions } from "./types";
 
@@ -9,15 +9,15 @@ const SELECT_YES_NO: RulingOptions = { type: "single-select", titles: ["Yes", "N
 const SELECT_ABC: RulingOptions = { type: "multiple-select", titles: ["A", "B", "C"] };
 const OUTCOMES = ["Kept", "Removed"];
 
-interface GoldenDispute {
+interface RecordedDispute {
   readonly chainId: number;
   readonly disputeId: string;
   readonly currentRuling: string;
   readonly rulingOptions?: RulingOptions;
 }
 
-function goldenDispute(chainId: number, disputeId: string): GoldenDispute {
-  const found = (golden.disputes as readonly GoldenDispute[]).find((d) => d.chainId === chainId && d.disputeId === disputeId);
+function recordedDispute(chainId: number, disputeId: string): RecordedDispute {
+  const found = (recorded.disputes as readonly RecordedDispute[]).find((d) => d.chainId === chainId && d.disputeId === disputeId);
   if (found === undefined) throw new Error(`fixture has no dispute ${String(chainId)}/${disputeId}`);
   return found;
 }
@@ -37,7 +37,7 @@ describe("formatRuling", () => {
   });
 
   it("Gnosis 0's multiple-select ruling 5 decodes the bitmask 4 to C", () => {
-    const dispute = goldenDispute(100, "0");
+    const dispute = recordedDispute(100, "0");
     expect(formatRuling(BigInt(dispute.currentRuling), dispute.rulingOptions ?? null, null)).toBe("C");
   });
 
@@ -47,14 +47,14 @@ describe("formatRuling", () => {
   });
 
   it("mainnet 1657's max-uint ruling reads reality-eth-lib's answered-too-soon text", () => {
-    const dispute = goldenDispute(1, "1657");
+    const dispute = recordedDispute(1, "1657");
     expect(BigInt(dispute.currentRuling)).toBe(MAX_UINT256);
     expect(formatRuling(MAX_UINT256, SELECT_YES_NO, null)).toBe("Answered too soon");
     expect(formatRuling(MAX_UINT256, { type: "uint", precision: 18 }, null)).toBe("Answered too soon");
   });
 
   it("mainnet 1658's uint ruling is decoded as a number with the question's decimals", () => {
-    const dispute = goldenDispute(1, "1658");
+    const dispute = recordedDispute(1, "1658");
     expect(formatRuling(BigInt(dispute.currentRuling), dispute.rulingOptions ?? null, null)).toBe("0.000000004243172404");
   });
 

@@ -1,5 +1,5 @@
 {
-  "note": "KlerosLiquid currentRuling(id) of the golden disputes whose decision text the ruling tests check. Ruling options: Gnosis 0 from its meta-evidence /ipfs/QmbiA9YYz1hhRzZVSbrVFbQ66qqqi3Qg6bn8xGKHxw47aK/metaEvidence.json; mainnet 1658 asks a Reality question created from template 1, whose built-in text fixes type uint with 18 decimals.",
+  "note": "KlerosLiquid currentRuling(id) of the disputes whose decision text the ruling tests check. Ruling options: Gnosis 0 from its meta-evidence /ipfs/QmbiA9YYz1hhRzZVSbrVFbQ66qqqi3Qg6bn8xGKHxw47aK/metaEvidence.json; mainnet 1658 asks a Reality question created from template 1, whose built-in text fixes type uint with 18 decimals.",
   "disputes": [
     {
       "chainId": 1,

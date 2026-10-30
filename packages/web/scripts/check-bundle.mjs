@@ -179,15 +179,15 @@ function isAssetScript(name) {
 }
 
 function zodConfigurationProblem(count) {
-  if (count === 0) return "dist/assets/: the zod configuration is missing from the bundle (C2).";
-  if (count > 1) return `dist/assets/: the zod configuration appears ${String(count)} times in the bundle, not once (C2).`;
+  if (count === 0) return "dist/assets/: the zod configuration is missing from the bundle.";
+  if (count > 1) return `dist/assets/: the zod configuration appears ${String(count)} times in the bundle, not once.`;
   return null;
 }
 
 function textFileProblems(name, text) {
-  const problems = TEST_DOUBLE_MARKERS.filter((marker) => marker.pattern.test(text)).map((marker) => `dist/${name} contains a ${marker.label} (C9).`);
+  const problems = TEST_DOUBLE_MARKERS.filter((marker) => marker.pattern.test(text)).map((marker) => `dist/${name} contains a ${marker.label}.`);
   if (name.endsWith(".html")) {
-    for (const finding of htmlFindings(text)) problems.push(`dist/${name} ${finding} (A20).`);
+    for (const finding of htmlFindings(text)) problems.push(`dist/${name} ${finding}.`);
   }
   return problems;
 }
