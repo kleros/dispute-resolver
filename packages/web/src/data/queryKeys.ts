@@ -34,6 +34,7 @@ export const queryKeys = {
   chainTime: (chainId: number) => ["dr", "chainTime", chainId] as const,
   executedRuling: (chainId: number, disputeId: bigint, fromBlock: bigint) => ["dr", "executedRuling", chainId, disputeId.toString(), fromBlock.toString()] as const,
   productFunding: (chainId: number, disputeId: bigint) => ["dr", "productFunding", chainId, disputeId.toString()] as const,
+  productRecognised: (chainId: number, disputeId: bigint) => ["dr", "productRecognised", chainId, disputeId.toString()] as const,
 } as const;
 
 export const disputeKeyPrefix = (kind: "lookup" | "evidence" | "details" | "funding" | "withdrawable" | "executedRuling" | "productFunding", chainId: number, disputeId: bigint) =>

@@ -49,6 +49,8 @@ export interface FoundCaseReads {
   readonly executed: SectionData<ExecutedRuling> | null;
   /** `useProductFunding`; `null` when the round's funding is the Dispute Resolver's own read, or not needed. */
   readonly productFunding: SectionData<readonly bigint[]> | null;
+  /** `useProductRecognised`; `null` outside the appeal period of an arbitrable that takes its own appeal funding. */
+  readonly productRecognised: SectionData<boolean> | null;
   readonly override: BehaviorOverride | undefined;
   readonly readClient: ReadClient | undefined;
 }
@@ -180,7 +182,8 @@ export function assembleAppealPanel(reads: FoundCaseReads): SectionData<AppealPa
   const multipliers = optionalOutcome(appeal.multipliers);
   const funding = optionalOutcome(appeal.funding);
   const withdraw = withdrawState(appeal.withdraw);
-  if (multipliers === undefined || funding === undefined || withdraw === undefined) return LOADING;
+  const recognised = optionalOutcome(reads.productRecognised);
+  if (multipliers === undefined || funding === undefined || withdraw === undefined || recognised === undefined) return LOADING;
   const { rulingOptions, fallbackOutcomes } = options.value;
   return ready(
     buildAppealPanel({
@@ -195,6 +198,7 @@ export function assembleAppealPanel(reads: FoundCaseReads): SectionData<AppealPa
       multipliers,
       funding,
       withdraw,
+      productRecognised: recognised?.ok === true && recognised.value,
     }),
   );
 }

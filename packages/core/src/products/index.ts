@@ -1,1 +1,1 @@
-export { readProductFunding, readsProductFunding } from "./funding";
+export { readProductFunding, readsProductFunding, recogniseProduct } from "./funding";

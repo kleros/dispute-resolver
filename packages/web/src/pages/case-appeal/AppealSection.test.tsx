@@ -7,7 +7,9 @@ import {
   type AppealPanel,
   type AppealPanelInput,
   type BehaviorOverride,
+  type Decision,
   type FamilyDetection,
+  type FundingTerms,
   type LocalIdResolution,
   type Multipliers,
   type Outcome,
@@ -162,6 +164,7 @@ interface DisputeOptions {
   readonly write?: SectionData<CaseWriteContext>;
   /** The appeal cost read again before an appeal; by default the cost the panel shows. */
   readonly readAppealCost?: CaseWriteContext["readAppealCost"];
+  readonly decision?: SectionData<Decision>;
 }
 
 function caseDispute(panel: AppealPanel | SectionData<AppealPanel>, options: DisputeOptions = {}): CaseDispute {
@@ -189,7 +192,7 @@ function caseDispute(panel: AppealPanel | SectionData<AppealPanel>, options: Dis
     appealDecisions: sectionLoading,
     courts: sectionLoading,
     appealPanel,
-    decision: sectionLoading,
+    decision: options.decision ?? sectionLoading,
     write: options.write ?? sectionReady(context),
   };
 }
@@ -488,6 +491,78 @@ describe("AppealSection: funding times", () => {
     await user.click(fundButton(card("No")));
     expect(await within(card("No")).findByRole("alert")).toHaveTextContent("Funding for this ruling has closed, so nothing was sent.");
     expect(vi.mocked(writeContract)).not.toHaveBeenCalled();
+  });
+});
+
+describe("AppealSection: times in the arbitrable application's notice", () => {
+  /** Gnosis 1052, Proof of Humanity v2, whose current ruling is 2. */
+  const LOSER = 1_793_431_805;
+  const END = 1_793_529_005;
+  const TERMS: FundingTerms = { noun: "option", tie: null, appealPeriodEnd: END, loserDeadline: LOSER };
+  const VIEW_ONLY = testFamily({
+    family: "view-only",
+    writeFamily: "view-only",
+    capabilities: { localId: "none", evidence: { kind: "none" }, appeal: { kind: "none" }, withdraw: { kind: "none" } },
+  });
+
+  function decided(ruling: bigint, rulingText: string): SectionData<Decision> {
+    return sectionReady({ kind: "jury-decision", court: { ruling, rulingText }, note: "appealable-in-arbitrable" });
+  }
+
+  function noticeBody(): HTMLElement {
+    const body = screen.getByText(HANDLED_BY_ARBITRABLE_BODY, { exact: false });
+    expect(body.tagName).toBe("SMALL");
+    return body;
+  }
+
+  it.each<[string, number, FundingTerms, SectionData<Decision>, string]>([
+    ["before either time", LOSER - 1, TERMS, decided(2n, "No"), `Funding for the current ruling (“No”) closes ${utc(END)}. Funding for every other option closes ${utc(LOSER)}.`],
+    [
+      "once the other options' time passed",
+      LOSER,
+      TERMS,
+      decided(2n, "No"),
+      `Funding for the current ruling (“No”) closes ${utc(END)}. Funding for every other option closed ${utc(LOSER)}.`,
+    ],
+    [
+      "a second before the appeal period ends",
+      END - 1,
+      TERMS,
+      decided(2n, "No"),
+      `Funding for the current ruling (“No”) closes ${utc(END)}. Funding for every other option closed ${utc(LOSER)}.`,
+    ],
+    [
+      "once the appeal period ended",
+      END,
+      TERMS,
+      decided(2n, "No"),
+      `Funding for the current ruling (“No”) closed ${utc(END)}. Funding for every other option closed ${utc(LOSER)}.`,
+    ],
+    ["after ruling 0, for every option until the end", END - 1, { ...TERMS, tie: "shared-full-period" }, decided(0n, REFUSE), `Funding for every option closes ${utc(END)}.`],
+    ["after ruling 0, once the appeal period ended", END, { ...TERMS, tie: "shared-full-period" }, decided(0n, REFUSE), `Funding for every option closed ${utc(END)}.`],
+    [
+      "without the ruling's title when the decision could not be read",
+      LOSER - 1,
+      TERMS,
+      sectionUnavailable("rpc-error", "The decision could not be read."),
+      `Funding for the current ruling closes ${utc(END)}. Funding for every other option closes ${utc(LOSER)}.`,
+    ],
+  ])("a product the Dispute Resolver recognised says in the notice when funding closes %s", async (_case, now, terms, decision, line) => {
+    freezeClockAtAppealStart(now);
+    const panel = await renderSection(caseDispute({ kind: "handled-by-arbitrable", terms }, { family: VIEW_ONLY, decision }), { connected: false });
+    expect(noticeBody().textContent).toBe(`${HANDLED_BY_ARBITRABLE_BODY}\n\n${line}`);
+    expect(within(panel).queryAllByRole("button")).toHaveLength(0);
+  });
+
+  it("an arbitrable the Dispute Resolver did not recognise keeps the notice without times", async () => {
+    await renderSection(caseDispute({ kind: "handled-by-arbitrable" }, { family: VIEW_ONLY, decision: decided(2n, "No") }), { connected: false });
+    expect(noticeBody().textContent).toBe(HANDLED_BY_ARBITRABLE_BODY);
+  });
+
+  it("holds a recognised product's notice until the decision names the current ruling, so the line never changes after it shows", async () => {
+    const panel = await renderSection(caseDispute({ kind: "handled-by-arbitrable", terms: TERMS }, { family: VIEW_ONLY }), { connected: false });
+    expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
+    expect(panel).not.toHaveTextContent(HANDLED_BY_ARBITRABLE_TITLE);
   });
 });
 

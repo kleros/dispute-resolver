@@ -4,6 +4,7 @@ import {
   readsProductFunding,
   readRoundFunding,
   readWithdrawable,
+  recogniseProduct,
   type Address,
   type AppealContext,
   type ArbitratedBinding,
@@ -61,6 +62,21 @@ export function useProductFunding(
   if (!wanted) return null;
   if (client === undefined) return unavailableFrom(noRpcError(chainId));
   return fromQuery(query, fromOutcome);
+}
+
+/** `null` while the appeal panel does not depend on it. */
+export function useProductRecognised(chainId: number, binding: ArbitratedBinding | undefined, family: FamilyDetection | undefined, needed: boolean): SectionData<boolean> | null {
+  const deps = useCoreDeps();
+  const client = deps.getReadClient(chainId);
+  const wanted = needed && binding !== undefined && family !== undefined;
+  const query = useQuery({
+    queryKey: wanted ? queryKeys.productRecognised(chainId, binding.disputeId) : IDLE_KEY,
+    queryFn: wanted && client !== undefined ? ({ signal }) => recogniseProduct(client, binding, family, signal) : skipToken,
+    staleTime: STALE_TIME_MS.funding,
+  });
+  if (!wanted) return null;
+  if (client === undefined) return unavailableFrom(noRpcError(chainId));
+  return fromQuery(query, ready);
 }
 
 export function useWithdrawable(

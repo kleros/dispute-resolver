@@ -40,5 +40,5 @@ export const readPohV2: ProductReader = async (client, { arbitrated: address, ar
   // Round 0 holds the challenge deposit, never appeal funding.
   check(head >> 184n === 0n && lastRoundId >= 1n && field(head, 16n, 8n) <= 2n && field(head, 24n, 160n) !== 0n);
   check((await stored(challenge + 1n)) === disputeId);
-  return sideFunded(await stored(mappingSlot(word(lastRoundId), challenge + 2n)));
+  return async () => sideFunded(await stored(mappingSlot(word(lastRoundId), challenge + 2n)));
 };

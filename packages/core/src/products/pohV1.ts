@@ -27,6 +27,8 @@ export const readPohV1: ProductReader = async (client, { arbitrated: address, ar
   check(sameAddress(await client.readContract({ address, abi: pohV1Abi, functionName: "arbitratorDataList", args: [arbitratorDataID] }), arbitrator));
   // Round 0 holds the challenge deposit, never appeal funding.
   check(lastRoundID >= 1n && fitsBits(lastRoundID, 16n));
-  const [, , side] = await client.readContract({ address, abi: pohV1Abi, functionName: "getRoundInfo", args: [submission, request, challengeID, lastRoundID] });
-  return sideFunded(side);
+  return async () => {
+    const [, , side] = await client.readContract({ address, abi: pohV1Abi, functionName: "getRoundInfo", args: [submission, request, challengeID, lastRoundID] });
+    return sideFunded(side);
+  };
 };

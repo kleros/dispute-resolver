@@ -356,6 +356,30 @@ describe("useCase", () => {
     expect(current.decision).toMatchObject({ status: "ready", value: { kind: "winner", winner: { ruling: 2n }, wonBy: "default" } });
   });
 
+  it("checks once in the appeal period whether a view-only arbitrable is a product that times its own appeals, and gives its notice the times", async () => {
+    programReads(3);
+    vi.mocked(core.detectFamily).mockResolvedValue(viewOnlyFamily);
+    vi.mocked(core.recogniseProduct).mockResolvedValue(true);
+    const { result } = renderCase(1n);
+    const current = await settledCase(result);
+    expect(vi.mocked(core.recogniseProduct).mock.calls).toEqual([[expect.anything(), testFoundLookup().binding, viewOnlyFamily, expect.any(AbortSignal)]]);
+    expect(current.appealPanel).toMatchObject({
+      status: "ready",
+      value: { kind: "handled-by-arbitrable", terms: { appealPeriodEnd: 4_000_000_000, loserDeadline: 2_850_000_000 } },
+    });
+  });
+
+  it.each([
+    ["in execution", viewOnlyFamily, 4],
+    ["for a family whose appeals the Dispute Resolver funds", testFamily(), 3],
+  ] as const)("checks no arbitrable's product %s", async (_case, family, period) => {
+    programReads(period, period === 4);
+    vi.mocked(core.detectFamily).mockResolvedValue(family);
+    const { result } = renderCase(1n);
+    await settledCase(result);
+    expect(core.recogniseProduct).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["the arbitrable applied the court's ruling", viewOnlyFamily, 1n],
     ["the Dispute Resolver reads the family's funding itself", testFamily(), 2n],

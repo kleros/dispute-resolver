@@ -55,7 +55,8 @@ export type AppealRoute = "crowdfunding" | "escrow" | "arbitrable" | "unsupporte
 
 /**
  * How the crowdfunded sides are set when the current ruling is 0: Refuse to Arbitrate is the winning option, every
- * list shares one deposit until the period ends (governors), or every option is costed and timed as a winner.
+ * side shares one deposit until the period ends (governors, and the products funded in their own application), or every
+ * option is costed and timed as a winner.
  */
 export type TieDialect = "refuse-is-winner" | "shared-full-period" | "all-winner";
 

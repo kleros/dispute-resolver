@@ -125,7 +125,8 @@ export type WithdrawState =
 
 export type AppealPanel =
   | { readonly kind: "hidden" }
-  | { readonly kind: "handled-by-arbitrable" }
+  /** `terms` only for a product `recogniseProduct` recognised, whose sides it times in its own application. */
+  | { readonly kind: "handled-by-arbitrable"; readonly terms?: FundingTerms }
   | { readonly kind: "not-appealable" }
   | { readonly kind: "funding-unsupported" }
   | { readonly kind: "escrow-appeal"; readonly appealCost: bigint; readonly deadline: number }
@@ -148,6 +149,8 @@ export interface AppealPanelInput {
   readonly multipliers: Outcome<Multipliers> | null;
   readonly funding: Outcome<RoundFunding> | null;
   readonly withdraw: WithdrawState | null;
+  /** `recogniseProduct` of the dispute, read in the appeal period only. */
+  readonly productRecognised?: boolean;
 }
 
 export interface CrowdfundingSet {

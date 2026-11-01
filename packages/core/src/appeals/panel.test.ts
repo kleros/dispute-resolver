@@ -5,7 +5,7 @@ import type { FamilyDetection } from "../families/types";
 import { REGISTRY } from "../registry";
 import type { Address, Outcome, Period } from "../types";
 import { buildAppealPanel, buildCrowdfundingCards, computeAppealAmounts, hasAppealPanel, needsRulingOptions } from "./index";
-import type { AppealPanelInput, Multipliers, RoundFunding, WithdrawState } from "./types";
+import type { AppealPanelInput, FundingTerms, Multipliers, RoundFunding, WithdrawState } from "./types";
 import { FAMILY_SIGNATURES, detectionFor, recordedDetection } from "../test/appeals/testHelpers";
 
 const ADDRESS: Address = "0x00000000000000000000000000000000000000dd";
@@ -210,6 +210,34 @@ describe("buildAppealPanel", () => {
   });
 
   const failed = (code: "rpc-error" | "unsupported" | "reverted", message: string) => ({ ok: false as const, error: { code, message } });
+
+  it.each<[string, Partial<AppealPanelInput>, FundingTerms | undefined]>([
+    ["the current ruling until the end, every other until half the period", { productRecognised: true }, { noun: "option", tie: null, appealPeriodEnd: 300, loserDeadline: 200 }],
+    [
+      "half an odd period rounded down to the second",
+      { productRecognised: true, appealInfo: ok({ ...APPEAL_INFO, appealPeriodEnd: 107 }) },
+      { noun: "option", tie: null, appealPeriodEnd: 107, loserDeadline: 103 },
+    ],
+    [
+      "every side until the end after ruling 0",
+      { productRecognised: true, currentRuling: ok(0n) },
+      { noun: "option", tie: "shared-full-period", appealPeriodEnd: 300, loserDeadline: 200 },
+    ],
+    ["no times for a ruling that is not one of its two sides", { productRecognised: true, currentRuling: ok(3n) }, undefined],
+    ["no times for an arbitrable not recognised", { productRecognised: false }, undefined],
+    ["no times when the arbitrable was not checked", {}, undefined],
+    ["no times without the appeal period", { productRecognised: true, appealInfo: failed("rpc-error", "down") }, undefined],
+    ["no times when the appeal period was not read", { productRecognised: true, appealInfo: null }, undefined],
+    [
+      "no times for the empty period the court reports once the dispute has left the appeal period",
+      { productRecognised: true, appealInfo: ok({ ...APPEAL_INFO, appealPeriodStart: 0, appealPeriodEnd: 0 }) },
+      undefined,
+    ],
+    ["no times without the current ruling", { productRecognised: true, currentRuling: failed("reverted", "no ruling") }, undefined],
+  ])("gives a product funded in its own app its appeal times in the arbitrable-application note: %s", (_, overrides, terms) => {
+    const note = terms === undefined ? { kind: "handled-by-arbitrable" } : { kind: "handled-by-arbitrable", terms };
+    expect(buildAppealPanel(input(family("view-only"), 3, overrides))).toStrictEqual(note);
+  });
 
   it.each<[string, Partial<AppealPanelInput>, { readonly code: string; readonly message: string }]>([
     ["a failed multipliers read", { multipliers: failed("unsupported", "no multipliers") }, { code: "unsupported", message: "no multipliers" }],

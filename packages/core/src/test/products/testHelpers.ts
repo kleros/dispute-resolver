@@ -1,5 +1,6 @@
 import { encodeFunctionData, encodeFunctionResult, numberToHex, pad, parseAbi, zeroAddress } from "viem";
 import type { Abi, AbiFunction } from "viem";
+import recordedAppealPeriod from "../../products/__fixtures__/appeal-period.json";
 import recorded from "../../products/__fixtures__/funding.json";
 import type { ArbitratedBinding } from "../../disputes/types";
 import type { FamilyDetection } from "../../families/types";
@@ -73,6 +74,7 @@ const caseSchema = z.object({
   disputeId: z.string(),
   calls: z.partialRecord(z.enum(Object.keys(ABIS) as [ProductKind, ...ProductKind[]]), z.array(callSchema)),
   storage: z.array(z.object({ slot: hex, word: hex })).optional(),
+  court: z.object({ appealPeriodStart: z.number(), appealPeriodEnd: z.number(), currentRuling: z.string() }).optional(),
 });
 const fixtureSchema = z.object({
   chains: z.array(z.object({ chainId: z.number(), readAtBlock: z.number(), arbitrator: address, cases: z.array(caseSchema) })),
@@ -88,24 +90,40 @@ export interface ProductCase {
   readonly disputeId: bigint;
   readonly calls: Readonly<Partial<Record<ProductKind, readonly RecordedCall[]>>>;
   readonly storage: readonly { readonly slot: Hex; readonly word: Hex }[];
+  /** The court's appeal period and current ruling at the case's block, recorded for cases read in the appeal period. */
+  readonly court?: { readonly appealPeriodStart: number; readonly appealPeriodEnd: number; readonly currentRuling: string };
 }
 
-const CASES: ReadonlyMap<string, ProductCase> = new Map(
-  fixtureSchema
-    .parse(recorded)
-    .chains.flatMap((chain) =>
-      chain.cases.map((kase): [string, ProductCase] => [
-        kase.label,
-        { ...kase, chainId: chain.chainId, arbitrator: chain.arbitrator, disputeId: BigInt(kase.disputeId), storage: kase.storage ?? [] },
-      ]),
-    ),
-);
+function casesOf(fixture: unknown): ReadonlyMap<string, ProductCase> {
+  return new Map(
+    fixtureSchema
+      .parse(fixture)
+      .chains.flatMap((chain) =>
+        chain.cases.map((kase): [string, ProductCase] => [
+          kase.label,
+          { ...kase, chainId: chain.chainId, arbitrator: chain.arbitrator, disputeId: BigInt(kase.disputeId), storage: kase.storage ?? [] },
+        ]),
+      ),
+  );
+}
+
+const CASES = casesOf(recorded);
+const APPEAL_PERIOD_CASES = casesOf(recordedAppealPeriod);
+
+function recordedCase(cases: ReadonlyMap<string, ProductCase>, label: string): ProductCase {
+  const kase = cases.get(label);
+  if (kase === undefined) throw new Error(`no recorded case ${label}`);
+  return kase;
+}
 
 /** The recorded case `label` ("<kind> <dispute ID>"); throws for an unrecorded one, so a typo fails loudly. */
 export function productCase(label: string): ProductCase {
-  const kase = CASES.get(label);
-  if (kase === undefined) throw new Error(`no recorded case ${label}`);
-  return kase;
+  return recordedCase(CASES, label);
+}
+
+/** The case `label` recorded inside its appeal period, before any funding read, with the court's values at that block. */
+export function appealPeriodCase(label: string): ProductCase {
+  return recordedCase(APPEAL_PERIOD_CASES, label);
 }
 
 function zeroOf(type: string): unknown {

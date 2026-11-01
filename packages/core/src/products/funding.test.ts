@@ -1,9 +1,25 @@
-import { zeroAddress } from "viem";
+import { toFunctionSelector, zeroAddress } from "viem";
 import { describe, expect, it } from "vitest";
-import { readProductFunding, readsProductFunding } from "./index";
+import { buildAppealPanel } from "../appeals";
+import { describeAppealRules } from "../families";
+import type { FamilyDetection, TieDialect } from "../families/types";
+import { REGISTRY } from "../registry";
+import { readProductFunding, readsProductFunding, recogniseProduct } from "./index";
 import type { Hex } from "../types";
 import { recordedDetection } from "../test/families/testHelpers";
-import { addCalls, editAnswerWord, editArg, editRaw, editValues, editWord, productCase, productRead, type ProductCase, type RecordedCall } from "../test/products/testHelpers";
+import {
+  addCalls,
+  appealPeriodCase,
+  editAnswerWord,
+  editArg,
+  editRaw,
+  editValues,
+  editWord,
+  productCase,
+  productRead,
+  type ProductCase,
+  type RecordedCall,
+} from "../test/products/testHelpers";
 import { rpcError } from "../test/rpc/testHelpers";
 
 const POH_V1 = productCase("poh-v1 1495");
@@ -182,5 +198,84 @@ describe("readsProductFunding", () => {
     ["an escrow", 1, "0xe2dd8cce2c33a04215074adb4b5820b765d8ed9d", false],
   ])("reads a product's own funding only where the Dispute Resolver reads none: %s", async (_, chainId, address, expected) => {
     expect(readsProductFunding(await recordedDetection(chainId, address))).toBe(expected);
+  });
+});
+
+/** The round reads that hold the funding, which recognising a product never makes. */
+const ROUND_READS = ["getRoundInfo(address,uint256,uint256,uint256)", "getRoundInfo(bytes32,uint256,uint256)"].map((signature) => `:${toFunctionSelector(signature)}`);
+
+/** The appeal panel of the case's recognised dispute in its appeal period, from the court's values recorded at its block. */
+function appealPanel(kase: ProductCase, family: FamilyDetection) {
+  const { court } = kase;
+  if (court === undefined) throw new Error(`${kase.label} has no recorded court values`);
+  return buildAppealPanel({
+    family,
+    period: 3,
+    rules: describeAppealRules(REGISTRY, family),
+    override: undefined,
+    rulingOptions: { type: "single-select" },
+    fallbackOutcomes: null,
+    currentRuling: { ok: true, value: BigInt(court.currentRuling) },
+    appealInfo: { ok: true, value: { appealCost: 0n, appealPeriodStart: court.appealPeriodStart, appealPeriodEnd: court.appealPeriodEnd } },
+    multipliers: null,
+    funding: null,
+    withdraw: null,
+    productRecognised: true,
+  });
+}
+
+const LIGHT_1050 = appealPeriodCase("light 1050");
+
+/** The 1050 Light Curate clone also answering as the token list for the same dispute and item. */
+function asTwoProducts(): ProductCase {
+  const key = LIGHT_1050.calls.light?.[1]?.args[0] ?? "";
+  return addCalls(LIGHT_1050, "atl", [
+    { fn: "arbitratorDisputeIDToTokenID", args: [LIGHT_1050.arbitrator, "1050"], values: { key } },
+    { fn: "getTokenInfo", args: [key], values: { status: "2", numberOfRequests: "1" } },
+  ]);
+}
+
+describe("recogniseProduct", () => {
+  it.each<[string, string, number, TieDialect | null]>([
+    ["Proof of Humanity v1 (mainnet 1646)", "poh-v1 1646", 1726603055, null],
+    ["Proof of Humanity v1 after ruling 0 (mainnet 1644)", "poh-v1 1644", 1714504607, "shared-full-period"],
+    ["Proof of Humanity v2 (Gnosis 1052)", "poh-v2 1052", 1793431805, null],
+    ["Proof of Humanity v2 after ruling 0 (Gnosis 1045)", "poh-v2 1045", 1792505405, "shared-full-period"],
+    ["a Light Curate clone (Gnosis 1050)", "light 1050", 1793388605, null],
+    ["another Light Curate clone (Gnosis 1051)", "light 1051", 1793455805, null],
+    ["a Light Curate clone in its second appeal round, after ruling 0 (Gnosis 939)", "light 939", 1787903420, "shared-full-period"],
+    ["the T2CR token list (mainnet 38)", "atl 38", 1555498069, null],
+    ["a Generalized TCR after ruling 0 (mainnet 344)", "gtcr 344", 1598389361, "shared-full-period"],
+  ])("recognises %s in its appeal period without reading its funding, and times its sides", async (_, label, loserDeadline, tie) => {
+    const kase = appealPeriodCase(label);
+    const { client, requests, binding, family } = productRead(kase);
+    expect(await recogniseProduct(client, binding, family)).toBe(true);
+    expect(requests.calls.filter((call) => ROUND_READS.some((selector) => call.includes(selector)))).toEqual([]);
+    expect(requests.methods.filter((method) => method === "eth_getStorageAt")).toHaveLength(kase.storage.length);
+    const appealPeriodEnd = kase.court?.appealPeriodEnd;
+    expect(appealPanel(kase, family)).toStrictEqual({ kind: "handled-by-arbitrable", terms: { noun: "option", tie, appealPeriodEnd, loserDeadline } });
+  });
+
+  it.each<[string, ProductCase]>([
+    ["an arbitrable on which every product's first call reverts (Linguo, Gnosis 83)", appealPeriodCase("linguo 83")],
+    ["an item the Light Curate clone does not know (Gnosis 553)", productCase("light 553")],
+    ["a Proof of Humanity v2 deployment with another storage layout (Sepolia 42)", productCase("poh-v2 42")],
+    ["the binary proxy, which finds a dispute only once it is ruled (mainnet 193)", productCase("bap 193")],
+    ["a dispute two products answer for", asTwoProducts()],
+  ])("does not recognise %s", async (_, kase) => {
+    const { client, binding, family } = productRead(kase);
+    expect(await recogniseProduct(client, binding, family)).toBe(false);
+  });
+
+  it("asks nothing of an arbitrable the Dispute Resolver funds itself, of another arbitrable, or once the read is aborted", async () => {
+    const { client, requests, binding, family } = productRead(LIGHT_1050);
+    expect(await recogniseProduct(client, binding, family, AbortSignal.abort())).toBe(false);
+    const resolver = await recordedDetection(1, "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf");
+    expect(await recogniseProduct(client, binding, { ...resolver, chainId: binding.chainId, arbitrable: binding.arbitrated })).toBe(false);
+    const legacy = await recordedDetection(1, "0x135c573503f70dc290b1d60fe2e7f7eb114febd6");
+    expect(await recogniseProduct(client, binding, legacy)).toBe(false);
+    const other = await recordedDetection(1, "0xebcf3bca271b26ae4b162ba560e243055af0e679");
+    expect(await recogniseProduct(client, binding, other)).toBe(false);
+    expect(requests.methods).toEqual([]);
   });
 });

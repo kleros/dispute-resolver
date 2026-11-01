@@ -1,7 +1,7 @@
-import type { AppealPanel, ChainConfig, UnavailableCode } from "@dispute-resolver/core";
+import type { AppealPanel, ChainConfig, Decision, FundingTerms, UnavailableCode } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import type { CaseSectionProps, CaseWriteContext, SectionData } from "../../data";
-import { Notice, SectionSkeleton, SectionUnavailable } from "../../ui";
+import { Notice, SectionSkeleton, SectionUnavailable, useNowSeconds } from "../../ui";
 import {
   ESCROW_ENDED,
   FEES_UNAVAILABLE_BODY,
@@ -14,6 +14,7 @@ import {
   NOT_APPEALABLE_TITLE,
   WITHDRAW_HEADING,
   WITHDRAW_UNSUPPORTED,
+  fundingTimesLine,
 } from "./copy";
 import { CrowdfundingPanel } from "./CrowdfundingPanel";
 import { EscrowAppealPanel } from "./EscrowAppealPanel";
@@ -35,18 +36,30 @@ function WriteContextNotice({ write }: { readonly write: SectionData<CaseWriteCo
   return <Notice variant="warning" title="Appeal actions unavailable" body={write.error.message} />;
 }
 
+/** The decision box's title of the current ruling: the same read, named by the dispute's options. */
+function currentRulingTitle(decision: SectionData<Decision>): string | undefined {
+  return decision.status === "ready" && decision.value.kind === "jury-decision" ? decision.value.court.rulingText : undefined;
+}
+
+function HandledByArbitrableNotice({ terms, currentTitle }: { readonly terms: FundingTerms; readonly currentTitle: string | undefined }) {
+  const nowSeconds = useNowSeconds();
+  return <Notice variant="info" title={HANDLED_BY_ARBITRABLE_TITLE} body={`${HANDLED_BY_ARBITRABLE_BODY}\n\n${fundingTimesLine(terms, currentTitle, nowSeconds)}`} />;
+}
+
 interface PanelBodyProps {
   readonly panel: AppealPanel;
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
   readonly onRetry: () => void;
+  readonly currentTitle: string | undefined;
 }
 
-function PanelBody({ panel, actions, chain, onRetry }: PanelBodyProps) {
+function PanelBody({ panel, actions, chain, onRetry, currentTitle }: PanelBodyProps) {
   switch (panel.kind) {
     case "hidden":
       return null;
     case "handled-by-arbitrable":
+      if (panel.terms !== undefined) return <HandledByArbitrableNotice terms={panel.terms} currentTitle={currentTitle} />;
       return <Notice variant="info" title={HANDLED_BY_ARBITRABLE_TITLE} body={HANDLED_BY_ARBITRABLE_BODY} />;
     case "not-appealable":
       return <Notice variant="info" title={NOT_APPEALABLE_TITLE} body={NOT_APPEALABLE_BODY} />;
@@ -80,14 +93,16 @@ function PanelBody({ panel, actions, chain, onRetry }: PanelBodyProps) {
 export function AppealSection({ dispute, chain }: CaseSectionProps) {
   const actions = useAppealActions(dispute, chain);
   const retry = useAppealRetry(dispute);
-  const { appealPanel } = dispute;
-  if (appealPanel.status === "loading") return <SectionSkeleton variant="text" lines={6} />;
+  const { appealPanel, decision } = dispute;
+  const waitsForTitle =
+    appealPanel.status === "ready" && appealPanel.value.kind === "handled-by-arbitrable" && appealPanel.value.terms !== undefined && decision.status === "loading";
+  if (appealPanel.status === "loading" || waitsForTitle) return <SectionSkeleton variant="text" lines={6} />;
   if (appealPanel.status === "unavailable") return <SectionUnavailable section={SECTION} error={appealPanel.error} onRetry={retry} />;
   const panel = appealPanel.value;
   return (
     <div className="flex min-w-0 flex-col gap-4">
       {hasActions(panel) ? <WriteContextNotice write={dispute.write} /> : null}
-      <PanelBody panel={panel} actions={actions} chain={chain} onRetry={retry} />
+      <PanelBody panel={panel} actions={actions} chain={chain} onRetry={retry} currentTitle={currentRulingTitle(decision)} />
     </div>
   );
 }

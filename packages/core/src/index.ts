@@ -53,7 +53,7 @@ export {
   roundsToScan,
   type EnteredAnswerFunding,
 } from "./appeals";
-export { readProductFunding, readsProductFunding } from "./products";
+export { readProductFunding, readsProductFunding, recogniseProduct } from "./products";
 export { CREATE_LIMITS, buildCreatedMetaEvidence, disputeIdFromReceipt, encodeExtraData, numberOfRulingOptions, readArbitrationCost, validateCreateInput } from "./create";
 export {
   buildCreateDisputeCall,

@@ -44,6 +44,8 @@ export const CURATE_READERS: readonly ProductReader[] = ROWS.map((row) => async 
   });
   // Round 0 holds both parties' deposits, never appeal funding.
   check(rounds >= 2n);
-  const [, , hasPaid] = await client.readContract({ address, abi: requestAbi, functionName: "getRoundInfo", args: [key, request, rounds - 1n] });
-  return paidSides(hasPaid);
+  return async () => {
+    const [, , hasPaid] = await client.readContract({ address, abi: requestAbi, functionName: "getRoundInfo", args: [key, request, rounds - 1n] });
+    return paidSides(hasPaid);
+  };
 });

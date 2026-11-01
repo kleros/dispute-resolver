@@ -12,7 +12,7 @@ import {
   type FamilyDetection,
   type ReadClient,
 } from "@dispute-resolver/core";
-import { useProductFunding } from "./appealHooks";
+import { useProductFunding, useProductRecognised } from "./appealHooks";
 import { executedRulingFrom, useAppealReads, type AppealPlan } from "./caseAppealReads";
 import {
   assembleAppealPanel,
@@ -110,6 +110,7 @@ export function useCase(chainId: number, disputeId: bigint | null, account?: Add
   const rules = family.status === "ready" ? describeAppealRules(deps.registry, family.value) : null;
   const fundingNeeded = found !== undefined && decisionWaitsForFunding(found.dispute, details, executed);
   const productFunding = useProductFunding(chainId, binding, valueOf(family), fundingNeeded);
+  const productRecognised = useProductRecognised(chainId, binding, valueOf(family), found?.dispute.period === 3 && rules?.route === "arbitrable");
 
   if (disputeId === null) return { status: "no-id", chainId };
 
@@ -120,7 +121,7 @@ export function useCase(chainId: number, disputeId: bigint | null, account?: Add
     return { ...base, ...everySection(unavailableFrom(error)), view: ready(viewWithoutDispute(lookup.value, error)) };
   }
 
-  const reads: FoundCaseReads = { lookup: lookup.value, family, rules, metaEvidence, courts, details, appeal, executed, productFunding, override, readClient };
+  const reads: FoundCaseReads = { lookup: lookup.value, family, rules, metaEvidence, courts, details, appeal, executed, productFunding, productRecognised, override, readClient };
   return {
     ...base,
     view: assembleView(reads),

@@ -53,6 +53,7 @@ interface ReadsOptions {
   readonly funding?: SectionData<RoundFunding> | null;
   readonly executed?: SectionData<ExecutedRuling> | null;
   readonly productFunding?: SectionData<readonly bigint[]> | null;
+  readonly productRecognised?: SectionData<boolean> | null;
 }
 
 function notExecuted(period: Period): SectionData<ExecutedRuling> | null {
@@ -76,6 +77,7 @@ function readsWith(family: FamilyDetection, period: Period, metaEvidence: FoundC
     },
     executed: options.executed === undefined ? notExecuted(period) : options.executed,
     productFunding: options.productFunding ?? null,
+    productRecognised: options.productRecognised ?? null,
     override: undefined,
     readClient: undefined,
   };
@@ -189,5 +191,21 @@ describe("case assembly", () => {
     ["an IDisputeResolver v1 dispute in the appeal period waits for its meta-evidence before showing appeal cards", IDR_V1, 3, sectionLoading, { status: "loading" }],
   ])("%s", (_name, family, period, metaEvidence, expected) => {
     expect(assembleAppealPanel(readsWith(family, period, metaEvidence))).toEqual(expected);
+  });
+
+  it.each<[string, SectionData<boolean>, unknown]>([
+    [
+      "gives the appeal times of a product it recognised",
+      sectionReady(true),
+      { kind: "handled-by-arbitrable", terms: { noun: "option", tie: null, appealPeriodEnd: 4_000_000_000, loserDeadline: 2_850_000_000 } },
+    ],
+    ["gives no times for an arbitrable it did not recognise", sectionReady(false), { kind: "handled-by-arbitrable" }],
+    ["gives no times when the arbitrable could not be checked", sectionUnavailable("no-rpc", "No read RPC."), { kind: "handled-by-arbitrable" }],
+  ])("a view-only dispute in the appeal period %s", (_name, productRecognised, panel) => {
+    expect(assembleAppealPanel(readsWith(VIEW_ONLY, 3, sectionReady(testOkMetaEvidence()), { productRecognised }))).toEqual({ status: "ready", value: panel });
+  });
+
+  it("holds a view-only dispute's appeal notice while its arbitrable is checked, so no line appears after it", () => {
+    expect(assembleAppealPanel(readsWith(VIEW_ONLY, 3, sectionReady(testOkMetaEvidence()), { productRecognised: sectionLoading }))).toEqual({ status: "loading" });
   });
 });

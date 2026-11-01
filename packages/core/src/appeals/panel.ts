@@ -62,6 +62,21 @@ function crowdfunding(input: AppealPanelInput, dialect: "idr" | "governor"): App
   return { kind: "crowdfunding", dialect, ...set, cards, terms };
 }
 
+/**
+ * A recognised product takes the current ruling's appeal funding until the appeal period ends and the others' while
+ * `now − start < (end − start) / 2`, in integer division; after ruling 0 every side's until the end. Its sides are
+ * rulings 1 and 2, so a larger ruling gets no times. Any read missing keeps the note without times, and so does the
+ * court's (0, 0) for a dispute that has left the appeal period while its separately read period still says 3.
+ */
+function handledByArbitrable(input: AppealPanelInput): AppealPanel {
+  const { appealInfo, currentRuling } = input;
+  if (input.productRecognised !== true || appealInfo?.ok !== true || !currentRuling.ok || currentRuling.value > 2n) return { kind: "handled-by-arbitrable" };
+  const { appealPeriodStart: start, appealPeriodEnd: end } = appealInfo.value;
+  if (end <= start) return { kind: "handled-by-arbitrable" };
+  const tie = currentRuling.value === 0n ? "shared-full-period" : null;
+  return { kind: "handled-by-arbitrable", terms: { noun: input.rules.noun, tie, appealPeriodEnd: end, loserDeadline: start + Math.floor((end - start) / 2) } };
+}
+
 /** The execution-period withdraw panel; a state that was not read is unavailable, never empty. */
 function withdraw(input: AppealPanelInput): AppealPanel {
   const state: WithdrawState = input.withdraw ?? { status: "unavailable", error: { code: "not-found", message: "The withdrawable amount was not read." } };
@@ -105,7 +120,7 @@ function appealPeriodPanel(input: AppealPanelInput): AppealPanel {
     case "escrow":
       return escrowAppeal(input);
     case "arbitrable":
-      return { kind: "handled-by-arbitrable" };
+      return handledByArbitrable(input);
     case "crowdfunding":
       return crowdfunding(input, input.family.writeFamily === "governor" ? "governor" : "idr");
   }

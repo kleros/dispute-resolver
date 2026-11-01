@@ -3,11 +3,12 @@ import type { ArbitratedBinding } from "../disputes/types";
 import type { Address, Hex, ReadClient } from "../types";
 
 /**
- * Reads, from the arbitrable's own getters or storage, the fully funded rulings of the round its `rule()` used, and
- * throws when any step fails or proves nothing. The readers declare every integer output as `uint256`: viem decodes a
- * narrower type without masking it anyway, so each small field is range-checked on the full word instead.
+ * Finds the dispute in the arbitrable's own getters or storage without reading its funding, then gives the read of the
+ * fully funded rulings of the round its `rule()` used; either throws when any step fails or proves nothing. The readers
+ * declare every integer output as `uint256`: viem decodes a narrower type without masking it anyway, so each small field
+ * is range-checked on the full word instead.
  */
-export type ProductReader = (client: ReadClient, binding: ArbitratedBinding) => Promise<readonly bigint[]>;
+export type ProductReader = (client: ReadClient, binding: ArbitratedBinding) => Promise<() => Promise<readonly bigint[]>>;
 
 class NoProof extends Error {
   constructor() {

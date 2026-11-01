@@ -19,9 +19,11 @@ export const readBinaryProxy: ProductReader = async (client, { arbitrated: addre
   check(fitsBits(local, 64n));
   const [, isRuled, ruling, id] = await client.readContract({ address, abi: binaryProxyAbi, functionName: "disputes", args: [local] });
   check(isRuled && ruling <= 2n && id === disputeId);
-  const data = encodeFunctionData({ abi: binaryProxyAbi, functionName: "crowdfundingStatus", args: [local, zeroAddress] });
-  const status = await rawCall(client, address, data, FUNDING_STATUS_BYTES);
-  check(size(status) === FUNDING_STATUS_BYTES);
-  const [, hasPaid] = decodeFunctionResult({ abi: binaryProxyAbi, functionName: "crowdfundingStatus", data: status });
-  return paidSides(hasPaid);
+  return async () => {
+    const data = encodeFunctionData({ abi: binaryProxyAbi, functionName: "crowdfundingStatus", args: [local, zeroAddress] });
+    const status = await rawCall(client, address, data, FUNDING_STATUS_BYTES);
+    check(size(status) === FUNDING_STATUS_BYTES);
+    const [, hasPaid] = decodeFunctionResult({ abi: binaryProxyAbi, functionName: "crowdfundingStatus", data: status });
+    return paidSides(hasPaid);
+  };
 };
