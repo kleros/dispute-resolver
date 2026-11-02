@@ -5,10 +5,12 @@ import {
   buildDisputeView,
   describeAppealRules,
   type Address,
+  type AppealPanel,
   type Court,
   type DisputeReads,
   type ExecutedRuling,
   type FamilyDetection,
+  type FundingTerms,
   type MetaEvidenceResult,
   type Outcome,
   type Period,
@@ -32,7 +34,9 @@ import {
   testOkMetaEvidence,
 } from "../../test/data";
 import { matchOnly } from "../../test/matchMedia";
+import { renderWithProviders } from "../../test/shell";
 import { installOfflineAppKitEnvironment } from "../../test/wallet";
+import { AppealSection } from "../case-appeal";
 import { FIVE_STEPS_MEDIA_QUERY } from "./DisputeTimeline";
 import { CaseOverview, DecisionAlert, DisputeTimeline, RealityNotice } from "./index";
 
@@ -55,6 +59,7 @@ interface CaseOptions {
   readonly fundedRulings?: Outcome<readonly bigint[]> | null;
   readonly metaEvidence?: SectionData<MetaEvidenceResult>;
   readonly view?: "ready" | "loading";
+  readonly appealPanel?: SectionData<AppealPanel>;
 }
 
 /** A mainnet dispute whose view and decision core builds from the given reads, as `useCase` does. */
@@ -88,6 +93,7 @@ function caseDispute(options: CaseOptions = {}): CaseDispute {
     family: sectionReady(family),
     metaEvidence,
     courts: sectionReady([testCourt(options.court)]),
+    appealPanel: options.appealPanel ?? sectionLoading,
   });
 }
 
@@ -221,7 +227,7 @@ describe("DisputeTimeline", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 2, lastPeriodChange: NOW - HOUR, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }));
     expect(columns()).toEqual([
       { name: "Evidence", state: "concluded", text: expect.stringContaining("Concluded") as string },
-      { name: "Voting", state: "current", text: expect.stringContaining("Ends in 01d 23h 00m") as string },
+      { name: "Voting", state: "current", text: "Voting01d 23h 00m" },
       { name: "Appeal", state: "upcoming", text: "Appeal01d 00h 00m" },
       { name: "Execution", state: "upcoming", text: "Execution" },
     ]);
@@ -240,7 +246,7 @@ describe("DisputeTimeline", () => {
   it("shows each new minute of the countdown without an entrance animation", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 0, lastPeriodChange: NOW, court: { timesPerPeriod: [BigInt(DAY), 0n, BigInt(DAY), BigInt(DAY)] } }));
     const list = timelineList();
-    expect(list.className).not.toMatch(/small\+small\]:animate-/);
+    expect(list.className).not.toMatch(/small[^\s]*\]:animate-/);
     act(() => {
       vi.advanceTimersByTime(30 * 1000);
     });
@@ -330,7 +336,8 @@ describe("DisputeTimeline", () => {
   it("renders the current countdown once", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 2, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }));
     expect(within(timeline()).getAllByRole("list")).toHaveLength(1);
-    expect(within(timeline()).getAllByText(/^Ends in/)).toHaveLength(1);
+    expect(within(timeline()).getAllByText("01d 23h 00m")).toHaveLength(1);
+    expect(timelineList().querySelectorAll('li[aria-current="step"] small')).toHaveLength(1);
     expect(countdown(timelineList())).toHaveTextContent("01d 23h 00m");
   });
 
@@ -339,9 +346,19 @@ describe("DisputeTimeline", () => {
     const list = timelineList();
     expect(within(list).getByText("Concluded")).toBeInTheDocument();
     expect(within(list).getByText("01d 00h 00m")).toBeInTheDocument();
-    expect(within(list).getByText("Ends in")).toBeInTheDocument();
     expect(countdown(list)).toBeVisible();
     expect(list.querySelectorAll('[class*="sr-only"]')).toHaveLength(0);
+  });
+
+  it("tells screen readers that the current step's value is the time left in its period", () => {
+    const { unmount } = renderSection(DisputeTimeline, caseDispute({ period: 2, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }));
+    const hint = within(timeline()).getByText(/time left in its period/);
+    expect(hint).toHaveClass("sr-only");
+    expect(hint).not.toHaveAttribute("aria-live");
+    expect(timelineList()).not.toContainElement(hint);
+    unmount();
+    renderSection(DisputeTimeline, caseDispute({ period: 4 }));
+    expect(within(timeline()).queryByText(/time left in its period/)).not.toBeInTheDocument();
   });
 
   it.each([
@@ -363,7 +380,7 @@ describe("DisputeTimeline", () => {
   it("gives an upcoming period its duration alone, with no word before it", () => {
     renderSection(DisputeTimeline, caseDispute({ period: 0, court: { timesPerPeriod: [BigInt(DAY), 0n, 2n * BigInt(DAY) + 6n * BigInt(HOUR), BigInt(DAY)] } }));
     expect(columns().map(({ name, text }) => [name, text])).toEqual([
-      ["Evidence", "EvidenceEnds in 00d 23h 00m"],
+      ["Evidence", "Evidence00d 23h 00m"],
       ["Voting", "Voting02d 06h 00m"],
       ["Appeal", "Appeal01d 00h 00m"],
       ["Execution", "Execution"],
@@ -371,33 +388,33 @@ describe("DisputeTimeline", () => {
     expect(within(timelineList()).queryByText(/Lasts/)).not.toBeInTheDocument();
   });
 
-  it("reads Unknown after Ends in when the current deadline is not a finite time", () => {
+  it("reads Unknown when the current deadline is not a finite time", () => {
     const dispute = caseDispute({ period: 2 });
     const view = dispute.view.status === "ready" && dispute.view.value.exists ? dispute.view.value : undefined;
     if (view?.timeline.ok !== true) throw new Error("The test dispute has no timeline.");
     const withEndlessDeadline = view.timeline.value.columns.map((column) => (column.state === "current" ? { ...column, deadline: Number.POSITIVE_INFINITY } : column));
     renderSection(DisputeTimeline, { ...dispute, view: sectionReady({ ...view, timeline: { ok: true, value: { columns: withEndlessDeadline } } }) });
-    expect(columns()[1]).toEqual({ name: "Voting", state: "current", text: "VotingEnds in Unknown" });
+    expect(columns()[1]).toEqual({ name: "Voting", state: "current", text: "VotingUnknown" });
   });
 
   it.each([
     ["vertical", false],
     ["horizontal", true],
-  ] as const)("sets the countdown on the line of Ends in at 16 px semibold in tabular figures (%s)", (_orientation, horizontal) => {
+  ] as const)("sets the countdown alone on its line at 16 px semibold in tabular figures (%s)", (_orientation, horizontal) => {
     if (horizontal) {
       installOfflineAppKitEnvironment();
       vi.stubGlobal("matchMedia", matchEverything);
     }
     renderSection(DisputeTimeline, caseDispute({ period: 2 }));
     const list = timelineList();
-    const countdown = "[&_li[aria-current]_small+small]";
-    expect(list).toHaveClass(`${countdown}:text-base`, `${countdown}:font-semibold`, `${countdown}:text-klerosUIComponentsPrimaryText`, `${countdown}:tabular-nums`);
+    const value = "[&_li[aria-current]_small]";
+    expect(list).toHaveClass(`${value}:text-base`, `${value}:font-semibold`, `${value}:text-klerosUIComponentsPrimaryText`, `${value}:tabular-nums`);
     expect(list.className).not.toContain("text-xl");
-    // As block boxes, the library's flex columns let "Ends in" and the countdown run inline on one line.
+    // As block boxes, the library's flex columns set the states as lines of text, so the countdown sits on the line the title's block gives it.
     expect(list).toHaveClass(horizontal ? "[&>li>div:last-child]:block" : "[&_li>div:last-child>div]:block");
-    const [endsIn, value] = Array.from(within(list).getByRole("listitem", { name: "Voting" }).querySelectorAll("small"));
-    expect(endsIn?.textContent).toBe("Ends in ");
-    expect(endsIn?.nextElementSibling).toBe(value);
+    const states = Array.from(within(list).getByRole("listitem", { name: "Voting" }).querySelectorAll("small"), (small) => small.textContent);
+    expect(states).toEqual([expect.stringMatching(COUNTDOWN)]);
+    expect(Array.from(list.querySelectorAll("li[aria-current] small"), (small) => small.textContent)).toEqual(states);
   });
 
   it.each([
@@ -413,6 +430,265 @@ describe("DisputeTimeline", () => {
       .className.split(/\s+/)
       .filter((token) => /aria-(current|disabled)/.test(token));
     expect(byState.filter((token) => /:(after:)?(border-[tblr](-\d+)?|m[xytblr]?-[^:]+)$/.test(token))).toEqual([]);
+  });
+});
+
+describe("DisputeTimeline in the appeal period", () => {
+  /** Two days of appeal period, an hour in: it ends in 01d 23h 00m. */
+  const APPEAL_COURT: Partial<Court> = { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), 2n * BigInt(DAY)] };
+  const END = NOW - HOUR + 2 * DAY;
+  const LOSING = NOW - HOUR + DAY;
+  const TERMS: FundingTerms = { noun: "option", tie: null, appealPeriodEnd: END, loserDeadline: LOSING };
+  const ONE_TIME = ["01d 23h 00m"];
+  const TWO_TIMES = ["01d 23h 00m", "Losing side: 00d\u00a023h\u00a000m"];
+
+  function crowdfunding(terms: FundingTerms): SectionData<AppealPanel> {
+    return sectionReady({ kind: "crowdfunding", dialect: "idr", terms, cards: [], freeInput: null, composer: null });
+  }
+
+  function appealCase(appealPanel: SectionData<AppealPanel>, lastPeriodChange = NOW - HOUR): CaseDispute {
+    return caseDispute({ period: 3, lastPeriodChange, court: APPEAL_COURT, appealPanel });
+  }
+
+  /** The current step's state lines, one entry per subitem the library renders. */
+  function currentLines(): string[] {
+    const current = timelineList().querySelector('li[aria-current="step"]');
+    if (current === null) throw new Error("No current step.");
+    return Array.from(current.querySelectorAll("small"), (small) => small.textContent);
+  }
+
+  function rowLayout(): void {
+    installOfflineAppKitEnvironment();
+    vi.stubGlobal("matchMedia", matchEverything);
+  }
+
+  it("counts down to the appeal period's end and, under it, to when funding for the losing side closes", () => {
+    renderSection(DisputeTimeline, appealCase(crowdfunding(TERMS)));
+    expect(currentLines()).toEqual(TWO_TIMES);
+  });
+
+  it("says Ended for the losing side once its time passed", () => {
+    renderSection(DisputeTimeline, appealCase(crowdfunding({ ...TERMS, loserDeadline: NOW })));
+    expect(currentLines()).toEqual(["01d 23h 00m", "Losing side: Ended"]);
+  });
+
+  it("counts the losing side's last second down before it says Ended", () => {
+    renderSection(DisputeTimeline, appealCase(crowdfunding({ ...TERMS, loserDeadline: NOW + 1 })));
+    expect(currentLines()).toEqual(["01d 23h 00m", "Losing side: 00d 00h 00m"]);
+  });
+
+  it("turns the losing side's countdown into Ended when its time passes while the page is open", () => {
+    renderSection(DisputeTimeline, appealCase(crowdfunding({ ...TERMS, loserDeadline: NOW + 60 })));
+    expect(currentLines()).toEqual(["01d 23h 00m", "Losing side: 00d\u00a000h\u00a001m"]);
+    act(() => {
+      vi.advanceTimersByTime(60 * 1000);
+    });
+    expect(currentLines()).toEqual(["01d 22h 59m", "Losing side: Ended"]);
+  });
+
+  it("says Ended alone once the appeal period's time passed", () => {
+    renderSection(DisputeTimeline, appealCase(crowdfunding({ ...TERMS, appealPeriodEnd: NOW, loserDeadline: NOW - DAY }), NOW - 2 * DAY));
+    expect(currentLines()).toEqual(["Ended"]);
+  });
+
+  it("counts the appeal period's last second down before it says Ended", () => {
+    renderSection(DisputeTimeline, appealCase(crowdfunding({ ...TERMS, appealPeriodEnd: NOW + 1, loserDeadline: NOW - DAY }), NOW + 1 - 2 * DAY));
+    expect(currentLines()).toEqual(["00d 00h 00m", "Losing side: Ended"]);
+  });
+
+  it.each(["option", "answer", "list"] as const)("calls the losing side the same whatever the dispute calls its rulings (%s)", (noun) => {
+    const { unmount } = renderSection(DisputeTimeline, appealCase(crowdfunding({ ...TERMS, noun })));
+    expect(currentLines()).toEqual(TWO_TIMES);
+    unmount();
+    renderSection(DisputeTimeline, appealCase(crowdfunding({ ...TERMS, noun, loserDeadline: NOW })));
+    expect(currentLines()).toEqual(["01d 23h 00m", "Losing side: Ended"]);
+  });
+
+  it("gives a tie where refusing to arbitrate is the winner both times", () => {
+    renderSection(DisputeTimeline, appealCase(crowdfunding({ ...TERMS, tie: "refuse-is-winner" })));
+    expect(currentLines()).toEqual(TWO_TIMES);
+  });
+
+  it.each([
+    ["a tie that shares the whole period", { ...TERMS, tie: "shared-full-period" }],
+    ["a tie that costs every option as a winner", { ...TERMS, tie: "all-winner" }],
+    ["losing options closing at the appeal period's end", { ...TERMS, loserDeadline: END }],
+    ["losing options closing after the appeal period's end", { ...TERMS, loserDeadline: END + HOUR }],
+  ] as const)("shows one time for %s", (_case, terms: FundingTerms) => {
+    renderSection(DisputeTimeline, appealCase(crowdfunding(terms)));
+    expect(currentLines()).toEqual(ONE_TIME);
+  });
+
+  it("shows both times for a product appealed in its own application whose funding times are known", () => {
+    renderSection(DisputeTimeline, appealCase(sectionReady({ kind: "handled-by-arbitrable", terms: TERMS })));
+    expect(currentLines()).toEqual(TWO_TIMES);
+  });
+
+  it.each<[string, SectionData<AppealPanel>]>([
+    ["an escrow appeal", sectionReady({ kind: "escrow-appeal", appealCost: 1n, deadline: END })],
+    ["an arbitrable that takes appeals in its own application without known times", sectionReady({ kind: "handled-by-arbitrable" })],
+    ["an arbitrable that cannot be appealed", sectionReady({ kind: "not-appealable" })],
+    ["an arbitrable whose funding rules are not supported", sectionReady({ kind: "funding-unsupported" })],
+    ["appeal fees that could not be calculated", sectionReady({ kind: "fees-unavailable", error: { code: "rpc-error", message: "The fees could not be read." } })],
+    ["an appeal read still loading", sectionLoading],
+    ["an appeal read that failed", sectionUnavailable("rpc-error", "The appeal could not be read.")],
+  ])("shows only when the appeal period ends for %s", (_case, appealPanel) => {
+    renderSection(DisputeTimeline, appealCase(appealPanel));
+    expect(currentLines()).toEqual(ONE_TIME);
+    expect(screen.queryByText("Timeline unavailable")).not.toBeInTheDocument();
+  });
+
+  it("adds the losing side's line when the appeal read lands, keeping the first line as it was", () => {
+    const { rerender } = renderSection(DisputeTimeline, appealCase(sectionLoading));
+    const endsIn = within(timelineList()).getByText("01d 23h 00m");
+    rerender(
+      <TestDataProvider>
+        <SectionBoundary section="Section">
+          <DisputeTimeline dispute={appealCase(crowdfunding(TERMS))} chain={MAINNET} />
+        </SectionBoundary>
+      </TestDataProvider>,
+    );
+    expect(currentLines()).toEqual(TWO_TIMES);
+    expect(within(timelineList()).getByText("01d 23h 00m")).toBe(endsIn);
+  });
+
+  it("keeps the appeal step's state from the timeline when the appeal period's time is not a finite one", () => {
+    const dispute = appealCase(crowdfunding(TERMS));
+    const view = dispute.view.status === "ready" && dispute.view.value.exists ? dispute.view.value : undefined;
+    if (view?.timeline.ok !== true) throw new Error("The test dispute has no timeline.");
+    const endless = view.timeline.value.columns.map((column) => (column.state === "current" ? { ...column, deadline: Number.POSITIVE_INFINITY } : column));
+    renderSection(DisputeTimeline, { ...dispute, view: sectionReady({ ...view, timeline: { ok: true, value: { columns: endless } } }) });
+    expect(currentLines()).toEqual(["Unknown"]);
+  });
+
+  it.each([
+    ["Evidence", { period: 0, lastPeriodChange: NOW - 3 * DAY, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }],
+    ["Commit", { period: 1, lastPeriodChange: NOW - DAY, court: { hiddenVotes: true, timesPerPeriod: [3n * BigInt(DAY), BigInt(DAY), 2n * BigInt(DAY), BigInt(DAY)] } }],
+    ["Voting", { period: 2, lastPeriodChange: NOW - 2 * DAY, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }],
+  ] as const)("says Ended on the %s step once its time passed", (name, options: CaseOptions) => {
+    renderSection(DisputeTimeline, caseDispute(options));
+    expect(timelineList().querySelector('li[aria-current="step"]')).toHaveAttribute("aria-label", name);
+    expect(currentLines()).toEqual(["Ended"]);
+  });
+
+  it("counts a step's last second down before it says Ended", () => {
+    renderSection(
+      DisputeTimeline,
+      caseDispute({ period: 2, lastPeriodChange: NOW + 1 - 2 * DAY, court: { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), BigInt(DAY)] } }),
+    );
+    expect(currentLines()).toEqual(["00d 00h 00m"]);
+  });
+
+  it("gives a current step without a deadline no state lines, even with the appeal's times known", () => {
+    const dispute = appealCase(crowdfunding(TERMS));
+    const view = dispute.view.status === "ready" && dispute.view.value.exists ? dispute.view.value : undefined;
+    if (view?.timeline.ok !== true) throw new Error("The test dispute has no timeline.");
+    const undated = view.timeline.value.columns.map((column) => (column.state === "current" ? { ...column, deadline: null } : column));
+    renderSection(DisputeTimeline, { ...dispute, view: sectionReady({ ...view, timeline: { ok: true, value: { columns: undated } } }) });
+    expect(timelineList().querySelectorAll('li[aria-current="step"] small')).toHaveLength(0);
+  });
+
+  it.each([
+    ["two times", { ...TERMS, tie: null }],
+    ["a tie where refusing to arbitrate is the winner", { ...TERMS, tie: "refuse-is-winner" }],
+    ["a tie that shares the whole period", { ...TERMS, tie: "shared-full-period" }],
+    ["a tie that costs every option as a winner", { ...TERMS, tie: "all-winner" }],
+    ["losing options closing at the appeal period's end", { ...TERMS, loserDeadline: END }],
+  ] as const)("the appeal notice and the timeline agree on whether the losing side's funding closes first (%s)", (_case, terms: FundingTerms) => {
+    const dispute = appealCase(sectionReady({ kind: "handled-by-arbitrable", terms }));
+    renderWithProviders(
+      <>
+        <DisputeTimeline dispute={dispute} chain={MAINNET} />
+        <AppealSection dispute={dispute} chain={MAINNET} />
+      </>,
+    );
+    const noticeHasTwo = screen.getByText(/Funding for/).textContent.includes("every other option");
+    expect(currentLines().length > 1).toBe(noticeHasTwo);
+  });
+
+  it.each([
+    ["vertical", false],
+    ["horizontal", true],
+  ] as const)("sets the whole losing side's line in the countdown's value style, with no quieter label (%s)", (_orientation, horizontal) => {
+    if (horizontal) rowLayout();
+    renderSection(DisputeTimeline, appealCase(crowdfunding(TERMS)));
+    const list = timelineList();
+    const value = "[&_li[aria-current]_small]";
+    expect(list).toHaveClass(`${value}:text-base`, `${value}:leading-5`, `${value}:font-semibold`, `${value}:text-klerosUIComponentsPrimaryText`, `${value}:tabular-nums`);
+    expect(Array.from(list.querySelectorAll("li[aria-current] small"), (small) => small.textContent)).toEqual(TWO_TIMES);
+    const currentSubitemRules = list.className.split(/\s+/).filter((token) => token.startsWith("[&_li[aria-current]") && token.includes("small"));
+    expect(currentSubitemRules.filter((token) => /text-sm|SecondaryText|font-normal|nth-of-type\((odd|even|1|3)\)/.test(token))).toEqual([]);
+  });
+
+  it.each<[string, CaseDispute, string[]]>([
+    ["the losing side's Ended", appealCase(crowdfunding({ ...TERMS, loserDeadline: NOW })), ["01d 23h 00m", "Losing side: Ended"]],
+    ["a lone Ended", appealCase(crowdfunding(TERMS), NOW - 2 * DAY), ["Ended"]],
+  ])("gives %s the value style, the slot a countdown fills", (_case, dispute, lines) => {
+    renderSection(DisputeTimeline, dispute);
+    expect(Array.from(timelineList().querySelectorAll("li[aria-current] small"), (small) => small.textContent)).toEqual(lines);
+  });
+
+  it.each([
+    ["both times", TERMS, true],
+    ["the losing options closed", { ...TERMS, loserDeadline: NOW }, true],
+    ["one time", { ...TERMS, tie: "shared-full-period" }, false],
+  ] as const)("gives the list row a second row for the losing side's line only when it has one (%s)", (_case, terms: FundingTerms, gridded) => {
+    renderSection(DisputeTimeline, appealCase(crowdfunding(terms)));
+    const list = timelineList();
+    const grid = "li[aria-current]:has(small:nth-of-type(2))";
+    expect(list).toHaveClass(`[&_${grid}>div:last-child]:grid`, `[&_${grid}>div:last-child>div]:contents`);
+    expect(list.querySelectorAll(`${grid}>div:last-child`)).toHaveLength(gridded ? 1 : 0);
+  });
+
+  it("keeps the list row's title and countdown on its first row and puts the losing side's line alone on the row under them, ending at the countdown's right edge", () => {
+    renderSection(DisputeTimeline, appealCase(crowdfunding({ ...TERMS, loserDeadline: NOW })));
+    const list = timelineList();
+    const grid = "[&_li[aria-current]:has(small:nth-of-type(2))";
+    expect(list).toHaveClass(`${grid}>div:last-child]:grid-cols-[1fr_auto]`, `${grid}_small:nth-of-type(2)]:col-span-full`, `${grid}_small:nth-of-type(2)]:text-right`);
+    expect(list.className).not.toMatch(/(col|row)-(start|end)-|grid-cols-\[1fr_auto_auto\]|nth-of-type\(3\)/);
+  });
+
+  it("gives the list row's lines the height and the title the drop they have in a one-line row, and leaves room under its second line", () => {
+    renderSection(DisputeTimeline, appealCase(crowdfunding(TERMS)));
+    const grid = "[&_li[aria-current]:has(small:nth-of-type(2))";
+    expect(timelineList()).toHaveClass(`${grid}_small]:leading-5.5`, `${grid}>div:last-child]:pt-px`, `${grid}>div:last-child]:pb-2`);
+  });
+
+  it("keeps the losing side's countdown in one piece", () => {
+    renderSection(DisputeTimeline, appealCase(crowdfunding(TERMS)));
+    const losingLine = timelineList().querySelector("li[aria-current] small:nth-of-type(2)")?.textContent;
+    expect(losingLine).toMatch(/^Losing side: \d{2}d\u00a0\d{2}h\u00a0\d{2}m$/);
+  });
+
+  it("starts the losing side's line on its own line under the step in the row", () => {
+    rowLayout();
+    renderSection(DisputeTimeline, appealCase(crowdfunding(TERMS)));
+    const list = timelineList();
+    expect(list).toHaveClass("[&_li[aria-current]_small:nth-of-type(2)]:before:block");
+    expect(list.querySelector("li[aria-current] small:nth-of-type(2)")?.textContent).toBe("Losing side: 00d\u00a023h\u00a000m");
+  });
+
+  it.each<[string, CaseDispute]>([
+    ["with both times", appealCase(crowdfunding(TERMS))],
+    ["with one time", appealCase(sectionReady({ kind: "not-appealable" }))],
+    ["while the appeal read loads", appealCase(sectionLoading)],
+    ["once it says Ended", appealCase(crowdfunding(TERMS), NOW - 2 * DAY)],
+  ])("holds the row's room for a third line for the whole appeal period (%s)", (_case, dispute) => {
+    rowLayout();
+    renderSection(DisputeTimeline, dispute);
+    expect(timelineList()).toHaveClass("pb-19");
+    expect(timelineList()).not.toHaveClass("pb-14");
+  });
+
+  it.each([
+    ["the evidence period", 0],
+    ["the voting period", 2],
+    ["the execution period", 4],
+  ] as const)("keeps the row's room for two lines in %s", (_case, period) => {
+    rowLayout();
+    renderSection(DisputeTimeline, caseDispute({ period, appealPanel: crowdfunding(TERMS) }));
+    expect(timelineList()).toHaveClass("pb-14");
+    expect(timelineList()).not.toHaveClass("pb-19");
   });
 });
 

@@ -2,7 +2,7 @@ import { Steps } from "@kleros/ui-components-library";
 import { render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { installOfflineAppKitEnvironment } from "../../test/wallet";
-import { TIMELINE_H, TIMELINE_V } from "./DisputeTimeline";
+import { TIMELINE_H, TIMELINE_H_APPEAL, TIMELINE_V } from "./DisputeTimeline";
 
 /** What one selector of a class string must find inside the list. */
 interface Expectation {
@@ -13,7 +13,7 @@ interface Expectation {
 
 const ITEMS = [
   { title: "Evidence", subitems: ["Concluded"] },
-  { title: "Voting", subitems: ["Ends in ", "02d 05h 19m"] },
+  { title: "Voting", subitems: ["02d 05h 19m"] },
   { title: "Appeal", subitems: ["02d 06h 00m"] },
   { title: "Execution" },
 ];
@@ -121,15 +121,19 @@ describe("the library steps under the timeline's class strings", () => {
       TIMELINE_V,
       list,
       new Map<string, Expectation>([
-        ["small", { count: 4 }],
-        ["li[aria-current] small+small", { count: 1, texts: ["02d 05h 19m"] }],
+        ["small", { count: 3 }],
+        ["li[aria-current] small", { count: 1, texts: ["02d 05h 19m"] }],
         ["li[aria-current] h2", { count: 1, texts: ["Voting"] }],
+        ["li[aria-current]:has(small:nth-of-type(2))>div:last-child", { count: 0 }],
+        ["li[aria-current]:has(small:nth-of-type(2))>div:last-child>div", { count: 0 }],
+        ["li[aria-current]:has(small:nth-of-type(2)) small", { count: 0 }],
+        ["li[aria-current]:has(small:nth-of-type(2)) small:nth-of-type(2)", { count: 0 }],
         ["li[aria-disabled] [aria-hidden]>div:first-child", { count: 2, every: (match) => upcoming(match) && isNumberedBullet(match) }],
         ["li[aria-disabled] [aria-hidden] span", { count: 2, texts: ["3", "4"] }],
         ["li[aria-current] [aria-hidden]>div:first-child", { count: 1, every: (match) => current(match) && isNumberedBullet(match) }],
         ["li", { count: 4 }],
         ["li>div:last-child", { count: 4, every: isTextBlock }],
-        ["li>div:last-child>div", { count: 3, texts: ["Concluded", "Ends in 02d 05h 19m", "02d 06h 00m"] }],
+        ["li>div:last-child>div", { count: 3, texts: ["Concluded", "02d 05h 19m", "02d 06h 00m"] }],
         ["[aria-hidden]>*+*", { count: 3, every: outsideLastStep }],
         ["li[aria-current] [aria-hidden]>*+*", { count: 1, every: current }],
         ["li[aria-disabled] [aria-hidden]>*+*", { count: 1, every: (match) => upcoming(match) && outsideLastStep(match) }],
@@ -151,14 +155,15 @@ describe("the library steps under the timeline's class strings", () => {
       TIMELINE_H,
       list,
       new Map<string, Expectation>([
-        ["small", { count: 4 }],
-        ["li[aria-current] small+small", { count: 1, texts: ["02d 05h 19m"] }],
+        ["small", { count: 3 }],
+        ["li[aria-current] small", { count: 1, texts: ["02d 05h 19m"] }],
+        ["li[aria-current] small:nth-of-type(2)", { count: 0 }],
         ["li[aria-disabled] [aria-hidden]>div:first-child", { count: 2, every: (match) => upcoming(match) && isNumberedBullet(match) }],
         ["li[aria-disabled] [aria-hidden] span", { count: 2, texts: ["3", "4"] }],
         ["li[aria-current] [aria-hidden]>div:first-child", { count: 1, every: (match) => current(match) && isNumberedBullet(match) }],
         [">li>div:last-child", { count: 4, every: isTextBlock }],
         [">li:not(:last-child)", { count: 3, every: (match) => match.nextElementSibling?.tagName.toLowerCase() === "li" }],
-        [">li[aria-current]", { count: 1, texts: ["2VotingEnds in 02d 05h 19m"] }],
+        [">li[aria-current]", { count: 1, texts: ["2Voting02d 05h 19m"] }],
         [">li[aria-disabled]", { count: 2, texts: ["3Appeal02d 06h 00m", "4Execution"] }],
         [">li:not([aria-current]):not([aria-disabled])", { count: 1, texts: ["EvidenceConcluded"] }],
         ["[aria-hidden]>*", { count: 4 }],
@@ -168,6 +173,59 @@ describe("the library steps under the timeline's class strings", () => {
       ]),
     );
     expect(list.className).not.toContain("w-62.5");
+  });
+
+  it("the row with the appeal step current differs only in the room, the tighter line pitch, the title margin that keeps the first state line where the wider pitch puts it and the losing line's pull back into the room", () => {
+    const tokens = (className: string) => className.split(" ");
+    const pitch = "[&>li>div:last-child]:leading-5.5";
+    const titleMargin = "[&>li>div:last-child>h2]:mb-px";
+    const losingLinePull = "[&_li[aria-current]_small:nth-of-type(2)]:before:-mb-px";
+    const appealOnly = [pitch, titleMargin, losingLinePull];
+    expect(tokens(TIMELINE_H)).toContain("pb-14");
+    expect(tokens(TIMELINE_H)).not.toContain("pb-19");
+    for (const token of appealOnly) {
+      expect(tokens(TIMELINE_H)).not.toContain(token);
+      expect(tokens(TIMELINE_H_APPEAL)).toContain(token);
+    }
+    expect(tokens(TIMELINE_H_APPEAL)).toContain("pb-19");
+    expect(tokens(TIMELINE_H_APPEAL)).not.toContain("pb-14");
+    const withoutThirdLine = tokens(TIMELINE_H_APPEAL)
+      .filter((token) => !appealOnly.includes(token))
+      .map((token) => (token === "pb-19" ? "pb-14" : token));
+    expect(withoutThirdLine).toEqual(tokens(TIMELINE_H));
+  });
+
+  it.each(
+    [
+      ["both times open", ["01d 23h 00m", "Losing side: 00d 23h 00m"]],
+      ["the losing side's time passed", ["01d 22h 59m", "Losing side: Ended"]],
+      ["the appeal period ended", ["Ended"]],
+    ].flatMap(([state, lines]) => [
+      [state, lines, "vertical", false],
+      [state, lines, "horizontal", true],
+    ]) as [string, string[], string, boolean][],
+  )("the timeline's selectors pick each line of the appeal step with %s (%s)", (_state, lines, _orientation, horizontal) => {
+    installOfflineAppKitEnvironment();
+    const items = [{ title: "Evidence", subitems: ["Concluded"] }, { title: "Voting", subitems: ["Concluded"] }, { title: "Appeal", subitems: lines }, { title: "Execution" }];
+    const className = horizontal ? TIMELINE_H_APPEAL : TIMELINE_V;
+    const list = renderSteps(className, horizontal, items, 2);
+    const selectors = variantSelectors(className);
+    const texts = (selector: string) => {
+      expect(selectors.has(selector), selector).toBe(true);
+      return Array.from(list.querySelectorAll(`:scope ${selector}`), (match) => match.textContent);
+    };
+    const losingLine = lines.slice(1);
+    expect(texts("li[aria-current] small")).toEqual(lines);
+    if (horizontal) {
+      expect(texts("li[aria-current] small:nth-of-type(2)")).toEqual(losingLine);
+      expect(texts(">li>div:last-child>h2")).toEqual(items.map((item) => item.title));
+      return;
+    }
+    const grid = "li[aria-current]:has(small:nth-of-type(2))";
+    const gridded = losingLine.length > 0;
+    expect(texts(`${grid}>div:last-child`)).toHaveLength(gridded ? 1 : 0);
+    expect(texts(`${grid} small`)).toEqual(gridded ? lines : []);
+    expect(texts(`${grid} small:nth-of-type(2)`)).toEqual(losingLine);
   });
 
   it.each([

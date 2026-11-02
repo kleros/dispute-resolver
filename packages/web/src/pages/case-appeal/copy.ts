@@ -1,4 +1,4 @@
-import type { FundingTerms } from "@dispute-resolver/core";
+import { losingDeadline, type FundingTerms } from "@dispute-resolver/core";
 import { utcText } from "../../ui";
 
 export const APPEAL_HEADING = "Appeal the decision";
@@ -7,11 +7,13 @@ export const CROWDFUNDING_EXPLANATION =
   "In order to appeal the decision, you need to fully fund the crowdfunding deposit. The dispute will be sent to the jurors when the full deposit is reached. Note that if the previous round loser funds its side, the previous round winner should also fully fund its side in order not to lose the case.";
 
 /** Once above the cards: each sentence turns to the past on its own time. `currentTitle` is `undefined` when no card is the current ruling. */
-export function fundingTimesLine({ noun, tie, appealPeriodEnd, loserDeadline }: FundingTerms, currentTitle: string | undefined, nowSeconds: number): string {
+export function fundingTimesLine(terms: FundingTerms, currentTitle: string | undefined, nowSeconds: number): string {
+  const { noun, appealPeriodEnd } = terms;
   const closes = (at: number) => `${nowSeconds >= at ? "closed" : "closes"} ${utcText(at)}`;
-  if (tie === "shared-full-period" || tie === "all-winner" || loserDeadline >= appealPeriodEnd) return `Funding for every ${noun} ${closes(appealPeriodEnd)}.`;
+  const losing = losingDeadline(terms);
+  if (losing === null) return `Funding for every ${noun} ${closes(appealPeriodEnd)}.`;
   const current = currentTitle === undefined ? "the current ruling" : `the current ruling (“${currentTitle}”)`;
-  return `Funding for ${current} ${closes(appealPeriodEnd)}. Funding for every other ${noun} ${closes(loserDeadline)}.`;
+  return `Funding for ${current} ${closes(appealPeriodEnd)}. Funding for every other ${noun} ${closes(losing)}.`;
 }
 
 export const REWARDS_TITLE = "Rewards";

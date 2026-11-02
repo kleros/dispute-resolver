@@ -5,8 +5,8 @@ import { appOriginOf, callData, callTarget, fakeNetwork, type HttpAnswer, type R
 import { PAGE_SCROLLER } from "../support/pageScroll";
 import { switchScheme } from "../support/theme";
 
-// "Unknown" after "Ends in" never comes from the chain (a uint256 period gives a finite deadline), so only the unit tests
-// cover it.
+// "Unknown" never comes from the chain (a uint256 period gives a finite deadline), and these disputes have no appeal to read
+// for the losing side's line, so only the unit tests cover the two.
 
 const DISPUTE_ID = 4242n;
 const CASE_PATH = `/1/cases/${DISPUTE_ID.toString()}`;
@@ -35,12 +35,15 @@ const TOLERANCE = 1;
 const CONNECTOR_GAP = 8;
 /** The narrowest phone the app lays out for. */
 const NARROWEST = 320;
+const COUNTDOWN = /^\d{2,3}d \d{2}h \d{2}m$/;
 
 interface Scenario {
   readonly period: number;
   readonly court: Court;
   /** How long ago the current period began. */
   readonly elapsed: bigint;
+  /** Whether the page runs on Playwright's clock, so a spec can move time on. */
+  readonly clock?: boolean;
 }
 
 /** Three-digit day counts in every state, the widest the countdown and the durations get. */
@@ -70,6 +73,7 @@ async function openCase(page: Page, baseURL: string | undefined, scenario: Scena
   // Colours are compared once settled: the steps ease between colours over the tab timing otherwise.
   await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "light" });
   await page.setViewportSize({ width: 1280, height: HEIGHT });
+  if (scenario.clock === true) await page.clock.install();
   await page.goto(CASE_PATH);
   await expect(timelineList(page), "the timeline never rendered (needs the chain-1 read RPC in the build)").toBeVisible({ timeout: 30_000 });
 }
@@ -115,6 +119,14 @@ interface Rect {
 
 type StepState = "concluded" | "current" | "upcoming";
 
+interface State {
+  readonly text: string;
+  readonly rect: Rect;
+  readonly fontSize: string;
+  readonly fontWeight: string;
+  readonly figures: string;
+}
+
 interface Edge {
   readonly width: string;
   readonly color: string;
@@ -132,7 +144,7 @@ interface RawStep {
   readonly halo: string;
   readonly background: string;
   readonly nameText: Rect;
-  readonly states: readonly { readonly text: string; readonly rect: Rect }[];
+  readonly states: readonly State[];
   readonly label: Rect;
   /** The lines of text the step's name and states take. */
   readonly lines: number;
@@ -257,7 +269,16 @@ async function measure(page: Page): Promise<Geometry> {
         halo: bulletStyle.boxShadow,
         background: [item, text].map((element) => getComputedStyle(element).backgroundColor).join(" "),
         nameText: rectOf(contentsOf(name).getBoundingClientRect()),
-        states: Array.from(text.querySelectorAll("small"), (small) => ({ text: small.textContent, rect: rectOf(small.getBoundingClientRect()) })),
+        states: Array.from(text.querySelectorAll("small"), (small) => {
+          const style = getComputedStyle(small);
+          return {
+            text: small.textContent,
+            rect: rectOf(small.getBoundingClientRect()),
+            fontSize: style.fontSize,
+            fontWeight: style.fontWeight,
+            figures: style.fontVariantNumeric,
+          };
+        }),
         label: rectOf(text.getBoundingClientRect()),
         lines: lineCount(text),
         after: {
@@ -322,13 +343,14 @@ function textExtent(step: Step): Rect {
   return union([step.nameText, ...step.states.map((state) => state.rect)]) ?? step.nameText;
 }
 
-/** "Ends in " and the countdown on one line: the countdown follows it and shares its baseline. */
-function expectOneStateLine(step: Step, where: string): void {
-  const [endsIn, countdown] = step.states;
-  if (endsIn === undefined || countdown === undefined) return;
-  expect.soft(endsIn.text, where).toBe("Ends in ");
-  expect.soft(countdown.rect.left, `${where}: the countdown follows Ends in`).toBeGreaterThanOrEqual(endsIn.rect.right - TOLERANCE);
-  expect.soft(Math.abs(countdown.rect.bottom - endsIn.rect.bottom), `${where}: the countdown shares the line of Ends in`).toBeLessThanOrEqual(1.5);
+/** The current step's state is its value alone, set in the value style: 16 px semibold in tabular figures. */
+function expectCurrentValue(step: Step, where: string, value: RegExp = COUNTDOWN): void {
+  if (step.state !== "current" || step.states.length === 0) return;
+  const texts = step.states.map((state) => state.text);
+  expect.soft(texts, `${where}: the value alone`).toEqual([expect.stringMatching(value)]);
+  for (const state of step.states) {
+    expect.soft([state.fontSize, state.fontWeight, state.figures], `${where}: the value style`).toEqual(["16px", "600", "tabular-nums"]);
+  }
 }
 
 function expectConnector(geometry: Geometry, step: Step, next: Step | undefined, at: string): void {
@@ -385,7 +407,7 @@ function expectRow(geometry: Geometry, where: string): void {
     const at = `${where}, ${step.name}`;
     const next = steps[index + 1];
     expectRowLabel(geometry, step, at);
-    expectOneStateLine(step, at);
+    expectCurrentValue(step, at);
     expectConnector(geometry, step, next, at);
     if (next !== undefined) {
       const gap = textExtent(next).left - textExtent(step).right;
@@ -415,7 +437,7 @@ function expectList(geometry: Geometry, where: string): void {
   steps.forEach((step, index) => {
     const at = `${where}, ${step.name}`;
     expectListRow(geometry, step, at);
-    expectOneStateLine(step, at);
+    expectCurrentValue(step, at);
     expectConnector(geometry, step, steps[index + 1], at);
   });
   expectBullets(geometry, where);
@@ -425,7 +447,7 @@ function expectNarrowestList(geometry: Geometry, where: string): void {
   const { steps } = geometry;
   steps.forEach((step, index) => {
     const at = `${where}, ${step.name}`;
-    expectOneStateLine(step, at);
+    expectCurrentValue(step, at);
     expectConnector(geometry, step, steps[index + 1], at);
     const state = stateText(step);
     if (state === null) return;
@@ -449,9 +471,8 @@ async function expectEveryWidth(page: Page, widths: readonly number[], rowFrom: 
       if (row) expectRow(geometry, where);
       else expectList(geometry, where);
       await expect.soft(timeline(page).getByRole("list"), `${where}: one list of steps`).toHaveCount(1);
-      await expect
-        .soft(timeline(page).getByText("Ends in", { exact: true }), `${where}: one countdown`)
-        .toHaveCount(geometry.steps.some((step) => step.states.length === 2) ? 1 : 0);
+      const values = timeline(page).locator("li[aria-current] small");
+      await expect.soft(values, `${where}: one countdown`).toHaveCount(geometry.steps.some((step) => step.state === "current" && step.states.length > 0) ? 1 : 0);
     }
   }
 }
@@ -459,13 +480,13 @@ async function expectEveryWidth(page: Page, widths: readonly number[], rowFrom: 
 test.describe("the dispute timeline's geometry", () => {
   test("four periods in voting: a centred row from 900 px, a list of rows below", async ({ page, baseURL }) => {
     await openCase(page, baseURL, { period: 2, court: GENERAL_COURT, elapsed: HOUR });
-    await expect(timelineList(page).getByRole("listitem")).toHaveText(["EvidenceConcluded", /^2VotingEnds in 05d 00h [23]\dm$/, "3Appeal03d 09h 00m", "4Execution"]);
+    await expect(timelineList(page).getByRole("listitem")).toHaveText(["EvidenceConcluded", /^2Voting05d 00h [23]\dm$/, "3Appeal03d 09h 00m", "4Execution"]);
     await expectEveryWidth(page, FOUR_WIDTHS, LG);
   });
 
   test("four periods in evidence with three-digit day counts: the first label stays inside the band", async ({ page, baseURL }) => {
     await openCase(page, baseURL, { period: 0, court: LONG_COURT, elapsed: HOUR });
-    await expect(timelineList(page).getByRole("listitem", { name: "Evidence" })).toContainText(/Ends in 149d 2\dh \d{2}m$/);
+    await expect(timelineList(page).getByRole("listitem", { name: "Evidence" })).toContainText(/149d 2\dh \d{2}m$/);
     await expect(timelineList(page).getByRole("listitem", { name: "Appeal" })).toContainText(/456d 07h 08m$/);
     await expectEveryWidth(page, FOUR_WIDTHS, LG);
   });
@@ -473,13 +494,13 @@ test.describe("the dispute timeline's geometry", () => {
   test("five periods of a hidden-vote court in commit with three-digit day counts: a row from 1080 px only", async ({ page, baseURL }) => {
     await openCase(page, baseURL, { period: 1, court: LONG_HIDDEN_COURT, elapsed: HOUR });
     await expect(timelineList(page).getByRole("listitem")).toHaveCount(5);
-    await expect(timelineList(page).getByRole("listitem", { name: "Commit" })).toContainText(/Ends in 222d 2\dh \d{2}m$/);
+    await expect(timelineList(page).getByRole("listitem", { name: "Commit" })).toContainText(/222d 2\dh \d{2}m$/);
     await expectEveryWidth(page, FIVE_WIDTHS, FIVE_STEPS);
   });
 
   test("five periods of a hidden-vote court in evidence with three-digit day counts: the first label stays inside the band", async ({ page, baseURL }) => {
     await openCase(page, baseURL, { period: 0, court: LONG_HIDDEN_COURT, elapsed: HOUR });
-    await expect(timelineList(page).getByRole("listitem", { name: "Evidence" })).toContainText(/Ends in 149d 2\dh \d{2}m$/);
+    await expect(timelineList(page).getByRole("listitem", { name: "Evidence" })).toContainText(/149d 2\dh \d{2}m$/);
     await expectEveryWidth(page, FIVE_WIDTHS, FIVE_STEPS);
   });
 
@@ -506,6 +527,42 @@ test.describe("the dispute timeline's geometry", () => {
       }
     });
   }
+
+  test("the countdown holds its place and its value style as a minute passes and when it turns Ended", async ({ page, baseURL }) => {
+    const closing: Court = { hiddenVotes: false, timesPerPeriod: [DAY, 0n, HOUR + 5n * MINUTE, DAY] };
+    await openCase(page, baseURL, { period: 2, court: closing, elapsed: HOUR, clock: true });
+    const widths = [375, 1280];
+    /** The voting step's value and name, relative to its step. */
+    const voting = async (width: number) => {
+      await resizeTo(page, width, width >= LG ? "Horizontal" : "Vertical");
+      const step = (await measure(page)).steps.find((candidate) => candidate.name === "Voting");
+      const value = step?.states[0];
+      if (step === undefined || value === undefined) throw new Error(`${String(width)} px: the voting step has no value.`);
+      const from = (rect: Rect) => ({ left: rect.left - step.step.left, right: rect.right - step.step.left, top: rect.top - step.step.top, bottom: rect.bottom - step.step.top });
+      return { step, value: from(value.rect), name: from(step.nameText) };
+    };
+    const before = new Map<number, Awaited<ReturnType<typeof voting>>>();
+    for (const width of widths) before.set(width, await voting(width));
+    const later: readonly (readonly [number, RegExp])[] = [
+      [60_000, COUNTDOWN],
+      [6 * 60_000, /^Ended$/],
+    ];
+    for (const [time, text] of later) {
+      await page.clock.runFor(time);
+      for (const width of widths) {
+        const where = `${String(width)} px, after ${String(time / 60_000)} min`;
+        const was = before.get(width);
+        if (was === undefined) throw new Error(`${where}: nothing measured before.`);
+        const now = await voting(width);
+        expectCurrentValue(now.step, where, text);
+        expect.soft(now.name, `${where}: the name holds still`).toEqual(was.name);
+        expect.soft(now.value.top, `${where}: the value's top`).toBeCloseTo(was.value.top, 1);
+        expect.soft(now.value.bottom, `${where}: the value's bottom`).toBeCloseTo(was.value.bottom, 1);
+        const kept = width >= LG ? middle(now.value) - middle(was.value) : now.value.right - was.value.right;
+        expect.soft(kept, `${where}: the value keeps its ${width >= LG ? "centre" : "right edge"}`).toBeCloseTo(0, 1);
+      }
+    }
+  });
 
   test("the halo eases in with the steps' colours, and holds still under reduced motion", async ({ page, baseURL }) => {
     await openCase(page, baseURL, { period: 2, court: GENERAL_COURT, elapsed: HOUR });
