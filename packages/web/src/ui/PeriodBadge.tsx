@@ -1,4 +1,5 @@
 import type { Period } from "@dispute-resolver/core";
+import { PERIOD_COLOR, type PeriodColor } from "./periodColor";
 import type { PeriodBadgeProps } from "./types";
 
 interface PeriodStyle {
@@ -6,15 +7,23 @@ interface PeriodStyle {
   readonly dot: string;
 }
 
-const PERIOD_STYLES: Readonly<Record<Period, PeriodStyle>> = {
-  0: { label: "Evidence", dot: "bg-klerosUIComponentsPrimaryBlue" },
-  1: { label: "Commit", dot: "bg-klerosUIComponentsSecondaryPurple" },
-  2: { label: "Voting", dot: "bg-klerosUIComponentsTint" },
-  3: { label: "Appeal", dot: "bg-klerosUIComponentsWarning" },
-  4: { label: "Execution", dot: "bg-klerosUIComponentsSuccess" },
+// Whole class names, since Tailwind only generates the classes it finds written out in the source.
+const DOT_FILL: Readonly<Record<PeriodColor, string>> = {
+  Success: "bg-klerosUIComponentsSuccess",
+  PrimaryBlue: "bg-klerosUIComponentsPrimaryBlue",
+  Error: "bg-klerosUIComponentsError",
+  SecondaryText: "bg-klerosUIComponentsSecondaryText",
 };
 
-const UNKNOWN_PERIOD: PeriodStyle = { label: "Unknown period", dot: "bg-klerosUIComponentsSecondaryText" };
+const PERIOD_STYLES: Readonly<Record<Period, PeriodStyle>> = {
+  0: { label: "Evidence", dot: DOT_FILL[PERIOD_COLOR[0]] },
+  1: { label: "Commit", dot: DOT_FILL[PERIOD_COLOR[1]] },
+  2: { label: "Voting", dot: DOT_FILL[PERIOD_COLOR[2]] },
+  3: { label: "Appeal", dot: DOT_FILL[PERIOD_COLOR[3]] },
+  4: { label: "Execution", dot: DOT_FILL[PERIOD_COLOR[4]] },
+};
+
+const UNKNOWN_PERIOD: PeriodStyle = { label: "Unknown period", dot: DOT_FILL.SecondaryText };
 
 const PILL_BADGE =
   "inline-flex items-center gap-2 rounded-full border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground font-semibold text-klerosUIComponentsPrimaryText";

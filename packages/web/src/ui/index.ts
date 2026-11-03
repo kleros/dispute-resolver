@@ -11,6 +11,7 @@ export { Identicon } from "./Identicon";
 export { Notice } from "./Notice";
 export { PageMessage } from "./PageMessage";
 export { PeriodBadge } from "./PeriodBadge";
+export { periodColorVar } from "./periodColor";
 export { SectionBoundary } from "./SectionBoundary";
 export { SectionSkeleton } from "./SectionSkeleton";
 export { SectionUnavailable } from "./SectionUnavailable";

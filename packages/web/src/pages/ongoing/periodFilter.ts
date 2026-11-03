@@ -1,4 +1,5 @@
 import type { Period } from "@dispute-resolver/core";
+import { periodColorVar } from "../../ui";
 
 /** One of the four open periods, or "all" (labelled "Ongoing"), which shows every card. */
 export type PeriodFilter = Exclude<Period, 4> | "all";
@@ -7,17 +8,17 @@ interface PeriodFilterOption {
   readonly id: string;
   readonly filter: PeriodFilter;
   readonly label: string;
-  /** The period's color, as `PeriodBadge` draws it; "Ongoing" covers every period, so its dot is the neutral text colour. */
+  /** The period's colour, shared with `PeriodBadge`; "Ongoing" covers every period, so its dot is the neutral text colour. */
   readonly dot: string;
 }
 
 const ALL_PERIODS: PeriodFilterOption = { id: "all", filter: "all", label: "Ongoing", dot: "var(--klerosUIComponentsPrimaryText)" };
 
 export const PERIOD_FILTER_OPTIONS: readonly PeriodFilterOption[] = [
-  { id: "evidence", filter: 0, label: "Evidence", dot: "var(--klerosUIComponentsPrimaryBlue)" },
-  { id: "commit", filter: 1, label: "Commit", dot: "var(--klerosUIComponentsSecondaryPurple)" },
-  { id: "voting", filter: 2, label: "Voting", dot: "var(--klerosUIComponentsTint)" },
-  { id: "appeal", filter: 3, label: "Appeal", dot: "var(--klerosUIComponentsWarning)" },
+  { id: "evidence", filter: 0, label: "Evidence", dot: periodColorVar(0) },
+  { id: "commit", filter: 1, label: "Commit", dot: periodColorVar(1) },
+  { id: "voting", filter: 2, label: "Voting", dot: periodColorVar(2) },
+  { id: "appeal", filter: 3, label: "Appeal", dot: periodColorVar(3) },
   ALL_PERIODS,
 ];
 

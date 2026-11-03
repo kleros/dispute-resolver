@@ -330,8 +330,8 @@
      * - Warning #a85400: 4.75:1 on TintPurple (#ff9900, 2.14:1 on white).
      * - Error #c8102e: 5.24:1 on TintPurple (#f60c36, 4.18:1 on white).
      * - Success #007a1f: 4.91:1 on TintPurple (#00c42b, 2.35:1 on white).
-     * Warning, Error and Success clear every alert title, field message and inline error; their non-text uses (period
-     * dots, alert edges and icons, identicon fills, invalid-field borders) only darken.
+     * Warning, Error and Success clear every alert title, field message and inline error; their non-text uses (alert
+     * edges and icons, identicon fills, invalid-field borders, the Appeal and Evidence period dots) only darken.
      */
     --klerosUIComponentsPrimaryBlue: #0072c6;
     --klerosUIComponentsSecondaryBlue: #005fa8;

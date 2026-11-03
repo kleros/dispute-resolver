@@ -5,11 +5,11 @@ import { PeriodBadge } from "./PeriodBadge";
 
 describe("PeriodBadge", () => {
   it.each([
-    [0, "Evidence", "bg-klerosUIComponentsPrimaryBlue"],
-    [1, "Commit", "bg-klerosUIComponentsSecondaryPurple"],
-    [2, "Voting", "bg-klerosUIComponentsTint"],
-    [3, "Appeal", "bg-klerosUIComponentsWarning"],
-    [4, "Execution", "bg-klerosUIComponentsSuccess"],
+    [0, "Evidence", "bg-klerosUIComponentsSuccess"],
+    [1, "Commit", "bg-klerosUIComponentsPrimaryBlue"],
+    [2, "Voting", "bg-klerosUIComponentsPrimaryBlue"],
+    [3, "Appeal", "bg-klerosUIComponentsError"],
+    [4, "Execution", "bg-klerosUIComponentsSecondaryText"],
   ] as const)("period %i shows %s with its colored dot", (period, label, dotClass) => {
     const { container } = render(<PeriodBadge period={period} />);
     expect(screen.getByText(label)).toBeInTheDocument();
