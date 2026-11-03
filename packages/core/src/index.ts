@@ -46,6 +46,7 @@ export {
   fundingRound,
   hasAppealPanel,
   losingDeadline,
+  losingSideDeadline,
   needsRulingOptions,
   readMultipliers,
   readRoundFunding,

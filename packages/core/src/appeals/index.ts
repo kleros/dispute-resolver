@@ -6,4 +6,4 @@ export { computeAppealAmounts, fundedPercent, isWinningCode } from "./amounts";
 export { buildCrowdfundingCards, cardFundingState, enteredAnswerFunding, type EnteredAnswerFunding } from "./cards";
 export { readWithdrawable } from "./withdraw";
 export { buildAppealPanel, hasAppealPanel, needsRulingOptions } from "./panel";
-export { losingDeadline } from "./terms";
+export { losingDeadline, losingSideDeadline } from "./terms";

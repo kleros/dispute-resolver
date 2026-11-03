@@ -112,6 +112,9 @@ export interface FundingTerms {
   readonly loserDeadline: number;
 }
 
+/** When funding closes for the losing side, or `unknown` when it may close before the appeal period's end but cannot be read. */
+export type LosingSideDeadline = { readonly kind: "deadline"; readonly at: number } | { readonly kind: "unknown" };
+
 /** One withdrawable entry; the action withdraws them in sequence, one transaction each. */
 export type WithdrawItem =
   | { readonly dialect: "idr-v2" | "idr-v1"; readonly ruling: bigint; readonly amount: bigint }

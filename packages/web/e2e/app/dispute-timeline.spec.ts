@@ -5,8 +5,9 @@ import { appOriginOf, callData, callTarget, fakeNetwork, type HttpAnswer, type R
 import { PAGE_SCROLLER } from "../support/pageScroll";
 import { switchScheme } from "../support/theme";
 
-// "Unknown" never comes from the chain (a uint256 period gives a finite deadline), and these disputes have no appeal to read
-// for the losing side's line, so only the unit tests cover the two.
+// "Unknown" never comes from the chain (a uint256 period gives a finite deadline), so only the unit tests cover it. The
+// arbitrable here has no code, so the losing side's only notice these disputes can show is "deadline unknown"; the unit
+// tests cover the others.
 
 const DISPUTE_ID = 4242n;
 const CASE_PATH = `/1/cases/${DISPUTE_ID.toString()}`;
@@ -482,6 +483,30 @@ test.describe("the dispute timeline's geometry", () => {
     await openCase(page, baseURL, { period: 2, court: GENERAL_COURT, elapsed: HOUR });
     await expect(timelineList(page).getByRole("listitem")).toHaveText(["EvidenceConcluded", /^2Voting05d 00h [23]\dm$/, "3Appeal03d 09h 00m", "4Execution"]);
     await expectEveryWidth(page, FOUR_WIDTHS, LG);
+  });
+
+  test("four periods in appeal with an unknown arbitrable: one value on the step, the losing side's notice under the steps", async ({ page, baseURL }) => {
+    await openCase(page, baseURL, { period: 3, court: GENERAL_COURT, elapsed: HOUR });
+    await expect(timelineList(page).getByRole("listitem")).toHaveText(["EvidenceConcluded", "VotingConcluded", /^3Appeal03d 0[78]h \d{2}m$/, "4Execution"]);
+    const title = timeline(page).getByRole("heading", { name: "Losing side: deadline unknown", exact: true });
+    await expect(title).toBeVisible();
+    await expect(timelineList(page).getByRole("heading", { name: /Losing side/ })).toHaveCount(0);
+    await expectEveryWidth(page, FOUR_WIDTHS, LG);
+    for (const width of FOUR_WIDTHS) {
+      await resizeTo(page, width, width >= LG ? "Horizontal" : "Vertical");
+      const where = `${String(width)} px`;
+      const geometry = await measure(page);
+      const notice = await title.evaluate((heading): Rect => {
+        const box = heading.closest("section > div")?.getBoundingClientRect();
+        if (box === undefined) throw new Error("The notice is not a child of the timeline's section.");
+        return { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+      });
+      const lowest = Math.max(...geometry.steps.map((step) => Math.max(step.bullet.bottom, textExtent(step).bottom)));
+      expect.soft(notice.top - lowest, `${where}: the notice starts below every step's text`).toBeGreaterThan(0);
+      expect.soft(notice.top, `${where}: the notice starts below the list`).toBeGreaterThanOrEqual(geometry.list.bottom);
+      expect.soft(notice.left, `${where}: the notice stays inside the band`).toBeGreaterThanOrEqual(geometry.band.left - TOLERANCE);
+      expect.soft(notice.right, `${where}: the notice stays inside the band`).toBeLessThanOrEqual(geometry.band.right + TOLERANCE);
+    }
   });
 
   test("four periods in evidence with three-digit day counts: the first label stays inside the band", async ({ page, baseURL }) => {
