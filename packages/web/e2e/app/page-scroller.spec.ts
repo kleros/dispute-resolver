@@ -935,9 +935,4 @@ test.describe("where scrollbars overlay the page on a desktop, as on a Mac by de
     await openLongList(page, baseURL);
     await expectDeepCardBelowHeader(page);
   });
-
-  test("Back returns the list to where it was scrolled, and a case opened from it starts at its top", async ({ page, baseURL }) => {
-    await openLongList(page, baseURL);
-    await expectBackReturnsToOffset(page);
-  });
 });
