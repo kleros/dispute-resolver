@@ -1,4 +1,4 @@
-import { losingDeadline, type FundingTerms } from "@dispute-resolver/core";
+import { losingDeadline, type FundingTerms, type RulingNoun } from "@dispute-resolver/core";
 import { hasVisibleText, utcText } from "../../ui";
 
 export const APPEAL_HEADING = "Appeal the decision";
@@ -20,7 +20,9 @@ export function fundingTimesLine(terms: FundingTerms, currentTitle: string | und
 }
 
 export const REWARDS_TITLE = "Rewards";
-export const REWARDS_BODY = "Rewards only apply if both sides are funded and the option you fund wins. If no appeal takes place, your contribution is refunded.";
+export function rewardsBody(noun: RulingNoun): string {
+  return `Rewards only apply if both sides are funded and the ${noun} you fund wins. If no appeal takes place, your contribution is refunded.`;
+}
 
 export const FUNDING_CLOSES = "Funding closes ";
 export const FUNDING_CLOSED = "Closed";
@@ -49,15 +51,24 @@ export const HANDLED_BY_ARBITRABLE_BODY =
   "This arbitrable contract does not take appeal funding through the Dispute Resolver. Appeals for this dispute are handled in the arbitrable application.";
 
 export const WITHDRAW_HEADING = "Withdraw crowdfunding rewards and refunds";
-export const WITHDRAW_ELIGIBLE =
-  "If you have contributed to a ruling option and in the end that ruling option was the winner you are eligible for some reward. Also, if you have contributed but appeal did not happen your contribution is refunded.";
-export const WITHDRAW_NOTHING =
-  "You don't have any amount to withdraw. Reason might be that you did not contribute, the ruling option you have contributed did not win, you already withdrew or the ruling is not executed yet by the arbitrator.";
+const ARTICLE: Readonly<Record<RulingNoun, string>> = { answer: "an answer", list: "a list" };
+
+export function withdrawEligible(noun: RulingNoun): string {
+  return `If you have contributed to ${ARTICLE[noun]} and in the end that ${noun} was the winner you are eligible for some reward. Also, if you have contributed but appeal did not happen your contribution is refunded.`;
+}
+
+export function withdrawNothing(noun: RulingNoun): string {
+  return `You don't have any amount to withdraw. Reason might be that you did not contribute, the ${noun} you have contributed to did not win, you already withdrew or the ruling is not executed yet by the arbitrator.`;
+}
+
+export function withdrawnLine(amount: string): string {
+  return `You withdrew ${amount}.`;
+}
 export const WITHDRAW_NO_ACCOUNT = "Connect a wallet to see whether you have rewards or refunds to withdraw on this dispute.";
 export const WITHDRAW_UNSUPPORTED =
   "Withdrawals are not supported through the Dispute Resolver for this contract. Use the arbitrable application to withdraw your rewards and refunds.";
 
-export const FREE_INPUT_PLACEHOLDER = "Enter a new ruling option";
+export const FREE_INPUT_PLACEHOLDER = "Enter a new answer";
 
 export function matchedCardLine(title: string): string {
   return `This answer has its own card, “${title}”: its funding is shown here.`;

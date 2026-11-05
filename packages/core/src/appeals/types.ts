@@ -136,7 +136,7 @@ export type AppealPanel =
   | { readonly kind: "escrow-ended" }
   | ({ readonly kind: "crowdfunding"; readonly dialect: "idr" | "governor"; readonly terms: FundingTerms } & CrowdfundingSet)
   | { readonly kind: "fees-unavailable"; readonly error: Unavailable }
-  | { readonly kind: "withdraw"; readonly state: WithdrawState }
+  | { readonly kind: "withdraw"; readonly state: WithdrawState; readonly noun: RulingNoun }
   | { readonly kind: "withdraw-unsupported" };
 
 export interface AppealPanelInput {
@@ -147,6 +147,8 @@ export interface AppealPanelInput {
   readonly override: BehaviorOverride | undefined;
   readonly rulingOptions: RulingOptions;
   readonly fallbackOutcomes: FallbackOutcomes;
+  /** The arbitrator's `disputes(id).numberOfChoices`: a reserved answer above it gets no card. */
+  readonly numberOfChoices: bigint;
   readonly currentRuling: Outcome<bigint>;
   readonly appealInfo: Outcome<AppealInfo> | null;
   readonly multipliers: Outcome<Multipliers> | null;

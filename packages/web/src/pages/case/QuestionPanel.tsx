@@ -1,21 +1,27 @@
-import type { MetaEvidence } from "@dispute-resolver/core";
+import { reservedWithinChoices, type DisputeLookup, type MetaEvidence } from "@dispute-resolver/core";
 import { useId } from "react";
-import { metaEvidenceSection, type CaseSectionProps } from "../../data";
+import { metaEvidenceSection, type CaseSectionProps, type SectionData } from "../../data";
 import { courtCaseUrl, ExternalLink } from "../../safe-content";
 import { LABEL, SectionSkeleton, SectionUnavailable, VotingOptionList, votingOptions, type VotingOption } from "../../ui";
-import { questionTypeLabel } from "./questionOptions";
+import { hiddenAnswersLine, questionTypeLabel } from "./questionOptions";
 
 const SECTION = "Question";
 
 const NO_META_EVIDENCE = "This dispute has no meta-evidence, so its question and voting options cannot be shown.";
 
+/** `null` until the arbitrator's dispute is read: the meta-evidence's reserved answers are then all shown. */
+function numberOfChoices(lookup: SectionData<DisputeLookup>): bigint | null {
+  return lookup.status === "ready" && lookup.value.status === "found" ? lookup.value.dispute.numberOfChoices : null;
+}
+
 interface VotingOptionsSectionProps {
   readonly options: readonly VotingOption[];
+  readonly hiddenReserved: number;
   readonly disputeId: bigint;
   readonly chainId: number;
 }
 
-function VotingOptionsSection({ options, disputeId, chainId }: VotingOptionsSectionProps) {
+function VotingOptionsSection({ options, hiddenReserved, disputeId, chainId }: VotingOptionsSectionProps) {
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} className="flex flex-col">
@@ -23,6 +29,7 @@ function VotingOptionsSection({ options, disputeId, chainId }: VotingOptionsSect
         Voting options
       </h3>
       <VotingOptionList options={options} className="mt-2" />
+      {hiddenReserved > 0 ? <p className={`mt-4 ${LABEL}`}>{hiddenAnswersLine(hiddenReserved)}</p> : null}
       <p className={`mt-6 ${LABEL}`}>
         Note that you can only view the voting options. Selected jurors can vote using <ExternalLink href={courtCaseUrl(disputeId, chainId)}>Court</ExternalLink>.
       </p>
@@ -32,14 +39,16 @@ function VotingOptionsSection({ options, disputeId, chainId }: VotingOptionsSect
 
 interface QuestionContentProps {
   readonly metaEvidence: MetaEvidence;
+  readonly numberOfChoices: bigint | null;
   readonly disputeId: bigint;
   readonly chainId: number;
 }
 
-function QuestionContent({ metaEvidence, disputeId, chainId }: QuestionContentProps) {
+function QuestionContent({ metaEvidence, numberOfChoices, disputeId, chainId }: QuestionContentProps) {
   const { question, rulingOptions } = metaEvidence;
   const label = rulingOptions === null ? null : questionTypeLabel(rulingOptions.type);
-  const options = rulingOptions === null ? null : votingOptions(rulingOptions);
+  const within = rulingOptions === null ? null : reservedWithinChoices(rulingOptions, numberOfChoices);
+  const options = within === null ? null : votingOptions(within.rulingOptions);
   return (
     <div className="flex min-w-0 flex-col gap-6">
       {question === null && label === null ? null : (
@@ -50,7 +59,7 @@ function QuestionContent({ metaEvidence, disputeId, chainId }: QuestionContentPr
           {label === null ? null : <p className={LABEL}>{label}</p>}
         </div>
       )}
-      {options === null ? null : <VotingOptionsSection options={options} disputeId={disputeId} chainId={chainId} />}
+      {options === null || within === null ? null : <VotingOptionsSection options={options} hiddenReserved={within.hiddenReserved} disputeId={disputeId} chainId={chainId} />}
     </div>
   );
 }
@@ -67,6 +76,6 @@ export function QuestionPanel({ dispute, chain, onRetry }: QuestionPanelProps) {
     case "unavailable":
       return <SectionUnavailable section={SECTION} error={source.error} onRetry={onRetry} />;
     case "ready":
-      return <QuestionContent metaEvidence={source.value} disputeId={dispute.disputeId} chainId={chain.id} />;
+      return <QuestionContent metaEvidence={source.value} numberOfChoices={numberOfChoices(dispute.lookup)} disputeId={dispute.disputeId} chainId={chain.id} />;
   }
 }

@@ -16,7 +16,7 @@ import { ANSWER_ERROR_MESSAGES, fundedIntAnswer } from "./answer";
 import { matchedCardLine, newAnswerLine } from "./copy";
 import { FundAction } from "./FundAction";
 import { FundingProgress } from "./FundingProgress";
-import { CARD_CLASS, CARD_FOOTER_CLASS, CARD_ITEM_CLASS, CARD_TITLE_CLASS } from "./styles";
+import { CARD_CLASS, CARD_FOOTER_CLASS, CARD_HEAD_CLASS, CARD_ITEM_CLASS, CARD_TITLE_CLASS } from "./styles";
 import type { AppealActions } from "./useAppealActions";
 
 export interface FreeInputCardProps {
@@ -104,20 +104,22 @@ export function FreeInputCard({ freeInput, cards, actions, chain, isFundDisabled
   return (
     <li className={CARD_ITEM_CLASS} aria-labelledby={titleId}>
       <Card className={CARD_CLASS}>
-        <h4 id={titleId} className={CARD_TITLE_CLASS}>
-          Fund a new answer
-        </h4>
-        <AnswerField type={freeInput.type} onChange={setAnswer} error={error} />
-        {freeInput.type === "int" ? (
-          <p className={code === null ? "sr-only" : NOTE_CLASS} aria-live="polite" aria-atomic="true">
-            {code === null ? null : (
-              <>
-                This card funds the answer: <strong className="font-semibold">{fundedIntAnswer(code)}</strong>
-              </>
-            )}
-          </p>
-        ) : null}
-        <MatchedCardNote funding={funding} kind="answer" chain={chain} />
+        <div className={CARD_HEAD_CLASS}>
+          <h4 id={titleId} className={CARD_TITLE_CLASS}>
+            Fund a new answer
+          </h4>
+          <AnswerField type={freeInput.type} onChange={setAnswer} error={error} />
+          {freeInput.type === "int" ? (
+            <p className={code === null ? "sr-only" : NOTE_CLASS} aria-live="polite" aria-atomic="true">
+              {code === null ? null : (
+                <>
+                  This card funds the answer: <strong className="font-semibold">{fundedIntAnswer(code)}</strong>
+                </>
+              )}
+            </p>
+          ) : null}
+          <MatchedCardNote funding={funding} kind="answer" chain={chain} />
+        </div>
         <div className={CARD_FOOTER_CLASS}>
           <EnteredAnswerFooter funding={funding} subject={funding.card?.title ?? "the new answer"} code={code} actions={actions} chain={chain} isFundDisabled={isFundDisabled} />
         </div>

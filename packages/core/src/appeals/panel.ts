@@ -4,6 +4,7 @@ import { computeAppealAmounts } from "./amounts";
 import { buildCrowdfundingCards } from "./cards";
 import { governorListIndex } from "./governor";
 import { fail } from "../outcome";
+import { reservedWithinChoices } from "../rulings";
 import type { AppealAmounts, AppealPanel, AppealPanelInput, WithdrawState } from "./types";
 
 const HIDDEN: AppealPanel = { kind: "hidden" };
@@ -48,7 +49,7 @@ function crowdfunding(input: AppealPanelInput, dialect: "idr" | "governor"): App
   const tie = currentRuling.value === 0n ? input.rules.tie : null;
   if (dialect === "governor" && tie !== null && amounts.shared === undefined) return { kind: "fees-unavailable", error: { code: "unsupported", message: NO_SHARED_MULTIPLIER } };
   const set = buildCrowdfundingCards({
-    rulingOptions: input.rulingOptions,
+    rulingOptions: reservedWithinChoices(input.rulingOptions, input.numberOfChoices).rulingOptions,
     fallbackOutcomes: input.fallbackOutcomes,
     currentRuling: currentRuling.value,
     amounts: cardAmounts(amounts, dialect, currentRuling.value),
@@ -80,7 +81,7 @@ function handledByArbitrable(input: AppealPanelInput): AppealPanel {
 /** The execution-period withdraw panel; a state that was not read is unavailable, never empty. */
 function withdraw(input: AppealPanelInput): AppealPanel {
   const state: WithdrawState = input.withdraw ?? { status: "unavailable", error: { code: "not-found", message: "The withdrawable amount was not read." } };
-  return { kind: "withdraw", state };
+  return { kind: "withdraw", state, noun: input.rules.noun };
 }
 
 /**

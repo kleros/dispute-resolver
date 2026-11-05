@@ -11,7 +11,7 @@ import { testBinding } from "../test/appeals/testHelpers";
 const RESOLVED: LocalIdResolution = { kind: "local-id", value: 0n };
 const ARBITRABLE = "0x00000000000000000000000000000000000000dd";
 const DISPUTE: ArbitratorDispute = { id: 7n, subcourtId: 0n, arbitrated: ARBITRABLE, numberOfChoices: 2n, period: 4, lastPeriodChange: 0, ruled: true };
-const RULES: AppealRules = { route: "arbitrable", tie: null, noun: "option" };
+const RULES: AppealRules = { route: "arbitrable", tie: null, noun: "answer" };
 const ok = <T>(value: T): Outcome<T> => ({ ok: true, value });
 const NOT_READ: Outcome<never> = { ok: false, error: { code: "rpc-error", message: "Could not read: down" } };
 
@@ -69,7 +69,7 @@ const NONE_REPORTED: ExecutedRuling = { status: "none-reported" };
 const UNREAD: ExecutedRuling = { status: "unread", error: { code: "rpc-error", message: "Could not read the executed ruling: down" } };
 const funded = (...rulings: bigint[]) => ok(rulings);
 const jury = (court: bigint, note: string) => ({ kind: "jury-decision", court: fact(court), note });
-const winner = (ruling: bigint, court: bigint, wonBy: string) => ({ kind: "winner", winner: fact(ruling), court: fact(court), wonBy, noun: "option" });
+const winner = (ruling: bigint, court: bigint, wonBy: string) => ({ kind: "winner", winner: fact(ruling), court: fact(court), wonBy, noun: "answer" });
 
 describe("buildDecision", () => {
   it.each([0, 1, 2] as const)("has no decision in period %i, even without the detail reads", (period) => {
@@ -113,10 +113,16 @@ describe("buildDecision", () => {
     expect(decide(input)).toEqual(ok(expected));
   });
 
-  it("names the court's ruling 0 Invalid / Refused to Arbitrate / Tied, and takes the noun from the appeal rules", () => {
-    const answer = decide({ court: 0n, executed: applied(2n), funded: funded(2n), rules: { ...RULES, noun: "answer" } });
-    expect(answer).toMatchObject(ok({ court: { ruling: 0n, rulingText: "Invalid / Refused to Arbitrate / Tied" }, noun: "answer" }));
-    expect(decide({ executed: applied(2n), funded: funded(2n), rules: null })).toMatchObject(ok({ noun: "option" }));
+  it("names the court's ruling 0 Invalid / Refused to Arbitrate / Tied, and takes the noun from the appeal rules, else answer", () => {
+    const list = decide({ court: 0n, executed: applied(2n), funded: funded(2n), rules: { ...RULES, noun: "list" } });
+    expect(list).toMatchObject(ok({ court: { ruling: 0n, rulingText: "Invalid / Refused to Arbitrate / Tied" }, noun: "list" }));
+    expect(decide({ executed: applied(2n), funded: funded(2n), rules: null })).toMatchObject(ok({ noun: "answer" }));
+  });
+
+  it("never names the decision with a reserved answer above the dispute's number of choices", () => {
+    const withdrawn = metaEvidence({ type: "single-select", titles: ["Yes", "No"], reserved: { "0x3": "Withdrawn" } });
+    expect(decide({ executed: { status: "out-of-range", ruling: 3n }, funded: funded(3n), metaEvidence: withdrawn })).toEqual(ok(jury(1n, "out-of-range")));
+    expect(decide({ executed: NONE_REPORTED, funded: funded(3n), metaEvidence: withdrawn })).toEqual(ok(winner(1n, 1n, "jury")));
   });
 
   it("names a ruling with the dispute's options, the placeholder of an invalid meta-evidence, or its decimal value", () => {
@@ -153,21 +159,21 @@ describe("buildDecision", () => {
 
     it("as the court's ruling in the appeal period and in execution", () => {
       expect(decideAbc({ court: 1n, period: 3 })).toEqual(ok({ kind: "jury-decision", court: NONE, note: "appealable-in-arbitrable" }));
-      expect(decideAbc({ court: 1n, period: 4, executed: applied(1n) })).toEqual(ok({ kind: "winner", winner: NONE, court: NONE, wonBy: "jury", noun: "option" }));
+      expect(decideAbc({ court: 1n, period: 4, executed: applied(1n) })).toEqual(ok({ kind: "winner", winner: NONE, court: NONE, wonBy: "jury", noun: "answer" }));
     });
 
     it("as the ruling the arbitrable applied instead of the court's", () => {
       expect(decideAbc({ court: 5n, period: 4, executed: applied(1n), funded: funded() })).toEqual(
-        ok({ kind: "winner", winner: NONE, court: C, wonBy: "applied", noun: "option" }),
+        ok({ kind: "winner", winner: NONE, court: C, wonBy: "applied", noun: "answer" }),
       );
     });
 
     it("as the only answer fully funded, winning by default", () => {
       expect(decideAbc({ court: 5n, period: 4, executed: NONE_REPORTED, funded: funded(1n) })).toEqual(
-        ok({ kind: "winner", winner: NONE, court: C, wonBy: "default", noun: "option" }),
+        ok({ kind: "winner", winner: NONE, court: C, wonBy: "default", noun: "answer" }),
       );
       expect(decideAbc({ court: 5n, period: 4, executed: applied(1n), funded: funded(1n) })).toEqual(
-        ok({ kind: "winner", winner: NONE, court: C, wonBy: "default", noun: "option" }),
+        ok({ kind: "winner", winner: NONE, court: C, wonBy: "default", noun: "answer" }),
       );
     });
   });

@@ -38,3 +38,9 @@ export type AnswerEncodingError = "empty" | "not-a-number" | "negative-uint" | "
 export type AnswerEncoding = { readonly ok: true; readonly code: bigint } | { readonly ok: false; readonly error: AnswerEncodingError };
 
 export type FallbackOutcomes = readonly string[] | null;
+
+/** A dispute's ruling options without the reserved answers it cannot rule, and how many of those were left out. */
+export interface OptionsWithinChoices {
+  readonly rulingOptions: RulingOptions;
+  readonly hiddenReserved: number;
+}

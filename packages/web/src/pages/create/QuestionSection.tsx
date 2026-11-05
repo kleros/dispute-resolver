@@ -1,4 +1,4 @@
-import { CREATE_LIMITS } from "@dispute-resolver/core";
+import { CREATE_LIMITS, NONE_OF_THE_OPTIONS_TEXT } from "@dispute-resolver/core";
 import { DropdownSelect, NumberField, TextArea, TextField } from "@kleros/ui-components-library";
 import type { SectionProps } from "./CourtSection";
 import { QUESTION_TYPES, isSelectType, setOption, setOptionCount, setQuestionType, setText } from "./draft";
@@ -40,15 +40,39 @@ export function DisputeSection({ form, errors, onChange }: SectionProps) {
   );
 }
 
+const OPTION_ROW_CLASS = "grid grid-cols-1 gap-3 max-lg:py-4 max-lg:first:pt-0 max-lg:last:pb-0 lg:grid-cols-2";
+
+/**
+ * Ruling 1 of every multiple-select dispute, nothing ticked: shown only, never part of the draft, the option count or the
+ * uploaded titles. Read-only rather than disabled, so Tab still reaches it and it is announced. The library tints a field
+ * on hover with an `!important` rule, so the locked field takes no pointer events.
+ */
+function NoneOfTheOptionsRow() {
+  return (
+    <li className={OPTION_ROW_CLASS}>
+      <FieldSlot>
+        <TextField
+          label="Always included"
+          value={NONE_OF_THE_OPTIONS_TEXT}
+          isReadOnly
+          className={FULL_WIDTH_FIELD}
+          inputProps={{ className: "pointer-events-none bg-klerosUIComponentsLightGrey text-klerosUIComponentsSecondaryText" }}
+        />
+      </FieldSlot>
+    </li>
+  );
+}
+
 function OptionRows({ form, errors, onChange }: Pick<SectionProps, "form" | "errors" | "onChange">) {
   return (
     <ol className="flex flex-col gap-4 max-lg:gap-0 max-lg:divide-y max-lg:divide-klerosUIComponentsStroke" aria-label="Ruling options">
+      {form.questionType === "multiple-select" ? <NoneOfTheOptionsRow /> : null}
       {form.options.map((option, index) => {
         const number = String(index + 1);
         const error = errors.options?.[index];
         return (
-          // Rows are positional: option N is always the N-th row, and rows past the count are removed.
-          <li key={number} className="grid grid-cols-1 gap-3 max-lg:py-4 max-lg:first:pt-0 max-lg:last:pb-0 lg:grid-cols-2">
+          // Rows are positional: option N is always the N-th typed row, and rows past the count are removed.
+          <li key={number} className={OPTION_ROW_CLASS}>
             <FieldSlot>
               <TextField
                 label={`Ruling Option ${number}`}

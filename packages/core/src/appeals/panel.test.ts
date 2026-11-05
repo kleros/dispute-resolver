@@ -1,3 +1,4 @@
+import { maxUint256 } from "viem";
 import { describe, expect, it } from "vitest";
 import type { AppealInfo } from "../disputes/types";
 import { describeAppealRules } from "../families";
@@ -32,6 +33,7 @@ function input(family: FamilyDetection, period: Period, overrides: Partial<Appea
     override: undefined,
     rulingOptions: { type: "single-select", titles: ["Yes", "No"] },
     fallbackOutcomes: null,
+    numberOfChoices: 2n,
     currentRuling: ok(1n),
     appealInfo: ok(APPEAL_INFO),
     multipliers: ok(MULTIPLIERS),
@@ -106,16 +108,16 @@ describe("needsRulingOptions", () => {
 });
 
 describe("buildAppealPanel", () => {
-  it("crowdfunds idr-v2 and idr-v1 in the appeal period and withdraws in execution", () => {
+  it("crowdfunds idr-v2 and idr-v1 in the appeal period and withdraws in execution, naming their rulings answers", () => {
     for (const name of ["idr-v2", "idr-v1"] as const) {
       expect(buildAppealPanel(input(family(name), 3))).toMatchObject({ kind: "crowdfunding", dialect: "idr", ...EXPECTED_CARDS });
-      expect(buildAppealPanel(input(family(name), 4))).toEqual({ kind: "withdraw", state: WITHDRAW });
+      expect(buildAppealPanel(input(family(name), 4))).toEqual({ kind: "withdraw", state: WITHDRAW, noun: "answer" });
     }
   });
 
   it("follows a registered Reality proxy's write family, never its display family", () => {
     expect(buildAppealPanel(input(realityProxy(family("idr-v2")), 3))).toMatchObject({ kind: "crowdfunding", dialect: "idr", ...EXPECTED_CARDS });
-    expect(buildAppealPanel(input(realityProxy(family("idr-v2")), 4))).toEqual({ kind: "withdraw", state: WITHDRAW });
+    expect(buildAppealPanel(input(realityProxy(family("idr-v2")), 4))).toEqual({ kind: "withdraw", state: WITHDRAW, noun: "answer" });
   });
 
   it("an old Reality proxy cannot be appealed, and has no panel in execution", async () => {
@@ -145,12 +147,12 @@ describe("buildAppealPanel", () => {
     expect(buildAppealPanel(input(family("escrow-v1"), 3, { appealInfo: { ok: false, error: RPC_DOWN } }))).toEqual({ kind: "fees-unavailable", error: RPC_DOWN });
   });
 
-  it("crowdfunds and withdraws governors through their own dialect, kleros.eth included", async () => {
+  it("crowdfunds and withdraws governors through their own dialect, kleros.eth included, naming their rulings lists", async () => {
     for (const address of ["0x327a29fce0a6490e4236240be176daa282eccfdf", "0xe5bcea6f87aaee4a81f64dfdb4d30d400e0e5cf4"]) {
       const governor = await recordedDetection(1, address);
       expect(governor.writeFamily).toBe("governor");
       expect(buildAppealPanel(input(governor, 3))).toMatchObject({ kind: "crowdfunding", dialect: "governor", ...EXPECTED_GOVERNOR_CARDS });
-      expect(buildAppealPanel(input(governor, 4))).toEqual({ kind: "withdraw", state: WITHDRAW });
+      expect(buildAppealPanel(input(governor, 4))).toEqual({ kind: "withdraw", state: WITHDRAW, noun: "list" });
     }
   });
 
@@ -197,7 +199,7 @@ describe("buildAppealPanel", () => {
   it("terms give the noun, the appeal period end, the other rulings' deadline from the live multipliers, and the tie only when the current ruling is 0", async () => {
     const terms = (panel: ReturnType<typeof buildAppealPanel>) => (panel.kind === "crowdfunding" ? panel.terms : null);
     const quarter = { multipliers: ok({ ...MULTIPLIERS, loserAppealPeriodMultiplier: 2_500n }) };
-    expect(terms(buildAppealPanel(input(family("idr-v2"), 3, quarter)))).toEqual({ noun: "option", tie: null, appealPeriodEnd: 300, loserDeadline: 150 });
+    expect(terms(buildAppealPanel(input(family("idr-v2"), 3, quarter)))).toEqual({ noun: "answer", tie: null, appealPeriodEnd: 300, loserDeadline: 150 });
     expect(terms(buildAppealPanel(input(family("idr-v2"), 3, { currentRuling: ok(0n) })))).toMatchObject({ tie: "refuse-is-winner" });
     const governor = await recordedDetection(1, "0x327a29fce0a6490e4236240be176daa282eccfdf");
     const governorTie = buildAppealPanel(input(governor, 3, { currentRuling: ok(0n), multipliers: ok({ ...MULTIPLIERS, sharedMultiplier: 10_000n }) }));
@@ -212,16 +214,16 @@ describe("buildAppealPanel", () => {
   const failed = (code: "rpc-error" | "unsupported" | "reverted", message: string) => ({ ok: false as const, error: { code, message } });
 
   it.each<[string, Partial<AppealPanelInput>, FundingTerms | undefined]>([
-    ["the current ruling until the end, every other until half the period", { productRecognised: true }, { noun: "option", tie: null, appealPeriodEnd: 300, loserDeadline: 200 }],
+    ["the current ruling until the end, every other until half the period", { productRecognised: true }, { noun: "answer", tie: null, appealPeriodEnd: 300, loserDeadline: 200 }],
     [
       "half an odd period rounded down to the second",
       { productRecognised: true, appealInfo: ok({ ...APPEAL_INFO, appealPeriodEnd: 107 }) },
-      { noun: "option", tie: null, appealPeriodEnd: 107, loserDeadline: 103 },
+      { noun: "answer", tie: null, appealPeriodEnd: 107, loserDeadline: 103 },
     ],
     [
       "every side until the end after ruling 0",
       { productRecognised: true, currentRuling: ok(0n) },
-      { noun: "option", tie: "shared-full-period", appealPeriodEnd: 300, loserDeadline: 200 },
+      { noun: "answer", tie: "shared-full-period", appealPeriodEnd: 300, loserDeadline: 200 },
     ],
     ["no times for a ruling that is not one of its two sides", { productRecognised: true, currentRuling: ok(3n) }, undefined],
     ["no times for an arbitrable not recognised", { productRecognised: false }, undefined],
@@ -269,6 +271,29 @@ describe("buildAppealPanel", () => {
       const panel = buildAppealPanel(input(family(name), 3, { withdraw: WITHDRAW }));
       expect(["withdraw", "withdraw-unsupported"]).not.toContain(panel.kind);
     }
+  });
+
+  describe("reserved answers and the dispute's number of choices", () => {
+    const ANSWERED_TOO_SOON = `0x${"F".repeat(64)}`;
+    const cards = (panel: ReturnType<typeof buildAppealPanel>) => (panel.kind === "crowdfunding" ? panel.cards.map((card) => [card.code, card.title]) : null);
+
+    it("gives no card to a reserved answer coded above the dispute's number of choices, which jurors cannot vote", () => {
+      const rulingOptions = { type: "single-select", titles: ["Yes", "No"], reserved: { "0x3": "Withdrawn", "0x2a": "Out of reach" } };
+      const within = [
+        [0n, "Invalid / Refused to Arbitrate / Tied"],
+        [3n, "Withdrawn"],
+        [1n, "Yes"],
+        [2n, "No"],
+      ];
+      expect(cards(buildAppealPanel(input(family("idr-v2"), 3, { rulingOptions, numberOfChoices: 3n })))).toEqual(within);
+      expect(cards(buildAppealPanel(input(family("idr-v2"), 3, { rulingOptions, numberOfChoices: 2n })))).toEqual([within[0], within[2], within[3]]);
+    });
+
+    it("keeps Answered Too Soon on a Reality proxy dispute, whose choices span the whole uint256 range", () => {
+      const rulingOptions = { type: "single-select", titles: ["No", "Yes"], reserved: { [ANSWERED_TOO_SOON]: "Answered Too Soon" } };
+      const panel = buildAppealPanel(input(realityProxy(family("idr-v2")), 3, { rulingOptions, numberOfChoices: maxUint256 }));
+      expect(cards(panel)).toContainEqual([maxUint256, "Answered Too Soon"]);
+    });
   });
 
   it.each<[string, AppealPanelInput["rulingOptions"], object]>([

@@ -439,7 +439,7 @@ describe("DisputeTimeline in the appeal period", () => {
   const APPEAL_COURT: Partial<Court> = { timesPerPeriod: [3n * BigInt(DAY), 0n, 2n * BigInt(DAY), 2n * BigInt(DAY)] };
   const END = NOW - HOUR + 2 * DAY;
   const LOSING = NOW - HOUR + DAY;
-  const TERMS: FundingTerms = { noun: "option", tie: null, appealPeriodEnd: END, loserDeadline: LOSING };
+  const TERMS: FundingTerms = { noun: "answer", tie: null, appealPeriodEnd: END, loserDeadline: LOSING };
   const ONE_TIME = ["01d 23h 00m"];
   const WINNING_SIDE = "The winning side has until the period ends.";
   const AHEAD = { variant: "warning", title: "Losing side: 00d\u00a023h\u00a000m left to fund an appeal", body: WINNING_SIDE };
@@ -548,7 +548,7 @@ describe("DisputeTimeline in the appeal period", () => {
     expect(losingNotice()).toBeNull();
   });
 
-  it.each(["option", "answer", "list"] as const)("calls the losing side the same whatever the dispute calls its rulings (%s)", (noun) => {
+  it.each(["answer", "list"] as const)("calls the losing side the same whatever the dispute calls its rulings (%s)", (noun) => {
     const { unmount } = renderSection(DisputeTimeline, appealCase(crowdfunding({ ...TERMS, noun })));
     expect(losingNotice()).toEqual(AHEAD);
     unmount();
@@ -564,9 +564,9 @@ describe("DisputeTimeline in the appeal period", () => {
 
   it.each([
     ["a tie that shares the whole period", { ...TERMS, tie: "shared-full-period" }],
-    ["a tie that costs every option as a winner", { ...TERMS, tie: "all-winner" }],
-    ["losing options closing at the appeal period's end", { ...TERMS, loserDeadline: END }],
-    ["losing options closing after the appeal period's end", { ...TERMS, loserDeadline: END + HOUR }],
+    ["a tie that costs every answer as a winner", { ...TERMS, tie: "all-winner" }],
+    ["losing answers closing at the appeal period's end", { ...TERMS, loserDeadline: END }],
+    ["losing answers closing after the appeal period's end", { ...TERMS, loserDeadline: END + HOUR }],
   ] as const)("shows no notice for %s", (_case, terms: FundingTerms) => {
     renderSection(DisputeTimeline, appealCase(crowdfunding(terms)));
     expect(currentLines()).toEqual(ONE_TIME);
@@ -594,7 +594,7 @@ describe("DisputeTimeline in the appeal period", () => {
     ["an escrow appeal that ended", sectionReady({ kind: "escrow-ended" })],
     ["an arbitrable that cannot be appealed", sectionReady({ kind: "not-appealable" })],
     ["a hidden appeal", sectionReady({ kind: "hidden" })],
-    ["withdrawals", sectionReady({ kind: "withdraw", state: { status: "nothing" } })],
+    ["withdrawals", sectionReady({ kind: "withdraw", state: { status: "nothing" }, noun: "answer" })],
     ["withdrawals this app does not support", sectionReady({ kind: "withdraw-unsupported" })],
     ["an appeal read still loading", sectionLoading],
     ["an appeal read that failed", sectionUnavailable("rpc-error", "The appeal could not be read.")],
@@ -692,8 +692,8 @@ describe("DisputeTimeline in the appeal period", () => {
     ["two times", { ...TERMS, tie: null }],
     ["a tie where refusing to arbitrate is the winner", { ...TERMS, tie: "refuse-is-winner" }],
     ["a tie that shares the whole period", { ...TERMS, tie: "shared-full-period" }],
-    ["a tie that costs every option as a winner", { ...TERMS, tie: "all-winner" }],
-    ["losing options closing at the appeal period's end", { ...TERMS, loserDeadline: END }],
+    ["a tie that costs every answer as a winner", { ...TERMS, tie: "all-winner" }],
+    ["losing answers closing at the appeal period's end", { ...TERMS, loserDeadline: END }],
   ] as const)("the appeal notice and the timeline agree on whether the losing side's funding closes first (%s)", (_case, terms: FundingTerms) => {
     const dispute = appealCase(sectionReady({ kind: "handled-by-arbitrable", terms }));
     renderWithProviders(
@@ -702,7 +702,7 @@ describe("DisputeTimeline in the appeal period", () => {
         <AppealSection dispute={dispute} chain={MAINNET} />
       </>,
     );
-    const noticeHasTwo = screen.getByText(/Funding for/).textContent.includes("every other option");
+    const noticeHasTwo = screen.getByText(/Funding for/).textContent.includes("every other answer");
     expect(losingNotice()?.variant === "warning").toBe(noticeHasTwo);
   });
 
@@ -794,7 +794,7 @@ describe("DecisionAlert", () => {
       { period: 4, ruled: true, details: { currentRuling: { ok: true, value: 0n } }, executed: { status: "executed", ruling: 2n }, fundedRulings: funded(2n) },
       "Winner",
       "No",
-      `Won by default: “No” was the only option fully funded for the appeal. The court ruled “${REFUSED_RULING_TEXT}”.`,
+      `Won by default: “No” was the only answer fully funded for the appeal. The court ruled “${REFUSED_RULING_TEXT}”.`,
     ],
     [
       "when the arbitrable applied another ruling than the court's without that proof",
@@ -808,7 +808,7 @@ describe("DecisionAlert", () => {
       { period: 4, ruled: true, executed: { status: "none-reported" }, fundedRulings: funded(2n) },
       "Winner",
       "No",
-      "Won by default: “No” was the only option fully funded for the appeal. The court ruled “Yes”.",
+      "Won by default: “No” was the only answer fully funded for the appeal. The court ruled “Yes”.",
     ],
     [
       "when the arbitrable's report and the funding could not be read",
@@ -862,7 +862,7 @@ describe("DecisionAlert", () => {
       "as the only answer fully funded, winning by default",
       { period: 4, ruled: true, details: { currentRuling: { ok: true, value: 0n } }, executed: { status: "executed", ruling: 1n }, fundedRulings: funded(1n) },
       "Winner",
-      `Won by default: “${NONE_OF_THE_OPTIONS_TEXT}” was the only option fully funded for the appeal. The court ruled “${REFUSED_RULING_TEXT}”.`,
+      `Won by default: “${NONE_OF_THE_OPTIONS_TEXT}” was the only answer fully funded for the appeal. The court ruled “${REFUSED_RULING_TEXT}”.`,
     ],
     [
       "as the ruling the arbitrable applied instead of the court's",
@@ -882,7 +882,7 @@ describe("DecisionAlert", () => {
       "won by default",
       { period: 4, ruled: true, details: { currentRuling: yes }, executed: { status: "executed", ruling: 2n }, fundedRulings: funded(2n) },
       "Winner",
-      "Won by default as the only option fully funded for the appeal.",
+      "Won by default as the only answer fully funded for the appeal.",
     ],
     [
       "applied by the arbitrable",

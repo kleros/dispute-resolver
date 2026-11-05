@@ -60,7 +60,7 @@ export type AppealRoute = "crowdfunding" | "escrow" | "arbitrable" | "unsupporte
  */
 export type TieDialect = "refuse-is-winner" | "shared-full-period" | "all-winner";
 
-export type RulingNoun = "option" | "answer" | "list";
+export type RulingNoun = "answer" | "list";
 
 /** How a dispute of an arbitrable is appealed, what its sides are in a tie, and what a ruling is called on it. */
 export interface AppealRules {

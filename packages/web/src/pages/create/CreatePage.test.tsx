@@ -280,6 +280,45 @@ describe("CreatePage", () => {
     expect(screen.queryByRole("textbox", { name: "Ruling Option 33" })).toBeNull();
   });
 
+  it("a multiple select starts its options with a read-only “None of the options” row that takes focus and is not one of the counted options", async () => {
+    const { user } = await renderCreate({ connect: false });
+    await chooseOption(user, "Question Type", "Multiple choice: multiple select");
+    const locked = screen.getByRole("textbox", { name: "Always included" });
+    expect(locked).toHaveValue(core.NONE_OF_THE_OPTIONS_TEXT);
+    expect(locked).toHaveAttribute("readonly");
+    locked.focus();
+    expect(locked).toHaveFocus();
+    const rows = within(screen.getByRole("list", { name: "Ruling options" })).getAllByRole("listitem");
+    expect(rows).toHaveLength(3);
+    const [first] = rows;
+    if (first === undefined) throw new Error("The options list is empty");
+    expect(first).toContainElement(locked);
+    expect(within(first).getAllByRole("textbox")).toHaveLength(1);
+    expect(within(first).queryByRole("button")).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Number of Options" })).toHaveValue("2");
+    expect(screen.getByRole("textbox", { name: "Ruling Option 1" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Ruling Option 2" })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Ruling Option 3" })).toBeNull();
+
+    await setNumber(user, "Number of Options", "3");
+
+    expect(within(screen.getByRole("list", { name: "Ruling options" })).getAllByRole("listitem")).toHaveLength(4);
+    expect(screen.getByRole("textbox", { name: "Ruling Option 3" })).toBeInTheDocument();
+    expect(screen.getAllByRole("textbox", { name: "Always included" })).toHaveLength(1);
+  });
+
+  it("a single select has no locked row, and leaving multiple select removes it", async () => {
+    const { user } = await renderCreate({ connect: false });
+    expect(screen.queryByRole("textbox", { name: "Always included" })).toBeNull();
+    await chooseOption(user, "Question Type", "Multiple choice: multiple select");
+    expect(screen.getByRole("textbox", { name: "Always included" })).toBeInTheDocument();
+
+    await chooseOption(user, "Question Type", "Multiple choice: single select");
+
+    expect(screen.queryByRole("textbox", { name: "Always included" })).toBeNull();
+    expect(within(screen.getByRole("list", { name: "Ruling options" })).getAllByRole("listitem")).toHaveLength(2);
+  });
+
   it("the required fields are marked required and the optional ones are not", async () => {
     const { user } = await renderCreate({ connect: false });
     await user.click(screen.getByRole("button", { name: "Add party" }));
@@ -819,7 +858,7 @@ describe("CreatePage", () => {
     expect(screen.getByRole("button", { name: "Return" })).toBeEnabled();
   });
 
-  it("multiple select with three options and a primary document creates with 2³ ruling options", async () => {
+  it("multiple select with three options and a primary document creates with 2³ ruling options, leaving the locked row out of the uploaded titles", async () => {
     const { user, uploader } = await renderCreate();
     await user.upload(documentInput(), new File(["%PDF"], "rules.pdf", { type: "application/pdf" }));
     await screen.findByText("Uploaded rules.pdf.");
@@ -828,6 +867,7 @@ describe("CreatePage", () => {
     await fillRequired(user);
     await fillOptions(user, ["Red", "Green", "Blue"]);
     await typeInto(user, "Ruling Option 1 Description (Optional)", "The red one");
+    expect(screen.getByRole("textbox", { name: "Always included" })).toHaveValue(core.NONE_OF_THE_OPTIONS_TEXT);
     await toSummary(user);
     expect(screen.getByRole("link", { name: /rules\.pdf|QmYw/ })).toHaveAttribute("href", expect.stringContaining(TEST_UPLOAD_PATH) as string);
     await user.click(screen.getByRole("button", { name: "Create dispute" }));

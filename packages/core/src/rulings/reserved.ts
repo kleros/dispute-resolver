@@ -1,6 +1,6 @@
 import { reservedCode } from "./combinations";
 import { isVariableType } from "./questionTypes";
-import type { FallbackOutcomes, RulingOptions } from "./types";
+import type { FallbackOutcomes, OptionsWithinChoices, RulingOptions } from "./types";
 
 /** The outcomes of a question without usable options: Yes (1) and No (2). */
 const DEFAULT_OUTCOME_COUNT = 2n;
@@ -41,4 +41,21 @@ export function unshadowedReserved(options: RulingOptions, fallback: FallbackOut
   }
   const kept = [...byCode.values()].filter((entry): entry is ReservedEntry => entry !== null);
   return kept.length === 0 ? undefined : Object.fromEntries(kept);
+}
+
+/**
+ * The ruling options without the reserved answers coded above the dispute's number of choices: KlerosLiquid's `castVote`
+ * takes no choice above it and the appeal funding contracts refuse a ruling above it, so no such answer can ever win.
+ * A `null` number of choices (not read) keeps every reserved answer.
+ */
+export function reservedWithinChoices(options: RulingOptions, numberOfChoices: bigint | null): OptionsWithinChoices {
+  const { reserved, ...rest } = options;
+  if (reserved === undefined || numberOfChoices === null) return { rulingOptions: options, hiddenReserved: 0 };
+  const entries = Object.entries(reserved);
+  const kept = entries.filter(([key]) => {
+    const code = reservedCode(key);
+    return code === null || code <= numberOfChoices;
+  });
+  if (kept.length === entries.length) return { rulingOptions: options, hiddenReserved: 0 };
+  return { rulingOptions: kept.length === 0 ? rest : { ...rest, reserved: Object.fromEntries(kept) }, hiddenReserved: entries.length - kept.length };
 }

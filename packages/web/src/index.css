@@ -742,9 +742,10 @@
 /*
  * Control edges: inputs, textareas and select triggers at rest draw --dr-control-border (3:1 or more on
  * every surface) instead of Stroke. The library's variant classes (Error, focus) replace the Stroke class through
- * tailwind-merge, and the states are excluded here, so an invalid or focused field keeps the library border.
+ * tailwind-merge, and the states are excluded here, so an invalid or focused field keeps the library border. A
+ * read-only field is not a control to operate, so it keeps Stroke like a disabled one.
  */
-:where(input, textarea, button[aria-haspopup="listbox"]).border-klerosUIComponentsStroke:not(:focus, :invalid, [aria-invalid="true"], [data-invalid], :disabled) {
+:where(input, textarea, button[aria-haspopup="listbox"]).border-klerosUIComponentsStroke:not(:focus, :invalid, [aria-invalid="true"], [data-invalid], :disabled, [readonly]) {
   border-color: var(--dr-control-border);
 }
 

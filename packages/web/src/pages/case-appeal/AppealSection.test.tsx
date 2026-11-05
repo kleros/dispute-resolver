@@ -33,6 +33,7 @@ import {
   TEST_SENT,
   TEST_TX_HASH,
   TEST_WALLET_ADDRESS,
+  TEST_WALLET_SECOND_ACCOUNT,
   createConnectedTestWallet,
   createTestWallet,
   fakeWriteController,
@@ -54,9 +55,9 @@ import {
   HANDLED_BY_ARBITRABLE_TITLE,
   NOT_APPEALABLE_BODY,
   NOT_APPEALABLE_TITLE,
-  REWARDS_BODY,
-  WITHDRAW_ELIGIBLE,
-  WITHDRAW_NOTHING,
+  rewardsBody,
+  withdrawEligible,
+  withdrawNothing,
   WITHDRAW_UNSUPPORTED,
   matchedCardLine,
   newAnswerLine,
@@ -131,6 +132,8 @@ interface PanelOptions {
   readonly family?: FamilyDetection;
   readonly override?: BehaviorOverride;
   readonly rulingOptions?: RulingOptions;
+  /** The arbitrator's `numberOfChoices`; 2 by default, as for Yes and No. */
+  readonly numberOfChoices?: bigint;
   readonly currentRuling?: bigint;
   /** The arbitrator's `currentRuling` read; `currentRuling` gives a successful one. */
   readonly currentRulingRead?: Outcome<bigint>;
@@ -149,6 +152,7 @@ function crowdfunding(options: PanelOptions = {}): AppealPanel {
     override: options.override,
     rulingOptions: options.rulingOptions ?? YES_NO,
     fallbackOutcomes: null,
+    numberOfChoices: options.numberOfChoices ?? 2n,
     currentRuling: options.currentRulingRead ?? { ok: true, value: options.currentRuling ?? 1n },
     appealInfo: { ok: true, value: APPEAL_INFO },
     multipliers: { ok: true, value: options.multipliers ?? MULTIPLIERS },
@@ -269,8 +273,8 @@ async function sentCallsAfter(executions = 1): Promise<WriteCall[]> {
 }
 
 /** Renders the section over successive reads of its panel; "Next read" moves to the next one, as a refresh would. */
-async function renderReads(reads: readonly AppealPanel[]) {
-  const wallet = await createConnectedTestWallet();
+async function renderReads(reads: readonly AppealPanel[], connected?: TestWallet) {
+  const wallet = connected ?? (await createConnectedTestWallet());
   function Changing() {
     const [read, setRead] = useState(0);
     return (
@@ -351,9 +355,9 @@ describe("AppealSection: panel kinds", () => {
     ["funding-unsupported", { kind: "funding-unsupported" }, [FUNDING_UNSUPPORTED_TITLE, FUNDING_UNSUPPORTED_BODY], false],
     ["escrow-appeal", { kind: "escrow-appeal", appealCost: ETH, deadline: APPEAL_END }, [ESCROW_EXPLANATION], true],
     ["escrow-ended", { kind: "escrow-ended" }, [ESCROW_ENDED], false],
-    ["crowdfunding", crowdfunding(), [CROWDFUNDING_EXPLANATION, REWARDS_BODY], true],
+    ["crowdfunding", crowdfunding(), [CROWDFUNDING_EXPLANATION, rewardsBody("answer")], true],
     ["fees-unavailable", { kind: "fees-unavailable", error: { code: "unsupported", message: "The appeal multipliers could not be read." } }, [FEES_UNAVAILABLE_TITLE], false],
-    ["withdraw", { kind: "withdraw", state: { status: "nothing" } }, [WITHDRAW_NOTHING], false],
+    ["withdraw", { kind: "withdraw", state: { status: "nothing" }, noun: "answer" }, [withdrawNothing("answer")], false],
     ["withdraw-unsupported", { kind: "withdraw-unsupported" }, ["Withdrawals unavailable here", WITHDRAW_UNSUPPORTED], false],
   ];
 
@@ -406,32 +410,32 @@ describe("AppealSection: panel kinds", () => {
 describe("AppealSection: funding times", () => {
   const AT_END = { ...MULTIPLIERS, loserAppealPeriodMultiplier: 10_000n };
   it.each([
-    ["before either deadline", APPEAL_START, {}, `Funding for the current ruling (“Yes”) closes ${utc(APPEAL_END)}. Funding for every other option closes ${utc(LOSER_DEADLINE)}.`],
+    ["before either deadline", APPEAL_START, {}, `Funding for the current ruling (“Yes”) closes ${utc(APPEAL_END)}. Funding for every other answer closes ${utc(LOSER_DEADLINE)}.`],
     [
-      "once the other options' deadline passed",
+      "once the other answers' deadline passed",
       LOSER_DEADLINE,
       {},
-      `Funding for the current ruling (“Yes”) closes ${utc(APPEAL_END)}. Funding for every other option closed ${utc(LOSER_DEADLINE)}.`,
+      `Funding for the current ruling (“Yes”) closes ${utc(APPEAL_END)}. Funding for every other answer closed ${utc(LOSER_DEADLINE)}.`,
     ],
     [
       "once both deadlines passed",
       APPEAL_END,
       {},
-      `Funding for the current ruling (“Yes”) closed ${utc(APPEAL_END)}. Funding for every other option closed ${utc(LOSER_DEADLINE)}.`,
+      `Funding for the current ruling (“Yes”) closed ${utc(APPEAL_END)}. Funding for every other answer closed ${utc(LOSER_DEADLINE)}.`,
     ],
     [
       "in a tie where ruling 0 is the current ruling",
       APPEAL_START,
       { currentRuling: 0n },
-      `Funding for the current ruling (“${REFUSE}”) closes ${utc(APPEAL_END)}. Funding for every other option closes ${utc(LOSER_DEADLINE)}.`,
+      `Funding for the current ruling (“${REFUSE}”) closes ${utc(APPEAL_END)}. Funding for every other answer closes ${utc(LOSER_DEADLINE)}.`,
     ],
     [
       "for a current ruling that is not one of the options",
       APPEAL_START,
       { currentRuling: 3n },
-      `Funding for the current ruling closes ${utc(APPEAL_END)}. Funding for every other option closes ${utc(LOSER_DEADLINE)}.`,
+      `Funding for the current ruling closes ${utc(APPEAL_END)}. Funding for every other answer closes ${utc(LOSER_DEADLINE)}.`,
     ],
-    ["when the other options' deadline is the appeal period's end", APPEAL_START, { multipliers: AT_END }, `Funding for every option closes ${utc(APPEAL_END)}.`],
+    ["when the other answers' deadline is the appeal period's end", APPEAL_START, { multipliers: AT_END }, `Funding for every answer closes ${utc(APPEAL_END)}.`],
     [
       "in a governor tie, where every list shares one deposit",
       APPEAL_START,
@@ -442,7 +446,7 @@ describe("AppealSection: funding times", () => {
       "in a tie where ruling 0 cannot be funded",
       APPEAL_END,
       { family: UNSLASHED, override: UNSLASHED_OVERRIDE, currentRuling: 0n },
-      `Funding for every option closed ${utc(APPEAL_END)}.`,
+      `Funding for every answer closed ${utc(APPEAL_END)}.`,
     ],
   ] as const)("one line above the cards says when funding closes %s", async (_case, now, options: PanelOptions, line) => {
     freezeClockAtAppealStart(now);
@@ -499,7 +503,7 @@ describe("AppealSection: times in the arbitrable application's notice", () => {
   /** Gnosis 1052, Proof of Humanity v2, whose current ruling is 2. */
   const LOSER = 1_793_431_805;
   const END = 1_793_529_005;
-  const TERMS: FundingTerms = { noun: "option", tie: null, appealPeriodEnd: END, loserDeadline: LOSER };
+  const TERMS: FundingTerms = { noun: "answer", tie: null, appealPeriodEnd: END, loserDeadline: LOSER };
   const VIEW_ONLY = testFamily({
     family: "view-only",
     writeFamily: "view-only",
@@ -517,50 +521,50 @@ describe("AppealSection: times in the arbitrable application's notice", () => {
   }
 
   it.each<[string, number, FundingTerms, SectionData<Decision>, string]>([
-    ["before either time", LOSER - 1, TERMS, decided(2n, "No"), `Funding for the current ruling (“No”) closes ${utc(END)}. Funding for every other option closes ${utc(LOSER)}.`],
+    ["before either time", LOSER - 1, TERMS, decided(2n, "No"), `Funding for the current ruling (“No”) closes ${utc(END)}. Funding for every other answer closes ${utc(LOSER)}.`],
     [
-      "once the other options' time passed",
+      "once the other answers' time passed",
       LOSER,
       TERMS,
       decided(2n, "No"),
-      `Funding for the current ruling (“No”) closes ${utc(END)}. Funding for every other option closed ${utc(LOSER)}.`,
+      `Funding for the current ruling (“No”) closes ${utc(END)}. Funding for every other answer closed ${utc(LOSER)}.`,
     ],
     [
       "a second before the appeal period ends",
       END - 1,
       TERMS,
       decided(2n, "No"),
-      `Funding for the current ruling (“No”) closes ${utc(END)}. Funding for every other option closed ${utc(LOSER)}.`,
+      `Funding for the current ruling (“No”) closes ${utc(END)}. Funding for every other answer closed ${utc(LOSER)}.`,
     ],
     [
       "once the appeal period ended",
       END,
       TERMS,
       decided(2n, "No"),
-      `Funding for the current ruling (“No”) closed ${utc(END)}. Funding for every other option closed ${utc(LOSER)}.`,
+      `Funding for the current ruling (“No”) closed ${utc(END)}. Funding for every other answer closed ${utc(LOSER)}.`,
     ],
-    ["after ruling 0, for every option until the end", END - 1, { ...TERMS, tie: "shared-full-period" }, decided(0n, REFUSE), `Funding for every option closes ${utc(END)}.`],
-    ["after ruling 0, once the appeal period ended", END, { ...TERMS, tie: "shared-full-period" }, decided(0n, REFUSE), `Funding for every option closed ${utc(END)}.`],
+    ["after ruling 0, for every answer until the end", END - 1, { ...TERMS, tie: "shared-full-period" }, decided(0n, REFUSE), `Funding for every answer closes ${utc(END)}.`],
+    ["after ruling 0, once the appeal period ended", END, { ...TERMS, tie: "shared-full-period" }, decided(0n, REFUSE), `Funding for every answer closed ${utc(END)}.`],
     [
       "without quotes when the ruling reads as nothing",
       LOSER - 1,
       TERMS,
       decided(1n, ""),
-      `Funding for the current ruling closes ${utc(END)}. Funding for every other option closes ${utc(LOSER)}.`,
+      `Funding for the current ruling closes ${utc(END)}. Funding for every other answer closes ${utc(LOSER)}.`,
     ],
     [
       "without quotes when the ruling's title is only spaces",
       LOSER - 1,
       TERMS,
       decided(1n, "  "),
-      `Funding for the current ruling closes ${utc(END)}. Funding for every other option closes ${utc(LOSER)}.`,
+      `Funding for the current ruling closes ${utc(END)}. Funding for every other answer closes ${utc(LOSER)}.`,
     ],
     [
       "without the ruling's title when the decision could not be read",
       LOSER - 1,
       TERMS,
       sectionUnavailable("rpc-error", "The decision could not be read."),
-      `Funding for the current ruling closes ${utc(END)}. Funding for every other option closes ${utc(LOSER)}.`,
+      `Funding for the current ruling closes ${utc(END)}. Funding for every other answer closes ${utc(LOSER)}.`,
     ],
   ])("a product the Dispute Resolver recognised says in the notice when funding closes %s", async (_case, now, terms, decision, line) => {
     freezeClockAtAppealStart(now);
@@ -855,7 +859,7 @@ describe("AppealSection: crowdfunding cards", () => {
 
   it("a free-input card without an answer keeps Fund disabled", async () => {
     await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "string" } })));
-    expect(within(freeInputCard()).getByRole("textbox", { name: /Answer/ })).toHaveAttribute("placeholder", "Enter a new ruling option");
+    expect(within(freeInputCard()).getByRole("textbox", { name: /Answer/ })).toHaveAttribute("placeholder", "Enter a new answer");
     expect(fundButton(freeInputCard())).toBeDisabled();
   });
 
@@ -1084,15 +1088,36 @@ describe("AppealSection: Escrow V1 appeal", () => {
 });
 
 describe("AppealSection: withdraw", () => {
+  const NOTHING = withdrawNothing("answer");
+  const WITHDRAWN: AppealPanel = { kind: "withdraw", state: { status: "nothing" }, noun: "answer" };
+  /** What remains after the first of AVAILABLE_WITHDRAW's two withdrawals. */
+  const REMAINING: AppealPanel = {
+    kind: "withdraw",
+    state: { status: "available", beneficiary: TEST_WALLET_ADDRESS, total: ETH / 4n, items: [{ dialect: "idr-v2", ruling: 2n, amount: ETH / 4n }] },
+    noun: "answer",
+  };
+
   it("shows the sum across rulings on the Withdraw button, in the chain's currency", async () => {
-    const panel = await renderSection(caseDispute({ kind: "withdraw", state: AVAILABLE_WITHDRAW }, { chainId: 100 }));
+    const panel = await renderSection(caseDispute({ kind: "withdraw", state: AVAILABLE_WITHDRAW, noun: "answer" }, { chainId: 100 }));
     expect(screen.getByRole("button", { name: `Withdraw ${formatEther(ETH / 2n)} ${testChain(100).currency}` })).toBeInTheDocument();
-    expect(panel).toHaveTextContent(WITHDRAW_ELIGIBLE);
+    expect(panel).toHaveTextContent(withdrawEligible("answer"));
     expect(panel).toHaveTextContent(/2 transactions/);
   });
 
   it.each([
-    ["with nothing to withdraw it explains why", { status: "nothing" }, true, WITHDRAW_NOTHING],
+    ["an answer", "answer", "If you have contributed to an answer and in the end that answer was the winner", "the answer you have contributed to did not win"],
+    ["a list", "list", "If you have contributed to a list and in the end that list was the winner", "the list you have contributed to did not win"],
+  ] as const)("names what was funded %s in the withdraw copy", async (_case, noun, eligible, nothing) => {
+    const available = await renderSection(caseDispute({ kind: "withdraw", state: AVAILABLE_WITHDRAW, noun }));
+    expect(available).toHaveTextContent(eligible);
+    expect(available).not.toHaveTextContent(/option/);
+    const empty = await renderSection(caseDispute({ kind: "withdraw", state: { status: "nothing" }, noun }));
+    expect(empty).toHaveTextContent(nothing);
+    expect(empty).not.toHaveTextContent(/option/);
+  });
+
+  it.each([
+    ["with nothing to withdraw it explains why", { status: "nothing" }, true, NOTHING],
     ["without a wallet it asks to connect one", { status: "no-account" }, false, /Connect a wallet/],
     [
       "an unreadable withdrawable amount says why",
@@ -1101,17 +1126,18 @@ describe("AppealSection: withdraw", () => {
       "The withdrawable amount could not be read.",
     ],
   ] as const)("%s, with no amount and no button", async (_case, state: WithdrawState, connected, shown) => {
-    const panel = await renderSection(caseDispute({ kind: "withdraw", state }), { connected });
+    const panel = await renderSection(caseDispute({ kind: "withdraw", state, noun: "answer" }), { connected });
     expect(panel).toHaveTextContent(shown);
     expect(panel).not.toHaveTextContent(/\d ETH/);
-    if (shown !== WITHDRAW_NOTHING) expect(panel).not.toHaveTextContent(WITHDRAW_NOTHING);
+    if (shown !== NOTHING) expect(panel).not.toHaveTextContent(NOTHING);
+    expect(panel).not.toHaveTextContent(/You withdrew/);
     expect(within(panel).queryByRole("button")).toBeNull();
   });
 
   it("withdraws every ruling in one sequence, one transaction each, with a refresh for the end", async () => {
     const user = userEvent.setup();
     writes.fake = fakeWriteController(TEST_SENT);
-    await renderSection(caseDispute({ kind: "withdraw", state: AVAILABLE_WITHDRAW }));
+    await renderSection(caseDispute({ kind: "withdraw", state: AVAILABLE_WITHDRAW, noun: "answer" }));
     await user.click(screen.getByRole("button", { name: "Withdraw 0.5 ETH" }));
     expect(await screen.findByText("Transaction confirmed (2 of 2)")).toBeInTheDocument();
     const [execution] = writes.fake.executions;
@@ -1122,13 +1148,64 @@ describe("AppealSection: withdraw", () => {
     ]);
     expect(execution?.options.onMined).toBeTypeOf("function");
   });
+
+  it("right after a withdrawal that leaves nothing, says what was withdrawn beside the confirmation instead of why there is nothing", async () => {
+    const user = userEvent.setup();
+    writes.fake = fakeWriteController(TEST_SENT);
+    const { container } = await renderReads([{ kind: "withdraw", state: AVAILABLE_WITHDRAW, noun: "answer" }, WITHDRAWN]);
+    await user.click(screen.getByRole("button", { name: "Withdraw 0.5 ETH" }));
+    expect(await screen.findByText("Transaction confirmed (2 of 2)")).toBeInTheDocument();
+
+    await nextRead(user);
+
+    expect(await screen.findByText("You withdrew 0.5 ETH.")).toBeInTheDocument();
+    expect(screen.getByText("Transaction confirmed (2 of 2)")).toBeInTheDocument();
+    expect(container).not.toHaveTextContent(NOTHING);
+    expect(screen.queryByRole("button", { name: /^Withdraw/ })).toBeNull();
+  });
+
+  it("after a withdrawal that stopped part way, shows the remaining amount and its button, not what was withdrawn", async () => {
+    const user = userEvent.setup();
+    writes.fake = fakeWriteController(TEST_SENT, [TEST_SENT, [{ phase: "pending" }, { phase: "rejected" }]]);
+    const { container } = await renderReads([{ kind: "withdraw", state: AVAILABLE_WITHDRAW, noun: "answer" }, REMAINING]);
+    await user.click(screen.getByRole("button", { name: "Withdraw 0.5 ETH" }));
+    await waitFor(() => {
+      expect(writes.fake?.executions).toHaveLength(1);
+    });
+    expect(await screen.findByText(/\(2 of 2\)$/)).toBeInTheDocument();
+
+    await nextRead(user);
+
+    expect(await screen.findByRole("button", { name: "Withdraw 0.25 ETH" })).toBeInTheDocument();
+    expect(container).toHaveTextContent(withdrawEligible("answer"));
+    expect(container).not.toHaveTextContent(/You withdrew/);
+  });
+
+  it("an emptied panel read for another account explains why there is nothing, not what the first account withdrew", async () => {
+    const user = userEvent.setup();
+    writes.fake = fakeWriteController(TEST_SENT);
+    const wallet = await createConnectedTestWallet();
+    const { container } = await renderReads([{ kind: "withdraw", state: AVAILABLE_WITHDRAW, noun: "answer" }, WITHDRAWN], wallet);
+    await user.click(screen.getByRole("button", { name: "Withdraw 0.5 ETH" }));
+    await nextRead(user);
+    expect(await screen.findByText("You withdrew 0.5 ETH.")).toBeInTheDocument();
+
+    act(() => {
+      wallet.changeAccount(TEST_WALLET_SECOND_ACCOUNT);
+    });
+
+    await waitFor(() => {
+      expect(container).toHaveTextContent(NOTHING);
+    });
+    expect(container).not.toHaveTextContent(/You withdrew/);
+  });
 });
 
 describe("AppealSection: wallet on another chain", () => {
   it.each([
     ["Fund", caseDispute(crowdfunding()), "Fund No", "Wrong network"],
     ["the Escrow V1 appeal", escrowDispute(), "Appeal - 1 ETH", "Wrong network"],
-    ["Withdraw", caseDispute({ kind: "withdraw", state: AVAILABLE_WITHDRAW }), "Withdraw 0.5 ETH", "Wrong network (1 of 2)"],
+    ["Withdraw", caseDispute({ kind: "withdraw", state: AVAILABLE_WITHDRAW, noun: "answer" }), "Withdraw 0.5 ETH", "Wrong network (1 of 2)"],
   ])("while the wallet's switch to the page chain waits, %s is refused visibly, sends nothing and shows the waiting switch", async (_path, dispute, button, title) => {
     const user = userEvent.setup();
     const wallet = holdChainSwitches(createTestWallet({ chainId: 100 }));

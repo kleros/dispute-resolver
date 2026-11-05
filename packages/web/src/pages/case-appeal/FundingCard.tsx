@@ -18,7 +18,7 @@ export function FundingCard({ card, actions, chain, isFundDisabled }: FundingCar
   return (
     <li className={CARD_ITEM_CLASS} aria-labelledby={titleId}>
       <Card className={card.isWinner ? `${CARD_CLASS} ${PLATE}` : CARD_CLASS}>
-        <div className="flex flex-col items-start gap-2">
+        <div className="flex min-w-0 flex-col items-start gap-2">
           <h4 id={titleId} className={CARD_TITLE_CLASS}>
             {card.title}
           </h4>

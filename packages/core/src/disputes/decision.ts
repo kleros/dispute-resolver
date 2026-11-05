@@ -72,7 +72,7 @@ export function buildDecision(input: {
   const fact = (ruling: bigint): RulingFact => ({ ruling, rulingText: formatRuling(ruling, rulingOptions, fallbackOutcomes) });
   const court = reads.currentRuling.value;
   if (dispute.period === 3) return succeed({ kind: "jury-decision", court: fact(court), note: appealNote(rules) });
-  return succeed(inExecution({ dispute, court, executed: input.executed, funded: input.fundedRulings, fact, noun: rules?.noun ?? "option" }));
+  return succeed(inExecution({ dispute, court, executed: input.executed, funded: input.fundedRulings, fact, noun: rules?.noun ?? "answer" }));
 }
 
 /**

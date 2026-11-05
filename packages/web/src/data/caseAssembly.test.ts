@@ -172,7 +172,7 @@ describe("case assembly", () => {
       IDR_V1,
       4,
       sectionReady(FAILED),
-      { status: "ready", value: { kind: "withdraw", state: WITHDRAW } },
+      { status: "ready", value: { kind: "withdraw", state: WITHDRAW, noun: "answer" } },
     ],
     [
       "an arbitrable that handles its own appeals says so even when its meta-evidence failed to load",
@@ -197,12 +197,20 @@ describe("case assembly", () => {
     [
       "gives the appeal times of a product it recognised",
       sectionReady(true),
-      { kind: "handled-by-arbitrable", terms: { noun: "option", tie: null, appealPeriodEnd: 4_000_000_000, loserDeadline: 2_850_000_000 } },
+      { kind: "handled-by-arbitrable", terms: { noun: "answer", tie: null, appealPeriodEnd: 4_000_000_000, loserDeadline: 2_850_000_000 } },
     ],
     ["gives no times for an arbitrable it did not recognise", sectionReady(false), { kind: "handled-by-arbitrable" }],
     ["gives no times when the arbitrable could not be checked", sectionUnavailable("no-rpc", "No read RPC."), { kind: "handled-by-arbitrable" }],
   ])("a view-only dispute in the appeal period %s", (_name, productRecognised, panel) => {
     expect(assembleAppealPanel(readsWith(VIEW_ONLY, 3, sectionReady(testOkMetaEvidence()), { productRecognised }))).toEqual({ status: "ready", value: panel });
+  });
+
+  it("gives no appeal card to a reserved answer above the dispute's number of choices, which jurors cannot vote", () => {
+    const rulingOptions = { type: "single-select", titles: ["Yes", "No"], reserved: { "0x3": "Withdrawn" } } as const;
+    const panel = assembleAppealPanel(readsWith(testFamily(), 3, sectionReady(testOkMetaEvidence({ rulingOptions }))));
+    if (panel.status !== "ready" || panel.value.kind !== "crowdfunding") throw new Error("The dispute has no appeal cards.");
+    expect(panel.value.cards.map((card) => card.code)).toEqual([0n, 1n, 2n]);
+    expect(panel.value.cards.map((card) => card.title)).not.toContain("Withdrawn");
   });
 
   it("holds a view-only dispute's appeal notice while its arbitrable is checked, so no line appears after it", () => {

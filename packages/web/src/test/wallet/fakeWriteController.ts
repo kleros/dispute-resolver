@@ -21,7 +21,10 @@ function isOutcome(status: WriteStatus): status is WriteOutcome {
 export interface FakeWriteController {
   /** A `useWrite` replacement, for `vi.mock` of the wallet index: `useWrite: () => fake.useWrite()`. */
   useWrite(): WriteController;
-  /** A `useWriteSequence` replacement: plays the script once per build and stops at the first outcome other than `mined`. */
+  /**
+   * A `useWriteSequence` replacement: plays the script once per build (build i's own script when one is given) and stops
+   * at the first outcome other than `mined`.
+   */
   useWriteSequence(): WriteSequenceController;
   readonly executions: { readonly builds: readonly WriteBuild[]; readonly options: WriteOptions }[];
 }
@@ -42,9 +45,10 @@ async function play(script: readonly WriteStatus[], options: WriteOptions, repor
 /**
  * Drives every `WriteStatus` without a wallet: each `execute` plays `script` (for example pending → submitted → mined)
  * and resolves with its last status, which must be an outcome. `onMined` runs before a `mined` status is shown, as in
- * the real hook.
+ * the real hook; a sequence runs it once, after its last mined build, as the real one does. `buildScripts[i]`, when
+ * given, replaces `script` for a sequence's build i.
  */
-export function fakeWriteController(script: readonly WriteStatus[]): FakeWriteController {
+export function fakeWriteController(script: readonly WriteStatus[], buildScripts: readonly (readonly WriteStatus[])[] = []): FakeWriteController {
   const executions: { builds: readonly WriteBuild[]; options: WriteOptions }[] = [];
 
   function useWrite(): WriteController {
@@ -64,9 +68,10 @@ export function fakeWriteController(script: readonly WriteStatus[]): FakeWriteCo
     const execute = useCallback(async (builds: readonly WriteBuild[], writeOptions: WriteOptions) => {
       executions.push({ builds, options: writeOptions });
       let outcome: WriteOutcome = { phase: "refused", refusal: "withdraw-unsupported" };
+      let lastMined: Extract<WriteOutcome, { readonly phase: "mined" }> | null = null;
       for (const index of builds.keys()) {
         outcome = await play(
-          script,
+          buildScripts[index] ?? script,
           writeOptions,
           (current) => {
             setStatus({ index, total: builds.length, current });
@@ -74,8 +79,9 @@ export function fakeWriteController(script: readonly WriteStatus[]): FakeWriteCo
           false,
         );
         if (outcome.phase !== "mined") break;
+        lastMined = outcome;
       }
-      if (outcome.phase === "mined") await writeOptions.onMined?.(outcome.receipt);
+      if (lastMined !== null) await writeOptions.onMined?.(lastMined.receipt);
       return outcome;
     }, []);
     const reset = useCallback(() => {

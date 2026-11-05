@@ -193,6 +193,7 @@ export function assembleAppealPanel(reads: FoundCaseReads): SectionData<AppealPa
       override: reads.override,
       rulingOptions: rulingOptions ?? NO_RULING_OPTIONS,
       fallbackOutcomes,
+      numberOfChoices: reads.lookup.dispute.numberOfChoices,
       currentRuling: details.value.currentRuling,
       appealInfo: details.value.appealInfo,
       multipliers,

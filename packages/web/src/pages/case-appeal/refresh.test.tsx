@@ -7,9 +7,9 @@ import { useCase } from "../../data";
 import { createTestDeps, testCourt, testDetails, testDisputeEvent, testEvidenceList, testFamily, testFoundLookup, testOkMetaEvidence } from "../../test/data";
 import { testPageChain } from "../../test/routing";
 import { renderWithProviders } from "../../test/shell";
-import { TEST_SENT, createConnectedTestWallet, fakeWriteController, type FakeWriteController } from "../../test/wallet";
+import { TEST_SENT, TEST_WALLET_ADDRESS, createConnectedTestWallet, fakeWriteController, type FakeWriteController } from "../../test/wallet";
 import { AppealSection } from "./AppealSection";
-import { FEES_UNAVAILABLE_TITLE, WITHDRAW_NOTHING } from "./copy";
+import { FEES_UNAVAILABLE_TITLE, withdrawNothing } from "./copy";
 
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../../test/data/mockCoreReads")).mockCoreReads(importOriginal));
 
@@ -25,7 +25,8 @@ vi.mock("../../wallet", async (importOriginal) => {
 });
 
 const ETH = 10n ** 18n;
-const ACCOUNT: Address = "0x1111111111111111111111111111111111111111";
+/** The connected test wallet, as the case page reads the withdrawable amount for the wallet's account. */
+const ACCOUNT: Address = TEST_WALLET_ADDRESS;
 const EVIDENCE = testEvidenceList();
 const FOUND_EVENT: Outcome<DisputeEventResult> = { ok: true, value: testDisputeEvent() };
 const NO_FUNDING: Outcome<RoundFunding> = { ok: true, value: { round: 0n, contributions: [], fundedRulings: [] } };
@@ -120,20 +121,51 @@ describe("AppealSection refresh after a mined write", () => {
     });
   });
 
-  it("after the mined withdrawals the panel shows nothing withdrawable", async () => {
+  it("after the mined withdrawals that leave nothing, the panel says what was withdrawn, in a live region already on the page, and offers no button", async () => {
     const user = userEvent.setup();
     programReads(4);
     const { container } = await renderCase();
     const button = await screen.findByRole("button", { name: "Withdraw 1 ETH" });
+    const region = container.querySelector('p[aria-live="polite"]');
+    expect(region).toBeEmptyDOMElement();
     vi.mocked(core.readWithdrawable).mockResolvedValue({ status: "nothing" });
 
     await user.click(button);
 
-    await waitFor(() => {
-      expect(container).toHaveTextContent(WITHDRAW_NOTHING);
-    });
+    expect(await screen.findByText("You withdrew 1 ETH.")).toBe(region);
+    expect(screen.getByText("Transaction confirmed")).toBeInTheDocument();
+    expect(container).not.toHaveTextContent(withdrawNothing("answer"));
     expect(screen.queryByRole("button", { name: /^Withdraw/ })).toBeNull();
     expect(core.readWithdrawable).toHaveBeenCalledTimes(2);
+  });
+
+  it("after a withdrawal that stops part way, the panel shows the refreshed remaining amount and its button", async () => {
+    const user = userEvent.setup();
+    writes.fake = fakeWriteController(TEST_SENT, [TEST_SENT, [{ phase: "pending" }, { phase: "rejected" }]]);
+    programReads(4);
+    vi.mocked(core.readWithdrawable).mockResolvedValue({
+      status: "available",
+      beneficiary: ACCOUNT,
+      total: ETH + ETH / 2n,
+      items: [
+        { dialect: "idr-v2", ruling: 1n, amount: ETH },
+        { dialect: "idr-v2", ruling: 2n, amount: ETH / 2n },
+      ],
+    });
+    const { container } = await renderCase();
+    const button = await screen.findByRole("button", { name: "Withdraw 1.5 ETH" });
+    vi.mocked(core.readWithdrawable).mockResolvedValue({
+      status: "available",
+      beneficiary: ACCOUNT,
+      total: ETH / 2n,
+      items: [{ dialect: "idr-v2", ruling: 2n, amount: ETH / 2n }],
+    });
+
+    await user.click(button);
+
+    expect(await screen.findByRole("button", { name: "Withdraw 0.5 ETH" })).toBeInTheDocument();
+    expect(core.readWithdrawable).toHaveBeenCalledTimes(2);
+    expect(container).not.toHaveTextContent(/You withdrew/);
   });
 });
 

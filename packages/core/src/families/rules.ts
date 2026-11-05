@@ -12,8 +12,7 @@ const ROUTES: Readonly<Record<ProbedFamily, AppealRoute>> = {
 };
 
 function noun(family: FamilyDetection): RulingNoun {
-  if (family.writeFamily === "governor") return "list";
-  return family.family === "reality-proxy" ? "answer" : "option";
+  return family.writeFamily === "governor" ? "list" : "answer";
 }
 
 function tieDialect(registry: Registry, family: FamilyDetection, route: AppealRoute): TieDialect | null {

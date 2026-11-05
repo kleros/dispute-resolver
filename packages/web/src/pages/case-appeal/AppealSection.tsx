@@ -79,7 +79,7 @@ function PanelBody({ panel, actions, chain, onRetry, currentTitle }: PanelBodyPr
         </div>
       );
     case "withdraw":
-      return <WithdrawPanel state={panel.state} actions={actions} chain={chain} />;
+      return <WithdrawPanel state={panel.state} noun={panel.noun} actions={actions} chain={chain} />;
     case "withdraw-unsupported":
       return (
         <>

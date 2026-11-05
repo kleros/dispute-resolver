@@ -2,7 +2,7 @@ import type { AppealPanel, ChainConfig, CrowdfundingCard } from "@dispute-resolv
 import { Notice, useNowSeconds } from "../../ui";
 import { useWriteAccess } from "../../wallet";
 import { ComposerCard } from "./ComposerCard";
-import { APPEAL_HEADING, CROWDFUNDING_EXPLANATION, FUND_NEEDS_WALLET, REWARDS_BODY, REWARDS_TITLE, fundingTimesLine } from "./copy";
+import { APPEAL_HEADING, CROWDFUNDING_EXPLANATION, FUND_NEEDS_WALLET, REWARDS_TITLE, fundingTimesLine, rewardsBody } from "./copy";
 import { FreeInputCard } from "./FreeInputCard";
 import { FundingCard } from "./FundingCard";
 import { BODY_TEXT_CLASS } from "./styles";
@@ -38,7 +38,7 @@ export function CrowdfundingPanel({ panel, actions, chain }: CrowdfundingPanelPr
         <p className={BODY_TEXT_CLASS}>{CROWDFUNDING_EXPLANATION}</p>
         <p className={`${BODY_TEXT_CLASS} [overflow-wrap:anywhere]`}>{fundingTimesLine(panel.terms, currentTitle, nowSeconds)}</p>
       </div>
-      <Notice variant="info" title={REWARDS_TITLE} body={REWARDS_BODY} />
+      <Notice variant="info" title={REWARDS_TITLE} body={rewardsBody(panel.terms.noun)} />
       {needsWallet ? <p className={BODY_TEXT_CLASS}>{FUND_NEEDS_WALLET}</p> : null}
       <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Rulings to fund">
         {keyedCards(panel.cards).map(({ key, card }) => (

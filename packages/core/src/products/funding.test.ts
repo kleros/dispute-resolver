@@ -215,6 +215,7 @@ function appealPanel(kase: ProductCase, family: FamilyDetection) {
     override: undefined,
     rulingOptions: { type: "single-select" },
     fallbackOutcomes: null,
+    numberOfChoices: 2n,
     currentRuling: { ok: true, value: BigInt(court.currentRuling) },
     appealInfo: { ok: true, value: { appealCost: 0n, appealPeriodStart: court.appealPeriodStart, appealPeriodEnd: court.appealPeriodEnd } },
     multipliers: null,
@@ -253,7 +254,7 @@ describe("recogniseProduct", () => {
     expect(requests.calls.filter((call) => ROUND_READS.some((selector) => call.includes(selector)))).toEqual([]);
     expect(requests.methods.filter((method) => method === "eth_getStorageAt")).toHaveLength(kase.storage.length);
     const appealPeriodEnd = kase.court?.appealPeriodEnd;
-    expect(appealPanel(kase, family)).toStrictEqual({ kind: "handled-by-arbitrable", terms: { noun: "option", tie, appealPeriodEnd, loserDeadline } });
+    expect(appealPanel(kase, family)).toStrictEqual({ kind: "handled-by-arbitrable", terms: { noun: "answer", tie, appealPeriodEnd, loserDeadline } });
   });
 
   it.each<[string, ProductCase]>([

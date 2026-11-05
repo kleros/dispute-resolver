@@ -1,21 +1,29 @@
-import { NONE_OF_THE_OPTIONS_TEXT, REFUSED_RULING_TEXT, type MetaEvidenceResult } from "@dispute-resolver/core";
+import { NONE_OF_THE_OPTIONS_TEXT, REFUSED_RULING_TEXT, type DisputeLookup, type MetaEvidenceResult } from "@dispute-resolver/core";
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { CaseDispute, SectionData } from "../../data";
-import { TestDataProvider, sectionLoading, sectionReady, testCaseDispute, testChain, testFoundLookup, testOkMetaEvidence } from "../../test/data";
+import { TestDataProvider, sectionLoading, sectionReady, sectionUnavailable, testCaseDispute, testChain, testFoundLookup, testOkMetaEvidence } from "../../test/data";
 import { testMetaEvidence } from "../../test/safe-content";
 import { QuestionPanel } from "./QuestionPanel";
 
 const GNOSIS = testChain(100);
+const MAX_UINT256 = 2n ** 256n - 1n;
+const ANSWERED_TOO_SOON = `0x${"f".repeat(64)}`;
 
-function caseDispute(metaEvidence: SectionData<MetaEvidenceResult>): CaseDispute {
-  return testCaseDispute({ chainId: 100, disputeId: 12n, lookup: sectionReady(testFoundLookup({ chainId: 100, disputeId: 12n })), metaEvidence });
+/** The arbitrator's dispute 12 on Gnosis, with `numberOfChoices` choices (2 by default, as for Yes and No). */
+function foundLookup(numberOfChoices?: bigint): SectionData<DisputeLookup> {
+  const found = testFoundLookup({ chainId: 100, disputeId: 12n });
+  return sectionReady(numberOfChoices === undefined ? found : { ...found, dispute: { ...found.dispute, numberOfChoices } });
 }
 
-function renderPanel(metaEvidence: SectionData<MetaEvidenceResult>) {
+function caseDispute(metaEvidence: SectionData<MetaEvidenceResult>, lookup: SectionData<DisputeLookup> = foundLookup()): CaseDispute {
+  return testCaseDispute({ chainId: 100, disputeId: 12n, lookup, metaEvidence });
+}
+
+function renderPanel(metaEvidence: SectionData<MetaEvidenceResult>, lookup?: SectionData<DisputeLookup>) {
   return render(
     <TestDataProvider>
-      <QuestionPanel dispute={caseDispute(metaEvidence)} chain={GNOSIS} />
+      <QuestionPanel dispute={caseDispute(metaEvidence, lookup)} chain={GNOSIS} />
     </TestDataProvider>,
   );
 }
@@ -72,6 +80,53 @@ describe("QuestionPanel", () => {
     expect(red.querySelector(".order-last")).toBeNull();
     expect(within(red).getByText("Red")).toHaveClass("font-semibold", "text-base");
     expect(red.textContent).not.toContain(" - ");
+  });
+
+  it("leaves out a reserved answer the contract does not accept and says so in one line between the list and the Court note", () => {
+    renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: { type: "single-select", titles: ["Yes", "No"], reserved: { "0x3": "Withdrawn" } } })));
+    expect(optionLines()).toEqual([`Option 0 - ${REFUSED_RULING_TEXT}`, "Option 1 - Yes", "Option 2 - No"]);
+    const line = screen.getByText("The case's description also lists an answer the contract does not accept, so it is not shown.");
+    const list = screen.getByRole("list");
+    const note = screen.getByRole("link", { name: "Court" }).closest("p");
+    if (note === null) throw new Error("The Court note is missing");
+    expect(list.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(line.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("keeps the reserved answers the dispute's choices reach, a code equal to the number of choices included", () => {
+    const reserved = { "0x5": "Withdrawn", "0x9": "Too late", "0x10": "Spam" };
+    renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: { type: "multiple-select", titles: ["Red", "Green"], reserved } })), foundLookup(9n));
+    expect(optionLines()).toEqual([
+      `Option 0 - ${REFUSED_RULING_TEXT}`,
+      `Option 1 - ${NONE_OF_THE_OPTIONS_TEXT}`,
+      "Red",
+      "Green",
+      "Option 0x5 - Withdrawn",
+      "Option 0x9 - Too late",
+    ]);
+    expect(screen.getByText("The case's description also lists an answer the contract does not accept, so it is not shown.")).toBeInTheDocument();
+  });
+
+  it("counts several left-out reserved answers in the line", () => {
+    renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: { type: "single-select", titles: ["Yes", "No"], reserved: { "0x3": "Withdrawn", "0x4": "Spam" } } })));
+    expect(optionLines()).toHaveLength(3);
+    expect(screen.getByText("The case's description also lists 2 answers the contract does not accept, so they are not shown.")).toBeInTheDocument();
+  });
+
+  it("keeps Answered Too Soon on a dispute whose choices span the whole uint256 range, as a Reality proxy's do, with no line", () => {
+    const options = { type: "multiple-select", titles: ["Red", "Blue"], reserved: { [ANSWERED_TOO_SOON]: "Answered Too Soon" } } as const;
+    renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: options })), foundLookup(MAX_UINT256));
+    expect(optionLines().at(-1)).toBe("Option 0xffff...ffffff - Answered Too Soon");
+    expect(screen.queryByText(/does not accept/)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["while the dispute is read", sectionLoading],
+    ["when the dispute could not be read", sectionUnavailable("rpc-error", "The dispute could not be read.")],
+  ] as const)("shows every reserved answer the description lists, with no line, %s", (_case, lookup: SectionData<DisputeLookup>) => {
+    renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: { type: "single-select", titles: ["Yes", "No"], reserved: { "0x3": "Withdrawn" } } })), lookup);
+    expect(optionLines().at(-1)).toBe("Option 0x3 - Withdrawn");
+    expect(screen.queryByText(/does not accept/)).not.toBeInTheDocument();
   });
 
   it("keeps a non-select question to its question and type line", () => {

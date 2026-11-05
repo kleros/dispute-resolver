@@ -3,7 +3,7 @@ import { losingDeadline, losingSideDeadline } from "./index";
 import type { AppealPanel, FundingTerms } from "./types";
 
 const END = 2_000_000;
-const TERMS: FundingTerms = { noun: "option", tie: null, appealPeriodEnd: END, loserDeadline: 1_500_000 };
+const TERMS: FundingTerms = { noun: "answer", tie: null, appealPeriodEnd: END, loserDeadline: 1_500_000 };
 
 describe("losingDeadline", () => {
   it("gives the losing rulings their own earlier time", () => {
@@ -69,7 +69,7 @@ describe("losingSideDeadline", () => {
     ["an arbitrable that cannot be appealed", { kind: "not-appealable" }],
     ["an escrow appeal", { kind: "escrow-appeal", appealCost: 1n, deadline: END }],
     ["an escrow appeal that ended", { kind: "escrow-ended" }],
-    ["withdrawals", { kind: "withdraw", state: { status: "nothing" } }],
+    ["withdrawals", { kind: "withdraw", state: { status: "nothing" }, noun: "answer" }],
     ["withdrawals this app does not support", { kind: "withdraw-unsupported" }],
   ])("gives no losing side's time for %s", (_case, panel) => {
     expect(losingSideDeadline(panel)).toBeNull();

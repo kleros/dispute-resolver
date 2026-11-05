@@ -253,7 +253,7 @@ describe("useCase", () => {
       roundStartBlocks: [100n, 500n],
     });
     expect(core.readMultipliers).not.toHaveBeenCalled();
-    expect(current.appealPanel).toEqual({ status: "ready", value: { kind: "withdraw", state: { status: "nothing" } } });
+    expect(current.appealPanel).toEqual({ status: "ready", value: { kind: "withdraw", state: { status: "nothing" }, noun: "answer" } });
   });
 
   it("reads a governor's withdrawable amount again for the session of a Dispute event that recovers", async () => {
@@ -266,12 +266,12 @@ describe("useCase", () => {
     const client = createTestQueryClient();
     const { result } = renderCase(1n, { account: ACCOUNT, client });
     const failed = await settledCase(result);
-    expect(failed.appealPanel).toEqual({ status: "ready", value: { kind: "withdraw", state: { status: "unavailable", error: UNKNOWN_SESSION } } });
+    expect(failed.appealPanel).toEqual({ status: "ready", value: { kind: "withdraw", state: { status: "unavailable", error: UNKNOWN_SESSION }, noun: "list" } });
 
     vi.mocked(core.readDisputeEvent).mockResolvedValue(FOUND_EVENT);
     await act(() => client.invalidateQueries({ queryKey: queryKeys.disputeEvent(1, 1n, testFoundLookup().binding.arbitrated) }));
     await waitFor(() => {
-      expect(caseDispute(result.current).appealPanel).toEqual({ status: "ready", value: { kind: "withdraw", state: { status: "nothing" } } });
+      expect(caseDispute(result.current).appealPanel).toEqual({ status: "ready", value: { kind: "withdraw", state: { status: "nothing" }, noun: "list" } });
     });
     expect(core.readWithdrawable).toHaveBeenLastCalledWith(expect.objectContaining({ family: governorFamily, evidenceGroupId: 3n }), {
       beneficiary: ACCOUNT,
