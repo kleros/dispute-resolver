@@ -1,0 +1,517 @@
+{
+  "description": "Recognition reads of the product readers at a block inside each dispute's appeal period (period 3), one block per case: the eth_call answers up to the funding read (only the output fields the readers read; every other output is zero) and the eth_getStorageAt words they read, never the funding itself. `court` is KlerosLiquid's appealPeriod and currentRuling of the dispute at that block. Mainnet: Proof of Humanity v1 1646 (ruling 1) and 1644 (ruling 0); T2CR token list 38 (ruling 1); Generalized TCR 344 on 0x7884 (ruling 0). Gnosis: Proof of Humanity v2 1052 (ruling 2) and 1045 (ruling 0); Light Curate clones 1050 and 1051 (ruling 2) and 939 in its second appeal round (ruling 0); Linguo 83, on which every reader's first call reverts.",
+  "chains": [
+    {
+      "chainId": 1,
+      "readAtBlock": 20766530,
+      "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
+      "cases": [
+        {
+          "label": "poh-v1 1646",
+          "arbitrable": "0xc5e9ddebb09cd64dfacab4011a0d5cedaf7c9bdb",
+          "disputeId": "1646",
+          "court": {
+            "appealPeriodStart": 1726457255,
+            "appealPeriodEnd": 1726748855,
+            "currentRuling": "1"
+          },
+          "calls": {
+            "poh-v1": [
+              {
+                "fn": "arbitratorDisputeIDToDisputeData",
+                "args": ["0x988b3a538b618c7a603e1c11ab82cd16dbe28069", "1646"],
+                "values": {
+                  "challengeID": "0",
+                  "submissionID": "0x20d0e09a5df5ca56e0446581b00ea049a1dd1df7"
+                }
+              },
+              {
+                "fn": "getSubmissionInfo",
+                "args": ["0x20d0e09a5df5ca56e0446581b00ea049a1dd1df7"],
+                "values": {
+                  "numberOfRequests": "1"
+                }
+              },
+              {
+                "fn": "getChallengeInfo",
+                "args": ["0x20d0e09a5df5ca56e0446581b00ea049a1dd1df7", "0", "0"],
+                "values": {
+                  "lastRoundID": "1",
+                  "disputeID": "1646"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0x20d0e09a5df5ca56e0446581b00ea049a1dd1df7", "0"],
+                "values": {
+                  "lastChallengeID": "1",
+                  "arbitratorDataID": "5"
+                }
+              },
+              {
+                "fn": "arbitratorDataList",
+                "args": ["5"],
+                "values": {
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "readAtBlock": 19764111,
+      "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
+      "cases": [
+        {
+          "label": "poh-v1 1644",
+          "arbitrable": "0xc5e9ddebb09cd64dfacab4011a0d5cedaf7c9bdb",
+          "disputeId": "1644",
+          "court": {
+            "appealPeriodStart": 1714358807,
+            "appealPeriodEnd": 1714650407,
+            "currentRuling": "0"
+          },
+          "calls": {
+            "poh-v1": [
+              {
+                "fn": "arbitratorDisputeIDToDisputeData",
+                "args": ["0x988b3a538b618c7a603e1c11ab82cd16dbe28069", "1644"],
+                "values": {
+                  "challengeID": "0",
+                  "submissionID": "0xede0c0af46ec77ea4d4c687951d0719819c48bc7"
+                }
+              },
+              {
+                "fn": "getSubmissionInfo",
+                "args": ["0xede0c0af46ec77ea4d4c687951d0719819c48bc7"],
+                "values": {
+                  "numberOfRequests": "1"
+                }
+              },
+              {
+                "fn": "getChallengeInfo",
+                "args": ["0xede0c0af46ec77ea4d4c687951d0719819c48bc7", "0", "0"],
+                "values": {
+                  "lastRoundID": "1",
+                  "disputeID": "1644"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0xede0c0af46ec77ea4d4c687951d0719819c48bc7", "0"],
+                "values": {
+                  "lastChallengeID": "1",
+                  "arbitratorDataID": "5"
+                }
+              },
+              {
+                "fn": "arbitratorDataList",
+                "args": ["5"],
+                "values": {
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "chainId": 100,
+      "readAtBlock": 49024235,
+      "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
+      "cases": [
+        {
+          "label": "poh-v2 1052",
+          "arbitrable": "0xa4ac94c4fa65bb352efa30e3408e64f72ac857bc",
+          "disputeId": "1052",
+          "court": {
+            "appealPeriodStart": 1793334605,
+            "appealPeriodEnd": 1793529005,
+            "currentRuling": "2"
+          },
+          "calls": {
+            "poh-v2": [
+              {
+                "fn": "disputeIdToData",
+                "args": ["0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002", "1052"],
+                "values": {
+                  "requestId": "0",
+                  "challengeId": "1",
+                  "humanityId": "0xaa08e4c97435505fd50608f91e92c68aa0c2a044"
+                }
+              },
+              {
+                "fn": "arbitratorDataHistory",
+                "args": ["4"],
+                "values": {
+                  "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002"
+                }
+              }
+            ]
+          },
+          "storage": [
+            {
+              "slot": "0xb61d680cc2d0e639a28f48101856aa4577ce16383ad7e621cfb0c9c7a1b8274d",
+              "word": "0x0000000000000000000000000000000000000000000000000000000000000001"
+            },
+            {
+              "slot": "0xe832f4c58a583a5f37fe55380bec60322de0a34e21917a04db7caac81ff73bfd",
+              "word": "0xaa08e4c97435505fd50608f91e92c68aa0c2a044000000000002000406020200"
+            },
+            {
+              "slot": "0x3629090fe874cca8cebf363bbae2c66f9e47eb97ad23be6100310170e3232c9f",
+              "word": "0x0000000000000000002f708780e5e22701c40d563e81b96807dcc8b9d9000001"
+            },
+            {
+              "slot": "0x3629090fe874cca8cebf363bbae2c66f9e47eb97ad23be6100310170e3232ca0",
+              "word": "0x000000000000000000000000000000000000000000000000000000000000041c"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chainId": 100,
+      "readAtBlock": 48845188,
+      "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
+      "cases": [
+        {
+          "label": "poh-v2 1045",
+          "arbitrable": "0xa4ac94c4fa65bb352efa30e3408e64f72ac857bc",
+          "disputeId": "1045",
+          "court": {
+            "appealPeriodStart": 1792408205,
+            "appealPeriodEnd": 1792602605,
+            "currentRuling": "0"
+          },
+          "calls": {
+            "poh-v2": [
+              {
+                "fn": "disputeIdToData",
+                "args": ["0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002", "1045"],
+                "values": {
+                  "requestId": "0",
+                  "challengeId": "0",
+                  "humanityId": "0x7ab05e1aae85e115c1c15c38de416ecc5e28df20"
+                }
+              },
+              {
+                "fn": "arbitratorDataHistory",
+                "args": ["4"],
+                "values": {
+                  "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002"
+                }
+              }
+            ]
+          },
+          "storage": [
+            {
+              "slot": "0x9a93d4803b21a92324cd2df002944680dd09f70b81f40961d0e1a91e414bc43b",
+              "word": "0x0000000000000000000000000000000000000000000000000000000000000001"
+            },
+            {
+              "slot": "0x1b2537861c1f97faa436a7f33258be372e378b9ff724264998cdea93bbc11474",
+              "word": "0x7ab05e1aae85e115c1c15c38de416ecc5e28df20000000000001000401010200"
+            },
+            {
+              "slot": "0x57b761e690f116d1eb3de8df020972b6cf358e8daeb11c3fe4acbc026eb1b5e1",
+              "word": "0x000000000000000000d0203468e89e9c9cc5e1f9011e5a7efb3bf841b0000001"
+            },
+            {
+              "slot": "0x57b761e690f116d1eb3de8df020972b6cf358e8daeb11c3fe4acbc026eb1b5e2",
+              "word": "0x0000000000000000000000000000000000000000000000000000000000000415"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chainId": 100,
+      "readAtBlock": 49010000,
+      "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
+      "cases": [
+        {
+          "label": "light 1050",
+          "arbitrable": "0x66260c69d03837016d88c9877e61e08ef74c59f2",
+          "disputeId": "1050",
+          "court": {
+            "appealPeriodStart": 1793291405,
+            "appealPeriodEnd": 1793485805,
+            "currentRuling": "2"
+          },
+          "calls": {
+            "light": [
+              {
+                "fn": "arbitratorDisputeIDToItemID",
+                "args": ["0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002", "1050"],
+                "values": {
+                  "key": "0xefc12422c5c14c0f81486281f02779627941563f82751e1111eaf94732a831a0"
+                }
+              },
+              {
+                "fn": "getItemInfo",
+                "args": ["0xefc12422c5c14c0f81486281f02779627941563f82751e1111eaf94732a831a0"],
+                "values": {
+                  "status": "2",
+                  "numberOfRequests": "1"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0xefc12422c5c14c0f81486281f02779627941563f82751e1111eaf94732a831a0", "0"],
+                "values": {
+                  "disputed": true,
+                  "disputeID": "1050",
+                  "numberOfRounds": "2",
+                  "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "chainId": 100,
+      "readAtBlock": 49020000,
+      "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
+      "cases": [
+        {
+          "label": "light 1051",
+          "arbitrable": "0xee1502e29795ef6c2d60f8d7120596abe3bad990",
+          "disputeId": "1051",
+          "court": {
+            "appealPeriodStart": 1793358605,
+            "appealPeriodEnd": 1793553005,
+            "currentRuling": "2"
+          },
+          "calls": {
+            "light": [
+              {
+                "fn": "arbitratorDisputeIDToItemID",
+                "args": ["0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002", "1051"],
+                "values": {
+                  "key": "0x3283540efb13eb1f8d0fc85d8113aa8bf55a34d27c8280aef58955585f1c9e4e"
+                }
+              },
+              {
+                "fn": "getItemInfo",
+                "args": ["0x3283540efb13eb1f8d0fc85d8113aa8bf55a34d27c8280aef58955585f1c9e4e"],
+                "values": {
+                  "status": "2",
+                  "numberOfRequests": "1"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0x3283540efb13eb1f8d0fc85d8113aa8bf55a34d27c8280aef58955585f1c9e4e", "0"],
+                "values": {
+                  "disputed": true,
+                  "disputeID": "1051",
+                  "numberOfRounds": "2",
+                  "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "chainId": 100,
+      "readAtBlock": 47935500,
+      "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
+      "cases": [
+        {
+          "label": "light 939",
+          "arbitrable": "0x66260c69d03837016d88c9877e61e08ef74c59f2",
+          "disputeId": "939",
+          "court": {
+            "appealPeriodStart": 1787806220,
+            "appealPeriodEnd": 1788000620,
+            "currentRuling": "0"
+          },
+          "calls": {
+            "light": [
+              {
+                "fn": "arbitratorDisputeIDToItemID",
+                "args": ["0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002", "939"],
+                "values": {
+                  "key": "0xd4ddab270792dca04fdf7470f9ba30fac3553b898ad474bf3160feff17149d1a"
+                }
+              },
+              {
+                "fn": "getItemInfo",
+                "args": ["0xd4ddab270792dca04fdf7470f9ba30fac3553b898ad474bf3160feff17149d1a"],
+                "values": {
+                  "status": "2",
+                  "numberOfRequests": "1"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0xd4ddab270792dca04fdf7470f9ba30fac3553b898ad474bf3160feff17149d1a", "0"],
+                "values": {
+                  "disputed": true,
+                  "disputeID": "939",
+                  "numberOfRounds": "3",
+                  "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "readAtBlock": 7573700,
+      "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
+      "cases": [
+        {
+          "label": "atl 38",
+          "arbitrable": "0xebcf3bca271b26ae4b162ba560e243055af0e679",
+          "disputeId": "38",
+          "court": {
+            "appealPeriodStart": 1555346869,
+            "appealPeriodEnd": 1555649269,
+            "currentRuling": "1"
+          },
+          "calls": {
+            "atl": [
+              {
+                "fn": "arbitratorDisputeIDToTokenID",
+                "args": ["0x988b3a538b618c7a603e1c11ab82cd16dbe28069", "38"],
+                "values": {
+                  "key": "0xebb1c4e63b1d7833240688bd1ba6449c4c25a84025183d6743a831761431e829"
+                }
+              },
+              {
+                "fn": "getTokenInfo",
+                "args": ["0xebb1c4e63b1d7833240688bd1ba6449c4c25a84025183d6743a831761431e829"],
+                "values": {
+                  "status": "2",
+                  "numberOfRequests": "1"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0xebb1c4e63b1d7833240688bd1ba6449c4c25a84025183d6743a831761431e829", "0"],
+                "values": {
+                  "disputed": true,
+                  "disputeID": "38",
+                  "numberOfRounds": "2",
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "readAtBlock": 10724650,
+      "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069",
+      "cases": [
+        {
+          "label": "gtcr 344",
+          "arbitrable": "0x7884a7adf697e18357087fe8f994669042af4ae9",
+          "disputeId": "344",
+          "court": {
+            "appealPeriodStart": 1598292161,
+            "appealPeriodEnd": 1598486561,
+            "currentRuling": "0"
+          },
+          "calls": {
+            "gtcr": [
+              {
+                "fn": "arbitratorDisputeIDToItem",
+                "args": ["0x988b3a538b618c7a603e1c11ab82cd16dbe28069", "344"],
+                "values": {
+                  "key": "0xe002c7e1080513e23b26d74ab1c35226fa64af885b51ad19d42ea00b3420a6ab"
+                }
+              },
+              {
+                "fn": "getItemInfo",
+                "args": ["0xe002c7e1080513e23b26d74ab1c35226fa64af885b51ad19d42ea00b3420a6ab"],
+                "values": {
+                  "status": "2",
+                  "numberOfRequests": "1"
+                }
+              },
+              {
+                "fn": "getRequestInfo",
+                "args": ["0xe002c7e1080513e23b26d74ab1c35226fa64af885b51ad19d42ea00b3420a6ab", "0"],
+                "values": {
+                  "disputed": true,
+                  "disputeID": "344",
+                  "numberOfRounds": "2",
+                  "arbitrator": "0x988b3a538b618c7a603e1c11ab82cd16dbe28069"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "chainId": 100,
+      "readAtBlock": 27099600,
+      "arbitrator": "0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002",
+      "cases": [
+        {
+          "label": "linguo 83",
+          "arbitrable": "0xa2bfff0553de7405781fe0c39c04a383f04b9c80",
+          "disputeId": "83",
+          "court": {
+            "appealPeriodStart": 1679662650,
+            "appealPeriodEnd": 1679954250,
+            "currentRuling": "0"
+          },
+          "calls": {
+            "poh-v1": [
+              {
+                "fn": "arbitratorDisputeIDToDisputeData",
+                "args": ["0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002", "83"],
+                "revert": true
+              }
+            ],
+            "poh-v2": [
+              {
+                "fn": "disputeIdToData",
+                "args": ["0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002", "83"],
+                "revert": true
+              }
+            ],
+            "atl": [
+              {
+                "fn": "arbitratorDisputeIDToTokenID",
+                "args": ["0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002", "83"],
+                "revert": true
+              }
+            ],
+            "gtcr": [
+              {
+                "fn": "arbitratorDisputeIDToItem",
+                "args": ["0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002", "83"],
+                "revert": true
+              }
+            ],
+            "light": [
+              {
+                "fn": "arbitratorDisputeIDToItemID",
+                "args": ["0x9c1da9a04925bdfdedf0f6421bc7eea8305f9002", "83"],
+                "revert": true
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

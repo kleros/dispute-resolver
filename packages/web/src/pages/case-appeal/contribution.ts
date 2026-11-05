@@ -1,0 +1,17 @@
+import { parseEther } from "viem";
+
+type Contribution = { readonly ok: true; readonly wei: bigint } | { readonly ok: false; readonly message: string };
+
+const PLAIN_DECIMAL = /^\d+(?:\.(\d+))?$/;
+/** Every supported chain's currency has 18 decimals. */
+const MAX_DECIMALS = 18;
+
+/** An amount that cannot be sent as typed is refused with a message instead of being rounded or sent as zero. */
+export function parseContribution(text: string): Contribution {
+  const match = PLAIN_DECIMAL.exec(text);
+  if (match === null) return { ok: false, message: "Enter the amount as a number, such as 0.5." };
+  const decimals = match[1]?.length ?? 0;
+  if (decimals > MAX_DECIMALS) return { ok: false, message: "Amounts have at most 18 decimals." };
+  const wei = parseEther(text);
+  return wei > 0n ? { ok: true, wei } : { ok: false, message: "Enter an amount greater than 0." };
+}

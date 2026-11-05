@@ -1,0 +1,76 @@
+{
+  "provenance": "Raw JSON-RPC replies of eth_call, with no arguments, to the multiplier getters the reads reach, sent to the mainnet read RPC at blockNumber, recorded 2026-10-14.",
+  "chainId": 1,
+  "blockNumber": 26190905,
+  "contracts": [
+    {
+      "label": "Unslashed (idr-v1)",
+      "address": "0xe0e1bc8c6cd1b81993e2fcfb80832d814886ea38",
+      "calls": {
+        "getMultipliers()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000001388000000000000000000000000000000000000000000000000000000000000271000000000000000000000000000000000000000000000000000000000000013880000000000000000000000000000000000000000000000000000000000002710"
+        }
+      }
+    },
+    {
+      "label": "ArbitrableProxy (idr-v2)",
+      "address": "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf",
+      "calls": {
+        "getMultipliers()": {
+          "result": "0x00000000000000000000000000000000000000000000000000000000000027100000000000000000000000000000000000000000000000000000000000004e2000000000000000000000000000000000000000000000000000000000000013880000000000000000000000000000000000000000000000000000000000002710"
+        }
+      }
+    },
+    {
+      "label": "older resolver proxy (idr-legacy)",
+      "address": "0x135c573503f70dc290b1d60fe2e7f7eb114febd6",
+      "calls": {
+        "getMultipliers()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000001388000000000000000000000000000000000000000000000000000000000000271000000000000000000000000000000000000000000000000000000000000013880000000000000000000000000000000000000000000000000000000000002710"
+        }
+      }
+    },
+    {
+      "label": "Proof of Humanity v2 (view-only)",
+      "address": "0xbe9834097a4e97689d9b667441acafb456d0480a",
+      "calls": {
+        "getMultipliers()": {
+          "error": {
+            "code": 3,
+            "message": "execution reverted"
+          }
+        },
+        "winnerStakeMultiplier()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000002710"
+        },
+        "loserStakeMultiplier()": {
+          "result": "0x0000000000000000000000000000000000000000000000000000000000004e20"
+        },
+        "denominator()": {
+          "error": {
+            "code": 3,
+            "message": "execution reverted"
+          }
+        },
+        "MULTIPLIER_DIVISOR()": {
+          "error": {
+            "code": 3,
+            "message": "execution reverted"
+          }
+        },
+        "MULTIPLIER_DENOMINATOR()": {
+          "error": {
+            "code": 3,
+            "message": "execution reverted"
+          }
+        },
+        "loserAppealPeriodMultiplier()": {
+          "error": {
+            "code": 3,
+            "message": "execution reverted"
+          }
+        }
+      }
+    }
+  ]
+}

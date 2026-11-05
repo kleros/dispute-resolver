@@ -1,0 +1,140 @@
+import type { FetchResponse, Fetcher } from "@dispute-resolver/core";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createFetcher, withTimeout } from "./fetcher";
+
+const BOUND_MS = 1_000;
+const CAP_BYTES = 10;
+const URL = "https://cdn.kleros.link/ipfs/QmPolicy/policy.json";
+const never = <T>(): Promise<T> => new Promise<T>(() => undefined);
+
+function streamed(chunks: readonly string[], headers: HeadersInit = {}) {
+  const encoder = new TextEncoder();
+  let index = 0;
+  let pulls = 0;
+  let cancelled = false;
+  // A high-water mark of 0 keeps the stream from pulling a chunk before anyone reads.
+  const stream = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        pulls += 1;
+        const chunk = chunks[index++];
+        if (chunk === undefined) controller.close();
+        else controller.enqueue(encoder.encode(chunk));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    },
+    { highWaterMark: 0 },
+  );
+  return { response: new Response(stream, { status: 200, headers }), pulls: () => pulls, cancelled: () => cancelled };
+}
+
+async function rejectionName(promise: Promise<unknown>): Promise<string> {
+  return promise.then(
+    () => "answered",
+    (error: unknown) => (error instanceof Error ? error.name : "rejected"),
+  );
+}
+
+function answer(body: () => Promise<unknown>): FetchResponse {
+  return { ok: true, status: 200, json: body, text: () => body().then(String) };
+}
+
+async function stateAfter(promise: Promise<unknown>, ms: number): Promise<string> {
+  const outcome = promise.then(
+    () => "answered",
+    (error: unknown) => (error instanceof DOMException ? error.name : "rejected"),
+  );
+  await vi.advanceTimersByTimeAsync(ms);
+  return Promise.race([outcome, Promise.resolve("pending")]);
+}
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("createFetcher", () => {
+  const signal = new AbortController().signal;
+  it.each([
+    ["with core's signal and headers", { signal, headers: { accept: "application/json" } }, { credentials: "omit", signal, headers: { accept: "application/json" } }],
+    ["on a call without options", undefined, { credentials: "omit", signal: null, headers: {} }],
+  ])("never sends credentials and forwards only core's signal and headers, %s", async (_label, init, forwarded) => {
+    const fetchFunction = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() => Promise.resolve(new Response('{"name":"n"}', { status: 200 })));
+    const response = await createFetcher(fetchFunction)(URL, init);
+    expect(fetchFunction).toHaveBeenCalledWith(URL, forwarded);
+    expect(response).toMatchObject({ ok: true, status: 200 });
+    await expect(response.json()).resolves.toEqual({ name: "n" });
+  });
+
+  it("reads a body within the cap as text and as JSON", async () => {
+    const { response } = streamed(['{"na', 'me":', '"n"}']);
+    const fetcher = createFetcher(() => Promise.resolve(response), CAP_BYTES + 2);
+    const answer = await fetcher(URL);
+    await expect(answer.text()).resolves.toBe('{"name":"n"}');
+    await expect(answer.json()).resolves.toEqual({ name: "n" });
+  });
+
+  it("rejects a body whose declared length is over the cap without reading it, and cancels the body", async () => {
+    const { response, pulls, cancelled } = streamed(["x".repeat(20)], { "content-length": "20" });
+    if (response.body === null) throw new Error("the answer has no body");
+    const getReader = vi.spyOn(response.body, "getReader");
+    await expect(rejectionName(createFetcher(() => Promise.resolve(response), CAP_BYTES)(URL))).resolves.toBe("BodyTooLargeError");
+    expect(getReader).not.toHaveBeenCalled();
+    expect(pulls()).toBe(0);
+    expect(cancelled()).toBe(true);
+  });
+
+  it("stops reading a body once it passes the cap and rejects the read", async () => {
+    const chunks = Array.from({ length: 10 }, () => "abcd");
+    const { response, pulls } = streamed(chunks);
+    const answer = await createFetcher(() => Promise.resolve(response), CAP_BYTES)(URL);
+    await expect(rejectionName(answer.json())).resolves.toBe("BodyTooLargeError");
+    expect(pulls()).toBeLessThan(chunks.length);
+  });
+
+  it("a body that is not JSON rejects json() with a SyntaxError", async () => {
+    const answer = await createFetcher(() => Promise.resolve(new Response("%PDF-1.4", { status: 200 })))(URL);
+    await expect(rejectionName(answer.json())).resolves.toBe("SyntaxError");
+  });
+});
+
+describe("withTimeout", () => {
+  it("rejects a request that never answers once the bound passes", async () => {
+    vi.useFakeTimers();
+    const request = withTimeout(never, BOUND_MS)(URL);
+    expect(await stateAfter(request, BOUND_MS - 1)).toBe("pending");
+    expect(await stateAfter(request, 1)).toBe("TimeoutError");
+  });
+
+  it("rejects a body that never arrives once the bound passes", async () => {
+    vi.useFakeTimers();
+    const response = await withTimeout(() => Promise.resolve(answer(never)), BOUND_MS)(URL);
+    expect(await stateAfter(response.json(), BOUND_MS)).toBe("TimeoutError");
+  });
+
+  it("passes an answer within the bound through and clears its timer", async () => {
+    vi.useFakeTimers();
+    const response = await withTimeout(() => Promise.resolve(answer(() => Promise.resolve({ name: "General Court" }))), BOUND_MS)(URL);
+    await expect(response.json()).resolves.toEqual({ name: "General Court" });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("lets the caller's signal abort the request and aborts the forwarded signal at the bound", async () => {
+    vi.useFakeTimers();
+    const forwarded: AbortSignal[] = [];
+    const recording: Fetcher = (_url, init) => {
+      if (init?.signal !== undefined) forwarded.push(init.signal);
+      return never();
+    };
+    const caller = new AbortController();
+    const aborted = withTimeout(recording, BOUND_MS)(URL, { signal: caller.signal });
+    caller.abort(new DOMException("The query was cancelled.", "AbortError"));
+    expect(await stateAfter(aborted, 0)).toBe("AbortError");
+    expect(forwarded[0]?.aborted).toBe(true);
+
+    void withTimeout(recording, BOUND_MS)(URL).catch(() => undefined);
+    await vi.advanceTimersByTimeAsync(BOUND_MS);
+    expect(forwarded[1]?.aborted).toBe(true);
+  });
+});

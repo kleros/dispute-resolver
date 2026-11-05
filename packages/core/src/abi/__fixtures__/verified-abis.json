@@ -1,0 +1,257 @@
+{
+  "provenance": {
+    "source": "Sourcify server v2, GET /server/v2/contract/{chainId}/{address}?fields=abi (verified source ABIs), reduced to the entries the abi module embeds",
+    "fetchedAt": "2026-10-14",
+    "shared": "Identical verified ABIs are kept once: a record whose abi is { \"sameAs\": … } has the ABI of the record of its list with that label or address."
+  },
+  "governors": [
+    {
+      "label": "poh.eth governor",
+      "chainId": 1,
+      "address": "0x327a29fce0a6490e4236240be176daa282eccfdf",
+      "abi": [
+        {
+          "type": "function",
+          "name": "withdrawFeesAndRewards",
+          "inputs": [
+            { "name": "_beneficiary", "type": "address" },
+            { "name": "_session", "type": "uint256" },
+            { "name": "_round", "type": "uint256" },
+            { "name": "_submissionID", "type": "uint256" }
+          ],
+          "outputs": [],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "getContributions",
+          "inputs": [
+            { "name": "_session", "type": "uint256" },
+            { "name": "_round", "type": "uint256" },
+            { "name": "_contributor", "type": "address" }
+          ],
+          "outputs": [{ "name": "contributions", "type": "uint256[]" }],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "getCurrentSessionNumber",
+          "inputs": [],
+          "outputs": [{ "name": "", "type": "uint256" }],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "getRoundInfo",
+          "inputs": [
+            { "name": "_session", "type": "uint256" },
+            { "name": "_round", "type": "uint256" }
+          ],
+          "outputs": [
+            { "name": "paidFees", "type": "uint256[]" },
+            { "name": "hasPaid", "type": "bool[]" },
+            { "name": "feeRewards", "type": "uint256" },
+            { "name": "successfullyPaid", "type": "uint256" }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "loserMultiplier",
+          "inputs": [],
+          "outputs": [{ "name": "", "type": "uint256" }],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "winnerMultiplier",
+          "inputs": [],
+          "outputs": [{ "name": "", "type": "uint256" }],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "fundAppeal",
+          "inputs": [{ "name": "_submissionID", "type": "uint256" }],
+          "outputs": [],
+          "stateMutability": "payable"
+        },
+        {
+          "type": "function",
+          "name": "submitEvidence",
+          "inputs": [{ "name": "_evidenceURI", "type": "string" }],
+          "outputs": [],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "MULTIPLIER_DIVISOR",
+          "inputs": [],
+          "outputs": [{ "name": "", "type": "uint256" }],
+          "stateMutability": "view"
+        }
+      ]
+    },
+    {
+      "label": "ubi-voting.eth governor",
+      "chainId": 1,
+      "address": "0x7510c77163683448b8dc8fe9e019d9482be1ed2b",
+      "abi": { "sameAs": "poh.eth governor" }
+    },
+    {
+      "label": "fork-dao.eth governor",
+      "chainId": 100,
+      "address": "0xf7de5537ecd69a94695fcf4bcdbdee6329b63322",
+      "abi": { "sameAs": "poh.eth governor" }
+    },
+    {
+      "label": "kleros.eth governor",
+      "chainId": 1,
+      "address": "0xe5bcea6f87aaee4a81f64dfdb4d30d400e0e5cf4",
+      "abi": [
+        {
+          "type": "function",
+          "name": "withdrawFeesAndRewards",
+          "inputs": [
+            { "name": "_beneficiary", "type": "address" },
+            { "name": "_session", "type": "uint256" },
+            { "name": "_round", "type": "uint256" },
+            { "name": "_submissionID", "type": "uint256" }
+          ],
+          "outputs": [],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "getContributions",
+          "inputs": [
+            { "name": "_session", "type": "uint256" },
+            { "name": "_round", "type": "uint256" },
+            { "name": "_contributor", "type": "address" }
+          ],
+          "outputs": [{ "name": "contributions", "type": "uint256[]" }],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "getCurrentSessionNumber",
+          "inputs": [],
+          "outputs": [{ "name": "", "type": "uint256" }],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "getRoundInfo",
+          "inputs": [
+            { "name": "_session", "type": "uint256" },
+            { "name": "_round", "type": "uint256" }
+          ],
+          "outputs": [
+            { "name": "paidFees", "type": "uint256[]" },
+            { "name": "hasPaid", "type": "bool[]" },
+            { "name": "feeRewards", "type": "uint256" },
+            { "name": "successfullyPaid", "type": "uint256" }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "loserMultiplier",
+          "inputs": [],
+          "outputs": [{ "name": "", "type": "uint256" }],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "winnerMultiplier",
+          "inputs": [],
+          "outputs": [{ "name": "", "type": "uint256" }],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "fundAppeal",
+          "inputs": [{ "name": "_submissionID", "type": "uint256" }],
+          "outputs": [],
+          "stateMutability": "payable"
+        },
+        {
+          "type": "function",
+          "name": "MULTIPLIER_DIVISOR",
+          "inputs": [],
+          "outputs": [{ "name": "", "type": "uint256" }],
+          "stateMutability": "view"
+        }
+      ]
+    }
+  ],
+  "legacyResolver": {
+    "label": "older resolver proxy (idr-legacy)",
+    "chainId": 1,
+    "address": "0x135c573503f70dc290b1d60fe2e7f7eb114febd6",
+    "abi": [
+      {
+        "type": "function",
+        "name": "externalIDtoLocalID",
+        "inputs": [{ "name": "", "type": "uint256" }],
+        "outputs": [{ "name": "", "type": "uint256" }],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "fundAppeal",
+        "inputs": [
+          { "name": "_localDisputeID", "type": "uint256" },
+          { "name": "_side", "type": "uint8" }
+        ],
+        "outputs": [],
+        "stateMutability": "payable"
+      },
+      {
+        "type": "function",
+        "name": "submitEvidence",
+        "inputs": [
+          { "name": "_localDisputeID", "type": "uint256" },
+          { "name": "_evidenceURI", "type": "string" }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      }
+    ]
+  },
+  "crossChainRealityProxies": [
+    {
+      "chainId": 1,
+      "address": "0x32bcdc9776692679cfbbf8350bad67da13faaa3f",
+      "abi": [
+        {
+          "type": "event",
+          "name": "ArbitrationCreated",
+          "inputs": [
+            { "name": "_questionID", "type": "bytes32", "indexed": true },
+            { "name": "_requester", "type": "address", "indexed": true },
+            { "name": "_disputeID", "type": "uint256", "indexed": true }
+          ],
+          "anonymous": false
+        },
+        {
+          "type": "function",
+          "name": "arbitrationCreatedBlock",
+          "inputs": [{ "name": "", "type": "uint256" }],
+          "outputs": [{ "name": "", "type": "uint256" }],
+          "stateMutability": "view"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x412c0617f357e640406ff0b4ee55f547c3692ba7",
+      "abi": { "sameAs": "0x32bcdc9776692679cfbbf8350bad67da13faaa3f" }
+    },
+    {
+      "chainId": 1,
+      "address": "0xd6bf90e1daaa5cdec82235d2db1b93a9d50c6046",
+      "abi": { "sameAs": "0x32bcdc9776692679cfbbf8350bad67da13faaa3f" }
+    }
+  ]
+}

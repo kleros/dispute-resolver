@@ -1,0 +1,16 @@
+{
+  "provenance": {
+    "chain": "eth_call through the mainnet read RPC at blockNumber: KlerosLiquid disputes(1621).arbitrated, the poh.eth governor's sessions(i) scanned down from getCurrentSessionNumber() to the session whose disputeID is 1621, and getSubmittedLists(session)",
+    "source": "verified KlerosGovernor.sol of the four deployed governors (Sourcify server v2, GET /server/v2/contract/{chainId}/{address}?fields=sources), fetched 2026-10-14",
+    "goldenOptions": "mainnet dispute 1621: options \"List 7\", \"List 8\""
+  },
+  "chainId": 1,
+  "blockNumber": 26190697,
+  "governor": "0x327a29fce0a6490e4236240be176daa282eccfdf",
+  "disputeId": "1621",
+  "arbitrated": "0x327a29fce0a6490e4236240be176daa282eccfdf",
+  "session": "18",
+  "sessionRuling": "2",
+  "submittedLists": ["7", "8"],
+  "goldenOptions": ["List 7", "List 8"]
+}
