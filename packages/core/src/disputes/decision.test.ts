@@ -52,8 +52,9 @@ function decide(input: {
   readonly executed?: ExecutedRuling | null;
   readonly funded?: Outcome<readonly bigint[]> | null;
   readonly metaEvidence?: MetaEvidenceResult | null;
+  readonly numberOfChoices?: bigint;
 }): Outcome<Decision> {
-  const dispute = { ...DISPUTE, period: input.period ?? 4, ruled: input.ruled ?? true };
+  const dispute = { ...DISPUTE, period: input.period ?? 4, ruled: input.ruled ?? true, numberOfChoices: input.numberOfChoices ?? DISPUTE.numberOfChoices };
   return buildDecision({
     dispute,
     reads: { ...reads(ok(input.court ?? 1n)), dispute },
@@ -68,7 +69,7 @@ const applied = (ruling: bigint): ExecutedRuling => ({ status: "executed", rulin
 const NONE_REPORTED: ExecutedRuling = { status: "none-reported" };
 const UNREAD: ExecutedRuling = { status: "unread", error: { code: "rpc-error", message: "Could not read the executed ruling: down" } };
 const funded = (...rulings: bigint[]) => ok(rulings);
-const jury = (court: bigint, note: string) => ({ kind: "jury-decision", court: fact(court), note });
+const jury = (court: bigint, note: string) => ({ kind: "jury-decision", court: fact(court), note, noun: "answer" });
 const winner = (ruling: bigint, court: bigint, wonBy: string) => ({ kind: "winner", winner: fact(ruling), court: fact(court), wonBy, noun: "answer" });
 
 describe("buildDecision", () => {
@@ -123,11 +124,28 @@ describe("buildDecision", () => {
     const withdrawn = metaEvidence({ type: "single-select", titles: ["Yes", "No"], reserved: { "0x3": "Withdrawn" } });
     expect(decide({ executed: { status: "out-of-range", ruling: 3n }, funded: funded(3n), metaEvidence: withdrawn })).toEqual(ok(jury(1n, "out-of-range")));
     expect(decide({ executed: NONE_REPORTED, funded: funded(3n), metaEvidence: withdrawn })).toEqual(ok(winner(1n, 1n, "jury")));
+    expect(decide({ period: 3, ruled: false, court: 3n, metaEvidence: withdrawn })).toMatchObject(ok({ court: { ruling: 3n, rulingText: "3" } }));
+  });
+
+  it("names a reserved answer within the dispute's choices by its title", () => {
+    const withdrawn = metaEvidence({ type: "single-select", titles: ["Yes", "No"], reserved: { "0x3": "Withdrawn" } });
+    const applied3 = decide({ executed: applied(3n), funded: funded(), metaEvidence: withdrawn, numberOfChoices: 3n });
+    expect(applied3).toMatchObject(ok({ kind: "winner", winner: { ruling: 3n, rulingText: "Withdrawn" }, court: { ruling: 1n, rulingText: "Yes" }, wonBy: "applied" }));
+    expect(decide({ period: 3, ruled: false, court: 3n, metaEvidence: withdrawn, numberOfChoices: 3n })).toMatchObject(ok({ court: { ruling: 3n, rulingText: "Withdrawn" } }));
+  });
+
+  it("a jury decision carries the family's noun, else answer", () => {
+    const list = { ...RULES, noun: "list" } as const;
+    expect(decide({ period: 3, ruled: false, rules: list })).toMatchObject(ok({ kind: "jury-decision", noun: "list" }));
+    expect(decide({ executed: { status: "out-of-range", ruling: 7n }, rules: list })).toMatchObject(ok({ kind: "jury-decision", note: "out-of-range", noun: "list" }));
+    expect(decide({ ruled: false, rules: list })).toMatchObject(ok({ kind: "jury-decision", note: "not-executed", noun: "list" }));
+    expect(decide({ period: 3, ruled: false, rules: null })).toMatchObject(ok({ kind: "jury-decision", noun: "answer" }));
+    expect(decide({ executed: { status: "inconsistent" }, rules: null })).toMatchObject(ok({ kind: "jury-decision", note: "inconsistent", noun: "answer" }));
   });
 
   it("names a ruling with the dispute's options, the placeholder of an invalid meta-evidence, or its decimal value", () => {
     const text = (metaEvidenceResult: MetaEvidenceResult | null) => {
-      const decision = decide({ executed: applied(3n), metaEvidence: metaEvidenceResult });
+      const decision = decide({ executed: applied(3n), metaEvidence: metaEvidenceResult, numberOfChoices: 3n });
       return decision.ok && decision.value.kind === "winner" ? decision.value.winner.rulingText : null;
     };
     expect(text(metaEvidence({ type: "multiple-select", titles: ["A", "B", "C"] }))).toBe("B");
@@ -158,7 +176,7 @@ describe("buildDecision", () => {
     }
 
     it("as the court's ruling in the appeal period and in execution", () => {
-      expect(decideAbc({ court: 1n, period: 3 })).toEqual(ok({ kind: "jury-decision", court: NONE, note: "appealable-in-arbitrable" }));
+      expect(decideAbc({ court: 1n, period: 3 })).toEqual(ok({ kind: "jury-decision", court: NONE, note: "appealable-in-arbitrable", noun: "answer" }));
       expect(decideAbc({ court: 1n, period: 4, executed: applied(1n) })).toEqual(ok({ kind: "winner", winner: NONE, court: NONE, wonBy: "jury", noun: "answer" }));
     });
 

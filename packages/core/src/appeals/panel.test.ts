@@ -54,6 +54,7 @@ const EXPECTED_CARDS = buildCrowdfundingCards({
   funding: FUNDING,
   override: undefined,
   tie: null,
+  numberOfChoices: 2n,
 });
 
 const EXPECTED_GOVERNOR_CARDS = { ...EXPECTED_CARDS, cards: EXPECTED_CARDS.cards.filter((card) => card.code !== 0n) };
@@ -273,7 +274,7 @@ describe("buildAppealPanel", () => {
     }
   });
 
-  describe("reserved answers and the dispute's number of choices", () => {
+  describe("answers and the dispute's number of choices", () => {
     const ANSWERED_TOO_SOON = `0x${"F".repeat(64)}`;
     const cards = (panel: ReturnType<typeof buildAppealPanel>) => (panel.kind === "crowdfunding" ? panel.cards.map((card) => [card.code, card.title]) : null);
 
@@ -289,6 +290,25 @@ describe("buildAppealPanel", () => {
       expect(cards(buildAppealPanel(input(family("idr-v2"), 3, { rulingOptions, numberOfChoices: 2n })))).toEqual([within[0], within[2], within[3]]);
     });
 
+    it("gives no card to a single-select title past the dispute's number of choices", () => {
+      const rulingOptions = { type: "single-select", titles: ["Red", "Green", "Blue", "Black"] };
+      expect(cards(buildAppealPanel(input(family("idr-v2"), 3, { rulingOptions, numberOfChoices: 2n })))).toEqual([
+        [0n, "Invalid / Refused to Arbitrate / Tied"],
+        [1n, "Red"],
+        [2n, "Green"],
+      ]);
+    });
+
+    it("gives no card to a multiple-select combination past the dispute's number of choices", () => {
+      const rulingOptions = { type: "multiple-select", titles: ["A", "B"] };
+      expect(cards(buildAppealPanel(input(family("idr-v2"), 3, { rulingOptions, numberOfChoices: 3n })))).toEqual([
+        [0n, "Invalid / Refused to Arbitrate / Tied"],
+        [1n, "None of the options"],
+        [2n, "A"],
+        [3n, "B"],
+      ]);
+    });
+
     it("keeps Answered Too Soon on a Reality proxy dispute, whose choices span the whole uint256 range", () => {
       const rulingOptions = { type: "single-select", titles: ["No", "Yes"], reserved: { [ANSWERED_TOO_SOON]: "Answered Too Soon" } };
       const panel = buildAppealPanel(input(realityProxy(family("idr-v2")), 3, { rulingOptions, numberOfChoices: maxUint256 }));
@@ -296,14 +316,15 @@ describe("buildAppealPanel", () => {
     });
   });
 
-  it.each<[string, AppealPanelInput["rulingOptions"], object]>([
+  it.each<[string, AppealPanelInput["rulingOptions"], bigint, object]>([
     [
       "the multiple-select composer",
       { type: "multiple-select", titles: ["A", "B", "C", "D", "E"] },
-      { composer: { titles: ["A", "B", "C", "D", "E"], required: 3_000n, deadline: 200 } },
+      32n,
+      { composer: { titles: ["A", "B", "C", "D", "E"], required: 3_000n, deadline: 200, highestCode: 32n } },
     ],
-    ["the variable-type free input", { type: "uint" }, { freeInput: { type: "uint", required: 3_000n, deadline: 200 } }],
-  ])("carries %s inside the crowdfunding panel", (_, rulingOptions, expected) => {
-    expect(buildAppealPanel(input(family("idr-v2"), 3, { rulingOptions }))).toMatchObject({ kind: "crowdfunding", ...expected });
+    ["the variable-type free input", { type: "uint" }, maxUint256, { freeInput: { type: "uint", required: 3_000n, deadline: 200, highestCode: maxUint256 } }],
+  ])("carries %s inside the crowdfunding panel", (_, rulingOptions, numberOfChoices, expected) => {
+    expect(buildAppealPanel(input(family("idr-v2"), 3, { rulingOptions, numberOfChoices }))).toMatchObject({ kind: "crowdfunding", ...expected });
   });
 });

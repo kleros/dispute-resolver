@@ -2,8 +2,8 @@ import { buildWithdrawCalls, type Address, type ChainConfig, type RulingNoun, ty
 import { Button } from "@kleros/ui-components-library";
 import { useState } from "react";
 import { Notice, formatAmount } from "../../ui";
-import { WriteStatusNotice, useWallet, useWriteSequence, type WalletState, type WriteSequenceStatus } from "../../wallet";
-import { WITHDRAW_HEADING, WITHDRAW_NO_ACCOUNT, withdrawEligible, withdrawNothing, withdrawnLine } from "./copy";
+import { useWallet, useWriteSequence, type WalletState, type WriteSequenceStatus } from "../../wallet";
+import { WITHDRAW_HEADING, WITHDRAW_NO_ACCOUNT, withdrawEligible, withdrawLastWording, withdrawNothing, withdrawWording, withdrawnLine } from "./copy";
 import { BODY_TEXT_CLASS } from "./styles";
 import type { AppealActions } from "./useAppealActions";
 
@@ -65,10 +65,17 @@ export function WithdrawPanel({ state, noun, actions, chain }: WithdrawPanelProp
   const withdraw = async () => {
     if (state.status !== "available" || context === null) return;
     const builds = buildWithdrawCalls({ binding: context.binding, family: context.family, localId: context.localId, beneficiary: state.beneficiary, items: state.items });
+    const total = formatAmount(state.total, chain);
+    const last = state.items.length - 1;
+    const wordings = state.items.map((item, index) => {
+      const amount = formatAmount(item.amount, chain);
+      return index === last && last > 0 ? withdrawLastWording(amount, total) : withdrawWording(amount);
+    });
+    const whole = withdrawWording(total);
     setWithdrawal({ beneficiary: state.beneficiary, amount: state.total });
     setRunning(true);
     try {
-      await sequence.execute(builds, { pageChainId: actions.pageChainId, onMined: () => actions.refresh("withdraw") });
+      await sequence.execute(builds, { pageChainId: actions.pageChainId, onMined: () => actions.refresh("withdraw"), wording: (index) => wordings[index] ?? whole });
     } finally {
       setRunning(false);
     }
@@ -99,7 +106,6 @@ export function WithdrawPanel({ state, noun, actions, chain }: WithdrawPanelProp
           />
         </div>
       ) : null}
-      {progress === null ? null : <WriteStatusNotice status={progress.current} progress={{ index: progress.index, total: progress.total }} />}
     </>
   );
 }

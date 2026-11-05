@@ -44,19 +44,26 @@ export interface RoutedRenderResult extends RenderResult {
   readonly currentPath: () => string;
 }
 
+/**
+ * The router sits above the caller's providers, so a provider that follows the route (the shell's write toasts) finds
+ * it, and both stay RTL's `wrapper`: `rerender` keeps the router's state and the providers. The location probe is part
+ * of the wrapper, so a rerendered screen keeps it.
+ */
 export function renderInRouter(routes: ReactElement, path: string, options: RenderInRouterOptions = {}): RoutedRenderResult {
   const seen: { location: Location | null } = { location: null };
   const record = (location: Location) => {
     seen.location = location;
   };
-  const wrapper = options.wrapper ?? walletWrapper(options.wallet ?? createTestWallet());
-  const result = render(
-    <MemoryRouter initialEntries={[path]}>
-      {routes}
-      <LocationProbe onLocation={record} />
-    </MemoryRouter>,
-    { wrapper },
-  );
+  const Providers = options.wrapper ?? walletWrapper(options.wallet ?? createTestWallet());
+  function RouterAndProviders({ children }: { readonly children?: ReactNode }) {
+    return (
+      <MemoryRouter initialEntries={[path]}>
+        <Providers>{children}</Providers>
+        <LocationProbe onLocation={record} />
+      </MemoryRouter>
+    );
+  }
+  const result = render(routes, { wrapper: RouterAndProviders });
   return {
     ...result,
     currentPath: () => (seen.location === null ? "" : `${seen.location.pathname}${seen.location.search}${seen.location.hash}`),

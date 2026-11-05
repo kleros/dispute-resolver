@@ -12,10 +12,10 @@ const DRAFT = { title: "Contract", description: "The signed contract.", attachme
 async function renderModal(access: WriteAccess, wallet: TestWallet, connected: boolean, uploader: FakeUploader = fakeUploader()) {
   if (connected) await wallet.connect();
   const onSubmit = vi.fn();
-  renderWithProviders(
-    <SubmitEvidenceModal isOpen draft={DRAFT} onDraftChange={vi.fn()} onClose={vi.fn()} onSubmit={onSubmit} submitting={false} feedback={null} access={access} />,
-    { wallet, uploader },
-  );
+  renderWithProviders(<SubmitEvidenceModal isOpen draft={DRAFT} onDraftChange={vi.fn()} onClose={vi.fn()} onSubmit={onSubmit} submitting={false} notice={null} access={access} />, {
+    wallet,
+    uploader,
+  });
   return { uploader, onSubmit, modal: screen.getByRole("dialog", { name: "Submit Evidence" }) };
 }
 
@@ -70,15 +70,15 @@ describe("SubmitEvidenceModal motion", () => {
 
   it("raises an upload's outcome into view, and plays it again for a different outcome", async () => {
     const wallet = await createConnectedTestWallet();
-    const notice = (title: string, body: string) => ({ kind: "notice", notice: { variant: "warning", title, body } }) as const;
+    const notice = (title: string, body: string) => ({ variant: "warning", title, body }) as const;
     const props = { isOpen: true, draft: DRAFT, onDraftChange: vi.fn(), onClose: vi.fn(), onSubmit: vi.fn(), submitting: false, access: { status: "ready" } } as const;
-    const { rerender } = renderWithProviders(<SubmitEvidenceModal {...props} feedback={notice("Evidence not uploaded", "First reason.")} />, { wallet });
+    const { rerender } = renderWithProviders(<SubmitEvidenceModal {...props} notice={notice("Evidence not uploaded", "First reason.")} />, { wallet });
     const first = screen.getByText("First reason.");
     const alert = first.closest<HTMLElement>("[class*='t-stagger-in']");
     expect(alert).not.toBeNull();
     expect(alert?.className).toContain("motion-reduce:[&_h2]:animate-none");
 
-    rerender(<SubmitEvidenceModal {...props} feedback={notice("Evidence not uploaded", "Second reason.")} />);
+    rerender(<SubmitEvidenceModal {...props} notice={notice("Evidence not uploaded", "Second reason.")} />);
     expect(first).not.toBeInTheDocument();
     expect(screen.getByText("Second reason.").closest("[class*='t-stagger-in']")).not.toBeNull();
   });

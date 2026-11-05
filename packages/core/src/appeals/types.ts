@@ -93,6 +93,8 @@ export interface FreeInputCard {
   readonly side: CardSide;
   readonly required: bigint;
   readonly deadline: number;
+  /** The dispute's number of choices: a ruling above it is refused by the contract. */
+  readonly highestCode: bigint;
 }
 
 /** Multiple-select above four options: the user ticks options and funds the resulting combination, as a free input. */
@@ -101,6 +103,8 @@ export interface MultipleSelectComposer {
   readonly side: CardSide;
   readonly required: bigint;
   readonly deadline: number;
+  /** The dispute's number of choices: a ruling above it is refused by the contract. */
+  readonly highestCode: bigint;
 }
 
 export interface FundingTerms {
@@ -147,7 +151,7 @@ export interface AppealPanelInput {
   readonly override: BehaviorOverride | undefined;
   readonly rulingOptions: RulingOptions;
   readonly fallbackOutcomes: FallbackOutcomes;
-  /** The arbitrator's `disputes(id).numberOfChoices`: a reserved answer above it gets no card. */
+  /** The arbitrator's `disputes(id).numberOfChoices`: an answer coded above it gets no card. */
   readonly numberOfChoices: bigint;
   readonly currentRuling: Outcome<bigint>;
   readonly appealInfo: Outcome<AppealInfo> | null;

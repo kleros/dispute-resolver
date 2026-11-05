@@ -7,7 +7,7 @@ import { useArbitrationCost, useCoreDeps, useCourts } from "../../data";
 import { paths } from "../../routing";
 import { Attachment } from "../../safe-content";
 import { AddressText, Amount, EYEBROW, FACT, FACT_SMALL, LABEL, Notice, VotingOptionList, votingOptions } from "../../ui";
-import { useConnectWallet, useWallet, WriteStatusNotice, type WriteAccess, type WriteStatus } from "../../wallet";
+import { useConnectWallet, useWallet, WriteGuardNotice, type WriteAccess } from "../../wallet";
 import { courtLabel } from "./CourtSection";
 import { questionTypeLabel } from "./draft";
 import { Shimmer } from "./fields";
@@ -76,13 +76,13 @@ function RulingOptions({ input }: { readonly input: CreateDisputeInput }) {
   );
 }
 
-function ActionNotice({ state, writeStatus, chain }: { readonly state: CreateActionState; readonly writeStatus: WriteStatus; readonly chain: ChainConfig }) {
+/** The steps before and after the write; the write itself reports in the toasts. */
+function ActionNotice({ state, chain }: { readonly state: CreateActionState; readonly chain: ChainConfig }) {
   const uploader = useAtlasUpload();
   switch (state.kind) {
     case "idle":
+    case "writing":
       return null;
-    case "blocked":
-      return <WriteStatusNotice status={state.status} />;
     case "publishing":
       return (
         <Notice
@@ -98,19 +98,14 @@ function ActionNotice({ state, writeStatus, chain }: { readonly state: CreateAct
       );
     case "cost-failed":
       return <Notice reveal variant="error" title="Arbitration cost unavailable" body={`${state.error.message} Nothing was sent.`} />;
-    case "writing":
-      return <WriteStatusNotice status={writeStatus} />;
     case "no-dispute-id":
       return (
-        <div className="flex flex-col gap-3">
-          <WriteStatusNotice status={writeStatus} />
-          <Notice
-            reveal
-            variant="error"
-            title="Dispute ID not found"
-            body="The transaction was mined, but its receipt has no dispute creation event from the arbitrator, so the new dispute's ID is unknown. Check the transaction on the block explorer."
-          />
-        </div>
+        <Notice
+          reveal
+          variant="error"
+          title="Dispute ID not found"
+          body="The transaction was mined, but its receipt has no dispute creation event from the arbitrator, so the new dispute's ID is unknown. Check the transaction on the block explorer."
+        />
       );
     case "created":
       return (
@@ -126,7 +121,7 @@ function ActionNotice({ state, writeStatus, chain }: { readonly state: CreateAct
 
 /** Without a wallet the primary button itself says what is needed. */
 function AccessNotice({ access }: { readonly access: WriteAccess }) {
-  return access.status === "wrong-chain" ? <WriteStatusNotice status={access.guard} beforeAttempt /> : null;
+  return access.status === "wrong-chain" ? <WriteGuardNotice guard={access.guard} /> : null;
 }
 
 interface PrimaryAction {
@@ -234,7 +229,7 @@ export function CreateSummary({ chain, input, documentName, headingRef, onReturn
       <div aria-live="polite">
         {action.state.kind === "idle" ? <AccessNotice access={action.access} /> : null}
         {/* Keyed by the step of the action, so each new notice mounts and plays its reveal. */}
-        <ActionNotice key={action.state.kind} state={action.state} writeStatus={action.writeStatus} chain={chain} />
+        <ActionNotice key={action.state.kind} state={action.state} chain={chain} />
       </div>
       <div className="flex flex-col gap-2">
         {showSignInHint ? (

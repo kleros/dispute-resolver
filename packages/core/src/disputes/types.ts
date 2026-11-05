@@ -103,11 +103,12 @@ export type JuryDecisionNote = "appealable" | "appealable-in-arbitrable" | "not-
 
 /**
  * The decision section. `winner` once the ruling was executed: the court's ruling (`jury`), the only ruling fully funded
- * for the appeal (`default`), or another ruling the arbitrable applied (`applied`).
+ * for the appeal (`default`), or another ruling the arbitrable applied (`applied`). `noun` is what a ruling is called on
+ * the dispute's arbitrable.
  */
 export type Decision =
   | { readonly kind: "none" }
-  | { readonly kind: "jury-decision"; readonly court: RulingFact; readonly note: JuryDecisionNote }
+  | { readonly kind: "jury-decision"; readonly court: RulingFact; readonly note: JuryDecisionNote; readonly noun: RulingNoun }
   | { readonly kind: "winner"; readonly winner: RulingFact; readonly court: RulingFact; readonly wonBy: "jury" | "default" | "applied"; readonly noun: RulingNoun };
 
 export type Compatibility = "full" | "view-only";

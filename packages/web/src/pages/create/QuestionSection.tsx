@@ -43,16 +43,17 @@ export function DisputeSection({ form, errors, onChange }: SectionProps) {
 const OPTION_ROW_CLASS = "grid grid-cols-1 gap-3 max-lg:py-4 max-lg:first:pt-0 max-lg:last:pb-0 lg:grid-cols-2";
 
 /**
- * Ruling 1 of every multiple-select dispute, nothing ticked: shown only, never part of the draft, the option count or the
- * uploaded titles. Read-only rather than disabled, so Tab still reaches it and it is announced. The library tints a field
- * on hover with an `!important` rule, so the locked field takes no pointer events.
+ * Ruling 1 of every multiple-select dispute, nothing ticked, labelled with its number as the summary and the case page
+ * label it: shown only, never part of the draft, the option count or the uploaded titles. Read-only rather than disabled,
+ * so Tab still reaches it and it is announced. The library tints a field on hover with an `!important` rule, so the
+ * locked field takes no pointer events.
  */
 function NoneOfTheOptionsRow() {
   return (
     <li className={OPTION_ROW_CLASS}>
       <FieldSlot>
         <TextField
-          label="Always included"
+          label="Ruling Option 1"
           value={NONE_OF_THE_OPTIONS_TEXT}
           isReadOnly
           className={FULL_WIDTH_FIELD}
@@ -63,19 +64,32 @@ function NoneOfTheOptionsRow() {
   );
 }
 
+/** A to Z, then AA, AB and on, for as many rows as the form allows. */
+export function optionLetter(index: number): string {
+  const letter = String.fromCodePoint(65 + (index % 26));
+  return index < 26 ? letter : `${optionLetter(Math.floor(index / 26) - 1)}${letter}`;
+}
+
+/**
+ * The typed rows of a multiple select are options to tick, not rulings (Blue alone is ruling 5, not 4), so they are
+ * lettered and only the locked row carries a ruling number.
+ */
 function OptionRows({ form, errors, onChange }: Pick<SectionProps, "form" | "errors" | "onChange">) {
+  const multiple = form.questionType === "multiple-select";
+  const titleField = multiple ? "tickOptionTitle" : "optionTitle";
   return (
     <ol className="flex flex-col gap-4 max-lg:gap-0 max-lg:divide-y max-lg:divide-klerosUIComponentsStroke" aria-label="Ruling options">
-      {form.questionType === "multiple-select" ? <NoneOfTheOptionsRow /> : null}
+      {multiple ? <NoneOfTheOptionsRow /> : null}
       {form.options.map((option, index) => {
         const number = String(index + 1);
+        const name = multiple ? `Option ${optionLetter(index)}` : `Ruling Option ${number}`;
         const error = errors.options?.[index];
         return (
           // Rows are positional: option N is always the N-th typed row, and rows past the count are removed.
           <li key={number} className={OPTION_ROW_CLASS}>
             <FieldSlot>
               <TextField
-                label={`Ruling Option ${number}`}
+                label={name}
                 isRequired
                 validationBehavior="aria"
                 value={option.title}
@@ -83,12 +97,12 @@ function OptionRows({ form, errors, onChange }: Pick<SectionProps, "form" | "err
                   onChange((current) => setOption(current, index, "title", value));
                 }}
                 className={FULL_WIDTH_FIELD}
-                {...errorProps(error === undefined ? undefined : fieldErrorMessage("optionTitle", error))}
+                {...errorProps(error === undefined ? undefined : fieldErrorMessage(titleField, error))}
               />
             </FieldSlot>
             <FieldSlot>
               <TextField
-                label={`Ruling Option ${number} Description (Optional)`}
+                label={`${name} Description (Optional)`}
                 value={option.description}
                 onChange={(value) => {
                   onChange((current) => setOption(current, index, "description", value));

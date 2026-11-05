@@ -50,13 +50,13 @@ export type WalletState =
       readonly chainId: number;
     };
 
-/** The refusal of a write without a connected wallet, as `WriteStatusNotice` renders it. */
+/** The refusal of a write without a connected wallet, as `WriteGuardNotice` and `WriteGuardAction` render it. */
 export interface NeedsWalletGuard {
   readonly phase: "needs-wallet";
   readonly pageChainId: number;
 }
 
-/** The refusal of a write from a wallet on another chain than the page's, as `WriteStatusNotice` renders it. */
+/** The refusal of a write from a wallet on another chain than the page's, as `WriteGuardNotice` and `WriteGuardAction` render it. */
 export interface WrongChainGuard {
   readonly phase: "wrong-chain";
   readonly walletChainId: number;
@@ -89,11 +89,24 @@ export type WriteOutcome = Extract<
   { readonly phase: "refused" | "needs-wallet" | "wrong-chain" | "refused-by-contract" | "insufficient-funds" | "account-changed" | "mined" | "failed" | "rejected" }
 >;
 
+/**
+ * How a write names itself in its toast. `doing`: lowercase phrase, no full stop ("funding “Red” with 336 xDai").
+ * `done`: the mined sentence with its full stop, or read from the receipt inside the write's own chain.
+ */
+export interface WriteWording {
+  readonly doing: string;
+  readonly done: string | ((receipt: WriteReceipt) => string);
+}
+
 export interface WriteOptions {
   readonly pageChainId: number;
   /** Runs after the receipt is mined, before the status becomes `mined`. */
   readonly onMined?: (receipt: WriteReceipt) => Promise<void> | void;
+  readonly wording: WriteWording;
 }
+
+/** What one transaction needs from the options: `performWrite` and `refreshAfter` take this. */
+export type WriteRun = Pick<WriteOptions, "pageChainId" | "onMined">;
 
 export interface WriteController {
   readonly status: WriteStatus;
@@ -107,10 +120,29 @@ export interface WriteSequenceStatus {
   readonly current: WriteStatus;
 }
 
+/** The position of a status in a sequence, for "(1 of 2)". */
+export type WriteProgress = Pick<WriteSequenceStatus, "index" | "total">;
+
+/** One press of a write action as the observer follows it: every status in order, the outcome last. */
+export interface WriteAttempt {
+  report(status: WriteStatus, wording: WriteWording, progress?: WriteProgress): void;
+}
+
+/** Starts an attempt. `source` is stable per write control, so a new press can replace that control's last refusal. */
+export type WriteObserver = (source: string) => WriteAttempt;
+
+export interface WriteSequenceOptions {
+  readonly pageChainId: number;
+  /** Runs once, after the last mined receipt or at a stop that follows at least one. */
+  readonly onMined?: (receipt: WriteReceipt) => Promise<void> | void;
+  /** The wording of build `index`. */
+  readonly wording: (index: number) => WriteWording;
+}
+
 export interface WriteSequenceController {
   readonly status: WriteSequenceStatus | null;
   /** Stops at the first outcome other than `mined` and returns it; returns the last `mined` outcome otherwise. */
-  execute(builds: readonly WriteBuild[], options: WriteOptions): Promise<WriteOutcome>;
+  execute(builds: readonly WriteBuild[], options: WriteSequenceOptions): Promise<WriteOutcome>;
   reset(): void;
 }
 
@@ -122,10 +154,13 @@ export interface SmartContractWalletWarningProps {
   readonly chainId: number;
 }
 
-export interface WriteStatusNoticeProps {
-  readonly status: WriteStatus;
-  readonly progress?: Pick<WriteSequenceStatus, "index" | "total">;
-  /** The notice says why an action is locked before anything was tried, rather than reporting a refused write. */
-  readonly beforeAttempt?: boolean;
+export interface WriteGuardNoticeProps {
+  readonly guard: NeedsWalletGuard | WrongChainGuard;
   readonly className?: string;
+}
+
+export interface WriteGuardActionProps {
+  readonly guard: NeedsWalletGuard | WrongChainGuard;
+  /** Called once, when the wallet can sign on the guard's page chain. */
+  readonly onResolved: () => void;
 }

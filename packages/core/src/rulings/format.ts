@@ -1,6 +1,6 @@
 import { DEFAULT_UINT_PRECISION } from "./precision";
 import { isUint256 } from "../bigint";
-import { NONE_OF_THE_OPTIONS_TEXT } from "./combinations";
+import { NONE_OF_THE_OPTIONS_TEXT, reservedCode } from "./combinations";
 import { answerString, isReservedAnswer, toHexWord } from "./realityLib";
 import type { FallbackOutcomes, RulingOptions } from "./types";
 
@@ -30,15 +30,27 @@ function titledMultipleSelectText(ruling: bigint, options: RulingOptions): strin
 }
 
 /**
- * Only a uint answer is labelled with the precision (18 when absent), since only a uint answer is encoded with it. A
- * title-less single-select whose label is empty reads as the decimal; the library is asked first, so reserved answers
- * keep its label. Never throws.
+ * The title of the reserved answer the options list on this ruling, as its card names it. reality-eth-lib keeps its own
+ * labels for the answers it reserves (Answered too soon). The parsed options never list a reserved answer on one of their
+ * own codes (`unshadowedReserved`), so no title is read over an option's.
+ */
+function listedReservedTitle(ruling: bigint, options: RulingOptions): string | undefined {
+  if (options.reserved === undefined || isReservedAnswer(ruling - 1n)) return undefined;
+  return Object.entries(options.reserved).find(([key]) => reservedCode(key) === ruling)?.[1];
+}
+
+/**
+ * A reserved answer the options list reads as its title. Only a uint answer is labelled with the precision (18 when
+ * absent), since only a uint answer is encoded with it. A title-less single-select whose label is empty reads as the
+ * decimal; the library is asked first, so the answers it reserves keep its label. Never throws.
  */
 export function formatRuling(ruling: bigint, options: RulingOptions | null, fallback: FallbackOutcomes): string {
   if (ruling === 0n) return REFUSED_RULING_TEXT;
   const decimal = ruling.toString();
   if (!isUint256(ruling)) return decimal;
   if (options === null) return fallbackOutcome(ruling, fallback) ?? decimal;
+  const listed = listedReservedTitle(ruling, options);
+  if (listed !== undefined) return listed;
   const multipleSelectText = titledMultipleSelectText(ruling, options);
   if (multipleSelectText !== undefined) return multipleSelectText;
   const decimals = options.type === "uint" ? (options.precision ?? DEFAULT_UINT_PRECISION) : undefined;

@@ -182,15 +182,23 @@ describe("case assembly", () => {
       { status: "ready", value: { kind: "handled-by-arbitrable" } },
     ],
     [
-      "an IDisputeResolver v1 dispute in the appeal period without meta-evidence has no appeal cards, because its ruling options are unknown",
+      "an IDisputeResolver v1 dispute in the appeal period without meta-evidence has no appeal cards, because its answers are unknown",
       IDR_V1,
       3,
       sectionReady(MISSING),
-      { status: "unavailable", error: { code: "not-found", message: "This dispute has no meta-evidence, so its ruling options are unknown." } },
+      { status: "unavailable", error: { code: "not-found", message: "This dispute has no meta-evidence, so its answers are unknown." } },
     ],
     ["an IDisputeResolver v1 dispute in the appeal period waits for its meta-evidence before showing appeal cards", IDR_V1, 3, sectionLoading, { status: "loading" }],
   ])("%s", (_name, family, period, metaEvidence, expected) => {
     expect(assembleAppealPanel(readsWith(family, period, metaEvidence))).toEqual(expected);
+  });
+
+  it("a governor dispute in the appeal period without meta-evidence says its lists are unknown", () => {
+    const governor: FamilyDetection = { ...IDR_V1, family: "governor", writeFamily: "governor" };
+    expect(assembleAppealPanel(readsWith(governor, 3, sectionReady(MISSING)))).toEqual({
+      status: "unavailable",
+      error: { code: "not-found", message: "This dispute has no meta-evidence, so its lists are unknown." },
+    });
   });
 
   it.each<[string, SectionData<boolean>, unknown]>([

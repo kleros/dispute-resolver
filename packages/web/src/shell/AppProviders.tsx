@@ -6,11 +6,13 @@ import { PageScroller, ScrollMemory } from "./PageScroller";
 import { RootErrorBoundary } from "./RootErrorBoundary";
 import { ToastProvider } from "./ToastProvider";
 import type { AppProvidersProps } from "./types";
+import { WriteToasts } from "./writeToasts";
 
 /**
  * The order is forced: wagmi needs the QueryClient of the data layer above it, the Atlas library needs both, and
  * routing and every page need all three. Routing's chain notices become toasts, so their provider sits inside the
- * toasts. The root boundary is the outermost provider, so a failure anywhere in the tree keeps a minimal frame; the page
+ * toasts; writes report into the toasts and follow the route, so their observer sits inside the toasts and the router.
+ * The root boundary is the outermost provider, so a failure anywhere in the tree keeps a minimal frame; the page
  * scroller is around it, needing nothing from it, so that frame scrolls as the app does.
  */
 export function AppProviders({ config, dataProvider: DataLayer, atlasGate: AtlasLayer, colorScheme, pageScroll, children }: AppProvidersProps) {
@@ -23,9 +25,11 @@ export function AppProviders({ config, dataProvider: DataLayer, atlasGate: Atlas
               <BrowserRouter>
                 <ScrollMemory />
                 <ToastProvider>
-                  <ChainNoticeToasts>
-                    <ColorSchemeProvider store={colorScheme}>{children}</ColorSchemeProvider>
-                  </ChainNoticeToasts>
+                  <WriteToasts>
+                    <ChainNoticeToasts>
+                      <ColorSchemeProvider store={colorScheme}>{children}</ColorSchemeProvider>
+                    </ChainNoticeToasts>
+                  </WriteToasts>
                 </ToastProvider>
               </BrowserRouter>
             </AtlasLayer>

@@ -827,7 +827,7 @@ describe("DecisionAlert", () => {
       { period: 4, ruled: true, executed: { status: "out-of-range", ruling: 5n } },
       "Jury decision",
       "Yes",
-      "The arbitrable contract reported a ruling that is not one of this dispute's options.",
+      "The arbitrable contract reported a ruling that is not one of this dispute's answers.",
     ],
     [
       "when the arbitrable reported several rulings",

@@ -1,7 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import type { AtlasUploader } from "../../atlas";
 import type { CoreDeps } from "../../data";
-import { ChainNoticeToasts, ColorSchemeProvider, PageFrame, ToastProvider } from "../../shell";
+import { ChainNoticeToasts, ColorSchemeProvider, PageFrame, ToastProvider, WriteToasts } from "../../shell";
 import { createColorSchemeStore } from "../../theme";
 import { TestAtlasProvider } from "../atlas";
 import { TestDataProvider } from "../data";
@@ -34,9 +34,11 @@ export function renderWithProviders(ui: ReactElement, options: RenderWithProvide
         <TestWalletProvider wallet={wallet}>
           <TestAtlasProvider uploader={uploader}>
             <ToastProvider>
-              <ChainNoticeToasts>
-                <ColorSchemeProvider store={colorScheme}>{children}</ColorSchemeProvider>
-              </ChainNoticeToasts>
+              <WriteToasts>
+                <ChainNoticeToasts>
+                  <ColorSchemeProvider store={colorScheme}>{children}</ColorSchemeProvider>
+                </ChainNoticeToasts>
+              </WriteToasts>
             </ToastProvider>
           </TestAtlasProvider>
         </TestWalletProvider>

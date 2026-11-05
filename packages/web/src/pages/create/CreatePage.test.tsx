@@ -125,6 +125,10 @@ async function renderWithRealAtlas(wallet: TestWallet): Promise<{ readonly user:
   return { user, server };
 }
 
+function toastRegion(): HTMLElement {
+  return screen.getByRole("region", { name: "Notifications" });
+}
+
 /**
  * The Primary Document field's file input. The library's drop zone hides it from the accessibility tree and offers a button
  * named "Primary Document (Optional)" instead, so the input is reached through its group, the "Primary document" fieldset.
@@ -188,6 +192,17 @@ async function fillRequired(user: UserEvent) {
 
 async function fillOptions(user: UserEvent, titles: readonly string[]) {
   for (const [index, title] of titles.entries()) await typeInto(user, `Ruling Option ${String(index + 1)}`, title);
+}
+
+/** The typed rows of a multiple select, lettered from A. */
+const TICK_OPTION_LABELS = ["Option A", "Option B", "Option C"] as const;
+
+async function fillTickOptions(user: UserEvent, titles: readonly string[]) {
+  for (const [index, title] of titles.entries()) {
+    const label = TICK_OPTION_LABELS[index];
+    if (label === undefined) throw new Error(`No label for option ${String(index + 1)}`);
+    await typeInto(user, label, title);
+  }
 }
 
 async function toSummary(user: UserEvent) {
@@ -280,10 +295,10 @@ describe("CreatePage", () => {
     expect(screen.queryByRole("textbox", { name: "Ruling Option 33" })).toBeNull();
   });
 
-  it("a multiple select starts its options with a read-only “None of the options” row that takes focus and is not one of the counted options", async () => {
+  it("a multiple select starts its options with a read-only “None of the options” row labelled Ruling Option 1 that takes focus and is not one of the counted options", async () => {
     const { user } = await renderCreate({ connect: false });
     await chooseOption(user, "Question Type", "Multiple choice: multiple select");
-    const locked = screen.getByRole("textbox", { name: "Always included" });
+    const locked = screen.getByRole("textbox", { name: "Ruling Option 1" });
     expect(locked).toHaveValue(core.NONE_OF_THE_OPTIONS_TEXT);
     expect(locked).toHaveAttribute("readonly");
     locked.focus();
@@ -296,27 +311,63 @@ describe("CreatePage", () => {
     expect(within(first).getAllByRole("textbox")).toHaveLength(1);
     expect(within(first).queryByRole("button")).toBeNull();
     expect(screen.getByRole("textbox", { name: "Number of Options" })).toHaveValue("2");
-    expect(screen.getByRole("textbox", { name: "Ruling Option 1" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Ruling Option 2" })).toBeInTheDocument();
-    expect(screen.queryByRole("textbox", { name: "Ruling Option 3" })).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Option A" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Option B" })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Option C" })).toBeNull();
 
     await setNumber(user, "Number of Options", "3");
 
     expect(within(screen.getByRole("list", { name: "Ruling options" })).getAllByRole("listitem")).toHaveLength(4);
-    expect(screen.getByRole("textbox", { name: "Ruling Option 3" })).toBeInTheDocument();
-    expect(screen.getAllByRole("textbox", { name: "Always included" })).toHaveLength(1);
+    expect(screen.getByRole("textbox", { name: "Option C" })).toBeInTheDocument();
+    expect(screen.getAllByRole("textbox", { name: "Ruling Option 1" })).toHaveLength(1);
   });
 
   it("a single select has no locked row, and leaving multiple select removes it", async () => {
     const { user } = await renderCreate({ connect: false });
-    expect(screen.queryByRole("textbox", { name: "Always included" })).toBeNull();
+    expect(screen.queryByDisplayValue(core.NONE_OF_THE_OPTIONS_TEXT)).toBeNull();
     await chooseOption(user, "Question Type", "Multiple choice: multiple select");
-    expect(screen.getByRole("textbox", { name: "Always included" })).toBeInTheDocument();
+    expect(screen.getByDisplayValue(core.NONE_OF_THE_OPTIONS_TEXT)).toHaveAttribute("readonly");
 
     await chooseOption(user, "Question Type", "Multiple choice: single select");
 
-    expect(screen.queryByRole("textbox", { name: "Always included" })).toBeNull();
+    expect(screen.queryByDisplayValue(core.NONE_OF_THE_OPTIONS_TEXT)).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Ruling Option 1" })).not.toHaveAttribute("readonly");
     expect(within(screen.getByRole("list", { name: "Ruling options" })).getAllByRole("listitem")).toHaveLength(2);
+  });
+
+  it("a multiple select labels its typed rows Option A, B, C with their descriptions, and a single select keeps Ruling Option N", async () => {
+    const { user } = await renderCreate({ connect: false });
+    await chooseOption(user, "Question Type", "Multiple choice: multiple select");
+    await setNumber(user, "Number of Options", "3");
+    for (const name of TICK_OPTION_LABELS) {
+      expect(screen.getByRole("textbox", { name }), name).toHaveAttribute("aria-required", "true");
+      expect(screen.getByRole("textbox", { name: `${name} Description (Optional)` }), name).not.toHaveAttribute("aria-required");
+    }
+    expect(screen.queryByRole("textbox", { name: "Ruling Option 2" })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Ruling Option 1 Description (Optional)" })).toBeNull();
+
+    await chooseOption(user, "Question Type", "Multiple choice: single select");
+
+    for (const name of ["Ruling Option 1", "Ruling Option 2"]) {
+      expect(screen.getByRole("textbox", { name }), name).toHaveAttribute("aria-required", "true");
+      expect(screen.getByRole("textbox", { name: `${name} Description (Optional)` }), name).toBeInTheDocument();
+    }
+    expect(screen.queryByRole("textbox", { name: /^Option [A-Z]/ })).toBeNull();
+  });
+
+  it("an empty multiple-select option asks for an option like Red", async () => {
+    const { user } = await renderCreate({ connect: false });
+    await chooseOption(user, "Question Type", "Multiple choice: multiple select");
+    await typeInto(user, "Option B", "Green");
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByText("Some fields need attention")).toBeInTheDocument();
+
+    const empty = screen.getByRole("textbox", { name: "Option A" });
+    expect(empty).toHaveAttribute("aria-invalid", "true");
+    expect(empty).toHaveAccessibleDescription('Please enter this option, for example: "Red".');
+    expect(screen.getByRole("textbox", { name: "Option B" })).not.toHaveAttribute("aria-invalid", "true");
+    expect(screen.getAllByText('Please enter this option, for example: "Red".')).toHaveLength(1);
+    expect(screen.queryByText(/Please enter this ruling option/)).toBeNull();
   });
 
   it("the required fields are marked required and the optional ones are not", async () => {
@@ -451,7 +502,7 @@ describe("CreatePage", () => {
       await fillToSummary(user);
       expect(window.localStorage.getItem(DRAFT_KEY)).not.toBeNull();
       await user.click(screen.getByRole("button", { name: "Create dispute" }));
-      expect(await screen.findByText("You have successfully created dispute 42!")).toBeInTheDocument();
+      expect(await screen.findByText("Dispute 42 created")).toBeInTheDocument();
       expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
     });
 
@@ -731,8 +782,8 @@ describe("CreatePage", () => {
     await chooseOption(user, "Question Type", "Multiple choice: multiple select");
     await setNumber(user, "Number of Options", "3");
     await fillRequired(user);
-    await fillOptions(user, ["Red", "Green", "None of the above"]);
-    await typeInto(user, "Ruling Option 2 Description (Optional)", "The green one");
+    await fillTickOptions(user, ["Red", "Green", "None of the above"]);
+    await typeInto(user, "Option B Description (Optional)", "The green one");
     await toSummary(user);
     expect(summaryOptionLines()).toEqual([
       `Option 0 - ${core.REFUSED_RULING_TEXT}`,
@@ -865,9 +916,9 @@ describe("CreatePage", () => {
     await chooseOption(user, "Question Type", "Multiple choice: multiple select");
     await setNumber(user, "Number of Options", "3");
     await fillRequired(user);
-    await fillOptions(user, ["Red", "Green", "Blue"]);
-    await typeInto(user, "Ruling Option 1 Description (Optional)", "The red one");
-    expect(screen.getByRole("textbox", { name: "Always included" })).toHaveValue(core.NONE_OF_THE_OPTIONS_TEXT);
+    await fillTickOptions(user, ["Red", "Green", "Blue"]);
+    await typeInto(user, "Option A Description (Optional)", "The red one");
+    expect(screen.getByRole("textbox", { name: "Ruling Option 1" })).toHaveValue(core.NONE_OF_THE_OPTIONS_TEXT);
     await toSummary(user);
     expect(screen.getByRole("link", { name: /rules\.pdf|QmYw/ })).toHaveAttribute("href", expect.stringContaining(TEST_UPLOAD_PATH) as string);
     await user.click(screen.getByRole("button", { name: "Create dispute" }));
@@ -914,7 +965,8 @@ describe("CreatePage", () => {
     const { user, uploader, currentPath } = await renderCreate();
     await fillToSummary(user);
     await user.click(screen.getByRole("button", { name: "Create dispute" }));
-    expect(await screen.findByText("You have successfully created dispute 42!")).toBeInTheDocument();
+    expect(await within(toastRegion()).findByText("Created dispute 42.")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("Transaction confirmed")).toBeInTheDocument();
     expect(uploadedMetaEvidence(uploader).rulingOptions).toEqual({ type: "single-select", titles: ["Yes", "No"], descriptions: [] });
     expect(createCall(writes.controller ?? fakeWriteController([])).args[2]).toBe(2n);
     expect(currentPath()).toBe(CREATE_PATH);
@@ -933,7 +985,9 @@ describe("CreatePage", () => {
     await fillToSummary(user);
     await user.click(screen.getByRole("button", { name: "Create dispute" }));
     expect(await screen.findByText("Dispute ID not found")).toBeInTheDocument();
-    expect(screen.queryByText(/successfully created dispute/)).toBeNull();
+    expect(within(toastRegion()).getByText("Transaction confirmed")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("The transaction was mined.")).toBeInTheDocument();
+    expect(screen.queryByText(/Created dispute/)).toBeNull();
     expect(screen.getByRole("button", { name: "Create dispute" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Return" })).toBeEnabled();
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -945,12 +999,13 @@ describe("CreatePage", () => {
     expect(uploader.uploadJson).toHaveBeenCalledTimes(1);
   });
 
-  it("a rejected signature is a neutral notice and Create can be tried again with the same upload", async () => {
+  it("a rejected signature is a neutral toast and Create can be tried again with the same upload", async () => {
     writes.controller = fakeWriteController([{ phase: "pending" }, { phase: "rejected" }]);
     const { user, uploader } = await renderCreate();
     await fillToSummary(user);
     await user.click(screen.getByRole("button", { name: "Create dispute" }));
-    expect(await screen.findByText("Transaction cancelled")).toBeInTheDocument();
+    expect(await within(toastRegion()).findByText("Transaction cancelled")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("You declined creating the dispute in your wallet. Nothing was sent.")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Create dispute" })).toBeEnabled();
@@ -962,7 +1017,7 @@ describe("CreatePage", () => {
     expect(uploader.uploadJson).toHaveBeenCalledTimes(1);
   });
 
-  it("a failed transaction is shown as an error", async () => {
+  it("a failed transaction is shown as an error toast", async () => {
     writes.controller = fakeWriteController([
       { phase: "pending" },
       { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null },
@@ -971,8 +1026,9 @@ describe("CreatePage", () => {
     const { user } = await renderCreate();
     await fillToSummary(user);
     await user.click(screen.getByRole("button", { name: "Create dispute" }));
-    expect(await screen.findByText("Transaction failed")).toBeInTheDocument();
-    expect(screen.getByText("execution reverted")).toBeInTheDocument();
+    const toast = await within(toastRegion()).findByRole("alert");
+    expect(within(toast).getByText("Transaction failed")).toBeInTheDocument();
+    expect(within(toast).getByText("Creating the dispute failed. execution reverted")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create dispute" })).toBeEnabled();
   });
 

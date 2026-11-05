@@ -1,16 +1,19 @@
-import type { Decision, JuryDecisionNote, RulingFact } from "@dispute-resolver/core";
+import type { Decision, JuryDecisionNote, RulingFact, RulingNoun } from "@dispute-resolver/core";
 import { hasVisibleText } from "../../ui";
 
 const APPEALABLE = "This decision can be appealed within the appeal period.";
 
-const NOTES: Readonly<Record<JuryDecisionNote, string>> = {
+const NOTES: Readonly<Record<Exclude<JuryDecisionNote, "out-of-range">, string>> = {
   appealable: APPEALABLE,
   "appealable-in-arbitrable": `${APPEALABLE} Go to the arbitrable application to appeal this ruling.`,
   "not-appealable": "This dispute cannot be appealed.",
   "not-executed": "The ruling has not been executed yet.",
-  "out-of-range": "The arbitrable contract reported a ruling that is not one of this dispute's options.",
   inconsistent: "The arbitrable contract reported conflicting rulings.",
 };
+
+function outOfRangeNote(noun: RulingNoun): string {
+  return `The arbitrable contract reported a ruling that is not one of this dispute's ${noun}s.`;
+}
 
 /** A ruling can read as nothing (a blank title, or a multiple-select without titles); its quoted clause is then dropped. */
 function named(fact: RulingFact): boolean {
@@ -22,7 +25,7 @@ function courtRuled(court: RulingFact): string[] {
 }
 
 export function decisionLine(decision: Exclude<Decision, { readonly kind: "none" }>): string {
-  if (decision.kind === "jury-decision") return NOTES[decision.note];
+  if (decision.kind === "jury-decision") return decision.note === "out-of-range" ? outOfRangeNote(decision.noun) : NOTES[decision.note];
   const { winner, court, wonBy, noun } = decision;
   switch (wonBy) {
     case "jury":

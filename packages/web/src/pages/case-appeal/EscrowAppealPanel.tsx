@@ -2,7 +2,7 @@ import { buildEscrowAppealCall, type ChainConfig } from "@dispute-resolver/core"
 import { Button } from "@kleros/ui-components-library";
 import { useState } from "react";
 import { LABEL, Notice, Timestamp, formatAmount, useNowSeconds } from "../../ui";
-import { WriteStatusNotice, useWrite, useWriteAccess } from "../../wallet";
+import { useWrite, useWriteAccess } from "../../wallet";
 import {
   APPEAL_COST_CHANGED_TITLE,
   APPEAL_COST_CHECKING,
@@ -14,6 +14,7 @@ import {
   ESCROW_EXPLANATION,
   appealCostChangedBody,
   appealCostUnreadBody,
+  escrowAppealWording,
 } from "./copy";
 import { BODY_TEXT_CLASS } from "./styles";
 import type { AppealActions } from "./useAppealActions";
@@ -93,7 +94,7 @@ export function EscrowAppealPanel({ appealCost, deadline, actions, chain }: Escr
     }
     setCheck(IDLE);
     const build = buildEscrowAppealCall({ binding: context.binding, family: context.family, localId: context.localId, appealCost: fresh.value });
-    await write.execute(build, { pageChainId: actions.pageChainId, onMined: () => actions.refresh("appeal") });
+    await write.execute(build, { pageChainId: actions.pageChainId, onMined: () => actions.refresh("appeal"), wording: escrowAppealWording(formatAmount(fresh.value, chain)) });
   };
 
   return (
@@ -117,7 +118,6 @@ export function EscrowAppealPanel({ appealCost, deadline, actions, chain }: Escr
       <div className={check.phase === "idle" ? "sr-only" : undefined} aria-live="polite" aria-atomic="true">
         <CostCheckContent check={check} shownCost={shownCost} chain={chain} />
       </div>
-      <WriteStatusNotice status={write.status} />
     </>
   );
 }

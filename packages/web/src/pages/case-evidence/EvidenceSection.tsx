@@ -53,7 +53,8 @@ function SubmitEvidence({ context, chainId, disputeId }: SubmitEvidenceProps) {
     <div className="flex min-w-0 flex-col gap-3">
       <Button text="Submit New Evidence" className={BUTTON_CLASS} isDisabled={needsWallet || uploadsUnconfigured} onPress={open} />
       {needsWallet ? <p className="text-sm text-klerosUIComponentsSecondaryText">Connect a wallet to submit evidence.</p> : null}
-      {!isOpen && submission.feedback !== null ? <SubmissionFeedbackNotice feedback={submission.feedback} /> : null}
+      {/* The modal can be closed while a submission runs: what stops it before its write is shown here then. */}
+      {!isOpen && submission.notice !== null ? <SubmissionFeedbackNotice notice={submission.notice} /> : null}
       <SubmitEvidenceModal
         isOpen={isOpen}
         draft={draft}
@@ -65,7 +66,7 @@ function SubmitEvidence({ context, chainId, disputeId }: SubmitEvidenceProps) {
           void submit();
         }}
         submitting={submission.inFlight}
-        feedback={isOpen ? submission.feedback : null}
+        notice={isOpen ? submission.notice : null}
         access={submission.access}
       />
     </div>

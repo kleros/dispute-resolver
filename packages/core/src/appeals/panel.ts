@@ -4,7 +4,7 @@ import { computeAppealAmounts } from "./amounts";
 import { buildCrowdfundingCards } from "./cards";
 import { governorListIndex } from "./governor";
 import { fail } from "../outcome";
-import { reservedWithinChoices } from "../rulings";
+import { optionsWithinChoices } from "../rulings";
 import type { AppealAmounts, AppealPanel, AppealPanelInput, WithdrawState } from "./types";
 
 const HIDDEN: AppealPanel = { kind: "hidden" };
@@ -49,13 +49,14 @@ function crowdfunding(input: AppealPanelInput, dialect: "idr" | "governor"): App
   const tie = currentRuling.value === 0n ? input.rules.tie : null;
   if (dialect === "governor" && tie !== null && amounts.shared === undefined) return { kind: "fees-unavailable", error: { code: "unsupported", message: NO_SHARED_MULTIPLIER } };
   const set = buildCrowdfundingCards({
-    rulingOptions: reservedWithinChoices(input.rulingOptions, input.numberOfChoices).rulingOptions,
+    rulingOptions: optionsWithinChoices(input.rulingOptions, input.numberOfChoices).rulingOptions,
     fallbackOutcomes: input.fallbackOutcomes,
     currentRuling: currentRuling.value,
     amounts: cardAmounts(amounts, dialect, currentRuling.value),
     funding: funding.value,
     override: input.override,
     tie,
+    numberOfChoices: input.numberOfChoices,
   });
   // A governor's `fundAppeal(listIndex)` funds list `ruling − 1`: ruling 0 names no list, so it could never be funded.
   const cards = dialect === "governor" ? set.cards.filter((card) => governorListIndex(card.code) !== null) : set.cards;

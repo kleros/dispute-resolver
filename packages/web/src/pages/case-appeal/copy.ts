@@ -1,5 +1,6 @@
 import { losingDeadline, type FundingTerms, type RulingNoun } from "@dispute-resolver/core";
 import { hasVisibleText, utcText } from "../../ui";
+import type { WriteWording } from "../../wallet";
 
 export const APPEAL_HEADING = "Appeal the decision";
 
@@ -79,6 +80,9 @@ export function newAnswerLine(kind: "answer" | "combination"): string {
   return `This ${kind} has no card of its own: it is funded as a new ${kind}.`;
 }
 
+export const ANSWER_NOT_ACCEPTED = "The contract does not accept this answer.";
+export const COMBINATION_NOT_ACCEPTED = "The contract does not accept this combination.";
+
 export const APPEAL_COST_CHECKING = "Checking the appeal cost…";
 
 export const APPEAL_COST_CHANGED_TITLE = "The appeal cost changed";
@@ -89,4 +93,23 @@ export function appealCostChangedBody(amount: string): string {
 export const APPEAL_COST_UNREAD_TITLE = "Appeal cost unavailable";
 export function appealCostUnreadBody(reason: string): string {
   return `The appeal cost could not be read again, so nothing was sent. ${reason}`;
+}
+
+/** A blank answer title is not quoted. */
+export function fundWording(answer: string, amount: string): WriteWording {
+  if (!hasVisibleText(answer)) return { doing: `funding an untitled answer with ${amount}`, done: `Funded an untitled answer with ${amount}.` };
+  return { doing: `funding “${answer}” with ${amount}`, done: `Funded “${answer}” with ${amount}.` };
+}
+
+export function withdrawWording(amount: string): WriteWording {
+  return { doing: `withdrawing ${amount}`, done: `Withdrew ${amount}.` };
+}
+
+/** The last of several transactions: its toast is the one the reader keeps, so it names the whole withdrawal too. */
+export function withdrawLastWording(amount: string, total: string): WriteWording {
+  return { doing: `withdrawing ${amount}`, done: `Withdrew ${amount}, ${total} in all.` };
+}
+
+export function escrowAppealWording(amount: string): WriteWording {
+  return { doing: `paying ${amount} to appeal`, done: `Paid ${amount} to appeal.` };
 }

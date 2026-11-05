@@ -104,9 +104,10 @@ function questionCards(context: CardContext, options: RulingOptions, fallbackOut
 }
 
 /**
- * The refuse card unless option 0 is not fundable (Unslashed), the reserved answers, then the question type's cards. A
- * new answer on the free input or composer takes the loser terms, or the shared ones in a tie that costs every ruling
- * alike.
+ * The refuse card unless option 0 is not fundable (Unslashed), the reserved answers, then the question type's cards,
+ * without any card coded above the dispute's number of choices (a combination or a fallback outcome past it), since the
+ * contract refuses a ruling above it. A new answer on the free input or composer takes the loser terms, or the shared
+ * ones in a tie that costs every ruling alike.
  */
 export function buildCrowdfundingCards(input: {
   readonly rulingOptions: RulingOptions;
@@ -116,8 +117,10 @@ export function buildCrowdfundingCards(input: {
   readonly funding: RoundFunding;
   readonly override: BehaviorOverride | undefined;
   readonly tie: TieDialect | null;
+  /** The arbitrator's `disputes(id).numberOfChoices`. */
+  readonly numberOfChoices: bigint;
 }): CrowdfundingSet {
-  const { rulingOptions, fallbackOutcomes, amounts } = input;
+  const { rulingOptions, fallbackOutcomes, amounts, numberOfChoices } = input;
   const contributed = new Map<bigint, bigint>();
   for (const { ruling, amount } of input.funding.contributions) contributed.set(ruling, (contributed.get(ruling) ?? 0n) + amount);
   const shared = input.tie === "shared-full-period" || input.tie === "all-winner";
@@ -128,9 +131,9 @@ export function buildCrowdfundingCards(input: {
   const cards = [...fixed, ...questionCards(context, rulingOptions, fallbackOutcomes, taken)];
   const { type, titles, precision } = rulingOptions;
   const newAnswer = shared ? amounts.winner : amounts.loser;
-  const entered = { side: shared ? ("shared" as const) : ("loser" as const), required: newAnswer.total, deadline: newAnswer.deadline };
+  const entered = { side: shared ? ("shared" as const) : ("loser" as const), required: newAnswer.total, deadline: newAnswer.deadline, highestCode: numberOfChoices };
   return {
-    cards,
+    cards: cards.filter((fundable) => fundable.code <= numberOfChoices),
     freeInput: isVariableType(type) ? { type, precision, ...entered } : null,
     composer: type === "multiple-select" && titles !== undefined && titles.length > MAX_ENUMERATED_OPTIONS ? { titles, ...entered } : null,
   };

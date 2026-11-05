@@ -2,9 +2,9 @@ import { Button, Modal, TextArea, TextField } from "@kleros/ui-components-librar
 import { useMemo, useState } from "react";
 import { AtlasFileField, AtlasUploaderProvider, useAtlasUpload, type AtlasUploader } from "../../atlas";
 import { Notice } from "../../ui";
-import { ConnectButton, WriteStatusNotice, type NeedsWalletGuard, type WriteAccess } from "../../wallet";
+import { ConnectButton, WriteGuardNotice, type NeedsWalletGuard, type WriteAccess } from "../../wallet";
 import { SubmissionFeedbackNotice } from "./SubmissionFeedbackNotice";
-import type { EvidenceDraft, SubmissionFeedback } from "./useEvidenceSubmission";
+import type { EvidenceDraft, SubmissionNotice } from "./useEvidenceSubmission";
 
 const NEEDS_WALLET = "Connect a wallet to submit evidence.";
 
@@ -16,14 +16,10 @@ interface SubmitEvidenceModalProps {
   readonly onClose: () => void;
   readonly onSubmit: () => void;
   readonly submitting: boolean;
-  readonly feedback: SubmissionFeedback | null;
+  /** What stopped the last submission before its write; the write's outcome shows in the toasts. */
+  readonly notice: SubmissionNotice | null;
   /** Anything but `ready` locks the attachment field, so no Atlas sign-in is requested off the page chain. */
   readonly access: WriteAccess;
-}
-
-/** A refusal the modal already shows from `access`, so the submission's copy of it is not shown twice. */
-function isGuardRefusal(feedback: SubmissionFeedback | null): boolean {
-  return feedback?.kind === "write" && (feedback.status.phase === "wrong-chain" || feedback.status.phase === "needs-wallet");
 }
 
 /** Shown when the wallet disconnects while the modal is open; what was typed stays. */
@@ -76,15 +72,14 @@ const OVERLAY_MOTION = [
 /**
  * No field is validated. With the wallet on another chain the attachment field is locked and the switch is offered under
  * it, so no sign-in is requested; a Submit refused for the same reason adds no second notice. A failed submission keeps
- * the modal open with the outcome.
+ * the modal open; its outcome shows in the toast region above the modal.
  */
-export function SubmitEvidenceModal({ isOpen, draft, onDraftChange, onClose, onSubmit, submitting, feedback, access }: SubmitEvidenceModalProps) {
+export function SubmitEvidenceModal({ isOpen, draft, onDraftChange, onClose, onSubmit, submitting, notice, access }: SubmitEvidenceModalProps) {
   const uploader = useAtlasUpload();
   const attachment = useCountedUploads(uploader);
   const unconfigured = uploader.availability === "unconfigured";
   const uploading = attachment.inFlight || uploader.phase !== "idle";
   const needsWallet = access.status === "needs-wallet";
-  const shownFeedback = access.status !== "ready" && isGuardRefusal(feedback) ? null : feedback;
   return (
     <Modal
       isOpen={isOpen}
@@ -132,9 +127,9 @@ export function SubmitEvidenceModal({ isOpen, draft, onDraftChange, onClose, onS
             }}
           />
         </AtlasUploaderProvider>
-        {access.status === "wrong-chain" ? <WriteStatusNotice status={access.guard} beforeAttempt /> : null}
+        {access.status === "wrong-chain" ? <WriteGuardNotice guard={access.guard} /> : null}
         {access.status === "needs-wallet" ? <WalletNeeded guard={access.guard} /> : null}
-        {shownFeedback === null ? null : <SubmissionFeedbackNotice feedback={shownFeedback} />}
+        {notice === null ? null : <SubmissionFeedbackNotice notice={notice} />}
         <div className="sticky bottom-0 -mx-4 -mb-4 flex flex-wrap justify-end gap-3 border-t border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground px-4 py-3 sm:-mx-6 sm:-mb-6 sm:px-6">
           <Button text="Return" variant="secondary" onPress={onClose} />
           <Button

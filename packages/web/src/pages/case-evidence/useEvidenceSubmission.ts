@@ -3,9 +3,11 @@ import { useCallback, useRef, useState } from "react";
 import { useAtlasUpload, type UploadFailure, type UploadedFile } from "../../atlas";
 import type { NoticeVariant } from "../../ui";
 import { useCaseRefresh, type CaseWriteContext } from "../../data";
-import { useWrite, useWriteAccess, type NeedsWalletGuard, type WriteAccess, type WriteStatus, type WrongChainGuard } from "../../wallet";
+import { useWrite, useWriteAccess, type WriteAccess, type WriteWording } from "../../wallet";
 
 const EVIDENCE_FILE_NAME = "evidence.json";
+
+export const EVIDENCE_WORDING: WriteWording = { doing: "submitting your evidence", done: "Submitted your evidence." };
 
 export interface EvidenceDraft {
   readonly title: string;
@@ -13,18 +15,15 @@ export interface EvidenceDraft {
   readonly attachment: UploadedFile | null;
 }
 
-type ActiveWriteStatus = Exclude<WriteStatus, { readonly phase: "idle" }>;
-
-type GuardStatus = NeedsWalletGuard | WrongChainGuard;
-
-/** A failure outside the write flow: the evidence JSON upload, or an unexpected error. */
-interface SubmissionNotice {
+/**
+ * A failure outside the write flow, shown in place: the evidence JSON upload, a declined sign-in, or an unexpected
+ * error. The write's own statuses go to the toasts.
+ */
+export interface SubmissionNotice {
   readonly variant: NoticeVariant;
   readonly title: string;
   readonly body: string;
 }
-
-export type SubmissionFeedback = { readonly kind: "write"; readonly status: ActiveWriteStatus } | { readonly kind: "notice"; readonly notice: SubmissionNotice };
 
 interface EvidenceSubmission {
   /**
@@ -32,8 +31,8 @@ interface EvidenceSubmission {
    * well as Submit.
    */
   readonly access: WriteAccess;
-  /** `null` before the first attempt and after `clear()`. */
-  readonly feedback: SubmissionFeedback | null;
+  /** `null` before the first attempt, after `clear()`, and whenever the attempt reached the write. */
+  readonly notice: SubmissionNotice | null;
   /** From the click until the write's outcome, the evidence JSON upload included. */
   readonly inFlight: boolean;
   /** Resolves `true` once the transaction is mined. */
@@ -53,41 +52,39 @@ function errorText(error: unknown): string {
 }
 
 /**
- * The chain guard runs first, so nothing is uploaded or signed for a wallet on another chain. `submitEvidence` is built
- * on the arbitrated contract read from the arbitrator, never from meta-evidence.
+ * The chain guard runs first, so nothing is uploaded or signed for a wallet on another chain; the modal already shows
+ * that guard with its switch, so a refused press adds nothing. `submitEvidence` is built on the arbitrated contract read
+ * from the arbitrator, never from meta-evidence.
  */
 export function useEvidenceSubmission(context: CaseWriteContext, pageChainId: number, disputeId: bigint): EvidenceSubmission {
   const write = useWrite();
   const access = useWriteAccess(pageChainId);
   const uploader = useAtlasUpload();
   const refresh = useCaseRefresh(pageChainId, disputeId);
-  const [local, setLocal] = useState<SubmissionFeedback | null>(null);
+  const [notice, setNotice] = useState<SubmissionNotice | null>(null);
   const [inFlight, setInFlight] = useState(false);
   const busy = useRef(false);
-  const guard: GuardStatus | null = access.status === "ready" ? null : access.guard;
+  const ready = access.status === "ready";
 
   const send = useCallback(
     async (draft: EvidenceDraft): Promise<boolean> => {
-      if (guard !== null) {
-        setLocal({ kind: "write", status: guard });
-        return false;
-      }
+      if (!ready) return false;
       const fileUri = draft.attachment === null ? null : normalizeIpfsPath(draft.attachment.path);
       if (draft.attachment !== null && fileUri === null) {
-        setLocal({ kind: "write", status: { phase: "refused", refusal: "not-content-addressed" } });
+        await write.execute({ ok: false, refusal: "not-content-addressed" }, { pageChainId, wording: EVIDENCE_WORDING });
         return false;
       }
       const document = buildEvidenceDocument({ name: draft.title, description: draft.description, fileUri });
       const uploaded = await uploader.uploadJson(EVIDENCE_FILE_NAME, document, "policy");
       if (!uploaded.ok) {
-        setLocal({ kind: "notice", notice: uploadNotice(uploaded) });
+        setNotice(uploadNotice(uploaded));
         return false;
       }
       const build = buildSubmitEvidenceCall({ binding: context.binding, family: context.family, localId: context.localId, evidenceUri: uploaded.path });
-      const outcome = await write.execute(build, { pageChainId, onMined: () => refresh("evidence") });
+      const outcome = await write.execute(build, { pageChainId, onMined: () => refresh("evidence"), wording: EVIDENCE_WORDING });
       return outcome.phase === "mined";
     },
-    [context, guard, pageChainId, refresh, uploader, write],
+    [context, pageChainId, ready, refresh, uploader, write],
   );
 
   const submit = useCallback(
@@ -95,27 +92,24 @@ export function useEvidenceSubmission(context: CaseWriteContext, pageChainId: nu
       if (busy.current) return false;
       busy.current = true;
       setInFlight(true);
-      setLocal(null);
-      write.reset();
+      setNotice(null);
       try {
         return await send(draft);
       } catch (error) {
-        setLocal({ kind: "notice", notice: { variant: "error", title: "Evidence not submitted", body: errorText(error) } });
+        setNotice({ variant: "error", title: "Evidence not submitted", body: errorText(error) });
         return false;
       } finally {
         busy.current = false;
         setInFlight(false);
       }
     },
-    [send, write],
+    [send],
   );
 
   const clear = useCallback(() => {
     if (busy.current) return;
-    setLocal(null);
-    write.reset();
-  }, [write]);
+    setNotice(null);
+  }, []);
 
-  const feedback: SubmissionFeedback | null = local ?? (write.status.phase === "idle" ? null : { kind: "write", status: write.status });
-  return { access, feedback, inFlight, submit, clear };
+  return { access, notice, inFlight, submit, clear };
 }

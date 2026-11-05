@@ -9,6 +9,12 @@ export const LG_MEDIA_QUERY = "(min-width: 56.25rem)";
 /** Tailwind's default `--breakpoint-xl`, which the library keeps: the edge where the `xl:` classes switch. */
 export const XL_MEDIA_QUERY = "(min-width: 80rem)";
 
+/**
+ * Below Tailwind's default `--breakpoint-md`, which the library keeps: the edge where the `max-md:` classes apply. A
+ * below-query, so a browser without media queries reads the wide layout.
+ */
+export const PHONE_MEDIA_QUERY = "(width < 48rem)";
+
 interface MediaStore {
   readonly subscribe: (onChange: () => void) => () => void;
   readonly getSnapshot: () => boolean;

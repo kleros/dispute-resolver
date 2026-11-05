@@ -6,6 +6,7 @@ import {
   numberOfRulingOptions,
   readArbitrationCost,
   type CanonicalIpfsPath,
+  type ChainConfig,
   type CreateDisputeInput,
   type Outcome,
   type Unavailable,
@@ -13,20 +14,18 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAtlasUpload, type UploadError, type UploadResult } from "../../atlas";
-import { noRpcError, useCoreDeps } from "../../data";
+import { noRpcError, useCoreDeps, type WriteReceipt } from "../../data";
 import { paths, usePageChain } from "../../routing";
-import { useToast } from "../../shell";
-import { useWrite, useWriteAccess, type NeedsWalletGuard, type WriteAccess, type WriteStatus, type WrongChainGuard } from "../../wallet";
+import { useWrite, useWriteAccess, type WriteAccess, type WriteStatus, type WriteWording } from "../../wallet";
 import { clearCreateDraft } from "./draftStorage";
 
 const NAVIGATION_DELAY_MS = 2000;
 
 const META_EVIDENCE_FILE_NAME = "metaEvidence.json";
 
-/** `writing` means the write hook's own status is the one to show, from waiting for the wallet to its outcome. */
+/** `writing`: the write reports itself in the toasts, from waiting for the wallet to its outcome. */
 export type CreateActionState =
   | { readonly kind: "idle" }
-  | { readonly kind: "blocked"; readonly status: NeedsWalletGuard | WrongChainGuard }
   | { readonly kind: "publishing" }
   | { readonly kind: "publish-failed"; readonly error: UploadError; readonly message: string }
   | { readonly kind: "cost-failed"; readonly error: Unavailable }
@@ -37,7 +36,6 @@ export type CreateActionState =
 interface CreateDisputeAction {
   readonly access: WriteAccess;
   readonly state: CreateActionState;
-  readonly writeStatus: WriteStatus;
   /** Also true once the dispute is created and about to open; a mined transaction without a dispute ID is not busy. */
   readonly isBusy: boolean;
   create(): Promise<void>;
@@ -54,11 +52,26 @@ function isBusy(state: CreateActionState, writeStatus: WriteStatus): boolean {
       return UNSETTLED_WRITE_PHASES.has(writeStatus.phase);
     case "idle":
     case "no-dispute-id":
-    case "blocked":
     case "publish-failed":
     case "cost-failed":
       return false;
   }
+}
+
+/** `null` on a chain without KlerosLiquid, or when the receipt holds no DisputeCreation log. */
+function createdDisputeId(chain: ChainConfig, receipt: WriteReceipt): bigint | null {
+  return chain.klerosLiquid === undefined ? null : disputeIdFromReceipt(receipt.logs, chain.klerosLiquid);
+}
+
+/** The dispute number is known only once the receipt is read, inside the write's own chain. */
+export function createWording(chain: ChainConfig): WriteWording {
+  return {
+    doing: "creating the dispute",
+    done: (receipt) => {
+      const id = createdDisputeId(chain, receipt);
+      return id === null ? "The transaction was mined." : `Created dispute ${id.toString()}.`;
+    },
+  };
 }
 
 function uploadFailure(error: unknown): UploadResult {
@@ -66,9 +79,10 @@ function uploadFailure(error: unknown): UploadResult {
 }
 
 /**
- * The wallet and its chain are checked before anything is signed, the Atlas sign-in included. The uploaded
- * meta-evidence is reused when the user retries after a refused, rejected or failed transaction, or after a mined one
- * whose receipt had no dispute ID.
+ * The wallet and its chain are checked before anything is signed, the Atlas sign-in included; the summary already shows
+ * that guard with its switch, so a refused press adds nothing. The uploaded meta-evidence is reused when the user
+ * retries after a refused, rejected or failed transaction, or after a mined one whose receipt had no dispute ID. The
+ * write names the created dispute in its own toast, read from the receipt.
  */
 export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction {
   const { chainId, chain } = usePageChain();
@@ -76,7 +90,6 @@ export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction
   const uploader = useAtlasUpload();
   const write = useWrite();
   const deps = useCoreDeps();
-  const toast = useToast();
   const navigate = useNavigate();
   const [state, setState] = useState<CreateActionState>({ kind: "idle" });
   const published = useRef<CanonicalIpfsPath | null>(null);
@@ -93,7 +106,7 @@ export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction
   const run = useCallback(async () => {
     write.reset();
     if (access.status !== "ready") {
-      setState({ kind: "blocked", status: access.guard });
+      setState({ kind: "idle" });
       return;
     }
 
@@ -122,18 +135,17 @@ export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction
     if (!mounted.current) return;
     setState({ kind: "writing" });
     const build = buildCreateDisputeCall({ chain, extraData, metaEvidenceUri, numberOfRulingOptions: numberOfRulingOptions(input), cost: cost.value });
-    const outcome = await write.execute(build, { pageChainId: chainId });
+    const outcome = await write.execute(build, { pageChainId: chainId, wording: createWording(chain) });
     if (outcome.phase !== "mined") return;
 
-    const disputeId = chain.klerosLiquid === undefined ? null : disputeIdFromReceipt(outcome.receipt.logs, chain.klerosLiquid);
+    const disputeId = createdDisputeId(chain, outcome.receipt);
     if (disputeId === null) {
       setState({ kind: "no-dispute-id" });
       return;
     }
-    toast.show({ variant: "success", title: "Transaction Confirmed", message: `You have successfully created dispute ${disputeId.toString()}!` });
     clearCreateDraft(chainId);
     setState({ kind: "created", disputeId });
-  }, [write, access, chainId, uploader, input, deps, chain, toast]);
+  }, [write, access, chainId, uploader, input, deps, chain]);
 
   const create = useCallback(async () => {
     // The meta-evidence can only be published through Atlas, so without it there is nothing to start.
@@ -157,5 +169,5 @@ export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction
     };
   }, [createdId, chainId, navigate]);
 
-  return { access, state, writeStatus: write.status, isBusy: isBusy(state, write.status), create };
+  return { access, state, isBusy: isBusy(state, write.status), create };
 }

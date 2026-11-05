@@ -113,6 +113,20 @@ describe("QuestionPanel", () => {
     expect(screen.getByText("The case's description also lists 2 answers the contract does not accept, so they are not shown.")).toBeInTheDocument();
   });
 
+  it("leaves out single-select titles past the dispute's number of choices and counts them in the line with the reserved answers", () => {
+    const options = { type: "single-select", titles: ["Yes", "No", "Maybe", "Later"], reserved: { "0x3": "Withdrawn", "0x9": "Spam" } } as const;
+    renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: options })), foundLookup(3n));
+    expect(optionLines()).toEqual([`Option 0 - ${REFUSED_RULING_TEXT}`, "Option 1 - Yes", "Option 2 - No", "Option 3 - Maybe", "Option 0x3 - Withdrawn"]);
+    expect(screen.getByText("The case's description also lists 2 answers the contract does not accept, so they are not shown.")).toBeInTheDocument();
+  });
+
+  it("keeps every tickable title of a multiple select whatever the number of choices", () => {
+    const options = { type: "multiple-select", titles: ["Red", "Green", "Blue"] } as const;
+    renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: options })), foundLookup(2n));
+    expect(optionLines()).toEqual([`Option 0 - ${REFUSED_RULING_TEXT}`, `Option 1 - ${NONE_OF_THE_OPTIONS_TEXT}`, "Red", "Green", "Blue"]);
+    expect(screen.queryByText(/does not accept/)).not.toBeInTheDocument();
+  });
+
   it("keeps Answered Too Soon on a dispute whose choices span the whole uint256 range, as a Reality proxy's do, with no line", () => {
     const options = { type: "multiple-select", titles: ["Red", "Blue"], reserved: { [ANSWERED_TOO_SOON]: "Answered Too Soon" } } as const;
     renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: options })), foundLookup(MAX_UINT256));

@@ -4,7 +4,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCase } from "../../data";
-import { createTestDeps, testCourt, testDetails, testDisputeEvent, testEvidenceList, testFamily, testFoundLookup, testOkMetaEvidence } from "../../test/data";
+import { createTestDeps, deferred, testCourt, testDetails, testDisputeEvent, testEvidenceList, testFamily, testFoundLookup, testOkMetaEvidence } from "../../test/data";
 import { testPageChain } from "../../test/routing";
 import { renderWithProviders } from "../../test/shell";
 import { TEST_SENT, TEST_WALLET_ADDRESS, createConnectedTestWallet, fakeWriteController, type FakeWriteController } from "../../test/wallet";
@@ -76,6 +76,10 @@ function fundedPercent(card: HTMLElement): string | null {
   return within(card).getByRole("progressbar").getAttribute("aria-valuenow");
 }
 
+function toastRegion(): HTMLElement {
+  return screen.getByRole("region", { name: "Notifications" });
+}
+
 function findRulingsToFund(): Promise<HTMLElement> {
   return screen.findByRole("list", { name: "Rulings to fund" });
 }
@@ -102,7 +106,28 @@ describe("AppealSection refresh after a mined write", () => {
     });
     expect(core.readRoundFunding).toHaveBeenCalledTimes(2);
     expect(core.readDisputeDetails).toHaveBeenCalledTimes(2);
-    expect(within(winnerCard()).getByText("Transaction confirmed")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("Transaction confirmed")).toBeInTheDocument();
+    expect(winnerCard()).not.toHaveTextContent("Transaction confirmed");
+  });
+
+  it("the toast confirms a funding whose refresh moved the dispute on and removed the card", async () => {
+    const user = userEvent.setup();
+    programReads(3);
+    await renderCase();
+    const fund = await waitFor(() => within(winnerCard()).getByRole("button", { name: /^Fund/ }));
+    vi.mocked(core.lookupDispute).mockResolvedValue(testFoundLookup({ period: 4 }));
+    // The refresh after the receipt waits on this read, so the panel moves on before the write reports it was mined.
+    const funding = deferred<Outcome<RoundFunding>>();
+    vi.mocked(core.readRoundFunding).mockReturnValueOnce(funding.promise);
+
+    await user.click(fund);
+
+    expect(await screen.findByRole("button", { name: "Withdraw 1 ETH" })).toBeInTheDocument();
+    expect(screen.queryByRole("listitem", { name: "Yes" })).toBeNull();
+    expect(within(toastRegion()).getByText("Transaction submitted")).toBeInTheDocument();
+    funding.resolve(NO_FUNDING);
+    expect(await within(toastRegion()).findByText("Transaction confirmed")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("Funded “Yes” with 2 ETH.")).toBeInTheDocument();
   });
 
   it("once a funding is mined, an edited contribution follows the refreshed remaining amount again", async () => {
@@ -133,7 +158,7 @@ describe("AppealSection refresh after a mined write", () => {
     await user.click(button);
 
     expect(await screen.findByText("You withdrew 1 ETH.")).toBe(region);
-    expect(screen.getByText("Transaction confirmed")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("Transaction confirmed")).toBeInTheDocument();
     expect(container).not.toHaveTextContent(withdrawNothing("answer"));
     expect(screen.queryByRole("button", { name: /^Withdraw/ })).toBeNull();
     expect(core.readWithdrawable).toHaveBeenCalledTimes(2);

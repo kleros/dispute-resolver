@@ -22,6 +22,7 @@ import {
   type Outcome,
   type ReadClient,
   type RoundFunding,
+  type RulingNoun,
   type RulingOptions,
   type Unavailable,
   type WithdrawState,
@@ -167,9 +168,9 @@ type PanelOptions = Pick<MetaEvidence, "rulingOptions" | "fallbackOutcomes">;
 const WITHOUT_OPTIONS: PanelOptions = { rulingOptions: NO_RULING_OPTIONS, fallbackOutcomes: null };
 
 /** Only the crowdfunding cards wait for and depend on the meta-evidence; every other panel is built without it. */
-function panelOptions(reads: FoundCaseReads, family: FamilyDetection): SectionData<PanelOptions> {
+function panelOptions(reads: FoundCaseReads, family: FamilyDetection, noun: RulingNoun): SectionData<PanelOptions> {
   if (!needsRulingOptions(reads.lookup.dispute.period, family)) return ready(WITHOUT_OPTIONS);
-  return metaEvidenceSection(reads.metaEvidence, "This dispute has no meta-evidence, so its ruling options are unknown.");
+  return metaEvidenceSection(reads.metaEvidence, `This dispute has no meta-evidence, so its ${noun}s are unknown.`);
 }
 
 export function assembleAppealPanel(reads: FoundCaseReads): SectionData<AppealPanel> {
@@ -177,7 +178,7 @@ export function assembleAppealPanel(reads: FoundCaseReads): SectionData<AppealPa
   if (family.status !== "ready") return family;
   if (details.status !== "ready") return details;
   if (rules === null) return LOADING;
-  const options = panelOptions(reads, family.value);
+  const options = panelOptions(reads, family.value, rules.noun);
   if (options.status !== "ready") return options;
   const multipliers = optionalOutcome(appeal.multipliers);
   const funding = optionalOutcome(appeal.funding);

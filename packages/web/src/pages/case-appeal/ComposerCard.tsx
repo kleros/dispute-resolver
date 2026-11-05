@@ -9,8 +9,9 @@ import {
 } from "@dispute-resolver/core";
 import { Card, Checkbox } from "@kleros/ui-components-library";
 import { useId, useState } from "react";
+import { COMBINATION_NOT_ACCEPTED } from "./copy";
 import { EnteredAnswerFooter, MatchedCardNote } from "./FreeInputCard";
-import { CARD_TITLE_CLASS, COMPOSER_CARD_CLASS } from "./styles";
+import { CARD_HEAD_CLASS, CARD_TITLE_CLASS, WIDE_CARD_CLASS, WIDE_CARD_FUNDING_CLASS, WIDE_CARD_ITEM_CLASS } from "./styles";
 import type { AppealActions } from "./useAppealActions";
 
 export interface ComposerCardProps {
@@ -28,10 +29,13 @@ export interface ComposerCardProps {
  */
 export function ComposerCard({ composer, cards, actions, chain, isFundDisabled }: ComposerCardProps) {
   const titleId = useId();
+  const errorId = useId();
   const [selected, setSelected] = useState<ReadonlySet<number>>(() => new Set());
-  const code = combinationCode([...selected].sort((a, b) => a - b));
+  const ticked = combinationCode([...selected].sort((a, b) => a - b));
+  const tooHigh = ticked > composer.highestCode;
+  const code = tooHigh ? null : ticked;
   const funding = enteredAnswerFunding(cards, composer, code);
-  const answer = combinationTitle(code - 1n, composer.titles);
+  const answer = combinationTitle(ticked - 1n, composer.titles);
   const options = composer.titles.map((title, position) => ({ title, position, id: `option-${String(position)}` }));
 
   const toggle = (position: number, isSelected: boolean) => {
@@ -44,13 +48,13 @@ export function ComposerCard({ composer, cards, actions, chain, isFundDisabled }
   };
 
   return (
-    <li className="flex min-w-0 md:col-span-2 lg:col-span-3" aria-labelledby={titleId}>
-      <Card className={COMPOSER_CARD_CLASS}>
-        <div className="flex min-w-0 flex-col gap-4">
+    <li className={WIDE_CARD_ITEM_CLASS} aria-labelledby={titleId}>
+      <Card className={WIDE_CARD_CLASS}>
+        <div className={CARD_HEAD_CLASS}>
           <h4 id={titleId} className={CARD_TITLE_CLASS}>
             Fund another combination
           </h4>
-          <fieldset className="flex min-w-0 flex-col gap-2">
+          <fieldset className="flex min-w-0 flex-col gap-2" aria-describedby={tooHigh ? errorId : undefined}>
             <legend className="mb-2 text-sm text-klerosUIComponentsSecondaryText">
               Tick the options of the answer you want to fund. Ticking none funds “{NONE_OF_THE_OPTIONS_TEXT}”.
             </legend>
@@ -72,10 +76,25 @@ export function ComposerCard({ composer, cards, actions, chain, isFundDisabled }
           <p className="text-sm [overflow-wrap:anywhere]" aria-live="polite">
             Answer to fund: <strong className="font-semibold">{answer}</strong>
           </p>
-          <MatchedCardNote funding={funding} kind="combination" chain={chain} />
+          <div className={tooHigh ? undefined : "sr-only"} aria-live="polite">
+            {tooHigh ? (
+              <p id={errorId} className="text-sm text-klerosUIComponentsError">
+                {COMBINATION_NOT_ACCEPTED}
+              </p>
+            ) : null}
+          </div>
+          <MatchedCardNote funding={funding} kind="combination" chain={chain} accepted={!tooHigh} />
         </div>
-        <div className="flex min-w-0 flex-col gap-4 lg:border-l lg:border-klerosUIComponentsStroke lg:pl-8">
-          <EnteredAnswerFooter funding={funding} subject={funding.card?.title ?? answer} code={code} actions={actions} chain={chain} isFundDisabled={isFundDisabled} />
+        <div className={WIDE_CARD_FUNDING_CLASS}>
+          <EnteredAnswerFooter
+            funding={funding}
+            subject={funding.card?.title ?? answer}
+            answer={funding.card?.title ?? answer}
+            code={code}
+            actions={actions}
+            chain={chain}
+            isFundDisabled={isFundDisabled}
+          />
         </div>
       </Card>
     </li>

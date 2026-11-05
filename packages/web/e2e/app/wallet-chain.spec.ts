@@ -36,7 +36,7 @@ function ongoingHeading(page: Page) {
   return page.getByRole("heading", { name: "Ongoing Disputes", level: 1 });
 }
 
-test("refuses Fund visibly and sends nothing while the wallet's switch to the page chain waits", async ({ context, page, baseURL }) => {
+test("refuses Fund in one toast and sends nothing while the wallet's switch to the page chain waits", async ({ context, page, baseURL }) => {
   await injectWallet(context, { account: ACCOUNT, chainId: 100, heldSwitches: true });
   const traffic = await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), recordings: [RECORDING] });
 
@@ -53,10 +53,15 @@ test("refuses Fund visibly and sends nothing while the wallet's switch to the pa
   await expect(fund).toBeEnabled({ timeout: 30_000 });
   await fund.click();
 
-  await expect(panel.getByText("Wrong network", { exact: true })).toBeVisible();
-  await expect(panel.getByText("Your wallet is on Gnosis Network, but this page is on Ethereum Mainnet. Nothing was sent.")).toBeVisible();
-  await expect(panel.getByText("A switch to Ethereum Mainnet is waiting in your wallet.")).toBeVisible();
-  await expect(panel.getByRole("button", { name: /Switch/ })).toHaveCount(0);
+  const toasts = notifications(page);
+  await expect(toasts.getByText("Wrong network", { exact: true })).toBeVisible();
+  await expect(toasts.getByText("Your wallet is on Gnosis Network, but this page is on Ethereum Mainnet. Nothing was sent.")).toBeVisible();
+  await expect(toasts.getByText("A switch to Ethereum Mainnet is waiting in your wallet.")).toBeVisible();
+  await expect(toasts.getByRole("button", { name: /Switch/ })).toHaveCount(0);
+  await expect(panel.getByText("Wrong network")).toHaveCount(0);
+
+  await fund.click();
+  await expect(toasts.getByText("Wrong network", { exact: true })).toHaveCount(1);
   const requests = await walletRequests(page);
   expect(countOf(requests, "eth_sendTransaction"), "a transaction was requested from the wallet").toBe(0);
   expect(countOf(requests, "wallet_switchEthereumChain"), "the refusal asked for another switch").toBe(1);

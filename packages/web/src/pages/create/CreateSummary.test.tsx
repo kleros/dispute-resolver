@@ -1,14 +1,14 @@
 import * as core from "@dispute-resolver/core";
-import { act, cleanup, screen } from "@testing-library/react";
+import { act, cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { UploadResult } from "../../atlas";
 import { fakeUploader, type FakeUploader } from "../../test/atlas";
 import { testChain, testCourt } from "../../test/data";
 import { renderWithProviders } from "../../test/shell";
 import { createTestWallet, fakeWriteController, holdChainSwitches, installOfflineAppKitEnvironment, type FakeWriteController, type TestWallet } from "../../test/wallet";
-import type { WriteController, WriteOutcome, WriteStatus } from "../../wallet";
+import { useWriteObserver, type WriteController, type WriteOptions, type WriteOutcome, type WriteStatus } from "../../wallet";
 import { CreateSummary } from "./CreateSummary";
 
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../../test/data/mockCoreReads")).mockCoreReads(importOriginal));
@@ -65,14 +65,20 @@ async function renderSummary(uploader: FakeUploader, options: RenderSummaryOptio
   return { user };
 }
 
-/** A write that waits in the wallet forever, so the summary stays on the awaiting-confirmation step. */
+/** A write that waits in the wallet forever, so the summary stays on the awaiting-confirmation step; it reports as the real hook does. */
 function walletAwaitingController(): FakeWriteController {
   function useAwaitingWrite(): WriteController {
+    const observe = useWriteObserver();
+    const source = useId();
     const [status, setStatus] = useState<WriteStatus>({ phase: "idle" });
-    const execute = useCallback(() => {
-      setStatus({ phase: "pending" });
-      return new Promise<WriteOutcome>(() => undefined);
-    }, []);
+    const execute = useCallback(
+      (_build: unknown, options: WriteOptions) => {
+        setStatus({ phase: "pending" });
+        observe(source).report({ phase: "pending" }, options.wording);
+        return new Promise<WriteOutcome>(() => undefined);
+      },
+      [observe, source],
+    );
     const reset = useCallback(() => {
       setStatus({ phase: "idle" });
     }, []);
@@ -155,6 +161,17 @@ describe("CreateSummary", () => {
 
     expect(await screen.findByText(shown)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Creating the dispute" })).toHaveTextContent("Create dispute");
+  });
+
+  it("a wallet on another chain says in place why Create is locked, with the waiting switch, and no toast", async () => {
+    await renderSummary(fakeUploader(), { wallet: holdChainSwitches(createTestWallet({ chainId: 100 })) });
+
+    expect(await screen.findByText("Wrong network")).toBeInTheDocument();
+    expect(screen.getByText("Your wallet is on Gnosis Network, but this page is on Ethereum Mainnet.")).toBeInTheDocument();
+    expect(screen.getByText("A switch to Ethereum Mainnet is waiting in your wallet.")).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent("Nothing was sent");
+    expect(createButton()).toBeDisabled();
+    expect(within(screen.getByRole("region", { name: "Notifications" })).queryByText("Wrong network")).toBeNull();
   });
 
   describe("the primary button", () => {

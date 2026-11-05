@@ -43,19 +43,40 @@ export function unshadowedReserved(options: RulingOptions, fallback: FallbackOut
   return kept.length === 0 ? undefined : Object.fromEntries(kept);
 }
 
-/**
- * The ruling options without the reserved answers coded above the dispute's number of choices: KlerosLiquid's `castVote`
- * takes no choice above it and the appeal funding contracts refuse a ruling above it, so no such answer can ever win.
- * A `null` number of choices (not read) keeps every reserved answer.
- */
-export function reservedWithinChoices(options: RulingOptions, numberOfChoices: bigint | null): OptionsWithinChoices {
-  const { reserved, ...rest } = options;
-  if (reserved === undefined || numberOfChoices === null) return { rulingOptions: options, hiddenReserved: 0 };
-  const entries = Object.entries(reserved);
-  const kept = entries.filter(([key]) => {
+type Titles = RulingOptions["titles"];
+type Reserved = RulingOptions["reserved"];
+
+/** A single-select's titles code 1..n; a multiple-select's are options to tick, not answers, so they all stay. */
+function titlesWithinChoices({ type, titles }: RulingOptions, numberOfChoices: bigint): Titles {
+  if (type !== "single-select" || titles === undefined || BigInt(titles.length) <= numberOfChoices) return titles;
+  return titles.slice(0, Number(numberOfChoices));
+}
+
+/** A key that is not hex names no code, so no number of choices rules it out. */
+function reservedWithinChoices(reserved: Reserved, numberOfChoices: bigint): Reserved {
+  if (reserved === undefined) return undefined;
+  const kept = Object.entries(reserved).filter(([key]) => {
     const code = reservedCode(key);
     return code === null || code <= numberOfChoices;
   });
-  if (kept.length === entries.length) return { rulingOptions: options, hiddenReserved: 0 };
-  return { rulingOptions: kept.length === 0 ? rest : { ...rest, reserved: Object.fromEntries(kept) }, hiddenReserved: entries.length - kept.length };
+  return kept.length === 0 ? undefined : Object.fromEntries(kept);
+}
+
+/**
+ * The ruling options without the answers coded above the dispute's number of choices (single-select titles past it, and
+ * reserved answers above it): KlerosLiquid's `castVote` takes no choice above it and the appeal funding contracts refuse
+ * a ruling above it, so no such answer can ever win. Multiple-select titles and fallback outcomes stay: the cards and
+ * the composer bound their combinations and outcomes by code. A `null` number of choices (not read) keeps every answer.
+ */
+export function optionsWithinChoices(options: RulingOptions, numberOfChoices: bigint | null): OptionsWithinChoices {
+  if (numberOfChoices === null) return { rulingOptions: options, hiddenAnswers: 0 };
+  const { titles, reserved, ...rest } = options;
+  const keptTitles = titlesWithinChoices(options, numberOfChoices);
+  const keptReserved = reservedWithinChoices(reserved, numberOfChoices);
+  const hiddenTitles = (titles?.length ?? 0) - (keptTitles?.length ?? 0);
+  const hiddenReserved = Object.keys(reserved ?? {}).length - Object.keys(keptReserved ?? {}).length;
+  const hiddenAnswers = hiddenTitles + hiddenReserved;
+  if (hiddenAnswers === 0) return { rulingOptions: options, hiddenAnswers };
+  const within: RulingOptions = { ...rest, ...(keptTitles === undefined ? {} : { titles: keptTitles }), ...(keptReserved === undefined ? {} : { reserved: keptReserved }) };
+  return { rulingOptions: within, hiddenAnswers };
 }

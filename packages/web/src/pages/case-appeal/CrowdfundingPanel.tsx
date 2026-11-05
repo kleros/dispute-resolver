@@ -40,7 +40,8 @@ export function CrowdfundingPanel({ panel, actions, chain }: CrowdfundingPanelPr
       </div>
       <Notice variant="info" title={REWARDS_TITLE} body={rewardsBody(panel.terms.noun)} />
       {needsWallet ? <p className={BODY_TEXT_CLASS}>{FUND_NEEDS_WALLET}</p> : null}
-      <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Rulings to fund">
+      {/* Rows 24 px apart and an 8 px inset make room for the tag above a card's top edge. */}
+      <ul className="grid grid-cols-1 gap-x-4 gap-y-6 pt-2 md:grid-cols-2 lg:grid-cols-3" aria-label="Rulings to fund">
         {keyedCards(panel.cards).map(({ key, card }) => (
           <FundingCard key={key} card={card} {...cardProps} />
         ))}

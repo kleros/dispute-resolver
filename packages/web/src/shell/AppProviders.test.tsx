@@ -1,11 +1,12 @@
-import { render, renderHook, screen } from "@testing-library/react";
+import { render, renderHook, screen, within } from "@testing-library/react";
 import { QueryClientContext, useQueryClient } from "@tanstack/react-query";
-import { useContext, type ComponentType, type ReactNode } from "react";
+import { useContext, useEffect, type ComponentType, type ReactNode } from "react";
 import { useInRouterContext, useLocation } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useConfig, WagmiContext } from "wagmi";
 import { buildAppConfig, type AppConfig } from "../env";
 import { TestDataProvider } from "../test/data";
+import { useWriteObserver } from "../wallet";
 import { expectRenderErrors } from "../test/shell";
 import { createColorSchemeStore } from "../theme";
 import { AppProviders } from "./AppProviders";
@@ -46,6 +47,11 @@ vi.mock("react-router", async (importOriginal) => {
 vi.mock("./ToastProvider", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./ToastProvider")>();
   return { ...actual, ToastProvider: recorded("toasts", actual.ToastProvider) };
+});
+
+vi.mock("./writeToasts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./writeToasts")>();
+  return { ...actual, WriteToasts: recorded("write toasts", actual.WriteToasts) };
 });
 
 vi.mock("./ChainNoticeToasts", async (importOriginal) => {
@@ -89,6 +95,15 @@ function RouteProbe() {
   return <p>Routes at {location.pathname}</p>;
 }
 
+/** A write control that is pressed as it mounts: its attempt waits for the wallet. */
+function PressedWrite() {
+  const observe = useWriteObserver();
+  useEffect(() => {
+    observe("probe").report({ phase: "pending" }, { doing: "funding “Yes” with 1 ETH", done: "Funded “Yes” with 1 ETH." });
+  }, [observe]);
+  return null;
+}
+
 function renderApp(dataProvider: ConfiguredProvider, children: ReactNode, pageScroll: PageScroll = "document") {
   return render(
     <AppProviders
@@ -113,16 +128,17 @@ afterEach(() => {
 });
 
 describe("AppProviders", () => {
-  it("composes data, wallet, atlas, router, toasts, chain notices and the colour scheme in that order around the routes, with no page scroller where the document scrolls", () => {
+  it("composes data, wallet, atlas, router, toasts, write toasts, chain notices and the colour scheme in that order around the routes, with no page scroller where the document scrolls", () => {
     renderApp(DataProbe, <RouteProbe />);
     expect(screen.getByText("Routes at /")).toBeInTheDocument();
     expect(document.querySelector(".dr-page-scroller")).toBeNull();
-    expect(order.slice(0, 8)).toEqual([
+    expect(order.slice(0, 9)).toEqual([
       "data query:false wagmi:false router:false",
       "wallet query:true wagmi:false router:false",
       "atlas query:true wagmi:true router:false",
       "router query:true wagmi:true router:false",
       "toasts query:true wagmi:true router:true",
+      "write toasts query:true wagmi:true router:true",
       "chain notices query:true wagmi:true router:true",
       "colour scheme query:true wagmi:true router:true",
       "routes query:true wagmi:true router:true",
@@ -138,6 +154,13 @@ describe("AppProviders", () => {
     const heading = screen.getByRole("heading", { level: 1, name: "Something went wrong" });
     expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
     expect(pageScrollerContent()?.contains(heading) ?? false).toBe(inScroller);
+  });
+
+  it("a write reports into the app's toast region", async () => {
+    renderApp(DataProbe, <PressedWrite />);
+    const region = screen.getByRole("region", { name: "Notifications" });
+    expect(await within(region).findByText("Waiting for your wallet")).toBeInTheDocument();
+    expect(within(region).getByText("Confirm funding “Yes” with 1 ETH in your wallet.")).toBeInTheDocument();
   });
 
   it("where the page scroller scrolls the page, the routes render inside it", () => {

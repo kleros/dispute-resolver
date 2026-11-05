@@ -1,7 +1,7 @@
 import type { CreateFieldErrorCode } from "@dispute-resolver/core";
 import type { UploadError } from "../../atlas";
 
-type ErrorField = "courtId" | "votes" | "title" | "question" | "optionCount" | "optionTitle" | "party" | "primaryDocument";
+type ErrorField = "courtId" | "votes" | "title" | "question" | "optionCount" | "optionTitle" | "tickOptionTitle" | "party" | "primaryDocument";
 
 const REQUIRED: Readonly<Record<ErrorField, string>> = {
   courtId: "Please select a court.",
@@ -10,6 +10,7 @@ const REQUIRED: Readonly<Record<ErrorField, string>> = {
   question: "Please enter a question.",
   optionCount: "Please enter the number of options.",
   optionTitle: 'Please enter this ruling option, for example: "Yes".',
+  tickOptionTitle: 'Please enter this option, for example: "Red".',
   party: "Please fill in both the alias and the address.",
   primaryDocument: "Please upload the document again.",
 };

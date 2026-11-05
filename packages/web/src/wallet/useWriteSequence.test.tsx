@@ -5,8 +5,8 @@ import { UserRejectedRequestError } from "viem";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CoreDeps, WriteReceipt } from "../data";
 import { createTestDeps } from "../test/data";
-import { createConnectedTestWallet, testReceipt, testWriteBuild, walletWrapper } from "../test/wallet";
-import type { WriteOutcome } from "./types";
+import { createConnectedTestWallet, observedWalletWrapper, recordingObserver, testReceipt, testWriteBuild, walletWrapper } from "../test/wallet";
+import type { WriteObserver, WriteOutcome, WriteWording } from "./types";
 import { useWriteSequence } from "./useWriteSequence";
 
 vi.mock("@wagmi/core", async (importOriginal) => ({ ...(await importOriginal<typeof import("@wagmi/core")>()), writeContract: vi.fn() }));
@@ -26,10 +26,15 @@ function hashAt(index: number): Hex {
 
 const minedReceipt = (_chainId: number, hash: Hex): Promise<WriteReceipt> => Promise.resolve(testReceipt(hash));
 
-async function renderSequence(waitForReceipt: (chainId: number, hash: Hex) => Promise<WriteReceipt> = minedReceipt, simulate?: CoreDeps["simulate"]) {
+async function renderSequence(waitForReceipt: (chainId: number, hash: Hex) => Promise<WriteReceipt> = minedReceipt, simulate?: CoreDeps["simulate"], observer?: WriteObserver) {
   const wallet = await createConnectedTestWallet();
   const deps = createTestDeps({ waitForReceipt, ...(simulate === undefined ? {} : { simulate }) });
-  return { ...renderHook(() => useWriteSequence(), { wrapper: walletWrapper(wallet, deps) }), wallet };
+  const wrapper = observer === undefined ? walletWrapper(wallet, deps) : observedWalletWrapper(wallet, deps, observer);
+  return { ...renderHook(() => useWriteSequence(), { wrapper }), wallet };
+}
+
+function wording(index: number): WriteWording {
+  return { doing: `withdrawing item ${String(index + 1)}`, done: `Withdrew item ${String(index + 1)}.` };
 }
 
 const BUILDS = [testWriteBuild(1, 1n), testWriteBuild(1, 2n), testWriteBuild(1, 3n)];
@@ -59,7 +64,7 @@ describe("useWriteSequence", () => {
     const { result } = await renderSequence(minedReceipt, simulate);
     let outcome: WriteOutcome | undefined;
     await act(async () => {
-      outcome = await result.current.execute(BUILDS, { pageChainId: 1, onMined });
+      outcome = await result.current.execute(BUILDS, { pageChainId: 1, onMined, wording });
     });
     expect(events).toEqual(["check 1", "sign 1", "check 2"]);
     expect(outcome).toEqual({ phase: "refused-by-contract", reason: null });
@@ -82,7 +87,7 @@ describe("useWriteSequence", () => {
     });
     let outcome: WriteOutcome | undefined;
     await act(async () => {
-      outcome = await result.current.execute(BUILDS, { pageChainId: 1, onMined });
+      outcome = await result.current.execute(BUILDS, { pageChainId: 1, onMined, wording });
     });
     expect(events).toEqual(["sign 1", "receipt 1", "sign 2", "receipt 2", "sign 3", "receipt 3"]);
     expect(outcome?.phase).toBe("mined");
@@ -97,7 +102,7 @@ describe("useWriteSequence", () => {
     const { result } = await renderSequence();
     let outcome: WriteOutcome | undefined;
     await act(async () => {
-      outcome = await result.current.execute(BUILDS, { pageChainId: 1, onMined });
+      outcome = await result.current.execute(BUILDS, { pageChainId: 1, onMined, wording });
     });
     expect(outcome).toEqual({ phase: "rejected" });
     expect(result.current.status).toEqual({ index: 1, total: 3, current: { phase: "rejected" } });
@@ -110,7 +115,7 @@ describe("useWriteSequence", () => {
     const onMined = vi.fn();
     const { result } = await renderSequence((_chainId, hash) => Promise.resolve(testReceipt(hash, "reverted")));
     await act(async () => {
-      await result.current.execute(BUILDS, { pageChainId: 1, onMined });
+      await result.current.execute(BUILDS, { pageChainId: 1, onMined, wording });
     });
     expect(result.current.status).toMatchObject({ index: 0, current: { phase: "failed", hash: hashAt(0) } });
     expect(writeContractMock).toHaveBeenCalledTimes(1);
@@ -123,7 +128,7 @@ describe("useWriteSequence", () => {
       return testReceipt(hash);
     });
     await act(async () => {
-      await result.current.execute(BUILDS, { pageChainId: 1 });
+      await result.current.execute(BUILDS, { pageChainId: 1, wording });
     });
     expect(result.current.status).toEqual({ index: 1, total: 3, current: { phase: "wrong-chain", walletChainId: 100, pageChainId: 1 } });
     expect(writeContractMock).toHaveBeenCalledTimes(1);
@@ -132,7 +137,7 @@ describe("useWriteSequence", () => {
   it("a refused item refuses the sequence before anything is signed", async () => {
     const { result } = await renderSequence();
     await act(async () => {
-      await result.current.execute([testWriteBuild(1), { ok: false, refusal: "withdraw-unsupported" }], { pageChainId: 1 });
+      await result.current.execute([testWriteBuild(1), { ok: false, refusal: "withdraw-unsupported" }], { pageChainId: 1, wording });
     });
     expect(result.current.status).toEqual({ index: 1, total: 2, current: { phase: "refused", refusal: "withdraw-unsupported" } });
     expect(writeContractMock).not.toHaveBeenCalled();
@@ -141,7 +146,7 @@ describe("useWriteSequence", () => {
   it("an empty list withdraws nothing", async () => {
     const { result } = await renderSequence();
     await act(async () => {
-      await result.current.execute([], { pageChainId: 1 });
+      await result.current.execute([], { pageChainId: 1, wording });
     });
     expect(result.current.status).toEqual({ index: 0, total: 0, current: { phase: "refused", refusal: "withdraw-unsupported" } });
     expect(writeContractMock).not.toHaveBeenCalled();
@@ -150,11 +155,53 @@ describe("useWriteSequence", () => {
   it("reset clears the status", async () => {
     const { result } = await renderSequence();
     await act(async () => {
-      await result.current.execute(BUILDS.slice(0, 1), { pageChainId: 1 });
+      await result.current.execute(BUILDS.slice(0, 1), { pageChainId: 1, wording });
     });
     act(() => {
       result.current.reset();
     });
     expect(result.current.status).toBeNull();
+  });
+
+  it("reports the whole sequence as one attempt, each status with its item's wording and its position", async () => {
+    const recording = recordingObserver();
+    const { result } = await renderSequence(minedReceipt, undefined, recording.observer);
+    await act(async () => {
+      await result.current.execute(BUILDS.slice(0, 2), { pageChainId: 1, wording });
+    });
+    expect(recording.attempts).toHaveLength(1);
+    const reports = recording.attempts[0]?.reports ?? [];
+    expect(reports.map(({ status, wording: { doing }, progress }) => [status.phase, doing, progress])).toEqual([
+      ["checking", "withdrawing item 1", { index: 0, total: 2 }],
+      ["pending", "withdrawing item 1", { index: 0, total: 2 }],
+      ["submitted", "withdrawing item 1", { index: 0, total: 2 }],
+      ["mined", "withdrawing item 1", { index: 0, total: 2 }],
+      ["checking", "withdrawing item 2", { index: 1, total: 2 }],
+      ["pending", "withdrawing item 2", { index: 1, total: 2 }],
+      ["submitted", "withdrawing item 2", { index: 1, total: 2 }],
+      ["mined", "withdrawing item 2", { index: 1, total: 2 }],
+    ]);
+  });
+
+  it("a refused item reports its refusal without a position", async () => {
+    const recording = recordingObserver();
+    const { result } = await renderSequence(minedReceipt, undefined, recording.observer);
+    await act(async () => {
+      await result.current.execute([testWriteBuild(1), { ok: false, refusal: "withdraw-unsupported" }], { pageChainId: 1, wording });
+    });
+    expect(recording.attempts).toEqual([
+      { source: expect.any(String) as unknown, reports: [{ status: { phase: "refused", refusal: "withdraw-unsupported" }, wording: wording(1), progress: undefined }] },
+    ]);
+  });
+
+  it("an empty list reports that there is nothing to withdraw, without a position", async () => {
+    const recording = recordingObserver();
+    const { result } = await renderSequence(minedReceipt, undefined, recording.observer);
+    await act(async () => {
+      await result.current.execute([], { pageChainId: 1, wording });
+    });
+    expect(recording.attempts).toEqual([
+      { source: expect.any(String) as unknown, reports: [{ status: { phase: "refused", refusal: "withdraw-unsupported" }, wording: wording(0), progress: undefined }] },
+    ]);
   });
 });

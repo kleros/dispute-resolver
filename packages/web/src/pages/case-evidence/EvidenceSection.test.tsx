@@ -187,6 +187,10 @@ async function renderSection({ uploader = fakeUploader(), wallet = createTestWal
   return { ...view, uploader, user: userEvent.setup() };
 }
 
+function toastRegion(): HTMLElement {
+  return screen.getByRole("region", { name: "Notifications" });
+}
+
 function submitButton() {
   return screen.getByRole("button", { name: /^(Submit|Awaiting Confirmation)$/ });
 }
@@ -456,7 +460,8 @@ describe("EvidenceSection: submission", () => {
         ["dr", "evidence", 1, "1"],
       ]),
     );
-    expect(screen.getByText("Transaction confirmed")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("Transaction confirmed")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("Submitted your evidence.")).toBeInTheDocument();
   });
 
   it("a mined submission resets every field, the attachment included", async () => {
@@ -504,7 +509,7 @@ describe("EvidenceSection: submission", () => {
     expect(uploader.uploadJson.mock.calls[0]?.[1]).toMatchObject({ fileURI: `/ipfs/${ATTACHMENT_CID}/contract.pdf` });
   });
 
-  it("an attachment path that is not content-addressed is refused before anything is uploaded", async () => {
+  it("an attachment path that is not content-addressed is refused in a toast before anything is uploaded", async () => {
     const uploader = fakeUploader({ upload: () => Promise.resolve({ ok: true, path: "/ipfs/not-a-cid/file.pdf" }) });
     const { user } = await renderSection({ uploader });
     const modal = await openModal(user);
@@ -513,31 +518,41 @@ describe("EvidenceSection: submission", () => {
       expect(within(modal).getByText("Uploaded contract.pdf.")).toBeInTheDocument();
     });
     await user.click(submitButton());
-    expect(await within(modal).findByText("Action unavailable")).toBeInTheDocument();
+    const toast = await within(toastRegion()).findByRole("alert");
+    expect(within(toast).getByText("Action unavailable")).toBeInTheDocument();
+    expect(within(toast).getByText("The uploaded file did not come back as a content-addressed IPFS link, so nothing was sent.")).toBeInTheDocument();
+    expect(within(modal).queryByText("Action unavailable")).toBeNull();
     expect(uploader.uploadJson).not.toHaveBeenCalled();
-    expect(writes.fake?.executions).toHaveLength(0);
+    expect(writes.fake?.executions.map((execution) => execution.builds)).toEqual([[{ ok: false, refusal: "not-content-addressed" }]]);
   });
 
-  it("a failed submission keeps the modal open with the error and the typed fields", async () => {
+  it("a failed submission keeps the modal open with the typed fields and reports the error in a toast above it", async () => {
     writes.fake = fakeWriteController([{ phase: "pending" }, SUBMITTED, { phase: "failed", hash: TEST_TX_HASH, explorerUrl: null, message: "execution reverted" }]);
     const { user } = await renderSection();
     const modal = await fillAndSubmit(user, "Kept");
-    expect(await within(modal).findByText("execution reverted")).toBeInTheDocument();
-    expect(within(modal).getByRole("alert")).toHaveTextContent("Transaction failed");
+    const toast = await within(toastRegion()).findByRole("alert");
+    expect(within(toast).getByText("Transaction failed")).toBeInTheDocument();
+    expect(within(toast).getByText("Submitting your evidence failed. execution reverted")).toBeInTheDocument();
+    expect(toastRegion()).not.toHaveAttribute("aria-hidden");
+    expect(within(modal).queryByRole("alert")).toBeNull();
+    expect(dialog()).toBe(modal);
     expect(within(modal).getByLabelText("Evidence Title")).toHaveValue("Kept");
     expect(submitButton()).toHaveTextContent("Submit");
     expect(invalidations).toEqual([]);
   });
 
-  it("a rejected signature is a neutral notice and keeps the modal open", async () => {
+  it("a rejected signature is a neutral toast and keeps the modal open", async () => {
     writes.fake = fakeWriteController([{ phase: "pending" }, { phase: "rejected" }]);
     const { user } = await renderSection();
     const modal = await fillAndSubmit(user);
-    expect(await within(modal).findByText("Transaction cancelled")).toBeInTheDocument();
+    expect(await within(toastRegion()).findByText("Transaction cancelled")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("You declined submitting your evidence in your wallet. Nothing was sent.")).toBeInTheDocument();
+    expect(within(toastRegion()).queryByRole("alert")).toBeNull();
     expect(within(modal).queryByRole("alert")).toBeNull();
+    expect(dialog()).toBe(modal);
   });
 
-  it("a failure that arrives after the modal was closed is shown in the panel", async () => {
+  it("a transaction failure that arrives after the modal was closed is shown in a toast", async () => {
     const upload = deferred<UploadResult>();
     writes.fake = fakeWriteController([{ phase: "failed", hash: null, explorerUrl: null, message: "wallet error" }]);
     const uploader = fakeUploader({ uploadJson: () => upload.promise });
@@ -545,11 +560,29 @@ describe("EvidenceSection: submission", () => {
     const modal = await fillAndSubmit(user);
     await user.click(within(modal).getByRole("button", { name: "Return" }));
     upload.resolve({ ok: true, path: TEST_UPLOAD_PATH });
-    expect(await screen.findByText("wallet error")).toBeInTheDocument();
-    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(await within(toastRegion()).findByText("Submitting your evidence failed. wallet error")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
   });
 
-  it("an evidence.json upload failure is shown and nothing is sent", async () => {
+  it("an evidence.json upload failure that arrives after Return closed the modal is shown under the button", async () => {
+    const upload = deferred<UploadResult>();
+    const uploader = fakeUploader({ uploadJson: () => upload.promise });
+    const { user, container } = await renderSection({ uploader });
+    const modal = await fillAndSubmit(user);
+    await user.click(within(modal).getByRole("button", { name: "Return" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    upload.resolve({ ok: false, error: "upload-failed", message: "An error occurred while uploading the file. Please try again." });
+    expect(await within(container).findByText("An error occurred while uploading the file. Please try again.")).toBeInTheDocument();
+    expect(within(container).getByRole("alert")).toHaveTextContent("Evidence not uploaded");
+    expect(toastRegion()).toBeEmptyDOMElement();
+    expect(writes.fake?.executions).toHaveLength(0);
+  });
+
+  it("an evidence.json upload failure is shown in the modal and nothing is sent", async () => {
     const uploader = fakeUploader({
       uploadJson: () => Promise.resolve({ ok: false, error: "upload-failed", message: "An error occurred while uploading the file. Please try again." }),
     });
@@ -572,7 +605,7 @@ describe("EvidenceSection: submission", () => {
     expect(writes.fake?.executions).toHaveLength(0);
   });
 
-  it("while the wallet's switch to the page chain waits, the attachment field is locked and Submit is refused with the waiting switch before any sign-in or upload", async () => {
+  it("while the wallet's switch to the page chain waits, the attachment field is locked and Submit is refused with the waiting switch in the modal and no toast, before any sign-in or upload", async () => {
     const uploader = fakeUploader({ isSignedIn: false });
     const { user } = await renderSection({ uploader, wallet: walletAwaitingSwitch(100) });
     const modal = await openModal(user);
@@ -588,6 +621,7 @@ describe("EvidenceSection: submission", () => {
     expect(await within(modal).findByText("Wrong network")).toBeInTheDocument();
     expect(within(modal).getAllByText("Wrong network")).toHaveLength(1);
     expect(within(modal).getByText("A switch to Ethereum Mainnet is waiting in your wallet.")).toBeInTheDocument();
+    expect(toastRegion()).toBeEmptyDOMElement();
     expect(uploader.upload).not.toHaveBeenCalled();
     expect(uploader.uploadJson).not.toHaveBeenCalled();
     expect(writes.fake?.executions).toHaveLength(0);

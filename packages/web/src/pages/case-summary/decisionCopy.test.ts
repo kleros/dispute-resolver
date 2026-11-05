@@ -41,6 +41,13 @@ describe("decisionLine", () => {
     expect(decisionLine({ kind: "winner", winner: BLANK_OTHER, court: BLANK_COURT, wonBy, noun: "answer" })).toBe(line);
   });
 
+  it.each([
+    ["answer", "The arbitrable contract reported a ruling that is not one of this dispute's answers."],
+    ["list", "The arbitrable contract reported a ruling that is not one of this dispute's lists."],
+  ] as const)("says a reported ruling outside the dispute's answers in the family's noun: %s", (noun: RulingNoun, line) => {
+    expect(decisionLine({ kind: "jury-decision", court: COURT, note: "out-of-range", noun })).toBe(line);
+  });
+
   it("names both rulings when the arbitrable applied another one than the court's", () => {
     expect(decisionLine({ kind: "winner", winner: OTHER, court: COURT, wonBy: "applied", noun: "answer" })).toBe("The court ruled “Yes”. The arbitrable contract applied “No”.");
   });

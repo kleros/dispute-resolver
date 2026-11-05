@@ -5,3 +5,4 @@ export { ColorSchemeProvider } from "./colorScheme";
 export { PageFrame } from "./PageFrame";
 export { choosePageScroll, type PageScroll } from "./pageScroll";
 export { ToastProvider, useToast } from "./ToastProvider";
+export { WriteToasts } from "./writeToasts";

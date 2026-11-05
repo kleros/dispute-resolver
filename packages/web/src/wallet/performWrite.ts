@@ -12,7 +12,7 @@ import {
 import { getAccount, writeContract, type Config, type Connector } from "@wagmi/core";
 import type { WriteReceipt } from "../data";
 import { errorMessage, isChainMismatch, isUserRejection } from "./errors";
-import type { NeedsWalletGuard, WriteOptions, WriteOutcome, WriteStatus, WrongChainGuard } from "./types";
+import type { NeedsWalletGuard, WriteOutcome, WriteRun, WriteStatus, WrongChainGuard } from "./types";
 import { currentWalletState, toWalletState } from "./useWallet";
 
 /** What one write needs besides the call: wagmi to sign, and the configured read RPC for the check and the receipt. */
@@ -116,7 +116,7 @@ function replacementFailure(receipt: WriteReceipt, hash: Hex): string | null {
   return replacement.reason === "cancelled" ? CANCELLED_MESSAGE : REPLACED_MESSAGE;
 }
 
-export async function refreshAfter(options: WriteOptions, receipt: WriteReceipt): Promise<void> {
+export async function refreshAfter(options: WriteRun, receipt: WriteReceipt): Promise<void> {
   try {
     await options.onMined?.(receipt);
   } catch {
@@ -129,7 +129,7 @@ export async function refreshAfter(options: WriteOptions, receipt: WriteReceipt)
  * The receipt is that of the transaction actually mined: a repricing counts as the call under its new hash, and a
  * cancellation or another replacing transaction is a failure, so a withdrawal sequence stops there.
  */
-async function confirm(environment: WriteEnvironment, call: WriteCall, hash: Hex, options: WriteOptions): Promise<WriteOutcome> {
+async function confirm(environment: WriteEnvironment, call: WriteCall, hash: Hex, options: WriteRun): Promise<WriteOutcome> {
   let receipt: WriteReceipt;
   try {
     receipt = await environment.waitForReceipt(call.chainId, hash);
@@ -151,7 +151,7 @@ async function confirm(environment: WriteEnvironment, call: WriteCall, hash: Hex
  * contract from the connected account, and nothing reaches the wallet once the check stops it. A user rejection is not
  * an error. Every status goes to `report`; the final one is also returned. Never throws.
  */
-export async function performWrite(environment: WriteEnvironment, build: WriteBuild, options: WriteOptions, report: Report): Promise<WriteOutcome> {
+export async function performWrite(environment: WriteEnvironment, build: WriteBuild, options: WriteRun, report: Report): Promise<WriteOutcome> {
   const settle = (outcome: WriteOutcome): WriteOutcome => {
     report(outcome);
     return outcome;

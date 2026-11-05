@@ -1,10 +1,12 @@
 import type { Address, Hex, SimulationResult, WriteCall } from "@dispute-resolver/core";
-import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { writeContract } from "@wagmi/core";
 import { ContractFunctionExecutionError, ContractFunctionRevertedError, UserRejectedRequestError, type EIP1193RequestFn } from "viem";
+import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CoreDeps, WriteReceipt } from "../data";
+import { ToastProvider, WriteToasts } from "../shell";
 import { createTestDeps } from "../test/data";
 import {
   TEST_REPLACEMENT_TX_HASH,
@@ -12,6 +14,8 @@ import {
   TEST_WALLET_ACCOUNT,
   createConnectedTestWallet,
   createTestWallet,
+  observedWalletWrapper,
+  recordingObserver,
   testReceipt,
   testReplacementReceipt,
   testWriteBuild,
@@ -19,13 +23,14 @@ import {
   walletWrapper,
   type TestWallet,
 } from "../test/wallet";
-import type { WriteController, WriteOptions, WriteStatus } from "./types";
+import type { WriteController, WriteObserver, WriteOptions, WriteStatus, WriteWording } from "./types";
 import { useWrite } from "./useWrite";
-import { WriteStatusNotice } from "./WriteStatusNotice";
 
 vi.mock("@wagmi/core", async (importOriginal) => ({ ...(await importOriginal<typeof import("@wagmi/core")>()), writeContract: vi.fn() }));
 
 const writeContractMock = vi.mocked(writeContract);
+
+const WORDING: WriteWording = { doing: "funding “Yes” with 1 ETH", done: "Funded “Yes” with 1 ETH." };
 
 function renderWrite(
   wallet: TestWallet,
@@ -48,7 +53,7 @@ function renderWrite(
 async function writeOnMainnet(waitForReceipt?: (chainId: number, hash: Hex) => Promise<WriteReceipt>, onMined?: WriteOptions["onMined"]) {
   const { result } = renderWrite(await createConnectedTestWallet(), waitForReceipt);
   await act(async () => {
-    await result.current.execute(testWriteBuild(1), { pageChainId: 1, onMined });
+    await result.current.execute(testWriteBuild(1), { pageChainId: 1, onMined, wording: WORDING });
   });
   return result;
 }
@@ -57,22 +62,42 @@ function checkAnswering(result: SimulationResult) {
   return vi.fn<(call: WriteCall, from: Address) => Promise<SimulationResult>>(() => Promise.resolve(result));
 }
 
-function WriteWithNotice({ onRender }: { readonly onRender: (write: WriteController) => void }) {
-  const write = useWrite();
-  onRender(write);
-  return <WriteStatusNotice status={write.status} />;
+function Presser({ onWrite }: { readonly onWrite: (write: WriteController) => void }) {
+  onWrite(useWrite());
+  return null;
 }
 
-function renderWriteWithNotice(wallet: TestWallet, simulate?: CoreDeps["simulate"]): () => WriteController {
+/** The write under the app's toasts, on a page of chain 1; `walletWrapper` has no router, so the toasts get their own. */
+function renderWriteWithToasts(wallet: TestWallet, simulate?: CoreDeps["simulate"]): () => WriteController {
   const writes: WriteController[] = [];
-  render(<WriteWithNotice onRender={(write) => writes.push(write)} />, {
-    wrapper: walletWrapper(wallet, createTestDeps({ waitForReceipt: () => Promise.resolve(testReceipt()), ...(simulate === undefined ? {} : { simulate }) })),
-  });
+  render(
+    <MemoryRouter initialEntries={["/1/cases/5"]}>
+      <ToastProvider>
+        <WriteToasts>
+          <Presser onWrite={(write) => writes.push(write)} />
+        </WriteToasts>
+      </ToastProvider>
+    </MemoryRouter>,
+    { wrapper: walletWrapper(wallet, createTestDeps({ waitForReceipt: () => Promise.resolve(testReceipt()), ...(simulate === undefined ? {} : { simulate }) })) },
+  );
   return () => {
     const write = writes.at(-1);
-    if (write === undefined) throw new Error("WriteWithNotice has not rendered.");
+    if (write === undefined) throw new Error("The write has not rendered.");
     return write;
   };
+}
+
+function toastRegion(): HTMLElement {
+  return screen.getByRole("region", { name: "Notifications" });
+}
+
+function PressingControl({ mounted, onWrite }: { readonly mounted: boolean; readonly onWrite: (write: WriteController) => void }) {
+  return mounted ? <Presser onWrite={onWrite} /> : null;
+}
+
+function observedWrite(wallet: TestWallet, observer: WriteObserver, simulate?: CoreDeps["simulate"]) {
+  const deps = createTestDeps({ waitForReceipt: () => Promise.resolve(testReceipt()), ...(simulate === undefined ? {} : { simulate }) });
+  return renderHook(() => useWrite(), { wrapper: observedWalletWrapper(wallet, deps, observer) });
 }
 
 const CALL_CHAIN_MISMATCH = "This action was prepared for a different network than this page, so nothing was sent.";
@@ -93,7 +118,7 @@ describe("useWrite chain guard", () => {
     const { result } = renderWrite(wallet, undefined, simulate);
     let outcome: WriteStatus | undefined;
     await act(async () => {
-      outcome = await result.current.execute(testWriteBuild(1), { pageChainId: 1 });
+      outcome = await result.current.execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
     });
     expect(outcome).toEqual({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 });
     expect(result.current.status).toEqual({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 });
@@ -103,33 +128,36 @@ describe("useWrite chain guard", () => {
 
   it("the refusal's switch offer moves the wallet, the refusal stays until the retry, and the retry signs on the page chain", async () => {
     const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const latest = renderWriteWithNotice(wallet);
+    const latest = renderWriteWithToasts(wallet);
     await act(async () => {
-      await latest().execute(testWriteBuild(1), { pageChainId: 1 });
+      await latest().execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
     });
-    await userEvent.click(screen.getByRole("button", { name: "Switch to Ethereum Mainnet" }));
-    expect(await screen.findByText("Your wallet is now on Ethereum Mainnet. Try again.")).toBeInTheDocument();
+    await userEvent.click(within(toastRegion()).getByRole("button", { name: "Switch to Ethereum Mainnet" }));
+    expect(await within(toastRegion()).findByText("Network switched")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("Your wallet is now on Ethereum Mainnet. Try funding “Yes” with 1 ETH again.")).toBeInTheDocument();
     expect(latest().status).toEqual({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 });
     expect(writeContractMock).not.toHaveBeenCalled();
     await act(async () => {
-      await latest().execute(testWriteBuild(1), { pageChainId: 1 });
+      await latest().execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
     });
     expect(writeContractMock).toHaveBeenCalledTimes(1);
     expect(writeContractMock).toHaveBeenCalledWith(wallet.config, expect.objectContaining({ chainId: 1 }));
     expect(latest().status.phase).toBe("mined");
+    expect(toastRegion().querySelectorAll(":scope > output")).toHaveLength(1);
+    expect(within(toastRegion()).getByText("Transaction confirmed")).toBeInTheDocument();
   });
 
   it.each([1, 100])("refuses before signing a call built for another chain than the page, with the wallet on chain %i, and offers no switch", async (walletChainId) => {
     const wallet = await createConnectedTestWallet({ chainId: walletChainId });
-    const latest = renderWriteWithNotice(wallet);
+    const latest = renderWriteWithToasts(wallet);
     let outcome: WriteStatus | undefined;
     await act(async () => {
-      outcome = await latest().execute(testWriteBuild(100), { pageChainId: 1 });
+      outcome = await latest().execute(testWriteBuild(100), { pageChainId: 1, wording: WORDING });
     });
     expect(outcome).toEqual({ phase: "refused", refusal: "call-chain-mismatch" });
     expect(writeContractMock).not.toHaveBeenCalled();
-    expect(screen.getByText("Action unavailable")).toBeInTheDocument();
-    expect(screen.getByText(CALL_CHAIN_MISMATCH)).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("Action unavailable")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText(CALL_CHAIN_MISMATCH)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Switch to/ })).toBeNull();
   });
 
@@ -154,7 +182,7 @@ describe("useWrite chain guard", () => {
     const { result } = renderWrite(wallet);
     let outcome: WriteStatus | undefined;
     await act(async () => {
-      outcome = await result.current.execute(testWriteBuild(1), { pageChainId: 1 });
+      outcome = await result.current.execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
     });
     expect(outcome).toEqual({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 });
     // Both methods are answered by the mock connector itself; any other one would go out to the chain's RPC.
@@ -166,7 +194,7 @@ describe("useWrite chain guard", () => {
     const wallet = createTestWallet();
     const { result } = renderWrite(wallet);
     await act(async () => {
-      await result.current.execute(testWriteBuild(100), { pageChainId: 100 });
+      await result.current.execute(testWriteBuild(100), { pageChainId: 100, wording: WORDING });
     });
     expect(result.current.status).toEqual({ phase: "needs-wallet", pageChainId: 100 });
     expect(writeContractMock).not.toHaveBeenCalled();
@@ -187,7 +215,7 @@ describe("useWrite pre-flight check", () => {
     const wallet = await createConnectedTestWallet();
     const { result, statuses } = renderWrite(wallet, undefined, simulate);
     await act(async () => {
-      await result.current.execute(testWriteBuild(1), { pageChainId: 1 });
+      await result.current.execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
     });
     expect(order).toEqual(["check", "sign"]);
     const build = testWriteBuild(1);
@@ -198,33 +226,38 @@ describe("useWrite pre-flight check", () => {
   });
 
   it("a contract rejection sends nothing and quotes the contract's answer as the contract's", async () => {
-    const latest = renderWriteWithNotice(await createConnectedTestWallet(), checkAnswering({ status: "reverted", reason: "Appeal period is over." }));
+    const latest = renderWriteWithToasts(await createConnectedTestWallet(), checkAnswering({ status: "reverted", reason: "Appeal period is over." }));
     await act(async () => {
-      await latest().execute(testWriteBuild(1), { pageChainId: 1 });
+      await latest().execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
     });
     expect(latest().status).toEqual({ phase: "refused-by-contract", reason: "Appeal period is over." });
-    expect(await screen.findByRole("alert")).toHaveTextContent("The contract would reject this transactionNothing was sent. The contract's answer: “Appeal period is over.”");
+    const toast = await within(toastRegion()).findByRole("alert");
+    expect(within(toast).getByText("The contract would reject this transaction")).toBeInTheDocument();
+    expect(within(toast).getByText("Nothing was sent for funding “Yes” with 1 ETH. The contract's answer: “Appeal period is over.”")).toBeInTheDocument();
     expect(writeContractMock).not.toHaveBeenCalled();
   });
 
   it("a rejection without a reason the page may show sends nothing and quotes nothing", async () => {
-    const latest = renderWriteWithNotice(await createConnectedTestWallet(), checkAnswering({ status: "reverted", reason: null }));
+    const latest = renderWriteWithToasts(await createConnectedTestWallet(), checkAnswering({ status: "reverted", reason: null }));
     await act(async () => {
-      await latest().execute(testWriteBuild(1), { pageChainId: 1 });
+      await latest().execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
     });
     expect(latest().status).toEqual({ phase: "refused-by-contract", reason: null });
-    const notice = await screen.findByRole("alert");
-    expect(notice).toHaveTextContent("The contract would reject this transactionNothing was sent.");
-    expect(notice).not.toHaveTextContent("answer");
+    const toast = await within(toastRegion()).findByRole("alert");
+    expect(within(toast).getByText("The contract would reject this transaction")).toBeInTheDocument();
+    expect(within(toast).getByText("Nothing was sent for funding “Yes” with 1 ETH.")).toBeInTheDocument();
+    expect(toast).not.toHaveTextContent("answer");
     expect(writeContractMock).not.toHaveBeenCalled();
   });
 
   it("a balance too low sends nothing", async () => {
-    const latest = renderWriteWithNotice(await createConnectedTestWallet(), checkAnswering({ status: "insufficient-funds" }));
+    const latest = renderWriteWithToasts(await createConnectedTestWallet(), checkAnswering({ status: "insufficient-funds" }));
     await act(async () => {
-      await latest().execute(testWriteBuild(1), { pageChainId: 1 });
+      await latest().execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
     });
-    expect(await screen.findByRole("alert")).toHaveTextContent("Balance too lowYour wallet's balance does not cover this transaction. Nothing was sent.");
+    const toast = await within(toastRegion()).findByRole("alert");
+    expect(within(toast).getByText("Balance too low")).toBeInTheDocument();
+    expect(within(toast).getByText("Your wallet's balance does not cover funding “Yes” with 1 ETH. Nothing was sent.")).toBeInTheDocument();
     expect(writeContractMock).not.toHaveBeenCalled();
   });
 
@@ -237,13 +270,13 @@ describe("useWrite pre-flight check", () => {
   ] as const)("a check that %s still opens the wallet", async (_case, simulate: CoreDeps["simulate"]) => {
     const { result } = renderWrite(await createConnectedTestWallet(), undefined, vi.fn(simulate));
     await act(async () => {
-      await result.current.execute(testWriteBuild(1), { pageChainId: 1 });
+      await result.current.execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
     });
     expect(writeContractMock).toHaveBeenCalledTimes(1);
     expect(result.current.status.phase).toBe("mined");
   });
 
-  it("says it is checking while the check runs", async () => {
+  it("is checking while the check runs, with no toast before the wallet opens", async () => {
     let answer: ((result: SimulationResult) => void) | undefined;
     const simulate = vi.fn<CoreDeps["simulate"]>(
       () =>
@@ -251,13 +284,15 @@ describe("useWrite pre-flight check", () => {
           answer = resolve;
         }),
     );
-    const latest = renderWriteWithNotice(await createConnectedTestWallet(), simulate);
+    const latest = renderWriteWithToasts(await createConnectedTestWallet(), simulate);
     let pending: Promise<unknown> = Promise.resolve();
     act(() => {
-      pending = latest().execute(testWriteBuild(1), { pageChainId: 1 });
+      pending = latest().execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
     });
-    expect(await screen.findByText("Checking the transaction")).toBeInTheDocument();
-    expect(screen.getByText("Checking with the contract that it accepts this transaction before your wallet opens.")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(latest().status.phase).toBe("checking");
+    });
+    expect(toastRegion()).toBeEmptyDOMElement();
     expect(writeContractMock).not.toHaveBeenCalled();
     await act(async () => {
       answer?.({ status: "ok" });
@@ -275,13 +310,13 @@ describe("useWrite pre-flight check", () => {
       wallet.changeAccount("0x00000000000000000000000000000000000B0b00");
       return Promise.resolve(answer);
     });
-    const latest = renderWriteWithNotice(wallet, simulate);
+    const latest = renderWriteWithToasts(wallet, simulate);
     await act(async () => {
-      await latest().execute(testWriteBuild(1), { pageChainId: 1 });
+      await latest().execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
     });
     expect(latest().status).toEqual({ phase: "account-changed" });
-    expect(await screen.findByText("Transaction not sent")).toBeInTheDocument();
-    expect(screen.getByText("Your wallet's account changed while the transaction was checked. Nothing was sent. Try again.")).toBeInTheDocument();
+    expect(await within(toastRegion()).findByText("Transaction not sent")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("Your wallet's account changed while funding “Yes” with 1 ETH was checked. Nothing was sent. Try again.")).toBeInTheDocument();
     expect(writeContractMock).not.toHaveBeenCalled();
   });
 });
@@ -291,7 +326,7 @@ describe("useWrite outcomes", () => {
     const wallet = await createConnectedTestWallet();
     const { result } = renderWrite(wallet);
     await act(async () => {
-      await result.current.execute({ ok: false, refusal: "appeal-unsupported" }, { pageChainId: 1 });
+      await result.current.execute({ ok: false, refusal: "appeal-unsupported" }, { pageChainId: 1, wording: WORDING });
     });
     expect(result.current.status).toEqual({ phase: "refused", refusal: "appeal-unsupported" });
     expect(writeContractMock).not.toHaveBeenCalled();
@@ -310,7 +345,7 @@ describe("useWrite outcomes", () => {
     });
     let pendingWrite: Promise<unknown> = Promise.resolve();
     act(() => {
-      pendingWrite = result.current.execute(testWriteBuild(1), { pageChainId: 1, onMined });
+      pendingWrite = result.current.execute(testWriteBuild(1), { pageChainId: 1, onMined, wording: WORDING });
     });
     await waitFor(() => {
       expect(result.current.status).toEqual({ phase: "submitted", hash: TEST_TX_HASH, explorerUrl: `https://etherscan.io/tx/${TEST_TX_HASH}` });
@@ -372,7 +407,7 @@ describe("useWrite outcomes", () => {
     const waitForReceipt = vi.fn<(chainId: number, hash: Hex) => Promise<WriteReceipt>>(() => Promise.resolve(testReceipt()));
     const { result } = renderWrite(wallet, waitForReceipt);
     await act(async () => {
-      await result.current.execute(testWriteBuild(100), { pageChainId: 100 });
+      await result.current.execute(testWriteBuild(100), { pageChainId: 100, wording: WORDING });
     });
     expect(waitForReceipt).toHaveBeenCalledWith(100, TEST_TX_HASH);
     expect(result.current.status.phase).toBe("mined");
@@ -435,5 +470,106 @@ describe("useWrite outcomes", () => {
       result.current.reset();
     });
     expect(result.current.status).toEqual({ phase: "idle" });
+  });
+});
+
+describe("useWrite observer", () => {
+  it("reports every status of a write to the observer, with the write's wording, from checking to the outcome", async () => {
+    const recording = recordingObserver();
+    const { result } = observedWrite(await createConnectedTestWallet(), recording.observer);
+    await act(async () => {
+      await result.current.execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
+    });
+    expect(recording.attempts).toHaveLength(1);
+    const reports = recording.attempts[0]?.reports ?? [];
+    expect(reports.map((report) => report.status.phase)).toEqual(["checking", "pending", "submitted", "mined"]);
+    expect(reports.map((report) => report.wording)).toEqual([WORDING, WORDING, WORDING, WORDING]);
+    expect(reports.map((report) => report.progress)).toEqual([undefined, undefined, undefined, undefined]);
+    expect(reports.at(-1)?.status).toEqual(result.current.status);
+  });
+
+  it("keeps reporting after the component that pressed unmounts, so the outcome reaches the observer", async () => {
+    const recording = recordingObserver();
+    let releaseReceipt: ((receipt: WriteReceipt) => void) | undefined;
+    const deps = createTestDeps({
+      waitForReceipt: () =>
+        new Promise<WriteReceipt>((resolve) => {
+          releaseReceipt = resolve;
+        }),
+    });
+    const writes: WriteController[] = [];
+    const onWrite = (write: WriteController) => {
+      writes.push(write);
+    };
+    const { rerender } = render(<PressingControl mounted onWrite={onWrite} />, { wrapper: observedWalletWrapper(await createConnectedTestWallet(), deps, recording.observer) });
+    let pending: Promise<unknown> = Promise.resolve();
+    act(() => {
+      pending = writes.at(-1)?.execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING }) ?? Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(recording.attempts[0]?.reports.at(-1)?.status.phase).toBe("submitted");
+    });
+    rerender(<PressingControl mounted={false} onWrite={onWrite} />);
+    await act(async () => {
+      releaseReceipt?.(testReceipt());
+      await pending;
+    });
+    expect(recording.attempts[0]?.reports.at(-1)?.status).toEqual({
+      phase: "mined",
+      hash: TEST_TX_HASH,
+      explorerUrl: `https://etherscan.io/tx/${TEST_TX_HASH}`,
+      receipt: testReceipt(),
+    });
+  });
+
+  it("a chain guard found after the wallet was asked reaches the observer as the same attempt's next status", async () => {
+    const recording = recordingObserver();
+    const wallet = await createConnectedTestWallet({ chainId: 1 });
+    const simulate = vi.fn<CoreDeps["simulate"]>(async () => {
+      await wallet.changeChain(100);
+      return { status: "ok" };
+    });
+    const { result } = observedWrite(wallet, recording.observer, simulate);
+    await act(async () => {
+      await result.current.execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
+    });
+    expect(recording.attempts).toHaveLength(1);
+    expect(recording.attempts[0]?.reports.map((report) => report.status)).toEqual([
+      { phase: "checking" },
+      { phase: "pending" },
+      { phase: "wrong-chain", walletChainId: 100, pageChainId: 1 },
+    ]);
+    expect(writeContractMock).not.toHaveBeenCalled();
+  });
+
+  it("two presses of the same control report as two attempts from one source", async () => {
+    const recording = recordingObserver();
+    const { result } = observedWrite(await createConnectedTestWallet(), recording.observer);
+    await act(async () => {
+      await result.current.execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
+    });
+    await act(async () => {
+      await result.current.execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
+    });
+    const [first, second] = recording.attempts;
+    expect(recording.attempts).toHaveLength(2);
+    expect(first?.source).not.toBe("");
+    expect(second?.source).toBe(first?.source);
+    expect(second?.reports.map((report) => report.status.phase)).toEqual(["checking", "pending", "submitted", "mined"]);
+  });
+
+  it("an observer that throws leaves a mined write mined", async () => {
+    const throwing: WriteObserver = () => ({
+      report() {
+        throw new Error("The observer broke.");
+      },
+    });
+    const { result } = observedWrite(await createConnectedTestWallet(), throwing);
+    let outcome: WriteStatus | undefined;
+    await act(async () => {
+      outcome = await result.current.execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
+    });
+    expect(outcome?.phase).toBe("mined");
+    expect(result.current.status.phase).toBe("mined");
   });
 });

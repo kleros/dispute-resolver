@@ -1,4 +1,4 @@
-import { reservedWithinChoices, type DisputeLookup, type MetaEvidence } from "@dispute-resolver/core";
+import { optionsWithinChoices, type DisputeLookup, type MetaEvidence } from "@dispute-resolver/core";
 import { useId } from "react";
 import { metaEvidenceSection, type CaseSectionProps, type SectionData } from "../../data";
 import { courtCaseUrl, ExternalLink } from "../../safe-content";
@@ -9,19 +9,19 @@ const SECTION = "Question";
 
 const NO_META_EVIDENCE = "This dispute has no meta-evidence, so its question and voting options cannot be shown.";
 
-/** `null` until the arbitrator's dispute is read: the meta-evidence's reserved answers are then all shown. */
+/** `null` until the arbitrator's dispute is read: every answer the meta-evidence lists is then shown. */
 function numberOfChoices(lookup: SectionData<DisputeLookup>): bigint | null {
   return lookup.status === "ready" && lookup.value.status === "found" ? lookup.value.dispute.numberOfChoices : null;
 }
 
 interface VotingOptionsSectionProps {
   readonly options: readonly VotingOption[];
-  readonly hiddenReserved: number;
+  readonly hiddenAnswers: number;
   readonly disputeId: bigint;
   readonly chainId: number;
 }
 
-function VotingOptionsSection({ options, hiddenReserved, disputeId, chainId }: VotingOptionsSectionProps) {
+function VotingOptionsSection({ options, hiddenAnswers, disputeId, chainId }: VotingOptionsSectionProps) {
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} className="flex flex-col">
@@ -29,7 +29,7 @@ function VotingOptionsSection({ options, hiddenReserved, disputeId, chainId }: V
         Voting options
       </h3>
       <VotingOptionList options={options} className="mt-2" />
-      {hiddenReserved > 0 ? <p className={`mt-4 ${LABEL}`}>{hiddenAnswersLine(hiddenReserved)}</p> : null}
+      {hiddenAnswers > 0 ? <p className={`mt-4 ${LABEL}`}>{hiddenAnswersLine(hiddenAnswers)}</p> : null}
       <p className={`mt-6 ${LABEL}`}>
         Note that you can only view the voting options. Selected jurors can vote using <ExternalLink href={courtCaseUrl(disputeId, chainId)}>Court</ExternalLink>.
       </p>
@@ -47,7 +47,7 @@ interface QuestionContentProps {
 function QuestionContent({ metaEvidence, numberOfChoices, disputeId, chainId }: QuestionContentProps) {
   const { question, rulingOptions } = metaEvidence;
   const label = rulingOptions === null ? null : questionTypeLabel(rulingOptions.type);
-  const within = rulingOptions === null ? null : reservedWithinChoices(rulingOptions, numberOfChoices);
+  const within = rulingOptions === null ? null : optionsWithinChoices(rulingOptions, numberOfChoices);
   const options = within === null ? null : votingOptions(within.rulingOptions);
   return (
     <div className="flex min-w-0 flex-col gap-6">
@@ -59,7 +59,7 @@ function QuestionContent({ metaEvidence, numberOfChoices, disputeId, chainId }: 
           {label === null ? null : <p className={LABEL}>{label}</p>}
         </div>
       )}
-      {options === null || within === null ? null : <VotingOptionsSection options={options} hiddenReserved={within.hiddenReserved} disputeId={disputeId} chainId={chainId} />}
+      {options === null || within === null ? null : <VotingOptionsSection options={options} hiddenAnswers={within.hiddenAnswers} disputeId={disputeId} chainId={chainId} />}
     </div>
   );
 }

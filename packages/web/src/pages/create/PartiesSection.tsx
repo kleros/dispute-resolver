@@ -2,7 +2,7 @@ import type { CreateFieldErrorCode } from "@dispute-resolver/core";
 import { Button, TextField } from "@kleros/ui-components-library";
 import { useState } from "react";
 import { AtlasFileField, type UploadedFile } from "../../atlas";
-import { WriteStatusNotice, useWriteAccess } from "../../wallet";
+import { WriteGuardNotice, useWriteAccess } from "../../wallet";
 import type { SectionProps } from "./CourtSection";
 import { addParty, canonicalDocument, removeParty, setParty, setPrimaryDocument, type PartyRow } from "./draft";
 import { FULL_WIDTH_FIELD, FieldSlot, FormGroup, errorProps } from "./fields";
@@ -136,7 +136,7 @@ export function DocumentSection({ chain, form, errors, onChange }: SectionProps)
             onChange((current) => setPrimaryDocument(current, null));
           }}
         />
-        {wrongChain === null ? null : <WriteStatusNotice status={wrongChain} beforeAttempt className="mt-2" />}
+        {wrongChain === null ? null : <WriteGuardNotice guard={wrongChain} className="mt-2" />}
         {code === undefined ? null : (
           <p role="alert" className="mt-2 text-sm text-klerosUIComponentsError">
             {fieldErrorMessage("primaryDocument", code)}

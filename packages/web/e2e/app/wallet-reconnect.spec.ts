@@ -38,6 +38,8 @@ test("a returning wallet shows its account and receives the write request while 
 
   // The e2e wallet refuses to send, so the write fails, but only after it reached the wallet.
   await expect.poll(async () => (await walletRequests(page)).filter((method) => method === "eth_sendTransaction")).toHaveLength(1);
+  await expect(page.getByRole("region", { name: "Notifications" }).getByText("Transaction failed", { exact: true })).toBeVisible();
+  await expect(panel.getByText("Transaction failed")).toHaveCount(0);
   expect(await unresponsiveWalletRequests(page)).not.toContain("eth_sendTransaction");
   const checks = traffic.rpc.filter((call) => callTarget(call) === GOVERNOR && callData(call)?.startsWith(FUND_APPEAL_SELECTOR) === true);
   expect(checks, "the contribution was not checked against the governor before the wallet opened").toHaveLength(1);

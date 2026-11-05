@@ -1,7 +1,7 @@
 import type { AppealRules, RulingNoun } from "../families/types";
 import type { MetaEvidenceResult } from "../metaEvidence/types";
 import { fail, succeed } from "../outcome";
-import { formatRuling } from "../rulings";
+import { formatRuling, optionsWithinChoices } from "../rulings";
 import type { FallbackOutcomes, RulingOptions } from "../rulings/types";
 import type { Outcome } from "../types";
 import type { ArbitratorDispute, Decision, DisputeReads, ExecutedRuling, JuryDecisionNote, RulingFact } from "./types";
@@ -42,8 +42,8 @@ interface Execution {
  * funded. Without a report, that funding alone names the winner, and otherwise the court's ruling stands.
  */
 function inExecution({ dispute, court, executed, funded, fact, noun }: Execution): Decision {
-  if (!dispute.ruled) return { kind: "jury-decision", court: fact(court), note: "not-executed" };
-  if (executed?.status === "out-of-range" || executed?.status === "inconsistent") return { kind: "jury-decision", court: fact(court), note: executed.status };
+  if (!dispute.ruled) return { kind: "jury-decision", court: fact(court), note: "not-executed", noun };
+  if (executed?.status === "out-of-range" || executed?.status === "inconsistent") return { kind: "jury-decision", court: fact(court), note: executed.status, noun };
   const won = (ruling: bigint, wonBy: "jury" | "default" | "applied"): Decision => ({ kind: "winner", winner: fact(ruling), court: fact(court), wonBy, noun });
   const byDefault = soleFunded(funded, dispute);
   if (executed?.status === "executed") {
@@ -69,10 +69,12 @@ export function buildDecision(input: {
   if (reads === null) return fail("rpc-error", DETAILS_NOT_READ);
   if (!reads.currentRuling.ok) return reads.currentRuling;
   const { rulingOptions, fallbackOutcomes } = rulingSources(input.metaEvidence);
-  const fact = (ruling: bigint): RulingFact => ({ ruling, rulingText: formatRuling(ruling, rulingOptions, fallbackOutcomes) });
+  const within = rulingOptions === null ? null : optionsWithinChoices(rulingOptions, dispute.numberOfChoices).rulingOptions;
+  const fact = (ruling: bigint): RulingFact => ({ ruling, rulingText: formatRuling(ruling, within, fallbackOutcomes) });
   const court = reads.currentRuling.value;
-  if (dispute.period === 3) return succeed({ kind: "jury-decision", court: fact(court), note: appealNote(rules) });
-  return succeed(inExecution({ dispute, court, executed: input.executed, funded: input.fundedRulings, fact, noun: rules?.noun ?? "answer" }));
+  const noun = rules?.noun ?? "answer";
+  if (dispute.period === 3) return succeed({ kind: "jury-decision", court: fact(court), note: appealNote(rules), noun });
+  return succeed(inExecution({ dispute, court, executed: input.executed, funded: input.fundedRulings, fact, noun }));
 }
 
 /**

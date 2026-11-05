@@ -74,9 +74,11 @@ describe("formatRuling", () => {
     expect(formatRuling(MAX_UINT256, { type: "multiple-select", titles, reserved: ANSWERED_TOO_SOON }, null)).toBe("Answered too soon");
   });
 
-  it("a reserved answer past a multiple-select's combinations reads as its decimal, as one past a single-select's titles does", () => {
-    expect(formatRuling(9n, { ...SELECT_ABC, reserved: { "0x9": "Soon" } }, null)).toBe("9");
-    expect(formatRuling(7n, { ...SELECT_YES_NO, reserved: { "0x7": "Soon" } }, null)).toBe("7");
+  it("a reserved answer the options list reads as its title, past a multiple-select's combinations or a single-select's titles", () => {
+    expect(formatRuling(9n, { ...SELECT_ABC, reserved: { "0x9": "Withdrawn" } }, null)).toBe("Withdrawn");
+    expect(formatRuling(7n, { ...SELECT_YES_NO, reserved: { "0x07": "Withdrawn" } }, null)).toBe("Withdrawn");
+    expect(formatRuling(10n, { ...SELECT_ABC, reserved: { "0x9": "Withdrawn" } }, null)).toBe("10");
+    expect(formatRuling(8n, { ...SELECT_ABC, reserved: { "0x9": "Withdrawn" } }, null)).toBe("A / B / C");
   });
 
   it("a multiple-select with an empty title list reads ruling 1 as None of the options and every other ruling as its decimal", () => {

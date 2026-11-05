@@ -39,8 +39,8 @@ export type AnswerEncoding = { readonly ok: true; readonly code: bigint } | { re
 
 export type FallbackOutcomes = readonly string[] | null;
 
-/** A dispute's ruling options without the reserved answers it cannot rule, and how many of those were left out. */
+/** A dispute's ruling options without the answers it cannot rule, and how many of those were left out. */
 export interface OptionsWithinChoices {
   readonly rulingOptions: RulingOptions;
-  readonly hiddenReserved: number;
+  readonly hiddenAnswers: number;
 }

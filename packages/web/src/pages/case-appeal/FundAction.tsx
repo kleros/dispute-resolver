@@ -2,14 +2,17 @@ import { buildFundAppealCall, type CardFundingState, type ChainConfig } from "@d
 import { BigNumberField, Button } from "@kleros/ui-components-library";
 import { useState } from "react";
 import { formatEther } from "viem";
-import { useChainNow } from "../../ui";
-import { WriteStatusNotice, useWrite, type WriteStatus } from "../../wallet";
+import { formatAmount, useChainNow } from "../../ui";
+import { useWrite, type WriteStatus } from "../../wallet";
 import { parseContribution } from "./contribution";
+import { fundWording } from "./copy";
 import type { AppealActions } from "./useAppealActions";
 
 export interface FundActionProps {
   /** What is funded, for the accessible names of the field and the button ("Yes", "the new answer"). */
   readonly subject: string;
+  /** The answer as the write's toast quotes it: the card's title, or the entered answer. */
+  readonly answer: string;
   /** `null` while the card has no answer to fund. */
   readonly code: bigint | null;
   /** The suggested contribution: what remains to fund of the card, or of the answer entered into it. */
@@ -40,7 +43,7 @@ function inFlight(status: WriteStatus): boolean {
  * For one input event React runs `onInput` before `onChange`, so a value the field rewrites (a negative amount becomes
  * 0) ends on what the field shows.
  */
-export function FundAction({ subject, code, suggested, deadline, state, describedBy, actions, chain, isDisabled = false }: FundActionProps) {
+export function FundAction({ subject, answer, code, suggested, deadline, state, describedBy, actions, chain, isDisabled = false }: FundActionProps) {
   const write = useWrite();
   const chainNow = useChainNow();
   /** The contribution as the field shows it once the user edited it; `null` while it follows the suggested amount. */
@@ -69,46 +72,47 @@ export function FundAction({ subject, code, suggested, deadline, state, describe
       deadline,
       nowSeconds: chainNow(),
     });
-    const outcome = await write.execute(build, { pageChainId: actions.pageChainId, onMined: () => actions.refresh("appeal") });
+    const outcome = await write.execute(build, {
+      pageChainId: actions.pageChainId,
+      onMined: () => actions.refresh("appeal"),
+      wording: fundWording(answer, formatAmount(contribution.wei, chain)),
+    });
     if (outcome.phase === "mined") setEdited(null);
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-start gap-2">
-        <BigNumberField
-          className="w-auto min-w-0 flex-1 basis-40"
-          label={`Contribution (${chain.currency})`}
-          value={edited === null ? formatEther(suggested) : undefined}
-          minValue="0"
-          step="0.01"
-          isDisabled={locked}
-          variant={edited !== null && !contribution.ok ? "error" : undefined}
-          message={edited !== null && !contribution.ok ? contribution.message : undefined}
-          inputProps={{
-            "aria-label": `Contribution (${chain.currency}) for ${subject}`,
-            ...description,
-            onInput: (event) => {
-              setEdited(event.currentTarget.value);
-            },
-          }}
-          onChange={(value) => {
-            setEdited(value.toFixed());
-          }}
-        />
-        <Button
-          text="Fund"
-          aria-label={`Fund ${subject}`}
-          {...description}
-          className="mt-6 shrink-0"
-          isLoading={busy}
-          isDisabled={!canFund}
-          onPress={() => {
-            void fund();
-          }}
-        />
-      </div>
-      <WriteStatusNotice status={write.status} />
+    <div className="flex flex-wrap items-start gap-2">
+      <BigNumberField
+        className="w-auto min-w-0 flex-1 basis-40"
+        label={`Contribution (${chain.currency})`}
+        value={edited === null ? formatEther(suggested) : undefined}
+        minValue="0"
+        step="0.01"
+        isDisabled={locked}
+        variant={edited !== null && !contribution.ok ? "error" : undefined}
+        message={edited !== null && !contribution.ok ? contribution.message : undefined}
+        inputProps={{
+          "aria-label": `Contribution (${chain.currency}) for ${subject}`,
+          ...description,
+          onInput: (event) => {
+            setEdited(event.currentTarget.value);
+          },
+        }}
+        onChange={(value) => {
+          setEdited(value.toFixed());
+        }}
+      />
+      <Button
+        text="Fund"
+        aria-label={`Fund ${subject}`}
+        {...description}
+        className="mt-6 shrink-0"
+        isLoading={busy}
+        isDisabled={!canFund}
+        onPress={() => {
+          void fund();
+        }}
+      />
     </div>
   );
 }

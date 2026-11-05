@@ -27,6 +27,8 @@ function build(input: {
   readonly fallbackOutcomes?: FallbackOutcomes;
   readonly unslashed?: boolean;
   readonly fundedRulings?: readonly bigint[];
+  /** The arbitrator's `numberOfChoices`; by default every code, as a Reality proxy's disputes have. */
+  readonly numberOfChoices?: bigint;
 }) {
   const unslashed = input.unslashed === true;
   return buildCrowdfundingCards({
@@ -37,6 +39,7 @@ function build(input: {
     funding: funding(input.contributions, input.fundedRulings),
     override: unslashed ? UNSLASHED_OVERRIDE : undefined,
     tie: unslashed && input.currentRuling === 0n ? "all-winner" : null,
+    numberOfChoices: input.numberOfChoices ?? MAX_UINT,
   });
 }
 
@@ -114,10 +117,10 @@ describe("buildCrowdfundingCards", () => {
 
   it("funds a new answer on winner terms when every option is a winner in a tie", () => {
     const set = build({ rulingOptions: { type: "uint", precision: 0 }, currentRuling: 0n, unslashed: true });
-    expect(set.freeInput).toEqual({ type: "uint", precision: 0, side: "shared", required: 2_000n, deadline: 500 });
+    expect(set.freeInput).toEqual({ type: "uint", precision: 0, side: "shared", required: 2_000n, deadline: 500, highestCode: MAX_UINT });
     expect(enteredAnswerFunding(set.cards, freeInputOf(set), 42n)).toMatchObject({ card: null, side: "shared", required: 2_000n, deadline: 500 });
     const composed = build({ rulingOptions: { type: "multiple-select", titles: ["A", "B", "C", "D", "E"] }, currentRuling: 0n, unslashed: true });
-    expect(composed.composer).toEqual({ titles: ["A", "B", "C", "D", "E"], side: "shared", required: 2_000n, deadline: 500 });
+    expect(composed.composer).toEqual({ titles: ["A", "B", "C", "D", "E"], side: "shared", required: 2_000n, deadline: 500, highestCode: MAX_UINT });
   });
 
   it("shares every card's side in a governor tie", () => {
@@ -129,6 +132,7 @@ describe("buildCrowdfundingCards", () => {
       funding: funding(),
       override: undefined,
       tie: "shared-full-period",
+      numberOfChoices: 2n,
     });
     expect(set.cards.map((card) => card.side)).toEqual(["shared", "shared", "shared"]);
   });
@@ -195,14 +199,14 @@ describe("buildCrowdfundingCards", () => {
       expectedCard({ origin: "contributed-value", title: "4", code: 5n, side: "loser", contributed: 100n, remaining: 2_900n, fundedPercent: 3.33 }),
       expectedCard({ origin: "current-ruling", title: "8", code: 9n, side: "winner", contributed: 50n, remaining: 1_950n, fundedPercent: 2.5 }),
     ]);
-    expect(set.freeInput).toEqual({ type: "uint", precision: 0, side: "loser", required: 3_000n, deadline: 250 });
+    expect(set.freeInput).toEqual({ type: "uint", precision: 0, side: "loser", required: 3_000n, deadline: 250, highestCode: MAX_UINT });
     expect(set.composer).toBeNull();
   });
 
   it("gives a variable question no current-ruling card when the ruling is 0", () => {
     const set = build({ rulingOptions: { type: "int" }, currentRuling: 0n });
     expect(set.cards.map((card) => card.origin)).toEqual(["refuse"]);
-    expect(set.freeInput).toEqual({ type: "int", precision: undefined, side: "loser", required: 3_000n, deadline: 250 });
+    expect(set.freeInput).toEqual({ type: "int", precision: undefined, side: "loser", required: 3_000n, deadline: 250, highestCode: MAX_UINT });
   });
 
   it("decodes string answers as UTF-8 and hash answers as code − 1 in 64 hex digits", () => {
@@ -309,7 +313,7 @@ describe("buildCrowdfundingCards", () => {
     ]);
     expect(set.cards[3]).toMatchObject({ isWinner: true, required: 2_000n, deadline: 500 });
     expect(set.cards[4]).toMatchObject({ isWinner: false, contributed: 5n, required: 3_000n, deadline: 250 });
-    expect(set.composer).toEqual({ titles, side: "loser", required: 3_000n, deadline: 250 });
+    expect(set.composer).toEqual({ titles, side: "loser", required: 3_000n, deadline: 250, highestCode: MAX_UINT });
     expect(set.freeInput).toBeNull();
   });
 
@@ -333,6 +337,39 @@ describe("buildCrowdfundingCards", () => {
     const shown = build({ rulingOptions, currentRuling: 1n, contributions: { "2": 1n, "38": 1n, "64": 1n } }).cards.filter((card) => card.origin === "combination");
     expect(shown.map((card) => card.code)).toEqual([1n, 2n, 38n, 64n]);
     for (const card of shown) expect(card.title).toBe(formatRuling(card.code, rulingOptions, null));
+  });
+
+  it("gives no card to a multiple-select combination past the dispute's number of choices", () => {
+    const set = build({ rulingOptions: { type: "multiple-select", titles: ["A", "B", "C"] }, currentRuling: 2n, contributions: { "8": 1_000n }, numberOfChoices: 5n });
+    expect(summary(set.cards)).toEqual([
+      [0n, REFUSED_TITLE],
+      [1n, "None of the options"],
+      [2n, "A"],
+      [3n, "B"],
+      [4n, "A / B"],
+      [5n, "C"],
+    ]);
+  });
+
+  it("gives no card to a fallback outcome past the dispute's number of choices", () => {
+    const set = build({ rulingOptions: { type: "bool" }, currentRuling: 1n, fallbackOutcomes: ["Kept", "Removed", "Undecided"], numberOfChoices: 2n });
+    expect(summary(set.cards)).toEqual([
+      [0n, REFUSED_TITLE],
+      [1n, "Kept"],
+      [2n, "Removed"],
+    ]);
+  });
+
+  it("gives the free input and the composer the dispute's number of choices as the highest code they fund", () => {
+    expect(build({ rulingOptions: { type: "uint", precision: 0 }, currentRuling: 0n, numberOfChoices: 1_000n }).freeInput).toMatchObject({ highestCode: 1_000n });
+    const titles = ["A", "B", "C", "D", "E"];
+    expect(build({ rulingOptions: { type: "multiple-select", titles }, currentRuling: 1n, numberOfChoices: 20n }).composer).toEqual({
+      titles,
+      side: "loser",
+      required: 3_000n,
+      deadline: 250,
+      highestCode: 20n,
+    });
   });
 
   it("keeps a datetime question's reserved cards and adds the variable cards", () => {
