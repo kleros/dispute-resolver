@@ -1,4 +1,5 @@
 import {
+  NONE_OF_THE_OPTIONS_TEXT,
   REGISTRY,
   buildAppealPanel,
   describeAppealRules,
@@ -541,6 +542,20 @@ describe("AppealSection: times in the arbitrable application's notice", () => {
     ["after ruling 0, for every option until the end", END - 1, { ...TERMS, tie: "shared-full-period" }, decided(0n, REFUSE), `Funding for every option closes ${utc(END)}.`],
     ["after ruling 0, once the appeal period ended", END, { ...TERMS, tie: "shared-full-period" }, decided(0n, REFUSE), `Funding for every option closed ${utc(END)}.`],
     [
+      "without quotes when the ruling reads as nothing",
+      LOSER - 1,
+      TERMS,
+      decided(1n, ""),
+      `Funding for the current ruling closes ${utc(END)}. Funding for every other option closes ${utc(LOSER)}.`,
+    ],
+    [
+      "without quotes when the ruling's title is only spaces",
+      LOSER - 1,
+      TERMS,
+      decided(1n, "  "),
+      `Funding for the current ruling closes ${utc(END)}. Funding for every other option closes ${utc(LOSER)}.`,
+    ],
+    [
       "without the ruling's title when the decision could not be read",
       LOSER - 1,
       TERMS,
@@ -751,29 +766,64 @@ describe("AppealSection: crowdfunding cards", () => {
     expect(fundButton(card("No"))).toBeDisabled();
   });
 
-  it("five options show only the current and contributed combinations, plus a composer", async () => {
+  it("five options show only the current and contributed combinations, plus a composer that funds None of the options while nothing is ticked", async () => {
     const titles = ["A", "B", "C", "D", "E"];
     await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "multiple-select", titles }, currentRuling: 3n, contributions: [{ ruling: 20n, amount: ETH }] })));
-    expect(cardTitles()).toEqual([REFUSE, "B", "A, B, E"]);
+    expect(cardTitles()).toEqual([REFUSE, "B", "A / B / E"]);
     const composer = composerCard();
     expect(within(composer).getAllByRole("checkbox")).toHaveLength(5);
-    expect(composer).toHaveTextContent("Answer to fund: None");
+    expect(within(composer).getByText(/Ticking none funds/, { selector: "legend" })).toHaveTextContent(`Ticking none funds “${NONE_OF_THE_OPTIONS_TEXT}”.`);
+    expect(within(composer).getByText(/^Answer to fund:/)).toHaveTextContent(new RegExp(`^Answer to fund: ${NONE_OF_THE_OPTIONS_TEXT}$`));
   });
 
-  it("ticking a combination that has its own card announces that card and its amounts in the composer's live region, and Fund names it", async () => {
+  it("ticking a combination that has its own card announces that card and its amounts in the composer's live region, and Fund names the answer", async () => {
     const user = userEvent.setup();
     const titles = ["A", "B", "C", "D", "E"];
     await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "multiple-select", titles }, currentRuling: 3n, contributions: [{ ruling: 3n, amount: ETH / 2n }] })));
     const [region] = liveRegions(composerCard());
     expect(region).toHaveTextContent(newAnswerLine("combination"));
-    expect(within(composerCard()).getByRole("button", { name: "Fund the selected combination" })).toBeInTheDocument();
+    expect(within(composerCard()).getByRole("button", { name: `Fund ${NONE_OF_THE_OPTIONS_TEXT}` })).toBeInTheDocument();
+    expect(within(composerCard()).getByRole("spinbutton", { name: `Contribution (ETH) for ${NONE_OF_THE_OPTIONS_TEXT}` })).toBeInTheDocument();
     await user.click(within(composerCard()).getByRole("checkbox", { name: "B" }));
     expect(liveRegions(composerCard())).toEqual([region]);
     expect(region).toHaveTextContent(`${matchedCardLine("B")} 1.5 ETH remaining of 2 ETH.`);
     expect(within(composerCard()).getByRole("button", { name: "Fund B" })).toBeInTheDocument();
     await user.click(within(composerCard()).getByRole("checkbox", { name: "B" }));
     expect(region).toHaveTextContent(newAnswerLine("combination"));
-    expect(within(composerCard()).getByRole("button", { name: "Fund the selected combination" })).toBeInTheDocument();
+    expect(within(composerCard()).getByRole("button", { name: `Fund ${NONE_OF_THE_OPTIONS_TEXT}` })).toBeInTheDocument();
+    await user.click(within(composerCard()).getByRole("checkbox", { name: "A" }));
+    await user.click(within(composerCard()).getByRole("checkbox", { name: "E" }));
+    expect(region).toHaveTextContent(newAnswerLine("combination"));
+    expect(within(composerCard()).getByRole("button", { name: "Fund A / E" })).toBeInTheDocument();
+    expect(within(composerCard()).getByRole("spinbutton", { name: "Contribution (ETH) for A / E" })).toBeInTheDocument();
+  });
+
+  it("with nothing ticked the composer funds ruling 1, None of the options, as a new combination at the loser's amount", async () => {
+    const user = userEvent.setup();
+    writes.fake = fakeWriteController(TEST_SENT);
+    const titles = ["A", "B", "C", "D", "E"];
+    await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "multiple-select", titles }, currentRuling: 3n, contributions: [{ ruling: 20n, amount: ETH }] })));
+    expect(cardTitles()).not.toContain(NONE_OF_THE_OPTIONS_TEXT);
+    expect(within(composerCard()).queryAllByRole("checkbox", { checked: true })).toHaveLength(0);
+    const [region] = liveRegions(composerCard());
+    expect(region).toHaveTextContent(newAnswerLine("combination"));
+    expect(contributionField(composerCard())).toHaveValue(formatEther(LOSER_TOTAL));
+    expect(fundButton(composerCard())).toBeEnabled();
+    await user.click(fundButton(composerCard()));
+    expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 1n], value: LOSER_TOTAL }]);
+  });
+
+  it("with nothing ticked while None of the options is the current ruling, the composer announces its card and funds its remaining amount", async () => {
+    const user = userEvent.setup();
+    writes.fake = fakeWriteController(TEST_SENT);
+    const titles = ["A", "B", "C", "D", "E"];
+    await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "multiple-select", titles }, currentRuling: 1n })));
+    expect(cardTitles()).toEqual([REFUSE, NONE_OF_THE_OPTIONS_TEXT]);
+    const [region] = liveRegions(composerCard());
+    expect(region).toHaveTextContent(`${matchedCardLine(NONE_OF_THE_OPTIONS_TEXT)} 2 ETH remaining of 2 ETH.`);
+    expect(within(composerCard()).getByRole("spinbutton", { name: `Contribution (ETH) for ${NONE_OF_THE_OPTIONS_TEXT}` })).toHaveValue(formatEther(WINNER_TOTAL));
+    await user.click(within(composerCard()).getByRole("button", { name: `Fund ${NONE_OF_THE_OPTIONS_TEXT}` }));
+    expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 1n], value: WINNER_TOTAL }]);
   });
 
   it("a 34-option multiple-select shows only the refuse card, the current and contributed combinations and a composer with 34 options", async () => {
@@ -793,12 +843,12 @@ describe("AppealSection: crowdfunding cards", () => {
         }),
       ),
     );
-    expect(cardTitles()).toEqual([REFUSE, "Option 34", titles.join(", ")]);
+    expect(cardTitles()).toEqual([REFUSE, "Option 34", titles.join(" / ")]);
     const composer = composerCard();
     expect(within(composer).getAllByRole("checkbox")).toHaveLength(34);
     await user.click(within(composer).getByRole("checkbox", { name: "Option 1" }));
     await user.click(within(composer).getByRole("checkbox", { name: "Option 34" }));
-    expect(composer).toHaveTextContent("Answer to fund: Option 1, Option 34");
+    expect(within(composer).getByText(/^Answer to fund:/)).toHaveTextContent(/^Answer to fund: Option 1 \/ Option 34$/);
     await user.click(fundButton(composer));
     expect(await sentCallsAfter()).toMatchObject([{ args: [7n, ((1n << 33n) | 1n) + 1n], value: LOSER_TOTAL }]);
   });

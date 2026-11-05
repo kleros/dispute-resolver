@@ -129,6 +129,49 @@ describe("buildDecision", () => {
     expect(text(null)).toBe("3");
   });
 
+  describe("a multiple-select whose ruling 1, no option ticked, reads None of the options", () => {
+    const ABC = metaEvidence({ type: "multiple-select", titles: ["A", "B", "C"] });
+    const NONE = { ruling: 1n, rulingText: "None of the options" };
+    const C = { ruling: 5n, rulingText: "C" };
+
+    function decideAbc(input: {
+      readonly court: bigint;
+      readonly period: 3 | 4;
+      readonly executed?: ExecutedRuling;
+      readonly funded?: Outcome<readonly bigint[]>;
+    }): Outcome<Decision> {
+      const dispute: ArbitratorDispute = { ...DISPUTE, numberOfChoices: 8n, period: input.period, ruled: input.period === 4 };
+      return buildDecision({
+        dispute,
+        reads: { ...reads(ok(input.court)), dispute },
+        rules: RULES,
+        executed: input.executed ?? null,
+        fundedRulings: input.funded ?? null,
+        metaEvidence: ABC,
+      });
+    }
+
+    it("as the court's ruling in the appeal period and in execution", () => {
+      expect(decideAbc({ court: 1n, period: 3 })).toEqual(ok({ kind: "jury-decision", court: NONE, note: "appealable-in-arbitrable" }));
+      expect(decideAbc({ court: 1n, period: 4, executed: applied(1n) })).toEqual(ok({ kind: "winner", winner: NONE, court: NONE, wonBy: "jury", noun: "option" }));
+    });
+
+    it("as the ruling the arbitrable applied instead of the court's", () => {
+      expect(decideAbc({ court: 5n, period: 4, executed: applied(1n), funded: funded() })).toEqual(
+        ok({ kind: "winner", winner: NONE, court: C, wonBy: "applied", noun: "option" }),
+      );
+    });
+
+    it("as the only answer fully funded, winning by default", () => {
+      expect(decideAbc({ court: 5n, period: 4, executed: NONE_REPORTED, funded: funded(1n) })).toEqual(
+        ok({ kind: "winner", winner: NONE, court: C, wonBy: "default", noun: "option" }),
+      );
+      expect(decideAbc({ court: 5n, period: 4, executed: applied(1n), funded: funded(1n) })).toEqual(
+        ok({ kind: "winner", winner: NONE, court: C, wonBy: "default", noun: "option" }),
+      );
+    });
+  });
+
   it("degrades without the detail reads or the court's ruling, never reading a failure as ruling 0", () => {
     expect(buildDecision({ dispute: DISPUTE, reads: null, rules: RULES, executed: null, fundedRulings: null, metaEvidence: null }).ok).toBe(false);
     expect(buildDecision({ dispute: DISPUTE, reads: reads(NOT_READ), rules: RULES, executed: applied(2n), fundedRulings: null, metaEvidence: null })).toEqual(NOT_READ);

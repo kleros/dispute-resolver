@@ -1,4 +1,4 @@
-import type { MetaEvidenceResult } from "@dispute-resolver/core";
+import { NONE_OF_THE_OPTIONS_TEXT, REFUSED_RULING_TEXT, type MetaEvidenceResult } from "@dispute-resolver/core";
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { CaseDispute, SectionData } from "../../data";
@@ -59,6 +59,19 @@ describe("QuestionPanel", () => {
     expect(court).toHaveAttribute("href", "https://court.kleros.io/cases/12?requiredChainId=100");
     expect(court).toHaveAttribute("target", "_blank");
     expect(court).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("a multiple-select lists option 1 for nothing ticked with its code, and each title as a box without a code", () => {
+    renderPanel(sectionReady(testOkMetaEvidence({ rulingOptions: { type: "multiple-select", titles: ["Red", "Green"], descriptions: ["The red one"] } })));
+    expect(optionLines()).toEqual([`Option 0 - ${REFUSED_RULING_TEXT}`, `Option 1 - ${NONE_OF_THE_OPTIONS_TEXT}`, "Red: The red one", "Green"]);
+    const [, none, red] = within(screen.getByRole("list")).getAllByRole("listitem");
+    if (none === undefined || red === undefined) throw new Error("The multiple-select options are missing");
+    const noneCode = within(none).getByText("Option 1");
+    expect(noneCode).toHaveClass("order-last", "tabular-nums");
+    expect(noneCode.querySelector(".sr-only")?.textContent).toBe(" - ");
+    expect(red.querySelector(".order-last")).toBeNull();
+    expect(within(red).getByText("Red")).toHaveClass("font-semibold", "text-base");
+    expect(red.textContent).not.toContain(" - ");
   });
 
   it("keeps a non-select question to its question and type line", () => {

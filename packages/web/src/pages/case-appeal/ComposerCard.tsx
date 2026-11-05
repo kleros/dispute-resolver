@@ -1,4 +1,12 @@
-import { combinationCode, combinationTitle, enteredAnswerFunding, type ChainConfig, type CrowdfundingCard, type MultipleSelectComposer } from "@dispute-resolver/core";
+import {
+  NONE_OF_THE_OPTIONS_TEXT,
+  combinationCode,
+  combinationTitle,
+  enteredAnswerFunding,
+  type ChainConfig,
+  type CrowdfundingCard,
+  type MultipleSelectComposer,
+} from "@dispute-resolver/core";
 import { Card, Checkbox } from "@kleros/ui-components-library";
 import { useId, useState } from "react";
 import { EnteredAnswerFooter, MatchedCardNote } from "./FreeInputCard";
@@ -16,13 +24,14 @@ export interface ComposerCardProps {
 
 /**
  * Above four options the combinations are not enumerated as cards, so the user ticks the options of the answer and
- * funds that combination (bitmask + 1). Ticking nothing funds "None", which is a combination too.
+ * funds that combination (bitmask + 1).
  */
 export function ComposerCard({ composer, cards, actions, chain, isFundDisabled }: ComposerCardProps) {
   const titleId = useId();
   const [selected, setSelected] = useState<ReadonlySet<number>>(() => new Set());
   const code = combinationCode([...selected].sort((a, b) => a - b));
   const funding = enteredAnswerFunding(cards, composer, code);
+  const answer = combinationTitle(code - 1n, composer.titles);
   const options = composer.titles.map((title, position) => ({ title, position, id: `option-${String(position)}` }));
 
   const toggle = (position: number, isSelected: boolean) => {
@@ -42,7 +51,9 @@ export function ComposerCard({ composer, cards, actions, chain, isFundDisabled }
             Fund another combination
           </h4>
           <fieldset className="flex min-w-0 flex-col gap-2">
-            <legend className="mb-2 text-sm text-klerosUIComponentsSecondaryText">Tick the options of the answer you want to fund. Ticking none funds “None”.</legend>
+            <legend className="mb-2 text-sm text-klerosUIComponentsSecondaryText">
+              Tick the options of the answer you want to fund. Ticking none funds “{NONE_OF_THE_OPTIONS_TEXT}”.
+            </legend>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {options.map((option) => (
                 <Checkbox
@@ -59,19 +70,12 @@ export function ComposerCard({ composer, cards, actions, chain, isFundDisabled }
             </div>
           </fieldset>
           <p className="text-sm [overflow-wrap:anywhere]" aria-live="polite">
-            Answer to fund: <strong className="font-semibold">{combinationTitle(code - 1n, composer.titles)}</strong>
+            Answer to fund: <strong className="font-semibold">{answer}</strong>
           </p>
           <MatchedCardNote funding={funding} kind="combination" chain={chain} />
         </div>
         <div className="flex min-w-0 flex-col gap-4 lg:border-l lg:border-klerosUIComponentsStroke lg:pl-8">
-          <EnteredAnswerFooter
-            funding={funding}
-            subject={funding.card?.title ?? "the selected combination"}
-            code={code}
-            actions={actions}
-            chain={chain}
-            isFundDisabled={isFundDisabled}
-          />
+          <EnteredAnswerFooter funding={funding} subject={funding.card?.title ?? answer} code={code} actions={actions} chain={chain} isFundDisabled={isFundDisabled} />
         </div>
       </Card>
     </li>

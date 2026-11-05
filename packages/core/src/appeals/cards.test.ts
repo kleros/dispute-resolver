@@ -144,14 +144,14 @@ describe("buildCrowdfundingCards", () => {
     const set = build({ rulingOptions: { type: "multiple-select", titles }, currentRuling: 4n, contributions: { "4": 1_000n } });
     expect(summary(set.cards)).toEqual([
       [0n, REFUSED_TITLE],
-      [1n, "None"],
+      [1n, "None of the options"],
       [2n, "A"],
       [3n, "B"],
-      [4n, "A, B"],
+      [4n, "A / B"],
       [5n, "C"],
-      [6n, "A, C"],
-      [7n, "B, C"],
-      [8n, "A, B, C"],
+      [6n, "A / C"],
+      [7n, "B / C"],
+      [8n, "A / B / C"],
     ]);
     expect(set.cards.filter((card) => card.isWinner).map((card) => card.code)).toEqual([4n]);
     expect(set.cards.find((card) => card.code === 4n)).toMatchObject({ origin: "combination", required: 2_000n, contributed: 1_000n, fundedPercent: 50 });
@@ -302,15 +302,37 @@ describe("buildCrowdfundingCards", () => {
     });
     expect(summary(set.cards)).toEqual([
       [0n, REFUSED_TITLE],
-      [1n, "None"],
+      [1n, "None of the options"],
       [2n, "Option 1"],
       [lastOnly, "Option 34"],
-      [everyOption, titles.join(", ")],
+      [everyOption, titles.join(" / ")],
     ]);
     expect(set.cards[3]).toMatchObject({ isWinner: true, required: 2_000n, deadline: 500 });
     expect(set.cards[4]).toMatchObject({ isWinner: false, contributed: 5n, required: 3_000n, deadline: 250 });
     expect(set.composer).toEqual({ titles, side: "loser", required: 3_000n, deadline: 250 });
     expect(set.freeInput).toBeNull();
+  });
+
+  it("the None of the options card funds ruling 1 and is the winner when the court ruled it", () => {
+    const set = build({ rulingOptions: { type: "multiple-select", titles: ["A", "B", "C"] }, currentRuling: 1n, contributions: { "1": 500n } });
+    const none = set.cards.filter((card) => card.title === "None of the options");
+    expect(none).toEqual([
+      expectedCard({ origin: "combination", title: "None of the options", code: 1n, side: "winner", contributed: 500n, remaining: 1_500n, fundedPercent: 25 }),
+    ]);
+  });
+
+  it("every combination card reads as the court reads its code, None of the options included, enumerated or not", () => {
+    for (let count = 0; count <= 4; count += 1) {
+      const rulingOptions: RulingOptions = { type: "multiple-select", titles: Array.from({ length: count }, (_, index) => `Option ${String(index + 1)}`) };
+      const combinations = build({ rulingOptions, currentRuling: 1n }).cards.filter((card) => card.origin === "combination");
+      expect(combinations).toHaveLength(2 ** count);
+      for (const card of combinations) expect(card.title).toBe(formatRuling(card.code, rulingOptions, null));
+    }
+    const titles = Array.from({ length: 6 }, (_, index) => `Option ${String(index + 1)}`);
+    const rulingOptions: RulingOptions = { type: "multiple-select", titles, reserved: ANSWERED_TOO_SOON };
+    const shown = build({ rulingOptions, currentRuling: 1n, contributions: { "2": 1n, "38": 1n, "64": 1n } }).cards.filter((card) => card.origin === "combination");
+    expect(shown.map((card) => card.code)).toEqual([1n, 2n, 38n, 64n]);
+    for (const card of shown) expect(card.title).toBe(formatRuling(card.code, rulingOptions, null));
   });
 
   it("keeps a datetime question's reserved cards and adds the variable cards", () => {
@@ -330,11 +352,13 @@ describe("buildCrowdfundingCards", () => {
       const rulingOptions = parsedOptions(question);
       const { cards } = build({ rulingOptions, currentRuling: 1n });
       expect(new Set(cards.map((card) => card.code)).size).toBe(cards.length);
-      for (const card of cards.filter((candidate) => candidate.origin === "option")) expect(card.title).toBe(formatRuling(card.code, rulingOptions, null));
+      for (const card of cards.filter((candidate) => candidate.origin === "option" || candidate.origin === "combination")) {
+        expect(card.title).toBe(formatRuling(card.code, rulingOptions, null));
+      }
       return cards;
     }
 
-    it("no two cards of a single-select or multiple-select send the same code, and every option card reads as the court reads its code", () => {
+    it("no two cards of a single-select or multiple-select send the same code, and every option or combination card reads as the court reads its code", () => {
       const singleSelect = checkedCards({
         type: "single-select",
         titles: ["Yes", "No"],

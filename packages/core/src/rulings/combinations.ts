@@ -1,6 +1,10 @@
+/** The answer of a multiple-select with no option ticked: combination 0, ruling 1. */
+export const NONE_OF_THE_OPTIONS_TEXT = "None of the options";
+
+/** The titles of the set bits, lowest bit first, joined as reality-eth-lib joins a multiple-select answer. */
 export function combinationTitle(combination: bigint, titles: readonly string[]): string {
-  if (combination === 0n) return "None";
-  return titles.filter((_, index) => ((combination >> BigInt(index)) & 1n) === 1n).join(", ");
+  if (combination === 0n) return NONE_OF_THE_OPTIONS_TEXT;
+  return titles.filter((_, index) => ((combination >> BigInt(index)) & 1n) === 1n).join(" / ");
 }
 
 export function combinationCode(selectedIndexes: readonly number[]): bigint {

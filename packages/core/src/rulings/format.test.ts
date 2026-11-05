@@ -1,13 +1,14 @@
 import { getAnswerString, padToBytes32 } from "@reality.eth/reality-eth-lib/formatters/question.js";
 import { describe, expect, it } from "vitest";
 import recorded from "./__fixtures__/recorded-rulings.json";
-import { REFUSED_RULING_TEXT, decodeRulingCode, encodeAnswer, formatRuling } from "./index";
+import { NONE_OF_THE_OPTIONS_TEXT, REFUSED_RULING_TEXT, decodeRulingCode, encodeAnswer, formatRuling } from "./index";
 import type { RulingOptions } from "./types";
 
 const MAX_UINT256 = 2n ** 256n - 1n;
 const SELECT_YES_NO: RulingOptions = { type: "single-select", titles: ["Yes", "No"] };
 const SELECT_ABC: RulingOptions = { type: "multiple-select", titles: ["A", "B", "C"] };
 const OUTCOMES = ["Kept", "Removed"];
+const ANSWERED_TOO_SOON = { [`0x${"f".repeat(64)}`]: "Answered Too Soon" };
 
 interface RecordedDispute {
   readonly chainId: number;
@@ -44,6 +45,50 @@ describe("formatRuling", () => {
   it("a multiple-select ruling joins its titles as reality-eth-lib does", () => {
     expect(formatRuling(4n, SELECT_ABC, null)).toBe("A / B");
     expect(formatRuling(8n, SELECT_ABC, null)).toBe("A / B / C");
+  });
+
+  it("ruling 1 of a titled multiple-select, no option ticked, reads None of the options", () => {
+    expect(NONE_OF_THE_OPTIONS_TEXT).toBe("None of the options");
+    expect(formatRuling(1n, SELECT_ABC, null)).toBe(NONE_OF_THE_OPTIONS_TEXT);
+    expect(formatRuling(1n, { type: "multiple-select", titles: ["A"], reserved: ANSWERED_TOO_SOON }, null)).toBe(NONE_OF_THE_OPTIONS_TEXT);
+  });
+
+  it.each([3, 5])("a multiple-select of %i titles reads ruling 2ⁿ as every title and any ruling past it as its decimal", (count) => {
+    const titles = Array.from({ length: count }, (_, index) => `Option ${String(index + 1)}`);
+    const everyOption = 1n << BigInt(count);
+    for (const options of [
+      { type: "multiple-select", titles },
+      { type: "multiple-select", titles, reserved: ANSWERED_TOO_SOON },
+    ]) {
+      expect(formatRuling(1n, options, null)).toBe(NONE_OF_THE_OPTIONS_TEXT);
+      expect(formatRuling(everyOption, options, null)).toBe(titles.join(" / "));
+      expect(formatRuling(everyOption + 1n, options, null)).toBe((everyOption + 1n).toString());
+      expect(formatRuling(4n * everyOption, options, null)).toBe((4n * everyOption).toString());
+      expect(formatRuling(MAX_UINT256 - 1n, options, null)).toBe((MAX_UINT256 - 1n).toString());
+    }
+  });
+
+  it.each([3, 5])("Answered too soon keeps reality-eth-lib's label on a multiple-select of %i titles, with or without a reserved answer for it", (count) => {
+    const titles = Array.from({ length: count }, (_, index) => `Option ${String(index + 1)}`);
+    expect(formatRuling(MAX_UINT256, { type: "multiple-select", titles }, null)).toBe("Answered too soon");
+    expect(formatRuling(MAX_UINT256, { type: "multiple-select", titles, reserved: ANSWERED_TOO_SOON }, null)).toBe("Answered too soon");
+  });
+
+  it("a reserved answer past a multiple-select's combinations reads as its decimal, as one past a single-select's titles does", () => {
+    expect(formatRuling(9n, { ...SELECT_ABC, reserved: { "0x9": "Soon" } }, null)).toBe("9");
+    expect(formatRuling(7n, { ...SELECT_YES_NO, reserved: { "0x7": "Soon" } }, null)).toBe("7");
+  });
+
+  it("a multiple-select with an empty title list reads ruling 1 as None of the options and every other ruling as its decimal", () => {
+    const noTitles: RulingOptions = { type: "multiple-select", titles: [] };
+    expect(formatRuling(1n, noTitles, null)).toBe(NONE_OF_THE_OPTIONS_TEXT);
+    expect(formatRuling(2n, noTitles, null)).toBe("2");
+    expect(formatRuling(MAX_UINT256, noTitles, null)).toBe("Answered too soon");
+  });
+
+  it("a multiple-select without titles keeps reality-eth-lib's empty label, fallback outcomes or not", () => {
+    expect(formatRuling(5n, { type: "multiple-select" }, null)).toBe("");
+    expect(formatRuling(2n, { type: "multiple-select" }, OUTCOMES)).toBe("");
   });
 
   it("mainnet 1657's max-uint ruling reads reality-eth-lib's answered-too-soon text", () => {
@@ -181,8 +226,8 @@ describe("extreme precisions, empty labels and byte-order marks", () => {
   });
 
   it("an empty reality-eth-lib label is the ruling text, not a formatter failure", () => {
-    expect(formatRuling(1n, { type: "multiple-select", titles: ["A", "B"] }, null)).toBe("");
     expect(formatRuling(1n, { type: "single-select", titles: [""] }, null)).toBe("");
+    expect(formatRuling(2n, { type: "multiple-select", titles: [""] }, null)).toBe("");
     expect(formatRuling(1n, { type: "multiple-select" }, null)).toBe("");
     expect(formatRuling(5n, { type: "string" }, null)).toBe("");
     expect(formatRuling(5n, { type: "not-a-reality-type" }, null)).toBe("");

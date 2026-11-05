@@ -1,4 +1,5 @@
 import {
+  NONE_OF_THE_OPTIONS_TEXT,
   REFUSED_RULING_TEXT,
   REGISTRY,
   buildDecision,
@@ -852,6 +853,48 @@ describe("DecisionAlert", () => {
     const metaEvidence = sectionReady(testOkMetaEvidence({ rulingOptions: { type: "single-select" } }));
     renderSection(DecisionAlert, caseDispute({ period: 3, metaEvidence, details: { currentRuling: { ok: true, value: 2n } } }));
     expect(within(decisionAlert("Jury decision")).getByText("2")).toBeInTheDocument();
+  });
+
+  const COLOURS = sectionReady(testOkMetaEvidence({ rulingOptions: { type: "multiple-select", titles: ["Red", "Green", "Blue"] } }));
+  it.each([
+    ["as the court's ruling in the appeal period", { period: 3, family: testFamily(), details: { currentRuling: yes } }, "Jury decision", APPEALABLE],
+    [
+      "as the only answer fully funded, winning by default",
+      { period: 4, ruled: true, details: { currentRuling: { ok: true, value: 0n } }, executed: { status: "executed", ruling: 1n }, fundedRulings: funded(1n) },
+      "Winner",
+      `Won by default: “${NONE_OF_THE_OPTIONS_TEXT}” was the only option fully funded for the appeal. The court ruled “${REFUSED_RULING_TEXT}”.`,
+    ],
+    [
+      "as the ruling the arbitrable applied instead of the court's",
+      { period: 4, ruled: true, details: { currentRuling: { ok: true, value: 2n } }, executed: { status: "executed", ruling: 1n }, fundedRulings: funded(1n, 2n) },
+      "Winner",
+      `The court ruled “Red”. The arbitrable contract applied “${NONE_OF_THE_OPTIONS_TEXT}”.`,
+    ],
+  ] as const)("ruling 1 of a multiple-select, no option ticked, reads None of the options %s", (_case, options: CaseOptions, title, line) => {
+    renderSection(DecisionAlert, caseDispute({ family: VIEW_ONLY, metaEvidence: COLOURS, ...options }));
+    expect(decisionAlert(title).textContent).toBe(`${title}${NONE_OF_THE_OPTIONS_TEXT}${line}`);
+  });
+
+  const UNTITLED = sectionReady(testOkMetaEvidence({ rulingOptions: { type: "multiple-select" } }));
+  it.each([
+    ["in the appeal period", { period: 3, family: testFamily(), details: { currentRuling: yes } }, "Jury decision", APPEALABLE],
+    [
+      "won by default",
+      { period: 4, ruled: true, details: { currentRuling: yes }, executed: { status: "executed", ruling: 2n }, fundedRulings: funded(2n) },
+      "Winner",
+      "Won by default as the only option fully funded for the appeal.",
+    ],
+    [
+      "applied by the arbitrable",
+      { period: 4, ruled: true, details: { currentRuling: yes }, executed: { status: "executed", ruling: 2n }, fundedRulings: funded(1n, 2n) },
+      "Winner",
+      "The arbitrable contract applied a ruling other than the court's.",
+    ],
+  ] as const)("a ruling that reads as nothing shows no ruling line and no empty quotes, %s", (_case, options: CaseOptions, title, line) => {
+    renderSection(DecisionAlert, caseDispute({ family: VIEW_ONLY, metaEvidence: UNTITLED, ...options }));
+    const alert = decisionAlert(title);
+    expect(alert.textContent).toBe(`${title}${line}`);
+    expect(alert.textContent).not.toContain("“”");
   });
 
   it("a failed current-ruling read shows the decision as unavailable", () => {

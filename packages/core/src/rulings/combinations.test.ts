@@ -1,17 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { combinationCode, combinationTitle, reservedCode } from "./index";
+import { NONE_OF_THE_OPTIONS_TEXT, combinationCode, combinationTitle, formatRuling, reservedCode } from "./index";
 
 const ABC = ["A", "B", "C"];
 const NINE = ["o0", "o1", "o2", "o3", "o4", "o5", "o6", "o7", "o8"];
 
 describe("combinationTitle", () => {
-  it("a combination reads the titles of its set bits, lowest bit first, joined by a comma, and combination 0 reads None", () => {
+  it("a combination reads the titles of its set bits, lowest bit first, joined by a slash, and combination 0 reads None of the options", () => {
     const titles = Array.from({ length: 8 }, (_, combination) => combinationTitle(BigInt(combination), ABC));
-    expect(titles).toEqual(["None", "A", "B", "A, B", "C", "A, C", "B, C", "A, B, C"]);
+    expect(titles).toEqual(["None of the options", "A", "B", "A / B", "C", "A / C", "B / C", "A / B / C"]);
   });
 
-  it("titles that contain spaces stay apart in a combination", () => {
-    expect(combinationTitle(3n, ["Pay seller", "Refund buyer"])).toBe("Pay seller, Refund buyer");
+  it("combination 0 reads None of the options whatever the titles, even beside a title written None", () => {
+    expect(combinationTitle(0n, [])).toBe(NONE_OF_THE_OPTIONS_TEXT);
+    expect(combinationTitle(0n, ["None", "A"])).toBe(NONE_OF_THE_OPTIONS_TEXT);
+    expect(combinationTitle(1n, ["None", "A"])).toBe("None");
+  });
+
+  it("titles that contain spaces or commas stay apart in a combination", () => {
+    expect(combinationTitle(3n, ["Pay seller", "Refund buyer"])).toBe("Pay seller / Refund buyer");
+    expect(combinationTitle(3n, ["Paris, France", "Rome"])).toBe("Paris, France / Rome");
+  });
+
+  it("every combination of the titles reads as the ruling formatter reads its code", () => {
+    for (const titles of [ABC, NINE]) {
+      const options = { type: "multiple-select", titles };
+      for (let combination = 0n; combination < 1n << BigInt(titles.length); combination += 1n) {
+        expect(combinationTitle(combination, titles)).toBe(formatRuling(combination + 1n, options, null));
+      }
+    }
   });
 
   it("bits beyond the titles are ignored", () => {
@@ -30,7 +46,7 @@ describe("combinationCode", () => {
   it("the code for options above four round-trips through the title", () => {
     const code = combinationCode([0, 4, 8]);
     expect(code).toBe(0b100010001n + 1n);
-    expect(combinationTitle(code - 1n, NINE)).toBe("o0, o4, o8");
+    expect(combinationTitle(code - 1n, NINE)).toBe("o0 / o4 / o8");
   });
 
   it("a repeated index is counted once", () => {

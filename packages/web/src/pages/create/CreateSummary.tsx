@@ -1,4 +1,4 @@
-import { attachmentKind, encodeExtraData, toAttachmentLink, type Address, type ChainConfig, type CreateDisputeInput } from "@dispute-resolver/core";
+import { attachmentKind, buildCreatedMetaEvidence, encodeExtraData, toAttachmentLink, type Address, type ChainConfig, type CreateDisputeInput } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { useId, type ReactNode, type Ref } from "react";
 import { Link } from "react-router";
@@ -6,7 +6,7 @@ import { useAtlasUpload } from "../../atlas";
 import { useArbitrationCost, useCoreDeps, useCourts } from "../../data";
 import { paths } from "../../routing";
 import { Attachment } from "../../safe-content";
-import { AddressText, Amount, EYEBROW, FACT, FACT_SMALL, LABEL, Notice } from "../../ui";
+import { AddressText, Amount, EYEBROW, FACT, FACT_SMALL, LABEL, Notice, VotingOptionList, votingOptions } from "../../ui";
 import { useConnectWallet, useWallet, WriteStatusNotice, type WriteAccess, type WriteStatus } from "../../wallet";
 import { courtLabel } from "./CourtSection";
 import { questionTypeLabel } from "./draft";
@@ -64,22 +64,14 @@ function PrimaryDocument({ path, fileName }: { readonly path: string; readonly f
   );
 }
 
+/** The rows the case page's voting options will show, read from the meta-evidence this summary uploads. */
 function RulingOptions({ input }: { readonly input: CreateDisputeInput }) {
-  if (input.options.length === 0) return null;
+  const { registry } = useCoreDeps();
+  const options = votingOptions(buildCreatedMetaEvidence(input, registry).rulingOptions);
+  if (options === null) return null;
   return (
     <Row term="Ruling Options">
-      <ol className="m-0 flex list-decimal flex-col gap-2 pl-6">
-        {input.options.map((option, index) => {
-          // Options are positional: the N-th option is ruling code N.
-          const rulingCode = String(index + 1);
-          return (
-            <li key={rulingCode}>
-              <span className="font-semibold">{option.title}</span>
-              {option.description === "" ? null : <span className="block text-sm text-klerosUIComponentsPrimaryText">{option.description}</span>}
-            </li>
-          );
-        })}
-      </ol>
+      <VotingOptionList options={options} />
     </Row>
   );
 }

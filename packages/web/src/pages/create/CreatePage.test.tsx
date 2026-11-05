@@ -207,6 +207,11 @@ function summaryValue(term: string): HTMLElement {
   return value;
 }
 
+/** Each ruling option row as its list item reads, the separators the screen hides included. */
+function summaryOptionLines(): string[] {
+  return [...summaryValue("Ruling Options").querySelectorAll("li")].map((option) => option.textContent.trimEnd());
+}
+
 function uploadedMetaEvidence(uploader: FakeUploader): core.CreatedMetaEvidence {
   const call = uploader.uploadJson.mock.calls[0];
   if (call === undefined) throw new Error("no meta-evidence upload");
@@ -679,8 +684,27 @@ describe("CreatePage", () => {
     });
     expect(summaryValue("Arbitration Cost")).toHaveTextContent(/ sETH$/);
     expect(summaryValue("Multiple choice: single select")).toHaveTextContent(/^Which party is right\?$/);
-    const options = [...summaryValue("Ruling Options").querySelectorAll("li")].map((option) => option.textContent);
-    expect(options).toEqual(["YesThe deposit goes back.", "No"]);
+    expect(summaryOptionLines()).toEqual([`Option 0 - ${core.REFUSED_RULING_TEXT}`, "Option 1 - Yes: The deposit goes back.", "Option 2 - No"]);
+  });
+
+  it("the summary of a multiple select lists option 0, option 1 for nothing ticked and each title without a code, keeping a title written None of the above", async () => {
+    const { user } = await renderCreate({ connect: false });
+    await chooseOption(user, "Question Type", "Multiple choice: multiple select");
+    await setNumber(user, "Number of Options", "3");
+    await fillRequired(user);
+    await fillOptions(user, ["Red", "Green", "None of the above"]);
+    await typeInto(user, "Ruling Option 2 Description (Optional)", "The green one");
+    await toSummary(user);
+    expect(summaryOptionLines()).toEqual([
+      `Option 0 - ${core.REFUSED_RULING_TEXT}`,
+      `Option 1 - ${core.NONE_OF_THE_OPTIONS_TEXT}`,
+      "Red:",
+      "Green: The green one",
+      "None of the above",
+    ]);
+    const [, none, red] = summaryValue("Ruling Options").querySelectorAll("li");
+    expect(none?.querySelector(".order-last")).toHaveTextContent("Option 1");
+    expect(red?.querySelector(".order-last")).toBeNull();
   });
 
   it("says the court is loading on the summary until the court list arrives, then shows its name", async () => {

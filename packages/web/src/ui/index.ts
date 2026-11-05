@@ -22,6 +22,9 @@ export { ChainClockProvider, useChainNow, useNowSeconds } from "./clock";
 export { Timestamp, utcText } from "./Timestamp";
 export { LG_MEDIA_QUERY, useMediaQuery, XL_MEDIA_QUERY } from "./useMediaQuery";
 export { useOutsidePress } from "./outsidePress";
+export { hasVisibleText } from "./visibleText";
+export { VotingOptionList } from "./VotingOptionList";
+export { votingOptions, type VotingOption } from "./votingOptions";
 export {
   DROPDOWN_CLOSING_CLASS,
   DROPDOWN_OPEN_CLASS,

@@ -31,9 +31,14 @@ export function hasSupportedDecimals(decimals: number | undefined): boolean {
   return libDecimals(decimals) <= MAX_ENCODE_DECIMALS;
 }
 
+/** Whether reality-eth-lib labels this answer itself, whatever the question: Answered too soon and Invalid. */
+export function isReservedAnswer(answer: bigint): boolean {
+  return answer >= ANSWERED_TOO_SOON;
+}
+
 /** Whether labelling this answer makes reality-eth-lib do decimal arithmetic beyond the display cap. */
 function exceedsDisplayDecimals(question: LibQuestion, answer: bigint): boolean {
-  return DECIMAL_TYPES.has(question.type) && answer < ANSWERED_TOO_SOON && libDecimals(question.decimals) > MAX_DISPLAY_DECIMALS;
+  return DECIMAL_TYPES.has(question.type) && !isReservedAnswer(answer) && libDecimals(question.decimals) > MAX_DISPLAY_DECIMALS;
 }
 
 export function toHexWord(value: bigint): string {
