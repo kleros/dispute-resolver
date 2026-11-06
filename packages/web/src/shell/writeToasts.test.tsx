@@ -6,7 +6,7 @@ import { TEST_TX_HASH, createConnectedTestWallet, createTestWallet, testReceipt,
 import { useWriteObserver, type WriteAttempt, type WriteObserver, type WriteStatus, type WriteWording } from "../wallet";
 import { ToastProvider } from "./ToastProvider";
 import type { ToastInput } from "./types";
-import { WriteToasts, movedGuardToast, writeToast } from "./writeToasts";
+import { WriteToasts, movedGuardToast, resolvedGuardToast, writeToast } from "./writeToasts";
 
 const EXPLORER = `https://etherscan.io/tx/${TEST_TX_HASH}`;
 const LINK = { href: EXPLORER, label: "View the transaction on the block explorer" };
@@ -156,6 +156,21 @@ describe("writeToast", () => {
       autoHideMs: 10_000,
     });
   });
+
+  it("a switched network or a connected wallet is shown as done, asks for the press again and closes after 10 seconds", () => {
+    expect(resolvedGuardToast({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 }, WORDING)).toEqual<ToastInput>({
+      variant: "success",
+      title: "Network switched",
+      message: "Your wallet is now on Ethereum Mainnet. Try funding “Red” with 336 xDai again.",
+      autoHideMs: 10_000,
+    });
+    expect(resolvedGuardToast({ phase: "needs-wallet", pageChainId: 1 }, WORDING)).toEqual<ToastInput>({
+      variant: "success",
+      title: "Wallet connected",
+      message: "Try funding “Red” with 336 xDai again.",
+      autoHideMs: 10_000,
+    });
+  });
 });
 
 interface Harness {
@@ -286,7 +301,7 @@ describe("WriteToasts", () => {
     expect(region().getAllByText("Wrong network")).toHaveLength(2);
   });
 
-  it("a wrong-network refusal carries a live switch and becomes a neutral fact once the wallet reaches the page chain", async () => {
+  it("a wrong-network refusal carries a live switch and becomes a fact once the wallet reaches the page chain", async () => {
     const user = userEvent.setup();
     const harness = renderWriteToasts(await createConnectedTestWallet({ chainId: 100 }));
     report(harness().observe("fund"), WRONG_CHAIN);
@@ -300,7 +315,7 @@ describe("WriteToasts", () => {
     expect(toasts()).toEqual([toast]);
   });
 
-  it("a refusal without a wallet carries a live Connect and becomes a neutral fact once a wallet connects", async () => {
+  it("a refusal without a wallet carries a live Connect and becomes a fact once a wallet connects", async () => {
     const wallet = createTestWallet();
     const harness = renderWriteToasts(wallet);
     report(harness().observe("fund"), NEEDS_WALLET);

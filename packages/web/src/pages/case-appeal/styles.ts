@@ -3,7 +3,7 @@
  * cell. A card and its list item span two rows of the cards grid and share them through subgrid: the head (the title)
  * and the funding. The funding bars of a row of cards then line up, and a card that grows under its bar (a
  * contribution's field error) leaves the others' extra height below their Fund button rather than above their bar. The
- * "Latest jury decision" tag is out of the flow, over the card's top edge, so a tagged card's head is as tall as any
+ * "Current ruling" tag is out of the flow, over the card's top edge, so a tagged card's head is as tall as any
  * other title; the top padding holds the half of the tag inside the card.
  */
 export const CARD_CLASS = "relative row-span-2 grid h-auto w-full min-w-0 grid-cols-1 grid-rows-subgrid gap-4 p-4 pt-6";

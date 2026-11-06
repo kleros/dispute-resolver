@@ -110,7 +110,7 @@ describe("buildCrowdfundingCards", () => {
     ]);
   });
 
-  it("gives every option the winner total and the full appeal period on Unslashed with ruling 0, marking none as the jury decision", () => {
+  it("gives every option the winner total and the full appeal period on Unslashed with ruling 0, marking none as the current ruling", () => {
     const set = build({ rulingOptions: { type: "single-select", titles: ["Yes", "No"] }, currentRuling: 0n, unslashed: true });
     for (const card of set.cards) expect(card).toMatchObject({ isWinner: false, side: "shared", required: 2_000n, deadline: 500 });
   });

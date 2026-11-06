@@ -433,7 +433,7 @@ describe("AppealSection: panel kinds", () => {
     const panel = await renderSection(caseDispute(crowdfunding({ currentRulingRead: { ok: false, error: failed } })));
     expect(panel).toHaveTextContent(FEES_UNAVAILABLE_TITLE);
     expect(panel).toHaveTextContent(failed.message);
-    expect(panel).not.toHaveTextContent("Latest jury decision");
+    expect(panel).not.toHaveTextContent("Current ruling");
     expect(panel).not.toHaveTextContent(/\d ETH/);
     expect(cardElements()).toHaveLength(0);
     expect(screen.queryByRole("button", { name: /^Fund/ })).toBeNull();
@@ -626,12 +626,12 @@ describe("AppealSection: times in the arbitrable application's notice", () => {
 });
 
 describe("AppealSection: crowdfunding cards", () => {
-  it("each card shows its title, funded percent, remaining amount and the countdown to its deadline, in ruling order, and the current ruling's card says it is the latest jury decision", async () => {
+  it("each card shows its title, funded percent, remaining amount and the countdown to its deadline, in ruling order, and the current ruling's card is tagged as the current ruling", async () => {
     freezeClockAtAppealStart();
     await renderSection(caseDispute(crowdfunding({ contributions: [{ ruling: 1n, amount: ETH / 2n }] })));
     expect(cardTitles()).toEqual([REFUSE, "Yes", "No"]);
-    expect(card("Yes")).toHaveTextContent("Latest jury decision");
-    expect(card("No")).not.toHaveTextContent("Latest jury decision");
+    expect(card("Yes")).toHaveTextContent("Current ruling");
+    expect(card("No")).not.toHaveTextContent("Current ruling");
     expect(within(card("Yes")).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
     expect(card("Yes")).toHaveTextContent("25.00% Funded");
     expect(card("Yes")).toHaveTextContent("Remaining 1.5 ETH of 2 ETH");
@@ -643,11 +643,11 @@ describe("AppealSection: crowdfunding cards", () => {
     expect(screen.queryByRole("listitem", { name: "Fund another combination" })).toBeNull();
   });
 
-  it("the latest jury decision tag sits on the card's top edge, after the title in reading order", async () => {
+  it("the current ruling tag sits on the card's top edge, after the title in reading order", async () => {
     await renderSection(caseDispute(crowdfunding()));
     const winner = card("Yes");
     const title = within(winner).getByRole("heading", { level: 4 });
-    const tag = within(winner).getByText("Latest jury decision");
+    const tag = within(winner).getByText("Current ruling");
     expect(title.compareDocumentPosition(tag) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(winner).toHaveAccessibleName("Yes");
     expect(tag).toHaveClass("absolute", "top-0", "left-4", "-translate-y-1/2");
@@ -1298,7 +1298,7 @@ describe("AppealSection: withdraw", () => {
     expect(await screen.findByText("You withdrew 0.5 ETH.")).toBeInTheDocument();
     expect(toastsShown()).toHaveLength(1);
     expect(within(toastRegion()).getByText("Transaction confirmed (2 of 2)")).toBeInTheDocument();
-    expect(within(toastRegion()).getByText("Withdrew 0.25 ETH, 0.5 ETH in all.")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("Withdrew 0.5 ETH in total.")).toBeInTheDocument();
     expect(container).not.toHaveTextContent("Transaction confirmed");
     expect(container).not.toHaveTextContent(NOTHING);
     expect(screen.queryByRole("button", { name: /^Withdraw/ })).toBeNull();
@@ -1334,7 +1334,7 @@ describe("AppealSection: withdraw", () => {
 
     secondCheck.resolve({ status: "ok" });
     expect(await within(toastRegion()).findByText("Transaction confirmed (2 of 2)")).toBeInTheDocument();
-    expect(within(toastRegion()).getByText("Withdrew 0.25 ETH, 0.5 ETH in all.")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("Withdrew 0.5 ETH in total.")).toBeInTheDocument();
     expect(toastsShown()).toHaveLength(1);
     expect(within(toastRegion()).getByRole("link")).toHaveAttribute("href", expect.stringContaining(TEST_REPLACEMENT_TX_HASH) as string);
     expect(vi.mocked(writeContract)).toHaveBeenCalledTimes(2);

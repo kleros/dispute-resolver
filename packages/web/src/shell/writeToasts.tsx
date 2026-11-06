@@ -174,9 +174,9 @@ export function writeToast(status: WriteStatus, wording: WriteWording, progress?
 /** A guard's toast once the wallet can sign on the page chain: nothing was sent, so the press is to be made again. */
 export function resolvedGuardToast(guard: Guard, { doing }: WriteWording, progress?: WriteProgress): ToastInput {
   const partial = partialSuffix(progress);
-  if (guard.phase === "needs-wallet") return { variant: "sync", title: counted("Wallet connected", progress), message: `Try ${doing} again.${partial}`, autoHideMs: OUTCOME_MS };
+  if (guard.phase === "needs-wallet") return { variant: "success", title: counted("Wallet connected", progress), message: `Try ${doing} again.${partial}`, autoHideMs: OUTCOME_MS };
   return {
-    variant: "sync",
+    variant: "success",
     title: counted("Network switched", progress),
     message: `Your wallet is now on ${chainName(guard.pageChainId)}. Try ${doing} again.${partial}`,
     autoHideMs: OUTCOME_MS,
@@ -213,7 +213,7 @@ interface OpenGuard {
 /**
  * Turns every write into one toast per press, updated in place through its phases from the write's own chain, so an
  * outcome is shown even when the pressing control is gone. A guard's toast carries the live switch or Connect, becomes
- * a neutral fact once the wallet can sign, and closes when the page moves to another chain, unless its sequence already
+ * a done fact once the wallet can sign, and closes when the page moves to another chain, unless its sequence already
  * sent a transaction; a transaction's toast is never closed by navigation.
  */
 export function WriteToasts({ children }: { readonly children?: ReactNode }) {

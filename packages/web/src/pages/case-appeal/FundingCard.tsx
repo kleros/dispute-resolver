@@ -22,7 +22,7 @@ export function FundingCard({ card, actions, chain, isFundDisabled }: FundingCar
           <h4 id={titleId} className={CARD_TITLE_CLASS}>
             {card.title}
           </h4>
-          {card.isWinner ? <span className={`${CHIP_STATUS} ${CARD_TAG_CLASS}`}>Latest jury decision</span> : null}
+          {card.isWinner ? <span className={`${CHIP_STATUS} ${CARD_TAG_CLASS}`}>Current ruling</span> : null}
         </div>
         <div className={CARD_FOOTER_CLASS}>
           <EnteredAnswerFooter funding={card} subject={card.title} answer={card.title} code={card.code} actions={actions} chain={chain} isFundDisabled={isFundDisabled} />

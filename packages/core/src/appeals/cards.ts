@@ -25,7 +25,7 @@ interface CardContext {
 const FULLY_FUNDED_PERCENT = 100;
 
 /**
- * One fixed card. Costing and deadline follow `isWinningCode`, but the "Latest jury decision" mark is the current ruling
+ * One fixed card. Costing and deadline follow `isWinningCode`, but the "Current ruling" mark follows the current ruling
  * only, so Unslashed's ruling 0 marks no option although every option is costed as a winner. A ruling the contract
  * reported fully funded stays so even if today's appeal cost would ask for more.
  */

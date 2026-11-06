@@ -105,9 +105,9 @@ export function withdrawWording(amount: string): WriteWording {
   return { doing: `withdrawing ${amount}`, done: `Withdrew ${amount}.` };
 }
 
-/** The last of several transactions: its toast is the one the reader keeps, so it names the whole withdrawal too. */
+/** The last of several transactions: its toast is the one the reader keeps, so it names the whole withdrawal. */
 export function withdrawLastWording(amount: string, total: string): WriteWording {
-  return { doing: `withdrawing ${amount}`, done: `Withdrew ${amount}, ${total} in all.` };
+  return { doing: `withdrawing ${amount}`, done: `Withdrew ${total} in total.` };
 }
 
 export function escrowAppealWording(amount: string): WriteWording {
