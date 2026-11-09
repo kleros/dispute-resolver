@@ -356,25 +356,68 @@ describe("ToastProvider", () => {
     expect(toastTitled("Transaction failed")).toHaveClass("is-open");
   });
 
-  it("an error toast keeps the library's surface and differs from a success by its icon, title and role", () => {
+  it("an error toast is painted with the Error token and a success with PrimaryBlue, and they still differ by icon, title and role", () => {
     const toaster = renderToaster();
     shown(toaster, { variant: "error", title: "Transaction failed", message: "The transaction reverted." });
     shown(toaster, { variant: "success", title: "Transaction confirmed", message: "Funded." });
     const error = region().getByRole("alert");
     const success = region().getByRole("status");
     const [errorMessage, successMessage] = [error.firstElementChild, success.firstElementChild];
-    expect(errorMessage).toHaveClass("bg-klerosUIComponentsPrimaryBlue");
-    expect(successMessage).toHaveClass("bg-klerosUIComponentsPrimaryBlue");
-    expect(errorMessage?.className).toBe(successMessage?.className);
+    expect(error).toHaveAttribute("data-surface", "error");
+    expect(success).not.toHaveAttribute("data-surface");
+    expect(error).toHaveClass("bg-klerosUIComponentsPrimaryBlue", "data-[surface=error]:bg-klerosUIComponentsError");
     expect(error.className).toBe(success.className);
-    expect(document.body.querySelector("[class*='klerosUIComponentsError']")).toBeNull();
+    expect(errorMessage).toHaveClass("bg-klerosUIComponentsError");
+    expect(errorMessage).not.toHaveClass("bg-klerosUIComponentsPrimaryBlue");
+    expect(successMessage).toHaveClass("bg-klerosUIComponentsPrimaryBlue");
+    expect(successMessage).not.toHaveClass("bg-klerosUIComponentsError");
     expect(within(error).getByRole("heading", { name: "Transaction failed" })).toBeInTheDocument();
     expect(error.querySelector("svg")?.innerHTML).not.toBe(success.querySelector("svg")?.innerHTML);
   });
 
+  it("an error toast asked for the primary surface stays blue and keeps its error icon and role rule", () => {
+    const toaster = renderToaster();
+    shown(toaster, { variant: "error", title: "Transaction failed" });
+    shown(toaster, { variant: "error", surface: "primary", title: "Wrong network" });
+    shown(toaster, { variant: "error", surface: "primary", title: "Wrong network held", action: <SwitchAction /> });
+    const red = toastTitled("Transaction failed");
+    const blue = toastTitled("Wrong network");
+    const held = toastTitled("Wrong network held");
+    for (const toast of [blue, held]) {
+      expect(toast).not.toHaveAttribute("data-surface");
+      expect(toast.className).toBe(red.className);
+      expect(toast.firstElementChild).toHaveClass("bg-klerosUIComponentsPrimaryBlue");
+      expect(toast.firstElementChild).not.toHaveClass("bg-klerosUIComponentsError");
+      expect(toast.querySelector("svg")?.innerHTML).toBe(red.querySelector("svg")?.innerHTML);
+    }
+    expect(blue).toHaveAttribute("role", "alert");
+    expect(held).not.toHaveAttribute("role");
+  });
+
+  it("a toast updated from sync to error and back keeps its open class and its wrapper className unchanged", () => {
+    const toaster = renderToaster();
+    const id = shown(toaster, { variant: "sync", title: "Transaction submitted", autoHideMs: null });
+    const toast = toastTitled("Transaction submitted");
+    const className = toast.className;
+    expect(toast).toHaveClass("is-open");
+    act(() => {
+      toaster().update(id, { variant: "error", title: "Transaction failed", autoHideMs: null });
+    });
+    expect(outputs()).toEqual([toast]);
+    expect(toast).toHaveAttribute("data-surface", "error");
+    expect(toast).toHaveClass("is-open");
+    expect(toast.className).toBe(className);
+    act(() => {
+      toaster().update(id, { variant: "success", title: "Transaction confirmed", autoHideMs: null });
+    });
+    expect(toast).not.toHaveAttribute("data-surface");
+    expect(toast).toHaveClass("is-open");
+    expect(toast.className).toBe(className);
+  });
+
   it("the action button keeps the library's secondary face and label colours", () => {
     const toaster = renderToaster();
-    shown(toaster, { variant: "error", title: "Wrong network", message: "Nothing was sent.", action: <SwitchAction /> });
+    shown(toaster, { variant: "error", surface: "primary", title: "Wrong network", message: "Nothing was sent.", action: <SwitchAction /> });
     const button = region().getByRole("button", { name: SWITCH_LABEL });
     expect(button).toHaveClass("bg-klerosUIComponentsWhiteBackground", "border-klerosUIComponentsPrimaryBlue");
     expect(button.querySelector("p.button-text")).toHaveClass("text-klerosUIComponentsPrimaryBlue");
@@ -409,7 +452,7 @@ describe("ToastProvider", () => {
 
   it("the close button keeps its Dismiss notification label when the toast carries a button of its own", () => {
     const toaster = renderToaster();
-    const id = shown(toaster, { variant: "error", title: "Wrong network", action: <SwitchAction /> });
+    const id = shown(toaster, { variant: "error", surface: "primary", title: "Wrong network", action: <SwitchAction /> });
     expect(region().getAllByRole("button", { name: "Dismiss notification" })).toHaveLength(1);
     expect(region().getByRole("button", { name: SWITCH_LABEL })).not.toHaveAttribute("aria-label");
     act(() => {

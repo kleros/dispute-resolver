@@ -10,6 +10,8 @@ export interface ToastLink {
 
 export interface ToastInput {
   readonly variant: "success" | "error" | "sync";
+  /** The background, read for the error variant only: Error unless `"primary"` asks for PrimaryBlue. Success and sync toasts are always PrimaryBlue. */
+  readonly surface?: "error" | "primary";
   readonly title: string;
   readonly message?: string;
   /** `null`: no clock, the toast stays until it is closed or updated. Default 5000. */

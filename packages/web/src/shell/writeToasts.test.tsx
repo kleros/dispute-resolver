@@ -102,9 +102,20 @@ describe("writeToast", () => {
     expect(writeToast({ phase: "refused", refusal: "funding-closed" }, WORDING)).toEqual(error("Action unavailable", "Funding for this ruling has closed, so nothing was sent."));
   });
 
-  it("a wrong network says both chains and that nothing was sent, without asking for the switch the action row offers", () => {
-    expect(writeToast(WRONG_CHAIN, WORDING)).toEqual<ToastInput>({
+  it("failed and check-end toasts take the error variant's default red surface", () => {
+    const failed = writeToast({ phase: "failed", hash: null, explorerUrl: null, message: "The transaction reverted." }, WORDING);
+    const refused = writeToast({ phase: "refused-by-contract", reason: null }, WORDING);
+    const funds = writeToast({ phase: "insufficient-funds" }, WORDING);
+    for (const toast of [failed, refused, funds]) {
+      expect(toast?.variant).toBe("error");
+      expect(toast).not.toHaveProperty("surface");
+    }
+  });
+
+  it("a wrong network says both chains and that nothing was sent, without asking for the switch the action row offers, on the blue surface", () => {
+    expect(writeToast(WRONG_CHAIN, WORDING)).toStrictEqual<ToastInput>({
       variant: "error",
+      surface: "primary",
       title: "Wrong network",
       message: "Your wallet is on Gnosis Network, but this page is on Ethereum Mainnet. Nothing was sent.",
       autoHideMs: null,
@@ -142,9 +153,10 @@ describe("writeToast", () => {
     expect(writeToast(MINED, { doing: "creating the dispute", done })).toMatchObject({ variant: "success", message: "The transaction was mined." });
   });
 
-  it("a refusal after the app moved to another network says nothing was sent and offers no switch", () => {
-    expect(movedGuardToast({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 }, WORDING)).toEqual<ToastInput>({
+  it("a refusal after the app moved to another network says nothing was sent and offers no switch, a wrong network on the blue surface", () => {
+    expect(movedGuardToast({ phase: "wrong-chain", walletChainId: 100, pageChainId: 1 }, WORDING)).toStrictEqual<ToastInput>({
       variant: "error",
+      surface: "primary",
       title: "Wrong network",
       message: "Nothing was sent for funding “Red” with 336 xDai. The app has moved to another network.",
       autoHideMs: null,
@@ -244,6 +256,21 @@ describe("WriteToasts", () => {
     expect(region().getByText("Funded “Red” with 336 xDai.")).toBeInTheDocument();
   });
 
+  it("a failed transaction's toast turns red in place and a wrong-network refusal stays blue", async () => {
+    const harness = renderWriteToasts(await createConnectedTestWallet({ chainId: 1 }));
+    const attempt = harness().observe("fund");
+    report(attempt, SUBMITTED);
+    const [toast] = toasts();
+    expect(toast).not.toHaveAttribute("data-surface");
+    report(attempt, { phase: "failed", hash: TEST_TX_HASH, explorerUrl: EXPLORER, message: "The transaction reverted." });
+    expect(toasts()).toEqual([toast]);
+    expect(toast).toHaveAttribute("data-surface", "error");
+    expect(toast).toHaveClass("is-open");
+    report(harness().observe("fund-blue"), WRONG_CHAIN);
+    expect(toasts()).toHaveLength(2);
+    expect(toasts()[1]).not.toHaveAttribute("data-surface");
+  });
+
   it("a closed in-flight toast comes back with the outcome", async () => {
     const user = userEvent.setup();
     const harness = renderWriteToasts(await createConnectedTestWallet({ chainId: 1 }));
@@ -270,6 +297,20 @@ describe("WriteToasts", () => {
     report(next, PENDING);
     expect(toasts()).toHaveLength(1);
     expect(region().getByText("Waiting for your wallet")).toBeInTheDocument();
+  });
+
+  it("a blue wrong-network refusal turns red in place when the next press of the same control fails", async () => {
+    const harness = renderWriteToasts(await createConnectedTestWallet({ chainId: 100 }));
+    report(harness().observe("fund"), WRONG_CHAIN);
+    const [toast] = toasts();
+    expect(toast).not.toHaveAttribute("data-surface");
+    const next = harness().observe("fund");
+    report(next, PENDING);
+    report(next, { phase: "failed", hash: TEST_TX_HASH, explorerUrl: EXPLORER, message: "The transaction reverted." });
+    expect(toasts()).toEqual([toast]);
+    expect(region().getByText("Transaction failed")).toBeInTheDocument();
+    expect(toast).toHaveAttribute("data-surface", "error");
+    expect(toast).toHaveClass("is-open");
   });
 
   it("a second press keeps a confirmed transaction's toast and opens a new one", async () => {
@@ -307,6 +348,7 @@ describe("WriteToasts", () => {
     report(harness().observe("fund"), WRONG_CHAIN);
     const [toast] = toasts();
     expect(toast).not.toHaveAttribute("role", "alert");
+    expect(toast).not.toHaveAttribute("data-surface");
     await user.click(region().getByRole("button", { name: SWITCH }));
     expect(await region().findByText("Network switched")).toBeInTheDocument();
     expect(region().getByText("Your wallet is now on Ethereum Mainnet. Try funding “Red” with 336 xDai again.")).toBeInTheDocument();
@@ -349,6 +391,7 @@ describe("WriteToasts", () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     expect(toasts()).toHaveLength(1);
     expect(region().getByText("Wrong network (2 of 2)")).toBeInTheDocument();
+    expect(toasts()[0]).not.toHaveAttribute("data-surface");
     expect(region().getByText("Nothing was sent for funding “Red” with 336 xDai. The app has moved to another network. The first transaction went through.")).toBeInTheDocument();
     expect(region().queryByRole("button", { name: SWITCH })).toBeNull();
   });
@@ -372,6 +415,7 @@ describe("WriteToasts", () => {
     report(attempt, WRONG_CHAIN);
     expect(toasts()).toHaveLength(1);
     expect(region().getByText("Wrong network")).toBeInTheDocument();
+    expect(toasts()[0]).not.toHaveAttribute("data-surface");
     expect(region().getByText("Nothing was sent for funding “Red” with 336 xDai. The app has moved to another network.")).toBeInTheDocument();
     expect(region().queryByRole("button", { name: SWITCH })).toBeNull();
     navigateTo(harness, "/137/cases/5");

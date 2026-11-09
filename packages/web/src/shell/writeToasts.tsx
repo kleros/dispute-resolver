@@ -132,6 +132,11 @@ function checkEndToast(status: CheckEnd, { doing }: WriteWording, progress: Writ
   return { variant: "error", title: counted(writeMessage(status).title, progress), message: `${checkEndMessage(status, doing)}${partialSuffix(progress)}`, autoHideMs: null };
 }
 
+/** A wrong network keeps the error variant's icon and role but not its red: it asks for a switch, it is not a failure. */
+function guardLook(guard: Guard): Pick<ToastInput, "variant" | "surface"> {
+  return guard.phase === "wrong-chain" ? { variant: "error", surface: "primary" } : { variant: "sync" };
+}
+
 /**
  * Without the switch request the body never goes stale: the action row carries the live part, a button or the line
  * saying a switch waits in the wallet.
@@ -139,7 +144,7 @@ function checkEndToast(status: CheckEnd, { doing }: WriteWording, progress: Writ
 function guardToast(status: Guard, progress: WriteProgress | undefined): ToastInput {
   const message = writeMessage(status, { switching: true });
   return {
-    variant: status.phase === "wrong-chain" ? "error" : "sync",
+    ...guardLook(status),
     title: counted(message.title, progress),
     message: `${message.body}${partialSuffix(progress)}`,
     autoHideMs: null,
@@ -185,12 +190,12 @@ export function resolvedGuardToast(guard: Guard, { doing }: WriteWording, progre
 
 /** A guard the wallet answered after the app moved to another chain: a switch back would be wrong, so it offers none. */
 export function movedGuardToast(guard: Guard, { doing }: WriteWording, progress?: WriteProgress): ToastInput {
-  const { variant, title } = guardToast(guard, progress);
+  const look = guardLook(guard);
   return {
-    variant,
-    title,
+    ...look,
+    title: counted(writeMessage(guard, { switching: true }).title, progress),
     message: `Nothing was sent for ${doing}. The app has moved to another network.${partialSuffix(progress)}`,
-    autoHideMs: variant === "error" ? null : OUTCOME_MS,
+    autoHideMs: look.variant === "error" ? null : OUTCOME_MS,
   };
 }
 

@@ -17,12 +17,14 @@ const PHONE_VISIBLE_TOASTS = 3;
 /**
  * Every message selector is scoped to the PushMessage (the first child): the foot holds a `div` and the action's
  * library Button too. The library's close button is an 8 px square; it grows to 24 px about the same centre, and the
- * text column keeps clear of it. The global PrimaryBlue focus ring would not show on the toast's PrimaryBlue surface,
- * so it takes the toast's text colour. The toast paints the library's own PrimaryBlue behind the message and the foot,
- * so their seam shows no corner whichever radius the message keeps.
+ * text column keeps clear of it. The global PrimaryBlue focus ring would not show on the toast's blue surface, so it
+ * takes the toast's text colour. The toast paints the message's own surface, PrimaryBlue or Error, behind the
+ * message and the foot, so their seam shows no corner whichever radius the message keeps. The surface rides on
+ * `data-surface`, not on the class list: see ToastItem.
  */
 const TOAST_CLASS = [
   "t-toast pointer-events-auto block w-full overflow-hidden rounded-base bg-klerosUIComponentsPrimaryBlue shadow-default",
+  "data-[surface=error]:bg-klerosUIComponentsError",
   "[--dr-focus:var(--klerosUIComponentsWhiteBackground)] [overflow-wrap:anywhere]",
   "[&>div:first-child]:h-auto [&>div:first-child]:min-h-16 [&>div:first-child]:w-full [&>div:first-child>div]:pr-4",
   "[&>div:first-child>button]:top-4 [&>div:first-child>button]:right-4 [&>div:first-child>button]:size-6",
@@ -35,8 +37,18 @@ const TEXT_COLUMN_INSET = "pl-[72px]";
 /** `empty:hidden` drops the foot when its only content renders nothing (a Connect without a project ID). */
 const FOOT_CLASS = `flex flex-col items-start gap-2 pr-6 pb-4 ${TEXT_COLUMN_INSET} text-sm text-klerosUIComponentsWhiteBackground empty:hidden`;
 
-/** The toast's own text colour: the link's default PrimaryBlue would vanish on the PrimaryBlue surface. */
+/** The toast's own text colour: the link's default PrimaryBlue would vanish on the blue surface and is below AA on the red one. */
 const LINK_CLASS = "rounded-base text-klerosUIComponentsWhiteBackground underline decoration-1 underline-offset-2 hover:decoration-2 [overflow-wrap:anywhere]";
+
+/** The library merges a PushMessage's className over its own, so this replaces its PrimaryBlue. */
+const ERROR_MESSAGE_CLASS = "bg-klerosUIComponentsError";
+
+function messageClass(extras: boolean, red: boolean): string | undefined {
+  const classes: string[] = [];
+  if (extras) classes.push("pb-2");
+  if (red) classes.push(ERROR_MESSAGE_CLASS);
+  return classes.length === 0 ? undefined : classes.join(" ");
+}
 
 interface ActiveToast extends ToastInput {
   readonly id: number;
@@ -63,10 +75,11 @@ interface ToastItemProps {
 
 /**
  * The open class is set on the element directly: the wrapper's className never changes after mount, so React never
- * rewrites it over the class.
+ * rewrites it over the class. That is why the surface, which an update can change, is an attribute.
  */
 function ToastItem({ toast, parked, onRemove }: ToastItemProps) {
-  const { id, version, closeRequest, variant, title, message, link, action, autoHideMs = DEFAULT_AUTO_HIDE_MS } = toast;
+  const { id, version, closeRequest, variant, surface, title, message, link, action, autoHideMs = DEFAULT_AUTO_HIDE_MS } = toast;
+  const red = variant === "error" && surface !== "primary";
   const itemRef = useRef<HTMLOutputElement>(null);
   const removeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -183,8 +196,14 @@ function ToastItem({ toast, parked, onRemove }: ToastItemProps) {
   const extras = link !== undefined || action !== undefined;
   // The library's PushMessage takes strings only, so the link and the action sit in a foot under it, in its text column.
   return (
-    <output ref={itemRef} role={variant === "error" && action === undefined ? "alert" : undefined} hidden={parked} className={TOAST_CLASS}>
-      <PushMessage variant={variant} title={title} msg={message} callback={leave} className={extras ? "pb-2" : undefined} />
+    <output
+      ref={itemRef}
+      role={variant === "error" && action === undefined ? "alert" : undefined}
+      hidden={parked}
+      data-surface={red ? "error" : undefined}
+      className={TOAST_CLASS}
+    >
+      <PushMessage variant={variant} title={title} msg={message} callback={leave} className={messageClass(extras, red)} />
       {extras ? (
         <div className={FOOT_CLASS}>
           {link === undefined ? null : (
