@@ -122,10 +122,33 @@ describe("DisputeSummary", () => {
     expect(screen.getByText("Second paragraph.")).toBeInTheDocument();
     expect(screen.getByText("Party 1")).toBeInTheDocument();
     expect(screen.getByText("Alice")).toBeInTheDocument();
-    expect(screen.getByText("Party 1 address")).toBeInTheDocument();
     expect(screen.getByTitle(party)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: APP_LINK })).toHaveAttribute("href", "https://app.example.org/item/1");
     expect(screen.getByRole("link", { name: "policy.pdf" })).toBeInTheDocument();
+  });
+
+  it("keeps each party's label, name and address together in one group, in that order", () => {
+    const party: Address = "0x1111111111111111111111111111111111111111";
+    renderSummary(withMetaEvidence({ aliases: { [party]: "Alice" } }));
+    const group = screen.getByText("Party 1").parentElement;
+    expect(Array.from(group?.children ?? []).map((child) => child.tagName)).toEqual(["DT", "DD", "DD"]);
+    expect(group?.children[1]).toHaveTextContent("Alice");
+    expect(group?.children[2]).toContainElement(screen.getByTitle(party));
+  });
+
+  it("gives two parties two groups, each with its own label, name and address", () => {
+    const first: Address = "0x1111111111111111111111111111111111111111";
+    const second: Address = "0x2222222222222222222222222222222222222222";
+    renderSummary(withMetaEvidence({ aliases: { [first]: "Alice", [second]: "Bob" } }));
+    const list = screen.getByText("Party 1").closest("dl");
+    const groups = Array.from(list?.children ?? []);
+    expect(groups.map((group) => group.tagName)).toEqual(["DIV", "DIV"]);
+    expect(groups[0]).toHaveTextContent("Party 1");
+    expect(groups[0]).toHaveTextContent("Alice");
+    expect(groups[0]).toContainElement(screen.getByTitle(first));
+    expect(groups[1]).toHaveTextContent("Party 2");
+    expect(groups[1]).toHaveTextContent("Bob");
+    expect(groups[1]).toContainElement(screen.getByTitle(second));
   });
 
   it("the description runs the full width of the card, like the title above it, with its paragraphs set at the long-line height", () => {
