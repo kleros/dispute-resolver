@@ -1,10 +1,10 @@
 import * as core from "@dispute-resolver/core";
-import { act, cleanup, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useCallback, useId, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { UploadResult } from "../../atlas";
-import { fakeUploader, type FakeUploader } from "../../test/atlas";
+import { AtlasUploaderProvider, type AtlasUploader, type UploadPhase, type UploadResult } from "../../atlas";
+import { fakeUploader, TEST_UPLOAD_PATH, type FakeUploader } from "../../test/atlas";
 import { testChain, testCourt } from "../../test/data";
 import { renderWithProviders } from "../../test/shell";
 import { createTestWallet, fakeWriteController, holdChainSwitches, installOfflineAppKitEnvironment, type FakeWriteController, type TestWallet } from "../../test/wallet";
@@ -87,6 +87,37 @@ function walletAwaitingController(): FakeWriteController {
   return { ...fakeWriteController([]), useWrite: useAwaitingWrite };
 }
 
+interface PhaseStore {
+  readonly get: () => UploadPhase;
+  readonly set: (phase: UploadPhase) => void;
+  readonly subscribe: (listener: () => void) => () => void;
+}
+
+function phaseStore(): PhaseStore {
+  let phase: UploadPhase = "idle";
+  const listeners = new Set<() => void>();
+  return {
+    get: () => phase,
+    set: (next) => {
+      phase = next;
+      for (const listener of listeners) listener();
+    },
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}
+
+/** The real uploader moves through its phases during one upload; the fake one is static, so this one reads them from a store. */
+function PhasedUploader({ uploader, phases, children }: { readonly uploader: AtlasUploader; readonly phases: PhaseStore; readonly children: ReactNode }) {
+  const phase = useSyncExternalStore(phases.subscribe, phases.get);
+  const value = useMemo(() => ({ ...uploader, phase }), [uploader, phase]);
+  return <AtlasUploaderProvider uploader={value}>{children}</AtlasUploaderProvider>;
+}
+
 function createButton(): HTMLElement {
   return screen.getByRole("button", { name: "Create dispute" });
 }
@@ -99,6 +130,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   writes.controller = null;
   vi.clearAllMocks();
   vi.unstubAllGlobals();
@@ -130,7 +162,7 @@ describe("CreateSummary", () => {
   });
 
   it("hides the sign-in sentence while Create publishes the dispute data", async () => {
-    const uploader = fakeUploader({ isSignedIn: false, uploadJson: () => new Promise<UploadResult>(() => undefined) });
+    const uploader = fakeUploader({ isSignedIn: false, phase: "signing-in", uploadJson: () => new Promise<UploadResult>(() => undefined) });
     const { user } = await renderSummary(uploader);
 
     await user.click(createButton());
@@ -151,7 +183,12 @@ describe("CreateSummary", () => {
   });
 
   it.each([
-    ["the dispute data is published", "Publishing the dispute data", { uploadJson: () => new Promise<UploadResult>(() => undefined) }, () => fakeWriteController([])],
+    [
+      "the dispute data is published",
+      "Publishing the dispute data",
+      { phase: "signing-in" as const, uploadJson: () => new Promise<UploadResult>(() => undefined) },
+      () => fakeWriteController([]),
+    ],
     ["the wallet asks to confirm the transaction", "Waiting for your wallet", {}, walletAwaitingController],
   ])("names the Create button as creating the dispute while %s", async (_phase, shown, uploaderOptions, writeController) => {
     writes.controller = writeController();
@@ -172,6 +209,175 @@ describe("CreateSummary", () => {
     expect(document.body).not.toHaveTextContent("Nothing was sent");
     expect(createButton()).toBeDisabled();
     expect(within(screen.getByRole("region", { name: "Notifications" })).queryByText("Wrong network")).toBeNull();
+  });
+
+  describe("the publishing notice", () => {
+    const PUBLISHING = "Publishing the dispute data";
+    const UPLOADING = "Uploading the dispute data to IPFS...";
+    const SIGN_IN = "Sign the message in your wallet to upload the dispute data to IPFS.";
+    const UPLOADED: UploadResult = { ok: true, path: TEST_UPLOAD_PATH };
+    const UPLOAD_FAILED: UploadResult = { ok: false, error: "upload-failed", message: "Atlas did not answer." };
+
+    function settlesAfter(ms: number, result: UploadResult): Promise<UploadResult> {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(result);
+        }, ms);
+      });
+    }
+
+    function neverSettles(): Promise<UploadResult> {
+      return new Promise<UploadResult>(() => undefined);
+    }
+
+    /** Renders on real timers, connects, then fakes the timers so each test sets the clock from the press on. */
+    async function renderPublishing(uploadJson: AtlasUploader["uploadJson"], phases: PhaseStore = phaseStore()) {
+      writes.controller = walletAwaitingController();
+      const uploader = fakeUploader({ uploadJson });
+      const wallet = createTestWallet({ chainId: 1 });
+      renderWithProviders(
+        <PhasedUploader uploader={uploader} phases={phases}>
+          <CreateSummary chain={CHAIN} input={INPUT} onReturn={vi.fn()} />
+        </PhasedUploader>,
+        { path: "/1", wallet, uploader },
+      );
+      await act(async () => {
+        await wallet.connect();
+      });
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    }
+
+    /** user-event and Testing Library's async wrapper wait on setTimeout, which the faked clock never fires on its own. */
+    async function pressCreate() {
+      await act(async () => {
+        fireEvent.click(createButton());
+        await Promise.resolve();
+      });
+    }
+
+    async function advance(ms: number) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(ms);
+      });
+    }
+
+    /** The space between the summary and the buttons, where the step notices appear. */
+    function noticeArea(): Element {
+      const area = screen.getByRole("region", { name: INPUT.title }).querySelector('[aria-live="polite"]');
+      if (area === null) throw new Error("The summary has no notice area.");
+      return area;
+    }
+
+    it("a publish that ends within half a second never shows the notice and leaves the space above the buttons empty", async () => {
+      await renderPublishing(() => settlesAfter(300, UPLOADED));
+
+      await pressCreate();
+      expect(noticeArea()).toBeEmptyDOMElement();
+      await advance(300);
+      expect(noticeArea()).toBeEmptyDOMElement();
+      await advance(1000);
+
+      expect(screen.getByText("Waiting for your wallet")).toBeInTheDocument();
+      expect(screen.queryByText(PUBLISHING)).toBeNull();
+      expect(noticeArea()).toBeEmptyDOMElement();
+    });
+
+    it("a publish that lasts longer shows that the dispute data is uploading from half a second on", async () => {
+      await renderPublishing(neverSettles);
+
+      await pressCreate();
+      await advance(499);
+      expect(screen.queryByText(PUBLISHING)).toBeNull();
+      expect(noticeArea()).toBeEmptyDOMElement();
+      await advance(1);
+
+      expect(screen.getByText(PUBLISHING)).toBeInTheDocument();
+      expect(screen.getByText(UPLOADING)).toBeInTheDocument();
+    });
+
+    it("a sign-in shows the notice asking for the signature at once", async () => {
+      const phases = phaseStore();
+      await renderPublishing(() => {
+        phases.set("signing-in");
+        return neverSettles();
+      }, phases);
+
+      await pressCreate();
+
+      expect(screen.getByText(PUBLISHING)).toBeInTheDocument();
+      expect(screen.getByText(SIGN_IN)).toBeInTheDocument();
+    });
+
+    it("a sign-in that starts after the press shows the notice as soon as the signature is asked for", async () => {
+      const phases = phaseStore();
+      await renderPublishing(neverSettles, phases);
+
+      await pressCreate();
+      await advance(100);
+      expect(noticeArea()).toBeEmptyDOMElement();
+      act(() => {
+        phases.set("signing-in");
+      });
+
+      expect(screen.getByText(PUBLISHING)).toBeInTheDocument();
+      expect(screen.getByText(SIGN_IN)).toBeInTheDocument();
+      act(() => {
+        phases.set("uploading");
+      });
+      expect(screen.getByText(UPLOADING)).toBeInTheDocument();
+    });
+
+    it("a sign-in followed by the upload keeps the notice, which then says the dispute data is uploading", async () => {
+      const phases = phaseStore();
+      await renderPublishing(() => {
+        phases.set("signing-in");
+        return neverSettles();
+      }, phases);
+
+      await pressCreate();
+      await advance(100);
+      act(() => {
+        phases.set("uploading");
+      });
+
+      expect(screen.getByText(PUBLISHING)).toBeInTheDocument();
+      expect(screen.getByText(UPLOADING)).toBeInTheDocument();
+      await advance(1000);
+      expect(screen.getByText(UPLOADING)).toBeInTheDocument();
+    });
+
+    it("leaving the publishing step removes its notice", async () => {
+      await renderPublishing(() => settlesAfter(800, UPLOADED));
+
+      await pressCreate();
+      await advance(500);
+      expect(screen.getByText(PUBLISHING)).toBeInTheDocument();
+      await advance(300);
+
+      expect(screen.getByText("Waiting for your wallet")).toBeInTheDocument();
+      expect(screen.queryByText(PUBLISHING)).toBeNull();
+      expect(noticeArea()).toBeEmptyDOMElement();
+    });
+
+    it("a second press waits half a second again before showing the notice", async () => {
+      let presses = 0;
+      await renderPublishing(() => {
+        presses += 1;
+        return presses === 1 ? settlesAfter(400, UPLOAD_FAILED) : neverSettles();
+      });
+
+      await pressCreate();
+      await advance(400);
+      expect(screen.getByText("Atlas did not answer. Nothing was sent.")).toBeInTheDocument();
+
+      await pressCreate();
+      await advance(499);
+      expect(screen.queryByText(PUBLISHING)).toBeNull();
+      expect(noticeArea()).toBeEmptyDOMElement();
+      await advance(1);
+
+      expect(screen.getByText(UPLOADING)).toBeInTheDocument();
+    });
   });
 
   describe("the primary button", () => {

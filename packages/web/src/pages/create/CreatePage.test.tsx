@@ -1092,7 +1092,8 @@ describe("CreatePage", () => {
     });
     await fillToSummary(user);
     await user.click(screen.getByRole("button", { name: "Create dispute" }));
-    expect(await screen.findByText("Publishing the dispute data")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Creating the dispute" })).toBeInTheDocument();
+    expect(uploader.uploadJson).toHaveBeenCalledTimes(1);
 
     await user.click(screen.getByRole("link", { name: "Gnosis disputes" }));
     expect(currentPath()).toBe(`/${String(GNOSIS)}/ongoing`);

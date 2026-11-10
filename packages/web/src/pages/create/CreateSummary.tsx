@@ -1,6 +1,6 @@
 import { attachmentKind, buildCreatedMetaEvidence, encodeExtraData, toAttachmentLink, type Address, type ChainConfig, type CreateDisputeInput } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
-import { useId, type ReactNode, type Ref } from "react";
+import { useEffect, useId, useState, type ReactNode, type Ref } from "react";
 import { Link } from "react-router";
 import { useAtlasUpload } from "../../atlas";
 import { useArbitrationCost, useCoreDeps, useCourts } from "../../data";
@@ -76,22 +76,41 @@ function RulingOptions({ input }: { readonly input: CreateDisputeInput }) {
   );
 }
 
+// A fast upload would only flash its notice and move the buttons; the Create button's spinner covers that wait.
+const PUBLISHING_NOTICE_DELAY_MS = 500;
+
+/** Mounted for the publishing step only, so leaving the step or pressing again clears or restarts the delay. */
+function PublishingNotice() {
+  const { phase } = useAtlasUpload();
+  const [shown, setShown] = useState(phase === "signing-in");
+  if (phase === "signing-in" && !shown) setShown(true);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShown(true);
+    }, PUBLISHING_NOTICE_DELAY_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, []);
+  if (!shown) return null;
+  return (
+    <Notice
+      reveal
+      variant="info"
+      title="Publishing the dispute data"
+      body={phase === "signing-in" ? "Sign the message in your wallet to upload the dispute data to IPFS." : "Uploading the dispute data to IPFS..."}
+    />
+  );
+}
+
 /** The steps before and after the write; the write itself reports in the toasts. */
 function ActionNotice({ state, chain }: { readonly state: CreateActionState; readonly chain: ChainConfig }) {
-  const uploader = useAtlasUpload();
   switch (state.kind) {
     case "idle":
     case "writing":
       return null;
     case "publishing":
-      return (
-        <Notice
-          reveal
-          variant="info"
-          title="Publishing the dispute data"
-          body={uploader.phase === "signing-in" ? "Sign the message in your wallet to upload the dispute data to IPFS." : "Uploading the dispute data to IPFS..."}
-        />
-      );
+      return <PublishingNotice />;
     case "publish-failed":
       return (
         <Notice reveal variant={state.error === "sign-in-rejected" ? "info" : "error"} title={UPLOAD_FAILURE_TITLES[state.error]} body={`${state.message} Nothing was sent.`} />
