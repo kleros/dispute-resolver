@@ -19,7 +19,7 @@ export function runRequest(overrides: Partial<RunnerRequestMessage> = {}): Runne
   return { type: "dr-runner/run", version: 2, scriptText: "script", params: SAMPLE_PARAMS, guardSource: null, rpcRedirects: [], ...overrides };
 }
 
-export type FakeGlobals = Record<string, unknown>;
+type FakeGlobals = Record<string, unknown>;
 
 export interface ScriptApi {
   readonly globals: FakeGlobals;
@@ -35,7 +35,7 @@ interface FakeRunnerEnvironmentOptions {
   readonly onEvaluate?: (source: string, api: ScriptApi) => void;
 }
 
-export interface FakeRunnerEnvironment {
+interface FakeRunnerEnvironment {
   readonly env: RunnerEnvironment;
   readonly parent: object;
   readonly globals: FakeGlobals;

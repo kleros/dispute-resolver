@@ -25,7 +25,7 @@ function shake(slot: HTMLElement): void {
   slot.addEventListener("animationend", settleShake);
 }
 
-export interface CreateFormProps {
+interface CreateFormProps {
   readonly chain: ChainConfig;
   readonly form: Form;
   /** How often the form was cleared: the upload field starts afresh each time, dropping its upload, failure and message. */

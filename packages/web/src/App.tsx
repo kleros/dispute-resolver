@@ -5,7 +5,7 @@ import { APP_CONFIG } from "./env";
 import { AppProviders, type PageScroll } from "./shell";
 import type { ColorSchemeStore } from "./theme";
 
-export interface AppProps {
+interface AppProps {
   readonly colorScheme: ColorSchemeStore;
   readonly pageScroll: PageScroll;
 }

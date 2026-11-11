@@ -128,11 +128,9 @@ export interface WriteCall<TAbi extends Abi = Abi, TFunctionName extends WriteFu
 }
 
 export type * from "./chains/types";
-export type * from "./abi/types";
 export type * from "./uri/types";
 export type * from "./rulings/types";
 export type * from "./registry/types";
-export type * from "./rpc/types";
 export type * from "./families/types";
 export type * from "./reality/types";
 export type * from "./metaEvidence/types";

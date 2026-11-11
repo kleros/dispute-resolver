@@ -82,7 +82,7 @@ const unslashedSchema = z.object({
   ),
 });
 
-export interface RecordedUnslashedDispute {
+interface RecordedUnslashedDispute {
   readonly disputeId: bigint;
   readonly localId: bigint;
   readonly disputeStartBlock: bigint;

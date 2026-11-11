@@ -5,7 +5,7 @@ import { expect, type Page } from "@playwright/test";
 // rendering them. Chromium writes the PDF uncompressed, with a plain cross-reference table: a parser that cannot find its
 // objects throws, so a print never passes a check by being unreadable.
 
-export interface PrintedLink {
+interface PrintedLink {
   /** A path for the app's own pages, else the whole URL. */
   readonly href: string;
   /** Points from the page's top edge. */

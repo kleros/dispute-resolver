@@ -104,7 +104,7 @@ function useOpenWhenCreated(state: CreateActionState | null, chainId: number): v
   }, [createdId, chainId, navigate]);
 }
 
-export interface HeldCreate {
+interface HeldCreate {
   /** `null` when nothing was in flight at mount, once it settled without being mined (failed, rejected, unconfirmed), or once dismissed. */
   readonly state: CreateActionState | null;
   /** Forgets a transaction mined without a dispute ID, so the next summary starts afresh, as it does after its own. */

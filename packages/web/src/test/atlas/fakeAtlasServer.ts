@@ -18,9 +18,9 @@ export const TEST_SERVER_ROLES = [
   { name: "Policy", restriction: { maxSize: MIB, allowedMimeTypes: ["application/json"] } },
 ];
 
-export type AtlasRequestKind = "roles" | "nonce" | "login" | "user" | "graphql" | "upload" | "sign" | "rpc";
+type AtlasRequestKind = "roles" | "nonce" | "login" | "user" | "graphql" | "upload" | "sign" | "rpc";
 
-export interface RecordedUpload {
+interface RecordedUpload {
   readonly product: FormDataEntryValue | null;
   readonly role: FormDataEntryValue | null;
   readonly name: FormDataEntryValue | null;
@@ -28,12 +28,12 @@ export interface RecordedUpload {
   readonly authorization: string | null;
 }
 
-export interface RecordedSignature {
+interface RecordedSignature {
   readonly account: string;
   readonly message: string;
 }
 
-export interface RecordedGraphqlRequest {
+interface RecordedGraphqlRequest {
   readonly kind: AtlasRequestKind;
   readonly variables: unknown;
   readonly authorization: string | null;

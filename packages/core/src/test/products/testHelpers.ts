@@ -51,7 +51,7 @@ const ABIS = {
   ]),
 } satisfies Readonly<Record<string, Abi>>;
 
-export type ProductKind = keyof typeof ABIS;
+type ProductKind = keyof typeof ABIS;
 
 const hex = z
   .string()

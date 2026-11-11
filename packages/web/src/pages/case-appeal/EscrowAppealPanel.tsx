@@ -19,7 +19,7 @@ import {
 import { BODY_TEXT_CLASS } from "./styles";
 import type { AppealActions } from "./useAppealActions";
 
-export interface EscrowAppealPanelProps {
+interface EscrowAppealPanelProps {
   readonly appealCost: bigint;
   readonly deadline: number;
   readonly actions: AppealActions;

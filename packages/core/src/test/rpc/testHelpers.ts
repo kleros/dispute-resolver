@@ -17,7 +17,7 @@ export interface RpcLog {
   readonly removed: boolean;
 }
 
-export type TopicFilter = string | readonly string[] | null;
+type TopicFilter = string | readonly string[] | null;
 
 /** The `eth_getLogs` filter the fake node received, with block numbers decoded. */
 export interface LogsRequest {
@@ -27,7 +27,7 @@ export interface LogsRequest {
   readonly toBlock: bigint;
 }
 
-export type LogsAnswer = readonly RpcLog[] | Error;
+type LogsAnswer = readonly RpcLog[] | Error;
 
 export function callKey(to: string, data: Hex): string {
   return `${to}:${data}`.toLowerCase();
@@ -64,7 +64,7 @@ export function rangeRefusal(): Error {
   return rpcError(-32005, "query returned more than 10000 results");
 }
 
-export function asLogsRequest(params: unknown): LogsRequest {
+function asLogsRequest(params: unknown): LogsRequest {
   const [filter] = params as [{ address: string; topics?: TopicFilter[]; fromBlock: Hex; toBlock: Hex }];
   return { address: filter.address, topics: filter.topics ?? [], fromBlock: BigInt(filter.fromBlock), toBlock: BigInt(filter.toBlock) };
 }
@@ -268,7 +268,7 @@ export interface JsonRpcCall {
 export type Reply =
   { readonly result: unknown } | { readonly error: { readonly code: number; readonly message: string; readonly data?: unknown } } | { readonly status: number } | "hang";
 
-export interface FakeEndpoint {
+interface FakeEndpoint {
   readonly posts: { readonly url: string; readonly calls: readonly JsonRpcCall[]; readonly at: number }[];
 }
 

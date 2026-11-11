@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 
 export type PresencePhase = "closed" | "open" | "closing";
 
-export interface Presence<T extends HTMLElement> {
+interface Presence<T extends HTMLElement> {
   readonly phase: PresencePhase;
   /** Changes on every opening; used as the panel's key, so a reopen during the close starts from the pre-open state. */
   readonly mountKey: number;

@@ -5,7 +5,7 @@ import fixture from "../../metaEvidence/__fixtures__/disputes.json";
 import type { MetaEvidenceContext, MetaEvidenceResult, OnChainMetaEvidence, OnChainMetaEvidenceReader } from "../../metaEvidence/types";
 import { HANG, type Route } from "../fetch/testHelpers";
 
-export { HANG, fakeFetcher, type Route } from "../fetch/testHelpers";
+export { HANG, fakeFetcher } from "../fetch/testHelpers";
 
 export const GATEWAY = "https://cdn.kleros.link";
 

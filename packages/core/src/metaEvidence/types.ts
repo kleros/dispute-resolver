@@ -58,7 +58,7 @@ export type ScriptOutcome =
   | { readonly ran: true; readonly kind: ScriptKind; readonly jsonDuplicateKeys: boolean };
 
 /** Why the arbitrable's `MetaEvidence` event did not decide the URI, so the locator did. */
-export type OnChainFallbackReason = "dispute-event-not-found" | "dispute-event-ambiguous" | "meta-evidence-event-not-found";
+type OnChainFallbackReason = "dispute-event-not-found" | "dispute-event-ambiguous" | "meta-evidence-event-not-found";
 
 /**
  * The URI the arbitrable recorded in its `MetaEvidence` event for the dispute's meta-evidence ID: the raw,

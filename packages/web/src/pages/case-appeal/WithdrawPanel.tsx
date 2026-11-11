@@ -7,7 +7,7 @@ import { WITHDRAW_HEADING, WITHDRAW_NO_ACCOUNT, withdrawEligible, withdrawLastWo
 import { BODY_TEXT_CLASS } from "./styles";
 import type { AppealActions } from "./useAppealActions";
 
-export interface WithdrawPanelProps {
+interface WithdrawPanelProps {
   readonly state: WithdrawState;
   readonly noun: RulingNoun;
   readonly actions: AppealActions;

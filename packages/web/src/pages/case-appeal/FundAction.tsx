@@ -8,7 +8,7 @@ import { parseContribution } from "./contribution";
 import { fundWording } from "./copy";
 import type { AppealActions } from "./useAppealActions";
 
-export interface FundActionProps {
+interface FundActionProps {
   /** What is funded, for the accessible names of the field and the button ("Yes", "the new answer"). */
   readonly subject: string;
   /** The answer as the write's toast quotes it: the card's title, or the entered answer. */

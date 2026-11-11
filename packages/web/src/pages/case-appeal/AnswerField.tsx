@@ -17,7 +17,7 @@ const TEXT_LABELS: Readonly<Record<TextAnswerType, string>> = {
 /** A decimal keypad where the answer is a non-negative number; `int` keeps the full keyboard for the minus sign. */
 const INPUT_MODES: Readonly<Record<TextAnswerType, "decimal" | "text">> = { uint: "decimal", int: "text", string: "text", hash: "text" };
 
-export interface AnswerFieldProps {
+interface AnswerFieldProps {
   readonly type: VariableQuestionType;
   /** The typed answer, or `null` while there is none (a cleared date). */
   readonly onChange: (answer: AnswerInput | null) => void;

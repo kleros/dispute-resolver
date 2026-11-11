@@ -9,7 +9,7 @@ import { renderAtPath, type RoutedRenderResult } from "../routing";
 import { WritesInFlightProvider } from "../../wallet";
 import { TestWalletProvider, createTestWallet, type TestWallet } from "../wallet";
 
-export interface RenderWithProvidersOptions {
+interface RenderWithProvidersOptions {
   /** The URL the router starts at; default `/1`. The screen renders under the app's `/:chainId` layout. */
   readonly path?: string;
   readonly deps?: CoreDeps;
@@ -20,7 +20,7 @@ export interface RenderWithProvidersOptions {
   readonly frame?: "test" | "page";
 }
 
-export interface ProvidersRenderResult extends RoutedRenderResult {
+interface ProvidersRenderResult extends RoutedRenderResult {
   readonly wallet: TestWallet;
 }
 

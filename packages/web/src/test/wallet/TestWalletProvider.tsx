@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { WalletSetupProvider } from "../../wallet";
 import type { TestWallet } from "./testWallet";
 
-export interface TestWalletProviderProps {
+interface TestWalletProviderProps {
   readonly wallet: TestWallet;
   readonly children?: ReactNode;
 }

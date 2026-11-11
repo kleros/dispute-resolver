@@ -1,4 +1,4 @@
-export interface HeaderRule {
+interface HeaderRule {
   readonly pattern: string;
   readonly headers: readonly (readonly [name: string, value: string])[];
 }

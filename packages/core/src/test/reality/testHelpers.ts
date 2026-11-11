@@ -70,7 +70,7 @@ export function singleBlockLogs(method: string, params: unknown): boolean {
   return filter.fromBlock === filter.toBlock;
 }
 
-export function blockTimestamp(chain: Pick<FakeChain, "blockTimeS">, block: bigint): bigint {
+function blockTimestamp(chain: Pick<FakeChain, "blockTimeS">, block: bigint): bigint {
   return 1_000_000_000n + BigInt(chain.blockTimeS) * block;
 }
 
@@ -224,7 +224,7 @@ export function fakeNetwork(chains: Readonly<Record<number, FakeChain>>): {
 let logCounter = 0;
 
 /** The log `event` is emitted as: `indexed` fills the topics, `data` is the non-indexed arguments in order. */
-export function eventLog(event: AbiEvent, address: string, blockNumber: number, indexed: Record<string, unknown>, data: readonly unknown[]): RpcLog {
+function eventLog(event: AbiEvent, address: string, blockNumber: number, indexed: Record<string, unknown>, data: readonly unknown[]): RpcLog {
   const topics = encodeEventTopics({ abi: [event], eventName: event.name, args: indexed }).filter((topic): topic is Hex => typeof topic === "string");
   logCounter += 1;
   return {

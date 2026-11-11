@@ -15,7 +15,7 @@ export interface Multipliers {
   readonly sharedMultiplier?: bigint;
 }
 
-export interface SideRequirement {
+interface SideRequirement {
   readonly total: bigint;
   /** Funding closes at this second: the contracts accept a contribution only strictly before it. */
   readonly deadline: number;

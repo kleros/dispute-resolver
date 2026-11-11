@@ -8,7 +8,7 @@ import type { WriteBuild } from "../../writes/types";
 
 export { detectionFor, FAMILY_SIGNATURES, testBinding } from "../appeals/testHelpers";
 
-export interface RecordedDetection {
+interface RecordedDetection {
   readonly label: string;
   readonly blockNumber: number;
   readonly detection: FamilyDetection;
@@ -51,7 +51,7 @@ export function expectCall(build: WriteBuild): WriteCall {
   return build.call;
 }
 
-export function calldata(call: WriteCall): Hex {
+function calldata(call: WriteCall): Hex {
   return encodeFunctionData({ abi: call.abi, functionName: call.functionName, args: call.args });
 }
 

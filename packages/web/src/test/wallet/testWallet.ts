@@ -3,7 +3,7 @@ import { act } from "@testing-library/react";
 import { connect, createConfig, createStorage, disconnect, mock, type Config, type Connector } from "@wagmi/core";
 import { UserRejectedRequestError, custom, defineChain, getAddress, numberToHex, type Chain, type EIP1193RequestFn } from "viem";
 import { vi, type Mock } from "vitest";
-import type { WalletMode, WalletModal, WalletSetup } from "../../wallet";
+import type { WalletModal, WalletSetup } from "../../wallet";
 import { createMemoryStorage, deferred } from "../data";
 import { TEST_TX_HASH } from "./writeFixtures";
 
@@ -41,9 +41,9 @@ export function rejectingTransports(chains: readonly Chain[]) {
   return Object.fromEntries(chains.map((chain) => [chain.id, custom({ request: () => Promise.reject(new Error("Tests read through core's test deps, never through wagmi.")) })]));
 }
 
-export interface TestWalletOptions {
+interface TestWalletOptions {
   /** `appkit` (default) gives a fake modal recording its calls; `unconfigured` has none. */
-  readonly mode?: WalletMode;
+  readonly mode?: WalletSetup["mode"];
   /** `true`: the fake modal reports an embedded-wallet connector once ready, as AppKit does when the Reown dashboard is misconfigured. */
   readonly embeddedWallet?: boolean;
   readonly chainId?: number;
@@ -53,7 +53,7 @@ export interface TestWalletOptions {
   readonly pendingReconnect?: boolean;
 }
 
-export interface FakeWalletModal extends WalletModal {
+interface FakeWalletModal extends WalletModal {
   readonly openConnect: Mock<WalletModal["openConnect"]>;
   readonly hasEmbeddedWallet: Mock<WalletModal["hasEmbeddedWallet"]>;
 }
@@ -150,7 +150,7 @@ export function declineNextSwitch(wallet: TestWallet): () => void {
   };
 }
 
-export interface ReturningTestWalletOptions {
+interface ReturningTestWalletOptions {
   /** Whether wagmi's storage holds `CONNECTED_WAGMI_STORE` (chain 1); default `true`. */
   readonly stored?: boolean;
 }

@@ -34,7 +34,7 @@ export const MAINNET_1657_ATTACHMENT_PATH =
 export const DEFAULT_GATEWAY = "https://cdn.kleros.link";
 
 /** Pages of the app an untrusted link is rendered on, as the base URL a browser resolves the link's `href` against. */
-export const APP_PAGE_BASES = ["https://resolve.kleros.io/", "https://resolve.kleros.io/1/cases/5?tab=evidence#top"] as const;
+const APP_PAGE_BASES = ["https://resolve.kleros.io/", "https://resolve.kleros.io/1/cases/5?tab=evidence#top"] as const;
 
 /**
  * `https:` references that spell no authority. Parsed without a base they name host `0.0.0.1` or `example.org`; as an

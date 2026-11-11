@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { AtlasUploaderProvider, type AtlasUploader } from "../../atlas";
 import { fakeUploader } from "./fakeUploader";
 
-export interface TestAtlasProviderProps {
+interface TestAtlasProviderProps {
   readonly uploader?: AtlasUploader;
   readonly children?: ReactNode;
 }

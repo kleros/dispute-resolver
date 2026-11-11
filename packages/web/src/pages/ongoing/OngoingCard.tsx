@@ -117,7 +117,7 @@ function CardShell({ chainId, disputeId, children }: { readonly chainId: number;
   );
 }
 
-export interface OngoingCardProps {
+interface OngoingCardProps {
   readonly chainId: number;
   readonly dispute: OngoingDispute;
   readonly title: SectionData<OngoingTitle>;

@@ -14,7 +14,7 @@ import { EnteredAnswerFooter, MatchedCardNote } from "./FreeInputCard";
 import { CARD_HEAD_CLASS, CARD_TITLE_CLASS, WIDE_CARD_CLASS, WIDE_CARD_FUNDING_CLASS, WIDE_CARD_ITEM_CLASS } from "./styles";
 import type { AppealActions } from "./useAppealActions";
 
-export interface ComposerCardProps {
+interface ComposerCardProps {
   readonly composer: MultipleSelectComposer;
   /** The panel's fixed cards: a combination that already has one shows that card's funding. */
   readonly cards: readonly CrowdfundingCard[];

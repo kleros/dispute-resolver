@@ -1,4 +1,3 @@
-export type * from "./types";
 export { parseDisputeId } from "./parseDisputeId";
 export { lookupDispute } from "./lookup";
 export { resolveLocalId } from "./localId";

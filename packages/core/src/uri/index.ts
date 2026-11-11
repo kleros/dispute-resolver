@@ -1,4 +1,3 @@
-export type * from "./types";
 export { attachmentKind, toAttachmentLink, withoutTrailingSlashes } from "./attachment";
 export { resolveDisplayUrl } from "./display";
 export { gatewayUrl, policyFetchUrl, resolveGateway } from "./gateway";

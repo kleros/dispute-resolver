@@ -6,7 +6,7 @@ import { EnteredAnswerFooter } from "./FreeInputCard";
 import { CARD_CLASS, CARD_FOOTER_CLASS, CARD_ITEM_CLASS, CARD_TAG_CLASS, CARD_TITLE_CLASS } from "./styles";
 import type { AppealActions } from "./useAppealActions";
 
-export interface FundingCardProps {
+interface FundingCardProps {
   readonly card: CrowdfundingCard;
   readonly actions: AppealActions;
   readonly chain: ChainConfig;

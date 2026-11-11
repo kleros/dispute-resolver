@@ -35,7 +35,7 @@ function LocationProbe({ onLocation }: { readonly onLocation: (location: Locatio
   return null;
 }
 
-export interface RenderInRouterOptions {
+interface RenderInRouterOptions {
   readonly wallet?: TestWallet;
   readonly wrapper?: ComponentType<{ readonly children?: ReactNode }>;
 }
@@ -70,7 +70,7 @@ export function renderInRouter(routes: ReactElement, path: string, options: Rend
   };
 }
 
-export interface RenderAtPathOptions extends RenderInRouterOptions {
+interface RenderAtPathOptions extends RenderInRouterOptions {
   readonly frame?: ComponentType<FrameProps>;
 }
 

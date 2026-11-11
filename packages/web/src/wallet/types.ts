@@ -4,9 +4,6 @@ import type { Address, ChainConfig, Hex, WriteBuild, WriteRefusal } from "@dispu
 import type { WriteReceipt } from "../data";
 import type { AppConfig } from "../env";
 
-/** `unconfigured` means no WalletConnect project ID: the app is read-only and Connect is disabled. */
-export type WalletMode = "appkit" | "unconfigured";
-
 export interface WalletModal {
   /** Makes `chainId` the modal's active network, so a WalletConnect session starts on it, then opens the Connect view. */
   openConnect(chainId: number | undefined): Promise<void>;
@@ -18,6 +15,7 @@ export interface WalletModal {
   hasEmbeddedWallet(): Promise<boolean>;
 }
 
+/** `unconfigured` means no WalletConnect project ID: the app is read-only and Connect is disabled. */
 export type WalletSetup = { readonly mode: "appkit"; readonly wagmiConfig: Config; readonly modal: WalletModal } | { readonly mode: "unconfigured"; readonly wagmiConfig: Config };
 
 export type AppKitWalletSetup = Extract<WalletSetup, { readonly mode: "appkit" }>;

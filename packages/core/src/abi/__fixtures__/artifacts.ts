@@ -21,14 +21,14 @@ import idrV1 from "IDRv1/build/contracts/IDisputeResolver.json";
 import idrV2 from "IDRv2/build/contracts/IDisputeResolver.json";
 import verified from "./verified-abis.json";
 
-export interface NormalizedParameter {
+interface NormalizedParameter {
   readonly name: string;
   readonly type: string;
   readonly indexed?: boolean;
   readonly components?: readonly NormalizedParameter[];
 }
 
-export interface NormalizedFunction {
+interface NormalizedFunction {
   readonly type: "function";
   readonly name: string;
   readonly inputs: readonly NormalizedParameter[];
@@ -36,7 +36,7 @@ export interface NormalizedFunction {
   readonly stateMutability: string;
 }
 
-export interface NormalizedEvent {
+interface NormalizedEvent {
   readonly type: "event";
   readonly name: string;
   readonly inputs: readonly NormalizedParameter[];
@@ -148,7 +148,7 @@ export function abiOf(abi: RecordedAbi, records: readonly { readonly label?: str
   return source;
 }
 
-export interface VerifiedContract {
+interface VerifiedContract {
   readonly label: string;
   readonly chainId: number;
   readonly address: string;

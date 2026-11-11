@@ -13,7 +13,7 @@ import {
 import { createPublicClient, custom } from "viem";
 import type { CoreDeps } from "../../data";
 
-export interface RpcRequest {
+interface RpcRequest {
   readonly chainId: number;
   readonly method: string;
   readonly params: unknown;

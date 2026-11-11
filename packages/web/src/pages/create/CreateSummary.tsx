@@ -176,7 +176,7 @@ function primaryAction({ uploadsLocked, access, walletConnecting, canConnect, cr
   return { text: CREATE_DISPUTE, isLoading: creating, isDisabled: isBusy, ariaLabel: creating ? "Creating the dispute" : undefined, onPress: create };
 }
 
-export interface CreateSummaryProps {
+interface CreateSummaryProps {
   readonly chain: ChainConfig;
   readonly input: CreateDisputeInput;
   readonly documentName?: string;

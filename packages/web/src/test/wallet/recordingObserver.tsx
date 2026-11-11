@@ -4,18 +4,18 @@ import { WriteObserverProvider, type WriteObserver, type WriteProgress, type Wri
 import type { TestWallet } from "./testWallet";
 import { walletWrapper } from "./walletWrapper";
 
-export interface ObservedReport {
+interface ObservedReport {
   readonly status: WriteStatus;
   readonly wording: WriteWording;
   readonly progress: WriteProgress | undefined;
 }
 
-export interface ObservedAttempt {
+interface ObservedAttempt {
   readonly source: string;
   readonly reports: readonly ObservedReport[];
 }
 
-export interface RecordingObserver {
+interface RecordingObserver {
   readonly observer: WriteObserver;
   /** One entry per attempt, in the order they started, each with what it reported. */
   readonly attempts: readonly ObservedAttempt[];

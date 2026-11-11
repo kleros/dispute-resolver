@@ -85,7 +85,7 @@ const webTestFiles = [`${webSrc}/**/*.test.{ts,tsx}`, `${webSrc}/test/**`];
 
 const importMetaEnvSyntax = {
   selector: "MemberExpression[object.type='MetaProperty'][property.name='env']",
-  message: "import.meta.env is read only in packages/web/src/env/env.ts. Import ENV or APP_CONFIG from env/.",
+  message: "import.meta.env is read only in packages/web/src/env/env.ts. Import APP_CONFIG from env/.",
 };
 
 const anchorSyntax = {

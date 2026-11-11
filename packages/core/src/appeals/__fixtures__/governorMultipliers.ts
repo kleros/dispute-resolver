@@ -35,7 +35,7 @@ export const GOVERNOR_MULTIPLIERS: readonly RecordedGovernor[] = parsed.contract
   replies: contract.calls satisfies Readonly<Record<string, CallReply>>,
 }));
 
-export type GovernorGetter = "winnerMultiplier" | "loserMultiplier" | "MULTIPLIER_DIVISOR" | "sharedMultiplier";
+type GovernorGetter = "winnerMultiplier" | "loserMultiplier" | "MULTIPLIER_DIVISOR" | "sharedMultiplier";
 
 /** The uint256 a governor answered `getter()` with, decoded with the governor ABI. */
 export function recordedValue(governor: RecordedGovernor, getter: GovernorGetter): bigint {

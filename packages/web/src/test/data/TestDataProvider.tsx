@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { CoreDepsProvider, createQueryClient, type CoreDeps, type SectionData } from "../../data";
 import { createTestDeps } from "./createTestDeps";
 
-export interface TestDataProviderProps {
+interface TestDataProviderProps {
   readonly deps?: CoreDeps;
   readonly client?: QueryClient;
   /** Query data written before the first render, keyed with `queryKeys`, so a screen renders without any read. */

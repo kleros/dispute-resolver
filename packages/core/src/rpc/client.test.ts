@@ -6,12 +6,7 @@ import { chainOf } from "../test/chains/testHelpers";
 import { rpcCalls, stubEndpoint } from "../test/rpc/testHelpers";
 import type { BudgetedReadClientOptions } from "./types";
 
-/**
- * viem keeps one batch queue per URL at module level, so each test reads through its own URL: a request left pending
- * under fake timers can then never hold up the next test.
- */
-let urlCounter = 0;
-let READ_URL = "";
+const READ_URL = "https://read.rpc.example/";
 const event = parseAbiItem("event Ruling(address indexed _arbitrator, uint256 indexed _disputeID, uint256 _ruling)");
 const address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
 
@@ -22,11 +17,6 @@ function readClient(env: Record<string, string>, options?: BudgetedReadClientOpt
 }
 
 const getLogs = (client: ReadClient) => client.getLogs({ address, event, fromBlock: 1n, toBlock: 2n });
-
-beforeEach(() => {
-  urlCounter += 1;
-  READ_URL = `https://read.rpc.example/${String(urlCounter)}`;
-});
 
 describe("createReadClient", () => {
   afterEach(() => {

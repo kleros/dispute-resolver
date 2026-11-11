@@ -2,7 +2,7 @@ import { createConfig, injected, type Config } from "@wagmi/core";
 import { numberToHex, type Chain, type EIP1193Provider } from "viem";
 import { TEST_WALLET_ACCOUNT, rejectingTransports } from "./testWallet";
 
-export interface AddChainRequest {
+interface AddChainRequest {
   readonly chainId: string;
   readonly chainName: string;
   readonly rpcUrls: readonly string[];
@@ -17,7 +17,7 @@ export interface FakeInjectedWalletOptions {
   readonly addChain?: "approve" | "reject";
 }
 
-export interface FakeInjectedWallet {
+interface FakeInjectedWallet {
   readonly config: Config;
   readonly addChainRequests: readonly AddChainRequest[];
   chainId(): number;

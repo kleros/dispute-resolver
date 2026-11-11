@@ -7,9 +7,9 @@ export type Family = "reality-proxy" | "escrow-v1" | "governor" | "idr-v2" | "id
 export type ProbedFamily = Exclude<Family, "reality-proxy">;
 
 /** How the arbitrable's own dispute ID is found from the arbitrator dispute ID. */
-export type LocalIdSource = "externalIDtoLocalID" | "disputeIDtoTransactionID" | "none";
+type LocalIdSource = "externalIDtoLocalID" | "disputeIDtoTransactionID" | "none";
 
-export type EvidenceCapability =
+type EvidenceCapability =
   | { readonly kind: "local-id" } // submitEvidence(uint256 localId, string uri): idr-*, escrow-v1 (transaction ID)
   | { readonly kind: "uri-only" } // submitEvidence(string uri): governors that have it
   | { readonly kind: "none" }; // view-only, kleros.eth governor
@@ -20,7 +20,7 @@ export type AppealCapability =
   | { readonly kind: "escrow-pay-cost" } // appeal(uint256 transactionID) paying the arbitrator's appeal cost
   | { readonly kind: "none" };
 
-export type WithdrawCapability =
+type WithdrawCapability =
   | { readonly kind: "idr-v2" } // withdrawFeesAndRewardsForAllRounds(uint256,address,uint256)
   | { readonly kind: "idr-v1" } // withdrawFeesAndRewardsForAllRounds(uint256,address,uint256[])
   | { readonly kind: "governor" } // withdrawFeesAndRewards(address,uint256,uint256,uint256)

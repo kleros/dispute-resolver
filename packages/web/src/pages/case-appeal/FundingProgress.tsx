@@ -3,7 +3,7 @@ import { useId } from "react";
 import { Countdown, FACT, LABEL, Timestamp } from "../../ui";
 import { FUNDING_CLOSED, FUNDING_CLOSED_AT, FUNDING_CLOSES } from "./copy";
 
-export interface FundingProgressProps {
+interface FundingProgressProps {
   /** Above 100 when a side was over-funded; the bar shows it as full. */
   readonly percent: number;
   readonly deadline: number;

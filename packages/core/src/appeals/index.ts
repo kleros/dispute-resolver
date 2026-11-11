@@ -1,4 +1,3 @@
-export type * from "./types";
 export { readMultipliers } from "./multipliers";
 export { fundingRound, roundStartBlock, roundsToScan } from "./rounds";
 export { readRoundFunding } from "./funding";

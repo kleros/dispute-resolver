@@ -1,5 +1,4 @@
-export type * from "./types";
-export { LookupLimitError, TooManyLogsError, isLookupLimitError, isTooManyLogsError } from "./errors";
+export { LookupLimitError, isLookupLimitError, isTooManyLogsError } from "./errors";
 export { describeError, isContractFailure, readFailure, rejectionReason } from "./failures";
 export { createRequestBudget } from "./budget";
 export { isRangeLimitError } from "./rangeLimit";

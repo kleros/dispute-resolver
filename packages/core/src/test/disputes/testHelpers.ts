@@ -10,17 +10,7 @@ import { callKey, rpcLog, type CallReply, type FakeNodeSpec, type RpcLog } from 
 
 export { recordedDetection } from "../families/testHelpers";
 export { fakeFetcher } from "../fetch/testHelpers";
-export {
-  answer,
-  callKey,
-  fakeNode as fakeClient,
-  reverting as failure,
-  rpcError,
-  type CallReply as CallAnswer,
-  type FakeNodeSpec as FakeNode,
-  type NodeRequests,
-  type RpcErrorBody,
-} from "../rpc/testHelpers";
+export { answer, fakeNode as fakeClient, reverting as failure, rpcError, type CallReply as CallAnswer, type FakeNodeSpec as FakeNode, type RpcErrorBody } from "../rpc/testHelpers";
 
 export function selectorOf(key: string): string {
   return key.split(":0x")[1]?.slice(0, 8) ?? "";

@@ -22,7 +22,7 @@ export const governorSessionAbi = [
 /** `Session.status` once the arbitrator's ruling is executed: `withdrawFeesAndRewards` requires it. */
 const SESSION_RESOLVED = 2;
 
-export interface GovernorSession {
+interface GovernorSession {
   /**
    * The ruling the governor settled on: the jury's, unless exactly one list fully funded the final round, which then
    * wins as the governor's shadow winner (`rule()` executes `shadowWinner + 1`).
@@ -38,7 +38,7 @@ export async function readGovernorSession(client: ReadClient, governor: Address,
   return { ruling, disputeId, resolved: status === SESSION_RESOLVED };
 }
 
-export interface GovernorRound {
+interface GovernorRound {
   readonly paidFees: readonly bigint[];
   readonly hasPaid: readonly boolean[];
   readonly feeRewards: bigint;

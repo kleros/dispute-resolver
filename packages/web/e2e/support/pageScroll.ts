@@ -6,7 +6,7 @@ import { expect, type BrowserContext, type Page } from "@playwright/test";
 
 export const PAGE_SCROLLER = ".dr-page-scroller > .simplebar-wrapper > .simplebar-mask > .simplebar-offset > .simplebar-content-wrapper";
 
-export interface PageScrollState {
+interface PageScrollState {
   readonly top: number;
   readonly maxTop: number;
   readonly scrollWidth: number;

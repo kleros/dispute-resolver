@@ -1,4 +1,3 @@
-export type * from "./types";
 export { CREATE_LIMITS } from "./limits";
 export { encodeExtraData } from "./extraData";
 export { readArbitrationCost } from "./cost";

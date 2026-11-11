@@ -8,7 +8,7 @@ import { FundingCard } from "./FundingCard";
 import { BODY_TEXT_CLASS } from "./styles";
 import type { AppealActions } from "./useAppealActions";
 
-export interface CrowdfundingPanelProps {
+interface CrowdfundingPanelProps {
   readonly panel: Extract<AppealPanel, { readonly kind: "crowdfunding" }>;
   readonly actions: AppealActions;
   readonly chain: ChainConfig;

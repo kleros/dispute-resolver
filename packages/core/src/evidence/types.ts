@@ -13,7 +13,7 @@ export interface DisputeEvent {
 export type DisputeEventResult =
   { readonly status: "found"; readonly event: DisputeEvent } | { readonly status: "not-found" } | { readonly status: "ambiguous"; readonly count: number };
 
-export interface MetaEvidenceEvent {
+interface MetaEvidenceEvent {
   /** The raw, untrusted `_evidence` string; content addressing is checked by the meta-evidence pipeline. */
   readonly uri: string;
   readonly blockNumber: bigint;

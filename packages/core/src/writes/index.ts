@@ -1,4 +1,3 @@
-export type * from "./types";
 export { buildEscrowAppealCall, buildFundAppealCall } from "./appeal";
 export { readAppealCost } from "./appealCost";
 export { checkChainMatch } from "./chainGuard";

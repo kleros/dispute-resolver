@@ -8,7 +8,7 @@ import { rpcError } from "../rpc/testHelpers";
 
 export { rpcError } from "../rpc/testHelpers";
 
-export interface NodeCall {
+interface NodeCall {
   readonly method: string;
   readonly params: readonly unknown[];
 }

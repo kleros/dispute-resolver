@@ -2,7 +2,7 @@ import type { Address, RegistryKey } from "../types";
 import type { CidPath } from "../uri/types";
 
 /** Why no generic rule covers the entry. Non-empty. */
-export interface Justified {
+interface Justified {
   readonly justification: string;
 }
 

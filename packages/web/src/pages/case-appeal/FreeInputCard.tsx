@@ -19,7 +19,7 @@ import { FundingProgress } from "./FundingProgress";
 import { CARD_HEAD_CLASS, CARD_TITLE_CLASS, WIDE_CARD_CLASS, WIDE_CARD_FUNDING_CLASS, WIDE_CARD_ITEM_CLASS } from "./styles";
 import type { AppealActions } from "./useAppealActions";
 
-export interface FreeInputCardProps {
+interface FreeInputCardProps {
   readonly freeInput: FreeInput;
   /** The panel's fixed cards: an answer that already has one shows that card's funding. */
   readonly cards: readonly CrowdfundingCard[];
@@ -61,7 +61,7 @@ export function MatchedCardNote({ funding, kind, chain, accepted }: MatchedCardN
   );
 }
 
-export interface EnteredAnswerFooterProps {
+interface EnteredAnswerFooterProps {
   readonly funding: Pick<EnteredAnswerFunding, "fundedPercent" | "deadline" | "remaining" | "required" | "fullyFunded">;
   /** What is funded, for the accessible names of the contribution field and Fund: the matched card's title when there is one. */
   readonly subject: string;

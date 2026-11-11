@@ -48,7 +48,7 @@ function inSelectorOrder(signatures: readonly ProbeSignature[]): Hex[] {
   return Object.values(SELECTORS).filter((selector) => wanted.has(selector));
 }
 
-export interface RecordedContract {
+interface RecordedContract {
   readonly chainId: number;
   readonly blockNumber: number;
   readonly address: Address;

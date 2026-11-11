@@ -11,7 +11,7 @@ export interface LegacyRendering {
   readonly images: readonly { readonly alt: string | null; readonly src: string | null }[];
 }
 
-export interface MarkdownCorpusEntry {
+interface MarkdownCorpusEntry {
   readonly id: string;
   readonly source: string;
   readonly legacy: LegacyRendering;

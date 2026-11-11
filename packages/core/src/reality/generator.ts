@@ -22,7 +22,7 @@ export interface KnownQuestionsData {
  */
 export type GeneratorMode = "incremental" | "full" | "check";
 
-export interface GeneratorRequest {
+interface GeneratorRequest {
   readonly proxies: Readonly<Record<RegistryKey, RealityProxyEntry>>;
   readonly previous: KnownQuestionsData;
   readonly mode: GeneratorMode;
