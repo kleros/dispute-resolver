@@ -1,4 +1,4 @@
-import { encodeErrorResult, parseAbi, parseAbiItem } from "viem";
+import { encodeErrorResult, numberToHex, parseAbi, parseAbiItem } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReadClient } from "../types";
 import { createReadClient, createReadClients, createRequestBudget, isLookupLimitError } from "./index";
@@ -39,6 +39,16 @@ describe("createReadClient", () => {
     const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
     expect(await client.getBlockNumber()).toBe(16n);
     expect(endpoint.posts.map((post) => post.url)).toEqual([READ_URL]);
+  });
+
+  it("a second head read right after the chain advanced asks the node again and returns the new head", async () => {
+    let head = 1_000n;
+    const endpoint = stubEndpoint(() => ({ result: numberToHex(head) }));
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
+    expect(await client.getBlockNumber()).toBe(1_000n);
+    head = 1_001n;
+    expect(await client.getBlockNumber()).toBe(1_001n);
+    expect(rpcCalls(endpoint).map((call) => call.method)).toEqual(["eth_blockNumber", "eth_blockNumber"]);
   });
 
   it("a contract that answers with an off-chain lookup fails the read, and no URL the contract names is fetched", async () => {

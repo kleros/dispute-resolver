@@ -1,5 +1,5 @@
 import { encodeEventTopics, encodeAbiParameters } from "viem";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { governorAbi } from "../abi";
 import type { LocalIdResolution } from "../disputes/types";
 import { REGISTRY, getOverride } from "../registry";
@@ -9,6 +9,7 @@ import { readRoundFunding, roundStartBlock } from "./index";
 import { CONTRIBUTION_EVENT, RULING_FUNDED_EVENT } from "./context";
 import type { AppealContext } from "./types";
 import { FAMILY_SIGNATURES, answer, detectionFor, fakeNode, recordedDetection, reverting, rpcError, rpcLog, testBinding, type FakeNodeSpec } from "../test/appeals/testHelpers";
+import { readRpcNode } from "../test/rpc/testHelpers";
 
 const UNSLASHED_OVERRIDE = getOverride(REGISTRY, 1, UNSLASHED.arbitrable);
 const SYNTHETIC: Address = "0x00000000000000000000000000000000000000bb";
@@ -25,19 +26,29 @@ async function unslashedContext(spec: FakeNodeSpec, disputeId: bigint, localId: 
   return { context, requests };
 }
 
-function syntheticContext(spec: FakeNodeSpec, localId: LocalIdResolution = { kind: "local-id", value: 7n }) {
-  const { client, requests } = fakeNode(spec);
-  const context: AppealContext = {
+function resolverContext(client: AppealContext["client"], localId: LocalIdResolution): AppealContext {
+  return {
     client,
     binding: testBinding({ disputeId: 99n, arbitrated: SYNTHETIC }),
     family: detectionFor(SYNTHETIC, FAMILY_SIGNATURES["idr-v2"]),
     localId,
     override: undefined,
   };
-  return { context, requests };
 }
 
-function contributionLog(input: { readonly localId: bigint; readonly round: bigint; readonly ruling: bigint; readonly amount: bigint; readonly logIndex?: number }) {
+function syntheticContext(spec: FakeNodeSpec, localId: LocalIdResolution = { kind: "local-id", value: 7n }) {
+  const { client, requests } = fakeNode(spec);
+  return { context: resolverContext(client, localId), requests };
+}
+
+function contributionLog(input: {
+  readonly localId: bigint;
+  readonly round: bigint;
+  readonly ruling: bigint;
+  readonly amount: bigint;
+  readonly block?: bigint;
+  readonly logIndex?: number;
+}) {
   return rpcLog({
     address: SYNTHETIC,
     topics: encodeEventTopics({
@@ -46,7 +57,7 @@ function contributionLog(input: { readonly localId: bigint; readonly round: bigi
       args: { _localDisputeID: input.localId, _round: input.round, _contributor: "0x00000000000000000000000000000000000000c1" },
     }) as `0x${string}`[],
     data: encodeAbiParameters([{ type: "uint256" }, { type: "uint256" }], [input.ruling, input.amount]),
-    blockNumber: 100n,
+    blockNumber: input.block ?? 100n,
     logIndex: input.logIndex ?? 0,
   });
 }
@@ -70,6 +81,10 @@ function expectedRound(round: bigint, amounts: Readonly<Record<string, bigint>>,
 }
 
 describe("readRoundFunding (IDisputeResolver)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   const rounds1170 = [
     expectedRound(1n, { 1: 1_008_000_000_000_000_000n, 2: 756_000_000_000_000_000n }, [1n, 2n]),
     expectedRound(2n, { 1: 1_620_000_000_000_000_000n, 2: 2_160_000_000_000_000_000n }, [2n, 1n]),
@@ -134,6 +149,18 @@ describe("readRoundFunding (IDisputeResolver)", () => {
     ];
     const { context } = syntheticContext({ head: 200n, logs });
     expect(await readRoundFunding(context, 1n, 0n)).toEqual({ ok: true, value: { round: 1n, contributions: [{ ruling: 1n, amount: 5n }], fundedRulings: [] } });
+  });
+
+  it("a read right after a contribution is mined in the next block counts that contribution", async () => {
+    const node = readRpcNode({ head: 1_000n, logs: [contributionLog({ localId: 7n, round: 1n, ruling: 1n, amount: 5n })] });
+    const context = resolverContext(node.client, { kind: "local-id", value: 7n });
+    expect(await readRoundFunding(context, 1n, 0n)).toEqual({ ok: true, value: { round: 1n, contributions: [{ ruling: 1n, amount: 5n }], fundedRulings: [] } });
+    const head = node.mine([contributionLog({ localId: 7n, round: 1n, ruling: 1n, amount: 500_000_000_000_000_000n, block: 1_001n })]);
+    expect(head).toBe(1_001n);
+    expect(await readRoundFunding(context, 1n, 0n)).toEqual({
+      ok: true,
+      value: { round: 1n, contributions: [{ ruling: 1n, amount: 500_000_000_000_000_005n }], fundedRulings: [] },
+    });
   });
 
   it("reports a failed scan as rpc-error, never an empty funding", async () => {

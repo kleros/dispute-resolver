@@ -1,10 +1,11 @@
 import { numberToHex, pad } from "viem";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CHAINS } from "../chains";
 import type { Address, ReadClient } from "../types";
 import { scanEvidenceLogs } from "./events";
 import { evidenceScanStart, readDisputeEvent, readMetaEvidenceEvent } from "./index";
-import { disputeLog, fakeClient, recordedDispute, recordedNode, RECORDED, rpcError, type RpcLog } from "../test/evidence/testHelpers";
+import { disputeLog, evidenceLog, fakeClient, recordedDispute, recordedNode, RECORDED, rpcError, type RpcLog } from "../test/evidence/testHelpers";
+import { readRpcNode } from "../test/rpc/testHelpers";
 import { chainOf } from "../test/chains/testHelpers";
 
 const ARBITRATOR = RECORDED.arbitrator;
@@ -161,6 +162,23 @@ describe("Evidence and Dispute-event scan start", () => {
 });
 
 describe("scanEvidenceLogs", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("a read right after an Evidence log is mined in the next block finds that log", async () => {
+    const node = readRpcNode({ head: 1_000n });
+    const scan = { client: node.client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, fromBlock: 0n };
+    expect((await scanEvidenceLogs(scan)).logs).toEqual([]);
+    const party: Address = "0x00000000000000000000000000000000000000c1";
+    const head = node.mine([
+      evidenceLog({ arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, party, uri: "/ipfs/QmNew/evidence.json", blockNumber: 1_001n, logIndex: 0 }),
+    ]);
+    expect(head).toBe(1_001n);
+    const { logs } = await scanEvidenceLogs(scan);
+    expect(logs.map((log) => [log.blockNumber, log.evidenceUri, log.submitter])).toEqual([[1_001n, "/ipfs/QmNew/evidence.json", party]]);
+  });
+
   it("reads the recorded Evidence logs of mainnet 505 in chain order with lowercase submitters", async () => {
     const { client, requests } = fakeClient(recordedNode());
     const { logs } = await scanEvidenceLogs({

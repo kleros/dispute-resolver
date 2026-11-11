@@ -1,6 +1,8 @@
 import { createPublicClient, custom, encodeFunctionData, encodeFunctionResult, numberToHex, pad } from "viem";
 import type { Abi, ContractFunctionArgs, ContractFunctionName, ContractFunctionReturnType } from "viem";
 import { vi } from "vitest";
+import { createReadClient } from "../../rpc/client";
+import { chainOf } from "../chains/testHelpers";
 import type { Address, Hex, ReadClient } from "../../types";
 
 export interface RpcLog {
@@ -168,10 +170,8 @@ export function reverting<const TAbi extends Abi, TName extends ContractFunction
   return [callKey(input.to, data), { error: input.error ?? { code: 3, message: "execution reverted" } }];
 }
 
-/** A `ReadClient` over a fake node, viem retries off so every request reaches the node once. */
-export function fakeNode(spec: FakeNodeSpec): { readonly client: ReadClient; readonly requests: NodeRequests } {
+function nodeResponder(spec: FakeNodeSpec, requests: NodeRequests): (method: string, params: unknown) => Promise<unknown> {
   const calls = new Map(spec.calls ?? []);
-  const requests: NodeRequests = { methods: [], calls: [], logs: [], blocks: [] };
   const respond = (method: string, params: unknown): unknown => {
     switch (method) {
       case "eth_blockNumber":
@@ -205,7 +205,7 @@ export function fakeNode(spec: FakeNodeSpec): { readonly client: ReadClient; rea
         throw rpcError(-32601, `unexpected method ${method}`);
     }
   };
-  const request = ({ method, params }: { method: string; params?: unknown }): Promise<unknown> => {
+  return (method, params) => {
     requests.methods.push(method);
     const failure = spec.failing?.[method];
     if (failure !== undefined) return Promise.reject(failure);
@@ -215,7 +215,48 @@ export function fakeNode(spec: FakeNodeSpec): { readonly client: ReadClient; rea
       return Promise.reject(error instanceof Error ? error : new Error(String(error)));
     }
   };
+}
+
+function emptyRequests(): NodeRequests {
+  return { methods: [], calls: [], logs: [], blocks: [] };
+}
+
+/** A `ReadClient` over a fake node, viem retries off so every request reaches the node once. */
+export function fakeNode(spec: FakeNodeSpec): { readonly client: ReadClient; readonly requests: NodeRequests } {
+  const requests = emptyRequests();
+  const answer = nodeResponder(spec, requests);
+  const request = ({ method, params }: { method: string; params?: unknown }): Promise<unknown> => answer(method, params);
   return { client: createPublicClient({ transport: custom({ request }, { retryCount: 0 }) }), requests };
+}
+
+let readRpcNodes = 0;
+
+/**
+ * A fake node behind mainnet's configured read RPC, read through the client `createReadClient` builds, so its client
+ * settings apply. `mine` adds one block holding `logs` (placed by the caller at the returned head). Stubs the global
+ * fetch: tests call `vi.unstubAllGlobals()` after each.
+ */
+export function readRpcNode(spec: FakeNodeSpec): { readonly client: ReadClient; readonly requests: NodeRequests; readonly mine: (logs: readonly RpcLog[]) => bigint } {
+  readRpcNodes += 1;
+  const requests = emptyRequests();
+  let current = spec;
+  let answer = nodeResponder(current, requests);
+  stubEndpoint(async (call) => {
+    try {
+      return { result: await answer(call.method, call.params) };
+    } catch (error) {
+      const code = typeof error === "object" && error !== null && "code" in error && typeof error.code === "number" ? error.code : -32603;
+      return { error: { code, message: error instanceof Error ? error.message : String(error) } };
+    }
+  });
+  const resolution = createReadClient(chainOf(1), { REACT_APP_WEB3_PROVIDER_URL: `https://read.rpc.example/node/${String(readRpcNodes)}` }, { retryCount: 0 });
+  if (resolution.status !== "ok") throw new Error("expected a configured read client");
+  const mine = (logs: readonly RpcLog[]): bigint => {
+    current = { ...current, head: current.head + 1n, logs: [...(current.logs ?? []), ...logs] };
+    answer = nodeResponder(current, requests);
+    return current.head;
+  };
+  return { client: resolution.client, requests, mine };
 }
 
 export interface JsonRpcCall {
