@@ -467,6 +467,80 @@ describe("createReceiptWaiter", () => {
     expect(settled.value?.replacement).toBeUndefined();
   });
 
+  it("a transaction of another sender with the same nonce is not taken for a replacement", async () => {
+    vi.useFakeTimers();
+    const otherBlock = FIRST_HEAD + 1;
+    const other = rpcTransaction({
+      hash: OTHER_HASH,
+      to: ARBITRATOR,
+      value: "0x0",
+      input: CALLDATA,
+      blockNumber: hex(otherBlock),
+      from: "0x2222222222222222222222222222222222222222",
+    });
+    let mined = false;
+    stubRpc(
+      clockChain({
+        block: (number) => (number === otherBlock ? [other] : []),
+        receipt: (hash) => {
+          if (hash === OTHER_HASH) return minedReceipt(OTHER_HASH, otherBlock);
+          return hash === HASH && mined ? minedReceipt(HASH, FIRST_HEAD + 10) : null;
+        },
+      }),
+    );
+    const settled = settlement(waitFor());
+    await vi.advanceTimersByTimeAsync(2 * 60_000);
+    expect(settled.state).toBe("pending");
+    mined = true;
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(settled.value?.transactionHash).toBe(HASH);
+    expect(settled.value?.replacement).toBeUndefined();
+  });
+
+  it("a call to the same contract with the same value but other calldata is reported as replaced, not repriced", async () => {
+    stubRpc(replacedOnChain({ to: ARBITRATOR, value: "0x64", input: "0xd98493f60000000000000000000000000000000000000000000000000000000000000006" }));
+    const receipt = await waitFor();
+    expect(receipt.replacement).toEqual({ reason: "replaced" });
+  });
+
+  it("three failed looks that are not in a row say nothing", async () => {
+    vi.useFakeTimers();
+    const chain = clockChain();
+    let receiptAsksSoFar = 0;
+    stubRpc((method, params) => {
+      if (method === "eth_getTransactionReceipt") {
+        receiptAsksSoFar += 1;
+        if (receiptAsksSoFar % 2 === 1 && receiptAsksSoFar <= 5) throw new TypeError("fetch failed");
+      }
+      return chain(method, params);
+    });
+    const cannotConfirmYet = vi.fn();
+    void waitFor(cannotConfirmYet);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(receiptAsksSoFar).toBeGreaterThan(5);
+    expect(cannotConfirmYet).not.toHaveBeenCalled();
+  });
+
+  it("a block the RPC cannot serve in the middle of a catch-up is asked for again, and a speed-up in it is found", async () => {
+    vi.useFakeTimers();
+    const target = FIRST_HEAD + 3;
+    let asks = 0;
+    stubRpc(
+      clockChain({
+        gap: { after: 1, blocks: 6 },
+        block: (number) => {
+          if (number !== target) return [];
+          asks += 1;
+          return asks === 1 ? null : [speedUpIn(target)];
+        },
+        receipt: (hash) => (hash === REPLACEMENT_HASH ? minedReceipt(REPLACEMENT_HASH, target) : null),
+      }),
+    );
+    const settled = settlement(waitFor());
+    await vi.advanceTimersByTimeAsync(2 * 60_000);
+    expect(settled.value?.transactionHash).toBe(REPLACEMENT_HASH);
+  });
+
   it("the awaited transaction seen in a block before its receipt is served is not taken for a replacement", async () => {
     vi.useFakeTimers();
     const minedBlock = FIRST_HEAD + 1;
@@ -520,7 +594,8 @@ describe("createReceiptWaiter", () => {
         awaitedAsks += 1;
         return params[0] === HASH && awaitedAsks > 4 ? awaited : null;
       }
-      if (method === "eth_getTransactionReceipt") return params[0] === REPLACEMENT_HASH && head >= 0x12 ? { ...RECEIPT, transactionHash: REPLACEMENT_HASH, blockNumber: "0x12", logs: [] } : null;
+      if (method === "eth_getTransactionReceipt")
+        return params[0] === REPLACEMENT_HASH && head >= 0x12 ? { ...RECEIPT, transactionHash: REPLACEMENT_HASH, blockNumber: "0x12", logs: [] } : null;
       if (method !== "eth_getBlockByNumber") return undefined;
       return { number: params[0], hash: "0x" + "cd".repeat(32), transactions: Number(params[0]) === 0x12 ? [speedUp] : [] };
     });
