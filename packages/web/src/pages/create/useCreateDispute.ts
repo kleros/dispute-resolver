@@ -158,7 +158,7 @@ export function useCreateDispute(input: CreateDisputeInput, held: CreateActionSt
   const write = useWrite();
   const deps = useCoreDeps();
   const writesInFlight = useWritesInFlight();
-  const [own, setState] = useState<CreateActionState | null>(null);
+  const [own, setOwn] = useState<CreateActionState | null>(null);
   const state = own ?? held ?? IDLE;
   const published = useRef<CanonicalIpfsPath | null>(null);
   const running = useRef(false);
@@ -174,16 +174,16 @@ export function useCreateDispute(input: CreateDisputeInput, held: CreateActionSt
   const run = useCallback(async () => {
     write.reset();
     if (access.status !== "ready") {
-      setState({ kind: "idle" });
+      setOwn({ kind: "idle" });
       return;
     }
 
-    setState({ kind: "publishing" });
+    setOwn({ kind: "publishing" });
     let metaEvidenceUri = published.current;
     if (metaEvidenceUri === null) {
       const upload = await uploader.uploadJson(META_EVIDENCE_FILE_NAME, buildCreatedMetaEvidence(input, deps.registry), "policy").catch((error: unknown) => uploadFailure(error));
       if (!upload.ok) {
-        setState({ kind: "publish-failed", error: upload.error, message: upload.message });
+        setOwn({ kind: "publish-failed", error: upload.error, message: upload.message });
         return;
       }
       metaEvidenceUri = upload.path;
@@ -194,14 +194,14 @@ export function useCreateDispute(input: CreateDisputeInput, held: CreateActionSt
     const client = deps.getReadClient(chainId);
     const cost: Outcome<bigint> = client === undefined ? { ok: false, error: noRpcError(chainId) } : await readArbitrationCost(client, chain, extraData);
     if (!cost.ok) {
-      setState({ kind: "cost-failed", error: cost.error });
+      setOwn({ kind: "cost-failed", error: cost.error });
       return;
     }
 
     // The layout remounts the page on a chain change, so an upload or cost read that settles after the page is gone
     // still carries the old page chain, which the wallet may well be on: the wallet's own chain guard would pass.
     if (!mounted.current) return;
-    setState({ kind: "writing" });
+    setOwn({ kind: "writing" });
     const build = buildCreateDisputeCall({ chain, extraData, metaEvidenceUri, numberOfRulingOptions: numberOfRulingOptions(input), cost: cost.value });
     const pending = write.execute(build, { pageChainId: chainId, wording: createWording(chain) });
     writesInFlight.hold(inFlightKey(chainId), pending);
@@ -210,12 +210,12 @@ export function useCreateDispute(input: CreateDisputeInput, held: CreateActionSt
 
     const mined = minedState(chain, outcome.receipt);
     if (mined.kind === "created") clearCreateDraft(chainId);
-    setState(mined);
+    setOwn(mined);
   }, [write, access, chainId, uploader, input, deps, chain, writesInFlight]);
 
   const create = useCallback(async () => {
     // The meta-evidence can only be published through Atlas, so without it there is nothing to start.
-    if (running.current || writesInFlight.find(inFlightKey(chainId)) !== undefined || uploader.availability === "unconfigured") return;
+    if (running.current || writesInFlight.has(inFlightKey(chainId)) || uploader.availability === "unconfigured") return;
     running.current = true;
     try {
       await run();

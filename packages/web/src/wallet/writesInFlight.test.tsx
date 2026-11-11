@@ -19,12 +19,15 @@ describe("useWritesInFlight", () => {
     result.current.hold("create:1", write);
     expect(result.current.find("create:1")).toBe(write);
     expect(result.current.find("create:100")).toBeUndefined();
+    expect(result.current.has("create:1")).toBe(true);
+    expect(result.current.has("create:100")).toBe(false);
 
     await act(async () => {
       settle({ phase: "rejected" });
       await write;
     });
     expect(result.current.find("create:1")).toBeUndefined();
+    expect(result.current.has("create:1")).toBe(false);
   });
 
   it("keeps a newer write when an older one under the same key settles", async () => {
@@ -44,5 +47,6 @@ describe("useWritesInFlight", () => {
     const { result } = renderHook(() => useWritesInFlight());
     result.current.hold("create:1", heldWrite().write);
     expect(result.current.find("create:1")).toBeUndefined();
+    expect(result.current.has("create:1")).toBe(false);
   });
 });

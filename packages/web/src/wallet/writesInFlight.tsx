@@ -4,11 +4,12 @@ import type { WriteOutcome } from "./types";
 export interface WritesInFlight {
   /** The write held under `key`, until it settles. */
   find(key: string): Promise<WriteOutcome> | undefined;
+  has(key: string): boolean;
   hold(key: string, write: Promise<WriteOutcome>): void;
 }
 
 /** Without the provider nothing is held, and every screen keeps its own busy state. */
-const NOTHING_HELD: WritesInFlight = { find: () => undefined, hold: () => undefined };
+const NOTHING_HELD: WritesInFlight = { find: () => undefined, has: () => false, hold: () => undefined };
 
 const WritesInFlightContext = createContext<WritesInFlight>(NOTHING_HELD);
 
@@ -16,6 +17,7 @@ function createWritesInFlight(): WritesInFlight {
   const held = new Map<string, Promise<WriteOutcome>>();
   return {
     find: (key) => held.get(key),
+    has: (key) => held.has(key),
     hold(key, write) {
       held.set(key, write);
       const release = () => {
