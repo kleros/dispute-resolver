@@ -7,7 +7,7 @@ import { useWrite, useWriteAccess, type WriteAccess, type WriteWording } from ".
 
 const EVIDENCE_FILE_NAME = "evidence.json";
 
-export const EVIDENCE_WORDING: WriteWording = { doing: "submitting your evidence", done: "Submitted your evidence." };
+const EVIDENCE_WORDING: WriteWording = { doing: "submitting your evidence", done: "Submitted your evidence." };
 
 export interface EvidenceDraft {
   readonly title: string;

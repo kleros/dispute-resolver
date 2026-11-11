@@ -60,29 +60,37 @@ function rpcTransaction({ from = SENDER, nonce = "0x7", ...fields }: Transaction
   return { ...fields, from, nonce };
 }
 
+const AWAITED = rpcTransaction({ hash: HASH, to: ARBITRATOR, value: "0x64", input: CALLDATA, blockNumber: null });
+
+function speedUpIn(block: number) {
+  return rpcTransaction({ hash: REPLACEMENT_HASH, to: ARBITRATOR, value: "0x64", input: CALLDATA, blockNumber: hex(block) });
+}
+
+function minedReceipt(hash: string, block: number) {
+  return { ...RECEIPT, transactionHash: hash, blockNumber: hex(block), logs: [] };
+}
+
 /**
  * The chain after a wallet replaced the awaited transaction: the awaited hash is known but never mined, and block 0x10
  * holds a transaction of the same sender and nonce with the given recipient, value and data, mined successfully.
  */
 function replacedOnChain(replacement: { to: string; value: string; input: string }): RpcAnswer {
-  const awaited = rpcTransaction({ hash: HASH, to: ARBITRATOR, value: "0x64", input: CALLDATA, blockNumber: null });
   const mined = rpcTransaction({ hash: REPLACEMENT_HASH, ...replacement, blockNumber: "0x10" });
   const block = { number: "0x10", hash: "0x" + "ab".repeat(32), transactions: [mined] };
-  const minedReceipt = { ...RECEIPT, transactionHash: REPLACEMENT_HASH, logs: [] };
   // Keyed by method, then by the first parameter where the answer depends on it.
   const answers = new Map<string, unknown>([
     ["eth_blockNumber", "0x10"],
     ["eth_chainId", "0x1"],
     ["eth_getBlockByNumber", block],
-    [`eth_getTransactionByHash:${HASH}`, awaited],
+    [`eth_getTransactionByHash:${HASH}`, AWAITED],
     [`eth_getTransactionByHash:${REPLACEMENT_HASH}`, mined],
-    [`eth_getTransactionReceipt:${REPLACEMENT_HASH}`, minedReceipt],
+    [`eth_getTransactionReceipt:${REPLACEMENT_HASH}`, minedReceipt(REPLACEMENT_HASH, 0x10)],
   ]);
   return (method, params) => answers.get(method) ?? answers.get(`${method}:${String(params[0])}`);
 }
 
 /** A chain that mines an empty block at every block-number read, whatever the clock says. */
-function advancingChain(receipt: (method: string) => unknown): RpcAnswer {
+function advancingChain(receipt: () => unknown): RpcAnswer {
   let block = 0x10;
   return (method, params) => {
     if (method === "eth_blockNumber") {
@@ -91,8 +99,8 @@ function advancingChain(receipt: (method: string) => unknown): RpcAnswer {
     }
     if (method === "eth_chainId") return "0x1";
     if (method === "eth_getBlockByNumber") return { number: params[0], hash: "0x" + "cd".repeat(32), transactions: [] };
-    if (method === "eth_getTransactionByHash") return rpcTransaction({ hash: HASH, to: ARBITRATOR, value: "0x64", input: CALLDATA, blockNumber: null });
-    return method === "eth_getTransactionReceipt" ? receipt(method) : undefined;
+    if (method === "eth_getTransactionByHash") return AWAITED;
+    return method === "eth_getTransactionReceipt" ? receipt() : undefined;
   };
 }
 
@@ -102,16 +110,6 @@ const BLOCK_TIME_MS = 12_000;
 
 function hex(number: number): string {
   return `0x${number.toString(16)}`;
-}
-
-const AWAITED = rpcTransaction({ hash: HASH, to: ARBITRATOR, value: "0x64", input: CALLDATA, blockNumber: null });
-
-function speedUpIn(block: number) {
-  return rpcTransaction({ hash: REPLACEMENT_HASH, to: ARBITRATOR, value: "0x64", input: CALLDATA, blockNumber: hex(block) });
-}
-
-function minedReceipt(hash: string, block: number) {
-  return { ...RECEIPT, transactionHash: hash, blockNumber: hex(block), logs: [] };
 }
 
 interface ClockChain {
@@ -224,7 +222,7 @@ describe("createReceiptWaiter", () => {
   it("waits for a transaction not yet mined past any deadline, and resolves once it is mined", async () => {
     vi.useFakeTimers();
     let mined = false;
-    stubRpc(advancingChain((method) => (method === "eth_getTransactionReceipt" && !mined ? null : RECEIPT)));
+    stubRpc(advancingChain(() => (mined ? RECEIPT : null)));
     const settled = settlement(waitFor());
     await vi.advanceTimersByTimeAsync(30 * 60_000);
     expect(settled.state).toBe("pending");
@@ -328,7 +326,7 @@ describe("createReceiptWaiter", () => {
   it("a read RPC that fails for a while once the wait has begun is asked again until it answers, and the receipt is then found", async () => {
     vi.useFakeTimers();
     let requests = 0;
-    const chain = advancingChain((method) => (method === "eth_getTransactionReceipt" && requests <= 8 ? null : RECEIPT));
+    const chain = advancingChain(() => (requests <= 8 ? null : RECEIPT));
     stubRpc((method, params) => {
       requests += 1;
       if (requests > 2 && requests <= 8) throw new TypeError("fetch failed");
@@ -580,8 +578,6 @@ describe("createReceiptWaiter", () => {
 
   it("a speed-up mined before the read RPC knew the awaited transaction is still found", async () => {
     vi.useFakeTimers();
-    const awaited = rpcTransaction({ hash: HASH, to: ARBITRATOR, value: "0x64", input: CALLDATA, blockNumber: null });
-    const speedUp = rpcTransaction({ hash: REPLACEMENT_HASH, to: ARBITRATOR, value: "0x64", input: CALLDATA, blockNumber: "0x12" });
     let head = 0x10;
     let awaitedAsks = 0;
     stubRpc((method, params): unknown => {
@@ -592,12 +588,11 @@ describe("createReceiptWaiter", () => {
       }
       if (method === "eth_getTransactionByHash") {
         awaitedAsks += 1;
-        return params[0] === HASH && awaitedAsks > 4 ? awaited : null;
+        return params[0] === HASH && awaitedAsks > 4 ? AWAITED : null;
       }
-      if (method === "eth_getTransactionReceipt")
-        return params[0] === REPLACEMENT_HASH && head >= 0x12 ? { ...RECEIPT, transactionHash: REPLACEMENT_HASH, blockNumber: "0x12", logs: [] } : null;
+      if (method === "eth_getTransactionReceipt") return params[0] === REPLACEMENT_HASH && head >= 0x12 ? minedReceipt(REPLACEMENT_HASH, 0x12) : null;
       if (method !== "eth_getBlockByNumber") return undefined;
-      return { number: params[0], hash: "0x" + "cd".repeat(32), transactions: Number(params[0]) === 0x12 ? [speedUp] : [] };
+      return { number: params[0], hash: "0x" + "cd".repeat(32), transactions: Number(params[0]) === 0x12 ? [speedUpIn(0x12)] : [] };
     });
     const settled = settlement(waitFor());
     await vi.advanceTimersByTimeAsync(5 * 60_000);
@@ -626,7 +621,7 @@ describe("createReceiptWaiter", () => {
     expect(settled.value?.replacement).toBeUndefined();
   });
 
-  it("while the transaction is pending and the search is caught up, a minute costs 35 requests: two per 4 s look and one per new block", async () => {
+  it("while the transaction is pending and the search is caught up, a minute costs at most 35 requests: two per 4 s look and one per new block", async () => {
     vi.useFakeTimers();
     const began = Date.now();
     const calls = stubRpc(clockChain());
@@ -729,29 +724,24 @@ describe("createReceiptWaiter", () => {
     let inFlight = 0;
     let mostInFlight = 0;
     const asked: number[] = [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
-        const body = JSON.parse(typeof init?.body === "string" ? init.body : "{}") as { id: number; method: string; params?: unknown[] };
-        const reply = (result: unknown) => new Response(JSON.stringify({ jsonrpc: "2.0", id: body.id, result }), { headers: { "content-type": "application/json" } });
-        if (body.method === "eth_chainId") return reply("0x1");
-        if (body.method === "eth_blockNumber") {
-          head += 1 + jump;
-          jump = 0;
-          return reply(`0x${head.toString(16)}`);
-        }
-        if (body.method === "eth_getTransactionByHash") return reply(rpcTransaction({ hash: HASH, to: ARBITRATOR, value: "0x64", input: CALLDATA, blockNumber: null }));
-        if (body.method !== "eth_getBlockByNumber") return reply(null);
-        const number = String(body.params?.[0]);
-        asked.push(Number(number));
-        inFlight += 1;
-        mostInFlight = Math.max(mostInFlight, inFlight);
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        inFlight -= 1;
-        return reply({ number, hash: "0x" + "cd".repeat(32), transactions: [] });
-      }),
-    );
-    void waitFor().catch(() => undefined);
+    stubRpc(async (method, params) => {
+      if (method === "eth_chainId") return "0x1";
+      if (method === "eth_blockNumber") {
+        head += 1 + jump;
+        jump = 0;
+        return `0x${head.toString(16)}`;
+      }
+      if (method === "eth_getTransactionByHash") return AWAITED;
+      if (method !== "eth_getBlockByNumber") return undefined;
+      const number = String(params[0]);
+      asked.push(Number(number));
+      inFlight += 1;
+      mostInFlight = Math.max(mostInFlight, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      inFlight -= 1;
+      return { number, hash: "0x" + "cd".repeat(32), transactions: [] };
+    });
+    void waitFor();
     await vi.advanceTimersByTimeAsync(30_000);
     jump = 300;
     await vi.advanceTimersByTimeAsync(5 * 60_000);

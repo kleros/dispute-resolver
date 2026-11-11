@@ -16,7 +16,7 @@ const CONTROL_CHARACTERS = /\p{Cc}+/gu;
  * piece that is part of another cannot leave the rest of it behind. Control characters become spaces, so a quoted
  * message can neither forge an output line nor send terminal escapes.
  */
-export function printable(text: string, urls: readonly string[]): string {
+function printable(text: string, urls: readonly string[]): string {
   const pieces = urls.flatMap((url) => urlPieces(url)).sort((left, right) => right.length - left.length);
   let cleaned = text.replaceAll(ANY_URL, "<url>");
   for (const piece of pieces) cleaned = cleaned.replaceAll(piece, "<redacted>");

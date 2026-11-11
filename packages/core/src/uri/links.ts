@@ -19,7 +19,7 @@ export function isSafeNavigationUrl(url: unknown): boolean {
  * (never as a substring), with the fully qualified spelling `resolve.kleros.io.` read as `resolve.kleros.io`.
  * Ports are ignored, so a dev server's `localhost:5173` matches its own links.
  */
-export function isSelfLink(url: string, hosts: SelfHosts): boolean {
+function isSelfLink(url: string, hosts: SelfHosts): boolean {
   const hostname = parseAbsoluteUrl(url.trim())?.hostname;
   if (hostname === undefined) return false;
   const target = canonicalHostname(hostname);

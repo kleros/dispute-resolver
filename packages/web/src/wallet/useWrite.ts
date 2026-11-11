@@ -1,4 +1,4 @@
-import type { Address, Hex, WriteBuild, WriteCall } from "@dispute-resolver/core";
+import type { Address, WriteBuild, WriteCall } from "@dispute-resolver/core";
 import { useCallback, useId, useMemo, useState } from "react";
 import { useConfig } from "wagmi";
 import { useCoreDeps } from "../data";
@@ -14,7 +14,7 @@ export function useWriteEnvironment(): WriteEnvironment {
   return useMemo(
     () => ({
       config,
-      waitForReceipt: (chainId: number, hash: Hex, onCannotConfirmYet?: () => void) => deps.waitForReceipt(chainId, hash, onCannotConfirmYet),
+      waitForReceipt: deps.waitForReceipt,
       simulate: (call: WriteCall, from: Address) => deps.simulate(call, from),
     }),
     [config, deps],

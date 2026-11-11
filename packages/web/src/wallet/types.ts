@@ -78,7 +78,7 @@ export type WriteStatus =
   | { readonly phase: "insufficient-funds" }
   | { readonly phase: "account-changed" }
   | { readonly phase: "pending" }
-  /** `cannotConfirmYet`: the receipt waiter cannot confirm yet (three failed looks in a row, or no receipt after 10 minutes); the wait goes on. */
+  /** `cannotConfirmYet`: the receipt waiter cannot confirm yet; the wait goes on. */
   | { readonly phase: "submitted"; readonly hash: Hex; readonly explorerUrl: string | null; readonly cannotConfirmYet?: true }
   | { readonly phase: "mined"; readonly hash: Hex; readonly explorerUrl: string | null; readonly receipt: WriteReceipt }
   /** Sent, but its receipt cannot be awaited on this chain: not a failure, since the transaction may well be mined. */

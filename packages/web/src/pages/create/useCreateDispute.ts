@@ -70,7 +70,7 @@ function minedState(chain: ChainConfig, receipt: WriteReceipt): CreateActionStat
 
 const IDLE: CreateActionState = { kind: "idle" };
 
-/** The toast reports every outcome; a page that did not send the write only needs to know whether a dispute came of it. */
+/** The toast reports every outcome; a page that did not send the write only needs to know whether it was mined, and with which dispute. */
 function settledElsewhere(chain: ChainConfig, outcome: WriteOutcome): CreateActionState | null {
   return outcome.phase === "mined" ? minedState(chain, outcome.receipt) : null;
 }
@@ -80,7 +80,7 @@ function inFlightKey(chainId: number): string {
 }
 
 /** The dispute number is known only once the receipt is read, inside the write's own chain. */
-export function createWording(chain: ChainConfig): WriteWording {
+function createWording(chain: ChainConfig): WriteWording {
   return {
     doing: "creating the dispute",
     done: (receipt) => {
@@ -105,7 +105,7 @@ function useOpenWhenCreated(state: CreateActionState | null, chainId: number): v
 }
 
 export interface HeldCreate {
-  /** `null` when nothing was in flight at mount, once it settled without a dispute being mined, or once dismissed. */
+  /** `null` when nothing was in flight at mount, once it settled without being mined (failed, rejected, unconfirmed), or once dismissed. */
   readonly state: CreateActionState | null;
   /** Forgets a transaction mined without a dispute ID, so the next summary starts afresh, as it does after its own. */
   dismiss(): void;
@@ -146,10 +146,10 @@ function uploadFailure(error: unknown): UploadResult {
 
 /**
  * The wallet and its chain are checked before anything is signed, the Atlas sign-in included; the summary already shows
- * that guard with its switch, so a refused press adds nothing. The uploaded meta-evidence is reused when the user
- * retries after a refused, rejected or failed transaction, or after a mined one whose receipt had no dispute ID. The
- * write names the created dispute in its own toast, read from the receipt. The write is held per page chain above the
- * routes until it settles; `held` is the page's `useHeldCreate` state, shown until this summary starts a create of its own.
+ * that guard with its switch, so a refused press adds nothing. The uploaded meta-evidence is reused on every retry from
+ * this summary, whatever the last outcome. The write names the created dispute in its own toast, read from the receipt.
+ * The write is held per page chain above the routes until it settles; `held` is the page's `useHeldCreate` state, shown
+ * until this summary starts a create of its own.
  */
 export function useCreateDispute(input: CreateDisputeInput, held: CreateActionState | null): CreateDisputeAction {
   const { chainId, chain } = usePageChain();

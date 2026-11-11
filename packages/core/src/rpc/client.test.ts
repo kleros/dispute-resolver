@@ -178,7 +178,7 @@ describe("createReadClient", () => {
   it("sends each request in its own HTTP request", async () => {
     const endpoint = stubEndpoint(() => ({ result: "0x1" }));
     const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
-    await Promise.all([client.getBlockNumber({ cacheTime: 0 }), client.getCode({ address })]);
+    await Promise.all([client.getBlockNumber(), client.getCode({ address })]);
     expect(endpoint.posts.map((post) => post.calls.map((call) => call.method))).toEqual([["eth_blockNumber"], ["eth_getCode"]]);
   });
 
@@ -186,7 +186,7 @@ describe("createReadClient", () => {
     vi.useFakeTimers();
     stubEndpoint((call) => (call.method === "eth_blockNumber" ? "hang" : { result: "0x1" }));
     const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL }, { retryCount: 0 });
-    const slow = expect(client.getBlockNumber({ cacheTime: 0 })).rejects.toThrow(/took too long/);
+    const slow = expect(client.getBlockNumber()).rejects.toThrow(/took too long/);
     const fast = client.getCode({ address });
     await vi.advanceTimersByTimeAsync(0);
     expect(await fast).toBe("0x1");
@@ -209,9 +209,9 @@ describe("createReadClient", () => {
     const endpoint = stubEndpoint(() => ({ result: "0x1" }));
     const budget = createRequestBudget({ maxRequests: 2, deadlineMs: 90_000 });
     const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL }, { budget });
-    await client.getBlockNumber({ cacheTime: 0 });
+    await client.getBlockNumber();
     await client.getCode({ address });
-    await expect(client.getBlockNumber({ cacheTime: 0 })).rejects.toSatisfy(isLookupLimitError);
+    await expect(client.getBlockNumber()).rejects.toSatisfy(isLookupLimitError);
     expect(endpoint.posts).toHaveLength(2);
   });
 

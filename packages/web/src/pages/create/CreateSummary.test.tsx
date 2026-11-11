@@ -56,7 +56,7 @@ interface RenderSummaryOptions {
 async function renderSummary(uploader: FakeUploader, options: RenderSummaryOptions = {}) {
   const wallet = options.wallet ?? createTestWallet({ chainId: 1 });
   const user = userEvent.setup();
-  renderWithProviders(<CreateSummary chain={CHAIN} input={INPUT} onReturn={vi.fn()} />, { path: "/1", wallet, uploader });
+  renderWithProviders(<CreateSummary chain={CHAIN} input={INPUT} onReturn={vi.fn()} held={null} />, { path: "/1", wallet, uploader });
   if (options.connect ?? true) {
     await act(async () => {
       await wallet.connect();
@@ -237,7 +237,7 @@ describe("CreateSummary", () => {
       const wallet = createTestWallet({ chainId: 1 });
       renderWithProviders(
         <PhasedUploader uploader={uploader} phases={phases}>
-          <CreateSummary chain={CHAIN} input={INPUT} onReturn={vi.fn()} />
+          <CreateSummary chain={CHAIN} input={INPUT} onReturn={vi.fn()} held={null} />
         </PhasedUploader>,
         { path: "/1", wallet, uploader },
       );

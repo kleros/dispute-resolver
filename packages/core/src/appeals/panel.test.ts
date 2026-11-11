@@ -122,10 +122,10 @@ describe("buildAppealPanel", () => {
   });
 
   it("an old Reality proxy cannot be appealed, and has no panel in execution", async () => {
-    const golden150 = await recordedDetection(1, "0x594ec762b59978c97c82bc36ab493ed8b1f1f368");
-    expect([golden150.family, golden150.writeFamily]).toEqual(["reality-proxy", "view-only"]);
-    expect(buildAppealPanel(input(golden150, 3))).toEqual({ kind: "not-appealable" });
-    expect(buildAppealPanel(input(golden150, 4))).toEqual({ kind: "hidden" });
+    const realityProxy150 = await recordedDetection(1, "0x594ec762b59978c97c82bc36ab493ed8b1f1f368");
+    expect([realityProxy150.family, realityProxy150.writeFamily]).toEqual(["reality-proxy", "view-only"]);
+    expect(buildAppealPanel(input(realityProxy150, 3))).toEqual({ kind: "not-appealable" });
+    expect(buildAppealPanel(input(realityProxy150, 4))).toEqual({ kind: "hidden" });
   });
 
   it("idr-legacy funding is unavailable here, and its withdrawals unsupported in execution", () => {

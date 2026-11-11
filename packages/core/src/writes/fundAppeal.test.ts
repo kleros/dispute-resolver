@@ -59,7 +59,7 @@ describe("buildFundAppealCall", () => {
     const governorBinding = testBinding({ chainId: governor1621.chainId, disputeId: BigInt(governor1621.disputeId), arbitrated: governor1621.arbitrated });
     const governor = detectionFor(governor1621.governor, FAMILY_SIGNATURES.governor, governor1621.chainId);
     const titles = governor1621.submittedLists.map((list) => `List ${list}`);
-    expect(titles).toEqual(governor1621.goldenOptions);
+    expect(titles).toEqual(governor1621.shownOptions);
     for (const [index, title] of titles.entries()) {
       const ruling = BigInt(index + 1);
       const call = expectCall(buildFundAppealCall({ ...OPEN, binding: governorBinding, family: governor, localId: { kind: "not-applicable" }, ruling, value: 3n }));

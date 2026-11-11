@@ -229,18 +229,14 @@ export function fakeNode(spec: FakeNodeSpec): { readonly client: ReadClient; rea
   return { client: createPublicClient({ transport: custom({ request }, { retryCount: 0 }) }), requests };
 }
 
-let readRpcNodes = 0;
-
 /**
  * A fake node behind mainnet's configured read RPC, read through the client `createReadClient` builds, so its client
  * settings apply. `mine` adds one block holding `logs` (placed by the caller at the returned head). Stubs the global
  * fetch: tests call `vi.unstubAllGlobals()` after each.
  */
-export function readRpcNode(spec: FakeNodeSpec): { readonly client: ReadClient; readonly requests: NodeRequests; readonly mine: (logs: readonly RpcLog[]) => bigint } {
-  readRpcNodes += 1;
-  const requests = emptyRequests();
+export function readRpcNode(spec: FakeNodeSpec): { readonly client: ReadClient; readonly mine: (logs: readonly RpcLog[]) => bigint } {
   let current = spec;
-  let answer = nodeResponder(current, requests);
+  let answer = nodeResponder(current, emptyRequests());
   stubEndpoint(async (call) => {
     try {
       return { result: await answer(call.method, call.params) };
@@ -249,14 +245,14 @@ export function readRpcNode(spec: FakeNodeSpec): { readonly client: ReadClient; 
       return { error: { code, message: error instanceof Error ? error.message : String(error) } };
     }
   });
-  const resolution = createReadClient(chainOf(1), { REACT_APP_WEB3_PROVIDER_URL: `https://read.rpc.example/node/${String(readRpcNodes)}` }, { retryCount: 0 });
+  const resolution = createReadClient(chainOf(1), { REACT_APP_WEB3_PROVIDER_URL: "https://read.rpc.example/node" }, { retryCount: 0 });
   if (resolution.status !== "ok") throw new Error("expected a configured read client");
   const mine = (logs: readonly RpcLog[]): bigint => {
     current = { ...current, head: current.head + 1n, logs: [...(current.logs ?? []), ...logs] };
-    answer = nodeResponder(current, requests);
+    answer = nodeResponder(current, emptyRequests());
     return current.head;
   };
-  return { client: resolution.client, requests, mine };
+  return { client: resolution.client, mine };
 }
 
 export interface JsonRpcCall {

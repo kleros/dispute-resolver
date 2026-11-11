@@ -87,9 +87,7 @@ async function searchBlocks(client: ReceiptClient, search: Search, awaited: Tran
   for (let number = from; number <= last; number += 1n) {
     const block = await orNull(client.getBlock({ blockNumber: number, includeTransactions: true }), BlockNotFoundError);
     if (block === null) return POLL;
-    const transaction = block.transactions.find(
-      (candidate) => sameAddress(candidate.from, awaited.from) && candidate.nonce === awaited.nonce && candidate.hash !== awaited.hash,
-    );
+    const transaction = block.transactions.find((candidate) => sameAddress(candidate.from, awaited.from) && candidate.nonce === awaited.nonce && candidate.hash !== awaited.hash);
     search.searched = number;
     if (transaction !== undefined) {
       search.replacement = { transaction, reason: replacementReason(awaited, transaction) };
@@ -130,10 +128,10 @@ async function step(client: ReceiptClient, hash: Hex, search: Search): Promise<S
 
 /**
  * The pauses between steps and the single call to `onCannotConfirmYet`. A failed step is asked again after a pause
- * that doubles with each failure in a row; a step that searched blocks before it failed halves the count instead of
- * growing it, so a catch-up through an RPC that refuses some requests slows down without stalling. The callback comes
- * when that count reaches three, or when no receipt has been found `LATE_AFTER_MS` after the wait began; only the
- * latter slows the polling.
+ * that doubles with each failure in a row; a step that searched blocks before it failed first halves the count, so a
+ * catch-up through an RPC that refuses some requests settles at a steady pause without stalling or reaching three. The
+ * callback comes when that count reaches three, or when no receipt has been found `LATE_AFTER_MS` after the wait began;
+ * only the latter slows the polling.
  */
 class Pace {
   private failures = 0;
@@ -204,7 +202,7 @@ async function waitPatiently(client: ReceiptClient, hash: Hex, onCannotConfirmYe
  * and a replacement the search cannot see. A chain without a configured RPC rejects at once.
  */
 export function createReceiptWaiter(env: Env): ReceiptWaiter {
-  return async (chainId, hash: Hex, onCannotConfirmYet) => {
+  return async (chainId, hash, onCannotConfirmYet) => {
     const chain = getChain(chainId);
     const resolution = chain === undefined ? undefined : resolveReadRpcUrl(chain, env);
     if (resolution?.status !== "configured") throw new Error(noRpcError(chainId).message);

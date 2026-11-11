@@ -950,7 +950,7 @@ describe("CreatePage", () => {
   it.each([
     ["Non-negative number", "uint", { precision: 18 }],
     ["Date", "datetime", {}],
-  ] as const)("a %s question creates with 0 ruling options and no titles", async (label, type, precision) => {
+  ] as const)("a %s question creates with 0 ruling options and no titles, and a number question states its precision 18", async (label, type, extra) => {
     const { user, uploader } = await renderCreate();
     await chooseOption(user, "Question Type", label);
     expect(screen.queryByRole("textbox", { name: "Number of Options" })).toBeNull();
@@ -959,7 +959,7 @@ describe("CreatePage", () => {
     expect(screen.getByText(label)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Create dispute" }));
     await screen.findByText("Dispute 42 created");
-    expect(uploadedMetaEvidence(uploader).rulingOptions).toEqual({ type, titles: [], descriptions: [], ...precision });
+    expect(uploadedMetaEvidence(uploader).rulingOptions).toEqual({ type, titles: [], descriptions: [], ...extra });
     expect(createCall(writes.controller ?? fakeWriteController([])).args[2]).toBe(0n);
   });
 

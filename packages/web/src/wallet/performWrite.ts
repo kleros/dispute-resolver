@@ -125,9 +125,8 @@ export async function refreshAfter(options: WriteRun, receipt: WriteReceipt): Pr
 }
 
 /**
- * Waits for the receipt through the configured RPC, for as long as it takes. The waiter says it cannot confirm yet at
- * most once, after three failed looks in a row or when no receipt has been found 10 minutes after the wait began, and
- * the write stays submitted meanwhile, so its control stays busy and the same transaction is not sent twice. Only a receipt
+ * Waits for the receipt through the configured RPC, for as long as it takes. When the waiter says it cannot confirm yet,
+ * the write stays submitted, so its control stays busy and the same transaction is not sent twice. Only a receipt
  * ends a write as failed: a revert, or a cancellation or another replacing transaction, so a withdrawal sequence stops
  * there; a repricing counts as the call under its new hash. A chain whose receipt cannot be awaited at all ends the
  * write as sent but unconfirmed.

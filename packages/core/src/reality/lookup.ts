@@ -72,10 +72,6 @@ async function findLogs<const TEvent extends AbiEvent>(lookup: Lookup, client: R
   return findLatestLogsRemembering(client, request, memory);
 }
 
-function headBlock(client: ReadClient): Promise<bigint> {
-  return client.getBlockNumber({ cacheTime: 0 });
-}
-
 async function blockHeader(client: ReadClient, blockNumber: bigint): Promise<BlockHeader> {
   const block = await client.getBlock({ blockNumber, includeTransactions: false });
   return { number: Number(block.number), timestamp: Number(block.timestamp) };
@@ -113,7 +109,7 @@ async function findQuestionId(lookup: Lookup, arbitratorChainId: number, dispute
   const log =
     hinted ??
     requireSingleLog(
-      await findLogs(lookup, lookup.arbitrator, { address: entry.proxy, event, args: { _disputeID: disputeId }, fromBlock, toBlock: await headBlock(lookup.arbitrator) }),
+      await findLogs(lookup, lookup.arbitrator, { address: entry.proxy, event, args: { _disputeID: disputeId }, fromBlock, toBlock: await lookup.arbitrator.getBlockNumber() }),
       event.name,
     );
   return { questionId: requireHex(log.args._questionID, event.name), mappingBlock: blockOf(log) };
@@ -127,7 +123,7 @@ async function findQuestionId(lookup: Lookup, arbitratorChainId: number, dispute
  * Reality.eth chain head, which is always a valid bound.
  */
 async function crossChainQuestionBlockUpperBound(lookup: Lookup, mappingBlock: bigint): Promise<bigint> {
-  const latest = await headBlock(lookup.reality);
+  const latest = await lookup.reality.getBlockNumber();
   try {
     const target = (await blockHeader(lookup.arbitrator, mappingBlock)).timestamp + CLOCK_SKEW_MARGIN_S;
     let [low, high] = await Promise.all([blockHeader(lookup.reality, BigInt(lookup.entry.realityDeployBlock)), blockHeader(lookup.reality, latest)]);
