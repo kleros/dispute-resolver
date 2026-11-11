@@ -14,7 +14,7 @@ export function useWriteEnvironment(): WriteEnvironment {
   return useMemo(
     () => ({
       config,
-      waitForReceipt: (chainId: number, hash: Hex) => deps.waitForReceipt(chainId, hash),
+      waitForReceipt: (chainId: number, hash: Hex, onCannotConfirmYet?: () => void) => deps.waitForReceipt(chainId, hash, onCannotConfirmYet),
       simulate: (call: WriteCall, from: Address) => deps.simulate(call, from),
     }),
     [config, deps],

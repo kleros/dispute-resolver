@@ -1,11 +1,11 @@
-import type { Address, Hex, SimulationResult, WriteCall } from "@dispute-resolver/core";
+import type { Address, SimulationResult, WriteCall } from "@dispute-resolver/core";
 import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { writeContract } from "@wagmi/core";
 import { ContractFunctionExecutionError, ContractFunctionRevertedError, UserRejectedRequestError, type EIP1193RequestFn } from "viem";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { CoreDeps, WriteReceipt } from "../data";
+import type { CoreDeps, ReceiptWaiter, WriteReceipt } from "../data";
 import { ToastProvider, WriteToasts } from "../shell";
 import { createTestDeps } from "../test/data";
 import {
@@ -34,7 +34,7 @@ const WORDING: WriteWording = { doing: "funding “Yes” with 1 ETH", done: "Fu
 
 function renderWrite(
   wallet: TestWallet,
-  waitForReceipt: (chainId: number, hash: Hex) => Promise<WriteReceipt> = () => Promise.resolve(testReceipt()),
+  waitForReceipt: ReceiptWaiter = () => Promise.resolve(testReceipt()),
   simulate?: CoreDeps["simulate"],
 ) {
   const deps = createTestDeps({ waitForReceipt, ...(simulate === undefined ? {} : { simulate }) });
@@ -50,7 +50,7 @@ function renderWrite(
   return { ...view, statuses };
 }
 
-async function writeOnMainnet(waitForReceipt?: (chainId: number, hash: Hex) => Promise<WriteReceipt>, onMined?: WriteOptions["onMined"]) {
+async function writeOnMainnet(waitForReceipt?: ReceiptWaiter, onMined?: WriteOptions["onMined"]) {
   const { result } = renderWrite(await createConnectedTestWallet(), waitForReceipt);
   await act(async () => {
     await result.current.execute(testWriteBuild(1), { pageChainId: 1, onMined, wording: WORDING });
@@ -392,24 +392,44 @@ describe("useWrite outcomes", () => {
     expect(onMined).not.toHaveBeenCalled();
   });
 
-  it("a receipt that cannot be read is a failure that keeps the hash", async () => {
-    const result = await writeOnMainnet(() => Promise.reject(new Error("No RPC configured for chain 1.")));
-    expect(result.current.status).toEqual({
-      phase: "failed",
-      hash: TEST_TX_HASH,
-      explorerUrl: `https://etherscan.io/tx/${TEST_TX_HASH}`,
-      message: "The transaction could not be confirmed: No RPC configured for chain 1.",
+  it("a chain whose receipt cannot be awaited ends the write as sent, never as failed, with the hash and explorer link", async () => {
+    const onMined = vi.fn();
+    const result = await writeOnMainnet(() => Promise.reject(new Error("Reads on chain 1 are unavailable.")), onMined);
+    expect(result.current.status).toEqual({ phase: "unconfirmed", hash: TEST_TX_HASH, explorerUrl: `https://etherscan.io/tx/${TEST_TX_HASH}` });
+    expect(onMined).not.toHaveBeenCalled();
+  });
+
+  it("a waiter that cannot confirm yet keeps the write submitted, says so, and the receipt still ends it", async () => {
+    let mine: ((receipt: WriteReceipt) => void) | undefined;
+    const { result } = renderWrite(await createConnectedTestWallet(), (_chainId, _hash, onCannotConfirmYet) => {
+      onCannotConfirmYet?.();
+      return new Promise<WriteReceipt>((resolve) => {
+        mine = resolve;
+      });
     });
+    let outcome: Promise<unknown> = Promise.resolve();
+    act(() => {
+      outcome = result.current.execute(testWriteBuild(1), { pageChainId: 1, wording: WORDING });
+    });
+    const explorerUrl = `https://etherscan.io/tx/${TEST_TX_HASH}`;
+    await waitFor(() => {
+      expect(result.current.status).toEqual({ phase: "submitted", hash: TEST_TX_HASH, explorerUrl, cannotConfirmYet: true });
+    });
+    await act(async () => {
+      mine?.(testReceipt());
+      await outcome;
+    });
+    expect(result.current.status).toEqual({ phase: "mined", hash: TEST_TX_HASH, explorerUrl, receipt: testReceipt() });
   });
 
   it("the receipt is read through the data layer's configured RPC, on the call's chain", async () => {
     const wallet = await createConnectedTestWallet({ chainId: 100 });
-    const waitForReceipt = vi.fn<(chainId: number, hash: Hex) => Promise<WriteReceipt>>(() => Promise.resolve(testReceipt()));
+    const waitForReceipt = vi.fn<ReceiptWaiter>(() => Promise.resolve(testReceipt()));
     const { result } = renderWrite(wallet, waitForReceipt);
     await act(async () => {
       await result.current.execute(testWriteBuild(100), { pageChainId: 100, wording: WORDING });
     });
-    expect(waitForReceipt).toHaveBeenCalledWith(100, TEST_TX_HASH);
+    expect(waitForReceipt).toHaveBeenCalledWith(100, TEST_TX_HASH, expect.any(Function));
     expect(result.current.status.phase).toBe("mined");
   });
 

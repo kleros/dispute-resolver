@@ -21,6 +21,7 @@ const OUTCOME_PHASES: ReadonlySet<WriteStatus["phase"]> = new Set([
   "insufficient-funds",
   "account-changed",
   "mined",
+  "unconfirmed",
   "failed",
   "rejected",
 ]);
@@ -53,14 +54,21 @@ async function refreshAfter(run: WriteRun, receipt: WriteReceipt): Promise<void>
 }
 
 /** One status per microtask, so each intermediate status renders. */
-async function play(script: readonly WriteStatus[], run: WriteRun, report: (status: WriteStatus) => void): Promise<WriteOutcome> {
-  let last: WriteStatus = { phase: "idle" };
+async function playSteps(script: readonly WriteStatus[], run: WriteRun, report: (status: WriteStatus) => void, from: WriteStatus): Promise<WriteStatus> {
+  let last = from;
   for (const status of script) {
     await Promise.resolve();
     if (status.phase === "mined") await refreshAfter(run, status.receipt);
     report(status);
     last = status;
   }
+  return last;
+}
+
+/** `held`: the rest of the script, played once it arrives. */
+async function play(script: readonly WriteStatus[], run: WriteRun, report: (status: WriteStatus) => void, held?: Promise<readonly WriteStatus[]>): Promise<WriteOutcome> {
+  let last = await playSteps(script, run, report, { phase: "idle" });
+  if (held !== undefined) last = await playSteps(await held, run, report, last);
   if (!isOutcome(last)) throw new Error(`A fake write script must end with an outcome, not "${last.phase}".`);
   return last;
 }
@@ -82,6 +90,24 @@ function refusalOf(builds: readonly WriteBuild[]): WriteOutcome | null {
  * contract check; a script plays those.
  */
 export function fakeWriteController(script: readonly WriteStatus[], buildScripts: readonly (readonly WriteStatus[])[] = []): FakeWriteController {
+  return createFakeWriteController(script, buildScripts, undefined);
+}
+
+export interface HeldWriteController extends FakeWriteController {
+  /** Plays `rest` in every `execute` held so far and in any later one; its last status must be an outcome. */
+  release(rest: readonly WriteStatus[]): void;
+}
+
+/** As `fakeWriteController`, but each `execute` of `useWrite` plays `before` and then waits for `release`. */
+export function heldWriteController(before: readonly WriteStatus[]): HeldWriteController {
+  let release: (rest: readonly WriteStatus[]) => void = () => undefined;
+  const held = new Promise<readonly WriteStatus[]>((resolve) => {
+    release = resolve;
+  });
+  return { ...createFakeWriteController(before, [], held), release };
+}
+
+function createFakeWriteController(script: readonly WriteStatus[], buildScripts: readonly (readonly WriteStatus[])[], held: Promise<readonly WriteStatus[]> | undefined): FakeWriteController {
   const executions: { builds: readonly WriteBuild[]; options: WriteOptions | WriteSequenceOptions }[] = [];
 
   function useWrite(): WriteController {
@@ -101,7 +127,7 @@ export function fakeWriteController(script: readonly WriteStatus[], buildScripts
           report(refused);
           return refused;
         }
-        return play(script, writeOptions, report);
+        return play(script, writeOptions, report, held);
       },
       [observe, source],
     );

@@ -1,4 +1,4 @@
-import { parseAbiItem } from "viem";
+import { encodeErrorResult, parseAbi, parseAbiItem } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReadClient } from "../types";
 import { createReadClient, createReadClients, createRequestBudget, isLookupLimitError } from "./index";
@@ -39,6 +39,25 @@ describe("createReadClient", () => {
     const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL });
     expect(await client.getBlockNumber()).toBe(16n);
     expect(endpoint.posts.map((post) => post.url)).toEqual([READ_URL]);
+  });
+
+  it("a contract that answers with an off-chain lookup fails the read, and no URL the contract names is fetched", async () => {
+    const data = encodeErrorResult({
+      abi: parseAbi(["error OffchainLookup(address sender, string[] urls, bytes callData, bytes4 callbackFunction, bytes extraData)"]),
+      errorName: "OffchainLookup",
+      args: [address, ["https://lookup.example/{sender}/{data}.json"], "0x1234", "0x12345678", "0x"],
+    });
+    stubEndpoint(() => ({ error: { code: 3, message: "execution reverted", data } }));
+    const endpoint = globalThis.fetch;
+    const fetched: string[] = [];
+    vi.stubGlobal("fetch", (url: string, init: RequestInit) => {
+      fetched.push(url);
+      return endpoint(url, init);
+    });
+    const client = readClient({ REACT_APP_WEB3_PROVIDER_URL: READ_URL }, { retryCount: 0 });
+    const read = client.readContract({ address, abi: parseAbi(["function resolve(bytes name, bytes data) view returns (bytes)"]), functionName: "resolve", args: ["0x", "0x"] });
+    await expect(read).rejects.toThrow(/reverted/);
+    expect(fetched).toEqual([READ_URL]);
   });
 
   it("uses the literal read RPC of zkSync when its variable is unset", async () => {

@@ -8,6 +8,7 @@ import { CreateSteps } from "./CreateSteps";
 import { CreateSummary } from "./CreateSummary";
 import { initialForm, type CreateForm as Form } from "./draft";
 import { restoreCreateDraft, storeCreateDraft } from "./draftStorage";
+import { useHeldCreate } from "./useCreateDispute";
 
 const FEATURE_REQUEST_URL = "https://github.com/kleros/dispute-resolver/issues";
 
@@ -54,10 +55,13 @@ export function CreatePage() {
   const [stepChanges, setStepChanges] = useState(0);
   const navRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const held = useHeldCreate();
+  // The page that sent the create cleared this form's draft once the dispute was mined; an edit here must not bring it back.
+  const createdElsewhere = held.state?.kind === "created";
 
   useEffect(() => {
-    storeCreateDraft(chain.id, form);
-  }, [chain.id, form]);
+    if (!createdElsewhere) storeCreateDraft(chain.id, form);
+  }, [chain.id, form, createdElsewhere]);
 
   // The button that changed the step unmounts with it, so without this the focus falls to the body and the page keeps
   // the scroll offset of the step it left, which on a phone opens the summary near its Create button. "nearest" scrolls
@@ -73,6 +77,7 @@ export function CreatePage() {
     setStepChanges((count) => count + 1);
   };
   const returnToForm = () => {
+    held.dismiss();
     changeStep(null);
   };
   const resetForm = () => {
@@ -104,7 +109,7 @@ export function CreatePage() {
           ) : (
             <SectionBoundary key="summary" section="Create summary">
               <div data-create-step="summary" className={stepClass(1, stepChanges)}>
-                <CreateSummary chain={chain} input={input} documentName={form.primaryDocument?.fileName} headingRef={headingRef} onReturn={returnToForm} />
+                <CreateSummary chain={chain} input={input} documentName={form.primaryDocument?.fileName} headingRef={headingRef} onReturn={returnToForm} held={held.state} />
               </div>
             </SectionBoundary>
           )}

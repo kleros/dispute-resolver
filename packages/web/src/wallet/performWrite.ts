@@ -10,7 +10,7 @@ import {
   type WriteCall,
 } from "@dispute-resolver/core";
 import { getAccount, writeContract, type Config, type Connector } from "@wagmi/core";
-import type { WriteReceipt } from "../data";
+import type { ReceiptWaiter, WriteReceipt } from "../data";
 import { errorMessage, isChainMismatch, isUserRejection } from "./errors";
 import type { NeedsWalletGuard, WriteOutcome, WriteRun, WriteStatus, WrongChainGuard } from "./types";
 import { currentWalletState, toWalletState } from "./useWallet";
@@ -18,7 +18,7 @@ import { currentWalletState, toWalletState } from "./useWallet";
 /** What one write needs besides the call: wagmi to sign, and the configured read RPC for the check and the receipt. */
 export interface WriteEnvironment {
   readonly config: Config;
-  waitForReceipt(chainId: number, hash: Hex): Promise<WriteReceipt>;
+  readonly waitForReceipt: ReceiptWaiter;
   simulate(call: WriteCall, from: Address): Promise<SimulationResult>;
 }
 
@@ -125,16 +125,22 @@ export async function refreshAfter(options: WriteRun, receipt: WriteReceipt): Pr
 }
 
 /**
- * Waits for the receipt through the configured RPC; a revert or a lost receipt is a failure shown with the hash.
- * The receipt is that of the transaction actually mined: a repricing counts as the call under its new hash, and a
- * cancellation or another replacing transaction is a failure, so a withdrawal sequence stops there.
+ * Waits for the receipt through the configured RPC, for as long as it takes. The waiter says it cannot confirm yet at
+ * most once, after three failed looks in a row or when no receipt has been found 10 minutes after the wait began, and
+ * the write stays submitted meanwhile, so its control stays busy and the same transaction is not sent twice. Only a receipt
+ * ends a write as failed: a revert, or a cancellation or another replacing transaction, so a withdrawal sequence stops
+ * there; a repricing counts as the call under its new hash. A chain whose receipt cannot be awaited at all ends the
+ * write as sent but unconfirmed.
  */
-async function confirm(environment: WriteEnvironment, call: WriteCall, hash: Hex, options: WriteRun): Promise<WriteOutcome> {
+async function confirm(environment: WriteEnvironment, call: WriteCall, hash: Hex, options: WriteRun, report: Report): Promise<WriteOutcome> {
+  const submittedUrl = explorerUrl(call.chainId, hash);
   let receipt: WriteReceipt;
   try {
-    receipt = await environment.waitForReceipt(call.chainId, hash);
-  } catch (error) {
-    return { phase: "failed", hash, explorerUrl: explorerUrl(call.chainId, hash), message: `The transaction could not be confirmed: ${errorMessage(error, call.chainId)}` };
+    receipt = await environment.waitForReceipt(call.chainId, hash, () => {
+      report({ phase: "submitted", hash, explorerUrl: submittedUrl, cannotConfirmYet: true });
+    });
+  } catch {
+    return { phase: "unconfirmed", hash, explorerUrl: submittedUrl };
   }
   const minedHash = receipt.transactionHash;
   const url = explorerUrl(call.chainId, minedHash);
@@ -185,5 +191,5 @@ export async function performWrite(environment: WriteEnvironment, build: WriteBu
   if ("outcome" in signed) return settle(signed.outcome);
 
   report({ phase: "submitted", hash: signed.hash, explorerUrl: explorerUrl(build.call.chainId, signed.hash) });
-  return settle(await confirm(environment, build.call, signed.hash, options));
+  return settle(await confirm(environment, build.call, signed.hash, options, report));
 }

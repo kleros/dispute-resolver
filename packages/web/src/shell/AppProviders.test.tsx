@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { useConfig, WagmiContext } from "wagmi";
 import { buildAppConfig, type AppConfig } from "../env";
 import { TestDataProvider } from "../test/data";
-import { useWriteObserver } from "../wallet";
+import { useWriteObserver, useWritesInFlight, type WriteOutcome, type WritesInFlight } from "../wallet";
 import { expectRenderErrors } from "../test/shell";
 import { createColorSchemeStore } from "../theme";
 import { AppProviders } from "./AppProviders";
@@ -104,6 +104,17 @@ function PressedWrite() {
   return null;
 }
 
+const NEVER_SETTLES = new Promise<WriteOutcome>(() => undefined);
+
+/** Hands out the registry the routes see. */
+function WritesInFlightProbe({ onRegistry }: { readonly onRegistry: (writes: WritesInFlight) => void }) {
+  const writes = useWritesInFlight();
+  useEffect(() => {
+    onRegistry(writes);
+  }, [writes, onRegistry]);
+  return null;
+}
+
 function renderApp(dataProvider: ConfiguredProvider, children: ReactNode, pageScroll: PageScroll = "document") {
   return render(
     <AppProviders
@@ -161,6 +172,20 @@ describe("AppProviders", () => {
     const region = screen.getByRole("region", { name: "Notifications" });
     expect(await within(region).findByText("Waiting for your wallet")).toBeInTheDocument();
     expect(within(region).getByText("Confirm funding “Yes” with 1 ETH in your wallet.")).toBeInTheDocument();
+  });
+
+  it("provides the writes-in-flight registry to the routes", () => {
+    const seen: { registry: WritesInFlight | null } = { registry: null };
+    renderApp(
+      DataProbe,
+      <WritesInFlightProbe
+        onRegistry={(writes) => {
+          seen.registry = writes;
+        }}
+      />,
+    );
+    seen.registry?.hold("probe", NEVER_SETTLES);
+    expect(seen.registry?.find("probe")).toBe(NEVER_SETTLES);
   });
 
   it("where the page scroller scrolls the page, the routes render inside it", () => {

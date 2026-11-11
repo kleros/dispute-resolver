@@ -1,6 +1,6 @@
 export { installOfflineAppKitEnvironment } from "./appKitEnvironment";
 export { createFakeInjectedWallet, type FakeInjectedWalletOptions } from "./fakeInjectedWallet";
-export { fakeWriteController, type FakeWriteController } from "./fakeWriteController";
+export { fakeWriteController, heldWriteController, type FakeWriteController, type HeldWriteController } from "./fakeWriteController";
 export { observedWalletWrapper, recordingObserver, type ObservedAttempt, type ObservedReport, type RecordingObserver } from "./recordingObserver";
 export { TestWalletProvider } from "./TestWalletProvider";
 export { walletWrapper } from "./walletWrapper";

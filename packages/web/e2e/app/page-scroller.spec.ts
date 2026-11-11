@@ -278,6 +278,32 @@ async function expectThumbColours(page: Page): Promise<void> {
   await expect.poll(() => thumbFill(page)).toBe(rest);
 }
 
+/**
+ * Opens the Create page from the header's navigation on the list scrolled down, twice: the second time its code is loaded
+ * and its form is there at full height at once, so only the navigation itself can bring it to the top. The click is
+ * dispatched because Playwright's click() first scrolls the sticky link into view, which moves the list before it is left.
+ * Where the document scrolls, Back is left to the browser, which does not reliably restore the list's offset after a page
+ * shorter than that offset: `documentScrolls` checks that Create is at least that tall.
+ */
+async function expectCreateOpensAtTopAndBackReturns(page: Page, { documentScrolls = false }: { readonly documentScrolls?: boolean } = {}): Promise<void> {
+  const create = page.locator("nav[aria-label='Main'] a", { hasText: "Create" });
+  for (const visit of [1, 2]) {
+    await scrollPageTo(page, 1500);
+    const before = await settledScrollTop(page);
+    expect(before, "the list is too short to scroll").toBeGreaterThan(0);
+    await create.dispatchEvent("click");
+    await expect(page).toHaveURL(/\/1\/create$/);
+    await expect(page.locator("[data-create-step]").first()).toBeVisible();
+    const { maxTop } = await pageScroll(page);
+    expect(maxTop, "the Create page is too short to scroll").toBeGreaterThan(0);
+    if (documentScrolls) expect(maxTop, "the Create page is shorter than the list's offset").toBeGreaterThanOrEqual(before);
+    expect(await settledScrollTop(page), `visit ${String(visit)} kept the list's offset`).toBe(0);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/1\/ongoing$/);
+    await expect.poll(async () => Math.abs((await scrollTop(page)) - before)).toBeLessThanOrEqual(2);
+  }
+}
+
 /** Brings a card deep in the long list into view as find in page does, and expects it just below the sticky header. */
 async function expectDeepCardBelowHeader(page: Page): Promise<void> {
   const headerBottom = await bottomOf(page.getByRole("banner"));
@@ -672,6 +698,11 @@ test.describe("where the scrollbar takes layout space", () => {
     await expectBackReturnsToOffset(page);
   });
 
+  test("a page opened from the scrolled list that is at full height at once starts at its top, and Back returns the list to where it was scrolled", async ({ page, baseURL }) => {
+    await openLongList(page, baseURL);
+    await expectCreateOpensAtTopAndBackReturns(page);
+  });
+
   test("a window resize keeps the thumb in step with the page, with no sideways scroll", async ({ page, baseURL }) => {
     await openLongList(page, baseURL);
     await scrollPageTo(page, 1000);
@@ -866,6 +897,12 @@ test.describe("where scrollbars overlay the page, as on a phone", () => {
       window.scrollTo({ top: 600, behavior: "instant" });
     });
     expect(await page.evaluate(() => window.scrollY)).toBe(600);
+  });
+
+  test("a page opened from the scrolled list that is at full height at once starts at its top, and Back returns the list to where it was scrolled", async ({ page, baseURL }) => {
+    await loadLongList(page, baseURL);
+    await expect(page.locator("html")).not.toHaveAttribute("data-page-scroll");
+    await expectCreateOpensAtTopAndBackReturns(page, { documentScrolls: true });
   });
 
   test("printed while scrolled, the header heads the page and the content and footer follow it, as from the top, and the screen keeps its offset", async ({ page, baseURL }) => {

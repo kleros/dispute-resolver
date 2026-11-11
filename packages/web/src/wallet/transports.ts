@@ -10,7 +10,6 @@ import { noRpcError } from "../data";
 export function walletTransport(chain: ChainConfig, env: Env): Transport {
   const resolution = resolveReadRpcUrl(chain, env);
   if (resolution.status === "configured") return redactingHttp(resolution.url);
-  // A failed receipt shows this text, so it is the sentence a section without a read RPC shows.
   return custom({ request: () => Promise.reject(new Error(noRpcError(chain.id).message)) }, { retryCount: 0 });
 }
 

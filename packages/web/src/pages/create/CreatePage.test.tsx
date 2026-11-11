@@ -2,7 +2,7 @@ import * as core from "@dispute-resolver/core";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { numberToHex, toEventSelector } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { UploadResult } from "../../atlas";
@@ -19,10 +19,12 @@ import {
   TEST_TX_HASH,
   createTestWallet,
   fakeWriteController,
+  heldWriteController,
   holdChainSwitches,
   installOfflineAppKitEnvironment,
   testReceipt,
   type FakeWriteController,
+  type HeldWriteController,
   type TestWallet,
 } from "../../test/wallet";
 import { CreatePage } from "./index";
@@ -946,9 +948,9 @@ describe("CreatePage", () => {
   });
 
   it.each([
-    ["Non-negative number", "uint"],
-    ["Date", "datetime"],
-  ] as const)("a %s question creates with 0 ruling options and no titles", async (label, type) => {
+    ["Non-negative number", "uint", { precision: 18 }],
+    ["Date", "datetime", {}],
+  ] as const)("a %s question creates with 0 ruling options and no titles", async (label, type, precision) => {
     const { user, uploader } = await renderCreate();
     await chooseOption(user, "Question Type", label);
     expect(screen.queryByRole("textbox", { name: "Number of Options" })).toBeNull();
@@ -957,7 +959,7 @@ describe("CreatePage", () => {
     expect(screen.getByText(label)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Create dispute" }));
     await screen.findByText("Dispute 42 created");
-    expect(uploadedMetaEvidence(uploader).rulingOptions).toEqual({ type, titles: [], descriptions: [] });
+    expect(uploadedMetaEvidence(uploader).rulingOptions).toEqual({ type, titles: [], descriptions: [], ...precision });
     expect(createCall(writes.controller ?? fakeWriteController([])).args[2]).toBe(0n);
   });
 
@@ -1104,6 +1106,174 @@ describe("CreatePage", () => {
 
     expect(uploader.uploadJson).toHaveBeenCalledTimes(1);
     expect(writes.controller?.executions).toHaveLength(0);
+  });
+
+  describe("a create still in flight when the page is opened again", () => {
+    const ONGOING_PATH = `/${String(SEPOLIA)}/ongoing`;
+    const [MINED_42] = minedWith(42n).slice(-1);
+    const [MINED_WITHOUT_ID] = minedWith(null).slice(-1);
+    if (MINED_42 === undefined || MINED_WITHOUT_ID === undefined) throw new Error("A mined status is needed.");
+
+    /** The Create page at its own path and a stand-in elsewhere, so leaving and coming back remounts it under the same providers. */
+    function CreateOrOngoing() {
+      const { pathname } = useLocation();
+      return (
+        <>
+          {pathname.endsWith("/create") ? <CreatePage /> : <p>Ongoing disputes</p>}
+          <Link to={ONGOING_PATH}>Ongoing</Link>
+          <Link to={CREATE_PATH}>Create</Link>
+        </>
+      );
+    }
+
+    /** Leaves Create while the transaction is unmined and opens it again, which starts on the form; `summary` then continues to the summary. */
+    async function createThenLeaveAndReturn(step: "form" | "summary" = "summary"): Promise<Rendered & { readonly held: HeldWriteController }> {
+      const held = heldWriteController(minedWith(42n).slice(0, 2));
+      writes.controller = held;
+      const uploader = fakeUploader();
+      const wallet = createTestWallet({ chainId: SEPOLIA });
+      const user = userEvent.setup();
+      const result = renderWithProviders(<CreateOrOngoing />, { path: CREATE_PATH, wallet, uploader });
+      await act(async () => {
+        await wallet.connect();
+      });
+      await fillToSummary(user);
+      await user.click(screen.getByRole("button", { name: "Create dispute" }));
+      expect(await within(toastRegion()).findByText("Transaction submitted")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("link", { name: "Ongoing" }));
+      expect(await screen.findByText("Ongoing disputes")).toBeInTheDocument();
+      await user.click(screen.getByRole("link", { name: "Create" }));
+      if (step === "summary") await toSummary(user);
+      else await screen.findByRole("button", { name: "Continue" });
+      return { user, uploader, wallet, currentPath: result.currentPath, unmount: result.unmount, held };
+    }
+
+    it("keeps Create and Return disabled while the earlier create is unmined", async () => {
+      const { uploader, held } = await createThenLeaveAndReturn();
+      expect(screen.getByRole("button", { name: "Creating the dispute" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Return" })).toBeDisabled();
+      expect(held.executions).toHaveLength(1);
+      expect(uploader.uploadJson).toHaveBeenCalledTimes(1);
+    });
+
+    it("opens the created dispute when the transaction is mined while the reopened page is still on the form, and does not store its draft again", async () => {
+      const { user, uploader, held, currentPath } = await createThenLeaveAndReturn("form");
+      act(() => {
+        held.release([MINED_42]);
+      });
+      expect(await within(toastRegion()).findByText("Created dispute 42.")).toBeInTheDocument();
+      await user.type(screen.getByRole("textbox", { name: "Title" }), "!");
+      expect(window.localStorage.getItem(`dr-create-draft:${String(SEPOLIA)}`)).toBeNull();
+      await waitFor(
+        () => {
+          expect(currentPath()).toBe(`/${String(SEPOLIA)}/cases/42`);
+        },
+        { timeout: 3000 },
+      );
+      expect(held.executions).toHaveLength(1);
+      expect(uploader.uploadJson).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows the created dispute on a summary opened after the transaction was mined, with Create disabled", async () => {
+      const { user, held } = await createThenLeaveAndReturn("form");
+      act(() => {
+        held.release([MINED_42]);
+      });
+      expect(await within(toastRegion()).findByText("Created dispute 42.")).toBeInTheDocument();
+      await toSummary(user);
+      expect(screen.getByText("Dispute 42 created")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Create dispute" })).toBeDisabled();
+      expect(held.executions).toHaveLength(1);
+    });
+
+    it("reports a transaction mined without a dispute ID on the summary opened after it, once, and lets Create send a new one", async () => {
+      const { user, uploader, held, currentPath } = await createThenLeaveAndReturn("form");
+      act(() => {
+        held.release([MINED_WITHOUT_ID]);
+      });
+      expect(await within(toastRegion()).findByText("The transaction was mined.")).toBeInTheDocument();
+      await toSummary(user);
+      expect(screen.getByText("Dispute ID not found")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Return" }));
+      await toSummary(user);
+      expect(screen.queryByText("Dispute ID not found")).toBeNull();
+      await user.click(screen.getByRole("button", { name: "Create dispute" }));
+      await waitFor(() => {
+        expect(held.executions).toHaveLength(2);
+      });
+      expect(uploader.uploadJson).toHaveBeenCalledTimes(2);
+      expect(currentPath()).toBe(CREATE_PATH);
+    });
+
+    it("re-enables Create once a transaction the network cannot confirm is reported", async () => {
+      const { held } = await createThenLeaveAndReturn();
+      act(() => {
+        held.release([{ phase: "unconfirmed", hash: TEST_TX_HASH, explorerUrl: null }]);
+      });
+      expect(await within(toastRegion()).findByText("Transaction sent")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Create dispute" })).toBeEnabled();
+      });
+      expect(screen.getByRole("button", { name: "Return" })).toBeEnabled();
+    });
+
+    it("shows the created dispute once the transaction is mined with it, and opens it after 2 seconds", async () => {
+      const { held, currentPath } = await createThenLeaveAndReturn();
+      act(() => {
+        held.release([MINED_42]);
+      });
+      expect(await screen.findByText("Dispute 42 created")).toBeInTheDocument();
+      expect(within(toastRegion()).getByText("Created dispute 42.")).toBeInTheDocument();
+      expect(window.localStorage.getItem(`dr-create-draft:${String(SEPOLIA)}`)).toBeNull();
+      await waitFor(
+        () => {
+          expect(currentPath()).toBe(`/${String(SEPOLIA)}/cases/42`);
+        },
+        { timeout: 3000 },
+      );
+    });
+
+    it("reports a transaction mined without a dispute ID and re-enables Create", async () => {
+      const { held, currentPath } = await createThenLeaveAndReturn();
+      act(() => {
+        held.release([MINED_WITHOUT_ID]);
+      });
+      expect(await screen.findByText("Dispute ID not found")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Create dispute" })).toBeEnabled();
+      expect(currentPath()).toBe(CREATE_PATH);
+    });
+
+    it("re-enables Create once the transaction fails, leaving the outcome to its toast", async () => {
+      const { held } = await createThenLeaveAndReturn();
+      act(() => {
+        held.release([{ phase: "failed", hash: TEST_TX_HASH, explorerUrl: null, message: "execution reverted" }]);
+      });
+      expect(await within(toastRegion()).findByText("Transaction failed")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Create dispute" })).toBeEnabled();
+      });
+      expect(screen.getByRole("button", { name: "Return" })).toBeEnabled();
+      expect(screen.queryByText("Dispute ID not found")).toBeNull();
+    });
+
+    it("does not make Create busy on another chain", async () => {
+      const { user, uploader, wallet, held } = await createThenLeaveAndReturn();
+      await act(async () => {
+        await wallet.changeChain(GNOSIS);
+      });
+      await waitFor(() => {
+        expect(core.listCourts).toHaveBeenLastCalledWith(expect.objectContaining({ chainId: GNOSIS }));
+      });
+      await fillToSummary(user);
+      const create = screen.getByRole("button", { name: "Create dispute" });
+      expect(create).toBeEnabled();
+      await user.click(create);
+      await waitFor(() => {
+        expect(held.executions).toHaveLength(2);
+      });
+      expect(uploader.uploadJson).toHaveBeenCalledTimes(2);
+    });
   });
 
   it("without a wallet the primary button is Connect and opens the wallet modal on the page chain, with no second Connect button", async () => {

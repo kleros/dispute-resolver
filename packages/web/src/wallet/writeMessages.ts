@@ -16,6 +16,9 @@ const REFUSALS: Readonly<Record<WriteRefusal, string>> = {
   "funding-closed": "Funding for this ruling has closed, so nothing was sent.",
 };
 
+/** A transaction sent but not confirmed may still be mined: a second one could repeat it. */
+export const CHECK_BEFORE_RETRY = "Check the transaction on the block explorer before trying again.";
+
 interface WriteMessage {
   readonly variant: NoticeVariant;
   readonly title: string;
@@ -56,9 +59,13 @@ export function writeMessage(status: Exclude<WriteStatus, { readonly phase: "idl
     case "pending":
       return { variant: "info", title: "Waiting for your wallet", body: "Confirm the transaction in your wallet." };
     case "submitted":
-      return { variant: "info", title: "Transaction submitted", body: "Waiting for the transaction to be mined." };
+      return status.cannotConfirmYet === true
+        ? { variant: "info", title: "Transaction not confirmed yet", body: `The transaction was sent, but the Dispute Resolver cannot confirm it yet and keeps checking. ${CHECK_BEFORE_RETRY}` }
+        : { variant: "info", title: "Transaction submitted", body: "Waiting for the transaction to be mined." };
     case "mined":
       return { variant: "success", title: "Transaction confirmed", body: "The transaction was mined." };
+    case "unconfirmed":
+      return { variant: "info", title: "Transaction sent", body: `The Dispute Resolver cannot confirm the transaction on this network. ${CHECK_BEFORE_RETRY}` };
     case "failed":
       return { variant: "error", title: "Transaction failed", body: status.message };
     case "rejected":

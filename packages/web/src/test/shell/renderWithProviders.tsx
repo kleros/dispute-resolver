@@ -6,6 +6,7 @@ import { createColorSchemeStore } from "../../theme";
 import { TestAtlasProvider } from "../atlas";
 import { TestDataProvider } from "../data";
 import { renderAtPath, type RoutedRenderResult } from "../routing";
+import { WritesInFlightProvider } from "../../wallet";
 import { TestWalletProvider, createTestWallet, type TestWallet } from "../wallet";
 
 export interface RenderWithProvidersOptions {
@@ -35,9 +36,11 @@ export function renderWithProviders(ui: ReactElement, options: RenderWithProvide
           <TestAtlasProvider uploader={uploader}>
             <ToastProvider>
               <WriteToasts>
-                <ChainNoticeToasts>
-                  <ColorSchemeProvider store={colorScheme}>{children}</ColorSchemeProvider>
-                </ChainNoticeToasts>
+                <WritesInFlightProvider>
+                  <ChainNoticeToasts>
+                    <ColorSchemeProvider store={colorScheme}>{children}</ColorSchemeProvider>
+                  </ChainNoticeToasts>
+                </WritesInFlightProvider>
               </WriteToasts>
             </ToastProvider>
           </TestAtlasProvider>

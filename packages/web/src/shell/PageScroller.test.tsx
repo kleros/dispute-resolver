@@ -269,6 +269,12 @@ function HistoryButtons() {
       <button type="button" onClick={() => void navigate(1)}>
         Forward
       </button>
+      <button type="button" onClick={() => void navigate("/other", { replace: true })}>
+        Replace with another page
+      </button>
+      <button type="button" onClick={() => void navigate({ search: "?period=appeal" }, { replace: true })}>
+        Filter the page
+      </button>
     </>
   );
 }
@@ -305,20 +311,56 @@ describe("ScrollMemory", () => {
     expect(scroller.scrollTop).toBe(120);
   });
 
-  it("a new page keeps the offset the browser leaves it, as a scrolling document does", async () => {
+  it("a page opened by a link starts at its top, and Back returns the page left to where it was scrolled", async () => {
     renderRoutes("container");
     const scroller = pageScroller();
     const offset = trackScrollTop(scroller);
     offset.set(300);
     await userEvent.click(screen.getByRole("link", { name: "Open the case" }));
+    expect(screen.getByRole("link", { name: "Open another page" })).toBeInTheDocument();
+    expect(scroller.scrollTop).toBe(0);
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(scroller.scrollTop).toBe(300);
   });
 
-  it("does nothing where the document scrolls the page, which the browser restores itself", async () => {
-    renderRoutes("document");
-    await userEvent.click(screen.getByRole("link", { name: "Open the case" }));
-    await userEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(document.querySelector(".dr-page-scroller")).toBeNull();
+  it("a page that replaces the current entry starts at its top", async () => {
+    renderRoutes("container");
+    const scroller = pageScroller();
+    const offset = trackScrollTop(scroller);
+    offset.set(300);
+    await userEvent.click(screen.getByRole("button", { name: "Replace with another page" }));
+    expect(screen.getByText("Another page")).toBeInTheDocument();
+    expect(scroller.scrollTop).toBe(0);
+  });
+
+  it("an entry replaced on the same page, as a list filter does, keeps the page where it is", async () => {
+    renderRoutes("container");
+    const scroller = pageScroller();
+    const offset = trackScrollTop(scroller);
+    offset.set(300);
+    await userEvent.click(screen.getByRole("button", { name: "Filter the page" }));
     expect(screen.getByRole("link", { name: "Open the case" })).toBeInTheDocument();
+    expect(scroller.scrollTop).toBe(300);
+  });
+
+  it("where the document scrolls the page, a page opened by a link starts at its top, and Back leaves the offset to the browser", async () => {
+    const { unmount } = renderRoutes("document");
+    const scrolling = document.scrollingElement ?? document.documentElement;
+    if (!(scrolling instanceof HTMLElement)) throw new Error("The document has no scrolling element.");
+    const offset = trackScrollTop(scrolling);
+    try {
+      expect(document.querySelector(".dr-page-scroller")).toBeNull();
+      offset.set(300);
+      await userEvent.click(screen.getByRole("link", { name: "Open the case" }));
+      expect(scrolling.scrollTop).toBe(0);
+      offset.set(120);
+      await userEvent.click(screen.getByRole("button", { name: "Back" }));
+      expect(screen.getByRole("link", { name: "Open the case" })).toBeInTheDocument();
+      expect(scrolling.scrollTop).toBe(120);
+    } finally {
+      unmount();
+      Reflect.deleteProperty(scrolling, "scrollTop");
+      Reflect.deleteProperty(scrolling, "scrollTo");
+    }
   });
 });

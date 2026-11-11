@@ -37,11 +37,18 @@ export interface WriteReceipt {
   readonly blockNumber: bigint;
   readonly logs: readonly { readonly address: string; readonly topics: readonly Hex[] }[];
   /**
-   * Set when the awaited transaction was replaced and this is the receipt of the replacement, with viem's
-   * `ReplacementReason`. Only `repriced` executed the awaited call.
+   * Set when the awaited transaction was replaced and this is the receipt of the replacement, with the reason, as viem
+   * names it. Only `repriced` executed the awaited call.
    */
   readonly replacement?: { readonly reason: "cancelled" | "replaced" | "repriced" };
 }
+
+/**
+ * Resolves with the receipt of the transaction mined for `hash`, however long that takes. `onCannotConfirmYet` is called
+ * at most once, when the read RPC has failed three looks in a row or no receipt has been found after 10 minutes, while
+ * the wait goes on. Rejects when the chain has no read RPC to wait through.
+ */
+export type ReceiptWaiter = (chainId: number, hash: Hex, onCannotConfirmYet?: () => void) => Promise<WriteReceipt>;
 
 export interface CoreDeps {
   readonly env: Env;
@@ -52,7 +59,7 @@ export interface CoreDeps {
   readonly realityCache: RealityQuestionCache;
   readonly gateway: GatewayOrigin;
   readonly registry: Registry;
-  waitForReceipt(chainId: number, hash: Hex): Promise<WriteReceipt>;
+  readonly waitForReceipt: ReceiptWaiter;
   /** Checks a write against its contract through the call chain's read RPC, as `from` would send it; never the wallet's transport. */
   simulate(call: WriteCall, from: Address): Promise<SimulationResult>;
 }

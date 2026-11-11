@@ -78,15 +78,20 @@ export type WriteStatus =
   | { readonly phase: "insufficient-funds" }
   | { readonly phase: "account-changed" }
   | { readonly phase: "pending" }
-  | { readonly phase: "submitted"; readonly hash: Hex; readonly explorerUrl: string | null }
+  /** `cannotConfirmYet`: the receipt waiter cannot confirm yet (three failed looks in a row, or no receipt after 10 minutes); the wait goes on. */
+  | { readonly phase: "submitted"; readonly hash: Hex; readonly explorerUrl: string | null; readonly cannotConfirmYet?: true }
   | { readonly phase: "mined"; readonly hash: Hex; readonly explorerUrl: string | null; readonly receipt: WriteReceipt }
+  /** Sent, but its receipt cannot be awaited on this chain: not a failure, since the transaction may well be mined. */
+  | { readonly phase: "unconfirmed"; readonly hash: Hex; readonly explorerUrl: string | null }
   | { readonly phase: "failed"; readonly hash: Hex | null; readonly explorerUrl: string | null; readonly message: string }
   | { readonly phase: "rejected" };
 
 /** How a write ended. Nothing is signed for `refused`, `needs-wallet`, `wrong-chain` and the three ends of the check. */
 export type WriteOutcome = Extract<
   WriteStatus,
-  { readonly phase: "refused" | "needs-wallet" | "wrong-chain" | "refused-by-contract" | "insufficient-funds" | "account-changed" | "mined" | "failed" | "rejected" }
+  {
+    readonly phase: "refused" | "needs-wallet" | "wrong-chain" | "refused-by-contract" | "insufficient-funds" | "account-changed" | "mined" | "unconfirmed" | "failed" | "rejected";
+  }
 >;
 
 /**

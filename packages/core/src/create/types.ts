@@ -76,7 +76,13 @@ export interface CreatedMetaEvidence {
   readonly description: string;
   readonly aliases: Readonly<Record<Address, string>>;
   readonly question: string;
-  readonly rulingOptions: { readonly type: CreateQuestionType; readonly titles: readonly string[]; readonly descriptions: readonly string[] };
+  readonly rulingOptions: {
+    readonly type: CreateQuestionType;
+    readonly titles: readonly string[];
+    readonly descriptions: readonly string[];
+    /** Decimals of the answer; only a `uint` question has it. */
+    readonly precision?: number;
+  };
   /** `""` without a document. */
   readonly fileURI: CanonicalIpfsPath | "";
   /** Always `/ipfs/<defaultScriptCid>`. */

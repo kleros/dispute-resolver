@@ -17,6 +17,8 @@ const PENDING: WriteStatus = { phase: "pending" };
 const SUBMITTED: WriteStatus = { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: EXPLORER };
 const MINED: WriteStatus = { phase: "mined", hash: TEST_TX_HASH, explorerUrl: EXPLORER, receipt: testReceipt() };
 const REJECTED: WriteStatus = { phase: "rejected" };
+const CANNOT_CONFIRM_YET: WriteStatus = { ...SUBMITTED, cannotConfirmYet: true };
+const UNCONFIRMED: WriteStatus = { phase: "unconfirmed", hash: TEST_TX_HASH, explorerUrl: EXPLORER };
 const SWITCH = "Switch to Ethereum Mainnet";
 
 describe("writeToast", () => {
@@ -42,6 +44,29 @@ describe("writeToast", () => {
       link: LINK,
       autoHideMs: null,
     });
+  });
+
+  it("submitted while the transaction cannot be confirmed yet says so and to check the transaction before trying again, links it, with no clock", () => {
+    expect(writeToast(CANNOT_CONFIRM_YET, WORDING)).toEqual<ToastInput>({
+      variant: "sync",
+      title: "Transaction not confirmed yet",
+      message:
+        "Funding “Red” with 336 xDai was sent, but the Dispute Resolver cannot confirm it yet and keeps checking. Check the transaction on the block explorer before trying again.",
+      link: LINK,
+      autoHideMs: null,
+    });
+  });
+
+  it("a transaction that cannot be confirmed on its network is sent, not failed: neutral, linked, with no clock", () => {
+    expect(writeToast(UNCONFIRMED, WORDING)).toEqual<ToastInput>({
+      variant: "sync",
+      title: "Transaction sent",
+      message:
+        "Funding “Red” with 336 xDai was sent, but the Dispute Resolver cannot confirm it on this network. Check the transaction on the block explorer before trying again.",
+      link: LINK,
+      autoHideMs: null,
+    });
+    expect(writeToast(UNCONFIRMED, WORDING, { index: 1, total: 2 })?.message).toMatch(/before trying again\. The first transaction went through\.$/);
   });
 
   it("mined states what was done, links it and closes after 10 seconds", () => {
@@ -283,6 +308,35 @@ describe("WriteToasts", () => {
     report(attempt, MINED);
     expect(region().getByText("Transaction confirmed")).toBeInTheDocument();
     expect(toasts()).toHaveLength(1);
+  });
+
+  it("a closed toast that cannot confirm its transaction yet comes back with the outcome", async () => {
+    const user = userEvent.setup();
+    const harness = renderWriteToasts(await createConnectedTestWallet({ chainId: 1 }));
+    const attempt = harness().observe("fund");
+    report(attempt, PENDING);
+    report(attempt, SUBMITTED);
+    report(attempt, CANNOT_CONFIRM_YET);
+    expect(toasts()).toHaveLength(1);
+    expect(region().getByText("Transaction not confirmed yet")).toBeInTheDocument();
+    expect(toasts()[0]).not.toHaveAttribute("data-surface");
+    await user.click(region().getByRole("button", { name: "Dismiss notification" }));
+    await waitFor(() => {
+      expect(toasts()).toHaveLength(0);
+    });
+    report(attempt, MINED);
+    expect(toasts()).toHaveLength(1);
+    expect(region().getByText("Transaction confirmed")).toBeInTheDocument();
+  });
+
+  it("a second press keeps the toast of a transaction sent but not confirmed and opens a new one", async () => {
+    const harness = renderWriteToasts(await createConnectedTestWallet({ chainId: 1 }));
+    const first = harness().observe("fund");
+    for (const status of [PENDING, SUBMITTED, UNCONFIRMED]) report(first, status);
+    expect(toasts()[0]).not.toHaveAttribute("data-surface");
+    report(harness().observe("fund"), PENDING);
+    expect(toasts()).toHaveLength(2);
+    expect(region().getByText("Transaction sent")).toBeInTheDocument();
   });
 
   it("a second press of the same control replaces its refusal instead of stacking a copy", async () => {

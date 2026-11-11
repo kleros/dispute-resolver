@@ -182,6 +182,8 @@ export interface CreateSummaryProps {
   readonly documentName?: string;
   readonly headingRef?: Ref<HTMLHeadingElement>;
   readonly onReturn: () => void;
+  /** The page's create still in flight, or settled, from an earlier visit; see `useHeldCreate`. */
+  readonly held?: CreateActionState | null;
 }
 
 /**
@@ -189,8 +191,8 @@ export interface CreateSummaryProps {
  * is on the page chain, and always without an upload service. Create signs in to Atlas when needed instead of requiring
  * a separate sign-in.
  */
-export function CreateSummary({ chain, input, documentName, headingRef, onReturn }: CreateSummaryProps) {
-  const action = useCreateDispute(input);
+export function CreateSummary({ chain, input, documentName, headingRef, onReturn, held = null }: CreateSummaryProps) {
+  const action = useCreateDispute(input, held);
   const wallet = useWallet();
   const connect = useConnectWallet();
   const uploader = useAtlasUpload();

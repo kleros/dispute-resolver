@@ -104,6 +104,10 @@ function keepOffsetThroughPrint(scrolling: Element): () => void {
   };
 }
 
+function scrollToTop(scrolling: Element): void {
+  if (scrolling.scrollTop !== 0) scrolling.scrollTo({ top: 0, behavior: "instant" });
+}
+
 function ContainerScroller({ children }: { readonly children?: ReactNode }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
 
@@ -144,15 +148,18 @@ export function PageScroller({ scroll, children }: PageScrollerProps) {
 }
 
 /**
- * A browser restores the offset on Back and Forward for a scrolling document, never for an element inside it. Sits inside
- * the router, under PageScroller.
+ * A page reached by a link or a redirect starts at its top, as on a site whose every page loads anew; an entry replaced on
+ * the same page, as a list filter does, leaves it where it is. On Back and Forward a browser restores the offset of a
+ * scrolling document itself, never of an element inside it, so the page scroller's is put back here. Sits inside the
+ * router, under PageScroller.
  */
 export function ScrollMemory() {
   const scrollerRef = useContext(ScrollerContext);
-  const { key } = useLocation();
+  const { key, pathname } = useLocation();
   const navigationType = useNavigationType();
   const offsets = useRef<Map<string, number>>(new Map());
   const currentKey = useRef(key);
+  const currentPathname = useRef(pathname);
 
   useEffect(() => {
     const scroller = scrollerRef?.current;
@@ -170,13 +177,23 @@ export function ScrollMemory() {
   // After the new page's elements are in place and before paint, so an offset lands on the page it belongs to. On the
   // first render the scroller's ref is not attached yet (a child's layout effect runs first); the effect above records it.
   useLayoutEffect(() => {
+    const newPage = navigationType === NavigationType.Push || (navigationType === NavigationType.Replace && pathname !== currentPathname.current);
     currentKey.current = key;
-    const scroller = scrollerRef?.current;
-    if (scroller === null || scroller === undefined) return;
+    currentPathname.current = pathname;
+    if (scrollerRef === null) {
+      if (newPage) scrollToTop(document.scrollingElement ?? document.documentElement);
+      return;
+    }
+    const scroller = scrollerRef.current;
+    if (scroller === null) return;
     const offset = offsets.current.get(key);
-    if (navigationType === NavigationType.Pop && offset !== undefined) scroller.scrollTo({ top: offset, behavior: "instant" });
-    else offsets.current.set(key, scroller.scrollTop);
-  }, [key, navigationType, scrollerRef]);
+    if (navigationType === NavigationType.Pop && offset !== undefined) {
+      scroller.scrollTo({ top: offset, behavior: "instant" });
+      return;
+    }
+    if (newPage) scrollToTop(scroller);
+    offsets.current.set(key, scroller.scrollTop);
+  }, [key, pathname, navigationType, scrollerRef]);
 
   return null;
 }

@@ -69,12 +69,13 @@ function withDefaults(options: BudgetedReadClientOptions | undefined): Transport
 
 /**
  * Built only from the chain's configured read RPC, never from a wallet. A lookup with a request budget builds its own
- * client so that every attempt it sends is counted.
+ * client so that every attempt it sends is counted. CCIP-Read is off: an off-chain lookup revert fails the read, and no
+ * URL named by a contract is fetched.
  */
 export function createReadClient(chain: ChainConfig, env: Env, options?: BudgetedReadClientOptions): ReadClientResolution {
   const rpc = resolveReadRpcUrl(chain, env);
   return rpc.status === "configured"
-    ? { status: "ok", client: createPublicClient({ transport: readTransport(rpc.url, withDefaults(options)) }) }
+    ? { status: "ok", client: createPublicClient({ transport: readTransport(rpc.url, withDefaults(options)), ccipRead: false }) }
     : { status: "unconfigured", chainId: chain.id };
 }
 

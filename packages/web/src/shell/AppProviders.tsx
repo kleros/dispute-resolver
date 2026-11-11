@@ -1,5 +1,5 @@
 import { BrowserRouter } from "react-router";
-import { WalletProvider } from "../wallet";
+import { WalletProvider, WritesInFlightProvider } from "../wallet";
 import { ChainNoticeToasts } from "./ChainNoticeToasts";
 import { ColorSchemeProvider } from "./colorScheme";
 import { PageScroller, ScrollMemory } from "./PageScroller";
@@ -26,9 +26,11 @@ export function AppProviders({ config, dataProvider: DataLayer, atlasGate: Atlas
                 <ScrollMemory />
                 <ToastProvider>
                   <WriteToasts>
-                    <ChainNoticeToasts>
-                      <ColorSchemeProvider store={colorScheme}>{children}</ColorSchemeProvider>
-                    </ChainNoticeToasts>
+                    <WritesInFlightProvider>
+                      <ChainNoticeToasts>
+                        <ColorSchemeProvider store={colorScheme}>{children}</ColorSchemeProvider>
+                      </ChainNoticeToasts>
+                    </WritesInFlightProvider>
                   </WriteToasts>
                 </ToastProvider>
               </BrowserRouter>

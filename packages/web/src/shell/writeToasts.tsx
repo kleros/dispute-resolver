@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useLocation } from "react-router";
 import {
+  CHECK_BEFORE_RETRY,
   WriteGuardAction,
   WriteObserverProvider,
   chainName,
@@ -24,7 +25,7 @@ const MINED_FALLBACK = "The transaction was mined.";
 
 type Guard = NeedsWalletGuard | WrongChainGuard;
 type InFlight = Extract<WriteStatus, { readonly phase: "pending" | "submitted" }>;
-type Outcome = Extract<WriteStatus, { readonly phase: "mined" | "failed" | "rejected" }>;
+type Outcome = Extract<WriteStatus, { readonly phase: "mined" | "unconfirmed" | "failed" | "rejected" }>;
 type CheckEnd = Extract<WriteStatus, { readonly phase: "refused" | "refused-by-contract" | "insufficient-funds" | "account-changed" }>;
 type Mined = Extract<WriteStatus, { readonly phase: "mined" }>;
 
@@ -77,6 +78,15 @@ function explorerLink(explorerUrl: string | null): { readonly link?: ToastLink }
 
 function inFlightToast(status: InFlight, { doing }: WriteWording, progress: WriteProgress | undefined): ToastInput {
   if (status.phase === "pending") return { variant: "sync", title: counted("Waiting for your wallet", progress), message: `Confirm ${doing} in your wallet.`, autoHideMs: null };
+  if (status.cannotConfirmYet === true) {
+    return {
+      variant: "sync",
+      title: counted("Transaction not confirmed yet", progress),
+      message: `${capitalize(doing)} was sent, but the Dispute Resolver cannot confirm it yet and keeps checking. ${CHECK_BEFORE_RETRY}`,
+      ...explorerLink(status.explorerUrl),
+      autoHideMs: null,
+    };
+  }
   return {
     variant: "sync",
     title: counted("Transaction submitted", progress),
@@ -96,6 +106,14 @@ function outcomeToast(status: Outcome, wording: WriteWording, progress: WritePro
         message: doneText(wording, status),
         ...explorerLink(status.explorerUrl),
         autoHideMs: isLastItem(progress) ? OUTCOME_MS : null,
+      };
+    case "unconfirmed":
+      return {
+        variant: "sync",
+        title: counted("Transaction sent", progress),
+        message: `${capitalize(wording.doing)} was sent, but the Dispute Resolver cannot confirm it on this network. ${CHECK_BEFORE_RETRY}${partial}`,
+        ...explorerLink(status.explorerUrl),
+        autoHideMs: null,
       };
     case "failed":
       return {
@@ -165,6 +183,7 @@ export function writeToast(status: WriteStatus, wording: WriteWording, progress?
     case "submitted":
       return inFlightToast(status, wording, progress);
     case "mined":
+    case "unconfirmed":
     case "failed":
     case "rejected":
       return outcomeToast(status, wording, progress);

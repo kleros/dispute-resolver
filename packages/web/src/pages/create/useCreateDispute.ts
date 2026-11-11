@@ -11,12 +11,12 @@ import {
   type Outcome,
   type Unavailable,
 } from "@dispute-resolver/core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAtlasUpload, type UploadError, type UploadResult } from "../../atlas";
 import { noRpcError, useCoreDeps, type WriteReceipt } from "../../data";
 import { paths, usePageChain } from "../../routing";
-import { useWrite, useWriteAccess, type WriteAccess, type WriteStatus, type WriteWording } from "../../wallet";
+import { useWrite, useWriteAccess, useWritesInFlight, type WriteAccess, type WriteOutcome, type WriteStatus, type WriteWording } from "../../wallet";
 import { clearCreateDraft } from "./draftStorage";
 
 const NAVIGATION_DELAY_MS = 2000;
@@ -63,6 +63,22 @@ function createdDisputeId(chain: ChainConfig, receipt: WriteReceipt): bigint | n
   return chain.klerosLiquid === undefined ? null : disputeIdFromReceipt(receipt.logs, chain.klerosLiquid);
 }
 
+function minedState(chain: ChainConfig, receipt: WriteReceipt): CreateActionState {
+  const disputeId = createdDisputeId(chain, receipt);
+  return disputeId === null ? { kind: "no-dispute-id" } : { kind: "created", disputeId };
+}
+
+const IDLE: CreateActionState = { kind: "idle" };
+
+/** The toast reports every outcome; a page that did not send the write only needs to know whether a dispute came of it. */
+function settledElsewhere(chain: ChainConfig, outcome: WriteOutcome): CreateActionState | null {
+  return outcome.phase === "mined" ? minedState(chain, outcome.receipt) : null;
+}
+
+function inFlightKey(chainId: number): string {
+  return `create:${String(chainId)}`;
+}
+
 /** The dispute number is known only once the receipt is read, inside the write's own chain. */
 export function createWording(chain: ChainConfig): WriteWording {
   return {
@@ -74,6 +90,56 @@ export function createWording(chain: ChainConfig): WriteWording {
   };
 }
 
+function useOpenWhenCreated(state: CreateActionState | null, chainId: number): void {
+  const navigate = useNavigate();
+  const createdId = state?.kind === "created" ? state.disputeId : null;
+  useEffect(() => {
+    if (createdId === null) return undefined;
+    const timer = setTimeout(() => {
+      void navigate(paths.case(chainId, createdId));
+    }, NAVIGATION_DELAY_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [createdId, chainId, navigate]);
+}
+
+export interface HeldCreate {
+  /** `null` when nothing was in flight at mount, once it settled without a dispute being mined, or once dismissed. */
+  readonly state: CreateActionState | null;
+  /** Forgets a transaction mined without a dispute ID, so the next summary starts afresh, as it does after its own. */
+  dismiss(): void;
+}
+
+/**
+ * The create the page chain still has in flight when the page mounts, followed on either step until it settles, since a
+ * reopened page starts on the form. A created dispute opens after the same delay as on the page that sent it.
+ */
+export function useHeldCreate(): HeldCreate {
+  const { chainId, chain } = usePageChain();
+  const writesInFlight = useWritesInFlight();
+  const [heldAtMount] = useState(() => writesInFlight.find(inFlightKey(chainId)));
+  const [state, setState] = useState<CreateActionState | null>(heldAtMount === undefined ? null : { kind: "writing" });
+
+  useEffect(() => {
+    if (heldAtMount === undefined) return undefined;
+    let active = true;
+    void heldAtMount.then((outcome) => {
+      if (active) setState(settledElsewhere(chain, outcome));
+    });
+    return () => {
+      active = false;
+    };
+  }, [heldAtMount, chain]);
+
+  useOpenWhenCreated(state, chainId);
+
+  const dismiss = useCallback(() => {
+    setState((current) => (current?.kind === "no-dispute-id" ? null : current));
+  }, []);
+  return useMemo(() => ({ state, dismiss }), [state, dismiss]);
+}
+
 function uploadFailure(error: unknown): UploadResult {
   return { ok: false, error: "upload-failed", message: error instanceof Error ? error.message : "The upload failed." };
 }
@@ -82,16 +148,18 @@ function uploadFailure(error: unknown): UploadResult {
  * The wallet and its chain are checked before anything is signed, the Atlas sign-in included; the summary already shows
  * that guard with its switch, so a refused press adds nothing. The uploaded meta-evidence is reused when the user
  * retries after a refused, rejected or failed transaction, or after a mined one whose receipt had no dispute ID. The
- * write names the created dispute in its own toast, read from the receipt.
+ * write names the created dispute in its own toast, read from the receipt. The write is held per page chain above the
+ * routes until it settles; `held` is the page's `useHeldCreate` state, shown until this summary starts a create of its own.
  */
-export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction {
+export function useCreateDispute(input: CreateDisputeInput, held: CreateActionState | null): CreateDisputeAction {
   const { chainId, chain } = usePageChain();
   const access = useWriteAccess(chainId);
   const uploader = useAtlasUpload();
   const write = useWrite();
   const deps = useCoreDeps();
-  const navigate = useNavigate();
-  const [state, setState] = useState<CreateActionState>({ kind: "idle" });
+  const writesInFlight = useWritesInFlight();
+  const [own, setState] = useState<CreateActionState | null>(null);
+  const state = own ?? held ?? IDLE;
   const published = useRef<CanonicalIpfsPath | null>(null);
   const running = useRef(false);
   const mounted = useRef(true);
@@ -135,39 +203,28 @@ export function useCreateDispute(input: CreateDisputeInput): CreateDisputeAction
     if (!mounted.current) return;
     setState({ kind: "writing" });
     const build = buildCreateDisputeCall({ chain, extraData, metaEvidenceUri, numberOfRulingOptions: numberOfRulingOptions(input), cost: cost.value });
-    const outcome = await write.execute(build, { pageChainId: chainId, wording: createWording(chain) });
+    const pending = write.execute(build, { pageChainId: chainId, wording: createWording(chain) });
+    writesInFlight.hold(inFlightKey(chainId), pending);
+    const outcome = await pending;
     if (outcome.phase !== "mined") return;
 
-    const disputeId = createdDisputeId(chain, outcome.receipt);
-    if (disputeId === null) {
-      setState({ kind: "no-dispute-id" });
-      return;
-    }
-    clearCreateDraft(chainId);
-    setState({ kind: "created", disputeId });
-  }, [write, access, chainId, uploader, input, deps, chain]);
+    const mined = minedState(chain, outcome.receipt);
+    if (mined.kind === "created") clearCreateDraft(chainId);
+    setState(mined);
+  }, [write, access, chainId, uploader, input, deps, chain, writesInFlight]);
 
   const create = useCallback(async () => {
     // The meta-evidence can only be published through Atlas, so without it there is nothing to start.
-    if (running.current || uploader.availability === "unconfigured") return;
+    if (running.current || writesInFlight.find(inFlightKey(chainId)) !== undefined || uploader.availability === "unconfigured") return;
     running.current = true;
     try {
       await run();
     } finally {
       running.current = false;
     }
-  }, [run, uploader.availability]);
+  }, [run, uploader.availability, writesInFlight, chainId]);
 
-  const createdId = state.kind === "created" ? state.disputeId : null;
-  useEffect(() => {
-    if (createdId === null) return undefined;
-    const timer = setTimeout(() => {
-      void navigate(paths.case(chainId, createdId));
-    }, NAVIGATION_DELAY_MS);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [createdId, chainId, navigate]);
+  useOpenWhenCreated(own, chainId);
 
   return { access, state, isBusy: isBusy(state, write.status), create };
 }

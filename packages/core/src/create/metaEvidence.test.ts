@@ -96,8 +96,20 @@ describe("buildCreatedMetaEvidence", () => {
   it("uint and datetime carry no titles and no descriptions", () => {
     for (const questionType of ["uint", "datetime"] satisfies CreateQuestionType[]) {
       const metaEvidence = buildCreatedMetaEvidence(input({ questionType, options: [] }));
-      expect(metaEvidence.rulingOptions).toEqual({ type: questionType, titles: [], descriptions: [] });
+      expect(metaEvidence.rulingOptions).toMatchObject({ type: questionType, titles: [], descriptions: [] });
     }
+  });
+
+  it("a number question writes a precision of 18 decimals after the descriptions", () => {
+    const metaEvidence = buildCreatedMetaEvidence(input({ questionType: "uint", options: [] }));
+    expect(JSON.stringify(metaEvidence.rulingOptions)).toBe(JSON.stringify({ type: "uint", titles: [], descriptions: [], precision: 18 }));
+  });
+
+  it("single-select, multiple-select and date questions write no precision", () => {
+    for (const questionType of ["single-select", "multiple-select"] satisfies CreateQuestionType[]) {
+      expect(buildCreatedMetaEvidence(input({ questionType })).rulingOptions).not.toHaveProperty("precision");
+    }
+    expect(buildCreatedMetaEvidence(input({ questionType: "datetime", options: [] })).rulingOptions).not.toHaveProperty("precision");
   });
 
   it("fileURI is the empty string without a primary document", () => {
