@@ -16,7 +16,7 @@ export { SectionBoundary } from "./SectionBoundary";
 export { SectionSkeleton } from "./SectionSkeleton";
 export { SectionUnavailable } from "./SectionUnavailable";
 export { shortenAddress } from "./address";
-export { formatAmount } from "./amount";
+export { formatAmount } from "./formatAmount";
 export { formatDuration } from "./duration";
 export { ChainClockProvider, useChainNow, useNowSeconds } from "./clock";
 export { Timestamp, utcText } from "./Timestamp";

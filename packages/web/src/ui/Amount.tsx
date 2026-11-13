@@ -1,4 +1,4 @@
-import { formatAmount } from "./amount";
+import { formatAmount } from "./formatAmount";
 import type { AmountProps } from "./types";
 
 export function Amount({ wei, chain, className }: AmountProps) {

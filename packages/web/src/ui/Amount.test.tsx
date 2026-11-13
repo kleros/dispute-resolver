@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Amount } from "./Amount";
-import { formatAmount } from "./amount";
+import { formatAmount } from "./formatAmount";
 import { testChain } from "../test/data";
 
 const MAINNET = testChain(1);
