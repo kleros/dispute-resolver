@@ -1,6 +1,6 @@
 import { buildFundAppealCall, type CardFundingState, type ChainConfig } from "@dispute-resolver/core";
-import { BigNumberField, Button } from "@kleros/ui-components-library";
-import { useState } from "react";
+import { Button, TextField } from "@kleros/ui-components-library";
+import { useId, useState } from "react";
 import { formatEther } from "viem";
 import { formatAmount, useChainNow } from "../../ui";
 import { useWrite, type WriteStatus } from "../../wallet";
@@ -33,29 +33,25 @@ function inFlight(status: WriteStatus): boolean {
 }
 
 /**
- * The field follows the suggested amount until the user edits it, and again once a funding is mined or the answer
- * under the field changes. When the suggested amount drops to 0, or funding closes, the edit is dropped, so the disabled
- * field shows what remains. The deadline is checked again at the press against the chain's time, since the shared clock
- * that closes the card ticks only every 30 seconds.
+ * The field follows the suggested amount until the user edits it, and again once a funding is mined. A typed amount is
+ * kept when the answer under the field changes; it is dropped when the suggested amount drops to 0 or funding closes, so
+ * the disabled field shows what remains. The deadline is checked again at the press against the chain's time, since the
+ * shared clock that closes the card ticks only every 30 seconds.
  *
- * The amount sent is always the text the field shows. The library field reports a parsed value through `onChange` but
- * stays silent for text it treats as unfinished, such as "-" alone, so the raw text also arrives through `onInput`.
- * For one input event React runs `onInput` before `onChange`, so a value the field rewrites (a negative amount becomes
- * 0) ends on what the field shows.
+ * A plain text field, not the library's number field, so the amount sent is always the text the field shows and a typed
+ * comma can be read as the decimal point.
  */
 export function FundAction({ subject, answer, code, suggested, deadline, state, describedBy, actions, chain, isDisabled = false }: FundActionProps) {
   const write = useWrite();
   const chainNow = useChainNow();
+  const subjectId = useId();
   /** The contribution as the field shows it once the user edited it; `null` while it follows the suggested amount. */
   const [edited, setEdited] = useState<string | null>(null);
-  const [previousCode, setPreviousCode] = useState(code);
   const locked = suggested === 0n || state !== "open";
-  if (code !== previousCode) {
-    setPreviousCode(code);
-    setEdited(null);
-  }
   if (locked && edited !== null) setEdited(null);
-  const contribution = parseContribution(edited ?? formatEther(suggested));
+  const text = edited ?? formatEther(suggested);
+  const contribution = parseContribution(text);
+  const error = edited === null || contribution.ok ? undefined : contribution.message;
   const busy = inFlight(write.status);
   const { context } = actions;
   const canFund = !isDisabled && context !== null && code !== null && contribution.ok && !locked && !busy;
@@ -82,26 +78,20 @@ export function FundAction({ subject, answer, code, suggested, deadline, state, 
 
   return (
     <div className="flex flex-wrap items-start gap-2">
-      <BigNumberField
+      <TextField
         className="w-auto min-w-0 flex-1 basis-40"
         label={`Contribution (${chain.currency})`}
-        value={edited === null ? formatEther(suggested) : undefined}
-        minValue="0"
-        step="0.01"
+        aria-labelledby={subjectId}
+        value={text}
         isDisabled={locked}
-        variant={edited !== null && !contribution.ok ? "error" : undefined}
-        message={edited !== null && !contribution.ok ? contribution.message : undefined}
-        inputProps={{
-          "aria-label": `Contribution (${chain.currency}) for ${subject}`,
-          ...description,
-          onInput: (event) => {
-            setEdited(event.currentTarget.value);
-          },
-        }}
-        onChange={(value) => {
-          setEdited(value.toFixed());
-        }}
+        isInvalid={error !== undefined}
+        variant={error === undefined ? undefined : "error"}
+        message={error}
+        inputProps={{ inputMode: "decimal", autoComplete: "off", ...description }}
+        onChange={setEdited}
       />
+      {/* What is funded follows the visible label as a second label, hidden so it is read only in the field's name. */}
+      <span id={subjectId} hidden>{`for ${subject}`}</span>
       <Button
         text="Fund"
         aria-label={`Fund ${subject}`}

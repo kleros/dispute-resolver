@@ -134,7 +134,7 @@ describe("AppealSection refresh after a mined write", () => {
     const user = userEvent.setup();
     programReads(3);
     await renderCase();
-    const field = await waitFor(() => within(winnerCard()).getByRole("spinbutton", { name: /Contribution/ }));
+    const field = await waitFor(() => within(winnerCard()).getByRole("textbox", { name: /Contribution/ }));
     await user.clear(field);
     await user.type(field, "0.5");
     vi.mocked(core.readRoundFunding).mockResolvedValue({ ok: true, value: { round: 0n, contributions: [{ ruling: 1n, amount: ETH / 2n }], fundedRulings: [] } });
@@ -142,7 +142,7 @@ describe("AppealSection refresh after a mined write", () => {
     await user.click(within(winnerCard()).getByRole("button", { name: /^Fund/ }));
 
     await waitFor(() => {
-      expect(within(winnerCard()).getByRole("spinbutton", { name: /Contribution/ })).toHaveValue("1.5");
+      expect(within(winnerCard()).getByRole("textbox", { name: /Contribution/ })).toHaveValue("1.5");
     });
   });
 
