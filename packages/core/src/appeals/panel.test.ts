@@ -314,6 +314,25 @@ describe("buildAppealPanel", () => {
       const panel = buildAppealPanel(input(realityProxy(family("idr-v2")), 3, { rulingOptions, numberOfChoices: maxUint256 }));
       expect(cards(panel)).toContainEqual([maxUint256, "Answered Too Soon"]);
     });
+
+    it("shows a Reality proxy dispute's fully funded ruling that its options do not list", () => {
+      const rulingOptions = { type: "single-select", titles: ["No", "Yes"], reserved: { [ANSWERED_TOO_SOON]: "Answered Too Soon" } };
+      const funding = ok({ round: 0n, contributions: [{ ruling: 7n, amount: 3_000n }], fundedRulings: [7n] });
+      const panel = buildAppealPanel(input(realityProxy(family("idr-v2")), 3, { rulingOptions, numberOfChoices: maxUint256, currentRuling: ok(2n), funding }));
+      if (panel.kind !== "crowdfunding") throw new Error(`expected crowdfunding, got ${panel.kind}`);
+      expect(panel.cards.find((card) => card.code === 7n)).toMatchObject({ title: "7", fullyFunded: true, fundedPercent: 100 });
+    });
+
+    it("shows a governor's fully paid list that its options do not list", async () => {
+      const governor = await recordedDetection(1, "0x327a29fce0a6490e4236240be176daa282eccfdf");
+      const funding = ok({ round: 0n, contributions: [{ ruling: 3n, amount: 3_000n }], fundedRulings: [3n] });
+      const panel = buildAppealPanel(input(governor, 3, { numberOfChoices: 3n, funding }));
+      expect(cards(panel)).toEqual([
+        [1n, "Yes"],
+        [2n, "No"],
+        [3n, "3"],
+      ]);
+    });
   });
 
   it.each<[string, AppealPanelInput["rulingOptions"], bigint, object]>([

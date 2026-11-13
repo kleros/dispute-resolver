@@ -104,10 +104,28 @@ function questionCards(context: CardContext, options: RulingOptions, fallbackOut
 }
 
 /**
- * The refuse card unless option 0 is not fundable (Unslashed), the reserved answers, then the question type's cards,
- * without any card coded above the dispute's number of choices (a combination or a fallback outcome past it), since the
- * contract refuses a ruling above it. A new answer on the free input or composer takes the loser terms, or the shared
- * ones in a tie that costs every ruling alike.
+ * The current ruling and every ruling the round reports fully funded, each when no card has its code yet: the funded
+ * ones in code order, then the current ruling. Ruling 0 already has the refuse card or cannot be funded. A contribution
+ * alone adds no card.
+ */
+function unlistedCards(context: CardContext, options: RulingOptions, fallbackOutcomes: FallbackOutcomes, shown: ReadonlySet<bigint>): CrowdfundingCard[] {
+  const { currentRuling } = context;
+  const unlisted = (code: bigint) => code !== 0n && !shown.has(code);
+  // An unknown type such as "bool" reads an unlisted code as "", which would leave the card without a title.
+  const titled = (title: string, code: bigint) => (title === "" ? code.toString() : title);
+  const funded = [...context.funded]
+    .filter((code) => code !== currentRuling && unlisted(code))
+    .sort(compareBigint)
+    .map((code) => card(context, "funded-ruling", titled(decodeRulingCode(code, options, fallbackOutcomes), code), code));
+  if (!unlisted(currentRuling)) return funded;
+  return [...funded, card(context, "current-ruling", titled(formatRuling(currentRuling, options, fallbackOutcomes), currentRuling), currentRuling)];
+}
+
+/**
+ * The refuse card unless option 0 is not fundable (Unslashed), the reserved answers, the question type's cards, then the
+ * current ruling and the fully funded rulings that none of those code, without any card coded above the dispute's number
+ * of choices (a combination or a fallback outcome past it), since the contract refuses a ruling above it. A new answer
+ * on the free input or composer takes the loser terms, or the shared ones in a tie that costs every ruling alike.
  */
 export function buildCrowdfundingCards(input: {
   readonly rulingOptions: RulingOptions;
@@ -128,7 +146,8 @@ export function buildCrowdfundingCards(input: {
   const refuse = input.override?.refuseToArbitrateFundable === false ? [] : [card(context, "refuse", REFUSED_RULING_TEXT, 0n)];
   const fixed = [...refuse, ...reservedCards(context, rulingOptions.reserved)];
   const taken = new Set(fixed.map((fixedCard) => fixedCard.code));
-  const cards = [...fixed, ...questionCards(context, rulingOptions, fallbackOutcomes, taken)];
+  const listed = [...fixed, ...questionCards(context, rulingOptions, fallbackOutcomes, taken)];
+  const cards = [...listed, ...unlistedCards(context, rulingOptions, fallbackOutcomes, new Set(listed.map((listedCard) => listedCard.code)))];
   const { type, titles, precision } = rulingOptions;
   const newAnswer = shared ? amounts.winner : amounts.loser;
   const entered = { side: shared ? ("shared" as const) : ("loser" as const), required: newAnswer.total, deadline: newAnswer.deadline, highestCode: numberOfChoices };

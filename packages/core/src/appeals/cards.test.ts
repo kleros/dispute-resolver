@@ -378,6 +378,114 @@ describe("buildCrowdfundingCards", () => {
     expect(set.freeInput).toMatchObject({ type: "datetime" });
   });
 
+  describe("rulings the options do not list", () => {
+    const YES_NO: RulingOptions = { type: "single-select", titles: ["No", "Yes"], reserved: ANSWERED_TOO_SOON };
+    const LISTED = [
+      [0n, REFUSED_TITLE],
+      [MAX_UINT, "Answered Too Soon"],
+      [1n, "No"],
+      [2n, "Yes"],
+    ];
+
+    it("a fully funded ruling that the options do not list has its own card", () => {
+      const set = build({ rulingOptions: YES_NO, currentRuling: 2n, contributions: { "7": 3_000n }, fundedRulings: [7n] });
+      expect(summary(set.cards)).toEqual([...LISTED, [7n, "7"]]);
+      expect(set.cards.at(-1)).toEqual(
+        expectedCard({ origin: "funded-ruling", title: "7", code: 7n, side: "loser", contributed: 3_000n, remaining: 0n, fundedPercent: 100, fullyFunded: true }),
+      );
+    });
+
+    it("the current ruling has a card when the options do not list it", () => {
+      const set = build({ rulingOptions: YES_NO, currentRuling: 5n, contributions: { "5": 500n } });
+      expect(summary(set.cards)).toEqual([...LISTED, [5n, "5"]]);
+      expect(set.cards.at(-1)).toEqual(expectedCard({ origin: "current-ruling", title: "5", code: 5n, side: "winner", contributed: 500n, remaining: 1_500n, fundedPercent: 25 }));
+      expect(set.cards.filter((card) => card.isWinner)).toHaveLength(1);
+    });
+
+    it("a ruling that is both the current ruling and fully funded has one card, on the winner terms", () => {
+      const set = build({ rulingOptions: YES_NO, currentRuling: 5n, contributions: { "5": 2_000n }, fundedRulings: [5n] });
+      expect(set.cards.filter((card) => card.code === 5n)).toEqual([
+        expectedCard({ origin: "current-ruling", title: "5", code: 5n, side: "winner", contributed: 2_000n, remaining: 0n, fundedPercent: 100, fullyFunded: true }),
+      ]);
+    });
+
+    it("contributions to unlisted rulings add no cards, however many", () => {
+      const contributions = Object.fromEntries(Array.from({ length: 1_000 }, (_, index) => [String(index + 3), BigInt(index % 2)]));
+      const set = build({ rulingOptions: YES_NO, currentRuling: 2n, contributions });
+      expect(summary(set.cards)).toEqual(LISTED);
+    });
+
+    it("listed rulings keep their cards and order, and the added cards follow in code order with the current ruling last", () => {
+      const contributions = { "1": 400n, "2": 300n, "7": 3_000n, "9": 3_000n };
+      const plain = build({ rulingOptions: YES_NO, currentRuling: 2n, contributions });
+      const set = build({ rulingOptions: YES_NO, currentRuling: 11n, contributions, fundedRulings: [9n, 7n] });
+      expect(summary(set.cards)).toEqual([...LISTED, [7n, "7"], [9n, "9"], [11n, "11"]]);
+      expect(set.cards.slice(0, LISTED.length).map(({ code, contributed }) => [code, contributed])).toEqual(plain.cards.map(({ code, contributed }) => [code, contributed]));
+    });
+
+    it("a ruling the round reports as funded twice has one card", () => {
+      const set = build({ rulingOptions: YES_NO, currentRuling: 2n, contributions: { "7": 3_000n }, fundedRulings: [7n, 7n] });
+      expect(set.cards.filter((card) => card.code === 7n)).toHaveLength(1);
+    });
+
+    it("a funded ruling reads fully funded even when no contribution to it was read", () => {
+      const set = build({ rulingOptions: YES_NO, currentRuling: 2n, fundedRulings: [7n] });
+      expect(set.cards.find((card) => card.code === 7n)).toMatchObject({ contributed: 0n, remaining: 0n, fundedPercent: 100, fullyFunded: true });
+    });
+
+    it("a variable question's funded ruling has a card even when no contribution to it was read", () => {
+      const rulingOptions: RulingOptions = { type: "uint", precision: 0 };
+      const set = build({ rulingOptions, currentRuling: 0n, fundedRulings: [43n] });
+      expect(set.cards.find((card) => card.code === 43n)).toMatchObject({ origin: "funded-ruling", title: "42", fullyFunded: true });
+    });
+
+    it("a multiple-select current ruling above its combinations has a card, enumerated or not", () => {
+      const three = build({ rulingOptions: { type: "multiple-select", titles: ["A", "B", "C"] }, currentRuling: 20n });
+      expect(three.cards.at(-1)).toMatchObject({ origin: "current-ruling", code: 20n, title: "20", isWinner: true });
+      const titles = ["A", "B", "C", "D", "E"];
+      const five = build({ rulingOptions: { type: "multiple-select", titles }, currentRuling: 40n, fundedRulings: [35n] });
+      expect(summary(five.cards).slice(-2)).toEqual([
+        [35n, "35"],
+        [40n, "40"],
+      ]);
+    });
+
+    it("an added card is titled with its ruling's number, whatever the question type", () => {
+      const questions: readonly (readonly [RulingOptions, FallbackOutcomes])[] = [
+        [YES_NO, null],
+        [{ type: "single-select" }, null],
+        [{ type: "single-select", titles: [] }, null],
+        [{ type: "bool" }, ["Kept", "Removed"]],
+        [{ type: "bool" }, null],
+        [{ type: "multiple-select" }, null],
+        [{ type: "multiple-select", titles: ["A", "B", "C"] }, null],
+      ];
+      for (const [rulingOptions, fallbackOutcomes] of questions) {
+        const set = build({ rulingOptions, fallbackOutcomes, currentRuling: 100n, fundedRulings: [99n] });
+        expect(summary(set.cards.filter((card) => card.code === 99n || card.code === 100n))).toEqual([
+          [99n, "99"],
+          [100n, "100"],
+        ]);
+      }
+    });
+
+    it("adds no card for ruling 0 when the options make it unfundable", () => {
+      const set = build({ rulingOptions: YES_NO, currentRuling: 0n, fundedRulings: [0n], unslashed: true });
+      expect(set.cards.map((card) => card.code)).not.toContain(0n);
+    });
+
+    it("gives no card to a funded or current ruling past the dispute's number of choices", () => {
+      const set = build({
+        rulingOptions: { type: "single-select", titles: ["Yes", "No"] },
+        currentRuling: 1n,
+        contributions: { "7": 3_000n },
+        fundedRulings: [7n],
+        numberOfChoices: 2n,
+      });
+      expect(set.cards.map((card) => card.code)).toEqual([0n, 1n, 2n]);
+    });
+  });
+
   describe("reserved answers of a parsed meta-evidence", () => {
     function parsedOptions(rulingOptions: unknown): RulingOptions {
       const outcome = parseMetaEvidence({ title: "Title", rulingOptions });

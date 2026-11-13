@@ -59,7 +59,7 @@ export interface AppealContext {
   readonly signal?: AbortSignal;
 }
 
-export type CardOrigin = "refuse" | "reserved" | "option" | "combination" | "contributed-value" | "current-ruling";
+export type CardOrigin = "refuse" | "reserved" | "option" | "combination" | "contributed-value" | "current-ruling" | "funded-ruling";
 
 /**
  * The terms a card is funded on: the current ruling's, the other rulings', or one deposit until the period ends shared
