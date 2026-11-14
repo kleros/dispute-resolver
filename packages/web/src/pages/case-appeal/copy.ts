@@ -97,8 +97,8 @@ export function appealCostUnreadBody(reason: string): string {
 
 /** A blank answer title is not quoted. */
 export function fundWording(answer: string, amount: string): WriteWording {
-  if (!hasVisibleText(answer)) return { doing: `funding an untitled answer with ${amount}`, done: `Funded an untitled answer with ${amount}.` };
-  return { doing: `funding “${answer}” with ${amount}`, done: `Funded “${answer}” with ${amount}.` };
+  if (!hasVisibleText(answer)) return { doing: `funding an untitled answer with ${amount}`, done: `Sent ${amount} to fund an untitled answer.` };
+  return { doing: `funding “${answer}” with ${amount}`, done: `Sent ${amount} to fund “${answer}”.` };
 }
 
 export function withdrawWording(amount: string): WriteWording {

@@ -28,15 +28,22 @@ interface FundActionProps {
   readonly isDisabled?: boolean;
 }
 
+function exceeds(text: string, limit: bigint): boolean {
+  const contribution = parseContribution(text);
+  return contribution.ok && contribution.wei > limit;
+}
+
 function inFlight(status: WriteStatus): boolean {
   return status.phase === "checking" || status.phase === "pending" || status.phase === "submitted";
 }
 
 /**
- * The field follows the suggested amount until the user edits it, and again once a funding is mined. A typed amount is
- * kept when the answer under the field changes; it is dropped when the suggested amount drops to 0 or funding closes, so
- * the disabled field shows what remains. The deadline is checked again at the press against the chain's time, since the
- * shared clock that closes the card ticks only every 30 seconds.
+ * The field follows the suggested amount until the user edits it, and again once a funding is mined. When the answer
+ * under the field changes, a typed amount above what the new answer still needs is lowered to it and never raised back;
+ * any other typed text stays. A typed amount is kept while the field is locked on a fully funded answer, to come back on
+ * the next one; text that is not an amount is not. A locked field shows what remains. A typed amount is dropped when the
+ * answer under it becomes fully funded or closes, and when the field moves to an answer whose funding has closed. The deadline is checked again at the press
+ * against the chain's time, since the shared clock that closes the card ticks only every 30 seconds.
  *
  * A plain text field, not the library's number field, so the amount sent is always the text the field shows and a typed
  * comma can be read as the decimal point.
@@ -45,13 +52,21 @@ export function FundAction({ subject, answer, code, suggested, deadline, state, 
   const write = useWrite();
   const chainNow = useChainNow();
   const subjectId = useId();
-  /** The contribution as the field shows it once the user edited it; `null` while it follows the suggested amount. */
+  /** The contribution the user typed, shown while the field is open; `null` while it follows the suggested amount. */
   const [edited, setEdited] = useState<string | null>(null);
   const locked = suggested === 0n || state !== "open";
-  if (locked && edited !== null) setEdited(null);
-  const text = edited ?? formatEther(suggested);
+  const [seen, setSeen] = useState({ code, locked });
+  // Acted on during render, not in an effect, so Fund never sees the old amount against the new answer.
+  if (code !== seen.code || locked !== seen.locked) {
+    setSeen({ code, locked });
+    if (edited !== null) {
+      if (code === seen.code || state === "closed" || (locked && !parseContribution(edited).ok)) setEdited(null);
+      else if (!locked && exceeds(edited, suggested)) setEdited(formatEther(suggested));
+    }
+  }
+  const text = locked ? formatEther(suggested) : (edited ?? formatEther(suggested));
   const contribution = parseContribution(text);
-  const error = edited === null || contribution.ok ? undefined : contribution.message;
+  const error = edited === null || locked || contribution.ok ? undefined : contribution.message;
   const busy = inFlight(write.status);
   const { context } = actions;
   const canFund = !isDisabled && context !== null && code !== null && contribution.ok && !locked && !busy;
