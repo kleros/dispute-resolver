@@ -20,8 +20,8 @@ async function readResolverFunding(context: AppealContext, round: bigint, fromBl
     const head = await client.getBlockNumber();
     const scan = { address: binding.arbitrated, args: { _localDisputeID: localId.value, _round: round }, fromBlock, toBlock: head };
     const [contributionLogs, fundedLogs] = await Promise.all([
-      getLogsChunked(client, { ...scan, event: CONTRIBUTION_EVENT }, { signal }),
-      getLogsChunked(client, { ...scan, event: RULING_FUNDED_EVENT }, { signal }),
+      getLogsChunked(client, { ...scan, event: CONTRIBUTION_EVENT }, { signal, splitCrowdedWindows: true }),
+      getLogsChunked(client, { ...scan, event: RULING_FUNDED_EVENT }, { signal, splitCrowdedWindows: true }),
     ]);
     const totals = new Map<bigint, bigint>();
     for (const { args } of contributionLogs) {

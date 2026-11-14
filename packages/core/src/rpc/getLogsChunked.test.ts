@@ -1,8 +1,10 @@
-import { getAddress, numberToHex, pad, parseAbiItem } from "viem";
+import { getAddress, numberToHex, pad, parseAbiItem, ResponseBodyTooLargeError } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import fixture from "../appeals/__fixtures__/dispute-1170-unslashed.json";
+import refusal from "./__fixtures__/gnosis-crowded-logs-refusal.json";
 import type { Address, Hex, ReadClient } from "../types";
 import { createReadClient, createRequestBudget, getLogsChunked, isLookupLimitError, isRangeLimitError, isTooManyLogsError } from "./index";
+import { isTooManyResultsError } from "./rangeLimit";
 import {
   cappedNode,
   fakeLogsClient,
@@ -297,5 +299,170 @@ describe("getLogsChunked with a log cap", () => {
     expect(isTooManyLogsError(error)).toBe(true);
     expect(isRangeLimitError(error)).toBe(false);
     expect(isLookupLimitError(error)).toBe(false);
+  });
+});
+
+/** The Gnosis read RPC's refusal of an answer holding more results than it returns, as recorded. */
+function crowdedRefusal(): Error {
+  return Object.assign(new Error(refusal.error.message), { code: refusal.error.code, data: refusal.error.data });
+}
+
+/** A node without a block-range cap that refuses any answer holding more than `maxResults` logs. */
+function resultCappedNode(logs: readonly RpcLog[], maxResults: number): (request: LogsRequest) => Promise<RpcLog[] | Error> {
+  return (request) => {
+    const matched = logs.filter((log) => matchesFilter(log, request));
+    return Promise.resolve(matched.length > maxResults ? crowdedRefusal() : matched);
+  };
+}
+
+function contributionsAt(blocks: readonly bigint[]): RpcLog[] {
+  return blocks.map((block, index) => rpcLog({ address: arbitrable, topics: [DISPUTE_1170.contributionTopic], data: "0x", blockNumber: block, logIndex: index }));
+}
+
+function blockRun(first: bigint, count: number, perBlock: number): bigint[] {
+  return Array.from({ length: count * perBlock }, (_, index) => first + BigInt(Math.floor(index / perBlock)));
+}
+
+function sortedPositions(logs: readonly RpcLog[]): [bigint, number][] {
+  const byPosition = ([a, i]: [bigint, number], [b, j]: [bigint, number]): number => {
+    if (a !== b) return a < b ? -1 : 1;
+    return i - j;
+  };
+  return logs.map((log): [bigint, number] => [BigInt(log.blockNumber), Number(log.logIndex)]).sort(byPosition);
+}
+
+const crowdedScan = { ...scan, fromBlock: 1_000_000n, toBlock: 1_049_999n } as const;
+
+describe("getLogsChunked reading crowded windows in pieces", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /** Four neighbouring blocks of three logs each: no window of four blocks or more fits under a cap of six results. */
+  const crowded = contributionsAt([1_005_000n, ...blockRun(1_020_040n, 4, 3), 1_030_000n, 1_045_000n]);
+
+  it("a 100-block window refused for too many results is read again in pieces of 20, 4 and 1 blocks, and every log is returned in order", async () => {
+    const { client, requests } = fakeLogsClient(resultCappedNode(crowded, 6));
+    const logs = await getLogsChunked(client, crowdedScan, { splitCrowdedWindows: true });
+
+    expect(positions(logs)).toEqual(sortedPositions(crowded));
+    const crowdedWindow = requests.findIndex((request) => request.fromBlock === 1_020_000n && size(request) === 100n);
+    expect(crowdedWindow).toBeGreaterThan(0);
+    const pieces = requests.slice(crowdedWindow + 8, crowdedWindow + 8 + 14);
+    expect(pieces.map((piece) => [piece.fromBlock, size(piece)])).toEqual([
+      ...[0n, 20n, 40n, 60n, 80n].map((offset) => [1_020_000n + offset, 20n]),
+      ...[0n, 4n, 8n, 12n, 16n].map((offset) => [1_020_040n + offset, 4n]),
+      ...[0n, 1n, 2n, 3n].map((offset) => [1_020_040n + offset, 1n]),
+    ]);
+  });
+
+  it("the scan carries on at its normal window size after a crowded window", async () => {
+    const { client, requests } = fakeLogsClient(resultCappedNode(crowded, 6));
+    await getLogsChunked(client, crowdedScan, { splitCrowdedWindows: true });
+
+    const lastPiece = requests.map(size).lastIndexOf(1n);
+    const after = requests.slice(lastPiece + 1);
+    expect(after[0]).toMatchObject({ fromBlock: 1_020_800n, toBlock: 1_030_799n });
+    expect(after.every((request) => request.fromBlock > 1_020_043n)).toBe(true);
+    expect(after.at(-1)).toMatchObject({ toBlock: crowdedScan.toBlock });
+  });
+
+  it("reads a range of 100 blocks or fewer refused for too many results in pieces smaller than the range", async () => {
+    const hundred = fakeLogsClient(resultCappedNode(crowded, 6));
+    const fromHundred = await getLogsChunked(hundred.client, { ...scan, fromBlock: 1_020_000n, toBlock: 1_020_099n }, { splitCrowdedWindows: true });
+    expect(positions(fromHundred)).toEqual(sortedPositions(crowded).filter(([block]) => block >= 1_020_000n && block <= 1_020_099n));
+    expect(hundred.requests.slice(1, 6).map(size)).toEqual([20n, 20n, 20n, 20n, 20n]);
+
+    const fifteen = fakeLogsClient(resultCappedNode(crowded, 6));
+    const fromFifteen = await getLogsChunked(fifteen.client, { ...scan, fromBlock: 1_020_030n, toBlock: 1_020_044n }, { splitCrowdedWindows: true });
+    expect(positions(fromFifteen)).toEqual(sortedPositions(crowded).filter(([block]) => block >= 1_020_030n && block <= 1_020_044n));
+    expect(fifteen.requests.slice(1, 5).map(size)).toEqual([4n, 4n, 4n, 3n]);
+  });
+
+  it("a single block still refused for too many results is rethrown", async () => {
+    const { client, requests } = fakeLogsClient(resultCappedNode(contributionsAt(blockRun(1_020_041n, 1, 7)), 6));
+    await expect(getLogsChunked(client, crowdedScan, { splitCrowdedWindows: true })).rejects.toSatisfy(isTooManyResultsError);
+    expect(requests).toContainEqual(expect.objectContaining({ fromBlock: 1_020_041n, toBlock: 1_020_041n }));
+
+    const single = fakeLogsClient(resultCappedNode(contributionsAt(blockRun(1_020_041n, 1, 7)), 6));
+    await expect(getLogsChunked(single.client, { ...scan, fromBlock: 1_020_041n, toBlock: 1_020_041n }, { splitCrowdedWindows: true })).rejects.toSatisfy(isTooManyResultsError);
+    expect(single.requests).toHaveLength(1);
+  });
+
+  it.each([
+    ["a timeout", "request timed out"],
+    ["a block-range cap", "block range is too wide"],
+  ])("%s at the 100-block floor is rethrown as today, never read in pieces", async (_name, message) => {
+    const { client, requests } = fakeLogsClient(() => Promise.resolve(rpcError(-32000, message)));
+    await expect(getLogsChunked(client, crowdedScan, { splitCrowdedWindows: true })).rejects.toThrow(message);
+    expect(requests.every((request) => size(request) >= 100n)).toBe(true);
+    expect(requests.some((request) => size(request) === 100n)).toBe(true);
+  });
+
+  it("a timeout on a piece is rethrown, never split further", async () => {
+    const node = resultCappedNode(crowded, 6);
+    const { client, requests } = fakeLogsClient((request) => (size(request) === 4n ? Promise.resolve(rpcError(-32000, "request timed out")) : node(request)));
+    await expect(getLogsChunked(client, crowdedScan, { splitCrowdedWindows: true })).rejects.toThrow("request timed out");
+    expect(requests.some((request) => size(request) === 1n)).toBe(false);
+  });
+
+  it("a window whose answer is larger than the read client accepts is read in pieces too, and a single block still too large is rethrown", async () => {
+    const tooLarge = (logs: readonly RpcLog[]) => (request: LogsRequest) => {
+      const matched = logs.filter((log) => matchesFilter(log, request));
+      return Promise.resolve(matched.length > 6 ? new ResponseBodyTooLargeError({ maxSize: 6, size: matched.length }) : matched);
+    };
+    const { client, requests } = fakeLogsClient(tooLarge(crowded));
+    expect(positions(await getLogsChunked(client, crowdedScan, { splitCrowdedWindows: true }))).toEqual(sortedPositions(crowded));
+    expect(requests.filter((request) => size(request) === 1n)).toHaveLength(4);
+
+    const single = fakeLogsClient(tooLarge(contributionsAt(blockRun(1_020_041n, 1, 7))));
+    await expect(getLogsChunked(single.client, crowdedScan, { splitCrowdedWindows: true })).rejects.toBeInstanceOf(ResponseBodyTooLargeError);
+
+    const withoutOption = fakeLogsClient(tooLarge(crowded));
+    await expect(getLogsChunked(withoutOption.client, crowdedScan)).rejects.toBeInstanceOf(ResponseBodyTooLargeError);
+    expect(withoutOption.requests.every((request) => size(request) >= 100n)).toBe(true);
+  });
+
+  it("a wider range refused with result-count wording that is not a range limit is rethrown after one request, never read in pieces", async () => {
+    const { client, requests } = fakeLogsClient(() => Promise.resolve(Object.assign(new Error("server error"), { code: -32000, data: refusal.error.data })));
+    await expect(getLogsChunked(client, crowdedScan, { splitCrowdedWindows: true })).rejects.toSatisfy(isTooManyResultsError);
+    expect(requests).toHaveLength(1);
+  });
+
+  it("without the option, a window refused for too many results at the floor is rethrown", async () => {
+    const { client, requests } = fakeLogsClient(resultCappedNode(crowded, 6));
+    await expect(getLogsChunked(client, crowdedScan)).rejects.toSatisfy(isTooManyResultsError);
+    expect(requests.every((request) => size(request) >= 100n)).toBe(true);
+
+    const hundred = fakeLogsClient(resultCappedNode(crowded, 6));
+    await expect(getLogsChunked(hundred.client, { ...scan, fromBlock: 1_020_000n, toBlock: 1_020_099n })).rejects.toSatisfy(isTooManyResultsError);
+    expect(hundred.requests).toHaveLength(1);
+  });
+
+  it("an aborted signal stops reading the pieces of a crowded window", async () => {
+    const controller = new AbortController();
+    const node = resultCappedNode(crowded, 6);
+    const { client, requests } = fakeLogsClient((request) => {
+      if (size(request) === 20n) controller.abort(new Error("left the page"));
+      return node(request);
+    });
+    await expect(getLogsChunked(client, crowdedScan, { signal: controller.signal, splitCrowdedWindows: true })).rejects.toThrow(/left the page/);
+    expect(requests.some((request) => size(request) === 4n)).toBe(false);
+  });
+
+  it("over the production read transport, the recorded refusal is read in pieces without a retry", async () => {
+    const logs = contributionsAt(blockRun(1_020_040n, 4, 3));
+    const endpoint = stubEndpoint((call) => {
+      const [filter] = call.params as [{ address: string; topics?: (string | null)[] }];
+      const request = { address: filter.address, topics: filter.topics ?? [], ...logsRange(call) };
+      const matched = logs.filter((log) => matchesFilter(log, request));
+      return matched.length > 6 ? { error: refusal.error } : { result: matched };
+    });
+    const client = mainnetReadClient();
+    const found = await getLogsChunked(client, { ...scan, fromBlock: 1_020_000n, toBlock: 1_020_099n }, { splitCrowdedWindows: true });
+    expect(positions(found)).toEqual(sortedPositions(logs));
+    const ranges = rpcCalls(endpoint).map((call) => logsRange(call));
+    expect(ranges).toHaveLength(1 + 5 + 5 + 4);
+    expect(new Set(ranges.map(({ fromBlock, toBlock }) => `${String(fromBlock)}-${String(toBlock)}`)).size).toBe(ranges.length);
   });
 });

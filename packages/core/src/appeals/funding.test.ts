@@ -1,4 +1,4 @@
-import { encodeEventTopics, encodeAbiParameters } from "viem";
+import { encodeEventTopics, encodeAbiParameters, numberToHex } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { governorAbi } from "../abi";
 import type { LocalIdResolution } from "../disputes/types";
@@ -9,7 +9,10 @@ import { readRoundFunding, roundStartBlock } from "./index";
 import { CONTRIBUTION_EVENT, RULING_FUNDED_EVENT } from "./context";
 import type { AppealContext } from "./types";
 import { FAMILY_SIGNATURES, answer, detectionFor, fakeNode, recordedDetection, reverting, rpcError, rpcLog, testBinding, type FakeNodeSpec } from "../test/appeals/testHelpers";
-import { readRpcNode } from "../test/rpc/testHelpers";
+import { createReadClient } from "../rpc";
+import refusal from "../rpc/__fixtures__/gnosis-crowded-logs-refusal.json";
+import { chainOf } from "../test/chains/testHelpers";
+import { logsRange, matchesFilter, readRpcNode, stubEndpoint, type RpcLog } from "../test/rpc/testHelpers";
 
 const UNSLASHED_OVERRIDE = getOverride(REGISTRY, 1, UNSLASHED.arbitrable);
 const SYNTHETIC: Address = "0x00000000000000000000000000000000000000bb";
@@ -160,6 +163,36 @@ describe("readRoundFunding (IDisputeResolver)", () => {
     expect(await readRoundFunding(context, 1n, 0n)).toEqual({
       ok: true,
       value: { round: 1n, contributions: [{ ruling: 1n, amount: 500_000_000_000_000_005n }], fundedRulings: [] },
+    });
+  });
+
+  it("reads a round whose contributions and funded rulings crowd one 100-block window past the RPC's result cap", async () => {
+    const contributions = Array.from({ length: 12 }, (_, index) =>
+      contributionLog({ localId: 7n, round: 1n, ruling: BigInt((index % 2) + 1), amount: BigInt(index + 1), block: 1_020_040n + BigInt(Math.floor(index / 3)), logIndex: index }),
+    );
+    const funded = Array.from({ length: 7 }, (_, index) =>
+      rulingFundedLog({ localId: 7n, round: 1n, ruling: BigInt(index + 1), block: 1_020_048n + BigInt(Math.floor(index / 2)), logIndex: 100 + index }),
+    );
+    const logs: readonly RpcLog[] = [...contributions, ...funded];
+    stubEndpoint((call) => {
+      if (call.method === "eth_blockNumber") return { result: numberToHex(1_049_999n) };
+      const [filter] = call.params as [{ address: string; topics?: (string | string[] | null)[] }];
+      const matched = logs.filter((log) => matchesFilter(log, { address: filter.address, topics: filter.topics ?? [], ...logsRange(call) }));
+      return matched.length > 6 ? { error: refusal.error } : { result: matched };
+    });
+    const resolution = createReadClient(chainOf(1), { REACT_APP_WEB3_PROVIDER_URL: "https://read.rpc.example/crowded" }, { retryCount: 0 });
+    if (resolution.status !== "ok") throw new Error("expected a configured read client");
+
+    expect(await readRoundFunding(resolverContext(resolution.client, { kind: "local-id", value: 7n }), 1n, 1_000_000n)).toEqual({
+      ok: true,
+      value: {
+        round: 1n,
+        contributions: [
+          { ruling: 1n, amount: 1n + 3n + 5n + 7n + 9n + 11n },
+          { ruling: 2n, amount: 2n + 4n + 6n + 8n + 10n + 12n },
+        ],
+        fundedRulings: [1n, 2n, 3n, 4n, 5n, 6n, 7n],
+      },
     });
   });
 

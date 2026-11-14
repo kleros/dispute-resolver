@@ -1,12 +1,15 @@
-import { HttpRequestError, InvalidInputRpcError, LimitExceededRpcError, RpcRequestError, TimeoutError } from "viem";
+import { HttpRequestError, InvalidInputRpcError, InvalidParamsRpcError, LimitExceededRpcError, ResponseBodyTooLargeError, RpcRequestError, TimeoutError } from "viem";
 import { describe, expect, it } from "vitest";
+import refusal from "./__fixtures__/gnosis-crowded-logs-refusal.json";
 import { isRangeLimitError, LookupLimitError } from "./index";
+import { TooManyLogsError } from "./errors";
+import { isTooManyResultsError } from "./rangeLimit";
 
 const URL = "https://rpc.example/mainnet";
 
 /** The error viem's transport throws for a JSON-RPC error response, before `buildRequest` maps it by code. */
-function rpcRequestError(code: number, message: string, params: unknown = []): RpcRequestError {
-  return new RpcRequestError({ body: { method: "eth_getLogs", params }, error: { code, message }, url: URL });
+function rpcRequestError(code: number, message: string, params: unknown = [], data?: unknown): RpcRequestError {
+  return new RpcRequestError({ body: { method: "eth_getLogs", params }, error: { code, message, data }, url: URL });
 }
 
 describe("isRangeLimitError on provider error shapes", () => {
@@ -57,5 +60,57 @@ describe("isRangeLimitError on viem errors", () => {
     const error = new InvalidInputRpcError(rpcRequestError(-32000, "header not found", params));
     expect(error.message).toContain("10000");
     expect(isRangeLimitError(error)).toBe(false);
+  });
+});
+
+describe("isTooManyResultsError", () => {
+  it.each<[unknown, boolean]>([
+    [refusal.error, true],
+    [{ code: -32005, message: "query returned more than 10000 results" }, true],
+    [{ code: -32005, message: "query returned more than 10,000 results. Try with this block range [0x1, 0x2]." }, true],
+    [{ code: -32602, message: "Log response size exceeded. You can make eth_getLogs requests with up to a 2K block range and no limit on the response size." }, true],
+    [{ code: -32602, message: "query exceeds max results 20000, retry with the range 100-200" }, true],
+    [{ message: "too many results" }, true],
+    [{ code: -32602, message: "invalid params" }, false],
+    [{ message: "CONNECTION TIMEOUT: timeout of 20000 ms achived" }, false],
+    [{ message: "request timed out" }, false],
+    [{ code: -32005, message: "daily request count exceeded, request rate limited" }, false],
+    [{ code: 429, message: "Too Many Requests" }, false],
+    [{ message: "rate limit exceeded: more than 100 results per second" }, false],
+    [{ message: "Returned error: block range is too wide" }, false],
+    [{ message: "eth_getLogs is limited to a 1000 range" }, false],
+    [{ code: -32602, message: "exceed maximum block range: 5000" }, false],
+    [{ message: 'Invalid JSON RPC response: "413 Request Entity Too Large"' }, false],
+    [{ code: -32005, message: "limit exceeded" }, false],
+    [{ code: -32000, message: "header not found" }, false],
+    [{ code: 3, message: "execution reverted", data: "0x08c379a0" }, false],
+    [undefined, false],
+  ])("classifies %j as too many results: %s", (error, expected) => {
+    expect(isTooManyResultsError(error)).toBe(expected);
+  });
+
+  it.each<[string, Error, boolean]>([
+    [
+      "the recorded Gnosis refusal as viem's read transport throws it",
+      new InvalidParamsRpcError(rpcRequestError(refusal.error.code, refusal.error.message, [], refusal.error.data)),
+      true,
+    ],
+    ["a result-count refusal mapped by viem", new LimitExceededRpcError(rpcRequestError(-32005, "query returned more than 10000 results")), true],
+    ["an answer larger than the read client accepts", new ResponseBodyTooLargeError({ maxSize: 10_485_760, size: 10_485_761 }), true],
+    ["a request timeout", new TimeoutError({ body: { method: "eth_getLogs" }, url: URL }), false],
+    ["HTTP 413", new HttpRequestError({ status: 413, details: "nginx", url: URL }), false],
+    ["HTTP 429", new HttpRequestError({ status: 429, details: "Too Many Requests", url: URL }), false],
+    ["the scan's own log cap", new TooManyLogsError(1_000), false],
+    ["the scan's own log cap wrapped as a cause", new Error("wrapped", { cause: new TooManyLogsError(1_000) }), false],
+    ["a spent request budget", new LookupLimitError("Request budget of 1500 requests exceeded."), false],
+  ])("%s: %s", (_name, error, expected) => {
+    expect(isTooManyResultsError(error)).toBe(expected);
+  });
+
+  it("the request body is not read, so blocks and topics in it never look like a result count", () => {
+    const params = [{ topics: ["more than 10000 results"], fromBlock: "0x10000", toBlock: "0x20000" }];
+    const error = new InvalidParamsRpcError(rpcRequestError(-32602, "invalid params", params));
+    expect(error.message).toContain("more than 10000 results");
+    expect(isTooManyResultsError(error)).toBe(false);
   });
 });
