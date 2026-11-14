@@ -44,18 +44,22 @@ function boundedResponse(response: Response, maxBytes: number): FetchResponse {
 
 /**
  * Only core's options are forwarded, and no request ever carries credentials: every URL core fetches (the
- * meta-evidence API, the IPFS gateway, court policies) is a third party. No body is read past `maxBodyBytes`: an answer
- * that declares more rejects before its body is read (the declared length may be the compressed size, so the streamed
- * bytes are counted as well), and a body that streams past the cap rejects with `BodyTooLargeError`.
+ * meta-evidence API, the IPFS gateway, court policies) is a third party. No body is read past `maxBodyBytes`, or the
+ * caller's smaller `maxBytes`: an answer that declares more rejects before its body is read (the declared length may be
+ * the compressed size, so the streamed bytes are counted as well), and a body that streams past the cap rejects with
+ * `BodyTooLargeError`. A refused answer is held to `maxBodyBytes` alone before its body is read, so a large error page
+ * reads as refused rather than as a document over the caller's cap.
  */
 export function createFetcher(fetchFunction: FetchFunction, maxBodyBytes: number = FETCH_BODY_MAX_BYTES): Fetcher {
   return async (url, init) => {
+    const limit = Math.min(maxBodyBytes, init?.maxBytes ?? maxBodyBytes);
     const response = await fetchFunction(url, { credentials: "omit", signal: init?.signal ?? null, headers: { ...init?.headers } });
-    if (declaredLength(response) > maxBodyBytes) {
+    const declaredCap = response.ok ? limit : maxBodyBytes;
+    if (declaredLength(response) > declaredCap) {
       response.body?.cancel().catch(() => undefined);
-      throw new BodyTooLargeError(maxBodyBytes);
+      throw new BodyTooLargeError(declaredCap);
     }
-    return boundedResponse(response, maxBodyBytes);
+    return boundedResponse(response, limit);
   };
 }
 

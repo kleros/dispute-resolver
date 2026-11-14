@@ -169,19 +169,19 @@ describe("scanEvidenceLogs", () => {
   it("a read right after an Evidence log is mined in the next block finds that log", async () => {
     const node = readRpcNode({ head: 1_000n });
     const scan = { client: node.client, arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, fromBlock: 0n };
-    expect((await scanEvidenceLogs(scan)).logs).toEqual([]);
+    expect(await scanEvidenceLogs(scan)).toEqual([]);
     const party: Address = "0x00000000000000000000000000000000000000c1";
     const head = node.mine([
       evidenceLog({ arbitrable: OTHER_ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: 9n, party, uri: "/ipfs/QmNew/evidence.json", blockNumber: 1_001n, logIndex: 0 }),
     ]);
     expect(head).toBe(1_001n);
-    const { logs } = await scanEvidenceLogs(scan);
-    expect(logs.map((log) => [log.blockNumber, log.evidenceUri, log.submitter])).toEqual([[1_001n, "/ipfs/QmNew/evidence.json", party]]);
+    const logs = await scanEvidenceLogs(scan);
+    expect(logs.map((log) => [log.blockNumber, log.decoded?.evidenceUri, log.decoded?.submitter])).toEqual([[1_001n, "/ipfs/QmNew/evidence.json", party]]);
   });
 
   it("reads the recorded Evidence logs of mainnet 505 in chain order with lowercase submitters", async () => {
     const { client, requests } = fakeClient(recordedNode());
-    const { logs } = await scanEvidenceLogs({
+    const logs = await scanEvidenceLogs({
       client,
       arbitrable: DISPUTE_505.arbitrable,
       arbitrator: ARBITRATOR,
@@ -190,9 +190,10 @@ describe("scanEvidenceLogs", () => {
     });
     expect(logs).toHaveLength(5);
     expect(logs.map((log) => [log.blockNumber, log.logIndex])).toEqual(DISPUTE_505.evidenceLogs.map((log) => [BigInt(log.blockNumber), Number(log.logIndex)]));
-    expect(logs.map((log) => log.submitter)).toEqual(DISPUTE_505.evidenceLogs.map((log) => `0x${(log.topics[3] ?? "").slice(26)}`));
-    expect(logs.every((log) => log.submitter === log.submitter.toLowerCase())).toBe(true);
-    expect(logs[0]?.evidenceUri).toBe("/ipfs/QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA/evidence.json");
+    const submitters = logs.map((log) => log.decoded?.submitter ?? "");
+    expect(submitters).toEqual(DISPUTE_505.evidenceLogs.map((log) => `0x${(log.topics[3] ?? "").slice(26)}`));
+    expect(submitters.every((submitter) => submitter === submitter.toLowerCase())).toBe(true);
+    expect(logs[0]?.decoded?.evidenceUri).toBe("/ipfs/QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA/evidence.json");
     expect(requests.logs[0]?.topics).toEqual([DISPUTE_505.evidenceLogs[0]?.topics[0], pad(ARBITRATOR), numberToHex(57n, { size: 32 }), null]);
   });
 });

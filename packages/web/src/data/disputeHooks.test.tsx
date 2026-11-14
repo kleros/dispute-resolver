@@ -2,7 +2,7 @@ import * as core from "@dispute-resolver/core";
 import type { ArbitratedBinding, MetaEvidenceResult } from "@dispute-resolver/core";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createTestDeps, dataWrapper, testBinding, testDisputeEvent, testEvidenceList, testFamily, testOkMetaEvidence } from "../test/data";
+import { createTestDeps, createTestQueryClient, dataWrapper, testBinding, testDisputeEvent, testEvidenceList, testFamily, testOkMetaEvidence } from "../test/data";
 import { EVIDENCE_FETCH_TIMEOUT_MS } from "./constants";
 import { useEvidence, useFamily, useMetaEvidence } from "./disputeHooks";
 import { metaEvidenceStaleTime } from "./metaEvidenceQuery";
@@ -54,6 +54,22 @@ describe("dispute hooks", () => {
     );
     await vi.advanceTimersByTimeAsync(EVIDENCE_FETCH_TIMEOUT_MS);
     await expect(Promise.race([outcome, Promise.resolve("pending")])).resolves.toBe("TimeoutError");
+  });
+
+  it("reads the first page of the evidence, and on a read again the page the list holds", async () => {
+    const held = { ...testEvidenceList(), page: { order: "oldest" as const, page: 2 } };
+    vi.mocked(core.loadEvidence).mockResolvedValueOnce({ ok: true, value: held });
+    const client = createTestQueryClient();
+    renderHook(() => useEvidence(1, BINDING, ready(FOUND_EVENT)), { wrapper: dataWrapper({ deps: createTestDeps(), client }) });
+    await waitFor(() => {
+      expect(core.loadEvidence).toHaveBeenCalledTimes(1);
+    });
+    expect(vi.mocked(core.loadEvidence).mock.calls[0]?.[0].page).toBeUndefined();
+
+    vi.mocked(core.loadEvidence).mockResolvedValue({ ok: true, value: held });
+    await act(() => client.invalidateQueries({ queryKey: queryKeys.evidence(1, 9n, BINDING.arbitrated, FOUND_EVENT.event.evidenceGroupId) }));
+    expect(core.loadEvidence).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(core.loadEvidence).mock.calls[1]?.[0].page).toEqual({ order: "oldest", page: 2 });
   });
 
   it("detects the family through the chain's configured read client and the session cache", async () => {

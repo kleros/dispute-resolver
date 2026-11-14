@@ -10,7 +10,9 @@ import {
   type DisputeEventResult,
   type DisputeLookup,
   type DisputeReads,
+  type EvidenceItem,
   type EvidenceList,
+  type EvidenceLog,
   type FamilyDetection,
   type HiddenEvidenceReason,
   type MetaEvidence,
@@ -109,9 +111,40 @@ export function testDisputeEvent(overrides: Partial<DisputeEvent> = {}): Extract
   return { status: "found", event: { metaEvidenceId: 0n, evidenceGroupId: 3n, blockNumber: 100n, createdAt: 1_700_000_000, transactionHash: "0x01", ...overrides } };
 }
 
-export function testEvidenceList(items: EvidenceList["items"] = [], hidden: Partial<Record<HiddenEvidenceReason, number>> = {}): EvidenceList {
+/**
+ * One loaded page holding every entry: `items` newest first, items of one block in chain order, and the hidden entries,
+ * placed before them in block 0.
+ */
+export function testEvidenceList(items: readonly EvidenceItem[] = [], hidden: Partial<Record<HiddenEvidenceReason, number>> = {}): EvidenceList {
   const hiddenByReason = { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0, ...hidden };
-  return { items, hiddenEvidenceCount: Object.values(hiddenByReason).reduce((sum, count) => sum + count, 0), hiddenByReason };
+  const reasons = (Object.keys(hiddenByReason) as HiddenEvidenceReason[]).flatMap((reason) => Array.from({ length: hiddenByReason[reason] }, () => reason));
+  const shown = items.map((item, index) => ({
+    blockNumber: item.blockNumber,
+    logIndex: items.slice(0, index).filter((other) => other.blockNumber === item.blockNumber).length,
+    status: "shown" as const,
+    item,
+  }));
+  const hiddenEntries = reasons.map((reason, logIndex) => ({ blockNumber: 0n, logIndex, status: "hidden" as const, reason }));
+  const shownLogs = shown.map(({ blockNumber, logIndex, item }): EvidenceLog => ({
+    blockNumber,
+    logIndex,
+    transactionHash: item.transactionHash,
+    decoded: { evidenceUri: item.uri, submitter: item.submitter },
+  }));
+  const hiddenLogs = hiddenEntries.map(({ logIndex, reason }): EvidenceLog => ({
+    blockNumber: 0n,
+    logIndex,
+    transactionHash: "0x00",
+    decoded: reason === "undecodable" ? null : { evidenceUri: "https://example.org/hidden.json", submitter: TEST_ARBITRATOR },
+  }));
+  shownLogs.sort((a, b) => (a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : Number(a.blockNumber - b.blockNumber)));
+  return {
+    logs: [...hiddenLogs, ...shownLogs],
+    page: { order: "newest", page: 1 },
+    entries: [...shown, ...hiddenEntries],
+    hiddenEvidenceCount: reasons.length,
+    hiddenByReason,
+  };
 }
 
 export function testCaseDispute(overrides: Partial<CaseDispute> = {}): CaseDispute {

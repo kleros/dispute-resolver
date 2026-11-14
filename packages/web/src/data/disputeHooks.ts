@@ -16,6 +16,7 @@ import {
   type ExecutedRuling,
   type FamilyDetection,
   type MetaEvidenceResult,
+  type Outcome,
 } from "@dispute-resolver/core";
 import { skipToken, useQuery, useQueryClient, type Query } from "@tanstack/react-query";
 import { EVIDENCE_FETCH_TIMEOUT_MS, STALE_TIME_MS } from "./constants";
@@ -88,19 +89,26 @@ function missingEventMessage(event: Exclude<DisputeEventResult, { status: "found
     : "The dispute's Dispute event was not found, so its evidence group is unknown.";
 }
 
+/**
+ * A read again (a refresh after a mined write) reads the page the list holds, so the visitor stays on the page they
+ * opened; `useEvidencePage` puts any other page into the same query.
+ */
 export function useEvidence(chainId: number, binding: ArbitratedBinding | undefined, disputeEvent: SectionData<DisputeEventResult>): SectionData<EvidenceList> {
   const deps = useCoreDeps();
+  const queryClient = useQueryClient();
   const client = deps.getReadClient(chainId);
   const chain = getChain(chainId);
   const event = disputeEvent.status === "ready" ? disputeEvent.value : undefined;
   const found = event?.status === "found" ? event.event : undefined;
+  const key = binding === undefined || found === undefined ? IDLE_KEY : queryKeys.evidence(chainId, binding.disputeId, binding.arbitrated, found.evidenceGroupId);
   const query = useQuery({
-    queryKey: binding === undefined || found === undefined ? IDLE_KEY : queryKeys.evidence(chainId, binding.disputeId, binding.arbitrated, found.evidenceGroupId),
+    queryKey: key,
     queryFn:
       binding === undefined || found === undefined || client === undefined || chain === undefined
         ? skipToken
-        : ({ signal }) =>
-            loadEvidence({
+        : ({ signal }) => {
+            const held = queryClient.getQueryData<Outcome<EvidenceList>>(key);
+            return loadEvidence({
               client,
               fetcher: withTimeout(deps.fetcher, EVIDENCE_FETCH_TIMEOUT_MS),
               gateway: deps.gateway,
@@ -108,8 +116,10 @@ export function useEvidence(chainId: number, binding: ArbitratedBinding | undefi
               arbitrator: binding.arbitrator,
               evidenceGroupId: found.evidenceGroupId,
               fromBlock: evidenceScanStart(chain),
+              page: held?.ok === true ? held.value.page : undefined,
               signal,
-            }),
+            });
+          },
     staleTime: STALE_TIME_MS.evidence,
   });
   if (binding === undefined || disputeEvent.status === "loading") return LOADING;

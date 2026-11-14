@@ -37,6 +37,8 @@ export type GetReadClient = (chainId: number) => ReadClient | undefined;
 export interface FetchInit {
   readonly signal?: AbortSignal;
   readonly headers?: Readonly<Record<string, string>>;
+  /** The caller's own body limit: the fetcher reads no more than the smaller of it and its own, and throws `BodyTooLargeError` past it. */
+  readonly maxBytes?: number;
 }
 
 /** The part of a fetch `Response` core reads. Bodies are `unknown` until a Zod schema parses them. */

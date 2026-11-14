@@ -1,4 +1,4 @@
-import type { FetchResponse, Fetcher } from "@dispute-resolver/core";
+import { BodyTooLargeError, type FetchResponse, type Fetcher } from "@dispute-resolver/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFetcher, withTimeout } from "./fetcher";
 
@@ -93,6 +93,60 @@ describe("createFetcher", () => {
     expect(pulls()).toBeLessThan(chunks.length);
   });
 
+  it("a caller's smaller cap rejects a declared length over it without reading the body", async () => {
+    const { response, pulls, cancelled } = streamed(["x".repeat(20)], { "content-length": "20" });
+    await expect(rejectionName(createFetcher(() => Promise.resolve(response), 1_000)(URL, { maxBytes: CAP_BYTES }))).resolves.toBe("BodyTooLargeError");
+    expect(pulls()).toBe(0);
+    expect(cancelled()).toBe(true);
+  });
+
+  it("a caller's 64 KB cap stops a streamed 4 MiB body one chunk past 64 KB and cancels the rest", async () => {
+    const chunk = "x".repeat(16 * 1024);
+    const { response, pulls, cancelled } = streamed(Array.from({ length: 256 }, () => chunk));
+    const answer = await createFetcher(() => Promise.resolve(response))(URL, { maxBytes: 65_536 });
+    await expect(rejectionName(answer.json())).resolves.toBe("BodyTooLargeError");
+    expect(pulls() * chunk.length).toBeLessThanOrEqual(65_536 + chunk.length);
+    expect(cancelled()).toBe(true);
+  });
+
+  it("reads a body of exactly the caller's cap, and rejects one byte more", async () => {
+    const exact = streamed(['{"name":', '"n"}']);
+    const answer = await createFetcher(() => Promise.resolve(exact.response), 1_000)(URL, { maxBytes: 12 });
+    await expect(answer.json()).resolves.toEqual({ name: "n" });
+    const over = streamed(['{"name":', '"nn"}']);
+    const longer = await createFetcher(() => Promise.resolve(over.response), 1_000)(URL, { maxBytes: 12 });
+    await expect(rejectionName(longer.json())).resolves.toBe("BodyTooLargeError");
+  });
+
+  it("a refused answer that declares more than the caller's cap is returned as refused, not as too large", async () => {
+    const refused = new Response("x".repeat(100), { status: 404, headers: { "content-length": "100" } });
+    const answer = await createFetcher(() => Promise.resolve(refused), 1_000)(URL, { maxBytes: CAP_BYTES });
+    expect(answer).toMatchObject({ ok: false, status: 404 });
+  });
+
+  it("a refused answer that declares more than the fetcher's own cap is still rejected before its body is read", async () => {
+    const refused = new Response("x".repeat(20), { status: 404, headers: { "content-length": "20" } });
+    await expect(rejectionName(createFetcher(() => Promise.resolve(refused), CAP_BYTES)(URL))).resolves.toBe("BodyTooLargeError");
+  });
+
+  it("a declared length over the cap is refused against the caller's cap on a successful answer and the fetcher's own on a refused one", async () => {
+    const cap = async (status: number) => {
+      const response = new Response("x".repeat(2_000), { status, headers: { "content-length": "2000" } });
+      return createFetcher(() => Promise.resolve(response), 1_000)(URL, { maxBytes: CAP_BYTES }).then(
+        () => undefined,
+        (error: unknown) => (error instanceof BodyTooLargeError ? error.maxBytes : undefined),
+      );
+    };
+    await expect(cap(200)).resolves.toBe(CAP_BYTES);
+    await expect(cap(503)).resolves.toBe(1_000);
+  });
+
+  it("a caller's cap above the fetcher's own keeps the fetcher's", async () => {
+    const { response } = streamed(Array.from({ length: 10 }, () => "abcd"));
+    const answer = await createFetcher(() => Promise.resolve(response), CAP_BYTES)(URL, { maxBytes: 1_000 });
+    await expect(rejectionName(answer.json())).resolves.toBe("BodyTooLargeError");
+  });
+
   it("a body that is not JSON rejects json() with a SyntaxError", async () => {
     const answer = await createFetcher(() => Promise.resolve(new Response("%PDF-1.4", { status: 200 })))(URL);
     await expect(rejectionName(answer.json())).resolves.toBe("SyntaxError");
@@ -118,6 +172,16 @@ describe("withTimeout", () => {
     const response = await withTimeout(() => Promise.resolve(answer(() => Promise.resolve({ name: "General Court" }))), BOUND_MS)(URL);
     await expect(response.json()).resolves.toEqual({ name: "General Court" });
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("forwards the caller's body cap", async () => {
+    const seen: (number | undefined)[] = [];
+    const recording: Fetcher = (_url, init) => {
+      seen.push(init?.maxBytes);
+      return Promise.resolve(answer(() => Promise.resolve({})));
+    };
+    await withTimeout(recording, BOUND_MS)(URL, { maxBytes: 65_536 });
+    expect(seen).toEqual([65_536]);
   });
 
   it("lets the caller's signal abort the request and aborts the forwarded signal at the bound", async () => {

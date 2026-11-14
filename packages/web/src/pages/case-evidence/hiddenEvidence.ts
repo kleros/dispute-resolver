@@ -15,7 +15,7 @@ const REASONS = Object.keys(HIDDEN_REASON_LABELS) as readonly HiddenEvidenceReas
  * For example "2 evidence items hidden: not content-addressed"; with several reasons each is counted ("3 evidence items
  * hidden: 1 not valid JSON, 2 could not be fetched").
  */
-export function hiddenEvidenceText(list: EvidenceList): string | null {
+export function hiddenEvidenceText(list: Pick<EvidenceList, "hiddenEvidenceCount" | "hiddenByReason">): string | null {
   const total = list.hiddenEvidenceCount;
   if (total === 0) return null;
   const present = REASONS.filter((reason) => list.hiddenByReason[reason] > 0);
