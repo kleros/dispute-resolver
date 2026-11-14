@@ -127,7 +127,7 @@ describe("AppealSection refresh after a mined write", () => {
     expect(within(toastRegion()).getByText("Transaction submitted")).toBeInTheDocument();
     funding.resolve(NO_FUNDING);
     expect(await within(toastRegion()).findByText("Transaction confirmed")).toBeInTheDocument();
-    expect(within(toastRegion()).getByText("Funded “Yes” with 2 ETH.")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("Sent 2 ETH to fund “Yes”.")).toBeInTheDocument();
   });
 
   it("once a funding is mined, an edited contribution follows the refreshed remaining amount again", async () => {
