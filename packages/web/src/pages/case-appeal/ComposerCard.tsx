@@ -4,7 +4,7 @@ import {
   combinationTitle,
   enteredAnswerFunding,
   type ChainConfig,
-  type CrowdfundingCard,
+  type CrowdfundingSet,
   type MultipleSelectComposer,
 } from "@dispute-resolver/core";
 import { Card, Checkbox } from "@kleros/ui-components-library";
@@ -16,8 +16,8 @@ import type { AppealActions } from "./useAppealActions";
 
 interface ComposerCardProps {
   readonly composer: MultipleSelectComposer;
-  /** The panel's fixed cards: a combination that already has one shows that card's funding. */
-  readonly cards: readonly CrowdfundingCard[];
+  /** The panel's cards and the round's totals: a combination with a card shows that card's funding, any other what it holds. */
+  readonly round: Pick<CrowdfundingSet, "cards" | "contributed">;
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
   readonly isFundDisabled: boolean;
@@ -27,14 +27,14 @@ interface ComposerCardProps {
  * Above four options the combinations are not enumerated as cards, so the user ticks the options of the answer and
  * funds that combination (bitmask + 1).
  */
-export function ComposerCard({ composer, cards, actions, chain, isFundDisabled }: ComposerCardProps) {
+export function ComposerCard({ composer, round, actions, chain, isFundDisabled }: ComposerCardProps) {
   const titleId = useId();
   const errorId = useId();
   const [selected, setSelected] = useState<ReadonlySet<number>>(() => new Set());
   const ticked = combinationCode([...selected].sort((a, b) => a - b));
   const tooHigh = ticked > composer.highestCode;
   const code = tooHigh ? null : ticked;
-  const funding = enteredAnswerFunding(cards, composer, code);
+  const funding = enteredAnswerFunding(round, composer, code);
   const answer = combinationTitle(ticked - 1n, composer.titles);
   const options = composer.titles.map((title, position) => ({ title, position, id: `option-${String(position)}` }));
 

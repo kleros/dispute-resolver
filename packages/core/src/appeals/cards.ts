@@ -5,12 +5,19 @@ import { REFUSED_RULING_TEXT, combinationTitle, decodeRulingCode, formatRuling, 
 import type { FallbackOutcomes, RulingOptions } from "../rulings/types";
 
 import { fundedPercent, isWinningCode } from "./amounts";
-import type { AppealAmounts, CardFundingState, CardOrigin, CardSide, CrowdfundingCard, CrowdfundingSet, RoundFunding } from "./types";
+import type { AppealAmounts, CardFundingState, CardOrigin, CardSide, CrowdfundingCard, CrowdfundingSet, MultipleSelectComposer, RoundFunding } from "./types";
 
 const DEFAULT_OUTCOMES = ["Yes", "No"] as const;
 
 /** Above this many options, multiple-select cards are no longer enumerated: 2ⁿ cards would flood the panel. */
 const MAX_ENUMERATED_OPTIONS = 4;
+const MULTIPLE_SELECT = "multiple-select";
+
+/**
+ * Where funders can add new answers, at most this many cards for answers that hold contributions beyond the cards always
+ * shown; the rest are counted.
+ */
+const MAX_CONTRIBUTED_CARDS = 20;
 
 interface CardContext {
   readonly currentRuling: bigint;
@@ -65,67 +72,90 @@ function optionCards(context: CardContext, titles: readonly string[]): Crowdfund
   return titles.map((title, index) => card(context, "option", title, BigInt(index + 1)));
 }
 
-/**
- * Every combination 0…2ⁿ−1, coded combination + 1, for up to four options; above that only the current ruling's
- * combination and the combinations that already received contributions, in code order.
- */
+/** Every combination 0…2ⁿ−1, coded combination + 1. */
 function combinationCards(context: CardContext, titles: readonly string[]): CrowdfundingCard[] {
   const combinations = 1n << BigInt(titles.length);
-  const codes: bigint[] = [];
-  if (titles.length <= MAX_ENUMERATED_OPTIONS) {
-    for (let code = 1n; code <= combinations; code += 1n) codes.push(code);
-  } else {
-    const shown = new Set([context.currentRuling, ...context.contributed.keys()]);
-    codes.push(...[...shown].filter((code) => code >= 1n && code <= combinations).sort(compareBigint));
-  }
-  return codes.map((code) => card(context, "combination", combinationTitle(code - 1n, titles), code));
+  const cards: CrowdfundingCard[] = [];
+  for (let code = 1n; code <= combinations; code += 1n) cards.push(card(context, "combination", combinationTitle(code - 1n, titles), code));
+  return cards;
 }
 
 /**
- * The contributed values other than the current ruling (titled by decoding the code), then the current ruling when it
- * is not 0. A code in `taken` (the refuse card's, a reserved answer's) already has its card.
+ * The cards the question lists: its options, its combinations up to four options, or the fallback outcomes. A variable
+ * question and a multiple-select above four options list none: their answers come from the round.
  */
-function variableCards(context: CardContext, options: RulingOptions, fallbackOutcomes: FallbackOutcomes, taken: ReadonlySet<bigint>): CrowdfundingCard[] {
-  const { currentRuling } = context;
-  const contributedValues = [...context.contributed.keys()]
-    .filter((code) => code !== currentRuling && !taken.has(code))
-    .sort(compareBigint)
-    .map((code) => card(context, "contributed-value", decodeRulingCode(code, options, fallbackOutcomes), code));
-  if (currentRuling === 0n || taken.has(currentRuling)) return contributedValues;
-  return [...contributedValues, card(context, "current-ruling", formatRuling(currentRuling, options, fallbackOutcomes), currentRuling)];
-}
-
-function questionCards(context: CardContext, options: RulingOptions, fallbackOutcomes: FallbackOutcomes, taken: ReadonlySet<bigint>): CrowdfundingCard[] {
+function listedCards(context: CardContext, options: RulingOptions, fallbackOutcomes: FallbackOutcomes): CrowdfundingCard[] {
   const { type, titles } = options;
-  if (isVariableType(type)) return variableCards(context, options, fallbackOutcomes, taken);
+  if (isVariableType(type)) return [];
   if (type === "single-select" && titles !== undefined) return optionCards(context, titles);
-  if (type === "multiple-select" && titles !== undefined) return combinationCards(context, titles);
+  if (type === MULTIPLE_SELECT && titles !== undefined) return titles.length <= MAX_ENUMERATED_OPTIONS ? combinationCards(context, titles) : [];
   return optionCards(context, fallbackOutcomes !== null && fallbackOutcomes.length > 0 ? fallbackOutcomes : DEFAULT_OUTCOMES);
 }
 
+type AnswerOrigin = Extract<CardOrigin, "current-ruling" | "funded-ruling" | "contributed-value">;
+
 /**
- * The current ruling and every ruling the round reports fully funded, each when no card has its code yet: the funded
- * ones in code order, then the current ruling. Ruling 0 already has the refuse card or cannot be funded. A contribution
- * alone adds no card.
+ * A card for an answer the question does not list. A multiple-select code within its combinations is titled as one;
+ * any other code as the court reads it, or by its number when that reading is empty (an unknown type such as "bool"),
+ * except a variable question's current ruling, which keeps the court's reading (empty for a text answer).
  */
-function unlistedCards(context: CardContext, options: RulingOptions, fallbackOutcomes: FallbackOutcomes, shown: ReadonlySet<bigint>): CrowdfundingCard[] {
-  const { currentRuling } = context;
-  const unlisted = (code: bigint) => code !== 0n && !shown.has(code);
-  // An unknown type such as "bool" reads an unlisted code as "", which would leave the card without a title.
-  const titled = (title: string, code: bigint) => (title === "" ? code.toString() : title);
-  const funded = [...context.funded]
-    .filter((code) => code !== currentRuling && unlisted(code))
-    .sort(compareBigint)
-    .map((code) => card(context, "funded-ruling", titled(decodeRulingCode(code, options, fallbackOutcomes), code), code));
-  if (!unlisted(currentRuling)) return funded;
-  return [...funded, card(context, "current-ruling", titled(formatRuling(currentRuling, options, fallbackOutcomes), currentRuling), currentRuling)];
+function answerCard(context: CardContext, options: RulingOptions, fallbackOutcomes: FallbackOutcomes, origin: AnswerOrigin, code: bigint): CrowdfundingCard {
+  const { type, titles } = options;
+  if (type === MULTIPLE_SELECT && titles !== undefined && code >= 1n && code <= 1n << BigInt(titles.length)) {
+    return card(context, "combination", combinationTitle(code - 1n, titles), code);
+  }
+  if (origin === "current-ruling") {
+    const reading = formatRuling(code, options, fallbackOutcomes);
+    return card(context, origin, reading === "" && !isVariableType(type) ? code.toString() : reading, code);
+  }
+  const title = decodeRulingCode(code, options, fallbackOutcomes);
+  return card(context, origin, title === "" ? code.toString() : title, code);
+}
+
+interface Contributed {
+  readonly code: bigint;
+  readonly amount: bigint;
+}
+
+function ranksBefore(a: Contributed, b: Contributed): boolean {
+  return a.amount === b.amount ? a.code < b.code : a.amount > b.amount;
 }
 
 /**
- * The refuse card unless option 0 is not fundable (Unslashed), the reserved answers, the question type's cards, then the
- * current ruling and the fully funded rulings that none of those code, without any card coded above the dispute's number
- * of choices (a combination or a fallback outcome past it), since the contract refuses a ruling above it. A new answer
- * on the free input or composer takes the loser terms, or the shared ones in a tie that costs every ruling alike.
+ * The answers holding money that `shown` lacks and the contract accepts, at most `limit` of them in rank order, and how
+ * many more there are. One pass without sorting the whole round, which can hold any number of answers.
+ */
+function largestContributions(contributed: ReadonlyMap<bigint, bigint>, shown: ReadonlySet<bigint>, highestCode: bigint, limit: number) {
+  const top: Contributed[] = [];
+  let candidates = 0;
+  for (const [code, amount] of contributed) {
+    if (amount <= 0n || code === 0n || code > highestCode || shown.has(code)) continue;
+    candidates += 1;
+    const entry = { code, amount };
+    const last = top.at(-1);
+    if (top.length === limit && last !== undefined && !ranksBefore(entry, last)) continue;
+    const at = top.findIndex((ranked) => ranksBefore(entry, ranked));
+    top.splice(at === -1 ? top.length : at, 0, entry);
+    if (top.length > limit) top.pop();
+  }
+  return { top, more: candidates - top.length };
+}
+
+/** The composer funds no code past its last combination, and nothing funds a code past the dispute's number of choices. */
+function highestContributedCode(composer: MultipleSelectComposer | null, numberOfChoices: bigint): bigint {
+  if (composer === null) return numberOfChoices;
+  const lastCombination = 1n << BigInt(composer.titles.length);
+  return lastCombination < numberOfChoices ? lastCombination : numberOfChoices;
+}
+
+/**
+ * The refuse card unless option 0 is not fundable (Unslashed), the reserved answers and the question's listed cards; then
+ * every fully funded ruling in code order and the current ruling, when no card has their code yet. Only where funders can
+ * add new answers (the free input or the composer), at most `MAX_CONTRIBUTED_CARDS` other answers that hold contributions
+ * follow, largest total first, the lower code first on a tie, none past the composer's last combination; elsewhere a
+ * contribution alone adds no card and nothing is counted. Ruling 0 only ever has the refuse card. No card is coded above the dispute's number of choices (a combination or a
+ * fallback outcome past it), since the contract refuses a ruling above it. A new answer on the free input or composer
+ * takes the loser terms, or the shared ones in a tie that costs every ruling alike.
  */
 export function buildCrowdfundingCards(input: {
   readonly rulingOptions: RulingOptions;
@@ -138,24 +168,38 @@ export function buildCrowdfundingCards(input: {
   /** The arbitrator's `disputes(id).numberOfChoices`. */
   readonly numberOfChoices: bigint;
 }): CrowdfundingSet {
-  const { rulingOptions, fallbackOutcomes, amounts, numberOfChoices } = input;
+  const { rulingOptions, fallbackOutcomes, amounts, numberOfChoices, currentRuling } = input;
   const contributed = new Map<bigint, bigint>();
   for (const { ruling, amount } of input.funding.contributions) contributed.set(ruling, (contributed.get(ruling) ?? 0n) + amount);
   const shared = input.tie === "shared-full-period" || input.tie === "all-winner";
-  const context: CardContext = { currentRuling: input.currentRuling, amounts, override: input.override, contributed, funded: new Set(input.funding.fundedRulings), shared };
-  const refuse = input.override?.refuseToArbitrateFundable === false ? [] : [card(context, "refuse", REFUSED_RULING_TEXT, 0n)];
-  const fixed = [...refuse, ...reservedCards(context, rulingOptions.reserved)];
-  const taken = new Set(fixed.map((fixedCard) => fixedCard.code));
-  const listed = [...fixed, ...questionCards(context, rulingOptions, fallbackOutcomes, taken)];
-  const cards = [...listed, ...unlistedCards(context, rulingOptions, fallbackOutcomes, new Set(listed.map((listedCard) => listedCard.code)))];
+  const context: CardContext = { currentRuling, amounts, override: input.override, contributed, funded: new Set(input.funding.fundedRulings), shared };
+  const cards: CrowdfundingCard[] = [];
+  const shown = new Set<bigint>();
+  const add = (next: CrowdfundingCard) => {
+    shown.add(next.code);
+    cards.push(next);
+  };
+  // The fixed cards are never merged: a reserved answer coded like a listed outcome keeps both cards.
+  if (input.override?.refuseToArbitrateFundable !== false) add(card(context, "refuse", REFUSED_RULING_TEXT, 0n));
+  for (const reserved of reservedCards(context, rulingOptions.reserved)) add(reserved);
+  for (const listed of listedCards(context, rulingOptions, fallbackOutcomes)) add(listed);
+  const addAnswer = (origin: AnswerOrigin, code: bigint) => {
+    if (code !== 0n && !shown.has(code)) add(answerCard(context, rulingOptions, fallbackOutcomes, origin, code));
+  };
+  for (const code of Array.from(context.funded).sort(compareBigint)) if (code !== currentRuling) addAnswer("funded-ruling", code);
+  addAnswer("current-ruling", currentRuling);
   const { type, titles, precision } = rulingOptions;
   const newAnswer = shared ? amounts.winner : amounts.loser;
   const entered = { side: shared ? ("shared" as const) : ("loser" as const), required: newAnswer.total, deadline: newAnswer.deadline, highestCode: numberOfChoices };
-  return {
-    cards: cards.filter((fundable) => fundable.code <= numberOfChoices),
-    freeInput: isVariableType(type) ? { type, precision, ...entered } : null,
-    composer: type === "multiple-select" && titles !== undefined && titles.length > MAX_ENUMERATED_OPTIONS ? { titles, ...entered } : null,
-  };
+  const freeInput = isVariableType(type) ? { type, precision, ...entered } : null;
+  const composer = type === MULTIPLE_SELECT && titles !== undefined && titles.length > MAX_ENUMERATED_OPTIONS ? { titles, ...entered } : null;
+  let moreAnswers = 0;
+  if (freeInput !== null || composer !== null) {
+    const { top, more } = largestContributions(contributed, shown, highestContributedCode(composer, numberOfChoices), MAX_CONTRIBUTED_CARDS);
+    for (const { code } of top) addAnswer("contributed-value", code);
+    moreAnswers = more;
+  }
+  return { cards: cards.filter((fundable) => fundable.code <= numberOfChoices), moreAnswers, contributed, freeInput, composer };
 }
 
 /** Fully funded wins over the deadline; otherwise closed from the deadline second on, as the contracts compare strictly. */
@@ -178,22 +222,24 @@ export interface EnteredAnswerFunding {
 
 /**
  * An entered answer whose code already has a card (the current ruling, a contributed value) is funded on that card's
- * side, so it takes that card's numbers; a new answer, or no answer yet, takes the entered card's total and deadline.
+ * side, so it takes that card's numbers; any other answer, or no answer yet, takes the entered card's total and deadline
+ * with what the round already holds for it, since an answer past the cards' cap holds contributions without a card.
  */
 export function enteredAnswerFunding(
-  cards: readonly CrowdfundingCard[],
+  set: Pick<CrowdfundingSet, "cards" | "contributed">,
   entered: { readonly side: CardSide; readonly required: bigint; readonly deadline: number },
   code: bigint | null,
 ): EnteredAnswerFunding {
-  const matched = code === null ? undefined : cards.find((candidate) => candidate.code === code);
+  const matched = code === null ? undefined : set.cards.find((candidate) => candidate.code === code);
   if (matched === undefined) {
+    const contributed = code === null ? 0n : (set.contributed.get(code) ?? 0n);
     return {
       card: null,
       side: entered.side,
       required: entered.required,
-      contributed: 0n,
-      remaining: entered.required,
-      fundedPercent: 0,
+      contributed,
+      remaining: entered.required > contributed ? entered.required - contributed : 0n,
+      fundedPercent: fundedPercent(contributed, entered.required),
       deadline: entered.deadline,
       fullyFunded: false,
     };

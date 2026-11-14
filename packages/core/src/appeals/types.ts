@@ -164,6 +164,10 @@ export interface AppealPanelInput {
 
 export interface CrowdfundingSet {
   readonly cards: readonly CrowdfundingCard[];
+  /** How many answers hold contributions but got no card past the cap on such cards; 0 where funders cannot add new answers. */
+  readonly moreAnswers: number;
+  /** Each answer's total contributed in the round, so an entered answer without a card still shows what it holds. */
+  readonly contributed: ReadonlyMap<bigint, bigint>;
   readonly freeInput: FreeInputCard | null;
   readonly composer: MultipleSelectComposer | null;
 }

@@ -32,7 +32,7 @@ describe("losingDeadline", () => {
 });
 
 describe("losingSideDeadline", () => {
-  const CROWDFUNDING_SET = { dialect: "idr", cards: [], freeInput: null, composer: null } as const;
+  const CROWDFUNDING_SET = { dialect: "idr", cards: [], moreAnswers: 0, contributed: new Map<bigint, bigint>(), freeInput: null, composer: null } as const;
   const UNAVAILABLE = { code: "rpc-error", message: "The fees could not be read." } as const;
 
   it.each<[string, AppealPanel]>([
