@@ -1,0 +1,9 @@
+{
+  "provenance": "eth_getLogs through the mainnet read RPC over blocks 14576743 to 14580743, recorded 2026-10-14 with the head at readAtBlock: KlerosLiquid DisputeCreation(1170) and the Unslashed proxy ERC-1497 Dispute(arbitrator, 1170). Both are in the dispute creation transaction; the Dispute event block is where funding round 1 starts.",
+  "chainId": 1,
+  "readAtBlock": 26190900,
+  "disputeId": "1170",
+  "disputeEvent": {
+    "blockNumber": 14578743
+  }
+}

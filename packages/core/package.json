@@ -1,0 +1,41 @@
+{
+  "name": "@dispute-resolver/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Registry, URL and CID rules, chain reads, Reality pipeline, evidence pipelines, appeal math and write-call builders. No React, no DOM.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p scripts/tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "format": "prettier --write . --ignore-path ../../.prettierignore",
+    "reality:known-questions": "tsx scripts/generate-known-questions.ts",
+    "reality:known-questions:check": "tsx scripts/generate-known-questions.ts --check",
+    "rpc:preflight": "tsx scripts/preflight-rpc.ts",
+    "mutation": "stryker run"
+  },
+  "dependencies": {
+    "@reality.eth/reality-eth-lib": "3.4.34",
+    "viem": "^2.57.6",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@kleros/arbitrable-proxy-contracts": "5.0.3",
+    "@kleros/kleros": "0.1.5",
+    "@kleros/kleros-interaction": "0.9.3",
+    "@reality.eth/contracts": "3.2.31",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/vitest-runner": "^10.1.1",
+    "IDRv1": "npm:@kleros/dispute-resolver-interface-contract@1.0.2",
+    "IDRv2": "npm:@kleros/dispute-resolver-interface-contract@8.0.0",
+    "eslint": "^9.39.5",
+    "prettier": "^3.9.10",
+    "tsx": "^4",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
+  }
+}

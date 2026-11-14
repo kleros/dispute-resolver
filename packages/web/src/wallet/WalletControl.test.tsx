@@ -1,0 +1,168 @@
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it } from "vitest";
+import { testPageChain } from "../test/routing";
+import { createConnectedTestWallet, createTestWallet, setWalletStatus, walletWrapper } from "../test/wallet";
+import { WalletControl } from "./WalletControl";
+
+/** A closed panel first animates out, inert; jsdom runs no animation, so the test ends it before checking the unmount. */
+function expectAccountPanelClosed() {
+  const panel = screen.queryByRole("dialog", { name: "Account" });
+  if (panel !== null) {
+    expect(panel).toHaveAttribute("inert");
+    fireEvent.animationEnd(panel);
+  }
+  expect(screen.queryByRole("dialog")).toBeNull();
+}
+
+describe("WalletControl", () => {
+  it("Connect, named by its visible text, opens AppKit's Connect view on the page chain", async () => {
+    const wallet = createTestWallet();
+    render(<WalletControl chain={testPageChain(100).chain} />, { wrapper: walletWrapper(wallet) });
+    const button = screen.getByRole("button", { name: "Connect" });
+    expect(button).not.toHaveAttribute("aria-label");
+    await userEvent.click(button);
+    expect(wallet.modal?.openConnect).toHaveBeenCalledWith(100);
+  });
+
+  it("without a project ID Connect is disabled and nothing on the control mentions configuration", () => {
+    const wallet = createTestWallet({ mode: "unconfigured" });
+    const { container } = render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(wallet) });
+    const button = screen.getByRole("button", { name: "Connect" });
+    expect(button).toBeDisabled();
+    expect(button).not.toHaveAccessibleDescription();
+    expect(container).not.toHaveTextContent(/configured|deployment|unavailable/i);
+  });
+
+  it("once AppKit reports an embedded-wallet connector Connect is disabled the same way and never opens the modal", async () => {
+    const wallet = createTestWallet({ embeddedWallet: true });
+    const { container } = render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(wallet) });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
+    });
+    const button = screen.getByRole("button", { name: "Connect" });
+    expect(button).not.toHaveAccessibleDescription();
+    expect(container).not.toHaveTextContent(/configured|deployment|unavailable/i);
+    await userEvent.click(button);
+    expect(wallet.modal?.openConnect).not.toHaveBeenCalled();
+  });
+
+  it("a control mounted after the check renders the misconfiguration at once", async () => {
+    const wallet = createTestWallet({ embeddedWallet: true });
+    const first = render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(wallet) });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
+    });
+    first.unmount();
+    render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(wallet) });
+    expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
+  });
+
+  it("a connected wallet shows its short address and the app's account menu, linking a Gnosis wallet to gnosisscan.io", async () => {
+    const wallet = await createConnectedTestWallet({ chainId: 100 });
+    render(<WalletControl chain={testPageChain(100).chain} />, { wrapper: walletWrapper(wallet) });
+    const trigger = screen.getByRole("button", { name: "Account 0x0000…11cE" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
+    await userEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    const menu = screen.getByRole("dialog", { name: "Account" });
+    expect(trigger).toHaveAttribute("aria-controls", menu.id);
+    expect(menu).toHaveTextContent("0x0000…11cE");
+    expect(menu).toHaveTextContent("Wallet network: Gnosis Network");
+    expect(screen.getByRole("button", { name: "Copy address" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /view on Gnosis Network explorer/ })).toHaveAttribute(
+      "href",
+      "https://gnosisscan.io/address/0x00000000000000000000000000000000000a11ce",
+    );
+    expect(wallet.modal?.openConnect).not.toHaveBeenCalled();
+  });
+
+  it("Disconnect sits centred in the account panel and returns the app to read-only", async () => {
+    const wallet = await createConnectedTestWallet();
+    render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(wallet) });
+    await userEvent.click(screen.getByRole("button", { name: /^Account / }));
+    const disconnect = screen.getByRole("button", { name: "Disconnect" });
+    expect(disconnect).toHaveClass("self-center");
+    await userEvent.click(disconnect);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Connect" })).toBeInTheDocument();
+    });
+  });
+
+  it("Escape closes the account menu and returns focus to its button", async () => {
+    const wallet = await createConnectedTestWallet();
+    render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(wallet) });
+    const trigger = screen.getByRole("button", { name: /^Account / });
+    await userEvent.click(trigger);
+    await userEvent.keyboard("{Escape}");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expectAccountPanelClosed();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("the account panel and its chevron animate open and closed and the panel draws the surface's focus ring", async () => {
+    const wallet = await createConnectedTestWallet();
+    render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(wallet) });
+    const trigger = screen.getByRole("button", { name: /^Account / });
+    const chevron = () => {
+      const icon = trigger.querySelector("svg.order-last");
+      if (icon === null) throw new Error("The trigger has no chevron.");
+      return icon;
+    };
+    expect(chevron()).toHaveClass("transition-transform", "duration-150", "motion-reduce:transition-none");
+    expect(chevron()).not.toHaveClass("-scale-y-100");
+    await userEvent.click(trigger);
+    expect(chevron()).toHaveClass("-scale-y-100", "duration-250");
+    const panel = screen.getByRole("dialog", { name: "Account" });
+    expect(panel).toHaveAttribute("data-origin", "top-right");
+    expect(panel).toHaveClass("origin-top-right", "animate-scale-in");
+    expect(panel).toHaveClass("[--dr-focus:var(--klerosUIComponentsPrimaryBlue)]");
+    expect(panel).not.toHaveAttribute("inert");
+    await userEvent.click(trigger);
+    expect(panel).toHaveClass("animate-scale-out", "opacity-0", "pointer-events-none");
+    expect(panel).not.toHaveClass("animate-scale-in");
+    expect(panel).toHaveAttribute("inert");
+    expectAccountPanelClosed();
+  });
+
+  it("a press outside closes the account menu", async () => {
+    const wallet = await createConnectedTestWallet();
+    render(
+      <>
+        <WalletControl chain={testPageChain(1).chain} />
+        <p>Outside</p>
+      </>,
+      { wrapper: walletWrapper(wallet) },
+    );
+    await userEvent.click(screen.getByRole("button", { name: /^Account / }));
+    await userEvent.click(screen.getByText("Outside"));
+    expectAccountPanelClosed();
+  });
+
+  it("names the control while the wallet connects, though the library hides the button's text while loading", () => {
+    render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(createTestWallet({ pendingReconnect: true })) });
+    const button = screen.getByRole("button", { name: "Connecting" });
+    expect(button).toHaveAttribute("aria-label", "Connecting");
+    expect(button).toBeDisabled();
+  });
+
+  it("Connect stays enabled while wagmi probes the wallets of a visitor who never connected", async () => {
+    const wallet = createTestWallet();
+    setWalletStatus(wallet, "connecting");
+    render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(wallet) });
+    const button = screen.getByRole("button", { name: "Connect" });
+    expect(button).toBeEnabled();
+    await userEvent.click(button);
+    expect(wallet.modal?.openConnect).toHaveBeenCalledWith(1);
+  });
+
+  it("the control follows a wallet that connects after render", async () => {
+    const wallet = createTestWallet();
+    render(<WalletControl chain={testPageChain(1).chain} />, { wrapper: walletWrapper(wallet) });
+    await act(async () => {
+      await wallet.connect();
+    });
+    expect(screen.getByRole("button", { name: /^Account / })).toBeInTheDocument();
+  });
+});

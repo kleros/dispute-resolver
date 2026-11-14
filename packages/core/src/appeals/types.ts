@@ -1,0 +1,173 @@
+import type { Address, Outcome, Period, ReadClient, Unavailable } from "../types";
+import type { AppealInfo, ArbitratedBinding, LocalIdResolution } from "../disputes/types";
+import type { AppealRules, FamilyDetection, RulingNoun, TieDialect } from "../families/types";
+import type { BehaviorOverride } from "../registry/types";
+import type { FallbackOutcomes, RulingOptions, VariableQuestionType } from "../rulings/types";
+
+export interface Multipliers {
+  readonly winnerStakeMultiplier: bigint;
+  readonly loserStakeMultiplier: bigint;
+  /** A governor without a getter has `denominator / 2`, which KlerosGovernor fixes. */
+  readonly loserAppealPeriodMultiplier: bigint;
+  /** A governor without a getter has 10000, which KlerosGovernor fixes. */
+  readonly denominator: bigint;
+  /** Governors only: what every list pays when the current ruling is 0. Absent when the governor has no getter. */
+  readonly sharedMultiplier?: bigint;
+}
+
+interface SideRequirement {
+  readonly total: bigint;
+  /** Funding closes at this second: the contracts accept a contribution only strictly before it. */
+  readonly deadline: number;
+}
+
+export interface AppealAmounts {
+  readonly winner: SideRequirement;
+  readonly loser: SideRequirement;
+  /** Every governor list when the current ruling is 0; present when the multipliers carry `sharedMultiplier`. */
+  readonly shared?: SideRequirement;
+}
+
+export interface RulingAmount {
+  readonly ruling: bigint;
+  readonly amount: bigint;
+}
+
+/**
+ * Funding of one round. For the IDisputeResolver families, sums of `Contribution` events and the `RulingFunded`
+ * rulings; for governors, the round's `getRoundInfo`.
+ */
+export interface RoundFunding {
+  readonly round: bigint;
+  readonly contributions: readonly RulingAmount[];
+  /** Rulings with a `RulingFunded` event in this round; "won by default" uses its length. */
+  readonly fundedRulings: readonly bigint[];
+}
+
+export interface AppealContext {
+  readonly client: ReadClient;
+  readonly binding: ArbitratedBinding;
+  readonly family: FamilyDetection;
+  readonly localId: LocalIdResolution;
+  readonly override: BehaviorOverride | undefined;
+  /**
+   * The evidence group of the dispute's ERC-1497 `Dispute` event (`evidence.readDisputeEvent`). A governor emits its
+   * session index there, so its round and withdraw reads need it; other families ignore it. The governor's current
+   * session is not a substitute: it moves on once the ruling is executed.
+   */
+  readonly evidenceGroupId?: bigint;
+  readonly signal?: AbortSignal;
+}
+
+export type CardOrigin = "refuse" | "reserved" | "option" | "combination" | "contributed-value" | "current-ruling" | "funded-ruling";
+
+/**
+ * The terms a card is funded on: the current ruling's, the other rulings', or one deposit until the period ends shared
+ * by every ruling (a governor tie, or a tie where every option is costed as a winner).
+ */
+export type CardSide = "winner" | "loser" | "shared";
+
+/** Whether a card can still be funded, from the chain's time: fully funded first, then closed from its deadline on. */
+export type CardFundingState = "open" | "funded" | "closed";
+
+export interface CrowdfundingCard {
+  readonly origin: CardOrigin;
+  readonly title: string;
+  readonly code: bigint;
+  readonly isWinner: boolean;
+  readonly side: CardSide;
+  readonly required: bigint;
+  readonly contributed: bigint;
+  readonly remaining: bigint;
+  /** At least 100 once fully funded. */
+  readonly fundedPercent: number;
+  readonly deadline: number;
+  /** The contract reported this ruling fully funded in the round, whatever today's appeal cost would require. */
+  readonly fullyFunded: boolean;
+}
+
+/** The free-input card of variable-type questions; a new answer is funded on the loser terms, or the shared ones in a tie. */
+export interface FreeInputCard {
+  readonly type: VariableQuestionType;
+  readonly precision: number | undefined;
+  readonly side: CardSide;
+  readonly required: bigint;
+  readonly deadline: number;
+  /** The dispute's number of choices: a ruling above it is refused by the contract. */
+  readonly highestCode: bigint;
+}
+
+/** Multiple-select above four options: the user ticks options and funds the resulting combination, as a free input. */
+export interface MultipleSelectComposer {
+  readonly titles: readonly string[];
+  readonly side: CardSide;
+  readonly required: bigint;
+  readonly deadline: number;
+  /** The dispute's number of choices: a ruling above it is refused by the contract. */
+  readonly highestCode: bigint;
+}
+
+export interface FundingTerms {
+  readonly noun: RulingNoun;
+  /** How the sides are set while the current ruling is 0; `null` otherwise. */
+  readonly tie: TieDialect | null;
+  readonly appealPeriodEnd: number;
+  /** When funding closes for rulings other than the current one, never after the appeal period end. */
+  readonly loserDeadline: number;
+}
+
+/** When funding closes for the losing side, or `unknown` when it may close before the appeal period's end but cannot be read. */
+export type LosingSideDeadline = { readonly kind: "deadline"; readonly at: number } | { readonly kind: "unknown" };
+
+/** One withdrawable entry; the action withdraws them in sequence, one transaction each. */
+export type WithdrawItem =
+  | { readonly dialect: "idr-v2" | "idr-v1"; readonly ruling: bigint; readonly amount: bigint }
+  | { readonly dialect: "governor"; readonly session: bigint; readonly round: bigint; readonly listIndex: bigint; readonly amount: bigint };
+
+export type WithdrawState =
+  | { readonly status: "no-account" }
+  | { readonly status: "nothing" }
+  | { readonly status: "available"; readonly beneficiary: Address; readonly total: bigint; readonly items: readonly WithdrawItem[] }
+  | { readonly status: "unavailable"; readonly error: Unavailable };
+
+export type AppealPanel =
+  | { readonly kind: "hidden" }
+  /** `terms` only for a product `recogniseProduct` recognised, whose sides it times in its own application. */
+  | { readonly kind: "handled-by-arbitrable"; readonly terms?: FundingTerms }
+  | { readonly kind: "not-appealable" }
+  | { readonly kind: "funding-unsupported" }
+  | { readonly kind: "escrow-appeal"; readonly appealCost: bigint; readonly deadline: number }
+  | { readonly kind: "escrow-ended" }
+  | ({ readonly kind: "crowdfunding"; readonly dialect: "idr" | "governor"; readonly terms: FundingTerms } & CrowdfundingSet)
+  | { readonly kind: "fees-unavailable"; readonly error: Unavailable }
+  | { readonly kind: "withdraw"; readonly state: WithdrawState; readonly noun: RulingNoun }
+  | { readonly kind: "withdraw-unsupported" };
+
+export interface AppealPanelInput {
+  readonly family: FamilyDetection;
+  readonly period: Period;
+  /** `describeAppealRules` of the same family. */
+  readonly rules: AppealRules;
+  readonly override: BehaviorOverride | undefined;
+  readonly rulingOptions: RulingOptions;
+  readonly fallbackOutcomes: FallbackOutcomes;
+  /** The arbitrator's `disputes(id).numberOfChoices`: an answer coded above it gets no card. */
+  readonly numberOfChoices: bigint;
+  readonly currentRuling: Outcome<bigint>;
+  readonly appealInfo: Outcome<AppealInfo> | null;
+  readonly multipliers: Outcome<Multipliers> | null;
+  readonly funding: Outcome<RoundFunding> | null;
+  readonly withdraw: WithdrawState | null;
+  /** `recogniseProduct` of the dispute, read in the appeal period only. */
+  readonly productRecognised?: boolean;
+}
+
+export interface CrowdfundingSet {
+  readonly cards: readonly CrowdfundingCard[];
+  /** How many answers hold contributions but got no card past the cap on such cards; 0 where funders cannot add new answers. */
+  readonly moreAnswers: number;
+  /** Each answer's total contributed in the round, so an entered answer without a card still shows what it holds. */
+  readonly contributed: ReadonlyMap<bigint, bigint>;
+  readonly freeInput: FreeInputCard | null;
+  readonly composer: MultipleSelectComposer | null;
+}
