@@ -2,7 +2,7 @@ import type { AppealPanel, ChainConfig, CrowdfundingCard } from "@dispute-resolv
 import { Notice, useNowSeconds } from "../../ui";
 import { useWriteAccess } from "../../wallet";
 import { ComposerCard } from "./ComposerCard";
-import { APPEAL_HEADING, CROWDFUNDING_EXPLANATION, FUND_NEEDS_WALLET, REWARDS_TITLE, fundingTimesLine, rewardsBody } from "./copy";
+import { APPEAL_HEADING, CROWDFUNDING_EXPLANATION, FUND_NEEDS_WALLET, REWARDS_TITLE, fundingTimesLine, moreAnswersLine, rewardsBody } from "./copy";
 import { FreeInputCard } from "./FreeInputCard";
 import { FundingCard } from "./FundingCard";
 import { BODY_TEXT_CLASS } from "./styles";
@@ -45,9 +45,10 @@ export function CrowdfundingPanel({ panel, actions, chain }: CrowdfundingPanelPr
         {keyedCards(panel.cards).map(({ key, card }) => (
           <FundingCard key={key} card={card} {...cardProps} />
         ))}
-        {panel.freeInput === null ? null : <FreeInputCard freeInput={panel.freeInput} cards={panel.cards} {...cardProps} />}
-        {panel.composer === null ? null : <ComposerCard composer={panel.composer} cards={panel.cards} {...cardProps} />}
+        {panel.freeInput === null ? null : <FreeInputCard freeInput={panel.freeInput} round={panel} {...cardProps} />}
+        {panel.composer === null ? null : <ComposerCard composer={panel.composer} round={panel} {...cardProps} />}
       </ul>
+      {panel.moreAnswers > 0 ? <p className={BODY_TEXT_CLASS}>{moreAnswersLine(panel.moreAnswers)}</p> : null}
     </>
   );
 }

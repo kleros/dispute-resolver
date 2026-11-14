@@ -4,7 +4,7 @@ import {
   enteredAnswerFunding,
   type AnswerInput,
   type ChainConfig,
-  type CrowdfundingCard,
+  type CrowdfundingSet,
   type EnteredAnswerFunding,
   type FreeInputCard as FreeInput,
 } from "@dispute-resolver/core";
@@ -21,8 +21,8 @@ import type { AppealActions } from "./useAppealActions";
 
 interface FreeInputCardProps {
   readonly freeInput: FreeInput;
-  /** The panel's fixed cards: an answer that already has one shows that card's funding. */
-  readonly cards: readonly CrowdfundingCard[];
+  /** The panel's cards and the round's totals: an answer with a card shows that card's funding, any other what it holds. */
+  readonly round: Pick<CrowdfundingSet, "cards" | "contributed">;
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
   readonly isFundDisabled: boolean;
@@ -119,7 +119,7 @@ function enteredAnswerText(answer: AnswerInput | null, code: bigint | null): str
  * An int answer shows which answer it funds, since -1 and -2 land on reserved rulings. The card takes a row of its own:
  * its head, a field under the title, is taller than any title, so it never sets the fixed cards' head height.
  */
-export function FreeInputCard({ freeInput, cards, actions, chain, isFundDisabled }: FreeInputCardProps) {
+export function FreeInputCard({ freeInput, round, actions, chain, isFundDisabled }: FreeInputCardProps) {
   const titleId = useId();
   const [answer, setAnswer] = useState<AnswerInput | null>(null);
   const encoding = answer === null ? null : encodeAnswer(answer, { type: freeInput.type, precision: freeInput.precision });
@@ -128,7 +128,7 @@ export function FreeInputCard({ freeInput, cards, actions, chain, isFundDisabled
   const code = tooHigh ? null : typedCode;
   const encodingError = encoding === null || encoding.ok ? undefined : ANSWER_ERROR_MESSAGES[encoding.error];
   const error = tooHigh ? ANSWER_NOT_ACCEPTED : encodingError;
-  const funding = enteredAnswerFunding(cards, freeInput, code);
+  const funding = enteredAnswerFunding(round, freeInput, code);
   return (
     <li className={WIDE_CARD_ITEM_CLASS} aria-labelledby={titleId}>
       <Card className={WIDE_CARD_CLASS}>

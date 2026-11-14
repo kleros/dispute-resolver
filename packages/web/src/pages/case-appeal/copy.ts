@@ -113,3 +113,8 @@ export function withdrawLastWording(amount: string, total: string): WriteWording
 export function escrowAppealWording(amount: string): WriteWording {
   return { doing: `paying ${amount} to appeal`, done: `Paid ${amount} to appeal.` };
 }
+
+/** Under the cards: the answers that hold contributions but have no card of their own. */
+export function moreAnswersLine(count: number): string {
+  return count === 1 ? "1 more answer holds contributions." : `${count.toLocaleString("en-US")} more answers hold contributions.`;
+}

@@ -33,7 +33,7 @@ async function readResolverFunding(context: AppealContext, round: bigint, fromBl
       if (args._ruling === undefined) return fail("invalid-data", "A RulingFunded event of the arbitrable could not be decoded.");
       fundedRulings.push(args._ruling);
     }
-    const contributions = [...totals].map(([ruling, amount]) => ({ ruling, amount })).sort((a, b) => compareBigint(a.ruling, b.ruling));
+    const contributions = Array.from(totals, ([ruling, amount]) => ({ ruling, amount })).sort((a, b) => compareBigint(a.ruling, b.ruling));
     return succeed({ round, contributions, fundedRulings });
   } catch (error) {
     return fail("rpc-error", `Could not read the appeal funding: ${describeError(error)}`);

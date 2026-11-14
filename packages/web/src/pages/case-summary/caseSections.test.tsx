@@ -447,7 +447,7 @@ describe("DisputeTimeline in the appeal period", () => {
   const UNKNOWN = { variant: "info", title: "Losing side: deadline unknown", body: "The losing side may have less time to fund an appeal than the full period." };
 
   function crowdfunding(terms: FundingTerms): SectionData<AppealPanel> {
-    return sectionReady({ kind: "crowdfunding", dialect: "idr", terms, cards: [], freeInput: null, composer: null });
+    return sectionReady({ kind: "crowdfunding", dialect: "idr", terms, cards: [], moreAnswers: 0, contributed: new Map<bigint, bigint>(), freeInput: null, composer: null });
   }
 
   function appealCase(appealPanel: SectionData<AppealPanel>, lastPeriodChange = NOW - HOUR): CaseDispute {

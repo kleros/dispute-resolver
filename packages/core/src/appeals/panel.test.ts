@@ -333,6 +333,15 @@ describe("buildAppealPanel", () => {
         [3n, "3"],
       ]);
     });
+
+    it("gives a governor's lists that only hold contributions no card and no count", async () => {
+      const governor = await recordedDetection(1, "0x327a29fce0a6490e4236240be176daa282eccfdf");
+      const contributions = Array.from({ length: 300 }, (_, index) => ({ ruling: BigInt(index + 1), amount: BigInt(index + 1) }));
+      const panel = buildAppealPanel(input(governor, 3, { numberOfChoices: 300n, funding: ok({ round: 0n, contributions, fundedRulings: [] }) }));
+      if (panel.kind !== "crowdfunding") throw new Error(`expected crowdfunding, got ${panel.kind}`);
+      expect(panel.cards.map((card) => card.code)).toEqual([1n, 2n]);
+      expect(panel.moreAnswers).toBe(0);
+    });
   });
 
   it.each<[string, AppealPanelInput["rulingOptions"], bigint, object]>([
