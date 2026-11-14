@@ -19,11 +19,6 @@ interface ScanRequest {
   readonly signal?: AbortSignal;
 }
 
-interface EvidenceScan {
-  readonly logs: readonly EvidenceLog[];
-  readonly undecodable: number;
-}
-
 /** The arbitrator deployment block on every arbitrator chain, testnets included: a scan from `head − lookback` misses older disputes. */
 export function evidenceScanStart(chain: ChainConfig): bigint {
   return BigInt(chain.arbitratorDeployedAtBlock ?? 0);
@@ -99,10 +94,11 @@ export async function readMetaEvidenceEvent(request: Omit<ScanRequest, "arbitrat
 }
 
 /**
- * The scan starts at `fromBlock`, not at the dispute, because evidence can precede the dispute. Logs whose URI or
- * submitter does not decode are left out and counted; `loadEvidence` shows them as hidden. Rejects when a read fails.
+ * The scan starts at `fromBlock`, not at the dispute, because evidence can precede the dispute. Logs come in chain order;
+ * one whose URI or submitter does not decode keeps its place with `decoded: null`, and `loadEvidence` counts it as hidden.
+ * Rejects when a read fails.
  */
-export async function scanEvidenceLogs(request: ScanRequest & { readonly evidenceGroupId: bigint }): Promise<EvidenceScan> {
+export async function scanEvidenceLogs(request: ScanRequest & { readonly evidenceGroupId: bigint }): Promise<EvidenceLog[]> {
   const { client, signal } = request;
   signal?.throwIfAborted();
   const head = await client.getBlockNumber();
@@ -117,13 +113,10 @@ export async function scanEvidenceLogs(request: ScanRequest & { readonly evidenc
     },
     { signal },
   );
-  const logs: EvidenceLog[] = [];
-  for (const log of raw) {
+  return raw.map((log) => {
     const evidenceUri = log.args._evidence;
     const party = log.args._party;
-    if (evidenceUri !== undefined && party !== undefined) {
-      logs.push({ evidenceUri, submitter: toRegistryAddress(party), blockNumber: log.blockNumber, logIndex: log.logIndex, transactionHash: log.transactionHash });
-    }
-  }
-  return { logs, undecodable: raw.length - logs.length };
+    const decoded = evidenceUri === undefined || party === undefined ? null : { evidenceUri, submitter: toRegistryAddress(party) };
+    return { blockNumber: log.blockNumber, logIndex: log.logIndex, transactionHash: log.transactionHash, decoded };
+  });
 }

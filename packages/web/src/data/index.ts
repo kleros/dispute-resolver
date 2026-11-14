@@ -9,3 +9,4 @@ export { useArbitrationCost, useIsContractAccount } from "./accountHooks";
 export { useChainClockOffset } from "./chainTime";
 export { useCase } from "./useCase";
 export { useCaseRefresh } from "./useCaseRefresh";
+export { useEvidencePage, type EvidencePageState } from "./evidencePage";
