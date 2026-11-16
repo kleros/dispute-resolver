@@ -96,7 +96,8 @@ export async function readMetaEvidenceEvent(request: Omit<ScanRequest, "arbitrat
 /**
  * The scan starts at `fromBlock`, not at the dispute, because evidence can precede the dispute. Logs come in chain order;
  * one whose URI or submitter does not decode keeps its place with `decoded: null`, and `loadEvidence` counts it as hidden.
- * Rejects when a read fails.
+ * A block window whose answer is too large is read again in smaller pieces; a single block still refused, or any other
+ * failed read, rejects.
  */
 export async function scanEvidenceLogs(request: ScanRequest & { readonly evidenceGroupId: bigint }): Promise<EvidenceLog[]> {
   const { client, signal } = request;
@@ -111,7 +112,7 @@ export async function scanEvidenceLogs(request: ScanRequest & { readonly evidenc
       fromBlock: request.fromBlock,
       toBlock: head,
     },
-    { signal },
+    { signal, splitCrowdedWindows: true },
   );
   return raw.map((log) => {
     const evidenceUri = log.args._evidence;
