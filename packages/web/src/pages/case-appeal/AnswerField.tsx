@@ -1,9 +1,9 @@
 import type { AnswerInput, VariableQuestionType } from "@dispute-resolver/core";
-import { now, type DateValue } from "@internationalized/date";
+import { today, type DateValue } from "@internationalized/date";
 import { Datepicker, TextField } from "@kleros/ui-components-library";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { pickedTimestamp } from "./answer";
-import { FREE_INPUT_PLACEHOLDER } from "./copy";
+import { DATE_FROM_1970, FREE_INPUT_PLACEHOLDER } from "./copy";
 
 type TextAnswerType = Exclude<VariableQuestionType, "datetime">;
 
@@ -48,29 +48,47 @@ function TextAnswerField({ type, onChange, error }: { readonly type: TextAnswerT
   );
 }
 
+/** A date before 1970 has no answer to fund; the field passes through such dates while its year is typed (2, 20, 202). */
+function fundableDate(value: DateValue | null): AnswerInput | null {
+  if (value === null) return null;
+  const timestamp = pickedTimestamp(value);
+  return timestamp < 0 ? null : { type: "datetime", timestamp };
+}
+
 /**
- * Picking a day commits it at once, at 00:00 UTC unless a time is set: the library's Select button closes the popover
- * without committing a day picked on an empty field, so waiting for it would drop the choice.
+ * A date without a time of day, funded as midnight UTC of the chosen date in every browser zone. The placeholder is a
+ * date without a zone, so a typed date is one too. `defaultValue` is what the library's Clear button sets, and the
+ * library's own default is the current time in the browser's zone, so it stays empty. A date before 1970 counts as no
+ * answer and is explained only once focus has left the field and its calendar.
  */
 function DateAnswerField({ onChange, error }: Omit<AnswerFieldProps, "type">) {
   const [value, setValue] = useState<DateValue | null>(null);
-  const [placeholder] = useState(() => now("UTC").set({ hour: 0, minute: 0, second: 0, millisecond: 0 }));
+  const [placeholder] = useState(() => today("UTC"));
+  const [focused, setFocused] = useState(false);
+  const [open, setOpen] = useState(false);
+  const message = !focused && !open && value !== null && fundableDate(value) === null ? DATE_FROM_1970 : error;
+  const messageId = useId();
   return (
-    <div className="flex min-w-0 flex-col gap-1 [&_[role=group]]:w-full [&_[role=group]]:min-w-0">
+    <div className="flex min-w-0 flex-col [&_[role=group]]:w-full [&_[role=group]]:min-w-0">
       <Datepicker
-        time
         shouldCloseOnSelect
-        label="Answer (date and time, UTC)"
+        label="Answer (date, UTC)"
+        aria-describedby={messageId}
         value={value}
         defaultValue={null}
         placeholderValue={placeholder}
-        isInvalid={error !== undefined}
+        isInvalid={message !== undefined}
+        onFocusChange={setFocused}
+        onOpenChange={setOpen}
         onChange={(next) => {
           setValue(next);
-          onChange(next === null ? null : { type: "datetime", timestamp: pickedTimestamp(next) });
+          onChange(fundableDate(next));
         }}
       />
-      {error === undefined ? null : <p className="text-sm text-klerosUIComponentsError">{error}</p>}
+      {/* Mounted while empty, so the message is announced as it appears. */}
+      <div id={messageId} aria-live="polite">
+        {message === undefined ? null : <p className="mt-1 text-sm text-klerosUIComponentsError">{message}</p>}
+      </div>
     </div>
   );
 }

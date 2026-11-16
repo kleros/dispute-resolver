@@ -70,6 +70,7 @@ export const WITHDRAW_UNSUPPORTED =
   "Withdrawals are not supported through the Dispute Resolver for this contract. Use the arbitrable application to withdraw your rewards and refunds.";
 
 export const FREE_INPUT_PLACEHOLDER = "Enter a new answer";
+export const DATE_FROM_1970 = "Enter a full date, from 1970 on.";
 
 export function matchedCardLine(title: string): string {
   return `This answer has its own card, “${title}”: its funding is shown here.`;

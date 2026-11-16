@@ -346,13 +346,22 @@ function freeInputCard(): HTMLElement {
   return screen.getByRole("listitem", { name: "Fund a new answer" });
 }
 
-/** Types a date (MMDDYYYY) and a time (HHMM) into the free-input card's date field, from its month segment. */
-async function typeDateAnswer(user: ReturnType<typeof userEvent.setup>, date: string, time: string): Promise<void> {
+/** Types a date (MMDDYYYY) into the free-input card's date field, from its month segment. */
+async function typeDateAnswer(user: ReturnType<typeof userEvent.setup>, date: string): Promise<void> {
   const [month] = within(freeInputCard()).getAllByRole("spinbutton", { name: /month/i });
   if (month === undefined) throw new Error("The date field has no month segment.");
   await user.click(month);
   await user.keyboard(date);
-  await user.keyboard(time);
+}
+
+/** Runs the rest of the test in `zone`, for the browser's dates and the date field's calendar alike. */
+function inBrowserZone(zone: string): void {
+  vi.stubEnv("TZ", zone);
+  setLocalTimeZone(zone);
+  onTestFinished(() => {
+    vi.unstubAllEnvs();
+    resetLocalTimeZone();
+  });
 }
 
 function costCheckRegion(panel: HTMLElement): HTMLElement {
@@ -1644,18 +1653,225 @@ describe("AppealSection: funding", () => {
     expect(sentCalls(writes.fake)).toMatchObject([{ kind: "fund-appeal", functionName: "fundAppeal", address: TEST_ARBITRABLE, chainId: 1, args: [7n, 2n], value: ETH / 2n }]);
   });
 
-  it("a datetime answer is read in UTC whatever the browser's zone", async () => {
-    // UTC+14: a date and time read in the browser's zone would be fourteen hours earlier than the same reading in UTC.
-    setLocalTimeZone("Pacific/Kiritimati");
-    onTestFinished(resetLocalTimeZone);
-    expect(getLocalTimeZone()).toBe("Pacific/Kiritimati");
-    const user = userEvent.setup();
-    writes.fake = fakeWriteController(TEST_SENT);
-    await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
-    expect(within(freeInputCard()).getByText("Answer (date and time, UTC)")).toBeInTheDocument();
-    await typeDateAnswer(user, "10202026", "1545");
-    await user.click(fundButton(freeInputCard()));
-    expect(await sentCallsAfter()).toMatchObject([{ args: [7n, BigInt(Date.UTC(2026, 9, 20, 15, 45) / 1000) + 1n], value: LOSER_TOTAL }]);
+  describe("a date answer", () => {
+    /** 2026-01-02T00:00:00Z, funded as ruling 1767312001. */
+    const JANUARY_2_2026 = 1_767_312_000n;
+
+    it.each([
+      ["Asia/Tokyo", -540],
+      ["America/Los_Angeles", 480],
+      ["UTC", 0],
+    ])("a typed date is funded as midnight UTC of that date whatever the browser's zone: %s", async (zone, offsetMinutes) => {
+      inBrowserZone(zone);
+      expect(getLocalTimeZone()).toBe(zone);
+      expect(new Date(2026, 0, 2).getTimezoneOffset()).toBe(offsetMinutes);
+      const user = userEvent.setup();
+      writes.fake = fakeWriteController(TEST_SENT);
+      await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
+      await typeDateAnswer(user, "01022026");
+      await user.click(fundButton(freeInputCard()));
+      const [call] = await sentCallsAfter();
+      expect(call).toMatchObject({ args: [7n, JANUARY_2_2026 + 1n], value: LOSER_TOTAL });
+      const ruling = call?.args[1];
+      expect(typeof ruling === "bigint" && (ruling - 1n) % 86_400n).toBe(0n);
+    });
+
+    it("the date field takes a date without a time of day, in the field and on its calendar, and a day picked on the calendar is funded as midnight UTC of that day", async () => {
+      // 05:00 on 2 January in Tokyo, still 1 January in UTC: the calendar opens on January 2026 either way.
+      freezeClockAtAppealStart(Number(JANUARY_2_2026) - 4 * 3600);
+      inBrowserZone("Asia/Tokyo");
+      expect(getLocalTimeZone()).toBe("Asia/Tokyo");
+      expect(new Date(2026, 0, 2).getTimezoneOffset()).toBe(-540);
+      const user = userEvent.setup();
+      writes.fake = fakeWriteController(TEST_SENT);
+      await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
+      expect(within(freeInputCard()).getByText("Answer (date, UTC)")).toBeInTheDocument();
+      expect(within(freeInputCard()).queryAllByRole("spinbutton", { name: /hour|minute/i })).toEqual([]);
+
+      await user.click(within(freeInputCard()).getByRole("button", { name: /calendar/i }));
+      const calendar = await screen.findByRole("dialog");
+      expect(within(calendar).queryByRole("group", { name: "time-selection" })).toBeNull();
+      await user.click(within(calendar).getByRole("button", { name: /January 2, 2026/ }));
+      await user.click(fundButton(freeInputCard()));
+      expect(await sentCallsAfter()).toMatchObject([{ args: [7n, JANUARY_2_2026 + 1n] }]);
+    });
+
+    it("a funded date reads as the plain date on its card, without a time of day", async () => {
+      const user = userEvent.setup();
+      writes.fake = fakeWriteController(TEST_SENT);
+      await renderReads([
+        crowdfunding({ rulingOptions: { type: "datetime" } }),
+        crowdfunding({ rulingOptions: { type: "datetime" }, contributions: [{ ruling: JANUARY_2_2026 + 1n, amount: ETH }] }),
+      ]);
+      await typeDateAnswer(user, "01022026");
+      await user.click(fundButton(freeInputCard()));
+      expect(await sentCallsAfter()).toMatchObject([{ args: [7n, JANUARY_2_2026 + 1n] }]);
+
+      await nextRead(user);
+      expect(cardTitles()).toContain("2026-01-02");
+      expect(screen.getByRole("list", { name: "Rulings to fund" })).not.toHaveTextContent("Invalid datetime");
+    });
+
+    it("funding a new date answer quotes the plain date in its toast, as its card will read", async () => {
+      const user = userEvent.setup();
+      writes.fake = fakeWriteController(TEST_SENT);
+      await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
+      await typeDateAnswer(user, "01022026");
+      await user.click(fundButton(freeInputCard()));
+      expect(await within(toastRegion()).findByText("Sent 3 ETH to fund “2026-01-02”.")).toBeInTheDocument();
+      expect(writes.fake.executions[0]?.options.wording).toEqual({ doing: "funding “2026-01-02” with 3 ETH", done: "Sent 3 ETH to fund “2026-01-02”." });
+    });
+
+    describe("checked once focus leaves the field", () => {
+      const DATE_MESSAGE = "Enter a full date, from 1970 on.";
+
+      function expectNoDateMessage(): void {
+        expect(freeInputCard()).not.toHaveTextContent(DATE_MESSAGE);
+        expect(freeInputCard()).not.toHaveTextContent(ANSWER_ERROR_MESSAGES["out-of-range"]);
+        expect(within(freeInputCard()).getByRole("group", { name: /Answer \(date, UTC\)/ })).not.toHaveAttribute("data-invalid");
+      }
+
+      function yearSegment(): HTMLElement {
+        const [year] = within(freeInputCard()).getAllByRole("spinbutton", { name: /year/i });
+        if (year === undefined) throw new Error("The date field has no year segment.");
+        return year;
+      }
+
+      it("a date typed digit by digit shows no message at any keystroke, and Fund is enabled only once the year is complete", async () => {
+        const user = userEvent.setup();
+        writes.fake = fakeWriteController(TEST_SENT);
+        await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
+        await typeDateAnswer(user, "0102");
+        expectNoDateMessage();
+        expect(fundButton(freeInputCard())).toBeDisabled();
+        for (const digit of ["2", "0", "2"]) {
+          await user.keyboard(digit);
+          expectNoDateMessage();
+          expect(fundButton(freeInputCard())).toBeDisabled();
+        }
+
+        await user.keyboard("6");
+        expectNoDateMessage();
+        expect(fundButton(freeInputCard())).toBeEnabled();
+        await user.click(fundButton(freeInputCard()));
+        expect(await sentCallsAfter()).toMatchObject([{ args: [7n, JANUARY_2_2026 + 1n] }]);
+      });
+
+      it("a two-digit year left in the field is explained once focus leaves the field and its calendar button, Fund stays disabled, and fixing the year clears the message", async () => {
+        const user = userEvent.setup();
+        writes.fake = fakeWriteController(TEST_SENT);
+        await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
+        await typeDateAnswer(user, "010226");
+        await user.tab();
+        expect(within(freeInputCard()).getByRole("button", { name: /calendar/i })).toHaveFocus();
+        expectNoDateMessage();
+
+        await user.tab();
+        expect(freeInputCard()).toHaveTextContent(DATE_MESSAGE);
+        expect(freeInputCard()).not.toHaveTextContent(ANSWER_ERROR_MESSAGES["out-of-range"]);
+        expect(fundButton(freeInputCard())).toBeDisabled();
+
+        await user.click(yearSegment());
+        await user.keyboard("2026");
+        await user.tab();
+        await user.tab();
+        expectNoDateMessage();
+        expect(fundButton(freeInputCard())).toBeEnabled();
+        await user.click(fundButton(freeInputCard()));
+        expect(await sentCallsAfter()).toMatchObject([{ args: [7n, JANUARY_2_2026 + 1n] }]);
+      });
+
+      it("a two-digit year is still explained when focus leaves the field after its calendar was opened and closed", async () => {
+        const user = userEvent.setup();
+        await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
+        await typeDateAnswer(user, "010226");
+        await user.click(within(freeInputCard()).getByRole("button", { name: /calendar/i }));
+        await screen.findByRole("dialog");
+        expect(screen.queryByText(DATE_MESSAGE)).toBeNull();
+        await user.keyboard("{Escape}");
+        await waitFor(() => {
+          expect(screen.queryByRole("dialog")).toBeNull();
+        });
+        expectNoDateMessage();
+
+        await user.click(contributionField(freeInputCard()));
+        expect(freeInputCard()).toHaveTextContent(DATE_MESSAGE);
+        expect(fundButton(freeInputCard())).toBeDisabled();
+      });
+
+      it("the date message stays hidden while the calendar is open, even when the calendar opens without focus entering the field, as a screen reader can open it", async () => {
+        const user = userEvent.setup();
+        await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
+        await typeDateAnswer(user, "010226");
+        await user.click(contributionField(freeInputCard()));
+        const card = freeInputCard();
+        const group = within(card).getByRole("group", { name: /Answer \(date, UTC\)/ });
+        expect(card).toHaveTextContent(DATE_MESSAGE);
+
+        fireEvent.click(within(card).getByRole("button", { name: /calendar/i }));
+        await screen.findByRole("dialog");
+        expect(card).not.toHaveTextContent(DATE_MESSAGE);
+        expect(group).not.toHaveAttribute("data-invalid");
+      });
+
+      it("the date message describes the date field and is announced politely as it appears, from a region that stays in place while it comes and goes", async () => {
+        const user = userEvent.setup();
+        await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
+        const group = within(freeInputCard()).getByRole("group", { name: /Answer \(date, UTC\)/ });
+        await typeDateAnswer(user, "010226");
+        await user.click(contributionField(freeInputCard()));
+        const region = within(freeInputCard()).getByText(DATE_MESSAGE).closest('[aria-live="polite"]');
+        expect(region).not.toBeNull();
+        expect(group).toHaveAccessibleDescription(expect.stringContaining(DATE_MESSAGE));
+
+        await user.click(yearSegment());
+        await user.keyboard("2026");
+        await user.click(contributionField(freeInputCard()));
+        expectNoDateMessage();
+        expect(region).toBeInTheDocument();
+        expect(region).toBeEmptyDOMElement();
+        expect(group).not.toHaveAccessibleDescription(expect.stringContaining(DATE_MESSAGE));
+
+        await user.click(yearSegment());
+        await user.keyboard("19");
+        await user.click(contributionField(freeInputCard()));
+        expect(region).toHaveTextContent(DATE_MESSAGE);
+      });
+
+      it("a day picked on the calendar shows no message, before or after focus leaves the field", async () => {
+        freezeClockAtAppealStart(Number(JANUARY_2_2026) + 12 * 3600);
+        const user = userEvent.setup();
+        await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
+        await user.click(within(freeInputCard()).getByRole("button", { name: /calendar/i }));
+        const calendar = await screen.findByRole("dialog");
+        await user.click(within(calendar).getByRole("button", { name: /January 2, 2026/ }));
+        expectNoDateMessage();
+        await user.click(contributionField(freeInputCard()));
+        expectNoDateMessage();
+        expect(fundButton(freeInputCard())).toBeEnabled();
+      });
+
+      it("the first day of 1970 is a date the field funds, as ruling 1", async () => {
+        const user = userEvent.setup();
+        writes.fake = fakeWriteController(TEST_SENT);
+        await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
+        await typeDateAnswer(user, "01011970");
+        await user.click(contributionField(freeInputCard()));
+        expectNoDateMessage();
+        await user.click(fundButton(freeInputCard()));
+        expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 1n] }]);
+      });
+
+      it("a whole-number answer out of range is explained while it is typed, as before", async () => {
+        const user = userEvent.setup();
+        await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "int" } })));
+        const field = within(freeInputCard()).getByRole("textbox", { name: /Answer/ });
+        await user.type(field, "9".repeat(80));
+        expect(field).toHaveFocus();
+        expect(freeInputCard()).toHaveTextContent(ANSWER_ERROR_MESSAGES["out-of-range"]);
+        expect(fundButton(freeInputCard())).toBeDisabled();
+      });
+    });
   });
 
   it("Fund on a large uint current ruling sends its exact code to fundAppeal", async () => {

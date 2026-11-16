@@ -10,9 +10,9 @@ import {
 } from "@dispute-resolver/core";
 import { Card } from "@kleros/ui-components-library";
 import { useId, useState } from "react";
-import { Amount, FACT_LEAD, formatAmount, useNowSeconds, utcText } from "../../ui";
+import { Amount, FACT_LEAD, formatAmount, useNowSeconds } from "../../ui";
 import { AnswerField } from "./AnswerField";
-import { ANSWER_ERROR_MESSAGES, fundedIntAnswer } from "./answer";
+import { ANSWER_ERROR_MESSAGES, fundedDateAnswer, fundedIntAnswer } from "./answer";
 import { ANSWER_NOT_ACCEPTED, matchedCardLine, newAnswerLine } from "./copy";
 import { FundAction } from "./FundAction";
 import { FundingProgress } from "./FundingProgress";
@@ -107,10 +107,10 @@ export function EnteredAnswerFooter({ funding, subject, answer, code, actions, c
   );
 }
 
-/** The entered answer as the court will show the ruling: an int read back from its code, a date as its UTC time. */
+/** The entered answer as the court will show the ruling: an int or a date read back from its code. */
 function enteredAnswerText(answer: AnswerInput | null, code: bigint | null): string {
   if (answer === null) return "";
-  if (answer.type === "datetime") return utcText(answer.timestamp);
+  if (answer.type === "datetime") return code === null ? "" : fundedDateAnswer(code);
   if (answer.type === "int" && code !== null) return fundedIntAnswer(code);
   return answer.value;
 }

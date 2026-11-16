@@ -1,5 +1,5 @@
 import { formatRuling, type AnswerEncodingError, type RulingOptions } from "@dispute-resolver/core";
-import type { DateValue } from "@internationalized/date";
+import { toCalendarDate, type DateValue } from "@internationalized/date";
 
 export const ANSWER_ERROR_MESSAGES: Readonly<Record<AnswerEncodingError, string>> = {
   empty: "Enter the answer you want to fund.",
@@ -22,8 +22,17 @@ export function fundedIntAnswer(code: bigint): string {
   return formatRuling(code, INT_OPTIONS, null);
 }
 
-/** A value without a zone is read in UTC. */
+const DATETIME_OPTIONS: RulingOptions = { type: "datetime" };
+
+/** A date answer as the court will show the ruling. */
+export function fundedDateAnswer(code: bigint): string {
+  return formatRuling(code, DATETIME_OPTIONS, null);
+}
+
+/**
+ * The calendar date the field shows, as midnight UTC of that date: Reality reads a date answer to the day, so any other
+ * time of day would be a different answer from the one the court shows.
+ */
 export function pickedTimestamp(value: DateValue): number {
-  const date = "timeZone" in value ? value.toDate() : value.toDate("UTC");
-  return Math.floor(date.getTime() / 1000);
+  return toCalendarDate(value).toDate("UTC").getTime() / 1000;
 }
