@@ -44,6 +44,7 @@ import {
 import { renderWithProviders } from "../../test/shell";
 import { hasVisibleText } from "../../ui";
 import {
+  TEST_MINED,
   TEST_REPLACEMENT_TX_HASH,
   TEST_SENT,
   TEST_TX_HASH,
@@ -52,9 +53,11 @@ import {
   createConnectedTestWallet,
   createTestWallet,
   fakeWriteController,
+  heldWriteController,
   holdChainSwitches,
   testReceipt,
   type FakeWriteController,
+  type HeldWriteController,
   type TestWallet,
 } from "../../test/wallet";
 import { AppealSection } from "./AppealSection";
@@ -789,24 +792,36 @@ describe("AppealSection: crowdfunding cards", () => {
     expect(contributionField(card("No"))).toHaveValue("0.7");
   });
 
-  it("a card fully funded after the user edited its contribution shows 0 and is disabled", async () => {
-    const user = userEvent.setup();
-    writes.fake = fakeWriteController(TEST_SENT);
-    await renderReads([crowdfunding(), crowdfunding({ contributions: [{ ruling: 2n, amount: LOSER_TOTAL }] }), crowdfunding()]);
-    await user.clear(contributionField(card("No")));
-    await user.type(contributionField(card("No")), "0.7");
+  it.each([
+    ["kept below what the card needs", ETH, "Remaining 2 ETH of 3 ETH", "0.7", (7n * ETH) / 10n],
+    ["lowered to what the card needs", LOSER_TOTAL - ETH / 5n, "Remaining 0.2 ETH of 3 ETH", "0.2", ETH / 5n],
+  ] as const)(
+    "a card fully funded after the user edited its contribution shows 0 and is disabled, and a later read that reopens it brings the typed amount back, %s",
+    async (_case, contributed, remaining, shown, sent) => {
+      const user = userEvent.setup();
+      writes.fake = fakeWriteController(TEST_SENT);
+      await renderReads([
+        crowdfunding(),
+        crowdfunding({ contributions: [{ ruling: 2n, amount: LOSER_TOTAL }] }),
+        crowdfunding({ contributions: [{ ruling: 2n, amount: contributed }] }),
+      ]);
+      await user.clear(contributionField(card("No")));
+      await user.type(contributionField(card("No")), "0.7");
 
-    await nextRead(user);
-    expect(card("No")).toHaveTextContent("Remaining 0 ETH of 3 ETH");
-    expect(contributionField(card("No"))).toHaveValue("0");
-    expect(contributionField(card("No"))).toBeDisabled();
-    expect(fundButton(card("No"))).toBeDisabled();
+      await nextRead(user);
+      expect(card("No")).toHaveTextContent("Remaining 0 ETH of 3 ETH");
+      expect(contributionField(card("No"))).toHaveValue("0");
+      expect(contributionField(card("No"))).toBeDisabled();
+      expect(fundButton(card("No"))).toBeDisabled();
 
-    await nextRead(user);
-    expect(contributionField(card("No"))).toHaveValue("3");
-    await user.click(fundButton(card("No")));
-    expect(sentCalls(writes.fake)).toMatchObject([{ kind: "fund-appeal", args: [7n, 2n], value: LOSER_TOTAL }]);
-  });
+      await nextRead(user);
+      expect(card("No")).toHaveTextContent(remaining);
+      expect(contributionField(card("No"))).toHaveValue(shown);
+      expect(contributionField(card("No"))).toBeEnabled();
+      await user.click(fundButton(card("No")));
+      expect(await sentCallsAfter()).toMatchObject([{ kind: "fund-appeal", args: [7n, 2n], value: sent }]);
+    },
+  );
 
   it("a contribution typed for one answer, below what another new answer needs, is kept when the free input's answer changes to it", async () => {
     const user = userEvent.setup();
@@ -1069,7 +1084,7 @@ describe("AppealSection: crowdfunding cards", () => {
       expect(contributionField(freeInputCard())).toHaveValue("0.2");
     });
 
-    it("a typed amount is dropped when the answer moves to one whose funding has closed, so the next answer's field follows what it needs", async () => {
+    it("a typed amount is kept while the answer passes through one whose funding has closed, whose field shows what it would need, and comes back on the next answer", async () => {
       freezeClockAtAppealStart(LOSER_DEADLINE);
       const user = userEvent.setup();
       await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "uint", precision: 0 }, currentRuling: 3n })));
@@ -1077,11 +1092,86 @@ describe("AppealSection: crowdfunding cards", () => {
       await typeContribution(user, freeInputCard(), "0.5");
 
       await typeAnswer(user, "7");
+      expect(contributionField(freeInputCard())).toHaveValue("3");
       expect(contributionField(freeInputCard())).toBeDisabled();
+      expect(contributionField(freeInputCard())).not.toHaveAttribute("aria-invalid", "true");
 
       await typeAnswer(user, "2");
-      expect(contributionField(freeInputCard())).toHaveValue("2");
+      expect(contributionField(freeInputCard())).toHaveValue("0.5");
       expect(contributionField(freeInputCard())).toBeEnabled();
+    });
+
+    it("an answer typed through one whose funding has closed keeps a typed amount, and Fund sends it", async () => {
+      freezeClockAtAppealStart(LOSER_DEADLINE);
+      const user = userEvent.setup();
+      writes.fake = fakeWriteController(TEST_SENT);
+      await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "uint", precision: 0 }, currentRuling: 3n })));
+      const answer = within(freeInputCard()).getByRole("textbox", { name: /Answer/ });
+      await user.type(answer, "2");
+      await typeContribution(user, freeInputCard(), "0.1");
+
+      await user.type(answer, "7");
+      expect(contributionField(freeInputCard())).toBeDisabled();
+      await user.type(answer, "{Backspace}");
+      expect(contributionField(freeInputCard())).toHaveValue("0.1");
+      await user.click(fundButton(freeInputCard()));
+      expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 3n], value: ETH / 10n }]);
+    });
+
+    it("an answer cleared and typed again after the loser deadline, when an empty answer can no longer be funded, keeps a typed amount, and Fund sends it", async () => {
+      freezeClockAtAppealStart(LOSER_DEADLINE);
+      const user = userEvent.setup();
+      writes.fake = fakeWriteController(TEST_SENT);
+      await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "uint", precision: 0 }, currentRuling: 3n })));
+      const answer = within(freeInputCard()).getByRole("textbox", { name: /Answer/ });
+      await user.type(answer, "2");
+      await typeContribution(user, freeInputCard(), "0.1");
+
+      await user.clear(answer);
+      expect(contributionField(freeInputCard())).toBeDisabled();
+      await user.type(answer, "2");
+      expect(contributionField(freeInputCard())).toHaveValue("0.1");
+      await user.click(fundButton(freeInputCard()));
+      expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 3n], value: ETH / 10n }]);
+    });
+
+    it("a typed amount kept through an answer whose funding has closed is lowered to what the next answer still needs, and a later read that asks for more does not raise it", async () => {
+      freezeClockAtAppealStart(LOSER_DEADLINE);
+      const user = userEvent.setup();
+      writes.fake = fakeWriteController(TEST_SENT);
+      /** The second read costs the current ruling at 3 ETH instead of 2, so answer "2" then needs 1.2 ETH. */
+      await renderReads([crowdfunding(NEARLY_FUNDED), crowdfunding({ ...NEARLY_FUNDED, multipliers: { ...MULTIPLIERS, winnerStakeMultiplier: 20_000n } })]);
+      await typeAnswer(user, "2");
+      await typeContribution(user, freeInputCard(), "0.5");
+
+      await typeAnswer(user, "7");
+      expect(contributionField(freeInputCard())).toBeDisabled();
+      await typeAnswer(user, "2");
+      expect(freeInputCard()).toHaveTextContent("Remaining 0.2 ETH of 2 ETH");
+      expect(contributionField(freeInputCard())).toHaveValue("0.2");
+
+      await nextRead(user);
+      expect(freeInputCard()).toHaveTextContent("Remaining 1.2 ETH of 3 ETH");
+      expect(contributionField(freeInputCard())).toHaveValue("0.2");
+      await user.click(fundButton(freeInputCard()));
+      expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 3n], value: ETH / 5n }]);
+    });
+
+    it("a contribution typed in the composer is kept when the ticks pass through a combination whose funding has closed, and Fund sends it", async () => {
+      freezeClockAtAppealStart(LOSER_DEADLINE);
+      const user = userEvent.setup();
+      writes.fake = fakeWriteController(TEST_SENT);
+      await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "multiple-select", titles: ["A", "B", "C", "D", "E"] }, currentRuling: 3n })));
+      const a = within(composerCard()).getByRole("checkbox", { name: "A" });
+      await user.click(within(composerCard()).getByRole("checkbox", { name: "B" }));
+      await typeContribution(user, composerCard(), "0.1");
+
+      await user.click(a);
+      expect(contributionField(composerCard())).toBeDisabled();
+      await user.click(a);
+      expect(contributionField(composerCard())).toHaveValue("0.1");
+      await user.click(fundButton(composerCard()));
+      expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 3n], value: ETH / 10n }]);
     });
 
     it("an untouched composer contribution follows the ticked combination, and a typed one is kept while the ticks are on a fully funded combination, whose field shows what remains", async () => {
@@ -1117,6 +1207,186 @@ describe("AppealSection: crowdfunding cards", () => {
       expect(contributionField(composerCard())).toHaveValue("0.5");
       await user.click(fundButton(composerCard()));
       expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 7n], value: ETH / 2n }]);
+    });
+
+    describe("after the answer the amount was typed for locks without changing", () => {
+      const NEW_ANSWERS = { rulingOptions: { type: "uint", precision: 0 }, currentRuling: 3n } as const;
+      /** Answer "7" (ruling 8) read again as fully funded. */
+      const SEVEN_FUNDED = { contributions: [{ ruling: 8n, amount: LOSER_TOTAL }], fundedRulings: [8n] } as const;
+
+      it("a typed amount is kept when a refresh shows the answer fully funded, and the next answer's Fund sends it", async () => {
+        const user = userEvent.setup();
+        writes.fake = fakeWriteController(TEST_SENT);
+        await renderReads([crowdfunding(NEW_ANSWERS), crowdfunding({ ...NEW_ANSWERS, ...SEVEN_FUNDED })]);
+        await typeAnswer(user, "7");
+        await typeContribution(user, freeInputCard(), "0.1");
+
+        await nextRead(user);
+        expect(freeInputCard()).toHaveTextContent("Remaining 0 ETH of 3 ETH");
+        expect(contributionField(freeInputCard())).toHaveValue("0");
+        expect(contributionField(freeInputCard())).toBeDisabled();
+
+        await typeAnswer(user, "5");
+        expect(freeInputCard()).toHaveTextContent("Remaining 3 ETH of 3 ETH");
+        expect(contributionField(freeInputCard())).toHaveValue("0.1");
+        await user.click(fundButton(freeInputCard()));
+        expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 6n], value: ETH / 10n }]);
+      });
+
+      it("a typed amount is kept when the answer's funding deadline passes, and the next open answer's Fund sends it", async () => {
+        vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+        vi.setSystemTime((LOSER_DEADLINE - 20) * 1000);
+        onTestFinished(() => {
+          vi.useRealTimers();
+        });
+        const user = userEvent.setup();
+        writes.fake = fakeWriteController(TEST_SENT);
+        await renderSection(caseDispute(crowdfunding(NEW_ANSWERS)));
+        await typeAnswer(user, "7");
+        await typeContribution(user, freeInputCard(), "0.1");
+        expect(contributionField(freeInputCard())).toBeEnabled();
+
+        act(() => {
+          vi.advanceTimersByTime(30_000);
+        });
+        expect(freeInputCard()).toHaveTextContent(`Closed at ${utc(LOSER_DEADLINE)}`);
+        expect(contributionField(freeInputCard())).toHaveValue("3");
+        expect(contributionField(freeInputCard())).toBeDisabled();
+
+        await typeAnswer(user, "2");
+        expect(contributionField(freeInputCard())).toHaveValue("0.1");
+        expect(contributionField(freeInputCard())).toBeEnabled();
+        await user.click(fundButton(freeInputCard()));
+        expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 3n], value: ETH / 10n }]);
+      });
+
+      it("after the user's own funding is mined and fully funds the answer, the next answer's field shows what that answer needs, not the amount typed before", async () => {
+        const user = userEvent.setup();
+        const held = heldWriteController([{ phase: "pending" }, { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null }]);
+        writes.fake = held;
+        /** Answer "7" (ruling 8) still needs 0.1 ETH, which the user's funding pays. */
+        const SEVEN_NEARLY_FUNDED = { contributions: [{ ruling: 8n, amount: LOSER_TOTAL - ETH / 10n }] } as const;
+        await renderReads([crowdfunding({ ...NEW_ANSWERS, ...SEVEN_NEARLY_FUNDED }), crowdfunding({ ...NEW_ANSWERS, ...SEVEN_FUNDED })]);
+        await typeAnswer(user, "7");
+        await typeContribution(user, freeInputCard(), "0.1");
+        await user.click(fundButton(freeInputCard()));
+        expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 8n], value: ETH / 10n }]);
+
+        // The refresh after mining lands before the write reports it mined, as the real write hooks await it.
+        await nextRead(user);
+        expect(contributionField(freeInputCard())).toBeDisabled();
+        held.release([TEST_MINED]);
+        expect(await within(toastRegion()).findByText("Sent 0.1 ETH to fund “7”.")).toBeInTheDocument();
+
+        await typeAnswer(user, "5");
+        expect(contributionField(freeInputCard())).toHaveValue("3");
+        expect(fundButton(freeInputCard())).toBeEnabled();
+      });
+
+      it("a kept amount above what the next answer needs is lowered to it, and a later answer that needs more does not raise it", async () => {
+        const user = userEvent.setup();
+        writes.fake = fakeWriteController(TEST_SENT);
+        await renderReads([
+          crowdfunding(NEARLY_FUNDED),
+          crowdfunding({ ...NEARLY_FUNDED, contributions: [...NEARLY_FUNDED.contributions, ...SEVEN_FUNDED.contributions], fundedRulings: [8n] }),
+        ]);
+        await typeAnswer(user, "7");
+        await typeContribution(user, freeInputCard(), "0.5");
+
+        await nextRead(user);
+        expect(contributionField(freeInputCard())).toBeDisabled();
+
+        await typeAnswer(user, "2");
+        expect(freeInputCard()).toHaveTextContent("Remaining 0.2 ETH of 2 ETH");
+        expect(contributionField(freeInputCard())).toHaveValue("0.2");
+
+        await typeAnswer(user, "8");
+        expect(freeInputCard()).toHaveTextContent("Remaining 3 ETH of 3 ETH");
+        expect(contributionField(freeInputCard())).toHaveValue("0.2");
+        await user.click(fundButton(freeInputCard()));
+        expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 9n], value: ETH / 5n }]);
+      });
+
+      it.each(["1,000", "abc"])("typed text that cannot be read as an amount is dropped when a refresh shows the answer fully funded: %s", async (typed) => {
+        const user = userEvent.setup();
+        await renderReads([crowdfunding(NEW_ANSWERS), crowdfunding({ ...NEW_ANSWERS, ...SEVEN_FUNDED })]);
+        await typeAnswer(user, "7");
+        await typeContribution(user, freeInputCard(), typed);
+
+        await nextRead(user);
+        expect(contributionField(freeInputCard())).toHaveValue("0");
+
+        await typeAnswer(user, "5");
+        expect(contributionField(freeInputCard())).toHaveValue("3");
+        expect(contributionField(freeInputCard())).not.toHaveAttribute("aria-invalid", "true");
+        expect(fundButton(freeInputCard())).toBeEnabled();
+      });
+    });
+
+    describe("while the user's own funding runs", () => {
+      const NEW_ANSWERS = { rulingOptions: { type: "uint", precision: 0 }, currentRuling: 3n } as const;
+      /** Answer "7" (ruling 8) still needs 0.1 ETH, which the user's funding pays. */
+      const SEVEN_NEARLY_FUNDED = { contributions: [{ ruling: 8n, amount: LOSER_TOTAL - ETH / 10n }] } as const;
+      const SEVEN_FUNDED = { contributions: [{ ruling: 8n, amount: LOSER_TOTAL }], fundedRulings: [8n] } as const;
+
+      async function fundSevenHeld(user: ReturnType<typeof userEvent.setup>): Promise<HeldWriteController> {
+        const held = heldWriteController([{ phase: "pending" }, { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null }]);
+        writes.fake = held;
+        await renderReads([crowdfunding({ ...NEW_ANSWERS, ...SEVEN_NEARLY_FUNDED }), crowdfunding({ ...NEW_ANSWERS, ...SEVEN_FUNDED })]);
+        await typeAnswer(user, "7");
+        await typeContribution(user, freeInputCard(), "0.1");
+        await user.click(fundButton(freeInputCard()));
+        expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 8n], value: ETH / 10n }]);
+        return held;
+      }
+
+      async function mine(user: ReturnType<typeof userEvent.setup>, held: HeldWriteController): Promise<void> {
+        await nextRead(user);
+        held.release([TEST_MINED]);
+        expect(await within(toastRegion()).findByText("Sent 0.1 ETH to fund “7”.")).toBeInTheDocument();
+      }
+
+      it("an amount typed for another answer while the funding runs stays once it is mined, and Fund sends it", async () => {
+        const user = userEvent.setup();
+        const held = await fundSevenHeld(user);
+        await typeAnswer(user, "5");
+        await typeContribution(user, freeInputCard(), "0.2");
+
+        await mine(user, held);
+        expect(contributionField(freeInputCard())).toHaveValue("0.2");
+        await user.click(fundButton(freeInputCard()));
+        expect((await sentCallsAfter(2))[1]).toMatchObject({ args: [7n, 6n], value: ETH / 5n });
+      });
+
+      it("an answer changed while the funding runs keeps the amount typed before once it is mined, and Fund sends it", async () => {
+        const user = userEvent.setup();
+        const held = await fundSevenHeld(user);
+        await typeAnswer(user, "5");
+        expect(contributionField(freeInputCard())).toHaveValue("0.1");
+
+        await mine(user, held);
+        expect(contributionField(freeInputCard())).toHaveValue("0.1");
+        await user.click(fundButton(freeInputCard()));
+        expect((await sentCallsAfter(2))[1]).toMatchObject({ args: [7n, 6n], value: ETH / 10n });
+      });
+
+      it("an amount edited on a card while its funding runs stays once it is mined", async () => {
+        const user = userEvent.setup();
+        const held = heldWriteController([{ phase: "pending" }, { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null }]);
+        writes.fake = held;
+        await renderReads([crowdfunding(), crowdfunding({ contributions: [{ ruling: 2n, amount: ETH / 10n }] })]);
+        await user.clear(contributionField(card("No")));
+        await user.type(contributionField(card("No")), "0.1");
+        await user.click(fundButton(card("No")));
+        expect(await sentCallsAfter()).toMatchObject([{ args: [7n, 2n], value: ETH / 10n }]);
+        await user.clear(contributionField(card("No")));
+        await user.type(contributionField(card("No")), "0.05");
+
+        await nextRead(user);
+        held.release([TEST_MINED]);
+        expect(await within(toastRegion()).findByText("Sent 0.1 ETH to fund “No”.")).toBeInTheDocument();
+        expect(contributionField(card("No"))).toHaveValue("0.05");
+      });
     });
   });
 
