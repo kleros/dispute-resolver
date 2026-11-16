@@ -1,6 +1,7 @@
 import { createPublicClient, custom, encodeFunctionData, encodeFunctionResult, numberToHex, pad } from "viem";
 import type { Abi, ContractFunctionArgs, ContractFunctionName, ContractFunctionReturnType } from "viem";
 import { vi } from "vitest";
+import refusal from "../../rpc/__fixtures__/gnosis-crowded-logs-refusal.json";
 import { createReadClient } from "../../rpc/client";
 import { chainOf } from "../chains/testHelpers";
 import type { Address, Hex, ReadClient } from "../../types";
@@ -62,6 +63,15 @@ export function rpcError(code: number, message: string): Error {
 
 export function rangeRefusal(): Error {
   return rpcError(-32005, "query returned more than 10000 results");
+}
+
+/** The Gnosis read RPC's refusal of an answer holding more results than it returns, as recorded. */
+export function resultCountRefusal(): Error {
+  return Object.assign(new Error(refusal.error.message), { code: refusal.error.code, data: refusal.error.data });
+}
+
+export function blockRun(first: bigint, count: number, perBlock: number): bigint[] {
+  return Array.from({ length: count * perBlock }, (_, index) => first + BigInt(Math.floor(index / perBlock)));
 }
 
 function asLogsRequest(params: unknown): LogsRequest {

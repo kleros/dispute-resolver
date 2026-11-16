@@ -1,12 +1,11 @@
 import { createPublicClient, custom, numberToHex, pad, ResponseBodyTooLargeError, type Hex } from "viem";
 import { describe, expect, it } from "vitest";
-import refusal from "../rpc/__fixtures__/gnosis-crowded-logs-refusal.json";
 import { isTooManyResultsError } from "../rpc/rangeLimit";
 import type { Address, ReadClient } from "../types";
 import { scanEvidenceLogs } from "./events";
 import { loadEvidence } from "./index";
 import { evidenceLog, fakeFetcher, type RpcLog } from "../test/evidence/testHelpers";
-import { matchesFilter, rangeRefusal, type LogsRequest } from "../test/rpc/testHelpers";
+import { blockRun, matchesFilter, rangeRefusal, resultCountRefusal, type LogsRequest } from "../test/rpc/testHelpers";
 
 const ARBITRATOR: Address = "0x988b3a538b618c7a603e1c11ab82cd16dbe28069";
 const ARBITRABLE: Address = "0x1111111111111111111111111111111111111111";
@@ -40,11 +39,6 @@ function evidenceNode(answer: Answer): { readonly client: ReadClient; readonly r
   return { client: createPublicClient({ transport: custom({ request }, { retryCount: 0 }) }), requests };
 }
 
-/** The Gnosis read RPC's refusal of an answer holding more results than it returns, as recorded. */
-function resultCountRefusal(): Error {
-  return Object.assign(new Error(refusal.error.message), { code: refusal.error.code, data: refusal.error.data });
-}
-
 function bodySizeRefusal(): Error {
   return new ResponseBodyTooLargeError({ maxSize: 10_485_760, size: 10_485_761 });
 }
@@ -64,10 +58,6 @@ function entries(blocks: readonly bigint[]): RpcLog[] {
     inBlock.set(blockNumber, logIndex + 1);
     return evidenceLog({ arbitrable: ARBITRABLE, arbitrator: ARBITRATOR, evidenceGroupId: GROUP, party: PARTY, uri: `/ipfs/${CID}/${String(index)}`, blockNumber, logIndex });
   });
-}
-
-function blockRun(first: bigint, count: number, perBlock: number): bigint[] {
-  return Array.from({ length: count * perBlock }, (_, index) => first + BigInt(Math.floor(index / perBlock)));
 }
 
 /** Four neighbouring blocks of three entries each: no window of four blocks or more fits under the node's cap. */

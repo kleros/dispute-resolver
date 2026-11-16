@@ -6,11 +6,13 @@ import type { Address, Hex, ReadClient } from "../types";
 import { createReadClient, createRequestBudget, getLogsChunked, isLookupLimitError, isRangeLimitError, isTooManyLogsError } from "./index";
 import { isTooManyResultsError } from "./rangeLimit";
 import {
+  blockRun,
   cappedNode,
   fakeLogsClient,
   logsRange,
   matchesFilter,
   rangeRefusal,
+  resultCountRefusal,
   rpcCalls,
   rpcError,
   rpcLog,
@@ -302,25 +304,16 @@ describe("getLogsChunked with a log cap", () => {
   });
 });
 
-/** The Gnosis read RPC's refusal of an answer holding more results than it returns, as recorded. */
-function crowdedRefusal(): Error {
-  return Object.assign(new Error(refusal.error.message), { code: refusal.error.code, data: refusal.error.data });
-}
-
 /** A node without a block-range cap that refuses any answer holding more than `maxResults` logs. */
 function resultCappedNode(logs: readonly RpcLog[], maxResults: number): (request: LogsRequest) => Promise<RpcLog[] | Error> {
   return (request) => {
     const matched = logs.filter((log) => matchesFilter(log, request));
-    return Promise.resolve(matched.length > maxResults ? crowdedRefusal() : matched);
+    return Promise.resolve(matched.length > maxResults ? resultCountRefusal() : matched);
   };
 }
 
 function contributionsAt(blocks: readonly bigint[]): RpcLog[] {
   return blocks.map((block, index) => rpcLog({ address: arbitrable, topics: [DISPUTE_1170.contributionTopic], data: "0x", blockNumber: block, logIndex: index }));
-}
-
-function blockRun(first: bigint, count: number, perBlock: number): bigint[] {
-  return Array.from({ length: count * perBlock }, (_, index) => first + BigInt(Math.floor(index / perBlock)));
 }
 
 function sortedPositions(logs: readonly RpcLog[]): [bigint, number][] {

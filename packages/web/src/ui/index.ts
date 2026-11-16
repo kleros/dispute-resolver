@@ -1,6 +1,7 @@
 export type * from "./types";
 export { ACTION_LINK_CLASS } from "./actionLink";
 export { AddressText } from "./AddressText";
+export { CopyControl } from "./CopyControl";
 export { BAR_PILL, ChevronIcon } from "./barPill";
 export { Amount } from "./Amount";
 export { Countdown } from "./Countdown";

@@ -7,12 +7,9 @@ import {
   type EvidenceOrder,
   type EvidencePageSlice,
 } from "@dispute-resolver/core";
+import { evidencePlaceKey } from "../../data";
 
 export type TimelineRow = { readonly kind: "evidence"; readonly entry: EvidenceEntry } | { readonly kind: "appealed"; readonly decision: AppealDecisionEvent };
-
-function placeKey(place: { readonly blockNumber: bigint; readonly logIndex: number }): string {
-  return `${place.blockNumber.toString()}:${String(place.logIndex)}`;
-}
 
 /**
  * How many entries come before an appeal in `order`. Its block's entries come before it newest first and after it oldest
@@ -39,7 +36,7 @@ export function pageTimeline(list: EvidenceList, slice: EvidencePageSlice, order
       return before === 0 ? slice.page === 1 : before > slice.start && before <= slice.end;
     })
     .sort((a, b) => (order === "newest" ? compareBigint(b.blockNumber, a.blockNumber) : compareBigint(a.blockNumber, b.blockNumber)));
-  const entries = new Map(list.entries.map((entry) => [placeKey(entry), entry]));
+  const entries = new Map(list.entries.map((entry) => [evidencePlaceKey(entry), entry]));
   const rows: TimelineRow[] = [];
   let next = 0;
   for (const log of slice.logs) {
@@ -47,7 +44,7 @@ export function pageTimeline(list: EvidenceList, slice: EvidencePageSlice, order
       rows.push({ kind: "appealed", decision: marker });
       next += 1;
     }
-    const entry = entries.get(placeKey(log));
+    const entry = entries.get(evidencePlaceKey(log));
     if (entry !== undefined) rows.push({ kind: "evidence", entry });
   }
   for (const marker of markers.slice(next)) rows.push({ kind: "appealed", decision: marker });

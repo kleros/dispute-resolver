@@ -26,7 +26,7 @@ interface MetaEvidenceEvent {
 export type MetaEvidenceEventResult = { readonly status: "found"; readonly event: MetaEvidenceEvent } | { readonly status: "not-found" };
 
 /** Where an Evidence log sits on chain; the timeline orders entries by it. */
-export interface EvidencePlace {
+interface EvidencePlace {
   readonly blockNumber: bigint;
   readonly logIndex: number;
 }
@@ -70,14 +70,14 @@ export interface EvidenceFile {
 }
 
 /** A URI that is not content-addressed, never fetched. `address` is the raw, untrusted `_evidence`. */
-export interface UnaddressedEvidence {
+interface UnaddressedEvidence {
   readonly submitter: Address;
   readonly timestamp: number;
   readonly address: string;
 }
 
 /** An Evidence log whose `_evidence` or `_party` does not decode; `submitter` is `_party` when it decodes. */
-export interface UndecodableEvidence {
+interface UndecodableEvidence {
   readonly submitter: Address | null;
   readonly timestamp: number;
 }

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, SyntheticEvent } from "react";
 import type { Address, ChainConfig, Period, Unavailable } from "@dispute-resolver/core";
 
 export type NoticeVariant = "success" | "warning" | "error" | "info";
@@ -65,6 +65,19 @@ export interface AddressTextProps {
   readonly className?: string;
   /** Shows all 42 characters, wrapping where the line ends, for a page where the user checks the address before signing. */
   readonly full?: boolean;
+}
+
+export interface CopyControlProps {
+  /** The copy button's accessible name and its tooltip. */
+  readonly label: string;
+  readonly content: string;
+  /** The wrapper's classes before the copy control's own; `className` follows them. */
+  readonly layout: string;
+  readonly className?: string;
+  readonly copiableClassName?: string;
+  /** Sees each press, focus and click inside the control before the control does. */
+  readonly onReach?: (event: SyntheticEvent) => void;
+  readonly children: ReactNode;
 }
 
 /** A decorative 5×5 symmetric grid derived from the address bytes; the address text next to it is the accessible name. */

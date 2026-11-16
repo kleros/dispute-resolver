@@ -1,8 +1,8 @@
 import { isBodyTooLargeError } from "../fetch";
 import { describeError } from "../rpc";
-import type { Address, Fetcher, FetchInit, Outcome, ReadClient } from "../types";
+import type { Address, FetchInit, Outcome, ReadClient } from "../types";
 import { gatewayUrl, normalizeIpfsPath } from "../uri";
-import type { CanonicalIpfsPath, GatewayOrigin } from "../uri/types";
+import type { CanonicalIpfsPath } from "../uri/types";
 import { scanEvidenceLogs } from "./events";
 import { fail, succeed } from "../outcome";
 import { evidencePage, FIRST_EVIDENCE_PAGE } from "./pages";
@@ -16,6 +16,8 @@ const CONCURRENCY = 6;
 export const EVIDENCE_DOCUMENT_MAX_BYTES = 65_536;
 
 type Document = Pick<EvidenceItem, "title" | "description" | "attachment">;
+
+type DocumentContext = Pick<EvidencePageContext, "fetcher" | "gateway" | "signal">;
 
 type Fetched = { readonly status: "shown"; readonly document: Document } | { readonly status: EvidenceFileStatus };
 
@@ -56,10 +58,10 @@ export async function loadEvidencePage(context: EvidencePageContext, logs: reado
  * not decode, is never fetched and gives the entry its page gave. Never rejects: a failed or aborted fetch is
  * `fetch-failed`, so a caller whose signal aborted drops the result.
  */
-export async function loadEvidenceEntry(context: Pick<EvidencePageContext, "fetcher" | "gateway" | "signal">, log: EvidenceLog, timestamp: number): Promise<EvidenceEntry> {
+export async function loadEvidenceEntry(context: DocumentContext, log: EvidenceLog, timestamp: number): Promise<EvidenceEntry> {
   const judged = judge(log);
   const fetched = new Map<CanonicalIpfsPath, Fetched>();
-  if (judged.kind === "fetch") fetched.set(judged.uri, await fetchDocument(context.fetcher, gatewayUrl(judged.uri, context.gateway), context.gateway, context.signal));
+  if (judged.kind === "fetch") fetched.set(judged.uri, await fetchDocument(context, judged.uri));
   return entryOf(judged, fetched, new Map([[log.blockNumber, timestamp]]));
 }
 
@@ -74,9 +76,7 @@ async function readPage(context: EvidencePageContext, logs: readonly EvidenceLog
   const judged = slice.logs.map(judge);
   const uris = new Set<CanonicalIpfsPath>();
   for (const entry of judged) if (entry.kind === "fetch") uris.add(entry.uri);
-  const fetched = new Map(
-    await mapBounded([...uris], async (uri) => [uri, await fetchDocument(context.fetcher, gatewayUrl(uri, context.gateway), context.gateway, signal)] as const),
-  );
+  const fetched = new Map(await mapBounded([...uris], async (uri) => [uri, await fetchDocument(context, uri)] as const));
   signal?.throwIfAborted();
 
   const timestamps = await blockTimestamps(context.client, [...new Set(slice.logs.map((log) => log.blockNumber))]);
@@ -108,11 +108,11 @@ function entryOf(entry: Judged, fetched: ReadonlyMap<CanonicalIpfsPath, Fetched>
  * Never rejects: a successful answer whose body is over `EVIDENCE_DOCUMENT_MAX_BYTES` is `too-large`, every other failure
  * says why the document is not shown. Only a parse failure is `not-json`; a body read that is cut short is a failed fetch.
  */
-async function fetchDocument(fetcher: Fetcher, url: string, gateway: GatewayOrigin, signal: AbortSignal | undefined): Promise<Fetched> {
+async function fetchDocument({ fetcher, gateway, signal }: DocumentContext, uri: CanonicalIpfsPath): Promise<Fetched> {
   const init: FetchInit = signal === undefined ? { maxBytes: EVIDENCE_DOCUMENT_MAX_BYTES } : { signal, maxBytes: EVIDENCE_DOCUMENT_MAX_BYTES };
   let body: unknown;
   try {
-    const response = await fetcher(url, init);
+    const response = await fetcher(gatewayUrl(uri, gateway), init);
     if (!response.ok) return FETCH_FAILED;
     try {
       body = await response.json();

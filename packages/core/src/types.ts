@@ -111,7 +111,7 @@ export interface Unavailable {
 /** A value or the reason it is unavailable. Every independently degradable read returns one. */
 export type Outcome<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: Unavailable };
 
-export type WriteKind = "create-dispute" | "submit-evidence" | "fund-appeal" | "escrow-appeal" | "withdraw";
+type WriteKind = "create-dispute" | "submit-evidence" | "fund-appeal" | "escrow-appeal" | "withdraw";
 
 type WriteFunctionName<TAbi extends Abi> = ContractFunctionName<TAbi, "payable" | "nonpayable">;
 

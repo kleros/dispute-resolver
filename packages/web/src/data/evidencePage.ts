@@ -18,14 +18,14 @@ interface Failure {
   readonly error: Unavailable;
 }
 
-function placeKey(place: { readonly blockNumber: bigint; readonly logIndex: number }): string {
+export function evidencePlaceKey(place: { readonly blockNumber: bigint; readonly logIndex: number }): string {
   return `${place.blockNumber.toString()}:${String(place.logIndex)}`;
 }
 
 /** Whether `list` holds an entry for every log of the requested page, in whichever order it was read. */
 function holdsPage(list: EvidenceList, request: EvidencePageRequest): boolean {
-  const held = new Set(list.entries.map(placeKey));
-  return evidencePage(list.logs, request).logs.every((log) => held.has(placeKey(log)));
+  const held = new Set(list.entries.map(evidencePlaceKey));
+  return evidencePage(list.logs, request).logs.every((log) => held.has(evidencePlaceKey(log)));
 }
 
 /**
