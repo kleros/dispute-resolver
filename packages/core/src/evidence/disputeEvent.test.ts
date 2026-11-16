@@ -176,7 +176,7 @@ describe("scanEvidenceLogs", () => {
     ]);
     expect(head).toBe(1_001n);
     const logs = await scanEvidenceLogs(scan);
-    expect(logs.map((log) => [log.blockNumber, log.decoded?.evidenceUri, log.decoded?.submitter])).toEqual([[1_001n, "/ipfs/QmNew/evidence.json", party]]);
+    expect(logs.map((log) => [log.blockNumber, log.decoded?.evidenceUri, log.decoded?.submitter, log.party])).toEqual([[1_001n, "/ipfs/QmNew/evidence.json", party, party]]);
   });
 
   it("reads the recorded Evidence logs of mainnet 505 in chain order with lowercase submitters", async () => {

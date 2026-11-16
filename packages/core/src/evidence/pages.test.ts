@@ -9,6 +9,7 @@ function logs(places: readonly (readonly [number, number])[]): EvidenceLog[] {
     blockNumber: BigInt(block),
     logIndex,
     transactionHash: `0x${block.toString(16).padStart(4, "0")}${logIndex.toString(16).padStart(4, "0")}`,
+    party: "0x2222222222222222222222222222222222222222",
     decoded: { evidenceUri: `/ipfs/QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA/${String(block)}-${String(logIndex)}`, submitter: "0x2222222222222222222222222222222222222222" },
   }));
 }

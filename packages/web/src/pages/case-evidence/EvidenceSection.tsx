@@ -3,10 +3,10 @@ import { Button } from "@kleros/ui-components-library";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState, type ReactNode } from "react";
 import { useAtlasUpload } from "../../atlas";
-import { foundLookup, queryKeys, useCaseRefresh, useEvidencePage, type CaseDispute, type CaseSectionProps, type CaseWriteContext } from "../../data";
+import { foundLookup, queryKeys, useCaseRefresh, useEvidenceEntryRetry, useEvidencePage, type CaseDispute, type CaseSectionProps, type CaseWriteContext } from "../../data";
 import { SectionSkeleton, SectionUnavailable } from "../../ui";
 import { EvidenceOrderSelect, ORDER_LABELS } from "./EvidenceOrderSelect";
-import { EvidenceTimeline, type PageAnnouncement } from "./EvidenceTimeline";
+import { EvidenceTimeline, type Announcement } from "./EvidenceTimeline";
 import { SubmissionFeedbackNotice } from "./SubmissionFeedbackNotice";
 import { SubmitEvidenceModal } from "./SubmitEvidenceModal";
 import { submitControl } from "./submitControl";
@@ -169,13 +169,15 @@ function AppealMarkersUnavailable({ dispute, error }: { readonly dispute: CaseDi
 interface EvidenceListViewProps extends CaseSectionProps {
   readonly request: EvidencePageRequest;
   readonly onPage: (page: number) => void;
-  readonly announcement: PageAnnouncement | null;
+  readonly onAnnounce: (text: string) => void;
+  readonly announcement: Announcement | null;
 }
 
 /** The appeal decisions only add the "Appealed" markers, so the entries never wait for them or disappear when they fail. */
-function EvidenceListView({ dispute, chain, request, onPage, announcement }: EvidenceListViewProps) {
+function EvidenceListView({ dispute, chain, request, onPage, onAnnounce, announcement }: EvidenceListViewProps) {
   const retry = useEvidenceRetry(dispute);
   const pageState = useEvidencePage(dispute, request);
+  const entryRetry = useEvidenceEntryRetry(dispute, request);
   const { evidence, disputeEvent, appealDecisions } = dispute;
   if (evidence.status === "loading") return <SectionSkeleton variant="text" lines={4} />;
   if (evidence.status === "unavailable") return <SectionUnavailable section={SECTION} error={evidence.error} onRetry={retry} />;
@@ -191,6 +193,8 @@ function EvidenceListView({ dispute, chain, request, onPage, announcement }: Evi
         appealDecisions={appealDecisions.status === "ready" ? appealDecisions.value : []}
         chain={chain}
         onPage={onPage}
+        retry={entryRetry}
+        onAnnounce={onAnnounce}
         announcement={announcement}
       />
     </div>
@@ -203,7 +207,7 @@ function EvidenceListView({ dispute, chain, request, onPage, announcement }: Evi
  */
 export function EvidenceSection({ dispute, chain }: CaseSectionProps) {
   const [request, setRequest] = useState<EvidencePageRequest>(FIRST_EVIDENCE_PAGE);
-  const [announcement, setAnnouncement] = useState<PageAnnouncement | null>(null);
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const control = submitControl(dispute);
   const { evidence } = dispute;
   const orderable = evidence.status === "ready" && evidence.value.logs.length > 1;
@@ -217,6 +221,9 @@ export function EvidenceSection({ dispute, chain }: CaseSectionProps) {
     setRequest(next);
     setAnnouncement({ request: next, lead: "" });
   };
+  const announce = (text: string) => {
+    setAnnouncement({ request, text });
+  };
   return (
     <div className="flex min-w-0 flex-col gap-6">
       {control.kind === "hidden" && !orderable ? null : (
@@ -225,7 +232,7 @@ export function EvidenceSection({ dispute, chain }: CaseSectionProps) {
           {orderable ? <EvidenceOrderSelect value={request.order} onChange={reorder} /> : null}
         </div>
       )}
-      <EvidenceListView dispute={dispute} chain={chain} request={request} onPage={openPage} announcement={announcement} />
+      <EvidenceListView dispute={dispute} chain={chain} request={request} onPage={openPage} onAnnounce={announce} announcement={announcement} />
     </div>
   );
 }

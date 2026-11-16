@@ -117,6 +117,16 @@ function recorded(name: string): { readonly chain: ChainConfig; readonly evidenc
   return { chain: testChain(entry.chainId), evidence: testEvidenceList(items), decisions };
 }
 
+/** One entry whose document is not an evidence document, as core gives it. */
+function notEvidenceList(): EvidenceList {
+  const uri: CanonicalIpfsPath = `/ipfs/${ATTACHMENT_CID}/evidence.json`;
+  return {
+    logs: [{ blockNumber: 500n, logIndex: 0, transactionHash: TEST_TX_HASH, party: SUBMITTER, decoded: { evidenceUri: uri, submitter: SUBMITTER } }],
+    page: { order: "newest", page: 1 },
+    entries: [{ blockNumber: 500n, logIndex: 0, status: "schema-invalid", evidence: { submitter: SUBMITTER, timestamp: 1_700_000_500, uri } }],
+  };
+}
+
 function timelineRows(): string[] {
   const timeline = screen.getByRole("list", { name: "Evidence timeline" });
   return within(timeline)
@@ -280,23 +290,15 @@ describe("EvidenceSection: evidence list", () => {
     expect(entry?.querySelector("img, video, audio, iframe, object, embed")).toBeNull();
   });
 
-  it("shows how many entries were hidden and why", async () => {
-    await renderSection({ evidence: sectionReady(testEvidenceList([item()], { "not-content-addressed": 2 })) });
-    expect(screen.getByText("Hidden evidence")).toBeVisible();
-    const hidden = screen.getByText(/evidence items hidden/);
-    expect(hidden).toBeVisible();
-    expect(hidden).toHaveTextContent("2 evidence items hidden: not content-addressed");
-  });
-
   it("an empty evidence array shows 'No evidence submitted yet.' and no 'Dispute Raised'", async () => {
     await renderSection();
     expect(screen.getByText("No evidence submitted yet.")).toBeInTheDocument();
     expect(screen.queryByText("Dispute Raised")).toBeNull();
   });
 
-  it("'Dispute Raised' shows the Dispute event's time below the entries, even when every entry is hidden", async () => {
-    await renderSection({ evidence: sectionReady(testEvidenceList([], { "schema-invalid": 1 })), raisedAt: 1_700_000_000 });
-    expect(screen.getByText("Dispute Raised")).toBeInTheDocument();
+  it("'Dispute Raised' shows the Dispute event's time below the entries, even when no entry's document is shown", async () => {
+    await renderSection({ evidence: sectionReady(notEvidenceList()), raisedAt: 1_700_000_000 });
+    expect(timelineRows()).toEqual(["Not in the evidence format.", `Dispute Raised${new Date(1_700_000_000_000).toUTCString()}`]);
     expect(screen.getByText(new Date(1_700_000_000_000).toUTCString())).toBeInTheDocument();
     expect(screen.queryByText("No evidence submitted yet.")).toBeNull();
   });

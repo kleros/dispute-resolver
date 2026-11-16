@@ -31,9 +31,13 @@ export interface EvidencePlace {
   readonly logIndex: number;
 }
 
-/** One Evidence log of the evidence group. `decoded` is `null` when its `_evidence` or `_party` does not decode. */
+/**
+ * One Evidence log of the evidence group. `decoded` is `null` when its `_evidence` or `_party` does not decode; `party` is
+ * `_party` whenever it decodes, so an entry whose `_evidence` does not still says who submitted it.
+ */
 export interface EvidenceLog extends EvidencePlace {
   readonly transactionHash: Hex;
+  readonly party: Address | null;
   readonly decoded: { readonly evidenceUri: string; readonly submitter: Address } | null;
 }
 
@@ -50,9 +54,6 @@ export interface EvidenceItem {
   readonly attachment: AttachmentLink | null;
 }
 
-/** `undecodable` is an Evidence log whose `_evidence` or `_party` did not decode, so it has no URI to judge. */
-export type HiddenEvidenceReason = "undecodable" | "not-content-addressed" | "fetch-failed" | "not-json" | "schema-invalid";
-
 export type EvidenceOrder = "newest" | "oldest";
 
 /** `page` counts from 1. */
@@ -61,19 +62,39 @@ export interface EvidencePageRequest {
   readonly page: number;
 }
 
-/** A document over `EVIDENCE_DOCUMENT_MAX_BYTES`: never read, so only what the log tells is known. */
-export interface TooLargeEvidence {
+/** A content-addressed document that is not shown: only what the log tells is known, and where the file is. */
+export interface EvidenceFile {
   readonly submitter: Address;
   readonly timestamp: number;
   readonly uri: CanonicalIpfsPath;
 }
 
-/** One Evidence log of the loaded page, with what its document gave. */
+/** A URI that is not content-addressed, never fetched. `address` is the raw, untrusted `_evidence`. */
+export interface UnaddressedEvidence {
+  readonly submitter: Address;
+  readonly timestamp: number;
+  readonly address: string;
+}
+
+/** An Evidence log whose `_evidence` or `_party` does not decode; `submitter` is `_party` when it decodes. */
+export interface UndecodableEvidence {
+  readonly submitter: Address | null;
+  readonly timestamp: number;
+}
+
+/**
+ * Why a content-addressed document is not shown: over `EVIDENCE_DOCUMENT_MAX_BYTES` (never read past it), not JSON, JSON
+ * that is not an evidence document, or a fetch that failed.
+ */
+export type EvidenceFileStatus = "too-large" | "not-json" | "schema-invalid" | "fetch-failed";
+
+/** One Evidence log of the loaded page, with what its document gave. Every log of the page has one. */
 export type EvidenceEntry = EvidencePlace &
   (
     | { readonly status: "shown"; readonly item: EvidenceItem }
-    | { readonly status: "too-large"; readonly evidence: TooLargeEvidence }
-    | { readonly status: "hidden"; readonly reason: HiddenEvidenceReason }
+    | { readonly status: EvidenceFileStatus; readonly evidence: EvidenceFile }
+    | { readonly status: "not-content-addressed"; readonly evidence: UnaddressedEvidence }
+    | { readonly status: "undecodable"; readonly evidence: UndecodableEvidence }
   );
 
 export interface EvidenceList {
@@ -83,9 +104,6 @@ export interface EvidenceList {
   readonly page: EvidencePageRequest;
   /** That page's entries in its order; no other page's document is held. */
   readonly entries: readonly EvidenceEntry[];
-  /** The sum of `hiddenByReason`, on the loaded page. */
-  readonly hiddenEvidenceCount: number;
-  readonly hiddenByReason: Readonly<Record<HiddenEvidenceReason, number>>;
 }
 
 /** Where a page sits in the chosen order. */

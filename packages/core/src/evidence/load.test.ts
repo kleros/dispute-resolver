@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { BodyTooLargeError } from "../fetch";
 import type { Address, Fetcher, Hex } from "../types";
-import type { EvidenceContext, EvidenceItem, EvidenceList } from "./types";
-import { loadEvidence, loadEvidencePage } from "./index";
+import type { Route } from "../test/fetch/testHelpers";
+import type { EvidenceContext, EvidenceEntry, EvidenceItem, EvidenceList } from "./types";
+import { loadEvidence, loadEvidenceEntry, loadEvidencePage } from "./index";
 import { EVIDENCE_DOCUMENT_MAX_BYTES } from "./load";
 import { EVIDENCE_PAGE_SIZE } from "./pages";
 import { evidenceLog, fakeClient, fakeFetcher, recordedBodies, recordedDispute, recordedNode, RECORDED, rpcError, type FakeNode, type RpcLog } from "../test/evidence/testHelpers";
@@ -41,7 +42,7 @@ function timestampsOf(logs: readonly RpcLog[]): Record<string, Hex> {
   return Object.fromEntries(logs.map((log) => [log.blockNumber, `0x${(BigInt(log.blockNumber) * 10n).toString(16)}`]));
 }
 
-function syntheticContext(logs: readonly RpcLog[], bodies: Readonly<Record<string, string | Error>>, node: Partial<FakeNode> = {}) {
+function syntheticContext(logs: readonly RpcLog[], bodies: Readonly<Record<string, Route | readonly Route[]>>, node: Partial<FakeNode> = {}) {
   const { client, requests } = fakeClient({ head: 1_000n, logs, timestamps: timestampsOf(logs), ...node });
   const fake = fakeFetcher(bodies);
   const context: EvidenceContext = {
@@ -58,7 +59,16 @@ function syntheticContext(logs: readonly RpcLog[], bodies: Readonly<Record<strin
 
 const byNumber = (a: bigint, b: bigint): number => Number(a - b);
 
-const NOTHING_HIDDEN = { undecodable: 0, "not-content-addressed": 0, "fetch-failed": 0, "not-json": 0, "schema-invalid": 0 };
+/** A fetcher that aborts `controller` when asked for a document, and records the signal each request carried. */
+function abortingFetcher(controller: AbortController) {
+  const seen: (AbortSignal | undefined)[] = [];
+  const fetcher: Fetcher = (_url, init) => {
+    seen.push(init?.signal);
+    controller.abort();
+    return Promise.reject(new DOMException("aborted", "AbortError"));
+  };
+  return { fetcher, seen };
+}
 
 /** The shown entries' items, in the loaded page's order. */
 function shown(list: EvidenceList): EvidenceItem[] {
@@ -70,9 +80,9 @@ function loaded(outcome: Awaited<ReturnType<typeof loadEvidence>>): EvidenceList
   return outcome.value;
 }
 
-/** What the page shows and counts, without the logs every page carries. */
-function pageView(list: EvidenceList) {
-  return { items: shown(list), hiddenEvidenceCount: list.hiddenEvidenceCount, hiddenByReason: list.hiddenByReason };
+/** The loaded page's rows in its order: a shown entry by its title, any other by its status. */
+function rows(list: EvidenceList): string[] {
+  return list.entries.map((entry) => (entry.status === "shown" ? entry.item.title : entry.status));
 }
 
 describe("loadEvidence", () => {
@@ -90,8 +100,7 @@ describe("loadEvidence", () => {
       "Video Capture",
     ]);
     expect(items.map((item) => item.blockNumber)).toEqual([11426356n, 11414822n, 11414618n, 11406443n, 11405132n]);
-    expect(outcome.value.hiddenEvidenceCount).toBe(0);
-    expect(outcome.value.hiddenByReason).toEqual(NOTHING_HIDDEN);
+    expect(outcome.value.entries).toHaveLength(5);
 
     const log = DISPUTE_505.evidenceLogs[4];
     if (log === undefined) throw new Error("fixture has no fifth evidence log");
@@ -116,13 +125,13 @@ describe("loadEvidence", () => {
     expect(new Set(fake.urls)).toEqual(new Set(Object.keys(DISPUTE_505.documents).map((uri) => `${GATEWAY}${uri}`)));
   });
 
-  it("one block read per distinct block of the shown entries", async () => {
+  it("one block read per distinct block of the page's entries, those whose document is not shown included", async () => {
     const logs = [entry(`/ipfs/${CID_A}`, 10n, 0), entry(`/ipfs/${CID_A}`, 10n, 1), entry(`/ipfs/${CID_B}`, 20n, 0), entry("https://example.org/e.json", 30n, 0)];
     const body = JSON.stringify({ name: "n" });
     const { context, requests } = syntheticContext(logs, { [`${GATEWAY}/ipfs/${CID_A}`]: body, [`${GATEWAY}/ipfs/${CID_B}`]: body });
     const outcome = await loadEvidence(context);
     expect(shown(loaded(outcome))).toHaveLength(3);
-    expect([...requests.blocks].sort(byNumber)).toEqual([10n, 20n]);
+    expect([...requests.blocks].sort(byNumber)).toEqual([10n, 20n, 30n]);
   });
 
   it("entries with the same timestamp keep chain order", async () => {
@@ -136,7 +145,7 @@ describe("loadEvidence", () => {
     expect(shown(loaded(outcome)).map((item) => item.title)).toEqual(["newest", "first", "same block, later log"]);
   });
 
-  it("http(s), /ipns/, dot-segment escapes and percent-encoded variants are hidden without a fetch", async () => {
+  it("http(s), /ipns/, dot-segment escapes and percent-encoded variants are never fetched, and each keeps its row with who, when and the address as written", async () => {
     const uris = [
       `https://ipfs.kleros.io/ipfs/${CID_A}`,
       "http://example.org/evidence.json",
@@ -152,7 +161,14 @@ describe("loadEvidence", () => {
       {},
     );
     const outcome = await loadEvidence(context);
-    expect(pageView(loaded(outcome))).toEqual({ items: [], hiddenEvidenceCount: uris.length, hiddenByReason: { ...NOTHING_HIDDEN, "not-content-addressed": uris.length } });
+    expect(loaded(outcome).entries).toEqual(
+      uris
+        .map((uri, index) => {
+          const block = 10n + BigInt(index);
+          return { blockNumber: block, logIndex: 0, status: "not-content-addressed", evidence: { submitter: PARTY, timestamp: Number(block * 10n), address: uri } };
+        })
+        .reverse(),
+    );
     expect(urls).toEqual([]);
   });
 
@@ -165,11 +181,14 @@ describe("loadEvidence", () => {
     expect(new Set(urls)).toEqual(new Set([`${GATEWAY}/ipfs/${CID_A}/e.json`, `${GATEWAY}/ipfs/${CIDV1}`]));
   });
 
-  it("a failed or rejected fetch is hidden as fetch-failed", async () => {
+  it("a failed or rejected fetch keeps its row as fetch-failed, with who, when and where the file is", async () => {
     const logs = [entry(`/ipfs/${CID_A}`, 10n), entry(`/ipfs/${CID_B}`, 11n)];
     const { context } = syntheticContext(logs, { [`${GATEWAY}/ipfs/${CID_B}`]: new TypeError("network down") });
     const outcome = await loadEvidence(context);
-    expect(pageView(loaded(outcome))).toEqual({ items: [], hiddenEvidenceCount: 2, hiddenByReason: { ...NOTHING_HIDDEN, "fetch-failed": 2 } });
+    expect(loaded(outcome).entries).toEqual([
+      { blockNumber: 11n, logIndex: 0, status: "fetch-failed", evidence: { submitter: PARTY, timestamp: 110, uri: `/ipfs/${CID_B}` } },
+      { blockNumber: 10n, logIndex: 0, status: "fetch-failed", evidence: { submitter: PARTY, timestamp: 100, uri: `/ipfs/${CID_A}` } },
+    ]);
   });
 
   it("a document over the cap, refused before or while its body is read, keeps its place as too large with who, when and where it is", async () => {
@@ -187,14 +206,12 @@ describe("loadEvidence", () => {
       { blockNumber: 11n, logIndex: 0, status: "too-large", evidence: { submitter: PARTY, timestamp: 110, uri: `/ipfs/${CID_B}` } },
       { blockNumber: 10n, logIndex: 0, status: "too-large", evidence: { submitter: PARTY, timestamp: 100, uri: `/ipfs/${CID_A}` } },
     ]);
-    expect(list.hiddenEvidenceCount).toBe(0);
   });
 
-  it("a refusal for a cap above 64 KB, the fetcher's own cap on a failed gateway answer, is hidden as fetch-failed, not shown as too large", async () => {
+  it("a refusal for a cap above 64 KB, the fetcher's own cap on a failed gateway answer, is fetch-failed, not too large", async () => {
     const { context } = syntheticContext([entry(`/ipfs/${CID_A}`, 10n)], { [`${GATEWAY}/ipfs/${CID_A}`]: new BodyTooLargeError(4_194_304) });
     const list = loaded(await loadEvidence(context));
-    expect(list.entries).toEqual([{ blockNumber: 10n, logIndex: 0, status: "hidden", reason: "fetch-failed" }]);
-    expect(list.hiddenByReason).toEqual({ ...NOTHING_HIDDEN, "fetch-failed": 1 });
+    expect(list.entries).toEqual([{ blockNumber: 10n, logIndex: 0, status: "fetch-failed", evidence: { submitter: PARTY, timestamp: 100, uri: `/ipfs/${CID_A}` } }]);
   });
 
   it("asks the fetcher to stop reading each evidence document at 64 KB", async () => {
@@ -220,7 +237,7 @@ describe("loadEvidence", () => {
     expect(new Set(urls)).toEqual(new Set([`${GATEWAY}/ipfs/${CID_A}`, `${GATEWAY}/ipfs/${CID_B}`]));
   });
 
-  it("malformed evidence JSON is hidden as schema-invalid; valid entries still show", async () => {
+  it("malformed evidence JSON keeps its row as schema-invalid; valid entries still show", async () => {
     const malformed = [JSON.stringify([1, 2]), JSON.stringify({ title: { toString: "x" } })];
     const logs = [...malformed.map((_, index) => entry(`/ipfs/${CID_A}/${String(index)}`, 10n + BigInt(index))), entry(`/ipfs/${CID_B}`, 50n)];
     const bodies = Object.fromEntries([
@@ -229,14 +246,16 @@ describe("loadEvidence", () => {
     ]);
     const { context } = syntheticContext(logs, bodies);
     const outcome = await loadEvidence(context);
-    expect(pageView(loaded(outcome))).toEqual({
-      items: [expect.objectContaining({ title: "ok" })],
-      hiddenEvidenceCount: malformed.length,
-      hiddenByReason: { ...NOTHING_HIDDEN, "schema-invalid": malformed.length },
+    expect(rows(loaded(outcome))).toEqual(["ok", "schema-invalid", "schema-invalid"]);
+    expect(loaded(outcome).entries[1]).toEqual({
+      blockNumber: 11n,
+      logIndex: 0,
+      status: "schema-invalid",
+      evidence: { submitter: PARTY, timestamp: 110, uri: `/ipfs/${CID_A}/1` },
     });
   });
 
-  it("hiddenEvidenceCount is the sum of the hidden reasons", async () => {
+  it("every log of the page keeps its row in its chain place, whatever its document gave", async () => {
     const logs = [
       entry("https://example.org/e.json", 10n),
       entry(`/ipfs/${CID_A}/missing`, 11n),
@@ -250,29 +269,23 @@ describe("loadEvidence", () => {
       [`${GATEWAY}/ipfs/${CID_B}`]: JSON.stringify({ name: "shown" }),
     });
     const outcome = await loadEvidence(context);
-    expect(pageView(loaded(outcome))).toEqual({
-      items: [expect.objectContaining({ title: "shown" })],
-      hiddenEvidenceCount: 4,
-      hiddenByReason: { ...NOTHING_HIDDEN, "not-content-addressed": 1, "fetch-failed": 1, "not-json": 1, "schema-invalid": 1 },
-    });
+    expect(rows(loaded(outcome))).toEqual(["shown", "schema-invalid", "not-json", "fetch-failed", "not-content-addressed"]);
+    const oldest = loaded(await loadEvidencePage(context, loaded(outcome).logs, { order: "oldest", page: 1 }));
+    expect(rows(oldest)).toEqual(["not-content-addressed", "fetch-failed", "not-json", "schema-invalid", "shown"]);
   });
 
-  it("an Evidence log whose data does not decode is counted as undecodable, never dropped silently", async () => {
+  it("an Evidence log whose data does not decode keeps its row as undecodable, with the submitter its topic names and its block's time", async () => {
     const broken: RpcLog = { ...entry(`/ipfs/${CID_A}`, 10n), data: "0xdeadbeef" };
-    const { context } = syntheticContext([broken, entry(`/ipfs/${CID_B}`, 11n)], { [`${GATEWAY}/ipfs/${CID_B}`]: JSON.stringify({ name: "shown" }) });
+    const { context, urls } = syntheticContext([broken, entry(`/ipfs/${CID_B}`, 11n)], { [`${GATEWAY}/ipfs/${CID_B}`]: JSON.stringify({ name: "shown" }) });
     const list = loaded(await loadEvidence(context));
-    expect(list.hiddenByReason).toEqual({ ...NOTHING_HIDDEN, undecodable: 1 });
-    expect(list.hiddenEvidenceCount).toBe(1);
-    expect(shown(list)).toHaveLength(1);
-    expect(list.logs).toHaveLength(2);
+    expect(list.entries[1]).toEqual({ blockNumber: 10n, logIndex: 0, status: "undecodable", evidence: { submitter: PARTY, timestamp: 100 } });
+    expect(rows(list)).toEqual(["shown", "undecodable"]);
+    expect(urls).toEqual([`${GATEWAY}/ipfs/${CID_B}`]);
   });
 
-  it("no Evidence logs give an empty list with nothing hidden", async () => {
+  it("no Evidence logs give an empty list", async () => {
     const { context } = syntheticContext([], {});
-    expect(await loadEvidence(context)).toEqual({
-      ok: true,
-      value: { logs: [], page: { order: "newest", page: 1 }, entries: [], hiddenEvidenceCount: 0, hiddenByReason: NOTHING_HIDDEN },
-    });
+    expect(await loadEvidence(context)).toEqual({ ok: true, value: { logs: [], page: { order: "newest", page: 1 }, entries: [] } });
   });
 
   it.each<[string, Partial<FakeNode>, Record<string, string>]>([
@@ -287,12 +300,7 @@ describe("loadEvidence", () => {
   it("an aborted load degrades to rpc-error instead of rejecting, and the signal reaches the fetcher", async () => {
     const controller = new AbortController();
     const { context } = syntheticContext([entry(`/ipfs/${CID_A}`, 10n)], {});
-    const seen: (AbortSignal | undefined)[] = [];
-    const fetcher: Fetcher = (_url, init) => {
-      seen.push(init?.signal);
-      controller.abort();
-      return Promise.reject(new DOMException("aborted", "AbortError"));
-    };
+    const { fetcher, seen } = abortingFetcher(controller);
     const outcome = await loadEvidence({ ...context, fetcher, signal: controller.signal });
     expect(seen).toEqual([controller.signal]);
     expect(!outcome.ok && outcome.error.code).toBe("rpc-error");
@@ -359,16 +367,16 @@ describe("evidence pages", () => {
     expect(urls).toHaveLength(EVIDENCE_PAGE_SIZE);
   });
 
-  it("hidden entries are counted on their own page only", async () => {
+  it("an entry whose document is not shown keeps its row on its own page only", async () => {
     const broken: RpcLog = { ...entry(`/ipfs/${CID_B}`, 5n), data: "0xdeadbeef" };
     const logs = [broken, entry("https://example.org/e.json", 6n), ...pagedLogs];
     const { context } = syntheticContext(logs, pagedBodies);
     const newest = loaded(await loadEvidence(context));
-    expect(newest.hiddenEvidenceCount).toBe(0);
+    expect(newest.entries.every((entry) => entry.status === "shown")).toBe(true);
 
     const oldest = loaded(await loadEvidencePage(context, newest.logs, { order: "oldest", page: 1 }));
-    expect(oldest.hiddenByReason).toEqual({ ...NOTHING_HIDDEN, undecodable: 1, "not-content-addressed": 1 });
-    expect(oldest.hiddenEvidenceCount).toBe(2);
+    expect(rows(oldest).slice(0, 3)).toEqual(["undecodable", "not-content-addressed", "0"]);
+    expect(oldest.entries).toHaveLength(EVIDENCE_PAGE_SIZE);
     expect(shown(oldest)).toHaveLength(EVIDENCE_PAGE_SIZE - 2);
   });
 
@@ -383,5 +391,90 @@ describe("evidence pages", () => {
     controller.abort();
     const aborted = await loadEvidencePage({ ...context, signal: controller.signal }, first.logs, { order: "newest", page: 2 });
     expect(!aborted.ok && aborted.error.code).toBe("rpc-error");
+  });
+});
+
+describe("reading one entry again", () => {
+  const FAILED_URI = `/ipfs/${CID_A}/failed`;
+  const FAILED_URL = `${GATEWAY}${FAILED_URI}`;
+
+  /** A page of three entries whose middle document did not load; the gateway answers it with `again` afterwards. */
+  async function pageWithFailure(again: Route) {
+    const logs = [entry(`/ipfs/${CID_A}/0`, 10n), entry(FAILED_URI, 11n), entry(`/ipfs/${CID_A}/2`, 12n)];
+    const reads = syntheticContext(logs, {
+      [`${GATEWAY}/ipfs/${CID_A}/0`]: JSON.stringify({ name: "zero" }),
+      [FAILED_URL]: [new TypeError("network down"), again],
+      [`${GATEWAY}/ipfs/${CID_A}/2`]: JSON.stringify({ name: "two" }),
+    });
+    const list = loaded(await loadEvidence(reads.context));
+    const failed = list.entries[1];
+    const log = list.logs[1];
+    if (failed?.status !== "fetch-failed" || log === undefined) throw new Error("The middle entry should have failed to load.");
+    reads.urls.length = 0;
+    reads.inits.length = 0;
+    return { ...reads, failed, log };
+  }
+
+  it("fetches only that entry's document, at its gateway path with the 64 KB cap, and reads no block", async () => {
+    const { context, failed, log, urls, inits, requests } = await pageWithFailure(JSON.stringify({ name: "now shown" }));
+    const blockReads = requests.blocks.length;
+    await loadEvidenceEntry(context, log, failed.evidence.timestamp);
+    expect(urls).toEqual([FAILED_URL]);
+    expect(inits).toEqual([{ maxBytes: 65_536 }]);
+    expect(requests.blocks).toHaveLength(blockReads);
+  });
+
+  it("a document that loads now becomes a normal entry with the log's submitter, block, time and transaction", async () => {
+    const { context, failed, log } = await pageWithFailure(JSON.stringify({ title: "now shown", description: "text" }));
+    expect(await loadEvidenceEntry(context, log, failed.evidence.timestamp)).toEqual({
+      blockNumber: 11n,
+      logIndex: 0,
+      status: "shown",
+      item: {
+        title: "now shown",
+        description: "text",
+        submitter: PARTY,
+        timestamp: 110,
+        blockNumber: 11n,
+        transactionHash: log.transactionHash,
+        uri: FAILED_URI,
+        attachment: null,
+      },
+    });
+  });
+
+  it.each<[string, Route, EvidenceEntry["status"]]>([
+    ["too large", new BodyTooLargeError(65_536), "too-large"],
+    ["not JSON", "%PDF-1.4", "not-json"],
+    ["JSON that is not an evidence document", "[1, 2]", "schema-invalid"],
+    ["still failing", new TypeError("network down"), "fetch-failed"],
+  ])("a document that is now %s gives that entry, with who, when and where the file is", async (_now, again, status) => {
+    const { context, failed, log } = await pageWithFailure(again);
+    expect(await loadEvidenceEntry(context, log, failed.evidence.timestamp)).toEqual({
+      blockNumber: 11n,
+      logIndex: 0,
+      status,
+      evidence: { submitter: PARTY, timestamp: 110, uri: FAILED_URI },
+    });
+  });
+
+  it("a log whose URI is not content-addressed, or whose data does not decode, gives the entry its page gave and is never fetched", async () => {
+    const broken: RpcLog = { ...entry(`/ipfs/${CID_A}`, 10n), data: "0xdeadbeef" };
+    const logs = [broken, entry("https://example.org/evidence.json", 11n), entry(`/ipfs/${CID_A}/../../ipns/x`, 12n)];
+    const { context, urls } = syntheticContext(logs, {});
+    const list = loaded(await loadEvidencePage(context, loaded(await loadEvidence(context)).logs, { order: "oldest", page: 1 }));
+    expect(list.entries.map((entry) => entry.status)).toEqual(["undecodable", "not-content-addressed", "not-content-addressed"]);
+    const again = await Promise.all(list.logs.map((log) => loadEvidenceEntry(context, log, Number(log.blockNumber * 10n))));
+    expect(again).toEqual(list.entries);
+    expect(urls).toEqual([]);
+  });
+
+  it("an aborted read never rejects: the signal reaches the fetcher and the entry stays fetch-failed", async () => {
+    const { context, failed, log } = await pageWithFailure(JSON.stringify({ name: "now shown" }));
+    const controller = new AbortController();
+    const { fetcher, seen } = abortingFetcher(controller);
+    const again = await loadEvidenceEntry({ ...context, fetcher, signal: controller.signal }, log, failed.evidence.timestamp);
+    expect(seen).toEqual([controller.signal]);
+    expect(again).toEqual(failed);
   });
 });

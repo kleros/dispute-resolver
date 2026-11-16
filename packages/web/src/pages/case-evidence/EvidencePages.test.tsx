@@ -12,7 +12,7 @@ import {
   type Outcome,
 } from "@dispute-resolver/core";
 import { skipToken, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -21,6 +21,12 @@ import { createTestDeps, sectionReady, testCaseDispute, testChain, testDisputeEv
 import { renderWithProviders } from "../../test/shell";
 import { shortenAddress } from "../../ui";
 import { EvidenceSection } from "./EvidenceSection";
+import { plainAddress } from "./plainAddress";
+
+vi.mock("./plainAddress", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./plainAddress")>();
+  return { ...actual, plainAddress: vi.fn(actual.plainAddress) };
+});
 
 const CHAIN = testChain(1);
 const GATEWAY = resolveGateway({});
@@ -28,19 +34,36 @@ const CID = "QmPiLHsHHhzfWDaSYWXjaANAJyY2hU9VBPt7Txc94SCTsA";
 const SUBMITTER: Address = "0x1111111111111111111111111111111111111111";
 const RAISED_AT = 1_700_000_000;
 const EVIDENCE_KEY = queryKeys.evidence(1, 1n, testFoundLookup().binding.arbitrated, 1n);
+const TOO_LARGE = "This evidence is too large to show here.";
+const DID_NOT_LOAD = "This evidence did not load.";
+const NOT_EVIDENCE = "Not in the evidence format.";
+const NOT_ADDRESSED = "What was submitted is not an IPFS file:";
+const UNREADABLE = "This entry could not be read.";
+const COPY = "Copy the submitted text";
+
+interface LogOptions {
+  readonly blocks?: (index: number) => number;
+  /** Another `_evidence` for an entry, or `null` for one whose data does not decode. */
+  readonly addresses?: ReadonlyMap<number, string | null>;
+  /** Entries whose `_party` does not decode either. */
+  readonly withoutParty?: ReadonlySet<number>;
+}
 
 /** Entry `n` (from 0, chain order) is block `100 + n` unless `blocks` says otherwise; its document is titled "Entry n". */
-function evidenceLogs(count: number, blocks: (index: number) => number = (index) => 100 + index): EvidenceLog[] {
+function evidenceLogs(count: number, { blocks = (index) => 100 + index, addresses = new Map(), withoutParty = new Set() }: LogOptions = {}): EvidenceLog[] {
   const logIndexInBlock = new Map<number, number>();
   return Array.from({ length: count }, (_, index) => {
     const block = blocks(index);
     const logIndex = logIndexInBlock.get(block) ?? 0;
     logIndexInBlock.set(block, logIndex + 1);
+    const address = addresses.get(index);
+    const party = withoutParty.has(index) ? null : SUBMITTER;
     return {
       blockNumber: BigInt(block),
       logIndex,
       transactionHash: `0x${index.toString(16).padStart(64, "0")}`,
-      decoded: { evidenceUri: `/ipfs/${CID}/${String(index)}`, submitter: SUBMITTER },
+      party,
+      decoded: address === null || party === null ? null : { evidenceUri: address ?? `/ipfs/${CID}/${String(index)}`, submitter: party },
     };
   });
 }
@@ -57,28 +80,53 @@ function answer(body: unknown): FetchResponse {
   return { ok: true, status: 200, json: () => Promise.resolve(body), text: () => Promise.resolve(JSON.stringify(body)) };
 }
 
+/** Documents the gateway answers otherwise than with an evidence document titled "Entry n". */
+interface Documents {
+  readonly tooLarge?: Set<number>;
+  /** Refused by the gateway. */
+  readonly refused?: Set<number>;
+  readonly notJson?: ReadonlySet<number>;
+  /** JSON that is not an evidence document. */
+  readonly notEvidence?: ReadonlySet<number>;
+}
+
 interface Reads {
+  /** Every document fetch, the first page's included. */
+  readonly everFetched: string[];
+  /** The fetches since the first page. */
   readonly fetched: string[];
   readonly fetcher: Fetcher;
   /** Block reads fail while set. */
   failBlocks: boolean;
   /** Document fetches wait for it while set. */
   hold: Promise<void> | null;
+  /** The documents the gateway refuses, and those it answers as over the cap; a test may change them. */
+  readonly refused: Set<number>;
+  readonly tooLarge: Set<number>;
   readonly rpc: (request: { readonly method: string; readonly params: unknown }) => unknown;
 }
 
-function reads(tooLarge: ReadonlySet<number> = new Set(), refused: ReadonlySet<number> = new Set()): Reads {
+function notJsonAnswer(): FetchResponse {
+  return { ok: true, status: 200, json: () => Promise.reject(new SyntaxError("Unexpected token % in JSON")), text: () => Promise.resolve("%PDF-1.4") };
+}
+
+function reads({ tooLarge = new Set(), refused = new Set(), notJson = new Set(), notEvidence = new Set() }: Documents = {}): Reads {
   const state: Reads = {
+    everFetched: [],
     fetched: [],
     failBlocks: false,
     hold: null,
+    refused,
+    tooLarge,
     fetcher: async (url) => {
+      state.everFetched.push(url);
       state.fetched.push(url);
       await state.hold;
       const index = indexOf(url);
-      if (tooLarge.has(index)) throw new BodyTooLargeError(65_536);
-      if (refused.has(index)) return { ...answer({}), ok: false, status: 500 };
-      return answer({ name: `Entry ${String(index)}` });
+      if (state.tooLarge.has(index)) throw new BodyTooLargeError(65_536);
+      if (state.refused.has(index)) return { ...answer({}), ok: false, status: 500 };
+      if (notJson.has(index)) return notJsonAnswer();
+      return answer(notEvidence.has(index) ? [1, 2] : { name: `Entry ${String(index)}` });
     },
     rpc: ({ method, params }) => {
       if (method !== "eth_getBlockByNumber") throw new Error(`Unexpected RPC request ${method}.`);
@@ -128,16 +176,11 @@ function LiveSection({ initial }: { readonly initial: EvidenceList }) {
   return <EvidenceSection dispute={dispute(sectionReady(value))} chain={CHAIN} />;
 }
 
-interface LiveOptions {
-  readonly blocks?: (index: number) => number;
-  readonly tooLarge?: ReadonlySet<number>;
-  /** Documents the gateway refuses. */
-  readonly refused?: ReadonlySet<number>;
-}
+interface LiveOptions extends Documents, LogOptions {}
 
 async function renderLive(count: number, options: LiveOptions = {}) {
-  const read = reads(options.tooLarge, options.refused);
-  const initial = await firstPage(evidenceLogs(count, options.blocks), read);
+  const read = reads(options);
+  const initial = await firstPage(evidenceLogs(count, options), read);
   renderWithProviders(<LiveSection initial={initial} />, { deps: createTestDeps({ rpc: read.rpc, fetcher: read.fetcher }) });
   return { read, user: userEvent.setup() };
 }
@@ -356,15 +399,15 @@ describe("EvidenceSection: pages", () => {
     expect(screen.queryByText("Evidence page unavailable")).toBeNull();
   });
 
-  it("a page whose documents the gateway refuses is announced with how many of its entries are hidden", async () => {
+  it("a page whose documents the gateway refuses gives each of them a row in its place saying it did not load, and is announced as shown", async () => {
     const refused = new Set(Array.from({ length: 10 }, (_, offset) => 20 + offset));
     const { user } = await renderLive(120, { refused });
     await user.click(within(pager("top")).getByRole("button", { name: "Page 2" }));
     await waitFor(() => {
-      expect(titles()).toEqual(entryTitles(30, 70).reverse());
+      expect(titles()).toEqual([...entryTitles(30, 70).reverse(), ...Array.from({ length: 10 }, () => DID_NOT_LOAD)]);
     });
-    expect(screen.getByText("Hidden evidence")).toBeInTheDocument();
-    expect(announcement()).toBe("Entries 51–100 of 120 shown. 10 evidence items hidden: could not be fetched.");
+    expect(screen.queryByText("Hidden evidence")).toBeNull();
+    expect(announcement()).toBe("Entries 51–100 of 120 shown.");
   });
 
   it("a page loading shows the loading state between the page numbers", async () => {
@@ -387,8 +430,8 @@ describe("EvidenceSection: pages", () => {
 describe("EvidenceSection: a document over 64 KB", () => {
   it("keeps its place with who, when and a new-tab link to open the file", async () => {
     await renderLive(3, { tooLarge: new Set([1]) });
-    expect(titles()).toEqual(["Entry 2", "This evidence file is too large to show here.", "Entry 0", "Dispute Raised"]);
-    const row = screen.getByRole("heading", { level: 3, name: "This evidence file is too large to show here." }).closest("article");
+    expect(titles()).toEqual(["Entry 2", TOO_LARGE, "Entry 0", "Dispute Raised"]);
+    const row = screen.getByRole("heading", { level: 3, name: TOO_LARGE }).closest("article");
     if (row === null) throw new Error("The too-large entry has no article.");
     expect(within(row).getByText(shortenAddress(SUBMITTER))).toBeInTheDocument();
     expect(within(row).getByText(new Date((101 * 10 + 1_700_000_000) * 1000).toUTCString())).toBeInTheDocument();
@@ -397,5 +440,427 @@ describe("EvidenceSection: a document over 64 KB", () => {
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
     expect(screen.queryByText("Hidden evidence")).toBeNull();
+  });
+});
+
+/** The entry whose heading is `heading`, the `nth` of them from the top. */
+function row(heading: string, nth = 0): HTMLElement {
+  const article = screen.getAllByRole("heading", { level: 3, name: heading })[nth]?.closest("article");
+  if (article === null || article === undefined) throw new Error(`No entry headed ${heading}.`);
+  return article;
+}
+
+function blockTime(index: number): string {
+  return new Date(((100 + index) * 10 + 1_700_000_000) * 1000).toUTCString();
+}
+
+/** A row's own buttons and links, without the submitter's explorer link and copy button that every entry has. */
+function controls(article: HTMLElement): string[] {
+  const submitter = within(article).getByText("Submitted by").parentElement;
+  return [...article.querySelectorAll("button, a")]
+    .filter((control) => submitter?.contains(control) !== true)
+    .map((control) => `${control.tagName === "A" ? "link" : "button"}: ${control.getAttribute("aria-label") ?? control.textContent.trim()}`);
+}
+
+/** Holds every document fetch until the returned function is called. */
+function holdFetches(read: Reads): () => void {
+  let release = (): void => undefined;
+  read.hold = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return () => {
+    read.hold = null;
+    release();
+  };
+}
+
+function tryAgainButton(nth = 0): HTMLElement {
+  return within(row(DID_NOT_LOAD, nth)).getByRole("button", { name: "Try again" });
+}
+
+describe("EvidenceSection: every evidence entry gets a row", () => {
+  const MIXED: LiveOptions = {
+    refused: new Set([1]),
+    notJson: new Set([2]),
+    addresses: new Map([
+      [3, "https://example.org/evidence.json"],
+      [4, null],
+    ]),
+    notEvidence: new Set([5]),
+  };
+
+  it("each entry keeps its own row in its place in both orders, with no notice: rows equal the page's logs", async () => {
+    const { user } = await renderLive(7, MIXED);
+    expect(titles()).toEqual(["Entry 6", NOT_EVIDENCE, UNREADABLE, NOT_ADDRESSED, NOT_EVIDENCE, DID_NOT_LOAD, "Entry 0", "Dispute Raised"]);
+    expect(within(screen.getByRole("list", { name: "Evidence timeline" })).getAllByRole("article")).toHaveLength(7);
+    expect(screen.queryByText(/hidden/i)).toBeNull();
+
+    await chooseOrder(user, "Oldest first");
+    expect(titles()).toEqual(["Dispute Raised", "Entry 0", DID_NOT_LOAD, NOT_EVIDENCE, NOT_ADDRESSED, UNREADABLE, NOT_EVIDENCE, "Entry 6"]);
+    expect(announcement()).toBe("Oldest first. Entries 1–7 of 7 shown.");
+  });
+
+  it("each row that shows no document says why in plain words", async () => {
+    await renderLive(6, {
+      refused: new Set([0]),
+      tooLarge: new Set([1]),
+      notJson: new Set([2]),
+      addresses: new Map([
+        [3, "https://example.org/evidence.json"],
+        [4, null],
+      ]),
+    });
+    expect(titles()).toEqual([
+      "Entry 5",
+      "This entry could not be read.",
+      "What was submitted is not an IPFS file:",
+      "Not in the evidence format.",
+      "This evidence is too large to show here.",
+      "This evidence did not load.",
+      "Dispute Raised",
+    ]);
+  });
+
+  it("each row has who and when, and only its own controls: Try again and Open the file for a file that did not load, Open the file for one not in the evidence format, Copy for text submitted in place of a file, none otherwise", async () => {
+    await renderLive(7, MIXED);
+    const expected: [string, number, number, string[]][] = [
+      [DID_NOT_LOAD, 0, 1, ["button: Try again", "link: Open the file"]],
+      [NOT_EVIDENCE, 1, 2, ["link: Open the file"]],
+      [NOT_EVIDENCE, 0, 5, ["link: Open the file"]],
+      [NOT_ADDRESSED, 0, 3, [`button: ${COPY}`]],
+      [UNREADABLE, 0, 4, []],
+    ];
+    for (const [heading, nth, index, own] of expected) {
+      const article = row(heading, nth);
+      expect(within(article).getByText(shortenAddress(SUBMITTER))).toBeInTheDocument();
+      expect(within(article).getByText(blockTime(index))).toBeInTheDocument();
+      expect(controls(article)).toEqual(own);
+      const link = within(article).queryByRole("link", { name: /Open the file/ });
+      if (link !== null) {
+        expect(link).toHaveAttribute("href", documentUrl(index));
+        expect(link).toHaveAttribute("target", "_blank");
+        expect(link).toHaveAttribute("rel", "noopener noreferrer");
+      }
+    }
+  });
+
+  it("what was submitted in place of a file follows the heading as plain text, never a link and never fetched, its marks replaced, cut at 200 characters until Show all shows all of it", async () => {
+    const address = `https://example.org/\u202Eevidence.json\u2066${"x".repeat(300_000)}`;
+    const { read, user } = await renderLive(3, { addresses: new Map([[1, address]]) });
+    const article = row(NOT_ADDRESSED);
+    const marked = "https://example.org/\uFFFDevidence.json\uFFFD";
+    const text = within(article).getByText(`${marked}${"x".repeat(200 - marked.length)}…`);
+    expect(text.closest("a")).toBeNull();
+    expect(article.querySelector('a[href*="example.org"]')).toBeNull();
+    expect(article.innerHTML).not.toMatch(/[\u202E\u2066]/);
+
+    await user.click(within(article).getByRole("button", { name: "Show all" }));
+    expect(
+      within(article)
+        .getByText(`${marked}${"x".repeat(300_000)}`)
+        .closest("a"),
+    ).toBeNull();
+    expect(article.innerHTML).not.toMatch(/[\u202E\u2066]/);
+    expect(new Set(read.everFetched)).toEqual(new Set([documentUrl(0), documentUrl(2)]));
+    expect(read.everFetched).toHaveLength(2);
+  });
+
+  it("line breaks in what was submitted show as one space", async () => {
+    await renderLive(2, { addresses: new Map([[1, "I sent the file\r\n\r\nto the court\tyesterday"]]) });
+    expect(within(row(NOT_ADDRESSED)).getByText("I sent the file to the court yesterday")).toBeInTheDocument();
+  });
+
+  it("Show all shows all of what was submitted in a box with a visible edge that scrolls and takes focus, and Show less cuts it again", async () => {
+    const { user } = await renderLive(2, { addresses: new Map([[1, `${"a".repeat(250)}\n${"b".repeat(50)}`]]) });
+    const article = row(NOT_ADDRESSED);
+    const cut = `${"a".repeat(200)}…`;
+    expect(within(article).getByText(cut)).not.toHaveAttribute("tabindex");
+    const toggle = within(article).getByRole("button", { name: "Show all" });
+
+    await user.click(toggle);
+    const box = within(article).getByText(`${"a".repeat(250)} ${"b".repeat(50)}`);
+    expect(box).toHaveAttribute("tabindex", "0");
+    expect(box).toHaveClass("border", "border-klerosUIComponentsStroke", "rounded-base", "max-h-64", "overflow-y-auto");
+    expect(within(article).queryByText(cut)).toBeNull();
+    expect(toggle).toHaveAccessibleName("Show less");
+    expect(toggle).toHaveFocus();
+
+    await user.click(toggle);
+    expect(within(article).getByText(cut)).not.toHaveAttribute("tabindex");
+    expect(toggle).toHaveAccessibleName("Show all");
+  });
+
+  it("Show all and Show less say whether all of what was submitted is shown, and name the box they open and close", async () => {
+    const { user } = await renderLive(2, { addresses: new Map([[1, "a".repeat(250)]]) });
+    const article = row(NOT_ADDRESSED);
+    const toggle = within(article).getByRole("button", { name: "Show all" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    const controlled = toggle.getAttribute("aria-controls") ?? "";
+    expect(within(article).getByText(`${"a".repeat(200)}…`)).toHaveAttribute("id", controlled);
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(within(article).getByText("a".repeat(250))).toHaveAttribute("id", controlled);
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("a long submitted value is read only as far as its first 200 characters until Show all or the copy control asks for all of it", async () => {
+    const address = `x${"\u202E\u200B".repeat(100_000)}`;
+    const whole = `x${"\uFFFD".repeat(200_000)}`;
+    const read = vi.mocked(plainAddress);
+    read.mockClear();
+    const { user } = await renderLive(3, {
+      addresses: new Map([
+        [1, address],
+        [2, address],
+      ]),
+    });
+    expect(within(row(NOT_ADDRESSED, 0)).getByText(`x${"\uFFFD".repeat(199)}…`)).toBeInTheDocument();
+    expect(within(row(NOT_ADDRESSED, 1)).getByText(`x${"\uFFFD".repeat(199)}…`)).toBeInTheDocument();
+    expect(Math.max(0, ...read.mock.calls.map(([input]) => input.length))).toBeLessThanOrEqual(201);
+
+    await user.click(within(row(NOT_ADDRESSED, 0)).getByRole("button", { name: "Show all" }));
+    expect(within(row(NOT_ADDRESSED, 0)).getByText(whole)).toBeInTheDocument();
+    expect(read).toHaveBeenCalledWith(address);
+
+    await user.click(within(row(NOT_ADDRESSED, 1)).getByRole("button", { name: COPY }));
+    await expect(navigator.clipboard.readText()).resolves.toBe(whole);
+  });
+
+  it("the copy control copies all of a long submitted value when it is pressed with no pointer or focus on it first, as a screen reader can", async () => {
+    await renderLive(2, { addresses: new Map([[1, `${"a".repeat(250)}\n\u202E${"b".repeat(50)}`]]) });
+    fireEvent.click(within(row(NOT_ADDRESSED)).getByRole("button", { name: COPY }));
+    await expect(navigator.clipboard.readText()).resolves.toBe(`${"a".repeat(250)} \uFFFD${"b".repeat(50)}`);
+  });
+
+  it("the copy control copies all of what was submitted, as Show all shows it, and short text has no Show all", async () => {
+    const long = `${"a".repeat(250)}\n\u202E${"b".repeat(50)}`;
+    const { user } = await renderLive(3, {
+      addresses: new Map([
+        [1, long],
+        [2, "short\ttext"],
+      ]),
+    });
+    expect(within(row(NOT_ADDRESSED, 0)).queryByRole("button", { name: "Show all" })).toBeNull();
+
+    await user.click(within(row(NOT_ADDRESSED, 1)).getByRole("button", { name: COPY }));
+    await expect(navigator.clipboard.readText()).resolves.toBe(`${"a".repeat(250)} \uFFFD${"b".repeat(50)}`);
+    await user.click(within(row(NOT_ADDRESSED, 0)).getByRole("button", { name: COPY }));
+    await expect(navigator.clipboard.readText()).resolves.toBe("short text");
+  });
+
+  it("an empty value or only line breaks submitted in place of a file shows the heading alone, with nothing to copy", async () => {
+    await renderLive(3, {
+      addresses: new Map([
+        [1, ""],
+        [2, "\r\n\n"],
+      ]),
+    });
+    for (const nth of [0, 1]) {
+      const article = row(NOT_ADDRESSED, nth);
+      expect(controls(article)).toEqual([]);
+      expect(article.querySelector("h3")?.nextElementSibling?.tagName).toBe("FOOTER");
+    }
+  });
+
+  it("an entry whose data does not decode keeps its row with when, and who when its submitter decodes", async () => {
+    await renderLive(3, { addresses: new Map([[0, null]]), withoutParty: new Set([1]) });
+    expect(titles()).toEqual(["Entry 2", UNREADABLE, UNREADABLE, "Dispute Raised"]);
+    const [withoutSubmitter, withSubmitter] = [row(UNREADABLE, 0), row(UNREADABLE, 1)];
+    expect(within(withSubmitter).getByText(shortenAddress(SUBMITTER))).toBeInTheDocument();
+    expect(within(withSubmitter).getByText(blockTime(0))).toBeInTheDocument();
+    expect(within(withoutSubmitter).queryByText("Submitted by")).toBeNull();
+    expect(within(withoutSubmitter).getByText(blockTime(1))).toBeInTheDocument();
+    expect(withoutSubmitter.querySelectorAll("a, button")).toHaveLength(0);
+  });
+
+  it("Try again reads only that file's IPFS address: every other row, the Order and the links stay, nothing shows the loading state, and only its button is busy, keeping focus", async () => {
+    const { read, user } = await renderLive(5, { refused: new Set([1, 2]), addresses: new Map([[3, "https://example.org/evidence.json"]]) });
+    const shown = ["Entry 4", NOT_ADDRESSED, DID_NOT_LOAD, DID_NOT_LOAD, "Entry 0", "Dispute Raised"];
+    expect(titles()).toEqual(shown);
+    const release = holdFetches(read);
+    const pressed = tryAgainButton(1);
+    await user.click(pressed);
+
+    expect(read.fetched).toEqual([documentUrl(1)]);
+    expect(titles()).toEqual(shown);
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(pressed).toHaveAttribute("aria-disabled", "true");
+    expect(pressed).toHaveAccessibleName("Try again");
+    expect(pressed).toHaveFocus();
+    expect(tryAgainButton(0)).not.toHaveAttribute("aria-disabled");
+    expect(screen.getByRole("button", { name: /order/i })).toBeEnabled();
+    expect(within(row(DID_NOT_LOAD, 0)).getByRole("link", { name: /Open the file/ })).toHaveAttribute("href", documentUrl(2));
+
+    release();
+    await waitFor(() => {
+      expect(pressed).not.toHaveAttribute("aria-disabled");
+    });
+    expect(read.everFetched.filter((url) => !url.startsWith(`${GATEWAY}/ipfs/`))).toEqual([]);
+  });
+
+  it("a file that loads now turns only that row into a normal entry, in the held page too, focus moves to that row and it is announced", async () => {
+    const { read, user } = await renderLive(3, { refused: new Set([1]) });
+    const before = heldList().entries;
+    read.refused.clear();
+    await user.click(tryAgainButton());
+    await waitFor(() => {
+      expect(titles()).toEqual(["Entry 2", "Entry 1", "Entry 0", "Dispute Raised"]);
+    });
+    expect(read.fetched).toEqual([documentUrl(1)]);
+    const after = heldList().entries;
+    expect(after[0]).toBe(before[0]);
+    expect(after[2]).toBe(before[2]);
+    expect(after[1]?.status).toBe("shown");
+    expect(row("Entry 1")).toHaveFocus();
+    expect(announcement()).toBe("This evidence loaded.");
+  });
+
+  it("a file that loads now moves focus to its row also when focus went to that row's link while it was read", async () => {
+    const { read, user } = await renderLive(3, { refused: new Set([1]) });
+    read.refused.clear();
+    const release = holdFetches(read);
+    await user.click(tryAgainButton());
+    await user.tab();
+    expect(within(row(DID_NOT_LOAD)).getByRole("link", { name: /Open the file/ })).toHaveFocus();
+
+    release();
+    await waitFor(() => {
+      expect(titles()).toEqual(["Entry 2", "Entry 1", "Entry 0", "Dispute Raised"]);
+    });
+    expect(row("Entry 1")).toHaveFocus();
+  });
+
+  it("a file that still does not load keeps its row and focus on its Try again, and says so each time", async () => {
+    const { read, user } = await renderLive(3, { refused: new Set([1]) });
+    const button = tryAgainButton();
+    await user.click(button);
+    await waitFor(() => {
+      expect(announcement()).toBe("This evidence did not load.");
+    });
+    expect(read.fetched).toEqual([documentUrl(1)]);
+    expect(titles()).toEqual(["Entry 2", DID_NOT_LOAD, "Entry 0", "Dispute Raised"]);
+    expect(button).toHaveFocus();
+    expect(button).not.toHaveAttribute("aria-disabled");
+
+    const release = holdFetches(read);
+    await user.click(button);
+    expect(announcement()).toBe("");
+    release();
+    await waitFor(() => {
+      expect(announcement()).toBe("This evidence did not load.");
+    });
+    expect(read.fetched).toEqual([documentUrl(1), documentUrl(1)]);
+    expect(button).toHaveFocus();
+  });
+
+  it("a file that is now over 64 KB becomes the too-large row with its link, and focus moves to it", async () => {
+    const { read, user } = await renderLive(3, { refused: new Set([1]) });
+    read.refused.clear();
+    read.tooLarge.add(1);
+    await user.click(tryAgainButton());
+    await waitFor(() => {
+      expect(titles()).toEqual(["Entry 2", TOO_LARGE, "Entry 0", "Dispute Raised"]);
+    });
+    expect(read.fetched).toEqual([documentUrl(1)]);
+    expect(within(row(TOO_LARGE)).getByRole("link", { name: /Open the file/ })).toHaveAttribute("href", documentUrl(1));
+    expect(row(TOO_LARGE)).toHaveFocus();
+    expect(announcement()).toBe(TOO_LARGE);
+  });
+
+  it("two files tried again at once each update their own row", async () => {
+    const { read, user } = await renderLive(3, { refused: new Set([0, 2]) });
+    read.refused.clear();
+    const release = holdFetches(read);
+    await user.click(tryAgainButton(0));
+    await user.click(tryAgainButton(1));
+    release();
+    await waitFor(() => {
+      expect(titles()).toEqual(["Entry 2", "Entry 1", "Entry 0", "Dispute Raised"]);
+    });
+    expect(read.fetched.map(indexOf).sort((a, b) => a - b)).toEqual([0, 2]);
+    expect(heldList().entries.every((entry) => entry.status === "shown")).toBe(true);
+  });
+
+  it("a page change while Try again runs drops its result, which never reaches the page opened", async () => {
+    const { read, user } = await renderLive(120, { refused: new Set([100]) });
+    read.refused.clear();
+    const release = holdFetches(read);
+    await user.click(tryAgainButton());
+    expect(read.fetched).toEqual([documentUrl(100)]);
+    await user.click(within(pager("top")).getByRole("button", { name: "Page 2" }));
+    release();
+    await waitFor(() => {
+      expect(titles()).toEqual(entryTitles(20, 70).reverse());
+    });
+    expect(heldList().page).toEqual({ order: "newest", page: 2 });
+    expect(heldList().entries.some((entry) => entry.blockNumber === 200n)).toBe(false);
+  });
+
+  it("an order change while Try again runs drops its result, and that row can be tried again", async () => {
+    const { read, user } = await renderLive(3, { refused: new Set([1]) });
+    read.refused.clear();
+    const release = holdFetches(read);
+    await user.click(tryAgainButton());
+    expect(read.fetched).toEqual([documentUrl(1)]);
+    await chooseOrder(user, "Oldest first");
+    await waitFor(() => {
+      expect(tryAgainButton()).not.toHaveAttribute("aria-disabled");
+    });
+    release();
+    expect(titles()).toEqual(["Dispute Raised", "Entry 0", DID_NOT_LOAD, "Entry 2"]);
+    expect(announcement()).toBe("Oldest first. Entries 1–3 of 3 shown.");
+    await user.click(tryAgainButton());
+    await waitFor(() => {
+      expect(titles()).toEqual(["Dispute Raised", "Entry 0", "Entry 1", "Entry 2"]);
+    });
+  });
+
+  it("after Try again loads a file, switching the order and back keeps that entry without reading anything again", async () => {
+    const { read, user } = await renderLive(3, { refused: new Set([1]) });
+    read.refused.clear();
+    await user.click(tryAgainButton());
+    await waitFor(() => {
+      expect(titles()).toEqual(["Entry 2", "Entry 1", "Entry 0", "Dispute Raised"]);
+    });
+    expect(read.fetched).toEqual([documentUrl(1)]);
+    read.fetched.length = 0;
+    await chooseOrder(user, "Oldest first");
+    expect(titles()).toEqual(["Dispute Raised", "Entry 0", "Entry 1", "Entry 2"]);
+    await chooseOrder(user, "Newest first");
+    expect(titles()).toEqual(["Entry 2", "Entry 1", "Entry 0", "Dispute Raised"]);
+    expect(read.fetched).toEqual([]);
+  });
+
+  it("after Try again loads a file, another page and back still shows that entry, even when the page's new read does not load it", async () => {
+    const { read, user } = await renderLive(120, { refused: new Set([100]) });
+    read.refused.clear();
+    await user.click(tryAgainButton());
+    await waitFor(() => {
+      expect(titles()).toEqual(entryTitles(70, 120).reverse());
+    });
+    read.refused.add(100);
+    await user.click(within(pager("top")).getByRole("button", { name: "Page 2" }));
+    await waitFor(() => {
+      expect(titles()).toEqual(entryTitles(20, 70).reverse());
+    });
+    read.fetched.length = 0;
+
+    await user.click(within(pager("top")).getByRole("button", { name: "Page 1" }));
+    await waitFor(() => {
+      expect(titles()).toEqual(entryTitles(70, 120).reverse());
+    });
+    expect(read.fetched).toContain(documentUrl(100));
+    expect(heldList().entries.find((entry) => entry.blockNumber === 200n)?.status).toBe("fetch-failed");
+  });
+
+  it("a page whose every document loads renders as before: entries only, no notice and no Try again", async () => {
+    await renderLive(3);
+    expect(titles()).toEqual(["Entry 2", "Entry 1", "Entry 0", "Dispute Raised"]);
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(screen.queryByText(/hidden/i)).toBeNull();
+    const page = screen.getByRole("list", { name: "Evidence timeline" }).parentElement;
+    expect(page).not.toHaveAttribute("tabindex");
   });
 });
