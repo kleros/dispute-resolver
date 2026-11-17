@@ -1,0 +1,47 @@
+import { getChain } from "@dispute-resolver/core";
+import { useCallback, type ReactNode } from "react";
+import { ChainNoticeProvider, type ChainNotice } from "../routing";
+import { chainName } from "../wallet";
+import { useToast } from "./ToastProvider";
+import type { ToastInput } from "./types";
+
+export const NOT_SWITCHED_TITLE = "Network not switched";
+
+/** The user is often still in the wallet when a notice fires, so it outlasts the default toast; a failure has more to read. */
+const NEUTRAL_NOTICE_MS = 10_000;
+const ERROR_NOTICE_MS = 15_000;
+
+/** A wallet's message may end without a full stop; the toast reads it as a sentence followed by another. */
+export function asSentence(text: string): string {
+  const trimmed = text.trim();
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+/**
+ * `null` for a declined switch away from an unconfigured wallet chain: the unsupported-network screen says it all. Chain
+ * names come from the configuration and the dispute ID is parsed, so no URL text reaches the toast.
+ */
+export function chainNoticeToast(notice: ChainNotice): ToastInput | null {
+  const walletChain = getChain(notice.walletChainId);
+  if (walletChain === undefined) {
+    return notice.outcome === "failed" ? { variant: "error", title: NOT_SWITCHED_TITLE, message: asSentence(notice.reason), autoHideMs: ERROR_NOTICE_MS } : null;
+  }
+  const shown =
+    notice.disputeId === null
+      ? `The app is now showing ${walletChain.name}.`
+      : `Dispute ${notice.disputeId.toString()} is on ${chainName(notice.pageChainId)}, so the app is showing Ongoing Disputes on ${walletChain.name}.`;
+  if (notice.outcome === "declined") return { variant: "sync", title: `Wallet stayed on ${walletChain.name}`, message: shown, autoHideMs: NEUTRAL_NOTICE_MS };
+  return { variant: "error", title: NOT_SWITCHED_TITLE, message: `${asSentence(notice.reason)} ${shown}`, autoHideMs: ERROR_NOTICE_MS };
+}
+
+export function ChainNoticeToasts({ children }: { readonly children?: ReactNode }) {
+  const toaster = useToast();
+  const onNotice = useCallback(
+    (notice: ChainNotice) => {
+      const toast = chainNoticeToast(notice);
+      if (toast !== null) toaster.show(toast);
+    },
+    [toaster],
+  );
+  return <ChainNoticeProvider onNotice={onNotice}>{children}</ChainNoticeProvider>;
+}

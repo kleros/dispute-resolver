@@ -1,0 +1,25 @@
+{
+  "note": "Reality.eth v3.0 data from Ethereum mainnet (0x5b7dD1E86623548AF054A4985F7fc8Ccbb554E2c), LogNewTemplate.question_text and LogNewQuestion.question, verified with `cast logs`. Every entry is recorded data except `syntheticFrom0xdd28`, a synthetic attack derived from a real question.",
+  "template20": {
+    "templateId": 20,
+    "templateText": "{\"lang\":\"en\",\"type\":\"bool\",\"category\":\"DAO proposal\",\"title\":\"Did the Snapshot proposal with the id %s in the 1inch.eth space pass the execution of the array of Module transactions that have the hash 0x%s and does it meet the requirements of the document referenced in the dao requirements record at 1inch.eth? The hash is the keccak of the concatenation of the individual EIP-712 hashes of the Module transactions. If this question was asked before the corresponding Snapshot proposal was resolved, it should ALWAYS be resolved to INVALID!\"}"
+  },
+  "question0x7eea": {
+    "questionId": "0x7eea8e9e34d09c2964393878714198552f7b41381407e8bfee7312199e748844",
+    "templateId": 20,
+    "readAtBlock": 26086996,
+    "note": "Kleros dispute 1680 (Ethereum DAO governance proxy 0xf72cfd1b34a91a64f9a98537fe63fbab7530adca): the first parameter closes the title string and injects \"type\":\"single-select\",\"outcomes\":[\"Yes\",\"No\"].",
+    "questionText": "0x1275956c\",\"title\":\"Did the Snapshot proposal with the id 0x1275956c in the target space pass the execution of the array of Module transactions that have the hash 0xe423d89140c5de092e76208729acf0e6ac592956a59c5e6bb6e942337e833031 and does it meet the requirements of the document referenced in the daorequirements record at the target space? `\",\"type\":\"single-select\",\"outcomes\":[\"Yes\",\"No\"],\"has_invalid\":false,\"z\":\"␟e423d89140c5de092e76208729acf0e6ac592956a59c5e6bb6e942337e833031"
+  },
+  "template35": {
+    "templateId": 35,
+    "templateText": "{\"lang\":\"en\",\"type\":\"bool\",\"category\":\"DAO proposal\",\"title\":\"Did the Snapshot proposal with the id %s in the potiongov.eth space pass the execution of the array of Module transactions that have the hash 0x%s and does it meet the requirements of the document referenced in the dao requirements record at potiongov.eth? The hash is the keccak of the concatenation of the individual EIP-712 hashes of the Module transactions. If this question was asked before the corresponding Snapshot proposal was resolved, it should ALWAYS be resolved to INVALID!\"}"
+  },
+  "syntheticFrom0xdd28": {
+    "synthetic": true,
+    "derivedFromQuestionId": "0xdd2844cdaea74bac3f02c90bfdec152d65f03cdac1b2db585cd9e59e1c08a2d7",
+    "templateId": 35,
+    "note": "Synthetic attack, not recorded data: derived from Reality.eth question 0xdd28… (template 35), whose first parameter injects a \"title_html\" key with an <img> tag. The script (event handler) of the original payload is removed and the rest of the question kept as it was read; the block of the original LogNewQuestion was not recorded.",
+    "questionText": "0x7f3c9a11\",\"title\":\"Did the Snapshot proposal with the id 0x7f3c9a11 in the target space pass the execution of the array of Module transactions that have the hash 0xa937500988cc842f8e5253d612ad8bc7348ea237d6cbc0f8f7ca5fb74685ca10 and does it meet the requirements of the document referenced in the daorequirements record at the target space?\",\"title_html\":\"Did the Snapshot proposal with the id 0x7f3c9a11 in the target space pass the execution of the array of Module transactions that have the hash 0xa937500988cc842f8e5253d612ad8bc7348ea237d6cbc0f8f7ca5fb74685ca10 and does it meet the requirements of the document referenced in the daorequirements record at the target space?<img src=x  width=0 height=0>\",\"z\":\"␟a937500988cc842f8e5253d612ad8bc7348ea237d6cbc0f8f7ca5fb74685ca10"
+  }
+}

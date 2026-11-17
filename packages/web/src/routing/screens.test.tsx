@@ -1,0 +1,70 @@
+import { act, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it } from "vitest";
+import { renderAtPath } from "../test/routing";
+import { createConnectedTestWallet } from "../test/wallet";
+
+function Unreachable() {
+  return <p>Unreachable page</p>;
+}
+
+describe("UnsupportedNetworkScreen", () => {
+  it.each([
+    [10, "an unconfigured chain"],
+    [690, "a chain no longer supported"],
+  ])("a URL on chain %i, %s, offers only Ethereum Mainnet and Gnosis, never a testnet or a chain without a court, as named buttons, never links", (chainId) => {
+    renderAtPath(<Unreachable />, `/${String(chainId)}/ongoing`);
+    expect(screen.getByRole("heading", { level: 1, name: `Unsupported Network ${String(chainId)}` })).toBeInTheDocument();
+    expect(screen.getByText("Please switch over one of the following networks.")).toBeInTheDocument();
+    const list = screen.getByRole("list", { name: "Supported networks" });
+    const labels = within(list)
+      .getAllByRole("button")
+      .map((button) => button.textContent);
+    expect(labels).toEqual(["Ethereum Mainnet (1)", "Gnosis Network (100)"]);
+    expect(screen.getByRole("button", { name: "Switch the wallet to Gnosis Network (100)" })).toBeInTheDocument();
+    expect(screen.queryAllByRole("link")).toHaveLength(0);
+    expect(screen.queryByText("Unreachable page")).not.toBeInTheDocument();
+  });
+
+  it("without a wallet, a switch shows an inline message that rises into view instead of failing silently", async () => {
+    const user = userEvent.setup();
+    const view = renderAtPath(<Unreachable />, "/10/ongoing");
+    await user.click(screen.getByRole("button", { name: "Switch the wallet to Gnosis Network (100)" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Connect a wallet to switch to Gnosis Network.");
+    expect(alert.firstElementChild).toHaveClass("[&_h2]:animate-[t-stagger-in_var(--stagger-dur)_var(--stagger-ease)_backwards]", "motion-reduce:[&_h2]:animate-none");
+    expect(view.currentPath()).toBe("/10/ongoing");
+  });
+
+  it("a switch declined in the wallet is shown inline", async () => {
+    const user = userEvent.setup();
+    const wallet = await createConnectedTestWallet({ chainId: 10, switchChainError: true });
+    const view = renderAtPath(<Unreachable />, "/10/ongoing", { wallet });
+    await user.click(screen.getByRole("button", { name: "Switch the wallet to Gnosis Network (100)" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The switch to Gnosis Network was declined in the wallet.");
+    expect(view.currentPath()).toBe("/10/ongoing");
+  });
+
+  it("a successful switch moves the wallet and the app follows it to the chosen chain", async () => {
+    const user = userEvent.setup();
+    const wallet = await createConnectedTestWallet({ chainId: 10 });
+    const view = renderAtPath(<p>Ongoing page</p>, "/10/ongoing", { wallet });
+    await user.click(screen.getByRole("button", { name: "Switch the wallet to Gnosis Network (100)" }));
+    expect(await screen.findByText("Ongoing page")).toBeInTheDocument();
+    expect(view.currentPath()).toBe("/100/ongoing");
+    expect(wallet.config.state.chainId).toBe(100);
+  });
+
+  it("the chain being switched to shows progress and the others wait", async () => {
+    const wallet = await createConnectedTestWallet({ chainId: 10 });
+    renderAtPath(<Unreachable />, "/10/ongoing", { wallet });
+    const target = screen.getByRole("button", { name: "Switch the wallet to Gnosis Network (100)" });
+    act(() => {
+      target.click();
+    });
+    expect(screen.getByRole("button", { name: "Switch the wallet to Ethereum Mainnet (1)" })).toBeDisabled();
+    await waitFor(() => {
+      expect(wallet.config.state.chainId).toBe(100);
+    });
+  });
+});

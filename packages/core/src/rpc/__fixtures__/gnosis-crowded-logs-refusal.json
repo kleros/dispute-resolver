@@ -1,0 +1,18 @@
+{
+  "chainId": 100,
+  "readOn": "2026-11-14",
+  "readAtBlock": 49274399,
+  "request": {
+    "method": "eth_getLogs",
+    "address": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+    "topics": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"],
+    "fromBlock": 49270380,
+    "toBlock": 49274379
+  },
+  "error": {
+    "code": -32602,
+    "message": "invalid params",
+    "data": "Query returned more than 50000 results."
+  },
+  "maxResults": 50000
+}
