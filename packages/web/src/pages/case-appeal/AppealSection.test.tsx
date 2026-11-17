@@ -26,7 +26,7 @@ import userEvent from "@testing-library/user-event";
 import { writeContract } from "@wagmi/core";
 import { useState } from "react";
 import { formatEther, maxUint256 } from "viem";
-import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import type { CaseDispute, CaseWriteContext, CoreDeps, SectionData, WriteReceipt } from "../../data";
 import {
   TEST_ARBITRABLE,
@@ -1656,6 +1656,7 @@ describe("AppealSection: funding", () => {
   describe("a date answer", () => {
     /** 2026-01-02T00:00:00Z, funded as ruling 1767312001. */
     const JANUARY_2_2026 = 1_767_312_000n;
+    const DATE_MESSAGE = "Enter a full date, from 1970 on.";
 
     it.each([
       ["Asia/Tokyo", -540],
@@ -1722,9 +1723,66 @@ describe("AppealSection: funding", () => {
       expect(writes.fake.executions[0]?.options.wording).toEqual({ doing: "funding “2026-01-02” with 3 ETH", done: "Sent 3 ETH to fund “2026-01-02”." });
     });
 
-    describe("checked once focus leaves the field", () => {
-      const DATE_MESSAGE = "Enter a full date, from 1970 on.";
+    describe("in a browser whose language uses another calendar", () => {
+      /** Sets the browser language, or restores it with `null`, and dispatches `languagechange` as the browser does. */
+      async function changeBrowserLanguage(language: string | null): Promise<void> {
+        if (language === null) Reflect.deleteProperty(navigator, "language");
+        else Object.defineProperty(navigator, "language", { value: language, configurable: true });
+        await act(async () => {
+          window.dispatchEvent(new Event("languagechange"));
+          await Promise.resolve();
+        });
+      }
 
+      // Before the global cleanup unmounts the field: the library only hears `languagechange` while a field is mounted.
+      afterEach(async () => {
+        await changeBrowserLanguage(null);
+      });
+
+      /** Types a year, month and day into the date field's segments, in whatever order the language lays them out. */
+      async function typeDateParts(user: ReturnType<typeof userEvent.setup>, parts: { readonly year: string; readonly month: string; readonly day: string }): Promise<void> {
+        for (const type of ["year", "month", "day"] as const) {
+          const segment = within(freeInputCard())
+            .getAllByRole("spinbutton")
+            .find((candidate) => candidate.dataset.type === type);
+          if (segment === undefined) throw new Error(`The date field has no ${type} segment.`);
+          await user.click(segment);
+          await user.keyboard(parts[type]);
+        }
+      }
+
+      it.each(["fa-IR", "fa", "ps-AF", "ar-SA-u-ca-islamic-umalqura", "th-TH", "en-US-u-ca-ethiopic", "en-US"])(
+        "a date typed in a %s browser is the Gregorian date and is funded as midnight UTC of that date",
+        async (language) => {
+          const user = userEvent.setup();
+          writes.fake = fakeWriteController(TEST_SENT);
+          await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
+          await changeBrowserLanguage(language);
+          await typeDateParts(user, { year: "2026", month: "01", day: "02" });
+          await user.click(fundButton(freeInputCard()));
+          expect(await sentCallsAfter()).toMatchObject([{ args: [7n, JANUARY_2_2026 + 1n] }]);
+          expect(await within(toastRegion()).findByText("Sent 3 ETH to fund “2026-01-02”.")).toBeInTheDocument();
+        },
+      );
+
+      it("a Persian year typed in a Persian-language browser is a date before 1970, so Fund stays disabled and the field explains why", async () => {
+        const user = userEvent.setup();
+        await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
+        await changeBrowserLanguage("fa-IR");
+        await typeDateParts(user, { year: "1404", month: "01", day: "02" });
+        await user.click(contributionField(freeInputCard()));
+        expect(freeInputCard()).toHaveTextContent(DATE_MESSAGE);
+        expect(fundButton(freeInputCard())).toBeDisabled();
+      });
+
+      it("a Traditional Chinese browser keeps the Traditional Chinese labels of the date field", async () => {
+        await renderSection(caseDispute(crowdfunding({ rulingOptions: { type: "datetime" } })));
+        await changeBrowserLanguage("zh-TW");
+        expect(within(freeInputCard()).getByRole("button", { name: "日曆 Answer (date, UTC)" })).toBeInTheDocument();
+      });
+    });
+
+    describe("checked once focus leaves the field", () => {
       function expectNoDateMessage(): void {
         expect(freeInputCard()).not.toHaveTextContent(DATE_MESSAGE);
         expect(freeInputCard()).not.toHaveTextContent(ANSWER_ERROR_MESSAGES["out-of-range"]);

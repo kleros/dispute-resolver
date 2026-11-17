@@ -28,8 +28,10 @@ export default defineConfig({
         // default, so `import "./index.css"` and every package's own `sideEffects` field still apply. The first rule a
         // module matches wins: core's zod.ts configures zod at import time, and under the general rule the bundler drops
         // that call although the module's export is used (scripts/check-bundle.mjs fails the build's check without it).
+        // The web's calendar.ts is imported for its effect alone, which the general rule would drop.
         moduleSideEffects: [
           { test: /\/packages\/core\/src\/zod\.ts$/, sideEffects: true },
+          { test: /\/packages\/web\/src\/calendar\.ts$/, sideEffects: true },
           { test: /\/packages\/(core|web)\/src\/.+\.tsx?$/, sideEffects: false },
         ],
       },
@@ -43,6 +45,9 @@ export default defineConfig({
           // WalletConnect group is its `core` package only. The first group a module matches takes it: reality-eth-lib
           // nests its own ethers, which goes to `ethers`.
           groups: [
+            // A chunk of its own, which the entry imports before the shared chunk holding the library; left in the entry
+            // chunk, it would run after that shared chunk, once the library has already read the browser's calendar.
+            { name: "calendar", test: /\/packages\/web\/src\/calendar\.ts$/ },
             { name: "ethers", test: /\/node_modules\/(ethers|aes-js)\// },
             { name: "reality-eth-lib", test: /\/node_modules\/(@reality\.eth|marked|dompurify|isomorphic-dompurify)\// },
             { name: "walletconnect-core", test: /\/node_modules\/@walletconnect\/core\// },
