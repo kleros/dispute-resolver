@@ -89,6 +89,8 @@ export interface IdenticonProps {
 
 export interface PeriodBadgeProps {
   readonly period: Period;
+  /** The arbitrator executed the ruling: execution reads Executed, since no period follows it. */
+  readonly executed?: boolean;
   readonly size?: "sm" | "lg";
   readonly className?: string;
 }

@@ -6,6 +6,6 @@ export { listCourts } from "./courts";
 export { deriveTimeline } from "./timeline";
 export { deriveCompatibility } from "./compatibility";
 export { buildDecision, decisionNeedsFunding } from "./decision";
-export { readExecutedRuling } from "./executed";
+export { isExecuted, readExecutedRuling } from "./executed";
 export { buildDisputeView } from "./view";
 export { listOngoingDisputes } from "./ongoing";

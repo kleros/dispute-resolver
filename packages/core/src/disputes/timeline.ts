@@ -16,11 +16,14 @@ function column(name: TimelineColumnName, period: Period, current: Period, lastP
   return { name, state: "upcoming", durationSeconds: duration };
 }
 
-/** Commit appears for hidden-vote courts, and for a dispute currently in commit whatever its court says now. */
-export function deriveTimeline(input: { readonly period: Period; readonly lastPeriodChange: number; readonly court: Court }): Timeline {
-  const { period, lastPeriodChange, court } = input;
+/**
+ * Commit appears for hidden-vote courts, and for a dispute currently in commit whatever its court says now. Once the
+ * ruling is executed no period follows, so every column is concluded.
+ */
+export function deriveTimeline(input: { readonly period: Period; readonly lastPeriodChange: number; readonly court: Court; readonly executed: boolean }): Timeline {
+  const { period, lastPeriodChange, court, executed } = input;
   const passesCommit = court.hiddenVotes || period === 1;
-  return {
-    columns: COLUMNS.filter((entry) => entry.period !== 1 || passesCommit).map((entry) => column(entry.name, entry.period, period, lastPeriodChange, court)),
-  };
+  const shown = COLUMNS.filter((entry) => entry.period !== 1 || passesCommit);
+  if (executed) return { columns: shown.map((entry): TimelineColumn => ({ name: entry.name, state: "concluded" })) };
+  return { columns: shown.map((entry) => column(entry.name, entry.period, period, lastPeriodChange, court)) };
 }

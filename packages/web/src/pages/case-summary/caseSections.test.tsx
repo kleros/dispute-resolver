@@ -191,6 +191,18 @@ describe("CaseOverview", () => {
     expect(screen.getAllByRole("status").length).toBeGreaterThan(0);
   });
 
+  it("reads Executed once the arbitrator executed the ruling", () => {
+    renderSection(CaseOverview, caseDispute({ period: 4, ruled: true }));
+    expect(screen.getByText("Executed")).toBeInTheDocument();
+    expect(screen.queryByText("Execution")).not.toBeInTheDocument();
+  });
+
+  it("reads Execution while the ruling is not executed yet", () => {
+    renderSection(CaseOverview, caseDispute({ period: 4, ruled: false }));
+    expect(screen.getByText("Execution")).toBeInTheDocument();
+    expect(screen.queryByText("Executed")).not.toBeInTheDocument();
+  });
+
   it("a missing vote count degrades the votes only", () => {
     renderSection(CaseOverview, caseDispute({ details: { votesLengths: { ok: true, value: [] } } }));
     expect(detail("Number of votes")).toHaveTextContent(/^Unavailable: .*no valid vote count/);
@@ -303,8 +315,8 @@ describe("DisputeTimeline", () => {
     ]);
   });
 
-  it("in the execution period marks every earlier step concluded and execution current", () => {
-    renderSection(DisputeTimeline, caseDispute({ period: 4 }));
+  it("in the execution period, before the ruling is executed, marks every earlier step concluded and execution current", () => {
+    renderSection(DisputeTimeline, caseDispute({ period: 4, ruled: false }));
     expect(columns().map(({ name, state }) => [name, state])).toEqual([
       ["Evidence", "concluded"],
       ["Voting", "concluded"],
@@ -314,6 +326,25 @@ describe("DisputeTimeline", () => {
     const execution = within(timelineList()).getByRole("listitem", { name: "Execution" });
     expect(execution).toHaveAttribute("aria-current", "step");
     expect(execution.querySelector("small")).toBeNull();
+  });
+
+  it.each([
+    ["vertical", false],
+    ["horizontal", true],
+  ] as const)("once the ruling is executed marks every step done and Concluded, none current or upcoming (%s)", (_orientation, horizontal) => {
+    if (horizontal) {
+      installOfflineAppKitEnvironment();
+      vi.stubGlobal("matchMedia", matchEverything);
+    }
+    renderSection(DisputeTimeline, caseDispute({ period: 4, ruled: true, court: { hiddenVotes: true } }));
+    expect(timelineList()).toHaveAccessibleName(`${horizontal ? "Horizontal" : "Vertical"} progress steps`);
+    expect(columns()).toEqual(["Evidence", "Commit", "Voting", "Appeal", "Execution"].map((name) => ({ name, state: "concluded", text: `${name}Concluded` })));
+    for (const step of steps()) {
+      expect(step).not.toHaveAttribute("aria-current");
+      expect(step).not.toHaveAttribute("aria-disabled");
+      expect(step.querySelector("[aria-hidden] > svg")).not.toBeNull();
+    }
+    expect(within(timeline()).queryByText(/time left in its period/)).not.toBeInTheDocument();
   });
 
   it("degrades only the timeline when the court is missing from the list", () => {
@@ -358,7 +389,7 @@ describe("DisputeTimeline", () => {
     expect(hint).not.toHaveAttribute("aria-live");
     expect(timelineList()).not.toContainElement(hint);
     unmount();
-    renderSection(DisputeTimeline, caseDispute({ period: 4 }));
+    renderSection(DisputeTimeline, caseDispute({ period: 4, ruled: false }));
     expect(within(timeline()).queryByText(/time left in its period/)).not.toBeInTheDocument();
   });
 

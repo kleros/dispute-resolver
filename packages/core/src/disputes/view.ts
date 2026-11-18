@@ -4,6 +4,7 @@ import type { MetaEvidenceResult, RealityNotice } from "../metaEvidence/types";
 import type { Outcome } from "../types";
 import { deriveCompatibility } from "./compatibility";
 import { fail, succeed } from "../outcome";
+import { isExecuted } from "./executed";
 import { deriveTimeline } from "./timeline";
 import type { Court, DisputeLookup, DisputeReads, DisputeView, LocalIdResolution } from "./types";
 
@@ -55,7 +56,7 @@ export function buildDisputeView(input: {
     compatibility,
     period: dispute.period,
     lastPeriodChange: dispute.lastPeriodChange,
-    timeline: court.ok ? succeed(deriveTimeline({ period: dispute.period, lastPeriodChange: dispute.lastPeriodChange, court: court.value })) : court,
+    timeline: court.ok ? succeed(deriveTimeline({ period: dispute.period, lastPeriodChange: dispute.lastPeriodChange, court: court.value, executed: isExecuted(dispute) })) : court,
     numberOfVotes: numberOfVotes(reads),
     court,
     realityNotice: metaEvidence?.status === "ok" ? realityNotice(metaEvidence.metaEvidence.realityQuestion) : NO_NOTICE,

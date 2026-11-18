@@ -1,6 +1,6 @@
-import type { AppealPanel, ChainConfig, Decision, FundingTerms, UnavailableCode } from "@dispute-resolver/core";
+import { isExecuted, type AppealPanel, type ChainConfig, type Decision, type FundingTerms, type UnavailableCode } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
-import type { CaseSectionProps, CaseWriteContext, SectionData } from "../../data";
+import { foundLookup, type CaseSectionProps, type CaseWriteContext, type SectionData } from "../../data";
 import { Notice, SectionSkeleton, SectionUnavailable, useNowSeconds } from "../../ui";
 import {
   ESCROW_ENDED,
@@ -52,9 +52,10 @@ interface PanelBodyProps {
   readonly chain: ChainConfig;
   readonly onRetry: () => void;
   readonly currentTitle: string | undefined;
+  readonly executed: boolean;
 }
 
-function PanelBody({ panel, actions, chain, onRetry, currentTitle }: PanelBodyProps) {
+function PanelBody({ panel, actions, chain, onRetry, currentTitle, executed }: PanelBodyProps) {
   switch (panel.kind) {
     case "hidden":
       return null;
@@ -79,7 +80,7 @@ function PanelBody({ panel, actions, chain, onRetry, currentTitle }: PanelBodyPr
         </div>
       );
     case "withdraw":
-      return <WithdrawPanel state={panel.state} noun={panel.noun} actions={actions} chain={chain} />;
+      return <WithdrawPanel state={panel.state} noun={panel.noun} executed={executed} actions={actions} chain={chain} />;
     case "withdraw-unsupported":
       return (
         <>
@@ -99,10 +100,18 @@ export function AppealSection({ dispute, chain }: CaseSectionProps) {
   if (appealPanel.status === "loading" || waitsForTitle) return <SectionSkeleton variant="text" lines={6} />;
   if (appealPanel.status === "unavailable") return <SectionUnavailable section={SECTION} error={appealPanel.error} onRetry={retry} />;
   const panel = appealPanel.value;
+  const found = foundLookup(dispute);
   return (
     <div className="flex min-w-0 flex-col gap-4">
       {hasActions(panel) ? <WriteContextNotice write={dispute.write} /> : null}
-      <PanelBody panel={panel} actions={actions} chain={chain} onRetry={retry} currentTitle={currentRulingTitle(decision)} />
+      <PanelBody
+        panel={panel}
+        actions={actions}
+        chain={chain}
+        onRetry={retry}
+        currentTitle={currentRulingTitle(decision)}
+        executed={found !== undefined && isExecuted(found.dispute)}
+      />
     </div>
   );
 }

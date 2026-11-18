@@ -18,6 +18,9 @@ const ITEMS = [
   { title: "Execution" },
 ];
 
+/** An executed ruling: every period concluded and none current. */
+const ALL_CONCLUDED = ["Evidence", "Voting", "Appeal", "Execution"].map((title) => ({ title, subitems: ["Concluded"] }));
+
 function closingBracket(token: string): number {
   let depth = 0;
   for (let index = 0; index < token.length; index += 1) {
@@ -170,6 +173,59 @@ describe("the library steps under the timeline's class strings", () => {
     expect(list.className).not.toContain("w-62.5");
   });
 
+  it("the vertical steps past the last index are all completed, and the selectors find no current or upcoming step", () => {
+    const list = renderSteps(TIMELINE_V, false, ALL_CONCLUDED, ALL_CONCLUDED.length);
+    expectSelectors(
+      TIMELINE_V,
+      list,
+      new Map<string, Expectation>([
+        ["small", { count: 4 }],
+        ["li[aria-current] small", { count: 0 }],
+        ["li[aria-current] h2", { count: 0 }],
+        ["li[aria-disabled] [aria-hidden]>div:first-child", { count: 0 }],
+        ["li[aria-disabled] [aria-hidden] span", { count: 0 }],
+        ["li[aria-current] [aria-hidden]>div:first-child", { count: 0 }],
+        ["li", { count: 4 }],
+        ["li>div:last-child", { count: 4, every: isTextBlock }],
+        ["li>div:last-child>div", { count: 4, texts: ["Concluded", "Concluded", "Concluded", "Concluded"] }],
+        ["[aria-hidden]>*+*", { count: 3, every: outsideLastStep }],
+        ["li[aria-current] [aria-hidden]>*+*", { count: 0 }],
+        ["li[aria-disabled] [aria-hidden]>*+*", { count: 0 }],
+        ["li:not([aria-current]):not([aria-disabled]) [aria-hidden]>*+*", { count: 3, every: concluded }],
+        ["[aria-hidden]>*", { count: 7 }],
+        ["[aria-hidden] span", { count: 0 }],
+        ["h2", { count: 4 }],
+      ]),
+    );
+    expect(steps(list).map((step) => step.querySelector("[aria-hidden]")?.firstElementChild?.tagName.toLowerCase())).toEqual(["svg", "svg", "svg", "svg"]);
+  });
+
+  it("the horizontal steps past the last index are all completed, and the selectors find no current or upcoming step", () => {
+    installOfflineAppKitEnvironment();
+    const list = renderSteps(TIMELINE_H, true, ALL_CONCLUDED, ALL_CONCLUDED.length);
+    expectSelectors(
+      TIMELINE_H,
+      list,
+      new Map<string, Expectation>([
+        ["small", { count: 4 }],
+        ["li[aria-current] small", { count: 0 }],
+        ["li[aria-disabled] [aria-hidden]>div:first-child", { count: 0 }],
+        ["li[aria-disabled] [aria-hidden] span", { count: 0 }],
+        ["li[aria-current] [aria-hidden]>div:first-child", { count: 0 }],
+        [">li>div:last-child", { count: 4, every: isTextBlock }],
+        [">li:not(:last-child)", { count: 3, every: (match) => match.nextElementSibling?.tagName.toLowerCase() === "li" }],
+        [">li[aria-current]", { count: 0 }],
+        [">li[aria-disabled]", { count: 0 }],
+        [">li:not([aria-current]):not([aria-disabled])", { count: 4, texts: ["EvidenceConcluded", "VotingConcluded", "AppealConcluded", "ExecutionConcluded"] }],
+        ["[aria-hidden]>*", { count: 4 }],
+        ["[aria-hidden] span", { count: 0 }],
+        ["li", { count: 4 }],
+        ["h2", { count: 4 }],
+      ]),
+    );
+    expect(steps(list).map((step) => step.querySelector("[aria-hidden]")?.firstElementChild?.tagName.toLowerCase())).toEqual(["svg", "svg", "svg", "svg"]);
+  });
+
   it.each([
     ["row", TIMELINE_H],
     ["list", TIMELINE_V],
@@ -208,6 +264,17 @@ describe("the library steps under the timeline's class strings", () => {
     const all = steps(list);
     expect(all.map((step) => step.getAttribute("aria-current"))).toEqual([null, "step", null, null]);
     expect(all.map((step) => step.getAttribute("aria-disabled"))).toEqual([null, null, "true", "true"]);
+  });
+
+  it.each([
+    ["vertical", false],
+    ["horizontal", true],
+  ] as const)("with the index past the last step, no step carries aria-current or aria-disabled (%s)", (_orientation, horizontal) => {
+    installOfflineAppKitEnvironment();
+    const list = renderSteps(horizontal ? TIMELINE_H : TIMELINE_V, horizontal, ALL_CONCLUDED, ALL_CONCLUDED.length);
+    const all = steps(list);
+    expect(all.map((step) => step.getAttribute("aria-current"))).toEqual([null, null, null, null]);
+    expect(all.map((step) => step.getAttribute("aria-disabled"))).toEqual([null, null, null, null]);
   });
 
   it.each([

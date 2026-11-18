@@ -45,6 +45,8 @@ interface Scenario {
   readonly elapsed: bigint;
   /** Whether the page runs on Playwright's clock, so a spec can move time on. */
   readonly clock?: boolean;
+  /** Whether the arbitrator executed the ruling; only meaningful in execution. */
+  readonly ruled?: boolean;
 }
 
 /** Three-digit day counts in every state, the widest the countdown and the durations get. */
@@ -67,7 +69,7 @@ async function openCase(page: Page, baseURL: string | undefined, scenario: Scena
   const lastPeriodChange = BigInt(Math.floor(Date.now() / 1_000)) - scenario.elapsed;
   const details = caseDetailsAnswers(MAINNET_ARBITRATOR, DISPUTE_ID, { court: scenario.court });
   const rpc = (call: RpcCall): RpcAnswer | undefined => {
-    if (isDisputesCall(call, MAINNET_ARBITRATOR, DISPUTE_ID)) return disputeStruct({ arbitrated: ARBITRABLE, period: scenario.period, lastPeriodChange });
+    if (isDisputesCall(call, MAINNET_ARBITRATOR, DISPUTE_ID)) return disputeStruct({ arbitrated: ARBITRABLE, period: scenario.period, lastPeriodChange, ruled: scenario.ruled });
     return noPolicy(call) ?? details(call) ?? EMPTY_CHAIN[call.method];
   };
   await fakeNetwork(page.context(), { appOrigin: appOriginOf(baseURL), rpc, http: (request) => (request.kind === "locator" ? NO_META_EVIDENCE : undefined) });
@@ -77,6 +79,11 @@ async function openCase(page: Page, baseURL: string | undefined, scenario: Scena
   if (scenario.clock === true) await page.clock.install();
   await page.goto(CASE_PATH);
   await expect(timelineList(page), "the timeline never rendered (needs the chain-1 read RPC in the build)").toBeVisible({ timeout: 30_000 });
+}
+
+/** The case's header: its heading names it, and it holds the period badge. */
+function overview(page: Page) {
+  return page.getByRole("region", { name: `Dispute #${DISPUTE_ID.toString()}`, exact: true });
 }
 
 function timeline(page: Page) {
@@ -306,12 +313,18 @@ async function measure(page: Page): Promise<Geometry> {
       };
     });
     const currentBullet = list.querySelector("li[aria-current] [aria-hidden] > :first-child");
+    // With no current step, a done step's check icon carries the blue as its fill.
+    const doneIcon = list.querySelector("li:not([aria-current]):not([aria-disabled]) [aria-hidden] > svg:first-child");
+    const blueOf = (bullet: Element | null, icon: Element | null): string => {
+      if (bullet !== null) return getComputedStyle(bullet).backgroundColor;
+      return icon === null ? "" : getComputedStyle(icon).fill;
+    };
     const pageScroller = document.querySelector(scrollerSelector) ?? document.documentElement;
     return {
       horizontal: list.getAttribute("aria-label") === "Horizontal progress steps",
       list: rectOf(list.getBoundingClientRect()),
       band: rectOf(wrapper.getBoundingClientRect()),
-      blue: currentBullet === null ? "" : getComputedStyle(currentBullet).backgroundColor,
+      blue: blueOf(currentBullet, doneIcon),
       edge: getComputedStyle(wrapper).borderTopColor,
       scrollWidth: pageScroller.scrollWidth,
       clientWidth: pageScroller.clientWidth,
@@ -529,14 +542,35 @@ test.describe("the dispute timeline's geometry", () => {
     await expectEveryWidth(page, FIVE_WIDTHS, FIVE_STEPS);
   });
 
-  test("execution: the current numbered step with no state line, every connector before it done", async ({ page, baseURL }) => {
+  test("execution before the ruling is executed: the current numbered step with no state line, every connector before it done", async ({ page, baseURL }) => {
     await openCase(page, baseURL, { period: 4, court: GENERAL_COURT, elapsed: HOUR });
+    await expect(overview(page).getByText("Execution", { exact: true })).toBeVisible();
+    await expect(overview(page).getByText("Executed", { exact: true })).toHaveCount(0);
     const execution = timelineList(page).getByRole("listitem", { name: "Execution" });
     await expect(execution).toHaveAttribute("aria-current", "step");
     await expect(execution).toHaveText("4Execution");
     await expect(execution.locator("small")).toHaveCount(0);
     await expectEveryWidth(page, FOUR_WIDTHS, LG);
   });
+
+  const executed: readonly (readonly [string, Court, readonly string[], readonly number[], number])[] = [
+    ["four periods", GENERAL_COURT, ["Evidence", "Voting", "Appeal", "Execution"], FOUR_WIDTHS, LG],
+    ["five periods of a hidden-vote court", LONG_HIDDEN_COURT, ["Evidence", "Commit", "Voting", "Appeal", "Execution"], FIVE_WIDTHS, FIVE_STEPS],
+  ];
+  for (const [what, court, names, widths, rowFrom] of executed) {
+    test(`${what} once the ruling is executed: the badge reads Executed and every step is done and Concluded`, async ({ page, baseURL }) => {
+      await openCase(page, baseURL, { period: 4, court, elapsed: HOUR, ruled: true });
+      await expect(overview(page).getByText("Executed", { exact: true })).toBeVisible();
+      await expect(overview(page).getByText("Execution", { exact: true })).toHaveCount(0);
+      await expect(timelineList(page).getByRole("listitem")).toHaveText(names.map((name) => `${name}Concluded`));
+      await expect(timelineList(page).locator("li[aria-current], li[aria-disabled]")).toHaveCount(0);
+      await expect(timeline(page).getByText(/time left in its period/)).toHaveCount(0);
+      await expectEveryWidth(page, widths, rowFrom);
+      await resizeTo(page, NARROWEST, "Vertical");
+      await expect(timelineList(page).getByRole("listitem")).toHaveText(names.map((name) => `${name}Concluded`));
+      await expect(timelineList(page).locator("li[aria-current], li[aria-disabled]")).toHaveCount(0);
+    });
+  }
 
   const narrowest: readonly (readonly [string, Scenario])[] = [
     ["four periods in evidence", { period: 0, court: LONG_COURT, elapsed: HOUR }],

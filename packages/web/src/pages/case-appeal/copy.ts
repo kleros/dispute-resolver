@@ -58,8 +58,9 @@ export function withdrawEligible(noun: RulingNoun): string {
   return `If you have contributed to ${ARTICLE[noun]} and in the end that ${noun} was the winner you are eligible for some reward. Also, if you have contributed but appeal did not happen your contribution is refunded.`;
 }
 
-export function withdrawNothing(noun: RulingNoun): string {
-  return `You don't have any amount to withdraw. Reason might be that you did not contribute, the ${noun} you have contributed to did not win, you already withdrew or the ruling is not executed yet by the arbitrator.`;
+export function withdrawNothing(noun: RulingNoun, executed: boolean): string {
+  const reasons = `You don't have any amount to withdraw. Reason might be that you did not contribute, the ${noun} you have contributed to did not win`;
+  return executed ? `${reasons}, or you already withdrew.` : `${reasons}, you already withdrew or the ruling is not executed yet by the arbitrator.`;
 }
 
 export function withdrawnLine(amount: string): string {
