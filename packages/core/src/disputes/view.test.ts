@@ -79,7 +79,18 @@ describe("buildDisputeView", () => {
     });
     expect(view.timeline).toMatchObject({
       ok: true,
-      value: { columns: [{ state: "concluded" }, { state: "concluded" }, { state: "concluded" }, { state: "current", name: "execution" }] },
+      value: { columns: [{ state: "concluded" }, { state: "concluded" }, { state: "concluded" }, { state: "concluded", name: "execution" }] },
+    });
+  });
+
+  it("keeps the execution column current while the arbitrator has not executed the ruling", async () => {
+    const { lookup, reads, courts } = await load(MAINNET, 1, 1454n);
+    if (lookup.status !== "found") throw new Error("dispute 1454 not found");
+    const pending: DisputeLookup = { ...lookup, dispute: { ...lookup.dispute, ruled: false } };
+    const view = existing(buildDisputeView({ lookup: pending, reads, family: NOT_READ, courts, metaEvidence: null }));
+    expect(view.timeline).toMatchObject({
+      ok: true,
+      value: { columns: [{ state: "concluded" }, { state: "concluded" }, { state: "concluded" }, { state: "current", name: "execution", deadline: null }] },
     });
   });
 

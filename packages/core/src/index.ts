@@ -33,6 +33,7 @@ export {
   buildDisputeView,
   decisionNeedsFunding,
   deriveCompatibility,
+  isExecuted,
   listCourts,
   listOngoingDisputes,
   lookupDispute,

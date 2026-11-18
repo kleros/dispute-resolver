@@ -15,6 +15,7 @@ import {
   type LocalIdResolution,
   type Multipliers,
   type Outcome,
+  type Period,
   type RulingAmount,
   type RulingOptions,
   type WithdrawState,
@@ -203,12 +204,14 @@ interface DisputeOptions {
   /** The appeal cost read again before an appeal; by default the cost the panel shows. */
   readonly readAppealCost?: CaseWriteContext["readAppealCost"];
   readonly decision?: SectionData<Decision>;
+  readonly period?: Period;
+  readonly ruled?: boolean;
 }
 
 function caseDispute(panel: AppealPanel | SectionData<AppealPanel>, options: DisputeOptions = {}): CaseDispute {
   const chainId = options.chainId ?? 1;
   const family = options.family ?? testFamily({ chainId });
-  const lookup = testFoundLookup({ chainId, period: 3 });
+  const lookup = testFoundLookup({ chainId, period: options.period ?? 3, ruled: options.ruled ?? false });
   const appealPanel = "status" in panel ? panel : sectionReady(panel);
   const shownCost = appealPanel.status === "ready" && appealPanel.value.kind === "escrow-appeal" ? appealPanel.value.appealCost : APPEAL_INFO.appealCost;
   const context = testWriteContext({
@@ -409,7 +412,7 @@ describe("AppealSection: panel kinds", () => {
     ["escrow-ended", { kind: "escrow-ended" }, [ESCROW_ENDED], false],
     ["crowdfunding", crowdfunding(), [CROWDFUNDING_EXPLANATION, rewardsBody("answer")], true],
     ["fees-unavailable", { kind: "fees-unavailable", error: { code: "unsupported", message: "The appeal multipliers could not be read." } }, [FEES_UNAVAILABLE_TITLE], false],
-    ["withdraw", { kind: "withdraw", state: { status: "nothing" }, noun: "answer" }, [withdrawNothing("answer")], false],
+    ["withdraw", { kind: "withdraw", state: { status: "nothing" }, noun: "answer" }, [withdrawNothing("answer", false)], false],
     ["withdraw-unsupported", { kind: "withdraw-unsupported" }, ["Withdrawals unavailable here", WITHDRAW_UNSUPPORTED], false],
   ];
 
@@ -2115,7 +2118,7 @@ describe("AppealSection: Escrow V1 appeal", () => {
 });
 
 describe("AppealSection: withdraw", () => {
-  const NOTHING = withdrawNothing("answer");
+  const NOTHING = withdrawNothing("answer", false);
   const WITHDRAWN: AppealPanel = { kind: "withdraw", state: { status: "nothing" }, noun: "answer" };
   /** What remains after the first of AVAILABLE_WITHDRAW's two withdrawals. */
   const REMAINING: AppealPanel = {
@@ -2159,6 +2162,21 @@ describe("AppealSection: withdraw", () => {
     if (shown !== NOTHING) expect(panel).not.toHaveTextContent(NOTHING);
     expect(panel).not.toHaveTextContent(/You withdrew/);
     expect(within(panel).queryByRole("button")).toBeNull();
+  });
+
+  it("with nothing to withdraw before the arbitrator executed the ruling, gives that as one reason", async () => {
+    const panel = await renderSection(caseDispute(WITHDRAWN, { period: 4, ruled: false }));
+    expect(panel).toHaveTextContent(
+      "You don't have any amount to withdraw. Reason might be that you did not contribute, the answer you have contributed to did not win, you already withdrew or the ruling is not executed yet by the arbitrator.",
+    );
+  });
+
+  it("with nothing to withdraw once the arbitrator executed the ruling, no longer gives an unexecuted ruling as a reason", async () => {
+    const panel = await renderSection(caseDispute(WITHDRAWN, { period: 4, ruled: true }));
+    expect(panel).toHaveTextContent(
+      "You don't have any amount to withdraw. Reason might be that you did not contribute, the answer you have contributed to did not win, or you already withdrew.",
+    );
+    expect(panel).not.toHaveTextContent(/not executed/);
   });
 
   it("withdraws every ruling in one sequence, one transaction each, with a refresh for the end", async () => {

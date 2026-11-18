@@ -17,6 +17,19 @@ describe("PeriodBadge", () => {
     expect(dot).toHaveClass(dotClass);
   });
 
+  it("an executed ruling reads Executed with the execution period's dot", () => {
+    const { container } = render(<PeriodBadge period={4} executed />);
+    expect(screen.getByText("Executed")).toBeInTheDocument();
+    expect(screen.queryByText("Execution")).toBeNull();
+    expect(container.querySelector("[aria-hidden='true']")).toHaveClass("bg-klerosUIComponentsSecondaryText");
+  });
+
+  it("execution not marked executed still reads Execution", () => {
+    render(<PeriodBadge period={4} executed={false} />);
+    expect(screen.getByText("Execution")).toBeInTheDocument();
+    expect(screen.queryByText("Executed")).toBeNull();
+  });
+
   it("the large badge takes the large stamp size", () => {
     render(<PeriodBadge period={0} size="lg" />);
     expect(screen.getByText("Evidence")).toHaveClass("h-9", "px-4", "text-base");

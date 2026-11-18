@@ -81,6 +81,7 @@ test("a view-only dispute whose arbitrable applied another ruling than the court
   const panel = page.getByRole("region", { name: "Winner", exact: true });
   await expect(panel, "the decision never rendered (needs the chain-1 read RPC in the build)").toBeVisible({ timeout: 30_000 });
   await expect(panel.getByText("2", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Dispute #9391", exact: true }).getByText("Executed", { exact: true })).toBeVisible();
   await expect(panel).toContainText(`The court ruled “${REFUSED}”. The arbitrable contract applied “2”.`);
   await expect(panel).not.toContainText("Won by");
   await expect(panel.getByRole("button")).toHaveCount(0);

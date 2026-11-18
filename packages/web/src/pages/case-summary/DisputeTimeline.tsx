@@ -134,7 +134,9 @@ function TimelineSteps({ columns, losing }: { readonly columns: readonly Timelin
   const wide = columns.length > 4 ? fiveFit : fourFit;
   const items = columns.map((column) => ({ title: COLUMN_LABELS[column.name], subitems: stateLines(column, now) }));
   const notice = losingNotice(columns, losing, now);
-  const currentIndex = columns.findIndex((column) => column.state === "current");
+  const current = columns.findIndex((column) => column.state === "current");
+  // The library completes every step before its current index; at -1 it would mark them all upcoming instead.
+  const currentIndex = current === -1 ? columns.length : current;
   // The library hard-codes its list's name to the orientation alone, so the section carries what the steps are.
   return (
     <section aria-label="Dispute timeline">

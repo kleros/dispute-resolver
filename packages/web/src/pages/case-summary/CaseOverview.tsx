@@ -1,3 +1,4 @@
+import { isExecuted } from "@dispute-resolver/core";
 import { useId, type ReactNode } from "react";
 import { FACT_SMALL, LABEL, PAGE_TITLE, PeriodBadge, useRevealIn } from "../../ui";
 import { foundLookup, type CaseSectionProps } from "../../data";
@@ -79,7 +80,7 @@ export function CaseOverview({ dispute, chain }: CaseSectionProps) {
       <OverviewLayout
         headingId={headingId}
         disputeId={dispute.disputeId}
-        period={found === undefined ? <PeriodPlaceholder /> : <PeriodBadge size="lg" period={found.dispute.period} className={pillReveal} />}
+        period={found === undefined ? <PeriodPlaceholder /> : <PeriodBadge size="lg" period={found.dispute.period} executed={isExecuted(found.dispute)} className={pillReveal} />}
         network={chain.name}
         court={
           <ViewDetail view={view} pick={(value) => value.court}>

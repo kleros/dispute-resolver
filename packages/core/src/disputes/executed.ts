@@ -38,6 +38,11 @@ function fromLogs(logs: readonly unknown[], binding: ArbitratedBinding, dispute:
   return withinChoices(ruling, dispute) ? { status: "executed", ruling } : { status: "out-of-range", ruling };
 }
 
+/** KlerosLiquid has no period after execution: `executeRuling` runs in it and only sets the struct's `ruled` flag. */
+export function isExecuted(dispute: Pick<ArbitratorDispute, "period" | "ruled">): boolean {
+  return dispute.period === 4 && dispute.ruled;
+}
+
 /**
  * The ruling the arbitrable reports it executed: its ERC-792 `Ruling` events for this arbitrator and dispute, from
  * `fromBlock` (the last round's start) to the head. Read only in execution once the arbitrator has executed the ruling,

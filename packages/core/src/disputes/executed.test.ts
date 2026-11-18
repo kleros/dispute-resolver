@@ -2,7 +2,7 @@ import { createPublicClient, custom, encodeEventTopics, maxUint256, numberToHex,
 import { describe, expect, it } from "vitest";
 import { erc792Abi } from "../abi";
 import type { Address, Hex, Period } from "../types";
-import { lookupDispute, readExecutedRuling } from ".";
+import { isExecuted, lookupDispute, readExecutedRuling } from ".";
 import type { ArbitratedBinding, ArbitratorDispute } from "./types";
 import { EXECUTION_GNOSIS, EXECUTION_MAINNET, executionNode, fakeClient, rpcError, rulingLog } from "../test/disputes/testHelpers";
 import type { ExecutionRecording, FakeNode } from "../test/disputes/testHelpers";
@@ -48,6 +48,20 @@ async function read(recording: ExecutionRecording, disputeId: bigint, node: Fake
   const executed = await readExecutedRuling({ chainId: recording.chainId, client }, subject);
   return { executed, requests, subject };
 }
+
+describe("isExecuted", () => {
+  it("a dispute in execution whose ruling the arbitrator executed is executed", () => {
+    expect(isExecuted({ period: 4, ruled: true })).toBe(true);
+  });
+
+  it.each<[string, Period, boolean]>([
+    ["a dispute in execution whose ruling the arbitrator has not executed yet", 4, false],
+    ["a dispute in the appeal period", 3, false],
+    ["a dispute before execution whose struct already says ruled", 3, true],
+  ])("%s is not executed", (_case, period, ruled) => {
+    expect(isExecuted({ period, ruled })).toBe(false);
+  });
+});
 
 describe("readExecutedRuling", () => {
   it.each([

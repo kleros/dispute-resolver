@@ -10,6 +10,7 @@ import type { AppealActions } from "./useAppealActions";
 interface WithdrawPanelProps {
   readonly state: WithdrawState;
   readonly noun: RulingNoun;
+  readonly executed: boolean;
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
 }
@@ -30,8 +31,8 @@ function withdrawnAmount(withdrawal: Withdrawal | null, progress: WriteSequenceS
   return finished && wallet.address.toLowerCase() === withdrawal.beneficiary.toLowerCase() ? withdrawal.amount : null;
 }
 
-function WithdrawExplanation({ state, noun }: { readonly state: WithdrawState; readonly noun: RulingNoun }) {
-  if (state.status === "nothing") return <p className={BODY_TEXT_CLASS}>{withdrawNothing(noun)}</p>;
+function WithdrawExplanation({ state, noun, executed }: { readonly state: WithdrawState; readonly noun: RulingNoun; readonly executed: boolean }) {
+  if (state.status === "nothing") return <p className={BODY_TEXT_CLASS}>{withdrawNothing(noun, executed)}</p>;
   let note = null;
   if (state.status === "no-account") note = <Notice variant="info" title="Wallet required" body={WITHDRAW_NO_ACCOUNT} />;
   else if (state.status === "unavailable") note = <Notice variant="warning" title="Withdrawable amount unavailable" body={state.error.message} />;
@@ -55,7 +56,7 @@ function WithdrawExplanation({ state, noun }: { readonly state: WithdrawState; r
  * One transaction per ruling contributed to, sent in sequence for the beneficiary the amounts were read for. The
  * withdrawable amount is refreshed once, after the last mined withdrawal.
  */
-export function WithdrawPanel({ state, noun, actions, chain }: WithdrawPanelProps) {
+export function WithdrawPanel({ state, noun, executed, actions, chain }: WithdrawPanelProps) {
   const sequence = useWriteSequence();
   const wallet = useWallet();
   const [running, setRunning] = useState(false);
@@ -91,7 +92,7 @@ export function WithdrawPanel({ state, noun, actions, chain }: WithdrawPanelProp
         <p className={withdrawn === null ? "sr-only" : BODY_TEXT_CLASS} aria-live="polite" aria-atomic="true">
           {withdrawn === null ? null : withdrawnLine(formatAmount(withdrawn, chain))}
         </p>
-        {withdrawn === null ? <WithdrawExplanation state={state} noun={noun} /> : null}
+        {withdrawn === null ? <WithdrawExplanation state={state} noun={noun} executed={executed} /> : null}
       </div>
       {state.status === "available" ? (
         <div className="flex flex-col border-t border-klerosUIComponentsStroke pt-4">

@@ -23,7 +23,15 @@ const PERIOD_STYLES: Readonly<Record<Period, PeriodStyle>> = {
   4: { label: "Execution", dot: DOT_FILL[PERIOD_COLOR[4]] },
 };
 
+const EXECUTED: PeriodStyle = { label: "Executed", dot: PERIOD_STYLES[4].dot };
+
 const UNKNOWN_PERIOD: PeriodStyle = { label: "Unknown period", dot: DOT_FILL.SecondaryText };
+
+function styleOf(period: Period, executed: boolean): PeriodStyle {
+  if (executed) return EXECUTED;
+  // A bad dispute can carry a period outside 0–4.
+  return (PERIOD_STYLES as Readonly<Partial<Record<number, PeriodStyle>>>)[period] ?? UNKNOWN_PERIOD;
+}
 
 const PILL_BADGE =
   "inline-flex items-center gap-2 rounded-full border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground font-semibold text-klerosUIComponentsPrimaryText";
@@ -31,10 +39,8 @@ const PILL_SIZE = { sm: "h-7 px-3 text-sm", lg: "h-9 px-4 text-base" } as const;
 const PILL_DOT_SIZE = { sm: "size-2", lg: "size-2.5" } as const;
 
 /** The name is the indicator and the dot is redundant, so color is never the only cue (WCAG 1.4.1). */
-export function PeriodBadge({ period, size = "sm", className }: PeriodBadgeProps) {
-  // A bad dispute can carry a period outside 0–4.
-  const style: PeriodStyle | undefined = (PERIOD_STYLES as Readonly<Partial<Record<number, PeriodStyle>>>)[period];
-  const { label, dot } = style ?? UNKNOWN_PERIOD;
+export function PeriodBadge({ period, executed = false, size = "sm", className }: PeriodBadgeProps) {
+  const { label, dot } = styleOf(period, executed);
   const base = `${PILL_BADGE} ${PILL_SIZE[size]}`;
   return (
     <span className={className === undefined ? base : `${base} ${className}`}>

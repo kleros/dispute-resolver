@@ -16,7 +16,7 @@ const LAST_CHANGE = 1_700_000_000;
 
 describe("deriveTimeline", () => {
   it("a hidden-vote court in the commit period shows Evidence concluded, Commit current, and Vote, Appeal, Execution upcoming", () => {
-    expect(deriveTimeline({ period: 1, lastPeriodChange: LAST_CHANGE, court: HIDDEN_VOTES_COURT })).toEqual({
+    expect(deriveTimeline({ period: 1, lastPeriodChange: LAST_CHANGE, court: HIDDEN_VOTES_COURT, executed: false })).toEqual({
       columns: [
         { name: "evidence", state: "concluded" },
         { name: "commit", state: "current", deadline: LAST_CHANGE + 291600 },
@@ -28,7 +28,7 @@ describe("deriveTimeline", () => {
   });
 
   it("a court without hidden votes has no Commit column", () => {
-    expect(deriveTimeline({ period: 0, lastPeriodChange: LAST_CHANGE, court: OPEN_VOTES_COURT })).toEqual({
+    expect(deriveTimeline({ period: 0, lastPeriodChange: LAST_CHANGE, court: OPEN_VOTES_COURT, executed: false })).toEqual({
       columns: [
         { name: "evidence", state: "current", deadline: LAST_CHANGE + 100 },
         { name: "vote", state: "upcoming", durationSeconds: 300n },
@@ -38,8 +38,8 @@ describe("deriveTimeline", () => {
     });
   });
 
-  it("the execution period concludes every earlier column and is current without a deadline", () => {
-    expect(deriveTimeline({ period: 4, lastPeriodChange: LAST_CHANGE, court: HIDDEN_VOTES_COURT })).toEqual({
+  it("the execution period before the ruling is executed concludes every earlier column and is current without a deadline", () => {
+    expect(deriveTimeline({ period: 4, lastPeriodChange: LAST_CHANGE, court: HIDDEN_VOTES_COURT, executed: false })).toEqual({
       columns: [
         { name: "evidence", state: "concluded" },
         { name: "commit", state: "concluded" },
@@ -50,20 +50,42 @@ describe("deriveTimeline", () => {
     });
   });
 
+  it("once the ruling is executed every column is concluded, none current", () => {
+    expect(deriveTimeline({ period: 4, lastPeriodChange: LAST_CHANGE, court: HIDDEN_VOTES_COURT, executed: true })).toEqual({
+      columns: [
+        { name: "evidence", state: "concluded" },
+        { name: "commit", state: "concluded" },
+        { name: "vote", state: "concluded" },
+        { name: "appeal", state: "concluded" },
+        { name: "execution", state: "concluded" },
+      ],
+    });
+  });
+
+  it("an executed ruling in a court without hidden votes still has no Commit column", () => {
+    const timeline = deriveTimeline({ period: 4, lastPeriodChange: LAST_CHANGE, court: OPEN_VOTES_COURT, executed: true });
+    expect(timeline.columns.map((column) => [column.name, column.state])).toEqual([
+      ["evidence", "concluded"],
+      ["vote", "concluded"],
+      ["appeal", "concluded"],
+      ["execution", "concluded"],
+    ]);
+  });
+
   it("the current column's deadline is lastPeriodChange + timesPerPeriod[period] (appeal period)", () => {
-    const timeline = deriveTimeline({ period: 3, lastPeriodChange: LAST_CHANGE, court: OPEN_VOTES_COURT });
+    const timeline = deriveTimeline({ period: 3, lastPeriodChange: LAST_CHANGE, court: OPEN_VOTES_COURT, executed: false });
     expect(timeline.columns.find((column) => column.state === "current")).toEqual({ name: "appeal", state: "current", deadline: LAST_CHANGE + 400 });
     expect(timeline.columns.filter((column) => column.state === "concluded").map((column) => column.name)).toEqual(["evidence", "vote"]);
   });
 
   it("a dispute in the commit period keeps its Commit column even if its court no longer hides votes", () => {
-    const timeline = deriveTimeline({ period: 1, lastPeriodChange: LAST_CHANGE, court: OPEN_VOTES_COURT });
+    const timeline = deriveTimeline({ period: 1, lastPeriodChange: LAST_CHANGE, court: OPEN_VOTES_COURT, executed: false });
     expect(timeline.columns.map((column) => column.name)).toEqual(["evidence", "commit", "vote", "appeal", "execution"]);
     expect(timeline.columns[1]).toEqual({ name: "commit", state: "current", deadline: LAST_CHANGE + 200 });
   });
 
   it("uses a zero lastPeriodChange as read, without a fallback", () => {
-    const timeline = deriveTimeline({ period: 0, lastPeriodChange: 0, court: OPEN_VOTES_COURT });
+    const timeline = deriveTimeline({ period: 0, lastPeriodChange: 0, court: OPEN_VOTES_COURT, executed: false });
     expect(timeline.columns[0]).toEqual({ name: "evidence", state: "current", deadline: 100 });
   });
 });

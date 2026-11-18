@@ -159,7 +159,7 @@ describe("AppealSection refresh after a mined write", () => {
 
     expect(await screen.findByText("You withdrew 1 ETH.")).toBe(region);
     expect(within(toastRegion()).getByText("Transaction confirmed")).toBeInTheDocument();
-    expect(container).not.toHaveTextContent(withdrawNothing("answer"));
+    expect(container).not.toHaveTextContent(withdrawNothing("answer", false));
     expect(screen.queryByRole("button", { name: /^Withdraw/ })).toBeNull();
     expect(core.readWithdrawable).toHaveBeenCalledTimes(2);
   });
