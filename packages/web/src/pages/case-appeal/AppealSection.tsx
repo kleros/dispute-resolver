@@ -1,7 +1,8 @@
 import { isExecuted, type AppealPanel, type ChainConfig, type Decision, type FundingTerms, type UnavailableCode } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
-import { foundLookup, type CaseSectionProps, type CaseWriteContext, type SectionData } from "../../data";
+import { foundLookup, useCannotReceivePayout, type CaseSectionProps, type CaseWriteContext, type SectionData } from "../../data";
 import { Notice, SectionSkeleton, SectionUnavailable, useNowSeconds } from "../../ui";
+import { PayoutWarningNotice, useWallet } from "../../wallet";
 import {
   ESCROW_ENDED,
   FEES_UNAVAILABLE_BODY,
@@ -94,6 +95,8 @@ function PanelBody({ panel, actions, chain, onRetry, currentTitle, executed }: P
 export function AppealSection({ dispute, chain }: CaseSectionProps) {
   const actions = useAppealActions(dispute, chain);
   const retry = useAppealRetry(dispute);
+  const wallet = useWallet();
+  const cannotReceive = useCannotReceivePayout(chain.id, wallet.status === "connected" ? wallet.address : undefined);
   const { appealPanel, decision } = dispute;
   const waitsForTitle =
     appealPanel.status === "ready" && appealPanel.value.kind === "handled-by-arbitrable" && appealPanel.value.terms !== undefined && decision.status === "loading";
@@ -104,6 +107,8 @@ export function AppealSection({ dispute, chain }: CaseSectionProps) {
   return (
     <div className="flex min-w-0 flex-col gap-4">
       {hasActions(panel) ? <WriteContextNotice write={dispute.write} /> : null}
+      {/* The Withdraw panel places its own, since only it knows when the withdrawn line shows. */}
+      {cannotReceive && panel.kind === "crowdfunding" ? <PayoutWarningNotice /> : null}
       <PanelBody
         panel={panel}
         actions={actions}

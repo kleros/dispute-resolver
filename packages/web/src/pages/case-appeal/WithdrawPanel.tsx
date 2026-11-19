@@ -1,9 +1,21 @@
 import { buildWithdrawCalls, type Address, type ChainConfig, type RulingNoun, type WithdrawState } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { useCannotReceivePayout } from "../../data";
 import { Notice, formatAmount } from "../../ui";
-import { useWallet, useWriteSequence, type WalletState, type WriteSequenceStatus } from "../../wallet";
-import { WITHDRAW_HEADING, WITHDRAW_NO_ACCOUNT, withdrawEligible, withdrawLastWording, withdrawNothing, withdrawWording, withdrawnLine } from "./copy";
+import { PayoutWarningNotice, useWallet, useWriteSequence, type WalletState, type WriteSequenceStatus, type WriteWording } from "../../wallet";
+import {
+  WITHDRAW_HEADING,
+  WITHDRAW_NO_ACCOUNT,
+  withdrawEligible,
+  withdrawLastSentWording,
+  withdrawLastWording,
+  withdrawNothing,
+  withdrawSentLine,
+  withdrawSentWording,
+  withdrawWording,
+  withdrawnLine,
+} from "./copy";
 import { BODY_TEXT_CLASS } from "./styles";
 import type { AppealActions } from "./useAppealActions";
 
@@ -29,6 +41,16 @@ function withdrawnAmount(withdrawal: Withdrawal | null, progress: WriteSequenceS
   if (withdrawal === null || progress === null || wallet.status !== "connected") return null;
   const finished = progress.current.phase === "mined" && progress.index === progress.total - 1;
   return finished && wallet.address.toLowerCase() === withdrawal.beneficiary.toLowerCase() ? withdrawal.amount : null;
+}
+
+/** The wording of transaction `index`; past the last item, as for the refusal of an empty sequence, the whole total's. */
+function withdrawalWording(amounts: readonly string[], total: string, index: number, sent: boolean): WriteWording {
+  const single = sent ? withdrawSentWording : withdrawWording;
+  const amount = amounts[index];
+  if (amount === undefined) return single(total);
+  const last = amounts.length - 1;
+  if (index === last && last > 0) return (sent ? withdrawLastSentWording : withdrawLastWording)(amount, total);
+  return single(amount);
 }
 
 function WithdrawExplanation({ state, noun, executed }: { readonly state: WithdrawState; readonly noun: RulingNoun; readonly executed: boolean }) {
@@ -62,21 +84,26 @@ export function WithdrawPanel({ state, noun, executed, actions, chain }: Withdra
   const [running, setRunning] = useState(false);
   const [withdrawal, setWithdrawal] = useState<Withdrawal | null>(null);
   const { context } = actions;
+  const cannotReceive = useCannotReceivePayout(chain.id, wallet.status === "connected" ? wallet.address : undefined);
+  // The check can settle after the press, so each toast reads the verdict when it is reported, as the withdrawn line does.
+  const latestCannotReceive = useRef(cannotReceive);
+  useLayoutEffect(() => {
+    latestCannotReceive.current = cannotReceive;
+  }, [cannotReceive]);
 
   const withdraw = async () => {
     if (state.status !== "available" || context === null) return;
     const builds = buildWithdrawCalls({ binding: context.binding, family: context.family, localId: context.localId, beneficiary: state.beneficiary, items: state.items });
     const total = formatAmount(state.total, chain);
-    const last = state.items.length - 1;
-    const wordings = state.items.map((item, index) => {
-      const amount = formatAmount(item.amount, chain);
-      return index === last && last > 0 ? withdrawLastWording(amount, total) : withdrawWording(amount);
-    });
-    const whole = withdrawWording(total);
+    const amounts = state.items.map((item) => formatAmount(item.amount, chain));
     setWithdrawal({ beneficiary: state.beneficiary, amount: state.total });
     setRunning(true);
     try {
-      await sequence.execute(builds, { pageChainId: actions.pageChainId, onMined: () => actions.refresh("withdraw"), wording: (index) => wordings[index] ?? whole });
+      await sequence.execute(builds, {
+        pageChainId: actions.pageChainId,
+        onMined: () => actions.refresh("withdraw"),
+        wording: (index) => withdrawalWording(amounts, total, index, latestCannotReceive.current),
+      });
     } finally {
       setRunning(false);
     }
@@ -84,13 +111,15 @@ export function WithdrawPanel({ state, noun, executed, actions, chain }: Withdra
 
   const progress = sequence.status;
   const withdrawn = state.status === "nothing" ? withdrawnAmount(withdrawal, progress, wallet) : null;
+  const line = cannotReceive ? withdrawSentLine : withdrawnLine;
   return (
     <>
+      {cannotReceive && (state.status === "available" || withdrawn !== null) ? <PayoutWarningNotice /> : null}
       <div className="flex flex-col gap-2">
         <h3>{WITHDRAW_HEADING}</h3>
         {/* Mounted empty before the refresh empties the panel: a live region mounted with its text is not announced. */}
         <p className={withdrawn === null ? "sr-only" : BODY_TEXT_CLASS} aria-live="polite" aria-atomic="true">
-          {withdrawn === null ? null : withdrawnLine(formatAmount(withdrawn, chain))}
+          {withdrawn === null ? null : line(formatAmount(withdrawn, chain))}
         </p>
         {withdrawn === null ? <WithdrawExplanation state={state} noun={noun} executed={executed} /> : null}
       </div>

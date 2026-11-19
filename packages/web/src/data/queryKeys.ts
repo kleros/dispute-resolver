@@ -31,6 +31,8 @@ export const queryKeys = {
     ["dr", "withdrawable", chainId, disputeId.toString(), account ?? "none", rounds.join(","), sessionPart(session)] as const,
   cost: (chainId: number, extraData: Hex) => ["dr", "cost", chainId, extraData] as const,
   accountCode: (chainId: number, account: Address) => ["dr", "accountCode", chainId, account] as const,
+  /** `delegation`: the account's EIP-7702 code, which names its delegate. */
+  lowGasPayout: (chainId: number, account: Address, delegation: Hex) => ["dr", "lowGasPayout", chainId, account, delegation] as const,
   chainTime: (chainId: number) => ["dr", "chainTime", chainId] as const,
   executedRuling: (chainId: number, disputeId: bigint, fromBlock: bigint) => ["dr", "executedRuling", chainId, disputeId.toString(), fromBlock.toString()] as const,
   productFunding: (chainId: number, disputeId: bigint) => ["dr", "productFunding", chainId, disputeId.toString()] as const,

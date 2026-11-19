@@ -4,10 +4,9 @@ import { useIsContractAccount } from "../data";
 import { ExternalLink } from "../safe-content";
 import { Notice } from "../ui";
 import { dismissWarning, isWarningShown } from "./dismissal";
+import { SMART_ACCOUNT_FAQ_URL } from "./smartAccountFaq";
 import type { SmartContractWalletWarningProps } from "./types";
 import { useWallet } from "./useWallet";
-
-const LEARN_MORE_URL = "https://docs.kleros.io/welcome/faq#can-i-use-a-smart-contract-account-to-stake-in-the-court";
 
 /**
  * Code other than an EIP-7702 delegation marks a smart-contract wallet. An RPC error, a missing account or a chain
@@ -31,7 +30,7 @@ export function SmartContractWalletWarning({ chainId }: SmartContractWalletWarni
     <section aria-label="Smart contract wallet warning" className="flex flex-col gap-2 sm:flex-row sm:items-center">
       <Notice variant="warning" title="Warning" body="You are using a smart contract wallet. This is not recommended." className="w-full" />
       <div className="flex shrink-0 items-center gap-4">
-        <ExternalLink href={LEARN_MORE_URL}>Learn more</ExternalLink>
+        <ExternalLink href={SMART_ACCOUNT_FAQ_URL}>Learn more</ExternalLink>
         <Button text="Dismiss" variant="secondary" small onPress={dismiss} aria-label="Dismiss the smart contract wallet warning" />
       </div>
     </section>

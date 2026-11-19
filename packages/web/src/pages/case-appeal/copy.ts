@@ -66,6 +66,11 @@ export function withdrawNothing(noun: RulingNoun, executed: boolean): string {
 export function withdrawnLine(amount: string): string {
   return `You withdrew ${amount}.`;
 }
+
+/** For an account a 2300-gas transfer cannot reach: the transaction was mined, but the funds may not have arrived. */
+export function withdrawSentLine(amount: string): string {
+  return `Withdrawal of ${amount} sent.`;
+}
 export const WITHDRAW_NO_ACCOUNT = "Connect a wallet to see whether you have rewards or refunds to withdraw on this dispute.";
 export const WITHDRAW_UNSUPPORTED =
   "Withdrawals are not supported through the Dispute Resolver for this contract. Use the arbitrable application to withdraw your rewards and refunds.";
@@ -110,6 +115,14 @@ export function withdrawWording(amount: string): WriteWording {
 /** The last of several transactions: its toast is the one the reader keeps, so it names the whole withdrawal. */
 export function withdrawLastWording(amount: string, total: string): WriteWording {
   return { doing: `withdrawing ${amount}`, done: `Withdrew ${total} in total.` };
+}
+
+export function withdrawSentWording(amount: string): WriteWording {
+  return { doing: `withdrawing ${amount}`, done: withdrawSentLine(amount) };
+}
+
+export function withdrawLastSentWording(amount: string, total: string): WriteWording {
+  return { doing: `withdrawing ${amount}`, done: `Withdrawals of ${total} sent.` };
 }
 
 export function escrowAppealWording(amount: string): WriteWording {

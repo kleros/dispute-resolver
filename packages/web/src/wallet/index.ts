@@ -3,6 +3,7 @@ export type { NetworkSwitch } from "./switchChain";
 export type { WriteAccess } from "./useWriteAccess";
 export { chainName } from "./chains";
 export { ConnectButton } from "./ConnectButton";
+export { PayoutWarningNotice } from "./PayoutWarningNotice";
 export { SmartContractWalletWarning } from "./SmartContractWalletWarning";
 export { WalletControl } from "./WalletControl";
 export { WalletProvider, WalletSetupProvider } from "./WalletProvider";

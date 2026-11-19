@@ -69,6 +69,7 @@ export {
   readAppealCost,
   simulateWrite,
 } from "./writes";
+export { isEip7702Delegation, readLowGasPayout } from "./accounts";
 export { compareBigint } from "./bigint";
 export { BodyTooLargeError } from "./fetch";
 export { z } from "./zod";

@@ -22,6 +22,7 @@ const everyKey = [
   queryKeys.withdrawable(1, 5n, undefined, [], undefined),
   queryKeys.cost(1, "0x00"),
   queryKeys.accountCode(1, ARBITRABLE),
+  queryKeys.lowGasPayout(1, ARBITRABLE, "0xef01007702cb554e6bfb442cb743a7df23154544a7176c"),
   queryKeys.chainTime(100),
   queryKeys.executedRuling(1, 5n, 1_000n),
   queryKeys.productFunding(1, 5n),

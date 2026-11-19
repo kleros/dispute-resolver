@@ -139,7 +139,8 @@ describe("persisted query cache", () => {
     ["a lookup holding a binding", [[queryKeys.lookup(1, 1n), testFoundLookup()]], []],
     ["family detections", [[queryKeys.family(1, ARBITRABLE), testFamily()]], []],
     ["withdrawable amounts", [[queryKeys.withdrawable(1, 5n, ARBITRABLE, [0n], undefined), { status: "nothing" }]], []],
-    ["an account's code", [[queryKeys.accountCode(1, ARBITRABLE), true]], []],
+    ["an account's code", [[queryKeys.accountCode(1, ARBITRABLE), "0x"]], []],
+    ["a payout check", [[queryKeys.lowGasPayout(1, ARBITRABLE, "0xef01007702cb554e6bfb442cb743a7df23154544a7176c"), "cannot-receive"]], []],
     ["the chain time", [[queryKeys.chainTime(1), { blockTimestamp: 1_700_000_000, observedAtMs: 1_700_000_000_000, observedAtMonotonicMs: 1_000 }]], []],
     [
       "the library's UserSettings and RoleRestrictions queries",
